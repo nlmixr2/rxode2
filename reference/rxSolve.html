@@ -142,7 +142,16 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>    <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>, <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>,</span>
 <span>    <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>, <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>,</span>
 <span>    <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>, <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>,</span>
-<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span><span class="op">)</span>,</span>
+<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span>, <span class="st">"rk4s"</span>, <span class="st">"eulers"</span>, <span class="st">"midpoints"</span>, <span class="st">"heuns"</span>, <span class="st">"dop5s"</span>,</span>
+<span>    <span class="st">"dop853s"</span>, <span class="st">"ck54s"</span>, <span class="st">"bs32s"</span>, <span class="st">"vern65s"</span>, </span>
+<span>     <span class="st">"vern76s"</span>, <span class="st">"dop87s"</span>, <span class="st">"f78s"</span>, <span class="st">"ros4s"</span>,</span>
+<span>    <span class="st">"radauiia5s"</span>, <span class="st">"backwardEulers"</span>, <span class="st">"gauss6s"</span>, <span class="st">"sdirk43s"</span>, <span class="st">"iiic6s"</span>, <span class="st">"ros43s"</span>, <span class="st">"ros6s"</span>,</span>
+<span>    <span class="st">"geng5s"</span>, <span class="st">"rk3s"</span>, <span class="st">"rk43s"</span>, <span class="st">"cvodesadj"</span>, <span class="st">"liblsodaadj"</span>, <span class="st">"abs"</span>, <span class="st">"dop54s"</span>, <span class="st">"dp54s"</span>,</span>
+<span>    <span class="st">"vern98s"</span>, <span class="st">"f45s"</span>, <span class="st">"t54s"</span>, <span class="st">"pp54s"</span>, <span class="st">"pp54bs"</span>, <span class="st">"bs54s"</span>, <span class="st">"ss54s"</span>, <span class="st">"dp65s"</span>, <span class="st">"c65s"</span>,</span>
+<span>    <span class="st">"tp64s"</span>, <span class="st">"v65rs"</span>, <span class="st">"dverk65s"</span>, <span class="st">"tf65s"</span>, <span class="st">"tp75s"</span>, <span class="st">"tmy7sadj"</span>, <span class="st">"tmy7adj"</span>, <span class="st">"v76rs"</span>,</span>
+<span>    <span class="st">"ss76s"</span>, <span class="st">"v78s"</span>, <span class="st">"dverk78s"</span>, <span class="st">"dp85s"</span>, <span class="st">"tp86s"</span>, <span class="st">"v87es"</span>, <span class="st">"v87rs"</span>, <span class="st">"ev87s"</span>, <span class="st">"k87s"</span>,</span>
+<span>    <span class="st">"v89s"</span>, <span class="st">"t98as"</span>, <span class="st">"v98rs"</span>, <span class="st">"s98s"</span>, <span class="st">"c108s"</span>, <span class="st">"b109s"</span>, </span>
+<span>     <span class="st">"s1110as"</span>, <span class="st">"o129s"</span><span class="op">)</span>,</span>
 <span>  sigdig <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  atol <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  rtol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
@@ -275,6 +284,9 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  autoSwitchSwitchMax <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  stiff2 <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  useLinCmt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.useLinCmt"</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  chunkSize <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -874,7 +886,16 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.</p>
 <p>Note that for dense output methods (<code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>,
 <code>"ros4"</code>), <code>hmax</code> defaults to <code>NULL</code> to allow the solvers to
-determine the step size when <code>dense=TRUE</code></p></dd>
+determine the step size when <code>dense=TRUE</code></p>
+<p>For <code>method="indLin"</code>, <code>hmax</code> caps how long an interval is treated
+as having a CONSTANT Jacobian/matrix-exponential term before
+re-linearizing (previously silently ignored for this method). For a
+true (state-independent) <code>matExp()</code> model this makes no numerical
+difference; for an <code><a href="indLin.html">indLin()</a></code>-forcing model with a state-dependent
+term (e.g. Michaelis-Menten elimination), the default <code>hmax</code> (tied to
+the spacing of your own sampling/dosing times) may be too coarse for
+the desired accuracy – set an explicit, smaller <code>hmax</code> to force more
+frequent relinearization.</p></dd>
 
 
 <dt id="arg-hmaxsd">hmaxSd<a class="anchor" aria-label="anchor" href="#arg-hmaxsd"></a></dt>
@@ -1846,6 +1867,27 @@ stored in the returned <code>rxControl()</code> object so that downstream
 hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 use the value of <code>rxode2.useLinCmt</code> option (which when specified
 is <code>TRUE</code> by default).</p></dd>
+
+
+<dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
+<dd><p>Character string giving a file path prefix for out-of-memory
+chunk solving. When set, <code>rxSolve()</code> splits subjects into chunks, writes
+each chunk's result to <code>&lt;file&gt;_chunk_NNNNN.parquet</code> (or <code>.rds</code> if
+<code>arrow</code> is unavailable), and returns an <code>rxSolveOom</code> object. The manifest
+is saved to <code>&lt;file&gt;_manifest.rds</code>. Set to <code>NULL</code> (default) to use the
+normal in-memory path.</p></dd>
+
+
+<dt id="arg-chunksize">chunkSize<a class="anchor" aria-label="anchor" href="#arg-chunksize"></a></dt>
+<dd><p>Integer; number of subjects per chunk when <code>file</code> is
+set. If <code>NULL</code> (default), the chunk size is auto-computed from available
+free RAM using <code><a href="rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p></dd>
+
+
+<dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
+<dd><p>Integer; number of <code>mirai</code> daemons to use for parallel
+chunk solving when <code>file</code> is set. <code>0L</code> (default) uses serial solving.
+Requires the <code>mirai</code> package.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

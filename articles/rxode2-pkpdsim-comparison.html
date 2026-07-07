@@ -288,7 +288,10 @@ require editing the <code>new_ode_model()</code> call.</p>
 </h3>
 <p>rxode2 automatically derives the symbolic Jacobian and forward-
 sensitivity equations used by nlmixr2’s FOCEi algorithm for exact
-gradient-based estimation. PKPDsim’s nlmixr2 integration uses
+gradient-based estimation. These now extend to third-order sensitivities
+and to <em>jump</em> (event) sensitivities – exact derivatives with
+respect to dosing parameters such as bioavailability, lag time, infusion
+rate, duration, and amount. PKPDsim’s nlmixr2 integration uses
 finite-difference gradients.</p>
 </div>
 <div class="section level3">
@@ -303,10 +306,48 @@ these are still solved as ODEs rather than analytically.</p>
 <div class="section level3">
 <h3 id="multiple-ode-solver-backends">Multiple ODE solver backends<a class="anchor" aria-label="anchor" href="#multiple-ode-solver-backends"></a>
 </h3>
-<p>rxode2 provides three solver backends selectable per run: thread-safe
-C LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
-Runge-Kutta for non-stiff systems). PKPDsim uses a single Boost::odeint
-backend with a configurable step size.</p>
+<p>rxode2 provides several solver backends selectable per run:
+thread-safe C LSODA (default), Fortran LSODA, DOP853 (explicit 8th-order
+Runge-Kutta for non-stiff systems), a stiff Rosenbrock method
+(<code>ros4</code>), and AutoSwitch composite methods (for example
+<code>method = "dop853+ros4"</code>) that probe each segment with a
+non-stiff primary and reactively fall back to a stiff secondary only
+where stiffness is detected. PKPDsim uses a single Boost::odeint backend
+with a configurable step size.</p>
+</div>
+<div class="section level3">
+<h3 id="delay-differential-equations">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations"></a>
+</h3>
+<p>rxode2 solves delay differential equations through
+<code>delay(state, T)</code>, which evaluates an ODE state at the past
+time <code>t - T</code> (Monolix <code><a href="../reference/delay.html">delay()</a></code> semantics) using
+dense-output interpolation, with forward sensitivities generated
+automatically so the models stay estimable in nlmixr2. PKPDsim does not
+solve delay differential equations.</p>
+</div>
+<div class="section level3">
+<h3 id="automatic-ode-to-lincmt-conversion">Automatic ODE-to-<code>linCmt()</code> conversion<a class="anchor" aria-label="anchor" href="#automatic-ode-to-lincmt-conversion"></a>
+</h3>
+<p>When a model’s ODE system is a 1-3 compartment linear PK system,
+rxode2 detects this and transparently solves it with the fast analytical
+<code>linCmt()</code> path (<code>rxSolve(..., useLinCmt = TRUE)</code>,
+the default), falling back to the ODE solver if the converted model
+cannot be compiled.</p>
+</div>
+<div class="section level3">
+<h3 id="out-of-memory-simulation-and-distributed-parallelism">Out-of-memory simulation and distributed parallelism<a class="anchor" aria-label="anchor" href="#out-of-memory-simulation-and-distributed-parallelism"></a>
+</h3>
+<p>For populations too large to hold in RAM, passing a <code>file</code>
+prefix to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> splits subjects into RAM-sized chunks
+(auto-sized with <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>), solves each, and
+writes them to Parquet (or <code>.rds</code>) behind a lightweight
+object that supports lazy <code>dplyr</code>/DuckDB queries so the full
+result is never materialized. Chunks can be dispatched to
+<code>mirai</code> daemons (<code>rxSolve(..., parallel = n)</code>) for
+distributed/HPC execution, on top of the within-call OpenMP
+threading.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">ev</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span>, parallel <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -319,7 +360,7 @@ backend with a configurable step size.</p>
 though they are organized differently.</p>
 <p>PKPDsim ships models as self-contained installable R packages via its
 own distribution system:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># See what models are available</span></span>
 <span><span class="fu">available_default_literature_models</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -336,7 +377,7 @@ own distribution system:</p>
 <code>nlmixr2lib</code> package (part of the nlmixr2 ecosystem), which
 provides a collection of published models as rxode2 model functions
 ready for simulation or estimation:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/nlmixr2/nlmixr2lib" class="external-link">nlmixr2lib</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># List available models</span></span>
@@ -354,7 +395,7 @@ syntax.</p>
 <p>In rxode2, IOV is specified in the <code>ini({})</code> block using
 the <code>| occ</code> condition syntax, then included in the model
 equation:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tcl</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></span>
@@ -369,7 +410,7 @@ equation:</p>
 <span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span></span></code></pre></div>
 <p>PKPDsim specifies IOV via the dedicated <code>iov</code> argument to
 <code>new_ode_model()</code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">new_ode_model</span><span class="op">(</span></span>
 <span>  code <span class="op">=</span> <span class="st">"dAdt[1] = -(CL/V)*A[1];"</span>,</span>
 <span>  iiv  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>CL <span class="op">=</span> <span class="st">"exp"</span>, V <span class="op">=</span> <span class="st">"exp"</span><span class="op">)</span>,</span>
@@ -388,7 +429,7 @@ versioning, documentation, and default parameters) via the
 <code>package</code> argument to <code>new_ode_model()</code>. This
 makes it easy to share a specific model version as a reproducible,
 installable unit.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">new_ode_model</span><span class="op">(</span></span>
 <span>  code       <span class="op">=</span> <span class="st">"dAdt[1] = -(CL/V)*A[1]"</span>,</span>
 <span>  obs        <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>cmt <span class="op">=</span> <span class="fl">1</span>, scale <span class="op">=</span> <span class="st">"V"</span><span class="op">)</span>,</span>
@@ -409,7 +450,7 @@ executed at every event) and <code>dose_code</code> (C++ code executed
 only at dose events). These allow model-specific logic – such as
 parameter recomputation at dose time or post-dose state resets – to be
 embedded directly in the compiled model.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">new_ode_model</span><span class="op">(</span></span>
 <span>  code      <span class="op">=</span> <span class="st">"dAdt[1] = -(CL/V)*A[1];"</span>,</span>
 <span>  pk_code   <span class="op">=</span> <span class="st">"CL = TVCL * pow(WT/70, 0.75);"</span>,   <span class="co"># recompute at every event</span></span>
@@ -425,7 +466,7 @@ level.</p>
 <p>PKPDsim supports mixture models (subpopulations with different
 parameter values and associated probabilities) directly via the
 <code>mixture</code> argument to <code>new_ode_model()</code>:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">new_ode_model</span><span class="op">(</span></span>
 <span>  code    <span class="op">=</span> <span class="st">"dAdt[1] = -(CL/V)*A[1];"</span>,</span>
 <span>  mixture <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -448,7 +489,7 @@ uses rxode2 as its model representation layer, the resulting object is
 simultaneously a valid rxode2 model that can be passed to
 <code><a href="../reference/rxSolve.html">rxSolve()</a></code> for simulation or to any nlmixr2 estimator for
 parameter estimation.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/InsightRX/PKPDsim" class="external-link">PKPDsim</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.org/" class="external-link">nlmixr2</a></span><span class="op">)</span></span>
 <span></span>
@@ -474,13 +515,13 @@ parameter estimation.</p>
 <code>ini({})</code> and <code>model({})</code> blocks. It can be used
 directly for:</p>
 <p><strong>Simulation with rxode2:</strong></p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, by <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>, <span class="va">ev</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Population estimation with nlmixr2:</strong></p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">nlmixr2</span><span class="op">(</span><span class="va">f</span>, data <span class="op">=</span> <span class="va">your_dataset</span>, est <span class="op">=</span> <span class="st">"focei"</span><span class="op">)</span></span></code></pre></div>
 <p>The <code>fixed</code> argument to <code>pkpdsim_to_nlmixr()</code>
 accepts a character vector of parameter names to exclude from estimation
@@ -524,13 +565,24 @@ reference page</a> for further details.</p>
 </tr>
 <tr class="even">
 <td>Solver</td>
-<td>thread-safe C LSODA; Fortran LSODA; DOP853</td>
+<td>LSODA (C/Fortran), DOP853, ros4, <code>"dop853+ros4"</code>
+</td>
 <td>Boost::odeint C++</td>
 </tr>
 <tr class="odd">
 <td>OpenMP parallelism</td>
 <td>yes (thread-safe solver)</td>
 <td>no (R loop over subjects)</td>
+</tr>
+<tr class="even">
+<td>Distributed / cluster parallelism</td>
+<td>yes (<code>mirai</code>)</td>
+<td>no</td>
+</tr>
+<tr class="odd">
+<td>Out-of-memory / disk-backed solve</td>
+<td>yes (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
+<td>no</td>
 </tr>
 <tr class="even">
 <td>Iterative-use speed</td>
@@ -543,6 +595,16 @@ reference page</a> for further details.</p>
 <td>no (<code>new_regimen()</code> API)</td>
 </tr>
 <tr class="even">
+<td>Delay differential equations (<code><a href="../reference/delay.html">delay()</a></code>)</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr class="odd">
+<td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
+<td>yes (<code>useLinCmt=TRUE</code>)</td>
+<td>no</td>
+</tr>
+<tr class="even">
 <td>1-3 cmt analytical solution</td>
 <td>
 <code>linCmt()</code> with exact gradients</td>
@@ -551,7 +613,7 @@ reference page</a> for further details.</p>
 </tr>
 <tr class="odd">
 <td>Symbolic Jacobians / sensitivities</td>
-<td>yes</td>
+<td>yes (up to 3rd order + jump sensitivities)</td>
 <td>no (finite differences)</td>
 </tr>
 <tr class="even">

@@ -189,7 +189,11 @@ ETA/EPS resampling</li>
 <li>Algebraic (ODE-free) prediction models</li>
 <li>NONMEM dataset translation tooling</li>
 <li>Population simulation across many subjects</li>
-<li>Parallel execution (OpenMP or otherwise)</li>
+<li>Parallel execution (rxode2 built-in; mrgsolve via the
+<code>mrgsim.parallel</code> extension)</li>
+<li>Out-of-memory / disk-backed simulation of larger-than-RAM
+populations (rxode2 built-in; mrgsolve via the <code>mrgsim.ds</code>
+extension)</li>
 </ul>
 <div class="section level3">
 <h3 id="adaptive-dosing-inside-the-model">Adaptive dosing inside the model<a class="anchor" aria-label="anchor" href="#adaptive-dosing-inside-the-model"></a>
@@ -267,6 +271,221 @@ replacement/reset operations, and other dynamic regimen updates.</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="large-scale-simulation-parallelism-and-out-of-memory-solving">Large-scale simulation: parallelism and out-of-memory solving<a class="anchor" aria-label="anchor" href="#large-scale-simulation-parallelism-and-out-of-memory-solving"></a>
+</h2>
+<p>Simulating very large populations raises two separate problems:
+making the solve fast enough (parallelism) and keeping the result small
+enough to fit in memory (out-of-memory storage). rxode2 addresses both
+inside <code><a href="../reference/rxSolve.html">rxSolve()</a></code> itself. For mrgsolve the same two problems
+are solved by two dedicated community extension packages –
+<code>mrgsim.parallel</code> (<a href="https://github.com/kylebaron/mrgsim.parallel" class="external-link uri">https://github.com/kylebaron/mrgsim.parallel</a>) for
+parallel execution and <code>mrgsim.ds</code> (<a href="https://github.com/p-emex/mrgsim.ds" class="external-link uri">https://github.com/p-emex/mrgsim.ds</a>) for disk-backed
+“out-of-memory” datasets.</p>
+<div class="section level3">
+<h3 id="parallel-solving">Parallel solving<a class="anchor" aria-label="anchor" href="#parallel-solving"></a>
+</h3>
+<p>rxode2 parallelizes at two levels.</p>
+<p>At the <em>thread</em> level, rxode2’s LSODA and DOP853 backends are
+implemented in thread-safe C, so a single <code><a href="../reference/rxSolve.html">rxSolve()</a></code> call
+spreads the per-subject ODE solves across OpenMP threads automatically.
+No data splitting, forking, or extra package is involved – it is
+controlled by the <code>cores</code> argument (defaulting to the value
+of <code><a href="../reference/getRxThreads.html">getRxThreads()</a></code>).</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Subjects are solved in parallel across OpenMP threads in one call</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
+<p>At the <em>process</em> level, rxode2 (since 5.1.1) can dispatch
+chunks of subjects to <code>mirai</code> daemons, which enables
+distributed and HPC/cluster execution. This is the same mechanism used
+by the out-of-memory path below (the <code>parallel</code> argument
+gives the number of daemons).</p>
+<p>mrgsolve’s own C++ LSODA runs single-threaded within a process, so it
+cannot spread subjects across threads the way rxode2’s OpenMP solver
+does. The <code>mrgsim.parallel</code> package fills this gap by
+splitting the data set with <code>chunk_by_id()</code> /
+<code>chunk_by_row()</code> and simulating the chunks in parallel
+through the <code>future</code> or <code>parallel</code> (forking /
+<code>mclapply</code>) ecosystems, then recombining the pieces into a
+single in-memory data frame (<code>future_mrgsim_d()</code>,
+<code>mc_mrgsim_d()</code>, <code>future_mrgsim_ei()</code>, …).</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Topic</th>
+<th>rxode2</th>
+<th>mrgsolve (<code>mrgsim.parallel</code>)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Within-subject-loop threading</td>
+<td>OpenMP in the C solver (<code>cores=</code>)</td>
+<td>not available (single-threaded C++ solver)</td>
+</tr>
+<tr class="even">
+<td>Cross-process parallelism</td>
+<td>
+<code>mirai</code> daemons (<code>parallel=</code>)</td>
+<td>
+<code>future</code> / <code>parallel</code> (fork,
+multisession)</td>
+</tr>
+<tr class="odd">
+<td>Data splitting</td>
+<td>automatic (per subject)</td>
+<td>manual (<code>chunk_by_id()</code>,
+<code>chunk_by_row()</code>)</td>
+</tr>
+<tr class="even">
+<td>Extra package needed</td>
+<td>no (built into <code><a href="../reference/rxSolve.html">rxSolve()</a></code>)</td>
+<td>yes (<code>mrgsim.parallel</code>)</td>
+</tr>
+<tr class="odd">
+<td>Result assembly</td>
+<td>in memory, or streamed to disk (see below)</td>
+<td>recombined in memory</td>
+</tr>
+</tbody>
+</table>
+<p>Because rxode2’s threading and its <code>mirai</code> chunking
+compose, a large run can use OpenMP <em>within</em> each chunk while
+<code>mirai</code> distributes the chunks across processes or nodes.</p>
+</div>
+<div class="section level3">
+<h3 id="out-of-memory-larger-than-ram-solving">Out-of-memory (larger-than-RAM) solving<a class="anchor" aria-label="anchor" href="#out-of-memory-larger-than-ram-solving"></a>
+</h3>
+<p>A population simulation can easily produce a result that does not fit
+in RAM. rxode2 handles this directly: pass a <code>file</code> prefix to
+<code><a href="../reference/rxSolve.html">rxSolve()</a></code> and it splits the subjects into chunks, solves
+each chunk, writes the chunk to a Parquet file (falling back to
+<code>.rds</code> when the <code>arrow</code> package is not installed),
+and returns a lightweight <code>rxSolveOom</code> object that reads
+chunks lazily on demand rather than holding the whole result in
+memory.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">ev</span>,</span>
+<span>               file      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span>, <span class="co"># enables the out-of-memory path</span></span>
+<span>               chunkSize <span class="op">=</span> <span class="fl">5000</span>,           <span class="co"># subjects per chunk (optional)</span></span>
+<span>               parallel  <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>              <span class="co"># mirai daemons (optional)</span></span></code></pre></div>
+<p>If <code>chunkSize</code> is omitted, rxode2 auto-computes it from
+the currently available RAM using <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>, so
+the chunks are sized to fit. The returned object behaves like an
+ordinary solved object – it prints the <code>$params</code> and
+<code>$inits</code>, supports <code>$column</code> extraction,
+<code><a href="https://rdrr.io/r/utils/head.html" class="external-link">head()</a></code>, <code><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow()</a></code>, <code><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol()</a></code> /
+<code><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim()</a></code>, and the usual <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> /
+<code><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble()</a></code> / <code><a href="https://rdrr.io/pkg/data.table/man/as.data.table.html" class="external-link">as.data.table()</a></code> coercions – but
+none of these read more of the data than they need to.</p>
+<p>For genuinely out-of-memory results, the chunks can be queried lazily
+so that filtering and aggregation are pushed down to the on-disk Parquet
+files and the full result is never materialized:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/as.arrow.html">as.arrow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span>            <span class="co"># a lazy arrow Dataset over the chunks</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&gt;</span> <span class="fl">24</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>cmax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">cp</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span>                        <span class="co"># only the small summary comes into RAM</span></span></code></pre></div>
+<p>A DuckDB query layer is used under the hood for <code><a href="https://rdrr.io/r/utils/head.html" class="external-link">head()</a></code>,
+single-column extraction, and schema access when DuckDB is installed.
+The storage/query engine can be pinned with the
+<code>rxode2.oom.backend</code> option (<code>"auto"</code>,
+<code>"duckdb"</code>, <code>"arrow"</code>, or <code>"rds"</code>); a
+requested engine that is not installed degrades gracefully
+(<code>duckdb</code> -&gt; <code>arrow</code> -&gt; <code>rds</code>),
+and the option is forwarded to the parallel <code>mirai</code>
+workers.</p>
+<p>The <em>input</em> side can be kept out of memory too.
+<code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> references an event table that lives on
+disk (Parquet, CSV, <code>fst</code>, or <code>rds</code>); each chunk
+reads only its own subjects’ rows, so even the event data set never has
+to be loaded in full.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">big_ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxEventTableFile.html">rxEventTableFile</a></span><span class="op">(</span><span class="st">"events.parquet"</span>, id <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">big_ev</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>mrgsolve’s <code>mrgsim.ds</code> package takes a very similar
+approach on the output side: <code>mrgsim_ds()</code> stores results as
+Apache Arrow / Parquet datasets in <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>, returns a
+lightweight pointer object, and lets you apply <code>dplyr</code> verbs
+over an Arrow (or DuckDB) backend before <code><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect()</a></code>-ing. It
+also adds a parallel-safe model loader (<code>modlib_ds()</code>),
+combination (<code>reduce_ds()</code>), and persistent save/read
+(<code>save_ds()</code> / <code>read_ds()</code>).</p>
+<p>The two designs are close in spirit; the main differences are:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Topic</th>
+<th>rxode2</th>
+<th>mrgsolve (<code>mrgsim.ds</code>)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Packaging</td>
+<td>built into <code>rxSolve(file=)</code>
+</td>
+<td>separate <code>mrgsim.ds</code> package +
+<code>mrgsim_ds()</code>
+</td>
+</tr>
+<tr class="even">
+<td>On-disk format</td>
+<td>Parquet (Arrow), <code>.rds</code> fallback with no Arrow</td>
+<td>Parquet (Arrow)</td>
+</tr>
+<tr class="odd">
+<td>Lazy query engines</td>
+<td>DuckDB and Arrow/<code>dplyr</code> pushdown</td>
+<td>Arrow/<code>dplyr</code> and DuckDB</td>
+</tr>
+<tr class="even">
+<td>Automatic chunk sizing</td>
+<td>yes, from free RAM (<code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>)</td>
+<td>user manages replicate/chunking</td>
+</tr>
+<tr class="odd">
+<td>Backend selection</td>
+<td>
+<code>rxode2.oom.backend</code> option, graceful degrade</td>
+<td>Arrow-based</td>
+</tr>
+<tr class="even">
+<td>Persisted alongside data</td>
+<td>per-subject <code>$params</code> and <code>$inits</code>
+</td>
+<td>simulation output</td>
+</tr>
+<tr class="odd">
+<td>Out-of-memory <em>input</em>
+</td>
+<td>yes (<code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code>)</td>
+<td>–</td>
+</tr>
+<tr class="even">
+<td>Composes with parallelism</td>
+<td>yes (<code>parallel=</code> <code>mirai</code> daemons +
+OpenMP)</td>
+<td>via <code>mrgsim.parallel</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p><code><a href="../reference/rxSolveChunked.html">rxSolveChunked()</a></code> is a thin convenience wrapper around
+the same machinery, but the <code>rxSolve(..., file=)</code> form above
+is the recommended interface.</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="features-rxode2-has-that-mrgsolve-does-not">Features rxode2 has that mrgsolve does not<a class="anchor" aria-label="anchor" href="#features-rxode2-has-that-mrgsolve-does-not"></a>
 </h2>
 <div class="section level3">
@@ -277,6 +496,32 @@ system and forward-sensitivity equations. These are used directly by
 nlmixr2’s FOCEi algorithm for parameter estimation without finite
 differences. mrgsolve does not currently support symbolic
 differentiation.</p>
+<p>The sensitivity machinery has grown well beyond first order. rxode2
+now generates exact, finite-difference-free forward sensitivities up to
+third order (<code>d^3 state / ds1 ds2 ds3</code>), which supply the
+analytic FOCEi/FOCE covariance Hessian terms that previously required
+numeric differencing.</p>
+<p>It also generates <em>jump</em> (event) sensitivities: the derivative
+of the solution with respect to dosing parameters such as
+bioavailability (<code>F</code>), lag time (<code>alag</code>), infusion
+rate, duration, and dose amount, capturing the discontinuities these
+introduce at dose times (based on the <code>EventSensitivities</code>
+approach). These are available for ODE, matrix exponential, and
+<code>linCmt()</code> models – up to third order for the ODE and
+matrix-exponential cases – and are selected through the
+<code>eventSens</code> build option. mrgsolve has no equivalent.</p>
+</div>
+<div class="section level3">
+<h3 id="matrix-exponential-and-inductive-linearization-with-analytic-gradients">Matrix exponential and inductive linearization with analytic
+gradients<a class="anchor" aria-label="anchor" href="#matrix-exponential-and-inductive-linearization-with-analytic-gradients"></a>
+</h3>
+<p>rxode2 provides matrix-exponential and inductive-linearization
+solving paths for linear (and locally linearized) systems, specified
+with a NONMEM-like interface and translated automatically from ODE
+syntax. Both paths carry analytic gradients computed by symbolic
+differentiation, so they can be used inside gradient-based estimation
+rather than only for forward simulation. mrgsolve does not offer these
+solving modes.</p>
 </div>
 <div class="section level3">
 <h3 id="compartment-analytical-solutions-with-exact-gradients">1-3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
@@ -286,7 +531,7 @@ three-compartment analytical solutions. Gradients are computed via Stan
 math auto-differentiation, enabling exact gradient-based estimation in
 nlmixr2. mrgsolve’s <code>$PKMODEL</code> block supports one and two
 compartments only, and does not provide analytical gradients.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">TCl</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
@@ -308,8 +553,14 @@ three-compartment case.</p>
 <div class="section level3">
 <h3 id="multiple-ode-solvers">Multiple ODE solvers<a class="anchor" aria-label="anchor" href="#multiple-ode-solvers"></a>
 </h3>
-<p>rxode2 ships three solver backends that can be selected per run:</p>
+<p>rxode2 ships several solver backends that can be selected per
+run:</p>
 <table class="table">
+<colgroup>
+<col width="33%">
+<col width="25%">
+<col width="41%">
+</colgroup>
 <thead><tr class="header">
 <th>Solver</th>
 <th>Type</th>
@@ -331,12 +582,71 @@ three-compartment case.</p>
 <td>explicit Runge-Kutta</td>
 <td>non-stiff, fast</td>
 </tr>
+<tr class="even">
+<td>ros4</td>
+<td>Rosenbrock (implicit)</td>
+<td>stiff</td>
+</tr>
+<tr class="odd">
+<td><code>"dop853+ros4"</code></td>
+<td>AutoSwitch composite</td>
+<td>mixed stiff/non-stiff (see below)</td>
+</tr>
 </tbody>
 </table>
 <p>mrgsolve uses a single C++ LSODA backend.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"dop853"</span><span class="op">)</span> <span class="co"># explicit RK8 solver</span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"lsoda"</span><span class="op">)</span> <span class="co"># default</span></span></code></pre></div>
+<p>rxode2 additionally offers <strong>AutoSwitch composite</strong>
+methods, written as <code>"primary+secondary"</code> (for example
+<code>method = "dop853+ros4"</code>). These probe each integration
+segment with a fast non-stiff primary (<code>dop853</code>) and
+reactively fall back to a stiff secondary (a Rosenbrock/implicit method
+such as <code>ros4</code>, for which an analytical Jacobian is generated
+automatically) only where stiffness is detected. A problem that is
+non-stiff in one region and stiff in another is thus solved efficiently
+in a single pass, in both the standard and dense-output paths.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"dop853+ros4"</span><span class="op">)</span> <span class="co"># non-stiff probe, stiff fallback</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="delay-differential-equations">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations"></a>
+</h3>
+<p>rxode2 supports delay differential equations (DDEs) through the
+<code>delay(state, T)</code> model function, which evaluates an ODE
+state at the past time <code>t - T</code> (the same semantics as
+Monolix’s <code><a href="../reference/delay.html">delay()</a></code>). Delayed values are interpolated from
+the solver’s dense output (the 8th-order Dormand-Prince interpolant), so
+they are obtained to the full accuracy of the integration, and dense
+history is recorded only for the states that are actually looked back
+on. Delay models default to the dense AutoSwitch composite
+<code>"dop853+ros4"</code>, and forward sensitivities are generated for
+<code><a href="../reference/delay.html">delay()</a></code> models so they can be estimated with gradient-based
+methods in nlmixr2. mrgsolve does not solve delay differential
+equations.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod_dde</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">ke</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">central</span>, <span class="va">tau</span><span class="op">)</span> <span class="co"># delayed feedback</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="automatic-ode-to-lincmt-conversion">Automatic ODE-to-<code>linCmt()</code> conversion<a class="anchor" aria-label="anchor" href="#automatic-ode-to-lincmt-conversion"></a>
+</h3>
+<p>When a model’s ODE system is a 1-3 compartment linear PK system,
+rxode2 can detect this and transparently solve it with the fast
+analytical <code>linCmt()</code> path instead of the numerical ODE
+solver. This happens automatically at solve time
+(<code>rxSolve(..., useLinCmt = TRUE)</code>, the default), with the
+detected PK parameters passed explicitly to <code>linCmt()</code> so the
+parameterization is inferred even when parameters are declared only in
+<code><a href="../reference/ini.html">ini()</a></code>. If a converted model cannot be compiled the original
+ODE model is used instead, so the conversion never breaks an
+otherwise-valid solve. The reverse direction, <code><a href="../reference/linToOde.html">linToOde()</a></code>,
+expands a <code>linCmt()</code> model back to explicit ODEs. mrgsolve
+keeps analytical (<code>$PKMODEL</code>) and ODE (<code>$ODE</code>)
+models as distinct, user-selected forms.</p>
 </div>
 <div class="section level3">
 <h3 id="nonmem-model-import">NONMEM model import<a class="anchor" aria-label="anchor" href="#nonmem-model-import"></a>
@@ -351,7 +661,7 @@ performs a similar translation, that is not on CRAN.</p>
 package</a> (available on CRAN) can translate NONMEM models to several R
 simulation frameworks, including both <code>rxode2</code> (using
 <code>nonmem2rx</code>) and <code>mrgsolve</code>.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/nonmem2rx/" class="external-link">nonmem2rx</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Import a NONMEM run directly into an rxode2 model</span></span>
@@ -368,9 +678,13 @@ tool.</p>
 <div class="section level3">
 <h3 id="thread-safe-c-lsoda-enabling-openmp-parallelism">Thread-safe C LSODA enabling OpenMP parallelism<a class="anchor" aria-label="anchor" href="#thread-safe-c-lsoda-enabling-openmp-parallelism"></a>
 </h3>
-<p>rxode2’s LSODA is implemented in thread-safe C, allowing genuine
-parallel ODE solving across subjects via OpenMP. mrgsolve parallelism
-relies on forked processes or future-based backends.</p>
+<p>rxode2’s LSODA (and DOP853) are implemented in thread-safe C,
+allowing genuine parallel ODE solving across subjects via OpenMP within
+a single <code><a href="../reference/rxSolve.html">rxSolve()</a></code> call, whereas mrgsolve’s single-threaded
+C++ solver relies on forked processes or future-based backends (via
+<code>mrgsim.parallel</code>). See <a href="#parallel-solving">Parallel
+solving</a> above for the full comparison, including rxode2’s
+<code>mirai</code>-based cluster/HPC path.</p>
 </div>
 <div class="section level3">
 <h3 id="model-piping">Model piping<a class="anchor" aria-label="anchor" href="#model-piping"></a>
@@ -380,7 +694,7 @@ relies on forked processes or future-based backends.</p>
 rewriting the full specification. <code><a href="../reference/model.html">model()</a></code> and
 <code><a href="../reference/ini.html">ini()</a></code> pipes copy the model, apply the change, and return a
 new object – leaving the original untouched.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">base</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -411,7 +725,7 @@ inserted (<code>FALSE</code> = prepend, <code>TRUE</code> = append). The
 <code>cov</code> argument declares covariate columns so they are not
 treated as missing parameters.</p>
 <p>Additional convenience pipes allow targeted changes:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Change a single initial estimate without touching the rest of the model</span></span>
 <span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="va">full</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -431,7 +745,7 @@ script, or package) to be automatically available for use inside an
 rxode2 model. No special block or registration step is needed – rxode2
 finds the function by name in the parent environment and calls it at
 solve time.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; rxode2 5.1.3 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
@@ -465,9 +779,9 @@ structs) that persist across the model’s C++ functions via a
 <code>$GLOBAL</code> block. rxode2 has no direct equivalent at the model
 specification level; shared state must be handled through rxFun or
 package-level C code.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co">// mrgsolve only</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="er">$</span>GLOBAL</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="at">static</span> <span class="dt">int</span> call_count <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co">// mrgsolve only</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="er">$</span>GLOBAL</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="at">static</span> <span class="dt">int</span> call_count <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="env-block">
@@ -567,7 +881,7 @@ inline C strings, or through <code><a href="../reference/dot-extraC.html">.extra
 a file path (generating a <code>#include</code>) or raw C code. The MD5
 of any included file contributes to the model’s cache key, so a changed
 header triggers recompilation automatically.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Include a local header file; model recompiles if the file changes</span></span>
 <span><span class="fu"><a href="../reference/dot-extraC.html">.extraC</a></span><span class="op">(</span><span class="st">"mymodels/special_functions.h"</span><span class="op">)</span></span>
 <span></span>
@@ -588,7 +902,7 @@ code. Built-in examples include <code>linCmt()</code>,
 <code><a href="../reference/linMod.html">linMod()</a></code>, and distribution functions like
 <code><a href="../reference/rxpois.html">rxpois()</a></code>. This is described in <a href="Integrating-User-Defined-Functions-into-rxode2.html">Integrating
 User Defined Functions into rxode2</a>.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Register a model-expansion function</span></span>
 <span><span class="va">rxUdfUi.myFun</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fun</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval</a></span><span class="op">(</span><span class="va">fun</span><span class="op">)</span></span>
@@ -600,7 +914,7 @@ User Defined Functions into rxode2</a>.</p>
 </h3>
 <p>Both tools support purely algebraic models without any ODEs. In
 rxode2 you simply omit <code>d/dt()</code> statements:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mod_pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -658,7 +972,7 @@ directions.</p>
 <div class="section level3">
 <h3 id="rxode2-to-mrgsolve">rxode2 to mrgsolve<a class="anchor" aria-label="anchor" href="#rxode2-to-mrgsolve"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://gitlab.com/fiha1/rxode2-mrgsolve-bridge" class="external-link">rxode2mrgsolvebridge</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">rx_code</span> <span class="op">&lt;-</span> <span class="st">"</span></span>
@@ -680,7 +994,7 @@ directions.</p>
 <div class="section level3">
 <h3 id="mrgsolve-to-rxode2">mrgsolve to rxode2<a class="anchor" aria-label="anchor" href="#mrgsolve-to-rxode2"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/rxode2mrgsolvebridge/man/rxode2mrgsolvebridge.html" class="external-link">convert_mrgsolve_to_rxode2</a></span><span class="op">(</span></span>
 <span>  mrgsolve_file  <span class="op">=</span> <span class="st">"model.cpp"</span>,</span>
 <span>  output_basename <span class="op">=</span> <span class="st">"model"</span>,</span>
@@ -761,19 +1075,52 @@ conversion.</p>
 <td>C++ LSODA</td>
 </tr>
 <tr class="even">
-<td>Parallel solving (OpenMP)</td>
-<td>yes (thread-safe solver)</td>
-<td>process-based</td>
+<td>AutoSwitch composite solvers (<code>"dop853+ros4"</code>)</td>
+<td>yes</td>
+<td>no</td>
 </tr>
 <tr class="odd">
+<td>Delay differential equations (<code><a href="../reference/delay.html">delay()</a></code>)</td>
+<td>yes (dense output, with sensitivities)</td>
+<td>no</td>
+</tr>
+<tr class="even">
+<td>Parallel solving</td>
+<td>OpenMP threads (<code>cores=</code>) + <code>mirai</code>
+(<code>parallel=</code>)</td>
+<td>process-based via <code>mrgsim.parallel</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Out-of-memory / disk-backed solve</td>
+<td>built in (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
+<td>via <code>mrgsim.ds</code>
+</td>
+</tr>
+<tr class="even">
 <td>1-3 cmt analytical solution</td>
 <td>
 <code>linCmt()</code> with gradients</td>
 <td>
 <code>$PKMODEL</code> 1-2 cmt, no gradients</td>
 </tr>
+<tr class="odd">
+<td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
+<td>yes (<code>useLinCmt=TRUE</code>)</td>
+<td>no</td>
+</tr>
 <tr class="even">
 <td>Symbolic Jacobian / sensitivities</td>
+<td>yes (up to 3rd order)</td>
+<td>no</td>
+</tr>
+<tr class="odd">
+<td>Event / jump sensitivities (F, alag, rate, dur, amt)</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr class="even">
+<td>Matrix exponential / inductive linearization with gradients</td>
 <td>yes</td>
 <td>no</td>
 </tr>
@@ -905,6 +1252,12 @@ package</a></li>
 <li><a href="https://github.com/Andy00000000000/nonmem2mrgsolve" class="external-link">nonmem2mrgsolve</a></li>
 <li><a href="https://github.com/LeidenAdvancedPKPD/amp.sim" class="external-link">amp.sim
 package</a></li>
+<li><a href="https://github.com/kylebaron/mrgsim.parallel" class="external-link">mrgsim.parallel
+(parallel mrgsolve)</a></li>
+<li><a href="https://github.com/p-emex/mrgsim.ds" class="external-link">mrgsim.ds
+(out-of-memory mrgsolve)</a></li>
+<li><a href="https://github.com/dkaschek/EventSensitivities" class="external-link">EventSensitivities
+(event/jump sensitivities)</a></li>
 <li><a href="https://cran.r-project.org/package=rxode2mrgsolvebridge" class="external-link">rxode2mrgsolvebridge
 package (CRAN)</a></li>
 <li><a href="https://gitlab.com/fiha1/rxode2-mrgsolve-bridge" class="external-link">rxode2mrgsolvebridge

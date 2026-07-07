@@ -205,11 +205,11 @@
 <div class="section level2">
 <h2 id="vexp-context-tools-">vexp context tools <!-- vexp v2.0.12 -->
 <a class="anchor" aria-label="anchor" href="#vexp-context-tools-"></a></h2>
-<p><strong>MANDATORY: use <code>run_pipeline</code> — do NOT grep, glob, or read files manually.</strong> vexp returns pre-indexed, graph-ranked context in a single call.</p>
+<p><strong>MANDATORY: use <code>run_pipeline</code> – do NOT grep, glob, or read files manually.</strong> vexp returns pre-indexed, graph-ranked context in a single call.</p>
 <div class="section level3">
 <h3 id="workflow">Workflow<a class="anchor" aria-label="anchor" href="#workflow"></a></h3>
 <ol style="list-style-type: decimal"><li>
-<code>run_pipeline</code> with your task description — ALWAYS FIRST (replaces all other tools)</li>
+<code>run_pipeline</code> with your task description – ALWAYS FIRST (replaces all other tools)</li>
 <li>Make targeted changes based on the context returned</li>
 <li>
 <code>run_pipeline</code> again only if you need more context</li>
@@ -217,18 +217,18 @@
 <div class="section level3">
 <h3 id="available-mcp-tools">Available MCP tools<a class="anchor" aria-label="anchor" href="#available-mcp-tools"></a></h3>
 <ul><li>
-<code>run_pipeline</code> — <strong>PRIMARY TOOL</strong>. Runs capsule + impact + memory in 1 call. Auto-detects intent. Includes file content. Example: <code>run_pipeline({ "task": "fix auth bug" })</code>
+<code>run_pipeline</code> – <strong>PRIMARY TOOL</strong>. Runs capsule + impact + memory in 1 call. Auto-detects intent. Includes file content. Example: <code>run_pipeline({ "task": "fix auth bug" })</code>
 </li>
 <li>
-<code>get_skeleton</code> — compact file structure</li>
+<code>get_skeleton</code> – compact file structure</li>
 <li>
-<code>index_status</code> — indexing status</li>
+<code>index_status</code> – indexing status</li>
 <li>
-<code>expand_vexp_ref</code> — expand V-REF placeholders in v2 output</li>
+<code>expand_vexp_ref</code> – expand V-REF placeholders in v2 output</li>
 </ul></div>
 <div class="section level3">
 <h3 id="agentic-search">Agentic search<a class="anchor" aria-label="anchor" href="#agentic-search"></a></h3>
-<ul><li>Do NOT use built-in file search, grep, or codebase indexing — always call <code>run_pipeline</code> first</li>
+<ul><li>Do NOT use built-in file search, grep, or codebase indexing – always call <code>run_pipeline</code> first</li>
 <li>If you spawn sub-agents or background tasks, pass them the context from <code>run_pipeline</code> rather than letting them search the codebase independently</li>
 </ul></div>
 <div class="section level3">

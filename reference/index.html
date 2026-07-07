@@ -240,6 +240,13 @@
 
         <dt>
 
+          <code><a href="rxEventTableFile.html">rxEventTableFile()</a></code>
+
+        </dt>
+        <dd>Create a file-backed event table reference</dd>
+
+        <dt>
+
           <code><a href="splitBolus.html">splitBolus()</a></code>
 
         </dt>
@@ -342,10 +349,24 @@
 
         <dt>
 
+          <code><a href="rxSolveChunked.html">rxSolveChunked()</a></code>
+
+        </dt>
+        <dd>Solve an ODE model in memory-safe chunks</dd>
+
+        <dt>
+
           <code><a href="rxCbindStudyIndividual.html">rxCbindStudyIndividual()</a></code>
 
         </dt>
         <dd>Bind the study parameters and individual parameters</dd>
+
+        <dt>
+
+          <code><a href="as.arrow.html">as.arrow()</a></code>
+
+        </dt>
+        <dd>Convert an rxSolveOom result to a lazy Arrow Dataset</dd>
       </dl></div><div class="section level2">
       <h2 id="model-ui-piping">Model UI &amp; Piping<a class="anchor" aria-label="anchor" href="#model-ui-piping"></a></h2>
 
@@ -400,7 +421,7 @@
 
         <dt>
 
-          <code><a href="assertRxUi.html">assertRxUi()</a></code> <code><a href="assertRxUi.html">assertRxUiPrediction()</a></code> <code><a href="assertRxUi.html">assertRxUiIovNoCor()</a></code> <code><a href="assertRxUi.html">assertRxUiNoMix()</a></code> <code><a href="assertRxUi.html">assertRxUiSingleEndpoint()</a></code> <code><a href="assertRxUi.html">assertRxUiTransformNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiMuRefOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiEstimatedResiduals()</a></code> <code><a href="assertRxUi.html">assertRxUiPopulationOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiMixedOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiRandomOnIdOnly()</a></code>
+          <code><a href="assertRxUi.html">assertRxUi()</a></code> <code><a href="assertRxUi.html">assertRxUiPrediction()</a></code> <code><a href="assertRxUi.html">assertRxUiIovNoCor()</a></code> <code><a href="assertRxUi.html">assertRxUiNoMix()</a></code> <code><a href="assertRxUi.html">assertRxUiNoAutoregressive()</a></code> <code><a href="assertRxUi.html">assertRxUiSingleEndpoint()</a></code> <code><a href="assertRxUi.html">assertRxUiTransformNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiNormal()</a></code> <code><a href="assertRxUi.html">assertRxUiMuRefOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiEstimatedResiduals()</a></code> <code><a href="assertRxUi.html">assertRxUiPopulationOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiMixedOnly()</a></code> <code><a href="assertRxUi.html">assertRxUiRandomOnIdOnly()</a></code>
 
         </dt>
         <dd>Assert properties of the rxUi models</dd>
@@ -1783,6 +1804,13 @@
 
         <dt>
 
+          <code><a href="rxHasAr.html">rxHasAr()</a></code>
+
+        </dt>
+        <dd>Test if a model uses an autoregressive (<code><a href="https://rdrr.io/r/stats/ar.html" class="external-link">ar()</a></code>) residual</dd>
+
+        <dt>
+
           <code><a href="rxHtml.html">rxHtml()</a></code>
 
         </dt>
@@ -1906,6 +1934,20 @@
 
         </dt>
         <dd>Set timing for progress bar</dd>
+
+        <dt>
+
+          <code><a href="rxSolveAdjoint.html">rxSolveAdjoint()</a></code>
+
+        </dt>
+        <dd>Solve a model with adjoint (backward) sensitivities, drop-in for forward sens</dd>
+
+        <dt>
+
+          <code><a href="rxSolveAdjointRk4.html">rxSolveAdjointRk4()</a></code>
+
+        </dt>
+        <dd>Solve a model with an in-engine discrete-adjoint (<code>s</code>) method</dd>
 
         <dt>
 

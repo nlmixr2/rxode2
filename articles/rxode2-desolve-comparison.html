@@ -439,6 +439,51 @@ recent dose – <code>tad()</code>, <code>tad0()</code>,
 <code>tad(cmt)</code>, and <code>tad0(cmt)</code> – usable directly
 inside model equations. deSolve has no equivalent; the user must track
 this manually.</p>
+</div>
+<div class="section level3">
+<h3 id="out-of-memory-larger-than-ram-simulation">Out-of-memory (larger-than-RAM) simulation<a class="anchor" aria-label="anchor" href="#out-of-memory-larger-than-ram-simulation"></a>
+</h3>
+<p>A population simulation can produce a result too large to hold in
+RAM. rxode2 handles this directly: passing a <code>file</code> prefix to
+<code><a href="../reference/rxSolve.html">rxSolve()</a></code> splits the subjects into chunks, solves each,
+writes it to a Parquet file (falling back to <code>.rds</code> when
+<code>arrow</code> is unavailable), and returns a lightweight object
+that reads chunks lazily. The chunk size is auto-computed from available
+RAM (<code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>), and the on-disk chunks can be
+queried lazily with <code>dplyr</code>/<code>arrow</code> or DuckDB so
+that filtering and aggregation are pushed down and the full result never
+has to be materialized. deSolve returns an in-memory matrix or data
+frame only.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">ev</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span><span class="op">)</span> <span class="co"># disk-backed chunks</span></span>
+<span><span class="va">res</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/as.arrow.html">as.arrow</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&gt;</span> <span class="fl">24</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="distributed-cluster-parallelism-via-mirai">Distributed / cluster parallelism via mirai<a class="anchor" aria-label="anchor" href="#distributed-cluster-parallelism-via-mirai"></a>
+</h3>
+<p>In addition to OpenMP threading within a single call, rxode2 can
+dispatch chunks of subjects to <code>mirai</code> daemons
+(<code>rxSolve(..., parallel = n)</code>), which enables distributed and
+HPC/cluster execution and composes with the out-of-memory path above. In
+deSolve, cross-process parallelism is left entirely to the user.</p>
+</div>
+<div class="section level3">
+<h3 id="automatic-ode-to-lincmt-conversion">Automatic ODE-to-<code>linCmt()</code> conversion<a class="anchor" aria-label="anchor" href="#automatic-ode-to-lincmt-conversion"></a>
+</h3>
+<p>When a model’s ODE system is a 1-3 compartment linear PK system,
+rxode2 detects this and transparently solves it with the fast analytical
+<code>linCmt()</code> path (<code>rxSolve(..., useLinCmt = TRUE)</code>,
+the default), falling back to the ODE solver if the converted model
+cannot be compiled. deSolve always integrates the ODEs numerically.</p>
+</div>
+<div class="section level3">
+<h3 id="event-jump-and-higher-order-sensitivities">Event / jump and higher-order sensitivities<a class="anchor" aria-label="anchor" href="#event-jump-and-higher-order-sensitivities"></a>
+</h3>
+<p>Beyond first-order forward sensitivities, rxode2 generates exact
+sensitivities up to third order and <em>jump</em> (event) sensitivities
+– the derivative of the solution with respect to dosing parameters such
+as bioavailability, lag time, infusion rate, duration, and amount.
+deSolve has no symbolic-sensitivity machinery.</p>
 <hr>
 </div>
 </div>
@@ -498,25 +543,42 @@ in R:</p>
 </tr>
 </tbody>
 </table>
-<p>rxode2 offers three backends: thread-safe C LSODA (default), Fortran
-LSODA, and DOP853. Most pharmacometric models are stiff and well served
-by LSODA, but rxode2 does not currently offer sparse Jacobian solvers,
-DAE solvers, or delay-differential equation solvers.</p>
+<p>rxode2 offers thread-safe C LSODA (default), Fortran LSODA, DOP853, a
+stiff Rosenbrock method (<code>ros4</code>), and AutoSwitch composite
+methods (for example <code>method = "dop853+ros4"</code>) that probe
+each segment with a non-stiff primary and fall back to a stiff secondary
+only where stiffness is detected. Most pharmacometric models are stiff
+and well served by LSODA, but rxode2 does not currently offer sparse
+Jacobian solvers or DAE solvers. (rxode2 <em>does</em> now solve delay
+differential equations – see below.)</p>
 </div>
 <div class="section level3">
 <h3 id="delay-differential-equations-ddes">Delay differential equations (DDEs)<a class="anchor" aria-label="anchor" href="#delay-differential-equations-ddes"></a>
 </h3>
-<p>deSolve’s <code>dede()</code> function solves delay differential
-equations where the RHS depends on the history of the state vector.
-rxode2 does not support DDEs.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># deSolve only</span></span>
+<p>Both packages solve delay differential equations, with different
+mechanisms. deSolve’s <code>dede()</code> lets the right-hand side look
+up the state (<code>lagvalue()</code>) or its derivative
+(<code>lagderiv()</code>) at <em>any</em> past time, which is fully
+general. rxode2 provides the <code>delay(state, T)</code> model
+function, which evaluates an ODE state at the fixed past time
+<code>t - T</code> (the same semantics as Monolix’s
+<code><a href="../reference/delay.html">delay()</a></code>); values are interpolated from the solver’s
+8th-order dense output, so they carry the full accuracy of the
+integration, and rxode2 automatically generates forward sensitivities
+for <code><a href="../reference/delay.html">delay()</a></code> models so they can be estimated with
+gradient-based methods in nlmixr2.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># deSolve: arbitrary-history DDE</span></span>
 <span><span class="va">dde_model</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">y</span>, <span class="va">parms</span>, <span class="va">lag</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="va">parms</span><span class="op">[</span><span class="st">"r"</span><span class="op">]</span> <span class="op">*</span> <span class="va">y</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu">lagvalue</span><span class="op">(</span><span class="va">t</span> <span class="op">-</span> <span class="va">lag</span>, <span class="fl">1</span><span class="op">)</span> <span class="op">/</span> <span class="va">parms</span><span class="op">[</span><span class="st">"K"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span></span>
 <span><span class="fu">deSolve</span><span class="fu">::</span><span class="fu">dede</span><span class="op">(</span><span class="va">y0</span>, <span class="va">times</span>, func <span class="op">=</span> <span class="va">dde_model</span>, parms <span class="op">=</span> <span class="va">parms</span>,</span>
-<span>              lag <span class="op">=</span> <span class="fl">1.5</span>, method <span class="op">=</span> <span class="st">"dde23"</span><span class="op">)</span></span></code></pre></div>
+<span>              lag <span class="op">=</span> <span class="fl">1.5</span>, method <span class="op">=</span> <span class="st">"dde23"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># rxode2: delay() on an ODE right-hand side</span></span>
+<span><span class="va">mod_dde</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">r</span> <span class="op">*</span> <span class="va">y</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">tau</span><span class="op">)</span> <span class="op">/</span> <span class="va">K</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="differential-algebraic-equations-daes">Differential-algebraic equations (DAEs)<a class="anchor" aria-label="anchor" href="#differential-algebraic-equations-daes"></a>
@@ -566,7 +628,7 @@ overhead for general ODE work.</p>
 <p>deSolve can solve any R-function ODE right away – no compilation
 step. This makes it simple for quick explorations, teaching, or
 prototyping where compilation latency matters:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># deSolve: immediately solvable, no compilation</span></span>
 <span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">deSolve</span><span class="fu">::</span><span class="fu">ode</span><span class="op">(</span></span>
 <span>  y     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>depot <span class="op">=</span> <span class="fl">100</span>, centr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
@@ -670,69 +732,89 @@ compiled C code and OpenMP parallelism.</p>
 <td>yes (<code>rkF45</code> / <code>ode45</code>)</td>
 </tr>
 <tr class="odd">
+<td>AutoSwitch composite solvers (<code>"dop853+ros4"</code>)</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr class="even">
 <td>DAE solver</td>
 <td>no</td>
 <td>yes (<code>daspk</code>)</td>
 </tr>
-<tr class="even">
-<td>DDE solver</td>
-<td>no</td>
-<td>yes (<code>dede</code>)</td>
-</tr>
 <tr class="odd">
+<td>DDE solver</td>
+<td>yes (<code><a href="../reference/delay.html">delay()</a></code>, dense output, with sensitivities)</td>
+<td>yes (<code>dede</code>, general history)</td>
+</tr>
+<tr class="even">
 <td>Sparse Jacobian solver</td>
 <td>no</td>
 <td>yes (<code>lsodes</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Root finding / threshold</td>
 <td>no</td>
 <td>yes (<code>lsodar</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>OpenMP parallelism</td>
 <td>yes (built-in)</td>
 <td>no (manual)</td>
 </tr>
+<tr class="odd">
+<td>Distributed / cluster parallelism</td>
+<td>yes (<code>mirai</code>)</td>
+<td>no (manual)</td>
+</tr>
 <tr class="even">
+<td>Out-of-memory / disk-backed solve</td>
+<td>yes (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
+<td>no</td>
+</tr>
+<tr class="odd">
 <td>Population simulation (IIV)</td>
 <td>yes (omega matrices)</td>
 <td>no (manual)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Residual error simulation</td>
 <td>yes (in model)</td>
 <td>no (manual)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>NONMEM-format datasets</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>
 <code><a href="../reference/et.html">et()</a></code> dosing API</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Multiple dosing (addl, ii)</td>
 <td>yes</td>
 <td>manual</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Infusion rate/duration</td>
 <td>yes</td>
 <td>manual</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Analytical 1-3 cmt PK</td>
 <td><code>linCmt()</code></td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Symbolic Jacobians</td>
-<td>yes</td>
+<td>yes (up to 3rd order + jump sensitivities)</td>
+<td>no</td>
+</tr>
+<tr class="odd">
+<td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
+<td>yes (<code>useLinCmt=TRUE</code>)</td>
 <td>no</td>
 </tr>
 <tr class="even">

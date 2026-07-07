@@ -289,22 +289,57 @@ elements of a loaded project.</p>
 </h3>
 <p>rxode2 automatically derives the symbolic Jacobian and forward-
 sensitivity equations, used by nlmixr2’s FOCEi algorithm for exact
-gradient-based parameter estimation.</p>
+gradient-based parameter estimation. These extend to third-order
+sensitivities and to <em>jump</em> (event) sensitivities – exact
+derivatives with respect to dosing parameters such as bioavailability,
+lag time, infusion rate, duration, and amount.</p>
 </div>
 <div class="section level3">
 <h3 id="compartment-analytical-solutions-with-exact-gradients">1-3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
 </h3>
 <p><code>linCmt()</code> provides analytical solutions for one-, two-,
 and three-compartment PK models with gradients via Stan math
-auto-differentiation. Simulx uses ODEs for all compartment models.</p>
+auto-differentiation. Simulx uses ODEs for all compartment models.
+rxode2 can also detect a 1-3 compartment linear PK ODE system and
+transparently solve it through this analytical path
+(<code>rxSolve(..., useLinCmt = TRUE)</code>, the default), falling back
+to the ODE solver if the converted model cannot be compiled.</p>
 </div>
 <div class="section level3">
 <h3 id="multiple-ode-solver-backends">Multiple ODE solver backends<a class="anchor" aria-label="anchor" href="#multiple-ode-solver-backends"></a>
 </h3>
-<p>rxode2 offers three solver backends selectable per run: thread-safe C
-LSODA (default), Fortran LSODA, and DOP853 (explicit 8th-order
-Runge-Kutta for non-stiff systems). Simulx uses a single C++ LSODA-
-based solver.</p>
+<p>rxode2 offers several solver backends selectable per run: thread-safe
+C LSODA (default), Fortran LSODA, DOP853 (explicit 8th-order Runge-Kutta
+for non-stiff systems), a stiff Rosenbrock method (<code>ros4</code>),
+and AutoSwitch composite methods (for example
+<code>method = "dop853+ros4"</code>) that probe each segment with a
+non-stiff primary and reactively fall back to a stiff secondary only
+where stiffness is detected. Simulx uses a single C++ LSODA-based
+solver.</p>
+</div>
+<div class="section level3">
+<h3 id="delay-differential-equations">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations"></a>
+</h3>
+<p>rxode2 solves delay differential equations through
+<code>delay(state, T)</code>, which evaluates an ODE state at the past
+time <code>t - T</code> using dense-output interpolation, with forward
+sensitivities generated automatically so the models stay estimable in
+nlmixr2.</p>
+</div>
+<div class="section level3">
+<h3 id="out-of-memory-simulation-and-distributed-parallelism">Out-of-memory simulation and distributed parallelism<a class="anchor" aria-label="anchor" href="#out-of-memory-simulation-and-distributed-parallelism"></a>
+</h3>
+<p>For very large trial simulations, passing a <code>file</code> prefix
+to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> splits subjects into RAM-sized chunks
+(auto-sized with <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>), solves each, and
+writes them to Parquet (or <code>.rds</code>) behind a lightweight
+object that supports lazy <code>dplyr</code>/DuckDB queries, so an
+out-of-memory result is never fully materialized. Chunks can be
+dispatched to <code>mirai</code> daemons
+(<code>rxSolve(..., parallel = n)</code>) for distributed/HPC execution,
+all controlled directly from R.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">ev</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span>, parallel <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="runs-anywhere-without-infrastructure">Runs anywhere without infrastructure<a class="anchor" aria-label="anchor" href="#runs-anywhere-without-infrastructure"></a>
@@ -378,7 +413,7 @@ a Monolix project to an rxode2 model and automatically validates the
 conversion by comparing PRED/IPRED against the original Monolix output.
 A passing validation gives confidence that the rxode2 model is
 numerically equivalent to the Monolix model.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/monolix2rx/" class="external-link">monolix2rx</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Convert a Monolix project and validate automatically</span></span>
@@ -438,7 +473,8 @@ rxode2.</p>
 </tr>
 <tr class="odd">
 <td>ODE solver options</td>
-<td>LSODA (C), LSODA (Fortran), DOP853</td>
+<td>LSODA (C/Fortran), DOP853, ros4, <code>"dop853+ros4"</code>
+</td>
 <td>single C++ LSODA-based</td>
 </tr>
 <tr class="even">
@@ -448,8 +484,18 @@ rxode2.</p>
 <td>ODE-based only</td>
 </tr>
 <tr class="odd">
-<td>Symbolic Jacobians / sensitivities</td>
+<td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
+<td>yes (<code>useLinCmt=TRUE</code>)</td>
+<td>no</td>
+</tr>
+<tr class="even">
+<td>Delay differential equations (<code><a href="../reference/delay.html">delay()</a></code>)</td>
 <td>yes</td>
+<td>no</td>
+</tr>
+<tr class="odd">
+<td>Symbolic Jacobians / sensitivities</td>
+<td>yes (up to 3rd order + jump sensitivities)</td>
 <td>no</td>
 </tr>
 <tr class="even">
@@ -461,6 +507,16 @@ rxode2.</p>
 <td>OpenMP parallelism (R-controlled)</td>
 <td>yes</td>
 <td>engine-internal</td>
+</tr>
+<tr class="even">
+<td>Distributed / cluster parallelism</td>
+<td>yes (<code>mirai</code>)</td>
+<td>engine-internal</td>
+</tr>
+<tr class="odd">
+<td>Out-of-memory / disk-backed solve</td>
+<td>yes (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
+<td>no</td>
 </tr>
 <tr class="even">
 <td>Model piping (<code>\|&gt;</code>)</td>

@@ -21,11 +21,13 @@ articles:
   articles/rxode2-exposure-response: rxode2-exposure-response.html
   articles/rxode2-ind-lin: rxode2-ind-lin.html
   rxode2-intro: rxode2-intro.html
+  articles/rxode2-mirai-parallel: rxode2-mirai-parallel.html
   rxode2-model-types: rxode2-model-types.html
   articles/rxode2-mrgsolve-comparison: rxode2-mrgsolve-comparison.html
   rxode2-nesting: rxode2-nesting.html
   articles/rxode2-nmsim-comparison: rxode2-nmsim-comparison.html
   articles/rxode2-nonmem-sim-comparison: rxode2-nonmem-sim-comparison.html
+  articles/rxode2-oom-solve: rxode2-oom-solve.html
   articles/rxode2-parameter-uncertainty: rxode2-parameter-uncertainty.html
   rxode2-pipeline: rxode2-pipeline.html
   articles/rxode2-pkg-exported-funs: rxode2-pkg-exported-funs.html
@@ -47,7 +49,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-07-01T21:44Z
+last_built: 2026-07-07T19:01Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

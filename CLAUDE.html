@@ -190,8 +190,8 @@
 <li><p><strong>Compilation</strong>: The generated C code is compiled to a shared library (<code>inline</code> package) and dynamically loaded.</p></li>
 <li>
 <p><strong>Solving</strong> (<code>src/par_solve.cpp</code>): <code><a href="reference/rxSolve.html">rxSolve()</a></code> drives the numerical ODE solving using the compiled model. Supports multiple backends:</p>
-<ul><li>LSODA (<code>src/lsoda.c</code>, <code>src/dlsoda.f</code>) — stiff/non-stiff adaptive</li>
-<li>DOP853 (<code>src/dop853.c</code>) — non-stiff Runge-Kutta</li>
+<ul><li>LSODA (<code>src/lsoda.c</code>, <code>src/dlsoda.f</code>) – stiff/non-stiff adaptive</li>
+<li>DOP853 (<code>src/dop853.c</code>) – non-stiff Runge-Kutta</li>
 <li>Parallel solving via OpenMP across subjects</li>
 </ul></li>
 </ol></div>
@@ -203,6 +203,7 @@
 <li><p><code>etTran()</code> transforms event tables for the internal solver format</p></li>
 <li><p>Supports NONMEM-compatible event IDs (evid 0-4) as well as rxode2 specific evids like 5 (replace event), 6 (multiply event) and 7 (phantom/transit). Internally the EVIDs are translated to rxode2 specific evids documented <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html" class="uri">https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</a></p></li>
 </ul><p><strong>Linear Compartment Models</strong> (<code>src/linCmt.cpp</code>, <code>R/linCmt.R</code>): - Analytical solutions for 1-3 compartment PK models - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2) - Can be mixed with ODEs in the same model</p>
+<p><strong>Sensitivity Analysis</strong> (<code>R/rxJacobian.R</code>, <code>R/adjoint.R</code>, <code>src/expandGrid.cpp</code>, <code>src/adjoint.cpp</code>): - Forward sensitivities: <code><a href="reference/dot-rxJacobian.html">.rxJacobian()</a></code> builds the analytic Jacobian (<code>symengine::D</code>), <code><a href="reference/dot-rxSens.html">.rxSens()</a></code> splices <code>d/dt(rx__sens_&lt;state&gt;_BY_&lt;param&gt;__)</code> variational-equation lines into the model (solved as ordinary extra compartments). This is symbolic, not autodiff. - Adjoint (backward) sensitivities mirror the same <code>rx__sens_*</code> output but via a backward pass. <code><a href="reference/dot-rxAdjoint.html">.rxAdjoint()</a></code> symbolically generates the costate (<code>-J^T lambda</code>) and quadrature (<code>-lambda^T df/dp</code>) equations reusing the <code>rx__df_*</code> derivatives. <code><a href="reference/dot-rxAdjointSolve.html">.rxAdjointSolve()</a></code> = full per-timepoint <code>dy(t)/dp</code>; <code><a href="reference/dot-rxAdjointGrad.html">.rxAdjointGrad()</a></code> = single-sweep <code>dG/dtheta</code> objective gradient (incl. a FOCEi <code>-2LL</code> <code>errModel=</code>), where adjoint beats forward sensitivity. - <code>.rxAdjointGrad</code> is split into a symbolic <strong>build</strong> (<code>.rxAdjointGradBuild</code>, runs symengine once) and a numeric <strong>eval</strong> (<code>.rxAdjointGradEval</code> / the C++ <code>.rxAdjointGradEvalC</code> via the <code>rxode2AdjointSweep</code> sweep) so an optimizer builds once and evaluates the gradient many times. Build the gradient object BEFORE any <code>rxSolve</code> (a <code>load_all</code>-only symengine dispatch quirk affects the one-time symbolic build, never the numeric eval).</p>
 <p><strong>Output Data Frame</strong> (<code>src/rxode2_df.cpp</code>, <code>src/rxData.cpp</code>): - The solved result is returned as a modified data frame with special classes - Factor levels and units are preserved from the event table</p>
 <p><strong>Testing</strong> (<code>tests/testthat/</code>): - Tests use testthat edition 3 - Most test files wrap tests in <code>rxTest({...})</code> which skips on CRAN (requires <code>NOT_CRAN=true</code>) - Test files follow <code>test-*.R</code> naming convention</p>
 </div>
@@ -253,6 +254,22 @@
 <li>Avoid <code>snake_case</code> for new names; underscores only appear in S3 methods for snake_case generics from other packages (e.g., <code>drop_units.rxSolve</code>)</li>
 <li>Use American English spelling for consistency and do not use unicode characters</li>
 </ul><div class="section level3">
+<h3 id="working-with-symengine-objects-rxtoserxfromsesymengined">Working with symengine objects (<code>.rxToSE</code>/<code>rxFromSE</code>/<code>symengine::D</code>)<a class="anchor" aria-label="anchor" href="#working-with-symengine-objects-rxtoserxfromsesymengined"></a></h3>
+<p>The symengine env (eg <code>rxUiGet.foceiEtaS</code>/<code>rxUiGet.nlmEnv</code>, <code><a href="reference/rxS.html">rxS()</a></code>) and its <code>Basic</code> objects overload/register R functions, so once you touch symengine in these contexts base calls start failing with <code>user function 'X' requires N arguments</code>. When manipulating symengine objects programmatically:</p>
+<ul><li>
+<strong><code><a href="https://rdrr.io/r/base/get.html" class="external-link">get()</a></code> is masked.</strong> Capture Basics from <code><a href="https://rdrr.io/r/base/assign.html" class="external-link">assign()</a></code>’s return value instead: <code>.b &lt;- eval(parse(text = 'assign("x", with(.s, D(rx_pred_, y)), envir=.s)'))</code> returns the assigned Basic (this is how the FEta apply avoids <code>get</code>).</li>
+<li>
+<strong>Do symbolic ops inside the env</strong>: <code>with(.s, D(...))</code> (or the <code>assign(..., envir=.s)</code> string idiom), NOT <code>symengine::D(...)</code> directly – the qualified <code>pkg::fun</code> form gets intercepted too.</li>
+<li>
+<strong><code><a href="reference/rxToSE.html">rxFromSE()</a></code> of a Basic containing <code>lag0()</code>/<code>llik*()</code> poisons the <em>next</em> <code>[[</code>/<code>get</code>/<code>$</code>-read</strong> (but not <code>rxFromSE</code> itself). Convert the “clean” Basics to text first and the poisoning one LAST; after it, use only vectorized base ops.</li>
+<li>
+<strong><code>[[</code> on a list of Basics always dispatches to symengine’s <code>[[</code></strong> (fails). Never build a list of Basics – <code><a href="reference/rxToSE.html">rxFromSE()</a></code> each inline.</li>
+<li>
+<strong><code><a href="https://rdrr.io/r/base/assign.html" class="external-link">assign()</a></code> and <code>$&lt;-</code> (writes) are safe</strong>; <code>paste0</code>/<code>gsub</code>/<code>lapply</code> (C-level element access) are safe.</li>
+<li>
+<strong>Temp symbol names</strong> must avoid a trailing <code>_</code> (treated like the internal <code>THETA_1_</code>) and symengine-registered substrings (eg <code>Dmean</code>).</li>
+</ul></div>
+<div class="section level3">
 <h3 id="cc-conventions">C/C++ Conventions<a class="anchor" aria-label="anchor" href="#cc-conventions"></a></h3>
 <ul><li>Use <code>(Rf_error)(...)</code> (wrapped in parens) rather than <code>Rf_error(...)</code> to prevent macro conflicts</li>
 <li>C files use <code>#define STRICT_R_HEADERS</code> and <code>#define USE_FC_LEN_T</code>
@@ -274,18 +291,56 @@
 <li>Use <code>rx_protect.protect()</code> instead of <code>PROTECT()</code>; <code>UNPROTECT</code> will be handled when the object goes out of scope.</li>
 </ul></li>
 </ul></li>
-</ul></div>
+</ul><div class="section level4">
+<h4 id="exposing-a-cc-function-to-downstream-packages-eg-nlmixr2est">Exposing a C/C++ function to downstream packages (e.g. nlmixr2est)<a class="anchor" aria-label="anchor" href="#exposing-a-cc-function-to-downstream-packages-eg-nlmixr2est"></a></h4>
+<p>CRAN has asked this package to share C entry points via a <strong>function-pointer table</strong>, NOT <code>R_RegisterCCallable</code> and NOT Rcpp’s <code>// [[Rcpp::export]]</code>/<code>[[Rcpp::interfaces(r,cpp)]]</code> (both cause ABI coupling). The table is the positional external-pointer list built by <code>_rxode2_rxode2Ptr()</code> in <code>src/init.c</code> and installed into a downstream package’s globals by <code>iniRxodePtrs()</code>/<code>iniRxodePtrs0()</code> in <code>inst/include/rxode2ptr.h</code> when that package loads. To add a new function <code>foo</code> (copy any existing entry, e.g. <code>rxode2AdjointSweep</code> at index 66, as a template):</p>
+<ol style="list-style-type: decimal"><li>
+<strong><code>src/&lt;file&gt;.cpp</code></strong>: define <code>extern "C" &lt;ret&gt; foo(&lt;plain C types&gt;)</code> (no Rcpp; pass R matrices as column-major <code>double*</code> + sizes). If R itself must call it, add a manual <code>extern "C" SEXP _rxode2_foo(SEXP...)</code> <code>.Call</code> wrapper and register it in the <code>callMethods[]</code> table in <code>src/init.c</code>.</li>
+<li>
+<strong><code>src/init.c</code> <code>_rxode2_rxode2Ptr()</code></strong>: bump <code>#define nVec</code>; create <code>R_MakeExternalPtrFn((DL_FUNC)&amp;foo, ...)</code>; <code>SET_VECTOR_ELT(ret, N, ...)</code> and the parallel <code>SET_STRING_ELT(retN, N, Rf_mkChar("foo"))</code> at the new index <code>N</code>.</li>
+<li>
+<strong><code>inst/include/rxode2ptr.h</code></strong>: add <code>typedef &lt;ret&gt; (*foo_t)(...)</code> + <code>extern foo_t foo;</code>; the <code>foo = (foo_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, N));</code> line in <code>iniRxodePtrs0</code> (index <code>N</code> must match <code>init.c</code>); and <code>foo_t foo = NULL;</code> in the NULL-init macro at the bottom.</li>
+<li>
+<strong><code>inst/include/rxode2.h</code></strong>: a plain declaration guarded <code>#ifndef __RXODE2PTR_H__</code> (so it does not collide with the downstream pointer variable – same as <code>par_solve</code>/<code>getRxSolve_</code>).</li>
+</ol><p>Appending at a new index is backward compatible (older consumers read the lower indices and ignore the new one). Changing any <code>inst/include/*.h</code> header requires a full clean rebuild (<code>rm -f src/*.o &amp;&amp; R CMD INSTALL .</code>).</p>
+</div>
+</div>
 <div class="section level3">
 <h3 id="generated-files-do-not-edit-manually">Generated Files (do not edit manually)<a class="anchor" aria-label="anchor" href="#generated-files-do-not-edit-manually"></a></h3>
 <ul><li>
-<code>src/tran.g.d_parser.h</code> — generated from <code>inst/tran.g</code> via dparser</li>
+<code>src/tran.g.d_parser.h</code> – generated from <code>inst/tran.g</code> via dparser</li>
 <li>
-<code>R/rxrandomui.R</code> — generated by <code>.generateRandomUiFuns()</code> in <code>R/build.R</code>
+<code>R/rxrandomui.R</code> – generated by <code>.generateRandomUiFuns()</code> in <code>R/build.R</code>
 </li>
 <li>
-<code>inst/include/rxode2parse_control.h</code> — generated by <code>genDefine()</code> in <code>R/build.R</code>
+<code>inst/include/rxode2parse_control.h</code> – generated by <code>genDefine()</code> in <code>R/build.R</code>
 </li>
+<li>
+<code>R/parseFuns.R</code> – the list of parser-recognized functions (<code>.parseEnv$.parseFuns</code>), generated by <code>.rxodeBuildCode()</code> in <code>R/build.R</code> from <code>.rxSupportedFuns()</code> (<code>R/symengine.R</code>). To ADD a syntax function it must be registered in the symengine tables in <code>R/symengine.R</code> (<code>.rxSEeq</code>/<code>.rxSEsingle</code> /<code>.rxSEdouble</code>/<code>.rxOnly</code>), NOT hand-added to <code>R/parseFuns.R</code>.</li>
+<li>
+<code>R/rxSyntaxFunctions.R</code> – generated by <code>.rxodeBuildCode()</code> from <code>inst/syntax-functions.csv</code> (the documentation source for syntax functions).</li>
+<li>Regenerate both with <code>.rxodeBuildCode()</code> (or <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>).</li>
 </ul></div>
+</div>
+<div class="section level2">
+<h2 id="documentation-and-comment-style">Documentation and Comment Style<a class="anchor" aria-label="anchor" href="#documentation-and-comment-style"></a></h2>
+<ul><li>Keep comments and documentation terse. Condense multi-line explanations to one-liners, and drop worked examples and numeric anecdotes (e.g. “matches to ~1e-6”, “up to order 8”). State the fact, not the story behind it.</li>
+<li>Shorten multi-paragraph roxygen descriptions to a single compact paragraph, but keep every <code>@param</code>, <code>@return</code>, <code>@author</code>, <code>@export</code>, and <code>@keywords</code> tag.</li>
+<li>Compress <code>NEWS.md</code> entries to the terse house style: one bullet per change, a sentence or two, no nested walk-throughs or validation prose.</li>
+<li>Do not claim the adjoint method is cheaper/faster than (or “beats”) forward sensitivity; those cost comparisons do not hold here. Describe what the code does, not how it compares.</li>
+<li>ASCII only. No Unicode anywhere in the repo (CRAN requirement): use <code>--</code> for em-dashes, <code>-&gt;</code> for arrows, straight quotes, <code>...</code> for ellipses, etc.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="known-issues--investigation-notes">Known Issues / Investigation Notes<a class="anchor" aria-label="anchor" href="#known-issues--investigation-notes"></a></h2>
+<div class="section level3">
+<h3 id="lagdiff-and-lag-based-ar1-estimation--status">
+<code>lag()</code>/<code>diff()</code> and lag()-based AR(1) estimation – status<a class="anchor" aria-label="anchor" href="#lagdiff-and-lag-based-ar1-estimation--status"></a></h3>
+<p>FIXED (committed): - Solve/codegen path for <code>lag(x,1)</code>/<code>diff(x,1)</code> (lhs via <code>_PL[_LHS_&lt;ordinal&gt;_]</code>, covariates via the true parameter index) – <code>src/codegen.h</code>. Tests in <code>tests/testthat/test-lhs-lag.R</code>. - <code>rxNorm</code> normalization: <code>assertCorrectDiffArgs</code> (<code>src/parseFunsDiff.h</code>) gated the lag-number extraction on <code>strlen(v2) &gt; 2</code>, which dropped the no-space form <code>,1</code> (length 2) -&gt; <code>lagNo=0</code> -&gt; the sbt (normalized-text) emission was skipped and <code>rxNorm("b=lag(a,1)")</code> gave <code>b=;</code>. Gate is now <code>&gt; 1</code>. <code>rxNorm</code>/<code>rxS</code> round-trip <code><a href="https://rdrr.io/r/stats/lag.html" class="external-link">lag()</a></code>/<code><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff()</a></code>. - symengine load: <code>.rxToSELagOrLead</code> (<code>R/symengine.R</code>) wraps the lagged var in <code>symengine::S("var")</code> so the assignment <code>eval(with(envir,...))</code> does not inline an lhs definition into the <code><a href="https://rdrr.io/r/stats/lag.html" class="external-link">lag()</a></code> call.</p>
+<p>The base AR(1) estimation model (<code>.rxArEstLlikLines</code> in <code>R/err-foceiBase.R</code>) now builds through <code>rxNorm</code>/<code>rxS</code>.</p>
+<p>FIXED since: (1) dotted names inside a llik() argument broke the symengine derivative -&gt; AR(1) intermediates now use dot-free names (rx_arE_<var> etc.); (2) lag()-referenced variables were inlined/dead-code-eliminated by symengine -&gt; <code>.rxCollectLaggedVars</code> + <code>.rxToSEAssignOperators</code> now emit them as lhs and bind them as symbols; (3) nlmixr2est model assemblies (<code>rxUiGet.nlmRxModel</code>, <code>.rxFinalizePred</code>) now emit the lag()-referenced definitions ahead of rx_pred_. The nlm AR(1) estimation model BUILDS and RUNS with correct symbolic gradients (the sensitivity model has the AR covariance derivative via llikNormDsd and the cor^dt derivative).</var></p>
+<p>FIXED (first-record NaN): added <code>lag0()</code>/<code>diff0()</code>/<code>lead0()</code> (return 0 not NA on the first record); AR(1) estimation uses lag0 + a NaN-safe <code>1-is.na(lag(...))</code> first-record indicator, so phi=0 (marginal) on the first obs with no <code>0*NaN</code>. The nlm AR(1) objective is finite and CORRECT (varies with params; truth is optimal) and the symbolic gradients (sensitivity model) are all finite and non-zero, including the AR covariance derivative (llikNormDsd) and the cor^dt derivative.</p>
+<p>REMAINING (range transform for the AR correlation): the nlm fit does not converge (params stay at init) because OUTSIDE [0,1) the objective is degenerate (cor&gt;=1 -&gt; sqrt(1-phi^2) NaN -&gt; spuriously low), so the UNBOUNDED nlm line search stalls when it steps cor past 1. FIX (the author’s earlier request): reparameterize the AR correlation on an unbounded scale during estimation, cor = expit(theta) (theta = logit(cor)), with the ini transformed and the report back-transformed – a parameter-transform feature spanning the ini/theta/report handling. AR(1) SIMULATION, the lag/diff/lag0 fixes, opt-out asserts, and the symbolic-gradient AR estimation model are complete.</p>
+</div>
 </div>
 </div>
 

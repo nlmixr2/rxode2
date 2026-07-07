@@ -286,7 +286,9 @@ separately.</p>
 <h3 id="symbolic-jacobians-and-forward-sensitivities">Symbolic Jacobians and forward sensitivities<a class="anchor" aria-label="anchor" href="#symbolic-jacobians-and-forward-sensitivities"></a>
 </h3>
 <p>rxode2 automatically derives the symbolic Jacobian of the ODE system
-and forward-sensitivity equations, which are used by nlmixr2’s FOCEi
+and forward-sensitivity equations (up to third order, plus <em>jump</em>
+sensitivities with respect to dosing parameters such as bioavailability,
+lag time, rate, duration, and amount), which are used by nlmixr2’s FOCEi
 algorithm for exact gradient-based estimation. This capability is
 irrelevant to NMsim, which delegates all numerical work to NONMEM.</p>
 </div>
@@ -301,10 +303,56 @@ independently of NONMEM’s own ADVAN routines.</p>
 <div class="section level3">
 <h3 id="multiple-ode-solver-backends">Multiple ODE solver backends<a class="anchor" aria-label="anchor" href="#multiple-ode-solver-backends"></a>
 </h3>
-<p>rxode2 offers three solver backends selectable per run: a thread-safe
-C LSODA (default), a Fortran LSODA reference implementation, and DOP853
-(explicit 8th-order Runge-Kutta for non-stiff systems). NMsim uses
-whichever ADVAN is specified in the NONMEM control stream.</p>
+<p>rxode2 offers several solver backends selectable per run: a
+thread-safe C LSODA (default), a Fortran LSODA reference implementation,
+DOP853 (explicit 8th-order Runge-Kutta for non-stiff systems), a stiff
+Rosenbrock method (<code>ros4</code>), and AutoSwitch composite methods
+(for example <code>method = "dop853+ros4"</code>) that probe each
+segment with a non-stiff primary and reactively fall back to a stiff
+secondary only where stiffness is detected. NMsim uses whichever ADVAN
+is specified in the NONMEM control stream.</p>
+</div>
+<div class="section level3">
+<h3 id="delay-differential-equations">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations"></a>
+</h3>
+<p>Both tools can solve delay differential equations, through different
+mechanisms. rxode2 uses the <code>delay(state, T)</code> model function,
+which evaluates an ODE state at the past time <code>t - T</code>
+(Monolix <code><a href="../reference/delay.html">delay()</a></code> semantics) using dense-output
+interpolation. NONMEM (and therefore NMsim) supports DDEs through its
+RADAR5 solver (<code>ADVAN16</code>, an implicit Runge-Kutta method
+suited to stiff and state-dependent delays), with the delay time and
+delayed state history declared through the reserved
+<code>TAUy</code>/<code>AP_x_y</code>/<code>AD_x_y</code> variables in
+the <code>$DES</code> block. The main rxode2 advantage is that it
+generates forward sensitivities for <code><a href="../reference/delay.html">delay()</a></code> automatically,
+so delay models remain estimable by gradient-based methods in
+nlmixr2.</p>
+</div>
+<div class="section level3">
+<h3 id="automatic-ode-to-lincmt-conversion">Automatic ODE-to-<code>linCmt()</code> conversion<a class="anchor" aria-label="anchor" href="#automatic-ode-to-lincmt-conversion"></a>
+</h3>
+<p>When a model’s ODE system is a 1-3 compartment linear PK system,
+rxode2 detects this and transparently solves it with the fast analytical
+<code>linCmt()</code> path (<code>rxSolve(..., useLinCmt = TRUE)</code>,
+the default), falling back to the ODE solver if the converted model
+cannot be compiled.</p>
+</div>
+<div class="section level3">
+<h3 id="out-of-memory-simulation-and-distributed-parallelism">Out-of-memory simulation and distributed parallelism<a class="anchor" aria-label="anchor" href="#out-of-memory-simulation-and-distributed-parallelism"></a>
+</h3>
+<p>For very large trial simulations, rxode2 can write results directly
+to disk: passing a <code>file</code> prefix to <code><a href="../reference/rxSolve.html">rxSolve()</a></code>
+splits subjects into RAM-sized chunks, solves each, and stores them as
+Parquet (or <code>.rds</code>) files behind a lightweight object that
+supports lazy <code>dplyr</code>/DuckDB queries so an out-of-memory
+result is never fully materialized. Chunks can be dispatched to
+<code>mirai</code> daemons (<code>rxSolve(..., parallel = n)</code>) for
+distributed and HPC/cluster execution – so, like NMsim’s PsN path,
+rxode2 can scale beyond a single machine, but does so from pure R and
+without a NONMEM license.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">params</span>, <span class="va">ev</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"rx"</span><span class="op">)</span>, parallel <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="runs-anywhere-without-infrastructure">Runs anywhere without infrastructure<a class="anchor" aria-label="anchor" href="#runs-anywhere-without-infrastructure"></a>
@@ -337,7 +385,7 @@ immediately whether the re-implementation is correct, rather than
 discovering discrepancies later. Complex or highly customised NONMEM
 models may still require manual adjustment when the automated comparison
 does not pass.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nmautoverse.github.io/NMsim/" class="external-link">NMsim</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Simulate the exact estimation model -- no reimplementation</span></span>
@@ -371,8 +419,10 @@ code in <code>$DES</code> have no direct equivalent.</li>
 <p><code>NMexec()</code> (the NMsim companion for running estimation)
 can submit NONMEM jobs to an HPC cluster using PsN. For large bootstrap
 or uncertainty simulations NMsim can similarly distribute NONMEM runs
-across cluster nodes. rxode2’s parallelism is always within a single R
-process via OpenMP.</p>
+across cluster nodes. rxode2 parallelizes across OpenMP threads within a
+process and, since 5.1.1, can also distribute chunks of subjects to
+<code>mirai</code> daemons for HPC/cluster execution (see above) –
+though it does not integrate with PsN specifically.</p>
 </div>
 </div>
 <div class="section level2">
@@ -391,7 +441,7 @@ directly from NONMEM output tables.</p>
 model, storing them in <code>$etaData</code> of the imported model
 object, so they can be passed directly to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> without
 any manual extraction step.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># NMsim approach</span></span>
 <span><span class="va">simres</span> <span class="op">&lt;-</span> <span class="fu">NMsim</span><span class="op">(</span></span>
 <span>  file.mod   <span class="op">=</span> <span class="st">"path/to/run001.mod"</span>,</span>
@@ -524,42 +574,58 @@ draws</td>
 <td>no</td>
 </tr>
 <tr class="even">
-<td>Cluster submission</td>
-<td>no</td>
+<td>Cluster / distributed submission</td>
+<td>yes (<code>mirai</code>)</td>
 <td>yes (via PSN)</td>
 </tr>
 <tr class="odd">
+<td>Out-of-memory / disk-backed solve</td>
+<td>yes (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
+<td>writes NONMEM tables to disk</td>
+</tr>
+<tr class="even">
 <td>Model piping (<code>\|&gt;</code>)</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Parameter estimation</td>
 <td>via nlmixr2</td>
 <td>no (NONMEM only)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Symbolic Jacobians / sensitivities</td>
-<td>yes</td>
+<td>yes (up to 3rd order + jump sensitivities)</td>
 <td>no</td>
 </tr>
+<tr class="odd">
+<td>Delay differential equations</td>
+<td>yes (<code><a href="../reference/delay.html">delay()</a></code>, auto sensitivities)</td>
+<td>yes (RADAR5 / <code>ADVAN16</code>)</td>
+</tr>
 <tr class="even">
+<td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
+<td>yes (<code>useLinCmt=TRUE</code>)</td>
+<td>no</td>
+</tr>
+<tr class="odd">
 <td>1-3 cmt analytical solutions</td>
 <td>
 <code>linCmt()</code> with gradients</td>
 <td>ADVAN1/2/3/4/11/12 via NONMEM</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Multiple ODE solver backends</td>
-<td>LSODA (C), LSODA (Fortran), DOP853</td>
+<td>LSODA (C/Fortran), DOP853, ros4, <code>"dop853+ros4"</code>
+</td>
 <td>NONMEM ADVAN</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Runs without licensed software</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>CRAN</td>
 <td>yes</td>
 <td>yes</td>
