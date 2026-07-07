@@ -165,7 +165,7 @@ files and the full result is never materialized:
 library(dplyr)
 
 res |>
-  as_arrow_dataset() |>            # a lazy arrow Dataset over the chunks
+  as.arrow() |>            # a lazy arrow Dataset over the chunks
   filter(time > 24) |>
   group_by(id) |>
   summarise(cmax = max(cp)) |>

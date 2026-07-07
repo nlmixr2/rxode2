@@ -299,7 +299,7 @@ only.
 
 ```{r}
 res <- rxSolve(mod, params, ev, file = tempfile("rx")) # disk-backed chunks
-res |> as_arrow_dataset() |> dplyr::filter(time > 24) |> dplyr::collect()
+res |> as.arrow() |> dplyr::filter(time > 24) |> dplyr::collect()
 ```
 
 ### Distributed / cluster parallelism via mirai

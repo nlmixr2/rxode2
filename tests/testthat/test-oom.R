@@ -92,7 +92,7 @@ test_that("as_arrow_table.rxSolveOom returns an Arrow Table", {
   })
 })
 
-test_that("as_arrow_dataset.rxSolveOom returns a lazy Arrow Dataset", {
+test_that("as.arrow.rxSolveOom returns a lazy Arrow Dataset", {
   rxTest({
     skip_if_not_installed("arrow")
     skip_if_not_installed("dplyr")
@@ -102,7 +102,7 @@ test_that("as_arrow_dataset.rxSolveOom returns a lazy Arrow Dataset", {
     et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
     chnk <- rxSolveChunked(mod, c(k = 0.1), et_pop, chunkSize = 3)
 
-    ds <- as_arrow_dataset(chnk)
+    ds <- as.arrow(chnk)
     expect_true(inherits(ds, "Dataset"))
 
     collected <- dplyr::collect(ds)
@@ -422,7 +422,7 @@ test_that("dplyr filter/select on rxSolveOom stays lazy (no full materialization
     et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:6)
     chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, chunkSize = 2)
 
-    ds <- as_arrow_dataset(chnk)
+    ds <- as.arrow(chnk)
     # The data stays on disk: a file-backed Dataset, not an in-memory Table.
     expect_true(inherits(ds, "Dataset"))
     expect_false(inherits(ds, "Table"))
@@ -465,7 +465,7 @@ test_that("dplyr group_by/summarise on rxSolveOom is pushed to the arrow backend
     chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 11,
                             omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
 
-    agg <- as_arrow_dataset(chnk) |>
+    agg <- as.arrow(chnk) |>
       dplyr::group_by(id) |>
       dplyr::summarise(mcp = mean(cp), n = dplyr::n())
     # aggregation is deferred until collect()
@@ -498,7 +498,7 @@ test_that("rxSolveOom supports lazy dplyr queries through a DuckDB connection", 
     chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, chunkSize = 2)
 
     # Register the on-disk parquet chunks as a lazy DuckDB-backed table.
-    tbl <- arrow::to_duckdb(as_arrow_dataset(chnk))
+    tbl <- arrow::to_duckdb(as.arrow(chnk))
     expect_s3_class(tbl, "tbl_lazy")
     expect_false(is.data.frame(tbl))
 

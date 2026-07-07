@@ -176,7 +176,7 @@
   chunked data.  A DuckDB query layer over the parquet chunks is used
   for lazy access (`head()`, single-column extraction, schema) when
   available.  The chunks can also be queried lazily with `dplyr` (via
-  `as_arrow_dataset()` or `arrow::to_duckdb()`) so that filtering and
+  `as.arrow()` or `arrow::to_duckdb()`) so that filtering and
   aggregation are pushed down to the on-disk chunks and a possibly
   out-of-memory result never has to be fully materialized.  The
   storage/query engine can be pinned with the

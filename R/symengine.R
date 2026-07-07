@@ -2917,6 +2917,46 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
               return(.errD())
             }
           }
+        } else if (length(x) > 3) {
+          ## symengine collapses repeated same-argument differentiation
+          ## D(D(fun, v), v)... into Derivative(fun, v, v, ...).  Apply the registered
+          ## derivative chain iteratively (e.g. rxTBS -> rxTBSd -> rxTBSd2), carrying the
+          ## arguments through the parsed result so each step uses the correct
+          ## derivative-argument order; args are converted from symengine to rxode2 syntax
+          ## once (first step) and reused as-is thereafter.
+          .rxD <- rxode2parseD()
+          .fun <- as.character(x[[2]][[1L]])
+          .args <- lapply(as.list(x[[2]])[-1], .rxFromSE)
+          .vars <- lapply(x[-(1:2)], .rxFromSE)
+          .ok <- TRUE
+          .res <- NULL
+          for (.k in seq_along(.vars)) {
+            .with <- which(.vars[[.k]] == unlist(.args))
+            if (length(.with) != 1 || !exists(.fun, envir = .rxD)) {
+              .ok <- FALSE
+              break
+            }
+            .funLst <- get(.fun, envir = .rxD)
+            if (length(.funLst) < .with || is.null(.funLst[[.with]])) {
+              .ok <- FALSE
+              break
+            }
+            .res <- try(do.call(.funLst[[.with]], as.list(.args)), silent = TRUE)
+            if (inherits(.res, "try-error")) {
+              .ok <- FALSE
+              break
+            }
+            .call <- str2lang(.res)
+            .fun <- as.character(.call[[1L]])
+            .args <- lapply(as.list(.call)[-1],
+                            function(.z) if (is.character(.z)) .z else paste(deparse(.z), collapse = ""))
+          }
+          if (.ok && !is.null(.res)) {
+            return(.res)
+          }
+          stop("'Derivative' conversion only takes one function and one argument",
+            call. = FALSE
+          )
         } else {
           stop("'Derivative' conversion only takes one function and one argument",
             call. = FALSE

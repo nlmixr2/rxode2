@@ -533,19 +533,19 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
 #' the \code{arrow} package.
 #'
 #' This is an rxode2 generic: \pkg{arrow} provides \code{open_dataset()} but no
-#' \code{as_arrow_dataset()} generic to dispatch on, so rxode2 defines its own.
+#' lazy-dataset coercion generic to dispatch on, so rxode2 defines its own.
 #'
 #' @param x An \code{rxSolveOom} object.
 #' @param ... Ignored.
 #' @return An \code{arrow::Dataset}.
 #' @export
-as_arrow_dataset <- function(x, ...) UseMethod("as_arrow_dataset")
+as.arrow <- function(x, ...) UseMethod("as.arrow")
 
-#' @rdname as_arrow_dataset
+#' @rdname as.arrow
 #' @export
-as_arrow_dataset.rxSolveOom <- function(x, ...) {
+as.arrow.rxSolveOom <- function(x, ...) {
   if (!requireNamespace("arrow", quietly = TRUE))
-    stop("package 'arrow' is required for as_arrow_dataset()")
+    stop("package 'arrow' is required for as.arrow()")
   .m <- attr(x, "manifest")
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
   if (length(.pq) == 0L)

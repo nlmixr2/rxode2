@@ -216,14 +216,14 @@ files), rxode2 exposes two Arrow-native accessors on the `rxSolveOom` object.
 
 ### Lazy Arrow Dataset — querying without loading everything
 
-`arrow::as_arrow_dataset()` opens all chunk files as a single lazy
-`arrow::Dataset`.  No rows are read from disk until you explicitly collect
-them.  You can push filters, column selections, and aggregations down to the
+`as.arrow()` (an rxode2 generic; arrow itself has no such function)
+opens all chunk files as a single lazy `arrow::Dataset`.  No rows are read
+from disk until you explicitly collect them.  You can push filters, column selections, and aggregations down to the
 Arrow engine so that only the result — not the full dataset — is brought into R
 memory:
 
 ```{r arrow-dataset, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
-ds <- arrow::as_arrow_dataset(res)
+ds <- as.arrow(res)
 ds
 ```
 
@@ -231,12 +231,20 @@ Because `ds` is lazy you can chain dplyr verbs and only call `dplyr::collect()`
 at the end to materialize the (small) result:
 
 ```{r arrow-dplyr, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
-# Compute the peak concentration per subject without loading all rows
-pk_summary <- ds |>
+# Compute the peak concentration per subject without loading all rows.
+# Arrow cannot translate argmax expressions like time[which.max(cp)], so
+# tmax comes from a lazy self-join: keep the rows where cp hits the
+# per-subject maximum.
+cmax_tbl <- ds |>
   dplyr::group_by(id) |>
-  dplyr::summarise(cmax = max(cp, na.rm = TRUE),
-                   tmax = time[which.max(cp)]) |>
-  dplyr::collect()
+  dplyr::summarise(cmax = max(cp, na.rm = TRUE))
+
+pk_summary <- ds |>
+  dplyr::inner_join(cmax_tbl, by = "id") |>
+  dplyr::filter(cp == cmax) |>
+  dplyr::select(id, cmax, tmax = time) |>
+  dplyr::collect() |>
+  dplyr::arrange(id)
 
 pk_summary
 ```
