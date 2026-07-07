@@ -1520,7 +1520,8 @@ rxTest({
         mx <- max(mx, max(abs(f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE))
       }
     }
-    expect_lt(mx, 1e-5)
+    # 1e-4 keeps power against the ~30% skip bug; 1e-5 flakes on macOS ARM64 (3.5e-5)
+    expect_lt(mx, 1e-4)
   })
 
   test_that("modeled rate() moving-boundary forward jump-sensitivities match FD (non-ss AND ss)", {

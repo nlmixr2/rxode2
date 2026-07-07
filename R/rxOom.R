@@ -57,6 +57,25 @@ rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "
   .dat[.dat[[x$id_col]] %in% ids, , drop = FALSE]
 }
 
+# First n rows without materializing the whole file (rds has no lazy read).
+.rxEtFileReadHead <- function(x, n = 100L) {
+  switch(x$format,
+    parquet = {
+      if (!requireNamespace("arrow", quietly = TRUE))
+        stop("package 'arrow' is required for parquet format")
+      as.data.frame(utils::head(arrow::open_dataset(x$path), n))
+    },
+    csv     = data.table::fread(x$path, nrows = n, data.table = FALSE),
+    fst     = {
+      if (!requireNamespace("fst", quietly = TRUE))
+        stop("package 'fst' is required for fst format")
+      .n <- min(as.integer(n), fst::metadata_fst(x$path)$nrOfRows)
+      fst::read_fst(x$path, from = 1L, to = .n)
+    },
+    rds     = utils::head(readRDS(x$path), n)
+  )
+}
+
 rxMemSummary.rxEtFile <- function(x, ...) {
   .cols <- c(x$id_col, "evid")
   .dat <- .rxEtFileReadCols(x, .cols)
@@ -71,7 +90,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
 
   # Normalize: if events is an rxEt but params is not, events is the params; swap
-  if ((is.rxEt(params) || rxIs(params, "rx.event")) && !is.rxEt(events)) {
+  if ((is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
+        !is.rxEt(events)) {
     .tmp  <- events
     events <- params
     params <- .tmp
@@ -675,7 +695,8 @@ dim.rxSolveOom <- function(x) {
 rxSolveChunked <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             chunkSize, seed = NULL, parallel = 0L) {
   # Normalize params/events to match rxSolve convention
-  if ((is.rxEt(params) || rxIs(params, "rx.event")) && !is.rxEt(events)) {
+  if ((is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
+        !is.rxEt(events)) {
     .tmp   <- events
     events <- params
     params <- .tmp

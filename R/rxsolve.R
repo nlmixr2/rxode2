@@ -1857,6 +1857,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       )
     }
     .preview
+  } else if (inherits(x, "rxEtFile")) {
+    .rxEtFileReadHead(x)
   } else if (rxIs(x, "event.data.frame")) {
     as.data.frame(x)
   } else {
@@ -1997,7 +1999,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                            theta = NULL, eta = NULL) {
   .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
                              theta = theta, eta=eta)
-  if (rxIs(params, "rx.event")) {
+  if (rxIs(params, "rx.event") || inherits(params, "rxEtFile")) {
     if (!is.null(events)) {
       .tmp <- events
       events <- params

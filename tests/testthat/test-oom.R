@@ -188,6 +188,38 @@ test_that("rxEventTableFile works with rds format", {
   })
 })
 
+test_that("rxEtFile is recognized as events when passed positionally", {
+  rxTest({
+    mod <- rxode2({
+      d/dt(A) <- -k * A
+    })
+    et <- et(seq(0, 12, by = 1)) |> et(amt = 100) |> et(id = 1:4)
+
+    .tf <- tempfile(fileext = ".rds")
+    saveRDS(as.data.frame(et), .tf)
+    .etf <- rxEventTableFile(.tf, format = "rds")
+
+    # positional (params slot) must swap to events like rxEt/data.frame do
+    .res <- rxSolve(mod, .etf, params = c(k = 0.1),
+                    file = tempfile("rxPos"), chunkSize = 2)
+    expect_s3_class(.res, "rxSolveOom")
+    .df <- as.data.frame(.res)
+    expect_equal(sort(unique(.df$id)), 1:4)
+
+    # ui function models re-parse from a head preview of the file
+    fun <- function() {
+      ini({
+        k <- 0.1
+      })
+      model({
+        d/dt(A) <- -k * A
+      })
+    }
+    .res2 <- rxSolve(fun, .etf, file = tempfile("rxPosUi"), chunkSize = 2)
+    expect_s3_class(.res2, "rxSolveOom")
+  })
+})
+
 test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
   rxTest({
     skip_if_not_installed("mirai")
