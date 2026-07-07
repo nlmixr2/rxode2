@@ -671,7 +671,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 .rxToSEDualVarFunction <- c("tlast", "tlast0", "tad", "tad0", "tafd", "tafd0",
-                            "dose", "podo", "dose0", "podo0")
+                            "tfirst", "tfirst0", "dose", "podo", "dose0", "podo0",
+                            "dosenum", "dosenum0")
 
 #' Change rxode2 linCmt states to `linCmtA/B` syntax
 #'
