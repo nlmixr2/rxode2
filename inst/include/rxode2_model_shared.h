@@ -101,6 +101,9 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define rxTBSi(x, lm, yj, hi, low) _powerDi(x,  lm, (int)(yj), hi, low)
 #define rxTBSd(x, lm, yj, hi, low) _powerDD(x, lm, (int)(yj), hi, low)
 #define rxTBSd2(x, lm, yj, hi, low) _powerDDD(x, lm, (int)(yj), hi, low)
+#define rxTBSdL(x, lm, yj, hi, low) _powerDLambda(x, lm, (int)(yj), hi, low)
+#define rxTBSdL2(x, lm, yj, hi, low) _powerDLambda2(x, lm, (int)(yj), hi, low)
+#define rxTBSdLx(x, lm, yj, hi, low) _powerDLambdaX(x, lm, (int)(yj), hi, low)
 #define normcdf(x) phi(x)
 #define _getIndSim(id, val) (_ind->isIni == 1 ? \
                              (_ind->simIni[id] = (val)) : \

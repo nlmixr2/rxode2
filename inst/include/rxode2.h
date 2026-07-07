@@ -396,6 +396,106 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
   return NA_REAL;
 }
 
+// Box-Cox VALUE lambda-derivatives at base b (>0), exponent lam.  y=(b^lam-1)/lam;
+// near lam=0, y ~ ln b + lam*(ln b)^2/2 + lam^2*(ln b)^3/6 gives the removable-singularity limits.
+static inline double _bcDL(double b, double lam) __attribute__((unused));
+static inline double _bcDL(double b, double lam){ // dy/dlam
+  if (b <= _eps) b = _eps;
+  double lb = log(b);
+  if (lam == 0.0) return 0.5*lb*lb;
+  double bl = pow(b, lam);
+  return bl*lb/lam - (bl - 1.0)/(lam*lam);
+}
+static inline double _bcDLx(double b, double lam) __attribute__((unused));
+static inline double _bcDLx(double b, double lam){ // d2y/(dlam db)
+  if (b <= _eps) b = _eps;
+  return pow(b, lam - 1.0)*log(b);
+}
+static inline double _bcDL2(double b, double lam) __attribute__((unused));
+static inline double _bcDL2(double b, double lam){ // d2y/dlam2
+  if (b <= _eps) b = _eps;
+  double lb = log(b);
+  if (lam == 0.0) return lb*lb*lb/3.0;
+  double bl = pow(b, lam);
+  return bl*lb*lb/lam - 2.0*bl*lb/(lam*lam) + 2.0*(bl - 1.0)/(lam*lam*lam);
+}
+// Yeo-Johnson VALUE lambda-derivatives (x>=0: base x+1, exp lam; x<0: base 1-x, exp 2-lam,
+// with the extra chain-rule signs from d(2-lam)/dlam=-1 and d(1-x)/dx=-1).
+static inline double _yjDL(double x, double lam) __attribute__((unused));
+static inline double _yjDL(double x, double lam){
+  if (x >= 0) return _bcDL(x + 1.0, lam);
+  return _bcDL(1.0 - x, 2.0 - lam);
+}
+static inline double _yjDLx(double x, double lam) __attribute__((unused));
+static inline double _yjDLx(double x, double lam){
+  if (x >= 0) return _bcDLx(x + 1.0, lam);
+  return -_bcDLx(1.0 - x, 2.0 - lam);
+}
+static inline double _yjDL2(double x, double lam) __attribute__((unused));
+static inline double _yjDL2(double x, double lam){
+  if (x >= 0) return _bcDL2(x + 1.0, lam);
+  return -_bcDL2(1.0 - x, 2.0 - lam);
+}
+
+// d(tbs)/dlambda -- the VALUE lambda-derivative of the both-sides transform (rxTBSdL).
+static inline double _powerDLambda(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambda(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDL(x, lambda);                     // boxCox
+  case 1: return _yjDL(x, lambda);                     // yeoJohnson
+  case 2: case 3: case 4: case 6: return 0.0;          // norm/logNorm/logit/probit: no lambda
+  case 5: // logit then yeoJohnson
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    return _yjDL(p, lambda);
+  case 7: // probit then yeoJohnson
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDL(p, lambda);
+  }
+  return NA_REAL;
+}
+// d2(tbs)/dlambda2 (rxTBSdL2).
+static inline double _powerDLambda2(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambda2(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDL2(x, lambda);
+  case 1: return _yjDL2(x, lambda);
+  case 2: case 3: case 4: case 6: return 0.0;
+  case 5:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    return _yjDL2(p, lambda);
+  case 7:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDL2(p, lambda);
+  }
+  return NA_REAL;
+}
+// d2(tbs)/(dlambda dx) (rxTBSdLx).  For the logit/probit-composed cases the inner transform p
+// is lambda-free, so d/dx chains through dp/dx = _powerDD(x, lambda, <innerYj>, low, high).
+static inline double _powerDLambdaX(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambdaX(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDLx(x, lambda);
+  case 1: return _yjDLx(x, lambda);
+  case 2: case 3: case 4: case 6: return 0.0;
+  case 5:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    return _yjDLx(p, lambda)*_powerDD(x, lambda, 4, low, high);
+  case 7:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDLx(p, lambda)*_powerDD(x, lambda, 6, low, high);
+  }
+  return NA_REAL;
+}
+
 static inline double _powerL(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
 static inline double _powerL(double x, double lambda, int yj0, double low, double high){
   if (!R_finite(x)) return NA_REAL;

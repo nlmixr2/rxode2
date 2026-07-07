@@ -100,6 +100,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rxTBSi" = 5,
   "rxTBSd" = 5,
   "rxTBSd2" = 5,
+  "rxTBSdL" = 5,
+  "rxTBSdL2" = 5,
+  "rxTBSdLx" = 5,
   "sin" = 1,
   "sinh" = 1,
   "sqrt" = 1,
@@ -3075,7 +3078,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     ls(.symengineFs()),
     ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
-    "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
+    "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
+    "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
     "lag0", "lead0", "diff0",
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {

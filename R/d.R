@@ -392,10 +392,20 @@
 
 .rxD$rxTBS <- list(function(a, lambda, yj, hi, low) {
   paste0("rxTBSd(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+}, function(a, lambda, yj, hi, low) {
+  paste0("rxTBSdL(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
 })
 
 .rxD$rxTBSd <- list(function(a, lambda, yj, hi, low) {
   paste0("rxTBSd2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+}, function(a, lambda, yj, hi, low) {
+  paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+})
+
+.rxD$rxTBSdL <- list(function(a, lambda, yj, hi, low) {
+  paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+}, function(a, lambda, yj, hi, low) {
+  paste0("rxTBSdL2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
 })
 
 .rxD$..k <- 10
