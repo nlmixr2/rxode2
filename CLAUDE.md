@@ -268,6 +268,20 @@ Appending at a new index is backward compatible (older consumers read the lower
 indices and ignore the new one). Changing any `inst/include/*.h` header requires
 a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
 
+#### `src/init.c` is the MANUAL `.Call` registration table (hardcoded arities)
+
+`src/init.c` hand-maintains the `R_registerRoutines` `callMethods[]` table and owns
+`R_init_rxode2` (Rcpp's generated `R_init_rxode2` in `RcppExports.cpp` is NOT used).
+Every `.Call` entry has an explicit forward prototype plus a HARDCODED argument
+count, e.g. `{"_rxode2_foo", (DL_FUNC) &_rxode2_foo, 5}`. So when you add a
+`[[Rcpp::export]]` function OR change one's argument count you MUST do BOTH:
+`Rcpp::compileAttributes(".")` (regenerates `src/RcppExports.cpp` + `R/RcppExports.R`)
+AND hand-edit `src/init.c` (add/update the prototype and the `callMethods[]` arg
+count). Skipping the init.c edit does NOT fail at compile time -- it surfaces at
+runtime as `Incorrect number of arguments (N), expecting M for '_rxode2_foo'`
+because the loaded registration table still carries the old arity. (Same pattern in
+nlmixr2est's `src/init.c`.)
+
 ### Generated Files (do not edit manually)
 
 - `src/tran.g.d_parser.h` -- generated from `inst/tran.g` via dparser
