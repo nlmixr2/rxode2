@@ -254,8 +254,13 @@ solving modes.
 `linCmt()` in rxode2 supports one-, two-, and three-compartment
 analytical solutions.  Gradients are computed via Stan math
 auto-differentiation, enabling exact gradient-based estimation in
-nlmixr2.  mrgsolve's `$PKMODEL` block supports one and two
-compartments only, and does not provide analytical gradients.
+nlmixr2.  mrgsolve's `$PKMODEL` block gained closed-form
+three-compartment models in mrgsolve 2.0.0 (`advan = 2, 4, 12` for
+1-, 2-, and 3-compartment models with a depot, `advan = 1, 3, 11` for
+the IV-only equivalents; also available as the `pk3`/`pk3iv` modlib
+models), so both tools now cover one to three compartments
+analytically.  mrgsolve still does not provide analytical gradients
+for these closed-form models.
 
 ```{r}
 mod <- function() {
@@ -275,8 +280,12 @@ mod <- function() {
 }
 ```
 
-Mrgsolve equivalent would require explicit ODE equations for the
-three-compartment case.
+Mrgsolve's equivalent (since mrgsolve 2.0.0) is
+`$PKMODEL advan = 12` (or the `pk3` modlib model), not explicit ODE
+equations; the difference from the rxode2 approach above is that
+rxode2 infers the parameterization from named `ini()`/`model()`
+parameters, while mrgsolve's closed-form solutions do not carry
+analytical gradients.
 
 ### Multiple ODE solvers
 
@@ -693,7 +702,7 @@ conversion.
 | Delay differential equations (`delay()`) | yes (dense output, with sensitivities) | no |
 | Parallel solving | OpenMP threads (`cores=`) + `mirai` (`parallel=`) | process-based via `mrgsim.parallel` |
 | Out-of-memory / disk-backed solve | built in (`rxSolve(file=)`, Parquet/DuckDB) | via `mrgsim.ds` |
-| 1-3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1-2 cmt, no gradients |
+| 1-3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1-3 cmt (advan 1/2/3/4/11/12, since 2.0.0), no gradients |
 | Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | Symbolic Jacobian / sensitivities | yes (up to 3rd order) | no |
 | Event / jump sensitivities (F, alag, rate, dur, amt) | yes | no |

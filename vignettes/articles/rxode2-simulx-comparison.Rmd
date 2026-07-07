@@ -147,7 +147,10 @@ infusion rate, duration, and amount.
 
 `linCmt()` provides analytical solutions for one-, two-, and
 three-compartment PK models with gradients via Stan math
-auto-differentiation.  Simulx uses ODEs for all compartment models.
+auto-differentiation.  Simulx's mlxtran language has its own closed-form
+solution for linear compartmental models with no transit compartments
+(the `pkmodel` macro), falling back to ODE integration otherwise, but it
+does not expose auto-differentiated gradients through this path.
 rxode2 can also detect a 1-3 compartment linear PK ODE system and
 transparently solve it through this analytical path
 (`rxSolve(..., useLinCmt = TRUE)`, the default), falling back to the ODE
@@ -275,7 +278,7 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 | Re-implementation risk | mitigated: `monolix2rx` auto-validates PRED/IPRED | none |
 | Simulation engine | rxode2 C/Fortran solver | Simulx C++ solver |
 | ODE solver options | LSODA (C/Fortran), DOP853, ros4, `"dop853+ros4"` | single C++ LSODA-based |
-| 1-3 cmt analytical solution | `linCmt()` with gradients | ODE-based only |
+| 1-3 cmt analytical solution | `linCmt()` with gradients | `pkmodel` macro (linear, no transit cmts); no exposed gradients |
 | Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | Delay differential equations (`delay()`) | yes | no |
 | Symbolic Jacobians / sensitivities | yes (up to 3rd order + jump sensitivities) | no |
@@ -290,7 +293,7 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 | Monolix ecosystem integration | via monolix2rx | native |
 | nlmixr2 ecosystem integration | native | no |
 | Runs without installed application | yes | no |
-| CRAN | yes | no (`lixoftConnectors` distributed by Lixoft) |
+| CRAN | yes | `RsSimulx` connector only; needs licensed Simulx app + non-CRAN `lixoftConnectors` |
 
 ## References
 

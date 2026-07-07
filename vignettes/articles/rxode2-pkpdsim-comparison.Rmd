@@ -150,14 +150,6 @@ with respect to dosing parameters such as bioavailability, lag time,
 infusion rate, duration, and amount.  PKPDsim's nlmixr2 integration uses
 finite-difference gradients.
 
-### 1-3 compartment analytical solutions with exact gradients
-
-`linCmt()` provides one-, two-, and three-compartment analytical PK
-solutions with gradients computed via Stan math auto-differentiation.
-PKPDsim's `reparametrization` argument offers standardised
-re-parameterisation for 1-3-compartment models, but these are still
-solved as ODEs rather than analytically.
-
 ### Multiple ODE solver backends
 
 rxode2 provides several solver backends selectable per run: thread-safe
@@ -198,6 +190,15 @@ rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
 ```
 
 ## Features available in both tools (with different approaches)
+
+### 1-3 compartment analytical solutions
+
+Both tools provide closed-form (non-ODE) solutions for 1-, 2-, and
+3-compartment linear PK systems.  rxode2's `linCmt()` computes gradients
+via Stan math auto-differentiation, giving nlmixr2's FOCEi exact
+derivatives.  PKPDsim provides ADVAN-style analytical equations
+(`sim(..., analytical = "...")`, based on Abuhelwa et al. 2015) for fast
+closed-form solving.
 
 ### Literature model libraries
 
@@ -407,7 +408,7 @@ for further details.
 | NONMEM-format datasets | yes | no (`new_regimen()` API) |
 | Delay differential equations (`delay()`) | yes | no |
 | Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
-| 1-3 cmt analytical solution | `linCmt()` with exact gradients | `reparametrization` (ODE-based) |
+| 1-3 cmt analytical solution | `linCmt()` with exact gradients | ADVAN-style closed-form (`analytical=` in `sim()`), finite-diff gradients |
 | Symbolic Jacobians / sensitivities | yes (up to 3rd order + jump sensitivities) | no (finite differences) |
 | nlmixr2 estimation | yes (exact gradients via FOCEi) | yes (finite-difference gradients) |
 | Model piping (`\|>`) | yes | no |

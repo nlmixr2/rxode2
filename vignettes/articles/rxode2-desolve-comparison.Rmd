@@ -31,7 +31,7 @@ different niches.
   with nlmixr2 for population parameter estimation and accepts
   NONMEM-format event datasets directly.
 
-Both are on CRAN.  deSolve is BSD-licensed; rxode2 is GPL (>= 3).
+Both are on CRAN.  deSolve is GPL (>= 2) licensed; rxode2 is GPL (>= 3).
 
 ---
 
@@ -465,7 +465,7 @@ compiled C code and OpenMP parallelism.
 
 | Feature | rxode2 | deSolve |
 |---------|--------|---------|
-| License | GPL >= 3 | BSD |
+| License | GPL >= 3 | GPL >= 2 |
 | CRAN | yes | yes |
 | Model language | compiled C (mini-language) | R function (or C/Fortran) |
 | Compilation step | yes (cached) | no (for R RHS) |

@@ -150,9 +150,11 @@ getRxThreads()   # inspect active thread count
 rxSolve(mod, ev, params = theta, omega = omega, nSub = 10000)
 ```
 
-NONMEM's `$SIMULATION` step solves subjects sequentially within a
-single run.  Parallelism requires submitting multiple NONMEM runs to
-an HPC cluster (e.g., via PsN).
+NONMEM's `$SIMULATION` step can also be parallelized, via a parafile
+and the `nmfe` `[nodes]=` option (native MPI support since NONMEM
+7.2), but this spreads the work across separate OS processes rather
+than threads within one process, and is usually configured through
+PsN rather than run directly.
 
 ### Native R workflow -- no file I/O
 
@@ -372,14 +374,17 @@ in `$PK`, `$DES`, and `$ERROR` blocks, enabling highly customised
 models.  rxode2 supports custom C via `rxFun()` and `.extraC()` but
 does not allow embedding arbitrary Fortran.
 
-### Cluster submission via PsN
+### Native MPI parallel processing and cluster submission via PsN
 
-PsN (Perl-speaks-NONMEM) can distribute NONMEM simulation runs across
-HPC cluster nodes.  rxode2 parallelizes across OpenMP threads within a
+NONMEM has built-in MPI-based parallel processing (a parafile and the
+`nmfe` `[nodes]=` option, since NONMEM 7.2) for a single `$SIMULATION`
+or estimation run across cores or cluster nodes; PsN (Perl-speaks-
+NONMEM) automates generating parafiles and distributing runs across an
+HPC cluster.  rxode2 parallelizes across OpenMP threads within a
 process and, since 5.1.1, can also distribute chunks of subjects to
 `mirai` daemons for HPC/cluster execution (built into `rxSolve()`'s
 out-of-memory path via the `parallel` argument), though it does not
-integrate with PsN specifically.
+integrate with PsN or NONMEM parafiles specifically.
 
 ### Steady-state dosing (`SS=1`, `II`)
 
@@ -432,8 +437,8 @@ passed to the `vpc` R package or Xpose for VPC plots.
 | License | open-source (GPL >= 3) | commercial license required |
 | Simulation engine | compiled C / Fortran in-process | NONMEM external process |
 | Simulation speed | sub-second to seconds | seconds to minutes per run |
-| OpenMP within-process parallelism | yes | no (sequential subjects) |
-| Cluster / distributed submission | yes (built-in `mirai`) | via PsN |
+| In-process multithreading | yes (OpenMP) | no (MPI across separate processes, since 7.2) |
+| Cluster / distributed submission | yes (built-in `mirai`) | yes (native parafile MPI, or via PsN) |
 | Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | writes tables to disk |
 | Model re-implementation needed | yes (or `nonmem2rx`) | no |
 | Re-implementation validation | `nonmem2rx` auto-checks PRED/IPRED/IWRES | N/A |
