@@ -295,15 +295,6 @@ rate, duration, and amount. PKPDsim’s nlmixr2 integration uses
 finite-difference gradients.</p>
 </div>
 <div class="section level3">
-<h3 id="compartment-analytical-solutions-with-exact-gradients">1-3 compartment analytical solutions with exact gradients<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions-with-exact-gradients"></a>
-</h3>
-<p><code>linCmt()</code> provides one-, two-, and three-compartment
-analytical PK solutions with gradients computed via Stan math
-auto-differentiation. PKPDsim’s <code>reparametrization</code> argument
-offers standardised re-parameterisation for 1-3-compartment models, but
-these are still solved as ODEs rather than analytically.</p>
-</div>
-<div class="section level3">
 <h3 id="multiple-ode-solver-backends">Multiple ODE solver backends<a class="anchor" aria-label="anchor" href="#multiple-ode-solver-backends"></a>
 </h3>
 <p>rxode2 provides several solver backends selectable per run:
@@ -353,6 +344,16 @@ threading.</p>
 <div class="section level2">
 <h2 id="features-available-in-both-tools-with-different-approaches">Features available in both tools (with different approaches)<a class="anchor" aria-label="anchor" href="#features-available-in-both-tools-with-different-approaches"></a>
 </h2>
+<div class="section level3">
+<h3 id="compartment-analytical-solutions">1-3 compartment analytical solutions<a class="anchor" aria-label="anchor" href="#compartment-analytical-solutions"></a>
+</h3>
+<p>Both tools provide closed-form (non-ODE) solutions for 1-, 2-, and
+3-compartment linear PK systems. rxode2’s <code>linCmt()</code> computes
+gradients via Stan math auto-differentiation, giving nlmixr2’s FOCEi
+exact derivatives. PKPDsim provides ADVAN-style analytical equations
+(<code>sim(..., analytical = "...")</code>, based on Abuhelwa et
+al. 2015) for fast closed-form solving.</p>
+</div>
 <div class="section level3">
 <h3 id="literature-model-libraries">Literature model libraries<a class="anchor" aria-label="anchor" href="#literature-model-libraries"></a>
 </h3>
@@ -608,8 +609,8 @@ reference page</a> for further details.</p>
 <td>1-3 cmt analytical solution</td>
 <td>
 <code>linCmt()</code> with exact gradients</td>
-<td>
-<code>reparametrization</code> (ODE-based)</td>
+<td>ADVAN-style closed-form (<code>analytical=</code> in
+<code>sim()</code>), finite-diff gradients</td>
 </tr>
 <tr class="odd">
 <td>Symbolic Jacobians / sensitivities</td>

@@ -291,9 +291,11 @@ subjects uses all available cores automatically:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/getRxThreads.html">getRxThreads</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># inspect active thread count</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, params <span class="op">=</span> <span class="va">theta</span>, omega <span class="op">=</span> <span class="va">omega</span>, nSub <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span></code></pre></div>
-<p>NONMEM’s <code>$SIMULATION</code> step solves subjects sequentially
-within a single run. Parallelism requires submitting multiple NONMEM
-runs to an HPC cluster (e.g., via PsN).</p>
+<p>NONMEM’s <code>$SIMULATION</code> step can also be parallelized, via
+a parafile and the <code>nmfe</code> <code>[nodes]=</code> option
+(native MPI support since NONMEM 7.2), but this spreads the work across
+separate OS processes rather than threads within one process, and is
+usually configured through PsN rather than run directly.</p>
 </div>
 <div class="section level3">
 <h3 id="native-r-workflow-no-file-io">Native R workflow – no file I/O<a class="anchor" aria-label="anchor" href="#native-r-workflow-no-file-io"></a>
@@ -581,15 +583,18 @@ customised models. rxode2 supports custom C via <code><a href="../reference/rxFu
 Fortran.</p>
 </div>
 <div class="section level3">
-<h3 id="cluster-submission-via-psn">Cluster submission via PsN<a class="anchor" aria-label="anchor" href="#cluster-submission-via-psn"></a>
+<h3 id="native-mpi-parallel-processing-and-cluster-submission-via-psn">Native MPI parallel processing and cluster submission via PsN<a class="anchor" aria-label="anchor" href="#native-mpi-parallel-processing-and-cluster-submission-via-psn"></a>
 </h3>
-<p>PsN (Perl-speaks-NONMEM) can distribute NONMEM simulation runs across
-HPC cluster nodes. rxode2 parallelizes across OpenMP threads within a
-process and, since 5.1.1, can also distribute chunks of subjects to
-<code>mirai</code> daemons for HPC/cluster execution (built into
-<code><a href="../reference/rxSolve.html">rxSolve()</a></code>’s out-of-memory path via the
-<code>parallel</code> argument), though it does not integrate with PsN
-specifically.</p>
+<p>NONMEM has built-in MPI-based parallel processing (a parafile and the
+<code>nmfe</code> <code>[nodes]=</code> option, since NONMEM 7.2) for a
+single <code>$SIMULATION</code> or estimation run across cores or
+cluster nodes; PsN (Perl-speaks- NONMEM) automates generating parafiles
+and distributing runs across an HPC cluster. rxode2 parallelizes across
+OpenMP threads within a process and, since 5.1.1, can also distribute
+chunks of subjects to <code>mirai</code> daemons for HPC/cluster
+execution (built into <code><a href="../reference/rxSolve.html">rxSolve()</a></code>’s out-of-memory path via
+the <code>parallel</code> argument), though it does not integrate with
+PsN or NONMEM parafiles specifically.</p>
 </div>
 <div class="section level3">
 <h3 id="steady-state-dosing-ss1-ii">Steady-state dosing (<code>SS=1</code>, <code>II</code>)<a class="anchor" aria-label="anchor" href="#steady-state-dosing-ss1-ii"></a>
@@ -680,14 +685,14 @@ passed to the <code>vpc</code> R package or Xpose for VPC plots.</p>
 <td>seconds to minutes per run</td>
 </tr>
 <tr class="even">
-<td>OpenMP within-process parallelism</td>
-<td>yes</td>
-<td>no (sequential subjects)</td>
+<td>In-process multithreading</td>
+<td>yes (OpenMP)</td>
+<td>no (MPI across separate processes, since 7.2)</td>
 </tr>
 <tr class="odd">
 <td>Cluster / distributed submission</td>
 <td>yes (built-in <code>mirai</code>)</td>
-<td>via PsN</td>
+<td>yes (native parafile MPI, or via PsN)</td>
 </tr>
 <tr class="even">
 <td>Out-of-memory / disk-backed solve</td>

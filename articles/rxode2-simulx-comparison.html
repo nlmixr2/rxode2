@@ -299,9 +299,12 @@ lag time, infusion rate, duration, and amount.</p>
 </h3>
 <p><code>linCmt()</code> provides analytical solutions for one-, two-,
 and three-compartment PK models with gradients via Stan math
-auto-differentiation. Simulx uses ODEs for all compartment models.
-rxode2 can also detect a 1-3 compartment linear PK ODE system and
-transparently solve it through this analytical path
+auto-differentiation. Simulx’s mlxtran language has its own closed-form
+solution for linear compartmental models with no transit compartments
+(the <code>pkmodel</code> macro), falling back to ODE integration
+otherwise, but it does not expose auto-differentiated gradients through
+this path. rxode2 can also detect a 1-3 compartment linear PK ODE system
+and transparently solve it through this analytical path
 (<code>rxSolve(..., useLinCmt = TRUE)</code>, the default), falling back
 to the ODE solver if the converted model cannot be compiled.</p>
 </div>
@@ -481,7 +484,9 @@ rxode2.</p>
 <td>1-3 cmt analytical solution</td>
 <td>
 <code>linCmt()</code> with gradients</td>
-<td>ODE-based only</td>
+<td>
+<code>pkmodel</code> macro (linear, no transit cmts); no exposed
+gradients</td>
 </tr>
 <tr class="odd">
 <td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
@@ -556,7 +561,10 @@ rxode2.</p>
 <tr class="odd">
 <td>CRAN</td>
 <td>yes</td>
-<td>no (<code>lixoftConnectors</code> distributed by Lixoft)</td>
+<td>
+<code>RsSimulx</code> connector only; needs licensed Simulx app +
+non-CRAN <code>lixoftConnectors</code>
+</td>
 </tr>
 </tbody>
 </table>
