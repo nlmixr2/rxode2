@@ -304,6 +304,11 @@
 <strong><code>inst/include/rxode2.h</code></strong>: a plain declaration guarded <code>#ifndef __RXODE2PTR_H__</code> (so it does not collide with the downstream pointer variable – same as <code>par_solve</code>/<code>getRxSolve_</code>).</li>
 </ol><p>Appending at a new index is backward compatible (older consumers read the lower indices and ignore the new one). Changing any <code>inst/include/*.h</code> header requires a full clean rebuild (<code>rm -f src/*.o &amp;&amp; R CMD INSTALL .</code>).</p>
 </div>
+<div class="section level4">
+<h4 id="srcinitc-is-the-manual-call-registration-table-hardcoded-arities">
+<code>src/init.c</code> is the MANUAL <code>.Call</code> registration table (hardcoded arities)<a class="anchor" aria-label="anchor" href="#srcinitc-is-the-manual-call-registration-table-hardcoded-arities"></a></h4>
+<p><code>src/init.c</code> hand-maintains the <code>R_registerRoutines</code> <code>callMethods[]</code> table and owns <code>R_init_rxode2</code> (Rcpp’s generated <code>R_init_rxode2</code> in <code>RcppExports.cpp</code> is NOT used). Every <code>.Call</code> entry has an explicit forward prototype plus a HARDCODED argument count, e.g. <code>{"_rxode2_foo", (DL_FUNC) &amp;_rxode2_foo, 5}</code>. So when you add a <code>[[Rcpp::export]]</code> function OR change one’s argument count you MUST do BOTH: <code>Rcpp::compileAttributes(".")</code> (regenerates <code>src/RcppExports.cpp</code> + <code>R/RcppExports.R</code>) AND hand-edit <code>src/init.c</code> (add/update the prototype and the <code>callMethods[]</code> arg count). Skipping the init.c edit does NOT fail at compile time – it surfaces at runtime as <code>Incorrect number of arguments (N), expecting M for '_rxode2_foo'</code> because the loaded registration table still carries the old arity. (Same pattern in nlmixr2est’s <code>src/init.c</code>.)</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="generated-files-do-not-edit-manually">Generated Files (do not edit manually)<a class="anchor" aria-label="anchor" href="#generated-files-do-not-edit-manually"></a></h3>
