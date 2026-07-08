@@ -247,16 +247,18 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_lt(max(abs(.s[["rx__sens_cen_BY_kin_BY_kin__"]] - .fd2)), 0.05)
   })
 
-  test_that("parameter-dependent delays are rejected for second-order sensitivities", {
-    ## tau depends on ltau, so the DDE breaking points move with the parameter
-    ## and the second-order sensitivities pick up jump discontinuities at them
-    ## (not yet handled).  This must error cleanly (not a masked "Aborted").
+  test_that("param-dependent delay with a param-dependent initial rate is rejected for second-order sensitivities", {
+    ## A single parameter-dependent delay is now handled via the xi1 breaking-point
+    ## jump, BUT only when the jump amount is constant.  Here tau depends on ltau and
+    ## the delayed state's initial rate (-k*cen + kin*delay(cen, tau) at t0) depends
+    ## on k and kin, so the breaking-point jump amount is non-constant and the
+    ## analytic second-order path is rejected cleanly (numeric Hessian instead).
     .m <- .rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
     .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
     invisible(.rxSens(.mod, c("k", "ltau")))
     expect_error(.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
-                 "breaking points")
+                 "initial rate depends on")
   })
 
   ## Third-order (constant-delay) sensitivities.  The general third-order
