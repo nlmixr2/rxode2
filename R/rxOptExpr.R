@@ -166,6 +166,8 @@
       return(paste0("alag(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`dur`))) {
       return(paste0("dur(", ..rxOptLhs(x[[2]]), ")"))
+    } else if (identical(x[[1]], quote(`past`))) {
+      return(paste0("past(", ..rxOptLhs(x[[2]]), ",", ..rxOptLhs(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`dy`))) {
       return(paste0("dy(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`df`))) {

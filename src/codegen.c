@@ -359,6 +359,29 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return 0.0;\n",
                 prefix);
       }
+    } else if (show_ode == ode_past){
+      // Non-constant delay() pre-history (past(state, tau) <- expr).  Its own
+      // dedicated function/array, called by _rxDelay() for t' = t - tau < t0.
+      if (foundPast){
+        int nnn = tb.de.n;
+        if (tb.linCmt){
+          if (tb.hasKa){
+            nnn+=2;
+          } else {
+            nnn+=1;
+          }
+        }
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _past[%d];\n  (void)_past;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n",
+                nnn);
+        // default: the constant initial condition (states with no past() keep
+        // the previous constant-history behavior)
+        for (int jjj = nnn; jjj--;){
+          sAppend(&sbOut, "  _past[%d]=_solveData->op->inits[%d];\n", jjj, jjj);
+        }
+      } else {
+        // body left open; the catch-all close ("}\n") at the end finishes it
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  (void)_cSub; (void)__t; (void)__zzStateVar__;\n  return _solveData->op->inits[_cmt];\n");
+      }
     } else if (show_ode == ode_mtime){
       if (nmtime){
         sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
@@ -435,11 +458,13 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
          show_ode != ode_dur && show_ode != ode_rate && show_ode != ode_lag &&
          show_ode != ode_lhs && show_ode != ode_mtime && show_ode != ode_mexp &&
+         show_ode != ode_past &&
          show_ode != ode_indLinVec && !ode_is_es_dcode(show_ode)) ||
         (show_ode == ode_dur && foundDur) ||
         (show_ode == ode_rate && foundRate) ||
         (show_ode == ode_lag && foundLag) ||
         (show_ode == ode_fbio && foundF) ||
+        (show_ode == ode_past && foundPast) ||
         ode_is_es_dcode(show_ode) ||
         (show_ode == ode_ini && foundF0) ||
         (show_ode == ode_lhs && tb.li) ||
@@ -470,8 +495,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
       } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
-                 show_ode == ode_mtime || ode_is_es_dcode(show_ode)){
-        // functional lag, rate, duration, mtime, event-sensitivity dLag/dF
+                 show_ode == ode_mtime || show_ode == ode_past || ode_is_es_dcode(show_ode)){
+        // functional lag, rate, duration, mtime, past-history, event-sensitivity dLag/dF
         sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
       } else if (show_ode == ode_indLinVec || show_ode == ode_mexp){
         sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
@@ -479,7 +504,9 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
-      if (show_ode != ode_indLinVec){
+      if (show_ode != ode_indLinVec && show_ode != ode_past){
+        // past() history is a function of t and parameters only (no states); its
+        // __zzStateVar__ is NULL, so state-var population is skipped for ode_past.
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
           if (tb.idu[i] == 0) {
@@ -497,6 +524,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (foundRate && show_ode == ode_rate) ||
         (foundLag && show_ode == ode_lag) ||
         (foundF && show_ode == ode_fbio) ||
+        (foundPast && show_ode == ode_past) ||
         ode_is_es_dcode(show_ode) ||
         (foundF0 && show_ode == ode_ini) ||
         (show_ode == ode_lhs && tb.li) ||
@@ -506,6 +534,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
          show_ode != ode_jac && show_ode != ode_ini &&
          show_ode != ode_fbio && show_ode != ode_lag  &&
          show_ode != ode_rate && show_ode != ode_dur &&
+         show_ode != ode_past &&
          !ode_is_es_dcode(show_ode))){
       for (i = 0; i < sbPm.n; i++){
         // Event-sensitivity dLag/dF emit no model statements here (preamble
@@ -515,7 +544,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         case TLIN:
           if (show_ode != ode_mexp && show_ode != ode_indLinVec &&
               show_ode != ode_fbio && show_ode != ode_lag &&
-              show_ode != ode_rate && show_ode != ode_dur){
+              show_ode != ode_rate && show_ode != ode_dur && show_ode != ode_past){
             sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
@@ -537,7 +566,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           break;
         case TASSIGN:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
-            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
+            const char *_taLine = (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i];
+            // The pre-history function _rxPast() must never evaluate a delay():
+            // past() is a function of t and parameters only, and rxOptExpr can
+            // hoist delay() into a common-subexpression assignment -- emitting it
+            // into _rxPast would recurse (_rxDelay -> _rxPast -> _rxDelay ...).
+            if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
+              sAppend(&sbOut, "  %s", _taLine);
+            }
           }
           break;
         case TINI:
@@ -568,6 +604,9 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         case DUR:
           if (show_ode == ode_dur) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
           break;
+        case PAST:
+          if (show_ode == ode_past) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
+          break;
         case TJAC:
           if (show_ode == ode_lhs) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
           else if (show_ode == ode_jac)  sAppend(&sbOut, "  %s", sbPm.line[i]);
@@ -576,6 +615,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           // d/dt()
           if (show_ode != ode_ini && show_ode != ode_fbio && show_ode != ode_lag &&
               show_ode != ode_rate && show_ode != ode_dur && show_ode != ode_mtime &&
+              show_ode != ode_past &&
               show_ode !=10 && show_ode != ode_indLinVec){
             sAppend(&sbOut, "  %s", show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
           }
@@ -627,6 +667,12 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         break;
       case ode_fbio:
         sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
+        break;
+      case ode_past:
+        // when foundPast the header opened the body + declared _past[]; close
+        // with the selected compartment's history value.  When !foundPast the
+        // header already emitted a complete self-contained function.
+        if (foundPast) sAppendN(&sbOut, "\n  return _past[_cmt];\n", 22);
         break;
       case ode_dLag:
         // Event-sensitivity d(alag)/dp assignment lines (may be empty)
@@ -726,6 +772,9 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppendN(&sbOut,  "}\n", 2);
     } else if (show_ode == ode_fbio || show_ode == ode_lag || show_ode == ode_rate ||
                show_ode == ode_dur){
+      sAppendN(&sbOut,  "}\n", 2);
+    } else if (show_ode == ode_past && foundPast){
+      // !foundPast already closed the function body in its header
       sAppendN(&sbOut,  "}\n", 2);
     } else if (show_ode == ode_lhs && tb.li){
       sAppendN(&sbOut,  "\n", 1);
@@ -1047,6 +1096,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(9); // mtime
   gCode(10); //mat
   gCode(11); //matF
+  gCode(ode_past); // non-constant delay() pre-history _rxPast()
   gCode(ode_dLag); // event-sensitivity d(alag)/dp
   gCode(ode_dF);   // event-sensitivity d(F)/dp
   gCode(ode_dRate);// event-sensitivity d(rate)/dp

@@ -302,6 +302,32 @@
       }
       .thetas <- try(.muRefExtractTheta(y, env), silent=TRUE)
       if (inherits(.thetas, "try-error")) .thetas <- NULL
+      if (length(.thetas) == 1L &&
+            grepl("\\b(delay|past)\\s*\\(", deparse1(y), perl = TRUE)) {
+        ## A delay()/past() call is an ODE state's history: the call value is
+        ## never a theta*covariate, and the whole term cannot be parsed in
+        ## isolation (the `rxdummyLhs=<term>` fragment has no d/dt() for that
+        ## state, which the C parser reports directly to the console even under
+        ## try(silent=TRUE)).  But its DURATION argument may carry a
+        ## mu-reference (individual/covariate delay), so look inside the call and
+        ## analyse the duration argument(s) instead of the un-parseable term.
+        .taus <- list()
+        .collectTau <- function(z) {
+          if (is.call(z)) {
+            if ((identical(z[[1L]], quote(delay)) || identical(z[[1L]], quote(past))) &&
+                  length(z) >= 3L) {
+              .taus[[length(.taus) + 1L]] <<- z[[3L]]
+            } else {
+              for (.i in seq_along(z)) .collectTau(z[[.i]])
+            }
+          }
+        }
+        .collectTau(y)
+        if (length(.taus) == 0L) return(NULL)
+        .inner <- .muRefExtractMultiplyMuCovariates(.taus, list(0), env)
+        if (length(.inner) > 1L) return(.inner[-1L])
+        return(NULL)
+      }
       if (length(.thetas) == 1L) {
         .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas), silent=TRUE)
         .extra <- try(str2lang(rxFromSE(.d)), silent=TRUE)

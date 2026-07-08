@@ -42,6 +42,9 @@ static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
   return ((i == 3 || i == 4 || i < 2) &&
           (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
            nodeHas(rate) || nodeHas(dur) || nodeHas(indLin_prop))) ||
+    // past(state, tau) <- expr : visit child 2 (state) and child 7 (expr);
+    // skip 'past' '(' , tau ) and the assignment operator
+    (nodeHas(past) && (i < 2 || i == 3 || i == 4 || i == 5 || i == 6)) ||
     ((i == 3 || i < 2) && nodeHas(der_rhs)) ||
     (nodeHas(dfdy)     && i< 2)  ||
     (nodeHas(dfdy_rhs) && i< 2) ||

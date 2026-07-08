@@ -377,13 +377,16 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 // the value is interpolated from the per-subject dense history recorded by the
 // solver, using the same 8th-order Dormand-Prince interpolant as dop853's
 // contd8(), so delayed states are obtained to the full accuracy of the solve.
+// forward declaration of the model's non-constant pre-history (past()); the
+// default (no past()) returns the constant initial condition.
+double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   double td = t - T;
   // Learn the smallest delay so the solver can cap its step size and never
   // step over the delay (keeping the lagged time inside recorded history).
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
-    return _solveData->op->inits[i];   // constant initial history before t0
+    return _rxPast(_ind->id, i, td, (double*)0);   // pre-history: user past() or constant IC
   }
   int n = _ind->delayHistNeq;
   int stride = _ind->delayHistStride;
@@ -392,7 +395,7 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
   // index to its compact history column.
   int col = _solveData->op->delayCol[i];
   if (col < 0) {
-    return _solveData->op->inits[i];   // constant initial history defensive fallback
+    return _rxPast(_ind->id, i, td, (double*)0);   // defensive: past() or constant IC
   }
   // Records are sorted by increasing step start time (xold) and cover
   // contiguous intervals [xold, xold+h].  Find the largest xold <= td; that

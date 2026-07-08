@@ -111,7 +111,7 @@ static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_P
 static inline int isLineAssignmentStatement(nodeInfo ni, char *name) {
   return nodeHas(assignment) || nodeHas(ini) || nodeHas(dfdy) ||
     nodeHas(ini0) || nodeHas(ini0f) || nodeHas(fbio) || nodeHas(alag) || nodeHas(rate) ||
-    nodeHas(dur) || nodeHas(mtime) || nodeHas(indLin_prop);
+    nodeHas(dur) || nodeHas(past) || nodeHas(mtime) || nodeHas(indLin_prop);
 }
 
 static inline char * getLineAfterAssign(char *c) {

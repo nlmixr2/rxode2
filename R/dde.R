@@ -48,6 +48,104 @@
   .df
 }
 
+#' Base past(state, tau) <- expr history lines from a symengine env
+#'
+#' Reads the per-state history RHS/tau text stored by the `.rxToSE` assignment
+#' interception (rx__pastRhs_<state>__ / rx__pastTau_<state>__) and rebuilds the
+#' base `past(state,tau)=expr` line(s).  Used by gradient-free estimators (SAEM)
+#' whose symengine env is built without sensitivities (no `.rxDelaySensAugment`),
+#' so the history must be re-injected into the model text.
+#'
+#' @param model a symengine environment (as from `.loadSymengine`/`rxS`).
+#' @return character vector of past() lines, or NULL if none.
+#' @noRd
+.rxPastBaseLinesFromEnv <- function(model) {
+  .states <- tryCatch(rxode2::rxStateOde(model), error = function(e) character(0))
+  .lines <- character(0)
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    ## resolve through the env so the injected line references root parameters,
+    ## not intermediate lhs that may be dead-code eliminated from the model
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
+    .lines <- c(.lines, sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut))
+  }
+  if (length(.lines)) .lines else NULL
+}
+
+#' Extract past(state, tau) <- expr non-constant-history terms from a model
+#'
+#' @param model anything `rxNorm()` accepts.
+#' @return list of {state, tau, expr} (character), or NULL if none.
+#' @noRd
+.rxPastTerms <- function(model) {
+  .norm <- rxNorm(model)
+  .e <- parse(text = .norm)
+  .found <- list()
+  for (.i in seq_along(.e)) {
+    .st <- .e[[.i]]
+    ## past(state, tau) = expr  parses as `=`(past(state, tau), expr)
+    if (is.call(.st) && (identical(.st[[1L]], quote(`=`)) ||
+                           identical(.st[[1L]], quote(`<-`)))) {
+      .lhs <- .st[[2L]]
+      if (is.call(.lhs) && identical(.lhs[[1L]], quote(past)) && length(.lhs) == 3L) {
+        .found[[length(.found) + 1L]] <- list(state = deparse1(.lhs[[2L]]),
+                                              tau = deparse1(.lhs[[3L]]),
+                                              expr = deparse1(.st[[3L]]))
+      }
+    }
+  }
+  if (length(.found) == 0L) return(NULL)
+  .found
+}
+
+#' Validate past(state, tau) <- expr non-constant-history lines
+#'
+#' The history state must be a delayed ODE state, the duration must match one of
+#' that state's delay(state, tau) terms, and the history expression (a function
+#' of t and parameters) may not reference an ODE state -- past() history is
+#' evaluated before t0 where states are unavailable.  Machine-generated
+#' sensitivity histories (rx__sens_*) are trusted and skipped.
+#'
+#' @param model anything `rxNorm()` accepts.
+#' @return invisibly NULL; errors on an invalid past() line.
+#' @noRd
+.rxValidatePast <- function(model) {
+  .past <- .rxPastTerms(model)
+  if (is.null(.past)) return(invisible(NULL))
+  .states <- rxode2::rxStateOde(model)
+  .delays <- .rxDelayTerms(model)
+  for (.p in .past) {
+    if (grepl("^rx__sens_", .p$state)) next          # machine-generated, trusted
+    if (!(.p$state %in% .states)) {
+      stop(sprintf("past(%s, %s): '%s' is not an ODE state (define d/dt(%s))",
+                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+    }
+    .sd <- if (is.null(.delays)) NULL else .delays[.delays$state == .p$state, , drop = FALSE]
+    if (is.null(.sd) || nrow(.sd) == 0L) {
+      stop(sprintf("past(%s, %s): '%s' has no delay(%s, ...) term (a past history is only used by delay())",
+                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+    }
+    if (!(.p$tau %in% .sd$tau)) {
+      stop(sprintf("past(%s, %s): duration '%s' does not match any delay(%s, ...) (found: %s)",
+                   .p$state, .p$tau, .p$tau, .p$state, paste(unique(.sd$tau), collapse = ", ")),
+           call. = FALSE)
+    }
+    .refs <- tryCatch(all.vars(parse(text = .p$expr)[[1L]]), error = function(e) character(0))
+    .bad <- intersect(.refs, .states)
+    if (length(.bad) > 0L) {
+      stop(sprintf("past(%s, %s): history may not reference ODE state(s) '%s' (it is a function of t and parameters only)",
+                   .p$state, .p$tau, paste(.bad, collapse = "', '")), call. = FALSE)
+    }
+  }
+  invisible(NULL)
+}
+
 #' Named list of explicit assignments (lhs = rhs) in a model
 #'
 #' Skips ODE (`d/dt(...)`) and compartment-property lines; used to resolve a
@@ -252,6 +350,52 @@
     .out
   })
   names(.delayJac) <- .states
+  ## Non-constant delay pre-history: past(state, tau) <- expr.  The symengine
+  ## assignment interception stored the history RHS (rx__past_<state>__) and tau
+  ## text (rx__pastTau_<state>__) and dropped the line so it never entered
+  ## differentiation.  Re-add the base past() line to the augmented model (its
+  ## d/dt still references delay(state,tau)), and emit the per-sensitivity-
+  ## compartment history past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p) so
+  ## the delayed forward sensitivity uses the correct pre-history.
+  .baseLines <- character(0)   # base state history (also needed by gradient-free SAEM)
+  .pastLines <- character(0)   # base + per-sensitivity-compartment histories
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    ## resolve the history through the symengine env so the injected line is
+    ## self-contained (intermediate lhs used ONLY by past() -- dropped from
+    ## differentiation -- are dead-code eliminated from the assembled model, so
+    ## reference the root parameters, e.g. a*exp(b*t) -> exp(ta)*exp(tb*t))
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
+    .base <- sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut)
+    .baseLines <- c(.baseLines, .base)
+    .pastLines <- c(.pastLines, .base)
+    ## differentiate the history wrt each sensitivity parameter for the
+    ## sens-compartment pre-history
+    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    for (.p in params) {
+      .dp <- tryCatch(symengine::D(.rhsB, symengine::S(.p)), error = function(e) NULL)
+      if (is.null(.dp)) next
+      .dpTxt <- rxFromSE(.dp)
+      if (identical(.dpTxt, "0")) next
+      .pastLines <- c(.pastLines,
+                      sprintf("past(rx__sens_%s_BY_%s__,%s)=%s",
+                              .si, .p, .tauTxt, .dpTxt))
+    }
+  }
+  ## append (the 1st- and 2nd-order augments both contribute; unique dedups the
+  ## shared base past() line -- order-independent)
+  .prevBase <- base::mget("..pastBaseLines", envir = model, ifnotfound = list(NULL))[[1L]]
+  .baseLines <- unique(c(.prevBase, .baseLines))
+  assign("..pastBaseLines", if (length(.baseLines)) .baseLines else NULL, envir = model)
+  .prevPast <- base::mget("..pastLines", envir = model, ifnotfound = list(NULL))[[1L]]
+  .pastLines <- unique(c(.prevPast, .pastLines))
+  assign("..pastLines", if (length(.pastLines)) .pastLines else NULL, envir = model)
   if (all(lengths(.delayJac) == 0L)) {
     assign("..sensDelayAlagF", NULL, envir = model)
     return(sensVec)
@@ -728,45 +872,72 @@
 .rxDelaySensAugment2 <- function(model, sensVec, params) {
   if (length(sensVec) == 0L) return(sensVec)
   .states <- rxStateOde(model)
+  ## 2nd-order non-constant pre-history: past(rx__sens_s_BY_p_BY_q__, tau) =
+  ## d^2 expr/dp dq for every 2nd-order sensitivity compartment (appended to the
+  ## base + 1st-order past() lines from .rxDelaySensAugment; unique() dedups).
+  .pastLines2 <- character(0)
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    .cmts <- regmatches(sensVec,
+                        regexpr(paste0("rx__sens_", .si, "_BY_[^,)]+_BY_[^,)]+__"),
+                                sensVec))
+    for (.cmt in unique(.cmts[nzchar(.cmts)])) {
+      .mm <- regmatches(.cmt, regexec(
+        paste0("^rx__sens_", .si, "_BY_(.+)_BY_(.+)__$"), .cmt))[[1L]]
+      if (length(.mm) != 3L) next
+      .d2 <- tryCatch(symengine::D(symengine::D(.rhsB, symengine::S(.mm[2L])),
+                                   symengine::S(.mm[3L])),
+                      error = function(e) NULL)
+      if (is.null(.d2)) next
+      .d2Txt <- rxFromSE(.d2)
+      if (identical(.d2Txt, "0")) next
+      .pastLines2 <- c(.pastLines2,
+                       sprintf("past(%s,%s)=%s", .cmt, .tauTxt, .d2Txt))
+    }
+  }
+  if (length(.pastLines2)) {
+    .prevPast <- base::mget("..pastLines", envir = model, ifnotfound = list(NULL))[[1L]]
+    assign("..pastLines", unique(c(.prevPast, .pastLines2)), envir = model)
+  }
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) return(NULL)
-    ## Find the delay() terms by walking the rxFromSE text (symengine intercepts
-    ## VecBasic `[[`, so avoid function_symbols()/get_args() here).
-    .e <- parse(text = rxFromSE(.f))[[1L]]
+    ## Find the delay() terms as symengine Basic function symbols directly on
+    ## .f (the .rxDelaySensAugment 1st-order pattern) -- NOT by round-tripping
+    ## through rxFromSE()/parse()/eval(): the RHS text renders ETA/THETA as
+    ## bracket-indexed ETA[n]/THETA[n], which are not bound R objects in
+    ## envir=model, so re-eval'ing that text there errors "object 'ETA' not
+    ## found" for any real (eta/theta-referencing) model.
+    .fns <- tryCatch(symengine::function_symbols(.f), error = function(e) NULL)
     .terms <- list()
-    .walk <- function(x) {
-      if (is.call(x)) {
-        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
-          .key <- deparse1(x)
-          if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
-            .terms[[length(.terms) + 1L]] <<- list(
-              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
-              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
-          }
-        }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+    if (!is.null(.fns)) {
+      for (.k in seq_along(.fns)) {
+        .fn <- .fns[[.k]]
+        .fnTxt <- rxFromSE(.fn)
+        if (!grepl("^delay\\(", .fnTxt)) next
+        .call <- parse(text = .fnTxt)[[1L]]
+        .terms[[length(.terms) + 1L]] <- list(
+          fn = .fn, stateJ = deparse1(.call[[2L]]), tau = deparse1(.call[[3L]]),
+          gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
       }
     }
-    .walk(.e)
     if (length(.terms) == 0L) return(NULL)
-    ## Replace every delay() with its surrogate symbol in the RHS AST, then
-    ## rebuild the surrogate expression in the symengine env (the .rxJacobian
-    ## pattern) so it can be differentiated w.r.t. the delayed value (g), the
-    ## states (y) and the parameters (p) -- with no delay() left in symengine.
-    .subst <- function(x) {
-      if (is.call(x)) {
-        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
-          .key <- deparse1(x)
-          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
-        }
-        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
-      }
-      x
-    }
-    .fsubTxt <- deparse1(.subst(.e))
-    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
-    .fsub <- eval(parse(text = .fsubTxt), envir = model)
+    ## Substitute every delay() Basic function symbol with its own surrogate
+    ## symbol (symengine::subs, Basic-level -- no text round-trip) so the
+    ## resulting .fsub can be differentiated w.r.t. the delayed value (g), the
+    ## states (y) and the parameters (p) with no delay() left in symengine.
+    ## All terms are substituted into the SAME .fsub (not one at a time) so
+    ## cross second derivatives between two distinct delay() terms in the same
+    ## RHS (hgg below) see both surrogate symbols.
+    .fsub <- .f
+    for (.t in .terms) .fsub <- symengine::subs(.fsub, .t$fn, symengine::S(.t$gName))
     .restore <- function(txt) {
       for (.t in .terms) {
         txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
