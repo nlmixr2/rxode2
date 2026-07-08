@@ -909,42 +909,35 @@
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) return(NULL)
-    ## Find the delay() terms by walking the rxFromSE text (symengine intercepts
-    ## VecBasic `[[`, so avoid function_symbols()/get_args() here).
-    .e <- parse(text = rxFromSE(.f))[[1L]]
+    ## Find the delay() terms as symengine Basic function symbols directly on
+    ## .f (the .rxDelaySensAugment 1st-order pattern) -- NOT by round-tripping
+    ## through rxFromSE()/parse()/eval(): the RHS text renders ETA/THETA as
+    ## bracket-indexed ETA[n]/THETA[n], which are not bound R objects in
+    ## envir=model, so re-eval'ing that text there errors "object 'ETA' not
+    ## found" for any real (eta/theta-referencing) model.
+    .fns <- tryCatch(symengine::function_symbols(.f), error = function(e) NULL)
     .terms <- list()
-    .walk <- function(x) {
-      if (is.call(x)) {
-        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
-          .key <- deparse1(x)
-          if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
-            .terms[[length(.terms) + 1L]] <<- list(
-              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
-              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
-          }
-        }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+    if (!is.null(.fns)) {
+      for (.k in seq_along(.fns)) {
+        .fn <- .fns[[.k]]
+        .fnTxt <- rxFromSE(.fn)
+        if (!grepl("^delay\\(", .fnTxt)) next
+        .call <- parse(text = .fnTxt)[[1L]]
+        .terms[[length(.terms) + 1L]] <- list(
+          fn = .fn, stateJ = deparse1(.call[[2L]]), tau = deparse1(.call[[3L]]),
+          gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
       }
     }
-    .walk(.e)
     if (length(.terms) == 0L) return(NULL)
-    ## Replace every delay() with its surrogate symbol in the RHS AST, then
-    ## rebuild the surrogate expression in the symengine env (the .rxJacobian
-    ## pattern) so it can be differentiated w.r.t. the delayed value (g), the
-    ## states (y) and the parameters (p) -- with no delay() left in symengine.
-    .subst <- function(x) {
-      if (is.call(x)) {
-        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
-          .key <- deparse1(x)
-          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
-        }
-        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
-      }
-      x
-    }
-    .fsubTxt <- deparse1(.subst(.e))
-    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
-    .fsub <- eval(parse(text = .fsubTxt), envir = model)
+    ## Substitute every delay() Basic function symbol with its own surrogate
+    ## symbol (symengine::subs, Basic-level -- no text round-trip) so the
+    ## resulting .fsub can be differentiated w.r.t. the delayed value (g), the
+    ## states (y) and the parameters (p) with no delay() left in symengine.
+    ## All terms are substituted into the SAME .fsub (not one at a time) so
+    ## cross second derivatives between two distinct delay() terms in the same
+    ## RHS (hgg below) see both surrogate symbols.
+    .fsub <- .f
+    for (.t in .terms) .fsub <- symengine::subs(.fsub, .t$fn, symengine::S(.t$gName))
     .restore <- function(txt) {
       for (.t in .terms) {
         txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
