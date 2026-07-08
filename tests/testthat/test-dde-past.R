@@ -49,6 +49,22 @@ rxTest({
     }
   })
 
+  test_that("past() history is validated", {
+    .ev <- et(seq(0, 2, by = 0.5))
+    ## history may not reference an ODE state
+    expect_error(rxSolve(rxode2("y(0)<-1\nd/dt(y)<- -delay(y,1)\npast(y,1)<-0.5*y\n"), .ev),
+                 "may not reference ODE state")
+    ## duration must match the delay
+    expect_error(rxSolve(rxode2("y(0)<-1\nd/dt(y)<- -delay(y,2)\npast(y,1)<-exp(0.5*t)\n"), .ev),
+                 "does not match any delay")
+    ## past on a non-delayed state (while another state is delayed) is rejected
+    expect_error(rxSolve(rxode2("y(0)<-1\nz(0)<-1\nd/dt(y)<- -y\nd/dt(z)<- -delay(z,1)\npast(y,1)<-exp(t)\n"), .ev),
+                 "has no delay")
+    ## a valid history solves without error
+    .s <- suppressMessages(rxSolve(rxode2("y(0)<-1\nd/dt(y)<- -delay(y,1)\npast(y,1)<-exp(0.5*t)\n"), .ev))
+    expect_true(all(is.finite(.s$y)))
+  })
+
   test_that("past() second-order sensitivities match finite differences", {
     .ev <- et(seq(0, 3, by = 0.5))
     .mstr <- function(k, a, b) sprintf(

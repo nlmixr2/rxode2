@@ -2545,6 +2545,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
+    # Validate any non-constant past(state, tau) <- expr history lines (state is
+    # a delayed ODE state, tau matches a delay(), history references no states).
+    .rxValidatePast(object)
     # Forward-sensitivity param-dependent delay: reproduce the dose-induced
     # breaking-point jump by mirroring each delayed-state dose onto its
     # sensitivity compartment (the alag()/f() model lines are already emitted by

@@ -48,6 +48,74 @@
   .df
 }
 
+#' Extract past(state, tau) <- expr non-constant-history terms from a model
+#'
+#' @param model anything `rxNorm()` accepts.
+#' @return list of {state, tau, expr} (character), or NULL if none.
+#' @noRd
+.rxPastTerms <- function(model) {
+  .norm <- rxNorm(model)
+  .e <- parse(text = .norm)
+  .found <- list()
+  for (.i in seq_along(.e)) {
+    .st <- .e[[.i]]
+    ## past(state, tau) = expr  parses as `=`(past(state, tau), expr)
+    if (is.call(.st) && (identical(.st[[1L]], quote(`=`)) ||
+                           identical(.st[[1L]], quote(`<-`)))) {
+      .lhs <- .st[[2L]]
+      if (is.call(.lhs) && identical(.lhs[[1L]], quote(past)) && length(.lhs) == 3L) {
+        .found[[length(.found) + 1L]] <- list(state = deparse1(.lhs[[2L]]),
+                                              tau = deparse1(.lhs[[3L]]),
+                                              expr = deparse1(.st[[3L]]))
+      }
+    }
+  }
+  if (length(.found) == 0L) return(NULL)
+  .found
+}
+
+#' Validate past(state, tau) <- expr non-constant-history lines
+#'
+#' The history state must be a delayed ODE state, the duration must match one of
+#' that state's delay(state, tau) terms, and the history expression (a function
+#' of t and parameters) may not reference an ODE state -- past() history is
+#' evaluated before t0 where states are unavailable.  Machine-generated
+#' sensitivity histories (rx__sens_*) are trusted and skipped.
+#'
+#' @param model anything `rxNorm()` accepts.
+#' @return invisibly NULL; errors on an invalid past() line.
+#' @noRd
+.rxValidatePast <- function(model) {
+  .past <- .rxPastTerms(model)
+  if (is.null(.past)) return(invisible(NULL))
+  .states <- rxode2::rxStateOde(model)
+  .delays <- .rxDelayTerms(model)
+  for (.p in .past) {
+    if (grepl("^rx__sens_", .p$state)) next          # machine-generated, trusted
+    if (!(.p$state %in% .states)) {
+      stop(sprintf("past(%s, %s): '%s' is not an ODE state (define d/dt(%s))",
+                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+    }
+    .sd <- if (is.null(.delays)) NULL else .delays[.delays$state == .p$state, , drop = FALSE]
+    if (is.null(.sd) || nrow(.sd) == 0L) {
+      stop(sprintf("past(%s, %s): '%s' has no delay(%s, ...) term (a past history is only used by delay())",
+                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+    }
+    if (!(.p$tau %in% .sd$tau)) {
+      stop(sprintf("past(%s, %s): duration '%s' does not match any delay(%s, ...) (found: %s)",
+                   .p$state, .p$tau, .p$tau, .p$state, paste(unique(.sd$tau), collapse = ", ")),
+           call. = FALSE)
+    }
+    .refs <- tryCatch(all.vars(parse(text = .p$expr)[[1L]]), error = function(e) character(0))
+    .bad <- intersect(.refs, .states)
+    if (length(.bad) > 0L) {
+      stop(sprintf("past(%s, %s): history may not reference ODE state(s) '%s' (it is a function of t and parameters only)",
+                   .p$state, .p$tau, paste(.bad, collapse = "', '")), call. = FALSE)
+    }
+  }
+  invisible(NULL)
+}
+
 #' Named list of explicit assignments (lhs = rhs) in a model
 #'
 #' Skips ODE (`d/dt(...)`) and compartment-property lines; used to resolve a
