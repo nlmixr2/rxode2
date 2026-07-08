@@ -53,10 +53,12 @@ $$y'(t) = -y(t - 1), \qquad y(t) = 1 \text{ for } t \le 0$$
 is written directly:
 
 ```{r classic}
-dde <- rxode2({
-  y(0) <- 1
-  d/dt(y) <- -delay(y, 1)
-})
+dde <- function() {
+  model({
+    y(0) <- 1
+    d/dt(y) <- -delay(y, 1)
+  })
+}
 
 s <- rxSolve(dde, et(seq(0, 5, by = 0.1)))
 ```
@@ -145,28 +147,37 @@ lifespan `Td`, so cells that entered the pool one lifespan ago --
 `delay(x4, Td)` -- leave it. A drug-free control `x3` grows in parallel:
 
 ```{r ex2, fig.height=4}
-ex2 <- rxode2({
-  ## one-compartment oral PK -> concentration c(t)
-  d/dt(x1) <- -ka * x1
-  d/dt(x2) <-  ka * x1 - ke * x2
-  c    <- x2 / V
-  cdel <- delay(x2, Td) / V                    # c(t - Td)
-  ## lifespan tumor growth: x4 = proliferating p(t), x5 = apoptotic d(t)
-  d/dt(x3) <- (2 * l0 * l1 * x3) / (l1 + 2 * l0 * x3)                 # drug-free control
-  d/dt(x4) <- (2 * l0 * l1 * x4^2) / ((l1 + 2 * l0 * x4) * (x4 + x5)) - kpot * c * x4
-  d/dt(x5) <-  kpot * c * x4 - kpot * cdel * delay(x4, Td)
-  w  <- x4 + x5                                # observed treated tumor weight
-  x3(0) <- w0
-  x4(0) <- w0
-  x5(0) <- 0
-})
-
-theta <- c(ka = 103.96 * 24, ke = 0.1052 * 24, V = 2.7882,
-           l0 = 0.195, l1 = 0.245, w0 = 0.010, kpot = 0.007, Td = 3.61)
+ex2 <- function() {
+  ini({
+    ka   <- 103.96 * 24
+    ke   <- 0.1052 * 24
+    V    <- 2.7882
+    l0   <- 0.195
+    l1   <- 0.245
+    w0   <- 0.010
+    kpot <- 0.007
+    Td   <- 3.61        # apoptotic-cell lifespan (the delay)
+  })
+  model({
+    ## one-compartment oral PK -> concentration c(t)
+    d/dt(x1) <- -ka * x1
+    d/dt(x2) <-  ka * x1 - ke * x2
+    c    <- x2 / V
+    cdel <- delay(x2, Td) / V                    # c(t - Td)
+    ## lifespan tumor growth: x4 = proliferating p(t), x5 = apoptotic d(t)
+    d/dt(x3) <- (2 * l0 * l1 * x3) / (l1 + 2 * l0 * x3)                 # drug-free control
+    d/dt(x4) <- (2 * l0 * l1 * x4^2) / ((l1 + 2 * l0 * x4) * (x4 + x5)) - kpot * c * x4
+    d/dt(x5) <-  kpot * c * x4 - kpot * cdel * delay(x4, Td)
+    w  <- x4 + x5                                # observed treated tumor weight
+    x3(0) <- w0
+    x4(0) <- w0
+    x5(0) <- 0
+  })
+}
 
 ## 100 mg orally at days 12-16, observe the tumor for 25 days
 ev <- et(seq(0, 25, by = 0.1)) |> et(amt = 100, time = 12:16, cmt = "x1")
-s2 <- rxSolve(ex2, theta, ev)
+s2 <- rxSolve(ex2, ev)
 
 plot(s2$time, s2$x3, type = "l", lwd = 2, xlab = "time (days)",
      ylab = "tumor weight", ylim = c(0, max(s2$x3)))
@@ -193,14 +204,18 @@ covariates. Here a depot feeds a central compartment that has a delayed
 auto-induction-like feedback term:
 
 ```{r mixed, fig.height=4}
-mix <- rxode2({
-  ka  <- 1
-  ke  <- 0.3
-  kin <- 0.2
-  cen(0) <- 0
-  d/dt(depot) <- -ka * depot
-  d/dt(cen)   <-  ka * depot - ke * cen + kin * delay(cen, 2)
-})
+mix <- function() {
+  ini({
+    ka  <- 1
+    ke  <- 0.3
+    kin <- 0.2
+  })
+  model({
+    cen(0) <- 0
+    d/dt(depot) <- -ka * depot
+    d/dt(cen)   <-  ka * depot - ke * cen + kin * delay(cen, 2)
+  })
+}
 
 ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 0.25))
 s3 <- rxSolve(mix, ev)
@@ -224,21 +239,31 @@ value of `state` for times before `t0`. It must reference the same delay
 duration used in the matching `delay(state, T)`:
 
 ```{r ex6, fig.height=4}
-ra <- rxode2({
-  G(0) <- a                                  # continuity: a*exp(0) = a
-  d/dt(G) <- k3 - kg * G                      # development-phase cytokine turnover
-  past(G, Td) <- a * exp(b * t)               # induction-phase history (Koch Eq. 63)
-  I(0) <- 0
-  d/dt(I) <- k4 * G - k4 * delay(G, Td)       # inflammation
-  D(0) <- 0
-  d/dt(D) <- k4 * delay(G, Td) - k5 * D       # bone destruction
-  R1 <- I + D                                 # total arthritic score (TAS)
-  R2 <- D                                     # ankylosis score (AKS)
-})
+ra <- function() {
+  ini({
+    a  <- 2       # induction-phase amplitude
+    b  <- -0.25   # induction-phase rate
+    Td <- 5       # delay
+    k3 <- 1
+    kg <- 0.4
+    k4 <- 0.3
+    k5 <- 0.1
+  })
+  model({
+    G(0) <- a                                  # continuity: a*exp(0) = a
+    d/dt(G) <- k3 - kg * G                      # development-phase cytokine turnover
+    past(G, Td) <- a * exp(b * t)               # induction-phase history (Koch Eq. 63)
+    I(0) <- 0
+    d/dt(I) <- k4 * G - k4 * delay(G, Td)       # inflammation
+    D(0) <- 0
+    d/dt(D) <- k4 * delay(G, Td) - k5 * D       # bone destruction
+    R1 <- I + D                                 # total arthritic score (TAS)
+    R2 <- D                                     # ankylosis score (AKS)
+  })
+}
 
-pars <- c(a = 2, b = -0.25, Td = 5, k3 = 1, kg = 0.4, k4 = 0.3, k5 = 0.1)
-ev6  <- et(seq(0, 28, by = 0.25))
-sra  <- rxSolve(ra, pars, ev6)
+ev6 <- et(seq(0, 28, by = 0.25))
+sra <- rxSolve(ra, ev6)
 plot(sra, R2)
 ```
 
