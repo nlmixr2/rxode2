@@ -247,16 +247,18 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_lt(max(abs(.s[["rx__sens_cen_BY_kin_BY_kin__"]] - .fd2)), 0.05)
   })
 
-  test_that("parameter-dependent delays are rejected for second-order sensitivities", {
-    ## tau depends on ltau, so the DDE breaking points move with the parameter
-    ## and the second-order sensitivities pick up jump discontinuities at them
-    ## (not yet handled).  This must error cleanly (not a masked "Aborted").
+  test_that("param-dependent delay with a param-dependent initial rate is rejected for second-order sensitivities", {
+    ## A single parameter-dependent delay is now handled via the xi1 breaking-point
+    ## jump, BUT only when the jump amount is constant.  Here tau depends on ltau and
+    ## the delayed state's initial rate (-k*cen + kin*delay(cen, tau) at t0) depends
+    ## on k and kin, so the breaking-point jump amount is non-constant and the
+    ## analytic second-order path is rejected cleanly (numeric Hessian instead).
     .m <- .rxode2("d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0)<-10\ntau<-exp(ltau)")
     .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
     invisible(.rxSens(.mod, c("k", "ltau")))
     expect_error(.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
-                 "breaking points")
+                 "initial rate depends on")
   })
 
   ## Third-order (constant-delay) sensitivities.  The general third-order
@@ -300,5 +302,84 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     invisible(.rxSens(.mod, "k"))
     invisible(.rxSens(.mod, "k", "k"))
     expect_error(.rxSens(.mod, "k", "k", "k"), "nonlinear")
+  })
+
+  # ---- second-order breaking-point JUMP for parameter-dependent delays ----
+  # For a constant history the delayed state y_j has a derivative discontinuity at
+  # t0; propagated through delay(y_j, T(p)) it makes the SECOND-order sensitivity
+  # S_i^{ab} jump at xi1 = t0 + T by  JD_ij * ydot_j(t0) * (dT/da) * (dT/db).  This
+  # is reproduced by a modeled bolus on the 2nd-order sens compartment
+  # (.rxDelaySensAugment2 emits alag()/f(); rxSolve injects the t0 dose).
+
+  test_that("parameter-dependent delay is allowed for 2nd-order sensitivities", {
+    ## previously rejected; the xi1 jump now covers a single param-dependent delay
+    expect_s3_class(
+      suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                               calcSens = "L", calcSens2 = "L")), "rxode2")
+    ## the 2nd-order jump alag()/f() lines are emitted
+    .m <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                                   calcSens = "L", calcSens2 = "L"))
+    expect_true(any(grepl("alag(rx__sens_y_BY_L_BY_L__)", rxNorm(.m), fixed = TRUE)))
+  })
+
+  test_that("constant delay emits no 2nd-order jump and still matches (regression)", {
+    .m <- suppressMessages(.rxode2("d/dt(y) <- -k*y + delay(y, 1.3)\n y(0) <- 1",
+                                   calcSens = "k", calcSens2 = "k"))
+    ## no jump alag()/f() for a constant delay (dT/dp == 0)
+    expect_false(any(grepl("alag(rx__sens_y_BY_k_BY_k__)", rxNorm(.m), fixed = TRUE)))
+  })
+
+  test_that("2nd-order jump sensitivity matches finite differences", {
+    ## reference ydot=delay(y,tau), tau=exp(L): S^{LL} jumps by +T^2 at xi1=T.
+    .tt <- seq(0, 3, by = 0.02)
+    .mk <- function(L) suppressMessages(.rxode2(paste0(
+      "tau<-exp(", L, ")\n d/dt(y) <- delay(y, tau)\n y(0) <- 1")))
+    .h <- 1e-3
+    .g <- function(d) rxSolve(.mk(d), et(.tt), method = "dop853",
+                              atol = 1e-10, rtol = 1e-10)$y
+    .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
+    .ms <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                                    calcSens = "L", calcSens2 = "L"))
+    .s <- rxSolve(.ms, et(.tt), params = c(L = 0), method = "dop853",
+                  atol = 1e-10, rtol = 1e-10)
+    .an <- .s[["rx__sens_y_BY_L_BY_L__"]]
+    ## compare away from the breaking points (FD straddles the discontinuity there)
+    .keep <- abs(.tt - 1) > 0.05 & abs(.tt - 2) > 0.05
+    expect_lt(max(abs(.an - .fd2)[.keep], na.rm = TRUE), 0.02)
+    ## and the jump is actually present (S^{LL} is large after xi1)
+    expect_gt(max(abs(.an), na.rm = TRUE), 1)
+  })
+
+  test_that("dose-induced 2nd-order jump matches finite differences", {
+    ## delay(cen,tau) driven by a DOSED upstream compartment: the depot dose makes
+    ## ydot_cen jump at t0, so S^{LL}_cen jumps at xi1=t0+T by JD*(df_cen/ddepot)*A*(dT/dL)^2.
+    ## The user dose is mirrored onto the 2nd-order sens compartment.
+    .txt <- paste0("tau<-exp(L)\n ke<-0.7\n d/dt(depot) <- -depot\n",
+                   " d/dt(cen) <- depot - ke*cen + 0.5*delay(cen, tau)\n cen(0)<-0")
+    .tt <- seq(0, 4, by = 0.02)
+    .ev <- et(et(.tt), amt = 10, cmt = "depot", time = 0)
+    .mk <- function(L) suppressMessages(.rxode2(gsub("exp(L)", paste0("exp(", L, ")"),
+                                                    .txt, fixed = TRUE)))
+    .h <- 1e-3
+    .g <- function(d) rxSolve(.mk(d), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)$cen
+    .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
+    .ms <- suppressMessages(.rxode2(.txt, calcSens = "L", calcSens2 = "L"))
+    ## common F = JD*(dT/dL)^2 (magnitude comes from the mirrored dose amount)
+    expect_true(any(grepl("f(rx__sens_cen_BY_L_BY_L__)=(0.5)*(exp(L))*(exp(L))",
+                          rxNorm(.ms), fixed = TRUE)))
+    .an <- rxSolve(.ms, .ev, params = c(L = 0), method = "dop853",
+                   atol = 1e-10, rtol = 1e-10)[["rx__sens_cen_BY_L_BY_L__"]]
+    .keep <- rep(TRUE, length(.tt))
+    for (.b in 1:3) .keep <- .keep & abs(.tt - .b) > 0.08   # exclude FD spikes at xi_n
+    expect_lt(max(abs(.an - .fd2)[.keep], na.rm = TRUE), 0.03)
+    expect_gt(max(abs(.an), na.rm = TRUE), 1)               # the dose-induced jump is present
+  })
+
+  test_that("2nd-order jump is rejected when the delayed state has a parameter baseline", {
+    ## f_j(t0) depends on a parameter (non-constant jump amount) -> numeric Hessian.
+    expect_error(
+      suppressMessages(.rxode2("R0<-exp(lr0)\n tau<-exp(L)\n d/dt(R) <- k0 - delay(R, tau)\n R(0) <- R0",
+                               calcSens = c("L", "lr0"), calcSens2 = c("L", "lr0"))),
+      "initial rate depends on")
   })
 })
