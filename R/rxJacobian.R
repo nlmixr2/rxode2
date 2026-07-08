@@ -225,7 +225,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ## supported (moving breaking points -> jump discontinuities); reject
       ## before the progress bar so the message is not masked.
       .rxDelayValidateHigherOrderSE(model, union(union(vars, vars2),
-                                                 if (missing(vars3)) NULL else vars3))
+                                                 if (missing(vars3)) NULL else vars3),
+                                    thirdOrder = !missing(vars3))
       ## third-order only covers linear delays; reject nonlinear ones early too.
       if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
     }

@@ -2565,6 +2565,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
           if (!is.null(.map))
             events <- tryCatch(.rxDelaySensJumpEvents(.map$jumpMap, .map$st, events), error = function(e) events)
         }
+        # Second-order breaking-point jump (parameter-dependent delay): inject a
+        # unit bolus at each subject's t0 on every 2nd-order jump compartment; the
+        # modeled alag(=T)/f(=magnitude) lines land it at xi1 = t0 + T.  Gated on
+        # the alag() lines existing on a two-`_BY_` sens compartment.
+        if (!exists(".norm", inherits = FALSE)) .norm <- rxNorm(object)
+        .cmts2 <- tryCatch(.rxDelaySensJump2Cmts(.norm), error = function(e) character(0))
+        if (length(.cmts2) > 0L)
+          events <- tryCatch(.rxDelaySensJump2Events(.cmts2, events), error = function(e) events)
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the

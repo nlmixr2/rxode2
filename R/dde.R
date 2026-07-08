@@ -433,6 +433,75 @@
   list(alagf = .map$alagf, events = .rxDelaySensJumpEvents(.map$jumpMap, .map$st, events))
 }
 
+#' Second-order breaking-point jump: activate the t0 modeled bolus
+#'
+#' The 2nd-order jump `[S_i^{ab}](xi1)` is reproduced by a modeled bolus on the
+#' 2nd-order sensitivity compartment with a modeled lag `T` (so it lands at
+#' `xi1 = t0 + T`) and a modeled bioavailability equal to the jump magnitude
+#' (both emitted as `alag()/f()` lines by `.rxDelaySensAugment2()`).  Unlike the
+#' 1st-order dose jump there is no user dose to mirror -- the discontinuity comes
+#' from the initial history -- so a unit bolus is injected at each subject's start
+#' time `t0` on every 2nd-order jump compartment; the modeled `F` (evaluated at
+#' `t0`) supplies the actual signed magnitude.
+#'
+#' `.rxDelaySensJump2Cmts()` finds the 2nd-order jump compartments in the
+#' normalized model (those carrying an `alag()` and two `_BY_` groups).
+#'
+#' @param norm normalized model text (`rxNorm()` output).
+#' @param cmts 2nd-order jump compartment names.
+#' @param events event table (anything `as.data.frame()` accepts).
+#' @return `.rxDelaySensJump2Cmts()`: character vector of compartment names.
+#'   `.rxDelaySensJump2Events()`: `events` with the t0 unit boluses added.
+#' @author Matthew L. Fidler
+#' @noRd
+.rxDelaySensJump2Cmts <- function(norm) {
+  .lines <- strsplit(norm, "\n", fixed = TRUE)[[1L]]
+  .hit <- regmatches(.lines, regexpr("alag\\(rx__sens_[^)]+__\\)", .lines))
+  if (length(.hit) == 0L) return(character(0))
+  .cmt <- sub("^alag\\((rx__sens_[^)]+__)\\)$", "\\1", .hit)
+  ## keep only 2nd-order compartments (exactly two _BY_ groups)
+  .cmt <- .cmt[lengths(gregexpr("_BY_", .cmt, fixed = TRUE)) == 2L]
+  unique(.cmt)
+}
+
+.rxDelaySensJump2Events <- function(cmts, events) {
+  if (length(cmts) == 0L) return(events)
+  .ev <- as.data.frame(events)
+  if (nrow(.ev) == 0L) return(.ev)
+  ## an observation-only table may lack dosing columns; add the ones a bolus
+  ## record needs so the injected rows are well-formed (and rbind-compatible).
+  if (is.null(.ev$evid)) .ev$evid <- 0L
+  if (is.null(.ev$amt)) .ev$amt <- NA_real_
+  if (is.null(.ev$cmt)) .ev$cmt <- 1L
+  ## a character compartment name (rx__sens_...) is resolved by name; make the
+  ## whole cmt column character so rbind does not coerce the injected name away.
+  .ev$cmt <- as.character(.ev$cmt)
+  .idCol <- intersect(c("id", "ID"), names(.ev))
+  .idCol <- if (length(.idCol)) .idCol[1L] else NULL
+  ## neutralize any dose-modifier columns so the injected record is a plain bolus
+  .mkRow <- function(.template, .t0, .cmt) {
+    .row <- .template[1L, , drop = FALSE]
+    .set <- function(col, val) if (!is.null(.row[[col]])) .row[[col]] <<- val
+    .row$time <- .t0
+    .row$evid <- 1L; .row$amt <- 1; .row$cmt <- .cmt
+    .set("ss", 0L); .set("ii", 0); .set("addl", 0L); .set("rate", 0); .set("dur", 0)
+    .set("dv", NA_real_)
+    .row
+  }
+  .add <- .ev[0, , drop = FALSE]
+  if (is.null(.idCol)) {
+    .t0 <- min(.ev$time, na.rm = TRUE)
+    for (.c in cmts) .add <- rbind(.add, .mkRow(.ev, .t0, .c))
+  } else {
+    for (.id in unique(.ev[[.idCol]])) {
+      .sub <- .ev[.ev[[.idCol]] == .id, , drop = FALSE]
+      .t0 <- min(.sub$time, na.rm = TRUE)
+      for (.c in cmts) .add <- rbind(.add, .mkRow(.sub, .t0, .c))
+    }
+  }
+  if (nrow(.add)) rbind(.ev, .add) else .ev
+}
+
 # jumpMap cache: the map depends only on the model, so an optimizer that solves
 # the same param-dependent-delay forward-sens model many times (FOCEi/nlm inner
 # loops) computes the symengine analysis once.  Keyed by the normalized model text
@@ -468,33 +537,49 @@
 #' @param params character vector of sensitivity parameters.
 #' @return invisibly `TRUE`; stops with an informative error otherwise.
 #' @noRd
-.rxDelayValidateHigherOrderSE <- function(model, params) {
+.rxDelayValidateHigherOrderSE <- function(model, params, thirdOrder = TRUE) {
   for (.si in rxStateOde(model)) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) next
     .e <- parse(text = rxFromSE(.f))
+    ## collect the parameter-dependent delay terms in this state's RHS
+    .pdep <- list()
     .walk <- function(x) {
       if (is.call(x)) {
         if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
           .bad <- intersect(.rxResolveRootVarsSE(deparse1(x[[3L]]), model), params)
           if (length(.bad) > 0L) {
-            stop("parameter-dependent delay 'delay(", deparse1(x[[2L]]), ", ",
-                 deparse1(x[[3L]]),
-                 ")' is not yet supported for analytic second-/higher-order ",
-                 "sensitivities: the delay duration depends on ",
-                 paste(.bad, collapse = ", "),
-                 ", which moves the DDE breaking points and introduces jump ",
-                 "discontinuities in the higher-order sensitivities.  The ",
-                 "first-order sensitivities (the gradient) are exact, so fit ",
-                 "these models with a numeric or Gauss-Newton Hessian (the ",
-                 "default in nlmixr2 FOCEi).",
-                 call. = FALSE)
+            .pdep[[length(.pdep) + 1L]] <<- list(state = deparse1(x[[2L]]),
+                                                 tau = deparse1(x[[3L]]), bad = .bad)
           }
         }
         for (.i in seq_along(x)) .walk(x[[.i]])
       }
     }
     for (.i in seq_along(.e)) .walk(.e[[.i]])
+    if (length(.pdep) == 0L) next
+    ## Third order: parameter-dependent delays are not yet supported (would need
+    ## the xi1/xi2 jumps; out of scope).  Second order: the single closed-form
+    ## jump at xi1 is handled by .rxDelaySensAugment2()/.rxDelaySensJump2*(), so a
+    ## single param-dependent delay per state is allowed; multiple param-dependent
+    ## delays on one state still need per-term jump bookkeeping and are rejected.
+    if (thirdOrder || length(.pdep) > 1L) {
+      .d <- .pdep[[1L]]
+      .ord <- if (thirdOrder) "third-order" else "second-order"
+      .why <- if (!thirdOrder && length(.pdep) > 1L)
+        paste0("multiple parameter-dependent delays on state '", .si,
+               "' are not yet supported for ", .ord, " sensitivities")
+      else
+        paste0("parameter-dependent delay 'delay(", .d$state, ", ", .d$tau,
+               ")' is not yet supported for analytic ", .ord, " sensitivities")
+      stop(.why, ": the delay duration depends on ",
+           paste(unique(unlist(lapply(.pdep, `[[`, "bad"))), collapse = ", "),
+           ", which moves the DDE breaking points and introduces jump ",
+           "discontinuities in the ", .ord, " sensitivities.  The first-order ",
+           "sensitivities (the gradient) are exact, so fit these models with a ",
+           "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
+           call. = FALSE)
+    }
   }
   invisible(TRUE)
 }
@@ -532,6 +617,35 @@
 .rxDelaySensAugment2 <- function(model, sensVec, params) {
   if (length(sensVec) == 0L) return(sensVec)
   .states <- rxStateOde(model)
+  ## RHS text f_j(t) per state, captured up front with a clean rxFromSE() (calling
+  ## it again inside the augmentation loop, after surrogate symbols are assigned to
+  ## the env, can trip the delay()/dual-var handling).  Used to build the 2nd-order
+  ## jump magnitude f_j(t0) below.
+  .rhsText <- stats::setNames(lapply(.states, function(.s) {
+    .fs <- get0(paste0("rx__d_dt_", .s, "__"), envir = model, inherits = FALSE)
+    if (is.null(.fs)) NULL else rxFromSE(.fs)
+  }), .states)
+  ## f_j(t0) = [ydot_j](t0), the delayed state's initial RHS jump, must be read at
+  ## the LANDING time xi1 = t0 + T where the modeled F is evaluated.  With a
+  ## constant history every state's t0 value equals its delayed value there, so
+  ## replacing each *non-delayed* state y_k in f_j by delay(y_k, T) makes the whole
+  ## expression evaluate to f_j(t0) at xi1 (delayed terms already read their t0
+  ## value there; a delayed VALUE is continuous at the boundary, unlike rxDelayD).
+  .fjAtT0 <- function(rhsText, tau) {
+    if (is.null(rhsText)) return(NULL)
+    .sub <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1L]], quote(delay))) return(x)  # keep existing delays
+        for (.i in seq_along(x)) x[[.i]] <- .sub(x[[.i]])
+        return(x)
+      }
+      if (is.name(x) && as.character(x) %in% .states) {
+        return(call("delay", x, str2lang(tau)))
+      }
+      x
+    }
+    deparse1(.sub(parse(text = rhsText)[[1L]]))
+  }
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) return(NULL)
@@ -636,7 +750,25 @@
     .out
   })
   names(.delayJac) <- .states
-  if (all(vapply(.delayJac, is.null, logical(1L)))) return(sensVec)
+  if (all(vapply(.delayJac, is.null, logical(1L)))) {
+    assign("..sens2DelayAlagF", NULL, envir = model)
+    assign("..sens2JumpCmts", NULL, envir = model)
+    return(sensVec)
+  }
+  ## Second-order breaking-point JUMP (parameter-dependent delay only).  For a
+  ## constant history the delayed state y_j has a derivative discontinuity at t0
+  ## ([ydot_j](t0)=f_j(t0)); propagated through delay(y_j,T(p)) it makes the
+  ## SECOND-order sensitivity S_i^{ab} jump at xi1 = t0 + T by
+  ##   [S_i^{ab}](xi1) = (df_i/d delay(y_j,T)) * f_j(t0) * (dT/da) * (dT/db).
+  ## The smooth rxDelayD/rxDelayD2 terms in .sg2() miss this Dirac.  As with the
+  ## 1st-order dose jump, reproduce it with a modeled bolus on the 2nd-order sens
+  ## compartment: a unit dose at t0 (added by rxSolve), modeled lag T (lands at
+  ## xi1) and modeled bioavailability = the jump magnitude (F is evaluated at the
+  ## t0 dose time, where f_j(t0) and the delayed Jacobian take their initial
+  ## values).  For a constant delay dT/dp=0 so no jump is emitted (reduces exactly
+  ## to the validated constant-delay case).
+  .alagf2 <- character(0); .jump2Cmts <- character(0); .seen2 <- character(0)
+  .nzt0 <- function(x) !is.null(x) && !identical(x, "0")
   vapply(sensVec, function(.entry) {
     .m <- regmatches(.entry,
                      regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
@@ -644,6 +776,22 @@
     .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]
     .dj <- .delayJac[[.si]]
     if (is.null(.dj)) return(.entry)
+    .sensCmt2 <- paste0("rx__sens_", .si, "_BY_", .a, "_BY_", .b, "__")
+    for (z in .dj) {
+      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
+      if (!.nzt0(.ta) || !.nzt0(.tb)) next          # constant in a or b -> no jump
+      if (.sensCmt2 %in% .seen2) next                # one delay term per 2nd-order cmt
+      .fj0 <- .fjAtT0(.rhsText[[z$stateJ]], z$tau)
+      if (is.null(.fj0)) next
+      .seen2 <- c(.seen2, .sensCmt2)
+      ## jump [S_i^{ab}](xi1) = JD_ij * f_j(t0) * (dT/da) * (dT/db), reproduced by a
+      ## modeled bolus: alag = T (lands at xi1), F = the magnitude (JD taken at xi1).
+      .alagf2 <<- c(.alagf2,
+                    sprintf("alag(%s)=%s", .sensCmt2, z$tau),
+                    sprintf("f(%s)=(%s)*(%s)*(%s)*(%s)",
+                            .sensCmt2, z$jd, .fj0, .ta, .tb))
+      .jump2Cmts <<- c(.jump2Cmts, .sensCmt2)
+    }
     .Sx <- function(st, ord) paste0("rx__sens_", st, "_BY_", ord, "__")
     .nzt <- function(x) !is.null(x) && !identical(x, "0")
     ## first-order surrogate sensitivity SG_k^p = delay(S_j^p, tau)
@@ -706,7 +854,11 @@
     } else {
       paste0(.entry, .add)
     }
-  }, character(1L), USE.NAMES = FALSE)
+  }, character(1L), USE.NAMES = FALSE) -> .res
+  assign("..sens2DelayAlagF", if (length(.alagf2)) .alagf2 else NULL, envir = model)
+  assign("..sens2JumpCmts", if (length(.jump2Cmts)) unique(.jump2Cmts) else NULL,
+         envir = model)
+  .res
 }
 
 #' Reject nonlinear delays for third-order sensitivities (early, env)

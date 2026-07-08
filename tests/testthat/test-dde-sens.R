@@ -301,4 +301,50 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     invisible(.rxSens(.mod, "k", "k"))
     expect_error(.rxSens(.mod, "k", "k", "k"), "nonlinear")
   })
+
+  # ---- second-order breaking-point JUMP for parameter-dependent delays ----
+  # For a constant history the delayed state y_j has a derivative discontinuity at
+  # t0; propagated through delay(y_j, T(p)) it makes the SECOND-order sensitivity
+  # S_i^{ab} jump at xi1 = t0 + T by  JD_ij * ydot_j(t0) * (dT/da) * (dT/db).  This
+  # is reproduced by a modeled bolus on the 2nd-order sens compartment
+  # (.rxDelaySensAugment2 emits alag()/f(); rxSolve injects the t0 dose).
+
+  test_that("parameter-dependent delay is allowed for 2nd-order sensitivities", {
+    ## previously rejected; the xi1 jump now covers a single param-dependent delay
+    expect_s3_class(
+      suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                               calcSens = "L", calcSens2 = "L")), "rxode2")
+    ## the 2nd-order jump alag()/f() lines are emitted
+    .m <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                                   calcSens = "L", calcSens2 = "L"))
+    expect_true(any(grepl("alag(rx__sens_y_BY_L_BY_L__)", rxNorm(.m), fixed = TRUE)))
+  })
+
+  test_that("constant delay emits no 2nd-order jump and still matches (regression)", {
+    .m <- suppressMessages(.rxode2("d/dt(y) <- -k*y + delay(y, 1.3)\n y(0) <- 1",
+                                   calcSens = "k", calcSens2 = "k"))
+    ## no jump alag()/f() for a constant delay (dT/dp == 0)
+    expect_false(any(grepl("alag(rx__sens_y_BY_k_BY_k__)", rxNorm(.m), fixed = TRUE)))
+  })
+
+  test_that("2nd-order jump sensitivity matches finite differences", {
+    ## reference ydot=delay(y,tau), tau=exp(L): S^{LL} jumps by +T^2 at xi1=T.
+    .tt <- seq(0, 3, by = 0.02)
+    .mk <- function(L) suppressMessages(.rxode2(paste0(
+      "tau<-exp(", L, ")\n d/dt(y) <- delay(y, tau)\n y(0) <- 1")))
+    .h <- 1e-3
+    .g <- function(d) rxSolve(.mk(d), et(.tt), method = "dop853",
+                              atol = 1e-10, rtol = 1e-10)$y
+    .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
+    .ms <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
+                                    calcSens = "L", calcSens2 = "L"))
+    .s <- rxSolve(.ms, et(.tt), params = c(L = 0), method = "dop853",
+                  atol = 1e-10, rtol = 1e-10)
+    .an <- .s[["rx__sens_y_BY_L_BY_L__"]]
+    ## compare away from the breaking points (FD straddles the discontinuity there)
+    .keep <- abs(.tt - 1) > 0.05 & abs(.tt - 2) > 0.05
+    expect_lt(max(abs(.an - .fd2)[.keep], na.rm = TRUE), 0.02)
+    ## and the jump is actually present (S^{LL} is large after xi1)
+    expect_gt(max(abs(.an), na.rm = TRUE), 1)
+  })
 })
