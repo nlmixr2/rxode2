@@ -544,7 +544,12 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                   iasti++;
                   if (iasti == 15)
                     {
-                      rxSolveWarnPush(ctx->subject_id, "the problem seems to become stiff at x = %.16e", xph);
+                      /* Stiffness detection is enabled only as the AutoSwitch
+                         composite's primary probe (nstiff>0); the -4 return is
+                         caught by the composite and handled transparently by
+                         switching to the stiff secondary (ros4), so this is not
+                         a user-facing warning.  Standalone dop853 disables the
+                         detector (nstiff<0), so it never reaches here. */
 		      ctx->xout = x;
 		      ctx->hout = h;
 		      return -4;
