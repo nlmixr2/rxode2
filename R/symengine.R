@@ -2881,8 +2881,15 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
               return(paste0("abs(", .var, ")"))
             }
           }
-          .args <- .fun[-1]
-          .args <- lapply(.args, .rxFromSE)
+          ## Convert the differentiated function's arguments from the PARSED
+          ## expressions (as.list(x[[2]])[-1]), not as.character(x[[2]])[-1]:
+          ## the latter deparses each argument to a whole string, so a nested
+          ## symengine name (e.g. THETA_3_ inside sqrt(THETA_3_^2)) is treated as
+          ## an atomic value and the start/end-anchored THETA_n_ -> THETA[n]
+          ## conversion never fires, leaking the mangled name into the derivative
+          ## (e.g. llikNormDmean(DV, y, sqrt(THETA_3_^2))).  Matches the
+          ## length(x) > 3 branch below.
+          .args <- lapply(as.list(x[[2]])[-1], .rxFromSE)
           .with <- which(.var == .args)
           .errD <- function(force = FALSE) {
             if (!force && .rxFromNumDer != 0L) {
