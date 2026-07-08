@@ -252,6 +252,42 @@
     .out
   })
   names(.delayJac) <- .states
+  ## Non-constant delay pre-history: past(state, tau) <- expr.  The symengine
+  ## assignment interception stored the history RHS (rx__past_<state>__) and tau
+  ## text (rx__pastTau_<state>__) and dropped the line so it never entered
+  ## differentiation.  Re-add the base past() line to the augmented model (its
+  ## d/dt still references delay(state,tau)), and emit the per-sensitivity-
+  ## compartment history past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p) so
+  ## the delayed forward sensitivity uses the correct pre-history.
+  .pastLines <- character(0)
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    .pastLines <- c(.pastLines,
+                    sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsTxt))
+    ## differentiate the history wrt each sensitivity parameter for the
+    ## sens-compartment pre-history (same eval-in-env pattern used for tau above)
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    for (.p in params) {
+      .dp <- tryCatch(symengine::D(.rhsB, symengine::S(.p)), error = function(e) NULL)
+      if (is.null(.dp)) next
+      .dpTxt <- rxFromSE(.dp)
+      if (identical(.dpTxt, "0")) next
+      .pastLines <- c(.pastLines,
+                      sprintf("past(rx__sens_%s_BY_%s__,%s)=%s",
+                              .si, .p, .tauTxt, .dpTxt))
+    }
+  }
+  ## append (the 1st- and 2nd-order augments both contribute; unique dedups the
+  ## shared base past() line -- order-independent)
+  .prevPast <- base::mget("..pastLines", envir = model, ifnotfound = list(NULL))[[1L]]
+  .pastLines <- unique(c(.prevPast, .pastLines))
+  assign("..pastLines", if (length(.pastLines)) .pastLines else NULL, envir = model)
   if (all(lengths(.delayJac) == 0L)) {
     assign("..sensDelayAlagF", NULL, envir = model)
     return(sensVec)
@@ -728,6 +764,40 @@
 .rxDelaySensAugment2 <- function(model, sensVec, params) {
   if (length(sensVec) == 0L) return(sensVec)
   .states <- rxStateOde(model)
+  ## 2nd-order non-constant pre-history: past(rx__sens_s_BY_p_BY_q__, tau) =
+  ## d^2 expr/dp dq for every 2nd-order sensitivity compartment (appended to the
+  ## base + 1st-order past() lines from .rxDelaySensAugment; unique() dedups).
+  .pastLines2 <- character(0)
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    .cmts <- regmatches(sensVec,
+                        regexpr(paste0("rx__sens_", .si, "_BY_[^,)]+_BY_[^,)]+__"),
+                                sensVec))
+    for (.cmt in unique(.cmts[nzchar(.cmts)])) {
+      .mm <- regmatches(.cmt, regexec(
+        paste0("^rx__sens_", .si, "_BY_(.+)_BY_(.+)__$"), .cmt))[[1L]]
+      if (length(.mm) != 3L) next
+      .d2 <- tryCatch(symengine::D(symengine::D(.rhsB, symengine::S(.mm[2L])),
+                                   symengine::S(.mm[3L])),
+                      error = function(e) NULL)
+      if (is.null(.d2)) next
+      .d2Txt <- rxFromSE(.d2)
+      if (identical(.d2Txt, "0")) next
+      .pastLines2 <- c(.pastLines2,
+                       sprintf("past(%s,%s)=%s", .cmt, .tauTxt, .d2Txt))
+    }
+  }
+  if (length(.pastLines2)) {
+    .prevPast <- base::mget("..pastLines", envir = model, ifnotfound = list(NULL))[[1L]]
+    assign("..pastLines", unique(c(.prevPast, .pastLines2)), envir = model)
+  }
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) return(NULL)

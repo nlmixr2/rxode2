@@ -1137,6 +1137,24 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         envir$..eventVars <- unique(c(.var, envir$..eventVars))
       }
     }
+    if (length(x[[2]]) == 3 && as.character(x[[2]][[1]]) == "past") {
+      ## past(state, tau) <- expr : non-constant delay() pre-history.  Store the
+      ## RHS (rx__past_<state>__, for sensitivity histories) and the delay tau
+      ## text (rx__pastTau_<state>__) as per-state symengine env variables, then
+      ## return: the line is retained verbatim in the normalized model and must
+      ## not enter Jacobian/sensitivity differentiation here (state is the delay
+      ## history, differentiated only via its own past() expression).
+      .pastState <- as.character(x[[2]][[2]])
+      ## Store the history RHS and tau as plain rxode2-syntax TEXT (not symengine
+      ## Basics): reading Basics back out of the model env in .rxDelaySensAugment
+      ## is subject to symengine's masked get/[[.  The RHS is re-parsed there with
+      ## eval(parse(text=), envir=model) for differentiation (the safe pattern).
+      assign(paste0("rx__pastRhs_", .pastState, "__"),
+             paste(deparse(x[[3]]), collapse = " "), envir = envir)
+      assign(paste0("rx__pastTau_", .pastState, "__"),
+             paste(deparse(x[[2]][[3]]), collapse = " "), envir = envir)
+      return(invisible(NULL))
+    }
   }
   if (inherits(x[[3]], "numeric") || inherits(x[[3]], "integer")) {
     .isNum <- TRUE
@@ -2031,6 +2049,12 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .ret0 <- .ret0[-1]
       if (.fun == "linCmt") {
         return(paste0("linCmt(", paste(unlist(.ret0), collapse = ", "), ")"))
+      }
+      if (.fun == "past") {
+        ## past(state, tau) <- expr : non-constant delay() pre-history.  Keyed by
+        ## state (one past() per state); tau is carried separately.  Returns a
+        ## flat per-state symbol so it never reaches symengine differentiation.
+        return(paste0("rx_past_", .ret0[[1]], "_"))
       }
       if (length(.ret0) == 1L) {
         if (any(.fun == c("alag", "lag"))) {

@@ -13,6 +13,7 @@ statement
   | alag       end_statement
   | rate       end_statement
   | dur        end_statement
+  | past       end_statement
   | derivative end_statement
   | dfdy       end_statement
   | mtime      end_statement
@@ -167,6 +168,7 @@ fbio        : ('f' | 'F')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) lo
 alag        : ('alag' | 'lag')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
 rate        : 'rate'  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
 dur        : 'dur'  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
+past       : 'past'  '(' identifier_r_no_output ',' logical_or_expression ')' ('=' | '<-' | '~' ) logical_or_expression;
 
 
 
@@ -268,7 +270,7 @@ identifier_r: identifier_r_extra | identifier_r_1 | identifier_r_2 ;
 
 identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | identifier_r_extra;
 
-identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' |
+identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
   'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'replace' |
   'reset';
 

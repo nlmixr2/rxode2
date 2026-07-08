@@ -85,6 +85,10 @@
 // avoiding a calcSens2-position -> calcSens-position cross-index map --
 // see `.rxEventSensCLines()$durQ`).
 #define ode_dDurQ 34
+// show_ode == 35 non-constant delay() pre-history: past(state, tau) <- expr,
+// emitted as the dedicated _rxPast() history function (its own _past[] array,
+// independent of the modeled-lag _alag[] function)
+#define ode_past 35
 // True for any of the event-sensitivity dosing-derivative functions
 // (dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ);
 // they share the same codegen preamble (which also populates the second-

@@ -82,6 +82,29 @@ static inline int handleCmtPropertyRate(nodeInfo ni, char *name, char *v) {
   return 0;
 }
 
+static inline int handleCmtPropertyPast(nodeInfo ni, char *name, char *v, D_ParseNode *pn) {
+  if (nodeHas(past)) {
+    sb.o=0;sbDt.o=0; sbt.o=0;
+    if ((tb.dprop[tb.id] & propPast) == 0) {
+      tb.dprop[tb.id] += propPast;
+    }
+    // second argument (delay duration tau); captured as source text so the
+    // normalized model round-trips past(state,tau)=expr and R can match it to
+    // the corresponding delay(state,tau).
+    D_ParseNode *xpnTau = d_get_child(pn, 4);
+    char *tau = (char*)rc_dup_str(xpnTau->start_loc.s, xpnTau->end);
+    sAppend(&sb, "_past[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_past[__DDT%d__] = ", tb.id);
+    sAppend(&sbt, "past(%s,%s)=", v, tau);
+    tb.curPropN=tb.id;
+    if (foundPast == 0) needSort+=16; // & 16 when past
+    foundPast=1;
+    aType(PAST);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
   if (nodeHas(indLin_prop)){
     sb.o=0;sbDt.o=0; sbt.o=0;
@@ -116,10 +139,10 @@ static inline int handleCmtPropertyCmtOrder(nodeInfo ni, char *name, char *v) {
   return 0;
 }
 
-static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
+static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   int isCmt = 0;
   if ((nodeHas(fbio) || nodeHas(alag) ||
-       nodeHas(dur) || nodeHas(rate) ||
+       nodeHas(dur) || nodeHas(rate) || nodeHas(past) ||
        nodeHas(indLin_prop) ||
        (isCmt = nodeHas(cmt_statement))) &&
       i==2) {
@@ -139,6 +162,7 @@ static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode 
       handleCmtPropertyAlag(ni, name, v) ||
       handleCmtPropertyDur(ni, name, v) ||
       handleCmtPropertyRate(ni, name, v) ||
+      handleCmtPropertyPast(ni, name, v, pn) ||
       handleCmtPropertyIndLin(ni, name, v);
     (void) tmp;
     return 1;

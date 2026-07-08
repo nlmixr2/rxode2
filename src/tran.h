@@ -236,6 +236,7 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define TLIN 21
 #define TNONE 22
 #define TEVID 23
+#define PAST 24
 
 // new de type
 #define fromDDT 2
@@ -287,6 +288,7 @@ typedef struct nodeInfo {
   int printf_statement;
   int prod;
   int rate;
+  int past;
   int selection_statement;
   int selection_statement__9;
   int break_statement;
@@ -363,7 +365,7 @@ static inline void niReset(nodeInfo *ni){
   ni->printf_statement = -1;
   ni->prod = -1;
   ni->rate = -1;
-  ni->rate = -1;
+  ni->past = -1;
   ni->selection_statement = -1;
   ni->selection_statement__9 = -1;
   ni->break_statement = -1;
@@ -426,7 +428,7 @@ extern int gBufFree;
 extern int gBufLast;
 
 extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur,
-  good_jac, extraCmt, badMd5, maxUdf;
+  foundPast, good_jac, extraCmt, badMd5, maxUdf;
 extern unsigned int found_jac, nmtime;
 
 extern sbuf sbNrm;
@@ -522,5 +524,8 @@ char *getLine (char *src, int line, int *lloc);
 // history only for states carrying this bit.  Must match rxDelayStateProp in
 // inst/include/rxode2parseStruct.h.
 #define propDelay 262144
+// ODE state carrying a user-specified non-constant delay() pre-history via
+// past(state, tau) <- expr.
+#define propPast 524288
 
 #endif // __TRAN_H__

@@ -103,7 +103,7 @@ const char *model_prefix = NULL;
 const char *me_code = NULL;
 const char *md5 = NULL;
 int badMd5 = 0;
-int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundF0=0, needSort=0;
+int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundPast=0, foundF0=0, needSort=0;
 
 sbuf sbOut;
 
@@ -198,7 +198,7 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
   if (handlePrintf(ni, name, *i, xpn) ||
       handleJac(ni, name, *i, xpn, ii, found) ||
       handleLogicalExpr(ni, name, *i, pn, xpn, isWhile) ||
-      handleCmtProperty(ni, name, *i, xpn) ||
+      handleCmtProperty(ni, name, *i, pn, xpn) ||
       handleDdtAssign(ni, name, *i, pn, xpn) ||
       handleDdtRhs(ni, name, xpn) ||
       handleStrAssign(ni, name, *i, pn, xpn) ||
@@ -491,6 +491,7 @@ void reset(void) {
   foundF=0;
   foundLag=0;
   foundRate=0;
+  foundPast=0;
   gBufLast=0;
   lastStrLoc=0;
   lastSyntaxErrorLine=0;

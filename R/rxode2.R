@@ -841,6 +841,11 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .sens2,
         .sens3,
         .jacBlock,
+        ## DDE non-constant pre-history: base past(state,tau)<-expr (dropped from
+        ## ..ddt by the symengine interception) + per-sens-compartment histories
+        ## past(rx__sens_state_BY_p__,tau)=d expr/d p.  Placed after every d/dt so
+        ## the referenced (sensitivity) compartments are already defined.
+        .s$..pastLines,
         ## DDE param-dependent-delay dose-jump: alag()/f() on the sens compartments
         ## (no-op unless rxSolve adds the mirroring sens-compartment doses).
         .s$..sensDelayAlagF,
