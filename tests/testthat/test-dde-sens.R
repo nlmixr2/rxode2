@@ -347,4 +347,37 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## and the jump is actually present (S^{LL} is large after xi1)
     expect_gt(max(abs(.an), na.rm = TRUE), 1)
   })
+
+  test_that("dose-induced 2nd-order jump matches finite differences", {
+    ## delay(cen,tau) driven by a DOSED upstream compartment: the depot dose makes
+    ## ydot_cen jump at t0, so S^{LL}_cen jumps at xi1=t0+T by JD*(df_cen/ddepot)*A*(dT/dL)^2.
+    ## The user dose is mirrored onto the 2nd-order sens compartment.
+    .txt <- paste0("tau<-exp(L)\n ke<-0.7\n d/dt(depot) <- -depot\n",
+                   " d/dt(cen) <- depot - ke*cen + 0.5*delay(cen, tau)\n cen(0)<-0")
+    .tt <- seq(0, 4, by = 0.02)
+    .ev <- et(et(.tt), amt = 10, cmt = "depot", time = 0)
+    .mk <- function(L) suppressMessages(.rxode2(gsub("exp(L)", paste0("exp(", L, ")"),
+                                                    .txt, fixed = TRUE)))
+    .h <- 1e-3
+    .g <- function(d) rxSolve(.mk(d), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)$cen
+    .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
+    .ms <- suppressMessages(.rxode2(.txt, calcSens = "L", calcSens2 = "L"))
+    ## common F = JD*(dT/dL)^2 (magnitude comes from the mirrored dose amount)
+    expect_true(any(grepl("f(rx__sens_cen_BY_L_BY_L__)=(0.5)*(exp(L))*(exp(L))",
+                          rxNorm(.ms), fixed = TRUE)))
+    .an <- rxSolve(.ms, .ev, params = c(L = 0), method = "dop853",
+                   atol = 1e-10, rtol = 1e-10)[["rx__sens_cen_BY_L_BY_L__"]]
+    .keep <- rep(TRUE, length(.tt))
+    for (.b in 1:3) .keep <- .keep & abs(.tt - .b) > 0.08   # exclude FD spikes at xi_n
+    expect_lt(max(abs(.an - .fd2)[.keep], na.rm = TRUE), 0.03)
+    expect_gt(max(abs(.an), na.rm = TRUE), 1)               # the dose-induced jump is present
+  })
+
+  test_that("2nd-order jump is rejected when the delayed state has a parameter baseline", {
+    ## f_j(t0) depends on a parameter (non-constant jump amount) -> numeric Hessian.
+    expect_error(
+      suppressMessages(.rxode2("R0<-exp(lr0)\n tau<-exp(L)\n d/dt(R) <- k0 - delay(R, tau)\n R(0) <- R0",
+                               calcSens = c("L", "lr0"), calcSens2 = c("L", "lr0"))),
+      "initial rate depends on")
+  })
 })
