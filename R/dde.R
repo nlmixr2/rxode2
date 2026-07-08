@@ -48,6 +48,36 @@
   .df
 }
 
+#' Base past(state, tau) <- expr history lines from a symengine env
+#'
+#' Reads the per-state history RHS/tau text stored by the `.rxToSE` assignment
+#' interception (rx__pastRhs_<state>__ / rx__pastTau_<state>__) and rebuilds the
+#' base `past(state,tau)=expr` line(s).  Used by gradient-free estimators (SAEM)
+#' whose symengine env is built without sensitivities (no `.rxDelaySensAugment`),
+#' so the history must be re-injected into the model text.
+#'
+#' @param model a symengine environment (as from `.loadSymengine`/`rxS`).
+#' @return character vector of past() lines, or NULL if none.
+#' @noRd
+.rxPastBaseLinesFromEnv <- function(model) {
+  .states <- tryCatch(rxode2::rxStateOde(model), error = function(e) character(0))
+  .lines <- character(0)
+  for (.si in .states) {
+    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    if (is.null(.rhsTxt)) next
+    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
+                          ifnotfound = list(NULL))[[1L]]
+    ## resolve through the env so the injected line references root parameters,
+    ## not intermediate lhs that may be dead-code eliminated from the model
+    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
+                      error = function(e) NULL)
+    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
+    .lines <- c(.lines, sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut))
+  }
+  if (length(.lines)) .lines else NULL
+}
+
 #' Extract past(state, tau) <- expr non-constant-history terms from a model
 #'
 #' @param model anything `rxNorm()` accepts.
@@ -327,19 +357,26 @@
   ## d/dt still references delay(state,tau)), and emit the per-sensitivity-
   ## compartment history past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p) so
   ## the delayed forward sensitivity uses the correct pre-history.
-  .pastLines <- character(0)
+  .baseLines <- character(0)   # base state history (also needed by gradient-free SAEM)
+  .pastLines <- character(0)   # base + per-sensitivity-compartment histories
   for (.si in .states) {
     .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
                           ifnotfound = list(NULL))[[1L]]
     if (is.null(.rhsTxt)) next
     .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
                           ifnotfound = list(NULL))[[1L]]
-    .pastLines <- c(.pastLines,
-                    sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsTxt))
-    ## differentiate the history wrt each sensitivity parameter for the
-    ## sens-compartment pre-history (same eval-in-env pattern used for tau above)
+    ## resolve the history through the symengine env so the injected line is
+    ## self-contained (intermediate lhs used ONLY by past() -- dropped from
+    ## differentiation -- are dead-code eliminated from the assembled model, so
+    ## reference the root parameters, e.g. a*exp(b*t) -> exp(ta)*exp(tb*t))
     .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
                       error = function(e) NULL)
+    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
+    .base <- sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut)
+    .baseLines <- c(.baseLines, .base)
+    .pastLines <- c(.pastLines, .base)
+    ## differentiate the history wrt each sensitivity parameter for the
+    ## sens-compartment pre-history
     if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
     for (.p in params) {
       .dp <- tryCatch(symengine::D(.rhsB, symengine::S(.p)), error = function(e) NULL)
@@ -353,6 +390,9 @@
   }
   ## append (the 1st- and 2nd-order augments both contribute; unique dedups the
   ## shared base past() line -- order-independent)
+  .prevBase <- base::mget("..pastBaseLines", envir = model, ifnotfound = list(NULL))[[1L]]
+  .baseLines <- unique(c(.prevBase, .baseLines))
+  assign("..pastBaseLines", if (length(.baseLines)) .baseLines else NULL, envir = model)
   .prevPast <- base::mget("..pastLines", envir = model, ifnotfound = list(NULL))[[1L]]
   .pastLines <- unique(c(.prevPast, .pastLines))
   assign("..pastLines", if (length(.pastLines)) .pastLines else NULL, envir = model)

@@ -566,7 +566,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           break;
         case TASSIGN:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
-            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
+            const char *_taLine = (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i];
+            // The pre-history function _rxPast() must never evaluate a delay():
+            // past() is a function of t and parameters only, and rxOptExpr can
+            // hoist delay() into a common-subexpression assignment -- emitting it
+            // into _rxPast would recurse (_rxDelay -> _rxPast -> _rxDelay ...).
+            if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
+              sAppend(&sbOut, "  %s", _taLine);
+            }
           }
           break;
         case TINI:
