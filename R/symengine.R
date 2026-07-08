@@ -946,7 +946,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.ret)
   } else {
     .ret <- as.character(x)
-    if (.ret %in% .rxToSEDualVarFunction) {
+    if (!.rxIsLhs && .ret %in% .rxToSEDualVarFunction) {
+      ## A bare dose-history name (tad, dosenum, tlast, ...) used as a *value*
+      ## expands to its functional form (e.g. tad -> (t-tlast())).  When the same
+      ## name is an assignment *target* (e.g. `tad = tad()`, which FOCEi's FD model
+      ## emits) it must stay a plain symbol -- otherwise the lhs is rewritten into
+      ## the function body and produces an invalid assignment like
+      ## `(t-tlast()) = t-tlast()`, which breaks analytic Jacobian (calcJac)
+      ## generation for the model (notably delay()/DDE models, which force the
+      ## Jacobian-requiring dense solver).
       .ret <- paste0(.ret, "()")
       .ret <- rxToSE(.ret)
       return(.ret)

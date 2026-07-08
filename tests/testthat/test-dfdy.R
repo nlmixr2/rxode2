@@ -1,6 +1,31 @@
 rxTest({
   withr::local_options(list(rxode2.eventSens = "fd"))
 
+  test_that("dose-history names as an lhs do not break analytic Jacobian (calcJac)", {
+    ## A bare dose-history name (tad, dosenum, tlast, ...) used as a value expands
+    ## to its functional form, but as an assignment *target* it must stay a plain
+    ## symbol.  Otherwise the lhs is rewritten into the function body, producing an
+    ## invalid assignment like `(t-tlast()) = t-tlast()` that fails calcJac.  FOCEi's
+    ## finite-difference model appends exactly `tad = tad()` / `dosenum = dosenum()`,
+    ## and delay()/DDE models force the Jacobian-requiring dense solver, so this hit
+    ## every DDE fit (rxode2/nlmixr2#dde).
+    expect_s3_class(
+      suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ntad <- tad()",
+                              calcJac = TRUE)), "rxode2")
+    expect_s3_class(
+      suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ndosenum <- dosenum()",
+                              calcJac = TRUE)), "rxode2")
+    ## the practical trigger: a delay() model with the FOCEi FD-model bookkeeping lines
+    expect_s3_class(
+      suppressMessages(rxode2(paste0(
+        "d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0) <- 10\n",
+        "k <- 0.2\nkin <- 0.5\ntau <- 1\ntad <- tad()\ndosenum <- dosenum()"),
+        calcJac = TRUE)), "rxode2")
+    ## a bare dose-history name used as a value still expands (no regression)
+    .m <- suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ny <- tad + 1"))
+    expect_true(grepl("y=tad+1", rxNorm(.m), fixed = TRUE))
+  })
+
   test_that("Specified jacobian is captured", {
 
     Vtpol2 <- rxode2("
