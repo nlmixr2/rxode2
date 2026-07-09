@@ -247,7 +247,7 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt;   gsigma (sigma matrix)                      0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt;   gall_timesS (extra sim times)              0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.61 GB available)</span></span></code></pre></div>
+<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.34 GB available)</span></span></code></pre></div>
 <p>The output lists every major allocation (ODE state buffers,
 event-time arrays, output data, etc.) as well as the fraction of total
 and free RAM the solve would consume. The <code>freeRamBytes</code> line
@@ -318,7 +318,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpQgFKdP/rxChunk4cd31d496fc6' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpHLvKW1/rxChunk4d0479cfed24' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -415,7 +415,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpQgFKdP/rxDemo4cd336771b61' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpHLvKW1/rxDemo4d045edc12e8' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -467,7 +467,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpQgFKdP/rxFile4cd3743b8398' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpHLvKW1/rxFile4d042e0a299a' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
