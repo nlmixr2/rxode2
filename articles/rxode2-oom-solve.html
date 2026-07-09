@@ -247,7 +247,7 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt;   gsigma (sigma matrix)                      0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt;   gall_timesS (extra sim times)              0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.68 GB available)</span></span></code></pre></div>
+<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.63 GB available)</span></span></code></pre></div>
 <p>The output lists every major allocation (ODE state buffers,
 event-time arrays, output data, etc.) as well as the fraction of total
 and free RAM the solve would consume. The <code>freeRamBytes</code> line
@@ -318,7 +318,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpQsnCOZ/rxChunk4c4647ee9dc7' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpXDj0gB/rxChunk4d1635981e3' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -415,7 +415,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpQsnCOZ/rxDemo4c464b8d7596' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpXDj0gB/rxDemo4d16322d9cc2' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -467,7 +467,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpQsnCOZ/rxFile4c4615671bdd' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpXDj0gB/rxFile4d16df599b9' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
@@ -575,12 +575,12 @@ that fits easily in memory even when the full dataset does not.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 3</span></span></span>
 <span><span class="co">#&gt;      id  time    cp</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1    28 1.38 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1    32 1.13 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1    36 0.881</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    40 0.681</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    44 0.526</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    48 0.407</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     4    28 1.52 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     4    32 1.32 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     4    36 1.08 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     4    40 0.883</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     4    44 0.720</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     4    48 0.586</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="in-memory-arrow-table">In-memory Arrow Table<a class="anchor" aria-label="anchor" href="#in-memory-arrow-table"></a>

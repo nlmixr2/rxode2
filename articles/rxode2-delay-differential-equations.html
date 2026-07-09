@@ -170,6 +170,11 @@ and control.</p>
 <code>delay(state, T)</code>, which evaluates the ODE compartment
 <code>state</code> at the earlier time <code>t - T</code>. The semantics
 match the <code><a href="../reference/delay.html">delay()</a></code> function of Monolix.</p>
+<p>The pharmacodynamic examples in this article (Examples 2 and 6) are
+taken from the review by Koch, Krzyzanski, Perez-Ruixo and Schropp,
+<em>Modeling of delays in PKPD: classification of delays and
+mathematical properties</em> (J Pharmacokinet Pharmacodyn, 2014; see <a href="#references">References</a>), which classifies delay models in
+pharmacometrics and gives the equations we reproduce below.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
@@ -179,10 +184,12 @@ match the <code><a href="../reference/delay.html">delay()</a></code> function of
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>y</mi><mo>′</mo></msup><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>−</mi><mi>y</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"></mspace><mi>y</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn><mrow><mspace width="0.333em"></mspace><mtext mathvariant="normal"> for </mtext><mspace width="0.333em"></mspace></mrow><mi>t</mi><mo>≤</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">y'(t) = -y(t - 1), \qquad y(t) = 1 \text{ for } t \le 0</annotation></semantics></math></p>
 <p>is written directly:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dde</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">dde</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">dde</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span>, by <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span></code></pre></div>
@@ -262,24 +269,63 @@ inexpensive.</p></li>
 <code>method = "ros4"</code> (stiff) both work.</p>
 </div>
 <div class="section level2">
-<h2 id="a-pharmacodynamic-example-delayed-feedback-growth">A pharmacodynamic example: delayed feedback growth<a class="anchor" aria-label="anchor" href="#a-pharmacodynamic-example-delayed-feedback-growth"></a>
+<h2 id="example-2-a-lifespan-based-tumor-growth-model">Example 2: a lifespan-based tumor-growth model<a class="anchor" aria-label="anchor" href="#example-2-a-lifespan-based-tumor-growth-model"></a>
 </h2>
-<p>The delayed logistic (Hutchinson’s equation) models a population
-whose growth is regulated by its size one delay-period in the past. For
-a long enough delay it produces sustained oscillations:</p>
+<p>A more clinically relevant use of <code><a href="../reference/delay.html">delay()</a></code> is Koch et
+al.’s <strong>lifespan based tumor-growth model</strong> (their Example
+2), a delay reformulation of the Simeoni tumor-growth model. Drug
+concentration <code>c(t)</code> (a one -compartment oral PK model)
+drives proliferating tumor cells <code>p = x4</code> into an apoptotic
+pool <code>x5</code>; apoptotic cells live for a fixed lifespan
+<code>Td</code>, so cells that entered the pool one lifespan ago –
+<code>delay(x4, Td)</code> – leave it. A drug-free control
+<code>x3</code> grows in parallel:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">hutch</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">r</span>   <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
-<span>  <span class="va">K</span>   <span class="op">&lt;-</span> <span class="fl">10</span></span>
-<span>  <span class="va">tau</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span>  <span class="fu">N</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">r</span> <span class="op">*</span> <span class="va">N</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">tau</span><span class="op">)</span> <span class="op">/</span> <span class="va">K</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">ex2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span>   <span class="op">&lt;-</span> <span class="fl">103.96</span> <span class="op">*</span> <span class="fl">24</span></span>
+<span>    <span class="va">ke</span>   <span class="op">&lt;-</span> <span class="fl">0.1052</span> <span class="op">*</span> <span class="fl">24</span></span>
+<span>    <span class="va">V</span>    <span class="op">&lt;-</span> <span class="fl">2.7882</span></span>
+<span>    <span class="va">l0</span>   <span class="op">&lt;-</span> <span class="fl">0.195</span></span>
+<span>    <span class="va">l1</span>   <span class="op">&lt;-</span> <span class="fl">0.245</span></span>
+<span>    <span class="va">w0</span>   <span class="op">&lt;-</span> <span class="fl">0.010</span></span>
+<span>    <span class="va">kpot</span> <span class="op">&lt;-</span> <span class="fl">0.007</span></span>
+<span>    <span class="va">Td</span>   <span class="op">&lt;-</span> <span class="fl">3.61</span>        <span class="co"># apoptotic-cell lifespan (the delay)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="co">## one-compartment oral PK -&gt; concentration c(t)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x1</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">x1</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x2</span><span class="op">)</span> <span class="op">&lt;-</span>  <span class="va">ka</span> <span class="op">*</span> <span class="va">x1</span> <span class="op">-</span> <span class="va">ke</span> <span class="op">*</span> <span class="va">x2</span></span>
+<span>    <span class="va">c</span>    <span class="op">&lt;-</span> <span class="va">x2</span> <span class="op">/</span> <span class="va">V</span></span>
+<span>    <span class="va">cdel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">x2</span>, <span class="va">Td</span><span class="op">)</span> <span class="op">/</span> <span class="va">V</span>                    <span class="co"># c(t - Td)</span></span>
+<span>    <span class="co">## lifespan tumor growth: x4 = proliferating p(t), x5 = apoptotic d(t)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x3</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">l0</span> <span class="op">*</span> <span class="va">l1</span> <span class="op">*</span> <span class="va">x3</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">l1</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">l0</span> <span class="op">*</span> <span class="va">x3</span><span class="op">)</span>                 <span class="co"># drug-free control</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x4</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">l0</span> <span class="op">*</span> <span class="va">l1</span> <span class="op">*</span> <span class="va">x4</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="op">(</span><span class="va">l1</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">l0</span> <span class="op">*</span> <span class="va">x4</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">x4</span> <span class="op">+</span> <span class="va">x5</span><span class="op">)</span><span class="op">)</span> <span class="op">-</span> <span class="va">kpot</span> <span class="op">*</span> <span class="va">c</span> <span class="op">*</span> <span class="va">x4</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x5</span><span class="op">)</span> <span class="op">&lt;-</span>  <span class="va">kpot</span> <span class="op">*</span> <span class="va">c</span> <span class="op">*</span> <span class="va">x4</span> <span class="op">-</span> <span class="va">kpot</span> <span class="op">*</span> <span class="va">cdel</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">x4</span>, <span class="va">Td</span><span class="op">)</span></span>
+<span>    <span class="va">w</span>  <span class="op">&lt;-</span> <span class="va">x4</span> <span class="op">+</span> <span class="va">x5</span>                                <span class="co"># observed treated tumor weight</span></span>
+<span>    <span class="fu">x3</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">w0</span></span>
+<span>    <span class="fu">x4</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">w0</span></span>
+<span>    <span class="fu">x5</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">hutch</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">40</span>, by <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">## 100 mg orally at days 12-16, observe the tumor for 25 days</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">25</span>, by <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, time <span class="op">=</span> <span class="fl">12</span><span class="op">:</span><span class="fl">16</span>, cmt <span class="op">=</span> <span class="st">"x1"</span><span class="op">)</span></span>
+<span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">ex2</span>, <span class="va">ev</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s2</span>, <span class="va">N</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-delay-differential-equations_files/figure-html/hutch-1.png" class="r-plt" alt="" width="100%"></p>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s2</span><span class="op">$</span><span class="va">time</span>, <span class="va">s2</span><span class="op">$</span><span class="va">x3</span>, type <span class="op">=</span> <span class="st">"l"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, xlab <span class="op">=</span> <span class="st">"time (days)"</span>,</span>
+<span>     ylab <span class="op">=</span> <span class="st">"tumor weight"</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">s2</span><span class="op">$</span><span class="va">x3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">s2</span><span class="op">$</span><span class="va">time</span>, <span class="va">s2</span><span class="op">$</span><span class="va">w</span>, lwd <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topleft"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"control (drug-free)"</span>, <span class="st">"treated  w = p + d"</span><span class="op">)</span>,</span>
+<span>       col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"black"</span>, <span class="st">"red"</span><span class="op">)</span>, lwd <span class="op">=</span> <span class="fl">2</span>, bty <span class="op">=</span> <span class="st">"n"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="rxode2-delay-differential-equations_files/figure-html/ex2-1.png" class="r-plt" alt="" width="100%"></p>
+<p>The treated tumor is suppressed by the dosing and then regrows once
+the drug washes out, while the drug-free control grows monotonically –
+the signature of the Simeoni model. Note the two
+<code>delay(., Td)</code> terms share one estimated lifespan
+<code>Td</code>, and the delay duration is a model parameter rather than
+a constant.</p>
 <p>The delay duration <code>T</code> is an arbitrary model expression –
 it can be a constant, a parameter, or a covariate – and a model may use
 several <code><a href="../reference/delay.html">delay()</a></code> terms, on the same state or on different
@@ -292,20 +338,81 @@ states, each with its own delay.</p>
 dosing, and covariates. Here a depot feeds a central compartment that
 has a delayed auto-induction-like feedback term:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">ka</span>  <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span>  <span class="va">ke</span>  <span class="op">&lt;-</span> <span class="fl">0.3</span></span>
-<span>  <span class="va">kin</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
-<span>  <span class="fu">cen</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span>   <span class="op">&lt;-</span>  <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">ke</span> <span class="op">*</span> <span class="va">cen</span> <span class="op">+</span> <span class="va">kin</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">cen</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">mix</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span>  <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">ke</span>  <span class="op">&lt;-</span> <span class="fl">0.3</span></span>
+<span>    <span class="va">kin</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">cen</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span>   <span class="op">&lt;-</span>  <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">ke</span> <span class="op">*</span> <span class="va">cen</span> <span class="op">+</span> <span class="va">kin</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">cen</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, cmt <span class="op">=</span> <span class="st">"depot"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">s3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mix</span>, <span class="va">ev</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s3</span>, <span class="va">cen</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-delay-differential-equations_files/figure-html/mixed-1.png" class="r-plt" alt="" width="100%"></p>
+</div>
+<div class="section level2">
+<h2 id="example-6-a-non-constant-history-with-past">Example 6: a non-constant history with <code>past()</code><a class="anchor" aria-label="anchor" href="#example-6-a-non-constant-history-with-past"></a>
+</h2>
+<p>By default the pre-history of a delayed state (its value for
+<code>t &lt;= t0</code>) is the constant initial condition. Some
+published models instead need a <strong>non-constant history
+function</strong>. Koch et al.’s Example 6 is a rheumatoid-arthritis
+model in which the cytokine GM-CSF <code>G(t)</code> is already being
+over-produced during an <em>induction phase</em> before the observation
+window, so its past is the exponential
+<code>G(t) = a * exp(b * t)</code> on the interval <code>[-T, 0]</code>.
+The strongly delayed ankylosis score is driven by
+<code>delay(G, T)</code>, which during the early response reaches back
+into that induction-phase history.</p>
+<p><code>rxode2</code> provides this with a
+<code>past(state, T) &lt;- expr</code> line, giving the value of
+<code>state</code> for times before <code>t0</code>. It must reference
+the same delay duration used in the matching
+<code>delay(state, T)</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ra</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">a</span>  <span class="op">&lt;-</span> <span class="fl">2</span>       <span class="co"># induction-phase amplitude</span></span>
+<span>    <span class="va">b</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">0.25</span>   <span class="co"># induction-phase rate</span></span>
+<span>    <span class="va">Td</span> <span class="op">&lt;-</span> <span class="fl">5</span>       <span class="co"># delay</span></span>
+<span>    <span class="va">k3</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">0.4</span></span>
+<span>    <span class="va">k4</span> <span class="op">&lt;-</span> <span class="fl">0.3</span></span>
+<span>    <span class="va">k5</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">G</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">a</span>                                  <span class="co"># continuity: a*exp(0) = a</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">G</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">k3</span> <span class="op">-</span> <span class="va">kg</span> <span class="op">*</span> <span class="va">G</span>                      <span class="co"># development-phase cytokine turnover</span></span>
+<span>    <span class="fu">past</span><span class="op">(</span><span class="va">G</span>, <span class="va">Td</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">a</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">b</span> <span class="op">*</span> <span class="va">t</span><span class="op">)</span>               <span class="co"># induction-phase history (Koch Eq. 63)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">I</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">k4</span> <span class="op">*</span> <span class="va">G</span> <span class="op">-</span> <span class="va">k4</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">G</span>, <span class="va">Td</span><span class="op">)</span>       <span class="co"># inflammation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/deriv.html" class="external-link">D</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">k4</span> <span class="op">*</span> <span class="fu"><a href="../reference/delay.html">delay</a></span><span class="op">(</span><span class="va">G</span>, <span class="va">Td</span><span class="op">)</span> <span class="op">-</span> <span class="va">k5</span> <span class="op">*</span> <span class="va">D</span>       <span class="co"># bone destruction</span></span>
+<span>    <span class="va">R1</span> <span class="op">&lt;-</span> <span class="va">I</span> <span class="op">+</span> <span class="va">D</span>                                 <span class="co"># total arthritic score (TAS)</span></span>
+<span>    <span class="va">R2</span> <span class="op">&lt;-</span> <span class="va">D</span>                                     <span class="co"># ankylosis score (AKS)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">ev6</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">28</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">sra</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">ra</span>, <span class="va">ev6</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sra</span>, <span class="va">R2</span><span class="op">)</span></span></code></pre></div>
+<p><img src="rxode2-delay-differential-equations_files/figure-html/ex6-1.png" class="r-plt" alt="" width="100%"></p>
+<p>The <code>past()</code> history and the initial condition must agree
+at <code>t0</code> (here <code>G(0) = a</code>, which equals
+<code>a * exp(b * 0)</code>), so the delayed state is continuous. Using
+the ordinary constant-history default here would hold
+<code>delay(G, Td)</code> at <code>G(0)</code> and leave the ankylosis
+score flat until <code>t = Td</code>, missing the induction-phase-driven
+early response entirely – which is exactly why this class of models
+needs a non-constant past.</p>
 </div>
 <div class="section level2">
 <h2 id="estimation-with-nlmixr2-sensitivities">Estimation with nlmixr2 (sensitivities)<a class="anchor" aria-label="anchor" href="#estimation-with-nlmixr2-sensitivities"></a>
@@ -317,9 +424,14 @@ delay models too: the forward-sensitivity equations gain the delayed
 term <code>delay(S, T)</code> (the sensitivity of the delayed state),
 which reuses exactly the same dense history machinery described above.
 Delay durations that themselves depend on an estimated parameter are
-also supported. As a result, a delay model built with the
-<code>function</code> interface can be fit like any other
-<code>nlmixr2</code> model.</p>
+also supported. When a model has a non-constant <code>past()</code>
+history, the sensitivity of that history with respect to each estimated
+parameter is carried into the pre-history of the corresponding
+sensitivity state, so the gradient (and analytic Hessian) stay exact –
+for instance the <code>a</code> and <code>b</code> in Example 6’s
+<code>past(G, Td) &lt;- a * exp(b * t)</code> are estimable. As a
+result, a delay model built with the <code>function</code> interface can
+be fit like any other <code>nlmixr2</code> model.</p>
 </div>
 <div class="section level2">
 <h2 id="notes-and-attribution">Notes and attribution<a class="anchor" aria-label="anchor" href="#notes-and-attribution"></a>
@@ -328,6 +440,14 @@ also supported. As a result, a delay model built with the
 <li>Use <code>delay(state, T)</code> inside a <code>d/dt()</code>
 right-hand side. The first argument must be an ODE state (compartment)
 defined in the model; the second is the delay duration.</li>
+<li>Use <code>past(state, T) &lt;- expr</code> to give a delayed state a
+non-constant pre-history (its value for <code>t &lt;= t0</code>);
+<code>expr</code> is a function of <code>t</code> and the model
+parameters, <code>T</code> must match the state’s
+<code>delay(state, T)</code>, and <code>expr</code> at <code>t0</code>
+should equal the state’s initial condition. Without a
+<code>past()</code> line the history is the constant initial
+condition.</li>
 <li>The default solving method for delay models is the dense AutoSwitch
 composite <code>"dop853+ros4"</code>; <code>"dop853"</code> and
 <code>"ros4"</code> may be requested explicitly. Methods that cannot
@@ -342,9 +462,24 @@ companion article <a href="rxode2-dense-output.html">Dense output for
 fast dense-grid solves</a>.</p>
 </div>
 <div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<ul>
+<li>Koch G, Krzyzanski W, Perez-Ruixo JJ, Schropp J. Modeling of delays
+in PKPD: classification of delays and mathematical properties. <em>J
+Pharmacokinet Pharmacodyn.</em> 2014;41(4):291-318. <a href="doi:10.1007/s10928-014-9368-y" class="uri">doi:10.1007/s10928-014-9368-y</a>. (Examples 2 and 6
+above.)</li>
+<li>Simeoni M, Magni P, Cammia C, De Nicolao G, Croci V, Pesenti E,
+Germani M, Poggesi I, Rocchetti M. Predictive pharmacokinetic
+-pharmacodynamic modeling of tumor growth kinetics in xenograft models
+after administration of anticancer agents. <em>Cancer Res.</em>
+2004;64(3):1094-1101. (Basis of the Example 2 tumor-growth model.)</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="session-information">Session Information<a class="anchor" aria-label="anchor" href="#session-information"></a>
 </h2>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.6.1 (2026-06-24)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
