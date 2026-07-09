@@ -27,6 +27,18 @@ extern "C" {
   typedef void (*rxGetSolveAtolRtol_t)(double *atol, double *rtol);
   extern rxGetSolveAtolRtol_t rxGetSolveAtolRtol;
 
+  // threefry RNG engine entry points (src/rxthreefry.cpp); downstream packages
+  // seed a per-subject stream with setSeedEng1(getRxSeed1(cores) + id) -- after
+  // setRxThreadId() sets the OpenMP thread -- then draw with rxNormEng().
+  typedef uint32_t (*getRxSeed1_t)(int ncores);
+  extern getRxSeed1_t getRxSeed1;
+  typedef void (*setSeedEng1_t)(uint32_t seed);
+  extern setSeedEng1_t setSeedEng1;
+  typedef void (*seedEng_t)(int ncores);
+  extern seedEng_t seedEng;
+  typedef double (*rxNormEng_t)(double mean, double sd);
+  extern rxNormEng_t rxNormEng;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -311,6 +323,10 @@ extern "C" {
       rxode2AdjointTrajSweep = (rxode2AdjointTrajSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 67));
       rxSetSolveAtolRtol = (rxSetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 68));
       rxGetSolveAtolRtol = (rxGetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 69));
+      getRxSeed1 = (getRxSeed1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 70));
+      setSeedEng1 = (setSeedEng1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 71));
+      seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
+      rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
     }
     return R_NilValue;
   }
@@ -386,6 +402,10 @@ extern "C" {
   rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep = NULL; \
   rxSetSolveAtolRtol_t rxSetSolveAtolRtol = NULL;        \
   rxGetSolveAtolRtol_t rxGetSolveAtolRtol = NULL;        \
+  getRxSeed1_t getRxSeed1 = NULL;                       \
+  setSeedEng1_t setSeedEng1 = NULL;                     \
+  seedEng_t seedEng = NULL;                             \
+  rxNormEng_t rxNormEng = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
