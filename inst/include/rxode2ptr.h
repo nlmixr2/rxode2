@@ -39,6 +39,25 @@ extern "C" {
   typedef double (*rxNormEng_t)(double mean, double sd);
   extern rxNormEng_t rxNormEng;
 
+  // Per-individual ODE solve buffer-pointer swap (nlmixr2est impmap gradient):
+  // save the originals, install private larger buffers for a higher-state
+  // sensitivity solve (with setOpNeq), then restore.  getIndSolve() already
+  // returns ind->solve.
+  typedef void (*setIndSolvePtr_t)(rx_solving_options_ind* ind, double* solve);
+  extern setIndSolvePtr_t setIndSolvePtr;
+  typedef double *(*getIndSolveSave_t)(rx_solving_options_ind* ind);
+  extern getIndSolveSave_t getIndSolveSave;
+  typedef void (*setIndSolveSave_t)(rx_solving_options_ind* ind, double* solveSave);
+  extern setIndSolveSave_t setIndSolveSave;
+  typedef double *(*getIndSolveLast_t)(rx_solving_options_ind* ind);
+  extern getIndSolveLast_t getIndSolveLast;
+  typedef void (*setIndSolveLast_t)(rx_solving_options_ind* ind, double* solveLast);
+  extern setIndSolveLast_t setIndSolveLast;
+  typedef double *(*getIndSolveLast2_t)(rx_solving_options_ind* ind);
+  extern getIndSolveLast2_t getIndSolveLast2;
+  typedef void (*setIndSolveLast2_t)(rx_solving_options_ind* ind, double* solveLast2);
+  extern setIndSolveLast2_t setIndSolveLast2;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -327,6 +346,13 @@ extern "C" {
       setSeedEng1 = (setSeedEng1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 71));
       seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
       rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
+      setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
+      getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
+      setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
+      getIndSolveLast = (getIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 77));
+      setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
+      getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
+      setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
     }
     return R_NilValue;
   }
@@ -406,6 +432,13 @@ extern "C" {
   setSeedEng1_t setSeedEng1 = NULL;                     \
   seedEng_t seedEng = NULL;                             \
   rxNormEng_t rxNormEng = NULL;                         \
+  setIndSolvePtr_t setIndSolvePtr = NULL;               \
+  getIndSolveSave_t getIndSolveSave = NULL;             \
+  setIndSolveSave_t setIndSolveSave = NULL;             \
+  getIndSolveLast_t getIndSolveLast = NULL;             \
+  setIndSolveLast_t setIndSolveLast = NULL;             \
+  getIndSolveLast2_t getIndSolveLast2 = NULL;           \
+  setIndSolveLast2_t setIndSolveLast2 = NULL;           \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
