@@ -721,6 +721,20 @@ rxode <- rxode2
 #' @inheritParams rxode2
 #' @return rxode2 trans list
 #' @author Matthew L. Fidler
+## Sensitivity-named states (`rx__sens_<state>_BY_<var>__`) are stripped of their
+## d/dt() when calcJac/calcSens regenerate the sensitivity block.  A state that
+## is read by delay() is a load-bearing ODE (delay(X, T) requires d/dt(X)), so it
+## must never be stripped -- e.g. nlmixr2est's analytic-cov augmented model
+## supplies delayed sensitivity ODEs directly.  Returns the sens states safe to
+## strip (those not referenced by any delay() term).
+.rxSensStrippable <- function(mv) {
+  .sens <- mv$sens
+  if (length(.sens) == 0) return(.sens)
+  if (!isTRUE(mv$flags[["hasDelay"]] == 1L)) return(.sens)
+  .delayed <- tryCatch(.rxDelayTerms(mv)$state, error = function(e) NULL)
+  setdiff(.sens, .delayed)
+}
+
 #' @export
 #' @keywords internal
 rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
@@ -886,9 +900,10 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .stateInfo <- .rxGenFunState(.ret)
       .s <- .rxLoadPrune(.ret, FALSE)
       .s$..stateInfo <- .stateInfo
-      if (length(.ret$sens) != 0) {
+      .sensStrip <- .rxSensStrippable(.ret)
+      if (length(.sensStrip) != 0) {
         .new <- setNames(gsub(
-          rex::rex("d/dt(", or(.ret$sens), ")=", anything, "\n"), "",
+          rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"), "",
           .ret$model["normModel"]
         ), NULL)
         .ret <- rxModelVars(.new)
@@ -922,9 +937,10 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .ret <- rxModelVars(.new)
     }
   } else if (!is.null(calcJac)) {
-    if (length(.ret$sens) != 0) {
+    .sensStrip <- .rxSensStrippable(.ret)
+    if (length(.sensStrip) != 0) {
       .new <- setNames(gsub(
-        rex::rex("d/dt(", or(.ret$sens), ")=", anything, "\n"), "",
+        rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"), "",
         .ret$model["normModel"]
       ), NULL)
       .ret <- rxModelVars(.new)

@@ -1,5 +1,13 @@
 # rxode2 5.1.3
 
+- Fix analytic Jacobian generation (`calcJac=TRUE`) for models whose delayed
+  states use the sensitivity naming convention (`rx__sens_<state>_BY_<var>__`,
+  e.g. nlmixr2est's analytic-covariance augmented models): the `d/dt()` of such
+  a state was reclassified as a derivable sensitivity and stripped, leaving a
+  `delay()` with no defining ODE.  A state read by `delay()` is now always kept
+  as a real ODE.  This lets these delay models use the stiff `ros4` / dense
+  `dop853+ros4` composite directly instead of falling back.
+
 - Fix delay (`delay()`) models that request an implicit method (`ros4` or the
   `dop853+ros4` composite) but whose analytic Jacobian cannot be generated:
   they previously fell back to `liblsoda`, which is non-dense and records no
