@@ -70,6 +70,20 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rxLt" = c("(", "<", ")"),
   "rxAnd" = c("(", "&&", ")"),
   "rxOr" = c("(", "||", ")"),
+  # raw R comparison/logical operators map to themselves so rxFromSE() can
+  # re-consume its own output; the Subs handler re-parses converted text with
+  # R's parser, turning rxGt()/rxEq() back into `>`/`==` operator calls
+  "==" = c("(", "==", ")"),
+  "!=" = c("(", "!=", ")"),
+  ">=" = c("(", ">=", ")"),
+  "<=" = c("(", "<=", ")"),
+  ">" = c("(", ">", ")"),
+  "<" = c("(", "<", ")"),
+  "&&" = c("(", "&&", ")"),
+  "&" = c("(", "&&", ")"),
+  "||" = c("(", "||", ")"),
+  "|" = c("(", "||", ")"),
+  "%%" = c("(", "%%", ")"),
   "R_pow"=c("(", ")^(", ")"),
   "R_pow_di"=c("(", ")^(", ")"),
   "Rx_pow"=c("(", ")^(", ")"),
