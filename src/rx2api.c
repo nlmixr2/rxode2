@@ -133,6 +133,39 @@ double *getIndSolve(rx_solving_options_ind* ind) {
   return ind->solve;
 }
 
+// Buffer-pointer accessors: get/set the per-individual ODE solve buffers so a
+// caller can temporarily swap in privately-owned, larger buffers (e.g. to solve
+// a higher-state sensitivity model against the same event table) and restore the
+// originals afterward.  Pair with setOpNeq() to keep the effective state count
+// consistent with the swapped buffers.
+void setIndSolvePtr(rx_solving_options_ind* ind, double* solve) {
+  ind->solve = solve;
+}
+
+double *getIndSolveSave(rx_solving_options_ind* ind) {
+  return ind->solveSave;
+}
+
+void setIndSolveSave(rx_solving_options_ind* ind, double* solveSave) {
+  ind->solveSave = solveSave;
+}
+
+double *getIndSolveLast(rx_solving_options_ind* ind) {
+  return ind->solveLast;
+}
+
+void setIndSolveLast(rx_solving_options_ind* ind, double* solveLast) {
+  ind->solveLast = solveLast;
+}
+
+double *getIndSolveLast2(rx_solving_options_ind* ind) {
+  return ind->solveLast2;
+}
+
+void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2) {
+  ind->solveLast2 = solveLast2;
+}
+
 double getIndDv(rx_solving_options_ind* ind, int j) {
   if (j < 0 || j >= ind->n_all_times) {
     Rf_error("[getIndDv]: j (%d) should be between [0, %d)", j, ind->n_all_times);
