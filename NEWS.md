@@ -1,5 +1,18 @@
 # rxode2 5.1.3
 
+- Fix `calcJac=TRUE` model rewriting (also used by the on-the-fly Jacobian the
+  stiff `ros4` / `dop853+ros4` path generates) for models that declare literal
+  `THETA_n_`/`ETA_n_` parameters and use delays: (1) a suppressed constant
+  intermediate (e.g. `rx_expr_3 ~ 0`) was dropped but still referenced, leaking
+  as an undefined phantom parameter; (2) symengine rewrote `THETA_1_` to the
+  reserved indexed form `THETA[1]` in expressions while the declaration and
+  Jacobian targets kept the literal form, so the two coexisted as distinct
+  parameters and `params=` could not fill them; and (3) the `past()` delay
+  history lines were dropped from the rewritten model.  Constant `~` intermediates
+  are now always bound, the original literal `THETA_n_`/`ETA_n_` names are
+  restored, and `past()` lines are re-emitted.  Such delay models now solve
+  correctly on the stiff/composite path.
+
 - Fix analytic Jacobian generation (`calcJac=TRUE`) for models whose delayed
   states use the sensitivity naming convention (`rx__sens_<state>_BY_<var>__`,
   e.g. nlmixr2est's analytic-covariance augmented models): the `d/dt()` of such
