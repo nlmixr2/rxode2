@@ -1194,7 +1194,17 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       regIni0,
       regDDt
     )), .var) != -1) {
-      if (regexpr(
+      ## A d/dt(state) whose state is read by delay() is a genuine ODE, not a
+      ## derivable sensitivity -- keep it in ..ddt.. even if its name matches the
+      ## sensitivity convention.
+      .ddtState <- if (regexpr(rex::rex(regDDt), .var) != -1) {
+        sub(rex::rex(start, "rx__d_dt_", capture(anything), "__", end), "\\1", .var)
+      } else {
+        NA_character_
+      }
+      .isDelayedOde <- !is.na(.ddtState) &&
+        !is.null(envir$..delayedStates) && (.ddtState %in% envir$..delayedStates)
+      if (!.isDelayedOde && regexpr(
         rex::rex(or(regSens, regSensEtaTheta)),
         .var
       ) != -1) {
@@ -3103,6 +3113,16 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
   .env$..mv <- rxModelVars(x)
+  # States read by delay() are genuine ODEs (delay(X, T) requires d/dt(X)) even
+  # when their name matches the sensitivity convention (rx__sens_<s>_BY_<v>__);
+  # their d/dt() must stay in ..ddt.. and not be reclassified as a derivable
+  # sensitivity that later passes strip (e.g. nlmixr2est's analytic-cov
+  # augmented model supplies delayed sensitivity ODEs directly).
+  .env$..delayedStates <- if (isTRUE(.env$..mv$flags[["hasDelay"]] == 1L)) {
+    tryCatch(.rxDelayTerms(.env$..mv)$state, error = function(e) character(0))
+  } else {
+    character(0)
+  }
   .env$..jac0 <- NULL
   .env$..jac0.. <- list()
   .env$..ddt <- NULL

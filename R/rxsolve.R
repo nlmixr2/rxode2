@@ -2684,12 +2684,24 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       } else {
         .jacDetail <- if (!is.null(.jacEnv$errMsg)) .jacEnv$errMsg else
           "model previously failed Jacobian generation (cached)"
-        warning("method requires an analytical Jacobian, but automatic ",
-                "Jacobian generation failed for this model:\n  ", .jacDetail,
-                "\n  Falling back to liblsoda.",
-                call. = FALSE)
-        .ctl$method <- 2L
-        .ctl$stiff2 <- 0L
+        if (.hasDelay) {
+          # Delay models require a dense solver: liblsoda is non-dense and
+          # records no delay() history, so it silently returns wrong lagged
+          # values.  dop853 dense needs no Jacobian, so fall back to it.
+          warning("method requires an analytical Jacobian, but automatic ",
+                  "Jacobian generation failed for this model:\n  ", .jacDetail,
+                  "\n  Falling back to dop853 (dense, required for delays).",
+                  call. = FALSE)
+          .ctl$method <- 0L
+          .ctl$stiff2 <- 0L
+        } else {
+          warning("method requires an analytical Jacobian, but automatic ",
+                  "Jacobian generation failed for this model:\n  ", .jacDetail,
+                  "\n  Falling back to liblsoda.",
+                  call. = FALSE)
+          .ctl$method <- 2L
+          .ctl$stiff2 <- 0L
+        }
       }
     }
   }
