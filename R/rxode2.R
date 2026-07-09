@@ -735,6 +735,23 @@ rxode <- rxode2
   setdiff(.sens, .delayed)
 }
 
+## symengine rewrites a literal `THETA_1_`/`ETA_1_` parameter to the reserved
+## indexed form `THETA[1]`/`ETA[1]` inside expressions, but the Jacobian dy()
+## targets and the original param() declaration keep the literal form.  In a
+## calcJac/calcSens reassembly the two forms then coexist and rxode2 treats them
+## as two distinct parameters (so `params=` keyed by the literal name cannot fill
+## the indexed one).  Restore the literal name for exactly the indices the
+## original model declared as literals -- native `THETA[1]` models (whose params
+## are the indexed form) declare no such literal and are left untouched.
+.rxRestoreLiteralThetaEta <- function(txt, params) {
+  .lit <- grep("^(THETA|ETA)_[0-9]+_$", params, value = TRUE)
+  for (.p in .lit) {
+    .m <- regmatches(.p, regexec("^(THETA|ETA)_([0-9]+)_$", .p))[[1]]
+    txt <- gsub(paste0(.m[2], "[", .m[3], "]"), .p, txt, fixed = TRUE)
+  }
+  txt
+}
+
 #' @export
 #' @keywords internal
 rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
@@ -951,6 +968,7 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .calcJac <- FALSE
       }
     }
+    .litParams <- .ret$params
     if (.calcJac) {
       if (length(rxState(.ret)) <= 0) {
         ## Jacobian capitalized because it should be spelled with a capital
@@ -968,12 +986,14 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .s$..stateInfo["state"],
         .s$..lhs0,
         .s$..ddt,
+        .rxPastBaseLinesFromEnv(.s),
         .tmp1,
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],
         ""
       ), collapse = "\n")
+      .new <- .rxRestoreLiteralThetaEta(.new, .litParams)
       .ret <- rxModelVars(.new)
     } else {
       ## remove Jacobian
@@ -986,11 +1006,13 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .s$..stateInfo["state"],
         .s$..lhs0,
         .s$..ddt,
+        .rxPastBaseLinesFromEnv(.s),
         .tmp2,
         .s$..stateInfo["statef"],
         .s$..stateInfo["dvid"],
         ""
       ), collapse = "\n")
+      .new <- .rxRestoreLiteralThetaEta(.new, .litParams)
       .ret <- rxModelVars(.new)
     }
   }

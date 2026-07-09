@@ -1262,15 +1262,16 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       }
     } else {
-
+      # Suppressed (`~`) intermediate: never an output column, it exists only to
+      # be substituted into downstream expressions.  Always bind it so references
+      # resolve -- even a literal constant (e.g. `rx_expr_3 ~ 0`) with
+      # doConst=FALSE, which otherwise leaks as an undefined phantom parameter.
       .expr <- eval(parse(text = .expr))
-      if (envir$..doConst || !is.numeric(.expr)) {
-        assign(.var, .expr, envir = envir)
-        .rx <- paste0(
-          rxFromSE(.var), "=",
-          rxFromSE(.expr)
-        )
-      }
+      assign(.var, .expr, envir = envir)
+      .rx <- paste0(
+        rxFromSE(.var), "=",
+        rxFromSE(.expr)
+      )
     }
   }
 }
