@@ -1,5 +1,12 @@
 # rxode2 5.1.3
 
+- Fix delay (`delay()`) models that request an implicit method (`ros4` or the
+  `dop853+ros4` composite) but whose analytic Jacobian cannot be generated:
+  they previously fell back to `liblsoda`, which is non-dense and records no
+  delay history, so `delay()` lookups silently returned the pre-history
+  `past()`/initial-condition value and the solution diverged.  Such models now
+  fall back to `dop853` (dense, no Jacobian required) instead.
+
 - Fix `lag()`/`diff()` (and `first()`/`last()`) which previously returned a
   constant instead of the previous record's value, for both calculated (lhs)
   variables and time-varying covariates. They now read the prior record's value
