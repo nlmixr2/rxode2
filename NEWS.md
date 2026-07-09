@@ -1,5 +1,10 @@
 # rxode2 5.1.3
 
+- Fix `rxFromSE()` erroring with "argument is of length zero" (via
+  `.rxFromSEnum()`) and, worse, silently substituting user-workspace variable
+  values into converted expressions: the numeric-constant canonicalization now
+  evaluates operands in `baseenv()` only and guards zero-length results (#1109).
+
 - Fix `calcJac=TRUE` model rewriting (also used by the on-the-fly Jacobian the
   stiff `ros4` / `dop853+ros4` path generates) for models that declare literal
   `THETA_n_`/`ETA_n_` parameters and use delays: (1) a suppressed constant
