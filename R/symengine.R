@@ -87,7 +87,21 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "R_pow"=c("(", ")^(", ")"),
   "R_pow_di"=c("(", ")^(", ")"),
   "Rx_pow"=c("(", ")^(", ")"),
-  "Rx_pow_di"=c("(", ")^(", ")")
+  "Rx_pow_di"=c("(", ")^(", ")"),
+  ## Bare R relational/logical operators.  These are not produced by symengine
+  ## directly (it uses rxEq/rxGt/...), but a Subs() over a Derivative whose body
+  ## carries a relational -- e.g. from abs() or an occasion indicator -- converts
+  ## rxGt/rxEq to R `>`/`==` and then re-runs .rxFromSE(); handle those infix so
+  ## the relational survives the second pass instead of tripping the unknown-user-
+  ## function check.
+  ">"=c("(", ">", ")"),
+  "<"=c("(", "<", ")"),
+  ">="=c("(", ">=", ")"),
+  "<="=c("(", "<=", ")"),
+  "=="=c("(", "==", ")"),
+  "!="=c("(", "!=", ")"),
+  "&&"=c("(", "&&", ")"),
+  "||"=c("(", "||", ")")
 )
 
 ## atan2

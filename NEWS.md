@@ -1,5 +1,14 @@
 # rxode2 5.1.3
 
+- Fix `rxFromSE()` on a `Subs()` over a `Derivative()` whose body carries a
+  relational (`rxGt`/`rxEq`/... -- e.g. from `abs()` or an occasion indicator).
+  The derivative conversion turns the relational into an R `>`/`==`, and the
+  substituted expression was converted a second time, so the bare operator
+  tripped the unknown-user-function check (`user function '>' requires 0
+  arguments`).  Bare relational/logical operators are now recognized on the
+  second pass.  This unblocks FOCEi IOV models that also have a between-subject
+  eta on a parameter without IOV.
+
 - Fix `rxFromSE()` erroring with "argument is of length zero" (via
   `.rxFromSEnum()`) and, worse, silently substituting user-workspace variable
   values into converted expressions: the numeric-constant canonicalization now
