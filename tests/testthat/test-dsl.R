@@ -258,6 +258,20 @@ rxTest({
       rxFromSE("(2*a + b)*Subs(Derivative(rxTBS(_xi_1, b, c, d, f), _xi_1), (_xi_1), (a*b + a^2))"),
       "(2*a+b)*rxTBSd(a*b+Rx_pow_di(a,2),b,c,d,f)"
     )
+    ## A Subs() over a Derivative whose body carries a relational (rxGt/rxEq,
+    ## e.g. from abs() or an occasion indicator, as generated for FOCEi IOV
+    ## models) must not error: the Derivative conversion turns the relational
+    ## into an R `>`/`==`, and the substituted expression is converted a second
+    ## time, so those bare operators have to be recognized rather than treated as
+    ## unknown user functions (previously "user function '>' requires 0 arguments").
+    expect_equal(
+      rxFromSE("Subs(Derivative(rxTBS(_xi_1, rxGt(b, 0), c, d, f), _xi_1), (_xi_1), (a))"),
+      "rxTBSd(a,(b>0),c,d,f)"
+    )
+    expect_equal(
+      rxFromSE("Subs(Derivative(rxTBS(_xi_1, rxEq(occ, 1), c, d, f), _xi_1), (_xi_1), (a))"),
+      "rxTBSd(a,(occ==1),c,d,f)"
+    )
   })
 
   test_that("NN Activation functions derivatives", {

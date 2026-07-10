@@ -1,5 +1,14 @@
 # rxode2 5.1.3
 
+- Fix `rxFromSE()` on a `Subs()` over a `Derivative()` whose body carries a
+  relational (`rxGt`/`rxEq`/... -- e.g. from `abs()` or an occasion indicator).
+  The derivative conversion turns the relational into an R `>`/`==`, and the
+  substituted expression was converted a second time, so the bare operator
+  tripped the unknown-user-function check (`user function '>' requires 0
+  arguments`).  Bare relational/logical operators are now recognized on the
+  second pass.  This unblocks FOCEi IOV models that also have a between-subject
+  eta on a parameter without IOV.
+
 - Fix `calcJac=TRUE` model rewriting (also used by the on-the-fly Jacobian the
   stiff `ros4` / `dop853+ros4` path generates) for models that declare literal
   `THETA_n_`/`ETA_n_` parameters and use delays: (1) a suppressed constant
