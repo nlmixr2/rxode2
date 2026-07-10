@@ -1437,5 +1437,23 @@ rxTest({
     }
   }
 
+  test_that(".rxFromSEnum handles empty input (#1109)", {
+    expect_equal(.rxFromSEnum(numeric(0)), character(0))
+    expect_equal(.rxFromSEnum(character(0)), character(0))
+  })
+
+  test_that("rxFromSE does not leak user-workspace variables (#1109)", {
+    # a variable in the global environment named like a model symbol must
+    # neither error (zero-length) nor be substituted into the conversion
+    assign("rxFromSE1109center", numeric(0), envir = globalenv())
+    on.exit(rm("rxFromSE1109center", envir = globalenv()), add = TRUE)
+    .x <- symengine::S("exp(ETA_3_ + THETA_3_ - (ETA_3_ + THETA_3_))*rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    expect_equal(
+      rxFromSE(.x),
+      "exp(ETA[3]+THETA[3]-(ETA[3]+THETA[3]))*rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    assign("rxFromSE1109center", 42, envir = globalenv())
+    .y <- symengine::S("rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    expect_equal(rxFromSE(.y), "rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+  })
 
 })

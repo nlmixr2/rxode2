@@ -2454,7 +2454,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 .rxFromSEnum <- function(x) {
   .ret <- as.character(x)
   .retl <- nchar(.ret)
-  if (.retl > 5) {
+  if (length(.retl) == 1L && .retl > 5) {
     .op <- options()
     options(digits = 22)
     on.exit(options(.op))
@@ -2552,8 +2552,12 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .x2 <- .rxFromSE(.x2)
         .x3 <- x[[3]]
         .x3 <- .rxFromSE(.x3)
-        .x3v <- try(eval(parse(text = .x3)), silent = TRUE)
-        if (inherits(.x3v, "numeric")) {
+        # eval in baseenv() so only numeric-constant subexpressions
+        # canonicalize; the default frame's scope chain reaches the user's
+        # global environment, leaking workspace variables into the
+        # conversion (nlmixr2/rxode2#1109)
+        .x3v <- try(eval(parse(text = .x3), envir = baseenv()), silent = TRUE)
+        if (inherits(.x3v, "numeric") && length(.x3v) == 1L) {
           .x3 <- .rxFromSEnum(.x3v)
         }
         if (.x1 == "^" && .x3 == "1") {

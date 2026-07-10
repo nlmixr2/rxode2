@@ -1,5 +1,10 @@
 # rxode2 5.1.3
 
+- Fix `rxFromSE()` erroring with "argument is of length zero" (via
+  `.rxFromSEnum()`) and, worse, silently substituting user-workspace variable
+  values into converted expressions: the numeric-constant canonicalization now
+  evaluates operands in `baseenv()` only and guards zero-length results (#1109).
+
 - `rxFromSE()` now converts raw R comparison/logical operators (`>`, `<`, `>=`,
   `<=`, `==`, `!=`, `&`, `|`, `%%`), not only their `rxGt()`/`rxEq()` symengine
   forms.  This fixes a "user function '>' requires 0 arguments" error when a
