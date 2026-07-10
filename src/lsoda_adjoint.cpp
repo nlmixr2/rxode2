@@ -1,53 +1,22 @@
-// Exact discrete-adjoint driver for liblsoda (method="liblsodaadj", code 202).
-// Fills the same rx__sens_<state>_BY_<param>__ columns as rk4s / dop853s /
-// cvodesadj, as the exact reverse-mode transpose of liblsoda's own Nordsieck
-// multistep step map (not a continuous-adjoint approximation).
+// Exact discrete-adjoint driver for liblsoda (method="liblsodaadj", code 202):
+// the exact reverse-mode transpose of liblsoda's Nordsieck multistep step map,
+// filling the same rx__sens_<state>_BY_<param>__ columns as rk4s/dop853s/
+// cvodesadj.  #included into par_solve.cpp (IN_PAR_SOLVE) so it sees calc_lhs/
+// getSolve/rxEffNeq/the dydt globals and rk4s.cpp's luFactor/luSolveT.
 //
-// #included into par_solve.cpp (guarded by IN_PAR_SOLVE) so it sees calc_lhs /
-// getSolve / rxEffNeq / the dydt globals and rk4s.cpp's luFactor/luSolveT.
-//
-// Math (full derivation in ~/src/rxode2-liblsoda-adjoint-plan.md).  Per accepted
-// step (order nq, step h, coeffs el[], Nordsieck yh):
-//   PREDICT  Pascal triangle: for j=nq..1: for i1=j..nq: yh[i1]+=yh[i1+1]
-//   CORRECT  acor = h*f(y) - yh_pred[2],  y = yh_pred[1] + el[1]*acor
-//            solved via Pmat = I - h*el[1]*J (w-solve uses Pmat^{-T})
-//   UPDATE   yh_new[j] = yh_pred[j] + el[j]*acor
-// The transpose (costate Lambda is yh-shaped):
-//   UPDATE^T  adj_pred[j] = Lambda[j];  adj_acor = sum_j el[j]*Lambda[j]
-//   CORRECT^T w = Pmat^{-T} adj_acor;  adj_pred[1] += h*J^T w;  adj_pred[2] += -w;
-//             mu += h*F_p^T w              (parameter quadrature; F_p = rx__adjFP)
-//   PREDICT^T reverse Pascal:  for j=1..nq: for i1=nq..j: adj[i1+1]+=adj[i1]
-// The transpose is a linear map in (J, F_p, h, el, nq), so per step we record only
-// (tn, h, nq, el[], converged y) and recompute J,F_p via calc_lhs.  At an
-// observation the costate is seeded by intdy^T on the bracketing step.
-//
-// Handles variable order/step and Adams<->BDF method switches: the used el come
-// from the elco table indexed by order, so coefficients are captured
-// automatically and a switch's rescale is just another scaleh.
-//
-// Interior event jumps: istateReset restarts the integrator at every dose/reset,
-// so the trajectory is a chain of Nordsieck segments joined by a state jump.  The
-// backward sweep chains across a boundary via the segment re-init dual (yh0[2]=
-// h0*f(y0) couples the rows) and the event jump dual dPhi/dy^T (bolus=I, reset->0,
-// replace[c]->zero c, multiply[c]->scale c).  Modeled dose modifiers at each
-// segment start: f(c)=F adds mu += amt*dF/dp*lam_y0[c]; alag(c) adds the
-// transversality mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
-//
-// Modeled rate()/dur() infusion duals over [t_on, t_off): in-window steps get the
-// forcing mu += h*durMult*dR/dp[c]*w[c], and the segment at t_off gets the moving-
-// boundary transversality mu += -amt/R*durMult*dR/dp[c]*lam_c(t_off).  durMult = 1
-// for rate(), amt for dur(); constant-rate infusions have no dR/dp.
-//
-// par_liblsodaadj runs subjects in parallel (OpenMP; recording buffers are
-// thread_local); code 202 is in rxsolve.R's .adjCodes so an adjoint model solved
-// with the default liblsoda method upgrades to this exact discrete adjoint.
+// The transpose is a linear map in (J, F_p, h, el, nq), so per accepted step we
+// record only (tn, h, nq, el[], converged y) and recompute J,F_p via calc_lhs;
+// at an observation the costate is seeded by intdy^T on the bracketing step.
+// Variable order/step and Adams<->BDF switches are handled automatically (el
+// come from the elco table by order).  Interior event jumps chain Nordsieck
+// segments via the re-init dual and the event jump dual dPhi/dy^T, with modeled
+// f()/alag()/rate()/dur() dose-modifier duals accumulated into the parameter
+// quadrature.  par_liblsodaadj runs subjects in parallel (thread_local
+// buffers).
 #ifdef IN_PAR_SOLVE
 
-// --- recording hooks: need liblsoda's common block (ctx->common->...) ----------
-// par_solve.cpp already #included common.h (struct lsoda_common_t + the _rxC macro)
-// and <vector>/<algorithm> long before this TU, and it #undef'd min/max above the
-// method .cpp includes -- so we reuse those here directly (common.h has no include
-// guard, so re-including it would redefine the struct).
+// recording hooks reuse liblsoda's common block (common.h, already #included by
+// par_solve.cpp; no include guard, so do not re-include).
 
 // One recorded accepted step: the linearisation point + step metadata + the
 // post-step transition (order change + scaleh) that stoda applied before the next

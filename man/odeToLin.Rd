@@ -15,31 +15,14 @@ An rxUi model with ODE equations replaced by \code{linCmt()}, or
 (with a message) the original model unchanged if conversion is not possible.
 }
 \description{
-Detects whether a model's ODE equations form a standard 1-3 compartment
-pharmacokinetic system and, if so, replaces them with a \code{linCmt()}
-analytical solution. The conversion removes all \code{d/dt()} equations
-and the central-compartment output assignment (e.g. \code{cp <- central/v}),
-adding \code{cp <- linCmt()} in their place. All other model lines
-(parameter assignments, error model, etc.) are preserved unchanged.
-}
-\details{
-Detection succeeds when:
-\enumerate{
-\item Every ODE right-hand side is linear in the state variables.
-\item There are 1-4 compartments total (depot + 1-3 pharmacokinetic
-compartments).
-\item The compartment topology matches a standard PK model
-(optional depot feeding a central compartment, with 0-2 peripheral
-compartments exchanging bidirectionally with central).
-\item There is exactly one output line of the form
-\code{var <- central_cmt / v_expr}.
-}
-
-The converted model retains all named parameter assignments
-(\code{cl}, \code{v}, \code{ka}, \code{q}, \code{vp}, etc.) so that
-\code{linCmt()} can infer the parameterization automatically. For models
-that already use canonical PK parameter names, no additional assignments
-are added.
+Detects whether a model's ODE equations form a standard 1-3 compartment PK
+system and, if so, replaces the \code{d/dt()} equations and the central
+output assignment (e.g. \code{cp <- central/v}) with \code{cp <- linCmt()},
+preserving all other model lines.  Detection requires linear ODE
+right-hand sides, 1-4 compartments in a standard depot/central/peripheral
+topology, and one output line of the form \code{var <- central_cmt / v_expr}.
+Named parameter assignments are retained so \code{linCmt()} can infer the
+parameterization.
 }
 \examples{
 oneCmtOde <- function() {
@@ -60,27 +43,6 @@ oneCmtOde <- function() {
   })
 }
 linCmtModel <- odeToLin(oneCmtOde)
-
-twoCmtOde <- function() {
-  ini({
-    tcl <- 1
-    tv <- 3
-    tq <- 0.5
-    tvp <- 6
-    add.sd <- 0.7
-  })
-  model({
-    cl <- exp(tcl)
-    v <- exp(tv)
-    q <- exp(tq)
-    vp <- exp(tvp)
-    d/dt(central)    <- -(cl+q)/v * central + q/vp * peripheral
-    d/dt(peripheral) <-  q/v * central - q/vp * peripheral
-    cp <- central / v
-    cp ~ add(add.sd)
-  })
-}
-linCmtModel2 <- odeToLin(twoCmtOde)
 
 }
 \seealso{

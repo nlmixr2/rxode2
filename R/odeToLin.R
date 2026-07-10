@@ -87,11 +87,9 @@
   .parsed
 }
 
-## Net signed coefficient (sum of sign*coef) of state `s` across a parsed term
-## list, returned as a single expression; NULL when `s` does not appear.  Note
-## the parsed sign is not enough on its own: a standalone `-ka*depot` RHS parses
-## (by R precedence) as `(-ka)*depot`, i.e. a positive-sign term whose
-## coefficient is `-ka` -- so the sign must be folded into the coefficient here.
+## Net signed coefficient (sum of sign*coef) of state `s`, as a single
+## expression; NULL when `s` is absent.  The parsed sign is folded into the
+## coefficient (`-ka*depot` parses as a positive-sign term with coef `-ka`).
 .odeToLinNetCoef <- function(terms, s) {
   .rel <- Filter(function(.t) !is.na(.t$state) && .t$state == s, terms)
   if (length(.rel) == 0L) return(NULL)
@@ -99,16 +97,11 @@
   Reduce(function(.a, .b) bquote(.(.a) + .(.b)), .signed)
 }
 
-## Verify mass balance for every non-central compartment.  A genuine depot or
-## peripheral exchanges with central with no independent loss: the flux it loses
-## (its net coefficient of itself in its own ODE) exactly equals the flux central
-## gains from it (central's net coefficient of that state), so the two cancel.  A
-## metabolite (e.g. `d/dt(met) <- kpm*central - kelm*met - kbt*met`) carries an
-## extra independent-elimination term, so its loss (kelm + kbt) exceeds the kbt
-## returned to central; linCmt() would silently model it as a lossless peripheral
-## and give wrong results, so such systems must NOT convert.  The cancellation is
-## checked numerically (robust to how the coefficients are written) at two
-## distinct positive parameter assignments.
+## Verify mass balance for every non-central compartment: a genuine
+## depot/peripheral loses exactly the flux central gains from it (the two net
+## coefficients cancel).  A metabolite has an extra independent-elimination
+## term that breaks the cancellation, so it must NOT convert.  Checked
+## numerically at two distinct positive parameter assignments.
 .odeToLinMassBalanced <- function(odes, central, others) {
   .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
   .centralOde <- .byCmt[[central]]
@@ -132,12 +125,9 @@
 }
 
 ## Detect the topology of a linear ODE system and classify each compartment.
-##
-## odes: list of {cmt=name, terms=parsed_terms} for each ODE
-## outputCmt: the state variable identified as the central compartment
-##   (from the output line var <- cmt / v).
-##
-## Returns list(ncmt, oral0, central, depot, peripheral1, peripheral2) or NULL.
+## odes: list of {cmt, terms}; outputCmt: the central compartment (from the
+## output line).  Returns list(ncmt, oral0, central, depot, peripheral1,
+## peripheral2) or NULL.
 .odeToLinDetectTopology <- function(odes, outputCmt, cmtNames) {
   .n <- length(odes)
   if (.n == 0L || .n > 4L) return(NULL)
@@ -403,16 +393,9 @@
   })
   if (any(vapply(.odes, is.null, logical(1)))) return(NULL)
 
-  ## Bail when an ODE RHS depends on a compartment state *indirectly* through a
-  ## state-derived value.  The linearity check above only inspects direct state
-  ## references, so a Michaelis-Menten elimination written via the central
-  ## concentration -- `Cc <- central / vc` then
-  ## `... - vmax * Cc * vc / (km + Cc)` -- looks state-free (a constant forcing
-  ## term) and slips through even though it is genuinely nonlinear in `central`.
-  ## Auto-linearizing such a model silently drops the nonlinear term and demotes
-  ## the coupled rate constants to required input parameters, so rxSolve aborts
-  ## with "parameter(s) are required for solving: <par>".  Keep the explicit
-  ## ODE states for these models.
+  ## Bail when an ODE RHS depends on a state indirectly through a state-derived
+  ## value (e.g. Michaelis-Menten via `Cc <- central/vc`), which the direct
+  ## linearity check misses; keep the explicit ODE states.
   .stateDerived <- .odeToLinStateDerivedVars(.lstExpr, .states, .odeIdx)
   if (length(.stateDerived) > 0L &&
         any(vapply(.odes, function(.o) {
@@ -431,25 +414,19 @@
   .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
   if (is.null(.topo)) return(NULL)
 
-  ## Handle compartment states referenced as a value outside the ODE equations
-  ## and the central output line (e.g. a peripheral observable `Cp <- periph /
-  ## vp`).  linCmt() materializes central/peripheral1/peripheral2/depot as
-  ## accessible solved compartments, so rather than dropping the coupled state
-  ## we keep the model analytic by renaming the ODE compartments to their
-  ## canonical linCmt names (the coupled path; see .odeToLinBuildExpr).  This is
-  ## only valid when every estimated endpoint predicts the central output --
-  ## a peripheral with its own `~` endpoint collides with linCmt()'s internal
-  ## compartment -- so such models keep their explicit ODE states instead.
+  ## Compartment states referenced as a value outside the ODEs and the central
+  ## output line (e.g. `Cp <- periph/vp`): keep the model analytic by renaming
+  ## the ODE compartments to their canonical linCmt names (the coupled path),
+  ## valid only when every endpoint predicts the central output.
   .coupled <- FALSE
   if (.odeToLinStateReferencedElsewhere(.lstExpr, .cmtNames, .odeIdx, .out$lineIdx)) {
     if (!.odeToLinAllEndpointsCentral(.lstExpr, .out$var)) return(NULL)
     .coupled <- TRUE
   }
 
-  ## Collect the PK parameter names referenced in the rate coefficients and
-  ## the volume expression so they can be passed explicitly to linCmt().
-  ## Passing them explicitly lets linCmt() infer the parameterization even
-  ## when the parameters are defined only in ini() (no model-body assignment).
+  ## PK parameter names from the rate coefficients and volume expression,
+  ## passed explicitly to linCmt() so it can infer the parameterization even
+  ## for ini()-only parameters.
   .params <- character(0)
   for (.ode in .odes) {
     for (.t in .ode$terms) {
@@ -512,16 +489,9 @@
   e
 }
 
-## Rename the compartment argument in an adaptive dosing call.
-## Argument positions (AST index, where e[[1]] is the function name):
-##   bolus(amt, cmt, ...)       -> e[[3]]
-##   replace(amt, cmt)          -> e[[3]]
-##   multiply(amt, cmt)         -> e[[3]]
-##   phantom(amt, cmt, ...)     -> e[[3]]
-##   infuse(amt, rate, cmt, ...) -> e[[4]]
-##   infuseDur(amt, dur, cmt, ...) -> e[[4]]
-##   evid_(time, evid, amt, cmt, ...) -> e[[5]]
-## obs() and reset() have no compartment argument and are left unchanged.
+## Rename the compartment argument in an adaptive dosing call.  cmt AST index:
+## bolus/replace/multiply/phantom -> e[[3]], infuse/infuseDur -> e[[4]],
+## evid_ -> e[[5]]; obs()/reset() have no cmt and are left unchanged.
 .odeToLinRenameAdaptiveCall <- function(e, cmtMap) {
   if (!is.call(e)) return(e)
   .fn <- as.character(e[[1]])
@@ -636,30 +606,14 @@
 
 #' Convert ODE-based linear compartment models to analytical linCmt() form
 #'
-#' Detects whether a model's ODE equations form a standard 1-3 compartment
-#' pharmacokinetic system and, if so, replaces them with a \code{linCmt()}
-#' analytical solution. The conversion removes all \code{d/dt()} equations
-#' and the central-compartment output assignment (e.g. \code{cp <- central/v}),
-#' adding \code{cp <- linCmt()} in their place. All other model lines
-#' (parameter assignments, error model, etc.) are preserved unchanged.
-#'
-#' Detection succeeds when:
-#' \enumerate{
-#'   \item Every ODE right-hand side is linear in the state variables.
-#'   \item There are 1-4 compartments total (depot + 1-3 pharmacokinetic
-#'         compartments).
-#'   \item The compartment topology matches a standard PK model
-#'         (optional depot feeding a central compartment, with 0-2 peripheral
-#'         compartments exchanging bidirectionally with central).
-#'   \item There is exactly one output line of the form
-#'         \code{var <- central_cmt / v_expr}.
-#' }
-#'
-#' The converted model retains all named parameter assignments
-#' (\code{cl}, \code{v}, \code{ka}, \code{q}, \code{vp}, etc.) so that
-#' \code{linCmt()} can infer the parameterization automatically. For models
-#' that already use canonical PK parameter names, no additional assignments
-#' are added.
+#' Detects whether a model's ODE equations form a standard 1-3 compartment PK
+#' system and, if so, replaces the \code{d/dt()} equations and the central
+#' output assignment (e.g. \code{cp <- central/v}) with \code{cp <- linCmt()},
+#' preserving all other model lines.  Detection requires linear ODE
+#' right-hand sides, 1-4 compartments in a standard depot/central/peripheral
+#' topology, and one output line of the form \code{var <- central_cmt / v_expr}.
+#' Named parameter assignments are retained so \code{linCmt()} can infer the
+#' parameterization.
 #'
 #' @param ui rxUi-like model object (function, rxUi, or anything accepted by
 #'   \code{as.rxUi}).
@@ -685,27 +639,6 @@
 #'   })
 #' }
 #' linCmtModel <- odeToLin(oneCmtOde)
-#'
-#' twoCmtOde <- function() {
-#'   ini({
-#'     tcl <- 1
-#'     tv <- 3
-#'     tq <- 0.5
-#'     tvp <- 6
-#'     add.sd <- 0.7
-#'   })
-#'   model({
-#'     cl <- exp(tcl)
-#'     v <- exp(tv)
-#'     q <- exp(tq)
-#'     vp <- exp(tvp)
-#'     d/dt(central)    <- -(cl+q)/v * central + q/vp * peripheral
-#'     d/dt(peripheral) <-  q/v * central - q/vp * peripheral
-#'     cp <- central / v
-#'     cp ~ add(add.sd)
-#'   })
-#' }
-#' linCmtModel2 <- odeToLin(twoCmtOde)
 #'
 #' @author Matthew Fidler
 #' @export

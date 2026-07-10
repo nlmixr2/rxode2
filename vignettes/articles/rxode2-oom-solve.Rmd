@@ -19,7 +19,7 @@ Population pharmacokinetic/pharmacodynamic simulations can involve tens or
 hundreds of thousands of subjects.  Each subject requires solver workspace,
 output arrays, and covariate storage, so the combined memory footprint grows
 linearly with the number of subjects.  A 100,000-subject simulation with a
-two-compartment model and rich sampling can easily require 10–50 GB of RAM —
+two-compartment model and rich sampling can easily require 10-50 GB of RAM --
 more than many workstations or cloud instances provide.
 
 rxode2 addresses this by **chunked (out-of-memory) solving**: subjects are
@@ -36,7 +36,7 @@ holding the entire dataset in RAM.
 
 Throughout this vignette we use a one-compartment oral PK model with between-
 subject variability on clearance and absorption rate.  Parameters are defined
-using `ini()` and `model()` blocks — the standard rxode2 UI approach.
+using `ini()` and `model()` blocks -- the standard rxode2 UI approach.
 
 ```{r model}
 pkModel <- function() {
@@ -153,7 +153,7 @@ dim(res)
 ## Faking low memory in demos and tests
 
 The easiest way to demonstrate or test the chunked path on a small dataset is
-to set `chunkSize` directly — no need to modify system RAM.  With
+to set `chunkSize` directly -- no need to modify system RAM.  With
 `chunkSize = 2` on 10 subjects you get 5 chunks of 2 subjects each:
 
 ```{r fake-oom}
@@ -207,19 +207,19 @@ manifest <- readRDS("output/my_sim_manifest.rds")
 ## Working with Arrow datasets
 
 The combination of chunked solving and Arrow datasets means rxode2 can handle
-populations that are **too large to fit in memory at any stage** — not just
+populations that are **too large to fit in memory at any stage** -- not just
 during the solve, but also when post-processing the results.  Chunk files stay
 on disk; Arrow reads only what your query needs.
 
 When the `arrow` package is installed (which it must be for parquet chunk
 files), rxode2 exposes two Arrow-native accessors on the `rxSolveOom` object.
 
-### Lazy Arrow Dataset — querying without loading everything
+### Lazy Arrow Dataset -- querying without loading everything
 
 `as.arrow()` (an rxode2 generic; arrow itself has no such function)
 opens all chunk files as a single lazy `arrow::Dataset`.  No rows are read
 from disk until you explicitly collect them.  You can push filters, column selections, and aggregations down to the
-Arrow engine so that only the result — not the full dataset — is brought into R
+Arrow engine so that only the result -- not the full dataset -- is brought into R
 memory:
 
 ```{r arrow-dataset, eval = requireNamespace("arrow", quietly = TRUE) && requireNamespace("dplyr", quietly = TRUE)}
@@ -252,7 +252,7 @@ pk_summary
 This is the key advantage over materialising with `as.data.frame()`: for a
 100,000-subject simulation that would require 40 GB of RAM as an R data frame,
 the summary above reads each chunk sequentially and returns only one row per
-subject — a result that fits easily in memory even when the full dataset does
+subject -- a result that fits easily in memory even when the full dataset does
 not.
 
 Other useful patterns:

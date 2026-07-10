@@ -259,7 +259,871 @@ abbreviation \emph{Rx} for a medical prescription, and thus to
 suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
+
+\subsection{Creating rxode2 models}{
+
+The ODE-based model specification may be coded inside four places:
+\itemize{
+\item Inside a \code{rxode2({})} block statements:
 }
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
+mod <- rxode2(\{
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+\})
+}\if{html}{\out{</div>}}
+\itemize{
+\item Inside a \code{rxode2("")} string statement:
+}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+")
+}\if{html}{\out{</div>}}
+\itemize{
+\item In a file name to be loaded by rxode2:
+}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+", "modelFile.rxode2")
+mod <- rxode2(filename='modelFile.rxode2')
+unlink("modelFile.rxode2")
+}\if{html}{\out{</div>}}
+\itemize{
+\item In a model function which can be parsed by \code{rxode2}:
+}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
+  model(\{
+    # simple assignment
+    C2 <- centr/V2
+
+    # time-derivative assignment
+    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+  \})
+\}
+
+mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
+
+# These model functions often have residual components and initial
+# (`ini(\{\})`) conditions attached as well. For example the
+# theophylline model can be written as:
+
+one.compartment <- function() \{
+  ini(\{
+    tka <- 0.45 # Log Ka
+    tcl <- 1 # Log Cl
+    tv <- 3.45    # Log V
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    add.sd <- 0.7
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+    cp ~ add(add.sd)
+  \})
+\}
+
+# after parsing the model
+mod <- one.compartment()
+}\if{html}{\out{</div>}}
+
+For the block statement, character string or text file an internal
+\code{rxode2} compilation manager translates the ODE system into C, compiles
+it and loads it into the R session. The call to \code{rxode2} produces an
+object of class \code{rxode2} which consists of a list-like structure
+(environment) with various member functions.
+
+For the last type of model (a model function), a call to \code{rxode2}
+creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
+compilation model.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
+
+# or
+mod$simulationIniModel
+}\if{html}{\out{</div>}}
+
+This is the same type of function required for \code{nlmixr2} estimation and
+can be extended and modified by model piping. For this reason will be
+focused on in the documentation.
+}
+
+This basic model specification consists of one or more statements
+optionally terminated by semi-colons \verb{;} and optional comments (comments
+are delimited by \verb{#} and an end-of-line).
+
+A block of statements is a set of statements delimited by curly braces,
+\code{{ ... }}.
+
+Statements can be either assignments, conditional \code{if}/\verb{else if}/\verb{else},
+\code{while} loops (can be exited by \code{break}), special statements, or
+printing statements (for debugging/testing).
+
+Assignment statements can be:
+\itemize{
+\item \strong{simple} assignments, where the left hand is an identifier (i.e.,
+variable). This includes string assignments
+\item special \strong{time-derivative} assignments, where the left hand specifies
+the change of the amount in the corresponding state variable
+(compartment) with respect to time e.g., \code{d/dt(depot)}:
+\item special \strong{initial-condition} assignments where the left hand
+specifies the compartment of the initial condition being specified,
+e.g. \code{depot(0) = 0}
+\item special model event changes including \strong{bioavailability}
+(\code{f(depot)=1}), \strong{lag time} (\code{alag(depot)=0}), \strong{modeled rate}
+(\code{rate(depot)=2}) and \strong{modeled duration} (\code{dur(depot)=2}). An
+example of these model features and the event specification for the
+modeled infusions the rxode2 data specification is found in \href{https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html}{rxode2 events vignette}.
+\item special \strong{change point syntax, or model times}. These model times are
+specified by \code{mtime(var)=time}
+\item special \strong{Jacobian-derivative} assignments, where the left hand
+specifies the change in the compartment ode with respect to a
+variable. For example, if \code{d/dt(y) = dy}, then a Jacobian for this
+compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be some
+advantage to obtaining the solution or specifying the Jacobian for
+very stiff ODE systems. However, for the few stiff systems we tried
+with LSODA, this actually slightly slowed down the solving.
+\item Special \strong{string value declarations} which tell what values a string
+variable will take within a \code{rxode2} solving structure. These values
+will then cause a factor to be created for this variable on solving
+the \code{rxode2} model. As such, they are declared in much the same way as
+\code{R}, that is: \code{labels(a) <- c("a1", "a2")}.
+}
+
+Note that assignment can be done by \code{=}, \verb{<-} or \code{~}.
+
+When assigning with the \code{~} operator, the \strong{simple assignments} and
+\strong{time-derivative} assignments will not be output. Note that with the
+\code{rxode2} model functions assignment with \code{~} can also be overloaded with
+a residual distribution specification.
+
+Special statements can be:
+\itemize{
+\item \strong{Compartment declaration statements}, which can change the default
+dosing compartment and the assumed compartment number(s) as well as
+add extra compartment names at the end (useful for multiple-endpoint
+nlmixr models); These are specified by \code{cmt(compartmentName)}
+\item \strong{Parameter declaration statements}, which can make sure the input
+parameters are in a certain order instead of ordering the parameters
+by the order they are parsed. This is useful for keeping the parameter
+order the same when using 2 different ODE models. These are specified
+by \code{param(par1, par2,...)}
+\item \strong{Variable interpolation statements}, which tells the interpolation
+for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
+last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
+observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
+interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
+interpolation.
+}
+
+An example model is shown below:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{   # simple assignment
+   C2 <- centr/V2
+
+   # time-derivative assignment
+   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+}\if{html}{\out{</div>}}
+
+Expressions in assignment and \code{if} statements can be numeric or logical.
+
+Numeric expressions can include the following numeric operators
+\verb{+, -, *, /, ^, \%\%} and those mathematical functions defined in the C or
+the R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
+
+You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
+like \code{lgammafn} for the log gamma function.
+
+The \code{rxode2} syntax is case-sensitive, i.e., \code{ABC} is different than
+\code{abc}, \code{Abc}, \code{ABc}, etc.
+\subsection{Identifiers}{
+
+Like R, Identifiers (variable names) may consist of one or more
+alphanumeric, underscore \verb{_} or period \code{.} characters, but the first
+character cannot be a digit or underscore \verb{_}.
+
+Identifiers in a model specification can refer to:
+\itemize{
+\item State variables in the dynamic system (e.g., compartments in a
+pharmacokinetics model).
+\item Implied input variable, \code{t} (time), \code{tlast} (last time point), and
+\code{podo} (oral dose, in the undocumented case of absorption transit
+models).
+\item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R’s predefined constants}.
+\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance, etc.)
+\item Others, as created by assignments as part of the model specification;
+these are referred as \emph{LHS} (left-hand side) variable.
+}
+
+Currently, the \code{rxode2} modeling language only recognizes system state
+variables and “parameters”, thus, any values that need to be passed from
+R to the ODE model (e.g., \code{age}) should be either passed in the \code{params}
+argument of the integrator function \code{rxSolve()} or be in the supplied
+event data-set.
+
+There are certain variable names that are in the \code{rxode2} event tables.
+To avoid confusion, the following event table-related items cannot be
+assigned, or used as a state but can be accessed in the rxode2 code:
+\itemize{
+\item \code{cmt}
+\item \code{dvid}
+\item \code{addl}
+\item \code{ss}
+\item \code{amt}
+\item \code{dur}
+\item \code{rate}
+\item \code{Rprintf}
+\item \code{print}
+\item \code{printf}
+\item \code{id}
+}
+
+However the following variables are cannot be used in a model
+specification:
+\itemize{
+\item \code{evid}
+\item \code{ii}
+}
+
+Sometimes rxode2 generates variables that are fed back to rxode2.
+Similarly, nlmixr2 generates some variables that are used in nlmixr
+estimation and simulation. These variables start with the either the
+\code{rx} or \code{nlmixr} prefixes. To avoid any problems, it is suggested to not
+use these variables starting with either the \code{rx} or \code{nlmixr} prefixes.
+}
+
+\subsection{Logical Operators}{
+
+Logical operators support the standard R operators \code{==}, \code{!=} \code{>=} \code{<=}
+\code{>} and \code{<}. Like R these can be in \verb{if()} or \verb{while()} statements,
+\code{ifelse()} expressions. Additionally they can be in a standard
+assignment. For instance, the following is valid:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{cov1 = covm*(sexf == "female") + covm*(sexf != "female")
+}\if{html}{\out{</div>}}
+
+Notice that you can also use character expressions in comparisons. This
+convenience comes at a cost since character comparisons are slower than
+numeric expressions. Unlike R, \code{as.numeric} or \code{as.integer} for these
+logical statements is not only not needed, but will cause an syntax
+error if you try to use the function.
+}
+
+\subsection{Supported functions}{
+
+All the supported functions in rxode2 can be seen with the
+\code{rxSupportedFuns()}.
+
+A brief description of the built-in functions are in the following
+table:\tabular{lll}{
+   Function \tab Description \tab Aliases \cr
+   gamma(x) \tab The Gamma function \tab gammafn \cr
+   lgamma(x) \tab Natural logarithm of absolute value of gamma function \tab digamma \cr
+   digamma(x) \tab First derivative of lgamma \tab  \cr
+   trigamma(x) \tab Second derivative of lgamma \tab  \cr
+   tetragamma(x) \tab Third derivative of lgamma \tab  \cr
+   pentagamma(x) \tab Fourth derivative of lgamma \tab  \cr
+   psigamma(x, deriv) \tab n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. \tab  \cr
+   cospi(x) \tab cos(pi*x) \tab  \cr
+   sinpi(x) \tab sin(pi*x) \tab  \cr
+   tanpi(x) \tab tan(pi*x) \tab  \cr
+   beta(a, b) \tab Beta function \tab  \cr
+   lbeta(a, b) \tab log Beta function \tab  \cr
+   bessel_i(x, nu, expo) \tab Bessel function type I with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(-x) \cr
+   bessel_j(x, nu) \tab Bessel function type J with index nu \tab  \cr
+   bessel_k(x, ku, expo) \tab Bessel function type K with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(x) \cr
+   bessel_y(x, nu) \tab Bessel function type Y with index nu \tab  \cr
+   R_pow(x, y) \tab x^y \tab  \cr
+   R_pow_di(x, I) \tab x^y \tab y is an integer \cr
+   log1pmx \tab log(1+x) - x \tab  \cr
+   log1pexp \tab log(1+exp(x)) \tab  \cr
+   expm1(x) \tab exp(x)-1 \tab  \cr
+   lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
+   sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
+   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
+   fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
+   fround(x, digits) \tab Round, used by R’s round() \tab  \cr
+   ftrunc(x) \tab Truncated towards zero \tab  \cr
+   abs(x) \tab absolute value of x \tab fabs \cr
+   sin(x) \tab sine of x \tab  \cr
+   cos(x) \tab cos of x \tab  \cr
+   tan(x) \tab tan of x \tab  \cr
+   factorial(x) \tab factorial of x \tab  \cr
+   lfactorial(x) \tab log(factorial(x)) \tab  \cr
+   log10(x) \tab log base 10 \tab  \cr
+   log2(x) \tab log base 2 \tab  \cr
+   pnorm(x) \tab Normal CDF of x \tab normcdf, phi \cr
+   qnorm(x) \tab Normal pdf of x \tab norminv \cr
+   probit(x, low=0, hi=1) \tab Probit (normal pdf) of x transforming into a range \tab  \cr
+   probitInv(q, low=0, hi=1) \tab Inverse probit of x transforming into a range \tab  \cr
+   acos(x) \tab Inverse cosine \tab  \cr
+   asin(x) \tab Inverse sine \tab  \cr
+   atan(x) \tab Inverse tangent \tab  \cr
+   atan2(a, b) \tab Four quadrant inverse tangent \tab  \cr
+   sinh(x) \tab Hyperbolic sine \tab  \cr
+   cosh(x) \tab Hyperbolic cosine \tab  \cr
+   tanh(x) \tab Hyperbolic tangent \tab  \cr
+   floor(x) \tab Downward rounding \tab  \cr
+   ceil(x) \tab Upward rounding \tab  \cr
+   logit(x, low=0, hi=1) \tab Logit transformation of x transforming into a range \tab  \cr
+   expit(x, low=0, hi=1) \tab expit transofmration in range \tab invLogit, logitInv \cr
+   gammaq(a, z) \tab Normalized incomplete gamma from boost \tab  \cr
+   gammaqInv(a, q) \tab Normalized incomplete gamma inverse from boost \tab  \cr
+   ifelse(cond, trueValue, falseValue) \tab if else function \tab  \cr
+   gammap(a, z) \tab Normalized lower incomplete gamma from boost \tab  \cr
+   gammapInv(a, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
+   gammapInva(x, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
+   rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
+   rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
+   rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr
+   rxchisq \tab Generate one deviate from the chisq distribution for each observation \tab  \cr
+   rxexp \tab Generate one deviate from the exponential distribution for each observation \tab  \cr
+   rxf \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
+   rxgamma \tab Generate one deviate from the gamma distribution for each observation \tab  \cr
+   rxbeta \tab Generate one deviate from the beta distribution for each observation \tab  \cr
+   rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
+   rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
+   rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
+   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA \tab  \cr
+   tad0() or tad0(x) \tab Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0 \tab  \cr
+   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
+   tafd0() or tafd0(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
+   dosenum() \tab Dose Number \tab  \cr
+   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=NA \tab  \cr
+   tlast0() or tlast0(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=0 \tab  \cr
+   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=NA \tab  \cr
+   tfirst0() or tfirst0(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=0 \tab  \cr
+   prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   max(…) \tab maximum of a group of numbers \tab  \cr
+   min(…) \tab Min of a group of numbers \tab  \cr
+   lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
+   lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
+   diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
+   lag0(parameter, number=1) \tab Like lag() but returns 0 instead of NA when there is no prior value (the first record) \tab  \cr
+   lead0(parameter, number=1) \tab Like lead() but returns 0 instead of NA when there is no following value (the last record) \tab  \cr
+   diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
+   first(par) \tab Get the first value of an input parameter \tab  \cr
+   last(par) \tab Get the last value of an input parameter \tab  \cr
+   transit() \tab The transit compartment psuedo function \tab  \cr
+   delay(state, T) \tab Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver \tab  \cr
+   is.na() \tab Determine if a value is NA \tab  \cr
+   is.nan() \tab Determine if a value is NaN \tab  \cr
+   is.infinite() \tab Check to see if the value is infinite \tab  \cr
+   rinorm(x) \tab Generate one deviate of from a normal distribution for each individual \tab  \cr
+   rinormV(x) \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
+   ricauchy \tab Generate one deviate from the cauchy distribution for each individual \tab  \cr
+   richisq \tab Generate one deviate from the chisq distribution for each individual \tab  \cr
+   riexp \tab Generate one deviate from the exponential distribution for each individual \tab  \cr
+   rif \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
+   rigamma \tab Generate one deviate from the gamma distribution for each individual \tab  \cr
+   ribeta \tab Generate one deviate from the beta distribution for each individual \tab  \cr
+   rigeom \tab Generate one deviate from the geometric distribution for each individual \tab  \cr
+   ropois \tab Generate one deviate from the poission distribution for each individual \tab  \cr
+   rit \tab Generate one deviate from the t distribtuion for each individual \tab  \cr
+   simeps \tab Simulate EPS from possibly truncated sigma matrix. Will take sigma matrix from the current study. Simulated at the very last moment. \tab  \cr
+   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs \tab  \cr
+}
+
+
+Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
+as \verb{= lag(wt)}
+}
+
+\subsection{Reserved keywords}{
+
+There are a few reserved keywords in a rxode2 model. They are in the
+following table:\tabular{lll}{
+   Reserved Name \tab Meaning \tab Alias \cr
+   time \tab solver time \tab t \cr
+   podo \tab In Transit compartment models, last dose amount \tab  \cr
+   tlast \tab Time of Last dose \tab  \cr
+   M_E \tab Exp(1) \tab  \cr
+   M_LOG2E \tab log2(e) \tab  \cr
+   M_LOG10E \tab log10(e) \tab  \cr
+   M_LN2 \tab log(2) \tab  \cr
+   M_LN10 \tab log(10) \tab  \cr
+   M_PI \tab pi \tab  \cr
+   M_PI_2 \tab pi/2 \tab  \cr
+   M_PI_4 \tab pi/4 \tab  \cr
+   M_1_PI \tab 1/pi \tab  \cr
+   M_2_PI \tab 2/pi \tab  \cr
+   M_2_SQRTPI \tab 2/sqrt(pi) \tab  \cr
+   M_SQRT2 \tab sqrt(2) \tab  \cr
+   M_SQRT1_2 \tab 1/sqrt(2) \tab  \cr
+   M_SQRT_3 \tab sqrt(3) \tab  \cr
+   M_SQRT_32 \tab sqrt(32) \tab  \cr
+   M_LOG10_2 \tab Log10(2) \tab  \cr
+   M_2PI \tab 2*pi \tab  \cr
+   M_SQRT_PI \tab sqrt(pi) \tab  \cr
+   M_1_SQRT_2PI \tab 1/(sqrt(2*pi)) \tab  \cr
+   M_LN_SQRT_PI \tab log(sqrt(pi)) \tab  \cr
+   M_LN_SQRT_2PI \tab log(sqrt(2*pi)) \tab  \cr
+   M_LN_SQRT_PId2 \tab log(sqrt(pi/2)) \tab  \cr
+   pi \tab pi \tab  \cr
+   NA \tab R’s NA value \tab  \cr
+   NaN \tab Not a Number Value \tab  \cr
+   Inf \tab Infinite Value \tab  \cr
+   newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr
+   rxFlag \tab Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs \tab  \cr
+}
+
+
+Note that \code{rxFlag} will always output \code{11} or \code{calc_lhs} since that is
+where the final variables are calculated, though you can tweak or test
+certain parts of \code{rxode2} by using this flag.
+}
+
+\subsection{Residual functions when using rxode2 functions}{
+
+In addition to \code{~} hiding output for certain types of output, it also is
+used to specify a residual output or endpoint when the input is an
+\code{rxode2} model function (that includes the residual in the \code{model({})}
+block).
+
+These specifications are of the form:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{var ~ add(add.sd)
+}\if{html}{\out{</div>}}
+
+Indicating the variable \code{var} is the variable that represents the
+individual central tendencies of the model and it also represents the
+compartment specification in the data-set.
+
+You can also change the compartment name using the \code{|} syntax, that is:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{var ~ add(add.sd) | cmt
+}\if{html}{\out{</div>}}
+
+In the above case \code{var} represents the central tendency and \code{cmt}
+represents the compartment or \code{dvid} specification.
+\subsection{Transformations}{
+
+For normal and related distributions, you can apply the transformation
+on both sides by using some keywords/functions to apply these
+transformations.\tabular{ll}{
+   Transformation \tab rxode2/nlmixr2 code \cr
+   Box-Cox \tab +boxCox(lambda) \cr
+   Yeo-Johnson \tab +yeoJohnson(lambda) \cr
+   logit-normal \tab +logitNorm(logit.sd, low, hi) \cr
+   probit-normal \tab +probitNorm(probid.sd, low, hi) \cr
+   log-normal \tab +lnorm(lnorm.sd) \cr
+}
+
+
+By default for the likelihood for all of these transformations is
+calculated on the \strong{untransformed} scale.
+
+For bounded variables like logit-normal or probit-normal the low and
+high values are defaulted to 0 and 1 if missing.
+
+For models where you wish to have a proportional model on one of these
+transformation you can replace the standard deviation with \code{NA}
+
+To allow for more transformations, \code{lnorm()}, \code{probitNorm()} and
+\code{logitNorm()} can be combined the variance stabilizing \code{yeoJohnson()}
+transformation.
+}
+
+\subsection{Normal and t-related distributions}{
+
+For the normal and t-related distributions, we wanted to keep the
+ability to use skewed distributions additive and proportional in the
+t/cauchy-space, so these distributions are specified differently in
+comparison to the other supported distributions within \code{nlmixr2}:\tabular{lll}{
+   Distribution \tab How to Add \tab Example \cr
+   Normal (log-likelihood) \tab +dnorm() \tab cc ~ add(add.sd) + dnorm() \cr
+   T-distribution \tab +dt(df) \tab cc ~a dd(add.sd) + dt(df) \cr
+   Cauchy (t with df=1) \tab +dcauchy() \tab cc ~ add(add.sd) + dcauchy() \cr
+}
+
+
+Note that with the normal and t-related distributions \code{nlmixr2} will
+calculate \code{cwres} and \code{npde} under the normal assumption to help assess
+the goodness of the fit of the model.
+
+Also note that the \code{+dnorm()} is mostly for testing purposes and will
+slow down the estimation procedure in \code{nlmixr2}. We suggest not adding
+it (except for explicit testing). When there are multiple endpoint
+models that mix non-normal and normal distributions, the whole problem
+is shifted to a log-likelihood method for estimation in \code{nlmixr2}.
+}
+
+\subsection{Notes on additive + proportional models}{
+
+There are two different ways to specify additive and proportional
+models, which we will call \strong{combined1} and \strong{combined2}, the same way
+that Monolix calls the two distributions (to avoid between software
+differences in naming).
+
+The first, \strong{combined1}, assumes that the additive and proportional
+differences are on the standard deviation scale, or:
+
+y=f+(a+b* f^c)*err
+
+The second, \strong{combined2}, assumes that the additive and proportional
+differences are combined on a variance scale:
+
+y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err
+
+The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
+\strong{combined2} since it mirrors how adding 2 normal distributions in
+statistics will add their variances (not the standard deviations).
+However, the \strong{combined1} can describe the data possibly even better
+than \strong{combined2} so both are possible options in \code{rxode2}/\code{nlmixr2}.
+}
+
+\subsection{Autocorrelated residuals (\code{ar()})}{
+
+Adding \code{ar(cor)} to a normal residual makes successive residuals of the
+same endpoint follow a continuous-time AR(1) process:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{cp ~ add(add.sd) + ar(ar1.cor)
+}\if{html}{\out{</div>}}
+
+Here \code{ar1.cor} is the lag-one correlation and must be in \verb{[0, 1)}. The
+correlation between two residuals separated by a time gap \code{dt} is
+\code{cor^dt}, so irregular sampling is handled directly and the marginal
+(stationary) residual variance is unchanged; the first observation of
+each subject/endpoint uses the marginal distribution. \code{ar()} combines
+with \code{add()}/\code{prop()} normal residuals and uses the same \verb{| cmt}
+endpoint syntax as the other residual functions.
+
+The \code{ar()} specification is identical in \code{rxode2} and \code{nlmixr2}: the
+same model line simulates the autocorrelated residual in \code{rxode2} and
+estimates the correlation in \code{nlmixr2} (the \code{nlm}, \code{focei}/\code{foce} and
+\code{saem} families support it; \code{fo}, \code{foi}, \code{nlme} and \code{nls} do not). See
+Karlsson et al. (1995) for the continuous-time AR(1) residual model.
+}
+
+\subsection{Distributions of known likelihoods}{
+
+For residuals that are not related to normal, t-distribution or cauchy,
+often the residual specification is of the form:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{cmt ~ dbeta(alpha, beta)
+}\if{html}{\out{</div>}}
+
+Where the compartment specification is on the left handed side of the
+specification.
+
+For generalized likelihood you can specify:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ll(cmt) ~ llik specification
+}\if{html}{\out{</div>}}
+}
+
+\subsection{Ordinal likelihoods}{
+
+Finally, ordinal likelihoods/simulations can be specified in 2 ways. The
+first is:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{err ~ c(p0, p1, p2)
+}\if{html}{\out{</div>}}
+
+Here \code{err} represents the compartment and \code{p0} is the probability of
+being in a specific category:\tabular{ll}{
+   Category \tab Probability \cr
+   1 \tab p0 \cr
+   2 \tab p1 \cr
+   3 \tab p2 \cr
+   4 \tab 1-p0-p1-p2 \cr
+}
+
+
+It is up to the model to ensure that the sum of the \code{p} values are less
+than \code{1}. Additionally you can write an arbitrary number of categories
+in the ordinal model described above.
+
+It seems a little off that \code{p0} is the probability for category \code{1} and
+sometimes scores are in non-whole numbers. This can be modeled as
+follows:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{err ~ c(p0=0, p1=1, p2=2, 3)
+}\if{html}{\out{</div>}}
+
+Here the numeric categories are specified explicitly, and the
+probabilities remain the same:\tabular{ll}{
+   Category \tab Probability \cr
+   0 \tab p0 \cr
+   1 \tab p1 \cr
+   2 \tab p2 \cr
+   3 \tab 1-p0-p1-p2 \cr
+}
+
+}
+
+\subsection{General table of supported residual distributions}{
+
+In general all the that are supported are in the following table
+(available in \code{rxode2::rxResidualError})\tabular{llllll}{
+   Error model \tab Functional Form \tab Transformation \tab code \tab addProp \tab lhs \cr
+   constant \tab  \tab None \tab var ~ add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab None \tab var ~ prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab None \tab var ~ pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab log \tab var ~ lnorm(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab logit \tab var ~ logitNorm(logit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
+   additive \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab logit \tab var ~ probitNorm(probit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   additive \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab None \tab var ~ add(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab None \tab var ~ prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab log \tab var ~ lnorm(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab None \tab var ~ add(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab None \tab var ~ prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab log \tab var ~ lnorm(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   autocorrelated (constant) \tab  \tab None \tab var ~ add(add.sd) + ar(cor) \tab  \tab response variable \cr
+   autocorrelated (additive+proportional) \tab  \tab None \tab var ~ add(add.sd) + prop(prop.sd) + ar(cor) \tab  \tab response variable \cr
+   poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
+   binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
+   beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr
+   chisq \tab  \tab none \tab cmt ~ dchisq(nu) \tab  \tab compartment specification \cr
+   exponential \tab  \tab none \tab cmt ~ dexp(r) \tab  \tab compartment specification \cr
+   uniform \tab  \tab none \tab cmt ~ dunif(a, b) \tab  \tab compartment specification \cr
+   weibull \tab  \tab none \tab cmt ~ dweibull(a, b) \tab  \tab compartment specification \cr
+   gamma \tab  \tab none \tab cmt ~ dgamma(a, b) \tab  \tab compartment specification \cr
+   geometric \tab  \tab none \tab cmt ~ dgeom(a) \tab  \tab compartment specification \cr
+   negative binomial form #1 \tab  \tab none \tab cmt ~ dnbinom(n, p) \tab  \tab compartment specification \cr
+   negative binomial form #2 \tab  \tab none \tab cmt ~ dnbinomMu(size, mu) \tab  \tab compartment specification \cr
+   ordinal probability \tab  \tab none \tab cmt ~ c(p0=0, p1=1, p2=2, 3) \tab  \tab compartment specification \cr
+   log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
+}
+
+}
+
+}
+}
+\section{Note on strings in rxode2}{
+Strings are converted to double values inside of \code{rxode2}, hence you can
+refer to them as an integer corresponding to the string value or the
+string value itself. For covariates these are calculated on the fly
+based on your data and you should likely not try this, though you should
+be aware. For strings defined in the model, this is fixed and both could
+be used.
+
+For example:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- "High"
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- "Low"
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- "Med"
+  \} else \{
+    tAPGAR<- "Med"
+  \}
+}\if{html}{\out{</div>}}
+
+Could also be replaced by:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- "High"
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- "Low"
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- "Med"
+  \} else \{
+    tAPGAR<- 3
+  \}
+}\if{html}{\out{</div>}}
+
+Since \code{"Med"} is already defined
+
+If you wanted you can pre-declare what levels it has (and the order) to
+give you better control of this:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{levels(tAPGAR) <- c("Med", "Low", "High")
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) \{
+    tAPGAR <- 3
+  \} else if (APGAR == 1 || APGAR == 2 || APGAR == 3) \{
+    tAPGAR <- 2
+  \} else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) \{
+    tAPGAR <- 1
+  \} else \{
+    tAPGAR<- 1
+  \}
+}\if{html}{\out{</div>}}
+
+You can see that the number changed since the declaration change the
+numbers in each variable for \code{tAPGAR}. These \code{levels()} statements need
+to be declared before the variable occurs to ensure the numbering is
+consistent with what is declared.
+}
+
 \examples{
 \donttest{
 

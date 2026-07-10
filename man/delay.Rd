@@ -25,27 +25,14 @@ an ordinary differential equation model into a delay differential equation
 (DDE). The semantics match the \code{delay()} function of Monolix.
 }
 \details{
-Delayed states are interpolated from the solver's dense output using
-the same 8th-order Dormand-Prince interpolant as the integrator, so a
-delayed value is obtained to the full accuracy of the solution.
-
-Because this requires dense output, delay models are solved on a dense
-path.  When a model uses \code{delay()}, the default solving method
-becomes the dense AutoSwitch composite \code{"dop853+ros4"} and dense
-output is enabled automatically; \code{method = "dop853"} also works.
-The composite switches between dop853 and ros4 per segment in dense
-mode, so a delay model that is non-stiff in one region and stiff in
-another is solved efficiently in a single pass.  Stiff delay models can
-also be solved with \code{method = "ros4"} directly, whose dense
-Rosenbrock output is likewise recorded and interpolated for
-\code{delay()}.  The integrator step size is automatically capped to the
-smallest delay so that short delays remain accurate.  Methods that
-cannot record dense history raise an error.
-
-The dense-output and delay-history machinery is adapted from the
-\code{dde} package by Rich FitzJohn and Wes Hinsley (Imperial College
-of Science, Technology and Medicine), following the approach of
-Hairer, Norsett and Wanner.
+Delayed states are interpolated from the solver's dense output, so delay
+models are solved on a dense path: the default method becomes the dense
+AutoSwitch composite \code{"dop853+ros4"}, and dense methods such as \code{"dop853"}
+or \code{"ros4"} also work.  The step size is capped to the smallest delay, and
+methods that cannot record dense history raise an error.  The dense-output
+and delay-history machinery is adapted from the \code{dde} package by Rich
+FitzJohn and Wes Hinsley (Imperial College of Science, Technology and
+Medicine).
 }
 \examples{
 \donttest{

@@ -41,7 +41,7 @@ data; most NONMEM-ready datasets can be used directly.
 
 | Column | Meaning |
 |--------|---------|
-| `ID`   | Subject identifier — integer, character, or factor |
+| `ID`   | Subject identifier -- integer, character, or factor |
 
 ### Observation columns
 
@@ -122,7 +122,7 @@ Bioavailability changes affect the rate, not the duration.
 
 `DV` is the dependent variable in the observation compartment defined
 by `CMT` / `DVID`.  It may be missing (`MDV=1`) or censored
-(`CENS≠0`).
+(`CENS!=0`).
 
 ### `DVID` column
 
@@ -153,7 +153,7 @@ Output-only `EVID` values (visible when `addDosing=TRUE, subsetNonmem=FALSE`):
 | -2     | Modeled-duration infusion end (`rate=-2`) |
 | -10    | Rate-specified infusion end (`rate>0`) |
 | -20    | Duration-specified infusion end (`dur>0`) |
-| 101, 102, … | Modeled times 1, 2, … (`mtime`) |
+| 101, 102, ... | Modeled times 1, 2, ... (`mtime`) |
 
 Use `addDosing=NA` to see classic `EVID` equivalents instead.
 

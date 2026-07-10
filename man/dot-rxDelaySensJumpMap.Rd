@@ -37,22 +37,13 @@ if already computed, else it is derived).}
 list with \code{alagf} and \code{events}, or \code{NULL}.
 }
 \description{
-A dose is a state discontinuity; propagated through \code{delay(y_j, T(p))} it makes
-the delayed value jump at \code{t = t_dose + T(p)}, so the 1st-order sensitivity
-\code{S_i^p} jumps there by \verb{[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp} -- a
-Dirac the smooth \code{rxDelayD} term in \code{.rxDelaySensAugment()} misses.  Rather than
-insert runtime break events, this reproduces the jump with an ordinary modeled
-bolus on the sensitivity compartment: a dose of \verb{[y_j]} with modeled lag \code{T}
-(so it lands at \code{t_dose + T}) and modeled bioavailability \verb{-(d f_i/d delay)*dT/dp}
-(so the delivered amount is exactly \verb{[S_i]}).
-}
-\details{
-\code{.rxDelaySensJumpMap()} does the model-only (symengine) analysis: it returns
-the \code{alag()}/\code{f()} model lines and the jump map (which sensitivity compartment
-mirrors which dosed base state).  This part depends only on the model, so it is
-cached (see \code{.rxDelaySensJumpMapCached()}).  \code{.rxDelaySensJumpEvents()} is the
-cheap per-solve step that rbinds the mirroring doses onto the event table.
-\code{.rxDelaySensJump()} is the convenience wrapper doing both.
+A dose propagated through \code{delay(y_j, T(p))} makes the 1st-order sensitivity
+jump at \code{t = t_dose + T} by \verb{[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp},
+reproduced here as a modeled bolus of \verb{[y_j]} on the sensitivity compartment
+with modeled lag \code{T} and bioavailability \verb{-(d f_i/d delay)*dT/dp}.
+\code{.rxDelaySensJumpMap()} does the model-only symengine analysis (cached via
+\code{.rxDelaySensJumpMapCached()}); \code{.rxDelaySensJumpEvents()} rbinds the
+mirroring doses per solve; \code{.rxDelaySensJump()} does both.
 }
 \author{
 Matthew L. Fidler

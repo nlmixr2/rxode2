@@ -19,24 +19,18 @@ a list with \code{omegaInv}, \code{logDet}, the free-element index matrix
 \code{d2OmegaInv} / \code{d2LogDet}.
 }
 \description{
-rxode2's default random-effects parameterization for estimation is a Cholesky
-decomposition (see \code{\link[=rxSymInvCholCreate]{rxSymInvCholCreate()}}), whose parameters are Cholesky
-factors rather than interpretable variances/covariances.  To report standard
-errors on the natural variance-covariance scale -- or to build an analytic
-covariance matrix over the \code{Omega} elements -- a \emph{non-Cholesky} path is needed
-that differentiates with respect to the variance-covariance entries directly.
+A non-Cholesky \code{Omega} path that differentiates with respect to the
+variance-covariance entries directly (for reporting SEs on the natural scale
+or building an analytic covariance over the \code{Omega} elements).  Returns
+\code{Omega^{-1}}, \verb{log|Omega|}, and their first (and optionally second)
+derivatives with respect to each free lower-triangular element
+\verb{omega_\{ab\}}, via
 }
 \details{
-This returns \code{Omega^{-1}}, \verb{log|Omega|}, and their first (and optionally
-second) derivatives with respect to each free lower-triangular
-variance-covariance element \verb{omega_\{ab\}}, using the closed forms
-
 \deqn{\partial \Omega^{-1}/\partial \omega_{ab} = -\Omega^{-1} E_{ab} \Omega^{-1}}
 \deqn{\partial \log|\Omega|/\partial \omega_{ab} = \mathrm{tr}(\Omega^{-1} E_{ab})}
 
-where \eqn{E_{ab}} is the symmetric single-entry basis matrix.  These are the
-pieces a FOCEI/FOCE observed-information covariance contracts against for the
-\code{Omega} block.
+where \eqn{E_{ab}} is the symmetric single-entry basis matrix.
 }
 \author{
 Hidde van de Beek

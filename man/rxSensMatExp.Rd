@@ -19,35 +19,19 @@ rxSensMatExp(
 \item{calcSens}{A character vector of parameter names for which sensitivities should be calculated.}
 
 \item{calcSens2}{character vector (or \code{NULL}) requesting second-order
-(Hessian-path) matrix-exponential sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>__},
-where \code{p} ranges over \code{calcSens} and \code{q} over \code{calcSens2}. Every element of
-\code{calcSens2} must also appear in \code{calcSens} (its own first-order sensitivity
-compartment must already exist for the cross terms to reference). Mirrors
-\code{rxode2(calcSens2=)} for ordinary ODE models (\code{?rxode2}); unlike that path
-(which reuses the generic \code{.rxSens()}/\code{rxExpandSens2_()} machinery),
-\code{matExp()}/\code{indLin()} models cannot contain \code{d/dt()} lines, so the
-second-order sensitivity ODEs are expressed the same way as the first-order
-ones: as \code{k_from_to} micro-constant transfers into the
-\verb{rx__sens_<x>_BY_<p>_BY_<q>__} compartments. Ignored (with no compartments
-generated) for any state that is part of a \code{linCmt()} compartment -- linCmt
-sensitivities come from Stan forward-AD, not this Jacobian-based expansion.}
+sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>__} (\code{p} over \code{calcSens}, \code{q} over
+\code{calcSens2}; every \code{calcSens2} element must also be in \code{calcSens}).
+Expressed as \code{k_from_to} micro-constant transfers like the first-order
+ones.  Ignored for \code{linCmt()} states (those use Stan forward-AD).}
 
 \item{calcSens3}{character vector (or \code{NULL}) requesting third-order
-sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__}, where \code{p} ranges over
-\code{calcSens}, \code{q} over \code{calcSens2}, and \code{r} over \code{calcSens3}. Requires
-\code{calcSens2} to be supplied; every element of \code{calcSens3} must also appear
-in \code{calcSens2}. Same linCmt exclusion as \code{calcSens2}.}
+sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__} (\code{r} over \code{calcSens3}).
+Requires \code{calcSens2}; every \code{calcSens3} element must also be in \code{calcSens2}.}
 
 \item{doConst}{Replace constants with values; By default this is \code{FALSE}.}
 
-\item{env}{A pre-loaded symengine environment (as returned by
-\code{.rxLoadPrune()}) to reuse instead of reloading \code{model} from scratch.
-When \code{NULL} (the default), the environment is built internally from
-\code{model}/\code{doConst}. Passing an existing \code{env} lets callers that have
-already loaded/pruned the model (e.g. to inject matrix-exponential
-\code{d/dt()} terms or other model modifications) feed that same
-environment in, so the sensitivity expansion sees those modifications
-instead of re-deriving them from the original \code{model} text.}
+\item{env}{A pre-loaded symengine environment (from \code{.rxLoadPrune()}) to
+reuse instead of reloading \code{model}; when \code{NULL} it is built internally.}
 }
 \value{
 A character string representing the matrix exponential sensitivity-expanded model code
@@ -56,5 +40,5 @@ A character string representing the matrix exponential sensitivity-expanded mode
 Differentiate and expand a matrix exponential model with forward sensitivities
 }
 \author{
-Matthew L. Fidler & Antigravity
+Matthew L. Fidler
 }

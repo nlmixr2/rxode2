@@ -1,18 +1,13 @@
-## Event ("jump") sensitivities -- see ~/src/rxode2-event-sensitivities-plan.md
-## Phase A: build-time index map relating dosing/event compartments to the
-## first-order sensitivity compartments, plus the symbolic total-derivatives of
-## the dosing parameters (alag, F) needed by the runtime jump injection.
+## Event ("jump") sensitivities: build-time index map relating dosing/event
+## compartments to sensitivity compartments, plus the symbolic total
+## derivatives of the dosing parameters (alag/F/rate/dur) used by the runtime
+## jump injection.
 
 #' Resolve the event-sensitivity calculation mode
 #'
-#' Selects how dosing/event-parameter sensitivities are computed (plan
-#' Section 2): `"jump"` = analytic jump sensitivities, `"fd"` = legacy finite
-#' differences (the backward-compatible opt-out), `"both"` = compute both for
-#' cross-checking.  The default comes from `getOption("rxode2.eventSens")`.
-#'
-#' Note: the shipped default is `"fd"` while the jump codegen/runtime are being
-#' built; it flips to `"jump"` once Phase A-F validate (plan Section 2,
-#' "Flipping the default safely").
+#' `"jump"` = analytic jump sensitivities, `"fd"` = finite differences (the
+#' backward-compatible opt-out), `"both"` = compute both for cross-checking.
+#' The default comes from `getOption("rxode2.eventSens")`.
 #'
 #' @param mode One of `"jump"`, `"fd"`, `"both"`, or `NULL` to use the option.
 #' @return The resolved mode string.
@@ -107,7 +102,7 @@
 #' Split a third-order sensitivity state name into (state, p, q, r)
 #'
 #' Third-order sensitivity compartments are named
-#' `rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__` (Phase H, `rxExpandSens3_`).
+#' `rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__` (`rxExpandSens3_`).
 #' Anchored the same way as `.rxEventSensSplit2()`.
 #'
 #' @param sens Character vector of sensitivity compartment names.
@@ -147,8 +142,7 @@
 #' Build the event-sensitivity index map for a model
 #'
 #' Relates each dosing/event compartment to the first-order sensitivity
-#' compartments that its events must jump (per the jump tables in the plan,
-#' Section 0).  Pure model-vars bookkeeping -- no solving.
+#' compartments that its events must jump.  Pure model-vars bookkeeping.
 #'
 #' @param obj Anything `rxModelVars()` accepts (rxUi, rxode2, modelVars).
 #' @return A list with:
@@ -175,11 +169,8 @@
   .split$sensCmt <- unname(.ord[.split$sens])
   .split$stateCmt <- unname(.ord[.split$state])
   .sensParams <- unique(.split$param)
-  ## Restrict to states that actually have sensitivity compartments: the
-  ## runtime jump formula yp[nState + p*nState + cmt] requires a contiguous
-  ## block of exactly nState states starting at index 0.  Any extra normal
-  ## states (e.g. the "output" terminal in a matExp model) that have no
-  ## sensitivity counterpart must be excluded from the count.
+  ## Only states with sensitivity compartments count: the runtime jump formula
+  ## needs a contiguous block of exactly nState states starting at index 0.
   .statesWithSens <- unique(.split$state)
   ## Preserve compartment ordering from .map$stateCmt (ascending).
   .statesWithSens <- .statesWithSens[order(unname(.ord[.statesWithSens]))]
@@ -194,31 +185,15 @@
     .split2$sensCmt <- unname(.ord[.split2$sens])
     .split2$stateCmt <- unname(.ord[.split2$state])
     .map2 <- .split2[, c("state", "p", "q", "stateCmt", "sensCmt"), drop = FALSE]
-    ## Deliberately NOT re-sorted (unlike `.map` above, whose row order truly
-    ## doesn't matter downstream): `unique(.map2$p)`/`unique(.map2$q)`
-    ## (.rxEventSensCLines(), building .pIdx/.qIdx) rely on this data.frame's
-    ## natural row order -- inherited from `.mv$sens`'s true compilation
-    ## order -- to recover each parameter's ordinal position within
-    ## `calcSens`/`calcSens2` *as originally passed* (the i2/i3 loop order
-    ## `rxExpandSens2_` used to lay out the compartments). An earlier
-    ## `order(.map2$p, .map2$q, .map2$stateCmt)` sort here silently broke
-    ## that for any calcSens2 with more than one parameter (alphabetical order
-    ## coincides with the true one only by chance) -- e.g. calcSens2=c(
-    ## "trate","tlag") ended up indexed as if it were c("tlag","trate"),
-    ## writing 2nd-order jump values into the wrong compartment. Confirmed by
-    ## a nonzero-vs-FD mismatch when validating the 2nd-order infusion jump
-    ## (2026-06-30); masked in every prior test because they all used
-    ## calcSens2 == calcSens with a single parameter, where reordering is a
-    ## no-op.
+    ## Deliberately NOT re-sorted: .rxEventSensCLines() recovers each
+    ## parameter's ordinal position in calcSens/calcSens2 from
+    ## unique(.map2$p)/unique(.map2$q) first-occurrence order, which must stay
+    ## the compiled rxExpandSens2_ layout order; re-sorting writes 2nd-order
+    ## jump values into the wrong compartment.
     rownames(.map2) <- NULL
   }
-  ## Third-order sensitivity compartments (Phase H), if present.  Same
-  ## deliberately-unsorted-row-order rationale as `.map2` above -- `.pIdx`/
-  ## `.qIdx`/`.rIdx` (.rxEventSensCLines()) recover each parameter's ordinal
-  ## position within calcSens/calcSens2/calcSens3 *as passed* from
-  ## `unique(map3$p)`/`unique(map3$q)`/`unique(map3$r)`'s first-occurrence
-  ## order, which only matches the compiled `rxExpandSens3_` i2/i3/i4 layout
-  ## when this data.frame's row order is the natural (compilation) order.
+  ## Third-order compartments: same deliberately-unsorted-row-order
+  ## requirement as .map2 (.pIdx/.qIdx/.rIdx use first-occurrence order).
   .split3 <- .rxEventSensSplit3(.sens, .states)
   .split3 <- .split3[!is.na(.split3$state), , drop = FALSE]
   .map3 <- NULL
@@ -228,9 +203,8 @@
     .map3 <- .split3[, c("state", "p", "q", "r", "stateCmt", "sensCmt"), drop = FALSE]
     rownames(.map3) <- NULL
   }
-  ## event compartments: those carrying a modeled alag/F/rate/dur.  `mv$alag`
-  ## already lists the lag compartments; the analogous f/rate/dur compartments
-  ## are decoded from `stateProp` bit flags (see .rxEventSensProp).
+  ## event compartments: those carrying a modeled alag/F/rate/dur
+  ## (mv$alag plus stateProp bit flags; see .rxEventSensProp)
   .prop <- .rxEventSensProp(.mv)
   list(
     states = .statesWithSens,
@@ -340,26 +314,11 @@
   list(lagCmt = .lag, fCmt = .bit(2L), rateCmt = .bit(8L), durCmt = .bit(16L))
 }
 
-#' Total derivative of one dosing-parameter expression wrt a parameter
-#'
-#' Computes `d(g)/dp` as a *total* derivative including the state-coupling term
-#' (plan Section 0.2):
-#'   d(g)/dp = partial g/partial p + sum_l (partial g/partial x_l) * S^p_l ,
-#' where `g` is a modeled `alag`/`F`/`rate`/`dur` expression (held in the
-#' symengine env as `rx_<kind>_<cmt>_`), `x_l` are the physical states, and
-#' `S^p_l = rx__sens_<x_l>_BY_<p>__` is the first-order sensitivity (a symengine
-#' symbol).  For state-independent dosing the coupling term drops out and the
-#' result is the plain partial.
-#'
 #' Free symbols of a dosing expression in symengine (SE-mangled) names
 #'
-#' The sensitivity parameters (`map$sensParams`) are the SE-mangled names taken
-#' from the `rx__sens_<state>_BY_<param>__` compartment names, e.g. `ETA_3_`,
-#' `THETA_4_`.  `all.vars(parse(rxFromSE(sym)))` is the wrong comparison set: it
-#' returns the *R-syntax* names, so an indexed parameter `ETA[3]` collapses to
-#' `"ETA"` and never matches `ETA_3_` -- silently dropping the derivative (the
-#' FOCEi inner model uses exactly this `ETA[n]`/`THETA[n]` notation).  Use
-#' symengine's own `free_symbols`, which returns the mangled names directly.
+#' `map$sensParams` are SE-mangled names (e.g. `ETA_3_`); `all.vars()` of the
+#' R-syntax text collapses an indexed `ETA[3]` to `"ETA"` and never matches,
+#' silently dropping the derivative -- use symengine's `free_symbols` directly.
 #'
 #' @param sym symengine expression (or numeric constant).
 #' @return character vector of free-symbol names (empty for constants).
@@ -371,6 +330,12 @@
     error = function(e) character(0))
 }
 
+#' Total derivative of one dosing-parameter expression wrt a parameter
+#'
+#' `d(g)/dp = partial g/partial p + sum_l (partial g/partial x_l) * S^p_l`,
+#' where `g` is a modeled alag/F/rate/dur expression (`rx_<kind>_<cmt>_` in the
+#' symengine env) and `S^p_l = rx__sens_<x_l>_BY_<p>__`.
+#'
 #' @param model symengine model environment (e.g. from `.rxLoadPrune()`).
 #' @param sym symengine expression for the dosing parameter `g`.
 #' @param param Parameter name `p` to differentiate wrt.
@@ -378,13 +343,9 @@
 #' @return `rxFromSE` expression text for `d(g)/dp` (the string `"0"` when zero).
 #' @noRd
 .rxEventSensDExpr <- function(model, sym, param, states) {
-  ## Free symbols of the dosing expression: a variable that does not appear in
-  ## `sym` contributes a zero derivative, so guarding on it both avoids calling
-  ## symengine::D() on constants (which errors) and skips trivial terms.
+  ## guard on free symbols: skips zero terms and avoids D() on constants (errors)
   .vars <- .rxEventSensFreeSyms(sym)
-  ## partial wrt p.  Assign each symengine result to a variable *before* handing
-  ## it to rxFromSE: rxFromSE captures its argument by NSE, so a nested
-  ## symengine::D() call would be mis-captured (see R/dde.R).
+  ## assign symengine results before rxFromSE (NSE capture; see R/dde.R)
   .tot <- NULL
   if (param %in% .vars) {
     .tot <- symengine::D(sym, symengine::S(param))
@@ -432,16 +393,9 @@
 
 #' Second-order total derivative of a dosing-parameter expression
 #'
-#' Computes `d^2(g)/dp/dq` as a *total* derivative.  Starting from the
-#' first-order total derivative `dg_p = d(g)/dp` (which references the physical
-#' states `x_l` and the first-order sensitivities `S^p_l =
-#' rx__sens_<x_l>_BY_<p>__`), the total `d/dq` adds three groups of terms:
-#'   partial g/partial p/partial q                          (direct)
-#' + sum_l (partial dg_p / partial x_l)   * S^q_l            (state coupling)
-#' + sum_l (partial dg_p / partial S^p_l) * S^{pq}_l         (sens coupling)
-#' where `S^q_l = rx__sens_<x_l>_BY_<q>__` and `S^{pq}_l =
-#' rx__sens_<x_l>_BY_<p>_BY_<q>__`.  For a state-independent dosing expression
-#' (e.g. `F = expit(tf + eta_f)`) only the direct second partial survives.
+#' Computes `d^2(g)/dp/dq` as a total derivative: the direct partial plus the
+#' state-coupling (`* S^q_l`) and first-order-sensitivity-coupling
+#' (`* S^{pq}_l`) terms.
 #'
 #' @param sym symengine expression for the dosing parameter `g`.
 #' @param p,q Parameter names to differentiate wrt.
@@ -466,8 +420,7 @@
 .rxEventSensD2Sym <- function(sym, p, q, states) {
   .dgp <- .rxEventSensDSym(sym, p, states)
   if (is.null(.dgp)) return(NULL)
-  ## SE-mangled free symbols (see .rxEventSensFreeSyms): indexed params such as
-  ## `ETA[3]` collapse to `"ETA"` under all.vars and would never match `q`.
+  ## SE-mangled free symbols (see .rxEventSensFreeSyms)
   .vars <- .rxEventSensFreeSyms(.dgp)
   .tot <- NULL
   ## direct partial wrt q
@@ -498,20 +451,10 @@
 
 #' Third-order total derivative of a dosing-parameter expression
 #'
-#' Computes `d^3(g)/dp/dq/dr` as a *total* derivative, one level deeper than
-#' `.rxEventSensD2Sym()`.  Starting from the second-order total derivative
-#' `dg_pq = d^2(g)/dp/dq` (which may reference physical states `x_l`, and the
-#' sensitivity symbols `S^p_l`, `S^q_l`, `S^{pq}_l`), the total `d/dr` adds
-#' four groups of terms mirroring `.rxEventSensD2Sym()`'s own construction:
-#'   partial(dg_pq)/partial r                                (direct)
-#' + sum_l (partial dg_pq / partial x_l)      * S^r_l         (state coupling)
-#' + sum_l (partial dg_pq / partial S^p_l)    * S^{pr}_l      (p-chain)
-#' + sum_l (partial dg_pq / partial S^q_l)    * S^{qr}_l      (q-chain)
-#' + sum_l (partial dg_pq / partial S^{pq}_l) * S^{pqr}_l     (pq-chain)
-#' `S^{pr}_l`/`S^{qr}_l` are valid existing second-order compartments because
-#' `calcSens3 subset calcSens2 subset calcSens` (so `r` is also a valid
-#' calcSens2-slot parameter and `p`/`q` are also valid calcSens-slot
-#' parameters -- see the plan's naming-convention note).
+#' One level deeper than `.rxEventSensD2Sym()`: the direct partial plus the
+#' state-coupling and the p-, q-, and pq-chain sensitivity couplings.
+#' `S^{pr}_l`/`S^{qr}_l` are valid second-order compartments because
+#' `calcSens3 subset calcSens2 subset calcSens`.
 #'
 #' @param sym symengine expression for the dosing parameter `g`.
 #' @param p,q,r Parameter names to differentiate wrt (p in calcSens, q in
@@ -614,9 +557,8 @@
     }
     do.call(rbind, .rows)
   }
-  ## Second-order total-derivative tables (the Hessian jump path).  Built only
-  ## when the model carries 2nd-order sensitivity compartments (map2).  Indexed
-  ## by (cmt, p, q): p over the first-order params, q over the calcSens2 params.
+  ## 2nd-order tables (Hessian jump path), indexed (cmt, p, q); built only
+  ## when map2 is present
   .build2 <- function(cmts, kind) {
     if (is.null(map$map2)) {
       return(data.frame(cmt = integer(0), cmtName = character(0),
@@ -649,10 +591,7 @@
     }
     do.call(rbind, .rows)
   }
-  ## Third-order total-derivative table (Phase H1): additive-bolus `F` row
-  ## only, per the plan's H1 scope (mirrors Phase F's own initial scoping).
-  ## Indexed by (cmt, p, q, r): p over calcSens, q over calcSens2, r over
-  ## calcSens3 params.
+  ## 3rd-order table: additive-bolus `F` row only, indexed (cmt, p, q, r)
   .build3 <- function(cmts, kind) {
     if (is.null(map$map3)) {
       return(data.frame(cmt = integer(0), cmtName = character(0),
@@ -688,14 +627,9 @@
     }
     do.call(rbind, .rows)
   }
-  ## d(F)/dq table (Phase H1's dtau/lag row, "H1-dtau" scope): the SAME total
-  ## derivative as the first-order `f` table above, but evaluated at the
-  ## calcSens2 parameters instead of calcSens -- needed for the 2nd-order
-  ## dtau row's `d(delta)/dq = amt * dF_q[cmt]` term (Section 0's product-rule
-  ## expansion of `d/dq[-J[k][c]*delta*dLag_p[c]]`).  Indexed by (cmt, q) with
-  ## q already in calcSens2's index space (so the C buffer can be looked up
-  ## with the SAME `qIdx` used for `d2Lag`/`d2F`, with no calcSens/calcSens2
-  ## index-space mismatch to resolve at runtime).
+  ## d(F)/dq table: the first-order total derivative evaluated at the
+  ## calcSens2 parameters, indexed (cmt, q) in calcSens2's own index space so
+  ## the C buffer shares the same qIdx as d2Lag/d2F (no runtime remap)
   .buildQ <- function(cmts, kind, qParams) {
     .rows <- list()
     for (.c in cmts) {
@@ -719,19 +653,10 @@
     }
     do.call(rbind, .rows)
   }
-  ## d(J[k][c])/dq table (Phase H1's dtau/lag row): the total derivative of
-  ## the PHYSICAL Jacobian column (not a dosing-parameter expression) wrt a
-  ## calcSens2 parameter -- the piece the plan previously flagged as
-  ## "genuinely hard, not obtainable via nested FD".  Reachable directly:
-  ## the model's own RHS `rx__d_dt_<k>__` is available symbolically in the
-  ## loaded symengine env for EVERY model type (not just matExp -- confirmed
-  ## directly, `d/dt()` lines are parsed into exactly this symbol), so
-  ## `J[k][c] = d(rx__d_dt_<k>__)/dx_c` (a plain partial) can be computed once
-  ## and then differentiated totally wrt q with the SAME `.rxEventSensDSym()`
-  ## total-derivative operator used throughout this file (it only needs a
-  ## symengine expression, not a specific "kind" of model quantity). Indexed
-  ## by (cmt, k, q): cmt is the lag-carrying (event) compartment `c`, `k` is
-  ## the 0-based physical-state row, `q` is a calcSens2 parameter.
+  ## d(J[k][c])/dq table: the total derivative of the physical Jacobian column
+  ## wrt a calcSens2 parameter; J[k][c] = d(rx__d_dt_<k>__)/dx_c is available
+  ## symbolically for every model type.  Indexed (cmt, k, q): cmt = the
+  ## lag-carrying compartment, k = 0-based physical-state row.
   .buildJacQ <- function(cmts) {
     if (is.null(map$map2)) {
       return(data.frame(cmt = integer(0), k = integer(0), q = character(0),
@@ -777,60 +702,32 @@
        f3 = .build3(map$fCmt, "f"),
        fq = .buildQ(map$fCmt, "f", .q2All),
        lagJacQ = .buildJacQ(map$lagCmt),
-       ## d(alag)/dq (Phase H1's dtau/lag row SAFETY GUARD): whenever q ALSO
-       ## drives the SAME event's alag (dLag_q[c] != 0), the "differentiate
-       ## the existing 1st-order dtau row by the product rule" approach is
-       ## PROVEN INCOMPLETE by FD -- it misses a genuine Leibniz/moving-
-       ## -boundary term (`dS^p_k/dt * dLag_q[c]`, from S^p_k's pre-jump value
-       ## itself being read at a q-shifted time), the SAME class of problem
-       ## that blocked the infusion 2nd-order attempt (see the plan's Phase F
-       ## note). This table lets the runtime injection SKIP (leave 0) any
-       ## (cmt, q) pair where that term would be needed, rather than silently
-       ## injecting a wrong nonzero value.
+       ## d(alag)/dq safety guard: when q also drives the same event's alag,
+       ## the product-rule 2nd-order dtau row misses a Leibniz/moving-boundary
+       ## term (dS^p_k/dt * dLag_q[c]); this table lets the runtime skip those
+       ## (cmt, q) pairs rather than inject a wrong nonzero value.
        lagQ = .buildQ(map$lagCmt, "lag", .q2All),
-       ## d(dur)/dq (modeled-DUR continuous-forcing 2nd-order piece): the
-       ## quotient-rule 2nd derivative of rate=F*amt/dur needs d(dur)/dq at
-       ## q's position in calcSens2's OWN index space -- reusing the same
-       ## "evaluate directly at calcSens2 params" trick as "fq"/"lagQ" avoids
-       ## needing a calcSens2-position -> calcSens-position cross-index map.
+       ## d(dur)/dq for the quotient-rule 2nd derivative of rate=F*amt/dur,
+       ## in calcSens2's own index space (like fq/lagQ)
        durQ = .buildQ(map$durCmt, "dur", .q2All))
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
 #'
-#' The generated `dLag`/`dF` model functions mirror `Lag`/`F`: codegen supplies
-#' the per-model preamble that declares and populates every state, sensitivity
-#' state, and parameter as a local.  This helper produces just the body
-#' assignment lines, which write each dosing-parameter total derivative into a
-#' flat per-subject scratch buffer indexed `(cmt0 * nSensParam + paramIdx)` where
-#' `cmt0` is the 0-based compartment (matching how `Lag` indexes `_alag[_cmt]`)
-#' and `paramIdx` is the 0-based position in `map$sensParams`.
-#'
-#' The dLag/dF/dRate/dDur body lines are inserted into the generated C
-#' *verbatim* (codegen does not re-run its `doDot()`/indexed-parameter pass over
-#' them).  States, sensitivity states, and plain parameter names are declared in
-#' the preamble under their own names, so they pass through unchanged; the one
-#' rewrite needed is for nlmixr2's indexed `THETA[n]`/`ETA[n]` parameters, which
-#' the preamble declares as the locals `_THETA_n_`/`_ETA_n_` (populated from
-#' `_PP[]`).  `.rxEventSensCExpr()` applies exactly that mapping.
+#' Produces the body assignment lines writing each dosing-parameter total
+#' derivative into a flat per-subject scratch buffer indexed
+#' `(cmt0 * nSensParam + paramIdx)`.  The lines are inserted into the generated
+#' C verbatim; the only rewrite needed is nlmixr2's indexed
+#' `THETA[n]`/`ETA[n]` parameters, which `.rxEventSensCExpr()` maps to the
+#' codegen locals `_THETA_n_`/`_ETA_n_`.
 #'
 #' @param info An `.rxEventSensInfo()` result (mode + map + derivs).
 #' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
-#'
-#' Rewrite indexed `THETA[n]`/`ETA[n]` references in a dosing-derivative
-#' expression to the codegen local names `_THETA_n_`/`_ETA_n_`.  `THETA` is
-#' rewritten before `ETA` (otherwise the `ETA[` regex would match the `ETA[`
-#' inside `THETA[`); after the `THETA[n]` -> `_THETA_n_` step no bracket remains
-#' for the `ETA` pass to catch.  Plain parameter names are left untouched.
 #' @noRd
 .rxEventSensCExpr <- function(expr, plainParams = character(0)) {
-  # A `THETA[n]`/`ETA[n]` in the derivative expression maps to the codegen local
-  # `_THETA_n_`/`_ETA_n_` (populated from `_PP[]`) for nlmixr2's indexed
-  # parameters.  But a model may instead declare the parameter under its own
-  # plain name `THETA_n_`/`ETA_n_` (e.g. nlmixr2est's augmented outer-gradient
-  # model), which the preamble declares verbatim -- then the rewrite must use the
-  # plain name (no leading `_`), or the emitted `_THETA_n_` is undeclared.
+  # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
+  # model declares the plain name THETA_n_ itself (then use it, no leading _).
   .rw <- function(expr, kind) {
     .toks <- unique(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))[[1]])
     for (.tok in .toks) {
@@ -856,8 +753,7 @@
     .idx <- .cmt0 * .np + .pIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## Second-order (Hessian) buffer: indexed (cmt0*(np*np2) + pIdx*np2 + qIdx),
-  ## p over the first-order params, q over the calcSens2 params.
+  ## 2nd-order buffer: (cmt0*(np*np2) + pIdx*np2 + qIdx)
   .q2 <- if (is.null(info$map$map2)) character(0) else unique(info$map$map2$q)
   .np2 <- length(.q2)
   .qIdx <- stats::setNames(seq_along(.q2) - 1L, .q2)
@@ -867,9 +763,8 @@
     .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## Third-order (Phase H1) buffer: indexed
-  ## (cmt0*(np*np2*np3) + pIdx*(np2*np3) + qIdx*np3 + rIdx), r over the
-  ## calcSens3 params.  F row only (H1 scope).
+  ## 3rd-order buffer: (cmt0*(np*np2*np3) + pIdx*(np2*np3) + qIdx*np3 + rIdx);
+  ## F row only
   .r3 <- if (is.null(info$map$map3)) character(0) else unique(info$map$map3$r)
   .np3 <- length(.r3)
   .rIdx <- stats::setNames(seq_along(.r3) - 1L, .r3)
@@ -880,19 +775,15 @@
       .qIdx[tab$q] * .np3 + .rIdx[tab$r]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## d(F)/dq buffer (H1-dtau scope): indexed (cmt0*np2 + qIdx), q already in
-  ## calcSens2's own index space (no cross-index remapping needed at runtime).
+  ## d(F)/dq buffer: (cmt0*np2 + qIdx), q in calcSens2's own index space
   .linesQ <- function(tab, buf) {
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * .np2 + .qIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## d(J[k][c])/dq buffer (H1-dtau scope): indexed
-  ## (cmt0*(nState*np2) + k*np2 + qIdx) -- cmt0 is the lag-carrying (event)
-  ## compartment, k is the 0-based physical-state row, q in calcSens2's
-  ## index space.  Buffer sized nState*nState*np2 (always allocated for every
-  ## possible cmt slot, same convention as the other dLag/d2Lag buffers).
+  ## d(J[k][c])/dq buffer: (cmt0*(nState*np2) + k*np2 + qIdx), sized
+  ## nState*nState*np2 (every possible cmt slot, like the other buffers)
   .ns <- info$map$nState
   .linesJacQ <- function(tab, buf) {
     if (is.null(tab) || nrow(tab) == 0L) return(character(0))
@@ -925,11 +816,9 @@
 
 #' dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ C body lines for codegen
 #'
-#' Returns `c(dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate, d2Dur, d3F, dFQ,
-#' dLagJac, dLagQ, dDurQ)` body lines (empty strings when none). Passed as
-#' arguments to the codegen `.Call` so the lines reach codegen in the same
-#' package instance (robust under `pkgload::load_all`, where a module-global
-#' channel could bind the setter and codegen to different rxode2 C instances).
+#' Returns the 13 body-line strings (empty when none), passed as `.Call`
+#' arguments so the lines reach codegen in the same package instance (robust
+#' under `pkgload::load_all`).
 #'
 #' @param info An `.rxEventSensInfo()` result, or `NULL`.
 #' @return character(13): the dLag, dF, dRate, dDur, d2F, d2Lag, d2Rate,
@@ -945,12 +834,10 @@
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?
 #'
-#' matExp()/indLin() models have no functional `dydt()` (the primal system is
-#' solved by matrix-exponential propagation, not RHS evaluation), so
-#' `handle_evid`'s usual central-difference-of-`dydt` Jacobian column is
-#' always zero for them.  `rxSensMatExp()` emits explicit `df(x)/dy(y)` lines
-#' from its already-known Jacobian so `calc_jac` is real for these models;
-#' this detects when the runtime should read that instead.
+#' matExp()/indLin() models have no functional `dydt()`, so `handle_evid`'s
+#' central-difference Jacobian column is always zero for them;
+#' `rxSensMatExp()` emits explicit `df()/dy()` lines and the runtime should
+#' read `calc_jac` instead.
 #'
 #' @param object Anything `rxModelVars()` accepts.
 #' @return `TRUE`/`FALSE`.
@@ -992,13 +879,10 @@
 #' Point the rxode2 event-sensitivity globals at a jump-sensitivity model
 #'
 #' For downstream packages (e.g. nlmixr2est's FOCEi) that solve a sensitivity
-#' model through a direct C++ `ind_solve()` loop -- bypassing
-#' `rxSolve()`/`.rxSetEventSensDims()` -- this sets rxode2's event ("jump")
-#' sensitivity function pointers (dLag/dF/dRate/dDur/d2F/dydt/DUR) and the
-#' runtime dims to `model` and turns the jumps on.  The `handle_evid` jump
-#' blocks are bounds-guarded by the per-solve compartment count, so any smaller
-#' model solved afterwards (no sensitivity compartments, e.g. the FOCEi pred
-#' model) skips the injection safely without resetting these globals.  Pair with
+#' model through a direct C++ `ind_solve()` loop, bypassing `rxSolve()`: sets
+#' rxode2's event ("jump") sensitivity function pointers and runtime dims to
+#' `model` and turns the jumps on.  The jump blocks are bounds-guarded, so
+#' smaller models solved afterwards skip the injection safely.  Pair with
 #' `rxEventSensDeactivate()` after the run.
 #'
 #' @param model A built jump-sensitivity model (carrying `eventSensInfo`).
@@ -1035,13 +919,10 @@ rxEventSensDeactivate <- function() {
   invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
 }
 
-#' Assemble the event-sensitivity (Phase A) information for a built model
+#' Assemble the event-sensitivity information for a built model
 #'
-#' Combines the resolved mode, the index map, and the symbolic dosing-parameter
-#' total-derivative tables.  Consumed downstream by the jump codegen (A1b) and
-#' the runtime injection (A2).  Returns `NULL` (cheaply) for `mode = "fd"` or for
-#' models without first-order sensitivities, so attaching it is a no-op in the
-#' legacy path.
+#' Combines the resolved mode, the index map, and the symbolic total-derivative
+#' tables; `NULL` for `mode = "fd"` or models without first-order sensitivities.
 #'
 #' @param obj A built model (rxUi, rxode2, modelVars).
 #' @param mode Resolved mode from `.rxEventSensMode()`.

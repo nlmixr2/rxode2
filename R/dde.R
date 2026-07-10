@@ -1,18 +1,12 @@
-## Delay differential equation (DDE) support helpers for forward sensitivities.
-##
-## Forward sensitivities of a model containing delay(state, T) require the
-## "variational" delayed term  d f_i / d[delay(y_j, T)] * delay(S_j, T)  added to
-## each sensitivity ODE (see ~/src/rxode2-dde-sensitivity-plan.md).  These helpers
-## catalog the delayed terms in a model and resolve whether a delay duration
-## depends on the parameters sensitivities are taken with respect to.
+## Delay differential equation (DDE) helpers for forward sensitivities: catalog
+## the delay(state, T) terms and splice the variational delayed term
+## d f_i / d[delay(y_j, T)] * delay(S_j, T) into each sensitivity ODE.
 
 #' Catalog the delay(state, T) terms in a model
 #'
-#' Walks the normalized-model AST and returns one row per distinct delayed term
-#' (state argument + delay-duration expression text), with a surrogate symbol
-#' name used when generating sensitivities.  The surrogate lets symengine treat a
-#' delayed value as an independent variable so the delayed Jacobian
-#' d f / d(delay(state, T)) can be differentiated normally.
+#' Returns one row per distinct delayed term with a surrogate symbol name so
+#' symengine can treat the delayed value as an independent variable when
+#' differentiating.
 #'
 #' @param model anything `rxNorm()` accepts (rxode2 model, ui, model vars).
 #' @return `NULL` when the model has no delay() terms, otherwise a data.frame
@@ -50,11 +44,9 @@
 
 #' Base past(state, tau) <- expr history lines from a symengine env
 #'
-#' Reads the per-state history RHS/tau text stored by the `.rxToSE` assignment
-#' interception (rx__pastRhs_<state>__ / rx__pastTau_<state>__) and rebuilds the
-#' base `past(state,tau)=expr` line(s).  Used by gradient-free estimators (SAEM)
-#' whose symengine env is built without sensitivities (no `.rxDelaySensAugment`),
-#' so the history must be re-injected into the model text.
+#' Rebuilds the base `past(state,tau)=expr` line(s) from the stored
+#' rx__pastRhs_<state>__ / rx__pastTau_<state>__ text; used by gradient-free
+#' estimators (SAEM) whose symengine env is built without sensitivities.
 #'
 #' @param model a symengine environment (as from `.loadSymengine`/`rxS`).
 #' @return character vector of past() lines, or NULL if none.
@@ -68,8 +60,7 @@
     if (is.null(.rhsTxt)) next
     .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
                           ifnotfound = list(NULL))[[1L]]
-    ## resolve through the env so the injected line references root parameters,
-    ## not intermediate lhs that may be dead-code eliminated from the model
+    ## resolve through the env so the injected line references root parameters
     .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
                       error = function(e) NULL)
     .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
@@ -106,11 +97,9 @@
 
 #' Validate past(state, tau) <- expr non-constant-history lines
 #'
-#' The history state must be a delayed ODE state, the duration must match one of
-#' that state's delay(state, tau) terms, and the history expression (a function
-#' of t and parameters) may not reference an ODE state -- past() history is
-#' evaluated before t0 where states are unavailable.  Machine-generated
-#' sensitivity histories (rx__sens_*) are trusted and skipped.
+#' The state must be a delayed ODE state, the duration must match one of its
+#' delay() terms, and the history expression may not reference an ODE state;
+#' machine-generated sensitivity histories (rx__sens_*) are skipped.
 #'
 #' @param model anything `rxNorm()` accepts.
 #' @return invisibly NULL; errors on an invalid past() line.
@@ -202,10 +191,8 @@
 
 #' Root symbols an expression depends on, resolving through a symengine env
 #'
-#' Env-based analogue of `.rxResolveRootVars()` used inside `.rxSens()`, where
-#' only the loaded symengine environment (not the model text) is available.
-#' Bindings are read with `get0(envir=)` (a bare `get(x, env)` is intercepted by
-#' symengine's masked functions here).
+#' Env-based analogue of `.rxResolveRootVars()` used inside `.rxSens()`.
+#' Bindings are read with `get0(envir=)` (bare `get()` is masked by symengine).
 #'
 #' @param exprText expression text (e.g. a delay duration).
 #' @param model symengine environment.
@@ -239,20 +226,16 @@
 
 #' Validate that delay durations do not depend on a state (env)
 #'
-#' Used inside `.rxSens()` (which only has the loaded symengine environment).
-#' Parameter/eta-dependent delay durations ARE supported (the variational term
-#' gains a delayed-derivative correction).  A delay that depends on a *state*,
-#' however, would require the state's own sensitivity inside the duration and is
-#' rejected.
+#' Parameter/eta-dependent delay durations are supported; a duration depending
+#' on a *state* would need the state's own sensitivity inside the duration and
+#' is rejected.  Used inside `.rxSens()`.
 #'
 #' @param model symengine environment from the model loader.
 #' @return invisibly `TRUE`; stops with an informative error otherwise.
 #' @noRd
 .rxDelayValidateTauSE <- function(model) {
   .states <- rxStateOde(model)
-  ## Walk each RHS as rxFromSE text (base-R `[[` on language objects is safe;
-  ## symengine intercepts VecBasic `[[` before the sensitivity loop warms up
-  ## its method dispatch).
+  ## walk each RHS as rxFromSE text (symengine intercepts VecBasic `[[`)
   for (.si in .states) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) next
@@ -280,12 +263,10 @@
 
 #' Augment forward-sensitivity equations with the delayed (variational) terms
 #'
-#' For a model with `delay(y_j, T)` terms, each forward-sensitivity ODE gains
-#' `+ (d f_i / d[delay(y_j, T)]) * delay(rx__sens_<y_j>_BY_<p>__, T)`.  The
-#' delayed Jacobian `d f_i / d[delay(y_j, T)]` is obtained by substituting the
-#' delay subexpression with a fresh symbol in symengine and differentiating; the
-#' delayed sensitivity is `delay()` applied to the sensitivity state, which reuses
-#' the existing DDE dense-history machinery once the augmented model is parsed.
+#' Each forward-sensitivity ODE gains
+#' `+ (d f_i / d[delay(y_j, T)]) * delay(rx__sens_<y_j>_BY_<p>__, T)`; the
+#' delayed Jacobian comes from substituting the delay subexpression with a
+#' fresh symbol and differentiating.
 #'
 #' @param model symengine environment from `.rxLoadPrune()` (holds the original
 #'   ODE RHS as `rx__d_dt_<state>__`).
@@ -307,9 +288,8 @@
     .out <- list()
     for (.k in seq_along(.fns)) {
       .fn <- .fns[[.k]]
-      ## Identify delay() function symbols and pull out the state / duration via
-      ## the rxFromSE text -- symengine intercepts as.character() and VecBasic
-      ## `[[` inside this pipeline, so avoid get_args() here.
+      ## identify delay() symbols via rxFromSE text (as.character()/get_args()
+      ## are intercepted here)
       .fnTxt <- rxFromSE(.fn)
       if (!grepl("^delay\\(", .fnTxt)) next
       .call <- parse(text = .fnTxt)[[1L]]
@@ -322,23 +302,16 @@
       ## restore the substituted symbol back to the delay() subexpression
       .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
                      .djTxt, fixed = TRUE)
-      ## Parameter-dependent delay: precompute d tau / d p for every sensitivity
-      ## parameter here (all symengine work is done in this lapply, where S/subs/D
-      ## are reliable; the splice below is pure string assembly).  tau is resolved
-      ## through the model definitions first so intermediate assignments are
-      ## differentiated correctly.
+      ## param-dependent delay: precompute d tau/d p here (symengine work stays
+      ## in this lapply; the splice below is pure string assembly)
       .dtauByP <- stats::setNames(rep("0", length(params)), params)
-      ## Build the duration expression by evaluating its text in the symengine
-      ## env (like .rxJacobian) -- this resolves intermediate definitions and
-      ## avoids symengine::S() on a function expression, which is intercepted in
-      ## this context.
+      ## eval the duration text in the env to resolve intermediates (S() on a
+      ## function expression is intercepted here)
       .tauRes <- tryCatch(eval(parse(text = .tau), envir = model),
                           error = function(e) NULL)
       if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
         for (.pp in params) {
-          ## Assign each symengine result to its own variable before rxFromSE:
-          ## rxFromSE captures its argument (NSE), so a nested symengine::D()
-          ## call would be parsed literally (the `::` is rejected).
+          ## assign before rxFromSE, which captures its argument (NSE)
           .psym <- symengine::S(.pp)
           .dD <- tryCatch(symengine::D(.tauRes, .psym), error = function(e) NULL)
           if (!is.null(.dD)) .dtauByP[.pp] <- rxFromSE(.dD)
@@ -350,13 +323,9 @@
     .out
   })
   names(.delayJac) <- .states
-  ## Non-constant delay pre-history: past(state, tau) <- expr.  The symengine
-  ## assignment interception stored the history RHS (rx__past_<state>__) and tau
-  ## text (rx__pastTau_<state>__) and dropped the line so it never entered
-  ## differentiation.  Re-add the base past() line to the augmented model (its
-  ## d/dt still references delay(state,tau)), and emit the per-sensitivity-
-  ## compartment history past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p) so
-  ## the delayed forward sensitivity uses the correct pre-history.
+  ## Non-constant pre-history: re-add the base past() line and emit the
+  ## per-sensitivity-compartment history
+  ## past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p).
   .baseLines <- character(0)   # base state history (also needed by gradient-free SAEM)
   .pastLines <- character(0)   # base + per-sensitivity-compartment histories
   for (.si in .states) {
@@ -365,18 +334,15 @@
     if (is.null(.rhsTxt)) next
     .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
                           ifnotfound = list(NULL))[[1L]]
-    ## resolve the history through the symengine env so the injected line is
-    ## self-contained (intermediate lhs used ONLY by past() -- dropped from
-    ## differentiation -- are dead-code eliminated from the assembled model, so
-    ## reference the root parameters, e.g. a*exp(b*t) -> exp(ta)*exp(tb*t))
+    ## resolve through the env so the line references root parameters
+    ## (past()-only intermediates are dead-code eliminated from the model)
     .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
                       error = function(e) NULL)
     .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
     .base <- sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut)
     .baseLines <- c(.baseLines, .base)
     .pastLines <- c(.pastLines, .base)
-    ## differentiate the history wrt each sensitivity parameter for the
-    ## sens-compartment pre-history
+    ## sens-compartment pre-history: d(history)/d(param)
     if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
     for (.p in params) {
       .dp <- tryCatch(symengine::D(.rhsB, symengine::S(.p)), error = function(e) NULL)
@@ -388,8 +354,7 @@
                               .si, .p, .tauTxt, .dpTxt))
     }
   }
-  ## append (the 1st- and 2nd-order augments both contribute; unique dedups the
-  ## shared base past() line -- order-independent)
+  ## append; unique dedups the base past() line shared by the 1st/2nd-order augments
   .prevBase <- base::mget("..pastBaseLines", envir = model, ifnotfound = list(NULL))[[1L]]
   .baseLines <- unique(c(.prevBase, .baseLines))
   assign("..pastBaseLines", if (length(.baseLines)) .baseLines else NULL, envir = model)
@@ -400,13 +365,10 @@
     assign("..sensDelayAlagF", NULL, envir = model)
     return(sensVec)
   }
-  ## Dose-induced breaking-point jump (parameter-dependent delay only): reproduce
-  ## the jump [S_i]=-(djac)*[y_j]*dtau/dp with a modeled bolus on the sensitivity
-  ## compartment -- modeled lag `tau` (lands at t_dose+tau) and modeled
-  ## bioavailability -(djac)*dtau/dp (delivered amount = the jump).  These alag()/
-  ## f() lines are spliced into the model by rxGetModel(); rxSolve() adds the
-  ## mirroring sensitivity-compartment doses.  Harmless (no-op) unless those doses
-  ## are present, so safe to always emit for a param-dependent delay.
+  ## Dose-induced breaking-point jump (param-dependent delay only): reproduce
+  ## [S_i]=-(djac)*[y_j]*dtau/dp with a modeled bolus on the sensitivity
+  ## compartment (alag=tau, f=-(djac)*dtau/dp); a no-op unless rxSolve() adds
+  ## the mirroring doses.
   .alagf <- character(0); .seenCmt <- character(0)
   for (.si in .states) {
     .dj <- .delayJac[[.si]]
@@ -437,10 +399,8 @@
       ## delay(S_j, tau): the value-sensitivity of the delayed state.
       .term <- paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p,
                       "__,", z$tau, ")")
-      ## parameter-dependent delay: d/dp[y_j(t-tau(p))] also has the term
-      ## -ydot_j(t-tau)*dtau/dp.  ydot_j(t-tau) = rxDelayD(y_j, tau) is the exact
-      ## time-derivative of the delayed state (analytic derivative of the dense
-      ## history interpolant); dtau/dp was differentiated symbolically above.
+      ## param-dependent delay adds -ydot_j(t-tau)*dtau/dp, with
+      ## ydot_j(t-tau) = rxDelayD(y_j, tau)
       .dtau <- z$dtauByP[[.p]]
       if (!is.null(.dtau) && !identical(.dtau, "0")) {
         .term <- paste0(.term, "-(", z$djac, ")*rxDelayD(", z$stateJ, ",", z$tau,
@@ -461,21 +421,13 @@
 
 #' Dose-induced breaking-point jump for forward delay sensitivities
 #'
-#' A dose is a state discontinuity; propagated through `delay(y_j, T(p))` it makes
-#' the delayed value jump at `t = t_dose + T(p)`, so the 1st-order sensitivity
-#' `S_i^p` jumps there by `[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp` -- a
-#' Dirac the smooth `rxDelayD` term in `.rxDelaySensAugment()` misses.  Rather than
-#' insert runtime break events, this reproduces the jump with an ordinary modeled
-#' bolus on the sensitivity compartment: a dose of `[y_j]` with modeled lag `T`
-#' (so it lands at `t_dose + T`) and modeled bioavailability `-(d f_i/d delay)*dT/dp`
-#' (so the delivered amount is exactly `[S_i]`).
-#'
-#' `.rxDelaySensJumpMap()` does the model-only (symengine) analysis: it returns
-#' the `alag()`/`f()` model lines and the jump map (which sensitivity compartment
-#' mirrors which dosed base state).  This part depends only on the model, so it is
-#' cached (see `.rxDelaySensJumpMapCached()`).  `.rxDelaySensJumpEvents()` is the
-#' cheap per-solve step that rbinds the mirroring doses onto the event table.
-#' `.rxDelaySensJump()` is the convenience wrapper doing both.
+#' A dose propagated through `delay(y_j, T(p))` makes the 1st-order sensitivity
+#' jump at `t = t_dose + T` by `[S_i] = -(d f_i/d delay(y_j,T)) * [y_j] * dT/dp`,
+#' reproduced here as a modeled bolus of `[y_j]` on the sensitivity compartment
+#' with modeled lag `T` and bioavailability `-(d f_i/d delay)*dT/dp`.
+#' `.rxDelaySensJumpMap()` does the model-only symengine analysis (cached via
+#' `.rxDelaySensJumpMapCached()`); `.rxDelaySensJumpEvents()` rbinds the
+#' mirroring doses per solve; `.rxDelaySensJump()` does both.
 #'
 #' @param model base ODE model (anything `rxNorm()` accepts).
 #' @param calcSens character vector of sensitivity parameters.
@@ -552,8 +504,7 @@
 #' @keywords internal
 .rxDelaySensJumpEvents <- function(jumpMap, st, events) {
   if (is.null(jumpMap) || length(jumpMap) == 0L) return(events)
-  # mirror each state-j dose onto its sensitivity compartment(s) -- cheap; no
-  # symengine, so this is the only part that runs per solve.
+  # mirror each state-j dose onto its sensitivity compartment(s); no symengine
   .ev <- as.data.frame(events)
   .isDose <- if (!is.null(.ev$evid)) .ev$evid != 0 else rep(FALSE, nrow(.ev))
   .cmtName <- function(c) if (is.numeric(c)) st[c] else as.character(c)
@@ -580,20 +531,13 @@
 #' Second-order breaking-point jump: inject the modeled boluses
 #'
 #' The 2nd-order jump `[S_i^{ab}](xi) = JD_ij * [ydot_j](t_break) * dTa * dTb`
-#' occurs at every `xi = t_break + T`, where `t_break` is a discontinuity of the
-#' delayed state `y_j`: the initial history (`t_break = t0`, magnitude `f_j(t0)`),
-#' and each user dose on a state `k` that drives `f_j` (`t_break = t_dose`,
-#' magnitude `df_j/dy_k * [dose]`).  `.rxDelaySensAugment2()` emits the common
-#' modeled `F = JD * dTa * dTb` and `alag = T` on the sensitivity compartment;
-#' here the magnitude factor is supplied as the injected dose AMOUNT so the
-#' delivered bolus at `xi` equals the jump:
-#'   * initial history: a bolus of amount `f_j(IC)` at `t0`;
-#'   * dose-induced: each user dose on `k` mirrored with amount `A * df_j/dy_k`.
-#'
-#' `.rxDelaySensJump2Cmts()` finds the 2nd-order jump compartments (an `alag()`
-#' with two `_BY_` groups).  `.rxDelaySensJump2Map()` re-derives, per compartment,
-#' the delayed state `y_j`, the numeric history amount `f_j(IC)`, and the
-#' per-state couplings `df_j/dy_k`.
+#' at `xi = t_break + T` is delivered as a modeled bolus:
+#' `.rxDelaySensAugment2()` emits the common `F = JD * dTa * dTb` and
+#' `alag = T`; the magnitude factor is the injected dose amount (`f_j(IC)` at
+#' `t0` for the initial history; each user dose on a coupled state `k` mirrored
+#' with amount `A * df_j/dy_k`).  `.rxDelaySensJump2Cmts()` finds the 2nd-order
+#' jump compartments; `.rxDelaySensJump2Map()` derives each compartment's
+#' delayed state, history amount, and couplings.
 #'
 #' @param norm normalized model text (`rxNorm()` output).
 #' @param model anything `rxNorm()`/`rxGetModel()` accept.
@@ -623,10 +567,8 @@
   suppressWarnings(as.numeric(.s))
 }
 
-## f_j(IC) = the delayed state's RHS with every state and delayed value replaced by
-## its initial condition (constant history); numeric for a constant-history model,
-## NA when it depends on parameters.  `m` is a symengine model env carrying
-## rx__d_dt_<state>__ and rx_<state>_ini_0__.
+## f_j(IC): the delayed state's RHS with states/delays replaced by their initial
+## conditions; numeric for constant history, NA when parameter-dependent.
 .rxDelayFjICval <- function(m, j) {
   .f <- get0(paste0("rx__d_dt_", j, "__"), envir = m, inherits = FALSE)
   if (is.null(.f)) return(NA_real_)
@@ -744,11 +686,8 @@
   if (nrow(.add)) rbind(.ev, .add) else .ev
 }
 
-# jumpMap cache: the map depends only on the model, so an optimizer that solves
-# the same param-dependent-delay forward-sens model many times (FOCEi/nlm inner
-# loops) computes the symengine analysis once.  Keyed by the normalized model text
-# (already computed by the rxSolve gate) + calcSens; the wrapper list distinguishes
-# a cached NULL (no param-dependent delay) from a cache miss.
+# The jump map depends only on the model, so optimizer inner loops compute the
+# symengine analysis once; the wrapper list distinguishes a cached NULL from a miss.
 .rxDelaySensJumpCache <- new.env(parent = emptyenv())
 
 #' @rdname dot-rxDelaySensJumpMap
@@ -768,12 +707,10 @@
 
 #' Validate that delay durations are constant for second-order sensitivities
 #'
-#' Parameter-dependent delays `delay(state, T(p))` make the DDE breaking points
-#' `t = n*T(p)` move with the parameter, which puts *jump* discontinuities in the
-#' second- (and higher-) order sensitivities at those points.  Capturing the
-#' jumps needs breaking-point tracking that is not implemented yet, so a
-#' parameter-dependent delay is rejected for second-order sensitivities (the
-#' first-order sensitivity is continuous across breaking points and is supported).
+#' Parameter-dependent delays move the DDE breaking points with the parameter,
+#' putting jump discontinuities in the second- and higher-order sensitivities;
+#' unsupported cases are rejected (first-order sensitivities stay continuous
+#' and are supported).
 #'
 #' @param model symengine environment from the model loader.
 #' @param params character vector of sensitivity parameters.
@@ -800,11 +737,8 @@
     }
     for (.i in seq_along(.e)) .walk(.e[[.i]])
     if (length(.pdep) == 0L) next
-    ## Third order: parameter-dependent delays are not yet supported (would need
-    ## the xi1/xi2 jumps; out of scope).  Second order: the single closed-form
-    ## jump at xi1 is handled by .rxDelaySensAugment2()/.rxDelaySensJump2*(), so a
-    ## single param-dependent delay per state is allowed; multiple param-dependent
-    ## delays on one state still need per-term jump bookkeeping and are rejected.
+    ## 3rd order: param-dependent delays unsupported.  2nd order: a single
+    ## param-dependent delay per state is handled; multiple are rejected.
     if (thirdOrder || length(.pdep) > 1L) {
       .d <- .pdep[[1L]]
       .ord <- if (thirdOrder) "third-order" else "second-order"
@@ -822,10 +756,8 @@
            "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
            call. = FALSE)
     }
-    ## Second-order single param-dependent delay: the initial-history jump
-    ## amount f_j(IC) is injected as a numeric dose amount, so it must be
-    ## constant.  A delayed state whose initial rate depends on parameters
-    ## (e.g. a non-zero parameter baseline) is rejected -> numeric Hessian.
+    ## 2nd order: the initial-history jump amount f_j(IC) is injected as a
+    ## numeric dose amount, so it must be constant.
     if (!thirdOrder && is.na(.rxDelayFjICval(model, .pdep[[1L]]$state))) {
       stop("parameter-dependent delay 'delay(", .pdep[[1L]]$state, ", ",
            .pdep[[1L]]$tau, ")' is not yet supported for analytic second-order ",
@@ -841,27 +773,14 @@
 
 #' Augment second-order forward-sensitivity equations with the delayed terms
 #'
-#' Constant-delay (Phase A) second-order analogue of `.rxDelaySensAugment()`.
-#' Treating each `delay(y_j, T)` as a surrogate `g`, the standard second-order
-#' machinery misses every term where `delay()` is differentiated w.r.t. a
-#' parameter; those missing terms for the equation `d/dt(S_i^{ab})` are
-#'
-#' ```
-#' sum_k  JD_ik * delay(S_j^{ab}, T)                                    (pure)
-#'  + sum_{k,m} H_gy[k,m] * ( delay(S_j^a,T)*S_m^b + S_m^a*delay(S_j^b,T) )
-#'  + sum_{k,k'} H_gg[k,k'] * delay(S_j^a,T)*delay(S_{j'}^b,T)
-#'  + sum_k ( H_gp[k,b]*delay(S_j^a,T) + H_gp[k,a]*delay(S_j^b,T) )
-#' ```
-#'
-#' with `JD = df/dg`, `H_gy = d^2 f/dg dy`, `H_gg = d^2 f/dg dg'`,
-#' `H_gp = d^2 f/dg dp`.  The delayed sensitivities `delay(S, T)` are generalized
-#' here to the surrogate sensitivities `SG` (which gain `rxDelayD`/`rxDelayD2`
-#' time-derivative corrections weighted by `dT/dp`); for a constant delay every
-#' correction vanishes and `SG` reduces to `delay(S, T)`, the validated case.
-#' Parameter-dependent delays are rejected upstream (see
-#' `.rxDelayValidateHigherOrderSE()`) because the moving breaking points put jump
-#' discontinuities in the second-order sensitivities; the `SG` machinery here is
-#' the (between-breaking-point) groundwork for adding that.
+#' Second-order analogue of `.rxDelaySensAugment()`: treating each
+#' `delay(y_j, T)` as a surrogate `g`, splices in the missing terms built from
+#' `JD = df/dg`, `H_gy = d^2 f/dg dy`, `H_gg = d^2 f/dg dg'`, and
+#' `H_gp = d^2 f/dg dp`, with the delayed sensitivities generalized to
+#' surrogate sensitivities `SG` (`rxDelayD`/`rxDelayD2` corrections weighted by
+#' `dT/dp`; all corrections vanish for a constant delay).  Unsupported
+#' parameter-dependent cases are rejected upstream
+#' (`.rxDelayValidateHigherOrderSE()`).
 #'
 #' @param model symengine environment from the model loader.
 #' @param sensVec the second-order `..sens` vector (`rxExpandSens2_` output).
@@ -872,9 +791,7 @@
 .rxDelaySensAugment2 <- function(model, sensVec, params) {
   if (length(sensVec) == 0L) return(sensVec)
   .states <- rxStateOde(model)
-  ## 2nd-order non-constant pre-history: past(rx__sens_s_BY_p_BY_q__, tau) =
-  ## d^2 expr/dp dq for every 2nd-order sensitivity compartment (appended to the
-  ## base + 1st-order past() lines from .rxDelaySensAugment; unique() dedups).
+  ## 2nd-order pre-history: past(rx__sens_s_BY_p_BY_q__, tau) = d^2 expr/dp dq
   .pastLines2 <- character(0)
   for (.si in .states) {
     .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
@@ -909,12 +826,8 @@
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
     if (is.null(.f)) return(NULL)
-    ## Find the delay() terms as symengine Basic function symbols directly on
-    ## .f (the .rxDelaySensAugment 1st-order pattern) -- NOT by round-tripping
-    ## through rxFromSE()/parse()/eval(): the RHS text renders ETA/THETA as
-    ## bracket-indexed ETA[n]/THETA[n], which are not bound R objects in
-    ## envir=model, so re-eval'ing that text there errors "object 'ETA' not
-    ## found" for any real (eta/theta-referencing) model.
+    ## Find delay() terms as Basic function symbols directly on .f -- re-eval'ing
+    ## the rxFromSE text in envir=model fails (ETA[n]/THETA[n] are not bound there).
     .fns <- tryCatch(symengine::function_symbols(.f), error = function(e) NULL)
     .terms <- list()
     if (!is.null(.fns)) {
@@ -929,13 +842,9 @@
       }
     }
     if (length(.terms) == 0L) return(NULL)
-    ## Substitute every delay() Basic function symbol with its own surrogate
-    ## symbol (symengine::subs, Basic-level -- no text round-trip) so the
-    ## resulting .fsub can be differentiated w.r.t. the delayed value (g), the
-    ## states (y) and the parameters (p) with no delay() left in symengine.
-    ## All terms are substituted into the SAME .fsub (not one at a time) so
-    ## cross second derivatives between two distinct delay() terms in the same
-    ## RHS (hgg below) see both surrogate symbols.
+    ## Substitute every delay() Basic with its own surrogate symbol, all into
+    ## the SAME .fsub so cross derivatives between two delay() terms (hgg) see
+    ## both surrogates.
     .fsub <- .f
     for (.t in .terms) .fsub <- symengine::subs(.fsub, .t$fn, symengine::S(.t$gName))
     .restore <- function(txt) {
@@ -967,10 +876,8 @@
         .v <- .nz(symengine::D(.jdE, symengine::S(.pp)))
         if (!is.null(.v)) .hgp[[.pp]] <- .v
       }
-      ## Parameter-dependent delay: first and second symbolic derivatives of the
-      ## (resolved) duration tau w.r.t. each sensitivity parameter.  These weight
-      ## the delayed time-derivatives (rxDelayD/rxDelayD2) in the surrogate
-      ## sensitivity below.  All "0" for a constant delay.
+      ## param-dependent delay: d tau/dp and d^2 tau/dp dq weight the
+      ## rxDelayD/rxDelayD2 corrections below ("0" for a constant delay)
       .dtau <- stats::setNames(rep("0", length(params)), params)
       .d2tau <- list()
       .tauRes <- tryCatch(eval(parse(text = .t$tau), envir = model),
@@ -1008,18 +915,11 @@
     assign("..sens2JumpCmts", NULL, envir = model)
     return(sensVec)
   }
-  ## Second-order breaking-point JUMP (parameter-dependent delay only).  For a
-  ## constant history the delayed state y_j has a derivative discontinuity at t0
-  ## ([ydot_j](t0)=f_j(t0)); propagated through delay(y_j,T(p)) it makes the
-  ## SECOND-order sensitivity S_i^{ab} jump at xi1 = t0 + T by
-  ##   [S_i^{ab}](xi1) = (df_i/d delay(y_j,T)) * f_j(t0) * (dT/da) * (dT/db).
-  ## The smooth rxDelayD/rxDelayD2 terms in .sg2() miss this Dirac.  As with the
-  ## 1st-order dose jump, reproduce it with a modeled bolus on the 2nd-order sens
-  ## compartment: a unit dose at t0 (added by rxSolve), modeled lag T (lands at
-  ## xi1) and modeled bioavailability = the jump magnitude (F is evaluated at the
-  ## t0 dose time, where f_j(t0) and the delayed Jacobian take their initial
-  ## values).  For a constant delay dT/dp=0 so no jump is emitted (reduces exactly
-  ## to the validated constant-delay case).
+  ## 2nd-order breaking-point jump (param-dependent delay only): S_i^{ab} jumps
+  ## at xi1 = t0 + T by (df_i/d delay(y_j,T)) * f_j(t0) * dT/da * dT/db, which
+  ## the smooth rxDelayD/rxDelayD2 terms miss; reproduce it with a modeled bolus
+  ## on the 2nd-order sens compartment (unit dose at t0 from rxSolve, alag=T,
+  ## F=jump magnitude).  Constant delay: dT/dp=0, no jump emitted.
   .alagf2 <- character(0); .jump2Cmts <- character(0); .seen2 <- character(0)
   .nzt0 <- function(x) !is.null(x) && !identical(x, "0")
   vapply(sensVec, function(.entry) {
@@ -1035,12 +935,8 @@
       if (!.nzt0(.ta) || !.nzt0(.tb)) next          # constant in a or b -> no jump
       if (.sensCmt2 %in% .seen2) next                # one delay term per 2nd-order cmt
       .seen2 <- c(.seen2, .sensCmt2)
-      ## Common modeled F = JD_ij * (dT/da) * (dT/db); the jump *magnitude* factor
-      ## [ydot_j](t_break) is carried by the injected dose AMOUNTS (see
-      ## .rxDelaySensJump2Events): a t0 bolus of f_j(IC) for the initial-history
-      ## breaking point, plus each user dose on state k mirrored with amount
-      ## A*(df_j/dy_k) for the dose-induced breaking point.  Delivered at
-      ## xi = t_break + T (alag = T) it equals JD * [ydot_j](t_break) * dTa * dTb.
+      ## common modeled F = JD_ij * dTa * dTb; the [ydot_j](t_break) magnitude
+      ## factor is carried by the injected dose amounts (.rxDelaySensJump2Events)
       .alagf2 <<- c(.alagf2,
                     sprintf("alag(%s)=%s", .sensCmt2, z$tau),
                     sprintf("f(%s)=(%s)*(%s)*(%s)", .sensCmt2, z$jd, .ta, .tb))
@@ -1117,10 +1013,8 @@
 
 #' Reject nonlinear delays for third-order sensitivities (early, env)
 #'
-#' The third-order delay augmentation `.rxDelaySensAugment3()` only covers delays
-#' that appear linearly (`d^2 f/dg dy == 0` and `d^2 f/dg dg' == 0`).  This runs
-#' the same check before the sensitivity progress bar opens so a nonlinear delay
-#' errors with a clear (unmasked) message.
+#' `.rxDelaySensAugment3()` only covers delays that appear linearly; run the
+#' same check early so a nonlinear delay errors with a clear message.
 #'
 #' @param model symengine environment from the model loader.
 #' @return invisibly `TRUE`; stops otherwise.
@@ -1180,20 +1074,11 @@
 
 #' Augment third-order forward-sensitivity equations with the delayed terms
 #'
-#' Constant-delay third-order analogue of `.rxDelaySensAugment2()`.  For a delay
-#' that appears *linearly* (the common case: `... + c(p)*delay(y_j, T)`), the
-#' missing third-order terms for `d/dt(S_i^{abc})` are
-#'
-#' ```
-#' sum_k  JD_ik * delay(S_j^{abc}, T)                                   (pure)
-#'  + sum_k H_gp[k,c]*delay(S_j^{ab},T) + H_gp[k,b]*delay(S_j^{ac},T) + H_gp[k,a]*delay(S_j^{bc},T)
-#'  + sum_k H_gpp[k,bc]*delay(S_j^a,T) + H_gpp[k,ac]*delay(S_j^b,T) + H_gpp[k,ab]*delay(S_j^c,T)
-#' ```
-#'
-#' with `JD = df/dg`, `H_gp = d^2 f/dg dp`, `H_gpp = d^3 f/dg dp dq`.  A *nonlinear*
-#' delay (one with `d^2 f/dg dy != 0` or `d^2 f/dg dg' != 0`) would need the
-#' additional third-order tensor terms and is rejected here.  Parameter-dependent
-#' delays are rejected upstream (`.rxDelayValidateHigherOrderSE()`).
+#' Constant-delay third-order analogue of `.rxDelaySensAugment2()` for delays
+#' that appear linearly: splices the missing terms built from `JD = df/dg`,
+#' `H_gp = d^2 f/dg dp`, and `H_gpp = d^3 f/dg dp dq`.  Nonlinear delays are
+#' rejected here; parameter-dependent delays upstream
+#' (`.rxDelayValidateHigherOrderSE()`).
 #'
 #' @param model symengine environment from the model loader.
 #' @param sensVec the third-order `..sens` vector (`rxExpandSens3_()` output).
@@ -1247,9 +1132,8 @@
     lapply(.terms, function(.t) {
       .g <- symengine::S(.t$gName)
       .jdE <- symengine::D(.fsub, .g)
-      ## reject nonlinear delays (d^2 f/dg dy or d^2 f/dg dg' nonzero): they need
-      ## extra third-order tensor terms not implemented here.  (Assign each
-      ## symengine result to a variable before rxFromSE, which captures its arg.)
+      ## reject nonlinear delays; assign symengine results before rxFromSE
+      ## (which captures its argument)
       for (.mState in .states) {
         .msym <- symengine::S(.mState)
         .dm <- symengine::D(.jdE, .msym)
@@ -1332,9 +1216,8 @@
 
 #' Validate that delay durations do not depend on the sensitivity parameters
 #'
-#' v1 forward sensitivities require `d tau / d p == 0` for every sensitivity
-#' parameter `p` (a parameter- or eta-dependent delay needs the delayed-RHS term,
-#' deferred to v2).  Errors with a clear message naming the offending term.
+#' Requires `d tau / d p == 0` for every sensitivity parameter; errors naming
+#' the offending term.
 #'
 #' @param model anything `rxNorm()` accepts.
 #' @param params character vector of parameters sensitivities are taken w.r.t.
@@ -1378,27 +1261,14 @@
 #'   initial-condition history is used.
 #'
 #' @details
-#' Delayed states are interpolated from the solver's dense output using
-#' the same 8th-order Dormand-Prince interpolant as the integrator, so a
-#' delayed value is obtained to the full accuracy of the solution.
-#'
-#' Because this requires dense output, delay models are solved on a dense
-#' path.  When a model uses `delay()`, the default solving method
-#' becomes the dense AutoSwitch composite `"dop853+ros4"` and dense
-#' output is enabled automatically; `method = "dop853"` also works.
-#' The composite switches between dop853 and ros4 per segment in dense
-#' mode, so a delay model that is non-stiff in one region and stiff in
-#' another is solved efficiently in a single pass.  Stiff delay models can
-#' also be solved with `method = "ros4"` directly, whose dense
-#' Rosenbrock output is likewise recorded and interpolated for
-#' `delay()`.  The integrator step size is automatically capped to the
-#' smallest delay so that short delays remain accurate.  Methods that
-#' cannot record dense history raise an error.
-#'
-#' The dense-output and delay-history machinery is adapted from the
-#' `dde` package by Rich FitzJohn and Wes Hinsley (Imperial College
-#' of Science, Technology and Medicine), following the approach of
-#' Hairer, Norsett and Wanner.
+#' Delayed states are interpolated from the solver's dense output, so delay
+#' models are solved on a dense path: the default method becomes the dense
+#' AutoSwitch composite `"dop853+ros4"`, and dense methods such as `"dop853"`
+#' or `"ros4"` also work.  The step size is capped to the smallest delay, and
+#' methods that cannot record dense history raise an error.  The dense-output
+#' and delay-history machinery is adapted from the `dde` package by Rich
+#' FitzJohn and Wes Hinsley (Imperial College of Science, Technology and
+#' Medicine).
 #'
 #' @seealso [rxSolve()]
 #'

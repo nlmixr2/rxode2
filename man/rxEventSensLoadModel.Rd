@@ -15,13 +15,10 @@ invisibly \code{TRUE} when the jumps were activated, \code{FALSE} otherwise
 }
 \description{
 For downstream packages (e.g. nlmixr2est's FOCEi) that solve a sensitivity
-model through a direct C++ \code{ind_solve()} loop -- bypassing
-\code{rxSolve()}/\code{.rxSetEventSensDims()} -- this sets rxode2's event ("jump")
-sensitivity function pointers (dLag/dF/dRate/dDur/d2F/dydt/DUR) and the
-runtime dims to \code{model} and turns the jumps on.  The \code{handle_evid} jump
-blocks are bounds-guarded by the per-solve compartment count, so any smaller
-model solved afterwards (no sensitivity compartments, e.g. the FOCEi pred
-model) skips the injection safely without resetting these globals.  Pair with
+model through a direct C++ \code{ind_solve()} loop, bypassing \code{rxSolve()}: sets
+rxode2's event ("jump") sensitivity function pointers and runtime dims to
+\code{model} and turns the jumps on.  The jump blocks are bounds-guarded, so
+smaller models solved afterwards skip the injection safely.  Pair with
 \code{rxEventSensDeactivate()} after the run.
 }
 \keyword{internal}

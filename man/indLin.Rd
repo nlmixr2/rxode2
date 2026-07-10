@@ -26,5 +26,5 @@ A character string representing the matrix exponential model code
 Transition ODEs written in d/dt() format to matrix exponential / inductive linearization format
 }
 \author{
-Matthew L. Fidler & Antigravity
+Matthew L. Fidler
 }
