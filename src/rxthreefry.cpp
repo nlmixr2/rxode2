@@ -1364,6 +1364,17 @@ extern "C" double rxnorm(double mean, double sd){
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
+// Raw normal draw from the current thread's threefry engine, WITHOUT the inLhs
+// solve-context gate that rxnorm() applies.  Exposed via the function-pointer
+// table for downstream packages (nlmixr2est importance sampling) that seed a
+// per-subject stream with setSeedEng1(seed0 + id) -- after setRxThreadId() sets
+// the OpenMP thread id -- and then draw directly.
+extern "C" double rxNormEng(double mean, double sd){
+  if (ISNA(mean) || ISNA(sd)) return NA_REAL;
+  boost::random::normal_distribution<double> d(mean, sd);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
 extern "C" double rinorm(int id, double mean, double sd) {
   rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
   if (ind->isIni) {
