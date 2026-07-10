@@ -13,6 +13,27 @@ rxTest({
     expect_equal(rxFromSE(tmp), "d/dt(E)")
   })
 
+  test_that("rxFromSE() round-trips raw comparison/logical operators", {
+    # The Subs handler re-parses converted text with R's parser, which turns
+    # rxGt()/rxEq() back into raw `>`/`==` operator calls; .rxFromSE() must
+    # accept those so a comparison inside a Derivative(linCmtB(...)) does not
+    # error with "user function '>' requires 0 arguments" (nlmixr2/nlmixr2#390).
+    expect_equal(rxFromSE("a > b"), "(a>b)")
+    expect_equal(rxFromSE("a < b"), "(a<b)")
+    expect_equal(rxFromSE("a >= b"), "(a>=b)")
+    expect_equal(rxFromSE("a <= b"), "(a<=b)")
+    expect_equal(rxFromSE("a == b"), "(a==b)")
+    expect_equal(rxFromSE("a != b"), "(a!=b)")
+    expect_equal(rxFromSE("exp(x + (a > 0))"), "exp(x+((a>0)))")
+    # the derivative of a linCmtB() whose parameter contains a comparison
+    # (as produced for IOV + linCmt() FOCEi models) must convert without error
+    .x <- paste0("Subs(Derivative(linCmtB(rx__PTR__, t, 2.0, 1.0, 1.0, -1.0, ",
+                 "-1.0, 1.0, exp(THETA_2_ + rxGt(THETA_5_, 0.0)*rxEq(occ, 1.0)), ",
+                 "exp(THETA_3_), 0.0, 0.0, 0.0, 0.0, _xi_15), _xi_15), ",
+                 "(_xi_15), (exp(THETA_1_)))")
+    expect_error(rxFromSE(.x), NA)
+  })
+
   test_that("df(x)/dy(x) parsing", {
     expect_equal(rxToSE(df(matt) / dy(ruth)), "rx__df_matt_dy_ruth__")
     expect_equal(rxFromSE(rx__df_matt_dy_ruth__), "df(matt)/dy(ruth)")
