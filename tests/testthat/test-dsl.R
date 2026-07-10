@@ -13,6 +13,27 @@ rxTest({
     expect_equal(rxFromSE(tmp), "d/dt(E)")
   })
 
+  test_that("rxFromSE() round-trips raw comparison/logical operators", {
+    # The Subs handler re-parses converted text with R's parser, which turns
+    # rxGt()/rxEq() back into raw `>`/`==` operator calls; .rxFromSE() must
+    # accept those so a comparison inside a Derivative(linCmtB(...)) does not
+    # error with "user function '>' requires 0 arguments" (nlmixr2/nlmixr2#390).
+    expect_equal(rxFromSE("a > b"), "(a>b)")
+    expect_equal(rxFromSE("a < b"), "(a<b)")
+    expect_equal(rxFromSE("a >= b"), "(a>=b)")
+    expect_equal(rxFromSE("a <= b"), "(a<=b)")
+    expect_equal(rxFromSE("a == b"), "(a==b)")
+    expect_equal(rxFromSE("a != b"), "(a!=b)")
+    expect_equal(rxFromSE("exp(x + (a > 0))"), "exp(x+((a>0)))")
+    # the derivative of a linCmtB() whose parameter contains a comparison
+    # (as produced for IOV + linCmt() FOCEi models) must convert without error
+    .x <- paste0("Subs(Derivative(linCmtB(rx__PTR__, t, 2.0, 1.0, 1.0, -1.0, ",
+                 "-1.0, 1.0, exp(THETA_2_ + rxGt(THETA_5_, 0.0)*rxEq(occ, 1.0)), ",
+                 "exp(THETA_3_), 0.0, 0.0, 0.0, 0.0, _xi_15), _xi_15), ",
+                 "(_xi_15), (exp(THETA_1_)))")
+    expect_error(rxFromSE(.x), NA)
+  })
+
   test_that("df(x)/dy(x) parsing", {
     expect_equal(rxToSE(df(matt) / dy(ruth)), "rx__df_matt_dy_ruth__")
     expect_equal(rxFromSE(rx__df_matt_dy_ruth__), "df(matt)/dy(ruth)")
@@ -1430,5 +1451,23 @@ rxTest({
     }
   }
 
+  test_that(".rxFromSEnum handles empty input (#1109)", {
+    expect_equal(.rxFromSEnum(numeric(0)), character(0))
+    expect_equal(.rxFromSEnum(character(0)), character(0))
+  })
+
+  test_that("rxFromSE does not leak user-workspace variables (#1109)", {
+    # a variable in the global environment named like a model symbol must
+    # neither error (zero-length) nor be substituted into the conversion
+    assign("rxFromSE1109center", numeric(0), envir = globalenv())
+    on.exit(rm("rxFromSE1109center", envir = globalenv()), add = TRUE)
+    .x <- symengine::S("exp(ETA_3_ + THETA_3_ - (ETA_3_ + THETA_3_))*rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    expect_equal(
+      rxFromSE(.x),
+      "exp(ETA[3]+THETA[3]-(ETA[3]+THETA[3]))*rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    assign("rxFromSE1109center", 42, envir = globalenv())
+    .y <- symengine::S("rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+    expect_equal(rxFromSE(.y), "rx__sens_x_BY_ETA_1___/rxFromSE1109center")
+  })
 
 })

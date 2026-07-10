@@ -9,6 +9,17 @@
   second pass.  This unblocks FOCEi IOV models that also have a between-subject
   eta on a parameter without IOV.
 
+- Fix `rxFromSE()` erroring with "argument is of length zero" (via
+  `.rxFromSEnum()`) and, worse, silently substituting user-workspace variable
+  values into converted expressions: the numeric-constant canonicalization now
+  evaluates operands in `baseenv()` only and guards zero-length results (#1109).
+
+- `rxFromSE()` now converts raw R comparison/logical operators (`>`, `<`, `>=`,
+  `<=`, `==`, `!=`, `&`, `|`, `%%`), not only their `rxGt()`/`rxEq()` symengine
+  forms.  This fixes a "user function '>' requires 0 arguments" error when a
+  linear-compartment (`linCmt()`) parameter contains a comparison, e.g. FOCEi
+  models with inter-occasion variability (`iov ~ ... | occ`) (nlmixr2/nlmixr2#390).
+
 - Fix `calcJac=TRUE` model rewriting (also used by the on-the-fly Jacobian the
   stiff `ros4` / `dop853+ros4` path generates) for models that declare literal
   `THETA_n_`/`ETA_n_` parameters and use delays: (1) a suppressed constant
