@@ -13,7 +13,7 @@
 ^.claude$
 ^.vexp$
 ^.vscode$
-^.gemini/$
+^.gemini$
 ^\.clangd$
 ^\.clangd/$
 ^CLAUDE.md$
@@ -34,6 +34,7 @@
 ^.git.*$
 ^\.gitignore$
 ^\.covrignore$
+^covr$
 ^appveyor\.yml$
 rx_.*\.(so|dll)$
 .*\.(gcda|gcno|o|a|dll|zip)$
