@@ -270,6 +270,14 @@ extern "C" {
   typedef void (*setRxThreadId_t)(int id);
   extern setRxThreadId_t setRxThreadId;
 
+  // Register / remove an external parameter-block loader (t_rxParLoader from
+  // rxode2.h); rxode2 calls registered loaders once per solve so a package can
+  // fill reserved par_ptr slots with externally-owned values.
+  typedef void (*rxRegisterParLoader_t)(t_rxParLoader cb);
+  extern rxRegisterParLoader_t rxRegisterParLoader;
+  typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
+  extern rxRemoveParLoader_t rxRemoveParLoader;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -353,6 +361,8 @@ extern "C" {
       setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
       getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
       setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
+      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
+      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
     }
     return R_NilValue;
   }
@@ -439,6 +449,8 @@ extern "C" {
   setIndSolveLast_t setIndSolveLast = NULL;             \
   getIndSolveLast2_t getIndSolveLast2 = NULL;           \
   setIndSolveLast2_t setIndSolveLast2 = NULL;           \
+  rxRegisterParLoader_t rxRegisterParLoader = NULL;     \
+  rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

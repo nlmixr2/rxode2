@@ -89,6 +89,15 @@ typedef rx_solve *(*t_get_solve)(void);
 
 typedef void *(*t_assignFuns)(void);
 
+// External parameter-block loader hook signature.  A package registers a
+// callback (via the rxode2 function-pointer table) that rxode2 invokes once per
+// solve, after gpars is filled and before integration, so it can overwrite
+// reserved par_ptr slots with externally-owned values (e.g. neural-network
+// weights).  gpars is laid out `npars` per column with `ncols` columns; write a
+// population-constant block to every column.  Defined outside the
+// __RXODE2PTR_H__ guard so downstream packages see the typedef.
+typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+
 // Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
 // exported to downstream packages through the rxode2 function-pointer table
 // (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
@@ -108,13 +117,9 @@ rx_solve *getRxSolve_(void);
 void rxSetSolveAtolRtol(double atol, double rtol);
 void rxGetSolveAtolRtol(double *atol, double *rtol);
 
-// External parameter-block loader hooks.  A package registers a callback that
-// rxode2 invokes once per solve, after the parameter vector (gpars) is filled
-// and before integration, so the package can overwrite reserved par_ptr slots
-// with externally-owned values (e.g. neural-network weights).  gpars is laid
-// out `npars` per column with `ncols` columns; write a population-constant
-// block to every column.
-typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+// External parameter-block loader hook register/remove (t_rxParLoader typedef
+// is above, outside the guard).  Direct declarations for building rxode2
+// itself; downstream packages get these as function pointers via the table.
 void rxRegisterParLoader(t_rxParLoader cb);
 void rxRemoveParLoader(t_rxParLoader cb);
 #endif

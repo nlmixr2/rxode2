@@ -275,10 +275,9 @@ void rxOptionsIni(void);
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
-
-typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
-void rxRegisterParLoader(t_rxParLoader cb);
-void rxRemoveParLoader(t_rxParLoader cb);
+/* rxRegisterParLoader / rxRemoveParLoader + t_rxParLoader come from rxode2.h;
+   they are exported to downstream packages via the function-pointer table
+   (_rxode2_rxode2Ptr below), not R_RegisterCCallable. */
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
 void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
@@ -523,8 +522,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndSolveLast = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndSolveLast2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast2, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 81
+#define nVec 83
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -607,6 +608,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 78, rxode2setIndSolveLast);
   SET_VECTOR_ELT(ret, 79, rxode2getIndSolveLast2);
   SET_VECTOR_ELT(ret, 80, rxode2setIndSolveLast2);
+  SET_VECTOR_ELT(ret, 81, rxode2rxRegisterParLoader);
+  SET_VECTOR_ELT(ret, 82, rxode2rxRemoveParLoader);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -691,6 +694,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 78, Rf_mkChar("rxode2setIndSolveLast"));
   SET_STRING_ELT(retN, 79, Rf_mkChar("rxode2getIndSolveLast2"));
   SET_STRING_ELT(retN, 80, Rf_mkChar("rxode2setIndSolveLast2"));
+  SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxRegisterParLoader"));
+  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRemoveParLoader"));
 
 #undef nVec
 
@@ -986,8 +991,6 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
-  R_RegisterCCallable("rxode2", "rxRegisterParLoader", (DL_FUNC) &rxRegisterParLoader);
-  R_RegisterCCallable("rxode2", "rxRemoveParLoader", (DL_FUNC) &rxRemoveParLoader);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);
