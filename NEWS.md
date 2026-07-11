@@ -1,5 +1,14 @@
 # rxode2 5.1.3
 
+- Zero the LSODA solver work memory on allocation (`alloc_mem`, `calloc` instead
+  of `malloc`).  The shared work block (Nordsieck history `yh`, Jacobian
+  workspace `wm`, `acor`/`savf`, ...) was left uninitialised and parts are read
+  before the integrator writes them on some paths (e.g. a first stiff/BDF step at
+  an extreme point), making a solve non-deterministic.  Surfaced by valgrind as
+  reads of uninitialised LSODA memory inside FOCEi/impmap inner solves, and
+  downstream as an occasional blown-up importance-sampling fit run after a prior
+  (parallel) fit.  Solving is otherwise unchanged.
+
 - Fix `rxFromSE()` on a `Subs()` over a `Derivative()` whose body carries a
   relational (`rxGt`/`rxEq`/... -- e.g. from `abs()` or an occasion indicator).
   The derivative conversion turns the relational into an R `>`/`==`, and the
