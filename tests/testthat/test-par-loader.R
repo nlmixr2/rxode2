@@ -48,4 +48,39 @@ rxTest({
     expect_equal(.s2$ob[1], 2)
   })
 
+  test_that("injected parameters are saved on the object and restored on re-solve", {
+
+    .m <- rxode2({
+      param(a, b)
+      oa <- a
+      ob <- b
+      d/dt(x) <- 0
+    })
+    .ev <- et(amt = 0) |> et(0, 1, by = 1)
+
+    ## solve with two loaders injecting 111 -> a, 222 -> b
+    .Call("_rxode2_rxRegisterTestParLoaders", 2L, PACKAGE = "rxode2")
+    .obj <- rxSolve(.m, .ev, params = c(a = 1, b = 2))
+
+    ## the injected values are saved on the solved object
+    .inj <- rxInjectedPars(.obj)
+    expect_equal(.inj[["a"]], 111)
+    expect_equal(.inj[["b"]], 222)
+
+    ## remove the loaders: a plain solve passes the supplied params through
+    .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
+    .plain <- rxSolve(.m, .ev, params = c(a = 1, b = 2), returnType = "data.frame")
+    expect_equal(.plain$oa[1], 1)
+    expect_equal(.plain$ob[1], 2)
+
+    ## re-solving from the saved object restores the injected values, even though
+    ## no loader is registered anymore
+    .re <- rxSolve(.obj, .ev, returnType = "data.frame")
+    expect_equal(.re$oa[1], 111)
+    expect_equal(.re$ob[1], 222)
+
+    ## a model with no injection reports nothing
+    expect_null(rxInjectedPars(.plain))
+  })
+
 })

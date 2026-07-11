@@ -3346,15 +3346,30 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
     # Pass the rxSolve object directly so C++ updates the correct object
     # rather than the global rxCurObj, which may point to a different rxSolve.
     if (is.null(params)) params <- object$.params.single
+    params <- .rxApplyInjectedPars(params, object)
     if (is.null(inits)) inits <- object$inits
     return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
                            theta = theta, eta = eta, envir = envir))
   }
   .model <- as.character(.model)
   if (is.null(params)) params <- object$.params.single
+  params <- .rxApplyInjectedPars(params, object)
   if (is.null(inits)) inits <- object$inits
   rxSolve(.model, params = params, events = events, inits = inits, ...,
           theta = theta, eta = eta, envir = envir)
+}
+
+## Restore par-loader-injected parameters (e.g. trained NN weights) onto the
+## params for a re-solve, so re-solving from a solved object reproduces them
+## even without the injecting package.  Injected values override for their
+## names (and are appended if absent); only applies to a single named vector.
+.rxApplyInjectedPars <- function(params, object) {
+  .inj <- rxInjectedPars(object)
+  if (is.null(.inj) || length(.inj) == 0L) return(params)
+  if (is.numeric(params) && is.null(dim(params)) && !is.null(names(params))) {
+    params[names(.inj)] <- .inj
+  }
+  params
 }
 
 #' @rdname rxSolve
@@ -3539,7 +3554,39 @@ solve.rxEt <- solve.rxSolve
     dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
     jac = get(".jac.counter", envir = .env, inherits = FALSE)
   ), envir = .env)
+  ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
+  ## weights supplied through a loader hook rather than the params vector).  Saved
+  ## on the object so re-solving restores them even in a session without the
+  ## injecting package's buffer.  Indices are 0-based into the model params.
+  .inj <- tryCatch(.Call(`_rxode2_rxGetInjectedPars`), error = function(e) NULL)
+  if (!is.null(.inj) && length(.inj[[1L]]) > 0L) {
+    .injNames <- .pars[.inj[[1L]] + 1L]
+    assign(".injectedPars", stats::setNames(.inj[[2L]], .injNames), envir = .env)
+  } else {
+    assign(".injectedPars", NULL, envir = .env)
+  }
   invisible(TRUE)
+}
+
+#' Parameters injected into a solve by a par-loader hook
+#'
+#' Returns the parameters (e.g. trained neural-network weights) that a
+#' registered par-loader wrote into the solve parameter vector, saved on the
+#' solved object so re-solving from it restores them.
+#'
+#' @param obj a solved rxode2 object.
+#' @return a named numeric vector, or `NULL` if nothing was injected.
+#' @export
+rxInjectedPars <- function(obj) {
+  .cls <- attr(obj, "class")
+  .env <- attr(.cls, ".rxode2.env")
+  if (is.null(.env)) return(NULL)
+  .rxSolveMaterializeParams(obj, .env)   # ensure materialized
+  if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
+    get(".injectedPars", envir = .env, inherits = FALSE)
+  } else {
+    NULL
+  }
 }
 
 .rxSolveGetInit <- function(.env, arg) {

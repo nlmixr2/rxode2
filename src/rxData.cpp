@@ -4530,10 +4530,46 @@ extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
   }
 }
 
+// Parameters injected by the loaders on the most recent solve, captured by
+// diffing the population parameter block (column 0) before/after the loaders.
+// Lets the solved object save/restore externally-injected values (e.g. trained
+// neural-network weights) so re-solving from the object reproduces them even in
+// a session where the injecting package's buffer is gone.
+static std::vector<int> _rxInjIdx;
+static std::vector<double> _rxInjVal;
+
 static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
+  _rxInjIdx.clear();
+  _rxInjVal.clear();
+  if (_rxNParLoaders == 0) return;
+  static std::vector<double> pre;
+  pre.assign(&_globals.gpars[0], &_globals.gpars[0] + npars);   // subject 0 block
   for (int i = 0; i < _rxNParLoaders; ++i) {
     _rxParLoaders[i](rx, &_globals.gpars[0], npars, ncols);
   }
+  for (int k = 0; k < npars; ++k) {
+    if (_globals.gpars[k] != pre[k]) {
+      _rxInjIdx.push_back(k);
+      _rxInjVal.push_back(_globals.gpars[k]);
+    }
+  }
+}
+
+// Injected params from the last solve as list(index0 = <0-based par indices>,
+// value = <injected values>); the R layer maps indices to parameter names.
+extern "C" SEXP _rxode2_rxGetInjectedPars(void) {
+  int n = (int) _rxInjIdx.size();
+  SEXP idx = PROTECT(Rf_allocVector(INTSXP, n));
+  SEXP val = PROTECT(Rf_allocVector(REALSXP, n));
+  for (int i = 0; i < n; ++i) {
+    INTEGER(idx)[i] = _rxInjIdx[i];
+    REAL(val)[i] = _rxInjVal[i];
+  }
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(ret, 0, idx);
+  SET_VECTOR_ELT(ret, 1, val);
+  UNPROTECT(3);
+  return ret;
 }
 
 // Test-only par loaders (tests/testthat/test-par-loader.R): confirm that
