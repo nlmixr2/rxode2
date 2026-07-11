@@ -4536,6 +4536,31 @@ static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
   }
 }
 
+// Test-only par loaders (tests/testthat/test-par-loader.R): confirm that
+// multiple registered loaders are applied in series -- A writes a sentinel to
+// parameter 0, B to parameter 1.
+extern "C" void rxTestParLoaderA(rx_solve* rx, double* gpars, int npars, int ncols) {
+  (void) rx;
+  if (npars < 1) return;
+  for (int c = 0; c < ncols; ++c) gpars[(size_t) c * npars + 0] = 111.0;
+}
+extern "C" void rxTestParLoaderB(rx_solve* rx, double* gpars, int npars, int ncols) {
+  (void) rx;
+  if (npars < 2) return;
+  for (int c = 0; c < ncols; ++c) gpars[(size_t) c * npars + 1] = 222.0;
+}
+extern "C" SEXP _rxode2_rxRegisterTestParLoaders(SEXP nSEXP) {
+  int n = Rf_asInteger(nSEXP);
+  rxRegisterParLoader(rxTestParLoaderA);
+  if (n >= 2) rxRegisterParLoader(rxTestParLoaderB);
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxRemoveTestParLoaders(void) {
+  rxRemoveParLoader(rxTestParLoaderA);
+  rxRemoveParLoader(rxTestParLoaderB);
+  return R_NilValue;
+}
+
 static inline void rxSolve_resample(const RObject &obj,
                                     const List &rxControl,
                                     const Nullable<CharacterVector> &specParams,
