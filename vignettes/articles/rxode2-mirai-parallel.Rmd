@@ -129,7 +129,7 @@ ones.
 
 Not every parallel use case fits the `file` pattern.  You can dispatch
 arbitrary `rxSolve()` calls across mirai daemons for independent scenarios such
-as sensitivity analyses or dose–response simulations.
+as sensitivity analyses or dose-response simulations.
 
 ```{r custom-mirai, eval = requireNamespace("mirai", quietly = TRUE)}
 doses <- c(50, 100, 200)
@@ -160,9 +160,9 @@ sapply(results, nrow)
 
 This pattern is useful for:
 
-- **Sensitivity analysis** — vary one parameter at a time across daemons.
-- **Dose–response** — simulate many dose levels simultaneously.
-- **Bootstrap replicates** — each daemon processes an independent replicate
+- **Sensitivity analysis** -- vary one parameter at a time across daemons.
+- **Dose-response** -- simulate many dose levels simultaneously.
+- **Bootstrap replicates** -- each daemon processes an independent replicate
   data set.
 
 ## Reproducibility with seeds
@@ -183,7 +183,7 @@ head(as.data.frame(res_seed)[, c("id", "time", "cp")])
 
 When `parallel` is set, rxode2 pre-draws **all** subjects' etas in one pass
 before splitting into chunks.  This means the eta draws match those of an
-equivalent single-call `rxSolve()` at the same rxode2 seed — chunk boundaries
+equivalent single-call `rxSolve()` at the same rxode2 seed -- chunk boundaries
 do not affect the random-number sequence.
 
 For custom mirai workflows, seed each task independently:
@@ -207,7 +207,7 @@ tasks <- lapply(seq_along(reps), function(i) {
 
 | Guideline | Reasoning |
 |-----------|-----------|
-| Chunk size ≈ total_subjects / (2 × ndaemons) | Keeps daemons busy without under-utilising them |
+| Chunk size ~ total_subjects / (2 x ndaemons) | Keeps daemons busy without under-utilizing them |
 | Start with `parallel = 4` for 4-core machines | Match physical cores; OpenMP within each chunk uses 1 thread by default in daemon processes |
 | Avoid `chunkSize = 1` | Per-chunk mirai overhead outweighs any parallelism gain |
 | Profile before tuning | `system.time(rxSolve(...))` is the fastest way to find the sweet spot |

@@ -4,7 +4,7 @@
 #' @param doConst Replace constants with values; By default this is `FALSE`.
 #' @param calcSens A character vector of parameter names for which sensitivities should be calculated.
 #' @return A character string representing the matrix exponential model code
-#' @author Matthew L. Fidler & Antigravity
+#' @author Matthew L. Fidler
 #' @export
 indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   rxReq("symengine")
@@ -110,17 +110,11 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 
 #' Total derivative of an indLin/matExp Jacobian-entry expression
 #'
-#' `expr` is a scalar expression built from the original-system Jacobian `A`
-#' (never a sum of `coefficient * compartment` pieces -- see the "index-driven,
-#' not free-symbol-scan" note in the second/third order sections of
-#' `rxSensMatExp`), so it is safe to differentiate wrt every symbol it
-#' references: the explicit partial wrt `byVar`, plus a chain term for every
-#' physical state (`d/dx_l * rx__sens_x_l_BY_byVar__`) and every already-built
-#' sensitivity compartment symbol already present in `expr`
-#' (`d/d(rx__sens_x_BY_v1..__) * rx__sens_x_BY_v1_.._BY_byVar__`, i.e. the same
-#' symbol with `_BY_byVar` appended before the trailing `__`). This mirrors
-#' `.rxEventSensD2Expr()`'s state+sens coupling pattern one level more
-#' generally (arbitrary pre-existing sens symbols, not just a single `S^p`).
+#' `expr` is a scalar Jacobian-entry expression, differentiated wrt every
+#' symbol it references: the explicit partial wrt `byVar`, plus a chain term
+#' for every physical state and every pre-existing sensitivity compartment
+#' symbol (the same symbol with `_BY_byVar` appended).  Generalizes
+#' `.rxEventSensD2Expr()`'s state+sens coupling to arbitrary sens symbols.
 #'
 #' @param expr symengine expression (a Jacobian entry, or a total derivative
 #'   of one built by a previous call to this function).
@@ -176,13 +170,10 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 
 #' Accumulator for non-depleting (`_nd`) cross-term contributions
 #'
-#' At second and third order, several distinct mathematical terms can target
-#' the *same* `from -> to` compartment pair whenever two of the differentiated
-#' parameters coincide (e.g. `calcSens2` reusing a `calcSens` parameter, or a
-#' `calcSens3` parameter equal to a `calcSens2` one) -- their coefficients must
-#' be *summed*, not emitted as separate (conflicting, possibly duplicate-LHS)
-#' `k_from_to_nd = ...` lines. This accumulates by `(from, to)` key, in
-#' first-seen order, so the final emission has exactly one line per pair.
+#' At second/third order, distinct terms can target the same `from -> to` pair
+#' when differentiated parameters coincide; their coefficients must be summed,
+#' not emitted as conflicting duplicate-LHS lines.  Accumulates by `(from, to)`
+#' key in first-seen order, so emission has one line per pair.
 #'
 #' @return list with `add(from, to, val)` and `emit()` (character vector of
 #'   `k_<from>_<to>_nd = <expr>` lines, skipping pairs that summed to zero).
@@ -223,34 +214,18 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @param model rxode2 model, text, or function
 #' @param calcSens A character vector of parameter names for which sensitivities should be calculated.
 #' @param calcSens2 character vector (or `NULL`) requesting second-order
-#'   (Hessian-path) matrix-exponential sensitivities `rx__sens_<x>_BY_<p>_BY_<q>__`,
-#'   where `p` ranges over `calcSens` and `q` over `calcSens2`. Every element of
-#'   `calcSens2` must also appear in `calcSens` (its own first-order sensitivity
-#'   compartment must already exist for the cross terms to reference). Mirrors
-#'   `rxode2(calcSens2=)` for ordinary ODE models (`?rxode2`); unlike that path
-#'   (which reuses the generic `.rxSens()`/`rxExpandSens2_()` machinery),
-#'   `matExp()`/`indLin()` models cannot contain `d/dt()` lines, so the
-#'   second-order sensitivity ODEs are expressed the same way as the first-order
-#'   ones: as `k_from_to` micro-constant transfers into the
-#'   `rx__sens_<x>_BY_<p>_BY_<q>__` compartments. Ignored (with no compartments
-#'   generated) for any state that is part of a `linCmt()` compartment -- linCmt
-#'   sensitivities come from Stan forward-AD, not this Jacobian-based expansion.
+#'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>__` (`p` over `calcSens`, `q` over
+#'   `calcSens2`; every `calcSens2` element must also be in `calcSens`).
+#'   Expressed as `k_from_to` micro-constant transfers like the first-order
+#'   ones.  Ignored for `linCmt()` states (those use Stan forward-AD).
 #' @param calcSens3 character vector (or `NULL`) requesting third-order
-#'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__`, where `p` ranges over
-#'   `calcSens`, `q` over `calcSens2`, and `r` over `calcSens3`. Requires
-#'   `calcSens2` to be supplied; every element of `calcSens3` must also appear
-#'   in `calcSens2`. Same linCmt exclusion as `calcSens2`.
+#'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__` (`r` over `calcSens3`).
+#'   Requires `calcSens2`; every `calcSens3` element must also be in `calcSens2`.
 #' @param doConst Replace constants with values; By default this is `FALSE`.
-#' @param env A pre-loaded symengine environment (as returned by
-#'   `.rxLoadPrune()`) to reuse instead of reloading `model` from scratch.
-#'   When `NULL` (the default), the environment is built internally from
-#'   `model`/`doConst`. Passing an existing `env` lets callers that have
-#'   already loaded/pruned the model (e.g. to inject matrix-exponential
-#'   `d/dt()` terms or other model modifications) feed that same
-#'   environment in, so the sensitivity expansion sees those modifications
-#'   instead of re-deriving them from the original `model` text.
+#' @param env A pre-loaded symengine environment (from `.rxLoadPrune()`) to
+#'   reuse instead of reloading `model`; when `NULL` it is built internally.
 #' @return A character string representing the matrix exponential sensitivity-expanded model code
-#' @author Matthew L. Fidler & Antigravity
+#' @author Matthew L. Fidler
 #' @export
 rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, doConst = FALSE, env = NULL) {
   rxReq("symengine")
@@ -378,20 +353,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
   }
 
-  # 4b. Explicit Jacobian (df/dy) lines from the already-computed `.A` matrix.
-  #
-  # matExp()/indLin() models solve the primal system by matrix-exponential
-  # propagation, not by evaluating a symbolic RHS -- so the compiled `dydt()`
-  # never writes its output array for these models (it is a no-op stub). The
-  # event-sensitivity ("jump") dtau/lag row (`handle_evid`) normally sources
-  # its Jacobian column from a central difference of `dydt`, which is
-  # therefore silently always zero for matExp models. `df(<i>)/dy(<j>) <-
-  # <A[i][j]>` lines are legal in a matExp() model (only `d/dt()` lines are
-  # forbidden) and populate `calc_jac` with the real, already-known Jacobian
-  # -- `handle_evid` uses `calc_jac` instead of `dydt` for matExp models
-  # specifically (see `_rxEsUseCalcJac` / `.rxSetEventSensDims()`). Emitted
-  # unconditionally (not just when `calcSens2`/`calcSens3` are given) since
-  # any `eventSens="jump"` solve of this model -- even 1st order -- needs it.
+  # 4b. Explicit Jacobian (df/dy) lines from `.A`.  matExp()/indLin() models
+  # have a no-op dydt(), so the event-sensitivity Jacobian column would be
+  # zero; these df()/dy() lines populate calc_jac with the known Jacobian,
+  # which handle_evid reads instead for these models.  Emitted unconditionally
+  # (any eventSens="jump" solve needs it).
   for (.i in .states) {
     for (.j in .states) {
       .aij <- .A[[.i]][[.j]]
@@ -432,23 +398,15 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   }
 
   # 5c. Second-order sensitivity blocks (Hessian path, if calcSens2 given).
-  #
-  # For a fixed pair (p in calcSens, q in calcSens2), the compartments
-  # rx__sens_<x>_BY_<p>_BY_<q>__ obey the total derivative wrt q of the
-  # first-order sensitivity ODE (see the plan doc / project memory for the
-  # full derivation): writing A for the Jacobian and dAdp_ij = d(A[i,j])/dp,
+  # For (p, q), rx__sens_<x>_BY_<p>_BY_<q>__ obeys the total-derivative-wrt-q
+  # of the first-order ODE (A = Jacobian, dAdp_ij = d(A[i,j])/dp):
   #   d(S^{pq}_i)/dt = sum_k A_ik * S^{pq}_k                 [homogeneous: reuse]
   #                  + sum_k totalD_q(A_ik)  * S^p_k          [from S^p_k]
   #                  + sum_j dAdp_ij         * S^q_j          [from S^q_j]
   #                  + sum_j totalD_q(dAdp_ij) * X_j          [from X_j]
-  # where totalD_q() is the *total* derivative wrt q (explicit + chained
-  # through every physical state's own S^q, via .rxIndLinTotalD()).  Each
-  # coefficient is computed directly from its (i,j) or (i,k) indices -- NOT by
-  # symbolically expanding a pre-built sum and differentiating wrt each free
-  # symbol, which would be wrong whenever a coefficient depends on the same
-  # state it multiplies (the classic reason the first-order block above builds
-  # dAdp_ij index-by-index rather than assembling one expression and scanning
-  # its free symbols).
+  # totalD_q() (.rxIndLinTotalD()) is the total derivative wrt q.  Coefficients
+  # are computed index-by-index (not by scanning a pre-built sum's free
+  # symbols, which fails when a coefficient depends on the state it multiplies).
   if (!is.null(calcSens2)) {
     for (.p in calcSens) {
       .pSym <- symengine::S(.p)
@@ -490,16 +448,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
   }
 
-  # 5d. Third-order sensitivity blocks (if calcSens3 given).
-  #
-  # For a fixed triple (p in calcSens, q in calcSens2, r in calcSens3),
-  # rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__ obeys the total derivative wrt r of the
-  # second-order ODE above.  Applying the product rule to each of its four
-  # additive pieces gives one "coefficient changes" and one "compartment
-  # changes" contribution per piece; collecting by source compartment (using
-  # the same totalD_q(A_ik)/dAdp_ij pieces already computed above, now chained
-  # one variable further with `.rxIndLinChainD()`) gives, for every pair of
-  # states (i,k)/(i,j):
+  # 5d. Third-order sensitivity blocks (if calcSens3 given).  For (p, q, r),
+  # rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__ obeys the total-derivative-wrt-r of the
+  # second-order ODE (pieces chained one variable further with
+  # .rxIndLinChainD()), for every state pair (i,k)/(i,j):
   #   homogeneous:      A_ik                     -> S^{pqr}_k   (reuse)
   #   from S^{pq}_k:    totalD_r(A_ik)
   #   from S^{pr}_k:    totalD_q(A_ik)
@@ -508,8 +460,6 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   #   from S^q_j:       totalD_r(dAdp_ij)
   #   from S^r_j:       totalD_q(dAdp_ij)
   #   from X_j:         totalD_r(totalD_q(dAdp_ij))
-  # (See the project plan / memory for the full derivation and the
-  # p/q/r-permutation symmetry check that validates it.)
   if (!is.null(calcSens3)) {
     for (.p in calcSens) {
       .pSym <- symengine::S(.p)

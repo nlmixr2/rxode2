@@ -10,37 +10,27 @@
 // ===========================================================================
 // rk4s and the fixed-step explicit-RK discrete-adjoint family.
 //
-// SEPARATE ode methods (rk4 etc. stay byte-identical).  Each is a fixed-step
-// explicit Runge-Kutta method selected by a Butcher tableau (rksGetTableau):
-// rk4s (206), eulers (239), midpoints (240), heuns (241).  The forward pass
-// RECORDS each step's realized dt + its stage states, so the backward
-// reverse-mode sweep is the EXACT (table-driven) transpose of the actual
-// numerical map -- a machine-precision-consistent gradient, mirroring
-// R/adjointDiscrete.R's .rxDiscreteAdjointGrad.
+// Separate ode methods (rk4 etc. stay byte-identical): fixed-step explicit RK
+// methods by Butcher tableau (rksGetTableau) -- rk4s (206), eulers (239),
+// midpoints (240), heuns (241).  The forward pass records each step's realized
+// dt + stage states, so the backward sweep is the exact table-driven transpose
+// of the numerical map (mirrors R/adjointDiscrete.R's .rxDiscreteAdjointGrad).
 //
 // The model is built by R's .rxAdjointExpand: base ODE states, then
-// rx__sens_<state>_BY_<param>__ OUTPUT-storage compartments (d/dt=0), plus the
+// rx__sens_<state>_BY_<param>__ output-storage compartments (d/dt=0), plus the
 // state Jacobian F_X (rx__adjFX_i_j__) and parameter forcing F_p
-// (rx__adjFP_i_p__) exposed as lhs.  op carries the layout (op->adjNbase, adjNp,
-// adjFxOff, adjFpOff, adjSensOff), set by rxData.cpp for these method codes.
+// (rx__adjFP_i_p__) as lhs.  op carries the layout (adjNbase/adjNp/adjFxOff/
+// adjFpOff/adjSensOff), set by rxData.cpp.
 //
-// Forward: step ONLY the nBase base states (the rx__sens_* slots stay 0 during
-// the forward pass).  Backward: for each observation time and each base state k
-// run an independent reset sweep with terminal covector e_k; the resulting
-// mu (length np) = dy_k(t_obs)/dtheta is written into that obs row's
-// rx__sens_* solve slots.  rk4s is the GRADIENT method (full-trajectory
-// sensitivities); if no gradient is needed use plain rk4.  A scalar objective
-// gradient is a downstream REDUCTION of these columns, not a mode of the solver.
+// Forward steps only the nBase base states; backward runs, per observation time
+// and base state k, an independent reset sweep with terminal covector e_k, so
+// mu = dy_k(t_obs)/dtheta lands in that obs row's rx__sens_* slots.  rk4s is
+// the full-trajectory gradient method; use plain rk4 when no gradient is needed.
 // ===========================================================================
 
-// An additive bolus recorded during the forward pass: which 0-based RK4 step
-// its (F-scaled) state jump precedes (step = cumulative steps at dose time),
-// the base-state compartment, and the RAW amt (bioavailability F is applied to
-// the state in handle_evid; the adjoint needs mu += amt*dF/dtheta*lambda[cmt]).
 // A recorded forward state-jump event, tagged with the cumulative step index it
 // precedes.  type: 0 = additive bolus (amt = raw dose; F-jump quadrature), 3 =
-// reset (evid 3, whole state -> inits), 5 = replace (state cmt -> value), 6 =
-// multiply (state cmt *= amt).
+// reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 struct rk4s_dose { size_t step; int cmt; double amt; int type; };
 
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
@@ -7462,24 +7452,17 @@ static inline void rk4s_eval_jac(int cSub, double t, const double *a, int nBase,
   for (int i = 0; i < nBase * np; ++i)  fp[i] = ind->lhs[fpOff + i];
 }
 
-// The shared explicit-RK backward transpose (Phase 1 DRY seed): fills the
-// rx__sens_* output slots for every observation.  Precomputes each step's 4
-// stage Jacobians ONCE (calc_lhs), then runs an independent reset sweep per
-// (observation, base-state) pair.
-// Rosenbrock backward transpose (frozen-J, so EXACT for linear f; for nonlinear
-// f it drops the d(J)/dy = f'' term).  Reverse of one Rosenbrock step under W
-// (frozen) and the exact stage Jacobians J(u_i)=F_X(u_i)/F_p(u_i): rhsbar =
-// W^{-T} kbar_i; ubar = J(u_i)^T rhsbar; mu += F_p(u_i)^T rhsbar; couple back
-// through gam_ij/h (into rhs) and alpha_ij (into u).  Full-trajectory reset
-// sweeps identical to the explicit case.
-// DDE anticipating-term helper, shared by every backward fill.  It precomputes
-// the delayed Jacobian F_Xd and delay durations tau at each step start, then per
-// reset sweep tracks the costate lam at step boundaries and, after each step's
-// standard transpose, injects the anticipating contribution
+// Shared explicit-RK backward transpose: precomputes each step's stage
+// Jacobians once (calc_lhs), then runs an independent reset sweep per
+// (observation, base-state) pair to fill the rx__sens_* output slots.  The
+// Rosenbrock variant reverses each frozen-W step (exact for linear f).
+//
+// DDE anticipating-term helper, shared by every backward fill: precomputes the
+// delayed Jacobian F_Xd and delay durations tau, then after each step's
+// standard transpose injects
 //   lam_j(t_n) += h * F_Xd_ij(t_n+tau) * lam_i(t_n+tau).
-// The step cap (h <= delayMinT <= tau) guarantees t_n+tau lands on an
-// already-swept later boundary, so lam there is available (binary search + linear
-// interpolation).  Inactive (no-op) unless the model has delay() (adjFxdOff>=0).
+// The step cap (h <= tau) guarantees t_n+tau lands on an already-swept boundary
+// (binary search + linear interpolation).  No-op unless the model has delay().
 struct rk4s_dde {
   bool active = false, hasDtau = false;
   int nBase = 0, nfx = 0, np = 0;
