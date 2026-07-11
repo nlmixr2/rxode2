@@ -4501,6 +4501,41 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
 
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat);
 
+// ---- external parameter-block loader hooks --------------------------------
+// Packages (e.g. rxode2nn) register a callback that runs once per solve, after
+// gpars is populated from the supplied parameters and before integration, so
+// they can overwrite reserved par_ptr slots with externally-owned values (e.g.
+// neural-network weights held in a torch module).  This runs single-threaded,
+// before the parallel per-subject solve, so callbacks writing gpars are safe.
+// gpars is laid out npars per column with `ncols` columns (>= nsub*nsim and
+// nPopPar); a population-constant block is written to every column.
+typedef void (*t_rxParLoader)(rx_solve* rx, double* gpars, int npars, int ncols);
+#define RX_MAX_PAR_LOADERS 32
+static t_rxParLoader _rxParLoaders[RX_MAX_PAR_LOADERS] = {NULL};
+static int _rxNParLoaders = 0;
+
+extern "C" void rxRegisterParLoader(t_rxParLoader cb) {
+  if (cb == NULL) return;
+  for (int i = 0; i < _rxNParLoaders; ++i) if (_rxParLoaders[i] == cb) return;
+  if (_rxNParLoaders < RX_MAX_PAR_LOADERS) _rxParLoaders[_rxNParLoaders++] = cb;
+}
+
+extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
+  for (int i = 0; i < _rxNParLoaders; ++i) {
+    if (_rxParLoaders[i] == cb) {
+      for (int k = i; k < _rxNParLoaders - 1; ++k) _rxParLoaders[k] = _rxParLoaders[k + 1];
+      _rxParLoaders[--_rxNParLoaders] = NULL;
+      return;
+    }
+  }
+}
+
+static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
+  for (int i = 0; i < _rxNParLoaders; ++i) {
+    _rxParLoaders[i](rx, &_globals.gpars[0], npars, ncols);
+  }
+}
+
 static inline void rxSolve_resample(const RObject &obj,
                                     const List &rxControl,
                                     const Nullable<CharacterVector> &specParams,
@@ -4696,6 +4731,11 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
     {
       gparsCovSetup(rx->npars, rxSolveDat->nPopPar, rx->nsub*rx->nsim, ev1, rx);
       rxSolve_assignGpars(rxSolveDat);
+      {
+        int _ncols = (int)(rx->nsub*rx->nsim);
+        if (rxSolveDat->nPopPar > _ncols) _ncols = rxSolveDat->nPopPar;
+        rxCallParLoaders(rx, rx->npars, _ncols);
+      }
       rxSolve_resample(obj, rxControl, specParams, extraArgs, pars, ev1,
                        inits, rxSolveDat);
       curSolve=0;

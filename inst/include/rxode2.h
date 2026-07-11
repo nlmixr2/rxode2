@@ -107,6 +107,16 @@ void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np,
 rx_solve *getRxSolve_(void);
 void rxSetSolveAtolRtol(double atol, double rtol);
 void rxGetSolveAtolRtol(double *atol, double *rtol);
+
+// External parameter-block loader hooks.  A package registers a callback that
+// rxode2 invokes once per solve, after the parameter vector (gpars) is filled
+// and before integration, so the package can overwrite reserved par_ptr slots
+// with externally-owned values (e.g. neural-network weights).  gpars is laid
+// out `npars` per column with `ncols` columns; write a population-constant
+// block to every column.
+typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+void rxRegisterParLoader(t_rxParLoader cb);
+void rxRemoveParLoader(t_rxParLoader cb);
 #endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);

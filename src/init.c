@@ -276,6 +276,10 @@ void rxOptionsIni(void);
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 
+typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+void rxRegisterParLoader(t_rxParLoader cb);
+void rxRemoveParLoader(t_rxParLoader cb);
+
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
 void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
                t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
@@ -982,6 +986,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "rxRegisterParLoader", (DL_FUNC) &rxRegisterParLoader);
+  R_RegisterCCallable("rxode2", "rxRemoveParLoader", (DL_FUNC) &rxRemoveParLoader);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);
