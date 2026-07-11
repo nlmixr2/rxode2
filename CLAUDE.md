@@ -303,8 +303,15 @@ nlmixr2est's `src/init.c`.)
   ~1e-6", "up to order 8"). State the fact, not the story behind it.
 - Shorten multi-paragraph roxygen descriptions to a single compact paragraph,
   but keep every `@param`, `@return`, `@author`, `@export`, and `@keywords` tag.
-- Compress `NEWS.md` entries to the terse house style: one bullet per change,
-  a sentence or two, no nested walk-throughs or validation prose.
+- Organize `NEWS.md` per version (`# rxode2 X.Y.Z`): user-facing changes first
+  under a `## New features` heading, then a `## Bug fixes` heading.  When
+  `## Bug fixes` has several entries, group them by subsystem/type in
+  `### <category>` subsections (e.g. `### Estimation / symengine translation`,
+  `### Solving`, `### linCmt() models`); a single fix can be a bullet directly
+  under `## Bug fixes`.  Add each entry to the existing subsection when one fits
+  rather than creating a near-duplicate.  Entries are past-tense bullets, a
+  sentence or two, and may state the fix and its user-visible effect -- but no
+  nested walk-throughs or multi-paragraph root-cause/validation prose.
 - Do not claim the adjoint method is cheaper/faster than (or "beats") forward
   sensitivity; those cost comparisons do not hold here. Describe what the code
   does, not how it compares.
