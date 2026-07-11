@@ -53,7 +53,7 @@
 #' }
 #' @export
 #' @keywords internal
-forderForceBase <- function(forceBase = FALSE){
+forderForceBase <- function(forceBase = FALSE) {
   if (forceBase) {
     .forderEnv$useBase <- forceBase
   } else if (requireNamespace("data.table", quietly = TRUE)) {

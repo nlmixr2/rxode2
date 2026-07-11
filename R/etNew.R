@@ -873,10 +873,10 @@
     if (!is.null(.by)) {
       stop("cannot use both 'by' and 'length.out' for rxode2 simulations", call. = FALSE)
     }
-    .by <- (.to - .from)/(.lengthOut - 1)
+    .by <- (.to - .from)/ (.lengthOut - 1)
   } else if (is.null(.by)) {
     .lengthOut <- 200L
-    .by <- (.to - .from)/(.lengthOut - 1)
+    .by <- (.to - .from)/ (.lengthOut - 1)
   } else {
     .lengthOut <- as.integer((.to - .from)/.by + 1.0)
   }

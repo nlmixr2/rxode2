@@ -153,7 +153,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .rxFwdSensJacBlock <- function(model, state, params) {
-  .ns <- length(state); .np <- length(params)
+  .ns <- length(state)
+  .np <- length(params)
   .fx <- function(i, j) get0(paste0("rx__df_", state[i], "_dy_", state[j], "__"),
                              envir = model, inherits = FALSE)
   .fp <- function(i, p) get0(paste0("rx__df_", state[i], "_dy_", params[p], "__"),
@@ -176,7 +177,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
   for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
     .dF_X_k <- list()
     for (k in seq_len(.ns)) {
-      .fxik <- .fx(i, k); if (is.null(.fxik)) next
+      .fxik <- .fx(i, k)
+      if (is.null(.fxik)) next
       .d <- symengine::D(.fxik, state[j])
       if (paste(.d) != "0") {
         .dF_X_k[[k]] <- .d
@@ -438,7 +440,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ##   assign("rx_r_", .r, envir=.newmod)
       ## }
       if (addProp == "combined1") {
-        assign("rx_r_", get("rx_r_", envir = .newmod)^2, envir = .newmod)
+        assign("rx_r_", get("rx_r_", envir = .newmod)^2, envir = .newmod) # nolint: object_name_linter.
       }
       assign("..fixR", TRUE, envir = .newmod)
     }

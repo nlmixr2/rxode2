@@ -24,7 +24,7 @@
 #'
 #' @noRd
 .rxMuRefIsClean <- function(x, env) {
-  if (is.name(x) ) {
+  if (is.name(x)) {
     .n <- as.character(x)
     if (any(.n == env$info$state)) {
       return(FALSE)
@@ -242,7 +242,7 @@
 #' @noRd
 .muRefExtractSingleVariableNames <- function(x, names, env) {
   c(names, do.call(`c`, lapply(x, function(y) {
-    if(is.name(y)) {
+    if (is.name(y)) {
       env$found <- TRUE
       .th <- as.character(y)
       if (.th %in% env$info$theta &&
@@ -272,7 +272,7 @@
 #' @noRd
 .muRefExtractMultiplyMuCovariates <- function(x, doubleNames, env) {
   c(doubleNames, do.call(`c`, lapply(x, function(y) {
-    if(is.call(y) && identical(y[[1]], quote(`*`))) {
+    if (is.call(y) && identical(y[[1]], quote(`*`))) {
       .y2 <- y[-1]
       if (length(.y2) == 2) {
         if (is.name(.y2[[1]]) && is.name(.y2[[2]])) {
@@ -353,7 +353,7 @@
 .muRefNextAdditiveExpression <- function(x) {
   .expr <- NULL
   for (i in seq_along(length(x))) {
-    if(is.call(x[[i]])) {
+    if (is.call(x[[i]])) {
       .expr <- x[[i]]
       if (identical(.expr[[1]], quote(`+`))) {
         if (length(.expr) == 2L) {
@@ -1056,7 +1056,7 @@
   invisible()
 }
 
-.checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint <- function(ui) {
+.checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint <- function(ui) { # nolint: object_length_linter.
   .iniDf <- ui$iniDf
   .predDf <- ui$predDf
   if (is.null(.predDf)) return(NULL)

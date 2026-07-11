@@ -84,6 +84,10 @@
 
 ## Bug fixes
 
+- `ui$thetaUpper` now has its `"desc"` attribute set; a typo (`->` instead of
+  `<-`) assigned the description to a stray variable instead (found by the new
+  lint CI).
+
 ### Estimation / symengine translation (`rxFromSE()`)
 
 - Convert raw R comparison/logical operators (`>`, `==`, `&`, ...), not only

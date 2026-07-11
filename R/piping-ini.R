@@ -1075,7 +1075,7 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   assign("iniDf", .iniDf, envir=rxui)
 }
 
-.iniHandleDiag <- function(expr, rxui){
+.iniHandleDiag <- function(expr, rxui) {
   if (is.null(expr)) {
     assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir=rxui)
   } else {

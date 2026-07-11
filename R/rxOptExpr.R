@@ -181,7 +181,7 @@
   }
 }
 
-..rxOpt <- function(x, progress = FALSE) {
+..rxOpt <- function(x, progress = FALSE) { # nolint: cyclocomp_linter.
   if (is.atomic(x)) {
     return(as.character(x))
   } else if (is.name(x)) {

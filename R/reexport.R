@@ -44,7 +44,7 @@ ggplot2::waiver
 #' @return nothing, simply included to be compatible with ggplot 3.2
 #' @export
 #' @keywords internal
-guide_none <- function(title = waiver(), position = waiver()) {
+guide_none <- function(title = waiver(), position = waiver()) { # nolint: object_name_linter.
   stop("needs \"ggplot2\" 3.3.0", call. = FALSE)
 }
 

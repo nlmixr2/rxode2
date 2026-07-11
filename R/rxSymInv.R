@@ -246,7 +246,7 @@ rxSymInvCreate2C <- function(src) {
 
 
 ## rxSymInvCreateC_.slow <- NULL
-rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
+rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) { # nolint: object_name_linter.
   diag.xform <- match.arg(diag.xform)
   mat2 <- mat
   mat2 <- rxInv(mat2)

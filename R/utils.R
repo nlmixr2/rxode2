@@ -552,7 +552,7 @@ logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, .
     expit(x, low, high) * dnorm(x, mean = mean, sd = sd)
   }
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x){
+  .fV <- function(x) {
     (expit(x, low, high) - .m)^2 * dnorm(x, mean = mean, sd = sd)
   }
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value

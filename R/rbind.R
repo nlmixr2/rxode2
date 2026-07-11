@@ -100,7 +100,7 @@ rbind.rxSolve <- function(..., deparse.level = 1) {
     return(do.call(rbind.rxSolve,
                    c(list(.ret),
                      lapply(seq_along(.lst)[-(1:2)],
-                            function(i){
+                            function(i) {
                               .lst[[i]]
                             }))))
   }

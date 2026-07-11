@@ -89,7 +89,7 @@ getBaseIniSimModel.default <- function(obj) {
       .sigma <- lapply(.w, function(i) {.sigma[[i]]})
     }
   }
-  .mod <- lapply(seq_along(.ret[[2]])[-(1:2)], function(i){.ret[[2]][[i]]})
+  .mod <- lapply(seq_along(.ret[[2]])[-(1:2)], function(i) {.ret[[2]][[i]]})
   if (identical(.params, str2lang("params()"))) {
     .params <- NULL
   }

@@ -258,13 +258,13 @@
     if (.addProp == "combined2") {
       bquote((.(.p1))+ (.(.f))^2*.(.p2))
     } else {
-      bquote( ( (sqrt(.(.p1))) + (.(.f)) * (sqrt(.(.p2))) ) ^ 2)
+      bquote(((sqrt(.(.p1))) + (.(.f)) * (sqrt(.(.p2)))) ^ 2)
     }
   } else {
     if (.addProp == "combined2") {
-      bquote((.(.p1))^2+ (.(.f))^2*(.(.p2))^2)
+      bquote((.(.p1))^2+ (.(.f))^2* (.(.p2))^2)
     } else {
-      bquote( ( (.(.p1)) + (.(.f)) * (.(.p2)) ) ^ 2)
+      bquote(((.(.p1)) + (.(.f)) * (.(.p2))) ^ 2)
     }
   }
 
@@ -319,15 +319,15 @@
   }
   if (pred1$variance) {
     if (.addProp == "combined2") {
-      return(bquote( (.(.p1)) + ( (.(.f))^(.(.p3)) )^2 * .(.p2)))
+      return(bquote((.(.p1)) + ((.(.f))^(.(.p3)))^2 * .(.p2)))
     } else {
-      return(bquote( ( sqrt(.(.p1)) + (.(.f)) ^ (.(.p3))* sqrt(.(.p2)) ) ^ 2))
+      return(bquote((sqrt(.(.p1)) + (.(.f)) ^ (.(.p3))* sqrt(.(.p2))) ^ 2))
     }
   } else {
     if (.addProp == "combined2") {
-      return(bquote( (.(.p1))^2 + ( (.(.f))^(.(.p3)) )^2 * (.(.p2))^2))
+      return(bquote((.(.p1))^2 + ((.(.f))^(.(.p3)))^2 * (.(.p2))^2))
     } else {
-      return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
+      return(bquote(((.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2))) ^ 2))
     }
   }
 }
@@ -547,7 +547,7 @@
       return(.rxArEstLlikLines(env, pred1, errNum, type, .yj, .arCor))
     }
     .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
-    .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
+    .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10* (as.integer(pred1$distribution)-1)))
     .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
     .ret[[3]] <- bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1)))
     .ret[[4]] <- bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1)))
@@ -664,7 +664,7 @@
   }
   if (length(.c) >= 2) {
     .first <- vapply(seq(2, length(.c)), function(i) {
-      paste0("(DV==",(i-1),")*(",
+      paste0("(DV==", (i-1),")*(",
              deparse1(.c[[i]]),")")
 
     }, character(1), USE.NAMES=FALSE)

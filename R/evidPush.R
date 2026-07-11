@@ -108,7 +108,7 @@
 #' }
 #'
 #' @export
-evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
+evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) { # nolint: object_name_linter.
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
 

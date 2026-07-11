@@ -347,11 +347,11 @@
       } else {
         .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
         .val <- lapply(seq_along(.val)[-1],
-                       function(i){
+                       function(i) {
                          .val[[i]]
                        })[[1]]
         .val <- lapply(seq_along(.val)[-1],
-                       function(i){
+                       function(i) {
                          .val[[i]]
                        })
         for (.j in seq_along(.val)) {

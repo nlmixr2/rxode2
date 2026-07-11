@@ -1562,7 +1562,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (length(.invalidKeep) > 0) {
       stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using addDosing=TRUE or merging to original dataset", call.=FALSE)
     }
-    .invalidKeep <- c ("rxLambda", "rxYj", "rxLow", "rxHi")
+    .invalidKeep <- c("rxLambda", "rxYj", "rxLow", "rxHi")
     .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
     if (length(.invalidKeep) > 0) {
       stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using returnType=\"data.frame.TBS\"", call.=FALSE)
@@ -2289,7 +2289,7 @@ rxSolveCacheEnv$.order <- character()
 
 #' @rdname rxSolve
 #' @export
-rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ..., # nolint: cyclocomp_linter.
                             indOwnAlloc = TRUE,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
   rxUdfUiReset()
@@ -3022,7 +3022,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, .ctl)
     }
     .names <- c(.names, .col[.w])
-  } else if ( inherits(.ctl$omega, "character")) {
+  } else if (inherits(.ctl$omega, "character")) {
     .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
@@ -3047,7 +3047,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, .ctl)
     }
     .names <- c(.names, .col[.w])
-  } else if ( inherits(.ctl$sigma, "character")) {
+  } else if (inherits(.ctl$sigma, "character")) {
     .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma

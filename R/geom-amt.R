@@ -92,7 +92,7 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' }
 #' @export
 #' @inheritParams ggplot2::stat_identity
-stat_amt <- function(mapping = NULL, data = NULL,
+stat_amt <- function(mapping = NULL, data = NULL, # nolint: object_name_linter.
                      position = "identity", show.legend = NA,
                      inherit.aes = TRUE, ...) {
   ggplot2::layer(
@@ -104,4 +104,4 @@ stat_amt <- function(mapping = NULL, data = NULL,
 
 #' @rdname stat_amt
 #' @export
-geom_amt <- stat_amt
+geom_amt <- stat_amt # nolint: object_name_linter.

@@ -8,11 +8,11 @@
 #' @return ggplot2 theme used in rxode2
 #' @family rxode2 plotting
 #' @export
-rxTheme <- function(base_size = 11, base_family = "",
-                    base_line_size = base_size / 22,
-                    base_rect_size = base_size / 22,
+rxTheme <- function(base_size = 11, base_family = "", # nolint: object_name_linter.
+                    base_line_size = base_size / 22, # nolint: object_name_linter.
+                    base_rect_size = base_size / 22, # nolint: object_name_linter.
                     grid = TRUE) {
-  half_line <- base_size / 2
+  half_line <- base_size / 2 # nolint: object_name_linter.
   .greyTextAxisX <- ggplot2::element_text(
     color = "#808078",
     margin = ggplot2::margin(t = 0.8 * half_line / 2), vjust = 1
@@ -364,7 +364,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .lst <- .plotTime(.dat, xlab)
   .xlab <- .lst[["xlab"]]
   .lst <- .plotLog(.lst[["dat"]], .lst[["timex"]], log)
-  ggplot(.lst[["dat"]], .aes) +
+  .gg <- ggplot(.lst[["dat"]], .aes) +
     .line +
     .facet +
     .theme +
@@ -374,8 +374,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     .lst[["logy"]] +
     .ylab +
     .xlab +
-    .legend ->
-  .gg
+    .legend
   .gg
 }
 
@@ -446,7 +445,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .ribbon <- ggplot2::geom_ribbon(.aesR, alpha = 0.5, fill = "gray50")
   ## .title <- ggplot2::ggtitle(paste0("50% [", .d2$Percentile[1], ", ",
   ##                                 .d2$Percentile[2], "]"))
-  ggplot2::ggplot(.dat0, .aes) +
+  .ret <- ggplot2::ggplot(.dat0, .aes) +
     .ribbon +
     .line +
     .facet +
@@ -455,8 +454,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .logy +
     .xlab +
     .ylab +
-    .theme ->
-  .ret
+    .theme
   return(.ret)
 }
 
@@ -533,7 +531,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .ribbon <- ggplot2::geom_ribbon(.aesR, alpha = 0.5, col = NA, show.legend = FALSE)
   .leg1 <- ggplot2::scale_color_manual(values = c("black", "gray"))
   .leg2 <- ggplot2::scale_fill_manual(values = c("black", "gray"))
-  ggplot2::ggplot(.dat, .aes) +
+  .ret <- ggplot2::ggplot(.dat, .aes) +
     .ribbon +
     .line +
     .facet +
@@ -544,8 +542,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .ylab +
     .leg1 +
     .leg2 +
-    .theme ->
-  .ret
+    .theme
   ## p1 <- time <- eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- NULL
   ## .lvl <- attr(class(x), ".rx")$lvl
   ## .parm <- attr(class(x), ".rx")$parm

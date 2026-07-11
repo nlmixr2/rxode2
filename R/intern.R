@@ -2,7 +2,7 @@
   .Call(`_rxode2_codeLoaded`)
 }
 
-.codegen <- function(c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
+.codegen <- function(c_file, prefix, libname, pMd5, timeId, lastMv, goodFun, # nolint: object_name_linter.
                      eventSensCode = rep("", 13L)) {
   .Call(`_rxode2_codegen`, c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
         eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
@@ -19,7 +19,7 @@
   .Call(`_rxode2_isLinCmt`)
 }
 
-.trans <- function(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn) {
+.trans <- function(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn) { # nolint: object_name_linter.
   .Call(`_rxode2_trans`,
         parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn)
 }
