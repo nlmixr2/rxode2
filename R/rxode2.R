@@ -717,16 +717,19 @@ rxode <- rxode2
 
 #' Get model properties without compiling it.
 #'
-#' @param model rxode2 specification
-#' @inheritParams rxode2
+#' @param mv rxode2 model variables
+#'
+#' Sensitivity-named states (`rx__sens_<state>_BY_<var>__`) are
+#' stripped of their `d/dt()` when calcJac/calcSens regenerate the
+#' sensitivity block.  A state that is read by `delay()` is a
+#' load-bearing ODE (`delay(X, T)` requires `d/dt(X)`), so it must
+#' never be stripped -- e.g. nlmixr2est's analytic-cov augmented model
+#' supplies delayed sensitivity ODEs directly.  Returns the sens
+#' states safe to strip (those not referenced by any delay() term).
+#'
 #' @return rxode2 trans list
+#'
 #' @author Matthew L. Fidler
-## Sensitivity-named states (`rx__sens_<state>_BY_<var>__`) are stripped of their
-## d/dt() when calcJac/calcSens regenerate the sensitivity block.  A state that
-## is read by delay() is a load-bearing ODE (delay(X, T) requires d/dt(X)), so it
-## must never be stripped -- e.g. nlmixr2est's analytic-cov augmented model
-## supplies delayed sensitivity ODEs directly.  Returns the sens states safe to
-## strip (those not referenced by any delay() term).
 .rxSensStrippable <- function(mv) {
   .sens <- mv$sens
   if (length(.sens) == 0) return(.sens)
@@ -752,6 +755,31 @@ rxode <- rxode2
   txt
 }
 
+#' Get the rxode2 model variables without compiling the model
+#'
+#' Normalizes the input to an `rxModelVars` object and optionally
+#' rewrites the model text first: adding/stripping forward
+#' sensitivity equations (`calcSens`/`calcSens2`/`calcSens3`),
+#' adding/removing the `df()/dy()` Jacobian block (`calcJac`),
+#' dropping LHS definitions (`collapseModel`), or converting to an
+#' inductive linearization model (`indLin`).
+#'
+#' @param model The model to get the model variables from.  It can
+#'   be: rxode2 model text (a character string, `rxModelText`, or a
+#'   `{}` expression), a function or call whose body is the model, an
+#'   `rxode2` object, an `rxModelVars` object, an `rxDll` object, or
+#'   anything else `rxModelVars()` accepts.
+#'
+#' @inheritParams rxode2
+#'
+#' @return An `rxModelVars` object of the (possibly rewritten) model
+#'
+#' @author Matthew L. Fidler
+#'
+#' @examples
+#'
+#' rxGetModel("d/dt(depot) = -ka*depot; d/dt(central) = ka*depot - kel*central")
+#'
 #' @export
 #' @keywords internal
 rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
