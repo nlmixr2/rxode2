@@ -451,13 +451,14 @@
 
 #' AR(1) whitened residual in Gaussian norm (mean/variance) form
 #'
-#' Norm sibling of [.rxArEstLlikLines()] for the FOCEi inner model: instead of an
+#' Norm sibling of `.rxArEstLlikLines()` for the FOCEi inner model: instead of an
 #' explicit `llik`, the whitened conditional likelihood is expressed as a plain
 #' `norm` endpoint whose mean is `rx_pred_ + phi*e_prev` and whose variance is
 #' `R*(1 - phi^2)`.  Keeping the endpoint on the `norm` path lets FOCEi build the
 #' exact Almquist eta-Hessian (the `llik` path only has a first-order gradient).
 #'
-#' @inheritParams .rxArEstLlikLines
+#' inheritParams .rxArEstLlikLines
+#'
 #' @return list of model lines
 #' @author Matthew Fidler
 #' @keywords internal

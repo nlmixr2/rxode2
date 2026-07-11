@@ -415,6 +415,7 @@ uint32_t getRxSeed1(int ncores);
 void setSeedEng1(uint32_t seed);
 void seedEng(int ncores);
 double rxNormEng(double mean, double sd);
+double rxUnifEng(double low, double hi);
 
 // per-individual ODE solve buffer-pointer accessors (defined in rx2api.c); let a
 // downstream caller swap in private, larger solve buffers for a higher-state
@@ -515,6 +516,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setSeedEng1 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setSeedEng1, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2seedEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&seedEng, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxNormEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxNormEng, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxUnifEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxUnifEng, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolvePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolvePtr, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndSolveSave = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndSolveSave, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolveSave = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveSave, R_NilValue, R_NilValue)); pro++;
@@ -525,7 +527,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 83
+#define nVec 84
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -608,8 +610,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 78, rxode2setIndSolveLast);
   SET_VECTOR_ELT(ret, 79, rxode2getIndSolveLast2);
   SET_VECTOR_ELT(ret, 80, rxode2setIndSolveLast2);
-  SET_VECTOR_ELT(ret, 81, rxode2rxRegisterParLoader);
-  SET_VECTOR_ELT(ret, 82, rxode2rxRemoveParLoader);
+  SET_VECTOR_ELT(ret, 81, rxode2rxUnifEng);
+  SET_VECTOR_ELT(ret, 82, rxode2rxRegisterParLoader);
+  SET_VECTOR_ELT(ret, 83, rxode2rxRemoveParLoader);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -694,8 +697,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 78, Rf_mkChar("rxode2setIndSolveLast"));
   SET_STRING_ELT(retN, 79, Rf_mkChar("rxode2getIndSolveLast2"));
   SET_STRING_ELT(retN, 80, Rf_mkChar("rxode2setIndSolveLast2"));
-  SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxRegisterParLoader"));
-  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRemoveParLoader"));
+  SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxUnifEng"));
+  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRegisterParLoader"));
+  SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2rxRemoveParLoader"));
 
 #undef nVec
 

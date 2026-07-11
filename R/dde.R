@@ -50,7 +50,10 @@
 #'
 #' @param model a symengine environment (as from `.loadSymengine`/`rxS`).
 #' @return character vector of past() lines, or NULL if none.
-#' @noRd
+#'
+#' @keywords internal
+#'
+#' @export
 .rxPastBaseLinesFromEnv <- function(model) {
   .states <- tryCatch(rxode2::rxStateOde(model), error = function(e) character(0))
   .lines <- character(0)
@@ -1299,4 +1302,3 @@
 delay <- function(state, T) {
   stop("'delay()' can only be used inside an rxode2 model block", call. = FALSE)
 }
-

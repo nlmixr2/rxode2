@@ -7,7 +7,15 @@
 .rxSensStrippable(mv)
 }
 \arguments{
-\item{model}{rxode2 specification}
+\item{mv}{rxode2 model variables
+
+Sensitivity-named states (\verb{rx__sens_<state>_BY_<var>__}) are
+stripped of their \code{d/dt()} when calcJac/calcSens regenerate the
+sensitivity block.  A state that is read by \code{delay()} is a
+load-bearing ODE (\code{delay(X, T)} requires \code{d/dt(X)}), so it must
+never be stripped -- e.g. nlmixr2est's analytic-cov augmented model
+supplies delayed sensitivity ODEs directly.  Returns the sens
+states safe to strip (those not referenced by any delay() term).}
 }
 \value{
 rxode2 trans list

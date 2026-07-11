@@ -38,6 +38,8 @@ extern "C" {
   extern seedEng_t seedEng;
   typedef double (*rxNormEng_t)(double mean, double sd);
   extern rxNormEng_t rxNormEng;
+  typedef double (*rxUnifEng_t)(double low, double hi);
+  extern rxUnifEng_t rxUnifEng;
 
   // Per-individual ODE solve buffer-pointer swap (nlmixr2est impmap gradient):
   // save the originals, install private larger buffers for a higher-state
@@ -354,6 +356,7 @@ extern "C" {
       setSeedEng1 = (setSeedEng1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 71));
       seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
       rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
+      rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
       setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
       getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
       setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
@@ -361,8 +364,8 @@ extern "C" {
       setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
       getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
       setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
-      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
-      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
     }
     return R_NilValue;
   }
@@ -442,6 +445,7 @@ extern "C" {
   setSeedEng1_t setSeedEng1 = NULL;                     \
   seedEng_t seedEng = NULL;                             \
   rxNormEng_t rxNormEng = NULL;                         \
+  rxUnifEng_t rxUnifEng = NULL;                         \
   setIndSolvePtr_t setIndSolvePtr = NULL;               \
   getIndSolveSave_t getIndSolveSave = NULL;             \
   setIndSolveSave_t setIndSolveSave = NULL;             \

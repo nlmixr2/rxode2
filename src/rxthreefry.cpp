@@ -1375,6 +1375,17 @@ extern "C" double rxNormEng(double mean, double sd){
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
+// Raw uniform(low, hi) draw from the current thread's threefry engine, the
+// uniform peer of rxNormEng() (no inLhs solve-context gate).  Exposed via the
+// function-pointer table so downstream packages can draw threefry uniforms from
+// a seeded per-subject stream (setSeedEng1 + setRxThreadId), e.g. for MCMC
+// accept/reject steps.
+extern "C" double rxUnifEng(double low, double hi){
+  if (ISNA(low) || ISNA(hi)) return NA_REAL;
+  std::uniform_real_distribution<double> d(low, hi);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
 extern "C" double rinorm(int id, double mean, double sd) {
   rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
   if (ind->isIni) {
