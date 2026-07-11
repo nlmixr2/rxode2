@@ -133,6 +133,15 @@
 
 ### Solving
 
+- Zero the LSODA solver work memory on allocation (`alloc_mem`, `calloc` instead
+  of `malloc`).  The shared work block (Nordsieck history `yh`, Jacobian
+  workspace `wm`, `acor`/`savf`, ...) was left uninitialised and parts are read
+  before the integrator writes them on some paths (e.g. a first stiff/BDF step at
+  an extreme point), making a solve non-deterministic.  Surfaced by valgrind as
+  reads of uninitialised LSODA memory inside FOCEi/impmap inner solves, and
+  downstream as an occasional blown-up importance-sampling fit run after a prior
+  (parallel) fit.  Solving is otherwise unchanged.
+
 - `lag()`/`diff()` (and `first()`/`last()`) previously returned a constant
   instead of the prior record's value for calculated variables and time-varying
   covariates; they now read the prior record (`NA` on each individual's first

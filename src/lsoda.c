@@ -308,7 +308,14 @@ static int alloc_mem(struct lsoda_context_t * ctx) {
 	long ipvtoff = offset;
 	offset += (1 + nyh) * sizeof(int);
 
-	_rxC(memory) = malloc(offset);
+	/* calloc (not malloc): the Nordsieck history (yh), Jacobian workspace (wm),
+	   acor/savf, etc. share this block and parts are read before the integrator
+	   writes them on some paths (e.g. a first stiff/BDF step at an extreme eta).
+	   Leaving them uninitialised makes a solve non-deterministic -- surfaced by
+	   valgrind as reads of uninitialised lsoda work memory inside FOCEi/impmap
+	   inner solves, and downstream as an occasional blown-up importance-sampling
+	   fit after a prior (parallel) fit.  Zeroing is cheap and defined. */
+	_rxC(memory) = calloc(offset, 1);
     if (_rxC(memory) == NULL) {
       RSprintf(_("[lsoda] failed to allocate memory of size %ld bytes\n"), (long) offset);
       return 0;
