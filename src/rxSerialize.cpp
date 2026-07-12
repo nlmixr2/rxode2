@@ -785,7 +785,8 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;
   _globals.gSolveLast  = _globals.gSolveSave  + _mem.nsave;
   _globals.gSolveLast2 = _globals.gSolveLast  + _mem.nsave;
-  _globals.gmtime      = _globals.gSolveLast2 + _mem.nsave;
+  _globals.gEsPendingJump = _globals.gSolveLast2 + _mem.nsave;
+  _globals.gmtime      = _globals.gEsPendingJump + _mem.nsave;
   _globals.ginits      = _globals.gmtime      + _mem.n2;
   op->inits            = &_globals.ginits[0];
   _globals.glhs        = _globals.ginits      + _mem.n4;
@@ -1137,6 +1138,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     ind->solveSave = _globals.gSolveSave;
     ind->solveLast = _globals.gSolveLast;
     ind->solveLast2= _globals.gSolveLast2;
+    ind->esPendingJump = _globals.gEsPendingJump;
     ind->lhs       = _globals.glhs;
     ind->llikSave  = _globals.gLlikSave;
     ind->linCmtSave= _globals.gLinSave;

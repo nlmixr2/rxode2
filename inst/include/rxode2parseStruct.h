@@ -360,6 +360,17 @@ struct rx_solving_options_ind_s {
   double  delayT0;         /* initial time; history before this is the IC */
   double  delayMinT;       /* smallest delay duration seen; caps the step size */
   int     delayWarmed;     /* 1 once the RHS has been evaluated to learn delays */
+  // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
+  // compartments.  At a modeled-lag dose the sensitivity of a compartment that
+  // does NOT receive the bolus has a genuine jump discontinuity at the arrival
+  // time tau; its reported value at an output coincident with tau must be the
+  // pre-jump left limit (matching the reported left-continuous state), while
+  // t > tau must see the post-jump value.  handle_evid accumulates the non-dosed
+  // jump here instead of into yp; preSolve flushes it into yp at the first step
+  // that advances past tau.  Per-thread slice of _globals.gEsPendingJump.
+  double *esPendingJump;   /* per-thread neq buffer, or NULL when unused */
+  double  esPendingTau;    /* event time the pending jump belongs to */
+  int     esHasPending;    /* 1 while a deferred jump is waiting to be flushed */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

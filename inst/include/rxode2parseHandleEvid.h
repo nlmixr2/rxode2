@@ -485,6 +485,67 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
 
+// Event ("jump") sensitivities: apply a 1st-order dtau/alag moving-boundary jump
+// to sensitivity compartment `slot` (state esK, param p), or DEFER it.  The
+// dosed compartment (esK == cmt) jumps in VALUE at the arrival time tau -- its
+// reported state at an output coincident with tau is post-dose, so its
+// sensitivity must be the post-jump value; apply immediately.  A NON-dosed
+// compartment (esK != cmt) is physically continuous at tau -- its reported state
+// at a coincident output is the pre-arrival (left-continuous) value, so its
+// reported sensitivity must be the pre-jump left limit.  Its jump is genuine for
+// t > tau, so we accumulate it into the per-thread pending buffer tagged with
+// tau; preSolve() flushes it into yp at the first step that advances past tau.
+// Deferring vs. applying at the event yields an identical yp for every t > tau
+// (no integration happens in between), so this only changes the coincident-time
+// output.  When the pending buffer is unavailable (e.g. op->neq == 0) fall back
+// to applying immediately (old behavior).  Used by the replace/multiply dtau
+// rows, whose 1st-order jump is the LAST sensitivity write of the event (no
+// higher-order row reads it back), so it can be deferred out of yp immediately.
+static inline void _esApplyOrDeferJump(rx_solving_options_ind *ind, double *yp,
+                                       int slot, int esK, int cmt,
+                                       double value, double tau) {
+  if (esK == cmt || ind->esPendingJump == NULL) {
+    yp[slot] += value;
+    return;
+  }
+  ind->esPendingJump[slot] += value;
+  ind->esHasPending = 1;
+  ind->esPendingTau = tau;
+}
+
+// Additive-bolus variant: the same event's 2nd/3rd-order Leibniz rows read yp's
+// POST-jump 1st-order sensitivity block (via dydt of a scratch copy), so the
+// non-dosed 1st-order jump must be in yp while those rows run.  Apply it in place
+// for ALL compartments here, and separately RECORD the non-dosed part into a
+// per-event scratch `deferBuf` (indexed by slot-ns over the ns*np first-order
+// block); _esMoveDeferredToPending() moves it out of yp into the pending buffer
+// once the higher-order rows have run.
+static inline void _esApplyJumpRecordNonDosed(double *yp, double *deferBuf,
+                                              int ns, int slot, int esK, int cmt,
+                                              double value) {
+  yp[slot] += value;
+  if (esK != cmt && deferBuf != NULL) deferBuf[slot - ns] += value;
+}
+
+// Move a recorded per-event non-dosed 1st-order jump out of yp and into the
+// pending buffer, so an output coincident with tau reports the pre-jump left
+// limit while preSolve() restores the post-jump value for t > tau.  No-op
+// without a pending buffer (leaves the in-place jump -- old behavior).
+static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double *yp,
+                                            double *deferBuf, int ns, int np,
+                                            double tau) {
+  if (deferBuf == NULL || ind->esPendingJump == NULL) return;
+  int _any = 0;
+  for (int _r = 0; _r < ns * np; _r++) {
+    if (deferBuf[_r] != 0.0) {
+      yp[ns + _r] -= deferBuf[_r];
+      ind->esPendingJump[ns + _r] += deferBuf[_r];
+      _any = 1;
+    }
+  }
+  if (_any) { ind->esHasPending = 1; ind->esPendingTau = tau; }
+}
+
 // Event ("jump") sensitivities: physical Jacobian column J[.,cmt] and
 // f_cmt = dydt(pre-event state)[cmt], needed by the dtau (event-time) jump
 // rows in the paper's replace/additive/multiplicative tables.  Source
@@ -1528,7 +1589,9 @@ static inline int handle_evid(int evid, int neq,
                 for (int _esK = 0; _esK < _ns; _esK++) {
                   double _esTerm = _esJcol[_esK] * (_esX1 - _esXi);
                   if (_esK == cmt) _esTerm -= _esFc;
-                  yp[_ns + _p * _ns + _esK] += _esTerm * _esDLagP;
+                  // non-dosed compartments deferred to preSolve (coincident-time fix)
+                  _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                      _esTerm * _esDLagP, xout);
                 }
               }
             }
@@ -1601,7 +1664,9 @@ static inline int handle_evid(int evid, int neq,
                 if (_esDLagP != 0.0) {
                   for (int _esK = 0; _esK < _ns; _esK++) {
                     double _esTerm = _esOneMAlpha * (_esJcol[_esK] * _esX1 - (_esK == cmt ? _esFc : 0.0));
-                    yp[_ns + _p * _ns + _esK] += _esTerm * _esDLagP;
+                    // non-dosed compartments deferred to preSolve (coincident-time fix)
+                    _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                        _esTerm * _esDLagP, xout);
                   }
                 }
               }
@@ -1662,6 +1727,12 @@ static inline int handle_evid(int evid, int neq,
               memcpy(_esSensPre, yp + _ns, (size_t)_ns * _np * sizeof(double));
             }
           }
+          // Per-event scratch for the deferred non-dosed 1st-order dtau jump
+          // (coincident-time fix).  Filled in place by the dtau row below and
+          // moved to the pending buffer at the end of this block, AFTER the
+          // 2nd/3rd-order Leibniz rows have read yp's post-jump 1st-order block.
+          double *_esDeferBuf = (ind->esPendingJump != NULL) ?
+            (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
           // ddelta row (bioavailability)
           if (dF != NULL) {
             double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -1767,7 +1838,11 @@ static inline int handle_evid(int evid, int neq,
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
                   for (int _esK = 0; _esK < _ns; _esK++) {
-                    yp[_ns + _p * _ns + _esK] += -_esJcol[_esK] * _esDelta * _esDLagP;
+                    // apply in place (2nd/3rd-order rows read the post-jump block);
+                    // non-dosed part recorded for deferral (coincident-time fix)
+                    _esApplyJumpRecordNonDosed(yp, _esDeferBuf, _ns,
+                                               _ns + _p * _ns + _esK, _esK, cmt,
+                                               -_esJcol[_esK] * _esDelta * _esDLagP);
                   }
                 }
               }
@@ -1949,6 +2024,10 @@ static inline int handle_evid(int evid, int neq,
             if (_esJacQB != NULL) free(_esJacQB);
             if (_esDLagQB != NULL) free(_esDLagQB);
           }
+          // Now that the 2nd/3rd-order rows have read yp's post-jump 1st-order
+          // block, defer the non-dosed 1st-order jump (coincident-time fix).
+          _esMoveDeferredToPending(ind, yp, _esDeferBuf, _ns, _np, xout);
+          if (_esDeferBuf != NULL) free(_esDeferBuf);
           if (_esDydtPre != NULL) free(_esDydtPre);
           if (_esSensPre != NULL) free(_esSensPre);
         }

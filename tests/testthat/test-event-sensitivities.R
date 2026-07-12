@@ -418,6 +418,56 @@ rxTest({
     expect_equal(sj[["rx__sens_central_BY_eta_ka__"]], fdK, tolerance = 1e-4)
   })
 
+  test_that("additive-bolus lag jump: coincident-time output uses one-sided limits", {
+    # Regression for the doubled-sensitivity bug when an observation time exactly
+    # equals a modeled-lag dose arrival.  alag(depot) = 2 * exp(eta_lag): with
+    # eta_lag = 0 the dose (t = 0) arrives at EXACTLY t = 2, where an observation
+    # is placed.  At that coincident time the sensitivity has a genuine jump
+    # discontinuity; the reported value must match the STATE's reported side:
+    #   - central (not dosed, continuous): reported state is the pre-arrival
+    #     value, so its sensitivity must be the pre-jump (right/forward) limit.
+    #   - depot (dosed): reported state is post-dose, so its sensitivity keeps the
+    #     post-jump (left/backward) limit.
+    # Before the fix the coincident central sensitivity was the post-jump
+    # (backward) limit -- the wrong side, ~2x a symmetric FD -- which inflated the
+    # FOCEi objective on models whose observations land on lagged arrivals.
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+      alag(depot) <- 2 * exp(eta_lag)
+      d/dt(depot)   <- -ka * depot
+      d/dt(central) <-  ka * depot - cl / v * central
+    "
+    pars <- c(tka = log(1.15), tcl = log(0.135), tv = log(8), eta_lag = 0)
+    e <- et(amt = 100, cmt = "depot") |> et(c(1.9, 2.0, 2.1, 4))
+    m <- rxode2(.mod, calcSens = "eta_lag", eventSens = "jump")
+    sj <- rxSolve(m, e, pars)
+    h <- 1e-5
+    pp <- pars; pp["eta_lag"] <-  h
+    pm <- pars; pm["eta_lag"] <- -h
+    s0 <- rxSolve(m, e, pars)
+    sP <- rxSolve(m, e, pp)
+    sM <- rxSolve(m, e, pm)
+    .at <- function(s, tm, col) s[[col]][which(abs(s$time - tm) < 1e-8)[1]]
+    # one-sided finite differences of the STATE at the coincident time t = 2
+    fwdCentral <- (.at(sP, 2, "central") - .at(s0, 2, "central")) / h   # right
+    bwdCentral <- (.at(s0, 2, "central") - .at(sM, 2, "central")) / h   # left
+    bwdDepot   <- (.at(s0, 2, "depot")   - .at(sM, 2, "depot"))   / h
+    ajCentral <- .at(sj, 2, "rx__sens_central_BY_eta_lag__")
+    ajDepot   <- .at(sj, 2, "rx__sens_depot_BY_eta_lag__")
+    # central: analytic == pre-jump (forward/right) limit (~0 here), and clearly
+    # NOT the old doubled (backward/left) value.
+    expect_equal(ajCentral, fwdCentral, tolerance = 1e-3)
+    expect_true(abs(ajCentral - bwdCentral) > 0.1 * abs(bwdCentral))
+    # depot: dosed compartment keeps the post-jump (backward/left) limit.
+    expect_equal(ajDepot, bwdDepot, tolerance = 1e-2)
+    # off-dose observations still match a two-sided central difference.
+    for (tm in c(1.9, 2.1, 4)) {
+      fd <- (.at(sP, tm, "central") - .at(sM, tm, "central")) / (2 * h)
+      expect_equal(.at(sj, tm, "rx__sens_central_BY_eta_lag__"), fd,
+                   tolerance = 1e-3)
+    }
+  })
+
   test_that("additive-bolus jumps accumulate across a multi-dose regimen", {
     # alag(depot)=exp(tlag+eta_lag), F=expit(tf+eta_f): every dose contributes
     # both a dtau and a ddelta jump.  The rows use method "add", so the jumps

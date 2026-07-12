@@ -26,7 +26,7 @@ typedef struct {
   /* --- gsolve components (all double) --- */
   int64_t n0;          /* nall * state_size * nsim  -- ODE output matrix      */
   int64_t nlin;        /* linB * 7 * nsub * nsim    -- linCmt scratch          */
-  int64_t nsave;       /* neq * cores               -- used x3 (Save/Last/Last2) */
+  int64_t nsave;       /* neq * cores               -- used x4 (Save/Last/Last2/EsPendingJump) */
   int64_t n2;          /* nMtime * nsub * nsim      -- mtime arrays            */
   int64_t n3a_c;       /* (neq + extraCmt) * cores  -- gTlastS/firstS/CurDose  */
   int64_t n4;          /* initsC.size()  (~ neq for estimates)                */
@@ -98,7 +98,7 @@ static inline void rxFillMemLayout(
   out->gsolve_total =
     out->n0        +
     out->nlin      +
-    3 * out->nsave +
+    4 * out->nsave +  /* gSolveSave, gSolveLast, gSolveLast2, gEsPendingJump */
     out->n2        +
     out->n4        +
     out->n5_c      +
