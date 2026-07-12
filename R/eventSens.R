@@ -333,6 +333,48 @@
   list(lagCmt = .lag, fCmt = .bit(2L), rateCmt = .bit(8L), durCmt = .bit(16L))
 }
 
+#' Identify (linCmt compartment, event-timing parameter) pairs needing sensitivities
+#'
+#' For a linCmt() model, a modeled alag()/f() on a linCmt compartment driven by a
+#' `calcSens` parameter has an event-timing (moving-boundary) sensitivity that the
+#' structural linCmt Jacobian (wrt p1/v1/ka/...) does not capture.  This returns
+#' the (linCmt state, driving parameter) pairs so the linCmt solve can carry the
+#' extra sensitivity columns (Part B of nlmixr2/rxode2#1119).
+#'
+#' @param obj Built model (rxUi, rxode2, modelVars).
+#' @param calcSens Character vector of first-order sensitivity parameters.
+#' @return data.frame(state, param, kind, cmt) (1-based `cmt`), or `NULL` when
+#'   the model has no linCmt event-timing sensitivities.
+#' @noRd
+.rxLinCmtEventSensPairs <- function(obj, calcSens) {
+  if (is.null(calcSens) || length(calcSens) == 0L) return(NULL)
+  .mv <- rxModelVars(obj)
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(NULL)
+  ## linCmt physical compartments (reserved names that are not sens compartments)
+  .linPhys <- grep("^rx__sens_", .rxLinCmt(.mv), value = TRUE, invert = TRUE)
+  if (length(.linPhys) == 0L) return(NULL)
+  .norm <- strsplit(rxNorm(obj), "\n", fixed = TRUE)[[1]]
+  .rows <- list()
+  for (.kind in c("alag", "f")) {
+    .re <- paste0("^", .kind, "\\(([^)]+)\\)=(.*);$")
+    for (.line in grep(.re, .norm, value = TRUE)) {
+      .cmt <- sub(.re, "\\1", .line)
+      if (!(.cmt %in% .linPhys)) next
+      .rhs <- sub(.re, "\\2", .line)
+      .vars <- tryCatch(all.vars(str2lang(.rhs)), error = function(e) character(0))
+      for (.p in intersect(.vars, calcSens)) {
+        .rows[[length(.rows) + 1L]] <-
+          data.frame(state = .cmt, param = .p, kind = .kind,
+                     stringsAsFactors = FALSE)
+      }
+    }
+  }
+  if (length(.rows) == 0L) return(NULL)
+  .df <- do.call(rbind, .rows)
+  .df$cmt <- unname(.mv$stateOrd[.df$state])
+  .df[!duplicated(.df[c("state", "param")]), , drop = FALSE]
+}
+
 #' Free symbols of a dosing expression in symengine (SE-mangled) names
 #'
 #' `map$sensParams` are SE-mangled names (e.g. `ETA_3_`); `all.vars()` of the
