@@ -139,26 +139,16 @@
 
 <dt id="arg-calcsens-">calcSens2<a class="anchor" aria-label="anchor" href="#arg-calcsens-"></a></dt>
 <dd><p>character vector (or <code>NULL</code>) requesting second-order
-(Hessian-path) matrix-exponential sensitivities <code>rx__sens_&lt;x&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;__</code>,
-where <code>p</code> ranges over <code>calcSens</code> and <code>q</code> over <code>calcSens2</code>. Every element of
-<code>calcSens2</code> must also appear in <code>calcSens</code> (its own first-order sensitivity
-compartment must already exist for the cross terms to reference). Mirrors
-<code>rxode2(calcSens2=)</code> for ordinary ODE models (<code><a href="rxode2.html">?rxode2</a></code>); unlike that path
-(which reuses the generic <code><a href="dot-rxSens.html">.rxSens()</a></code>/<code><a href="rxExpandSens2_.html">rxExpandSens2_()</a></code> machinery),
-<code>matExp()</code>/<code><a href="indLin.html">indLin()</a></code> models cannot contain <code>d/dt()</code> lines, so the
-second-order sensitivity ODEs are expressed the same way as the first-order
-ones: as <code>k_from_to</code> micro-constant transfers into the
-<code>rx__sens_&lt;x&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;__</code> compartments. Ignored (with no compartments
-generated) for any state that is part of a <code>linCmt()</code> compartment – linCmt
-sensitivities come from Stan forward-AD, not this Jacobian-based expansion.</p></dd>
+sensitivities <code>rx__sens_&lt;x&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;__</code> (<code>p</code> over <code>calcSens</code>, <code>q</code> over
+<code>calcSens2</code>; every <code>calcSens2</code> element must also be in <code>calcSens</code>).
+Expressed as <code>k_from_to</code> micro-constant transfers like the first-order
+ones.  Ignored for <code>linCmt()</code> states (those use Stan forward-AD).</p></dd>
 
 
 <dt id="arg-calcsens-">calcSens3<a class="anchor" aria-label="anchor" href="#arg-calcsens-"></a></dt>
 <dd><p>character vector (or <code>NULL</code>) requesting third-order
-sensitivities <code>rx__sens_&lt;x&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;_BY_&lt;r&gt;__</code>, where <code>p</code> ranges over
-<code>calcSens</code>, <code>q</code> over <code>calcSens2</code>, and <code>r</code> over <code>calcSens3</code>. Requires
-<code>calcSens2</code> to be supplied; every element of <code>calcSens3</code> must also appear
-in <code>calcSens2</code>. Same linCmt exclusion as <code>calcSens2</code>.</p></dd>
+sensitivities <code>rx__sens_&lt;x&gt;_BY_&lt;p&gt;_BY_&lt;q&gt;_BY_&lt;r&gt;__</code> (<code>r</code> over <code>calcSens3</code>).
+Requires <code>calcSens2</code>; every <code>calcSens3</code> element must also be in <code>calcSens2</code>.</p></dd>
 
 
 <dt id="arg-doconst">doConst<a class="anchor" aria-label="anchor" href="#arg-doconst"></a></dt>
@@ -166,14 +156,8 @@ in <code>calcSens2</code>. Same linCmt exclusion as <code>calcSens2</code>.</p><
 
 
 <dt id="arg-env">env<a class="anchor" aria-label="anchor" href="#arg-env"></a></dt>
-<dd><p>A pre-loaded symengine environment (as returned by
-<code>.rxLoadPrune()</code>) to reuse instead of reloading <code>model</code> from scratch.
-When <code>NULL</code> (the default), the environment is built internally from
-<code>model</code>/<code>doConst</code>. Passing an existing <code>env</code> lets callers that have
-already loaded/pruned the model (e.g. to inject matrix-exponential
-<code>d/dt()</code> terms or other model modifications) feed that same
-environment in, so the sensitivity expansion sees those modifications
-instead of re-deriving them from the original <code>model</code> text.</p></dd>
+<dd><p>A pre-loaded symengine environment (from <code>.rxLoadPrune()</code>) to
+reuse instead of reloading <code>model</code>; when <code>NULL</code> it is built internally.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -182,7 +166,7 @@ instead of re-deriving them from the original <code>model</code> text.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
-    <p>Matthew L. Fidler &amp; Antigravity</p>
+    <p>Matthew L. Fidler</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

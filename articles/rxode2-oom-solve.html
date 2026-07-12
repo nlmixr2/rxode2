@@ -167,7 +167,7 @@ tens or hundreds of thousands of subjects. Each subject requires solver
 workspace, output arrays, and covariate storage, so the combined memory
 footprint grows linearly with the number of subjects. A 100,000-subject
 simulation with a two-compartment model and rich sampling can easily
-require 10–50 GB of RAM — more than many workstations or cloud instances
+require 10-50 GB of RAM – more than many workstations or cloud instances
 provide.</p>
 <p>rxode2 addresses this by <strong>chunked (out-of-memory)
 solving</strong>: subjects are split into batches, each batch is solved
@@ -187,7 +187,7 @@ solving with mirai</a> vignette.</p>
 <p>Throughout this vignette we use a one-compartment oral PK model with
 between- subject variability on clearance and absorption rate.
 Parameters are defined using <code><a href="../reference/ini.html">ini()</a></code> and <code><a href="../reference/model.html">model()</a></code>
-blocks — the standard rxode2 UI approach.</p>
+blocks – the standard rxode2 UI approach.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pkModel</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -230,13 +230,13 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="fu"><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ev</span><span class="op">)</span>, model <span class="op">=</span> <span class="va">mod</span><span class="op">)</span></span>
 <span><span class="co">#&gt; rxSolve() memory estimate</span></span>
-<span><span class="co">#&gt;   Total: 40.59 KB</span></span>
+<span><span class="co">#&gt;   Total: 40.85 KB</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   outputData (estimated returned data)       11.53 KB (28.4%)</span></span>
-<span><span class="co">#&gt;   inds_global (per-subject structs)          9.52 KB (23.5%)</span></span>
-<span><span class="co">#&gt;   gall_times (event time/dv/amt/ii/limit)    8.00 KB (19.7%)</span></span>
-<span><span class="co">#&gt;   gsolve (double buffer total)               3.68 KB ( 9.1%)</span></span>
-<span><span class="co">#&gt;     |_ n0: ODE state output matrix           3.20 KB ( 7.9%)</span></span>
+<span><span class="co">#&gt;   outputData (estimated returned data)       11.53 KB (28.2%)</span></span>
+<span><span class="co">#&gt;   inds_global (per-subject structs)          9.76 KB (23.9%)</span></span>
+<span><span class="co">#&gt;   gall_times (event time/dv/amt/ii/limit)    8.00 KB (19.6%)</span></span>
+<span><span class="co">#&gt;   gsolve (double buffer total)               3.70 KB ( 9.0%)</span></span>
+<span><span class="co">#&gt;     |_ n0: ODE state output matrix           3.20 KB ( 7.8%)</span></span>
 <span><span class="co">#&gt;   gevid (event IDs)                          2.40 KB ( 5.9%)</span></span>
 <span><span class="co">#&gt;   gon (int buffer)                           1.05 KB ( 2.6%)</span></span>
 <span><span class="co">#&gt;   ordId (subject ordering)                   800 B ( 2.0%)</span></span>
@@ -247,7 +247,7 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt;   gsigma (sigma matrix)                      0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt;   gall_timesS (extra sim times)              0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 952 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.63 GB available)</span></span></code></pre></div>
+<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of free RAM (14.63 GB available)</span></span></code></pre></div>
 <p>The output lists every major allocation (ODE state buffers,
 event-time arrays, output data, etc.) as well as the fraction of total
 and free RAM the solve would consume. The <code>freeRamBytes</code> line
@@ -292,6 +292,10 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="va">res</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
+<span><span class="co">#&gt; duckdb is keeping downloaded extensions in a temporary directory:</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpqBmiKO/duckdb/extensions</span></span>
+<span><span class="co">#&gt; This is removed when the R session ends, so extensions are re-downloaded each session.</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> To keep them, point `options(duckdb.extension_directory =)` or the `DUCKDB_EXTENSION_DIRECTORY` environment variable at a permanent path.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 7</span></span></span>
 <span><span class="co">#&gt;    id       tka   tcl    tv prop.err   eta.ka  eta.cl</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
@@ -318,7 +322,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpcAviup/rxChunk4d261856b9bb' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpqBmiKO/rxChunk4c353f5b95c3' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -374,7 +378,7 @@ avoiding loading columns you do not need.</p>
 <h2 id="faking-low-memory-in-demos-and-tests">Faking low memory in demos and tests<a class="anchor" aria-label="anchor" href="#faking-low-memory-in-demos-and-tests"></a>
 </h2>
 <p>The easiest way to demonstrate or test the chunked path on a small
-dataset is to set <code>chunkSize</code> directly — no need to modify
+dataset is to set <code>chunkSize</code> directly – no need to modify
 system RAM. With <code>chunkSize = 2</code> on 10 subjects you get 5
 chunks of 2 subjects each:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -415,7 +419,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpcAviup/rxDemo4d2652d0c774' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpqBmiKO/rxDemo4c352719773f' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -467,7 +471,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpcAviup/rxFile4d2629a80a9b' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpqBmiKO/rxFile4c355424ec6b' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
@@ -493,21 +497,21 @@ later:</p>
 </h2>
 <p>The combination of chunked solving and Arrow datasets means rxode2
 can handle populations that are <strong>too large to fit in memory at
-any stage</strong> — not just during the solve, but also when
+any stage</strong> – not just during the solve, but also when
 post-processing the results. Chunk files stay on disk; Arrow reads only
 what your query needs.</p>
 <p>When the <code>arrow</code> package is installed (which it must be
 for parquet chunk files), rxode2 exposes two Arrow-native accessors on
 the <code>rxSolveOom</code> object.</p>
 <div class="section level3">
-<h3 id="lazy-arrow-dataset-querying-without-loading-everything">Lazy Arrow Dataset — querying without loading everything<a class="anchor" aria-label="anchor" href="#lazy-arrow-dataset-querying-without-loading-everything"></a>
+<h3 id="lazy-arrow-dataset-querying-without-loading-everything">Lazy Arrow Dataset – querying without loading everything<a class="anchor" aria-label="anchor" href="#lazy-arrow-dataset-querying-without-loading-everything"></a>
 </h3>
 <p><code><a href="../reference/as.arrow.html">as.arrow()</a></code> (an rxode2 generic; arrow itself has no such
 function) opens all chunk files as a single lazy
 <code><a href="https://arrow.apache.org/docs/r/reference/Dataset.html" class="external-link">arrow::Dataset</a></code>. No rows are read from disk until you
 explicitly collect them. You can push filters, column selections, and
-aggregations down to the Arrow engine so that only the result — not the
-full dataset — is brought into R memory:</p>
+aggregations down to the Arrow engine so that only the result – not the
+full dataset – is brought into R memory:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as.arrow.html">as.arrow</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="va">ds</span></span>
@@ -561,7 +565,7 @@ result:</p>
 <p>This is the key advantage over materialising with
 <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code>: for a 100,000-subject simulation that
 would require 40 GB of RAM as an R data frame, the summary above reads
-each chunk sequentially and returns only one row per subject — a result
+each chunk sequentially and returns only one row per subject – a result
 that fits easily in memory even when the full dataset does not.</p>
 <p>Other useful patterns:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
@@ -672,7 +676,7 @@ performance tuning, and custom parallel workflows.</p>
 <span><span class="co">#&gt; [10] fastmap_1.2.0         qs2_0.2.2             lotri_1.0.5          </span></span>
 <span><span class="co">#&gt; [13] jsonlite_2.0.0        rxode2ll_2.0.14       backports_1.5.1      </span></span>
 <span><span class="co">#&gt; [16] DBI_1.3.0             purrr_1.2.2           scales_1.4.0         </span></span>
-<span><span class="co">#&gt; [19] textshaping_1.0.5     jquerylib_0.1.4       duckdb_1.5.4.2       </span></span>
+<span><span class="co">#&gt; [19] textshaping_1.0.5     jquerylib_0.1.4       duckdb_1.5.4.3       </span></span>
 <span><span class="co">#&gt; [22] cli_3.6.6             crayon_1.5.3          rlang_1.3.0          </span></span>
 <span><span class="co">#&gt; [25] units_1.0-1           bit64_4.8.2           withr_3.0.3          </span></span>
 <span><span class="co">#&gt; [28] cachem_1.1.0          yaml_2.3.12           otel_0.2.0           </span></span>

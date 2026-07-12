@@ -269,6 +269,10 @@ daemon, and shuts the daemons down when done.</p>
 <span><span class="va">res</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
+<span><span class="co">#&gt; duckdb is keeping downloaded extensions in a temporary directory:</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpFs2BLf/duckdb/extensions</span></span>
+<span><span class="co">#&gt; This is removed when the R session ends, so extensions are re-downloaded each session.</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> To keep them, point `options(duckdb.extension_directory =)` or the `DUCKDB_EXTENSION_DIRECTORY` environment variable at a permanent path.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 7</span></span></span>
 <span><span class="co">#&gt;    id       tka   tcl    tv prop.err   eta.ka  eta.cl</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
@@ -295,7 +299,7 @@ daemon, and shuts the daemons down when done.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.550   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.527   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.406   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpsH57zZ/rxPar47efeb912ac' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpFs2BLf/rxPar47084221bf5f' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   id time       ka      cl  v        cp  ipredSim       sim        depot</span></span>
@@ -346,7 +350,7 @@ creating new ones.</p>
 </h2>
 <p>Not every parallel use case fits the <code>file</code> pattern. You
 can dispatch arbitrary <code><a href="../reference/rxSolve.html">rxSolve()</a></code> calls across mirai daemons
-for independent scenarios such as sensitivity analyses or dose–response
+for independent scenarios such as sensitivity analyses or dose-response
 simulations.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">doses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">100</span>, <span class="fl">200</span><span class="op">)</span></span>
@@ -377,13 +381,13 @@ simulations.</p>
 <p>This pattern is useful for:</p>
 <ul>
 <li>
-<strong>Sensitivity analysis</strong> — vary one parameter at a time
+<strong>Sensitivity analysis</strong> – vary one parameter at a time
 across daemons.</li>
 <li>
-<strong>Dose–response</strong> — simulate many dose levels
+<strong>Dose-response</strong> – simulate many dose levels
 simultaneously.</li>
 <li>
-<strong>Bootstrap replicates</strong> — each daemon processes an
+<strong>Bootstrap replicates</strong> – each daemon processes an
 independent replicate data set.</li>
 </ul>
 </div>
@@ -413,7 +417,7 @@ reproducible, call <code><a href="../reference/rxSetSeed.html">rxSetSeed()</a></
 <p>When <code>parallel</code> is set, rxode2 pre-draws
 <strong>all</strong> subjects’ etas in one pass before splitting into
 chunks. This means the eta draws match those of an equivalent
-single-call <code><a href="../reference/rxSolve.html">rxSolve()</a></code> at the same rxode2 seed — chunk
+single-call <code><a href="../reference/rxSolve.html">rxSolve()</a></code> at the same rxode2 seed – chunk
 boundaries do not affect the random-number sequence.</p>
 <p>For custom mirai workflows, seed each task independently:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -444,8 +448,8 @@ boundaries do not affect the random-number sequence.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Chunk size ≈ total_subjects / (2 × ndaemons)</td>
-<td>Keeps daemons busy without under-utilising them</td>
+<td>Chunk size ~ total_subjects / (2 x ndaemons)</td>
+<td>Keeps daemons busy without under-utilizing them</td>
 </tr>
 <tr class="even">
 <td>Start with <code>parallel = 4</code> for 4-core machines</td>
@@ -504,7 +508,7 @@ the sweet spot</td>
 <span><span class="co">#&gt; [10] fastmap_1.2.0         lotri_1.0.5           qs2_0.2.2            </span></span>
 <span><span class="co">#&gt; [13] jsonlite_2.0.0        rxode2ll_2.0.14       backports_1.5.1      </span></span>
 <span><span class="co">#&gt; [16] DBI_1.3.0             purrr_1.2.2           scales_1.4.0         </span></span>
-<span><span class="co">#&gt; [19] textshaping_1.0.5     jquerylib_0.1.4       duckdb_1.5.4.2       </span></span>
+<span><span class="co">#&gt; [19] textshaping_1.0.5     jquerylib_0.1.4       duckdb_1.5.4.3       </span></span>
 <span><span class="co">#&gt; [22] cli_3.6.6             crayon_1.5.3          rlang_1.3.0          </span></span>
 <span><span class="co">#&gt; [25] units_1.0-1           bit64_4.8.2           cachem_1.1.0         </span></span>
 <span><span class="co">#&gt; [28] yaml_2.3.12           otel_0.2.0            tools_4.6.1          </span></span>
