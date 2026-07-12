@@ -237,6 +237,37 @@ rxTest({
     expect_equal(.info$map$lagCmt, 1L)
   })
 
+  test_that("ODE d/dt() colliding with a linCmt reserved compartment name warns + disables jump", {
+    # Naming an ODE compartment `depot` alongside an oral/multi-cmt linCmt (which
+    # reserves `depot`) conflates the two compartments: the ODE state loses its
+    # sensitivity expansion, so both the continuous sens ODE and the jump are
+    # wrong.  Detect and disable the jump with a clear warning rather than emit
+    # silently-incorrect sensitivities.
+    expect_warning(
+      m <- rxode2({
+        ka <- exp(tka)
+        alag(depot) <- 2 * exp(eta_lag)
+        d/dt(depot)   <- -ka * depot
+        d/dt(peri)    <-  ka * depot - 0.3 * peri
+        C2 <- linCmt(CL, V)
+      }, calcSens = "eta_lag", eventSens = "jump",
+      linCmtSens = "linCmtA", linCmtSensType = "A"),
+      "share a name with linCmt"
+    )
+    expect_null(suppressWarnings(m)$eventSensInfo)
+    # a valid (non-colliding) mixed model is unaffected: jump stays active
+    mOk <- rxode2({
+      ka <- exp(tka)
+      alag(gut) <- 2 * exp(eta_lag)
+      d/dt(gut) <- -ka * gut
+      d/dt(eff) <-  ka * gut - 0.3 * eff
+      C2 <- linCmt(CL, V)
+    }, calcSens = "eta_lag", eventSens = "fd",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_false(is.null(mOk$eventSensInfo))
+    expect_equal(mOk$eventSensInfo$map$states, c("gut", "eff"))
+  })
+
   test_that("mixed ODE+linCmt hybrid event path matches the ODE equivalent", {
     mLin <- rxode2({
       C2 <- linCmt(CL, V)

@@ -235,6 +235,25 @@
   .mv <- rxModelVars(obj)
   .lin <- .rxLinNcmt(.mv)
   if (.lin["numLin"] <= 0L) return(map)
+  ## Guard: an explicit d/dt() on a linCmt()-reserved compartment name
+  ## (depot/central/peripheralN) conflates the ODE and linCmt compartments --
+  ## the ODE state loses its sensitivity expansion (its rx__sens_<state>_BY_*
+  ## compartment is never generated), so BOTH the continuous sensitivity ODE
+  ## and the jump come out wrong.  Detect and disable jump with a clear warning
+  ## rather than emit silently-incorrect sensitivities.
+  .reservedPhys <- grep("^rx__sens_", .rxLinCmt(.mv), value = TRUE, invert = TRUE)
+  if (length(.reservedPhys) > 0L) {
+    .norm <- rxNorm(obj)
+    .collide <- .reservedPhys[vapply(.reservedPhys, function(.nm)
+      grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE), logical(1))]
+    if (length(.collide) > 0L) {
+      warning("event-sensitivity jump disabled: ODE compartment(s) '",
+              paste(.collide, collapse = "', '"),
+              "' share a name with linCmt() reserved compartments; rename them",
+              call. = FALSE)
+      return(NULL)
+    }
+  }
   .odeStates <- setdiff(.mv$normal.state, .rxLinCmt(.mv))
   if (length(.odeStates) == 0L) return(map)
   .stateCmt <- unname(map$stateCmt[.odeStates])
