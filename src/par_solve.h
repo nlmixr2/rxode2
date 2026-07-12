@@ -155,6 +155,14 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 		ind->lastIsSs2 = false;
     ind->idxLow=0;
     ind->idxHi=0;
+    // Event ("jump") sensitivities: clear any deferred non-dosed dtau jump so it
+    // does not leak across subjects; keep the buffer zeroed when idle (the flush
+    // in preSolve re-zeros it after each use).
+    ind->esHasPending = 0;
+    ind->esPendingTau = NA_REAL;
+    if (ind->esPendingJump != NULL) {
+      memset(ind->esPendingJump, 0, rxEffNeq(ind, op)*sizeof(double));
+    }
 		// neq[0] = op->neq
     int ncmt = (op->neq + op->extraCmt);
 		for (int j = ncmt; j--;) {
@@ -375,6 +383,22 @@ static inline int handleExtraDose(int *neq,
 
 static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
                             double &xp, double &xout, double *yp) {
+  // Event ("jump") sensitivities: flush the deferred non-dosed dtau jump.  It is
+  // recorded at a modeled-lag dose arrival time tau but withheld from yp so that
+  // any output coincident with tau reports the pre-jump left limit for
+  // compartments that did not receive the bolus.  This is the first integration
+  // step that advances past tau (preSolve is only called when xout != xp), so
+  // adding the jump here makes every t > tau see the post-jump value -- identical
+  // to applying it at the dose event, since no integration occurred in between.
+  // Invariant: a flush happens between any two distinct event times, so all
+  // pending accumulation shares the single time esPendingTau.
+  if (ind->esHasPending && ind->esPendingJump != NULL &&
+      isSameTime(ind->esPendingTau, xp)) {
+    int _n = rxEffNeq(ind, op);
+    for (int j = _n; j--;) yp[j] += ind->esPendingJump[j];
+    memset(ind->esPendingJump, 0, (size_t)_n*sizeof(double));
+    ind->esHasPending = 0;
+  }
   // First set the last values of time and compartment values
   if (op->numLin > 0) {
     ind->linCmtAlast = yp + op->linOffset;

@@ -6,6 +6,7 @@ struct rx_globals {
   double *gSolveLast2;
   double *gSolveLast;
   double *gSolveSave;
+  double *gEsPendingJump;  // per-thread neq scratch: deferred non-dosed dtau jump
   int *gon;
   double *gIndSim;
   double *gsolve;
