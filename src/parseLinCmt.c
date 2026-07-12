@@ -155,12 +155,23 @@ static inline int linCmtGenFinalize(linCmtGenStruct *linG, SEXP linCmt, SEXP var
   return 0;
 }
 
-static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose) {
+static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose, SEXP eventNames) {
   rxProtectGuard;
   SEXP inStr = rxP(Rf_allocVector(STRSXP, 4));
   int doSens = 0;
   if (TYPEOF(linCmtSens) == INTSXP){
     doSens = INTEGER(linCmtSens)[0];
+  }
+  // Part B (#1119): stash the requested linCmt event-timing sensitivity
+  // compartment names for calcLinCmt() to emit into the linCmt block.
+  rxLinEvSensN = 0;
+  if (!Rf_isNull(eventNames) && TYPEOF(eventNames) == STRSXP) {
+    int _n = (int) Rf_length(eventNames);
+    if (_n > RX_MAX_LIN_EV_SENS) _n = RX_MAX_LIN_EV_SENS;
+    for (int _i = 0; _i < _n; _i++) {
+      snprintf(rxLinEvSensNames[_i], 256, "%s", CHAR(STRING_ELT(eventNames, _i)));
+    }
+    rxLinEvSensN = _n;
   }
   // These no longer do anything
   SET_STRING_ELT(inStr, 2, Rf_mkChar(""));
@@ -205,13 +216,7 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
 
 linCmtGenStruct _linCmtGenStruct;
 
-SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose) {
+SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose, SEXP eventNames) {
   linCmtGenIni(&_linCmtGenStruct);
-  /* SEXP ret = PROTECT(Rf_allocVector(STRSXP, 1)); */
-  /* if (tb.hasKa){ */
-  /*   linCmtGenKa(&_linCmtGenStruct); */
-  /* } else { */
-  /*   linCmtGenBolus(&_linCmtGenStruct); */
-  /* } */
-  return linCmtGenSEXP(&_linCmtGenStruct, linCmt, vars, linCmtSens, verbose);
+  return linCmtGenSEXP(&_linCmtGenStruct, linCmt, vars, linCmtSens, verbose, eventNames);
 }

@@ -1638,6 +1638,19 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
                 "rx__sens_depot_BY_ka")
     }
   }
+  ## Part B (nlmixr2/rxode2#1119): event-timing sensitivity compartments live in
+  ## the linCmt block (numLinSens) but are NOT covered by the structural-name
+  ## reconstruction above.  When numLinSens exceeds the structural count, append
+  ## the extra trailing linCmt-block compartment names (by solve order) so they
+  ## are correctly treated as linCmt compartments (not ODE states) downstream.
+  .nBlock <- unname(.ncmt["numLin"] + .ncmt["numLinSens"])
+  if (.nBlock > length(.ret)) {
+    .mv <- rxModelVars(obj)
+    if (!is.null(.mv$stateOrd)) {
+      .blockNames <- utils::tail(names(sort(.mv$stateOrd)), .nBlock)
+      .ret <- union(.ret, .blockNames)
+    }
+  }
   .ret
 }
 

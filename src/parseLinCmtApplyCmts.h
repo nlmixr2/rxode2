@@ -249,6 +249,17 @@ extern void calcLinCmt(void) {
         break;
       }
     }
+    // Part B (nlmixr2/rxode2#1119): event-timing sensitivity compartments for
+    // linCmt() compartments (a modeled alag/f driven by a calcSens parameter).
+    // Requested by name from R via rxLinEvSensNames; added to the linCmt block's
+    // numSens so copyLinCmt materializes them.
+    for (int _i = 0; _i < rxLinEvSensN; _i++) {
+      if (new_de(rxLinEvSensNames[_i], fromDDT)) {
+        add_de(ni, "linCmt()", rxLinEvSensNames[_i], 0, fromDDT);
+        tb.idu[tb.id]=1;
+        numSens++;
+      }
+    }
     // Take off trailing "',
     if (linCmtErr) {
       if ((linCmtErr & 1) != 0) {
