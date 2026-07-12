@@ -98,6 +98,10 @@ typedef void *(*t_assignFuns)(void);
 // __RXODE2PTR_H__ guard so downstream packages see the typedef.
 typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
 
+// dydt forcing hook: add forcing to state derivatives from generated model dydt.
+// Defined outside the __RXODE2PTR_H__ guard so downstream packages see the typedef.
+typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+
 // Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
 // exported to downstream packages through the rxode2 function-pointer table
 // (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
@@ -122,6 +126,8 @@ void rxGetSolveAtolRtol(double *atol, double *rtol);
 // itself; downstream packages get these as function pointers via the table.
 void rxRegisterParLoader(t_rxParLoader cb);
 void rxRemoveParLoader(t_rxParLoader cb);
+void rxRegisterDydtForce(t_rxDydtForce cb);
+void rxRemoveDydtForce(t_rxDydtForce cb);
 #endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);

@@ -279,6 +279,11 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
    they are exported to downstream packages via the function-pointer table
    (_rxode2_rxode2Ptr below), not R_RegisterCCallable. */
 
+/* dydt forcing hook: rxCallDydtForce is called from generated model code and so
+   is resolved via R_GetCCallable; rxRegisterDydtForce / rxRemoveDydtForce are
+   exported to plugins via the function-pointer table (like the par loaders). */
+void rxCallDydtForce(int *neq, double t, double *y, double *dydt);
+
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
 void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
                t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
@@ -526,8 +531,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 84
+#define nVec 86
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -613,6 +620,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 81, rxode2rxUnifEng);
   SET_VECTOR_ELT(ret, 82, rxode2rxRegisterParLoader);
   SET_VECTOR_ELT(ret, 83, rxode2rxRemoveParLoader);
+  SET_VECTOR_ELT(ret, 84, rxode2rxRegisterDydtForce);
+  SET_VECTOR_ELT(ret, 85, rxode2rxRemoveDydtForce);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -700,6 +709,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxUnifEng"));
   SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRegisterParLoader"));
   SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2rxRemoveParLoader"));
+  SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2rxRegisterDydtForce"));
+  SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2rxRemoveDydtForce"));
 
 #undef nVec
 
@@ -1002,6 +1013,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "rxCallDydtForce", (DL_FUNC) &rxCallDydtForce);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);

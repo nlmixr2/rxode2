@@ -4530,6 +4530,41 @@ extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
   }
 }
 
+// ---- dydt forcing hooks ---------------------------------------------------
+// Packages register a callback the generated model invokes at the end of its RHS
+// (dydt) evaluation, so they can ADD forcing to designated state derivatives --
+// e.g. the b_j = dR/dg * dg/dw_j term for NN-weight forward-sensitivity
+// (variational) states, on top of the J*s_j part rxode2's sensitivity codegen
+// already produces.  Called inside the per-subject solve (possibly parallel), so
+// callbacks must be thread-safe (read-only shared state, write only their own
+// dydt slots).  neq[0]=nstate, neq[1]=cSub.
+typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+#define RX_MAX_DYDT_FORCE 32
+static t_rxDydtForce _rxDydtForce[RX_MAX_DYDT_FORCE] = {NULL};
+static int _rxNDydtForce = 0;
+
+extern "C" void rxRegisterDydtForce(t_rxDydtForce cb) {
+  if (cb == NULL) return;
+  for (int i = 0; i < _rxNDydtForce; ++i) if (_rxDydtForce[i] == cb) return;
+  if (_rxNDydtForce < RX_MAX_DYDT_FORCE) _rxDydtForce[_rxNDydtForce++] = cb;
+}
+
+extern "C" void rxRemoveDydtForce(t_rxDydtForce cb) {
+  for (int i = 0; i < _rxNDydtForce; ++i) {
+    if (_rxDydtForce[i] == cb) {
+      for (int k = i; k < _rxNDydtForce - 1; ++k) _rxDydtForce[k] = _rxDydtForce[k + 1];
+      _rxDydtForce[--_rxNDydtForce] = NULL;
+      return;
+    }
+  }
+}
+
+// Invoked by generated model dydt (resolved via R_GetCCallable at model load).
+// Fast no-op when nothing is registered -- one branch per RHS evaluation.
+extern "C" void rxCallDydtForce(int *neq, double t, double *y, double *dydt) {
+  for (int i = 0; i < _rxNDydtForce; ++i) _rxDydtForce[i](neq, t, y, dydt);
+}
+
 // Parameters injected by the loaders on the most recent solve, captured by
 // diffing the population parameter block (column 0) before/after the loaders.
 // Lets the solved object save/restore externally-injected values (e.g. trained

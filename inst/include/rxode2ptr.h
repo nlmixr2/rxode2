@@ -280,6 +280,15 @@ extern "C" {
   typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
   extern rxRemoveParLoader_t rxRemoveParLoader;
 
+  // Register / remove a dydt forcing hook (t_rxDydtForce from rxode2.h); the
+  // generated model calls all registered hooks at the end of its RHS so a
+  // package can add forcing to state derivatives (e.g. NN-weight variational
+  // states).
+  typedef void (*rxRegisterDydtForce_t)(t_rxDydtForce cb);
+  extern rxRegisterDydtForce_t rxRegisterDydtForce;
+  typedef void (*rxRemoveDydtForce_t)(t_rxDydtForce cb);
+  extern rxRemoveDydtForce_t rxRemoveDydtForce;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -366,6 +375,8 @@ extern "C" {
       setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
       rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
       rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
+      rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 84));
+      rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 85));
     }
     return R_NilValue;
   }
@@ -455,6 +466,8 @@ extern "C" {
   setIndSolveLast2_t setIndSolveLast2 = NULL;           \
   rxRegisterParLoader_t rxRegisterParLoader = NULL;     \
   rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
+  rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
+  rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
