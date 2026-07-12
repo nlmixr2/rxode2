@@ -461,6 +461,17 @@ rxode2 <- # nolint
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
     .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
+    ## Warn when sensitivities are requested on a linCmt() model whose ODE
+    ## compartment name collides with a linCmt reserved name: the ODE state loses
+    ## its sensitivity expansion, so its sensitivities are silently incorrect.
+    if (!is.null(calcSens)) {
+      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
+      if (length(.linCollide) > 0L) {
+        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
+                "' share a name with linCmt() reserved compartments; ",
+                "sensitivities will be incorrect -- rename them", call. = FALSE)
+      }
+    }
     .indLinSens <- length(.env$.mv$indLin) > 0L &&
       length(.env$.mv$sens) > 0L
     if (.indLinSens) {
