@@ -124,13 +124,14 @@ rxTest({
     expect_null(m$eventSensInfo)
   })
 
-  test_that("eventSens='jump' works with linCmt()+mtime() models", {
+  test_that("eventSens on a linCmt()+mtime() model downgrades to fd", {
     m <- rxode2({
       C2 <- linCmt(CL, V)
       mtime(t1) <- mt1
       mtime(t2) <- mt2
     }, eventSens = "jump", linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_equal(m$eventSens, "jump")
+    # linCmt models downgrade to finite differences for event sensitivities (#1119)
+    expect_equal(m$eventSens, "fd")
     expect_null(m$eventSensInfo)
     e <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 2, dosing.interval = 8) |>
@@ -139,16 +140,16 @@ rxTest({
     expect_true(all(c(0.5, 1.75) %in% s$time))
   })
 
-  test_that("eventSens='fd' resolves to hybrid jump for mixed ODE+linCmt", {
+  test_that("mixed ODE+linCmt downgrades to fd for event sensitivities", {
     m <- rxode2({
       C2 <- linCmt(CL, V)
       alag(eff) <- exp(tlag + eta_lag)
       d/dt(eff) <- kin - kout * eff
     }, calcSens = "eta_lag", eventSens = "fd",
     linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_equal(m$eventSens, "jump")
-    expect_false(is.null(m$eventSensInfo))
-    expect_equal(m$eventSensInfo$map$states, "eff")
+    # any linCmt model downgrades to FD (#1119): no jump metadata
+    expect_equal(m$eventSens, "fd")
+    expect_null(m$eventSensInfo)
   })
 
   test_that("eventSens='fdAll' keeps full finite-difference fallback", {
@@ -191,14 +192,15 @@ rxTest({
     }
   })
 
-  test_that("eventSens='fd' resolves to symbolic jump for pure linCmt", {
+  test_that("pure linCmt with modeled alag downgrades to fd", {
     m <- rxode2({
       C2 <- linCmt(CL, V)
       alag(central) <- exp(tlag + eta_lag)
     }, calcSens = "eta_lag", eventSens = "fd",
     linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_equal(m$eventSens, "jump")
-    expect_false(is.null(m$eventSensInfo))
+    # pure linCmt downgrades to FD (#1119)
+    expect_equal(m$eventSens, "fd")
+    expect_null(m$eventSensInfo)
   })
 
   test_that("pure linCmt hybrid event path matches the ODE equivalent", {
@@ -223,28 +225,26 @@ rxTest({
     expect_equal(sLin$central, sOde$central, tolerance = 1e-5)
   })
 
-  test_that("mixed ODE+linCmt jump keeps only ODE-scoped jump sensitivities", {
+  test_that("mixed ODE+linCmt with explicit jump still downgrades to fd", {
+    # Even eventSens="jump" downgrades to FD when linCmt() is present (#1119):
+    # the linCmt-compartment moving-boundary jump is not implemented, so all
+    # linCmt models use finite differences for event sensitivities.
     m <- rxode2({
       C2 <- linCmt(CL, V)
       alag(eff) <- exp(tlag + eta_lag)
       d/dt(eff) <- kin - kout * eff
     }, calcSens = "eta_lag", eventSens = "jump",
     linCmtSens = "linCmtA", linCmtSensType = "A")
-    .info <- m$eventSensInfo
-    expect_equal(.info$map$states, "eff")
-    expect_equal(.info$map$sensParams, "eta_lag")
-    expect_equal(unique(.info$map$map$state), "eff")
-    expect_equal(.info$map$lagCmt, 1L)
+    expect_equal(m$eventSens, "fd")
+    expect_null(m$eventSensInfo)
   })
 
-  test_that("ODE d/dt() colliding with a linCmt reserved compartment name warns + disables jump", {
+  test_that("ODE d/dt() colliding with a linCmt reserved compartment name warns", {
     # Naming an ODE compartment `depot` alongside an oral/multi-cmt linCmt (which
     # reserves `depot`) conflates the two compartments: the ODE state loses its
-    # sensitivity expansion, so both the continuous sens ODE and the jump are
-    # wrong.  Detect and disable the jump with a clear warning rather than emit
-    # silently-incorrect sensitivities.
+    # sensitivity expansion, so its sensitivities are silently incorrect.  Warn.
     expect_warning(
-      m <- rxode2({
+      rxode2({
         ka <- exp(tka)
         alag(depot) <- 2 * exp(eta_lag)
         d/dt(depot)   <- -ka * depot
@@ -254,18 +254,17 @@ rxTest({
       linCmtSens = "linCmtA", linCmtSensType = "A"),
       "share a name with linCmt"
     )
-    expect_null(suppressWarnings(m)$eventSensInfo)
-    # a valid (non-colliding) mixed model is unaffected: jump stays active
-    mOk <- rxode2({
+    # a valid (non-colliding) linCmt model: no warning; downgrades to fd (#1119)
+    mOk <- suppressWarnings(rxode2({
       ka <- exp(tka)
       alag(gut) <- 2 * exp(eta_lag)
       d/dt(gut) <- -ka * gut
       d/dt(eff) <-  ka * gut - 0.3 * eff
       C2 <- linCmt(CL, V)
     }, calcSens = "eta_lag", eventSens = "fd",
-    linCmtSens = "linCmtA", linCmtSensType = "A")
-    expect_false(is.null(mOk$eventSensInfo))
-    expect_equal(mOk$eventSensInfo$map$states, c("gut", "eff"))
+    linCmtSens = "linCmtA", linCmtSensType = "A"))
+    expect_equal(mOk$eventSens, "fd")
+    expect_null(mOk$eventSensInfo)
   })
 
   test_that("mixed ODE+linCmt hybrid event path matches the ODE equivalent", {

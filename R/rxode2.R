@@ -421,22 +421,6 @@ rxode2 <- # nolint
     if (.isLinCmt) {
       .env$.linCmtM <- rxNorm(.env$.mv)
       .vars <- c(.env$.mv$params, .env$.mv$lhs, .env$.mv$slhs)
-      ## Part B (#1119): event-timing sensitivities for linCmt compartments.
-      ## A modeled alag()/f() on a linCmt compartment driven by a calcSens param
-      ## has a moving-boundary sensitivity the structural linCmt Jacobian misses.
-      ## Emit an extra linCmt sensitivity compartment per (state, param) pair; the
-      ## linCmt solve carries it (homogeneous propagation + dose seeding).
-      ## WIP (#1119 Part B): gated OFF by default while the linCmt solve is wired
-      ## to carry these columns.  When enabled, the compartments are created but
-      ## downstream sensitivity generation is not yet complete.
-      .linEvNames <- character(0)
-      if (isTRUE(getOption("rxode2.linCmtEventSens", FALSE))) {
-        .linEvPairs <- .rxLinCmtEventSensPairs(.env$.mv, calcSens)
-        if (!is.null(.linEvPairs)) {
-          .linEvNames <- paste0("rx__sens_", .linEvPairs$state, "_BY_",
-                                .linEvPairs$param, "__")
-        }
-      }
       .env$.mv <- rxGetModel(.Call(
         `_rxode2_linCmtGen`,
         length(.env$.mv$state),
@@ -446,7 +430,7 @@ rxode2 <- # nolint
             "linCmtA" = 1L, "linCmtB" = 2L
           )[match.arg(linCmtSens)],
           NULL
-        ), verbose, .linEvNames
+        ), verbose
       ),
       calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel,
       indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
@@ -477,6 +461,17 @@ rxode2 <- # nolint
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
     .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
+    ## Warn when sensitivities are requested on a linCmt() model whose ODE
+    ## compartment name collides with a linCmt reserved name: the ODE state loses
+    ## its sensitivity expansion, so its sensitivities are silently incorrect.
+    if (!is.null(calcSens)) {
+      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
+      if (length(.linCollide) > 0L) {
+        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
+                "' share a name with linCmt() reserved compartments; ",
+                "sensitivities will be incorrect -- rename them", call. = FALSE)
+      }
+    }
     .indLinSens <- length(.env$.mv$indLin) > 0L &&
       length(.env$.mv$sens) > 0L
     if (.indLinSens) {

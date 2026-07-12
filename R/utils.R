@@ -1638,20 +1638,6 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
                 "rx__sens_depot_BY_ka")
     }
   }
-  ## Part B (nlmixr2/rxode2#1119): the structural-name reconstruction above can
-  ## disagree with the ACTUAL linCmt-block compartments -- e.g. event-timing
-  ## sensitivity compartments (rx__sens_<linState>_BY_<eventParam>__) are counted
-  ## in numLinSens but not reconstructed, and intermediate parses can carry a
-  ## different set.  Union in the ACTUAL trailing linCmt-block compartment names
-  ## (the block occupies the last numLin+numLinSens compartments of the solve
-  ## vector) so every linCmt compartment is recognized (and excluded from the ODE
-  ## sensitivity machinery) downstream.  Backward compatible: for models without
-  ## event compartments the trailing block equals the reconstruction.
-  .nBlock <- unname(.ncmt["numLin"] + .ncmt["numLinSens"])
-  .mv <- rxModelVars(obj)
-  if (!is.null(.mv$state) && length(.mv$state) >= .nBlock && .nBlock > 0) {
-    .ret <- union(.ret, utils::tail(.mv$state, .nBlock))
-  }
   .ret
 }
 

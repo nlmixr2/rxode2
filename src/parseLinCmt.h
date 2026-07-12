@@ -222,7 +222,7 @@ static inline void linCmtStr(linCmtStruct *lin, const char *in, int *index) {
 
 
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verboseSXP);
-SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose, SEXP eventNames);
+SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
 typedef struct linCmtGenStruct {
   sbuf last;

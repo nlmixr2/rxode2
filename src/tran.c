@@ -71,8 +71,6 @@ int rx_syntax_allow_ini = 1,
 sbuf s_inits;
 
 symtab tb;
-char rxLinEvSensNames[RX_MAX_LIN_EV_SENS][256];
-int rxLinEvSensN = 0;
 
 static inline void addSymbolStr(char *value) {
   if (strcmp("CMT", value) && !rxstrcmpi("CMT", value)) {

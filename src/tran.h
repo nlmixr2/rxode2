@@ -133,15 +133,6 @@ lhs symbols?
 
 extern symtab tb;
 
-// Part B (nlmixr2/rxode2#1119): event-timing sensitivity compartments requested
-// for linCmt() compartments.  Names ("rx__sens_<state>_BY_<param>__") are set by
-// _rxode2_linCmtGen() (parseLinCmt.c) from R and consumed by calcLinCmt()
-// (parseLinCmtApplyCmts.h), which adds them to the linCmt block's numSens.
-// Fixed-size to avoid cross-translation-unit allocation lifetime management.
-#define RX_MAX_LIN_EV_SENS 64
-extern char rxLinEvSensNames[RX_MAX_LIN_EV_SENS][256];
-extern int rxLinEvSensN;
-
 static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2) {
   int non_depleting = 0;
   char name_copy[256];
