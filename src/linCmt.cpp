@@ -493,8 +493,11 @@ extern "C" int linCmtZeroJac(int i) {
 // True for the automatic-differentiation jacobian methods (forward-mode
 // fvar = 3/30, reverse-mode = 31, and the auto/default path), which all want
 // the unscaled thetaSens + passthrough trueTheta. The finite-difference
-// methods (1,2,4,5,6,7,10,20,40,50) keep the scaled path.
-static inline bool linCmtSensIsAD(int sensType) {
+// methods (1,2,4,5,6,7,10,20,40,50) keep the scaled path.  These same FD
+// methods are exactly the ones linCmtB reads ind->linH for, so setupLinH
+// (par_solve.cpp) uses this predicate to skip step-size estimation on the AD
+// paths -- external linkage lets it share this single source of truth.
+bool linCmtSensIsAD(int sensType) {
   switch (sensType) {
   case 1: case 2: case 4: case 5: case 6: case 7:
   case 10: case 20: case 40: case 50:

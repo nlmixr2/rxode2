@@ -6780,6 +6780,10 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
 }
 
 
+// Defined in linCmt.cpp; true for the AD Jacobian paths, which never read
+// ind->linH (only the finite-difference paths do).
+bool linCmtSensIsAD(int sensType);
+
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {
   if (rx->sensType == 100) {
@@ -6792,15 +6796,22 @@ void setupLinH(rx_solve *rx, int solveid,
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   double *hh = ind->linH;
   if (ind->linCmtHparIndex == -3) return; // already setup
+  if (linCmtSensIsAD(rx->sensType)) {
+    // AD Jacobians (forward-mode fvar 3/30, reverse-mode 31) are exact and
+    // never read ind->linH, so skip the finite-difference step-size estimation
+    // (shi21ForwardH/gillForwardH) -- it would run a base solve plus several
+    // probe solves per parameter that the AD path discards.
+    std::fill_n(ind->linH, 7, rx->sensH);
+    ind->linCmtH = NA_REAL;
+    ind->linCmtHparIndex = -3;
+    return;
+  }
   switch (rx->sensType) {
   case 1: // forward; shi difference
     shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 2: // central; shi
     shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
-    break;
-  case 3: // 3pt forward; shi
-    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 4: // 5-point endpoint difference; shi
     shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
