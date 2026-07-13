@@ -6071,6 +6071,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
+      // linCmtB is thread safe on the forward-mode AD Jacobian path (sensType
+      // 3/30 and the auto default 100): each thread evaluates its own subject
+      // on its own __linCmtB[rx_get_thread()] slot with stack-local fvar and no
+      // shared AD arena.  The reverse-mode AD path (31) uses Stan's shared
+      // ChainableStack, and the finite-difference paths share a first-subject
+      // scaling/step setup, so those keep the single-core linCmtB guard.
+      int linCmtBThreadSafe = (rx->sensType == 3 || rx->sensType == 30 ||
+                               rx->sensType == 100);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
@@ -6091,8 +6099,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            op->cores = getRxThreads(INT_MAX, false);
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       } else {
@@ -6113,8 +6126,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            // Thread safe (forward-mode AD); keep the user-requested core count.
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       }
