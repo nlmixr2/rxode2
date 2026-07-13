@@ -487,6 +487,13 @@
   if (length(.ln) <= chunkLines) {
     return(rxOptExpr(.txt, msg = msg))
   }
+  # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
+  # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line is
+  # disguised.  A model that already uses such a name would have it silently captured --
+  # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
+  if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
 
   # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
   .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],

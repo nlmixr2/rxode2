@@ -107,6 +107,25 @@ rxTest({
     expect_true(length(.ch) > 1L)
   })
 
+  test_that("a model already using the chunker's own generated names is not chunked", {
+    # Chunking introduces names into the model's namespace -- rx_expr_c<i>_ for the
+    # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line is
+    # disguised.  rxode2 does not reserve these, so a model may legitimately use one; it
+    # would then be captured (renaming or restoring would rewrite the model's own variable)
+    # and the model would silently change.  Such a model is left to the whole-model call.
+    .pad <- vapply(1:45, function(i) sprintf("a%d=exp(THETA[1])*%d", i, i), character(1))
+    .ode <- c("d/dt(depot)=-exp(THETA[1])*depot",
+              "d/dt(center)=exp(THETA[1])*depot-exp(THETA[2])*center")
+    for (.nm in c("rx_expr_c1_0", "rx__disg_ic__depot__", "rx__disg_mod__f__depot__")) {
+      .m <- paste(c(.ode, paste0(.nm, "=exp(THETA[3])"), .pad,
+                    paste0("cp=center*", .nm)), collapse = "\n")
+      .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      # falls back to the whole-model call, so the model's own variable is untouched
+      expect_identical(.chunked, suppressMessages(rxOptExpr(.m, "model")))
+      expect_true(grepl(.nm, .chunked, fixed = TRUE))
+    }
+  })
+
   test_that("only the rx_expr_ names a chunk introduces are renamed", {
     # The chunks are optimized independently, so each restarts its rx_expr_ counter and the
     # names must be prefixed per chunk.  But renaming *every* rx_expr_ occurrence would
