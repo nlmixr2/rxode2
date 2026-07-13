@@ -395,17 +395,23 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 #undef yp
 }
 
+// These scaling/step-size helpers are read from the finite-difference H setup
+// (shi21ForwardH/gillForwardH) after ind_linCmtFH has populated THIS thread's
+// linCmtB slot, so they must read the same per-thread slot rx_get_thread()
+// selects -- not the hardcoded [0] slot, which another thread mutates (and may
+// resize) during a parallel linCmt solve.
 extern "C" double linCmtScaleInitPar(int which) {
-  return __linCmtB[0].lc.initPar(which);
+  return __linCmtB[rx_get_thread(__linCmtB.size())].lc.initPar(which);
 }
 
 extern "C" double linCmtScaleInitN() {
-  Eigen::Matrix<double, Eigen::Dynamic, 1> theta = __linCmtB[0].lc.initPar();
+  Eigen::Matrix<double, Eigen::Dynamic, 1> theta =
+    __linCmtB[rx_get_thread(__linCmtB.size())].lc.initPar();
   return theta.size();
 }
 
 extern "C" int linCmtZeroJac(int i) {
-  return __linCmtB[0].lc.parDepV1(i);
+  return __linCmtB[rx_get_thread(__linCmtB.size())].lc.parDepV1(i);
 }
 
 
