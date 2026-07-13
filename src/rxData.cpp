@@ -1610,6 +1610,7 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = _globals.gSolveSave + op->neq*_rxTid();
     ind->solveLast = _globals.gSolveLast + op->neq*_rxTid();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*_rxTid();
+    ind->esPendingJump = _globals.gEsPendingJump + op->neq*_rxTid();
   } else {
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
@@ -1619,6 +1620,7 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = NULL;
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
+    ind->esPendingJump = NULL;
     ind->linCmtSave = NULL;
   }
   if (rx->nMtime > 0) {
@@ -6469,7 +6471,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;
     _globals.gSolveLast  = _globals.gSolveSave  + _mem.nsave;
     _globals.gSolveLast2 = _globals.gSolveLast  + _mem.nsave;
-    _globals.gmtime      = _globals.gSolveLast2 + _mem.nsave;
+    _globals.gEsPendingJump = _globals.gSolveLast2 + _mem.nsave;
+    _globals.gmtime      = _globals.gEsPendingJump + _mem.nsave;
     // gInfusionRate is now allocated per-thread independently (see below)
     _globals.ginits      = _globals.gmtime      + _mem.n2;
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
