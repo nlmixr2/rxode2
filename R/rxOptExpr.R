@@ -479,7 +479,7 @@
 # .rxOptExprChunked(), which falls back to the whole model.
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
-  .o <- suppressMessages(rxOptExpr(.txt, msg))
+  .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
   .re <- "\\brx_expr_[0-9]+\\b"
   .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]),
                   unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
@@ -516,14 +516,14 @@
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
   if (length(.ln) <= chunkLines) {
-    return(rxOptExpr(.txt, msg = msg))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
   # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line is
   # disguised.  A model that already uses such a name would have it silently captured --
   # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
   if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
-    return(rxOptExpr(.txt, msg = msg))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
 
   # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
@@ -531,19 +531,36 @@
                                mean(pmax(1L, nchar(.ln))) * chunkLines)
   .nChunks <- length(.chunks)
 
-  # Never start more daemons than there are chunks, nor more threads than the user asked
-  # for with setRxThreads() (which rxCores() reports).
+  # `parallel` carries rxControl(cores=)'s semantics: 0 means the rxode2 thread setting
+  # (rxCores(), which setRxThreads()/OMP_THREAD_LIMIT control -- so CRAN and users tune
+  # this with the same knob as the solver), n > 0 means n.  Never use more daemons than
+  # there are chunks, nor more than that thread setting; a single daemon has no
+  # parallelism to offer, only dispatch overhead, so 1 runs serially.
   .nDaemons <- as.integer(parallel)
-  if (is.na(.nDaemons)) .nDaemons <- 0L
-  if (.nDaemons > 0L) .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
-  .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
+  if (is.na(.nDaemons) || .nDaemons < 0L) .nDaemons <- 0L
+  if (.nDaemons == 0L) .nDaemons <- max(1L, as.integer(rxCores()))
+  .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
+  .useMirai <- .nDaemons > 1L
+  # A caller's existing mirai pool is used as-is and never shut down; a pool of our own
+  # is only worth starting (a few seconds: each daemon loads rxode2) when there are
+  # enough chunks for the parallel win to beat that startup.
+  .ownDaemons <- FALSE
+  if (.useMirai) {
+    .have <- tryCatch(sum(mirai::status()$connections) > 0L, error = function(e) FALSE)
+    if (!.have) {
+      .ownDaemons <- .nChunks >= 4L
+      .useMirai <- .ownDaemons
+    }
+  }
   .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
                   if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
 
   .opt <- tryCatch({
     if (.useMirai) {
-      mirai::daemons(.nDaemons)
-      on.exit(mirai::daemons(0), add = TRUE)
+      if (.ownDaemons) {
+        mirai::daemons(.nDaemons)
+        on.exit(mirai::daemons(0), add = TRUE)
+      }
       # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
       # environment, so a chunk is optimized by the same code path serially and in parallel.
       .tasks <- mirai::mirai_map(
@@ -583,7 +600,7 @@
   # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
   # model never lands here.)
   if (is.null(.opt)) {
-    return(rxOptExpr(.txt, msg = msg))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   .rxRestoreCmt(paste(.opt, collapse = "\n"))
 }
@@ -602,14 +619,14 @@
 #'
 #'  finding duplicate expressions in model...
 #'
-#' @param chunkLines Integer; when positive, optimize the model in
-#'     contiguous cost-balanced chunks of roughly this many lines
-#'     (40 is a reasonable value) instead of in a single pass.  `0`,
-#'     the default, optimizes the whole model at once and is exactly
-#'     the previous behaviour.
+#' @param chunkLines Integer; when positive (the default is 40),
+#'     a model longer than this many lines is optimized in contiguous
+#'     cost-balanced chunks of roughly this many lines instead of in a
+#'     single pass; a model at or under it is optimized whole, exactly
+#'     as before.  `0` always optimizes the whole model at once.
 #'
-#'     This is worth doing only for a large machine-generated model --
-#'     a sensitivity- or Jacobian-augmented model, say.  Normalizing a
+#'     Chunking pays off for a large machine-generated model -- a
+#'     sensitivity- or Jacobian-augmented model, say.  Normalizing a
 #'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
 #'     its size, and for such a model it, not the common subexpression
 #'     search, is what dominates: optimizing a 275-line augmented model
@@ -619,14 +636,11 @@
 #'
 #'     \tabular{rrrr}{
 #'       lines \tab whole \tab chunked \tab \cr
-#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: no gain) \cr
+#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: not chunked) \cr
 #'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
 #'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
 #'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
 #'     }
-#'
-#'     An ordinary model is small enough that there is nothing to gain,
-#'     which is why this is off by default.
 #'
 #'     Common subexpressions are then only shared within a chunk, so the
 #'     model is equivalent but carries more temporaries.  That costs no
@@ -645,16 +659,20 @@
 #'     states and parameters, the same solution, and the same errors.
 #'
 #' @param parallel Integer; number of `mirai` daemons used to optimize
-#'     the chunks in parallel (`0`, the default, is serial).  Only used
-#'     when `chunkLines` is positive.  Requires the `mirai` package.
+#'     the chunks in parallel.  Only used when the model is chunked.  It
+#'     carries the same semantics as `rxControl(cores=)`, and defaults to
+#'     that control's `cores`: `0` (the `rxControl()` default) means the
+#'     rxode2 thread setting `rxCores()`, so CRAN and users tune it with
+#'     the same knob as the solver (`setRxThreads()`, `OMP_THREAD_LIMIT`)
+#'     or by passing `parallel=` directly; `1` runs the chunks serially.
 #'     It is capped by the number of chunks and by `rxCores()`, so it
-#'     will not oversubscribe past the threads the user asked for with
-#'     `setRxThreads()`.
+#'     will not oversubscribe past the threads the user asked for.
 #'
-#'     The daemons are started for the call and shut down when it
-#'     returns.  That startup (and loading rxode2 into each daemon) costs
-#'     a few seconds, which is a large part of what there is to gain
-#'     here, so this is only worth using on a genuinely large model.
+#'     An existing `mirai` daemon pool is used as-is and left running.
+#'     Otherwise a pool is started for the call and shut down when it
+#'     returns; that startup (loading rxode2 into each daemon) costs a
+#'     few seconds, so a pool is only started when the model splits into
+#'     at least 4 chunks, where the parallel win covers it.
 #'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
@@ -663,7 +681,8 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
-rxOptExpr <- function(x, msg = "model", chunkLines = 0L, parallel = 0L) {
+rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
+                      parallel = rxControl()$cores) {
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))

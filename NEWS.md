@@ -9,10 +9,18 @@
   common subexpression search -- is what dominates: optimizing a 275-line
   augmented model takes ~113s, of which the subexpression search is only ~15s.
   Chunking amortizes that parse, since each chunk is normalized on its own,
-  taking the same model to ~11s (10.7x; 5.7x at 149 lines, 2.5x at 119).  An
-  ordinary model is far too small to gain anything, which is why the default
-  (`chunkLines = 0`) leaves behaviour exactly as before.  `parallel` optionally
-  optimizes the chunks in `mirai` daemons.
+  taking the same model to ~11s (10.7x; 5.7x at 149 lines, 2.5x at 119).
+
+  Chunking is now the default: a model over `chunkLines` (default 40) lines is
+  chunked, and the chunks are optimized in parallel `mirai` daemons.  `parallel`
+  carries `rxControl(cores=)`'s semantics and defaults to that control's
+  `cores`, so CRAN and users tune it with the same knob as the solver
+  (`setRxThreads()`, `OMP_THREAD_LIMIT`, or `parallel=` directly; `1` runs
+  serially).  An existing `mirai` daemon pool is used as-is; otherwise a pool is
+  started only when the model splits into at least 4 chunks (its startup costs a
+  few seconds) and shut down when the call returns.  A model at or under
+  `chunkLines` lines is optimized whole, exactly as before; `chunkLines = 0`
+  forces that for any model.  `mirai` moved from `Suggests` to `Imports`.
 
   Common subexpressions are only shared within a chunk, so chunking does not give
   the same optimized text as the whole-model call -- it carries more temporaries

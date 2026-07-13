@@ -4,7 +4,7 @@
 \alias{rxOptExpr}
 \title{Optimize rxode2 for computer evaluation}
 \usage{
-rxOptExpr(x, msg = "model", chunkLines = 0L, parallel = 0L)
+rxOptExpr(x, msg = "model", chunkLines = 40L, parallel = rxControl()$cores)
 }
 \arguments{
 \item{x}{rxode2 model that can be accessed by rxNorm}
@@ -16,31 +16,28 @@ optimizing the model:
 
 finding duplicate expressions in model...}
 
-\item{chunkLines}{Integer; when positive, optimize the model in
-contiguous cost-balanced chunks of roughly this many lines
-(40 is a reasonable value) instead of in a single pass.  \code{0},
-the default, optimizes the whole model at once and is exactly
-the previous behaviour.
+\item{chunkLines}{Integer; when positive (the default is 40),
+a model longer than this many lines is optimized in contiguous
+cost-balanced chunks of roughly this many lines instead of in a
+single pass; a model at or under it is optimized whole, exactly
+as before.  \code{0} always optimizes the whole model at once.
 
-This is worth doing only for a large machine-generated model --
-a sensitivity- or Jacobian-augmented model, say.  Normalizing a
-model (\code{rxNorm()}, i.e. parsing it) is strongly superlinear in
+\if{html}{\out{<div class="sourceCode">}}\preformatted{Chunking pays off for a large machine-generated model -- a
+sensitivity- or Jacobian-augmented model, say.  Normalizing a
+model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
 its size, and for such a model it, not the common subexpression
 search, is what dominates: optimizing a 275-line augmented model
 takes ~113s, of which the subexpression search is only ~15s.
-Chunking amortizes that parse -- \code{rxOptExpr()} normalizes each
+Chunking amortizes that parse -- `rxOptExpr()` normalizes each
 chunk on its own -- taking the same model to ~11s:
 
-\tabular{rrrr}{
-  lines \tab whole \tab chunked \tab \cr
-  34 \tab 0.5s \tab 0.5s \tab (a typical model: no gain) \cr
-  119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
-  149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
-  275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
-}
-
-An ordinary model is small enough that there is nothing to gain,
-which is why this is off by default.
+\\tabular\{rrrr\}\{
+  lines \\tab whole \\tab chunked \\tab \\cr
+  34 \\tab 0.5s \\tab 0.5s \\tab (a typical model: not chunked) \\cr
+  119 \\tab 2.0s \\tab 0.8s \\tab 2.5x \\cr
+  149 \\tab 22.2s \\tab 3.9s \\tab 5.7x \\cr
+  275 \\tab 112.7s \\tab 10.6s \\tab 10.7x \\cr
+\}
 
 Common subexpressions are then only shared within a chunk, so the
 model is equivalent but carries more temporaries.  That costs no
@@ -56,19 +53,25 @@ rare path.
 Chunking therefore does not give the same optimized text as the
 whole-model call -- it shares fewer subexpressions and so carries
 more temporaries -- but it gives an equivalent model: the same
-states and parameters, the same solution, and the same errors.}
+states and parameters, the same solution, and the same errors.
+}\if{html}{\out{</div>}}}
 
 \item{parallel}{Integer; number of \code{mirai} daemons used to optimize
-the chunks in parallel (\code{0}, the default, is serial).  Only used
-when \code{chunkLines} is positive.  Requires the \code{mirai} package.
+the chunks in parallel.  Only used when the model is chunked.  It
+carries the same semantics as \code{rxControl(cores=)}, and defaults to
+that control's \code{cores}: \code{0} (the \code{rxControl()} default) means the
+rxode2 thread setting \code{rxCores()}, so CRAN and users tune it with
+the same knob as the solver (\code{setRxThreads()}, \code{OMP_THREAD_LIMIT})
+or by passing \verb{parallel=} directly; \code{1} runs the chunks serially.
 It is capped by the number of chunks and by \code{rxCores()}, so it
-will not oversubscribe past the threads the user asked for with
-\code{setRxThreads()}.
+will not oversubscribe past the threads the user asked for.
 
-The daemons are started for the call and shut down when it
-returns.  That startup (and loading rxode2 into each daemon) costs
-a few seconds, which is a large part of what there is to gain
-here, so this is only worth using on a genuinely large model.}
+\if{html}{\out{<div class="sourceCode">}}\preformatted{An existing `mirai` daemon pool is used as-is and left running.
+Otherwise a pool is started for the call and shut down when it
+returns; that startup (loading rxode2 into each daemon) costs a
+few seconds, so a pool is only started when the model splits into
+at least 4 chunks, where the parallel win covers it.
+}\if{html}{\out{</div>}}}
 }
 \value{
 Optimized rxode2 model text.  The order and type lhs and
