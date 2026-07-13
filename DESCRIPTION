@@ -89,7 +89,6 @@ Suggests:
     rootSolve,
     memuse,
     arrow,
-    mirai,
     fst,
     duckdb,
     DBI
@@ -104,6 +103,7 @@ Imports:
     lotri (>= 1.0.4),
     memoise,
     methods,
+    mirai,
     rex,
     sys,
     tools,

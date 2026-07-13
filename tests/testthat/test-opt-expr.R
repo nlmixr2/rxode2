@@ -49,15 +49,20 @@ rxTest({
             "rx_pred_=center*exp(THETA[3])"), collapse = "\n")
   }
 
-  test_that("chunkLines=0 (the default) is exactly the unchunked behaviour", {
+  test_that("the default chunks a large model; chunkLines=0 optimizes it whole", {
     .m <- .chunkModel()
-    suppressMessages(expect_identical(rxOptExpr(.m, "model"),
-                                      rxOptExpr(.m, "model", chunkLines = 0L)))
+    .def <- suppressMessages(rxOptExpr(.m, "model"))
+    # per-chunk rx_expr_c<i>_ names prove the default took the chunked path
+    expect_true(grepl("rx_expr_c[0-9]+_", .def))
+    expect_identical(.def, suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L)))
+    # chunkLines = 0 still forces the single whole-model pass
+    .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    expect_false(grepl("rx_expr_c[0-9]+_", .whole))
   })
 
   test_that("chunked optimization yields an equivalent model", {
     .m <- .chunkModel()
-    .whole <- suppressMessages(rxOptExpr(.m, "model"))
+    .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
     .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
     # the compartment-scoped lines survive, in place, and the chunked model still builds
     expect_true(grepl("depot(0)=", .chunk, fixed = TRUE))
@@ -73,10 +78,10 @@ rxTest({
     expect_identical(.rv(.whole), .rv(.chunk))
   })
 
-  test_that("a model at or below chunkLines is not chunked", {
+  test_that("a model at or below chunkLines is untouched by the default", {
     .m <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-cl/v*center"
-    suppressMessages(expect_identical(rxOptExpr(.m, "model", chunkLines = 40L),
-                                      rxOptExpr(.m, "model")))
+    suppressMessages(expect_identical(rxOptExpr(.m, "model"),
+                                      rxOptExpr(.m, "model", chunkLines = 0L)))
   })
 
   test_that("compartment-scoped disguise/restore round-trips exactly", {
@@ -158,7 +163,7 @@ rxTest({
                     paste0("cp=center*", .nm)), collapse = "\n")
       .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
       # falls back to the whole-model call, so the model's own variable is untouched
-      expect_identical(.chunked, suppressMessages(rxOptExpr(.m, "model")))
+      expect_identical(.chunked, suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L)))
       expect_true(grepl(.nm, .chunked, fixed = TRUE))
     }
   })
@@ -205,7 +210,7 @@ rxTest({
                      "d/dt(center)=exp(THETA[1])*depot-exp(THETA[2])*center",
                      .pad, "f(depot) <- exp(THETA[3])", "rx_pred_=center"), collapse = "\n")
     .out <- suppressMessages(rxOptExpr(.frag, "model", chunkLines = 40L))
-    expect_identical(.out, suppressMessages(rxOptExpr(.frag, "model")))
+    expect_identical(.out, suppressMessages(rxOptExpr(.frag, "model", chunkLines = 0L)))
     expect_true(grepl("rx_expr_", .out))   # fell back, so it is still fully optimized
     expect_error(rxModelVars(.out), NA)
 
@@ -216,13 +221,29 @@ rxTest({
   })
 
   test_that("parallel chunking gives the identical model and leaves no daemons behind", {
-    skip_if_not_installed("mirai")
-    .m <- .chunkModel()
-    .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+    # daemons only start when the model splits into at least 4 chunks, so use a model
+    # large enough to cross that threshold
+    .m <- .chunkModel(150L)
+    .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
     .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
     # optimizing the chunks in daemons must not change the model at all
     expect_identical(.seq, .par)
     # the pool is started for the call and shut down when it returns
+    expect_equal(sum(mirai::status()$connections), 0L)
+    # the default parallel (0 = the rxode2 thread setting) is the same model too,
+    # and equally leaves no pool behind
+    .def <- suppressMessages(rxOptExpr(.m, "model"))
+    expect_identical(.def, .seq)
+    expect_equal(sum(mirai::status()$connections), 0L)
+  })
+
+  test_that("too few chunks do not pay for a daemon pool", {
+    # .chunkModel() splits into only 2 chunks: even with parallel forced on, no pool is
+    # started (its startup would cost more than it saves) and none is left behind
+    .m <- .chunkModel()
+    .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
+    .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
+    expect_identical(.par, .seq)
     expect_equal(sum(mirai::status()$connections), 0L)
   })
 })
