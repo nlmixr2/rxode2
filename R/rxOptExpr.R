@@ -660,11 +660,11 @@
 #'
 #' @param parallel Integer; number of `mirai` daemons used to optimize
 #'     the chunks in parallel.  Only used when the model is chunked.  It
-#'     carries the same semantics as `rxControl(cores=)`, and defaults to
-#'     that control's `cores`: `0` (the `rxControl()` default) means the
-#'     rxode2 thread setting `rxCores()`, so CRAN and users tune it with
-#'     the same knob as the solver (`setRxThreads()`, `OMP_THREAD_LIMIT`)
-#'     or by passing `parallel=` directly; `1` runs the chunks serially.
+#'     carries the same semantics as `rxControl(cores=)`: `0` (the
+#'     default) means the rxode2 thread setting `rxCores()`, so CRAN and
+#'     users tune it with the same knob as the solver (`setRxThreads()`,
+#'     `OMP_THREAD_LIMIT`) or by passing `parallel=` directly; `1` runs
+#'     the chunks serially.
 #'     It is capped by the number of chunks and by `rxCores()`, so it
 #'     will not oversubscribe past the threads the user asked for.
 #'
@@ -682,7 +682,7 @@
 #' @author Matthew L. Fidler
 #' @export
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
-                      parallel = rxControl()$cores) {
+                      parallel = 0L) {
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))

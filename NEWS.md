@@ -13,10 +13,10 @@
 
   Chunking is now the default: a model over `chunkLines` (default 40) lines is
   chunked, and the chunks are optimized in parallel `mirai` daemons.  `parallel`
-  carries `rxControl(cores=)`'s semantics and defaults to that control's
-  `cores`, so CRAN and users tune it with the same knob as the solver
-  (`setRxThreads()`, `OMP_THREAD_LIMIT`, or `parallel=` directly; `1` runs
-  serially).  An existing `mirai` daemon pool is used as-is; otherwise a pool is
+  carries `rxControl(cores=)`'s semantics: `0` (the default) resolves to the
+  rxode2 thread setting `rxCores()`, so CRAN and users tune it with the same
+  knob as the solver (`setRxThreads()`, `OMP_THREAD_LIMIT`, or `parallel=`
+  directly; `1` runs serially).  An existing `mirai` daemon pool is used as-is; otherwise a pool is
   started only when the model splits into at least 4 chunks (its startup costs a
   few seconds) and shut down when the call returns.  A model at or under
   `chunkLines` lines is optimized whole, exactly as before; `chunkLines = 0`

@@ -230,8 +230,8 @@ rxTest({
     expect_identical(.seq, .par)
     # the pool is started for the call and shut down when it returns
     expect_equal(sum(mirai::status()$connections), 0L)
-    # the default parallel (rxControl()$cores, 0 = the rxode2 thread setting) is the
-    # same model too, and equally leaves no pool behind
+    # the default parallel (0 = the rxode2 thread setting) is the same model too,
+    # and equally leaves no pool behind
     .def <- suppressMessages(rxOptExpr(.m, "model"))
     expect_identical(.def, .seq)
     expect_equal(sum(mirai::status()$connections), 0L)

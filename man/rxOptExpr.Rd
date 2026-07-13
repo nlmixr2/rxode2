@@ -4,7 +4,7 @@
 \alias{rxOptExpr}
 \title{Optimize rxode2 for computer evaluation}
 \usage{
-rxOptExpr(x, msg = "model", chunkLines = 40L, parallel = rxControl()$cores)
+rxOptExpr(x, msg = "model", chunkLines = 40L, parallel = 0L)
 }
 \arguments{
 \item{x}{rxode2 model that can be accessed by rxNorm}
@@ -58,11 +58,11 @@ states and parameters, the same solution, and the same errors.
 
 \item{parallel}{Integer; number of \code{mirai} daemons used to optimize
 the chunks in parallel.  Only used when the model is chunked.  It
-carries the same semantics as \code{rxControl(cores=)}, and defaults to
-that control's \code{cores}: \code{0} (the \code{rxControl()} default) means the
-rxode2 thread setting \code{rxCores()}, so CRAN and users tune it with
-the same knob as the solver (\code{setRxThreads()}, \code{OMP_THREAD_LIMIT})
-or by passing \verb{parallel=} directly; \code{1} runs the chunks serially.
+carries the same semantics as \code{rxControl(cores=)}: \code{0} (the
+default) means the rxode2 thread setting \code{rxCores()}, so CRAN and
+users tune it with the same knob as the solver (\code{setRxThreads()},
+\code{OMP_THREAD_LIMIT}) or by passing \verb{parallel=} directly; \code{1} runs
+the chunks serially.
 It is capped by the number of chunks and by \code{rxCores()}, so it
 will not oversubscribe past the threads the user asked for.
 
