@@ -384,18 +384,12 @@
   }
 }
 
-#' Split model lines into contiguous cost-balanced chunks
-#'
-#' Optimizing a chunk is strongly superlinear in its size, so the largest chunk
-#' dominates the total (and, in parallel, sets the floor).  Balancing on
-#' character count rather than line count minimizes that largest chunk: model
-#' lines vary hugely in length, and a sensitivity equation is far more expensive
-#' than a short assignment.
-#'
-#' @param lines character vector of model lines
-#' @param targetChars approximate character budget per chunk
-#' @return list of character vectors, in order (their concatenation is `lines`)
-#' @noRd
+# -- Chunked optimization ------------------------------------------------------
+
+# Split the model into contiguous chunks of roughly `targetChars` characters.
+# Optimizing a chunk is strongly superlinear in its size, so the largest chunk
+# dominates the total; balancing on characters rather than lines minimizes it,
+# since a sensitivity equation costs far more than a short assignment.
 .rxBalancedChunks <- function(lines, targetChars) {
   .w <- pmax(1L, nchar(lines))
   .k <- max(1L, min(length(lines), as.integer(ceiling(sum(.w) / max(1, targetChars)))))
@@ -403,28 +397,16 @@
   unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
 }
 
-#' Disguise compartment-scoped assignments so each chunk parses on its own
-#'
-#' A state initial condition (`state(0)=`) or a dosing modifier
-#' (`f|alag|lag|rate|dur(cmt)=`) is a syntax error in a chunk that does not also
-#' hold the matching `d/dt(cmt)` ("'W(0)' present, but d/dt(W) not defined").
-#' The lines cannot simply be moved to a chunk that has the `d/dt()`: their
-#' right-hand side may read a variable that a later line reassigns, so their
-#' position is load-bearing.  Instead rewrite the left-hand side *in place* to a
-#' unique plain name, which parses anywhere as an ordinary assignment, and undo
-#' it with [.rxRestoreCmt] once the chunks are optimized and reassembled.  The
-#' line never moves, so semantics are preserved exactly.
-#'
-#' The text handed here is the caller's, which need not be canonical (the whole
-#' model is deliberately never normalized -- see [.rxOptExprChunked]), so
-#' whitespace around the left-hand side is preserved verbatim and the round trip
-#' is byte-exact for any spacing.  A construct this does not recognise is simply
-#' left alone; its chunk then fails to optimize and falls back to the whole
-#' model, which is safe.
-#'
-#' @param modTxt model text
-#' @return model text with compartment-scoped LHS disguised
-#' @noRd
+# A state initial condition (state(0)=) or a dosing modifier (f/alag/lag/rate/dur(cmt)=)
+# is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
+# d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
+# d/dt(): its right-hand side may read a variable that a later line reassigns, so its
+# position is load-bearing.  Rewrite its left-hand side to a unique plain name *in place*
+# instead -- which parses anywhere as an ordinary assignment -- and undo that with
+# .rxRestoreCmt() once the chunks are optimized.  The line never moves, so semantics are
+# preserved exactly.  Whitespace is kept verbatim (the caller's text need not be
+# canonical, since the whole model is deliberately never normalized).  A construct not
+# recognised here is left alone; its chunk then fails and falls back to the whole model.
 .rxDisguiseCmt <- function(modTxt) {
   .ln <- strsplit(modTxt, "\n", fixed = TRUE)[[1]]
   .eq <- regexpr("=", .ln, fixed = TRUE)
@@ -444,14 +426,8 @@
         collapse = "\n")
 }
 
-#' Reverse [.rxDisguiseCmt]: restore the original compartment-scoped LHS
-#'
-#' Only the left-hand side is rewritten (split at the first `=`), so the
-#' optimized right-hand side is kept verbatim.
-#'
-#' @param txt optimized model text containing disguised names
-#' @return model text with the compartment-scoped LHS restored
-#' @noRd
+# Reverse .rxDisguiseCmt().  Only the left-hand side is rewritten (split at the first
+# "="), so the optimized right-hand side is kept verbatim.
 .rxRestoreCmt <- function(txt) {
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
   .disg <- grepl("^[ \t]*rx__disg_(ic|mod)__", .ln)
@@ -469,37 +445,22 @@
   paste(.ln, collapse = "\n")
 }
 
-#' Optimize one chunk and namespace the introduced `rx_expr_` variables
-#'
-#' Each chunk is itself a (smaller) model, so it is optimized by `rxOptExpr`
-#' with chunking off.  The chunks are optimized independently, so each starts
-#' its `rx_expr_` counter at zero -- prefix them per chunk to keep them unique
-#' after reassembly.  Errors are deliberately *not* caught here: a chunk that
-#' cannot be optimized sends the caller back to the whole model, which is the
-#' only thing that can tell a fragment apart from a malformed model.
-#'
-#' @param i chunk index
-#' @param chunks list of chunks (character vectors of lines)
-#' @param msg progress label
-#' @return optimized chunk text
-#' @noRd
+# A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
+# Each chunk restarts its rx_expr_ counter at zero, so prefix them per chunk to keep them
+# unique once reassembled.  Errors are deliberately not caught here: a chunk that cannot
+# be optimized must reach .rxOptExprChunked(), which falls back to the whole model.
 .rxOptExprChunk <- function(i, chunks, msg) {
   .o <- suppressMessages(rxOptExpr(paste(chunks[[i]], collapse = "\n"), msg))
   gsub("rx_expr_", sprintf("rx_expr_c%d_", i), .o, fixed = TRUE)
 }
 
-#' Chunked (optionally parallel) common-subexpression optimization
-#'
-#' Chunking is purely an optimization: it returns the same model, and raises the
-#' same error, as optimizing the whole model would.
-#'
-#' @inheritParams rxOptExpr
-#' @return optimized model text
-#' @noRd
+# Chunked (optionally parallel) common subexpression optimization.  This is purely an
+# optimization: it returns the same model, and raises the same error, as optimizing the
+# whole model would.
 .rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
   # superlinear in model size, and is what actually dominates optimizing a large model: on a
-  # 275-line augmented model the whole-model call is ~102s, of which the common subexpression
+  # 275-line augmented model the whole-model call is ~113s, of which the common subexpression
   # search is only ~15s.  Chunking is fast precisely because rxOptExpr() normalizes each
   # chunk on its own, so normalizing the whole model here would pay the very cost this is
   # avoiding.  Text is already line-oriented and is split as-is; only an object needs rxNorm.
