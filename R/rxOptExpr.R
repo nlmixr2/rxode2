@@ -397,7 +397,7 @@
   unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
 }
 
-# A state initial condition (state(0)=) or a dosing modifier (f/alag/lag/rate/dur(cmt)=)
+# A state initial condition (state(0)=) or a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
 # is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
 # d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
 # d/dt(): its right-hand side may read a variable that a later line reassigns, so its
@@ -405,8 +405,12 @@
 # instead -- which parses anywhere as an ordinary assignment -- and undo that with
 # .rxRestoreCmt() once the chunks are optimized.  The line never moves, so semantics are
 # preserved exactly.  Whitespace is kept verbatim (the caller's text need not be
-# canonical, since the whole model is deliberately never normalized).  A construct not
-# recognised here is left alone; its chunk then fails and falls back to the whole model.
+# canonical, since the whole model is deliberately never normalized): a canonical
+# left-hand side embeds the compartment name bare (readable), while a spacing variant
+# the grammar also accepts (`depot (0)=`, `f( depot )=`) is hex-encoded whole, so the
+# disguised name is always a valid identifier and the restore is byte-exact either way.
+# A construct not recognised here is left alone; its chunk then fails and falls back to
+# the whole model.
 .rxDisguiseCmt <- function(modTxt) {
   .ln <- strsplit(modTxt, "\n", fixed = TRUE)[[1]]
   .eq <- regexpr("=", .ln, fixed = TRUE)
@@ -415,22 +419,32 @@
   .lead <- sub("^([ \t]*).*$", "\\1", .raw)
   .trail <- substr(.raw, nchar(.lead) + nchar(.lhs) + 1L, nchar(.raw))
   .rhs <- ifelse(.eq > 0L, substr(.ln, .eq, nchar(.ln)), "")
-  .isIc <- .eq > 0L & endsWith(.lhs, "(0)")
-  .isMod <- .eq > 0L & grepl("^(f|alag|lag|rate|dur)\\(", .lhs) & endsWith(.lhs, ")")
+  .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
+  .icRe <- paste0("^(", .id, ")[ \t]*\\(0\\)$")
+  .modRe <- paste0("^([fF]|alag|lag|rate|dur)[ \t]*\\([ \t]*(", .id, ")[ \t]*\\)$")
+  .isIc <- .eq > 0L & grepl(.icRe, .lhs)
+  .isMod <- .eq > 0L & grepl(.modRe, .lhs)
+  .icCan <- .isIc & grepl(paste0("^", .id, "\\(0\\)$"), .lhs)
+  .modCan <- .isMod & grepl(paste0("^([fF]|alag|lag|rate|dur)\\(", .id, "\\)$"), .lhs)
+  .hex <- (.isIc | .isMod) & !(.icCan | .modCan)
   .new <- .lhs
-  .new[.isIc] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.isIc]), "__")
-  .mm <- regmatches(.lhs[.isMod], regexec("^([a-z]+)\\((.*)\\)$", .lhs[.isMod]))
-  .new[.isMod] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
-                         character(1))
-  paste(ifelse(.eq > 0L & (.isIc | .isMod), paste0(.lead, .new, .trail, .rhs), .ln),
+  .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
+  .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
+  .new[.modCan] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
+                          character(1))
+  .new[.hex] <- vapply(.lhs[.hex], function(.l) {
+    paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
+  }, character(1), USE.NAMES = FALSE)
+  paste(ifelse(.isIc | .isMod, paste0(.lead, .new, .trail, .rhs), .ln),
         collapse = "\n")
 }
 
 # Reverse .rxDisguiseCmt().  Only the left-hand side is rewritten (split at the first
-# "="), so the optimized right-hand side is kept verbatim.
+# "="), so the optimized right-hand side is kept verbatim.  The rx__disg_lhs__ form is
+# hex-decoded back to the original left-hand side, byte for byte.
 .rxRestoreCmt <- function(txt) {
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
-  .disg <- grepl("^[ \t]*rx__disg_(ic|mod)__", .ln)
+  .disg <- grepl("^[ \t]*rx__disg_(ic|mod|lhs)__", .ln)
   if (any(.disg)) {
     .eq <- regexpr("=", .ln[.disg], fixed = TRUE)
     .raw <- substr(.ln[.disg], 1L, .eq - 1L)
@@ -439,7 +453,13 @@
     .tok <- trimws(.raw)
     .trail <- substr(.raw, nchar(.lead) + nchar(.tok) + 1L, nchar(.raw))
     .tok <- sub("^rx__disg_ic__(.*)__$", "\\1(0)", .tok)
-    .tok <- sub("^rx__disg_mod__([a-z]+)__(.*)__$", "\\1(\\2)", .tok)
+    .tok <- sub("^rx__disg_mod__([a-zA-Z]+)__(.*)__$", "\\1(\\2)", .tok)
+    .isHex <- grepl("^rx__disg_lhs__([0-9a-f][0-9a-f])+__$", .tok)
+    .tok[.isHex] <- vapply(sub("^rx__disg_lhs__([0-9a-f]+)__$", "\\1", .tok[.isHex]),
+                           function(.h) {
+                             rawToChar(as.raw(strtoi(substring(.h, seq(1L, nchar(.h), 2L),
+                                                               seq(2L, nchar(.h), 2L)), 16L)))
+                           }, character(1), USE.NAMES = FALSE)
     .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
   }
   paste(.ln, collapse = "\n")
@@ -482,6 +502,17 @@
   # search is only ~15s.  Chunking is fast precisely because rxOptExpr() normalizes each
   # chunk on its own, so normalizing the whole model here would pay the very cost this is
   # avoiding.  Text is already line-oriented and is split as-is; only an object needs rxNorm.
+  #
+  # Mirror how rxModelVars() reads a character, in its order: a length-1 string may be a
+  # filename (the file holds the model text; read it) or a registered model name (it has no
+  # "=", "<-" or "~"; only rxNorm() can resolve it); anything else is literal model text.
+  if (is.character(x) && length(x) == 1L &&
+        isTRUE(tryCatch(file.exists(x), error = function(e) FALSE,
+                        warning = function(w) FALSE))) {
+    x <- readLines(x, warn = FALSE)
+  } else if (is.character(x) && length(x) == 1L && !grepl("[=~]|<-", x)) {
+    x <- rxNorm(x)
+  }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
   if (length(.ln) <= chunkLines) {

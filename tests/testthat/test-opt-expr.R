@@ -83,7 +83,8 @@ rxTest({
     # byte-exact for every spacing variant, so a chunk boundary can never alter the
     # surrounding whitespace, and idempotent in both directions
     .lines <- c("depot(0)=W0", "  depot(0)=W0", "\tdepot(0)=W0", "depot(0) = W0",
-                "depot (0)=W0", "f(depot)=ff", "f( depot )=ff", "alag( central )=tlag",
+                "depot (0)=W0", "f(depot)=ff", "f( depot )=ff", "f (depot)=ff",
+                "F(depot)=ff", "alag( central )=tlag",
                 "rate(depot)=r0", "dur(depot)=d0", "lag(depot)=tl",
                 "rx__sens_W_BY_ETA_1___(0)=exp(x)",
                 "d/dt(depot)=-ka*depot", "ka=exp(tka)")
@@ -94,10 +95,46 @@ rxTest({
     expect_identical(.rxRestoreCmt(.rxDisguiseCmt(.txt)), .txt)
     expect_identical(.rxDisguiseCmt(.rxDisguiseCmt(.txt)), .rxDisguiseCmt(.txt))
     expect_identical(.rxRestoreCmt(.rxRestoreCmt(.txt)), .txt)
-    # nothing compartment-scoped is left for a chunk to orphan
+    # every disguised left-hand side is a syntactically valid identifier, even for the
+    # spacing variants (`depot (0)=`, `f( depot )=`), so the chunk it lands in parses
     .lhs <- trimws(sub("=.*$", "", strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]]))
+    .disg <- grepl("^rx__disg_", .lhs)
+    expect_true(all(grepl("^[a-zA-Z][a-zA-Z0-9_.]*$", .lhs[.disg])))
+    # nothing compartment-scoped is left for a chunk to orphan
     expect_false(any(endsWith(.lhs, "(0)")))
-    expect_false(any(grepl("^(f|alag|lag|rate|dur)\\(", .lhs) & endsWith(.lhs, ")")))
+    expect_false(any(grepl("^([fF]|alag|lag|rate|dur)[ \t]*\\(", .lhs) & endsWith(.lhs, ")")))
+  })
+
+  test_that("grammar-accepted spacing variants chunk without falling back", {
+    # `depot (0)=` and `f( depot )=` used to be disguised into an identifier containing
+    # spaces, a syntax error that silently sent every such model down the whole-model
+    # fallback; they are now hex-encoded, so the chunked path handles them.
+    .pad <- vapply(1:60, function(i) {
+      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+    }, character(1))
+    .m <- paste(c("d/dt(depot)=-exp(THETA[1]+ETA[1])*depot",
+                  "d/dt(center)=exp(THETA[1]+ETA[1])*depot-exp(THETA[2])*center",
+                  "depot (0)=exp(THETA[4])",
+                  "f( depot )=exp(THETA[5])",
+                  "alag (depot)=exp(THETA[6])",
+                  .pad, "rx_pred_=center"), collapse = "\n")
+    .out <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+    # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
+    expect_true(grepl("rx_expr_c[0-9]+_", .out))
+    # the spacing-variant lines are restored byte-exact and the model still parses
+    expect_true(grepl("depot (0)=", .out, fixed = TRUE))
+    expect_true(grepl("f( depot )=", .out, fixed = TRUE))
+    expect_true(grepl("alag (depot)=", .out, fixed = TRUE))
+    expect_error(rxModelVars(.out), NA)
+  })
+
+  test_that("a filename is read as a file when chunking, like the unchunked call", {
+    .f <- tempfile(fileext = ".rx")
+    on.exit(unlink(.f), add = TRUE)
+    writeLines(.chunkModel(), .f)
+    suppressMessages(expect_identical(
+      rxOptExpr(.f, "model", chunkLines = 40L),
+      rxOptExpr(.chunkModel(), "model", chunkLines = 40L)))
   })
 
   test_that("chunks are cost balanced and lossless", {
@@ -161,12 +198,12 @@ rxTest({
     # unchunked call in BOTH cases.
     .pad <- vapply(1:60, function(i) sprintf("v%d=exp(THETA[1])*%d", i, i), character(1))
 
-    # (a) valid model whose chunk orphans a compartment-scoped line.  `f (depot)` (a space
-    # before the paren) is accepted by rxode2 but is not matched as a dosing modifier, so it
-    # is not disguised and its chunk cannot be optimized on its own.
+    # (a) valid model whose chunk orphans a compartment-scoped line.  `f(depot) <- ...`
+    # (assignment with `<-`) is accepted by rxode2, but the disguise only splits a line at
+    # its first "=", so it is not disguised and its chunk cannot be optimized on its own.
     .frag <- paste(c("d/dt(depot)=-exp(THETA[1])*depot",
                      "d/dt(center)=exp(THETA[1])*depot-exp(THETA[2])*center",
-                     .pad, "f (depot)=exp(THETA[3])", "rx_pred_=center"), collapse = "\n")
+                     .pad, "f(depot) <- exp(THETA[3])", "rx_pred_=center"), collapse = "\n")
     .out <- suppressMessages(rxOptExpr(.frag, "model", chunkLines = 40L))
     expect_identical(.out, suppressMessages(rxOptExpr(.frag, "model")))
     expect_true(grepl("rx_expr_", .out))   # fell back, so it is still fully optimized
