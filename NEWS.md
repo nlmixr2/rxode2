@@ -53,6 +53,11 @@
   inside `linCmt()` and mixed `linCmt()`+ODE models, with Jacobian handling of
   the dosing events; `odeToLin()` preserves and renames them when converting.
 
+- `linCmt()` sensitivity (`linCmtB`) solves now run in parallel across subjects
+  on the default forward-mode AD Jacobian path (`linCmtSensType="AD"`), which is
+  stack-local with no shared Stan arena.  The reverse-mode AD (`"ADr"`) and
+  finite-difference paths remain single threaded.
+
 - Inductive linearization and matrix exponentials rewritten with a more
   NONMEM-like interface (automatic ODE->syntax translation retained) and
   symbolic-differentiation gradients.
