@@ -2,6 +2,28 @@
 
 ## New features
 
+- `rxOptExpr()` gains `chunkLines` and `parallel`, to optimize a large
+  machine-generated model (a sensitivity- or Jacobian-augmented model) in
+  contiguous cost-balanced chunks rather than in a single pass.  Normalizing a
+  model is strongly superlinear in its size, and for such a model it -- not the
+  common subexpression search -- is what dominates: optimizing a 275-line
+  augmented model takes ~113s, of which the subexpression search is only ~15s.
+  Chunking amortizes that parse, since each chunk is normalized on its own,
+  taking the same model to ~11s (10.7x; 5.7x at 149 lines, 2.5x at 119).  An
+  ordinary model is far too small to gain anything, which is why the default
+  (`chunkLines = 0`) leaves behaviour exactly as before.  `parallel` optionally
+  optimizes the chunks in `mirai` daemons.
+
+  Common subexpressions are then only shared within a chunk, so the model
+  carries more temporaries; this costs no measurable solve time, though it does
+  make the C compilation somewhat slower.  Compartment-scoped assignments (a
+  `state(0)=` initial condition or an `f`/`alag`/`lag`/`rate`/`dur` dosing
+  modifier) are disguised in place while the chunks are optimized, so they can
+  be chunked without being separated from their `d/dt()`.  A chunk is only a
+  fragment and so can fail to optimize where the whole model would not; if any
+  chunk fails the whole model is optimized instead, so chunking never changes
+  the model that is returned nor the error a malformed model raises.
+
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the
   pre-history.  Delayed states are interpolated from the solver's dense output;

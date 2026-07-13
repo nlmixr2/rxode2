@@ -384,6 +384,180 @@
   }
 }
 
+#' Split model lines into contiguous cost-balanced chunks
+#'
+#' Optimizing a chunk is strongly superlinear in its size, so the largest chunk
+#' dominates the total (and, in parallel, sets the floor).  Balancing on
+#' character count rather than line count minimizes that largest chunk: model
+#' lines vary hugely in length, and a sensitivity equation is far more expensive
+#' than a short assignment.
+#'
+#' @param lines character vector of model lines
+#' @param targetChars approximate character budget per chunk
+#' @return list of character vectors, in order (their concatenation is `lines`)
+#' @noRd
+.rxBalancedChunks <- function(lines, targetChars) {
+  .w <- pmax(1L, nchar(lines))
+  .k <- max(1L, min(length(lines), as.integer(ceiling(sum(.w) / max(1, targetChars)))))
+  if (.k <= 1L) return(list(lines))
+  unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
+}
+
+#' Disguise compartment-scoped assignments so each chunk parses on its own
+#'
+#' A state initial condition (`state(0)=`) or a dosing modifier
+#' (`f|alag|lag|rate|dur(cmt)=`) is a syntax error in a chunk that does not also
+#' hold the matching `d/dt(cmt)` ("'W(0)' present, but d/dt(W) not defined").
+#' The lines cannot simply be moved to a chunk that has the `d/dt()`: their
+#' right-hand side may read a variable that a later line reassigns, so their
+#' position is load-bearing.  Instead rewrite the left-hand side *in place* to a
+#' unique plain name, which parses anywhere as an ordinary assignment, and undo
+#' it with [.rxRestoreCmt] once the chunks are optimized and reassembled.  The
+#' line never moves, so semantics are preserved exactly.
+#'
+#' The text handed here is the caller's, which need not be canonical (the whole
+#' model is deliberately never normalized -- see [.rxOptExprChunked]), so
+#' whitespace around the left-hand side is preserved verbatim and the round trip
+#' is byte-exact for any spacing.  A construct this does not recognise is simply
+#' left alone; its chunk then fails to optimize and falls back to the whole
+#' model, which is safe.
+#'
+#' @param modTxt model text
+#' @return model text with compartment-scoped LHS disguised
+#' @noRd
+.rxDisguiseCmt <- function(modTxt) {
+  .ln <- strsplit(modTxt, "\n", fixed = TRUE)[[1]]
+  .eq <- regexpr("=", .ln, fixed = TRUE)
+  .raw <- ifelse(.eq > 0L, substr(.ln, 1L, .eq - 1L), "")
+  .lhs <- trimws(.raw)
+  .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+  .trail <- substr(.raw, nchar(.lead) + nchar(.lhs) + 1L, nchar(.raw))
+  .rhs <- ifelse(.eq > 0L, substr(.ln, .eq, nchar(.ln)), "")
+  .isIc <- .eq > 0L & endsWith(.lhs, "(0)")
+  .isMod <- .eq > 0L & grepl("^(f|alag|lag|rate|dur)\\(", .lhs) & endsWith(.lhs, ")")
+  .new <- .lhs
+  .new[.isIc] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.isIc]), "__")
+  .mm <- regmatches(.lhs[.isMod], regexec("^([a-z]+)\\((.*)\\)$", .lhs[.isMod]))
+  .new[.isMod] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
+                         character(1))
+  paste(ifelse(.eq > 0L & (.isIc | .isMod), paste0(.lead, .new, .trail, .rhs), .ln),
+        collapse = "\n")
+}
+
+#' Reverse [.rxDisguiseCmt]: restore the original compartment-scoped LHS
+#'
+#' Only the left-hand side is rewritten (split at the first `=`), so the
+#' optimized right-hand side is kept verbatim.
+#'
+#' @param txt optimized model text containing disguised names
+#' @return model text with the compartment-scoped LHS restored
+#' @noRd
+.rxRestoreCmt <- function(txt) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .disg <- grepl("^[ \t]*rx__disg_(ic|mod)__", .ln)
+  if (any(.disg)) {
+    .eq <- regexpr("=", .ln[.disg], fixed = TRUE)
+    .raw <- substr(.ln[.disg], 1L, .eq - 1L)
+    .rest <- substr(.ln[.disg], .eq, nchar(.ln[.disg]))
+    .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+    .tok <- trimws(.raw)
+    .trail <- substr(.raw, nchar(.lead) + nchar(.tok) + 1L, nchar(.raw))
+    .tok <- sub("^rx__disg_ic__(.*)__$", "\\1(0)", .tok)
+    .tok <- sub("^rx__disg_mod__([a-z]+)__(.*)__$", "\\1(\\2)", .tok)
+    .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
+  }
+  paste(.ln, collapse = "\n")
+}
+
+#' Optimize one chunk and namespace the introduced `rx_expr_` variables
+#'
+#' Each chunk is itself a (smaller) model, so it is optimized by `rxOptExpr`
+#' with chunking off.  The chunks are optimized independently, so each starts
+#' its `rx_expr_` counter at zero -- prefix them per chunk to keep them unique
+#' after reassembly.  Errors are deliberately *not* caught here: a chunk that
+#' cannot be optimized sends the caller back to the whole model, which is the
+#' only thing that can tell a fragment apart from a malformed model.
+#'
+#' @param i chunk index
+#' @param chunks list of chunks (character vectors of lines)
+#' @param msg progress label
+#' @return optimized chunk text
+#' @noRd
+.rxOptExprChunk <- function(i, chunks, msg) {
+  .o <- suppressMessages(rxOptExpr(paste(chunks[[i]], collapse = "\n"), msg))
+  gsub("rx_expr_", sprintf("rx_expr_c%d_", i), .o, fixed = TRUE)
+}
+
+#' Chunked (optionally parallel) common-subexpression optimization
+#'
+#' Chunking is purely an optimization: it returns the same model, and raises the
+#' same error, as optimizing the whole model would.
+#'
+#' @inheritParams rxOptExpr
+#' @return optimized model text
+#' @noRd
+.rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
+  # superlinear in model size, and is what actually dominates optimizing a large model: on a
+  # 275-line augmented model the whole-model call is ~102s, of which the common subexpression
+  # search is only ~15s.  Chunking is fast precisely because rxOptExpr() normalizes each
+  # chunk on its own, so normalizing the whole model here would pay the very cost this is
+  # avoiding.  Text is already line-oriented and is split as-is; only an object needs rxNorm.
+  .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
+  if (length(.ln) <= chunkLines) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
+
+  # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
+  .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
+                               mean(pmax(1L, nchar(.ln))) * chunkLines)
+  .nChunks <- length(.chunks)
+
+  # Never start more daemons than there are chunks, nor more threads than the user asked
+  # for with setRxThreads() (which rxCores() reports).
+  .nDaemons <- as.integer(parallel)
+  if (is.na(.nDaemons)) .nDaemons <- 0L
+  if (.nDaemons > 0L) .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
+  .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
+  .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
+                  if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
+
+  .opt <- tryCatch({
+    if (.useMirai) {
+      mirai::daemons(.nDaemons)
+      on.exit(mirai::daemons(0), add = TRUE)
+      # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
+      # environment, so a chunk is optimized by the same code path serially and in parallel.
+      # `[mirai::.stop]` re-raises a chunk that failed in a daemon; collecting with a bare
+      # `[]` would instead hand back an errorValue, which would be pasted into the model.
+      .tasks <- mirai::mirai_map(
+        seq_len(.nChunks),
+        function(.i, .chunks, .msg, .optOne) {
+          library(rxode2)
+          .optOne(.i, .chunks, .msg)
+        },
+        .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+      )
+      unlist(.tasks[mirai::.stop], use.names = FALSE)
+    } else {
+      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+    }
+  }, error = function(e) NULL)
+
+  # A chunk is only a fragment of the model, so it can fail to optimize where the whole
+  # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
+  # or only part of a statement.  It can equally fail because the model is malformed, and
+  # the chunk alone cannot tell those apart.  The whole model can: it optimizes cleanly for
+  # a mere fragment, and raises exactly what the unchunked call raises for a broken model.
+  # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
+  # model never lands here.)
+  if (is.null(.opt)) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
+  .rxRestoreCmt(paste(.opt, collapse = "\n"))
+}
+
 #' Optimize rxode2 for computer evaluation
 #'
 #' This optimizes rxode2 code for computer evaluation by only
@@ -398,6 +572,56 @@
 #'
 #'  finding duplicate expressions in model...
 #'
+#' @param chunkLines Integer; when positive, optimize the model in
+#'     contiguous cost-balanced chunks of roughly this many lines
+#'     (40 is a reasonable value) instead of in a single pass.  `0`,
+#'     the default, optimizes the whole model at once and is exactly
+#'     the previous behaviour.
+#'
+#'     This is worth doing only for a large machine-generated model --
+#'     a sensitivity- or Jacobian-augmented model, say.  Normalizing a
+#'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
+#'     its size, and for such a model it, not the common subexpression
+#'     search, is what dominates: optimizing a 275-line augmented model
+#'     takes ~113s, of which the subexpression search is only ~15s.
+#'     Chunking amortizes that parse -- `rxOptExpr()` normalizes each
+#'     chunk on its own -- taking the same model to ~11s:
+#'
+#'     \tabular{rrrr}{
+#'       lines \tab whole \tab chunked \tab \cr
+#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: no gain) \cr
+#'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
+#'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
+#'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
+#'     }
+#'
+#'     An ordinary model is small enough that there is nothing to gain,
+#'     which is why this is off by default.
+#'
+#'     Common subexpressions are then only shared within a chunk, so the
+#'     model is equivalent but carries more temporaries.  That costs no
+#'     measurable solve time, but it does make the C compilation of the
+#'     model somewhat slower, which partly offsets the gain.
+#'
+#'     A chunk is a fragment, so it can fail to optimize where the whole
+#'     model would not.  If any chunk fails, the whole model is optimized
+#'     instead, so chunking never changes the model that is returned nor
+#'     the error that a malformed model raises: it is purely an
+#'     optimization, and falling back costs the unchunked time only on
+#'     that rare path.
+#'
+#' @param parallel Integer; number of `mirai` daemons used to optimize
+#'     the chunks in parallel (`0`, the default, is serial).  Only used
+#'     when `chunkLines` is positive.  Requires the `mirai` package.
+#'     It is capped by the number of chunks and by `rxCores()`, so it
+#'     will not oversubscribe past the threads the user asked for with
+#'     `setRxThreads()`.
+#'
+#'     The daemons are started for the call and shut down when it
+#'     returns.  That startup (and loading rxode2 into each daemon) costs
+#'     a few seconds, which is a large part of what there is to gain
+#'     here, so this is only worth using on a genuinely large model.
+#'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
 #'     While parameters names are maintained, their order may be
@@ -405,7 +629,11 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
-rxOptExpr <- function(x, msg = "model") {
+rxOptExpr <- function(x, msg = "model", chunkLines = 0L, parallel = 0L) {
+  .chunkLines <- as.integer(chunkLines)
+  if (!is.na(.chunkLines) && .chunkLines > 0L) {
+    return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
+  }
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))

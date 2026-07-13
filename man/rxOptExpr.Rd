@@ -4,7 +4,7 @@
 \alias{rxOptExpr}
 \title{Optimize rxode2 for computer evaluation}
 \usage{
-rxOptExpr(x, msg = "model")
+rxOptExpr(x, msg = "model", chunkLines = 0L, parallel = 0L)
 }
 \arguments{
 \item{x}{rxode2 model that can be accessed by rxNorm}
@@ -15,6 +15,56 @@ example "model" will produce the following message while
 optimizing the model:
 
 finding duplicate expressions in model...}
+
+\item{chunkLines}{Integer; when positive, optimize the model in
+contiguous cost-balanced chunks of roughly this many lines
+(40 is a reasonable value) instead of in a single pass.  \code{0},
+the default, optimizes the whole model at once and is exactly
+the previous behaviour.
+
+This is worth doing only for a large machine-generated model --
+a sensitivity- or Jacobian-augmented model, say.  Normalizing a
+model (\code{rxNorm()}, i.e. parsing it) is strongly superlinear in
+its size, and for such a model it, not the common subexpression
+search, is what dominates: optimizing a 275-line augmented model
+takes ~113s, of which the subexpression search is only ~15s.
+Chunking amortizes that parse -- \code{rxOptExpr()} normalizes each
+chunk on its own -- taking the same model to ~11s:
+
+\tabular{rrrr}{
+  lines \tab whole \tab chunked \tab \cr
+  34 \tab 0.5s \tab 0.5s \tab (a typical model: no gain) \cr
+  119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
+  149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
+  275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
+}
+
+An ordinary model is small enough that there is nothing to gain,
+which is why this is off by default.
+
+Common subexpressions are then only shared within a chunk, so the
+model is equivalent but carries more temporaries.  That costs no
+measurable solve time, but it does make the C compilation of the
+model somewhat slower, which partly offsets the gain.
+
+A chunk is a fragment, so it can fail to optimize where the whole
+model would not.  If any chunk fails, the whole model is optimized
+instead, so chunking never changes the model that is returned nor
+the error that a malformed model raises: it is purely an
+optimization, and falling back costs the unchunked time only on
+that rare path.}
+
+\item{parallel}{Integer; number of \code{mirai} daemons used to optimize
+the chunks in parallel (\code{0}, the default, is serial).  Only used
+when \code{chunkLines} is positive.  Requires the \code{mirai} package.
+It is capped by the number of chunks and by \code{rxCores()}, so it
+will not oversubscribe past the threads the user asked for with
+\code{setRxThreads()}.
+
+The daemons are started for the call and shut down when it
+returns.  That startup (and loading rxode2 into each daemon) costs
+a few seconds, which is a large part of what there is to gain
+here, so this is only worth using on a genuinely large model.}
 }
 \value{
 Optimized rxode2 model text.  The order and type lhs and
