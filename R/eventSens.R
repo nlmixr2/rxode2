@@ -221,16 +221,6 @@
   )
 }
 
-#' Restrict jump sensitivities to ODE states for mixed ODE+linCmt models
-#'
-#' For pure linCmt models (no ODE states), event sensitivities are handled by the
-#' finite-difference linCmt path, so jump metadata is disabled (`NULL`).  For
-#' mixed models, keep only ODE-scoped states/parameters in the jump map.
-#'
-#' @param obj Model object accepted by `rxModelVars()`.
-#' @param map `.rxEventSensMap(obj)` result.
-#' @return Filtered map list, or `NULL` when jump should be disabled.
-#' @noRd
 #' Detect an ODE compartment name colliding with a linCmt() reserved name
 #'
 #' An explicit `d/dt()` on a linCmt()-reserved compartment name
@@ -252,6 +242,16 @@
     grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE), logical(1))]
 }
 
+#' Restrict jump sensitivities to ODE states for mixed ODE+linCmt models
+#'
+#' For pure linCmt models (no ODE states), event sensitivities are handled by the
+#' finite-difference linCmt path, so jump metadata is disabled (`NULL`).  For
+#' mixed models, keep only ODE-scoped states/parameters in the jump map.
+#'
+#' @param obj Model object accepted by `rxModelVars()`.
+#' @param map `.rxEventSensMap(obj)` result.
+#' @return Filtered map list, or `NULL` when jump should be disabled.
+#' @noRd
 .rxEventSensFilterMap <- function(obj, map) {
   .mv <- rxModelVars(obj)
   .lin <- .rxLinNcmt(.mv)
@@ -303,8 +303,9 @@
 
 #' Resolve effective event-sensitivity mode for linCmt-containing models
 #'
-#' `fdAll` is the explicit full finite-difference fallback. For models that
-#' include linCmt, `fd` resolves to jump/symbolic event handling.
+#' `fdAll` is the explicit full finite-difference fallback. Models that include
+#' linCmt() always resolve to `fd` regardless of the requested mode (see the
+#' comment in the body); the requested mode is honored otherwise.
 #'
 #' @param requested Requested mode from `.rxEventSensMode()`.
 #' @param mv Parsed model vars.
