@@ -141,6 +141,7 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
 static inline int finalizeLineDdt(nodeInfo ni, char *name);
 static inline int finalizeLineParam(nodeInfo ni, char *name);
 static inline int finalizeLineInterp(nodeInfo ni, char *name);
+static inline int finalizeLineEtaFD(nodeInfo ni, char *name);
 static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v);
 //static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
 static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
@@ -185,6 +186,7 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleStringEqualityStatements(ni, name, *i, xpn) ||
       handleDvidStatement(ni, name, xpn, pn) ||
       handleStartInterpStatement(ni, name, i, xpn, pn) ||
+      handleStartEtaFDStatement(ni, name, i, xpn, pn) ||
       handleFunctions(ni, name, i, depth, nch, xpn, pn) ||
       handleTheta(ni, name, xpn) ||
       handleEta(ni, name, xpn)) return 1;
@@ -299,6 +301,7 @@ void parseFree(int last) {
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
   R_Free(tb.interp);
+  R_Free(tb.etaFD);
   R_Free(tb.lag);
   R_Free(tb.alag);
   R_Free(tb.splitBolus);
@@ -381,6 +384,8 @@ void reset(void) {
   tb.lho    = R_Calloc(MXSYM, int);
   tb.interp	= R_Calloc(MXSYM, int);
   tb.interpC= 0;
+  tb.etaFD	= R_Calloc(MXSYM, int);
+  tb.etaFDflag= 0;
   tb.lhi    = 1;
   tb.ini	= R_Calloc(MXSYM, int);
   tb.mtime	= R_Calloc(MXSYM, int);

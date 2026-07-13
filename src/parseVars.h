@@ -136,6 +136,7 @@ static inline int new_or_ith(const char *s) {
       // if currently defining an interpolation and
       // this variable has not been assigned an interpolation
       // then assign it.
+      if (tb.etaFDflag) tb.etaFD[tb.ix] = 1;
       if (tb.interpC != 0) {
         if (tb.interp[tb.ix] == 0) {
           tb.interp[tb.ix] = tb.interpC;

@@ -441,3 +441,15 @@ static inline int finalizeLineInterp(nodeInfo ni, char *name) {
   }
   return 0;
 }
+
+static inline int finalizeLineEtaFD(nodeInfo ni, char *name) {
+  if (nodeHas(etaFD_statement)) {
+    sbDt.o = 0; sbt.o = 0;
+    sAppend(&sbNrm, "etaFD%s;\n", sbt.s);
+    addLine(&sbNrmL, "etaFD%s;\n", sbt.s);
+    tb.etaFDflag=0; // reset so it does not leak to later etas
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}

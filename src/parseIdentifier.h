@@ -7,6 +7,7 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
       // If it is new, add it
       addSymbolStr(value);
       tb.interp[NV-1] = tb.interpC;
+      if (tb.etaFDflag) tb.etaFD[NV-1] = 1;
       // Ignored variables
       if (isTbsVar(value)){
         // If it is Transform both sides, suppress printouts

@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   rxProtectGuard;
-  SEXP lst   = rxP(Rf_allocVector(VECSXP, 31));
-  SEXP names = rxP(Rf_allocVector(STRSXP, 31));
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 34));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 34));
 
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -61,6 +61,7 @@ SEXP generateModelVars(void) {
   SEXP lhsOrd = rxP(Rf_allocVector(INTSXP, tb.li));
   SEXP slhs   = rxP(Rf_allocVector(STRSXP, tb.sli));
   SEXP interp = rxP(Rf_allocVector(INTSXP, tb.pi));
+  SEXP etaFD  = rxP(Rf_allocVector(INTSXP, tb.pi));
 
   SEXP version = rxP(calcVersionInfo());
   SEXP ini = rxP(calcIniVals());
@@ -68,7 +69,7 @@ SEXP generateModelVars(void) {
   SEXP model  = rxP(Rf_allocVector(STRSXP,2));
   SEXP modeln = rxP(Rf_allocVector(STRSXP,2));
 
-  populateParamsLhsSlhs(params, lhsIn, slhs, INTEGER(interp), lhsStrIn,
+  populateParamsLhsSlhs(params, lhsIn, slhs, INTEGER(interp), INTEGER(etaFD), lhsStrIn,
                         INTEGER(lhsOrd));
 
   SEXP lhsOrdFS = rxP(orderForderS1(lhsOrd));
@@ -321,6 +322,20 @@ SEXP generateModelVars(void) {
 
   SET_VECTOR_ELT(lst, 21, interp);
   SET_STRING_ELT(names, 21, Rf_mkChar("interp"));
+
+  // timeId (31) and md5 (32) placeholders -- filled by name in R (rxModelVars);
+  // created here so etaFD stays at the canonical end (33) of the model-vars list
+  SET_VECTOR_ELT(lst, 31, Rf_ScalarInteger(0));
+  SET_STRING_ELT(names, 31, Rf_mkChar("timeId"));
+  SEXP md5Ph = rxP(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(md5Ph, 0, Rf_mkChar(""));
+  SET_STRING_ELT(md5Ph, 1, Rf_mkChar(""));
+  SET_VECTOR_ELT(lst, 32, md5Ph);
+  SET_STRING_ELT(names, 32, Rf_mkChar("md5"));
+
+  Rf_setAttrib(etaFD, R_NamesSymbol, params);
+  SET_VECTOR_ELT(lst, 33, etaFD);
+  SET_STRING_ELT(names, 33, Rf_mkChar("etaFD"));
 
   SEXP strAssign = rxP(Rf_allocVector(VECSXP, tb.str.n));
   SEXP strAssignN = rxP(Rf_allocVector(STRSXP, tb.str.n));

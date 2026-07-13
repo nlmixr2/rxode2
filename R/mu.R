@@ -750,6 +750,15 @@
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
   .curEval <- as.character(x[[1]])
+  # Directive statements (param/interp/cmt/etaFD/...) are pass-through model
+  # lines, not mathematical expressions -- do not descend into them looking for
+  # mu-referenced parameters (etaFD() in particular lists a bare eta argument).
+  if (length(.curEval) == 1L &&
+        .curEval %in% c("param", "params", "cmt", "dvid", "locf", "nocb",
+                        "linear", "midpoint", "interp", "etaFD", "splitBolus",
+                        "matExp", "indLin")) {
+    return(invisible())
+  }
   assign(".curEval", .curEval, env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_

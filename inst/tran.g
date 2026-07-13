@@ -24,6 +24,7 @@ statement
   | printf_statement end_statement
   | param_statement end_statement
   | interp_statement end_statement
+  | etaFD_statement end_statement
   | cmt_statement end_statement
   | splitBolus_statement end_statement
   | dvid_statementI end_statement
@@ -140,6 +141,8 @@ param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
 
 interp_statement: ('locf' | 'linear' | 'nocb' | 'midpoint') '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
+
+etaFD_statement: "etaFD" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
 
 printf_statement
   : printf_command '(' string (',' logical_or_expression )* ')';

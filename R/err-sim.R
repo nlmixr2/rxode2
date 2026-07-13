@@ -323,6 +323,23 @@ rxUiGet.interpLines <- function(x, ...){
 attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for model"
 attr(rxUiGet.interpLines, "rstudio") <- quote(linear(CP)) # for rstudio completion
 
+#' @export
+#' @rdname rxUiGet
+rxUiGet.etaFDLines <- function(x, ...){
+  .ui <- x[[1]]
+  .etaFD <- rxModelVars(.ui)$etaFD
+  if (is.null(.etaFD) || length(.etaFD) == 0L) {
+    return(NULL)
+  }
+  .w <- which(.etaFD == 1L)
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  list(str2lang(paste0("etaFD(", paste(names(.etaFD)[.w], collapse=", "), ")")))
+}
+attr(rxUiGet.etaFDLines, "desc") <- "etaFD (force finite-difference eta) declaration line(s) for model"
+attr(rxUiGet.etaFDLines, "rstudio") <- quote(etaFD(eta.cl)) # for rstudio completion
+
 #' @rdname rxUiGet
 #' @export
 rxUiGet.splitDose <- function(x, ...) {

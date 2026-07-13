@@ -47,6 +47,8 @@ lhs symbols?
   // 3 = nocb via nocb()
   // 4 = midpoint via midpoint()
   int interpC;// = 0; // current interpolation method
+  int *etaFD;  // per-symbol flag: 1 = eta forced to finite-difference via etaFD()
+  int etaFDflag;// current etaFD() statement flag (mirrors interpC lifetime)
   int *ini;        /* initial variable assignment =2 if there are two assignments */
   int *mtime;
   double *iniv;        /* Initial values */
@@ -301,6 +303,7 @@ typedef struct nodeInfo {
   int splitBolus_statement;
   int param_statement;
   int interp_statement;
+  int etaFD_statement;
   int dvid_statementI;
   int ifelse;
   int ifelse_statement;
@@ -378,6 +381,7 @@ static inline void niReset(nodeInfo *ni){
   ni->splitBolus_statement = -1;
   ni->param_statement = -1;
   ni->interp_statement = -1;
+  ni->etaFD_statement = -1;
   ni->dvid_statementI = -1;
   ni->ifelse = -1;
   ni->ifelse_statement=-1;

@@ -163,6 +163,7 @@
 #define RxMv_strCmpParams 30
 #define RxMv_timeId 31
 #define RxMv_md5 32
+#define RxMv_etaFD 33
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

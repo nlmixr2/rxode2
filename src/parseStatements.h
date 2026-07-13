@@ -20,6 +20,22 @@ static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
   return 0;
 }
 
+static inline int handleStartEtaFDStatement(nodeInfo ni, char *name, int *i,
+                                            D_ParseNode *xpn, D_ParseNode *pn) {
+  if (nodeHas(etaFD_statement)) {
+    if (*i == 0) {
+      // 'etaFD' keyword; the etas listed after it are flagged as finite-differenced.
+      // Reset the statement buffers so only the '(eta,...)' args accumulate in sbt
+      // (finalizeLineEtaFD prepends the keyword) -- otherwise the previous line's
+      // text leaks into the normalized 'etaFD(...)' line and corrupts re-parsing.
+      sb.o=0; sbDt.o=0; sbt.o=0;
+      tb.etaFDflag = 1;
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline int handleDvidStatement(nodeInfo ni, char *name, D_ParseNode *xpn, D_ParseNode *pn) {
   if (nodeHas(dvid_statementI)){
     if (tb.dvidn == 0){
@@ -213,6 +229,7 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLinePower(ni, name) ||
     finalizeLineMod(ni, name) ||
     finalizeLineInterp(ni, name) ||
+    finalizeLineEtaFD(ni, name) ||
     finalizeLineStrAssign(ni, name) ||
     finalizeLineLevelStr(ni, name)
     ;
