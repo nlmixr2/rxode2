@@ -118,7 +118,7 @@ calculating redundant expressions once.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxOptExpr</span><span class="op">(</span><span class="va">x</span>, msg <span class="op">=</span> <span class="st">"model"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxOptExpr</span><span class="op">(</span><span class="va">x</span>, msg <span class="op">=</span> <span class="st">"model"</span>, chunkLines <span class="op">=</span> <span class="fl">0L</span>, parallel <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -135,6 +135,50 @@ optimizing that will in the message when optimizing.  For
 example "model" will produce the following message while
 optimizing the model:</p>
 <p>finding duplicate expressions in model...</p></dd>
+
+
+<dt id="arg-chunklines">chunkLines<a class="anchor" aria-label="anchor" href="#arg-chunklines"></a></dt>
+<dd><p>Integer; when positive, optimize the model in
+contiguous cost-balanced chunks of roughly this many lines
+(40 is a reasonable value) instead of in a single pass.  <code>0</code>,
+the default, optimizes the whole model at once and is exactly
+the previous behaviour.</p>
+<p>This is worth doing only for a large machine-generated model –
+a sensitivity- or Jacobian-augmented model, say.  Normalizing a
+model (<code><a href="rxNorm.html">rxNorm()</a></code>, i.e. parsing it) is strongly superlinear in
+its size, and for such a model it, not the common subexpression
+search, is what dominates: optimizing a 275-line augmented model
+takes ~113s, of which the subexpression search is only ~15s.
+Chunking amortizes that parse – <code>rxOptExpr()</code> normalizes each
+chunk on its own – taking the same model to ~11s:</p>
+<table class="table table"><tr><td>lines</td><td>whole</td><td>chunked</td><td></td></tr><tr><td>34</td><td>0.5s</td><td>0.5s</td><td>(a typical model: no gain)</td></tr><tr><td>119</td><td>2.0s</td><td>0.8s</td><td>2.5x</td></tr><tr><td>149</td><td>22.2s</td><td>3.9s</td><td>5.7x</td></tr><tr><td>275</td><td>112.7s</td><td>10.6s</td><td>10.7x</td></tr></table><p>An ordinary model is small enough that there is nothing to gain,
+which is why this is off by default.</p>
+<p>Common subexpressions are then only shared within a chunk, so the
+model is equivalent but carries more temporaries.  That costs no
+measurable solve time, but it does make the C compilation of the
+model somewhat slower, which partly offsets the gain.</p>
+<p>A chunk is a fragment, so it can fail to optimize where the whole
+model would not.  If any chunk fails, the whole model is optimized
+instead, so a malformed model still raises the error the unchunked
+call raises; falling back costs the unchunked time only on that
+rare path.</p>
+<p>Chunking therefore does not give the same optimized text as the
+whole-model call – it shares fewer subexpressions and so carries
+more temporaries – but it gives an equivalent model: the same
+states and parameters, the same solution, and the same errors.</p></dd>
+
+
+<dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
+<dd><p>Integer; number of <code>mirai</code> daemons used to optimize
+the chunks in parallel (<code>0</code>, the default, is serial).  Only used
+when <code>chunkLines</code> is positive.  Requires the <code>mirai</code> package.
+It is capped by the number of chunks and by <code><a href="getRxThreads.html">rxCores()</a></code>, so it
+will not oversubscribe past the threads the user asked for with
+<code><a href="getRxThreads.html">setRxThreads()</a></code>.</p>
+<p>The daemons are started for the call and shut down when it
+returns.  That startup (and loading rxode2 into each daemon) costs
+a few seconds, which is a large part of what there is to gain
+here, so this is only worth using on a genuinely large model.</p></dd>
 
 </dl></div>
     <div class="section level2">
