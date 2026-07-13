@@ -49,10 +49,14 @@ model somewhat slower, which partly offsets the gain.
 
 A chunk is a fragment, so it can fail to optimize where the whole
 model would not.  If any chunk fails, the whole model is optimized
-instead, so chunking never changes the model that is returned nor
-the error that a malformed model raises: it is purely an
-optimization, and falling back costs the unchunked time only on
-that rare path.}
+instead, so a malformed model still raises the error the unchunked
+call raises; falling back costs the unchunked time only on that
+rare path.
+
+Chunking therefore does not give the same optimized text as the
+whole-model call -- it shares fewer subexpressions and so carries
+more temporaries -- but it gives an equivalent model: the same
+states and parameters, the same solution, and the same errors.}
 
 \item{parallel}{Integer; number of \code{mirai} daemons used to optimize
 the chunks in parallel (\code{0}, the default, is serial).  Only used

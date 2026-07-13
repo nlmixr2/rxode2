@@ -14,15 +14,18 @@
   (`chunkLines = 0`) leaves behaviour exactly as before.  `parallel` optionally
   optimizes the chunks in `mirai` daemons.
 
-  Common subexpressions are then only shared within a chunk, so the model
-  carries more temporaries; this costs no measurable solve time, though it does
-  make the C compilation somewhat slower.  Compartment-scoped assignments (a
-  `state(0)=` initial condition or an `f`/`alag`/`lag`/`rate`/`dur` dosing
-  modifier) are disguised in place while the chunks are optimized, so they can
-  be chunked without being separated from their `d/dt()`.  A chunk is only a
-  fragment and so can fail to optimize where the whole model would not; if any
-  chunk fails the whole model is optimized instead, so chunking never changes
-  the model that is returned nor the error a malformed model raises.
+  Common subexpressions are only shared within a chunk, so chunking does not give
+  the same optimized text as the whole-model call -- it carries more temporaries
+  -- but it gives an equivalent model: the same states and parameters, the same
+  solution, and the same errors.  The extra temporaries cost no measurable solve
+  time, though they do make the C compilation somewhat slower.
+
+  Compartment-scoped assignments (a `state(0)=` initial condition or an
+  `f`/`alag`/`lag`/`rate`/`dur` dosing modifier) are disguised in place while the
+  chunks are optimized, so they can be chunked without being separated from their
+  `d/dt()`.  A chunk is only a fragment and so can fail to optimize where the
+  whole model would not; if any chunk fails the whole model is optimized instead,
+  so a malformed model still raises the error the unchunked call raises.
 
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the

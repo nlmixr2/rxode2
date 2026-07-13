@@ -446,17 +446,35 @@
 }
 
 # A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
-# Each chunk restarts its rx_expr_ counter at zero, so prefix them per chunk to keep them
-# unique once reassembled.  Errors are deliberately not caught here: a chunk that cannot
-# be optimized must reach .rxOptExprChunked(), which falls back to the whole model.
+# Each chunk restarts its rx_expr_ counter at zero, so the names one chunk introduces would
+# collide with another's once reassembled; prefix them per chunk.
+#
+# Only the names *this* call introduced may be renamed.  A rx_expr_ name already present in
+# the chunk -- the model was optimized before, say -- must be left exactly as it is: its
+# definition and its uses can sit in different chunks, and renaming them per chunk would
+# rename them differently and pull them apart.  Matching whole words likewise keeps a
+# variable that merely contains "rx_expr_" (say `my_rx_expr_var`) from being rewritten.
+#
+# Errors are deliberately not caught here: a chunk that cannot be optimized must reach
+# .rxOptExprChunked(), which falls back to the whole model.
 .rxOptExprChunk <- function(i, chunks, msg) {
-  .o <- suppressMessages(rxOptExpr(paste(chunks[[i]], collapse = "\n"), msg))
-  gsub("rx_expr_", sprintf("rx_expr_c%d_", i), .o, fixed = TRUE)
+  .txt <- paste(chunks[[i]], collapse = "\n")
+  .o <- suppressMessages(rxOptExpr(.txt, msg))
+  .re <- "\\brx_expr_[0-9]+\\b"
+  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]),
+                  unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  for (.v in .new) {
+    .o <- gsub(paste0("\\b", .v, "\\b"),
+               sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+  }
+  .o
 }
 
-# Chunked (optionally parallel) common subexpression optimization.  This is purely an
-# optimization: it returns the same model, and raises the same error, as optimizing the
-# whole model would.
+# Chunked (optionally parallel) common subexpression optimization.  Subexpressions are only
+# shared within a chunk, so the optimized text is not the text the whole-model call would
+# produce -- it carries more temporaries -- but it is an equivalent model, with the same
+# states and parameters and the same solution, and a malformed model still raises the same
+# error.  What is optimized changes; what the model *means* does not.
 .rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
   # superlinear in model size, and is what actually dominates optimizing a large model: on a
@@ -490,8 +508,6 @@
       on.exit(mirai::daemons(0), add = TRUE)
       # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
       # environment, so a chunk is optimized by the same code path serially and in parallel.
-      # `[mirai::.stop]` re-raises a chunk that failed in a daemon; collecting with a bare
-      # `[]` would instead hand back an errorValue, which would be pasted into the model.
       .tasks <- mirai::mirai_map(
         seq_len(.nChunks),
         function(.i, .chunks, .msg, .optOne) {
@@ -500,7 +516,22 @@
         },
         .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
       )
-      unlist(.tasks[mirai::.stop], use.names = FALSE)
+      # A chunk that failed in a daemon comes back as an error object rather than throwing,
+      # and would otherwise be pasted into the model text; raise it so the fallback below
+      # optimizes the whole model instead.
+      .res <- character(.nChunks)
+      for (.i in seq_len(.nChunks)) {
+        .r <- .tasks[[.i]][]
+        if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || !is.character(.r)) {
+          stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
+                       tryCatch(conditionMessage(.r),
+                                error = function(e) paste(utils::head(unclass(.r), 1L),
+                                                          collapse = ""))),
+               call. = FALSE)
+        }
+        .res[.i] <- .r
+      }
+      .res
     } else {
       vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
     }
@@ -566,10 +597,14 @@
 #'
 #'     A chunk is a fragment, so it can fail to optimize where the whole
 #'     model would not.  If any chunk fails, the whole model is optimized
-#'     instead, so chunking never changes the model that is returned nor
-#'     the error that a malformed model raises: it is purely an
-#'     optimization, and falling back costs the unchunked time only on
-#'     that rare path.
+#'     instead, so a malformed model still raises the error the unchunked
+#'     call raises; falling back costs the unchunked time only on that
+#'     rare path.
+#'
+#'     Chunking therefore does not give the same optimized text as the
+#'     whole-model call -- it shares fewer subexpressions and so carries
+#'     more temporaries -- but it gives an equivalent model: the same
+#'     states and parameters, the same solution, and the same errors.
 #'
 #' @param parallel Integer; number of `mirai` daemons used to optimize
 #'     the chunks in parallel (`0`, the default, is serial).  Only used

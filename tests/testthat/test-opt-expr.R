@@ -107,6 +107,33 @@ rxTest({
     expect_true(length(.ch) > 1L)
   })
 
+  test_that("only the rx_expr_ names a chunk introduces are renamed", {
+    # The chunks are optimized independently, so each restarts its rx_expr_ counter and the
+    # names must be prefixed per chunk.  But renaming *every* rx_expr_ occurrence would
+    # break two cases: a name already in the model (it was optimized before) whose
+    # definition and uses land in different chunks would be renamed differently and pulled
+    # apart; and a variable that merely contains "rx_expr_" would be rewritten.
+    .pad <- vapply(1:45, function(i) sprintf("a%d=exp(THETA[1]+ETA[1])*%d", i, i), character(1))
+    .base <- c("d/dt(depot)=-exp(THETA[1]+ETA[1])*depot",
+               "d/dt(center)=exp(THETA[1]+ETA[1])*depot-exp(THETA[2])*center")
+
+    # (a) re-optimizing an already-optimized model
+    .once <- suppressMessages(rxOptExpr(paste(c(.base, .pad, "cp=center"), collapse = "\n")))
+    expect_true(grepl("rx_expr_", .once))
+    .twice <- suppressMessages(rxOptExpr(.once, "model", chunkLines = 40L))
+    expect_error(rxModelVars(.twice), NA)
+    # no rx_expr_ left dangling as an input parameter
+    expect_false(any(grepl("^rx_expr_", rxModelVars(.twice)$params)))
+
+    # (b) a user variable whose name merely contains "rx_expr_"
+    .m <- paste(c(.base, "my_rx_expr_var=exp(THETA[3])", .pad,
+                  "cp=center*my_rx_expr_var"), collapse = "\n")
+    .o <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+    expect_true(grepl("my_rx_expr_var", .o, fixed = TRUE))   # left exactly as it was
+    expect_error(rxModelVars(.o), NA)
+    expect_false(any(grepl("^rx_expr_", rxModelVars(.o)$params)))
+  })
+
   test_that("a failing chunk falls back to the whole model, so chunking changes nothing", {
     # A chunk is a fragment, so it can fail where the whole model would not.  But it can
     # equally fail because the model is genuinely malformed, and the chunk alone cannot tell
