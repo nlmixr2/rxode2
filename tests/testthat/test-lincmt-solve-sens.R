@@ -117,4 +117,29 @@ rxTest({
       expect_equal(outOde[[col]], outLin[[col]], tolerance=1e-5)
     })
   }
+
+  test_that("linCmtB forward-AD solves are thread safe (parallel == serial)", {
+    skip_on_cran()
+    .nsub <- 60
+    set.seed(1)
+    .params <- data.frame(
+      id = seq_len(.nsub),
+      "THETA[1]" = log(4), "THETA[2]" = log(70), "THETA[3]" = log(1),
+      "THETA[4]" = 0.1,
+      "ETA[1]" = rnorm(.nsub, 0, 0.3),
+      "ETA[2]" = rnorm(.nsub, 0, 0.3),
+      "ETA[3]" = rnorm(.nsub, 0, 0.3),
+      check.names = FALSE)
+    .ev <- et(amt = 100, ii = 12, until = 48) |>
+      et(seq(0, 48, by = 1)) |>
+      et(id = seq_len(.nsub))
+    .s1 <- rxSolve(lin, params = .params, events = .ev, cores = 1,
+                   returnType = "data.frame")
+    .s2 <- rxSolve(lin, params = .params, events = .ev, cores = 2,
+                   returnType = "data.frame")
+    .cols <- grep("sens_rx_pred.*ETA|^rx_pred_$", names(.s1), value = TRUE)
+    for (.col in .cols) {
+      expect_identical(.s1[[.col]], .s2[[.col]])
+    }
+  })
 })
