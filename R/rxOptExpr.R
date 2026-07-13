@@ -384,6 +384,210 @@
   }
 }
 
+# -- Chunked optimization ------------------------------------------------------
+
+# Split the model into contiguous chunks of roughly `targetChars` characters.
+# Optimizing a chunk is strongly superlinear in its size, so the largest chunk
+# dominates the total; balancing on characters rather than lines minimizes it,
+# since a sensitivity equation costs far more than a short assignment.
+.rxBalancedChunks <- function(lines, targetChars) {
+  .w <- pmax(1L, nchar(lines))
+  .k <- max(1L, min(length(lines), as.integer(ceiling(sum(.w) / max(1, targetChars)))))
+  if (.k <= 1L) return(list(lines))
+  unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
+}
+
+# A state initial condition (state(0)=) or a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
+# d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
+# d/dt(): its right-hand side may read a variable that a later line reassigns, so its
+# position is load-bearing.  Rewrite its left-hand side to a unique plain name *in place*
+# instead -- which parses anywhere as an ordinary assignment -- and undo that with
+# .rxRestoreCmt() once the chunks are optimized.  The line never moves, so semantics are
+# preserved exactly.  Whitespace is kept verbatim (the caller's text need not be
+# canonical, since the whole model is deliberately never normalized): a canonical
+# left-hand side embeds the compartment name bare (readable), while a spacing variant
+# the grammar also accepts (`depot (0)=`, `f( depot )=`) is hex-encoded whole, so the
+# disguised name is always a valid identifier and the restore is byte-exact either way.
+# A construct not recognised here is left alone; its chunk then fails and falls back to
+# the whole model.
+.rxDisguiseCmt <- function(modTxt) {
+  .ln <- strsplit(modTxt, "\n", fixed = TRUE)[[1]]
+  .eq <- regexpr("=", .ln, fixed = TRUE)
+  .raw <- ifelse(.eq > 0L, substr(.ln, 1L, .eq - 1L), "")
+  .lhs <- trimws(.raw)
+  .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+  .trail <- substr(.raw, nchar(.lead) + nchar(.lhs) + 1L, nchar(.raw))
+  .rhs <- ifelse(.eq > 0L, substr(.ln, .eq, nchar(.ln)), "")
+  .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
+  .icRe <- paste0("^(", .id, ")[ \t]*\\(0\\)$")
+  .modRe <- paste0("^([fF]|alag|lag|rate|dur)[ \t]*\\([ \t]*(", .id, ")[ \t]*\\)$")
+  .isIc <- .eq > 0L & grepl(.icRe, .lhs)
+  .isMod <- .eq > 0L & grepl(.modRe, .lhs)
+  .icCan <- .isIc & grepl(paste0("^", .id, "\\(0\\)$"), .lhs)
+  .modCan <- .isMod & grepl(paste0("^([fF]|alag|lag|rate|dur)\\(", .id, "\\)$"), .lhs)
+  .hex <- (.isIc | .isMod) & !(.icCan | .modCan)
+  .new <- .lhs
+  .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
+  .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
+  .new[.modCan] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
+                          character(1))
+  .new[.hex] <- vapply(.lhs[.hex], function(.l) {
+    paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
+  }, character(1), USE.NAMES = FALSE)
+  paste(ifelse(.isIc | .isMod, paste0(.lead, .new, .trail, .rhs), .ln),
+        collapse = "\n")
+}
+
+# Reverse .rxDisguiseCmt().  Only the left-hand side is rewritten (split at the first
+# "="), so the optimized right-hand side is kept verbatim.  The rx__disg_lhs__ form is
+# hex-decoded back to the original left-hand side, byte for byte.
+.rxRestoreCmt <- function(txt) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .disg <- grepl("^[ \t]*rx__disg_(ic|mod|lhs)__", .ln)
+  if (any(.disg)) {
+    .eq <- regexpr("=", .ln[.disg], fixed = TRUE)
+    .raw <- substr(.ln[.disg], 1L, .eq - 1L)
+    .rest <- substr(.ln[.disg], .eq, nchar(.ln[.disg]))
+    .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+    .tok <- trimws(.raw)
+    .trail <- substr(.raw, nchar(.lead) + nchar(.tok) + 1L, nchar(.raw))
+    .tok <- sub("^rx__disg_ic__(.*)__$", "\\1(0)", .tok)
+    .tok <- sub("^rx__disg_mod__([a-zA-Z]+)__(.*)__$", "\\1(\\2)", .tok)
+    .isHex <- grepl("^rx__disg_lhs__([0-9a-f][0-9a-f])+__$", .tok)
+    .tok[.isHex] <- vapply(sub("^rx__disg_lhs__([0-9a-f]+)__$", "\\1", .tok[.isHex]),
+                           function(.h) {
+                             rawToChar(as.raw(strtoi(substring(.h, seq(1L, nchar(.h), 2L),
+                                                               seq(2L, nchar(.h), 2L)), 16L)))
+                           }, character(1), USE.NAMES = FALSE)
+    .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
+  }
+  paste(.ln, collapse = "\n")
+}
+
+# A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
+# Each chunk restarts its rx_expr_ counter at zero, so the names one chunk introduces would
+# collide with another's once reassembled; prefix them per chunk.
+#
+# Only the names *this* call introduced may be renamed.  A rx_expr_ name already present in
+# the chunk -- the model was optimized before, say -- must be left exactly as it is: its
+# definition and its uses can sit in different chunks, and renaming them per chunk would
+# rename them differently and pull them apart.  Matching whole words likewise keeps a
+# variable that merely contains "rx_expr_" (say `my_rx_expr_var`) from being rewritten.
+#
+# Errors are deliberately not caught here: a chunk that cannot be optimized must reach
+# .rxOptExprChunked(), which falls back to the whole model.
+.rxOptExprChunk <- function(i, chunks, msg) {
+  .txt <- paste(chunks[[i]], collapse = "\n")
+  .o <- suppressMessages(rxOptExpr(.txt, msg))
+  .re <- "\\brx_expr_[0-9]+\\b"
+  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]),
+                  unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  for (.v in .new) {
+    .o <- gsub(paste0("\\b", .v, "\\b"),
+               sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+  }
+  .o
+}
+
+# Chunked (optionally parallel) common subexpression optimization.  Subexpressions are only
+# shared within a chunk, so the optimized text is not the text the whole-model call would
+# produce -- it carries more temporaries -- but it is an equivalent model, with the same
+# states and parameters and the same solution, and a malformed model still raises the same
+# error.  What is optimized changes; what the model *means* does not.
+.rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
+  # superlinear in model size, and is what actually dominates optimizing a large model: on a
+  # 275-line augmented model the whole-model call is ~113s, of which the common subexpression
+  # search is only ~15s.  Chunking is fast precisely because rxOptExpr() normalizes each
+  # chunk on its own, so normalizing the whole model here would pay the very cost this is
+  # avoiding.  Text is already line-oriented and is split as-is; only an object needs rxNorm.
+  #
+  # Mirror how rxModelVars() reads a character, in its order: a length-1 string may be a
+  # filename (the file holds the model text; read it) or a registered model name (it has no
+  # "=", "<-" or "~"; only rxNorm() can resolve it); anything else is literal model text.
+  if (is.character(x) && length(x) == 1L &&
+        isTRUE(tryCatch(file.exists(x), error = function(e) FALSE,
+                        warning = function(w) FALSE))) {
+    x <- readLines(x, warn = FALSE)
+  } else if (is.character(x) && length(x) == 1L && !grepl("[=~]|<-", x)) {
+    x <- rxNorm(x)
+  }
+  .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
+  if (length(.ln) <= chunkLines) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
+  # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
+  # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line is
+  # disguised.  A model that already uses such a name would have it silently captured --
+  # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
+  if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
+
+  # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
+  .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
+                               mean(pmax(1L, nchar(.ln))) * chunkLines)
+  .nChunks <- length(.chunks)
+
+  # Never start more daemons than there are chunks, nor more threads than the user asked
+  # for with setRxThreads() (which rxCores() reports).
+  .nDaemons <- as.integer(parallel)
+  if (is.na(.nDaemons)) .nDaemons <- 0L
+  if (.nDaemons > 0L) .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
+  .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
+  .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
+                  if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
+
+  .opt <- tryCatch({
+    if (.useMirai) {
+      mirai::daemons(.nDaemons)
+      on.exit(mirai::daemons(0), add = TRUE)
+      # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
+      # environment, so a chunk is optimized by the same code path serially and in parallel.
+      .tasks <- mirai::mirai_map(
+        seq_len(.nChunks),
+        function(.i, .chunks, .msg, .optOne) {
+          library(rxode2)
+          .optOne(.i, .chunks, .msg)
+        },
+        .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+      )
+      # A chunk that failed in a daemon comes back as an error object rather than throwing,
+      # and would otherwise be pasted into the model text; raise it so the fallback below
+      # optimizes the whole model instead.
+      .res <- character(.nChunks)
+      for (.i in seq_len(.nChunks)) {
+        .r <- .tasks[[.i]][]
+        if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || !is.character(.r)) {
+          stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
+                       tryCatch(conditionMessage(.r),
+                                error = function(e) paste(utils::head(unclass(.r), 1L),
+                                                          collapse = ""))),
+               call. = FALSE)
+        }
+        .res[.i] <- .r
+      }
+      .res
+    } else {
+      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+    }
+  }, error = function(e) NULL)
+
+  # A chunk is only a fragment of the model, so it can fail to optimize where the whole
+  # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
+  # or only part of a statement.  It can equally fail because the model is malformed, and
+  # the chunk alone cannot tell those apart.  The whole model can: it optimizes cleanly for
+  # a mere fragment, and raises exactly what the unchunked call raises for a broken model.
+  # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
+  # model never lands here.)
+  if (is.null(.opt)) {
+    return(rxOptExpr(.txt, msg = msg))
+  }
+  .rxRestoreCmt(paste(.opt, collapse = "\n"))
+}
+
 #' Optimize rxode2 for computer evaluation
 #'
 #' This optimizes rxode2 code for computer evaluation by only
@@ -398,6 +602,60 @@
 #'
 #'  finding duplicate expressions in model...
 #'
+#' @param chunkLines Integer; when positive, optimize the model in
+#'     contiguous cost-balanced chunks of roughly this many lines
+#'     (40 is a reasonable value) instead of in a single pass.  `0`,
+#'     the default, optimizes the whole model at once and is exactly
+#'     the previous behaviour.
+#'
+#'     This is worth doing only for a large machine-generated model --
+#'     a sensitivity- or Jacobian-augmented model, say.  Normalizing a
+#'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
+#'     its size, and for such a model it, not the common subexpression
+#'     search, is what dominates: optimizing a 275-line augmented model
+#'     takes ~113s, of which the subexpression search is only ~15s.
+#'     Chunking amortizes that parse -- `rxOptExpr()` normalizes each
+#'     chunk on its own -- taking the same model to ~11s:
+#'
+#'     \tabular{rrrr}{
+#'       lines \tab whole \tab chunked \tab \cr
+#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: no gain) \cr
+#'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
+#'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
+#'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
+#'     }
+#'
+#'     An ordinary model is small enough that there is nothing to gain,
+#'     which is why this is off by default.
+#'
+#'     Common subexpressions are then only shared within a chunk, so the
+#'     model is equivalent but carries more temporaries.  That costs no
+#'     measurable solve time, but it does make the C compilation of the
+#'     model somewhat slower, which partly offsets the gain.
+#'
+#'     A chunk is a fragment, so it can fail to optimize where the whole
+#'     model would not.  If any chunk fails, the whole model is optimized
+#'     instead, so a malformed model still raises the error the unchunked
+#'     call raises; falling back costs the unchunked time only on that
+#'     rare path.
+#'
+#'     Chunking therefore does not give the same optimized text as the
+#'     whole-model call -- it shares fewer subexpressions and so carries
+#'     more temporaries -- but it gives an equivalent model: the same
+#'     states and parameters, the same solution, and the same errors.
+#'
+#' @param parallel Integer; number of `mirai` daemons used to optimize
+#'     the chunks in parallel (`0`, the default, is serial).  Only used
+#'     when `chunkLines` is positive.  Requires the `mirai` package.
+#'     It is capped by the number of chunks and by `rxCores()`, so it
+#'     will not oversubscribe past the threads the user asked for with
+#'     `setRxThreads()`.
+#'
+#'     The daemons are started for the call and shut down when it
+#'     returns.  That startup (and loading rxode2 into each daemon) costs
+#'     a few seconds, which is a large part of what there is to gain
+#'     here, so this is only worth using on a genuinely large model.
+#'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
 #'     While parameters names are maintained, their order may be
@@ -405,7 +663,11 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
-rxOptExpr <- function(x, msg = "model") {
+rxOptExpr <- function(x, msg = "model", chunkLines = 0L, parallel = 0L) {
+  .chunkLines <- as.integer(chunkLines)
+  if (!is.na(.chunkLines) && .chunkLines > 0L) {
+    return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
+  }
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))
