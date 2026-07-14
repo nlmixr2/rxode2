@@ -291,7 +291,7 @@
 
 #'@rdname rxode2-set
 #'@export
-`RxODE<-` <- function(x, envir=environment(x), value) {
+`RxODE<-` <- function(x, envir=environment(x), value) { # nolint: object_name_linter.
   UseMethod("rxode2<-")
 }
 

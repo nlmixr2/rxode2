@@ -200,7 +200,7 @@
 rxPreferredDistributionName <- function(dist) {
   if (length(dist) == 1) {
     .names <- names(.errIdenticalDists)
-    for(.n in .names) {
+    for (.n in .names) {
       if (dist == .n) return(.n)
       else if (dist %in% .errIdenticalDists[[.n]]) return(.n)
     }
@@ -1306,7 +1306,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .y <- lapply(seq_along(.y), function(i) {
         .y[[i]]
       })
-      while(.i <= length(.y)) {
+      while (.i <= length(.y)) {
         .env$line <- .i
         if (length(.y[[.i]]) == 1 &&
               is.name(.y[[.i]])) {

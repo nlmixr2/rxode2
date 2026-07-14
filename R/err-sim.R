@@ -274,7 +274,7 @@ attr(rxUiGet.paramsLine, "rstudio") <- quote(params(ID, CL, V, KA)) # for rstudi
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.interpLines <- function(x, ...){
+rxUiGet.interpLines <- function(x, ...) {
   .ui <- x[[1]]
   .interp <- rxModelVars(.ui)$interp
   if (!is.factor(.interp) ||
@@ -480,7 +480,7 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
     .ret[[.k]] <- .expr[[.i]]
     .k <- .k + 1
   }
-  for(.i in seq_along(.cmtLines)) {
+  for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1
   }
@@ -670,7 +670,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
                                 useIf=TRUE,
                                 interpLines=NULL, splitDoseLines=NULL,
                                 levelLines=NULL) {
-  if(!inherits(uiModel, "rxUi")) {
+  if (!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
   }

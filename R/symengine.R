@@ -641,7 +641,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 ## adapted from URLencode
-.rxStrEncode <- function (str) {
+.rxStrEncode <- function(str) {
   paste0("rxQ__",
          vapply(str, function(str) {
            OK <- "[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789]"
@@ -1899,7 +1899,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 #' @return string representing the translation
 #' @noRd
 #' @author Matthew L. Fidler
-.rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+.rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) { # nolint: cyclocomp_linter.
   if (identical(x[[1]], quote(`(`))) {
     return(paste0("(", .rxToSE(x[[2]], envir = envir), ")"))
   } else if (identical(x[[1]], quote(`{`))) {
@@ -2489,7 +2489,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 
 #' @export
 #' @rdname rxToSE
-.rxFromSE <- function(x) {
+.rxFromSE <- function(x) { # nolint: cyclocomp_linter.
   rxReq("symengine")
   .cnst <- setNames(
     names(.rxSEreserved),
@@ -4403,7 +4403,7 @@ rxSupportedFuns <- function() {
                                   })
                                   envir$didAssign <- FALSE
                                   .cur <- .rxFun2c(.cur, envir=envir)
-                                  if(!envir$didAssign && !envir$isExpr) {
+                                  if (!envir$didAssign && !envir$isExpr) {
                                     .pre <- paste0(rep(" ", envir$n), collapse="")
                                     if (envir$isRx) {
                                       return(paste0(.pre, "rxLastValue <- ", .cur, "\n"))
@@ -4526,7 +4526,7 @@ rxFun2c <- function(fun, name, onlyF=FALSE) {
     .cur <- .body[[i]]
     .env$didAssign <- FALSE
     .cur <- .rxFun2c(.cur, envir=.env)
-    if(!.env$didAssign && !.env$isExpr) {
+    if (!.env$didAssign && !.env$isExpr) {
       .pre <- paste0(rep(" ", .env$n), collapse="")
       if (.env$isRx) {
         return(paste0(.pre, "rxLastValue <- ", .cur, "\n"))
@@ -4567,7 +4567,7 @@ rxFun2c <- function(fun, name, onlyF=FALSE) {
       .cur <- .body[[i]]
       .env$didAssign <- FALSE
       .cur <- .rxFun2c(.cur, envir=.env)
-      if(!.env$didAssign && !.env$isExpr) {
+      if (!.env$didAssign && !.env$isExpr) {
         .pre <- paste0(rep(" ", .env$n), collapse="")
         return(paste0(.pre, "rxLastValue = ", .cur, ";\n"))
       }

@@ -160,20 +160,23 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   for (.k in which(.rateCol %in% c(-1, -2))) {
     .c <- as.character(.ev$cmt[.dr][.k])
     if (!(.c %in% .st)) next
-    .t1 <- .ev$time[.dr][.k]; .amt <- .ev$amt[.dr][.k]
+    .t1 <- .ev$time[.dr][.k]
+    .amt <- .ev$amt[.dr][.k]
     if (.rateCol[.k] == -1) {
       .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.rSE)) next
       .valStr <- rxode2::rxFromSE(.rSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.rSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
       .kind <- "rate"
     } else {
       .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.dSE)) next
       .valStr <- rxode2::rxFromSE(.dSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.dSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
       .kind <- "dur"
     }
     .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
@@ -181,16 +184,20 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   }
   .doses <- data.frame(time = .ev$time[.dr], cmt = as.character(.ev$cmt[.dr]),
                        amt = .ev$amt[.dr], rate = .rateCol, stringsAsFactors = FALSE)
-  .dFexpr <- list(); .dLagStr <- list(); .lagStr <- list()
+  .dFexpr <- list()
+  .dLagStr <- list()
+  .lagStr <- list()
   for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
     .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
-      .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .d <- symengine::D(.fSE, p)
+      rxode2::rxFromSE(.d) }, character(1))
     .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.lSE)) {
       .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
       .dLagStr[[.c]] <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.lSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
     }
   }
   .evR <- .ev[!is.na(.ev$evid) & .ev$evid %in% c(5L, 6L), , drop = FALSE]
@@ -233,8 +240,12 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
 #' @keywords internal
 .rxAdjointSolveEvalC <- function(build, params, outTimes, denseBy = 0.01,
                                  atol = 1e-10, rtol = 1e-10) {
-  .st <- build$st; calcSens <- build$calcSens; adjStates <- build$adjStates
-  .ns <- length(.st); .np <- length(calcSens); .nk <- length(adjStates)
+  .st <- build$st
+  calcSens <- build$calcSens
+  adjStates <- build$adjStates
+  .ns <- length(.st)
+  .np <- length(calcSens)
+  .nk <- length(adjStates)
   .doses <- build$doses
   .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
     .c <- .doses$cmt[i]
@@ -247,7 +258,8 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
     } else {
       .Dv <- .rxAdjEvalNum(z$valStr, params)
       .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
-      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+      .Rv <- z$amt / .Dv
+      .dRp <- -(z$amt / .Dv^2) * .dDp
     }
     list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
          dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
@@ -286,11 +298,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   ## bolus dose duals: F and modeled lag
   .duals <- list()
   for (.j in which(.doses$rate == 0)) {
-    .c <- .doses$cmt[.j]; .ci <- match(.c, .st); .tau <- .doses$tau[.j]
+    .c <- .doses$cmt[.j]
+    .ci <- match(.c, .st)
+    .tau <- .doses$tau[.j]
     if (is.na(.ci)) next
     .k <- which.min(abs(.denseT - .tau))
     if (.c %in% names(build$dFexpr)) {
-      .w <- numeric(.ns); .w[.ci] <- .doses$amt[.j]
+      .w <- numeric(.ns)
+      .w[.ci] <- .doses$amt[.j]
       .cc <- vapply(calcSens, function(p) .fwd[[paste0("rx__dFdp_", .c, "_", p, "__")]][.k],
                     numeric(1))
       .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .cc)
@@ -309,7 +324,8 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
     .ci <- match(.z$cmt, .st)
     if (is.na(.ci)) next
     .k <- which.min(abs(.denseT - .z$t2))
-    .w <- numeric(.ns); .w[.ci] <- .z$R
+    .w <- numeric(.ns)
+    .w[.ci] <- .z$R
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
@@ -428,9 +444,11 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   ## directly; with() would ignore enclos and mis-resolve `pred`).
   .ph <- eval(parse(text = pred), envir = .model)
   .predC <- rxode2::rxFromSE(.ph)
-  .dhdy <- lapply(.st, function(i) { .d <- symengine::D(.ph, i); rxode2::rxFromSE(.d) })
+  .dhdy <- lapply(.st, function(i) { .d <- symengine::D(.ph, i)
+  rxode2::rxFromSE(.d) })
   names(.dhdy) <- .st
-  .dhdp <- lapply(calcSens, function(p) { .d <- symengine::D(.ph, p); rxode2::rxFromSE(.d) })
+  .dhdp <- lapply(calcSens, function(p) { .d <- symengine::D(.ph, p)
+  rxode2::rxFromSE(.d) })
   names(.dhdp) <- calcSens
 
   ## event detection (needed before the backward model is built)
@@ -444,20 +462,23 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   for (.k in which(.rateCol %in% c(-1, -2))) {
     .c <- as.character(.ev$cmt[.dr][.k])
     if (!(.c %in% .st)) next
-    .t1 <- .ev$time[.dr][.k]; .amt <- .ev$amt[.dr][.k]
+    .t1 <- .ev$time[.dr][.k]
+    .amt <- .ev$amt[.dr][.k]
     if (.rateCol[.k] == -1) {
       .rSE <- get0(paste0("rx_rate_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.rSE)) next
       .valStr <- rxode2::rxFromSE(.rSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.rSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
       .kind <- "rate"
     } else {
       .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.dSE)) next
       .valStr <- rxode2::rxFromSE(.dSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.dSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
       .kind <- "dur"
     }
     .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
@@ -491,16 +512,20 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   ## d(alag)/dtheta strings; numeric evaluation deferred to eval.
   .doses <- data.frame(time = .ev$time[.dr], cmt = as.character(.ev$cmt[.dr]),
                        amt = .ev$amt[.dr], rate = .rateCol, stringsAsFactors = FALSE)
-  .dFexpr <- list(); .dLagStr <- list(); .lagStr <- list()
+  .dFexpr <- list()
+  .dLagStr <- list()
+  .lagStr <- list()
   for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
     .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
-      .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .d <- symengine::D(.fSE, p)
+      rxode2::rxFromSE(.d) }, character(1))
     .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.lSE)) {
       .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
       .dLagStr[[.c]] <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.lSE, p)
+        rxode2::rxFromSE(.d) }, character(1))
     }
   }
   ## replace(evid5)/multiply(evid6) costate jumps (replace -> 0; multiply -> *alpha)
@@ -557,9 +582,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
 #' @keywords internal
 .rxAdjointGradEval <- function(build, params, obsTimes, obs, weight = 1,
                                denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
-  .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
-  .fmod <- build$fmod; .revMod <- build$revMod; .infCmts <- build$infCmts
-  .evR <- build$evR; .dFexpr <- build$dFexpr
+  .st <- build$st
+  calcSens <- build$calcSens
+  errModel <- build$errModel
+  .fmod <- build$fmod
+  .revMod <- build$revMod
+  .infCmts <- build$infCmts
+  .evR <- build$evR
+  .dFexpr <- build$dFexpr
   .lam <- function(i) paste0("rx__adjLam_", i, "__")
 
   ## numeric infusion quantities from the cached symbolic strings
@@ -570,13 +600,15 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
     } else {
       .Dv <- .rxAdjEvalNum(z$valStr, params)
       .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
-      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+      .Rv <- z$amt / .Dv
+      .dRp <- -(z$amt / .Dv^2) * .dDp
     }
     list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
          dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
   })
   ## numeric lag values / d(alag)/dtheta from cached strings
-  .lagVal <- stats::setNames(numeric(0), character(0)); .dLag <- list()
+  .lagVal <- stats::setNames(numeric(0), character(0))
+  .dLag <- list()
   for (.c in names(build$lagStr)) {
     .lagVal[.c] <- .rxAdjEvalNum(build$lagStr[[.c]], params)
     .dLag[[.c]] <- stats::setNames(
@@ -584,7 +616,8 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   }
   .doses <- build$doses
   .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
-    .lv <- .lagVal[.doses$cmt[i]]; if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
+    .lv <- .lagVal[.doses$cmt[i]]
+    if (length(.lv) && !is.na(.lv)) .lv else 0 }, numeric(1))
 
   ## forward checkpoint + predictions/residuals at observations
   .infT <- unlist(lapply(.infus, function(z) c(z$t1, z$t2)))
@@ -724,8 +757,11 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
                                 denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
   ## all duals (F, modeled lag, replace/multiply, modeled rate/dur infusion) run
   ## through the C++ sweep.
-  .st <- build$st; calcSens <- build$calcSens; errModel <- build$errModel
-  .ns <- length(.st); .np <- length(calcSens)
+  .st <- build$st
+  calcSens <- build$calcSens
+  errModel <- build$errModel
+  .ns <- length(.st)
+  .np <- length(calcSens)
   ## actual (possibly lagged) bolus dose times
   .doses <- build$doses
   .doses$tau <- .doses$time + vapply(seq_len(nrow(.doses)), function(i) {
@@ -740,7 +776,8 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
     } else {
       .Dv <- .rxAdjEvalNum(z$valStr, params)
       .dDp <- vapply(z$dStr, function(s) .rxAdjEvalNum(s, params), numeric(1))
-      .Rv <- z$amt / .Dv; .dRp <- -(z$amt / .Dv^2) * .dDp
+      .Rv <- z$amt / .Dv
+      .dRp <- -(z$amt / .Dv^2) * .dDp
     }
     list(cmt = z$cmt, t1 = z$t1, t2 = z$t1 + z$amt / .Rv, R = .Rv,
          dRdp = stats::setNames(.dRp, calcSens), amt = z$amt)
@@ -801,11 +838,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   ## bolus dose duals (F and modeled lag), out[p] += (lambda . w) * c
   .duals <- list()
   for (.j in which(.doses$rate == 0)) {
-    .c <- .doses$cmt[.j]; .ci <- match(.c, .st); .tau <- .doses$tau[.j]
+    .c <- .doses$cmt[.j]
+    .ci <- match(.c, .st)
+    .tau <- .doses$tau[.j]
     if (is.na(.ci)) next
     .k <- which.min(abs(.denseT - .tau))
     if (.c %in% names(build$dFexpr)) {
-      .w <- numeric(.ns); .w[.ci] <- .doses$amt[.j]
+      .w <- numeric(.ns)
+      .w[.ci] <- .doses$amt[.j]
       .cc <- vapply(calcSens, function(p) .fwd[[paste0("rx__dFdp_", .c, "_", p, "__")]][.k],
                     numeric(1))
       .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .cc)
@@ -824,7 +864,8 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
     .ci <- match(.z$cmt, .st)
     if (is.na(.ci)) next
     .k <- which.min(abs(.denseT - .z$t2))
-    .w <- numeric(.ns); .w[.ci] <- .z$R
+    .w <- numeric(.ns)
+    .w[.ci] <- .z$R
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }

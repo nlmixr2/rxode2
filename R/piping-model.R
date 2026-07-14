@@ -232,7 +232,7 @@ model.rxModelVars <- model.rxode2
   ret
 }
 
-.getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) {
+.getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) { # nolint: object_length_linter.
   ret <- NULL
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)

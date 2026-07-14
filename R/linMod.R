@@ -275,7 +275,7 @@ linMod <- function(variable, power, dv="dv",
                           }, character(1)), collapse="+")
   if (type == "replace") {
     list(replace=.linMod,
-         iniDf=.iniDf )
+         iniDf=.iniDf)
   } else if (type == "before") {
     .replace <- paste0("rx.linMod.", .var, ".f", num)
     list(before=paste0(.replace, " <- ", .linMod),

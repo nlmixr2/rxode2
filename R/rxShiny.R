@@ -1,5 +1,5 @@
 ## nocov start
-g.y.log10 <- function(breaks = g.log.breaks.major, minor_breaks = g.log.breaks.minor, labels = scales::math_format(format = log10), ...) {
+g.y.log10 <- function(breaks = g.log.breaks.major, minor_breaks = g.log.breaks.minor, labels = scales::math_format(format = log10), ...) { # nolint: object_name_linter.
   g.log.breaks.minor <- function(y) {
     r1 <- range(log10(y))
     r <- r1
@@ -349,16 +349,16 @@ $(document).on("keyup", function(e) {
 
       inits <- NULL
       if (length(cmts) > 0) {
-        init_str <- paste0(cmts, "=as.numeric(input$", cmts, ")")
-        init_str <- paste("c(", toString(init_str), ")")
+        init_str <- paste0(cmts, "=as.numeric(input$", cmts, ")") # nolint: object_name_linter.
+        init_str <- paste("c(", toString(init_str), ")") # nolint: object_name_linter.
         inits <- eval(parse(text = init_str))
       }
 
       pars <- values$pars
       params <- NULL
       if (length(pars) > 0) {
-        param_str <- paste0(pars, "=as.numeric(input$", pars, ")")
-        param_str <- paste("c(", toString(param_str), ")")
+        param_str <- paste0(pars, "=as.numeric(input$", pars, ")") # nolint: object_name_linter.
+        param_str <- paste("c(", toString(param_str), ")") # nolint: object_name_linter.
         params <- eval(parse(text = param_str))
       }
 

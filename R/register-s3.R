@@ -57,7 +57,7 @@
 
   caller <- parent.frame()
 
-  get_method_env <- function() {
+  get_method_env <- function() { # nolint: object_name_linter.
     top <- topenv(caller)
     if (isNamespace(top)) {
       asNamespace(environmentName(top))
@@ -65,7 +65,7 @@
       caller
     }
   }
-  get_method <- function(method, env) {
+  get_method <- function(method, env) { # nolint: object_name_linter.
     if (is.null(method)) {
       get(paste0(generic, ".", class), envir = get_method_env())
     } else {
@@ -73,7 +73,7 @@
     }
   }
 
-  method_fn <- get_method(method)
+  method_fn <- get_method(method) # nolint: object_name_linter.
   stopifnot(is.function(method_fn))
 
   # Always register hook in case package is later unloaded & reloaded
@@ -83,7 +83,7 @@
       ns <- asNamespace(package)
 
       # Refresh the method, it might have been updated by `devtools::load_all()`
-      method_fn <- get_method(method)
+      method_fn <- get_method(method) # nolint: object_name_linter.
 
       registerS3method(generic, class, method_fn, envir = ns)
     }

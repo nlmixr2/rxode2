@@ -136,7 +136,7 @@ StatCens <- ggplot2::ggproto("StatCens", ggplot2::Stat,
 #' @inheritParams ggplot2::stat_identity
 #' @return This returns a ggplot2 stat
 #' @export
-stat_cens <- function(mapping = NULL, data = NULL,
+stat_cens <- function(mapping = NULL, data = NULL, # nolint: object_name_linter.
                       position = "identity", show.legend = NA,
                       inherit.aes = TRUE, width = 0.01, ...) {
   ggplot2::layer(
@@ -147,4 +147,4 @@ stat_cens <- function(mapping = NULL, data = NULL,
 }
 #' @rdname stat_cens
 #' @export
-geom_cens <- stat_cens
+geom_cens <- stat_cens # nolint: object_name_linter.

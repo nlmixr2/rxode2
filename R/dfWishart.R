@@ -48,7 +48,7 @@ dfWishart <- function(omega, n, rse, upper, totN=1000, diag=TRUE, seed=1234) {
   } else if (missing(rse)) {
     stop("need to match rse with some metric", call.=FALSE)
   } else if (missing(upper)) {
-    upper <- 200*(sqrt(2)/rse)^2
+    upper <- 200* (sqrt(2)/rse)^2
   }
   checkmate::assertNumeric(upper, len=1, lower=1)
   checkmate::assertIntegerish(totN, len=1, lower=1)

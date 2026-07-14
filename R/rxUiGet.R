@@ -31,7 +31,7 @@
   # unlock on exit
   .udfEnvSet(list(parent.frame(1), parent.frame(2)))
   .obj <- .uiToRxUiGet(obj=obj, arg=arg, exact=exact)
-  if (.rstudioComplete()){
+  if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply
     # return a dummy object so it doesn't calculate the value.
     #
@@ -544,7 +544,7 @@ rxUiGet.thetaUpper <- function(x, ...) {
   .w <- !is.na(.ini$ntheta)
   setNames(.ini$upper[.w], .ini$name[.w])
 }
-attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
+attr(rxUiGet.thetaUpper, "desc") <- "thetaUpper"
 attr(rxUiGet.thetaUpper, "rstudio") <- c("thetaUpper"=1.0) # named vector
 
 #' @export

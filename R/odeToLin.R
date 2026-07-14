@@ -55,7 +55,8 @@
     return(.extractMultCoef(expr[[2]], stateNm, states))
   }
   if (!identical(.fn, quote(`*`))) return(NULL)
-  .lhs <- expr[[2]]; .rhs <- expr[[3]]
+  .lhs <- expr[[2]]
+  .rhs <- expr[[3]]
   .lu <- length(.statesInExpr(.lhs, states)) > 0L
   .ru <- length(.statesInExpr(.rhs, states)) > 0L
   if (.lu && !.ru && is.name(.lhs) && as.character(.lhs) == stateNm) return(.rhs)

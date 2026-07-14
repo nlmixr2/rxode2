@@ -2,17 +2,38 @@ linters: linters_with_defaults(
     object_name_linter(
       styles = "camelCase",
       regexes = c(
-        internal = "^\\.[a-z][a-zA-Z0-9]*$",
-        s3 = "^[a-z][a-z0-9_]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+        internal = "^\\.{1,2}[a-zA-Z][a-zA-Z0-9._]*$",
+        s3 = "^[a-z][a-zA-Z0-9_]*\\.[a-zA-Z][a-zA-Z0-9._]*$",
+        caps = "^[A-Z][a-zA-Z0-9_.]*$"
       )
     ),
     assignment_linter(),
-    line_length_linter(120),
     whitespace_linter(),
     pipe_continuation_linter(),
     T_and_F_symbol_linter(),
+    cyclocomp_linter(160), # Largest existing function is 155; ratchet down over time
+    object_length_linter(45), # Longest existing name is 36; ratchet down over time
     infix_spaces_linter = NULL, # Keep disabled for now due to high violation count (8541)
     commas_linter = NULL, # Keep disabled for now (2242)
-    cyclocomp_linter(50)
+    line_length_linter = NULL, # Keep disabled for now (112 over 120 chars)
+    return_linter = NULL, # Codebase style uses explicit return()
+    indentation_linter = NULL, # Keep disabled for now (292)
+    commented_code_linter = NULL, # Keep disabled for now (147)
+    object_usage_linter = NULL, # False positives with NSE/symengine idioms
+    brace_linter = NULL # Keep disabled for now (78)
   )
-exclusions: list()
+exclusions: list(
+    # The lint gate covers package code in R/ for now; legacy tests,
+    # tutorials, and vignettes are excluded until they are cleaned up.
+    "tests",
+    "inst",
+    "vignettes",
+    "demo",
+    # Generated files (see CLAUDE.md); do not edit or lint.
+    "R/RcppExports.R",
+    "R/rxode2_md5.R",
+    "R/dfIni.R",
+    "R/rxrandomui.R",
+    "R/parseFuns.R",
+    "R/rxSyntaxFunctions.R"
+  )

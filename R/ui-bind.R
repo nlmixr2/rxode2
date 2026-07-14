@@ -27,7 +27,7 @@
 #' @return rxUi combined model of model1 and model2
 #' @noRd
 #' @author Matthew L. Fidler
-rxAppendModel_ <- function(model1, model2, common=TRUE) {
+rxAppendModel_ <- function(model1, model2, common=TRUE) { # nolint: object_name_linter.
   model1 <- assertRxUi(model1)
   model1 <- .copyUi(model1) # so modifications do not affect first model
   model2 <- assertRxUi(model2)
@@ -74,7 +74,7 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
     .complex2 <- which(vapply(.both, function(v) {
       .eta <- .ini2eta[.ini2eta$name == v, "neta1"]
       any((.ini2eta$neta1 == .eta & .ini2eta$neta2 != .eta) |
-            (.ini2eta$neta2 == .eta & .ini2eta$neta1 != .eta) )
+            (.ini2eta$neta2 == .eta & .ini2eta$neta1 != .eta))
     }, logical(1), USE.NAMES = FALSE))
     .err <- unique(c(.both[.complex1], .both[.complex2]))
     if (length(.err) > 0) {

@@ -372,7 +372,8 @@
   ## [S_i]=-(djac)*[y_j]*dtau/dp with a modeled bolus on the sensitivity
   ## compartment (alag=tau, f=-(djac)*dtau/dp); a no-op unless rxSolve() adds
   ## the mirroring doses.
-  .alagf <- character(0); .seenCmt <- character(0)
+  .alagf <- character(0)
+  .seenCmt <- character(0)
   for (.si in .states) {
     .dj <- .delayJac[[.si]]
     if (is.null(.dj) || length(.dj) == 0L) next
@@ -447,7 +448,8 @@
 #' @keywords internal
 .rxDelaySensJumpMap <- function(model, calcSens) {
   .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
-  .st <- rxode2::rxStateOde(.m); .ns <- length(.st)
+  .st <- rxode2::rxStateOde(.m)
+  .ns <- length(.st)
   .findDelays <- function(e, acc = list()) {
     if (is.call(e)) {
       if (identical(e[[1L]], as.name("delay")) && length(e) == 3L) acc[[length(acc) + 1L]] <- e
@@ -460,18 +462,24 @@
     if (is.call(e)) for (.i in seq_along(e)) e[[.i]] <- .substDelay(e[[.i]], target, repl)
     e
   }
-  .alagf <- character(0); .jumpMap <- list(); .seenCmt <- character(0)
+  .alagf <- character(0)
+  .jumpMap <- list()
+  .seenCmt <- character(0)
   for (i in seq_len(.ns)) {
     # skip sensitivity compartments when applied to an already-augmented model
     # (their d/dt carries delay(rx__sens_*, tau) which must not spawn its own jump)
     if (grepl("^rx__sens_", .st[i])) next
     .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .m, inherits = FALSE)
     if (is.null(.fi)) next
-    .fiTxt <- rxode2::rxFromSE(.fi); .full <- parse(text = .fiTxt)[[1L]]
+    .fiTxt <- rxode2::rxFromSE(.fi)
+    .full <- parse(text = .fiTxt)[[1L]]
     .seen <- character(0)
     for (.dc in .findDelays(.full)) {
-      .dcTxt <- deparse1(.dc); if (.dcTxt %in% .seen) next; .seen <- c(.seen, .dcTxt)
-      .stateJ <- deparse1(.dc[[2L]]); .tau <- deparse1(.dc[[3L]])
+      .dcTxt <- deparse1(.dc)
+      if (.dcTxt %in% .seen) next
+      .seen <- c(.seen, .dcTxt)
+      .stateJ <- deparse1(.dc[[2L]])
+      .tau <- deparse1(.dc[[3L]])
       if (is.na(match(.stateJ, .st))) next
       .g <- "rx__gdlyJTMP__"
       .dj <- symengine::D(symengine::S(deparse1(.substDelay(.full, .dc, as.name(.g)))), symengine::S(.g))
@@ -515,7 +523,8 @@
   for (.jm in jumpMap) {
     for (.r in which(.isDose)) {
       if (!identical(.cmtName(.ev$cmt[.r]), .jm$stateJ)) next
-      .row <- .ev[.r, , drop = FALSE]; .row$cmt <- .jm$sensCmt
+      .row <- .ev[.r, , drop = FALSE]
+      .row$cmt <- .jm$sensCmt
       .add <- rbind(.add, .row)
     }
   }
@@ -585,7 +594,8 @@
       if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
         return(str2lang(.icOf(deparse1(x[[2L]]))))
       }
-      for (.i in seq_along(x)) x[[.i]] <- .subIC(x[[.i]]); return(x)
+      for (.i in seq_along(x)) x[[.i]] <- .subIC(x[[.i]])
+      return(x)
     }
     if (is.name(x) && as.character(x) %in% .st) return(str2lang(.icOf(as.character(x))))
     x
@@ -621,7 +631,8 @@
   for (.cmt in .cmts) {
     .mm <- regmatches(.cmt, regexec("^rx__sens_(.+?)_BY_(.+?)_BY_(.+)__$", .cmt))[[1L]]
     if (length(.mm) != 4L) next
-    .fi <- .fjTxt(.mm[2L]); if (is.null(.fi)) next
+    .fi <- .fjTxt(.mm[2L])
+    if (is.null(.fi)) next
     .dd <- NULL
     .walk <- function(x) {
       if (is.call(x)) {
@@ -657,8 +668,15 @@
   .mkRow <- function(.template, .t, .amt, .cmt) {
     .row <- .template[1L, , drop = FALSE]
     .set <- function(col, val) if (!is.null(.row[[col]])) .row[[col]] <<- val
-    .row$time <- .t; .row$evid <- 1L; .row$amt <- .amt; .row$cmt <- .cmt
-    .set("ss", 0L); .set("ii", 0); .set("addl", 0L); .set("rate", 0); .set("dur", 0)
+    .row$time <- .t
+    .row$evid <- 1L
+    .row$amt <- .amt
+    .row$cmt <- .cmt
+    .set("ss", 0L)
+    .set("ii", 0)
+    .set("addl", 0L)
+    .set("rate", 0)
+    .set("dur", 0)
     .set("dv", NA_real_)
     .row
   }
@@ -923,18 +941,23 @@
   ## the smooth rxDelayD/rxDelayD2 terms miss; reproduce it with a modeled bolus
   ## on the 2nd-order sens compartment (unit dose at t0 from rxSolve, alag=T,
   ## F=jump magnitude).  Constant delay: dT/dp=0, no jump emitted.
-  .alagf2 <- character(0); .jump2Cmts <- character(0); .seen2 <- character(0)
+  .alagf2 <- character(0)
+  .jump2Cmts <- character(0)
+  .seen2 <- character(0)
   .nzt0 <- function(x) !is.null(x) && !identical(x, "0")
-  vapply(sensVec, function(.entry) {
+  .res <- vapply(sensVec, function(.entry) {
     .m <- regmatches(.entry,
                      regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
     if (length(.m) != 4L) return(.entry)
-    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]
+    .si <- .m[2L]
+    .a <- .m[3L]
+    .b <- .m[4L]
     .dj <- .delayJac[[.si]]
     if (is.null(.dj)) return(.entry)
     .sensCmt2 <- paste0("rx__sens_", .si, "_BY_", .a, "_BY_", .b, "__")
     for (z in .dj) {
-      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
+      .ta <- z$dtau[[.a]]
+      .tb <- z$dtau[[.b]]
       if (!.nzt0(.ta) || !.nzt0(.tb)) next          # constant in a or b -> no jump
       if (.sensCmt2 %in% .seen2) next                # one delay term per 2nd-order cmt
       .seen2 <- c(.seen2, .sensCmt2)
@@ -961,7 +984,8 @@
     ## second derivative; reduces to delay(S_j^{ab}, tau) for constant tau).
     .sg2 <- function(z) {
       .s <- paste0("delay(", .Sx(z$stateJ, paste0(.a, "_BY_", .b)), ",", z$tau, ")")
-      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
+      .ta <- z$dtau[[.a]]
+      .tb <- z$dtau[[.b]]
       .d2 <- z$d2tau[[paste0(.a, "|", .b)]]
       if (is.null(.d2)) .d2 <- z$d2tau[[paste0(.b, "|", .a)]]
       .corr <- character(0)
@@ -981,7 +1005,8 @@
     .parts <- character(0)
     for (.ki in seq_along(.dj)) {
       z <- .dj[[.ki]]
-      .SGa <- .sg1(z, .a); .SGb <- .sg1(z, .b)
+      .SGa <- .sg1(z, .a)
+      .SGb <- .sg1(z, .b)
       ## pure second-order term: JD * SG_k^{ab}
       .parts <- c(.parts, paste0("+(", z$jd, ")*", .sg2(z)))
       ## H_gy: SG_k^a*S_m^b + S_m^a*SG_k^b
@@ -1007,7 +1032,7 @@
     } else {
       paste0(.entry, .add)
     }
-  }, character(1L), USE.NAMES = FALSE) -> .res
+  }, character(1L), USE.NAMES = FALSE)
   assign("..sens2DelayAlagF", if (length(.alagf2)) .alagf2 else NULL, envir = model)
   assign("..sens2JumpCmts", if (length(.jump2Cmts)) unique(.jump2Cmts) else NULL,
          envir = model)
@@ -1159,7 +1184,8 @@
       for (.pp in params) {
         .d <- symengine::D(.jdE, symengine::S(.pp))
         .txt <- rxFromSE(.d)
-        if (!identical(.txt, "0")) { .hgp[[.pp]] <- .restore(.txt); .dE[[.pp]] <- .d }
+        if (!identical(.txt, "0")) { .hgp[[.pp]] <- .restore(.txt)
+        .dE[[.pp]] <- .d }
       }
       .hgpp <- list()
       for (.p1 in names(.dE)) {
@@ -1179,7 +1205,10 @@
     .m <- regmatches(.entry, regexec(
       "^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
     if (length(.m) != 5L) return(.entry)
-    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]; .c <- .m[5L]
+    .si <- .m[2L]
+    .a <- .m[3L]
+    .b <- .m[4L]
+    .c <- .m[5L]
     .dj <- .delayJac[[.si]]
     if (is.null(.dj)) return(.entry)
     .dS <- function(st, tau, ord) paste0("delay(rx__sens_", st, "_BY_", ord, "__,", tau, ")")

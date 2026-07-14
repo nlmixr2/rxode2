@@ -270,7 +270,7 @@ assertRxUiEstimatedResiduals <- function(ui, extra="", .var.name=.vname(ui)) {
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
-  if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda", "ar")], use.names=FALSE)))) {
+  if (!all(is.na(unlist(.predDf[,c("a", "b", "c", "d", "e", "f", "lambda", "ar")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
   }
   invisible(ui)
@@ -611,7 +611,7 @@ testExists <- function(ui, x) {
                    return(is.finite(.t$upper) || is.finite(.t$lower))
                  }
                  .err <- .errDistArgRanges[[.t$err]]
-                 return (!identical(.t$lower, .err[1]) ||
+                 return(!identical(.t$lower, .err[1]) ||
                            !identical(.t$upper, .err[2]))
                }, logical(1), USE.NAMES=FALSE), .theta$name)
 }
