@@ -4576,12 +4576,47 @@ extern "C" void rxCallDydtForce(int *neq, double t, double *y, double *dydt) {
 static std::vector<int> _rxInjIdx;
 static std::vector<double> _rxInjVal;
 
+// Forced parameters for the current solve: (0-based param index, value) pairs set
+// from R (a model/ui's `forcedPars` slot resolved to solve-param indices) and
+// injected into EVERY gpars column before the registered par-loaders run.  This
+// is the first-class, plugin-free forcing mechanism: a ui carries its forced
+// values (e.g. trained NN weights) and every solve of that ui reproduces them, so
+// a fit is self-contained and portable.  Population-constant (same value in every
+// column), single-threaded (set before the parallel per-subject solve).
+static std::vector<int> _rxForcedIdx;
+static std::vector<double> _rxForcedVal;
+
+extern "C" SEXP _rxode2_rxSetForcedPars(SEXP idx, SEXP val) {
+  int n = Rf_length(idx);
+  if (Rf_length(val) != n) Rf_error("forcedPars idx/val length mismatch");
+  SEXP idxI = PROTECT(Rf_coerceVector(idx, INTSXP));
+  SEXP valR = PROTECT(Rf_coerceVector(val, REALSXP));
+  _rxForcedIdx.assign(INTEGER(idxI), INTEGER(idxI) + n);
+  _rxForcedVal.assign(REAL(valR), REAL(valR) + n);
+  UNPROTECT(2);
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_rxClearForcedPars(void) {
+  _rxForcedIdx.clear();
+  _rxForcedVal.clear();
+  return R_NilValue;
+}
+
 static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
   _rxInjIdx.clear();
   _rxInjVal.clear();
-  if (_rxNParLoaders == 0) return;
+  if (_rxNParLoaders == 0 && _rxForcedIdx.empty()) return;
   static std::vector<double> pre;
   pre.assign(&_globals.gpars[0], &_globals.gpars[0] + npars);   // subject 0 block
+  // ui-driven forced parameters: write to every subject/sim column first, so a
+  // registered loader (if any) can still override them.
+  for (size_t f = 0; f < _rxForcedIdx.size(); ++f) {
+    int k = _rxForcedIdx[f];
+    if (k < 0 || k >= npars) continue;
+    double v = _rxForcedVal[f];
+    for (int c = 0; c < ncols; ++c) _globals.gpars[(size_t)c * npars + k] = v;
+  }
   for (int i = 0; i < _rxNParLoaders; ++i) {
     _rxParLoaders[i](rx, &_globals.gpars[0], npars, ncols);
   }

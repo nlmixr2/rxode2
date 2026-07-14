@@ -760,6 +760,8 @@ SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
 extern SEXP _rxode2_rxRemoveTestParLoaders(void);
 extern SEXP _rxode2_rxGetInjectedPars(void);
+extern SEXP _rxode2_rxSetForcedPars(SEXP, SEXP);
+extern SEXP _rxode2_rxClearForcedPars(void);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
@@ -767,6 +769,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxRegisterTestParLoaders", (DL_FUNC) &_rxode2_rxRegisterTestParLoaders, 1},
     {"_rxode2_rxRemoveTestParLoaders", (DL_FUNC) &_rxode2_rxRemoveTestParLoaders, 0},
     {"_rxode2_rxGetInjectedPars", (DL_FUNC) &_rxode2_rxGetInjectedPars, 0},
+    {"_rxode2_rxSetForcedPars", (DL_FUNC) &_rxode2_rxSetForcedPars, 2},
+    {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},

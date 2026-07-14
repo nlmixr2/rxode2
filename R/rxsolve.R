@@ -2190,6 +2190,11 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
+  ## forced (externally-owned) parameters carried on the ui -- injected into every
+  ## solve column at setup (rxCallParLoaders), overriding params/data/inits.
+  if (.rxApplyForcedPars(object, .lst[[1L]])) {
+    on.exit(.rxClearForcedParsC(), add = TRUE)
+  }
   .ret <- do.call("rxSolve.default", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
@@ -3587,6 +3592,86 @@ rxInjectedPars <- function(obj) {
   } else {
     NULL
   }
+}
+
+#' Forced parameters carried by a model / ui
+#'
+#' Get or set a named-numeric vector of *forced* parameters stored in a hidden
+#' slot of an rxode2 ui.  Forced parameters override the values supplied in
+#' `params`/data and the model initial estimates on **every** solve of that ui
+#' (they are written into every subject/simulation column at solve setup, the
+#' same injection point used by par-loader hooks).  Because the values live on
+#' the ui they travel with it -- through model piping and into any `nlmixr2` fit
+#' built from it -- so the model stays self-contained and portable (e.g. a fit
+#' that carries trained neural-network weights re-solves, predicts and simulates
+#' with those weights with no external state).
+#'
+#' Names must be model parameters; names that are not model parameters are
+#' ignored at solve time.  Set to `NULL` (or an empty vector) to clear.
+#'
+#' @param ui an rxode2 ui / model function.
+#' @param value named numeric vector of forced parameter values, or `NULL`.
+#' @return the getter returns the named numeric vector (or `NULL`); the setter
+#'   returns the (modified) ui.
+#' @export
+#' @author Matthew L. Fidler
+rxForcedPars <- function(ui) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) return(NULL)
+  .fp <- .ui$forcedPars
+  if (is.null(.fp)) return(NULL)
+  .fp
+}
+
+#' @rdname rxForcedPars
+#' @export
+`rxForcedPars<-` <- function(ui, value) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) {
+    stop("'ui' must be an rxode2 ui/model to set forcedPars", call. = FALSE)
+  }
+  if (is.null(value) || length(value) == 0L) {
+    if (exists("forcedPars", envir = .ui$meta, inherits = FALSE)) {
+      rm("forcedPars", envir = .ui$meta)
+    }
+    return(invisible(.ui))
+  }
+  if (is.null(names(value)) || any(names(value) == "")) {
+    stop("forcedPars must be a fully-named numeric vector", call. = FALSE)
+  }
+  assign("forcedPars", stats::setNames(as.numeric(value), names(value)),
+         envir = .ui$meta)
+  invisible(.ui)
+}
+
+## low-level: set/clear the rxode2 forced-parameter buffer honored at solve setup
+.rxSetForcedParsC <- function(idx, val) {
+  invisible(.Call(`_rxode2_rxSetForcedPars`, as.integer(idx), as.double(val)))
+}
+.rxClearForcedParsC <- function() {
+  invisible(.Call(`_rxode2_rxClearForcedPars`))
+}
+
+## resolve a ui's forcedPars names to 0-based solve-param indices and load the C
+## buffer for the next solve; returns TRUE if anything was set (so the caller
+## clears afterward).  No-op (and clears) when the model carries no forcedPars.
+## `forcedSrc` supplies the values (the ui); `solveModel` supplies the definitive
+## solve-parameter order the gpars layout uses (default: forcedSrc itself).
+.rxApplyForcedPars <- function(forcedSrc, solveModel = forcedSrc) {
+  .fp <- tryCatch(forcedSrc$forcedPars, error = function(e) NULL)
+  if (is.null(.fp) || length(.fp) == 0L) {
+    .rxClearForcedParsC()
+    return(FALSE)
+  }
+  .pars <- rxModelVars(solveModel)$params
+  .idx <- match(names(.fp), .pars) - 1L
+  .keep <- !is.na(.idx)
+  if (!any(.keep)) {
+    .rxClearForcedParsC()
+    return(FALSE)
+  }
+  .rxSetForcedParsC(.idx[.keep], unname(.fp)[.keep])
+  TRUE
 }
 
 .rxSolveGetInit <- function(.env, arg) {
