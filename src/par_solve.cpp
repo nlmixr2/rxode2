@@ -17,6 +17,7 @@
 #include "../inst/include/rxode2parseGetTime.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "linCmtDiffConstant.h"
+#include "linCmtSensType.h"
 
 #define SORT gfx::timsort
 
@@ -6792,15 +6793,22 @@ void setupLinH(rx_solve *rx, int solveid,
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   double *hh = ind->linH;
   if (ind->linCmtHparIndex == -3) return; // already setup
+  if (linCmtSensIsAD(rx->sensType)) {
+    // AD Jacobians (forward-mode fvar 3/30, reverse-mode 31) are exact and
+    // never read ind->linH, so skip the finite-difference step-size estimation
+    // (shi21ForwardH/gillForwardH) -- it would run a base solve plus several
+    // probe solves per parameter that the AD path discards.
+    std::fill_n(ind->linH, 7, rx->sensH);
+    ind->linCmtH = NA_REAL;
+    ind->linCmtHparIndex = -3;
+    return;
+  }
   switch (rx->sensType) {
   case 1: // forward; shi difference
     shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 2: // central; shi
     shi21CentralH(rx, op, solveid, neq, dydt, u_inis);
-    break;
-  case 3: // 3pt forward; shi
-    shi21ForwardH(rx, op, solveid, neq, dydt, u_inis);
     break;
   case 4: // 5-point endpoint difference; shi
     shi21CentralH(rx, op, solveid, neq, dydt, u_inis);

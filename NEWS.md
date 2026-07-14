@@ -2,6 +2,39 @@
 
 ## New features
 
+- `rxOptExpr()` gains `chunkLines` and `parallel`, to optimize a large
+  machine-generated model (a sensitivity- or Jacobian-augmented model) in
+  contiguous cost-balanced chunks rather than in a single pass.  Normalizing a
+  model is strongly superlinear in its size, and for such a model it -- not the
+  common subexpression search -- is what dominates: optimizing a 275-line
+  augmented model takes ~113s, of which the subexpression search is only ~15s.
+  Chunking amortizes that parse, since each chunk is normalized on its own,
+  taking the same model to ~11s (10.7x; 5.7x at 149 lines, 2.5x at 119).
+
+  Chunking is now the default: a model over `chunkLines` (default 40) lines is
+  chunked, and the chunks are optimized in parallel `mirai` daemons.  `parallel`
+  carries `rxControl(cores=)`'s semantics: `0` (the default) resolves to the
+  rxode2 thread setting `rxCores()`, so CRAN and users tune it with the same
+  knob as the solver (`setRxThreads()`, `OMP_THREAD_LIMIT`, or `parallel=`
+  directly; `1` runs serially).  An existing `mirai` daemon pool is used as-is; otherwise a pool is
+  started only when the model splits into at least 4 chunks (its startup costs a
+  few seconds) and shut down when the call returns.  A model at or under
+  `chunkLines` lines is optimized whole, exactly as before; `chunkLines = 0`
+  forces that for any model.  `mirai` moved from `Suggests` to `Imports`.
+
+  Common subexpressions are only shared within a chunk, so chunking does not give
+  the same optimized text as the whole-model call -- it carries more temporaries
+  -- but it gives an equivalent model: the same states and parameters, the same
+  solution, and the same errors.  The extra temporaries cost no measurable solve
+  time, though they do make the C compilation somewhat slower.
+
+  Compartment-scoped assignments (a `state(0)=` initial condition or an
+  `f`/`alag`/`lag`/`rate`/`dur` dosing modifier) are disguised in place while the
+  chunks are optimized, so they can be chunked without being separated from their
+  `d/dt()`.  A chunk is only a fragment and so can fail to optimize where the
+  whole model would not; if any chunk fails the whole model is optimized instead,
+  so a malformed model still raises the error the unchunked call raises.
+
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the
   pre-history.  Delayed states are interpolated from the solver's dense output;
@@ -52,6 +85,11 @@
 - Adaptive dosing helpers (`bolus()`, `infuse()`, `replace()`, etc.) now work
   inside `linCmt()` and mixed `linCmt()`+ODE models, with Jacobian handling of
   the dosing events; `odeToLin()` preserves and renames them when converting.
+
+- `linCmt()` sensitivity (`linCmtB`) solves now run in parallel across subjects
+  on the default forward-mode AD Jacobian path (`linCmtSensType="AD"`), which is
+  stack-local with no shared Stan arena.  The reverse-mode AD (`"ADr"`) and
+  finite-difference paths remain single threaded.
 
 - Inductive linearization and matrix exponentials rewritten with a more
   NONMEM-like interface (automatic ODE->syntax translation retained) and
