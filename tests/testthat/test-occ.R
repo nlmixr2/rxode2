@@ -383,5 +383,10 @@ rxTest({
     expect_equal(curEval[curEval$parameter == "iov.cl", "curEval"],
                  "exp")
 
+    # the post-UDF eta refresh must not fold IOV etas into the id-level eta
+    # list; that makes `theta + eta + iov` parse as 2 population etas and fail
+    expect_false("iov.cl" %in% f$eta)
+    expect_true("iov.cl" %in% f$level)
+
   })
 })

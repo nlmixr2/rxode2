@@ -1364,7 +1364,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       # the ini({}) omega before those UDFs ran, so refresh it from the now-final
       # iniDf (the source of truth); otherwise the appended etas are mis-classified
       # as covariates downstream (mu-referencing / covariate detection).
-      .etaDf <- .env$df[!is.na(.env$df$neta1), , drop=FALSE]
+      # Keep non-id (IOV) etas out: they live in .env$level, and including them in
+      # .env$eta makes a mu-referenced `theta + eta + iov` parse as 2 population etas.
+      .etaDf <- .env$df[!is.na(.env$df$neta1) &
+                          !(.env$df$name %in% .env$level), , drop=FALSE]
       if (nrow(.etaDf) > 0L) {
         .etaDf <- .etaDf[order(.etaDf$neta1), , drop=FALSE]
         .env$eta <- unique(.etaDf$name)
