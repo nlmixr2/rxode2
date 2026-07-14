@@ -8,6 +8,7 @@
 #include "timsort.h"
 #define SORT gfx::timsort
 #include "linCmt.h"
+#include "linCmtSensType.h"
 
 
 extern rx_solving_options op_global;
@@ -399,19 +400,22 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 // (shi21ForwardH/gillForwardH) after ind_linCmtFH has populated THIS thread's
 // linCmtB slot, so they must read the same per-thread slot rx_get_thread()
 // selects -- not the hardcoded [0] slot, which another thread mutates (and may
-// resize) during a parallel linCmt solve.
+// resize) during a parallel linCmt solve.  rx_get_thread() takes an int, so the
+// size_t pool size is cast once to avoid a narrowing conversion.
 extern "C" double linCmtScaleInitPar(int which) {
-  return __linCmtB[rx_get_thread(__linCmtB.size())].lc.initPar(which);
+  int tid = rx_get_thread((int)__linCmtB.size());
+  return __linCmtB[tid].lc.initPar(which);
 }
 
 extern "C" double linCmtScaleInitN() {
-  Eigen::Matrix<double, Eigen::Dynamic, 1> theta =
-    __linCmtB[rx_get_thread(__linCmtB.size())].lc.initPar();
+  int tid = rx_get_thread((int)__linCmtB.size());
+  Eigen::Matrix<double, Eigen::Dynamic, 1> theta = __linCmtB[tid].lc.initPar();
   return theta.size();
 }
 
 extern "C" int linCmtZeroJac(int i) {
-  return __linCmtB[rx_get_thread(__linCmtB.size())].lc.parDepV1(i);
+  int tid = rx_get_thread((int)__linCmtB.size());
+  return __linCmtB[tid].lc.parDepV1(i);
 }
 
 
@@ -490,23 +494,10 @@ extern "C" int linCmtZeroJac(int i) {
  * @author Matthew Fidler
  *
 */
-// True for the automatic-differentiation jacobian methods (forward-mode
-// fvar = 3/30, reverse-mode = 31, and the auto/default path), which all want
-// the unscaled thetaSens + passthrough trueTheta. The finite-difference
-// methods (1,2,4,5,6,7,10,20,40,50) keep the scaled path.  These same FD
-// methods are exactly the ones linCmtB reads ind->linH for, so setupLinH
-// (par_solve.cpp) uses this predicate to skip step-size estimation on the AD
-// paths -- external linkage lets it share this single source of truth.
-bool linCmtSensIsAD(int sensType) {
-  switch (sensType) {
-  case 1: case 2: case 4: case 5: case 6: case 7:
-  case 10: case 20: case 40: case 50:
-    return false;
-  default:
-    return true;
-  }
-}
-
+// linCmtSensIsAD() (the AD jacobian classifier; forward-mode fvar 3/30,
+// reverse-mode 31, auto 100 -> unscaled thetaSens + passthrough trueTheta; the
+// finite-difference methods keep the scaled path) lives in linCmtSensType.h so
+// linCmt.cpp, par_solve.cpp and rxData.cpp share one definition.
 extern "C" double linCmtB(rx_solve *rx, int id,
                           double _t, int linCmt,
                           int ncmt, int oral0,

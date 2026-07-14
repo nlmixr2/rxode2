@@ -57,6 +57,7 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 #include "rxThreadData.h"
 
 #include "threadSafeConstants.h"
+#include "linCmtSensType.h"
 //#include "seed.h"
 
 SEXP rxSaveState_();         // defined in rxSerialize.cpp
@@ -5937,14 +5938,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
-      // linCmtB is thread safe on the forward-mode AD Jacobian path (sensType
-      // 3/30 and the auto default 100): each thread evaluates its own subject
-      // on its own __linCmtB[rx_get_thread()] slot with stack-local fvar and no
-      // shared AD arena.  The reverse-mode AD path (31) uses Stan's shared
-      // ChainableStack, and the finite-difference paths share a first-subject
-      // scaling/step setup, so those keep the single-core linCmtB guard.
-      int linCmtBThreadSafe = (rx->sensType == 3 || rx->sensType == 30 ||
-                               rx->sensType == 100);
+      // linCmtB is thread safe on the forward-mode AD Jacobian path: each thread
+      // evaluates its own subject on its own __linCmtB[rx_get_thread()] slot with
+      // stack-local fvar and no shared AD arena.  linCmtSensForwardAdThreadSafe()
+      // (linCmtSensType.h) is the shared classifier -- it excludes reverse-mode
+      // AD (31, Stan's shared ChainableStack) and the finite-difference paths
+      // (first-subject scaling/step setup), which keep the single-core guard.
+      int linCmtBThreadSafe = linCmtSensForwardAdThreadSafe(rx->sensType);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:

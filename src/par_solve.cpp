@@ -17,6 +17,7 @@
 #include "../inst/include/rxode2parseGetTime.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "linCmtDiffConstant.h"
+#include "linCmtSensType.h"
 
 #define SORT gfx::timsort
 
@@ -6779,10 +6780,6 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
   }
 }
 
-
-// Defined in linCmt.cpp; true for the AD Jacobian paths, which never read
-// ind->linH (only the finite-difference paths do).
-bool linCmtSensIsAD(int sensType);
 
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {

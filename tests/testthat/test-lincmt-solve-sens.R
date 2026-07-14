@@ -120,6 +120,12 @@ rxTest({
 
   test_that("linCmtB forward-AD solves are thread safe (parallel == serial)", {
     skip_on_cran()
+    # Without >= 2 available threads the cores = 2 request cannot exercise the
+    # parallel path, so the comparison would pass vacuously; skip instead.
+    # rxode2 exposes no per-solve "cores actually used" telemetry, so gate on
+    # thread availability (this model's linCmtB carries the forward-AD flag that
+    # the cores = 2 request now honors -- see rxData.cpp thread decision).
+    skip_if_not(rxode2::getRxThreads() >= 2L)
     .nsub <- 60
     set.seed(1)
     .params <- data.frame(
