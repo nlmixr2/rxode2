@@ -118,7 +118,7 @@ calculating redundant expressions once.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxOptExpr</span><span class="op">(</span><span class="va">x</span>, msg <span class="op">=</span> <span class="st">"model"</span>, chunkLines <span class="op">=</span> <span class="fl">0L</span>, parallel <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxOptExpr</span><span class="op">(</span><span class="va">x</span>, msg <span class="op">=</span> <span class="st">"model"</span>, chunkLines <span class="op">=</span> <span class="fl">40L</span>, parallel <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -138,47 +138,60 @@ optimizing the model:</p>
 
 
 <dt id="arg-chunklines">chunkLines<a class="anchor" aria-label="anchor" href="#arg-chunklines"></a></dt>
-<dd><p>Integer; when positive, optimize the model in
-contiguous cost-balanced chunks of roughly this many lines
-(40 is a reasonable value) instead of in a single pass.  <code>0</code>,
-the default, optimizes the whole model at once and is exactly
-the previous behaviour.</p>
-<p>This is worth doing only for a large machine-generated model –
-a sensitivity- or Jacobian-augmented model, say.  Normalizing a
-model (<code><a href="rxNorm.html">rxNorm()</a></code>, i.e. parsing it) is strongly superlinear in
-its size, and for such a model it, not the common subexpression
-search, is what dominates: optimizing a 275-line augmented model
-takes ~113s, of which the subexpression search is only ~15s.
-Chunking amortizes that parse – <code>rxOptExpr()</code> normalizes each
-chunk on its own – taking the same model to ~11s:</p>
-<table class="table table"><tr><td>lines</td><td>whole</td><td>chunked</td><td></td></tr><tr><td>34</td><td>0.5s</td><td>0.5s</td><td>(a typical model: no gain)</td></tr><tr><td>119</td><td>2.0s</td><td>0.8s</td><td>2.5x</td></tr><tr><td>149</td><td>22.2s</td><td>3.9s</td><td>5.7x</td></tr><tr><td>275</td><td>112.7s</td><td>10.6s</td><td>10.7x</td></tr></table><p>An ordinary model is small enough that there is nothing to gain,
-which is why this is off by default.</p>
-<p>Common subexpressions are then only shared within a chunk, so the
-model is equivalent but carries more temporaries.  That costs no
-measurable solve time, but it does make the C compilation of the
-model somewhat slower, which partly offsets the gain.</p>
-<p>A chunk is a fragment, so it can fail to optimize where the whole
-model would not.  If any chunk fails, the whole model is optimized
-instead, so a malformed model still raises the error the unchunked
-call raises; falling back costs the unchunked time only on that
-rare path.</p>
-<p>Chunking therefore does not give the same optimized text as the
-whole-model call – it shares fewer subexpressions and so carries
-more temporaries – but it gives an equivalent model: the same
-states and parameters, the same solution, and the same errors.</p></dd>
+<dd><p>Integer; when positive (the default is 40),
+a model longer than this many lines is optimized in contiguous
+cost-balanced chunks of roughly this many lines instead of in a
+single pass; a model at or under it is optimized whole, exactly
+as before.  <code>0</code> always optimizes the whole model at once.</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>Chunking pays off <span class="cf">for</span> a large machine<span class="sc">-</span>generated model <span class="sc">--</span> a</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>sensitivity<span class="sc">-</span> or Jacobian<span class="sc">-</span>augmented model, say.  Normalizing a</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">model</span> (<span class="st">`</span><span class="at">rxNorm()</span><span class="st">`</span>, i.e. parsing it) is strongly superlinear <span class="cf">in</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>its size, and <span class="cf">for</span> such a model it, not the common subexpression</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>search, is what dominates<span class="sc">:</span> optimizing a <span class="dv">275</span><span class="sc">-</span>line augmented model</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>takes <span class="sc">~</span><span class="dv">113</span>s, of which the subexpression search is only <span class="sc">~</span><span class="dv">15</span>s.</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>Chunking amortizes that parse <span class="sc">--</span> <span class="st">`</span><span class="at">rxOptExpr()</span><span class="st">`</span> normalizes each</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>chunk on its own <span class="sc">--</span> taking the same model to <span class="sc">~</span><span class="dv">11</span>s<span class="sc">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>\tabular{rrrr}{</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>  lines \tab whole \tab chunked \tab \cr</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>  <span class="dv">34</span> \tab <span class="fl">0.5</span>s \tab <span class="fl">0.5</span>s \<span class="fu">tab</span> (a typical model<span class="sc">:</span> not chunked) \cr</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  <span class="dv">119</span> \tab <span class="fl">2.0</span>s \tab <span class="fl">0.8</span>s \tab <span class="fl">2.5</span>x \cr</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="dv">149</span> \tab <span class="fl">22.2</span>s \tab <span class="fl">3.9</span>s \tab <span class="fl">5.7</span>x \cr</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="dv">275</span> \tab <span class="fl">112.7</span>s \tab <span class="fl">10.6</span>s \tab <span class="fl">10.7</span>x \cr</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>}</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>Common subexpressions are then only shared within a chunk, so the</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>model is equivalent but carries more temporaries.  That costs no</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>measurable solve time, but it does make the C compilation of the</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>model somewhat slower, which partly offsets the gain.</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>A chunk is a fragment, so it can fail to optimize where the whole</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>model would not.  If any chunk fails, the whole model is optimized</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>instead, so a malformed model still raises the error the unchunked</span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>call raises; falling back costs the unchunked time only on that</span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>rare path.</span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a></span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>Chunking therefore does not give the same optimized text as the</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>whole<span class="sc">-</span>model call <span class="sc">--</span> it shares fewer subexpressions and so carries</span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>more temporaries <span class="sc">--</span> but it gives an equivalent model<span class="sc">:</span> the same</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a>states and parameters, the same solution, and the same errors.</span></code></pre><p></p></div></dd>
 
 
 <dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
 <dd><p>Integer; number of <code>mirai</code> daemons used to optimize
-the chunks in parallel (<code>0</code>, the default, is serial).  Only used
-when <code>chunkLines</code> is positive.  Requires the <code>mirai</code> package.
+the chunks in parallel.  Only used when the model is chunked.  It
+carries the same semantics as <code>rxControl(cores=)</code>: <code>0</code> (the
+default) means the rxode2 thread setting <code><a href="getRxThreads.html">rxCores()</a></code>, so CRAN and
+users tune it with the same knob as the solver (<code><a href="getRxThreads.html">setRxThreads()</a></code>,
+<code>OMP_THREAD_LIMIT</code>) or by passing <code>parallel=</code> directly; <code>1</code> runs
+the chunks serially.
 It is capped by the number of chunks and by <code><a href="getRxThreads.html">rxCores()</a></code>, so it
-will not oversubscribe past the threads the user asked for with
-<code><a href="getRxThreads.html">setRxThreads()</a></code>.</p>
-<p>The daemons are started for the call and shut down when it
-returns.  That startup (and loading rxode2 into each daemon) costs
-a few seconds, which is a large part of what there is to gain
-here, so this is only worth using on a genuinely large model.</p></dd>
+will not oversubscribe past the threads the user asked for.</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>An existing <span class="st">`</span><span class="at">mirai</span><span class="st">`</span> daemon pool is used as<span class="sc">-</span>is and left running.</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>Otherwise a pool is started <span class="cf">for</span> the call and shut down when it</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>returns; that <span class="fu">startup</span> (loading rxode2 into each daemon) costs a</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>few seconds, so a pool is only started when the model splits into</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>at least <span class="dv">4</span> chunks, where the parallel win covers it.</span></code></pre><p></p></div></dd>
 
 </dl></div>
     <div class="section level2">
