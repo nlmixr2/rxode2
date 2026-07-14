@@ -54,6 +54,28 @@ test_that("forcedPars overrides the data covariate on rxSolve; unset -> unchange
   expect_equal(s2$cp, s0$cp, tolerance = 1e-8)
 })
 
+test_that("forcedPars is hidden from the printed model and survives piping", {
+  ui <- rxode2(.forcedMod)
+  rxForcedPars(ui) <- c(WT = 2)
+
+  ## hidden: stored on the ui env, not the printed meta block
+  .txt <- paste(capture.output(print(ui)), collapse = "\n")
+  expect_false(grepl("forcedPars", .txt))
+
+  ## survives a model-block change (a "significant" pipe) via the sticky mechanism
+  ui2 <- ui |> model(cp <- depot * 1)
+  expect_equal(rxForcedPars(ui2), c(WT = 2))
+  ## still hidden after piping
+  .txt2 <- paste(capture.output(print(ui2)), collapse = "\n")
+  expect_false(grepl("forcedPars", .txt2))
+
+  ## and still applied on the piped model's solve
+  ev <- .forcedEv()
+  s0 <- rxSolve(rxode2(.forcedMod), ev)
+  s2 <- rxSolve(ui2, ev)
+  expect_true(all(s2$cp < s0$cp))
+})
+
 test_that("forcedPars names that are not model params are ignored", {
   ui <- rxode2(.forcedMod)
   ev <- .forcedEv()

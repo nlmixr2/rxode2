@@ -3606,8 +3606,11 @@ rxInjectedPars <- function(obj) {
 #' that carries trained neural-network weights re-solves, predicts and simulates
 #' with those weights with no external state).
 #'
-#' Names must be model parameters; names that are not model parameters are
-#' ignored at solve time.  Set to `NULL` (or an empty vector) to clear.
+#' The value is stored directly in the ui environment (not in the printed `meta`
+#' block, so it stays hidden) and registered as a `sticky` model item so it
+#' survives model piping.  Names must be model parameters; names that are not
+#' model parameters are ignored at solve time.  Set to `NULL` (or an empty
+#' vector) to clear.
 #'
 #' @param ui an rxode2 ui / model function.
 #' @param value named numeric vector of forced parameter values, or `NULL`.
@@ -3618,9 +3621,8 @@ rxInjectedPars <- function(obj) {
 rxForcedPars <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) return(NULL)
-  .fp <- .ui$forcedPars
-  if (is.null(.fp)) return(NULL)
-  .fp
+  if (!exists("forcedPars", envir = .ui, inherits = FALSE)) return(NULL)
+  get("forcedPars", envir = .ui, inherits = FALSE)
 }
 
 #' @rdname rxForcedPars
@@ -3630,17 +3632,24 @@ rxForcedPars <- function(ui) {
   if (!inherits(.ui, "rxUi")) {
     stop("'ui' must be an rxode2 ui/model to set forcedPars", call. = FALSE)
   }
+  .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
+    get("sticky", envir = .ui, inherits = FALSE)
+  } else character(0)
   if (is.null(value) || length(value) == 0L) {
-    if (exists("forcedPars", envir = .ui$meta, inherits = FALSE)) {
-      rm("forcedPars", envir = .ui$meta)
+    if (exists("forcedPars", envir = .ui, inherits = FALSE)) {
+      rm("forcedPars", envir = .ui)
     }
+    assign("sticky", setdiff(.sticky, "forcedPars"), envir = .ui)
     return(invisible(.ui))
   }
   if (is.null(names(value)) || any(names(value) == "")) {
     stop("forcedPars must be a fully-named numeric vector", call. = FALSE)
   }
+  ## store on the ui env (hidden -- not the printed `meta` block) and mark sticky
+  ## so it survives model piping.
   assign("forcedPars", stats::setNames(as.numeric(value), names(value)),
-         envir = .ui$meta)
+         envir = .ui)
+  assign("sticky", unique(c(.sticky, "forcedPars")), envir = .ui)
   invisible(.ui)
 }
 
@@ -3658,7 +3667,7 @@ rxForcedPars <- function(ui) {
 ## `forcedSrc` supplies the values (the ui); `solveModel` supplies the definitive
 ## solve-parameter order the gpars layout uses (default: forcedSrc itself).
 .rxApplyForcedPars <- function(forcedSrc, solveModel = forcedSrc) {
-  .fp <- tryCatch(forcedSrc$forcedPars, error = function(e) NULL)
+  .fp <- tryCatch(rxForcedPars(forcedSrc), error = function(e) NULL)
   if (is.null(.fp) || length(.fp) == 0L) {
     .rxClearForcedParsC()
     return(FALSE)
