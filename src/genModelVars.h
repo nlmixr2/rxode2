@@ -496,7 +496,7 @@ static inline void assertLhsAndDualLhsDiffNotLegal(int islhs, int i, char *buf) 
   }
 }
 
-static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp, int *etaFD, SEXP lhsStr, int *lhsOrd) {
+static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp, SEXP lhsStr, int *lhsOrd) {
   int li=0, pi=0, sli = 0;
   char *buf;
   for (int i=0; i<NV; i++) {
@@ -512,7 +512,6 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr, lhsOrd, &i)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
-      etaFD[pi] = tb.etaFD[i]; // 1 = eta forced to finite differences via etaFD()
       SET_STRING_ELT(params, pi++, Rf_mkChar(_bufw.s));
     }
   }
