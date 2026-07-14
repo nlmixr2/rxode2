@@ -57,6 +57,7 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 #include "rxThreadData.h"
 
 #include "threadSafeConstants.h"
+#include "linCmtSensType.h"
 //#include "seed.h"
 
 SEXP rxSaveState_();         // defined in rxSerialize.cpp
@@ -5937,6 +5938,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
+      // linCmtB is thread safe on the forward-mode AD Jacobian path: each thread
+      // evaluates its own subject on its own __linCmtB[rx_get_thread()] slot with
+      // stack-local fvar and no shared AD arena.  linCmtSensForwardAdThreadSafe()
+      // (linCmtSensType.h) is the shared classifier -- it excludes reverse-mode
+      // AD (31, Stan's shared ChainableStack) and the finite-difference paths
+      // (first-subject scaling/step setup), which keep the single-core guard.
+      int linCmtBThreadSafe = linCmtSensForwardAdThreadSafe(rx->sensType);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
@@ -5957,8 +5965,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            op->cores = getRxThreads(INT_MAX, false);
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       } else {
@@ -5979,8 +5992,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            // Thread safe (forward-mode AD); keep the user-requested core count.
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       }

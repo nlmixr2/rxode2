@@ -193,8 +193,9 @@ static inline int nodeFunLinCmtB(char *value) {
     sAppendN(&sbt,"linCmtB", 7);
     tb.linCmt=2;
 
-    // right now linCmtB isn't thread safe,
-    // the Jacobian can cause a null free in stan math currently.
+    // Mark the model as linCmtB-bearing.  The solve-time thread decision
+    // (rxData.cpp) threads the forward-mode AD Jacobian path and keeps the
+    // reverse-mode AD (stan shared arena) and finite-difference paths serial.
     if (tb.thread == threadSafe) {
       tb.thread = notThreadLinCmtB;
     }
