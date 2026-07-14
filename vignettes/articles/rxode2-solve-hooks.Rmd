@@ -90,6 +90,29 @@ with `param(...)` (or as covariates) so `rxode2` reserves contiguous positions,
 resolve `base` from the model's solve parameter order once, and cache it.
 `rxInjectedPars()` reports what a loader changed on the last solve.
 
+### Named loaders: dispatch to the right model only
+
+A loader registered with `rxRegisterParLoader()` runs on **every** solve, so it must
+guard itself, and it can still corrupt an unrelated model if its guards are loose.
+Prefer a **named** loader instead:
+
+```c
+rxRegisterParLoaderNamed("myPkg:myLoader", myLoader);   /* runs only when flagged */
+```
+
+A named loader runs *only* while a model flags its name.  Flag the injector on the
+model that needs it with `rxParLoader()` (a sticky ui item, like `rxForcedPars()`):
+
+```{r}
+rxParLoader(ui) <- "myPkg:myLoader"   # only this loader fires for ui's solves
+```
+
+`rxSolve()` sets that flag active for the model's solve and clears it afterward, so
+the loader never touches any other model.  For solves that bypass the ui path
+(estimation internals, plain `rxode2()` models), a package can set the active flag
+directly around its own solve batch and clear it after.  This is how `nlmixr2nn`
+keeps its neural-network weight loader from leaking into unrelated fits.
+
 ## The dydt forcing hook (C)
 
 To add a term to a state derivative that the model text cannot express (e.g. a
