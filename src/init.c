@@ -533,8 +533,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 86
+#define nVec 87
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -622,6 +623,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 83, rxode2rxRemoveParLoader);
   SET_VECTOR_ELT(ret, 84, rxode2rxRegisterDydtForce);
   SET_VECTOR_ELT(ret, 85, rxode2rxRemoveDydtForce);
+  SET_VECTOR_ELT(ret, 86, rxode2rxRegisterParLoaderNamed);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -711,6 +713,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2rxRemoveParLoader"));
   SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2rxRegisterDydtForce"));
   SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2rxRemoveDydtForce"));
+  SET_STRING_ELT(retN, 86, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
 
 #undef nVec
 
@@ -762,6 +765,8 @@ extern SEXP _rxode2_rxRemoveTestParLoaders(void);
 extern SEXP _rxode2_rxGetInjectedPars(void);
 extern SEXP _rxode2_rxSetForcedPars(SEXP, SEXP);
 extern SEXP _rxode2_rxClearForcedPars(void);
+extern SEXP _rxode2_rxSetActiveParLoader(SEXP);
+extern SEXP _rxode2_rxClearActiveParLoader(void);
 
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
@@ -771,6 +776,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxGetInjectedPars", (DL_FUNC) &_rxode2_rxGetInjectedPars, 0},
     {"_rxode2_rxSetForcedPars", (DL_FUNC) &_rxode2_rxSetForcedPars, 2},
     {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
+    {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
+    {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},

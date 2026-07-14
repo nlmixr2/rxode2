@@ -279,6 +279,11 @@ extern "C" {
   extern rxRegisterParLoader_t rxRegisterParLoader;
   typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
   extern rxRemoveParLoader_t rxRemoveParLoader;
+  // Register a NAMED loader ("<package>:<function>") that runs only for a model
+  // flagging that name (rxParLoader()), so an injector never touches an unrelated
+  // model's par_ptr.
+  typedef void (*rxRegisterParLoaderNamed_t)(const char* name, t_rxParLoader cb);
+  extern rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed;
 
   // Register / remove a dydt forcing hook (t_rxDydtForce from rxode2.h); the
   // generated model calls all registered hooks at the end of its RHS so a
@@ -377,6 +382,7 @@ extern "C" {
       rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
       rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 84));
       rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 85));
+      rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 86));
     }
     return R_NilValue;
   }
@@ -468,6 +474,7 @@ extern "C" {
   rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
   rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
   rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
+  rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

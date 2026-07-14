@@ -125,6 +125,7 @@ void rxGetSolveAtolRtol(double *atol, double *rtol);
 // is above, outside the guard).  Direct declarations for building rxode2
 // itself; downstream packages get these as function pointers via the table.
 void rxRegisterParLoader(t_rxParLoader cb);
+void rxRegisterParLoaderNamed(const char* name, t_rxParLoader cb);
 void rxRemoveParLoader(t_rxParLoader cb);
 void rxRegisterDydtForce(t_rxDydtForce cb);
 void rxRemoveDydtForce(t_rxDydtForce cb);

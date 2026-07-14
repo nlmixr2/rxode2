@@ -2195,6 +2195,10 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (.rxApplyForcedPars(object, .lst[[1L]])) {
     on.exit(.rxClearForcedParsC(), add = TRUE)
   }
+  ## flag this model's parameter injector (if any) so only its loader runs
+  if (.rxApplyParLoader(object)) {
+    on.exit(.rxClearActiveParLoaderC(), add = TRUE)
+  }
   .ret <- do.call("rxSolve.default", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
@@ -3680,6 +3684,65 @@ rxForcedPars <- function(ui) {
     return(FALSE)
   }
   .rxSetForcedParsC(.idx[.keep], unname(.fp)[.keep])
+  TRUE
+}
+
+#' Parameter-loader flag on a model
+#'
+#' A model that needs an externally-owned parameter injector -- a registered
+#' par-loader, e.g. a package's neural-network weight loader -- flags that
+#' injector's `"<package>:<function>"` name here.  At solve setup only the loader
+#' with that name runs, so an injector never overwrites an unrelated model's
+#' `par_ptr` merely because it happens to be registered.  The flag is stored on the
+#' ui (a sticky item, so it survives model piping) like [rxForcedPars()]; set it to
+#' `NULL` to clear.
+#'
+#' @param ui an rxode2 ui / model function.
+#' @param value a single loader name (`"<package>:<function>"`), or `NULL`.
+#' @return the getter returns the name (or `NULL`); the setter returns the ui.
+#' @export
+#' @author Matthew L. Fidler
+rxParLoader <- function(ui) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) return(NULL)
+  if (!exists("parLoader", envir = .ui, inherits = FALSE)) return(NULL)
+  get("parLoader", envir = .ui, inherits = FALSE)
+}
+
+#' @rdname rxParLoader
+#' @export
+`rxParLoader<-` <- function(ui, value) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) {
+    stop("'ui' must be an rxode2 ui/model to set rxParLoader", call. = FALSE)
+  }
+  .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
+    get("sticky", envir = .ui, inherits = FALSE)
+  } else character(0)
+  if (is.null(value) || length(value) == 0L || !nzchar(value[1L])) {
+    if (exists("parLoader", envir = .ui, inherits = FALSE)) rm("parLoader", envir = .ui)
+    assign("sticky", setdiff(.sticky, "parLoader"), envir = .ui)
+    return(invisible(.ui))
+  }
+  assign("parLoader", as.character(value[1L]), envir = .ui)
+  assign("sticky", unique(c(.sticky, "parLoader")), envir = .ui)
+  invisible(.ui)
+}
+
+## low-level: set/clear the active par-loader name honored at the next solve setup.
+.rxSetActiveParLoaderC <- function(name) {
+  invisible(.Call(`_rxode2_rxSetActiveParLoader`, as.character(name)))
+}
+.rxClearActiveParLoaderC <- function() {
+  invisible(.Call(`_rxode2_rxClearActiveParLoader`))
+}
+
+## bridge: flag the active par-loader from a ui's parLoader item before a solve.
+## Returns TRUE if a flag was set (so the caller clears afterward).
+.rxApplyParLoader <- function(ui) {
+  .pl <- tryCatch(rxParLoader(ui), error = function(e) NULL)
+  if (is.null(.pl) || length(.pl) == 0L || !nzchar(.pl[1L])) return(FALSE)
+  .rxSetActiveParLoaderC(.pl[1L])
   TRUE
 }
 

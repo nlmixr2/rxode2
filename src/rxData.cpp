@@ -4515,22 +4515,59 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat);
 typedef void (*t_rxParLoader)(rx_solve* rx, double* gpars, int npars, int ncols);
 #define RX_MAX_PAR_LOADERS 32
 static t_rxParLoader _rxParLoaders[RX_MAX_PAR_LOADERS] = {NULL};
+// Each loader has a NAME (empty = "unnamed").  A model that needs a specific
+// injector flags its name (via rxParLoader() -> _rxActiveParLoader, below); a
+// NAMED loader then runs ONLY for a model that flags it, so an injector (e.g. a
+// package's neural-network weight loader) cannot clobber an unrelated model's
+// par_ptr just because it happens to be registered.  Unnamed loaders keep the
+// legacy "run on every solve" behavior for backward compatibility.
+static std::string _rxParLoaderNames[RX_MAX_PAR_LOADERS];
 static int _rxNParLoaders = 0;
+static std::string _rxActiveParLoader;  // set per-solve; empty = no named loader
 
-extern "C" void rxRegisterParLoader(t_rxParLoader cb) {
+static void rxRegisterParLoaderImpl(const char* name, t_rxParLoader cb) {
   if (cb == NULL) return;
   for (int i = 0; i < _rxNParLoaders; ++i) if (_rxParLoaders[i] == cb) return;
-  if (_rxNParLoaders < RX_MAX_PAR_LOADERS) _rxParLoaders[_rxNParLoaders++] = cb;
+  if (_rxNParLoaders < RX_MAX_PAR_LOADERS) {
+    _rxParLoaderNames[_rxNParLoaders] = (name == NULL) ? std::string() : std::string(name);
+    _rxParLoaders[_rxNParLoaders++] = cb;
+  }
+}
+
+extern "C" void rxRegisterParLoader(t_rxParLoader cb) {
+  rxRegisterParLoaderImpl(NULL, cb);            // unnamed -> legacy always-run
+}
+
+// Register a loader under a "<package>:<function>" name so it dispatches only to
+// models that flag that name.
+extern "C" void rxRegisterParLoaderNamed(const char* name, t_rxParLoader cb) {
+  rxRegisterParLoaderImpl(name, cb);
 }
 
 extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
   for (int i = 0; i < _rxNParLoaders; ++i) {
     if (_rxParLoaders[i] == cb) {
-      for (int k = i; k < _rxNParLoaders - 1; ++k) _rxParLoaders[k] = _rxParLoaders[k + 1];
+      for (int k = i; k < _rxNParLoaders - 1; ++k) {
+        _rxParLoaders[k] = _rxParLoaders[k + 1];
+        _rxParLoaderNames[k] = _rxParLoaderNames[k + 1];
+      }
       _rxParLoaders[--_rxNParLoaders] = NULL;
+      _rxParLoaderNames[_rxNParLoaders].clear();
       return;
     }
   }
+}
+
+// The active injector flag for the next solve (set from the model that is about
+// to be solved), consumed by rxCallParLoaders and then cleared.
+extern "C" SEXP _rxode2_rxSetActiveParLoader(SEXP nameSxp) {
+  _rxActiveParLoader = (TYPEOF(nameSxp) == STRSXP && Rf_length(nameSxp) >= 1) ?
+    std::string(CHAR(STRING_ELT(nameSxp, 0))) : std::string();
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxClearActiveParLoader(void) {
+  _rxActiveParLoader.clear();
+  return R_NilValue;
 }
 
 // ---- dydt forcing hooks ---------------------------------------------------
@@ -4618,6 +4655,10 @@ static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
     for (int c = 0; c < ncols; ++c) _globals.gpars[(size_t)c * npars + k] = v;
   }
   for (int i = 0; i < _rxNParLoaders; ++i) {
+    // an UNNAMED loader runs always (legacy); a NAMED loader runs only when the
+    // model being solved flags its name (_rxActiveParLoader), so a package's
+    // injector never touches an unrelated model's par_ptr.
+    if (!_rxParLoaderNames[i].empty() && _rxParLoaderNames[i] != _rxActiveParLoader) continue;
     _rxParLoaders[i](rx, &_globals.gpars[0], npars, ncols);
   }
   for (int k = 0; k < npars; ++k) {
