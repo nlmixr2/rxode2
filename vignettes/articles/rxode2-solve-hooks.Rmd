@@ -1,0 +1,141 @@
+---
+title: "Solve-time hooks for package developers"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Overview
+
+Most `rxode2` models are fully specified by their parameters, data and initial
+conditions.  Some downstream tools, though, need to change *what a solve sees* from
+outside the model text -- for example to inject a block of externally-owned
+parameters (neural-network weights, a lookup table) on every solve, or to add a
+forcing term to a state derivative.  `rxode2` exposes a small set of hooks for this.
+They fall into two groups:
+
+* **R-level:** `rxForcedPars()` -- override parameter values on a model, carried
+  with the model itself.
+* **C-level:** the *par-loader* and *dydt forcing* hooks, plus the
+  **function-pointer table** that lets a downstream package call `rxode2`'s C
+  entry points.  These are for package authors writing compiled code.
+
+This article is a companion to
+[Providing Custom C/C++ Functions to rxode2](rxode2-pkg-exported-funs.html): that
+one adds new *functions* callable inside a model; this one changes the *parameters
+and derivatives* a solve uses.
+
+## `rxForcedPars()`: forced parameters on a model
+
+`rxForcedPars()` sets a named vector of parameter values that override `params`/data
+and the model initial estimates on **every** solve of a ui.  The values are stored
+on the ui (hidden from the printed model, registered as a `sticky` item), so they
+travel with it -- through model piping and into any `nlmixr2` fit built from it.
+That keeps a model self-contained: a fit that carries, say, trained weights
+re-solves, predicts and simulates with those weights and no external state.
+
+```{r}
+ui <- function() {
+  model({
+    d/dt(center) <- -(cl/v) * center
+    cp <- center/v
+  })
+}
+ui <- rxode2(ui)
+rxForcedPars(ui) <- c(cl = 1.2, v = 8)   # force cl, v on every solve
+rxForcedPars(ui)                          # getter
+rxForcedPars(ui) <- NULL                  # clear
+```
+
+Names that are not model parameters are ignored at solve time.  Forced parameters
+are written into every subject/simulation column at solve setup -- the *same
+injection point* the par-loader hook (below) uses, so a registered loader can still
+override them if needed.
+
+## The par-loader hook (C)
+
+For a parameter block that is not a fixed vector but is *computed* -- owned by a
+plugin and refreshed each solve -- register a **par-loader**.  It runs once per
+solve, single-threaded, right after `rxode2` lays out the global parameter matrix
+(`gpars`) and before the parallel integration, so the injected values are in place
+for the (thread-safe) solve.
+
+```c
+/* signature (inst/include/rxode2.h) */
+typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+void rxRegisterParLoader(t_rxParLoader cb);
+void rxRemoveParLoader(t_rxParLoader cb);
+```
+
+`gpars` is the flat `ncols x npars` parameter matrix (column `c`'s `par_ptr` is
+`&gpars[c*npars]`).  A loader writes its block into every column:
+
+```c
+static void myLoader(rx_solve *rx, double *gpars, int npars, int ncols) {
+  for (int c = 0; c < ncols; ++c) {
+    double *par_ptr = gpars + (size_t)c * npars;
+    for (int k = 0; k < BLOCK_N; ++k) par_ptr[base + k] = myBlock[k];  /* base = block start */
+  }
+}
+```
+
+Register it in `.onLoad()` (via a `.Call` wrapper) and `rxRemoveParLoader()` in
+`.onUnload()`.  The block must occupy real `par_ptr` slots: declare its parameters
+with `param(...)` (or as covariates) so `rxode2` reserves contiguous positions,
+resolve `base` from the model's solve parameter order once, and cache it.
+`rxInjectedPars()` reports what a loader changed on the last solve.
+
+## The dydt forcing hook (C)
+
+To add a term to a state derivative that the model text cannot express (e.g. a
+plugin's contribution computed in C), register a **dydt-force** callback.  The
+generated model calls it at the end of `dydt`, so the added forcing is integrated
+like any other RHS term:
+
+```c
+/* signature (inst/include/rxode2.h) */
+typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+void rxRegisterDydtForce(t_rxDydtForce cb);
+void rxRemoveDydtForce(t_rxDydtForce cb);
+```
+
+```c
+static void myForce(int *neq, double t, double *y, double *dydt) {
+  dydt[stateIdx] += myForcingTerm(t, y);   /* on top of the model's own RHS */
+}
+```
+
+A model with no registered forcing is unaffected (the call is a null-pointer
+no-op), so this is safe to leave installed.
+
+## The function-pointer table
+
+The hooks above are C callables *inside* `rxode2`.  Because CRAN discourages
+`R_RegisterCCallable` ABI coupling across packages, `rxode2` shares its C entry
+points through a positional **function-pointer table** rather than by name:
+
+* `rxode2::.rxode2ptrs()` returns the table (an external-pointer list) built by
+  `_rxode2_rxode2Ptr()` in `src/init.c`.
+* A downstream package installs it into its own globals with `iniRxodePtrs()` /
+  `iniRxodePtrs0()` from the header `inst/include/rxode2ptr.h`, calling
+  `.Call("_myPkg_iniRxodePtrs", rxode2::.rxode2ptrs())` in `.onLoad()`.
+
+Each table slot is a fixed index; new entries are appended (so the layout stays
+backward compatible).  `rxRegisterParLoader` / `rxRegisterDydtForce` are exposed
+this way, so a plugin can register its hooks from its own compiled code.  See the
+`rxode2` source (`src/init.c`, `inst/include/rxode2ptr.h`) for the current table,
+and the `nlmixr2nn` package for a worked consumer that uses the par-loader to inject
+neural-network weights.
+
+## See also
+
+* [Providing Custom C/C++ Functions to rxode2](rxode2-pkg-exported-funs.html) --
+  adding model-callable functions.
+* `nlmixr2est`: *"Extending nlmixr2est"* -- creating estimation methods,
+  intercepting estimations, and contributing to the objective, which build on
+  these solve hooks.
