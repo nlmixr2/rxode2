@@ -245,6 +245,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getRamBytes <- function() {
+  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`), error = function(e) NA_real_)
+  if (length(.ram) == 1L && !is.na(.ram) && .ram > 0) return(.ram)
   if (requireNamespace("memuse", quietly = TRUE)) {
     .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
     if (!is.null(.info)) {
@@ -256,9 +258,6 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     if (file.exists("/proc/meminfo")) {
       .m <- grep("^MemTotal:", readLines("/proc/meminfo", n = 10L), value = TRUE)
       if (length(.m)) return(as.numeric(gsub("\\D", "", .m[1L])) * 1024)
-    }
-    if (.Platform$OS.type == "windows") {
-      return(utils::memory.limit() * 1024^2)
     }
     .out <- system("sysctl -n hw.memsize", intern = TRUE, ignore.stderr = TRUE)
     if (length(.out) && nzchar(.out[1L])) return(as.numeric(.out[1L]))
