@@ -3370,11 +3370,32 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
 
 ## Restore par-loader-injected parameters (e.g. trained NN weights) onto the
 ## params for a re-solve, so re-solving from a solved object reproduces them
-## even without the injecting package.  Injected values override for their
-## names (and are appended if absent); only applies to a single named vector.
+## even without the injecting package.  Injected values override for their names
+## (and are appended if absent).  Handles a single named vector, a parameter
+## data.frame, or a matrix; when no params are supplied it falls back to the
+## solved object's stored parameter data.frame (multi-subject/multi-sim solves
+## have no single named vector).
 .rxApplyInjectedPars <- function(params, object) {
   .inj <- rxInjectedPars(object)
   if (is.null(.inj) || length(.inj) == 0L) return(params)
+  if (is.null(params)) params <- object$.params.dat
+  if (is.null(params)) return(params)
+  if (is.data.frame(params)) {
+    for (.n in names(.inj)) params[[.n]] <- .inj[[.n]]
+    return(params)
+  }
+  if (is.matrix(params)) {
+    for (.n in names(.inj)) {
+      if (!is.null(colnames(params)) && .n %in% colnames(params)) {
+        params[, .n] <- .inj[[.n]]
+      } else {
+        params <- cbind(params,
+                        matrix(.inj[[.n]], nrow = nrow(params), ncol = 1L,
+                               dimnames = list(NULL, .n)))
+      }
+    }
+    return(params)
+  }
   if (is.numeric(params) && is.null(dim(params)) && !is.null(names(params))) {
     params[names(.inj)] <- .inj
   }
@@ -3648,6 +3669,11 @@ rxForcedPars <- function(ui) {
   }
   if (is.null(names(value)) || any(names(value) == "")) {
     stop("forcedPars must be a fully-named numeric vector", call. = FALSE)
+  }
+  # reject non-numeric input up front; as.numeric() would otherwise coerce
+  # characters/factors to NA and silently force parameters to NA_real_.
+  if (!is.numeric(value)) {
+    stop("forcedPars must be numeric (got '", class(value)[1], "')", call. = FALSE)
   }
   ## store on the ui env (hidden -- not the printed `meta` block) and mark sticky
   ## so it survives model piping.

@@ -4531,6 +4531,11 @@ static void rxRegisterParLoaderImpl(const char* name, t_rxParLoader cb) {
   if (_rxNParLoaders < RX_MAX_PAR_LOADERS) {
     _rxParLoaderNames[_rxNParLoaders] = (name == NULL) ? std::string() : std::string(name);
     _rxParLoaders[_rxNParLoaders++] = cb;
+  } else {
+    // registration usually happens during a package's .onLoad(); fail loudly so a
+    // dropped injector is diagnosable instead of silently never running.
+    Rf_warning("rxode2: parameter-loader registry full (max %d); loader '%s' not registered",
+               RX_MAX_PAR_LOADERS, (name == NULL) ? "<unnamed>" : name);
   }
 }
 
@@ -4558,8 +4563,10 @@ extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
   }
 }
 
-// The active injector flag for the next solve (set from the model that is about
-// to be solved), consumed by rxCallParLoaders and then cleared.
+// The active injector flag for the next solve: set from the model about to be
+// solved (rxSetActiveParLoader), READ by rxCallParLoaders to dispatch to the
+// matching named loader, and cleared afterward by the R on-exit hook
+// .rxClearActiveParLoaderC() -- rxCallParLoaders does not clear it itself.
 extern "C" SEXP _rxode2_rxSetActiveParLoader(SEXP nameSxp) {
   _rxActiveParLoader = (TYPEOF(nameSxp) == STRSXP && Rf_length(nameSxp) >= 1) ?
     std::string(CHAR(STRING_ELT(nameSxp, 0))) : std::string();

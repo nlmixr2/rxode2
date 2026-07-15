@@ -1371,6 +1371,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       if (nrow(.etaDf) > 0L) {
         .etaDf <- .etaDf[order(.etaDf$neta1), , drop=FALSE]
         .env$eta <- unique(.etaDf$name)
+      } else {
+        # only IOV (or no) etas remain -> no population etas; clear the list so a
+        # stale omega-derived name cannot leak (matches the NULL init above).
+        .env$eta <- NULL
       }
       if (is.null(.env$predDf)) {
         ## .env$errGlobal <- c(.env$errGlobal,
