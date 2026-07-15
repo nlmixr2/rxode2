@@ -13,7 +13,9 @@ rxTest(type = NULL, skipOnCran = TRUE)
 }
 \arguments{
 \item{type}{Type of test or filter of test type, When this is an
-expression, evaluate the contents, respecting \code{skipOnCran}}
+expression, evaluate the contents, respecting \code{skipOnCran}.  In
+the expression form, stray progress messages are muffled unless
+\code{options(rxode2.test.verbose = TRUE)} is set.}
 
 \item{skipOnCran}{when \code{TRUE} skip the test on CRAN.}
 }
