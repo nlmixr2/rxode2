@@ -245,8 +245,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getRamBytes <- function() {
-  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`), error = function(e) NA_real_)
-  if (length(.ram) == 1L && !is.na(.ram) && .ram > 0) return(.ram)
+  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["total"]],
+                   error = function(e) NA_real_)
+  if (!is.na(.ram) && .ram > 0) return(.ram)
   if (requireNamespace("memuse", quietly = TRUE)) {
     .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
     if (!is.null(.info)) {
@@ -357,6 +358,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getFreeRamBytes <- function() {
+  .free <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["free"]],
+                    error = function(e) NA_real_)
+  if (!is.na(.free) && .free > 0) return(.free)
   if (requireNamespace("memuse", quietly = TRUE)) {
     .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
     if (!is.null(.info)) {
