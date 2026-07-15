@@ -120,6 +120,10 @@
   C function-pointer API, and `setRxThreadId()` so a package can drive the
   per-subject solve from its own OpenMP team.
 
+- `rxTest()` test blocks now muffle stray progress messages (e.g. "calculate
+  sensitivities"); set `options(rxode2.test.verbose = TRUE)` to see them.
+  Messages asserted with `expect_message()` are unaffected.
+
 ## Bug fixes
 
 ### Estimation / symengine translation (`rxFromSE()`)
