@@ -136,6 +136,39 @@ static void myForce(int *neq, double t, double *y, double *dydt) {
 A model with no registered forcing is unaffected (the call is a null-pointer
 no-op), so this is safe to leave installed.
 
+## `rxRegisterUiPrep()`: rehydrating state before a ui solve
+
+The C hooks above rely on state a package registers *in the running session*.
+That state is lost when a model or fit is saved to disk and reloaded in a fresh
+session -- the serializable ui survives, but the C-side registry behind it does
+not.  `rxRegisterUiPrep(name, fn)` closes that gap: `fn(ui)` is called with the
+ui at the very start of every ui solve (before parameter loaders run), so a
+package can rebuild transient C state from serializable ui slots.
+
+```r
+# in a downstream package's .onLoad():
+rxode2::rxRegisterUiPrep("myPkg:rehydrate", function(ui) {
+  meta <- ui$myMeta            # a slot the package stamped on the ui at fit time
+  if (is.null(meta)) return(invisible())   # no-op for models it does not own
+  # ... resolve indices BY NAME from the current parameter layout and re-register
+  #     the C-side state so the reloaded ui solves correctly ...
+})
+```
+
+Guidelines for a prep hook:
+
+* **Be cheap and a no-op for unrelated models** -- it runs on *every* ui solve.
+* **Resolve positions by name, not by a stored index.** A ui saved by one build
+  and reloaded by another may have a different parameter column layout; matching
+  a saved *name* against the current layout is robust, a cached integer is not.
+* Errors are downgraded to a warning so a buggy hook cannot break other solves.
+
+This is how `nlmixr2nn` makes a saved neural-network fit reload: the trained
+weights ride on the ui in `rxForcedPars()` and the network *shapes* in a sticky
+`nnMeta` slot; the prep hook re-registers the shapes (base resolved by name) so
+the persisted weight values land in a network that can stride them.  Pair a
+`rxRegisterUiPrep()` with `rxRemoveUiPrep(name)` in `.onUnload()`.
+
 ## The function-pointer table
 
 The hooks above are C callables *inside* `rxode2`.  Because CRAN discourages
