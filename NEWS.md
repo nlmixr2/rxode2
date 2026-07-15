@@ -120,6 +120,10 @@
   C function-pointer API, and `setRxThreadId()` so a package can drive the
   per-subject solve from its own OpenMP team.
 
+- `rxTest()` test blocks now muffle stray progress messages (e.g. "calculate
+  sensitivities"); set `options(rxode2.test.verbose = TRUE)` to see them.
+  Messages asserted with `expect_message()` are unaffected.
+
 ## Bug fixes
 
 ### Estimation / symengine translation (`rxFromSE()`)
@@ -187,6 +191,13 @@
   `lag(x, 1)`/`diff(x, 1)` are supported for calculated variables.
 
 - Bug fix for `mix()` models and `iCov` models.
+
+- The `rxMemoryEstimate()` RAM detection no longer calls the defunct
+  `utils::memory.limit()` (which warned on every Windows solve); total RAM is
+  now queried natively in C (`GlobalMemoryStatusEx` on Windows,
+  `sysctl` on macOS, `sysconf` on Linux) and available memory reuses the
+  allocator preflight estimate (`rxAvailableMemoryBytes()`).  This also drops
+  the `memuse` suggested dependency and the shell-command fallbacks.
 
 - Fixed out-of-bounds heap reads (AddressSanitizer-confirmed; results
   unchanged): `rxSolve()` parameter setup when subjects share one event table

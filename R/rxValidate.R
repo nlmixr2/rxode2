@@ -3,7 +3,9 @@
 #' testing suite on your system.
 #'
 #' @param type Type of test or filter of test type, When this is an
-#'   expression, evaluate the contents, respecting `skipOnCran`
+#'   expression, evaluate the contents, respecting `skipOnCran`.  In
+#'   the expression form, stray progress messages are muffled unless
+#'   `options(rxode2.test.verbose = TRUE)` is set.
 #' @param skipOnCran when `TRUE` skip the test on CRAN.
 #' @author Matthew L. Fidler
 #' @return nothing
@@ -25,7 +27,22 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     # set.seed()-based reproducibility tests (e.g. test-random, test-rxRmvn).
     .rxSeed0 <- rxGetSeed()
     on.exit(rxSetSeed(.rxSeed0), add = TRUE)
-    return(force(type))
+    if (getOption("rxode2.test.verbose", FALSE)) {
+      return(force(type))
+    }
+    # Muffle stray progress messages (cli alerts, rxCat) during tests;
+    # expect_message()/verify_output() handlers run innermost and still
+    # see what they assert on.  The rxParseSuppressMsg()/.rxSilentErr
+    # probe message(" ") must pass through, or muffling is mistaken for
+    # suppressMessages() and sets the C-level silent flag, hiding
+    # parse-error output some tests assert on.
+    return(withCallingHandlers(
+      force(type),
+      message = function(m) {
+        if (!identical(conditionMessage(m), " \n")) {
+          tryInvokeRestart("muffleMessage")
+        }
+      }))
   }
   pt <- proc.time()
   .filter <- NULL

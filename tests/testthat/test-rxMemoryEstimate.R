@@ -27,6 +27,21 @@ rxTest({
     expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
   })
 
+  test_that(".getRamBytes()/.getFreeRamBytes() query RAM natively", {
+    .ram  <- .getRamBytes()
+    .free <- .getFreeRamBytes()
+    expect_true(is.numeric(.ram)  && length(.ram)  == 1L)
+    expect_true(is.numeric(.free) && length(.free) == 1L)
+    # Windows, macOS and Linux all have a native C path; none should be NA
+    expect_gt(.ram, 0)
+    expect_gt(.free, 0)
+    expect_true(is.finite(.ram))
+    expect_true(is.finite(.free))
+    # no free <= total invariant: .getFreeRamBytes() is the allocation
+    # budget, which may exceed physical RAM (page file on Windows, swap
+    # on Linux)
+  })
+
   test_that("rxMemoryEstimate contains memory availability metadata", {
     .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
@@ -164,7 +179,7 @@ rxTest({
     expect_output(print(.est), "rxSolve\\(\\) memory estimate")
     expect_output(print(.est), "Total:")
     if (!is.na(.est$freeRamBytes) && .est$freeRamBytes > 0) {
-      expect_output(print(.est), "free RAM")
+      expect_output(print(.est), "available memory")
     }
   })
 

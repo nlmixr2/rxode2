@@ -87,7 +87,6 @@ Suggests:
     kableExtra,
     pmxTools,
     rootSolve,
-    memuse,
     arrow,
     fst,
     duckdb,
