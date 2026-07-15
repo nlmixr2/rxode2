@@ -2190,6 +2190,9 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
+  ## let packages rehydrate transient C state from the ui's serializable slots
+  ## (e.g. NN shapes) before parameters are loaded -- keeps a reloaded ui solvable.
+  .rxRunUiPrepHooks(object)
   ## forced (externally-owned) parameters carried on the ui -- injected into every
   ## solve column at setup (rxCallParLoaders), overriding params/data/inits.
   if (.rxApplyForcedPars(object, .lst[[1L]])) {
@@ -3770,6 +3773,63 @@ rxParLoader <- function(ui) {
   if (is.null(.pl) || length(.pl) == 0L || !nzchar(.pl[1L])) return(FALSE)
   .rxSetActiveParLoaderC(.pl[1L])
   TRUE
+}
+
+## ---- ui-solve preparation hooks -------------------------------------------
+## Registry of functions called with the ui at the start of a ui solve (before
+## parameter loaders run).  A package uses this to rehydrate transient C-side
+## state from serializable ui slots after a ui has been saved to disk and
+## reloaded in a fresh session (e.g. re-registering neural-network shapes so the
+## weight values carried in `rxForcedPars()` land in a network that can stride
+## them).  Each hook must be cheap and a no-op for models it does not own.
+.rxUiPrepHooks <- new.env(parent = emptyenv())
+
+#' Register or remove a solve-time ui preparation hook
+#'
+#' Package developers register a function called with the ui at the start of a
+#' ui solve, before parameter loaders run.  Use it to rehydrate transient C-side
+#' state from serializable ui slots (so a ui saved to disk and reloaded in a
+#' fresh session solves correctly).  The hook must be cheap and a no-op for
+#' models it does not own.
+#'
+#' @param name Unique hook name; re-registering the same name replaces it.
+#' @param fn Function of one argument (the rxUi being solved).  Return value is
+#'   ignored; errors are downgraded to a warning so a buggy hook cannot break
+#'   unrelated solves.
+#' @return Invisibly, the hook name (register) or `NULL` (remove).
+#' @export
+rxRegisterUiPrep <- function(name, fn) {
+  if (!is.character(name) || length(name) != 1L) {
+    stop("'name' must be a single string", call. = FALSE)
+  }
+  if (!is.function(fn)) {
+    stop("'fn' must be a function of one argument (the ui)", call. = FALSE)
+  }
+  assign(name, fn, envir = .rxUiPrepHooks)
+  invisible(name)
+}
+
+#' @rdname rxRegisterUiPrep
+#' @export
+rxRemoveUiPrep <- function(name) {
+  if (exists(name, envir = .rxUiPrepHooks, inherits = FALSE)) {
+    rm(list = name, envir = .rxUiPrepHooks)
+  }
+  invisible(NULL)
+}
+
+.rxRunUiPrepHooks <- function(object) {
+  .nm <- ls(envir = .rxUiPrepHooks, all.names = TRUE)
+  if (length(.nm) == 0L) return(invisible())
+  for (.n in .nm) {
+    .fn <- get(.n, envir = .rxUiPrepHooks)
+    tryCatch(.fn(object),
+             error = function(e) {
+               warning("rxode2 ui-prep hook '", .n, "' failed: ",
+                       conditionMessage(e), call. = FALSE)
+             })
+  }
+  invisible()
 }
 
 .rxSolveGetInit <- function(.env, arg) {

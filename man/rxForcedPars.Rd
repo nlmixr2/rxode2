@@ -30,8 +30,11 @@ that carries trained neural-network weights re-solves, predicts and simulates
 with those weights with no external state).
 }
 \details{
-Names must be model parameters; names that are not model parameters are
-ignored at solve time.  Set to \code{NULL} (or an empty vector) to clear.
+The value is stored directly in the ui environment (not in the printed \code{meta}
+block, so it stays hidden) and registered as a \code{sticky} model item so it
+survives model piping.  Names must be model parameters; names that are not
+model parameters are ignored at solve time.  Set to \code{NULL} (or an empty
+vector) to clear.
 }
 \author{
 Matthew L. Fidler
