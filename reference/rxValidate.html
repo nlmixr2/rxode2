@@ -132,7 +132,9 @@ testing suite on your system.</p>
 
 <dl><dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p>Type of test or filter of test type, When this is an
-expression, evaluate the contents, respecting <code>skipOnCran</code></p></dd>
+expression, evaluate the contents, respecting <code>skipOnCran</code>.  In
+the expression form, stray progress messages are muffled unless
+<code>options(rxode2.test.verbose = TRUE)</code> is set.</p></dd>
 
 
 <dt id="arg-skiponcran">skipOnCran<a class="anchor" aria-label="anchor" href="#arg-skiponcran"></a></dt>
