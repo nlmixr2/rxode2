@@ -4251,6 +4251,14 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
   } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
     method <- .parseAutoSwitchMethod(method)
   } else {
+    if (is.character(method) && length(method) > 1L) {
+      ## Downstream/legacy callers (e.g. saved models and rxSolve() methods in
+      ## nonmem2rx/monolix2rx) pass the historical multi-value method default
+      ## c("liblsoda", "lsoda", "dop853", "indLin"); match.arg() only accepts a
+      ## length>1 arg identical to the current choices, which the expanded choice
+      ## list broke, so collapse to the first entry (the intended default).
+      method <- method[[1L]]
+    }
     method <- .methodIdx[match.arg(method)]
   }
   method

@@ -689,6 +689,19 @@ rxode2 <- # nolint
     tmp <- list2env(tmp, parent = .env)
     class(tmp) <- "RxCompilationManager"
     .env$cmpMgr <- tmp
+    ## Strip source refs from the generated helper closures.  Under
+    ## devtools::load_all() (keep.source=TRUE) each eval(bquote(function(){...}))
+    ## closure carries a srcref to the pkgload srcfile of rxode2.R, whose lazy
+    ## `lines` promise captures the entire session -- serializing any one of them
+    ## drags the whole session into the rds.  removeSource() drops the srcref
+    ## (no-op for installed/source-less builds).
+    for (.n in ls(.env, all.names = TRUE)) {
+      if (is.function(.env[[.n]])) assign(.n, removeSource(.env[[.n]]), envir = .env)
+    }
+    for (.n in ls(.env$cmpMgr, all.names = TRUE)) {
+      .f <- get(.n, envir = .env$cmpMgr)
+      if (is.function(.f)) assign(.n, removeSource(.f), envir = .env$cmpMgr)
+    }
     .env$calcJac <- (length(.mv$dfdy) > 0)
     .env$calcSens <- (length(.mv$sens) > 0)
     class(.env) <- "rxode2"
@@ -1974,9 +1987,13 @@ rxCompile.rxModelVars <- function(model, # Model
       .badBuild("Error, model doesn't have correct model variables.")
     }
   }
-  .call <- function(...) {
+  ## removeSource() so this generated closure does not carry a srcref back to
+  ## the (pkgload) srcfile of rxode2.R -- under load_all that srcfile holds a
+  ## lazy `lines` promise capturing the whole session, which would balloon any
+  ## saveRDS() of a model/fit (see the fit-fixture size regression).
+  .call <- removeSource(function(...) {
     return(.Call(...))
-  }
+  })
   .args <- list(
     model = model, dir = .dir, prefix = prefix,
     force = force, modName = modName,
