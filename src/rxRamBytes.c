@@ -11,6 +11,7 @@
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 #else
+#include <stdio.h>
 #include <unistd.h>
 #endif
 
@@ -39,8 +40,7 @@ double rxRamBytes(void) {
 }
 
 // Currently available physical RAM in bytes, or NA_REAL when the OS query
-// fails.  On Linux this returns NA_REAL so the R fallback can prefer
-// /proc/meminfo MemAvailable (which includes reclaimable cache).
+// fails.
 double rxFreeRamBytes(void) {
 #ifdef _WIN32
   MEMORYSTATUSEX st;
@@ -59,6 +59,33 @@ double rxFreeRamBytes(void) {
     // free_count includes speculative pages
     return (double) vm.free_count * (double) pageSize;
   }
+#else
+  // Prefer MemAvailable (includes reclaimable cache) over MemFree
+  FILE *f = fopen("/proc/meminfo", "r");
+  if (f != NULL) {
+    char line[256];
+    double availKb = -1.0, freeKb = -1.0;
+    unsigned long long kb;
+    while (fgets(line, sizeof(line), f) != NULL) {
+      if (sscanf(line, "MemAvailable: %llu kB", &kb) == 1) {
+        availKb = (double) kb;
+        break;
+      }
+      if (freeKb < 0 && sscanf(line, "MemFree: %llu kB", &kb) == 1) {
+        freeKb = (double) kb;
+      }
+    }
+    fclose(f);
+    if (availKb >= 0) return availKb * 1024.0;
+    if (freeKb >= 0) return freeKb * 1024.0;
+  }
+#ifdef _SC_AVPHYS_PAGES
+  long pages = sysconf(_SC_AVPHYS_PAGES);
+  long pageSize = sysconf(_SC_PAGE_SIZE);
+  if (pages > 0 && pageSize > 0) {
+    return (double) pages * (double) pageSize;
+  }
+#endif
 #endif
   return NA_REAL;
 }
