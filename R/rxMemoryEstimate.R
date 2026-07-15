@@ -337,9 +337,13 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .dataBytes + .listBytes
 }
 
-#' Detect currently available physical RAM in bytes
+#' Detect currently available memory for allocation in bytes
 #'
-#' @return Numeric bytes of available RAM, or \code{NA_real_} if unavailable.
+#' Uses the allocator preflight estimate (\code{rxAvailableMemoryBytes()}),
+#' which may exceed physical RAM (page file on Windows, swap on Linux).
+#'
+#' @return Numeric bytes of available memory, or \code{NA_real_} if
+#'   unavailable.
 #' @noRd
 #' @author Matthew L. Fidler
 .getFreeRamBytes <- function() {
@@ -630,7 +634,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     cat(sprintf("  |  %.1f%% of RAM (%s)",
                 100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
     if (!is.null(.freeRamBytes) && !is.na(.freeRamBytes) && .freeRamBytes > 0) {
-      cat(sprintf("  |  %.1f%% of free RAM (%s available)",
+      cat(sprintf("  |  %.1f%% of available memory (%s available)",
                   100 * .totalBytes / .freeRamBytes, .fmtSize(.freeRamBytes)))
     }
     cat("\n")
