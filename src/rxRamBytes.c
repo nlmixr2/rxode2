@@ -3,15 +3,14 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "rxProtect.h"
+#include "rxMemAvail.h" /* rxAvailableMemoryBytes() */
 
 #ifdef _WIN32
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
-#include <mach/mach.h>
 #else
-#include <stdio.h>
 #include <unistd.h>
 #endif
 
@@ -39,55 +38,13 @@ double rxRamBytes(void) {
   return NA_REAL;
 }
 
-// Currently available physical RAM in bytes, or NA_REAL when the OS query
-// fails.
+// Currently available memory in bytes (rxAvailableMemoryBytes() from
+// rxMemAvail.h, the same estimate the C allocator preflight uses), or
+// NA_REAL when the OS query fails.
 double rxFreeRamBytes(void) {
-#ifdef _WIN32
-  MEMORYSTATUSEX st;
-  st.dwLength = sizeof(st);
-  if (GlobalMemoryStatusEx(&st)) {
-    return (double) st.ullAvailPhys;
-  }
-#elif defined(__APPLE__)
-  vm_size_t pageSize = 0;
-  vm_statistics64_data_t vm;
-  mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
-  mach_port_t host = mach_host_self();
-  if (host_page_size(host, &pageSize) == KERN_SUCCESS &&
-      host_statistics64(host, HOST_VM_INFO64, (host_info64_t) &vm,
-                        &count) == KERN_SUCCESS) {
-    // free_count includes speculative pages
-    return (double) vm.free_count * (double) pageSize;
-  }
-#else
-  // Prefer MemAvailable (includes reclaimable cache) over MemFree
-  FILE *f = fopen("/proc/meminfo", "r");
-  if (f != NULL) {
-    char line[256];
-    double availKb = -1.0, freeKb = -1.0;
-    unsigned long long kb;
-    while (fgets(line, sizeof(line), f) != NULL) {
-      if (sscanf(line, "MemAvailable: %llu kB", &kb) == 1) {
-        availKb = (double) kb;
-        break;
-      }
-      if (freeKb < 0 && sscanf(line, "MemFree: %llu kB", &kb) == 1) {
-        freeKb = (double) kb;
-      }
-    }
-    fclose(f);
-    if (availKb >= 0) return availKb * 1024.0;
-    if (freeKb >= 0) return freeKb * 1024.0;
-  }
-#ifdef _SC_AVPHYS_PAGES
-  long pages = sysconf(_SC_AVPHYS_PAGES);
-  long pageSize = sysconf(_SC_PAGE_SIZE);
-  if (pages > 0 && pageSize > 0) {
-    return (double) pages * (double) pageSize;
-  }
-#endif
-#endif
-  return NA_REAL;
+  uint64_t avail = rxAvailableMemoryBytes();
+  if (avail == UINT64_MAX) return NA_REAL;
+  return (double) avail;
 }
 
 SEXP _rxode2_rxRamBytes_(void) {

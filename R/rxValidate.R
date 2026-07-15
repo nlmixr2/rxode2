@@ -32,10 +32,17 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     }
     # Muffle stray progress messages (cli alerts, rxCat) during tests;
     # expect_message()/verify_output() handlers run innermost and still
-    # see what they assert on.
+    # see what they assert on.  The rxParseSuppressMsg()/.rxSilentErr
+    # probe message(" ") must pass through, or muffling is mistaken for
+    # suppressMessages() and sets the C-level silent flag, hiding
+    # parse-error output some tests assert on.
     return(withCallingHandlers(
       force(type),
-      message = function(m) tryInvokeRestart("muffleMessage")))
+      message = function(m) {
+        if (!identical(conditionMessage(m), " \n")) {
+          tryInvokeRestart("muffleMessage")
+        }
+      }))
   }
   pt <- proc.time()
   .filter <- NULL

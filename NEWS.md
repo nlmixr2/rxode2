@@ -193,11 +193,11 @@
 - Bug fix for `mix()` models and `iCov` models.
 
 - The `rxMemoryEstimate()` RAM detection no longer calls the defunct
-  `utils::memory.limit()` (which warned on every Windows solve); total and
-  available RAM are now queried natively in C (`GlobalMemoryStatusEx` on
-  Windows, `sysctl`/Mach on macOS, `sysconf`//proc/meminfo on Linux).  This
-  also drops the `memuse` suggested dependency and the shell-command
-  fallbacks.
+  `utils::memory.limit()` (which warned on every Windows solve); total RAM is
+  now queried natively in C (`GlobalMemoryStatusEx` on Windows,
+  `sysctl` on macOS, `sysconf` on Linux) and available memory reuses the
+  allocator preflight estimate (`rxAvailableMemoryBytes()`).  This also drops
+  the `memuse` suggested dependency and the shell-command fallbacks.
 
 - Fixed out-of-bounds heap reads (AddressSanitizer-confirmed; results
   unchanged): `rxSolve()` parameter setup when subjects share one event table
