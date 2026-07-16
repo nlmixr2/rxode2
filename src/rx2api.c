@@ -207,6 +207,21 @@ int getIndIdx(rx_solving_options_ind* ind) {
   return ind->idx;
 }
 
+// Per-observation endpoint (compartment) from the CMT time-varying covariate.  The
+// covariate index is cached in op->cmtCov at setup (getIndCmt does no name lookup).
+// Returns the raw CMT value at observation row kk, or 1 when the model has no CMT
+// covariate (a single-endpoint model) or the value is missing.  CMT values are the
+// data's compartment numbers (distinct, not necessarily sequential).
+int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
+  if (op == NULL || op->cmtCov < 0) return 1;
+  if (kk < 0 || kk >= ind->n_all_times) {
+    Rf_error("[getIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
+  double v = ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk];
+  if (ISNA(v)) return 1;
+  return (int) v;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Solving options (rx->op)
 ////////////////////////////////////////////////////////////////////////

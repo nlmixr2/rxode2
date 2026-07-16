@@ -107,6 +107,7 @@ void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np,
 rx_solve *getRxSolve_(void);
 void rxSetSolveAtolRtol(double atol, double rtol);
 void rxGetSolveAtolRtol(double *atol, double *rtol);
+int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
 #endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);
