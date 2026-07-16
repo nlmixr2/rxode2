@@ -37,6 +37,42 @@ rxTest({
   test_that("bad mu referencing examples (throw error)", {
     expect_error(.rxMuRef("a=theta1+theta2+theta3*wt+eta1", lmat))
     expect_error(.rxMuRef("a=theta1+theta2*wt+theta3*wt+eta1", lmat))
+    # the 2+ population parameter error must name the parameters that
+    # were actually summed (rxode2#471)
+    expect_error(.rxMuRef("a=theta2+theta3+eta1", lmat), "'theta2', 'theta3'")
+  })
+
+  test_that("summing population parameters without an eta is not a mu-ref error (rxode2#471)", {
+    # 'sqrt(sigma.1. + sigma.2.)'-style combined residual error sums two
+    # population parameters with no random effect; this is legitimate and
+    # must not be flagged as a mu-referenced expression
+    expect_error(.rxMuRef("a=theta1+theta2", lmat), NA)
+    expect_error(.rxMuRef("a=sqrt(theta1+theta2)", lmat), NA)
+
+    f <- function() {
+      ini({
+        theta1 <- c(0, 1.08, 10)
+        theta2 <- c(0, 0.814, 10)
+        theta3 <- fix(0.179)
+        eta1 ~ fix(0)
+        sigma.1. <- 0.422
+        sigma.2. <- 0.0364
+      })
+      model({
+        TVKGA <- 0
+        if (BACT == 2) TVKGA <- theta1
+        TVKGP <- 0
+        if (BACT == 1) TVKGP <- theta2
+        TVKK <- theta3
+        KGDXS <- 1
+        KGA <- KGDXS * TVKGA * exp(eta1)
+        KGP <- KGDXS * TVKGP * exp(eta1)
+        IPRED <- KGA + KGP + TVKK
+        W <- sqrt(sigma.1. + sigma.2.)
+        Y <- IPRED + W * eps1
+      })
+    }
+    expect_error(suppressMessages(rxode2(f)), NA)
   })
 
   testEnv <- function(env, ref) {

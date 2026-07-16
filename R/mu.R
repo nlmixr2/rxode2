@@ -700,10 +700,15 @@
   .wt <- which(.names %in% env$info$theta)
   .we <- which(.names %in% env$info$eta)
   .wl <- if (!is.null(env$info$level)) which(.names %in% env$info$level) else integer(0)
-  if (length(.wt) >= 2) {
+  if (length(.wt) >= 2 && length(.we) >= 1) {
+    # Only a genuine mu-referenced expression (ie one that also has an
+    # eta) with 2+ population parameters is ambiguous.  Summing
+    # population parameters with no random effect (eg a combined
+    # residual error 'sqrt(sigma.1. + sigma.2.)') is legitimate and must
+    # not be flagged.
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
-                               paste(env$info$theta[.wt], collapse="', '"),
+                               paste(.names[.wt], collapse="', '"),
                                "'\nthis could occur when a between subject variability parameter is not initialized with a '~'")))
   } else if (length(.wt) == 1) {
     if (!is.null(.extraItems)) {
