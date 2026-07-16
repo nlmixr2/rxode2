@@ -40,6 +40,8 @@ extern "C" {
   extern rxNormEng_t rxNormEng;
   typedef double (*rxUnifEng_t)(double low, double hi);
   extern rxUnifEng_t rxUnifEng;
+  typedef int (*getIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+  extern getIndCmt_t getIndCmt;
 
   // Per-individual ODE solve buffer-pointer swap (nlmixr2est impmap gradient):
   // save the originals, install private larger buffers for a higher-state
@@ -349,6 +351,7 @@ extern "C" {
       seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
       rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
       rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
+      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
       setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
       getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
       setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
@@ -436,6 +439,7 @@ extern "C" {
   seedEng_t seedEng = NULL;                             \
   rxNormEng_t rxNormEng = NULL;                         \
   rxUnifEng_t rxUnifEng = NULL;                         \
+  getIndCmt_t getIndCmt = NULL;                         \
   setIndSolvePtr_t setIndSolvePtr = NULL;               \
   getIndSolveSave_t getIndSolveSave = NULL;             \
   setIndSolveSave_t setIndSolveSave = NULL;             \

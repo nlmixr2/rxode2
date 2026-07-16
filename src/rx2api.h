@@ -73,6 +73,9 @@ extern "C" {
   // Get the index of the current solve
   int getIndIdx(rx_solving_options_ind* ind);
 
+  // Per-observation endpoint from the CMT covariate (cached op->cmtCov); 1 if none
+  int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+
   // Get the mixest of the current solve
   int getIndMixest(rx_solving_options_ind* ind);
 
