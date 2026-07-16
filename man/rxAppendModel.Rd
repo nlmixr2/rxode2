@@ -9,7 +9,7 @@ rxAppendModel(..., common = TRUE)
 \arguments{
 \item{...}{models to append together}
 
-\item{common}{boolean that determines if you need a common value to bind}
+\item{common}{boolean; when \code{TRUE} warn if the models have no variables in common}
 }
 \value{
 New model with both models appended together
