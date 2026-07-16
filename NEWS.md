@@ -126,6 +126,14 @@
 
 ## Bug fixes
 
+- `rxFixPop()` no longer tries to literally substitute a fixed mixture
+  proportion (`mix()`).  A mixture proportion must stay a named model-block
+  variable, so substituting its value made the re-parse throw from `mix()`
+  ("the probabilities in a mixture must be in the model block ..."); a downstream
+  caller wrapping `rxFixPop()` in `try()` leaked that error to the console during
+  otherwise-successful mixture fits.  Fixed mixture proportions are now excluded
+  from the substitution.
+
 ### Estimation / symengine translation (`rxFromSE()`)
 
 - Convert raw R comparison/logical operators (`>`, `==`, `&`, ...), not only
