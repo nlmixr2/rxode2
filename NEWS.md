@@ -137,6 +137,15 @@
 
 ## Bug fixes
 
+- A Jacobian entry `df(state)/dy(THETA[n])` or `df(state)/dy(ETA[n])` (a
+  bracketed parameter reference, which the grammar accepts) no longer segfaults.
+  The synthetic `_THETA_n_`/`_ETA_n_` symbol was never registered, so its index
+  stayed `-2` and the model validator read `tb.ss.line[-2]` out of bounds.  This
+  crashed `nlm`/FOCEi fits that re-parse their generated `calcJac` model (whose
+  parameters are `THETA[n]`) in the residual/table step -- notably for a
+  delay-differential-equation model whose delay parameter appears in a product
+  of delayed states.
+
 - `past(state, tau)` on a state with no `d/dt(state)` now reports that cleanly
   instead of corrupting the heap.  The error path appended nothing to the
   message buffer and then trimmed a trailing `', ` that was never written,

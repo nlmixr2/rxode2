@@ -519,6 +519,14 @@ static inline void assertCorrectDfDy(void) {
   char *buf1, *buf2, bufe[2048];
   int i, j, found, islhs;
   for (i=0; i<tb.ndfdy; i++) {                     /* name state vars */
+    // A df()/dy() whose numerator or denominator never resolved to a symbol
+    // (e.g. a re-parsed df(state)/dy(THETA[n]) Jacobian where the THETA index
+    // was not registered) leaves tb.df[i]/tb.dy[i] negative; indexing
+    // tb.ss.line with it reads out of bounds and crashes.  Such an entry
+    // cannot be validated, so skip it rather than segfault.
+    if (tb.df[i] < 0 || tb.df[i] >= NV || tb.dy[i] < 0 || tb.dy[i] >= NV) {
+      continue;
+    }
     buf1=tb.ss.line[tb.df[i]];
     found=0;
     for (j=0; j<tb.de.n; j++) {                     /* name state vars */
