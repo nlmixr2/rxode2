@@ -384,4 +384,45 @@ rxTest({
                  "exp")
 
   })
+
+  test_that("iov simulation with id()/occ() nesting (issue #323)", {
+
+    # Classic-style event table with an occ column added by assignment;
+    # this combination of id(nu=)/occ(nu=) nesting previously segfaulted
+    # in the nesting expansion ("Not compatible with STRSXP: [type=NULL]").
+
+    model <- rxode2({
+      KA <- KA * exp(KA_eta)
+      V  <- V * exp(V_eta)
+      CL <- CL * exp(CL_eta + iov.cl)
+      cp = A2 / V * (1 + eps)
+      d/dt(A1) <- -KA * A1
+      d/dt(A2) <-  KA * A1 - CL / V * A2
+    })
+
+    ev <- et()
+    ev$add.dosing(dose = 100000, nbr.doses = 1, dosing.to = 1, start.time = 0)
+    ev$add.dosing(dose = 100000, nbr.doses = 1, dosing.to = 1, start.time = 100)
+    ev$add.sampling(0:200)
+    ev$occ <- ifelse(as.numeric(ev$time) < 100, 1, 2)
+
+    params <- c(KA = 1, CL = 10, V = 100)
+
+    omega <- lotri(lotri(KA_eta + V_eta + CL_eta ~ c(0.1,
+                                                     0.01, 0.1,
+                                                     0.01, 0.01, 0.1)) | id(nu = 100),
+                   lotri(iov.cl ~ 0.1) | occ(nu = 200))
+    sigma <- lotri(eps ~ 0.2)
+
+    set.seed(42)
+    expect_error(
+      sim <- rxSolve(model, events = ev, params = params,
+                     sigma = sigma, omega = omega, nSub = 5),
+      NA)
+
+    # each subject should have exactly one iov.cl per occasion (two total)
+    .d <- as.data.frame(sim)
+    .nOcc <- tapply(.d$iov.cl, .d$sim.id, function(x) length(unique(x)))
+    expect_true(all(.nOcc == 2))
+  })
 })
