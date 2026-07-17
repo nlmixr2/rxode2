@@ -96,4 +96,54 @@ rxTest({
       expect_equal(.s[[.col]], .fd, tolerance = 1e-3)
     }
   })
+
+  # past(state, tau) without a d/dt(state) is a user error.  Reporting it used to
+  # append nothing to the error buffer and then trim a trailing "', " that was
+  # never written, moving the write offset before the start of the buffer; the
+  # heap corruption surfaced as a double free on a *later*, unrelated parse.
+  test_that("past() without d/dt() errors cleanly and leaves the parser usable", {
+    .bad <- "a=1\nb=0.5\nT=12.8\npast(G, T) = a*exp(b*t)\nR2 = a\n"
+    expect_error(suppressMessages(rxModelVars(.bad)), "syntax error")
+    # the message names the offending property rather than a mangled fragment
+    expect_output(try(suppressMessages(rxModelVars(.bad)), silent = TRUE),
+                  "'past(G)' present, but d/dt(G) not defined", fixed = TRUE)
+    # parsing again, and parsing a good model afterwards, must still work
+    expect_error(suppressMessages(rxModelVars(.bad)), "syntax error")
+    expect_true(inherits(rxModelVars("d/dt(G)=-G\n"), "rxModelVars"))
+  })
+
+  # A past() line is compartment-scoped: it only parses in a chunk that also has
+  # the matching d/dt().  .rxDelaySensAugment() appends past() after every d/dt(),
+  # so on a model long enough to chunk it lands in the last chunk, away from its
+  # d/dt() -- .rxDisguiseCmt() must hide it for the chunk to parse standalone.
+  test_that("past() survives chunked expression optimization", {
+    .filler <- paste(sprintf("v%d = %d * exp(kg * t) + sin(v0 * %d)", 1:45, 1:45, 1:45),
+                     collapse = "\n")
+    .mod <- paste0(
+      "a = 1\nb = 0.5\nT = 12.8\nk3 = 5\nkg = 0.4\nk4 = 0.3\nk5 = 0.1\nv0 = 2\n",
+      "G(0) = a\nd/dt(G) = k3 - kg * G\n",
+      "I(0) = 0\nd/dt(I) = k4 * G - k4 * delay(G, T)\n",
+      "D(0) = 0\nd/dt(D) = k4 * delay(G, T) - k5 * D\n",
+      .filler, "\n", "R2 = D + v1 + v45\n",
+      "past(G, T) = a * exp(b * t)\n")
+
+    .dg <- rxode2:::.rxDisguiseCmt(.mod)
+    # the past line is hidden as an ordinary assignment, so a chunk parses alone
+    expect_false(any(grepl("^past", strsplit(.dg, "\n")[[1]])))
+    expect_true(any(grepl("^rx__disg_lhs__", strsplit(.dg, "\n")[[1]])))
+    # ... and is restored byte-exactly, spacing included
+    expect_equal(strsplit(rxode2:::.rxRestoreCmt(.dg), "\n")[[1]],
+                 strsplit(.mod, "\n")[[1]])
+
+    .o <- suppressMessages(rxOptExpr(.mod, "m", chunkLines = 40L))
+    expect_true(any(grepl("^past\\(G, *T\\)", strsplit(.o, "\n")[[1]])))
+    expect_false(grepl("rx__disg_", .o, fixed = TRUE))
+    # optimizing must not change what the model means
+    .ev <- et(seq(0, 30, by = 1))
+    .s1 <- rxSolve(rxode2(.mod), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10,
+                   dense = TRUE)
+    .s2 <- rxSolve(rxode2(.o), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10,
+                   dense = TRUE)
+    expect_equal(.s1$R2, .s2$R2, tolerance = 1e-8)
+  })
 })

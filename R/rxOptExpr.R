@@ -397,7 +397,8 @@
   unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
 }
 
-# A state initial condition (state(0)=) or a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# A state initial condition (state(0)=), a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# or a delay pre-history (past(cmt, tau)=)
 # is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
 # d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
 # d/dt(): its right-hand side may read a variable that a later line reassigns, so its
@@ -409,6 +410,8 @@
 # left-hand side embeds the compartment name bare (readable), while a spacing variant
 # the grammar also accepts (`depot (0)=`, `f( depot )=`) is hex-encoded whole, so the
 # disguised name is always a valid identifier and the restore is byte-exact either way.
+# past(cmt, tau)= always takes the hex form: its second argument is an arbitrary
+# expression (`past(G, exp(THETA[8]))`), which no canonical bare-name form could carry.
 # A construct not recognised here is left alone; its chunk then fails and falls back to
 # the whole model.
 .rxDisguiseCmt <- function(modTxt) {
@@ -422,11 +425,13 @@
   .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
   .icRe <- paste0("^(", .id, ")[ \t]*\\(0\\)$")
   .modRe <- paste0("^([fF]|alag|lag|rate|dur)[ \t]*\\([ \t]*(", .id, ")[ \t]*\\)$")
+  .pastRe <- paste0("^past[ \t]*\\([ \t]*", .id, "[ \t]*,.*\\)$")
   .isIc <- .eq > 0L & grepl(.icRe, .lhs)
   .isMod <- .eq > 0L & grepl(.modRe, .lhs)
+  .isPast <- .eq > 0L & grepl(.pastRe, .lhs)
   .icCan <- .isIc & grepl(paste0("^", .id, "\\(0\\)$"), .lhs)
   .modCan <- .isMod & grepl(paste0("^([fF]|alag|lag|rate|dur)\\(", .id, "\\)$"), .lhs)
-  .hex <- (.isIc | .isMod) & !(.icCan | .modCan)
+  .hex <- (.isIc | .isMod | .isPast) & !(.icCan | .modCan)
   .new <- .lhs
   .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
   .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
@@ -435,7 +440,7 @@
   .new[.hex] <- vapply(.lhs[.hex], function(.l) {
     paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
   }, character(1), USE.NAMES = FALSE)
-  paste(ifelse(.isIc | .isMod, paste0(.lead, .new, .trail, .rhs), .ln),
+  paste(ifelse(.isIc | .isMod | .isPast, paste0(.lead, .new, .trail, .rhs), .ln),
         collapse = "\n")
 }
 
