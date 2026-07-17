@@ -164,6 +164,15 @@
   only and guards zero-length results, fixing an "argument is of length zero"
   error and silent substitution of user-workspace variables (#1109).
 
+- A trig function (`sin`/`cos`/`tan`) whose argument is a compound expression
+  divided by something (for example `sin(2 * 3.14 * (time - mtime1) / period)`)
+  no longer drops its whole argument.  The division branch fell through without
+  returning when the numerator was not a single token, so the argument became
+  `NULL` and the emitted C code was `sin()` -- which failed to compile with "too
+  few arguments to function 'sin'".  Such models (for example an enterohepatic
+  gallbladder model with a sinusoidal release) now build and fit
+  (nlmixr2/nlmixr2est#513).
+
 ### Model parsing / mu-referencing
 
 - Summing two or more population parameters in an expression that has no
