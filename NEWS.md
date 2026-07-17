@@ -153,6 +153,16 @@
   only and guards zero-length results, fixing an "argument is of length zero"
   error and silent substitution of user-workspace variables (#1109).
 
+### Model parsing / mu-referencing
+
+- Summing two or more population parameters in an expression that has no
+  random effect (for example a combined residual error
+  `W <- sqrt(sigma.1. + sigma.2.)`) is no longer misreported as
+  "2+ single population parameters in a single mu-referenced expression".
+  That check now fires only for a genuine mu-referenced expression (one that
+  also contains an eta), and the message names the parameters that were
+  actually summed instead of the first parameters in the model (#471).
+
 ### Delay models
 
 - `calcJac=TRUE` rewriting (also used by the stiff `ros4`/`dop853+ros4` path)
