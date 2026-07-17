@@ -132,6 +132,25 @@
 
 ## Bug fixes
 
+- `past(state, tau)` on a state with no `d/dt(state)` now reports that cleanly
+  instead of corrupting the heap.  The error path appended nothing to the
+  message buffer and then trimmed a trailing `', ` that was never written,
+  moving the write offset before the start of the buffer; the damage surfaced
+  as a `double free or corruption` abort on a *later*, unrelated parse rather
+  than at the offending model.  The message now names the property
+  (`'past(G)' present, but d/dt(G) not defined`), and a property with no
+  message branch can no longer underflow the buffer.
+
+- `rxOptExpr()` no longer fails on a model that uses `past(state, tau)` and is
+  long enough to be optimized in chunks.  A `past()` line only parses in a
+  chunk that also holds the matching `d/dt()`, and sensitivity augmentation
+  appends `past()` after every `d/dt()` -- so it reliably landed in a chunk of
+  its own.  It is now disguised for the duration of the optimization like any
+  other compartment-scoped left-hand side, and restored byte-exactly
+  afterwards.  Together with the fix above this unblocks estimating a
+  non-constant-history DDE (e.g. the rheumatoid arthritis model of Koch et al.
+  2014, J Pharmacokinet Pharmacodyn 41:291-318, Example 6).
+
 - `rxAppendModel()` now warns (instead of erroring) when the appended models
   have no variables in common, so the combined model is still returned; use
   `common=FALSE` to suppress the warning (#520).
