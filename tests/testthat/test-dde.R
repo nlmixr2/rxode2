@@ -249,4 +249,29 @@ rxTest({
     fd <- (sb(pp) - sb(pm)) / (2 * hh)
     expect_lt(max(abs(sj[["rx__sens_central_BY_tau__"]] - fd)), 5e-3)
   })
+
+  test_that("an lhs reading delay() is reported correctly in the output (#1140)", {
+    # The output data frame recalculates lhs after the solve; the delay history
+    # used to be freed at the end of each subject's solve, so such an lhs
+    # reported the constant pre-history (0) at every record even though the
+    # delayed value drove the ODE.
+    .m <- rxode2("a = 0.5 * delay(x, tau)\nd/dt(x) = -k * x + a")
+    .ev <- et(amt = 10, cmt = "x") %>% et(seq(0, 24, by = 0.5))
+    # tau = 2 lands t - tau on the output grid, so a[t] must match 0.5 * x[t - 2]
+    .check <- function(.s) {
+      .d <- as.data.frame(.s)
+      expect_true(all(.d$a[.d$time < 2] == 0))          # zero pre-history
+      .i <- which(.d$time > 2)
+      expect_equal(.d$a[.i], 0.5 * .d$x[.i - 4L], tolerance = 1e-6)
+    }
+    .check(rxSolve(.m, c(k = 0.3, tau = 2), .ev))                    # dop853+ros4 default
+    .check(rxSolve(.m, c(k = 0.3, tau = 2), .ev, method = "ros4"))   # stiff path
+    # multi-subject parallel solve: each subject keeps its own history
+    .p <- data.frame(k = seq(0.1, 0.9, length.out = 4), tau = 2)
+    .d <- as.data.frame(rxSolve(.m, .p, .ev, cores = 2))
+    for (.di in split(.d, .d$sim.id)) {
+      .i <- which(.di$time > 2)
+      expect_equal(.di$a[.i], 0.5 * .di$x[.i - 4L], tolerance = 1e-6)
+    }
+  })
 })
