@@ -222,6 +222,13 @@
   `dop853` (dense) instead of `liblsoda`, which recorded no delay history and
   silently returned pre-history values.
 
+- An lhs reading `delay()` is now reported correctly in the output data frame
+  (#1140).  The dense delay history was freed at the end of each subject's
+  solve, so the post-solve lhs recalculation returned the constant pre-history
+  (0) at every record even though the delayed value drove the ODE.  The history
+  is now kept until `rxSolveFree()` releases the subject, which also plugs a
+  leak on the discrete-adjoint (`rk4s`) path where it was never freed.
+
 ### `linCmt()` models
 
 - Fixed a compartment-indexing bug where a model with both an error model and

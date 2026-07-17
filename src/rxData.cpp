@@ -1867,6 +1867,16 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
     free(ind->idose);      ind->idose = NULL;
     ind->indOwnAlloc = 0;
   }
+  // The delay() dense history is allocated by the solver (rxDelayHistSlot) and
+  // kept after the solve so the output data frame's lhs recalculation can still
+  // interpolate delayed states; it is released here with the subject.
+  free(ind->delayHist);
+  ind->delayHist = NULL;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = 0;
+  ind->delayHistNeq = 0;
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
 }
 
 extern "C" void gFree(){
