@@ -414,6 +414,7 @@ rxTest({
   test_that("STIFF adjoint solvers (Rosenbrock/implicit): non-ss nmtest gradients match FD", {
     skip_on_cran()
     skip_on_ci()
+    skip_if_not_installed("nlmixr2data")
 
     d0 <- nlmixr2data::nmtest
     mt <- paste("d/dt(depot)=-ka*depot", "d/dt(central)=ka*depot-(cl/v)*central",

@@ -164,6 +164,7 @@ rxTest({
 
       test_that(sprintf("nStud > 1 makes event-table and keep columns ALTREP (theo_sd / WT) %s %s", rt, ad), {
 
+        skip_if_not_installed("nlmixr2data")
         one.cmt <- function() {
           ini({
             tka <- 0.45
@@ -296,6 +297,7 @@ rxTest({
     })
 
     test_that(sprintf("TBS columns are ALTREP via nStud path (addDosing=%s)", ad), {
+      skip_if_not_installed("nlmixr2data")
       one.cmt <- function() {
         ini({
           tka <- 0.45

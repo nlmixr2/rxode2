@@ -89,6 +89,7 @@ rxTest({
 
     test_that("rxSolve 'keep' maintains character output (#190/#622)", {
 
+      skip_if_not_installed("nlmixr2data")
       one.cmt <- function() {
         ini({
           tka <- 0.45
