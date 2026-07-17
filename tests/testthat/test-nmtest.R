@@ -2,6 +2,7 @@ rxTest({
 
   ## devtools::load_all()
 
+  skip_if_not_installed("nlmixr2data")
   d <- nlmixr2data::nmtest
   # internally rxode2 treats lag time evids differently than
   # non-lagged events

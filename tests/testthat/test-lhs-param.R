@@ -136,6 +136,7 @@ rxTest({
 
   test_that("dual order lhs mixed with non dual-order gives right order", {
 
+    skip_if_not_installed("nlmixr2data")
     m <- rxode2({
       param(THETA[1], THETA[2], THETA[3], THETA[4], Nominal)
       rx_yj_ ~ 162

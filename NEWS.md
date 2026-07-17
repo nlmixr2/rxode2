@@ -138,6 +138,11 @@
   otherwise-successful mixture fits.  Fixed mixture proportions are now excluded
   from the substitution.
 
+- Tests that use datasets from the suggested `nlmixr2data` package (`theo_sd`,
+  `warfarin`, `nmtest`) now guard their use with
+  `skip_if_not_installed("nlmixr2data")`, so the test suite runs cleanly when
+  `nlmixr2data` is not installed (#95).
+
 ### Estimation / symengine translation (`rxFromSE()`)
 
 - Convert raw R comparison/logical operators (`>`, `==`, `&`, ...), not only

@@ -1,6 +1,7 @@
 rxTest({ # mostly tested in 'rxode2et'
   test_that("warfarin model", {
 
+    skip_if_not_installed("nlmixr2data")
     warfarin <- nlmixr2data::warfarin
 
     mod <- rxode2({
@@ -928,6 +929,7 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     test_that("Missing evid gives the same results", {
+      skip_if_not_installed("nlmixr2data")
       theoSd <- nlmixr2data::theo_sd
       d <- theoSd[, names(theoSd) != "EVID"]
 
