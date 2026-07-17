@@ -133,6 +133,95 @@ rxTest({
     expect_error(rxModelVars(.out), NA)
   })
 
+  test_that("a chunk boundary separating delay() from its d/dt() no longer falls back", {
+    # delay(state, T) parses only where d/dt(state) is defined; a boundary between the
+    # two used to fail the chunk, print the parser's :ERR: block, and lose the chunking
+    # speedup to the whole-model fallback.  The call is now disguised across the
+    # boundary and restored byte-exact.
+    .pad <- vapply(1:60, function(i) {
+      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+    }, character(1))
+    .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
+                  .pad,
+                  "a=delay(x, exp(THETA[2]))+exp(THETA[1]+ETA[1])",
+                  "b=rxDelayD(x, exp(THETA[2]))*2+exp(THETA[1]+ETA[1])",
+                  "rx_pred_=a+b"), collapse = "\n")
+    .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+    # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
+    expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
+    # the calls are restored byte-exact, nothing disguised is left, and it still parses
+    expect_true(grepl("delay(x, exp(THETA[2]))", .chunk, fixed = TRUE))
+    expect_true(grepl("rxDelayD(x, exp(THETA[2]))", .chunk, fixed = TRUE))
+    expect_false(grepl("rx__disg_delay_", .chunk, fixed = TRUE))
+    expect_error(rxModelVars(.chunk), NA)
+    # same states and parameters as the whole-model pass
+    .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    .rv <- function(.x) {
+      .mv <- rxModelVars(.x)
+      list(state = .mv$state, params = sort(.mv$params[!grepl("^rx_expr_", .mv$params)]))
+    }
+    expect_identical(.rv(.whole), .rv(.chunk))
+  })
+
+  test_that("a chunk holding delay() and its d/dt() keeps optimizing the call", {
+    # co-located calls are NOT disguised, so their arguments still join the chunk's
+    # common-subexpression pool
+    .pad <- vapply(1:60, function(i) {
+      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+    }, character(1))
+    .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
+                  "a=delay(x, exp(THETA[2]))+1",
+                  "b=delay(x, exp(THETA[2]))*2",
+                  .pad,
+                  "rx_pred_=a+b"), collapse = "\n")
+    .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+    expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
+    # the delay argument was factored in place of the literal exp(THETA[2])
+    expect_true(grepl("delay\\(x, rx_expr_c[0-9]+_[0-9]+\\)", .chunk))
+  })
+
+  test_that("a delay() state with no d/dt() anywhere raises the whole-model error", {
+    # the disguise only hides a call whose d/dt() exists in another chunk; a malformed
+    # model must still reach the whole-model fallback and raise the unchunked error
+    .pad <- vapply(1:60, function(i) {
+      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+    }, character(1))
+    .m <- paste(c(.pad, "a=delay(x, exp(THETA[2]))+1", "rx_pred_=a"), collapse = "\n")
+    .err <- function(.chunkLines) {
+      tryCatch({
+        .z <- capture.output(suppressMessages(
+          rxOptExpr(.m, "model", chunkLines = .chunkLines)), type = "output")
+        NA_character_
+      }, error = function(e) conditionMessage(e))
+    }
+    .chunk <- .err(40L)
+    expect_false(is.na(.chunk))
+    expect_identical(.chunk, .err(0L))
+  })
+
+  test_that("delay disguise/restore round-trips and is chunk-local", {
+    .chunks <- list(
+      c("d/dt(x)=-k*x", "d/dt(y)=k*x-ke*y",
+        "a=delay(x, tau)+1"),                      # d/dt(x) here: kept as-is
+      c("b=delay(x, exp(tau))*2",                  # split from d/dt(x): disguised
+        "c=rxDelayD2(y, tau+delay(x, exp(tau)))",  # nested call inside a disguised one
+        "d=delay(z, tau)"))                        # no d/dt(z) anywhere: left alone
+    .d <- .rxDisguiseDelayChunks(.chunks)
+    expect_identical(.d$chunks[[1]], .chunks[[1]])
+    # every delay-family call split from its d/dt() is hidden in chunk 2 ...
+    expect_false(any(grepl("delay\\(x|rxDelayD2\\(y", .d$chunks[[2]])))
+    # ... while the call whose state has no d/dt() anywhere survives untouched
+    expect_true(grepl("delay(z, tau)", .d$chunks[[2]][3], fixed = TRUE))
+    # identical calls share one name; restore is byte-exact
+    expect_identical(.d$chunks[[2]][1],
+                     sub("delay(x, exp(tau))", names(.d$map)[match("delay(x, exp(tau))", .d$map)],
+                         .chunks[[2]][1], fixed = TRUE))
+    .joined <- vapply(.d$chunks, paste, character(1), collapse = "\n")
+    expect_identical(.rxRestoreDelay(paste(.joined, collapse = "\n"), .d$map),
+                     paste(vapply(.chunks, paste, character(1), collapse = "\n"),
+                           collapse = "\n"))
+  })
+
   test_that("a filename is read as a file when chunking, like the unchunked call", {
     .f <- tempfile(fileext = ".rx")
     on.exit(unlink(.f), add = TRUE)

@@ -31,9 +31,14 @@
   Compartment-scoped assignments (a `state(0)=` initial condition or an
   `f`/`alag`/`lag`/`rate`/`dur` dosing modifier) are disguised in place while the
   chunks are optimized, so they can be chunked without being separated from their
-  `d/dt()`.  A chunk is only a fragment and so can fail to optimize where the
-  whole model would not; if any chunk fails the whole model is optimized instead,
-  so a malformed model still raises the error the unchunked call raises.
+  `d/dt()`.  A `delay(state, T)` call (or its `rxDelayD`/`rxDelayD2`/`rxDelayD3`
+  sensitivity derivatives) that a chunk boundary separates from its `d/dt(state)`
+  is likewise disguised and restored, so a large DDE (sensitivity) model chunks
+  without falling back; a call in the same chunk as its `d/dt()` still joins the
+  common-subexpression pool.  A chunk is only a fragment and so can fail to
+  optimize where the whole model would not; if any chunk fails the whole model is
+  optimized instead, so a malformed model still raises the error the unchunked
+  call raises.
 
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the
