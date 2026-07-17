@@ -264,4 +264,30 @@ d/dt(cen) = ka*depot-k*cen
 
     ## tmp <- rxode2(mod, calcSens=list(eta=c("eta_ka", "eta_mtt"), theta=c("cl", "vc")));
   })
+
+  test_that("df(state)/dy(THETA[n]) and dy(ETA[n]) do not segfault", {
+    # The grammar accepts a bracketed THETA[n]/ETA[n] in dy(), but handleDy()
+    # never registered the synthetic _THETA_n_ / _ETA_n_ symbol, leaving tb.ix
+    # = -2; that -2 was stored in tb.dy[] and assertCorrectDfDy() then read
+    # tb.ss.line[-2] -- an out-of-bounds access that crashed R.  nlm/FOCEi hit
+    # this by re-parsing their generated calcJac model (parameters expressed as
+    # THETA[n]) in the residual/table step.  It must error or parse, never crash.
+    # The operative property is simply "did not crash": rxModelVars() returns
+    # normally, whether it parses the model or raises a clean R error.
+    .safe <- function(m) {
+      .r <- tryCatch(suppressMessages(rxModelVars(m)),
+                     error = function(e) "clean-error")
+      !is.null(.r)
+    }
+    expect_true(.safe("d/dt(x1)=-x1\nx1(0)=1\ny=x1\ndf(x1)/dy(THETA[1])=0\n"))
+    expect_true(.safe("d/dt(x1)=-x1\nx1(0)=1\ny=x1\ndf(x1)/dy(ETA[1])=0\n"))
+    # a full re-parsed calcJac DDE model (delay in a product of delayed states,
+    # parameters as THETA[n], the FOCEi tad=/dosenum= bookkeeping) must not crash
+    expect_true(.safe(paste0(
+      "cmt(x1);\ncmt(x2);\nka=2495\nke=2.52\nV=2.79\n",
+      "d/dt(x1)=-ka*x1\nd/dt(x2)=ka*x1-ke*x2\n",
+      "d/dt(cen)=exp(THETA[1])*delay(x1, exp(THETA[2]))*delay(x2, exp(THETA[2]))\n",
+      "cen(0)=0\ndf(cen)/dy(x1)=0\ndf(cen)/dy(THETA[1])=0\ndf(cen)/dy(THETA[2])=0\n",
+      "df(cen)/dy(THETA[3])=0\ny=cen\ntad=t-tlast()\n")))
+  })
 })
