@@ -1277,7 +1277,56 @@ in common:</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
-<span><span class="co">#&gt; Error : not all the models have variables in common (use `common=FALSE` to allow this)</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: the appended models have no variables in common (use `common=FALSE` to</span></span>
+<span><span class="co">#&gt; suppress this warning)</span></span>
+<span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
+<span><span class="co">#&gt;       tka       tcl        tv    add.sd      tkin     tkout     tic50     gamma </span></span>
+<span><span class="co">#&gt;  1.568312  2.718282 31.500392  0.700000  0.000000  0.000000  2.302585  1.000000 </span></span>
+<span><span class="co">#&gt;    idr.sd </span></span>
+<span><span class="co">#&gt;  1.000000 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co"><span style="font-weight: bold;">#&gt; States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span></span>
+<span><span class="co">#&gt;   Compartment Number Compartment Name</span></span>
+<span><span class="co">#&gt; 1                  1            depot</span></span>
+<span><span class="co">#&gt; 2                  2           center</span></span>
+<span><span class="co">#&gt; 3                  3              eff</span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Multiple Endpoint Model (</span><span style="color: #0000BB; font-weight: bold;">$multipleEndpoint</span><span style="font-weight: bold;">):</span> ──  </span></span>
+<span><span class="co">#&gt;   variable                cmt                dvid*</span></span>
+<span><span class="co">#&gt; 1   cp ~ …  cmt='cp' or cmt=4  dvid='cp' or dvid=1</span></span>
+<span><span class="co">#&gt; 2  eff ~ … cmt='eff' or cmt=3 dvid='eff' or dvid=2</span></span>
+<span><span class="co">#&gt;   * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span></span>
+<span><span class="co">#&gt; function() {</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         tka &lt;- 1.56831218549017</span></span>
+<span><span class="co">#&gt;         tcl &lt;- 2.71828182845905</span></span>
+<span><span class="co">#&gt;         tv &lt;- 31.5003923087479</span></span>
+<span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
+<span><span class="co">#&gt;         tkin &lt;- 0</span></span>
+<span><span class="co">#&gt;         tkout &lt;- 0</span></span>
+<span><span class="co">#&gt;         tic50 &lt;- 2.30258509299405</span></span>
+<span><span class="co">#&gt;         gamma &lt;- fix(1)</span></span>
+<span><span class="co">#&gt;         idr.sd &lt;- c(0, 1)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         ka &lt;- tka</span></span>
+<span><span class="co">#&gt;         cl &lt;- tcl</span></span>
+<span><span class="co">#&gt;         v &lt;- tv</span></span>
+<span><span class="co">#&gt;         d/dt(depot) &lt;- -ka * depot</span></span>
+<span><span class="co">#&gt;         d/dt(center) &lt;- ka * depot - cl/v * center</span></span>
+<span><span class="co">#&gt;         cp &lt;- center/v</span></span>
+<span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
+<span><span class="co">#&gt;         kin &lt;- exp(tkin)</span></span>
+<span><span class="co">#&gt;         kout &lt;- exp(tkout)</span></span>
+<span><span class="co">#&gt;         ic50 &lt;- exp(tic50)</span></span>
+<span><span class="co">#&gt;         d/dt(eff) &lt;- kin - kout * (1 - ceff^gamma/(ic50^gamma + </span></span>
+<span><span class="co">#&gt;             ceff^gamma))</span></span>
+<span><span class="co">#&gt;         eff ~ add(idr.sd)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>If you want to combine the models without respecting the having the
 variables in common, you can use <code>common=FALSE</code>:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
@@ -1419,7 +1468,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55cd46b71d40&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x56229d896fc8&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>

@@ -293,7 +293,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; duckdb is keeping downloaded extensions in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpeD215l/duckdb/extensions</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpFHdeVA/duckdb/extensions</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends, so extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> To keep them, point `options(duckdb.extension_directory =)` or the `DUCKDB_EXTENSION_DIRECTORY` environment variable at a permanent path.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 7</span></span></span>
@@ -322,7 +322,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpeD215l/rxChunk4dac32e626c1' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxChunk4d5a1a19bc34' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -419,7 +419,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpeD215l/rxDemo4dac55dfd673' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxDemo4d5a5b6c61af' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -471,7 +471,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpeD215l/rxFile4dac7f85a89a' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxFile4d5a7d308081' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
