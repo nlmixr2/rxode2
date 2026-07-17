@@ -34,8 +34,11 @@
 // individual pred-mode solve writes and reads at the same compact stride
 // without mutating shared op->neq from a parallel worker thread.
 // NOTE: getAdvan() + neqOverride is unsupported when op->numLin > 0
-// (op->linOffset is computed from the full neq layout).  In nlmixr2est's
-// FOCEi flow the predNoLhs model has numLin == 0, so this is fine.
+// (op->linOffset is computed from the full neq layout).  A linCmt() model
+// mixed with ODEs does reach nlmixr2est's FOCEi flow with numLin > 0 on the
+// predNoLhs model, so this is NOT covered by the model itself; nlmixr2est
+// translates those models with linToOde() before estimating (its issue #286),
+// which leaves numLin == 0 here.
 static inline int rxEffNeq(const rx_solving_options_ind *ind,
                            const rx_solving_options *op) {
   int o = ind->neqOverride;
