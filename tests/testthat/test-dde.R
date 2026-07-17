@@ -260,18 +260,19 @@ rxTest({
     # tau = 2 lands t - tau on the output grid, so a[t] must match 0.5 * x[t - 2]
     .check <- function(.s) {
       .d <- as.data.frame(.s)
-      expect_true(all(.d$a[.d$time < 2] == 0))          # zero pre-history
+      # at t = tau the lookup time equals the solve start (td <= delayT0), so
+      # the boundary record still legitimately reports the pre-history (0)
+      expect_equal(.d$a[.d$time <= 2], rep(0, sum(.d$time <= 2)), tolerance = 1e-12)
+      # match the delayed lookup by time rather than a row offset
+      .j <- match(.d$time - 2, .d$time)
       .i <- which(.d$time > 2)
-      expect_equal(.d$a[.i], 0.5 * .d$x[.i - 4L], tolerance = 1e-6)
+      expect_equal(.d$a[.i], 0.5 * .d$x[.j[.i]], tolerance = 1e-6)
     }
     .check(rxSolve(.m, c(k = 0.3, tau = 2), .ev))                    # dop853+ros4 default
     .check(rxSolve(.m, c(k = 0.3, tau = 2), .ev, method = "ros4"))   # stiff path
     # multi-subject parallel solve: each subject keeps its own history
     .p <- data.frame(k = seq(0.1, 0.9, length.out = 4), tau = 2)
-    .d <- as.data.frame(rxSolve(.m, .p, .ev, cores = 2))
-    for (.di in split(.d, .d$sim.id)) {
-      .i <- which(.di$time > 2)
-      expect_equal(.di$a[.i], 0.5 * .di$x[.i - 4L], tolerance = 1e-6)
-    }
+    .d <- rxSolve(.m, .p, .ev, cores = 2)
+    for (.di in split(as.data.frame(.d), .d$sim.id)) .check(.di)
   })
 })
