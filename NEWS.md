@@ -124,6 +124,12 @@
   sensitivities"); set `options(rxode2.test.verbose = TRUE)` to see them.
   Messages asserted with `expect_message()` are unaffected.
 
+- `coef()` methods for `rxUi` models (and model functions).  By default
+  `coef()` returns the fixed-effect (`theta`) estimates; `coef(model,
+  level = "omega")` returns the random-effect variability matrix and
+  `coef(model, level = "all")` returns both.  `nlme::fixef()` continues to
+  return the fixed effects.
+
 ## Bug fixes
 
 - `rxAppendModel()` now warns (instead of erroring) when the appended models
