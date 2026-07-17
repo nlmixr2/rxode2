@@ -157,7 +157,7 @@ rxTest({
     expect_true("idr.sd" %in% m1$iniDf$name)
     expect_true("tv" %in% m1$iniDf$name)
 
-    expect_error(rxAppendModel(ocmt, idr))
+    expect_warning(rxAppendModel(ocmt, idr), "no variables in common")
 
     idr <- function() {
       ini({

@@ -126,6 +126,10 @@
 
 ## Bug fixes
 
+- `rxAppendModel()` now warns (instead of erroring) when the appended models
+  have no variables in common, so the combined model is still returned; use
+  `common=FALSE` to suppress the warning (#520).
+
 - `rxFixPop()` no longer tries to literally substitute a fixed mixture
   proportion (`mix()`).  A mixture proportion must stay a named model-block
   variable, so substituting its value made the re-parse throw from `mix()`
