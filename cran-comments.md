@@ -34,6 +34,25 @@ catchable R error stating that the solving environment is not set up.
 This turns the pre-existing `nlmixr2est` 6.0.1 crash into a graceful
 error while the `nlmixr2est` fix propagates through CRAN.
 
+## Reverse dependencies
+
+We ran `revdepcheck` on all 26 CRAN reverse dependencies (the `nlmixr2`
+suite, `babelmixr2`, `campsis`, `ggPMX`, `monolix2rx`, `nonmem2rx`,
+`posologyr`, `ruminate`, `shinyMixR`, `ubiquity`, `xpose.xtras`, ...),
+comparing CRAN `rxode2` 5.1.2 with this submission.  All 26 pass with
+no new errors, warnings, or notes attributable to `rxode2`.
+
+`revdepcheck` initially flagged one "new problem" in `PKbioanalysis`,
+but it is a local false positive of parallel checking: its tests open a
+shared per-user DuckDB file that lives outside the isolated check
+library, so the concurrent "old" and "new" check jobs raced for the
+file lock and one failed to acquire it.  Re-running `PKbioanalysis`
+alone (a single worker) passes cleanly with no errors.
+
+The `shinyMixR` vignette error (a missing figure inside its own
+package) is present identically with both the CRAN and the submitted
+`rxode2`, so it is not a new problem.
+
 # rxode2 5.1.2
 
 * CRAN has asked us to fix `nlmixr2est` `m1-san` which seems to be
