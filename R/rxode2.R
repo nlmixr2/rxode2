@@ -293,7 +293,7 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
-#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
+#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion removeSource
 #' @importFrom stats setNames update dnorm integrate
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
