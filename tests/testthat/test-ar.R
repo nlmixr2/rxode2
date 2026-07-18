@@ -19,15 +19,33 @@ rxTest({
       })
     }
     ui <- rxode2(.estCor)
-    # estimated correlation lives in iniDf (err == "ar"), predDf$ar is NA
-    expect_true(is.na(ui$predDf$ar))
+    # estimated correlation lives in iniDf (err == "ar"); there is no $predDf
+    # ar column (it must never be added -- reverse dependencies rely on the
+    # $predDf schema)
+    expect_false("ar" %in% colnames(ui$predDf))
     .w <- which(ui$iniDf$name == "ar1.cor")
     expect_equal(ui$iniDf$err[.w], "ar")
     expect_equal(ui$iniDf$condition[.w], "cp")
     expect_equal(ui$iniDf$lower[.w], 0)
     expect_equal(ui$iniDf$upper[.w], 1)
 
-    # modeled correlation lands in predDf$ar
+    # a numeric literal correlation becomes an auto-generated FIX parameter in
+    # the $iniDf (rx.<endpoint>.ar), not a $predDf entry
+    .litCor <- function() {
+      ini({tcl <- log(1); add.sd <- 0.5})
+      model({cl <- exp(tcl); cp <- cl; cp ~ add(add.sd) + ar(0.5)})
+    }
+    .lit <- rxode2(.litCor)
+    expect_false("ar" %in% colnames(.lit$predDf))
+    .wl <- which(.lit$iniDf$name == "rx.cp.ar")
+    expect_equal(length(.wl), 1L)
+    expect_true(.lit$iniDf$fix[.wl])
+    expect_equal(.lit$iniDf$est[.wl], 0.5)
+    expect_equal(.lit$iniDf$err[.wl], "ar")
+    expect_equal(.lit$iniDf$condition[.wl], "cp")
+
+    # a modeled correlation (a calculated model variable) is neither a parameter
+    # nor a $predDf column; it is recovered from the endpoint error expression
     .modCor <- function() {
       ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; tcor <- 0.3})
       model({
@@ -37,14 +55,10 @@ rxTest({
         cp ~ add(add.sd) + ar(corv)
       })
     }
-    expect_equal(rxode2(.modCor)$predDf$ar, "corv")
-
-    # numeric literal correlation
-    .litCor <- function() {
-      ini({tcl <- log(1); add.sd <- 0.5})
-      model({cl <- exp(tcl); cp <- cl; cp ~ add(add.sd) + ar(0.5)})
-    }
-    expect_equal(rxode2(.litCor)$predDf$ar, "0.5")
+    .mod <- rxode2(.modCor)
+    expect_false("ar" %in% colnames(.mod$predDf))
+    expect_false("corv" %in% .mod$iniDf$name)
+    expect_true(rxHasAr(.mod))
   })
 
   test_that("ar() works with a variety of transformably-normal error models", {

@@ -1,5 +1,20 @@
 # rxode2 5.1.3
 
+## Breaking / compatibility changes
+
+- The `ar` column that had been added to `$predDf` was removed.  `$predDf` and
+  `$iniDf` are a stable, exported interface relied on by reverse dependencies
+  (nlmixr2est, babelmixr2, ...) and by fits saved with earlier versions, so
+  their schema must not grow.  Instead, a numeric literal supplied to an
+  error-model function (e.g. `add(0.7)`, `prop(0.1)`, `ar(0.5)`) is now parsed
+  into an auto-generated, uniquely named `rx`-prefixed **FIX** parameter in the
+  `$iniDf` (`rx.<endpoint>.<func>`), keyed to its endpoint through the existing
+  `err`/`condition` columns -- exactly like a user-written fixed residual
+  parameter.  (This also fixes literals such as `add(0.7)` that were previously
+  silently dropped.)  Estimated (`ar(rho)`) and modeled (`ar(corv)`)
+  correlations continue to work; the modeled correlation is recovered from the
+  endpoint's error expression rather than from a column.
+
 ## New features
 
 - `rxOptExpr()` gains `chunkLines` and `parallel`, to optimize a large

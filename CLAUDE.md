@@ -124,6 +124,23 @@ devtools::document()
 - `rxUiGet` is an S3 dispatch system: `ui$property` calls `rxUiGet.property(x)`
 - Model piping (`R/piping*.R`) copies and modifies `rxUi` objects via `.copyUi()`
 
+> [!IMPORTANT]
+> **`$predDf` and `$iniDf` are a stable, exported interface — do not change
+> their schema without explicit user permission.** Their columns and structure
+> are relied on for model export/serialization and by reverse dependencies
+> (nlmixr2est, babelmixr2, nonmem2rx, …), including fits/UIs that were saved by
+> earlier versions. Adding, removing, renaming, or repurposing a column is a
+> breaking change: never do it as an incidental part of another change — ask
+> first. Prefer representing new information with the *existing* schema (e.g. a
+> literal residual value becomes an auto-generated FIX row in `$iniDf`, keyed to
+> its endpoint via the existing `err`/`condition` columns — see
+> `.rxErrLiteralToFixParam` in `R/err.R` — rather than a new `$predDf` column).
+>
+> **Reverse-dependency compatibility is fixed here, in rxode2.** When an rxode2
+> change breaks a reverse dependency, the released reverse dependency cannot be
+> patched retroactively, so the fix belongs in rxode2 — not in the reverse
+> dependency.
+
 **Event Table** (`src/et.cpp`, `src/etTran.cpp`, `R/et.R`):
 
 - `et()` constructs dosing/sampling event tables
