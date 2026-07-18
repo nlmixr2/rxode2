@@ -14,6 +14,9 @@ rx_solve *getRxSolve_(void);
 // The global solve struct (`&rx_global`) and its options (`&op_global`) are
 // static, so the meaningful "not set up" signal is `rx->subjects` (backed by
 // `inds_global`, which stays NULL until a solve allocates the subject array).
+//
+// Call sites pass `__func__` for `what` so the reported accessor name always
+// matches the calling function without manual upkeep across renames.
 static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
   if (rx == NULL) {
     rx = getRxSolve_();
@@ -27,12 +30,12 @@ static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
 }
 
 rx_solving_options* getSolvingOptions(rx_solve* rx) {
-  rx = rxSolveOrError(rx, "getSolvingOptions");
+  rx = rxSolveOrError(rx, __func__);
   return rx->op;
 }
 
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
-  rx = rxSolveOrError(rx, "getSolvingOptionsInd");
+  rx = rxSolveOrError(rx, __func__);
   uint32_t nall = rx->nsub*rx->nsim;
   if (id < 0 || (uint32_t)id >= nall) {
     Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
@@ -105,7 +108,7 @@ void setIndMixest(rx_solving_options_ind* ind, int mixest) {
 
 int getRxMixnum(rx_solve *rx) {
   // This is the number of mixtures
-  rx = rxSolveOrError(rx, "getRxMixnum");
+  rx = rxSolveOrError(rx, __func__);
   return rx->mixnum;
 }
 
@@ -289,47 +292,47 @@ void resetOpBadSolve(rx_solving_options* op) {
 ////////////////////////////////////////////////////////////////////////
 
 int getRxNsub(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNsub");
+  rx = rxSolveOrError(rx, __func__);
   return (int)rx->nsub;
 }
 
 int hasRxLimit(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "hasRxLimit");
+  rx = rxSolveOrError(rx, __func__);
   return rx->limit;
 }
 
 int hasRxCens(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "hasRxCens");
+  rx = rxSolveOrError(rx, __func__);
   return rx->cens;
 }
 
 int getRxNall(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNall");
+  rx = rxSolveOrError(rx, __func__);
   return rx->nall;
 }
 
 int getRxNobs(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNobs");
+  rx = rxSolveOrError(rx, __func__);
   return rx->nobs;
 }
 
 int getRxNobs2(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNobs2");
+  rx = rxSolveOrError(rx, __func__);
   return rx->nobs2;
 }
 
 int getRxNsim(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNsim");
+  rx = rxSolveOrError(rx, __func__);
   return (int)rx->nsim;
 }
 
 int getRxNpars(rx_solve *rx) {
-  rx = rxSolveOrError(rx, "getRxNpars");
+  rx = rxSolveOrError(rx, __func__);
   return rx->npars;
 }
 
 int getOrdId(rx_solve *rx, int solveid) {
-  rx = rxSolveOrError(rx, "getOrdId");
+  rx = rxSolveOrError(rx, __func__);
   return rx->ordId[solveid];
 }
 ////////////////////////////////////////////////////////////////////////

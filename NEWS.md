@@ -139,7 +139,7 @@
 
 - The C accessors exposed through the function-pointer API (`getRxNsub()`,
   `getSolvingOptions()`, `getSolvingOptionsInd()`, and the other `rx_solve*`
-  accessors) no longer segfault when handed a `NULL` or un-initialized solve.
+  accessors) no longer segfault when handed a `NULL` or uninitialized solve.
   They now fall back to the global solve and, if it is still not set up, raise a
   normal catchable R error stating that the solving environment is not set up,
   instead of dereferencing a `NULL` pointer and crashing the R process.  This
