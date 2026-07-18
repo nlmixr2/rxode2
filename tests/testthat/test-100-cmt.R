@@ -4,7 +4,7 @@ rxTest({
   et <- eventTable() |> add.sampling(0:180)
 
   test_that("initial conditions work", {
-    inits <- structure(rep(10, 105), .Names = sprintf("amt%s", 1:105))
+    inits <- structure(rep(10, 105), names = sprintf("amt%s", 1:105))
 
     dat <- mod |> rxSolve(et, c(k1 = 0.1), inits = inits)
 

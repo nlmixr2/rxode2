@@ -277,8 +277,8 @@ rxTest({
         ev
       )
 
-      expect_equal(.ni$above, structure(integer(0), .Names = character(0)))
-      expect_equal(.ni$below, structure(integer(0), .Names = character(0)))
+      expect_equal(.ni$above, structure(integer(0), names = character(0)))
+      expect_equal(.ni$below, structure(integer(0), names = character(0)))
       expect_equal(.ni$idName, "id")
       expect_s3_class(.ni$omega, "lotri")
       expect_equal(names(.ni$omega), "id")

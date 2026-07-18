@@ -1407,7 +1407,7 @@ d/dt(blood)     = a*intestine - b*blood
       trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
+        ID = structure(1L, class = "factor", levels = "1"),
         TIME = 0, EVID = 10140L, AMT = 10, II = 0, DV = NA_real_
       ),
       class = "data.frame", row.names = c(NA, -1L)
@@ -1419,7 +1419,7 @@ d/dt(blood)     = a*intestine - b*blood
       trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
+        ID = structure(1L, class = "factor", levels = "1"),
         TIME = 0, EVID = 90140L, AMT = 0, II = 0, DV = NA_real_
       ),
       class = "data.frame", row.names = c(NA, -1L)

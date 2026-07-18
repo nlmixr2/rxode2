@@ -45,7 +45,7 @@
 #' Base past(state, tau) <- expr history lines from a symengine env
 #'
 #' Rebuilds the base `past(state,tau)=expr` line(s) from the stored
-#' rx__pastRhs_<state>__ / rx__pastTau_<state>__ text; used by gradient-free
+#' `rx__pastRhs_STATE__` / `rx__pastTau_STATE__` text; used by gradient-free
 #' estimators (SAEM) whose symengine env is built without sensitivities.
 #'
 #' @param model a symengine environment (as from `.loadSymengine`/`rxS`).
