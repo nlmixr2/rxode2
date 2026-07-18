@@ -767,14 +767,31 @@ rxTest({
     }
     .u1 <- .mk(-4.75, 0.22)
     .u2 <- .mk(-2.60, -1.44)
-    .ev <- et(amt = 100, cmt = "centre") |> et(seq(0, 24, by = 4))
+    # Default (unnamed) dosing so the linCmt conversion is actually adopted; a
+    # named `cmt = "centre"` would trigger the compatibility fallback and the
+    # cache path under test would never run.
+    .ev <- et(amt = 100) |> et(seq(0, 24, by = 4))
+
+    .getDll <- function(r) {
+      normalizePath(
+        get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
+        winslash = "/", mustWork = FALSE)
+    }
+
     # Solve u1 first (populates the cache), then u2 (previously collided)
     .s1 <- suppressWarnings(rxSolve(.u1, .ev))
     .s2 <- suppressWarnings(rxSolve(.u2, .ev))
-    expect_false(isTRUE(all.equal(.s1$cp, .s2$cp)))  # must differ by ini()
-    # Each must match its own explicit-parameter / ODE solve
     .g1 <- suppressWarnings(rxSolve(.u1, .ev, useLinCmt = FALSE))
     .g2 <- suppressWarnings(rxSolve(.u2, .ev, useLinCmt = FALSE))
+
+    # The linCmt conversion must actually be in play, otherwise the cache path
+    # is never exercised: the default solve must use a different DLL than the
+    # ODE solve.
+    expect_false(identical(.getDll(.s1), .getDll(.g1)),
+                 label = "useLinCmt default must adopt the converted linCmt DLL")
+
+    expect_false(isTRUE(all.equal(.s1$cp, .s2$cp)))  # must differ by ini()
+    # Each must match its own explicit-parameter / ODE solve
     expect_equal(.s1$cp, .g1$cp, tolerance = 1e-4)
     expect_equal(.s2$cp, .g2$cp, tolerance = 1e-4)
   })
