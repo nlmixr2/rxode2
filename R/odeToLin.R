@@ -577,9 +577,74 @@
 ## with the same model.
 .odeToLinCache <- new.env(parent = emptyenv(), hash = TRUE)
 
-## Cheap cache key: normalized text of all model lines.
+## Cheap cache key: normalized text of all model lines plus the initial
+## estimates.  The converted model rebuilt by `.rebuildRxUiFromExpr()` bakes in
+## `ui$iniFun`, so two models that share the same `model({})` equations but
+## differ only in their `ini({})` block must map to distinct cache entries.
+## Keying on the equations alone caused the second model to reuse the first
+## model's parameters (see the rxSolve(useLinCmt=TRUE) regression).
 .odeToLinCacheKey <- function(ui) {
-  paste0(vapply(ui$lstExpr, deparse1, character(1)), collapse = "\n")
+  .model <- paste0(vapply(ui$lstExpr, deparse1, character(1)), collapse = "\n")
+  .ini <- if (length(ui$iniDf$cond) > 0L) deparse1(ui$iniFun) else ""
+  paste0(.model, "\n#### ini ####\n", .ini)
+}
+
+## Package-scope cache: maps the same model-text key used by `.odeToLinCache`
+## to the character vector of compartment names the conversion renamed away.
+## Deriving these requires `rxModelVars()` on both the original and converted
+## models, which is constant per converted model, so it is computed once here
+## rather than on every solve.
+.odeToLinLostCache <- new.env(parent = emptyenv(), hash = TRUE)
+
+## The compartment names the ODE->linCmt conversion renamed away (i.e. present
+## in the original model but not the converted one).  Cached by model key.
+.odeToLinLostStates <- function(cacheKey, original, converted) {
+  if (exists(cacheKey, envir = .odeToLinLostCache, inherits = FALSE)) {
+    return(get(cacheKey, envir = .odeToLinLostCache, inherits = FALSE))
+  }
+  .lost <- setdiff(rxModelVars(original)$state, rxModelVars(converted)$state)
+  assign(cacheKey, .lost, envir = .odeToLinLostCache)
+  .lost
+}
+
+## Is a converted linCmt() model safe to use for the given solve data?
+##
+## The ODE->linCmt conversion renames compartments (e.g. an ODE `centre`
+## compartment becomes linCmt's `central`).  If the event data addresses a
+## compartment (in a dose or an observation record) by the *name* of an original
+## ODE compartment that the converted model no longer has, that record would
+## silently be routed nowhere -- producing all-zero predictions.  In that case
+## fall back to the original ODE model so behaviour matches solving without the
+## linCmt optimization.  `lost` is the (pre-computed) set of renamed-away
+## compartment names.  Numeric compartment indices are preserved by the
+## conversion, and names that are not compartments in the original model (e.g.
+## the special "(default)" placeholder in an event table) are handled
+## identically by both models, so both are left untouched here.
+.odeToLinCmtCompatible <- function(lost, data) {
+  if (length(lost) == 0L) {
+    return(TRUE)
+  }
+  if (is.null(data) || !is.data.frame(data)) {
+    return(TRUE)
+  }
+  .nm <- names(data)
+  .col <- .nm[tolower(.nm) == "cmt"]
+  if (length(.col) == 0L) {
+    return(TRUE)
+  }
+  .cmt <- data[[.col[1L]]]
+  if (is.factor(.cmt)) {
+    .cmt <- as.character(.cmt)
+  }
+  if (!is.character(.cmt)) {
+    ## numeric indices are preserved by the conversion
+    return(TRUE)
+  }
+  .cmt <- unique(.cmt[!is.na(.cmt)])
+  if (length(.cmt) == 0L) {
+    return(TRUE)
+  }
+  !any(.cmt %in% lost)
 }
 
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).

@@ -2157,7 +2157,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
       if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) { # nolint
-        object <- .odeToLinCache[[.cacheKey]] # nolint
+        .converted <- .odeToLinCache[[.cacheKey]] # nolint
       } else {
         .linExpr   <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
         # fall back to the original ODE model
@@ -2168,7 +2168,22 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
           .converted <- object
         }
         assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
+      }
+      # Only adopt the converted linCmt() model when the solve data does not
+      # address a compartment by a name the conversion renames away (otherwise
+      # those records would be routed nowhere, giving all-zero predictions).
+      # The renamed-away compartment set is derived once per model and cached.
+      .lost <- .odeToLinLostStates(.cacheKey, object, .converted) # nolint
+      if (length(.lost) == 0L) {
         object <- .converted
+      } else {
+        .solveData <- .rxSolveUiEventData(events) # nolint
+        if (is.null(.solveData)) {
+          .solveData <- .rxSolveUiEventData(params) # nolint
+        }
+        if (.odeToLinCmtCompatible(.lost, .solveData)) { # nolint
+          object <- .converted
+        }
       }
     }
   }

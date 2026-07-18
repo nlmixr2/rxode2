@@ -747,4 +747,80 @@ rxTest({
     expect_equal(.r$Cc, .rOde$Cc, tolerance = 1e-4)
   })
 
+  test_that("odeToLin cache distinguishes models that differ only in ini()", {
+    # Regression: the ODE->linCmt conversion cache was keyed on the model
+    # equations alone.  Two models with identical model({}) but different
+    # ini({}) collided, so the second rxSolve(useLinCmt=TRUE) reused the first
+    # model's parameters -- yielding identical predictions regardless of ini().
+    .mk <- function(tclVal, tvVal) {
+      .f <- function() {
+        ini({ tcl <- 0; tv <- 0; add.err <- 1 })
+        model({
+          cl <- exp(tcl); v <- exp(tv); k <- cl / v
+          d/dt(centre) <- -k * centre
+          cp <- centre / v
+          cp ~ add(add.err)
+        })
+      }
+      .f <- rxode2::ini(.f, tcl = tclVal, tv = tvVal)
+      suppressMessages(rxode2(.f))
+    }
+    .u1 <- .mk(-4.75, 0.22)
+    .u2 <- .mk(-2.60, -1.44)
+    # Default (unnamed) dosing so the linCmt conversion is actually adopted; a
+    # named `cmt = "centre"` would trigger the compatibility fallback and the
+    # cache path under test would never run.
+    .ev <- et(amt = 100) |> et(seq(0, 24, by = 4))
+
+    .getDll <- function(r) {
+      normalizePath(
+        get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
+        winslash = "/", mustWork = FALSE)
+    }
+
+    # Solve u1 first (populates the cache), then u2 (previously collided)
+    .s1 <- suppressWarnings(rxSolve(.u1, .ev))
+    .s2 <- suppressWarnings(rxSolve(.u2, .ev))
+    .g1 <- suppressWarnings(rxSolve(.u1, .ev, useLinCmt = FALSE))
+    .g2 <- suppressWarnings(rxSolve(.u2, .ev, useLinCmt = FALSE))
+
+    # The linCmt conversion must actually be in play, otherwise the cache path
+    # is never exercised: the default solve must use a different DLL than the
+    # ODE solve.
+    expect_false(identical(.getDll(.s1), .getDll(.g1)),
+                 label = "useLinCmt default must adopt the converted linCmt DLL")
+
+    expect_false(isTRUE(all.equal(.s1$cp, .s2$cp)))  # must differ by ini()
+    # Each must match its own explicit-parameter / ODE solve
+    expect_equal(.s1$cp, .g1$cp, tolerance = 1e-4)
+    expect_equal(.s2$cp, .g2$cp, tolerance = 1e-4)
+  })
+
+  test_that("auto linCmt conversion is skipped when data doses a named ODE compartment", {
+    # Regression: odeToLin renames the ODE compartment (e.g. `centre`) to the
+    # linCmt compartment (`central`).  Event data that doses the compartment by
+    # its ODE name lost the dose after conversion, producing all-zero
+    # predictions.  The default solve must fall back to the ODE model and match
+    # useLinCmt = FALSE.
+    .mod <- suppressMessages(rxode2(function() {
+      ini({ tcl <- -4.75; tv <- 0.22; add.err <- 1 })
+      model({
+        cl <- exp(tcl); v <- exp(tv); k <- cl / v
+        d/dt(centre) <- -k * centre
+        cp <- centre / v
+        cp ~ add(add.err)
+      })
+    }))
+    .ev <- data.frame(ID = 1L,
+                      TIME = c(0, 2, 4, 8, 12, 24),
+                      AMT = c(100, 0, 0, 0, 0, 0),
+                      EVID = c(1L, 0L, 0L, 0L, 0L, 0L),
+                      CMT = "centre",
+                      stringsAsFactors = FALSE)
+    .rLin <- suppressWarnings(rxSolve(.mod, .ev))                     # default (useLinCmt=TRUE)
+    .rOde <- suppressWarnings(rxSolve(.mod, .ev, useLinCmt = FALSE))
+    expect_false(all(.rLin$cp == 0))            # the bug produced all-zero cp
+    expect_equal(.rLin$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
 })
