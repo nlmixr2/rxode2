@@ -44,6 +44,28 @@ rxTest({
     expect_equal(.lit$iniDf$err[.wl], "ar")
     expect_equal(.lit$iniDf$condition[.wl], "cp")
 
+    # numeric literals in other error functions (add()/prop()) are likewise
+    # turned into FIX $iniDf params (rx.<endpoint>.<func>) rather than being
+    # silently dropped
+    .litAddProp <- function() {
+      ini({tcl <- log(1)})
+      model({cl <- exp(tcl); cp <- cl; cp ~ add(0.7) + prop(0.1)})
+    }
+    .lap <- rxode2(.litAddProp)
+    .wa <- which(.lap$iniDf$name == "rx.cp.add")
+    expect_equal(length(.wa), 1L)
+    expect_true(.lap$iniDf$fix[.wa])
+    expect_equal(.lap$iniDf$est[.wa], 0.7)
+    expect_equal(.lap$iniDf$err[.wa], "add")
+    expect_equal(.lap$iniDf$condition[.wa], "cp")
+    expect_equal(.lap$iniDf$lower[.wa], 0)
+    .wp <- which(.lap$iniDf$name == "rx.cp.prop")
+    expect_equal(length(.wp), 1L)
+    expect_true(.lap$iniDf$fix[.wp])
+    expect_equal(.lap$iniDf$est[.wp], 0.1)
+    expect_equal(.lap$iniDf$err[.wp], "prop")
+    expect_equal(.lap$iniDf$condition[.wp], "cp")
+
     # a modeled correlation (a calculated model variable) is neither a parameter
     # nor a $predDf column; it is recovered from the endpoint error expression
     .modCor <- function() {

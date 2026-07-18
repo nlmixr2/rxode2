@@ -676,20 +676,22 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .df <- env$df
   .base <- paste0("rx.", env$curCondition, ".", funName)
   .name <- .base
-  .i <- 1L
+  .i <- 0L
   while (.name %in% .df$name) {
     .i <- .i + 1L
     .name <- paste0(.base, ".", .i)
   }
   .ntheta <- suppressWarnings(max(.df$ntheta, na.rm=TRUE))
   if (!is.finite(.ntheta)) .ntheta <- 0L
-  # positive-support residual parameters get a lower bound of 0; ar() lives in
-  # [0, 1); everything else stays unbounded (the value is FIX regardless)
+  # positive-support residual parameters get a lower bound of 0; ar() is a
+  # correlation in [0, 1), so its upper bound is the strict-below-1 sup rather
+  # than an inclusive 1; everything else stays unbounded (the value is FIX
+  # regardless)
   .lower <- -Inf
   .upper <- Inf
   if (funName == "ar") {
     .lower <- 0
-    .upper <- 1
+    .upper <- 1 - .Machine$double.eps
   } else if (funName %in% .errDistsPositive) {
     .lower <- 0
   }

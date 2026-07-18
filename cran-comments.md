@@ -7,7 +7,7 @@ Reverse-dependency checks of `nlmixr2est` (6.0.1) and, through it,
 `nls`/`nlm` fit as the very first model operation in a fresh session
 (e.g. `nlmixr2autoinit::Fit_1cmpt_iv(..., est.method = "nls")`).
 
-This crash is **not** caused by or new to this `rxode2` submission.  It
+This crash is **not** caused by nor new to this `rxode2` submission.  It
 is a pre-existing use-before-initialization bug in the *released*
 `nlmixr2est` 6.0.1: in `nlmSetup()` (src/nlm.cpp) it calls the rxode2
 accessor `getRxNsub(rx)` before `rx` has been assigned via
@@ -28,7 +28,7 @@ submitted to CRAN.
 
 In addition, this `rxode2` release hardens the C accessors exposed
 through the function-pointer API so that being handed an
-un-initialized solve no longer crashes the R process: instead of
+uninitialized solve no longer crashes the R process: instead of
 dereferencing a NULL/unset `rx_solve`, they now raise a normal,
 catchable R error stating that the solving environment is not set up.
 This turns the pre-existing `nlmixr2est` 6.0.1 crash into a graceful

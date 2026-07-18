@@ -119,6 +119,15 @@ rxGetDistributionSimulationLines <- function(line) {
       .lhs <- .e[[2]]
       # strip conditioning (lhs | cond) down to the endpoint variable
       if (is.call(.lhs) && identical(.lhs[[1]], quote(`|`))) .lhs <- .lhs[[2]]
+      # unwrap ll(x)/linCmt() the same way .errHandleLlOrLinCmt() sets the
+      # endpoint condition, so ll(cp) ~ ... + ar(corv) still matches cond
+      if (is.call(.lhs)) {
+        if (identical(.lhs[[1]], quote(`ll`)) && length(.lhs) == 2L) {
+          .lhs <- .lhs[[2]]
+        } else if (identical(.lhs[[1]], quote(`linCmt`))) {
+          .lhs <- quote(`rxLinCmt`)
+        }
+      }
       if (identical(deparse1(.lhs), as.character(cond))) {
         .arg <- .findAr(.e[[3]])
         if (!is.null(.arg)) return(.arg)
