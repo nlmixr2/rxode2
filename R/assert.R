@@ -195,10 +195,24 @@ assertRxUiNoMix <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @export
 rxHasAr <- function(ui) {
   ui <- assertRxUi(ui)
-  .predDf <- ui$predDf
   .iniDf <- ui$iniDf
-  (!is.null(.predDf) && any(!is.na(.predDf$ar))) ||
-    (!is.null(.iniDf) && any(.iniDf$err == "ar", na.rm=TRUE))
+  # literal (auto-fixed) and estimated ar() correlations live in the $iniDf with
+  # err == "ar"
+  if (!is.null(.iniDf) && any(.iniDf$err == "ar", na.rm=TRUE)) return(TRUE)
+  # a modeled correlation (e.g. corv <- expit(tcor); ar(corv)) is not a
+  # parameter, so scan the endpoint error expressions for an ar() term
+  .lst <- tryCatch(ui$lstExpr, error=function(e) NULL)
+  if (is.null(.lst)) return(FALSE)
+  .hasAr <- function(e) {
+    if (is.call(e)) {
+      if (identical(e[[1]], quote(ar))) return(TRUE)
+      return(any(vapply(as.list(e), .hasAr, logical(1))))
+    }
+    FALSE
+  }
+  any(vapply(.lst, function(e) {
+    is.call(e) && identical(e[[1]], quote(`~`)) && .hasAr(e)
+  }, logical(1)))
 }
 
 #' @export
@@ -270,7 +284,7 @@ assertRxUiEstimatedResiduals <- function(ui, extra="", .var.name=.vname(ui)) {
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
-  if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda", "ar")], use.names=FALSE)))) {
+  if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
   }
   invisible(ui)

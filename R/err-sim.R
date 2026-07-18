@@ -73,14 +73,67 @@ rxGetDistributionSimulationLines <- function(line) {
 #'
 #' @param env parsed model environment
 #' @param pred1 single predDf row
-#' @return quoted correlation (name or number), or NULL when the endpoint
-#'   has no ar() term
+#' @return quoted correlation (parameter name, or the modeled correlation
+#'   variable), or NULL when the endpoint has no ar() term
 #' @author Matthew Fidler
 #' @noRd
 .rxGetArCorLang <- function(env, pred1) {
-  if (!is.na(pred1$ar)) return(str2lang(pred1$ar))
+  # ar() correlations backed by a parameter live in the $iniDf with err == "ar"
+  # (a literal ar(0.5) is parsed into an auto-generated FIX parameter, an
+  # estimated ar(rho) keeps its name); there is no dedicated $predDf column
   .w <- which(env$iniDf$err == "ar" & env$iniDf$condition == pred1$cond)
   if (length(.w) == 1L) return(str2lang(env$iniDf$name[.w]))
+  # otherwise the correlation is a modeled (calculated) variable, e.g.
+  # `corv <- expit(tcor); cp ~ add(add.sd) + ar(corv)` -- recover it directly
+  # from the endpoint's original error expression
+  .rxFindArArg(env, pred1$cond)
+}
+
+#' Find the `ar()` argument in an endpoint's error expression
+#'
+#' Scans the model's stored expressions (`env$lstExpr`) for the `~` error line
+#' whose left-hand side matches the endpoint `cond` and returns the (quoted)
+#' argument of its `ar()` term, if any.  Used to resolve modeled `ar()`
+#' correlations, which are not stored in `$iniDf`/`$predDf`.
+#'
+#' @param env parsed model environment (must carry `lstExpr`)
+#' @param cond endpoint condition (the error expression's left-hand side)
+#' @return the quoted `ar()` argument, or NULL when not found
+#' @author Matthew L. Fidler
+#' @noRd
+.rxFindArArg <- function(env, cond) {
+  .lst <- tryCatch(get("lstExpr", envir=env), error=function(e) NULL)
+  if (is.null(.lst)) return(NULL)
+  .findAr <- function(e) {
+    if (is.call(e)) {
+      if (identical(e[[1]], quote(ar)) && length(e) == 2L) return(e[[2]])
+      for (.i in seq_along(e)) {
+        .r <- .findAr(e[[.i]])
+        if (!is.null(.r)) return(.r)
+      }
+    }
+    NULL
+  }
+  for (.e in .lst) {
+    if (is.call(.e) && identical(.e[[1]], quote(`~`)) && length(.e) == 3L) {
+      .lhs <- .e[[2]]
+      # strip conditioning (lhs | cond) down to the endpoint variable
+      if (is.call(.lhs) && identical(.lhs[[1]], quote(`|`))) .lhs <- .lhs[[2]]
+      # unwrap ll(x)/linCmt() the same way .errHandleLlOrLinCmt() sets the
+      # endpoint condition, so ll(cp) ~ ... + ar(corv) still matches cond
+      if (is.call(.lhs)) {
+        if (identical(.lhs[[1]], quote(`ll`)) && length(.lhs) == 2L) {
+          .lhs <- .lhs[[2]]
+        } else if (identical(.lhs[[1]], quote(`linCmt`))) {
+          .lhs <- quote(`rxLinCmt`)
+        }
+      }
+      if (identical(deparse1(.lhs), as.character(cond))) {
+        .arg <- .findAr(.e[[3]])
+        if (!is.null(.arg)) return(.arg)
+      }
+    }
+  }
   NULL
 }
 
