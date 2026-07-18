@@ -262,11 +262,11 @@
   Michaelis-Menten via `Cc <- central / vc`).
 
 - The automatic `linCmt()` conversion no longer changes results when the event
-  data doses a compartment by the *name* of an ODE compartment the conversion
-  renames (e.g. an ODE `centre` compartment addressed as `CMT = "centre"`,
-  which the conversion renames to `central`).  Such a solve now falls back to
-  the original ODE model instead of routing the dose nowhere and returning
-  all-zero predictions.
+  data addresses a compartment (in a dose or an observation record) by the
+  *name* of an ODE compartment the conversion renames (e.g. an ODE `centre`
+  compartment addressed as `CMT = "centre"`, which the conversion renames to
+  `central`).  Such a solve now falls back to the original ODE model instead of
+  routing the record nowhere and returning all-zero predictions.
 
 - Fixed the automatic `linCmt()` conversion cache reusing the first model's
   initial estimates for a later model that shares the same `model({})`
