@@ -261,6 +261,18 @@
   whose nonlinearity is written through a state-derived observable (e.g.
   Michaelis-Menten via `Cc <- central / vc`).
 
+- The automatic `linCmt()` conversion no longer changes results when the event
+  data doses a compartment by the *name* of an ODE compartment the conversion
+  renames (e.g. an ODE `centre` compartment addressed as `CMT = "centre"`,
+  which the conversion renames to `central`).  Such a solve now falls back to
+  the original ODE model instead of routing the dose nowhere and returning
+  all-zero predictions.
+
+- Fixed the automatic `linCmt()` conversion cache reusing the first model's
+  initial estimates for a later model that shares the same `model({})`
+  equations but has a different `ini({})` block, which made structurally
+  identical models with different parameters return identical predictions.
+
 - Fixed the string form of the compartment argument in the adaptive dosing
   helpers (e.g. `bolus(50, cmt = "depot")`).
 
