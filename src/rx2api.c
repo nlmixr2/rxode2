@@ -24,14 +24,20 @@ rx_solve *getRxSolve_(void);
 //
 // Call sites pass `__func__` for `what` so the reported accessor name always
 // matches the calling function without manual upkeep across renames.
+// Shared "solve not set up" message body reused by the accessors below so the
+// wording cannot drift between call sites.  %s is the accessor name; the trailing
+// %s is a branch-specific clause describing exactly which piece is missing.
+#define RX_SOLVE_NOT_SETUP_FMT                                          \
+  "rxode2: cannot access the solve (%s): the solving environment is "   \
+  "not set up. This usually means a solve accessor was called before "  \
+  "rxSolve() populated the solving environment (%s)."
+
 static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
   if (rx == NULL) {
     rx = getRxSolve_();
   }
   if (rx == NULL || rx->op == NULL) {
-    Rf_error("rxode2: cannot access the solve (%s): the solving environment is not set up. "
-             "This usually means a solve accessor was called before rxSolve() populated the "
-             "solving environment (rx_solve is NULL/uninitialized).", what);
+    Rf_error(RX_SOLVE_NOT_SETUP_FMT, what, "rx_solve is NULL/uninitialized");
   }
   return rx;
 }
@@ -45,15 +51,17 @@ rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   rx = rxSolveOrError(rx, __func__);
   // Unlike the scalar accessors, this dereferences the subject array, so an
   // un-populated solve (subjects still NULL, before any rxSolve()) is fatal
-  // here -- raise the clean R error instead of crashing on NULL.
+  // here -- raise the clean R error instead of crashing on NULL.  The `rx`
+  // itself is the (non-NULL) global here, so the message names the actually
+  // missing piece: no solve has populated the subject array yet.
   if (rx->subjects == NULL) {
-    Rf_error("rxode2: cannot access the solve (%s): the solving environment is not set up. "
-             "This usually means a solve accessor was called before rxSolve() populated the "
-             "solving environment (rx_solve is NULL/uninitialized).", __func__);
+    Rf_error(RX_SOLVE_NOT_SETUP_FMT, __func__, "no solve has populated the subject array yet");
   }
-  uint32_t nall = rx->nsub*rx->nsim;
-  if (id < 0 || (uint32_t)id >= nall) {
-    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
+  // nsub/nsim are uint32_t; multiply in 64-bit so the product cannot wrap and
+  // corrupt the bounds check for large subject/simulation counts.
+  uint64_t nall = (uint64_t)rx->nsub*(uint64_t)rx->nsim;
+  if (id < 0 || (uint64_t)id >= nall) {
+    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %llu); nsub: %u nsim: %u", id, (unsigned long long)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
   }
   return &(rx->subjects[id]);
 }
