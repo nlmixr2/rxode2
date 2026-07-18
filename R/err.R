@@ -310,7 +310,7 @@ rxDemoteAddErr <- function(errType) {
                             "add + prop"=2L,
                             "add + pow"=3L,
                             as.integer(errType)),
-                     .Label =.rxErrType,
+                     levels=.rxErrType,
                      class="factor"))
   } else if (inherits(errType, "rxCombinedErrorList")) {
     return(.rxTransformCombineListOrChar(list(transform=errType$transform,
@@ -371,7 +371,7 @@ rxDemoteAddErr <- function(errType) {
                                  default=3L,
                                  3L),
                           as.integer(oldAddProp))),
-            .Label=.rxAddPropLevels,
+            levels=.rxAddPropLevels,
             class="factor")
 }
 
@@ -407,7 +407,7 @@ rxDemoteAddErr <- function(errType) {
                                  powF=3L,
                                  4L),
                           as.integer(oldErrTypeF))),
-            .Label=.rxErrTypeF,
+            levels=.rxErrTypeF,
             class="factor")
 }
 
@@ -467,7 +467,7 @@ rxDemoteAddErr <- function(errType) {
                                          powF=3L,
                                          6L)),
                    as.integer(oldErrType)),
-            .Label=.rxErrType,
+            levels=.rxErrType,
             class="factor")
 }
 #' Combine transformations
@@ -509,10 +509,10 @@ rxDemoteAddErr <- function(errType) {
                                                   logitNorm=5L,
                                                   probitNorm=7L,
                                                   3L),
-                                           .Label=.rxTransformCombineLevels,
+                                           levels=.rxTransformCombineLevels,
                                            class="factor"),
                    as.integer(oldTransform)),
-            .Label=.rxTransformCombineLevels,
+            levels=.rxTransformCombineLevels,
             class="factor")
 }
 
