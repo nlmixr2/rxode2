@@ -3,11 +3,36 @@
 
 rx_solve *getRxSolve_(void);
 
+// ABI-boundary guard: downstream packages resolve these accessors through the
+// function-pointer table and may hand us a NULL `rx` if their cached solve
+// pointer has not been populated yet (e.g. an accessor is called before
+// `rx = getRxSolve_()` on a cold first fit).  Rather than dereference NULL and
+// segfault the host process, fall back to the global solve structure and then
+// verify the solve has actually been set up.  If it has not, raise a clean R
+// error (which the caller can catch) instead of crashing somewhere downstream.
+//
+// The global solve struct (`&rx_global`) and its options (`&op_global`) are
+// static, so the meaningful "not set up" signal is `rx->subjects` (backed by
+// `inds_global`, which stays NULL until a solve allocates the subject array).
+static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
+  if (rx == NULL) {
+    rx = getRxSolve_();
+  }
+  if (rx == NULL || rx->op == NULL || rx->subjects == NULL) {
+    Rf_error("rxode2: cannot access the solve (%s): the solving environment is not set up. "
+             "This usually means a solve accessor was called before rxSolve() populated the "
+             "solving environment (rx_solve is NULL/uninitialized).", what);
+  }
+  return rx;
+}
+
 rx_solving_options* getSolvingOptions(rx_solve* rx) {
+  rx = rxSolveOrError(rx, "getSolvingOptions");
   return rx->op;
 }
 
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
+  rx = rxSolveOrError(rx, "getSolvingOptionsInd");
   uint32_t nall = rx->nsub*rx->nsim;
   if (id < 0 || (uint32_t)id >= nall) {
     Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
@@ -80,6 +105,7 @@ void setIndMixest(rx_solving_options_ind* ind, int mixest) {
 
 int getRxMixnum(rx_solve *rx) {
   // This is the number of mixtures
+  rx = rxSolveOrError(rx, "getRxMixnum");
   return rx->mixnum;
 }
 
@@ -263,38 +289,47 @@ void resetOpBadSolve(rx_solving_options* op) {
 ////////////////////////////////////////////////////////////////////////
 
 int getRxNsub(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNsub");
   return (int)rx->nsub;
 }
 
 int hasRxLimit(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "hasRxLimit");
   return rx->limit;
 }
 
 int hasRxCens(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "hasRxCens");
   return rx->cens;
 }
 
 int getRxNall(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNall");
   return rx->nall;
 }
 
 int getRxNobs(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNobs");
   return rx->nobs;
 }
 
 int getRxNobs2(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNobs2");
   return rx->nobs2;
 }
 
 int getRxNsim(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNsim");
   return (int)rx->nsim;
 }
 
 int getRxNpars(rx_solve *rx) {
+  rx = rxSolveOrError(rx, "getRxNpars");
   return rx->npars;
 }
 
 int getOrdId(rx_solve *rx, int solveid) {
+  rx = rxSolveOrError(rx, "getOrdId");
   return rx->ordId[solveid];
 }
 ////////////////////////////////////////////////////////////////////////
