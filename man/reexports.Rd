@@ -24,6 +24,9 @@
 \alias{scale_y_date}
 \alias{expand_limits}
 \title{Objects exported from other packages}
+\value{
+Inherited from parent routine
+}
 \keyword{internal}
 \description{
 These objects are imported from other packages. Follow the links
@@ -35,4 +38,3 @@ below to see their documentation.
   \item{lotri}{\code{\link[lotri:lotri]{lotri()}}}
 }}
 
-\value{ Inherited from parent routine }

@@ -539,16 +539,6 @@ close(codegen2.h)
 ## --- Optional: model-cache MD5 (needs 'digest', which is in Suggests) ---
 ## Skipped gracefully when digest is not installed (e.g. --no-suggests CI).
 
-if (file.exists("man/reexports.Rd")) {
-  l <- readLines("man/reexports.Rd")
-  if (!any(regexpr("[\\]value", l) != -1)) {
-    l <- c(l, "\\value{ Inherited from parent routine }")
-    file.out <- file("man/reexports.Rd", "wb")
-    writeLines(l, file.out)
-    close(file.out)
-  }
-}
-
 if (requireNamespace("digest", quietly = TRUE)) {
   cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
   include <- list.files("inst/include", recursive = TRUE)
