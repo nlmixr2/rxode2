@@ -66,6 +66,44 @@ rxTest({
     expect_equal(.lap$iniDf$err[.wp], "prop")
     expect_equal(.lap$iniDf$condition[.wp], "cp")
 
+    # multi-argument error functions (pow(alpha, exponent)): a literal in a
+    # non-first argument is fixed into $iniDf and named after its `err` spec
+    # (rx.<endpoint>.<func><argno>), keeping an estimated first argument
+    .litPow <- function() {
+      ini({tcl <- log(1); pw <- 0.5})
+      model({cl <- exp(tcl); cp <- cl; cp ~ pow(pw, 1.5)})
+    }
+    .lp <- rxode2(.litPow)
+    # the estimated first argument stays a normal parameter
+    .we <- which(.lp$iniDf$name == "pw")
+    expect_equal(length(.we), 1L)
+    expect_false(.lp$iniDf$fix[.we])
+    expect_equal(.lp$iniDf$err[.we], "pow")
+    # the literal exponent becomes a FIX param named rx.cp.pow2 (err == "pow2")
+    .wpow2 <- which(.lp$iniDf$name == "rx.cp.pow2")
+    expect_equal(length(.wpow2), 1L)
+    expect_true(.lp$iniDf$fix[.wpow2])
+    expect_equal(.lp$iniDf$est[.wpow2], 1.5)
+    expect_equal(.lp$iniDf$err[.wpow2], "pow2")
+    expect_equal(.lp$iniDf$condition[.wpow2], "cp")
+
+    # both pow() arguments literal: distinct names keyed to their err specs
+    # (rx.cp.pow / rx.cp.pow2), no collision on the bare function name
+    .litPow2 <- function() {
+      ini({tcl <- log(1)})
+      model({cl <- exp(tcl); cp <- cl; cp ~ pow(1.5, 2)})
+    }
+    .lp2 <- rxode2(.litPow2)
+    .wp1 <- which(.lp2$iniDf$name == "rx.cp.pow")
+    .wp2 <- which(.lp2$iniDf$name == "rx.cp.pow2")
+    expect_equal(length(.wp1), 1L)
+    expect_equal(length(.wp2), 1L)
+    expect_equal(.lp2$iniDf$est[.wp1], 1.5)
+    expect_equal(.lp2$iniDf$est[.wp2], 2)
+    expect_equal(.lp2$iniDf$err[.wp1], "pow")
+    expect_equal(.lp2$iniDf$err[.wp2], "pow2")
+    expect_true(all(.lp2$iniDf$fix[c(.wp1, .wp2)]))
+
     # a modeled correlation (a calculated model variable) is neither a parameter
     # nor a $predDf column; it is recovered from the endpoint error expression
     .modCor <- function() {

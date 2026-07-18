@@ -659,8 +659,11 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' and lets them flow through every downstream path (estimation, simulation,
 #' export) unchanged.
 #'
-#' The generated name is `rx.<endpoint>.<func>`, de-duplicated with a numeric
-#' suffix if that name already exists.
+#' The generated name is `rx.<endpoint>.<err>` where `<err>` is the endpoint's
+#' `err` specification (the function name for argument 1, the function name with
+#' the argument index appended otherwise, e.g. `pow` / `pow2`), so multiple
+#' fixed literals in one function get distinct names.  It is de-duplicated with
+#' a numeric suffix if that name already exists.
 #'
 #' @param argumentNumber distribution argument index (1-based); argument 1 uses
 #'   the bare function name for `err`, later arguments append the index (matching
@@ -674,7 +677,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .rxErrLiteralToFixParam <- function(argumentNumber, funName, value, env) {
   .df <- env$df
-  .base <- paste0("rx.", env$curCondition, ".", funName)
+  # the name mirrors the `err` specification (funName for argument 1, funName
+  # with the argument index appended otherwise), so a function with more than
+  # one fixed literal (e.g. pow(1.5, 2)) gets distinct names (rx.cp.pow,
+  # rx.cp.pow2) rather than colliding on the bare function name
+  .errName <- if (argumentNumber == 1L) funName else paste0(funName, argumentNumber)
+  .base <- paste0("rx.", env$curCondition, ".", .errName)
   .name <- .base
   .i <- 0L
   while (.name %in% .df$name) {
@@ -707,7 +715,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .row$upper <- .upper
   .row$fix <- TRUE
   .row$condition <- env$curCondition
-  .row$err <- if (argumentNumber == 1) funName else paste0(funName, argumentNumber)
+  .row$err <- .errName
   env$df <- rbind(.df, .row)
   assign("lastDistAssign", .name, envir=env)
   invisible(NULL)
