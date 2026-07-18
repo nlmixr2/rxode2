@@ -137,6 +137,15 @@
 
 ## Bug fixes
 
+- The C accessors exposed through the function-pointer API (`getRxNsub()`,
+  `getSolvingOptions()`, `getSolvingOptionsInd()`, and the other `rx_solve*`
+  accessors) no longer segfault when handed a `NULL` or un-initialized solve.
+  They now fall back to the global solve and, if it is still not set up, raise a
+  normal catchable R error stating that the solving environment is not set up,
+  instead of dereferencing a `NULL` pointer and crashing the R process.  This
+  hardens downstream packages that call an accessor before their solve pointer
+  has been populated (for example a cold first `nls`/`nlm` fit in `nlmixr2est`).
+
 - A Jacobian entry `df(state)/dy(THETA[n])` or `df(state)/dy(ETA[n])` (a
   bracketed parameter reference, which the grammar accepts) no longer segfaults.
   The synthetic `_THETA_n_`/`_ETA_n_` symbol was never registered, so its index
