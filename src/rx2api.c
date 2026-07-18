@@ -7,13 +7,20 @@ rx_solve *getRxSolve_(void);
 // function-pointer table and may hand us a NULL `rx` if their cached solve
 // pointer has not been populated yet (e.g. an accessor is called before
 // `rx = getRxSolve_()` on a cold first fit).  Rather than dereference NULL and
-// segfault the host process, fall back to the global solve structure and then
-// verify the solve has actually been set up.  If it has not, raise a clean R
-// error (which the caller can catch) instead of crashing somewhere downstream.
+// segfault the host process, fall back to the global solve structure so the
+// returned `rx` (and its `rx->op`) is always safe to read.
 //
 // The global solve struct (`&rx_global`) and its options (`&op_global`) are
-// static, so the meaningful "not set up" signal is `rx->subjects` (backed by
-// `inds_global`, which stays NULL until a solve allocates the subject array).
+// static storage, so reading a scalar counter/flag off `rx` or `rx->op` (nsub,
+// nall, nobs, npars, neq, nlhs, stiff, ...) is always memory-safe; before a
+// solve those scalars are simply zero.  Downstream code relies on this: e.g.
+// babelmixr2's PopED integration probes these counts at load time (in `.onLoad`
+// via `popedGetLoadedInfo()`), long before any `rxSolve()`, and expects zeros
+// rather than an error.  So this helper does NOT treat an un-populated solve as
+// fatal -- the "not set up" signal (`rx->subjects == NULL`, backed by
+// `inds_global`, which stays NULL until a solve allocates the subject array) is
+// checked at the one place that actually dereferences a subject
+// (`getSolvingOptionsInd`), where dereferencing NULL would crash.
 //
 // Call sites pass `__func__` for `what` so the reported accessor name always
 // matches the calling function without manual upkeep across renames.
@@ -21,7 +28,7 @@ static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
   if (rx == NULL) {
     rx = getRxSolve_();
   }
-  if (rx == NULL || rx->op == NULL || rx->subjects == NULL) {
+  if (rx == NULL || rx->op == NULL) {
     Rf_error("rxode2: cannot access the solve (%s): the solving environment is not set up. "
              "This usually means a solve accessor was called before rxSolve() populated the "
              "solving environment (rx_solve is NULL/uninitialized).", what);
@@ -36,6 +43,14 @@ rx_solving_options* getSolvingOptions(rx_solve* rx) {
 
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   rx = rxSolveOrError(rx, __func__);
+  // Unlike the scalar accessors, this dereferences the subject array, so an
+  // un-populated solve (subjects still NULL, before any rxSolve()) is fatal
+  // here -- raise the clean R error instead of crashing on NULL.
+  if (rx->subjects == NULL) {
+    Rf_error("rxode2: cannot access the solve (%s): the solving environment is not set up. "
+             "This usually means a solve accessor was called before rxSolve() populated the "
+             "solving environment (rx_solve is NULL/uninitialized).", __func__);
+  }
   uint32_t nall = rx->nsub*rx->nsim;
   if (id < 0 || (uint32_t)id >= nall) {
     Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %u); nsub: %u nsim: %u", id, (unsigned int)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
