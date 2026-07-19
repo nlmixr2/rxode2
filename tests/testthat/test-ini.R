@@ -11,7 +11,7 @@ rxTest({
   test_that("blank names works", {
     expect_equal(
       suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
-      structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
+      structure(c(0, 0, 0, 1), names = c("depot", "centr", "peri", "eff"))
     )
   })
 
@@ -136,7 +136,7 @@ rxTest({
         test_that("blank names works", {
           expect_equal(
             suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
-            structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
+            structure(c(0, 0, 0, 1), names = c("depot", "centr", "peri", "eff"))
           )
         })
   })
@@ -160,9 +160,9 @@ rxTest({
     })
 
     test_that("Initial conditions are zero length before and after compile", {
-      expect_equal(rxModelVars("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")$ini, structure(numeric(0), .Names = character(0)))
+      expect_equal(rxModelVars("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")$ini, structure(numeric(0), names = character(0)))
       tmp <- rxode2("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")
-      expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), .Names = character(0)))
+      expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), names = character(0)))
     })
   })
 })

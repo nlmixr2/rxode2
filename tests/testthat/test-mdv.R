@@ -1,6 +1,7 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("mdv means EVID=2 when amt=0", {
+      skip_if_not_installed("nlmixr2data")
       theoSd <- nlmixr2data::theo_sd
 
       d <- theoSd[, names(theoSd) != "EVID"]

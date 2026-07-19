@@ -74,6 +74,7 @@ rxTest({
   })
 
   # nmtest dataset: dense vs non-dense must give identical cp for ODE model
+  skip_if_not_installed("nlmixr2data")
   d <- nlmixr2data::nmtest
 
   f <- rxode2({

@@ -397,7 +397,8 @@
   unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
 }
 
-# A state initial condition (state(0)=) or a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# A state initial condition (state(0)=), a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# or a delay pre-history (past(cmt, tau)=)
 # is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
 # d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
 # d/dt(): its right-hand side may read a variable that a later line reassigns, so its
@@ -409,6 +410,8 @@
 # left-hand side embeds the compartment name bare (readable), while a spacing variant
 # the grammar also accepts (`depot (0)=`, `f( depot )=`) is hex-encoded whole, so the
 # disguised name is always a valid identifier and the restore is byte-exact either way.
+# past(cmt, tau)= always takes the hex form: its second argument is an arbitrary
+# expression (`past(G, exp(THETA[8]))`), which no canonical bare-name form could carry.
 # A construct not recognised here is left alone; its chunk then fails and falls back to
 # the whole model.
 .rxDisguiseCmt <- function(modTxt) {
@@ -422,11 +425,13 @@
   .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
   .icRe <- paste0("^(", .id, ")[ \t]*\\(0\\)$")
   .modRe <- paste0("^([fF]|alag|lag|rate|dur)[ \t]*\\([ \t]*(", .id, ")[ \t]*\\)$")
+  .pastRe <- paste0("^past[ \t]*\\([ \t]*", .id, "[ \t]*,.*\\)$")
   .isIc <- .eq > 0L & grepl(.icRe, .lhs)
   .isMod <- .eq > 0L & grepl(.modRe, .lhs)
+  .isPast <- .eq > 0L & grepl(.pastRe, .lhs)
   .icCan <- .isIc & grepl(paste0("^", .id, "\\(0\\)$"), .lhs)
   .modCan <- .isMod & grepl(paste0("^([fF]|alag|lag|rate|dur)\\(", .id, "\\)$"), .lhs)
-  .hex <- (.isIc | .isMod) & !(.icCan | .modCan)
+  .hex <- (.isIc | .isMod | .isPast) & !(.icCan | .modCan)
   .new <- .lhs
   .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
   .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
@@ -435,7 +440,7 @@
   .new[.hex] <- vapply(.lhs[.hex], function(.l) {
     paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
   }, character(1), USE.NAMES = FALSE)
-  paste(ifelse(.isIc | .isMod, paste0(.lead, .new, .trail, .rhs), .ln),
+  paste(ifelse(.isIc | .isMod | .isPast, paste0(.lead, .new, .trail, .rhs), .ln),
         collapse = "\n")
 }
 
@@ -463,6 +468,80 @@
     .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
   }
   paste(.ln, collapse = "\n")
+}
+
+# delay(state, T) -- and its sensitivity derivatives rxDelayD/rxDelayD2/rxDelayD3 --
+# parses only where d/dt(state) is defined, so a chunk boundary separating the two makes
+# the chunk a syntax error: the parser's :ERR: block prints mid-fit and the whole model
+# falls back to the unchunked pass.  Unlike the left-hand sides above, a delay() call is
+# a right-hand-side *expression* whose repeated occurrences are worth factoring (each is
+# a dense-history interpolation at runtime), so it is only disguised where it must be:
+# in a chunk that lacks the matching d/dt(), the whole call is replaced in place by a
+# unique plain name -- which parses anywhere -- and restored verbatim by
+# .rxRestoreDelay() once the chunks are reassembled.  A chunk holding both keeps the
+# call and its factoring.  A call whose state has no d/dt() anywhere in the model is
+# left alone, so a malformed model still fails its chunk and reaches the whole-model
+# fallback, which raises exactly what the unchunked call raises.  Likewise a call this
+# scan cannot delimit (spanning lines, or a non-name first argument) is left alone.
+.rxDisguiseDelayChunks <- function(chunks) {
+  .ddtRe <- "^[ \t]*d[ \t]*/[ \t]*dt[ \t]*\\([ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*\\)[ \t]*(=|<-|~)"
+  .ddtOf <- function(.ln) {
+    .m <- regmatches(.ln, regexec(.ddtRe, .ln))
+    unique(vapply(.m[lengths(.m) == 3L], `[`, character(1), 2L))
+  }
+  .allDdt <- unique(unlist(lapply(chunks, .ddtOf)))
+  .fnRe <- "(?<![a-zA-Z0-9_.])(rxDelayD3|rxDelayD2|rxDelayD|delay)[ \t]*\\("
+  .map <- character(0) # id -> original call text, shared across chunks
+  .oneLine <- function(.l, .ddt) {
+    .pos <- 1L
+    repeat {
+      .m <- regexpr(.fnRe, substr(.l, .pos, nchar(.l)), perl = TRUE)
+      if (.m == -1L) break
+      .start <- .pos + as.integer(.m) - 1L
+      .open <- .start + attr(.m, "match.length") - 1L
+      .ch <- strsplit(substr(.l, .open, nchar(.l)), "", fixed = TRUE)[[1]]
+      .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
+      if (is.na(.rel)) { # no matching ")" on this line: leave the call alone
+        .pos <- .open + 1L
+        next
+      }
+      .end <- .open + .rel - 1L
+      .inner <- substr(.l, .open + 1L, .end - 1L)
+      .st <- regmatches(.inner,
+                        regexec("^[ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*,", .inner))[[1]]
+      # keep scanning inside the arguments (nested calls) when this call stays
+      if (length(.st) != 2L || .st[2L] %in% .ddt || !(.st[2L] %in% .allDdt)) {
+        .pos <- .open + 1L
+        next
+      }
+      .call <- substr(.l, .start, .end)
+      .hit <- match(.call, .map)
+      if (is.na(.hit)) {
+        .id <- sprintf("rx__disg_delay_%d__", length(.map) + 1L)
+        .map[[.id]] <<- .call
+      } else {
+        .id <- names(.map)[.hit]
+      }
+      .l <- paste0(substr(.l, 1L, .start - 1L), .id, substr(.l, .end + 1L, nchar(.l)))
+      .pos <- .start + nchar(.id)
+    }
+    .l
+  }
+  .chunks <- lapply(chunks, function(.ln) {
+    .ddt <- .ddtOf(.ln)
+    vapply(.ln, .oneLine, character(1), .ddt = .ddt, USE.NAMES = FALSE)
+  })
+  list(chunks = .chunks, map = .map)
+}
+
+# Reverse .rxDisguiseDelayChunks(): each unique name is put back as the original call
+# text, byte for byte, wherever the optimizer left it (in place, or hoisted into a
+# rx_expr_ temporary's definition).
+.rxRestoreDelay <- function(txt, map) {
+  for (.id in names(map)) {
+    txt <- gsub(.id, map[[.id]], txt, fixed = TRUE)
+  }
+  txt
 }
 
 # A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
@@ -519,8 +598,9 @@
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
-  # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line is
-  # disguised.  A model that already uses such a name would have it silently captured --
+  # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line or a
+  # boundary-split delay() call is disguised.  A model that already uses such a name would
+  # have it silently captured --
   # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
   if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
@@ -529,6 +609,9 @@
   # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
   .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
                                mean(pmax(1L, nchar(.ln))) * chunkLines)
+  # Disguise delay() calls that a chunk boundary separated from their d/dt().
+  .delay <- .rxDisguiseDelayChunks(.chunks)
+  .chunks <- .delay$chunks
   .nChunks <- length(.chunks)
 
   # `parallel` carries rxControl(cores=)'s semantics: 0 means the rxode2 thread setting
@@ -602,7 +685,7 @@
   if (is.null(.opt)) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
-  .rxRestoreCmt(paste(.opt, collapse = "\n"))
+  .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
 }
 
 #' Optimize rxode2 for computer evaluation

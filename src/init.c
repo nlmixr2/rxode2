@@ -522,6 +522,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2seedEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&seedEng, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxNormEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxNormEng, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxUnifEng = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxUnifEng, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndCmt = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndCmt, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolvePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolvePtr, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndSolveSave = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndSolveSave, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolveSave = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveSave, R_NilValue, R_NilValue)); pro++;
@@ -535,7 +536,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 87
+#define nVec 88
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -624,6 +625,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 84, rxode2rxRegisterDydtForce);
   SET_VECTOR_ELT(ret, 85, rxode2rxRemoveDydtForce);
   SET_VECTOR_ELT(ret, 86, rxode2rxRegisterParLoaderNamed);
+  SET_VECTOR_ELT(ret, 87, rxode2getIndCmt);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -714,6 +716,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2rxRegisterDydtForce"));
   SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2rxRemoveDydtForce"));
   SET_STRING_ELT(retN, 86, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
+  SET_STRING_ELT(retN, 87, Rf_mkChar("rxode2getIndCmt"));
 
 #undef nVec
 
@@ -758,6 +761,7 @@ SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
 extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
@@ -954,6 +958,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 19},
+    {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},
     {"_rxode2_rxRestoreState_", (DL_FUNC) _rxode2_rxRestoreState_, 1},

@@ -17,6 +17,7 @@ rxTest({
     })
   }
 
+  skip_if_not_installed("nlmixr2data")
   d <- nlmixr2data::theo_sd
   d$SEX <- ifelse(d$ID < 7, "M", "F")
   d$fSEX <- factor(d$SEX)

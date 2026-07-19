@@ -310,7 +310,7 @@ rxDemoteAddErr <- function(errType) {
                             "add + prop"=2L,
                             "add + pow"=3L,
                             as.integer(errType)),
-                     .Label =.rxErrType,
+                     levels=.rxErrType,
                      class="factor"))
   } else if (inherits(errType, "rxCombinedErrorList")) {
     return(.rxTransformCombineListOrChar(list(transform=errType$transform,
@@ -371,7 +371,7 @@ rxDemoteAddErr <- function(errType) {
                                  default=3L,
                                  3L),
                           as.integer(oldAddProp))),
-            .Label=.rxAddPropLevels,
+            levels=.rxAddPropLevels,
             class="factor")
 }
 
@@ -407,7 +407,7 @@ rxDemoteAddErr <- function(errType) {
                                  powF=3L,
                                  4L),
                           as.integer(oldErrTypeF))),
-            .Label=.rxErrTypeF,
+            levels=.rxErrTypeF,
             class="factor")
 }
 
@@ -467,7 +467,7 @@ rxDemoteAddErr <- function(errType) {
                                          powF=3L,
                                          6L)),
                    as.integer(oldErrType)),
-            .Label=.rxErrType,
+            levels=.rxErrType,
             class="factor")
 }
 #' Combine transformations
@@ -509,10 +509,10 @@ rxDemoteAddErr <- function(errType) {
                                                   logitNorm=5L,
                                                   probitNorm=7L,
                                                   3L),
-                                           .Label=.rxTransformCombineLevels,
+                                           levels=.rxTransformCombineLevels,
                                            class="factor"),
                    as.integer(oldTransform)),
-            .Label=.rxTransformCombineLevels,
+            levels=.rxTransformCombineLevels,
             class="factor")
 }
 
@@ -643,11 +643,83 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   cauchy=c("a", "b"),
   dgamma=c("a", "b"),
   nbinom=c("a", "b"),
-  nbinomMu=c("a", "b"),
-  ar="ar"
+  nbinomMu=c("a", "b")
 )
 
 .allowEstimatedParameters <- "ordinal"
+
+#' Convert a numeric literal error-model argument into a FIX `$iniDf` parameter
+#'
+#' A residual literal such as `add(0.7)`, `prop(0.1)` or `ar(0.5)` is turned
+#' into an auto-generated, uniquely named, `rx`-prefixed **FIX** parameter that
+#' is appended to `env$df` (the working `$iniDf`) and linked to the current
+#' endpoint through the `err`/`condition` columns -- exactly as a user-supplied
+#' estimated (fixed) residual parameter would be.  This keeps residual literals
+#' out of `$predDf` (so no dedicated columns like the former `ar` are needed)
+#' and lets them flow through every downstream path (estimation, simulation,
+#' export) unchanged.
+#'
+#' The generated name is `rx.<endpoint>.<err>` where `<err>` is the endpoint's
+#' `err` specification (the function name for argument 1, the function name with
+#' the argument index appended otherwise, e.g. `pow` / `pow2`), so multiple
+#' fixed literals in one function get distinct names.  It is de-duplicated with
+#' a numeric suffix if that name already exists.
+#'
+#' @param argumentNumber distribution argument index (1-based); argument 1 uses
+#'   the bare function name for `err`, later arguments append the index (matching
+#'   the named-parameter convention in [.errHandleSingleDistributionArgument]).
+#' @param funName error distribution function name
+#' @param value numeric literal value
+#' @param env parse environment (holds `df`, the working `$iniDf`, and
+#'   `curCondition`, the current endpoint variable)
+#' @return NULL, called for its side effect of appending a row to `env$df`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxErrLiteralToFixParam <- function(argumentNumber, funName, value, env) {
+  .df <- env$df
+  # the name mirrors the `err` specification (funName for argument 1, funName
+  # with the argument index appended otherwise), so a function with more than
+  # one fixed literal (e.g. pow(1.5, 2)) gets distinct names (rx.cp.pow,
+  # rx.cp.pow2) rather than colliding on the bare function name
+  .errName <- if (argumentNumber == 1L) funName else paste0(funName, argumentNumber)
+  .base <- paste0("rx.", env$curCondition, ".", .errName)
+  .name <- .base
+  .i <- 0L
+  while (.name %in% .df$name) {
+    .i <- .i + 1L
+    .name <- paste0(.base, ".", .i)
+  }
+  .ntheta <- suppressWarnings(max(.df$ntheta, na.rm=TRUE))
+  if (!is.finite(.ntheta)) .ntheta <- 0L
+  # positive-support residual parameters get a lower bound of 0; ar() is a
+  # correlation in [0, 1), so its upper bound is the strict-below-1 sup rather
+  # than an inclusive 1; everything else stays unbounded (the value is FIX
+  # regardless)
+  .lower <- -Inf
+  .upper <- Inf
+  if (funName == "ar") {
+    .lower <- 0
+    .upper <- 1 - .Machine$double.eps
+  } else if (funName %in% .errDistsPositive) {
+    .lower <- 0
+  }
+  # build a one-row frame that matches env$df's columns exactly, then fill it
+  .row <- .df[0, , drop=FALSE]
+  .row[1, ] <- NA
+  .row$ntheta <- .ntheta + 1L
+  .row$neta1 <- NA_integer_
+  .row$neta2 <- NA_integer_
+  .row$name <- .name
+  .row$lower <- .lower
+  .row$est <- value
+  .row$upper <- .upper
+  .row$fix <- TRUE
+  .row$condition <- env$curCondition
+  .row$err <- .errName
+  env$df <- rbind(.df, .row)
+  assign("lastDistAssign", .name, envir=env)
+  invisible(NULL)
+}
 
 #' This handles the error distribution for a single argument.
 #'
@@ -682,6 +754,15 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .df$condition[.w] <- env$curCondition
       assign("df", .df, envir=env)
       assign("lastDistAssign", .curName, envir=env)
+    } else if (funName == "ar") {
+      # ar(<modeled variable>): the correlation is a model-calculated quantity
+      # (e.g. corv <- expit(tcor)) rather than an estimated parameter or a
+      # literal.  Nothing is stored in $iniDf/$predDf; .rxGetArCorLang() recovers
+      # the correlation directly from the endpoint's error expression.  The
+      # referenced variable is validated as a model quantity later, like other
+      # modeled residual references.
+      assign("lastDistAssign", .curName, envir=env)
+      return(NULL)
     } else {
       .w <- which(names(.namedArgumentsToPredDf) == funName)
       if (length(.w) == 1) {
@@ -699,17 +780,22 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
     }
   } else if (.is.numeric(.cur, env)) {
-    if (.isLogitOrProbit) {
-      if (argumentNumber == 2 || argumentNumber == 3) {
-        env$trLimit[argumentNumber - 1] <- env$.numeric
-      }
-    } else if (funName == "ar") {
-      if (env$.numeric < 0 || env$.numeric >= 1) {
-        env$err <- c(env$err,
-                     "'ar()' correlation must be in [0, 1)")
-      } else {
-        env$ar <- as.character(env$.numeric)
-      }
+    if (.isLogitOrProbit && (argumentNumber == 2 || argumentNumber == 3)) {
+      # logitNorm()/probitNorm() transformation bounds are structural
+      # constants, not parameters
+      env$trLimit[argumentNumber - 1] <- env$.numeric
+    } else if (funName == "ar" && (env$.numeric < 0 || env$.numeric >= 1)) {
+      env$err <- c(env$err,
+                   "'ar()' correlation must be in [0, 1)")
+    } else {
+      # A numeric literal supplied to an error-model function (e.g. add(0.7),
+      # prop(0.1), ar(0.5)) is converted to an auto-generated, uniquely named
+      # FIX parameter in the $iniDf -- exactly as if the user had written
+      # `rx.<endpoint>.<func> <- fix(<value>)` and referenced it by name.  This
+      # keeps residual literals out of $predDf (no dedicated columns needed) and
+      # routes them through the same machinery as an estimated residual
+      # parameter.
+      .rxErrLiteralToFixParam(argumentNumber, funName, env$.numeric, env)
     }
   } else if (is.na(.cur)) {
     if (argumentNumber == 1 && funName %in% .allowDemoteAddDistributions) {
@@ -976,7 +1062,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$linCmt <- FALSE
   env$var <- FALSE
   env$dv <- FALSE
-  env$ar <- NA_character_
   env$hasAr <- FALSE
   .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
@@ -1026,8 +1111,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                                      lambda=env$lambda,
                                      linCmt=env$linCmt,
                                      variance=env$var,
-                                     dv=env$dv,
-                                     ar=env$ar))
+                                     dv=env$dv))
       env$curDvid <- env$curDvid + 1L
 
     }
@@ -1056,8 +1140,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          lambda=env$lambda,
                          linCmt=env$linCmt,
                          variance=env$var,
-                         dv=env$dv,
-                         ar=env$ar)
+                         dv=env$dv)
       env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
@@ -1089,7 +1172,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .iniDf <- env$iniDf
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
-    if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda", "ar")]))) {
+    if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
       if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
@@ -1480,7 +1563,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
                          "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
-                         "lhs", "earlyErr", "var", "dv", "ar", "hasAr"),
+                         "lhs", "earlyErr", "var", "dv", "hasAr"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1558,7 +1641,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .left <- .errHandleLlOrLinCmt(expr[[2]], .env)
   .env$trLimit <- c(-Inf, Inf)
   .env$a <- .env$b <- .env$c <- .env$d <- .env$e <- .env$f <- .env$lambda <- NA_character_
-  .env$ar <- NA_character_
   .env$hasAr <- FALSE
   .env$curCondition <- .env$curVar <- deparse1(.left)
   .env$hasNonErrorTerm <- FALSE

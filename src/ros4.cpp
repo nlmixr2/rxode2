@@ -280,16 +280,10 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     }
     ind->solvedIdx = i;
   }
-  // release this subject's delay history (only needed during its own solve)
-  if (ind->delayHist != NULL) {
-    free(ind->delayHist);
-    ind->delayHist = NULL;
-    ind->delayHistCap = 0;
-    ind->delayHistStride = 0;
-    ind->delayHistNeq = 0;
-  }
-  ind->delayHistN = 0;
-  ind->delayHistOn = 0;
+  // Keep this subject's delay history: the output data frame recalculates lhs
+  // after the solve (rxode2_df), so an lhs reading delay() still needs to
+  // interpolate it.  rxFreeInd() releases it with the other per-subject
+  // buffers; the next solve resets delayHistN and reuses the allocation.
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 

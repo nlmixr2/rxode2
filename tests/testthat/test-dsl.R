@@ -91,6 +91,18 @@ rxTest({
     expect_equal(rxFromSE(tan(pi * a)), "tanpi(a)")
     expect_equal(rxFromSE("tan(pi/2)"), "tanpi(1/2)")
 
+    ## nlmixr2est#513: a trig argument that is a compound expression divided by
+    ## something (eg sin(2*3.14*(time-mtime1)/period)) must keep its argument;
+    ## the `/` branch used to fall through and drop the whole argument -> sin()
+    expect_equal(rxFromSE("sin(2 * 3.14 * (time-mtime1)/period)"),
+                 "sin((2*3.14*(time-mtime1))/period)")
+    expect_equal(rxFromSE("cos((time-mtime1)/period)"),
+                 "cos((time-mtime1)/period)")
+    ## a pi factor buried in a compound numerator still folds to sinpi and keeps
+    ## precedence-correct parentheses
+    expect_equal(rxFromSE("sin(pi * (time-mtime1)/period)"),
+                 "sinpi((time-mtime1)/period)")
+
     expect_equal(rxToSE(log1pmx(a)), "(log(1+a)-(a))")
     expect_equal(rxToSE(expm1(a)), "(exp(a)-1)")
     expect_equal(rxToSE(pow(a, b)), "(a)^(b)")

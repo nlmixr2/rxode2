@@ -1,5 +1,20 @@
 # rxode2 5.1.3
 
+## Breaking / compatibility changes
+
+- The `ar` column that had been added to `$predDf` was removed.  `$predDf` and
+  `$iniDf` are a stable, exported interface relied on by reverse dependencies
+  (nlmixr2est, babelmixr2, ...) and by fits saved with earlier versions, so
+  their schema must not grow.  Instead, a numeric literal supplied to an
+  error-model function (e.g. `add(0.7)`, `prop(0.1)`, `ar(0.5)`) is now parsed
+  into an auto-generated, uniquely named `rx`-prefixed **FIX** parameter in the
+  `$iniDf` (`rx.<endpoint>.<func>`), keyed to its endpoint through the existing
+  `err`/`condition` columns -- exactly like a user-written fixed residual
+  parameter.  (This also fixes literals such as `add(0.7)` that were previously
+  silently dropped.)  Estimated (`ar(rho)`) and modeled (`ar(corv)`)
+  correlations continue to work; the modeled correlation is recovered from the
+  endpoint's error expression rather than from a column.
+
 ## New features
 
 - `rxOptExpr()` gains `chunkLines` and `parallel`, to optimize a large
@@ -31,9 +46,14 @@
   Compartment-scoped assignments (a `state(0)=` initial condition or an
   `f`/`alag`/`lag`/`rate`/`dur` dosing modifier) are disguised in place while the
   chunks are optimized, so they can be chunked without being separated from their
-  `d/dt()`.  A chunk is only a fragment and so can fail to optimize where the
-  whole model would not; if any chunk fails the whole model is optimized instead,
-  so a malformed model still raises the error the unchunked call raises.
+  `d/dt()`.  A `delay(state, T)` call (or its `rxDelayD`/`rxDelayD2`/`rxDelayD3`
+  sensitivity derivatives) that a chunk boundary separates from its `d/dt(state)`
+  is likewise disguised and restored, so a large DDE (sensitivity) model chunks
+  without falling back; a call in the same chunk as its `d/dt()` still joins the
+  common-subexpression pool.  A chunk is only a fragment and so can fail to
+  optimize where the whole model would not; if any chunk fails the whole model is
+  optimized instead, so a malformed model still raises the error the unchunked
+  call raises.
 
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the
@@ -120,7 +140,76 @@
   C function-pointer API, and `setRxThreadId()` so a package can drive the
   per-subject solve from its own OpenMP team.
 
+- `rxTest()` test blocks now muffle stray progress messages (e.g. "calculate
+  sensitivities"); set `options(rxode2.test.verbose = TRUE)` to see them.
+  Messages asserted with `expect_message()` are unaffected.
+
+- `coef()` methods for `rxUi` models (and model functions).  By default
+  `coef()` returns the fixed-effect (`theta`) estimates; `coef(model,
+  level = "omega")` returns the random-effect variability matrix and
+  `coef(model, level = "all")` returns both.  `nlme::fixef()` continues to
+  return the fixed effects.
+
 ## Bug fixes
+
+- The C accessors exposed through the function-pointer API (`getRxNsub()`,
+  `getSolvingOptions()`, `getSolvingOptionsInd()`, and the other `rx_solve*`
+  accessors) no longer segfault when handed a `NULL` or uninitialized solve.
+  They fall back to the global solve; a scalar counter/flag accessor (`nsub`,
+  `nall`, `nobs`, `npars`, ...) simply reports zero before any solve, exactly as
+  before, so downstream code that probes those counts at load time keeps working
+  (for example babelmixr2's PopED integration, which queries them from
+  `.onLoad`).  An accessor that must dereference a per-subject record
+  (`getSolvingOptionsInd()`) instead raises a normal catchable R error stating
+  that the solving environment is not set up, rather than dereferencing a `NULL`
+  pointer and crashing the R process.  This hardens downstream packages that call
+  an accessor before their solve pointer has been populated (for example a cold
+  first `nls`/`nlm` fit in `nlmixr2est`).
+
+- A Jacobian entry `df(state)/dy(THETA[n])` or `df(state)/dy(ETA[n])` (a
+  bracketed parameter reference, which the grammar accepts) no longer segfaults.
+  The synthetic `_THETA_n_`/`_ETA_n_` symbol was never registered, so its index
+  stayed `-2` and the model validator read `tb.ss.line[-2]` out of bounds.  This
+  crashed `nlm`/FOCEi fits that re-parse their generated `calcJac` model (whose
+  parameters are `THETA[n]`) in the residual/table step -- notably for a
+  delay-differential-equation model whose delay parameter appears in a product
+  of delayed states.
+
+- `past(state, tau)` on a state with no `d/dt(state)` now reports that cleanly
+  instead of corrupting the heap.  The error path appended nothing to the
+  message buffer and then trimmed a trailing `', ` that was never written,
+  moving the write offset before the start of the buffer; the damage surfaced
+  as a `double free or corruption` abort on a *later*, unrelated parse rather
+  than at the offending model.  The message now names the property
+  (`'past(G)' present, but d/dt(G) not defined`), and a property with no
+  message branch can no longer underflow the buffer.
+
+- `rxOptExpr()` no longer fails on a model that uses `past(state, tau)` and is
+  long enough to be optimized in chunks.  A `past()` line only parses in a
+  chunk that also holds the matching `d/dt()`, and sensitivity augmentation
+  appends `past()` after every `d/dt()` -- so it reliably landed in a chunk of
+  its own.  It is now disguised for the duration of the optimization like any
+  other compartment-scoped left-hand side, and restored byte-exactly
+  afterwards.  Together with the fix above this unblocks estimating a
+  non-constant-history DDE (e.g. the rheumatoid arthritis model of Koch et al.
+  2014, J Pharmacokinet Pharmacodyn 41:291-318, Example 6).
+
+- `rxAppendModel()` now warns (instead of erroring) when the appended models
+  have no variables in common, so the combined model is still returned; use
+  `common=FALSE` to suppress the warning (#520).
+
+- `rxFixPop()` no longer tries to literally substitute a fixed mixture
+  proportion (`mix()`).  A mixture proportion must stay a named model-block
+  variable, so substituting its value made the re-parse throw from `mix()`
+  ("the probabilities in a mixture must be in the model block ..."); a downstream
+  caller wrapping `rxFixPop()` in `try()` leaked that error to the console during
+  otherwise-successful mixture fits.  Fixed mixture proportions are now excluded
+  from the substitution.
+
+- Tests that use datasets from the suggested `nlmixr2data` package (`theo_sd`,
+  `warfarin`, `nmtest`) now guard their use with
+  `skip_if_not_installed("nlmixr2data")`, so the test suite runs cleanly when
+  `nlmixr2data` is not installed (#95).
 
 ### Estimation / symengine translation (`rxFromSE()`)
 
@@ -137,6 +226,25 @@
   only and guards zero-length results, fixing an "argument is of length zero"
   error and silent substitution of user-workspace variables (#1109).
 
+- A trig function (`sin`/`cos`/`tan`) whose argument is a compound expression
+  divided by something (for example `sin(2 * 3.14 * (time - mtime1) / period)`)
+  no longer drops its whole argument.  The division branch fell through without
+  returning when the numerator was not a single token, so the argument became
+  `NULL` and the emitted C code was `sin()` -- which failed to compile with "too
+  few arguments to function 'sin'".  Such models (for example an enterohepatic
+  gallbladder model with a sinusoidal release) now build and fit
+  (nlmixr2/nlmixr2est#513).
+
+### Model parsing / mu-referencing
+
+- Summing two or more population parameters in an expression that has no
+  random effect (for example a combined residual error
+  `W <- sqrt(sigma.1. + sigma.2.)`) is no longer misreported as
+  "2+ single population parameters in a single mu-referenced expression".
+  That check now fires only for a genuine mu-referenced expression (one that
+  also contains an eta), and the message names the parameters that were
+  actually summed instead of the first parameters in the model (#471).
+
 ### Delay models
 
 - `calcJac=TRUE` rewriting (also used by the stiff `ros4`/`dop853+ros4` path)
@@ -152,6 +260,13 @@
   `dop853` (dense) instead of `liblsoda`, which recorded no delay history and
   silently returned pre-history values.
 
+- An lhs reading `delay()` is now reported correctly in the output data frame
+  (#1140).  The dense delay history was freed at the end of each subject's
+  solve, so the post-solve lhs recalculation returned the constant pre-history
+  (0) at every record even though the delayed value drove the ODE.  The history
+  is now kept until `rxSolveFree()` releases the subject, which also plugs a
+  leak on the discrete-adjoint (`rk4s`) path where it was never freed.
+
 ### `linCmt()` models
 
 - Fixed a compartment-indexing bug where a model with both an error model and
@@ -165,6 +280,18 @@
 - The automatic `linCmt()` conversion no longer fires on a nonlinear model
   whose nonlinearity is written through a state-derived observable (e.g.
   Michaelis-Menten via `Cc <- central / vc`).
+
+- The automatic `linCmt()` conversion no longer changes results when the event
+  data addresses a compartment (in a dose or an observation record) by the
+  *name* of an ODE compartment the conversion renames (e.g. an ODE `centre`
+  compartment addressed as `CMT = "centre"`, which the conversion renames to
+  `central`).  Such a solve now falls back to the original ODE model instead of
+  routing the record nowhere and returning all-zero predictions.
+
+- Fixed the automatic `linCmt()` conversion cache reusing the first model's
+  initial estimates for a later model that shares the same `model({})`
+  equations but has a different `ini({})` block, which made structurally
+  identical models with different parameters return identical predictions.
 
 - Fixed the string form of the compartment argument in the adaptive dosing
   helpers (e.g. `bolus(50, cmt = "depot")`).
@@ -187,6 +314,13 @@
   `lag(x, 1)`/`diff(x, 1)` are supported for calculated variables.
 
 - Bug fix for `mix()` models and `iCov` models.
+
+- The `rxMemoryEstimate()` RAM detection no longer calls the defunct
+  `utils::memory.limit()` (which warned on every Windows solve); total RAM is
+  now queried natively in C (`GlobalMemoryStatusEx` on Windows,
+  `sysctl` on macOS, `sysconf` on Linux) and available memory reuses the
+  allocator preflight estimate (`rxAvailableMemoryBytes()`).  This also drops
+  the `memuse` suggested dependency and the shell-command fallbacks.
 
 - Fixed out-of-bounds heap reads (AddressSanitizer-confirmed; results
   unchanged): `rxSolve()` parameter setup when subjects share one event table

@@ -243,6 +243,12 @@ static inline int sortStateVectorsErrHandle(int prop, int i) {
   }
   char *buf = NULL;
   buf = tb.ss.line[tb.di[i]];
+  // Every property that reaches here appends "'<name>', " below, and the
+  // trailing "', " is then trimmed with sbt.o -= 2.  A property with no branch
+  // appends nothing, so that trim would move sbt.o *before* the start of the
+  // buffer and write there -- corrupting the heap rather than reporting the
+  // error.  Remember where this message starts so the trim can be anchored.
+  int sbtStart = sbt.o;
   if ((prop & prop0) != 0) {
     sAppend(&sbt, "'%s(0)', ", buf);
   }
@@ -293,6 +299,17 @@ static inline int sortStateVectorsErrHandle(int prop, int i) {
   }
   if ((prop & propDose0) != 0) {
     sAppend(&sbt, "'dose0(%s)', ", buf);
+  }
+  // past(state, tau) <- expr supplies the pre-history that delay(state, tau)
+  // interpolates, so it too requires the state to have a d/dt().
+  if ((prop & propPast) != 0) {
+    sAppend(&sbt, "'past(%s)', ", buf);
+  }
+  if (sbt.o == sbtStart) {
+    // No branch above matched, so there is no trailing "', " to trim and
+    // nothing to report; a property known only to the guard above is not an
+    // error the user can act on.  Trimming here would underflow the buffer.
+    return 1;
   }
   // Take off trailing "',
   sbt.o -= 2;

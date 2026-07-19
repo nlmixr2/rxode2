@@ -1,6 +1,7 @@
 rxTest({ # mostly tested in 'rxode2et'
   test_that("warfarin model", {
 
+    skip_if_not_installed("nlmixr2data")
     warfarin <- nlmixr2data::warfarin
 
     mod <- rxode2({
@@ -928,6 +929,7 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     test_that("Missing evid gives the same results", {
+      skip_if_not_installed("nlmixr2data")
       theoSd <- nlmixr2data::theo_sd
       d <- theoSd[, names(theoSd) != "EVID"]
 
@@ -1405,7 +1407,7 @@ d/dt(blood)     = a*intestine - b*blood
       trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
+        ID = structure(1L, class = "factor", levels = "1"),
         TIME = 0, EVID = 10140L, AMT = 10, II = 0, DV = NA_real_
       ),
       class = "data.frame", row.names = c(NA, -1L)
@@ -1417,7 +1419,7 @@ d/dt(blood)     = a*intestine - b*blood
       trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
       expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
+        ID = structure(1L, class = "factor", levels = "1"),
         TIME = 0, EVID = 90140L, AMT = 0, II = 0, DV = NA_real_
       ),
       class = "data.frame", row.names = c(NA, -1L)

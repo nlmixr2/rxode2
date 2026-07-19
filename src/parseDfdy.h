@@ -110,7 +110,16 @@ static inline int handleDy(nodeInfo ni, char *name, int i, D_ParseNode *xpn, int
       aAppendN(" = ", 3);
       sAppendN(&sbt ,"=", 1);
       if (*ii == 1){
-        new_or_ith(_gbuf.s);
+        // df(state)/dy(THETA[n]) or dy(ETA[n]): _gbuf holds the synthetic
+        // name (_THETA_n_ / _ETA_n_).  Unlike the identifier form -- which the
+        // tree walk already registered before this point -- that name is not a
+        // symbol yet, so new_or_ith() leaves tb.ix = -2.  Storing that into
+        // tb.dy[] makes assertCorrectDfDy() read tb.ss.line[-2] (out of
+        // bounds).  Register it and take its index, as handleIdentifier() does.
+        if (new_or_ith(_gbuf.s)) {
+          addSymbolStr(_gbuf.s);
+          tb.ix = NV - 1;
+        }
       } else {
         new_or_ith(v);
       }

@@ -2379,7 +2379,6 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         }
       } else if (identical(x[[1]], quote(`/`))) {
         .x2 <- as.character(x[[2]])
-        .x3 <- as.character(x[[3]])
         if (length(.x2) == 1) {
           if (.x2 == "pi") {
             envir$found <- TRUE
@@ -2391,6 +2390,16 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
             .f(x[[3]], envir)
           ))
         }
+        ## Compound numerator (eg sin(2*(time-a)/period)): recurse into both
+        ## sides so a `pi` factor buried in the numerator is still stripped and
+        ## the argument is not dropped (else the whole arg became NULL -> sin()).
+        ## Parenthesize the numerator unless it is already parenthesized so the
+        ## `/` precedence is preserved after any pi-factor stripping.
+        .num <- .f(x[[2]], envir)
+        if (!identical(x[[2]][[1]], quote(`(`))) {
+          .num <- paste0("(", .num, ")")
+        }
+        return(paste0(.num, "/", .f(x[[3]], envir)))
       } else {
         return(.rxFromSE(x))
       }

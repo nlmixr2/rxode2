@@ -1867,6 +1867,16 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
     free(ind->idose);      ind->idose = NULL;
     ind->indOwnAlloc = 0;
   }
+  // The delay() dense history is allocated by the solver (rxDelayHistSlot) and
+  // kept after the solve so the output data frame's lhs recalculation can still
+  // interpolate delayed states; it is released here with the subject.
+  free(ind->delayHist);
+  ind->delayHist = NULL;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = 0;
+  ind->delayHistNeq = 0;
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
 }
 
 extern "C" void gFree(){
@@ -4027,6 +4037,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
     //
     bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
+    op->cmtCov = -1;   // covariate index of the CMT covariate; -1 = none (single endpoint)
     for (i = dfN; i--;){
       for (j = rx->npars; j--;){
         if (pars[j] == dfNames[i]){
@@ -4036,6 +4047,11 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           // the rxControl() object
           const char *curDf = dfNames[i];
           int curDfN = strlen(curDf);
+          // cache the CMT covariate's covariate-index so getIndCmt can read the
+          // per-observation endpoint (cov_ptr) without a per-call name comparison.
+          if (op->cmtCov < 0 && curDfN == 3 && !strncmpci(curDf, "CMT", 3)) {
+            op->cmtCov = ncov;
+          }
           _globals.gpar_covInterp[ncov] = interp0[j] - 2;
           if ((isLinearOrMidpointInterp &&
                _globals.gpar_covInterp[ncov] == -1) ||

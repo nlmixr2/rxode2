@@ -19,15 +19,93 @@ rxTest({
       })
     }
     ui <- rxode2(.estCor)
-    # estimated correlation lives in iniDf (err == "ar"), predDf$ar is NA
-    expect_true(is.na(ui$predDf$ar))
+    # estimated correlation lives in iniDf (err == "ar"); there is no $predDf
+    # ar column (it must never be added -- reverse dependencies rely on the
+    # $predDf schema)
+    expect_false("ar" %in% colnames(ui$predDf))
     .w <- which(ui$iniDf$name == "ar1.cor")
     expect_equal(ui$iniDf$err[.w], "ar")
     expect_equal(ui$iniDf$condition[.w], "cp")
     expect_equal(ui$iniDf$lower[.w], 0)
     expect_equal(ui$iniDf$upper[.w], 1)
 
-    # modeled correlation lands in predDf$ar
+    # a numeric literal correlation becomes an auto-generated FIX parameter in
+    # the $iniDf (rx.<endpoint>.ar), not a $predDf entry
+    .litCor <- function() {
+      ini({tcl <- log(1); add.sd <- 0.5})
+      model({cl <- exp(tcl); cp <- cl; cp ~ add(add.sd) + ar(0.5)})
+    }
+    .lit <- rxode2(.litCor)
+    expect_false("ar" %in% colnames(.lit$predDf))
+    .wl <- which(.lit$iniDf$name == "rx.cp.ar")
+    expect_equal(length(.wl), 1L)
+    expect_true(.lit$iniDf$fix[.wl])
+    expect_equal(.lit$iniDf$est[.wl], 0.5)
+    expect_equal(.lit$iniDf$err[.wl], "ar")
+    expect_equal(.lit$iniDf$condition[.wl], "cp")
+
+    # numeric literals in other error functions (add()/prop()) are likewise
+    # turned into FIX $iniDf params (rx.<endpoint>.<func>) rather than being
+    # silently dropped
+    .litAddProp <- function() {
+      ini({tcl <- log(1)})
+      model({cl <- exp(tcl); cp <- cl; cp ~ add(0.7) + prop(0.1)})
+    }
+    .lap <- rxode2(.litAddProp)
+    .wa <- which(.lap$iniDf$name == "rx.cp.add")
+    expect_equal(length(.wa), 1L)
+    expect_true(.lap$iniDf$fix[.wa])
+    expect_equal(.lap$iniDf$est[.wa], 0.7)
+    expect_equal(.lap$iniDf$err[.wa], "add")
+    expect_equal(.lap$iniDf$condition[.wa], "cp")
+    expect_equal(.lap$iniDf$lower[.wa], 0)
+    .wp <- which(.lap$iniDf$name == "rx.cp.prop")
+    expect_equal(length(.wp), 1L)
+    expect_true(.lap$iniDf$fix[.wp])
+    expect_equal(.lap$iniDf$est[.wp], 0.1)
+    expect_equal(.lap$iniDf$err[.wp], "prop")
+    expect_equal(.lap$iniDf$condition[.wp], "cp")
+
+    # multi-argument error functions (pow(alpha, exponent)): a literal in a
+    # non-first argument is fixed into $iniDf and named after its `err` spec
+    # (rx.<endpoint>.<func><argno>), keeping an estimated first argument
+    .litPow <- function() {
+      ini({tcl <- log(1); pw <- 0.5})
+      model({cl <- exp(tcl); cp <- cl; cp ~ pow(pw, 1.5)})
+    }
+    .lp <- rxode2(.litPow)
+    # the estimated first argument stays a normal parameter
+    .we <- which(.lp$iniDf$name == "pw")
+    expect_equal(length(.we), 1L)
+    expect_false(.lp$iniDf$fix[.we])
+    expect_equal(.lp$iniDf$err[.we], "pow")
+    # the literal exponent becomes a FIX param named rx.cp.pow2 (err == "pow2")
+    .wpow2 <- which(.lp$iniDf$name == "rx.cp.pow2")
+    expect_equal(length(.wpow2), 1L)
+    expect_true(.lp$iniDf$fix[.wpow2])
+    expect_equal(.lp$iniDf$est[.wpow2], 1.5)
+    expect_equal(.lp$iniDf$err[.wpow2], "pow2")
+    expect_equal(.lp$iniDf$condition[.wpow2], "cp")
+
+    # both pow() arguments literal: distinct names keyed to their err specs
+    # (rx.cp.pow / rx.cp.pow2), no collision on the bare function name
+    .litPow2 <- function() {
+      ini({tcl <- log(1)})
+      model({cl <- exp(tcl); cp <- cl; cp ~ pow(1.5, 2)})
+    }
+    .lp2 <- rxode2(.litPow2)
+    .wp1 <- which(.lp2$iniDf$name == "rx.cp.pow")
+    .wp2 <- which(.lp2$iniDf$name == "rx.cp.pow2")
+    expect_equal(length(.wp1), 1L)
+    expect_equal(length(.wp2), 1L)
+    expect_equal(.lp2$iniDf$est[.wp1], 1.5)
+    expect_equal(.lp2$iniDf$est[.wp2], 2)
+    expect_equal(.lp2$iniDf$err[.wp1], "pow")
+    expect_equal(.lp2$iniDf$err[.wp2], "pow2")
+    expect_true(all(.lp2$iniDf$fix[c(.wp1, .wp2)]))
+
+    # a modeled correlation (a calculated model variable) is neither a parameter
+    # nor a $predDf column; it is recovered from the endpoint error expression
     .modCor <- function() {
       ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; tcor <- 0.3})
       model({
@@ -37,14 +115,10 @@ rxTest({
         cp ~ add(add.sd) + ar(corv)
       })
     }
-    expect_equal(rxode2(.modCor)$predDf$ar, "corv")
-
-    # numeric literal correlation
-    .litCor <- function() {
-      ini({tcl <- log(1); add.sd <- 0.5})
-      model({cl <- exp(tcl); cp <- cl; cp ~ add(add.sd) + ar(0.5)})
-    }
-    expect_equal(rxode2(.litCor)$predDf$ar, "0.5")
+    .mod <- rxode2(.modCor)
+    expect_false("ar" %in% colnames(.mod$predDf))
+    expect_false("corv" %in% .mod$iniDf$name)
+    expect_true(rxHasAr(.mod))
   })
 
   test_that("ar() works with a variety of transformably-normal error models", {

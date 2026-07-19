@@ -245,25 +245,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getRamBytes <- function() {
-  if (requireNamespace("memuse", quietly = TRUE)) {
-    .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
-    if (!is.null(.info)) {
-      # as.numeric gives in bytes
-      return(as.numeric(.info$totalram))
-    }
-  }
-  tryCatch({
-    if (file.exists("/proc/meminfo")) {
-      .m <- grep("^MemTotal:", readLines("/proc/meminfo", n = 10L), value = TRUE)
-      if (length(.m)) return(as.numeric(gsub("\\D", "", .m[1L])) * 1024)
-    }
-    if (.Platform$OS.type == "windows") {
-      return(utils::memory.limit() * 1024^2)
-    }
-    .out <- system("sysctl -n hw.memsize", intern = TRUE, ignore.stderr = TRUE)
-    if (length(.out) && nzchar(.out[1L])) return(as.numeric(.out[1L]))
-    NA_real_
-  }, error = function(e) NA_real_)
+  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["total"]],
+                   error = function(e) NA_real_)
+  if (!is.na(.ram) && .ram > 0) return(.ram)
+  NA_real_
 }
 
 .rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov,
@@ -352,46 +337,20 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .dataBytes + .listBytes
 }
 
-#' Detect currently available physical RAM in bytes
+#' Detect currently available memory for allocation in bytes
 #'
-#' @return Numeric bytes of available RAM, or \code{NA_real_} if unavailable.
+#' Uses the allocator preflight estimate (\code{rxAvailableMemoryBytes()}),
+#' which may exceed physical RAM (page file on Windows, swap on Linux).
+#'
+#' @return Numeric bytes of available memory, or \code{NA_real_} if
+#'   unavailable.
 #' @noRd
 #' @author Matthew L. Fidler
 .getFreeRamBytes <- function() {
-  if (requireNamespace("memuse", quietly = TRUE)) {
-    .info <- tryCatch(memuse::Sys.meminfo(), error = function(e) NULL)
-    if (!is.null(.info)) {
-      .fields <- c("availram", "freeram")
-      for (.field in .fields) {
-        if (.field %in% names(.info)) {
-          return(as.numeric(.info[[.field]]))
-        }
-      }
-    }
-  }
-  tryCatch({
-    if (file.exists("/proc/meminfo")) {
-      .meminfo <- readLines("/proc/meminfo", n = 64L)
-      for (.field in c("MemAvailable", "MemFree")) {
-        .m <- grep(paste0("^", .field, ":"), .meminfo, value = TRUE)
-        if (length(.m)) return(as.numeric(gsub("\\D", "", .m[1L])) * 1024)
-      }
-    }
-    .out <- system("vm_stat", intern = TRUE, ignore.stderr = TRUE)
-    if (length(.out)) {
-      .page <- grep("page size of [0-9]+ bytes", .out, value = TRUE)
-      if (length(.page)) {
-        .pageSize <- as.numeric(sub(".*page size of ([0-9]+) bytes.*", "\\1", .page[1L]))
-        .free <- grep("^Pages free:", .out, value = TRUE)
-        .spec <- grep("^Pages speculative:", .out, value = TRUE)
-        .pages <- 0
-        if (length(.free)) .pages <- .pages + as.numeric(gsub("\\D", "", .free[1L]))
-        if (length(.spec)) .pages <- .pages + as.numeric(gsub("\\D", "", .spec[1L]))
-        if (.pages > 0) return(.pages * .pageSize)
-      }
-    }
-    NA_real_
-  }, error = function(e) NA_real_)
+  .free <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["free"]],
+                    error = function(e) NA_real_)
+  if (!is.na(.free) && .free > 0) return(.free)
+  NA_real_
 }
 
 #' Estimate memory required by rxSolve() for a given dataset and model
@@ -622,31 +581,18 @@ print.rxMemoryEstimate <- function(x, ...) {
   .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
   .comps <- x[!names(x) %in% .meta]
 
-  .hasMem <- requireNamespace("memuse", quietly = TRUE)
-
   .fmtSize <- function(v) {
-    if (.hasMem && inherits(v, "memuse")) {
-      format(v, ...)
-    } else {
-      .b <- if (is.numeric(v)) v else unclass(v)
-      if (.b >= 1e9)       sprintf("%.2f GB", .b / 1e9)
-      else if (.b >= 1e6)  sprintf("%.2f MB", .b / 1e6)
-      else if (.b >= 1e3)  sprintf("%.2f KB", .b / 1e3)
-      else                 sprintf("%.0f B",  .b)
-    }
+    .b <- if (is.numeric(v)) v else unclass(v)
+    if (.b >= 1e9)       sprintf("%.2f GB", .b / 1e9)
+    else if (.b >= 1e6)  sprintf("%.2f MB", .b / 1e6)
+    else if (.b >= 1e3)  sprintf("%.2f KB", .b / 1e3)
+    else                 sprintf("%.0f B",  .b)
   }
 
   cat("rxSolve() memory estimate\n")
   cat(sprintf("  Total: %s\n\n", .fmtSize(x$total)))
 
-  .bytes <- vapply(.comps, function(v) {
-    if (.hasMem && inherits(v, "memuse")) {
-      .obj <- memuse::mu(v, unit = "B", unit.names = "short")
-      as.numeric(format(.obj, unit = "B"))
-    } else {
-      as.numeric(v)
-    }
-  }, numeric(1))
+  .bytes <- vapply(.comps, as.numeric, numeric(1))
 
   .ord <- order(.bytes, decreasing = TRUE)
   .nm  <- names(.comps)[.ord]
@@ -688,7 +634,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     cat(sprintf("  |  %.1f%% of RAM (%s)",
                 100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
     if (!is.null(.freeRamBytes) && !is.na(.freeRamBytes) && .freeRamBytes > 0) {
-      cat(sprintf("  |  %.1f%% of free RAM (%s available)",
+      cat(sprintf("  |  %.1f%% of available memory (%s available)",
                   100 * .totalBytes / .freeRamBytes, .fmtSize(.freeRamBytes)))
     }
     cat("\n")

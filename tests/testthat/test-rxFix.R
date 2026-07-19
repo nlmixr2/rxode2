@@ -165,5 +165,35 @@ rxTest({
 
   })
 
+  test_that("rxFixPop excludes a fixed mixture proportion (mix() needs it named)", {
+    # a fixed mixture proportion must NOT be literally substituted -- mix() requires
+    # the proportion to be a named model-block variable, so re-parsing the
+    # substituted model would throw from mix() (the error leaked to the console when
+    # a downstream caller wrapped rxFixPop in try()).
+    .mixMod <- function() {
+      ini({
+        tcl1 <- log(2); tcl2 <- log(0.5); tv <- log(32)
+        eta.v ~ 0.1
+        p1 <- fix(0.5)
+        add.sd <- 0.7
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cl <- mix(exp(tcl1), p1, exp(tcl2))
+        ke <- cl / v
+        d/dt(depot) <- -depot
+        d/dt(center) <- depot - ke * center
+        cp <- center / v
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.mixMod)
+    # the only fixed theta is the mixture proportion, so there is nothing to
+    # substitute -> NULL, and crucially no error from re-parsing mix().
+    expect_error(.res <- rxFixPop(.ui, returnNull = TRUE), NA)
+    expect_null(.res)
+    # p1 is still a named parameter in the model
+    expect_true("p1" %in% .ui$iniDf$name)
+  })
 
 })

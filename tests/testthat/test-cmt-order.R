@@ -1,4 +1,5 @@
 rxTest({
+  skip_if_not_installed("nlmixr2data")
   warfarin <- nlmixr2data::warfarin
 
   test_that("cmt() syntax makes sense", {

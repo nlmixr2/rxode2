@@ -53,3 +53,7 @@ src/StanHeaders.def
 /.vexp/
 /..Rcheck/
 /tools/
+/.vscode/
+/.mcp.json
+/.claude/
+/.cache/

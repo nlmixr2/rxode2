@@ -117,7 +117,12 @@ rxFixPop <- function(ui, returnNull=FALSE) {
   .model <- rxUiDecompress(assertRxUi(ui))
   .model <- .copyUi(.model)
   .iniDf <- .model$iniDf
-  .w <- which(!is.na(.iniDf$ntheta) & is.na(.iniDf$err) & .iniDf$fix)
+  # a mixture proportion (ui$mixProbs) is structural: mix() requires it as a named
+  # model-block variable, so it cannot be literally substituted with its (fixed)
+  # value -- doing so makes the re-parse below throw from mix().  Exclude it.
+  .mixProbs <- tryCatch(.model$mixProbs, error=function(e) NULL)
+  .w <- which(!is.na(.iniDf$ntheta) & is.na(.iniDf$err) & .iniDf$fix &
+                !(.iniDf$name %in% .mixProbs))
   if (length(.w) == 0L) {
     if (returnNull) return(NULL)
     return(.model)

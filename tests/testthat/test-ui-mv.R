@@ -83,10 +83,10 @@ rxTest({
   })
 
   test_that("rxInit works with ui obects", {
-    expect_equal(rxInits(one.cmt), structure(numeric(0), .Names = character(0)))
-    expect_equal(rxInits(f), structure(numeric(0), .Names = character(0)))
-    expect_equal(rxInits(cov), structure(numeric(0), .Names = character(0)))
-    expect_equal(rxInits(f2), structure(numeric(0), .Names = character(0)))
+    expect_equal(rxInits(one.cmt), structure(numeric(0), names = character(0)))
+    expect_equal(rxInits(f), structure(numeric(0), names = character(0)))
+    expect_equal(rxInits(cov), structure(numeric(0), names = character(0)))
+    expect_equal(rxInits(f2), structure(numeric(0), names = character(0)))
   })
 
   test_that("data frame doesn't work by itself", {

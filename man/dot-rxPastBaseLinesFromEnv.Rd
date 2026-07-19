@@ -14,7 +14,7 @@ character vector of past() lines, or NULL if none.
 }
 \description{
 Rebuilds the base \code{past(state,tau)=expr} line(s) from the stored
-rx__pastRhs_\if{html}{\out{<state>}}__ / rx__pastTau_\if{html}{\out{<state>}}__ text; used by gradient-free
+\code{rx__pastRhs_STATE__} / \code{rx__pastTau_STATE__} text; used by gradient-free
 estimators (SAEM) whose symengine env is built without sensitivities.
 }
 \keyword{internal}
