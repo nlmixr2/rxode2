@@ -2364,4 +2364,31 @@ rxTest({
 
 
   })
+
+  test_that("piping appends a state after the simulation model is cached (persistent meta)", {
+    # Realizing $simulationModel populates meta$.simModelBase.  Piping copies
+    # the previous model's meta env (to keep sticky items), so the cache must
+    # be invalidated -- otherwise the appended state is missing from the solve.
+    f <- function() {
+      ini({
+        ke <- 1
+        sd <- 0.1
+      })
+      model({
+        d/dt(CENTRAL) <- -ke * CENTRAL
+        cp <- CENTRAL
+        cp ~ add(sd)
+      })
+    }
+    m <- rxode2(f)
+    # prime the cached simulation model before modifying the model
+    expect_false(is.null(m$simulationModel))
+
+    m2 <- m %>% model(d/dt(AUC) <- cp, append = TRUE)
+    # the appended state must be present in the (rebuilt) simulation model
+    expect_true("AUC" %in% rxModelVars(m2$simulationModel)$state)
+
+    s <- suppressWarnings(rxSolve(m2, et(amt = 100, cmt = "CENTRAL") %>% et(0:5)))
+    expect_true("AUC" %in% names(s))
+  })
 })
