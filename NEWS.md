@@ -2,6 +2,18 @@
 
 ## Bug fixes
 
+### Model piping
+
+- Model piping now invalidates the cached simulation model
+  (`$meta$.simModelBase`) when a model that keeps a persistent `meta`
+  environment is modified.  `.newModelAdjust()` copies the previous model's
+  `meta` env (to retain sticky items), which also carried the stale
+  `.simModelBase` cache; `.copyUi()`/`.copyEnv()` already drop it, but this
+  path did not.  As a result, appending a compartment/state to such a model
+  (e.g. a `nonmem2rx` import: `mod %>% model(d/dt(AUC) <- f, append=TRUE)`)
+  silently dropped the new state from the solved output.  The stale cache is
+  now cleared so the modified model rebuilds it.
+
 ### Compilation
 
 - Silenced the CRAN `-Wlto-type-mismatch` warnings seen with LTO/gcc builds.
