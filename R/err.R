@@ -1442,6 +1442,23 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         .i <- .i + 1L
       }
       .env$iniDf <- .env$df
+      # A UDF modification function (rxUdfUi) can append etas to the iniDf during
+      # parsing (e.g. individual neural-network weight etas).  .env$eta was set from
+      # the ini({}) omega before those UDFs ran, so refresh it from the now-final
+      # iniDf (the source of truth); otherwise the appended etas are mis-classified
+      # as covariates downstream (mu-referencing / covariate detection).
+      # Keep non-id (IOV) etas out: they live in .env$level, and including them in
+      # .env$eta makes a mu-referenced `theta + eta + iov` parse as 2 population etas.
+      .etaDf <- .env$df[!is.na(.env$df$neta1) &
+                          !(.env$df$name %in% .env$level), , drop=FALSE]
+      if (nrow(.etaDf) > 0L) {
+        .etaDf <- .etaDf[order(.etaDf$neta1), , drop=FALSE]
+        .env$eta <- unique(.etaDf$name)
+      } else {
+        # only IOV (or no) etas remain -> no population etas; clear the list so a
+        # stale omega-derived name cannot leak (matches the NULL init above).
+        .env$eta <- NULL
+      }
       if (is.null(.env$predDf)) {
         ## .env$errGlobal <- c(.env$errGlobal,
         ##                     "there must be at least one prediction in the model({}) block.  Use `~` for predictions")

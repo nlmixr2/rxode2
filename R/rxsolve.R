@@ -2205,6 +2205,18 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
+  ## let packages rehydrate transient C state from the ui's serializable slots
+  ## (e.g. NN shapes) before parameters are loaded -- keeps a reloaded ui solvable.
+  .rxRunUiPrepHooks(object)
+  ## forced (externally-owned) parameters carried on the ui -- injected into every
+  ## solve column at setup (rxCallParLoaders), overriding params/data/inits.
+  if (.rxApplyForcedPars(object, .lst[[1L]])) {
+    on.exit(.rxClearForcedParsC(), add = TRUE)
+  }
+  ## flag this model's parameter injector (if any) so only its loader runs
+  if (.rxApplyParLoader(object)) {
+    on.exit(.rxClearActiveParLoaderC(), add = TRUE)
+  }
   .ret <- do.call("rxSolve.default", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
@@ -3361,15 +3373,51 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
     # Pass the rxSolve object directly so C++ updates the correct object
     # rather than the global rxCurObj, which may point to a different rxSolve.
     if (is.null(params)) params <- object$.params.single
+    params <- .rxApplyInjectedPars(params, object)
     if (is.null(inits)) inits <- object$inits
     return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
                            theta = theta, eta = eta, envir = envir))
   }
   .model <- as.character(.model)
   if (is.null(params)) params <- object$.params.single
+  params <- .rxApplyInjectedPars(params, object)
   if (is.null(inits)) inits <- object$inits
   rxSolve(.model, params = params, events = events, inits = inits, ...,
           theta = theta, eta = eta, envir = envir)
+}
+
+## Restore par-loader-injected parameters (e.g. trained NN weights) onto the
+## params for a re-solve, so re-solving from a solved object reproduces them
+## even without the injecting package.  Injected values override for their names
+## (and are appended if absent).  Handles a single named vector, a parameter
+## data.frame, or a matrix; when no params are supplied it falls back to the
+## solved object's stored parameter data.frame (multi-subject/multi-sim solves
+## have no single named vector).
+.rxApplyInjectedPars <- function(params, object) {
+  .inj <- rxInjectedPars(object)
+  if (is.null(.inj) || length(.inj) == 0L) return(params)
+  if (is.null(params)) params <- object$.params.dat
+  if (is.null(params)) return(params)
+  if (is.data.frame(params)) {
+    for (.n in names(.inj)) params[[.n]] <- .inj[[.n]]
+    return(params)
+  }
+  if (is.matrix(params)) {
+    for (.n in names(.inj)) {
+      if (!is.null(colnames(params)) && .n %in% colnames(params)) {
+        params[, .n] <- .inj[[.n]]
+      } else {
+        params <- cbind(params,
+                        matrix(.inj[[.n]], nrow = nrow(params), ncol = 1L,
+                               dimnames = list(NULL, .n)))
+      }
+    }
+    return(params)
+  }
+  if (is.numeric(params) && is.null(dim(params)) && !is.null(names(params))) {
+    params[names(.inj)] <- .inj
+  }
+  params
 }
 
 #' @rdname rxSolve
@@ -3554,7 +3602,249 @@ solve.rxEt <- solve.rxSolve
     dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
     jac = get(".jac.counter", envir = .env, inherits = FALSE)
   ), envir = .env)
+  ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
+  ## weights supplied through a loader hook rather than the params vector).  Saved
+  ## on the object so re-solving restores them even in a session without the
+  ## injecting package's buffer.  Indices are 0-based into the model params.
+  .inj <- tryCatch(.Call(`_rxode2_rxGetInjectedPars`), error = function(e) NULL)
+  if (!is.null(.inj) && length(.inj[[1L]]) > 0L) {
+    .injNames <- .pars[.inj[[1L]] + 1L]
+    assign(".injectedPars", stats::setNames(.inj[[2L]], .injNames), envir = .env)
+  } else {
+    assign(".injectedPars", NULL, envir = .env)
+  }
   invisible(TRUE)
+}
+
+#' Parameters injected into a solve by a par-loader hook
+#'
+#' Returns the parameters (e.g. trained neural-network weights) that a
+#' registered par-loader wrote into the solve parameter vector, saved on the
+#' solved object so re-solving from it restores them.
+#'
+#' @param obj a solved rxode2 object.
+#' @return a named numeric vector, or `NULL` if nothing was injected.
+#' @export
+rxInjectedPars <- function(obj) {
+  .cls <- attr(obj, "class")
+  .env <- attr(.cls, ".rxode2.env")
+  if (is.null(.env)) return(NULL)
+  .rxSolveMaterializeParams(obj, .env)   # ensure materialized
+  if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
+    get(".injectedPars", envir = .env, inherits = FALSE)
+  } else {
+    NULL
+  }
+}
+
+#' Forced parameters carried by a model / ui
+#'
+#' Get or set a named-numeric vector of *forced* parameters stored in a hidden
+#' slot of an rxode2 ui.  Forced parameters override the values supplied in
+#' `params`/data and the model initial estimates on **every** solve of that ui
+#' (they are written into every subject/simulation column at solve setup, the
+#' same injection point used by par-loader hooks).  Because the values live on
+#' the ui they travel with it -- through model piping and into any `nlmixr2` fit
+#' built from it -- so the model stays self-contained and portable (e.g. a fit
+#' that carries trained neural-network weights re-solves, predicts and simulates
+#' with those weights with no external state).
+#'
+#' The value is stored directly in the ui environment (not in the printed `meta`
+#' block, so it stays hidden) and registered as a `sticky` model item so it
+#' survives model piping.  Names must be model parameters; names that are not
+#' model parameters are ignored at solve time.  Set to `NULL` (or an empty
+#' vector) to clear.
+#'
+#' @param ui an rxode2 ui / model function.
+#' @param value named numeric vector of forced parameter values, or `NULL`.
+#' @return the getter returns the named numeric vector (or `NULL`); the setter
+#'   returns the (modified) ui.
+#' @export
+#' @author Matthew L. Fidler
+rxForcedPars <- function(ui) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) return(NULL)
+  if (!exists("forcedPars", envir = .ui, inherits = FALSE)) return(NULL)
+  get("forcedPars", envir = .ui, inherits = FALSE)
+}
+
+#' @rdname rxForcedPars
+#' @export
+`rxForcedPars<-` <- function(ui, value) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) {
+    stop("'ui' must be an rxode2 ui/model to set forcedPars", call. = FALSE)
+  }
+  .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
+    get("sticky", envir = .ui, inherits = FALSE)
+  } else character(0)
+  if (is.null(value) || length(value) == 0L) {
+    if (exists("forcedPars", envir = .ui, inherits = FALSE)) {
+      rm("forcedPars", envir = .ui)
+    }
+    assign("sticky", setdiff(.sticky, "forcedPars"), envir = .ui)
+    return(invisible(.ui))
+  }
+  if (is.null(names(value)) || any(names(value) == "")) {
+    stop("forcedPars must be a fully-named numeric vector", call. = FALSE)
+  }
+  # reject non-numeric input up front; as.numeric() would otherwise coerce
+  # characters/factors to NA and silently force parameters to NA_real_.
+  if (!is.numeric(value)) {
+    stop("forcedPars must be numeric (got '", class(value)[1], "')", call. = FALSE)
+  }
+  ## store on the ui env (hidden -- not the printed `meta` block) and mark sticky
+  ## so it survives model piping.
+  assign("forcedPars", stats::setNames(as.numeric(value), names(value)),
+         envir = .ui)
+  assign("sticky", unique(c(.sticky, "forcedPars")), envir = .ui)
+  invisible(.ui)
+}
+
+## low-level: set/clear the rxode2 forced-parameter buffer honored at solve setup
+.rxSetForcedParsC <- function(idx, val) {
+  invisible(.Call(`_rxode2_rxSetForcedPars`, as.integer(idx), as.double(val)))
+}
+.rxClearForcedParsC <- function() {
+  invisible(.Call(`_rxode2_rxClearForcedPars`))
+}
+
+## resolve a ui's forcedPars names to 0-based solve-param indices and load the C
+## buffer for the next solve; returns TRUE if anything was set (so the caller
+## clears afterward).  No-op (and clears) when the model carries no forcedPars.
+## `forcedSrc` supplies the values (the ui); `solveModel` supplies the definitive
+## solve-parameter order the gpars layout uses (default: forcedSrc itself).
+.rxApplyForcedPars <- function(forcedSrc, solveModel = forcedSrc) {
+  .fp <- tryCatch(rxForcedPars(forcedSrc), error = function(e) NULL)
+  if (is.null(.fp) || length(.fp) == 0L) {
+    .rxClearForcedParsC()
+    return(FALSE)
+  }
+  .pars <- rxModelVars(solveModel)$params
+  .idx <- match(names(.fp), .pars) - 1L
+  .keep <- !is.na(.idx)
+  if (!any(.keep)) {
+    .rxClearForcedParsC()
+    return(FALSE)
+  }
+  .rxSetForcedParsC(.idx[.keep], unname(.fp)[.keep])
+  TRUE
+}
+
+#' Parameter-loader flag on a model
+#'
+#' A model that needs an externally-owned parameter injector -- a registered
+#' par-loader, e.g. a package's neural-network weight loader -- flags that
+#' injector's `"<package>:<function>"` name here.  At solve setup only the loader
+#' with that name runs, so an injector never overwrites an unrelated model's
+#' `par_ptr` merely because it happens to be registered.  The flag is stored on the
+#' ui (a sticky item, so it survives model piping) like [rxForcedPars()]; set it to
+#' `NULL` to clear.
+#'
+#' @param ui an rxode2 ui / model function.
+#' @param value a single loader name (`"<package>:<function>"`), or `NULL`.
+#' @return the getter returns the name (or `NULL`); the setter returns the ui.
+#' @export
+#' @author Matthew L. Fidler
+rxParLoader <- function(ui) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) return(NULL)
+  if (!exists("parLoader", envir = .ui, inherits = FALSE)) return(NULL)
+  get("parLoader", envir = .ui, inherits = FALSE)
+}
+
+#' @rdname rxParLoader
+#' @export
+`rxParLoader<-` <- function(ui, value) {
+  .ui <- rxUiDecompress(ui)
+  if (!inherits(.ui, "rxUi")) {
+    stop("'ui' must be an rxode2 ui/model to set rxParLoader", call. = FALSE)
+  }
+  .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
+    get("sticky", envir = .ui, inherits = FALSE)
+  } else character(0)
+  if (is.null(value) || length(value) == 0L || !nzchar(value[1L])) {
+    if (exists("parLoader", envir = .ui, inherits = FALSE)) rm("parLoader", envir = .ui)
+    assign("sticky", setdiff(.sticky, "parLoader"), envir = .ui)
+    return(invisible(.ui))
+  }
+  assign("parLoader", as.character(value[1L]), envir = .ui)
+  assign("sticky", unique(c(.sticky, "parLoader")), envir = .ui)
+  invisible(.ui)
+}
+
+## low-level: set/clear the active par-loader name honored at the next solve setup.
+.rxSetActiveParLoaderC <- function(name) {
+  invisible(.Call(`_rxode2_rxSetActiveParLoader`, as.character(name)))
+}
+.rxClearActiveParLoaderC <- function() {
+  invisible(.Call(`_rxode2_rxClearActiveParLoader`))
+}
+
+## bridge: flag the active par-loader from a ui's parLoader item before a solve.
+## Returns TRUE if a flag was set (so the caller clears afterward).
+.rxApplyParLoader <- function(ui) {
+  .pl <- tryCatch(rxParLoader(ui), error = function(e) NULL)
+  if (is.null(.pl) || length(.pl) == 0L || !nzchar(.pl[1L])) return(FALSE)
+  .rxSetActiveParLoaderC(.pl[1L])
+  TRUE
+}
+
+## ---- ui-solve preparation hooks -------------------------------------------
+## Registry of functions called with the ui at the start of a ui solve (before
+## parameter loaders run).  A package uses this to rehydrate transient C-side
+## state from serializable ui slots after a ui has been saved to disk and
+## reloaded in a fresh session (e.g. re-registering neural-network shapes so the
+## weight values carried in `rxForcedPars()` land in a network that can stride
+## them).  Each hook must be cheap and a no-op for models it does not own.
+.rxUiPrepHooks <- new.env(parent = emptyenv())
+
+#' Register or remove a solve-time ui preparation hook
+#'
+#' Package developers register a function called with the ui at the start of a
+#' ui solve, before parameter loaders run.  Use it to rehydrate transient C-side
+#' state from serializable ui slots (so a ui saved to disk and reloaded in a
+#' fresh session solves correctly).  The hook must be cheap and a no-op for
+#' models it does not own.
+#'
+#' @param name Unique hook name; re-registering the same name replaces it.
+#' @param fn Function of one argument (the rxUi being solved).  Return value is
+#'   ignored; errors are downgraded to a warning so a buggy hook cannot break
+#'   unrelated solves.
+#' @return Invisibly, the hook name (register) or `NULL` (remove).
+#' @export
+rxRegisterUiPrep <- function(name, fn) {
+  if (!is.character(name) || length(name) != 1L) {
+    stop("'name' must be a single string", call. = FALSE)
+  }
+  if (!is.function(fn)) {
+    stop("'fn' must be a function of one argument (the ui)", call. = FALSE)
+  }
+  assign(name, fn, envir = .rxUiPrepHooks)
+  invisible(name)
+}
+
+#' @rdname rxRegisterUiPrep
+#' @export
+rxRemoveUiPrep <- function(name) {
+  if (exists(name, envir = .rxUiPrepHooks, inherits = FALSE)) {
+    rm(list = name, envir = .rxUiPrepHooks)
+  }
+  invisible(NULL)
+}
+
+.rxRunUiPrepHooks <- function(object) {
+  .nm <- ls(envir = .rxUiPrepHooks, all.names = TRUE)
+  if (length(.nm) == 0L) return(invisible())
+  for (.n in .nm) {
+    .fn <- get(.n, envir = .rxUiPrepHooks)
+    tryCatch(.fn(object),
+             error = function(e) {
+               warning("rxode2 ui-prep hook '", .n, "' failed: ",
+                       conditionMessage(e), call. = FALSE)
+             })
+  }
+  invisible()
 }
 
 .rxSolveGetInit <- function(.env, arg) {

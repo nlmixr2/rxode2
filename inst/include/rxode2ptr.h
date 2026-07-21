@@ -274,6 +274,28 @@ extern "C" {
   typedef void (*setRxThreadId_t)(int id);
   extern setRxThreadId_t setRxThreadId;
 
+  // Register / remove an external parameter-block loader (t_rxParLoader from
+  // rxode2.h); rxode2 calls registered loaders once per solve so a package can
+  // fill reserved par_ptr slots with externally-owned values.
+  typedef void (*rxRegisterParLoader_t)(t_rxParLoader cb);
+  extern rxRegisterParLoader_t rxRegisterParLoader;
+  typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
+  extern rxRemoveParLoader_t rxRemoveParLoader;
+  // Register a NAMED loader ("<package>:<function>") that runs only for a model
+  // flagging that name (rxParLoader()), so an injector never touches an unrelated
+  // model's par_ptr.
+  typedef void (*rxRegisterParLoaderNamed_t)(const char* name, t_rxParLoader cb);
+  extern rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed;
+
+  // Register / remove a dydt forcing hook (t_rxDydtForce from rxode2.h); the
+  // generated model calls all registered hooks at the end of its RHS so a
+  // package can add forcing to state derivatives (e.g. NN-weight variational
+  // states).
+  typedef void (*rxRegisterDydtForce_t)(t_rxDydtForce cb);
+  extern rxRegisterDydtForce_t rxRegisterDydtForce;
+  typedef void (*rxRemoveDydtForce_t)(t_rxDydtForce cb);
+  extern rxRemoveDydtForce_t rxRemoveDydtForce;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -351,7 +373,7 @@ extern "C" {
       seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
       rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
       rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
-      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 87));
       setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
       getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
       setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
@@ -359,6 +381,11 @@ extern "C" {
       setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
       getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
       setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
+      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
+      rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 84));
+      rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 85));
+      rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 86));
     }
     return R_NilValue;
   }
@@ -447,6 +474,11 @@ extern "C" {
   setIndSolveLast_t setIndSolveLast = NULL;             \
   getIndSolveLast2_t getIndSolveLast2 = NULL;           \
   setIndSolveLast2_t setIndSolveLast2 = NULL;           \
+  rxRegisterParLoader_t rxRegisterParLoader = NULL;     \
+  rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
+  rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
+  rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
+  rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

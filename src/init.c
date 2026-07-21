@@ -275,6 +275,14 @@ void rxOptionsIni(void);
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
+/* rxRegisterParLoader / rxRemoveParLoader + t_rxParLoader come from rxode2.h;
+   they are exported to downstream packages via the function-pointer table
+   (_rxode2_rxode2Ptr below), not R_RegisterCCallable. */
+
+/* dydt forcing hook: rxCallDydtForce is called from generated model code and so
+   is resolved via R_GetCCallable; rxRegisterDydtForce / rxRemoveDydtForce are
+   exported to plugins via the function-pointer table (like the par loaders). */
+void rxCallDydtForce(int *neq, double t, double *y, double *dydt);
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
 void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
@@ -522,8 +530,13 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndSolveLast = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndSolveLast2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast2, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 83
+#define nVec 88
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -607,7 +620,12 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 79, rxode2getIndSolveLast2);
   SET_VECTOR_ELT(ret, 80, rxode2setIndSolveLast2);
   SET_VECTOR_ELT(ret, 81, rxode2rxUnifEng);
-  SET_VECTOR_ELT(ret, 82, rxode2getIndCmt);
+  SET_VECTOR_ELT(ret, 82, rxode2rxRegisterParLoader);
+  SET_VECTOR_ELT(ret, 83, rxode2rxRemoveParLoader);
+  SET_VECTOR_ELT(ret, 84, rxode2rxRegisterDydtForce);
+  SET_VECTOR_ELT(ret, 85, rxode2rxRemoveDydtForce);
+  SET_VECTOR_ELT(ret, 86, rxode2rxRegisterParLoaderNamed);
+  SET_VECTOR_ELT(ret, 87, rxode2getIndCmt);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -693,7 +711,12 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 79, Rf_mkChar("rxode2getIndSolveLast2"));
   SET_STRING_ELT(retN, 80, Rf_mkChar("rxode2setIndSolveLast2"));
   SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxUnifEng"));
-  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2getIndCmt"));
+  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRegisterParLoader"));
+  SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2rxRemoveParLoader"));
+  SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2rxRegisterDydtForce"));
+  SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2rxRemoveDydtForce"));
+  SET_STRING_ELT(retN, 86, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
+  SET_STRING_ELT(retN, 87, Rf_mkChar("rxode2getIndCmt"));
 
 #undef nVec
 
@@ -741,9 +764,24 @@ SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SE
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
+extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
+extern SEXP _rxode2_rxRemoveTestParLoaders(void);
+extern SEXP _rxode2_rxGetInjectedPars(void);
+extern SEXP _rxode2_rxSetForcedPars(SEXP, SEXP);
+extern SEXP _rxode2_rxClearForcedPars(void);
+extern SEXP _rxode2_rxSetActiveParLoader(SEXP);
+extern SEXP _rxode2_rxClearActiveParLoader(void);
+
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxRegisterTestParLoaders", (DL_FUNC) &_rxode2_rxRegisterTestParLoaders, 1},
+    {"_rxode2_rxRemoveTestParLoaders", (DL_FUNC) &_rxode2_rxRemoveTestParLoaders, 0},
+    {"_rxode2_rxGetInjectedPars", (DL_FUNC) &_rxode2_rxGetInjectedPars, 0},
+    {"_rxode2_rxSetForcedPars", (DL_FUNC) &_rxode2_rxSetForcedPars, 2},
+    {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
+    {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
+    {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
@@ -991,6 +1029,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "rxCallDydtForce", (DL_FUNC) &rxCallDydtForce);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);

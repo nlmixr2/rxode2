@@ -164,3 +164,56 @@ plot(r1,C2, ylab="Central Concentration", xlab="Time")
 ```{r time-varying-nocb-effect}
 plot(r1,eff, ylab="Effect", xlab="Time")
 ```
+
+# Forced parameters
+
+Sometimes a parameter's value is owned *outside* the usual `params`/data/`ini`
+channel and must be applied on **every** solve of a model -- for example
+weights fit by an external optimizer that should travel with the model so it
+stays self-contained.  `rxForcedPars()` stores such values in a hidden slot on
+the model (a named numeric vector).  On each solve they are injected into every
+subject/simulation column at solve setup, overriding whatever `params` or the
+data supplied:
+
+```{r}
+mod <- function() {
+  ini({ tcl <- -2 })
+  model({
+    cl <- exp(tcl) * WT
+    d/dt(depot) <- -cl * depot
+    cp <- depot
+  })
+}
+ui <- rxode2(mod)
+
+ev <- et(amt = 100) |> et(seq(1, 8, by = 1))
+ev$WT <- 1
+
+## baseline: WT = 1 from the data
+s0 <- rxSolve(ui, ev)
+
+## force WT = 2 for every solve of this model
+rxForcedPars(ui) <- c(WT = 2)
+s1 <- rxSolve(ui, ev)
+
+head(data.frame(time = s0$time, cp_WT1 = s0$cp, cp_forcedWT2 = s1$cp))
+```
+
+Because the value lives on the model, it is carried through model piping and
+into any `nlmixr2` fit built from the model, so `predict()`/`simulate()` on that
+fit reuse it with no external state.  The forced values are also reported by
+`rxInjectedPars()` on the solved object:
+
+```{r}
+rxInjectedPars(s1)
+```
+
+Clear forcing by assigning `NULL`:
+
+```{r}
+rxForcedPars(ui) <- NULL
+```
+
+Names that are not model parameters are ignored, and forcing applies only to
+population-constant parameters/covariates (a single value per parameter), not
+to per-record time-varying covariates.
