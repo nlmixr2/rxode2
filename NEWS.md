@@ -1,59 +1,23 @@
+# rxode2 5.1.4
+
+## Bug fixes
+
+### Compilation
+
+- Silenced the CRAN `-Wlto-type-mismatch` warnings seen with LTO/gcc builds.
+  The `rxSolveWarnPush()` forward declaration in `src/init.c` was missing the
+  variadic `...` of its definition, and the ODEPACK `/DLS001/` common block was
+  declared with two inconsistent (but memory-equivalent) layouts across the
+  LSODE/LSODA step routines.  Both are now declared consistently; the fixes are
+  layout-preserving and the Fortran solvers produce identical results.
+
 # rxode2 5.1.3
-
-## Breaking / compatibility changes
-
-- The `ar` column that had been added to `$predDf` was removed.  `$predDf` and
-  `$iniDf` are a stable, exported interface relied on by reverse dependencies
-  (nlmixr2est, babelmixr2, ...) and by fits saved with earlier versions, so
-  their schema must not grow.  Instead, a numeric literal supplied to an
-  error-model function (e.g. `add(0.7)`, `prop(0.1)`, `ar(0.5)`) is now parsed
-  into an auto-generated, uniquely named `rx`-prefixed **FIX** parameter in the
-  `$iniDf` (`rx.<endpoint>.<func>`), keyed to its endpoint through the existing
-  `err`/`condition` columns -- exactly like a user-written fixed residual
-  parameter.  (This also fixes literals such as `add(0.7)` that were previously
-  silently dropped.)  Estimated (`ar(rho)`) and modeled (`ar(corv)`)
-  correlations continue to work; the modeled correlation is recovered from the
-  endpoint's error expression rather than from a column.
 
 ## New features
 
 - `rxOptExpr()` gains `chunkLines` and `parallel`, to optimize a large
   machine-generated model (a sensitivity- or Jacobian-augmented model) in
-  contiguous cost-balanced chunks rather than in a single pass.  Normalizing a
-  model is strongly superlinear in its size, and for such a model it -- not the
-  common subexpression search -- is what dominates: optimizing a 275-line
-  augmented model takes ~113s, of which the subexpression search is only ~15s.
-  Chunking amortizes that parse, since each chunk is normalized on its own,
-  taking the same model to ~11s (10.7x; 5.7x at 149 lines, 2.5x at 119).
-
-  Chunking is now the default: a model over `chunkLines` (default 40) lines is
-  chunked, and the chunks are optimized in parallel `mirai` daemons.  `parallel`
-  carries `rxControl(cores=)`'s semantics: `0` (the default) resolves to the
-  rxode2 thread setting `rxCores()`, so CRAN and users tune it with the same
-  knob as the solver (`setRxThreads()`, `OMP_THREAD_LIMIT`, or `parallel=`
-  directly; `1` runs serially).  An existing `mirai` daemon pool is used as-is; otherwise a pool is
-  started only when the model splits into at least 4 chunks (its startup costs a
-  few seconds) and shut down when the call returns.  A model at or under
-  `chunkLines` lines is optimized whole, exactly as before; `chunkLines = 0`
-  forces that for any model.  `mirai` moved from `Suggests` to `Imports`.
-
-  Common subexpressions are only shared within a chunk, so chunking does not give
-  the same optimized text as the whole-model call -- it carries more temporaries
-  -- but it gives an equivalent model: the same states and parameters, the same
-  solution, and the same errors.  The extra temporaries cost no measurable solve
-  time, though they do make the C compilation somewhat slower.
-
-  Compartment-scoped assignments (a `state(0)=` initial condition or an
-  `f`/`alag`/`lag`/`rate`/`dur` dosing modifier) are disguised in place while the
-  chunks are optimized, so they can be chunked without being separated from their
-  `d/dt()`.  A `delay(state, T)` call (or its `rxDelayD`/`rxDelayD2`/`rxDelayD3`
-  sensitivity derivatives) that a chunk boundary separates from its `d/dt(state)`
-  is likewise disguised and restored, so a large DDE (sensitivity) model chunks
-  without falling back; a call in the same chunk as its `d/dt()` still joins the
-  common-subexpression pool.  A chunk is only a fragment and so can fail to
-  optimize where the whole model would not; if any chunk fails the whole model is
-  optimized instead, so a malformed model still raises the error the unchunked
-  call raises.
+  contiguous cost-balanced chunks rather than in a single pass.
 
 - Delay differential equations: `delay(state, T)` evaluates an ODE state at
   `t - T` (Monolix semantics), with `past(state, T) <- expr` defining the
