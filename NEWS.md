@@ -1,5 +1,20 @@
 # rxode2 5.1.4
 
+## New features
+
+- `rxControl(sigdig=)` now derives the ODE solver tolerances with the common
+  convention -- `atol` well below `rtol`, and split by solver stiffness. A purely
+  non-stiff solver (`dop853`, `dop5`, the Runge-Kutta / Verner methods, ...) uses
+  `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)`; a stiff-only solver (`ros4`,
+  `cvode`, `bdf`, ...), an auto-switching solver (`lsoda`/`liblsoda`) or a
+  stiff-secondary composite (e.g. `dop853+ros4`) uses the tighter
+  `rtol = 10^(-sigdig-3)`, `atol = 10^(-sigdig-5)` (stiffness classified with
+  `rxIsNonStiff()`). The sensitivity (`atolSens`/`rtolSens`) and steady-state
+  (`ssAtol`/`ssRtol`, `ssAtolSens`/`ssRtolSens`) tolerances run one order looser.
+  Previously `sigdig` set a symmetric `atol = rtol = 0.5*10^(-sigdig-2)` regardless
+  of the solver. An explicit `atol`/`rtol` still overrides the `sigdig`-derived
+  value.
+
 ## Bug fixes
 
 ### Compilation

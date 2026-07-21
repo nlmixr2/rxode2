@@ -32,16 +32,22 @@
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @param sigdig Specifies the "significant digits" that the ode
+#' @param sigdig Specifies the "significant digits" that the ODE
 #'   solving requests.  When specified this controls the relative and
-#'   absolute tolerances of the ODE solvers.  By default the tolerance
-#'   is `0.5*10^(-sigdig-2)` for regular ODEs. For the
-#'   sensitivity equations the default is `0.5*10\^(-sigdig-1.5)`
-#'   (sensitivity changes only applicable for liblsoda).  This also
-#'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10\^(-sigdig)` and for the sensitivities
-#'   `0.5*10\^(-sigdig+0.625)`.  By default
-#'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
+#'   absolute tolerances of the ODE solvers, following the common
+#'   convention that `atol` sits well below `rtol` and that a stiff
+#'   solver is solved more tightly than a non-stiff one.  For a purely
+#'   non-stiff solver (`dop853`, `dop5`, the Runge-Kutta / Verner
+#'   methods, ...) the main tolerances are `rtol = 10^(-sigdig)` and
+#'   `atol = 10^(-sigdig-3)`; for a stiff-only solver (`ros4`, `cvode`,
+#'   `bdf`, ...), an auto-switching solver (`lsoda`/`liblsoda`) or a
+#'   stiff-secondary composite (e.g. `dop853+ros4`) they are the tighter
+#'   `rtol = 10^(-sigdig-3)` and `atol = 10^(-sigdig-5)` (see
+#'   [rxIsNonStiff()]).  The sensitivity (`atolSens`/`rtolSens`) and
+#'   steady-state (`ssAtol`/`ssRtol`, `ssAtolSens`/`ssRtolSens`)
+#'   tolerances are one order looser than the corresponding main
+#'   tolerance.  By default this is unspecified (`NULL`) and uses the
+#'   standard `atol`/`rtol`.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -1439,29 +1445,41 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     if (!is.null(sigdig)) {
       checkmate::assertNumeric(sigdig, lower=2, finite=TRUE, any.missing=FALSE, len=1)
+      # `sigdig` sets the ODE solver tolerances with the common convention: atol
+      # well below rtol, and split by solver stiffness.  A stiff solve needs
+      # tighter tolerances than a purely non-stiff one.  Only a purely non-stiff
+      # base solver (dop853, dop5, the Runge-Kutta / Verner methods, ...) with no
+      # stiff auto-switch secondary uses the looser non-stiff tolerances; every
+      # stiff-only solver (ros4, cvode, bdf, ...), every auto-switching solver
+      # (lsoda/liblsoda) and every stiff-secondary composite (e.g. dop853+ros4)
+      # uses the tighter stiff tolerances.
+      .sigNonStiff <- isTRUE(rxIsNonStiff(method)) && stiff2 == 0L
+      .sigRtol <- if (.sigNonStiff) 10^(-sigdig)     else 10^(-sigdig - 3)
+      .sigAtol <- if (.sigNonStiff) 10^(-sigdig - 3) else 10^(-sigdig - 5)
       if (missing(atol)) {
-        atol <- 0.5 * 10^(-sigdig - 2)
+        atol <- .sigAtol
       }
       if (missing(rtol)) {
-        rtol <- 0.5 * 10^(-sigdig - 2)
+        rtol <- .sigRtol
       }
+      # sensitivity and steady-state solves run one order looser than the main solve
       if (missing(atolSens)) {
-        atolSens <- 0.5 * 10^(-sigdig - 1.5)
+        atolSens <- 10 * .sigAtol
       }
       if (missing(rtolSens)) {
-        rtolSens <- 0.5 * 10^(-sigdig - 1.5)
+        rtolSens <- 10 * .sigRtol
       }
       if (missing(ssAtol)) {
-        ssAtol <- 0.5 * 10^(-sigdig)
+        ssAtol <- 10 * .sigAtol
       }
       if (missing(ssRtol)) {
-        ssRtol <- 0.5 * 10^(-sigdig)
+        ssRtol <- 10 * .sigRtol
       }
       if (missing(ssAtolSens)) {
-        ssAtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssAtolSens <- 10 * .sigAtol
       }
       if (missing(ssRtolSens)) {
-        ssRtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssRtolSens <- 10 * .sigRtol
       }
     }
     checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
