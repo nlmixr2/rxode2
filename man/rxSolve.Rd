@@ -690,16 +690,11 @@ step-size; error controlled by \code{atol} and \code{rtol}.
 
 \item{sigdig}{Specifies the "significant digits" that the ODE
 solving requests.  When specified this controls the relative and
-absolute tolerances of the ODE solvers, following the common
-convention that \code{atol} sits well below \code{rtol} and that a stiff
-solver is solved more tightly than a non-stiff one.  For a purely
-non-stiff solver (\code{dop853}, \code{dop5}, the Runge-Kutta / Verner
-methods, ...) the main tolerances are \code{rtol = 10^(-sigdig)} and
-\code{atol = 10^(-sigdig-3)}; for a stiff-only solver (\code{ros4}, \code{cvode},
-\code{bdf}, ...), an auto-switching solver (\code{lsoda}/\code{liblsoda}) or a
-stiff-secondary composite (e.g. \code{dop853+ros4}) they are the tighter
-\code{rtol = 10^(-sigdig-3)} and \code{atol = 10^(-sigdig-5)} (see
-\code{\link[=rxIsNonStiff]{rxIsNonStiff()}}).  The sensitivity (\code{atolSens}/\code{rtolSens}) and
+absolute tolerances of the ODE solvers with one simple,
+solver-independent formula: the \code{rtol} exponent IS \code{sigdig} and
+\code{atol} sits three orders below it, so \code{rtol = 10^(-sigdig)} and
+\code{atol = 10^(-sigdig-3)} for every solver (stiff, non-stiff or
+auto-switching).  The sensitivity (\code{atolSens}/\code{rtolSens}) and
 steady-state (\code{ssAtol}/\code{ssRtol}, \code{ssAtolSens}/\code{ssRtolSens})
 tolerances are one order looser than the corresponding main
 tolerance.  By default this is unspecified (\code{NULL}) and uses the
