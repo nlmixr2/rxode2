@@ -694,11 +694,12 @@ absolute tolerances of the ODE solvers with one simple,
 solver-independent formula: the \code{rtol} exponent IS \code{sigdig} and
 \code{atol} sits three orders below it, so \code{rtol = 10^(-sigdig)} and
 \code{atol = 10^(-sigdig-3)} for every solver (stiff, non-stiff or
-auto-switching).  The sensitivity (\code{atolSens}/\code{rtolSens}) and
-steady-state (\code{ssAtol}/\code{ssRtol}, \code{ssAtolSens}/\code{ssRtolSens})
-tolerances are one order looser than the corresponding main
-tolerance.  By default this is unspecified (\code{NULL}) and uses the
-standard \code{atol}/\code{rtol}.}
+auto-switching).  The sensitivity (\code{atolSens}/\code{rtolSens})
+tolerances match the main solve (gradients and covariances are built from
+them); the steady-state (\code{ssAtol}/\code{ssRtol},
+\code{ssAtolSens}/\code{ssRtolSens}) tolerances are one order looser than the
+corresponding main tolerance.  By default this is unspecified (\code{NULL})
+and uses the standard \code{atol}/\code{rtol}.}
 
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been

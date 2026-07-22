@@ -1,8 +1,8 @@
 rxTest({
   # sigdig sets the ODE solver tolerances with one simple, solver-independent
-  # formula: rtol = 10^-sigdig, atol = 10^(-sigdig-3).  Sensitivity + steady-state
-  # solves run one order looser.  Same for every solver (stiff, non-stiff,
-  # auto-switching).
+  # formula: rtol = 10^-sigdig, atol = 10^(-sigdig-3).  Sensitivity solves match
+  # the main solve; steady-state solves run one order looser.  Same for every solver
+  # (stiff, non-stiff, auto-switching).
 
   test_that("sigdig sets the same tolerances for every solver", {
     for (m in c("liblsoda", "lsoda", "dop853", "dop5", "ros4", "cvode", "bdf",
@@ -10,8 +10,8 @@ rxTest({
       .c <- rxControl(sigdig = 4, method = m)
       expect_equal(.c$rtol, 1e-4, info = m)
       expect_equal(.c$atol, 1e-7, info = m)
-      expect_equal(.c$rtolSens, 1e-3, info = m)
-      expect_equal(.c$atolSens, 1e-6, info = m)
+      expect_equal(.c$rtolSens, 1e-4, info = m)
+      expect_equal(.c$atolSens, 1e-7, info = m)
       expect_equal(.c$ssRtol[1], 1e-3, info = m)
       expect_equal(.c$ssAtol[1], 1e-6, info = m)
     }

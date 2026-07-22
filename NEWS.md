@@ -6,7 +6,8 @@
   solver-independent formula: the `rtol` exponent IS `sigdig` and `atol` sits three
   orders below it, so `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)` for every
   solver (stiff, non-stiff or auto-switching).  The sensitivity
-  (`atolSens`/`rtolSens`) and steady-state (`ssAtol`/`ssRtol`,
+  (`atolSens`/`rtolSens`) tolerances match the main solve (gradients and
+  covariances are built from them); the steady-state (`ssAtol`/`ssRtol`,
   `ssAtolSens`/`ssRtolSens`) tolerances run one order looser.  Previously `sigdig`
   set a symmetric `atol = rtol = 0.5*10^(-sigdig-2)`.  An explicit `atol`/`rtol`
   still overrides the `sigdig`-derived value.

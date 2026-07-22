@@ -38,11 +38,12 @@
 #'   solver-independent formula: the `rtol` exponent IS `sigdig` and
 #'   `atol` sits three orders below it, so `rtol = 10^(-sigdig)` and
 #'   `atol = 10^(-sigdig-3)` for every solver (stiff, non-stiff or
-#'   auto-switching).  The sensitivity (`atolSens`/`rtolSens`) and
-#'   steady-state (`ssAtol`/`ssRtol`, `ssAtolSens`/`ssRtolSens`)
-#'   tolerances are one order looser than the corresponding main
-#'   tolerance.  By default this is unspecified (`NULL`) and uses the
-#'   standard `atol`/`rtol`.
+#'   auto-switching).  The sensitivity (`atolSens`/`rtolSens`)
+#'   tolerances match the main solve (gradients and covariances are
+#'   built from them); the steady-state (`ssAtol`/`ssRtol`,
+#'   `ssAtolSens`/`ssRtolSens`) tolerances are one order looser than
+#'   the corresponding main tolerance.  By default this is unspecified
+#'   (`NULL`) and uses the standard `atol`/`rtol`.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -1445,7 +1446,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       # Keeping it uniform (same for stiff, non-stiff and auto-switch solvers) makes
       # it easy to document and lets an optimizer converge to exactly the precision
       # the solve supports (a caller keys its convergence tolerance to `10^-sigdig`
-      # too).  Sensitivity and steady-state solves run one order looser.
+      # too).  Sensitivity solves match the main solve; steady-state runs looser.
       .sigRtol <- 10^(-sigdig)
       .sigAtol <- 10^(-sigdig - 3)
       if (missing(atol)) {
@@ -1454,12 +1455,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       if (missing(rtol)) {
         rtol <- .sigRtol
       }
-      # sensitivity and steady-state solves run one order looser than the main solve
+      # sensitivity solves match the main solve (gradients/covariances are built
+      # from them); steady-state solves run one order looser than the main solve
       if (missing(atolSens)) {
-        atolSens <- 10 * .sigAtol
+        atolSens <- .sigAtol
       }
       if (missing(rtolSens)) {
-        rtolSens <- 10 * .sigRtol
+        rtolSens <- .sigRtol
       }
       if (missing(ssAtol)) {
         ssAtol <- 10 * .sigAtol
