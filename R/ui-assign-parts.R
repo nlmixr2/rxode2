@@ -122,21 +122,19 @@
   oldModel <- rxUiDecompress(oldModel)
   lapply(c("meta", "sticky", "model", "modelName"), function(x) {
     if (exists(x, envir=oldModel)) {
-      assign(x, get(x, envir=oldModel), envir=newModel)
+      if (x == "meta") {
+        # meta must be copied, not shared by reference: the simulation-model
+        # cache (`.simModelBase`) lives in meta, so a shared env would let
+        # either model pick up the other's cached simulation model after
+        # piping.  .copyEnv() drops `.simModelBase`, matching .copyUi() and
+        # the invariant in rxUiGet.simulationModel that piping creates a new
+        # meta env.
+        assign(x, .copyEnv(get(x, envir=oldModel)), envir=newModel)
+      } else {
+        assign(x, get(x, envir=oldModel), envir=newModel)
+      }
     }
   })
-  # The meta env copied above carries the cached simulation model
-  # (`.simModelBase`), which describes the *old* model.  It must be dropped so
-  # the modified model rebuilds it -- consistent with .copyUi()/.copyEnv(),
-  # which already exclude `.simModelBase`.  Without this, models that keep a
-  # persistent meta env across piping (e.g. nonmem2rx imports) reuse the stale
-  # cache and silently drop newly appended compartments/states from solves.
-  if (exists("meta", envir=newModel)) {
-    .metaEnv <- get("meta", envir=newModel)
-    if (exists(".simModelBase", envir=.metaEnv, inherits=FALSE)) {
-      rm(list=".simModelBase", envir=.metaEnv)
-    }
-  }
   if (rename || .modelsNearlySame(newModel, oldModel)) {
     lapply(.getAllSigEnv(oldModel),
            function(x) {

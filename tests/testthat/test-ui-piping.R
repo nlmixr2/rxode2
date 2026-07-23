@@ -2367,8 +2367,9 @@ rxTest({
 
   test_that("piping appends a state after the simulation model is cached (persistent meta)", {
     # Realizing $simulationModel populates meta$.simModelBase.  Piping copies
-    # the previous model's meta env (to keep sticky items), so the cache must
-    # be invalidated -- otherwise the appended state is missing from the solve.
+    # the previous model's meta env (to keep sticky items); the copy must not
+    # share the env by reference -- otherwise either model can pick up the
+    # other's cached simulation model, in whichever order they are solved.
     f <- function() {
       ini({
         ke <- 1
@@ -2385,10 +2386,36 @@ rxTest({
     expect_false(is.null(m$simulationModel))
 
     m2 <- m %>% model(d/dt(AUC) <- cp, append = TRUE)
+    # the meta env must not be shared by reference after piping
+    expect_false(identical(rxUiDecompress(m)$meta, rxUiDecompress(m2)$meta))
     # the appended state must be present in the (rebuilt) simulation model
     expect_true("AUC" %in% rxModelVars(m2$simulationModel)$state)
 
-    s <- suppressWarnings(rxSolve(m2, et(amt = 100, cmt = "CENTRAL") %>% et(0:5)))
+    .ev <- et(amt = 100, cmt = "CENTRAL") %>% et(0:5)
+    s <- suppressWarnings(rxSolve(m2, .ev))
     expect_true("AUC" %in% names(s))
+
+    # solving the piped model must not contaminate the original model
+    expect_false("AUC" %in% rxModelVars(m$simulationModel)$state)
+    s1 <- suppressWarnings(rxSolve(m, .ev))
+    expect_false("AUC" %in% names(s1))
+
+    # reverse order: solve the original first, then the piped model
+    m3 <- rxode2(f)
+    expect_false(is.null(m3$simulationModel))
+    m4 <- m3 %>% model(d/dt(AUC) <- cp, append = TRUE)
+    s3 <- suppressWarnings(rxSolve(m3, .ev))
+    expect_false("AUC" %in% names(s3))
+    s4 <- suppressWarnings(rxSolve(m4, .ev))
+    expect_true("AUC" %in% names(s4))
+
+    # ini() piping must not leak the piped estimates into the original's
+    # cached simulation model (theta is stored on the cached TOS)
+    m5 <- rxode2(f)
+    expect_false(is.null(m5$simulationModel))
+    m6 <- m5 %>% ini(ke = 5)
+    expect_false(is.null(m6$simulationModel))
+    expect_equal(m5$simulationModel$theta[["ke"]], 1)
+    expect_equal(m6$simulationModel$theta[["ke"]], 5)
   })
 })
