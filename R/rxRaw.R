@@ -30,16 +30,28 @@
 #'
 rxGetDefaultSerialize <- function() {
   op <- getOption("rxode2.serialize.type", "bzip2")
-  if (!op %in% c("qs2", "qdata", "base", "bzip2", "xz")) {
-    stop("option 'rxode2.serialize.type' must be one of 'qs2', 'qdata', 'base', 'bzip2' or 'xz'", call.=FALSE)
+  if (!op %in% c("base", "bzip2", "xz")) {
+    stop("option 'rxode2.serialize.type' must be one of 'base', 'bzip2' or 'xz'", call.=FALSE)
   }
   op
+}
+#' Get an exported function from qs2 (an optional dependency)
+#'
+#' @param fun function name to get from qs2
+#' @return the function
+#' @noRd
+.qs2Fn <- function(fun) {
+  if (!requireNamespace("qs2", quietly = TRUE)) {
+    stop("deserializing this object requires the 'qs2' package",
+         call. = FALSE)
+  }
+  getExportedValue("qs2", fun)
 }
 #' Serialize an R Object to a Raw Vector
 #'
 #' @param x object to serialize
 #'
-#' @param type serialization type; one of "qs2", "qdata", "base", "xz" or "bzip2".
+#' @param type serialization type; one of "base", "xz" or "bzip2".
 #'
 #' @return raw vector
 #'
@@ -53,7 +65,7 @@ rxGetDefaultSerialize <- function() {
 #'
 #' rxRawToC(mtcars)
 #'
-rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
+rxSerialize <- function(x, type=c("xz", "bzip2", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
     type <- rxGetDefaultSerialize()
@@ -65,12 +77,6 @@ rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
          " is not supported")
   }
   switch(match.arg(type),
-         qs2 = {
-           qs2::qs_serialize(x)
-         },
-         qdata = {
-           qs2::qd_serialize(x)
-         },
          bzip2 = {
            memCompress(serialize(x, NULL), type="bzip2")
          },
@@ -96,7 +102,7 @@ rxSerialize <- function(x, type=c("xz", "bzip2", "qs2", "qdata", "base")) {
 #'
 rxDeserialize <- function(x) {
   if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
-    .x <- try(qs2::base91_decode(x))
+    .x <- try(.qs2Fn("base91_decode")(x), silent=TRUE)
     if (inherits(.x, "try-error")) {
       stop("Input must be a raw vector or base91 encoded string")
     }
@@ -108,12 +114,10 @@ rxDeserialize <- function(x) {
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
   .ret <- try(switch(.type,
                      qs2 = {
-                       rxReq("qs2")
-                       qs2::qs_deserialize(x)
+                       .qs2Fn("qs_deserialize")(x)
                      },
                      qdata = {
-                       rxReq("qs2")
-                       qs2::qd_deserialize(x)
+                       .qs2Fn("qd_deserialize")(x)
                      },
                      qs = {
                        rxReq("qs")
@@ -157,7 +161,7 @@ rxDeserialize <- function(x) {
 #'
 #' rxRawToC(mtcars)
 #'
-rxRawToC <- function(raw, type=c("xz", "qs2", "qdata", "base", "bzip2")) {
+rxRawToC <- function(raw, type=c("xz", "base", "bzip2")) {
   if (missing(type)) {
     type <- rxGetDefaultSerialize()
   }

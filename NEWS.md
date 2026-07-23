@@ -1,5 +1,13 @@
 # rxode2 (development version)
 
+## New features
+
+- Removed the hard dependency on `qs2` (and hence `stringfish`).
+  `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
+  `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
+  base91-encoded strings when the `qs2` package is installed. Test data was
+  converted from `.qs2` to `.rds`.
+
 ## Bug fixes
 
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the

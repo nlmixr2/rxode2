@@ -2,9 +2,9 @@ rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("infusion + bolus works correctly", {
 
-      d <- test_path("test-infusion-bolus.qs2")
+      d <- test_path("test-infusion-bolus.rds")
       skip_if_not(file.exists(d))
-      dataset <- qs2::qs_read(d)
+      dataset <- readRDS(d)
 
       base_model <- function() {
         ini({

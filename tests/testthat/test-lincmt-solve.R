@@ -4,9 +4,9 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
     test_that("table step for linCmtB", {
 
       skip_if_not_installed("nlmixr2data")
-      pars <- test_path("lincmt-solve-focei-sol.qs2")
+      pars <- test_path("lincmt-solve-focei-sol.rds")
       skip_if_not(file.exists(pars))
-      pars <- qs2::qs_read(pars)
+      pars <- readRDS(pars)
 
       rx <- rxode2({
         param(THETA[1], THETA[2], THETA[3], THETA[4], ETA[1], ETA[2],

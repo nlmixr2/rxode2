@@ -1,9 +1,9 @@
 rxTest({
   test_that("RxODE#398", {
-    filename <- test_path("test-issue-398.qs2")
+    filename <- test_path("test-issue-398.rds")
     skip_if_not(file.exists(filename))
 
-    NM_data <- qs2::qs_read(filename)
+    NM_data <- readRDS(filename)
 
     # Define and Compile model
     mod1 <- rxode2({
