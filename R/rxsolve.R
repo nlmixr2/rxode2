@@ -3872,8 +3872,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`).
 #'
-#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-#'    from the sundialr package sources).  Supports thread-parallel solving and
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (sources
+#'    and headers vendored into rxode2).  Supports thread-parallel solving and
 #'    per-compartment absolute tolerances.
 #'
 #' * `"trapz"` -- Explicit trapezoidal rule (Heun's method), a 2nd-order

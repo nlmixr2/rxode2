@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 5.1.4
+Version: 5.1.4.9000
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
@@ -141,7 +141,6 @@ LinkingTo:
     BH,
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
-    sundialr (>= 0.1.7),
     dparser (>= 1.3.1-12),
     StanHeaders (>= 2.21.0.7)
 Encoding: UTF-8
