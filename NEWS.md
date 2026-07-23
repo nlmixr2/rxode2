@@ -1,14 +1,16 @@
-# rxode2 5.1.4
+# rxode2 (development version)
 
 ## Bug fixes
-
-### Solving
 
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
   per-thread inter-event amount buffer was never cleared between subjects, so
   with `cores < nSub` every subject after the first on a thread could start
   from the previous subject's compartment amounts (surfaced by a modeled
   `alag()`) (#1153; by Hidde van de Beek).
+
+# rxode2 5.1.4
+
+## Bug fixes
 
 ### Compilation
 
