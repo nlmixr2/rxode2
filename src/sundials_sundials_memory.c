@@ -56,10 +56,10 @@ SUNMemoryHelper SUNMemoryHelper_NewEmpty(SUNContext sunctx)
   SUNFunctionBegin(sunctx);
   SUNMemoryHelper helper = NULL;
 
-  helper = (SUNMemoryHelper)malloc(sizeof(struct SUNMemoryHelper_));
+  helper = (SUNMemoryHelper)calloc(1, sizeof(struct SUNMemoryHelper_));
   SUNAssertNull(helper, SUN_ERR_MALLOC_FAIL);
 
-  helper->ops = (SUNMemoryHelper_Ops)malloc(sizeof(struct SUNMemoryHelper_Ops_));
+  helper->ops = (SUNMemoryHelper_Ops)calloc(1, sizeof(struct SUNMemoryHelper_Ops_));
   SUNAssertNull(helper->ops, SUN_ERR_MALLOC_FAIL);
 
   /* Set all ops to NULL */
