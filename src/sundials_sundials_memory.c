@@ -40,7 +40,7 @@ SUNMemory SUNMemoryNewEmpty(SUNContext sunctx)
 
   SUNMemory mem = NULL;
 
-  mem = (SUNMemory)malloc(sizeof(struct SUNMemory_));
+  mem = (SUNMemory)calloc(1, sizeof(struct SUNMemory_));
   SUNAssertNull(mem, SUN_ERR_MALLOC_FAIL);
 
   mem->bytes  = 0;

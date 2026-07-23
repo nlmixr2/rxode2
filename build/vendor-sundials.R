@@ -108,27 +108,39 @@ message("Vendoring SUNDIALS from sundialr ", .sdr_ver, " ...")
 .tarball      <- Filter(file.exists, file.path(.search_dirs, .tarball_name))
 .tarball      <- if (length(.tarball)) .tarball[1] else character(0)
 
-if (!length(.tarball)) {
+if (!length(.tarball) && !nzchar(Sys.getenv("SUNDIALR_VERSION"))) {
   ## Try download.packages() with the configured repos first (may be RSPM).
   ## If that produces a binary (no nested tarball), we fall back below.
+  ## Skipped when SUNDIALR_VERSION is set: download.packages() always fetches
+  ## the repo's CURRENT release and would silently replace the pinned version.
   .tarball <- tryCatch(
     utils::download.packages("sundialr", destdir = tempdir(),
                              repos = getOption("repos"), type = "source")[1, 2],
     error = function(e) character(0)
   )
+  if (length(.tarball) && basename(.tarball) != .tarball_name) .tarball <- character(0)
 }
 
 if (!length(.tarball) || !file.exists(.tarball)) {
-  ## Fall back to the canonical CRAN source URL -- guaranteed to be the real
+  ## Fall back to the canonical CRAN source URLs -- guaranteed to be the real
   ## source tarball regardless of which mirror/RSPM the session is using.
+  ## Superseded versions live under src/contrib/Archive/sundialr/.
   .dest <- file.path(tempdir(), .tarball_name)
-  .cran_url <- paste0("https://cran.r-project.org/src/contrib/", .tarball_name)
-  message("Downloading ", .cran_url)
-  tryCatch(
-    download.file(.cran_url, .dest, mode = "wb", quiet = FALSE),
-    error = function(e) stop("Could not download sundialr source tarball: ", e$message,
-                             call. = FALSE)
-  )
+  .cran_urls <- paste0("https://cran.r-project.org/src/contrib/",
+                       c("", "Archive/sundialr/"), .tarball_name)
+  .ok <- FALSE
+  for (.u in .cran_urls) {
+    message("Downloading ", .u)
+    .ok <- tryCatch({
+      download.file(.u, .dest, mode = "wb", quiet = FALSE)
+      TRUE
+    }, error = function(e) FALSE)
+    if (.ok) break
+  }
+  if (!.ok) {
+    stop("Could not download the sundialr ", .sdr_ver, " source tarball from ",
+         "CRAN (tried src/contrib and src/contrib/Archive).", call. = FALSE)
+  }
   .tarball <- .dest
 }
 
@@ -284,7 +296,7 @@ message("Copied ", length(.hdrs), " headers to src/sundials_inc/.")
   if (!file.exists(.path)) return(invisible(NULL))
   .lines <- readLines(.path)
   .new <- gsub("malloc\\(sizeof \\*([A-Za-z_]+)\\)", "calloc(1, sizeof *\\1)", .lines)
-  .new <- gsub("malloc\\(sizeof\\(struct (SUNMemoryHelper_Ops_|SUNMemoryHelper_)\\)\\)",
+  .new <- gsub("malloc\\(sizeof\\(struct (SUNMemoryHelper_Ops_|SUNMemoryHelper_|SUNMemory_)\\)\\)",
                "calloc(1, sizeof(struct \\1))", .new)
   if (!identical(.new, .lines)) {
     .out <- file(.path, "wb")
