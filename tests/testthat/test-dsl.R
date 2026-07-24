@@ -408,41 +408,46 @@ rxTest({
       "(20*tanh(10*(a-b))-20*tanh(10*(a-b))^3)"
     )
 
+    ## The inequality derivatives are the nascent-delta bump +/- (k/2)*sech^2(k*(a-b))
+    ## centred ON the boundary a==b -- NO atanh(2*tol-1) ~ -4.605 shift. The shift
+    ## used to move the bump off the step (to a-b ~ +/-0.46), which made the emitted
+    ## derivative disagree with the hard-boolean forward value in a whole band; see
+    ## R/d.R.
     expect_equal(
       rxFromSE("Derivative(rxGeq(a,b), a)"),
-      "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxGeq(a,b), b)"),
-      "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxLeq(a,b), a)"),
-      "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxLeq(a,b), b)"),
-      "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxLt(a,b), a)"),
-      "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxLt(a,b), b)"),
-      "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxGt(a,b), a)"),
-      "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxGt(a,b), b)"),
-      "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(

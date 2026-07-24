@@ -423,7 +423,8 @@
 )
 
 ## Approx a==b by
-## (1-tanh(k*(a-b))^2)
+## (1-tanh(k*(a-b))^2)  -- a bump already centred at a==b, so its derivative
+## (the double lobe below) needs no shift.
 .rxD$rxEq <- list(
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
@@ -440,46 +441,47 @@
   }
 )
 
-
-
+## Derivative of the inequality operators (>=, <=, <, >).
+##
+## Each is a smooth step 1/2 +/- 1/2*tanh(k*(a-b)); its derivative is the
+## nascent-delta bump +/- (k/2)*sech^2(k*(a-b)) = +/- (k/2 - (k/2)*tanh(k*(a-b))^2),
+## which peaks AT the boundary a==b and integrates to 1 (the jump size).
+##
+## Earlier versions added a shift `delta = atanh(2*tol-1) ~ -4.605` inside the
+## tanh so the smooth VALUE would read ~0 (for >, <) or ~1 (for >=, <=) exactly
+## at equality. But the forward pass uses the HARD boolean value, so that shift
+## only moved the DERIVATIVE bump off the boundary to a-b ~ +/-0.46 -- into a
+## band where the hard value is already saturated. A consumer of the sensitivity
+## (any exact-AD gradient via .rxSens) then saw a large spurious derivative where
+## the value is locally constant (measured ~4.7x too large on a parameter-
+## dependent branch). Dropping the shift centres the bump on the step, so the
+## derivative is non-zero only where the value actually transitions. The bump is
+## identical for the strict/non-strict pair (same jump, same location); the
+## strict-vs-non-strict distinction lives in the hard value, not the derivative.
 .rxD$rxGeq <- list(
   function(a, b) {
-    .delta <- atanh(2 * .rxD$..tol - 1)
-    ## approx is (1/2+1/2*tanh(k*(a-b)-delta))
     .ab <- paste0("(", a, "-", b, ")")
-    ## (1/2)*k + (-1/2)*k*tanh(-delta + k*(a - b))^2
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", -.delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }, function(a, b) {
-    .delta <- atanh(2 * .rxD$..tol - 1)
-    ## approx is (1/2+1/2*tanh(k*(a-b)-delta))
     .ab <- paste0("(", a, "-", b, ")")
-    ## (1/2)*k + (-1/2)*k*tanh(-delta + k*(a - b))^2
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", -.delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }
 )
 
 .rxD$rxLeq <- list(
   function(a, b) {
-    .delta <- atanh(2 * .rxD$..tol - 1)
-    ## approx is (1/2-1/2*tanh(k*(a-b)+delta))
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }, function(a, b) {
-    .delta <- atanh(2 * .rxD$..tol - 1)
-    ## approx is (1/2-1/2*tanh(k*(a-b)+delta))
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }
 )
@@ -487,23 +489,15 @@
 
 .rxD$rxLt <- list(
   function(a, b) {
-    ## Approx is 1/2-1/2*tanh(k*(a-b)-delta)
-    .delta <- atanh(2 * .rxD$..tol - 1)
     .ab <- paste0("(", a, "-", b, ")")
-    ## (-1/2)*k + (1/2)*k*tanh(-delta + k*(a - b))^2
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", -.delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   },
   function(a, b) {
-    ## Approx is 1/2-1/2*tanh(k*(a-b)-delta)
-    .delta <- atanh(2 * .rxD$..tol - 1)
     .ab <- paste0("(", a, "-", b, ")")
-    ## (-1/2)*k + (1/2)*k*tanh(-delta + k*(a - b))^2
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", -.delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }
 )
@@ -511,25 +505,15 @@
 
 .rxD$rxGt <- list(
   function(a, b) {
-    ## delta <- atanh(2*tol-1);
-    ## 1/2+1/2*tanh(k*(a-b)+delta)
-    .delta <- atanh(2 * .rxD$..tol - 1)
     .ab <- paste0("(", a, "-", b, ")")
-    ## (1/2)*k + (-1/2)*k*tanh(delta + k*(a - b))^2
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   },
   function(a, b) {
-    ## delta <- atanh(2*tol-1);
-    ## 1/2+1/2*tanh(k*(a-b)+delta)
-    .delta <- atanh(2 * .rxD$..tol - 1)
     .ab <- paste0("(", a, "-", b, ")")
-    ## (-1/2)*k + (1/2)*k*tanh(delta + k*(a - b))^2
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .delta,
-      "+", .rxD$..k, "*", .ab, ")^2)"
+      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
     ))
   }
 )
