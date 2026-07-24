@@ -857,6 +857,14 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
   }
   .oldEventSensKey <- .rxEventSensCacheKey
   on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
+  ## `.indLinInfo` is a session global folded into the parsed md5 by rxMd5().  It
+  ## is an OUTPUT of parsing (this call's own indLin/mexp branches below re-set
+  ## it before codegen), never an input, so clear any value left by a prior
+  ## build BEFORE the parse below hashes the model -- otherwise a stale
+  ## descriptor from an earlier matrix-exponential build (or from a rxSensMatExp
+  ## that never fully compiled) makes an unrelated plain model hash differently
+  ## depending on build order.
+  assignInMyNamespace(".indLinInfo", list())
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
     .calcSens <- TRUE
