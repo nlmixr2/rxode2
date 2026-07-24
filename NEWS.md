@@ -2,6 +2,15 @@
 
 ## New features
 
+- The SUNDIALS public headers are now vendored into the package
+  (`src/sundials_inc/`) alongside the already-vendored SUNDIALS C sources,
+  and the `LinkingTo: sundialr` dependency has been dropped.  This
+  guarantees the vendored sources always compile against headers from the
+  same SUNDIALS release, instead of silently drifting when sundialr updates
+  its bundled SUNDIALS (#1155).  The vendored include is injected via
+  `PKG_CPPFLAGS` so it precedes the LinkingTo include flags; otherwise the
+  older SUNDIALS copy bundled inside StanHeaders would shadow it.
+
 - Removed the dependency on `qs2` (and hence `stringfish`).
   `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
   `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
@@ -9,6 +18,10 @@
   converted from `.qs2` to `.rds`.
 
 ## Bug fixes
+
+- The vendored SUNDIALS `*NewEmpty` constructors now allocate with `calloc`
+  instead of `malloc`, so any struct fields added by a newer SUNDIALS
+  release are NULL (and safely ignored) rather than uninitialized (#1155).
 
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
   per-thread inter-event amount buffer was never cleared between subjects, so
