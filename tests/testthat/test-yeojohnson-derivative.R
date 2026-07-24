@@ -101,4 +101,38 @@ rxTest({
     }
   })
 
+  # boxCox (yj = 0) and lnorm (yj = 3) clamp x at sqrt(.Machine$double.eps)
+  # for stability; the clamped x is then run through the usual derivative
+  # formula, so the derivatives are continuous at the clamp boundary (they
+  # used to return the clamp constant ~1.5e-8 itself below the boundary).
+  test_that("boxCox/lnorm derivatives clamp x and evaluate the formula", {
+    .eps <- sqrt(.Machine$double.eps)
+    x <- c(0, .eps, 0.5, 2)
+    xc <- pmax(x, .eps)
+    r <- .tbs(x, 1.0, 3)
+    expect_equal(r$d1, 1 / xc)
+    expect_equal(r$d2, -1 / (xc * xc))
+    for (lambda in c(0, 0.5, 2.0)) {
+      r <- .tbs(x, lambda, 0)
+      if (lambda == 0) {
+        expect_equal(r$d1, 1 / xc)
+        expect_equal(r$d2, -1 / (xc * xc))
+      } else {
+        expect_equal(r$d1, xc^(lambda - 1))
+        expect_equal(r$d2, (lambda - 1) * xc^(lambda - 2))
+      }
+    }
+  })
+
+  test_that("clamped boxCox/lnorm derivatives are continuous at the boundary", {
+    .eps <- sqrt(.Machine$double.eps)
+    x <- c(0, .eps * (1 + 1e-8))
+    r <- .tbs(x, 0.5, 0)
+    expect_equal(r$d1[1], r$d1[2], tolerance = 1e-6)
+    expect_equal(r$d2[1], r$d2[2], tolerance = 1e-6)
+    r <- .tbs(x, 1.0, 3)
+    expect_equal(r$d1[1], r$d1[2], tolerance = 1e-6)
+    expect_equal(r$d2[1], r$d2[2], tolerance = 1e-6)
+  })
+
 })

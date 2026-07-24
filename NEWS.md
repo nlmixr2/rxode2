@@ -70,6 +70,12 @@
     missing the `probit + yeoJohnson` case (returned `NA`).  The log-Jacobian
     itself (`powerL`) clamped the wrong term in its `logit` guard, giving an
     unprotected `log(0)` at the upper bound.
+  - For `boxCox`/`lnorm`, `rxTBSd()` and `rxTBSd2()` returned the clamp
+    constant `sqrt(.Machine$double.eps)` itself for `x` at or below the clamp
+    instead of clamping `x` and evaluating the derivative formula, making the
+    derivatives discontinuous (and ~15 orders of magnitude too small) at the
+    boundary.  The clamp now feeds the usual formula, matching how every other
+    transform in the family handles the guard.
 
 - The `parsed_md5` of a model no longer depends on how many models were built
   before it in the session.  `linCmtSens` was folded into the hash but only

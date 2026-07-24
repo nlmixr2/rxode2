@@ -305,13 +305,13 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
     hl = (high - low);
     return hl/(xl*(hl-xl));
   case 3:
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     return 1/x0;
   case 2:
     return 1.0;
   case 0:
     if (lambda == 1.0) return 1.0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return 1/x0;
     // pow(x,lambda)/lambda - 1/lambda
     return pow(x0, lambda-1);
@@ -365,7 +365,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
     return 0;
   case 0:
     if (lambda == 1.0) return 0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return -1/(x0*x0);
     // pow(x,lambda)/lambda - 1/lambda
     return (lambda-1)*pow(x0, lambda-2);
