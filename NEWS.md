@@ -64,6 +64,19 @@
 
 ## Bug fixes
 
+### Model piping
+
+- Model piping no longer shares the `meta` environment by reference between
+  the original and the piped model.  `.newModelAdjust()` assigned the previous
+  model's `meta` env directly (to retain sticky items), so both models shared
+  one env -- including the cached simulation model (`$meta$.simModelBase`).
+  Whichever model was solved first cached its simulation model for both, so a
+  piped model could silently drop an appended compartment/state (e.g. a
+  `nonmem2rx` import: `mod %>% model(d/dt(AUC) <- f, append=TRUE)`) or the
+  original model could silently gain the piped model's states/estimates.  The
+  meta env is now copied via `.copyEnv()` (which drops `.simModelBase`), so
+  each model keeps its own cache.
+
 ### Compilation
 
 - Silenced the CRAN `-Wlto-type-mismatch` warnings seen with LTO/gcc builds.
