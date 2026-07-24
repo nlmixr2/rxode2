@@ -1,3 +1,17 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- The symbolic derivatives of the relational operators (`>`, `<`, `>=`, `<=`)
+  are now centered on the discontinuity `a == b`: the `atanh(2*tol - 1)` shift
+  that placed the smoothed nascent-delta bump at `a - b ~ +/-0.46` was removed.
+  Since the forward pass evaluates relationals as hard booleans, the shifted
+  bump gave sensitivity/exact-gradient consumers (e.g. FOCEI's analytic
+  gradient paths) a spurious derivative in a band next to the threshold; the
+  centered rule makes the derivative consistent with the forward value.  This
+  also makes the first derivatives of `abs()`, `min()`, and `max()` exact away
+  from the boundary (#1159).
+
 # rxode2 5.1.5
 
 ## New features
@@ -77,6 +91,14 @@
     derivatives discontinuous (and ~15 orders of magnitude too small) at the
     boundary.  The clamp now feeds the usual formula, matching how every other
     transform in the family handles the guard.
+- On Windows with RcppParallel >= 6.0.0 (which statically links TBB through
+  Rtools and no longer loads `tbb.dll`), the stale `-ltbb`/`-ltbbmalloc` flags
+  and the `-L` path to RcppParallel's old dynamic TBB directory that
+  `StanHeaders::LdFlags()` still emits are stripped at configure time, so the
+  rxode2 DLL no longer records an unresolvable runtime dependency on
+  `tbb.dll`.  The strip is keyed to that stale `-L<RcppParallel/lib>`
+  signature, so a future StanHeaders that emits corrected flags -- or a
+  user-supplied TBB via `TBB_LINK_LIB`/`TBB_LIB` -- is left untouched (#1161).
 
 - The `parsed_md5` of a model no longer depends on how many models were built
   before it in the session.  `linCmtSens` was folded into the hash but only
