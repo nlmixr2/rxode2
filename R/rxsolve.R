@@ -32,16 +32,41 @@
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @param sigdig Specifies the "significant digits" that the ode
-#'   solving requests.  When specified this controls the relative and
-#'   absolute tolerances of the ODE solvers.  By default the tolerance
-#'   is `0.5*10^(-sigdig-2)` for regular ODEs. For the
-#'   sensitivity equations the default is `0.5*10\^(-sigdig-1.5)`
-#'   (sensitivity changes only applicable for liblsoda).  This also
-#'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10\^(-sigdig)` and for the sensitivities
-#'   `0.5*10\^(-sigdig+0.625)`.  By default
-#'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
+#' @param sigdig Specifies the "significant digits" that the ODE
+#'   solving requests.  This is `NULL` by default, and while it is
+#'   `NULL` it has no effect at all: `rxSolve()` uses the standard
+#'   `atol`/`rtol` (and the standard sensitivity and steady-state
+#'   tolerances).  `sigdig` only changes a tolerance when you ask for
+#'   it explicitly.
+#'
+#'   When it is supplied, the tolerances are derived with one
+#'   solver-independent formula -- the same for stiff, non-stiff and
+#'   auto-switching solvers.  The `rtol` exponent IS `sigdig` and
+#'   `atol` sits three orders below it:
+#'
+#'   * `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)`
+#'   * the sensitivity tolerances match the main solve, so
+#'     `rtolSens = rtol` and `atolSens = atol` (gradients and
+#'     covariances are built from them)
+#'   * the steady-state tolerances run one order looser than the
+#'     corresponding main tolerance, so `ssRtol = ssRtolSens = 10*rtol`
+#'     and `ssAtol = ssAtolSens = 10*atol`
+#'
+#'   Each of these is set only when you did not pass that tolerance
+#'   yourself; a tolerance you supply always wins.  Because they are
+#'   resolved independently, an explicit `atol`/`rtol` overrides the
+#'   main solve but does *not* propagate to the sensitivity or
+#'   steady-state tolerances -- set those directly if you need them
+#'   changed too.
+#'
+#'   This mapping matches how `nlmixr2est` derives solver tolerances
+#'   from its optimization `sigdig`, so a `sigdig` used for estimation
+#'   and the same `sigdig` used for a plain `rxSolve()` mean the same
+#'   thing.  Note it is keyed to `sigdig` as a request for that many
+#'   significant digits, and is looser than the `atol`/`rtol` defaults
+#'   for small `sigdig` -- at `sigdig = 4` it gives `rtol = 1e-4`
+#'   against a default `rtol = 1e-6`.  Raise `sigdig`, or set
+#'   `atol`/`rtol` directly, when you want a tighter solve.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -1439,29 +1464,39 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     if (!is.null(sigdig)) {
       checkmate::assertNumeric(sigdig, lower=2, finite=TRUE, any.missing=FALSE, len=1)
+      # `sigdig` sets the ODE solver tolerances with ONE simple, solver-independent
+      # formula: the `rtol` exponent IS `sigdig`, and `atol` sits three orders below.
+      # Keeping it uniform (same for stiff, non-stiff and auto-switch solvers) makes
+      # it easy to document and lets an optimizer converge to exactly the precision
+      # the solve supports (a caller keys its convergence tolerance to `10^-sigdig`
+      # too).  Sensitivity solves match the main solve; steady-state runs looser.
+      .sigRtol <- 10^(-sigdig)
+      .sigAtol <- 10^(-sigdig - 3)
       if (missing(atol)) {
-        atol <- 0.5 * 10^(-sigdig - 2)
+        atol <- .sigAtol
       }
       if (missing(rtol)) {
-        rtol <- 0.5 * 10^(-sigdig - 2)
+        rtol <- .sigRtol
       }
+      # sensitivity solves match the main solve (gradients/covariances are built
+      # from them); steady-state solves run one order looser than the main solve
       if (missing(atolSens)) {
-        atolSens <- 0.5 * 10^(-sigdig - 1.5)
+        atolSens <- .sigAtol
       }
       if (missing(rtolSens)) {
-        rtolSens <- 0.5 * 10^(-sigdig - 1.5)
+        rtolSens <- .sigRtol
       }
       if (missing(ssAtol)) {
-        ssAtol <- 0.5 * 10^(-sigdig)
+        ssAtol <- 10 * .sigAtol
       }
       if (missing(ssRtol)) {
-        ssRtol <- 0.5 * 10^(-sigdig)
+        ssRtol <- 10 * .sigRtol
       }
       if (missing(ssAtolSens)) {
-        ssAtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssAtolSens <- 10 * .sigAtol
       }
       if (missing(ssRtolSens)) {
-        ssRtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssRtolSens <- 10 * .sigRtol
       }
     }
     checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
