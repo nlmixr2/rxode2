@@ -4,7 +4,10 @@ R_NegInf <- -Inf # nolint
 R_PosInf <- Inf # nolint
 NA_LOGICAL <- NA # nolint
 
-.linCmtSens <- NULL
+## Must match the `linCmtSens` default of `rxode2()`: it is folded into the
+## parsed md5, so a NULL here would make the first build of a session hash
+## differently from every later one (c() drops NULL).
+.linCmtSens <- c("linCmtA", "linCmtB")
 .clearME <- function() {
   assignInMyNamespace(".rxMECode", "")
   assignInMyNamespace(".indLinInfo", list())
@@ -408,8 +411,10 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxEventSensCacheKey",
                         if (.eventSensActiveReq) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
-    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
+    ## Set BEFORE the parse: `.linCmtSens` is folded into the parsed md5, so
+    ## assigning it afterwards hashed this build with the previous call's value.
     assignInMyNamespace(".linCmtSens", linCmtSens)
+    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
     .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
       calcJac <- TRUE

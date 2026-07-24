@@ -43,6 +43,14 @@
 
 ## Bug fixes
 
+- The `parsed_md5` of a model no longer depends on how many models were built
+  before it in the session.  `linCmtSens` was folded into the hash but only
+  assigned *after* the model was parsed, so the first build of a session hashed
+  with an unset value and every later build hashed with the *previous* call's
+  value.  Because the compiled DLL is named from `parsed_md5`, the same model
+  could get two different cache keys (and hence a redundant recompile) depending
+  on build order.  It is now set before the parse.
+
 - `ev$id` on an event table now returns the per-row `id` column (matching
   `as.data.frame(ev)$id`) instead of the unique subject ids, so idiomatic
   subsets like `ev[ev$id == 3, ]` and per-subject assignments like
