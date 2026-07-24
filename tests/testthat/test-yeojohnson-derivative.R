@@ -80,7 +80,7 @@ rxTest({
   test_that("logit/probit (+ yeoJohnson) derivatives match finite differences", {
     x <- c(0.15, 0.35, 0.5, 0.75, 0.9)
     h <- 1e-6
-    for (yjc in c(4, 5, 7)) {
+    for (yjc in c(4, 5, 6, 7)) {
       for (lambda in c(2.0, 1.0, 0.5, 0)) {
         r <- .tbs(x, lambda, yjc)
         fp <- .tbs(x + h, lambda, yjc)
@@ -133,6 +133,47 @@ rxTest({
     r <- .tbs(x, 1.0, 3)
     expect_equal(r$d1[1], r$d1[2], tolerance = 1e-6)
     expect_equal(r$d2[1], r$d2[2], tolerance = 1e-6)
+  })
+
+  # powerL (log-Jacobian) and powerDL (its lambda gradient) are only shared
+  # via R_RegisterCCallable (nlmixr2est), so they are pinned through the
+  # internal .rxTransformL() test hook.
+  test_that("powerL/powerDL log-Jacobian and lambda gradient", {
+    .pL <- function(x, lambda, yj) {
+      rxode2:::.rxTransformL(x, lambda, transform = yj)
+    }
+    .pDL <- function(x, lambda, yj) {
+      rxode2:::.rxTransformL(x, lambda, transform = yj, dLambda = TRUE)
+    }
+    # yeoJohnson log-Jacobian: (lambda-1)*log1p(x) for x >= 0,
+    # (1-lambda)*log1p(-x) for x < 0
+    expect_equal(.pL(c(2, -0.5, -2), 0.5, 1),
+                 c(-0.5 * log1p(2), 0.5 * log1p(0.5), 0.5 * log1p(2)))
+    # lambda gradient log1p(x) / -log1p(-x), including at exactly lambda == 1
+    # (used to return 0 there) and x < -1 (used to be NaN)
+    for (lam in c(0.25, 1, 1.75)) {
+      expect_equal(.pDL(c(2, -0.5, -2), lam, 1),
+                   c(log1p(2), -log1p(0.5), -log1p(2)))
+    }
+    # boxCox gradient log(x), including at exactly lambda == 1
+    expect_equal(.pDL(2, 1, 0), log(2))
+    # lambda-free transforms have a zero gradient (norm, lnorm, logit, probit)
+    for (yj in c(2, 3, 4, 6)) {
+      expect_equal(.pDL(0.5, 0.7, yj), 0)
+    }
+    # composed transforms chain through the inner logit/probit value
+    # (yj = 7 used to return NA)
+    expect_equal(.pDL(0.25, 0.5, 5), -log1p(log(1 / 0.25 - 1)))
+    expect_equal(.pDL(0.25, 0.5, 7), -log1p(-qnorm(0.25)))
+    # powerDL is the lambda derivative of powerL
+    h <- 1e-6
+    for (yj in c(0, 1, 5, 7)) {
+      x <- c(2, -0.5, 0.35, 0.35)[match(yj, c(0, 1, 5, 7))]
+      fd <- (.pL(x, 0.75 + h, yj) - .pL(x, 0.75 - h, yj)) / (2 * h)
+      expect_equal(.pDL(x, 0.75, yj), fd, tolerance = 1e-6)
+    }
+    # logit log-Jacobian is finite at the upper bound (clamped)
+    expect_true(is.finite(.pL(1, 1, 4)))
   })
 
 })

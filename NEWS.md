@@ -66,10 +66,11 @@
   - The `lambda` gradient of the transform log-Jacobian (`powerDL`, used by
     estimation routines) was wrong on the negative Yeo-Johnson branch
     (`-log1p(x)` instead of `-log1p(-x)`, `NaN` for `x < -1`), returned a
-    spurious `0` at exactly `lambda == 1` for `boxCox`/`yeoJohnson`, and was
-    missing the `probit + yeoJohnson` case (returned `NA`).  The log-Jacobian
-    itself (`powerL`) clamped the wrong term in its `logit` guard, giving an
-    unprotected `log(0)` at the upper bound.
+    spurious `0` at exactly `lambda == 1` for `boxCox`/`yeoJohnson`, was
+    missing the `probit + yeoJohnson` case (returned `NA`), and returned a
+    spurious `log(x)` (instead of `0`) for the lambda-free `lnorm` transform.
+    The log-Jacobian itself (`powerL`) clamped the wrong term in its `logit`
+    guard, giving an unprotected `log(0)` at the upper bound.
   - For `boxCox`/`lnorm`, `rxTBSd()` and `rxTBSd2()` returned the clamp
     constant `sqrt(.Machine$double.eps)` itself for `x` at or below the clamp
     instead of clamping `x` and evaluating the derivative formula, making the

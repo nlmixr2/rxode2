@@ -556,8 +556,8 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
     // For logit norm, no dependence on lambda
     return 0;
   case 3:
-    if (x <= _eps) x0 = _eps;
-    return log(x0);
+    // log-Jacobian of logNorm is -log(x): no dependence on lambda
+    return 0;
   case 2:
     // For normal transform no dependence of lambda
     return 0;
