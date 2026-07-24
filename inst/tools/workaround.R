@@ -81,24 +81,34 @@ if (.Platform$OS.type == "windows") {
   # The path is shQuote()d by StanHeaders, so match quoted forms first;
   # otherwise a path containing a space leaves an orphaned token behind.
   .sl <- gsub("\\s+-Wl,-rpath,('[^']*'|\"[^\"]*\"|[^[:space:]]+)", "", .sl)
-  # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools, so
-  # tbb.dll is no longer distributed and must not be linked dynamically.
-  # Strip the -L path that pointed to the old dynamic TBB copy and the
-  # corresponding -ltbb / -ltbbmalloc flags (emitted by StanHeaders'
-  # LdFlags()) so the linker does not produce a DLL with an unresolvable
-  # runtime dependency on tbb.dll.  When TBB_LIB points at a user-supplied
-  # TBB, StanHeaders emits flags for that copy on purpose, so keep them.
+  # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools and no
+  # longer loads its tbb.dll stub, so StanHeaders' LdFlags() output
+  # (-L<RcppParallel/lib dir> -ltbb -ltbbmalloc) leaves the built DLL with an
+  # unresolvable runtime dependency on tbb.dll.  Strip those flags; TBB
+  # symbols resolve through RcppParallel's own -lRcppParallel instead.  The
+  # strip is keyed to the stale -L<RcppParallel/lib> signature so that a
+  # future StanHeaders that emits corrected flags (a different -L, -ltbb12,
+  # or -lRcppParallel) passes through untouched.  When TBB_LINK_LIB/TBB_LIB
+  # point at a user-supplied TBB, StanHeaders emits flags for that copy on
+  # purpose, so keep them too.
   .rp_ver <- tryCatch(utils::packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
-  if (.rp_ver >= "6.0.0" && !dir.exists(Sys.getenv("TBB_LIB"))) {
-    # StanHeaders shQuote()s the -L path (single quotes); also accept double
-    # quotes.  Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64,
-    # ...) but not ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
-    .sl <- gsub("-L'[^']*RcppParallel[/\\\\]lib([/\\\\][^']*)?'", "", .sl)
-    .sl <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib([/\\\\][^\"]*)?\"", "", .sl)
-    .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl)
-    .sl <- gsub("-ltbbmalloc\\b", "", .sl)
-    .sl <- gsub("-ltbb\\b", "", .sl)
-    .sl <- gsub("\\s+", " ", trimws(.sl))
+  .tbb_env <- Sys.getenv("TBB_LINK_LIB", Sys.getenv("TBB_LIB"))
+  if (.rp_ver >= "6.0.0" && !dir.exists(.tbb_env)) {
+    # Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64, ...) in
+    # shQuote()d (single-quoted), double-quoted, or unquoted form -- but not
+    # ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
+    .sl2 <- gsub("-L'[^']*RcppParallel[/\\\\]lib([/\\\\][^']*)?'", "", .sl)
+    .sl2 <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib([/\\\\][^\"]*)?\"", "", .sl2)
+    .sl2 <- gsub("-L[^-'\"[:space:]][^[:space:]]*RcppParallel[/\\\\]lib([/\\\\][^[:space:]]*)?(?=[[:space:]]|$)",
+                 "", .sl2, perl = TRUE)
+    if (!identical(.sl2, .sl)) {
+      # The stale -L was present, so the -ltbb/-ltbbmalloc flags next to it
+      # came from the same LdFlags() call; drop them with it.
+      .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl2)
+      .sl <- gsub("-ltbbmalloc\\b", "", .sl)
+      .sl <- gsub("-ltbb\\b", "", .sl)
+      .sl <- gsub("\\s+", " ", trimws(.sl))
+    }
   }
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
