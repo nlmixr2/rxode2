@@ -3001,7 +3001,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   if (getOption("rxode2.debug", FALSE)) {
     .rx <- rxNorm(object)
-    qs2::qs_save(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs2"))
+    saveRDS(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.rds"))
   }
   if (inherits(object, "function") ||
         inherits(object, "rxUi")) {

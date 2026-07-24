@@ -68,7 +68,7 @@ rxTest({
                                   addDosing=TRUE)
 
     # import NONMEM output
-    lst <- qs2::qs_read("test-issue-468.qs2")
+    lst <- readRDS("test-issue-468.rds")
 
     run301_tab <- as.data.frame(lst[[1]])
     run302_tab <- as.data.frame(lst[[2]])

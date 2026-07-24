@@ -32,14 +32,14 @@ if (FALSE) {
 
     x2 <- rxCbindStudyIndividual(tmat, ev2)
   })
-  qs2::qs_save(list(tmat=tmat, ev1=ev1, ev2=ev2, x1=x1, x2=x2), "data-cbind-study-individual.qs2")
+  saveRDS(list(tmat=tmat, ev1=ev1, ev2=ev2, x1=x1, x2=x2), "data-cbind-study-individual.rds")
 }
 
 test_that("cbind study and individual", {
-  fileCbindStudyIndividual <- test_path("data-cbind-study-individual.qs2")
+  fileCbindStudyIndividual <- test_path("data-cbind-study-individual.rds")
   skip_if_not(file.exists(fileCbindStudyIndividual))
 
-  l <- qs2::qs_read(fileCbindStudyIndividual)
+  l <- readRDS(fileCbindStudyIndividual)
 
   tmat <- l$tmat
   ev1 <- l$ev1
