@@ -1,3 +1,17 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- The symbolic derivatives of the relational operators (`>`, `<`, `>=`, `<=`)
+  are now centered on the discontinuity `a == b`: the `atanh(2*tol - 1)` shift
+  that placed the smoothed nascent-delta bump at `a - b ~ +/-0.46` was removed.
+  Since the forward pass evaluates relationals as hard booleans, the shifted
+  bump gave sensitivity/exact-gradient consumers (e.g. FOCEI's analytic
+  gradient paths) a spurious derivative in a band next to the threshold; the
+  centered rule makes the derivative consistent with the forward value.  This
+  also makes the first derivatives of `abs()`, `min()`, and `max()` exact away
+  from the boundary (#1159).
+
 # rxode2 5.1.5
 
 ## New features
