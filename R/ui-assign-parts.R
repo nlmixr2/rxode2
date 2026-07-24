@@ -123,13 +123,14 @@
   lapply(c("meta", "sticky", "model", "modelName"), function(x) {
     if (exists(x, envir=oldModel)) {
       if (x == "meta") {
-        # meta must be copied, not shared by reference: the simulation-model
-        # cache (`.simModelBase`) lives in meta, so a shared env would let
-        # either model pick up the other's cached simulation model after
-        # piping.  .copyEnv() drops `.simModelBase`, matching .copyUi() and
-        # the invariant in rxUiGet.simulationModel that piping creates a new
-        # meta env.
-        assign(x, .copyEnv(get(x, envir=oldModel)), envir=newModel)
+        # meta must be forked, not shared by reference: the simulation-model
+        # cache (`.simModelBase`) lives in meta, so a shared env lets either
+        # model pick up the other's cached simulation model after piping.
+        # This is the invariant rxUiGet.simulationModel documents and
+        # .copyUi() already follows.  The fork is shallow (see
+        # .copyMetaForPiping) so metadata carried over keeps the reference
+        # semantics it had when meta was shared.
+        assign(x, .copyMetaForPiping(get(x, envir=oldModel)), envir=newModel)
       } else {
         assign(x, get(x, envir=oldModel), envir=newModel)
       }

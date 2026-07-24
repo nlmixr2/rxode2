@@ -2418,4 +2418,45 @@ rxTest({
     expect_equal(m5$simulationModel$theta[["ke"]], 1)
     expect_equal(m6$simulationModel$theta[["ke"]], 5)
   })
+
+  test_that("forking the meta env on piping preserves metadata semantics", {
+    # Only the meta env itself is new; metadata carried over must behave as it
+    # did when meta was shared -- nested envs stay shared (reference
+    # semantics), closures keep working, and parent chains are intact.
+    f <- function() {
+      ini({
+        ke <- 1
+        sd <- 0.1
+      })
+      model({
+        d/dt(CENTRAL) <- -ke * CENTRAL
+        cp <- CENTRAL
+        cp ~ add(sd)
+      })
+    }
+    m <- rxode2(f)
+
+    .ctx <- new.env(parent = baseenv())
+    evalq({
+      k <- 1
+      getK <- function() k
+      expr <- quote(sum(1, 2))
+    }, .ctx)
+    m$ctx <- .ctx
+    m$plainMeta <- "kept"
+
+    m2 <- m %>% model(d/dt(AUC) <- cp, append = TRUE)
+
+    # plain metadata carries over
+    expect_equal(m2$ctx$k, 1)
+    expect_equal(m2$plainMeta, "kept")
+    # closures stored in meta still evaluate
+    expect_equal(m2$ctx$getK(), 1)
+    # parent chain of a nested env survives (baseenv() -> sum() visible)
+    expect_equal(eval(m2$ctx$expr, m2$ctx), 3)
+    # nested envs keep reference semantics: still the same env, not a clone
+    expect_true(identical(m2$ctx, .ctx))
+    m2$ctx$k <- 5
+    expect_equal(.ctx$getK(), 5)
+  })
 })
