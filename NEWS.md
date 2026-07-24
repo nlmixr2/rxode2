@@ -19,6 +19,13 @@
 
 ## Bug fixes
 
+- `delay()`/`past()` models containing an `if`/`else` block failed to solve
+  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
+  directly, which puts `}` and `else` on separate top-level lines; the
+  normalized text is now parsed wrapped in a `{ }` block.  In addition, a
+  `past()` history inside an `if`/`else` branch is now rejected with a clear
+  error (it was invisible to validation), and delay-duration root-variable
+  resolution now sees assignments made inside `if`/`else` branches (#1151).
 - The vendored SUNDIALS `*NewEmpty` constructors now allocate with `calloc`
   instead of `malloc`, so any struct fields added by a newer SUNDIALS
   release are NULL (and safely ignored) rather than uninitialized (#1155).
