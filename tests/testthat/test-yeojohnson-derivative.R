@@ -174,6 +174,8 @@ rxTest({
     }
     # logit log-Jacobian is finite at the upper bound (clamped)
     expect_true(is.finite(.pL(1, 1, 4)))
+    expect_error(rxode2:::.rxTransformL(0.5, low = 1, high = 0, transform = 4L),
+                 "'high' must be greater than 'low'")
   })
 
 })

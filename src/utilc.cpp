@@ -969,6 +969,9 @@ extern "C" SEXP _rxode2_powerLDL(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS,
   int d = INTEGER(dS)[0];
   double low = REAL(lowS)[0], high = REAL(highS)[0],
     lambda = REAL(lambdaS)[0];
+  if (high <= low) {
+    (Rf_errorcall)(R_NilValue, _("'high' must be greater than 'low'"));
+  }
   double *xD = REAL(xS);
   int lenx = Rf_length(xS);
   SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
