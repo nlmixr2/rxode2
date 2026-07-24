@@ -2,6 +2,15 @@
 
 ## Bug fixes
 
+- `RcppParallel` is now a runtime import (added to `Imports` with an
+  `importFrom`), so its shared library is loaded into the process before
+  `rxode2`'s.  `rxode2` links against `RcppParallel` (`-lRcppParallel`); with
+  `RcppParallel` only in `LinkingTo` its DLL was not guaranteed to be loaded
+  first, so on Windows `library(rxode2)` could fail with `LoadLibrary failure:
+  The specified module could not be found`.  This surfaced with RcppParallel
+  6.0.0, which statically links TBB and no longer ships the `tbb.dll` stub that
+  previously happened to pull the library in.
+
 - The symbolic derivatives of the relational operators (`>`, `<`, `>=`, `<=`)
   are now centered on the discontinuity `a == b`: the `atanh(2*tol - 1)` shift
   that placed the smoothed nascent-delta bump at `a - b ~ +/-0.46` was removed.
