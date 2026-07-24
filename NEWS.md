@@ -2,6 +2,39 @@
 
 ## New features
 
+- `rxControl(sigdig=)` now derives the ODE solver tolerances with one
+  solver-independent formula -- the same for stiff, non-stiff and auto-switching
+  solvers.  The `rtol` exponent IS `sigdig` and `atol` sits three orders below it:
+  `rtol = 10^(-sigdig)` and `atol = 10^(-sigdig-3)`.  The sensitivity tolerances
+  match the main solve (`rtolSens = rtol`, `atolSens = atol`), since gradients and
+  covariances are built from them, and the steady-state tolerances run one order
+  looser (`ssRtol = ssRtolSens = 10*rtol`, `ssAtol = ssAtolSens = 10*atol`).  This
+  matches how `nlmixr2est` derives solver tolerances from its optimization
+  `sigdig`, so the same `sigdig` means the same thing whether it is used for
+  estimation or for a plain `rxSolve()`.
+
+  `sigdig` remains `NULL` by default and continues to have no effect unless you
+  pass it, so solves that do not name `sigdig` are unchanged.
+
+  Two notes for callers who do pass it.  First, the mapping is keyed to `sigdig`
+  as a request for that many significant digits, which for small `sigdig` is
+  *looser* than what the previous symmetric `atol = rtol = 0.5*10^(-sigdig-2)`
+  gave: at `sigdig = 4`, `rtol` moves from `5e-7` to `1e-4`, which is also looser
+  than the `1e-6` default `rtol` (`atol` moves the other way, from `5e-7` to
+  `1e-7`).  If you were using `sigdig` to tighten a solve, raise it or set
+  `atol`/`rtol` directly.  Second, each tolerance is resolved independently and
+  only when you did not supply it, so an explicit `atol`/`rtol` overrides the main
+  solve but does not propagate to the sensitivity or steady-state tolerances --
+  set those directly if they should change too.
+- The SUNDIALS public headers are now vendored into the package
+  (`src/sundials_inc/`) alongside the already-vendored SUNDIALS C sources,
+  and the `LinkingTo: sundialr` dependency has been dropped.  This
+  guarantees the vendored sources always compile against headers from the
+  same SUNDIALS release, instead of silently drifting when sundialr updates
+  its bundled SUNDIALS (#1155).  The vendored include is injected via
+  `PKG_CPPFLAGS` so it precedes the LinkingTo include flags; otherwise the
+  older SUNDIALS copy bundled inside StanHeaders would shadow it.
+
 - Removed the dependency on `qs2` (and hence `stringfish`).
   `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
   `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
@@ -20,6 +53,17 @@
   previously hidden canonical columns such as `cmt`) now round-trip through
   `as.data.frame(ev)` (#1154).
 
+- `delay()`/`past()` models containing an `if`/`else` block failed to solve
+  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
+  directly, which puts `}` and `else` on separate top-level lines; the
+  normalized text is now parsed wrapped in a `{ }` block.  In addition, a
+  `past()` history inside an `if`/`else` branch is now rejected with a clear
+  error (it was invisible to validation), and delay-duration root-variable
+  resolution now sees assignments made inside `if`/`else` branches (#1151).
+- The vendored SUNDIALS `*NewEmpty` constructors now allocate with `calloc`
+  instead of `malloc`, so any struct fields added by a newer SUNDIALS
+  release are NULL (and safely ignored) rather than uninitialized (#1155).
+
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
   per-thread inter-event amount buffer was never cleared between subjects, so
   with `cores < nSub` every subject after the first on a thread could start
@@ -29,6 +73,19 @@
 # rxode2 5.1.4
 
 ## Bug fixes
+
+### Model piping
+
+- Model piping no longer shares the `meta` environment by reference between
+  the original and the piped model.  `.newModelAdjust()` assigned the previous
+  model's `meta` env directly (to retain sticky items), so both models shared
+  one env -- including the cached simulation model (`$meta$.simModelBase`).
+  Whichever model was solved first cached its simulation model for both, so a
+  piped model could silently drop an appended compartment/state (e.g. a
+  `nonmem2rx` import: `mod %>% model(d/dt(AUC) <- f, append=TRUE)`) or the
+  original model could silently gain the piped model's states/estimates.  The
+  meta env is now copied via `.copyEnv()` (which drops `.simModelBase`), so
+  each model keeps its own cache.
 
 ### Compilation
 

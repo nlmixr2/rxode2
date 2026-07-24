@@ -408,8 +408,8 @@ the \code{order} parameter to configure the number of intermediate
 steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-from the sundialr package sources).  Supports thread-parallel solving and
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (sources
+and headers vendored into rxode2).  Supports thread-parallel solving and
 per-compartment absolute tolerances.
 \item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
 fixed-step Runge-Kutta method implemented via the libode library.
@@ -688,16 +688,42 @@ step-size; error controlled by \code{atol} and \code{rtol}.
 \strong{Not thread-safe} -- always runs on a single core.
 }}
 
-\item{sigdig}{Specifies the "significant digits" that the ode
-solving requests.  When specified this controls the relative and
-absolute tolerances of the ODE solvers.  By default the tolerance
-is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
-(sensitivity changes only applicable for liblsoda).  This also
-controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
-\verb{0.5*10\\^(-sigdig+0.625)}.  By default
-this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
+\item{sigdig}{Specifies the "significant digits" that the ODE
+solving requests.  This is \code{NULL} by default, and while it is
+\code{NULL} it has no effect at all: \code{rxSolve()} uses the standard
+\code{atol}/\code{rtol} (and the standard sensitivity and steady-state
+tolerances).  \code{sigdig} only changes a tolerance when you ask for
+it explicitly.
+
+When it is supplied, the tolerances are derived with one
+solver-independent formula -- the same for stiff, non-stiff and
+auto-switching solvers.  The \code{rtol} exponent IS \code{sigdig} and
+\code{atol} sits three orders below it:
+\itemize{
+\item \code{rtol = 10^(-sigdig)}, \code{atol = 10^(-sigdig-3)}
+\item the sensitivity tolerances match the main solve, so
+\code{rtolSens = rtol} and \code{atolSens = atol} (gradients and
+covariances are built from them)
+\item the steady-state tolerances run one order looser than the
+corresponding main tolerance, so \code{ssRtol = ssRtolSens = 10*rtol}
+and \code{ssAtol = ssAtolSens = 10*atol}
+}
+
+Each of these is set only when you did not pass that tolerance
+yourself; a tolerance you supply always wins.  Because they are
+resolved independently, an explicit \code{atol}/\code{rtol} overrides the
+main solve but does \emph{not} propagate to the sensitivity or
+steady-state tolerances -- set those directly if you need them
+changed too.
+
+This mapping matches how \code{nlmixr2est} derives solver tolerances
+from its optimization \code{sigdig}, so a \code{sigdig} used for estimation
+and the same \code{sigdig} used for a plain \code{rxSolve()} mean the same
+thing.  Note it is keyed to \code{sigdig} as a request for that many
+significant digits, and is looser than the \code{atol}/\code{rtol} defaults
+for small \code{sigdig} -- at \code{sigdig = 4} it gives \code{rtol = 1e-4}
+against a default \code{rtol = 1e-6}.  Raise \code{sigdig}, or set
+\code{atol}/\code{rtol} directly, when you want a tighter solve.}
 
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been

@@ -82,10 +82,14 @@ if (.Platform$OS.type == "windows") {
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
 
-## Get SUNDIALS public headers from the installed sundialr package.
-.sundialrInc <- system.file("include", package = "sundialr")
-if (!nzchar(.sundialrInc) || !dir.exists(.sundialrInc)) {
-  stop("sundialr package is required for building rxode2. Please install sundialr.", call. = FALSE)
+## SUNDIALS public headers are vendored in-tree (src/sundials_inc) so the
+## vendored SUNDIALS .c sources always compile against the matching headers
+## (see https://github.com/nlmixr2/rxode2/issues/1155).
+.sundialsInc <- file.path("src", "sundials_inc")
+if (!file.exists(file.path(.sundialsInc, "sundials", "sundials_config.h"))) {
+  stop("Vendored SUNDIALS headers are missing from src/sundials_inc.\n",
+       "These files are committed to the repository and must be present.\n",
+       "Re-vendor them with 'Rscript build/vendor-sundials.R'.", call. = FALSE)
 }
 
 ## CVODE C source and private impl headers are committed to src/.
@@ -291,9 +295,9 @@ if (file.exists(.clf)) {
 
 ## ---------------------------------------------------------------------------
 
-.in <- gsub("@SUNDIALR_INC@",
-            paste0("-I\"", normalizePath(.sundialrInc, winslash = "/", mustWork = TRUE), "\""),
-            .in)
+## Compilation runs with src/ as the working directory, so a relative
+## include path is sufficient (and avoids embedding build-tree paths).
+.in <- gsub("@SUNDIALS_INC@", "-Isundials_inc", .in)
 
 .sp_files <- c("sunlinsol_spgmr.c", "sunlinsol_spbcgs.c", "sunlinsol_sptfqmr.c")
 
@@ -540,7 +544,8 @@ close(codegen2.h)
 ## Skipped gracefully when digest is not installed (e.g. --no-suggests CI).
 
 if (requireNamespace("digest", quietly = TRUE)) {
-  cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
+  cpp <- list.files("src", pattern = "\\.(c|h|cpp|f)$")
+  cpp <- cpp[!dir.exists(file.path("src", cpp))]
   include <- list.files("inst/include", recursive = TRUE)
 
   md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
