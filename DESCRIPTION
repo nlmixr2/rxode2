@@ -151,7 +151,7 @@ LinkingTo:
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
     BH,
-    RcppParallel,
+    RcppParallel (>= 6.0.0),
     RcppEigen (>= 0.3.3.9.2),
     dparser (>= 1.3.1-12),
     StanHeaders (>= 2.21.0.7)

@@ -79,6 +79,19 @@ if (inherits(versionInfo, "try-error")) {
 if (.Platform$OS.type == "windows") {
   # rpath is not meaningful on Windows and can generate noisy linker flags.
   .sl <- gsub("\\s+-Wl,-rpath,[^[:space:]]+", "", .sl)
+  # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools, so
+  # tbb.dll is no longer distributed and must not be linked dynamically.
+  # Strip the -L path that pointed to the old dynamic TBB copy and the
+  # corresponding -ltbb / -ltbbmalloc flags so the linker does not produce
+  # a DLL with an unresolvable runtime dependency on tbb.dll.
+  .rp_ver <- tryCatch(packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
+  if (.rp_ver >= "6.0.0") {
+    .sl <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib[/\\\\]x64\"", "", .sl)
+    .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl)
+    .sl <- gsub("-ltbbmalloc\\b", "", .sl)
+    .sl <- gsub("-ltbb\\b", "", .sl)
+    .sl <- gsub("\\s+", " ", trimws(.sl))
+  }
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
 
