@@ -1,4 +1,4 @@
-# rxode2 5.1.4
+# rxode2 (development version)
 
 ## New features
 
@@ -26,6 +26,8 @@
   only when you did not supply it, so an explicit `atol`/`rtol` overrides the main
   solve but does not propagate to the sensitivity or steady-state tolerances --
   set those directly if they should change too.
+
+# rxode2 5.1.4
 
 ## Bug fixes
 
