@@ -175,6 +175,53 @@
   sort(unique(.ids))
 }
 
+#' Per-row id column of the materialized table, without materializing
+#'
+#' Mirrors the row counts of .etMaterialize() (obs-chunk expansion plus
+#' the windowed-addl expansion of .etExpandAddl(windows=TRUE)) but never
+#' draws window times, so reading ev$id does not touch the RNG (#1154).
+#'
+#' @param et rxEt object
+#' @return integer vector matching .etMaterialize(et)$id
+#' @noRd
+.etIdColumn <- function(et) {
+  .env <- .rxEtEnv(et)
+  .groups <- .etGetGroups(.env)
+  if (length(.groups) == 0L) return(integer(0))
+  .ids <- integer(0)
+  .counts <- integer(0)
+  for (.g in .groups) {
+    .df <- .g$data
+    if (!is.data.frame(.df)) .df <- .etExpandObsChunk(.df)
+    if (!is.data.frame(.df) || nrow(.df) == 0L) next
+    # rows added by the windowed-addl expansion in .etMaterialize
+    .extra <- if (is.null(.df$evid) || is.null(.df$addl) || is.null(.df$low)) {
+      rep.int(0L, nrow(.df))
+    } else {
+      ifelse(!is.na(.df$evid) & .df$evid != 0L &
+               !is.na(.df$addl) & .df$addl > 0L & !is.na(.df$low),
+             as.integer(.df$addl), 0L)
+    }
+    if (!is.null(.df$id)) {
+      .rowIds <- as.integer(.df$id)
+      .tab <- tapply(1L + .extra, .rowIds, sum)
+      .ids <- c(.ids, as.integer(names(.tab)))
+      .counts <- c(.counts, as.integer(.tab))
+    } else {
+      .n <- nrow(.df) + sum(.extra)
+      .gIds <- as.integer(.g$ids)
+      .ids <- c(.ids, .gIds)
+      .counts <- c(.counts, rep.int(as.integer(.n), length(.gIds)))
+    }
+  }
+  if (length(.ids) == 0L) return(integer(0))
+  # total rows per unique id, in ascending id order (materialize sorts by id)
+  .tot <- vapply(split(.counts, .ids), sum, integer(1))
+  .uid <- as.integer(names(.tot))
+  .ord <- order(.uid)
+  rep(.uid[.ord], .tot[.ord])
+}
+
 .etResetCountsFromGroups <- function(envRef) {
   .groups <- .etGetGroups(envRef)
   if (length(.groups) == 0L) {

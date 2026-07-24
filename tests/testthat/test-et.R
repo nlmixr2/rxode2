@@ -1,5 +1,48 @@
 rxTest({
   library(withr)
+
+  test_that("ev$id has data-frame semantics (#1154)", {
+    ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
+    .df <- as.data.frame(ev, all = TRUE)
+    # per-row id column, matching as.data.frame(ev)$id
+    expect_equal(ev$id, .df$id)
+    expect_equal(length(ev$id), nrow(.df))
+    # unique ids remain available via the env
+    expect_equal(ev$env$ids, 1:3)
+    # idiomatic subset returns only subject 3, doses included
+    .sub <- as.data.frame(ev[ev$id == 3, ])
+    expect_equal(unique(.sub$id), 3L)
+    expect_equal(nrow(.sub), sum(.df$id == 3L))
+    expect_equal(sum(.sub$evid != 0L), 1L)
+    # a logical row index that cannot recycle cleanly errors
+    expect_error(ev[c(TRUE, FALSE, TRUE), ], "logical row index")
+    expect_error(ev[c(TRUE, FALSE, TRUE), "time"], "logical row index")
+    # length-0 and length-1 logical indices keep data-frame semantics
+    expect_equal(nrow(as.data.frame(ev[logical(0), ])), 0L)
+    expect_equal(nrow(as.data.frame(ev[TRUE, ], all = TRUE)), nrow(.df))
+    # reading ev$id does not consume the RNG stream (windowed addl doses
+    # draw times on materialization)
+    .evw <- et(data.frame(id = 1L, time = 0, low = 0, high = 1, cmt = "depot",
+                          amt = 100, ii = 24, addl = 1L, evid = 1L))
+    .a <- withr::with_seed(42, as.data.frame(.evw, all = TRUE))
+    .b <- withr::with_seed(42, {
+      invisible(.evw$id)
+      as.data.frame(.evw, all = TRUE)
+    })
+    expect_equal(.a$time, .b$time)
+    expect_equal(.evw$id, .a$id)
+    # per-subject covariate assignment round-trips through as.data.frame
+    ev$wt <- 50 + 20 * ev$id
+    .df2 <- as.data.frame(ev)
+    expect_true("wt" %in% names(.df2))
+    expect_equal(as.numeric(tapply(.df2$wt, .df2$id, unique)), c(70, 90, 110))
+    # assigning an unshown canonical column round-trips too
+    .evc <- et(0:5)
+    .evc$cmt <- "depot"
+    expect_true("cmt" %in% names(as.data.frame(.evc)))
+    expect_equal(unique(as.data.frame(.evc)$cmt), "depot")
+  })
+
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
@@ -185,45 +228,45 @@ rxTest({
     ## Now do it with dosing/sampling windows
 
     test_that("Make sure that et only has IDs 2 and 3.", {
-      expect_equal(eti$id, 2:3)
-      expect_equal(eti1$id, 3:4)
-      expect_equal(eti2$id, 3)
-      expect_equal(eti3$id, 3:4)
-      expect_equal(eti4$id, 3)
-      expect_equal(eti5$id, 2:3)
-      expect_equal(eti6$id, 2)
-      expect_equal(eti7$id, 2)
-      expect_equal(eti8$id, 1)
+      expect_equal(unique(eti$id), 2:3)
+      expect_equal(unique(eti1$id), 3:4)
+      expect_equal(unique(eti2$id), 3)
+      expect_equal(unique(eti3$id), 3:4)
+      expect_equal(unique(eti4$id), 3)
+      expect_equal(unique(eti5$id), 2:3)
+      expect_equal(unique(eti6$id), 2)
+      expect_equal(unique(eti7$id), 2)
+      expect_equal(unique(eti8$id), 1)
       expect_true(eti8$env$show["id"])
-      expect_equal(eti9$id, 1)
+      expect_equal(unique(eti9$id), 1)
       expect_true(eti9$env$show["id"])
-      expect_equal(eti10$id, 1)
+      expect_equal(unique(eti10$id), 1)
       expect_true(eti10$env$show["id"])
-      expect_equal(eti11$id, 1)
+      expect_equal(unique(eti11$id), 1)
       expect_true(eti11$env$show["id"])
-      expect_equal(eti12$id, 1)
+      expect_equal(unique(eti12$id), 1)
       expect_true(eti12$env$show["id"])
-      expect_equal(eti13$id, 1)
+      expect_equal(unique(eti13$id), 1)
       expect_true(eti13$env$show["id"])
-      expect_equal(eti14$id, 1)
+      expect_equal(unique(eti14$id), 1)
       expect_true(eti14$env$show["id"])
-      expect_equal(eti15$id, 1)
+      expect_equal(unique(eti15$id), 1)
       expect_true(eti15$env$show["id"])
-      expect_equal(eti16$id, 2)
+      expect_equal(unique(eti16$id), 2)
       expect_true(eti16$env$show["id"])
-      expect_equal(eti17$id, 2)
+      expect_equal(unique(eti17$id), 2)
       expect_true(eti17$env$show["id"])
-      expect_equal(eti18$id, 2)
+      expect_equal(unique(eti18$id), 2)
       expect_true(eti18$env$show["id"])
-      expect_equal(eti19$id, 2)
+      expect_equal(unique(eti19$id), 2)
       expect_true(eti19$env$show["id"])
-      expect_equal(eti20$id, 2:3)
+      expect_equal(unique(eti20$id), 2:3)
       expect_true(eti20$env$show["id"])
-      expect_equal(eti21$id, 2:3)
+      expect_equal(unique(eti21$id), 2:3)
       expect_true(eti21$env$show["id"])
-      expect_equal(eti22$id, 2:3)
+      expect_equal(unique(eti22$id), 2:3)
       expect_true(eti22$env$show["id"])
-      expect_equal(eti23$id, 2:3)
+      expect_equal(unique(eti23$id), 2:3)
       expect_true(eti23$env$show["id"])
     })
 

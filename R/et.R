@@ -653,16 +653,20 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (!is.null(.direct)) return(.direct)
 
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
-  # "id" returns the unique sorted ids present in the materialized table
-  if (arg == "id" && !is.null(.env)) {
-    return(.etPresentIds(.env)) # nolint
-  }
+  # "id" falls through to step 3 and returns the per-row id column
+  # (data-frame semantics, #1154); unique ids are available via x$env$ids
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     return(get(arg, envir = .env, inherits = FALSE))
   }
 
   # 3. Materialize and return data column (time, amt, evid, etc.)
   if (!is.null(.env)) {
+    if (arg == "id") {
+      # computed from row counts rather than .etMaterialize(), which
+      # draws window/addl times from the RNG; the id column itself does
+      # not depend on the drawn values (rows sort by id first)
+      return(.etIdColumn(obj)) # nolint
+    }
     .mat <- .etMaterialize(obj) # nolint
     if (arg %in% names(.mat)) {
       .val <- .mat[[arg]]
@@ -731,6 +735,7 @@ names.rxEt <- function(x) {
   if (missing(j)) {
     # Row-only subset: return rxEt
     .full <- .etMaterialize(x) # nolint
+    if (!missing(i)) .etCheckLogicalRowIndex(i, nrow(.full)) # nolint
     .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
     .newEnv <- new.env(parent = emptyenv())
     .newEnv$units      <- .env0$units
@@ -753,14 +758,34 @@ names.rxEt <- function(x) {
   }
   .mat <- as.data.frame(x, all = TRUE)
   if (missing(i)) return(.mat[, j, drop = drop])
+  .etCheckLogicalRowIndex(i, nrow(.mat)) # nolint
   .mat[i, j, drop = drop]
+}
+
+#' Guard against silent logical recycling in rxEt row subsets (#1154)
+#'
+#' @param i row index supplied to `[.rxEt`
+#' @param nrow number of rows in the materialized event table
+#' @return nothing; stops when a logical index cannot recycle cleanly
+#' @noRd
+.etCheckLogicalRowIndex <- function(i, nrow) {
+  if (is.logical(i) && length(i) > 1L && length(i) != nrow) {
+    stop(sprintf("logical row index of length %d does not match the number of event table rows (%d)",
+                 length(i), nrow), call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @export
 `$<-.rxEt` <- function(x, name, value) {
   .df <- .etMaterialize(x) # nolint
   .df[[name]] <- value
-  .rxEtRebuildShell(x, .df) # nolint
+  .ret <- .rxEtRebuildShell(x, .df) # nolint
+  # an explicitly assigned canonical column should display, so the
+  # default as.data.frame() output reflects what will be solved (#1154)
+  .env <- .rxEtEnv(.ret) # nolint
+  if (name %in% names(.env$show)) .env$show[name] <- TRUE
+  .ret
 }
 
 drop_units.rxEt <- function(x) {
@@ -1496,7 +1521,9 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
   } else {
     .showCols <- names(.show)[.show]
     .showCols <- intersect(.showCols, names(.full))
-    .full[, .showCols, drop = FALSE]
+    # keep user-added columns (e.g. covariates from ev$wt <- ...), #1154
+    .extraCols <- setdiff(names(.full), names(.show))
+    .full[, c(.showCols, .extraCols), drop = FALSE]
   }
 
 }
