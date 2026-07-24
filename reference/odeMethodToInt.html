@@ -216,8 +216,8 @@ the <code>order</code> parameter to configure the number of intermediate
 steps.</p></li>
 <li><p><code>"em"</code> – Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by <code>hmin</code>).</p></li>
-<li><p><code>"cvode"</code> – CVODE BDF stiff solver from the SUNDIALS library (vendored
-from the sundialr package sources).  Supports thread-parallel solving and
+<li><p><code>"cvode"</code> – CVODE BDF stiff solver from the SUNDIALS library (sources
+and headers vendored into rxode2).  Supports thread-parallel solving and
 per-compartment absolute tolerances.</p></li>
 <li><p><code>"trapz"</code> – Explicit trapezoidal rule (Heun's method), a 2nd-order
 fixed-step Runge-Kutta method implemented via the libode library.
