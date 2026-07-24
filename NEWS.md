@@ -1,3 +1,21 @@
+# rxode2 (development version)
+
+## New features
+
+- Removed the dependency on `qs2` (and hence `stringfish`).
+  `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
+  `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
+  base91-encoded strings when the `qs2` package is installed. Test data was
+  converted from `.qs2` to `.rds`.
+
+## Bug fixes
+
+- Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
+  per-thread inter-event amount buffer was never cleared between subjects, so
+  with `cores < nSub` every subject after the first on a thread could start
+  from the previous subject's compartment amounts (surfaced by a modeled
+  `alag()`) (#1153; by Hidde van de Beek).
+
 # rxode2 5.1.4
 
 ## Bug fixes

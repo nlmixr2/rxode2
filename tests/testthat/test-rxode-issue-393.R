@@ -1,10 +1,10 @@
 rxTest({
   test_that("RxODE#393", {
-    filePath <- test_path("test-issue-393.qs2")
+    filePath <- test_path("test-issue-393.rds")
 
     skip_if_not(file.exists(filePath))
 
-    d <- qs2::qs_read(filePath)
+    d <- readRDS(filePath)
 
     mod1 <- rxode2({
       #  CLH = THETA[1];
