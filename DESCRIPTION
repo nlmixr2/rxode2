@@ -90,8 +90,7 @@ Suggests:
     arrow,
     fst,
     duckdb,
-    DBI,
-    qs2
+    DBI
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),

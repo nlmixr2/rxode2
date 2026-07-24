@@ -2,7 +2,7 @@
 
 ## New features
 
-- Moved `qs2` (and hence `stringfish`) from Imports to Suggests.
+- Removed the dependency on `qs2` (and hence `stringfish`).
   `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
   `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
   base91-encoded strings when the `qs2` package is installed. Test data was

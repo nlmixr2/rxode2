@@ -41,10 +41,7 @@ rxGetDefaultSerialize <- function() {
 #' @return the function
 #' @noRd
 .qs2Fn <- function(fun) {
-  if (!requireNamespace("qs2", quietly = TRUE)) {
-    stop("deserializing this object requires the 'qs2' package",
-         call. = FALSE)
-  }
+  rxReq("qs2")
   getExportedValue("qs2", fun)
 }
 #' Serialize an R Object to a Raw Vector
