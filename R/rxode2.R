@@ -4,10 +4,11 @@ R_NegInf <- -Inf # nolint
 R_PosInf <- Inf # nolint
 NA_LOGICAL <- NA # nolint
 
-## Must match the `linCmtSens` default of `rxode2()`: it is folded into the
-## parsed md5, so a NULL here would make the first build of a session hash
+## Must match what `rxode2()` stores for its `linCmtSens` default (the default
+## choice vector collapsed to the value `match.arg()` picks): it is folded into
+## the parsed md5, so a NULL here would make the first build of a session hash
 ## differently from every later one (c() drops NULL).
-.linCmtSens <- c("linCmtA", "linCmtB")
+.linCmtSens <- "linCmtA"
 .clearME <- function() {
   assignInMyNamespace(".rxMECode", "")
   assignInMyNamespace(".indLinInfo", list())
@@ -413,6 +414,14 @@ rxode2 <- # nolint
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     ## Set BEFORE the parse: `.linCmtSens` is folded into the parsed md5, so
     ## assigning it afterwards hashed this build with the previous call's value.
+    ## The default is the whole choice vector, which `match.arg()` resolves to
+    ## its first element -- so collapse an in-effect default to that scalar and
+    ## the default and an explicit "linCmtA" share one cache key instead of
+    ## compiling the identical model twice.  Only the untouched default is
+    ## collapsed; an explicit value is passed through so validation is unchanged.
+    if (identical(linCmtSens, c("linCmtA", "linCmtB"))) {
+      linCmtSens <- "linCmtA"
+    }
     assignInMyNamespace(".linCmtSens", linCmtSens)
     .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
     .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
