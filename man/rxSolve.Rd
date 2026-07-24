@@ -408,8 +408,8 @@ the \code{order} parameter to configure the number of intermediate
 steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-from the sundialr package sources).  Supports thread-parallel solving and
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (sources
+and headers vendored into rxode2).  Supports thread-parallel solving and
 per-compartment absolute tolerances.
 \item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
 fixed-step Runge-Kutta method implemented via the libode library.

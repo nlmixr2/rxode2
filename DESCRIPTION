@@ -1,16 +1,22 @@
 Package: rxode2
-Version: 5.1.4
+Version: 5.1.4.9000
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
    person("Wenping", "Wang", role = c("aut"), email = "wwang8198@gmail.com"),
+   person("Aaron", "Collier", role="ctb", comment="SUNDIALS/CVODE"),
    person("Alan", "Hindmarsh",role="ctb"),
    person("Arun", "Srinivasan", role="ctb", email="arunkumar.sriniv@gmail.com"),
+   person("Ashley", "Crawford", role="ctb", comment="SUNDIALS/CVODE"),
    person("Awad H.", "Al-Mohy",role="ctb"),
    person("Bill", "Denney", email="wdenney@humanpredictions.com", role="ctb", comment=c(ORCID="0000-0002-5759-428X")),
    person("Cleve", "Moler", role="ctb"),
+   person("Cody J.", "Balos", role="ctb", comment="SUNDIALS/CVODE"),
+   person("Dan", "Shumaker", role="ctb", comment="SUNDIALS/CVODE"),
    person("Daniel", "Kaschek", email="daniel.kaschek@gmail.com", role="ctb"),
+   person("Daniel R.", "Reynolds", role="ctb", comment="SUNDIALS/CVODE"),
    person("David", "Cooley", role="ctb"),
+   person("David J.", "Gardner", role="ctb", comment="SUNDIALS/CVODE"),
    person("Drew", "Schmidt", role="ctb"),
    person("Ernst", "Hairer", role="ctb"),
    person("Gabriel", "Staples", role="ctb"),
@@ -26,6 +32,7 @@ Authors@R: c(
    person("Jim", "Bunch", role="ctb"),
    person("Karline", "Soetaert", role="ctb"),
    person("Kevin", "Ushey", role="ctb"),
+   person("Lawrence Livermore National Security", role="cph", comment="SUNDIALS/CVODE"),
    person("Linda", "Petzold", role="ctb"),
    person("Mark M.", "Baum", role="ctb"),
    person("Martin", "Maechler", role="ctb"),
@@ -37,11 +44,16 @@ Authors@R: c(
    person("Nicholas J.", "Higham",role="ctb"),
    person("Omar", "Elashkar", email="omar.i.elashkar@gmail.com", role="ctb"),
    person("Peter N.", "Brown", role="ctb"),
+   person("Radu", "Serban", role="ctb", comment="SUNDIALS/CVODE"),
    person("Rich", "FitzJohn", role="ctb", email="rich.fitzjohn@gmail.com"),
    person("Richard", "Upton", role = "ctb"),
    person("Roger B.", "Sidje", role="ctb"),
+   person("Scott D.", "Cohen", role="ctb", comment="SUNDIALS/CVODE"),
    person("Simon", "Frost", role="ctb"),
+   person("Slaven", "Peles", role="ctb", comment="SUNDIALS/CVODE"),
+   person("Southern Methodist University", role="cph", comment="SUNDIALS/CVODE"),
    person("Thomas", "Petzoldt", role="ctb"),
+   person("University of Maryland Baltimore County", role="cph", comment="SUNDIALS/CVODE"),
    person("Wes", "Hinsley", role="ctb"),
    person("Woodrow",  "Setzer", role="ctb"),
    person("Yu", "Feng", role="ctb"),
@@ -110,7 +122,6 @@ Imports:
     dparser (>= 1.3.1-12),
     rxode2ll (>= 2.0.9),
     data.table (>= 1.12.4),
-    qs2,
     vctrs,
     stats
 Description: Facilities for running simulations from ordinary
@@ -123,8 +134,9 @@ Description: Facilities for running simulations from ordinary
     Fortran compilers, for details on their use with R please see
     Section 6.3, Appendix A, and Appendix D in the "R Administration and
     Installation" manual. Also the code is mostly released under GPL.  The
-    'VODE' and 'LSODA' are in the public domain.  The information is available
-    in the inst/COPYRIGHTS.
+    'VODE' and 'LSODA' are in the public domain.  The vendored 'SUNDIALS'
+    'CVODE' sources and headers are released under the BSD-3-Clause license.
+    The information is available in the inst/COPYRIGHTS.
 BugReports: https://github.com/nlmixr2/rxode2/issues/
 NeedsCompilation: yes
 VignetteBuilder: knitr
@@ -141,7 +153,6 @@ LinkingTo:
     BH,
     RcppParallel,
     RcppEigen (>= 0.3.3.9.2),
-    sundialr (>= 0.1.7),
     dparser (>= 1.3.1-12),
     StanHeaders (>= 2.21.0.7)
 Encoding: UTF-8

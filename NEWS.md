@@ -26,6 +26,39 @@
   only when you did not supply it, so an explicit `atol`/`rtol` overrides the main
   solve but does not propagate to the sensitivity or steady-state tolerances --
   set those directly if they should change too.
+- The SUNDIALS public headers are now vendored into the package
+  (`src/sundials_inc/`) alongside the already-vendored SUNDIALS C sources,
+  and the `LinkingTo: sundialr` dependency has been dropped.  This
+  guarantees the vendored sources always compile against headers from the
+  same SUNDIALS release, instead of silently drifting when sundialr updates
+  its bundled SUNDIALS (#1155).  The vendored include is injected via
+  `PKG_CPPFLAGS` so it precedes the LinkingTo include flags; otherwise the
+  older SUNDIALS copy bundled inside StanHeaders would shadow it.
+
+- Removed the dependency on `qs2` (and hence `stringfish`).
+  `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
+  `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
+  base91-encoded strings when the `qs2` package is installed. Test data was
+  converted from `.qs2` to `.rds`.
+
+## Bug fixes
+
+- `delay()`/`past()` models containing an `if`/`else` block failed to solve
+  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
+  directly, which puts `}` and `else` on separate top-level lines; the
+  normalized text is now parsed wrapped in a `{ }` block.  In addition, a
+  `past()` history inside an `if`/`else` branch is now rejected with a clear
+  error (it was invisible to validation), and delay-duration root-variable
+  resolution now sees assignments made inside `if`/`else` branches (#1151).
+- The vendored SUNDIALS `*NewEmpty` constructors now allocate with `calloc`
+  instead of `malloc`, so any struct fields added by a newer SUNDIALS
+  release are NULL (and safely ignored) rather than uninitialized (#1155).
+
+- Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
+  per-thread inter-event amount buffer was never cleared between subjects, so
+  with `cores < nSub` every subject after the first on a thread could start
+  from the previous subject's compartment amounts (surfaced by a modeled
+  `alag()`) (#1153; by Hidde van de Beek).
 
 # rxode2 5.1.4
 

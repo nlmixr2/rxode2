@@ -3036,7 +3036,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   if (getOption("rxode2.debug", FALSE)) {
     .rx <- rxNorm(object)
-    qs2::qs_save(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs2"))
+    saveRDS(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.rds"))
   }
   if (inherits(object, "function") ||
         inherits(object, "rxUi")) {
@@ -3907,8 +3907,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`).
 #'
-#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-#'    from the sundialr package sources).  Supports thread-parallel solving and
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (sources
+#'    and headers vendored into rxode2).  Supports thread-parallel solving and
 #'    per-compartment absolute tolerances.
 #'
 #' * `"trapz"` -- Explicit trapezoidal rule (Heun's method), a 2nd-order

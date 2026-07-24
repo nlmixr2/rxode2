@@ -28,6 +28,17 @@ The files errmsg.f and rprintf.c are taken from the deSovle package
 for R printing in fortran.  These are copyright Karline Soetaert,
 Thomas Petzoldt and R. Woodrow Setzer.
 
+# SUNDIALS (CVODE) licence
+
+The vendored SUNDIALS sources (src/sundials_*.c, src/sunlinsol_*.c and
+the matching *_impl.h headers) and the vendored SUNDIALS public headers
+(src/sundials_inc/) are from the SUNDIALS library, Copyright (c)
+2002-2026, Lawrence Livermore National Security, Southern Methodist
+University, University of Maryland Baltimore County, and the SUNDIALS
+contributors.  SUNDIALS is released under the BSD-3-Clause license; the
+full license text and notice are included in
+src/sundials_inc/sundials/LICENSE and src/sundials_inc/sundials/NOTICE.
+
 
 The liblsoda was taken from Simon Frost's package and modified to work
 with R.
