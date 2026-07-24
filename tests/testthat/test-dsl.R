@@ -408,11 +408,8 @@ rxTest({
       "(20*tanh(10*(a-b))-20*tanh(10*(a-b))^3)"
     )
 
-    ## The inequality derivatives are the nascent-delta bump +/- (k/2)*sech^2(k*(a-b))
-    ## centred ON the boundary a==b -- NO atanh(2*tol-1) ~ -4.605 shift. The shift
-    ## used to move the bump off the step (to a-b ~ +/-0.46), which made the emitted
-    ## derivative disagree with the hard-boolean forward value in a whole band; see
-    ## R/d.R.
+    ## Inequality derivatives are the nascent-delta bump +/-(k/2)*sech^2(k*(a-b))
+    ## centered on the boundary a==b (no atanh(2*tol-1) shift); see R/d.R.
     expect_equal(
       rxFromSE("Derivative(rxGeq(a,b), a)"),
       "(5-5*tanh(10*(a-b))^2)"
@@ -463,6 +460,23 @@ rxTest({
       rxFromSE("Derivative(rxNot(a), a)"),
       "(-1)"
     )
+  })
+
+  test_that("abs/min/max derivatives use the centered relational bump", {
+    ## Composite operators expand through rxGt/rxLt, so their derivatives must
+    ## carry the centered bump.  (`get` is masked in a symengine env; capture
+    ## the Basic from assign()'s return value -- see CLAUDE.md.)
+    .s <- rxS("rx_pred_ = max(a, b)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "(a-b)*(5-5*tanh(10*(a-b))^2)+(a>b)")
+
+    .s <- rxS("rx_pred_ = min(a, b)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "(a-b)*(-5+5*tanh(10*(a-b))^2)+(a<b)")
+
+    .s <- rxS("rx_pred_ = abs(a)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "-1+2*a*(5-5*tanh(10*(a-0))^2)+2*(a>0)")
   })
 
   # Test factor expansion by `rxSplitPlusQ'
