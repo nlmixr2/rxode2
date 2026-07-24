@@ -78,7 +78,38 @@ if (inherits(versionInfo, "try-error")) {
              capture.output(RcppParallel:::RcppParallelLibs()))
 if (.Platform$OS.type == "windows") {
   # rpath is not meaningful on Windows and can generate noisy linker flags.
-  .sl <- gsub("\\s+-Wl,-rpath,[^[:space:]]+", "", .sl)
+  # The path is shQuote()d by StanHeaders, so match quoted forms first;
+  # otherwise a path containing a space leaves an orphaned token behind.
+  .sl <- gsub("\\s+-Wl,-rpath,('[^']*'|\"[^\"]*\"|[^[:space:]]+)", "", .sl)
+  # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools and no
+  # longer loads its tbb.dll stub, so StanHeaders' LdFlags() output
+  # (-L<RcppParallel/lib dir> -ltbb -ltbbmalloc) leaves the built DLL with an
+  # unresolvable runtime dependency on tbb.dll.  Strip those flags; TBB
+  # symbols resolve through RcppParallel's own -lRcppParallel instead.  The
+  # strip is keyed to the stale -L<RcppParallel/lib> signature so that a
+  # future StanHeaders that emits corrected flags (a different -L, -ltbb12,
+  # or -lRcppParallel) passes through untouched.  When TBB_LINK_LIB/TBB_LIB
+  # point at a user-supplied TBB, StanHeaders emits flags for that copy on
+  # purpose, so keep them too.
+  .rp_ver <- tryCatch(utils::packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
+  .tbb_env <- Sys.getenv("TBB_LINK_LIB", Sys.getenv("TBB_LIB"))
+  if (.rp_ver >= "6.0.0" && !dir.exists(.tbb_env)) {
+    # Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64, ...) in
+    # shQuote()d (single-quoted), double-quoted, or unquoted form -- but not
+    # ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
+    .sl2 <- gsub("-L'[^']*RcppParallel[/\\\\]lib([/\\\\][^']*)?'", "", .sl)
+    .sl2 <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib([/\\\\][^\"]*)?\"", "", .sl2)
+    .sl2 <- gsub("-L[^-'\"[:space:]][^[:space:]]*RcppParallel[/\\\\]lib([/\\\\][^[:space:]]*)?(?=[[:space:]]|$)",
+                 "", .sl2, perl = TRUE)
+    if (!identical(.sl2, .sl)) {
+      # The stale -L was present, so the -ltbb/-ltbbmalloc flags next to it
+      # came from the same LdFlags() call; drop them with it.
+      .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl2)
+      .sl <- gsub("-ltbbmalloc\\b", "", .sl)
+      .sl <- gsub("-ltbb\\b", "", .sl)
+      .sl <- gsub("\\s+", " ", trimws(.sl))
+    }
+  }
 }
 .in <- gsub("@SL@", .sl, .in) #nolint
 

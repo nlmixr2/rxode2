@@ -57,6 +57,15 @@
 
 ## Bug fixes
 
+- On Windows with RcppParallel >= 6.0.0 (which statically links TBB through
+  Rtools and no longer loads `tbb.dll`), the stale `-ltbb`/`-ltbbmalloc` flags
+  and the `-L` path to RcppParallel's old dynamic TBB directory that
+  `StanHeaders::LdFlags()` still emits are stripped at configure time, so the
+  rxode2 DLL no longer records an unresolvable runtime dependency on
+  `tbb.dll`.  The strip is keyed to that stale `-L<RcppParallel/lib>`
+  signature, so a future StanHeaders that emits corrected flags -- or a
+  user-supplied TBB via `TBB_LINK_LIB`/`TBB_LIB` -- is left untouched (#1161).
+
 - The `parsed_md5` of a model no longer depends on how many models were built
   before it in the session.  `linCmtSens` was folded into the hash but only
   assigned *after* the model was parsed, so the first build of a session hashed
