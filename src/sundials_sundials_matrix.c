@@ -48,12 +48,12 @@ SUNMatrix SUNMatNewEmpty(SUNContext sunctx)
 
   /* create matrix object */
   A = NULL;
-  A = (SUNMatrix)malloc(sizeof *A);
+  A = (SUNMatrix)calloc(1, sizeof *A);
   SUNAssertNull(A, SUN_ERR_MALLOC_FAIL);
 
   /* create matrix ops structure */
   ops = NULL;
-  ops = (SUNMatrix_Ops)malloc(sizeof *ops);
+  ops = (SUNMatrix_Ops)calloc(1, sizeof *ops);
   SUNAssertNull(ops, SUN_ERR_MALLOC_FAIL);
 
   /* initialize operations to NULL */
