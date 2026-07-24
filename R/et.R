@@ -661,6 +661,12 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # 3. Materialize and return data column (time, amt, evid, etc.)
   if (!is.null(.env)) {
+    if (arg == "id") {
+      # computed from row counts rather than .etMaterialize(), which
+      # draws window/addl times from the RNG; the id column itself does
+      # not depend on the drawn values (rows sort by id first)
+      return(.etIdColumn(obj)) # nolint
+    }
     .mat <- .etMaterialize(obj) # nolint
     if (arg %in% names(.mat)) {
       .val <- .mat[[arg]]
@@ -763,7 +769,7 @@ names.rxEt <- function(x) {
 #' @return nothing; stops when a logical index cannot recycle cleanly
 #' @noRd
 .etCheckLogicalRowIndex <- function(i, nrow) {
-  if (is.logical(i) && length(i) != 1L && length(i) != nrow) {
+  if (is.logical(i) && length(i) > 1L && length(i) != nrow) {
     stop(sprintf("logical row index of length %d does not match the number of event table rows (%d)",
                  length(i), nrow), call. = FALSE)
   }
@@ -774,7 +780,12 @@ names.rxEt <- function(x) {
 `$<-.rxEt` <- function(x, name, value) {
   .df <- .etMaterialize(x) # nolint
   .df[[name]] <- value
-  .rxEtRebuildShell(x, .df) # nolint
+  .ret <- .rxEtRebuildShell(x, .df) # nolint
+  # an explicitly assigned canonical column should display, so the
+  # default as.data.frame() output reflects what will be solved (#1154)
+  .env <- .rxEtEnv(.ret) # nolint
+  if (name %in% names(.env$show)) .env$show[name] <- TRUE
+  .ret
 }
 
 drop_units.rxEt <- function(x) {

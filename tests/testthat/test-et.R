@@ -17,11 +17,30 @@ rxTest({
     # a logical row index that cannot recycle cleanly errors
     expect_error(ev[c(TRUE, FALSE, TRUE), ], "logical row index")
     expect_error(ev[c(TRUE, FALSE, TRUE), "time"], "logical row index")
+    # length-0 and length-1 logical indices keep data-frame semantics
+    expect_equal(nrow(as.data.frame(ev[logical(0), ])), 0L)
+    expect_equal(nrow(as.data.frame(ev[TRUE, ], all = TRUE)), nrow(.df))
+    # reading ev$id does not consume the RNG stream (windowed addl doses
+    # draw times on materialization)
+    .evw <- et(data.frame(id = 1L, time = 0, low = 0, high = 1, cmt = "depot",
+                          amt = 100, ii = 24, addl = 1L, evid = 1L))
+    .a <- withr::with_seed(42, as.data.frame(.evw, all = TRUE))
+    .b <- withr::with_seed(42, {
+      invisible(.evw$id)
+      as.data.frame(.evw, all = TRUE)
+    })
+    expect_equal(.a$time, .b$time)
+    expect_equal(.evw$id, .a$id)
     # per-subject covariate assignment round-trips through as.data.frame
     ev$wt <- 50 + 20 * ev$id
     .df2 <- as.data.frame(ev)
     expect_true("wt" %in% names(.df2))
     expect_equal(as.numeric(tapply(.df2$wt, .df2$id, unique)), c(70, 90, 110))
+    # assigning an unshown canonical column round-trips too
+    .evc <- et(0:5)
+    .evc$cmt <- "depot"
+    expect_true("cmt" %in% names(as.data.frame(.evc)))
+    expect_equal(unique(as.data.frame(.evc)$cmt), "depot")
   })
 
   test_that("et import rate=-2", {

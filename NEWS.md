@@ -16,7 +16,8 @@
   `ev$wt <- 50 + 20 * ev$id` no longer silently recycle a short vector; the
   unique ids remain available via `ev$env$ids`.  `[.rxEt` now errors on a
   logical row index whose length matches neither 1 nor the number of rows,
-  and columns added with `ev$col <- value` now round-trip through
+  and columns assigned with `ev$col <- value` (new covariates as well as
+  previously hidden canonical columns such as `cmt`) now round-trip through
   `as.data.frame(ev)` (#1154).
 
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
