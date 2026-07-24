@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.4.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 5.1.3 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 5.1.4.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="why-chunked-solving">Why chunked solving?<a class="anchor" aria-label="anchor" href="#why-chunked-solving"></a>
@@ -247,7 +247,7 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt;   gsigma (sigma matrix)                      0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt;   gall_timesS (extra sim times)              0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.53 GB available)</span></span></code></pre></div>
+<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.47 GB available)</span></span></code></pre></div>
 <p>The output lists every major allocation (ODE state buffers,
 event-time arrays, output data, etc.) as well as the fraction of total
 and free RAM the solve would consume. The <code>freeRamBytes</code> line
@@ -293,7 +293,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; duckdb is keeping downloaded extensions in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpFHdeVA/duckdb/extensions</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/Rtmp7TL4kH/duckdb/extensions</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends, so extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> To keep them, point `options(duckdb.extension_directory =)` or the `DUCKDB_EXTENSION_DIRECTORY` environment variable at a permanent path.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 7</span></span></span>
@@ -322,7 +322,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxChunk4d5a1a19bc34' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/Rtmp7TL4kH/rxChunk51cf19d15fca' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -419,7 +419,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxDemo4d5a5b6c61af' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/Rtmp7TL4kH/rxDemo51cf627b2c01' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -471,7 +471,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpFHdeVA/rxFile4d5a7d308081' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/Rtmp7TL4kH/rxFile51cf7ec3b6d8' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
@@ -579,12 +579,12 @@ that fits easily in memory even when the full dataset does not.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 3</span></span></span>
 <span><span class="co">#&gt;      id  time    cp</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1    28 1.38 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1    32 1.13 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1    36 0.881</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    40 0.681</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    44 0.526</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    48 0.407</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     4    28 1.52 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     4    32 1.32 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     4    36 1.08 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     4    40 0.883</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     4    44 0.720</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     4    48 0.586</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="in-memory-arrow-table">In-memory Arrow Table<a class="anchor" aria-label="anchor" href="#in-memory-arrow-table"></a>
@@ -667,32 +667,26 @@ performance tuning, and custom parallel workflows.</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] rxode2_5.1.3</span></span>
+<span><span class="co">#&gt; [1] rxode2_5.1.4.9000</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span><span class="co">#&gt;  [1] utf8_1.2.6            sass_0.4.10           generics_0.1.4       </span></span>
-<span><span class="co">#&gt;  [4] lattice_0.22-9        digest_0.6.39         magrittr_2.0.5       </span></span>
-<span><span class="co">#&gt;  [7] evaluate_1.0.5        grid_4.6.1            RColorBrewer_1.1-3   </span></span>
-<span><span class="co">#&gt; [10] fastmap_1.2.0         qs2_0.2.2             lotri_1.0.5          </span></span>
-<span><span class="co">#&gt; [13] jsonlite_2.0.0        rxode2ll_2.0.14       backports_1.5.1      </span></span>
-<span><span class="co">#&gt; [16] DBI_1.3.0             purrr_1.2.2           scales_1.4.0         </span></span>
-<span><span class="co">#&gt; [19] textshaping_1.0.5     jquerylib_0.1.4       duckdb_1.5.4.3       </span></span>
-<span><span class="co">#&gt; [22] cli_3.6.6             crayon_1.5.3          rlang_1.3.0          </span></span>
-<span><span class="co">#&gt; [25] units_1.0-1           bit64_4.8.2           withr_3.0.3          </span></span>
-<span><span class="co">#&gt; [28] cachem_1.1.0          yaml_2.3.12           otel_0.2.0           </span></span>
-<span><span class="co">#&gt; [31] tools_4.6.1           memoise_2.0.1         checkmate_2.3.4      </span></span>
-<span><span class="co">#&gt; [34] dplyr_1.2.1           ggplot2_4.0.3         assertthat_0.2.1     </span></span>
-<span><span class="co">#&gt; [37] vctrs_0.7.3           R6_2.6.1              lifecycle_1.0.5      </span></span>
-<span><span class="co">#&gt; [40] stringfish_0.19.0     fs_2.1.0              htmlwidgets_1.6.4    </span></span>
-<span><span class="co">#&gt; [43] bit_4.6.0             ragg_1.5.2            PreciseSums_0.7      </span></span>
-<span><span class="co">#&gt; [46] arrow_24.0.0          pkgconfig_2.0.3       desc_1.4.3           </span></span>
-<span><span class="co">#&gt; [49] RcppParallel_5.1.11-2 pkgdown_2.2.1         pillar_1.11.1        </span></span>
-<span><span class="co">#&gt; [52] bslib_0.11.0          gtable_0.3.6          data.table_1.18.4    </span></span>
-<span><span class="co">#&gt; [55] glue_1.8.1            Rcpp_1.1.2            systemfonts_1.3.2    </span></span>
-<span><span class="co">#&gt; [58] xfun_0.60             tibble_3.3.1          tidyselect_1.2.1     </span></span>
-<span><span class="co">#&gt; [61] sys_3.4.3             knitr_1.51            farver_2.1.2         </span></span>
-<span><span class="co">#&gt; [64] dparser_1.3.1-13      nlme_3.1-169          htmltools_0.5.9      </span></span>
-<span><span class="co">#&gt; [67] rmarkdown_2.31        compiler_4.6.1        S7_0.2.2</span></span></code></pre></div>
+<span><span class="co">#&gt;  [1] utf8_1.2.6         sass_0.4.10        generics_0.1.4     lattice_0.22-9    </span></span>
+<span><span class="co">#&gt;  [5] digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5     grid_4.6.1        </span></span>
+<span><span class="co">#&gt;  [9] RColorBrewer_1.1-3 fastmap_1.2.0      lotri_1.0.5        jsonlite_2.0.0    </span></span>
+<span><span class="co">#&gt; [13] rxode2ll_2.0.15    backports_1.5.1    DBI_1.3.0          purrr_1.2.2       </span></span>
+<span><span class="co">#&gt; [17] scales_1.4.0       textshaping_1.0.5  jquerylib_0.1.4    duckdb_1.5.4.3    </span></span>
+<span><span class="co">#&gt; [21] cli_3.6.6          crayon_1.5.3       rlang_1.3.0        units_1.0-1       </span></span>
+<span><span class="co">#&gt; [25] bit64_4.8.2        withr_3.0.3        cachem_1.1.0       yaml_2.3.12       </span></span>
+<span><span class="co">#&gt; [29] otel_0.2.0         tools_4.6.1        memoise_2.0.1      checkmate_2.3.4   </span></span>
+<span><span class="co">#&gt; [33] dplyr_1.2.1        ggplot2_4.0.3      assertthat_0.2.1   vctrs_0.7.3       </span></span>
+<span><span class="co">#&gt; [37] R6_2.6.1           lifecycle_1.0.5    fs_2.1.0           htmlwidgets_1.6.4 </span></span>
+<span><span class="co">#&gt; [41] bit_4.6.0          ragg_1.5.2         PreciseSums_0.7    arrow_25.0.0      </span></span>
+<span><span class="co">#&gt; [45] pkgconfig_2.0.3    desc_1.4.3         RcppParallel_6.0.0 pkgdown_2.2.1     </span></span>
+<span><span class="co">#&gt; [49] pillar_1.11.1      bslib_0.11.0       gtable_0.3.6       data.table_1.18.4 </span></span>
+<span><span class="co">#&gt; [53] glue_1.8.1         Rcpp_1.1.2         systemfonts_1.3.2  xfun_0.60         </span></span>
+<span><span class="co">#&gt; [57] tibble_3.3.1       tidyselect_1.2.1   sys_3.4.3          knitr_1.51        </span></span>
+<span><span class="co">#&gt; [61] farver_2.1.2       dparser_1.3.1-13   nlme_3.1-169       htmltools_0.5.9   </span></span>
+<span><span class="co">#&gt; [65] rmarkdown_2.31     compiler_4.6.1     S7_0.2.2</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

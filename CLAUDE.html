@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.4.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,6 +198,10 @@
 <div class="section level3">
 <h3 id="key-subsystems">Key Subsystems<a class="anchor" aria-label="anchor" href="#key-subsystems"></a></h3>
 <p><strong>UI/Model Interface</strong> (<code>R/ui.R</code>, <code>R/rxUiGet.R</code>, <code>R/asRxui.R</code>): - <code>rxUi</code> objects are R environments containing the fully parsed model - <code>rxUiGet</code> is an S3 dispatch system: <code>ui$property</code> calls <code>rxUiGet.property(x)</code> - Model piping (<code>R/piping*.R</code>) copies and modifies <code>rxUi</code> objects via <code><a href="reference/dot-copyUi.html">.copyUi()</a></code></p>
+<blockquote>
+<p>[!IMPORTANT] <strong><code>$predDf</code> and <code>$iniDf</code> are a stable, exported interface — do not change their schema without explicit user permission.</strong> Their columns and structure are relied on for model export/serialization and by reverse dependencies (nlmixr2est, babelmixr2, nonmem2rx, …), including fits/UIs that were saved by earlier versions. Adding, removing, renaming, or repurposing a column is a breaking change: never do it as an incidental part of another change — ask first. Prefer representing new information with the <em>existing</em> schema (e.g. a literal residual value becomes an auto-generated FIX row in <code>$iniDf</code>, keyed to its endpoint via the existing <code>err</code>/<code>condition</code> columns — see <code>.rxErrLiteralToFixParam</code> in <code>R/err.R</code> — rather than a new <code>$predDf</code> column).</p>
+<p><strong>Reverse-dependency compatibility is fixed here, in rxode2.</strong> When an rxode2 change breaks a reverse dependency, the released reverse dependency cannot be patched retroactively, so the fix belongs in rxode2 — not in the reverse dependency.</p>
+</blockquote>
 <p><strong>Event Table</strong> (<code>src/et.cpp</code>, <code>src/etTran.cpp</code>, <code>R/et.R</code>):</p>
 <ul><li><p><code><a href="reference/et.html">et()</a></code> constructs dosing/sampling event tables</p></li>
 <li><p><code>etTran()</code> transforms event tables for the internal solver format</p></li>
