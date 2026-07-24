@@ -293,7 +293,8 @@ rxTest({
     expect_equal(.dt$state, "A1")
     expect_equal(.dt$tau, "tau1")
     expect_null(.rxPastTerms(.m))
-    expect_equal(.rxModelDefs(.m), character(0))
+    # branch assignments are collected as a conservative (rhs1)+(rhs2) union
+    expect_equal(.rxModelDefs(.m), c(kx = "(0)+(5)"))
 
     # past() line alongside the if/else still catalogs at the top level
     .mp <- rxode2({
@@ -311,7 +312,7 @@ rxTest({
     expect_equal(.pt[[1L]]$state, "A1")
     expect_equal(.pt[[1L]]$tau, "tau1")
     expect_equal(.pt[[1L]]$expr, "7")
-    expect_equal(.rxModelDefs(.mp), c(kel = "kg * 2"))
+    expect_equal(.rxModelDefs(.mp), c(kx = "(0)+(5)", kel = "kg * 2"))
 
     # end-to-end solve of the issue reproducer
     f <- function() {
@@ -341,5 +342,40 @@ rxTest({
     # and with an explicit past() history line
     .s2 <- suppressWarnings(rxSolve(.mp, c(kg = 0.4, tau1 = 5), .ev))
     expect_true(all(is.finite(.s2$A2)))
+  })
+
+  test_that("past() inside an if/else branch is rejected, not silently skipped (#1151)", {
+    # a conditional past() is invisible to the top-level scan and its C emission
+    # would leave the history undefined on the other branch
+    .m <- rxode2({
+      if (FLAG == 1) {
+        past(A1, tau1) <- 7
+      } else {
+        past(A1, tau1) <- 5
+      }
+      d/dt(A1) <- 1 - kg * A1
+      d/dt(A2) <- delay(A1, tau1)
+    })
+    expect_error(.rxValidatePast(.m), "top level")
+    .ev <- et(seq(0, 10, by = 1))
+    .ev$FLAG <- 1
+    expect_error(suppressWarnings(rxSolve(.m, c(kg = 0.4, tau1 = 5), .ev)),
+                 "top level")
+  })
+
+  test_that("a delay duration alias assigned inside if/else is still validated (#1151)", {
+    # tau resolves through a branch assignment; the sensitivity-parameter check
+    # must still see the dependence
+    .m <- rxode2({
+      if (FLAG == 1) {
+        tau1 <- exp(ltau)
+      } else {
+        tau1 <- 1
+      }
+      d/dt(A1) <- 1 - kg * A1
+      d/dt(A2) <- delay(A1, tau1)
+    })
+    expect_error(.rxDelayValidateTau(.m, "ltau"), "not yet supported")
+    expect_true(.rxDelayValidateTau(.m, "kg"))
   })
 })

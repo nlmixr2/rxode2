@@ -12,8 +12,20 @@
 #' @return list of top-level statements (language objects).
 #' @noRd
 .rxNormStatements <- function(model) {
-  .e <- parse(text = paste0("{\n", rxNorm(model), "\n}"))[[1L]]
+  .e <- parse(text = paste0("{\n", paste(rxNorm(model), collapse = "\n"), "\n}"))[[1L]]
   as.list(.e)[-1L]
+}
+
+#' Is a statement a `past(state, tau) <- expr` assignment?
+#'
+#' @param x a language object.
+#' @return logical.
+#' @noRd
+.rxIsPastAssign <- function(x) {
+  is.call(x) && (identical(x[[1L]], quote(`=`)) ||
+                   identical(x[[1L]], quote(`<-`))) &&
+    is.call(x[[2L]]) && identical(x[[2L]][[1L]], quote(past)) &&
+    length(x[[2L]]) == 3L
 }
 
 #' Catalog the delay(state, T) terms in a model
@@ -96,14 +108,11 @@
   for (.i in seq_along(.e)) {
     .st <- .e[[.i]]
     ## past(state, tau) = expr  parses as `=`(past(state, tau), expr)
-    if (is.call(.st) && (identical(.st[[1L]], quote(`=`)) ||
-                           identical(.st[[1L]], quote(`<-`)))) {
+    if (.rxIsPastAssign(.st)) {
       .lhs <- .st[[2L]]
-      if (is.call(.lhs) && identical(.lhs[[1L]], quote(past)) && length(.lhs) == 3L) {
-        .found[[length(.found) + 1L]] <- list(state = deparse1(.lhs[[2L]]),
-                                              tau = deparse1(.lhs[[3L]]),
-                                              expr = deparse1(.st[[3L]]))
-      }
+      .found[[length(.found) + 1L]] <- list(state = deparse1(.lhs[[2L]]),
+                                            tau = deparse1(.lhs[[3L]]),
+                                            expr = deparse1(.st[[3L]]))
     }
   }
   if (length(.found) == 0L) return(NULL)
@@ -120,6 +129,23 @@
 #' @return invisibly NULL; errors on an invalid past() line.
 #' @noRd
 .rxValidatePast <- function(model) {
+  ## a past() history inside an if/else branch is invisible to the top-level
+  ## scan (and its conditional C emission would leave the history undefined on
+  ## the other branch): reject it outright
+  .assertNoNestedPast <- function(x) {
+    if (is.call(x)) {
+      if (.rxIsPastAssign(x)) {
+        stop(sprintf("past(%s, %s) must be at the top level of the model (not inside if/else)",
+                     deparse1(x[[2L]][[2L]]), deparse1(x[[2L]][[3L]])),
+             call. = FALSE)
+      }
+      for (.i in seq_along(x)) .assertNoNestedPast(x[[.i]])
+    }
+  }
+  for (.st in .rxNormStatements(model)) {
+    if (.rxIsPastAssign(.st)) next
+    .assertNoNestedPast(.st)
+  }
   .past <- .rxPastTerms(model)
   if (is.null(.past)) return(invisible(NULL))
   .states <- rxode2::rxStateOde(model)
@@ -153,25 +179,36 @@
 #' Named list of explicit assignments (lhs = rhs) in a model
 #'
 #' Skips ODE (`d/dt(...)`) and compartment-property lines; used to resolve a
-#' delay-duration expression down to its root symbols.
+#' delay-duration expression down to its root symbols.  Recurses into
+#' `if`/`else` branches; an lhs assigned more than once maps to a
+#' `(rhs1)+(rhs2)` union of its rhs texts so root-variable resolution stays
+#' conservative (any branch may execute).
 #'
 #' @param model anything `rxNorm()` accepts.
 #' @return named character vector mapping each assigned lhs to its rhs text.
 #' @noRd
 .rxModelDefs <- function(model) {
-  .e <- .rxNormStatements(model)
   .defs <- character(0)
-  for (.i in seq_along(.e)) {
-    .st <- .e[[.i]]
-    if (is.call(.st) && (identical(.st[[1]], quote(`=`)) ||
-                           identical(.st[[1]], quote(`<-`)))) {
-      .lhs <- .st[[2]]
+  .collect <- function(x) {
+    if (!is.call(x)) return(invisible(NULL))
+    if (identical(x[[1L]], quote(`=`)) || identical(x[[1L]], quote(`<-`))) {
+      .lhs <- x[[2L]]
       ## only simple `name = rhs` assignments (skip d/dt(x), f(x), etc.)
       if (is.name(.lhs)) {
-        .defs[[as.character(.lhs)]] <- deparse1(.st[[3]])
+        .nm <- as.character(.lhs)
+        .rhs <- deparse1(x[[3L]])
+        if (.nm %in% names(.defs) && !identical(.defs[[.nm]], .rhs)) {
+          .defs[[.nm]] <<- paste0("(", .defs[[.nm]], ")+(", .rhs, ")")
+        } else {
+          .defs[[.nm]] <<- .rhs
+        }
       }
+    } else if (identical(x[[1L]], quote(`if`)) || identical(x[[1L]], quote(`{`))) {
+      for (.i in seq_along(x)[-1L]) .collect(x[[.i]])
     }
+    invisible(NULL)
   }
+  for (.st in .rxNormStatements(model)) .collect(.st)
   .defs
 }
 
