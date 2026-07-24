@@ -941,6 +941,48 @@ extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEX
   return ret;
 }
 
+// Internal test hook for the transform log-Jacobian (_powerL) and its
+// lambda gradient (_powerDL); these are only exported through
+// R_RegisterCCallable so they are otherwise unreachable from R.
+extern "C" SEXP _rxode2_powerLDL(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS,
+                                 SEXP yjS, SEXP dS) {
+  rxProtect rx_protect;
+  if (Rf_length(yjS) != 1 || TYPEOF(yjS) != INTSXP) {
+    (Rf_errorcall)(R_NilValue, _("'yj' must be an integer of length 1"));
+  }
+  if (Rf_length(dS) != 1 || TYPEOF(dS) != INTSXP) {
+    (Rf_errorcall)(R_NilValue, _("'d' must be an integer of length 1"));
+  }
+  if (Rf_length(lambdaS) != 1 || TYPEOF(lambdaS) != REALSXP) {
+    (Rf_errorcall)(R_NilValue, _("'lambda' must be a numeric of length 1"));
+  }
+  if (Rf_length(lowS) != 1 || TYPEOF(lowS) != REALSXP) {
+    (Rf_errorcall)(R_NilValue, _("'low' must be a numeric of length 1"));
+  }
+  if (Rf_length(highS) != 1 || TYPEOF(highS) != REALSXP) {
+    (Rf_errorcall)(R_NilValue, _("'high' must be a numeric of length 1"));
+  }
+  if (TYPEOF(xS) != REALSXP) {
+    (Rf_errorcall)(R_NilValue, _("'x' must be a numeric vector"));
+  }
+  int yj = INTEGER(yjS)[0];
+  int d = INTEGER(dS)[0];
+  double low = REAL(lowS)[0], high = REAL(highS)[0],
+    lambda = REAL(lambdaS)[0];
+  if (high <= low) {
+    (Rf_errorcall)(R_NilValue, _("'high' must be greater than 'low'"));
+  }
+  double *xD = REAL(xS);
+  int lenx = Rf_length(xS);
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
+  double *retD = REAL(ret);
+  for (int i = lenx; i--;) {
+    retD[i] = d ? _powerDL(xD[i], lambda, yj, low, high) :
+      _powerL(xD[i], lambda, yj, low, high);
+  }
+  return ret;
+}
+
 extern "C" SEXP _vecDF(SEXP cv, SEXP n_) {
   rxProtect rx_protect;
   int n=0;

@@ -165,34 +165,12 @@ static inline double _powerDi(double x, double lambda, int yj0, double low, doub
   _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7: // inverse-Yeo Johnson followed by pnorm
-    if (lambda == 1.0) {
-      yjd = x;
-    } else if (x >= 0){
-      if (lambda == 0) yjd = log1p(x);
-      else yjd = (pow(x + 1.0, lambda) - 1.0)/lambda;
-    } else {
-      if (lambda == 2.0) yjd = -log1p(-x);
-      else {
-	l2 = 2.0 - lambda;
-	yjd = (1.0 - pow(1.0 - x, l2))/l2;
-      }
-    }
-    return (high-low)*Rf_pnorm5(x, 0, 1, 1, 0)+low;
+    yjd = _powerDi(x, lambda, 1, low, high);
+    return (high-low)*Rf_pnorm5(yjd, 0, 1, 1, 0)+low;
   case 6: // probitInverse
     return (high-low)*Rf_pnorm5(x, 0, 1, 1, 0)+low;
   case 5: // inverse-Yeo-Johnson followed by expit
-    if (lambda == 1.0) {
-      yjd = x;
-    } else if (x >= 0){
-      if (lambda == 0) yjd = log1p(x);
-      else yjd = (pow(x + 1.0, lambda) - 1.0)/lambda;
-    } else {
-      if (lambda == 2.0) yjd = -log1p(-x);
-      else {
-	l2 = 2.0 - lambda;
-	yjd = (1.0 - pow(1.0 - x, l2))/l2;
-      }
-    }
+    yjd = _powerDi(x, lambda, 1, low, high);
     return (high-low)/(1+exp(-yjd))+low;
   case 4:
     return (high-low)/(1+exp(-x))+low; // expit
@@ -327,13 +305,13 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
     hl = (high - low);
     return hl/(xl*(hl-xl));
   case 3:
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     return 1/x0;
   case 2:
     return 1.0;
   case 0:
     if (lambda == 1.0) return 1.0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return 1/x0;
     // pow(x,lambda)/lambda - 1/lambda
     return pow(x0, lambda-1);
@@ -343,7 +321,7 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
       if (lambda == 0.0) return 1.0/(x + 1.0);
       return pow(x + 1.0, lambda-1.0);
     } else {
-      if (lambda == 2.0) return -1/(1.0 - x);
+      if (lambda == 2.0) return 1/(1.0 - x);
       return pow(1.0 - x, 1.0-lambda);
     }
   }
@@ -353,29 +331,33 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high){
   if (!R_finite(x)) return NA_REAL;
-  double x0 = x, hl, hl2, xl,  t1, dL, eri;
+  double x0 = x, hl, xl,  t1, dL, eri;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7:
+    // yj''(probit(x))*probit'(x)^2 + yj'(probit(x))*probit''(x)
     dL = _powerDD(x, lambda, 6, low, high);
-    return dL*dL*_powerDD(_powerD(x, lambda, 6, low, high), lambda, 1, low, high);
+    t1 = _powerD(x, lambda, 6, low, high);
+    return dL*dL*_powerDDD(t1, lambda, 1, low, high) +
+      _powerDD(t1, lambda, 1, low, high)*_powerDDD(x, lambda, 6, low, high);
   case 6: // derivative
     //10.026513098524*exp(erfinv(-1+2*(-low+x)/(high-low))^2)*M_SQRT_PI/2*exp((erfinv(-1+2*(-low+x)/(high-low)))^2)*erfinv(-1+2*(-low+x)/(high-low))/(high-low)^2
     hl = (high-low);
     eri = erfinv(-1+2*(-low+x)/hl);
     return 8.885765876316728650863*exp(2*eri*eri)*eri/(hl*hl);
   case 5:
-    //Derivative(logit(x), x)^2*Subs(Derivative(yeoJohnson(_xi_1), _xi_1, _xi_1), (_xi_1), (logit(x))) + Subs(Derivative(yeoJohnson(_xi_1), _xi_1), (_xi_1), (logit(x)))*Derivative(logit(x), x, x)
+    // yj''(logit(x))*logit'(x)^2 + yj'(logit(x))*logit''(x)
     dL = _powerDD(x, lambda, 4, low, high);
-    return dL*dL*_powerDD(_powerD(x, lambda, 4, low, high), lambda, 1, low, high);
+    t1 = _powerD(x, lambda, 4, low, high);
+    return dL*dL*_powerDDD(t1, lambda, 1, low, high) +
+      _powerDD(t1, lambda, 1, low, high)*_powerDDD(x, lambda, 4, low, high);
   case 4: // logit
-    // (high - low)^2/((-low + x)^4*(-1 + (high - low)/(-low + x))^2) - 2*(high - low)/((-low + x)^3*(-1 + (high - low)/(-low + x)))
+    // d2/dx2 logit((x-low)/(high-low)) = 1/(high-x)^2 - 1/(x-low)^2
     hl = (high - low);
-    hl2 = hl*hl;
     xl = (-low + x);
-    t1 = (-1.0 + hl/xl);
-    return 1.0*hl2/(hl2*hl2*t1*t1) - 2.0*hl/(xl*xl*xl*t1);
+    t1 = hl - xl;
+    return 1.0/(t1*t1) - 1.0/(xl*xl);
   case 3:
     if (x <= _eps) x0 = _eps;
     return -1/(x0*x0);
@@ -383,7 +365,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
     return 0;
   case 0:
     if (lambda == 1.0) return 0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return -1/(x0*x0);
     // pow(x,lambda)/lambda - 1/lambda
     return (lambda-1)*pow(x0, lambda-2);
@@ -393,7 +375,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
       if (lambda ==  0.0) return -1/((x + 1.0)*(x + 1.0));
       return (lambda-1.0)*pow(x + 1.0, lambda-2.0);
     } else {
-      if (lambda == 2.0) return -1/((1.0 - x)*(1.0 - x));
+      if (lambda == 2.0) return 1/((1.0 - x)*(1.0 - x));
       return -(1.0-lambda)*pow(1.0 - x, -lambda);
     }
   }
@@ -521,7 +503,7 @@ static inline double _powerL(double x, double lambda, int yj0, double low, doubl
     if (xl <= _eps) xl = _eps;
     hl = (high - low);
     hl2 = hl-xl;
-    if (xl <= _eps) hl2 = _eps;
+    if (hl2 <= _eps) hl2 = _eps;
     return log(hl)-log(xl)-log(hl2);
     /* return 0; */
   case 3:
@@ -564,6 +546,8 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
   switch (yj){
+  case 7:
+    return _powerDL(_powerD(x, lambda, 6, low, hi), lambda, 1, low, hi);
   case 6:
     return 0; // does not depend on lambda
   case 5:
@@ -572,19 +556,19 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
     // For logit norm, no dependence on lambda
     return 0;
   case 3:
-    if (x <= _eps) x0 = _eps;
-    return log(x0);
+    // log-Jacobian of logNorm is -log(x): no dependence on lambda
+    return 0;
   case 2:
     // For normal transform no dependence of lambda
     return 0;
   case 0:
-    if (lambda == 1.0) return 0;
+    // d/dlambda[(lambda-1)*log(x)] = log(x) for every lambda
     if (x <= _eps) x0 = _eps;
     return log(x0);
   case 1:
-    if (lambda == 1.0) return 0;
+    // d/dlambda[(lambda-1)*log1p(x)] and d/dlambda[(1-lambda)*log1p(-x)]
     if (x >= 0) return log1p(x);
-    return -log1p(x);
+    return -log1p(-x);
   }
   return NA_REAL;
   // d = 0.0 for cox box

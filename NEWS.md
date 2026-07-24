@@ -57,6 +57,40 @@
 
 ## Bug fixes
 
+- The first and second derivatives of the Yeo-Johnson transform (`rxTBSd()` and
+  `rxTBSd2()`) had the wrong sign for negative values when `lambda` was exactly
+  `2`.  There `yj(x) = -log(1 - x)`, so the derivatives are `1/(1 - x)` and
+  `1/(1 - x)^2`, both positive; the special case returned them negated, which
+  also contradicted the general formula's limit and made the derivative
+  discontinuous in `lambda` at `2`.  Since Yeo-Johnson is monotone increasing,
+  its first derivative must be positive everywhere.
+
+- Review of the fix above found further errors in the same transform family
+  (all pre-existing, none introduced by that fix):
+  - `rxTBSd2()` returned a wrong second derivative for the `logit` transform
+    (an algebra error in the closed form) and for the composed
+    `logit + yeoJohnson` / `probit + yeoJohnson` transforms, where the chain
+    rule used the first Yeo-Johnson derivative in place of the second and
+    dropped the inner-transform curvature term.
+  - `rxTBSi()` did not invert the composed `logit + yeoJohnson` /
+    `probit + yeoJohnson` transforms: it applied the forward Yeo-Johnson
+    transform (or skipped it entirely) instead of the inverse, so
+    `rxTBSi(rxTBS(x))` did not return `x` for `lambda != 1`.  This affected
+    simulation back-transforms of those error models.
+  - The `lambda` gradient of the transform log-Jacobian (`powerDL`, used by
+    estimation routines) was wrong on the negative Yeo-Johnson branch
+    (`-log1p(x)` instead of `-log1p(-x)`, `NaN` for `x < -1`), returned a
+    spurious `0` at exactly `lambda == 1` for `boxCox`/`yeoJohnson`, was
+    missing the `probit + yeoJohnson` case (returned `NA`), and returned a
+    spurious `log(x)` (instead of `0`) for the lambda-free `lnorm` transform.
+    The log-Jacobian itself (`powerL`) clamped the wrong term in its `logit`
+    guard, giving an unprotected `log(0)` at the upper bound.
+  - For `boxCox`/`lnorm`, `rxTBSd()` and `rxTBSd2()` returned the clamp
+    constant `sqrt(.Machine$double.eps)` itself for `x` at or below the clamp
+    instead of clamping `x` and evaluating the derivative formula, making the
+    derivatives discontinuous (and ~15 orders of magnitude too small) at the
+    boundary.  The clamp now feeds the usual formula, matching how every other
+    transform in the family handles the guard.
 - On Windows with RcppParallel >= 6.0.0 (which statically links TBB through
   Rtools and no longer loads `tbb.dll`), the stale `-ltbb`/`-ltbbmalloc` flags
   and the `-L` path to RcppParallel's old dynamic TBB directory that
