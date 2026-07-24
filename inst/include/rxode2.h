@@ -343,7 +343,7 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
       if (lambda == 0.0) return 1.0/(x + 1.0);
       return pow(x + 1.0, lambda-1.0);
     } else {
-      if (lambda == 2.0) return -1/(1.0 - x);
+      if (lambda == 2.0) return 1/(1.0 - x);
       return pow(1.0 - x, 1.0-lambda);
     }
   }
@@ -393,7 +393,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
       if (lambda ==  0.0) return -1/((x + 1.0)*(x + 1.0));
       return (lambda-1.0)*pow(x + 1.0, lambda-2.0);
     } else {
-      if (lambda == 2.0) return -1/((1.0 - x)*(1.0 - x));
+      if (lambda == 2.0) return 1/((1.0 - x)*(1.0 - x));
       return -(1.0-lambda)*pow(1.0 - x, -lambda);
     }
   }

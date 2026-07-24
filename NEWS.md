@@ -43,6 +43,14 @@
 
 ## Bug fixes
 
+- The first and second derivatives of the Yeo-Johnson transform (`rxTBSd()` and
+  `rxTBSd2()`) had the wrong sign for negative values when `lambda` was exactly
+  `2`.  There `yj(x) = -log(1 - x)`, so the derivatives are `1/(1 - x)` and
+  `1/(1 - x)^2`, both positive; the special case returned them negated, which
+  also contradicted the general formula's limit and made the derivative
+  discontinuous in `lambda` at `2`.  Since Yeo-Johnson is monotone increasing,
+  its first derivative must be positive everywhere.
+
 - The `parsed_md5` of a model no longer depends on how many models were built
   before it in the session.  `linCmtSens` was folded into the hash but only
   assigned *after* the model was parsed, so the first build of a session hashed
