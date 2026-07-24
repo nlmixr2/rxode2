@@ -2,15 +2,30 @@
 
 ## New features
 
-- `rxControl(sigdig=)` now derives the ODE solver tolerances with one simple,
-  solver-independent formula: the `rtol` exponent IS `sigdig` and `atol` sits three
-  orders below it, so `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)` for every
-  solver (stiff, non-stiff or auto-switching).  The sensitivity
-  (`atolSens`/`rtolSens`) tolerances match the main solve (gradients and
-  covariances are built from them); the steady-state (`ssAtol`/`ssRtol`,
-  `ssAtolSens`/`ssRtolSens`) tolerances run one order looser.  Previously `sigdig`
-  set a symmetric `atol = rtol = 0.5*10^(-sigdig-2)`.  An explicit `atol`/`rtol`
-  still overrides the `sigdig`-derived value.
+- `rxControl(sigdig=)` now derives the ODE solver tolerances with one
+  solver-independent formula -- the same for stiff, non-stiff and auto-switching
+  solvers.  The `rtol` exponent IS `sigdig` and `atol` sits three orders below it:
+  `rtol = 10^(-sigdig)` and `atol = 10^(-sigdig-3)`.  The sensitivity tolerances
+  match the main solve (`rtolSens = rtol`, `atolSens = atol`), since gradients and
+  covariances are built from them, and the steady-state tolerances run one order
+  looser (`ssRtol = ssRtolSens = 10*rtol`, `ssAtol = ssAtolSens = 10*atol`).  This
+  matches how `nlmixr2est` derives solver tolerances from its optimization
+  `sigdig`, so the same `sigdig` means the same thing whether it is used for
+  estimation or for a plain `rxSolve()`.
+
+  `sigdig` remains `NULL` by default and continues to have no effect unless you
+  pass it, so solves that do not name `sigdig` are unchanged.
+
+  Two notes for callers who do pass it.  First, the mapping is keyed to `sigdig`
+  as a request for that many significant digits, which for small `sigdig` is
+  *looser* than what the previous symmetric `atol = rtol = 0.5*10^(-sigdig-2)`
+  gave: at `sigdig = 4`, `rtol` moves from `5e-7` to `1e-4`, which is also looser
+  than the `1e-6` default `rtol` (`atol` moves the other way, from `5e-7` to
+  `1e-7`).  If you were using `sigdig` to tighten a solve, raise it or set
+  `atol`/`rtol` directly.  Second, each tolerance is resolved independently and
+  only when you did not supply it, so an explicit `atol`/`rtol` overrides the main
+  solve but does not propagate to the sensitivity or steady-state tolerances --
+  set those directly if they should change too.
 
 ## Bug fixes
 

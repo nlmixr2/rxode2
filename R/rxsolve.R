@@ -33,17 +33,40 @@
 #'     compartments);
 #'
 #' @param sigdig Specifies the "significant digits" that the ODE
-#'   solving requests.  When specified this controls the relative and
-#'   absolute tolerances of the ODE solvers with one simple,
-#'   solver-independent formula: the `rtol` exponent IS `sigdig` and
-#'   `atol` sits three orders below it, so `rtol = 10^(-sigdig)` and
-#'   `atol = 10^(-sigdig-3)` for every solver (stiff, non-stiff or
-#'   auto-switching).  The sensitivity (`atolSens`/`rtolSens`)
-#'   tolerances match the main solve (gradients and covariances are
-#'   built from them); the steady-state (`ssAtol`/`ssRtol`,
-#'   `ssAtolSens`/`ssRtolSens`) tolerances are one order looser than
-#'   the corresponding main tolerance.  By default this is unspecified
-#'   (`NULL`) and uses the standard `atol`/`rtol`.
+#'   solving requests.  This is `NULL` by default, and while it is
+#'   `NULL` it has no effect at all: `rxSolve()` uses the standard
+#'   `atol`/`rtol` (and the standard sensitivity and steady-state
+#'   tolerances).  `sigdig` only changes a tolerance when you ask for
+#'   it explicitly.
+#'
+#'   When it is supplied, the tolerances are derived with one
+#'   solver-independent formula -- the same for stiff, non-stiff and
+#'   auto-switching solvers.  The `rtol` exponent IS `sigdig` and
+#'   `atol` sits three orders below it:
+#'
+#'   * `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)`
+#'   * the sensitivity tolerances match the main solve, so
+#'     `rtolSens = rtol` and `atolSens = atol` (gradients and
+#'     covariances are built from them)
+#'   * the steady-state tolerances run one order looser than the
+#'     corresponding main tolerance, so `ssRtol = ssRtolSens = 10*rtol`
+#'     and `ssAtol = ssAtolSens = 10*atol`
+#'
+#'   Each of these is set only when you did not pass that tolerance
+#'   yourself; a tolerance you supply always wins.  Because they are
+#'   resolved independently, an explicit `atol`/`rtol` overrides the
+#'   main solve but does *not* propagate to the sensitivity or
+#'   steady-state tolerances -- set those directly if you need them
+#'   changed too.
+#'
+#'   This mapping matches how `nlmixr2est` derives solver tolerances
+#'   from its optimization `sigdig`, so a `sigdig` used for estimation
+#'   and the same `sigdig` used for a plain `rxSolve()` mean the same
+#'   thing.  Note it is keyed to `sigdig` as a request for that many
+#'   significant digits, and is looser than the `atol`/`rtol` defaults
+#'   for small `sigdig` -- at `sigdig = 4` it gives `rtol = 1e-4`
+#'   against a default `rtol = 1e-6`.  Raise `sigdig`, or set
+#'   `atol`/`rtol` directly, when you want a tighter solve.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
