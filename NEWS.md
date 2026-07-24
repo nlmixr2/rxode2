@@ -10,6 +10,15 @@
 
 ## Bug fixes
 
+- `ev$id` on an event table now returns the per-row `id` column (matching
+  `as.data.frame(ev)$id`) instead of the unique subject ids, so idiomatic
+  subsets like `ev[ev$id == 3, ]` and per-subject assignments like
+  `ev$wt <- 50 + 20 * ev$id` no longer silently recycle a short vector; the
+  unique ids remain available via `ev$env$ids`.  `[.rxEt` now errors on a
+  logical row index whose length matches neither 1 nor the number of rows,
+  and columns added with `ev$col <- value` now round-trip through
+  `as.data.frame(ev)` (#1154).
+
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
   per-thread inter-event amount buffer was never cleared between subjects, so
   with `cores < nSub` every subject after the first on a thread could start
