@@ -78,15 +78,23 @@ if (inherits(versionInfo, "try-error")) {
              capture.output(RcppParallel:::RcppParallelLibs()))
 if (.Platform$OS.type == "windows") {
   # rpath is not meaningful on Windows and can generate noisy linker flags.
-  .sl <- gsub("\\s+-Wl,-rpath,[^[:space:]]+", "", .sl)
+  # The path is shQuote()d by StanHeaders, so match quoted forms first;
+  # otherwise a path containing a space leaves an orphaned token behind.
+  .sl <- gsub("\\s+-Wl,-rpath,('[^']*'|\"[^\"]*\"|[^[:space:]]+)", "", .sl)
   # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools, so
   # tbb.dll is no longer distributed and must not be linked dynamically.
   # Strip the -L path that pointed to the old dynamic TBB copy and the
-  # corresponding -ltbb / -ltbbmalloc flags so the linker does not produce
-  # a DLL with an unresolvable runtime dependency on tbb.dll.
-  .rp_ver <- tryCatch(packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
-  if (.rp_ver >= "6.0.0") {
-    .sl <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib[/\\\\]x64\"", "", .sl)
+  # corresponding -ltbb / -ltbbmalloc flags (emitted by StanHeaders'
+  # LdFlags()) so the linker does not produce a DLL with an unresolvable
+  # runtime dependency on tbb.dll.  When TBB_LIB points at a user-supplied
+  # TBB, StanHeaders emits flags for that copy on purpose, so keep them.
+  .rp_ver <- tryCatch(utils::packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
+  if (.rp_ver >= "6.0.0" && !dir.exists(Sys.getenv("TBB_LIB"))) {
+    # StanHeaders shQuote()s the -L path (single quotes); also accept double
+    # quotes.  Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64,
+    # ...) but not ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
+    .sl <- gsub("-L'[^']*RcppParallel[/\\\\]lib([/\\\\][^']*)?'", "", .sl)
+    .sl <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib([/\\\\][^\"]*)?\"", "", .sl)
     .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl)
     .sl <- gsub("-ltbbmalloc\\b", "", .sl)
     .sl <- gsub("-ltbb\\b", "", .sl)
