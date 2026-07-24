@@ -51,6 +51,26 @@
   discontinuous in `lambda` at `2`.  Since Yeo-Johnson is monotone increasing,
   its first derivative must be positive everywhere.
 
+- Review of the fix above found further errors in the same transform family
+  (all pre-existing, none introduced by that fix):
+  - `rxTBSd2()` returned a wrong second derivative for the `logit` transform
+    (an algebra error in the closed form) and for the composed
+    `logit + yeoJohnson` / `probit + yeoJohnson` transforms, where the chain
+    rule used the first Yeo-Johnson derivative in place of the second and
+    dropped the inner-transform curvature term.
+  - `rxTBSi()` did not invert the composed `logit + yeoJohnson` /
+    `probit + yeoJohnson` transforms: it applied the forward Yeo-Johnson
+    transform (or skipped it entirely) instead of the inverse, so
+    `rxTBSi(rxTBS(x))` did not return `x` for `lambda != 1`.  This affected
+    simulation back-transforms of those error models.
+  - The `lambda` gradient of the transform log-Jacobian (`powerDL`, used by
+    estimation routines) was wrong on the negative Yeo-Johnson branch
+    (`-log1p(x)` instead of `-log1p(-x)`, `NaN` for `x < -1`), returned a
+    spurious `0` at exactly `lambda == 1` for `boxCox`/`yeoJohnson`, and was
+    missing the `probit + yeoJohnson` case (returned `NA`).  The log-Jacobian
+    itself (`powerL`) clamped the wrong term in its `logit` guard, giving an
+    unprotected `log(0)` at the upper bound.
+
 - The `parsed_md5` of a model no longer depends on how many models were built
   before it in the session.  `linCmtSens` was folded into the hash but only
   assigned *after* the model was parsed, so the first build of a session hashed

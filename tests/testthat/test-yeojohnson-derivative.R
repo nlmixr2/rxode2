@@ -54,4 +54,51 @@ rxTest({
     }
   })
 
+  # General transform model: yj code and bounds as covariates.  Codes: 4 logit,
+  # 5 logit + yeoJohnson, 6 probit, 7 probit + yeoJohnson; x in (lo, hi).  For
+  # yj 5/7, x below the midpoint gives a negative inner logit/probit value, so
+  # these also exercise the negative Yeo-Johnson branch (including lambda == 2).
+  .tbsModel <- function() {
+    model({
+      v <- rxTBS(xv, lam, yjc, lo, hi)
+      d1 <- rxTBSd(xv, lam, yjc, lo, hi)
+      d2 <- rxTBSd2(xv, lam, yjc, lo, hi)
+      vi <- rxTBSi(v, lam, yjc, lo, hi)
+    })
+  }
+
+  .tbs <- function(x, lambda, yjc, lo = 0, hi = 1) {
+    .et <- et(seq_along(x))
+    .et$xv <- x
+    .et$lam <- lambda
+    .et$yjc <- yjc
+    .et$lo <- lo
+    .et$hi <- hi
+    as.data.frame(rxSolve(.tbsModel, .et, cores = 1L))[, c("v", "d1", "d2", "vi")]
+  }
+
+  test_that("logit/probit (+ yeoJohnson) derivatives match finite differences", {
+    x <- c(0.15, 0.35, 0.5, 0.75, 0.9)
+    h <- 1e-6
+    for (yjc in c(4, 5, 7)) {
+      for (lambda in c(2.0, 1.0, 0.5, 0)) {
+        r <- .tbs(x, lambda, yjc)
+        fp <- .tbs(x + h, lambda, yjc)
+        fm <- .tbs(x - h, lambda, yjc)
+        expect_equal(r$d1, (fp$v - fm$v) / (2 * h), tolerance = 1e-4)
+        expect_equal(r$d2, (fp$d1 - fm$d1) / (2 * h), tolerance = 1e-4)
+      }
+    }
+  })
+
+  test_that("rxTBSi() inverts rxTBS() for the composed transforms", {
+    x <- c(0.15, 0.35, 0.5, 0.75, 0.9)
+    for (yjc in c(4, 5, 6, 7)) {
+      for (lambda in c(2.0, 1.0, 0.5, 0)) {
+        r <- .tbs(x, lambda, yjc)
+        expect_equal(r$vi, x, tolerance = 1e-6)
+      }
+    }
+  })
+
 })
