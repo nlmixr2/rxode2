@@ -2,6 +2,20 @@
 ## the delay(state, T) terms and splice the variational delayed term
 ## d f_i / d[delay(y_j, T)] * delay(S_j, T) into each sensitivity ODE.
 
+#' Top-level statements of a model's normalized text
+#'
+#' `rxNorm()` emits `if`/`else` with `}` and `else` on separate top-level
+#' lines, which is only valid R inside a `{ }` block; wrap before parsing
+#' (#1151).
+#'
+#' @param model anything `rxNorm()` accepts.
+#' @return list of top-level statements (language objects).
+#' @noRd
+.rxNormStatements <- function(model) {
+  .e <- parse(text = paste0("{\n", rxNorm(model), "\n}"))[[1L]]
+  as.list(.e)[-1L]
+}
+
 #' Catalog the delay(state, T) terms in a model
 #'
 #' Returns one row per distinct delayed term with a surrogate symbol name so
@@ -15,8 +29,7 @@
 #' @keywords internal
 #' @noRd
 .rxDelayTerms <- function(model) {
-  .norm <- rxNorm(model)
-  .e <- parse(text = .norm)
+  .e <- .rxNormStatements(model)
   .found <- list()
   .walk <- function(x) {
     if (is.call(x)) {
@@ -78,8 +91,7 @@
 #' @return list of {state, tau, expr} (character), or NULL if none.
 #' @noRd
 .rxPastTerms <- function(model) {
-  .norm <- rxNorm(model)
-  .e <- parse(text = .norm)
+  .e <- .rxNormStatements(model)
   .found <- list()
   for (.i in seq_along(.e)) {
     .st <- .e[[.i]]
@@ -147,8 +159,7 @@
 #' @return named character vector mapping each assigned lhs to its rhs text.
 #' @noRd
 .rxModelDefs <- function(model) {
-  .norm <- rxNorm(model)
-  .e <- parse(text = .norm)
+  .e <- .rxNormStatements(model)
   .defs <- character(0)
   for (.i in seq_along(.e)) {
     .st <- .e[[.i]]

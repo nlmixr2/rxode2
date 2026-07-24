@@ -275,4 +275,71 @@ rxTest({
     .d <- rxSolve(.m, .p, .ev, cores = 2)
     for (.di in split(as.data.frame(.d), .d$sim.id)) .check(.di)
   })
+
+  test_that("delay()/past() models with an if/else block solve (#1151)", {
+    # rxNorm() emits `}` and `else` on separate top-level lines, which is only
+    # valid R inside a `{ }` block; .rxDelayTerms()/.rxPastTerms()/.rxModelDefs()
+    # used to parse the bare normalized text and choke on the `else`.
+    .m <- rxode2({
+      if (FLAG == 1) {
+        kx <- 0
+      } else {
+        kx <- 5
+      }
+      d/dt(A1) <- 1 - kg * A1
+      d/dt(A2) <- kx * delay(A1, tau1)
+    })
+    .dt <- .rxDelayTerms(.m)
+    expect_equal(.dt$state, "A1")
+    expect_equal(.dt$tau, "tau1")
+    expect_null(.rxPastTerms(.m))
+    expect_equal(.rxModelDefs(.m), character(0))
+
+    # past() line alongside the if/else still catalogs at the top level
+    .mp <- rxode2({
+      if (FLAG == 1) {
+        kx <- 0
+      } else {
+        kx <- 5
+      }
+      past(A1, tau1) <- 7
+      kel <- kg * 2
+      d/dt(A1) <- 1 - kg * A1
+      d/dt(A2) <- kx * delay(A1, tau1)
+    })
+    .pt <- .rxPastTerms(.mp)
+    expect_equal(.pt[[1L]]$state, "A1")
+    expect_equal(.pt[[1L]]$tau, "tau1")
+    expect_equal(.pt[[1L]]$expr, "7")
+    expect_equal(.rxModelDefs(.mp), c(kel = "kg * 2"))
+
+    # end-to-end solve of the issue reproducer
+    f <- function() {
+      ini({
+        kg <- 0.4
+        k4 <- 0.3
+        tau1 <- 5
+        prop.sd <- 0.1
+      })
+      model({
+        if (FLAG == 1) {
+          kx <- 0
+        } else {
+          kx <- 5
+        }
+        d/dt(A1) <- 1 - kg * A1
+        d/dt(A2) <- k4 * A1 - kx * delay(A1, tau1)
+        cp <- A2
+        cp ~ prop(prop.sd)
+      })
+    }
+    .ev <- et(seq(0, 20, by = 1))
+    .ev$FLAG <- 1
+    .s <- suppressWarnings(rxSolve(rxode2(f), .ev))
+    expect_true(all(is.finite(.s$cp)))
+
+    # and with an explicit past() history line
+    .s2 <- suppressWarnings(rxSolve(.mp, c(kg = 0.4, tau1 = 5), .ev))
+    expect_true(all(is.finite(.s2$A2)))
+  })
 })

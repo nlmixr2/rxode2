@@ -10,6 +10,11 @@
 
 ## Bug fixes
 
+- `delay()`/`past()` models containing an `if`/`else` block failed to solve
+  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
+  directly, which puts `}` and `else` on separate top-level lines; the
+  normalized text is now parsed wrapped in a `{ }` block (#1151).
+
 - Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
   per-thread inter-event amount buffer was never cleared between subjects, so
   with `cores < nSub` every subject after the first on a thread could start
