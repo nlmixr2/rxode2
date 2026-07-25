@@ -6,8 +6,12 @@ This is submitted within a few days of the last update because without
 it the next version of sundialr package cannot submitted; this package
 broke their reverse dependencies.
 
-The `qs2` (and `stringfish`) dependency was also removed since it seems
-to be broken.
+This is also submitted because the windows version of RcppParallel (6.0.0) +
+rxode2ll causes this package to crash without a revision.
+
+Also online and in CRAN the rxode2 interaction with `stringfish`
+causes rxode2 not to load.  Therefore the `qs2` dependency was also
+removed since it seems to be broken.
 
 The remaining changes are bug fixes (compiled-model cache key
 stability, event-table `ev$id` indexing, `delay()`/`past()` models
@@ -19,10 +23,12 @@ leak); see NEWS.md for the full list.
 On all platforms I see the standard "Days since last update" for this
 maintainer follow-up.
 
-This is due to the CRAN reverse dependency check of sundialr.
+This is due to the CRAN reverse dependency check of sundialr as well
+as the release of RcppParallel 6.0.0 which causes rxode2 to crash on
+windows systems.
 
 With this followup, sundialr is no longer blocked from their
-submission.
+submission, and rxode2 will not cause a segmentation fault in windows.
 
 ## Reverse dependencies
 
