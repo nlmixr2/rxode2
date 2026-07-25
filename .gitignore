@@ -57,3 +57,5 @@ src/StanHeaders.def
 /.mcp.json
 /.claude/
 /.cache/
+tests/testthat/Rplots.pdf
+tests/testthat/_problems/
