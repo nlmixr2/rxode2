@@ -24,14 +24,16 @@ Exponential Linear Unit (ELU) Activation Function
 
 ELU(c(-1, 0, 1, 2), 2)
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
-   r=SELU(time)
+   r=ELU(time, 2)
 })
 
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{

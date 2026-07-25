@@ -24,6 +24,7 @@ The switch activation function is defined as:
 
 Swish(c(-1, 0, 1, 2))
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
    r<- Swish(time)
@@ -32,6 +33,7 @@ x <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{

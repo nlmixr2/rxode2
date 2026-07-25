@@ -19,11 +19,13 @@ Derivative of Leaky ReLU activation function
 
 dlReLU(c(-1, 0, 1))
 
+\donttest{
 # Can use in rxode2 as well
 
 r <- rxode2({r <- dlReLU(time)})
 e <- et(c(-1, 0, 1))
 rxSolve(r, e)
+}
 
 }
 \seealso{

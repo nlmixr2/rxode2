@@ -11,6 +11,7 @@
 #'
 #' SELU(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'    r=SELU(time)
@@ -19,6 +20,7 @@
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(x, e)
+#' }
 #'
 SELU <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
@@ -35,12 +37,14 @@ SELU <- function(x) {
 #' @export
 #' @examples
 #' dSELU(c(-1, 0, 1, 2))
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'   r=dSELU(time)
 #' })
 #' e <- et(c(-1, 0, 1, 2))
 #' rxSolve(x, e)
+#' }
 dSELU <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   .Call(`_rxode2_activationF`, x, 17L)

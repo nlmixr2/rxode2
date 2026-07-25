@@ -29,6 +29,7 @@ dGELU(c(-2, -1, 0, 1, 2))
 d2GELU(c(-2, -1, 0, 1, 2))
 d3GELU(c(-2, -1, 0, 1, 2))
 d4GELU(c(-2, -1, 0, 1, 2))
+\donttest{
 # you can use rxode2 as well
 r <- rxode2({
    r1 <- dGELU(time)
@@ -38,6 +39,7 @@ r <- rxode2({
 })
 et <- et(c(-2, -1, 0, 1, 2))
 rxSolve(r, et)
+}
 }
 \seealso{
 Other Activation Functions:

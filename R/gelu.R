@@ -8,12 +8,14 @@
 #'
 #' GELU(c(-2, -1, 0, 1, 2))
 #'
+#' \donttest{
 #' # you can use rxode2 as well
 #' r <- rxode2({
 #'   r = GELU(time)
 #' })
 #' et <- et(c(-2, -1, 0, 1, 2))
 #' rxSolve(r, et)
+#' }
 #'
 GELU <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
@@ -32,6 +34,7 @@ GELU <- function(x) {
 #' d2GELU(c(-2, -1, 0, 1, 2))
 #' d3GELU(c(-2, -1, 0, 1, 2))
 #' d4GELU(c(-2, -1, 0, 1, 2))
+#' \donttest{
 #' # you can use rxode2 as well
 #' r <- rxode2({
 #'    r1 <- dGELU(time)
@@ -41,6 +44,7 @@ GELU <- function(x) {
 #' })
 #' et <- et(c(-2, -1, 0, 1, 2))
 #' rxSolve(r, et)
+#' }
 dGELU <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   .Call(`_rxode2_activationF`, x, 9L)

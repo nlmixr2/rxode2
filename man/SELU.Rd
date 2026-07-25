@@ -21,6 +21,7 @@ Scaled Exponential Linear Unit (SELU) Activation Function
 
 SELU(c(-1, 0, 1, 2))
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
    r=SELU(time)
@@ -29,6 +30,7 @@ x <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{

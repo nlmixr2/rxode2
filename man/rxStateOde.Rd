@@ -16,7 +16,7 @@ ODE states only
 Get the ODE states only
 }
 \examples{
-
+\donttest{
 mod <- rxode2({
   Cp <- linCmt(Cl, V, Q2, V2, Q3, V3)
   ke0 <- log(2)/(50)
@@ -36,6 +36,7 @@ mod <- rxode2({
 rxStateOde(mod)
 
 rxState(mod)
+}
 
 }
 \author{
