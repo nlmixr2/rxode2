@@ -28,6 +28,7 @@ Default Softplus Activation Function
 
 dsoftplus(c(-1, 0, 1, 2))
 
+\donttest{
 # You can use rxode2 too:
 
 r <- rxode2({
@@ -37,6 +38,7 @@ r <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(r, e)
+}
 
 }
 \seealso{

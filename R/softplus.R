@@ -9,6 +9,7 @@
 #'
 #' softplus(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # You can use rxode2 too:
 #'
 #' r <- rxode2({
@@ -18,6 +19,7 @@
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(r, e)
+#' }
 #'
 softplus <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
@@ -35,6 +37,7 @@ softplus <- function(x) {
 #'
 #' dsoftplus(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # You can use rxode2 too:
 #'
 #' r <- rxode2({
@@ -44,6 +47,7 @@ softplus <- function(x) {
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(r, e)
+#' }
 #'
 dsoftplus <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)

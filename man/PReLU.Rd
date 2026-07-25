@@ -24,6 +24,7 @@ Parametric ReLU Activation Function
 
 PReLU(c(-1, 0, 1, 2), 2)
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
    r=PReLU(time, 2)
@@ -32,6 +33,7 @@ x <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{

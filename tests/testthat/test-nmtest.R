@@ -414,65 +414,67 @@ rxTest({
 
 })
 
-test_that("evid4", {
+rxTest({
+  test_that("evid4", {
 
-  df <- readRDS(test_path("nmtest-evid4.rds"))
-
-
-  evid4 <- function() {
-    ini({
-      # Where initial conditions/variables are specified
-      lka  <- log(2.097)   #log ka (1/h)
-      lcl  <- log(2.568724)#log Cl (L/h)
-      lv   <- log(69.1925) #log V (L)
-      allocl <- fix(0.75)  #WT on Cl
-      allov  <- fix(1.00)  #WT on V
-    })
-    model({
-      # Where the model is specified
-      cl <- exp(lcl + allocl*(log(WT/70)))
-      v  <- exp(lv + allov*(log(WT/70)))
-      ka <- exp(lka)
-      lin <- linCmt()
-    })
-  }
-
-  evid4ode <- function() {
-    ini({
-      # Where initial conditions/variables are specified
-      lka  <- log(2.097)   #log ka (1/h)
-      lcl  <- log(2.568724)#log Cl (L/h)
-      lv   <- log(69.1925) #log V (L)
-      allocl <- fix(0.75)  #WT on Cl
-      allov  <- fix(1.00)  #WT on V
-    })
-    model({
-      # Where the model is specified
-      cl <- exp(lcl + allocl*(log(WT/70)))
-      v  <- exp(lv + allov*(log(WT/70)))
-      ka <- exp(lka)
-      kel <- cl/v
-      d/dt(depot)   <- -ka*depot
-      d/dt(central) <- ka*depot - kel*central
-      lin <- central/v
-    })
-  }
+    df <- readRDS(test_path("nmtest-evid4.rds"))
 
 
-  f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    evid4 <- function() {
+      ini({
+        # Where initial conditions/variables are specified
+        lka  <- log(2.097)   #log ka (1/h)
+        lcl  <- log(2.568724)#log Cl (L/h)
+        lv   <- log(69.1925) #log V (L)
+        allocl <- fix(0.75)  #WT on Cl
+        allov  <- fix(1.00)  #WT on V
+      })
+      model({
+        # Where the model is specified
+        cl <- exp(lcl + allocl*(log(WT/70)))
+        v  <- exp(lv + allov*(log(WT/70)))
+        ka <- exp(lka)
+        lin <- linCmt()
+      })
+    }
 
-  f1o <- rxSolve(evid4ode, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    evid4ode <- function() {
+      ini({
+        # Where initial conditions/variables are specified
+        lka  <- log(2.097)   #log ka (1/h)
+        lcl  <- log(2.568724)#log Cl (L/h)
+        lv   <- log(69.1925) #log V (L)
+        allocl <- fix(0.75)  #WT on Cl
+        allov  <- fix(1.00)  #WT on V
+      })
+      model({
+        # Where the model is specified
+        cl <- exp(lcl + allocl*(log(WT/70)))
+        v  <- exp(lv + allov*(log(WT/70)))
+        ka <- exp(lka)
+        kel <- cl/v
+        d/dt(depot)   <- -ka*depot
+        d/dt(central) <- ka*depot - kel*central
+        lin <- central/v
+      })
+    }
 
-  f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
 
-  f2o <- rxSolve(evid4ode, df, addDosing=TRUE, returnType="data.frame")
+    f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
 
-  expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
+    f1o <- rxSolve(evid4ode, df[1:5,], addDosing=TRUE, returnType="data.frame")
 
-  expect_equal(f1o$lin, f2o$lin[seq_along(f1o$lin)])
+    f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
 
-  expect_equal(f1$lin, f1o$lin, tolerance = 1e-6)
+    f2o <- rxSolve(evid4ode, df, addDosing=TRUE, returnType="data.frame")
 
-  expect_equal(f2$lin, f2o$lin, tolerance = 1e-6)
+    expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
 
+    expect_equal(f1o$lin, f2o$lin[seq_along(f1o$lin)])
+
+    expect_equal(f1$lin, f1o$lin, tolerance = 1e-6)
+
+    expect_equal(f2$lin, f2o$lin, tolerance = 1e-6)
+
+  })
 })

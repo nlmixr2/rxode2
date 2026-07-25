@@ -35,31 +35,33 @@ if (FALSE) {
   saveRDS(list(tmat=tmat, ev1=ev1, ev2=ev2, x1=x1, x2=x2), "data-cbind-study-individual.rds")
 }
 
-test_that("cbind study and individual", {
-  fileCbindStudyIndividual <- test_path("data-cbind-study-individual.rds")
-  skip_if_not(file.exists(fileCbindStudyIndividual))
+rxTest({
+  test_that("cbind study and individual", {
+    fileCbindStudyIndividual <- test_path("data-cbind-study-individual.rds")
+    skip_if_not(file.exists(fileCbindStudyIndividual))
 
-  l <- readRDS(fileCbindStudyIndividual)
+    l <- readRDS(fileCbindStudyIndividual)
 
-  tmat <- l$tmat
-  ev1 <- l$ev1
-  ev2 <- l$ev2
+    tmat <- l$tmat
+    ev1 <- l$ev1
+    ev2 <- l$ev2
 
-  expect_equal(rxCbindStudyIndividual(tmat, ev1), l$x1)
+    expect_equal(rxCbindStudyIndividual(tmat, ev1), l$x1)
 
-  expect_equal(rxCbindStudyIndividual(as.data.frame(tmat), ev1), l$x1)
+    expect_equal(rxCbindStudyIndividual(as.data.frame(tmat), ev1), l$x1)
 
-  expect_equal(rxCbindStudyIndividual(tmat, ev2), l$x2)
+    expect_equal(rxCbindStudyIndividual(tmat, ev2), l$x2)
 
-  expect_equal(rxCbindStudyIndividual(as.data.frame(tmat), ev2), l$x2)
+    expect_equal(rxCbindStudyIndividual(as.data.frame(tmat), ev2), l$x2)
 
-  expect_error(rxCbindStudyIndividual(c(a = 1), ev1))
+    expect_error(rxCbindStudyIndividual(c(a = 1), ev1))
 
-  expect_error(rxCbindStudyIndividual(tmat, c(a = 1)))
+    expect_error(rxCbindStudyIndividual(tmat, c(a = 1)))
 
-  tmat2 <- tmat
+    tmat2 <- tmat
 
-  dimnames(tmat2) <- list(c("c", "cq"), NULL)
+    dimnames(tmat2) <- list(c("c", "cq"), NULL)
 
-  expect_error(rxCbindStudyIndividual(tmat2, ev1))
+    expect_error(rxCbindStudyIndividual(tmat2, ev1))
+  })
 })

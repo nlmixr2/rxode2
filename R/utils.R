@@ -1669,7 +1669,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
-#'
+#' \donttest{
 #' mod <- rxode2({
 #'   Cp <- linCmt(Cl, V, Q2, V2, Q3, V3)
 #'   ke0 <- log(2)/(50)
@@ -1689,6 +1689,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' rxStateOde(mod)
 #'
 #' rxState(mod)
+#' }
 #'
 rxStateOde <- function(obj) {
   .state <- rxState(obj)

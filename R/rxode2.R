@@ -1700,10 +1700,12 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
+#' \donttest{
 #' rxode2({
 #'   a <- b
 #' })
 #' rxLastCompile()
+#' }
 rxLastCompile <- function() {
   lapply(names(.rxCompileEnv$lst), function(nm) {
     cli::rule(left = nm)

@@ -33,6 +33,7 @@ dPReLUa(c(-1, 0, 1, 2), 2)
 dPReLUa1(c(-1, 0, 1, 2), 2)
 
 
+\donttest{
 # Can also be used in rxode2:
 r <- rxode2({
   r1=dPReLU(time, 2)
@@ -42,6 +43,7 @@ r <- rxode2({
 
 e <- et(c(-1, 0, 1, 2))
 rxSolve(r, e)
+}
 }
 \seealso{
 Other Activation Functions:

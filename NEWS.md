@@ -1,6 +1,27 @@
 # rxode2 (development version)
 
+## New features
+
+- `library(rxode2)` is faster.  `.onLoad()` no longer calls
+  `requireNamespace()` on the suggested packages (`pillar`, `tibble`,
+  `arrow`, `dplyr`, `nlme`, `units`, `digest`) before registering their
+  S3 methods.  The registration helper already installs an `onLoad`
+  hook when the other namespace is not loaded yet, so the eager loads
+  only added startup cost; the methods are still registered at the same
+  point in time from the user's perspective.
+
 ## Bug fixes
+
+### Solving
+
+- Fixed an out-of-bounds thread index that could segfault a solve.  The
+  internal thread id used to slice the per-thread solving buffers was not
+  bounded by the number of threads those buffers were allocated for
+  (`op$cores`).  A larger id read past the end of `gInfusionRate[]` -- an
+  array of pointers -- and the resulting garbage pointer crashed
+  `iniSubject()`; the flat per-thread arrays were silently overrun in the
+  same way.  The id is now clamped to the last valid slot, matching what
+  `rx_get_thread()` already did.
 
 - `RcppParallel` is now a runtime import (added to `Imports` with an
   `importFrom`), so its shared library is loaded into the process before

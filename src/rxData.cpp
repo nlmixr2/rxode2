@@ -1534,7 +1534,17 @@ extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
 static inline int _rxTid(void) {
   int t = _rxThreadIdOverride;
   if (t < 0) t = omp_get_thread_num();
-  return (t < 0) ? 0 : t;
+  if (t < 0) return 0;
+  // Every `_globals` per-thread slice is sized by op->cores, recorded in
+  // nInfusionRateThreads when they are allocated.  A thread id at or past
+  // that count indexes out of bounds: gInfusionRate[] is an array of
+  // pointers, so it yields a garbage pointer (a NULL there segfaults in
+  // iniSubject), and the flat arrays (gon, gTlastS, gatol2Thread, ...) are
+  // silently overrun.  Clamp to the last valid slot, matching the policy
+  // rx_get_thread() already applies in rxomp.h.
+  int mx = _globals.nInfusionRateThreads;
+  if (mx <= 0) return 0;
+  return (t < mx) ? t : mx - 1;
 }
 
 static inline double *getLinCmtSaveThread() {

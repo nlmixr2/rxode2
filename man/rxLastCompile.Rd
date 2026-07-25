@@ -22,10 +22,12 @@ also message the contents to the console.
 Get the last compiled model information as alist
 }
 \examples{
+\donttest{
 rxode2({
   a <- b
 })
 rxLastCompile()
+}
 }
 \author{
 Matthew L. Fidler
