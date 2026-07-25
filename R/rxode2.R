@@ -296,6 +296,7 @@ NA_LOGICAL <- NA # nolint
 #' @eval .rxodeBuildCode()
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
+#' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion removeSource
 #' @importFrom stats setNames update dnorm integrate
