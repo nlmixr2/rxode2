@@ -742,6 +742,7 @@ names.rxEt <- function(x) {
     .newEnv$show       <- .env0$show
     .newEnv$randomType <- .env0$randomType
     .newEnv$canResize  <- FALSE
+    .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
     .newEnv$chunks     <- list()
     if (nrow(.sub) > 0L) {
       .newEnv$ids  <- sort(unique(as.integer(.sub$id)))
@@ -776,15 +777,47 @@ names.rxEt <- function(x) {
   invisible(NULL)
 }
 
+#' Non-canonical columns that were explicitly assigned on an event table
+#'
+#' Columns that merely rode along with an imported data frame are not
+#' listed here, so they stay hidden in the default `as.data.frame()`
+#' output the way they were before #1154.
+#'
+#' @param env event table environment (or `NULL`)
+#' @return character vector of column names, possibly empty
+#' @noRd
+.etExtraCols <- function(env) {
+  if (!is.environment(env)) return(character(0))
+  .extra <- env$extraCols
+  if (is.null(.extra)) return(character(0))
+  as.character(.extra)
+}
+
+#' Record a non-canonical column as explicitly assigned
+#'
+#' @param env event table environment to modify by reference
+#' @param cols character vector of column names to add
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etAddExtraCols <- function(env, cols) {
+  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  env$extraCols <- unique(c(.etExtraCols(env), as.character(cols))) # nolint
+  invisible(NULL)
+}
+
 #' @export
 `$<-.rxEt` <- function(x, name, value) {
   .df <- .etMaterialize(x) # nolint
   .df[[name]] <- value
   .ret <- .rxEtRebuildShell(x, .df) # nolint
-  # an explicitly assigned canonical column should display, so the
-  # default as.data.frame() output reflects what will be solved (#1154)
+  # an explicitly assigned column should display, so the default
+  # as.data.frame() output reflects what will be solved (#1154)
   .env <- .rxEtEnv(.ret) # nolint
-  if (name %in% names(.env$show)) .env$show[name] <- TRUE
+  if (name %in% names(.env$show)) {
+    .env$show[name] <- TRUE
+  } else {
+    .etAddExtraCols(.env, name) # nolint
+  }
   .ret
 }
 
@@ -905,6 +938,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       .newEnv$ndose      <- .env0$ndose
       .newEnv$randomType <- NA_integer_
       .newEnv$canResize  <- FALSE
+      .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
       .newEnv$groups     <- .sim$groups
       .newEnv$chunks     <- .sim$chunks
       return(structure(c(list(.env = .newEnv),
@@ -1255,6 +1289,9 @@ etSeq <- function(..., samples = c("clear", "use"),
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- unique(unlist(lapply(.etItems, function(.a) {
+    .etExtraCols(.rxEtEnv(.a)) # nolint
+  }), use.names = FALSE))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
@@ -1397,6 +1434,9 @@ etRbind <- function(..., samples = c("use", "clear"),
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- unique(unlist(lapply(Filter(is.rxEt, .ets), function(.a) { # nolint
+    .etExtraCols(.rxEtEnv(.a)) # nolint
+  }), use.names = FALSE))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
@@ -1521,8 +1561,9 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
   } else {
     .showCols <- names(.show)[.show]
     .showCols <- intersect(.showCols, names(.full))
-    # keep user-added columns (e.g. covariates from ev$wt <- ...), #1154
-    .extraCols <- setdiff(names(.full), names(.show))
+    # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
+    .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
+    .extraCols <- setdiff(.extraCols, .showCols)
     .full[, c(.showCols, .extraCols), drop = FALSE]
   }
 
@@ -1607,6 +1648,7 @@ etExpand <- function(et) {
   }
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- .etExtraCols(.env) # nolint
   structure(c(list(.env = .newEnv),
               .etBuildMethods(.newEnv)), # nolint
             class = "rxEt")
