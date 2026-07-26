@@ -805,6 +805,18 @@ names.rxEt <- function(x) {
   invisible(NULL)
 }
 
+#' Forget a non-canonical column that was removed from an event table
+#'
+#' @param env event table environment to modify by reference
+#' @param cols character vector of column names to drop
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etDropExtraCols <- function(env, cols) {
+  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  env$extraCols <- setdiff(.etExtraCols(env), as.character(cols)) # nolint
+  invisible(NULL)
+}
+
 #' @export
 `$<-.rxEt` <- function(x, name, value) {
   .df <- .etMaterialize(x) # nolint
@@ -813,7 +825,10 @@ names.rxEt <- function(x) {
   # an explicitly assigned column should display, so the default
   # as.data.frame() output reflects what will be solved (#1154)
   .env <- .rxEtEnv(.ret) # nolint
-  if (name %in% names(.env$show)) {
+  if (is.null(value)) {
+    # the column was deleted, so it is neither shown nor tracked
+    .etDropExtraCols(.env, name) # nolint
+  } else if (name %in% names(.env$show)) {
     .env$show[name] <- TRUE
   } else {
     .etAddExtraCols(.env, name) # nolint

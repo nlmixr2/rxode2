@@ -63,6 +63,17 @@ rxTest({
     expect_true("wt2" %in% names(as.data.frame(.ev[1:2, ])))
     expect_true("wt2" %in% names(as.data.frame(etRbind(.ev, .ev))))
     expect_false("wt" %in% names(as.data.frame(etRbind(.ev, .ev))))
+    # ... and through the vctrs rebuild path (vec_slice/vec_restore/vec_c)
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_false("wt" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_c(.ev, .ev))))
+    # deleting the column forgets it rather than recording it
+    .ev$wt2 <- NULL
+    expect_false("wt2" %in% names(as.data.frame(.ev)))
+    expect_false("wt2" %in% .rxEtEnv(.ev)$extraCols)
+    .evn <- et(0:5)
+    .evn$never <- NULL
+    expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
   })
 
   test_that("et import rate=-2", {
