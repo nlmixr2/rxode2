@@ -12,6 +12,17 @@
 
 ## Bug fixes
 
+### Serialization
+
+- `qs2` moved to `Imports`.  `rxDeserialize()` used it without declaring it
+  anywhere, and because the call sites named the package as a string, the
+  dependency was invisible to `R CMD check` as well.  Environments that build
+  their library from the declared dependency graph could therefore end up
+  without `qs2` and fail to read objects stored while `qs2` was an allowed
+  `rxode2.serialize.type` -- for example the `origData` slot of fits saved by
+  earlier versions.  `qs2` is now only ever read, never written; `rxSerialize()`
+  writes `base`, `bzip2` or `xz`.
+
 ### Solving
 
 - Fixed an out-of-bounds thread index that could segfault a solve.  The
