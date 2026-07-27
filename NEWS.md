@@ -147,6 +147,12 @@
   previously hidden canonical columns such as `cmt`) now round-trip through
   `as.data.frame(ev)` (#1154).
 
+- Columns assigned explicitly on an event table (`ev$wt <- 70`) are now shown in
+  the tibble printed by `print(ev)`, in `ev$get.EventTable()`, and in the
+  compressed preview printed for `ev$get.dosing()`/`ev$get.sampling()`, matching
+  `as.data.frame(ev)`.  They were kept and used when solving, but never
+  displayed, so they looked like they had disappeared (#1154).
+
 - `as.data.frame()` on an event table still hides covariate columns that simply
   rode along with an imported data frame (`et(data)`), while showing columns
   assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The covariate

@@ -91,8 +91,7 @@
     .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
   }
   if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
-  .show <- env$show
-  .cols <- intersect(names(.show)[.show], names(.mat))
+  .cols <- .etDisplayCols(names(.mat), env$show, .etExtraCols(env)) # nolint
   .ret <- .mat[, .cols, drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
   .ret

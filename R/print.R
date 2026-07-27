@@ -76,9 +76,10 @@ print.rxEtPreview <- function(x, ...) {
   }
   .show <- attr(x, "rxEtShow", exact = TRUE)
   if (!is.null(.show)) {
-    .showCols <- unique(c("id", names(.show)[.show]))
-    .showCols <- intersect(.showCols, names(.df))
-    .df <- .df[, .showCols, drop = FALSE]
+    .df <- .df[, .etDisplayCols(names(.df), .show, # nolint
+                                attr(x, "rxEtExtraCols", exact = TRUE),
+                                pre = "id"),
+               drop = FALSE]
   }
   print(tibble::as_tibble(.df), ...)
   invisible(x)
@@ -160,8 +161,8 @@ print.rxEt <- function(x, ...) {
           class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
         }
       }
-      .show <- .rxEtEnv(x)$show
-      .showCols <- intersect(names(.show)[.show], names(.preview))
+      .env <- .rxEtEnv(x)
+      .showCols <- .etDisplayCols(names(.preview), .env$show, .etExtraCols(.env)) # nolint
       if (inherits(.preview, "rxEtPreview") && .maxId > 1L) {
         print(.preview)
       } else {

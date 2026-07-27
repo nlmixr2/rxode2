@@ -76,6 +76,48 @@ rxTest({
     expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
   })
 
+  test_that("explicitly assigned columns show up in print(ev) (#1154)", {
+    withr::local_options(list(width = 120))
+    .hasWt <- function(x) any(grepl("\\bwt\\b", utils::capture.output(print(x))))
+    .ev <- et(amt = 3, ii = 24, until = 96) |> et(seq(0, 96, by = 12))
+    expect_false(.hasWt(.ev))
+    .ev$wt <- 70
+    # the assigned column is part of the printed tibble, not swallowed
+    expect_true(.hasWt(.ev))
+    expect_true(any(grepl("\\b70\\b", utils::capture.output(print(.ev)))))
+    # and it is part of the accessor the printout points at
+    expect_true("wt" %in% names(.ev$get.EventTable()))
+    # deleting it takes it back out of the printout
+    .ev$wt <- NULL
+    expect_false(.hasWt(.ev))
+    expect_false("wt" %in% names(.ev$get.EventTable()))
+    # the compressed multi-subject preview shows it too
+    .evi <- et(amt = 3) |> et(0:5)
+    .evi$wt <- 70
+    .evi <- .evi |> et(id = 1:4)
+    .prev <- .etPreviewData(.rxEtEnv(.evi), "all")
+    expect_s3_class(.prev, "rxEtPreview")
+    expect_equal(attr(.prev, "rxEtExtraCols"), "wt")
+    expect_true(.hasWt(.evi))
+    expect_true(.hasWt(.prev))
+    expect_true(.hasWt(.evi$get.dosing()))
+    # a canonical column that is not shown by default is unaffected
+    expect_equal(.etDisplayCols(c("time", "amt", "wt"),
+                                c(time = TRUE, amt = TRUE, cmt = FALSE),
+                                "wt"),
+                 c("time", "amt", "wt"))
+    # `pre` columns lead, and columns absent from the data are dropped
+    expect_equal(.etDisplayCols(c("id", "time", "wt"),
+                                c(time = TRUE, amt = TRUE),
+                                c("wt", "gone"), pre = "id"),
+                 c("id", "time", "wt"))
+    # an extra column that is also canonical is not duplicated
+    expect_equal(.etDisplayCols(c("time", "cmt"),
+                                c(time = TRUE, cmt = TRUE),
+                                "cmt"),
+                 c("time", "cmt"))
+  })
+
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),

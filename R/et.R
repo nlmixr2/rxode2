@@ -793,6 +793,24 @@ names.rxEt <- function(x) {
   as.character(.extra)
 }
 
+#' Columns displayed for an event table
+#'
+#' The canonical columns flagged in `show`, followed by any explicitly
+#' assigned columns (e.g. `ev$wt <- 70`) so they are not silently
+#' swallowed by the event table (#1154).
+#'
+#' @param nms names available in the data being displayed
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @param pre columns to place first (e.g. `id`)
+#' @return character vector of column names present in `nms`
+#' @noRd
+.etDisplayCols <- function(nms, show, extraCols = character(0), pre = character(0)) {
+  .cols <- pre
+  if (!is.null(show)) .cols <- c(.cols, names(show)[show])
+  intersect(unique(c(.cols, extraCols)), nms)
+}
+
 #' Record a non-canonical column as explicitly assigned
 #'
 #' @param env event table environment to modify by reference
