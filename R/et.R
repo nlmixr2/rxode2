@@ -846,9 +846,43 @@ names.rxEt <- function(x) {
 .etKeepCols <- function(nms, marked, show, extraCols = character(0)) {
   if (is.null(marked)) marked <- nms
   .hide <- setdiff(marked, .etDisplayCols(marked, show, extraCols, pre = "id"))
-  .keep <- setdiff(nms, .hide)
+  # not setdiff(): that would drop duplicated column names as well
+  .keep <- nms[!(nms %in% .hide)]
   if (length(.keep) == 0L) return(nms)
   .keep
+}
+
+#' Drop the display marking once an event table frame is modified
+#'
+#' The marking describes the columns the accessor returned, so it is only
+#' meaningful while the frame is unchanged.  Mutating one in place makes
+#' it the caller's own data frame -- the same way `dplyr` verbs do via
+#' `dplyr_reconstruct()` -- so the print class goes away rather than
+#' hiding a column that was just assigned.
+#'
+#' @param x object being assigned into
+#' @return `x` without the `rxEtPreview` class
+#' @noRd
+.etUnmarkDisplay <- function(x) {
+  if (inherits(x, "rxEtPreview")) {
+    class(x) <- setdiff(class(x), "rxEtPreview")
+  }
+  x
+}
+
+#' @export
+`$<-.rxEtPreview` <- function(x, name, value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
 }
 
 #' Record a non-canonical column as explicitly assigned

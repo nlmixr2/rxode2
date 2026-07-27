@@ -160,6 +160,32 @@ rxTest({
     # keeping only hidden columns prints them rather than nothing
     .k <- .evd$get.dosing()[, c("low", "high"), drop = FALSE]
     expect_true(.has(.k, "low"))
+    # assigning into the frame makes it the caller's own data frame, so a
+    # column reusing a hidden name is not silently suppressed
+    .a <- .evd$get.dosing()
+    .a$covar <- NULL
+    .a$covar <- "new"
+    expect_false(inherits(.a, "rxEtPreview"))
+    expect_true(.has(.a, "covar"))
+    .b <- .evd$get.dosing()
+    .b[["covar"]] <- 1
+    expect_false(inherits(.b, "rxEtPreview"))
+    .c <- .evd$get.dosing()
+    .c[1, "amt"] <- 5
+    expect_false(inherits(.c, "rxEtPreview"))
+    # duplicated column names are not collapsed away by the column filter
+    expect_equal(.etKeepCols(c("time", "amt", "amt", "low"),
+                             c("time", "amt", "amt", "low"),
+                             c(time = TRUE, amt = TRUE, low = FALSE)),
+                 c("time", "amt", "amt"))
+    # nothing left to show falls back to showing everything
+    expect_equal(.etKeepCols(c("low", "high"), c("low", "high"),
+                             c(time = TRUE, low = FALSE, high = FALSE)),
+                 c("low", "high"))
+    # no marked columns recorded behaves like filtering on what is there
+    expect_equal(.etKeepCols(c("time", "low"), NULL,
+                             c(time = TRUE, low = FALSE)),
+                 "time")
     # units and row names survive the display marking
     skip_if_not_installed("units")
     .evu <- et(timeUnits = "hr") |>

@@ -153,6 +153,8 @@ print.rxEt <- function(x, ...) {
         }), sep = "\n")
       }
       .preview <- .etPreviewData(.rxEtEnv(x), "all")
+      # re-tagging columns is a `[[<-`, which drops the display marking
+      .previewCls <- class(.preview)
       if (!is.null(.preview[["evid"]])) {
         class(.preview[["evid"]]) <- c("rxEvid", class(.preview[["evid"]]))
       }
@@ -161,6 +163,7 @@ print.rxEt <- function(x, ...) {
           class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
         }
       }
+      class(.preview) <- .previewCls
       .env <- .rxEtEnv(x)
       .showCols <- .etDisplayCols(names(.preview), .env$show, .etExtraCols(.env)) # nolint
       if (inherits(.preview, "rxEtPreview") && .maxId > 1L) {
