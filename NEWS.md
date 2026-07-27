@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 5.1.5
 
 ## New features
 
@@ -9,62 +9,6 @@
   hook when the other namespace is not loaded yet, so the eager loads
   only added startup cost; the methods are still registered at the same
   point in time from the user's perspective.
-
-## Bug fixes
-
-### Serialization
-
-- `qs2` moved to `Imports`.  `rxDeserialize()` used it without declaring it
-  anywhere, and because the call sites named the package as a string, the
-  dependency was invisible to `R CMD check` as well.  Environments that build
-  their library from the declared dependency graph could therefore end up
-  without `qs2` and fail to read objects stored while `qs2` was an allowed
-  `rxode2.serialize.type` -- for example the `origData` slot of fits saved by
-  earlier versions.  `qs2` is now only ever read, never written; `rxSerialize()`
-  writes `base`, `bzip2` or `xz`.
-### Event tables
-
-- `as.data.frame()` on an event table again hides covariate columns that simply
-  rode along with an imported data frame (`et(data)`), while still showing
-  columns assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The
-  covariate is still used when solving.  Showing every non-canonical column
-  broke code that imports events and then joins its own covariates back onto
-  `as.data.frame(ev)`, since the join produced `wt.x`/`wt.y` and the model
-  parameter disappeared.
-
-### Solving
-
-- Fixed an out-of-bounds thread index that could segfault a solve.  The
-  internal thread id used to slice the per-thread solving buffers was not
-  bounded by the number of threads those buffers were allocated for
-  (`op$cores`).  A larger id read past the end of `gInfusionRate[]` -- an
-  array of pointers -- and the resulting garbage pointer crashed
-  `iniSubject()`; the flat per-thread arrays were silently overrun in the
-  same way.  The id is now clamped to the last valid slot, matching what
-  `rx_get_thread()` already did.
-
-- `RcppParallel` is now a runtime import (added to `Imports` with an
-  `importFrom`), so its shared library is loaded into the process before
-  `rxode2`'s.  `rxode2` links against `RcppParallel` (`-lRcppParallel`); with
-  `RcppParallel` only in `LinkingTo` its DLL was not guaranteed to be loaded
-  first, so on Windows `library(rxode2)` could fail with `LoadLibrary failure:
-  The specified module could not be found`.  This surfaced with RcppParallel
-  6.0.0, which statically links TBB and no longer ships the `tbb.dll` stub that
-  previously happened to pull the library in.
-
-- The symbolic derivatives of the relational operators (`>`, `<`, `>=`, `<=`)
-  are now centered on the discontinuity `a == b`: the `atanh(2*tol - 1)` shift
-  that placed the smoothed nascent-delta bump at `a - b ~ +/-0.46` was removed.
-  Since the forward pass evaluates relationals as hard booleans, the shifted
-  bump gave sensitivity/exact-gradient consumers (e.g. FOCEI's analytic
-  gradient paths) a spurious derivative in a band next to the threshold; the
-  centered rule makes the derivative consistent with the forward value.  This
-  also makes the first derivatives of `abs()`, `min()`, and `max()` exact away
-  from the boundary (#1159).
-
-# rxode2 5.1.5
-
-## New features
 
 - `rxControl(sigdig=)` now derives the ODE solver tolerances with one
   solver-independent formula -- the same for stiff, non-stiff and auto-switching
@@ -99,13 +43,25 @@
   `PKG_CPPFLAGS` so it precedes the LinkingTo include flags; otherwise the
   older SUNDIALS copy bundled inside StanHeaders would shadow it.
 
-- Removed the dependency on `qs2` (and hence `stringfish`).
-  `rxSerialize()` now supports the base R types only (`"xz"`, `"bzip2"`,
-  `"base"`); `rxDeserialize()` still reads `qs2`/`qdata`-serialized data and
-  base91-encoded strings when the `qs2` package is installed. Test data was
-  converted from `.qs2` to `.rds`.
+- `rxSerialize()` now writes the base R types only (`"xz"`, `"bzip2"`,
+  `"base"`); `qs2` is no longer a write format.  `rxDeserialize()` still reads
+  `qs2`/`qdata`-serialized data and base91-encoded strings, so objects stored
+  by earlier versions remain readable.  Test data was converted from `.qs2` to
+  `.rds`.
 
 ## Bug fixes
+
+### Serialization
+
+- `qs2` moved to `Imports`.  `rxDeserialize()` used it without declaring it
+  anywhere, and because the call sites named the package as a string, the
+  dependency was invisible to `R CMD check` as well.  Environments that build
+  their library from the declared dependency graph could therefore end up
+  without `qs2` and fail to read objects stored while `qs2` was an allowed
+  `rxode2.serialize.type` -- for example the `origData` slot of fits saved by
+  earlier versions.  `qs2` is now only ever read, never written.
+
+### Error models / transformations
 
 - The first and second derivatives of the Yeo-Johnson transform (`rxTBSd()` and
   `rxTBSd2()`) had the wrong sign for negative values when `lambda` was exactly
@@ -141,22 +97,45 @@
     derivatives discontinuous (and ~15 orders of magnitude too small) at the
     boundary.  The clamp now feeds the usual formula, matching how every other
     transform in the family handles the guard.
-- On Windows with RcppParallel >= 6.0.0 (which statically links TBB through
-  Rtools and no longer loads `tbb.dll`), the stale `-ltbb`/`-ltbbmalloc` flags
-  and the `-L` path to RcppParallel's old dynamic TBB directory that
-  `StanHeaders::LdFlags()` still emits are stripped at configure time, so the
-  rxode2 DLL no longer records an unresolvable runtime dependency on
-  `tbb.dll`.  The strip is keyed to that stale `-L<RcppParallel/lib>`
-  signature, so a future StanHeaders that emits corrected flags -- or a
-  user-supplied TBB via `TBB_LINK_LIB`/`TBB_LIB` -- is left untouched (#1161).
 
-- The `parsed_md5` of a model no longer depends on how many models were built
-  before it in the session.  `linCmtSens` was folded into the hash but only
-  assigned *after* the model was parsed, so the first build of a session hashed
-  with an unset value and every later build hashed with the *previous* call's
-  value.  Because the compiled DLL is named from `parsed_md5`, the same model
-  could get two different cache keys (and hence a redundant recompile) depending
-  on build order.  It is now set before the parse.
+### Estimation / symengine translation
+
+- The symbolic derivatives of the relational operators (`>`, `<`, `>=`, `<=`)
+  are now centered on the discontinuity `a == b`: the `atanh(2*tol - 1)` shift
+  that placed the smoothed nascent-delta bump at `a - b ~ +/-0.46` was removed.
+  Since the forward pass evaluates relationals as hard booleans, the shifted
+  bump gave sensitivity/exact-gradient consumers (e.g. FOCEI's analytic
+  gradient paths) a spurious derivative in a band next to the threshold; the
+  centered rule makes the derivative consistent with the forward value.  This
+  also makes the first derivatives of `abs()`, `min()`, and `max()` exact away
+  from the boundary (#1159).
+
+### Solving
+
+- Fixed an out-of-bounds thread index that could segfault a solve.  The
+  internal thread id used to slice the per-thread solving buffers was not
+  bounded by the number of threads those buffers were allocated for
+  (`op$cores`).  A larger id read past the end of `gInfusionRate[]` -- an
+  array of pointers -- and the resulting garbage pointer crashed
+  `iniSubject()`; the flat per-thread arrays were silently overrun in the
+  same way.  The id is now clamped to the last valid slot, matching what
+  `rx_get_thread()` already did.
+
+- Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
+  per-thread inter-event amount buffer was never cleared between subjects, so
+  with `cores < nSub` every subject after the first on a thread could start
+  from the previous subject's compartment amounts (surfaced by a modeled
+  `alag()`) (#1153; by Hidde van de Beek).
+
+- `delay()`/`past()` models containing an `if`/`else` block failed to solve
+  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
+  directly, which puts `}` and `else` on separate top-level lines; the
+  normalized text is now parsed wrapped in a `{ }` block.  In addition, a
+  `past()` history inside an `if`/`else` branch is now rejected with a clear
+  error (it was invisible to validation), and delay-duration root-variable
+  resolution now sees assignments made inside `if`/`else` branches (#1151).
+
+### Event tables
 
 - `ev$id` on an event table now returns the per-row `id` column (matching
   `as.data.frame(ev)$id`) instead of the unique subject ids, so idiomatic
@@ -168,22 +147,47 @@
   previously hidden canonical columns such as `cmt`) now round-trip through
   `as.data.frame(ev)` (#1154).
 
-- `delay()`/`past()` models containing an `if`/`else` block failed to solve
-  with `unexpected 'else'`: the DDE helpers parsed the `rxNorm()` text
-  directly, which puts `}` and `else` on separate top-level lines; the
-  normalized text is now parsed wrapped in a `{ }` block.  In addition, a
-  `past()` history inside an `if`/`else` branch is now rejected with a clear
-  error (it was invisible to validation), and delay-duration root-variable
-  resolution now sees assignments made inside `if`/`else` branches (#1151).
+- `as.data.frame()` on an event table still hides covariate columns that simply
+  rode along with an imported data frame (`et(data)`), while showing columns
+  assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The covariate
+  is still used when solving.  Showing every non-canonical column broke code
+  that imports events and then joins its own covariates back onto
+  `as.data.frame(ev)`, since the join produced `wt.x`/`wt.y` and the model
+  parameter disappeared.
+
+### Model compilation
+
+- The `parsed_md5` of a model no longer depends on how many models were built
+  before it in the session.  `linCmtSens` was folded into the hash but only
+  assigned *after* the model was parsed, so the first build of a session hashed
+  with an unset value and every later build hashed with the *previous* call's
+  value.  Because the compiled DLL is named from `parsed_md5`, the same model
+  could get two different cache keys (and hence a redundant recompile) depending
+  on build order.  It is now set before the parse.
+
+### Installation / linking
+
+- `RcppParallel` is now a runtime import (added to `Imports` with an
+  `importFrom`), so its shared library is loaded into the process before
+  `rxode2`'s.  `rxode2` links against `RcppParallel` (`-lRcppParallel`); with
+  `RcppParallel` only in `LinkingTo` its DLL was not guaranteed to be loaded
+  first, so on Windows `library(rxode2)` could fail with `LoadLibrary failure:
+  The specified module could not be found`.  This surfaced with RcppParallel
+  6.0.0, which statically links TBB and no longer ships the `tbb.dll` stub that
+  previously happened to pull the library in.
+
+- On Windows with RcppParallel >= 6.0.0 (which statically links TBB through
+  Rtools and no longer loads `tbb.dll`), the stale `-ltbb`/`-ltbbmalloc` flags
+  and the `-L` path to RcppParallel's old dynamic TBB directory that
+  `StanHeaders::LdFlags()` still emits are stripped at configure time, so the
+  rxode2 DLL no longer records an unresolvable runtime dependency on
+  `tbb.dll`.  The strip is keyed to that stale `-L<RcppParallel/lib>`
+  signature, so a future StanHeaders that emits corrected flags -- or a
+  user-supplied TBB via `TBB_LINK_LIB`/`TBB_LIB` -- is left untouched (#1161).
+
 - The vendored SUNDIALS `*NewEmpty` constructors now allocate with `calloc`
   instead of `malloc`, so any struct fields added by a newer SUNDIALS
   release are NULL (and safely ignored) rather than uninitialized (#1155).
-
-- Fixed a cross-subject leak in batched multi-subject `linCmt()` solves: the
-  per-thread inter-event amount buffer was never cleared between subjects, so
-  with `cores < nSub` every subject after the first on a thread could start
-  from the previous subject's compartment amounts (surfaced by a modeled
-  `alag()`) (#1153; by Hidde van de Beek).
 
 # rxode2 5.1.4
 
