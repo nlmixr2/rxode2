@@ -321,6 +321,12 @@
       names(df)[.i] <- .colMap[.upper[.i]]
     }
   }
+  # rename the assigned-column tag with the columns it points at (#1154)
+  .extra <- .etExtraColsAttr(df) # nolint
+  if (length(.extra) > 0L) {
+    .map <- stats::setNames(names(df), .nms)[.extra]
+    attr(df, "rxEtExtraCols") <- unname(ifelse(is.na(.map), .extra, .map))
+  }
   df
 }
 
@@ -403,11 +409,11 @@
   if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
   .extra <- .etExtraColsAttr(df) # nolint
   df <- as.data.frame(df)
+  # as.data.frame() may drop it; re-tag first so the rename below tracks it
+  if (length(.extra) > 0L) attr(df, "rxEtExtraCols") <- .extra
   df <- .etImportNormalizeNames(df)
   df <- .etImportIdToInteger(df)
   df <- .etImportDropNaTime(df)
-  # the helpers above may drop it, so re-tag before delegating
-  if (length(.extra) > 0L) attr(df, "rxEtExtraCols") <- .extra
   # Delegate to import.EventTable for units handling + storage
   .etMethodImportEventTable(env, df)
   invisible(NULL)

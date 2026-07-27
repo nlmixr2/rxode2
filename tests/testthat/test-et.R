@@ -232,6 +232,18 @@ rxTest({
     expect_true(.has(.all, "wt"))
     expect_false(.has(.all, "covar"))
     expect_true("covar" %in% names(as.data.frame(.all, all = TRUE)))
+    # a NONMEM-style uppercase name is renamed on import, and the tag is
+    # renamed with it so the column does not vanish (it shows before the trip)
+    .up <- et(time = 1, amt = 100)
+    .up$SS <- 3
+    expect_true(.has(.up, "SS"))
+    .upRt <- et(as.data.frame(.up))
+    expect_equal(.etExtraCols(.rxEtEnv(.upRt)), "ss")
+    expect_true(.has(.upRt, "ss"))
+    # a tag naming a column that is not in the frame is ignored
+    .bad <- as.data.frame(.ev)
+    attr(.bad, "rxEtExtraCols") <- c("wt", "nosuchcolumn")
+    expect_equal(.etExtraCols(.rxEtEnv(et(.bad))), "wt")
     # a data frame built by hand carries no tag, so its covariates stay hidden
     .plain <- et(data.frame(time = c(0, 1), amt = c(1, NA), evid = c(1, 0),
                             cv = c(2, 2)))
