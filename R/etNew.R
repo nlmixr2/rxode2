@@ -598,6 +598,7 @@
   .env$ndose      <- 0L
   .env$randomType <- NA_integer_
   .env$canResize  <- TRUE
+  .env$extraCols  <- character(0)
   .env$methods <- .etBuildMethods(.env)
   .obj <- list(
     id = integer(0), low = numeric(0), time = numeric(0), high = numeric(0),
@@ -1372,6 +1373,7 @@ is.rxEt <- function(x) {
   .env$show[names(.env0$show)] <- .env$show[names(.env0$show)] | .env0$show
   .env$randomType <- .env0$randomType
   .env$canResize <- .env0$canResize
+  .etAddExtraCols(.env, .etExtraCols(.env0)) # nolint
   .et
 }
 

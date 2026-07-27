@@ -74,6 +74,7 @@
   env$ndose <- .retEnv$ndose
   env$randomType <- .retEnv$randomType
   env$canResize <- .retEnv$canResize
+  .etAddExtraCols(env, .etExtraCols(.retEnv)) # nolint
   invisible(NULL)
 }
 
@@ -492,6 +493,7 @@
   .newEnv$ndose      <- env$ndose
   .newEnv$randomType <- env$randomType
   .newEnv$canResize  <- env$canResize
+  .newEnv$extraCols  <- .etExtraCols(env) # nolint
   .newEnv$methods <- .etBuildMethods(.newEnv)
   .cp <- list()
   attr(.cp, "names")     <- character(0)

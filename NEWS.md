@@ -22,6 +22,15 @@
   `rxode2.serialize.type` -- for example the `origData` slot of fits saved by
   earlier versions.  `qs2` is now only ever read, never written; `rxSerialize()`
   writes `base`, `bzip2` or `xz`.
+### Event tables
+
+- `as.data.frame()` on an event table again hides covariate columns that simply
+  rode along with an imported data frame (`et(data)`), while still showing
+  columns assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The
+  covariate is still used when solving.  Showing every non-canonical column
+  broke code that imports events and then joins its own covariates back onto
+  `as.data.frame(ev)`, since the join produced `wt.x`/`wt.y` and the model
+  parameter disappeared.
 
 ### Solving
 

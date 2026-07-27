@@ -43,6 +43,39 @@ rxTest({
     expect_equal(unique(as.data.frame(.evc)$cmt), "depot")
   })
 
+  test_that("covariates riding along on an imported data frame stay hidden", {
+    # a covariate that came in with the imported data frame is not shown by
+    # default; downstream packages join it back on and would otherwise get
+    # duplicated `wt.x`/`wt.y` columns
+    .ev <- et(data.frame(id = 1, time = 0, evid = 1, cmt = 1, amt = 10, wt = 70))
+    expect_false("wt" %in% names(as.data.frame(.ev)))
+    expect_true("wt" %in% names(as.data.frame(.ev, all = TRUE)))
+    # the hidden covariate is still used when solving
+    .ev <- add.sampling(.ev, 0:3)
+    expect_false("wt" %in% names(as.data.frame(.ev)))
+    .m <- rxode2("v = 10 * (wt / 70)\nd/dt(ac) = -0.1 * ac\ncc = ac / v")
+    expect_equal(suppressWarnings(unique(rxSolve(.m, .ev)$v)), 10)
+    # an explicitly assigned covariate is still shown, and survives copies,
+    # row subsets and rbind
+    .ev$wt2 <- 80
+    expect_true("wt2" %in% names(as.data.frame(.ev)))
+    expect_true("wt2" %in% names(as.data.frame(.ev$copy())))
+    expect_true("wt2" %in% names(as.data.frame(.ev[1:2, ])))
+    expect_true("wt2" %in% names(as.data.frame(etRbind(.ev, .ev))))
+    expect_false("wt" %in% names(as.data.frame(etRbind(.ev, .ev))))
+    # ... and through the vctrs rebuild path (vec_slice/vec_restore/vec_c)
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_false("wt" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_c(.ev, .ev))))
+    # deleting the column forgets it rather than recording it
+    .ev$wt2 <- NULL
+    expect_false("wt2" %in% names(as.data.frame(.ev)))
+    expect_false("wt2" %in% .rxEtEnv(.ev)$extraCols)
+    .evn <- et(0:5)
+    .evn$never <- NULL
+    expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
+  })
+
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
