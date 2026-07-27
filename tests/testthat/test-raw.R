@@ -53,15 +53,14 @@ rxTest({
     expect_equal(rxGetSerialType_(as.raw(c(0x43, 0x0A, 0x0A))), "unknown")
   })
 
-  test_that("qs2 deserialization is supported when qs2 is installed", {
-    skip_if_not_installed("qs2")
-    qsSer <- getExportedValue("qs2", "qs_serialize")
-    qdSer <- getExportedValue("qs2", "qd_serialize")
-    expect_equal(rxDeserialize(qsSer(mv)), mv)
-    expect_equal(rxDeserialize(qdSer(mv)), mv)
-    expect_equal(rxDeserialize(qsSer(df)), df)
-    expect_equal(rxDeserialize(qdSer(df)), df)
-    expect_error(rxDeserialize(qsSer("not a good object")))
+  test_that("legacy qs2 objects can still be read back", {
+    # qs2 is only ever read, never written; these come from objects stored
+    # while 'qs2' was an allowed rxode2.serialize.type
+    expect_equal(rxDeserialize(qs2::qs_serialize(mv)), mv)
+    expect_equal(rxDeserialize(qs2::qd_serialize(mv)), mv)
+    expect_equal(rxDeserialize(qs2::qs_serialize(df)), df)
+    expect_equal(rxDeserialize(qs2::qd_serialize(df)), df)
+    expect_error(rxDeserialize(qs2::qs_serialize("not a good object")))
   })
 
 })

@@ -35,15 +35,6 @@ rxGetDefaultSerialize <- function() {
   }
   op
 }
-#' Get an exported function from qs2 (an optional dependency)
-#'
-#' @param fun function name to get from qs2
-#' @return the function
-#' @noRd
-.qs2Fn <- function(fun) {
-  rxReq("qs2")
-  getExportedValue("qs2", fun)
-}
 #' Serialize an R Object to a Raw Vector
 #'
 #' @param x object to serialize
@@ -99,7 +90,7 @@ rxSerialize <- function(x, type=c("xz", "bzip2", "base")) {
 #'
 rxDeserialize <- function(x) {
   if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
-    .x <- try(.qs2Fn("base91_decode")(x), silent=TRUE)
+    .x <- try(qs2::base91_decode(x), silent=TRUE)
     if (inherits(.x, "try-error")) {
       stop("Input must be a raw vector or base91 encoded string")
     }
@@ -109,12 +100,14 @@ rxDeserialize <- function(x) {
     stop("Input must be a raw vector or base91 encoded string")
   }
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
+  # 'qs2'/'qdata' are only ever read, never written; they come from objects
+  # stored while 'qs2' was still an allowed 'rxode2.serialize.type'
   .ret <- try(switch(.type,
                      qs2 = {
-                       .qs2Fn("qs_deserialize")(x)
+                       qs2::qs_deserialize(x)
                      },
                      qdata = {
-                       .qs2Fn("qd_deserialize")(x)
+                       qs2::qd_deserialize(x)
                      },
                      qs = {
                        rxReq("qs")
