@@ -6,12 +6,14 @@ This is submitted within a few days of the last update because without
 it the next version of sundialr package cannot submitted; this package
 broke their reverse dependencies.
 
-This is also submitted because the windows version of RcppParallel (6.0.0) +
-rxode2ll causes this package to crash without a revision.
+This is also submitted because the windows version of RcppParallel
+(6.0.0) + rxode2ll causes this package to crash without a
+revision. While the RcppParallel released another version, this still works.
 
 Also online and in CRAN the rxode2 interaction with `stringfish`
 causes rxode2 not to load.  Therefore the `qs2` dependency was also
-removed since it seems to be broken.
+removed depreciated since it seems to have ABI linkage to
+RcppParallel. This means that the mac os build is still broken.
 
 The remaining changes are bug fixes (compiled-model cache key
 stability, event-table `ev$id` indexing, `delay()`/`past()` models
