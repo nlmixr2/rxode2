@@ -101,6 +101,19 @@ rxTest({
     expect_true(.hasWt(.evi))
     expect_true(.hasWt(.prev))
     expect_true(.hasWt(.evi$get.dosing()))
+    expect_true(.hasWt(.evi$get.sampling()))
+    # a covariate that only rode along with an imported data frame stays
+    # hidden even once another column is assigned explicitly
+    .evd <- et(data.frame(time = c(0, 1), amt = c(100, NA), evid = c(1, 0),
+                          covar = c(50, 50)))
+    .evd$wt <- 70
+    .hasCovar <- function(x) any(grepl("\\bcovar\\b", utils::capture.output(print(x))))
+    expect_true(.hasWt(.evd))
+    expect_false(.hasCovar(.evd))
+    expect_true("wt" %in% names(.evd$get.EventTable()))
+    expect_false("covar" %in% names(.evd$get.EventTable()))
+    # an unshown canonical column stays hidden as well
+    expect_false(any(grepl("\\bdur\\b", utils::capture.output(print(.evd)))))
     # a canonical column that is not shown by default is unaffected
     expect_equal(.etDisplayCols(c("time", "amt", "wt"),
                                 c(time = TRUE, amt = TRUE, cmt = FALSE),
