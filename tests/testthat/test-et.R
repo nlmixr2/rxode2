@@ -152,6 +152,14 @@ rxTest({
     }
     # no compressed-preview header for an un-grouped table
     expect_false(any(grepl("compressed preview", .out(.evd$get.dosing()))))
+    # a column renamed afterwards is not silently hidden
+    .r <- .evd$get.dosing()
+    names(.r)[names(.r) == "time"] <- "Time"
+    expect_true(.has(.r, "Time"))
+    expect_false(.has(.r, "covar"))
+    # keeping only hidden columns prints them rather than nothing
+    .k <- .evd$get.dosing()[, c("low", "high"), drop = FALSE]
+    expect_true(.has(.k, "low"))
     # units and row names survive the display marking
     skip_if_not_installed("units")
     .evu <- et(timeUnits = "hr") |>
@@ -165,6 +173,23 @@ rxTest({
       expect_true(.has(.d, "addl"))
       expect_false(.has(.d, "low"))
     })
+  })
+
+  test_that("dplyr verbs drop the get.dosing() display marking", {
+    skip_if_not_installed("dplyr")
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                          evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    # dplyr keeps the class but drops the marker attributes, so degrade to a
+    # plain data frame the way `rxEt` does instead of printing a stale subset
+    .m <- dplyr::mutate(.evd$get.dosing(), wt2 = 1)
+    expect_false(inherits(.m, "rxEtPreview"))
+    expect_true(any(grepl("\\bwt2\\b", .out(.m))))
+    .s <- dplyr::filter(.evd$get.sampling(), .data$time > 1)
+    expect_false(inherits(.s, "rxEtPreview"))
+    expect_equal(nrow(.s), 1L)
   })
 
   test_that("et import rate=-2", {

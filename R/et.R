@@ -826,8 +826,29 @@ names.rxEt <- function(x) {
   if (is.null(x) || inherits(x, "rxEtPreview")) return(x)
   attr(x, "rxEtShow") <- env$show
   attr(x, "rxEtExtraCols") <- .etExtraCols(env) # nolint
+  attr(x, "rxEtMarkedCols") <- names(x)
   class(x) <- c("rxEtPreview", class(x))
   x
+}
+
+#' Columns hidden when an event table frame prints
+#'
+#' Only columns that were present -- and hidden -- when the frame was
+#' marked are dropped, so a column added or renamed afterwards still
+#' prints instead of silently disappearing.
+#'
+#' @param nms names of the data being printed
+#' @param marked names present when the frame was marked, or `NULL`
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @return character vector of columns to keep, in `nms` order
+#' @noRd
+.etKeepCols <- function(nms, marked, show, extraCols = character(0)) {
+  if (is.null(marked)) marked <- nms
+  .hide <- setdiff(marked, .etDisplayCols(marked, show, extraCols, pre = "id"))
+  .keep <- setdiff(nms, .hide)
+  if (length(.keep) == 0L) return(nms)
+  .keep
 }
 
 #' Record a non-canonical column as explicitly assigned

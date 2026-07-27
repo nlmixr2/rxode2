@@ -408,6 +408,7 @@
   attr(.out, "rxEtPreviewGroups") <- .meta
   attr(.out, "rxEtShow") <- envRef$show
   attr(.out, "rxEtExtraCols") <- .etExtraCols(envRef) # nolint
+  attr(.out, "rxEtMarkedCols") <- names(.out)
   class(.out) <- c("rxEtPreview", class(.out))
   .tu <- envRef$units["time"]
   if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {

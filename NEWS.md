@@ -159,7 +159,9 @@
   hidden ones such as `low`/`high`/`dur` and covariates that only rode along
   with an imported data frame, while a compressed one printed only the shown
   columns.  Every column is still present on the returned data frame for
-  programmatic access.
+  programmatic access, a column added or renamed on the returned frame still
+  prints, and `dplyr` verbs turn it back into a plain data frame the way they
+  already did for `rxEt`.
 
 - `as.data.frame()` on an event table still hides covariate columns that simply
   rode along with an imported data frame (`et(data)`), while showing columns

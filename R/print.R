@@ -76,9 +76,9 @@ print.rxEtPreview <- function(x, ...) {
   }
   .show <- attr(x, "rxEtShow", exact = TRUE)
   if (!is.null(.show)) {
-    .df <- .df[, .etDisplayCols(names(.df), .show, # nolint
-                                attr(x, "rxEtExtraCols", exact = TRUE),
-                                pre = "id"),
+    .df <- .df[, .etKeepCols(names(.df), # nolint
+                             attr(x, "rxEtMarkedCols", exact = TRUE), .show,
+                             attr(x, "rxEtExtraCols", exact = TRUE)),
                drop = FALSE]
   }
   print(tibble::as_tibble(.df), ...)
