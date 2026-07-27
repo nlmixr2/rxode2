@@ -131,6 +131,42 @@ rxTest({
                  c("time", "cmt"))
   })
 
+  test_that("get.dosing()/get.sampling() print display columns only (#1154)", {
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .has <- function(x, nm) any(grepl(paste0("\\b", nm, "\\b"), .out(x)))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                          evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    for (.f in list(.evd$get.dosing(), .evd$get.sampling())) {
+      # the un-grouped accessor now prints the same columns print(ev) does
+      expect_s3_class(.f, "rxEtPreview")
+      expect_true(.has(.f, "wt"))
+      expect_true(.has(.f, "time"))
+      expect_false(.has(.f, "covar"))
+      expect_false(.has(.f, "dur"))
+      expect_false(.has(.f, "high"))
+      # but every column is still there for programmatic access
+      expect_true(all(c("covar", "dur", "high", "wt") %in% names(.f)))
+      expect_equal(.f$covar, rep(50, nrow(.f)))
+    }
+    # no compressed-preview header for an un-grouped table
+    expect_false(any(grepl("compressed preview", .out(.evd$get.dosing()))))
+    # units and row names survive the display marking
+    skip_if_not_installed("units")
+    .evu <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 12, until = 24) |>
+      et(seq(0, 24, by = 6))
+    withr::with_options(list(rxode2.homogenous = FALSE), {
+      .d <- .evu$get.dosing()
+      expect_true(inherits(.d$time, "units"))
+      expect_equal(rownames(.d), "1")
+      expect_equal(as.numeric(.d$ii), 12)
+      expect_true(.has(.d, "addl"))
+      expect_false(.has(.d, "low"))
+    })
+  })
+
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),

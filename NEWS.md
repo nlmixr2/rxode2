@@ -153,6 +153,14 @@
   `as.data.frame(ev)`.  They were kept and used when solving, but never
   displayed, so they looked like they had disappeared (#1154).
 
+- `ev$get.dosing()` and `ev$get.sampling()` now print the same columns
+  `print(ev)` does regardless of how the event table is stored internally.
+  Previously an un-grouped table printed every internal column, including
+  hidden ones such as `low`/`high`/`dur` and covariates that only rode along
+  with an imported data frame, while a compressed one printed only the shown
+  columns.  Every column is still present on the returned data frame for
+  programmatic access.
+
 - `as.data.frame()` on an event table still hides covariate columns that simply
   rode along with an imported data frame (`et(data)`), while showing columns
   assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The covariate

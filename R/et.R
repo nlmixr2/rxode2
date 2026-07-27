@@ -811,6 +811,25 @@ names.rxEt <- function(x) {
   intersect(unique(c(.cols, extraCols)), nms)
 }
 
+#' Mark an event table frame so it prints only its display columns
+#'
+#' Every column is kept for programmatic access; only the printed output
+#' is limited to `.etDisplayCols()`, so an un-grouped `$get.dosing()` no
+#' longer dumps hidden internal/covariate columns the way a compressed
+#' preview never did.
+#'
+#' @param x data frame to mark, or `NULL`
+#' @param env event table environment supplying `show`/`extraCols`
+#' @return `x` with the `rxEtPreview` print class attached
+#' @noRd
+.etMarkDisplay <- function(x, env) {
+  if (is.null(x) || inherits(x, "rxEtPreview")) return(x)
+  attr(x, "rxEtShow") <- env$show
+  attr(x, "rxEtExtraCols") <- .etExtraCols(env) # nolint
+  class(x) <- c("rxEtPreview", class(x))
+  x
+}
+
 #' Record a non-canonical column as explicitly assigned
 #'
 #' @param env event table environment to modify by reference

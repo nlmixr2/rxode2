@@ -116,7 +116,7 @@
     NULL
   } else {
     rownames(.d) <- seq_len(nrow(.d))
-    .d
+    .etMarkDisplay(.d, env) # nolint
   }
 }
 
@@ -576,7 +576,7 @@
     NULL
   } else {
     rownames(.s) <- seq_len(nrow(.s))
-    .s
+    .etMarkDisplay(.s, env) # nolint
   }
 }
 
