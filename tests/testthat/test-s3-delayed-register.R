@@ -5,35 +5,59 @@ rxTest({
   # check both halves: the method is reachable, and it landed in the other
   # package's S3 methods table once that package is loaded.
 
-  .rxS3Registered <- function(pkg, method) {
+  .rxS3Registered <- function(pkg, generic, class) {
     if (!isNamespaceLoaded(pkg)) return(NA)
-    .tbl <- try(get(".__S3MethodsTable__.", envir = asNamespace(pkg)),
+    # Resolve the generic the way .s3register() does.  Prefer the exported
+    # object so an unrelated same-named generic cannot be inherited from
+    # base/stats and passed on; fall back to what the namespace sees, since
+    # `units` has no `units<-` of its own and that call targets base's.
+    .gen <- try(getExportedValue(pkg, generic), silent = TRUE)
+    if (inherits(.gen, "try-error")) {
+      .gen <- try(get(generic, envir = asNamespace(pkg)), silent = TRUE)
+    }
+    if (inherits(.gen, "try-error")) return(NA)
+    # registerS3method() files a method under the environment that DEFINES the
+    # generic, which is not always `pkg`: base for a primitive, and base for a
+    # generic a package re-exports (`units` re-exports base's `units<-`)
+    .defenv <- if (typeof(.gen) == "closure") environment(.gen) else asNamespace("base")
+    .tbl <- try(get(".__S3MethodsTable__.", envir = .defenv, inherits = FALSE),
                 silent = TRUE)
     if (inherits(.tbl, "try-error")) return(NA)
-    exists(method, envir = .tbl, inherits = FALSE)
+    exists(paste0(generic, ".", class), envir = .tbl, inherits = FALSE)
   }
 
-  .rxS3Cases <- list(
-    list(pkg = "pillar", method = "type_sum.rxEvid"),
-    list(pkg = "pillar", method = "pillar_shaft.rxEvid"),
-    list(pkg = "tibble", method = "as_tibble.rxEt"),
-    list(pkg = "data.table", method = "as.data.table.rxEt"),
-    list(pkg = "arrow", method = "as_arrow_table.rxSolveOom"),
-    list(pkg = "dplyr", method = "filter.rxEt"),
-    list(pkg = "dplyr", method = "dplyr_reconstruct.rxEt"),
-    list(pkg = "dplyr", method = "dplyr_reconstruct.rxEtPreview"),
-    list(pkg = "nlme", method = "fixef.rxUi"),
-    list(pkg = "units", method = "set_units.rxEt"),
-    list(pkg = "units", method = "drop_units.rxSolve"),
-    list(pkg = "digest", method = "sha1.rxUi")
-  )
+  # Read the cases out of .onLoad() itself rather than repeating them, so
+  # adding a registration cannot leave this file behind.  Match over the whole
+  # body at once: a wrapped or doubled-up line would defeat a per-line regex.
+  .rxS3Src <- paste(deparse(body(rxode2:::.onLoad), width.cutoff = 500L), # nolint
+                    collapse = "\n")
+  .rxS3Found <- regmatches(
+    .rxS3Src,
+    gregexec('\\.s3register\\("([^":]+)::([^"]+)", *"([^"]+)"\\)', .rxS3Src))[[1]]
+  .rxS3Cases <- if (length(.rxS3Found) == 0L) list() else {
+    apply(.rxS3Found, 2L,
+          function(.m) list(pkg = .m[2], generic = .m[3], class = .m[4]))
+  }
 
+  test_that("every .onLoad() registration is covered below", {
+    # a call the regex cannot read would otherwise be skipped silently
+    .nCalls <- gregexpr(".s3register(", .rxS3Src, fixed = TRUE)[[1]]
+    .nCalls <- if (identical(as.integer(.nCalls), -1L)) 0L else length(.nCalls)
+    expect_equal(length(.rxS3Cases), .nCalls)
+    expect_true(length(.rxS3Cases) > 20L)
+    expect_false(any(vapply(.rxS3Cases,
+                            function(.c) anyNA(unlist(.c)), logical(1))))
+  })
+
+  # `units<-.rxEvid` is the one case NAMESPACE also registers statically, so
+  # for it this only shows dispatch will work, not that the hook fired.
   for (.case in .rxS3Cases) {
-    test_that(sprintf("%s is registered for %s", .case$method, .case$pkg), {
+    test_that(sprintf("%s.%s is registered for %s",
+                      .case$generic, .case$class, .case$pkg), {
       skip_if_not_installed(.case$pkg)
       # loading the namespace now must fire the deferred registration hook
       loadNamespace(.case$pkg)
-      expect_true(isTRUE(.rxS3Registered(.case$pkg, .case$method)))
+      expect_true(isTRUE(.rxS3Registered(.case$pkg, .case$generic, .case$class)))
     })
   }
 
