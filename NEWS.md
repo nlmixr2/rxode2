@@ -161,7 +161,9 @@
   columns.  Every column is still present on the returned data frame for
   programmatic access, a column added or renamed on the returned frame still
   prints, and `dplyr` verbs turn it back into a plain data frame the way they
-  already did for `rxEt`.
+  already did for `rxEt` -- including the column verbs (`select()`,
+  `relocate()`), which subset with `[` rather than going through
+  `dplyr_reconstruct()`.
 
 - Explicitly assigned columns now survive a round trip through a data frame.
   `as.data.frame()` tags them in a `rxEtExtraCols` attribute that `et()`,

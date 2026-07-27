@@ -10,10 +10,15 @@ This is also submitted because the windows version of RcppParallel
 (6.0.0) + rxode2ll causes this package to crash without a
 revision. While the RcppParallel released another version, this still works.
 
-Also online and in CRAN the rxode2 interaction with `stringfish`
-causes rxode2 not to load.  Therefore the `qs2` dependency was also
-removed depreciated since it seems to have ABI linkage to
-RcppParallel. This means that the mac os build is still broken.
+Also online and in CRAN the rxode2 interaction with `stringfish` (which
+comes in through `qs2`, and appears to have ABI linkage to
+RcppParallel) causes rxode2 not to load.  This release breaks that
+linkage: `qs2` is no longer imported into the rxode2 namespace and is
+no longer loaded when rxode2 is, so `stringfish` is not pulled in at
+load time.  `qs2` remains in `Imports` and is called with `qs2::` from
+`rxDeserialize()` alone, purely so objects serialized by earlier
+versions of rxode2 stay readable; it is never written to any more, and
+`rxSerialize()` now only writes `base`, `bzip2` or `xz`.
 
 The remaining changes are bug fixes (compiled-model cache key
 stability, event-table `ev$id` indexing, `delay()`/`past()` models

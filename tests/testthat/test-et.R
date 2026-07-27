@@ -76,6 +76,102 @@ rxTest({
     expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
   })
 
+  test_that("explicitly assigned columns survive etExpand/etSeq/simulate", {
+    # these three rebuild the event table environment from scratch, so each
+    # has to carry `extraCols` over or the assigned column silently becomes a
+    # hidden imported covariate (#1154)
+    .eve <- et(amt = 3, ii = 24, addl = 2) |> et(0:5) |> et(id = 1:3)
+    .eve$wt <- 70
+    expect_true("wt" %in% names(as.data.frame(etExpand(.eve))))
+    expect_equal(.rxEtEnv(etExpand(.eve))$extraCols, "wt")
+
+    .evq <- suppressWarnings(etSeq(.eve, .eve))
+    expect_true("wt" %in% names(as.data.frame(.evq)))
+    expect_equal(.rxEtEnv(.evq)$extraCols, "wt")
+
+    .evs <- et(amt = 3) |> et(0:5)
+    .evs$wt <- 70
+    .evsim <- suppressWarnings(simulate(.evs))
+    expect_true("wt" %in% names(as.data.frame(.evsim)))
+    expect_equal(.rxEtEnv(.evsim)$extraCols, "wt")
+
+    # a covariate that merely rode along is still not resurrected by any of them
+    .evi <- et(data.frame(id = 1, time = 0, evid = 1, cmt = 1, amt = 10, wt = 70))
+    .evi <- add.sampling(.evi, 0:3)
+    expect_false("wt" %in% names(as.data.frame(etExpand(.evi))))
+    expect_false("wt" %in% names(as.data.frame(suppressWarnings(simulate(.evi)))))
+  })
+
+  test_that("dplyr verbs degrade an event table preview to a plain data frame", {
+    skip_if_not_installed("dplyr")
+    # the preview marking describes the frame the accessor returned; once a
+    # dplyr verb rewrites it, it is the caller's own data frame and must print
+    # like one instead of hiding columns it no longer describes
+    .ev <- et(amt = 3) |> et(0:5)
+    .ev$wt <- 70
+    .p <- .ev$get.dosing()
+    expect_s3_class(.p, "rxEtPreview")
+    for (.f in list(function(x) x[c("time", "amt")],
+                    function(x) dplyr::select(x, "time", "amt"),
+                    function(x) dplyr::relocate(x, "amt"),
+                    function(x) dplyr::mutate(x, z = 1),
+                    function(x) dplyr::filter(x, TRUE))) {
+      .out <- .f(.p)
+      expect_false(inherits(.out, "rxEtPreview"))
+      expect_s3_class(.out, "data.frame")
+    }
+    # a bare rename keeps the marking on purpose -- `.etKeepCols()` hides only
+    # the names that were marked, so the renamed column keeps printing
+    expect_s3_class(dplyr::rename(.p, tm = "time"), "rxEtPreview")
+    expect_true(any(grepl("\\btm\\b",
+                          utils::capture.output(print(dplyr::rename(.p, tm = "time"))))))
+    # a row subset keeps every column, so the marking still describes it and
+    # the hidden columns stay hidden (this is what the `[` method must NOT undo)
+    for (.r in list(.p[1, ], utils::head(.p), .p[0, ], .p[.p$amt > 0, ])) {
+      expect_s3_class(.r, "rxEtPreview")
+      expect_false(any(grepl("\\brate\\b", utils::capture.output(print(.r)))))
+    }
+    expect_false(inherits(dplyr::slice(.p, 1), "rxEtPreview"))
+    # selecting every column by name is still a column subset: `[.data.frame`
+    # drops the marker attributes there, so the class must not be left behind
+    # pointing at nothing
+    for (.a in list(.p[TRUE], .p[names(.p)], .p[, names(.p)])) {
+      expect_false(inherits(.a, "rxEtPreview"))
+      expect_null(attr(.a, "rxEtShow", exact = TRUE))
+    }
+    # `[` keeps base semantics: drop=, matrix indexing and row filters
+    expect_equal(.p[, "amt"], as.data.frame(.p)[["amt"]])
+    expect_false(inherits(.p[, "amt", drop = FALSE], "rxEtPreview"))
+    expect_equal(ncol(.p[, "amt", drop = FALSE]), 1L)
+    expect_equal(nrow(.p[.p$amt > 0, ]), sum(.p$amt > 0))
+    expect_equal(.p[1, 2], as.data.frame(.p)[1, 2])
+    # a compressed preview is the exception: its groups count rows and print()
+    # builds the `id` column and the "N individuals" header from them, so a row
+    # subset must give up the marking rather than print a header that lies
+    .evg <- et(amt = 3) |> et(0:5)
+    .evg$wt <- 70
+    .g <- (.evg |> et(id = 1:4))$get.sampling()
+    expect_s3_class(.g, "rxEtPreview")
+    # the whole preview prints the synthesized `id` under a group header
+    expect_false("id" %in% names(.g))
+    expect_true(any(grepl("\\bid\\b", utils::capture.output(print(.g)))))
+    expect_true(any(grepl("compressed preview", utils::capture.output(print(.g)))))
+    expect_false(inherits(.g[1:2, ], "rxEtPreview"))
+    expect_false(any(grepl("compressed preview",
+                           utils::capture.output(print(.g[1:2, ])))))
+    # every row still present keeps it, since the groups still describe it
+    expect_s3_class(.g[seq_len(nrow(.g)), ], "rxEtPreview")
+    # the untouched preview still hides the columns it was marked to hide,
+    # but every column is there for programmatic access
+    expect_false(any(grepl("\\brate\\b", utils::capture.output(print(.p)))))
+    expect_true("rate" %in% names(.p))
+    # once columns are picked it is a plain data frame that prints all of them,
+    # including one that was hidden while it was marked
+    .k <- .p[c("time", "rate")]
+    expect_false(inherits(.k, "rxEtPreview"))
+    expect_true(any(grepl("\\brate\\b", utils::capture.output(print(.k)))))
+  })
+
   test_that("explicitly assigned columns show up in print(ev) (#1154)", {
     withr::local_options(list(width = 120))
     .hasWt <- function(x) any(grepl("\\bwt\\b", utils::capture.output(print(x))))
