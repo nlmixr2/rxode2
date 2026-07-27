@@ -21,6 +21,7 @@ rxTest({
     list(pkg = "arrow", method = "as_arrow_table.rxSolveOom"),
     list(pkg = "dplyr", method = "filter.rxEt"),
     list(pkg = "dplyr", method = "dplyr_reconstruct.rxEt"),
+    list(pkg = "dplyr", method = "dplyr_reconstruct.rxEtPreview"),
     list(pkg = "nlme", method = "fixef.rxUi"),
     list(pkg = "units", method = "set_units.rxEt"),
     list(pkg = "units", method = "drop_units.rxSolve"),
