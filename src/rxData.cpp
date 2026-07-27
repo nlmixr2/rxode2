@@ -2845,6 +2845,14 @@ extern "C" void allocExtraDosingC() {
   allocExtraDosing(omp_get_max_threads());
 }
 
+// Called from par_solve(), the one choke point every solve goes through --
+// including a downstream package driving par_solve directly rather than
+// through rxSolve_()'s setup.  Runs before the parallel region, and
+// iniSubject() (which hands these pools out) runs inside it.
+extern "C" void ensureExtraDosingC(int ncores) {
+  ensureExtraDosing(ncores);
+}
+
 void resetFkeep();
 //' Free the C solving/parsing information.
 //'
@@ -5547,6 +5555,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureExtraDosing((int)op->cores);
     int _bneq = (int)op->neq;
     int _lrw, _liw;
     if (op->stiff == 107) {
@@ -6040,6 +6049,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureExtraDosing((int)op->cores);
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
     int _bneq = (int)_mvState.size();

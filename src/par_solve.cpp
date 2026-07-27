@@ -65,6 +65,7 @@ extern "C" void RSprintf(const char *format, ...);
 // Pre-generated eta batch draw (defined in rxthreefry.cpp)
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
 extern "C" void rxEtaPreDeactivate(void);
+extern "C" void ensureExtraDosingC(int ncores);
 
 extern "C" SEXP _rxHasOpenMp(){
   rxProtect rx_protect;
@@ -7116,6 +7117,11 @@ extern "C" void par_solve(rx_solve *rx) {
   rxt.cur = 0;
   assignFuns();
   rx_solving_options *op = rx->op;
+  // The extra-dosing pools are indexed by the solving thread id, bounded by
+  // op->cores; they are first sized from omp_get_max_threads(), which honors
+  // OMP_NUM_THREADS.  Grow them here so a solve that asks for more cores than
+  // OMP_NUM_THREADS cannot write off their ends (heap corruption).
+  ensureExtraDosingC(op->cores);
   if (op->neq != 0) {
     if (rx->linB == 1) {
       // Setup H

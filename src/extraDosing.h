@@ -256,4 +256,19 @@ static inline void resetExtraDosing() {
   }
 }
 
+// Grow the pools to cover `ncores` solving threads.  These are indexed by
+// `_rxTid()`, which is bounded by op->cores, but they are first sized at load
+// from omp_get_max_threads().  omp_get_max_threads() honors OMP_NUM_THREADS,
+// so an environment that sets it below the cores a solve asks for -- CRAN
+// check machines set OMP_NUM_THREADS=2, and `rxSolve(cores=)` overrides it via
+// the num_threads clause -- left every thread past the first two writing off
+// the end of the arrays (`ind->extraDoseN[0] = 0` in iniSubject), corrupting
+// the heap.  Called from solve setup, before any pointer into these is handed
+// to a subject, so reallocating here is safe.
+static inline void ensureExtraDosing(int ncores) {
+  if (ncores <= _globals.extraDoseCores &&
+      _globals.extraDoseN != NULL) return;
+  allocExtraDosing(ncores);
+}
+
 #endif
