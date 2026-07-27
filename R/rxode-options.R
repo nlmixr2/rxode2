@@ -52,6 +52,7 @@
   .s3register("data.table::as.data.table", "rxSolveOom")
   .s3register("arrow::as_arrow_table", "rxSolveOom")
   .s3register("dplyr::dplyr_reconstruct", "rxEt")
+  .s3register("dplyr::dplyr_reconstruct", "rxEtPreview")
   .s3register("dplyr::filter", "rxEt")
   .s3register("dplyr::select", "rxEt")
   .s3register("dplyr::rename", "rxEt")

@@ -76,9 +76,10 @@ print.rxEtPreview <- function(x, ...) {
   }
   .show <- attr(x, "rxEtShow", exact = TRUE)
   if (!is.null(.show)) {
-    .showCols <- unique(c("id", names(.show)[.show]))
-    .showCols <- intersect(.showCols, names(.df))
-    .df <- .df[, .showCols, drop = FALSE]
+    .df <- .df[, .etKeepCols(names(.df), # nolint
+                             attr(x, "rxEtMarkedCols", exact = TRUE), .show,
+                             attr(x, "rxEtExtraCols", exact = TRUE)),
+               drop = FALSE]
   }
   print(tibble::as_tibble(.df), ...)
   invisible(x)
@@ -152,6 +153,8 @@ print.rxEt <- function(x, ...) {
         }), sep = "\n")
       }
       .preview <- .etPreviewData(.rxEtEnv(x), "all")
+      # re-tagging columns is a `[[<-`, which drops the display marking
+      .previewCls <- class(.preview)
       if (!is.null(.preview[["evid"]])) {
         class(.preview[["evid"]]) <- c("rxEvid", class(.preview[["evid"]]))
       }
@@ -160,8 +163,9 @@ print.rxEt <- function(x, ...) {
           class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
         }
       }
-      .show <- .rxEtEnv(x)$show
-      .showCols <- intersect(names(.show)[.show], names(.preview))
+      class(.preview) <- .previewCls
+      .env <- .rxEtEnv(x)
+      .showCols <- .etDisplayCols(names(.preview), .env$show, .etExtraCols(.env)) # nolint
       if (inherits(.preview, "rxEtPreview") && .maxId > 1L) {
         print(.preview)
       } else {

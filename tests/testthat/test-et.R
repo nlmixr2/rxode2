@@ -76,6 +76,202 @@ rxTest({
     expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
   })
 
+  test_that("explicitly assigned columns show up in print(ev) (#1154)", {
+    withr::local_options(list(width = 120))
+    .hasWt <- function(x) any(grepl("\\bwt\\b", utils::capture.output(print(x))))
+    .ev <- et(amt = 3, ii = 24, until = 96) |> et(seq(0, 96, by = 12))
+    expect_false(.hasWt(.ev))
+    .ev$wt <- 70
+    # the assigned column is part of the printed tibble, not swallowed
+    expect_true(.hasWt(.ev))
+    expect_true(any(grepl("\\b70\\b", utils::capture.output(print(.ev)))))
+    # and it is part of the accessor the printout points at
+    expect_true("wt" %in% names(.ev$get.EventTable()))
+    # deleting it takes it back out of the printout
+    .ev$wt <- NULL
+    expect_false(.hasWt(.ev))
+    expect_false("wt" %in% names(.ev$get.EventTable()))
+    # the compressed multi-subject preview shows it too
+    .evi <- et(amt = 3) |> et(0:5)
+    .evi$wt <- 70
+    .evi <- .evi |> et(id = 1:4)
+    .prev <- .etPreviewData(.rxEtEnv(.evi), "all")
+    expect_s3_class(.prev, "rxEtPreview")
+    expect_equal(attr(.prev, "rxEtExtraCols"), "wt")
+    expect_true(.hasWt(.evi))
+    expect_true(.hasWt(.prev))
+    expect_true(.hasWt(.evi$get.dosing()))
+    expect_true(.hasWt(.evi$get.sampling()))
+    # a covariate that only rode along with an imported data frame stays
+    # hidden even once another column is assigned explicitly
+    .evd <- et(data.frame(time = c(0, 1), amt = c(100, NA), evid = c(1, 0),
+                          covar = c(50, 50)))
+    .evd$wt <- 70
+    .hasCovar <- function(x) any(grepl("\\bcovar\\b", utils::capture.output(print(x))))
+    expect_true(.hasWt(.evd))
+    expect_false(.hasCovar(.evd))
+    expect_true("wt" %in% names(.evd$get.EventTable()))
+    expect_false("covar" %in% names(.evd$get.EventTable()))
+    # an unshown canonical column stays hidden as well
+    expect_false(any(grepl("\\bdur\\b", utils::capture.output(print(.evd)))))
+    # a canonical column that is not shown by default is unaffected
+    expect_equal(.etDisplayCols(c("time", "amt", "wt"),
+                                c(time = TRUE, amt = TRUE, cmt = FALSE),
+                                "wt"),
+                 c("time", "amt", "wt"))
+    # `pre` columns lead, and columns absent from the data are dropped
+    expect_equal(.etDisplayCols(c("id", "time", "wt"),
+                                c(time = TRUE, amt = TRUE),
+                                c("wt", "gone"), pre = "id"),
+                 c("id", "time", "wt"))
+    # an extra column that is also canonical is not duplicated
+    expect_equal(.etDisplayCols(c("time", "cmt"),
+                                c(time = TRUE, cmt = TRUE),
+                                "cmt"),
+                 c("time", "cmt"))
+  })
+
+  test_that("get.dosing()/get.sampling() print display columns only (#1154)", {
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .has <- function(x, nm) any(grepl(paste0("\\b", nm, "\\b"), .out(x)))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                          evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    for (.f in list(.evd$get.dosing(), .evd$get.sampling())) {
+      # the un-grouped accessor now prints the same columns print(ev) does
+      expect_s3_class(.f, "rxEtPreview")
+      expect_true(.has(.f, "wt"))
+      expect_true(.has(.f, "time"))
+      expect_false(.has(.f, "covar"))
+      expect_false(.has(.f, "dur"))
+      expect_false(.has(.f, "high"))
+      # but every column is still there for programmatic access
+      expect_true(all(c("covar", "dur", "high", "wt") %in% names(.f)))
+      expect_equal(.f$covar, rep(50, nrow(.f)))
+    }
+    # no compressed-preview header for an un-grouped table
+    expect_false(any(grepl("compressed preview", .out(.evd$get.dosing()))))
+    # a column renamed afterwards is not silently hidden
+    .r <- .evd$get.dosing()
+    names(.r)[names(.r) == "time"] <- "Time"
+    expect_true(.has(.r, "Time"))
+    expect_false(.has(.r, "covar"))
+    # keeping only hidden columns prints them rather than nothing
+    .k <- .evd$get.dosing()[, c("low", "high"), drop = FALSE]
+    expect_true(.has(.k, "low"))
+    # assigning into the frame makes it the caller's own data frame, so a
+    # column reusing a hidden name is not silently suppressed
+    .a <- .evd$get.dosing()
+    .a$covar <- NULL
+    .a$covar <- "new"
+    expect_false(inherits(.a, "rxEtPreview"))
+    expect_true(.has(.a, "covar"))
+    .b <- .evd$get.dosing()
+    .b[["covar"]] <- 1
+    expect_false(inherits(.b, "rxEtPreview"))
+    .c <- .evd$get.dosing()
+    .c[1, "amt"] <- 5
+    expect_false(inherits(.c, "rxEtPreview"))
+    # duplicated column names are not collapsed away by the column filter
+    expect_equal(.etKeepCols(c("time", "amt", "amt", "low"),
+                             c("time", "amt", "amt", "low"),
+                             c(time = TRUE, amt = TRUE, low = FALSE)),
+                 c("time", "amt", "amt"))
+    # nothing left to show falls back to showing everything
+    expect_equal(.etKeepCols(c("low", "high"), c("low", "high"),
+                             c(time = TRUE, low = FALSE, high = FALSE)),
+                 c("low", "high"))
+    # no marked columns recorded behaves like filtering on what is there
+    expect_equal(.etKeepCols(c("time", "low"), NULL,
+                             c(time = TRUE, low = FALSE)),
+                 "time")
+    # units and row names survive the display marking
+    skip_if_not_installed("units")
+    .evu <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 12, until = 24) |>
+      et(seq(0, 24, by = 6))
+    withr::with_options(list(rxode2.homogenous = FALSE), {
+      .d <- .evu$get.dosing()
+      expect_true(inherits(.d$time, "units"))
+      expect_equal(rownames(.d), "1")
+      expect_equal(as.numeric(.d$ii), 12)
+      expect_true(.has(.d, "addl"))
+      expect_false(.has(.d, "low"))
+    })
+  })
+
+  test_that("assigned columns survive a data frame round trip (#1154)", {
+    withr::local_options(list(width = 120))
+    .has <- function(x, nm) {
+      any(grepl(paste0("\\b", nm, "\\b"), utils::capture.output(print(x))))
+    }
+    .ev <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                         evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .ev$wt <- 70
+    .df <- as.data.frame(.ev)
+    expect_equal(attr(.df, "rxEtExtraCols"), "wt")
+    # et(), $import.EventTable(), $importEventTable() and as.et() all keep the
+    # assigned column visible without promoting the imported covariate
+    .rt <- et(.df)
+    expect_true(.has(.rt, "wt"))
+    expect_false(.has(.rt, "covar"))
+    expect_equal(.etExtraCols(.rxEtEnv(.rt)), "wt")
+    expect_true(.has(et(as.data.frame(.rt)), "wt")) # and again, repeatedly
+    expect_true(.has(as.et(.df), "wt"))
+    .i1 <- et()
+    .i1$import.EventTable(.df)
+    expect_true(.has(.i1, "wt"))
+    expect_false(.has(.i1, "covar"))
+    .i2 <- et()
+    .i2$importEventTable(.df)
+    expect_true(.has(.i2, "wt"))
+    expect_false(.has(.i2, "covar"))
+    # all = TRUE carries the hidden covariate as data but not as a shown column
+    .all <- et(as.data.frame(.ev, all = TRUE))
+    expect_true(.has(.all, "wt"))
+    expect_false(.has(.all, "covar"))
+    expect_true("covar" %in% names(as.data.frame(.all, all = TRUE)))
+    # a NONMEM-style uppercase name is renamed on import, and the tag is
+    # renamed with it so the column does not vanish (it shows before the trip)
+    .up <- et(time = 1, amt = 100)
+    .up$SS <- 3
+    expect_true(.has(.up, "SS"))
+    .upRt <- et(as.data.frame(.up))
+    expect_equal(.etExtraCols(.rxEtEnv(.upRt)), "ss")
+    expect_true(.has(.upRt, "ss"))
+    # a tag naming a column that is not in the frame is ignored
+    .bad <- as.data.frame(.ev)
+    attr(.bad, "rxEtExtraCols") <- c("wt", "nosuchcolumn")
+    expect_equal(.etExtraCols(.rxEtEnv(et(.bad))), "wt")
+    # a data frame built by hand carries no tag, so its covariates stay hidden
+    .plain <- et(data.frame(time = c(0, 1), amt = c(1, NA), evid = c(1, 0),
+                            cv = c(2, 2)))
+    expect_false(.has(.plain, "cv"))
+    expect_null(attr(as.data.frame(.plain), "rxEtExtraCols"))
+    # dropping the column drops the tag, so it does not come back
+    .ev$wt <- NULL
+    expect_null(attr(as.data.frame(.ev), "rxEtExtraCols"))
+    expect_false(.has(et(as.data.frame(.ev)), "wt"))
+  })
+
+  test_that("dplyr verbs drop the get.dosing() display marking", {
+    skip_if_not_installed("dplyr")
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                          evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    # dplyr keeps the class but drops the marker attributes, so degrade to a
+    # plain data frame the way `rxEt` does instead of printing a stale subset
+    .m <- dplyr::mutate(.evd$get.dosing(), wt2 = 1)
+    expect_false(inherits(.m, "rxEtPreview"))
+    expect_true(any(grepl("\\bwt2\\b", .out(.m))))
+    .s <- dplyr::filter(.evd$get.sampling(), .data$time > 1)
+    expect_false(inherits(.s, "rxEtPreview"))
+    expect_equal(nrow(.s), 1L)
+  })
+
   test_that("et import rate=-2", {
 
     d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),

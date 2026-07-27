@@ -147,6 +147,29 @@
   previously hidden canonical columns such as `cmt`) now round-trip through
   `as.data.frame(ev)` (#1154).
 
+- Columns assigned explicitly on an event table (`ev$wt <- 70`) are now shown in
+  the tibble printed by `print(ev)`, in `ev$get.EventTable()`, and in the
+  compressed preview printed for `ev$get.dosing()`/`ev$get.sampling()`, matching
+  `as.data.frame(ev)`.  They were kept and used when solving, but never
+  displayed, so they looked like they had disappeared (#1154).
+
+- `ev$get.dosing()` and `ev$get.sampling()` now print the same columns
+  `print(ev)` does regardless of how the event table is stored internally.
+  Previously an un-grouped table printed every internal column, including
+  hidden ones such as `low`/`high`/`dur` and covariates that only rode along
+  with an imported data frame, while a compressed one printed only the shown
+  columns.  Every column is still present on the returned data frame for
+  programmatic access, a column added or renamed on the returned frame still
+  prints, and `dplyr` verbs turn it back into a plain data frame the way they
+  already did for `rxEt`.
+
+- Explicitly assigned columns now survive a round trip through a data frame.
+  `as.data.frame()` tags them in a `rxEtExtraCols` attribute that `et()`,
+  `as.et()` and `$import.EventTable()`/`$importEventTable()` read back, so
+  `et(as.data.frame(ev))` keeps showing `wt` instead of demoting it to a hidden
+  imported covariate.  A data frame built by hand carries no tag, so its
+  covariate columns stay hidden as before.
+
 - `as.data.frame()` on an event table still hides covariate columns that simply
   rode along with an imported data frame (`et(data)`), while showing columns
   assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The covariate

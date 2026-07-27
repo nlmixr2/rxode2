@@ -793,6 +793,126 @@ names.rxEt <- function(x) {
   as.character(.extra)
 }
 
+#' Columns displayed for an event table
+#'
+#' The canonical columns flagged in `show`, followed by any explicitly
+#' assigned columns (e.g. `ev$wt <- 70`) so they are not silently
+#' swallowed by the event table (#1154).
+#'
+#' @param nms names available in the data being displayed
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @param pre columns to place first (e.g. `id`)
+#' @return character vector of column names present in `nms`
+#' @noRd
+.etDisplayCols <- function(nms, show, extraCols = character(0), pre = character(0)) {
+  .cols <- pre
+  if (!is.null(show)) .cols <- c(.cols, names(show)[show])
+  intersect(unique(c(.cols, extraCols)), nms)
+}
+
+#' Provenance for explicitly assigned columns carried on a data frame
+#'
+#' `as.data.frame()` tags the columns that were explicitly assigned so a
+#' round trip back through `et()`/`$import.EventTable()` keeps showing
+#' them instead of demoting them to hidden imported covariates (#1154).
+#' A data frame built by hand carries no tag, so its covariates stay
+#' hidden the way they always have.
+#'
+#' @param df object to read the tag from
+#' @return character vector of column names, possibly empty
+#' @noRd
+.etExtraColsAttr <- function(df) {
+  .extra <- attr(df, "rxEtExtraCols", exact = TRUE)
+  if (is.null(.extra)) return(character(0))
+  as.character(.extra)
+}
+
+#' Carry an imported data frame's assigned-column tag into an event table
+#'
+#' @param env event table environment to modify by reference
+#' @param df object the tag was read from (before any renaming)
+#' @param nms names of the data actually stored
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etImportExtraCols <- function(env, df, nms) {
+  .etAddExtraCols(env, intersect(.etExtraColsAttr(df), nms)) # nolint
+}
+
+#' Mark an event table frame so it prints only its display columns
+#'
+#' Every column is kept for programmatic access; only the printed output
+#' is limited to `.etDisplayCols()`, so an un-grouped `$get.dosing()` no
+#' longer dumps hidden internal/covariate columns the way a compressed
+#' preview never did.
+#'
+#' @param x data frame to mark, or `NULL`
+#' @param env event table environment supplying `show`/`extraCols`
+#' @return `x` with the `rxEtPreview` print class attached
+#' @noRd
+.etMarkDisplay <- function(x, env) {
+  if (is.null(x) || inherits(x, "rxEtPreview")) return(x)
+  attr(x, "rxEtShow") <- env$show
+  attr(x, "rxEtExtraCols") <- .etExtraCols(env) # nolint
+  attr(x, "rxEtMarkedCols") <- names(x)
+  class(x) <- c("rxEtPreview", class(x))
+  x
+}
+
+#' Columns hidden when an event table frame prints
+#'
+#' Only columns that were present -- and hidden -- when the frame was
+#' marked are dropped, so a column added or renamed afterwards still
+#' prints instead of silently disappearing.
+#'
+#' @param nms names of the data being printed
+#' @param marked names present when the frame was marked, or `NULL`
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @return character vector of columns to keep, in `nms` order
+#' @noRd
+.etKeepCols <- function(nms, marked, show, extraCols = character(0)) {
+  if (is.null(marked)) marked <- nms
+  .hide <- setdiff(marked, .etDisplayCols(marked, show, extraCols, pre = "id"))
+  # not setdiff(): that would drop duplicated column names as well
+  .keep <- nms[!(nms %in% .hide)]
+  if (length(.keep) == 0L) return(nms)
+  .keep
+}
+
+#' Drop the display marking once an event table frame is modified
+#'
+#' The marking describes the columns the accessor returned, so it is only
+#' meaningful while the frame is unchanged.  Mutating one in place makes
+#' it the caller's own data frame -- the same way `dplyr` verbs do via
+#' `dplyr_reconstruct()` -- so the print class goes away rather than
+#' hiding a column that was just assigned.
+#'
+#' @param x object being assigned into
+#' @return `x` without the `rxEtPreview` class
+#' @noRd
+.etUnmarkDisplay <- function(x) {
+  if (inherits(x, "rxEtPreview")) {
+    class(x) <- setdiff(class(x), "rxEtPreview")
+  }
+  x
+}
+
+#' @export
+`$<-.rxEtPreview` <- function(x, name, value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
 #' Record a non-canonical column as explicitly assigned
 #'
 #' @param env event table environment to modify by reference
@@ -1571,17 +1691,18 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
   }
   .show <- .env$show
   .full <- .etMaterialize(x) # nolint
+  # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
+  .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
   if (isTRUE(.lst$all)) {
-    .full
+    .ret <- .full
   } else {
     .showCols <- names(.show)[.show]
     .showCols <- intersect(.showCols, names(.full))
-    # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
-    .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
-    .extraCols <- setdiff(.extraCols, .showCols)
-    .full[, c(.showCols, .extraCols), drop = FALSE]
+    .ret <- .full[, c(.showCols, setdiff(.extraCols, .showCols)), drop = FALSE]
   }
-
+  # tag which columns were assigned so et(as.data.frame(ev)) still shows them
+  if (length(.extraCols) > 0L) attr(.ret, "rxEtExtraCols") <- .extraCols
+  .ret
 }
 
 .datatable.aware <- TRUE # nolint

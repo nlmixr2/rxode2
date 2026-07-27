@@ -307,3 +307,12 @@ dplyr_reconstruct.rxEt <- function(data, template) {
   }
   data
 }
+
+# dplyr keeps the class but drops the marker attributes a display-only
+# print needs, so degrade to a plain data frame the way rxEt does.
+dplyr_reconstruct.rxEtPreview <- function(data, template) {
+  if (inherits(data, "rxEtPreview")) {
+    class(data) <- setdiff(class(data), "rxEtPreview")
+  }
+  data
+}

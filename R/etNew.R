@@ -407,7 +407,8 @@
   rownames(.out) <- seq_len(nrow(.out))
   attr(.out, "rxEtPreviewGroups") <- .meta
   attr(.out, "rxEtShow") <- envRef$show
-  class(.out) <- c("rxEtPreview", class(.out))
+  attr(.out, "rxEtExtraCols") <- .etExtraCols(envRef) # nolint
+  attr(.out, "rxEtMarkedCols") <- names(.out)
   .tu <- envRef$units["time"]
   if (!is.na(.tu) && nchar(.tu) > 0 && requireNamespace("units", quietly = TRUE)) {
     for (.col in c("time", "ii", "low", "high", "dur")) {
@@ -416,6 +417,8 @@
       }
     }
   }
+  # class last: `[[<-` on a marked frame drops the display marking
+  class(.out) <- c("rxEtPreview", class(.out))
   .out
 }
 
