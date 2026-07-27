@@ -163,6 +163,13 @@
   prints, and `dplyr` verbs turn it back into a plain data frame the way they
   already did for `rxEt`.
 
+- Explicitly assigned columns now survive a round trip through a data frame.
+  `as.data.frame()` tags them in a `rxEtExtraCols` attribute that `et()`,
+  `as.et()` and `$import.EventTable()`/`$importEventTable()` read back, so
+  `et(as.data.frame(ev))` keeps showing `wt` instead of demoting it to a hidden
+  imported covariate.  A data frame built by hand carries no tag, so its
+  covariate columns stay hidden as before.
+
 - `as.data.frame()` on an event table still hides covariate columns that simply
   rode along with an imported data frame (`et(data)`), while showing columns
   assigned explicitly on the event table (`ev$wt <- 70`, #1154).  The covariate

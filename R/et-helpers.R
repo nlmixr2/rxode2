@@ -297,6 +297,7 @@
     envRef$show["addl"] <- TRUE
   }
   envRef$chunks <- .addRowsToChunks(envRef$chunks, .df) # nolint
+  .etImportExtraCols(envRef, xVal, names(.df)) # nolint
   list(done = TRUE, et = et)
 }
 

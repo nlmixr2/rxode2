@@ -811,6 +811,34 @@ names.rxEt <- function(x) {
   intersect(unique(c(.cols, extraCols)), nms)
 }
 
+#' Provenance for explicitly assigned columns carried on a data frame
+#'
+#' `as.data.frame()` tags the columns that were explicitly assigned so a
+#' round trip back through `et()`/`$import.EventTable()` keeps showing
+#' them instead of demoting them to hidden imported covariates (#1154).
+#' A data frame built by hand carries no tag, so its covariates stay
+#' hidden the way they always have.
+#'
+#' @param df object to read the tag from
+#' @return character vector of column names, possibly empty
+#' @noRd
+.etExtraColsAttr <- function(df) {
+  .extra <- attr(df, "rxEtExtraCols", exact = TRUE)
+  if (is.null(.extra)) return(character(0))
+  as.character(.extra)
+}
+
+#' Carry an imported data frame's assigned-column tag into an event table
+#'
+#' @param env event table environment to modify by reference
+#' @param df object the tag was read from (before any renaming)
+#' @param nms names of the data actually stored
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etImportExtraCols <- function(env, df, nms) {
+  .etAddExtraCols(env, intersect(.etExtraColsAttr(df), nms)) # nolint
+}
+
 #' Mark an event table frame so it prints only its display columns
 #'
 #' Every column is kept for programmatic access; only the printed output
@@ -1663,17 +1691,18 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
   }
   .show <- .env$show
   .full <- .etMaterialize(x) # nolint
+  # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
+  .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
   if (isTRUE(.lst$all)) {
-    .full
+    .ret <- .full
   } else {
     .showCols <- names(.show)[.show]
     .showCols <- intersect(.showCols, names(.full))
-    # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
-    .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
-    .extraCols <- setdiff(.extraCols, .showCols)
-    .full[, c(.showCols, .extraCols), drop = FALSE]
+    .ret <- .full[, c(.showCols, setdiff(.extraCols, .showCols)), drop = FALSE]
   }
-
+  # tag which columns were assigned so et(as.data.frame(ev)) still shows them
+  if (length(.extraCols) > 0L) attr(.ret, "rxEtExtraCols") <- .extraCols
+  .ret
 }
 
 .datatable.aware <- TRUE # nolint

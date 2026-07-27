@@ -201,6 +201,48 @@ rxTest({
     })
   })
 
+  test_that("assigned columns survive a data frame round trip (#1154)", {
+    withr::local_options(list(width = 120))
+    .has <- function(x, nm) {
+      any(grepl(paste0("\\b", nm, "\\b"), utils::capture.output(print(x))))
+    }
+    .ev <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA),
+                         evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .ev$wt <- 70
+    .df <- as.data.frame(.ev)
+    expect_equal(attr(.df, "rxEtExtraCols"), "wt")
+    # et(), $import.EventTable(), $importEventTable() and as.et() all keep the
+    # assigned column visible without promoting the imported covariate
+    .rt <- et(.df)
+    expect_true(.has(.rt, "wt"))
+    expect_false(.has(.rt, "covar"))
+    expect_equal(.etExtraCols(.rxEtEnv(.rt)), "wt")
+    expect_true(.has(et(as.data.frame(.rt)), "wt")) # and again, repeatedly
+    expect_true(.has(as.et(.df), "wt"))
+    .i1 <- et()
+    .i1$import.EventTable(.df)
+    expect_true(.has(.i1, "wt"))
+    expect_false(.has(.i1, "covar"))
+    .i2 <- et()
+    .i2$importEventTable(.df)
+    expect_true(.has(.i2, "wt"))
+    expect_false(.has(.i2, "covar"))
+    # all = TRUE carries the hidden covariate as data but not as a shown column
+    .all <- et(as.data.frame(.ev, all = TRUE))
+    expect_true(.has(.all, "wt"))
+    expect_false(.has(.all, "covar"))
+    expect_true("covar" %in% names(as.data.frame(.all, all = TRUE)))
+    # a data frame built by hand carries no tag, so its covariates stay hidden
+    .plain <- et(data.frame(time = c(0, 1), amt = c(1, NA), evid = c(1, 0),
+                            cv = c(2, 2)))
+    expect_false(.has(.plain, "cv"))
+    expect_null(attr(as.data.frame(.plain), "rxEtExtraCols"))
+    # dropping the column drops the tag, so it does not come back
+    .ev$wt <- NULL
+    expect_null(attr(as.data.frame(.ev), "rxEtExtraCols"))
+    expect_false(.has(et(as.data.frame(.ev)), "wt"))
+  })
+
   test_that("dplyr verbs drop the get.dosing() display marking", {
     skip_if_not_installed("dplyr")
     withr::local_options(list(width = 120))

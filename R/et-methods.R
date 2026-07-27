@@ -372,10 +372,12 @@
   if (!is.data.frame(df)) {
     stop("'df' must be a data.frame", call. = FALSE)
   }
+  .extra <- .etExtraColsAttr(df) # nolint
   .u <- .etImportAutoUnits(env, df)
   df <- .etImportConvertUnits(df, .u$tu, .u$du, .u$hasTimeU, .u$hasDoseU)
   df <- .etImportStandardizeIdEvid(df)
   .etImportUpdateEnv(env, df)
+  .etAddExtraCols(env, intersect(.extra, names(df))) # nolint
   invisible(NULL)
 }
 
@@ -399,10 +401,13 @@
 #' @author Matthew L. Fidler
 .etMethodImportEventTable2 <- function(env, df, ...) {
   if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  .extra <- .etExtraColsAttr(df) # nolint
   df <- as.data.frame(df)
   df <- .etImportNormalizeNames(df)
   df <- .etImportIdToInteger(df)
   df <- .etImportDropNaTime(df)
+  # the helpers above may drop it, so re-tag before delegating
+  if (length(.extra) > 0L) attr(df, "rxEtExtraCols") <- .extra
   # Delegate to import.EventTable for units handling + storage
   .etMethodImportEventTable(env, df)
   invisible(NULL)
