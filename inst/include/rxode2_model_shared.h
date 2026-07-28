@@ -382,6 +382,11 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
 
+/* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
+   plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational
+   states).  neq[0]=nstate, neq[1]=cSub; y=states, dydt=DADT array to add into. */
+typedef void (*_rxDydtForce_t)(int *neq, double t, double *y, double *dydt);
+
 typedef double (*_getParCov_p)(unsigned int id, rx_solve *rx, int parNo, int idx);
 
 typedef rx_solve *(*_getRxSolve_t)(void);

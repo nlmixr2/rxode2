@@ -755,6 +755,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       }
     }
     if (show_ode == ode_dydt){
+      sAppendN(&sbOut,  "  if (_rxDydtForceCb != NULL) _rxDydtForceCb(_neq, __t, __zzStateVar__, __DDtStateVar__);\n", 90);
       sAppendN(&sbOut,  "  (&_solveData->subjects[_cSub])->dadt_counter[0]++;\n}\n\n", 56);
     } else if (show_ode == ode_jac){
       //sAppendN(&sbOut, "  free(__ld_DDtStateVar__);\n");
