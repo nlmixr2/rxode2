@@ -913,6 +913,35 @@ names.rxEt <- function(x) {
   .etUnmarkDisplay(NextMethod()) # nolint
 }
 
+#' @export
+`[.rxEtPreview` <- function(x, ...) {
+  .ret <- NextMethod()
+  # The marking says which columns were hidden when the accessor built the
+  # frame, so it still describes a row subset -- `head(ev$get.dosing())` keeps
+  # printing display columns only.  Picking columns makes it the caller's own
+  # frame: `dplyr`'s column verbs (select(), relocate()) subset with `[`
+  # rather than going through `dplyr_reconstruct()`, so this is what degrades
+  # them to a plain data frame the way mutate()/filter() already were.  A bare
+  # rename is deliberately still marked: `.etKeepCols()` hides only the names
+  # marked at the time, so a renamed column keeps printing either way.
+  # `[.data.frame` keeps the marker attributes on the row form but drops them
+  # on the column form, so `x[TRUE]` would otherwise keep the class with
+  # nothing left to drive it and print every column anyway.
+  if (!is.data.frame(.ret) ||
+        is.null(attr(.ret, "rxEtShow", exact = TRUE)) ||
+        !identical(names(.ret), names(x))) {
+    return(.etUnmarkDisplay(.ret)) # nolint
+  }
+  # A compressed preview is the exception: its groups count rows, and print()
+  # both synthesizes the `id` column from them and heads the output with how
+  # many individuals they cover, so dropping rows makes the marking a lie.
+  if (!is.null(attr(.ret, "rxEtPreviewGroups", exact = TRUE)) &&
+        !identical(nrow(.ret), nrow(x))) {
+    return(.etUnmarkDisplay(.ret)) # nolint
+  }
+  .ret
+}
+
 #' Record a non-canonical column as explicitly assigned
 #'
 #' @param env event table environment to modify by reference

@@ -55,7 +55,14 @@ rxTest({
 
   test_that("legacy qs2 objects can still be read back", {
     # qs2 is only ever read, never written; these come from objects stored
-    # while 'qs2' was an allowed rxode2.serialize.type
+    # while 'qs2' was an allowed rxode2.serialize.type.
+    #
+    # Guarded even though qs2 is an Import: it pulls in stringfish, whose CRAN
+    # macOS binary currently fails to *load* (undefined TBB symbol against the
+    # installed RcppParallel) even though it installs.  requireNamespace()
+    # returns FALSE for that, so this skips rather than erroring.  rxode2
+    # itself is unaffected -- it never loads qs2 outside rxDeserialize().
+    skip_if_not_installed("qs2")
     expect_equal(rxDeserialize(qs2::qs_serialize(mv)), mv)
     expect_equal(rxDeserialize(qs2::qd_serialize(mv)), mv)
     expect_equal(rxDeserialize(qs2::qs_serialize(df)), df)

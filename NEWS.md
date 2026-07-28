@@ -112,6 +112,17 @@
 
 ### Solving
 
+- Fixed heap corruption when `OMP_NUM_THREADS` is set below the number of
+  cores a solve asks for -- as it is on CRAN check machines, which set
+  `OMP_NUM_THREADS=2`.  The extra-dosing pools were sized once when the package
+  loaded, from `omp_get_max_threads()` (which honors `OMP_NUM_THREADS`), but
+  they are indexed by the solving thread id, which is bounded by `op$cores`;
+  `rxSolve(cores=)` overrides `OMP_NUM_THREADS` through OpenMP's `num_threads`
+  clause.  Every thread past the first `OMP_NUM_THREADS` therefore wrote off
+  the end of those arrays, corrupting the heap and crashing the session later
+  in an unrelated allocation.  The pools now grow to cover `op$cores` at solve
+  setup, like the other per-thread pools.
+
 - Fixed an out-of-bounds thread index that could segfault a solve.  The
   internal thread id used to slice the per-thread solving buffers was not
   bounded by the number of threads those buffers were allocated for
@@ -161,7 +172,9 @@
   columns.  Every column is still present on the returned data frame for
   programmatic access, a column added or renamed on the returned frame still
   prints, and `dplyr` verbs turn it back into a plain data frame the way they
-  already did for `rxEt`.
+  already did for `rxEt` -- including the column verbs (`select()`,
+  `relocate()`), which subset with `[` rather than going through
+  `dplyr_reconstruct()`.
 
 - Explicitly assigned columns now survive a round trip through a data frame.
   `as.data.frame()` tags them in a `rxEtExtraCols` attribute that `et()`,
