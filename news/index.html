@@ -105,11 +105,11 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/v5.1.5/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.1.5" id="rxode2-515">rxode2 5.1.5<a class="anchor" aria-label="anchor" href="#rxode2-515"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.1.5" id="rxode2-515">rxode2 5.1.5<a class="anchor" aria-label="anchor" href="#rxode2-515"></a></h2><p class="text-muted">CRAN release: 2026-07-28</p>
 <div class="section level3">
 <h3 id="new-features-5-1-5">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-5"></a></h3>
 <ul><li><p><code><a href="https://nlmixr2.github.io/rxode2/">library(rxode2)</a></code> is faster. <code>.onLoad()</code> no longer calls <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace()</a></code> on the suggested packages (<code>pillar</code>, <code>tibble</code>, <code>arrow</code>, <code>dplyr</code>, <code>nlme</code>, <code>units</code>, <code>digest</code>) before registering their S3 methods. The registration helper already installs an <code>onLoad</code> hook when the other namespace is not loaded yet, so the eager loads only added startup cost; the methods are still registered at the same point in time from the user’s perspective.</p></li>
