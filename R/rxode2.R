@@ -327,8 +327,7 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     rxParseSuppressMsg()
-    .modelName <- try(as.character(substitute(model)), silent=TRUE)
-    if (inherits(.modelName, "try-error")) .modelName <- NULL
+    .modelName <- .rxModelNameFromExpr(substitute(model))
     if (!missing(modName)) {
       if (!checkmate::testCharacter(modName, max.len = 1)) {
         stop("'modName' has to be a single length character", call. = FALSE)

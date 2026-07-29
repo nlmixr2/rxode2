@@ -191,6 +191,19 @@
   `as.data.frame(ev)`, since the join produced `wt.x`/`wt.y` and the model
   parameter disappeared.
 
+### Model interface
+
+- `ui$modelName` is now always a single character string (or `NULL`), as it was
+  always documented to be.  It came from `as.character()` of the substituted
+  model expression, which returns one element per part of a call, so
+  `rxode2(readModelDb("PK_1cmt"))` gave `c("readModelDb", "PK_1cmt")` and an
+  anonymous model function gave a four-element vector including the deparsed
+  body.  A call is now deparsed to one string
+  (`readModelDb("PK_1cmt")`), an anonymous function has no name and gives
+  `NULL`, and a plain symbol is unchanged.  Values assigned by other packages
+  (or read from models saved by earlier versions) are also collapsed to a
+  single string on access (#1019).
+
 ### Model compilation
 
 - The `parsed_md5` of a model no longer depends on how many models were built

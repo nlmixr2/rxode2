@@ -288,10 +288,11 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
                   cov=NULL, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
-    .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
+    .funName <- try(.rxModelNameFromExpr(as.list(with(envir, match.call()))[[1]]),
+                    silent=TRUE)
     if (inherits(.funName, "try-error")) {
       .funName <- NULL
-    } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
+    } else if (!is.null(.funName) && exists(.funName, envir=parent.env(envir))) {
       .udfEnvSet(parent.env(envir))
     }
     .ini <- .lastIni
