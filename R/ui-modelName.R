@@ -21,14 +21,27 @@
   .ret[[1L]]
 }
 
-#' Is this expression an anonymous function definition?
+#' Widest model name kept before it is truncated
+#' @noRd
+.rxModelNameMaxWidth <- 60L
+
+#' Tidy the first deparsed line of an expression into a name
 #'
-#' @param expr expression to test
-#' @return logical, `TRUE` for `function(...) ...` (and its `\(...)` spelling)
+#' `deparse()` breaks a multi-line construct after its opening brace, so the
+#' first line of a function definition is `function() {`; dropping the brace
+#' leaves `function()`.  Anything still wider than `.rxModelNameMaxWidth` is
+#' truncated.
+#'
+#' @param x deparsed expression
+#' @return single character string
 #' @noRd
 #' @author Bill Denney
-.rxModelNameIsFunctionDef <- function(expr) {
-  is.call(expr) && identical(expr[[1L]], quote(`function`))
+.rxModelNameTrim <- function(x) {
+  .ret <- trimws(sub("\\{[[:space:]]*$", "", x[1L]))
+  if (!is.na(.ret) && nchar(.ret) > .rxModelNameMaxWidth) {
+    .ret <- paste0(substr(.ret, 1L, .rxModelNameMaxWidth - 3L), "...")
+  }
+  .ret
 }
 
 #' Drop the `(` wrappers around an expression
@@ -51,14 +64,16 @@
 #' Convert an expression naming a model into a single model name
 #'
 #' `as.character()` on a call returns one element per call component, so
-#' `rxode2(readModelDb("PK_1cmt"))` used to give a length two `modelName`.
-#' Calls are deparsed to a single string instead; anonymous functions have no
-#' name to report and give `NULL`.
+#' `rxode2(readModelDb("PK_1cmt"))` used to give a length two `modelName`.  The
+#' name is the tidied first deparsed line of the expression instead: a symbol
+#' keeps its name, a call becomes its own text, and an anonymous function --
+#' whose deparse breaks after the opening brace -- becomes `function()` rather
+#' than its body.
 #'
 #' @param expr expression naming the model, usually from `substitute()` or
 #'   `match.call()[[1]]`
-#' @return single character string naming the model, or `NULL` when no name
-#'   can be determined
+#' @return single character string naming the model, or `NULL` when there is no
+#'   expression to name (a missing argument)
 #' @noRd
 #' @author Bill Denney
 .rxModelNameFromExpr <- function(expr) {
@@ -69,14 +84,13 @@
   # .rxModelNameScalar() turns into NULL.
   if (is.call(expr)) expr <- .rxModelNameUnwrapParens(expr)
   if (is.symbol(expr) || is.character(expr)) {
+    # same answer as deparsing, and the only form that reaches the empty symbol
     return(.rxModelNameScalar(try(as.character(expr), silent=TRUE)))
   }
-  if (is.call(expr) && !.rxModelNameIsFunctionDef(expr)) {
-    .ret <- try(paste(deparse(expr, width.cutoff=500L), collapse=" "), silent=TRUE)
-    if (inherits(.ret, "try-error")) return(NULL)
-    return(.rxModelNameScalar(.ret))
-  }
-  NULL
+  # nlines keeps this cheap no matter how large the deparsed object would be
+  .ret <- try(deparse(expr, width.cutoff=500L, nlines=1L), silent=TRUE)
+  if (inherits(.ret, "try-error")) return(NULL)
+  .rxModelNameScalar(.rxModelNameTrim(.ret))
 }
 
 #' @export

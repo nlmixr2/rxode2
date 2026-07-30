@@ -56,16 +56,34 @@ rxTest({
     expect_equal(.rxModelNameFromExpr("one.cmt"), "one.cmt")
     # the `(` needed to call an anonymous function is not part of a name
     expect_equal(.rxModelNameFromExpr(quote((one.cmt))), "one.cmt")
-    expect_null(.rxModelNameFromExpr(quote((function() NULL))))
-    # anonymous functions have no name to report
-    expect_null(.rxModelNameFromExpr(quote(function() {
+    # an anonymous function is named by the first deparsed line, not its body
+    expect_equal(.rxModelNameFromExpr(quote(function() {
       ini({a <- 1})
       model({b <- a})
-    })))
-    expect_null(.rxModelNameFromExpr(NULL))
+    })), "function()")
+    expect_equal(.rxModelNameFromExpr(quote((function() {
+      ini({a <- 1})
+      model({b <- a})
+    }))), "function()")
+    expect_equal(.rxModelNameFromExpr(quote(function(x, y) {
+      x + y
+    })), "function(x, y)")
+    # a one-line function keeps all of its (short) text
+    expect_equal(.rxModelNameFromExpr(quote(function(x) x)), "function(x) x")
+    # a function object (not an expression naming one) is named the same way
+    expect_equal(.rxModelNameFromExpr(function() {
+      NULL
+    }), "function ()")
+    # anything wider than .rxModelNameMaxWidth is truncated, still one string
+    .wide <- .rxModelNameFromExpr(str2lang(
+      paste0("makeModel(", paste0("arg", 1:40, " = ", 1:40, collapse = ", "), ")")))
+    expect_equal(nchar(.wide), .rxModelNameMaxWidth)
+    expect_true(endsWith(.wide, "..."))
+    expect_true(startsWith(.wide, "makeModel(arg1 = 1, "))
+    # `rxode2(NULL)` passes an expression, and its text is "NULL"; only a
+    # genuinely absent argument has no name at all
+    expect_equal(.rxModelNameFromExpr(NULL), "NULL")
     expect_null(.rxModelNameFromExpr())
-    # a function object (not an expression naming one) has no name
-    expect_null(.rxModelNameFromExpr(function() NULL))
     # the empty symbol from a missing argument (rxode2(filename=)) is not a name
     .subMissing <- function(x) .rxModelNameFromExpr(substitute(x))
     expect_null(.subMissing())
@@ -99,15 +117,17 @@ rxTest({
     expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName,
                  ".getTestModel(\"PK_1cmt\")")
 
-    # anonymous functions have no name
-    expect_null(rxode2(function() {
+    # an anonymous model is still named, just not by its body
+    expect_equal(rxode2(function() {
       ini({a <- 1})
       model({b <- a})
-    })$modelName)
-    expect_null((function() {
+    })$modelName, "function()")
+    expect_equal((function() {
       ini({a <- 1})
       model({b <- a})
-    })()$modelName)
+    })()$modelName, "function()")
+    # a function reaching rxode2() as a value, with no expression naming it
+    expect_equal(do.call(rxode2, list(.oneCmt))$modelName, "function ()")
 
     .lst <- list(mod = .oneCmt)
     expect_equal(rxode2(.lst$mod)$modelName, ".lst$mod")
