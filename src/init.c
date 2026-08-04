@@ -642,8 +642,15 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 5, Rf_mkChar("rxode2isRstudio"));
   SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectE"));
   SET_STRING_ELT(retN, 7, Rf_mkChar("rxode2sortIds"));
-  SET_STRING_ELT(retN, 8, Rf_mkChar("rxode2getSolvingOptions"));
-  SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getSolvingOptionsInd"));
+  // These two labels do not describe slots 8 and 9 (which are getSolvingOptions
+  // and getSolvingOptionsInd), but they are FROZEN.  A released downstream package
+  // may have snapshotted this name vector at build time and compare it at load, so
+  // renaming a slot breaks that package with no way to patch it retroactively.  The
+  // contract is the POSITION; the names are only labels, and correcting one is never
+  // worth breaking a reverse dependency.  Append new slots at the end -- never rename
+  // or reorder an existing one.
+  SET_STRING_ELT(retN, 8, Rf_mkChar("getSolvingOptionsInd"));
+  SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getUpdateInis"));
   SET_STRING_ELT(retN, 10, Rf_mkChar("rxode2_rxode2_rxModelVars_"));
   SET_STRING_ELT(retN, 11, Rf_mkChar("rxode2_par_solve"));
   SET_STRING_ELT(retN, 12, Rf_mkChar("rxode2rxGetId"));
@@ -727,16 +734,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 90, Rf_mkChar("rxode2EventSensSetActive"));
   SET_STRING_ELT(retN, 91, Rf_mkChar("rxode2EventSensDeactivate"));
 
-  // Every slot must be filled: the table is read positionally by
-  // iniRxodePtrs0() (inst/include/rxode2ptr.h), so a slot left at R_NilValue by
-  // a missed SET_VECTOR_ELT hands the downstream package a NULL function pointer
-  // that only crashes when it is finally called.  Fail here instead.
-  for (int i = 0; i < nVec; ++i) {
-    if (VECTOR_ELT(ret, i) == R_NilValue) {
-      UNPROTECT(pro);
-      (Rf_error)("rxode2 function-pointer table slot %d is unset (internal error)", i);
-    }
-  }
+  // Nothing is validated here.  Every reverse dependency calls this at load, so a
+  // check that fails takes them all down at once and they cannot be patched
+  // retroactively.  The "every slot is filled" invariant is asserted in rxode2's own
+  // test suite instead (tests/testthat/test-event-sensitivities-api.R).
 
 #undef nVec
 

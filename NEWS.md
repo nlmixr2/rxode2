@@ -45,14 +45,6 @@
 
 ### Installation / linking
 
-- Fixed two wrong names in rxode2's function-pointer table: slot 8 was labeled
-  `getSolvingOptionsInd` (it is `getSolvingOptions`) and slot 9
-  `rxode2getUpdateInis` (it is `getSolvingOptionsInd`), left over from an export
-  that was removed.  The table is read positionally, so this was cosmetic, but
-  it made the slots impossible to audit by name.  The table is now also checked
-  at build time for unset slots, which would otherwise hand a downstream package
-  a `NULL` function pointer that only crashes when called.
-
 - Fixed the Windows build against `RcppParallel` 6.2.0, which no longer ships
   the TBB library there (6.0.0 still built).  `configure` already dropped the
   `-ltbb`/`-ltbbmalloc`
