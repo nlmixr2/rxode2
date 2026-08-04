@@ -18,6 +18,10 @@
 - Added `setIndCmt()` to the function-pointer API, the writer counterpart of
   `getIndCmt()`, so a downstream package can re-base the per-observation `CMT`
   covariate without reaching into `op->cmtCov`/`ind->cov_ptr` by field.
+  `getIndCmt()` reports a missing `CMT` as `NA_INTEGER`, distinct from the `1`
+  it returns for a model with no `CMT` covariate at all (where every observation
+  really is compartment 1), so a caller re-basing the column can leave missing
+  rows alone.
 
 ## Bug fixes
 

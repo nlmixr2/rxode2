@@ -40,6 +40,10 @@ extern "C" {
   extern rxNormEng_t rxNormEng;
   typedef double (*rxUnifEng_t)(double low, double hi);
   extern rxUnifEng_t rxUnifEng;
+  // Per-observation CMT.  Returns 1 when the model has no CMT covariate (every
+  // observation is compartment 1) but NA_INTEGER when the covariate is present and
+  // this row's value is missing -- so "no compartment recorded" is distinguishable
+  // from "compartment 1".  For the old lenient behaviour, map NA_INTEGER to 1.
   typedef int (*getIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
   extern getIndCmt_t getIndCmt;
   // Writer for the CMT covariate (inverse of getIndCmt); lets a downstream
