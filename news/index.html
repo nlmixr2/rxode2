@@ -118,6 +118,10 @@
 <div class="section level3">
 <h3 id="bug-fixes-5-1-6">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-6"></a></h3>
 <div class="section level4">
+<h4 id="compilation-cache-5-1-6">Compilation cache<a class="anchor" aria-label="anchor" href="#compilation-cache-5-1-6"></a></h4>
+<ul><li>The compiled-model cache key now includes <code>eventSensCode</code>, so two builds of one model whose generated C differs – event sensitivities on vs off – no longer share a <code>.c</code>/<code>.so</code> path in the rxode2 cache directory. Previously the second build overwrote the first while any model object created earlier kept resolving its entry points by name, so it silently began executing the other variant: the declared <code>lhs</code> width was unchanged but most slots were never written, and <code><a href="../reference/rxSolve.html">rxSolve()</a></code> returned whatever was left in the buffer. A model with no event-sensitivity code keeps exactly the prefix it had, so no existing cache entry is invalidated (<a href="https://github.com/nlmixr2/rxode2/issues/1171" class="external-link">#1171</a>).</li>
+</ul></div>
+<div class="section level4">
 <h4 id="dependencies-5-1-6">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-5-1-6"></a></h4>
 <ul><li>The suggested <code>xgxr</code> is now required to be <code>&gt;= 1.1.6</code>. Its <code><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_x_log10.html" class="external-link">xgx_scale_x_log10()</a></code>/<code><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10()</a></code> return the <code>ggplot2</code> scale itself from that version on, rather than a length-one list wrapping it.</li>
 </ul></div>
