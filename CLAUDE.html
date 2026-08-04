@@ -201,6 +201,7 @@
 <blockquote>
 <p>[!IMPORTANT] <strong><code>$predDf</code> and <code>$iniDf</code> are a stable, exported interface — do not change their schema without explicit user permission.</strong> Their columns and structure are relied on for model export/serialization and by reverse dependencies (nlmixr2est, babelmixr2, nonmem2rx, …), including fits/UIs that were saved by earlier versions. Adding, removing, renaming, or repurposing a column is a breaking change: never do it as an incidental part of another change — ask first. Prefer representing new information with the <em>existing</em> schema (e.g. a literal residual value becomes an auto-generated FIX row in <code>$iniDf</code>, keyed to its endpoint via the existing <code>err</code>/<code>condition</code> columns — see <code>.rxErrLiteralToFixParam</code> in <code>R/err.R</code> — rather than a new <code>$predDf</code> column).</p>
 <p><strong>Reverse-dependency compatibility is fixed here, in rxode2.</strong> When an rxode2 change breaks a reverse dependency, the released reverse dependency cannot be patched retroactively, so the fix belongs in rxode2 — not in the reverse dependency.</p>
+<p><strong>Never add an unrequested check, assertion, or validation on a path that a reverse dependency executes</strong> (package load, <code>.onLoad</code> helpers, <code>_rxode2_rxode2Ptr()</code>, <code>rxSolve</code>, <code>rxUi</code> accessors). CRAN runs every strong reverse dependency against a submission, so one such check that fires fails all of them at once and gets the submission rejected. The same goes for “correcting” any already-released name, label, slot, column, or return value: tidying it is never worth the break. Assert in rxode2’s own tests instead, and if a real incompatibility needs a guard, ask first.</p>
 </blockquote>
 <p><strong>Event Table</strong> (<code>src/et.cpp</code>, <code>src/etTran.cpp</code>, <code>R/et.R</code>):</p>
 <ul><li><p><code><a href="reference/et.html">et()</a></code> constructs dosing/sampling event tables</p></li>
@@ -307,6 +308,14 @@
 <li>
 <strong><code>inst/include/rxode2.h</code></strong>: a plain declaration guarded <code>#ifndef __RXODE2PTR_H__</code> (so it does not collide with the downstream pointer variable – same as <code>par_solve</code>/<code>getRxSolve_</code>).</li>
 </ol><p>Appending at a new index is backward compatible (older consumers read the lower indices and ignore the new one). Changing any <code>inst/include/*.h</code> header requires a full clean rebuild (<code>rm -f src/*.o &amp;&amp; R CMD INSTALL .</code>).</p>
+<blockquote>
+<p>[!IMPORTANT] <strong>The pointer table is APPEND-ONLY, and <code>_rxode2_rxode2Ptr()</code> never validates anything.</strong> The positional table exists precisely so a new rxode2 can be submitted while every already-released reverse dependency keeps working. Two rules, both absolute:</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Never rename, reorder, remove, or repurpose an existing slot – including its <code>SET_STRING_ELT(retN, ...)</code> LABEL.</strong> The label is not documentation you may tidy: a released downstream package may have snapshotted the name vector at build time and compare it at load. Slots 8 and 9 are deliberately mislabeled and frozen for exactly this reason; correcting them in 5.1.6 made every reverse-dependency check fail at CRAN. If a label is wrong, leave it wrong and add a comment. Only ever append at the end.</li>
+<li>
+<strong>Never add a check to <code>_rxode2_rxode2Ptr()</code> or to a downstream package’s load path.</strong> Every reverse dependency calls it at load, so a check that fails takes them all down at once, and a released reverse dependency cannot be patched retroactively. Assert invariants in rxode2’s own test suite instead (<code>tests/testthat/test-event-sensitivities-api.R</code>), never at load time.</li>
+</ol><p>The same reasoning applies to the <strong>semantics</strong> of an already-released entry point: changing what <code>getIndCmt()</code> returns for a given input is a breaking change to code you cannot patch. Add a new entry point instead of changing an existing one, and do not do either as an incidental “fix” – ask first.</p>
+</blockquote>
 </div>
 <div class="section level4">
 <h4 id="srcinitc-is-the-manual-call-registration-table-hardcoded-arities">
