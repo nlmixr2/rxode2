@@ -274,6 +274,19 @@ int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
   return (int) v;
 }
 
+// Inverse of getIndCmt(): write the CMT covariate at row kk.  Lets a downstream
+// package re-base the CMT column (e.g. nlmixr2est's shared FOCEi solve pool,
+// whose peer models carry different sensitivity-compartment counts and so
+// different _CMT offsets) without reaching into op->cmtCov / ind->cov_ptr.  A
+// no-op for a model with no CMT covariate (single endpoint).
+void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt) {
+  if (op == NULL || op->cmtCov < 0) return;
+  if (kk < 0 || kk >= ind->n_all_times) {
+    (Rf_error)("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
+  ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk] = (double) cmt;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Solving options (rx->op)
 ////////////////////////////////////////////////////////////////////////
