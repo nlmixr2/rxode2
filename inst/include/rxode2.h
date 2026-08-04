@@ -116,7 +116,7 @@ void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int 
 // there for how a downstream package swaps shapes around a batch of solves.
 int rxode2EventSensShapeSize(void);
 void rxode2EventSensShapeSave(void *buf);
-void rxode2EventSensShapeRestore(const void *buf);
+int rxode2EventSensShapeRestore(const void *buf);
 void rxode2EventSensLoadFull(SEXP trans, int active, int nState, int nParam,
                              int nParam2, int nParam3, int useCalcJac);
 void rxode2EventSensGetDims(int *active, int *nState, int *nParam, int *nParam2,

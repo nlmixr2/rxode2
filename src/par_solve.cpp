@@ -723,9 +723,21 @@ extern "C" SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState,
 // from R can repoint rxode2's global model pointer while the pool solve is
 // live).  The shape is saved into a caller-owned opaque buffer rather than a
 // published struct, so its layout stays rxode2's business.
+//
+// The shape globals are read (not written) inside the OpenMP solve loops, so
+// install and restore only at batch boundaries -- never from inside a parallel
+// region, and never while another thread is solving.
 ////////////////////////////////////////////////////////////////////////
 
+// Stamped into every saved buffer and checked on restore, so a buffer that did
+// not come from rxode2EventSensShapeSave() -- a corrupted one, or one saved by a
+// different rxode2 build whose layout has moved -- is rejected instead of
+// installed as live function pointers.  Bump when the struct below changes.
+#define RX_ES_SHAPE_MAGIC 0x72455331  /* "rES1" */
+
 typedef struct rxEsShape {
+  unsigned int magic;
+  int size;
   int active;
   int nState;
   int nParam;
@@ -759,6 +771,8 @@ extern "C" int rxode2EventSensShapeSize(void) {
 extern "C" void rxode2EventSensShapeSave(void *buf) {
   if (buf == NULL) return;
   rxEsShape s;
+  s.magic = RX_ES_SHAPE_MAGIC;
+  s.size = (int) sizeof(rxEsShape);
   s.active = _rxEsActive;
   s.nState = _rxEsNState;
   s.nParam = _rxEsNParam;
@@ -783,11 +797,19 @@ extern "C" void rxode2EventSensShapeSave(void *buf) {
   memcpy(buf, &s, sizeof(rxEsShape));
 }
 
-// Reinstall a shape previously written by rxode2EventSensShapeSave().
-extern "C" void rxode2EventSensShapeRestore(const void *buf) {
-  if (buf == NULL) return;
+// Reinstall a shape previously written by rxode2EventSensShapeSave().  Rejects
+// a buffer that does not carry this build's stamp rather than installing
+// whatever bytes it holds as function pointers.  Returns 1 on success and 0 if
+// the buffer was rejected (leaving the installed shape untouched); it never
+// calls Rf_error, so a C++ caller holding the buffer in a local container is
+// not longjmp'd past its destructor.
+extern "C" int rxode2EventSensShapeRestore(const void *buf) {
+  if (buf == NULL) return 0;
   rxEsShape s;
   memcpy(&s, buf, sizeof(rxEsShape));
+  if (s.magic != RX_ES_SHAPE_MAGIC || s.size != (int) sizeof(rxEsShape)) {
+    return 0;
+  }
   _rxEsActive = s.active;
   _rxEsNState = s.nState;
   _rxEsNParam = s.nParam;
@@ -809,6 +831,7 @@ extern "C" void rxode2EventSensShapeRestore(const void *buf) {
   dDurEs = s.dDurEs;
   d2DurEs = s.d2DurEs;
   dDurQEs = s.dDurQEs;
+  return 1;
 }
 
 // rxode2EventSensLoad plus the two dims that setter predates (nParam3,
@@ -917,7 +940,9 @@ extern "C" SEXP _rxode2_eventSensShapeRestore(SEXP buf) {
     (Rf_error)("[eventSensShapeRestore]: expected a raw vector of %d bytes",
                rxode2EventSensShapeSize());
   }
-  rxode2EventSensShapeRestore(RAW(buf));
+  if (!rxode2EventSensShapeRestore(RAW(buf))) {
+    (Rf_error)("[eventSensShapeRestore]: not an event-sensitivity shape saved by this rxode2 build");
+  }
   return R_NilValue;
 }
 
