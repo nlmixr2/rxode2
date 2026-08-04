@@ -1330,29 +1330,25 @@ coef.rxode2 <- function(object,
 
 #' Drop the srcrefs that pin a whole R session onto a compiled model
 #'
-#' A compiled model stays in `.rxModels` for the life of the session and nothing
-#' removes it, so anything it retains is retained forever.  Two of its closures
-#' carry a srcref whose `srcfilealias` resolves to a `srcfilecopy` whose PARENT
-#' environment captures the session; the listed bindings of that srcfilecopy total
-#' ~2MB while its deep size is the whole session.
-#'
-#' `rxode2()` already runs [removeSource()] over the model env and its `cmpMgr`, but
-#' these two escape that sweep:
-#'
-#'   `assignPtr`'s closure env     -> `.f`
-#'   `environment(.rxDll$.call)`   -> `.badBuild`  (inside a LIST, so `ls()` never
-#'                                                  sees it)
-#'
-#' Both must go: they are independent references to the same alias, so severing one
-#' keeps it alive and measures as no change at all.
-#'
-#' Measured downstream (nlmixr2est, `theo_sd`, 5 distinct models fitted in one
-#' session with `est="impmap"`): retained entries grew 70 -> 142 -> 285 -> 569 ->
-#' 1137MB, exactly doubling per model, because each new model's srcfilecopy captured
-#' a session that already held the previous ones.
+#' A compiled model is kept in `.rxModels` for the life of the session, so
+#' anything it retains is retained forever.  [utils::removeSource()] is already
+#' swept over the model environment and its `cmpMgr`, but two closures escape
+#' that sweep -- `.f` in `assignPtr`'s environment and `.badBuild` in the list
+#' `.rxDll$.call` -- and each holds an independent reference to a srcref whose
+#' `srcfilealias` captures the session, so both must be stripped.  Called
+#' internally by [rxode2()]; exported for downstream packages that build models
+#' themselves.
 #'
 #' @param mod compiled rxode2 model
 #' @return `mod`, modified in place
+#' @examples
+#' \donttest{
+#' mod <- rxode2({
+#'   d/dt(intestine) <- -a * intestine
+#'   d/dt(blood) <- a * intestine - b * blood
+#' })
+#' rxStripModelSrc(mod)
+#' }
 #' @export
 #' @keywords internal
 rxStripModelSrc <- function(mod) {
