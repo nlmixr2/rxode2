@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 5.1.5 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 5.1.6 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/lotri/" class="external-link">lotri</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
@@ -207,12 +207,12 @@ at the C level, parallel solving with OpenMP is fully supported.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   60.41   65.69   71.15   70.37   74.90   79.96</span></span></code></pre></div>
+<span><span class="co">#&gt;   60.49   65.30   69.51   69.78   74.90   79.97</span></span></code></pre></div>
 <p>All simulated weights fall within the 60-80 kg window:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&gt;=</span> <span class="fl">60</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span> <span class="op">&lt;=</span> <span class="fl">80</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">f</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 60.40967 79.96111</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 60.48968 79.97034</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="interaction-with-nstud">Interaction with <code>nStud</code><a class="anchor" aria-label="anchor" href="#interaction-with-nstud"></a>
 </h3>
@@ -231,7 +231,7 @@ studies (<code>nStud</code>). Each study draws its own omega matrix (if
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">f2</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 60.06940 79.97599</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 60.01110 79.97703</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -108,6 +108,25 @@
       <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="5.1.6" id="rxode2-516">rxode2 5.1.6<a class="anchor" aria-label="anchor" href="#rxode2-516"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-5-1-6">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-6"></a></h3>
+<div class="section level4">
+<h4 id="dependencies-5-1-6">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-5-1-6"></a></h4>
+<ul><li>The suggested <code>xgxr</code> is now required to be <code>&gt;= 1.1.6</code>. Its <code><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_x_log10.html" class="external-link">xgx_scale_x_log10()</a></code>/<code><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10()</a></code> return the <code>ggplot2</code> scale itself from that version on, rather than a length-one list wrapping it.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="installation--linking-5-1-6">Installation / linking<a class="anchor" aria-label="anchor" href="#installation--linking-5-1-6"></a></h4>
+<ul><li>Fixed the Windows build against <code>RcppParallel</code> 6.2.0, which no longer ships the TBB library there (6.0.0 still built). <code>configure</code> already dropped the <code>-ltbb</code>/<code>-ltbbmalloc</code> link flags when they are unavailable, but still compiled with <code>-DSTAN_THREADS</code> and <code>-DRCPP_PARALLEL_USE_TBB=1</code>, which pulls <code>stan::math</code>’s <code>ad_tape_observer</code> (a <code>tbb::task_scheduler_observer</code>) into the objects and left undefined references to <code>tbb::detail::r1::observe</code> at link time. Those defines are now dropped together with the link flags, <code>stan-math</code>’s <code>init_chainablestack.hpp</code> is kept out of the build, and the main thread’s AD tape – which that observer would otherwise have created – is constructed in <code>src/linCmt.cpp</code> instead (by Jeroen Ooms).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="solving-5-1-6">Solving<a class="anchor" aria-label="anchor" href="#solving-5-1-6"></a></h4>
+<ul><li><p>Fixed heap corruption when <code>simeta()</code>/<code>simeps()</code> resample inside a solve. Both go through <code>simvar()</code>, which reseeded its threefry stream with <code>getRxSeed1()</code>; unless <code><a href="../reference/rxSetSeed.html">rxSetSeed()</a></code> had been called that draws from R’s own random number generator, which allocates R objects and can trigger a garbage collection. Doing so from an OpenMP worker thread corrupted R’s heap, and the session then failed later in an unrelated place (<code>cannot get data pointer of 'NULL' objects</code>, <code>'rho' must be an environment</code>, <code>corrupted double-linked list</code>, or a segfault). The in-solve resample now draws from a per-thread engine seeded on the main thread and touches no R API.</p></li>
+<li><p>The <code>simeta()</code>/<code>simeps()</code> resample no longer replays the simulated parameters. Its engines are keyed off a threefry draw rather than off the <code><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif()</a></code>-derived seed handed out at solve setup, which <code><a href="../reference/rxSolve.html">rxSolve()</a></code> goes on to reuse for the simulated <code>omega</code>/<code>sigma</code> deviates; a resampled <code>eta</code> could therefore come out exactly equal to another subject’s simulated <code>eta</code>.</p></li>
+</ul></div>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.5" id="rxode2-515">rxode2 5.1.5<a class="anchor" aria-label="anchor" href="#rxode2-515"></a></h2><p class="text-muted">CRAN release: 2026-07-28</p>
 <div class="section level3">
