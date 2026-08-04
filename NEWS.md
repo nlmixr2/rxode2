@@ -21,6 +21,16 @@
 
 ## Bug fixes
 
+### C API
+
+- `getIndCmt()` now returns `NA_INTEGER` when a row's CMT covariate is missing,
+  instead of `1`.  Returning `1` made a missing compartment indistinguishable
+  from compartment 1, so a caller walking the CMT column silently treated NA
+  rows as real observations in compartment 1.  A model with no CMT covariate at
+  all still returns `1`, which is correct -- every observation in a
+  single-endpoint model *is* compartment 1.  Callers wanting the old lenient
+  behaviour map `NA_INTEGER` to `1` themselves.
+
 ### Dependencies
 
 - The suggested `xgxr` is now required to be `>= 1.1.6`.  Its
