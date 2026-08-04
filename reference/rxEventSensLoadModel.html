@@ -4,12 +4,16 @@ model through a direct C++ ind_solve() loop, bypassing rxSolve(): sets
 rxode2's event (&quot;jump&quot;) sensitivity function pointers and runtime dims to
 model and turns the jumps on.  The jump blocks are bounds-guarded, so
 smaller models solved afterwards skip the injection safely.  Pair with
-rxEventSensDeactivate() after the run."><meta property="og:description" content="For downstream packages (e.g. nlmixr2est's FOCEi) that solve a sensitivity
+rxEventSensDeactivate() after the run.  The C API entry points behind this
+(rxode2EventSensLoadFull() and the shape save/restore) are in rxode2's
+function-pointer table, for callers that need the swap from C++."><meta property="og:description" content="For downstream packages (e.g. nlmixr2est's FOCEi) that solve a sensitivity
 model through a direct C++ ind_solve() loop, bypassing rxSolve(): sets
 rxode2's event (&quot;jump&quot;) sensitivity function pointers and runtime dims to
 model and turns the jumps on.  The jump blocks are bounds-guarded, so
 smaller models solved afterwards skip the injection safely.  Pair with
-rxEventSensDeactivate() after the run."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png"><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU"></head><body>
+rxEventSensDeactivate() after the run.  The C API entry points behind this
+(rxode2EventSensLoadFull() and the shape save/restore) are in rxode2's
+function-pointer table, for callers that need the swap from C++."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png"><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -125,7 +129,9 @@ model through a direct C++ <code>ind_solve()</code> loop, bypassing <code><a hre
 rxode2's event ("jump") sensitivity function pointers and runtime dims to
 <code>model</code> and turns the jumps on.  The jump blocks are bounds-guarded, so
 smaller models solved afterwards skip the injection safely.  Pair with
-<code><a href="rxEventSensDeactivate.html">rxEventSensDeactivate()</a></code> after the run.</p>
+<code><a href="rxEventSensDeactivate.html">rxEventSensDeactivate()</a></code> after the run.  The C API entry points behind this
+(<code>rxode2EventSensLoadFull()</code> and the shape save/restore) are in rxode2's
+function-pointer table, for callers that need the swap from C++.</p>
     </div>
 
     <div class="section level2">
