@@ -76,6 +76,9 @@ if (inherits(versionInfo, "try-error")) {
 
 .sl <- paste(capture.output(StanHeaders:::LdFlags()),
              capture.output(RcppParallel:::RcppParallelLibs()))
+# Set when the TBB link flags are stripped below; the compile-time
+# STAN_THREADS/TBB defines must then be stripped too (see @SH@ handling).
+.rxDisableTbb <- FALSE
 if (.Platform$OS.type == "windows") {
   # rpath is not meaningful on Windows and can generate noisy linker flags.
   # The path is shQuote()d by StanHeaders, so match quoted forms first;
@@ -108,6 +111,7 @@ if (.Platform$OS.type == "windows") {
       .sl <- gsub("-ltbbmalloc\\b", "", .sl)
       .sl <- gsub("-ltbb\\b", "", .sl)
       .sl <- gsub("\\s+", " ", trimws(.sl))
+      .rxDisableTbb <- TRUE
     }
   }
 }
@@ -420,13 +424,23 @@ close(.ie_out)
 
 
 .badStan <- ""
-.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",
-                         paste(capture.output(StanHeaders:::CxxFlags()), # nolint
-                               capture.output(RcppParallel:::CxxFlags()), # nolint
-                               paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
-                               paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
-                               .badStan)),
-            .in)
+.sh <- paste(capture.output(StanHeaders:::CxxFlags()), # nolint
+             capture.output(RcppParallel:::CxxFlags()), # nolint
+             paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
+             paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
+             .badStan)
+if (.rxDisableTbb) {
+  # The -ltbb/rxode2/-ltbbmalloc link flags were stripped above (RcppParallel >=
+  # 6.0.0 on Windows no longer provides libtbb).  Compiling with
+  # -DSTAN_THREADS / -DRCPP_PARALLEL_USE_TBB=1 would still pull stan::math's
+  # ad_tape_observer (a tbb::task_scheduler_observer) into the objects,
+  # leaving undefined references to tbb::detail::r1::observe at link time.
+  # Drop the defines so Stan math and RcppParallel compile without TBB.
+  .sh <- gsub("-DSTAN_THREADS\\b", "", .sh)
+  .sh <- gsub("-DRCPP_PARALLEL_USE_TBB=1", "-DRCPP_PARALLEL_USE_TBB=0", .sh)
+  .sh <- gsub("\\s+", " ", trimws(.sh))
+}
+.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@", .sh), .in)
 
 
 

@@ -40,4 +40,19 @@ typedef sunrealtype realtype;
 #endif
 #endif
 
+/*
+ * RcppParallel 6.2.0 statically links TBB on Windows and no longer exports
+ * the oneTBB runtime symbols (tbb::detail::r1::observe) that stan-math's
+ * ad_tape_observer (stan/math/rev/core/init_chainablestack.hpp) needs, so
+ * configure strips -DSTAN_THREADS and no TBB library is linked (see
+ * inst/tools/workaround.R).  Pre-define that header's include guard so the
+ * TBB task_scheduler_observer never enters the build.  The main-thread AD
+ * tape that observer would have created is created in linCmt.cpp instead,
+ * keyed on RXODE2_NO_STAN_TBB_OBSERVER.
+ */
+#if defined(_WIN32) && !defined(STAN_THREADS) && defined(__cplusplus)
+#define STAN_MATH_REV_CORE_INIT_CHAINABLESTACK_HPP
+#define RXODE2_NO_STAN_TBB_OBSERVER
+#endif
+
 #endif

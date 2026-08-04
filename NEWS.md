@@ -1,3 +1,45 @@
+# rxode2 5.1.6
+
+## Bug fixes
+
+### Dependencies
+
+- The suggested `xgxr` is now required to be `>= 1.1.6`.  Its
+  `xgx_scale_x_log10()`/`xgx_scale_y_log10()` return the `ggplot2` scale
+  itself from that version on, rather than a length-one list wrapping it.
+
+### Installation / linking
+
+- Fixed the Windows build against `RcppParallel` 6.2.0, which no longer ships
+  the TBB library there (6.0.0 still built).  `configure` already dropped the
+  `-ltbb`/`-ltbbmalloc`
+  link flags when they are unavailable, but still compiled with `-DSTAN_THREADS`
+  and `-DRCPP_PARALLEL_USE_TBB=1`, which pulls `stan::math`'s `ad_tape_observer`
+  (a `tbb::task_scheduler_observer`) into the objects and left undefined
+  references to `tbb::detail::r1::observe` at link time.  Those defines are now
+  dropped together with the link flags, `stan-math`'s `init_chainablestack.hpp`
+  is kept out of the build, and the main thread's AD tape -- which that
+  observer would otherwise have created -- is constructed in `src/linCmt.cpp`
+  instead (by Jeroen Ooms).
+
+### Solving
+
+- Fixed heap corruption when `simeta()`/`simeps()` resample inside a solve.
+  Both go through `simvar()`, which reseeded its threefry stream with
+  `getRxSeed1()`; unless `rxSetSeed()` had been called that draws from R's own
+  random number generator, which allocates R objects and can trigger a garbage
+  collection.  Doing so from an OpenMP worker thread corrupted R's heap, and
+  the session then failed later in an unrelated place (`cannot get data pointer
+  of 'NULL' objects`, `'rho' must be an environment`, `corrupted double-linked
+  list`, or a segfault).  The in-solve resample now draws from a per-thread
+  engine seeded on the main thread and touches no R API.
+
+- The `simeta()`/`simeps()` resample no longer replays the simulated
+  parameters.  Its engines are keyed off a threefry draw rather than off the
+  `runif()`-derived seed handed out at solve setup, which `rxSolve()` goes on
+  to reuse for the simulated `omega`/`sigma` deviates; a resampled `eta` could
+  therefore come out exactly equal to another subject's simulated `eta`.
+
 # rxode2 5.1.5
 
 ## New features
