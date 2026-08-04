@@ -24,6 +24,20 @@ rxTest({
     expect_identical(.jump, rxode2:::.rxPre(.m, eventSensCode = c("dLag[0] = 1.0;", rep("", 12L))))
   })
 
+  test_that("the key is unambiguous about slot boundaries", {
+    .m <- rxModelVars("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - cl/v*center")
+    # a slot body may itself contain newlines, so an in-band separator would let two
+    # different slot LAYOUTS collapse onto one key
+    .a <- rxode2:::.rxPre(.m, eventSensCode = c("dLag[0] = 1.0;\ndF[0] = 2.0;", rep("", 12L)))
+    .b <- rxode2:::.rxPre(.m, eventSensCode = c("dLag[0] = 1.0;", "dF[0] = 2.0;", rep("", 11L)))
+    expect_false(identical(.a, .b))
+    # NA is normalized in place, not dropped: dropping would change the LENGTH, which
+    # both keys differently for identical code and opens the collapse above
+    expect_identical(
+      rxode2:::.rxEventSensKey(c("dLag[0] = 1.0;", rep("", 12L))),
+      rxode2:::.rxEventSensKey(c("dLag[0] = 1.0;", rep(NA_character_, 12L))))
+  })
+
   test_that(".rxEventSensKey is empty only when there is no code", {
     expect_identical(rxode2:::.rxEventSensKey(NULL), "")
     expect_identical(rxode2:::.rxEventSensKey(rep("", 13L)), "")

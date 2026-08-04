@@ -717,6 +717,11 @@ rxode2 <- # nolint
       .f <- get(.n, envir = .env$cmpMgr)
       if (is.function(.f)) assign(.n, removeSource(.f), envir = .env$cmpMgr)
     }
+    ## Two closures escape the sweep above -- assignPtr's `.f`, and `.badBuild` inside
+    ## the LIST .rxDll$.call, which ls() never walks.  They hold independent references
+    ## to the same srcfilealias, so leaving either keeps the session alive and the sweep
+    ## measures as no change at all.  See rxStripModelSrc().
+    rxStripModelSrc(.env)
     .env$calcJac <- (length(.mv$dfdy) > 0)
     .env$calcSens <- (length(.mv$sens) > 0)
     class(.env) <- "rxode2"
@@ -1323,6 +1328,50 @@ coef.rxode2 <- function(object,
   return(.modelPrefix)
 }
 
+#' Drop the srcrefs that pin a whole R session onto a compiled model
+#'
+#' A compiled model stays in `.rxModels` for the life of the session and nothing
+#' removes it, so anything it retains is retained forever.  Two of its closures
+#' carry a srcref whose `srcfilealias` resolves to a `srcfilecopy` whose PARENT
+#' environment captures the session; the listed bindings of that srcfilecopy total
+#' ~2MB while its deep size is the whole session.
+#'
+#' `rxode2()` already runs [removeSource()] over the model env and its `cmpMgr`, but
+#' these two escape that sweep:
+#'
+#'   `assignPtr`'s closure env     -> `.f`
+#'   `environment(.rxDll$.call)`   -> `.badBuild`  (inside a LIST, so `ls()` never
+#'                                                  sees it)
+#'
+#' Both must go: they are independent references to the same alias, so severing one
+#' keeps it alive and measures as no change at all.
+#'
+#' Measured downstream (nlmixr2est, `theo_sd`, 5 distinct models fitted in one
+#' session with `est="impmap"`): retained entries grew 70 -> 142 -> 285 -> 569 ->
+#' 1137MB, exactly doubling per model, because each new model's srcfilecopy captured
+#' a session that already held the previous ones.
+#'
+#' @param mod compiled rxode2 model
+#' @return `mod`, modified in place
+#' @export
+#' @keywords internal
+rxStripModelSrc <- function(mod) {
+  if (!is.environment(mod)) return(mod)
+  .strip <- function(env, nm) {
+    if (!is.environment(env)) return(invisible(NULL))
+    .f <- tryCatch(get(nm, envir = env, inherits = FALSE), error = function(e) NULL)
+    if (is.function(.f)) {
+      tryCatch(assign(nm, removeSource(.f), envir = env), error = function(e) NULL)
+    }
+    invisible(NULL)
+  }
+  .ap <- tryCatch(get("assignPtr", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.function(.ap)) .strip(environment(.ap), ".f")
+  .dll <- tryCatch(get(".rxDll", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.list(.dll) && is.function(.dll$.call)) .strip(environment(.dll$.call), ".badBuild")
+  mod
+}
+
 #' Short digest of the event-sensitivity code bodies, or "" when there are none
 #'
 #' Part of the compiled-model cache key: two builds of one model text whose
@@ -1333,9 +1382,16 @@ coef.rxode2 <- function(object,
 .rxEventSensKey <- function(eventSensCode) {
   if (is.null(eventSensCode)) return("")
   .code <- as.character(eventSensCode)
-  .code <- .code[!is.na(.code)]
+  # NA is normalized to "" IN PLACE rather than dropped: dropping changes the vector's
+  # LENGTH, which both makes c("a", NA) and c("a") key differently (a needless
+  # recompile) and -- worse -- lets two different slot layouts collapse onto one key.
+  .code[is.na(.code)] <- ""
   if (length(.code) == 0L || !any(nzchar(.code))) return("")
-  substr(digest::digest(paste(.code, collapse = "\n"), algo = "md5"), 1L, 8L)
+  # digest the VECTOR, not a pasted string: a slot's body may itself contain newlines,
+  # so any in-band separator is ambiguous -- c("a\nb", "") and c("a", "b") would have to
+  # be told apart by trailing-separator count alone.  Serializing the vector keeps the
+  # element boundaries.
+  substr(digest::digest(.code, algo = "md5"), 1L, 8L)
 }
 
 .md5Rx <- NULL

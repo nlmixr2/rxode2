@@ -293,7 +293,12 @@ void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int 
   if (kk < 0 || kk >= ind->n_all_times) {
     (Rf_error)("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
   }
-  ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk] = (double) cmt;
+  // NA_INTEGER is INT_MIN, so a plain (double) cast would store -2147483648.0 -- a
+  // finite value that ISNA() does not recognize and that covariate interpolation would
+  // treat as a real compartment number.  Round-trip it as the double NA instead, which
+  // is what getIndCmt() reads back as NA_INTEGER.
+  ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk] =
+    (cmt == NA_INTEGER) ? NA_REAL : (double) cmt;
 }
 
 ////////////////////////////////////////////////////////////////////////
