@@ -56,22 +56,27 @@ extern "C" {
   // `trans`, or a previously saved buffer), solve, then restore:
   //
   //   std::vector<char> saved(rxode2EventSensShapeSize());
-  //   rxode2EventSensShapeSave(saved.data());
-  //   rxode2EventSensShapeRestore(peerShape.data());   // ... solve the batch
-  //   rxode2EventSensShapeRestore(saved.data());
+  //   rxode2EventSensShapeSave(saved.data(), saved.size());
+  //   rxode2EventSensShapeRestore(peer.data(), peer.size());  // solve the batch
+  //   rxode2EventSensShapeRestore(saved.data(), saved.size());
   //
-  // The buffer layout is opaque and may change between rxode2 versions, so a
-  // buffer must not outlive the process that produced it; a buffer rxode2 does
-  // not recognize is rejected (restore returns 0 and changes nothing) rather
-  // than installed.  These globals are read inside the OpenMP solve loops, so
-  // install and restore only at batch boundaries, never from a parallel region.
+  // Both take the buffer's capacity and refuse to touch a buffer that is too
+  // small, so a mis-sized allocation fails cleanly instead of running off its
+  // end.  The layout is opaque and may change between rxode2 versions: a buffer
+  // rxode2 does not recognize is rejected rather than installed, and a buffer
+  // must never be serialized or reused across sessions.  A saved shape also
+  // holds pointers INTO the model's shared library, so unloading that model
+  // (rxUnload()) invalidates it -- re-install with rxode2EventSensLoadFull()
+  // rather than restoring a shape saved before the unload.  These globals are
+  // read inside the OpenMP solve loops, so install and restore only at batch
+  // boundaries, never from a parallel region or while a solve is running.
+  // Neither calls Rf_error, so a C++ caller is not longjmp'd past its
+  // destructors; both return 1 on success and 0 if the buffer was rejected.
   typedef int (*rxode2EventSensShapeSize_t)(void);
   extern rxode2EventSensShapeSize_t rxode2EventSensShapeSize;
-  typedef void (*rxode2EventSensShapeSave_t)(void *buf);
+  typedef int (*rxode2EventSensShapeSave_t)(void *buf, int bufSize);
   extern rxode2EventSensShapeSave_t rxode2EventSensShapeSave;
-  // Returns 1 on success, 0 if the buffer was rejected.  Never calls Rf_error,
-  // so a C++ caller is not longjmp'd past its destructors.
-  typedef int (*rxode2EventSensShapeRestore_t)(const void *buf);
+  typedef int (*rxode2EventSensShapeRestore_t)(const void *buf, int bufSize);
   extern rxode2EventSensShapeRestore_t rxode2EventSensShapeRestore;
   // Install a model's shape from its `trans` vector (all six dims).
   typedef void (*rxode2EventSensLoadFull_t)(SEXP trans, int active, int nState, int nParam, int nParam2, int nParam3, int useCalcJac);

@@ -766,10 +766,12 @@ extern "C" int rxode2EventSensShapeSize(void) {
   return (int) sizeof(rxEsShape);
 }
 
-// Snapshot the installed shape into `buf` (>= rxode2EventSensShapeSize() bytes).
-// memcpy'd, so `buf` needs no particular alignment.
-extern "C" void rxode2EventSensShapeSave(void *buf) {
-  if (buf == NULL) return;
+// Snapshot the installed shape into `buf`, whose capacity is `bufSize` bytes.
+// Returns 1 on success, 0 if `buf` is NULL or too small (nothing is written --
+// the callee cannot otherwise tell, and a short buffer would be a silent
+// out-of-bounds write).  memcpy'd, so `buf` needs no particular alignment.
+extern "C" int rxode2EventSensShapeSave(void *buf, int bufSize) {
+  if (buf == NULL || bufSize < (int) sizeof(rxEsShape)) return 0;
   rxEsShape s;
   s.magic = RX_ES_SHAPE_MAGIC;
   s.size = (int) sizeof(rxEsShape);
@@ -795,6 +797,7 @@ extern "C" void rxode2EventSensShapeSave(void *buf) {
   s.d2DurEs = d2DurEs;
   s.dDurQEs = dDurQEs;
   memcpy(buf, &s, sizeof(rxEsShape));
+  return 1;
 }
 
 // Reinstall a shape previously written by rxode2EventSensShapeSave().  Rejects
@@ -803,8 +806,8 @@ extern "C" void rxode2EventSensShapeSave(void *buf) {
 // the buffer was rejected (leaving the installed shape untouched); it never
 // calls Rf_error, so a C++ caller holding the buffer in a local container is
 // not longjmp'd past its destructor.
-extern "C" int rxode2EventSensShapeRestore(const void *buf) {
-  if (buf == NULL) return 0;
+extern "C" int rxode2EventSensShapeRestore(const void *buf, int bufSize) {
+  if (buf == NULL || bufSize < (int) sizeof(rxEsShape)) return 0;
   rxEsShape s;
   memcpy(&s, buf, sizeof(rxEsShape));
   if (s.magic != RX_ES_SHAPE_MAGIC || s.size != (int) sizeof(rxEsShape)) {
@@ -930,8 +933,9 @@ extern "C" SEXP _rxode2_eventSensDeactivate(void) {
 // that produced them -- never serialize one.
 extern "C" SEXP _rxode2_eventSensShapeSave(void) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(RAWSXP, rxode2EventSensShapeSize()));
-  rxode2EventSensShapeSave(RAW(ret));
+  int n = rxode2EventSensShapeSize();
+  SEXP ret = rx_protect.protect(Rf_allocVector(RAWSXP, n));
+  rxode2EventSensShapeSave(RAW(ret), n);
   return ret;
 }
 
@@ -940,7 +944,7 @@ extern "C" SEXP _rxode2_eventSensShapeRestore(SEXP buf) {
     (Rf_error)("[eventSensShapeRestore]: expected a raw vector of %d bytes",
                rxode2EventSensShapeSize());
   }
-  if (!rxode2EventSensShapeRestore(RAW(buf))) {
+  if (!rxode2EventSensShapeRestore(RAW(buf), (int) Rf_xlength(buf))) {
     (Rf_error)("[eventSensShapeRestore]: not an event-sensitivity shape saved by this rxode2 build");
   }
   return R_NilValue;

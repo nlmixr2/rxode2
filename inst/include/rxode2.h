@@ -115,8 +115,8 @@ void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int 
 // Event ("jump") sensitivity shape (src/par_solve.cpp); see the block comment
 // there for how a downstream package swaps shapes around a batch of solves.
 int rxode2EventSensShapeSize(void);
-void rxode2EventSensShapeSave(void *buf);
-int rxode2EventSensShapeRestore(const void *buf);
+int rxode2EventSensShapeSave(void *buf, int bufSize);
+int rxode2EventSensShapeRestore(const void *buf, int bufSize);
 void rxode2EventSensLoadFull(SEXP trans, int active, int nState, int nParam,
                              int nParam2, int nParam3, int useCalcJac);
 void rxode2EventSensGetDims(int *active, int *nState, int *nParam, int *nParam2,

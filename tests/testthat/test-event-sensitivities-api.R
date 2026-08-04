@@ -87,6 +87,24 @@ rxTest({
     expect_false(rxEventSensLoadModel(mfd))
   })
 
+  test_that("toggling active preserves the rest of the shape", {
+    # rxode2EventSensSetActive() is the cheap gate: it must flip `active` and
+    # leave the dims (and the function pointers) in place, unlike Deactivate().
+    on.exit(rxEventSensDeactivate(), add = TRUE)
+    m <- rxode2(.mod1, calcSens = c("eta_ka", "eta_lag"), eventSens = "jump")
+    rxEventSensLoadModel(m)
+    before <- .rxGetEventSensDims()
+    saved <- .rxEventSensShapeSave()
+    .Call(`_rxode2_eventSensSetDims`, 0L, before[["nState"]], before[["nParam"]],
+          before[["nParam2"]], before[["nParam3"]], before[["useCalcJac"]])
+    off <- .rxGetEventSensDims()
+    expect_equal(unname(off[["active"]]), 0L)
+    expect_equal(off[-1L], before[-1L])   # only `active` moved
+    # and the pointers were untouched: restoring the saved shape is a no-op here
+    .rxEventSensShapeRestore(saved)
+    expect_equal(.rxGetEventSensDims(), before)
+  })
+
   test_that("rxEventSensLoadModel carries nParam2 for a second-order model", {
     on.exit(rxEventSensDeactivate(), add = TRUE)
     m <- rxode2(.mod2, calcSens = c("trate", "tlag"),
