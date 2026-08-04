@@ -25,6 +25,18 @@
 
 ## Bug fixes
 
+### Compilation cache
+
+- The compiled-model cache key now includes `eventSensCode`, so two builds of one
+  model whose generated C differs -- event sensitivities on vs off -- no longer
+  share a `.c`/`.so` path in the rxode2 cache directory.  Previously the second
+  build overwrote the first while any model object created earlier kept resolving
+  its entry points by name, so it silently began executing the other variant: the
+  declared `lhs` width was unchanged but most slots were never written, and
+  `rxSolve()` returned whatever was left in the buffer.  A model with no
+  event-sensitivity code keeps exactly the prefix it had, so no existing cache
+  entry is invalidated (#1171).
+
 ### Dependencies
 
 - The suggested `xgxr` is now required to be `>= 1.1.6`.  Its

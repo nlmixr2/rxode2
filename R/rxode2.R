@@ -1293,7 +1293,8 @@ coef.rxode2 <- function(object,
 }
 
 .rxPre <- function(model,
-                   modName = NULL) {
+                   modName = NULL,
+                   eventSensCode = NULL) {
   if (!is.null(modName)) {
     if (is.null(.pkg)) {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_", .Platform$r_arch, "_")
@@ -1306,7 +1307,35 @@ coef.rxode2 <- function(object,
     .cache <- .rxModelVarsCCache
     .modelPrefix <- paste0("rx_", .mv$md5["parsed_md5"], "_", .Platform$r_arch, "_")
   }
+  # `eventSensCode` changes the GENERATED C but is not part of the model text, so
+  # without it two variants of one model (event sensitivities on vs off) derive the
+  # same prefix -- and therefore the same .c/.so path in the rxode2 cache.  The second
+  # build overwrites the first, while any model object created earlier still resolves
+  # its entry points BY NAME (R_GetCCallable) and so silently starts executing the
+  # other variant: declared `lhs` width unchanged, most slots never written.  See #1171.
+  #
+  # Only extend the prefix when there IS event-sensitivity code, so every existing
+  # cache entry keeps its current path and nothing is invalidated for the common case.
+  .esKey <- .rxEventSensKey(eventSensCode)
+  if (nzchar(.esKey)) {
+    .modelPrefix <- paste0(substr(.modelPrefix, 0, nchar(.modelPrefix) - 1), "es", .esKey, "_")
+  }
   return(.modelPrefix)
+}
+
+#' Short digest of the event-sensitivity code bodies, or "" when there are none
+#'
+#' Part of the compiled-model cache key: two builds of one model text whose
+#' `eventSensCode` differs generate different C and must not share a `.so`.
+#' @param eventSensCode character vector of C body lines, or NULL
+#' @return a short hex string, or "" when there is no event-sensitivity code
+#' @noRd
+.rxEventSensKey <- function(eventSensCode) {
+  if (is.null(eventSensCode)) return("")
+  .code <- as.character(eventSensCode)
+  .code <- .code[!is.na(.code)]
+  if (length(.code) == 0L || !any(nzchar(.code))) return("")
+  substr(digest::digest(paste(.code, collapse = "\n"), algo = "md5"), 1L, 8L)
 }
 
 .md5Rx <- NULL
@@ -1767,7 +1796,7 @@ rxCompile.rxModelVars <- function(model, # Model
   model <- rxGetModel(model)
 
   if (is.null(prefix)) {
-    prefix <- .rxPre(model, modName)
+    prefix <- .rxPre(model, modName, eventSensCode)
   }
   if (is.null(dir)) {
     if (getOption("rxode2.tempfiles", TRUE)) {
