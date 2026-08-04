@@ -41,7 +41,7 @@ typedef sunrealtype realtype;
 #endif
 
 /*
- * RcppParallel >= 6.0.0 statically links TBB on Windows and no longer exports
+ * RcppParallel 6.2.0 statically links TBB on Windows and no longer exports
  * the oneTBB runtime symbols (tbb::detail::r1::observe) that stan-math's
  * ad_tape_observer (stan/math/rev/core/init_chainablestack.hpp) needs, so
  * configure strips -DSTAN_THREADS and no TBB library is linked (see
