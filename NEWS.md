@@ -1,3 +1,19 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Installation / linking
+
+- On Windows, `STAN_THREADS` and the TBB link are kept when building against
+  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
+  package again.  `configure` now decides whether to strip the TBB flags by
+  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
+  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
+  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
+  library on Windows.  (The 5.1.6 release notes had this backwards:
+  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
+  dropping it.)
+
 # rxode2 5.1.6
 
 ## Bug fixes

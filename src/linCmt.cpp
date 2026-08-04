@@ -11,8 +11,8 @@
 #include "linCmtSensType.h"
 
 #ifdef RXODE2_NO_STAN_TBB_OBSERVER
-// stan-math's init_chainablestack.hpp is kept out of the build (no TBB on
-// Windows, see rxode2_sundials_stan_compat.h).  Its global ad_tape_observer
+// stan-math's init_chainablestack.hpp is kept out of the build (no linkable
+// TBB, see rxode2_sundials_stan_compat.h).  Its global ad_tape_observer
 // was also what created the main thread's AD tape; without STAN_THREADS the
 // tape is a plain (shared) global, so constructing one ChainableStack here
 // initializes it for the whole DLL.
