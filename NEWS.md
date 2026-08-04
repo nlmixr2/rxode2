@@ -1,5 +1,24 @@
 # rxode2 5.1.6
 
+## New features
+
+- Added the event ("jump") sensitivity shape to rxode2's linked
+  function-pointer API, so a downstream package can install a model's shape
+  from C++ without an R round trip: `rxode2EventSensLoadFull()` (all six dims,
+  where the older `rxode2EventSensLoad()` omitted `nParam3`/`useCalcJac`),
+  `rxode2EventSensGetDims()`/`rxode2EventSensSetDims()`,
+  `rxode2EventSensSetActive()`, `rxode2EventSensDeactivate()`, and
+  `rxode2EventSensShapeSize()`/`rxode2EventSensShapeSave()`/
+  `rxode2EventSensShapeRestore()`, which snapshot and reinstall a whole shape
+  (dims plus the model's dosing-derivative function pointers) through a
+  caller-owned opaque buffer.  This lets several peer models with different
+  shapes be solved through one shared solve pool, installing each batch's
+  shape and restoring the previous one afterwards.
+
+- Added `setIndCmt()` to the function-pointer API, the writer counterpart of
+  `getIndCmt()`, so a downstream package can re-base the per-observation `CMT`
+  covariate without reaching into `op->cmtCov`/`ind->cov_ptr` by field.
+
 ## Bug fixes
 
 ### Dependencies
@@ -9,6 +28,14 @@
   itself from that version on, rather than a length-one list wrapping it.
 
 ### Installation / linking
+
+- Fixed two wrong names in rxode2's function-pointer table: slot 8 was labeled
+  `getSolvingOptionsInd` (it is `getSolvingOptions`) and slot 9
+  `rxode2getUpdateInis` (it is `getSolvingOptionsInd`), left over from an export
+  that was removed.  The table is read positionally, so this was cosmetic, but
+  it made the slots impossible to audit by name.  The table is now also checked
+  at build time for unset slots, which would otherwise hand a downstream package
+  a `NULL` function pointer that only crashes when called.
 
 - Fixed the Windows build against `RcppParallel` 6.2.0, which no longer ships
   the TBB library there (6.0.0 still built).  `configure` already dropped the

@@ -265,13 +265,27 @@ int getIndIdx(rx_solving_options_ind* ind) {
 // covariate (a single-endpoint model) or the value is missing.  CMT values are the
 // data's compartment numbers (distinct, not necessarily sequential).
 int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
-  if (op == NULL || op->cmtCov < 0) return 1;
+  if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return 1;
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
   }
   double v = ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk];
   if (ISNA(v)) return 1;
   return (int) v;
+}
+
+// Inverse of getIndCmt(): write the CMT covariate at row kk.  Lets a downstream
+// package re-base the CMT column (e.g. nlmixr2est's shared FOCEi solve pool,
+// whose peer models carry different sensitivity-compartment counts and so
+// different _CMT offsets) without reaching into op->cmtCov / ind->cov_ptr.  A
+// no-op for a model with no CMT covariate (single endpoint) or an individual
+// with no covariate array.
+void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt) {
+  if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return;
+  if (kk < 0 || kk >= ind->n_all_times) {
+    (Rf_error)("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
+  ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk] = (double) cmt;
 }
 
 ////////////////////////////////////////////////////////////////////////
