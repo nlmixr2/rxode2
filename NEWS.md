@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 5.1.7 (development version)
 
 ## Bug fixes
 
@@ -16,7 +16,42 @@
 
 # rxode2 5.1.6
 
+## New features
+
+- Added the event ("jump") sensitivity shape to rxode2's linked
+  function-pointer API, so a downstream package can install a model's shape
+  from C++ without an R round trip: `rxode2EventSensLoadFull()` (all six dims,
+  where the older `rxode2EventSensLoad()` omitted `nParam3`/`useCalcJac`),
+  `rxode2EventSensGetDims()`/`rxode2EventSensSetDims()`,
+  `rxode2EventSensSetActive()`, `rxode2EventSensDeactivate()`, and
+  `rxode2EventSensShapeSize()`/`rxode2EventSensShapeSave()`/
+  `rxode2EventSensShapeRestore()`, which snapshot and reinstall a whole shape
+  (dims plus the model's dosing-derivative function pointers) through a
+  caller-owned opaque buffer.  This lets several peer models with different
+  shapes be solved through one shared solve pool, installing each batch's
+  shape and restoring the previous one afterwards.
+
+- Added `setIndCmt()` to the function-pointer API, the writer counterpart of
+  `getIndCmt()`, so a downstream package can re-base the per-observation `CMT`
+  covariate without reaching into `op->cmtCov`/`ind->cov_ptr` by field.
+  `getIndCmt()` reports a missing `CMT` as `NA_INTEGER`, distinct from the `1`
+  it returns for a model with no `CMT` covariate at all (where every observation
+  really is compartment 1), so a caller re-basing the column can leave missing
+  rows alone.
+
 ## Bug fixes
+
+### Compilation cache
+
+- The compiled-model cache key now includes `eventSensCode`, so two builds of one
+  model whose generated C differs -- event sensitivities on vs off -- no longer
+  share a `.c`/`.so` path in the rxode2 cache directory.  Previously the second
+  build overwrote the first while any model object created earlier kept resolving
+  its entry points by name, so it silently began executing the other variant: the
+  declared `lhs` width was unchanged but most slots were never written, and
+  `rxSolve()` returned whatever was left in the buffer.  A model with no
+  event-sensitivity code keeps exactly the prefix it had, so no existing cache
+  entry is invalidated (#1171).
 
 ### Dependencies
 

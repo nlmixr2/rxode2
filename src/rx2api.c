@@ -261,17 +261,44 @@ int getIndIdx(rx_solving_options_ind* ind) {
 
 // Per-observation endpoint (compartment) from the CMT time-varying covariate.  The
 // covariate index is cached in op->cmtCov at setup (getIndCmt does no name lookup).
-// Returns the raw CMT value at observation row kk, or 1 when the model has no CMT
-// covariate (a single-endpoint model) or the value is missing.  CMT values are the
-// data's compartment numbers (distinct, not necessarily sequential).
+// CMT values are the data's compartment numbers (distinct, not necessarily
+// sequential).  Two distinct answers, deliberately NOT the same value:
+//
+//   * the model has NO CMT covariate (a single-endpoint model), or the individual
+//     has no covariate array -> 1, because every observation IS compartment 1;
+//   * the covariate is present but this row's value is MISSING -> NA_INTEGER, so a
+//     caller can tell "no compartment recorded here" from "compartment 1".
+//
+// Returning 1 for a missing value made the two indistinguishable, which silently
+// mis-classifies an NA row as a real compartment.  A caller that wants the old
+// lenient behaviour writes `cmt = getIndCmt(...); if (cmt == NA_INTEGER) cmt = 1;`.
 int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
-  if (op == NULL || op->cmtCov < 0) return 1;
+  if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return 1;
   if (kk < 0 || kk >= ind->n_all_times) {
     Rf_error("[getIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
   }
   double v = ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk];
-  if (ISNA(v)) return 1;
+  if (ISNA(v) || ISNAN(v)) return NA_INTEGER;
   return (int) v;
+}
+
+// Inverse of getIndCmt(): write the CMT covariate at row kk.  Lets a downstream
+// package re-base the CMT column (e.g. nlmixr2est's shared FOCEi solve pool,
+// whose peer models carry different sensitivity-compartment counts and so
+// different _CMT offsets) without reaching into op->cmtCov / ind->cov_ptr.  A
+// no-op for a model with no CMT covariate (single endpoint) or an individual
+// with no covariate array.
+void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt) {
+  if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return;
+  if (kk < 0 || kk >= ind->n_all_times) {
+    (Rf_error)("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
+  // NA_INTEGER is INT_MIN, so a plain (double) cast would store -2147483648.0 -- a
+  // finite value that ISNA() does not recognize and that covariate interpolation would
+  // treat as a real compartment number.  Round-trip it as the double NA instead, which
+  // is what getIndCmt() reads back as NA_INTEGER.
+  ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk] =
+    (cmt == NA_INTEGER) ? NA_REAL : (double) cmt;
 }
 
 ////////////////////////////////////////////////////////////////////////

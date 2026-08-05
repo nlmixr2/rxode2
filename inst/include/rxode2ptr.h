@@ -40,8 +40,61 @@ extern "C" {
   extern rxNormEng_t rxNormEng;
   typedef double (*rxUnifEng_t)(double low, double hi);
   extern rxUnifEng_t rxUnifEng;
+  // Per-observation CMT.  Returns 1 when the model has no CMT covariate (every
+  // observation is compartment 1) but NA_INTEGER when the covariate is present and
+  // this row's value is missing -- so "no compartment recorded" is distinguishable
+  // from "compartment 1".  For the old lenient behaviour, map NA_INTEGER to 1.
   typedef int (*getIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
   extern getIndCmt_t getIndCmt;
+  // Writer for the CMT covariate (inverse of getIndCmt); lets a downstream
+  // package re-base the CMT column without touching op->cmtCov / ind->cov_ptr.
+  typedef void (*setIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt);
+  extern setIndCmt_t setIndCmt;
+
+  // Event ("jump") sensitivity shape.  A shape is one model's six dims
+  // (active/nState/nParam/nParam2/nParam3/useCalcJac) plus its dosing-derivative
+  // function pointers; rxode2 holds exactly one installed at a time.  To solve
+  // peer models with different shapes through a shared solve pool, save the
+  // installed shape into a caller-owned buffer of rxode2EventSensShapeSize()
+  // bytes, install the batch's shape (rxode2EventSensLoadFull() from the model's
+  // `trans`, or a previously saved buffer), solve, then restore:
+  //
+  //   std::vector<char> saved(rxode2EventSensShapeSize());
+  //   rxode2EventSensShapeSave(saved.data(), saved.size());
+  //   rxode2EventSensShapeRestore(peer.data(), peer.size());  // solve the batch
+  //   rxode2EventSensShapeRestore(saved.data(), saved.size());
+  //
+  // Both take the buffer's capacity and refuse to touch a buffer that is too
+  // small, so a mis-sized allocation fails cleanly instead of running off its
+  // end.  The layout is opaque and may change between rxode2 versions: a buffer
+  // rxode2 does not recognize is rejected rather than installed, and a buffer
+  // must never be serialized or reused across sessions.  A saved shape also
+  // holds pointers INTO the model's shared library, so unloading that model
+  // (rxUnload()) invalidates it -- re-install with rxode2EventSensLoadFull()
+  // rather than restoring a shape saved before the unload.  These globals are
+  // read inside the OpenMP solve loops, so install and restore only at batch
+  // boundaries, never from a parallel region or while a solve is running.
+  // Neither calls Rf_error, so a C++ caller is not longjmp'd past its
+  // destructors; both return 1 on success and 0 if the buffer was rejected.
+  typedef int (*rxode2EventSensShapeSize_t)(void);
+  extern rxode2EventSensShapeSize_t rxode2EventSensShapeSize;
+  typedef int (*rxode2EventSensShapeSave_t)(void *buf, int bufSize);
+  extern rxode2EventSensShapeSave_t rxode2EventSensShapeSave;
+  typedef int (*rxode2EventSensShapeRestore_t)(const void *buf, int bufSize);
+  extern rxode2EventSensShapeRestore_t rxode2EventSensShapeRestore;
+  // Install a model's shape from its `trans` vector (all six dims).
+  typedef void (*rxode2EventSensLoadFull_t)(SEXP trans, int active, int nState, int nParam, int nParam2, int nParam3, int useCalcJac);
+  extern rxode2EventSensLoadFull_t rxode2EventSensLoadFull;
+  // Read / write the dims only (any getter pointer may be NULL to skip it).
+  typedef void (*rxode2EventSensGetDims_t)(int *active, int *nState, int *nParam, int *nParam2, int *nParam3, int *useCalcJac);
+  extern rxode2EventSensGetDims_t rxode2EventSensGetDims;
+  typedef void (*rxode2EventSensSetDims_t)(int active, int nState, int nParam, int nParam2, int nParam3, int useCalcJac);
+  extern rxode2EventSensSetDims_t rxode2EventSensSetDims;
+  // Toggle the active flag only / turn the jumps off and zero the dims.
+  typedef void (*rxode2EventSensSetActive_t)(int active);
+  extern rxode2EventSensSetActive_t rxode2EventSensSetActive;
+  typedef void (*rxode2EventSensDeactivate_t)(void);
+  extern rxode2EventSensDeactivate_t rxode2EventSensDeactivate;
 
   // Per-individual ODE solve buffer-pointer swap (nlmixr2est impmap gradient):
   // save the originals, install private larger buffers for a higher-state
@@ -350,8 +403,6 @@ extern "C" {
       setSeedEng1 = (setSeedEng1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 71));
       seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
       rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
-      rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
-      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
       setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
       getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
       setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
@@ -359,6 +410,17 @@ extern "C" {
       setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
       getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
       setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
+      rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
+      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      setIndCmt = (setIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
+      rxode2EventSensShapeSize = (rxode2EventSensShapeSize_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 84));
+      rxode2EventSensShapeSave = (rxode2EventSensShapeSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 85));
+      rxode2EventSensShapeRestore = (rxode2EventSensShapeRestore_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 86));
+      rxode2EventSensLoadFull = (rxode2EventSensLoadFull_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 87));
+      rxode2EventSensGetDims = (rxode2EventSensGetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 88));
+      rxode2EventSensSetDims = (rxode2EventSensSetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 89));
+      rxode2EventSensSetActive = (rxode2EventSensSetActive_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 90));
+      rxode2EventSensDeactivate = (rxode2EventSensDeactivate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 91));
     }
     return R_NilValue;
   }
@@ -447,6 +509,15 @@ extern "C" {
   setIndSolveLast_t setIndSolveLast = NULL;             \
   getIndSolveLast2_t getIndSolveLast2 = NULL;           \
   setIndSolveLast2_t setIndSolveLast2 = NULL;           \
+  setIndCmt_t setIndCmt = NULL;                         \
+  rxode2EventSensShapeSize_t rxode2EventSensShapeSize = NULL;       \
+  rxode2EventSensShapeSave_t rxode2EventSensShapeSave = NULL;       \
+  rxode2EventSensShapeRestore_t rxode2EventSensShapeRestore = NULL; \
+  rxode2EventSensLoadFull_t rxode2EventSensLoadFull = NULL;         \
+  rxode2EventSensGetDims_t rxode2EventSensGetDims = NULL;           \
+  rxode2EventSensSetDims_t rxode2EventSensSetDims = NULL;           \
+  rxode2EventSensSetActive_t rxode2EventSensSetActive = NULL;       \
+  rxode2EventSensDeactivate_t rxode2EventSensDeactivate = NULL;     \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

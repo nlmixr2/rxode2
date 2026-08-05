@@ -717,6 +717,11 @@ rxode2 <- # nolint
       .f <- get(.n, envir = .env$cmpMgr)
       if (is.function(.f)) assign(.n, removeSource(.f), envir = .env$cmpMgr)
     }
+    ## Two closures escape the sweep above -- assignPtr's `.f`, and `.badBuild` inside
+    ## the LIST .rxDll$.call, which ls() never walks.  They hold independent references
+    ## to the same srcfilealias, so leaving either keeps the session alive and the sweep
+    ## measures as no change at all.  See rxStripModelSrc().
+    rxStripModelSrc(.env)
     .env$calcJac <- (length(.mv$dfdy) > 0)
     .env$calcSens <- (length(.mv$sens) > 0)
     class(.env) <- "rxode2"
@@ -1293,7 +1298,8 @@ coef.rxode2 <- function(object,
 }
 
 .rxPre <- function(model,
-                   modName = NULL) {
+                   modName = NULL,
+                   eventSensCode = NULL) {
   if (!is.null(modName)) {
     if (is.null(.pkg)) {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_", .Platform$r_arch, "_")
@@ -1306,7 +1312,82 @@ coef.rxode2 <- function(object,
     .cache <- .rxModelVarsCCache
     .modelPrefix <- paste0("rx_", .mv$md5["parsed_md5"], "_", .Platform$r_arch, "_")
   }
+  # `eventSensCode` changes the GENERATED C but is not part of the model text, so
+  # without it two variants of one model (event sensitivities on vs off) derive the
+  # same prefix -- and therefore the same .c/.so path in the rxode2 cache.  The second
+  # build overwrites the first, while any model object created earlier still resolves
+  # its entry points BY NAME (R_GetCCallable) and so silently starts executing the
+  # other variant: declared `lhs` width unchanged, most slots never written.  See #1171.
+  #
+  # Only extend the prefix when there IS event-sensitivity code, so every existing
+  # cache entry keeps its current path and nothing is invalidated for the common case.
+  .esKey <- .rxEventSensKey(eventSensCode)
+  if (nzchar(.esKey)) {
+    .modelPrefix <- paste0(substr(.modelPrefix, 0, nchar(.modelPrefix) - 1), "es", .esKey, "_")
+  }
   return(.modelPrefix)
+}
+
+#' Drop the srcrefs that pin a whole R session onto a compiled model
+#'
+#' A compiled model is kept in `.rxModels` for the life of the session, so
+#' anything it retains is retained forever.  [utils::removeSource()] is already
+#' swept over the model environment and its `cmpMgr`, but two closures escape
+#' that sweep -- `.f` in `assignPtr`'s environment and `.badBuild` in the list
+#' `.rxDll$.call` -- and each holds an independent reference to a srcref whose
+#' `srcfilealias` captures the session, so both must be stripped.  Called
+#' internally by [rxode2()]; exported for downstream packages that build models
+#' themselves.
+#'
+#' @param mod compiled rxode2 model
+#' @return `mod`, modified in place
+#' @examples
+#' \donttest{
+#' mod <- rxode2({
+#'   d/dt(intestine) <- -a * intestine
+#'   d/dt(blood) <- a * intestine - b * blood
+#' })
+#' rxStripModelSrc(mod)
+#' }
+#' @export
+#' @keywords internal
+rxStripModelSrc <- function(mod) {
+  if (!is.environment(mod)) return(mod)
+  .strip <- function(env, nm) {
+    if (!is.environment(env)) return(invisible(NULL))
+    .f <- tryCatch(get(nm, envir = env, inherits = FALSE), error = function(e) NULL)
+    if (is.function(.f)) {
+      tryCatch(assign(nm, removeSource(.f), envir = env), error = function(e) NULL)
+    }
+    invisible(NULL)
+  }
+  .ap <- tryCatch(get("assignPtr", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.function(.ap)) .strip(environment(.ap), ".f")
+  .dll <- tryCatch(get(".rxDll", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.list(.dll) && is.function(.dll$.call)) .strip(environment(.dll$.call), ".badBuild")
+  mod
+}
+
+#' Short digest of the event-sensitivity code bodies, or "" when there are none
+#'
+#' Part of the compiled-model cache key: two builds of one model text whose
+#' `eventSensCode` differs generate different C and must not share a `.so`.
+#' @param eventSensCode character vector of C body lines, or NULL
+#' @return a short hex string, or "" when there is no event-sensitivity code
+#' @noRd
+.rxEventSensKey <- function(eventSensCode) {
+  if (is.null(eventSensCode)) return("")
+  .code <- as.character(eventSensCode)
+  # NA is normalized to "" IN PLACE rather than dropped: dropping changes the vector's
+  # LENGTH, which both makes c("a", NA) and c("a") key differently (a needless
+  # recompile) and -- worse -- lets two different slot layouts collapse onto one key.
+  .code[is.na(.code)] <- ""
+  if (length(.code) == 0L || !any(nzchar(.code))) return("")
+  # digest the VECTOR, not a pasted string: a slot's body may itself contain newlines,
+  # so any in-band separator is ambiguous -- c("a\nb", "") and c("a", "b") would have to
+  # be told apart by trailing-separator count alone.  Serializing the vector keeps the
+  # element boundaries.
+  substr(digest::digest(.code, algo = "md5"), 1L, 8L)
 }
 
 .md5Rx <- NULL
@@ -1767,7 +1848,7 @@ rxCompile.rxModelVars <- function(model, # Model
   model <- rxGetModel(model)
 
   if (is.null(prefix)) {
-    prefix <- .rxPre(model, modName)
+    prefix <- .rxPre(model, modName, eventSensCode)
   }
   if (is.null(dir)) {
     if (getOption("rxode2.tempfiles", TRUE)) {

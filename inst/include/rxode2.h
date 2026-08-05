@@ -111,6 +111,20 @@ rx_solve *getRxSolve_(void);
 void rxSetSolveAtolRtol(double atol, double rtol);
 void rxGetSolveAtolRtol(double *atol, double *rtol);
 int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt);
+// Event ("jump") sensitivity shape (src/par_solve.cpp); see the block comment
+// there for how a downstream package swaps shapes around a batch of solves.
+int rxode2EventSensShapeSize(void);
+int rxode2EventSensShapeSave(void *buf, int bufSize);
+int rxode2EventSensShapeRestore(const void *buf, int bufSize);
+void rxode2EventSensLoadFull(SEXP trans, int active, int nState, int nParam,
+                             int nParam2, int nParam3, int useCalcJac);
+void rxode2EventSensGetDims(int *active, int *nState, int *nParam, int *nParam2,
+                            int *nParam3, int *useCalcJac);
+void rxode2EventSensSetDims(int active, int nState, int nParam, int nParam2,
+                            int nParam3, int useCalcJac);
+void rxode2EventSensSetActive(int active);
+void rxode2EventSensDeactivate(void);
 #endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);
