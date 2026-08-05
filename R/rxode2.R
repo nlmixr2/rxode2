@@ -1960,8 +1960,37 @@ rxCompile.rxModelVars <- function(model, # Model
         .j <- 0
         .i <- 0
         .trans <- c(.mv$trans, .mv$md5)
-        ## Load model into memory if needed
-        if (.Call(`_rxode2_codeLoaded`) == 0L) .rxModelVarsCharacter(setNames(.mv$model, NULL))
+        ## Load model into memory if needed.
+        ##
+        ## `_rxode2_codegen` below emits C from the parser's GLOBAL
+        ## `.rxModelVarsLast`, not from `model` -- so the parsed state has to be
+        ## THIS model.  Testing `codeLoaded() == 0L` alone is not enough: it only
+        ## asks whether *some* model is loaded.  Whenever the loaded model is a
+        ## DIFFERENT one, the C written out is that other model's while the
+        ## artifact keeps this model's md5-derived name, and the returned
+        ## `modVars` (read back from the DLL) describe the wrong model entirely.
+        ##
+        ## `rxode2()` never hits this, because it parses and then immediately
+        ## compiles.  A RE-compile does: an existing model object whose .so is
+        ## gone (a saved fit restored in a new session -- its DLL lived in the
+        ## original session's tempdir) reaches here via rxDynLoad() ->
+        ## `$compile()` long after some other model was parsed.  Measured on a
+        ## restored SAEM fit: the mu-referenced prediction model `param(tcl,tv)`
+        ## came back as the fit's base model `param(tcl,eta.cl,tv,eta.v)`, so
+        ## every later solve failed with "parameter(s) are required for solving:
+        ## eta.v, eta.cl".
+        ##
+        ## Re-parse unless the loaded model is provably this one.  Only the model
+        ## SYNTAX (`normModel`) is parsed: the sibling `indLin` slot holds
+        ## generated matrix-exponential C, and it is restored from `.indLinInfo`
+        ## / `.rxMECode` a few lines below anyway.
+        .lastMd5 <- .rxModelVarsLast$md5["parsed_md5"]
+        if (.Call(`_rxode2_codeLoaded`) == 0L ||
+              length(.lastMd5) != 1L || anyNA(.lastMd5) ||
+              !identical(as.character(.lastMd5),
+                         as.character(.mv$md5["parsed_md5"]))) {
+          .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
+        }
         .prefix2 <- .rxModelVarsCCache[[3]]
         ## SEXP pMd5, SEXP timeId, SEXP fixInis
         .newMod <- FALSE
