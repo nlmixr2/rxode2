@@ -1,5 +1,15 @@
 # rxode2 5.1.7 (development version)
 
+## New features
+
+- `rxSolve(safeLog=2)` floors `log(0)` at `log(.Machine$double.eps)` the way
+  `safeLog=TRUE` does, but treats a **negative** argument as a domain error and
+  returns `NaN`.  `safeLog=TRUE` (the default) and `safeLog=FALSE` are
+  unchanged.  This is for a hand-written likelihood taking `log()` of a
+  parameter that must stay positive: under `safeLog=TRUE` an invalid negative
+  value returns a large finite number, which `-log(sigma)` turns into a reward
+  of roughly `+36` per observation instead of a rejection.
+
 ## Bug fixes
 
 ### Installation / linking

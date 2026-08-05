@@ -1225,7 +1225,7 @@ vector based on each state.}
 \item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
 
-\item{safeLog}{Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  By default this is turned on.}
+\item{safeLog}{Use safe log.  When enabled (\code{TRUE}, the default) if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  With \code{FALSE} both return the usual \code{NaN}/\code{-Inf}.  With \code{2} only zero is floored to \verb{log(machine epsilon)}; a \emph{negative} argument is treated as a domain error and returns \code{NaN}.  Use \code{2} when a hand-written likelihood takes \code{log()} of a parameter that must stay positive, so an invalid value propagates as \code{NaN} instead of a large finite number the optimizer could mistake for a good fit.}
 
 \item{safePow}{Use safe powers.  When enabled if your power is
 negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
