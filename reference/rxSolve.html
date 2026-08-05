@@ -1463,7 +1463,7 @@ this is turned on but you may turn it off if you wish.</p></dd>
 
 
 <dt id="arg-safelog">safeLog<a class="anchor" aria-label="anchor" href="#arg-safelog"></a></dt>
-<dd><p>Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return <code>log(machine epsilon)</code>.  By default this is turned on.</p></dd>
+<dd><p>Use safe log.  When enabled (<code>TRUE</code>, the default) if your value that you are taking log() of is negative or zero, this will return <code>log(machine epsilon)</code>.  With <code>FALSE</code> both return the usual <code>NaN</code>/<code>-Inf</code>.  With <code>2</code> only zero is floored to <code>log(machine epsilon)</code>; a <em>negative</em> argument is treated as a domain error and returns <code>NaN</code>.  Use <code>2</code> when a hand-written likelihood takes <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">log()</a></code> of a parameter that must stay positive, so an invalid value propagates as <code>NaN</code> instead of a large finite number the optimizer could mistake for a good fit.</p></dd>
 
 
 <dt id="arg-safepow">safePow<a class="anchor" aria-label="anchor" href="#arg-safepow"></a></dt>

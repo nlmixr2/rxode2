@@ -111,6 +111,11 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.7" id="rxode2-517-development-version">rxode2 5.1.7 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-517-development-version"></a></h2>
 <div class="section level3">
+<h3 id="new-features-5-1-7">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-7"></a></h3>
+<ul><li>
+<code>rxSolve(safeLog=2)</code> floors <code>log(0)</code> at <code>log(.Machine$double.eps)</code> the way <code>safeLog=TRUE</code> does, but treats a <strong>negative</strong> argument as a domain error and returns <code>NaN</code>. <code>safeLog=TRUE</code> (the default) and <code>safeLog=FALSE</code> are unchanged. This is for a hand-written likelihood taking <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">log()</a></code> of a parameter that must stay positive: under <code>safeLog=TRUE</code> an invalid negative value returns a large finite number, which <code>-log(sigma)</code> turns into a reward of roughly <code>+36</code> per observation instead of a rejection.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="bug-fixes-5-1-7">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-7"></a></h3>
 <div class="section level4">
 <h4 id="installation--linking-5-1-7">Installation / linking<a class="anchor" aria-label="anchor" href="#installation--linking-5-1-7"></a></h4>
