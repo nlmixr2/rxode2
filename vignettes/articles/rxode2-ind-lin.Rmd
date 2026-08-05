@@ -527,6 +527,17 @@ Differences from NONMEM:
 | Exploratory model with changing structure | `d/dt()` -- faster iteration |
 | Nonlinear model | `d/dt()` with a time-stepping solver, unless you have a specific reason not to |
 
+## Use in nlmixr2
+
+`matExp()` and `indLin()` models estimate in nlmixr2 across the focei, nlm and
+SAEM families and match the equivalent `d/dt()` model. Be aware of how that
+currently works: nlmixr2est materializes the rate constants back into ordinary
+ODEs before building each estimation model, so a fit solves the ODE form rather
+than propagating a matrix exponential. The syntax is therefore a modeling
+convenience there, not a change of integrator.
+
+Full matrix exponential support during estimation is upcoming.
+
 ## When to use `method = "indLin"`
 
 | Scenario | Recommendation |
