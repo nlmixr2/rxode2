@@ -20,7 +20,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
     <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponentials / Inductive Linearization</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponential Solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -122,6 +122,11 @@
 <ul><li>On Windows, <code>STAN_THREADS</code> and the TBB link are kept when building against <code>RcppParallel</code> &gt;= 6.2.0, which ships <code>tbb.dll</code>/<code>tbbmalloc.dll</code> with the package again. <code>configure</code> now decides whether to strip the TBB flags by looking for the TBB library in <code>RcppParallel</code>’s <code>lib</code> directory rather than by the shape of the <code>-L</code> flags it emits, so the TBB-less build introduced in 5.1.6 is used only with <code>RcppParallel</code> 6.0.0–6.1.1, which shipped no TBB library on Windows. (The 5.1.6 release notes had this backwards: <code>RcppParallel</code> 6.2.0 restored the TBB library on Windows rather than dropping it.)</li>
 </ul></div>
 </div>
+<div class="section level3">
+<h3 id="bug-fixes-5-1-7-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-7-1"></a></h3>
+<ul><li>
+<code><a href="../reference/rxCompile.html">rxCompile()</a></code> now re-parses the model it is handed whenever the parser’s current model is a different one. Code generation reads the parser’s global model state, and the old guard only checked whether <em>some</em> model was loaded, so a re-compile requested while an unrelated model was parsed wrote that other model’s C under this model’s name and handed back its model variables. Building a model with <code><a href="../reference/rxode2.html">rxode2()</a></code> never hit this (it parses, then compiles immediately), but re-loading one whose <code>.so</code> is gone did – as when a saved fit is restored in a new session, since its DLL lived in the original session’s <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>. Such a fit came back solving a different model, e.g. a restored SAEM fit failing with “The following parameter(s) are required for solving: eta.v, eta.cl”.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.6" id="rxode2-516">rxode2 5.1.6<a class="anchor" aria-label="anchor" href="#rxode2-516"></a></h2><p class="text-muted">CRAN release: 2026-08-04</p>

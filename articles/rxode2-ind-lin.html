@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Matrix Exponentials and Inductive Linearization in rxode2 • rxode2</title>
+<title>Matrix Exponential Solving in rxode2 • rxode2</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Matrix Exponentials and Inductive Linearization in rxode2">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Matrix Exponential Solving in rxode2">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
@@ -41,7 +41,7 @@
 <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
     <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponentials / Inductive Linearization</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponential Solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
   </ul>
 </li>
@@ -146,7 +146,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Matrix Exponentials and Inductive Linearization in rxode2</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Matrix Exponential Solving in rxode2</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/rxode2-ind-lin.Rmd" class="external-link"><code>vignettes/articles/rxode2-ind-lin.Rmd</code></a></small>
@@ -158,151 +158,226 @@
 <div class="section level2">
 <h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
 </h2>
-<p>Nonlinear ordinary differential equations (ODEs) arise naturally in
-pharmacokinetic–pharmacodynamic (PKPD) models. Consider a drug that
-undergoes Michaelis–Menten (saturable) elimination: the clearance
-depends on the current concentration, making the ODE nonlinear. Standard
-time-stepping solvers (LSODA, Runge–Kutta) handle this by advancing one
-small step at a time, using only local information about the
-solution.</p>
-<p><strong>Inductive Linearization</strong> (IndLin), introduced by
-Duffull and Hegarty (2014) and further explored by Sharif, Hasegawa and
-Duffull (2022), offers an alternative. Rather than stepping forward in
-time, it iteratively converts the nonlinear ODE into a linear
-time-varying (LTV) system. The LTV system is of the form</p>
-<pre><code>dy/dt = f(t) + A(t, y^[n-1]) * y^[n]</code></pre>
-<p>where the matrix <code>A</code> is formed using the solution from the
-previous iteration <code>y^[n-1]</code>. Starting from
-<code>y^[0] = 0</code>, each iteration produces a more accurate
-approximation of the true solution. Crucially, because the system is now
-linear, it can be solved exactly over the whole time span using the
-<strong>matrix exponential</strong> (ME), rather than approximated with
-finite steps.</p>
-<p>rxode2 pairs IndLin with the matrix-exponential integrator using
-eigenvalue decomposition (EVD):</p>
-<pre><code>y^[n](t) = V * diag(exp(lambda * t)) * V^{-1} * y0</code></pre>
+<p>A linear system of ODEs</p>
+<pre><code>dy/dt = A . y</code></pre>
+<p>has a closed-form solution given by the <strong>matrix
+exponential</strong>,</p>
+<pre><code>y(t) = exp(A * t) . y0</code></pre>
+<p>which rxode2 evaluates through an eigenvalue decomposition,</p>
+<pre><code>y(t) = V . diag(exp(lambda * t)) . V^-1 . y0</code></pre>
 <p>where <code>V</code> are the eigenvectors and <code>lambda</code> the
-eigenvalues of the rate matrix <code>K</code>.</p>
-<div class="section level3">
-<h3 id="key-properties">Key properties<a class="anchor" aria-label="anchor" href="#key-properties"></a>
-</h3>
-<ul>
-<li>The solution is available at <strong>all</strong> times in
-<code>[0, T]</code> simultaneously, not just at local steps.
-Perturbations such as dose events at any time are handled globally.</li>
-<li>For purely <strong>linear</strong> ODE systems the iteration
-converges in one step, giving an exact solution via ME alone.</li>
-<li>For <strong>nonlinear</strong> systems the method is approximate but
-converges with a user-controlled tolerance.</li>
-</ul>
-<p>The reference comparing IndLin to MATLAB’s <code>ode45</code> (Sharif
-et al. 2022) showed that IndLin with an adaptive step size and a
-convergence stopping rule was six times faster than <code>ode45</code>
-for a Michaelis–Menten PK example, while recovering parameter estimates
-of comparable accuracy.</p>
-<hr>
-</div>
+eigenvalues of <code>A</code>. For a system that really is linear this
+is exact – there is no discretization error at any step size, because
+there is no stepping.</p>
+<p>Every standard compartmental PK model is of this form, which makes
+the matrix exponential a natural fit: the rate matrix is built once from
+the model’s rate constants and the solution is propagated across each
+interval in one operation.</p>
+<p><code>rxSolve(..., method = "indLin")</code> selects this
+integrator.</p>
 </div>
 <div class="section level2">
-<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+<h2 id="three-things-sharing-the-indlin-name">Three things sharing the <code>indLin</code> name<a class="anchor" aria-label="anchor" href="#three-things-sharing-the-indlin-name"></a>
 </h2>
-<div class="section level3">
-<h3 id="step-1-build-the-model-with-indlin-true">Step 1 – build the model with <code>indLin = TRUE</code><a class="anchor" aria-label="anchor" href="#step-1-build-the-model-with-indlin-true"></a>
-</h3>
-<p>Activate inductive linearization by passing
-<code>indLin = TRUE</code> to <code><a href="../reference/rxode2.html">rxode2()</a></code>:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">mmPK</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
-<span>  <span class="op">{</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
-<span>    <span class="va">Cp</span>           <span class="op">&lt;-</span> <span class="va">center</span> <span class="op">/</span> <span class="va">V</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">Vmax</span> <span class="op">*</span> <span class="va">Cp</span> <span class="op">/</span> <span class="op">(</span><span class="va">Km</span> <span class="op">+</span> <span class="va">Cp</span><span class="op">)</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>This step uses the <code>symengine</code> computer-algebra system to
-factor each ODE right-hand side into a rate matrix <code>A</code> (the
-part linear in the state variables) and an inhomogeneous forcing vector
-<code>f</code> (the part that depends only on time and parameters). A
-summary of the factorization is printed when you inspect the model:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Name</th>
+<th>What it is</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>indLin(model)</code></td>
+<td>An R function</td>
+<td>Rewrites a <code>d/dt()</code> model into matrix-exponential
+(<code>matExp()</code>) form and returns the model code as text</td>
+</tr>
+<tr class="even">
+<td><code>indLin(state) &lt;- expr</code></td>
+<td>A model statement</td>
+<td>Adds an inhomogeneous forcing term to one compartment of a
+<code>matExp()</code> model</td>
+</tr>
+<tr class="odd">
+<td><code>method = "indLin"</code></td>
+<td>An <code><a href="../reference/rxSolve.html">rxSolve()</a></code> option</td>
+<td>Selects the matrix-exponential integrator instead of a time-stepping
+solver</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
+<h2 id="what-indlin-does">What <code>indLin()</code> does<a class="anchor" aria-label="anchor" href="#what-indlin-does"></a>
+</h2>
+<p><code><a href="../reference/indLin.html">indLin()</a></code> is the symbolic half. Give it a model written
+with <code>d/dt()</code> and it returns the same model written as a rate
+matrix:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mmPK</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="step-2-solve-with-method-indlin">Step 2 – solve with <code>method = "indLin"</code><a class="anchor" aria-label="anchor" href="#step-2-solve-with-method-indlin"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, Km <span class="op">=</span> <span class="fl">0.5</span>, Vmax <span class="op">=</span> <span class="fl">0.2</span>, V <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">oralOde</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="op">(</span><span class="va">cl</span> <span class="op">/</span> <span class="va">v</span><span class="op">)</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">3</span>, start.time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">12</span>, <span class="fl">16</span>, <span class="fl">24</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">oralOde</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>which prints</p>
+<pre><code><span><span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">central</span><span class="op">)</span></span>
+<span><span class="va">k_depot_central</span> <span class="op">=</span> <span class="va">ka</span></span>
+<span><span class="va">k_central_output</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">v</span></span>
+<span><span class="va">cp</span><span class="op">=</span><span class="va">central</span><span class="op">/</span><span class="va">v</span></span></code></pre>
+<p><code><a href="../reference/indLin.html">indLin()</a></code> differentiated each right-hand side with
+respect to each state to get</p>
+<pre><code>A = [ -ka       0    ]
+    [  ka   -cl/v    ]</code></pre>
+<p>and then reported <code>A</code> through its <em>micro-constants</em>
+rather than as a matrix: the off-diagonal
+<code>A[central, depot] = ka</code> becomes
+<code>k_depot_central</code>, and the column sum lost to the outside
+world, <code>-(A[depot, depot] + A[central, depot])</code>, becomes
+<code>k_central_output</code>. The diagonal is implied, so it never has
+to be written down. Nothing else changes – the output line
+<code>cp = central/v</code> is carried through untouched.</p>
+<p>A nonlinear model converts too, but the nonlinearity ends up
+<em>inside</em> a rate constant:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmOde</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">km</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span>    <span class="va">vmax</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">vmax</span> <span class="op">*</span> <span class="va">cp</span> <span class="op">/</span> <span class="op">(</span><span class="va">km</span> <span class="op">+</span> <span class="va">cp</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">sol_indlin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
-<span><span class="va">sol_lsoda</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sol_indlin</span><span class="op">)</span></span></code></pre></div>
-<p>For a purely linear model the two solutions are numerically
-identical; for a Michaelis–Menten model they are close, with differences
-controlled by the convergence tolerance.</p>
-</div>
-<div class="section level3">
-<h3 id="comparing-against-lsoda">Comparing against LSODA<a class="anchor" aria-label="anchor" href="#comparing-against-lsoda"></a>
-</h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">sol_lsoda</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"time"</span>, <span class="st">"Cp"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">sol_indlin</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"time"</span>, <span class="st">"Cp"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>  by <span class="op">=</span> <span class="st">"time"</span>, suffixes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">".lsoda"</span>, <span class="st">".indlin"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">Cp.lsoda</span>,  colour <span class="op">=</span> <span class="st">"LSODA"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">Cp.indlin</span>, colour <span class="op">=</span> <span class="st">"IndLin"</span><span class="op">)</span>, linetype <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Time (h)"</span>, y <span class="op">=</span> <span class="st">"Concentration (mg/L)"</span>, colour <span class="op">=</span> <span class="st">"Solver"</span><span class="op">)</span></span></code></pre></div>
-<hr>
-</div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">mmOde</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">central</span><span class="op">)</span></span>
+<span><span class="va">k_depot_central</span> <span class="op">=</span> <span class="va">ka</span></span>
+<span><span class="va">k_central_output</span> <span class="op">=</span> <span class="va">vmax</span><span class="op">/</span><span class="op">(</span><span class="va">v</span><span class="op">*</span><span class="op">(</span><span class="va">km</span> <span class="op">+</span> <span class="va">central</span><span class="op">/</span><span class="va">v</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">cp</span><span class="op">=</span><span class="va">central</span><span class="op">/</span><span class="va">v</span></span></code></pre>
+<p><code>k_central_output</code> now contains a state, so the rate
+matrix is no longer constant. See the accuracy section below – this case
+needs care.</p>
+<p>You rarely have to call <code><a href="../reference/indLin.html">indLin()</a></code> yourself:
+<code>rxSolve(..., method = "indLin")</code> on an ODE model runs this
+conversion internally. Calling it directly is how you inspect the
+factorization, or obtain a <code>matExp()</code> model you want to edit
+and keep.</p>
 </div>
 <div class="section level2">
-<h2 id="purely-linear-systems-matrix-exponential-alone">Purely linear systems: matrix exponential alone<a class="anchor" aria-label="anchor" href="#purely-linear-systems-matrix-exponential-alone"></a>
+<h2 id="how-rxode2-solves-it">How rxode2 solves it<a class="anchor" aria-label="anchor" href="#how-rxode2-solves-it"></a>
 </h2>
-<p>When every ODE is linear in the state variables, the inductive
-linearization loop converges immediately and the solution is exact. This
-includes all standard compartmental PK models.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">simplePK</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
-<span>  <span class="op">{</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="op">(</span><span class="va">CL</span> <span class="op">/</span> <span class="va">V</span><span class="op">)</span> <span class="op">*</span> <span class="va">center</span></span>
-<span>    <span class="va">Cp</span>           <span class="op">&lt;-</span> <span class="va">center</span> <span class="op">/</span> <span class="va">V</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
+<p>Over each substep the rate matrix is evaluated once at the current
+state, the matrix exponential advances the states exactly for that
+frozen matrix, and the next substep starts from the updated state.</p>
+<p>For a <strong>linear</strong> model this is exact and the substep
+length is irrelevant:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">oralMe</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
+<span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">central</span><span class="op">)</span></span>
+<span>    <span class="va">k_depot_central</span> <span class="op">&lt;-</span> <span class="va">ka</span></span>
+<span>    <span class="va">k_central_output</span> <span class="op">&lt;-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">params2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, CL <span class="op">=</span> <span class="fl">0.1</span>, V <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span>, ii <span class="op">=</span> <span class="fl">12</span>, until <span class="op">=</span> <span class="fl">48</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">72</span>, by <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ev2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">ev2</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">100</span>, start.time <span class="op">=</span> <span class="fl">0</span>, nbr.doses <span class="op">=</span> <span class="fl">5</span>, dosing.interval <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></span>
-<span><span class="va">ev2</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">72</span>, by <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">meSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">oralMe</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
+<span><span class="va">odeSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">oralOde</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">pk_me</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">simplePK</span>, <span class="va">params2</span>, <span class="va">ev2</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
-<span><span class="va">pk_lsoda</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">simplePK</span>, <span class="va">params2</span>, <span class="va">ev2</span>, method <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span></span>
+<span><span class="co">## differences are at machine precision (~3e-13)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">meSol</span><span class="op">$</span><span class="va">cp</span> <span class="op">-</span> <span class="va">odeSol</span><span class="op">$</span><span class="va">cp</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>For a model whose rate matrix depends on the states, accuracy is
+governed entirely by <strong>how long a substep is allowed to
+be</strong>, which is what <code>hmax</code> sets:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">solveMm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmOde</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">12</span>, <span class="fl">16</span>, <span class="fl">24</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="co">## Differences should be at machine precision</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">pk_me</span><span class="op">$</span><span class="va">Cp</span> <span class="op">-</span> <span class="va">pk_lsoda</span><span class="op">$</span><span class="va">Cp</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<hr>
+<span><span class="va">refMm</span> <span class="op">&lt;-</span> <span class="fu">solveMm</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">maxRelErr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">sol</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">sol</span><span class="op">$</span><span class="va">cp</span> <span class="op">-</span> <span class="va">refMm</span><span class="op">$</span><span class="va">cp</span><span class="op">)</span> <span class="op">/</span> <span class="va">refMm</span><span class="op">$</span><span class="va">cp</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">maxRelErr</span><span class="op">(</span><span class="fu">solveMm</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">maxRelErr</span><span class="op">(</span><span class="fu">solveMm</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"indLin"</span>, hmax <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">maxRelErr</span><span class="op">(</span><span class="fu">solveMm</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"indLin"</span>, hmax <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th><code>hmax</code></th>
+<th>Maximum relative error vs LSODA</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>default (the spacing of your own sampling times)</td>
+<td>7.1e-01</td>
+</tr>
+<tr class="even">
+<td><code>1</code></td>
+<td>2.6e-01</td>
+</tr>
+<tr class="odd">
+<td><code>0.1</code></td>
+<td>1.3e-02</td>
+</tr>
+<tr class="even">
+<td><code>0.01</code></td>
+<td>1.3e-03</td>
+</tr>
+<tr class="odd">
+<td><code>0.001</code></td>
+<td>1.4e-04</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Set <code>hmax</code> for state-dependent models.</strong>
+The default <code>hmax</code> is tied to the spacing of your own
+sampling and dosing times, which has nothing to do with how fast the
+rate matrix changes; with the sparse sampling grid above that default is
+badly too coarse. Always set an explicit <code>hmax</code> when the rate
+matrix depends on the states, and confirm the answer is stable when you
+halve it. There is no automatic error control behind this method – if a
+time-stepping solver can solve your model, it will usually be the safer
+choice for a nonlinear one.</p>
+</blockquote>
 </div>
 <div class="section level2">
 <h2 id="matrix-exponential-algorithms">Matrix exponential algorithms<a class="anchor" aria-label="anchor" href="#matrix-exponential-algorithms"></a>
 </h2>
-<p>Three ME algorithms are available via
-<code>indLinMatExpType</code>:</p>
+<p>Three algorithms are available via <code>indLinMatExpType</code>:</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -316,16 +391,17 @@ includes all standard compartmental PK models.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>"Al-Mohy"</code></td>
-<td>Al-Mohy &amp; Higham (2009) scaling and squaring</td>
-<td>Accurate; order controlled by <code>indLinMatExpOrder</code>
+<td><code>"expokit"</code></td>
+<td>Sidje (1998) Krylov/Pade</td>
+<td>
+<strong>Default.</strong> Good for sparse or large matrices;
+controlled by <code>indLinPhiTol</code> and <code>indLinPhiM</code>
 </td>
 </tr>
 <tr class="even">
-<td><code>"expokit"</code></td>
-<td>Sidje (1998) Krylov/Pade</td>
-<td>Good for sparse/large matrices; controlled by
-<code>indLinPhiTol</code> and <code>indLinPhiM</code>
+<td><code>"Al-Mohy"</code></td>
+<td>Al-Mohy and Higham (2009) scaling and squaring</td>
+<td>Accurate; order controlled by <code>indLinMatExpOrder</code>
 </td>
 </tr>
 <tr class="odd">
@@ -336,18 +412,12 @@ includes all standard compartmental PK models.</p>
 </tr>
 </tbody>
 </table>
-<p>The default is <code>"expokit"</code>.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## Al-Mohy / Higham algorithm, Pade order 8</span></span>
-<span><span class="va">sol_almohy</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>,</span>
-<span>                      method          <span class="op">=</span> <span class="st">"indLin"</span>,</span>
-<span>                      indLinMatExpType  <span class="op">=</span> <span class="st">"Al-Mohy"</span>,</span>
-<span>                      indLinMatExpOrder <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">almohySol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmOde</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span>, hmax <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>                     indLinMatExpType <span class="op">=</span> <span class="st">"Al-Mohy"</span>, indLinMatExpOrder <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co">## RcppArmadillo expmat</span></span>
-<span><span class="va">sol_arma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>,</span>
-<span>                    method         <span class="op">=</span> <span class="st">"indLin"</span>,</span>
-<span>                    indLinMatExpType <span class="op">=</span> <span class="st">"arma"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">armaSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmOde</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span>, hmax <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>                   indLinMatExpType <span class="op">=</span> <span class="st">"arma"</span><span class="op">)</span></span></code></pre></div>
 <p>For the expokit method, two additional controls are available:</p>
 <ul>
 <li>
@@ -357,142 +427,114 @@ the exponential-matrix action computation.</li>
 <code>indLinPhiM</code> (default <code>0L</code>, meaning
 automatic): maximum Krylov basis size.</li>
 </ul>
-<hr>
 </div>
 <div class="section level2">
-<h2 id="controlling-the-linearization-strategy">Controlling the linearization strategy<a class="anchor" aria-label="anchor" href="#controlling-the-linearization-strategy"></a>
+<h2 id="controlling-the-factorization">Controlling the factorization<a class="anchor" aria-label="anchor" href="#controlling-the-factorization"></a>
 </h2>
+<p>When an ODE term is the product of two or more states
+(<code>y * z</code>), there is no unique way to split it into
+<code>A . y</code>: the term can be assigned to <code>y</code>, to
+<code>z</code>, or shared. Two session-level settings control the choice
+<code><a href="../reference/indLin.html">indLin()</a></code> makes. The van der Pol oscillator, whose
+<code>mu * (1 - y^2) * dy</code> term mixes both states, shows the
+difference.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">vanPol</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">dy</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="rxindlinstrategy">
 <code>rxIndLinStrategy()</code><a class="anchor" aria-label="anchor" href="#rxindlinstrategy"></a>
 </h3>
-<p>When an ODE term contains the product of two or more state variables
-(e.g., <code>y * z</code>), the solver must decide which state to use as
-the linear factor. <code><a href="../reference/rxIndLinStrategy.html">rxIndLinStrategy()</a></code> selects the
-algorithm:</p>
 <ul>
 <li>
 <code>"curState"</code> (default): prefer the state whose derivative
-is being computed (<code>d/dt(y) &lt;- ... y*z ...</code> factors by
-<code>y</code>). When the current state is not present, fall back to the
-first state found.</li>
+is being computed; fall back to the first state found when it is
+absent.</li>
 <li>
 <code>"split"</code>: divide the term equally among all states
 involved.</li>
 </ul>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## Use split strategy for the Van der Pol equation</span></span>
-<span><span class="fu"><a href="../reference/rxIndLinStrategy.html">rxIndLinStrategy</a></span><span class="op">(</span><span class="st">"split"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">vanPol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
-<span>  <span class="op">{</span></span>
-<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="fl">2</span></span>
-<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">dy</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="../reference/rxIndLinStrategy.html">rxIndLinStrategy</a></span><span class="op">(</span><span class="st">"curState"</span><span class="op">)</span> <span class="co"># restore default</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">vanPol</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span></span>
+<span><span class="va">k_y_dy</span> <span class="op">=</span> <span class="op">-</span><span class="fl">1</span></span>
+<span><span class="va">k_y_output</span> <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="va">k_dy_y</span> <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="va">k_dy_output</span> <span class="op">=</span> <span class="op">-</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">*</span><span class="va">mu</span><span class="op">)</span></span>
+<span><span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">2</span></span>
+<span><span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">0</span></span></code></pre>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxIndLinStrategy.html">rxIndLinStrategy</a></span><span class="op">(</span><span class="st">"split"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">vanPol</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxIndLinStrategy.html">rxIndLinStrategy</a></span><span class="op">(</span><span class="st">"curState"</span><span class="op">)</span> <span class="co"># restore the default</span></span></code></pre></div>
+<pre><code><span><span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span></span>
+<span><span class="va">k_y_dy</span> <span class="op">=</span> <span class="op">-</span><span class="fl">1</span><span class="op">+</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">mu</span><span class="op">*</span><span class="va">dy</span><span class="op">*</span><span class="fu">Rx_pow_di</span><span class="op">(</span><span class="va">y</span>, <span class="fl">2</span><span class="op">)</span><span class="op">/</span><span class="va">y</span></span>
+<span><span class="va">k_y_output</span> <span class="op">=</span> <span class="op">-</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="op">-</span><span class="fl">1</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">y</span><span class="op">*</span><span class="va">mu</span><span class="op">*</span><span class="va">dy</span><span class="op">)</span></span>
+<span><span class="va">k_dy_y</span> <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="va">k_dy_output</span> <span class="op">=</span> <span class="op">-</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span> <span class="op">+</span> <span class="op">(</span><span class="op">-</span><span class="fl">1</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">*</span><span class="va">mu</span><span class="op">)</span></span>
+<span><span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">2</span></span>
+<span><span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">0</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="rxindlinstate">
 <code>rxIndLinState()</code><a class="anchor" aria-label="anchor" href="#rxindlinstate"></a>
 </h3>
-<p>For fine-grained control you can specify, per state, which state
-variable should appear as the linear factor for each ODE.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## For the Van der Pol equation: factor d/dt(y) by dy, and d/dt(dy) by y</span></span>
-<span><span class="fu"><a href="../reference/rxIndLinState.html">rxIndLinState</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"dy"</span>, dy <span class="op">=</span> <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">vanPol2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
-<span>  <span class="op">{</span></span>
-<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="fl">2</span></span>
-<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">dy</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="../reference/rxIndLinState.html">rxIndLinState</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>  <span class="co"># clear preferences</span></span></code></pre></div>
-<hr>
+<p>For fine-grained control, name the state that should carry the linear
+factor for each ODE. Sending the whole nonlinear term into
+<code>d/dt(y)</code> leaves <code>k_dy_output</code> free of any state,
+so that row of the rate matrix becomes constant:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxIndLinState.html">rxIndLinState</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"dy"</span>, dy <span class="op">=</span> <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">vanPol</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxIndLinState.html">rxIndLinState</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span> <span class="co"># clear preferences</span></span></code></pre></div>
+<pre><code><span><span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span>
+<span><span class="fu">cmt</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span></span>
+<span><span class="va">k_y_dy</span> <span class="op">=</span> <span class="op">-</span><span class="fl">1</span><span class="op">-</span><span class="va">mu</span><span class="op">*</span><span class="va">dy</span><span class="op">*</span><span class="fu">Rx_pow_di</span><span class="op">(</span><span class="va">y</span>, <span class="fl">2</span><span class="op">)</span><span class="op">/</span><span class="va">y</span></span>
+<span><span class="va">k_y_output</span> <span class="op">=</span> <span class="op">-</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y</span><span class="op">*</span><span class="va">mu</span><span class="op">*</span><span class="va">dy</span><span class="op">)</span></span>
+<span><span class="va">k_dy_y</span> <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="va">k_dy_output</span> <span class="op">=</span> <span class="op">-</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span><span class="op">)</span></span>
+<span><span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">2</span></span>
+<span><span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">=</span><span class="fl">0</span></span></code></pre>
 </div>
 </div>
 <div class="section level2">
-<h2 id="a-full-example-michaelismenten-pk">A full example: Michaelis–Menten PK<a class="anchor" aria-label="anchor" href="#a-full-example-michaelismenten-pk"></a>
+<h2 id="writing-the-rate-matrix-directly-with-matexp">Writing the rate matrix directly with <code>matExp()</code><a class="anchor" aria-label="anchor" href="#writing-the-rate-matrix-directly-with-matexp"></a>
 </h2>
-<p>This example reproduces the scenario from Sharif et al. (2022): oral
-absorption with Michaelis–Menten elimination.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">mmPK</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span></span>
-<span>  <span class="op">{</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
-<span>    <span class="va">Cp</span>           <span class="op">&lt;-</span> <span class="va">center</span> <span class="op">/</span> <span class="va">V</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">Vmax</span> <span class="op">*</span> <span class="va">Cp</span> <span class="op">/</span> <span class="op">(</span><span class="va">Km</span> <span class="op">+</span> <span class="va">Cp</span><span class="op">)</span></span>
-<span>  <span class="op">}</span>,</span>
-<span>  indLin <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, Km <span class="op">=</span> <span class="fl">0.5</span>, Vmax <span class="op">=</span> <span class="fl">0.2</span>, V <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">3</span>, start.time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">12</span>, <span class="fl">16</span>, <span class="fl">24</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co">## Three solvers</span></span>
-<span><span class="va">sol_ll</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span></span>
-<span><span class="va">sol_il</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
-<span><span class="va">sol_ila</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmPK</span>, <span class="va">params</span>, <span class="va">ev</span>,</span>
-<span>                   method <span class="op">=</span> <span class="st">"indLin"</span>, indLinMatExpType <span class="op">=</span> <span class="st">"Al-Mohy"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">sol_ll</span><span class="op">)</span>,  solver <span class="op">=</span> <span class="st">"liblsoda"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">sol_il</span><span class="op">)</span>,  solver <span class="op">=</span> <span class="st">"IndLin/expokit"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">sol_ila</span><span class="op">)</span>, solver <span class="op">=</span> <span class="st">"IndLin/Al-Mohy"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">Cp</span>, colour <span class="op">=</span> <span class="va">solver</span>, linetype <span class="op">=</span> <span class="va">solver</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Time (h)"</span>, y <span class="op">=</span> <span class="st">"Concentration (mg/L)"</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"Michaelis-Menten PK: solver comparison"</span><span class="op">)</span></span></code></pre></div>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="direct-coefficient-specification-with-matexp-the-most-stable-approach">Direct coefficient specification with <code>matExp()</code>: the
-most stable approach<a class="anchor" aria-label="anchor" href="#direct-coefficient-specification-with-matexp-the-most-stable-approach"></a>
-</h2>
-<p>The auto-factorization path (<code>indLin = TRUE</code>) uses the
-<code>symengine</code> computer-algebra system to symbolically factor
-each ODE into a rate matrix and a forcing vector. For complex
-expressions this symbolic step can fail or produce unexpected
-factorizations.</p>
-<p>The <code>matExp()</code> model declaration bypasses symbolic
-manipulation entirely. You write rate constants in the form
-<code>k_from_to</code> (or <code>k.from.to</code>), and rxode2
-constructs the rate matrix directly from those coefficients at compile
-time. This is:</p>
+<p>Everything above went through <code>symengine</code> to factor the
+ODEs symbolically. For complex expressions that step can fail or produce
+an unexpected factorization. <code>matExp()</code> skips it entirely:
+you write the rate constants, and rxode2 builds the rate matrix from
+them at compile time. This is:</p>
 <ul>
 <li>
-<strong>The most stable approach</strong> – no CAS factorization, no
+<strong>The most stable path</strong> – no CAS factorization, no
 symengine dependency, no expression simplification.</li>
 <li>
-<strong>Familiar to NONMEM users</strong> – mirrors NONMEM’s
-ADVAN5/7 <code>K(i,j)</code> notation with the same source-first index
+<strong>Familiar to NONMEM users</strong> – it mirrors ADVAN5/7
+<code>K(i,j)</code> notation with the same source-first index
 convention.</li>
 <li>
-<strong>Self-documenting</strong> – every rate constant name encodes
+<strong>Self-documenting</strong> – every rate constant name says
 what it connects.</li>
 </ul>
 <div class="section level3">
 <h3 id="matexp-model-syntax">
 <code>matExp()</code> model syntax<a class="anchor" aria-label="anchor" href="#matexp-model-syntax"></a>
 </h3>
-<p>A <code>matExp()</code> model has three kinds of statements:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -510,164 +552,185 @@ what it connects.</li>
 <code>d/dt()</code>.</td>
 </tr>
 <tr class="even">
-<td><code>k_from_to = expr</code></td>
+<td><code>k_from_to &lt;- expr</code></td>
 <td>First-order rate from compartment <code>from</code> to compartment
 <code>to</code>.</td>
 </tr>
 <tr class="odd">
-<td><code>k.from.to = expr</code></td>
+<td><code>k.from.to &lt;- expr</code></td>
 <td>Dot-separator alternative (identical meaning).</td>
 </tr>
 <tr class="even">
-<td><code>k_cmt_output = expr</code></td>
+<td><code>k_cmt_output &lt;- expr</code></td>
 <td>Elimination from <code>cmt</code> to outside the system (like
 NONMEM’s <code>K(i,0)</code>).</td>
 </tr>
 <tr class="odd">
-<td><code>k_from_to_nd = expr</code></td>
+<td><code>k_from_to_nd &lt;- expr</code></td>
 <td>Non-depleting transfer: only <code>to</code> gains;
 <code>from</code> is unchanged.</td>
 </tr>
 <tr class="even">
 <td><code>indLin(state) &lt;- expr</code></td>
-<td>Add a time-varying forcing term to <code>state</code> (inhomogeneous
-part).</td>
+<td>Add an inhomogeneous forcing term to <code>state</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>cmt(name)</code></td>
-<td>Optionally declare a compartment explicitly. Usually not
-needed.</td>
+<td>Optionally declare a compartment explicitly.</td>
 </tr>
 <tr class="even">
-<td><code>other = expr</code></td>
+<td><code>other &lt;- expr</code></td>
 <td>Standard derived-variable assignment (output calculation).</td>
 </tr>
 </tbody>
 </table>
 <p>Compartments are <strong>auto-detected</strong> from the
-<code>k_from_to</code> names – no explicit <code>cmt()</code>
-declarations are required. The diagonal entries of the rate matrix
-(self-decay) are computed automatically from the outflow terms.</p>
+<code>k_from_to</code> names, and the diagonal entries of the rate
+matrix are computed automatically from the outflow terms.</p>
 </div>
 <div class="section level3">
-<h3 id="optional-declaring-compartment-order-with-cmt">Optional: declaring compartment order with <code>cmt()</code><a class="anchor" aria-label="anchor" href="#optional-declaring-compartment-order-with-cmt"></a>
+<h3 id="declaring-compartment-order-with-cmt">Declaring compartment order with <code>cmt()</code><a class="anchor" aria-label="anchor" href="#declaring-compartment-order-with-cmt"></a>
 </h3>
-<p>By default the compartment ordering in the rate matrix (and therefore
-the CMT numbers used in the event table) follows the order in which
-compartment names first appear in the <code>k_from_to</code>
-assignments. If you need a specific CMT numbering – for example, to
-match a NONMEM control stream where the depot is CMT=1 and central is
-CMT=2 – you can pin the order with explicit <code>cmt()</code>
-declarations placed before the rate constants:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mmOrdered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>      <span class="co">## CMT = 1</span></span>
-<span>  <span class="fu">cmt</span><span class="op">(</span><span class="va">central</span><span class="op">)</span>    <span class="co">## CMT = 2</span></span>
-<span>  <span class="va">Cp</span> <span class="op">=</span> <span class="va">central</span> <span class="op">/</span> <span class="va">V</span></span>
-<span>  <span class="va">k_depot_central</span>  <span class="op">=</span> <span class="va">ka</span>                <span class="co">## absorption: depot -&gt; central</span></span>
-<span>  <span class="va">k_central_output</span> <span class="op">=</span> <span class="va">Vmax</span> <span class="op">/</span> <span class="op">(</span><span class="va">Km</span> <span class="op">+</span> <span class="va">Cp</span><span class="op">)</span> <span class="co">## MM elimination: state-dependent rate</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Any compartment listed in a <code>cmt()</code> call is assigned CMT
-numbers in declaration order. Compartments that appear in rate constants
-but have no <code>cmt()</code> declaration are appended after the
-declared ones in their first-appearance order. This lets you fix the
-positions that matter (e.g., the dosing compartment) while letting the
-rest be auto-ordered.</p>
-<p><code>cmt()</code> declarations are purely for ordering; they do not
-change the model mathematics.</p>
+<p>Without <code>cmt()</code> declarations, compartment order in the
+rate matrix – and therefore the CMT numbers used in the event table –
+follows the order in which names first appear in the
+<code>k_from_to</code> assignments. Use <code>cmt()</code> before the
+rate constants to pin the numbering, for example to match a NONMEM
+control stream where the depot is CMT=1:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmComp</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">km</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span>    <span class="va">vmax</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span>   <span class="co">## CMT = 1</span></span>
+<span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="co">## CMT = 2</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="va">k_depot_central</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="co">## absorption: depot -&gt; central</span></span>
+<span>    <span class="co">## MM elimination as an effective first-order rate on the AMOUNT:</span></span>
+<span>    <span class="co">## vmax * cp / (km + cp) = [vmax / (v * (km + cp))] * central</span></span>
+<span>    <span class="va">k_central_output</span> <span class="op">&lt;-</span> <span class="va">vmax</span> <span class="op">/</span> <span class="op">(</span><span class="va">v</span> <span class="op">*</span> <span class="op">(</span><span class="va">km</span> <span class="op">+</span> <span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Compartments that appear in rate constants but have no
+<code>cmt()</code> declaration are appended after the declared ones in
+first-appearance order, so you can fix the positions that matter and let
+the rest be auto-ordered. <code>cmt()</code> declarations are purely for
+ordering; they do not change the model mathematics.</p>
 </div>
 <div class="section level3">
 <h3 id="rules-and-restrictions">Rules and restrictions<a class="anchor" aria-label="anchor" href="#rules-and-restrictions"></a>
 </h3>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co">## ERROR: matExp() cannot be combined with d/dt()</span></span>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">## ERROR: matExp() cannot be combined with d/dt()</span></span>
 <span><span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span>   <span class="co"># error</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; :ERR: Matrix exponential models cannot be used with any ODEs</span></span>
 <span></span>
 <span><span class="co">## ERROR: self-transfer is not allowed</span></span>
 <span><span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">k_depot_depot</span> <span class="op">=</span> <span class="fl">0.1</span>          <span class="co"># error</span></span>
+<span>  <span class="va">k_depot_depot</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; :ERR: transfer from a compartment to itself (e.g., k_cmt1_cmt1) is not allowed</span></span>
 <span></span>
 <span><span class="co">## ERROR: indLin() without matExp()</span></span>
 <span><span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu">cmt</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0.5</span>         <span class="co"># error</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; :ERR: indLin() cannot be used without matExp() defined in the model</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="michaelis-menten-elimination">Michaelis-Menten elimination<a class="anchor" aria-label="anchor" href="#michaelis-menten-elimination"></a>
+<h3 id="state-dependent-rate-constants">State-dependent rate constants<a class="anchor" aria-label="anchor" href="#state-dependent-rate-constants"></a>
 </h3>
-<p>Rate expressions in <code>matExp()</code> can reference derived
-variables that depend on the current state. When such a rate is
-state-dependent the system is no longer strictly linear, but
-<code>method = "indLin"</code> handles this via iteration: at each
-IndLin pass the rate matrix is recomputed using the current state
-estimate, and the matrix exponential is then solved exactly for that
-linearised system. Michaelis-Menten elimination is the canonical
-example.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<p>Rate expressions can reference derived variables that depend on the
+current state, as in the Michaelis-Menten example above. The rate matrix
+is then no longer constant, and the substep argument from the accuracy
+section applies – set <code>hmax</code>:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mmComp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">Cp</span> <span class="op">=</span> <span class="va">central</span> <span class="op">/</span> <span class="va">V</span>                   <span class="co">## derived variable (used in rate expression)</span></span>
-<span>  <span class="va">k_depot_central</span>  <span class="op">=</span> <span class="va">ka</span>              <span class="co">## absorption: depot -&gt; central</span></span>
-<span>  <span class="va">k_central_output</span> <span class="op">=</span> <span class="va">Vmax</span> <span class="op">/</span> <span class="op">(</span><span class="va">Km</span> <span class="op">+</span> <span class="va">Cp</span><span class="op">)</span> <span class="co">## MM elimination expressed as effective clearance</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, Km <span class="op">=</span> <span class="fl">0.5</span>, Vmax <span class="op">=</span> <span class="fl">0.2</span>, V <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">mmSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmComp</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span>, hmax <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">3</span>, start.time <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">12</span>, <span class="fl">16</span>, <span class="fl">24</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co">## method = "indLin" iterates to account for the state-dependent rate</span></span>
-<span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mmComp</span>, <span class="va">params</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sol</span>, <span class="va">Cp</span><span class="op">)</span></span></code></pre></div>
-<p>rxode2 infers <code>depot</code> and <code>central</code> as state
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">mmSol</span><span class="op">)</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">cp</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Time (h)"</span>, y <span class="op">=</span> <span class="st">"Concentration (mg/L)"</span>,</span>
+<span>       title <span class="op">=</span> <span class="st">"Michaelis-Menten PK solved with matExp()"</span><span class="op">)</span></span></code></pre></div>
+<p>rxode2 infers <code>depot</code> and <code>central</code> as
 compartments from the rate constant names. The <code>output</code> label
 is reserved for the elimination sink, analogous to compartment 0 in
 NONMEM.</p>
 </div>
 <div class="section level3">
-<h3 id="three-compartment-pk-with-peripheral">Three-compartment PK with peripheral<a class="anchor" aria-label="anchor" href="#three-compartment-pk-with-peripheral"></a>
+<h3 id="two-compartment-pk-with-a-peripheral-compartment">Two-compartment PK with a peripheral compartment<a class="anchor" aria-label="anchor" href="#two-compartment-pk-with-a-peripheral-compartment"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">threeComp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">k_depot_central</span>   <span class="op">=</span> <span class="va">ka</span>            <span class="co">## absorption</span></span>
-<span>  <span class="va">k_central_output</span>  <span class="op">=</span> <span class="va">CL</span> <span class="op">/</span> <span class="va">Vc</span>       <span class="co">## central elimination</span></span>
-<span>  <span class="va">k_central_periph</span>  <span class="op">=</span> <span class="va">Q</span>  <span class="op">/</span> <span class="va">Vc</span>       <span class="co">## distribution to peripheral</span></span>
-<span>  <span class="va">k_periph_central</span>  <span class="op">=</span> <span class="va">Q</span>  <span class="op">/</span> <span class="va">Vp</span>       <span class="co">## redistribution from peripheral</span></span>
-<span>  <span class="va">Cp</span> <span class="op">=</span> <span class="va">central</span> <span class="op">/</span> <span class="va">Vc</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">twoCmt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>    <span class="va">vc</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span>    <span class="va">q</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">vp</span> <span class="op">&lt;-</span> <span class="fl">20</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">k_depot_central</span> <span class="op">&lt;-</span> <span class="va">ka</span>   <span class="co">## absorption</span></span>
+<span>    <span class="va">k_central_output</span> <span class="op">&lt;-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">vc</span> <span class="co">## central elimination</span></span>
+<span>    <span class="va">k_central_periph</span> <span class="op">&lt;-</span> <span class="va">q</span> <span class="op">/</span> <span class="va">vc</span>  <span class="co">## distribution to peripheral</span></span>
+<span>    <span class="va">k_periph_central</span> <span class="op">&lt;-</span> <span class="va">q</span> <span class="op">/</span> <span class="va">vp</span>  <span class="co">## redistribution from peripheral</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">central</span> <span class="op">/</span> <span class="va">vc</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">params3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ka <span class="op">=</span> <span class="fl">1</span>, CL <span class="op">=</span> <span class="fl">2</span>, Vc <span class="op">=</span> <span class="fl">10</span>, Q <span class="op">=</span> <span class="fl">1</span>, Vp <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
-<span><span class="va">sol3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">threeComp</span>, <span class="va">params3</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">twoCmtSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">twoCmt</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">48</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                     method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">twoCmtSol</span><span class="op">)</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">cp</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Time (h)"</span>, y <span class="op">=</span> <span class="st">"Concentration (mg/L)"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="adding-a-forcing-term-with-indlin">Adding a forcing term with <code>indLin()</code><a class="anchor" aria-label="anchor" href="#adding-a-forcing-term-with-indlin"></a>
 </h3>
-<p>The <code>indLin(state)</code> statement adds a time-varying
-(inhomogeneous) term to a compartment. This is useful for constant
-infusions that are not handled by the dosing event table, or for
-steady-state baseline inputs:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">glucoseModel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">k_Gc_output</span> <span class="op">=</span> <span class="va">Clg</span> <span class="op">/</span> <span class="va">Vg</span>       <span class="co">## glucose clearance</span></span>
-<span>  <span class="va">k_Gp_Gc</span>    <span class="op">=</span> <span class="va">Q</span>   <span class="op">/</span> <span class="va">Vp</span>        <span class="co">## peripheral to central</span></span>
-<span>  <span class="va">k_Gc_Gp</span>    <span class="op">=</span> <span class="va">Q</span>   <span class="op">/</span> <span class="va">Vg</span>        <span class="co">## central to peripheral</span></span>
-<span>  <span class="co">## Constant endogenous glucose production enters Gc</span></span>
-<span>  <span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">Gc</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">Gprod</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p><code>indLin(state) &lt;- expr</code> supplies an inhomogeneous term:
+one that enters a compartment without being proportional to any state.
+This covers endogenous production, constant inputs that are not in the
+dosing event table, and steady-state baselines. A turnover response
+model is the smallest useful example – production <code>kin</code> is a
+forcing term, loss <code>kout * resp</code> is a rate constant:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">turnover</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">kin</span> <span class="op">&lt;-</span> <span class="fl">5</span></span>
+<span>    <span class="va">kout</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
+<span>    <span class="va">k_resp_output</span> <span class="op">&lt;-</span> <span class="va">kout</span>   <span class="co">## first-order loss</span></span>
+<span>    <span class="fu"><a href="../reference/indLin.html">indLin</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">kin</span>     <span class="co">## zero-order production</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">turnoverSol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">turnover</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">100</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"indLin"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## baseline approaches kin/kout = 50</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">turnoverSol</span><span class="op">)</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">5</span> <span class="op">/</span> <span class="fl">0.1</span>, linetype <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Time (h)"</span>, y <span class="op">=</span> <span class="st">"Response"</span><span class="op">)</span></span></code></pre></div>
+<p>The forcing is treated as constant across a substep, which makes it
+exact for a genuinely constant term like <code>kin</code> above.</p>
 </div>
 <div class="section level3">
 <h3 id="comparison-with-nonmem-advan57">Comparison with NONMEM ADVAN5/7<a class="anchor" aria-label="anchor" href="#comparison-with-nonmem-advan57"></a>
@@ -676,8 +739,8 @@ steady-state baseline inputs:</p>
 for steady-state) specifies rate constants as <code>K(i,j)</code>
 scalars in <code>$PK</code>, where <strong><code>K(i,j)</code> is the
 first-order transfer rate from compartment <code>i</code> to compartment
-<code>j</code></strong> (source first, destination second).</p>
-<p>rxode2’s <code>matExp()</code> uses the <strong>same source-first
+<code>j</code></strong> (source first, destination second). rxode2’s
+<code>matExp()</code> uses the <strong>same source-first
 convention</strong>: <code>k_from_to</code>.</p>
 <table class="table">
 <thead><tr class="header">
@@ -689,22 +752,22 @@ convention</strong>: <code>k_from_to</code>.</p>
 <tbody>
 <tr class="odd">
 <td><code>K12 = ka</code></td>
-<td><code>k_cmt1_cmt2 = ka</code></td>
+<td><code>k_cmt1_cmt2 &lt;- ka</code></td>
 <td>depot (1) to central (2)</td>
 </tr>
 <tr class="even">
 <td><code>K20 = ke</code></td>
-<td><code>k_cmt2_output = ke</code></td>
+<td><code>k_cmt2_output &lt;- ke</code></td>
 <td>central (2) elimination</td>
 </tr>
 <tr class="odd">
 <td><code>K23 = Q/V2</code></td>
-<td><code>k_cmt2_cmt3 = Q/V2</code></td>
+<td><code>k_cmt2_cmt3 &lt;- q / v2</code></td>
 <td>central to peripheral</td>
 </tr>
 <tr class="even">
 <td><code>K32 = Q/V3</code></td>
-<td><code>k_cmt3_cmt2 = Q/V3</code></td>
+<td><code>k_cmt3_cmt2 &lt;- q / v3</code></td>
 <td>peripheral to central</td>
 </tr>
 </tbody>
@@ -724,8 +787,8 @@ names.</li>
 (compartment 0 = outside); rxode2 uses <code>k_cmt_output</code>
 (<code>output</code> is the reserved sink label).</li>
 <li>
-<strong>Diagonal</strong>: Both tools compute the diagonal
-(self-decay) entries automatically from the listed outflow rates.</li>
+<strong>Diagonal</strong>: both compute the diagonal (self-decay)
+entries automatically from the listed outflow rates.</li>
 <li>
 <strong>Non-depleting inputs</strong>: rxode2 supports
 <code>k_from_to_nd</code> for zero-depletion transfers; NONMEM has no
@@ -733,30 +796,11 @@ direct equivalent.</li>
 <li>
 <strong>Forcing terms</strong>: rxode2’s
 <code>indLin(state) &lt;- expr</code> adds an inhomogeneous term; in
-NONMEM this requires explicit ODE (ADVAN6+).</li>
+NONMEM this requires explicit ODEs (ADVAN6+).</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="why-matexp-is-the-most-stable-path">Why <code>matExp()</code> is the most stable path<a class="anchor" aria-label="anchor" href="#why-matexp-is-the-most-stable-path"></a>
-</h3>
-<p>When using <code>indLin = TRUE</code> (ODE auto-factorization),
-rxode2 must:</p>
-<ol style="list-style-type: decimal">
-<li>Parse the ODE right-hand sides symbolically via
-<code>symengine</code>
-</li>
-<li>Factor each expression into linear-in-state terms vs. remaining
-(forcing) terms</li>
-<li>Handle multi-state products using heuristics
-(<code>rxIndLinStrategy</code>, <code>rxIndLinState</code>)</li>
-</ol>
-<p>Any of these steps can fail or produce a suboptimal factorization for
-complex models. With <code>matExp()</code>, none of this happens: you
-specify the rate matrix entries directly, and rxode2 generates the
-matrix exponential code without any symbolic processing.</p>
-</div>
-<div class="section level3">
-<h3 id="when-to-use-matexp-vs-indlin-true">When to use <code>matExp()</code> vs <code>indLin = TRUE</code><a class="anchor" aria-label="anchor" href="#when-to-use-matexp-vs-indlin-true"></a>
+<h3 id="when-to-use-matexp-vs-ddt">When to use <code>matExp()</code> vs <code>d/dt()</code><a class="anchor" aria-label="anchor" href="#when-to-use-matexp-vs-ddt"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -769,7 +813,7 @@ matrix exponential code without any symbolic processing.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Linear compartmental PK/PD (known rate constants)</td>
+<td>Linear compartmental PK/PD with known rate constants</td>
 <td>
 <code>matExp()</code> – most stable, no symengine</td>
 </tr>
@@ -779,27 +823,34 @@ matrix exponential code without any symbolic processing.</p>
 <code>matExp()</code> – direct <code>K(i,j)</code> translation</td>
 </tr>
 <tr class="odd">
-<td>Nonlinear ODE (Michaelis–Menten, etc.)</td>
+<td>Exploratory model with changing structure</td>
 <td>
-<code>indLin = TRUE</code> – auto-factorization required</td>
+<code>d/dt()</code> – faster iteration</td>
 </tr>
 <tr class="even">
-<td>Exploratory model with changing ODE structure</td>
+<td>Nonlinear model</td>
 <td>
-<code>indLin = TRUE</code> – faster iteration</td>
-</tr>
-<tr class="odd">
-<td>Complex nonlinear ODE where auto-factorization fails</td>
-<td>Consider <code>matExp()</code> if you can state the rate matrix
-analytically</td>
+<code>d/dt()</code> with a time-stepping solver, unless you have a
+specific reason not to</td>
 </tr>
 </tbody>
 </table>
-<hr>
 </div>
 </div>
 <div class="section level2">
-<h2 id="when-to-use-inductive-linearization">When to use inductive linearization<a class="anchor" aria-label="anchor" href="#when-to-use-inductive-linearization"></a>
+<h2 id="use-in-nlmixr2">Use in nlmixr2<a class="anchor" aria-label="anchor" href="#use-in-nlmixr2"></a>
+</h2>
+<p><code>matExp()</code> and <code><a href="../reference/indLin.html">indLin()</a></code> models estimate in
+nlmixr2 across the focei, nlm and SAEM families and match the equivalent
+<code>d/dt()</code> model. Be aware of how that currently works:
+nlmixr2est materializes the rate constants back into ordinary ODEs
+before building each estimation model, so a fit solves the ODE form
+rather than propagating a matrix exponential. The syntax is therefore a
+modeling convenience there, not a change of integrator.</p>
+<p>Full matrix exponential support during estimation is upcoming.</p>
+</div>
+<div class="section level2">
+<h2 id="when-to-use-method-indlin">When to use <code>method = "indLin"</code><a class="anchor" aria-label="anchor" href="#when-to-use-method-indlin"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -812,87 +863,73 @@ analytically</td>
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td>Purely linear system</td>
+<td>
+<code>method = "indLin"</code> gives an exact, closed-form
+solution</td>
+</tr>
+<tr class="even">
 <td>Multi-subject population simulation, linear PK</td>
 <td>
 <code>method = "liblsoda"</code> (default) is typically fastest
 overall</td>
 </tr>
-<tr class="even">
-<td>Purely linear system, single subject</td>
-<td>
-<code>method = "indLin"</code> gives an exact, closed-form
-solution</td>
-</tr>
 <tr class="odd">
-<td>Mildly nonlinear system (Michaelis–Menten saturation)</td>
+<td>State-dependent rate matrix</td>
 <td>
-<code>method = "indLin"</code> can be faster than LSODA when
-parameters are evaluated many times (e.g., in estimation)</td>
+<code>method = "indLin"</code> only with an explicit, verified
+<code>hmax</code>
+</td>
 </tr>
 <tr class="even">
 <td>Heavily nonlinear or chaotic ODE</td>
-<td>Time-stepping solvers (<code>liblsoda</code>, <code>dop853</code>)
-are safer; IndLin convergence is not guaranteed</td>
+<td>Time-stepping solvers (<code>liblsoda</code>,
+<code>dop853</code>)</td>
 </tr>
 <tr class="odd">
 <td>Stiff system</td>
 <td>
-<code>liblsoda</code> or <code>lsoda</code> with Jacobian
-specification; IndLin with EVD can struggle when eigenvalues span many
-orders of magnitude</td>
+<code>liblsoda</code> or <code>lsoda</code>; the eigenvalue
+decomposition can struggle when eigenvalues span many orders of
+magnitude</td>
 </tr>
 </tbody>
 </table>
 <div class="section level3">
-<h3 id="advantages-over-time-stepping-solvers">Advantages over time-stepping solvers<a class="anchor" aria-label="anchor" href="#advantages-over-time-stepping-solvers"></a>
+<h3 id="advantages">Advantages<a class="anchor" aria-label="anchor" href="#advantages"></a>
 </h3>
 <ol style="list-style-type: decimal">
 <li>
-<strong>All-time domain access</strong>: because the linearization
-is performed over the entire interval, information from all time points
-is available. Dose events at any time are incorporated without the
-solver needing an explicit hint about discontinuities.</li>
+<strong>Exact for linear systems</strong>: no discretization error
+at all, at any step size.</li>
 <li>
-<strong>Exact solution for linear systems</strong>: no
-discretization error.</li>
-<li>
-<strong>Estimation warm-start</strong>: during iterative parameter
-estimation, the previous parameter vector’s solution can seed the next
-IndLin iteration (the “smart update” described in Sharif et al. 2022),
-reducing the number of linearization iterations needed.</li>
+<strong>Interval-based</strong>: the system is propagated across an
+interval rather than stepped through it, so no local error control is
+needed inside the interval.</li>
 </ol>
 </div>
 <div class="section level3">
 <h3 id="limitations">Limitations<a class="anchor" aria-label="anchor" href="#limitations"></a>
 </h3>
 <ol style="list-style-type: decimal">
-<li>EVD does not exist for all square matrices (defective
-matrices).</li>
-<li>For large systems (many ODEs) the matrix operations become
-expensive; EVD scales as O(n^3).</li>
-<li>Convergence for highly nonlinear systems may be slow or fail.</li>
-<li>The current implementation is under active development; results may
-change between versions.</li>
+<li>The eigenvalue decomposition does not exist for all square matrices
+(defective matrices).</li>
+<li>For large systems the matrix operations become expensive; the
+decomposition scales as O(n^3).</li>
+<li>Accuracy on a state-dependent model depends entirely on
+<code>hmax</code>, which has no automatic error control behind it.</li>
+<li>The implementation is under active development; results may change
+between versions.</li>
 </ol>
-<hr>
 </div>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li><p>Sharif, Hasegawa, Duffull (2022). Exploring <em>Inductive
-Linearization</em> for simulation and estimation with an application to
-the Michaelis–Menten model. <em>Journal of Pharmacokinetics and
-Pharmacodynamics</em> 49:445–453. <a href="https://doi.org/10.1007/s10928-022-09813-z" class="external-link uri">https://doi.org/10.1007/s10928-022-09813-z</a></p></li>
-<li><p>Duffull SB, Hegarty G (2014). An inductive approximation to the
-solution of systems of nonlinear ordinary differential equations in
-pharmacokinetics-pharmacodynamics. <em>J Theor Comput Sci</em>
-1(4):1000119.</p></li>
-<li><p>Hasegawa C, Duffull SB (2018). Exploring inductive linearization
-for pharmacokinetic-pharmacodynamic systems of nonlinear ordinary
-differential equations. <em>J Pharmacokinet Pharmacodyn</em>
-20(1):35–47.</p></li>
+<li><p>Moler C, Van Loan C (2003). Nineteen dubious ways to compute the
+exponential of a matrix, twenty-five years later. <em>SIAM Rev</em>
+45(1):3–49. <a href="https://doi.org/10.1137/S00361445024180" class="external-link uri">https://doi.org/10.1137/S00361445024180</a></p></li>
 <li><p>Al-Mohy AH, Higham NJ (2009). A new scaling and squaring
 algorithm for the matrix exponential. <em>SIAM J Matrix Anal Appl</em>
 31(3):970–989.</p></li>
