@@ -193,7 +193,7 @@
 #' information (like data)
 #'
 #' @param x The rxUi object
-#' @param envir environment where the assignment ocurs
+#' @param envir environment where the assignment occurs
 #' @param value the value that will be assigned
 #' @return The rxode2 ui/function
 #' @export

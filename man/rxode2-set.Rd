@@ -22,7 +22,7 @@ RxODE(x, envir = environment(x)) <- value
 \arguments{
 \item{x}{The rxUi object}
 
-\item{envir}{environment where the assignment ocurs}
+\item{envir}{environment where the assignment occurs}
 
 \item{value}{the value that will be assigned}
 }

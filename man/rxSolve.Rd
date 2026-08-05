@@ -1386,7 +1386,7 @@ compartment numeric difference.}
 \item{linCmtScale}{The scale of the linear compartment model.  This
 is applied to sensitivity approximation using numeric
 differences.  When \code{TRUE} or \code{NULL} use default scaling, when
-\code{FALSE} use no scaling.  If it is one elment numeric, the value
+\code{FALSE} use no scaling.  If it is one element numeric, the value
 is duplicated 7 times and applies to all the parameters.
 Otherwise this is a seven element numeric vector implying the
 scaling for each of the linear compartmental model parameters.}

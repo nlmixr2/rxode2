@@ -798,7 +798,7 @@
 #' @param linCmtScale The scale of the linear compartment model.  This
 #'   is applied to sensitivity approximation using numeric
 #'   differences.  When `TRUE` or `NULL` use default scaling, when
-#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   `FALSE` use no scaling.  If it is one element numeric, the value
 #'   is duplicated 7 times and applies to all the parameters.
 #'   Otherwise this is a seven element numeric vector implying the
 #'   scaling for each of the linear compartmental model parameters.
