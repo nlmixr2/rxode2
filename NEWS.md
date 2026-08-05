@@ -24,6 +24,20 @@
   `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
   dropping it.)
 
+## Bug fixes
+
+- `rxCompile()` now re-parses the model it is handed whenever the parser's
+  current model is a different one.  Code generation reads the parser's global
+  model state, and the old guard only checked whether *some* model was loaded,
+  so a re-compile requested while an unrelated model was parsed wrote that other
+  model's C under this model's name and handed back its model variables.
+  Building a model with `rxode2()` never hit this (it parses, then compiles
+  immediately), but re-loading one whose `.so` is gone did -- as when a saved
+  fit is restored in a new session, since its DLL lived in the original
+  session's `tempdir()`.  Such a fit came back solving a different model, e.g. a
+  restored SAEM fit failing with "The following parameter(s) are required for
+  solving: eta.v, eta.cl".
+
 # rxode2 5.1.6
 
 ## New features
