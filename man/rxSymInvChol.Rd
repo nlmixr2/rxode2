@@ -29,7 +29,7 @@ supported:
 \item \code{cholOmegaInv} gives the
 Cholesky decomposition of the Omega Inverse matrix.
 \item \code{omegaInv} gives the Omega Inverse matrix.
-\item \code{d(omegaInv)} gives the \code{d(Omega^-1)} withe respect to the
+\item \code{d(omegaInv)} gives the \code{d(Omega^-1)} with respect to the
 theta parameter specified in \code{thetaNumber}.
 \item \code{d(D)} gives the \code{d(diagonal(Omega^-1))} with respect to
 the theta parameter specified in the \code{thetaNumber}

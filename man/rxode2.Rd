@@ -429,10 +429,10 @@ by the order they are parsed. This is useful for keeping the parameter
 order the same when using 2 different ODE models. These are specified
 by \code{param(par1, par2,...)}
 \item \strong{Variable interpolation statements}, which tells the interpolation
-for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
-last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
-observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
-interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
+for specific covariates. These include \code{locf(cov1, cov2, ...)} for
+last observation carried forward, \code{nocb(cov1, cov2, ...)} for next
+observation carried backward, \code{linear(cov1, cov2, ...)} for linear
+interpolation and \code{midpoint(cov1, cov2, ...)} for midpoint
 interpolation.
 }
 
@@ -603,7 +603,7 @@ table:\tabular{lll}{
    rxbeta \tab Generate one deviate from the beta distribution for each observation \tab  \cr
    rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
    rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
-   rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
+   rxt \tab Generate one deviate from the t distribution for each observation \tab  \cr
    tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA \tab  \cr
    tad0() or tad0(x) \tab Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0 \tab  \cr
    tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
@@ -625,7 +625,7 @@ table:\tabular{lll}{
    diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
-   transit() \tab The transit compartment psuedo function \tab  \cr
+   transit() \tab The transit compartment pseudo function \tab  \cr
    delay(state, T) \tab Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver \tab  \cr
    is.na() \tab Determine if a value is NA \tab  \cr
    is.nan() \tab Determine if a value is NaN \tab  \cr
@@ -640,9 +640,9 @@ table:\tabular{lll}{
    ribeta \tab Generate one deviate from the beta distribution for each individual \tab  \cr
    rigeom \tab Generate one deviate from the geometric distribution for each individual \tab  \cr
    ropois \tab Generate one deviate from the poission distribution for each individual \tab  \cr
-   rit \tab Generate one deviate from the t distribtuion for each individual \tab  \cr
+   rit \tab Generate one deviate from the t distribution for each individual \tab  \cr
    simeps \tab Simulate EPS from possibly truncated sigma matrix. Will take sigma matrix from the current study. Simulated at the very last moment. \tab  \cr
-   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs \tab  \cr
+   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initialization of the ODE system or the intialization of lhs \tab  \cr
 }
 
 
@@ -784,7 +784,12 @@ y=f+(a+b* f^c)*err
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err
+y=f+
+
+\if{html}{\out{<div class="sourceCode math">}}\preformatted{sqrt(a^2+b^2 *f^(2c))
+}\if{html}{\out{</div>}}
+
+*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in

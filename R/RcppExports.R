@@ -948,7 +948,7 @@ rxInv <- function(matrix) {
 #' * `cholOmegaInv` gives the
 #'     Cholesky decomposition of the Omega Inverse matrix.
 #' * `omegaInv` gives the Omega Inverse matrix.
-#' * `d(omegaInv)` gives the `d(Omega^-1)` withe respect to the
+#' * `d(omegaInv)` gives the `d(Omega^-1)` with respect to the
 #'     theta parameter specified in `thetaNumber`.
 #' * `d(D)` gives the `d(diagonal(Omega^-1))` with respect to
 #'     the theta parameter specified in the `thetaNumber`

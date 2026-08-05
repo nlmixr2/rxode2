@@ -11,7 +11,7 @@ rxExpandIfElse(model, removeInis = TRUE, removePrint = TRUE)
 to have normalized syntax, that is \code{if (...){}} has to be
 on the same line.  The \verb{else} statement must be on its
 own line with the closing bracket of the \code{if} statement
-on the previous line.  This \verb{else} statment must also
+on the previous line.  This \verb{else} statement must also
 contain the opening bracket, like the code \verb{else \{\}}}
 
 \item{removeInis}{A boolean indicating if parameter

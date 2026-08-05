@@ -193,7 +193,7 @@ rxRmFunParse <- function(name) {
   invisible()
 }
 
-#' Setup the UDF environment (for querying user defined funtions)
+#' Setup the UDF environment (for querying user defined functions)
 #'
 #' @param env environment where user defined functions are queried. If NULL return current environment
 #' @return environment
