@@ -109,7 +109,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.1.7" id="rxode2-517">rxode2 5.1.7<a class="anchor" aria-label="anchor" href="#rxode2-517"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.1.7" id="rxode2-517-development-version">rxode2 5.1.7 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-517-development-version"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-5-1-7">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-7"></a></h3>
+<div class="section level4">
+<h4 id="installation--linking-5-1-7">Installation / linking<a class="anchor" aria-label="anchor" href="#installation--linking-5-1-7"></a></h4>
+<ul><li>On Windows, <code>STAN_THREADS</code> and the TBB link are kept when building against <code>RcppParallel</code> &gt;= 6.2.0, which ships <code>tbb.dll</code>/<code>tbbmalloc.dll</code> with the package again. <code>configure</code> now decides whether to strip the TBB flags by looking for the TBB library in <code>RcppParallel</code>’s <code>lib</code> directory rather than by the shape of the <code>-L</code> flags it emits, so the TBB-less build introduced in 5.1.6 is used only with <code>RcppParallel</code> 6.0.0–6.1.1, which shipped no TBB library on Windows. (The 5.1.6 release notes had this backwards: <code>RcppParallel</code> 6.2.0 restored the TBB library on Windows rather than dropping it.)</li>
+</ul></div>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.6" id="rxode2-516">rxode2 5.1.6<a class="anchor" aria-label="anchor" href="#rxode2-516"></a></h2><p class="text-muted">CRAN release: 2026-08-04</p>
