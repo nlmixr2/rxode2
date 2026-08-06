@@ -367,6 +367,40 @@ rxTest({
     }
   })
 
+  test_that(".rxRealignPastTau() only ever rewrites the duration it is sure of", {
+    .r <- rxode2:::.rxRealignPastTau
+    .pastOf <- function(.x) grep("past\\(", strsplit(.x, "\n")[[1]], value = TRUE)
+    # nothing to do: no past() at all, and a past() already naming its delay's duration
+    .none <- "d/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)\n"
+    expect_identical(.r(.none), .none)
+    .ok <- "past(G,exp(lT))=2\nd/dt(G)=-delay(G,exp(lT))\n"
+    expect_identical(.r(.ok), .ok)
+    # the left-hand side is delimited by the parenthesis matching past(, not by the first
+    # "=", so a duration holding one is still re-pointed
+    .eq <- "past(G, h(x)==1)=2\nd/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~h(x)==1\n"
+    expect_identical(.pastOf(.r(.eq)), "past(G,rx_expr_0)=2")
+    # the delay() scan matches parentheses rather than parsing, so a model whose
+    # if/else the R parser would reject is still realigned
+    .ie <- paste(c("if (t>0) {", "v1=1", "}", "else {", "v1=2", "}",
+                   "rx_expr_0~exp(lT)", "d/dt(G)=-delay(G, rx_expr_0)",
+                   "past(G,exp(lT))=2"), collapse = "\n")
+    expect_identical(.pastOf(.r(.ie)), "past(G,rx_expr_0)=2")
+    # two distinct durations on one state: with the pre-optimization text each past()
+    # line follows the delay() it came from (order of first appearance is preserved) ...
+    .two0 <- paste(c("d/dt(G)=-delay(G, exp(lT))-delay(G, 2*lT)",
+                     "past(G,exp(lT))=2", "past(G,2*lT)=3"), collapse = "\n")
+    .two1 <- paste(c("rx_expr_0~exp(lT)", "rx_expr_1~2*lT",
+                     "d/dt(G)=-delay(G, rx_expr_0)-delay(G, rx_expr_1)",
+                     "past(G,exp(lT))=2", "past(G,2*lT)=3"), collapse = "\n")
+    expect_identical(.pastOf(.r(.two1, .two0)),
+                     c("past(G,rx_expr_0)=2", "past(G,rx_expr_1)=3"))
+    # ... and without it neither line is guessed at
+    expect_identical(.r(.two1), .two1)
+    # when it does rewrite, only the duration changes -- spacing is kept
+    .sp <- "   past(G,exp(lT))  =  2\nd/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)"
+    expect_identical(strsplit(.r(.sp), "\n")[[1]][1L], "   past(G,rx_expr_0)  =  2")
+  })
+
   test_that("an unsupported lhs names itself and does not print (#1192)", {
     # the branch is only reachable directly -- an unsupported lhs is already a parse
     # error in rxModelVars() -- but the stray print() it used to do landed in the

@@ -551,6 +551,80 @@
   txt
 }
 
+# Index of the ")" matching the "(" at `open`, or NA when the line does not close it.
+.rxMatchParen <- function(line, open) {
+  .ch <- strsplit(substr(line, open, nchar(line)), "", fixed = TRUE)[[1]]
+  .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
+  if (is.na(.rel)) NA_integer_ else open + .rel - 1L
+}
+
+# Split "state, tau" at its top-level comma.  NULL when there is no such comma or the
+# first argument is not a plain name (`delay(f(x), tau)` is not a state).
+.rxSplitStateTau <- function(inner) {
+  .ch <- strsplit(inner, "", fixed = TRUE)[[1]]
+  .depth <- cumsum((.ch == "(") - (.ch == ")"))
+  .at <- which(.ch == "," & .depth == 0L)[1L]
+  if (is.na(.at)) return(NULL)
+  .st <- trimws(substr(inner, 1L, .at - 1L))
+  if (!grepl("^[a-zA-Z][a-zA-Z0-9_.]*$", .st)) return(NULL)
+  list(state = .st, tau = trimws(substr(inner, .at + 1L, nchar(inner))))
+}
+
+# Comparable form of a duration: whatever spacing the text carries, two durations that
+# parse to the same expression compare equal.  Text that does not parse compares as itself.
+.rxTauKey <- function(tau) {
+  .e <- tryCatch(parse(text = tau)[[1L]], error = function(e) NULL)
+  if (is.null(.e)) trimws(tau) else deparse1(.e)
+}
+
+# Durations of every delay(state, tau) in `txt`, per state, in order of first appearance.
+# Found by matching parentheses rather than by parsing, the way .rxDisguiseDelayChunks()
+# already scans for the same calls: `txt` is reassembled optimizer output, which is rxode2
+# syntax and not guaranteed to be valid R, and a scan that quietly stopped working on some
+# model shape would silently leave a past() line unmatched.
+.rxDelayDurs <- function(txt) {
+  .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
+  .out <- list()
+  for (.l in strsplit(txt, "\n", fixed = TRUE)[[1]]) {
+    .pos <- 1L
+    repeat {
+      .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)
+      if (.m == -1L) break
+      .open <- .pos + as.integer(.m) + attr(.m, "match.length") - 2L
+      .end <- .rxMatchParen(.l, .open)
+      if (is.na(.end)) { # no matching ")" on this line: skip it and keep scanning
+        .pos <- .open + 1L
+        next
+      }
+      .a <- .rxSplitStateTau(substr(.l, .open + 1L, .end - 1L))
+      if (!is.null(.a)) {
+        .prev <- .out[[.a$state]]
+        if (!(.rxTauKey(.a$tau) %in% vapply(.prev, .rxTauKey, character(1)))) {
+          .out[[.a$state]] <- c(.prev, .a$tau)
+        }
+      }
+      .pos <- .open + 1L   # keep scanning, including nested delay() calls
+    }
+  }
+  .out
+}
+
+# The parts of a `past(state, tau) = ...` line, or NULL when the line is not one.  The
+# left-hand side is delimited by the parenthesis matching `past(`, NOT by the first "=" --
+# a duration may itself contain one (`past(G, h(x)==1)`).
+.rxPastLineParts <- function(line) {
+  .m <- regexpr("^[ \t]*past[ \t]*\\(", line)
+  if (.m == -1L) return(NULL)
+  .open <- attr(.m, "match.length")
+  .end <- .rxMatchParen(line, .open)
+  if (is.na(.end)) return(NULL)
+  .rest <- substr(line, .end + 1L, nchar(line))
+  if (!grepl("^[ \t]*(=|<-|~)", .rest)) return(NULL)
+  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L))
+  if (is.null(.a)) return(NULL)
+  c(.a, list(lead = sub("^([ \t]*).*$", "\\1", line), rest = .rest))
+}
+
 # Re-point a past() duration at the duration its delay() calls actually ended up with.
 #
 # On the whole-model path ..rxOptLhs() renders the past() duration through the optimizer,
@@ -562,40 +636,41 @@
 #
 # This is text only, and no model semantics are involved: the duration on a past() line is
 # never evaluated (it exists so a history can be matched to its delay(); see
-# src/parseCmtProperties.h).  A duration is only re-pointed when the state's delay() calls
-# agree on exactly one duration; with several the past() line is left alone, since a single
-# history cannot say which one it belongs to anyway and the validator should say so.
-.rxRealignPastTau <- function(txt) {
+# src/parseCmtProperties.h).  Optimizing never reorders statements, so a state's delay()
+# durations keep their order of first appearance and `orig` (the text before optimizing)
+# says which optimized duration each past() line meant.  Without it -- or when the two
+# disagree on how many durations a state has -- a duration is only re-pointed when the
+# state's delay() calls agree on exactly one, and otherwise the line is left for the
+# validator to report.
+.rxRealignPastTau <- function(txt, orig = NULL) {
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
-  .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
-  .eq <- regexpr("=", .ln, fixed = TRUE)
-  .lhs <- ifelse(.eq > 0L, substr(.ln, 1L, .eq - 1L), "")
-  .isPast <- .eq > 0L &
-    grepl(paste0("^[ \t]*past[ \t]*\\([ \t]*", .id, "[ \t]*,.*\\)[ \t]*$"), .lhs)
-  if (!any(.isPast)) return(txt)
-  .e <- tryCatch(parse(text = paste0("{\n", txt, "\n}"))[[1L]], error = function(e) NULL)
-  if (is.null(.e)) return(txt)
-  .dly <- list()
-  .walk <- function(x) {
-    if (is.call(x)) {
-      if (identical(x[[1]], quote(delay)) && length(x) == 3L) {
-        .st <- deparse1(x[[2]])
-        .dly[[.st]] <<- unique(c(.dly[[.st]], deparse1(x[[3]])))
-      }
-      for (.i in seq_along(x)) .walk(x[[.i]])
+  .parts <- lapply(.ln, .rxPastLineParts)
+  .isPast <- which(!vapply(.parts, is.null, logical(1)))
+  if (length(.isPast) == 0L) return(txt)
+  .opt <- .rxDelayDurs(txt)
+  .org <- if (is.null(orig)) .opt else .rxDelayDurs(orig)
+  .did <- FALSE
+  for (.i in .isPast) {
+    .p <- .parts[[.i]]
+    .o <- .opt[[.p$state]]
+    if (is.null(.o)) next
+    .key <- .rxTauKey(.p$tau)
+    if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
+    .g <- .org[[.p$state]]
+    .new <- NULL
+    if (!is.null(.g) && length(.g) == length(.o)) {
+      .j <- match(.key, vapply(.g, .rxTauKey, character(1)))
+      if (!is.na(.j)) .new <- .o[[.j]]
     }
+    # the pre-optimization text could not say which one it was (or was not given): a
+    # single duration is still unambiguous
+    if (is.null(.new) && length(.o) == 1L) .new <- .o[[1L]]
+    if (is.null(.new)) next
+    # keep the caller's spacing: only the duration inside past(...) is rewritten
+    .ln[.i] <- paste0(.p$lead, "past(", .p$state, ",", .new, ")", .p$rest)
+    .did <- TRUE
   }
-  .walk(.e)
-  for (.i in which(.isPast)) {
-    .p <- tryCatch(parse(text = .lhs[.i])[[1L]], error = function(e) NULL)
-    if (is.null(.p) || !is.call(.p) || length(.p) != 3L) next
-    .st <- deparse1(.p[[2L]])
-    .d <- .dly[[.st]]
-    if (is.null(.d) || length(.d) != 1L || deparse1(.p[[3L]]) %in% .d) next
-    .lead <- sub("^([ \t]*).*$", "\\1", .lhs[.i])
-    .ln[.i] <- paste0(.lead, "past(", .st, ",", .d,
-                      ")", substr(.ln[.i], .eq[.i], nchar(.ln[.i])))
-  }
+  if (!.did) return(txt)
   paste(.ln, collapse = "\n")
 }
 
@@ -741,7 +816,7 @@
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
-  .rxRealignPastTau(.out)
+  .rxRealignPastTau(.out, .txt)
 }
 
 #' Optimize rxode2 for computer evaluation
