@@ -335,4 +335,44 @@ rxTest({
     expect_identical(.par, .seq)
     expect_equal(sum(mirai::status()$connections), 0L)
   })
+
+  # A past() duration is an ordinary expression, not a left-hand side; rendering it with
+  # ..rxOptLhs() only ever worked for a name, a number, `(x)` and `x/y` (the last two by
+  # accident -- they are there for d/dt(x)) and stopped on anything else (#1192).
+  .pastModel <- function(tau) {
+    paste(c("lT=1.2", "a=1", "b=0.5", "k3=5", "kg=0.4",
+            "G(0)=a", "d/dt(G)=k3-kg*G",
+            sprintf("past(G,%s)=a*exp(b*t)", tau),
+            sprintf("z1=delay(G,%s)", tau),
+            sprintf("z2=2*delay(G,%s)", tau)), collapse = "\n")
+  }
+
+  test_that("a past() duration that is an expression optimizes (#1192)", {
+    for (.tau in c("exp(lT)", "lT*2", "2^lT", "exp(THETA[1]+ETA[1])")) {
+      .o <- suppressMessages(rxOptExpr(.pastModel(.tau), "model", chunkLines = 0L))
+      expect_error(rxModelVars(.o), NA)
+      # the duration picked up the same temporary the delay() calls did, so the
+      # past() history still matches its delay() -- see .rxValidatePast()
+      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+      expect_true(grepl("past\\(G,rx_expr_[0-9]+\\)", .o))
+      expect_true(grepl("delay\\(G, *rx_expr_[0-9]+\\)", .o))
+    }
+  })
+
+  test_that("a degenerate past() duration is rendered exactly as before", {
+    for (.tau in c("lT", "12.8", "(lT)")) {
+      .o <- suppressMessages(rxOptExpr(.pastModel(.tau), "model", chunkLines = 0L))
+      expect_true(grepl(sprintf("past(G,%s)=", .tau), .o, fixed = TRUE))
+      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+    }
+  })
+
+  test_that("an unsupported lhs names itself and does not print (#1192)", {
+    # the branch is only reachable directly -- an unsupported lhs is already a parse
+    # error in rxModelVars() -- but the stray print() it used to do landed in the
+    # middle of the progress bar
+    expect_error(rxode2:::..rxOptLhs(quote(foo(bar, baz))),
+                 "foo(bar, baz)", fixed = TRUE)
+    expect_output(try(rxode2:::..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
+  })
 })

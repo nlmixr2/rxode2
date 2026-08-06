@@ -146,4 +146,75 @@ rxTest({
                    dense = TRUE)
     expect_equal(.s1$R2, .s2$R2, tolerance = 1e-8)
   })
+
+  # An expression duration is the case the estimation models hit: symengine inlines
+  # `T <- exp(lT)` into every delay(), and rxOptExpr() then factors that expression
+  # into a temporary.  Both must keep the past() line matched to its delay() (#1192).
+  test_that("an expression past() duration optimizes and keeps its delay() match", {
+    .filler <- paste(sprintf("v%d = %d * exp(kg * t) + sin(v0 * %d)", 1:45, 1:45, 1:45),
+                     collapse = "\n")
+    .head <- paste0(
+      "lT = 2.5\na = 1\nb = 0.5\nk3 = 5\nkg = 0.4\nk4 = 0.3\nk5 = 0.1\nv0 = 2\n",
+      "G(0) = a\nd/dt(G) = k3 - kg * G\n",
+      "I(0) = 0\nd/dt(I) = k4 * G - k4 * delay(G, exp(lT))\n",
+      "D(0) = 0\nd/dt(D) = k4 * delay(G, exp(lT)) - k5 * D\n")
+    .tail <- "R2 = D\npast(G, exp(lT)) = a * exp(b * t)\n"
+    .ev <- et(seq(0, 30, by = 1))
+    .sol <- function(.x) {
+      rxSolve(rxode2(.x), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10,
+              dense = TRUE)
+    }
+    for (.chunkLines in c(0L, 40L)) {
+      # pad past chunkLines only for the chunked arm, so each arm exercises its path
+      .mod <- if (.chunkLines == 0L) paste0(.head, .tail)
+              else paste0(.head, .filler, "\n", .tail)
+      .o <- suppressMessages(rxOptExpr(.mod, "m", chunkLines = .chunkLines))
+      expect_error(rxModelVars(.o), NA)
+      # the duration was factored out of the delay() calls ...
+      expect_true(grepl("delay\\(G, *rx_expr_", .o))
+      # ... and the past() line followed it, so the history still matches its delay()
+      expect_true(grepl("past\\(G,rx_expr_", .o))
+      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+      # optimizing must not change what the model means
+      expect_equal(.sol(.mod)$R2, .sol(.o)$R2, tolerance = 1e-8)
+    }
+  })
+
+  # The duration was stored as verbatim source text and emitted unresolved, while every
+  # delay() had its duration inlined by symengine -- so a generated model carried a
+  # past() naming an expression no delay() used any more (#1193).
+  .genModel <- "T=exp(lT)\nk=0.3\ny(0)=1\nd/dt(y)=-k*delay(y,T)\npast(y,T)=exp(b*t)\n"
+
+  test_that("generated models keep the past() duration matched to delay() (#1193)", {
+    .ev <- et(seq(0, 6, by = 0.25))
+    .p <- c(lT = 0.2, b = 0.5)
+    .ref <- rxSolve(rxode2(.genModel), .p, .ev, method = "dop853", dense = TRUE,
+                    atol = 1e-10, rtol = 1e-10)
+    for (.g in list(rxode2(.genModel, calcJac = TRUE),
+                    suppressMessages(rxode2(.genModel, calcSens = "k")))) {
+      .n <- gsub(" ", "", rxNorm(.g), fixed = TRUE)
+      expect_false(grepl("past(y,T)", .n, fixed = TRUE))
+      expect_true(grepl("past(y,exp(lT))", .n, fixed = TRUE))
+      expect_error(rxode2:::.rxValidatePast(.g), NA)
+      # ... and the generated model therefore solves, and means the same thing
+      .s <- rxSolve(.g, .p, .ev, method = "dop853", dense = TRUE,
+                    atol = 1e-10, rtol = 1e-10)
+      expect_equal(.s$y, .ref$y, tolerance = 1e-8)
+    }
+  })
+
+  test_that("sensitivity-compartment histories carry the resolved duration too", {
+    # differentiating the history w.r.t. b is non-zero, so .rxDelaySensAugment() also
+    # emits a past(rx__sens_y_BY_b__, tau) line -- it must resolve the duration the
+    # same way the base history does, and .rxValidatePast() skips rx__sens_ lines so
+    # only a test can say so
+    .g <- suppressMessages(rxode2(.genModel, calcSens = "b"))
+    .past <- .rxPastTerms(.g)
+    expect_equal(length(.past), 2L)                        # base + rx__sens_ history
+    .tau <- vapply(.past, `[[`, character(1), "tau")
+    expect_false(any(.tau == "T"))
+    expect_equal(length(unique(.tau)), 1L)
+    # the duration is the one the model's delay() terms actually use
+    expect_true(all(.tau %in% .rxDelayTerms(.g)$tau))
+  })
 })

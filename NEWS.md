@@ -1,5 +1,25 @@
 # rxode2 5.1.7
 
+## Bug fixes
+
+### Delay differential equations
+
+- `rxOptExpr()` no longer fails on a `past(state, tau)` whose delay duration is
+  an expression rather than a name or a number (`past(G, exp(lT))`,
+  `past(G, tau*2)`), which raised `unsupported lhs in optimize expression` and
+  printed the duration into the middle of the progress bar.  This made
+  `optExpression=TRUE` unusable for such a delay differential equation; it now
+  optimizes, and the duration follows the same common subexpression its
+  `delay()` terms do, so the history stays matched to them.
+
+- A generated delay differential equation model (`rxode2(..., calcJac=TRUE)`,
+  `calcSens=`, or an nlmixr2 estimation model) now resolves the `past()` delay
+  duration the same way it resolves the history itself.  A duration written as
+  an intermediate (`T <- exp(lT)`) was emitted verbatim while every `delay()`
+  had its duration inlined, so the generated model named a duration no `delay()`
+  used any more and `rxSolve()` rejected it with `duration 'T' does not match
+  any delay(...)`.
+
 # rxode2 5.1.6
 
 ## New features

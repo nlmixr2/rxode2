@@ -167,7 +167,15 @@
     } else if (identical(x[[1]], quote(`dur`))) {
       return(paste0("dur(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`past`))) {
-      return(paste0("past(", ..rxOptLhs(x[[2]]), ",", ..rxOptLhs(x[[3]]), ")"))
+      ## The delay duration is an ordinary expression, not a left-hand side, so it
+      ## is rendered by the right-hand-side optimizer rather than by this one --
+      ## which only knows names and the dosing-property heads and would reject any
+      ## `past(G, exp(lT))`.  Going through .rxOptExpr() also makes the duration
+      ## pick up the SAME rx_expr_ temporary the matching delay(state, tau) calls
+      ## do, which .rxValidatePast() requires (it matches the two by text).
+      .tau <- .rxOptExpr(x[[3]])
+      if (!is.character(.tau) || length(.tau) != 1L) .tau <- deparse1(x[[3]])
+      return(paste0("past(", ..rxOptLhs(x[[2]]), ",", .tau, ")"))
     } else if (identical(x[[1]], quote(`dy`))) {
       return(paste0("dy(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`df`))) {
@@ -175,8 +183,7 @@
     } else if (identical(x[[2]], 0)) {
       return(paste0(as.character(x[[1]]), "(0)"))
     } else {
-      print(x)
-      stop("unsupported lhs in optimize expression")
+      stop("unsupported lhs in optimize expression: ", deparse1(x), call. = FALSE)
     }
   }
 }
@@ -544,6 +551,54 @@
   txt
 }
 
+# Re-point a past() duration at the duration its delay() calls actually ended up with.
+#
+# On the whole-model path ..rxOptLhs() renders the past() duration through the optimizer,
+# so it picks up the same rx_expr_ temporary the matching delay(state, tau) calls do.  The
+# chunked path cannot: .rxDisguiseCmt() hides the whole past() left-hand side from the
+# optimizer and restores it byte-exactly, so a duration factored out of the delay() calls
+# would leave past(state, tau) naming an expression no delay(state, ...) uses any more --
+# which .rxValidatePast() rejects at solve time.
+#
+# This is text only, and no model semantics are involved: the duration on a past() line is
+# never evaluated (it exists so a history can be matched to its delay(); see
+# src/parseCmtProperties.h).  A duration is only re-pointed when the state's delay() calls
+# agree on exactly one duration; with several the past() line is left alone, since a single
+# history cannot say which one it belongs to anyway and the validator should say so.
+.rxRealignPastTau <- function(txt) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
+  .eq <- regexpr("=", .ln, fixed = TRUE)
+  .lhs <- ifelse(.eq > 0L, substr(.ln, 1L, .eq - 1L), "")
+  .isPast <- .eq > 0L &
+    grepl(paste0("^[ \t]*past[ \t]*\\([ \t]*", .id, "[ \t]*,.*\\)[ \t]*$"), .lhs)
+  if (!any(.isPast)) return(txt)
+  .e <- tryCatch(parse(text = paste0("{\n", txt, "\n}"))[[1L]], error = function(e) NULL)
+  if (is.null(.e)) return(txt)
+  .dly <- list()
+  .walk <- function(x) {
+    if (is.call(x)) {
+      if (identical(x[[1]], quote(delay)) && length(x) == 3L) {
+        .st <- deparse1(x[[2]])
+        .dly[[.st]] <<- unique(c(.dly[[.st]], deparse1(x[[3]])))
+      }
+      for (.i in seq_along(x)) .walk(x[[.i]])
+    }
+  }
+  .walk(.e)
+  for (.i in which(.isPast)) {
+    .p <- tryCatch(parse(text = .lhs[.i])[[1L]], error = function(e) NULL)
+    if (is.null(.p) || !is.call(.p) || length(.p) != 3L) next
+    .st <- deparse1(.p[[2L]])
+    .d <- .dly[[.st]]
+    if (is.null(.d) || length(.d) != 1L || deparse1(.p[[3L]]) %in% .d) next
+    .lead <- sub("^([ \t]*).*$", "\\1", .lhs[.i])
+    .ln[.i] <- paste0(.lead, "past(", .st, ",", .d,
+                      ")", substr(.ln[.i], .eq[.i], nchar(.ln[.i])))
+  }
+  paste(.ln, collapse = "\n")
+}
+
 # A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
 # Each chunk restarts its rx_expr_ counter at zero, so the names one chunk introduces would
 # collide with another's once reassembled; prefix them per chunk.
@@ -685,7 +740,8 @@
   if (is.null(.opt)) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
-  .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
+  .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
+  .rxRealignPastTau(.out)
 }
 
 #' Optimize rxode2 for computer evaluation
