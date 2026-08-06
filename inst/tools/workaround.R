@@ -76,24 +76,33 @@ if (inherits(versionInfo, "try-error")) {
 
 .sl <- paste(capture.output(StanHeaders:::LdFlags()),
              capture.output(RcppParallel:::RcppParallelLibs()))
+# Set when the TBB link flags are stripped below; the compile-time
+# STAN_THREADS/TBB defines must then be stripped too (see @SH@ handling).
+.rxDisableTbb <- FALSE
 if (.Platform$OS.type == "windows") {
   # rpath is not meaningful on Windows and can generate noisy linker flags.
   # The path is shQuote()d by StanHeaders, so match quoted forms first;
   # otherwise a path containing a space leaves an orphaned token behind.
   .sl <- gsub("\\s+-Wl,-rpath,('[^']*'|\"[^\"]*\"|[^[:space:]]+)", "", .sl)
-  # RcppParallel >= 6.0.0 statically links TBB on Windows via Rtools and no
-  # longer loads its tbb.dll stub, so StanHeaders' LdFlags() output
-  # (-L<RcppParallel/lib dir> -ltbb -ltbbmalloc) leaves the built DLL with an
-  # unresolvable runtime dependency on tbb.dll.  Strip those flags; TBB
-  # symbols resolve through RcppParallel's own -lRcppParallel instead.  The
-  # strip is keyed to the stale -L<RcppParallel/lib> signature so that a
-  # future StanHeaders that emits corrected flags (a different -L, -ltbb12,
-  # or -lRcppParallel) passes through untouched.  When TBB_LINK_LIB/TBB_LIB
-  # point at a user-supplied TBB, StanHeaders emits flags for that copy on
-  # purpose, so keep them too.
+  # RcppParallel 6.0.0--6.1.1 linked the static TBB provided by Rtools into
+  # RcppParallel.dll and shipped no TBB library on Windows, so the
+  # -L<RcppParallel/lib dir> -ltbb -ltbbmalloc emitted by StanHeaders'
+  # LdFlags() pointed at nothing; TBB symbols resolved through
+  # -lRcppParallel instead.  RcppParallel >= 6.2.0 builds the bundled oneTBB
+  # as a shared library and ships tbb.dll/tbbmalloc.dll there again, so the
+  # same flags are correct and linking them keeps STAN_THREADS on Windows.
+  # Distinguish the two states by looking for the TBB library on disk: strip
+  # the flags (and, via .rxDisableTbb, the STAN_THREADS/TBB defines) only
+  # when RcppParallel's lib directory has no TBB to link.  When
+  # TBB_LINK_LIB/TBB_LIB point at a user-supplied TBB, StanHeaders emits
+  # flags for that copy on purpose, so keep them too.
   .rp_ver <- tryCatch(utils::packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
   .tbb_env <- Sys.getenv("TBB_LINK_LIB", Sys.getenv("TBB_LIB"))
-  if (.rp_ver >= "6.0.0" && !dir.exists(.tbb_env)) {
+  .rp_lib <- system.file("lib", package = "RcppParallel")
+  .rp_has_tbb <- nzchar(.rp_lib) &&
+    length(list.files(.rp_lib, pattern = "^(lib)?tbb[0-9]*\\.(dll|dll\\.a|a)$",
+                      recursive = TRUE)) > 0L
+  if (.rp_ver >= "6.0.0" && !dir.exists(.tbb_env) && !.rp_has_tbb) {
     # Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64, ...) in
     # shQuote()d (single-quoted), double-quoted, or unquoted form -- but not
     # ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
@@ -102,12 +111,14 @@ if (.Platform$OS.type == "windows") {
     .sl2 <- gsub("-L[^-'\"[:space:]][^[:space:]]*RcppParallel[/\\\\]lib([/\\\\][^[:space:]]*)?(?=[[:space:]]|$)",
                  "", .sl2, perl = TRUE)
     if (!identical(.sl2, .sl)) {
-      # The stale -L was present, so the -ltbb/-ltbbmalloc flags next to it
-      # came from the same LdFlags() call; drop them with it.
+      # The -L pointing at RcppParallel's (TBB-less) lib dir was present, so
+      # the -ltbb/-ltbbmalloc flags next to it came from the same LdFlags()
+      # call; drop them with it.
       .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl2)
       .sl <- gsub("-ltbbmalloc\\b", "", .sl)
       .sl <- gsub("-ltbb\\b", "", .sl)
       .sl <- gsub("\\s+", " ", trimws(.sl))
+      .rxDisableTbb <- TRUE
     }
   }
 }
@@ -420,13 +431,23 @@ close(.ie_out)
 
 
 .badStan <- ""
-.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",
-                         paste(capture.output(StanHeaders:::CxxFlags()), # nolint
-                               capture.output(RcppParallel:::CxxFlags()), # nolint
-                               paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
-                               paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
-                               .badStan)),
-            .in)
+.sh <- paste(capture.output(StanHeaders:::CxxFlags()), # nolint
+             capture.output(RcppParallel:::CxxFlags()), # nolint
+             paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
+             paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
+             .badStan)
+if (.rxDisableTbb) {
+  # The -ltbb/rxode2/-ltbbmalloc link flags were stripped above (RcppParallel >=
+  # 6.0.0 on Windows no longer provides libtbb).  Compiling with
+  # -DSTAN_THREADS / -DRCPP_PARALLEL_USE_TBB=1 would still pull stan::math's
+  # ad_tape_observer (a tbb::task_scheduler_observer) into the objects,
+  # leaving undefined references to tbb::detail::r1::observe at link time.
+  # Drop the defines so Stan math and RcppParallel compile without TBB.
+  .sh <- gsub("-DSTAN_THREADS\\b", "", .sh)
+  .sh <- gsub("-DRCPP_PARALLEL_USE_TBB=1", "-DRCPP_PARALLEL_USE_TBB=0", .sh)
+  .sh <- gsub("\\s+", " ", trimws(.sh))
+}
+.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@", .sh), .in)
 
 
 

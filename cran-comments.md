@@ -1,44 +1,32 @@
-# rxode2 5.1.5
+# rxode2 5.1.6
 
-This is a bug-fix follow-up to 5.1.4.
+This is a bug-fix follow-up to 5.1.5.
 
-This is submitted within a few days of the last update because without
-it the next version of sundialr package cannot submitted; this package
-broke their reverse dependencies.
+This is submitted within a few days of the last update because RcppParallel 6.2.0 reversed their TBB decision.
 
-This is also submitted because the windows version of RcppParallel
-(6.0.0) + rxode2ll causes this package to crash without a
-revision. While the RcppParallel released another version, this still works.
-
-Also online and in CRAN the rxode2 interaction with `stringfish` (which
-comes in through `qs2`, and appears to have ABI linkage to
-RcppParallel) causes rxode2 not to load.  This release breaks that
-linkage: `qs2` is no longer imported into the rxode2 namespace and is
-no longer loaded when rxode2 is, so `stringfish` is not pulled in at
-load time.  `qs2` remains in `Imports` and is called with `qs2::` from
-`rxDeserialize()` alone, purely so objects serialized by earlier
-versions of rxode2 stay readable; it is never written to any more, and
-`rxSerialize()` now only writes `base`, `bzip2` or `xz`.
-
-The remaining changes are bug fixes (compiled-model cache key
-stability, event-table `ev$id` indexing, `delay()`/`past()` models
-with `if`/`else`, and a batched multi-subject `linCmt()` cross-subject
-leak); see NEWS.md for the full list.
-
-## R CMD check results
-
-On all platforms I see the standard "Days since last update" for this
-maintainer follow-up.
-
-This is due to the CRAN reverse dependency check of sundialr as well
-as the release of RcppParallel 6.0.0 which causes rxode2 to crash on
-windows systems.
-
-With this followup, sundialr is no longer blocked from their
-submission, and rxode2 will not cause a segmentation fault in windows.
+The remaining changes are bug fixes
 
 ## Reverse dependencies
 
-The downstream packages (nlmixr2est, babelmixr2, nonmem2rx,
-monolix2rx) rely on the stable `$predDf`/`$iniDf` interface, which is
-unchanged in this release. They also function correctly.
+This resubmission fixes the reverse-dependency failures reported for the
+previous 5.1.6 upload.
+
+Those failures all came from a single change, which has been reverted.  rxode2
+shares its C entry points with downstream packages through a positional
+function-pointer table, so that a new rxode2 can be released without rebuilding
+every reverse dependency.  The previous upload corrected two labels in that
+table's name vector that did not describe the slots they sat on.  Nothing about
+the ABI moved and the table is still read positionally, but the released
+nlmixr2est records those names when it is compiled and compares them when it
+loads, so it refused to start:
+
+    nlmixr2est needs a different version of rxode2 api, cannot run nlmixr2est
+
+which failed every package that depends on nlmixr2est.
+
+The labels are restored, so the names are now identical to those in 5.1.5, and
+they are documented as frozen: new entry points are only ever appended.  The
+build-time check on that table, added in the same upload, has also been removed,
+since every reverse dependency runs it when it loads.
+
+The affected maintainers are the nlmixr2 team, who are aware of the change.

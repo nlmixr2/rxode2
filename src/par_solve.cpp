@@ -710,6 +710,246 @@ extern "C" SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState,
   return R_NilValue;
 }
 
+////////////////////////////////////////////////////////////////////////
+// Event-sensitivity shape: function-pointer-table API (issue #1169)
+//
+// A "shape" is everything that describes one model's event ("jump")
+// sensitivities: the six dims above plus the model's dosing-derivative function
+// pointers.  Downstream packages (nlmixr2est's FOCEi) solve several peer models
+// -- pred, inner, augmented outer -- through ONE shared solve pool, each with a
+// different shape, so a swap has to install the batch's shape and restore the
+// previous one afterwards.  These entry points make that a self-contained C++
+// batch boundary with no R round trip (which is not usable there: installing
+// from R can repoint rxode2's global model pointer while the pool solve is
+// live).  The shape is saved into a caller-owned opaque buffer rather than a
+// published struct, so its layout stays rxode2's business.
+//
+// The shape globals are read (not written) inside the OpenMP solve loops, so
+// install and restore only at batch boundaries -- never from inside a parallel
+// region, and never while another thread is solving.
+////////////////////////////////////////////////////////////////////////
+
+// Stamped into every saved buffer and checked on restore, so a buffer that did
+// not come from rxode2EventSensShapeSave() -- a corrupted one, or one saved by a
+// different rxode2 build whose layout has moved -- is rejected instead of
+// installed as live function pointers.  Bump when the struct below changes.
+#define RX_ES_SHAPE_MAGIC 0x72455331  /* "rES1" */
+
+typedef struct rxEsShape {
+  unsigned int magic;
+  int size;
+  int active;
+  int nState;
+  int nParam;
+  int nParam2;
+  int nParam3;
+  int useCalcJac;
+  t_dydt dydtEs;
+  t_DUR durEsFn;
+  t_dLag dLagEs;
+  t_dLag d2LagEs;
+  t_dLag dLagJacEs;
+  t_dLag dLagQEs;
+  t_dF dF;
+  t_dF d2FEs;
+  t_dF d3FEs;
+  t_dF dFQEs;
+  t_dRate dRateEs;
+  t_dRate d2RateEs;
+  t_dDur dDurEs;
+  t_dDur d2DurEs;
+  t_dDur dDurQEs;
+} rxEsShape;
+
+// Bytes a caller must allocate for one saved shape.
+extern "C" int rxode2EventSensShapeSize(void) {
+  return (int) sizeof(rxEsShape);
+}
+
+// Snapshot the installed shape into `buf`, whose capacity is `bufSize` bytes.
+// Returns 1 on success, 0 if `buf` is NULL or too small (nothing is written --
+// the callee cannot otherwise tell, and a short buffer would be a silent
+// out-of-bounds write).  memcpy'd, so `buf` needs no particular alignment.
+extern "C" int rxode2EventSensShapeSave(void *buf, int bufSize) {
+  if (buf == NULL || bufSize < (int) sizeof(rxEsShape)) return 0;
+  rxEsShape s;
+  s.magic = RX_ES_SHAPE_MAGIC;
+  s.size = (int) sizeof(rxEsShape);
+  s.active = _rxEsActive;
+  s.nState = _rxEsNState;
+  s.nParam = _rxEsNParam;
+  s.nParam2 = _rxEsNParam2;
+  s.nParam3 = _rxEsNParam3;
+  s.useCalcJac = _rxEsUseCalcJac;
+  s.dydtEs = dydtEs;
+  s.durEsFn = durEsFn;
+  s.dLagEs = dLagEs;
+  s.d2LagEs = d2LagEs;
+  s.dLagJacEs = dLagJacEs;
+  s.dLagQEs = dLagQEs;
+  s.dF = dF;
+  s.d2FEs = d2FEs;
+  s.d3FEs = d3FEs;
+  s.dFQEs = dFQEs;
+  s.dRateEs = dRateEs;
+  s.d2RateEs = d2RateEs;
+  s.dDurEs = dDurEs;
+  s.d2DurEs = d2DurEs;
+  s.dDurQEs = dDurQEs;
+  memcpy(buf, &s, sizeof(rxEsShape));
+  return 1;
+}
+
+// Reinstall a shape previously written by rxode2EventSensShapeSave().  Rejects
+// a buffer that does not carry this build's stamp rather than installing
+// whatever bytes it holds as function pointers.  Returns 1 on success and 0 if
+// the buffer was rejected (leaving the installed shape untouched); it never
+// calls Rf_error, so a C++ caller holding the buffer in a local container is
+// not longjmp'd past its destructor.
+extern "C" int rxode2EventSensShapeRestore(const void *buf, int bufSize) {
+  if (buf == NULL || bufSize < (int) sizeof(rxEsShape)) return 0;
+  rxEsShape s;
+  memcpy(&s, buf, sizeof(rxEsShape));
+  if (s.magic != RX_ES_SHAPE_MAGIC || s.size != (int) sizeof(rxEsShape)) {
+    return 0;
+  }
+  _rxEsActive = s.active;
+  _rxEsNState = s.nState;
+  _rxEsNParam = s.nParam;
+  _rxEsNParam2 = s.nParam2;
+  _rxEsNParam3 = s.nParam3;
+  _rxEsUseCalcJac = s.useCalcJac;
+  dydtEs = s.dydtEs;
+  durEsFn = s.durEsFn;
+  dLagEs = s.dLagEs;
+  d2LagEs = s.d2LagEs;
+  dLagJacEs = s.dLagJacEs;
+  dLagQEs = s.dLagQEs;
+  dF = s.dF;
+  d2FEs = s.d2FEs;
+  d3FEs = s.d3FEs;
+  dFQEs = s.dFQEs;
+  dRateEs = s.dRateEs;
+  d2RateEs = s.d2RateEs;
+  dDurEs = s.dDurEs;
+  d2DurEs = s.d2DurEs;
+  dDurQEs = s.dDurQEs;
+  return 1;
+}
+
+// rxode2EventSensLoad plus the two dims that setter predates (nParam3,
+// useCalcJac); the C equivalent of R's rxEventSensLoadModel().
+extern "C" void rxode2EventSensLoadFull(SEXP trans, int active, int nState,
+                                        int nParam, int nParam2, int nParam3,
+                                        int useCalcJac) {
+  rxode2EventSensLoad(trans, active, nState, nParam, nParam2);
+  _rxEsNParam3 = nParam3;
+  _rxEsUseCalcJac = useCalcJac;
+}
+
+// Read the installed dims (any pointer may be NULL to skip it).  Pair with
+// rxode2EventSensSetDims() when only the dims change between peers -- use the
+// shape save/restore when the models differ, since the dosing-derivative
+// function pointers differ with them.
+extern "C" void rxode2EventSensGetDims(int *active, int *nState, int *nParam,
+                                       int *nParam2, int *nParam3,
+                                       int *useCalcJac) {
+  if (active != NULL) *active = _rxEsActive;
+  if (nState != NULL) *nState = _rxEsNState;
+  if (nParam != NULL) *nParam = _rxEsNParam;
+  if (nParam2 != NULL) *nParam2 = _rxEsNParam2;
+  if (nParam3 != NULL) *nParam3 = _rxEsNParam3;
+  if (useCalcJac != NULL) *useCalcJac = _rxEsUseCalcJac;
+}
+
+// Set all six dims at once, leaving the function pointers alone.
+extern "C" void rxode2EventSensSetDims(int active, int nState, int nParam,
+                                       int nParam2, int nParam3,
+                                       int useCalcJac) {
+  _rxEsActive = active;
+  _rxEsNState = nState;
+  _rxEsNParam = nParam;
+  _rxEsNParam2 = nParam2;
+  _rxEsNParam3 = nParam3;
+  _rxEsUseCalcJac = useCalcJac;
+}
+
+// Turn the jump injection off and zero the dims (C equivalent of R's
+// rxEventSensDeactivate()).  Function pointers are preserved, so a later
+// rxode2EventSensSetDims() can turn the same model back on.
+extern "C" void rxode2EventSensDeactivate(void) {
+  _rxEsActive = 0;
+  _rxEsNState = 0;
+  _rxEsNParam = 0;
+  _rxEsNParam2 = 0;
+  _rxEsNParam3 = 0;
+  _rxEsUseCalcJac = 0;
+}
+
+// R .Call wrappers around the entry points above, so the R side
+// (rxEventSensLoadModel() / rxEventSensDeactivate() / .rxSetEventSensDims())
+// and the C API drive the same code.
+extern "C" SEXP _rxode2_eventSensLoadFull(SEXP trans, SEXP active, SEXP nState,
+                                          SEXP nParam, SEXP nParam2,
+                                          SEXP nParam3, SEXP useCalcJac) {
+  rxode2EventSensLoadFull(trans, INTEGER(active)[0], INTEGER(nState)[0],
+                          INTEGER(nParam)[0], INTEGER(nParam2)[0],
+                          INTEGER(nParam3)[0], INTEGER(useCalcJac)[0]);
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_eventSensSetDims(SEXP active, SEXP nState, SEXP nParam,
+                                         SEXP nParam2, SEXP nParam3,
+                                         SEXP useCalcJac) {
+  rxode2EventSensSetDims(INTEGER(active)[0], INTEGER(nState)[0],
+                         INTEGER(nParam)[0], INTEGER(nParam2)[0],
+                         INTEGER(nParam3)[0], INTEGER(useCalcJac)[0]);
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_eventSensGetDims(void) {
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 6));
+  SEXP nm = rx_protect.protect(Rf_allocVector(STRSXP, 6));
+  rxode2EventSensGetDims(INTEGER(ret), INTEGER(ret) + 1, INTEGER(ret) + 2,
+                         INTEGER(ret) + 3, INTEGER(ret) + 4, INTEGER(ret) + 5);
+  SET_STRING_ELT(nm, 0, Rf_mkChar("active"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("nState"));
+  SET_STRING_ELT(nm, 2, Rf_mkChar("nParam"));
+  SET_STRING_ELT(nm, 3, Rf_mkChar("nParam2"));
+  SET_STRING_ELT(nm, 4, Rf_mkChar("nParam3"));
+  SET_STRING_ELT(nm, 5, Rf_mkChar("useCalcJac"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  return ret;
+}
+
+extern "C" SEXP _rxode2_eventSensDeactivate(void) {
+  rxode2EventSensDeactivate();
+  return R_NilValue;
+}
+
+// Shape save/restore as an R raw vector.  The bytes are an internal snapshot
+// (they hold live function pointers), so they are valid only within the session
+// that produced them -- never serialize one.
+extern "C" SEXP _rxode2_eventSensShapeSave(void) {
+  rxProtect rx_protect;
+  int n = rxode2EventSensShapeSize();
+  SEXP ret = rx_protect.protect(Rf_allocVector(RAWSXP, n));
+  rxode2EventSensShapeSave(RAW(ret), n);
+  return ret;
+}
+
+extern "C" SEXP _rxode2_eventSensShapeRestore(SEXP buf) {
+  if (TYPEOF(buf) != RAWSXP || Rf_xlength(buf) != rxode2EventSensShapeSize()) {
+    (Rf_error)("[eventSensShapeRestore]: expected a raw vector of %d bytes",
+               rxode2EventSensShapeSize());
+  }
+  if (!rxode2EventSensShapeRestore(RAW(buf), (int) Rf_xlength(buf))) {
+    (Rf_error)("[eventSensShapeRestore]: not an event-sensitivity shape saved by this rxode2 build");
+  }
+  return R_NilValue;
+}
+
 t_update_inis update_inis = NULL;
 
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;

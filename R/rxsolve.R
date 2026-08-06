@@ -274,7 +274,7 @@
 #'   negative and your base is zero, this will return the `machine
 #'   epsilon^(negative power)`.  By default this is turned on.
 #'
-#' @param safeLog Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  By default this is turned on.
+#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -798,7 +798,7 @@
 #' @param linCmtScale The scale of the linear compartment model.  This
 #'   is applied to sensitivity approximation using numeric
 #'   differences.  When `TRUE` or `NULL` use default scaling, when
-#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   `FALSE` use no scaling.  If it is one element numeric, the value
 #'   is duplicated 7 times and applies to all the parameters.
 #'   Otherwise this is a seven element numeric vector implying the
 #'   scaling for each of the linear compartmental model parameters.
@@ -1433,7 +1433,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
-    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1,
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=2,
                                    len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
     }

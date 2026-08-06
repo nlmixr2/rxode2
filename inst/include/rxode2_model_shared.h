@@ -37,7 +37,14 @@ static inline void _rxPrintf(const char *fmt, ...) {
 #define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) _rxPrintf
 #define LHS_Rprintf _rxPrintf
 static inline double _safe_log_(double a, rx_solve *rx) {
-  if (rx->safeLog) {
+  if (rx->safeLog == 2) {
+    // Zero is a benign numerical touch (a prediction landing exactly on 0), so it keeps
+    // the floor.  A NEGATIVE argument is a domain error: it must propagate as NaN rather
+    // than the large finite log(DBL_EPSILON), which a likelihood written as -log(sigma)
+    // otherwise reads as a +36 reward for an invalid sigma.
+    if (a < 0) return R_NaN;
+    return (a == 0) ? log(DBL_EPSILON) : log(a);
+  } else if (rx->safeLog) {
     return (a <= 0) ? log(DBL_EPSILON) : log(a);
   } else {
     return log(a);

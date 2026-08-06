@@ -1,5 +1,15 @@
 rxTest({
 
+  # A log scale is either a bare ggplot2 scale object or a length-one list
+  # wrapping one (xgxr <= 1.1.2 and old ggplot2 return the list form).
+  expect_scale <- function(o, cls) {
+    if (is.list(o)) {
+      expect_length(o, 1)
+      o <- o[[1]]
+    }
+    expect_s3_class(o, cls)
+  }
+
   expect_plotlog <- function(o, timex, logx, logy, dat) {
     # Checking for the correct type for logx and logy is nontrivial, so j
     expect_named(o, c("timex", "logx", "logy", "dat"))
@@ -11,16 +21,12 @@ rxTest({
     if (is.null(logx)) {
       expect_null(o$logx)
     } else {
-      expect_type(o$logx, "list")
-      expect_length(o$logx, 1)
-      expect_s3_class(o$logx[[1]], logx)
+      expect_scale(o$logx, logx)
     }
     if (is.null(logy)) {
       expect_null(o$logy)
     } else {
-      expect_type(o$logy, "list")
-      expect_length(o$logy, 1)
-      expect_s3_class(o$logy[[1]], logy)
+      expect_scale(o$logy, logy)
     }
     expect_equal(o$dat, dat)
   }

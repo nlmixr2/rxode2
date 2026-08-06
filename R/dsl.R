@@ -122,7 +122,7 @@ regIni <- rex::rex(or(
 #'     to have normalized syntax, that is `if (...){}` has to be
 #'     on the same line.  The `else` statement must be on its
 #'     own line with the closing bracket of the `if` statement
-#'     on the previous line.  This `else` statment must also
+#'     on the previous line.  This `else` statement must also
 #'     contain the opening bracket, like the code `else {}`
 #'
 #' @param removeInis A boolean indicating if parameter
@@ -250,11 +250,11 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
   return(x[regexpr(getFromNamespace("regPrint", "rxode2"), x) == -1])
 }
 
-#' Add a return statment to a function.
+#' Add a return statement to a function.
 #'
 #' @param fn Function to deparse
 #' @param ret boolean stating if a return statement will be added.
-#' @return Function with parens removed and add a return statment.
+#' @return Function with parens removed and add a return statement.
 #' @author Matthew L. Fidler
 #' @noRd
 rxAddReturn <- function(fn, ret = TRUE) {

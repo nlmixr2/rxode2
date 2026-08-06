@@ -916,6 +916,41 @@ rxTest({
     })
   })
 
+  test_that("simeps() resampling in a threaded solve does not touch R's RNG", {
+    # simeps()/simeta() run on the solving threads; drawing the replacement
+    # deviate used to reseed with getRxSeed1(), which calls R's RNG and
+    # corrupted R's heap when more than one thread resampled at once.  The
+    # damage only surfaced in a later, unrelated allocation, so gc() between
+    # solves is what makes a regression visible here.
+    rx <- rxode2({
+      c <- 0 + err
+      i <- 0
+      while (c < 0) {
+        simeps()
+        c <- 0 + err
+        i <- i + 1
+        if (i > 10) break
+      }
+    })
+
+    e <- et(0, 10)
+
+    .threads <- rxCores()
+    on.exit(setRxThreads(.threads), add = TRUE)
+    setRxThreads(min(4L, .threads))
+
+    rxWithPreserveSeed({
+      for (.s in 1:30) {
+        set.seed(.s)
+        .f <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 4))
+        # records that left the loop before the i > 10 escape resampled to a
+        # positive value
+        expect_true(all(.f$c[.f$i <= 10] > 0))
+        gc()
+      }
+    })
+  })
+
   test_that("simeta", {
     rx <- rxode2({
       wt <- 70 * exp(eta.wt)

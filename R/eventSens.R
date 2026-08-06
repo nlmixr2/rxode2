@@ -935,9 +935,7 @@
 .rxSetEventSensDims <- function(object) {
   .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
   if (is.null(.info) || identical(.info$mode, "fd")) {
-    .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
-    .Call(`_rxode2_setEventSensNParam3`, 0L)
-    return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L)))
+    return(invisible(.Call(`_rxode2_eventSensDeactivate`)))
   }
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
@@ -945,10 +943,45 @@
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   ## number of third-order (calcSens3) parameters; 0 when no Phase H1 path
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(object)))
-  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
-  invisible(.Call(`_rxode2_setEventSensDims`, 1L,
-                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
+  invisible(.Call(`_rxode2_eventSensSetDims`, 1L,
+                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2),
+                  as.integer(.nParam3),
+                  as.integer(.rxEventSensUseCalcJac(object))))
+}
+
+#' Read the installed event-sensitivity runtime dims
+#'
+#' Mirrors the C API's `rxode2EventSensGetDims()`; mostly for tests and for
+#' checking what a solve or [rxEventSensLoadModel()] installed.
+#'
+#' @return named integer vector: `active`, `nState`, `nParam`, `nParam2`,
+#'   `nParam3`, `useCalcJac`.
+#' @noRd
+.rxGetEventSensDims <- function() {
+  .Call(`_rxode2_eventSensGetDims`)
+}
+
+#' Save / restore the installed event-sensitivity shape
+#'
+#' R view of the C API's `rxode2EventSensShapeSave()` /
+#' `rxode2EventSensShapeRestore()`: the whole shape, dims plus the model's
+#' dosing-derivative function pointers, so a caller can bracket a batch of
+#' solves that install a different model's shape.  The raw vector holds live
+#' function pointers -- valid only in the session that produced it, never
+#' serialize it.
+#'
+#' @param buf A raw vector from `.rxEventSensShapeSave()`.
+#' @return `.rxEventSensShapeSave()` a raw vector; `.rxEventSensShapeRestore()`
+#'   invisibly `NULL`.
+#' @noRd
+.rxEventSensShapeSave <- function() {
+  .Call(`_rxode2_eventSensShapeSave`)
+}
+
+#' @rdname dot-rxEventSensShapeSave
+#' @noRd
+.rxEventSensShapeRestore <- function(buf) {
+  invisible(.Call(`_rxode2_eventSensShapeRestore`, buf))
 }
 
 #' Point the rxode2 event-sensitivity globals at a jump-sensitivity model
@@ -958,7 +991,9 @@
 #' rxode2's event ("jump") sensitivity function pointers and runtime dims to
 #' `model` and turns the jumps on.  The jump blocks are bounds-guarded, so
 #' smaller models solved afterwards skip the injection safely.  Pair with
-#' `rxEventSensDeactivate()` after the run.
+#' `rxEventSensDeactivate()` after the run.  The C API entry points behind this
+#' (`rxode2EventSensLoadFull()` and the shape save/restore) are in rxode2's
+#' function-pointer table, for callers that need the swap from C++.
 #'
 #' @param model A built jump-sensitivity model (carrying `eventSensInfo`).
 #' @return invisibly `TRUE` when the jumps were activated, `FALSE` otherwise
@@ -973,10 +1008,9 @@ rxEventSensLoadModel <- function(model) {
   .nParam <- length(.info$map$sensParams)
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  .Call(`_rxode2_eventSensLoad`, .trans, 1L, as.integer(.nState),
-        as.integer(.nParam), as.integer(.nParam2))
-  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(model)))
-  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
+  .Call(`_rxode2_eventSensLoadFull`, .trans, 1L, as.integer(.nState),
+        as.integer(.nParam), as.integer(.nParam2), as.integer(.nParam3),
+        as.integer(.rxEventSensUseCalcJac(model)))
   invisible(TRUE)
 }
 
@@ -989,9 +1023,7 @@ rxEventSensLoadModel <- function(model) {
 #' @export
 #' @keywords internal
 rxEventSensDeactivate <- function() {
-  .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
-  .Call(`_rxode2_setEventSensNParam3`, 0L)
-  invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
+  invisible(.Call(`_rxode2_eventSensDeactivate`))
 }
 
 #' Assemble the event-sensitivity information for a built model

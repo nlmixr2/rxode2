@@ -15,7 +15,7 @@ rxTest({
     expect_equal(rxExpandIfElse(rx1, TRUE, FALSE), c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");", "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");"))
   })
 
-  test_that("Keep initilizations if needed.", {
+  test_that("Keep initializations if needed.", {
     expect_equal(
       rxExpandIfElse(rx1, FALSE, FALSE),
       c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");", "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");")
@@ -36,7 +36,7 @@ rxTest({
     expect_equal(rxExpandIfElse(rx2, TRUE, FALSE), c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");"))
   })
 
-  test_that("Keep initilizations if needed.", {
+  test_that("Keep initializations if needed.", {
     expect_equal(
       rxExpandIfElse(rx2, FALSE, FALSE),
       c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");")
@@ -66,7 +66,7 @@ rxTest({
     )
   })
 
-  test_that("Keep initilizations", {
+  test_that("Keep initializations", {
     expect_equal(
       rxExpandIfElse(rx3, FALSE, FALSE),
       c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");", "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");")

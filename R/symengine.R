@@ -537,7 +537,7 @@ rxRmFun <- function(name) {
 #'     same number of arguments as the original function.  The first
 #'     function will construct the derivative with respect to the
 #'     first argument; The second function will construct the
-#'     derivitive with respect to the second argument, and so on.
+#'     derivative with respect to the second argument, and so on.
 #' @return nothing
 #' @author Matthew Fidler
 #' @export

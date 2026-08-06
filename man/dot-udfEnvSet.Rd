@@ -2,7 +2,7 @@
 % Please edit documentation in R/rudf.R
 \name{.udfEnvSet}
 \alias{.udfEnvSet}
-\title{Setup the UDF environment (for querying user defined funtions)}
+\title{Setup the UDF environment (for querying user defined functions)}
 \usage{
 .udfEnvSet(env)
 }
@@ -13,7 +13,7 @@
 environment
 }
 \description{
-Setup the UDF environment (for querying user defined funtions)
+Setup the UDF environment (for querying user defined functions)
 }
 \author{
 Matthew L. Fidler

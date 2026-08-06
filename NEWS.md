@@ -1,3 +1,106 @@
+# rxode2 5.1.7 (development version)
+
+## New features
+
+- `rxSolve(safeLog=2)` floors `log(0)` at `log(.Machine$double.eps)` the way
+  `safeLog=TRUE` does, but treats a **negative** argument as a domain error and
+  returns `NaN`.  `safeLog=TRUE` (the default) and `safeLog=FALSE` are
+  unchanged.  This is for a hand-written likelihood taking `log()` of a
+  parameter that must stay positive: under `safeLog=TRUE` an invalid negative
+  value returns a large finite number, which `-log(sigma)` turns into a reward
+  of roughly `+36` per observation instead of a rejection.
+
+## Bug fixes
+
+### Installation / linking
+
+- On Windows, `STAN_THREADS` and the TBB link are kept when building against
+  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
+  package again.  `configure` now decides whether to strip the TBB flags by
+  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
+  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
+  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
+  library on Windows.  (The 5.1.6 release notes had this backwards:
+  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
+  dropping it.)
+
+# rxode2 5.1.6
+
+## New features
+
+- Added the event ("jump") sensitivity shape to rxode2's linked
+  function-pointer API, so a downstream package can install a model's shape
+  from C++ without an R round trip: `rxode2EventSensLoadFull()` (all six dims,
+  where the older `rxode2EventSensLoad()` omitted `nParam3`/`useCalcJac`),
+  `rxode2EventSensGetDims()`/`rxode2EventSensSetDims()`,
+  `rxode2EventSensSetActive()`, `rxode2EventSensDeactivate()`, and
+  `rxode2EventSensShapeSize()`/`rxode2EventSensShapeSave()`/
+  `rxode2EventSensShapeRestore()`, which snapshot and reinstall a whole shape
+  (dims plus the model's dosing-derivative function pointers) through a
+  caller-owned opaque buffer.  This lets several peer models with different
+  shapes be solved through one shared solve pool, installing each batch's
+  shape and restoring the previous one afterwards.
+
+- Added `setIndCmt()` to the function-pointer API, the writer counterpart of
+  `getIndCmt()`, so a downstream package can re-base the per-observation `CMT`
+  covariate without reaching into `op->cmtCov`/`ind->cov_ptr` by field.
+  `getIndCmt()` reports a missing `CMT` as `NA_INTEGER`, distinct from the `1`
+  it returns for a model with no `CMT` covariate at all (where every observation
+  really is compartment 1), so a caller re-basing the column can leave missing
+  rows alone.
+
+## Bug fixes
+
+### Compilation cache
+
+- The compiled-model cache key now includes `eventSensCode`, so two builds of one
+  model whose generated C differs -- event sensitivities on vs off -- no longer
+  share a `.c`/`.so` path in the rxode2 cache directory.  Previously the second
+  build overwrote the first while any model object created earlier kept resolving
+  its entry points by name, so it silently began executing the other variant: the
+  declared `lhs` width was unchanged but most slots were never written, and
+  `rxSolve()` returned whatever was left in the buffer.  A model with no
+  event-sensitivity code keeps exactly the prefix it had, so no existing cache
+  entry is invalidated (#1171).
+
+### Dependencies
+
+- The suggested `xgxr` is now required to be `>= 1.1.6`.  Its
+  `xgx_scale_x_log10()`/`xgx_scale_y_log10()` return the `ggplot2` scale
+  itself from that version on, rather than a length-one list wrapping it.
+
+### Installation / linking
+
+- Fixed the Windows build against `RcppParallel` 6.2.0, which no longer ships
+  the TBB library there (6.0.0 still built).  `configure` already dropped the
+  `-ltbb`/`-ltbbmalloc`
+  link flags when they are unavailable, but still compiled with `-DSTAN_THREADS`
+  and `-DRCPP_PARALLEL_USE_TBB=1`, which pulls `stan::math`'s `ad_tape_observer`
+  (a `tbb::task_scheduler_observer`) into the objects and left undefined
+  references to `tbb::detail::r1::observe` at link time.  Those defines are now
+  dropped together with the link flags, `stan-math`'s `init_chainablestack.hpp`
+  is kept out of the build, and the main thread's AD tape -- which that
+  observer would otherwise have created -- is constructed in `src/linCmt.cpp`
+  instead (by Jeroen Ooms).
+
+### Solving
+
+- Fixed heap corruption when `simeta()`/`simeps()` resample inside a solve.
+  Both go through `simvar()`, which reseeded its threefry stream with
+  `getRxSeed1()`; unless `rxSetSeed()` had been called that draws from R's own
+  random number generator, which allocates R objects and can trigger a garbage
+  collection.  Doing so from an OpenMP worker thread corrupted R's heap, and
+  the session then failed later in an unrelated place (`cannot get data pointer
+  of 'NULL' objects`, `'rho' must be an environment`, `corrupted double-linked
+  list`, or a segfault).  The in-solve resample now draws from a per-thread
+  engine seeded on the main thread and touches no R API.
+
+- The `simeta()`/`simeps()` resample no longer replays the simulated
+  parameters.  Its engines are keyed off a threefry draw rather than off the
+  `runif()`-derived seed handed out at solve setup, which `rxSolve()` goes on
+  to reuse for the simulated `omega`/`sigma` deviates; a resampled `eta` could
+  therefore come out exactly equal to another subject's simulated `eta`.
+
 # rxode2 5.1.5
 
 ## New features
