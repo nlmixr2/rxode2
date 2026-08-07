@@ -893,6 +893,43 @@ rxTest({
     expect_equal(.rx$base, as.numeric(1:4))
   })
 
+  test_that("supplying one eta leaves the others simulated", {
+    f <- function() {
+      ini({
+        ta <- 0
+        tb <- 0
+        eta.a ~ 0.09
+        eta.b ~ 0.09
+        addSd <- 1
+      })
+      model({
+        a <- ta + eta.a
+        b <- tb + eta.b
+        base <- a + b
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .n <- 8L
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # eta.a is supplied, so it is dropped from the omega -- but the subset that
+    # drops it took a single remaining eta down to a scalar, whose dim is NULL,
+    # and all(NULL == c(0L, 0L)) is TRUE, so the whole omega was dropped and
+    # eta.b was neither simulated nor supplied ("The following parameter(s) are
+    # required for solving: eta.b").  A matrix params reached this only once a
+    # matrix's column names became visible to that filter.
+    for (.pars in list(
+      data.frame(id = seq_len(.n), ta = 0, tb = 0, addSd = 1, eta.a = 0),
+      cbind(ta = 0, tb = 0, addSd = 1, eta.a = 0)[rep(1L, .n), , drop = FALSE])) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, returnType = "data.frame"))
+      # eta.a was taken as given (a == ta == 0) and eta.b still varies
+      expect_equal(.rx$a, rep(0.0, .n))
+      expect_true(length(unique(.rx$b)) > 1L)
+    }
+  })
+
   test_that("sigma=NA is a no-op for a model with no residual error", {
     f <- function() {
       ini({

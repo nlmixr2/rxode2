@@ -2201,7 +2201,10 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
-      .omega <- .omega[.v, .v]
+      # drop=FALSE or selecting a single remaining eta gives a scalar, whose
+      # dim is NULL, and all(NULL == c(0L, 0L)) is TRUE -- so the whole omega
+      # went away and that eta stopped being simulated
+      .omega <- .omega[.v, .v, drop = FALSE]
       if (all(dim(.omega) == c(0L, 0L))) {
         .rxControl$omega <- NULL
       } else {

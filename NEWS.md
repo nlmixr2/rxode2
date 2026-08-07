@@ -107,6 +107,14 @@
   `0.92 1.84 2.67 ...`.  There was no warning, and the values look reasonable
   unless you know what they should be.
 
+- Supplying a value for one random effect no longer stops the others from being
+  simulated.  A supplied effect is dropped from the `omega` before solving, but
+  the subset that drops it took a single remaining effect down to a scalar,
+  whose `dim` is `NULL`, and `all(NULL == c(0L, 0L))` is `TRUE` -- so the whole
+  `omega` was dropped and the remaining effect was neither simulated nor
+  supplied (`The following parameter(s) are required for solving: eta.b`).  The
+  matching `sigma` code already guarded this.
+
 ### Compilation
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's
