@@ -100,7 +100,10 @@ rxTest({
 
     # Every comment here must survive the comment -> label() promotion verbatim.
     # Before the fix a `"` or `\` terminated the generated label() string early
-    # and the re-parse in .rxReplaceCommentWithLabel() failed.
+    # and the re-parse in .rxReplaceCommentWithLabel() failed.  The last three
+    # are the silent variants: they re-parsed fine but sub() stripping one level
+    # of backslash left a label carrying the *wrong* text -- an escape sequence
+    # (`\n`, `\t`) that R then interpreted, or a `\1` that R read as octal.
     .comments <- c(
       plain           = "Log Ka",
       doubleQuote     = "fixed to a \"small value\"",
@@ -108,7 +111,10 @@ rxTest({
       singleQuote     = "fixed to a 'small value'",
       backslash       = "units are mg\\L",
       escapedQuote    = "already \\\"escaped\\\"",
-      both            = "a \"quote\" and a \\ backslash"
+      both            = "a \"quote\" and a \\ backslash",
+      escapeN         = "line1\\nline2",
+      escapeT         = "a\\tb",
+      backReference   = "see \\1 here"
     )
 
     for (.n in names(.comments)) {
