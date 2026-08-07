@@ -730,6 +730,18 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param zeroVarParamHandle Determines what happens when `params`
+#'   supplies a value for an omega/sigma item whose variance is zero
+#'   (say `eta.base ~ fix(0)`).  Such an item is dropped from the matrix
+#'   that is simulated from and given to the model as a literal zero
+#'   instead; the options are:
+#'
+#'  - `warn` (default) replace the supplied value with zero and warn
+#'
+#'  - `ignore` replace the supplied value with zero silently
+#'
+#'  - `keep` use the supplied value instead of zero
+#'
 #' @param ssSolved When `TRUE` this will return the solved steady
 #'   state solutions for the linear compartment model.  When `FALSE`
 #'   this will solve to steady state using the linear solutions
@@ -1156,6 +1168,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     file=NULL,
                     chunkSize=NULL,
                     parallel=0L,
+                    zeroVarParamHandle=c("warn", "ignore", "keep"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1325,6 +1338,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
     }
+    if (missing(zeroVarParamHandle) &&
+          !is.null(getOption("rxode2.zeroVarParamHandle", NULL))) {
+      zeroVarParamHandle <- getOption("rxode2.zeroVarParamHandle")
+    }
+    zeroVarParamHandle <- match.arg(zeroVarParamHandle)
     if (any(names(.xtra) == "covs")) {
       stop("covariates can no longer be specified by 'covs' include them in the event dataset", .call = FALSE)
     }
@@ -1817,7 +1835,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       file=file,
       chunkSize=chunkSize,
       parallel=parallel,
-      .zeros=unique(.zeros)
+      .zeros=unique(.zeros),
+      zeroVarParamHandle=zeroVarParamHandle
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2030,6 +2049,52 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   .bad
 }
 
+#' The parameter names a `params` carries, whatever shape it is
+#'
+#' `names()` of a `matrix` is `NULL` -- its names are the column names -- so a
+#' matrix `params` looks to have no parameters at all when asked with `names()`.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
+#' @return the parameter names, or `NULL` when there are none
+#' @noRd
+.rxParamsNms <- function(params) {
+  if (is.matrix(params)) {
+    colnames(params)
+  } else {
+    names(params)
+  }
+}
+
+#' Which zero variance omega/sigma items to fix at zero in `params`
+#'
+#' An omega/sigma item whose variance is zero is dropped from the matrix that is
+#' simulated from and supplied to the model as a literal zero instead.  When
+#' `params` already carries a value for one, `handle` decides what happens to
+#' it: `"warn"` and `"ignore"` replace it with zero (`"warn"` says so),
+#' `"keep"` leaves the supplied value alone.
+#'
+#' @param zeros names of the omega/sigma items with zero variance
+#' @param params the `params` given to `rxSolve()`
+#' @param handle one of `"warn"`, `"ignore"`, `"keep"`; `NULL` (a control from
+#'   an older rxode2) is treated as `"warn"`
+#' @return the subset of `zeros` to set to zero in `params`
+#' @noRd
+.rxZeroVarParams <- function(zeros, params, handle) {
+  if (is.null(handle)) handle <- "warn"
+  .have <- intersect(zeros, .rxParamsNms(params))
+  if (length(.have) == 0L) return(zeros)
+  if (handle == "keep") return(setdiff(zeros, .have))
+  if (handle == "warn") {
+    warning("'params' value(s) replaced by zero for the zero variance omega/sigma item(s): '",
+            paste(.have, collapse = "', '"),
+            "'\nuse zeroVarParamHandle=\"keep\" to use the supplied value(s), ",
+            "or \"ignore\" to silence this",
+            call. = FALSE)
+  }
+  zeros
+}
+
 #' Fix the parameters named by an omega/sigma matrix at zero
 #'
 #' Used for `omega=NA`/`sigma=NA`, which request that the corresponding random
@@ -2131,7 +2196,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .omega <- .rxControl$omega
     .v <- vapply(dimnames(.omega)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
@@ -2164,7 +2229,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .sigma <- .rxControl$sigma
     .v <- vapply(dimnames(.sigma)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$sigma <- NULL
@@ -3195,17 +3260,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- params
       params <- .tmp
     }
-    if (inherits(params, "data.frame")) {
-      params <- .rxParamsZero(params, .ctl$.zeros)
-    } else if (is.matrix(params)) {
-      # a matrix params was left without the zeroed items entirely, so the
-      # model then asked for parameters the caller had no way to supply.  Only
-      # the missing ones are added: a column the caller did supply was used as
-      # given before this, and that keeps working.
-      params <- .rxParamsZero(params, setdiff(.ctl$.zeros, colnames(params)))
+    .zeros <- .rxZeroVarParams(.ctl$.zeros, params, .ctl$zeroVarParamHandle)
+    if (inherits(params, "data.frame") || is.matrix(params)) {
+      params <- .rxParamsZero(params, .zeros)
     } else if (inherits(params, "numeric") ||
                  inherits(params, "integer")) {
-      params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
+      params <- c(params, setNames(rep(0.0, length(.zeros)), .zeros))
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }

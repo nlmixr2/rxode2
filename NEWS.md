@@ -2,6 +2,13 @@
 
 ## New features
 
+- `rxSolve(zeroVarParamHandle=)` says what happens when `params` supplies a
+  value for an omega/sigma item whose variance is zero (say
+  `eta.base ~ fix(0)`).  Such an item is dropped from the matrix that is
+  simulated from and given to the model as a literal zero instead, which
+  discards the supplied value: `"warn"` (the default) does that and says so,
+  `"ignore"` does it silently, and `"keep"` uses the supplied value.
+
 - `rxSolve(safeLog=2)` floors `log(0)` at `log(.Machine$double.eps)` the way
   `safeLog=TRUE` does, but treats a **negative** argument as a domain error and
   returns `NaN`.  `safeLog=TRUE` (the default) and `safeLog=FALSE` are
@@ -86,7 +93,19 @@
   already was for a data.frame or a named numeric vector.  Such an entry is
   dropped from the matrix that is simulated from, so a matrix `params` reached
   the solver without it and `rxSolve()` failed with "The following parameter(s)
-  are required for solving".
+  are required for solving".  A matrix that did supply the item kept its value
+  where a data.frame had it replaced by zero; both replace it now, and
+  `zeroVarParamHandle=` chooses (see New features).
+
+- A `params` matrix that supplies a random effect is now recognized as
+  supplying it, so that effect is no longer simulated on top of the supplied
+  value.  `rxSolve()` decided whether `params` already had a random effect with
+  `names(params)`, which is `NULL` for a matrix -- its names are the column
+  names -- so the answer was always "no".  The supplied column was silently
+  ignored and a random draw used in its place: with `eta.base = 100` supplied
+  for every subject, a data.frame gave `101 102 103 ...` and a matrix gave
+  `0.92 1.84 2.67 ...`.  There was no warning, and the values look reasonable
+  unless you know what they should be.
 
 ### Compilation
 
