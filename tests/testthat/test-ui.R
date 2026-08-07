@@ -89,6 +89,37 @@ rxTest({
 
   })
 
+  test_that("a comment containing '#' keeps its label (rxode2 issue 1205)", {
+
+    .mkSrc <- function(comment) {
+      c("function() {", "  ini({",
+        paste0("    tka <- 0.45 ", comment),
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+    .labelOf <- function(comment) {
+      suppressMessages(.res <- .rxReplaceCommentWithLabel(.mkSrc(comment)))
+      .lbl <- .res[grepl("^ *label\\(", .res)]
+      if (length(.lbl) != 1L) return(NA_character_)
+      parse(text = .lbl)[[1]][[2]]
+    }
+
+    # The code group used to run on to the LAST `#`, leaving the first one in the
+    # emitted code where it commented out the label() -- so these silently lost
+    # their label while still parsing as a valid model.
+    expect_equal(.labelOf("## Log Ka"), "Log Ka")
+    expect_equal(.labelOf("### Log Ka"), "Log Ka")
+    expect_equal(.labelOf("# rate # per hour"), "rate # per hour")
+    expect_equal(.labelOf("# Patient #2 only"), "Patient #2 only")
+
+    # unchanged for the single-`#` forms
+    expect_equal(.labelOf("# Log Ka"), "Log Ka")
+    expect_equal(.labelOf("#Log Ka"), "Log Ka")
+
+    # a `#` in a comment that also carries a quote needs the escaping fix from
+    # #1198 as well, so that combination is asserted there rather than here.
+  })
+
   test_that("meta information parsing", {
 
     one.cmt <- function() {

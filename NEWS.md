@@ -70,6 +70,14 @@
   restored SAEM fit failing with "The following parameter(s) are required for
   solving: eta.v, eta.cl".
 
+- A trailing `#` comment on an `ini({})` line keeps its `label()` when the
+  comment itself contains a `#`, including the common `## comment` form.  The
+  code portion of the line was matched greedily, so on a line with two `#` it
+  ran on to the last one and left the first sitting in the generated code, where
+  it commented out the `label()` that had just been appended.  The label was
+  dropped silently -- the model still parsed and built, it simply lost the label
+  (#1205).
+
 ## Bug fixes
 
 ### Delay differential equations
