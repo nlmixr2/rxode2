@@ -114,7 +114,8 @@ rxTest({
       both            = "a \"quote\" and a \\ backslash",
       escapeN         = "line1\\nline2",
       escapeT         = "a\\tb",
-      backReference   = "see \\1 here"
+      backReference   = "see \\1 here",
+      trailingSlash   = "comment \\"
     )
 
     for (.n in names(.comments)) {
