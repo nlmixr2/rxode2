@@ -167,7 +167,15 @@
     } else if (identical(x[[1]], quote(`dur`))) {
       return(paste0("dur(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`past`))) {
-      return(paste0("past(", ..rxOptLhs(x[[2]]), ",", ..rxOptLhs(x[[3]]), ")"))
+      ## The delay duration is an ordinary expression, not a left-hand side, so it
+      ## is rendered by the right-hand-side optimizer rather than by this one --
+      ## which only knows names and the dosing-property heads and would reject any
+      ## `past(G, exp(lT))`.  Going through .rxOptExpr() also makes the duration
+      ## pick up the SAME rx_expr_ temporary the matching delay(state, tau) calls
+      ## do, which .rxValidatePast() requires (it matches the two by text).
+      .tau <- .rxOptExpr(x[[3]])
+      if (!is.character(.tau) || length(.tau) != 1L) .tau <- deparse1(x[[3]])
+      paste0("past(", ..rxOptLhs(x[[2]]), ",", .tau, ")")
     } else if (identical(x[[1]], quote(`dy`))) {
       return(paste0("dy(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`df`))) {
@@ -175,8 +183,7 @@
     } else if (identical(x[[2]], 0)) {
       return(paste0(as.character(x[[1]]), "(0)"))
     } else {
-      print(x)
-      stop("unsupported lhs in optimize expression")
+      stop("unsupported lhs in optimize expression: ", deparse1(x), call. = FALSE)
     }
   }
 }
@@ -544,6 +551,197 @@
   txt
 }
 
+# Index of the ")" matching the "(" at `open`, or NA when the line does not close it.
+.rxMatchParen <- function(line, open) {
+  .ch <- strsplit(substr(line, open, nchar(line)), "", fixed = TRUE)[[1]]
+  .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
+  if (is.na(.rel)) NA_integer_ else open + .rel - 1L
+}
+
+# Split "state, tau" at its top-level comma.  NULL when there is no such comma or the
+# first argument is not a plain name (`delay(f(x), tau)` is not a state).  A state may
+# lead with "." (`d/dt(.y.1)` parses), so a name is not required to start with a letter.
+# `code` is the code-only form of `inner` (see .rxCodeOnly()); the comma is found in it,
+# so a string holding one does not split the arguments, and the text is taken from
+# `inner`, which still has the string.  The two agree column for column.
+.rxSplitStateTau <- function(inner, code = inner) {
+  .ch <- strsplit(code, "", fixed = TRUE)[[1]]
+  .depth <- cumsum((.ch == "(") - (.ch == ")"))
+  .at <- which(.ch == "," & .depth == 0L)[1L]
+  if (is.na(.at)) return(NULL)
+  .st <- trimws(substr(inner, 1L, .at - 1L))
+  if (!grepl("^[a-zA-Z.][a-zA-Z0-9_.]*$", .st)) return(NULL)
+  list(state = .st, tau = trimws(substr(inner, .at + 1L, nchar(inner))))
+}
+
+# Comparable form of a duration: whatever spacing the text carries, two durations that
+# parse to the same expression compare equal.  Text that does not parse compares as itself.
+.rxTauKey <- function(tau) {
+  .e <- tryCatch(parse(text = tau)[[1L]], error = function(e) NULL)
+  if (is.null(.e)) trimws(tau) else deparse1(.e)
+}
+
+# The code part of a line: the comment dropped, and the inside of every string literal
+# blanked out.  Neither is code, so a delay() written in one is not a delay() call, and the
+# scan below must neither read one nor be stopped by an unbalanced parenthesis in one.
+# Blanking rather than removing keeps every column where it was, so what the scan does read
+# it reads from the right place.
+.rxCodeOnly <- function(line) {
+  if (!grepl("[#\"']", line)) return(line)
+  .ch <- strsplit(line, "", fixed = TRUE)[[1]]
+  .q <- ""
+  .i <- 1L
+  while (.i <= length(.ch)) {
+    .c <- .ch[.i]
+    if (nzchar(.q)) {
+      .ch[.i] <- " "
+      if (.c == "\\") {                    # escaped: whatever follows is not a delimiter
+        .i <- .i + 1L
+        if (.i <= length(.ch)) .ch[.i] <- " "
+      } else if (.c == .q) {
+        .ch[.i] <- .c                      # keep the quote that closes it
+        .q <- ""
+      }
+    } else if (.c == "\"" || .c == "'") {
+      .q <- .c
+    } else if (.c == "#") {
+      return(paste(.ch[seq_len(.i - 1L)], collapse = ""))
+    }
+    .i <- .i + 1L
+  }
+  paste(.ch, collapse = "")
+}
+
+# Durations of every delay(state, tau) in `txt`, per state, in order of first appearance.
+# Found by matching parentheses rather than by parsing, the way .rxDisguiseDelayChunks()
+# already scans for the same calls: `txt` is reassembled optimizer output, which is rxode2
+# syntax and not guaranteed to be valid R, and a scan that quietly stopped working on some
+# model shape would silently leave a past() line unmatched.
+#
+# A call the scan cannot read -- one split over lines, say -- sets the "incomplete"
+# attribute: the result is then a subset of the model's delay() calls, so neither the
+# order of what it did read nor the absence of a duration from it says anything.
+#
+# A call is LOCATED on the code-only form of the line and READ off the line itself: a
+# duration may legitimately hold a string (`delay(G, 1+(OCC=="first"))`), and the masking
+# that keeps the scan out of a string exists only to say what is code, not to alter it.
+# The two agree column for column, which is why .rxCodeOnly() blanks rather than removes.
+.rxDelayDurs <- function(txt) {
+  .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
+  .out <- list()
+  .incomplete <- FALSE
+  .lines <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  for (.i in seq_along(.lines)) {
+    .raw <- .lines[.i]
+    .l <- .rxCodeOnly(.raw)
+    .pos <- 1L
+    repeat {
+      .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)
+      if (.m == -1L) break
+      .open <- .pos + as.integer(.m) + attr(.m, "match.length") - 2L
+      .end <- .rxMatchParen(.l, .open)
+      if (is.na(.end)) { # no matching ")" on this line: skip it and keep scanning
+        .incomplete <- TRUE
+        .pos <- .open + 1L
+        next
+      }
+      .a <- .rxSplitStateTau(substr(.raw, .open + 1L, .end - 1L),
+                             substr(.l, .open + 1L, .end - 1L))
+      if (!is.null(.a)) {
+        .prev <- .out[[.a$state]]
+        if (!(.rxTauKey(.a$tau) %in% vapply(.prev, .rxTauKey, character(1)))) {
+          .out[[.a$state]] <- c(.prev, .a$tau)
+        }
+      }
+      .pos <- .open + 1L   # keep scanning, including nested delay() calls
+    }
+  }
+  attr(.out, "incomplete") <- .incomplete
+  .out
+}
+
+# The parts of a `past(state, tau) = ...` line, or NULL when the line is not one.  The
+# left-hand side is delimited by the parenthesis matching `past(`, NOT by the first "=" --
+# a duration may itself contain one (`past(G, h(x)==1)`).  Delimited on the code-only form
+# of the line, for the same reason .rxDelayDurs() scans that: a parenthesis inside a string
+# does not close the call.  The duration text still comes from the line itself.
+.rxPastLineParts <- function(line) {
+  .m <- regexpr("^[ \t]*past[ \t]*\\(", line)
+  if (.m == -1L) return(NULL)
+  .code <- .rxCodeOnly(line)
+  .open <- attr(.m, "match.length")
+  .end <- .rxMatchParen(.code, .open)
+  if (is.na(.end)) return(NULL)
+  .rest <- substr(line, .end + 1L, nchar(line))
+  if (!grepl("^[ \t]*(=|<-|~)", .rest)) return(NULL)
+  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L),
+                         substr(.code, .open + 1L, .end - 1L))
+  if (is.null(.a)) return(NULL)
+  c(.a, list(lead = sub("^([ \t]*).*$", "\\1", line), rest = .rest))
+}
+
+# Re-point a past() duration at the duration its delay() calls actually ended up with.
+#
+# On the whole-model path ..rxOptLhs() renders the past() duration through the optimizer,
+# so it picks up the same rx_expr_ temporary the matching delay(state, tau) calls do.  The
+# chunked path cannot: .rxDisguiseCmt() hides the whole past() left-hand side from the
+# optimizer and restores it byte-exactly, so a duration factored out of the delay() calls
+# would leave past(state, tau) naming an expression no delay(state, ...) uses any more --
+# which .rxValidatePast() rejects at solve time.
+#
+# This is text only, and no model semantics are involved: the duration on a past() line is
+# never evaluated (it exists so a history can be matched to its delay(); see
+# src/parseCmtProperties.h).  Optimizing never reorders statements, so a state's delay()
+# durations keep their order of first appearance, and `orig` -- the text before optimizing
+# -- says which optimized duration each past() line meant.  It is required: without it a
+# duration that stopped matching cannot be told from one that never matched.
+#
+# Only a duration that DID match a delay() before optimizing is ever re-pointed.  A
+# duration that matched nothing then matches nothing now for a reason of the model's own --
+# a typo, say -- and re-pointing it would turn a duration .rxValidatePast() rejects into
+# one it accepts, which is the one thing this pass must not do.  And a state's durations
+# are only matched up when the two texts agree on how many it has: optimizing can drop one
+# (`0*delay(G,10)` folds to `0`), and the survivor is then not the one a history that named
+# the dropped duration meant -- re-pointing it there would quietly hand a delay() term
+# another one's history, and the model would solve, wrongly.  Nothing is guessed at: what
+# does not line up is left for the validator to report.
+.rxRealignPastTau <- function(txt, orig) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .parts <- lapply(.ln, .rxPastLineParts)
+  .isPast <- which(!vapply(.parts, is.null, logical(1)))
+  if (length(.isPast) == 0L) return(txt)
+  .opt <- .rxDelayDurs(txt)
+  # a delay() the scan could not read -- one split over lines, say -- leaves an incomplete
+  # picture, and nothing can be concluded from it: the durations it did read are not the
+  # same calls, in the same order, as the ones optimizing produced, and a duration missing
+  # from it may be there in the model.  Leave every line alone, which is what this pass did
+  # before it existed: the validator still says whatever it would have said.
+  if (isTRUE(attr(.opt, "incomplete"))) return(txt)
+  .org <- .rxDelayDurs(orig)
+  if (isTRUE(attr(.org, "incomplete"))) return(txt)
+  .did <- FALSE
+  for (.i in .isPast) {
+    .p <- .parts[[.i]]
+    .o <- .opt[[.p$state]]
+    if (is.null(.o)) next
+    .key <- .rxTauKey(.p$tau)
+    if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
+    .g <- .org[[.p$state]]
+    .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
+    # it did not match a delay() before optimizing either: not ours to rewrite
+    if (!(.key %in% .gk)) next
+    if (length(.g) != length(.o)) next   # a duration was dropped: nothing lines up
+    .j <- match(.key, .gk)
+    if (is.na(.j)) next
+    .new <- .o[[.j]]
+    # keep the caller's spacing: only the duration inside past(...) is rewritten
+    .ln[.i] <- paste0(.p$lead, "past(", .p$state, ",", .new, ")", .p$rest)
+    .did <- TRUE
+  }
+  if (!.did) return(txt)
+  paste(.ln, collapse = "\n")
+}
+
 # A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
 # Each chunk restarts its rx_expr_ counter at zero, so the names one chunk introduces would
 # collide with another's once reassembled; prefix them per chunk.
@@ -685,7 +883,8 @@
   if (is.null(.opt)) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
-  .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
+  .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
+  .rxRealignPastTau(.out, .txt)
 }
 
 #' Optimize rxode2 for computer evaluation
