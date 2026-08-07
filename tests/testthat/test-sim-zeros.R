@@ -214,5 +214,11 @@ rxTest({
     .rx <- suppressWarnings(
       rxSolve(tmp, .ev, params = .df, returnType = "data.frame"))
     expect_equal(.rx$base, .expected)
+
+    # a matrix that does supply the item is left alone, as it was before
+    .matEta <- cbind(tbase = .expected, addSd = 1, eta.base = 5)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .matEta, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected + 5)
   })
 })

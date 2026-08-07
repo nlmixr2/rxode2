@@ -3195,10 +3195,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- params
       params <- .tmp
     }
-    if (inherits(params, "data.frame") || is.matrix(params)) {
-      # a matrix params was left without the zeroed items entirely, so the
-      # model then asked for parameters the caller had no way to supply
+    if (inherits(params, "data.frame")) {
       params <- .rxParamsZero(params, .ctl$.zeros)
+    } else if (is.matrix(params)) {
+      # a matrix params was left without the zeroed items entirely, so the
+      # model then asked for parameters the caller had no way to supply.  Only
+      # the missing ones are added: a column the caller did supply was used as
+      # given before this, and that keeps working.
+      params <- .rxParamsZero(params, setdiff(.ctl$.zeros, colnames(params)))
     } else if (inherits(params, "numeric") ||
                  inherits(params, "integer")) {
       params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
