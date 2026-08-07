@@ -36,6 +36,30 @@ jobs:
 
       - name: Test coverage
         run: |
+          ## A truncated covr trace file must not discard the whole run.
+          ## covr appends `reg.finalizer(ns, ... save_trace(...), onexit = TRUE)`
+          ## to the installed package's load script, so EVERY R process that
+          ## loads rxode2 writes a covr_trace_* into the merge directory on exit
+          ## -- including the helper subprocesses the test suite spawns.  One of
+          ## those dying mid-write leaves a partial file, and covr's
+          ## merge_coverage() readRDS()es each trace with no error handling, so a
+          ## single partial file aborts a multi-hour run and the upload below
+          ## never happens.  Drop the unreadable ones and say which, loudly.
+          .origMerge <- covr:::merge_coverage.character
+          .tolerantMerge <- function(x, ...) {
+            .ok <- vapply(x, function(f) {
+              !inherits(try(suppressWarnings(readRDS(f)), silent = TRUE), "try-error")
+            }, logical(1))
+            if (any(!.ok)) {
+              message(sprintf("covr: skipping %d of %d unreadable trace file(s): %s",
+                              sum(!.ok), length(x),
+                              paste(basename(x[!.ok]), collapse = ", ")))
+            }
+            if (!any(.ok)) stop("covr: every trace file was unreadable")
+            .origMerge(x[.ok])
+          }
+          assignInNamespace("merge_coverage.character", .tolerantMerge, "covr")
+
           cov <- covr::package_coverage(
             quiet = FALSE,
             clean = FALSE,
