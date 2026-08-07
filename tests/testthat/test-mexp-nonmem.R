@@ -626,6 +626,26 @@ rxTest({
     dFine <- max(abs(rxSolve(mexp, e, method = "indLin", hmax = 0.05)$central -
                        ref$central))
     expect_lt(dFine, dCoarse / 2)
+
+    # Same forcing through the braced rxode2({...}) front end rather than a
+    # string.  One compartment, so no k_from_to micro constant is needed.
+    mexpBraced <- suppressMessages(rxode2({
+      matExp()
+      cmt(central)
+      vmax <- 10
+      km <- 5
+      indLin(central) <- -vmax * central / (km + central)
+    }))
+    odeMm <- suppressMessages(rxode2({
+      vmax <- 10
+      km <- 5
+      d/dt(central) <- -vmax * central / (km + central)
+    }))
+    eb <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    refMm <- rxSolve(odeMm, eb, atol = 1e-10, rtol = 1e-10)
+    fineBraced <- rxSolve(mexpBraced, eb, method = "indLin", hmax = 0.001)
+    expect_false(any(is.na(fineBraced$central)))
+    expect_equal(fineBraced$central, refMm$central, tolerance = 1e-3)
   })
 
   test_that("rxSensMatExp() calcSens2/calcSens3 match the generic ODE path (linear)", {
