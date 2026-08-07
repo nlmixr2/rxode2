@@ -411,6 +411,19 @@ rxTest({
     .mrg1 <- paste(c("rx_expr_0~2", "d/dt(G)=-delay(G,rx_expr_0)-delay(G,rx_expr_0)",
                      "past(G,1+1)=2", "past(G,2)=3"), collapse = "\n")
     expect_identical(.r(.mrg1, .mrg0), .mrg1)
+    # a state may lead with a "." -- d/dt(.y.1) parses, so the scan must take it
+    .dot <- "past(.y.1,exp(lT))=2\nd/dt(.y.1)=-delay(.y.1,rx_expr_0)\nrx_expr_0~exp(lT)\n"
+    expect_identical(.pastOf(.r(.dot)), "past(.y.1,rx_expr_0)=2")
+    # the same duration twice is one duration, so the past() line still follows it
+    .dup0 <- "d/dt(G)=-delay(G, exp(lT))-delay(G, exp(lT))\npast(G,exp(lT))=2"
+    .dup1 <- paste(c("rx_expr_0~exp(lT)", "d/dt(G)=-delay(G, rx_expr_0)-delay(G, rx_expr_0)",
+                     "past(G,exp(lT))=2"), collapse = "\n")
+    expect_identical(.pastOf(.r(.dup1, .dup0)), "past(G,rx_expr_0)=2")
+    # the scan reads a line at a time, so a delay() split over lines is not read at all --
+    # the guard above needs something to have been read before it can refuse a rewrite
+    .ml0 <- "lT=2.5\nd/dt(G)=-delay(G,\n  exp(lT))\npast(G, exp(lT))=10\n"
+    .ml1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G, rx_expr_0)\npast(G, exp(lT))=10\n"
+    expect_identical(.pastOf(.r(.ml1, .ml0)), "past(G,rx_expr_0)=10")
   })
 
   test_that("the chunked path rejects a wrong duration the way the whole model does", {

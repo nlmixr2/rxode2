@@ -559,14 +559,15 @@
 }
 
 # Split "state, tau" at its top-level comma.  NULL when there is no such comma or the
-# first argument is not a plain name (`delay(f(x), tau)` is not a state).
+# first argument is not a plain name (`delay(f(x), tau)` is not a state).  A state may
+# lead with "." (`d/dt(.y.1)` parses), so a name is not required to start with a letter.
 .rxSplitStateTau <- function(inner) {
   .ch <- strsplit(inner, "", fixed = TRUE)[[1]]
   .depth <- cumsum((.ch == "(") - (.ch == ")"))
   .at <- which(.ch == "," & .depth == 0L)[1L]
   if (is.na(.at)) return(NULL)
   .st <- trimws(substr(inner, 1L, .at - 1L))
-  if (!grepl("^[a-zA-Z][a-zA-Z0-9_.]*$", .st)) return(NULL)
+  if (!grepl("^[a-zA-Z.][a-zA-Z0-9_.]*$", .st)) return(NULL)
   list(state = .st, tau = trimws(substr(inner, .at + 1L, nchar(inner))))
 }
 
@@ -666,8 +667,11 @@
     if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
     .g <- .org[[.p$state]]
     .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
-    # it did not match a delay() before optimizing either: not ours to rewrite
-    if (!is.null(orig) && !(.key %in% .gk)) next
+    # it did not match a delay() before optimizing either: not ours to rewrite.  Only when
+    # the pre-optimization text did say what this state's delay() durations were -- a
+    # delay() split over lines, say, is not read by the scan, and then there is nothing to
+    # conclude from its absence
+    if (!is.null(orig) && length(.gk) > 0L && !(.key %in% .gk)) next
     .new <- NULL
     if (length(.g) == length(.o)) {
       .j <- match(.key, .gk)
