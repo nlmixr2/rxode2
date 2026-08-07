@@ -591,19 +591,19 @@ rxTest({
   })
 
   test_that("an indLin() forcing that references a state is evaluated at that state", {
-    # rxode2#1183: IndF() took no state vector and codegen skipped the
-    # __zzStateVar__ population loop for ode_indLinVec, so the state locals kept
-    # their NA_REAL declaration and a Michaelis-Menten forcing solved to NA.
-    mexp <- suppressMessages(rxode2({
-      matExp()
-      cmt(depot)
-      cmt(central)
-      k_depot_central <- 1
-      vmax <- 10
-      km <- 5
-      indLin(central) <- -vmax * central / (km + central)
-      cp <- central / 20
-    }))
+    # rxode2#1183: the forcing function took no state vector and codegen skipped
+    # the __zzStateVar__ population loop for ode_indLinVec, so the state locals
+    # kept their NA_REAL declaration and a Michaelis-Menten forcing solved to NA.
+    # The matExp model is a string so the micro-constant name stays out of R.
+    mexp <- suppressMessages(rxode2(paste("matExp()",
+                                          "cmt(depot)",
+                                          "cmt(central)",
+                                          "k_depot_central = 1",
+                                          "vmax = 10",
+                                          "km = 5",
+                                          "indLin(central) <- -vmax*central/(km+central)",
+                                          "cp = central/20",
+                                          sep = "\n")))
     ode <- suppressMessages(rxode2({
       vmax <- 10
       km <- 5
@@ -611,7 +611,7 @@ rxTest({
       d/dt(central) <- 1 * depot - vmax * central / (km + central)
       cp <- central / 20
     }))
-    e <- et(amt = 100, cmt = "depot") %>% et(seq(0, 20, by = 0.5))
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0, 20, by = 0.5))
     ref <- rxSolve(ode, e, atol = 1e-10, rtol = 1e-10)
 
     fine <- rxSolve(mexp, e, method = "indLin", hmax = 0.001)
