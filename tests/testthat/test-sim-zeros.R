@@ -151,7 +151,7 @@ rxTest({
 
     # ok now try just the control
 
-    .ctl <- rxControl(omega=lotri::lotri(eta1~c(0.0)))
+    .ctl <- rxControl(omega=lotri::lotri(eta1~0.0))
     expect_equal(.ctl$omega, NULL)
     expect_equal(.ctl$.zeros, "eta1")
 
@@ -167,7 +167,7 @@ rxTest({
     expect_equal(.ctl$omegaUpper, c(eta1=1, eta2=1))
 
     # sigma
-    .ctl <- rxControl(sigma=lotri::lotri(eps1~c(0.0)))
+    .ctl <- rxControl(sigma=lotri::lotri(eps1~0.0))
     expect_equal(.ctl$sigma, NULL)
     expect_equal(.ctl$.zeros, "eps1")
 
@@ -237,8 +237,9 @@ rxTest({
     tmp <- rxode2("base = tbase + eta.base;")
     .n <- 4L
     .expected <- as.numeric(seq_len(.n))
-    .ev <- et(0) %>% et(id = seq_len(.n))
+    .ev <- et(0) |> et(id = seq_len(.n))
     .om <- lotri::lotri(eta.base ~ 0.0)
+    .rxZeroVarParams <- getFromNamespace(".rxZeroVarParams", "rxode2")
 
     .solve <- function(params, ...) {
       suppressMessages(
@@ -269,15 +270,15 @@ rxTest({
     }
 
     # nothing supplied for it -> zero it whatever the handle says
-    expect_equal(rxode2:::.rxZeroVarParams("eta.base", c(tbase = 1), "keep"),
+    expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1), "keep"),
                  "eta.base")
-    expect_equal(rxode2:::.rxZeroVarParams("eta.base",
+    expect_equal(.rxZeroVarParams("eta.base",
                                            c(tbase = 1, eta.base = 5), "keep"),
                  character(0))
 
     # a control from an older rxode2 has no such element at all
     expect_warning(
-      expect_equal(rxode2:::.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5),
+      expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5),
                                              NULL),
                    "eta.base"),
       "replaced by zero")

@@ -782,40 +782,41 @@ rxTest({
     # (per-id columns keep length nid, the appended zeros have length one), which
     # was then read out of bounds while solving.
     .omega <- matrix(0.1, 1, 1, dimnames = list("eta.base", "eta.base"))
+    .rxParamsZero <- getFromNamespace(".rxParamsZero", "rxode2")
     .df <- data.frame(id = 1:4, tbase = as.numeric(1:4))
 
-    .out <- rxode2:::.rxParamsZero(.df, .omega)
+    .out <- .rxParamsZero(.df, .omega)
     expect_s3_class(.out, "data.frame")
     expect_equal(nrow(.out), 4L)
     expect_equal(.out$eta.base, rep(0.0, 4))
     expect_equal(lengths(.out), c(id = 4L, tbase = 4L, eta.base = 4L))
 
     # a zero row params stays a zero row data.frame
-    .out0 <- rxode2:::.rxParamsZero(.df[0, ], .omega)
+    .out0 <- .rxParamsZero(.df[0, ], .omega)
     expect_s3_class(.out0, "data.frame")
     expect_equal(nrow(.out0), 0L)
     expect_equal(.out0$eta.base, numeric(0))
 
     # a matrix params keeps its dim -- c() would drop it the same way
     .mat <- cbind(tbase = as.numeric(1:4))
-    .outM <- rxode2:::.rxParamsZero(.mat, .omega)
+    .outM <- .rxParamsZero(.mat, .omega)
     expect_true(is.matrix(.outM))
     expect_equal(dim(.outM), c(4L, 2L))
     expect_equal(colnames(.outM), c("tbase", "eta.base"))
     expect_equal(.outM[, "eta.base"], rep(0.0, 4))
 
     # a matrix already carrying the column has it zeroed rather than doubled
-    .outM2 <- rxode2:::.rxParamsZero(cbind(tbase = as.numeric(1:4),
+    .outM2 <- .rxParamsZero(cbind(tbase = as.numeric(1:4),
                                            eta.base = 100), .omega)
     expect_equal(colnames(.outM2), c("tbase", "eta.base"))
     expect_equal(.outM2[, "eta.base"], rep(0.0, 4))
 
     # a named numeric vector still gets the zeros appended
-    expect_equal(rxode2:::.rxParamsZero(c(tbase = 1.0), .omega),
+    expect_equal(.rxParamsZero(c(tbase = 1.0), .omega),
                  c(tbase = 1.0, eta.base = 0.0))
 
     # a model with no random effects is a no-op rather than rep(0, NA)
-    expect_identical(rxode2:::.rxParamsZero(.df, NULL), .df)
+    expect_identical(.rxParamsZero(.df, NULL), .df)
   })
 
   test_that("omega=NA/sigma=NA solve correctly with a multi-row params data.frame", {
