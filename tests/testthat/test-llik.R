@@ -1065,4 +1065,25 @@ rxTest({
     expect_error(rxSolve(modelX, et, cores=2), NA)
 
   })
+
+  test_that("rxode2ll lookups are generated only for models that use llik()", {
+    # Emitting them for every model made a plain ODE depend on rxode2ll:
+    # R_GetCCallable() errors out of the generated model's R_init() before its
+    # globals are assigned, and R keeps the dll loaded anyway, so the first
+    # solve of a half-initialized model segfaulted.
+    .llRefs <- function(m) {
+      .c <- paste(readLines(as.character(rxC(m)), warn = FALSE), collapse = "\n")
+      lengths(regmatches(.c, gregexpr("rxode2ll", .c)))
+    }
+    .nLlFuns <- sum(rxode2parseGetTranslation()$package == "rxode2ll")
+    expect_gt(.nLlFuns, 0L)
+
+    .plain <- rxode2("d/dt(x) <- -0.5*x;")
+    expect_equal(setNames(rxModelVars(.plain)$flags["nLlik"], NULL), 0L)
+    expect_equal(.llRefs(.plain), 0L)
+
+    .withLlik <- rxode2("ll <- llikNorm(0, 1, 2); d/dt(x) <- -0.5*x;")
+    expect_equal(setNames(rxModelVars(.withLlik)$flags["nLlik"], NULL), 1L)
+    expect_equal(.llRefs(.withLlik), .nLlFuns)
+  })
 })

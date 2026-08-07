@@ -34,6 +34,11 @@
   raised when `cli` was absent became an unhandled C++ exception and aborted
   `library(rxode2)` itself; the `cli` namespace is now loaded on first use.
 
+- Generated models only resolve `rxode2ll`'s `llik*()` symbols when the model
+  actually calls one, instead of resolving all of them in every model.  A model
+  with no `llik*()` no longer depends on `rxode2ll` at all, and skips that many
+  `R_GetCCallable()` lookups when it loads.
+
 ## Bug fixes
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's

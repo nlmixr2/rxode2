@@ -246,6 +246,18 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppendN(&sbOut,"#include \"extraC.h\"\n", 20);
       writeBody1();
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
+        // rxode2ll supplies only llik*() functions, and those are reachable
+        // solely when the model calls one -- which is exactly what tb.nLlik
+        // counts.  Looking them up unconditionally made a plain ODE model
+        // depend on rxode2ll for no reason, and the lookup is not a soft
+        // failure: R_GetCCallable() errors, which longjmps out of the model's
+        // R_init() before its globals are assigned while R keeps the dll in its
+        // loaded table.
+        if (tb.nLlik == 0 &&
+            !strcmp(R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, i)),
+                    "rxode2ll")) {
+          continue;
+        }
         sAppend(&sbOut,"  %s = (%s) R_GetCCallable(\"%s\", \"%s\");\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
                 R_CHAR(STRING_ELT(_rxode2parse_functionType, i)),
