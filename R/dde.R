@@ -67,6 +67,95 @@
   .df
 }
 
+#' Evaluate stored rxode2 text in a symengine env
+#'
+#' The `past()` pieces are stored as plain rxode2 source text, which is not
+#' symengine syntax: `THETA[1]`/`ETA[1]` are subscripts there and symbols
+#' (`THETA_1_`) in the env, so evaluating the text directly fails on every
+#' mu-referenced model.  Translate it the way the model body itself was
+#' translated, then evaluate inside `with()` (the safe idiom -- symengine masks
+#' `get`/`[[`).
+#'
+#' @param model symengine environment.
+#' @param txt rxode2 source text.
+#' @return the `Basic` it evaluates to, or `NULL` when it does not resolve.
+#' @noRd
+.rxSeEvalTxt <- function(model, txt) {
+  .e <- tryCatch(parse(text = txt)[[1L]], error = function(e) NULL)
+  if (is.null(.e)) return(NULL)
+  .se <- tryCatch(.rxToSE(.e, envir = model), error = function(e) NULL)
+  if (is.null(.se)) return(NULL)
+  .b <- tryCatch(eval(parse(text = paste0("with(model,", .se, ")"))),
+                 error = function(e) NULL)
+  if (inherits(.b, "Basic")) .b else NULL
+}
+
+#' Resolve a stored past() delay duration through a symengine env
+#'
+#' The duration is rendered by evaluating a surrogate `delay(state, tau)` in the
+#' env and taking its second argument back off, so it comes out as the same
+#' expression the duration `.rxDelaySensAugment()` reads off the augmented
+#' `d/dt()` is (both are `deparse1()` of the same `rxFromSE()` round trip; the
+#' spacing `deparse1()` puts around an operator is normalized away when a history
+#' is matched to its `delay()`).  Evaluating the duration on
+#' its own is the fallback; a constant-folded intermediate is stored as a plain R
+#' numeric rather than a `Basic`, which is exactly the case the surrogate gets
+#' right and a bare `eval()` does not.  An unresolvable duration (env binding
+#' missing, eval error) keeps its stored text.
+#'
+#' @param model symengine environment.
+#' @param state state the history belongs to.
+#' @param tauTxt stored duration text (`rx__pastTau_STATE__`).
+#' @return duration text to emit.
+#' @noRd
+.rxTauFromEnv <- function(model, state, tauTxt) {
+  if (is.null(tauTxt)) return(tauTxt)
+  .b <- .rxSeEvalTxt(model, paste0("delay(", state, ",", tauTxt, ")"))
+  if (!is.null(.b)) {
+    .c <- tryCatch(parse(text = rxFromSE(.b))[[1L]], error = function(e) NULL)
+    if (is.call(.c) && length(.c) == 3L) return(deparse1(.c[[3L]]))
+  }
+  .t <- .rxSeEvalTxt(model, tauTxt)
+  if (!is.null(.t)) return(rxFromSE(.t))
+  tauTxt
+}
+
+#' Read a state's stored past() history out of a symengine env, resolved
+#'
+#' Both the history RHS and the duration are stored as plain rxode2 text
+#' (`rx__pastRhs_STATE__` / `rx__pastTau_STATE__`, see `R/symengine.R`).  The RHS
+#' has always been resolved back through the env; the duration was not, so a
+#' duration written as an intermediate (`T`) was emitted verbatim even though that
+#' intermediate had been dead-code eliminated from the generated model, while the
+#' matching `delay()` had its duration inlined by symengine.  Resolving both here
+#' is what keeps the emitted `past()` line matched to its `delay()` terms, and
+#' keeps the three emitters from drifting apart.  Both go through `.rxSeEvalTxt()`,
+#' so a `THETA[n]`/`ETA[n]` subscript resolves as well -- without it a
+#' mu-referenced history resolved to nothing and its per-parameter sensitivity
+#' pre-history lines were silently dropped.
+#'
+#' @param model symengine environment.
+#' @param state state the history belongs to.
+#' @return `NULL` when the state has no `past()`, otherwise a list with the
+#'   resolved duration `tau`, the resolved history text `rhs`, and the history
+#'   `Basic` `rhsB` (`NULL` when it did not resolve) for differentiation.
+#' @noRd
+.rxPastFromEnv <- function(model, state) {
+  .rhsTxt <- base::mget(paste0("rx__pastRhs_", state, "__"), envir = model,
+                        ifnotfound = list(NULL))[[1L]]
+  if (is.null(.rhsTxt)) return(NULL)
+  .tauTxt <- base::mget(paste0("rx__pastTau_", state, "__"), envir = model,
+                        ifnotfound = list(NULL))[[1L]]
+  ## resolve the duration first: rxFromSE() of a Basic holding lag0()/llik*()
+  ## poisons the next `[[`/get read from the env, and the history RHS is the one
+  ## that may carry such a call
+  .tau <- .rxTauFromEnv(model, state, .tauTxt)
+  .rhsB <- .rxSeEvalTxt(model, .rhsTxt)
+  list(tau = .tau,
+       rhs = if (is.null(.rhsB)) .rhsTxt else rxFromSE(.rhsB),
+       rhsB = .rhsB)
+}
+
 #' Base past(state, tau) <- expr history lines from a symengine env
 #'
 #' Rebuilds the base `past(state,tau)=expr` line(s) from the stored
@@ -83,16 +172,10 @@
   .states <- tryCatch(rxode2::rxStateOde(model), error = function(e) character(0))
   .lines <- character(0)
   for (.si in .states) {
-    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
-    if (is.null(.rhsTxt)) next
-    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
     ## resolve through the env so the injected line references root parameters
-    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
-                      error = function(e) NULL)
-    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
-    .lines <- c(.lines, sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut))
+    .p <- .rxPastFromEnv(model, .si)
+    if (is.null(.p)) next
+    .lines <- c(.lines, sprintf("past(%s,%s)=%s", .si, .p$tau, .p$rhs))
   }
   if (length(.lines)) .lines else NULL
 }
@@ -380,21 +463,16 @@
   .baseLines <- character(0)   # base state history (also needed by gradient-free SAEM)
   .pastLines <- character(0)   # base + per-sensitivity-compartment histories
   for (.si in .states) {
-    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
-    if (is.null(.rhsTxt)) next
-    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
     ## resolve through the env so the line references root parameters
     ## (past()-only intermediates are dead-code eliminated from the model)
-    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
-                      error = function(e) NULL)
-    .rhsOut <- if (!is.null(.rhsB) && inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt
-    .base <- sprintf("past(%s,%s)=%s", .si, .tauTxt, .rhsOut)
+    .pe <- .rxPastFromEnv(model, .si)
+    if (is.null(.pe)) next
+    .rhsB <- .pe$rhsB
+    .base <- sprintf("past(%s,%s)=%s", .si, .pe$tau, .pe$rhs)
     .baseLines <- c(.baseLines, .base)
     .pastLines <- c(.pastLines, .base)
     ## sens-compartment pre-history: d(history)/d(param)
-    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    if (is.null(.rhsB)) next
     for (.p in params) {
       .dp <- tryCatch(symengine::D(.rhsB, symengine::S(.p)), error = function(e) NULL)
       if (is.null(.dp)) next
@@ -402,7 +480,7 @@
       if (identical(.dpTxt, "0")) next
       .pastLines <- c(.pastLines,
                       sprintf("past(rx__sens_%s_BY_%s__,%s)=%s",
-                              .si, .p, .tauTxt, .dpTxt))
+                              .si, .p, .pe$tau, .dpTxt))
     }
   }
   ## append; unique dedups the base past() line shared by the 1st/2nd-order augments
@@ -845,14 +923,10 @@
   ## 2nd-order pre-history: past(rx__sens_s_BY_p_BY_q__, tau) = d^2 expr/dp dq
   .pastLines2 <- character(0)
   for (.si in .states) {
-    .rhsTxt <- base::mget(paste0("rx__pastRhs_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
-    if (is.null(.rhsTxt)) next
-    .tauTxt <- base::mget(paste0("rx__pastTau_", .si, "__"), envir = model,
-                          ifnotfound = list(NULL))[[1L]]
-    .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
-                      error = function(e) NULL)
-    if (is.null(.rhsB) || !inherits(.rhsB, "Basic")) next
+    .pe <- .rxPastFromEnv(model, .si)
+    if (is.null(.pe)) next
+    .rhsB <- .pe$rhsB
+    if (is.null(.rhsB)) next
     .cmts <- regmatches(sensVec,
                         regexpr(paste0("rx__sens_", .si, "_BY_[^,)]+_BY_[^,)]+__"),
                                 sensVec))
@@ -867,7 +941,7 @@
       .d2Txt <- rxFromSE(.d2)
       if (identical(.d2Txt, "0")) next
       .pastLines2 <- c(.pastLines2,
-                       sprintf("past(%s,%s)=%s", .cmt, .tauTxt, .d2Txt))
+                       sprintf("past(%s,%s)=%s", .cmt, .pe$tau, .d2Txt))
     }
   }
   if (length(.pastLines2)) {
