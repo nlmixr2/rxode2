@@ -399,6 +399,34 @@ rxTest({
     # when it does rewrite, only the duration changes -- spacing is kept
     .sp <- "   past(G,exp(lT))  =  2\nd/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)"
     expect_identical(strsplit(.r(.sp), "\n")[[1]][1L], "   past(G,rx_expr_0)  =  2")
+    # a duration that matched no delay() BEFORE optimizing is the model's own error and
+    # is left for the validator: re-pointing it would make a rejected duration accepted
+    .bad1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0)\npast(G,typo)=2\n"
+    .bad0 <- "d/dt(G)=-delay(G,exp(lT))\npast(G,typo)=2\n"
+    expect_identical(.r(.bad1, .bad0), .bad1)
+    # two histories on one state whose delay() durations optimized down to one: rewriting
+    # both would leave one silently shadowing the other, so neither is guessed at
+    .mrg0 <- paste(c("d/dt(G)=-delay(G,1+1)-delay(G,2)",
+                     "past(G,1+1)=2", "past(G,2)=3"), collapse = "\n")
+    .mrg1 <- paste(c("rx_expr_0~2", "d/dt(G)=-delay(G,rx_expr_0)-delay(G,rx_expr_0)",
+                     "past(G,1+1)=2", "past(G,2)=3"), collapse = "\n")
+    expect_identical(.r(.mrg1, .mrg0), .mrg1)
+  })
+
+  test_that("the chunked path rejects a wrong duration the way the whole model does", {
+    .pad <- paste(sprintf("v%d=%d", 1:60, 1:60), collapse = "\n")
+    .mod <- function(.tau) {
+      paste0("lT=0.2\nb=0.5\nG(0)=1\n", .pad,
+             "\nd/dt(G)=-exp(lT)*delay(G,exp(lT))\npast(G,", .tau, ")=exp(b*t)\n")
+    }
+    for (.chunk in c(0L, 10L)) {
+      .o <- suppressMessages(rxOptExpr(.mod("exp(lT)"), "m", chunkLines = .chunk))
+      expect_error(.rxValidatePast(rxModelVars(.o)), NA)
+      expect_true(grepl("past\\(G,rx_expr_", .o))
+      # a genuinely wrong duration still names itself in the error, on either path
+      .b <- suppressMessages(rxOptExpr(.mod("typo"), "m", chunkLines = .chunk))
+      expect_error(.rxValidatePast(rxModelVars(.b)), "'typo' does not match")
+    }
   })
 
   test_that("an unsupported lhs names itself and does not print (#1192)", {

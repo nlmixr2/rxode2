@@ -217,4 +217,28 @@ rxTest({
     # the duration is the one the model's delay() terms actually use
     expect_true(all(.tau %in% .rxDelayTerms(.g)$tau))
   })
+
+  test_that("a THETA[]/ETA[] duration resolves like the rest of the model", {
+    # the stored duration is rxode2 source text, where THETA[1] is a subscript -- in the
+    # symengine env it is the symbol THETA_1_, so it has to be translated before it is
+    # evaluated.  Every mu-referenced (nlmixr2) model reaches this.
+    .m <- paste0("T=exp(lT)\nk=0.3\ny(0)=1\n",
+                 "d/dt(y)=-k*delay(y,T+THETA[1])\npast(y,T+THETA[1])=exp(b*t)\n")
+    .g <- rxode2(.m, calcJac = TRUE)
+    .n <- gsub(" ", "", rxNorm(.g), fixed = TRUE)
+    expect_false(grepl("past(y,T+THETA[1])", .n, fixed = TRUE))
+    expect_true(grepl("past(y,THETA[1]+exp(lT))", .n, fixed = TRUE))
+    expect_error(.rxValidatePast(.g), NA)
+  })
+
+  test_that("a THETA[]/ETA[] history resolves, so it can be differentiated", {
+    # an unresolved history is not a Basic, and .rxDelaySensAugment() then silently
+    # emits no per-parameter sensitivity pre-history at all
+    .e <- rxS(paste0("k=0.3\nG(0)=1\nd/dt(G)=-k*delay(G,exp(THETA[1]))\n",
+                     "past(G,exp(THETA[1]))=exp(ETA[1]*t)\n"), doConst = FALSE)
+    .p <- .rxPastFromEnv(.e, "G")
+    expect_equal(.p$tau, "exp(THETA[1])")
+    expect_equal(.p$rhs, "exp(t*ETA[1])")
+    expect_true(inherits(.p$rhsB, "Basic"))
+  })
 })

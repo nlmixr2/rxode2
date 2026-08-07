@@ -18,7 +18,10 @@
   an intermediate (`T <- exp(lT)`) was emitted verbatim while every `delay()`
   had its duration inlined, so the generated model named a duration no `delay()`
   used any more and `rxSolve()` rejected it with `duration 'T' does not match
-  any delay(...)`.
+  any delay(...)`.  This also covers a duration or a history written with
+  `THETA[n]`/`ETA[n]`, as every mu-referenced model is: they were left
+  unresolved, and an unresolved history additionally emitted no per-parameter
+  sensitivity pre-history at all.
 
 # rxode2 5.1.6
 

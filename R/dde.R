@@ -67,6 +67,29 @@
   .df
 }
 
+#' Evaluate stored rxode2 text in a symengine env
+#'
+#' The `past()` pieces are stored as plain rxode2 source text, which is not
+#' symengine syntax: `THETA[1]`/`ETA[1]` are subscripts there and symbols
+#' (`THETA_1_`) in the env, so evaluating the text directly fails on every
+#' mu-referenced model.  Translate it the way the model body itself was
+#' translated, then evaluate inside `with()` (the safe idiom -- symengine masks
+#' `get`/`[[`).
+#'
+#' @param model symengine environment.
+#' @param txt rxode2 source text.
+#' @return the `Basic` it evaluates to, or `NULL` when it does not resolve.
+#' @noRd
+.rxSeEvalTxt <- function(model, txt) {
+  .e <- tryCatch(parse(text = txt)[[1L]], error = function(e) NULL)
+  if (is.null(.e)) return(NULL)
+  .se <- tryCatch(.rxToSE(.e, envir = model), error = function(e) NULL)
+  if (is.null(.se)) return(NULL)
+  .b <- tryCatch(eval(parse(text = paste0("with(model,", .se, ")"))),
+                 error = function(e) NULL)
+  if (inherits(.b, "Basic")) .b else NULL
+}
+
 #' Resolve a stored past() delay duration through a symengine env
 #'
 #' The duration is rendered by evaluating a surrogate `delay(state, tau)` in the
@@ -85,14 +108,13 @@
 #' @noRd
 .rxTauFromEnv <- function(model, state, tauTxt) {
   if (is.null(tauTxt)) return(tauTxt)
-  .b <- tryCatch(eval(parse(text = paste0("delay(", state, ",", tauTxt, ")")),
-                      envir = model), error = function(e) NULL)
-  if (inherits(.b, "Basic")) {
+  .b <- .rxSeEvalTxt(model, paste0("delay(", state, ",", tauTxt, ")"))
+  if (!is.null(.b)) {
     .c <- tryCatch(parse(text = rxFromSE(.b))[[1L]], error = function(e) NULL)
     if (is.call(.c) && length(.c) == 3L) return(deparse1(.c[[3L]]))
   }
-  .t <- tryCatch(eval(parse(text = tauTxt), envir = model), error = function(e) NULL)
-  if (inherits(.t, "Basic")) return(rxFromSE(.t))
+  .t <- .rxSeEvalTxt(model, tauTxt)
+  if (!is.null(.t)) return(rxFromSE(.t))
   tauTxt
 }
 
@@ -105,7 +127,10 @@
 #' intermediate had been dead-code eliminated from the generated model, while the
 #' matching `delay()` had its duration inlined by symengine.  Resolving both here
 #' is what keeps the emitted `past()` line matched to its `delay()` terms, and
-#' keeps the three emitters from drifting apart.
+#' keeps the three emitters from drifting apart.  Both go through `.rxSeEvalTxt()`,
+#' so a `THETA[n]`/`ETA[n]` subscript resolves as well -- without it a
+#' mu-referenced history resolved to nothing and its per-parameter sensitivity
+#' pre-history lines were silently dropped.
 #'
 #' @param model symengine environment.
 #' @param state state the history belongs to.
@@ -123,11 +148,10 @@
   ## poisons the next `[[`/get read from the env, and the history RHS is the one
   ## that may carry such a call
   .tau <- .rxTauFromEnv(model, state, .tauTxt)
-  .rhsB <- tryCatch(eval(parse(text = .rhsTxt), envir = model),
-                    error = function(e) NULL)
+  .rhsB <- .rxSeEvalTxt(model, .rhsTxt)
   list(tau = .tau,
-       rhs = if (inherits(.rhsB, "Basic")) rxFromSE(.rhsB) else .rhsTxt,
-       rhsB = if (inherits(.rhsB, "Basic")) .rhsB else NULL)
+       rhs = if (is.null(.rhsB)) .rhsTxt else rxFromSE(.rhsB),
+       rhsB = .rhsB)
 }
 
 #' Base past(state, tau) <- expr history lines from a symengine env
