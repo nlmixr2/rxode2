@@ -12,7 +12,13 @@
   .regOther1 <- rex::rex(any_spaces, "}", any_spaces, ")", any_spaces)
   .regOther2 <- rex::rex(any_spaces, "model", any_spaces, "(", any_spaces, "{", any_spaces)
   .regCommentOnBlankLine <- "^ *#+ *(.*) *$"
-  .regLabel <- "^( *[^\n\"]+) *#+ *(.*) *$"
+  # `#` is excluded from the code group so it stops at the FIRST `#`.  POSIX ERE
+  # is leftmost-longest, so a greedy `[^\n"]+` ran on to the LAST `#` and left
+  # the earlier one in the emitted code, where it commented out the label() just
+  # appended -- `x <- 1 ## Lbl` and `x <- 1 # a # b` lost their label entirely.
+  # Outside a string R code cannot contain `#`, and strings are already excluded
+  # by the `"` in the same bracket.
+  .regLabel <- "^( *[^\n\"#]+) *#+ *(.*) *$"
   .ret <- vapply(src,
                  function(line) {
                    if (regexpr(.regIni, line, perl=TRUE) != -1) {
@@ -26,7 +32,12 @@
                      } else if (regexpr(.regLabel, line) != -1) {
                        .env$convertLabel <- TRUE
                        .label <- deparse1(sub(.regLabel, "\\2", line))
-                       return(sub(.regLabel, paste0("\\1; label(", .label, ")"), line))
+                       # `.label` is already escaped by deparse1(); assemble the line with
+                       # paste0() rather than sub()'s replacement so it stays that way.
+                       # sub() parses backslashes in a replacement and strips one level,
+                       # which turned a `"` or `\` in the comment into an unparsable
+                       # label() (rxode2 issue 1195).
+                       return(paste0(sub(.regLabel, "\\1", line), "; label(", .label, ")"))
                      }
                    }
                    line
@@ -288,11 +299,18 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
                   cov=NULL, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
-    .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
-    if (inherits(.funName, "try-error")) {
+    .funExpr <- try(as.list(with(envir, match.call()))[[1]], silent=TRUE)
+    if (inherits(.funExpr, "try-error")) {
       .funName <- NULL
-    } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
-      .udfEnvSet(parent.env(envir))
+    } else {
+      .funName <- try(.rxModelNameFromExpr(.funExpr, envir=envir), silent=TRUE)
+      if (inherits(.funName, "try-error")) .funName <- NULL
+      # the user function environment follows the model function itself, which
+      # is only known when it was called by name
+      if (is.symbol(.funExpr) &&
+            exists(as.character(.funExpr), envir=parent.env(envir))) {
+        .udfEnvSet(parent.env(envir))
+      }
     }
     .ini <- .lastIni
     .iniQ <- .lastIniQ

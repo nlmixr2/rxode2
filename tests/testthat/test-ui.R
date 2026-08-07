@@ -89,6 +89,109 @@ rxTest({
 
   })
 
+  test_that("comment labels with quotes/backslashes are escaped (rxode2 issue 1195)", {
+
+    .mkSrc <- function(comment) {
+      c("function() {", "  ini({",
+        paste0("    tka <- 0.45 # ", comment),
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+
+    # Every comment here must survive the comment -> label() promotion verbatim.
+    # Before the fix a `"` or `\` terminated the generated label() string early
+    # and the re-parse in .rxReplaceCommentWithLabel() failed.  The last three
+    # are the silent variants: they re-parsed fine but sub() stripping one level
+    # of backslash left a label carrying the *wrong* text -- an escape sequence
+    # (`\n`, `\t`) that R then interpreted, or a `\1` that R read as octal.
+    .comments <- c(
+      plain           = "Log Ka",
+      doubleQuote     = "fixed to a \"small value\"",
+      unbalancedQuote = "6\" tall",
+      singleQuote     = "fixed to a 'small value'",
+      backslash       = "units are mg\\L",
+      escapedQuote    = "already \\\"escaped\\\"",
+      both            = "a \"quote\" and a \\ backslash",
+      escapeN         = "line1\\nline2",
+      escapeT         = "a\\tb",
+      backReference   = "see \\1 here",
+      trailingSlash   = "comment \\"
+    )
+
+    for (.n in names(.comments)) {
+      .comment <- .comments[[.n]]
+      suppressMessages(
+        .res <- .rxReplaceCommentWithLabel(.mkSrc(.comment))
+      )
+      # the promoted label must re-parse ...
+      expect_true(is.function(
+        eval(parse(text = paste(.res, collapse = "\n"), keep.source = FALSE))
+      ), info = .n)
+      # ... and carry the comment text through unchanged
+      .lbl <- .res[grepl("^ *label\\(", .res)]
+      expect_equal(length(.lbl), 1L, info = .n)
+      expect_equal(parse(text = .lbl)[[1]][[2]], .comment, info = .n)
+    }
+
+    # exact generated line for the reported failure
+    suppressMessages(
+      .res <- .rxReplaceCommentWithLabel(.mkSrc("fixed to a \"small value\""))
+    )
+    expect_equal(.res[grepl("^ *label\\(", .res)],
+                 "        label(\"fixed to a \\\"small value\\\"\")")
+
+    # a `"` in a comment on an eta line is promoted the same way
+    .eta <- c("function() {", "  ini({", "    tka <- 0.45",
+              "    eta.ka ~ fixed(0.0225) # IIV \"fixed to a small value\"",
+              "    add.sd <- 0.7", "  })", "  model({",
+              "    ka <- exp(tka + eta.ka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.eta))
+    expect_equal(.res[grepl("^ *label\\(", .res)],
+                 "        label(\"IIV \\\"fixed to a small value\\\"\")")
+
+    # a line that already has label() is left alone, quoted comment or not
+    .already <- c("function() {", "  ini({",
+                  "    tka <- 0.45; label(\"Log Ka\") # ignore this \"quoted\" text",
+                  "    add.sd <- 0.7", "  })", "  model({",
+                  "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.already))
+    expect_equal(.res[grepl("^ *label\\(", .res)], "        label(\"Log Ka\")")
+  })
+
+  test_that("a comment containing '#' keeps its label (rxode2 issue 1205)", {
+
+    .mkSrc <- function(comment) {
+      c("function() {", "  ini({",
+        paste0("    tka <- 0.45 ", comment),
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+    .labelOf <- function(comment) {
+      suppressMessages(.res <- .rxReplaceCommentWithLabel(.mkSrc(comment)))
+      .lbl <- .res[grepl("^ *label\\(", .res)]
+      if (length(.lbl) != 1L) return(NA_character_)
+      parse(text = .lbl)[[1]][[2]]
+    }
+
+    # The code group used to run on to the LAST `#`, leaving the first one in the
+    # emitted code where it commented out the label() -- so these silently lost
+    # their label while still parsing as a valid model.
+    expect_equal(.labelOf("## Log Ka"), "Log Ka")
+    expect_equal(.labelOf("### Log Ka"), "Log Ka")
+    expect_equal(.labelOf("# rate # per hour"), "rate # per hour")
+    expect_equal(.labelOf("# Patient #2 only"), "Patient #2 only")
+
+    # unchanged for the single-`#` forms
+    expect_equal(.labelOf("# Log Ka"), "Log Ka")
+    expect_equal(.labelOf("#Log Ka"), "Log Ka")
+
+    # a comment carrying BOTH a `#` and a quote needs the #1205 regex and the
+    # #1195 escaping together: the regex keeps the label from being commented
+    # out, the paste0() assembly keeps the quote from breaking the re-parse.
+    expect_equal(.labelOf("## a \"quoted\" # note"), "a \"quoted\" # note")
+    expect_equal(.labelOf("## mg\\L # per dose"), "mg\\L # per dose")
+  })
+
   test_that("meta information parsing", {
 
     one.cmt <- function() {

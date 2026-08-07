@@ -52,7 +52,7 @@ typedef void (*t_dDur)(int _cSub, double t, double *y, double *_dDurSave);
 typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
+typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 
 typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
 typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);

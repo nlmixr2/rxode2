@@ -10,21 +10,74 @@
   value returns a large finite number, which `-log(sigma)` turns into a reward
   of roughly `+36` per observation instead of a rejection.
 
+- A function that produces models can now name them.  `rxModelName()` is an
+  `s3` generic dispatched on the name of the function that was called, so a
+  `rxModelName.readModelDb()` method names every model
+  `rxode2(readModelDb("PK_1cmt"))` builds (here, `"PK_1cmt"`) instead of
+  leaving it named after the text of the call.  The method is given the call
+  and its (unevaluated) arguments, matched to the argument names of the
+  function being called; a call with no method keeps the default name.
+
+- `rxModelNameLhs()` registers the name an assignment is making, for
+  assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
+  names the model when the model expression itself names nothing -- an
+  anonymous model function, or a call with no `rxModelName()` method -- so the
+  model is built with that name rather than none.  `rxModelNameFromExpr()`
+  exposes the whole naming sequence for packages that capture a model
+  expression with `substitute()`.
+
 ## Bug fixes
 
-### Installation / linking
+### Model interface
 
-- On Windows, `STAN_THREADS` and the TBB link are kept when building against
-  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
-  package again.  `configure` now decides whether to strip the TBB flags by
-  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
-  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
-  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
-  library on Windows.  (The 5.1.6 release notes had this backwards:
-  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
-  dropping it.)
+- `ui$modelName` is now always a single character string, as it was always
+  documented to be.  It came from `as.character()` of the substituted model
+  expression, which returns one element per part of a call, so
+  `rxode2(readModelDb("PK_1cmt"))` gave `c("readModelDb", "PK_1cmt")` and an
+  anonymous model function gave a four-element vector including the deparsed
+  body.  The name is the tidied first deparsed line of the expression instead:
+  a symbol keeps its name and a call becomes its own text
+  (`readModelDb("PK_1cmt")`), unless a `rxModelName()` method or
+  `rxModelNameLhs()` names it better.  Names wider than 60 characters are
+  truncated.  An anonymous model function names nothing, so its `modelName` is
+  `NULL` rather than a piece of its body.  Values assigned by other packages
+  (or read from models saved by earlier versions) are also collapsed to a
+  single string on access (#1019).
 
-## Bug fixes
+- A trailing `#` comment on an `ini({})` line may now contain a double quote or
+  a backslash.  Such a comment is promoted to a `label()` call when the model is
+  parsed with its source refs intact, and while the label text was escaped
+  correctly it was then interpolated into the replacement argument of `sub()`,
+  which parses backslashes and strips one level.  The generated
+  `label("fixed to a "small value"")` did not parse, so the model failed with a
+  bare syntax error pointing into regenerated text rather than at the offending
+  source line.  Because the promotion only runs when source refs are kept, the
+  same model resolved fine without them -- so a package build could be green
+  while a test suite run with `keep.source = TRUE` was red on the identical file
+  (#1195).
+
+- A trailing `#` comment on an `ini({})` line keeps its `label()` when the
+  comment itself contains a `#`, including the common `## comment` form.  The
+  code portion of the line was matched greedily, so on a line with two `#` it
+  ran on to the last one and left the first sitting in the generated code, where
+  it commented out the `label()` that had just been appended.  The label was
+  dropped silently -- the model still parsed and built, it simply lost the label
+  (#1205).
+
+### Solving
+
+- `rxSolve()` no longer returns silently wrong, run-to-run varying results when
+  a multi-row `params` data.frame (one parameter set per `id`) is combined with
+  `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
+  class and yields a ragged list -- the per-id columns keep their length while
+  the appended zeros have length one -- which was then read out of bounds while
+  solving, so the random effects that `omega = NA` fixes at zero were filled
+  from unrelated memory instead.  With eight or more subjects this changed the
+  solved values on every solve of identical input, occasionally to non-finite
+  ones.  `omega = NA` on a model with no between subject variability also no
+  longer fails with "invalid 'times' argument".
+
+### Compilation
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's
   current model is a different one.  Code generation reads the parser's global
@@ -38,16 +91,47 @@
   restored SAEM fit failing with "The following parameter(s) are required for
   solving: eta.v, eta.cl".
 
-- `rxSolve()` no longer returns silently wrong, run-to-run varying results when
-  a multi-row `params` data.frame (one parameter set per `id`) is combined with
-  `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
-  class and yields a ragged list -- the per-id columns keep their length while
-  the appended zeros have length one -- which was then read out of bounds while
-  solving, so the random effects that `omega = NA` fixes at zero were filled
-  from unrelated memory instead.  With eight or more subjects this changed the
-  solved values on every solve of identical input, occasionally to non-finite
-  ones.  `omega = NA` on a model with no between subject variability also no
-  longer fails with "invalid 'times' argument".
+### Delay differential equations
+
+- `rxOptExpr()` no longer fails on a `past(state, tau)` whose delay duration is
+  an expression rather than a name or a number (`past(G, exp(lT))`,
+  `past(G, tau*2)`), which raised `unsupported lhs in optimize expression` and
+  printed the duration into the middle of the progress bar.  This made
+  `optExpression=TRUE` unusable for such a delay differential equation; it now
+  optimizes, and the duration follows the same common subexpression its
+  `delay()` terms do, so the history stays matched to them.
+
+- A generated delay differential equation model (`rxode2(..., calcJac=TRUE)`,
+  `calcSens=`, or an nlmixr2 estimation model) now resolves the `past()` delay
+  duration the same way it resolves the history itself.  A duration written as
+  an intermediate (`T <- exp(lT)`) was emitted verbatim while every `delay()`
+  had its duration inlined, so the generated model named a duration no `delay()`
+  used any more and `rxSolve()` rejected it with `duration 'T' does not match
+  any delay(...)`.  This also covers a duration or a history written with
+  `THETA[n]`/`ETA[n]`, as every mu-referenced model is: they were left
+  unresolved, and an unresolved history additionally emitted no per-parameter
+  sensitivity pre-history at all.
+
+### Matrix exponential / inductive linearization
+
+- An `indLin(<state>) <- <expr>` forcing that references a compartment is now
+  evaluated at that compartment's current value.  The generated forcing
+  function took no state vector, so the compartment kept its `NA_REAL`
+  declaration and any state-dependent forcing (e.g. Michaelis-Menten
+  elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
+  under `method="indLin"`.  A forcing that references no state is unchanged.
+
+### Installation / linking
+
+- On Windows, `STAN_THREADS` and the TBB link are kept when building against
+  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
+  package again.  `configure` now decides whether to strip the TBB flags by
+  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
+  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
+  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
+  library on Windows.  (The 5.1.6 release notes had this backwards:
+  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
+  dropping it.)
 
 # rxode2 5.1.6
 
