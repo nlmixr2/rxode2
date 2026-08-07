@@ -353,7 +353,7 @@ rxTest({
       expect_error(rxModelVars(.o), NA)
       # the duration picked up the same temporary the delay() calls did, so the
       # past() history still matches its delay() -- see .rxValidatePast()
-      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+      expect_error(.rxValidatePast(rxModelVars(.o)), NA)
       expect_true(grepl("past\\(G,rx_expr_[0-9]+\\)", .o))
       expect_true(grepl("delay\\(G, *rx_expr_[0-9]+\\)", .o))
     }
@@ -363,12 +363,12 @@ rxTest({
     for (.tau in c("lT", "12.8", "(lT)")) {
       .o <- suppressMessages(rxOptExpr(.pastModel(.tau), "model", chunkLines = 0L))
       expect_true(grepl(sprintf("past(G,%s)=", .tau), .o, fixed = TRUE))
-      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+      expect_error(.rxValidatePast(rxModelVars(.o)), NA)
     }
   })
 
   test_that(".rxRealignPastTau() only ever rewrites the duration it is sure of", {
-    .r <- rxode2:::.rxRealignPastTau
+    .r <- .rxRealignPastTau
     .pastOf <- function(.x) grep("past\\(", strsplit(.x, "\n")[[1]], value = TRUE)
     # nothing to do: no past() at all, and a past() already naming its delay's duration
     .none <- "d/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)\n"
@@ -405,8 +405,8 @@ rxTest({
     # the branch is only reachable directly -- an unsupported lhs is already a parse
     # error in rxModelVars() -- but the stray print() it used to do landed in the
     # middle of the progress bar
-    expect_error(rxode2:::..rxOptLhs(quote(foo(bar, baz))),
+    expect_error(..rxOptLhs(quote(foo(bar, baz))),
                  "foo(bar, baz)", fixed = TRUE)
-    expect_output(try(rxode2:::..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
+    expect_output(try(..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
   })
 })

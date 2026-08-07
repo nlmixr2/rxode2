@@ -174,7 +174,7 @@ rxTest({
       expect_true(grepl("delay\\(G, *rx_expr_", .o))
       # ... and the past() line followed it, so the history still matches its delay()
       expect_true(grepl("past\\(G,rx_expr_", .o))
-      expect_error(rxode2:::.rxValidatePast(rxModelVars(.o)), NA)
+      expect_error(.rxValidatePast(rxModelVars(.o)), NA)
       # optimizing must not change what the model means
       expect_equal(.sol(.mod)$R2, .sol(.o)$R2, tolerance = 1e-8)
     }
@@ -195,7 +195,7 @@ rxTest({
       .n <- gsub(" ", "", rxNorm(.g), fixed = TRUE)
       expect_false(grepl("past(y,T)", .n, fixed = TRUE))
       expect_true(grepl("past(y,exp(lT))", .n, fixed = TRUE))
-      expect_error(rxode2:::.rxValidatePast(.g), NA)
+      expect_error(.rxValidatePast(.g), NA)
       # ... and the generated model therefore solves, and means the same thing
       .s <- rxSolve(.g, .p, .ev, method = "dop853", dense = TRUE,
                     atol = 1e-10, rtol = 1e-10)

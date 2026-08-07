@@ -175,7 +175,7 @@
       ## do, which .rxValidatePast() requires (it matches the two by text).
       .tau <- .rxOptExpr(x[[3]])
       if (!is.character(.tau) || length(.tau) != 1L) .tau <- deparse1(x[[3]])
-      return(paste0("past(", ..rxOptLhs(x[[2]]), ",", .tau, ")"))
+      paste0("past(", ..rxOptLhs(x[[2]]), ",", .tau, ")")
     } else if (identical(x[[1]], quote(`dy`))) {
       return(paste0("dy(", ..rxOptLhs(x[[2]]), ")"))
     } else if (identical(x[[1]], quote(`df`))) {
