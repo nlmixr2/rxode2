@@ -590,6 +590,44 @@ rxTest({
                       grepl("central", .jac)))
   })
 
+  test_that("an indLin() forcing that references a state is evaluated at that state", {
+    # rxode2#1183: IndF() took no state vector and codegen skipped the
+    # __zzStateVar__ population loop for ode_indLinVec, so the state locals kept
+    # their NA_REAL declaration and a Michaelis-Menten forcing solved to NA.
+    mexp <- suppressMessages(rxode2({
+      matExp()
+      cmt(depot)
+      cmt(central)
+      k_depot_central <- 1
+      vmax <- 10
+      km <- 5
+      indLin(central) <- -vmax * central / (km + central)
+      cp <- central / 20
+    }))
+    ode <- suppressMessages(rxode2({
+      vmax <- 10
+      km <- 5
+      d/dt(depot) <- -1 * depot
+      d/dt(central) <- 1 * depot - vmax * central / (km + central)
+      cp <- central / 20
+    }))
+    e <- et(amt = 100, cmt = "depot") %>% et(seq(0, 20, by = 0.5))
+    ref <- rxSolve(ode, e, atol = 1e-10, rtol = 1e-10)
+
+    fine <- rxSolve(mexp, e, method = "indLin", hmax = 0.001)
+    expect_false(any(is.na(fine$central)))
+    expect_equal(fine$central, ref$central, tolerance = 1e-3)
+    expect_gt(max(abs(ref$central)), 1)
+
+    # The forcing is relinearized once per hmax substep, so it is first order in
+    # hmax; refining hmax must measurably reduce the error.
+    dCoarse <- max(abs(rxSolve(mexp, e, method = "indLin", hmax = 0.5)$central -
+                         ref$central))
+    dFine <- max(abs(rxSolve(mexp, e, method = "indLin", hmax = 0.05)$central -
+                       ref$central))
+    expect_lt(dFine, dCoarse / 2)
+  })
+
   test_that("rxSensMatExp() calcSens2/calcSens3 match the generic ODE path (linear)", {
     ode_code <- "
       d/dt(depot) = -ka * depot
