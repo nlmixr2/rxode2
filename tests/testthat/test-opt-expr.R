@@ -409,6 +409,12 @@ rxTest({
     .bad1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0)\npast(G,typo)=2\n"
     .bad0 <- "d/dt(G)=-delay(G,exp(lT))\npast(G,typo)=2\n"
     expect_identical(.r(.bad1, .bad0), .bad1)
+    # optimizing can DROP a duration (0*delay(G,10) folds to 0), and the one left is not
+    # the one the history meant: re-pointing there would hand the surviving delay() term
+    # another one's history and the model would solve, wrongly
+    .dc0 <- "d/dt(G)=0*delay(G,10)+delay(G,20)\npast(G,10)=5\n"
+    .dc1 <- "d/dt(G)=0+delay(G, 20)\npast(G,10)=5\n"
+    expect_identical(.r(.dc1, .dc0), .dc1)
     # two histories on one state whose delay() durations optimized down to one: rewriting
     # both would leave one silently shadowing the other, so neither is guessed at
     .mrg0 <- paste(c("d/dt(G)=-delay(G,1+1)-delay(G,2)",
@@ -457,9 +463,16 @@ rxTest({
     .cm2 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0) # (see above\npast(G,exp(lT))=2"
     expect_identical(.pastOf(.r(.cm2, "d/dt(G)=-delay(G,exp(lT)) # (see above\npast(G,exp(lT))=2")),
                      "past(G,rx_expr_0)=2")
-    # a "#" inside a string is not a comment
-    expect_identical(.rxStripComment("printf(\"a#b\") # c"), "printf(\"a#b\") ")
-    expect_identical(.rxStripComment("d/dt(G)=-delay(G,rx_expr_0)"),
+    # a delay() inside a string is not one either -- it must neither be read nor stop the
+    # scan, which would take the whole model with it
+    .st0 <- "s=\"delay(G,\"\nd/dt(G)=-delay(G,exp(lT))\npast(G,exp(lT))=2"
+    .st1 <- "s=\"delay(G,\"\nrx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0)\npast(G,exp(lT))=2"
+    expect_identical(.pastOf(.r(.st1, .st0)), "past(G,rx_expr_0)=2")
+    # code only: the comment goes, a string keeps its quotes and its width but not its
+    # contents, and a "#" inside a string is not a comment
+    expect_identical(.rxCodeOnly("printf(\"a#b\") # c"), "printf(\"   \") ")
+    expect_identical(.rxCodeOnly("s=\"delay(G,\""), "s=\"        \"")
+    expect_identical(.rxCodeOnly("d/dt(G)=-delay(G,rx_expr_0)"),
                      "d/dt(G)=-delay(G,rx_expr_0)")
   })
 
@@ -469,6 +482,10 @@ rxTest({
       paste0("lT=0.2\nb=0.5\nG(0)=1\n", .pad,
              "\nd/dt(G)=-exp(lT)*", .dt, "\npast(G,", .tau, ")=exp(b*t)\n")
     }
+    # ... end to end: a dropped delay() leaves its history dangling, and it is reported
+    .dc <- suppressMessages(rxOptExpr("G(0)=1\nd/dt(G)=0*delay(G,10)+delay(G,20)\npast(G,10)=5\n",
+                                      "m", chunkLines = 1L))
+    expect_error(.rxValidatePast(rxModelVars(.dc)), "'10' does not match")
     # a comment naming a delay() the model does not have must not stop the realign
     .cm <- suppressMessages(rxOptExpr(.mod("exp(lT)", "delay(G,exp(lT)) # delay(G,junk)"),
                                       "m", chunkLines = 15L))

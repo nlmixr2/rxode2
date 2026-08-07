@@ -578,30 +578,35 @@
   if (is.null(.e)) trimws(tau) else deparse1(.e)
 }
 
-# The code part of a line: everything before the first "#" outside a string.  A delay()
-# written in a comment is not a delay() call, and the scan below must not read one -- nor
-# be stopped by an unbalanced parenthesis in one.
-.rxStripComment <- function(line) {
-  if (!grepl("#", line, fixed = TRUE)) return(line)
+# The code part of a line: the comment dropped, and the inside of every string literal
+# blanked out.  Neither is code, so a delay() written in one is not a delay() call, and the
+# scan below must neither read one nor be stopped by an unbalanced parenthesis in one.
+# Blanking rather than removing keeps every column where it was, so what the scan does read
+# it reads from the right place.
+.rxCodeOnly <- function(line) {
+  if (!grepl("[#\"']", line)) return(line)
   .ch <- strsplit(line, "", fixed = TRUE)[[1]]
   .q <- ""
   .i <- 1L
   while (.i <= length(.ch)) {
     .c <- .ch[.i]
     if (nzchar(.q)) {
-      if (.c == "\\") {
-        .i <- .i + 1L                      # escaped: whatever follows is not a delimiter
+      .ch[.i] <- " "
+      if (.c == "\\") {                    # escaped: whatever follows is not a delimiter
+        .i <- .i + 1L
+        if (.i <= length(.ch)) .ch[.i] <- " "
       } else if (.c == .q) {
+        .ch[.i] <- .c                      # keep the quote that closes it
         .q <- ""
       }
     } else if (.c == "\"" || .c == "'") {
       .q <- .c
     } else if (.c == "#") {
-      return(substr(line, 1L, .i - 1L))
+      return(paste(.ch[seq_len(.i - 1L)], collapse = ""))
     }
     .i <- .i + 1L
   }
-  line
+  paste(.ch, collapse = "")
 }
 
 # Durations of every delay(state, tau) in `txt`, per state, in order of first appearance.
@@ -617,7 +622,7 @@
   .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
   .out <- list()
   .incomplete <- FALSE
-  for (.l in vapply(strsplit(txt, "\n", fixed = TRUE)[[1]], .rxStripComment,
+  for (.l in vapply(strsplit(txt, "\n", fixed = TRUE)[[1]], .rxCodeOnly,
                     character(1), USE.NAMES = FALSE)) {
     .pos <- 1L
     repeat {
@@ -679,10 +684,12 @@
 # Only a duration that DID match a delay() before optimizing is ever re-pointed.  A
 # duration that matched nothing then matches nothing now for a reason of the model's own --
 # a typo, say -- and re-pointing it would turn a duration .rxValidatePast() rejects into
-# one it accepts, which is the one thing this pass must not do.  When the two texts
-# disagree on how many durations a state has, a duration is only re-pointed when the
-# state's delay() calls agree on exactly one AND a single past() line claims it: two
-# histories rewritten to one duration would leave one silently shadowing the other.
+# one it accepts, which is the one thing this pass must not do.  And a state's durations
+# are only matched up when the two texts agree on how many it has: optimizing can drop one
+# (`0*delay(G,10)` folds to `0`), and the survivor is then not the one a history that named
+# the dropped duration meant -- re-pointing it there would quietly hand a delay() term
+# another one's history, and the model would solve, wrongly.  Nothing is guessed at: what
+# does not line up is left for the validator to report.
 .rxRealignPastTau <- function(txt, orig) {
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
   .parts <- lapply(.ln, .rxPastLineParts)
@@ -697,7 +704,6 @@
   if (isTRUE(attr(.opt, "incomplete"))) return(txt)
   .org <- .rxDelayDurs(orig)
   if (isTRUE(attr(.org, "incomplete"))) return(txt)
-  .nPast <- table(vapply(.parts[.isPast], function(z) z$state, character(1)))
   .did <- FALSE
   for (.i in .isPast) {
     .p <- .parts[[.i]]
@@ -709,15 +715,10 @@
     .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
     # it did not match a delay() before optimizing either: not ours to rewrite
     if (!(.key %in% .gk)) next
-    .new <- NULL
-    if (length(.g) == length(.o)) {
-      .j <- match(.key, .gk)
-      if (!is.na(.j)) .new <- .o[[.j]]
-    }
-    # the pre-optimization text could not say which one it was: a single duration is
-    # still unambiguous, as long as a single history claims it
-    if (is.null(.new) && length(.o) == 1L && .nPast[[.p$state]] == 1L) .new <- .o[[1L]]
-    if (is.null(.new)) next
+    if (length(.g) != length(.o)) next   # a duration was dropped: nothing lines up
+    .j <- match(.key, .gk)
+    if (is.na(.j)) next
+    .new <- .o[[.j]]
     # keep the caller's spacing: only the duration inside past(...) is rewritten
     .ln[.i] <- paste0(.p$lead, "past(", .p$state, ",", .new, ")", .p$rest)
     .did <- TRUE
