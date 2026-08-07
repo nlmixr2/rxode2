@@ -26,7 +26,12 @@
                      } else if (regexpr(.regLabel, line) != -1) {
                        .env$convertLabel <- TRUE
                        .label <- deparse1(sub(.regLabel, "\\2", line))
-                       return(sub(.regLabel, paste0("\\1; label(", .label, ")"), line))
+                       # `.label` is already escaped by deparse1(); assemble the line with
+                       # paste0() rather than sub()'s replacement so it stays that way.
+                       # sub() parses backslashes in a replacement and strips one level,
+                       # which turned a `"` or `\` in the comment into an unparsable
+                       # label() (rxode2 issue 1195).
+                       return(paste0(sub(.regLabel, "\\1", line), "; label(", .label, ")"))
                      }
                    }
                    line

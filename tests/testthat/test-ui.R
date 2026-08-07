@@ -89,6 +89,68 @@ rxTest({
 
   })
 
+  test_that("comment labels with quotes/backslashes are escaped (rxode2 issue 1195)", {
+
+    .mkSrc <- function(comment) {
+      c("function() {", "  ini({",
+        paste0("    tka <- 0.45 # ", comment),
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+
+    # Every comment here must survive the comment -> label() promotion verbatim.
+    # Before the fix a `"` or `\` terminated the generated label() string early
+    # and the re-parse in .rxReplaceCommentWithLabel() failed.
+    .comments <- c(
+      plain           = "Log Ka",
+      doubleQuote     = "fixed to a \"small value\"",
+      unbalancedQuote = "6\" tall",
+      singleQuote     = "fixed to a 'small value'",
+      backslash       = "units are mg\\L",
+      escapedQuote    = "already \\\"escaped\\\"",
+      both            = "a \"quote\" and a \\ backslash"
+    )
+
+    for (.n in names(.comments)) {
+      .comment <- .comments[[.n]]
+      suppressMessages(
+        .res <- .rxReplaceCommentWithLabel(.mkSrc(.comment))
+      )
+      # the promoted label must re-parse ...
+      expect_true(is.function(
+        eval(parse(text = paste(.res, collapse = "\n"), keep.source = FALSE))
+      ), info = .n)
+      # ... and carry the comment text through unchanged
+      .lbl <- .res[grepl("^ *label\\(", .res)]
+      expect_equal(length(.lbl), 1L, info = .n)
+      expect_equal(parse(text = .lbl)[[1]][[2]], .comment, info = .n)
+    }
+
+    # exact generated line for the reported failure
+    suppressMessages(
+      .res <- .rxReplaceCommentWithLabel(.mkSrc("fixed to a \"small value\""))
+    )
+    expect_equal(.res[grepl("^ *label\\(", .res)],
+                 "        label(\"fixed to a \\\"small value\\\"\")")
+
+    # a `"` in a comment on an eta line is promoted the same way
+    .eta <- c("function() {", "  ini({", "    tka <- 0.45",
+              "    eta.ka ~ fixed(0.0225) # IIV \"fixed to a small value\"",
+              "    add.sd <- 0.7", "  })", "  model({",
+              "    ka <- exp(tka + eta.ka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.eta))
+    expect_equal(.res[grepl("^ *label\\(", .res)],
+                 "        label(\"IIV \\\"fixed to a small value\\\"\")")
+
+    # a line that already has label() is left alone, quoted comment or not
+    .already <- c("function() {", "  ini({",
+                  "    tka <- 0.45; label(\"Log Ka\") # ignore this \"quoted\" text",
+                  "    add.sd <- 0.7", "  })", "  model({",
+                  "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.already))
+    expect_equal(.res[grepl("^ *label\\(", .res)], "        label(\"Log Ka\")")
+  })
+
   test_that("meta information parsing", {
 
     one.cmt <- function() {

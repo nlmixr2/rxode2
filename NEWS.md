@@ -38,6 +38,18 @@
   restored SAEM fit failing with "The following parameter(s) are required for
   solving: eta.v, eta.cl".
 
+- A trailing `#` comment on an `ini({})` line may now contain a double quote or
+  a backslash.  Such a comment is promoted to a `label()` call when the model is
+  parsed with its source refs intact, and while the label text was escaped
+  correctly it was then interpolated into the replacement argument of `sub()`,
+  which parses backslashes and strips one level.  The generated
+  `label("fixed to a "small value"")` did not parse, so the model failed with a
+  bare syntax error pointing into regenerated text rather than at the offending
+  source line.  Because the promotion only runs when source refs are kept, the
+  same model resolved fine without them -- so a package build could be green
+  while a test suite run with `keep.source = TRUE` was red on the identical file
+  (#1195).
+
 # rxode2 5.1.6
 
 ## New features
