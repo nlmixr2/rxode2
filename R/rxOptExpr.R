@@ -561,8 +561,11 @@
 # Split "state, tau" at its top-level comma.  NULL when there is no such comma or the
 # first argument is not a plain name (`delay(f(x), tau)` is not a state).  A state may
 # lead with "." (`d/dt(.y.1)` parses), so a name is not required to start with a letter.
-.rxSplitStateTau <- function(inner) {
-  .ch <- strsplit(inner, "", fixed = TRUE)[[1]]
+# `code` is the code-only form of `inner` (see .rxCodeOnly()); the comma is found in it,
+# so a string holding one does not split the arguments, and the text is taken from
+# `inner`, which still has the string.  The two agree column for column.
+.rxSplitStateTau <- function(inner, code = inner) {
+  .ch <- strsplit(code, "", fixed = TRUE)[[1]]
   .depth <- cumsum((.ch == "(") - (.ch == ")"))
   .at <- which(.ch == "," & .depth == 0L)[1L]
   if (is.na(.at)) return(NULL)
@@ -618,12 +621,19 @@
 # A call the scan cannot read -- one split over lines, say -- sets the "incomplete"
 # attribute: the result is then a subset of the model's delay() calls, so neither the
 # order of what it did read nor the absence of a duration from it says anything.
+#
+# A call is LOCATED on the code-only form of the line and READ off the line itself: a
+# duration may legitimately hold a string (`delay(G, 1+(OCC=="first"))`), and the masking
+# that keeps the scan out of a string exists only to say what is code, not to alter it.
+# The two agree column for column, which is why .rxCodeOnly() blanks rather than removes.
 .rxDelayDurs <- function(txt) {
   .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
   .out <- list()
   .incomplete <- FALSE
-  for (.l in vapply(strsplit(txt, "\n", fixed = TRUE)[[1]], .rxCodeOnly,
-                    character(1), USE.NAMES = FALSE)) {
+  .lines <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  for (.i in seq_along(.lines)) {
+    .raw <- .lines[.i]
+    .l <- .rxCodeOnly(.raw)
     .pos <- 1L
     repeat {
       .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)
@@ -635,7 +645,8 @@
         .pos <- .open + 1L
         next
       }
-      .a <- .rxSplitStateTau(substr(.l, .open + 1L, .end - 1L))
+      .a <- .rxSplitStateTau(substr(.raw, .open + 1L, .end - 1L),
+                             substr(.l, .open + 1L, .end - 1L))
       if (!is.null(.a)) {
         .prev <- .out[[.a$state]]
         if (!(.rxTauKey(.a$tau) %in% vapply(.prev, .rxTauKey, character(1)))) {
@@ -651,16 +662,20 @@
 
 # The parts of a `past(state, tau) = ...` line, or NULL when the line is not one.  The
 # left-hand side is delimited by the parenthesis matching `past(`, NOT by the first "=" --
-# a duration may itself contain one (`past(G, h(x)==1)`).
+# a duration may itself contain one (`past(G, h(x)==1)`).  Delimited on the code-only form
+# of the line, for the same reason .rxDelayDurs() scans that: a parenthesis inside a string
+# does not close the call.  The duration text still comes from the line itself.
 .rxPastLineParts <- function(line) {
   .m <- regexpr("^[ \t]*past[ \t]*\\(", line)
   if (.m == -1L) return(NULL)
+  .code <- .rxCodeOnly(line)
   .open <- attr(.m, "match.length")
-  .end <- .rxMatchParen(line, .open)
+  .end <- .rxMatchParen(.code, .open)
   if (is.na(.end)) return(NULL)
   .rest <- substr(line, .end + 1L, nchar(line))
   if (!grepl("^[ \t]*(=|<-|~)", .rest)) return(NULL)
-  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L))
+  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L),
+                         substr(.code, .open + 1L, .end - 1L))
   if (is.null(.a)) return(NULL)
   c(.a, list(lead = sub("^([ \t]*).*$", "\\1", line), rest = .rest))
 }

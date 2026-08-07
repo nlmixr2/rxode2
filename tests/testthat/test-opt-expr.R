@@ -468,6 +468,17 @@ rxTest({
     .st0 <- "s=\"delay(G,\"\nd/dt(G)=-delay(G,exp(lT))\npast(G,exp(lT))=2"
     .st1 <- "s=\"delay(G,\"\nrx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0)\npast(G,exp(lT))=2"
     expect_identical(.pastOf(.r(.st1, .st0)), "past(G,rx_expr_0)=2")
+    # ... but a duration may legitimately hold one, and it is read back whole: masking
+    # says what is code, it does not change what the duration is
+    .sd0 <- paste(c("OCC=\"first\"", "d/dt(I)=delay(G, 1+(OCC==\"first\"))",
+                    "past(G, 1+(OCC==\"first\"))=2"), collapse = "\n")
+    .sd1 <- paste(c("OCC=\"first\"", "rx_expr_0~1+(OCC==\"first\")",
+                    "d/dt(I)=delay(G, rx_expr_0)", "past(G, 1+(OCC==\"first\"))=2"),
+                  collapse = "\n")
+    expect_identical(.pastOf(.r(.sd1, .sd0)), "past(G,rx_expr_0)=2")
+    # a comma or a parenthesis inside a string does not split the call either
+    expect_identical(.rxDelayDurs("d/dt(I)=delay(G, f(\"a,b)\")+1)\n")[["G"]],
+                     "f(\"a,b)\")+1")
     # code only: the comment goes, a string keeps its quotes and its width but not its
     # contents, and a "#" inside a string is not a comment
     expect_identical(.rxCodeOnly("printf(\"a#b\") # c"), "printf(\"   \") ")
