@@ -13,6 +13,8 @@ reference:
   desc: Define, parse, compile, and manage rxode2 ODE models.
   contents:
   - rxode2
+  - rxModelName
+  - rxModelNameLhs
   - rxCompile
   - rxLastCompile
   - rxClean
