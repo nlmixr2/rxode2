@@ -183,4 +183,36 @@ rxTest({
     expect_equal(.ctl$sigmaUpper, c(eps1=1, eps2=1))
 
   })
+
+  test_that("a zeroed omega item reaches a matrix params too", {
+    f <- function() {
+      ini({
+        tbase <- 1
+        eta.base ~ fix(0)
+        addSd <- 1
+      })
+      model({
+        base <- tbase + eta.base
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .n <- 8L
+    .expected <- as.numeric(seq_len(.n))
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # the zeroed items were added to a data.frame params and appended to a
+    # named numeric one, but a matrix params matched neither branch, so the
+    # eta was never supplied and the solve failed with "The following
+    # parameter(s) are required for solving: eta.base"
+    .mat <- cbind(tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    .df <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .df, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+  })
 })

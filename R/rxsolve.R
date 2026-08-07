@@ -2043,15 +2043,21 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #'
 #' @param params parameter `data.frame`/`matrix` (one row per id) or named
 #'   numeric vector
-#' @param mat the omega/sigma matrix naming the parameters to zero; when `NULL`
-#'   the model has no such random effects and `params` is returned unchanged
+#' @param mat the omega/sigma matrix naming the parameters to zero, or the
+#'   names themselves; when `NULL` the model has no such random effects and
+#'   `params` is returned unchanged
 #' @return `params` with each parameter named by `mat` set to zero
 #' @noRd
 .rxParamsZero <- function(params, mat) {
   if (is.null(mat)) return(params)
-  .nms <- dimnames(mat)[[2]]
-  # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
-  if (length(.nms) == 0L) .nms <- dimnames(mat)[[1]]
+  .nms <- if (is.character(mat)) {
+    mat
+  } else {
+    # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
+    .n <- dimnames(mat)[[2]]
+    if (length(.n) == 0L) .n <- dimnames(mat)[[1]]
+    .n
+  }
   if (length(.nms) == 0L) return(params)
   if (inherits(params, "data.frame")) {
     for (.n in .nms) {
@@ -3189,10 +3195,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- params
       params <- .tmp
     }
-    if (inherits(params, "data.frame")) {
-      for (v in .ctl$.zeros) {
-        params[[v]] <- 0.0
-      }
+    if (inherits(params, "data.frame") || is.matrix(params)) {
+      # a matrix params was left without the zeroed items entirely, so the
+      # model then asked for parameters the caller had no way to supply
+      params <- .rxParamsZero(params, .ctl$.zeros)
     } else if (inherits(params, "numeric") ||
                  inherits(params, "integer")) {
       params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
