@@ -419,19 +419,40 @@ rxTest({
     .dup1 <- paste(c("rx_expr_0~exp(lT)", "d/dt(G)=-delay(G, rx_expr_0)-delay(G, rx_expr_0)",
                      "past(G,exp(lT))=2"), collapse = "\n")
     expect_identical(.pastOf(.r(.dup1, .dup0)), "past(G,rx_expr_0)=2")
-    # the scan reads a line at a time, so a delay() split over lines is not read at all --
-    # the guard above needs something to have been read before it can refuse a rewrite
+    # the scan reads a line at a time, so a delay() split over lines is not read at all.
+    # Either text holding one is only a subset of the model's delay() calls and nothing can
+    # be concluded from it -- not that a duration was already wrong (it may be the call
+    # that was dropped), and not which optimized duration a past() line meant.  Neither is
+    # realigned, which is what happened before this pass existed
     .ml0 <- "lT=2.5\nd/dt(G)=-delay(G,\n  exp(lT))\npast(G, exp(lT))=10\n"
     .ml1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G, rx_expr_0)\npast(G, exp(lT))=10\n"
-    expect_identical(.pastOf(.r(.ml1, .ml0)), "past(G,rx_expr_0)=10")
+    expect_identical(.r(.ml1, .ml0), .ml1)
+    expect_identical(.r("d/dt(G)=-delay(G,\n rx_expr_0)\npast(G,exp(lT))=2\n"),
+                     "d/dt(G)=-delay(G,\n rx_expr_0)\npast(G,exp(lT))=2\n")
+    # in particular a duration is never matched by position against a scan that dropped a
+    # call: here the two readable durations of `orig` line up with the two of the optimized
+    # text only by coincidence, and past(G,exp(lT)*1) would take tau2's temporary
+    .co0 <- paste(c("d/dt(G)=-delay(G, exp(lT))-delay(G,", "tau2)-delay(G, exp(lT)*1)",
+                    "past(G, exp(lT))=1", "past(G, tau2)=2",
+                    "past(G, exp(lT)*1)=3"), collapse = "\n")
+    .co1 <- paste(c("rx_expr_1~exp(lT)", "rx_expr_2~tau2",
+                    "d/dt(G)=-delay(G, rx_expr_1)-delay(G, rx_expr_2)-delay(G, rx_expr_1)",
+                    "past(G, exp(lT))=1", "past(G, tau2)=2",
+                    "past(G, exp(lT)*1)=3"), collapse = "\n")
+    expect_identical(.r(.co1, .co0), .co1)
   })
 
   test_that("the chunked path rejects a wrong duration the way the whole model does", {
     .pad <- paste(sprintf("v%d=%d", 1:60, 1:60), collapse = "\n")
-    .mod <- function(.tau) {
+    .mod <- function(.tau, .dt = "delay(G,exp(lT))") {
       paste0("lT=0.2\nb=0.5\nG(0)=1\n", .pad,
-             "\nd/dt(G)=-exp(lT)*delay(G,exp(lT))\npast(G,", .tau, ")=exp(b*t)\n")
+             "\nd/dt(G)=-exp(lT)*", .dt, "\npast(G,", .tau, ")=exp(b*t)\n")
     }
+    # ... including when the model's own delay() is split over lines, which the realign
+    # scan cannot read: an unreadable model must not be guessed into a valid one
+    expect_error(.rxValidatePast(rxModelVars(suppressMessages(
+      rxOptExpr(.mod("typo", "delay(G,\n exp(lT))"), "m", chunkLines = 15L)))),
+      "'typo' does not match")
     for (.chunk in c(0L, 10L)) {
       .o <- suppressMessages(rxOptExpr(.mod("exp(lT)"), "m", chunkLines = .chunk))
       expect_error(.rxValidatePast(rxModelVars(.o)), NA)

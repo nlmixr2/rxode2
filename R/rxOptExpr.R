@@ -583,9 +583,14 @@
 # already scans for the same calls: `txt` is reassembled optimizer output, which is rxode2
 # syntax and not guaranteed to be valid R, and a scan that quietly stopped working on some
 # model shape would silently leave a past() line unmatched.
+#
+# A call the scan cannot read -- one split over lines, say -- sets the "incomplete"
+# attribute: the result is then a subset of the model's delay() calls, so neither the
+# order of what it did read nor the absence of a duration from it says anything.
 .rxDelayDurs <- function(txt) {
   .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
   .out <- list()
+  .incomplete <- FALSE
   for (.l in strsplit(txt, "\n", fixed = TRUE)[[1]]) {
     .pos <- 1L
     repeat {
@@ -594,6 +599,7 @@
       .open <- .pos + as.integer(.m) + attr(.m, "match.length") - 2L
       .end <- .rxMatchParen(.l, .open)
       if (is.na(.end)) { # no matching ")" on this line: skip it and keep scanning
+        .incomplete <- TRUE
         .pos <- .open + 1L
         next
       }
@@ -607,6 +613,7 @@
       .pos <- .open + 1L   # keep scanning, including nested delay() calls
     }
   }
+  attr(.out, "incomplete") <- .incomplete
   .out
 }
 
@@ -656,7 +663,14 @@
   .isPast <- which(!vapply(.parts, is.null, logical(1)))
   if (length(.isPast) == 0L) return(txt)
   .opt <- .rxDelayDurs(txt)
+  # a delay() the scan could not read -- one split over lines, say -- leaves an incomplete
+  # picture, and nothing can be concluded from it: the durations it did read are not the
+  # same calls, in the same order, as the ones optimizing produced, and a duration missing
+  # from it may be there in the model.  Leave every line alone, which is what this pass did
+  # before it existed: the validator still says whatever it would have said.
+  if (isTRUE(attr(.opt, "incomplete"))) return(txt)
   .org <- if (is.null(orig)) .opt else .rxDelayDurs(orig)
+  if (isTRUE(attr(.org, "incomplete"))) return(txt)
   .nPast <- table(vapply(.parts[.isPast], function(z) z$state, character(1)))
   .did <- FALSE
   for (.i in .isPast) {
@@ -667,11 +681,8 @@
     if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
     .g <- .org[[.p$state]]
     .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
-    # it did not match a delay() before optimizing either: not ours to rewrite.  Only when
-    # the pre-optimization text did say what this state's delay() durations were -- a
-    # delay() split over lines, say, is not read by the scan, and then there is nothing to
-    # conclude from its absence
-    if (!is.null(orig) && length(.gk) > 0L && !(.key %in% .gk)) next
+    # it did not match a delay() before optimizing either: not ours to rewrite
+    if (!is.null(orig) && !(.key %in% .gk)) next
     .new <- NULL
     if (length(.g) == length(.o)) {
       .j <- match(.key, .gk)
