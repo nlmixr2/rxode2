@@ -81,6 +81,13 @@
   argument") and `sigma = NA` on a model with no residual error are now the
   no-ops they should be.
 
+- An `omega`/`sigma` entry whose variance is zero (say `eta.base ~ fix(0)`) is
+  now supplied to the model as a literal zero when `params` is a matrix, as it
+  already was for a data.frame or a named numeric vector.  Such an entry is
+  dropped from the matrix that is simulated from, so a matrix `params` reached
+  the solver without it and `rxSolve()` failed with "The following parameter(s)
+  are required for solving".
+
 ### Compilation
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's
