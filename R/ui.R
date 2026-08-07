@@ -12,7 +12,13 @@
   .regOther1 <- rex::rex(any_spaces, "}", any_spaces, ")", any_spaces)
   .regOther2 <- rex::rex(any_spaces, "model", any_spaces, "(", any_spaces, "{", any_spaces)
   .regCommentOnBlankLine <- "^ *#+ *(.*) *$"
-  .regLabel <- "^( *[^\n\"]+) *#+ *(.*) *$"
+  # `#` is excluded from the code group so it stops at the FIRST `#`.  POSIX ERE
+  # is leftmost-longest, so a greedy `[^\n"]+` ran on to the LAST `#` and left
+  # the earlier one in the emitted code, where it commented out the label() just
+  # appended -- `x <- 1 ## Lbl` and `x <- 1 # a # b` lost their label entirely.
+  # Outside a string R code cannot contain `#`, and strings are already excluded
+  # by the `"` in the same bracket.
+  .regLabel <- "^( *[^\n\"#]+) *#+ *(.*) *$"
   .ret <- vapply(src,
                  function(line) {
                    if (regexpr(.regIni, line, perl=TRUE) != -1) {
