@@ -74,8 +74,12 @@
   solving, so the random effects that `omega = NA` fixes at zero were filled
   from unrelated memory instead.  With eight or more subjects this changed the
   solved values on every solve of identical input, occasionally to non-finite
-  ones.  `omega = NA` on a model with no between subject variability also no
-  longer fails with "invalid 'times' argument".
+  ones.  A multi-row `params` matrix hit the same problem from the other side:
+  `c()` dropped its `dim`, so `omega = NA`/`sigma = NA` failed outright with
+  "The following parameter(s) are required for solving".  `omega = NA` on a
+  model with no between subject variability (which failed with "invalid 'times'
+  argument") and `sigma = NA` on a model with no residual error are now the
+  no-ops they should be.
 
 ### Compilation
 

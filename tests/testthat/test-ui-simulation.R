@@ -790,6 +790,26 @@ rxTest({
     expect_equal(.out$eta.base, rep(0.0, 4))
     expect_equal(lengths(.out), c(id = 4L, tbase = 4L, eta.base = 4L))
 
+    # a zero row params stays a zero row data.frame
+    .out0 <- rxode2:::.rxParamsZero(.df[0, ], .omega)
+    expect_s3_class(.out0, "data.frame")
+    expect_equal(nrow(.out0), 0L)
+    expect_equal(.out0$eta.base, numeric(0))
+
+    # a matrix params keeps its dim -- c() would drop it the same way
+    .mat <- cbind(tbase = as.numeric(1:4))
+    .outM <- rxode2:::.rxParamsZero(.mat, .omega)
+    expect_true(is.matrix(.outM))
+    expect_equal(dim(.outM), c(4L, 2L))
+    expect_equal(colnames(.outM), c("tbase", "eta.base"))
+    expect_equal(.outM[, "eta.base"], rep(0.0, 4))
+
+    # a matrix already carrying the column has it zeroed rather than doubled
+    .outM2 <- rxode2:::.rxParamsZero(cbind(tbase = as.numeric(1:4),
+                                           eta.base = 100), .omega)
+    expect_equal(colnames(.outM2), c("tbase", "eta.base"))
+    expect_equal(.outM2[, "eta.base"], rep(0.0, 4))
+
     # a named numeric vector still gets the zeros appended
     expect_equal(rxode2:::.rxParamsZero(c(tbase = 1.0), .omega),
                  c(tbase = 1.0, eta.base = 0.0))
@@ -832,6 +852,25 @@ rxTest({
       rxSolve(tmp, .ev, params = .pars, omega = NA, sigma = NA,
               returnType = "data.frame"))
     expect_equal(.rx$base, .expected)
+
+    # sigma=NA on its own used to error outright with a multi-row params.  The
+    # etas are still simulated here, so assert on the residual being zero
+    # (sim == base) rather than on the value of base.
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame"))
+    expect_equal(.rx$sim, .rx$base)
+
+    # a matrix params is the same shape problem: c() drops its dim, which used
+    # to fail with "The following parameter(s) are required for solving"
+    .mat <- cbind(tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, sigma = NA,
+              returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
   })
 
   test_that("omega=NA is a no-op for a model with no between subject variability", {
@@ -851,6 +890,26 @@ rxTest({
     # previously raised "invalid 'times' argument" from rep(0, dim(NULL)[1])
     .rx <- suppressWarnings(
       rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, as.numeric(1:4))
+  })
+
+  test_that("sigma=NA is a no-op for a model with no residual error", {
+    f <- function() {
+      ini({
+        tbase <- 1
+      })
+      model({
+        base <- tbase
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # simulationSigma is a 0x0 matrix here, so the old c() appended nothing but
+    # still dropped the data.frame class, failing with "The following
+    # parameter(s) are required for solving: tbase"
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame"))
     expect_equal(.rx$base, as.numeric(1:4))
   })
 

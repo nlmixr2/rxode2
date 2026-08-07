@@ -2038,7 +2038,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' appended zeros have length one -- which is then read out of bounds while
 #' solving, so a multi-row `params` must be given a real column instead.
 #'
-#' @param params parameter `data.frame` (one row per id) or named numeric vector
+#' A `matrix` (one row per id) is the same story: `c()` drops its `dim`, so the
+#' zeros are added as extra columns instead.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
 #' @param mat the omega/sigma matrix naming the parameters to zero; when `NULL`
 #'   the model has no such random effects and `params` is returned unchanged
 #' @return `params` with each parameter named by `mat` set to zero
@@ -2046,10 +2050,23 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 .rxParamsZero <- function(params, mat) {
   if (is.null(mat)) return(params)
   .nms <- dimnames(mat)[[2]]
+  # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
+  if (length(.nms) == 0L) .nms <- dimnames(mat)[[1]]
   if (length(.nms) == 0L) return(params)
   if (inherits(params, "data.frame")) {
     for (.n in .nms) {
-      params[[.n]] <- 0.0
+      # rep() rather than a scalar so a zero row params stays a zero row frame
+      params[[.n]] <- rep(0.0, nrow(params))
+    }
+    params
+  } else if (is.matrix(params)) {
+    .have <- intersect(.nms, colnames(params))
+    if (length(.have) > 0L) params[, .have] <- 0.0
+    .add <- setdiff(.nms, .have)
+    if (length(.add) > 0L) {
+      params <- cbind(params,
+                      matrix(0.0, nrow(params), length(.add),
+                             dimnames = list(NULL, .add)))
     }
     params
   } else {
