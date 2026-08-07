@@ -578,6 +578,32 @@
   if (is.null(.e)) trimws(tau) else deparse1(.e)
 }
 
+# The code part of a line: everything before the first "#" outside a string.  A delay()
+# written in a comment is not a delay() call, and the scan below must not read one -- nor
+# be stopped by an unbalanced parenthesis in one.
+.rxStripComment <- function(line) {
+  if (!grepl("#", line, fixed = TRUE)) return(line)
+  .ch <- strsplit(line, "", fixed = TRUE)[[1]]
+  .q <- ""
+  .i <- 1L
+  while (.i <= length(.ch)) {
+    .c <- .ch[.i]
+    if (nzchar(.q)) {
+      if (.c == "\\") {
+        .i <- .i + 1L                      # escaped: whatever follows is not a delimiter
+      } else if (.c == .q) {
+        .q <- ""
+      }
+    } else if (.c == "\"" || .c == "'") {
+      .q <- .c
+    } else if (.c == "#") {
+      return(substr(line, 1L, .i - 1L))
+    }
+    .i <- .i + 1L
+  }
+  line
+}
+
 # Durations of every delay(state, tau) in `txt`, per state, in order of first appearance.
 # Found by matching parentheses rather than by parsing, the way .rxDisguiseDelayChunks()
 # already scans for the same calls: `txt` is reassembled optimizer output, which is rxode2
@@ -591,7 +617,8 @@
   .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
   .out <- list()
   .incomplete <- FALSE
-  for (.l in strsplit(txt, "\n", fixed = TRUE)[[1]]) {
+  for (.l in vapply(strsplit(txt, "\n", fixed = TRUE)[[1]], .rxStripComment,
+                    character(1), USE.NAMES = FALSE)) {
     .pos <- 1L
     repeat {
       .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)

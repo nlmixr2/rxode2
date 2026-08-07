@@ -440,6 +440,20 @@ rxTest({
                     "past(G, exp(lT))=1", "past(G, tau2)=2",
                     "past(G, exp(lT)*1)=3"), collapse = "\n")
     expect_identical(.r(.co1, .co0), .co1)
+    # a delay() in a comment is not a delay(): counting one would leave the state with a
+    # duration no delay() has, and the past() line refused a rewrite it needed
+    .cm0 <- paste(c("d/dt(G)=-delay(G,exp(lT)) # delay(G,junk)", "past(G,exp(lT))=2"),
+                  collapse = "\n")
+    .cm1 <- paste(c("rx_expr_0~exp(lT)", "d/dt(G)=-delay(G,rx_expr_0) # delay(G,junk)",
+                    "past(G,exp(lT))=2"), collapse = "\n")
+    expect_identical(.pastOf(.r(.cm1, .cm0)), "past(G,rx_expr_0)=2")
+    # ... and an unbalanced parenthesis in one does not stop the scan either
+    .cm2 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0) # (see above\npast(G,exp(lT))=2"
+    expect_identical(.pastOf(.r(.cm2)), "past(G,rx_expr_0)=2")
+    # a "#" inside a string is not a comment
+    expect_identical(.rxStripComment("printf(\"a#b\") # c"), "printf(\"a#b\") ")
+    expect_identical(.rxStripComment("d/dt(G)=-delay(G,rx_expr_0)"),
+                     "d/dt(G)=-delay(G,rx_expr_0)")
   })
 
   test_that("the chunked path rejects a wrong duration the way the whole model does", {
@@ -448,6 +462,11 @@ rxTest({
       paste0("lT=0.2\nb=0.5\nG(0)=1\n", .pad,
              "\nd/dt(G)=-exp(lT)*", .dt, "\npast(G,", .tau, ")=exp(b*t)\n")
     }
+    # a comment naming a delay() the model does not have must not stop the realign
+    .cm <- suppressMessages(rxOptExpr(.mod("exp(lT)", "delay(G,exp(lT)) # delay(G,junk)"),
+                                      "m", chunkLines = 15L))
+    expect_error(.rxValidatePast(rxModelVars(.cm)), NA)
+    expect_true(grepl("past\\(G,rx_expr_", .cm))
     # ... including when the model's own delay() is split over lines, which the realign
     # scan cannot read: an unreadable model must not be guessed into a valid one
     expect_error(.rxValidatePast(rxModelVars(suppressMessages(
