@@ -2054,9 +2054,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     mat
   } else {
     # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
-    .n <- dimnames(mat)[[2]]
-    if (length(.n) == 0L) .n <- dimnames(mat)[[1]]
-    .n
+    .matNms <- dimnames(mat)[[2]]
+    if (length(.matNms) == 0L) .matNms <- dimnames(mat)[[1]]
+    .matNms
   }
   if (length(.nms) == 0L) return(params)
   if (inherits(params, "data.frame")) {
