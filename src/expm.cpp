@@ -384,7 +384,9 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       break;
     }
     case 2: {
-      IndF(cSub, tcov, _subTf, u.memptr());
+      // Evaluate the forcing at the interval-start state, the same vector
+      // `meOnly()` hands to `ME` below (it is `meOnly()` that advances `yp_`).
+      IndF(cSub, tcov, _subTf, u.memptr(), yp_);
       _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, u.memptr(), on_, ME, op, ind);
       break;
     }

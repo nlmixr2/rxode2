@@ -56,6 +56,15 @@
   `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
   dropping it.)
 
+### Matrix exponential / inductive linearization
+
+- An `indLin(<state>) <- <expr>` forcing that references a compartment is now
+  evaluated at that compartment's current value.  The generated forcing
+  function took no state vector, so the compartment kept its `NA_REAL`
+  declaration and any state-dependent forcing (e.g. Michaelis-Menten
+  elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
+  under `method="indLin"`.  A forcing that references no state is unchanged.
+
 ## Bug fixes
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's
