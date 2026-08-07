@@ -2030,6 +2030,33 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   .bad
 }
 
+#' Fix the parameters named by an omega/sigma matrix at zero
+#'
+#' Used for `omega=NA`/`sigma=NA`, which request that the corresponding random
+#' effects be set to zero.  `c()` on a `data.frame` drops the `data.frame` class
+#' and returns a ragged list -- the per-id columns keep length `nid` while the
+#' appended zeros have length one -- which is then read out of bounds while
+#' solving, so a multi-row `params` must be given a real column instead.
+#'
+#' @param params parameter `data.frame` (one row per id) or named numeric vector
+#' @param mat the omega/sigma matrix naming the parameters to zero; when `NULL`
+#'   the model has no such random effects and `params` is returned unchanged
+#' @return `params` with each parameter named by `mat` set to zero
+#' @noRd
+.rxParamsZero <- function(params, mat) {
+  if (is.null(mat)) return(params)
+  .nms <- dimnames(mat)[[2]]
+  if (length(.nms) == 0L) return(params)
+  if (inherits(params, "data.frame")) {
+    for (.n in .nms) {
+      params[[.n]] <- 0.0
+    }
+    params
+  } else {
+    c(params, setNames(rep(0.0, length(.nms)), .nms))
+  }
+}
+
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
   .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
@@ -2073,7 +2100,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$omega)) {
     if (is.na(.rxControl$omega)) {
       .omega <- object$omega
-      params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
+      params <- .rxParamsZero(params, .omega)
       .rxControl$omega <- NULL
     }
   }
@@ -2106,7 +2133,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$sigma)) {
     if (is.na(.rxControl$sigma)) {
       .sigma <- object$simulationSigma
-      params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
+      params <- .rxParamsZero(params, .sigma)
       .rxControl$sigma <- NULL
     }
   }

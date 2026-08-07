@@ -777,6 +777,83 @@ rxTest({
     })
   })
 
+  test_that(".rxParamsZero keeps a multi-row params data.frame rectangular", {
+    # c() on a data.frame drops the data.frame class and returns a ragged list
+    # (per-id columns keep length nid, the appended zeros have length one), which
+    # was then read out of bounds while solving.
+    .omega <- matrix(0.1, 1, 1, dimnames = list("eta.base", "eta.base"))
+    .df <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+
+    .out <- rxode2:::.rxParamsZero(.df, .omega)
+    expect_s3_class(.out, "data.frame")
+    expect_equal(nrow(.out), 4L)
+    expect_equal(.out$eta.base, rep(0.0, 4))
+    expect_equal(lengths(.out), c(id = 4L, tbase = 4L, eta.base = 4L))
+
+    # a named numeric vector still gets the zeros appended
+    expect_equal(rxode2:::.rxParamsZero(c(tbase = 1.0), .omega),
+                 c(tbase = 1.0, eta.base = 0.0))
+
+    # a model with no random effects is a no-op rather than rep(0, NA)
+    expect_identical(rxode2:::.rxParamsZero(.df, NULL), .df)
+  })
+
+  test_that("omega=NA/sigma=NA solve correctly with a multi-row params data.frame", {
+    # Trivial on purpose: with omega=NA the etas are zero, so base == tbase
+    # exactly, with no solver tolerance involved.
+    f <- function() {
+      ini({
+        tbase <- 1
+        eta.base ~ 0.1
+        addSd <- 1
+      })
+      model({
+        base <- tbase + eta.base
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+
+    .n <- 200L
+    .expected <- as.numeric(seq_len(.n))
+    .pars <- data.frame(id = seq_len(.n), tbase = .expected)
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # Identical input must give the identical, correct answer every time.  Note
+    # the corruption did NOT show up in the returned $params (which reported the
+    # etas as zero) -- only in the solved values, so assert on those.
+    for (.i in seq_len(20)) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame"))
+      expect_equal(.rx$base, .expected)
+    }
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, sigma = NA,
+              returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+  })
+
+  test_that("omega=NA is a no-op for a model with no between subject variability", {
+    f <- function() {
+      ini({
+        tbase <- 1
+        addSd <- 1
+      })
+      model({
+        base <- tbase
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # previously raised "invalid 'times' argument" from rep(0, dim(NULL)[1])
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, as.numeric(1:4))
+  })
+
   test_that("negative binomial simulation", {
     f <- function() {
       ini({

@@ -38,6 +38,17 @@
   restored SAEM fit failing with "The following parameter(s) are required for
   solving: eta.v, eta.cl".
 
+- `rxSolve()` no longer returns silently wrong, run-to-run varying results when
+  a multi-row `params` data.frame (one parameter set per `id`) is combined with
+  `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
+  class and yields a ragged list -- the per-id columns keep their length while
+  the appended zeros have length one -- which was then read out of bounds while
+  solving, so the random effects that `omega = NA` fixes at zero were filled
+  from unrelated memory instead.  With eight or more subjects this changed the
+  solved values on every solve of identical input, occasionally to non-finite
+  ones.  `omega = NA` on a model with no between subject variability also no
+  longer fails with "invalid 'times' argument".
+
 # rxode2 5.1.6
 
 ## New features
