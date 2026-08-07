@@ -158,6 +158,40 @@ rxTest({
     expect_equal(.res[grepl("^ *label\\(", .res)], "        label(\"Log Ka\")")
   })
 
+  test_that("a comment containing '#' keeps its label (rxode2 issue 1205)", {
+
+    .mkSrc <- function(comment) {
+      c("function() {", "  ini({",
+        paste0("    tka <- 0.45 ", comment),
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+    .labelOf <- function(comment) {
+      suppressMessages(.res <- .rxReplaceCommentWithLabel(.mkSrc(comment)))
+      .lbl <- .res[grepl("^ *label\\(", .res)]
+      if (length(.lbl) != 1L) return(NA_character_)
+      parse(text = .lbl)[[1]][[2]]
+    }
+
+    # The code group used to run on to the LAST `#`, leaving the first one in the
+    # emitted code where it commented out the label() -- so these silently lost
+    # their label while still parsing as a valid model.
+    expect_equal(.labelOf("## Log Ka"), "Log Ka")
+    expect_equal(.labelOf("### Log Ka"), "Log Ka")
+    expect_equal(.labelOf("# rate # per hour"), "rate # per hour")
+    expect_equal(.labelOf("# Patient #2 only"), "Patient #2 only")
+
+    # unchanged for the single-`#` forms
+    expect_equal(.labelOf("# Log Ka"), "Log Ka")
+    expect_equal(.labelOf("#Log Ka"), "Log Ka")
+
+    # a comment carrying BOTH a `#` and a quote needs the #1205 regex and the
+    # #1195 escaping together: the regex keeps the label from being commented
+    # out, the paste0() assembly keeps the quote from breaking the re-parse.
+    expect_equal(.labelOf("## a \"quoted\" # note"), "a \"quoted\" # note")
+    expect_equal(.labelOf("## mg\\L # per dose"), "mg\\L # per dose")
+  })
+
   test_that("meta information parsing", {
 
     one.cmt <- function() {

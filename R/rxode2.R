@@ -327,8 +327,9 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     rxParseSuppressMsg()
-    .modelName <- try(as.character(substitute(model)), silent=TRUE)
-    if (inherits(.modelName, "try-error")) .modelName <- NULL
+    # named where it is used, so a `rxModelName()` method sees the model
+    # expression only after it has been forced
+    .modelNameExpr <- substitute(model)
     if (!missing(modName)) {
       if (!checkmate::testCharacter(modName, max.len = 1)) {
         stop("'modName' has to be a single length character", call. = FALSE)
@@ -386,7 +387,10 @@ rxode2 <- # nolint
           stop("model functions can only be called with one argument", call.=FALSE)
         }
         .tmp <- rxUiDecompress(.rxFunction2ui(model))
-        assign("modelName", .modelName, envir=.tmp)
+        # unconditional: `model()` named this after the function
+        # `.rxFunction2ui()` rebuilt, so an unnamed model has to clear that
+        assign("modelName", .rxModelNameFromExpr(.modelNameExpr, envir=envir),
+               envir=.tmp)
         return(rxUiCompress(.tmp))
       } else if (is(model, "rxode2")) {
         package <- get("package", model)

@@ -10,7 +10,39 @@
   value returns a large finite number, which `-log(sigma)` turns into a reward
   of roughly `+36` per observation instead of a rejection.
 
+- A function that produces models can now name them.  `rxModelName()` is an
+  `s3` generic dispatched on the name of the function that was called, so a
+  `rxModelName.readModelDb()` method names every model
+  `rxode2(readModelDb("PK_1cmt"))` builds (here, `"PK_1cmt"`) instead of
+  leaving it named after the text of the call.  The method is given the call
+  and its (unevaluated) arguments, matched to the argument names of the
+  function being called; a call with no method keeps the default name.
+
+- `rxModelNameLhs()` registers the name an assignment is making, for
+  assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
+  names the model when the model expression itself names nothing -- an
+  anonymous model function, or a call with no `rxModelName()` method -- so the
+  model is built with that name rather than none.  `rxModelNameFromExpr()`
+  exposes the whole naming sequence for packages that capture a model
+  expression with `substitute()`.
+
 ## Bug fixes
+
+### Model interface
+
+- `ui$modelName` is now always a single character string, as it was always
+  documented to be.  It came from `as.character()` of the substituted model
+  expression, which returns one element per part of a call, so
+  `rxode2(readModelDb("PK_1cmt"))` gave `c("readModelDb", "PK_1cmt")` and an
+  anonymous model function gave a four-element vector including the deparsed
+  body.  The name is the tidied first deparsed line of the expression instead:
+  a symbol keeps its name and a call becomes its own text
+  (`readModelDb("PK_1cmt")`), unless a `rxModelName()` method or
+  `rxModelNameLhs()` names it better.  Names wider than 60 characters are
+  truncated.  An anonymous model function names nothing, so its `modelName` is
+  `NULL` rather than a piece of its body.  Values assigned by other packages
+  (or read from models saved by earlier versions) are also collapsed to a
+  single string on access (#1019).
 
 ### Installation / linking
 
@@ -23,6 +55,15 @@
   library on Windows.  (The 5.1.6 release notes had this backwards:
   `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
   dropping it.)
+
+### Matrix exponential / inductive linearization
+
+- An `indLin(<state>) <- <expr>` forcing that references a compartment is now
+  evaluated at that compartment's current value.  The generated forcing
+  function took no state vector, so the compartment kept its `NA_REAL`
+  declaration and any state-dependent forcing (e.g. Michaelis-Menten
+  elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
+  under `method="indLin"`.  A forcing that references no state is unchanged.
 
 ## Bug fixes
 
@@ -49,6 +90,16 @@
   same model resolved fine without them -- so a package build could be green
   while a test suite run with `keep.source = TRUE` was red on the identical file
   (#1195).
+
+- A trailing `#` comment on an `ini({})` line keeps its `label()` when the
+  comment itself contains a `#`, including the common `## comment` form.  The
+  code portion of the line was matched greedily, so on a line with two `#` it
+  ran on to the last one and left the first sitting in the generated code, where
+  it commented out the `label()` that had just been appended.  The label was
+  dropped silently -- the model still parsed and built, it simply lost the label
+  (#1205).
+
+## Bug fixes
 
 ### Delay differential equations
 
