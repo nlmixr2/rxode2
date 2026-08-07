@@ -672,19 +672,18 @@
 # This is text only, and no model semantics are involved: the duration on a past() line is
 # never evaluated (it exists so a history can be matched to its delay(); see
 # src/parseCmtProperties.h).  Optimizing never reorders statements, so a state's delay()
-# durations keep their order of first appearance and `orig` (the text before optimizing)
-# says which optimized duration each past() line meant.  Without it -- or when the two
-# disagree on how many durations a state has -- a duration is only re-pointed when the
-# state's delay() calls agree on exactly one, and otherwise the line is left for the
-# validator to report.
+# durations keep their order of first appearance, and `orig` -- the text before optimizing
+# -- says which optimized duration each past() line meant.  It is required: without it a
+# duration that stopped matching cannot be told from one that never matched.
 #
 # Only a duration that DID match a delay() before optimizing is ever re-pointed.  A
 # duration that matched nothing then matches nothing now for a reason of the model's own --
 # a typo, say -- and re-pointing it would turn a duration .rxValidatePast() rejects into
-# one it accepts, which is the one thing this pass must not do.  For the same reason the
-# single-duration fallback is only taken when the state has a single past() line: two
+# one it accepts, which is the one thing this pass must not do.  When the two texts
+# disagree on how many durations a state has, a duration is only re-pointed when the
+# state's delay() calls agree on exactly one AND a single past() line claims it: two
 # histories rewritten to one duration would leave one silently shadowing the other.
-.rxRealignPastTau <- function(txt, orig = NULL) {
+.rxRealignPastTau <- function(txt, orig) {
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
   .parts <- lapply(.ln, .rxPastLineParts)
   .isPast <- which(!vapply(.parts, is.null, logical(1)))
@@ -696,7 +695,7 @@
   # from it may be there in the model.  Leave every line alone, which is what this pass did
   # before it existed: the validator still says whatever it would have said.
   if (isTRUE(attr(.opt, "incomplete"))) return(txt)
-  .org <- if (is.null(orig)) .opt else .rxDelayDurs(orig)
+  .org <- .rxDelayDurs(orig)
   if (isTRUE(attr(.org, "incomplete"))) return(txt)
   .nPast <- table(vapply(.parts[.isPast], function(z) z$state, character(1)))
   .did <- FALSE
@@ -709,14 +708,14 @@
     .g <- .org[[.p$state]]
     .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
     # it did not match a delay() before optimizing either: not ours to rewrite
-    if (!is.null(orig) && !(.key %in% .gk)) next
+    if (!(.key %in% .gk)) next
     .new <- NULL
     if (length(.g) == length(.o)) {
       .j <- match(.key, .gk)
       if (!is.na(.j)) .new <- .o[[.j]]
     }
-    # the pre-optimization text could not say which one it was (or was not given): a
-    # single duration is still unambiguous, as long as a single history claims it
+    # the pre-optimization text could not say which one it was: a single duration is
+    # still unambiguous, as long as a single history claims it
     if (is.null(.new) && length(.o) == 1L && .nPast[[.p$state]] == 1L) .new <- .o[[1L]]
     if (is.null(.new)) next
     # keep the caller's spacing: only the duration inside past(...) is rewritten

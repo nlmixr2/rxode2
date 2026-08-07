@@ -93,9 +93,11 @@
 #' Resolve a stored past() delay duration through a symengine env
 #'
 #' The duration is rendered by evaluating a surrogate `delay(state, tau)` in the
-#' env and taking its second argument back off, so it comes out byte-identical to
-#' the duration `.rxDelaySensAugment()` reads off the augmented `d/dt()` (which is
-#' `deparse1()` of the same `rxFromSE()` round trip).  Evaluating the duration on
+#' env and taking its second argument back off, so it comes out as the same
+#' expression the duration `.rxDelaySensAugment()` reads off the augmented
+#' `d/dt()` is (both are `deparse1()` of the same `rxFromSE()` round trip; the
+#' spacing `deparse1()` puts around an operator is normalized away when a history
+#' is matched to its `delay()`).  Evaluating the duration on
 #' its own is the fallback; a constant-folded intermediate is stored as a plain R
 #' numeric rather than a `Basic`, which is exactly the case the surrogate gets
 #' right and a bare `eval()` does not.  An unresolvable duration (env binding

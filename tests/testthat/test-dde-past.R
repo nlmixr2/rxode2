@@ -231,6 +231,21 @@ rxTest({
     expect_error(.rxValidatePast(.g), NA)
   })
 
+  test_that("an operator duration still matches its delay() in a generated model", {
+    # the emitted duration is deparse1()'d, which spaces an operator out (`a * b`) where
+    # the augmented d/dt() carries the rxFromSE() form (`a*b`) -- matching a history to
+    # its delay() normalizes that away, and the solution is the proof
+    .m <- "a=2\nb=3\nk=0.3\nG(0)=1\nd/dt(G)=-k*delay(G,a*b)\npast(G,a*b)=exp(0.5*t)\n"
+    .ev <- et(seq(0, 6, by = 0.5))   # tau=6, so the history is used over the whole range
+    .ref <- rxSolve(rxode2(.m), .ev, method = "dop853", dense = TRUE)
+    for (.g in list(rxode2(.m, calcJac = TRUE),
+                    suppressMessages(rxode2(.m, calcSens = "k")))) {
+      expect_error(.rxValidatePast(.g), NA)
+      expect_equal(rxSolve(.g, .ev, method = "dop853", dense = TRUE)$G, .ref$G,
+                   tolerance = 1e-8)
+    }
+  })
+
   test_that("a THETA[]/ETA[] history resolves, so it can be differentiated", {
     # an unresolved history is not a Basic, and .rxDelaySensAugment() then silently
     # emits no per-parameter sensitivity pre-history at all

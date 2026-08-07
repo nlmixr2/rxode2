@@ -372,19 +372,21 @@ rxTest({
     .pastOf <- function(.x) grep("past\\(", strsplit(.x, "\n")[[1]], value = TRUE)
     # nothing to do: no past() at all, and a past() already naming its delay's duration
     .none <- "d/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)\n"
-    expect_identical(.r(.none), .none)
+    expect_identical(.r(.none, "d/dt(G)=-delay(G,exp(lT))\n"), .none)
     .ok <- "past(G,exp(lT))=2\nd/dt(G)=-delay(G,exp(lT))\n"
-    expect_identical(.r(.ok), .ok)
+    expect_identical(.r(.ok, .ok), .ok)
     # the left-hand side is delimited by the parenthesis matching past(, not by the first
     # "=", so a duration holding one is still re-pointed
     .eq <- "past(G, h(x)==1)=2\nd/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~h(x)==1\n"
-    expect_identical(.pastOf(.r(.eq)), "past(G,rx_expr_0)=2")
+    expect_identical(.pastOf(.r(.eq, "past(G, h(x)==1)=2\nd/dt(G)=-delay(G,h(x)==1)\n")),
+                     "past(G,rx_expr_0)=2")
     # the delay() scan matches parentheses rather than parsing, so a model whose
     # if/else the R parser would reject is still realigned
     .ie <- paste(c("if (t>0) {", "v1=1", "}", "else {", "v1=2", "}",
                    "rx_expr_0~exp(lT)", "d/dt(G)=-delay(G, rx_expr_0)",
                    "past(G,exp(lT))=2"), collapse = "\n")
-    expect_identical(.pastOf(.r(.ie)), "past(G,rx_expr_0)=2")
+    expect_identical(.pastOf(.r(.ie, "d/dt(G)=-delay(G, exp(lT))\npast(G,exp(lT))=2")),
+                     "past(G,rx_expr_0)=2")
     # two distinct durations on one state: with the pre-optimization text each past()
     # line follows the delay() it came from (order of first appearance is preserved) ...
     .two0 <- paste(c("d/dt(G)=-delay(G, exp(lT))-delay(G, 2*lT)",
@@ -394,11 +396,14 @@ rxTest({
                      "past(G,exp(lT))=2", "past(G,2*lT)=3"), collapse = "\n")
     expect_identical(.pastOf(.r(.two1, .two0)),
                      c("past(G,rx_expr_0)=2", "past(G,rx_expr_1)=3"))
-    # ... and without it neither line is guessed at
-    expect_identical(.r(.two1), .two1)
+    # ... and when it does not line up with them, neither line is guessed at
+    expect_identical(.r(.two1, "d/dt(G)=-delay(G, exp(lT))\npast(G,exp(lT))=2\npast(G,2*lT)=3"),
+                     .two1)
     # when it does rewrite, only the duration changes -- spacing is kept
     .sp <- "   past(G,exp(lT))  =  2\nd/dt(G)=-delay(G,rx_expr_0)\nrx_expr_0~exp(lT)"
-    expect_identical(strsplit(.r(.sp), "\n")[[1]][1L], "   past(G,rx_expr_0)  =  2")
+    expect_identical(strsplit(.r(.sp, "   past(G,exp(lT))  =  2\nd/dt(G)=-delay(G,exp(lT))"),
+                              "\n")[[1]][1L],
+                     "   past(G,rx_expr_0)  =  2")
     # a duration that matched no delay() BEFORE optimizing is the model's own error and
     # is left for the validator: re-pointing it would make a rejected duration accepted
     .bad1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0)\npast(G,typo)=2\n"
@@ -413,7 +418,8 @@ rxTest({
     expect_identical(.r(.mrg1, .mrg0), .mrg1)
     # a state may lead with a "." -- d/dt(.y.1) parses, so the scan must take it
     .dot <- "past(.y.1,exp(lT))=2\nd/dt(.y.1)=-delay(.y.1,rx_expr_0)\nrx_expr_0~exp(lT)\n"
-    expect_identical(.pastOf(.r(.dot)), "past(.y.1,rx_expr_0)=2")
+    expect_identical(.pastOf(.r(.dot, "past(.y.1,exp(lT))=2\nd/dt(.y.1)=-delay(.y.1,exp(lT))\n")),
+                     "past(.y.1,rx_expr_0)=2")
     # the same duration twice is one duration, so the past() line still follows it
     .dup0 <- "d/dt(G)=-delay(G, exp(lT))-delay(G, exp(lT))\npast(G,exp(lT))=2"
     .dup1 <- paste(c("rx_expr_0~exp(lT)", "d/dt(G)=-delay(G, rx_expr_0)-delay(G, rx_expr_0)",
@@ -427,7 +433,7 @@ rxTest({
     .ml0 <- "lT=2.5\nd/dt(G)=-delay(G,\n  exp(lT))\npast(G, exp(lT))=10\n"
     .ml1 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G, rx_expr_0)\npast(G, exp(lT))=10\n"
     expect_identical(.r(.ml1, .ml0), .ml1)
-    expect_identical(.r("d/dt(G)=-delay(G,\n rx_expr_0)\npast(G,exp(lT))=2\n"),
+    expect_identical(.r("d/dt(G)=-delay(G,\n rx_expr_0)\npast(G,exp(lT))=2\n", .ml0),
                      "d/dt(G)=-delay(G,\n rx_expr_0)\npast(G,exp(lT))=2\n")
     # in particular a duration is never matched by position against a scan that dropped a
     # call: here the two readable durations of `orig` line up with the two of the optimized
@@ -449,7 +455,8 @@ rxTest({
     expect_identical(.pastOf(.r(.cm1, .cm0)), "past(G,rx_expr_0)=2")
     # ... and an unbalanced parenthesis in one does not stop the scan either
     .cm2 <- "rx_expr_0~exp(lT)\nd/dt(G)=-delay(G,rx_expr_0) # (see above\npast(G,exp(lT))=2"
-    expect_identical(.pastOf(.r(.cm2)), "past(G,rx_expr_0)=2")
+    expect_identical(.pastOf(.r(.cm2, "d/dt(G)=-delay(G,exp(lT)) # (see above\npast(G,exp(lT))=2")),
+                     "past(G,rx_expr_0)=2")
     # a "#" inside a string is not a comment
     expect_identical(.rxStripComment("printf(\"a#b\") # c"), "printf(\"a#b\") ")
     expect_identical(.rxStripComment("d/dt(G)=-delay(G,rx_expr_0)"),
