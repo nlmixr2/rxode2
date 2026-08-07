@@ -945,10 +945,21 @@ is.latex <- function() {
 
 
 .nsToLoad <- function() {
-  vapply(rxode2parseGetPackagesToLoad(),
-         function(pkg) {
-           requireNamespace(pkg, quietly = TRUE)
-         }, logical(1))
+  .pkgs <- rxode2parseGetPackagesToLoad()
+  .ok <- vapply(.pkgs,
+                function(pkg) {
+                  requireNamespace(pkg, quietly = TRUE)
+                }, logical(1))
+  # Must be an error: every compiled rxode2 model resolves these packages'
+  # symbols with R_GetCCallable() from its R_init(), which errors out of R_init
+  # and leaves the model's globals NULL.  R keeps the dll loaded anyway, so the
+  # half-initialized model is accepted and the first solve segfaults.
+  if (!all(.ok)) {
+    stop("rxode2 models require package(s) that are not installed: ",
+         paste0("'", .pkgs[!.ok], "'", collapse = ", "),
+         call. = FALSE)
+  }
+  .ok
 }
 
 #' Check if a language object matches a template language object

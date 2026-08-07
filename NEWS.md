@@ -24,6 +24,16 @@
   `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
   dropping it.)
 
+- A missing `Imports:` package no longer crashes the R process.  Every compiled
+  model resolves `rxode2ll`'s symbols with `R_GetCCallable()` from its
+  `R_init()`, which errors out of `R_init()` and leaves the model's globals
+  `NULL`; R keeps the dll loaded regardless, so the half-initialized model was
+  accepted and the first solve segfaulted.  `rxode2` now stops with a message
+  naming the missing package before loading a model dll.  Separately, a
+  file-scope `loadNamespace("cli")` ran inside `dlopen()`, where the R error
+  raised when `cli` was absent became an unhandled C++ exception and aborted
+  `library(rxode2)` itself; the `cli` namespace is now loaded on first use.
+
 ## Bug fixes
 
 - `rxCompile()` now re-parses the model it is handed whenever the parser's

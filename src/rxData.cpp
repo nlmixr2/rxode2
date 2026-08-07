@@ -463,16 +463,29 @@ Function loadNamespace("loadNamespace", R_BaseNamespace);
 
 Function requireNamespace("requireNamespace", R_BaseNamespace);
 
-Environment cliNS = loadNamespace("cli");
-Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
+// Loaded on first use, not at file scope: a file-scope initializer runs inside
+// dlopen(), where an R error (as when 'cli' is not installed) becomes an
+// Rcpp::LongjumpException with no handler and calls std::terminate, aborting R
+// during library(rxode2).  Same shape as loadCheckmate() in checkmate.cpp.
+Environment cliNS;
+bool loadedCliNs = false;
+
+static void loadCli() {
+  if (!loadedCliNs) {
+    cliNS = loadNamespace("cli");
+    loadedCliNs = true;
+  }
+}
 
 extern "C" void cliAlert(const char *format, ...) {
   va_list args;
   char buffer[256];
   va_start(args, format);
   vsnprintf(buffer, 256, format, args);
-  cliAlert0(wrap(buffer));
   va_end (args);
+  loadCli();
+  Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
+  cliAlert0(wrap(buffer));
 }
 
 extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP,
