@@ -216,6 +216,20 @@
   multi-state product yields a state-free rate constant; both are kept so
   existing code keeps working.
 
+- `rxSolve(indLinStepSearch=)` and `rxSolve(indLinMaxIter=)` control the
+  fixed-point iteration `method="indLin"` runs inside each relinearization step.
+  `indLinStepSearch="secant"` (the default) estimates the iteration's
+  contraction ratio from the last two residuals and relaxes by it, which costs
+  nothing extra and is what makes an oscillating iteration converge at all;
+  `"exact"` spends one more matrix exponential per iteration to locate the
+  residual-minimizing factor in closed form; `"none"` is plain, undamped Picard.
+  All three converge to the same answer -- relaxation does not move the fixed
+  point -- so the choice trades iterations against work per iteration; on a
+  Michaelis-Menten model the default is about five times faster than `"none"`.
+  `indLinMaxIter` (default 20) caps the iterations per step; running out is not
+  an error, since the iteration contracts in proportion to the step and the
+  solver reads it as a step that is too long.
+
 - A `matExp()` rate constant that depends on a compartment is now a parse error
   rather than a silently invalid model.  The matrix exponential is only correct
   when the rate matrix is constant over the step, so a `k_from_to` that reads a

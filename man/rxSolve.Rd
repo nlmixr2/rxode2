@@ -192,6 +192,8 @@ rxSolve(
   chunkSize = NULL,
   parallel = 0L,
   zeroVarParamHandle = c("warn", "ignore", "keep"),
+  indLinStepSearch = c("secant", "exact", "none"),
+  indLinMaxIter = 20L,
   envir = parent.frame()
 )
 
@@ -791,14 +793,14 @@ Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
-as having a CONSTANT Jacobian/matrix-exponential term before
-re-linearizing (previously silently ignored for this method). For a
-true (state-independent) \code{matExp()} model this makes no numerical
-difference; for an \code{indLin()}-forcing model with a state-dependent
-term (e.g. Michaelis-Menten elimination), the default \code{hmax} (tied to
-the spacing of your own sampling/dosing times) may be too coarse for
-the desired accuracy -- set an explicit, smaller \code{hmax} to force more
-frequent relinearization.}
+as having a CONSTANT matrix-exponential term before re-linearizing.
+A model with a state-dependent \code{indLin()} forcing now chooses its own
+relinearization step from a local error estimate, so \code{atol}/\code{rtol}
+(and \code{maxsteps}) are what control its accuracy and \code{hmax} only sets an
+upper bound on the step.  A model whose forcing reads no state, or
+which has none, has a rate matrix that is constant in the states, so
+there is no error to control and \code{hmax} only changes how many
+(mathematically equivalent) matrix exponentials are taken.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}
@@ -1603,6 +1605,20 @@ instead; the options are:
 \item \code{ignore} replace the supplied value with zero silently
 \item \code{keep} use the supplied value instead of zero
 }}
+
+\item{indLinStepSearch}{how \code{method="indLin"} picks the relaxation factor
+for its fixed-point iteration.  \code{"secant"} (the default) estimates the
+iteration's contraction ratio from the last two residuals and costs
+nothing extra; \code{"exact"} spends one more matrix exponential per iteration
+to locate the residual-minimizing factor in closed form; \code{"none"} is
+plain, undamped Picard iteration.  All three converge to the same answer
+-- the relaxation does not move the fixed point -- so this trades
+iterations against work per iteration.}
+
+\item{indLinMaxIter}{the maximum number of \code{method="indLin"} fixed-point
+iterations per relinearization step.  Running out is not an error: the
+iteration contracts in proportion to the step, so the solver reads it as
+a step that is too long and retries with a shorter one.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

@@ -334,6 +334,14 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 // iteration noise instead of discretization error and the controller chases
 // its own tail.  Same convention as lsoda's corrector.
 #define RX_INDLIN_PICARD_TOL_FAC 0.1
+// Bounds on the relaxation factor.  Anything outside these is a secant fit that
+// should not be trusted; the driver cuts the step instead.
+#define RX_INDLIN_THETA_MIN 0.1
+#define RX_INDLIN_THETA_MAX 10.0
+// `indLinStepSearch` codes, matching the R-side character values.
+#define RX_INDLIN_SEARCH_NONE   0
+#define RX_INDLIN_SEARCH_SECANT 1
+#define RX_INDLIN_SEARCH_EXACT  2
 
 // Secant estimate of the iteration map's contraction ratio from two
 // consecutive Picard residuals, measured only over the states flagged in
@@ -360,9 +368,32 @@ static inline double indLinTheta(rx_solving_options *op, const double *rtol, con
   if (den <= 0.0 || !R_FINITE(num) || thetaPrev <= 0.0) return 1.0;
   double g = 1.0 + (num/den - 1.0)/thetaPrev;
   if (!R_FINITE(g)) return 1.0;
-  if (g > 0.9) g = 0.9;
-  if (g < -999.0) g = -999.0;
-  return 1.0/(1.0 - g);
+  double theta = 1.0/(1.0 - g);
+  // Clamp the relaxation itself rather than the estimated ratio: the point of
+  // the bound is that a secant fit of a nonlinear map should not be trusted far
+  // from theta = 1.  A measured ratio well below -1 means the map is EXPANDING,
+  // and the right answer to that is a shorter step (which the driver will take
+  // once this returns -2), not crawling along at theta = 1e-3.
+  if (!R_FINITE(theta) || theta < RX_INDLIN_THETA_MIN) return RX_INDLIN_THETA_MIN;
+  if (theta > RX_INDLIN_THETA_MAX) return RX_INDLIN_THETA_MAX;
+  return theta;
+}
+
+// Tolerance-scaled RMS of a Picard residual over the flagged states.  Used both
+// as the convergence measure and to notice an iteration that is going backwards.
+static inline double indLinResNorm(rx_solving_options *op, const double *rtol, const double *atol,
+                                   const arma::vec &w, const arma::vec &d) {
+  double s = 0.0;
+  int n = 0;
+  for (int j = op->indLinN; j--;) {
+    int k = op->indLin[j];
+    double sc = rtol[k]*fabs(w[k]) + atol[k];
+    if (sc <= 0.0) continue;
+    double e = d[k]/sc;
+    s += e*e;
+    n++;
+  }
+  return (n > 0) ? sqrt(s/(double)n) : 0.0;
 }
 
 // The inductive-linearization fixed point over one relinearization substep
@@ -384,14 +415,16 @@ static inline double indLinTheta(rx_solving_options *op, const double *rtol, con
 // iterate leaves the reals -- that is a "cut the step" signal to the driver,
 // not a failure -- or whatever `meOnly()` failed with.
 static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                         int neq, double *rtol, double *atol, int maxIter,
+                         int neq, double *rtol, double *atol, int maxIter, int stepSearch,
                          double *yp_, double subTp, double subTf, double tcov,
                          double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                          arma::vec *u, arma::vec *w1Out, double *ratioOut) {
   arma::vec y0(yp_, neq);
   arma::vec w(y0);
-  arma::vec wPrev(neq), d(neq), dPrev(neq);
+  arma::vec wPrev(neq), d(neq), dPrev(neq), wTry(neq);
   double theta = 1.0, thetaPrev = 0.0;
+  double resPrev = -1.0;
+  int nGrow = 0;
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
     wPrev = w;
@@ -414,7 +447,53 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // the fixed point is about |d|/(1-g') = theta*|d|, not |d| -- at g'=0.9
     // those differ by 10x, so testing the bare residual accepts an iterate
     // ten times further out than the tolerance asked for.
-    theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    // A residual that is growing means the secant fit is misleading -- `g` is
+    // not normal, so a single rise is normal and only a run of them is real.
+    // Fall back to plain Picard once, then hand off to a shorter step.  This is
+    // the safeguard role Armijo backtracking plays in Schmidt et al. (2024),
+    // but read off the residual we already have rather than paid for with extra
+    // matrix exponentials.
+    double res = indLinResNorm(op, rtol, atol, w, d);
+    bool backOff = false;
+    if (resPrev >= 0.0 && res > 2.0*resPrev) {
+      if (++nGrow >= 2) {
+        std::copy(w.begin(), w.end(), yp_);
+        return -2;
+      }
+      backOff = true;
+    } else {
+      nGrow = 0;
+    }
+    resPrev = res;
+
+    if (backOff || stepSearch == RX_INDLIN_SEARCH_NONE) {
+      theta = 1.0;
+    } else if (stepSearch == RX_INDLIN_SEARCH_EXACT) {
+      // One extra propagation, at the plain-Picard point, gives the residual
+      // there.  The residual is affine in the step for an affine map, so two of
+      // them locate the minimizer of ||R(a)|| in closed form -- the same thing
+      // Schmidt et al.'s bisection converges to, without spending a matrix
+      // exponential per bisection.
+      wTry = w;
+      int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(), subTp, subTf, tcov,
+                          InfusionRate_, on_, ME, IndF, u);
+      if (r2 <= 0) return r2;
+      double num = 0.0, den = 0.0;
+      for (int j = op->indLinN; j--;) {
+        int k = op->indLin[j];
+        double sc = rtol[k]*fabs(w[k]) + atol[k];
+        if (sc <= 0.0) continue;
+        double a0 = d[k]/sc;
+        double a1 = (wTry[k] - w[k] - d[k])/sc;
+        num += a0*a1;
+        den += a1*a1;
+      }
+      theta = (den > 0.0 && R_FINITE(num)) ? -num/den : 1.0;
+      if (!R_FINITE(theta) || theta < RX_INDLIN_THETA_MIN) theta = RX_INDLIN_THETA_MIN;
+      if (theta > RX_INDLIN_THETA_MAX) theta = RX_INDLIN_THETA_MAX;
+    } else {
+      theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    }
     // Report the measured contraction ratio so a caller that has to cut the
     // step can size the cut instead of guessing.
     if (ratioOut != NULL) {
@@ -460,8 +539,9 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
                             double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                             arma::vec *u, arma::vec &yOut, arma::vec &w1,
                             double *errOut, double *ratioOut) {
+  int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
   yOut = y0;
-  int ret = indLinIterate(cSub, op, ind, neq, rtol, atol, RX_INDLIN_MAXITER,
+  int ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxIter, op->indLinStepSearch,
                           yOut.memptr(), t, t + h, tcov,
                           InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
   if (ret != 1) return ret;

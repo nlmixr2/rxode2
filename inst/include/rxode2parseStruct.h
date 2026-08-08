@@ -117,6 +117,8 @@ typedef struct {
   int indLinPhiM;
   int indLinMatExpType;
   int indLinMatExpOrder;
+  int indLinStepSearch; // 0 = none, 1 = secant, 2 = exact
+  int indLinMaxIter;
   int nDisplayProgress;
   int ncoresRV;
   int isChol;

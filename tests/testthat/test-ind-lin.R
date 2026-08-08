@@ -498,6 +498,41 @@ d/dt(blood)     = a*intestine - b*blood
                  tolerance = 1e-8)
   })
 
+  test_that("indLinStepSearch and indLinMaxIter do not move the answer", {
+    # The relaxation factor only changes how fast the fixed-point iteration
+    # gets there -- it cannot move the fixed point -- so every search mode has
+    # to agree, and the iteration cap has to be invisible as long as the solver
+    # is free to shorten its step when the cap is hit.
+    .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
+    .ode <- rxode2(.code)
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
+
+    .sol <- lapply(c("none", "secant", "exact"), function(m) {
+      rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
+              indLinStepSearch = m)$central
+    })
+    expect_equal(.sol[[1]], .sol[[2]], tolerance = 1e-10)
+    expect_equal(.sol[[1]], .sol[[3]], tolerance = 1e-10)
+    expect_lt(max(abs(.sol[[2]] - .ref$central)), 1e-2)
+
+    # A cap low enough to bite is absorbed by the step controller rather than
+    # reported.  It shifts the step schedule slightly, so the answers agree to
+    # the solve tolerance rather than exactly.
+    expect_equal(rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 3L)$central,
+                 rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 100L)$central,
+                 tolerance = 1e-6)
+
+    # the character values map onto the integers the solver reads
+    expect_equal(rxControl(indLinStepSearch = "secant")$indLinStepSearch, 1L)
+    expect_equal(rxControl(indLinStepSearch = "exact")$indLinStepSearch, 2L)
+    expect_equal(rxControl(indLinStepSearch = "none")$indLinStepSearch, 0L)
+    expect_equal(rxControl()$indLinStepSearch, 1L)
+    expect_equal(rxControl()$indLinMaxIter, 20L)
+    expect_error(rxControl(indLinMaxIter = 0L))
+  })
+
   test_that("a matExp() rate constant may not depend on a compartment", {
     # rxode2#1186: the matrix exponential is only valid when the rate matrix is
     # constant over the step -- an assumption the event-sensitivity jump code in

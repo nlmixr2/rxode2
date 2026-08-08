@@ -132,4 +132,6 @@
 #define Rxc_parallel 127
 #define Rxc__zeros 128
 #define Rxc_zeroVarParamHandle 129
+#define Rxc_indLinStepSearch 130
+#define Rxc_indLinMaxIter 131
 #endif // __rxode2_control_H__
