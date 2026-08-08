@@ -396,7 +396,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       rxSolveFreeC();
       if (indLinNoConv) {
         (Rf_errorcall)(R_NilValue, "%s",
-                       _("inductive linearization did not converge; lower 'hmax' or loosen 'atol'/'rtol'"));
+                       _("inductive linearization did not converge; loosen 'atol'/'rtol' or raise 'maxsteps'"));
       }
       (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
     } else {
@@ -407,7 +407,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           rx->maxExtra);
       }
       if (indLinNoConv) {
-        warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; lower 'hmax' or loosen 'atol'/'rtol'"));
+        warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; loosen 'atol'/'rtol' or raise 'maxsteps'"));
       } else {
         warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
       }

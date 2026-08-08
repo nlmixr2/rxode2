@@ -284,7 +284,7 @@ extern "C" void printErr(int err, int id){
     RSprintf(" Rate is zero/negative\n");
   }
   if (err & rxErrIndLinConverge){
-    RSprintf("  Inductive linearization did not converge in 'maxsteps' iterations; lower 'hmax' or loosen 'atol'/'rtol'\n");
+    RSprintf("  Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'\n");
   }
   if (err & rxErrIndLinCode){
     RSprintf("  Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver\n");

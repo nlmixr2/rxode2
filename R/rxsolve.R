@@ -138,14 +138,14 @@
 #'   determine the step size when `dense=TRUE`
 #'
 #'   For `method="indLin"`, `hmax` caps how long an interval is treated
-#'   as having a CONSTANT Jacobian/matrix-exponential term before
-#'   re-linearizing (previously silently ignored for this method). For a
-#'   true (state-independent) `matExp()` model this makes no numerical
-#'   difference; for an `indLin()`-forcing model with a state-dependent
-#'   term (e.g. Michaelis-Menten elimination), the default `hmax` (tied to
-#'   the spacing of your own sampling/dosing times) may be too coarse for
-#'   the desired accuracy -- set an explicit, smaller `hmax` to force more
-#'   frequent relinearization.
+#'   as having a CONSTANT matrix-exponential term before re-linearizing.
+#'   A model with a state-dependent `indLin()` forcing now chooses its own
+#'   relinearization step from a local error estimate, so `atol`/`rtol`
+#'   (and `maxsteps`) are what control its accuracy and `hmax` only sets an
+#'   upper bound on the step.  A model whose forcing reads no state, or
+#'   which has none, has a rate matrix that is constant in the states, so
+#'   there is no error to control and `hmax` only changes how many
+#'   (mathematically equivalent) matrix exponentials are taken.
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0

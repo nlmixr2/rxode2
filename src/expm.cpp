@@ -322,6 +322,19 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
   return meOnly(cSub, w, y0, subTp, subTf, tcov, force, on_, ME, op, ind);
 }
 
+// Cap on the inductive iteration, deliberately small and deliberately NOT
+// `op->mxstep` (70000).  The Picard map contracts at a ratio proportional to
+// the substep, so an iteration that has not converged in this many passes is
+// telling us the substep is too long -- and the driver's answer to that is to
+// cut the step, which is cheap.  Grinding tens of thousands of matrix
+// exponentials before reaching that conclusion is not.
+#define RX_INDLIN_MAXITER 20
+// The iterate has to land a factor tighter than the step-size tolerance, or
+// the local error estimate (which differences two iterates) ends up measuring
+// iteration noise instead of discretization error and the controller chases
+// its own tail.  Same convention as lsoda's corrector.
+#define RX_INDLIN_PICARD_TOL_FAC 0.1
+
 // Secant estimate of the iteration map's contraction ratio from two
 // consecutive Picard residuals, measured only over the states flagged in
 // `op->indLin[]` and scaled by the same `rtol`/`atol` the convergence test
@@ -367,28 +380,33 @@ static inline double indLinTheta(rx_solving_options *op, const double *rtol, con
 // does not move the fixed point, so the converged answer -- and its order in
 // `hmax` -- is the undamped one.
 //
-// Returns 1 on convergence, -1 when `maxsteps` passes are exhausted or the
-// iterate leaves the reals (`yp_` still holds the last iterate), or whatever
-// `meOnly()` failed with.
+// Returns 1 on convergence, -2 when `maxIter` passes are exhausted or the
+// iterate leaves the reals -- that is a "cut the step" signal to the driver,
+// not a failure -- or whatever `meOnly()` failed with.
 static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                         int neq, double *rtol, double *atol, int maxsteps,
+                         int neq, double *rtol, double *atol, int maxIter,
                          double *yp_, double subTp, double subTf, double tcov,
                          double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
-                         arma::vec *u) {
+                         arma::vec *u, arma::vec *w1Out, double *ratioOut) {
   arma::vec y0(yp_, neq);
   arma::vec w(y0);
   arma::vec wPrev(neq), d(neq), dPrev(neq);
   double theta = 1.0, thetaPrev = 0.0;
-  for (int i = 0; i < maxsteps; ++i) {
+  if (ratioOut != NULL) *ratioOut = 1.0;
+  for (int i = 0; i < maxIter; ++i) {
     wPrev = w;
     int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
                          InfusionRate_, on_, ME, IndF, u);
     if (ret <= 0) return ret;
+    // Pass 0 linearizes at the substep-start state: that is the forward
+    // (explicit) answer, and the caller differences it against the converged
+    // backward one to get a local error estimate for free.
+    if (i == 0 && w1Out != NULL) *w1Out = w;
     d = w - wPrev;
     for (int j = op->indLinN; j--;) {
       if (!R_FINITE(w[op->indLin[j]])) {
         std::copy(w.begin(), w.end(), yp_);
-        return -1;
+        return -2;
       }
     }
     // Pick the relaxation BEFORE testing, because the test needs it.  For a
@@ -397,10 +415,17 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // those differ by 10x, so testing the bare residual accepts an iterate
     // ten times further out than the tolerance asked for.
     theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    // Report the measured contraction ratio so a caller that has to cut the
+    // step can size the cut instead of guessing.
+    if (ratioOut != NULL) {
+      double r = fabs(1.0 - 1.0/theta);
+      *ratioOut = (R_FINITE(r) && r > 1.0) ? r : 1.0;
+    }
     bool converge = true;
     for (int j = op->indLinN; j--;) {
       int k = op->indLin[j];
-      if (fabs(theta*d[k]) >= rtol[k]*fabs(w[k]) + atol[k]) {
+      if (fabs(theta*d[k]) >=
+          RX_INDLIN_PICARD_TOL_FAC*(rtol[k]*fabs(w[k]) + atol[k])) {
         converge = false;
       }
     }
@@ -413,7 +438,135 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     thetaPrev = theta;
   }
   std::copy(w.begin(), w.end(), yp_);
-  return -1;
+  return -2;
+}
+
+// One adaptive attempt over `[t, t+h]` starting from `y0`.  Leaves the
+// propagated state in `yOut` and the scaled local error estimate in `*errOut`.
+//
+// The estimate is free.  Writing `A0 = A(y0)`, `F0 = F(y0)` and `B0` for the
+// state-dependent part of the true Jacobian, the forward answer (linearize at
+// the start, which is pass 0 of the iteration and also exactly what the
+// non-iterating codes 1/2 compute) and the converged backward answer bracket
+// the truth symmetrically:
+//
+//   w1 - exact = -(h^2/2) B0 F0 ,   w* - exact = +(h^2/2) B0 F0
+//
+// so `w* - w1` is TWICE the local error of either -- hence the 0.5 below,
+// without which every tolerance would silently be twice as tight as asked.
+static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                            int neq, double *rtol, double *atol,
+                            const arma::vec &y0, double t, double h, double tcov,
+                            double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                            arma::vec *u, arma::vec &yOut, arma::vec &w1,
+                            double *errOut, double *ratioOut) {
+  yOut = y0;
+  int ret = indLinIterate(cSub, op, ind, neq, rtol, atol, RX_INDLIN_MAXITER,
+                          yOut.memptr(), t, t + h, tcov,
+                          InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
+  if (ret != 1) return ret;
+  double err = 0.0;
+  for (int k = 0; k < neq; ++k) {
+    // Every state, not just the flagged ones: the linearization error
+    // propagates into compartments that carry no forcing of their own.
+    double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
+    if (sc <= 0.0) continue;
+    double e = 0.5*(yOut[k] - w1[k])/sc;
+    err += e*e;
+  }
+  *errOut = sqrt(err / (double) neq);
+  return 1;
+}
+
+// Adaptive relinearization over `[tp,tf]` for the iterating codes 3/4.
+//
+// `hCap` is the equal-subdivision substep the non-adaptive path would have
+// used, so the controller can only ever step SHORTER than before -- anyone who
+// tuned `hmax` keeps at least the accuracy they had, and every old substep
+// boundary is still a boundary (which is what keeps time-varying covariate
+// sampling a refinement rather than a change).
+static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                               int neq, double *rtol, double *atol,
+                               double *yp_, double tp, double tf, double hCap, int locf,
+                               double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                               arma::vec *u) {
+  const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
+  double span = tf - tp;
+  double t = tp;
+  double h = (hCap > 0.0 && std::isfinite(hCap) && hCap < span) ? hCap : span;
+  bool lastRejected = false;
+  // Steady state re-solves the same tau-sized interval until it stops moving.
+  // If the substep schedule drifted between passes the ssRtol/ssAtol test
+  // would be reading schedule jitter rather than convergence, so allow the
+  // step to shrink there but never to grow.
+  bool inSS = (ind != NULL && !ISNA(ind->ssTime));
+  arma::vec y0(yp_, neq), yTry(neq), w1(neq);
+  int nAttempt = 0, nAccept = 0;
+  while (t < tf) {
+    // Snap to `tf` rather than leaving a sliver behind.
+    if (t + 1.01*h >= tf) h = tf - t;
+    if (h <= 0.0) break;
+    if (++nAttempt > op->mxstep) {
+      std::copy(y0.begin(), y0.end(), yp_);
+      if (ind != NULL) ind->err |= rxErrIndLinConverge;
+      return 1;
+    }
+    double tcov = locf ? t : (t + h);
+    double err = 0.0, ratio = 1.0;
+    int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+                               InfusionRate_, on_, ME, IndF, u, yTry, w1,
+                               &err, &ratio);
+    if (ret == -2) {
+      // Not a dead end: the contraction ratio is proportional to `h`, so a
+      // failure to converge proves the step is too long and a bounded number
+      // of cuts must fix it.  Size the cut from the measured ratio instead of
+      // halving blindly -- lsoda's corrector-failure convention.
+      double cut = 1.0/(2.0*ratio);
+      if (cut > 0.25) cut = 0.25;
+      if (cut < FACMIN) cut = FACMIN;
+      h *= cut;
+      lastRejected = true;
+      if (h < 1e-10*span) {
+        std::copy(y0.begin(), y0.end(), yp_);
+        if (ind != NULL) ind->err |= rxErrIndLinConverge;
+        return 1;
+      }
+      continue;
+    }
+    if (ret <= 0) {
+      std::copy(y0.begin(), y0.end(), yp_);
+      return ret;
+    }
+    double fac = (err > 0.0) ? SAFE*pow(err, -0.5) : FACMAX;
+    if (fac < FACMIN) fac = FACMIN;
+    if (fac > FACMAX) fac = FACMAX;
+    if (err > 1.0) {
+      h *= fac;
+      lastRejected = true;
+      if (h < 1e-10*span) {
+        std::copy(y0.begin(), y0.end(), yp_);
+        if (ind != NULL) ind->err |= rxErrIndLinConverge;
+        return 1;
+      }
+      continue;
+    }
+    y0 = yTry;
+    t += h;
+    nAccept++;
+    // A step that follows a rejection may not grow, and a steady-state step
+    // may never grow at all.
+    if ((lastRejected || inSS) && fac > 1.0) fac = 1.0;
+    lastRejected = false;
+    h *= fac;
+    if (hCap > 0.0 && std::isfinite(hCap) && h > hCap) h = hCap;
+  }
+  std::copy(y0.begin(), y0.end(), yp_);
+  // `postSolve()` already counts one per output interval; add the substeps
+  // this interval actually needed so `$counts$slvr` reports real work.
+  if (ind != NULL && ind->slvr_counter != NULL && nAccept > 1) {
+    ind->slvr_counter[0] += nAccept - 1;
+  }
+  return 1;
 }
 
 //' Inductive linearization solver
@@ -448,7 +601,8 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
   double *rtol = (ind != NULL && ind->rtol2 != NULL) ? ind->rtol2 : op->rtol2;
   double *atol = (ind != NULL && ind->atol2 != NULL) ? ind->atol2 : op->atol2;
-  int maxsteps=op->mxstep;
+  // `op->mxstep` is the attempted-substep budget for the whole interval; the
+  // per-substep iteration cap is RX_INDLIN_MAXITER, which is much smaller.
   int doIndLin=op->doIndLin;
   // int indLinPerterb=10;
   // double indLinAmt=1.0;
@@ -497,6 +651,15 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   if (doIndLin == 2 || doIndLin == 4) {
     u.zeros(neq);
   }
+  if (doIndLin == 3 || doIndLin == 4) {
+    // The iterating codes pick their own substep from a local error estimate,
+    // capped by the equal subdivision the fixed grid would have used.  Codes
+    // 1/2 fall through to that fixed grid: after rxode2#1186 their `A` is
+    // constant in the states, so there is no truncation error to control.
+    return indLinDriveAdaptive(cSub, op, ind, neq, rtol, atol, yp_, tp, tf, _dt, locf,
+                               InfusionRate_, on_, ME, IndF,
+                               (doIndLin == 4) ? &u : NULL);
+  }
   for (int _sub = 0; _sub < _nSub; _sub++) {
     // Avoid floating-point drift on the final substep by snapping to `tf`.
     double _subTf = (_sub == _nSub - 1) ? tf : _subTp + _dt;
@@ -513,22 +676,6 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, u.memptr(), on_, ME, op, ind);
       break;
     }
-    case 3: {
-      // Homogeneous matrix exponential + the inductive iteration.  Not reached
-      // today: `wIndLin` is filled only from `indLin()` forcings, and a model
-      // that has one always has an `f`, which selects code 4.  It is here for
-      // the state-dependent-`A` case, whose detection is a separate issue.
-      _ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxsteps, yp_,
-                           _subTp, _subTf, tcov, InfusionRate_, on_, ME, IndF, NULL);
-      break;
-    }
-    case 4: {
-      // Matrix exponential with an `indLin()` forcing + the inductive
-      // iteration; the forcing is rebuilt at each iterate alongside `ME`.
-      _ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxsteps, yp_,
-                           _subTp, _subTf, tcov, InfusionRate_, on_, ME, IndF, &u);
-      break;
-    }
     default:
       // Never throw: this runs inside `par_indLin`'s `omp parallel for`, and an
       // Rcpp exception escaping a worker thread is a confirmed session crash
@@ -536,14 +683,6 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       // Report through `err` and let the caller NA-fill.
       if (ind != NULL) ind->err |= rxErrIndLinCode;
       return -1;
-    }
-    if (_ret == -1 && ind != NULL && (doIndLin == 3 || doIndLin == 4)) {
-      // Report rather than silently keep the last iterate.  Flagging `err`
-      // (instead of returning <= 0, which reaches `postSolve()` with no
-      // message) routes it through `printErr()`, which names the subject and
-      // still NA-fills the solve.
-      ind->err |= rxErrIndLinConverge;
-      return 1;
     }
     if (_ret <= 0) return _ret;
     _subTp = _subTf;

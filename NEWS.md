@@ -174,6 +174,11 @@
 
 ### Matrix exponential / inductive linearization
 
+- `method="indLin"` no longer throws from inside the parallel solve.  Two code
+  paths in the inductive-linearization solver raised an R-level error from a
+  worker thread, which crashes the session rather than reporting an error; both
+  now report through the usual per-subject error flag.
+
 - An `indLin(<state>) <- <expr>` forcing that references a compartment is now
   evaluated at that compartment's current value.  The generated forcing
   function took no state vector, so the compartment kept its `NA_REAL`
@@ -191,11 +196,41 @@
   elimination sits right at the stability boundary, oscillating for ~1e5 passes
   -- so each step is relaxed by a secant estimate of the iteration's contraction
   ratio.  Relaxation does not move the fixed point, so the converged answer is
-  the undamped one; it is still first order in the relinearization step, so
-  `hmax` keeps refining it.  A forcing with no fixed point over the substep now
-  reports `inductive linearization did not converge` instead of returning the
-  last iterate as if it had converged.  Models with no forcing, or with a
-  forcing that reads no state, keep the single-pass path and are unchanged.
+  the undamped one.  Models with no forcing, or with a forcing that reads no
+  state, keep the single-pass path and are unchanged.
+
+- Converting an ODE model to `matExp()` form (`rxToIndLin()`, and therefore
+  `rxode2(..., indLin = TRUE)` and `method="indLin"`'s auto-conversion) now puts
+  the nonlinear part of a right-hand side into an `indLin()` forcing instead of
+  into a rate constant.  A rate constant that reads a compartment is not a rate
+  constant -- the matrix exponential assumes the rate matrix is constant in the
+  states -- and burying the nonlinearity there meant the solver could not
+  iterate it.  Michaelis-Menten elimination now converts to
+  `indLin(central) <- -vmax*central/(km + central)` with an empty rate matrix
+  rather than to `k_central_output = vmax/(km + central)`.  This also removes a
+  rate constant that was singular when the compartment was empty.  Because these
+  models now reach the iterating solver path, they are far more accurate: a
+  one-compartment Michaelis-Menten solve that was about 70% off at the default
+  settings is now within about 0.01%.  `rxIndLinStrategy()` and
+  `rxIndLinState()` no longer affect the conversion, since no way of factoring a
+  multi-state product yields a state-free rate constant; both are kept so
+  existing code keeps working.
+
+- `method="indLin"` chooses its own relinearization step for models with a
+  state-dependent `indLin()` forcing, instead of subdividing each interval
+  evenly by `hmax`.  The forward answer (matrix built at the step's starting
+  state) and the converged backward answer bracket the truth symmetrically, so
+  their difference is a local error estimate that costs nothing extra; the step
+  is then chosen from it the same way the other adaptive solvers choose theirs.
+  `atol`/`rtol` and `maxsteps` now control the accuracy of these models and
+  `hmax` only bounds the step.  An iteration that will not converge is treated
+  as a step that is too long and is retried shorter rather than reported, so
+  stiff forcings that previously failed outright now solve; non-convergence is
+  reported only once the step or the step budget runs out.  `$counts$slvr`
+  reports the relinearization steps actually taken, where it used to read zero.
+  One consequence worth knowing: as with every adaptive method, the solution is
+  now a piecewise function of the parameters, which adds a little noise to
+  finite-difference gradients taken through it.
 
 ### Installation / linking
 
