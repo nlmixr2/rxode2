@@ -117,6 +117,16 @@
 
 ### Compilation
 
+- The statement form of `ifelse()` -- `ifelse(cond, stmt, stmt)`, where each
+  branch is a statement rather than a value -- now compiles anywhere in a model.
+  Its handler appended `if (` to the code buffers without first clearing the
+  preceding statement's text, so the generated C ran the two together
+  (`kin=3if (t<2) {`) and only a model whose *first* statement was an `ifelse()`
+  compiled.  The construct now emits and normalizes exactly like the equivalent
+  `if (...) {...} else {...}`, so it round-trips through `rxNorm()` and
+  translates for symengine derivatives (sensitivities, FOCEi) the same way
+  (#1211).
+
 - `rxCompile()` now re-parses the model it is handed whenever the parser's
   current model is a different one.  Code generation reads the parser's global
   model state, and the old guard only checked whether *some* model was loaded,
