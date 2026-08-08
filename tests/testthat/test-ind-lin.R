@@ -260,7 +260,23 @@ d/dt(blood)     = a*intestine - b*blood
     ## 3000 causes weird behavior of indLin / lsoda
     et$add.sampling(seq(0, 20, length.out = 200))
 
-    s1 <- rxSolve(van1, et, c(mu = 1000), method = "lsoda")
+    # rxode2#1186: compare against a PLAIN ODE model rather than against the
+    # indLin model itself.  `rxSolve.default` force-selects method="indLin" for
+    # any model carrying an indLin descriptor, so the old `method="lsoda"` arm
+    # here was silently solving with indLin too and the comparison was vacuous.
+    vanOde <- rxode2({
+      y(0) <- 2
+      d / dt(y) <- dy
+      d / dt(dy) <- mu * (1 - y^2) * dy - y
+    })
+    # The strategy knobs no longer change the conversion: under a strictly
+    # linear A no multi-state split can produce a legal rate constant, so the
+    # nonlinear product goes to the forcing whichever state is preferred.
+    expect_equal(rxNorm(van1), rxNorm(van2))
+    expect_equal(rxNorm(van1), rxNorm(van3))
+
+    s1 <- rxSolve(vanOde, et, c(mu = 1000), method = "lsoda",
+                  atol = 1e-12, rtol = 1e-12)
     s2 <- rxSolve(van1, et, c(mu = 1000), method = "indLin")
     ## s3 <- rxSolve(van, et, c(mu=1000), method="dop853")
 
@@ -285,11 +301,16 @@ d/dt(blood)     = a*intestine - b*blood
     ##     }
     ## }, movie.name="indLin-dop.gif", interval=0.1, nmax=30, ani.width=600, ani.hegith=300)
 
-    expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance = 1e-5)
+    expect_equal(s1$y, s2$y, tolerance = 1e-4)
 
-    s1 <- rxSolve(van, et, c(mu = 1), method = "lsoda")
+    # rxode2#1186 notes these were commented out only because the conversion
+    # buried the nonlinearity in a rate constant; with it in the forcing, and
+    # the solver cutting its step until the iteration contracts, the non-stiff
+    # case matches too.
+    s1 <- rxSolve(vanOde, et, c(mu = 1), method = "lsoda",
+                  atol = 1e-12, rtol = 1e-12)
     s2 <- rxSolve(van, et, c(mu = 1), method = "indLin")
-    ## expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance =1e-4)
+    expect_equal(s1$y, s2$y, tolerance = 1e-3)
     ## s3 <- rxSolve(van, et, c(mu=1), method="dop853")
 
     ## s1 |> rename(y.lsoda=y, dy.lsoda=dy) |>
@@ -336,20 +357,14 @@ d/dt(blood)     = a*intestine - b*blood
     ))
   })
 
-  test_that("hmax caps method='indLin' relinearization interval (task #8)", {
-    # `indLin()`/`meOnly()` (src/expm.cpp) evaluate the ME/Jacobian ONCE per
-    # call and treat it as constant over the WHOLE requested interval --
-    # exact for a true (state-independent) matExp() model, but only a
-    # first-order approximation for a state-dependent (indLin-forcing, e.g.
-    # Michaelis-Menten) one. `hmax` previously had NO effect on this at
-    # all: the relinearization interval was always exactly the gap between
-    # requested output times, so a coarse sampling grid silently gave a
-    # coarse (and potentially very wrong) answer for nonlinear models, with
-    # no way for a user to ask for more accuracy. This checks (1) `hmax`
-    # now measurably improves accuracy for a nonlinear (Michaelis-Menten
-    # elimination) model, and (2) it makes no numerical difference for a
-    # genuinely linear matExp model (same Jacobian regardless of how finely
-    # the interval is subdivided).
+  test_that("atol/rtol, not hmax, control method='indLin' accuracy", {
+    # rxode2#1186 + #1185: a converted Michaelis-Menten model used to bury the
+    # nonlinearity in a rate constant, which made `A` state dependent (illegal)
+    # and left the answer ~70% off at the default hmax.  The nonlinear residual
+    # is now an indLin() forcing, the solver iterates it, and it picks its own
+    # relinearization step from a local error estimate.  So `hmax` is only a cap
+    # now: refining it changes little, while refining `atol`/`rtol` is what buys
+    # accuracy.  A genuinely linear matExp model is unaffected by either.
     ode_code <- "
       vmax <- 10; km <- 5; v <- 20
       d/dt(central) = -vmax*central/(km+central)
@@ -357,16 +372,35 @@ d/dt(blood)     = a*intestine - b*blood
     pars <- c(vmax = 10, km = 5, v = 20)
     et_f <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
     mod_ode <- rxode2(ode_code)
-    res_ode <- rxSolve(mod_ode, et_f, pars, atol = 1e-10, rtol = 1e-10)
+    res_ode <- rxSolve(mod_ode, et_f, pars, method = "liblsoda",
+                       atol = 1e-12, rtol = 1e-12)
 
     mod_mexp <- suppressMessages(rxode2(rxToIndLin(ode_code)))
+    # the conversion is legal: no state inside a rate constant
+    expect_false(any(grepl("k_central_output", rxToIndLin(ode_code))))
+    expect_true(rxModelVars(mod_mexp)$indLin$fullIndLin)
+
+    .errTol <- function(tol) {
+      max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin",
+                      atol = tol, rtol = tol)$central - res_ode$central))
+    }
+    .e <- vapply(c(1e-4, 1e-6, 1e-8), .errTol, double(1))
+    expect_true(all(diff(.e) < 0))
+    expect_lt(.e[3], .e[1] / 10)
+    # and the default solve is accurate now, which is the #1186 headline
+    expect_lt(max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin")$central -
+                        res_ode$central)) / max(abs(res_ode$central)),
+              1e-3)
+
+    # hmax is a cap, not the accuracy knob: loosening it does not degrade the
+    # answer the way it did when the substep grid was uniform.
     diff_coarse <- max(abs(
       rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.5)$central - res_ode$central
     ))
     diff_fine <- max(abs(
       rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.01)$central - res_ode$central
     ))
-    expect_true(diff_fine < diff_coarse / 10)
+    expect_lt(diff_coarse, 10 * diff_fine)
 
     ode_code_lin <- "
       ka <- 0.5; cl <- 0.2; v <- 10
@@ -413,11 +447,14 @@ d/dt(blood)     = a*intestine - b*blood
     expect_false(any(is.na(.fine$central)))
     expect_equal(.fine$central, .ref$central, tolerance = 1e-3)
 
-    # Linearizing at the converged iterate is still first order in the
-    # relinearization step, so hmax keeps refining the answer (an order this
-    # coarse is what makes the deferred linear-ramp work measurable).
-    .err <- vapply(c(0.1, 0.01, 0.001), function(h) {
-      max(abs(rxSolve(.mm, .e, method = "indLin", hmax = h)$central - .ref$central))
+    # The relinearization step is now chosen from a local error estimate, so
+    # tightening atol/rtol is what refines the answer.  Linearizing at the
+    # converged iterate is still first order, so the error scales like the
+    # square root of the tolerance -- an order this coarse is what makes the
+    # deferred linear-ramp work measurable.
+    .err <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
+      max(abs(rxSolve(.mm, .e, method = "indLin",
+                      atol = tol, rtol = tol)$central - .ref$central))
     }, double(1))
     expect_true(all(diff(.err) < 0))
     expect_lt(.err[3], .err[1] / 10)
