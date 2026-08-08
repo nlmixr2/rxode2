@@ -26,6 +26,7 @@
 #define rxErrModeledFss2n3    4194304
 #define rxErrRate02           8388608
 #define rxErrIndLinConverge   16777216
+#define rxErrIndLinCode       33554432
 
 #define rxErrNaTimeLag   1
 #define rxErrNaTimeRate  2

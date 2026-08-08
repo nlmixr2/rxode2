@@ -15,6 +15,11 @@
 
 #define _(String) (String)
 
+// `indLin()` runs inside `par_indLin`'s `omp parallel for`, so nothing in this
+// file may use the R API or throw: `RSprintf` is the thread-safe printer (it
+// prints from the master thread only and honors the silent-error flag).
+extern "C" void RSprintf(const char *format, ...);
+
 using namespace Rcpp;
 
 std::string symengineRes(std::string val){
@@ -210,7 +215,12 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 	  s = R_pow_di(10,std::floor(log10(t_step))-1);
 	  t_step = std::ceil(t_step/s) * s;
 	  if (ireject == mxrej){
-	    stop(_("requested tolerance is too high"));
+	    // Never throw from here: `indLin()` -- and therefore anything it
+	    // calls -- runs inside `par_indLin`'s `omp parallel for`, where a
+	    // longjmp out of a worker thread crashes the session.  Accept the
+	    // step that missed the tolerance and say so instead.
+	    RSprintf(_("requested tolerance is too high\n"));
+	    break;
 	  }
 	  ireject = ireject + 1;
 	}
@@ -368,21 +378,29 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   arma::vec y0(yp_, neq);
   arma::vec w(y0);
   arma::vec wPrev(neq), d(neq), dPrev(neq);
-  double thetaPrev = 0.0;
+  double theta = 1.0, thetaPrev = 0.0;
   for (int i = 0; i < maxsteps; ++i) {
     wPrev = w;
     int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
                          InfusionRate_, on_, ME, IndF, u);
     if (ret <= 0) return ret;
     d = w - wPrev;
-    bool converge = true;
     for (int j = op->indLinN; j--;) {
-      int k = op->indLin[j];
-      if (!R_FINITE(w[k])) {
+      if (!R_FINITE(w[op->indLin[j]])) {
         std::copy(w.begin(), w.end(), yp_);
         return -1;
       }
-      if (fabs(d[k]) >= rtol[k]*fabs(w[k]) + atol[k]) {
+    }
+    // Pick the relaxation BEFORE testing, because the test needs it.  For a
+    // map contracting at ratio g', the distance from the current iterate to
+    // the fixed point is about |d|/(1-g') = theta*|d|, not |d| -- at g'=0.9
+    // those differ by 10x, so testing the bare residual accepts an iterate
+    // ten times further out than the tolerance asked for.
+    theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    bool converge = true;
+    for (int j = op->indLinN; j--;) {
+      int k = op->indLin[j];
+      if (fabs(theta*d[k]) >= rtol[k]*fabs(w[k]) + atol[k]) {
         converge = false;
       }
     }
@@ -390,7 +408,6 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
       std::copy(w.begin(), w.end(), yp_);
       return 1;
     }
-    double theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
     if (theta != 1.0) w = wPrev + theta*d;
     dPrev = d;
     thetaPrev = theta;
@@ -464,6 +481,9 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   // For a true matExp() model (state-independent ME) this changes nothing
   // but the number of (mathematically equivalent) matrix exponentials
   // computed; for indLin-forcing models it is the actual fix.
+  // A zero-length or backward interval has nothing to subdivide; bail before
+  // the arithmetic below can divide by it.
+  if (!(tf > tp)) return 1;
   double _hmax = (ind != NULL) ? ind->HMAX : op->hmax2;
   int _nSub = 1;
   if (_hmax > 0.0 && std::isfinite(_hmax) && (tf - tp) > _hmax) {
@@ -510,7 +530,12 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       break;
     }
     default:
-      stop(_("unsupported indLin code: %d"), doIndLin);
+      // Never throw: this runs inside `par_indLin`'s `omp parallel for`, and an
+      // Rcpp exception escaping a worker thread is a confirmed session crash
+      // (see the `.indLinInfo` leak note in R/rxode2.R) rather than an error.
+      // Report through `err` and let the caller NA-fill.
+      if (ind != NULL) ind->err |= rxErrIndLinCode;
+      return -1;
     }
     if (_ret == -1 && ind != NULL && (doIndLin == 3 || doIndLin == 4)) {
       // Report rather than silently keep the last iterate.  Flagging `err`
