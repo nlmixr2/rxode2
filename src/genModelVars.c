@@ -154,7 +154,7 @@ SEXP generateModelVars(void) {
       SET_VECTOR_ELT(matLst, 1, R_NilValue);
     }
     SET_VECTOR_ELT(matLst, 2, rxP(Rf_ScalarLogical(0)));
-    SET_VECTOR_ELT(matLst, 3, rxP(Rf_allocVector(INTSXP, 0)));
+    SET_VECTOR_ELT(matLst, 3, rxP(calcWIndLin(state)));
   } else {
     matLst = rxP(Rf_allocVector(VECSXP, 0));
   }

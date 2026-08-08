@@ -648,6 +648,261 @@ rxTest({
     expect_equal(fineBraced$central, refMm$central, tolerance = 1e-3)
   })
 
+  test_that("wIndLin reports the states whose indLin() forcing depends on a state", {
+    # rxode2#1184: modelVars$indLin$wIndLin was hardcoded empty, so it claimed
+    # no state ever carries a state-dependent forcing.  It is now filled by
+    # replaying the parsed assignments and indLin() forcings in source order, so
+    # hand-written matExp() models are covered too.  fullIndLin stays FALSE, so
+    # rxData.cpp still selects doIndLin 1/2 and nothing changes numerically.
+    .wIndLin <- function(code) {
+      rxModelVars(suppressMessages(rxode2(paste(code, collapse = "\n"))))$indLin$wIndLin
+    }
+
+    # a linear matExp() model has no forcing at all
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "k_central_output = 0.1",
+                            "cp = central/20")),
+                 setNames(integer(0), character(0)))
+
+    # a forcing that references no state keeps the cheap non-iterating path
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(Gc)",
+                            "k_Gc_output = 0.1",
+                            "Gprod = 3",
+                            "indLin(Gc) <- Gprod")),
+                 setNames(integer(0), character(0)))
+
+    # Michaelis-Menten: the forcing on central references central
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "vmax = 10",
+                            "km = 5",
+                            "indLin(central) <- -vmax*central/(km+central)",
+                            "cp = central/20")),
+                 c(central = 1L))
+
+    # van der Pol: the forcing on dy references both y and dy
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(y)",
+                            "cmt(dy)",
+                            "k_dy_y = 1",
+                            "indLin(dy) <- mu*(1-y^2)*dy - y")),
+                 c(dy = 1L))
+
+    # a forcing may reference a state other than its own
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "kin = 3",
+                            "indLin(central) <- kin*depot")),
+                 c(central = 1L))
+
+    # each forcing is classified on its own
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "cmt(b)",
+                            "k_a_b = 1",
+                            "kin = 3",
+                            "vmax = 1",
+                            "km = 2",
+                            "indLin(a) <- kin",
+                            "indLin(b) <- -vmax*b/(km+b)")),
+                 c(b = 1L))
+
+    # an unconditional forcing overwrites rx_indLin_<state>, so only the last
+    # one counts
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- a",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- kin",
+                            "indLin(a) <- a")),
+                 c(a = 0L))
+
+    # a forcing inside an if/while may not run, so it adds to the forcings
+    # already recorded rather than replacing them
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "} else {",
+                            "  indLin(a) <- kin",
+                            "}")),
+                 c(a = 0L))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- kin",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "}")),
+                 c(a = 0L))
+    # ... but an unconditional forcing after the block still wins
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "}",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+    # nested blocks nest: the forcing is still only conditional
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  if (t < 1) {",
+                            "    indLin(a) <- a",
+                            "  }",
+                            "  indLin(a) <- kin",
+                            "}")),
+                 c(a = 0L))
+    # a while block counts the same way
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  indLin(a) <- a",
+                            "  n = n + 1",
+                            "}")),
+                 c(a = 0L))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  indLin(a) <- a",
+                            "  n = n + 1",
+                            "}",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+
+    # the compartment may be declared after the forcing that references it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "indLin(depot) <- kin*central",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "kin = 3")),
+                 c(depot = 0L))
+
+    # the forcing may reach the state through an lhs rather than naming it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "vmax = 1",
+                            "km = 2",
+                            "cp = central/20",
+                            "indLin(central) <- -vmax*cp/(km+cp)")),
+                 c(central = 0L))
+    # ... through a chain of them
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "cp = central/20",
+                            "eff = 3*cp",
+                            "indLin(central) <- -eff")),
+                 c(central = 0L))
+    # ... but an lhs that never sees a state does not flag it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "eff = 2*kin",
+                            "indLin(central) <- eff")),
+                 setNames(integer(0), character(0)))
+
+    # statement order decides: an lhs reassigned to something state free before
+    # the forcing reads it no longer carries the state
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "cp = kin",
+                            "indLin(central) <- cp")),
+                 setNames(integer(0), character(0)))
+    # ... but reassigning it after the forcing has read it changes nothing
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "indLin(central) <- cp",
+                            "cp = kin")),
+                 c(central = 0L))
+    # ... and a conditional reassignment may not happen, so it only adds
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "if (t < 2) {",
+                            "  cp = kin",
+                            "}",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+    # ... including a reassignment inside a while block
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  cp = kin",
+                            "  n = n + 1",
+                            "}",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+    # a self-referencing update keeps the dependency
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "cp = central/20",
+                            "cp = cp*2",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+
+    # a model converted from ODEs by indLin() round-trips: the conversion puts
+    # every state-dependent term in the A matrix, so its forcing is state free
+    .conv <- suppressMessages(rxode2(indLin(suppressMessages(rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central + kin
+    })))))
+    expect_false(is.null(rxModelVars(.conv)$indLin$f))
+    expect_equal(rxModelVars(.conv)$indLin$wIndLin,
+                 setNames(integer(0), character(0)))
+
+    # fullIndLin is still FALSE, so the solver dispatch is unchanged
+    .mexp <- suppressMessages(rxode2(paste("matExp()",
+                                           "cmt(central)",
+                                           "vmax = 10",
+                                           "km = 5",
+                                           "indLin(central) <- -vmax*central/(km+central)",
+                                           sep = "\n")))
+    expect_false(rxModelVars(.mexp)$indLin$fullIndLin)
+
+    # a plain ODE model has no indLin element to report
+    expect_length(rxModelVars(suppressMessages(rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    })))$indLin, 0)
+  })
+
   test_that("rxSensMatExp() calcSens2/calcSens3 match the generic ODE path (linear)", {
     ode_code <- "
       d/dt(depot) = -ka * depot

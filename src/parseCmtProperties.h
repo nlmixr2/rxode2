@@ -123,6 +123,11 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
     sAppend(&sbDt, "%s = ", lhsVar);
     sAppend(&sbt, "indLin(%s)=", v);
     aType(TASSIGN);
+    // The forcing's right-hand side is parsed next; record the symbols it
+    // reads so wIndLin can report the state-dependent forcings.  Cleared in
+    // finalizeLine() / by ENDLINE.
+    tb.curIndLin = tb.id + 1;
+    tb.curStmt = pushIndLinStmt(tb.id, 1);
     return 1;
   }
   return 0;
@@ -231,6 +236,11 @@ static inline int handleRemainingAssignmentsCalcPropMtime(nodeInfo ni, char *nam
 
 static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, char *name, D_ParseNode *pn, char *v) {
   if (nodeHas(assignment)  || (!rx_syntax_allow_ini && nodeHas(ini))) {
+    // The right-hand side is parsed next; remember what it assigns so an
+    // indLin() forcing can be traced through it (see recordIndLinRef()).
+    // Cleared by ENDLINE.
+    tb.curLhs = tb.ix;
+    tb.curStmt = (tb.ix >= 0) ? pushIndLinStmt(tb.ix, 0) : -1;
     if (tb.ix+1 == NV && tb.NEnd != NV){
       // New assignment
       tb.ixL = tb.ix;

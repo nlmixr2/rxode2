@@ -25,6 +25,19 @@
   and its (unevaluated) arguments, matched to the argument names of the
   function being called; a call with no method keeps the default name.
 
+- `rxModelVars(m)$indLin$wIndLin` now reports the states whose
+  `indLin(<state>) <- <expr>` forcing references a compartment, rather than
+  always being empty.  It is worked out by replaying the parsed assignments and
+  forcings in source order, so hand-written `matExp()` models are covered as
+  well as converted ones, and a forcing that reaches a compartment only through
+  an assigned variable (`cp <- central/20`) counts too; a forcing built only
+  from parameters or covariates (e.g. `indLin(Gc) <- Gprod`) stays unflagged, as
+  does one whose variables were reassigned to something state free before it
+  reads them.  A forcing inside an `if`/`while` may not run, so it adds to what
+  the forcings before it established rather than replacing them.  The entries
+  are the 0-indexed positions in `$state`, named with those states.
+  `fullIndLin` is still `FALSE`, so solving is unchanged.
+
 - `rxModelNameLhs()` registers the name an assignment is making, for
   assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
   names the model when the model expression itself names nothing -- an
