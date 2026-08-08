@@ -216,6 +216,16 @@
   multi-state product yields a state-free rate constant; both are kept so
   existing code keeps working.
 
+- A `matExp()` rate constant that depends on a compartment is now a parse error
+  rather than a silently invalid model.  The matrix exponential is only correct
+  when the rate matrix is constant over the step, so a `k_from_to` that reads a
+  state breaks the method's central assumption; the error names the constant and
+  the compartment it reaches and points at `indLin()`, which is where a
+  state-dependent term belongs and where the solver can iterate it.  Models
+  built by `rxSensMatExp()` are exempt for now: their sensitivity blocks are
+  built out of rate constants throughout, and rewriting that generator is
+  separate work.
+
 - `method="indLin"` chooses its own relinearization step for models with a
   state-dependent `indLin()` forcing, instead of subdividing each interval
   evenly by `hmax`.  The forward answer (matrix built at the step's starting

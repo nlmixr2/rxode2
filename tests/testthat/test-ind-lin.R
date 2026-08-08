@@ -498,6 +498,52 @@ d/dt(blood)     = a*intestine - b*blood
                  tolerance = 1e-8)
   })
 
+  test_that("a matExp() rate constant may not depend on a compartment", {
+    # rxode2#1186: the matrix exponential is only valid when the rate matrix is
+    # constant over the step -- an assumption the event-sensitivity jump code in
+    # rxode2parseHandleEvid.h already states outright.  A state inside a
+    # `k_from_to` silently broke it, so it is a parse error now; the
+    # state-dependent part belongs in `indLin()`, where the solver iterates it.
+    .bad <- function(code) {
+      suppressMessages(rxode2(paste(code, collapse = "\n")))
+    }
+    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
+                        "k_central_output = vmax/(km+central)")),
+                 "syntax error")
+    # reached through an intermediate rather than written directly
+    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
+                        "cp = central/20",
+                        "k_central_output = vmax/(km+cp)")),
+                 "syntax error")
+    # the dot spelling of a micro constant is caught the same way
+    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
+                        "k.central.output = vmax/(km+central)")),
+                 "syntax error")
+    # van der Pol written by hand the way the old converter emitted it
+    expect_error(.bad(c("matExp()", "cmt(y)", "cmt(dy)", "k_y_dy = -1",
+                        "k_dy_output = -(1 + mu - y^2*mu)")),
+                 "syntax error")
+
+    # ... and everything legal still parses: a state-free rate matrix, a
+    # state-free forcing, a state-dependent forcing, and an ordinary lhs that
+    # reads a state without being a rate constant.
+    expect_no_error(.bad(c("matExp()", "cmt(depot)", "cmt(central)",
+                           "k_depot_central = 1", "k_central_output = 0.1")))
+    expect_no_error(.bad(c("matExp()", "cmt(Gc)", "k_Gc_output = 0.1",
+                           "Gprod = 3", "indLin(Gc) <- Gprod")))
+    expect_no_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
+                           "indLin(central) <- -vmax*central/(km+central)")))
+    expect_no_error(.bad(c("matExp()", "cmt(central)",
+                           "k_central_output = 0.1", "cp = central/20")))
+
+    # the converter never emits an illegal model any more
+    for (.code in c("vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n",
+                    "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n",
+                    "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n")) {
+      expect_no_error(suppressMessages(rxode2(rxToIndLin(.code))))
+    }
+  })
+
   test_that("a non-converging inductive linearization is reported", {
     # The deleted code returned 1 unconditionally once maxsteps ran out, handing
     # back the last iterate as if it had converged.  A forcing with no fixed
