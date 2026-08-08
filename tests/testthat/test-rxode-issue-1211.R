@@ -55,6 +55,21 @@ d/dt(c2) <- b
                  rxSolve(.if, .ev, returnType = "data.frame"))
   })
 
+  test_that("ifelse() statement form carries break inside a while()", {
+    m <- rxode2("
+q = 1
+while (q > 0) {
+  ifelse(q < 0.4, break, q <- q - 0.25)
+}
+d/dt(a) <- -a + q
+")
+    expect_equal(rxNorm(m),
+                 paste0("q=1;\nwhile (q>0){\nif (q<0.4){\nbreak;\n}\nelse {\n",
+                        "q=q-0.25;\n}\n}\nd/dt(a)=-a+q;\n"))
+    .s <- rxSolve(m, et(0:3) %>% et(amt = 10, cmt = 1), returnType = "data.frame")
+    expect_equal(unique(.s$q), 0.25)
+  })
+
   test_that("ifelse() statement form works in symengine derivatives", {
     .mod <- function(cond) {
       sprintf(paste0("ka <- exp(tka)\ncl <- exp(tcl)\nv <- exp(tv)\n%s\n",
