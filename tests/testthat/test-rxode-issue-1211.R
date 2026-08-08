@@ -1,7 +1,8 @@
 rxTest({
-  # rxode2#1211: the statement form ifelse(cond, stmt, stmt) appended "if (" to
-  # whatever the previous statement had left in the code buffers, so it only
-  # compiled when it was the first statement of the model.
+  # rxode2#1211: the statement form of ifelse -- where each branch is a
+  # statement rather than a value -- appended the opening brace to whatever the
+  # previous statement had left in the code buffers, so it only compiled when it
+  # was the first statement of the model.
 
   test_that("ifelse() statement form compiles after a preceding assignment", {
     m <- rxode2("
@@ -27,12 +28,14 @@ d/dt(c2) <- b
 
   test_that("ifelse() statement form normalizes to a re-parsable fixed point", {
     .norm <- function(txt) rxNorm(rxode2(txt))
-    for (txt in c(
+    .models <- c(
       "kin = 3\nifelse(t<2, b <- 1, b <- 2)\nd/dt(a) <- -a + b",
       "q=1\nifelse(t<2, ifelse(t<1, b <- 1, b <- 2), b <- 3)\nd/dt(a) <- -a+b",
       "q=1\nif (q>0) {\n ifelse(t<2, b <- 1, b <- 2)\n}\nd/dt(a) <- -a+b",
       "q=1\nifelse(t<2, d/dt(a) <- -a, d/dt(a) <- -2*a)\n",
-      "q=1\nifelse(t<2, b <- 1, b <- 2)\nifelse(t<3, c2 <- 1, c2 <- 2)\nd/dt(a) <- -a+b+c2")) {
+      "q=1\nifelse(t<2, b <- 1, b <- 2)\nifelse(t<3, c2 <- 1, c2 <- 2)\nd/dt(a) <- -a+b+c2"
+    )
+    for (txt in .models) {
       .n1 <- .norm(txt)
       expect_equal(.norm(.n1), .n1)
     }
@@ -50,7 +53,7 @@ if (t<2) { b <- 1 } else { b <- 2 }
 d/dt(c2) <- b
 ")
     expect_equal(rxNorm(.ie), rxNorm(.if))
-    .ev <- et(seq(0, 5, by = 0.5)) %>% et(amt = 10, cmt = 1)
+    .ev <- et(seq(0, 5, by = 0.5)) |> et(amt = 10, cmt = 1)
     expect_equal(rxSolve(.ie, .ev, returnType = "data.frame"),
                  rxSolve(.if, .ev, returnType = "data.frame"))
   })
@@ -66,7 +69,7 @@ d/dt(a) <- -a + q
     expect_equal(rxNorm(m),
                  paste0("q=1;\nwhile (q>0){\nif (q<0.4){\nbreak;\n}\nelse {\n",
                         "q=q-0.25;\n}\n}\nd/dt(a)=-a+q;\n"))
-    .s <- rxSolve(m, et(0:3) %>% et(amt = 10, cmt = 1), returnType = "data.frame")
+    .s <- rxSolve(m, et(0:3) |> et(amt = 10, cmt = 1), returnType = "data.frame")
     expect_equal(unique(.s$q), 0.25)
   })
 
