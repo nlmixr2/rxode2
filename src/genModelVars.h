@@ -403,6 +403,89 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   }
 }
 
+// Replay the recorded assignments and indLin() forcings in source order to work
+// out which forcings depend on a compartment.  dep[i] tracks whether symbol i
+// currently holds something derived from a state, so a forcing that reaches a
+// state only through an assigned variable (cp = central/20; indLin(central) <-
+// -vmax*cp/(km+cp)) is seen, while one whose variable was reassigned to
+// something state free before it is read is not.  A statement inside an
+// if/while/ifelse may not run, so it adds to what is already known instead of
+// replacing it -- the conservative direction, since a missed state would be
+// solved without the inductive iteration it needs.  fdep[] is the same for each
+// compartment's forcing.
+static inline void indLinReplay(int *dep, int *fdep, SEXP state) {
+  int ns = Rf_length(state);
+  for (int i = 0; i < NV; ++i) {
+    dep[i] = 0;
+    for (int m = 0; m < ns; ++m) {
+      if (!strcmp(tb.ss.line[i], CHAR(STRING_ELT(state, m)))) {
+        dep[i] = 2; // a state itself, never overwritten below
+        break;
+      }
+    }
+  }
+  for (int d = 0; d < tb.de.n; ++d) fdep[d] = 0;
+  for (int s = 0; s < tb.stmtN; ++s) {
+    int t = tb.stmtT[s];
+    if (tb.stmtK[s] == 0) {
+      // a state is never assigned, and must stay flagged if the parser ever
+      // routes one through here
+      if (t < 0 || t >= NV || dep[t] == 2) continue;
+    } else if (t < 0 || t >= tb.de.n) {
+      continue;
+    }
+    int v = 0;
+    int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+    for (int r = tb.stmtR0[s]; r < r1; ++r) {
+      if (dep[tb.stmtRef[r]]) {
+        v = 1;
+        break;
+      }
+    }
+    if (tb.stmtK[s] == 0) {
+      dep[t] = tb.stmtC[s] ? (dep[t] || v) : v;
+    } else {
+      fdep[t] = tb.stmtC[s] ? (fdep[t] || v) : v;
+    }
+  }
+}
+
+// modelVars$indLin$wIndLin: the 0-indexed positions in modelVars$state whose
+// indLin() forcing depends on a state (named with those states for reading).  A
+// forcing built only from parameters/covariates (eg indLin(Gc) <- Gprod) stays
+// unflagged and keeps the cheap non-iterating path.
+static inline SEXP calcWIndLin(SEXP state) {
+  rxProtectGuard;
+  int ns = Rf_length(state);
+  int *dep  = (int*)R_alloc(NV > 0 ? NV : 1, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  indLinReplay(dep, fdep, state);
+  int *isDep = (int*)R_alloc(ns > 0 ? ns : 1, sizeof(int));
+  int n = 0;
+  for (int k = 0; k < ns; ++k) {
+    isDep[k] = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], CHAR(STRING_ELT(state, k)))) {
+        isDep[k] = fdep[d];
+        break;
+      }
+    }
+    if (isDep[k]) n++;
+  }
+  SEXP w  = rxP(Rf_allocVector(INTSXP, n));
+  SEXP wn = rxP(Rf_allocVector(STRSXP, n));
+  int *wi = INTEGER(w);
+  for (int k = 0, j = 0; k < ns; ++k) {
+    if (!isDep[k]) continue;
+    wi[j] = k;
+    SET_STRING_ELT(wn, j, STRING_ELT(state, k));
+    j++;
+  }
+  Rf_setAttrib(w, R_NamesSymbol, wn);
+  rxUPAll();
+  return w;
+}
+
 static inline void populateDfdy(SEXP dfdy) {
   char *df, *dy;
   for (int i=0; i<tb.ndfdy; i++) {                     /* name state vars */
