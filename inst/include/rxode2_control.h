@@ -131,4 +131,5 @@
 #define Rxc_chunkSize 126
 #define Rxc_parallel 127
 #define Rxc__zeros 128
+#define Rxc_zeroVarParamHandle 129
 #endif // __rxode2_control_H__

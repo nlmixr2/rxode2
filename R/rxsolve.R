@@ -730,6 +730,18 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param zeroVarParamHandle Determines what happens when `params`
+#'   supplies a value for an omega/sigma item whose variance is zero
+#'   (say `eta.base ~ fix(0)`).  Such an item is dropped from the matrix
+#'   that is simulated from and given to the model as a literal zero
+#'   instead; the options are:
+#'
+#'  - `warn` (default) replace the supplied value with zero and warn
+#'
+#'  - `ignore` replace the supplied value with zero silently
+#'
+#'  - `keep` use the supplied value instead of zero
+#'
 #' @param ssSolved When `TRUE` this will return the solved steady
 #'   state solutions for the linear compartment model.  When `FALSE`
 #'   this will solve to steady state using the linear solutions
@@ -1156,6 +1168,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     file=NULL,
                     chunkSize=NULL,
                     parallel=0L,
+                    zeroVarParamHandle=c("warn", "ignore", "keep"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1325,6 +1338,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
     }
+    if (missing(zeroVarParamHandle) &&
+          !is.null(getOption("rxode2.zeroVarParamHandle", NULL))) {
+      zeroVarParamHandle <- getOption("rxode2.zeroVarParamHandle")
+    }
+    zeroVarParamHandle <- match.arg(zeroVarParamHandle)
     if (any(names(.xtra) == "covs")) {
       stop("covariates can no longer be specified by 'covs' include them in the event dataset", .call = FALSE)
     }
@@ -1817,7 +1835,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       file=file,
       chunkSize=chunkSize,
       parallel=parallel,
-      .zeros=unique(.zeros)
+      .zeros=unique(.zeros),
+      zeroVarParamHandle=zeroVarParamHandle
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2030,6 +2049,102 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   .bad
 }
 
+#' The parameter names a `params` carries, whatever shape it is
+#'
+#' `names()` of a `matrix` is `NULL` -- its names are the column names -- so a
+#' matrix `params` looks to have no parameters at all when asked with `names()`.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
+#' @return the parameter names, or `NULL` when there are none
+#' @noRd
+.rxParamsNms <- function(params) {
+  if (is.matrix(params)) {
+    colnames(params)
+  } else {
+    names(params)
+  }
+}
+
+#' Which zero variance omega/sigma items to fix at zero in `params`
+#'
+#' An omega/sigma item whose variance is zero is dropped from the matrix that is
+#' simulated from and supplied to the model as a literal zero instead.  When
+#' `params` already carries a value for one, `handle` decides what happens to
+#' it: `"warn"` and `"ignore"` replace it with zero (`"warn"` says so),
+#' `"keep"` leaves the supplied value alone.
+#'
+#' @param zeros names of the omega/sigma items with zero variance
+#' @param params the `params` given to `rxSolve()`
+#' @param handle one of `"warn"`, `"ignore"`, `"keep"`; `NULL` (a control from
+#'   an older rxode2) is treated as `"warn"`
+#' @return the subset of `zeros` to set to zero in `params`
+#' @noRd
+.rxZeroVarParams <- function(zeros, params, handle) {
+  if (is.null(handle)) handle <- "warn"
+  .have <- intersect(zeros, .rxParamsNms(params))
+  if (length(.have) == 0L) return(zeros)
+  if (handle == "keep") return(setdiff(zeros, .have))
+  if (handle == "warn") {
+    warning("'params' value(s) replaced by zero for the zero variance omega/sigma item(s): '",
+            paste(.have, collapse = "', '"),
+            "'\nuse zeroVarParamHandle=\"keep\" to use the supplied value(s), ",
+            "or \"ignore\" to silence this",
+            call. = FALSE)
+  }
+  zeros
+}
+
+#' Fix the parameters named by an omega/sigma matrix at zero
+#'
+#' Used for `omega=NA`/`sigma=NA`, which request that the corresponding random
+#' effects be set to zero.  `c()` on a `data.frame` drops the `data.frame` class
+#' and returns a ragged list -- the per-id columns keep length `nid` while the
+#' appended zeros have length one -- which is then read out of bounds while
+#' solving, so a multi-row `params` must be given a real column instead.
+#'
+#' A `matrix` (one row per id) is the same story: `c()` drops its `dim`, so the
+#' zeros are added as extra columns instead.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
+#' @param mat the omega/sigma matrix naming the parameters to zero, or the
+#'   names themselves; when `NULL` the model has no such random effects and
+#'   `params` is returned unchanged
+#' @return `params` with each parameter named by `mat` set to zero
+#' @noRd
+.rxParamsZero <- function(params, mat) {
+  if (is.null(mat)) return(params)
+  .nms <- if (is.character(mat)) {
+    mat
+  } else {
+    # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
+    .matNms <- dimnames(mat)[[2]]
+    if (length(.matNms) == 0L) .matNms <- dimnames(mat)[[1]]
+    .matNms
+  }
+  if (length(.nms) == 0L) return(params)
+  if (inherits(params, "data.frame")) {
+    for (.n in .nms) {
+      # rep() rather than a scalar so a zero row params stays a zero row frame
+      params[[.n]] <- rep(0.0, nrow(params))
+    }
+    params
+  } else if (is.matrix(params)) {
+    .have <- intersect(.nms, colnames(params))
+    if (length(.have) > 0L) params[, .have] <- 0.0
+    .add <- setdiff(.nms, .have)
+    if (length(.add) > 0L) {
+      params <- cbind(params,
+                      matrix(0.0, nrow(params), length(.add),
+                             dimnames = list(NULL, .add)))
+    }
+    params
+  } else {
+    c(params, setNames(rep(0.0, length(.nms)), .nms))
+  }
+}
+
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
   .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
@@ -2073,7 +2188,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$omega)) {
     if (is.na(.rxControl$omega)) {
       .omega <- object$omega
-      params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
+      params <- .rxParamsZero(params, .omega)
       .rxControl$omega <- NULL
     }
   }
@@ -2081,12 +2196,15 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .omega <- .rxControl$omega
     .v <- vapply(dimnames(.omega)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
-      .omega <- .omega[.v, .v]
+      # drop=FALSE or selecting a single remaining eta gives a scalar, whose
+      # dim is NULL, and all(NULL == c(0L, 0L)) is TRUE -- so the whole omega
+      # went away and that eta stopped being simulated
+      .omega <- .omega[.v, .v, drop = FALSE]
       if (all(dim(.omega) == c(0L, 0L))) {
         .rxControl$omega <- NULL
       } else {
@@ -2106,7 +2224,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$sigma)) {
     if (is.na(.rxControl$sigma)) {
       .sigma <- object$simulationSigma
-      params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
+      params <- .rxParamsZero(params, .sigma)
       .rxControl$sigma <- NULL
     }
   }
@@ -2114,7 +2232,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .sigma <- .rxControl$sigma
     .v <- vapply(dimnames(.sigma)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$sigma <- NULL
@@ -3145,13 +3263,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- params
       params <- .tmp
     }
-    if (inherits(params, "data.frame")) {
-      for (v in .ctl$.zeros) {
-        params[[v]] <- 0.0
-      }
+    .zeros <- .rxZeroVarParams(.ctl$.zeros, params, .ctl$zeroVarParamHandle)
+    if (inherits(params, "data.frame") || is.matrix(params)) {
+      params <- .rxParamsZero(params, .zeros)
     } else if (inherits(params, "numeric") ||
                  inherits(params, "integer")) {
-      params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
+      params <- c(params, setNames(rep(0.0, length(.zeros)), .zeros))
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }

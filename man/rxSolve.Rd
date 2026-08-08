@@ -191,6 +191,7 @@ rxSolve(
   file = NULL,
   chunkSize = NULL,
   parallel = 0L,
+  zeroVarParamHandle = c("warn", "ignore", "keep"),
   envir = parent.frame()
 )
 
@@ -1591,6 +1592,17 @@ free RAM using \code{rxMemoryEstimate()}.}
 \item{parallel}{Integer; number of \code{mirai} daemons to use for parallel
 chunk solving when \code{file} is set. \code{0L} (default) uses serial solving.
 Requires the \code{mirai} package.}
+
+\item{zeroVarParamHandle}{Determines what happens when \code{params}
+supplies a value for an omega/sigma item whose variance is zero
+(say \code{eta.base ~ fix(0)}).  Such an item is dropped from the matrix
+that is simulated from and given to the model as a literal zero
+instead; the options are:
+\itemize{
+\item \code{warn} (default) replace the supplied value with zero and warn
+\item \code{ignore} replace the supplied value with zero silently
+\item \code{keep} use the supplied value instead of zero
+}}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

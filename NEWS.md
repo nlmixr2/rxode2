@@ -2,6 +2,13 @@
 
 ## New features
 
+- `rxSolve(zeroVarParamHandle=)` says what happens when `params` supplies a
+  value for an omega/sigma item whose variance is zero (say
+  `eta.base ~ fix(0)`).  Such an item is dropped from the matrix that is
+  simulated from and given to the model as a literal zero instead, which
+  discards the supplied value: `"warn"` (the default) does that and says so,
+  `"ignore"` does it silently, and `"keep"` uses the supplied value.
+
 - `rxSolve(safeLog=2)` floors `log(0)` at `log(.Machine$double.eps)` the way
   `safeLog=TRUE` does, but treats a **negative** argument as a domain error and
   returns `NaN`.  `safeLog=TRUE` (the default) and `safeLog=FALSE` are
@@ -44,41 +51,6 @@
   (or read from models saved by earlier versions) are also collapsed to a
   single string on access (#1019).
 
-### Installation / linking
-
-- On Windows, `STAN_THREADS` and the TBB link are kept when building against
-  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
-  package again.  `configure` now decides whether to strip the TBB flags by
-  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
-  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
-  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
-  library on Windows.  (The 5.1.6 release notes had this backwards:
-  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
-  dropping it.)
-
-### Matrix exponential / inductive linearization
-
-- An `indLin(<state>) <- <expr>` forcing that references a compartment is now
-  evaluated at that compartment's current value.  The generated forcing
-  function took no state vector, so the compartment kept its `NA_REAL`
-  declaration and any state-dependent forcing (e.g. Michaelis-Menten
-  elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
-  under `method="indLin"`.  A forcing that references no state is unchanged.
-
-## Bug fixes
-
-- `rxCompile()` now re-parses the model it is handed whenever the parser's
-  current model is a different one.  Code generation reads the parser's global
-  model state, and the old guard only checked whether *some* model was loaded,
-  so a re-compile requested while an unrelated model was parsed wrote that other
-  model's C under this model's name and handed back its model variables.
-  Building a model with `rxode2()` never hit this (it parses, then compiles
-  immediately), but re-loading one whose `.so` is gone did -- as when a saved
-  fit is restored in a new session, since its DLL lived in the original
-  session's `tempdir()`.  Such a fit came back solving a different model, e.g. a
-  restored SAEM fit failing with "The following parameter(s) are required for
-  solving: eta.v, eta.cl".
-
 - A trailing `#` comment on an `ini({})` line may now contain a double quote or
   a backslash.  Such a comment is promoted to a `label()` call when the model is
   parsed with its source refs intact, and while the label text was escaped
@@ -99,7 +71,63 @@
   dropped silently -- the model still parsed and built, it simply lost the label
   (#1205).
 
-## Bug fixes
+### Solving
+
+- `rxSolve()` no longer returns silently wrong, run-to-run varying results when
+  a multi-row `params` data.frame (one parameter set per `id`) is combined with
+  `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
+  class and yields a ragged list -- the per-id columns keep their length while
+  the appended zeros have length one -- which was then read out of bounds while
+  solving, so the random effects that `omega = NA` fixes at zero were filled
+  from unrelated memory instead.  With eight or more subjects this changed the
+  solved values on every solve of identical input, occasionally to non-finite
+  ones.  A multi-row `params` matrix hit the same problem from the other side:
+  `c()` dropped its `dim`, so `omega = NA`/`sigma = NA` failed outright with
+  "The following parameter(s) are required for solving".  `omega = NA` on a
+  model with no between subject variability (which failed with "invalid 'times'
+  argument") and `sigma = NA` on a model with no residual error are now the
+  no-ops they should be.
+
+- An `omega`/`sigma` entry whose variance is zero (say `eta.base ~ fix(0)`) is
+  now supplied to the model as a literal zero when `params` is a matrix, as it
+  already was for a data.frame or a named numeric vector.  Such an entry is
+  dropped from the matrix that is simulated from, so a matrix `params` reached
+  the solver without it and `rxSolve()` failed with "The following parameter(s)
+  are required for solving".  A matrix that did supply the item kept its value
+  where a data.frame had it replaced by zero; both replace it now, and
+  `zeroVarParamHandle=` chooses (see New features).
+
+- A `params` matrix that supplies a random effect is now recognized as
+  supplying it, so that effect is no longer simulated on top of the supplied
+  value.  `rxSolve()` decided whether `params` already had a random effect with
+  `names(params)`, which is `NULL` for a matrix -- its names are the column
+  names -- so the answer was always "no".  The supplied column was silently
+  ignored and a random draw used in its place: with `eta.base = 100` supplied
+  for every subject, a data.frame gave `101 102 103 ...` and a matrix gave
+  `0.92 1.84 2.67 ...`.  There was no warning, and the values look reasonable
+  unless you know what they should be.
+
+- Supplying a value for one random effect no longer stops the others from being
+  simulated.  A supplied effect is dropped from the `omega` before solving, but
+  the subset that drops it took a single remaining effect down to a scalar,
+  whose `dim` is `NULL`, and `all(NULL == c(0L, 0L))` is `TRUE` -- so the whole
+  `omega` was dropped and the remaining effect was neither simulated nor
+  supplied (`The following parameter(s) are required for solving: eta.b`).  The
+  matching `sigma` code already guarded this.
+
+### Compilation
+
+- `rxCompile()` now re-parses the model it is handed whenever the parser's
+  current model is a different one.  Code generation reads the parser's global
+  model state, and the old guard only checked whether *some* model was loaded,
+  so a re-compile requested while an unrelated model was parsed wrote that other
+  model's C under this model's name and handed back its model variables.
+  Building a model with `rxode2()` never hit this (it parses, then compiles
+  immediately), but re-loading one whose `.so` is gone did -- as when a saved
+  fit is restored in a new session, since its DLL lived in the original
+  session's `tempdir()`.  Such a fit came back solving a different model, e.g. a
+  restored SAEM fit failing with "The following parameter(s) are required for
+  solving: eta.v, eta.cl".
 
 ### Delay differential equations
 
@@ -121,6 +149,27 @@
   `THETA[n]`/`ETA[n]`, as every mu-referenced model is: they were left
   unresolved, and an unresolved history additionally emitted no per-parameter
   sensitivity pre-history at all.
+
+### Matrix exponential / inductive linearization
+
+- An `indLin(<state>) <- <expr>` forcing that references a compartment is now
+  evaluated at that compartment's current value.  The generated forcing
+  function took no state vector, so the compartment kept its `NA_REAL`
+  declaration and any state-dependent forcing (e.g. Michaelis-Menten
+  elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
+  under `method="indLin"`.  A forcing that references no state is unchanged.
+
+### Installation / linking
+
+- On Windows, `STAN_THREADS` and the TBB link are kept when building against
+  `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
+  package again.  `configure` now decides whether to strip the TBB flags by
+  looking for the TBB library in `RcppParallel`'s `lib` directory rather than
+  by the shape of the `-L` flags it emits, so the TBB-less build introduced in
+  5.1.6 is used only with `RcppParallel` 6.0.0--6.1.1, which shipped no TBB
+  library on Windows.  (The 5.1.6 release notes had this backwards:
+  `RcppParallel` 6.2.0 restored the TBB library on Windows rather than
+  dropping it.)
 
 # rxode2 5.1.6
 
