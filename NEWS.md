@@ -256,6 +256,16 @@
   now a piecewise function of the parameters, which adds a little noise to
   finite-difference gradients taken through it.
 
+  Each step also advances on the average of the two answers the error estimate
+  is built from, whose leading errors are equal and opposite, so what is
+  propagated is second order where either alone is first.  This costs nothing --
+  both are already in hand -- and it is what brings the step count down: the
+  error now falls roughly in proportion to `atol`/`rtol` rather than to their
+  square root, so the work needed for a given accuracy grows like
+  `1/sqrt(error)` instead of `1/error`.  On the Michaelis-Menten model above,
+  matching the accuracy the old scheme delivered at its default now takes about
+  a twentieth of the steps, and the gap widens the more accuracy is asked for.
+
 ### Installation / linking
 
 - On Windows, `STAN_THREADS` and the TBB link are kept when building against

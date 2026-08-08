@@ -207,26 +207,30 @@ maxRelErr(solveMm(method = "indLin"))
 maxRelErr(solveMm(method = "indLin", atol = 1e-10, rtol = 1e-10))
 ```
 
-| `atol`/`rtol` | Maximum relative error vs LSODA |
-|---|---|
-| `1e-4` | 1.7e-01 |
-| `1e-6` | 1.7e-02 |
-| default (`1e-8`/`1e-6`) | 5.3e-03 |
-| `1e-8` | 1.7e-03 |
-| `1e-10` | 1.7e-04 |
+| `atol`/`rtol` | Maximum relative error vs LSODA | Steps (`$counts$slvr`) |
+|---|---|---|
+| `1e-4` | 4.0e-03 | 148 |
+| `1e-6` | 7.3e-05 | 1307 |
+| default (`1e-8`/`1e-6`) | 7.6e-06 | 3212 |
+| `1e-8` | 6.8e-07 | 12865 |
+| `1e-10` | 6.4e-09 | 128442 |
 
-The relinearization is first order, so the error falls like the square root of
-the tolerance: a hundredfold tighter tolerance buys about a tenfold better
-answer, and costs about ten times as many steps. `$counts$slvr` reports how many
-were taken.
+The step is sized from a first-order error estimate, but each step advances on
+the average of two answers whose leading errors are equal and opposite -- the
+one built at the step's starting state and the converged one -- so what is
+propagated is second order. The practical consequence is the scaling: the error
+falls roughly in proportion to the tolerance, not to its square root, while the
+step count still grows only as its square root. So the work needed for a given
+accuracy grows like `1/sqrt(error)` rather than `1/error`, which is worth a
+factor of tens to hundreds of steps at the accuracies people usually want.
 
 `hmax` is now only an upper bound on the substep. Lowering it does not
 meaningfully improve the answer, because the solver is already choosing a
 shorter step than `hmax` allows:
 
 ```{r}
-maxRelErr(solveMm(method = "indLin", hmax = 1))    # 5.3e-03
-maxRelErr(solveMm(method = "indLin", hmax = 0.01)) # 4.2e-03
+maxRelErr(solveMm(method = "indLin", hmax = 1))    # 8.4e-06
+maxRelErr(solveMm(method = "indLin", hmax = 0.01)) # 1.9e-06
 ```
 
 > **This changed in rxode2 5.1.7.** Previously the nonlinearity was folded into

@@ -555,6 +555,16 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
     err += e*e;
   }
   *errOut = sqrt(err / (double) neq);
+  // Advance on the average of the two.  Their leading errors are equal and
+  // opposite, so the average cancels them and is second order where either
+  // alone is first -- for free, since both are already in hand.  This is local
+  // extrapolation, the same trick dop853 uses: the step is still sized from the
+  // first-order estimate above, but what gets propagated is the better answer.
+  // The point is not just accuracy: it changes how accuracy scales with the
+  // tolerance, from sqrt(tol) to tol, which is what takes the step count down.
+  // Both terms are exp(A*h)*y0 with a Metzler A, so a nonnegative state stays
+  // nonnegative under the average.
+  for (int k = 0; k < neq; ++k) yOut[k] = 0.5*(yOut[k] + w1[k]);
   return 1;
 }
 

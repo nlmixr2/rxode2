@@ -386,7 +386,12 @@ d/dt(blood)     = a*intestine - b*blood
     }
     .e <- vapply(c(1e-4, 1e-6, 1e-8), .errTol, double(1))
     expect_true(all(diff(.e) < 0))
-    expect_lt(.e[3], .e[1] / 10)
+    # Second order, and this is what pins it: the step is sized from a
+    # first-order estimate but the step advances on the average of the forward
+    # and converged answers, whose leading errors cancel.  Over these two
+    # decades of tolerance a first-order method could only manage a factor of
+    # 100; local extrapolation buys several thousand.
+    expect_lt(.e[3], .e[1] / 1000)
     # and the default solve is accurate now, which is the #1186 headline
     expect_lt(max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin")$central -
                         res_ode$central)) / max(abs(res_ode$central)),
@@ -447,17 +452,17 @@ d/dt(blood)     = a*intestine - b*blood
     expect_false(any(is.na(.fine$central)))
     expect_equal(.fine$central, .ref$central, tolerance = 1e-3)
 
-    # The relinearization step is now chosen from a local error estimate, so
-    # tightening atol/rtol is what refines the answer.  Linearizing at the
-    # converged iterate is still first order, so the error scales like the
-    # square root of the tolerance -- an order this coarse is what makes the
-    # deferred linear-ramp work measurable.
+    # The relinearization step is chosen from a local error estimate, so
+    # tightening atol/rtol is what refines the answer -- and the step advances
+    # on the average of the forward and converged answers, which cancels the
+    # leading error and makes it second order.  A first-order method could only
+    # manage a factor of 100 over these two decades of tolerance.
     .err <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
       max(abs(rxSolve(.mm, .e, method = "indLin",
                       atol = tol, rtol = tol)$central - .ref$central))
     }, double(1))
     expect_true(all(diff(.err) < 0))
-    expect_lt(.err[3], .err[1] / 10)
+    expect_lt(.err[3], .err[1] / 1000)
 
     # A repeated solve is deterministic -- the iteration reads no stale state.
     expect_identical(rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central,
