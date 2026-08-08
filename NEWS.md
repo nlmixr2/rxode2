@@ -36,7 +36,6 @@
   reads them.  A forcing inside an `if`/`while` may not run, so it adds to what
   the forcings before it established rather than replacing them.  The entries
   are the 0-indexed positions in `$state`, named with those states.
-  `fullIndLin` is still `FALSE`, so solving is unchanged.
 
 - `rxModelNameLhs()` registers the name an assignment is making, for
   assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
@@ -181,6 +180,22 @@
   declaration and any state-dependent forcing (e.g. Michaelis-Menten
   elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
   under `method="indLin"`.  A forcing that references no state is unchanged.
+
+- `method="indLin"` iterates again, so it is inductive linearization rather than
+  one relinearization per `hmax` substep.  Within each substep the matrix and
+  the forcing are rebuilt at the latest iterate while propagation restarts from
+  the substep's starting state, until the states reported by
+  `rxModelVars(m)$indLin$wIndLin` stop moving to within `atol`/`rtol`.  Plain
+  Picard iteration only barely contracts once the substep is comparable to the
+  forcing's own time scale -- a Michaelis-Menten forcing with no linear
+  elimination sits right at the stability boundary, oscillating for ~1e5 passes
+  -- so each step is relaxed by a secant estimate of the iteration's contraction
+  ratio.  Relaxation does not move the fixed point, so the converged answer is
+  the undamped one; it is still first order in the relinearization step, so
+  `hmax` keeps refining it.  A forcing with no fixed point over the substep now
+  reports `inductive linearization did not converge` instead of returning the
+  last iterate as if it had converged.  Models with no forcing, or with a
+  forcing that reads no state, keep the single-pass path and are unchanged.
 
 ### Installation / linking
 

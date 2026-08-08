@@ -283,6 +283,9 @@ extern "C" void printErr(int err, int id){
   if (err & rxErrRate02){
     RSprintf(" Rate is zero/negative\n");
   }
+  if (err & rxErrIndLinConverge){
+    RSprintf("  Inductive linearization did not converge in 'maxsteps' iterations; lower 'hmax' or loosen 'atol'/'rtol'\n");
+  }
 }
 
 rx_solving_options op_global;

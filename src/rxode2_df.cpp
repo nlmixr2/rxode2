@@ -369,6 +369,17 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       }
       // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
+    // rxode2#1185: `printErr()` goes through `RSprintf()`, which is silenced
+    // outside an interactive session, so a non-converged inductive
+    // linearization also has to name itself in the condition the user sees --
+    // the generic message gives no hint that 'hmax' is the knob.
+    int indLinNoConv = 0;
+    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+      if (rx->subjects[solveid].err & rxErrIndLinConverge) {
+        indLinNoConv = 1;
+        break;
+      }
+    }
     if (nidCols == 0){
       if (rx->extraPushAbort) {
         rxSolveFreeC();
@@ -383,6 +394,10 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         }
       }
       rxSolveFreeC();
+      if (indLinNoConv) {
+        (Rf_errorcall)(R_NilValue, "%s",
+                       _("inductive linearization did not converge; lower 'hmax' or loosen 'atol'/'rtol'"));
+      }
       (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
     } else {
       if (rx->extraPushAbort) {
@@ -391,7 +406,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
           rx->maxExtra);
       }
-      warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
+      if (indLinNoConv) {
+        warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; lower 'hmax' or loosen 'atol'/'rtol'"));
+      } else {
+        warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
+      }
     }
   }
   // Pre-compute per-subject row counts before allocating output columns so

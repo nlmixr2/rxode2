@@ -9,6 +9,7 @@
 #include <RcppArmadillo.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
+#include "../inst/include/rxode2dataErr.h"
 #define ARMA_DONT_PRINT_ERRORS
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
 
@@ -296,6 +297,108 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   }
 }
 
+// One inductive-linearization pass over `[subTp, subTf]`: build the forcing
+// (codes 2/4) and the matrix at `w`, propagate from `y0`, and leave the result
+// in `w`.  `u` is NULL for the codes that carry no `IndF` forcing.
+static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                             double *w, double *y0, double subTp, double subTf, double tcov,
+                             double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                             arma::vec *u) {
+  double *force = InfusionRate_;
+  if (u != NULL) {
+    IndF(cSub, tcov, subTf, u->memptr(), w);
+    force = u->memptr();
+  }
+  return meOnly(cSub, w, y0, subTp, subTf, tcov, force, on_, ME, op, ind);
+}
+
+// Secant estimate of the iteration map's contraction ratio from two
+// consecutive Picard residuals, measured only over the states flagged in
+// `op->indLin[]` and scaled by the same `rtol`/`atol` the convergence test
+// uses, so states of different magnitude contribute comparably.  `thetaPrev`
+// undoes the relaxation that produced `d`: relaxing by theta turns a map
+// derivative g' into a measured ratio of 1 + theta*(g'-1).
+//
+// Returns the relaxation factor 1/(1-g') to use next, clamped to a range that
+// keeps a nonlinear map from being over-relaxed off a cliff, or 1.0 (plain
+// Picard) when there is nothing usable to estimate from.
+static inline double indLinTheta(rx_solving_options *op, const double *rtol, const double *atol,
+                                 const arma::vec &w, const arma::vec &d, const arma::vec &dPrev,
+                                 double thetaPrev) {
+  double num = 0.0, den = 0.0;
+  for (int j = op->indLinN; j--;) {
+    int k = op->indLin[j];
+    double sc = rtol[k]*fabs(w[k]) + atol[k];
+    if (sc <= 0.0) continue;
+    double dn = d[k]/sc, dp = dPrev[k]/sc;
+    num += dn*dp;
+    den += dp*dp;
+  }
+  if (den <= 0.0 || !R_FINITE(num) || thetaPrev <= 0.0) return 1.0;
+  double g = 1.0 + (num/den - 1.0)/thetaPrev;
+  if (!R_FINITE(g)) return 1.0;
+  if (g > 0.9) g = 0.9;
+  if (g < -999.0) g = -999.0;
+  return 1.0/(1.0 - g);
+}
+
+// The inductive-linearization fixed point over one relinearization substep
+// (rxode2#1185).  `y0` is the substep-start state and never moves; `w` is the
+// iterate and doubles as the point `ME`/`IndF` are built at, so the
+// linearization chases the solution while propagation always restarts from
+// `y0`.  The first pass linearizes at `y0` -- that alone is the non-iterating
+// codes 1/2 answer.  Converged when the Picard residual `g(w)-w` is within
+// `rtol`/`atol` for every state flagged in `op->indLin[]`.
+//
+// Plain Picard is only marginally contractive once the substep is comparable
+// to the forcing's own time scale (a Michaelis-Menten forcing with no linear
+// elimination sits right at ratio -1 at the default `hmax`, where it oscillates
+// for ~1e5 passes), so each step is relaxed by `indLinTheta()`.  Relaxation
+// does not move the fixed point, so the converged answer -- and its order in
+// `hmax` -- is the undamped one.
+//
+// Returns 1 on convergence, -1 when `maxsteps` passes are exhausted or the
+// iterate leaves the reals (`yp_` still holds the last iterate), or whatever
+// `meOnly()` failed with.
+static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                         int neq, double *rtol, double *atol, int maxsteps,
+                         double *yp_, double subTp, double subTf, double tcov,
+                         double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                         arma::vec *u) {
+  arma::vec y0(yp_, neq);
+  arma::vec w(y0);
+  arma::vec wPrev(neq), d(neq), dPrev(neq);
+  double thetaPrev = 0.0;
+  for (int i = 0; i < maxsteps; ++i) {
+    wPrev = w;
+    int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
+                         InfusionRate_, on_, ME, IndF, u);
+    if (ret <= 0) return ret;
+    d = w - wPrev;
+    bool converge = true;
+    for (int j = op->indLinN; j--;) {
+      int k = op->indLin[j];
+      if (!R_FINITE(w[k])) {
+        std::copy(w.begin(), w.end(), yp_);
+        return -1;
+      }
+      if (fabs(d[k]) >= rtol[k]*fabs(w[k]) + atol[k]) {
+        converge = false;
+      }
+    }
+    if (converge) {
+      std::copy(w.begin(), w.end(), yp_);
+      return 1;
+    }
+    double theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    if (theta != 1.0) w = wPrev + theta*d;
+    dPrev = d;
+    thetaPrev = theta;
+  }
+  std::copy(w.begin(), w.end(), yp_);
+  return -1;
+}
+
 //' Inductive linearization solver
 //'
 //' @param cSub = Current subject number
@@ -371,7 +474,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   double _subTp = tp;
   int _ret = 1;
   arma::vec u;
-  if (doIndLin == 2) {
+  if (doIndLin == 2 || doIndLin == 4) {
     u.zeros(neq);
   }
   for (int _sub = 0; _sub < _nSub; _sub++) {
@@ -390,8 +493,32 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
       _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, u.memptr(), on_, ME, op, ind);
       break;
     }
+    case 3: {
+      // Homogeneous matrix exponential + the inductive iteration.  Not reached
+      // today: `wIndLin` is filled only from `indLin()` forcings, and a model
+      // that has one always has an `f`, which selects code 4.  It is here for
+      // the state-dependent-`A` case, whose detection is a separate issue.
+      _ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxsteps, yp_,
+                           _subTp, _subTf, tcov, InfusionRate_, on_, ME, IndF, NULL);
+      break;
+    }
+    case 4: {
+      // Matrix exponential with an `indLin()` forcing + the inductive
+      // iteration; the forcing is rebuilt at each iterate alongside `ME`.
+      _ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxsteps, yp_,
+                           _subTp, _subTf, tcov, InfusionRate_, on_, ME, IndF, &u);
+      break;
+    }
     default:
       stop(_("unsupported indLin code: %d"), doIndLin);
+    }
+    if (_ret == -1 && ind != NULL && (doIndLin == 3 || doIndLin == 4)) {
+      // Report rather than silently keep the last iterate.  Flagging `err`
+      // (instead of returning <= 0, which reaches `postSolve()` with no
+      // message) routes it through `printErr()`, which names the subject and
+      // still NA-fills the solve.
+      ind->err |= rxErrIndLinConverge;
+      return 1;
     }
     if (_ret <= 0) return _ret;
     _subTp = _subTf;

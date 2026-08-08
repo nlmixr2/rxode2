@@ -380,4 +380,111 @@ d/dt(blood)     = a*intestine - b*blood
     r_fine <- rxSolve(mod_mexp_lin, et_lin, pars_lin, method = "indLin", hmax = 0.01)$central
     expect_equal(r_coarse, r_fine, tolerance = 1e-6)
   })
+
+  test_that("a state-dependent indLin() forcing runs the inductive iteration", {
+    # rxode2#1185: the fixed-point iteration that makes this inductive
+    # linearization was deleted, leaving one relinearization per hmax substep.
+    # It is back, nested inside that substep loop, and `fullIndLin` now follows
+    # `wIndLin` so a state-dependent forcing actually reaches it.
+    .mm <- suppressMessages(rxode2(paste("matExp()",
+                                         "cmt(depot)",
+                                         "cmt(central)",
+                                         "k_depot_central = 1",
+                                         "k_central_output = 0.05",
+                                         "vmax = 10",
+                                         "km = 5",
+                                         "indLin(central) <- -vmax*central/(km+central)",
+                                         sep = "\n")))
+    expect_true(rxModelVars(.mm)$indLin$fullIndLin)
+    expect_equal(rxModelVars(.mm)$indLin$wIndLin, c(central = 1L))
+
+    .ode <- suppressMessages(rxode2({
+      vmax <- 10
+      km <- 5
+      d/dt(depot) <- -1 * depot
+      d/dt(central) <- 1 * depot - 0.05 * central - vmax * central / (km + central)
+    }))
+    .e <- et(amt = 100, cmt = "depot") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
+
+    # The iteration converges, so the answer is well defined and finite at every
+    # hmax rather than the last iterate of a truncated sweep.
+    .fine <- rxSolve(.mm, .e, method = "indLin", hmax = 0.001)
+    expect_false(any(is.na(.fine$central)))
+    expect_equal(.fine$central, .ref$central, tolerance = 1e-3)
+
+    # Linearizing at the converged iterate is still first order in the
+    # relinearization step, so hmax keeps refining the answer (an order this
+    # coarse is what makes the deferred linear-ramp work measurable).
+    .err <- vapply(c(0.1, 0.01, 0.001), function(h) {
+      max(abs(rxSolve(.mm, .e, method = "indLin", hmax = h)$central - .ref$central))
+    }, double(1))
+    expect_true(all(diff(.err) < 0))
+    expect_lt(.err[3], .err[1] / 10)
+
+    # A repeated solve is deterministic -- the iteration reads no stale state.
+    expect_identical(rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central,
+                     rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central)
+  })
+
+  test_that("linear and state-free indLin models keep the non-iterating dispatch", {
+    # A model whose forcing reads no state, and one with no forcing at all, must
+    # stay on codes 1/2: nothing about them changed with rxode2#1185.
+    .lin <- suppressMessages(rxode2(paste("matExp()",
+                                          "cmt(depot)",
+                                          "cmt(central)",
+                                          "k_depot_central = 0.5",
+                                          "k_central_output = 0.02",
+                                          sep = "\n")))
+    expect_false(rxModelVars(.lin)$indLin$fullIndLin)
+
+    .sf <- suppressMessages(rxode2(paste("matExp()",
+                                         "cmt(Gc)",
+                                         "k_Gc_output = 0.1",
+                                         "Gprod = 3",
+                                         "indLin(Gc) <- Gprod",
+                                         sep = "\n")))
+    expect_false(rxModelVars(.sf)$indLin$fullIndLin)
+
+    .e <- et(amt = 100, cmt = "depot") |> et(seq(0, 20, by = 0.5))
+    .odeLin <- suppressMessages(rxode2({
+      d/dt(depot) <- -0.5 * depot
+      d/dt(central) <- 0.5 * depot - 0.02 * central
+    }))
+    expect_equal(rxSolve(.lin, .e, method = "indLin")$central,
+                 rxSolve(.odeLin, .e, method = "liblsoda",
+                         atol = 1e-12, rtol = 1e-12)$central,
+                 tolerance = 1e-8)
+    # hmax only changes how many (equivalent) matrix exponentials are taken
+    expect_equal(rxSolve(.lin, .e, method = "indLin", hmax = 0.5)$central,
+                 rxSolve(.lin, .e, method = "indLin", hmax = 0.01)$central,
+                 tolerance = 1e-8)
+  })
+
+  test_that("a non-converging inductive linearization is reported", {
+    # The deleted code returned 1 unconditionally once maxsteps ran out, handing
+    # back the last iterate as if it had converged.  A forcing with no fixed
+    # point over the substep must say so instead.
+    .blow <- suppressMessages(rxode2(paste("matExp()",
+                                           "cmt(central)",
+                                           "k_central_output = 0.1",
+                                           "indLin(central) <- exp(central)",
+                                           sep = "\n")))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    expect_error(rxSolve(.blow, .e, method = "indLin"),
+                 "inductive linearization did not converge")
+
+    # A stiff but well-posed forcing is relaxed into convergence rather than
+    # reported -- the report means "no fixed point here", not "nonlinear".
+    .stiff <- suppressMessages(rxode2(paste("matExp()",
+                                            "cmt(central)",
+                                            "k_central_output = 0.1",
+                                            "indLin(central) <- -1000*central",
+                                            sep = "\n")))
+    .odeStiff <- suppressMessages(rxode2("d/dt(central) = -0.1*central - 1000*central"))
+    expect_equal(rxSolve(.stiff, .e, method = "indLin")$central,
+                 rxSolve(.odeStiff, .e, method = "liblsoda",
+                         atol = 1e-12, rtol = 1e-12)$central,
+                 tolerance = 1e-2)
+  })
 })

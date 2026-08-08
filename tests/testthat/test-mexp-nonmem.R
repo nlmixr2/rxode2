@@ -887,14 +887,17 @@ rxTest({
     expect_equal(rxModelVars(.conv)$indLin$wIndLin,
                  setNames(integer(0), character(0)))
 
-    # fullIndLin is still FALSE, so the solver dispatch is unchanged
+    # rxode2#1185 drives fullIndLin off wIndLin, so a state-dependent forcing
+    # now selects the iterating dispatch (codes 3/4) and a state-free one does
+    # not
     .mexp <- suppressMessages(rxode2(paste("matExp()",
                                            "cmt(central)",
                                            "vmax = 10",
                                            "km = 5",
                                            "indLin(central) <- -vmax*central/(km+central)",
                                            sep = "\n")))
-    expect_false(rxModelVars(.mexp)$indLin$fullIndLin)
+    expect_true(rxModelVars(.mexp)$indLin$fullIndLin)
+    expect_false(rxModelVars(.conv)$indLin$fullIndLin)
 
     # a plain ODE model has no indLin element to report
     expect_length(rxModelVars(suppressMessages(rxode2({
