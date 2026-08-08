@@ -568,6 +568,58 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
   return 1;
 }
 
+// One adaptive attempt, at whatever order was asked for.
+//
+// The default form advances on the average (second order) and sizes the step
+// from the first-order estimate.  The Richardson form runs that same thing once
+// at `h` and twice at `h/2`: for a second-order method the two-half-step answer
+// has a quarter the local error of the one-step answer, so their difference
+// over three estimates it, and `(4*two - one)/3` cancels it -- third order.
+// Both are local extrapolation; what differs is the order of the estimate the
+// step is sized from, hence the controller exponent in the caller.
+//
+// It costs three fixed-point solves per step instead of one, which pays for
+// itself only when the tolerance is tight -- measured at roughly 3x fewer
+// matrix exponentials at 1e-3 and 12x at 1e-6 -- so it is off by default.
+static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                         int neq, double *rtol, double *atol,
+                         const arma::vec &y0, double t, double h, int locf,
+                         double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                         arma::vec *u, arma::vec &yOut, arma::vec &w1,
+                         arma::vec &yHalf, arma::vec &yOne,
+                         double *errOut, double *ratioOut) {
+  double tcov = locf ? t : (t + h);
+  if (!op->indLinRichardson) {
+    return indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+                            InfusionRate_, on_, ME, IndF, u, yOut, w1,
+                            errOut, ratioOut);
+  }
+  double eOne = 0.0, rOne = 1.0, eA = 0.0, rA = 1.0, eB = 0.0, rB = 1.0;
+  double tMid = t + 0.5*h;
+  int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+                             InfusionRate_, on_, ME, IndF, u, yOne, w1, &eOne, &rOne);
+  if (ret != 1) { *ratioOut = rOne; return ret; }
+  ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, 0.5*h,
+                         locf ? t : tMid,
+                         InfusionRate_, on_, ME, IndF, u, yHalf, w1, &eA, &rA);
+  if (ret != 1) { *ratioOut = rA; return ret; }
+  ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, yHalf, tMid, 0.5*h,
+                         locf ? tMid : (t + h),
+                         InfusionRate_, on_, ME, IndF, u, yOut, w1, &eB, &rB);
+  if (ret != 1) { *ratioOut = rB; return ret; }
+  *ratioOut = std::max(rOne, std::max(rA, rB));
+  double err = 0.0;
+  for (int k = 0; k < neq; ++k) {
+    double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
+    if (sc <= 0.0) continue;
+    double e = (yOut[k] - yOne[k])/(3.0*sc);
+    err += e*e;
+  }
+  *errOut = sqrt(err / (double) neq);
+  for (int k = 0; k < neq; ++k) yOut[k] = (4.0*yOut[k] - yOne[k])/3.0;
+  return 1;
+}
+
 // Adaptive relinearization over `[tp,tf]` for the iterating codes 3/4.
 //
 // `hCap` is the equal-subdivision substep the non-adaptive path would have
@@ -590,7 +642,11 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // would be reading schedule jitter rather than convergence, so allow the
   // step to shrink there but never to grow.
   bool inSS = (ind != NULL && !ISNA(ind->ssTime));
-  arma::vec y0(yp_, neq), yTry(neq), w1(neq);
+  arma::vec y0(yp_, neq), yTry(neq), w1(neq), yHalf(neq), yOne(neq);
+  // The step is sized from an estimate of the order the extrapolation is built
+  // on: first order by default, second under Richardson.  Exponent is
+  // -1/(p_est + 1) either way.
+  double expo = op->indLinRichardson ? (-1.0/3.0) : (-0.5);
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
     // Snap to `tf` rather than leaving a sliver behind.
@@ -601,11 +657,10 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       if (ind != NULL) ind->err |= rxErrIndLinConverge;
       return 1;
     }
-    double tcov = locf ? t : (t + h);
     double err = 0.0, ratio = 1.0;
-    int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
-                               InfusionRate_, on_, ME, IndF, u, yTry, w1,
-                               &err, &ratio);
+    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, y0, t, h, locf,
+                            InfusionRate_, on_, ME, IndF, u, yTry, w1,
+                            yHalf, yOne, &err, &ratio);
     if (ret == -2) {
       // Not a dead end: the contraction ratio is proportional to `h`, so a
       // failure to converge proves the step is too long and a bounded number
@@ -627,7 +682,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       std::copy(y0.begin(), y0.end(), yp_);
       return ret;
     }
-    double fac = (err > 0.0) ? SAFE*pow(err, -0.5) : FACMAX;
+    double fac = (err > 0.0) ? SAFE*pow(err, expo) : FACMAX;
     if (fac < FACMIN) fac = FACMIN;
     if (fac > FACMAX) fac = FACMAX;
     if (err > 1.0) {

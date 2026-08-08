@@ -141,7 +141,7 @@ SEXP rxSaveState_() {
   W_DBL(hmax2);
   W_I32(indLinN); W_DBL(indLinPhiTol); W_I32(indLinPhiM);
   W_I32(indLinMatExpType); W_I32(indLinMatExpOrder);
-  W_I32(indLinStepSearch); W_I32(indLinMaxIter);
+  W_I32(indLinStepSearch); W_I32(indLinMaxIter); W_I32(indLinRichardson);
   W_I32(nDisplayProgress); W_I32(ncoresRV); W_I32(isChol);
   W_I32(nsvar); W_I32(abort); W_I32(minSS); W_I32(maxSS);
   W_I32(doIndLin); W_I32(strictSS);
@@ -679,7 +679,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_DBL(hmax2);
   R_I32(indLinN); R_DBL(indLinPhiTol); R_I32(indLinPhiM);
   R_I32(indLinMatExpType); R_I32(indLinMatExpOrder);
-  R_I32(indLinStepSearch); R_I32(indLinMaxIter);
+  R_I32(indLinStepSearch); R_I32(indLinMaxIter); R_I32(indLinRichardson);
   R_I32(nDisplayProgress); R_I32(ncoresRV); R_I32(isChol);
   R_I32(nsvar); R_I32(abort); R_I32(minSS); R_I32(maxSS);
   R_I32(doIndLin); R_I32(strictSS);

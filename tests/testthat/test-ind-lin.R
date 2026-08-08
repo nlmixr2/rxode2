@@ -538,6 +538,44 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(rxControl(indLinMaxIter = 0L))
   })
 
+  test_that("indLinRichardson raises the step to third order, off by default", {
+    # Richardson-extrapolating each relinearization step (once whole, twice at
+    # half length) cancels the second-order term the average leaves behind.  It
+    # costs three fixed-point solves per step rather than one, so it is off by
+    # default and only wins once the tolerance is tight enough that taking far
+    # fewer steps outweighs the per-step cost.
+    expect_false(rxControl()$indLinRichardson)
+    expect_true(rxControl(indLinRichardson = TRUE)$indLinRichardson)
+    expect_error(rxControl(indLinRichardson = "yes"))
+
+    .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(rxode2(.code), .e, method = "liblsoda",
+                    atol = 1e-12, rtol = 1e-12)
+    .relErr <- function(...) {
+      .s <- rxSolve(.mm, .e, method = "indLin", ...)
+      max(abs(.s$central - .ref$central)) / max(abs(.ref$central))
+    }
+    .steps <- function(...) sum(rxSolve(.mm, .e, method = "indLin", ...)$counts$slvr)
+
+    # both agree on the answer
+    expect_lt(.relErr(atol = 1e-8, rtol = 1e-8, indLinRichardson = TRUE), 1e-6)
+
+    # third order: at a fixed tolerance it needs far fewer steps than second
+    # order does, because its error falls faster than the tolerance it is held
+    # to.  An order-2 scheme could not show this gap.
+    expect_lt(.steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = TRUE),
+              .steps(atol = 1e-8, rtol = 1e-8) / 10)
+
+    # and it really is a higher order: over two decades of tolerance the error
+    # falls by more than the second-order scheme manages over the same range
+    .rich <- vapply(c(1e-4, 1e-6), function(tol) {
+      .relErr(atol = tol, rtol = tol, indLinRichardson = TRUE)
+    }, double(1))
+    expect_true(.rich[2] < .rich[1])
+  })
+
   test_that("a matExp() rate constant may not depend on a compartment", {
     # rxode2#1186: the matrix exponential is only valid when the rate matrix is
     # constant over the step -- an assumption the event-sensitivity jump code in

@@ -119,6 +119,7 @@ typedef struct {
   int indLinMatExpOrder;
   int indLinStepSearch; // 0 = none, 1 = secant, 2 = exact
   int indLinMaxIter;
+  int indLinRichardson; // 1 = Richardson-extrapolate to third order
   int nDisplayProgress;
   int ncoresRV;
   int isChol;

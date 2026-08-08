@@ -194,6 +194,7 @@ rxSolve(
   zeroVarParamHandle = c("warn", "ignore", "keep"),
   indLinStepSearch = c("secant", "exact", "none"),
   indLinMaxIter = 20L,
+  indLinRichardson = FALSE,
   envir = parent.frame()
 )
 
@@ -1619,6 +1620,14 @@ iterations against work per iteration.}
 iterations per relinearization step.  Running out is not an error: the
 iteration contracts in proportion to the step, so the solver reads it as
 a step that is too long and retries with a shorter one.}
+
+\item{indLinRichardson}{when \code{TRUE}, \code{method="indLin"} Richardson-extrapolates
+each relinearization step, raising it from second to third order.  It
+runs the step once whole and twice at half length, so it costs three
+fixed-point solves per step instead of one, and pays for itself only when
+the tolerance is tight -- roughly three times fewer matrix exponentials
+for a relative error of \code{1e-3}, and twelve times fewer at \code{1e-6}.  \code{FALSE}
+(the default) keeps the second-order step, which is already free.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

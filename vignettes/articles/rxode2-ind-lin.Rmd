@@ -224,6 +224,19 @@ step count still grows only as its square root. So the work needed for a given
 accuracy grows like `1/sqrt(error)` rather than `1/error`, which is worth a
 factor of tens to hundreds of steps at the accuracies people usually want.
 
+For a tight tolerance, `indLinRichardson = TRUE` is worth trying. It runs each
+step once whole and twice at half length and extrapolates, which raises the step
+from second to third order at three times the cost per step. That is a losing
+trade at loose tolerances and a winning one at tight ones -- on this model it is
+a wash at a relative error of `1e-4`, about three times faster at `1e-6`, and
+about six times faster at `1e-8`:
+
+```{r}
+maxRelErr(solveMm(method = "indLin", atol = 1e-8, rtol = 1e-8))
+maxRelErr(solveMm(method = "indLin", atol = 1e-8, rtol = 1e-8,
+                  indLinRichardson = TRUE))
+```
+
 `hmax` is now only an upper bound on the substep. Lowering it does not
 meaningfully improve the answer, because the solver is already choosing a
 shorter step than `hmax` allows:

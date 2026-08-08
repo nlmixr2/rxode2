@@ -5470,6 +5470,7 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinMatExpOrder = 6;
   op->indLinStepSearch = 1; // secant
   op->indLinMaxIter = 20;
+  op->indLinRichardson = 0;
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -6137,6 +6138,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinMatExpOrder=asInt(rxControl[Rxc_indLinMatExpOrder], "indLinMatExpOrder");
     op->indLinStepSearch=asInt(rxControl[Rxc_indLinStepSearch], "indLinStepSearch");
     op->indLinMaxIter=asInt(rxControl[Rxc_indLinMaxIter], "indLinMaxIter");
+    op->indLinRichardson=asBool(rxControl[Rxc_indLinRichardson], "indLinRichardson");
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){

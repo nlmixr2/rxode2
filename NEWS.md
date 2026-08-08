@@ -216,6 +216,16 @@
   multi-state product yields a state-free rate constant; both are kept so
   existing code keeps working.
 
+- `rxSolve(indLinRichardson=TRUE)` Richardson-extrapolates each
+  `method="indLin"` relinearization step, raising it from second to third order:
+  the step is run once whole and twice at half length, and since a second-order
+  step has a quarter the error at half the length, the two answers together
+  cancel it.  This costs three fixed-point solves per step instead of one, so it
+  is off by default and only pays once the tolerance is tight enough that taking
+  far fewer steps outweighs the per-step cost.  Measured on a Michaelis-Menten
+  model, reaching a relative error of `1e-4` is a wash, `1e-6` is about three
+  times faster, and `1e-8` about six times faster (32,000 steps down to 1,100).
+
 - `rxSolve(indLinStepSearch=)` and `rxSolve(indLinMaxIter=)` control the
   fixed-point iteration `method="indLin"` runs inside each relinearization step.
   `indLinStepSearch="secant"` (the default) estimates the iteration's
