@@ -413,40 +413,52 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
 // replacing it -- the conservative direction, since a missed state would be
 // solved without the inductive iteration it needs.  fdep[] is the same for each
 // compartment's forcing.
-static inline void indLinReplay(int *dep, int *fdep, SEXP state) {
+// A compartment is state dependent by definition; 2 marks the state itself so
+// indLinStmtTarget() can refuse to overwrite it.
+static inline void indLinSeedStateDep(int *dep, SEXP state) {
   int ns = Rf_length(state);
   for (int i = 0; i < NV; ++i) {
     dep[i] = 0;
     for (int m = 0; m < ns; ++m) {
       if (!strcmp(tb.ss.line[i], CHAR(STRING_ELT(state, m)))) {
-        dep[i] = 2; // a state itself, never overwritten below
+        dep[i] = 2;
         break;
       }
     }
   }
+}
+
+// Does statement `s` read anything that currently holds a state?
+static inline int indLinStmtReadsDep(int s, int *dep) {
+  int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+  for (int r = tb.stmtR0[s]; r < r1; ++r) {
+    if (dep[tb.stmtRef[r]]) return 1;
+  }
+  return 0;
+}
+
+// The slot statement `s` writes, or -1 when it writes nothing trackable.  A
+// state is never assigned, and must stay flagged if the parser ever routes one
+// through here.
+static inline int indLinStmtTarget(int s, int *dep) {
+  int t = tb.stmtT[s];
+  if (tb.stmtK[s] == 0) {
+    if (t < 0 || t >= NV || dep[t] == 2) return -1;
+  } else if (t < 0 || t >= tb.de.n) {
+    return -1;
+  }
+  return t;
+}
+
+static inline void indLinReplay(int *dep, int *fdep, SEXP state) {
+  indLinSeedStateDep(dep, state);
   for (int d = 0; d < tb.de.n; ++d) fdep[d] = 0;
   for (int s = 0; s < tb.stmtN; ++s) {
-    int t = tb.stmtT[s];
-    if (tb.stmtK[s] == 0) {
-      // a state is never assigned, and must stay flagged if the parser ever
-      // routes one through here
-      if (t < 0 || t >= NV || dep[t] == 2) continue;
-    } else if (t < 0 || t >= tb.de.n) {
-      continue;
-    }
-    int v = 0;
-    int r1 = tb.stmtR0[s] + tb.stmtRn[s];
-    for (int r = tb.stmtR0[s]; r < r1; ++r) {
-      if (dep[tb.stmtRef[r]]) {
-        v = 1;
-        break;
-      }
-    }
-    if (tb.stmtK[s] == 0) {
-      dep[t] = tb.stmtC[s] ? (dep[t] || v) : v;
-    } else {
-      fdep[t] = tb.stmtC[s] ? (fdep[t] || v) : v;
-    }
+    int t = indLinStmtTarget(s, dep);
+    if (t < 0) continue;
+    int v = indLinStmtReadsDep(s, dep);
+    int *cur = (tb.stmtK[s] == 0) ? dep : fdep;
+    cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
   }
 }
 
