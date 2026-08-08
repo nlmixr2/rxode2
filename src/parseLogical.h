@@ -87,13 +87,18 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
     if (i == 0){
       return 1;
     } else if (i == 1){
+      // reset the buffers; they still hold the preceding statement's text
+      // (each statement handler is what clears them)
+      sb.o=0;sbDt.o=0; sbt.o=0;
       aAppendN("if (", 4);
       sAppendN(&sbt, "if (", 4);
       return 1;
     } else if (i == 3){
       aType(TLOGIC);
       aAppendN(") {", 3);
-      sAppendN(&sbt,") {", 3);
+      // normalized text uses the same spelling as 'if (...){' so rxNorm() is a
+      // fixed point when the statement is re-parsed
+      sAppendN(&sbt,"){", 2);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
@@ -104,7 +109,7 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
       sb.o=0;sbDt.o=0; sbt.o=0;
       aType(TLOGIC);
       aAppendN("}\nelse {", 8);
-      sAppendN(&sbt,"}\nelse {", 1);
+      sAppendN(&sbt,"}\nelse {", 8);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
