@@ -180,10 +180,16 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
 // `memcmp`, not elementwise ==: conservative on signed zero, correct on NaN bit
 // patterns, and it does not invite anyone to relax it into a tolerance later.
 //
-// Four slots because the fixed grid uses one h for every substep but the last
-// (which is snapped to the interval end and differs in the last ulp), so a
-// single slot would thrash; four also absorbs Richardson's h and h/2.
-#define RX_INDLIN_EXPCACHE_N 4
+// Slots have to cover every distinct operand in flight at once, or the round
+// robin thrashes and the hit rate collapses.  In flight are: one operand per
+// distinct h -- the fixed grid uses one h for every substep but the last, which
+// is snapped to the interval end and differs in the last ulp, and the Romberg
+// column adds h/2, h/4 and h/8 -- times one operand per *kind*, since the
+// Newton path also exponentiates the [[A,I],[0,0]] block that yields P(h)
+// alongside meOnly's own augmentation.  Sixteen covers 4 levels x 2 kinds with
+// room to spare; the footprint is still trivial at compartmental sizes and is
+// bounded by RX_INDLIN_EXPCACHE_MAXN2 regardless.
+#define RX_INDLIN_EXPCACHE_N 16
 // Skip caching above this n*n -- large sensitivity models would never hit and
 // the footprint is per thread.
 #define RX_INDLIN_EXPCACHE_MAXN2 16384
@@ -440,6 +446,51 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 
 bool expm_assign=false;
 SEXP expm_s;
+
+// P(h) = A^-1(exp(Ah) - I) = h*phi1(Ah), the operator the substep map applies
+// to the forcing.  Needed as a MATRIX only by the Newton iteration, which forms
+// `I - P(h) f'`.
+//
+// Evaluated as a series rather than an exponential.  Taking it as the top-right
+// block of exp([[A,I],[0,0]]h) is exact and needs no A^-1, but it is a 2n x 2n
+// exponential against meOnly's n x n (or n+nInf), i.e. ~8x the work on a model
+// with no infusion -- measured at 5.8 exponentials per step against Picard's
+// 2.9, which was the entire reason Newton lost on wall clock.
+//
+// The series is not an approximation in the regime that matters.  A matExp()
+// model puts its LINEAR dynamics in A, where the exponential already handles
+// them exactly, and only the nonlinear remainder in the forcing -- so wherever
+// the iteration is the binding constraint, ||A*h|| is small.  The degree is
+// chosen from the norm so the truncation sits below unit roundoff, exactly as
+// matrixExpTaylor does, and anything with a norm too large to serve that way
+// falls back to the exponential.
+//
+// phi1(z) = sum_{k>=0} z^k/(k+1)!, by Horner:
+//   P = I/(m+1)!;  for k = m..1:  P = I/k! + z*P;  then P(h) = h*P.
+#define RX_INDLIN_PHI1_MAXNRM 0.5
+static bool indLinPhi1(const arma::mat &A, double h, arma::mat &Ph,
+                       arma::mat &z, arma::mat &tmp) {
+  const arma::uword n = A.n_rows;
+  z = A*h;
+  double nrm = arma::norm(z, "inf");
+  if (!R_FINITE(nrm) || nrm > RX_INDLIN_PHI1_MAXNRM) return false;
+  // Smallest m with nrm^(m+1)/(m+2)! <= 2^-53; at nrm <= 1/2, m = 16 is ample
+  // for any of them, and the terms are n x n multiplies at compartmental size.
+  int m = 16;
+  double fk = 1.0;                       // (m+1)!
+  for (int k = 2; k <= m + 1; ++k) fk *= (double) k;
+  Ph.eye(n, n);
+  Ph /= fk;
+  for (int k = m; k >= 1; --k) {
+    double kf = 1.0;
+    for (int q = 2; q <= k; ++q) kf *= (double) q;
+    tmp = z*Ph;
+    Ph = tmp;
+    Ph.diag() += 1.0/kf;
+  }
+  Ph *= h;
+  return true;
+}
 
 // -- Forcing Jacobian ---------------------------------------------------------
 //
@@ -733,12 +784,16 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   // in the header for when that is and is not adequate.
   arma::mat Aloc(neq, neq);
   ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
-  arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
-  aug.submat(0, 0, neq-1, neq-1) = Aloc;
-  aug.submat(0, neq, neq-1, 2*neq-1).eye();
-  arma::mat augE(2*neq, 2*neq);
-  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
-  arma::mat Ph = augE.submat(0, neq, neq-1, 2*neq-1);
+  arma::mat Ph(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
+  if (!indLinPhi1(Aloc, h, Ph, phiZ, phiTmp)) {
+    // ||A*h|| too large for the series: fall back to the exact block.
+    arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
+    aug.submat(0, 0, neq-1, neq-1) = Aloc;
+    aug.submat(0, neq, neq-1, 2*neq-1).eye();
+    arma::mat augE(2*neq, 2*neq);
+    matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+    Ph = augE.submat(0, neq, neq-1, 2*neq-1);
+  }
   G = -Ph*Jf;
   G.diag() += 1.0;
   // Invert once and reuse: at compartmental sizes this is a handful of flops,
