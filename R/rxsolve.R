@@ -212,16 +212,19 @@
 #'     iteration contracts in proportion to the step, so the solver reads it as
 #'     a step that is too long and retries with a shorter one.
 #'
-#' @param indLinRichardson whether `method="indLin"` Richardson-extrapolates
-#'     each relinearization step, raising it from second to third order.  The
-#'     step is run once whole and twice at half length, so it costs three
-#'     fixed-point solves instead of one, and pays for itself only once the
-#'     tolerance is tight enough that taking far fewer steps outweighs that.
-#'     `"auto"` (the default) starts each interval second order and switches on
-#'     once the interval has needed more than 27 steps, which is where the two
-#'     costs cross: a second-order step needing `N` steps becomes a third-order
-#'     one needing about `N^(2/3)` at three times the cost each.  `"always"`
-#'     (or `TRUE`) and `"never"` (or `FALSE`) force the choice.
+#' @param indLinRichardson how far `method="indLin"` extrapolates each
+#'     relinearization step.  The base step is second order; running it also at
+#'     half length and combining removes the leading error term for third order
+#'     at three fixed-point solves, and adding a quarter-length run gives a
+#'     three-entry Romberg column for fourth order at seven.  Each level pays
+#'     for itself only once the tolerance is tight enough that taking far fewer
+#'     steps outweighs the extra solves per step: a second-order step needing
+#'     `N` steps becomes a `p`-th order one needing about `N^(2/p)`, so third
+#'     order wins once `3*N^(2/3) < N` (`N > 27`) and fourth once
+#'     `7*N^(1/2) < 3*N^(2/3)` (`N > 161`).  `"auto"` (the default) starts each
+#'     interval second order and raises the level as the step the controller
+#'     settles on crosses those thresholds.  `"never"` (or `FALSE`), `"always"`
+#'     (or `TRUE`, third order) and `"always4"` (fourth order) force the choice.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
@@ -1196,7 +1199,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     zeroVarParamHandle=c("warn", "ignore", "keep"),
                     indLinStepSearch = c("secant", "exact", "none"),
                     indLinMaxIter = 20L,
-                    indLinRichardson = c("auto", "always", "never"),
+                    indLinRichardson = c("auto", "always", "never", "always4", "always5"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1603,12 +1606,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L &&
           !is.na(indLinRichardson)) {
       .indLinRichardson <- as.integer(indLinRichardson)
-    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=2,
+    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=4,
                                          any.missing=FALSE)) {
       .indLinRichardson <- as.integer(indLinRichardson)
     } else {
       .indLinRichardson <- unname(c("never" = 0L, "always" = 1L,
-                                    "auto" = 2L)[match.arg(indLinRichardson)])
+                                    "auto" = 2L,
+                                    "always4" = 3L,
+                                    "always5" = 4L)[match.arg(indLinRichardson)])
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)

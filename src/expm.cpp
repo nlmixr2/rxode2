@@ -529,6 +529,8 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 #define RX_INDLIN_RICH_NEVER  0
 #define RX_INDLIN_RICH_ALWAYS 1
 #define RX_INDLIN_RICH_AUTO   2
+#define RX_INDLIN_RICH_ALWAYS4 3
+#define RX_INDLIN_RICH_ALWAYS5 4
 // Auto switch-over.  If the second-order step needs N substeps to cross an
 // interval, the third-order one needs about N^(2/3) of them -- error falls as
 // h^2 against h^3, so the step counts go as E^(-1/2) against E^(-1/3) -- at
@@ -536,6 +538,12 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 // 3*N^(2/3) < N, i.e. once N > 3^3 = 27.  Measured crossover on a
 // Michaelis-Menten model: 33 substeps per interval, at atol=rtol=1e-5.
 #define RX_INDLIN_AUTO_RICH_N 27
+// And once more for the fourth-order column: 7*N^(1/2) < 3*N^(2/3) once
+// N^(1/6) > 7/3, i.e. N > (7/3)^6 ~ 161.
+#define RX_INDLIN_AUTO_RICH4_N 161
+// And the fifth-order column (15 solves) beats the fourth (7) once
+// 15*N^(2/5) < 7*N^(1/2), i.e. once N^(1/10) > 15/7, N > (15/7)^10 ~ 1750.
+#define RX_INDLIN_AUTO_RICH5_N 1750
 
 // Secant estimate of the iteration map's contraction ratio from two
 // consecutive Picard residuals, measured only over the states flagged in
@@ -790,42 +798,98 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
 // It costs three fixed-point solves per step instead of one, which pays for
 // itself only when the tolerance is tight -- measured at roughly 3x fewer
 // matrix exponentials at 1e-3 and 12x at 1e-6 -- so it is off by default.
+// `nSub` equal substeps of `h/nSub` across `[t, t+h]`, leaving the result in
+// `out`.  `cur` is scratch for the running state.  The last substep ends
+// exactly at `t+h` rather than accumulating `nSub` additions of `h/nSub`.
+static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int neq, double *rtol, double *atol,
+                       const arma::vec &y0, double t, double h, int nSub, int locf,
+                       double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                       arma::vec *u, arma::vec &out, arma::vec &w1, arma::vec &cur,
+                       double *ratioOut) {
+  const double hs = h / (double) nSub;
+  double rMax = 1.0;
+  cur = y0;
+  for (int i = 0; i < nSub; ++i) {
+    double ts = t + ((double) i)*hs;
+    double te = (i == nSub - 1) ? (t + h) : (ts + hs);
+    double e = 0.0, r = 1.0;
+    int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, cur, ts, te - ts,
+                               locf ? ts : te,
+                               InfusionRate_, on_, ME, IndF, u, out, w1, &e, &r);
+    if (r > rMax) rMax = r;
+    if (ret != 1) { *ratioOut = rMax; return ret; }
+    cur = out;
+  }
+  *ratioOut = rMax;
+  return 1;
+}
+
+// One step, extrapolated to the requested level.
+//
+//   level 0  the plain averaged substep                    2nd order,  1 solve
+//   level 1  Richardson on h, h/2                          3rd order,  3 solves
+//   level 2  Romberg column on h, h/2, h/4                 4th order,  7 solves
+//   level 3  Romberg column on h, h/2, h/4, h/8            5th order, 15 solves
+//
+// The base step is second order, so entry j of the tableau is built from
+// T(h/2^j) and the leading error term after k eliminations goes as h^(2+k):
+// R[k][j] = (f*R[k-1][j+1] - R[k-1][j])/(f-1) with f = 2^(k+1).  The error
+// estimate is the difference between the two highest entries, which is the
+// standard Romberg estimate.
+#define RX_INDLIN_RICH_MAXLVL 3
+
 static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                          int neq, double *rtol, double *atol,
                          const arma::vec &y0, double t, double h, int locf, int useRich,
                          double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                          arma::vec *u, arma::vec &yOut, arma::vec &w1,
-                         arma::vec &yHalf, arma::vec &yOne,
+                         arma::vec &yScratch, arma::mat &tab,
                          double *errOut, double *ratioOut) {
   double tcov = locf ? t : (t + h);
-  if (!useRich) {
+  if (useRich <= 0) {
     return indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
                             InfusionRate_, on_, ME, IndF, u, yOut, w1,
                             errOut, ratioOut);
   }
-  double eOne = 0.0, rOne = 1.0, eA = 0.0, rA = 1.0, eB = 0.0, rB = 1.0;
-  double tMid = t + 0.5*h;
-  int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
-                             InfusionRate_, on_, ME, IndF, u, yOne, w1, &eOne, &rOne);
-  if (ret != 1) { *ratioOut = rOne; return ret; }
-  ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, 0.5*h,
-                         locf ? t : tMid,
-                         InfusionRate_, on_, ME, IndF, u, yHalf, w1, &eA, &rA);
-  if (ret != 1) { *ratioOut = rA; return ret; }
-  ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, yHalf, tMid, 0.5*h,
-                         locf ? tMid : (t + h),
-                         InfusionRate_, on_, ME, IndF, u, yOut, w1, &eB, &rB);
-  if (ret != 1) { *ratioOut = rB; return ret; }
-  *ratioOut = std::max(rOne, std::max(rA, rB));
+  if (useRich > RX_INDLIN_RICH_MAXLVL) useRich = RX_INDLIN_RICH_MAXLVL;
+  const int nEntry = useRich + 1;          // T(h) ... T(h/2^useRich)
+  double rMax = 1.0;
+  // Column of base-method results, one per subdivision.
+  for (int j = 0; j < nEntry; ++j) {
+    double r = 1.0;
+    int nSub = 1 << j;
+    int ret = indLinChain(cSub, op, ind, neq, rtol, atol, y0, t, h, nSub, locf,
+                          InfusionRate_, on_, ME, IndF, u, yOut, w1, yScratch, &r);
+    if (r > rMax) rMax = r;
+    if (ret != 1) { *ratioOut = rMax; return ret; }
+    for (int k = 0; k < neq; ++k) tab(k, j) = yOut[k];
+  }
+  *ratioOut = rMax;
+  // Neville-Aitken sweep in place; column j holds R[k][j] after pass k.
+  for (int k = 1; k <= useRich; ++k) {
+    double f = (double)(1 << (k + 1));     // 4, 8, 16 ... for a 2nd-order base
+    for (int j = 0; j + k < nEntry; ++j) {
+      for (int q = 0; q < neq; ++q) {
+        tab(q, j) = (f*tab(q, j + 1) - tab(q, j))/(f - 1.0);
+      }
+    }
+  }
+  // After the sweep tab(.,0) is the highest entry.  The last pass only touched
+  // j = 0, so tab(.,1) still holds the previous column's entry, one order
+  // lower -- their difference is the estimate.  At level 1 this reduces to
+  // (T(h/2) - T(h))/3, which is what the two-entry Richardson used.
   double err = 0.0;
-  for (int k = 0; k < neq; ++k) {
-    double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
+  for (int q = 0; q < neq; ++q) {
+    double best = tab(q, 0);
+    double sc = atol[q] + rtol[q]*std::max(fabs(y0[q]), fabs(best));
+    double e = best - tab(q, (nEntry > 1) ? 1 : 0);
+    yOut[q] = best;
     if (sc <= 0.0) continue;
-    double e = (yOut[k] - yOne[k])/(3.0*sc);
+    e /= sc;
     err += e*e;
   }
   *errOut = sqrt(err / (double) neq);
-  for (int k = 0; k < neq; ++k) yOut[k] = (4.0*yOut[k] - yOne[k])/3.0;
   return 1;
 }
 
@@ -851,12 +915,15 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // would be reading schedule jitter rather than convergence, so allow the
   // step to shrink there but never to grow.
   bool inSS = (ind != NULL && !ISNA(ind->ssTime));
-  arma::vec y0(yp_, neq), yTry(neq), w1(neq), yHalf(neq), yOne(neq);
+  arma::vec y0(yp_, neq), yTry(neq), w1(neq), yScratch(neq);
+  arma::mat richTab(neq, RX_INDLIN_RICH_MAXLVL + 1);
   // "auto" starts second order and turns Richardson on once this interval has
   // needed enough steps to pay for it, so a loose tolerance never carries the
   // extra cost and a tight one is not left crawling.  The switch is one way
   // within an interval, so it cannot chatter.
-  int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS);
+  int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS) ? 1 : 0;
+  if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS4) useRich = 2;
+  if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS5) useRich = 3;
   int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
@@ -872,18 +939,28 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     // burning the switch-over count first: if crossing what is left of the
     // interval at this step would take more than the break-even number of
     // steps, Richardson is already the cheaper way to finish.
-    if (autoRich && !useRich && nAccept > 0 && h > 0.0 &&
-        (tf - t)/h > (double) RX_INDLIN_AUTO_RICH_N) {
-      useRich = 1;
+    if (autoRich && nAccept > 0 && h > 0.0) {
+      double nLeft = (tf - t)/h;
+      // Same break-even argument one level up.  A p-th order step needs about
+      // N^(2/p) of the second-order step's N, so the fourth-order column
+      // (7 solves) beats the third (3 solves) once 7*N^(1/2) < 3*N^(2/3),
+      // i.e. once N > (7/3)^6.
+      if (useRich < 3 && nLeft > (double) RX_INDLIN_AUTO_RICH5_N) {
+        useRich = 3;
+      } else if (useRich < 2 && nLeft > (double) RX_INDLIN_AUTO_RICH4_N) {
+        useRich = 2;
+      } else if (useRich < 1 && nLeft > (double) RX_INDLIN_AUTO_RICH_N) {
+        useRich = 1;
+      }
     }
     // The step is sized from an estimate of the order the extrapolation is
     // built on: first order for the plain step, second under Richardson.  The
     // exponent is -1/(p_est + 1) either way.
-    double expo = useRich ? (-1.0/3.0) : (-0.5);
+    double expo = -1.0/((double) (useRich + 2));
     double err = 0.0, ratio = 1.0;
     int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, y0, t, h, locf, useRich,
                             InfusionRate_, on_, ME, IndF, u, yTry, w1,
-                            yHalf, yOne, &err, &ratio);
+                            yScratch, richTab, &err, &ratio);
     if (ret == -2) {
       // Not a dead end: the contraction ratio is proportional to `h`, so a
       // failure to converge proves the step is too long and a bounded number

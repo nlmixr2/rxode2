@@ -199,6 +199,17 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `method="indLin"` extrapolates further when it pays.  Each relinearization
+  step could previously be raised from second to third order by running it also
+  at half length; it can now use a Romberg column of up to four entries (`h`,
+  `h/2`, `h/4`, `h/8`) for up to fifth order, at 3, 7 and 15 fixed-point solves
+  per step.  `indLinRichardson="auto"` (the default) raises the level as the
+  step the controller settles on crosses each break-even, so a loose tolerance
+  never pays for extrapolation it does not need.  `"always4"` and `"always5"`
+  force the new levels.  On a 200-subject Michaelis-Menten solve this halves
+  the time at `atol=rtol=1e-8`, and on a single subject at `1e-12` it is over
+  seven times faster than the third-order step.
+
 - `rxSolve(indLinMatExpType="taylor")` adds a Taylor scaling-and-squaring
   matrix exponential, which needs no linear solve; its degree is chosen per
   call from the norm.  It is as accurate as the default `"expokit"` on every

@@ -631,6 +631,58 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true(.rich[2] < .rich[1])
   })
 
+  test_that("the higher Romberg columns cost less at a tight tolerance", {
+    # Each extra entry -- h, h/2, h/4, h/8 -- removes one more error term, for
+    # 3, 7 and 15 fixed-point solves per step against the base step's 1.  A
+    # level has to buy its cost back in steps, so the claim is about work at
+    # matched DELIVERED accuracy, not about error at a matched tolerance.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .o <- suppressMessages(rxode2(.txt))
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
+                                    atol = 1e-13, rtol = 1e-13))$central
+    .run <- function(rich, tol) {
+      .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
+                                     indLinRichardson = rich))
+      list(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
+    }
+    .a3 <- .run("always", 1e-8)
+    .a4 <- .run("always4", 1e-9)
+    # at least as accurate ...
+    expect_lt(.a4$err, .a3$err * 2)
+    # ... for far fewer steps
+    expect_lt(.a4$steps, .a3$steps / 3)
+
+    # every level is reachable by name and by integer code
+    for (.lv in list(c("always", 1L), c("always4", 3L), c("always5", 4L))) {
+      expect_equal(suppressMessages(rxSolve(.m, .e, method = "indLin",
+                                            indLinRichardson = .lv[1]))$central,
+                   suppressMessages(rxSolve(.m, .e, method = "indLin",
+                                            indLinRichardson = as.integer(.lv[2])))$central,
+                   tolerance = 0, info = .lv[1])
+    }
+  })
+
+  test_that("auto reaches the higher columns when they pay", {
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+    .steps <- function(rich, tol) {
+      sum(suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
+                                   indLinRichardson = rich))$counts$slvr)
+    }
+    # At a tight tolerance auto must be far below the third-order step count,
+    # which is only possible if it has raised the level.
+    expect_lt(.steps("auto", 1e-9), .steps("always", 1e-9) / 3)
+    # At a loose one it must not pay for extrapolation it does not need.
+    expect_equal(.steps("auto", 1e-3), .steps("never", 1e-3))
+  })
+
   test_that("a matExp() rate constant may not depend on a compartment", {
     # rxode2#1186: the matrix exponential is only valid when the rate matrix is
     # constant over the step -- an assumption the event-sensitivity jump code in
