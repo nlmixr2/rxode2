@@ -174,6 +174,34 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxSolve(<function or rxUi model>, method="indLin")` failed with "Can only
+  parse scalar data".  With the default `useLinCmt=TRUE` the ODE was first
+  rewritten into `linCmt()`, leaving a model with `linCmt()` pseudo-compartments
+  and no `d/dt()` for the matrix-exponential conversion to work from.  That
+  rewrite is now skipped when `method="indLin"` is requested, so such a model
+  integrates its own rate matrix rather than being replaced by the analytic
+  solution.
+
+- `method="indLin"` is substantially faster.  The ODE-to-`matExp()` conversion
+  ran on every `rxSolve()` call although it is a pure function of the model, and
+  cost several times the solve it was preparing for; it is now done once per
+  model (`options(rxode2.indLinConvCache=FALSE)` restores the old behaviour).
+  The matrix exponential itself was recomputed on every fixed-point pass even
+  though the rate matrix cannot change between them, and identical exponentials
+  are now reused (`RXODE2_INDLIN_NO_EXP_CACHE` disables this).  Together these
+  are several times faster on a nonlinear model and more on a linear one; no
+  result changes.
+
+- `$counts$dadt` and `$counts$jac` report the matrix exponentials computed and
+  reused for a `method="indLin"` solve.  Both counters were previously unused on
+  this path.
+
+- `method="indLin"` no longer uses the R API from inside the parallel solve.
+  The Al-Mohy matrix-exponential backend took its workspace from `R_alloc`, and
+  the default expokit backend warned through `RWarn` on a singular Pade
+  denominator; neither is safe from a worker thread.  The singular case also
+  used to continue with an unfinished matrix, and now reports and returns zeros.
+
 - `method="indLin"` no longer throws from inside the parallel solve.  Two code
   paths in the inductive-linearization solver raised an R-level error from a
   worker thread, which crashes the session rather than reporting an error; both
