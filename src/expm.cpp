@@ -16,6 +16,7 @@
 #include <vector>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2dataErr.h"
+#include "rxProtect.h"
 #include "rxomp.h"
 
 #define _(String) (String)
@@ -59,6 +60,9 @@ std::string rxIndLin_(CharacterVector states){
 }
 
 extern "C" void F77_NAME(matexprbs)(int *ideg, int *m, double *t, double *H, int *iflag);
+
+// Diagnostics; defined with the other step counters below.
+extern "C" void rxIndLinCountIter(int n);
 
 extern "C" void matexp_MH09(double *x, int n, const int p, double *ret);
 
@@ -629,6 +633,7 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   int nGrow = 0;
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
+    rxIndLinCountIter(1);
     wPrev = w;
     // Pass 0 evaluates at the step START, in time as well as in state; every
     // later pass evaluates at the end.  Both halves of the quadrature have to
@@ -900,6 +905,27 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
 // tuned `hmax` keeps at least the accuracy they had, and every old substep
 // boundary is still a boundary (which is what keeps time-varying covariate
 // sampling a refinement rather than a change).
+// -- Step-disposition diagnostics ---------------------------------------------
+//
+// `$counts` is full: slvr counts accepted steps and dadt/jac already carry the
+// exponentials computed and reused.  These answer a different question -- WHY a
+// step was retried.  A step cut because the fixed-point iteration would not
+// contract is one the error controller would have allowed, so this count is the
+// ceiling on what replacing that iteration can win; a step rejected on error is
+// not.  Read with `rxIndLinSteps()`, which also resets.
+//
+// Plain `long` rather than atomics: `par_indLin` is forced single-threaded
+// (`solveMethodThreadSafe`), and these are diagnostics, so a torn count under a
+// future threaded build would mislead but not corrupt.  Revisit if indLin ever
+// becomes reentrant.
+static long __indLinNAttempt = 0;
+static long __indLinNAccept  = 0;
+static long __indLinNRejErr  = 0;   // rejected: local error estimate too large
+static long __indLinNCutConv = 0;   // cut: iteration did not converge (ret == -2)
+static long __indLinNIter    = 0;   // total iteration passes over all substeps
+
+extern "C" void rxIndLinCountIter(int n) { __indLinNIter += n; }
+
 static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                                int neq, double *rtol, double *atol,
                                double *yp_, double tp, double tf, double hCap, int locf,
@@ -930,6 +956,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     // Snap to `tf` rather than leaving a sliver behind.
     if (t + 1.01*h >= tf) h = tf - t;
     if (h <= 0.0) break;
+    __indLinNAttempt++;
     if (++nAttempt > op->mxstep) {
       std::copy(y0.begin(), y0.end(), yp_);
       if (ind != NULL) ind->err |= rxErrIndLinConverge;
@@ -962,6 +989,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
                             InfusionRate_, on_, ME, IndF, u, yTry, w1,
                             yScratch, richTab, &err, &ratio);
     if (ret == -2) {
+      __indLinNCutConv++;
       // Not a dead end: the contraction ratio is proportional to `h`, so a
       // failure to converge proves the step is too long and a bounded number
       // of cuts must fix it.  Size the cut from the measured ratio instead of
@@ -986,6 +1014,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     if (fac < FACMIN) fac = FACMIN;
     if (fac > FACMAX) fac = FACMAX;
     if (err > 1.0) {
+      __indLinNRejErr++;
       h *= fac;
       lastRejected = true;
       if (h < 1e-10*span) {
@@ -998,6 +1027,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     y0 = yTry;
     t += h;
     nAccept++;
+    __indLinNAccept++;
     // A step that follows a rejection may not grow, and a steady-state step
     // may never grow at all.
     if ((lastRejected || inSS) && fac > 1.0) fac = 1.0;
@@ -1192,4 +1222,29 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   //   }
   // }
   return 1;
+}
+
+// Step dispositions for the last solve (or since the last read), as a named
+// integer vector; reading resets, so a measurement is one call before and the
+// numbers after.  `cutConv` is the count that matters: those are steps the
+// error controller would have accepted but the fixed-point iteration could not
+// converge on, so it bounds what a better iteration can recover.
+extern "C" SEXP _rxode2_rxIndLinSteps(void) {
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 5));
+  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 5));
+  REAL(ret)[0] = (double) __indLinNAttempt;
+  REAL(ret)[1] = (double) __indLinNAccept;
+  REAL(ret)[2] = (double) __indLinNRejErr;
+  REAL(ret)[3] = (double) __indLinNCutConv;
+  REAL(ret)[4] = (double) __indLinNIter;
+  SET_STRING_ELT(nm, 0, Rf_mkChar("attempt"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("accept"));
+  SET_STRING_ELT(nm, 2, Rf_mkChar("rejErr"));
+  SET_STRING_ELT(nm, 3, Rf_mkChar("cutConv"));
+  SET_STRING_ELT(nm, 4, Rf_mkChar("iter"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  __indLinNAttempt = __indLinNAccept = __indLinNRejErr = 0;
+  __indLinNCutConv = __indLinNIter = 0;
+  return ret;
 }
