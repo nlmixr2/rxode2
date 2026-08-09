@@ -5,13 +5,14 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADER
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
+// Must precede RcppArmadillo.h: defined after the include it has no effect, and
+// an Armadillo error message printed from a worker thread is a confirmed crash.
+#define ARMA_DONT_PRINT_ERRORS
 #include <iostream>
 #include <RcppArmadillo.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2dataErr.h"
-#define ARMA_DONT_PRINT_ERRORS
-#define ARMA_DONT_USE_OPENMP // Known to cause speed problems
 
 #define _(String) (String)
 
@@ -57,32 +58,34 @@ extern "C" void F77_NAME(matexprbs)(int *ideg, int *m, double *t, double *H, int
 
 extern "C" void matexp_MH09(double *x, int n, const int p, double *ret);
 
-static inline arma::mat matrixExp(arma::mat& H, double t, int& type,
-				  int& order){
+// Writes exp(H*t) into `out`, which must already be H's size.
+//
+// `H` IS DESTROYED.  Type 2 has always overwritten its operand in place, and
+// type 3 now scales in place rather than allocating a scaled copy, so the
+// caller must treat H as consumed.  Returning the result instead cost an n^2
+// copy that no caller could elide.
+static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
+                             int order){
   switch(type){
   case 3: {
     int p = order;
     if (p > 13) p = 13;
     int n = H.n_rows;
-    arma::mat Hin = H*t;
-    arma::mat Hout(Hin.n_rows,Hin.n_cols);
-    double *x = Hin.memptr();
-    double *ret = Hout.memptr();
-    matexp_MH09(x, n, p, ret);
-    return Hout;
+    H *= t;
+    matexp_MH09(H.memptr(), n, p, out.memptr());
     break;
   }
   case 2: {
     int iflag=0;
     int m = H.n_rows;
     // FIXME C++ implementation for threading.
-    F77_CALL(matexprbs)(&order, &m, &t, &H[0], &iflag);
-    return H;
+    out = H;
+    F77_CALL(matexprbs)(&order, &m, &t, out.memptr(), &iflag);
     break;
   }
   default:
-    arma::mat mat2 = t*H;
-    return (arma::expmat(mat2));
+    H *= t;
+    out = arma::expmat(H);
   }
 }
 // extern "C" typedef void (*matvec_t) (double *, double *, double *, int *);
@@ -123,7 +126,12 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
     Ainv(1,1) = A(0,0)*d;
     Ainv(0,1) = -A(0,1)*d;
     Ainv(1,0) = -A(0,1)*d;
-    arma::mat22 expAt = matrixExp(A, t, type, order);
+    // matrixExp consumes its operand, and A belongs to the caller.  The type-2
+    // backend already overwrote A here in place, so this also removes a
+    // destruction that only happened for some backends.
+    arma::mat Aop = A;
+    arma::mat expAt(2, 2);
+    matrixExp(Aop, expAt, t, type, order);
     arma::vec w = expAt*v + (expAt-arma::eye(2,2))*Ainv*u;
     return w;
   }
@@ -142,7 +150,7 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
     int k1 = 3, ireject = 0, mx=0;
     double xm = 1.0/m;
     arma::vec w = v;
-    arma::mat V, H, F, tmp;
+    arma::mat V, H, F, tmp, Fop;
     arma::vec p;
     double beta=0, fact=0, s=0, t_step=0, h=0, avnorm=0, err_loc=0, p1, p2;
     while (t_now < t_out){
@@ -187,8 +195,10 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
       ireject = 0;
       while(ireject <= mxrej){
 	mx = mb + std::max(1,k1);
-	F = H(arma::span(0,mx-1),arma::span(0,mx-1));
-	F = matrixExp(F, sgn*t_step, type, order);
+	// The operand must be separate from the result: matrixExp consumes it.
+	Fop = H(arma::span(0,mx-1),arma::span(0,mx-1));
+	F.set_size(mx, mx);
+	matrixExp(Fop, F, sgn*t_step, type, order);
 	if (k1 == 0){
 	  err_loc = btol;
 	  break;
@@ -273,16 +283,12 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   // arma::mat mexp;
   // arma::mat ypout;
   unsigned int i, nInf=0;
-  arma::mat m0extra(neq, neq, arma::fill::zeros);
   for (i = 0; i < (unsigned int)neq; i++){
-    if (InfusionRate[i] != 0.0){
-      nInf++;
-      m0extra[neq*(nInf-1)+i]=1;
-    }
+    if (InfusionRate[i] != 0.0) nInf++;
   }
   if (nInf == 0){
     arma::mat expAT(neq, neq);
-    expAT = matrixExp(m0, tf-tp, type, order);
+    matrixExp(m0, expAT, tf-tp, type, order);
     arma::vec yc_temp = expAT*yp;
     std::copy(yc_temp.begin(), yc_temp.end(), yc_);
     return 1;
@@ -292,13 +298,15 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
     for (int j = neq; j--;){
       std::copy(m0.colptr(j), m0.colptr(j)+neq, mout.colptr(j));
     }
-    for (int j = nInf; j--;){
-      std::copy(m0extra.colptr(j),m0extra.colptr(j)+neq, mout.colptr(neq+j));
-    }
     std::copy(yp.begin(),yp.end(),ypout.begin());
+    // Each infused compartment gets a unit column in the augmented block and
+    // its rate in the augmented state, which turns the constant forcing into
+    // part of the exponential and avoids needing A^-1.  This used to be staged
+    // through a zero-filled neq x neq scratch matrix and copied in.
     int cur_nInf = 0;
     for (i = 0; i < (unsigned int)neq; i++){
       if (InfusionRate[i] != 0.0){
+        mout(i, neq + cur_nInf) = 1.0;
         ypout[neq + cur_nInf] = InfusionRate[i];
         cur_nInf++;
       }
@@ -306,7 +314,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
     arma::vec meSol(neq+nInf);
     arma::mat expAT(neq+nInf, neq+nInf);
     // Unfortunately the tf-tp may change so we can not cache this.
-    expAT = matrixExp(mout, (tf-tp), type, order);
+    matrixExp(mout, expAT, (tf-tp), type, order);
     meSol = expAT*ypout;
     std::copy(meSol.begin(), meSol.begin()+neq, yc_);
     return 1;
