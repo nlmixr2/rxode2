@@ -896,6 +896,81 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.r$central[4], .r$central[3])
   })
 
+  test_that("a converted matExp() model carries an analytic Jacobian", {
+    # calc_jac is declared and compiled for every matExp() model but was empty,
+    # because nothing emitted df()/dy() -- and an empty one is a SILENT zero
+    # Jacobian, not an error.  Assert positively that it is populated.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    expect_equal(rxModelVars(.m)$trans[["jac"]], "fulluser")
+    expect_gt(length(rxModelVars(.m)$dfdy), 0)
+
+    # and the guard turns it back off, so a large model cannot be held up in
+    # symengine
+    withr::with_options(list(rxode2.indLinJacMaxStates = 0L), {
+      .m0 <- suppressMessages(rxode2(rxToIndLin(.txt)))
+      expect_equal(rxModelVars(.m0)$trans[["jac"]], "fullint")
+    })
+  })
+
+  test_that("the emitted Jacobian matches finite differences", {
+    .chk <- function(.txt, .pars, .y0, .tol = 1e-4) {
+      .lines <- unlist(strsplit(rxToIndLin(.txt), "\n"))
+      .dl <- grep("^df\\(", .lines, value = TRUE)
+      .st <- names(.y0)
+      .n <- length(.st)
+      .J <- matrix(0, .n, .n, dimnames = list(.st, .st))
+      for (.l in .dl) {
+        .g <- regmatches(.l, regexec("^df\\((.*)\\)/dy\\((.*)\\) = (.*)$", .l))[[1]]
+        if (length(.g) != 4L) next
+        if (!(.g[2] %in% .st) || !(.g[3] %in% .st)) next
+        .e <- c(as.list(.pars), as.list(.y0),
+                list(Rx_pow_di = function(a, b) a^b, Rx_pow = function(a, b) a^b))
+        .J[.g[2], .g[3]] <- eval(parse(text = .g[4]), envir = .e)
+      }
+      .ode <- suppressMessages(rxode2(.txt))
+      .f <- function(.yy) {
+        .h <- 1e-6
+        .s <- suppressMessages(rxSolve(.ode, params = .pars, events = et(c(0, .h)),
+                                       inits = .yy, returnType = "data.frame"))
+        (as.numeric(.s[2, .st]) - as.numeric(.s[1, .st])) / .h
+      }
+      .Jn <- matrix(0, .n, .n, dimnames = list(.st, .st))
+      for (.j in seq_len(.n)) {
+        .d <- 1e-5 * max(abs(.y0[.j]), 1)
+        .yp <- .y0; .yp[.j] <- .yp[.j] + .d
+        .ym <- .y0; .ym[.j] <- .ym[.j] - .d
+        .Jn[, .j] <- (.f(.yp) - .f(.ym)) / (2 * .d)
+      }
+      expect_lt(max(abs(.J - .Jn)) / max(1, max(abs(.Jn))), .tol)
+    }
+    .chk(paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                "d/dt(depot) = -ka*depot\n",
+                "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"),
+         c(ka = 1, km = 0.5, vmax = 0.2, v = 1), c(depot = 3, central = 1))
+    .chk("vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n",
+         c(vmax = 10, km = 5), c(central = 7))
+    .chk("d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n",
+         c(mu = 10), c(y = 2, dy = 0.5))
+  })
+
+  test_that("a compartment named after a symengine constant still differentiates", {
+    # `I` is symengine's imaginary unit, so symengine::S("I") is not a symbol
+    # and differentiating by it fails outright.  The environment binds such a
+    # name as rx_SymPy_Res_I (.rxSEreserved), which is what rxToSE() returns.
+    .m <- suppressMessages(rxode2({
+      d/dt(Ga) <- -ka*Ga
+      d/dt(I)  <- (Iss*Cli)*(1 + Sincr*Ga) - Cli/Vi*I
+    }, indLin = TRUE))
+    .mv <- rxModelVars(.m)
+    expect_equal(.mv$trans[["jac"]], "fulluser")
+    .norm <- trimws(unlist(strsplit(rxNorm(.m), "[\n;]")))
+    expect_true("df(I)/dy(I)=-Cli/Vi" %in% .norm)
+    expect_true("df(I)/dy(Ga)=Iss*Cli*Sincr" %in% .norm)
+  })
+
   # --- matrix-exponential cache -----------------------------------------------
   # The cache is keyed on the bytes of (n, h, operand), so a hit is a proof
   # rather than an assumption.  These tests attack the ways a *flag*-based

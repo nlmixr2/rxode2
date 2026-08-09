@@ -94,6 +94,62 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     }
   }
   
+  # 4b. Explicit Jacobian (df/dy) lines.
+  #
+  # `calc_jac` is already declared and compiled for a matExp() model; it is
+  # empty only because nothing emits df()/dy(), which is what sets `found_jac`
+  # in the parser.  Emitting it is what lets a Newton iteration or an
+  # exponential-Rosenbrock step have a Jacobian at all -- and note the failure
+  # mode if it is skipped is a SILENT zero Jacobian, not an error.
+  #
+  # Differentiate the full right-hand side, `rx__d_dt_<state>__`, which the
+  # symengine load already built and which `rxIndLin_()` above has just read.
+  # Deriving it instead from the split (A from `.ret0` plus the forcing) would
+  # be fewer symengine calls, but the forcing is only available here as text
+  # that has been through rxFromSE() -- so it can carry C-level helpers such as
+  # `Rx_pow_di()`, which are legal rxode2 syntax but not functions in the
+  # symengine environment.  The per-state Basic `rx__indLinForce_<state>__`
+  # that would avoid that (R/symengine.R:1152-1161) is only captured for a
+  # model already written in `indLin()` form, not on this conversion path.
+  # This is the same derivation `rxSensMatExp()` performs at :345-352.
+  #
+  # `.jacMax` bounds the symbolic work: symengine is the slowest thing in this
+  # pipeline and the solver must not depend on it, so above this many states
+  # the emission is skipped and the runtime falls back to differencing IndF().
+  #
+  # Compartments the conversion invents -- an `output` sink created by a
+  # `k_<cmt>_output` rate -- are not in `.states` and get no row.  They have no
+  # dynamics of their own in the source model, so their row was zero before
+  # this change too.
+  .jacMax <- getOption("rxode2.indLinJacMaxStates", 24L)
+  if (length(.states) <= .jacMax) {
+    .isZeroTxt <- function(.t) .t == "0" || .t == "0.0" || .t == "-0"
+    # Direct symengine::D on Basics held in locals, as rxSensMatExp does:
+    # `with(.env, ...)` would not see them, since it ignores the calling frame.
+    #
+    # Route the name through rxToSE() first.  A compartment may legitimately be
+    # called `I`, `E` or `Catalan`, and symengine parses those as constants
+    # rather than symbols -- `symengine::S("I")` is the imaginary unit, so
+    # differentiating by it fails with "Input is not a SYMBOL".  rxToSE() maps
+    # each to the `rx_SymPy_Res_*` name the environment actually binds it under
+    # (`.rxSEreserved`, R/symengine.R:524).
+    .stateSym <- lapply(.states, function(.s) symengine::S(rxToSE(.s)))
+    names(.stateSym) <- .states
+    for (.ii in seq_along(.states)) {
+      .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")
+      if (!exists(.ddtName, envir = .env, inherits = FALSE)) next
+      .rhsI <- base::get(.ddtName, envir = .env, inherits = FALSE)
+      for (.jj in seq_along(.states)) {
+        .d <- symengine::D(.rhsI, .stateSym[[.jj]])
+        .dTxt <- rxFromSE(.d)
+        if (!.isZeroTxt(.dTxt)) {
+          .code <- c(.code, paste0("df(", .states[.ii], ")/dy(", .states[.jj],
+                                   ") = ", .dTxt))
+        }
+      }
+    }
+  }
+
   # 5. Extract and preserve the non-ODE lines from the original normalized model
   .normModel <- .mv$model["normModel"]
   .lines <- unlist(strsplit(.normModel, "[\n;]"))
