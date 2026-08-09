@@ -207,9 +207,12 @@
   while on a stiff one it is the only thing limiting it -- so `"auto"` (the
   default) starts on Picard and switches only once steps are actually being cut
   for non-convergence.  A model that never needs a Jacobian therefore never
-  forms one.  On a van der Pol oscillator at `mu = 100` integrated over a full
-  period this is about 30 times faster than Picard at matched accuracy, while a
-  Michaelis-Menten model is left on Picard and unchanged.  With both schemes
+  forms one.  On a van der Pol oscillator integrated over a full relaxation
+  period at matched accuracy this is about 39 times faster than Picard at
+  `mu = 100` (593 relinearizations against 45,913) and about 426 times faster at
+  `mu = 1000` (581 against 1,001,968), which takes a full cycle at that
+  stiffness from impractical to routine; a Michaelis-Menten model is left on
+  Picard and unchanged.  With both schemes
   given their best extrapolation level, that division holds: Picard is ahead on
   a non-stiff model at working tolerances and the exponential Rosenbrock step is
   ahead on a stiff one, and at a delivered error of 1e-8 on a non-stiff model.
