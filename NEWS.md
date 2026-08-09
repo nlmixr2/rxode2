@@ -209,18 +209,43 @@
   for non-convergence.  A model that never needs a Jacobian therefore never
   forms one.  On a van der Pol oscillator at `mu = 100` integrated over a full
   period this is about 30 times faster than Picard at matched accuracy, while a
-  Michaelis-Menten model is left on Picard and unchanged.
+  Michaelis-Menten model is left on Picard and unchanged.  With both schemes
+  given their best extrapolation level, that division holds: Picard is ahead on
+  a non-stiff model at working tolerances and the exponential Rosenbrock step is
+  ahead on a stiff one, and at a delivered error of 1e-8 on a non-stiff model.
+  `"exprb"` runs at fourth order or above, since its error estimate comes from
+  the extrapolation column and the third-order one is not reliable enough to
+  size a step from.
 
 - `method="indLin"` extrapolates further when it pays.  Each relinearization
   step could previously be raised from second to third order by running it also
   at half length; it can now use a Romberg column of up to four entries (`h`,
   `h/2`, `h/4`, `h/8`) for up to fifth order, at 3, 7 and 15 fixed-point solves
   per step.  `indLinRichardson="auto"` (the default) raises the level as the
-  step the controller settles on crosses each break-even, so a loose tolerance
-  never pays for extrapolation it does not need.  `"always4"` and `"always5"`
-  force the new levels.  On a 200-subject Michaelis-Menten solve this halves
-  the time at `atol=rtol=1e-8`, and on a single subject at `1e-12` it is over
-  seven times faster than the third-order step.
+  step the controller settles on crosses each break-even.  `"always4"` and
+  `"always5"` force the new levels.  On a 200-subject Michaelis-Menten solve
+  this halves the time at `atol=rtol=1e-8`, and on a single subject at `1e-12`
+  it is over seven times faster than the third-order step.
+
+- `indLinRichardson="auto"` keeps the extrapolation level it has earned for the
+  rest of the subject, instead of dropping back to second order at every
+  observation and re-earning it.  A step that only needs a few relinearizations
+  never reached the break-even, so a model observed at a dozen times ran most of
+  its profile at second order however low the break-even was set: on a
+  200-subject Michaelis-Menten solve the default took 0.626 s to reach a
+  delivered error of 1e-4 where forcing the fourth-order column took 0.098 s.
+  It is now 0.112 s, and 0.341 s rather than 0.646 s at 1e-6.  The break-evens
+  themselves are also measured rather than derived, and differ between the
+  fixed-point and exponential-Rosenbrock steps, whose costs per level differ.  A
+  model whose forcing reads no state is unaffected: the matrix exponential is
+  already exact for it and there is nothing to extrapolate.
+
+  Two consequences for anyone reading step counts.  A loose tolerance now does
+  use extrapolation -- it turns out to pay there too, taking fewer steps than
+  the second-order path rather than the same number -- and the delivered error
+  at a loose tolerance is much smaller than before, so a ratio of errors across
+  a tolerance sweep is no longer a way to read off the order of the default
+  path.  Use `indLinRichardson="never"` for that.
 
 - `rxSolve(indLinMatExpType="taylor")` adds a Taylor scaling-and-squaring
   matrix exponential, which needs no linear solve; its degree is chosen per
