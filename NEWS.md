@@ -199,6 +199,14 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `rxSolve(indLinMatExpType="taylor")` adds a Taylor scaling-and-squaring
+  matrix exponential, which needs no linear solve; its degree is chosen per
+  call from the norm.  It is as accurate as the default `"expokit"` on every
+  problem tested, including a linear system where `"Al-Mohy"` at its default
+  order is six orders of magnitude worse.  The default is unchanged: profiling
+  puts all of LAPACK at roughly 3% of a solve, so avoiding the linear solve does
+  not pay on nonlinear problems.
+
 - `$counts$dadt` and `$counts$jac` report the matrix exponentials computed and
   reused for a `method="indLin"` solve.  Both counters were previously unused on
   this path.

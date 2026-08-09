@@ -1124,7 +1124,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     keep = NULL,
                     indLinPhiTol = 1e-7,
                     indLinPhiM = 0L,
-                    indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+                    indLinMatExpType = c("expokit", "Al-Mohy", "arma", "taylor"),
                     indLinMatExpOrder = 6L,
                     drop = NULL,
                     idFactor = TRUE,
@@ -1400,10 +1400,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .omega <- lotri(omega)
     }
-    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=4, any.missing=FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
     } else {
-      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L)
+      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L, "taylor" = 4L)
       .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
     if (checkmate::testIntegerish(sumType, len=1, lower=1,

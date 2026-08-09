@@ -62,6 +62,63 @@ extern "C" void F77_NAME(matexprbs)(int *ideg, int *m, double *t, double *H, int
 
 extern "C" void matexp_MH09(double *x, int n, const int p, double *ret);
 
+// Taylor scaling-and-squaring, after Ruiz, Sastre, Ibanez & Defez (2015),
+// J. Comput. Appl. Math. 291:370-379.
+//
+// The point at compartmental sizes is what it does NOT do: all three Pade
+// backends need a linear solve, and at n = 2-4 the LAPACK call's fixed overhead
+// dominates the arithmetic it performs.  This is matrix multiplies only.
+//
+// The degree is chosen per call rather than fixed, which is what makes this
+// worth having: inductive linearization takes SHORT substeps, so ||A*h|| is
+// usually far below 1 and a degree-4 polynomial already reaches unit roundoff.
+// A fixed degree spends the same ~14 multiplies whatever the norm and loses to
+// Pade on exactly the problems that take the most steps.
+//
+// theta[i] is the largest ||A|| for which degree `deg[i]` truncates below
+// 2^-53: the remainder is bounded by ||A||^(m+1)/(m+1)!, so theta solves
+// x^(m+1)/(m+1)! = 2^-53.  Cost is (degree + squarings) matrix multiplies, and
+// the pair minimising that is chosen.
+static const int    RX_TAYLOR_DEG[]   = {4, 6, 8, 10, 12, 14, 16, 18};
+static const double RX_TAYLOR_THETA[] = {1.07e-3, 1.36e-2, 7.36e-2, 1.71e-1,
+                                         3.34e-1, 5.56e-1, 8.24e-1, 1.157};
+#define RX_TAYLOR_NDEG 8
+
+static inline void matrixExpTaylor(arma::mat& H, arma::mat& out, double t) {
+  const arma::uword n = H.n_rows;
+  H *= t;
+  double nrm = arma::norm(H, "inf");
+  if (!R_FINITE(nrm)) nrm = 0.0;
+  int deg = RX_TAYLOR_DEG[RX_TAYLOR_NDEG - 1];
+  int s = 0;
+  int best = -1;
+  for (int si = 0; si <= 1023; ++si) {
+    double x = std::ldexp(nrm, -si);
+    for (int di = 0; di < RX_TAYLOR_NDEG; ++di) {
+      if (x <= RX_TAYLOR_THETA[di]) {
+        int cost = RX_TAYLOR_DEG[di] + si;
+        if (best < 0 || cost < best) { best = cost; deg = RX_TAYLOR_DEG[di]; s = si; }
+        break;                    // degrees are ascending: the first fit is cheapest here
+      }
+    }
+    // Once the smallest degree fits, more scaling can only cost more.
+    if (best >= 0 && deg == RX_TAYLOR_DEG[0]) break;
+    if (std::ldexp(nrm, -si) <= RX_TAYLOR_THETA[0]) break;
+  }
+  if (s > 0) H *= std::ldexp(1.0, -s);
+  out.eye(n, n);
+  arma::mat tmp(n, n);
+  for (int k = deg; k >= 1; --k) {
+    tmp = H * out;
+    out = tmp / (double) k;
+    out.diag() += 1.0;
+  }
+  for (int i = 0; i < s; ++i) {
+    tmp = out * out;
+    out = tmp;
+  }
+}
+
 // Writes exp(H*t) into `out`, which must already be H's size.
 //
 // `H` IS DESTROYED.  Type 2 has always overwritten its operand in place, and
@@ -71,6 +128,10 @@ extern "C" void matexp_MH09(double *x, int n, const int p, double *ret);
 static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
                              int order){
   switch(type){
+  case 4: {
+    matrixExpTaylor(H, out, t);
+    break;
+  }
   case 3: {
     int p = order;
     if (p > 13) p = 13;
