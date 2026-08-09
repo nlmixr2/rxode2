@@ -715,9 +715,11 @@ d/dt(blood)     = a*intestine - b*blood
     .u <- suppressMessages(rxode2(.f))
     .e <- et(amt = 10) |> et(seq(0, 24, length.out = 13))
     expect_error(rxSolve(.u, .e, method = "indLin"), NA)
-    # linear model, so the matrix exponential is exact
+    # The reference must be liblsoda actually integrating: this model is one
+    # useLinCmt=TRUE converts, so without the opt-out the "liblsoda" arm is the
+    # analytic linCmt() solution and no ODE solver runs at all.
     expect_equal(rxSolve(.u, .e, method = "indLin")$cp,
-                 rxSolve(.u, .e, method = "liblsoda",
+                 rxSolve(.u, .e, method = "liblsoda", useLinCmt = FALSE,
                          atol = 1e-12, rtol = 1e-12)$cp,
                  tolerance = 1e-8)
 
@@ -745,9 +747,19 @@ d/dt(blood)     = a*intestine - b*blood
     }
     .ug <- suppressMessages(rxode2(.g))
     expect_equal(rxSolve(.ug, .e, method = "indLin", atol = 1e-10, rtol = 1e-10)$cp,
-                 rxSolve(.ug, .e, method = "liblsoda",
+                 rxSolve(.ug, .e, method = "liblsoda", useLinCmt = FALSE,
                          atol = 1e-12, rtol = 1e-12)$cp,
                  tolerance = 1e-5)
+
+    # The gate itself: method="indLin" must be recognized in every form it can
+    # arrive in, or the linCmt() rewrite runs and there is no d/dt() left to
+    # convert.  Anything else must leave the rewrite alone.
+    expect_true(rxode2:::.rxIndLinRequested(method = "indLin"))
+    expect_true(rxode2:::.rxIndLinRequested(method = 3L))
+    expect_true(rxode2:::.rxIndLinRequested(rxControl(method = "indLin")))
+    expect_false(rxode2:::.rxIndLinRequested(method = "liblsoda"))
+    expect_false(rxode2:::.rxIndLinRequested(rxControl(method = "lsoda")))
+    expect_false(rxode2:::.rxIndLinRequested(atol = 1e-8))
   })
 
   test_that("method='indLin' leaves a model with no d/dt() alone", {
