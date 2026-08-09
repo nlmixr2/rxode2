@@ -134,6 +134,7 @@
 #define Rxc_indLinStepSearch 130
 #define Rxc_indLinMaxIter 131
 #define Rxc_indLinRichardson 132
+#define Rxc_indLinIteration 133
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

@@ -226,6 +226,18 @@
 #'     settles on crosses those thresholds.  `"never"` (or `FALSE`), `"always"`
 #'     (or `TRUE`, third order) and `"always4"` (fourth order) force the choice.
 #'
+#' @param indLinIteration how `method="indLin"` solves each relinearization
+#'     step.  `"picard"` is the relaxed fixed-point iteration; `"newton"`
+#'     replaces it with a Newton iteration, which removes the contraction
+#'     condition so convergence stops limiting the step; `"exprb"` uses an
+#'     exponential Rosenbrock step, which does not iterate at all -- it puts the
+#'     full linearization into the exponential, so nothing can fail to converge.
+#'     Their costs differ sharply by problem: on a non-stiff model the iteration
+#'     never limits the step and Picard is cheapest, while on a stiff one it is
+#'     the only thing limiting it.  `"auto"` (the default) therefore starts on
+#'     Picard and switches only once steps are actually being cut for
+#'     non-convergence, so a model that never needs a Jacobian never forms one.
+#'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
 #' @param minSS Minimum number of iterations for a steady-state dose
@@ -1200,6 +1212,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinStepSearch = c("secant", "exact", "none"),
                     indLinMaxIter = 20L,
                     indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+                    indLinIteration = c("auto", "picard", "newton", "exprb"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1615,6 +1628,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                     "always4" = 3L,
                                     "always5" = 4L)[match.arg(indLinRichardson)])
     }
+    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=3,
+                                  any.missing=FALSE)) {
+      .indLinIteration <- as.integer(indLinIteration)
+    } else {
+      .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L,
+                                   "auto" = 3L)[match.arg(indLinIteration)])
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1890,7 +1910,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       zeroVarParamHandle=zeroVarParamHandle,
       indLinStepSearch=.indLinStepSearch,
       indLinMaxIter=indLinMaxIter,
-      indLinRichardson=.indLinRichardson
+      indLinRichardson=.indLinRichardson,
+      indLinIteration=.indLinIteration
     )
     class(.ret) <- "rxControl"
     return(.ret)

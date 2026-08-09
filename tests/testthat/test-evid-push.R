@@ -342,7 +342,7 @@ rxTest({
 
   test_that("in-model replace() pushes a replacement event", {
     # rxode2#1214: see the note on the other pushed-event tests below.
-    skip_if(identical(.methods0, "indLin"), "rxode2#1214")
+    skip_if("indLin" %in% .methods0, "rxode2#1214")
     obs <- seq(0, 24, by = 1)
     e <- et(amt = 100, time = 0) |>
       et(amt = 50, time = 18) |>

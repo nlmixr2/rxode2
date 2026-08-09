@@ -208,19 +208,64 @@ typedef struct {
 
 static std::vector<expCache_t> __indLinExpCache;
 static int __indLinExpCacheOff = 0;
-// Iteration scheme selector (temporary; becomes the `indLinIteration` control).
-static int __indLinUseNewton = 0;
-static int __indLinUseExprb  = 0;
+// `indLinIteration` codes.  Picard is the historical scheme and the cheapest
+// per step; the other two exist for stiff forcings, where Picard's contraction
+// condition -- not the error controller -- is what limits the step.
+#define RX_INDLIN_ITER_PICARD 0
+#define RX_INDLIN_ITER_NEWTON 1
+#define RX_INDLIN_ITER_EXPRB  2
+#define RX_INDLIN_ITER_AUTO   3
+// How many steps `auto` must see cut for non-convergence before it switches.
+// One cut can be a transient at a dose event; a short run of them is the
+// signal that the iteration, not the tolerance, is setting the step.  Measured
+// crossover on van der Pol is between mu = 10 (2.6% of attempts cut) and
+// mu = 100 (32.5%), so this only has to be above the noise.
+#define RX_INDLIN_AUTO_ITER_CUTS 8
+
+// `auto`'s decision has to outlive the interval that made it.
+// `indLinDriveAdaptive` runs once per OUTPUT INTERVAL, so a switch held in a
+// local resets at every observation: on van der Pol over one period that meant
+// re-learning stiffness 200 times and paying the first 8 cuts each time (1592
+// cuts against pure exprb's 1).  Keep it per thread, keyed by subject, and
+// reset it when the subject changes.
+//
+// Per thread rather than on `ind`, because a field there is an ABI change to a
+// struct downstream packages compile against; this is solver-internal state
+// with no reason to be visible.
+typedef struct {
+  int cSub;      // subject this decision belongs to; -1 = unset
+  int scheme;
+  int nCut;
+} indLinAutoState_t;
+static std::vector<indLinAutoState_t> __indLinAutoState;
+
+static inline indLinAutoState_t *indLinAutoFor(int cSub) {
+  if (__indLinAutoState.empty()) return NULL;
+  indLinAutoState_t *a =
+    &__indLinAutoState[rx_get_thread((int)__indLinAutoState.size())];
+  if (a->cSub != cSub) {
+    a->cSub = cSub;
+    a->scheme = RX_INDLIN_ITER_PICARD;
+    a->nCut = 0;
+  }
+  return a;
+}
 
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
-  __indLinUseNewton = (getenv("RXODE2_INDLIN_NEWTON") != NULL);
-  __indLinUseExprb  = (getenv("RXODE2_INDLIN_EXPRB") != NULL);
   if ((int)__indLinExpCache.size() < nCores) {
     __indLinExpCache.resize(nCores);
+  }
+  if ((int)__indLinAutoState.size() < nCores) {
+    __indLinAutoState.resize(nCores);
+  }
+  for (int i = 0; i < (int)__indLinAutoState.size(); i++) {
+    __indLinAutoState[i].cSub = -1;      // nothing survives into another solve
+    __indLinAutoState[i].scheme = RX_INDLIN_ITER_PICARD;
+    __indLinAutoState[i].nCut = 0;
   }
   for (int i = 0; i < (int)__indLinExpCache.size(); i++) {
     // Nothing may survive into a different solve: the operands are the same
@@ -232,6 +277,7 @@ extern "C" void ensureIndLinExpCache(int nCores) {
 
 extern "C" void freeIndLinExpCache(void) {
   __indLinExpCache.clear();
+  __indLinAutoState.clear();
 }
 
 // exp(H*t) into `out`, reusing an identical earlier exponential when there is
@@ -1092,17 +1138,15 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
 // frozen (a sensitivity model built by rxSensMatExp(), where `A` still reads the
 // states); only the derivative being expanded changes.
 static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                            int neq, double *rtol, double *atol,
+                            int neq, double *rtol, double *atol, int scheme,
                             const arma::vec &y0, double t, double h, double tcov,
                             double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                             arma::vec *u, arma::vec &yOut, arma::vec &w1,
                             double *errOut, double *ratioOut) {
   int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
   yOut = y0;
-  // Selector is an environment variable for now; Phase 4 turns it into the
-  // `indLinIteration` control.  Read per call so a test can toggle it.
   int ret;
-  if (__indLinUseExprb) {
+  if (scheme == RX_INDLIN_ITER_EXPRB) {
     // Exponential Rosenbrock has no iteration, so it produces no `w1` and no
     // pass-0/converged difference.  Its error comes from the Romberg tableau
     // instead, which is why the driver holds it at level >= 1; `errOut` is left
@@ -1119,7 +1163,7 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
     w1 = yOut;
     return ret;
   }
-  if (__indLinUseNewton) {
+  if (scheme == RX_INDLIN_ITER_NEWTON) {
     ret = indLinNewton(cSub, op, ind, neq, rtol, atol, maxIter,
                        yOut.memptr(), t, t + h, tcov,
                        InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
@@ -1169,7 +1213,7 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
 // `out`.  `cur` is scratch for the running state.  The last substep ends
 // exactly at `t+h` rather than accumulating `nSub` additions of `h/nSub`.
 static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                       int neq, double *rtol, double *atol,
+                       int neq, double *rtol, double *atol, int scheme,
                        const arma::vec &y0, double t, double h, int nSub, int locf,
                        double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                        arma::vec *u, arma::vec &out, arma::vec &w1, arma::vec &cur,
@@ -1181,7 +1225,7 @@ static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind 
     double ts = t + ((double) i)*hs;
     double te = (i == nSub - 1) ? (t + h) : (ts + hs);
     double e = 0.0, r = 1.0;
-    int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, cur, ts, te - ts,
+    int ret = indLinTrySubstep(cSub, op, ind, neq, rtol, atol, scheme, cur, ts, te - ts,
                                locf ? ts : te,
                                InfusionRate_, on_, ME, IndF, u, out, w1, &e, &r);
     if (r > rMax) rMax = r;
@@ -1207,7 +1251,7 @@ static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind 
 #define RX_INDLIN_RICH_MAXLVL 3
 
 static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                         int neq, double *rtol, double *atol,
+                         int neq, double *rtol, double *atol, int scheme,
                          const arma::vec &y0, double t, double h, int locf, int useRich,
                          double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                          arma::vec *u, arma::vec &yOut, arma::vec &w1,
@@ -1215,7 +1259,7 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
                          double *errOut, double *ratioOut) {
   double tcov = locf ? t : (t + h);
   if (useRich <= 0) {
-    return indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+    return indLinTrySubstep(cSub, op, ind, neq, rtol, atol, scheme, y0, t, h, tcov,
                             InfusionRate_, on_, ME, IndF, u, yOut, w1,
                             errOut, ratioOut);
   }
@@ -1226,7 +1270,7 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
   for (int j = 0; j < nEntry; ++j) {
     double r = 1.0;
     int nSub = 1 << j;
-    int ret = indLinChain(cSub, op, ind, neq, rtol, atol, y0, t, h, nSub, locf,
+    int ret = indLinChain(cSub, op, ind, neq, rtol, atol, scheme, y0, t, h, nSub, locf,
                           InfusionRate_, on_, ME, IndF, u, yOut, w1, yScratch, &r);
     if (r > rMax) rMax = r;
     if (ret != 1) { *ratioOut = rMax; return ret; }
@@ -1312,10 +1356,18 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS) ? 1 : 0;
   if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS4) useRich = 2;
   if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS5) useRich = 3;
+  // The scheme for this interval.  `auto` starts on Picard and is raised by the
+  // stiffness gate below, so a model that never needs a Jacobian never forms
+  // one -- Phase 0 measured zero convergence cuts on Michaelis-Menten at every
+  // tolerance, where Picard is also the cheapest per step.
+  int scheme = op->indLinIteration;
+  const int autoScheme = (scheme == RX_INDLIN_ITER_AUTO);
+  indLinAutoState_t *autoSt = autoScheme ? indLinAutoFor(cSub) : NULL;
+  if (autoScheme) scheme = (autoSt != NULL) ? autoSt->scheme : RX_INDLIN_ITER_PICARD;
   // exprb2 carries no embedded estimate of its own yet, so it needs at least
   // two tableau entries to produce one at all.  (The Luan-Ostermann schemes
   // supply their own pair and will lift this.)
-  if (__indLinUseExprb && useRich < 1) useRich = 1;
+  if (scheme == RX_INDLIN_ITER_EXPRB && useRich < 1) useRich = 1;
   int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
@@ -1338,7 +1390,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       // N^(2/p) of the second-order step's N, so the fourth-order column
       // (7 solves) beats the third (3 solves) once 7*N^(1/2) < 3*N^(2/3),
       // i.e. once N > (7/3)^6.
-      if (__indLinUseExprb && useRich < 1) useRich = 1;
+      if (scheme == RX_INDLIN_ITER_EXPRB && useRich < 1) useRich = 1;
       if (useRich < 3 && nLeft > (double) RX_INDLIN_AUTO_RICH5_N) {
         useRich = 3;
       } else if (useRich < 2 && nLeft > (double) RX_INDLIN_AUTO_RICH4_N) {
@@ -1352,11 +1404,20 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     // exponent is -1/(p_est + 1) either way.
     double expo = -1.0/((double) (useRich + 2));
     double err = 0.0, ratio = 1.0;
-    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, y0, t, h, locf, useRich,
+    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, scheme, y0, t, h, locf, useRich,
                             InfusionRate_, on_, ME, IndF, u, yTry, w1,
                             yScratch, richTab, &err, &ratio);
     if (ret == -2) {
       __indLinNCutConv++;
+      // The stiffness gate.  A step cut here is one the error controller would
+      // have accepted, so a run of them says the iteration is the binding
+      // constraint -- which is exactly the regime the other schemes exist for.
+      // One way only, so it cannot chatter.
+      if (autoScheme && autoSt != NULL && scheme == RX_INDLIN_ITER_PICARD &&
+          ++(autoSt->nCut) >= RX_INDLIN_AUTO_ITER_CUTS) {
+        scheme = autoSt->scheme = RX_INDLIN_ITER_EXPRB;
+        if (useRich < 1) useRich = 1;
+      }
       // Not a dead end: the contraction ratio is proportional to `h`, so a
       // failure to converge proves the step is too long and a bounded number
       // of cuts must fix it.  Size the cut from the measured ratio instead of

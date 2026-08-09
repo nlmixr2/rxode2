@@ -139,6 +139,11 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")
       if (!exists(.ddtName, envir = .env, inherits = FALSE)) next
       .rhsI <- base::get(.ddtName, envir = .env, inherits = FALSE)
+      # A constant derivative -- `d/dt(depot) <- 0`, a common way to declare a
+      # dosing-only compartment -- is stored as a plain numeric rather than a
+      # symengine Basic, and symengine::D() rejects it outright.  Its row is
+      # zero anyway, so there is nothing to emit.
+      if (!inherits(.rhsI, "Basic")) next
       for (.jj in seq_along(.states)) {
         .d <- symengine::D(.rhsI, .stateSym[[.jj]])
         .dTxt <- rxFromSE(.d)

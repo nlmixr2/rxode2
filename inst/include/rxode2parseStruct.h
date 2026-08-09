@@ -169,6 +169,7 @@ typedef struct {
   int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
   int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
+  int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
 } rx_solving_options;
 
 
