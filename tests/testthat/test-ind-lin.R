@@ -1024,6 +1024,32 @@ d/dt(blood)     = a*intestine - b*blood
     }
   })
 
+  test_that("the Al-Mohy backend works past its stack-scratch size", {
+    # matexp_MH09() keeps its workspace on the stack up to n = 12 and mallocs
+    # above that; it used to take the workspace from R_alloc, which is not
+    # thread-safe and is reached from inside indLin()'s parallel region.  A
+    # 14-compartment chain exercises the heap branch.
+    .n <- 14L
+    .code <- paste(c("matExp()", paste0("cmt(c", seq_len(.n), ")"),
+                     paste0("k_c", seq_len(.n - 1L), "_c", 2:.n, " = 0.3"),
+                     paste0("k_c", .n, "_output = 0.2")), collapse = "\n")
+    .big <- suppressMessages(rxode2(.code))
+    .e <- et(amt = 100, cmt = "c1") |> et(seq(0, 10, by = 1))
+    .a <- suppressMessages(rxSolve(.big, .e, method = "indLin", indLinMatExpType = 3))
+    .b <- suppressMessages(rxSolve(.big, .e, method = "indLin", indLinMatExpType = 2))
+    expect_true(all(is.finite(.a$c14)))
+    expect_gt(max(abs(.a$c14)), 0)
+    expect_equal(.a$c14, .b$c14, tolerance = 1e-8)
+    # and the small-n stack branch still agrees with it
+    expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar,
+                                          events = et(amt = 3) |> et(c(1, 4, 8, 24)),
+                                          method = "indLin", indLinMatExpType = 3))$central,
+                 suppressMessages(rxSolve(.mmMe, params = .mmPar,
+                                          events = et(amt = 3) |> et(c(1, 4, 8, 24)),
+                                          method = "indLin", indLinMatExpType = 2))$central,
+                 tolerance = 1e-6)
+  })
+
   test_that("the cache holds across the event types", {
     .cases <- list(
       bolus       = et(amt = 3, cmt = "depot"),

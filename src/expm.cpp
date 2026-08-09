@@ -85,6 +85,13 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
     // FIXME C++ implementation for threading.
     out = H;
     F77_CALL(matexprbs)(&order, &m, &t, out.memptr(), &iflag);
+    // matexpRBS used to warn through the R API from inside the parallel
+    // region and carry on; it now returns iflag < 0 and leaves `out`
+    // unfinished, which was previously used as if it were an answer.
+    if (iflag < 0) {
+      RSprintf(_("matrix exponential failed (singular Pade denominator)\n"));
+      out.zeros();
+    }
     break;
   }
   default:

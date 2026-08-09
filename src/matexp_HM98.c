@@ -121,7 +121,8 @@ static int matexp_scale_factor(const double *x, const int n)
 //     --- Merge the two, keep the better one
 
 // Matrix power by squaring: P = A^b (A is garbage on exit)
-static void matpow_by_squaring(double *A, int n, int b, double *P)
+// `wsp` is n*n scratch supplied by the caller -- see matexp_MH09().
+static void matpow_by_squaring(double *A, int n, int b, double *P, double *wsp)
 {
     if (b == 1) {
 	matcopy(n, A, P);
@@ -132,7 +133,7 @@ static void matpow_by_squaring(double *A, int n, int b, double *P)
 	return;
 
     // General case: b >= 2
-    double *TMP = (double *) R_alloc(n*n, sizeof(double));
+    double *TMP = wsp;
 
     while (b) {
 	if (b&1) { // P := P A
@@ -208,18 +209,20 @@ void matexp_pade_fillmats(const int m, const int n, const int i,
  * @param A
  * @param N
  */
-static void matexp_pade(int n, const int p, double *A, double *N)
+// `wsp` is 3*n*n doubles and `iwsp` n ints of caller-supplied scratch.
+static void matexp_pade(int n, const int p, double *A, double *N,
+                        double *wsp, int *iwsp)
 {
     int i, info = 0, n2 = n*n;
     // FIXME: check n2 (or n, such that n2 did not overflow !)
 
     // Power of A
-    double *B = (double*) R_alloc(n2, sizeof(double));
+    double *B = wsp;
 
     // Temporary storage for matrix multiplication;  matcopy(n, A, C);
-    double *C = Memcpy((double*)R_alloc(n2, sizeof(double)), A, n2);
+    double *C = Memcpy(wsp + n2, A, n2);
 
-    double *D = (double*) R_alloc(n2, sizeof(double));
+    double *D = wsp + 2*n2;
 
     for (i=0; i<n*n; i++) {
 	N[i] = 0.0;
@@ -247,8 +250,7 @@ static void matexp_pade(int n, const int p, double *A, double *N)
     }
 
     // R <- inverse(D) %*% N
-    int *ipiv = (int *) R_alloc(n, sizeof(int));
-    /* assert(ipiv != NULL); */
+    int *ipiv = iwsp;
 
     F77_CALL(dgesv)(&n, &n, D, &n, ipiv, N, &n, &info);
 
@@ -263,23 +265,57 @@ static void matexp_pade(int n, const int p, double *A, double *N)
  * @param p Order of the Pade' approximation. 0 < p <= 13.
  * @param ret On exit, ret = expm(x).
  */
+/* Scratch is owned here rather than taken from R's transient vmax stack.
+   This is reached from expm.cpp inside indLin()'s omp parallel region, and
+   R_alloc uses a single unlocked global that is not released until the
+   enclosing .Call returns -- so the old code both raced between threads and
+   grew vmax monotonically across a solve.  Compartmental models are small
+   enough to stay on the stack; anything larger falls back to malloc, which
+   is thread-safe. */
+#define MATEXP_STACK_N 12
+
 void matexp_MH09(double *x, int n, const int p, double *ret)
 {
+  int nn = n*n;
+  double wspStack[3*MATEXP_STACK_N*MATEXP_STACK_N];
+  int iwspStack[MATEXP_STACK_N];
+  double *wsp = wspStack;
+  int *iwsp = iwspStack;
+  double *wspHeap = NULL;
+  int *iwspHeap = NULL;
+  if (n > MATEXP_STACK_N) {
+    wspHeap = (double *) malloc(3*(size_t)nn*sizeof(double));
+    iwspHeap = (int *) malloc((size_t)n*sizeof(int));
+    if (wspHeap == NULL || iwspHeap == NULL) {
+      /* Never longjmp from here: a worker thread cannot unwind past the
+         parallel region.  Report zeros and let the caller notice. */
+      free(wspHeap);
+      free(iwspHeap);
+      for (int i = 0; i < nn; i++) ret[i] = 0.0;
+      return;
+    }
+    wsp = wspHeap;
+    iwsp = iwspHeap;
+  }
+
   int m = matexp_scale_factor(x, n);
 
   if (m == 0) {
-      matexp_pade(n, p, x, ret);
-      return;
+      matexp_pade(n, p, x, ret, wsp, iwsp);
+  } else {
+    int one = 1;
+    double tmp = 1. / ((double) m);
+
+    F77_CALL(dscal)(&nn, &tmp, x, &one);
+
+    matexp_pade(n, p, x, ret, wsp, iwsp);
+
+    matcopy(n, ret, x);
+
+    /* matexp_pade() has returned, so its scratch is free to reuse here. */
+    matpow_by_squaring(x, n, m, ret, wsp);
   }
 
-  int nn = n*n, one = 1;
-  double tmp = 1. / ((double) m);
-
-  F77_CALL(dscal)(&nn, &tmp, x, &one);
-
-  matexp_pade(n, p, x, ret);
-
-  matcopy(n, ret, x);
-
-  matpow_by_squaring(x, n, m, ret);
+  free(wspHeap);
+  free(iwspHeap);
 }
