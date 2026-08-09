@@ -202,12 +202,15 @@ typedef struct {
 
 static std::vector<expCache_t> __indLinExpCache;
 static int __indLinExpCacheOff = 0;
+// Iteration scheme selector (temporary; becomes the `indLinIteration` control).
+static int __indLinUseNewton = 0;
 
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
+  __indLinUseNewton = (getenv("RXODE2_INDLIN_NEWTON") != NULL);
   if ((int)__indLinExpCache.size() < nCores) {
     __indLinExpCache.resize(nCores);
   }
@@ -438,6 +441,52 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
 bool expm_assign=false;
 SEXP expm_s;
 
+// -- Forcing Jacobian ---------------------------------------------------------
+//
+// `Jf(i,j) = d(forcing_i)/d(state_j)`, by central differences of `IndF`.
+//
+// Differencing IndF is the right FD here and the generic helper is not:
+// `OdeBase::ode_jac` (src/ode_impl.cpp) differences `dydt`, which for a
+// matExp() model is a no-op stub and would hand back a zero Jacobian without
+// complaint.  IndF is a real compiled function, and since it returns
+// `InfusionRate + forcing` with the infusion rate independent of the states,
+// differencing it gives exactly the forcing Jacobian.
+//
+// The step follows `_esJacColF` (inst/include/rxode2parseHandleEvid.h): a
+// relative epsilon floored at the absolute scale, which is what keeps it
+// meaningful for a compartment sitting near zero.
+//
+// Every state is swept as a column, NOT just the ones in `op->indLin[]`.  That
+// list is the states whose forcing is state-dependent -- the nonzero ROWS.  A
+// forcing may perfectly well depend on a state that carries no forcing of its
+// own, and that entry is a column, not a row.  van der Pol is exactly this
+// case: the forcing `mu*(1-y^2)*dy` sits on `dy`, so only `dy` is flagged, yet
+// `d/dy = -2*mu*y*dy` is the dominant entry at large mu.  Restricting the sweep
+// to the flagged set drops it silently, and Newton then fails to converge at
+// all on the stiff problems it exists for.
+static void indLinForcingJacFd(int cSub, rx_solving_options *op,
+                               int neq, double tcov, double tEval,
+                               const double *y, t_IndF IndF,
+                               arma::mat &Jf, arma::vec &yPert,
+                               arma::vec &fPlus, arma::vec &fMinus) {
+  Jf.zeros(neq, neq);
+  if (IndF == NULL) return;
+  std::copy(y, y + neq, yPert.memptr());
+  for (int j = 0; j < neq; ++j) {
+    const double yj = y[j];
+    const double eps = 6e-6 * std::max(fabs(yj), 1.0);
+    yPert[j] = yj + eps;
+    IndF(cSub, tcov, tEval, fPlus.memptr(), yPert.memptr());
+    yPert[j] = yj - eps;
+    IndF(cSub, tcov, tEval, fMinus.memptr(), yPert.memptr());
+    yPert[j] = yj;
+    const double d = 0.5/eps;
+    for (int i = 0; i < neq; ++i) {
+      Jf(i, j) = (fPlus[i] - fMinus[i])*d;
+    }
+  }
+}
+
 int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov,
 	   double tme, double *InfusionRate_, int *on_, t_ME ME, rx_solving_options *op,
 	   rx_solving_options_ind *ind){
@@ -620,6 +669,161 @@ static inline double indLinResNorm(rx_solving_options *op, const double *rtol, c
 // Returns 1 on convergence, -2 when `maxIter` passes are exhausted or the
 // iterate leaves the reals -- that is a "cut the step" signal to the driver,
 // not a failure -- or whatever `meOnly()` failed with.
+// The same substep fixed point as `indLinIterate`, reached by Newton instead of
+// relaxed Picard.  Same equation, same answer -- only the path differs.
+//
+// The map is `w = g(w) = exp(Ah)y0 + P(h) f(t,w)` with `P(h) = A^-1(exp(Ah)-I)`,
+// so the residual is `G(w) = w - g(w)` and
+//
+//     G'(w) = I - P(h) f'(w)
+//
+// P(h) is approximated by `h*I`.  That is the classical simplified-Newton
+// choice (lsoda's corrector uses `I - h*gamma*J` for the same reason), and it
+// is a good one here rather than merely convenient: `P(h) = h*phi1(Ah)` and
+// phi1(0) = I, so the approximation is exact as `||Ah|| -> 0`.  A matExp()
+// model puts its LINEAR dynamics in `A` -- where the exponential handles them
+// exactly and no iteration is needed -- and only the nonlinear remainder in the
+// forcing, which is what this iterates on.  So the regime where the iteration
+// is the binding constraint is precisely the regime where `||Ah||` is small.
+// Materialising the true P(h) would cost a second, wider exponential per step;
+// if convergence measures poorly this is the first thing to revisit.
+//
+// An inexact Jacobian costs convergence RATE, never correctness: the fixed
+// point of `G(w) = 0` does not depend on `G'`.  That is also why the Jacobian
+// is formed once per substep and reused across iterations (a chord iteration)
+// rather than refreshed each time.
+//
+// The contract is `indLinIterate`'s, exactly, because that is what buys the
+// Romberg extrapolation, the exponential cache and the event handling:
+//   * `*w1Out` is the pass-0 `tEval = subTp` left-endpoint answer -- so this
+//     still evaluates one Picard pass to produce it.  Newton's own first
+//     iterate is not that value, and returning it would turn the caller's error
+//     estimate into a measure of this iteration's transient instead of
+//     truncation, silently corrupting every extrapolation level built on it.
+//   * `*ratioOut` is a `>= 1` "how much too long is this step" number.
+//   * `-2` means "cut the step", never a hard error.
+static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                        int neq, double *rtol, double *atol, int maxIter,
+                        double *yp_, double subTp, double subTf, double tcov,
+                        double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                        arma::vec *u, arma::vec *w1Out, double *ratioOut) {
+  arma::vec y0(yp_, neq);
+  arma::vec w(y0), gw(neq), r(neq), dw(neq);
+  arma::vec yPert(neq), fPlus(neq), fMinus(neq);
+  arma::mat Jf(neq, neq), G(neq, neq);
+  if (ratioOut != NULL) *ratioOut = 1.0;
+
+  // Pass 0: the left-endpoint answer, evaluated at subTp in time as well as in
+  // state.  This is the caller's `w1`.
+  rxIndLinCountIter(1);
+  int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
+                       subTp, InfusionRate_, on_, ME, IndF, u);
+  if (ret <= 0) return ret;
+  if (w1Out != NULL) *w1Out = w;
+
+  // Chord Jacobian, formed once at the pass-0 iterate.
+  indLinForcingJacFd(cSub, op, neq, tcov, subTf, w.memptr(), IndF,
+                     Jf, yPert, fPlus, fMinus);
+  const double h = subTf - subTp;
+  // P(h) = A^-1(exp(Ah) - I), the operator the map actually applies to the
+  // forcing.  It is the top-right block of exp([[A, I],[0, 0]]h) -- the same
+  // augmentation `meOnly` uses, widened to the full identity instead of just
+  // the infusion unit columns -- so it needs no A^-1 and rides the exponential
+  // cache.  `h*I` is its small-||Ah|| limit and was tried first; see the note
+  // in the header for when that is and is not adequate.
+  arma::mat Aloc(neq, neq);
+  ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
+  arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
+  aug.submat(0, 0, neq-1, neq-1) = Aloc;
+  aug.submat(0, neq, neq-1, 2*neq-1).eye();
+  arma::mat augE(2*neq, 2*neq);
+  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  arma::mat Ph = augE.submat(0, neq, neq-1, 2*neq-1);
+  G = -Ph*Jf;
+  G.diag() += 1.0;
+  // Invert once and reuse: at compartmental sizes this is a handful of flops,
+  // and it keeps the per-iteration cost to a matrix-vector product.  If it is
+  // singular, fall through to plain Picard steps rather than failing the step.
+  arma::mat Ginv;
+  bool haveFact = arma::inv(Ginv, G);
+
+  double resPrev = -1.0;
+  int nGrow = 0;
+  bool refreshed = false;
+  for (int i = 0; i < maxIter; ++i) {
+    rxIndLinCountIter(1);
+    gw = w;
+    ret = indLinPass(cSub, op, ind, gw.memptr(), y0.memptr(), subTp, subTf, tcov,
+                     subTf, InfusionRate_, on_, ME, IndF, u);
+    if (ret <= 0) return ret;
+    r = gw - w;                       // -G(w); the Picard step is exactly this
+    for (int j = op->indLinN; j--;) {
+      if (!R_FINITE(gw[op->indLin[j]])) {
+        std::copy(gw.begin(), gw.end(), yp_);
+        return -2;
+      }
+    }
+    double res = indLinResNorm(op, rtol, atol, gw, r);
+    // Converged: same test and same 0.1x factor as the Picard path, but on the
+    // raw residual -- Newton has no relaxation to undo.
+    bool ok = true;
+    for (int j = op->indLinN; j--;) {
+      int k = op->indLin[j];
+      if (fabs(r[k]) >= RX_INDLIN_PICARD_TOL_FAC*(rtol[k]*fabs(gw[k]) + atol[k])) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) {
+      std::copy(gw.begin(), gw.end(), yp_);
+      return 1;
+    }
+    // A residual that keeps growing means the step is too long; report how badly
+    // so the driver can size its cut, exactly as the Picard ratio does.
+    //
+    // Two consecutive increases, not one -- the same rule the Picard path uses
+    // (`nGrow >= 2`).  Newton's residual is legitimately non-monotone early,
+    // especially with a chord Jacobian, and bailing on the first bump makes the
+    // driver cut steps it did not need to: on van der Pol at mu = 1000 that
+    // turned a win into a 2.3x loss, with cut steps going UP.
+    //
+    // On the first bump, refresh the chord Jacobian at the current iterate
+    // before giving up on it (a Shamanskii step).  A stale Jacobian is the
+    // likely cause of the stall on a stiff problem, and refreshing costs
+    // 2*indLinN cheap IndF evaluations against a whole rejected step.
+    if (resPrev > 0.0 && res > resPrev) {
+      nGrow++;
+      if (nGrow >= 2) {
+        if (ratioOut != NULL) {
+          double q = res/resPrev;
+          *ratioOut = (q > 1.0) ? q : 1.0;
+        }
+        std::copy(gw.begin(), gw.end(), yp_);
+        return -2;
+      }
+      if (!refreshed) {
+        refreshed = true;
+        indLinForcingJacFd(cSub, op, neq, tcov, subTf, gw.memptr(), IndF,
+                           Jf, yPert, fPlus, fMinus);
+        G = -Ph*Jf;
+        G.diag() += 1.0;
+        haveFact = arma::inv(Ginv, G);
+      }
+    } else {
+      nGrow = 0;
+    }
+    resPrev = res;
+    if (haveFact) {
+      dw = Ginv*r;
+      w += dw;
+    } else {
+      w = gw;                          // degrade to a Picard step rather than stall
+    }
+  }
+  std::copy(w.begin(), w.end(), yp_);
+  return -2;
+}
+
 static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                          int neq, double *rtol, double *atol, int maxIter, int stepSearch,
                          double *yp_, double subTp, double subTf, double tcov,
@@ -763,9 +967,18 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
                             double *errOut, double *ratioOut) {
   int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
   yOut = y0;
-  int ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxIter, op->indLinStepSearch,
-                          yOut.memptr(), t, t + h, tcov,
-                          InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
+  // Selector is an environment variable for now; Phase 4 turns it into the
+  // `indLinIteration` control.  Read per call so a test can toggle it.
+  int ret;
+  if (__indLinUseNewton) {
+    ret = indLinNewton(cSub, op, ind, neq, rtol, atol, maxIter,
+                       yOut.memptr(), t, t + h, tcov,
+                       InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
+  } else {
+    ret = indLinIterate(cSub, op, ind, neq, rtol, atol, maxIter, op->indLinStepSearch,
+                        yOut.memptr(), t, t + h, tcov,
+                        InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
+  }
   if (ret != 1) return ret;
   double err = 0.0;
   for (int k = 0; k < neq; ++k) {
