@@ -210,6 +210,7 @@ static std::vector<expCache_t> __indLinExpCache;
 static int __indLinExpCacheOff = 0;
 // Iteration scheme selector (temporary; becomes the `indLinIteration` control).
 static int __indLinUseNewton = 0;
+static int __indLinUseExprb  = 0;
 
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
@@ -217,6 +218,7 @@ extern "C" void ensureIndLinExpCache(int nCores) {
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
   __indLinUseNewton = (getenv("RXODE2_INDLIN_NEWTON") != NULL);
+  __indLinUseExprb  = (getenv("RXODE2_INDLIN_EXPRB") != NULL);
   if ((int)__indLinExpCache.size() < nCores) {
     __indLinExpCache.resize(nCores);
   }
@@ -720,6 +722,81 @@ static inline double indLinResNorm(rx_solving_options *op, const double *rtol, c
 // Returns 1 on convergence, -2 when `maxIter` passes are exhausted or the
 // iterate leaves the reals -- that is a "cut the step" signal to the driver,
 // not a failure -- or whatever `meOnly()` failed with.
+// One exponential Rosenbrock-Euler (exprb2) step.  No iteration at all -- this
+// is what distinguishes it from both Picard and Newton, and the reason it is
+// worth trying after Newton's ceiling turned out to be below break-even: there
+// is no convergence loop to fail, so no step is ever cut for non-convergence,
+// and the Jacobian is formed once per STEP rather than once per iteration.
+//
+// Split at the current state rather than at the state-free rate matrix:
+//
+//     J = A + f'(y_n),   g(y) = f(y) - f'(y_n) y,   y' = J y + g(y)
+//     y_{n+1} = exp(Jh) y_n + P_J(h) g(y_n)
+//
+// Both terms come from ONE exponential of size n+1, not 2n: augmenting with the
+// forcing as a single column,
+//
+//     exp([[J, g],[0, 0]] h) [y_n; 1] = [exp(Jh)y_n + P_J(h)g ; 1]
+//
+// which is the same identity `meOnly` uses for infusion rates, with the whole
+// forcing vector in one column instead of a unit column per infused
+// compartment.
+//
+// `f(y_n)` is IndF's output, which already folds in the infusion rates, so the
+// infusion needs no separate augmentation here.  With no IndF (code 3) the
+// forcing is the infusion rate alone and f' is zero, which degenerates to the
+// plain matrix-exponential step -- correct, and what that code path already
+// does.
+//
+// Returns 1, or whatever the exponential path failed with.  It cannot return
+// -2: there is nothing to converge.
+static int indLinExprb2(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                        int neq, const arma::vec &y0, double t, double h, double tcov,
+                        double tEval, double *InfusionRate_, t_ME ME, t_IndF IndF,
+                        arma::vec *u, arma::vec &yOut,
+                        arma::mat &Jf, arma::vec &yPert, arma::vec &fPlus,
+                        arma::vec &fMinus, arma::mat &aug, arma::vec &augY,
+                        arma::mat &augE, arma::mat &Aloc) {
+  // A at the step start.
+  ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
+  // f(y_n): IndF when there is one, otherwise the bare infusion rate.
+  arma::vec f0(neq);
+  if (u != NULL) {
+    IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
+    indLinForcingJacFd(cSub, op, neq, tcov, tEval, y0.memptr(), IndF,
+                       Jf, yPert, fPlus, fMinus);
+  } else {
+    std::copy(InfusionRate_, InfusionRate_ + neq, f0.memptr());
+    Jf.zeros(neq, neq);
+  }
+  // J = A + f', g = f(y_n) - f' y_n
+  arma::mat J = Aloc + Jf;
+  arma::vec g = f0 - Jf*y0;
+  // exp([[J, g],[0,0]] h) [y0; 1]
+  aug.zeros(neq + 1, neq + 1);
+  aug.submat(0, 0, neq - 1, neq - 1) = J;
+  aug.submat(0, neq, neq - 1, neq) = g;
+  augE.set_size(neq + 1, neq + 1);
+  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  augY.set_size(neq + 1);
+  std::copy(y0.begin(), y0.end(), augY.begin());
+  augY[neq] = 1.0;
+  arma::vec sol = augE*augY;
+  yOut.set_size(neq);
+  std::copy(sol.begin(), sol.begin() + neq, yOut.begin());
+  // Unlike the iterating schemes this cannot fail to converge, but it CAN
+  // overflow: `J` is the full linearisation, so at a relaxation layer it
+  // carries a large POSITIVE eigenvalue and exp(Jh) blows up unless h is
+  // short.  Without this the step returns NaN, the error estimate is NaN, and
+  // the controller can no longer reject anything -- van der Pol at mu = 100
+  // produced NaN for a whole period before this guard.  Report it the same way
+  // a non-converging iteration does, so the driver cuts the step.
+  for (int k = 0; k < neq; ++k) {
+    if (!R_FINITE(yOut[k])) return -2;
+  }
+  return 1;
+}
+
 // The same substep fixed point as `indLinIterate`, reached by Newton instead of
 // relaxed Picard.  Same equation, same answer -- only the path differs.
 //
@@ -1025,6 +1102,23 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
   // Selector is an environment variable for now; Phase 4 turns it into the
   // `indLinIteration` control.  Read per call so a test can toggle it.
   int ret;
+  if (__indLinUseExprb) {
+    // Exponential Rosenbrock has no iteration, so it produces no `w1` and no
+    // pass-0/converged difference.  Its error comes from the Romberg tableau
+    // instead, which is why the driver holds it at level >= 1; `errOut` is left
+    // for `indLinTryStep` to fill from the column.
+    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq);
+    arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
+    ret = indLinExprb2(cSub, op, ind, neq, y0, t, h, tcov,
+                       t, InfusionRate_, ME, IndF, u, yOut,
+                       Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc);
+    // -2 means the exponential overflowed; ratio 2 asks the driver for a
+    // halving, since there is no measured contraction ratio to size it from.
+    if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
+    if (errOut != NULL) *errOut = 0.0;
+    w1 = yOut;
+    return ret;
+  }
   if (__indLinUseNewton) {
     ret = indLinNewton(cSub, op, ind, neq, rtol, atol, maxIter,
                        yOut.memptr(), t, t + h, tcov,
@@ -1218,6 +1312,10 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS) ? 1 : 0;
   if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS4) useRich = 2;
   if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS5) useRich = 3;
+  // exprb2 carries no embedded estimate of its own yet, so it needs at least
+  // two tableau entries to produce one at all.  (The Luan-Ostermann schemes
+  // supply their own pair and will lift this.)
+  if (__indLinUseExprb && useRich < 1) useRich = 1;
   int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
@@ -1240,6 +1338,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       // N^(2/p) of the second-order step's N, so the fourth-order column
       // (7 solves) beats the third (3 solves) once 7*N^(1/2) < 3*N^(2/3),
       // i.e. once N > (7/3)^6.
+      if (__indLinUseExprb && useRich < 1) useRich = 1;
       if (useRich < 3 && nLeft > (double) RX_INDLIN_AUTO_RICH5_N) {
         useRich = 3;
       } else if (useRich < 2 && nLeft > (double) RX_INDLIN_AUTO_RICH4_N) {
