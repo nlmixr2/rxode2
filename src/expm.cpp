@@ -250,7 +250,7 @@ bool expm_assign=false;
 SEXP expm_s;
 
 int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov,
-	   double *InfusionRate_, int *on_, t_ME ME, rx_solving_options *op,
+	   double tme, double *InfusionRate_, int *on_, t_ME ME, rx_solving_options *op,
 	   rx_solving_options_ind *ind){
   // Honor per-individual neqOverride when ind is available; otherwise fall
   // back to op->neq.  Keeps allocations / loops consistent with what the
@@ -259,7 +259,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
   arma::mat m0(neq, neq);
-  ME(cSub, tcov, tf, m0.memptr(), yc_);
+  ME(cSub, tcov, tme, m0.memptr(), yc_);
   const arma::vec InfusionRate(InfusionRate_, neq, false, false);
   arma::vec yp(yp_, neq, false, true);
   arma::vec yc(yc_, neq, false, true);
@@ -312,14 +312,14 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 // in `w`.  `u` is NULL for the codes that carry no `IndF` forcing.
 static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                              double *w, double *y0, double subTp, double subTf, double tcov,
-                             double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
-                             arma::vec *u) {
+                             double tEval, double *InfusionRate_, int *on_,
+                             t_ME ME, t_IndF IndF, arma::vec *u) {
   double *force = InfusionRate_;
   if (u != NULL) {
-    IndF(cSub, tcov, subTf, u->memptr(), w);
+    IndF(cSub, tcov, tEval, u->memptr(), w);
     force = u->memptr();
   }
-  return meOnly(cSub, w, y0, subTp, subTf, tcov, force, on_, ME, op, ind);
+  return meOnly(cSub, w, y0, subTp, subTf, tcov, tEval, force, on_, ME, op, ind);
 }
 
 // Cap on the inductive iteration, deliberately small and deliberately NOT
@@ -342,6 +342,17 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 #define RX_INDLIN_SEARCH_NONE   0
 #define RX_INDLIN_SEARCH_SECANT 1
 #define RX_INDLIN_SEARCH_EXACT  2
+// `indLinRichardson` codes.
+#define RX_INDLIN_RICH_NEVER  0
+#define RX_INDLIN_RICH_ALWAYS 1
+#define RX_INDLIN_RICH_AUTO   2
+// Auto switch-over.  If the second-order step needs N substeps to cross an
+// interval, the third-order one needs about N^(2/3) of them -- error falls as
+// h^2 against h^3, so the step counts go as E^(-1/2) against E^(-1/3) -- at
+// three times the cost per step.  Richardson is therefore cheaper once
+// 3*N^(2/3) < N, i.e. once N > 3^3 = 27.  Measured crossover on a
+// Michaelis-Menten model: 33 substeps per interval, at atol=rtol=1e-5.
+#define RX_INDLIN_AUTO_RICH_N 27
 
 // Secant estimate of the iteration map's contraction ratio from two
 // consecutive Picard residuals, measured only over the states flagged in
@@ -428,7 +439,13 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
     wPrev = w;
+    // Pass 0 evaluates at the step START, in time as well as in state; every
+    // later pass evaluates at the end.  Both halves of the quadrature have to
+    // move together or the average cancels the state error and leaves the
+    // explicit-time error behind, which drops the step back to first order for
+    // any forcing that reads `t`.
     int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
+                         (i == 0) ? subTp : subTf,
                          InfusionRate_, on_, ME, IndF, u);
     if (ret <= 0) return ret;
     // Pass 0 linearizes at the substep-start state: that is the forward
@@ -476,7 +493,7 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
       // exponential per bisection.
       wTry = w;
       int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(), subTp, subTf, tcov,
-                          InfusionRate_, on_, ME, IndF, u);
+                          subTf, InfusionRate_, on_, ME, IndF, u);
       if (r2 <= 0) return r2;
       double num = 0.0, den = 0.0;
       for (int j = op->indLinN; j--;) {
@@ -523,16 +540,25 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
 // One adaptive attempt over `[t, t+h]` starting from `y0`.  Leaves the
 // propagated state in `yOut` and the scaled local error estimate in `*errOut`.
 //
-// The estimate is free.  Writing `A0 = A(y0)`, `F0 = F(y0)` and `B0` for the
-// state-dependent part of the true Jacobian, the forward answer (linearize at
-// the start, which is pass 0 of the iteration and also exactly what the
-// non-iterating codes 1/2 compute) and the converged backward answer bracket
-// the truth symmetrically:
+// The estimate is free, and it is a quadrature error in disguise.  Over the
+// step the exact solution is
 //
-//   w1 - exact = -(h^2/2) B0 F0 ,   w* - exact = +(h^2/2) B0 F0
+//   y(h) = exp(A h) y0 + int_0^h exp(A (h-s)) g(s) ds ,   g(s) = f(y(s))
+//
+// and freezing the forcing replaces that integral by `phi(h) g(.)` with
+// `phi(h) = int_0^h exp(A (h-s)) ds`.  Freezing it at the start (pass 0 of the
+// iteration, and exactly what the non-iterating codes 1/2 compute) is the
+// left-endpoint rule; freezing it at the converged iterate is the right-endpoint
+// rule.  Their errors are the two ends of the same trapezoid:
+//
+//   w1 - exact = -(h^2/2) g'(0) + O(h^3) ,  w* - exact = +(h^2/2) g'(0) + O(h^3)
 //
 // so `w* - w1` is TWICE the local error of either -- hence the 0.5 below,
-// without which every tolerance would silently be twice as tight as asked.
+// without which every tolerance would silently be twice as tight as asked --
+// and their average is the trapezoidal rule, which is one order better.  The
+// same cancellation holds when it is the matrix rather than the forcing that is
+// frozen (a sensitivity model built by rxSensMatExp(), where `A` still reads the
+// states); only the derivative being expanded changes.
 static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                             int neq, double *rtol, double *atol,
                             const arma::vec &y0, double t, double h, double tcov,
@@ -583,13 +609,13 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
 // matrix exponentials at 1e-3 and 12x at 1e-6 -- so it is off by default.
 static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                          int neq, double *rtol, double *atol,
-                         const arma::vec &y0, double t, double h, int locf,
+                         const arma::vec &y0, double t, double h, int locf, int useRich,
                          double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                          arma::vec *u, arma::vec &yOut, arma::vec &w1,
                          arma::vec &yHalf, arma::vec &yOne,
                          double *errOut, double *ratioOut) {
   double tcov = locf ? t : (t + h);
-  if (!op->indLinRichardson) {
+  if (!useRich) {
     return indLinTrySubstep(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
                             InfusionRate_, on_, ME, IndF, u, yOut, w1,
                             errOut, ratioOut);
@@ -643,10 +669,12 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // step to shrink there but never to grow.
   bool inSS = (ind != NULL && !ISNA(ind->ssTime));
   arma::vec y0(yp_, neq), yTry(neq), w1(neq), yHalf(neq), yOne(neq);
-  // The step is sized from an estimate of the order the extrapolation is built
-  // on: first order by default, second under Richardson.  Exponent is
-  // -1/(p_est + 1) either way.
-  double expo = op->indLinRichardson ? (-1.0/3.0) : (-0.5);
+  // "auto" starts second order and turns Richardson on once this interval has
+  // needed enough steps to pay for it, so a loose tolerance never carries the
+  // extra cost and a tight one is not left crawling.  The switch is one way
+  // within an interval, so it cannot chatter.
+  int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS);
+  int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
     // Snap to `tf` rather than leaving a sliver behind.
@@ -657,8 +685,20 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       if (ind != NULL) ind->err |= rxErrIndLinConverge;
       return 1;
     }
+    // Decide from the step the controller has settled on rather than by
+    // burning the switch-over count first: if crossing what is left of the
+    // interval at this step would take more than the break-even number of
+    // steps, Richardson is already the cheaper way to finish.
+    if (autoRich && !useRich && nAccept > 0 && h > 0.0 &&
+        (tf - t)/h > (double) RX_INDLIN_AUTO_RICH_N) {
+      useRich = 1;
+    }
+    // The step is sized from an estimate of the order the extrapolation is
+    // built on: first order for the plain step, second under Richardson.  The
+    // exponent is -1/(p_est + 1) either way.
+    double expo = useRich ? (-1.0/3.0) : (-0.5);
     double err = 0.0, ratio = 1.0;
-    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, y0, t, h, locf,
+    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, y0, t, h, locf, useRich,
                             InfusionRate_, on_, ME, IndF, u, yTry, w1,
                             yHalf, yOne, &err, &ratio);
     if (ret == -2) {
@@ -811,14 +851,14 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     double tcov = locf ? _subTp : _subTf;
     switch(doIndLin){
     case 1: {
-      _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, InfusionRate_, on_, ME, op, ind);
+      _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, _subTf, InfusionRate_, on_, ME, op, ind);
       break;
     }
     case 2: {
       // Evaluate the forcing at the interval-start state, the same vector
       // `meOnly()` hands to `ME` below (it is `meOnly()` that advances `yp_`).
       IndF(cSub, tcov, _subTf, u.memptr(), yp_);
-      _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, u.memptr(), on_, ME, op, ind);
+      _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, _subTf, u.memptr(), on_, ME, op, ind);
       break;
     }
     default:
