@@ -216,15 +216,20 @@
   multi-state product yields a state-free rate constant; both are kept so
   existing code keeps working.
 
-- `rxSolve(indLinRichardson=TRUE)` Richardson-extrapolates each
-  `method="indLin"` relinearization step, raising it from second to third order:
-  the step is run once whole and twice at half length, and since a second-order
-  step has a quarter the error at half the length, the two answers together
-  cancel it.  This costs three fixed-point solves per step instead of one, so it
-  is off by default and only pays once the tolerance is tight enough that taking
-  far fewer steps outweighs the per-step cost.  Measured on a Michaelis-Menten
-  model, reaching a relative error of `1e-4` is a wash, `1e-6` is about three
-  times faster, and `1e-8` about six times faster (32,000 steps down to 1,100).
+- `rxSolve(indLinRichardson=)` Richardson-extrapolates each `method="indLin"`
+  relinearization step, raising it from second to third order: the step is run
+  once whole and twice at half length, and since a second-order step has a
+  quarter the error at half the length, the two answers together cancel it.
+  That costs three fixed-point solves per step instead of one, so it only pays
+  once the tolerance is tight enough that taking far fewer steps outweighs it.
+  `"auto"` (the default) decides per interval: after the first accepted step it
+  compares the step the controller settled on against what is left of the
+  interval, and switches when finishing at that step would take more than 27 of
+  them -- the break-even point, since a second-order step needing `N` steps
+  becomes a third-order one needing about `N^(2/3)` at three times the cost
+  each.  `"always"`/`TRUE` and `"never"`/`FALSE` force the choice.  On a
+  Michaelis-Menten model the switch-over lands at about `atol=rtol=1e-5`; at
+  `1e-8` `"auto"` takes 544 steps where the second-order step takes 12,865.
 
 - `rxSolve(indLinStepSearch=)` and `rxSolve(indLinMaxIter=)` control the
   fixed-point iteration `method="indLin"` runs inside each relinearization step.
@@ -275,6 +280,13 @@
   `1/sqrt(error)` instead of `1/error`.  On the Michaelis-Menten model above,
   matching the accuracy the old scheme delivered at its default now takes about
   a twentieth of the steps, and the gap widens the more accuracy is asked for.
+
+  The forward answer is evaluated at the step's starting time as well as its
+  starting state, so that it and the converged answer really are the two ends of
+  one quadrature.  Evaluating both at the step end cancels the state error but
+  leaves the explicit-time error, which silently dropped any forcing that reads
+  `t` back to first order: on a Michaelis-Menten model with an `exp(-t)` input
+  the error at `atol=rtol=1e-9` falls from 4.6e-03 to 1.1e-07.
 
 ### Installation / linking
 

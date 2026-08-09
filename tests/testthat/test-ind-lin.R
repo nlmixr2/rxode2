@@ -397,15 +397,19 @@ d/dt(blood)     = a*intestine - b*blood
                         res_ode$central)) / max(abs(res_ode$central)),
               1e-3)
 
-    # hmax is a cap, not the accuracy knob: loosening it does not degrade the
-    # answer the way it did when the substep grid was uniform.
+    # hmax is a cap, not the accuracy knob: an answer taken at the loosest hmax
+    # is still accurate, where under the old uniform substep grid it tracked
+    # hmax directly and was ~70% off.  A tighter hmax is still somewhat better
+    # -- it forces more steps, which also makes "auto" reach for the
+    # third-order path sooner -- but neither has to be tuned to get an answer.
     diff_coarse <- max(abs(
       rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.5)$central - res_ode$central
     ))
     diff_fine <- max(abs(
       rxSolve(mod_mexp, et_f, pars, method = "indLin", hmax = 0.01)$central - res_ode$central
     ))
-    expect_lt(diff_coarse, 10 * diff_fine)
+    expect_lt(diff_coarse / max(abs(res_ode$central)), 1e-3)
+    expect_lt(diff_fine, diff_coarse)
 
     ode_code_lin <- "
       ka <- 0.5; cl <- 0.2; v <- 10
@@ -538,14 +542,42 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(rxControl(indLinMaxIter = 0L))
   })
 
+  test_that("a forcing that reads t keeps second order", {
+    # The step averages a forward and a converged answer, whose leading errors
+    # cancel.  That only works if BOTH are genuinely the two ends of the same
+    # quadrature: evaluating the forcing at the step end in the forward pass
+    # too cancels the state error but leaves the explicit-time error behind,
+    # which silently drops the step back to first order.  The forward pass
+    # therefore evaluates at the step start in time as well as in state.
+    .code <- paste0("vmax <- 10\nkm <- 5\n",
+                    "d/dt(central) = -vmax*central/(km+central) + 5*exp(-0.5*t)\n")
+    .ode <- rxode2(.code)
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    expect_true(rxModelVars(.mm)$indLin$fullIndLin)
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
+    .tol <- 10^-(4:9)
+    .err <- vapply(.tol, function(tt) {
+      max(abs(rxSolve(.mm, .e, method = "indLin",
+                      atol = tt, rtol = tt)$central - .ref$central))
+    }, double(1))
+    # error falls roughly in proportion to the tolerance (second order); a
+    # first-order step would only manage its square root, a slope near 0.5.
+    expect_gt(unname(coef(lm(log(.err) ~ log(.tol)))[2]), 0.8)
+    expect_lt(.err[length(.err)], 1e-5)
+  })
+
   test_that("indLinRichardson raises the step to third order, off by default", {
     # Richardson-extrapolating each relinearization step (once whole, twice at
     # half length) cancels the second-order term the average leaves behind.  It
     # costs three fixed-point solves per step rather than one, so it is off by
     # default and only wins once the tolerance is tight enough that taking far
     # fewer steps outweighs the per-step cost.
-    expect_false(rxControl()$indLinRichardson)
-    expect_true(rxControl(indLinRichardson = TRUE)$indLinRichardson)
+    expect_equal(rxControl()$indLinRichardson, 2L)          # auto
+    expect_equal(rxControl(indLinRichardson = "always")$indLinRichardson, 1L)
+    expect_equal(rxControl(indLinRichardson = "never")$indLinRichardson, 0L)
+    expect_equal(rxControl(indLinRichardson = TRUE)$indLinRichardson, 1L)
+    expect_equal(rxControl(indLinRichardson = FALSE)$indLinRichardson, 0L)
     expect_error(rxControl(indLinRichardson = "yes"))
 
     .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
@@ -560,18 +592,26 @@ d/dt(blood)     = a*intestine - b*blood
     .steps <- function(...) sum(rxSolve(.mm, .e, method = "indLin", ...)$counts$slvr)
 
     # both agree on the answer
-    expect_lt(.relErr(atol = 1e-8, rtol = 1e-8, indLinRichardson = TRUE), 1e-6)
+    expect_lt(.relErr(atol = 1e-8, rtol = 1e-8, indLinRichardson = "always"), 1e-6)
 
     # third order: at a fixed tolerance it needs far fewer steps than second
     # order does, because its error falls faster than the tolerance it is held
     # to.  An order-2 scheme could not show this gap.
-    expect_lt(.steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = TRUE),
-              .steps(atol = 1e-8, rtol = 1e-8) / 10)
+    expect_lt(.steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "always"),
+              .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
+
+    # "auto" pays the extra cost only when it buys something: at a loose
+    # tolerance it is exactly the second-order step, and at a tight one it is
+    # close to always-on rather than to never.
+    expect_equal(.steps(atol = 1e-3, rtol = 1e-3),
+                 .steps(atol = 1e-3, rtol = 1e-3, indLinRichardson = "never"))
+    expect_lt(.steps(atol = 1e-8, rtol = 1e-8),
+              .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
 
     # and it really is a higher order: over two decades of tolerance the error
     # falls by more than the second-order scheme manages over the same range
     .rich <- vapply(c(1e-4, 1e-6), function(tol) {
-      .relErr(atol = tol, rtol = tol, indLinRichardson = TRUE)
+      .relErr(atol = tol, rtol = tol, indLinRichardson = "always")
     }, double(1))
     expect_true(.rich[2] < .rich[1])
   })

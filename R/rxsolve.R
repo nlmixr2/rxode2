@@ -212,13 +212,16 @@
 #'     iteration contracts in proportion to the step, so the solver reads it as
 #'     a step that is too long and retries with a shorter one.
 #'
-#' @param indLinRichardson when `TRUE`, `method="indLin"` Richardson-extrapolates
-#'     each relinearization step, raising it from second to third order.  It
-#'     runs the step once whole and twice at half length, so it costs three
-#'     fixed-point solves per step instead of one, and pays for itself only when
-#'     the tolerance is tight -- roughly three times fewer matrix exponentials
-#'     for a relative error of `1e-3`, and twelve times fewer at `1e-6`.  `FALSE`
-#'     (the default) keeps the second-order step, which is already free.
+#' @param indLinRichardson whether `method="indLin"` Richardson-extrapolates
+#'     each relinearization step, raising it from second to third order.  The
+#'     step is run once whole and twice at half length, so it costs three
+#'     fixed-point solves instead of one, and pays for itself only once the
+#'     tolerance is tight enough that taking far fewer steps outweighs that.
+#'     `"auto"` (the default) starts each interval second order and switches on
+#'     once the interval has needed more than 27 steps, which is where the two
+#'     costs cross: a second-order step needing `N` steps becomes a third-order
+#'     one needing about `N^(2/3)` at three times the cost each.  `"always"`
+#'     (or `TRUE`) and `"never"` (or `FALSE`) force the choice.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
@@ -1193,7 +1196,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     zeroVarParamHandle=c("warn", "ignore", "keep"),
                     indLinStepSearch = c("secant", "exact", "none"),
                     indLinMaxIter = 20L,
-                    indLinRichardson = FALSE,
+                    indLinRichardson = c("auto", "always", "never"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1597,7 +1600,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertIntegerish(indLinMaxIter, len=1, lower=1, any.missing=FALSE)
     indLinMaxIter <- as.integer(indLinMaxIter)
-    checkmate::assertLogical(indLinRichardson, len=1, any.missing=FALSE)
+    if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L &&
+          !is.na(indLinRichardson)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=2,
+                                         any.missing=FALSE)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else {
+      .indLinRichardson <- unname(c("never" = 0L, "always" = 1L,
+                                    "auto" = 2L)[match.arg(indLinRichardson)])
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1873,7 +1885,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       zeroVarParamHandle=zeroVarParamHandle,
       indLinStepSearch=.indLinStepSearch,
       indLinMaxIter=indLinMaxIter,
-      indLinRichardson=indLinRichardson
+      indLinRichardson=.indLinRichardson
     )
     class(.ret) <- "rxControl"
     return(.ret)

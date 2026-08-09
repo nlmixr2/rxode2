@@ -194,7 +194,7 @@ rxSolve(
   zeroVarParamHandle = c("warn", "ignore", "keep"),
   indLinStepSearch = c("secant", "exact", "none"),
   indLinMaxIter = 20L,
-  indLinRichardson = FALSE,
+  indLinRichardson = c("auto", "always", "never"),
   envir = parent.frame()
 )
 
@@ -1621,13 +1621,16 @@ iterations per relinearization step.  Running out is not an error: the
 iteration contracts in proportion to the step, so the solver reads it as
 a step that is too long and retries with a shorter one.}
 
-\item{indLinRichardson}{when \code{TRUE}, \code{method="indLin"} Richardson-extrapolates
-each relinearization step, raising it from second to third order.  It
-runs the step once whole and twice at half length, so it costs three
-fixed-point solves per step instead of one, and pays for itself only when
-the tolerance is tight -- roughly three times fewer matrix exponentials
-for a relative error of \code{1e-3}, and twelve times fewer at \code{1e-6}.  \code{FALSE}
-(the default) keeps the second-order step, which is already free.}
+\item{indLinRichardson}{whether \code{method="indLin"} Richardson-extrapolates
+each relinearization step, raising it from second to third order.  The
+step is run once whole and twice at half length, so it costs three
+fixed-point solves instead of one, and pays for itself only once the
+tolerance is tight enough that taking far fewer steps outweighs that.
+\code{"auto"} (the default) starts each interval second order and switches on
+once the interval has needed more than 27 steps, which is where the two
+costs cross: a second-order step needing \code{N} steps becomes a third-order
+one needing about \code{N^(2/3)} at three times the cost each.  \code{"always"}
+(or \code{TRUE}) and \code{"never"} (or \code{FALSE}) force the choice.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
