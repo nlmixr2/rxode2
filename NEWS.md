@@ -199,6 +199,18 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `rxSolve(indLinIteration=)` chooses how `method="indLin"` solves each
+  relinearization step: `"picard"` (the previous and only behaviour),
+  `"newton"`, or `"exprb"`, an exponential Rosenbrock step that does not
+  iterate at all.  Which is cheapest depends entirely on the problem -- on a
+  non-stiff model the iteration never limits the step and Picard is cheapest,
+  while on a stiff one it is the only thing limiting it -- so `"auto"` (the
+  default) starts on Picard and switches only once steps are actually being cut
+  for non-convergence.  A model that never needs a Jacobian therefore never
+  forms one.  On a van der Pol oscillator at `mu = 100` integrated over a full
+  period this is about 30 times faster than Picard at matched accuracy, while a
+  Michaelis-Menten model is left on Picard and unchanged.
+
 - `method="indLin"` extrapolates further when it pays.  Each relinearization
   step could previously be raised from second to third order by running it also
   at half length; it can now use a Romberg column of up to four entries (`h`,

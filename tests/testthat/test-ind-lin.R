@@ -971,6 +971,66 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true("df(I)/dy(Ga)=Iss*Cli*Sincr" %in% .norm)
   })
 
+  test_that("indLinIteration round-trips through rxControl", {
+    expect_equal(rxControl()$indLinIteration, 3L)          # auto
+    expect_equal(rxControl(indLinIteration = "picard")$indLinIteration, 0L)
+    expect_equal(rxControl(indLinIteration = "newton")$indLinIteration, 1L)
+    expect_equal(rxControl(indLinIteration = "exprb")$indLinIteration, 2L)
+    expect_equal(rxControl(indLinIteration = "auto")$indLinIteration, 3L)
+    expect_equal(rxControl(indLinIteration = 2L)$indLinIteration, 2L)
+    expect_error(rxControl(indLinIteration = "nope"))
+  })
+
+  test_that("every indLinIteration scheme solves the same problem", {
+    # Newton and exprb change HOW the substep is solved, not what it solves, so
+    # all three have to agree with an ODE integration of the same model.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .o <- suppressMessages(rxode2(.txt))
+    .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
+    .ref <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
+                                     atol = 1e-12, rtol = 1e-12))$central
+    for (.it in c("picard", "newton", "exprb", "auto")) {
+      .r <- suppressMessages(rxSolve(.m, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+                                     events = .e, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8, indLinIteration = .it))
+      expect_equal(.r$central, .ref, tolerance = 1e-5, info = .it)
+    }
+  })
+
+  test_that("auto gates on stiffness and stays switched within a subject", {
+    .mmTxt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                     "d/dt(depot) = -ka*depot\n",
+                     "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .mm <- suppressMessages(rxode2(rxToIndLin(.mmTxt)))
+    .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
+    .steps <- function(mod, pars, ev, it, ...) {
+      sum(suppressMessages(rxSolve(mod, params = pars, events = ev, method = "indLin",
+                                   indLinIteration = it, ...))$counts$slvr)
+    }
+    # Michaelis-Menten never cuts a step for non-convergence, so auto must stay
+    # on Picard -- identically, not just close.
+    .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
+    expect_equal(.steps(.mm, .p, .e, "auto",   atol = 1e-8, rtol = 1e-8),
+                 .steps(.mm, .p, .e, "picard", atol = 1e-8, rtol = 1e-8))
+
+    # A stiff van der Pol over a full period is the opposite: the iteration is
+    # what limits the step, so auto must switch and then stay switched.  It
+    # pays the detection cuts once; if the decision reset per output interval
+    # it would pay them at every one and land far closer to Picard.
+    .van <- suppressMessages(rxode2(rxToIndLin(
+      "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
+    .tmax <- (3 - 2*log(2))*100
+    .ev <- et(seq(0, .tmax, length.out = 200))
+    .sPic <- .steps(.van, c(mu = 100), .ev, "picard", atol = 1e-6, rtol = 1e-6)
+    .sExp <- .steps(.van, c(mu = 100), .ev, "exprb",  atol = 1e-6, rtol = 1e-6)
+    .sAut <- .steps(.van, c(mu = 100), .ev, "auto",   atol = 1e-6, rtol = 1e-6)
+    expect_lt(.sAut, .sPic/5)      # switched
+    expect_lt(.sAut, 2*.sExp)      # and stayed switched
+  })
+
   # --- matrix-exponential cache -----------------------------------------------
   # The cache is keyed on the bytes of (n, h, operand), so a hit is a proof
   # rather than an assumption.  These tests attack the ways a *flag*-based
