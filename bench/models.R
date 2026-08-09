@@ -55,7 +55,54 @@
     })
   }
 
-  list(ode = odeModel, lin = linModel, cov = covModel)
+  ## Linear matExp() model -- method="indLin" codes 1/2, no fixed-point
+  ## iteration.  The matrix exponential is the whole answer here, so this case
+  ## isolates the cost of the exponential itself.
+  meLinModel <- function() {
+    ini({
+      tka <- 0.45; tcl <- 1; tv <- 3.45
+      eta.ka ~ 0.6; eta.cl ~ 0.3; eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      matExp()
+      cmt(depot)
+      cmt(center)
+      k_depot_center <- ka
+      k_center_output <- cl / v
+      cp <- center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  ## Michaelis-Menten elimination as an indLin() forcing -- codes 3/4, so this
+  ## one runs the fixed-point iteration and the adaptive step controller.
+  meMmModel <- function() {
+    ini({
+      tka <- 0.45; tvmax <- -1.6; tkm <- -0.7; tv <- 3.45
+      eta.ka ~ 0.6; eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      vmax <- exp(tvmax)
+      km <- exp(tkm)
+      v <- exp(tv + eta.v)
+      matExp()
+      cmt(depot)
+      cmt(center)
+      k_depot_center <- ka
+      cp <- center / v
+      indLin(center) <- -vmax * cp / (km + cp)
+      cp ~ add(add.sd)
+    })
+  }
+
+  list(ode = odeModel, lin = linModel, cov = covModel,
+       meLin = meLinModel, meMm = meMmModel)
 }
 
 .benchEvents <- function(withCov = FALSE) {

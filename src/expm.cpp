@@ -258,6 +258,12 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
+  // Diagnostics: count the matrix exponentials this solve actually computes.
+  // `dydt()` is a no-op stub for a matExp() model, so `dadt_counter` is free on
+  // this path and carries the count out through `$counts$dadt` with no extra
+  // plumbing.  Divided by `$counts$slvr` it gives the exponentials per accepted
+  // relinearization step, which is the redundancy this work is aimed at.
+  if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
   arma::mat m0(neq, neq);
   ME(cSub, tcov, tme, m0.memptr(), yc_);
   const arma::vec InfusionRate(InfusionRate_, neq, false, false);

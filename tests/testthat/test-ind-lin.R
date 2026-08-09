@@ -688,4 +688,89 @@ d/dt(blood)     = a*intestine - b*blood
                          atol = 1e-12, rtol = 1e-12)$central,
                  tolerance = 1e-2)
   })
+
+  test_that("method='indLin' solves a function/rxUi model", {
+    # rxSolve.rxUi hands rxSolve.default the *simulation* model, and with
+    # useLinCmt=TRUE it first rewrote this ODE into linCmt().  That model has
+    # linCmt() pseudo-compartments but no d/dt() at all, so rxToIndLin() looked
+    # for derivatives that were not there and the solve died in symengine with
+    # "Can only parse scalar data".
+    .f <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+        cp ~ add(add.sd)
+      })
+    }
+    .u <- suppressMessages(rxode2(.f))
+    .e <- et(amt = 10) |> et(seq(0, 24, length.out = 13))
+    expect_error(rxSolve(.u, .e, method = "indLin"), NA)
+    # linear model, so the matrix exponential is exact
+    expect_equal(rxSolve(.u, .e, method = "indLin")$cp,
+                 rxSolve(.u, .e, method = "liblsoda",
+                         atol = 1e-12, rtol = 1e-12)$cp,
+                 tolerance = 1e-8)
+
+    # the same model given as an rxUi object rather than a function
+    expect_equal(rxSolve(rxode2(.u), .e, method = "indLin")$cp,
+                 rxSolve(.u, .e, method = "indLin")$cp)
+
+    # a nonlinear model has no linCmt() form to be diverted into, but must
+    # still reach the iterating path through the UI
+    .g <- function() {
+      ini({
+        tvmax <- 1
+        tkm <- 1
+        tv <- 1
+        add.sd <- 0.1
+      })
+      model({
+        vmax <- tvmax
+        km <- tkm
+        v <- tv
+        d/dt(central) <- -vmax * (central / v) / (km + central / v)
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }
+    .ug <- suppressMessages(rxode2(.g))
+    expect_equal(rxSolve(.ug, .e, method = "indLin", atol = 1e-10, rtol = 1e-10)$cp,
+                 rxSolve(.ug, .e, method = "liblsoda",
+                         atol = 1e-12, rtol = 1e-12)$cp,
+                 tolerance = 1e-5)
+  })
+
+  test_that("method='indLin' leaves a model with no d/dt() alone", {
+    # $state counts linCmt() pseudo-compartments, so a pure linCmt() model
+    # looked like it had something to convert.  There is nothing to convert and
+    # the analytic solution stands.
+    .h <- function() {
+      ini({
+        tcl <- 1
+        tv <- 3
+        add.sd <- 0.1
+      })
+      model({
+        cl <- exp(tcl)
+        v <- exp(tv)
+        cp <- linCmt()
+        cp ~ add(add.sd)
+      })
+    }
+    .uh <- suppressMessages(rxode2(.h))
+    .e <- et(amt = 10) |> et(seq(0, 24, length.out = 5))
+    expect_error(rxSolve(.uh, .e, method = "indLin"), NA)
+    expect_equal(rxSolve(.uh, .e, method = "indLin")$cp,
+                 rxSolve(.uh, .e)$cp)
+  })
 })

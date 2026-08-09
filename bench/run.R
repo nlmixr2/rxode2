@@ -56,6 +56,8 @@ add("compile_ode", .timeIt(quote(rxode2(mods$ode)), times = reps))
 mOde <- rxode2(mods$ode)
 mLin <- rxode2(mods$lin)
 mCov <- rxode2(mods$cov)
+mMeLin <- suppressMessages(rxode2(mods$meLin))
+mMeMm  <- suppressMessages(rxode2(mods$meMm))
 
 ## --- single-subject solve (fixed-overhead dominated) ---------------------
 add("solve_single_ode", .timeIt(quote(rxSolve(mOde, ev)), times = max(reps, 20)))
@@ -65,6 +67,27 @@ add("solve_single_lin", .timeIt(quote(rxSolve(mLin, ev)), times = max(reps, 20))
 add("solve_pop_ode",  .timeIt(quote(rxSolve(mOde, ev, nSub = nbig)), times = reps))
 add("solve_pop_lin",  .timeIt(quote(rxSolve(mLin, ev, nSub = nbig)), times = reps))
 add("solve_pop_cov",  .timeIt(quote(rxSolve(mCov, evCov, nSub = nbig)), times = reps))
+
+## --- method="indLin" matrix-exponential solves ---------------------------
+## meLin exercises codes 1/2 (no iteration, exponential is the answer); meMm
+## exercises codes 3/4 (fixed-point iteration + adaptive step control).
+add("solve_single_indlin_lin",
+    .timeIt(quote(rxSolve(mMeLin, ev, method = "indLin")), times = max(reps, 20)))
+add("solve_single_indlin_mm",
+    .timeIt(quote(rxSolve(mMeMm, ev, method = "indLin")), times = max(reps, 20)))
+## The path a user actually takes: a plain ODE model solved with method="indLin",
+## which has to be converted to matExp() form first.  Written as text because
+## method="indLin" does not currently work on an rxUi (function) model.
+mOdeTxt <- suppressMessages(rxode2(paste0(
+  "ka <- 1\ncl <- 1\nv <- 30\n",
+  "d/dt(depot) <- -ka*depot\n",
+  "d/dt(center) <- ka*depot - cl/v*center\n",
+  "cp <- center/v\n")))
+add("solve_single_indlin_convert",
+    .timeIt(quote(rxSolve(mOdeTxt, ev, method = "indLin")), times = max(reps, 20)))
+add("solve_pop_indlin_mm",
+    .timeIt(quote(rxSolve(mMeMm, ev, nSub = nbig %/% 10, method = "indLin")),
+            times = reps))
 
 ## --- event table construction --------------------------------------------
 add("et_build", .timeIt(quote({

@@ -2311,6 +2311,47 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 
 #' @rdname rxSolve
 #' @export
+#' Does this model actually carry `d/dt()` equations?
+#'
+#' `rxModelVars(x)$state` also counts `linCmt()` pseudo-compartments, so it is
+#' non-empty for models that have no differential equations at all.
+#'
+#' @param x model to test
+#' @return logical, `TRUE` when the normalized model has at least one `d/dt()`
+#' @noRd
+.rxHasOde <- function(x) {
+  .norm <- try(rxNorm(x), silent = TRUE)
+  if (inherits(.norm, "try-error") || is.null(.norm)) {
+    return(TRUE)
+  }
+  any(grepl("d/dt(", .norm, fixed = TRUE))
+}
+
+#' Was `method="indLin"` asked for in these `rxSolve()` dots?
+#'
+#' @param ... the `rxSolve()` dots to inspect
+#' @return logical, `TRUE` when the dots select the inductive-linearization method
+#' @noRd
+.rxIndLinRequested <- function(...) {
+  .dots <- list(...)
+  .m <- .dots$method
+  if (is.null(.m)) {
+    for (.d in .dots) {
+      if (inherits(.d, "rxControl") && !is.null(.d$method)) {
+        .m <- .d$method
+        break
+      }
+    }
+  }
+  if (is.null(.m) || length(.m) != 1L) {
+    return(FALSE)
+  }
+  if (is.numeric(.m)) {
+    return(isTRUE(.m == 3L))
+  }
+  isTRUE(as.character(.m) == "indLin")
+}
+
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
@@ -2354,7 +2395,11 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
-  if (isTRUE(useLinCmt)) {
+  # `method="indLin"` asks for the matrix exponential of this model's own rate
+  # matrix, so the ODE-to-linCmt() auto-conversion must not fire: it leaves a
+  # model with linCmt() pseudo-compartments and no d/dt() lines at all, which
+  # rxToIndLin() cannot convert.
+  if (isTRUE(useLinCmt) && !.rxIndLinRequested(...)) {
     .linInfo <- .odeToLinDetect(object) # nolint
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
@@ -2633,16 +2678,44 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   } else if (.ctl$method == 3L) {
-    if (length(rxModelVars(object)$state) > 0L) {
+    # `$state` also counts linCmt() pseudo-compartments, which have no d/dt()
+    # line behind them; converting such a model would look for derivatives that
+    # do not exist.  There is nothing to convert when no d/dt() is present, and
+    # the model solves as it stands.
+    if (length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
       .calcSens <- NULL
+      .modelEnv <- NULL
       if (rxIs(object, "rxode2")) {
         .e <- attr(class(object), ".rxode2.env")
         if (is.environment(.e)) {
           .calcSens <- .e$calcSens
         }
+        # An rxode2 object is itself an environment; the attribute above is a
+        # legacy handle that no longer matches one built from text or a file.
+        # Cache against whichever is actually there.
+        .modelEnv <- if (is.environment(.e)) .e else if (is.environment(object)) object else NULL
       }
-      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
-      object <- rxode2(.mexpCode)
+      # Converting an ODE model to matExp() form runs symengine and then builds
+      # the generated model, which together cost several times more than the
+      # solve they are preparing for.  Both are a pure function of this model,
+      # so cache the result on the model's own environment: an rxode2 object is
+      # immutable once built and `calcSens` is read from that same environment,
+      # so nothing can invalidate it.  A text or function `object` has no such
+      # environment and still converts per call.
+      .useCache <- isTRUE(getOption("rxode2.indLinConvCache", TRUE))
+      .converted <- if (.useCache && is.environment(.modelEnv)) {
+        .modelEnv$.rxIndLinModel
+      } else {
+        NULL
+      }
+      if (is.null(.converted)) {
+        .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+        .converted <- rxode2(.mexpCode)
+        if (.useCache && is.environment(.modelEnv)) {
+          assign(".rxIndLinModel", .converted, envir = .modelEnv)
+        }
+      }
+      object <- .converted
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
