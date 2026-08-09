@@ -182,6 +182,13 @@
   integrates its own rate matrix rather than being replaced by the analytic
   solution.
 
+- A steady-state infusion (`ss=1` or `ss=2` with a `rate`) gave a diverging
+  solve under `method="indLin"`.  Its solver was the only one that never drained
+  the pending-dose queue, which is where the infusion's off record is held, so
+  the steady state itself was found correctly and the infusion was then left
+  running for the rest of the timeline.  Steady-state boluses and ordinary
+  (non-steady-state) infusions were unaffected.
+
 - `method="indLin"` is substantially faster.  The ODE-to-`matExp()` conversion
   ran on every `rxSolve()` call although it is a pure function of the model, and
   cost several times the solve it was preparing for; it is now done once per

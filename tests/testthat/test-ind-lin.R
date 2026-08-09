@@ -801,6 +801,49 @@ d/dt(blood)     = a*intestine - b*blood
                  rxSolve(.uh, .e)$cp)
   })
 
+  test_that("a steady-state infusion turns off on the main timeline", {
+    # `ind_indLin0` was the only per-method driver that never drained the
+    # pending/extra dose queue, and a steady-state infusion's OFF record lives
+    # there.  handleSS established a correct trough and the forward solve then
+    # ran with the infusion still on, growing without bound -- ~16 absolute
+    # against liblsoda, and ~8 on a purely linear model, so it was the driver
+    # rather than the inductive iteration.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .me <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .ode <- suppressMessages(rxode2(.txt))
+    .linTxt <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    .lme <- suppressMessages(rxode2(rxToIndLin(.linTxt)))
+    .lode <- suppressMessages(rxode2(.linTxt))
+    .o <- seq(0, 20, by = 2.5)
+    .e <- et(amt = 1, rate = 1, ii = 7, ss = 1, cmt = "depot") |> et(.o)
+    expect_equal(
+      suppressMessages(rxSolve(.me, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+                               events = .e, method = "indLin",
+                               atol = 1e-8, rtol = 1e-8))$central,
+      suppressMessages(rxSolve(.ode, events = .e, method = "liblsoda",
+                               atol = 1e-12, rtol = 1e-12))$central,
+      tolerance = 1e-6)
+    expect_equal(
+      suppressMessages(rxSolve(.lme, params = c(ka = 1, cl = 1, v = 10),
+                               events = .e, method = "indLin",
+                               atol = 1e-8, rtol = 1e-8))$central,
+      suppressMessages(rxSolve(.lode, params = c(ka = 1, cl = 1, v = 10),
+                               events = .e, method = "liblsoda",
+                               atol = 1e-12, rtol = 1e-12))$central,
+      tolerance = 1e-5)
+    # ss=1 with no addl is one dose at steady state and then washout, so the
+    # concentration must FALL after the last interval.  Under the bug it grew
+    # without bound instead, which is what this catches directly.
+    .r <- suppressMessages(rxSolve(.me, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+                                   events = et(amt = 1, rate = 1, ii = 7, ss = 1,
+                                               cmt = "depot") |> et(c(0, 7, 14, 21)),
+                                   method = "indLin", atol = 1e-8, rtol = 1e-8))
+    expect_lt(.r$central[3], .r$central[1])
+    expect_lt(.r$central[4], .r$central[3])
+  })
+
   # --- matrix-exponential cache -----------------------------------------------
   # The cache is keyed on the bytes of (n, h, operand), so a hit is a proof
   # rather than an assumption.  These tests attack the ways a *flag*-based
@@ -942,13 +985,9 @@ d/dt(blood)     = a*intestine - b*blood
     # amt must be inside what Vmax can clear over ii (0.2 mg/h * 7 h = 1.4 mg),
     # or the model accumulates without bound and has no steady state to find --
     # liblsoda errors on that too.
-    #
-    # Bolus only.  Steady-state INFUSION (ss=1 with a rate) is separately broken
-    # on this method -- it accumulates linearly rather than reaching a steady
-    # state, missing liblsoda by ~16 absolute -- identically with the
-    # exponential cache on and off, so it is a pre-existing defect and not
-    # something these tests are about.
-    for (.ss in list(list(amt = 1, ii = 7, ss = 1))) {
+    for (.ss in list(list(amt = 1, ii = 7, ss = 1),
+                     list(amt = 1, ii = 7, ss = 1, rate = 1),
+                     list(amt = 1, ii = 7, ss = 2, rate = 1))) {
       # 1e-8, not 1e-10: the steady-state loop re-solves the tau interval and
       # does not reach a fixed point at 1e-10 on this model, with or without the
       # cache.  A separate limitation, noted rather than worked around here.
@@ -1056,9 +1095,9 @@ d/dt(blood)     = a*intestine - b*blood
       fixedRate   = et(amt = 3, rate = 1.5, cmt = "depot"),
       addlII      = et(amt = 3, addl = 3, ii = 6, cmt = "depot"),
       lag         = et(amt = 3, cmt = "depot"),
-      # steady-state doses stay inside what Vmax can clear over ii; ss with a
-      # rate is omitted because it is separately broken (see above)
+      # steady-state doses stay inside what Vmax can clear over ii
       ssBolus     = et(amt = 1, ii = 8, ss = 1, cmt = "depot"),
+      ssInfusion  = et(amt = 1, rate = 1, ii = 8, ss = 1, cmt = "depot"),
       evid4       = et(amt = 3, evid = 4, cmt = "depot"))
     for (.nm in names(.cases)) {
       .e <- .cases[[.nm]] |> et(seq(0, 24, by = 3))
