@@ -11,8 +11,12 @@
 #include <iostream>
 #include <RcppArmadillo.h>
 #include <algorithm>
+#include <cstring>
+#include <cstdlib>
+#include <vector>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2dataErr.h"
+#include "rxomp.h"
 
 #define _(String) (String)
 
@@ -87,6 +91,109 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
     H *= t;
     out = arma::expmat(H);
   }
+}
+
+// -- Per-thread content-addressed matrix-exponential cache --------------------
+//
+// `matrixExp` is a pure function of (operand, t, type, order), and type/order
+// cannot change mid-solve.  A bitwise match on (n, t, operand) is therefore a
+// PROOF that a stored result is the right answer, rather than an assumption
+// about what has been invalidated.  That is why this is content-addressed and
+// not a validity flag: the old `ind->cacheME` flag was cleared on some
+// covariate paths and not others, and reviving it would be a staleness bug.
+// Content addressing needs no such bookkeeping -- a state-dependent rate matrix
+// (rxSensMatExp models) simply never hits, and an infusion starting or stopping
+// changes the augmented dimension, which is a key mismatch.
+//
+// `memcmp`, not elementwise ==: conservative on signed zero, correct on NaN bit
+// patterns, and it does not invite anyone to relax it into a tolerance later.
+//
+// Four slots because the fixed grid uses one h for every substep but the last
+// (which is snapped to the interval end and differs in the last ulp), so a
+// single slot would thrash; four also absorbs Richardson's h and h/2.
+#define RX_INDLIN_EXPCACHE_N 4
+// Skip caching above this n*n -- large sensitivity models would never hit and
+// the footprint is per thread.
+#define RX_INDLIN_EXPCACHE_MAXN2 16384
+
+typedef struct {
+  int n;                     // 0 == empty
+  double t;
+  std::vector<double> key;   // the operand, before it was consumed
+  std::vector<double> val;   // exp(key * t)
+} expCacheSlot_t;
+
+typedef struct {
+  expCacheSlot_t slot[RX_INDLIN_EXPCACHE_N];
+  int next;                  // round-robin victim
+} expCache_t;
+
+static std::vector<expCache_t> __indLinExpCache;
+static int __indLinExpCacheOff = 0;
+
+// Sized before the parallel region, from rxData.cpp, alongside the other pools.
+extern "C" void ensureIndLinExpCache(int nCores) {
+  // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
+  // rather than a bisect.  Read here so it is live per solve.
+  __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
+  if ((int)__indLinExpCache.size() < nCores) {
+    __indLinExpCache.resize(nCores);
+  }
+  for (int i = 0; i < (int)__indLinExpCache.size(); i++) {
+    // Nothing may survive into a different solve: the operands are the same
+    // size and could collide across models that share a thread.
+    for (int j = 0; j < RX_INDLIN_EXPCACHE_N; j++) __indLinExpCache[i].slot[j].n = 0;
+    __indLinExpCache[i].next = 0;
+  }
+}
+
+extern "C" void freeIndLinExpCache(void) {
+  __indLinExpCache.clear();
+}
+
+// exp(H*t) into `out`, reusing an identical earlier exponential when there is
+// one.  Consumes `H` exactly as `matrixExp` does.  `ind` is only for counting.
+static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
+                                   int type, int order,
+                                   rx_solving_options_ind *ind) {
+  const int n = (int) H.n_rows;
+  const size_t n2 = (size_t) n * (size_t) n;
+  expCache_t *c = NULL;
+  if (!__indLinExpCacheOff && !__indLinExpCache.empty() &&
+      n2 <= RX_INDLIN_EXPCACHE_MAXN2) {
+    c = &__indLinExpCache[rx_get_thread((int)__indLinExpCache.size())];
+    for (int j = 0; j < RX_INDLIN_EXPCACHE_N; j++) {
+      expCacheSlot_t &s = c->slot[j];
+      if (s.n == n && memcmp(&s.t, &t, sizeof(double)) == 0 &&
+          memcmp(s.key.data(), H.memptr(), n2*sizeof(double)) == 0) {
+        memcpy(out.memptr(), s.val.data(), n2*sizeof(double));
+        // Diagnostics: exponentials REUSED.  `jac_counter` is free on this path
+        // -- a matExp() model's calc_jac is a stub -- so it carries the count
+        // out through `$counts$jac` with no extra plumbing.
+        if (ind != NULL && ind->jac_counter != NULL) ind->jac_counter[0]++;
+        return;
+      }
+    }
+  }
+  // Diagnostics: exponentials COMPUTED, reported as `$counts$dadt` (dydt() is
+  // likewise a no-op stub for a matExp() model).
+  if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
+  if (c == NULL) {
+    matrixExp(H, out, t, type, order);
+    return;
+  }
+  // The operand must be snapshotted BEFORE exponentiating, because matrixExp
+  // consumes it.
+  expCacheSlot_t &s = c->slot[c->next];
+  c->next = (c->next + 1) % RX_INDLIN_EXPCACHE_N;
+  s.n = 0;                            // invalid until both halves are written
+  if (s.key.size() != n2) s.key.resize(n2);
+  if (s.val.size() != n2) s.val.resize(n2);
+  memcpy(s.key.data(), H.memptr(), n2*sizeof(double));
+  matrixExp(H, out, t, type, order);
+  memcpy(s.val.data(), out.memptr(), n2*sizeof(double));
+  s.t = t;
+  s.n = n;
 }
 // extern "C" typedef void (*matvec_t) (double *, double *, double *, int *);
 
@@ -268,12 +375,6 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
-  // Diagnostics: count the matrix exponentials this solve actually computes.
-  // `dydt()` is a no-op stub for a matExp() model, so `dadt_counter` is free on
-  // this path and carries the count out through `$counts$dadt` with no extra
-  // plumbing.  Divided by `$counts$slvr` it gives the exponentials per accepted
-  // relinearization step, which is the redundancy this work is aimed at.
-  if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
   arma::mat m0(neq, neq);
   ME(cSub, tcov, tme, m0.memptr(), yc_);
   const arma::vec InfusionRate(InfusionRate_, neq, false, false);
@@ -288,7 +389,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   }
   if (nInf == 0){
     arma::mat expAT(neq, neq);
-    matrixExp(m0, expAT, tf-tp, type, order);
+    matrixExpCached(m0, expAT, tf-tp, type, order, ind);
     arma::vec yc_temp = expAT*yp;
     std::copy(yc_temp.begin(), yc_temp.end(), yc_);
     return 1;
@@ -314,7 +415,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
     arma::vec meSol(neq+nInf);
     arma::mat expAT(neq+nInf, neq+nInf);
     // Unfortunately the tf-tp may change so we can not cache this.
-    matrixExp(mout, expAT, (tf-tp), type, order);
+    matrixExpCached(mout, expAT, (tf-tp), type, order, ind);
     meSol = expAT*ypout;
     std::copy(meSol.begin(), meSol.begin()+neq, yc_);
     return 1;

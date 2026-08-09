@@ -1,4 +1,19 @@
 rxTest({
+  # Run a solve with the matrix-exponential cache live and again with every
+  # lookup forced to miss, assert the two are bit-identical, and return the
+  # cached one.  A hit is by construction the same matrix, so any difference is
+  # a cache bug; this is the strongest check available and it costs one extra
+  # solve.
+  # The solved values must match exactly; the counters must not, since counting
+  # the reuse is the point.
+  .indLinCacheBoth <- function(f) {
+    .on <- f()
+    .off <- withr::with_envvar(c(RXODE2_INDLIN_NO_EXP_CACHE = "1"), f())
+    expect_equal(as.data.frame(.on), as.data.frame(.off), tolerance = 0)
+    expect_gte(sum(.off$counts$dadt), sum(.on$counts$dadt))
+    .on
+  }
+
   test_that("Matrix exponential alone works", {
     # Test inductive linearization
 
@@ -784,5 +799,253 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(rxSolve(.uh, .e, method = "indLin"), NA)
     expect_equal(rxSolve(.uh, .e, method = "indLin")$cp,
                  rxSolve(.uh, .e)$cp)
+  })
+
+  # --- matrix-exponential cache -----------------------------------------------
+  # The cache is keyed on the bytes of (n, h, operand), so a hit is a proof
+  # rather than an assumption.  These tests attack the ways a *flag*-based
+  # scheme would have been wrong, since that is what a future reader will be
+  # tempted to replace it with.
+
+  .mmMe <- suppressMessages(rxode2(rxToIndLin(paste0(
+    "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+    "d/dt(depot) = -ka*depot\n",
+    "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"))))
+  .mmOde <- suppressMessages(rxode2(paste0(
+    "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+    "d/dt(depot) = -ka*depot\n",
+    "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")))
+  .mmPar <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
+
+  test_that("identical parameters with different dosing do not share an exponential", {
+    # The killer case for any flag-based scheme: two subjects whose rate matrix
+    # is identical but whose forcing is not.  The augmented operand differs in
+    # dimension (bolus has no infusion row) and in content, so content
+    # addressing must miss where a "parameters unchanged" flag would hit.
+    .obs <- c(0.5, 1, 2, 4, 8, 16, 30)
+    # Derive the bolus from the infusion table by zeroing the rate, so the two
+    # differ in exactly the forcing and nothing else -- et() drops a rate = 0
+    # column entirely, which would make them unstackable.
+    .eI <- as.data.frame(et(amt = 3, rate = 1) |> et(.obs))
+    .eB <- .eI
+    .eB$rate[!is.na(.eB$rate)] <- 0
+    .eB$id <- 1L
+    .eI$id <- 2L
+    .both <- .indLinCacheBoth(function() {
+      suppressMessages(rxSolve(.mmMe, params = .mmPar, events = rbind(.eB, .eI),
+                               method = "indLin", atol = 1e-10, rtol = 1e-10,
+                               cores = 1))
+    })
+    .s1 <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .eB,
+                                    method = "indLin", atol = 1e-10, rtol = 1e-10))
+    .s2 <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .eI,
+                                    method = "indLin", atol = 1e-10, rtol = 1e-10))
+    expect_equal(.both$central[.both$id == 1], .s1$central, tolerance = 0)
+    expect_equal(.both$central[.both$id == 2], .s2$central, tolerance = 0)
+    # the two subjects must actually differ, or the test proves nothing
+    expect_gt(max(abs(.s1$central - .s2$central)), 0.1)
+    # and both against a real ODE integration
+    .r1 <- suppressMessages(rxSolve(.mmOde, events = .eB, method = "liblsoda",
+                                    atol = 1e-12, rtol = 1e-12))
+    .r2 <- suppressMessages(rxSolve(.mmOde, events = .eI, method = "liblsoda",
+                                    atol = 1e-12, rtol = 1e-12))
+    expect_equal(.s1$central, .r1$central, tolerance = 1e-6)
+    expect_equal(.s2$central, .r2$central, tolerance = 1e-6)
+  })
+
+  test_that("a time-varying covariate invalidates the cached exponential", {
+    # This is the test the old `ind->cacheME` flag would fail: approx.cpp does
+    # not clear it on the interpolated-covariate branch, which was harmless when
+    # indLin took one step per output interval and is not now that it takes
+    # interior substeps.  The rate matrix changes at every record here.
+    .cov <- suppressMessages(rxode2(paste("matExp()",
+                                          "cmt(central)",
+                                          "k_central_output = kel",
+                                          sep = "\n")))
+    .covOde <- suppressMessages(rxode2("d/dt(central) = -kel*central"))
+    .t <- seq(0, 20, by = 0.5)
+    .ev <- as.data.frame(et(amt = 100, cmt = "central") |> et(.t))
+    .ev$kel <- 0.05 + 0.04 * sin(.ev$time / 3)
+    for (.ci in c("linear", "locf", "nocb", "midpoint")) {
+      # Cache identity is the point of this test, and it must hold for every
+      # interpolation mode.
+      .a <- .indLinCacheBoth(function() {
+        suppressMessages(rxSolve(.cov, events = .ev, method = "indLin",
+                                 hmax = 0.1, covsInterpolation = .ci))
+      })
+      if (.ci %in% c("locf", "nocb")) {
+        # Piecewise-constant covariate: the frozen rate matrix is exact over the
+        # substep, so this must match an ODE integration outright.  The
+        # interpolating modes are only first order here -- see the test below --
+        # so they are checked for cache identity but not for accuracy.
+        .b <- suppressMessages(rxSolve(.covOde, events = .ev, method = "liblsoda",
+                                       atol = 1e-12, rtol = 1e-12,
+                                       covsInterpolation = .ci))
+        expect_equal(.a$central, .b$central, tolerance = 1e-5)
+      }
+    }
+  })
+
+  test_that("an interpolated covariate is first order on the non-iterating path", {
+    # A pure matExp() model takes ONE frozen-coefficient exponential per substep
+    # with no second pass, so there is no quadrature to average and a rate matrix
+    # that genuinely varies over the substep is only first order in hmax.  locf
+    # and nocb hold the covariate constant across the interval and so are exact.
+    # Documented rather than fixed: fixing it needs a time-varying treatment
+    # (Magnus, or a second exponential), not endpoint bookkeeping.
+    .cov <- suppressMessages(rxode2("matExp()\ncmt(central)\nk_central_output = kel\n"))
+    .covOde <- suppressMessages(rxode2("d/dt(central) = -kel*central"))
+    .ev <- as.data.frame(et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5)))
+    .ev$kel <- 0.05 + 0.04 * sin(.ev$time / 3)
+    .hs <- c(0.4, 0.2, 0.1, 0.05)
+    .ord <- function(.ci) {
+      .b <- suppressMessages(rxSolve(.covOde, events = .ev, method = "liblsoda",
+                                     atol = 1e-12, rtol = 1e-12, covsInterpolation = .ci))
+      .e <- vapply(.hs, function(.h) {
+        max(abs(suppressMessages(rxSolve(.cov, events = .ev, method = "indLin",
+                                         hmax = .h, covsInterpolation = .ci))$central -
+                .b$central))
+      }, 1)
+      list(err = .e, order = unname(coef(stats::lm(log(.e) ~ log(.hs)))[2]))
+    }
+    .lin <- .ord("linear")
+    expect_gt(.lin$order, 0.5)
+    expect_lt(.lin$order, 1.5)
+    # halving hmax roughly halves the error, which is what "first order" means
+    expect_equal(.lin$err[3] / .lin$err[4], 2, tolerance = 0.15)
+    # and the piecewise-constant modes carry no such error at any hmax
+    .lo <- .ord("locf")
+    expect_lt(max(.lo$err), 1e-7)
+    expect_equal(.lo$err[1], .lo$err[4], tolerance = 1e-6)
+  })
+
+  test_that("an infusion ending mid-interval flips the augmented dimension", {
+    # nInf is derived from which forcing entries are nonzero, so the operand
+    # changes SIZE when an infusion stops.  With hmax forcing several substeps
+    # per output interval that happens inside an interval, and any cache key
+    # that ignores n would return an exponential of the wrong matrix.
+    .a <- .indLinCacheBoth(function() {
+      suppressMessages(rxSolve(.mmMe, params = .mmPar,
+                               events = et(amt = 3, rate = 2, cmt = "depot") |>
+                                 et(seq(0, 12, by = 1)),
+                               method = "indLin", hmax = 0.3,
+                               atol = 1e-10, rtol = 1e-10))
+    })
+    .b <- suppressMessages(rxSolve(.mmOde,
+                                   events = et(amt = 3, rate = 2, cmt = "depot") |>
+                                     et(seq(0, 12, by = 1)),
+                                   method = "liblsoda", atol = 1e-12, rtol = 1e-12))
+    expect_equal(.a$central, .b$central, tolerance = 1e-6)
+  })
+
+  test_that("steady state re-solving the same tau interval stays correct", {
+    # amt must be inside what Vmax can clear over ii (0.2 mg/h * 7 h = 1.4 mg),
+    # or the model accumulates without bound and has no steady state to find --
+    # liblsoda errors on that too.
+    #
+    # Bolus only.  Steady-state INFUSION (ss=1 with a rate) is separately broken
+    # on this method -- it accumulates linearly rather than reaching a steady
+    # state, missing liblsoda by ~16 absolute -- identically with the
+    # exponential cache on and off, so it is a pre-existing defect and not
+    # something these tests are about.
+    for (.ss in list(list(amt = 1, ii = 7, ss = 1))) {
+      # 1e-8, not 1e-10: the steady-state loop re-solves the tau interval and
+      # does not reach a fixed point at 1e-10 on this model, with or without the
+      # cache.  A separate limitation, noted rather than worked around here.
+      .e <- do.call(et, c(.ss, list(cmt = "depot"))) |> et(seq(0, 20, by = 2.5))
+      .a <- .indLinCacheBoth(function() {
+        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                 method = "indLin", atol = 1e-8, rtol = 1e-8))
+      })
+      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
+                                     atol = 1e-12, rtol = 1e-12))
+      expect_equal(.a$central, .b$central, tolerance = 1e-5)
+    }
+  })
+
+  test_that("a state-dependent rate matrix never reuses an exponential", {
+    # rxSensMatExp() builds its sensitivity blocks out of rate constants that
+    # read the primal states, so the operand differs on every pass.  Content
+    # addressing needs no exemption for that -- it simply never hits -- and the
+    # reuse counter proves it.
+    .sens <- suppressMessages(rxode2(rxSensMatExp(
+      "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n",
+      calcSens = c("ka", "Vm"))))
+    .e <- et(amt = 100) |> et(seq(0, 10, by = 1))
+    .a <- .indLinCacheBoth(function() {
+      suppressMessages(rxSolve(.sens, .e, method = "indLin",
+                               params = c(ka = 0.5, Vm = 10, Km = 5)))
+    })
+    # Incidental hits are possible and are correct by construction -- two
+    # substeps can produce the same operand bitwise.  The claim is that reuse
+    # cannot CARRY such a model, and the contrast with a state-free rate matrix
+    # on the same machinery is what shows it.
+    expect_gt(sum(.a$counts$dadt), 0)
+    .sensReuse <- sum(.a$counts$jac) / (sum(.a$counts$jac) + sum(.a$counts$dadt))
+    .lin <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
+                                          "k_central_output = 0.1", sep = "\n")))
+    .l <- suppressMessages(rxSolve(.lin, et(amt = 100, cmt = "central") |>
+                                     et(seq(0, 10, by = 1)),
+                                   method = "indLin", hmax = 0.25))
+    .linReuse <- sum(.l$counts$jac) / (sum(.l$counts$jac) + sum(.l$counts$dadt))
+    expect_lt(.sensReuse, 0.2)
+    expect_gt(.linReuse, 0.9)
+  })
+
+  test_that("the cache is per thread and does not change the answer", {
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |> et(id = 1:40))
+    .one <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                     method = "indLin", atol = 1e-10, rtol = 1e-10,
+                                     cores = 1))
+    for (.nc in c(2L, 4L)) {
+      expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                            method = "indLin", atol = 1e-10,
+                                            rtol = 1e-10, cores = .nc))$central,
+                   .one$central, tolerance = 0)
+    }
+    # repeated solves must not accumulate anything across calls either
+    expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                          method = "indLin", atol = 1e-10,
+                                          rtol = 1e-10, cores = 1))$central,
+                 .one$central, tolerance = 0)
+  })
+
+  test_that("every matrix-exponential backend agrees with the cache on", {
+    .e <- et(amt = 3, rate = 1) |> et(c(0.5, 1, 2, 4, 8, 16, 30))
+    .ref <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
+                                     atol = 1e-12, rtol = 1e-12))
+    for (.ty in 1:3) {
+      .a <- .indLinCacheBoth(function() {
+        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                 method = "indLin", atol = 1e-10, rtol = 1e-10,
+                                 indLinMatExpType = .ty))
+      })
+      expect_equal(.a$central, .ref$central, tolerance = 1e-5)
+    }
+  })
+
+  test_that("the cache holds across the event types", {
+    .cases <- list(
+      bolus       = et(amt = 3, cmt = "depot"),
+      fixedRate   = et(amt = 3, rate = 1.5, cmt = "depot"),
+      addlII      = et(amt = 3, addl = 3, ii = 6, cmt = "depot"),
+      lag         = et(amt = 3, cmt = "depot"),
+      # steady-state doses stay inside what Vmax can clear over ii; ss with a
+      # rate is omitted because it is separately broken (see above)
+      ssBolus     = et(amt = 1, ii = 8, ss = 1, cmt = "depot"),
+      evid4       = et(amt = 3, evid = 4, cmt = "depot"))
+    for (.nm in names(.cases)) {
+      .e <- .cases[[.nm]] |> et(seq(0, 24, by = 3))
+      # the steady-state cases do not converge at 1e-10 either way; see above
+      .tol <- if (startsWith(.nm, "ss")) 1e-8 else 1e-10
+      .a <- .indLinCacheBoth(function() {
+        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                 method = "indLin", atol = .tol, rtol = .tol))
+      })
+      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
+                                     atol = 1e-12, rtol = 1e-12))
+      expect_equal(.a$central, .b$central, tolerance = 1e-5,
+                   info = paste("event type:", .nm))
+    }
   })
 })

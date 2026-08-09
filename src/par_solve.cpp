@@ -4767,8 +4767,11 @@ extern "C" void rxOptionsIni() {
   rx->subjects = inds_global;
 }
 
+extern "C" void freeIndLinExpCache(void);
+
 extern "C" void rxOptionsFree(){
   freeLsodaCtxPool();
+  freeIndLinExpCache();
   freeRworkPool();
   rxEtaPreFree();
 

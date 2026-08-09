@@ -49,6 +49,7 @@ extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -5558,6 +5559,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
     int _bneq = (int)op->neq;
     int _lrw, _liw;
@@ -6052,6 +6054,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
