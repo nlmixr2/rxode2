@@ -221,6 +221,12 @@ static int __indLinExpCacheOff = 0;
 // crossover on van der Pol is between mu = 10 (2.6% of attempts cut) and
 // mu = 100 (32.5%), so this only has to be above the noise.
 #define RX_INDLIN_AUTO_ITER_CUTS 8
+// Lowest Romberg level exprb may run at.  exprb2 has no embedded pair, so its
+// error estimate comes from the extrapolation column; at level 1 that estimate
+// is unreliable -- on an ordinary Michaelis-Menten subject the delivered error
+// plateaus at 4e-6 across three decades of requested tolerance and the step
+// count is non-monotone in it.  Level 2 and above track the tolerance.
+#define RX_INDLIN_EXPRB_MINRICH 2
 
 // `auto`'s decision has to outlive the interval that made it.
 // `indLinDriveAdaptive` runs once per OUTPUT INTERVAL, so a switch held in a
@@ -236,6 +242,7 @@ typedef struct {
   int cSub;      // subject this decision belongs to; -1 = unset
   int scheme;
   int nCut;
+  int rich;      // Romberg level earned so far, for the same reason as `scheme`
 } indLinAutoState_t;
 static std::vector<indLinAutoState_t> __indLinAutoState;
 
@@ -247,6 +254,7 @@ static inline indLinAutoState_t *indLinAutoFor(int cSub) {
     a->cSub = cSub;
     a->scheme = RX_INDLIN_ITER_PICARD;
     a->nCut = 0;
+    a->rich = 0;
   }
   return a;
 }
@@ -266,6 +274,7 @@ extern "C" void ensureIndLinExpCache(int nCores) {
     __indLinAutoState[i].cSub = -1;      // nothing survives into another solve
     __indLinAutoState[i].scheme = RX_INDLIN_ITER_PICARD;
     __indLinAutoState[i].nCut = 0;
+    __indLinAutoState[i].rich = 0;
   }
   for (int i = 0; i < (int)__indLinExpCache.size(); i++) {
     // Nothing may survive into a different solve: the operands are the same
@@ -687,15 +696,30 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 // interval, the third-order one needs about N^(2/3) of them -- error falls as
 // h^2 against h^3, so the step counts go as E^(-1/2) against E^(-1/3) -- at
 // three times the cost per step.  Richardson is therefore cheaper once
-// 3*N^(2/3) < N, i.e. once N > 3^3 = 27.  Measured crossover on a
-// Michaelis-Menten model: 33 substeps per interval, at atol=rtol=1e-5.
-#define RX_INDLIN_AUTO_RICH_N 27
-// And once more for the fourth-order column: 7*N^(1/2) < 3*N^(2/3) once
-// N^(1/6) > 7/3, i.e. N > (7/3)^6 ~ 161.
-#define RX_INDLIN_AUTO_RICH4_N 161
-// And the fifth-order column (15 solves) beats the fourth (7) once
-// 15*N^(2/5) < 7*N^(1/2), i.e. once N^(1/10) > 15/7, N > (15/7)^10 ~ 1750.
-#define RX_INDLIN_AUTO_RICH5_N 1750
+// 3*N^(2/3) < N, i.e. once N > 3^3 = 27.  And once more for the fourth-order
+// column: 7*N^(1/2) < 3*N^(2/3) once N > (7/3)^6 ~ 161; and the fifth (15
+// solves) beats the fourth (7) once 15*N^(2/5) < 7*N^(1/2), N > (15/7)^10 ~
+// 1750.
+//
+// Those derived values are kept for exprb and REPLACED for Picard.  The
+// derivation assumes every level runs the same base step at three times the
+// cost of the one below, which is true of Picard and not of exprb -- exprb does
+// not iterate, forms a Jacobian per step, and carries a floor of level 2.
+// Measured on 200-subject work-precision curves (the thresholds were swept as a
+// scale factor over 1, 3, 10, 30, 100): Michaelis-Menten under Picard improves
+// monotonically down to ~1/30 of the derived values, 0.313 s -> 0.093 s at a
+// delivered error of 1e-4, and turns back up by 1/100; van der Pol under exprb
+// degrades 1.8x past ~1/3 and is flat between 1 and 1/3.  A two-compartment
+// linear model is insensitive across the whole range.
+//
+// These are only reachable through the derived-then-measured route above; do
+// not "restore" them to the analytic values without re-running that sweep.
+#define RX_INDLIN_AUTO_RICH_N    1.0
+#define RX_INDLIN_AUTO_RICH4_N   5.0
+#define RX_INDLIN_AUTO_RICH5_N  58.0
+#define RX_INDLIN_EXPRB_RICH_N    9.0
+#define RX_INDLIN_EXPRB_RICH4_N  54.0
+#define RX_INDLIN_EXPRB_RICH5_N 583.0
 
 // Secant estimate of the iteration map's contraction ratio from two
 // consecutive Picard residuals, measured only over the states flagged in
@@ -1362,13 +1386,29 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // tolerance, where Picard is also the cheapest per step.
   int scheme = op->indLinIteration;
   const int autoScheme = (scheme == RX_INDLIN_ITER_AUTO);
-  indLinAutoState_t *autoSt = autoScheme ? indLinAutoFor(cSub) : NULL;
+  int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
+  // Only a model with a state-dependent forcing has anything for the
+  // extrapolation to work on: with the forcing state-free the exponential is
+  // already exact, the controller takes one step per interval, and carrying a
+  // level earned during a dose interval into every later one is pure cost --
+  // measured at 48% on a two-compartment linear model.
+  const int richSticky = (autoRich && op->indLinN > 0);
+  indLinAutoState_t *autoSt = (autoScheme || richSticky) ? indLinAutoFor(cSub) : NULL;
   if (autoScheme) scheme = (autoSt != NULL) ? autoSt->scheme : RX_INDLIN_ITER_PICARD;
+  // The earned Romberg level has to outlive the interval that earned it, for
+  // exactly the reason `scheme` does.  This is a local per output interval, so
+  // it used to reset to second order at every observation and re-earn itself
+  // from `nAccept > 0`; an interval needing only a few substeps never clears
+  // the threshold, so a 13-observation Michaelis-Menten profile ran most of its
+  // life at second order.  Measured on 200 subjects, forcing level 4 reached a
+  // delivered error of 1e-4 in 0.098 s where `auto` took 0.626 s -- and scaling
+  // the thresholds down by 100x recovered none of it, because the reset, not
+  // the threshold, was the binding constraint.
+  if (richSticky && autoSt != NULL && autoSt->rich > useRich) useRich = autoSt->rich;
   // exprb2 carries no embedded estimate of its own yet, so it needs at least
   // two tableau entries to produce one at all.  (The Luan-Ostermann schemes
   // supply their own pair and will lift this.)
-  if (scheme == RX_INDLIN_ITER_EXPRB && useRich < 1) useRich = 1;
-  int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
+  if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) useRich = RX_INDLIN_EXPRB_MINRICH;
   int nAttempt = 0, nAccept = 0;
   while (t < tf) {
     // Snap to `tf` rather than leaving a sliver behind.
@@ -1390,14 +1430,21 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       // N^(2/p) of the second-order step's N, so the fourth-order column
       // (7 solves) beats the third (3 solves) once 7*N^(1/2) < 3*N^(2/3),
       // i.e. once N > (7/3)^6.
-      if (scheme == RX_INDLIN_ITER_EXPRB && useRich < 1) useRich = 1;
-      if (useRich < 3 && nLeft > (double) RX_INDLIN_AUTO_RICH5_N) {
+      if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) useRich = RX_INDLIN_EXPRB_MINRICH;
+      const int isExprb = (scheme == RX_INDLIN_ITER_EXPRB);
+      const double r5 = isExprb ? RX_INDLIN_EXPRB_RICH5_N : RX_INDLIN_AUTO_RICH5_N;
+      const double r4 = isExprb ? RX_INDLIN_EXPRB_RICH4_N : RX_INDLIN_AUTO_RICH4_N;
+      const double r1 = isExprb ? RX_INDLIN_EXPRB_RICH_N  : RX_INDLIN_AUTO_RICH_N;
+      if (useRich < 3 && nLeft > r5) {
         useRich = 3;
-      } else if (useRich < 2 && nLeft > (double) RX_INDLIN_AUTO_RICH4_N) {
+      } else if (useRich < 2 && nLeft > r4) {
         useRich = 2;
-      } else if (useRich < 1 && nLeft > (double) RX_INDLIN_AUTO_RICH_N) {
+      } else if (useRich < 1 && nLeft > r1) {
         useRich = 1;
       }
+      // Carry it to the next interval of this subject; one way, so it cannot
+      // chatter, and it is dropped when the subject changes.
+      if (richSticky && autoSt != NULL && useRich > autoSt->rich) autoSt->rich = useRich;
     }
     // The step is sized from an estimate of the order the extrapolation is
     // built on: first order for the plain step, second under Richardson.  The
@@ -1416,7 +1463,20 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       if (autoScheme && autoSt != NULL && scheme == RX_INDLIN_ITER_PICARD &&
           ++(autoSt->nCut) >= RX_INDLIN_AUTO_ITER_CUTS) {
         scheme = autoSt->scheme = RX_INDLIN_ITER_EXPRB;
-        if (useRich < 1) useRich = 1;
+        // Re-earn the extrapolation level under the new scheme's cost model
+        // rather than inheriting Picard's.  The two use different thresholds
+        // for good reason, and the level ratchet is one way, so a level climbed
+        // under Picard's (much lower) thresholds would stick at 3 for the rest
+        // of the subject -- measured at 4.25 s against 2.18 s on 200-subject
+        // van der Pol, i.e. the whole benefit of the split thresholds lost.
+        // Only when the level is ours to choose; an explicit always4/always5
+        // must not be lowered.
+        if (autoRich) {
+          useRich = RX_INDLIN_EXPRB_MINRICH;
+          autoSt->rich = RX_INDLIN_EXPRB_MINRICH;
+        } else if (useRich < RX_INDLIN_EXPRB_MINRICH) {
+          useRich = RX_INDLIN_EXPRB_MINRICH;
+        }
       }
       // Not a dead end: the contraction ratio is proportional to `h`, so a
       // failure to converge proves the step is too long and a bounded number

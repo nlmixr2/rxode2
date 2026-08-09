@@ -476,12 +476,26 @@ d/dt(blood)     = a*intestine - b*blood
     # on the average of the forward and converged answers, which cancels the
     # leading error and makes it second order.  A first-order method could only
     # manage a factor of 100 over these two decades of tolerance.
+    # Measured on the BASE second-order step.  "auto" no longer stays at second
+    # order at a loose tolerance (it starts extrapolating much earlier than it
+    # used to), so it is the wrong thing to read an order off: its 1e-4 point is
+    # already 317x more accurate than the base method's and the ratio across the
+    # sweep collapses even though every individual answer improved.
     .err <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
-      max(abs(rxSolve(.mm, .e, method = "indLin",
-                      atol = tol, rtol = tol)$central - .ref$central))
+      max(abs(rxSolve(.mm, .e, method = "indLin", atol = tol, rtol = tol,
+                      indLinRichardson = "never")$central - .ref$central))
     }, double(1))
     expect_true(all(diff(.err) < 0))
     expect_lt(.err[3], .err[1] / 1000)
+
+    # And the stronger statement that replaces it: the default is at least as
+    # accurate as that base method at every tolerance, never worse.
+    .errAuto <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
+      max(abs(rxSolve(.mm, .e, method = "indLin",
+                      atol = tol, rtol = tol)$central - .ref$central))
+    }, double(1))
+    expect_true(all(diff(.errAuto) < 0))
+    expect_true(all(.errAuto <= .err))
 
     # A repeated solve is deterministic -- the iteration reads no stale state.
     expect_identical(rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central,
@@ -615,11 +629,13 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "always"),
               .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
 
-    # "auto" pays the extra cost only when it buys something: at a loose
-    # tolerance it is exactly the second-order step, and at a tight one it is
-    # close to always-on rather than to never.
-    expect_equal(.steps(atol = 1e-3, rtol = 1e-3),
-                 .steps(atol = 1e-3, rtol = 1e-3, indLinRichardson = "never"))
+    # "auto" pays the extra cost only when it buys something -- but measurement
+    # says extrapolation buys something at a loose tolerance too, so this is no
+    # longer the equality it once was.  The thresholds were recalibrated against
+    # 200-subject work-precision curves and auto now costs FEWER steps than the
+    # second-order step at 1e-3, not the same number.
+    expect_lte(.steps(atol = 1e-3, rtol = 1e-3),
+               .steps(atol = 1e-3, rtol = 1e-3, indLinRichardson = "never"))
     expect_lt(.steps(atol = 1e-8, rtol = 1e-8),
               .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
 
@@ -679,8 +695,10 @@ d/dt(blood)     = a*intestine - b*blood
     # At a tight tolerance auto must be far below the third-order step count,
     # which is only possible if it has raised the level.
     expect_lt(.steps("auto", 1e-9), .steps("always", 1e-9) / 3)
-    # At a loose one it must not pay for extrapolation it does not need.
-    expect_equal(.steps("auto", 1e-3), .steps("never", 1e-3))
+    # At a loose one it must not pay for extrapolation it does not need -- and
+    # the recalibrated thresholds say it does need some there, so the bar is
+    # "no more steps than second order", not "the same number".
+    expect_lte(.steps("auto", 1e-3), .steps("never", 1e-3))
   })
 
   test_that("a matExp() rate constant may not depend on a compartment", {
