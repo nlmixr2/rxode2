@@ -4012,7 +4012,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   /* double *yp = &yp0[neq[1]*neq[0]]; */
   int nx;
   rx_solving_options_ind *ind;
-  double xout, xoutp;
+  double xout;
   int *rc;
   double *yp;
   int idid = 0;
@@ -4024,7 +4024,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   nx = ind->n_all_times;
   rc= ind->rc;
   double xp = ind->all_times[0];
-  xoutp=xp;
+  bool _skipEvid = false;
   ind->solvedIdx = 0;
   for (i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
@@ -4050,57 +4050,68 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     xout = ind->timeThread[ind->ix[i]];
     _growSolveIfNeeded(ind, op, i, 1);
     yp = getSolve(i);
-    if(getEvid(ind, ind->ix[i]) != 3) {
+    // This is the SAME forward loop every other per-method driver runs (see
+    // rkr4.cpp and the 98 other solver files); only the stepper differs.  It
+    // used to be hand-written here and had drifted -- it never drained the
+    // pending-dose queue at all, so a steady-state infusion never switched off
+    // and anything else that arrives through that queue (doses pushed by the
+    // model at run time, modeled rate/duration off records) was silently
+    // ignored on this method alone.
+    // No `&& !isSameTime(xout, xp)` on this guard.  rkr4.cpp and friends have
+    // it, but liblsoda deliberately does not: a dose pushed at the CURRENT
+    // record's own time leaves xout == xp, and the queue still has to be
+    // drained or that dose is silently dropped.
+    if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         *rc = -1000;
         // Bad Solve => NA
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        // Drain the pending/extra dose queue before stepping, exactly as every
-        // other per-method driver does.  This was missing here, and it is where
-        // a steady-state infusion's OFF record lives: without it the infusion
-        // was left running for the whole main timeline after handleSS had
-        // established a correct trough, so the solve then grew without bound.
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xoutp, ind->id, &i, ind->n_all_times,
-                            &idid, op, ind, u_inis, NULL)) {
-          if (!isSameTime(ind->extraDoseNewXout, xoutp)) {
-            preSolve(op, ind, xoutp, ind->extraDoseNewXout, yp);
-            idid = indLin(solveid, op, ind, xoutp, yp, ind->extraDoseNewXout,
+                            xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            idid = indLin(solveid, op, ind, xp, yp, ind->extraDoseNewXout,
                           ind->InfusionRate, ind->on,
                           (ind->fns ? ind->fns->me : NULL),
                           (ind->fns ? ind->fns->indf : NULL));
             postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
-            xoutp = ind->extraDoseNewXout;
+            if (*rc < 0) localBadSolve = 1;
+            xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          idid = 1;
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            idid = indLin(solveid, op, ind, ind->extraDoseNewXout, yp, xout,
-                          ind->InfusionRate, ind->on,
-                          (ind->fns ? ind->fns->me : NULL),
-                          (ind->fns ? ind->fns->indf : NULL));
-            postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
-            xoutp = ind->extraDoseNewXout;
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            idid = 1;
+            ind->ixds = ixds;
+            ind->idx = idx;
+            ind->idxExtra++;
+            if (!isSameTime(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              idid = indLin(solveid, op, ind, ind->extraDoseNewXout, yp, xout,
+                            ind->InfusionRate, ind->on,
+                            (ind->fns ? ind->fns->me : NULL),
+                            (ind->fns ? ind->fns->indf : NULL));
+              postSolve(neq, &idid, rc, &idx, yp, NULL, 0, false, ind, op, rx);
+              if (*rc < 0) localBadSolve = 1;
+              ind->extraDoseNewXout = xout;
+            }
+            xp = ind->extraDoseNewXout;
           }
         }
-        if (!isSameTime(xout, xoutp)) {
-          preSolve(op, ind, xoutp, xout, yp);
-          idid = indLin(solveid, op, ind, xoutp, yp, xout, ind->InfusionRate, ind->on,
+        if (!localBadSolve && !isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          idid = indLin(solveid, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
                         (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
           postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
         }
-        xoutp = xout;
+        xp = xout;
       }
     }
     ind->_newind = 2;
@@ -4129,7 +4140,36 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           ind->mainSorted = 0;
         }
       }
+      // Fire evid_() through calc_lhs at observation records, the same way
+      // ind_linCmt0 does.  codegen emits evid_() into dydt and calc_lhs only
+      // (src/codegen.c TEVID), and a matExp()/indLin() model's dydt is a no-op
+      // stub -- so without this, doses pushed by the model at run time
+      // (bolus(), infuse(), replace(), multiply(), reset(), ...) never happen
+      // on this method.  Unlike linCmt there is no internal dydt call to have
+      // already consumed the flag, so calc_lhs is the only firing point.
+      // Observation AND model-time (mtime, evid 10-99) records: an ODE method
+      // fires evid_() from dydt continuously, so a guard like
+      // `t >= mt && t < mt + 0.5` triggers wherever the integrator steps.  With
+      // no dydt the model body is only seen at records, and an mtime record is
+      // usually the very record such a guard was written against.
+      ind->idx = i + 1;
+      int _evidHere = getEvid(ind, ind->ix[i]);
+      if (op->indOwnAlloc &&
+          (isObs(_evidHere) || (_evidHere >= 10 && _evidHere <= 99))) {
+        if (_skipEvid) {
+          _skipEvid = false;
+        } else {
+          ind->_atEventTime = 1;
+        }
+      }
+      // A push inside calc_lhs can insert events at this same time and displace
+      // the current observation to ix[i+1]; without this the displaced record
+      // fires evid_() a second time and the pushed dose is counted twice.
+      // linCmt needs the same guard, but detects the growth around its solve,
+      // because its linSolve calls dydt and so pushes there instead.
+      int _nBeforePush = ind->n_all_times;
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      if (ind->n_all_times > _nBeforePush) _skipEvid = true;
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
     }

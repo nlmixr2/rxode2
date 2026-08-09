@@ -63,9 +63,18 @@ rxIndLinState <- function(preferred = NULL) {
 .rxIndLinLine <- function(line, states, state0) {
   .tmp <- tryCatch(
     symengine::expand(line), ## Expand line; simplifies X^1->X etc
-    error = function(e) symengine::S(as.character(line)) ## fall back for complex exprs
+    error = function(e) {
+      ## Re-parsing is the usual fallback for complex exprs, but symengine
+      ## cannot parse a dotted identifier (`eta.Cl`) and that is an ordinary
+      ## rxode2 name.  Expansion is a simplification, not a requirement, so
+      ## give up on it rather than on the conversion.
+      tryCatch(symengine::S(as.character(line)),
+               error = function(e2) line)
+    }
   )
-  .tmp <- rxFromSE(.tmp) ## Convert SE->rxode2; Changes things like X^1 -> X
+  ## rxFromSE() needs a Basic; if the fallback above handed back the original
+  ## object it is already one, but a plain string must pass through untouched.
+  .tmp <- if (is.character(.tmp)) .tmp else rxFromSE(.tmp)
 
   .ret <- eval(parse(text = paste0("rxSplitPlusQ(quote(", .tmp, "))")))
   .lst <- list()
@@ -85,7 +94,13 @@ rxIndLinState <- function(preferred = NULL) {
   ## This collapses a character vector with "*" between it
   ## If we have *1/x this becomes simply /x
   .multCollapse <- function(x) {
-    as.character(symengine::S(paste(x, collapse = "*")))
+    .txt <- paste(x, collapse = "*")
+    # symengine cannot parse a dotted identifier (`eta.Cl`), which is an
+    # ordinary rxode2 name, and this call is only tidying the result
+    # cosmetically.  Fall back to the plain product rather than failing the
+    # whole conversion: `-1*x` instead of `-x` is uglier but identical.
+    tryCatch(as.character(symengine::S(.txt)),
+             error = function(e) .txt)
   }
   sapply(.ret, function(x) {
     .mult <- eval(parse(text = paste0("rxSplitPlusQ(quote(", x, "),mult=TRUE)")))

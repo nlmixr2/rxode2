@@ -54,7 +54,12 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
           } else {
             .code <- c(.code, paste0(.kname, " = ", .val))
           }
-          .offTerms <- c(.offTerms, symengine::S(.val))
+          # eval-in-env, not symengine::S(): S() re-parses, and symengine's
+          # parser rejects an ordinary rxode2 name like `eta.Cl`.  The SE
+          # layer already binds every model symbol in `.env` (created with
+          # symengine::Symbol(), which tolerates dots), so evaluating there is
+          # how the rest of rxode2 turns an expression into a Basic.
+          .offTerms <- c(.offTerms, eval(parse(text = .val), envir = .env))
         }
       }
     }
@@ -62,11 +67,13 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     # Diagonal column sum: elimination/output rate from cmt1
     .diag <- .ret0[j, j]
     if (.diag != "0" || length(.offTerms) > 0) {
-      .sumExpr <- symengine::S(.diag)
+      .sumExpr <- eval(parse(text = .diag), envir = .env)
       for (.t in .offTerms) {
         .sumExpr <- .sumExpr + .t
       }
-      .elimStr <- as.character(symengine::S(paste0("-(", rxFromSE(.sumExpr), ")")))
+      # Negate the Basic directly rather than round-tripping through a string:
+      # same simplification, and no re-parse to fail on a dotted name.
+      .elimStr <- as.character(-.sumExpr)
       if (.elimStr != "0") {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {
