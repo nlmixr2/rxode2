@@ -103,17 +103,46 @@ static double matnorm_1(const double *x, const int n)
 
 #define NTHETA 5
 
-static int matexp_scale_factor(const double *x, const int n)
+/* Al-Mohy & Higham (2009), Table 2.1: theta[i] is the largest ||A||_1 for which
+   Pade degree degs[i] is accurate to double precision.  The degree and the
+   scaling MUST be chosen together -- each threshold belongs to one degree.
+
+   This previously returned only the scaling and left the degree to the caller's
+   fixed `p` (rxSolve(indLinMatExpOrder=), default 6), so a matrix with
+   ||A||_1 anywhere up to theta[4] = 5.37 was evaluated at degree 6 with no
+   scaling at all, when the table says that norm needs degree 13.  The result
+   was silently wrong rather than an error: on a linear two-compartment model
+   it delivered 1.8e-6 where every other kernel delivered 5.8e-11, and under an
+   exponential Rosenbrock step it could make the error estimate unsatisfiable,
+   so the controller shrank the step without limit -- one van der Pol subject at
+   mu = 95.7866 ran for over 390 s against 0.03 s for the other kernels.
+
+   Picking both from the norm is what `matrixExpTaylor` already does, and it is
+   why `indLinMatExpOrder` no longer applies to this kernel. */
+static int matexp_deg_scale(const double *x, const int n, int *deg)
 {
-    const double theta[] = {1.5e-2, 2.5e-1, 9.5e-1, 2.1e0, 5.4e0};
+    const double theta[NTHETA] = {1.495585217958292e-2, 2.539398330063230e-1,
+                                  9.504178996162932e-1, 2.097847961257068e0,
+                                  5.371920351148152e0};
+    const int degs[NTHETA] = {3, 5, 7, 9, 13};
     const double x_1 = matnorm_1(x, n);
 
-    for (int i=0; i < NTHETA; i++) {
-	if (x_1 <= theta[i])
-	    return 0;
+    if (!R_FINITE(x_1)) {   /* nothing sensible to scale by; stay at the top
+                               degree and let the caller see the result */
+        *deg = degs[NTHETA-1];
+        return 0;
     }
-
-    int i = (int) ceil(log2(x_1/theta[4]));
+    for (int i = 0; i < NTHETA; i++) {
+        if (x_1 <= theta[i]) {
+            *deg = degs[i];
+            return 0;
+        }
+    }
+    *deg = degs[NTHETA-1];
+    int i = (int) ceil(log2(x_1/theta[NTHETA-1]));
+    if (i < 0) i = 0;
+    if (i > 30) i = 30;     /* 1 << 31 is undefined; 2^30 squarings is already
+                               far past any operand this solver can produce */
     return 1 << i;
 }
 
@@ -298,17 +327,21 @@ void matexp_MH09(double *x, int n, const int p, double *ret)
     iwsp = iwspHeap;
   }
 
-  int m = matexp_scale_factor(x, n);
+  /* `p` is deliberately unused: the degree is not free to choose, it is fixed
+     by the norm together with the scaling.  See matexp_deg_scale(). */
+  (void) p;
+  int deg = 13;
+  int m = matexp_deg_scale(x, n, &deg);
 
   if (m == 0) {
-      matexp_pade(n, p, x, ret, wsp, iwsp);
+      matexp_pade(n, deg, x, ret, wsp, iwsp);
   } else {
     int one = 1;
     double tmp = 1. / ((double) m);
 
     F77_CALL(dscal)(&nn, &tmp, x, &one);
 
-    matexp_pade(n, p, x, ret, wsp, iwsp);
+    matexp_pade(n, deg, x, ret, wsp, iwsp);
 
     matcopy(n, ret, x);
 

@@ -191,9 +191,13 @@
 #'
 #'
 #' @param indLinMatExpOrder an integer, the order of approximation to
-#'     be used, for the `Al-Mohy` and `expokit` values.
-#'     The best value for this depends on machine precision (and
-#'     slightly on the matrix). We use `6` as a default.
+#'     be used, for the `expokit` value.  The best value for this
+#'     depends on machine precision (and slightly on the matrix). We
+#'     use `6` as a default.  It no longer applies to `Al-Mohy`, whose
+#'     degree is not free to choose: each accuracy threshold in the
+#'     Al-Mohy-Higham table belongs to one specific degree, so the
+#'     degree and the scaling are selected together from the matrix
+#'     norm.  `taylor` has always chosen its degree the same way.
 #'
 #' @param indLinPhiTol the requested accuracy tolerance on
 #'     exponential matrix.

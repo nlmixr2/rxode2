@@ -174,6 +174,24 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxSolve(indLinMatExpType="Al-Mohy")` chose its Pade degree and its scaling
+  inconsistently, which could return a silently wrong answer or a solve that
+  never finished.  The scaling came from the Al-Mohy-Higham threshold table,
+  whose entries each belong to one specific degree, while the degree itself came
+  from `indLinMatExpOrder` (default 6) -- so any matrix with a 1-norm up to the
+  table's largest threshold, 5.37, was evaluated at degree 6 with no scaling at
+  all where the table calls for degree 13.  Both are now taken together from the
+  norm, as the `taylor` backend already did.  A two-compartment linear model
+  returned `1.8e-06` against about `1e-11` for every other backend, and one
+  van der Pol subject at `mu = 95.7866` under an exponential Rosenbrock step ran
+  for over 390 seconds -- a bad exponential can make the error estimate
+  unsatisfiable, so the step controller shrinks the step without limit instead
+  of failing -- where the other backends took 0.03 s.  Both now agree with the
+  other backends, and on a 50-subject stiff population `Al-Mohy` goes from not
+  completing in 418 s to 0.92 s, the fastest of the four.  Consequently
+  `indLinMatExpOrder` no longer applies to `Al-Mohy`; it still applies to
+  `expokit`.
+
 - `rxSolve(<function or rxUi model>, method="indLin")` failed with "Can only
   parse scalar data".  With the default `useLinCmt=TRUE` the ODE was first
   rewritten into `linCmt()`, leaving a model with `linCmt()` pseudo-compartments

@@ -1268,6 +1268,56 @@ d/dt(blood)     = a*intestine - b*blood
     }
   })
 
+  test_that("the Al-Mohy backend picks its Pade degree from the norm", {
+    # matexp_MH09() used to take the degree from `indLinMatExpOrder` (default 6)
+    # while deciding the scaling from the Al-Mohy-Higham theta table, whose
+    # thresholds each belong to a *specific* degree.  Any operand with
+    # ||A||_1 up to theta[4] = 5.37 was therefore evaluated at degree 6 with no
+    # scaling, when the table calls for degree 13.  Both symptoms below were
+    # silent -- a wrong number and a solve that would not finish, never an
+    # error -- so both are pinned.
+
+    # (1) A linear model takes one long step per interval, so ||H*t|| lands in
+    # that unscaled band.  Al-Mohy returned 1.8e-6 where every other backend
+    # returned ~1e-11 on the same problem.
+    .linTxt <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    .lin <- suppressMessages(rxode2(rxToIndLin(.linTxt)))
+    .linOde <- suppressMessages(rxode2(.linTxt))
+    .lp <- c(ka = 1, cl = 1, v = 10)
+    .le <- et(amt = 3) |> et(seq(0, 30, by = 1))
+    .lref <- suppressMessages(rxSolve(.linOde, .le, .lp, method = "lsoda",
+                                      atol = 1e-12, rtol = 1e-12))$central
+    .err <- vapply(1:4, function(.ty) {
+      max(abs(suppressMessages(rxSolve(.lin, .le, .lp, method = "indLin",
+                                       atol = 1e-8, rtol = 1e-8,
+                                       indLinMatExpType = .ty))$central - .lref))
+    }, double(1))
+    # every backend, Al-Mohy (3) included, must be far inside the old failure
+    expect_true(all(.err < 1e-9))
+
+    # (2) Under an exponential Rosenbrock step a bad exponential can make the
+    # error estimate unsatisfiable, so the controller shrinks the step without
+    # limit rather than failing.  This subject ran over 390 s where the other
+    # backends took 0.03 s; it is timed, because the failure mode is "does not
+    # finish" and an equality check alone would simply hang.
+    .van <- suppressMessages(rxode2(rxToIndLin(
+      "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
+    .ev <- et(seq(0, (3 - 2*log(2))*100, length.out = 200))
+    .solve <- function(.ty) {
+      suppressMessages(rxSolve(.van, .ev, c(mu = 95.7866), method = "indLin",
+                               atol = 1e-6, rtol = 1e-6,
+                               indLinIteration = "exprb", indLinMatExpType = .ty))
+    }
+    .t0 <- proc.time()[["elapsed"]]
+    .aAl <- .solve(3)
+    .dt <- proc.time()[["elapsed"]] - .t0
+    .aEx <- .solve(2)
+    expect_equal(.aAl$y, .aEx$y, tolerance = 1e-6)
+    # generous enough not to be flaky on a loaded machine, four orders of
+    # magnitude tighter than the failure
+    expect_lt(.dt, 30)
+  })
+
   test_that("the Al-Mohy backend works past its stack-scratch size", {
     # matexp_MH09() keeps its workspace on the stack up to n = 12 and mallocs
     # above that; it used to take the workspace from R_alloc, which is not
