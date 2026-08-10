@@ -1154,6 +1154,29 @@ static inline void indLinPmat(rx_solving_options *op, rx_solving_options_ind *in
   Ph = augE.submat(0, neq, neq-1, 2*neq-1);
 }
 
+// Newton's divergence response.  A growing residual gets one chance: refresh
+// the chord Jacobian at the current iterate and refactorise, once.  A second
+// growth means the step is too long, and the ratio of successive residuals
+// sizes the caller's cut.  Returns true to keep iterating.
+static inline bool indLinNewtonDiverging(double res, double *resPrev, int *nGrow,
+                                         double *ratioOut) {
+  const bool growing = (*resPrev > 0.0 && res > *resPrev);
+  if (growing && ++(*nGrow) >= 2) {
+    if (ratioOut != NULL) {
+      // Against the PREVIOUS residual, so this is read before resPrev moves.
+      const double q = res/(*resPrev);
+      *ratioOut = (q > 1.0) ? q : 1.0;
+    }
+    return false;
+  }
+  if (!growing) *nGrow = 0;
+  // Unconditional, including the tolerated single growth: leaving resPrev at
+  // the older, smaller value would make the next comparison read against a
+  // stale baseline and trigger sooner than it should.
+  *resPrev = res;
+  return true;
+}
+
 static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                         int neq, double *rtol, double *atol, int maxIter,
                         double *yp_, double subTp, double subTf, double tcov,
@@ -1231,16 +1254,12 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
     // before giving up on it (a Shamanskii step).  A stale Jacobian is the
     // likely cause of the stall on a stiff problem, and refreshing costs
     // 2*indLinN cheap IndF evaluations against a whole rejected step.
-    if (resPrev > 0.0 && res > resPrev) {
-      nGrow++;
-      if (nGrow >= 2) {
-        if (ratioOut != NULL) {
-          double q = res/resPrev;
-          *ratioOut = (q > 1.0) ? q : 1.0;
-        }
-        std::copy(gw.begin(), gw.end(), yp_);
-        return -2;
-      }
+    const bool wasGrowing = (resPrev > 0.0 && res > resPrev);
+    if (!indLinNewtonDiverging(res, &resPrev, &nGrow, ratioOut)) {
+      std::copy(gw.begin(), gw.end(), yp_);
+      return -2;
+    }
+    if (wasGrowing) {
       if (!refreshed) {
         refreshed = true;
         indLinForcingJac(cSub, op, neq, tcov, subTf, gw.memptr(), IndF, ME,
@@ -1262,6 +1281,64 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   }
   std::copy(w.begin(), w.end(), yp_);
   return -2;
+}
+
+// Pick the relaxation factor for this pass.  Returns the propagation status --
+// <= 0 is a hard failure from the extra pass the exact search needs and must be
+// passed up -- with `*thetaOut` set when it returns 1.
+static int indLinPickTheta(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                           const double *rtol, const double *atol, int stepSearch,
+                           bool backOff, const arma::vec &w, const arma::vec &d,
+                           const arma::vec &dPrev, double thetaPrev,
+                           arma::vec &y0, double subTp, double subTf, double tcov,
+                           double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                           arma::vec *u, arma::vec &wTry, double *thetaOut) {
+  if (backOff || stepSearch == RX_INDLIN_SEARCH_NONE) {
+    *thetaOut = 1.0;
+    return 1;
+  }
+  if (stepSearch == RX_INDLIN_SEARCH_EXACT) {
+    // One extra propagation, at the plain-Picard point, gives the residual
+    // there.  The residual is affine in the step for an affine map, so two of
+    // them locate the minimizer of ||R(a)|| in closed form -- the same thing
+    // Schmidt et al.'s bisection converges to, without spending a matrix
+    // exponential per bisection.
+    wTry = w;
+    const int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(),
+                              subTp, subTf, tcov, subTf,
+                              InfusionRate_, on_, ME, IndF, u);
+    if (r2 <= 0) return r2;
+    *thetaOut = indLinThetaExact(op, rtol, atol, w, d, wTry);
+    return 1;
+  }
+  *thetaOut = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev)
+                                : 1.0;
+  return 1;
+}
+
+// Is the residual growing?  One bad pass is tolerated by backing the
+// relaxation off to a plain Picard step; two in a row means this step has no
+// fixed point to find and the caller should shorten it.  Returns true to keep
+// iterating, false to give up, with `*backOff` set for the tolerated case.
+static inline bool indLinResidualOk(double res, double *resPrev, int *nGrow,
+                                    bool *backOff) {
+  *backOff = false;
+  if (*resPrev >= 0.0 && res > 2.0*(*resPrev)) {
+    if (++(*nGrow) >= 2) return false;
+    *backOff = true;
+  } else {
+    *nGrow = 0;
+  }
+  *resPrev = res;
+  return true;
+}
+
+// Report the measured contraction ratio so a caller that has to cut the step
+// can size the cut instead of guessing.
+static inline void indLinReportRatio(double *ratioOut, double theta) {
+  if (ratioOut == NULL) return;
+  const double r = fabs(1.0 - 1.0/theta);
+  *ratioOut = (R_FINITE(r) && r > 1.0) ? r : 1.0;
 }
 
 static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
@@ -1310,39 +1387,18 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // matrix exponentials.
     double res = indLinResNorm(op, rtol, atol, w, d);
     bool backOff = false;
-    if (resPrev >= 0.0 && res > 2.0*resPrev) {
-      if (++nGrow >= 2) {
-        std::copy(w.begin(), w.end(), yp_);
-        return -2;
-      }
-      backOff = true;
-    } else {
-      nGrow = 0;
+    if (!indLinResidualOk(res, &resPrev, &nGrow, &backOff)) {
+      std::copy(w.begin(), w.end(), yp_);
+      return -2;
     }
-    resPrev = res;
 
-    if (backOff || stepSearch == RX_INDLIN_SEARCH_NONE) {
-      theta = 1.0;
-    } else if (stepSearch == RX_INDLIN_SEARCH_EXACT) {
-      // One extra propagation, at the plain-Picard point, gives the residual
-      // there.  The residual is affine in the step for an affine map, so two of
-      // them locate the minimizer of ||R(a)|| in closed form -- the same thing
-      // Schmidt et al.'s bisection converges to, without spending a matrix
-      // exponential per bisection.
-      wTry = w;
-      int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(), subTp, subTf, tcov,
-                          subTf, InfusionRate_, on_, ME, IndF, u);
-      if (r2 <= 0) return r2;
-      theta = indLinThetaExact(op, rtol, atol, w, d, wTry);
-    } else {
-      theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
+    {
+      const int rt = indLinPickTheta(cSub, op, ind, rtol, atol, stepSearch, backOff,
+                                     w, d, dPrev, thetaPrev, y0, subTp, subTf, tcov,
+                                     InfusionRate_, on_, ME, IndF, u, wTry, &theta);
+      if (rt <= 0) return rt;
     }
-    // Report the measured contraction ratio so a caller that has to cut the
-    // step can size the cut instead of guessing.
-    if (ratioOut != NULL) {
-      double r = fabs(1.0 - 1.0/theta);
-      *ratioOut = (R_FINITE(r) && r > 1.0) ? r : 1.0;
-    }
+    indLinReportRatio(ratioOut, theta);
     if (indLinConverged(op, rtol, atol, w, d, theta)) {
       std::copy(w.begin(), w.end(), yp_);
       return 1;
@@ -1701,6 +1757,42 @@ typedef struct {
   int nAccept;
 } indLinProgress_t;
 
+// Raise the extrapolation level if what is left of the interval now justifies
+// it.  exprb32 is excluded: it has its own embedded pair, so a tableau would
+// only re-estimate an error it already has.
+static inline void indLinMaybeRaise(int autoRich, int richSticky,
+                                    indLinAutoState_t *autoSt, double tf,
+                                    indLinProgress_t *pr) {
+  if (!autoRich || pr->nAccept <= 0 || pr->h <= 0.0 ||
+      pr->scheme == RX_INDLIN_ITER_EXPRB32) {
+    return;
+  }
+  pr->useRich = indLinRaiseRich(pr->scheme, pr->useRich, (tf - pr->t)/pr->h);
+  // Carry it to the next interval of this subject; one way, so it cannot
+  // chatter, and it is dropped when the subject changes.
+  if (richSticky && autoSt != NULL && pr->useRich > autoSt->rich) {
+    autoSt->rich = pr->useRich;
+  }
+}
+
+// Commit an accepted step and size the next one.  A step following a rejection
+// may not grow, and a steady-state step may never grow at all: steady state
+// re-solves the same interval until it stops moving, so a drifting substep
+// schedule would make the ssRtol/ssAtol test read schedule jitter rather than
+// convergence.
+static inline void indLinAcceptStep(indLinProgress_t *pr, bool inSS, double hCap,
+                                    double fac, arma::vec &y0,
+                                    const arma::vec &yTry) {
+  y0 = yTry;
+  pr->t += pr->h;
+  pr->nAccept++;
+  __indLinNAccept++;
+  if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
+  pr->lastRejected = 0;
+  pr->h *= fac;
+  if (hCap > 0.0 && std::isfinite(hCap) && pr->h > hCap) pr->h = hCap;
+}
+
 // One adaptive attempt: raise the extrapolation level if the remaining work
 // now justifies it, take the step, and decide what the outcome means.  Pulled
 // out of indLinDriveAdaptive() so the driver reads as "snap to the endpoint,
@@ -1721,20 +1813,8 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   __indLinNAttempt++;
   if (++(pr->nAttempt) > op->mxstep) return RX_INDLIN_ACT_ABANDON;
   // Decide from the step the controller has settled on rather than by burning
-  // the switch-over count first: if crossing what is left of the interval at
-  // this step would take more than the break-even number of steps, Richardson
-  // is already the cheaper way to finish.  exprb32 is held at the base order --
-  // it has its own embedded pair, so a tableau would only re-estimate an error
-  // it already has -- unless an explicit indLinRichardson asks otherwise.
-  if (autoRich && pr->nAccept > 0 && pr->h > 0.0 &&
-      pr->scheme != RX_INDLIN_ITER_EXPRB32) {
-    pr->useRich = indLinRaiseRich(pr->scheme, pr->useRich, (tf - pr->t)/pr->h);
-    // Carry it to the next interval of this subject; one way, so it cannot
-    // chatter, and it is dropped when the subject changes.
-    if (richSticky && autoSt != NULL && pr->useRich > autoSt->rich) {
-      autoSt->rich = pr->useRich;
-    }
-  }
+  // the switch-over count first.
+  indLinMaybeRaise(autoRich, richSticky, autoSt, tf, pr);
   // The step is sized from an estimate of the order the extrapolation is built
   // on: first order for the plain step, second under Richardson.  The exponent
   // is -1/(p_est + 1) either way.
@@ -1762,17 +1842,51 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
     pr->lastRejected = 1;
     return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
   }
-  y0 = yTry;
-  pr->t += pr->h;
-  pr->nAccept++;
-  __indLinNAccept++;
-  // A step that follows a rejection may not grow, and a steady-state step may
-  // never grow at all.
-  if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
-  pr->lastRejected = 0;
-  pr->h *= fac;
-  if (hCap > 0.0 && std::isfinite(hCap) && pr->h > hCap) pr->h = hCap;
+  indLinAcceptStep(pr, inSS, hCap, fac, y0, yTry);
   return RX_INDLIN_ACT_ACCEPT;
+}
+
+// Where this interval starts: which scheme, which extrapolation level, and
+// whether either is ours to change.  Split out because the driver's remaining
+// job is the loop, and because the four flags interact in ways worth reading in
+// one place rather than spread over the top of a long function.
+static void indLinBeginInterval(rx_solving_options *op, int cSub, int *scheme,
+                                int *useRich, int *autoScheme, int *autoRich,
+                                int *richSticky, indLinAutoState_t **autoSt) {
+  *useRich = indLinInitialRich(op);
+  // `auto` starts on Picard and is raised by the stiffness gate, so a model
+  // that never needs a Jacobian never forms one -- zero convergence cuts were
+  // measured on Michaelis-Menten at every tolerance, where Picard is also the
+  // cheapest per step.
+  *scheme = op->indLinIteration;
+  *autoScheme = (*scheme == RX_INDLIN_ITER_AUTO);
+  *autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
+  // Only a model with a state-dependent forcing has anything for the
+  // extrapolation to work on: with the forcing state-free the exponential is
+  // already exact, the controller takes one step per interval, and carrying a
+  // level earned during a dose interval into every later one is pure cost --
+  // measured at 48% on a two-compartment linear model.
+  *richSticky = (*autoRich && op->indLinN > 0);
+  *autoSt = (*autoScheme || *richSticky) ? indLinAutoFor(cSub) : NULL;
+  if (*autoScheme) {
+    *scheme = (*autoSt != NULL) ? (*autoSt)->scheme : RX_INDLIN_ITER_PICARD;
+  }
+  // The earned level has to outlive the interval that earned it, for the same
+  // reason the scheme does: this runs once per OUTPUT INTERVAL, so a level held
+  // only locally resets at every observation and an interval spanning a few
+  // substeps never re-earns it.  A 13-observation profile then ran most of its
+  // trajectory at second order whatever the tolerance -- 0.626 s against
+  // 0.098 s for a forced level 4 on 200 subjects -- and scaling the thresholds
+  // down by 100x recovered none of it, because the reset was the binding
+  // constraint rather than the threshold.
+  if (*richSticky && *autoSt != NULL && (*autoSt)->rich > *useRich) {
+    *useRich = (*autoSt)->rich;
+  }
+  // exprb2 has no embedded pair, so its error estimate comes from the
+  // extrapolation column and it needs at least two entries to have one at all.
+  if (*scheme == RX_INDLIN_ITER_EXPRB && *useRich < RX_INDLIN_EXPRB_MINRICH) {
+    *useRich = RX_INDLIN_EXPRB_MINRICH;
+  }
 }
 
 static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
@@ -1796,36 +1910,10 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // needed enough steps to pay for it, so a loose tolerance never carries the
   // extra cost and a tight one is not left crawling.  The switch is one way
   // within an interval, so it cannot chatter.
-  int useRich = indLinInitialRich(op);
-  // The scheme for this interval.  `auto` starts on Picard and is raised by the
-  // stiffness gate below, so a model that never needs a Jacobian never forms
-  // one -- Phase 0 measured zero convergence cuts on Michaelis-Menten at every
-  // tolerance, where Picard is also the cheapest per step.
-  int scheme = op->indLinIteration;
-  const int autoScheme = (scheme == RX_INDLIN_ITER_AUTO);
-  int autoRich = (op->indLinRichardson == RX_INDLIN_RICH_AUTO);
-  // Only a model with a state-dependent forcing has anything for the
-  // extrapolation to work on: with the forcing state-free the exponential is
-  // already exact, the controller takes one step per interval, and carrying a
-  // level earned during a dose interval into every later one is pure cost --
-  // measured at 48% on a two-compartment linear model.
-  const int richSticky = (autoRich && op->indLinN > 0);
-  indLinAutoState_t *autoSt = (autoScheme || richSticky) ? indLinAutoFor(cSub) : NULL;
-  if (autoScheme) scheme = (autoSt != NULL) ? autoSt->scheme : RX_INDLIN_ITER_PICARD;
-  // The earned Romberg level has to outlive the interval that earned it, for
-  // exactly the reason `scheme` does.  This is a local per output interval, so
-  // it used to reset to second order at every observation and re-earn itself
-  // from `nAccept > 0`; an interval needing only a few substeps never clears
-  // the threshold, so a 13-observation Michaelis-Menten profile ran most of its
-  // life at second order.  Measured on 200 subjects, forcing level 4 reached a
-  // delivered error of 1e-4 in 0.098 s where `auto` took 0.626 s -- and scaling
-  // the thresholds down by 100x recovered none of it, because the reset, not
-  // the threshold, was the binding constraint.
-  if (richSticky && autoSt != NULL && autoSt->rich > useRich) useRich = autoSt->rich;
-  // exprb2 carries no embedded estimate of its own yet, so it needs at least
-  // two tableau entries to produce one at all.  (The Luan-Ostermann schemes
-  // supply their own pair and will lift this.)
-  if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) useRich = RX_INDLIN_EXPRB_MINRICH;
+  int useRich, scheme, autoScheme, autoRich, richSticky;
+  indLinAutoState_t *autoSt;
+  indLinBeginInterval(op, cSub, &scheme, &useRich, &autoScheme, &autoRich,
+                      &richSticky, &autoSt);
   indLinProgress_t pr;
   pr.t = t; pr.h = h; pr.scheme = scheme; pr.useRich = useRich;
   pr.lastRejected = 0; pr.nAttempt = 0; pr.nAccept = 0;
