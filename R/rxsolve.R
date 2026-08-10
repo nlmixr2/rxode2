@@ -246,6 +246,9 @@
 #'     the only thing limiting it.  `"auto"` (the default) therefore starts on
 #'     Picard and switches only once steps are actually being cut for
 #'     non-convergence, so a model that never needs a Jacobian never forms one.
+#'     `"exprb32"` is the Luan-Ostermann third-order exponential Rosenbrock
+#'     pair, which carries its own embedded error estimate and so does not need
+#'     the extrapolation column that `"exprb"` takes its estimate from.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
@@ -1221,7 +1224,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinStepSearch = c("secant", "exact", "none"),
                     indLinMaxIter = 20L,
                     indLinRichardson = c("auto", "always", "never", "always4", "always5"),
-                    indLinIteration = c("auto", "picard", "newton", "exprb"),
+                    indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1637,12 +1640,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                     "always4" = 3L,
                                     "always5" = 4L)[match.arg(indLinRichardson)])
     }
-    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=3,
+    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=4,
                                   any.missing=FALSE)) {
       .indLinIteration <- as.integer(indLinIteration)
     } else {
       .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L,
-                                   "auto" = 3L)[match.arg(indLinIteration)])
+                                   "auto" = 3L,
+                                   "exprb32" = 4L)[match.arg(indLinIteration)])
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)

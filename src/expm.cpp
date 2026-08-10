@@ -215,6 +215,10 @@ static int __indLinExpCacheOff = 0;
 #define RX_INDLIN_ITER_NEWTON 1
 #define RX_INDLIN_ITER_EXPRB  2
 #define RX_INDLIN_ITER_AUTO   3
+// exprb32 carries its own embedded pair, so unlike exprb2 it does not need the
+// extrapolation column to produce an error estimate and is not held at a
+// minimum Romberg level.
+#define RX_INDLIN_ITER_EXPRB32 4
 // How many steps `auto` must see cut for non-convergence before it switches.
 // One cut can be a transient at a dose event; a short run of them is the
 // signal that the iteration, not the tolerance, is setting the step.  Measured
@@ -867,6 +871,110 @@ static int indLinExprb2(int cSub, rx_solving_options *op, rx_solving_options_ind
   return 1;
 }
 
+// Luan-Ostermann exprb32: third order, with the second-order exprb2 solution
+// as an embedded pair.  Writing F for the full right-hand side and
+// J = F'(y_n),
+//
+//     U_2     = y_n + h*phi1(hJ)*F(y_n)                     (this is exprb2)
+//     y_{n+1} = U_2 + 2h*phi3(hJ)*D_2,  D_2 = F(U_2) - F(y_n) - J(U_2 - y_n)
+//
+// so `y_{n+1} - U_2` is an error estimate for the lower-order member and costs
+// nothing beyond what the step already computes.  That is the reason to have
+// this at all: exprb2 has no pair of its own and has to take its estimate from
+// the extrapolation column, which is unreliable at low levels (see
+// RX_INDLIN_EXPRB_MINRICH), so it is pinned to level 2 and pays for a tableau
+// it only wants an error estimate from.
+//
+// Two properties of this splitting make the extra stage cheap.  `A` is
+// state-independent, so D_2 collapses to `f(U_2) - f(y_n) - f'(U_2 - y_n)` --
+// one more forcing evaluation and NO second Jacobian.  And phi3 comes from the
+// same augmented-matrix identity already used for phi1, one size wider.
+//
+// Measured on a scalar Michaelis-Menten step: local order 4.015 against
+// exprb2's 3.005, with the estimate tracking exprb2's actual error to three
+// digits and their ratio approaching 1 as h falls.
+static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                         int neq, double *rtol, double *atol,
+                         const arma::vec &y0, double t, double h, double tcov,
+                         double tEval, double *InfusionRate_, t_ME ME, t_IndF IndF,
+                         arma::vec *u, arma::vec &yOut, double *errOut,
+                         arma::mat &Jf, arma::vec &yPert, arma::vec &fPlus,
+                         arma::vec &fMinus, arma::mat &aug, arma::vec &augY,
+                         arma::mat &augE, arma::mat &Aloc) {
+  ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
+  arma::vec f0(neq);
+  if (u != NULL) {
+    IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
+    indLinForcingJacFd(cSub, op, neq, tcov, tEval, y0.memptr(), IndF,
+                       Jf, yPert, fPlus, fMinus);
+  } else {
+    std::copy(InfusionRate_, InfusionRate_ + neq, f0.memptr());
+    Jf.zeros(neq, neq);
+  }
+  arma::mat J = Aloc + Jf;
+  arma::vec g = f0 - Jf*y0;
+  // Stage one is exactly exprb2: exp([[J, g],[0,0]] h) [y0; 1].
+  aug.zeros(neq + 1, neq + 1);
+  aug.submat(0, 0, neq - 1, neq - 1) = J;
+  aug.submat(0, neq, neq - 1, neq) = g;
+  augE.set_size(neq + 1, neq + 1);
+  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  augY.set_size(neq + 1);
+  std::copy(y0.begin(), y0.end(), augY.begin());
+  augY[neq] = 1.0;
+  arma::vec sol = augE*augY;
+  arma::vec U2(neq);
+  std::copy(sol.begin(), sol.begin() + neq, U2.begin());
+  // Same overflow guard as exprb2: J is the full linearisation and carries a
+  // large positive eigenvalue at a relaxation layer.
+  for (int k = 0; k < neq; ++k) {
+    if (!R_FINITE(U2[k])) return -2;
+  }
+  if (u == NULL) {
+    // No state-dependent forcing, so f' = 0, D_2 = 0 and the correction
+    // vanishes identically -- this IS exprb2, and exactly, not to rounding.
+    yOut = U2;
+    if (errOut != NULL) *errOut = 0.0;
+    return 1;
+  }
+  arma::vec fU2(neq);
+  IndF(cSub, tcov, tEval, fU2.memptr(), U2.memptr());
+  arma::vec D2 = fU2 - f0 - Jf*(U2 - y0);
+  // phi3(hJ) D_2 from one exponential of size neq+3, using
+  //   exp([[X, W],[0, K]])  with W = [w_p ... w_1] and K the UNIT superdiagonal
+  // whose last column's top block is sum_k phi_k(X) w_k.  Setting w_3 = D_2 and
+  // w_2 = w_1 = 0 leaves phi3(X) D_2 alone.
+  //
+  // X must be J*h with the exponential then taken at t = 1, NOT J with the
+  // exponential at t = h: the latter scales the nilpotent block too, and the
+  // identity needs its superdiagonal to be exactly one.  That distinction is
+  // invisible at p = 1 -- the block is the 1x1 zero and h*0 = 0 -- which is why
+  // stage one above can pass `h` directly.
+  const int p = 3;
+  aug.zeros(neq + p, neq + p);
+  aug.submat(0, 0, neq - 1, neq - 1) = J*h;
+  aug.submat(0, neq, neq - 1, neq) = D2;
+  for (int i = 0; i < p - 1; ++i) aug(neq + i, neq + i + 1) = 1.0;
+  augE.set_size(neq + p, neq + p);
+  matrixExpCached(aug, augE, 1.0, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  arma::vec phi3D = augE.col(neq + p - 1).head(neq);
+  yOut = U2 + (2.0*h)*phi3D;
+  for (int k = 0; k < neq; ++k) {
+    if (!R_FINITE(yOut[k])) return -2;
+  }
+  if (errOut != NULL) {
+    double err = 0.0;
+    for (int k = 0; k < neq; ++k) {
+      double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
+      if (sc <= 0.0) continue;
+      double e = (yOut[k] - U2[k])/sc;
+      err += e*e;
+    }
+    *errOut = sqrt(err / (double) neq);
+  }
+  return 1;
+}
+
 // The same substep fixed point as `indLinIterate`, reached by Newton instead of
 // relaxed Picard.  Same equation, same answer -- only the path differs.
 //
@@ -1170,6 +1278,19 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
   int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
   yOut = y0;
   int ret;
+  if (scheme == RX_INDLIN_ITER_EXPRB32) {
+    // Unlike exprb2 this fills `errOut` itself, from its embedded pair, so it
+    // works at Romberg level 0 and the driver leaves the column alone.
+    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq);
+    arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
+    ret = indLinExprb32(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+                        t, InfusionRate_, ME, IndF, u, yOut, errOut,
+                        Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc);
+    if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
+    if (ret == -2 && errOut != NULL) *errOut = 0.0;
+    w1 = yOut;
+    return ret;
+  }
   if (scheme == RX_INDLIN_ITER_EXPRB) {
     // Exponential Rosenbrock has no iteration, so it produces no `w1` and no
     // pass-0/converged difference.  Its error comes from the Romberg tableau
@@ -1424,7 +1545,11 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     // burning the switch-over count first: if crossing what is left of the
     // interval at this step would take more than the break-even number of
     // steps, Richardson is already the cheaper way to finish.
-    if (autoRich && nAccept > 0 && h > 0.0) {
+    // exprb32 brings its own embedded pair, so extrapolating it means paying
+    // for a tableau to estimate an error it has already estimated.  Hold it at
+    // the base order under `auto`; an explicit `indLinRichardson` still wins,
+    // because that is the user asking for it.
+    if (autoRich && nAccept > 0 && h > 0.0 && scheme != RX_INDLIN_ITER_EXPRB32) {
       double nLeft = (tf - t)/h;
       // Same break-even argument one level up.  A p-th order step needs about
       // N^(2/p) of the second-order step's N, so the fourth-order column

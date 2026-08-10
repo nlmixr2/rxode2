@@ -243,6 +243,18 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `rxSolve(indLinIteration="exprb32")` adds the Luan-Ostermann third-order
+  exponential Rosenbrock pair.  Its embedded second-order member is `"exprb"`
+  itself, so the two differ by a computable quantity and it sizes its step from
+  that rather than from the extrapolation column -- which is what `"exprb"` has
+  to use and why `"exprb"` is held at fourth order.  It is NOT the default and
+  is not selected by `"auto"`: measured at matched delivered accuracy it wins
+  only on a stiff problem at a loose tolerance, by about 1.2 to 1.7 times, and
+  loses elsewhere, badly so on a non-stiff population.  The reason is the cost
+  of the third phi function, which needs an augmented matrix three rows wider
+  than the plain step; at the small dense systems compartmental models produce,
+  widening the exponential costs more than the extra order saves.
+
 - `rxSolve(indLinIteration=)` chooses how `method="indLin"` solves each
   relinearization step: `"picard"` (the previous and only behaviour),
   `"newton"`, or `"exprb"`, an exponential Rosenbrock step that does not

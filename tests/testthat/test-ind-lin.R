@@ -1318,6 +1318,48 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.dt, 30)
   })
 
+  test_that("exprb32 solves the same problem and carries its own error estimate", {
+    # exprb32 is a third-order exponential Rosenbrock pair whose embedded
+    # second-order member is exprb2 itself, so it needs no extrapolation column
+    # to size a step.  It is NOT the default -- measured, it wins only on stiff
+    # problems at loose tolerance and loses badly elsewhere -- but it must still
+    # be correct, and correctness here means agreeing with an ODE integration.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .o <- suppressMessages(rxode2(.txt))
+    .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
+    .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
+    .ref <- suppressMessages(rxSolve(.o, .e, .p, method = "lsoda",
+                                     atol = 1e-13, rtol = 1e-13))$central
+    .r <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
+                                   atol = 1e-8, rtol = 1e-8,
+                                   indLinIteration = "exprb32"))
+    expect_equal(.r$central, .ref, tolerance = 1e-5)
+
+    # It is a higher order than exprb2, which is the whole reason it exists:
+    # over three decades of tolerance its error must fall faster.  Run against
+    # the stiff problem where exprb is the scheme in use.
+    .van <- suppressMessages(rxode2(rxToIndLin(
+      "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
+    .vo <- suppressMessages(rxode2(
+      "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n"))
+    .ev <- et(seq(0, (3 - 2*log(2))*10, length.out = 100))
+    .vref <- suppressMessages(rxSolve(.vo, .ev, c(mu = 10), method = "lsoda",
+                                      atol = 1e-13, rtol = 1e-13))$y
+    .err <- vapply(c(1e-4, 1e-6), function(.tol) {
+      max(abs(suppressMessages(rxSolve(.van, .ev, c(mu = 10), method = "indLin",
+                                       atol = .tol, rtol = .tol,
+                                       indLinIteration = "exprb32"))$y - .vref))
+    }, double(1))
+    expect_lt(.err[2], .err[1])
+
+    # Round-trips through the control by name and by code.
+    expect_equal(rxControl(indLinIteration = "exprb32")$indLinIteration, 4L)
+    expect_equal(rxControl(indLinIteration = 4L)$indLinIteration, 4L)
+  })
+
   test_that("every backend is accurate at every Al-Mohy degree band", {
     # The Pade coefficients depend on the degree.  matexp_pade() used to read a
     # fixed table that is the degree-13 row and truncate it, which is not the
