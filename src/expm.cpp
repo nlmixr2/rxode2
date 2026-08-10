@@ -1677,6 +1677,104 @@ static inline double indLinCutFactor(double ratio, double facMin) {
   return cut;
 }
 
+// What one attempt concluded.  ACCEPT and RETRY both mean "go round again" --
+// they are distinguished because only ACCEPT advances `t` -- while the two
+// exits leave the interval.
+typedef enum {
+  RX_INDLIN_ACT_ACCEPT = 0,  // step taken
+  RX_INDLIN_ACT_RETRY,       // rejected or cut; `h` has already been reduced
+  RX_INDLIN_ACT_ABANDON,     // out of budget or out of step; restore and report
+  RX_INDLIN_ACT_ERROR        // hard failure from below; pass its code up
+} indLinAction_t;
+
+// The state one attempt advances.  Bundled rather than passed as six in/out
+// pointers: an attempt moves `t`, `h`, `scheme`, `useRich` and `lastRejected`
+// together, and spelling that out as a long argument list would hide the very
+// thing splitting the loop is meant to show.
+typedef struct {
+  double t;
+  double h;
+  int scheme;
+  int useRich;
+  int lastRejected;
+  int nAttempt;
+  int nAccept;
+} indLinProgress_t;
+
+// One adaptive attempt: raise the extrapolation level if the remaining work
+// now justifies it, take the step, and decide what the outcome means.  Pulled
+// out of indLinDriveAdaptive() so the driver reads as "snap to the endpoint,
+// attempt, handle the two ways out" and the policy lives here.
+static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
+                                    rx_solving_options_ind *ind, int neq,
+                                    double *rtol, double *atol,
+                                    double tf, double span, double hCap, int locf,
+                                    double *InfusionRate_, int *on_,
+                                    t_ME ME, t_IndF IndF, arma::vec *u,
+                                    int autoScheme, int autoRich, int richSticky,
+                                    bool inSS, indLinAutoState_t *autoSt,
+                                    indLinProgress_t *pr,
+                                    arma::vec &y0, arma::vec &yTry, arma::vec &w1,
+                                    arma::vec &yScratch, arma::mat &richTab,
+                                    int *retOut) {
+  const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
+  __indLinNAttempt++;
+  if (++(pr->nAttempt) > op->mxstep) return RX_INDLIN_ACT_ABANDON;
+  // Decide from the step the controller has settled on rather than by burning
+  // the switch-over count first: if crossing what is left of the interval at
+  // this step would take more than the break-even number of steps, Richardson
+  // is already the cheaper way to finish.  exprb32 is held at the base order --
+  // it has its own embedded pair, so a tableau would only re-estimate an error
+  // it already has -- unless an explicit indLinRichardson asks otherwise.
+  if (autoRich && pr->nAccept > 0 && pr->h > 0.0 &&
+      pr->scheme != RX_INDLIN_ITER_EXPRB32) {
+    pr->useRich = indLinRaiseRich(pr->scheme, pr->useRich, (tf - pr->t)/pr->h);
+    // Carry it to the next interval of this subject; one way, so it cannot
+    // chatter, and it is dropped when the subject changes.
+    if (richSticky && autoSt != NULL && pr->useRich > autoSt->rich) {
+      autoSt->rich = pr->useRich;
+    }
+  }
+  // The step is sized from an estimate of the order the extrapolation is built
+  // on: first order for the plain step, second under Richardson.  The exponent
+  // is -1/(p_est + 1) either way.
+  const double expo = -1.0/((double) (pr->useRich + 2));
+  double err = 0.0, ratio = 1.0;
+  const int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, pr->scheme, y0,
+                                pr->t, pr->h, locf, pr->useRich,
+                                InfusionRate_, on_, ME, IndF, u, yTry, w1,
+                                yScratch, richTab, &err, &ratio);
+  if (ret == -2) {
+    __indLinNCutConv++;
+    indLinStiffGate(autoScheme, autoRich, autoSt, &(pr->scheme), &(pr->useRich));
+    pr->h *= indLinCutFactor(ratio, FACMIN);
+    pr->lastRejected = 1;
+    return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
+  }
+  if (ret <= 0) {
+    *retOut = ret;
+    return RX_INDLIN_ACT_ERROR;
+  }
+  double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
+  if (err > 1.0) {
+    __indLinNRejErr++;
+    pr->h *= fac;
+    pr->lastRejected = 1;
+    return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
+  }
+  y0 = yTry;
+  pr->t += pr->h;
+  pr->nAccept++;
+  __indLinNAccept++;
+  // A step that follows a rejection may not grow, and a steady-state step may
+  // never grow at all.
+  if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
+  pr->lastRejected = 0;
+  pr->h *= fac;
+  if (hCap > 0.0 && std::isfinite(hCap) && pr->h > hCap) pr->h = hCap;
+  return RX_INDLIN_ACT_ACCEPT;
+}
+
 static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                                int neq, double *rtol, double *atol,
                                double *yp_, double tp, double tf, double hCap, int locf,
@@ -1728,75 +1826,30 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // two tableau entries to produce one at all.  (The Luan-Ostermann schemes
   // supply their own pair and will lift this.)
   if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) useRich = RX_INDLIN_EXPRB_MINRICH;
-  int nAttempt = 0, nAccept = 0;
-  while (t < tf) {
+  indLinProgress_t pr;
+  pr.t = t; pr.h = h; pr.scheme = scheme; pr.useRich = useRich;
+  pr.lastRejected = 0; pr.nAttempt = 0; pr.nAccept = 0;
+  while (pr.t < tf) {
     // Snap to `tf` rather than leaving a sliver behind.
-    if (t + 1.01*h >= tf) h = tf - t;
-    if (h <= 0.0) break;
-    __indLinNAttempt++;
-    if (++nAttempt > op->mxstep) return indLinAbandon(y0, yp_, ind);
-    // Decide from the step the controller has settled on rather than by
-    // burning the switch-over count first: if crossing what is left of the
-    // interval at this step would take more than the break-even number of
-    // steps, Richardson is already the cheaper way to finish.
-    // exprb32 brings its own embedded pair, so extrapolating it means paying
-    // for a tableau to estimate an error it has already estimated.  Hold it at
-    // the base order under `auto`; an explicit `indLinRichardson` still wins,
-    // because that is the user asking for it.
-    if (autoRich && nAccept > 0 && h > 0.0 && scheme != RX_INDLIN_ITER_EXPRB32) {
-      useRich = indLinRaiseRich(scheme, useRich, (tf - t)/h);
-      // Carry it to the next interval of this subject; one way, so it cannot
-      // chatter, and it is dropped when the subject changes.
-      if (richSticky && autoSt != NULL && useRich > autoSt->rich) autoSt->rich = useRich;
-    }
-    // The step is sized from an estimate of the order the extrapolation is
-    // built on: first order for the plain step, second under Richardson.  The
-    // exponent is -1/(p_est + 1) either way.
-    double expo = -1.0/((double) (useRich + 2));
-    double err = 0.0, ratio = 1.0;
-    int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, scheme, y0, t, h, locf, useRich,
-                            InfusionRate_, on_, ME, IndF, u, yTry, w1,
-                            yScratch, richTab, &err, &ratio);
-    if (ret == -2) {
-      __indLinNCutConv++;
-      // The stiffness gate.  A step cut here is one the error controller would
-      // have accepted, so a run of them says the iteration is the binding
-      // constraint -- which is exactly the regime the other schemes exist for.
-      // One way only, so it cannot chatter.
-      indLinStiffGate(autoScheme, autoRich, autoSt, &scheme, &useRich);
-      h *= indLinCutFactor(ratio, FACMIN);
-      lastRejected = true;
-      if (h < 1e-10*span) return indLinAbandon(y0, yp_, ind);
-      continue;
-    }
-    if (ret <= 0) {
+    if (pr.t + 1.01*pr.h >= tf) pr.h = tf - pr.t;
+    if (pr.h <= 0.0) break;
+    int ret = 1;
+    const indLinAction_t act =
+      indLinAttempt(cSub, op, ind, neq, rtol, atol, tf, span, hCap, locf,
+                    InfusionRate_, on_, ME, IndF, u,
+                    autoScheme, autoRich, richSticky, inSS, autoSt, &pr,
+                    y0, yTry, w1, yScratch, richTab, &ret);
+    if (act == RX_INDLIN_ACT_ABANDON) return indLinAbandon(y0, yp_, ind);
+    if (act == RX_INDLIN_ACT_ERROR) {
       std::copy(y0.begin(), y0.end(), yp_);
       return ret;
     }
-    double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
-    if (err > 1.0) {
-      __indLinNRejErr++;
-      h *= fac;
-      lastRejected = true;
-      if (h < 1e-10*span) return indLinAbandon(y0, yp_, ind);
-      continue;
-    }
-    y0 = yTry;
-    t += h;
-    nAccept++;
-    __indLinNAccept++;
-    // A step that follows a rejection may not grow, and a steady-state step
-    // may never grow at all.
-    if ((lastRejected || inSS) && fac > 1.0) fac = 1.0;
-    lastRejected = false;
-    h *= fac;
-    if (hCap > 0.0 && std::isfinite(hCap) && h > hCap) h = hCap;
   }
   std::copy(y0.begin(), y0.end(), yp_);
   // `postSolve()` already counts one per output interval; add the substeps
   // this interval actually needed so `$counts$slvr` reports real work.
-  if (ind != NULL && ind->slvr_counter != NULL && nAccept > 1) {
-    ind->slvr_counter[0] += nAccept - 1;
+  if (ind != NULL && ind->slvr_counter != NULL && pr.nAccept > 1) {
+    ind->slvr_counter[0] += pr.nAccept - 1;
   }
   return 1;
 }
