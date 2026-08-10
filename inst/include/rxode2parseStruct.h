@@ -117,6 +117,9 @@ typedef struct {
   int indLinPhiM;
   int indLinMatExpType;
   int indLinMatExpOrder;
+  int indLinStepSearch; // 0 = none, 1 = secant, 2 = exact
+  int indLinMaxIter;
+  int indLinRichardson; // 1 = Richardson-extrapolate to third order
   int nDisplayProgress;
   int ncoresRV;
   int isChol;
@@ -166,6 +169,8 @@ typedef struct {
   int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
   int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
+  int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
+  int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
 } rx_solving_options;
 
 

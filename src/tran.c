@@ -677,6 +677,9 @@ void trans_internal(const char* parse_file, int isStr){
         tb.didx[i] = abs(tb.didx[i]);
         tb.idu[i] = 1;
       }
+      // Has to come after the loop above: that is what registers the
+      // compartments, so the state list is not complete until it has run.
+      assertNoStateDependentMicro();
     }
   }
 }

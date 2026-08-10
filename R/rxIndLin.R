@@ -13,6 +13,14 @@
 #'   term by dividing each by the number of states in the term and then
 #'   adding a matrix term for each state.
 #'
+#' @details
+#'
+#' This no longer affects the conversion.  The `matExp()` rate matrix has to be
+#' constant in the states, and dividing any one state out of a multi-state
+#' product always leaves a coefficient that still reads a state, so such a term
+#' goes to the `indLin()` forcing whichever state is preferred.  The setting is
+#' kept so existing code keeps working.
+#'
 #' @return Nothing
 #' @author Matthew L. Fidler
 #' @export
@@ -24,6 +32,14 @@ rxIndLinStrategy <- function(strategy = c("curState", "split")) {
 #' Set the preferred factoring by state
 #'
 #' @param preferred A list of each state's preferred factorization
+#'
+#' @details
+#'
+#' Like [rxIndLinStrategy()], this no longer affects the conversion: a
+#' multi-state product cannot yield a state-free rate constant whichever state
+#' is factored out, so it becomes an `indLin()` forcing instead.  The setting is
+#' kept so existing code keeps working.
+#'
 #' @return Nothing
 #' @author Matthew Fidler
 #' @export
@@ -47,9 +63,18 @@ rxIndLinState <- function(preferred = NULL) {
 .rxIndLinLine <- function(line, states, state0) {
   .tmp <- tryCatch(
     symengine::expand(line), ## Expand line; simplifies X^1->X etc
-    error = function(e) symengine::S(as.character(line)) ## fall back for complex exprs
+    error = function(e) {
+      ## Re-parsing is the usual fallback for complex exprs, but symengine
+      ## cannot parse a dotted identifier (`eta.Cl`) and that is an ordinary
+      ## rxode2 name.  Expansion is a simplification, not a requirement, so
+      ## give up on it rather than on the conversion.
+      tryCatch(symengine::S(as.character(line)),
+               error = function(e2) line)
+    }
   )
-  .tmp <- rxFromSE(.tmp) ## Convert SE->rxode2; Changes things like X^1 -> X
+  ## rxFromSE() needs a Basic; if the fallback above handed back the original
+  ## object it is already one, but a plain string must pass through untouched.
+  .tmp <- if (is.character(.tmp)) .tmp else rxFromSE(.tmp)
 
   .ret <- eval(parse(text = paste0("rxSplitPlusQ(quote(", .tmp, "))")))
   .lst <- list()
@@ -69,7 +94,13 @@ rxIndLinState <- function(preferred = NULL) {
   ## This collapses a character vector with "*" between it
   ## If we have *1/x this becomes simply /x
   .multCollapse <- function(x) {
-    as.character(symengine::S(paste(x, collapse = "*")))
+    .txt <- paste(x, collapse = "*")
+    # symengine cannot parse a dotted identifier (`eta.Cl`), which is an
+    # ordinary rxode2 name, and this call is only tidying the result
+    # cosmetically.  Fall back to the plain product rather than failing the
+    # whole conversion: `-1*x` instead of `-x` is uglier but identical.
+    tryCatch(as.character(symengine::S(.txt)),
+             error = function(e) .txt)
   }
   sapply(.ret, function(x) {
     .mult <- eval(parse(text = paste0("rxSplitPlusQ(quote(", x, "),mult=TRUE)")))
@@ -89,15 +120,25 @@ rxIndLinState <- function(preferred = NULL) {
       .pars <- rxModelVars(paste0("rx_expr=", x))$params
       return(.pars[.pars %in% states])
     }))
+    ## The A matrix of a matExp() model has to be constant in the states --
+    ## that is the premise of the matrix exponential, and it is what
+    ## rxode2parseHandleEvid.h's jump code already assumes.  So a term only
+    ## belongs in A when dividing out one state leaves a coefficient that
+    ## reads no state at all; anything else is the nonlinear residual and
+    ## goes to the forcing, where the solver's Picard iteration can chase it
+    ## (rxode2#1186).
+    .addForcing <- function(.mult) {
+      .fullIndLin <<- TRUE
+      .addIt(.multCollapse(.mult), "_rxF")
+    }
     .addState <- function(.state, .mult) {
       .num <- which(.mult == .state)
       if (length(.num) == 0) {
-        .fullIndLin <<- TRUE
-        .rest <- c(.mult, paste0("1/", .state))
-        .expr <- .multCollapse(.rest)
-        .addIt(.expr, .state)
+        ## The state is in there but not as a bare factor (vmax/(km+central)),
+        ## so no division by it produces a linear coefficient.  This used to
+        ## multiply in `1/state`, which also made A singular at state == 0.
+        .addForcing(.mult)
       } else {
-        if (length(.num) > 1) .fullIndLin <<- TRUE
         .num <- .num[1]
         .rest <- .mult[-.num]
         if (length(.rest) == 0) {
@@ -105,51 +146,28 @@ rxIndLinState <- function(preferred = NULL) {
         } else if (length(.rest) == 1 && .rest[1] == "-1") {
           .addIt("-1", .state)
         } else {
-          if (!.fullIndLin) {
-            ## Check to see if this is inductive or
-            ## depends on other states.
-            .otherStates <- unlist(lapply(.rest, function(x) {
-              .pars <- rxModelVars(paste0("rx_expr=", x))$params
-              return(.pars[.pars %in% states])
-            }))
-            if (length(.otherStates) > 0) .fullIndLin <<- TRUE
+          ## Whatever is left after dividing out the state still has to be
+          ## state free to be a legal rate constant.
+          .otherStates <- unlist(lapply(.rest, function(x) {
+            .pars <- rxModelVars(paste0("rx_expr=", x))$params
+            return(.pars[.pars %in% states])
+          }))
+          if (length(.otherStates) > 0) {
+            .addForcing(.mult)
+          } else {
+            .addIt(.multCollapse(.rest), .state)
           }
-          .expr <- .multCollapse(.rest)
-          .addIt(.expr, .state)
         }
       }
     }
     if (length(.curStates) == 1) {
       .addState(.curStates, .mult)
     } else if (length(.curStates) > 1) {
-      if (.rxIndLinStrategy == "split") {
-        ## Use strategy #3, split between all the compartments
-        .extra <- paste0("1/", length(.curStates))
-        for (.s in .curStates) {
-          .addState(.s, c(.mult, .extra))
-        }
-      } else {
-        .pref <- .rxIndLinState[[state0]]
-        .addPref <- FALSE
-        if (!is.null(.pref)) {
-          .pref <- intersect(.pref, .curStates)
-          if (length(.pref) > 0) {
-            .addState(.pref[1], .mult)
-            .addPref <- TRUE
-          }
-        }
-        if (!.addPref) {
-          if (any(.curStates == state0)) {
-            ## If there is d/dt(state1) = ... (state1*state2*state3) ...
-            ## or some other complex expression prefer expressing
-            .addState(state0, .mult)
-          } else {
-            ## Otherwise just use the first state identified.
-            ## Strategy #1 just add the first
-            .addState(.curStates[1], .mult)
-          }
-        }
-      }
+      ## A product of two states (or a state with itself) can never leave a
+      ## state-free coefficient whichever one is divided out, so it goes to
+      ## the forcing whole.  Routing here rather than inside .addState() also
+      ## stops the "split" strategy emitting the same forcing term n times.
+      .addForcing(.mult)
     } else {
       ## This is some "constant" or time-base experssion that
       ## does not depend on state.  Hence it is the extra constant

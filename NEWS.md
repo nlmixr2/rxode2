@@ -36,7 +36,6 @@
   reads them.  A forcing inside an `if`/`while` may not run, so it adds to what
   the forcings before it established rather than replacing them.  The entries
   are the 0-indexed positions in `$state`, named with those states.
-  `fullIndLin` is still `FALSE`, so solving is unchanged.
 
 - `rxModelNameLhs()` registers the name an assignment is making, for
   assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
@@ -175,12 +174,288 @@
 
 ### Matrix exponential / inductive linearization
 
+- The `Al-Mohy` matrix exponential evaluated the wrong Pade numerator below
+  degree 13.  The coefficients depend on the degree, and the routine read a
+  fixed table -- the degree-13 row -- and truncated it, which is not the
+  degree-p numerator.  The answer stayed convergent but only to a few `1e-12`
+  where every other backend reaches machine precision, and only against an
+  exact solution is that visible.  The row is now built for whichever degree was
+  selected.
+
+- The `Al-Mohy` matrix exponential returned a wrong answer for a very large
+  matrix norm.  The squaring count was returned as the factor `2^s` in an `int`
+  and clamped so it could not overflow, but clamping caps the scaling while
+  leaving the norm untouched, so degree-13 Pade ran far outside its range and
+  produced a plausible finite number: a one-compartment model with a rate
+  constant of `1e20` returned `5.1e-08` for a quantity that underflows to zero.
+  The squaring count is now carried as a count.
+
+- `rxSolve(indLinMatExpType=)` now defaults to `"Al-Mohy"` rather than
+  `"expokit"`.  With the degree bug below fixed, all four backends agree to
+  solver tolerance and take the same steps on every problem tested, and
+  `"Al-Mohy"` is the cheapest per exponential: about 4-5% on a Michaelis-Menten
+  population and 34% on a stiff van der Pol one, where an exponential-Rosenbrock
+  step rebuilds its operator every step and the exponential cache cannot help.
+  On a linear model the difference is unmeasurable, the cache serving nearly
+  every call.  Results move in the last digits, as any change of exponential
+  kernel does; pass `indLinMatExpType="expokit"` to keep the previous one.
+
+- `rxSolve(indLinMatExpType="Al-Mohy")` chose its Pade degree and its scaling
+  inconsistently, which could return a silently wrong answer or a solve that
+  never finished.  The scaling came from the Al-Mohy-Higham threshold table,
+  whose entries each belong to one specific degree, while the degree itself came
+  from `indLinMatExpOrder` (default 6) -- so any matrix with a 1-norm up to the
+  table's largest threshold, 5.37, was evaluated at degree 6 with no scaling at
+  all where the table calls for degree 13.  Both are now taken together from the
+  norm, as the `taylor` backend already did.  A two-compartment linear model
+  returned `1.8e-06` against about `1e-11` for every other backend, and one
+  van der Pol subject at `mu = 95.7866` under an exponential Rosenbrock step ran
+  for over 390 seconds -- a bad exponential can make the error estimate
+  unsatisfiable, so the step controller shrinks the step without limit instead
+  of failing -- where the other backends took 0.03 s.  Both now agree with the
+  other backends, and on a 50-subject stiff population `Al-Mohy` goes from not
+  completing in 418 s to 0.92 s, the fastest of the four.  Consequently
+  `indLinMatExpOrder` no longer applies to `Al-Mohy`; it still applies to
+  `expokit`.
+
+- `rxSolve(<function or rxUi model>, method="indLin")` failed with "Can only
+  parse scalar data".  With the default `useLinCmt=TRUE` the ODE was first
+  rewritten into `linCmt()`, leaving a model with `linCmt()` pseudo-compartments
+  and no `d/dt()` for the matrix-exponential conversion to work from.  That
+  rewrite is now skipped when `method="indLin"` is requested, so such a model
+  integrates its own rate matrix rather than being replaced by the analytic
+  solution.
+
+- A steady-state infusion (`ss=1` or `ss=2` with a `rate`) gave a diverging
+  solve under `method="indLin"`.  Its solver was the only one that never drained
+  the pending-dose queue, which is where the infusion's off record is held, so
+  the steady state itself was found correctly and the infusion was then left
+  running for the rest of the timeline.  Steady-state boluses and ordinary
+  (non-steady-state) infusions were unaffected.
+
+- `method="indLin"` is substantially faster.  The ODE-to-`matExp()` conversion
+  ran on every `rxSolve()` call although it is a pure function of the model, and
+  cost several times the solve it was preparing for; it is now done once per
+  model (`options(rxode2.indLinConvCache=FALSE)` restores the old behaviour).
+  The matrix exponential itself was recomputed on every fixed-point pass even
+  though the rate matrix cannot change between them, and identical exponentials
+  are now reused (`RXODE2_INDLIN_NO_EXP_CACHE` disables this).  Together these
+  are several times faster on a nonlinear model and more on a linear one; no
+  result changes.
+
+- `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
+  `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and
+  `"exprb32"` -- Picard needs none, so a non-stiff model under the default
+  scheme never forms one.  `"symbolic"` uses the model's own analytic Jacobian,
+  which the `matExp()` conversion already emits as `df()/dy()` lines, and costs
+  no extra forcing evaluations; `"fd"` central-differences the forcing at `2n`
+  evaluations.  `"auto"` (the default) takes the symbolic one when the model
+  carries it and falls back to finite differences otherwise, which is what
+  happens above `getOption("rxode2.indLinJacMaxStates")` states where the
+  emission is skipped.
+
+  On cost the two are a wash at compartmental sizes -- within about 25% of each
+  other either way from 3 to 16 states, with no consistent ordering, and the
+  symbolic emission adds a fraction of a second once at model build.  The
+  reason `"auto"` prefers symbolic anyway is exactness rather than speed: an
+  exponential Rosenbrock step's order conditions assume the Jacobian is exact,
+  and on a stiff van der Pol the symbolic one delivered a smaller error for the
+  same work.
+
+- `rxSolve(indLinIteration="exprb32")` adds the Luan-Ostermann third-order
+  exponential Rosenbrock pair.  Its embedded second-order member is `"exprb"`
+  itself, so the two differ by a computable quantity and it sizes its step from
+  that rather than from the extrapolation column -- which is what `"exprb"` has
+  to use and why `"exprb"` is held at fourth order.  It is NOT the default and
+  is not selected by `"auto"`: measured at matched delivered accuracy it wins
+  only on a stiff problem at a loose tolerance, by about 1.2 to 1.7 times, and
+  loses elsewhere, badly so on a non-stiff population.  The reason is the cost
+  of the third phi function, which needs an augmented matrix three rows wider
+  than the plain step; at the small dense systems compartmental models produce,
+  widening the exponential costs more than the extra order saves.
+
+- `rxSolve(indLinIteration=)` chooses how `method="indLin"` solves each
+  relinearization step: `"picard"` (the previous and only behaviour),
+  `"newton"`, or `"exprb"`, an exponential Rosenbrock step that does not
+  iterate at all.  Which is cheapest depends entirely on the problem -- on a
+  non-stiff model the iteration never limits the step and Picard is cheapest,
+  while on a stiff one it is the only thing limiting it -- so `"auto"` (the
+  default) starts on Picard and switches only once steps are actually being cut
+  for non-convergence.  A model that never needs a Jacobian therefore never
+  forms one.  On a van der Pol oscillator integrated over a full relaxation
+  period at matched accuracy this is about 39 times faster than Picard at
+  `mu = 100` (593 relinearizations against 45,913) and about 426 times faster at
+  `mu = 1000` (581 against 1,001,968), which takes a full cycle at that
+  stiffness from impractical to routine; a Michaelis-Menten model is left on
+  Picard and unchanged.  With both schemes
+  given their best extrapolation level, that division holds: Picard is ahead on
+  a non-stiff model at working tolerances and the exponential Rosenbrock step is
+  ahead on a stiff one, and at a delivered error of 1e-8 on a non-stiff model.
+  `"exprb"` runs at fourth order or above, since its error estimate comes from
+  the extrapolation column and the third-order one is not reliable enough to
+  size a step from.
+
+- `method="indLin"` extrapolates further when it pays.  Each relinearization
+  step could previously be raised from second to third order by running it also
+  at half length; it can now use a Romberg column of up to four entries (`h`,
+  `h/2`, `h/4`, `h/8`) for up to fifth order, at 3, 7 and 15 fixed-point solves
+  per step.  `indLinRichardson="auto"` (the default) raises the level as the
+  step the controller settles on crosses each break-even.  `"always4"` and
+  `"always5"` force the new levels.  On a 200-subject Michaelis-Menten solve
+  this halves the time at `atol=rtol=1e-8`, and on a single subject at `1e-12`
+  it is over seven times faster than the third-order step.
+
+- `indLinRichardson="auto"` keeps the extrapolation level it has earned for the
+  rest of the subject, instead of dropping back to second order at every
+  observation and re-earning it.  A step that only needs a few relinearizations
+  never reached the break-even, so a model observed at a dozen times ran most of
+  its profile at second order however low the break-even was set: on a
+  200-subject Michaelis-Menten solve the default took 0.626 s to reach a
+  delivered error of 1e-4 where forcing the fourth-order column took 0.098 s.
+  It is now 0.112 s, and 0.341 s rather than 0.646 s at 1e-6.  The break-evens
+  themselves are also measured rather than derived, and differ between the
+  fixed-point and exponential-Rosenbrock steps, whose costs per level differ.  A
+  model whose forcing reads no state is unaffected: the matrix exponential is
+  already exact for it and there is nothing to extrapolate.
+
+  Two consequences for anyone reading step counts.  A loose tolerance now does
+  use extrapolation -- it turns out to pay there too, taking fewer steps than
+  the second-order path rather than the same number -- and the delivered error
+  at a loose tolerance is much smaller than before, so a ratio of errors across
+  a tolerance sweep is no longer a way to read off the order of the default
+  path.  Use `indLinRichardson="never"` for that.
+
+- `rxSolve(indLinMatExpType="taylor")` adds a Taylor scaling-and-squaring
+  matrix exponential, which needs no linear solve; its degree is chosen per
+  call from the norm.  It is as accurate as the default `"expokit"` on every
+  problem tested, including a linear system where `"Al-Mohy"` at its default
+  order is six orders of magnitude worse.  The default is unchanged: profiling
+  puts all of LAPACK at roughly 3% of a solve, so avoiding the linear solve does
+  not pay on nonlinear problems.
+
+- `$counts$dadt` and `$counts$jac` report the matrix exponentials computed and
+  reused for a `method="indLin"` solve.  Both counters were previously unused on
+  this path.
+
+- `method="indLin"` no longer uses the R API from inside the parallel solve.
+  The Al-Mohy matrix-exponential backend took its workspace from `R_alloc`, and
+  the default expokit backend warned through `RWarn` on a singular Pade
+  denominator; neither is safe from a worker thread.  The singular case also
+  used to continue with an unfinished matrix, and now reports and returns zeros.
+
+- `method="indLin"` no longer throws from inside the parallel solve.  Two code
+  paths in the inductive-linearization solver raised an R-level error from a
+  worker thread, which crashes the session rather than reporting an error; both
+  now report through the usual per-subject error flag.
+
 - An `indLin(<state>) <- <expr>` forcing that references a compartment is now
   evaluated at that compartment's current value.  The generated forcing
   function took no state vector, so the compartment kept its `NA_REAL`
   declaration and any state-dependent forcing (e.g. Michaelis-Menten
   elimination, `indLin(central) <- -vmax*central/(km+central)`) solved to `NA`
   under `method="indLin"`.  A forcing that references no state is unchanged.
+
+- `method="indLin"` iterates again, so it is inductive linearization rather than
+  one relinearization per `hmax` substep.  Within each substep the matrix and
+  the forcing are rebuilt at the latest iterate while propagation restarts from
+  the substep's starting state, until the states reported by
+  `rxModelVars(m)$indLin$wIndLin` stop moving to within `atol`/`rtol`.  Plain
+  Picard iteration only barely contracts once the substep is comparable to the
+  forcing's own time scale -- a Michaelis-Menten forcing with no linear
+  elimination sits right at the stability boundary, oscillating for ~1e5 passes
+  -- so each step is relaxed by a secant estimate of the iteration's contraction
+  ratio.  Relaxation does not move the fixed point, so the converged answer is
+  the undamped one.  Models with no forcing, or with a forcing that reads no
+  state, keep the single-pass path and are unchanged.
+
+- Converting an ODE model to `matExp()` form (`rxToIndLin()`, and therefore
+  `rxode2(..., indLin = TRUE)` and `method="indLin"`'s auto-conversion) now puts
+  the nonlinear part of a right-hand side into an `indLin()` forcing instead of
+  into a rate constant.  A rate constant that reads a compartment is not a rate
+  constant -- the matrix exponential assumes the rate matrix is constant in the
+  states -- and burying the nonlinearity there meant the solver could not
+  iterate it.  Michaelis-Menten elimination now converts to
+  `indLin(central) <- -vmax*central/(km + central)` with an empty rate matrix
+  rather than to `k_central_output = vmax/(km + central)`.  This also removes a
+  rate constant that was singular when the compartment was empty.  Because these
+  models now reach the iterating solver path, they are far more accurate: a
+  one-compartment Michaelis-Menten solve that was about 70% off at the default
+  settings is now within about 0.01%.  `rxIndLinStrategy()` and
+  `rxIndLinState()` no longer affect the conversion, since no way of factoring a
+  multi-state product yields a state-free rate constant; both are kept so
+  existing code keeps working.
+
+- `rxSolve(indLinRichardson=)` Richardson-extrapolates each `method="indLin"`
+  relinearization step, raising it from second to third order: the step is run
+  once whole and twice at half length, and since a second-order step has a
+  quarter the error at half the length, the two answers together cancel it.
+  That costs three fixed-point solves per step instead of one, so it only pays
+  once the tolerance is tight enough that taking far fewer steps outweighs it.
+  `"auto"` (the default) decides per interval: after the first accepted step it
+  compares the step the controller settled on against what is left of the
+  interval, and switches when finishing at that step would take more than 27 of
+  them -- the break-even point, since a second-order step needing `N` steps
+  becomes a third-order one needing about `N^(2/3)` at three times the cost
+  each.  `"always"`/`TRUE` and `"never"`/`FALSE` force the choice.  On a
+  Michaelis-Menten model the switch-over lands at about `atol=rtol=1e-5`; at
+  `1e-8` `"auto"` takes 544 steps where the second-order step takes 12,865.
+
+- `rxSolve(indLinStepSearch=)` and `rxSolve(indLinMaxIter=)` control the
+  fixed-point iteration `method="indLin"` runs inside each relinearization step.
+  `indLinStepSearch="secant"` (the default) estimates the iteration's
+  contraction ratio from the last two residuals and relaxes by it, which costs
+  nothing extra and is what makes an oscillating iteration converge at all;
+  `"exact"` spends one more matrix exponential per iteration to locate the
+  residual-minimizing factor in closed form; `"none"` is plain, undamped Picard.
+  All three converge to the same answer -- relaxation does not move the fixed
+  point -- so the choice trades iterations against work per iteration; on a
+  Michaelis-Menten model the default is about five times faster than `"none"`.
+  `indLinMaxIter` (default 20) caps the iterations per step; running out is not
+  an error, since the iteration contracts in proportion to the step and the
+  solver reads it as a step that is too long.
+
+- A `matExp()` rate constant that depends on a compartment is now a parse error
+  rather than a silently invalid model.  The matrix exponential is only correct
+  when the rate matrix is constant over the step, so a `k_from_to` that reads a
+  state breaks the method's central assumption; the error names the constant and
+  the compartment it reaches and points at `indLin()`, which is where a
+  state-dependent term belongs and where the solver can iterate it.  Models
+  built by `rxSensMatExp()` are exempt for now: their sensitivity blocks are
+  built out of rate constants throughout, and rewriting that generator is
+  separate work.
+
+- `method="indLin"` chooses its own relinearization step for models with a
+  state-dependent `indLin()` forcing, instead of subdividing each interval
+  evenly by `hmax`.  The forward answer (matrix built at the step's starting
+  state) and the converged backward answer bracket the truth symmetrically, so
+  their difference is a local error estimate that costs nothing extra; the step
+  is then chosen from it the same way the other adaptive solvers choose theirs.
+  `atol`/`rtol` and `maxsteps` now control the accuracy of these models and
+  `hmax` only bounds the step.  An iteration that will not converge is treated
+  as a step that is too long and is retried shorter rather than reported, so
+  stiff forcings that previously failed outright now solve; non-convergence is
+  reported only once the step or the step budget runs out.  `$counts$slvr`
+  reports the relinearization steps actually taken, where it used to read zero.
+  One consequence worth knowing: as with every adaptive method, the solution is
+  now a piecewise function of the parameters, which adds a little noise to
+  finite-difference gradients taken through it.
+
+  Each step also advances on the average of the two answers the error estimate
+  is built from, whose leading errors are equal and opposite, so what is
+  propagated is second order where either alone is first.  This costs nothing --
+  both are already in hand -- and it is what brings the step count down: the
+  error now falls roughly in proportion to `atol`/`rtol` rather than to their
+  square root, so the work needed for a given accuracy grows like
+  `1/sqrt(error)` instead of `1/error`.  On the Michaelis-Menten model above,
+  matching the accuracy the old scheme delivered at its default now takes about
+  a twentieth of the steps, and the gap widens the more accuracy is asked for.
+
+  The forward answer is evaluated at the step's starting time as well as its
+  starting state, so that it and the converged answer really are the two ends of
+  one quadrature.  Evaluating both at the step end cancels the state error but
+  leaves the explicit-time error, which silently dropped any forcing that reads
+  `t` back to first order: on a Michaelis-Menten model with an `exp(-t)` input
+  the error at `atol=rtol=1e-9` falls from 4.6e-03 to 1.1e-07.
 
 ### Installation / linking
 

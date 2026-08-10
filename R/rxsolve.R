@@ -138,14 +138,14 @@
 #'   determine the step size when `dense=TRUE`
 #'
 #'   For `method="indLin"`, `hmax` caps how long an interval is treated
-#'   as having a CONSTANT Jacobian/matrix-exponential term before
-#'   re-linearizing (previously silently ignored for this method). For a
-#'   true (state-independent) `matExp()` model this makes no numerical
-#'   difference; for an `indLin()`-forcing model with a state-dependent
-#'   term (e.g. Michaelis-Menten elimination), the default `hmax` (tied to
-#'   the spacing of your own sampling/dosing times) may be too coarse for
-#'   the desired accuracy -- set an explicit, smaller `hmax` to force more
-#'   frequent relinearization.
+#'   as having a CONSTANT matrix-exponential term before re-linearizing.
+#'   A model with a state-dependent `indLin()` forcing now chooses its own
+#'   relinearization step from a local error estimate, so `atol`/`rtol`
+#'   (and `maxsteps`) are what control its accuracy and `hmax` only sets an
+#'   upper bound on the step.  A model whose forcing reads no state, or
+#'   which has none, has a rate matrix that is constant in the states, so
+#'   there is no error to control and `hmax` only changes how many
+#'   (mathematically equivalent) matrix exponentials are taken.
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -183,20 +183,85 @@
 #' @param indLinMatExpType This is them matrix exponential type that
 #'     is use for rxode2.  Currently the following are supported:
 #'
-#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham (2009)
+#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham
+#'   (2009); the default.  It is the fastest on the models where the
+#'   exponential is a measurable share of the solve, and all four agree
+#'   to solver tolerance.
 #'
 #' * `arma` Use the exponential matrix from RcppArmadillo
 #'
 #' * `expokit` Use the exponential matrix from Roger B. Sidje (1998)
 #'
+#' * `taylor` Taylor scaling and squaring, needing no linear solve
+#'
 #'
 #' @param indLinMatExpOrder an integer, the order of approximation to
-#'     be used, for the `Al-Mohy` and `expokit` values.
-#'     The best value for this depends on machine precision (and
-#'     slightly on the matrix). We use `6` as a default.
+#'     be used, for the `expokit` value.  The best value for this
+#'     depends on machine precision (and slightly on the matrix). We
+#'     use `6` as a default.  It no longer applies to `Al-Mohy`, whose
+#'     degree is not free to choose: each accuracy threshold in the
+#'     Al-Mohy-Higham table belongs to one specific degree, so the
+#'     degree and the scaling are selected together from the matrix
+#'     norm.  `taylor` has always chosen its degree the same way.
 #'
 #' @param indLinPhiTol the requested accuracy tolerance on
 #'     exponential matrix.
+#'
+#' @param indLinStepSearch how `method="indLin"` picks the relaxation factor
+#'     for its fixed-point iteration.  `"secant"` (the default) estimates the
+#'     iteration's contraction ratio from the last two residuals and costs
+#'     nothing extra; `"exact"` spends one more matrix exponential per iteration
+#'     to locate the residual-minimizing factor in closed form; `"none"` is
+#'     plain, undamped Picard iteration.  All three converge to the same answer
+#'     -- the relaxation does not move the fixed point -- so this trades
+#'     iterations against work per iteration.
+#'
+#' @param indLinMaxIter the maximum number of `method="indLin"` fixed-point
+#'     iterations per relinearization step.  Running out is not an error: the
+#'     iteration contracts in proportion to the step, so the solver reads it as
+#'     a step that is too long and retries with a shorter one.
+#'
+#' @param indLinRichardson how far `method="indLin"` extrapolates each
+#'     relinearization step.  The base step is second order; running it also at
+#'     half length and combining removes the leading error term for third order
+#'     at three fixed-point solves, and adding a quarter-length run gives a
+#'     three-entry Romberg column for fourth order at seven.  Each level pays
+#'     for itself only once the tolerance is tight enough that taking far fewer
+#'     steps outweighs the extra solves per step: a second-order step needing
+#'     `N` steps becomes a `p`-th order one needing about `N^(2/p)`, so third
+#'     order wins once `3*N^(2/3) < N` (`N > 27`) and fourth once
+#'     `7*N^(1/2) < 3*N^(2/3)` (`N > 161`).  `"auto"` (the default) starts each
+#'     interval second order and raises the level as the step the controller
+#'     settles on crosses those thresholds.  `"never"` (or `FALSE`), `"always"`
+#'     (or `TRUE`, third order) and `"always4"` (fourth order) force the choice.
+#'
+#' @param indLinIteration how `method="indLin"` solves each relinearization
+#'     step.  `"picard"` is the relaxed fixed-point iteration; `"newton"`
+#'     replaces it with a Newton iteration, which removes the contraction
+#'     condition so convergence stops limiting the step; `"exprb"` uses an
+#'     exponential Rosenbrock step, which does not iterate at all -- it puts the
+#'     full linearization into the exponential, so nothing can fail to converge.
+#'     Their costs differ sharply by problem: on a non-stiff model the iteration
+#'     never limits the step and Picard is cheapest, while on a stiff one it is
+#'     the only thing limiting it.  `"auto"` (the default) therefore starts on
+#'     Picard and switches only once steps are actually being cut for
+#'     non-convergence, so a model that never needs a Jacobian never forms one.
+#'     `"exprb32"` is the Luan-Ostermann third-order exponential Rosenbrock
+#'     pair, which carries its own embedded error estimate and so does not need
+#'     the extrapolation column that `"exprb"` takes its estimate from.
+#'
+#' @param indLinJac where the forcing Jacobian comes from when
+#'     `method="indLin"` needs one, which is only under the `"newton"`,
+#'     `"exprb"` and `"exprb32"` iteration schemes -- Picard needs none, so a
+#'     non-stiff model under the default `"auto"` scheme never forms one at
+#'     all.  `"symbolic"` uses the model's own analytic Jacobian, available
+#'     because the `matExp()` conversion emits `df()/dy()` lines, and costs no
+#'     extra forcing evaluations; `"fd"` central-differences the forcing, at
+#'     `2n` evaluations per Jacobian.  `"auto"` (the default) takes the
+#'     symbolic one when the model carries it and falls back to finite
+#'     differences otherwise -- which is what happens above
+#'     `getOption("rxode2.indLinJacMaxStates")` states, where the symbolic
+#'     emission is skipped to bound the symengine work at model build.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
@@ -1099,7 +1164,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     keep = NULL,
                     indLinPhiTol = 1e-7,
                     indLinPhiM = 0L,
-                    indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+                    indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
                     indLinMatExpOrder = 6L,
                     drop = NULL,
                     idFactor = TRUE,
@@ -1169,6 +1234,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     chunkSize=NULL,
                     parallel=0L,
                     zeroVarParamHandle=c("warn", "ignore", "keep"),
+                    indLinStepSearch = c("secant", "exact", "none"),
+                    indLinMaxIter = 20L,
+                    indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+                    indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+                    indLinJac = c("auto", "symbolic", "fd"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1372,10 +1442,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .omega <- lotri(omega)
     }
-    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=4, any.missing=FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
     } else {
-      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L)
+      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L, "taylor" = 4L)
       .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
     if (checkmate::testIntegerish(sumType, len=1, lower=1,
@@ -1563,6 +1633,41 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (isTRUE(dense) && method == 7L) {
       warning("dense output is not supported for ck54. Ignoring dense=TRUE", call.=FALSE)
       dense <- FALSE
+    }
+    if (checkmate::testIntegerish(indLinStepSearch, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      .indLinStepSearch <- as.integer(indLinStepSearch)
+    } else {
+      .indLinStepSearch <- unname(c("none" = 0L, "secant" = 1L,
+                                    "exact" = 2L)[match.arg(indLinStepSearch)])
+    }
+    checkmate::assertIntegerish(indLinMaxIter, len=1, lower=1, any.missing=FALSE)
+    indLinMaxIter <- as.integer(indLinMaxIter)
+    if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L &&
+          !is.na(indLinRichardson)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=4,
+                                         any.missing=FALSE)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else {
+      .indLinRichardson <- unname(c("never" = 0L, "always" = 1L,
+                                    "auto" = 2L,
+                                    "always4" = 3L,
+                                    "always5" = 4L)[match.arg(indLinRichardson)])
+    }
+    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=4,
+                                  any.missing=FALSE)) {
+      .indLinIteration <- as.integer(indLinIteration)
+    } else {
+      .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L,
+                                   "auto" = 3L,
+                                   "exprb32" = 4L)[match.arg(indLinIteration)])
+    }
+    if (checkmate::testIntegerish(indLinJac, len=1, lower=0, upper=2,
+                                  any.missing=FALSE)) {
+      .indLinJac <- as.integer(indLinJac)
+    } else {
+      .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
+                             "fd" = 2L)[match.arg(indLinJac)])
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
@@ -1836,7 +1941,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       chunkSize=chunkSize,
       parallel=parallel,
       .zeros=unique(.zeros),
-      zeroVarParamHandle=zeroVarParamHandle
+      zeroVarParamHandle=zeroVarParamHandle,
+      indLinStepSearch=.indLinStepSearch,
+      indLinMaxIter=indLinMaxIter,
+      indLinRichardson=.indLinRichardson,
+      indLinIteration=.indLinIteration,
+      indLinJac=.indLinJac
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2260,8 +2370,47 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(theta = theta, eta = eta))
 }
 
-#' @rdname rxSolve
-#' @export
+#' Does this model actually carry `d/dt()` equations?
+#'
+#' `rxModelVars(x)$state` also counts `linCmt()` pseudo-compartments, so it is
+#' non-empty for models that have no differential equations at all.
+#'
+#' @param x model to test
+#' @return logical, `TRUE` when the normalized model has at least one `d/dt()`
+#' @noRd
+.rxHasOde <- function(x) {
+  .norm <- try(rxNorm(x), silent = TRUE)
+  if (inherits(.norm, "try-error") || is.null(.norm)) {
+    return(TRUE)
+  }
+  any(grepl("d/dt(", .norm, fixed = TRUE))
+}
+
+#' Was `method="indLin"` asked for in these `rxSolve()` dots?
+#'
+#' @param ... the `rxSolve()` dots to inspect
+#' @return logical, `TRUE` when the dots select the inductive-linearization method
+#' @noRd
+.rxIndLinRequested <- function(...) {
+  .dots <- list(...)
+  .m <- .dots$method
+  if (is.null(.m)) {
+    for (.d in .dots) {
+      if (inherits(.d, "rxControl") && !is.null(.d$method)) {
+        .m <- .d$method
+        break
+      }
+    }
+  }
+  if (is.null(.m) || length(.m) != 1L) {
+    return(FALSE)
+  }
+  if (is.numeric(.m)) {
+    return(isTRUE(.m == 3L))
+  }
+  isTRUE(as.character(.m) == "indLin")
+}
+
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
@@ -2305,7 +2454,11 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
-  if (isTRUE(useLinCmt)) {
+  # `method="indLin"` asks for the matrix exponential of this model's own rate
+  # matrix, so the ODE-to-linCmt() auto-conversion must not fire: it leaves a
+  # model with linCmt() pseudo-compartments and no d/dt() lines at all, which
+  # rxToIndLin() cannot convert.
+  if (isTRUE(useLinCmt) && !.rxIndLinRequested(...)) {
     .linInfo <- .odeToLinDetect(object) # nolint
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
@@ -2584,16 +2737,44 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   } else if (.ctl$method == 3L) {
-    if (length(rxModelVars(object)$state) > 0L) {
+    # `$state` also counts linCmt() pseudo-compartments, which have no d/dt()
+    # line behind them; converting such a model would look for derivatives that
+    # do not exist.  There is nothing to convert when no d/dt() is present, and
+    # the model solves as it stands.
+    if (length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
       .calcSens <- NULL
+      .modelEnv <- NULL
       if (rxIs(object, "rxode2")) {
         .e <- attr(class(object), ".rxode2.env")
         if (is.environment(.e)) {
           .calcSens <- .e$calcSens
         }
+        # An rxode2 object is itself an environment; the attribute above is a
+        # legacy handle that no longer matches one built from text or a file.
+        # Cache against whichever is actually there.
+        .modelEnv <- if (is.environment(.e)) .e else if (is.environment(object)) object else NULL
       }
-      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
-      object <- rxode2(.mexpCode)
+      # Converting an ODE model to matExp() form runs symengine and then builds
+      # the generated model, which together cost several times more than the
+      # solve they are preparing for.  Both are a pure function of this model,
+      # so cache the result on the model's own environment: an rxode2 object is
+      # immutable once built and `calcSens` is read from that same environment,
+      # so nothing can invalidate it.  A text or function `object` has no such
+      # environment and still converts per call.
+      .useCache <- isTRUE(getOption("rxode2.indLinConvCache", TRUE))
+      .converted <- if (.useCache && is.environment(.modelEnv)) {
+        .modelEnv$.rxIndLinModel
+      } else {
+        NULL
+      }
+      if (is.null(.converted)) {
+        .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+        .converted <- rxode2(.mexpCode)
+        if (.useCache && is.environment(.modelEnv)) {
+          assign(".rxIndLinModel", .converted, envir = .modelEnv)
+        }
+      }
+      object <- .converted
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model

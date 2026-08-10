@@ -3,7 +3,6 @@
 \name{rxSolve}
 \alias{rxSolve}
 \alias{rxSolve.function}
-\alias{rxSolve.rxUi}
 \alias{rxSolve.rxode2tos}
 \alias{rxSolve.nlmixr2FitData}
 \alias{rxSolve.nlmixr2FitCore}
@@ -126,7 +125,7 @@ rxSolve(
   keep = NULL,
   indLinPhiTol = 1e-07,
   indLinPhiM = 0L,
-  indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+  indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
   indLinMatExpOrder = 6L,
   drop = NULL,
   idFactor = TRUE,
@@ -192,6 +191,11 @@ rxSolve(
   chunkSize = NULL,
   parallel = 0L,
   zeroVarParamHandle = c("warn", "ignore", "keep"),
+  indLinStepSearch = c("secant", "exact", "none"),
+  indLinMaxIter = 20L,
+  indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+  indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+  indLinJac = c("auto", "symbolic", "fd"),
   envir = parent.frame()
 )
 
@@ -201,18 +205,6 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  theta = NULL,
-  eta = NULL,
-  envir = parent.frame()
-)
-
-\method{rxSolve}{rxUi}(
-  object,
-  params = NULL,
-  events = NULL,
-  inits = NULL,
-  ...,
-  useLinCmt = TRUE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -791,14 +783,14 @@ Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
-as having a CONSTANT Jacobian/matrix-exponential term before
-re-linearizing (previously silently ignored for this method). For a
-true (state-independent) \code{matExp()} model this makes no numerical
-difference; for an \code{indLin()}-forcing model with a state-dependent
-term (e.g. Michaelis-Menten elimination), the default \code{hmax} (tied to
-the spacing of your own sampling/dosing times) may be too coarse for
-the desired accuracy -- set an explicit, smaller \code{hmax} to force more
-frequent relinearization.}
+as having a CONSTANT matrix-exponential term before re-linearizing.
+A model with a state-dependent \code{indLin()} forcing now chooses its own
+relinearization step from a local error estimate, so \code{atol}/\code{rtol}
+(and \code{maxsteps}) are what control its accuracy and \code{hmax} only sets an
+upper bound on the step.  A model whose forcing reads no state, or
+which has none, has a rate matrix that is constant in the states, so
+there is no error to control and \code{hmax} only changes how many
+(mathematically equivalent) matrix exponentials are taken.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}
@@ -1185,15 +1177,23 @@ exponential matrix.}
 \item{indLinMatExpType}{This is them matrix exponential type that
 is use for rxode2.  Currently the following are supported:
 \itemize{
-\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham (2009)
+\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham
+(2009); the default.  It is the fastest on the models where the
+exponential is a measurable share of the solve, and all four agree
+to solver tolerance.
 \item \code{arma} Use the exponential matrix from RcppArmadillo
 \item \code{expokit} Use the exponential matrix from Roger B. Sidje (1998)
+\item \code{taylor} Taylor scaling and squaring, needing no linear solve
 }}
 
 \item{indLinMatExpOrder}{an integer, the order of approximation to
-be used, for the \code{Al-Mohy} and \code{expokit} values.
-The best value for this depends on machine precision (and
-slightly on the matrix). We use \code{6} as a default.}
+be used, for the \code{expokit} value.  The best value for this
+depends on machine precision (and slightly on the matrix). We
+use \code{6} as a default.  It no longer applies to \code{Al-Mohy}, whose
+degree is not free to choose: each accuracy threshold in the
+Al-Mohy-Higham table belongs to one specific degree, so the
+degree and the scaling are selected together from the matrix
+norm.  \code{taylor} has always chosen its degree the same way.}
 
 \item{drop}{Columns to drop from the output}
 
@@ -1603,6 +1603,62 @@ instead; the options are:
 \item \code{ignore} replace the supplied value with zero silently
 \item \code{keep} use the supplied value instead of zero
 }}
+
+\item{indLinStepSearch}{how \code{method="indLin"} picks the relaxation factor
+for its fixed-point iteration.  \code{"secant"} (the default) estimates the
+iteration's contraction ratio from the last two residuals and costs
+nothing extra; \code{"exact"} spends one more matrix exponential per iteration
+to locate the residual-minimizing factor in closed form; \code{"none"} is
+plain, undamped Picard iteration.  All three converge to the same answer
+-- the relaxation does not move the fixed point -- so this trades
+iterations against work per iteration.}
+
+\item{indLinMaxIter}{the maximum number of \code{method="indLin"} fixed-point
+iterations per relinearization step.  Running out is not an error: the
+iteration contracts in proportion to the step, so the solver reads it as
+a step that is too long and retries with a shorter one.}
+
+\item{indLinRichardson}{how far \code{method="indLin"} extrapolates each
+relinearization step.  The base step is second order; running it also at
+half length and combining removes the leading error term for third order
+at three fixed-point solves, and adding a quarter-length run gives a
+three-entry Romberg column for fourth order at seven.  Each level pays
+for itself only once the tolerance is tight enough that taking far fewer
+steps outweighs the extra solves per step: a second-order step needing
+\code{N} steps becomes a \code{p}-th order one needing about \code{N^(2/p)}, so third
+order wins once \code{3*N^(2/3) < N} (\code{N > 27}) and fourth once
+\code{7*N^(1/2) < 3*N^(2/3)} (\code{N > 161}).  \code{"auto"} (the default) starts each
+interval second order and raises the level as the step the controller
+settles on crosses those thresholds.  \code{"never"} (or \code{FALSE}), \code{"always"}
+(or \code{TRUE}, third order) and \code{"always4"} (fourth order) force the choice.}
+
+\item{indLinIteration}{how \code{method="indLin"} solves each relinearization
+step.  \code{"picard"} is the relaxed fixed-point iteration; \code{"newton"}
+replaces it with a Newton iteration, which removes the contraction
+condition so convergence stops limiting the step; \code{"exprb"} uses an
+exponential Rosenbrock step, which does not iterate at all -- it puts the
+full linearization into the exponential, so nothing can fail to converge.
+Their costs differ sharply by problem: on a non-stiff model the iteration
+never limits the step and Picard is cheapest, while on a stiff one it is
+the only thing limiting it.  \code{"auto"} (the default) therefore starts on
+Picard and switches only once steps are actually being cut for
+non-convergence, so a model that never needs a Jacobian never forms one.
+\code{"exprb32"} is the Luan-Ostermann third-order exponential Rosenbrock
+pair, which carries its own embedded error estimate and so does not need
+the extrapolation column that \code{"exprb"} takes its estimate from.}
+
+\item{indLinJac}{where the forcing Jacobian comes from when
+\code{method="indLin"} needs one, which is only under the \code{"newton"},
+\code{"exprb"} and \code{"exprb32"} iteration schemes -- Picard needs none, so a
+non-stiff model under the default \code{"auto"} scheme never forms one at
+all.  \code{"symbolic"} uses the model's own analytic Jacobian, available
+because the \code{matExp()} conversion emits \code{df()/dy()} lines, and costs no
+extra forcing evaluations; \code{"fd"} central-differences the forcing, at
+\verb{2n} evaluations per Jacobian.  \code{"auto"} (the default) takes the
+symbolic one when the model carries it and falls back to finite
+differences otherwise -- which is what happens above
+\code{getOption("rxode2.indLinJacMaxStates")} states, where the symbolic
+emission is skipped to bound the symengine work at model build.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

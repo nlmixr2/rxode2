@@ -619,12 +619,14 @@ rxTest({
     expect_equal(fine$central, ref$central, tolerance = 1e-3)
     expect_gt(max(abs(ref$central)), 1)
 
-    # The forcing is relinearized once per hmax substep, so it is first order in
-    # hmax; refining hmax must measurably reduce the error.
-    dCoarse <- max(abs(rxSolve(mexp, e, method = "indLin", hmax = 0.5)$central -
-                         ref$central))
-    dFine <- max(abs(rxSolve(mexp, e, method = "indLin", hmax = 0.05)$central -
-                       ref$central))
+    # rxode2#1185: the relinearization step is chosen from a local error
+    # estimate now, so `atol`/`rtol` -- not `hmax` -- is what refines the
+    # answer.  It is still first order, so the error falls like the square root
+    # of the tolerance.
+    dCoarse <- max(abs(rxSolve(mexp, e, method = "indLin",
+                               atol = 1e-4, rtol = 1e-4)$central - ref$central))
+    dFine <- max(abs(rxSolve(mexp, e, method = "indLin",
+                             atol = 1e-8, rtol = 1e-8)$central - ref$central))
     expect_lt(dFine, dCoarse / 2)
 
     # Same forcing through the braced rxode2({...}) front end rather than a
@@ -887,14 +889,17 @@ rxTest({
     expect_equal(rxModelVars(.conv)$indLin$wIndLin,
                  setNames(integer(0), character(0)))
 
-    # fullIndLin is still FALSE, so the solver dispatch is unchanged
+    # rxode2#1185 drives fullIndLin off wIndLin, so a state-dependent forcing
+    # now selects the iterating dispatch (codes 3/4) and a state-free one does
+    # not
     .mexp <- suppressMessages(rxode2(paste("matExp()",
                                            "cmt(central)",
                                            "vmax = 10",
                                            "km = 5",
                                            "indLin(central) <- -vmax*central/(km+central)",
                                            sep = "\n")))
-    expect_false(rxModelVars(.mexp)$indLin$fullIndLin)
+    expect_true(rxModelVars(.mexp)$indLin$fullIndLin)
+    expect_false(rxModelVars(.conv)$indLin$fullIndLin)
 
     # a plain ODE model has no indLin element to report
     expect_length(rxModelVars(suppressMessages(rxode2({

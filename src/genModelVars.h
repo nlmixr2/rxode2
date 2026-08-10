@@ -415,12 +415,11 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
 // compartment's forcing.
 // A compartment is state dependent by definition; 2 marks the state itself so
 // indLinStmtTarget() can refuse to overwrite it.
-static inline void indLinSeedStateDep(int *dep, SEXP state) {
-  int ns = Rf_length(state);
+static inline void indLinSeedStateDep(int *dep) {
   for (int i = 0; i < NV; ++i) {
     dep[i] = 0;
-    for (int m = 0; m < ns; ++m) {
-      if (!strcmp(tb.ss.line[i], CHAR(STRING_ELT(state, m)))) {
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.ss.line[i], tb.de.line[d])) {
         dep[i] = 2;
         break;
       }
@@ -450,8 +449,8 @@ static inline int indLinStmtTarget(int s, int *dep) {
   return t;
 }
 
-static inline void indLinReplay(int *dep, int *fdep, SEXP state) {
-  indLinSeedStateDep(dep, state);
+static inline void indLinReplay(int *dep, int *fdep) {
+  indLinSeedStateDep(dep);
   for (int d = 0; d < tb.de.n; ++d) fdep[d] = 0;
   for (int s = 0; s < tb.stmtN; ++s) {
     int t = indLinStmtTarget(s, dep);
@@ -459,6 +458,71 @@ static inline void indLinReplay(int *dep, int *fdep, SEXP state) {
     int v = indLinStmtReadsDep(s, dep);
     int *cur = (tb.stmtK[s] == 0) ? dep : fdep;
     cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
+  }
+}
+
+// Walk back from symbol `j` through whatever gave it its state dependence
+// until a compartment is reached, so the error message can name something the
+// user actually wrote.  Bounded by the statement count, so a self-referential
+// chain cannot spin.
+static inline int indLinDepSource(int j, int *dep) {
+  int cur = j;
+  for (int guard = 0; guard <= tb.stmtN; ++guard) {
+    if (dep[cur] == 2) return cur;
+    int found = -1;
+    for (int s = tb.stmtN; s--;) {
+      if (tb.stmtK[s] != 0 || tb.stmtT[s] != cur) continue;
+      int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+      for (int r = tb.stmtR0[s]; r < r1; ++r) {
+        if (dep[tb.stmtRef[r]]) { found = tb.stmtRef[r]; break; }
+      }
+      if (found >= 0) break;
+    }
+    if (found < 0) return cur;
+    cur = found;
+  }
+  return cur;
+}
+
+// A matExp() rate constant that reads a compartment is not a rate constant: the
+// matrix exponential is only valid when the rate matrix is constant over the
+// step, which is also what the event-sensitivity jump code assumes
+// (rxode2parseHandleEvid.h).  Report the first one, naming the constant and the
+// compartment it reaches, and point at indLin() -- which is where a
+// state-dependent term belongs and where the solver can iterate it.
+//
+// A sensitivity model is exempt for now.  rxSensMatExp() builds its whole
+// sensitivity system out of rate constants -- including the primal ones, which
+// the sensitivity blocks then reference BY NAME -- so for a nonlinear model
+// every one of them is state dependent.  Rewriting that generator to route the
+// nonlinear parts into forcings is a job of its own (rxode2#1186 follow-up);
+// until then those models keep the first-order propagation they have always
+// had, which is no worse than before.
+static inline void assertNoStateDependentMicro(void) {
+  if (!tb.isMexp || tb.de.n <= 0 || NV <= 0) return;
+  for (int d = 0; d < tb.de.n; ++d) {
+    if (!strncmp(tb.de.line[d], "rx__sens_", 9)) return;
+  }
+  int *dep  = (int*)R_alloc(NV, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n, sizeof(int));
+  indLinReplay(dep, fdep);
+  char cmt1[100], cmt2[100];
+  for (int j = 0; j < NV; ++j) {
+    if (dep[j] != 1) continue;
+    if (!parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) continue;
+    int have1 = 0, have2 = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], cmt1)) have1 = 1;
+      if (!strcmp(tb.de.line[d], cmt2)) have2 = 1;
+    }
+    if (!have1 || !have2) continue;
+    const char *src = tb.ss.line[indLinDepSource(j, dep)];
+    updateSyntaxCol();
+    sPrint(&_bufw,
+           _("matrix exponential rate constant '%s' depends on the compartment '%s'; rate constants must be constant in the states -- put the state-dependent part in 'indLin(%s) <- ...' instead"),
+           tb.ss.line[j], src, cmt1);
+    trans_syntax_error_report_fn0(_bufw.s);
+    break;
   }
 }
 
@@ -471,7 +535,7 @@ static inline SEXP calcWIndLin(SEXP state) {
   int ns = Rf_length(state);
   int *dep  = (int*)R_alloc(NV > 0 ? NV : 1, sizeof(int));
   int *fdep = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
-  indLinReplay(dep, fdep, state);
+  indLinReplay(dep, fdep);
   int *isDep = (int*)R_alloc(ns > 0 ? ns : 1, sizeof(int));
   int n = 0;
   for (int k = 0; k < ns; ++k) {

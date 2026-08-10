@@ -1,0 +1,21 @@
+{
+  "label": "indlin-baseline",
+  "timestamp": "2026-08-08T22:58:14",
+  "git": "ecac359b3",
+  "quick": false,
+  "nbig": 5000,
+  "cores": null,
+  "cases": {
+    "compile_ode": 0.031486,
+    "solve_single_ode": 0.014745,
+    "solve_single_lin": 0.011922,
+    "solve_pop_ode": 1.031945,
+    "solve_pop_lin": 1.170238,
+    "solve_pop_cov": 1.1946,
+    "solve_single_indlin_lin": 0.013717,
+    "solve_single_indlin_mm": 0.018135,
+    "solve_single_indlin_convert": 0.109628,
+    "solve_pop_indlin_mm": 2.710842,
+    "et_build": 0.004389
+  }
+}

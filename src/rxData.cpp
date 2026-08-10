@@ -49,6 +49,7 @@ extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -5466,8 +5467,13 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinN = 0;
   op->indLinPhiTol = 1e-7;
   op->indLinPhiM = 0;
-  op->indLinMatExpType = 2;
+  op->indLinMatExpType = 3; // Al-Mohy; see rxsolve.R's indLinMatExpType
   op->indLinMatExpOrder = 6;
+  op->indLinStepSearch = 1; // secant
+  op->indLinMaxIter = 20;
+  op->indLinRichardson = 2; // auto
+  op->indLinIteration = 3;  // auto (stiffness-gated)
+  op->indLinJac = 0; // auto: symbolic when the model carries one
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -5555,6 +5561,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
     int _bneq = (int)op->neq;
     int _lrw, _liw;
@@ -6049,6 +6056,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
@@ -6133,6 +6141,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinMatExpType=asInt(rxControl[Rxc_indLinMatExpType], "indLinMatExpType");
     op->indLinPhiM = asInt(rxControl[Rxc_indLinPhiM],"indLinPhiM");
     op->indLinMatExpOrder=asInt(rxControl[Rxc_indLinMatExpOrder], "indLinMatExpOrder");
+    op->indLinStepSearch=asInt(rxControl[Rxc_indLinStepSearch], "indLinStepSearch");
+    op->indLinMaxIter=asInt(rxControl[Rxc_indLinMaxIter], "indLinMaxIter");
+    op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
+    op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
+    op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){
