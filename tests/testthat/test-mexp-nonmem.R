@@ -332,6 +332,44 @@ rxTest({
                  .o$rx__sens_central_BY_Km__, tolerance = 1e-4)
   })
 
+  test_that("rxSensMatExp() handles reserved and dotted names in a forcing", {
+    # `I`, `E` and `Catalan` are symengine constants, so a compartment with one
+    # of those names has to be differentiated by its rx_SymPy_Res_* symbol; a
+    # dotted parameter (`eta.cl`) cannot be re-parsed by symengine at all and
+    # gives a sensitivity compartment whose name carries a `.`.
+    .ie <- "d/dt(I) = -ka*I\nd/dt(E) = ka*I - kout*E/(km + E)\n"
+    .code <- rxSensMatExp(.ie, calcSens = c("ka", "kout"))
+    expect_true(any(grepl("^indLin\\(rx__sens_E_BY_kout__\\) <- ",
+                          strsplit(.code, "\n")[[1L]])))
+    expect_no_error(suppressMessages(rxode2(.code)))
+
+    .dot <- "cl <- exp(tcl + eta.cl)\nd/dt(central) = -cl/v*central - vm*central/(km + central)\n"
+    .codeDot <- rxSensMatExp(.dot, calcSens = "eta.cl")
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_eta.cl__\\) <- ",
+                          strsplit(.codeDot, "\n")[[1L]])))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(tcl = log(4), eta.cl = 0.1, v = 70, vm = 5, km = 1)
+    .m <- rxSolve(rxode2(.codeDot), .et, method = "indLin", params = .p)
+    .o <- rxSolve(rxode2(.dot, calcSens = "eta.cl"), .et, params = .p,
+                  atol = 1e-12, rtol = 1e-12)
+    expect_equal(.m$central, .o$central, tolerance = 1e-4)
+    expect_equal(.m[["rx__sens_central_BY_eta.cl__"]],
+                 .o[["rx__sens_central_BY_eta.cl__"]], tolerance = 1e-4)
+  })
+
+  test_that("rxSensMatExp() says third-order omits the forcing", {
+    .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
+    expect_warning(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),
+                                calcSens2 = "Vm", calcSens3 = "Vm"),
+                   "third-order")
+    # a linear model has no forcing to omit, so it stays quiet
+    .lin <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    expect_no_warning(rxSensMatExp(.lin, calcSens = c("ka", "cl"),
+                                   calcSens2 = "cl", calcSens3 = "cl"))
+  })
+
   test_that("rxSensMatExp() second-order forcing matches the ODE calcSens2 path", {
     ode_code <- "
       d/dt(depot) = -ka*depot

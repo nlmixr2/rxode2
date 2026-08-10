@@ -188,9 +188,16 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #'   of one built by a previous call to this function).
 #' @param byVar Parameter name to differentiate wrt.
 #' @param states Physical state names.
+#' @param statesSe The symengine name of each of `states`, in the same order.
+#' @param byVarSe The symengine name of `byVar`.
+#'
+#'   Both are required rather than defaulted from `rxToSE()`: `rxToSE()` parses,
+#'   and parsing stops working once symengine `Basic` arithmetic has been done in
+#'   the same session (`user function '[[' requires 0 arguments`).  The caller
+#'   has to map every name before it touches a Basic.
 #' @return symengine expression for the total derivative.
 #' @noRd
-.rxIndLinTotalD <- function(expr, byVar, states) {
+.rxIndLinTotalD <- function(expr, byVar, states, statesSe, byVarSe) {
   .isZero <- function(.e) {
     .z <- rxFromSE(.e)
     .z == "0" || .z == "0.0" || .z == "-0"
@@ -203,22 +210,28 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   .add <- function(.term) {
     if (is.null(.tot)) .tot <<- .term else .tot <<- .tot + .term
   }
-  if (byVar %in% .vars) {
-    .add(symengine::D(expr, symengine::S(byVar)))
+  # Symbol(), not S(): S() re-parses, so it rejects a dotted rxode2 name
+  # (`eta.cl`) and reads a compartment called `I`, `E` or `Catalan` as the
+  # matching mathematical constant, which D() then refuses to differentiate by.
+  # The names differentiated by are symengine-side (rxToSE()); the names built
+  # INTO a sensitivity compartment are model-side, since that is what cmt()
+  # declared.
+  if (byVarSe %in% .vars) {
+    .add(symengine::D(expr, symengine::Symbol(byVarSe)))
   }
-  for (.l in states) {
-    if (!(.l %in% .vars)) next
-    .dl <- symengine::D(expr, symengine::S(.l))
+  for (.i in seq_along(states)) {
+    if (!(statesSe[[.i]] %in% .vars)) next
+    .dl <- symengine::D(expr, symengine::Symbol(statesSe[[.i]]))
     if (!.isZero(.dl)) {
-      .add(.dl * symengine::S(paste0("rx__sens_", .l, "_BY_", byVar, "__")))
+      .add(.dl * symengine::Symbol(paste0("rx__sens_", states[[.i]], "_BY_", byVar, "__")))
     }
   }
   for (.s in .vars) {
     if (!startsWith(.s, "rx__sens_") || !endsWith(.s, "__")) next
-    .ds <- symengine::D(expr, symengine::S(.s))
+    .ds <- symengine::D(expr, symengine::Symbol(.s))
     if (.isZero(.ds)) next
     .target <- paste0(substring(.s, 1L, nchar(.s) - 2L), "_BY_", byVar, "__")
-    .add(.ds * symengine::S(.target))
+    .add(.ds * symengine::Symbol(.target))
   }
   if (is.null(.tot)) symengine::S("0") else .tot
 }
@@ -228,11 +241,15 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @param base Starting symengine expression (a Jacobian entry).
 #' @param byVars Character vector of variables to differentiate by, in order.
 #' @param states Physical state names.
+#' @param statesSe The symengine name of each of `states`, in the same order.
+#' @param byVarsSe The symengine name of each of `byVars`, in the same order.
 #' @return symengine expression for the repeated total derivative.
 #' @noRd
-.rxIndLinChainD <- function(base, byVars, states) {
+.rxIndLinChainD <- function(base, byVars, states, statesSe, byVarsSe) {
   .e <- base
-  for (.v in byVars) .e <- .rxIndLinTotalD(.e, .v, states)
+  for (.i in seq_along(byVars)) {
+    .e <- .rxIndLinTotalD(.e, byVars[[.i]], states, statesSe, byVarsSe[[.i]])
+  }
   .e
 }
 
@@ -345,6 +362,20 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     stop("No state variables (compartments) found in the model.", call. = FALSE)
   }
 
+  # 1b. Map every model name to the symengine name it is bound under, BEFORE
+  # touching a single Basic.  rxToSE() parses, and parsing stops working once
+  # symengine arithmetic has been done ("user function '[[' requires 0
+  # arguments"), so this cannot be deferred into the loops below.  The mapping
+  # matters because a compartment may legitimately be called `I`, `E` or
+  # `Catalan`, which symengine reads as the matching mathematical constant
+  # rather than a symbol (`.rxSEreserved`, R/symengine.R:524).
+  # The anonymous wrapper is required: rxToSE() resolves its argument with
+  # substitute(), so handing it to vapply() as a bare FUN passes it the literal
+  # `X[[i]]` expression and it reports `user function '[[' requires 0 arguments`.
+  .toSe <- function(.n) rxToSE(.n)
+  .statesSe <- vapply(.states, .toSe, character(1), USE.NAMES = FALSE)
+  .parSe <- vapply(unique(c(calcSens, calcSens2, calcSens3)), .toSe, character(1))
+
   # 2. Split the system the way indLin() does: dX/dt = A.X + F(X), with A
   #    CONSTANT IN THE STATES.  That is the premise of the matrix exponential
   #    (rxode2#1186); anything that cannot leave a state-free coefficient is the
@@ -367,7 +398,9 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
   })
   names(.rhs) <- .states
-  .stateSym <- lapply(.states, function(.s) symengine::S(.s))
+  # Symbol(), not S(): S() re-parses, so it turns the mapped-away reserved
+  # names back into constants and cannot read a dotted rxode2 name at all.
+  .stateSym <- lapply(.statesSe, symengine::Symbol)
   names(.stateSym) <- .states
   # Full Jacobian, for the df()/dy() block only.
   .jac <- lapply(.states, function(.i) {
@@ -513,7 +546,8 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
 
   # 5. Sensitivity blocks for each parameter.
   for (.p in calcSens) {
-    .pSym <- symengine::S(.p)
+    .pSe <- .parSe[[.p]]
+    .pSym <- symengine::Symbol(.pSe)
     .S <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
     # 5a. Diagonal block: sensitivity states obey the same dynamics as the
     #     originals (reuse the original micro-constants).
@@ -545,7 +579,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     for (.i in .states) {
       .fi <- .force[[.i]]
       if (.isZero(.fi)) next
-      .g <- .rxIndLinTotalD(.fi, .p, .states)
+      .g <- .rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe)
       if (!.isZero(.g)) {
         .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
       }
@@ -564,9 +598,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # symbols, which fails when a coefficient depends on the state it multiplies).
   if (!is.null(calcSens2)) {
     for (.p in calcSens) {
-      .pSym <- symengine::S(.p)
+      .pSe <- .parSe[[.p]]
+      .pSym <- symengine::Symbol(.pSe)
       .S1p <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
       for (.q in calcSens2) {
+        .qSe <- .parSe[[.q]]
         .S1q <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "__")
         .S2 <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .q, "__")
         # homogeneous block: S^{pq} obeys the same dynamics as X / S^p (reuse).
@@ -588,13 +624,13 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         .acc <- .rxIndLinNdAccumulator()
         for (.i in .states) {
           for (.k in .states) {
-            .c2a <- .rxIndLinTotalD(.A[[.i]][[.k]], .q, .states) # from S^p_k
+            .c2a <- .rxIndLinTotalD(.A[[.i]][[.k]], .q, .states, .statesSe, .qSe) # from S^p_k
             .acc$add(.S1p(.k), .S2(.i), .c2a)
           }
           for (.j in .states) {
             .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
             .acc$add(.S1q(.j), .S2(.i), .dAdp) # from S^q_j
-            .c2c <- .rxIndLinTotalD(.dAdp, .q, .states) # from X_j
+            .c2c <- .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe) # from X_j
             .acc$add(.j, .S2(.i), .c2c)
           }
         }
@@ -607,7 +643,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         for (.i in .states) {
           .fi <- .force[[.i]]
           if (.isZero(.fi)) next
-          .g2 <- .rxIndLinChainD(.fi, c(.p, .q), .states)
+          .g2 <- .rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe, c(.pSe, .qSe))
           if (!.isZero(.g2)) {
             .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
           }
@@ -631,16 +667,24 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # The forcing contribution -- .rxIndLinChainD(.force[[i]], c(p, q, r),
   # .states), emitted as indLin(S^{pqr}_i) the way the first and second order
   # blocks above do -- is NOT emitted here.  Third order has never carried one,
-  # so this is not a regression, but for a nonlinear model it is incomplete
-  # (rxode2#1187 follow-up).
+  # so this is not a regression, but now that the orders around it do, a
+  # nonlinear model would be silently short a term; say so rather than let it
+  # pass (rxode2#1187 follow-up).
   if (!is.null(calcSens3)) {
+    if (any(vapply(.states, function(.i) !.isZero(.force[[.i]]), logical(1)))) {
+      warning("third-order sensitivities omit the indLin() forcing contribution, so they are incomplete for this nonlinear model; first and second order carry it",
+              call. = FALSE)
+    }
     for (.p in calcSens) {
-      .pSym <- symengine::S(.p)
+      .pSe <- .parSe[[.p]]
+      .pSym <- symengine::Symbol(.pSe)
       .S1p <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
       for (.q in calcSens2) {
+        .qSe <- .parSe[[.q]]
         .S1q <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "__")
         .S2pq <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .q, "__")
         for (.r in calcSens3) {
+          .rSe <- .parSe[[.r]]
           .S1r <- function(.s) paste0("rx__sens_", .s, "_BY_", .r, "__")
           .S2pr <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .r, "__")
           .S2qr <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "_BY_", .r, "__")
@@ -665,16 +709,16 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           for (.i in .states) {
             for (.k in .states) {
               .Aik <- .A[[.i]][[.k]]
-              .acc$add(.S2pq(.k), .S3(.i), .rxIndLinTotalD(.Aik, .r, .states)) # from S^{pq}_k
-              .acc$add(.S2pr(.k), .S3(.i), .rxIndLinTotalD(.Aik, .q, .states)) # from S^{pr}_k
-              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states)) # from S^p_k
+              .acc$add(.S2pq(.k), .S3(.i), .rxIndLinTotalD(.Aik, .r, .states, .statesSe, .rSe)) # from S^{pq}_k
+              .acc$add(.S2pr(.k), .S3(.i), .rxIndLinTotalD(.Aik, .q, .states, .statesSe, .qSe)) # from S^{pr}_k
+              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from S^p_k
             }
             for (.j in .states) {
               .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
               .acc$add(.S2qr(.j), .S3(.i), .dAdp) # from S^{qr}_j
-              .acc$add(.S1q(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .r, .states)) # from S^q_j
-              .acc$add(.S1r(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .q, .states)) # from S^r_j
-              .acc$add(.j, .S3(.i), .rxIndLinChainD(.dAdp, c(.q, .r), .states)) # from X_j
+              .acc$add(.S1q(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .r, .states, .statesSe, .rSe)) # from S^q_j
+              .acc$add(.S1r(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe)) # from S^r_j
+              .acc$add(.j, .S3(.i), .rxIndLinChainD(.dAdp, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from X_j
             }
           }
           .code <- c(.code, .acc$emit())

@@ -119,8 +119,16 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
     if (tb.lho[tb.ix] == 0) {
       tb.lho[tb.ix] = tb.lhi++;
     }
-    sAppend(&sb, "%s = ", lhsVar);
-    sAppend(&sbDt, "%s = ", lhsVar);
+    // doDot2(), not a plain sAppend(): the compartment name can carry a `.`
+    // (`rx__sens_central_BY_eta.cl__`, from a sensitivity wrt a dotted
+    // parameter), and everything else that names this variable -- its
+    // declaration, its `_PL[]` read, and codegen's `_matf[] +=` line -- writes
+    // it through doDot() as `_DoT_`.  Emitting the raw name here left the
+    // assignment referring to an undeclared identifier, which C then read as a
+    // struct member access.
+    doDot2(&sb, &sbDt, lhsVar);
+    sAppendN(&sb, " = ", 3);
+    sAppendN(&sbDt, " = ", 3);
     sAppend(&sbt, "indLin(%s)=", v);
     aType(TASSIGN);
     // The forcing's right-hand side is parsed next; record the symbols it

@@ -753,8 +753,12 @@ d/dt(blood)     = a*intestine - b*blood
     expect_no_error(suppressMessages(rxode2(rxSensMatExp(.mm, calcSens = c("ka", "vmax")))))
     expect_no_error(suppressMessages(rxode2(rxSensMatExp(
       .mm, calcSens = c("ka", "vmax"), calcSens2 = "vmax"))))
-    expect_no_error(suppressMessages(rxode2(rxSensMatExp(
-      .mm, calcSens = c("ka", "vmax"), calcSens2 = "vmax", calcSens3 = "vmax"))))
+    # third order warns that it is short the forcing term, but still emits a
+    # model whose rate constants are state free
+    expect_warning(.s3 <- rxSensMatExp(.mm, calcSens = c("ka", "vmax"),
+                                       calcSens2 = "vmax", calcSens3 = "vmax"),
+                   "third-order")
+    expect_no_error(suppressMessages(rxode2(.s3)))
   })
 
   test_that("a non-converging inductive linearization is reported", {
