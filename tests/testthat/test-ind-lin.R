@@ -1318,6 +1318,51 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.dt, 30)
   })
 
+  test_that("every backend is accurate at every Al-Mohy degree band", {
+    # The Pade coefficients depend on the degree.  matexp_pade() used to read a
+    # fixed table that is the degree-13 row and truncate it, which is not the
+    # degree-p numerator: correct to a few 1e-12 rather than to machine
+    # precision, and invisible unless compared against an exact solution.  A
+    # two-compartment linear system has one, and because a linear model takes
+    # one step per interval the interval length selects the degree band.
+    .m <- suppressMessages(rxode2("matExp()\ncmt(a)\ncmt(b)\nk_a_b = 1\nk_b_output = 2\n"))
+    .exact <- function(t) 1/(2-1)*(exp(-1*t) - exp(-2*t))
+    # norms 0.01, 0.2, 0.8, 2.0, 5.0, 20 -> degrees 3, 5, 7, 9, 13, 13+scaling
+    for (.t in c(0.005, 0.1, 0.4, 1.0, 2.5, 10)) {
+      .e <- et(amt = 1, cmt = "a") |> et(c(0, .t))
+      for (.ty in 1:4) {
+        .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", indLinMatExpType = .ty))
+        expect_lt(abs(.r$b[length(.r$b)] - .exact(.t)), 1e-14,
+                  label = paste0("type ", .ty, " at t = ", .t))
+      }
+    }
+  })
+
+  test_that("the Al-Mohy backend scales an arbitrarily large norm", {
+    # The squaring count was returned as the factor 2^s in an int and clamped so
+    # it could not overflow.  Clamping caps the SCALING while leaving the norm
+    # alone, so degree-13 Pade ran on a matrix far outside its range and
+    # returned a plausible finite number: exp(-1e20) came back as 5.1e-08.
+    # Types 1 (arma), 3 (Al-Mohy) and 4 (taylor) only.  expokit returns NaN
+    # from about k = 1e11 upward; that is a pre-existing limit of the Fortran
+    # routine rather than anything this scaling change touched, and a NaN at
+    # least announces itself, unlike the plausible finite number Al-Mohy used
+    # to return.
+    for (.k in c(1e9, 1e15, 1e20, 1e30)) {
+      .m <- suppressMessages(rxode2(paste0("matExp()\ncmt(c1)\nk_c1_output = ",
+                                           format(.k, scientific = TRUE), "\n")))
+      .e <- et(amt = 1, cmt = "c1") |> et(c(0, 1))
+      for (.ty in c(1L, 3L, 4L)) {
+        .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", indLinMatExpType = .ty))
+        .v <- .r$c1[length(.r$c1)]
+        # exp(-k) underflows to zero for every k here; anything finite and
+        # nonzero is the failure being guarded against.
+        expect_true(is.finite(.v) && abs(.v) < 1e-30,
+                    label = paste0("type ", .ty, " at k = ", .k, " gave ", .v))
+      }
+    }
+  })
+
   test_that("the Al-Mohy backend works past its stack-scratch size", {
     # matexp_MH09() keeps its workspace on the stack up to n = 12 and mallocs
     # above that; it used to take the workspace from R_alloc, which is not

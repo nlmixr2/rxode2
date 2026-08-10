@@ -174,6 +174,22 @@
 
 ### Matrix exponential / inductive linearization
 
+- The `Al-Mohy` matrix exponential evaluated the wrong Pade numerator below
+  degree 13.  The coefficients depend on the degree, and the routine read a
+  fixed table -- the degree-13 row -- and truncated it, which is not the
+  degree-p numerator.  The answer stayed convergent but only to a few `1e-12`
+  where every other backend reaches machine precision, and only against an
+  exact solution is that visible.  The row is now built for whichever degree was
+  selected.
+
+- The `Al-Mohy` matrix exponential returned a wrong answer for a very large
+  matrix norm.  The squaring count was returned as the factor `2^s` in an `int`
+  and clamped so it could not overflow, but clamping caps the scaling while
+  leaving the norm untouched, so degree-13 Pade ran far outside its range and
+  produced a plausible finite number: a one-compartment model with a rate
+  constant of `1e20` returned `5.1e-08` for a quantity that underflows to zero.
+  The squaring count is now carried as a count.
+
 - `rxSolve(indLinMatExpType=)` now defaults to `"Al-Mohy"` rather than
   `"expokit"`.  With the degree bug below fixed, all four backends agree to
   solver tolerance and take the same steps on every problem tested, and

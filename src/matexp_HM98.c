@@ -119,6 +119,12 @@ static double matnorm_1(const double *x, const int n)
 
    Picking both from the norm is what `matrixExpTaylor` already does, and it is
    why `indLinMatExpOrder` no longer applies to this kernel. */
+/* Returns the number of SQUARINGS, not the factor 2^s.  The factor cannot be
+   returned as an int: it overflows for any norm above about 5.4 * 2^30, and
+   clamping it instead -- as a first version of this did -- silently caps the
+   scaling while leaving the norm untouched, so degree-13 Pade runs on a matrix
+   it cannot represent.  With a 1x1 rate constant of 1e20 that returned
+   5.1e-08 for a quantity whose true value underflows to zero. */
 static int matexp_deg_scale(const double *x, const int n, int *deg)
 {
     const double theta[NTHETA] = {1.495585217958292e-2, 2.539398330063230e-1,
@@ -139,49 +145,28 @@ static int matexp_deg_scale(const double *x, const int n, int *deg)
         }
     }
     *deg = degs[NTHETA-1];
-    int i = (int) ceil(log2(x_1/theta[NTHETA-1]));
-    if (i < 0) i = 0;
-    if (i > 30) i = 30;     /* 1 << 31 is undefined; 2^30 squarings is already
-                               far past any operand this solver can produce */
-    return 1 << i;
+    double s = ceil(log2(x_1/theta[NTHETA-1]));
+    if (!(s > 0.0)) return 0;
+    /* A finite double has |x| < 2^1024, so this cannot exceed ~1024; the bound
+       is a guard against a NaN slipping past the check above, not a clamp on
+       any reachable input. */
+    if (s > 1100.0) s = 1100.0;
+    return (int) s;
 }
 
-// ___ MM: FIXME  we have a  matpow() already in  ./matpow.c
-//     --- Merge the two, keep the better one
-
-// Matrix power by squaring: P = A^b (A is garbage on exit)
-// `wsp` is n*n scratch supplied by the caller -- see matexp_MH09().
-static void matpow_by_squaring(double *A, int n, int b, double *P, double *wsp)
-{
-    if (b == 1) {
-	matcopy(n, A, P);
-	return;
-    }
-    mateye(n, P);  // P := I
-    if (b == 0)
-	return;
-
-    // General case: b >= 2
-    double *TMP = wsp;
-
-    while (b) {
-	if (b&1) { // P := P A
-	    matprod(n, P, A, TMP);
-	    matcopy(n, TMP, P);
-	}
-
-	b >>= 1;
-	// A := A^2 :
-	matprod(n, A, A, TMP);
-	matcopy(n, TMP, A);
-    }
-}
-
+/* A general matrix power by squaring used to live here, taking the exponent as
+   an int.  matexp_MH09() was its only caller and now squares directly, because
+   the exponent it needs is 2^s and does not fit an int; a file-local function
+   with no callers is a -Wunused-function warning, so it is gone rather than
+   left to rot.  ./matpow.c still has a matpow() if one is wanted again. */
 
 // --------------------------------------------------------
 // Matrix Exponentiation via Pade' Approximations
 // --------------------------------------------------------
 
+/* The p = 13 row of the Pade coefficients.  matexp_pade() now builds the row
+   for whichever degree it was given, so nothing reads this; it is kept rather
+   than deleted because it has external linkage. */
 const double matexp_pade_coefs[14] =
 {
   1.0,
@@ -210,9 +195,9 @@ const double matexp_pade_coefs[14] =
 
 // Workhorse for matexp_pade
 void matexp_pade_fillmats(const int m, const int n, const int i,
-			  double *N, double *D, double *B, double *C)
+			  double *N, double *D, double *B, double *C,
+			  const double tmp)
 {
-  const double tmp = matexp_pade_coefs[i];
   const int sgn = SGNEXP(-1, i);
 
     /* Performs the following actions:
@@ -267,15 +252,29 @@ static void matexp_pade(int n, const int p, double *A, double *N,
     }
 
 
+    /* Pade coefficients for THIS degree, built by the recurrence
+         c_0 = 1,  c_j = c_{j-1} * (p - j + 1) / (j * (2p - j + 1)),
+       which is  c_j = (2p-j)! p! / [(2p)! (p-j)! j!]  written to avoid the
+       factorials.  They depend on the degree: the file's matexp_pade_coefs[]
+       table is the p = 13 row, and truncating it to fewer terms is not the
+       degree-p numerator.  Doing that cost four orders of accuracy -- about
+       4e-12 against 1e-16 for the other backends on a two-compartment model at
+       every degree below 13 -- which is invisible unless compared against an
+       exact solution, since the answer is still convergent, merely not to the
+       accuracy the theta table promises. */
+    double cf = 1.0;
+
     // Fill N and D
     for (i=1; i<=p; i++)
     {
+	cf *= (double)(p - i + 1) / ((double) i * (double)(2*p - i + 1));
+
 	// C = A*B
 	if (i > 1)
 	    matprod(n, A, B, C);
 
 	// Update matrices
-	matexp_pade_fillmats(n, n, i, N, D, B, C);
+	matexp_pade_fillmats(n, n, i, N, D, B, C, cf);
     }
 
     // R <- inverse(D) %*% N
@@ -331,22 +330,26 @@ void matexp_MH09(double *x, int n, const int p, double *ret)
      by the norm together with the scaling.  See matexp_deg_scale(). */
   (void) p;
   int deg = 13;
-  int m = matexp_deg_scale(x, n, &deg);
+  int s = matexp_deg_scale(x, n, &deg);
 
-  if (m == 0) {
+  if (s == 0) {
       matexp_pade(n, deg, x, ret, wsp, iwsp);
   } else {
-    int one = 1;
-    double tmp = 1. / ((double) m);
-
-    F77_CALL(dscal)(&nn, &tmp, x, &one);
+    /* Scale by 2^-s with ldexp rather than dividing by 2^s: the factor itself
+       is not always representable (s can exceed 1023 for a large norm) while
+       the scaled elements always are, and ldexp only adjusts the exponent so
+       it introduces no rounding of its own. */
+    for (int i = 0; i < nn; i++) x[i] = ldexp(x[i], -s);
 
     matexp_pade(n, deg, x, ret, wsp, iwsp);
 
-    matcopy(n, ret, x);
-
-    /* matexp_pade() has returned, so its scratch is free to reuse here. */
-    matpow_by_squaring(x, n, m, ret, wsp);
+    /* Square s times.  matpow_by_squaring() cannot be used for this: it takes
+       the POWER as an int, and the power here is 2^s. */
+    for (int k = 0; k < s; k++) {
+      /* matexp_pade() has returned, so its scratch is free to reuse. */
+      matprod(n, ret, ret, wsp);
+      matcopy(n, wsp, ret);
+    }
   }
 
   free(wspHeap);
