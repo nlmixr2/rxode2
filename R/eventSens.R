@@ -787,18 +787,16 @@
        durQ = .buildQ(map$durCmt, "dur", .q2All))
 }
 
-#' Generate the C assignment lines for the dLag / dF functions
+#' Rewrite indexed nlmixr2 parameters into their codegen locals
 #'
-#' Produces the body assignment lines writing each dosing-parameter total
-#' derivative into a flat per-subject scratch buffer indexed
-#' `(cmt0 * nSensParam + paramIdx)`.  The lines are inserted into the generated
-#' C verbatim; the only rewrite needed is nlmixr2's indexed
-#' `THETA[n]`/`ETA[n]` parameters, which `.rxEventSensCExpr()` maps to the
-#' codegen locals `_THETA_n_`/`_ETA_n_`.
+#' Maps nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
+#' `_THETA_n_`/`_ETA_n_`, or to the plain `THETA_n_`/`ETA_n_` when the model
+#' declares that name itself.
 #'
-#' @param info An `.rxEventSensInfo()` result (mode + map + derivs).
-#' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
-#'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
+#' @param expr Character vector of C expressions, one per assignment line.
+#' @param plainParams Parameter names the model declares plainly (no leading
+#'   underscore).
+#' @return `expr` with every indexed parameter rewritten.
 #' @noRd
 .rxEventSensCExpr <- function(expr, plainParams = character(0)) {
   # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
@@ -818,6 +816,19 @@
   .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
 }
 
+#' Generate the C assignment lines for the dLag / dF functions
+#'
+#' Produces the body assignment lines writing each dosing-parameter total
+#' derivative into a flat per-subject scratch buffer indexed
+#' `(cmt0 * nSensParam + paramIdx)`.  The lines are inserted into the generated
+#' C verbatim; the only rewrite needed is nlmixr2's indexed
+#' `THETA[n]`/`ETA[n]` parameters, which `.rxEventSensCExpr()` maps to the
+#' codegen locals `_THETA_n_`/`_ETA_n_`.
+#'
+#' @param info An `.rxEventSensInfo()` result (mode + map + derivs).
+#' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
+#'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
+#' @noRd
 .rxEventSensCLines <- function(info) {
   if (is.null(info)) return(NULL)
   .pp <- info$params                     # declared param names (plain THETA_n_ vs indexed)
