@@ -6146,6 +6146,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
     op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
     op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
+    // "auto" cannot take the symbolic forcing Jacobian on a sensitivity model.
+    // indLinForcingJacSym() wants calc_jac over the WHOLE system, but
+    // rxSensMatExp() emits df()/dy() rows for the physical block only -- it has
+    // to, because _esJacColF() (rxode2parseHandleEvid.h) calls calc_jac with a
+    // buffer sized by the physical state count.  `calc_jac - A` would therefore
+    // hand back -A for every sensitivity row.  Difference the forcing instead;
+    // that is right for every row, and only the newton/exprb schemes ever ask.
+    if (op->indLinJac == 0 &&
+        Rf_length(as<SEXP>(rxSolveDat->mv[RxMv_sens])) > 0) {
+      op->indLinJac = 2;
+    }
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){

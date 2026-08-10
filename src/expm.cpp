@@ -173,9 +173,10 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
 // about what has been invalidated.  That is why this is content-addressed and
 // not a validity flag: the old `ind->cacheME` flag was cleared on some
 // covariate paths and not others, and reviving it would be a staleness bug.
-// Content addressing needs no such bookkeeping -- a state-dependent rate matrix
-// (rxSensMatExp models) simply never hits, and an infusion starting or stopping
-// changes the augmented dimension, which is a key mismatch.
+// Content addressing needs no such bookkeeping -- a rate matrix that moves
+// between substeps (one reading `t` or a time-varying covariate) simply never
+// hits, and an infusion starting or stopping changes the augmented dimension,
+// which is a key mismatch.
 //
 // `memcmp`, not elementwise ==: conservative on signed zero, correct on NaN bit
 // patterns, and it does not invite anyone to relax it into a tolerance later.
@@ -1431,8 +1432,8 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
 // without which every tolerance would silently be twice as tight as asked --
 // and their average is the trapezoidal rule, which is one order better.  The
 // same cancellation holds when it is the matrix rather than the forcing that is
-// frozen (a sensitivity model built by rxSensMatExp(), where `A` still reads the
-// states); only the derivative being expanded changes.
+// frozen (a rate constant reading `t` or a time-varying covariate); only the
+// derivative being expanded changes.
 // The two exponential Rosenbrock schemes, wrapped so the substep dispatcher
 // stays a dispatcher.  Both own the same scratch, neither iterates, and both
 // report an overflow the same way -- `-2` with ratio 2, asking the driver for a
