@@ -1437,6 +1437,27 @@ rxTest({
       expect_true(grepl("_ETA_5_", .c, fixed = TRUE))
       expect_true(grepl("_THETA_5_", .c, fixed = TRUE))
     }
+    # and the line that used to be left untranslated carries the right value:
+    # with FOOD=0 the duration is exp(ETA[5]+THETA[5]), so the jump sensitivity
+    # wrt ETA[5] must match finite differences (and wrt ETA[4] must be zero).
+    .m <- rxode2(.code("dur"), eventSens = "jump")
+    p <- c("THETA[4]" = 0.3, "THETA[5]" = 0.5, "ETA[4]" = 0.1, "ETA[5]" = 0.2,
+           FOOD = 0)
+    ev <- et(amt = 100, rate = -2, cmt = "depot") |> et(seq(0.25, 12, length.out = 20))
+    .sl <- function(pp) rxSolve(.m, pp, ev, atol = 1e-12, rtol = 1e-12)
+    s <- .sl(p)
+    h <- 1e-5
+    pp <- pm <- p
+    pp[["ETA[5]"]] <- p[["ETA[5]"]] + h
+    pm[["ETA[5]"]] <- p[["ETA[5]"]] - h
+    sp <- .sl(pp)
+    sm <- .sl(pm)
+    for (st in c("depot", "central")) {
+      fd <- (sp[[st]] - sm[[st]]) / (2 * h)
+      expect_equal(s[[sprintf("rx__sens_%s_BY_ETA_5___", st)]], fd, tolerance = 1e-5)
+      expect_gt(max(abs(fd)), 1)
+    }
+    expect_equal(max(abs(s[["rx__sens_central_BY_ETA_4___"]])), 0)
   })
 
   test_that("eventSens mode is folded into the model cache key", {
