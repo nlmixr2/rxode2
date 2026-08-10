@@ -1550,6 +1550,39 @@ static long __indLinNIter    = 0;   // total iteration passes over all substeps
 
 extern "C" void rxIndLinCountIter(int n) { __indLinNIter += n; }
 
+// The extrapolation level an explicit `indLinRichardson` asks for.  `auto`
+// starts at the base order and earns its way up through indLinRaiseRich().
+static inline int indLinInitialRich(rx_solving_options *op) {
+  switch (op->indLinRichardson) {
+  case RX_INDLIN_RICH_ALWAYS:  return 1;
+  case RX_INDLIN_RICH_ALWAYS4: return 2;
+  case RX_INDLIN_RICH_ALWAYS5: return 3;
+  default:                     return 0;
+  }
+}
+
+// The level to run at given how much of the interval is left, as a pure
+// function of (scheme, current level, steps remaining) so the break-even rule
+// can be read -- and tested -- without the driver around it.
+//
+// Break-even: a p-th order step needs about N^(2/p) of the second-order step's
+// N, so the fourth-order column (7 solves) beats the third (3 solves) once
+// 7*N^(1/2) < 3*N^(2/3), i.e. once N > (7/3)^6.  One level per call, and only
+// upward -- the ratchet is what keeps it from chattering.
+static inline int indLinRaiseRich(int scheme, int useRich, double nLeft) {
+  if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) {
+    useRich = RX_INDLIN_EXPRB_MINRICH;
+  }
+  const int isExprb = (scheme == RX_INDLIN_ITER_EXPRB);
+  const double r5 = isExprb ? RX_INDLIN_EXPRB_RICH5_N : RX_INDLIN_AUTO_RICH5_N;
+  const double r4 = isExprb ? RX_INDLIN_EXPRB_RICH4_N : RX_INDLIN_AUTO_RICH4_N;
+  const double r1 = isExprb ? RX_INDLIN_EXPRB_RICH_N  : RX_INDLIN_AUTO_RICH_N;
+  if (useRich < 3 && nLeft > r5) return 3;
+  if (useRich < 2 && nLeft > r4) return 2;
+  if (useRich < 1 && nLeft > r1) return 1;
+  return useRich;
+}
+
 static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                                int neq, double *rtol, double *atol,
                                double *yp_, double tp, double tf, double hCap, int locf,
@@ -1571,9 +1604,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
   // needed enough steps to pay for it, so a loose tolerance never carries the
   // extra cost and a tight one is not left crawling.  The switch is one way
   // within an interval, so it cannot chatter.
-  int useRich = (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS) ? 1 : 0;
-  if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS4) useRich = 2;
-  if (op->indLinRichardson == RX_INDLIN_RICH_ALWAYS5) useRich = 3;
+  int useRich = indLinInitialRich(op);
   // The scheme for this interval.  `auto` starts on Picard and is raised by the
   // stiffness gate below, so a model that never needs a Jacobian never forms
   // one -- Phase 0 measured zero convergence cuts on Michaelis-Menten at every
@@ -1623,23 +1654,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     // the base order under `auto`; an explicit `indLinRichardson` still wins,
     // because that is the user asking for it.
     if (autoRich && nAccept > 0 && h > 0.0 && scheme != RX_INDLIN_ITER_EXPRB32) {
-      double nLeft = (tf - t)/h;
-      // Same break-even argument one level up.  A p-th order step needs about
-      // N^(2/p) of the second-order step's N, so the fourth-order column
-      // (7 solves) beats the third (3 solves) once 7*N^(1/2) < 3*N^(2/3),
-      // i.e. once N > (7/3)^6.
-      if (scheme == RX_INDLIN_ITER_EXPRB && useRich < RX_INDLIN_EXPRB_MINRICH) useRich = RX_INDLIN_EXPRB_MINRICH;
-      const int isExprb = (scheme == RX_INDLIN_ITER_EXPRB);
-      const double r5 = isExprb ? RX_INDLIN_EXPRB_RICH5_N : RX_INDLIN_AUTO_RICH5_N;
-      const double r4 = isExprb ? RX_INDLIN_EXPRB_RICH4_N : RX_INDLIN_AUTO_RICH4_N;
-      const double r1 = isExprb ? RX_INDLIN_EXPRB_RICH_N  : RX_INDLIN_AUTO_RICH_N;
-      if (useRich < 3 && nLeft > r5) {
-        useRich = 3;
-      } else if (useRich < 2 && nLeft > r4) {
-        useRich = 2;
-      } else if (useRich < 1 && nLeft > r1) {
-        useRich = 1;
-      }
+      useRich = indLinRaiseRich(scheme, useRich, (tf - t)/h);
       // Carry it to the next interval of this subject; one way, so it cannot
       // chatter, and it is dropped when the subject changes.
       if (richSticky && autoSt != NULL && useRich > autoSt->rich) autoSt->rich = useRich;

@@ -839,12 +839,12 @@ d/dt(blood)     = a*intestine - b*blood
     # The gate itself: method="indLin" must be recognized in every form it can
     # arrive in, or the linCmt() rewrite runs and there is no d/dt() left to
     # convert.  Anything else must leave the rewrite alone.
-    expect_true(rxode2:::.rxIndLinRequested(method = "indLin"))
-    expect_true(rxode2:::.rxIndLinRequested(method = 3L))
-    expect_true(rxode2:::.rxIndLinRequested(rxControl(method = "indLin")))
-    expect_false(rxode2:::.rxIndLinRequested(method = "liblsoda"))
-    expect_false(rxode2:::.rxIndLinRequested(rxControl(method = "lsoda")))
-    expect_false(rxode2:::.rxIndLinRequested(atol = 1e-8))
+    expect_true(.rxIndLinRequested(method = "indLin"))
+    expect_true(.rxIndLinRequested(method = 3L))
+    expect_true(.rxIndLinRequested(rxControl(method = "indLin")))
+    expect_false(.rxIndLinRequested(method = "liblsoda"))
+    expect_false(.rxIndLinRequested(rxControl(method = "lsoda")))
+    expect_false(.rxIndLinRequested(atol = 1e-8))
   })
 
   test_that("method='indLin' leaves a model with no d/dt() alone", {
