@@ -152,6 +152,16 @@
   restored SAEM fit failing with "The following parameter(s) are required for
   solving: eta.v, eta.cl".
 
+- Event ("jump") sensitivities now compile when a dosing modifier (`dur()`,
+  `f()`, `alag()`, ...) depends on more than one estimated parameter.  Each such
+  parameter contributes its own assignment line to the same generated buffer,
+  but the rewrite of nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
+  `_THETA_n_`/`_ETA_n_` only collected the indices used by the *first* line, so
+  an index appearing only in a later line survived as raw symengine array syntax
+  and the model failed with "'ETA' undeclared".  This hit any model with, say, a
+  food-effect duration built from two etas, whether or not the parameters were
+  mu-referenced (#1196).
+
 ### Delay differential equations
 
 - `rxOptExpr()` no longer fails on a `past(state, tau)` whose delay duration is

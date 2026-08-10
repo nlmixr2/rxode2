@@ -804,7 +804,9 @@
   # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
   # model declares the plain name THETA_n_ itself (then use it, no leading _).
   .rw <- function(expr, kind) {
-    .toks <- unique(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))[[1]])
+    # expr is a vector of assignment lines; collect tokens from every element
+    # (not just the first) or indices unique to later lines leak into the C.
+    .toks <- unique(unlist(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))))
     for (.tok in .toks) {
       .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
       .plain <- paste0(kind, "_", .n, "_")
