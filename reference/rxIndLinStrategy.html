@@ -142,6 +142,14 @@ adding a matrix term for each state.</p></li>
     <p>Nothing</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>This no longer affects the conversion.  The <code>matExp()</code> rate matrix has to be
+constant in the states, and dividing any one state out of a multi-state
+product always leaves a coefficient that still reads a state, so such a term
+goes to the <code><a href="indLin.html">indLin()</a></code> forcing whichever state is preferred.  The setting is
+kept so existing code keeps working.</p>
+    </div>
+    <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
     <p>Matthew L. Fidler</p>
     </div>

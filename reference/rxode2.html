@@ -539,10 +539,10 @@ by the order they are parsed. This is useful for keeping the parameter
 order the same when using 2 different ODE models. These are specified
 by <code>param(par1, par2,...)</code></p></li>
 <li><p><strong>Variable interpolation statements</strong>, which tells the interpolation
-for specific covariates. These include <code>locf(cov1, cov2, ...)</code> for
-last observation carried forward, <code>nocb(cov1, cov2, ...)</code> for next
-observation carried backward, <code>linear(cov1, cov2, ...)</code> for linear
-interpolation and <code>midpoint(cov1, cov2, ...)</code> for midpoint
+for specific covariates. These include <code>locf(cov1,     cov2, ...)</code> for
+last observation carried forward, <code>nocb(cov1,     cov2, ...)</code> for next
+observation carried backward, <code>linear(cov1,     cov2, ...)</code> for linear
+interpolation and <code>midpoint(cov1, cov2,     ...)</code> for midpoint
 interpolation.</p></li>
 </ul><p>An example model is shown below:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>   <span class="co"># simple assignment</span></span>
@@ -701,9 +701,7 @@ differences are on the standard deviation scale, or:</p>
 <p>y=f+(a+b* f^c)*err</p>
 <p>The second, <strong>combined2</strong>, assumes that the additive and proportional
 differences are combined on a variance scale:</p>
-<p>y=f+</p>
-<p></p><div class="sourceCode math"><pre><code></code></pre><p></p></div>
-<p>*err</p>
+<p>y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err</p>
 <p>The default in <code>nlmixr2</code>/<code>rxode2</code> if not otherwise specified is
 <strong>combined2</strong> since it mirrors how adding 2 normal distributions in
 statistics will add their variances (not the standard deviations).
