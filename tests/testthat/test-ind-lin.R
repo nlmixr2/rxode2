@@ -759,6 +759,16 @@ d/dt(blood)     = a*intestine - b*blood
                                        calcSens2 = "vmax", calcSens3 = "vmax"),
                    "third-order")
     expect_no_error(suppressMessages(rxode2(.s3)))
+
+    # and the exemption really is gone: a hand-written sensitivity model with a
+    # state-reading rate constant is rejected like any other matExp() model
+    expect_error(
+      suppressMessages(rxode2(paste(
+        "matExp()", "cmt(central)", "cmt(rx__sens_central_BY_ka__)",
+        "k_central_output = 0.1",
+        "k_rx__sens_central_BY_ka___output = 1/(1 + rx__sens_central_BY_ka__)",
+        sep = "\n"))),
+      "syntax error")
   })
 
   test_that("a non-converging inductive linearization is reported", {

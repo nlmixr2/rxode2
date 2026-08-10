@@ -268,14 +268,18 @@ rxTest({
                  res_ode_mm$rx__sens_central_BY_Km__, tolerance = 1e-4)
 
     # The forcing Jacobian only gets formed under the schemes that need one, so
-    # solve under each of them as well (rxSensMatExp() emits df()/dy() for the
-    # physical block only, which is why "auto" differences the forcing here).
+    # solve under each of them as well.  rxSensMatExp() emits df()/dy() for the
+    # physical block only, so `calc_jac - A` would be -A on every sensitivity
+    # row; an explicit indLinJac="symbolic" has to fall back to differencing the
+    # forcing just as "auto" does, or exprb/exprb32 integrate the wrong Jacobian.
     for (.sch in c("newton", "exprb", "exprb32")) {
-      .r <- rxSolve(mod_mexp_mm, et, method = "indLin", params = pars_mm,
-                    indLinIteration = .sch)
-      expect_equal(.r$central, res_ode_mm$central, tolerance = 1e-4)
-      expect_equal(.r$rx__sens_central_BY_Vm__,
-                   res_ode_mm$rx__sens_central_BY_Vm__, tolerance = 1e-4)
+      for (.jac in c("auto", "symbolic", "fd")) {
+        .r <- rxSolve(mod_mexp_mm, et, method = "indLin", params = pars_mm,
+                      indLinIteration = .sch, indLinJac = .jac)
+        expect_equal(.r$central, res_ode_mm$central, tolerance = 1e-4)
+        expect_equal(.r$rx__sens_central_BY_Vm__,
+                     res_ode_mm$rx__sens_central_BY_Vm__, tolerance = 1e-4)
+      }
     }
   })
 

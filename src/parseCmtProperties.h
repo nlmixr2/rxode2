@@ -109,16 +109,19 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
   if (nodeHas(indLin_prop)){
     sb.o=0;sbDt.o=0; sbt.o=0;
     tb.hasIndLinProp = 1;
-    // A growable buffer, not a fixed one: `v` is a compartment name, and
+    // Sized from `v`, not a fixed buffer: `v` is a compartment name, and
     // rxSensMatExp() names a second-order sensitivity compartment
     // `rx__sens_<state>_BY_<p>_BY_<q>__`, which passes 150 bytes with ordinary
-    // parameter names.  snprintf() truncated silently, so two distinct
-    // compartments could share one C symbol -- one forcing overwriting the
-    // other in a model that still compiled.  Same pattern parseDfdy.h uses for
-    // its synthetic names.
-    sClear(&_gbuf);
-    sAppend(&_gbuf, "rx_indLin_%s", v);
-    char *lhsVar = _gbuf.s;
+    // parameter names.  snprintf() into a fixed buffer truncated silently, so
+    // two distinct compartments could share one C symbol -- one forcing
+    // overwriting the other in a model that still compiled.
+    //
+    // A copy rather than a pointer into `_gbuf`: `new_or_ith()` below writes
+    // `_gbuf` on its interpolation-clash path, which would realloc it out from
+    // under the name that is about to be registered.
+    size_t lhsN = strlen(v) + 11;
+    char *lhsVar = R_alloc(lhsN, sizeof(char));
+    snprintf(lhsVar, lhsN, "rx_indLin_%s", v);
     if (new_or_ith(lhsVar)) {
       addSymbolStr(lhsVar);
       new_or_ith(lhsVar);
