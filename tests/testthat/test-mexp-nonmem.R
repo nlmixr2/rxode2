@@ -359,6 +359,27 @@ rxTest({
                  .o[["rx__sens_central_BY_eta.cl__"]], tolerance = 1e-4)
   })
 
+  test_that("a long indLin() compartment name gets its own C symbol", {
+    # The forcing's LHS symbol is `rx_indLin_<cmt>`, and a second-order
+    # sensitivity compartment name passes 150 bytes with ordinary parameter
+    # names.  A fixed buffer truncated it silently, so two compartments shared
+    # one symbol and one forcing overwrote the other in a model that still
+    # compiled.
+    .st <- "centralCompartmentConcentrationStateVariable"
+    .p1 <- "etaBetweenSubjectVariabilityParameterNumberOne"
+    .p2 <- "etaBetweenSubjectVariabilityParameterNumberTwo"
+    .code <- rxSensMatExp(
+      sprintf("d/dt(%s) = -%s*%s - %s*%s/(km + %s)\n", .st, .p1, .st, .p2, .st, .st),
+      calcSens = c(.p1, .p2), calcSens2 = c(.p1, .p2))
+    .lines <- grep("^indLin\\(", strsplit(.code, "\n")[[1L]], value = TRUE)
+    expect_gt(length(.lines), 1L)
+    .m <- suppressMessages(rxode2(.code))
+    .c <- paste(summary(rxC(.m)), collapse = "\n")
+    .sym <- unique(regmatches(.c, gregexpr("rx_indLin_[A-Za-z0-9_]+", .c))[[1L]])
+    expect_equal(length(.sym), length(.lines))
+    expect_gt(max(nchar(.sym)), 150L)
+  })
+
   test_that("rxSensMatExp() says third-order omits the forcing", {
     .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
     expect_warning(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),

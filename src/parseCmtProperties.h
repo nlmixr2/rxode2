@@ -109,8 +109,16 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
   if (nodeHas(indLin_prop)){
     sb.o=0;sbDt.o=0; sbt.o=0;
     tb.hasIndLinProp = 1;
-    char lhsVar[150];
-    snprintf(lhsVar, sizeof(lhsVar), "rx_indLin_%s", v);
+    // A growable buffer, not a fixed one: `v` is a compartment name, and
+    // rxSensMatExp() names a second-order sensitivity compartment
+    // `rx__sens_<state>_BY_<p>_BY_<q>__`, which passes 150 bytes with ordinary
+    // parameter names.  snprintf() truncated silently, so two distinct
+    // compartments could share one C symbol -- one forcing overwriting the
+    // other in a model that still compiled.  Same pattern parseDfdy.h uses for
+    // its synthetic names.
+    sClear(&_gbuf);
+    sAppend(&_gbuf, "rx_indLin_%s", v);
+    char *lhsVar = _gbuf.s;
     if (new_or_ith(lhsVar)) {
       addSymbolStr(lhsVar);
       new_or_ith(lhsVar);
