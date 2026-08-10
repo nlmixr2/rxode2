@@ -3,7 +3,6 @@
 \name{rxSolve}
 \alias{rxSolve}
 \alias{rxSolve.function}
-\alias{rxSolve.rxUi}
 \alias{rxSolve.rxode2tos}
 \alias{rxSolve.nlmixr2FitData}
 \alias{rxSolve.nlmixr2FitCore}
@@ -126,7 +125,7 @@ rxSolve(
   keep = NULL,
   indLinPhiTol = 1e-07,
   indLinPhiM = 0L,
-  indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+  indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
   indLinMatExpOrder = 6L,
   drop = NULL,
   idFactor = TRUE,
@@ -194,7 +193,9 @@ rxSolve(
   zeroVarParamHandle = c("warn", "ignore", "keep"),
   indLinStepSearch = c("secant", "exact", "none"),
   indLinMaxIter = 20L,
-  indLinRichardson = c("auto", "always", "never"),
+  indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+  indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+  indLinJac = c("auto", "symbolic", "fd"),
   envir = parent.frame()
 )
 
@@ -204,18 +205,6 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  theta = NULL,
-  eta = NULL,
-  envir = parent.frame()
-)
-
-\method{rxSolve}{rxUi}(
-  object,
-  params = NULL,
-  events = NULL,
-  inits = NULL,
-  ...,
-  useLinCmt = TRUE,
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -1188,15 +1177,23 @@ exponential matrix.}
 \item{indLinMatExpType}{This is them matrix exponential type that
 is use for rxode2.  Currently the following are supported:
 \itemize{
-\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham (2009)
+\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham
+(2009); the default.  It is the fastest on the models where the
+exponential is a measurable share of the solve, and all four agree
+to solver tolerance.
 \item \code{arma} Use the exponential matrix from RcppArmadillo
 \item \code{expokit} Use the exponential matrix from Roger B. Sidje (1998)
+\item \code{taylor} Taylor scaling and squaring, needing no linear solve
 }}
 
 \item{indLinMatExpOrder}{an integer, the order of approximation to
-be used, for the \code{Al-Mohy} and \code{expokit} values.
-The best value for this depends on machine precision (and
-slightly on the matrix). We use \code{6} as a default.}
+be used, for the \code{expokit} value.  The best value for this
+depends on machine precision (and slightly on the matrix). We
+use \code{6} as a default.  It no longer applies to \code{Al-Mohy}, whose
+degree is not free to choose: each accuracy threshold in the
+Al-Mohy-Higham table belongs to one specific degree, so the
+degree and the scaling are selected together from the matrix
+norm.  \code{taylor} has always chosen its degree the same way.}
 
 \item{drop}{Columns to drop from the output}
 
@@ -1621,16 +1618,47 @@ iterations per relinearization step.  Running out is not an error: the
 iteration contracts in proportion to the step, so the solver reads it as
 a step that is too long and retries with a shorter one.}
 
-\item{indLinRichardson}{whether \code{method="indLin"} Richardson-extrapolates
-each relinearization step, raising it from second to third order.  The
-step is run once whole and twice at half length, so it costs three
-fixed-point solves instead of one, and pays for itself only once the
-tolerance is tight enough that taking far fewer steps outweighs that.
-\code{"auto"} (the default) starts each interval second order and switches on
-once the interval has needed more than 27 steps, which is where the two
-costs cross: a second-order step needing \code{N} steps becomes a third-order
-one needing about \code{N^(2/3)} at three times the cost each.  \code{"always"}
-(or \code{TRUE}) and \code{"never"} (or \code{FALSE}) force the choice.}
+\item{indLinRichardson}{how far \code{method="indLin"} extrapolates each
+relinearization step.  The base step is second order; running it also at
+half length and combining removes the leading error term for third order
+at three fixed-point solves, and adding a quarter-length run gives a
+three-entry Romberg column for fourth order at seven.  Each level pays
+for itself only once the tolerance is tight enough that taking far fewer
+steps outweighs the extra solves per step: a second-order step needing
+\code{N} steps becomes a \code{p}-th order one needing about \code{N^(2/p)}, so third
+order wins once \code{3*N^(2/3) < N} (\code{N > 27}) and fourth once
+\code{7*N^(1/2) < 3*N^(2/3)} (\code{N > 161}).  \code{"auto"} (the default) starts each
+interval second order and raises the level as the step the controller
+settles on crosses those thresholds.  \code{"never"} (or \code{FALSE}), \code{"always"}
+(or \code{TRUE}, third order) and \code{"always4"} (fourth order) force the choice.}
+
+\item{indLinIteration}{how \code{method="indLin"} solves each relinearization
+step.  \code{"picard"} is the relaxed fixed-point iteration; \code{"newton"}
+replaces it with a Newton iteration, which removes the contraction
+condition so convergence stops limiting the step; \code{"exprb"} uses an
+exponential Rosenbrock step, which does not iterate at all -- it puts the
+full linearization into the exponential, so nothing can fail to converge.
+Their costs differ sharply by problem: on a non-stiff model the iteration
+never limits the step and Picard is cheapest, while on a stiff one it is
+the only thing limiting it.  \code{"auto"} (the default) therefore starts on
+Picard and switches only once steps are actually being cut for
+non-convergence, so a model that never needs a Jacobian never forms one.
+\code{"exprb32"} is the Luan-Ostermann third-order exponential Rosenbrock
+pair, which carries its own embedded error estimate and so does not need
+the extrapolation column that \code{"exprb"} takes its estimate from.}
+
+\item{indLinJac}{where the forcing Jacobian comes from when
+\code{method="indLin"} needs one, which is only under the \code{"newton"},
+\code{"exprb"} and \code{"exprb32"} iteration schemes -- Picard needs none, so a
+non-stiff model under the default \code{"auto"} scheme never forms one at
+all.  \code{"symbolic"} uses the model's own analytic Jacobian, available
+because the \code{matExp()} conversion emits \code{df()/dy()} lines, and costs no
+extra forcing evaluations; \code{"fd"} central-differences the forcing, at
+\verb{2n} evaluations per Jacobian.  \code{"auto"} (the default) takes the
+symbolic one when the model carries it and falls back to finite
+differences otherwise -- which is what happens above
+\code{getOption("rxode2.indLinJacMaxStates")} states, where the symbolic
+emission is skipped to bound the symengine work at model build.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

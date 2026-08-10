@@ -2370,8 +2370,6 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(theta = theta, eta = eta))
 }
 
-#' @rdname rxSolve
-#' @export
 #' Does this model actually carry `d/dt()` equations?
 #'
 #' `rxModelVars(x)$state` also counts `linCmt()` pseudo-compartments, so it is

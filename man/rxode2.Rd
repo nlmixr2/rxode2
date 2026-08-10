@@ -429,10 +429,10 @@ by the order they are parsed. This is useful for keeping the parameter
 order the same when using 2 different ODE models. These are specified
 by \code{param(par1, par2,...)}
 \item \strong{Variable interpolation statements}, which tells the interpolation
-for specific covariates. These include \code{locf(cov1, cov2, ...)} for
-last observation carried forward, \code{nocb(cov1, cov2, ...)} for next
-observation carried backward, \code{linear(cov1, cov2, ...)} for linear
-interpolation and \code{midpoint(cov1, cov2, ...)} for midpoint
+for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
+last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
+observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
+interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
 interpolation.
 }
 
@@ -784,12 +784,7 @@ y=f+(a+b* f^c)*err
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-y=f+
-
-\if{html}{\out{<div class="sourceCode math">}}\preformatted{sqrt(a^2+b^2 *f^(2c))
-}\if{html}{\out{</div>}}
-
-*err
+y=f+$$sqrt(a^2+b^2 *f^(2c))$$*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in
