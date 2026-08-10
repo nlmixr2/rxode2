@@ -174,6 +174,16 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxSolve(indLinMatExpType=)` now defaults to `"Al-Mohy"` rather than
+  `"expokit"`.  With the degree bug below fixed, all four backends agree to
+  solver tolerance and take the same steps on every problem tested, and
+  `"Al-Mohy"` is the cheapest per exponential: about 4-5% on a Michaelis-Menten
+  population and 34% on a stiff van der Pol one, where an exponential-Rosenbrock
+  step rebuilds its operator every step and the exponential cache cannot help.
+  On a linear model the difference is unmeasurable, the cache serving nearly
+  every call.  Results move in the last digits, as any change of exponential
+  kernel does; pass `indLinMatExpType="expokit"` to keep the previous one.
+
 - `rxSolve(indLinMatExpType="Al-Mohy")` chose its Pade degree and its scaling
   inconsistently, which could return a silently wrong answer or a solve that
   never finished.  The scaling came from the Al-Mohy-Higham threshold table,

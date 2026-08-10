@@ -183,11 +183,16 @@
 #' @param indLinMatExpType This is them matrix exponential type that
 #'     is use for rxode2.  Currently the following are supported:
 #'
-#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham (2009)
+#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham
+#'   (2009); the default.  It is the fastest on the models where the
+#'   exponential is a measurable share of the solve, and all four agree
+#'   to solver tolerance.
 #'
 #' * `arma` Use the exponential matrix from RcppArmadillo
 #'
 #' * `expokit` Use the exponential matrix from Roger B. Sidje (1998)
+#'
+#' * `taylor` Taylor scaling and squaring, needing no linear solve
 #'
 #'
 #' @param indLinMatExpOrder an integer, the order of approximation to
@@ -1143,7 +1148,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     keep = NULL,
                     indLinPhiTol = 1e-7,
                     indLinPhiM = 0L,
-                    indLinMatExpType = c("expokit", "Al-Mohy", "arma", "taylor"),
+                    indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
                     indLinMatExpOrder = 6L,
                     drop = NULL,
                     idFactor = TRUE,

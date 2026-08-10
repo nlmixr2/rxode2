@@ -5467,7 +5467,7 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinN = 0;
   op->indLinPhiTol = 1e-7;
   op->indLinPhiM = 0;
-  op->indLinMatExpType = 2;
+  op->indLinMatExpType = 3; // Al-Mohy; see rxsolve.R's indLinMatExpType
   op->indLinMatExpOrder = 6;
   op->indLinStepSearch = 1; // secant
   op->indLinMaxIter = 20;
