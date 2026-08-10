@@ -941,6 +941,25 @@ static int indLinExprb2(int cSub, rx_solving_options *op, rx_solving_options_ind
   return 1;
 }
 
+// RMS of `fac*(a - b)` against the atol/rtol scale.  Both the fixed-point
+// schemes and exprb32 form their error estimate this way -- they differ only in
+// which two approximations are differenced and by what factor.
+//
+// Every state is included, not just the ones carrying a forcing: the
+// linearization error propagates into compartments that have none of their own.
+static inline double indLinScaledErr(int neq, const double *rtol, const double *atol,
+                                     const arma::vec &y0, const arma::vec &a,
+                                     const arma::vec &b, double fac) {
+  double err = 0.0;
+  for (int k = 0; k < neq; ++k) {
+    const double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(a[k]));
+    if (sc <= 0.0) continue;
+    const double e = fac*(a[k] - b[k])/sc;
+    err += e*e;
+  }
+  return sqrt(err / (double) neq);
+}
+
 // Luan-Ostermann exprb32: third order, with the second-order exprb2 solution
 // as an embedded pair.  Writing F for the full right-hand side and
 // J = F'(y_n),
@@ -1034,14 +1053,7 @@ static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_in
     if (!R_FINITE(yOut[k])) return -2;
   }
   if (errOut != NULL) {
-    double err = 0.0;
-    for (int k = 0; k < neq; ++k) {
-      double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
-      if (sc <= 0.0) continue;
-      double e = (yOut[k] - U2[k])/sc;
-      err += e*e;
-    }
-    *errOut = sqrt(err / (double) neq);
+    *errOut = indLinScaledErr(neq, rtol, atol, y0, yOut, U2, 1.0);
   }
   return 1;
 }
@@ -1079,6 +1091,69 @@ static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_in
 //     truncation, silently corrupting every extrapolation level built on it.
 //   * `*ratioOut` is a `>= 1` "how much too long is this step" number.
 //   * `-2` means "cut the step", never a hard error.
+// Has any state carrying a forcing gone non-finite?  Only those: a state the
+// iteration never touches cannot have been driven there by it.
+static inline bool indLinAnyNonFinite(rx_solving_options *op, const arma::vec &w) {
+  for (int j = op->indLinN; j--;) {
+    if (!R_FINITE(w[op->indLin[j]])) return true;
+  }
+  return false;
+}
+
+// Exact line search for the relaxation factor: the theta minimising the scaled
+// norm of the next residual, given the extra pass in `wTry`.  Clamped, because
+// anything outside the bounds is a secant fit that should not be trusted.
+static inline double indLinThetaExact(rx_solving_options *op, const double *rtol,
+                                      const double *atol, const arma::vec &w,
+                                      const arma::vec &d, const arma::vec &wTry) {
+  double num = 0.0, den = 0.0;
+  for (int j = op->indLinN; j--;) {
+    const int k = op->indLin[j];
+    const double sc = rtol[k]*fabs(w[k]) + atol[k];
+    if (sc <= 0.0) continue;
+    const double a0 = d[k]/sc;
+    const double a1 = (wTry[k] - w[k] - d[k])/sc;
+    num += a0*a1;
+    den += a1*a1;
+  }
+  double theta = (den > 0.0 && R_FINITE(num)) ? -num/den : 1.0;
+  if (!R_FINITE(theta) || theta < RX_INDLIN_THETA_MIN) theta = RX_INDLIN_THETA_MIN;
+  if (theta > RX_INDLIN_THETA_MAX) theta = RX_INDLIN_THETA_MAX;
+  return theta;
+}
+
+// Converged?  The distance left to the fixed point is |theta*d| rather than the
+// bare residual |d| -- at a contraction ratio of 0.9 those differ by ten times,
+// which is how much slack testing |d| alone would have allowed.
+static inline bool indLinConverged(rx_solving_options *op, const double *rtol,
+                                   const double *atol, const arma::vec &w,
+                                   const arma::vec &d, double theta) {
+  for (int j = op->indLinN; j--;) {
+    const int k = op->indLin[j];
+    if (fabs(theta*d[k]) >=
+        RX_INDLIN_PICARD_TOL_FAC*(rtol[k]*fabs(w[k]) + atol[k])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// P(h) = A^-1(exp(Ah) - I) = h*phi1(Ah).  The Horner series when ||A*h|| is
+// small enough to trust it, and otherwise the exact value read out of the
+// augmented exponential -- which costs a second, wider exponential, so it is
+// the fallback rather than the rule.
+static inline void indLinPmat(rx_solving_options *op, rx_solving_options_ind *ind,
+                              int neq, const arma::mat &Aloc, double h,
+                              arma::mat &Ph, arma::mat &phiZ, arma::mat &phiTmp) {
+  if (indLinPhi1(Aloc, h, Ph, phiZ, phiTmp)) return;
+  arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
+  aug.submat(0, 0, neq-1, neq-1) = Aloc;
+  aug.submat(0, neq, neq-1, 2*neq-1).eye();
+  arma::mat augE(2*neq, 2*neq);
+  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  Ph = augE.submat(0, neq, neq-1, 2*neq-1);
+}
+
 static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                         int neq, double *rtol, double *atol, int maxIter,
                         double *yp_, double subTp, double subTf, double tcov,
@@ -1111,15 +1186,7 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   arma::mat Aloc(neq, neq);
   ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
   arma::mat Ph(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
-  if (!indLinPhi1(Aloc, h, Ph, phiZ, phiTmp)) {
-    // ||A*h|| too large for the series: fall back to the exact block.
-    arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
-    aug.submat(0, 0, neq-1, neq-1) = Aloc;
-    aug.submat(0, neq, neq-1, 2*neq-1).eye();
-    arma::mat augE(2*neq, 2*neq);
-    matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
-    Ph = augE.submat(0, neq, neq-1, 2*neq-1);
-  }
+  indLinPmat(op, ind, neq, Aloc, h, Ph, phiZ, phiTmp);
   G = -Ph*Jf;
   G.diag() += 1.0;
   // Invert once and reuse: at compartmental sizes this is a handful of flops,
@@ -1138,24 +1205,16 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
                      subTf, InfusionRate_, on_, ME, IndF, u);
     if (ret <= 0) return ret;
     r = gw - w;                       // -G(w); the Picard step is exactly this
-    for (int j = op->indLinN; j--;) {
-      if (!R_FINITE(gw[op->indLin[j]])) {
-        std::copy(gw.begin(), gw.end(), yp_);
-        return -2;
-      }
+    if (indLinAnyNonFinite(op, gw)) {
+      std::copy(gw.begin(), gw.end(), yp_);
+      return -2;
     }
     double res = indLinResNorm(op, rtol, atol, gw, r);
     // Converged: same test and same 0.1x factor as the Picard path, but on the
     // raw residual -- Newton has no relaxation to undo.
-    bool ok = true;
-    for (int j = op->indLinN; j--;) {
-      int k = op->indLin[j];
-      if (fabs(r[k]) >= RX_INDLIN_PICARD_TOL_FAC*(rtol[k]*fabs(gw[k]) + atol[k])) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) {
+    // theta = 1: Newton takes the full step, so the residual IS the distance
+    // to the fixed point and needs no contraction correction.
+    if (indLinConverged(op, rtol, atol, gw, r, 1.0)) {
       std::copy(gw.begin(), gw.end(), yp_);
       return 1;
     }
@@ -1234,11 +1293,9 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // backward one to get a local error estimate for free.
     if (i == 0 && w1Out != NULL) *w1Out = w;
     d = w - wPrev;
-    for (int j = op->indLinN; j--;) {
-      if (!R_FINITE(w[op->indLin[j]])) {
-        std::copy(w.begin(), w.end(), yp_);
-        return -2;
-      }
+    if (indLinAnyNonFinite(op, w)) {
+      std::copy(w.begin(), w.end(), yp_);
+      return -2;
     }
     // Pick the relaxation BEFORE testing, because the test needs it.  For a
     // map contracting at ratio g', the distance from the current iterate to
@@ -1276,19 +1333,7 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
       int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(), subTp, subTf, tcov,
                           subTf, InfusionRate_, on_, ME, IndF, u);
       if (r2 <= 0) return r2;
-      double num = 0.0, den = 0.0;
-      for (int j = op->indLinN; j--;) {
-        int k = op->indLin[j];
-        double sc = rtol[k]*fabs(w[k]) + atol[k];
-        if (sc <= 0.0) continue;
-        double a0 = d[k]/sc;
-        double a1 = (wTry[k] - w[k] - d[k])/sc;
-        num += a0*a1;
-        den += a1*a1;
-      }
-      theta = (den > 0.0 && R_FINITE(num)) ? -num/den : 1.0;
-      if (!R_FINITE(theta) || theta < RX_INDLIN_THETA_MIN) theta = RX_INDLIN_THETA_MIN;
-      if (theta > RX_INDLIN_THETA_MAX) theta = RX_INDLIN_THETA_MAX;
+      theta = indLinThetaExact(op, rtol, atol, w, d, wTry);
     } else {
       theta = (thetaPrev > 0.0) ? indLinTheta(op, rtol, atol, w, d, dPrev, thetaPrev) : 1.0;
     }
@@ -1298,15 +1343,7 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
       double r = fabs(1.0 - 1.0/theta);
       *ratioOut = (R_FINITE(r) && r > 1.0) ? r : 1.0;
     }
-    bool converge = true;
-    for (int j = op->indLinN; j--;) {
-      int k = op->indLin[j];
-      if (fabs(theta*d[k]) >=
-          RX_INDLIN_PICARD_TOL_FAC*(rtol[k]*fabs(w[k]) + atol[k])) {
-        converge = false;
-      }
-    }
-    if (converge) {
+    if (indLinConverged(op, rtol, atol, w, d, theta)) {
       std::copy(w.begin(), w.end(), yp_);
       return 1;
     }
@@ -1340,6 +1377,42 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
 // same cancellation holds when it is the matrix rather than the forcing that is
 // frozen (a sensitivity model built by rxSensMatExp(), where `A` still reads the
 // states); only the derivative being expanded changes.
+// The two exponential Rosenbrock schemes, wrapped so the substep dispatcher
+// stays a dispatcher.  Both own the same scratch, neither iterates, and both
+// report an overflow the same way -- `-2` with ratio 2, asking the driver for a
+// halving, since there is no measured contraction ratio to size a cut from.
+//
+// They differ in one respect, and it is the reason exprb32 exists: exprb2 has
+// no embedded pair, so it leaves `errOut` for indLinTryStep() to fill from the
+// extrapolation column and the driver holds it at RX_INDLIN_EXPRB_MINRICH,
+// while exprb32 fills `errOut` itself and runs at the base order.
+static int indLinExprbSubstep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                              int neq, double *rtol, double *atol, int scheme,
+                              const arma::vec &y0, double t, double h, double tcov,
+                              double *InfusionRate_, t_ME ME, t_IndF IndF,
+                              arma::vec *u, arma::vec &yOut, arma::vec &w1,
+                              double *errOut, double *ratioOut) {
+  arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq), Jfull, Amat;
+  arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
+  int ret;
+  if (scheme == RX_INDLIN_ITER_EXPRB32) {
+    ret = indLinExprb32(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
+                        t, InfusionRate_, ME, IndF, u, yOut, errOut,
+                        Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
+                        Jfull, Amat);
+    if (ret == -2 && errOut != NULL) *errOut = 0.0;
+  } else {
+    ret = indLinExprb2(cSub, op, ind, neq, y0, t, h, tcov,
+                       t, InfusionRate_, ME, IndF, u, yOut,
+                       Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
+                       Jfull, Amat);
+    if (errOut != NULL) *errOut = 0.0;
+  }
+  if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
+  w1 = yOut;
+  return ret;
+}
+
 static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                             int neq, double *rtol, double *atol, int scheme,
                             const arma::vec &y0, double t, double h, double tcov,
@@ -1349,37 +1422,9 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
   int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
   yOut = y0;
   int ret;
-  if (scheme == RX_INDLIN_ITER_EXPRB32) {
-    // Unlike exprb2 this fills `errOut` itself, from its embedded pair, so it
-    // works at Romberg level 0 and the driver leaves the column alone.
-    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq), Jfull, Amat;
-    arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
-    ret = indLinExprb32(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
-                        t, InfusionRate_, ME, IndF, u, yOut, errOut,
-                        Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
-                        Jfull, Amat);
-    if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
-    if (ret == -2 && errOut != NULL) *errOut = 0.0;
-    w1 = yOut;
-    return ret;
-  }
-  if (scheme == RX_INDLIN_ITER_EXPRB) {
-    // Exponential Rosenbrock has no iteration, so it produces no `w1` and no
-    // pass-0/converged difference.  Its error comes from the Romberg tableau
-    // instead, which is why the driver holds it at level >= 1; `errOut` is left
-    // for `indLinTryStep` to fill from the column.
-    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq), Jfull, Amat;
-    arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
-    ret = indLinExprb2(cSub, op, ind, neq, y0, t, h, tcov,
-                       t, InfusionRate_, ME, IndF, u, yOut,
-                       Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
-                       Jfull, Amat);
-    // -2 means the exponential overflowed; ratio 2 asks the driver for a
-    // halving, since there is no measured contraction ratio to size it from.
-    if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
-    if (errOut != NULL) *errOut = 0.0;
-    w1 = yOut;
-    return ret;
+  if (scheme == RX_INDLIN_ITER_EXPRB32 || scheme == RX_INDLIN_ITER_EXPRB) {
+    return indLinExprbSubstep(cSub, op, ind, neq, rtol, atol, scheme, y0, t, h, tcov,
+                              InfusionRate_, ME, IndF, u, yOut, w1, errOut, ratioOut);
   }
   if (scheme == RX_INDLIN_ITER_NEWTON) {
     ret = indLinNewton(cSub, op, ind, neq, rtol, atol, maxIter,
@@ -1391,16 +1436,7 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
                         InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
   }
   if (ret != 1) return ret;
-  double err = 0.0;
-  for (int k = 0; k < neq; ++k) {
-    // Every state, not just the flagged ones: the linearization error
-    // propagates into compartments that carry no forcing of their own.
-    double sc = atol[k] + rtol[k]*std::max(fabs(y0[k]), fabs(yOut[k]));
-    if (sc <= 0.0) continue;
-    double e = 0.5*(yOut[k] - w1[k])/sc;
-    err += e*e;
-  }
-  *errOut = sqrt(err / (double) neq);
+  *errOut = indLinScaledErr(neq, rtol, atol, y0, yOut, w1, 0.5);
   // Advance on the average of the two.  Their leading errors are equal and
   // opposite, so the average cancels them and is second order where either
   // alone is first -- for free, since both are already in hand.  This is local
@@ -1583,6 +1619,64 @@ static inline int indLinRaiseRich(int scheme, int useRich, double nLeft) {
   return useRich;
 }
 
+// Give the interval up: restore the state it was entered with and report a
+// convergence failure.  Three places in the driver bail out this way -- the
+// mxstep budget and two step-underflow guards -- and having one exit makes it
+// checkable that they all leave the entry state behind rather than a partial
+// step.
+static inline int indLinAbandon(const arma::vec &y0, double *yp_,
+                                rx_solving_options_ind *ind) {
+  std::copy(y0.begin(), y0.end(), yp_);
+  if (ind != NULL) ind->err |= rxErrIndLinConverge;
+  return 1;
+}
+
+// The stiffness gate.  A step cut for non-convergence is one the error
+// controller would have accepted, so a run of them says the iteration -- not
+// the tolerance -- is what limits the step, which is the regime the
+// exponential Rosenbrock scheme exists for.  One way only, so it cannot
+// chatter, and the counter advances only while Picard is still in use.
+//
+// Switching re-earns the extrapolation level under the new scheme's cost model
+// instead of inheriting Picard's: the two use different thresholds, and since
+// the level ratchet is one way a level climbed under Picard's much lower ones
+// would otherwise stick at 3 for the rest of the subject (measured at 4.25 s
+// against 2.18 s on 200-subject van der Pol).  Only when the level is ours to
+// choose -- an explicit always4/always5 must not be lowered.
+static inline void indLinStiffGate(int autoScheme, int autoRich,
+                                   indLinAutoState_t *autoSt,
+                                   int *scheme, int *useRich) {
+  if (!autoScheme || autoSt == NULL || *scheme != RX_INDLIN_ITER_PICARD) return;
+  if (++(autoSt->nCut) < RX_INDLIN_AUTO_ITER_CUTS) return;
+  *scheme = autoSt->scheme = RX_INDLIN_ITER_EXPRB;
+  if (autoRich) {
+    *useRich = RX_INDLIN_EXPRB_MINRICH;
+    autoSt->rich = RX_INDLIN_EXPRB_MINRICH;
+  } else if (*useRich < RX_INDLIN_EXPRB_MINRICH) {
+    *useRich = RX_INDLIN_EXPRB_MINRICH;
+  }
+}
+
+// Step-size factor from the error estimate, clamped to the growth bounds.
+static inline double indLinStepFactor(double err, double expo, double safe,
+                                      double facMin, double facMax) {
+  double fac = (err > 0.0) ? safe*pow(err, expo) : facMax;
+  if (fac < facMin) fac = facMin;
+  if (fac > facMax) fac = facMax;
+  return fac;
+}
+
+// Cut factor after a convergence failure.  Not a dead end: the contraction
+// ratio is proportional to h, so a failure proves the step is too long and a
+// bounded number of cuts must fix it.  Sized from the measured ratio rather
+// than halved blindly -- lsoda's corrector-failure convention.
+static inline double indLinCutFactor(double ratio, double facMin) {
+  double cut = 1.0/(2.0*ratio);
+  if (cut > 0.25) cut = 0.25;
+  if (cut < facMin) cut = facMin;
+  return cut;
+}
+
 static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                                int neq, double *rtol, double *atol,
                                double *yp_, double tp, double tf, double hCap, int locf,
@@ -1640,11 +1734,7 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
     if (t + 1.01*h >= tf) h = tf - t;
     if (h <= 0.0) break;
     __indLinNAttempt++;
-    if (++nAttempt > op->mxstep) {
-      std::copy(y0.begin(), y0.end(), yp_);
-      if (ind != NULL) ind->err |= rxErrIndLinConverge;
-      return 1;
-    }
+    if (++nAttempt > op->mxstep) return indLinAbandon(y0, yp_, ind);
     // Decide from the step the controller has settled on rather than by
     // burning the switch-over count first: if crossing what is left of the
     // interval at this step would take more than the break-even number of
@@ -1673,56 +1763,22 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
       // have accepted, so a run of them says the iteration is the binding
       // constraint -- which is exactly the regime the other schemes exist for.
       // One way only, so it cannot chatter.
-      if (autoScheme && autoSt != NULL && scheme == RX_INDLIN_ITER_PICARD &&
-          ++(autoSt->nCut) >= RX_INDLIN_AUTO_ITER_CUTS) {
-        scheme = autoSt->scheme = RX_INDLIN_ITER_EXPRB;
-        // Re-earn the extrapolation level under the new scheme's cost model
-        // rather than inheriting Picard's.  The two use different thresholds
-        // for good reason, and the level ratchet is one way, so a level climbed
-        // under Picard's (much lower) thresholds would stick at 3 for the rest
-        // of the subject -- measured at 4.25 s against 2.18 s on 200-subject
-        // van der Pol, i.e. the whole benefit of the split thresholds lost.
-        // Only when the level is ours to choose; an explicit always4/always5
-        // must not be lowered.
-        if (autoRich) {
-          useRich = RX_INDLIN_EXPRB_MINRICH;
-          autoSt->rich = RX_INDLIN_EXPRB_MINRICH;
-        } else if (useRich < RX_INDLIN_EXPRB_MINRICH) {
-          useRich = RX_INDLIN_EXPRB_MINRICH;
-        }
-      }
-      // Not a dead end: the contraction ratio is proportional to `h`, so a
-      // failure to converge proves the step is too long and a bounded number
-      // of cuts must fix it.  Size the cut from the measured ratio instead of
-      // halving blindly -- lsoda's corrector-failure convention.
-      double cut = 1.0/(2.0*ratio);
-      if (cut > 0.25) cut = 0.25;
-      if (cut < FACMIN) cut = FACMIN;
-      h *= cut;
+      indLinStiffGate(autoScheme, autoRich, autoSt, &scheme, &useRich);
+      h *= indLinCutFactor(ratio, FACMIN);
       lastRejected = true;
-      if (h < 1e-10*span) {
-        std::copy(y0.begin(), y0.end(), yp_);
-        if (ind != NULL) ind->err |= rxErrIndLinConverge;
-        return 1;
-      }
+      if (h < 1e-10*span) return indLinAbandon(y0, yp_, ind);
       continue;
     }
     if (ret <= 0) {
       std::copy(y0.begin(), y0.end(), yp_);
       return ret;
     }
-    double fac = (err > 0.0) ? SAFE*pow(err, expo) : FACMAX;
-    if (fac < FACMIN) fac = FACMIN;
-    if (fac > FACMAX) fac = FACMAX;
+    double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
     if (err > 1.0) {
       __indLinNRejErr++;
       h *= fac;
       lastRejected = true;
-      if (h < 1e-10*span) {
-        std::copy(y0.begin(), y0.end(), yp_);
-        if (ind != NULL) ind->err |= rxErrIndLinConverge;
-        return 1;
-      }
+      if (h < 1e-10*span) return indLinAbandon(y0, yp_, ind);
       continue;
     }
     y0 = yTry;
