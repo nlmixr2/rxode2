@@ -243,6 +243,25 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
+  `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and
+  `"exprb32"` -- Picard needs none, so a non-stiff model under the default
+  scheme never forms one.  `"symbolic"` uses the model's own analytic Jacobian,
+  which the `matExp()` conversion already emits as `df()/dy()` lines, and costs
+  no extra forcing evaluations; `"fd"` central-differences the forcing at `2n`
+  evaluations.  `"auto"` (the default) takes the symbolic one when the model
+  carries it and falls back to finite differences otherwise, which is what
+  happens above `getOption("rxode2.indLinJacMaxStates")` states where the
+  emission is skipped.
+
+  On cost the two are a wash at compartmental sizes -- within about 25% of each
+  other either way from 3 to 16 states, with no consistent ordering, and the
+  symbolic emission adds a fraction of a second once at model build.  The
+  reason `"auto"` prefers symbolic anyway is exactness rather than speed: an
+  exponential Rosenbrock step's order conditions assume the Jacobian is exact,
+  and on a stiff van der Pol the symbolic one delivered a smaller error for the
+  same work.
+
 - `rxSolve(indLinIteration="exprb32")` adds the Luan-Ostermann third-order
   exponential Rosenbrock pair.  Its embedded second-order member is `"exprb"`
   itself, so the two differ by a computable quantity and it sizes its step from

@@ -5473,6 +5473,7 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinMaxIter = 20;
   op->indLinRichardson = 2; // auto
   op->indLinIteration = 3;  // auto (stiffness-gated)
+  op->indLinJac = 0; // auto: symbolic when the model carries one
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -6144,6 +6145,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinMaxIter=asInt(rxControl[Rxc_indLinMaxIter], "indLinMaxIter");
     op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
     op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
+    op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){

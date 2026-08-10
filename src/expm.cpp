@@ -576,6 +576,57 @@ static bool indLinPhi1(const arma::mat &A, double h, arma::mat &Ph,
 // `d/dy = -2*mu*y*dy` is the dominant entry at large mu.  Restricting the sweep
 // to the flagged set drops it silently, and Newton then fails to converge at
 // all on the stiff problems it exists for.
+// `indLinJac` codes, matching the R-side character values.
+#define RX_INDLIN_JAC_AUTO     0
+#define RX_INDLIN_JAC_SYMBOLIC 1
+#define RX_INDLIN_JAC_FD       2
+
+// `global_jt == 1` is set by rxUpdateFuns() when the model's trans reports a
+// "fulluser" Jacobian, i.e. when df()/dy() lines were parsed and calc_jac has a
+// real body.  Without this check the symbolic path would silently return `-A`:
+// an unemitted calc_jac is a stub that writes nothing, so `calc_jac - A` is
+// exactly the negative rate matrix rather than the forcing Jacobian.
+extern "C" int global_jt;
+
+static inline int indLinUseSymJac(rx_solving_options *op) {
+  const int have = (global_jt == 1 && calc_jac != NULL);
+  switch (op->indLinJac) {
+  case RX_INDLIN_JAC_FD:       return 0;
+  case RX_INDLIN_JAC_SYMBOLIC: return have;   // cannot force what is not there
+  default:                     return have;   // auto
+  }
+}
+
+// The forcing Jacobian from the model's own analytic Jacobian.
+//
+// `calc_jac` is d(RHS)/dy for the WHOLE right-hand side, which in this
+// splitting is `A + f'`, and `A` is state-independent by construction (a rate
+// constant that reads a compartment is a parse error).  So `f' = calc_jac - A`,
+// with both already compiled -- no differencing and no extra forcing
+// evaluations.
+//
+// calc_jac writes ROW-major: parseDfdy.h emits
+// `__PDStateVar__[i*(__NROWPD__) + j]` for `df(state_i)/dy(state_j)`.
+// Armadillo is column-major, so reading that buffer as a matrix gives the
+// TRANSPOSE and it has to be transposed back.  Getting this wrong is not
+// visibly wrong: the diagonal survives, so a model whose forcing Jacobian is
+// diagonal still solves, while the off-diagonal rate terms come back with the
+// wrong sign and position.  On a one-compartment oral model that put a
+// spurious +/- ka into the forcing Jacobian, which Newton absorbed (it
+// converges to the same fixed point under any J) while exprb -- whose order
+// conditions assume J is exact -- lost four orders of accuracy and took sixty
+// times the steps.
+static void indLinForcingJacSym(int cSub, int neq, double tcov, double tEval,
+                                const double *y, t_ME ME, arma::mat &Jf,
+                                arma::mat &Jfull, arma::mat &Amat) {
+  Jfull.zeros(neq, neq);
+  Amat.zeros(neq, neq);
+  int nj[2]; nj[0] = neq; nj[1] = cSub;
+  calc_jac(nj, tEval, const_cast<double*>(y), Jfull.memptr(), (unsigned int) neq);
+  ME(cSub, tcov, tEval, Amat.memptr(), const_cast<double*>(y));
+  Jf = Jfull.t() - Amat;
+}
+
 static void indLinForcingJacFd(int cSub, rx_solving_options *op,
                                int neq, double tcov, double tEval,
                                const double *y, t_IndF IndF,
@@ -597,6 +648,24 @@ static void indLinForcingJacFd(int cSub, rx_solving_options *op,
       Jf(i, j) = (fPlus[i] - fMinus[i])*d;
     }
   }
+}
+
+// One entry point for the forcing Jacobian, so the source is chosen in exactly
+// one place.  Callers pass their own scratch; the symbolic path needs two extra
+// n-by-n matrices and the finite-difference path three n-vectors, and neither
+// allocates when it is not the one taken.
+static void indLinForcingJac(int cSub, rx_solving_options *op,
+                             int neq, double tcov, double tEval,
+                             const double *y, t_IndF IndF, t_ME ME,
+                             arma::mat &Jf, arma::vec &yPert,
+                             arma::vec &fPlus, arma::vec &fMinus,
+                             arma::mat &Jfull, arma::mat &Amat) {
+  if (IndF == NULL) { Jf.zeros(neq, neq); return; }
+  if (indLinUseSymJac(op)) {
+    indLinForcingJacSym(cSub, neq, tcov, tEval, y, ME, Jf, Jfull, Amat);
+    return;
+  }
+  indLinForcingJacFd(cSub, op, neq, tcov, tEval, y, IndF, Jf, yPert, fPlus, fMinus);
 }
 
 int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov,
@@ -830,15 +899,16 @@ static int indLinExprb2(int cSub, rx_solving_options *op, rx_solving_options_ind
                         arma::vec *u, arma::vec &yOut,
                         arma::mat &Jf, arma::vec &yPert, arma::vec &fPlus,
                         arma::vec &fMinus, arma::mat &aug, arma::vec &augY,
-                        arma::mat &augE, arma::mat &Aloc) {
+                        arma::mat &augE, arma::mat &Aloc,
+                        arma::mat &Jfull, arma::mat &Amat) {
   // A at the step start.
   ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
   // f(y_n): IndF when there is one, otherwise the bare infusion rate.
   arma::vec f0(neq);
   if (u != NULL) {
     IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
-    indLinForcingJacFd(cSub, op, neq, tcov, tEval, y0.memptr(), IndF,
-                       Jf, yPert, fPlus, fMinus);
+    indLinForcingJac(cSub, op, neq, tcov, tEval, y0.memptr(), IndF, ME,
+                     Jf, yPert, fPlus, fMinus, Jfull, Amat);
   } else {
     std::copy(InfusionRate_, InfusionRate_ + neq, f0.memptr());
     Jf.zeros(neq, neq);
@@ -900,13 +970,14 @@ static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_in
                          arma::vec *u, arma::vec &yOut, double *errOut,
                          arma::mat &Jf, arma::vec &yPert, arma::vec &fPlus,
                          arma::vec &fMinus, arma::mat &aug, arma::vec &augY,
-                         arma::mat &augE, arma::mat &Aloc) {
+                         arma::mat &augE, arma::mat &Aloc,
+                         arma::mat &Jfull, arma::mat &Amat) {
   ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
   arma::vec f0(neq);
   if (u != NULL) {
     IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
-    indLinForcingJacFd(cSub, op, neq, tcov, tEval, y0.memptr(), IndF,
-                       Jf, yPert, fPlus, fMinus);
+    indLinForcingJac(cSub, op, neq, tcov, tEval, y0.memptr(), IndF, ME,
+                     Jf, yPert, fPlus, fMinus, Jfull, Amat);
   } else {
     std::copy(InfusionRate_, InfusionRate_ + neq, f0.memptr());
     Jf.zeros(neq, neq);
@@ -1016,7 +1087,7 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   arma::vec y0(yp_, neq);
   arma::vec w(y0), gw(neq), r(neq), dw(neq);
   arma::vec yPert(neq), fPlus(neq), fMinus(neq);
-  arma::mat Jf(neq, neq), G(neq, neq);
+  arma::mat Jf(neq, neq), G(neq, neq), JfullS, AmatS;
   if (ratioOut != NULL) *ratioOut = 1.0;
 
   // Pass 0: the left-endpoint answer, evaluated at subTp in time as well as in
@@ -1028,8 +1099,8 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   if (w1Out != NULL) *w1Out = w;
 
   // Chord Jacobian, formed once at the pass-0 iterate.
-  indLinForcingJacFd(cSub, op, neq, tcov, subTf, w.memptr(), IndF,
-                     Jf, yPert, fPlus, fMinus);
+  indLinForcingJac(cSub, op, neq, tcov, subTf, w.memptr(), IndF, ME,
+                   Jf, yPert, fPlus, fMinus, JfullS, AmatS);
   const double h = subTf - subTp;
   // P(h) = A^-1(exp(Ah) - I), the operator the map actually applies to the
   // forcing.  It is the top-right block of exp([[A, I],[0, 0]]h) -- the same
@@ -1113,8 +1184,8 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
       }
       if (!refreshed) {
         refreshed = true;
-        indLinForcingJacFd(cSub, op, neq, tcov, subTf, gw.memptr(), IndF,
-                           Jf, yPert, fPlus, fMinus);
+        indLinForcingJac(cSub, op, neq, tcov, subTf, gw.memptr(), IndF, ME,
+                         Jf, yPert, fPlus, fMinus, JfullS, AmatS);
         G = -Ph*Jf;
         G.diag() += 1.0;
         haveFact = arma::inv(Ginv, G);
@@ -1281,11 +1352,12 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
   if (scheme == RX_INDLIN_ITER_EXPRB32) {
     // Unlike exprb2 this fills `errOut` itself, from its embedded pair, so it
     // works at Romberg level 0 and the driver leaves the column alone.
-    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq);
+    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq), Jfull, Amat;
     arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
     ret = indLinExprb32(cSub, op, ind, neq, rtol, atol, y0, t, h, tcov,
                         t, InfusionRate_, ME, IndF, u, yOut, errOut,
-                        Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc);
+                        Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
+                        Jfull, Amat);
     if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;
     if (ret == -2 && errOut != NULL) *errOut = 0.0;
     w1 = yOut;
@@ -1296,11 +1368,12 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
     // pass-0/converged difference.  Its error comes from the Romberg tableau
     // instead, which is why the driver holds it at level >= 1; `errOut` is left
     // for `indLinTryStep` to fill from the column.
-    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq);
+    arma::mat Jf(neq, neq), aug, augE, Aloc(neq, neq), Jfull, Amat;
     arma::vec yPert(neq), fPlus(neq), fMinus(neq), augY;
     ret = indLinExprb2(cSub, op, ind, neq, y0, t, h, tcov,
                        t, InfusionRate_, ME, IndF, u, yOut,
-                       Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc);
+                       Jf, yPert, fPlus, fMinus, aug, augY, augE, Aloc,
+                       Jfull, Amat);
     // -2 means the exponential overflowed; ratio 2 asks the driver for a
     // halving, since there is no measured contraction ratio to size it from.
     if (ratioOut != NULL) *ratioOut = (ret == -2) ? 2.0 : 1.0;

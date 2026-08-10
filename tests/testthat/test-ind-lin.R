@@ -1318,6 +1318,59 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.dt, 30)
   })
 
+  test_that("the symbolic forcing Jacobian matches the finite-difference one", {
+    # `indLinJac` picks where f' comes from: the model's own calc_jac (which the
+    # matExp() conversion populates with df()/dy() lines) minus the rate matrix,
+    # or a central difference of the forcing.  They must agree.
+    #
+    # This is worth an exact test rather than a loose one because the failure
+    # mode is quiet.  calc_jac writes ROW-major and Armadillo reads column-major,
+    # so a missing transpose returns f' transposed -- which leaves the diagonal
+    # right and only moves the off-diagonal rate terms.  Newton absorbs that
+    # entirely, since it converges to the same fixed point under any Jacobian;
+    # only exprb, whose order conditions assume an exact J, shows it.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    # the conversion must actually have emitted a Jacobian, or "symbolic" would
+    # silently be finite differences and the comparison would be vacuous
+    expect_equal(unname(rxModelVars(.m)$trans[["jac"]]), "fulluser")
+    .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
+    .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
+    for (.sc in c("newton", "exprb", "exprb32")) {
+      .a <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = .sc, indLinJac = "symbolic"))
+      .b <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = .sc, indLinJac = "fd"))
+      # An off-by-a-transpose changes the step count as well as the answer, so
+      # both are checked; on this model the two sources agree to the digit.
+      expect_equal(.a$central, .b$central, tolerance = 1e-9, info = .sc)
+      expect_equal(sum(.a$counts$slvr), sum(.b$counts$slvr), info = .sc)
+    }
+
+    expect_equal(rxControl()$indLinJac, 0L)
+    expect_equal(rxControl(indLinJac = "symbolic")$indLinJac, 1L)
+    expect_equal(rxControl(indLinJac = "fd")$indLinJac, 2L)
+    expect_error(rxControl(indLinJac = "nope"))
+
+    # A model whose symbolic emission was skipped must still solve: "auto" and
+    # even an explicit "symbolic" fall back to finite differences rather than
+    # reading an empty calc_jac, which would return -A.
+    withr::with_options(list(rxode2.indLinJacMaxStates = 0L), {
+      .noJac <- suppressMessages(rxode2(rxToIndLin(.txt)))
+      expect_equal(unname(rxModelVars(.noJac)$trans[["jac"]]), "fullint")
+      for (.jj in c("auto", "symbolic", "fd")) {
+        .r <- suppressMessages(rxSolve(.noJac, .e, .p, method = "indLin",
+                                       atol = 1e-8, rtol = 1e-8,
+                                       indLinIteration = "exprb", indLinJac = .jj))
+        expect_equal(.r$central, .a$central, tolerance = 1e-5, info = .jj)
+      }
+    })
+  })
+
   test_that("exprb32 solves the same problem and carries its own error estimate", {
     # exprb32 is a third-order exponential Rosenbrock pair whose embedded
     # second-order member is exprb2 itself, so it needs no extrapolation column

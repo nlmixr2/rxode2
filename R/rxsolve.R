@@ -250,6 +250,19 @@
 #'     pair, which carries its own embedded error estimate and so does not need
 #'     the extrapolation column that `"exprb"` takes its estimate from.
 #'
+#' @param indLinJac where the forcing Jacobian comes from when
+#'     `method="indLin"` needs one, which is only under the `"newton"`,
+#'     `"exprb"` and `"exprb32"` iteration schemes -- Picard needs none, so a
+#'     non-stiff model under the default `"auto"` scheme never forms one at
+#'     all.  `"symbolic"` uses the model's own analytic Jacobian, available
+#'     because the `matExp()` conversion emits `df()/dy()` lines, and costs no
+#'     extra forcing evaluations; `"fd"` central-differences the forcing, at
+#'     `2n` evaluations per Jacobian.  `"auto"` (the default) takes the
+#'     symbolic one when the model carries it and falls back to finite
+#'     differences otherwise -- which is what happens above
+#'     `getOption("rxode2.indLinJacMaxStates")` states, where the symbolic
+#'     emission is skipped to bound the symengine work at model build.
+#'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
 #' @param minSS Minimum number of iterations for a steady-state dose
@@ -1225,6 +1238,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinMaxIter = 20L,
                     indLinRichardson = c("auto", "always", "never", "always4", "always5"),
                     indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+                    indLinJac = c("auto", "symbolic", "fd"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1648,6 +1662,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                    "auto" = 3L,
                                    "exprb32" = 4L)[match.arg(indLinIteration)])
     }
+    if (checkmate::testIntegerish(indLinJac, len=1, lower=0, upper=2,
+                                  any.missing=FALSE)) {
+      .indLinJac <- as.integer(indLinJac)
+    } else {
+      .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
+                             "fd" = 2L)[match.arg(indLinJac)])
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1924,7 +1945,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indLinStepSearch=.indLinStepSearch,
       indLinMaxIter=indLinMaxIter,
       indLinRichardson=.indLinRichardson,
-      indLinIteration=.indLinIteration
+      indLinIteration=.indLinIteration,
+      indLinJac=.indLinJac
     )
     class(.ret) <- "rxControl"
     return(.ret)
