@@ -398,6 +398,16 @@
   compartment is a parse error for a sensitivity model as well now.  Third-order
   sensitivities do not yet get a forcing contribution.
 
+- `eventSens="jump"` gets the right event-time (`alag`) jump sensitivity on a
+  `matExp()` model that has an `indLin()` forcing.  The `replace()`/`multiply()`
+  jump rows need the right-hand side at the pre-event state, which was taken
+  from the model Jacobian dotted with the state -- correct only while the whole
+  right-hand side is the rate matrix times the state.  With a forcing it is
+  short by the forcing's own contribution, which on a Michaelis-Menten model put
+  those sensitivities about 3.6% out.  It now comes from the rate matrix and the
+  forcing function directly.  This also affects hand-written `indLin()` models,
+  not only the ones `rxSensMatExp()` generates.
+
 - `rxSolve(indLinRichardson=)` Richardson-extrapolates each `method="indLin"`
   relinearization step, raising it from second to third order: the step is run
   once whole and twice at half length, and since a second-order step has a

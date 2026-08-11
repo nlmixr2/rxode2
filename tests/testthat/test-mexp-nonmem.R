@@ -403,6 +403,34 @@ rxTest({
     expect_equal(sort(rxModelVars(.m)$params), c("CL", "V"))
   })
 
+  test_that("event-time jumps are right when the nonlinearity is in the forcing", {
+    # The replace/multiply dtau rows need f_cmt, the right-hand side at the
+    # pre-event state.  For a matExp() model that used to come from the
+    # Jacobian row dotted with the state, which is f_cmt only while the whole
+    # right-hand side is A.X -- with a Michaelis-Menten forcing it is short by
+    # a factor Km/(Km + central), and these sensitivities came out ~3.6% off.
+    .ode <- "alag(central) <- tlag*exp(eta_lag)\nd/dt(central) = -Vm*central/(Km + central)\n"
+    .mx <- rxode2(rxSensMatExp(.ode, calcSens = "eta_lag"), eventSens = "jump")
+    .od <- rxode2(.ode, calcSens = "eta_lag", eventSens = "jump")
+    .p <- c(tlag = 1.5, eta_lag = 0.1, Vm = 8, Km = 4)
+    # et() reads `evid`/`amt` with NSE, so bind plain scalars rather than
+    # indexing into a list inside the call
+    for (.i in 1:2) {
+      .evid <- c(5L, 6L)[.i]
+      .amt <- c(50, 2)[.i]
+      .e <- et(amt = 100, cmt = "central") |>
+        et(time = 3, amt = .amt, cmt = "central", evid = .evid) |>
+        et(seq(0, 10, by = 0.7))
+      .a <- rxSolve(.mx, .e, method = "indLin", params = .p)
+      .b <- rxSolve(.od, .e, params = .p, atol = 1e-12, rtol = 1e-12)
+      expect_equal(.a$central, .b$central, tolerance = 1e-4)
+      # non-trivial: a wrong f_cmt shows up here, not in the states
+      expect_gt(max(abs(.b$rx__sens_central_BY_eta_lag__)), 1)
+      expect_equal(.a$rx__sens_central_BY_eta_lag__,
+                   .b$rx__sens_central_BY_eta_lag__, tolerance = 1e-4)
+    }
+  })
+
   test_that("rxSensMatExp() says third-order omits the forcing", {
     .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
     expect_warning(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),

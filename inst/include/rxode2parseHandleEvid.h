@@ -551,10 +551,10 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
 // rows in the paper's replace/additive/multiplicative tables.  Source
 // depends on model type (see _rxEsUseCalcJac, set from mv$indLin):
 //   - matExp()/indLin() models: dydt() is a no-op stub (matrix-exponential
-//     primal solve, not RHS evaluation), so both come from calc_jac -- the
-//     column directly, and f_cmt from the identity dX/dt = A*X (exact for
-//     the reconstructed matExp system) via row `cmt` of the Jacobian dotted
-//     with the current state.
+//     primal solve, not RHS evaluation), so the column comes from calc_jac,
+//     and f_cmt from ME() and IndF() -- the rate matrix dotted with the
+//     current state plus the forcing.  NOT from the Jacobian row: that is
+//     f_cmt only while the whole right-hand side is A.X.
 //   - ordinary ODE models: calc_jac is normally an empty stub (only
 //     populated by explicit user-written df/dy lines) but dydt is fully
 //     functional, so the column comes from a central difference of dydt and
@@ -562,8 +562,10 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
 //     computed for it (accurate to O(eps^2), avoids a third dydt call).
 // `_esJcol` (size >= ns) and `*_esFc` are left untouched if neither source
 // is available (caller must pre-zero/guard on the relevant function pointer).
+// Pass `_esFc = NULL` when the caller's jump row has no f_cmt term.
 static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
-                              int neq, double *_esJcol, double *_esFc) {
+                              int neq, double *_esJcol, double *_esFc,
+                              rx_solving_options_ind *ind) {
   int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
   if (_rxEsUseCalcJac) {
     double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
@@ -574,8 +576,42 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
         _esJcol[_k] = _esPD[_k * ns + cmt];
         _f += _esPD[cmt * ns + _k] * yp[_k];
       }
-      *_esFc = _f;
+      if (_esFc != NULL) *_esFc = _f;
       free(_esPD);
+    }
+    // The Jacobian row dotted with the state is f_cmt only for a model whose
+    // whole right-hand side is A.X.  Once part of it lives in an indLin()
+    // forcing -- which is where rxode2#1186/#1187 put every nonlinear term --
+    // J is A + dF/dX, so that dot product both misses F(X) and double counts
+    // (dF/dX).X.  Take the two pieces from the functions the solver already
+    // has: ME() is the rate matrix (column major, A[i][j] = _mat[j*neq + i])
+    // and IndF() is the forcing, seeded with the infusion rate, which is part
+    // of the true right-hand side at this instant too.
+    //
+    // Only the replace/multiply dtau rows need f_cmt; the additive-bolus rows
+    // pass NULL and skip the two extra evaluations.
+    if (_esFc != NULL) {
+      rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
+      t_ME _esME = _esRx->fns.me;
+      t_IndF _esIndF = _esRx->fns.indf;
+      if (_esME != NULL) {
+        double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
+        if (_esA != NULL) {
+          _esME(id, xout, xout, _esA, yp);
+          double _fa = 0.0;
+          for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + cmt] * yp[_j];
+          *_esFc = _fa;
+          free(_esA);
+          if (_esIndF != NULL) {
+            double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
+            if (_esFv != NULL) {
+              _esIndF(id, xout, xout, _esFv, yp);
+              *_esFc += _esFv[cmt];
+              free(_esFv);
+            }
+          }
+        }
+      }
     }
   } else if (dydtEs != NULL) {
     double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
@@ -591,7 +627,7 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
       for (int _k = 0; _k < ns; _k++) {
         _esJcol[_k] = (_esF1[_k] - _esF0[_k]) * _esInv;
       }
-      *_esFc = 0.5 * (_esF0[cmt] + _esF1[cmt]);
+      if (_esFc != NULL) *_esFc = 0.5 * (_esF0[cmt] + _esF1[cmt]);
     }
     if (_esF0 != NULL) free(_esF0);
     if (_esF1 != NULL) free(_esF1);
@@ -1580,7 +1616,7 @@ static inline int handle_evid(int evid, int neq,
           if (_esDLagB != NULL && _esJcol != NULL) {
             dLagEs(id, xout, yp, _esDLagB);
             double _esFc = 0.0;
-            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
             double _esX1 = yp[cmt];
             double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
             for (int _p = 0; _p < _np; _p++) {
@@ -1657,7 +1693,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
               double _esFc = 0.0;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
               double _esOneMAlpha = 1.0 - _esAlpha;
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
@@ -1832,8 +1868,8 @@ static inline int handle_evid(int evid, int neq,
             double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
             if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              double _esFc; // unused here (additive-bolus dtau row has no f_c term)
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+              // NULL: the additive-bolus dtau row has no f_c term
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, NULL, ind);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
@@ -1927,8 +1963,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
                 _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
               dLagEs(id, xout, yp, _esDLagB2);
-              double _esFc2;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, &_esFc2);
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, NULL, ind);
               d2LagEs(id, xout, yp, _esD2LagB);
               if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
               dLagJacEs(id, xout, yp, _esJacQB);
