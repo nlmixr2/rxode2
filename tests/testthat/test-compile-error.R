@@ -104,6 +104,25 @@ rxTest({
     )))
     # a symbol rxode2 asked for and did not supply is rxode2's to fix
     expect_false(.rxCompileToolchainProblem("rx.o: undefined reference to `rxFoo'"))
+    # a source-located diagnostic in the other spelling is still our bug
+    expect_false(.rxCompileToolchainProblem(
+      "rx_abc.c(214): error C2065: 'ETA': undeclared identifier"
+    ))
+    expect_false(.rxCompileToolchainProblem(
+      "C:\\tmp\\rx_abc.c:214:23: error: 'ETA' undeclared"
+    ))
+  })
+
+  test_that(".rxCompileErrLines() handles tools named by path and error codes", {
+    expect_length(
+      .rxCompileErrLines("c:/rtools40/mingw64/bin/ld.exe: unrecognized emulation mode"),
+      1L
+    )
+    expect_length(
+      .rxCompileErrLines("rx_abc.c(214): error C2065: 'ETA': undeclared identifier"),
+      1L
+    )
+    expect_length(.rxCompileErrLines("/usr/bin/ld: warning: something harmless"), 0L)
   })
 
   test_that("a codegen failure shows the compiler error and does not blame Rtools", {
@@ -154,19 +173,21 @@ rxTest({
 
   test_that("a real build failure reaches the console and rxLastCompile()", {
     skip_on_cran()
-    .msg <- NULL
-    withr::with_options(
-      list(rxode2.compile.O = "3 -include /rxode2-1197-does-not-exist.h"), {
-        .msg <- capture_messages(
-          expect_error(
-            rxode2({
-              d / dt(depot) <- -ka * depot
-            }),
-            "error building model"
-          )
-        )
-      }
+    # names nothing else compiles, so this cannot be answered from the cache
+    .broken <- NULL
+    .msg <- withr::with_options(
+      list(rxode2.compile.O = "3 -include /rxode2-1197-does-not-exist.h"),
+      capture_messages(
+        .broken <- try(rxode2({
+          d / dt(rx1197depot) <- -rx1197ka * rx1197depot
+        }), silent = TRUE)
+      )
     )
+    if (!inherits(.broken, "try-error")) {
+      # -include is a gcc/clang spelling; another compiler may ignore it
+      rxDelete(.broken)
+      skip("the compiler ignored the injected flag, so nothing failed to build")
+    }
     .msg <- paste(.msg, collapse = "")
     expect_match(.msg, "rxode2-1197-does-not-exist.h", fixed = TRUE)
     expect_match(.msg, "rxode2::rxLastCompile()", fixed = TRUE)
@@ -178,11 +199,13 @@ rxTest({
 
   test_that("a later model does not report the earlier model's failure", {
     skip_on_cran()
+    # deliberately a model other tests build too, so this is the cached path
     .m <- rxode2({
       d / dt(center) <- -kel * center
     })
     on.exit(rxDelete(.m))
     expect_true(.rxLastCompileSuccess())
     expect_null(rxLastCompile(what = character(0))$msg)
+    expect_null(rxLastCompile(what = character(0))$c)
   })
 })

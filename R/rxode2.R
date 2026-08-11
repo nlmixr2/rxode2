@@ -1819,13 +1819,18 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #' @noRd
 .rxCompileErrLines <- function(stderr, max = getOption("rxode2.compileErrLines", 10L)) {
   # this runs while reporting a build failure, so a bad option must not throw
-  max <- suppressWarnings(as.integer(max))
-  if (length(max) != 1L || is.na(max) || max < 1L) max <- 10L
+  max <- suppressWarnings(try(as.integer(max), silent = TRUE))
+  if (inherits(max, "try-error") || length(max) != 1L ||
+        is.na(max) || max < 1L) {
+    max <- 10L
+  }
   if (length(stderr) == 0L) return(structure(character(0), n = 0L))
   .lines <- unlist(strsplit(paste(stderr, collapse = "\n"), "\n", fixed = TRUE))
   .lines <- sub("\r$", "", .lines)
   .lines <- .lines[nzchar(trimws(.lines))]
-  .reErr <- "(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:"
+  # "error:", "fatal error:" and the MSVC-style "error C2065:"
+  .reErr <- paste0("(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:",
+                   "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z][0-9]+[[:space:]]*:")
   # a compiler, linker or loader diagnostic, not a warning or a progress line
   .re <- paste0(.reErr,
                 "|undefined reference to",
@@ -1834,7 +1839,8 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
                 "|cannot open output file",
                 "|cannot find -l",
                 "|cannot execute",
-                "|(^|[[:space:]])(ld|collect2|cc1|cc1plus)(\\.exe)?:",
+                # the tool may be named by its full path
+                "|(^|[[:space:]])([^[:space:]]*[/\\\\])?(ld|collect2|cc1|cc1plus)(\\.exe)?:",
                 "|ld returned [0-9]+ exit status")
   .err <- unique(.lines[grepl(.re, .lines, perl = TRUE, ignore.case = TRUE)])
   # R CMD SHLIB's own wrapper line says nothing the diagnostics do not
@@ -1866,8 +1872,13 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #' @noRd
 .rxCompileToolchainProblem <- function(stderr, errLines = .rxCompileErrLines(stderr)) {
   if (length(errLines) == 0L) return(TRUE)
-  # eg "rx_abc.c:214:23: error: 'ETA' undeclared"
-  .located <- "(^|[[:space:]])[^[:space:]]+:[0-9]+(:[0-9]+)?:[[:space:]]*(fatal[[:space:]]+)?error[[:space:]]*:"
+  # eg "rx_abc.c:214:23: error: 'ETA' undeclared", or the MSVC-style
+  # "rx_abc.c(214): error C2065: 'ETA': undeclared identifier"
+  .located <- paste0(
+    "(^|[[:space:]])[^[:space:]]+",
+    "(:[0-9]+(:[0-9]+)?:|\\([0-9]+(,[0-9]+)?\\)[[:space:]]*:)",
+    "[[:space:]]*(fatal[[:space:]]+)?error([[:space:]]+[A-Z][0-9]+)?[[:space:]]*:"
+  )
   if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) return(FALSE)
   # a symbol rxode2 asked for and did not supply is also rxode2's to fix
   !any(grepl("undefined reference to|undefined symbol", errLines,
@@ -2010,8 +2021,10 @@ rxCompile.rxModelVars <- function(model, # Model
   # (and tolerates a NULL .out) rather than inside the compilation branch.
   .out <- NULL
   # whatever is saved belongs to an earlier model; a cached load that never
-  # compiles would otherwise leave rxLastCompile() reporting that one
+  # compiles would otherwise leave rxLastCompile() reporting that one, and
+  # .rxLastCompileSuccess() still reporting its failure
   .rxCompileEnv$lst <- list()
+  .rxCompileEnv$success <- TRUE
   .badBuild <- function(msg, cSrc = TRUE, kind = "compile") {
     if (!is.null(.out)) {
       .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
