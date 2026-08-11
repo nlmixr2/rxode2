@@ -506,6 +506,7 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
   }
 }
 
+
 bool expm_assign=false;
 SEXP expm_s;
 
@@ -527,31 +528,68 @@ SEXP expm_s;
 // matrixExpTaylor does, and anything with a norm too large to serve that way
 // falls back to the exponential.
 //
-// phi1(z) = sum_{k>=0} z^k/(k+1)!, by Horner:
-//   P = I/(m+1)!;  for k = m..1:  P = I/k! + z*P;  then P(h) = h*P.
+// phi_p(z) = sum_{k>=0} z^k/(k+p)!, by Horner:
+//   P = I/(m+p)!;  for k = m..1:  P = I/(k+p-1)! + z*P;  then h*phi_p = h*P.
+// `p = 1` is P(h) itself; `p = 2` is what the linear-ramp forcing (rxode2#1191)
+// applies to the forcing INCREMENT, and is the same series one term along.
 #define RX_INDLIN_PHI1_MAXNRM 0.5
-static bool indLinPhi1(const arma::mat &A, double h, arma::mat &Ph,
-                       arma::mat &z, arma::mat &tmp) {
+static bool indLinPhiSeries(const arma::mat &A, double h, int p, arma::mat &Ph,
+                            arma::mat &z, arma::mat &tmp) {
   const arma::uword n = A.n_rows;
   z = A*h;
   double nrm = arma::norm(z, "inf");
   if (!R_FINITE(nrm) || nrm > RX_INDLIN_PHI1_MAXNRM) return false;
-  // Smallest m with nrm^(m+1)/(m+2)! <= 2^-53; at nrm <= 1/2, m = 16 is ample
+  // Smallest m with nrm^(m+1)/(m+p+1)! <= 2^-53; at nrm <= 1/2, m = 16 is ample
   // for any of them, and the terms are n x n multiplies at compartmental size.
   int m = 16;
-  double fk = 1.0;                       // (m+1)!
-  for (int k = 2; k <= m + 1; ++k) fk *= (double) k;
+  double fk = 1.0;                       // (m+p)!
+  for (int k = 2; k <= m + p; ++k) fk *= (double) k;
   Ph.eye(n, n);
   Ph /= fk;
   for (int k = m; k >= 1; --k) {
-    double kf = 1.0;
-    for (int q = 2; q <= k; ++q) kf *= (double) q;
+    double kf = 1.0;                     // (k+p-1)!
+    for (int q = 2; q <= k + p - 1; ++q) kf *= (double) q;
     tmp = z*Ph;
     Ph = tmp;
     Ph.diag() += 1.0/kf;
   }
   Ph *= h;
   return true;
+}
+
+// h*phi_p(Ah): for p = 1 that is P(h) = A^-1(exp(Ah) - I), the operator the
+// constant-forcing map applies to the forcing; for p = 2 it is what the
+// linear-ramp map applies to the forcing increment.  The Horner series when
+// ||A*h|| is small enough to trust it, and otherwise the exact value read out
+// of the augmented exponential -- which costs a second, wider exponential, so
+// it is the fallback rather than the rule.
+//
+// The fallback uses the same identity as everything else here: the top-right
+// block of exp([[X, W],[0, K]]) with `K` the unit superdiagonal is
+// sum_k phi_k(X) w_k, so `p` blocks with only the FIRST one set to the identity
+// leaves phi_p(X) alone.  As in indLinExprb32() the block must be X = A*h
+// exponentiated at t = 1, or the nilpotent chain is scaled along with it; at
+// p = 1 the chain is empty and `h` may be passed directly.
+static inline void indLinPmat(rx_solving_options *op, rx_solving_options_ind *ind,
+                              int neq, const arma::mat &Aloc, double h, int p,
+                              arma::mat &Ph, arma::mat &phiZ, arma::mat &phiTmp) {
+  if (indLinPhiSeries(Aloc, h, p, Ph, phiZ, phiTmp)) return;
+  const int m = neq*(p + 1);
+  arma::mat aug(m, m, arma::fill::zeros);
+  if (p == 1) {
+    aug.submat(0, 0, neq-1, neq-1) = Aloc;
+  } else {
+    aug.submat(0, 0, neq-1, neq-1) = Aloc*h;
+  }
+  aug.submat(0, neq, neq-1, 2*neq-1).eye();
+  for (int i = 1; i < p; ++i) {
+    aug.submat(i*neq, (i+1)*neq, (i+1)*neq-1, (i+2)*neq-1).eye();
+  }
+  arma::mat augE(m, m);
+  matrixExpCached(aug, augE, (p == 1) ? h : 1.0,
+                  op->indLinMatExpType, op->indLinMatExpOrder, ind);
+  Ph = augE.submat(0, m-neq, neq-1, m-1);
+  if (p != 1) Ph *= h;
 }
 
 // -- Forcing Jacobian ---------------------------------------------------------
@@ -725,17 +763,105 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   }
 }
 
+// `indLinForcing` codes, matching the R-side character values.
+#define RX_INDLIN_FORCING_CONST 0
+#define RX_INDLIN_FORCING_RAMP  1
+
+// The substep with the forcing taken as the LINE through its two endpoint
+// values instead of as a constant (rxode2#1191).  Over `[tp, tf]`, writing
+// `h = tf - tp` and `f(s) = f0 + (s/h)(f1 - f0)`,
+//
+//   y(h) = exp(Ah) y0 + int_0^h exp(A(h-s)) f(s) ds
+//        = exp(Ah) y0 + h*phi1(Ah) f0 + h*phi2(Ah) (f1 - f0)
+//              \___________  ____________/  \__  __/
+//                          \/                  \/
+//                        `base`                P2
+//
+// which is EXACT for a forcing that really is linear over the substep, where
+// `meOnly()`'s constant column is only first order.
+//
+// Only `f1` moves with the iterate, so everything else is built ONCE per
+// substep and a pass costs a forcing evaluation and a matrix-vector product --
+// no exponential at all, against one per pass on the constant path.  Keeping
+// the forcing OUT of the exponent is the whole point of splitting it this way:
+// folding `f1` into an augmented column (the obvious single-exponential form)
+// gives an operand that moves every pass, which misses the exponential cache
+// every time and costs several times more than it saves.
+//
+// `base` is `meOnly()` itself, with the substep-start forcing in place of the
+// infusion rate -- the same augmented-column identity, and the same cached
+// exponential the constant path takes.  `P2` = h*phi2(Ah) comes from the Horner
+// series whenever ||Ah|| is small enough to trust it, so the usual case adds no
+// exponential of its own.
+//
+// `A` is evaluated at the substep MIDPOINT.  The constant-forcing path gets its
+// second order in a time-varying `A` from the caller averaging a start-linearized
+// and an end-linearized answer; this path does not average, so it takes the
+// midpoint rule instead.  For the ordinary case of an `A` that is constant in
+// time all three agree, and the operand is then the one pass 0 already
+// exponentiated.
+//
+// A nonnegative state stays nonnegative, as under the average: the weights
+// regroup as h*(phi1 - phi2) f0 + h*phi2 f1, and for a Metzler `A` both
+// phi1 - phi2 = int_0^1 exp(A h (1-s))(1-s) ds and phi2 are entrywise
+// nonnegative.
+//
+// The converged map is symmetric -- its adjoint is itself, because
+// exp(z)*phi2(-z) = phi1(z) - phi2(z) turns the two forcing weights into each
+// other -- so its error expands in EVEN powers of `h` alone.  That is what
+// `indLinRichardson` reads off it; see indLinRichFactor().
+typedef struct {
+  arma::vec base;   // exp(Ah) y0 + h*phi1(Ah) f0
+  arma::mat P2;     // h*phi2(Ah), the weight on the forcing increment
+  arma::vec f0;     // the substep-start forcing, fixed for the whole substep
+} indLinRamp_t;
+
+// Is the linear-ramp forcing in play?  It needs a forcing to ramp: with no
+// `IndF` the forcing is the infusion rate, which is constant over the substep
+// by construction, and the ramp would be the same answer for more work.
+static inline bool indLinRampOn(rx_solving_options *op, const arma::vec *u) {
+  return (u != NULL) && (op->indLinForcing == RX_INDLIN_FORCING_RAMP);
+}
+
+static int indLinRampBuild(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                           int neq, arma::vec &y0, const arma::vec &f0,
+                           double subTp, double subTf, double tcov, int *on_,
+                           t_ME ME, indLinRamp_t *rmp) {
+  const double h = subTf - subTp;
+  const double tMid = subTp + 0.5*h;
+  rmp->f0 = f0;
+  rmp->base = y0;
+  const int ret = meOnly(cSub, rmp->base.memptr(), y0.memptr(), subTp, subTf, tcov,
+                         tMid, rmp->f0.memptr(), on_, ME, op, ind);
+  if (ret <= 0) return ret;
+  arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
+  ME(cSub, tcov, tMid, Aloc.memptr(), y0.memptr());
+  indLinPmat(op, ind, neq, Aloc, h, 2, rmp->P2, phiZ, phiTmp);
+  return 1;
+}
+
 // One inductive-linearization pass over `[subTp, subTf]`: build the forcing
 // (codes 2/4) and the matrix at `w`, propagate from `y0`, and leave the result
 // in `w`.  `u` is NULL for the codes that carry no `IndF` forcing.
+//
+// `rmp` is the prebuilt ramp under `indLinForcing="ramp"`, and NULL for the
+// constant column -- including on the pass that PRODUCES the ramp's left end,
+// which is evaluated at the substep start in time as well as in state and so is
+// the left-endpoint answer whatever the forcing setting.
 static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                              double *w, double *y0, double subTp, double subTf, double tcov,
                              double tEval, double *InfusionRate_, int *on_,
-                             t_ME ME, t_IndF IndF, arma::vec *u) {
+                             t_ME ME, t_IndF IndF, arma::vec *u,
+                             const indLinRamp_t *rmp) {
   double *force = InfusionRate_;
   if (u != NULL) {
     IndF(cSub, tcov, tEval, u->memptr(), w);
     force = u->memptr();
+    if (rmp != NULL) {
+      const arma::vec out = rmp->base + rmp->P2*(*u - rmp->f0);
+      std::copy(out.begin(), out.end(), w);
+      return 1;
+    }
   }
   return meOnly(cSub, w, y0, subTp, subTf, tcov, tEval, force, on_, ME, op, ind);
 }
@@ -1139,21 +1265,6 @@ static inline bool indLinConverged(rx_solving_options *op, const double *rtol,
   return true;
 }
 
-// P(h) = A^-1(exp(Ah) - I) = h*phi1(Ah).  The Horner series when ||A*h|| is
-// small enough to trust it, and otherwise the exact value read out of the
-// augmented exponential -- which costs a second, wider exponential, so it is
-// the fallback rather than the rule.
-static inline void indLinPmat(rx_solving_options *op, rx_solving_options_ind *ind,
-                              int neq, const arma::mat &Aloc, double h,
-                              arma::mat &Ph, arma::mat &phiZ, arma::mat &phiTmp) {
-  if (indLinPhi1(Aloc, h, Ph, phiZ, phiTmp)) return;
-  arma::mat aug(2*neq, 2*neq, arma::fill::zeros);
-  aug.submat(0, 0, neq-1, neq-1) = Aloc;
-  aug.submat(0, neq, neq-1, 2*neq-1).eye();
-  arma::mat augE(2*neq, 2*neq);
-  matrixExpCached(aug, augE, h, op->indLinMatExpType, op->indLinMatExpOrder, ind);
-  Ph = augE.submat(0, neq, neq-1, 2*neq-1);
-}
 
 // Newton's divergence response.  A growing residual gets one chance: refresh
 // the chord Jacobian at the current iterate and refactorise, once.  A second
@@ -1187,15 +1298,22 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   arma::vec w(y0), gw(neq), r(neq), dw(neq);
   arma::vec yPert(neq), fPlus(neq), fMinus(neq);
   arma::mat Jf(neq, neq), G(neq, neq), JfullS, AmatS;
+  const bool ramp = indLinRampOn(op, u);
+  indLinRamp_t rmp;
   if (ratioOut != NULL) *ratioOut = 1.0;
 
   // Pass 0: the left-endpoint answer, evaluated at subTp in time as well as in
-  // state.  This is the caller's `w1`.
+  // state.  This is the caller's `w1`, and the forcing it evaluates is the
+  // ramp's fixed left end.
   rxIndLinCountIter(1);
   int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
-                       subTp, InfusionRate_, on_, ME, IndF, u);
+                       subTp, InfusionRate_, on_, ME, IndF, u, NULL);
   if (ret <= 0) return ret;
   if (w1Out != NULL) *w1Out = w;
+  if (ramp) {
+    ret = indLinRampBuild(cSub, op, ind, neq, y0, *u, subTp, subTf, tcov, on_, ME, &rmp);
+    if (ret <= 0) return ret;
+  }
 
   // Chord Jacobian, formed once at the pass-0 iterate.
   indLinForcingJac(cSub, op, neq, tcov, subTf, w.memptr(), IndF, ME,
@@ -1207,10 +1325,18 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   // the infusion unit columns -- so it needs no A^-1 and rides the exponential
   // cache.  `h*I` is its small-||Ah|| limit and was tried first; see the note
   // in the header for when that is and is not adequate.
-  arma::mat Aloc(neq, neq);
-  ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
-  arma::mat Ph(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
-  indLinPmat(op, ind, neq, Aloc, h, Ph, phiZ, phiTmp);
+  //
+  // Under `indLinForcing="ramp"` the map applies h*phi2(Ah) to the endpoint
+  // forcing rather than P(h) = h*phi1(Ah), so that is what the residual's
+  // derivative carries -- and the ramp already built it.
+  arma::mat Ph(neq, neq);
+  if (ramp) {
+    Ph = rmp.P2;
+  } else {
+    arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
+    ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
+    indLinPmat(op, ind, neq, Aloc, h, 1, Ph, phiZ, phiTmp);
+  }
   G = -Ph*Jf;
   G.diag() += 1.0;
   // Invert once and reuse: at compartmental sizes this is a handful of flops,
@@ -1226,7 +1352,7 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
     rxIndLinCountIter(1);
     gw = w;
     ret = indLinPass(cSub, op, ind, gw.memptr(), y0.memptr(), subTp, subTf, tcov,
-                     subTf, InfusionRate_, on_, ME, IndF, u);
+                     subTf, InfusionRate_, on_, ME, IndF, u, ramp ? &rmp : NULL);
     if (ret <= 0) return ret;
     r = gw - w;                       // -G(w); the Picard step is exactly this
     if (indLinAnyNonFinite(op, gw)) {
@@ -1293,7 +1419,8 @@ static int indLinPickTheta(int cSub, rx_solving_options *op, rx_solving_options_
                            const arma::vec &dPrev, double thetaPrev,
                            arma::vec &y0, double subTp, double subTf, double tcov,
                            double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
-                           arma::vec *u, arma::vec &wTry, double *thetaOut) {
+                           arma::vec *u, const indLinRamp_t *rmp,
+                           arma::vec &wTry, double *thetaOut) {
   if (backOff || stepSearch == RX_INDLIN_SEARCH_NONE) {
     *thetaOut = 1.0;
     return 1;
@@ -1307,7 +1434,7 @@ static int indLinPickTheta(int cSub, rx_solving_options *op, rx_solving_options_
     wTry = w;
     const int r2 = indLinPass(cSub, op, ind, wTry.memptr(), y0.memptr(),
                               subTp, subTf, tcov, subTf,
-                              InfusionRate_, on_, ME, IndF, u);
+                              InfusionRate_, on_, ME, IndF, u, rmp);
     if (r2 <= 0) return r2;
     *thetaOut = indLinThetaExact(op, rtol, atol, w, d, wTry);
     return 1;
@@ -1353,6 +1480,12 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   double theta = 1.0, thetaPrev = 0.0;
   double resPrev = -1.0;
   int nGrow = 0;
+  // The ramp's fixed part.  Pass 0 evaluates the substep-start forcing anyway,
+  // so it is read off that pass rather than paid for separately, and everything
+  // built from it holds for the whole substep -- only the endpoint value moves
+  // with the iterate.
+  const bool ramp = indLinRampOn(op, u);
+  indLinRamp_t rmp;
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
     rxIndLinCountIter(1);
@@ -1364,12 +1497,20 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // any forcing that reads `t`.
     int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
                          (i == 0) ? subTp : subTf,
-                         InfusionRate_, on_, ME, IndF, u);
+                         InfusionRate_, on_, ME, IndF, u,
+                         (ramp && i > 0) ? &rmp : NULL);
     if (ret <= 0) return ret;
     // Pass 0 linearizes at the substep-start state: that is the forward
     // (explicit) answer, and the caller differences it against the converged
     // backward one to get a local error estimate for free.
-    if (i == 0 && w1Out != NULL) *w1Out = w;
+    if (i == 0) {
+      if (w1Out != NULL) *w1Out = w;
+      if (ramp) {
+        ret = indLinRampBuild(cSub, op, ind, neq, y0, *u, subTp, subTf, tcov, on_,
+                              ME, &rmp);
+        if (ret <= 0) return ret;
+      }
+    }
     d = w - wPrev;
     if (indLinAnyNonFinite(op, w)) {
       std::copy(w.begin(), w.end(), yp_);
@@ -1396,7 +1537,8 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     {
       const int rt = indLinPickTheta(cSub, op, ind, rtol, atol, stepSearch, backOff,
                                      w, d, dPrev, thetaPrev, y0, subTp, subTf, tcov,
-                                     InfusionRate_, on_, ME, IndF, u, wTry, &theta);
+                                     InfusionRate_, on_, ME, IndF, u,
+                                     ramp ? &rmp : NULL, wTry, &theta);
       if (rt <= 0) return rt;
     }
     indLinReportRatio(ratioOut, theta);
@@ -1493,6 +1635,16 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
                         InfusionRate_, on_, ME, IndF, u, &w1, ratioOut);
   }
   if (ret != 1) return ret;
+  if (indLinRampOn(op, u)) {
+    // The converged answer already integrates the forcing over the substep as
+    // a line, so it is second order on its own and averaging a first-order
+    // answer back into it would only undo that.  `w1` is still the low-order
+    // member of the pair, and their difference is still the estimate -- at
+    // face value now rather than halved, because the ramp sits where the
+    // average did, one whole first-order error away from `w1` instead of two.
+    *errOut = indLinScaledErr(neq, rtol, atol, y0, yOut, w1, 1.0);
+    return 1;
+  }
   *errOut = indLinScaledErr(neq, rtol, atol, y0, yOut, w1, 0.5);
   // Advance on the average of the two.  Their leading errors are equal and
   // opposite, so the average cancels them and is second order where either
@@ -1549,17 +1701,42 @@ static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind 
 
 // One step, extrapolated to the requested level.
 //
-//   level 0  the plain averaged substep                    2nd order,  1 solve
-//   level 1  Richardson on h, h/2                          3rd order,  3 solves
-//   level 2  Romberg column on h, h/2, h/4                 4th order,  7 solves
-//   level 3  Romberg column on h, h/2, h/4, h/8            5th order, 15 solves
+//                                            asymmetric   symmetric   solves
+//   level 0  the plain substep                2nd order   2nd order        1
+//   level 1  Richardson on h, h/2             3rd order   4th order        3
+//   level 2  Romberg column to h/4            4th order   6th order        7
+//   level 3  Romberg column to h/8            5th order   8th order       15
 //
 // The base step is second order, so entry j of the tableau is built from
-// T(h/2^j) and the leading error term after k eliminations goes as h^(2+k):
-// R[k][j] = (f*R[k-1][j+1] - R[k-1][j])/(f-1) with f = 2^(k+1).  The error
-// estimate is the difference between the two highest entries, which is the
-// standard Romberg estimate.
+// T(h/2^j) and R[k][j] = (f*R[k-1][j+1] - R[k-1][j])/(f-1) eliminates the
+// leading term of R[k-1].  Which term that is depends on the base step: the
+// asymmetric one leaves every power behind, h^2, h^3, h^4 ..., so pass `k`
+// kills h^(k+1) with f = 2^(k+1); the symmetric one -- the converged linear-ramp
+// substep, see indLinRamp_t -- leaves only the EVEN powers h^2, h^4, h^6 ..., so
+// pass `k` kills h^(2k) with f = 4^k and each level is worth two orders instead
+// of one.  Using the asymmetric factors on a symmetric base is not wrong, only
+// weak: it takes h^4 down by 14x rather than removing it, which shows up as a
+// level-2 column no more accurate than level 1.  The error estimate is the
+// difference between the two highest entries either way.
 #define RX_INDLIN_RICH_MAXLVL 3
+
+// Is the base substep its own adjoint?  Only the converged linear-ramp fixed
+// point is: the exponential Rosenbrock steps are not symmetric, and neither is
+// the constant-column map, whose two members are linearized at opposite ends of
+// the step and averaged.
+static inline bool indLinSymmetric(rx_solving_options *op, int scheme,
+                                   const arma::vec *u) {
+  if (!indLinRampOn(op, u)) return false;
+  return (scheme == RX_INDLIN_ITER_PICARD || scheme == RX_INDLIN_ITER_NEWTON);
+}
+
+// The order of the estimate a step at extrapolation level `useRich` is sized
+// from: the difference between the two highest tableau entries measures the
+// error of the LOWER one, which is one whole level down.
+static inline int indLinEstOrder(bool sym, int useRich) {
+  if (useRich <= 0) return 1;              // |converged - forward|, first order
+  return sym ? 2*useRich : (useRich + 1);
+}
 
 static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                          int neq, double *rtol, double *atol, int scheme,
@@ -1589,8 +1766,10 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
   }
   *ratioOut = rMax;
   // Neville-Aitken sweep in place; column j holds R[k][j] after pass k.
+  const bool sym = indLinSymmetric(op, scheme, u);
   for (int k = 1; k <= useRich; ++k) {
-    double f = (double)(1 << (k + 1));     // 4, 8, 16 ... for a 2nd-order base
+    // 4, 16, 64 on an even-only expansion; 4, 8, 16 when every power is there.
+    double f = (double)(1 << (sym ? 2*k : (k + 1)));
     for (int j = 0; j + k < nEntry; ++j) {
       for (int q = 0; q < neq; ++q) {
         tab(q, j) = (f*tab(q, j + 1) - tab(q, j))/(f - 1.0);
@@ -1817,9 +1996,11 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   // the switch-over count first.
   indLinMaybeRaise(autoRich, richSticky, autoSt, tf, pr);
   // The step is sized from an estimate of the order the extrapolation is built
-  // on: first order for the plain step, second under Richardson.  The exponent
-  // is -1/(p_est + 1) either way.
-  const double expo = -1.0/((double) (pr->useRich + 2));
+  // on -- first order for the plain step, and one level down from the top
+  // otherwise, which is two orders down when the base step is symmetric.  The
+  // exponent is -1/(p_est + 1) in every case.
+  const double expo =
+    -1.0/((double) (indLinEstOrder(indLinSymmetric(op, pr->scheme, u), pr->useRich) + 1));
   double err = 0.0, ratio = 1.0;
   const int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, pr->scheme, y0,
                                 pr->t, pr->h, locf, pr->useRich,

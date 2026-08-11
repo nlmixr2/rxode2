@@ -264,6 +264,17 @@
 #'     emission is skipped to bound the symengine work at model build, and on a
 #'     sensitivity model, whose `df()/dy()` lines cover the physical states only.
 #'
+#' @param indLinForcing how `method="indLin"` carries the `indLin()` forcing
+#'     across one relinearization step.  `"ramp"` (the default) evaluates it at
+#'     both ends of the step and integrates the line between them exactly,
+#'     which is what the step's matrix exponential is already shaped to do;
+#'     `"constant"` holds it fixed across the step and averages a
+#'     start-evaluated and an end-evaluated answer to recover the same order.
+#'     Both are second order, so this changes the step's error constant and how
+#'     fast its iteration contracts rather than its order.  It applies to the
+#'     `"picard"` and `"newton"` schemes; the exponential Rosenbrock ones do
+#'     not freeze the forcing at all.
+#'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
 #' @param minSS Minimum number of iterations for a steady-state dose
@@ -1240,6 +1251,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinRichardson = c("auto", "always", "never", "always4", "always5"),
                     indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
                     indLinJac = c("auto", "symbolic", "fd"),
+                    indLinForcing = c("ramp", "constant"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1670,6 +1682,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
                              "fd" = 2L)[match.arg(indLinJac)])
     }
+    if (checkmate::testIntegerish(indLinForcing, len=1, lower=0, upper=1,
+                                  any.missing=FALSE)) {
+      .indLinForcing <- as.integer(indLinForcing)
+    } else {
+      .indLinForcing <- unname(c("constant" = 0L,
+                                 "ramp" = 1L)[match.arg(indLinForcing)])
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1947,7 +1966,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indLinMaxIter=indLinMaxIter,
       indLinRichardson=.indLinRichardson,
       indLinIteration=.indLinIteration,
-      indLinJac=.indLinJac
+      indLinJac=.indLinJac,
+      indLinForcing=.indLinForcing
     )
     class(.ret) <- "rxControl"
     return(.ret)
