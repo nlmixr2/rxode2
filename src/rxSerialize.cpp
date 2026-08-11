@@ -785,6 +785,12 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   int32_t state_size_saved = sReadI32(f, "state_size");
   int32_t n4_saved = sReadI32(f, "n4");
   int32_t n6_saved = sReadI32(f, "n6");
+  // These size the gsolve slab and then bound the blob reads into it; a
+  // negative one from a corrupt file becomes a huge unsigned bound, so the
+  // reads would no longer be bounded at all.
+  if (state_size_saved < 0 || n4_saved < 0 || n6_saved < 0) {
+    (Rf_error)("rxRestoreState: corrupt state (negative layout size)");
+  }
 
   // Allocate gsolve using rxFillMemLayout with saved dimensions
   rx_mem_layout _mem;
@@ -1181,24 +1187,22 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   // -- Section 10: op->indLin convergence set --------------------------------
   {
     uint64_t expected = (uint64_t)(op->indLinN > 0 ? op->indLinN : 0);
-    uint64_t n;
-    int *buf = sReadIntBlob(f, &n, "indLin");
+    uint64_t n = sReadU64(f, "indLin");
     if (n != expected) {
-      if (buf) free(buf);
       (Rf_error)("rxRestoreState: indLin size mismatch (file: %llu, expected: %llu)",
                  (unsigned long long)n, (unsigned long long)expected);
     }
-    // gindLin is an R_Calloc allocation (rxSolveFreeC R_Free()s it), so copy
-    // the malloc'd blob into R's allocator rather than handing it over.
+    // gindLin is an R_Calloc allocation (rxSolveFreeC R_Free()s it), so read
+    // straight into R's allocator -- a malloc'd staging buffer would leak if
+    // R_Calloc() raised on the way past it.
     if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
     if (n > 0) {
       _globals.gindLin = R_Calloc((int)n, int);
-      memcpy(_globals.gindLin, buf, (size_t)n * sizeof(int));
       op->indLin = _globals.gindLin;
+      sRead(f, _globals.gindLin, (size_t)n * sizeof(int), "indLin");
     } else {
       op->indLin = NULL;
     }
-    if (buf) free(buf);
   }
 
   _globals.alloc = true;
