@@ -88,6 +88,48 @@
 
 ### Solving
 
+- A parallel chunked solve (`rxSolve(file=, chunkSize=, parallel=)`) no longer
+  fails outright when the `mirai` daemons load a different rxode2 than the
+  parent is running -- a source checkout, or a library updated underneath a
+  long-lived pool.  The whole control list is forwarded to each daemon by name,
+  and `rxSolve()` rejects an argument it has no formal for, so a parent one
+  version ahead lost every chunk to `unused argument`.  A control the daemons
+  cannot take is now dropped, with a warning naming it and the version they
+  loaded, rather than losing the solve over a setting that version had no notion
+  of.  What they can take is asked of the daemon itself, so a matching pool
+  drops nothing.
+- An event pushed by the model with `evid_()` (and the `bolus()`, `infuse()`,
+  `replace()`, `multiply()`, `reset()`, `phantom()` and `obs()` helpers) now
+  gives the same solution as the identical event written in the data, on every
+  solving method.  The ODE methods fired the model body from `dydt()` at the
+  start of the next integration interval: the time value was right, but the
+  event was inserted only after the solver had been asked to integrate past it,
+  so `liblsoda`, `dop853` and `cvode` applied the jump one observation late and
+  `lsoda` dropped it altogether.  `evid_()` now fires from a single shared point
+  at the record itself -- once per distinct record time, with the pushed event
+  landing in the slot immediately after that record -- so ODE, `linCmt()` and
+  `indLin()` models agree with each other and with the explicit event.  A model
+  that pushes an event but defines no `lhs` variable also compiled to an empty
+  `calc_lhs()` and never pushed anything; its body is now emitted.  A pushed
+  event that extends the timeline past its original last record is no longer
+  truncated by the dense `dop853` driver, and `dense=TRUE` is now dropped (with
+  a warning) for a model that pushes: a dense segment integrates across every
+  observation between two key events at once, which cannot honour an event the
+  model decides on at one of those observations.  A model that combines
+  `delay()` with a pushed event is now an error rather than silently returning
+  one of two wrong answers: `delay()` requires the dense output that a pushed
+  event rules out.
+
+- An adaptive dosing helper guarded by `t == <mtime>` no longer pushes its dose
+  twice when that `mtime()` names a time the event table already contains.  The
+  same model written as a function (`ini({})`/`model({})`) and as an
+  `rxode2({})` block disagreed, because `rxSolve()` defaults to
+  `useLinCmt=TRUE` for a function model: that one was auto-converted to a
+  `linCmt()` model, and the `linCmt()` driver fired `evid_()` from both its own
+  internal model evaluation and a second pass for the same-time observation.
+  Both forms now push once, and the doubled dose (silent except in the state at
+  the next time point) is gone.
+
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with
   `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
@@ -279,6 +321,38 @@
   are now reused (`RXODE2_INDLIN_NO_EXP_CACHE` disables this).  Together these
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
+
+- `indLinRichardson` extrapolated `indLinIteration="exprb32"` with the factors
+  for a second-order base step, which exprb32 is not -- it is third order, so
+  each level took its leading term down by a constant instead of removing it,
+  and the step was sized from an estimate a whole order off.  Asking for a level
+  therefore made the answer worse: on a Michaelis-Menten model at `1e-8`,
+  `indLinRichardson="always"` delivered `3.7e-6` where `"never"` delivered
+  `1.0e-7`.  The tableau now takes both the base order and how far a level
+  advances it from the scheme, so `"always4"` is `1.2e-8` for a ninth of the
+  steps `"never"` needs.  Only `exprb32` is affected: it is neither the default
+  nor reachable from `"auto"`, which never raised its level.
+
+- `rxSolve(indLinForcing=)` chooses how `method="indLin"` carries the
+  `indLin()` forcing across one relinearization step.  It was folded into an
+  augmented column exactly as a constant infusion rate is, so it was frozen for
+  the whole step.  `"ramp"` (the new default) evaluates it at both ends of the
+  step and integrates the line between them exactly -- the phi2 term -- with the
+  rate matrix taken at the step midpoint; `"constant"` is the previous scheme,
+  which reaches the same second order by averaging a start-linearized and an
+  end-linearized answer.  It applies to the `"picard"` and `"newton"` schemes;
+  the exponential Rosenbrock ones never freeze the forcing.
+
+  Only the endpoint value moves with the iterate, so the rest of the step is
+  built once and a pass costs a forcing evaluation and a matrix-vector product
+  rather than a matrix exponential.  The converged ramp step is symmetric, so
+  its error expands in even powers of the step alone and `indLinRichardson` now
+  removes two orders per level instead of one -- third order becomes fourth,
+  fourth becomes sixth, fifth becomes eighth.  That is where the difference
+  shows up: under the default `indLinRichardson="auto"` a nonlinear model is
+  several times to a hundred times more accurate at the same tolerance for the
+  same or fewer steps, while with no extrapolation the two are a wash, both
+  being second order there.
 
 - `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
   `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and

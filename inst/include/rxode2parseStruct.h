@@ -171,6 +171,7 @@ typedef struct {
   int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
   int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
   int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
+  int    indLinForcing;        /* forcing over a substep: 0 constant, 1 linear ramp between its endpoint values */
 } rx_solving_options;
 
 
@@ -346,7 +347,7 @@ struct rx_solving_options_ind_s {
   int indOwnAllocN;     // allocated capacity for event arrays (>= n_all_times)
   int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
-  int _atEventTime;     // set before each event-table interval; consumed once in dydt
+  int _atEventTime;     // set at an evid_() firing record; consumed once in calc_lhs
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
   int    autoMethod;             /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
   int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */

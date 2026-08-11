@@ -264,6 +264,19 @@
 #'     emission is skipped to bound the symengine work at model build, and on a
 #'     sensitivity model, whose `df()/dy()` lines cover the physical states only.
 #'
+#' @param indLinForcing how `method="indLin"` carries the `indLin()` forcing
+#'     across one relinearization step.  `"ramp"` (the default) evaluates it at
+#'     both ends of the step and integrates the line between them exactly, with
+#'     the rate matrix taken at the step midpoint; `"constant"` holds it fixed
+#'     across the step and averages a start-linearized and an end-linearized
+#'     answer to reach the same second order.  The ramp step is symmetric, so
+#'     its error expands in even powers of the step alone and
+#'     `indLinRichardson` removes two orders per extrapolation level from it
+#'     rather than one -- which is where most of the difference between the two
+#'     shows up, since the default `indLinRichardson="auto"` extrapolates.  It
+#'     applies to the `"picard"` and `"newton"` schemes; the exponential
+#'     Rosenbrock ones never freeze the forcing.
+#'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
 #' @param minSS Minimum number of iterations for a steady-state dose
@@ -1240,6 +1253,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinRichardson = c("auto", "always", "never", "always4", "always5"),
                     indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
                     indLinJac = c("auto", "symbolic", "fd"),
+                    indLinForcing = c("ramp", "constant"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1670,6 +1684,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
                              "fd" = 2L)[match.arg(indLinJac)])
     }
+    if (checkmate::testIntegerish(indLinForcing, len=1, lower=0, upper=1,
+                                  any.missing=FALSE)) {
+      .indLinForcing <- as.integer(indLinForcing)
+    } else {
+      .indLinForcing <- unname(c("constant" = 0L,
+                                 "ramp" = 1L)[match.arg(indLinForcing)])
+    }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1947,7 +1968,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indLinMaxIter=indLinMaxIter,
       indLinRichardson=.indLinRichardson,
       indLinIteration=.indLinIteration,
-      indLinJac=.indLinJac
+      indLinJac=.indLinJac,
+      indLinForcing=.indLinForcing
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2895,6 +2917,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
+    # delay() and evid_() pull the solver in opposite directions and cannot both
+    # be honoured: delay() needs dense output (a non-dense method records no
+    # history and silently returns wrong lagged values), while a dense segment
+    # integrates across every observation between two key events at once and so
+    # cannot apply an event the model decides on at one of those observations
+    # (rxode2#1214).  Refuse rather than silently return one of the two wrong
+    # answers.
+    if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
+      stop("a model cannot combine delay() with evid_() event pushing ",
+           "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
+",
+           "  delay() requires dense output, which cannot apply an event pushed ",
+           "at an observation",
+           call. = FALSE)
+    }
     # Validate any non-constant past(state, tau) <- expr history lines (state is
     # a delayed ODE state, tau matches a delay(), history references no states).
     .rxValidatePast(object)
