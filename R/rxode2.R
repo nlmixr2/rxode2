@@ -1919,9 +1919,9 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
     }
   }
   message("for the full compiler output and the generated C code use:")
-  message("  cat(rxode2::rxLastCompile()$stderr) # compiler error")
-  message("  cat(rxode2::rxLastCompile()$c)      # generated C code")
-  message("  rxode2::rxLastCompile()             # everything")
+  message("  rxode2::rxLastCompile(\"stderr\") # the whole compiler error")
+  message("  rxode2::rxLastCompile(\"c\")      # the generated C code")
+  message("  rxode2::rxLastCompile()         # everything, as a list too")
   if (kind == "load") {
     message("the model compiled but could not be loaded")
   }
@@ -2029,24 +2029,18 @@ rxCompile.rxModelVars <- function(model, # Model
   # .rxLastCompileSuccess() still reporting its failure
   .rxCompileEnv$lst <- list()
   .rxCompileEnv$success <- TRUE
-  .badBuild <- function(msg, cSrc = TRUE, kind = "compile") {
+  .badBuild <- function(msg, cSrc = TRUE, kind = "compile", detail = NULL) {
     if (!is.null(.out)) {
       .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
     }
     .rxCompileEnv$lst[["msg"]] <- gettext(msg)
-    if (cSrc) {
-      if (file.exists(.cFile)) {
-        .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
-      }
-    } else {
-      # report what the loader said instead of stopping on it
-      .load <- try(dyn.load(.cDllFile), silent = TRUE)
-      if (inherits(.load, "try-error")) {
-        .rxCompileEnv$lst[["stderr"]] <-
-          paste(c(.rxCompileEnv$lst[["stderr"]],
-                  conditionMessage(attr(.load, "condition"))),
-                collapse = "\n")
-      }
+    if (cSrc && file.exists(.cFile)) {
+      .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
+    }
+    if (length(detail) > 0L) {
+      # eg what the loader said, which is the only account of that failure
+      .rxCompileEnv$lst[["stderr"]] <-
+        paste(c(.rxCompileEnv$lst[["stderr"]], detail), collapse = "\n")
     }
     .rxCompileEnv$success <- FALSE
     .rxBadBuildMsg(msg, .rxCompileEnv$lst[["stderr"]], kind)
@@ -2268,7 +2262,9 @@ rxCompile.rxModelVars <- function(model, # Model
       rxUnloadAll()
       .tmp <- try(dynLoad(.cDllFile), silent = TRUE)
       if (inherits(.tmp, "try-error")) {
-        .badBuild("Error loading model (though dll exists)", cSrc = FALSE, kind = "load")
+        .badBuild("Error loading model (though dll exists)", cSrc = FALSE,
+                  kind = "load",
+                  detail = conditionMessage(attr(.tmp, "condition")))
       } else {
         warning("unloaded all rxode2 dlls before loading the current DLL", call. = FALSE)
       }

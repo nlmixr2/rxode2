@@ -52,8 +52,8 @@
 - A model that fails to build now shows the compiler's own error lines (and
   only those -- warnings and progress chatter are dropped, and the list is
   capped by `options(rxode2.compileErrLines=)`), followed by how to get the
-  rest (`cat(rxode2::rxLastCompile()$stderr)` for the full compiler output,
-  `cat(rxode2::rxLastCompile()$c)` for the generated C code).  The
+  rest (`rxode2::rxLastCompile("stderr")` for the full compiler output,
+  `rxode2::rxLastCompile("c")` for the generated C code).  The
   Rtools/C-compiler advice is only given when the failure actually looks like
   a toolchain problem: a diagnostic naming a source file and line is about the
   code that was compiled, so the message says the generated C code is at fault
