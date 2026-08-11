@@ -984,6 +984,20 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
+// The inductive-linearization driver never steps through dydt(), and fires
+// evid_() from calc_lhs instead (see ind_indLin0).  copyLinCmt() reaches the
+// linCmt() amounts through dydt(), so hide the event-time flag across it: left
+// set, dydt() would fire evid_() as well and a dose the model pushes at run
+// time would happen twice.
+static inline void copyLinCmtIndLin(int *neq, rx_solving_options_ind *ind,
+                                    rx_solving_options *op, double *yp) {
+  if (op->numLin <= 0) return;
+  int _atEventTime = ind->_atEventTime;
+  ind->_atEventTime = 0;
+  copyLinCmt(neq, ind, op, yp);
+  ind->_atEventTime = _atEventTime;
+}
+
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
@@ -1942,7 +1956,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         preSolve(op, ind, *xp, xout, yp);
         *idid = indLin(ind->id, op, ind, *xp, yp, xout, ind->InfusionRate, ind->on,
                        (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
-        copyLinCmt(neq, ind, op, yp);
+        copyLinCmtIndLin(neq, ind, op, yp);
       }
       if (*idid <= 0) {
         ind->rc[0] = *idid;
@@ -4077,7 +4091,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                           ind->InfusionRate, ind->on,
                           (ind->fns ? ind->fns->me : NULL),
                           (ind->fns ? ind->fns->indf : NULL));
-            copyLinCmt(neq, ind, op, yp);
+            copyLinCmtIndLin(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
@@ -4099,7 +4113,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             ind->InfusionRate, ind->on,
                             (ind->fns ? ind->fns->me : NULL),
                             (ind->fns ? ind->fns->indf : NULL));
-              copyLinCmt(neq, ind, op, yp);
+              copyLinCmtIndLin(neq, ind, op, yp);
               postSolve(neq, &idid, rc, &idx, yp, NULL, 0, false, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
               ind->extraDoseNewXout = xout;
@@ -4111,7 +4125,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           preSolve(op, ind, xp, xout, yp);
           idid = indLin(solveid, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
                         (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
-          copyLinCmt(neq, ind, op, yp);
+          copyLinCmtIndLin(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
         }

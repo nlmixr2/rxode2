@@ -160,7 +160,7 @@ rxIndLinState <- function(preferred = NULL) {
         }
       }
     }
-    if (any(grepl("linCmt[AB]?[(]", .mult))) {
+    if (any(grepl("(^|[^A-Za-z0-9._])linCmt[AB]?[(]", .mult))) {
       ## A linCmt() call reads the solved compartments, which are states of the
       ## system even though they carry no d/dt().  A coefficient built from one
       ## is therefore not constant over the matrix-exponential step, so the term
