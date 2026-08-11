@@ -14,13 +14,21 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   
   # 1. Parse model to get model variables and load symengine environment
   .mv <- rxModelVars(model)
-  .env <- .rxLoadPrune(model, doConst = doConst)
-  .states <- rxState(.env)
-  
+  # promoteLinSens=FALSE: a linCmt() the conversion inlines into a rate constant
+  # must stay `linCmtA()`.  Promoting it to `linCmtB()` would make the CONVERTED
+  # model request Stan sensitivities the source model never had, adding
+  # rx__sens_* pseudo-compartments to it (rxode2#1215).
+  .env <- .rxLoadPrune(model, doConst = doConst, promoteLinSens = FALSE)
+  # `$state` counts linCmt() pseudo-compartments (depot/central/peripheral*),
+  # which have no d/dt() behind them: nothing to convert, and the analytic
+  # solver keeps handling them.  Converting them emitted cmt()/indLin() lines
+  # for a derivative that does not exist (rxode2#1215).
+  .states <- setdiff(rxState(.env), .rxLinCmt(.mv))
+
   if (length(.states) == 0L) {
     stop("No state variables (compartments) found in the model.", call. = FALSE)
   }
-  
+
   # 2. Call the C/C++ registered function to get inductive linearization matrices
   .ret <- eval(parse(text = rxIndLin_((.states))))
   

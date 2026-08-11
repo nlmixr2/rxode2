@@ -160,7 +160,14 @@ rxIndLinState <- function(preferred = NULL) {
         }
       }
     }
-    if (length(.curStates) == 1) {
+    if (any(grepl("linCmt[AB]?[(]", .mult))) {
+      ## A linCmt() call reads the solved compartments, which are states of the
+      ## system even though they carry no d/dt().  A coefficient built from one
+      ## is therefore not constant over the matrix-exponential step, so the term
+      ## is the nonlinear residual and belongs in the forcing, where the solver
+      ## re-evaluates it as it iterates (rxode2#1215).
+      .addForcing(.mult)
+    } else if (length(.curStates) == 1) {
       .addState(.curStates, .mult)
     } else if (length(.curStates) > 1) {
       ## A product of two states (or a state with itself) can never leave a
