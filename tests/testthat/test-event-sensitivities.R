@@ -354,6 +354,23 @@ rxTest({
     expect_true("params" %in% names(m$eventSensInfo))
   })
 
+  test_that(".rxEventSensCExpr translates every element of a vector (#1196)", {
+    # expr is one entry per emitted assignment line; indices appearing only in a
+    # later line must be translated too, otherwise raw ETA[n]/THETA[n] leaks into
+    # the generated C and the model does not compile.
+    expect_equal(.rxEventSensCExpr(c("exp(ETA[4]+THETA[4])*(FOOD!=0)",
+                                     "exp(ETA[5]+THETA[5])*(FOOD==0)")),
+                 c("exp(_ETA_4_+_THETA_4_)*(FOOD!=0)",
+                   "exp(_ETA_5_+_THETA_5_)*(FOOD==0)"))
+    # plainParams still applies element-wise across the whole vector
+    expect_equal(.rxEventSensCExpr(c("THETA[1]", "ETA[3]"),
+                                   plainParams = c("THETA_1_", "ETA_3_")),
+                 c("THETA_1_", "ETA_3_"))
+    # zero-length and no-token inputs are unchanged
+    expect_equal(.rxEventSensCExpr(character(0)), character(0))
+    expect_equal(.rxEventSensCExpr(c("1", "cl/v")), c("1", "cl/v"))
+  })
+
   test_that("eventSens='jump' model with state-dependent F compiles and solves", {
     # Exercises the full lines channel: R-generated dLag/dF assignment lines are
     # pushed to codegen, spliced into the function bodies (with the state-coupling
@@ -1390,6 +1407,57 @@ rxTest({
     .F <- 1 / (1 + exp(-(0.2 + 0.9)))
     expect_equal(max(s[["rx__sens_depot_BY_ETA_3___"]]), 100 * .F * (1 - .F),
                  tolerance = 1e-2)
+  })
+
+  test_that("multi-eta dosing modifier emits fully translated C (#1196)", {
+    # A dur()/f() built from two distinct etas emits two assignment lines into the
+    # same event-sensitivity buffer.  Only the first line's indices used to be
+    # rewritten, so the second kept raw ETA[n]/THETA[n] and the model failed to
+    # compile with "'ETA' undeclared".
+    .code <- function(mod) {
+      paste(
+        "param(THETA[4],THETA[5],ETA[4],ETA[5],FOOD);",
+        "cmt(depot);",
+        "cmt(central);",
+        sprintf("%s(depot)=exp(ETA[4]+THETA[4])*(FOOD!=0)+exp(ETA[5]+THETA[5])*(FOOD==0);", mod),
+        "d/dt(depot)=-depot;",
+        "d/dt(central)=depot-central;",
+        "d/dt(rx__sens_depot_BY_ETA_4___)=-rx__sens_depot_BY_ETA_4___;",
+        "d/dt(rx__sens_central_BY_ETA_4___)=rx__sens_depot_BY_ETA_4___-rx__sens_central_BY_ETA_4___;",
+        "d/dt(rx__sens_depot_BY_ETA_5___)=-rx__sens_depot_BY_ETA_5___;",
+        "d/dt(rx__sens_central_BY_ETA_5___)=rx__sens_depot_BY_ETA_5___-rx__sens_central_BY_ETA_5___;",
+        sep = "\n")
+    }
+    for (.mod in c("dur", "f", "alag")) {
+      .m <- rxode2(.code(.mod), eventSens = "jump")
+      .c <- paste(readLines(rxC(.m)), collapse = "\n")
+      # no raw symengine array syntax survives into the generated C
+      expect_false(grepl("ETA\\[", .c))
+      expect_false(grepl("THETA\\[", .c))
+      expect_true(grepl("_ETA_5_", .c, fixed = TRUE))
+      expect_true(grepl("_THETA_5_", .c, fixed = TRUE))
+    }
+    # and the line that used to be left untranslated carries the right value:
+    # with FOOD=0 the duration is exp(ETA[5]+THETA[5]), so the jump sensitivity
+    # wrt ETA[5] must match finite differences (and wrt ETA[4] must be zero).
+    .m <- rxode2(.code("dur"), eventSens = "jump")
+    p <- c("THETA[4]" = 0.3, "THETA[5]" = 0.5, "ETA[4]" = 0.1, "ETA[5]" = 0.2,
+           FOOD = 0)
+    ev <- et(amt = 100, rate = -2, cmt = "depot") |> et(seq(0.25, 12, length.out = 20))
+    .sl <- function(pp) rxSolve(.m, pp, ev, atol = 1e-12, rtol = 1e-12)
+    s <- .sl(p)
+    h <- 1e-5
+    pp <- pm <- p
+    pp[["ETA[5]"]] <- p[["ETA[5]"]] + h
+    pm[["ETA[5]"]] <- p[["ETA[5]"]] - h
+    sp <- .sl(pp)
+    sm <- .sl(pm)
+    for (st in c("depot", "central")) {
+      fd <- (sp[[st]] - sm[[st]]) / (2 * h)
+      expect_equal(s[[sprintf("rx__sens_%s_BY_ETA_5___", st)]], fd, tolerance = 1e-5)
+      expect_gt(max(abs(fd)), 1)
+    }
+    expect_equal(max(abs(s[["rx__sens_central_BY_ETA_4___"]])), 0)
   })
 
   test_that("eventSens mode is folded into the model cache key", {

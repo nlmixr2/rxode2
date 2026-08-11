@@ -787,6 +787,35 @@
        durQ = .buildQ(map$durCmt, "dur", .q2All))
 }
 
+#' Rewrite indexed nlmixr2 parameters into their codegen locals
+#'
+#' Maps nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
+#' `_THETA_n_`/`_ETA_n_`, or to the plain `THETA_n_`/`ETA_n_` when the model
+#' declares that name itself.
+#'
+#' @param expr Character vector of C expressions, one per assignment line.
+#' @param plainParams Parameter names the model declares plainly (no leading
+#'   underscore).
+#' @return `expr` with every indexed parameter rewritten.
+#' @noRd
+.rxEventSensCExpr <- function(expr, plainParams = character(0)) {
+  # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
+  # model declares the plain name THETA_n_ itself (then use it, no leading _).
+  .rw <- function(expr, kind) {
+    # expr is a vector of assignment lines; collect tokens from every element
+    # (not just the first) or indices unique to later lines leak into the C.
+    .toks <- unique(unlist(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))))
+    for (.tok in .toks) {
+      .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
+      .plain <- paste0(kind, "_", .n, "_")
+      .repl <- if (.plain %in% plainParams) .plain else paste0("_", .plain)
+      expr <- gsub(.tok, .repl, expr, fixed = TRUE)
+    }
+    expr
+  }
+  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
+}
+
 #' Generate the C assignment lines for the dLag / dF functions
 #'
 #' Produces the body assignment lines writing each dosing-parameter total
@@ -800,22 +829,6 @@
 #' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
 #' @noRd
-.rxEventSensCExpr <- function(expr, plainParams = character(0)) {
-  # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
-  # model declares the plain name THETA_n_ itself (then use it, no leading _).
-  .rw <- function(expr, kind) {
-    .toks <- unique(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))[[1]])
-    for (.tok in .toks) {
-      .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
-      .plain <- paste0(kind, "_", .n, "_")
-      .repl <- if (.plain %in% plainParams) .plain else paste0("_", .plain)
-      expr <- gsub(.tok, .repl, expr, fixed = TRUE)
-    }
-    expr
-  }
-  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
-}
-
 .rxEventSensCLines <- function(info) {
   if (is.null(info)) return(NULL)
   .pp <- info$params                     # declared param names (plain THETA_n_ vs indexed)
