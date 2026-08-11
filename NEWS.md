@@ -85,6 +85,38 @@
 
 ### Solving
 
+- An event pushed by the model with `evid_()` (and the `bolus()`, `infuse()`,
+  `replace()`, `multiply()`, `reset()`, `phantom()` and `obs()` helpers) now
+  gives the same solution as the identical event written in the data, on every
+  solving method.  The ODE methods fired the model body from `dydt()` at the
+  start of the next integration interval: the time value was right, but the
+  event was inserted only after the solver had been asked to integrate past it,
+  so `liblsoda`, `dop853` and `cvode` applied the jump one observation late and
+  `lsoda` dropped it altogether.  `evid_()` now fires from a single shared point
+  at the record itself -- once per distinct record time, with the pushed event
+  landing in the slot immediately after that record -- so ODE, `linCmt()` and
+  `indLin()` models agree with each other and with the explicit event.  A model
+  that pushes an event but defines no `lhs` variable also compiled to an empty
+  `calc_lhs()` and never pushed anything; its body is now emitted.  A pushed
+  event that extends the timeline past its original last record is no longer
+  truncated by the dense `dop853` driver, and `dense=TRUE` is now dropped (with
+  a warning) for a model that pushes: a dense segment integrates across every
+  observation between two key events at once, which cannot honour an event the
+  model decides on at one of those observations.  A model that combines
+  `delay()` with a pushed event is now an error rather than silently returning
+  one of two wrong answers: `delay()` requires the dense output that a pushed
+  event rules out.
+
+- An adaptive dosing helper guarded by `t == <mtime>` no longer pushes its dose
+  twice when that `mtime()` names a time the event table already contains.  The
+  same model written as a function (`ini({})`/`model({})`) and as an
+  `rxode2({})` block disagreed, because `rxSolve()` defaults to
+  `useLinCmt=TRUE` for a function model: that one was auto-converted to a
+  `linCmt()` model, and the `linCmt()` driver fired `evid_()` from both its own
+  internal model evaluation and a second pass for the same-time observation.
+  Both forms now push once, and the doubled dose (silent except in the state at
+  the next time point) is gone.
+
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with
   `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame

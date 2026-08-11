@@ -467,7 +467,9 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_past && foundPast) ||
         ode_is_es_dcode(show_ode) ||
         (show_ode == ode_ini && foundF0) ||
-        (show_ode == ode_lhs && tb.li) ||
+        /* tb.evid_: calc_lhs() is the firing point for evid_() pushes, so it
+           needs its preamble even when the model defines no lhs variable */
+        (show_ode == ode_lhs && (tb.li || tb.evid_)) ||
         (show_ode == ode_mtime && nmtime) ||
         (show_ode == ode_mexp && (tb.matn || tb.isMexp)) ||
         (show_ode == ode_indLinVec && (tb.matnf || tb.isMexp))){
@@ -527,7 +529,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (foundPast && show_ode == ode_past) ||
         ode_is_es_dcode(show_ode) ||
         (foundF0 && show_ode == ode_ini) ||
-        (show_ode == ode_lhs && tb.li) ||
+        (show_ode == ode_lhs && (tb.li || tb.evid_)) ||
         (show_ode == ode_mtime && nmtime) ||
         (show_ode == ode_jac && found_jac == 1 && good_jac == 1) ||
         (show_ode != ode_mtime && show_ode != ode_lhs &&
