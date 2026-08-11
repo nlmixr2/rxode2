@@ -395,6 +395,29 @@
   multi-state product yields a state-free rate constant; both are kept so
   existing code keeps working.
 
+- `rxSensMatExp()` (`rxToIndLin(calcSens=)`) splits the system the same way.  It
+  used to take its rate matrix from the full Jacobian, so for a nonlinear model
+  every rate constant read a compartment and the propagated primal was `A(X).X`
+  rather than `f(X)`.  The nonlinear part now rides in an `indLin()` forcing, and
+  each sensitivity compartment gets its own forcing
+  `d(f)/dp + (df/dy).S^p`, at first and second order.  A state-free input term
+  (`d/dt(x) = k0 - ke*x`), which the Jacobian never saw, is carried too instead
+  of being dropped.  Michaelis-Menten forward sensitivities now match the
+  ordinary ODE `calcSens` path, and since the rate matrix is constant the
+  matrix exponential is cached across substeps.  A rate constant that reads a
+  compartment is a parse error for a sensitivity model as well now.  Third-order
+  sensitivities do not yet get a forcing contribution.
+
+- `eventSens="jump"` gets the right event-time (`alag`) jump sensitivity on a
+  `matExp()` model that has an `indLin()` forcing.  The `replace()`/`multiply()`
+  jump rows need the right-hand side at the pre-event state, which was taken
+  from the model Jacobian dotted with the state -- correct only while the whole
+  right-hand side is the rate matrix times the state.  With a forcing it is
+  short by the forcing's own contribution, which on a Michaelis-Menten model put
+  those sensitivities about 3.6% out.  It now comes from the rate matrix and the
+  forcing function directly.  This also affects hand-written `indLin()` models,
+  not only the ones `rxSensMatExp()` generates.
+
 - `rxSolve(indLinRichardson=)` Richardson-extrapolates each `method="indLin"`
   relinearization step, raising it from second to third order: the step is run
   once whole and twice at half length, and since a second-order step has a
@@ -429,10 +452,8 @@
   when the rate matrix is constant over the step, so a `k_from_to` that reads a
   state breaks the method's central assumption; the error names the constant and
   the compartment it reaches and points at `indLin()`, which is where a
-  state-dependent term belongs and where the solver can iterate it.  Models
-  built by `rxSensMatExp()` are exempt for now: their sensitivity blocks are
-  built out of rate constants throughout, and rewriting that generator is
-  separate work.
+  state-dependent term belongs and where the solver can iterate it.  This
+  applies to sensitivity models built by `rxSensMatExp()` as well.
 
 - `method="indLin"` chooses its own relinearization step for models with a
   state-dependent `indLin()` forcing, instead of subdividing each interval

@@ -261,7 +261,8 @@
 #'     symbolic one when the model carries it and falls back to finite
 #'     differences otherwise -- which is what happens above
 #'     `getOption("rxode2.indLinJacMaxStates")` states, where the symbolic
-#'     emission is skipped to bound the symengine work at model build.
+#'     emission is skipped to bound the symengine work at model build, and on a
+#'     sensitivity model, whose `df()/dy()` lines cover the physical states only.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
