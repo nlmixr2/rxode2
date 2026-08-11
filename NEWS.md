@@ -184,6 +184,11 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxSensMatExp(calcSens3=)` now carries the `indLin()` forcing at third order,
+  as `calcSens` and `calcSens2` already did.  Only the rate-matrix cross terms
+  were generated, so third-order sensitivities of a nonlinear model were short
+  every term the forcing contributes; the warning that said so is gone.
+
 - The `Al-Mohy` matrix exponential evaluated the wrong Pade numerator below
   degree 13.  The coefficients depend on the degree, and the routine read a
   fixed table -- the degree-13 row -- and truncated it, which is not the
