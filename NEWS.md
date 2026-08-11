@@ -97,7 +97,12 @@
   landing in the slot immediately after that record -- so ODE, `linCmt()` and
   `indLin()` models agree with each other and with the explicit event.  A model
   that pushes an event but defines no `lhs` variable also compiled to an empty
-  `calc_lhs()` and never pushed anything; its body is now emitted.
+  `calc_lhs()` and never pushed anything; its body is now emitted.  A pushed
+  event that extends the timeline past its original last record is no longer
+  truncated by the dense `dop853` driver, and `dense=TRUE` is now dropped (with
+  a warning) for a model that pushes: a dense segment integrates across every
+  observation between two key events at once, which cannot honour an event the
+  model decides on at one of those observations.
 
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with

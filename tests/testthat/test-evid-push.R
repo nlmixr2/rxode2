@@ -624,6 +624,71 @@ rxTest({
     })
   }
 
+  for (meth in .methods0) {
+    test_that(paste0("a rescheduled mtime() fires evid_() only once (", meth, ")"), {
+      # rxode2#1214: recomputeMtimeIfNeeded() reschedules a state-dependent
+      # mtime and the driver re-processes the same slot (its `i--`).  The record
+      # in that slot moves away, so the model body must run once for that time,
+      # on the settled pass -- not once per pass.
+      mod <- rxode2({
+        mtime(pushAt) <- 12 + 0.02 * central
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= 11.9 && t < 12.05) {
+          bolus(10, depot, 0, 0, 0)
+        }
+      })
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+      r <- rxSolve(mod, p, e, method = meth, addDosing = TRUE)
+      pushed <- r[!is.na(r$evid) & r$evid == 1 & r$amt == 10, ]
+      expect_equal(nrow(pushed), 1)
+      expect_equal(pushed$time, 12)
+    })
+  }
+
+  test_that("evid_() pushes are unaffected by dense=TRUE", {
+    # rxode2#1214: a dense segment integrates across every observation between
+    # two key events at once, which cannot honour an event the model decides on
+    # at one of those observations.  dense= is dropped (with a warning) for a
+    # model that pushes, and the solution matches the non-dense one exactly.
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+      if (t >= 12 && t < 12.5) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+    plain <- rxSolve(mod, p, e, method = "dop853")
+    expect_warning(dens <- rxSolve(mod, p, e, method = "dop853", dense = TRUE),
+                   regexp = "evid_")
+    expect_equal(dens$time, plain$time)
+    expect_equal(dens$depot, plain$depot, tolerance = 1e-5)
+    expect_equal(dens$central, plain$central, tolerance = 1e-5)
+  })
+
+  test_that("evid_() at the final record does not extend the timeline", {
+    # The last record starts no integration interval, so it does not push --
+    # otherwise an unconditional evid_() would append a record that pushes
+    # again, without bound.
+    mod <- rxode2({
+      d/dt(central) <- -cl / vd * central
+      cp <- central / vd
+      if (t >= 5) {
+        bolus(50, central, 0, 0, 0)
+      }
+    })
+    p <- c(cl = 1, vd = 10)
+    e <- et(amt = 100, time = 0) |> et(seq(0, 5, by = 1))
+    r <- rxSolve(mod, p, e, addDosing = TRUE)
+    expect_equal(max(r$time), 5)
+    expect_equal(sum(!is.na(r$evid) & r$evid == 1 & r$amt == 50), 0)
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x

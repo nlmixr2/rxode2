@@ -1329,6 +1329,15 @@ static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose
 // a subject is solved start to finish on one thread.
 static thread_local int _rxEvidSortStart = -1;
 
+// Set when recomputeMtimeIfNeeded() has just rescheduled a model time and the
+// driver is about to re-process this same slot (its `i--`).  The record sitting
+// in slot i is about to move somewhere later, so updateSolve() must not run the
+// model body for it; the settled pass over slot i does that instead, exactly
+// once.  Without this a state-dependent mtime() that reschedules fires evid_()
+// twice at the same time -- once on the requeued pass and again on the record
+// that takes over slot i.
+static thread_local bool _rxEvidMtimeRequeued = false;
+
 // Push a current/future event into the individual's own event arrays during ODE solving.
 // _curTime: current ODE model time (for past-time guard with solver tolerance).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
@@ -1547,6 +1556,9 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
     }
     ind->mtime0[k] = R_NegInf; // mark fired; no further re-evaluation
   }
+  // Every driver responds to a change by re-sorting and re-running this slot;
+  // tell updateSolve() to sit this pass out (see _rxEvidMtimeRequeued).
+  if (changed) _rxEvidMtimeRequeued = true;
   return changed;
 }
 
@@ -4045,7 +4057,8 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   // be.  The old ODE-only path fired from dydt() at the start of the next
   // integration interval, which inserted the event only after the solver had
   // already integrated past it.
-  bool _fire = _rxFireEvid(ind, op, i);
+  bool _fire = _rxFireEvid(ind, op, i) && !_rxEvidMtimeRequeued;
+  _rxEvidMtimeRequeued = false;
   int _nBefore = ind->n_all_times;
   if (_fire) {
     _rxEvidSortStart = i + 1;
@@ -5581,6 +5594,9 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       }
 
       updateSolve(ind, op, neq, xout, i, nx);
+      // Refresh the cached loop bound: evid_() inside calc_lhs may have pushed
+      // events past the original end of the timeline.
+      nx = ind->n_all_times;
 
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
@@ -6433,6 +6449,10 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      // Refresh the cached loop bound: evid_() inside calc_lhs may have pushed
+      // events past the original end of the timeline, and this driver's `for`
+      // tests against nx rather than ind->n_all_times.
+      nx = ind->n_all_times;
       if (_mtime_requeued) i--;
     }
     last_key_i = i;

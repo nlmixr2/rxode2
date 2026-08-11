@@ -5903,6 +5903,15 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
       op->useDense = 0;
     }
+    // A dense segment integrates across every observation between two key
+    // events at once, so an observation is only filled in once the segment has
+    // closed.  A model that pushes its own events cannot work that way: the
+    // event it decides on at an observation has to be applied before the solver
+    // moves past that observation (rxode2#1214).
+    if (op->useDense && op->indOwnAlloc) {
+      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      op->useDense = 0;
+    }
     op->stiff = method;
 
     if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228 || method == 229 || method == 205 || method == 213 || method == 236 || method == 233 || method == 234 || method == 238 || method == 235 || method == 231 || method == 232 || method == 237 || method == 243 || method == 225 || method == 221 || method == 202 || method == 226 || method == 230 || method == 208 || method == 282 || method == 300 || method == 301 || method == 302 || method == 304 || method == 267 || method == 268 || method == 270 || method == 271 || method == 272 || method == 273 || method == 274 || method == 275 || method == 276 || method == 277 || method == 279 || method == 280 || method == 281 || method == 283 || method == 284 || method == 285 || method == 286 || method == 287 || method == 288 || method == 289 || method == 290 || method == 291 || method == 292 || method == 293 || method == 295 || method == 296 || method == 297 || method == 298) {
