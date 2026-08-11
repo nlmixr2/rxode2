@@ -237,7 +237,7 @@ model.rxModelVars <- model.rxode2
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)
     if (.matchesLangTemplate(lhs, str2lang("-.")) ||
-          .matchesLangTemplate(lhs, str2lang(". <- NULL"))) {
+          .matchesLangTemplate(lhs, str2lang(". ~ NULL"))) {
       # If it is a drop expression with a minus sign, grab the non-minus part
       ret <- lhs[[2]]
     }
@@ -300,7 +300,7 @@ model.rxModelVars <- model.rxode2
 #'   error is defined in the model.
 #' @param origLines This is a list of lines in the `model({})` block
 #'   of the equation.
-#' @param rxui the UI model
+#' @param modelVars The model variables from the UI model (`c(rxui$mv0$lhs, rxui$mv0$state)`)
 #' @param returnAllLines Return all line numbers for the lhs, even
 #'   when there are duplicates. (default `FALSE`)
 #' @return For duplicated lines: `NULL` for duplicated lines (when
@@ -313,7 +313,7 @@ model.rxModelVars <- model.rxode2
 #' @author Matthew L. Fidler
 #' @noRd
 .getModelineFromExpressionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
-                                                        errLines, origLines, rxui,
+                                                        errLines, origLines, modelVars,
                                                         returnAllLines=FALSE) {
   .ret <- NA_integer_
   .multipleEndpointModel <- length(errLines) != 1L
@@ -346,9 +346,8 @@ model.rxModelVars <- model.rxode2
           if (.isNormOrTErrorExpression(.expr)) {
             # Make sure the lhs is included in the model prediction
             .var <- deparse1(expr)
-            .modelVars <- c(rxui$mv0$lhs, rxui$mv0$state)
-            if (!(.var %in% .modelVars)) {
-              stop("the variable '", .var, "' must be in the defined the model for piping this: '",deparse(.expr), "'",
+            if (!(.var %in% modelVars)) {
+              stop("the variable '", .var, "' must be in the defined the model for piping this: '", deparse(.expr), "'",
                    call.=FALSE)
             }
           }
@@ -441,7 +440,16 @@ model.rxModelVars <- model.rxode2
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExpressionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
+  .ret <-
+    .getModelineFromExpressionsAndOriginalLines(
+      expr = lhsExpr,
+      altExpr = .expr3,
+      useErrorLine = errorLine,
+      errLines = .errLines,
+      origLines = .origLines,
+      modelVars = c(rxui$mv0$lhs, rxui$mv0$state),
+      returnAllLines = returnAllLines
+    )
   if (is.null(.ret)) {
     return(NULL)
   } else if (length(.ret) > 1) {
@@ -478,19 +486,21 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   if (!is.null(.getModelLineEquivalentLhsExpressionDropEndpoint(line))) {
     return(TRUE)
   }
-  if (length(line) == 2L) {
-    if (identical(line[[1]], quote(`-`))) {
-      if (is.name(line[[2]])) {
-        return(TRUE)
-      } else if (is.call(line[[2]]) && length(line[[2]]) == 2L) {
-        if (is.name(line[[2]][[2]]) &&
-              as.character(line[[2]][[1]]) %in% c("F", "f", "alag", "lag", "dur", "rate")) {
-          return(TRUE)
-        } else if (identical(line[[2]][[2]], 0)) {
-          return(TRUE)
-        }
-      }
-    }
+  # Any NULL assignment should be a drop line
+  if (.matchesLangTemplate(x = line, template = str2lang(". <- NULL")) ||
+      .matchesLangTemplate(x = line, template = str2lang(". = NULL"))) {
+    return(TRUE)
+  }
+  # `-something` for specific values of `something` can be dropped
+  if (.matchesLangTemplate(line, template = str2lang("-.name")) ||
+      .matchesLangTemplate(line, template = str2lang("-.name(0)")) ||
+      .matchesLangTemplate(line, template = str2lang("-F(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-f(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-alag(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-lag(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-dur(.name)")) ||
+      .matchesLangTemplate(line, template = str2lang("-rate(.name)"))) {
+    return(TRUE)
   }
   FALSE
 }
