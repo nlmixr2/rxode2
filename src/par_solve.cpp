@@ -1422,20 +1422,29 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       // dose, all_times, ii, evid: allocate newCap+1 so that the [idx+1]
       // "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1,
       // getEvidP1) are always within bounds when idx == n_all_times-1.
+      // Each successful realloc is published on _ind straight away.  realloc()
+      // frees the old block when it moves one, so holding the new pointer in a
+      // local until every call has succeeded would leave _ind pointing at freed
+      // memory on a later failure -- and the driver loop keeps reading these
+      // arrays after the abort flag is set.
       double *a   = (double*)realloc(_ind->all_times,  newCap * sizeof(double));
+      if (a   != NULL) _ind->all_times  = a;
       double *d   = (double*)realloc(_ind->dose,       newCap * sizeof(double));
+      if (d   != NULL) _ind->dose       = d;
       double *i2  = (double*)realloc(_ind->ii,         newCap * sizeof(double));
+      if (i2  != NULL) _ind->ii         = i2;
       int    *ev2 = (int*)   realloc(_ind->evid,       newCap * sizeof(int));
+      if (ev2 != NULL) _ind->evid       = ev2;
       int    *ix  = (int*)   realloc(_ind->ix,         newCap * sizeof(int));
+      if (ix  != NULL) _ind->ix         = ix;
       double *tt  = (double*)realloc(_ind->timeThread, newCap * sizeof(double));
+      if (tt  != NULL) _ind->timeThread = tt;
       if (!a || !d || !i2 || !ev2 || !ix || !tt) {
         int bad = 1;
 #pragma omp atomic write
         op->badSolve = bad;
         return -1;
       }
-      _ind->all_times  = a;  _ind->dose = d;  _ind->ii = i2;
-      _ind->evid       = ev2; _ind->ix  = ix; _ind->timeThread = tt;
       _ind->indOwnAllocN = newCap;
       // Zero guard elements (solve slots are grown on next rxAllocInd call)
       memset(a + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
@@ -4041,14 +4050,8 @@ static inline void
 updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
             double &xout,
             int &i, int &nx) {
-  // Grow if needed before accessing getSolve(i) and optionally getSolve(i+1).
-  // Record whether the next slot was seeded here: callers pass ind->n_all_times
-  // itself as nx, so a push below would change nx under us.
-  bool _seededNext = (i + 1 != nx);
-  _growSolveIfNeeded(ind, op, i, _seededNext);
-  if (_seededNext) {
-    std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
-  }
+  (void)nx; // the timeline can grow below, so ind->n_all_times is the authority
+  _growSolveIfNeeded(ind, op, i, 0);
   // This calc_lhs() is the single firing point for evid_() (bolus(), infuse(),
   // replace(), multiply(), reset(), ...) on EVERY method.  It runs at the
   // record's own time with the record's own events already applied, and pushes
@@ -4059,20 +4062,19 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   // already integrated past it.
   bool _fire = _rxFireEvid(ind, op, i) && !_rxEvidMtimeRequeued;
   _rxEvidMtimeRequeued = false;
-  int _nBefore = ind->n_all_times;
   if (_fire) {
     _rxEvidSortStart = i + 1;
     ind->_atEventTime = 1;
   }
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
-  if (_fire) {
-    _rxEvidSortStart = -1;
-    if (!_seededNext && ind->n_all_times > _nBefore) {
-      // The copy above was skipped because i+1 was past the end of the
-      // timeline; the push has since created that slot, so seed it here.
-      _growSolveIfNeeded(ind, op, i, 1);
-      std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
-    }
+  if (_fire) _rxEvidSortStart = -1;
+  // Carry this record's state forward into the next slot.  Done AFTER calc_lhs
+  // (which only reads getSolve(i) and writes ind->lhs) so that a slot the push
+  // above just created is seeded too, rather than left with whatever the
+  // reallocation happened to leave there.
+  if (i + 1 != ind->n_all_times) {
+    _growSolveIfNeeded(ind, op, i, 1);
+    std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
   }
 }
 
