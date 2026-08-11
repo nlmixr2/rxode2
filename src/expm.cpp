@@ -1492,6 +1492,15 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   // with the iterate.
   const bool ramp = indLinRampOn(op, u);
   indLinRamp_t rmp;
+  // Pass 0 is the left-endpoint constant-column answer whatever the forcing
+  // setting, so accepting it would return a substep the ramp never touched --
+  // asymmetric, and first order.  The caller cannot see that and would collapse
+  // its extrapolation tableau with the symmetric factors anyway, so require one
+  // ramp pass before converging.  It is reachable: the test is on the whole
+  // substep's change, which a step that barely moves passes at once.  Only when
+  // there is an iteration to spend on it -- `indLinMaxIter = 1` asks for a
+  // single pass and has to still be able to return one.
+  const bool needRampPass = ramp && maxIter > 1;
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
     rxIndLinCountIter(1);
@@ -1548,7 +1557,8 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
       if (rt <= 0) return rt;
     }
     indLinReportRatio(ratioOut, theta);
-    if (indLinConverged(op, rtol, atol, w, d, theta)) {
+    if ((i > 0 || !needRampPass) &&
+        indLinConverged(op, rtol, atol, w, d, theta)) {
       std::copy(w.begin(), w.end(), yp_);
       return 1;
     }
