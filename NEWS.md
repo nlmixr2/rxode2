@@ -85,6 +85,17 @@
 
 ### Solving
 
+- A parallel chunked solve (`rxSolve(file=, chunkSize=, parallel=)`) no longer
+  fails outright when the `mirai` daemons load a different rxode2 than the
+  parent is running -- a source checkout, or a library updated underneath a
+  long-lived pool.  The whole control list is forwarded to each daemon by name,
+  and `rxSolve()` rejects an argument it has no formal for, so a parent one
+  version ahead lost every chunk to `unused argument`.  A control the daemons
+  cannot take is now dropped, with a warning naming it and the version they
+  loaded, rather than losing the solve over a setting that version had no notion
+  of.  What they can take is asked of the daemon itself, so a matching pool
+  drops nothing.
+
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with
   `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
