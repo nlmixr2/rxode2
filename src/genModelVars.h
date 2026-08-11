@@ -491,18 +491,13 @@ static inline int indLinDepSource(int j, int *dep) {
 // compartment it reaches, and point at indLin() -- which is where a
 // state-dependent term belongs and where the solver can iterate it.
 //
-// A sensitivity model is exempt for now.  rxSensMatExp() builds its whole
-// sensitivity system out of rate constants -- including the primal ones, which
-// the sensitivity blocks then reference BY NAME -- so for a nonlinear model
-// every one of them is state dependent.  Rewriting that generator to route the
-// nonlinear parts into forcings is a job of its own (rxode2#1186 follow-up);
-// until then those models keep the first-order propagation they have always
-// had, which is no worse than before.
+// Sensitivity models are held to the same rule.  rxSensMatExp() takes its rate
+// matrix from the same term-wise split the plain conversion uses, so every rate
+// constant it emits -- primal, homogeneous, non-depleting cross term, at every
+// order -- is state free, and the nonlinear part rides in the indLin() forcing
+// (rxode2#1187).
 static inline void assertNoStateDependentMicro(void) {
   if (!tb.isMexp || tb.de.n <= 0 || NV <= 0) return;
-  for (int d = 0; d < tb.de.n; ++d) {
-    if (!strncmp(tb.de.line[d], "rx__sens_", 9)) return;
-  }
   int *dep  = (int*)R_alloc(NV, sizeof(int));
   int *fdep = (int*)R_alloc(tb.de.n, sizeof(int));
   indLinReplay(dep, fdep);

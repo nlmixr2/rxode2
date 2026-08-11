@@ -1658,7 +1658,8 @@ extra forcing evaluations; \code{"fd"} central-differences the forcing, at
 symbolic one when the model carries it and falls back to finite
 differences otherwise -- which is what happens above
 \code{getOption("rxode2.indLinJacMaxStates")} states, where the symbolic
-emission is skipped to bound the symengine work at model build.}
+emission is skipped to bound the symengine work at model build, and on a
+sensitivity model, whose \code{df()/dy()} lines cover the physical states only.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

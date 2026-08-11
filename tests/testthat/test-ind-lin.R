@@ -745,6 +745,30 @@ d/dt(blood)     = a*intestine - b*blood
                     "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n")) {
       expect_no_error(suppressMessages(rxode2(rxToIndLin(.code))))
     }
+
+    # nor with sensitivities: rxSensMatExp() routes the nonlinear part into the
+    # forcing too, so its rate constants are state free at every order
+    # (rxode2#1187).
+    .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - vmax*central/(km+central)\n"
+    expect_no_error(suppressMessages(rxode2(rxSensMatExp(.mm, calcSens = c("ka", "vmax")))))
+    expect_no_error(suppressMessages(rxode2(rxSensMatExp(
+      .mm, calcSens = c("ka", "vmax"), calcSens2 = "vmax"))))
+    # third order warns that it is short the forcing term, but still emits a
+    # model whose rate constants are state free
+    expect_warning(.s3 <- rxSensMatExp(.mm, calcSens = c("ka", "vmax"),
+                                       calcSens2 = "vmax", calcSens3 = "vmax"),
+                   "third-order")
+    expect_no_error(suppressMessages(rxode2(.s3)))
+
+    # and the exemption really is gone: a hand-written sensitivity model with a
+    # state-reading rate constant is rejected like any other matExp() model
+    expect_error(
+      suppressMessages(rxode2(paste(
+        "matExp()", "cmt(central)", "cmt(rx__sens_central_BY_ka__)",
+        "k_central_output = 0.1",
+        "k_rx__sens_central_BY_ka___output = 1/(1 + rx__sens_central_BY_ka__)",
+        sep = "\n"))),
+      "syntax error")
   })
 
   test_that("a non-converging inductive linearization is reported", {
@@ -1207,11 +1231,12 @@ d/dt(blood)     = a*intestine - b*blood
     }
   })
 
-  test_that("a state-dependent rate matrix never reuses an exponential", {
-    # rxSensMatExp() builds its sensitivity blocks out of rate constants that
-    # read the primal states, so the operand differs on every pass.  Content
-    # addressing needs no exemption for that -- it simply never hits -- and the
-    # reuse counter proves it.
+  test_that("a nonlinear sensitivity model still reuses its exponential", {
+    # rxSensMatExp() used to build its sensitivity blocks out of rate constants
+    # that read the primal states, so the operand differed on every pass and the
+    # content-addressed cache never hit.  Since rxode2#1187 the nonlinear part
+    # rides in the indLin() forcing and the rate matrix is constant, so the
+    # exponential is reused as heavily as a plain linear model's.
     .sens <- suppressMessages(rxode2(rxSensMatExp(
       "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n",
       calcSens = c("ka", "Vm"))))
@@ -1220,10 +1245,6 @@ d/dt(blood)     = a*intestine - b*blood
       suppressMessages(rxSolve(.sens, .e, method = "indLin",
                                params = c(ka = 0.5, Vm = 10, Km = 5)))
     })
-    # Incidental hits are possible and are correct by construction -- two
-    # substeps can produce the same operand bitwise.  The claim is that reuse
-    # cannot CARRY such a model, and the contrast with a state-free rate matrix
-    # on the same machinery is what shows it.
     expect_gt(sum(.a$counts$dadt), 0)
     .sensReuse <- sum(.a$counts$jac) / (sum(.a$counts$jac) + sum(.a$counts$dadt))
     .lin <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
@@ -1232,7 +1253,7 @@ d/dt(blood)     = a*intestine - b*blood
                                      et(seq(0, 10, by = 1)),
                                    method = "indLin", hmax = 0.25))
     .linReuse <- sum(.l$counts$jac) / (sum(.l$counts$jac) + sum(.l$counts$dadt))
-    expect_lt(.sensReuse, 0.2)
+    expect_gt(.sensReuse, 0.9)
     expect_gt(.linReuse, 0.9)
   })
 
