@@ -293,6 +293,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  indLinRichardson <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"always"</span>, <span class="st">"never"</span>, <span class="st">"always4"</span>, <span class="st">"always5"</span><span class="op">)</span>,</span>
 <span>  indLinIteration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"picard"</span>, <span class="st">"newton"</span>, <span class="st">"exprb"</span>, <span class="st">"exprb32"</span><span class="op">)</span>,</span>
 <span>  indLinJac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"symbolic"</span>, <span class="st">"fd"</span><span class="op">)</span>,</span>
+<span>  indLinForcing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ramp"</span>, <span class="st">"constant"</span><span class="op">)</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -1987,6 +1988,21 @@ differences otherwise – which is what happens above
 <code>getOption("rxode2.indLinJacMaxStates")</code> states, where the symbolic
 emission is skipped to bound the symengine work at model build, and on a
 sensitivity model, whose <code>df()/dy()</code> lines cover the physical states only.</p></dd>
+
+
+<dt id="arg-indlinforcing">indLinForcing<a class="anchor" aria-label="anchor" href="#arg-indlinforcing"></a></dt>
+<dd><p>how <code>method="indLin"</code> carries the <code><a href="indLin.html">indLin()</a></code> forcing
+across one relinearization step.  <code>"ramp"</code> (the default) evaluates it at
+both ends of the step and integrates the line between them exactly, with
+the rate matrix taken at the step midpoint; <code>"constant"</code> holds it fixed
+across the step and averages a start-linearized and an end-linearized
+answer to reach the same second order.  The ramp step is symmetric, so
+its error expands in even powers of the step alone and
+<code>indLinRichardson</code> removes two orders per extrapolation level from it
+rather than one – which is where most of the difference between the two
+shows up, since the default <code>indLinRichardson="auto"</code> extrapolates.  It
+applies to the <code>"picard"</code> and <code>"newton"</code> schemes; the exponential
+Rosenbrock ones never freeze the forcing.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>
