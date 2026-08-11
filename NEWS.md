@@ -273,15 +273,6 @@
 
 ### Matrix exponential / inductive linearization
 
-- `meOnly()`/`indLin()` no longer write past the end of their buffers when a
-  downstream package sets a per-individual effective state count
-  (`setIndNeqOverride()`).  Those buffers were sized by the effective count
-  while the model-generated `ME()`/`IndF()`/`calc_jac()` bodies always index by
-  the compiled state count, so a shortened count overran them -- quadratically
-  for `ME()`.  The generated code is now called through a full-size buffer and
-  the leading effective block copied back; with no override, which is every
-  path rxode2 itself takes, the calls and the numerics are unchanged.
-
 - `rxToIndLin()` -- and therefore `rxSolve(method="indLin")` -- now converts a
   model that mixes `linCmt()` with `d/dt()`.  It walked `$state`, which counts
   the `linCmt()` pseudo-compartments (`depot`, `central`, `peripheral*`); those
