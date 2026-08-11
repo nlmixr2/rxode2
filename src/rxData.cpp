@@ -5911,6 +5911,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Keyed on the PARSER flag, not op->indOwnAlloc: rxSolve.default() defaults
     // indOwnAlloc to TRUE, so that would disable dense output for every model
     // -- including the delay() models whose history needs it.
+    //
+    // delay() needs that dense output (a non-dense method records no history
+    // and silently returns wrong lagged values), so a model asking for both is
+    // asking for two incompatible things.  Refuse instead of dropping one of
+    // them.  rxSolve() refuses this earlier with a fuller message; this is the
+    // backstop for a caller that reaches solver setup another way.
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
+                 "delay() requires dense output, which cannot apply an event "
+                 "pushed at an observation");
+    }
     if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
       Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
       op->useDense = 0;

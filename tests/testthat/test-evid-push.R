@@ -688,6 +688,20 @@ rxTest({
       }), c(cl = 1, v = 10), et(amt = 100, time = 0) |> et(seq(0, 20, by = 1))),
       regexp = "delay\\(\\) with evid_\\(\\)")
 
+    # the refusal is also enforced in solver setup, so a caller that does not
+    # come through rxSolve.default() cannot slip past it
+    mod <- rxode2({
+      d/dt(central) <- -cl / v * central
+      d/dt(eff) <- delay(central, 1.0) - eff
+      if (t >= 5 && t < 5.1) {
+        bolus(100, central, 0, 0, 0)
+      }
+    })
+    expect_error(
+      mod$solve(c(cl = 1, v = 10),
+                et(amt = 100, time = 0) |> et(seq(0, 20, by = 1))),
+      regexp = "delay\\(\\) with evid_\\(\\)")
+
     # the same delay() model without a push still solves, and matches the
     # identical dose written in the data
     ref <- rxode2({
