@@ -33,6 +33,16 @@
 // (caller's contract).  Used by getSolve()/getAdvan() so that a per-
 // individual pred-mode solve writes and reads at the same compact stride
 // without mutating shared op->neq from a parallel worker thread.
+// CONTRACT: an override says "the model whose dydt/calc_jac/ME/IndF are
+// CURRENTLY INSTALLED (rxUpdateFuns) has this many states"; it is not a request
+// to solve part of a wider installed model.  rxEffNeq() is therefore the size
+// the generated code writes, which is why every solver -- and meOnly()/indLin()
+// in src/expm.cpp -- sizes the buffers it hands to that code from rxEffNeq()
+// rather than op->neq, even though op->neq (the pool width, set by the widest
+// peer model) may be larger.  Sizing those buffers from op->neq instead would
+// mis-stride the generated code's output for a narrower installed model;
+// setting an override WITHOUT installing the matching model overruns them (a
+// downstream misuse, not something rxode2 guards at runtime).  See rxode2#1200.
 // NOTE: getAdvan() + neqOverride is unsupported when op->numLin > 0
 // (op->linOffset is computed from the full neq layout).  A linCmt() model
 // mixed with ODEs does reach nlmixr2est's FOCEi flow with numLin > 0 on the

@@ -713,6 +713,13 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   // Honor per-individual neqOverride when ind is available; otherwise fall
   // back to op->neq.  Keeps allocations / loops consistent with what the
   // outer indLin solver wrote.
+  //
+  // This is also the right size for the `ME`/`IndF`/`calc_jac` buffers below,
+  // which the model-generated bodies index by their own compiled state count:
+  // an override says how many states the INSTALLED model has, so rxEffNeq() is
+  // that count (see the contract on rxEffNeq() in inst/include/rxode2.h, and
+  // rxode2#1200).  Sizing them from op->neq -- the pool width -- would
+  // mis-stride the output whenever a narrower model is installed.
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
@@ -2262,6 +2269,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
                       double tp, double *yp_, double tf,
 		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF){
+  // The installed model's state count, not the pool width -- see meOnly().
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   // Use per-individual tolerance arrays when available (set by
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
