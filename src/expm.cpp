@@ -1300,6 +1300,78 @@ static inline bool indLinNewtonDiverging(double res, double *resPrev, int *nGrow
   return true;
 }
 
+// What pass 0 leaves behind, for both fixed-point schemes.  It is the caller's
+// forward answer `w1`, and under the ramp its forcing is the fixed left end the
+// rest of the substep is built from.
+static inline int indLinAfterFirstPass(int cSub, rx_solving_options *op,
+                                       rx_solving_options_ind *ind, int neq, bool ramp,
+                                       arma::vec &y0, const arma::vec &w,
+                                       const arma::vec *u, double subTp, double subTf,
+                                       double tcov, int *on_, t_ME ME,
+                                       arma::vec *w1Out, indLinRamp_t *rmp) {
+  if (w1Out != NULL) *w1Out = w;
+  if (!ramp) return 1;
+  return indLinRampBuild(cSub, op, ind, neq, y0, *u, subTp, subTf, tcov, on_, ME, rmp);
+}
+
+// Leave the iteration with `w` as the answer.  Every exit writes the current
+// iterate back, including the ones that give up -- the driver reads it to size
+// its cut.
+static inline int indLinLeave(const arma::vec &w, double *yp_, int code) {
+  std::copy(w.begin(), w.end(), yp_);
+  return code;
+}
+
+// The operator the substep map applies to the endpoint forcing, and so what the
+// Newton residual's derivative carries: h*phi2(Ah) under the ramp, which came
+// with the rest of it, and P(h) = h*phi1(Ah) for the constant column.
+//
+// P(h) is the top-right block of exp([[A, I],[0, 0]]h) -- the same augmentation
+// `meOnly` uses, widened to the full identity instead of just the infusion unit
+// columns -- so it needs no A^-1 and rides the exponential cache.  `h*I` is its
+// small-||Ah|| limit and was tried first; see the note in indLinNewton's header
+// for when that is and is not adequate.
+static inline void indLinNewtonPmat(int cSub, rx_solving_options *op,
+                                    rx_solving_options_ind *ind, int neq,
+                                    const indLinRamp_t *rmp, double tcov,
+                                    double subTf, double h, arma::vec &w,
+                                    t_ME ME, arma::mat &Ph) {
+  if (rmp != NULL) {
+    Ph = rmp->P2;
+    return;
+  }
+  arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
+  ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
+  indLinPmat(op, ind, neq, Aloc, h, 1, Ph, phiZ, phiTmp);
+}
+
+// Newton's answer to a residual that grew: refresh the chord Jacobian at the
+// current iterate and refactorise, once.  A stale Jacobian is the likely cause
+// of a stall on a stiff problem, and refreshing costs 2*indLinN cheap IndF
+// evaluations against a whole rejected step.  Returns whether the factorisation
+// is usable.
+static inline bool indLinNewtonRefresh(int cSub, rx_solving_options *op,
+                                       rx_solving_options_ind *ind, int neq,
+                                       bool wasGrowing, bool *refreshed, int *nGrow,
+                                       double tcov, double subTf, const arma::vec &gw,
+                                       t_IndF IndF, t_ME ME, const arma::mat &Ph,
+                                       arma::mat &Jf, arma::vec &yPert,
+                                       arma::vec &fPlus, arma::vec &fMinus,
+                                       arma::mat &JfullS, arma::mat &AmatS,
+                                       arma::mat &G, arma::mat &Ginv, bool haveFact) {
+  if (!wasGrowing) {
+    *nGrow = 0;
+    return haveFact;
+  }
+  if (*refreshed) return haveFact;
+  *refreshed = true;
+  indLinForcingJac(cSub, op, neq, tcov, subTf, gw.memptr(), IndF, ME,
+                   Jf, yPert, fPlus, fMinus, JfullS, AmatS);
+  G = -Ph*Jf;
+  G.diag() += 1.0;
+  return arma::inv(Ginv, G);
+}
+
 static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                         int neq, double *rtol, double *atol, int maxIter,
                         double *yp_, double subTp, double subTf, double tcov,
@@ -1320,34 +1392,17 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
   int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
                        subTp, InfusionRate_, on_, ME, IndF, u, NULL);
   if (ret <= 0) return ret;
-  if (w1Out != NULL) *w1Out = w;
-  if (ramp) {
-    ret = indLinRampBuild(cSub, op, ind, neq, y0, *u, subTp, subTf, tcov, on_, ME, &rmp);
-    if (ret <= 0) return ret;
-  }
+  ret = indLinAfterFirstPass(cSub, op, ind, neq, ramp, y0, w, u, subTp, subTf,
+                             tcov, on_, ME, w1Out, &rmp);
+  if (ret <= 0) return ret;
+  const indLinRamp_t *rmpP = ramp ? &rmp : NULL;
 
   // Chord Jacobian, formed once at the pass-0 iterate.
   indLinForcingJac(cSub, op, neq, tcov, subTf, w.memptr(), IndF, ME,
                    Jf, yPert, fPlus, fMinus, JfullS, AmatS);
   const double h = subTf - subTp;
-  // P(h) = A^-1(exp(Ah) - I), the operator the map actually applies to the
-  // forcing.  It is the top-right block of exp([[A, I],[0, 0]]h) -- the same
-  // augmentation `meOnly` uses, widened to the full identity instead of just
-  // the infusion unit columns -- so it needs no A^-1 and rides the exponential
-  // cache.  `h*I` is its small-||Ah|| limit and was tried first; see the note
-  // in the header for when that is and is not adequate.
-  //
-  // Under `indLinForcing="ramp"` the map applies h*phi2(Ah) to the endpoint
-  // forcing rather than P(h) = h*phi1(Ah), so that is what the residual's
-  // derivative carries -- and the ramp already built it.
   arma::mat Ph(neq, neq);
-  if (ramp) {
-    Ph = rmp.P2;
-  } else {
-    arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
-    ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
-    indLinPmat(op, ind, neq, Aloc, h, 1, Ph, phiZ, phiTmp);
-  }
+  indLinNewtonPmat(cSub, op, ind, neq, rmpP, tcov, subTf, h, w, ME, Ph);
   G = -Ph*Jf;
   G.diag() += 1.0;
   // Invert once and reuse: at compartmental sizes this is a handful of flops,
@@ -1363,22 +1418,16 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
     rxIndLinCountIter(1);
     gw = w;
     ret = indLinPass(cSub, op, ind, gw.memptr(), y0.memptr(), subTp, subTf, tcov,
-                     subTf, InfusionRate_, on_, ME, IndF, u, ramp ? &rmp : NULL);
+                     subTf, InfusionRate_, on_, ME, IndF, u, rmpP);
     if (ret <= 0) return ret;
     r = gw - w;                       // -G(w); the Picard step is exactly this
-    if (indLinAnyNonFinite(op, gw)) {
-      std::copy(gw.begin(), gw.end(), yp_);
-      return -2;
-    }
+    if (indLinAnyNonFinite(op, gw)) return indLinLeave(gw, yp_, -2);
     double res = indLinResNorm(op, rtol, atol, gw, r);
     // Converged: same test and same 0.1x factor as the Picard path, but on the
     // raw residual -- Newton has no relaxation to undo.
     // theta = 1: Newton takes the full step, so the residual IS the distance
     // to the fixed point and needs no contraction correction.
-    if (indLinConverged(op, rtol, atol, gw, r, 1.0)) {
-      std::copy(gw.begin(), gw.end(), yp_);
-      return 1;
-    }
+    if (indLinConverged(op, rtol, atol, gw, r, 1.0)) return indLinLeave(gw, yp_, 1);
     // A residual that keeps growing means the step is too long; report how badly
     // so the driver can size its cut, exactly as the Picard ratio does.
     //
@@ -1394,21 +1443,11 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
     // 2*indLinN cheap IndF evaluations against a whole rejected step.
     const bool wasGrowing = (resPrev > 0.0 && res > resPrev);
     if (!indLinNewtonDiverging(res, &resPrev, &nGrow, ratioOut)) {
-      std::copy(gw.begin(), gw.end(), yp_);
-      return -2;
+      return indLinLeave(gw, yp_, -2);
     }
-    if (wasGrowing) {
-      if (!refreshed) {
-        refreshed = true;
-        indLinForcingJac(cSub, op, neq, tcov, subTf, gw.memptr(), IndF, ME,
-                         Jf, yPert, fPlus, fMinus, JfullS, AmatS);
-        G = -Ph*Jf;
-        G.diag() += 1.0;
-        haveFact = arma::inv(Ginv, G);
-      }
-    } else {
-      nGrow = 0;
-    }
+    haveFact = indLinNewtonRefresh(cSub, op, ind, neq, wasGrowing, &refreshed, &nGrow,
+                                   tcov, subTf, gw, IndF, ME, Ph, Jf, yPert, fPlus,
+                                   fMinus, JfullS, AmatS, G, Ginv, haveFact);
     resPrev = res;
     if (haveFact) {
       dw = Ginv*r;
@@ -1417,8 +1456,7 @@ static int indLinNewton(int cSub, rx_solving_options *op, rx_solving_options_ind
       w = gw;                          // degrade to a Picard step rather than stall
     }
   }
-  std::copy(w.begin(), w.end(), yp_);
-  return -2;
+  return indLinLeave(w, yp_, -2);
 }
 
 // Pick the relaxation factor for this pass.  Returns the propagation status --
@@ -1480,6 +1518,38 @@ static inline void indLinReportRatio(double *ratioOut, double theta) {
   *ratioOut = (R_FINITE(r) && r > 1.0) ? r : 1.0;
 }
 
+// One pass's residual, and what to do with it: give up on the step (-2), pass a
+// hard failure up (<= 0), or carry on (1) with `*thetaOut` set.  The two belong
+// together -- the relaxation is picked from the same residual the growth test
+// reads, and a growing one backs it off to a plain Picard step.
+static int indLinPassTheta(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                           const double *rtol, const double *atol, int stepSearch,
+                           const arma::vec &w, const arma::vec &d,
+                           const arma::vec &dPrev, double thetaPrev, arma::vec &y0,
+                           double subTp, double subTf, double tcov,
+                           double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
+                           arma::vec *u, const indLinRamp_t *rmp, arma::vec &wTry,
+                           double *resPrev, int *nGrow, double *yp_, double *thetaOut) {
+  const double res = indLinResNorm(op, rtol, atol, w, d);
+  bool backOff = false;
+  if (!indLinResidualOk(res, resPrev, nGrow, &backOff)) {
+    return indLinLeave(w, yp_, -2);
+  }
+  return indLinPickTheta(cSub, op, ind, rtol, atol, stepSearch, backOff,
+                         w, d, dPrev, thetaPrev, y0, subTp, subTf, tcov,
+                         InfusionRate_, on_, ME, IndF, u, rmp, wTry, thetaOut);
+}
+
+// May this pass's iterate be accepted?  Pass 0 under the ramp may not: see
+// `needRampPass`.
+static inline bool indLinAccept(rx_solving_options *op, const double *rtol,
+                                const double *atol, const arma::vec &w,
+                                const arma::vec &d, double theta, int i,
+                                bool needRampPass) {
+  if (i == 0 && needRampPass) return false;
+  return indLinConverged(op, rtol, atol, w, d, theta);
+}
+
 static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                          int neq, double *rtol, double *atol, int maxIter, int stepSearch,
                          double *yp_, double subTp, double subTf, double tcov,
@@ -1506,6 +1576,7 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
   // there is an iteration to spend on it -- `indLinMaxIter = 1` asks for a
   // single pass and has to still be able to return one.
   const bool needRampPass = ramp && maxIter > 1;
+  const indLinRamp_t *rmpP = ramp ? &rmp : NULL;
   if (ratioOut != NULL) *ratioOut = 1.0;
   for (int i = 0; i < maxIter; ++i) {
     rxIndLinCountIter(1);
@@ -1518,24 +1589,18 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     int ret = indLinPass(cSub, op, ind, w.memptr(), y0.memptr(), subTp, subTf, tcov,
                          (i == 0) ? subTp : subTf,
                          InfusionRate_, on_, ME, IndF, u,
-                         (ramp && i > 0) ? &rmp : NULL);
+                         (i == 0) ? NULL : rmpP);
     if (ret <= 0) return ret;
     // Pass 0 linearizes at the substep-start state: that is the forward
     // (explicit) answer, and the caller differences it against the converged
     // backward one to get a local error estimate for free.
     if (i == 0) {
-      if (w1Out != NULL) *w1Out = w;
-      if (ramp) {
-        ret = indLinRampBuild(cSub, op, ind, neq, y0, *u, subTp, subTf, tcov, on_,
-                              ME, &rmp);
-        if (ret <= 0) return ret;
-      }
+      ret = indLinAfterFirstPass(cSub, op, ind, neq, ramp, y0, w, u, subTp, subTf,
+                                 tcov, on_, ME, w1Out, &rmp);
+      if (ret <= 0) return ret;
     }
     d = w - wPrev;
-    if (indLinAnyNonFinite(op, w)) {
-      std::copy(w.begin(), w.end(), yp_);
-      return -2;
-    }
+    if (indLinAnyNonFinite(op, w)) return indLinLeave(w, yp_, -2);
     // Pick the relaxation BEFORE testing, because the test needs it.  For a
     // map contracting at ratio g', the distance from the current iterate to
     // the fixed point is about |d|/(1-g') = theta*|d|, not |d| -- at g'=0.9
@@ -1547,32 +1612,20 @@ static int indLinIterate(int cSub, rx_solving_options *op, rx_solving_options_in
     // the safeguard role Armijo backtracking plays in Schmidt et al. (2024),
     // but read off the residual we already have rather than paid for with extra
     // matrix exponentials.
-    double res = indLinResNorm(op, rtol, atol, w, d);
-    bool backOff = false;
-    if (!indLinResidualOk(res, &resPrev, &nGrow, &backOff)) {
-      std::copy(w.begin(), w.end(), yp_);
-      return -2;
-    }
-
-    {
-      const int rt = indLinPickTheta(cSub, op, ind, rtol, atol, stepSearch, backOff,
-                                     w, d, dPrev, thetaPrev, y0, subTp, subTf, tcov,
-                                     InfusionRate_, on_, ME, IndF, u,
-                                     ramp ? &rmp : NULL, wTry, &theta);
-      if (rt <= 0) return rt;
-    }
+    const int rt = indLinPassTheta(cSub, op, ind, rtol, atol, stepSearch, w, d,
+                                   dPrev, thetaPrev, y0, subTp, subTf, tcov,
+                                   InfusionRate_, on_, ME, IndF, u, rmpP, wTry,
+                                   &resPrev, &nGrow, yp_, &theta);
+    if (rt != 1) return rt;
     indLinReportRatio(ratioOut, theta);
-    if ((i > 0 || !needRampPass) &&
-        indLinConverged(op, rtol, atol, w, d, theta)) {
-      std::copy(w.begin(), w.end(), yp_);
-      return 1;
+    if (indLinAccept(op, rtol, atol, w, d, theta, i, needRampPass)) {
+      return indLinLeave(w, yp_, 1);
     }
     if (theta != 1.0) w = wPrev + theta*d;
     dPrev = d;
     thetaPrev = theta;
   }
-  std::copy(w.begin(), w.end(), yp_);
-  return -2;
+  return indLinLeave(w, yp_, -2);
 }
 
 // One adaptive attempt over `[t, t+h]` starting from `y0`.  Leaves the
