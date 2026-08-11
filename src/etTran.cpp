@@ -837,65 +837,86 @@ static inline int etTransModeledPairType(int evid, int *cmt) {
 // each tied (id, time) block and put every stop back after its start, matching
 // on compartment and infusion type.  Blocks that are already correct keep
 // their order, so this only moves records the solver could not have used.
+// scratch buffers reused across blocks
+typedef struct {
+  std::vector<int> block;   // record indexes of the current block
+  std::vector<int> type;    // etTransModeledPairType() of each
+  std::vector<int> bCmt;    // compartment of each
+  std::vector<int> mate;    // index of the stop each start pairs with, or -1
+  std::vector<bool> claimed;// stop already paired to a start
+  std::string orphanWarn;
+} etTransPairBuf;
+
+// Load the block at [start, start+len) and classify each record; returns how
+// many of them take part in modeled rate/duration pairing.
+static int etTransClassifyBlock(etTransPairBuf& b, const std::vector<int>& idxOutput,
+                                int start, int len, const std::vector<int>& evid) {
+  b.block.assign(idxOutput.begin() + start, idxOutput.begin() + start + len);
+  b.type.resize(len);
+  b.bCmt.resize(len);
+  int nModeled = 0;
+  for (int k = 0; k < len; ++k) {
+    b.type[k] = etTransModeledPairType(evid[b.block[k]], &b.bCmt[k]);
+    if (b.type[k] != 0) nModeled++;
+  }
+  return nModeled;
+}
+
+// Rewrite one classified block in place so each start is followed by its own
+// stop.  A start always precedes its own stop (the pair shares the compartment
+// and differs only in the infusion flag, which sorts the start first), so the
+// mate is searched forward.  Records that are not part of a pair keep their
+// relative position, and a start with no matching stop is left alone and named.
+static void etTransPairModeledBlock(etTransPairBuf& b, std::vector<int>& idxOutput,
+                                    int start, int len, int curId, double curTime,
+                                    const CharacterVector& idLvl) {
+  b.mate.assign(len, -1);
+  b.claimed.assign(len, false);
+  for (int k = 0; k < len; ++k) {
+    if (b.type[k] <= 0) continue;
+    for (int m = k + 1; m < len; ++m) {
+      if (b.claimed[m] || b.type[m] != -b.type[k] || b.bCmt[m] != b.bCmt[k]) continue;
+      b.mate[k] = m;
+      b.claimed[m] = true;
+      break;
+    }
+    if (b.mate[k] == -1) {
+      b.orphanWarn += " (id: " + as<std::string>(idLvl[curId-1]) +
+        ", time: " + std::to_string(curTime) +
+        ", cmt: " + std::to_string(b.bCmt[k]+1) + ")";
+    }
+  }
+  int pos = start;
+  for (int k = 0; k < len; ++k) {
+    if (b.claimed[k]) continue; // emitted next to its start
+    idxOutput[pos++] = b.block[k];
+    if (b.mate[k] != -1) idxOutput[pos++] = b.block[b.mate[k]];
+  }
+}
+
 static void etTransPairModeledRateDur(std::vector<int>& idxOutput,
                                       const std::vector<int>& id,
                                       const std::vector<double>& time,
                                       const std::vector<int>& evid,
                                       const CharacterVector& idLvl) {
   int n = (int)idxOutput.size();
-  std::vector<int> block;
-  std::vector<int> type;
-  std::vector<int> bCmt;
-  std::vector<int> mate;
-  std::vector<bool> claimed;
-  std::string orphanWarn;
+  etTransPairBuf b;
   int i = 0;
   while (i < n) {
     int curId = id[idxOutput[i]];
     double curTime = time[idxOutput[i]];
     int j = i + 1;
     while (j < n && id[idxOutput[j]] == curId && time[idxOutput[j]] == curTime) j++;
-    int len = j - i;
-    if (len > 1) {
-      block.assign(idxOutput.begin() + i, idxOutput.begin() + j);
-      type.resize(len);
-      bCmt.resize(len);
-      int nModeled = 0;
-      for (int k = 0; k < len; ++k) {
-        type[k] = etTransModeledPairType(evid[block[k]], &bCmt[k]);
-        if (type[k] != 0) nModeled++;
-      }
-      if (nModeled > 1) {
-        mate.assign(len, -1);
-        claimed.assign(len, false);
-        for (int k = 0; k < len; ++k) {
-          if (type[k] <= 0) continue;
-          for (int m = k + 1; m < len; ++m) {
-            if (claimed[m] || type[m] != -type[k] || bCmt[m] != bCmt[k]) continue;
-            mate[k] = m;
-            claimed[m] = true;
-            break;
-          }
-          if (mate[k] == -1) {
-            orphanWarn += " (id: " + as<std::string>(idLvl[curId-1]) +
-              ", time: " + std::to_string(curTime) +
-              ", cmt: " + std::to_string(bCmt[k]+1) + ")";
-          }
-        }
-        int pos = i;
-        for (int k = 0; k < len; ++k) {
-          if (claimed[k]) continue; // emitted next to its start
-          idxOutput[pos++] = block[k];
-          if (mate[k] != -1) idxOutput[pos++] = block[mate[k]];
-        }
-      }
+    // a single modeled record in the block is already next to its own pair
+    if (j - i > 1 && etTransClassifyBlock(b, idxOutput, i, j - i, evid) > 1) {
+      etTransPairModeledBlock(b, idxOutput, i, j - i, curId, curTime, idLvl);
     }
     i = j;
   }
-  if (!orphanWarn.empty()) {
+  if (!b.orphanWarn.empty()) {
     Rf_warningcall(R_NilValue, "%s%s",
                    _("modeled 'rate'/'dur' dose without a matching infusion end record:"),
-                   orphanWarn.c_str());
+                   b.orphanWarn.c_str());
   }
 }
 
