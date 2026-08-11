@@ -196,6 +196,7 @@ rxSolve(
   indLinRichardson = c("auto", "always", "never", "always4", "always5"),
   indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
   indLinJac = c("auto", "symbolic", "fd"),
+  indLinForcing = c("ramp", "constant"),
   envir = parent.frame()
 )
 
@@ -1660,6 +1661,17 @@ differences otherwise -- which is what happens above
 \code{getOption("rxode2.indLinJacMaxStates")} states, where the symbolic
 emission is skipped to bound the symengine work at model build, and on a
 sensitivity model, whose \code{df()/dy()} lines cover the physical states only.}
+
+\item{indLinForcing}{how \code{method="indLin"} carries the \code{indLin()} forcing
+across one relinearization step.  \code{"ramp"} (the default) evaluates it at
+both ends of the step and integrates the line between them exactly,
+which is what the step's matrix exponential is already shaped to do;
+\code{"constant"} holds it fixed across the step and averages a
+start-evaluated and an end-evaluated answer to recover the same order.
+Both are second order, so this changes the step's error constant and how
+fast its iteration contracts rather than its order.  It applies to the
+\code{"picard"} and \code{"newton"} schemes; the exponential Rosenbrock ones do
+not freeze the forcing at all.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

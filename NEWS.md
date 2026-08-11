@@ -258,6 +258,28 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `rxSolve(indLinForcing=)` chooses how `method="indLin"` carries the
+  `indLin()` forcing across one relinearization step.  It was folded into an
+  augmented column exactly as a constant infusion rate is, so it was frozen for
+  the whole step.  `"ramp"` (the new default) evaluates it at both ends of the
+  step and integrates the line between them exactly -- the phi2 term -- with the
+  rate matrix taken at the step midpoint; `"constant"` is the previous scheme,
+  which reaches the same second order by averaging a start-linearized and an
+  end-linearized answer.  It applies to the `"picard"` and `"newton"` schemes;
+  the exponential Rosenbrock ones never freeze the forcing.
+
+  Only the endpoint value moves with the iterate, so the rest of the step is
+  built once and a pass costs a forcing evaluation and a matrix-vector product
+  rather than a matrix exponential.  The converged ramp step is symmetric, so
+  its error expands in even powers of the step alone and `indLinRichardson` now
+  removes two orders per level instead of one -- third order becomes fourth,
+  fourth becomes sixth, fifth becomes eighth.  Against an lsoda reference at
+  matched tolerance under the default `indLinRichardson="auto"`, on
+  Michaelis-Menten, a one-compartment oral MM model and a forcing that reads
+  `t`, that is 6 to 70 times more accurate from `1e-5` down for 1.3 to 2.4 times
+  fewer iteration passes and no more steps.  With no extrapolation the two are a
+  wash, as they should be: both are second order there.
+
 - `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
   `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and
   `"exprb32"` -- Picard needs none, so a non-stiff model under the default
