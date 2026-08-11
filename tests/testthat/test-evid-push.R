@@ -257,13 +257,9 @@ rxTest({
     test_that(paste0("in-model reset() matches an evid=3 reset event (",
                      meth,
                      ")"), {
-                       # rxode2#1214: a pushed dose and the identical event
-                       # written in the data give different solutions on the ODE
-                       # methods, which also disagree with each other; these
-                       # expectations are built from an ODE reference and so
-                       # encode that.  indLin reproduces the explicit-event
-                       # (analytic) result instead, so it cannot match them.
-                       skip_if(meth == "indLin", "rxode2#1214")
+                       # rxode2#1214: the pushed reset and the identical
+                       # evid=3 event written in the data must give the same
+                       # solution on every method.
                        obs <- seq(0, 24, by = 1)
                        e <- et(amt = 100, time = 0) |>
                          et(amt = 50, time = 18) |>
@@ -296,7 +292,11 @@ rxTest({
                        wantReset <- want[want$time >= 13, ]
 
                        expect_equal(sum(got$time == 12), 2)
-                       expect_true(all(got$cp[got$time == 12] > 0))
+                       # The mtime() trigger record reports the state at the
+                       # moment the model decides to reset (pre-reset); the
+                       # observation at that same time reports post-reset.
+                       expect_true(got$cp[got$time == 12][1] > 0)
+                       expect_equal(got$cp[got$time == 12][2], 0)
                        expect_true(all(gotReset$cp[gotReset$time < 18] == 0))
                        expect_equal(gotReset$time, wantReset$time)
                        expect_equal(gotReset$depot, wantReset$depot, tolerance = 1e-5)
@@ -334,21 +334,24 @@ rxTest({
     wantLinReset <- wantLin[wantLin$time >= 13, ]
 
     expect_equal(sum(gotLin$time == 12), 2)
-    expect_true(all(gotLin$cp[gotLin$time == 12] == 0))
+    # Same ordering as the ODE methods: the mtime() trigger record is pre-reset,
+    # the observation at that time is post-reset.
+    expect_true(gotLin$cp[gotLin$time == 12][1] > 0)
+    expect_equal(gotLin$cp[gotLin$time == 12][2], 0)
     expect_true(all(gotLinReset$cp[gotLinReset$time < 18] == 0))
     expect_equal(gotLinReset$time, wantLinReset$time)
     expect_equal(gotLinReset$cp, wantLinReset$cp, tolerance = 1e-5)
   })
 
   test_that("in-model replace() pushes a replacement event", {
-    # rxode2#1214: see the note on the other pushed-event tests below.
-    skip_if("indLin" %in% .methods0, "rxode2#1214")
+    # rxode2#1214: the pushed replacement and the identical evid=5 event
+    # written in the data (at the same time, t = 12) must agree on every method.
     obs <- seq(0, 24, by = 1)
     e <- et(amt = 100, time = 0) |>
       et(amt = 50, time = 18) |>
       et(obs)
     eRef <- et(amt = 100, time = 0) |>
-      et(time = 13, amt = 25, cmt = 1, evid = 5) |>
+      et(time = 12, amt = 25, cmt = 1, evid = 5) |>
       et(amt = 50, time = 18) |>
       et(obs)
 
@@ -387,19 +390,15 @@ rxTest({
     test_that(paste0("in-model multiply() pushes a multiplication event (",
                      meth,
                      ")"), {
-                       # rxode2#1214: a pushed dose and the identical event
-                       # written in the data give different solutions on the ODE
-                       # methods, which also disagree with each other; these
-                       # expectations are built from an ODE reference and so
-                       # encode that.  indLin reproduces the explicit-event
-                       # (analytic) result instead, so it cannot match them.
-                       skip_if(meth == "indLin", "rxode2#1214")
+                       # rxode2#1214: the pushed multiplication and the
+                       # identical evid=6 event written in the data (at the same
+                       # time, t = 12) must agree on every method.
                        obs <- seq(0, 24, by = 1)
                        e <- et(amt = 100, time = 0) |>
                          et(amt = 50, time = 18) |>
                          et(obs)
                        eRef <- et(amt = 100, time = 0) |>
-                         et(time = 13, amt = 2, cmt = 1, evid = 6) |>
+                         et(time = 12, amt = 2, cmt = 1, evid = 6) |>
                          et(amt = 50, time = 18) |>
                          et(obs)
 
@@ -475,17 +474,13 @@ rxTest({
 
   for (meth in .methods0) {
     test_that(paste0("in-model bolus() passes ii to repeated bolus events (", meth, ")"), {
-      # rxode2#1214: a pushed dose and the identical event written in the
-      # data give different solutions on the ODE methods, which also disagree
-      # with each other; these expectations are built from an ODE reference and
-      # so encode that.  indLin reproduces the explicit-event (analytic) result
-      # instead, so it cannot match them.
-      skip_if(meth == "indLin", "rxode2#1214")
+      # rxode2#1214: the pushed bolus series and the identical evid=1 events
+      # written in the data (t = 12, 24, 36) must agree on every method.
       obs <- seq(0, 40, by = 1)
       e <- et(amt = 100, time = 0) |>
         et(obs)
       eRef <- et(amt = 100, time = 0) |>
-        et(time = 13, amt = 50, cmt = 1, evid = 1) |>
+        et(time = 12, amt = 50, cmt = 1, evid = 1) |>
         et(time = 24, amt = 50, cmt = 1, evid = 1) |>
         et(time = 36, amt = 50, cmt = 1, evid = 1) |>
         et(obs)
@@ -545,7 +540,10 @@ rxTest({
     e <- et(amt = 100, time = 0) |> et(c(0, 6, 12))
     p <- c(cl = 1, vd = 10)
     r <- rxSolve(m4, p, e)
-    expect_equal(nrow(r), 5) # 5 observations should be in the output
+    # 0, 6, 12 from the data; 5.5 pushed from t=0, 11 from t=5.5, 11.5 from
+    # t=6, then 16.5 and 17 from t=11 and t=11.5 (the model body runs once per
+    # distinct record time, so each newly pushed time pushes again while t<12)
+    expect_equal(sort(r$time), c(0, 5.5, 6, 11, 11.5, 12, 16.5, 17))
   })
 
   test_that("obs() pushes multiple observation rows", {
