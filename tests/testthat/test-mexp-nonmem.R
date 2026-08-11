@@ -384,6 +384,25 @@ rxTest({
     expect_gt(max(nchar(.sym)), 150L)
   })
 
+  test_that("rxSensMatExp() splits a state dependency hidden behind an lhs", {
+    # The split reads the symengine right-hand side, which has every lhs
+    # substituted into it, not the source text.  So a nonlinearity reached
+    # through an intermediate still lands in the forcing rather than becoming a
+    # state-reading rate constant.
+    .code <- rxSensMatExp("my_rate = vmax/(km + central)\nd/dt(central) = -my_rate*central\n",
+                          calcSens = "vmax")
+    .lines <- strsplit(.code, "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(central\\) <- ", .lines)))
+    expect_length(grep("^k_", .lines), 0L)
+    expect_no_error(suppressMessages(rxode2(.code)))
+
+    # ... and an lhs whose name merely starts with `k_` is inlined the same way,
+    # so dropping its line does not turn it into a required parameter.
+    .m <- suppressMessages(rxode2(rxSensMatExp(
+      "k_el = CL/V\nd/dt(central) = -k_el*central\n", calcSens = "CL")))
+    expect_equal(sort(rxModelVars(.m)$params), c("CL", "V"))
+  })
+
   test_that("rxSensMatExp() says third-order omits the forcing", {
     .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
     expect_warning(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),

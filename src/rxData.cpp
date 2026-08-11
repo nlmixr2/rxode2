@@ -6146,7 +6146,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
     op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
     op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
-    // The symbolic forcing Jacobian is not available on a sensitivity model.
+    // The symbolic forcing Jacobian cannot be trusted on a sensitivity model.
     // indLinForcingJacSym() wants calc_jac over the WHOLE system, but
     // rxSensMatExp() emits df()/dy() rows for the physical block only -- it has
     // to, because _esJacColF() (rxode2parseHandleEvid.h) calls calc_jac with a
@@ -6159,6 +6159,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // An explicit "symbolic" is downgraded too, not just "auto": the same thing
     // indLinUseSymJac() already does when the model carries no df()/dy() at all
     // ("cannot force what is not there").
+    //
+    // Deliberately blunt.  An ODE model built with calcSens= and then converted
+    // by method="indLin"'s auto-conversion has df()/dy() for every compartment,
+    // sensitivity ones included, so its symbolic Jacobian would have been fine;
+    // it loses nothing but the 2n forcing evaluations, and only under the
+    // schemes that ask for a Jacobian at all.  Whether calc_jac spans the system
+    // is a property of which generator wrote the model, which is not something
+    // modelVars records -- so err toward the source that is right either way.
     if (op->indLinJac != 2 &&
         Rf_length(as<SEXP>(rxSolveDat->mv[RxMv_sens])) > 0) {
       op->indLinJac = 2;
