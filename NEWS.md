@@ -103,6 +103,16 @@
   precede the step -- reachable with tied modeled duration steady state doses --
   read one element past the end and then dereferenced it as a record index,
   corrupting the heap.
+- A parallel chunked solve (`rxSolve(file=, chunkSize=, parallel=)`) no longer
+  fails outright when the `mirai` daemons load a different rxode2 than the
+  parent is running -- a source checkout, or a library updated underneath a
+  long-lived pool.  The whole control list is forwarded to each daemon by name,
+  and `rxSolve()` rejects an argument it has no formal for, so a parent one
+  version ahead lost every chunk to `unused argument`.  A control the daemons
+  cannot take is now dropped, with a warning naming it and the version they
+  loaded, rather than losing the solve over a setting that version had no notion
+  of.  What they can take is asked of the daemon itself, so a matching pool
+  drops nothing.
 - An event pushed by the model with `evid_()` (and the `bolus()`, `infuse()`,
   `replace()`, `multiply()`, `reset()`, `phantom()` and `obs()` helpers) now
   gives the same solution as the identical event written in the data, on every
@@ -307,6 +317,38 @@
   are now reused (`RXODE2_INDLIN_NO_EXP_CACHE` disables this).  Together these
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
+
+- `indLinRichardson` extrapolated `indLinIteration="exprb32"` with the factors
+  for a second-order base step, which exprb32 is not -- it is third order, so
+  each level took its leading term down by a constant instead of removing it,
+  and the step was sized from an estimate a whole order off.  Asking for a level
+  therefore made the answer worse: on a Michaelis-Menten model at `1e-8`,
+  `indLinRichardson="always"` delivered `3.7e-6` where `"never"` delivered
+  `1.0e-7`.  The tableau now takes both the base order and how far a level
+  advances it from the scheme, so `"always4"` is `1.2e-8` for a ninth of the
+  steps `"never"` needs.  Only `exprb32` is affected: it is neither the default
+  nor reachable from `"auto"`, which never raised its level.
+
+- `rxSolve(indLinForcing=)` chooses how `method="indLin"` carries the
+  `indLin()` forcing across one relinearization step.  It was folded into an
+  augmented column exactly as a constant infusion rate is, so it was frozen for
+  the whole step.  `"ramp"` (the new default) evaluates it at both ends of the
+  step and integrates the line between them exactly -- the phi2 term -- with the
+  rate matrix taken at the step midpoint; `"constant"` is the previous scheme,
+  which reaches the same second order by averaging a start-linearized and an
+  end-linearized answer.  It applies to the `"picard"` and `"newton"` schemes;
+  the exponential Rosenbrock ones never freeze the forcing.
+
+  Only the endpoint value moves with the iterate, so the rest of the step is
+  built once and a pass costs a forcing evaluation and a matrix-vector product
+  rather than a matrix exponential.  The converged ramp step is symmetric, so
+  its error expands in even powers of the step alone and `indLinRichardson` now
+  removes two orders per level instead of one -- third order becomes fourth,
+  fourth becomes sixth, fifth becomes eighth.  That is where the difference
+  shows up: under the default `indLinRichardson="auto"` a nonlinear model is
+  several times to a hundred times more accurate at the same tolerance for the
+  same or fewer steps, while with no extrapolation the two are a wash, both
+  being second order there.
 
 - `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
   `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and

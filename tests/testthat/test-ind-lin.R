@@ -596,6 +596,111 @@ d/dt(blood)     = a*intestine - b*blood
     expect_lt(.err[length(.err)], 1e-5)
   })
 
+  test_that("indLinForcing carries the forcing as a line across the substep", {
+    # rxode2#1191: `meOnly()` folds the forcing into an augmented column exactly
+    # as it does a constant infusion rate, so it is frozen across the substep.
+    # "ramp" evaluates it at both substep ends and integrates the line between
+    # them exactly, through the phi2 term.  Both are second order and both have
+    # to land on the same solution -- what differs is the error constant and,
+    # because the ramp map is symmetric, what the extrapolation can do with it.
+    expect_equal(rxControl()$indLinForcing, 1L)              # ramp
+    expect_equal(rxControl(indLinForcing = "ramp")$indLinForcing, 1L)
+    expect_equal(rxControl(indLinForcing = "constant")$indLinForcing, 0L)
+    expect_equal(rxControl(indLinForcing = 0L)$indLinForcing, 0L)
+    expect_error(rxControl(indLinForcing = "nope"))
+
+    .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
+    .ode <- rxode2(.code)
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-13, rtol = 1e-13)$central
+
+    # Both settings solve the same problem, under either iteration scheme --
+    # the ramp changes the substep map, so Newton has to follow it to the same
+    # fixed point Picard reaches.
+    for (.fo in c("constant", "ramp")) {
+      for (.it in c("picard", "newton")) {
+        .r <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
+                                       atol = 1e-8, rtol = 1e-8,
+                                       indLinForcing = .fo, indLinIteration = .it))
+        expect_equal(.r$central, .ref, tolerance = 1e-6,
+                     info = paste(.fo, .it))
+      }
+    }
+
+    # The exponential Rosenbrock schemes put the whole linearization into the
+    # exponential and never freeze the forcing, so the setting has nothing to
+    # act on there -- bit for bit, not just close.
+    for (.it in c("exprb", "exprb32")) {
+      expect_identical(
+        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
+                                 indLinIteration = .it,
+                                 indLinForcing = "constant"))$central,
+        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
+                                 indLinIteration = .it,
+                                 indLinForcing = "ramp"))$central,
+        info = .it)
+    }
+
+    # A forcing with nothing to ramp is untouched, bit for bit: with no state
+    # dependence the model stays on the non-iterating codes 1/2, and an infusion
+    # rate is constant across the substep by construction.
+    .sf <- suppressMessages(rxode2(paste("matExp()", "cmt(Gc)", "k_Gc_output = 0.1",
+                                         "Gprod = 3", "indLin(Gc) <- Gprod",
+                                         sep = "\n")))
+    .eSf <- et(amt = 10, cmt = "Gc") |> et(seq(0, 20, by = 0.5))
+    expect_identical(
+      suppressMessages(rxSolve(.sf, .eSf, method = "indLin",
+                               indLinForcing = "constant"))$Gc,
+      suppressMessages(rxSolve(.sf, .eSf, method = "indLin",
+                               indLinForcing = "ramp"))$Gc)
+
+    # The rate matrix goes with the forcing: the constant path gets its second
+    # order in a time-varying `A` by averaging a start-linearized and an
+    # end-linearized answer, and the ramp -- which does not average -- takes the
+    # midpoint instead.  A rate constant that reads `t` must therefore not lose
+    # accuracy under the ramp.
+    .tv <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
+                                         "kel = 0.1*(1 + 0.9*sin(t))",
+                                         "vmax = 2", "km = 5",
+                                         "k_central_output = kel",
+                                         "indLin(central) <- -vmax*central/(km+central)",
+                                         sep = "\n")))
+    .tvOde <- suppressMessages(rxode2({
+      kel <- 0.1 * (1 + 0.9 * sin(t))
+      vmax <- 2
+      km <- 5
+      d/dt(central) <- -kel * central - vmax * central / (km + central)
+    }))
+    .tvRef <- rxSolve(.tvOde, .e, method = "liblsoda",
+                      atol = 1e-13, rtol = 1e-13)$central
+    .tvErr <- vapply(c("constant", "ramp"), function(fo) {
+      max(abs(suppressMessages(rxSolve(.tv, .e, method = "indLin",
+                                       atol = 1e-8, rtol = 1e-8,
+                                       indLinForcing = fo))$central - .tvRef))
+    }, double(1))
+    expect_lt(.tvErr[["ramp"]], .tvErr[["constant"]])
+
+    # h*phi2(Ah) comes from a Horner series that is only trusted below
+    # ||A*h|| = 1/2 and otherwise falls back to reading the block out of an
+    # augmented exponential.  A rate constant large against the output spacing
+    # takes that fallback on the first attempt of every interval (here
+    # ||A*h|| = 2.5), which nothing else here reaches.
+    .stiffTxt <- paste0("kel <- 50\nvmax <- 20\nkm <- 5\n",
+                        "d/dt(central) = -kel*central - vmax*central/(km+central)\n")
+    .stiffOde <- suppressMessages(rxode2(.stiffTxt))
+    .stiff <- suppressMessages(rxode2(rxToIndLin(.stiffTxt)))
+    .eStiff <- et(amt = 100, cmt = "central") |> et(seq(0, 2, by = 0.05))
+    .stiffRef <- suppressMessages(rxSolve(.stiffOde, .eStiff, method = "liblsoda",
+                                          atol = 1e-13, rtol = 1e-13))$central
+    for (.it in c("picard", "newton")) {
+      .rs <- suppressMessages(rxSolve(.stiff, .eStiff, method = "indLin",
+                                      atol = 1e-8, rtol = 1e-8,
+                                      indLinIteration = .it))
+      expect_equal(.rs$central, .stiffRef, tolerance = 1e-6, info = .it)
+    }
+  })
+
   test_that("indLinRichardson raises the step to third order, off by default", {
     # Richardson-extrapolating each relinearization step (once whole, twice at
     # half length) cancels the second-order term the average leaves behind.  It
@@ -647,6 +752,41 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true(.rich[2] < .rich[1])
   })
 
+  test_that("extrapolating exprb32 helps rather than hurts", {
+    # rxode2#1222: the tableau's elimination factors are chosen for the leading
+    # term of the base step, and exprb32's is h^3 where every other scheme's is
+    # h^2.  Collapsing it with the second-order factors took that term down by
+    # 6x instead of removing it, so a level made the answer WORSE -- at 1e-8,
+    # 3.70e-06 under "always" against 9.98e-08 under "never".  A level has to
+    # buy its cost back, so the claim is work against delivered accuracy.
+    .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
+    .ode <- rxode2(.code)
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-13, rtol = 1e-13)$central
+    .run <- function(rich) {
+      .r <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = "exprb32",
+                                     indLinRichardson = rich))
+      list(err = max(abs(.r$central - .ref)), steps = sum(.r$counts$slvr))
+    }
+    .no <- .run("never")
+    .r4 <- .run("always4")
+    expect_lt(.r4$err, .no$err)              # more accurate ...
+    expect_lt(.r4$steps, .no$steps/3)        # ... for far fewer steps
+
+    # The other schemes keep the factors they had: only exprb32 starts at a
+    # different order, so a second-order base must be untouched by the fix.
+    for (.it in c("picard", "newton", "exprb")) {
+      .a <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = .it,
+                                     indLinRichardson = "always4"))$central
+      expect_equal(.a, .ref, tolerance = 1e-5, info = .it)
+    }
+  })
+
   test_that("the higher Romberg columns cost less at a tight tolerance", {
     # Each extra entry -- h, h/2, h/4, h/8 -- removes one more error term, for
     # 3, 7 and 15 fixed-point solves per step against the base step's 1.  A
@@ -680,6 +820,63 @@ d/dt(blood)     = a*intestine - b*blood
                                             indLinRichardson = as.integer(.lv[2])))$central,
                    tolerance = 0, info = .lv[1])
     }
+  })
+
+  test_that("the linear-ramp step is symmetric, so a level is worth two orders", {
+    # rxode2#1191: the converged ramp substep is its own adjoint, so its error
+    # expands in EVEN powers of h alone and one extrapolation level removes two
+    # orders rather than one.  The constant-column step is not symmetric and
+    # gets one.  Read as the observed order of the SAME level-1 column under
+    # each -- error against work, which is what an order claim means, and which
+    # no choice of error constant could fake.
+    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+                   "d/dt(depot) = -ka*depot\n",
+                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .o <- suppressMessages(rxode2(.txt))
+    .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
+    .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
+    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
+                                    atol = 1e-13, rtol = 1e-13))$central
+    .obs <- function(fo) {
+      .v <- lapply(c(1e-8, 1e-10), function(tol) {
+        .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
+                                       indLinRichardson = "always",
+                                       indLinForcing = fo))
+        c(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
+      })
+      log(.v[[1]][["err"]]/.v[[2]][["err"]]) /
+        log(.v[[2]][["steps"]]/.v[[1]][["steps"]])
+    }
+    expect_gt(.obs("ramp"), 3.5)          # fourth order; measured 3.9
+    expect_lt(.obs("constant"), 3.4)      # third order;  measured 2.9
+
+    # The symmetry is a property of the step that ran, not of the setting that
+    # asked for it.  Picard's first pass is the constant-column left-endpoint
+    # answer, so at `indLinMaxIter = 1` it can never reach the ramp -- and then
+    # the two settings have to agree bit for bit at every extrapolation level,
+    # which they only can if the tableau also drops back to the asymmetric
+    # factors.
+    .m1 <- function(fo, rich) {
+      suppressWarnings(suppressMessages(
+        rxSolve(.m, .e, method = "indLin", atol = 1e-3, rtol = 1e-3,
+                indLinMaxIter = 1L, indLinIteration = "picard",
+                indLinRichardson = rich, indLinForcing = fo)))$central
+    }
+    for (.rich in c("never", "always", "always4")) {
+      expect_identical(.m1("constant", .rich), .m1("ramp", .rich), info = .rich)
+    }
+
+    # Which cashes out as the thing a user sees: at a tight tolerance the same
+    # column is more accurate for no more work.
+    .run <- function(fo) {
+      .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = 1e-9, rtol = 1e-9,
+                                     indLinRichardson = "always", indLinForcing = fo))
+      list(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
+    }
+    .rr <- .run("ramp")
+    .cc <- .run("constant")
+    expect_lt(.rr$err, .cc$err/10)
+    expect_lte(.rr$steps, .cc$steps)
   })
 
   test_that("auto reaches the higher columns when they pay", {

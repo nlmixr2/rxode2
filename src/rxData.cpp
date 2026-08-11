@@ -5474,6 +5474,7 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinRichardson = 2; // auto
   op->indLinIteration = 3;  // auto (stiffness-gated)
   op->indLinJac = 0; // auto: symbolic when the model carries one
+  op->indLinForcing = 1; // ramp: integrate the forcing as a line over the substep
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -6169,6 +6170,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
     op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
     op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
+    op->indLinForcing=asInt(rxControl[Rxc_indLinForcing], "indLinForcing");
     // The symbolic forcing Jacobian cannot be trusted on a sensitivity model.
     // indLinForcingJacSym() wants calc_jac over the WHOLE system, but
     // rxSensMatExp() emits df()/dy() rows for the physical block only -- it has
