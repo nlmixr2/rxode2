@@ -680,6 +680,25 @@ d/dt(blood)     = a*intestine - b*blood
                                        indLinForcing = fo))$central - .tvRef))
     }, double(1))
     expect_lt(.tvErr[["ramp"]], .tvErr[["constant"]])
+
+    # h*phi2(Ah) comes from a Horner series that is only trusted below
+    # ||A*h|| = 1/2 and otherwise falls back to reading the block out of an
+    # augmented exponential.  A rate constant large against the output spacing
+    # takes that fallback on the first attempt of every interval (here
+    # ||A*h|| = 2.5), which nothing else here reaches.
+    .stiffTxt <- paste0("kel <- 50\nvmax <- 20\nkm <- 5\n",
+                        "d/dt(central) = -kel*central - vmax*central/(km+central)\n")
+    .stiffOde <- suppressMessages(rxode2(.stiffTxt))
+    .stiff <- suppressMessages(rxode2(rxToIndLin(.stiffTxt)))
+    .eStiff <- et(amt = 100, cmt = "central") |> et(seq(0, 2, by = 0.05))
+    .stiffRef <- suppressMessages(rxSolve(.stiffOde, .eStiff, method = "liblsoda",
+                                          atol = 1e-13, rtol = 1e-13))$central
+    for (.it in c("picard", "newton")) {
+      .rs <- suppressMessages(rxSolve(.stiff, .eStiff, method = "indLin",
+                                      atol = 1e-8, rtol = 1e-8,
+                                      indLinIteration = .it))
+      expect_equal(.rs$central, .stiffRef, tolerance = 1e-6, info = .it)
+    }
   })
 
   test_that("indLinRichardson raises the step to third order, off by default", {
@@ -796,8 +815,8 @@ d/dt(blood)     = a*intestine - b*blood
     expect_gt(.obs("ramp"), 3.5)          # fourth order; measured 3.9
     expect_lt(.obs("constant"), 3.4)      # third order;  measured 2.9
 
-    # And the higher columns follow, so at a tight tolerance the ramp gets there
-    # for less work as well as more accurately.
+    # Which cashes out as the thing a user sees: at a tight tolerance the same
+    # column is more accurate for no more work.
     .run <- function(fo) {
       .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = 1e-9, rtol = 1e-9,
                                      indLinRichardson = "always", indLinForcing = fo))
