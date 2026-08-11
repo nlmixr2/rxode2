@@ -38,6 +38,10 @@ rxTest({
                       "rxode2EventSensLoadFull", "rxode2EventSensGetDims",
                       "rxode2EventSensSetDims", "rxode2EventSensSetActive",
                       "rxode2EventSensDeactivate") %in% names(p)))
+    # per-compartment infusion rate and on/off, for callers that evaluate
+    # dydt()/calc_jac() outside a solve
+    expect_true(all(c("rxode2getIndInfusionRate", "rxode2setIndInfusionRate",
+                      "rxode2getIndOn", "rxode2setIndOn") %in% names(p)))
   })
 
   # Slots whose LABEL does not describe the function they hold.  The labels are

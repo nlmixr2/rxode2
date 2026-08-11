@@ -2,6 +2,16 @@
 
 ## New features
 
+- The C function-pointer table (`.rxode2ptrs()`) gained
+  `getIndInfusionRate()`/`setIndInfusionRate()` and `getIndOn()`/`setIndOn()`,
+  which read and write a compartment's infusion rate and on/off flag.  The
+  generated `dydt()` reads both -- `_IR[]` enters the right-hand side directly
+  and `_ON[]` gates every line -- so a downstream package evaluating `dydt()` or
+  `calc_jac()` *outside* an integration (for example over a fixed grid of states
+  rather than along a solve) previously had no way to set them, and silently got
+  a right-hand side with no dosing.  The slots are appended, so packages built
+  against an older header are unaffected.
+
 - `rxSolve(zeroVarParamHandle=)` says what happens when `params` supplies a
   value for an omega/sigma item whose variance is zero (say
   `eta.base ~ fix(0)`).  Such an item is dropped from the matrix that is

@@ -537,8 +537,16 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2EventSensSetDimsPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetDims, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2EventSensSetActivePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetActive, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2EventSensDeactivatePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensDeactivate, R_NilValue, R_NilValue)); pro++;
+  // Appended for callers that evaluate dydt()/calc_jac() off the solver (magi):
+  // the generated right-hand side reads _IR[] and gates every line on _ON[], so
+  // both have to be settable from outside an integration.  Appended at the end
+  // so the prefix check reverse dependencies do stays backward compatible.
+  SEXP rxode2getIndInfusionRatePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndInfusionRate, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndInfusionRatePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndInfusionRate, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndOnPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndOn, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndOnPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndOn, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 92
+#define nVec 96
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -632,6 +640,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 89, rxode2EventSensSetDimsPtr);
   SET_VECTOR_ELT(ret, 90, rxode2EventSensSetActivePtr);
   SET_VECTOR_ELT(ret, 91, rxode2EventSensDeactivatePtr);
+  SET_VECTOR_ELT(ret, 92, rxode2getIndInfusionRatePtr);
+  SET_VECTOR_ELT(ret, 93, rxode2setIndInfusionRatePtr);
+  SET_VECTOR_ELT(ret, 94, rxode2getIndOnPtr);
+  SET_VECTOR_ELT(ret, 95, rxode2setIndOnPtr);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -734,6 +746,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 89, Rf_mkChar("rxode2EventSensSetDims"));
   SET_STRING_ELT(retN, 90, Rf_mkChar("rxode2EventSensSetActive"));
   SET_STRING_ELT(retN, 91, Rf_mkChar("rxode2EventSensDeactivate"));
+  SET_STRING_ELT(retN, 92, Rf_mkChar("rxode2getIndInfusionRate"));
+  SET_STRING_ELT(retN, 93, Rf_mkChar("rxode2setIndInfusionRate"));
+  SET_STRING_ELT(retN, 94, Rf_mkChar("rxode2getIndOn"));
+  SET_STRING_ELT(retN, 95, Rf_mkChar("rxode2setIndOn"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched

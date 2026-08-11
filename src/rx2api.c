@@ -107,6 +107,62 @@ int getIndNallTimes(rx_solving_options_ind* ind) {
   return ind->n_all_times;
 }
 
+// InfusionRate and on are both sized (op->neq + op->extraCmt) and are NULL when
+// that count is zero (see _setIndPointersByThread in rxData.cpp), so guard on
+// both the bound and the NULL.
+static inline int rxIndCmtCount(const char *who) {
+  rx_solve* rx = getRxSolve_();
+  rx_solving_options* op = rx->op;
+  if (op == NULL) {
+    Rf_error("[%s]: no solving options are loaded", who);
+  }
+  return op->neq + op->extraCmt;
+}
+
+double getIndInfusionRate(rx_solving_options_ind* ind, int i) {
+  int n = rxIndCmtCount("getIndInfusionRate");
+  if (i < 0 || i >= n) {
+    Rf_error("[getIndInfusionRate]: i (%d) should be between [0, %d)", i, n);
+  }
+  if (ind->InfusionRate == NULL) {
+    Rf_error("[getIndInfusionRate]: the individual has no infusion rate buffer");
+  }
+  return ind->InfusionRate[i];
+}
+
+void setIndInfusionRate(rx_solving_options_ind* ind, int i, double val) {
+  int n = rxIndCmtCount("setIndInfusionRate");
+  if (i < 0 || i >= n) {
+    Rf_error("[setIndInfusionRate]: i (%d) should be between [0, %d) when assigning %f", i, n, val);
+  }
+  if (ind->InfusionRate == NULL) {
+    Rf_error("[setIndInfusionRate]: the individual has no infusion rate buffer");
+  }
+  ind->InfusionRate[i] = val;
+}
+
+int getIndOn(rx_solving_options_ind* ind, int i) {
+  int n = rxIndCmtCount("getIndOn");
+  if (i < 0 || i >= n) {
+    Rf_error("[getIndOn]: i (%d) should be between [0, %d)", i, n);
+  }
+  if (ind->on == NULL) {
+    Rf_error("[getIndOn]: the individual has no compartment on/off buffer");
+  }
+  return ind->on[i];
+}
+
+void setIndOn(rx_solving_options_ind* ind, int i, int val) {
+  int n = rxIndCmtCount("setIndOn");
+  if (i < 0 || i >= n) {
+    Rf_error("[setIndOn]: i (%d) should be between [0, %d) when assigning %d", i, n, val);
+  }
+  if (ind->on == NULL) {
+    Rf_error("[setIndOn]: the individual has no compartment on/off buffer");
+  }
+  ind->on[i] = val;
+}
+
 void setIndIdx(rx_solving_options_ind* ind, int j) {
   ind->idx = j;
 }

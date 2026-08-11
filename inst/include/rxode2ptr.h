@@ -327,6 +327,22 @@ extern "C" {
   typedef void (*setRxThreadId_t)(int id);
   extern setRxThreadId_t setRxThreadId;
 
+  // Get/set the individual's infusion rate for compartment i.  The generated
+  // dydt() reads these as _IR[] straight into the right-hand side, so a caller
+  // evaluating dydt() outside an integration (e.g. on a discretization grid)
+  // has to set them itself.  Valid i is [0, op->neq + op->extraCmt).
+  typedef double (*getIndInfusionRate_t)(rx_solving_options_ind *ind, int i);
+  extern getIndInfusionRate_t getIndInfusionRate;
+  typedef void (*setIndInfusionRate_t)(rx_solving_options_ind *ind, int i, double val);
+  extern setIndInfusionRate_t setIndInfusionRate;
+
+  // Get/set whether compartment i is on.  Every generated right-hand side line
+  // is gated by _ON[], so a compartment left off yields a zero derivative.
+  typedef int (*getIndOn_t)(rx_solving_options_ind *ind, int i);
+  extern getIndOn_t getIndOn;
+  typedef void (*setIndOn_t)(rx_solving_options_ind *ind, int i, int val);
+  extern setIndOn_t setIndOn;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -421,6 +437,14 @@ extern "C" {
       rxode2EventSensSetDims = (rxode2EventSensSetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 89));
       rxode2EventSensSetActive = (rxode2EventSensSetActive_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 90));
       rxode2EventSensDeactivate = (rxode2EventSensDeactivate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 91));
+      // Appended slots.  Reverse dependencies built against an older header stop
+      // at 91 and are unaffected; one built against this header requires an
+      // rxode2 that supplies them, which the R-level prefix check enforces
+      // before this ever runs (see babelmixr2 .iniRxode2Ptr()).
+      getIndInfusionRate = (getIndInfusionRate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 92));
+      setIndInfusionRate = (setIndInfusionRate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 93));
+      getIndOn = (getIndOn_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 94));
+      setIndOn = (setIndOn_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 95));
     }
     return R_NilValue;
   }
@@ -518,6 +542,10 @@ extern "C" {
   rxode2EventSensSetDims_t rxode2EventSensSetDims = NULL;           \
   rxode2EventSensSetActive_t rxode2EventSensSetActive = NULL;       \
   rxode2EventSensDeactivate_t rxode2EventSensDeactivate = NULL;     \
+  getIndInfusionRate_t getIndInfusionRate = NULL;                   \
+  setIndInfusionRate_t setIndInfusionRate = NULL;                   \
+  getIndOn_t getIndOn = NULL;                                       \
+  setIndOn_t setIndOn = NULL;                                       \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

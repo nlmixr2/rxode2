@@ -164,6 +164,20 @@ extern "C" {
   // (RAII guard in nlmixr2est).
   void setIndNeqOverride(rx_solving_options_ind *ind, int neq);
 
+  // Get/set the individual's infusion rate for compartment i.  The generated
+  // dydt() reads these as _IR[] and adds them straight into the right-hand
+  // side, so a caller evaluating dydt() outside the solver (e.g. on a
+  // discretization grid rather than during an integration) has to set them
+  // itself.  Valid i is [0, op->neq + op->extraCmt).
+  double getIndInfusionRate(rx_solving_options_ind *ind, int i);
+  void setIndInfusionRate(rx_solving_options_ind *ind, int i, double val);
+
+  // Get/set whether compartment i is on.  Every generated right-hand side line
+  // is gated by _ON[], so a compartment left off returns a zero derivative and
+  // the caller silently gets nothing.  Valid i is [0, op->neq + op->extraCmt).
+  int getIndOn(rx_solving_options_ind *ind, int i);
+  void setIndOn(rx_solving_options_ind *ind, int i, int val);
+
   void rxSetSilentErr(int silent);
 
   int getOrdId(rx_solve *rx, int solveid);
