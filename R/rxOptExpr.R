@@ -69,7 +69,15 @@
 }
 
 .rxOptMod <- function(e1, e2) {
-  .addExpr(paste0(.rxModOperand(e1), "%%", .rxModOperand(e2)))
+  .ret <- paste0(.rxModOperand(e1), "%%", .rxModOperand(e2))
+  .num <- rex::rex(start, any_spaces, regNum, any_spaces, end)
+  if (regexpr(.num, paste0(e1), perl = TRUE) != -1 &&
+        regexpr(.num, paste0(e2), perl = TRUE) != -1) {
+    # constants are left inline, as the other binary operators do; unlike them
+    # `%%` is not folded here, since rxode2 truncates toward zero and R floors
+    return(.ret)
+  }
+  .addExpr(.ret)
 }
 
 .rxOptEnv <- new.env(parent = emptyenv())

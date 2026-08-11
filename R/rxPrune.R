@@ -41,8 +41,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxModOperand <- function(x) {
-  if (grepl("^[a-zA-Z._][a-zA-Z0-9._]*$", x) ||
-        grepl("^[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$", x)) {
+  if (grepl("^([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$", x) ||
+        grepl("^[a-zA-Z._][a-zA-Z0-9._]*$", x)) {
     x
   } else {
     paste0("(", x, ")")
