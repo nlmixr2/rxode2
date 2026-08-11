@@ -427,7 +427,12 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
   }
-  ind->_atEventTime = 1;
+  // NOTE: ind->_atEventTime is deliberately NOT set here.  evid_() is fired
+  // once per record from updateSolve() (see par_solve.cpp) so that every
+  // method -- ODE, linCmt() and indLin() alike -- pushes the event at the
+  // record it was decided at.  Setting it here fired evid_() from dydt() at
+  // the START of the next integration interval, i.e. after the solver had
+  // already been asked to integrate past the pushed event's own time.
 }
 
 
