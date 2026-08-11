@@ -67,20 +67,24 @@ summary(rxC(rxode2model))
 With a model that did not compile successfully, you can get the code by:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$c)
+cat(rxode2::rxLastCompile(character(0))$c)
 ```
 
 To get the compile error you can use:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stderr)
 ```
 
-If you need stout too you can get that with
+If you need stdout too you can get that with
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stdout)
 ```
+
+`rxLastCompile()` messages the sections named by its `what=` argument (all of
+them by default), so `character(0)` takes the list without echoing anything;
+`rxLastCompile("stderr")` echoes just the compiler error.
 
 ### Regenerate Grammar, Documentation and Build Artifacts
 

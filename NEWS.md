@@ -47,6 +47,32 @@
 
 ## Bug fixes
 
+### Compilation
+
+- A model that fails to build now shows the compiler's own error lines (and
+  only those -- warnings and progress chatter are dropped, and the list is
+  capped by `options(rxode2.compileErrLines=)`), followed by how to get the
+  rest (`rxode2::rxLastCompile("stderr")` for the full compiler output,
+  `rxode2::rxLastCompile("c")` for the generated C code).  The
+  Rtools/C-compiler advice is only given when the failure actually looks like
+  a toolchain problem: a diagnostic naming a source file and line is about the
+  code that was compiled, so the message says the generated C code is at fault
+  and points at the issue tracker, while a driver, linker or loader that fails
+  without reaching the source still gets the setup advice.  Previously every
+  failure blamed the toolchain, which sent users off validating Rtools when
+  the compiler had already named the generated-code defect (#1197).
+
+- A model that compiles but will not load reports what the loader said rather
+  than the loader's error replacing the diagnosis, and a build failure found
+  without recompiling (the model's dll was already present) no longer errors
+  with `could not find function ".badBuild"` or reports a previous model's
+  compiler output.
+
+- `rxLastCompile()` now prints its section rules -- `cli::rule()` was called
+  but its result was never messaged -- and takes `what=` to choose which
+  sections are messaged (`rxLastCompile("stderr")` for the compiler error
+  alone).  The returned list is unchanged.
+
 ### Model interface
 
 - `ui$modelName` is now always a single character string, as it was always
