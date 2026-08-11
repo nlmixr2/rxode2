@@ -1996,6 +1996,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         preSolve(op, ind, *xp, xout, yp);
         *idid = indLin(ind->id, op, ind, *xp, yp, xout, ind->InfusionRate, ind->on,
                        (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
+        copyLinCmt(neq, ind, op, yp);
       }
       if (*idid <= 0) {
         ind->rc[0] = *idid;
@@ -4178,6 +4179,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                           ind->InfusionRate, ind->on,
                           (ind->fns ? ind->fns->me : NULL),
                           (ind->fns ? ind->fns->indf : NULL));
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
@@ -4199,6 +4201,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             ind->InfusionRate, ind->on,
                             (ind->fns ? ind->fns->me : NULL),
                             (ind->fns ? ind->fns->indf : NULL));
+              copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &idid, rc, &idx, yp, NULL, 0, false, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
               ind->extraDoseNewXout = xout;
@@ -4210,6 +4213,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           preSolve(op, ind, xp, xout, yp);
           idid = indLin(solveid, op, ind, xp, yp, xout, ind->InfusionRate, ind->on,
                         (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
+          copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
         }

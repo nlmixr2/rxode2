@@ -34,8 +34,11 @@
   from parameters or covariates (e.g. `indLin(Gc) <- Gprod`) stays unflagged, as
   does one whose variables were reassigned to something state free before it
   reads them.  A forcing inside an `if`/`while` may not run, so it adds to what
-  the forcings before it established rather than replacing them.  The entries
-  are the 0-indexed positions in `$state`, named with those states.
+  the forcings before it established rather than replacing them.  In a model
+  that also has a `linCmt()`, every forcing is flagged: a solved concentration
+  moves within the step, so such a forcing cannot be treated as constant over
+  the interval the way a locf covariate can.  The entries are the 0-indexed
+  positions in `$state`, named with those states.
 
 - `rxModelNameLhs()` registers the name an assignment is making, for
   assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It
@@ -269,6 +272,25 @@
   sensitivity pre-history at all.
 
 ### Matrix exponential / inductive linearization
+
+- `rxToIndLin()` -- and therefore `rxSolve(method="indLin")` -- now converts a
+  model that mixes `linCmt()` with `d/dt()`.  It walked `$state`, which counts
+  the `linCmt()` pseudo-compartments (`depot`, `central`, `peripheral*`); those
+  have no `d/dt()` behind them, so it emitted `cmt()`/`indLin()` lines for
+  derivatives that do not exist -- one of them the literal R variable name
+  `.tmp` -- and the generated model did not parse.  Only the `d/dt()` block is
+  converted now; the solved compartments stay with the analytic solver and are
+  copied back after each step.  A term reading a `linCmt()` goes to the
+  `indLin()` forcing rather than into a rate constant, since a solved
+  compartment moves within the matrix-exponential step, and such a forcing takes
+  the iterating path so the driver refines it.
+
+- A `df(<state>)/dy(<state>)` Jacobian entry may now reference `linCmt()`.  A
+  `linCmt()` call retyped the whole statement, so the entry lost its Jacobian
+  routing and was emitted into `dydt()`, where `__PDStateVar__` does not exist:
+  the model failed to compile.  For the same reason a `matExp()` rate constant
+  or `indLin()` forcing built from a `linCmt()` concentration now reaches the
+  `ME()`/`IndF()` functions instead of reading a stale value.
 
 - `rxSensMatExp(calcSens3=)` now carries the `indLin()` forcing at third order,
   as `calcSens` and `calcSens2` already did.  Only the rate-matrix cross terms

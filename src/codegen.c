@@ -544,10 +544,18 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         if (ode_is_es_dcode(show_ode)) break;
         switch(sbPm.lType[i]){
         case TLIN:
-          if (show_ode != ode_mexp && show_ode != ode_indLinVec &&
+          // Same routing as TASSIGN -- a linCmt()-bearing assignment is still an
+          // assignment -- except that linCmt() cannot be evaluated from the
+          // F/alag/rate/dur/past functions.  `tb.isMexp` is what lets a matExp()
+          // rate constant read a linCmt() concentration: without it the ME/IndF
+          // functions skipped the line and used a stale _PL[] value
+          // (rxode2#1215).
+          if ((tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)) &&
               show_ode != ode_fbio && show_ode != ode_lag &&
               show_ode != ode_rate && show_ode != ode_dur && show_ode != ode_past){
-            sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+            sAppend(&sbOut,"  %s",
+                    (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ?
+                    sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
         case TMTIME:

@@ -449,15 +449,21 @@ static inline int indLinStmtTarget(int s, int *dep) {
   return t;
 }
 
-static inline void indLinReplay(int *dep, int *fdep) {
+// `fany` (optional) records which compartments have an indLin() forcing at all,
+// state dependent or not.
+static inline void indLinReplay(int *dep, int *fdep, int *fany) {
   indLinSeedStateDep(dep);
-  for (int d = 0; d < tb.de.n; ++d) fdep[d] = 0;
+  for (int d = 0; d < tb.de.n; ++d) {
+    fdep[d] = 0;
+    if (fany != NULL) fany[d] = 0;
+  }
   for (int s = 0; s < tb.stmtN; ++s) {
     int t = indLinStmtTarget(s, dep);
     if (t < 0) continue;
     int v = indLinStmtReadsDep(s, dep);
     int *cur = (tb.stmtK[s] == 0) ? dep : fdep;
     cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
+    if (tb.stmtK[s] == 1 && fany != NULL) fany[t] = 1;
   }
 }
 
@@ -500,7 +506,7 @@ static inline void assertNoStateDependentMicro(void) {
   if (!tb.isMexp || tb.de.n <= 0 || NV <= 0) return;
   int *dep  = (int*)R_alloc(NV, sizeof(int));
   int *fdep = (int*)R_alloc(tb.de.n, sizeof(int));
-  indLinReplay(dep, fdep);
+  indLinReplay(dep, fdep, NULL);
   char cmt1[100], cmt2[100];
   for (int j = 0; j < NV; ++j) {
     if (dep[j] != 1) continue;
@@ -530,14 +536,19 @@ static inline SEXP calcWIndLin(SEXP state) {
   int ns = Rf_length(state);
   int *dep  = (int*)R_alloc(NV > 0 ? NV : 1, sizeof(int));
   int *fdep = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
-  indLinReplay(dep, fdep);
+  int *fany = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  indLinReplay(dep, fdep, fany);
   int *isDep = (int*)R_alloc(ns > 0 ? ns : 1, sizeof(int));
   int n = 0;
   for (int k = 0; k < ns; ++k) {
     isDep[k] = 0;
     for (int d = 0; d < tb.de.n; ++d) {
       if (!strcmp(tb.de.line[d], CHAR(STRING_ELT(state, k)))) {
-        isDep[k] = fdep[d];
+        // A linCmt() concentration moves continuously within a step, so a
+        // forcing in a model that has one cannot be treated as constant over
+        // the interval the way a locf covariate can -- take the iterating path
+        // so the driver re-evaluates and refines it (rxode2#1215).
+        isDep[k] = fdep[d] || (tb.linCmt && fany[d]);
         break;
       }
     }

@@ -29,7 +29,15 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
 
     if (tf->isLinB) tf->isLinB=1;
     tb.linB = tf->isLinB;
-    aType(TLIN);
+    // TLIN marks "this statement calls linCmt()", which keeps it out of the
+    // F/alag/rate/dur/past functions.  It must not overwrite a line type that
+    // already routes the statement elsewhere: a df()/dy() entry (TJAC) belongs
+    // to calc_jac/calc_lhs, and retyping it emitted `__PDStateVar__[...]` into
+    // dydt, where that argument does not exist -- the model did not compile
+    // (rxode2#1215).
+    if (sbPm.lType[sbPm.n] != TJAC) {
+      aType(TLIN);
+    }
     if (tf->isLinB) {
       // Here we figure out what derivatives are requested.
       // This allows the linCmtB Jacobian to focus only on

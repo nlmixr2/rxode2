@@ -1725,4 +1725,122 @@ d/dt(blood)     = a*intestine - b*blood
                    info = paste("event type:", .nm))
     }
   })
+
+  test_that("a model mixing linCmt() with d/dt() converts and solves (rxode2#1215)", {
+    .mixed <- suppressMessages(rxode2({
+      CL <- TCL * exp(eta.Cl)
+      C2 <- linCmt(KA, CL, V2, Q, V3)
+      eff(0) <- 1
+      d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+      resp <- eff
+    }))
+    .txt <- rxToIndLin(.mixed)
+    .lines <- unlist(strsplit(.txt, "\n"))
+    # The linCmt() pseudo-compartments have no d/dt() to convert: they used to
+    # get cmt()/indLin() lines of their own, the forcing being the literal R
+    # variable name `.tmp`.
+    for (.cmt in c("depot", "central", "peripheral1")) {
+      expect_false(any(grepl(paste0("^(cmt|indLin)[(]", .cmt, "[)]"), .lines)),
+                   info = .cmt)
+    }
+    expect_false(any(grepl(".tmp", .lines, fixed = TRUE)))
+    # An inlined linCmt() must stay linCmtA(): promoting it to linCmtB() would
+    # add rx__sens_* compartments the source model never had.
+    expect_false(any(grepl("linCmtB", .lines, fixed = TRUE)))
+    # A linCmt() concentration is not constant over a matrix-exponential step,
+    # so a term reading one belongs in the forcing, never in a rate constant.
+    expect_false(any(grepl("^k_[^ ]*=.*linCmt", gsub(" ", "", .lines))))
+
+    .me <- suppressMessages(rxode2(.txt))
+    expect_equal(rxode2::rxState(.me),
+                 c("eff", "output", "depot", "central", "peripheral1"))
+    # The forcing carries a linCmt(), so the solve must take the iterating path.
+    expect_true(rxModelVars(.me)$indLin$fullIndLin)
+
+    .p <- c(KA = 2.94e-01, TCL = 1.86e+01, V2 = 4.02e+01, Q = 1.05e+01,
+            V3 = 2.97e+02, Kin = 1, Kout = 1, EC50 = 200, eta.Cl = 0)
+    .e <- et(amt = 10000, addl = 4, ii = 12, cmt = 2) |> et(0:120)
+    .ref <- suppressMessages(rxSolve(.mixed, .p, .e, method = "liblsoda",
+                                     atol = 1e-12, rtol = 1e-12))
+    .r <- suppressMessages(rxSolve(.mixed, .p, .e, method = "indLin"))
+    expect_equal(.r$resp, .ref$resp, tolerance = 1e-5)
+    # the analytic compartments still come from linCmt(), not from the ME step
+    expect_equal(.r$central, .ref$central, tolerance = 1e-10)
+    expect_equal(.r$peripheral1, .ref$peripheral1, tolerance = 1e-10)
+  })
+
+  test_that("a linCmt() that only forces the ODE is still refined (rxode2#1215)", {
+    # Here the linCmt() term multiplies no state, so the forcing is state free.
+    # Without flagging it the solver kept the single-pass code and held the
+    # concentration constant across the whole output interval.
+    .add <- suppressMessages(rxode2({
+      C2 <- linCmt(KA, CL, V2, Q, V3)
+      eff(0) <- 1
+      d/dt(eff) <- Kin * C2 - Kout * eff
+    }))
+    .me <- suppressMessages(rxode2(rxToIndLin(.add)))
+    expect_true(rxModelVars(.me)$indLin$fullIndLin)
+    .p <- c(KA = 2.94e-01, CL = 1.86e+01, V2 = 4.02e+01, Q = 1.05e+01,
+            V3 = 2.97e+02, Kin = 1, Kout = 1)
+    .e <- et(amt = 10000, addl = 4, ii = 12, cmt = 2) |> et(0:120)
+    expect_equal(
+      suppressMessages(rxSolve(.add, .p, .e, method = "indLin"))$eff,
+      suppressMessages(rxSolve(.add, .p, .e, method = "liblsoda",
+                               atol = 1e-12, rtol = 1e-12))$eff,
+      tolerance = 1e-5)
+  })
+
+  test_that("a df()/dy() entry may read a linCmt() (rxode2#1215)", {
+    # linCmt() retyped the whole statement, so the Jacobian entry lost its
+    # df()/dy() routing and was emitted into dydt(), where __PDStateVar__ does
+    # not exist -- the model did not compile at all.
+    .m <- suppressMessages(rxode2(paste(
+      "matExp()",
+      "cmt(eff)",
+      "C2 = linCmt(KA, CL, V2)",
+      "k_eff_output = Kout",
+      "indLin(eff) <- Kin*C2",
+      "df(eff)/dy(eff) = -Kout",
+      sep = "\n")))
+    expect_true(any(rxModelVars(.m)$lhs == "C2"))
+    .e <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
+    .p <- c(KA = 0.5, CL = 3, V2 = 20, Kin = 1, Kout = 0.2)
+    expect_false(any(is.na(suppressMessages(
+      rxSolve(.m, .p, .e, method = "indLin"))$eff)))
+  })
+
+  test_that("evid_() fires once in a mixed linCmt() indLin solve (rxode2#1215)", {
+    # Refreshing the linCmt() amounts adds a dydt() call to a driver that had
+    # none.  evid_() fires only from updateSolve()'s calc_lhs (rxode2#1214), so
+    # that extra call must not turn into a second dose.
+    .m <- suppressMessages(rxode2({
+      cp <- linCmt(ka, cl, v)
+      d/dt(eff) <- ke0 * (cp - eff)
+      if (t == 24) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    }))
+    .noPush <- suppressMessages(rxode2({
+      cp <- linCmt(ka, cl, v)
+      d/dt(eff) <- ke0 * (cp - eff)
+    }))
+    .p <- c(ka = 0.5, cl = 1, v = 10, ke0 = 0.3)
+    .e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .e1 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
+      et(seq(0, 48, by = 1))
+    .e2 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
+      et(amt = 50, time = 24) |> et(seq(0, 48, by = 1))
+    .r <- suppressMessages(rxSolve(.m, .p, .e, method = "indLin"))
+    .one <- suppressMessages(rxSolve(.noPush, .p, .e1, method = "indLin"))
+    .two <- suppressMessages(rxSolve(.noPush, .p, .e2, method = "indLin"))
+    expect_equal(.r$cp, .one$cp)
+    expect_equal(.r$eff, .one$eff)
+    expect_false(isTRUE(all.equal(.one$cp, .two$cp)))
+    # and the dose shows up exactly once in the returned event rows
+    expect_equal(
+      nrow(suppressMessages(rxSolve(.m, .p, .e, method = "indLin",
+                                    addDosing = TRUE)) |>
+             subset(evid == 1L & time == 24)),
+      1L)
+  })
 })
