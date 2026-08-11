@@ -5908,7 +5908,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // closed.  A model that pushes its own events cannot work that way: the
     // event it decides on at an observation has to be applied before the solver
     // moves past that observation (rxode2#1214).
-    if (op->useDense && op->indOwnAlloc) {
+    // Keyed on the PARSER flag, not op->indOwnAlloc: rxSolve.default() defaults
+    // indOwnAlloc to TRUE, so that would disable dense output for every model
+    // -- including the delay() models whose history needs it.
+    if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
       Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
       op->useDense = 0;
     }
