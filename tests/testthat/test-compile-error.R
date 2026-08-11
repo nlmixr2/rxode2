@@ -52,6 +52,30 @@ rxTest({
       .rxCompileErrLines("unable to load shared object 'rx_abc.so': undefined symbol: rxFoo"),
       1L
     )
+    # the line saying why the link failed, not just that it failed
+    .ld <- paste(
+      c("c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
+        "collect2.exe: error: ld returned 1 exit status"),
+      collapse = "\n"
+    )
+    expect_length(.rxCompileErrLines(.ld), 2L)
+  })
+
+  test_that(".rxCompileErrLines() keeps linker warnings out", {
+    expect_length(.rxCompileErrLines("ld: warning: directory not found for option '-L/x'"), 0L)
+  })
+
+  test_that(".rxCompileErrLines() survives a bad rxode2.compileErrLines option", {
+    .many <- paste(sprintf("rx.c:%d:1: error: bad %d", 1:25, 1:25), collapse = "\n")
+    withr::with_options(list(rxode2.compileErrLines = NULL), {
+      expect_length(.rxCompileErrLines(.many), 10L)
+    })
+    withr::with_options(list(rxode2.compileErrLines = -1L), {
+      expect_length(.rxCompileErrLines(.many), 10L)
+    })
+    withr::with_options(list(rxode2.compileErrLines = "bad"), {
+      expect_length(.rxCompileErrLines(.many), 10L)
+    })
   })
 
   test_that(".rxCompileToolchainProblem() separates codegen bugs from setup", {
@@ -65,6 +89,21 @@ rxTest({
     expect_false(.rxCompileToolchainProblem(
       "rx_abc.c:1:10: fatal error: rx_abc_extra.h: No such file or directory"
     ))
+    # the compiler driver failing before it ever read the source is not
+    expect_true(.rxCompileToolchainProblem(
+      "g++: error: unrecognized command line option '-bad-flag'"
+    ))
+    expect_true(.rxCompileToolchainProblem(
+      "g++: fatal error: cannot execute 'cc1plus': execvp: No such file or directory"
+    ))
+    expect_true(.rxCompileToolchainProblem("ld: cannot find -lRblas"))
+    expect_true(.rxCompileToolchainProblem(paste(
+      c("c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
+        "collect2.exe: error: ld returned 1 exit status"),
+      collapse = "\n"
+    )))
+    # a symbol rxode2 asked for and did not supply is rxode2's to fix
+    expect_false(.rxCompileToolchainProblem("rx.o: undefined reference to `rxFoo'"))
   })
 
   test_that("a codegen failure shows the compiler error and does not blame Rtools", {
@@ -111,5 +150,39 @@ rxTest({
 
   test_that("rxLastCompile(what=) selects what is messaged", {
     expect_type(rxLastCompile(what = character(0)), "list")
+  })
+
+  test_that("a real build failure reaches the console and rxLastCompile()", {
+    skip_on_cran()
+    .msg <- NULL
+    withr::with_options(
+      list(rxode2.compile.O = "3 -include /rxode2-1197-does-not-exist.h"), {
+        .msg <- capture_messages(
+          expect_error(
+            rxode2({
+              d / dt(depot) <- -ka * depot
+            }),
+            "error building model"
+          )
+        )
+      }
+    )
+    .msg <- paste(.msg, collapse = "")
+    expect_match(.msg, "rxode2-1197-does-not-exist.h", fixed = TRUE)
+    expect_match(.msg, "rxode2::rxLastCompile()", fixed = TRUE)
+    .last <- rxLastCompile(what = character(0))
+    expect_match(.last$stderr, "rxode2-1197-does-not-exist.h", fixed = TRUE)
+    expect_true(is.character(.last$c))
+    expect_false(.rxLastCompileSuccess())
+  })
+
+  test_that("a later model does not report the earlier model's failure", {
+    skip_on_cran()
+    .m <- rxode2({
+      d / dt(center) <- -kel * center
+    })
+    on.exit(rxDelete(.m))
+    expect_true(.rxLastCompileSuccess())
+    expect_null(rxLastCompile(what = character(0))$msg)
   })
 })

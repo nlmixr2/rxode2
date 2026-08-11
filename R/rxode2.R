@@ -1818,20 +1818,31 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #' @keywords internal
 #' @noRd
 .rxCompileErrLines <- function(stderr, max = getOption("rxode2.compileErrLines", 10L)) {
+  # this runs while reporting a build failure, so a bad option must not throw
+  max <- suppressWarnings(as.integer(max))
+  if (length(max) != 1L || is.na(max) || max < 1L) max <- 10L
   if (length(stderr) == 0L) return(structure(character(0), n = 0L))
   .lines <- unlist(strsplit(paste(stderr, collapse = "\n"), "\n", fixed = TRUE))
   .lines <- sub("\r$", "", .lines)
   .lines <- .lines[nzchar(trimws(.lines))]
-  # a compiler diagnostic, not a warning or a progress line
-  .re <- paste0("(^|[^[:alnum:]_])(fatal error|error)\\s*:",
+  .reErr <- "(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:"
+  # a compiler, linker or loader diagnostic, not a warning or a progress line
+  .re <- paste0(.reErr,
                 "|undefined reference to",
                 "|undefined symbol",
                 "|unable to load shared object",
-                "|^collect2:",
+                "|cannot open output file",
+                "|cannot find -l",
+                "|cannot execute",
+                "|(^|[[:space:]])(ld|collect2|cc1|cc1plus)(\\.exe)?:",
                 "|ld returned [0-9]+ exit status")
   .err <- unique(.lines[grepl(.re, .lines, perl = TRUE, ignore.case = TRUE)])
   # R CMD SHLIB's own wrapper line says nothing the diagnostics do not
   .err <- .err[!grepl("^ERROR: compilation failed", .err)]
+  # a line the tool names may have dragged in that is only a warning
+  .err <- .err[!grepl("(^|[^[:alnum:]_])warning[[:space:]]*:", .err,
+                      perl = TRUE, ignore.case = TRUE) |
+                 grepl(.reErr, .err, perl = TRUE, ignore.case = TRUE)]
   .n <- length(.err)
   if (.n > max) .err <- .err[seq_len(max)]
   structure(.err, n = .n)
@@ -1845,21 +1856,22 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #'
 #' @return `TRUE` when the failure points at the user's compiler setup
 #'   (nothing was compiled, a tool was missing, a library was not found)
-#'   rather than at the C code rxode2 generated.
+#'   rather than at the C code rxode2 generated.  A diagnostic naming a
+#'   source file and line is about the code being compiled -- that is,
+#'   rxode2's generated C -- while a compiler driver, linker or loader that
+#'   fails without ever reaching the source is about the setup.
 #'
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @noRd
 .rxCompileToolchainProblem <- function(stderr, errLines = .rxCompileErrLines(stderr)) {
   if (length(errLines) == 0L) return(TRUE)
-  .txt <- paste(stderr, collapse = "\n")
-  .re <- paste0("command not found",
-                "|(^|[[:space:]])(make|gcc|clang|cc|g\\+\\+|ld|sh|bash|Rcmd)[[:space:]]*:[^\n]*not found",
-                "|cannot find -l",
-                "|\\bRtools\\b",
-                "|no compilers? (is |are )?(installed|available|found)",
-                "|compilers? (is |are )?not (installed|available|found)")
-  grepl(.re, .txt, perl = TRUE, ignore.case = TRUE)
+  # eg "rx_abc.c:214:23: error: 'ETA' undeclared"
+  .located <- "(^|[[:space:]])[^[:space:]]+:[0-9]+(:[0-9]+)?:[[:space:]]*(fatal[[:space:]]+)?error[[:space:]]*:"
+  if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) return(FALSE)
+  # a symbol rxode2 asked for and did not supply is also rxode2's to fix
+  !any(grepl("undefined reference to|undefined symbol", errLines,
+             perl = TRUE, ignore.case = TRUE))
 }
 #' Message a failed model build
 #'
@@ -1997,12 +2009,11 @@ rxCompile.rxModelVars <- function(model, # Model
   # failures are reachable without compiling, so .badBuild is defined here
   # (and tolerates a NULL .out) rather than inside the compilation branch.
   .out <- NULL
+  # whatever is saved belongs to an earlier model; a cached load that never
+  # compiles would otherwise leave rxLastCompile() reporting that one
+  .rxCompileEnv$lst <- list()
   .badBuild <- function(msg, cSrc = TRUE, kind = "compile") {
-    if (is.null(.out)) {
-      # nothing was compiled in this call, so any saved compiler output
-      # belongs to a different model
-      .rxCompileEnv$lst <- list()
-    } else {
+    if (!is.null(.out)) {
       .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
     }
     .rxCompileEnv$lst[["msg"]] <- gettext(msg)

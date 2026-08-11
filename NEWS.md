@@ -55,9 +55,12 @@
   rest (`cat(rxode2::rxLastCompile()$stderr)` for the full compiler output,
   `cat(rxode2::rxLastCompile()$c)` for the generated C code).  The
   Rtools/C-compiler advice is only given when the failure actually looks like
-  a toolchain problem; when the compiler produced real diagnostics, the
-  message says the generated C code is at fault and points at the issue
-  tracker instead of sending the user off to validate their toolchain (#1197).
+  a toolchain problem: a diagnostic naming a source file and line is about the
+  code that was compiled, so the message says the generated C code is at fault
+  and points at the issue tracker, while a driver, linker or loader that fails
+  without reaching the source still gets the setup advice.  Previously every
+  failure blamed the toolchain, which sent users off validating Rtools when
+  the compiler had already named the generated-code defect (#1197).
 
 - A model that compiles but will not load reports what the loader said rather
   than the loader's error replacing the diagnosis, and a build failure found
