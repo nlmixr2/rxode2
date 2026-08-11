@@ -1825,12 +1825,16 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
     max <- 10L
   }
   if (length(stderr) == 0L) return(structure(character(0), n = 0L))
-  .lines <- unlist(strsplit(paste(stderr, collapse = "\n"), "\n", fixed = TRUE))
+  # a localized toolchain emits bytes that need not be valid in this locale,
+  # and strsplit() and every regex below would choke on them
+  .txt <- iconv(paste(stderr, collapse = "\n"), "", "UTF-8", sub = "?")
+  if (length(.txt) != 1L || is.na(.txt)) return(structure(character(0), n = 0L))
+  .lines <- unlist(strsplit(.txt, "\n", fixed = TRUE))
   .lines <- sub("\r$", "", .lines)
   .lines <- .lines[nzchar(trimws(.lines))]
   # "error:", "fatal error:" and the MSVC-style "error C2065:"
   .reErr <- paste0("(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:",
-                   "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z][0-9]+[[:space:]]*:")
+                   "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z]+[0-9]+[[:space:]]*:")
   # a compiler, linker or loader diagnostic, not a warning or a progress line
   .re <- paste0(.reErr,
                 "|undefined reference to",
@@ -1877,7 +1881,7 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
   .located <- paste0(
     "(^|[[:space:]])[^[:space:]]+",
     "(:[0-9]+(:[0-9]+)?:|\\([0-9]+(,[0-9]+)?\\)[[:space:]]*:)",
-    "[[:space:]]*(fatal[[:space:]]+)?error([[:space:]]+[A-Z][0-9]+)?[[:space:]]*:"
+    "[[:space:]]*(fatal[[:space:]]+)?error([[:space:]]+[A-Z]+[0-9]+)?[[:space:]]*:"
   )
   if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) return(FALSE)
   # a symbol rxode2 asked for and did not supply is also rxode2's to fix

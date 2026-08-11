@@ -122,6 +122,10 @@ rxTest({
       .rxCompileErrLines("rx_abc.c(214): error C2065: 'ETA': undeclared identifier"),
       1L
     )
+    expect_length(
+      .rxCompileErrLines("LINK : fatal error LNK1104: cannot open file 'rx.dll'"),
+      1L
+    )
     expect_length(.rxCompileErrLines("/usr/bin/ld: warning: something harmless"), 0L)
   })
 
@@ -199,13 +203,32 @@ rxTest({
 
   test_that("a later model does not report the earlier model's failure", {
     skip_on_cran()
+    # seed the state a failed build leaves behind, so this holds however the
+    # file is run and whether or not the model below comes from the cache
+    .rxCompileEnv$lst <- list(msg = "error building model",
+                              stderr = "rx_prior.c:1:1: error: nope",
+                              c = "// prior model")
+    .rxLastCompileSuccess(FALSE)
     # deliberately a model other tests build too, so this is the cached path
     .m <- rxode2({
       d / dt(center) <- -kel * center
     })
     on.exit(rxDelete(.m))
     expect_true(.rxLastCompileSuccess())
-    expect_null(rxLastCompile(what = character(0))$msg)
-    expect_null(rxLastCompile(what = character(0))$c)
+    .last <- rxLastCompile(what = character(0))
+    expect_null(.last$msg)
+    expect_null(.last$c)
+    expect_false(isTRUE(grepl("rx_prior.c", .last$stderr, fixed = TRUE)))
+  })
+
+  test_that("output that is not valid in this locale does not throw", {
+    # a localized toolchain can put bytes in stderr that R cannot decode
+    .bad <- rawToChar(as.raw(c(0x72, 0x78, 0x2e, 0x63, 0x3a, 0x31, 0x3a, 0x31,
+                               0x3a, 0x20, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x3a,
+                               0x20, 0x91, 0x45, 0x54, 0x41, 0x92, 0x20, 0x62,
+                               0x61, 0x64)))
+    expect_length(.rxCompileErrLines(.bad), 1L)
+    expect_false(.rxCompileToolchainProblem(.bad))
+    expect_silent(invisible(capture_messages(.rxBadBuildMsg("error building model", .bad))))
   })
 })
