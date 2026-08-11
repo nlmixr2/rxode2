@@ -258,6 +258,17 @@
   are several times faster on a nonlinear model and more on a linear one; no
   result changes.
 
+- `indLinRichardson` extrapolated `indLinIteration="exprb32"` with the factors
+  for a second-order base step, which exprb32 is not -- it is third order, so
+  each level took its leading term down by a constant instead of removing it,
+  and the step was sized from an estimate a whole order off.  Asking for a level
+  therefore made the answer worse: on a Michaelis-Menten model at `1e-8`,
+  `indLinRichardson="always"` delivered `3.7e-6` where `"never"` delivered
+  `1.0e-7`.  The tableau now takes both the base order and how far a level
+  advances it from the scheme, so `"always4"` is `1.2e-8` for a ninth of the
+  steps `"never"` needs.  Only `exprb32` is affected: it is neither the default
+  nor reachable from `"auto"`, which never raised its level.
+
 - `rxSolve(indLinForcing=)` chooses how `method="indLin"` carries the
   `indLin()` forcing across one relinearization step.  It was folded into an
   augmented column exactly as a constant infusion rate is, so it was frozen for

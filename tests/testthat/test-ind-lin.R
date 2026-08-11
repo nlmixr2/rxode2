@@ -752,6 +752,41 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true(.rich[2] < .rich[1])
   })
 
+  test_that("extrapolating exprb32 helps rather than hurts", {
+    # rxode2#1222: the tableau's elimination factors are chosen for the leading
+    # term of the base step, and exprb32's is h^3 where every other scheme's is
+    # h^2.  Collapsing it with the second-order factors took that term down by
+    # 6x instead of removing it, so a level made the answer WORSE -- at 1e-8,
+    # 3.70e-06 under "always" against 9.98e-08 under "never".  A level has to
+    # buy its cost back, so the claim is work against delivered accuracy.
+    .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
+    .ode <- rxode2(.code)
+    .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
+    .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-13, rtol = 1e-13)$central
+    .run <- function(rich) {
+      .r <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = "exprb32",
+                                     indLinRichardson = rich))
+      list(err = max(abs(.r$central - .ref)), steps = sum(.r$counts$slvr))
+    }
+    .no <- .run("never")
+    .r4 <- .run("always4")
+    expect_lt(.r4$err, .no$err)              # more accurate ...
+    expect_lt(.r4$steps, .no$steps/3)        # ... for far fewer steps
+
+    # The other schemes keep the factors they had: only exprb32 starts at a
+    # different order, so a second-order base must be untouched by the fix.
+    for (.it in c("picard", "newton", "exprb")) {
+      .a <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
+                                     atol = 1e-8, rtol = 1e-8,
+                                     indLinIteration = .it,
+                                     indLinRichardson = "always4"))$central
+      expect_equal(.a, .ref, tolerance = 1e-5, info = .it)
+    }
+  })
+
   test_that("the higher Romberg columns cost less at a tight tolerance", {
     # Each extra entry -- h, h/2, h/4, h/8 -- removes one more error term, for
     # 3, 7 and 15 fixed-point solves per step against the base step's 1.  A

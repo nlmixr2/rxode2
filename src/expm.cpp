@@ -1722,23 +1722,28 @@ static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind 
 
 // One step, extrapolated to the requested level.
 //
-//                                            asymmetric   symmetric   solves
-//   level 0  the plain substep                2nd order   2nd order        1
-//   level 1  Richardson on h, h/2             3rd order   4th order        3
-//   level 2  Romberg column to h/4            4th order   6th order        7
-//   level 3  Romberg column to h/8            5th order   8th order       15
+//                                     2nd order   symmetric   exprb32   solves
+//   level 0  the plain substep              2nd         2nd       3rd        1
+//   level 1  Richardson on h, h/2           3rd         4th       4th        3
+//   level 2  Romberg column to h/4          4th         6th       5th        7
+//   level 3  Romberg column to h/8          5th         8th       6th       15
 //
-// The base step is second order, so entry j of the tableau is built from
-// T(h/2^j) and R[k][j] = (f*R[k-1][j+1] - R[k-1][j])/(f-1) eliminates the
-// leading term of R[k-1].  Which term that is depends on the base step: the
-// asymmetric one leaves every power behind, h^2, h^3, h^4 ..., so pass `k`
-// kills h^(k+1) with f = 2^(k+1); the symmetric one -- the converged linear-ramp
-// substep, see indLinRamp_t -- leaves only the EVEN powers h^2, h^4, h^6 ..., so
-// pass `k` kills h^(2k) with f = 4^k and each level is worth two orders instead
-// of one.  Using the asymmetric factors on a symmetric base is not wrong, only
-// weak: it takes h^4 down by 14x rather than removing it, which shows up as a
-// level-2 column no more accurate than level 1.  The error estimate is the
-// difference between the two highest entries either way.
+// Entry j of the tableau is built from T(h/2^j), and
+// R[k][j] = (f*R[k-1][j+1] - R[k-1][j])/(f-1) eliminates the leading term of
+// R[k-1].  Which term that is depends on the base step, in two ways: what order
+// it starts at, and how far its expansion advances per level.  A second-order
+// step whose expansion leaves every power behind (h^2, h^3, h^4 ...) has pass
+// `k` kill h^(k+1) with f = 2^(k+1).  The symmetric one -- the converged
+// linear-ramp substep, see indLinRamp_t -- leaves only the EVEN powers, so pass
+// `k` kills h^(2k) with f = 4^k and a level is worth two orders instead of one.
+// exprb32 starts at h^3 instead, so its factors run 8, 16, 32.
+//
+// Getting either wrong is not a crash, only a weak or absent cancellation: the
+// asymmetric factors on a symmetric base take h^4 down by 14x rather than
+// removing it, and the second-order factors on exprb32 take its h^3 down by 6x,
+// each showing up as a column no better -- or worse -- than the one below it.
+// The error estimate is the difference between the two highest entries in every
+// case.
 #define RX_INDLIN_RICH_MAXLVL 3
 
 // Is the base substep its own adjoint?  Only the converged linear-ramp fixed
@@ -1758,12 +1763,33 @@ static inline bool indLinSymmetric(rx_solving_options *op, int scheme,
   return (scheme == RX_INDLIN_ITER_PICARD) && (indLinMaxIterOf(op) > 1);
 }
 
+// The base substep's own order.  Everything here is second order except the
+// Luan-Ostermann pair, which is third (rxode2#1222).
+static inline int indLinBaseOrder(int scheme) {
+  return (scheme == RX_INDLIN_ITER_EXPRB32) ? 3 : 2;
+}
+
+// How many orders one extrapolation level is worth: two when the base step is
+// symmetric, because its expansion skips every odd power, and one otherwise.
+static inline int indLinRichGain(rx_solving_options *op, int scheme,
+                                 const arma::vec *u) {
+  return indLinSymmetric(op, scheme, u) ? 2 : 1;
+}
+
 // The order of the estimate a step at extrapolation level `useRich` is sized
-// from: the difference between the two highest tableau entries measures the
-// error of the LOWER one, which is one whole level down.
-static inline int indLinEstOrder(bool sym, int useRich) {
-  if (useRich <= 0) return 1;              // |converged - forward|, first order
-  return sym ? 2*useRich : (useRich + 1);
+// from.
+static inline int indLinEstOrder(rx_solving_options *op, int scheme,
+                                 const arma::vec *u, int useRich) {
+  if (useRich <= 0) {
+    // With no tableau the estimate is whatever the substep itself produced: the
+    // fixed-point schemes difference their converged answer against the forward
+    // one, which measures the forward answer's first-order error, while exprb32
+    // differences its embedded pair, whose lower member is second order.
+    return (scheme == RX_INDLIN_ITER_EXPRB32) ? 2 : 1;
+  }
+  // Otherwise it is the entry one level below the top, which the top is
+  // differenced against.
+  return indLinBaseOrder(scheme) + (useRich - 1)*indLinRichGain(op, scheme, u);
 }
 
 static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
@@ -1794,10 +1820,15 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
   }
   *ratioOut = rMax;
   // Neville-Aitken sweep in place; column j holds R[k][j] after pass k.
-  const bool sym = indLinSymmetric(op, scheme, u);
+  //
+  // Pass `k` removes the leading term of R[k-1], which is h^(p + (k-1)*s) for a
+  // base step of order `p` whose expansion advances `s` orders per level.  So
+  // 4, 8, 16 for the second-order asymmetric step, 4, 16, 64 for the symmetric
+  // one, and 8, 16, 32 for third-order exprb32.
+  const int p = indLinBaseOrder(scheme);
+  const int s = indLinRichGain(op, scheme, u);
   for (int k = 1; k <= useRich; ++k) {
-    // 4, 16, 64 on an even-only expansion; 4, 8, 16 when every power is there.
-    double f = (double)(1 << (sym ? 2*k : (k + 1)));
+    double f = (double)(1 << (p + (k - 1)*s));
     for (int j = 0; j + k < nEntry; ++j) {
       for (int q = 0; q < neq; ++q) {
         tab(q, j) = (f*tab(q, j + 1) - tab(q, j))/(f - 1.0);
@@ -2024,11 +2055,10 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   // the switch-over count first.
   indLinMaybeRaise(autoRich, richSticky, autoSt, tf, pr);
   // The step is sized from an estimate of the order the extrapolation is built
-  // on -- first order for the plain step, and one level down from the top
-  // otherwise, which is two orders down when the base step is symmetric.  The
-  // exponent is -1/(p_est + 1) in every case.
+  // on -- what the substep itself reported for the plain step, and one level
+  // down from the top otherwise.  The exponent is -1/(p_est + 1) in every case.
   const double expo =
-    -1.0/((double) (indLinEstOrder(indLinSymmetric(op, pr->scheme, u), pr->useRich) + 1));
+    -1.0/((double) (indLinEstOrder(op, pr->scheme, u, pr->useRich) + 1));
   double err = 0.0, ratio = 1.0;
   const int ret = indLinTryStep(cSub, op, ind, neq, rtol, atol, pr->scheme, y0,
                                 pr->t, pr->h, locf, pr->useRich,
