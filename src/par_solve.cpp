@@ -1527,6 +1527,32 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
   return anyPushed ? 1 : 0;
 }
 
+// Is the solver at the original sort-time of an mtime slot that has not fired?
+static inline int _rxMtimeTriggerPending(rx_solve *rx,
+                                         rx_solving_options_ind *ind,
+                                         double xout) {
+  for (int k = 0; k < rx->nMtime; k++) {
+    if (ind->mtime0[k] != R_NegInf && isSameTime(xout, ind->mtime0[k])) return 1;
+  }
+  return 0;
+}
+
+// Points every not-yet-processed record of mtime slot k at its re-evaluated
+// time.  Returns 1 if any record in ix[nextI..] moved.
+static inline int _rxRetimeMtimeSlot(rx_solving_options_ind *ind, int k,
+                                     int nextI) {
+  double *time = ind->timeThread;
+  int moved = 0;
+  for (int j = nextI; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j];
+    if (getEvid(ind, raw) == k + 10) {
+      time[raw] = ind->mtime[k];
+      moved = 1;
+    }
+  }
+  return moved;
+}
+
 // Recomputes ind->mtime[k] with current state yp when the solver is exactly at
 // the original sort-time mtime0[k].  Only fires once per mtime slot (mtime0[k]
 // is set to R_NegInf after firing to prevent double re-evaluation).
@@ -1537,36 +1563,20 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
                                          double *yp, int nextI, double xout) {
   if (rx->nMtime == 0) return 0;
   int nm = rx->nMtime;
-  // Check whether we are at the original time of any pending mtime slot.
-  int needEval = 0;
-  for (int k = 0; k < nm; k++) {
-    if (ind->mtime0[k] != R_NegInf && isSameTime(xout, ind->mtime0[k])) {
-      needEval = 1;
-      break;
-    }
-  }
-  if (!needEval) return 0;
+  if (!_rxMtimeTriggerPending(rx, ind, xout)) return 0;
   // Evaluate all mtime slots with current state into a temporary buffer so we
   // can selectively apply only the slot(s) whose trigger time has arrived.
   double newMtime[90];
   for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
   if (ind->fns && ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
   int changed = 0;
-  double *time = ind->timeThread;
   for (int k = 0; k < nm; k++) {
     if (ind->mtime0[k] == R_NegInf) continue;          // already fired
     if (!isSameTime(xout, ind->mtime0[k])) continue;   // not yet at trigger time
     // Lock in the one-time re-evaluated value and update timeThread.
     if (newMtime[k] != ind->mtime[k]) {
       ind->mtime[k] = newMtime[k];
-      for (int j = nextI; j < ind->n_all_times; j++) {
-        int raw = ind->ix[j];
-        int evid = getEvid(ind, raw);
-        if (evid == k + 10) {
-          time[raw] = ind->mtime[k];
-          changed = 1;
-        }
-      }
+      if (_rxRetimeMtimeSlot(ind, k, nextI)) changed = 1;
     }
     ind->mtime0[k] = R_NegInf; // mark fired; no further re-evaluation
   }
