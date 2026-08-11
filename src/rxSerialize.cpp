@@ -22,7 +22,8 @@ extern rx_globals _globals;
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
 static const uint32_t rxSerializeFormatVer = 3u;
 // Format 3 added the gsolve layout sizes n4/n6 after state_size, and appended
-// the op->indLin convergence set at the end of the stream.
+// the op->indLin convergence set at the end of the stream.  It also carries
+// op->indLinForcing, written with the other indLin settings.
 
 // ---------------------------------------------------------------------------
 // Low-level write helpers -- all abort via Rf_error on failure

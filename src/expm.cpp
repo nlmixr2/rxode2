@@ -773,20 +773,18 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 //
 //   y(h) = exp(Ah) y0 + int_0^h exp(A(h-s)) f(s) ds
 //        = exp(Ah) y0 + h*phi1(Ah) f0 + h*phi2(Ah) (f1 - f0)
-//              \___________  ____________/  \__  __/
-//                          \/                  \/
-//                        `base`                P2
+//          `------------ base ------------'  `-- P2 --'
 //
 // which is EXACT for a forcing that really is linear over the substep, where
 // `meOnly()`'s constant column is only first order.
 //
-// Only `f1` moves with the iterate, so everything else is built ONCE per
+// Only `f1` moves with the iterate, so `base` and `P2` are built ONCE per
 // substep and a pass costs a forcing evaluation and a matrix-vector product --
 // no exponential at all, against one per pass on the constant path.  Keeping
-// the forcing OUT of the exponent is the whole point of splitting it this way:
+// the forcing OUT of the exponent is the point of splitting it this way:
 // folding `f1` into an augmented column (the obvious single-exponential form)
-// gives an operand that moves every pass, which misses the exponential cache
-// every time and costs several times more than it saves.
+// gives an operand that moves every pass, so it misses the exponential cache
+// every time and costs more than it saves.
 //
 // `base` is `meOnly()` itself, with the substep-start forcing in place of the
 // infusion rate -- the same augmented-column identity, and the same cached
@@ -809,7 +807,8 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 // The converged map is symmetric -- its adjoint is itself, because
 // exp(z)*phi2(-z) = phi1(z) - phi2(z) turns the two forcing weights into each
 // other -- so its error expands in EVEN powers of `h` alone.  That is what
-// `indLinRichardson` reads off it; see indLinRichFactor().
+// `indLinRichardson` reads off it; see indLinSymmetric() and the tableau in
+// indLinTryStep().
 typedef struct {
   arma::vec base;   // exp(Ah) y0 + h*phi1(Ah) f0
   arma::mat P2;     // h*phi2(Ah), the weight on the forcing increment
@@ -856,12 +855,12 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
   double *force = InfusionRate_;
   if (u != NULL) {
     IndF(cSub, tcov, tEval, u->memptr(), w);
-    force = u->memptr();
     if (rmp != NULL) {
       const arma::vec out = rmp->base + rmp->P2*(*u - rmp->f0);
       std::copy(out.begin(), out.end(), w);
       return 1;
     }
+    force = u->memptr();
   }
   return meOnly(cSub, w, y0, subTp, subTf, tcov, tEval, force, on_, ME, op, ind);
 }
@@ -914,6 +913,13 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 //
 // These are only reachable through the derived-then-measured route above; do
 // not "restore" them to the analytic values without re-running that sweep.
+//
+// The Picard thresholds are shared with the symmetric linear-ramp step, which
+// gains two orders per level rather than one, because the derivation lands in
+// the same place: 3*N^(1/2) < N gives N > 9, 7*N^(1/3) < 3*N^(1/2) gives
+// N > (7/3)^6 ~ 161 and 15*N^(1/4) < 7*N^(1/3) gives N > (15/7)^12 ~ 2600,
+// which at the measured 1/30 scale are 0.3, 5.4 and 87 against the 1.0, 5.0 and
+// 58 below.
 #define RX_INDLIN_AUTO_RICH_N    1.0
 #define RX_INDLIN_AUTO_RICH4_N   5.0
 #define RX_INDLIN_AUTO_RICH5_N  58.0

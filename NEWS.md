@@ -273,12 +273,11 @@
   rather than a matrix exponential.  The converged ramp step is symmetric, so
   its error expands in even powers of the step alone and `indLinRichardson` now
   removes two orders per level instead of one -- third order becomes fourth,
-  fourth becomes sixth, fifth becomes eighth.  Against an lsoda reference at
-  matched tolerance under the default `indLinRichardson="auto"`, on
-  Michaelis-Menten, a one-compartment oral MM model and a forcing that reads
-  `t`, that is 6 to 70 times more accurate from `1e-5` down for 1.3 to 2.4 times
-  fewer iteration passes and no more steps.  With no extrapolation the two are a
-  wash, as they should be: both are second order there.
+  fourth becomes sixth, fifth becomes eighth.  That is where the difference
+  shows up: under the default `indLinRichardson="auto"` a nonlinear model is
+  several times to a hundred times more accurate at the same tolerance for the
+  same or fewer steps, while with no extrapolation the two are a wash, both
+  being second order there.
 
 - `rxSolve(indLinJac=)` chooses where the forcing Jacobian comes from when
   `method="indLin"` needs one, which is only under `"newton"`, `"exprb"` and

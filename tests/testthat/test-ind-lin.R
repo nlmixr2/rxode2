@@ -628,6 +628,20 @@ d/dt(blood)     = a*intestine - b*blood
       }
     }
 
+    # The exponential Rosenbrock schemes put the whole linearization into the
+    # exponential and never freeze the forcing, so the setting has nothing to
+    # act on there -- bit for bit, not just close.
+    for (.it in c("exprb", "exprb32")) {
+      expect_identical(
+        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
+                                 indLinIteration = .it,
+                                 indLinForcing = "constant"))$central,
+        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
+                                 indLinIteration = .it,
+                                 indLinForcing = "ramp"))$central,
+        info = .it)
+    }
+
     # A forcing with nothing to ramp is untouched, bit for bit: with no state
     # dependence the model stays on the non-iterating codes 1/2, and an infusion
     # rate is constant across the substep by construction.

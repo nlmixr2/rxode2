@@ -266,14 +266,16 @@
 #'
 #' @param indLinForcing how `method="indLin"` carries the `indLin()` forcing
 #'     across one relinearization step.  `"ramp"` (the default) evaluates it at
-#'     both ends of the step and integrates the line between them exactly,
-#'     which is what the step's matrix exponential is already shaped to do;
-#'     `"constant"` holds it fixed across the step and averages a
-#'     start-evaluated and an end-evaluated answer to recover the same order.
-#'     Both are second order, so this changes the step's error constant and how
-#'     fast its iteration contracts rather than its order.  It applies to the
-#'     `"picard"` and `"newton"` schemes; the exponential Rosenbrock ones do
-#'     not freeze the forcing at all.
+#'     both ends of the step and integrates the line between them exactly, with
+#'     the rate matrix taken at the step midpoint; `"constant"` holds it fixed
+#'     across the step and averages a start-linearized and an end-linearized
+#'     answer to reach the same second order.  The ramp step is symmetric, so
+#'     its error expands in even powers of the step alone and
+#'     `indLinRichardson` removes two orders per extrapolation level from it
+#'     rather than one -- which is where most of the difference between the two
+#'     shows up, since the default `indLinRichardson="auto"` extrapolates.  It
+#'     applies to the `"picard"` and `"newton"` schemes; the exponential
+#'     Rosenbrock ones never freeze the forcing.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
