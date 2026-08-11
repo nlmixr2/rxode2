@@ -311,7 +311,6 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @param calcSens3 character vector (or `NULL`) requesting third-order
 #'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__` (`r` over `calcSens3`).
 #'   Requires `calcSens2`; every `calcSens3` element must also be in `calcSens2`.
-#'   The forcing contribution is not generated at third order.
 #' @param doConst Replace constants with values; By default this is `FALSE`.
 #' @param env A pre-loaded symengine environment (from `.rxLoadPrune()`) to
 #'   reuse instead of reloading `model`; when `NULL` it is built internally.
@@ -664,17 +663,8 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   #   from S^q_j:       totalD_r(dAdp_ij)
   #   from S^r_j:       totalD_q(dAdp_ij)
   #   from X_j:         totalD_r(totalD_q(dAdp_ij))
-  # The forcing contribution -- .rxIndLinChainD(.force[[i]], c(p, q, r),
-  # .states), emitted as indLin(S^{pqr}_i) the way the first and second order
-  # blocks above do -- is NOT emitted here.  Third order has never carried one,
-  # so this is not a regression, but now that the orders around it do, a
-  # nonlinear model would be silently short a term; say so rather than let it
-  # pass (rxode2#1187 follow-up).
+  # The forcing is chained one variable further as well (rxode2#1188).
   if (!is.null(calcSens3)) {
-    if (any(vapply(.states, function(.i) !.isZero(.force[[.i]]), logical(1)))) {
-      warning("third-order sensitivities omit the indLin() forcing contribution, so they are incomplete for this nonlinear model; first and second order carry it",
-              call. = FALSE)
-    }
     for (.p in calcSens) {
       .pSe <- .parSe[[.p]]
       .pSym <- symengine::Symbol(.pSe)
@@ -722,6 +712,22 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
             }
           }
           .code <- c(.code, .acc$emit())
+          # forcing: the second-order forcing differentiated once more.  The
+          # third pass chains through the states (-> S^r) and through the
+          # rx__sens_*_BY_<p>__ / _BY_<p>_BY_<q>__ symbols the earlier passes
+          # introduced (-> _BY_p_BY_q_BY_r), which is what .S3() emits.  Every
+          # name it can reach is declared: calcSens3 is a subset of calcSens2,
+          # which is a subset of calcSens.  No accumulator, for the same reason
+          # as second order -- a forcing is keyed by one target compartment.
+          for (.i in .states) {
+            .fi <- .force[[.i]]
+            if (.isZero(.fi)) next
+            .g3 <- .rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
+                                   c(.pSe, .qSe, .rSe))
+            if (!.isZero(.g3)) {
+              .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
+            }
+          }
         }
       }
     }

@@ -184,6 +184,11 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxSensMatExp(calcSens3=)` now carries the `indLin()` forcing at third order,
+  as `calcSens` and `calcSens2` already did.  Only the rate-matrix cross terms
+  were generated, so third-order sensitivities of a nonlinear model were short
+  every term the forcing contributes; the warning that said so is gone.
+
 - The `Al-Mohy` matrix exponential evaluated the wrong Pade numerator below
   degree 13.  The coefficients depend on the degree, and the routine read a
   fixed table -- the degree-13 row -- and truncated it, which is not the
@@ -487,6 +492,22 @@
   leaves the explicit-time error, which silently dropped any forcing that reads
   `t` back to first order: on a Michaelis-Menten model with an `exp(-t)` input
   the error at `atol=rtol=1e-9` falls from 4.6e-03 to 1.1e-07.
+
+### Serialization
+
+- A saved solver state now round-trips the `indLin()` convergence set
+  (`op->indLin`, from `rxModelVars()$indLin$wIndLin`).  Only its length was
+  written, so restoring a state for a model with an `indLin()` forcing left the
+  set itself empty and the relinearization iteration indexed a null pointer.
+
+- A saved solver state now round-trips the initial-condition and scale vectors
+  it claims to.  Their lengths were taken from the distance to the next pointer
+  in the `gsolve` slab rather than from the vectors themselves, so they spanned
+  the intervening `lhs` and tolerance blocks and no state could be restored at
+  all: `rxLoadState()` failed with a size mismatch for every model.  The two
+  lengths now travel with the state, which is what the format version is bumped
+  to 3 for; a state written by an earlier version is rejected with a message
+  asking for it to be re-saved.
 
 ### Installation / linking
 

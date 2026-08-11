@@ -431,15 +431,20 @@ rxTest({
     }
   })
 
-  test_that("rxSensMatExp() says third-order omits the forcing", {
+  test_that("rxSensMatExp() emits a third-order forcing", {
     .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
-    expect_warning(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),
-                                calcSens2 = "Vm", calcSens3 = "Vm"),
-                   "third-order")
-    # a linear model has no forcing to omit, so it stays quiet
+    .lines <- strsplit(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),
+                                    calcSens2 = "Vm", calcSens3 = "Vm"), "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Vm_BY_Vm_BY_Vm__\\) <- ",
+                          .lines)))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_ka_BY_Vm_BY_Vm__\\) <- ",
+                          .lines)))
+    # a linear model has no forcing at any order
     .lin <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
-    expect_no_warning(rxSensMatExp(.lin, calcSens = c("ka", "cl"),
-                                   calcSens2 = "cl", calcSens3 = "cl"))
+    expect_false(any(grepl("^indLin\\(",
+                           strsplit(rxSensMatExp(.lin, calcSens = c("ka", "cl"),
+                                                 calcSens2 = "cl", calcSens3 = "cl"),
+                                    "\n")[[1L]])))
   })
 
   test_that("rxSensMatExp() second-order forcing matches the ODE calcSens2 path", {
@@ -465,6 +470,75 @@ rxTest({
                   "rx__sens_central_BY_Vm_BY_Km__", "rx__sens_central_BY_Km_BY_Km__")) {
       expect_equal(.m[[.cn]], .o[[.cn]], tolerance = 1e-4)
     }
+  })
+
+  test_that("rxSensMatExp() third-order forcing matches the ODE calcSens3 path", {
+    ode_code <- "
+      d/dt(depot) = -ka*depot
+      d/dt(central) = ka*depot - Vm*central/(Km + central)
+    "
+    .cs <- c("ka", "Vm", "Km")
+    .m <- suppressMessages(rxode2(rxSensMatExp(ode_code, calcSens = .cs,
+                                               calcSens2 = c("Vm", "Km"),
+                                               calcSens3 = "Vm")))
+    .o <- suppressMessages(rxode2(ode_code, calcSens = .cs,
+                                  calcSens2 = c("Vm", "Km"), calcSens3 = "Vm"))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(ka = 0.5, Vm = 10, Km = 5)
+    .rm <- rxSolve(.m, .et, method = "indLin", params = .p, atol = 1e-12, rtol = 1e-12)
+    .ro <- rxSolve(.o, .et, params = .p, atol = 1e-12, rtol = 1e-12)
+    for (.cn in c("rx__sens_central_BY_ka_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_Vm_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_Km_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_ka_BY_Km_BY_Vm__",
+                  "rx__sens_central_BY_Vm_BY_Km_BY_Vm__",
+                  "rx__sens_central_BY_Km_BY_Km_BY_Vm__")) {
+      # non-trivial: without the forcing these are not merely inaccurate, they
+      # are a different quantity
+      expect_gt(max(abs(.ro[[.cn]])), 0.01)
+      expect_equal(.rm[[.cn]], .ro[[.cn]], tolerance = 1e-4)
+    }
+
+    # ... and against finite differences of the second-order sensitivities,
+    # which is the reference that does not share the ODE path's own machinery
+    .h <- 1e-3
+    .pu <- .p; .pu[["Vm"]] <- .p[["Vm"]] + .h
+    .pd <- .p; .pd[["Vm"]] <- .p[["Vm"]] - .h
+    .ru <- rxSolve(.m, .et, method = "indLin", params = .pu, atol = 1e-12, rtol = 1e-12)
+    .rd <- rxSolve(.m, .et, method = "indLin", params = .pd, atol = 1e-12, rtol = 1e-12)
+    for (.nm in c("Vm_BY_Vm", "Km_BY_Vm", "ka_BY_Vm")) {
+      expect_equal(.rm[[paste0("rx__sens_central_BY_", .nm, "_BY_Vm__")]],
+                   (.ru[[paste0("rx__sens_central_BY_", .nm, "__")]] -
+                      .rd[[paste0("rx__sens_central_BY_", .nm, "__")]]) / (2 * .h),
+                   tolerance = 1e-4)
+    }
+  })
+
+  test_that("rxSensMatExp() third-order forcing handles a fully repeated parameter", {
+    # p == q == r: every differentiation path lands on the same compartment, so
+    # the chained forcing must still be one line per target and the cross terms
+    # must sum rather than collide.
+    ode_code <- "
+      d/dt(central) = -Vm*central/(Km + central)
+    "
+    .code <- rxSensMatExp(ode_code, calcSens = "Vm", calcSens2 = "Vm", calcSens3 = "Vm")
+    .lines <- strsplit(.code, "\n")[[1L]]
+    expect_equal(sum(grepl("^indLin\\(rx__sens_central_BY_Vm_BY_Vm_BY_Vm__\\) <- ",
+                           .lines)), 1L)
+    .m <- suppressMessages(rxode2(.code))
+    .o <- suppressMessages(rxode2(ode_code, calcSens = "Vm", calcSens2 = "Vm",
+                                  calcSens3 = "Vm"))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0, cmt = "central") |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(Vm = 10, Km = 5)
+    .rm <- rxSolve(.m, .et, method = "indLin", params = .p, atol = 1e-12, rtol = 1e-12)
+    .ro <- rxSolve(.o, .et, params = .p, atol = 1e-12, rtol = 1e-12)
+    expect_gt(max(abs(.ro$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__)), 0.01)
+    expect_equal(.rm$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__,
+                 .ro$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__, tolerance = 1e-4)
   })
 
   test_that("matExp symengine env can build jacobians and sensitivities", {

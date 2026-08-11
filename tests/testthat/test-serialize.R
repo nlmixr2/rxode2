@@ -258,5 +258,57 @@ rxTest({
         as.data.frame(groupedDoseOnlyKeepExpanded)[, c("id", "time", "cp", "grp")]
       )
     })
+
+    # The C-state restore path (rxLoadState()/rxSolveFromRaw_()) rebuilds the
+    # solver from the binary alone, without the setup that normally fills
+    # op->indLin and the gsolve layout (rxode2#1189).
+    cStateSolve <- function(object, bundle, control = rxControl(),
+                            params = NULL) {
+      .rxRestoreStateBundle(bundle)
+      rxSolveFromRaw_(object, bundle$cState, bundle$solveState, control,
+                      NULL, NULL, params, NULL, NULL)
+    }
+
+    cStateFile <- tempfile(fileext = ".rxbin")
+    rxSolve(mod, theta, ev, serializeFile = cStateFile)
+    cStateBundle <- .rxReadStateBundle(cStateFile)
+
+    test_that("rxLoadState() restores the saved C state", {
+      expect_true(rxLoadState(cStateFile))
+    })
+
+    test_that("C-state replay reproduces the direct solve", {
+      cStateRep <- cStateSolve(mod, cStateBundle, params = theta)
+      expect_equal(as.data.frame(cStateRep), as.data.frame(ref))
+      expect_equal(cStateRep$params, ref$params)
+    })
+
+    # indLin() forcing: op->indLin is the convergence set the Picard iteration
+    # indexes with, and it is built from mv$indLin[[4]] only on a full setup.
+    indLinMod <- suppressMessages(rxode2({
+      ka <- 1
+      Vc <- 1
+      Vmax <- 0.00734
+      Km <- 0.3672
+      Cp <- center / Vc
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - Vmax / (Km + Cp) * Cp
+    }, indLin = TRUE))
+    indLinEv <- et(amt = 100) |> et(seq(0, 24, by = 1))
+    indLinRef <- rxSolve(indLinMod, indLinEv, method = "indLin")
+    indLinFile <- tempfile(fileext = ".rxbin")
+    rxSolve(indLinMod, indLinEv, method = "indLin", serializeFile = indLinFile)
+
+    test_that("indLin() replay from a serialization file matches direct solve", {
+      expect_equal(as.data.frame(rxSolve(indLinMod, indLinFile)),
+                   as.data.frame(indLinRef))
+    })
+
+    test_that("indLin() C-state replay keeps the convergence set", {
+      expect_equal(
+        as.data.frame(cStateSolve(indLinMod, .rxReadStateBundle(indLinFile),
+                                  rxControl(method = "indLin"))),
+        as.data.frame(indLinRef))
+    })
   })
 })

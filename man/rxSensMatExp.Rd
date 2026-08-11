@@ -25,8 +25,7 @@ Ignored for \code{linCmt()} states (those use Stan forward-AD).}
 
 \item{calcSens3}{character vector (or \code{NULL}) requesting third-order
 sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__} (\code{r} over \code{calcSens3}).
-Requires \code{calcSens2}; every \code{calcSens3} element must also be in \code{calcSens2}.
-The forcing contribution is not generated at third order.}
+Requires \code{calcSens2}; every \code{calcSens3} element must also be in \code{calcSens2}.}
 
 \item{doConst}{Replace constants with values; By default this is \code{FALSE}.}
 
