@@ -1769,6 +1769,10 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 .rxCompileEnv$cc <- NA_character_
 #' Get the last compiled model information as alist
 #'
+#' @param what Which elements to message to the console; by default all of
+#'   them.  Use `what="stderr"` for the compiler error alone, or
+#'   `what=character(0)` to message nothing and only take the returned list.
+#'
 #' @return A list contains the following elements:
 #'
 #' * `msg` the message for a bad compilation, or NULL if successful.
@@ -1791,12 +1795,121 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 #' })
 #' rxLastCompile()
 #' }
-rxLastCompile <- function() {
-  lapply(names(.rxCompileEnv$lst), function(nm) {
-    cli::rule(left = nm)
+rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
+  what <- intersect(what, names(.rxCompileEnv$lst))
+  lapply(what, function(nm) {
+    message(cli::rule(left = nm))
     message(.rxCompileEnv$lst[[nm]])
   })
   return(invisible(.rxCompileEnv$lst))
+}
+#' Compiler diagnostic lines from a compilation's standard error
+#'
+#' @param stderr Character vector (or single string) of the compiler's
+#'   standard error.
+#'
+#' @param max Maximum number of diagnostic lines to return.
+#'
+#' @return Character vector of the compiler's error lines (warnings and
+#'   progress chatter dropped), at most `max` long.  The number of
+#'   diagnostic lines found before truncation is in the `"n"` attribute.
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxCompileErrLines <- function(stderr, max = getOption("rxode2.compileErrLines", 10L)) {
+  if (length(stderr) == 0L) return(structure(character(0), n = 0L))
+  .lines <- unlist(strsplit(paste(stderr, collapse = "\n"), "\n", fixed = TRUE))
+  .lines <- sub("\r$", "", .lines)
+  .lines <- .lines[nzchar(trimws(.lines))]
+  # a compiler diagnostic, not a warning or a progress line
+  .re <- paste0("(^|[^[:alnum:]_])(fatal error|error)\\s*:",
+                "|undefined reference to",
+                "|undefined symbol",
+                "|unable to load shared object",
+                "|^collect2:",
+                "|ld returned [0-9]+ exit status")
+  .err <- unique(.lines[grepl(.re, .lines, perl = TRUE, ignore.case = TRUE)])
+  # R CMD SHLIB's own wrapper line says nothing the diagnostics do not
+  .err <- .err[!grepl("^ERROR: compilation failed", .err)]
+  .n <- length(.err)
+  if (.n > max) .err <- .err[seq_len(max)]
+  structure(.err, n = .n)
+}
+#' Does a failed compilation look like a broken toolchain?
+#'
+#' @param stderr Character vector (or single string) of the compiler's
+#'   standard error.
+#'
+#' @param errLines Compiler diagnostics from [.rxCompileErrLines()].
+#'
+#' @return `TRUE` when the failure points at the user's compiler setup
+#'   (nothing was compiled, a tool was missing, a library was not found)
+#'   rather than at the C code rxode2 generated.
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxCompileToolchainProblem <- function(stderr, errLines = .rxCompileErrLines(stderr)) {
+  if (length(errLines) == 0L) return(TRUE)
+  .txt <- paste(stderr, collapse = "\n")
+  .re <- paste0("command not found",
+                "|(^|[[:space:]])(make|gcc|clang|cc|g\\+\\+|ld|sh|bash|Rcmd)[[:space:]]*:[^\n]*not found",
+                "|cannot find -l",
+                "|\\bRtools\\b",
+                "|no compilers? (is |are )?(installed|available|found)",
+                "|compilers? (is |are )?not (installed|available|found)")
+  grepl(.re, .txt, perl = TRUE, ignore.case = TRUE)
+}
+#' Message a failed model build
+#'
+#' Shows the compiler's own diagnostics (and nothing else) plus how to get
+#' the full compiler output, and blames the toolchain only when the failure
+#' actually looks like a toolchain problem.
+#'
+#' @param msg The message describing what step failed.
+#'
+#' @param stderr Standard error of the compilation, possibly `NULL`.
+#'
+#' @param kind One of `"compile"` (the model did not build), `"load"` (it
+#'   built but would not load) or `"modelVars"` (it loaded without the model
+#'   variables).
+#'
+#' @return Nothing, called for the messages
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxBadBuildMsg <- function(msg, stderr, kind = "compile") {
+  .err <- .rxCompileErrLines(stderr)
+  .toolchain <- .rxCompileToolchainProblem(stderr, .err)
+  message(paste0("Error building the model: ", msg))
+  if (length(.err) > 0L) {
+    message(paste(.err, collapse = "\n"))
+    .n <- attr(.err, "n")
+    if (.n > length(.err)) {
+      message(sprintf("(%d more compiler error line(s) not shown)", .n - length(.err)))
+    }
+  }
+  message("for the full compiler output and the generated C code use:")
+  message("  cat(rxode2::rxLastCompile()$stderr) # compiler error")
+  message("  cat(rxode2::rxLastCompile()$c)      # generated C code")
+  message("  rxode2::rxLastCompile()             # everything")
+  if (kind == "load") {
+    message("the model compiled but could not be loaded")
+  }
+  if (kind == "modelVars" || !.toolchain) {
+    message("this points at the C code rxode2 generated, not at your setup;")
+    message("please report it at https://github.com/nlmixr2/rxode2/issues")
+    return(invisible())
+  }
+  if (.Platform$OS.type == "windows") {
+    message("this could be because your Rtools is not set up correctly")
+  } else {
+    message("please make sure you have a working C compiler set up")
+  }
+  message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
+  invisible()
 }
 #' Was the last compilation successful?
 #'
@@ -1880,6 +1993,37 @@ rxCompile.rxModelVars <- function(model, # Model
   .cDllFile <- file.path(.dir, sprintf("%s%s", substr(prefix, 0, nchar(prefix) - 1), .Platform$dynlib.ext))
   .allModVars <- NULL
   .needCompile <- TRUE
+  # .out is filled in by the compilation below; the load/model-variable
+  # failures are reachable without compiling, so .badBuild is defined here
+  # (and tolerates a NULL .out) rather than inside the compilation branch.
+  .out <- NULL
+  .badBuild <- function(msg, cSrc = TRUE, kind = "compile") {
+    if (is.null(.out)) {
+      # nothing was compiled in this call, so any saved compiler output
+      # belongs to a different model
+      .rxCompileEnv$lst <- list()
+    } else {
+      .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
+    }
+    .rxCompileEnv$lst[["msg"]] <- gettext(msg)
+    if (cSrc) {
+      if (file.exists(.cFile)) {
+        .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
+      }
+    } else {
+      # report what the loader said instead of stopping on it
+      .load <- try(dyn.load(.cDllFile), silent = TRUE)
+      if (inherits(.load, "try-error")) {
+        .rxCompileEnv$lst[["stderr"]] <-
+          paste(c(.rxCompileEnv$lst[["stderr"]],
+                  conditionMessage(attr(.load, "condition"))),
+                collapse = "\n")
+      }
+    }
+    .rxCompileEnv$success <- FALSE
+    .rxBadBuildMsg(msg, .rxCompileEnv$lst[["stderr"]], kind)
+    stop(msg, call. = FALSE)
+  }
   if (file.exists(.cDllFile)) {
     .modVars <- sprintf("%smodel_vars", prefix)
     if (!missing(prefix) && !missing(dir) &&
@@ -2082,27 +2226,9 @@ rxCompile.rxModelVars <- function(model, # Model
         .stderr <- rawToChar(.out$stderr)
         .rxCompileEnv$lst <- list()
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
-          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, sep = "\n")
+          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, collapse = "\n")
         }
         .rxCompileEnv$success <- TRUE
-        .badBuild <- function(msg, cSrc = TRUE) {
-          .rxCompileEnv$lst[["msg"]] <- gettext(msg)
-          .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
-          if (cSrc) {
-            .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
-          } else {
-            dyn.load(.cDllFile)
-          }
-          message("Error building the model: see rxode2::rxLastCompile()")
-          .rxCompileEnv$success <- FALSE
-          if (.Platform$OS.type == "windows") {
-            message("this could be because your Rtools is not set up correctly")
-          } else {
-            message("please make sure you have a working C compiler set up")
-          }
-          message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
-          stop(msg, call. = FALSE)
-        }
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }
@@ -2114,7 +2240,7 @@ rxCompile.rxModelVars <- function(model, # Model
       rxUnloadAll()
       .tmp <- try(dynLoad(.cDllFile), silent = TRUE)
       if (inherits(.tmp, "try-error")) {
-        .badBuild("Error loading model (though dll exists)", cSrc = FALSE)
+        .badBuild("Error loading model (though dll exists)", cSrc = FALSE, kind = "load")
       } else {
         warning("unloaded all rxode2 dlls before loading the current DLL", call. = FALSE)
       }
@@ -2123,7 +2249,7 @@ rxCompile.rxModelVars <- function(model, # Model
     if (is.loaded(.modVars)) {
       .allModVars <- eval(parse(text = sprintf(".Call(\"%s\")", .modVars)), envir = .GlobalEnv)
     } else {
-      .badBuild("Error, model doesn't have correct model variables.")
+      .badBuild("Error, model doesn't have correct model variables.", kind = "modelVars")
     }
   }
   ## removeSource() so this generated closure does not carry a srcref back to
