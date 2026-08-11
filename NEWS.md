@@ -34,8 +34,11 @@
   from parameters or covariates (e.g. `indLin(Gc) <- Gprod`) stays unflagged, as
   does one whose variables were reassigned to something state free before it
   reads them.  A forcing inside an `if`/`while` may not run, so it adds to what
-  the forcings before it established rather than replacing them.  The entries
-  are the 0-indexed positions in `$state`, named with those states.
+  the forcings before it established rather than replacing them.  In a model
+  that also has a `linCmt()`, every forcing is flagged: a solved concentration
+  moves within the step, so such a forcing cannot be treated as constant over
+  the interval the way a locf covariate can.  The entries are the 0-indexed
+  positions in `$state`, named with those states.
 
 - `rxModelNameLhs()` registers the name an assignment is making, for
   assignment operators like `nlmixr2save`'s `:=` (`fit := nlmixr2(...)`).  It

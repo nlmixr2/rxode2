@@ -984,11 +984,17 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
-// The inductive-linearization driver never steps through dydt(), and fires
-// evid_() from calc_lhs instead (see ind_indLin0).  copyLinCmt() reaches the
-// linCmt() amounts through dydt(), so hide the event-time flag across it: left
-// set, dydt() would fire evid_() as well and a dose the model pushes at run
-// time would happen twice.
+// The inductive-linearization driver makes no dydt() call of its own, so it
+// fires evid_() from calc_lhs (see ind_indLin0).  copyLinCmt() reaches the
+// linCmt() amounts through dydt(), which fires evid_() too, so hide the
+// event-time flag across it: left set, a dose the model pushes at run time
+// happens twice.
+//
+// Letting the dydt() firing stand instead and standing calc_lhs down would also
+// work and would match ind_linCmt0() -- but it MOVES the pushed dose, which
+// sorts before the observation when pushed mid-solve and after it when pushed
+// from calc_lhs.  That is rxode2#1214 (evid_() placement differs by method),
+// not this fix, so keep the placement this driver already had.
 static inline void copyLinCmtIndLin(int *neq, rx_solving_options_ind *ind,
                                     rx_solving_options *op, double *yp) {
   if (op->numLin <= 0) return;
@@ -1956,7 +1962,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         preSolve(op, ind, *xp, xout, yp);
         *idid = indLin(ind->id, op, ind, *xp, yp, xout, ind->InfusionRate, ind->on,
                        (ind->fns ? ind->fns->me : NULL), (ind->fns ? ind->fns->indf : NULL));
-        copyLinCmtIndLin(neq, ind, op, yp);
+        copyLinCmt(neq, ind, op, yp);
       }
       if (*idid <= 0) {
         ind->rc[0] = *idid;
@@ -4163,8 +4169,9 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       // (src/codegen.c TEVID), and a matExp()/indLin() model's dydt is a no-op
       // stub -- so without this, doses pushed by the model at run time
       // (bolus(), infuse(), replace(), multiply(), reset(), ...) never happen
-      // on this method.  Unlike linCmt there is no internal dydt call to have
-      // already consumed the flag, so calc_lhs is the only firing point.
+      // on this method.  There is no internal dydt call to have already consumed
+      // the flag -- copyLinCmtIndLin() deliberately hides it -- so calc_lhs is
+      // the only firing point.
       // Observation AND model-time (mtime, evid 10-99) records: an ODE method
       // fires evid_() from dydt continuously, so a guard like
       // `t >= mt && t < mt + 0.5` triggers wherever the integrator steps.  With

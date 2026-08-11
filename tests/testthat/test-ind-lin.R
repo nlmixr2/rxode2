@@ -1611,4 +1611,41 @@ d/dt(blood)     = a*intestine - b*blood
     expect_false(any(is.na(suppressMessages(
       rxSolve(.m, .p, .e, method = "indLin"))$eff)))
   })
+
+  test_that("evid_() fires once in a mixed linCmt() indLin solve (rxode2#1215)", {
+    # This driver makes no dydt() call of its own and fires evid_() from
+    # calc_lhs.  Refreshing the linCmt() amounts now calls dydt(), which would
+    # fire evid_() a second time, so the copy hides the event-time flag.  (Where
+    # in the record order the pushed dose lands is rxode2#1214 and is not
+    # asserted here; that it lands exactly once is.)
+    .m <- suppressMessages(rxode2({
+      cp <- linCmt(ka, cl, v)
+      d/dt(eff) <- ke0 * (cp - eff)
+      if (t == 24) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    }))
+    .noPush <- suppressMessages(rxode2({
+      cp <- linCmt(ka, cl, v)
+      d/dt(eff) <- ke0 * (cp - eff)
+    }))
+    .p <- c(ka = 0.5, cl = 1, v = 10, ke0 = 0.3)
+    .e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
+    .e1 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
+      et(seq(0, 48, by = 1))
+    .e2 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
+      et(amt = 50, time = 24) |> et(seq(0, 48, by = 1))
+    .r <- suppressMessages(rxSolve(.m, .p, .e, method = "indLin"))
+    .one <- suppressMessages(rxSolve(.noPush, .p, .e1, method = "indLin"))
+    .two <- suppressMessages(rxSolve(.noPush, .p, .e2, method = "indLin"))
+    expect_equal(.r$cp, .one$cp)
+    expect_equal(.r$eff, .one$eff)
+    expect_false(isTRUE(all.equal(.one$cp, .two$cp)))
+    # and the dose shows up exactly once in the returned event rows
+    expect_equal(
+      nrow(suppressMessages(rxSolve(.m, .p, .e, method = "indLin",
+                                    addDosing = TRUE)) |>
+             subset(evid == 1L & time == 24)),
+      1L)
+  })
 })
