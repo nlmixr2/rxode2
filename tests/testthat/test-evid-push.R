@@ -689,6 +689,78 @@ rxTest({
     expect_equal(sum(!is.na(r$evid) & r$evid == 1 & r$amt == 50), 0)
   })
 
+  test_that("mtime() at a time already in the event table pushes once (rxode2#1152)", {
+    # The classic block form and the functional/ui form of the same model must
+    # push the same single dose.  They did not: rxSolve() defaults to
+    # useLinCmt=TRUE for a ui model, so this one is auto-converted to a
+    # linCmt() model and solved by the linCmt driver -- which used to fire
+    # evid_() from BOTH its internal dydt(xout) and a calc_lhs() pass for the
+    # same-time observation.  With mtime(visit1) <- 24 and 24 also in the
+    # sampling grid, both fired and the bolus was pushed twice.  There is now a
+    # single firing point (rxode2#1214), so every path pushes once.
+    ev <- et(amt = 300, cmt = "depot", time = 0) |> et(seq(0, 72, by = 1))
+    cnt <- function(d) {
+      d <- as.data.frame(d)
+      dose <- d[!is.na(d$evid) & d$evid != 0, ]
+      c(nAt24 = sum(dose$time == 24), total = sum(dose$amt))
+    }
+    p <- c(ka = 1.57, cl = 2.72, v = 31.5)
+
+    classic <- rxode2({
+      mtime(visit1) <- 24
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      if (t == visit1) bolus(300, depot, 0, 0, 0)
+    })
+    ui <- suppressMessages(function() {
+      ini({
+        ka <- 1.57
+        cl <- 2.72
+        v <- 31.5
+      })
+      model({
+        mtime(visit1) <- 24
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+        if (t == visit1) bolus(300, depot, 0, 0, 0)
+      })
+    })
+
+    want <- c(nAt24 = 1, total = 600)
+    expect_equal(cnt(rxSolve(classic, p, ev, addDosing = TRUE)), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE))), want)
+    # the ODE form of the same ui model (no linCmt conversion) must agree
+    expect_equal(cnt(suppressMessages(
+      rxSolve(ui, ev, addDosing = TRUE, useLinCmt = FALSE))), want)
+
+    # dropping 24 from the grid was the documented workaround; it must give the
+    # same answer as keeping it
+    evNo24 <- et(amt = 300, cmt = "depot", time = 0) |>
+      et(setdiff(seq(0, 72, by = 1), 24))
+    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE))), want)
+
+    # two mtime()s in the grid scaled the doubling; 300 + 300 + 300, not 1500
+    ui2 <- suppressMessages(function() {
+      ini({
+        ka <- 1.57
+        cl <- 2.72
+        v <- 31.5
+      })
+      model({
+        mtime(visit1) <- 24
+        mtime(visit2) <- 48
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+        if (t == visit1 || t == visit2) bolus(300, depot, 0, 0, 0)
+      })
+    })
+    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE))),
+                 c(nAt24 = 1, total = 900))
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x

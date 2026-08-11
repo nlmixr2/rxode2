@@ -104,6 +104,16 @@
   observation between two key events at once, which cannot honour an event the
   model decides on at one of those observations.
 
+- An adaptive dosing helper guarded by `t == <mtime>` no longer pushes its dose
+  twice when that `mtime()` names a time the event table already contains.  The
+  same model written as a function (`ini({})`/`model({})`) and as an
+  `rxode2({})` block disagreed, because `rxSolve()` defaults to
+  `useLinCmt=TRUE` for a function model: that one was auto-converted to a
+  `linCmt()` model, and the `linCmt()` driver fired `evid_()` from both its own
+  internal model evaluation and a second pass for the same-time observation.
+  Both forms now push once, and the doubled dose (silent except in the state at
+  the next time point) is gone.
+
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with
   `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame
