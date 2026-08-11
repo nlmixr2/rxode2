@@ -1336,7 +1336,12 @@ static thread_local int _rxEvidSortStart = -1;
 // once.  Without this a state-dependent mtime() that reschedules fires evid_()
 // twice at the same time -- once on the requeued pass and again on the record
 // that takes over slot i.
-static thread_local bool _rxEvidMtimeRequeued = false;
+//
+// Keyed on the subject and record it was set for so a value stranded by an
+// aborted solve cannot suppress an unrelated record's push later on the same
+// thread.
+static thread_local int _rxEvidRequeueId  = -1;
+static thread_local int _rxEvidRequeueIdx = -1;
 
 // Push a current/future event into the individual's own event arrays during ODE solving.
 // _curTime: current ODE model time (for past-time guard with solver tolerance).
@@ -1566,8 +1571,11 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
     ind->mtime0[k] = R_NegInf; // mark fired; no further re-evaluation
   }
   // Every driver responds to a change by re-sorting and re-running this slot;
-  // tell updateSolve() to sit this pass out (see _rxEvidMtimeRequeued).
-  if (changed) _rxEvidMtimeRequeued = true;
+  // tell updateSolve() to sit this pass out (see _rxEvidRequeueId).
+  if (changed) {
+    _rxEvidRequeueId  = ind->id;
+    _rxEvidRequeueIdx = nextI;
+  }
   return changed;
 }
 
@@ -4052,6 +4060,11 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
             int &i, int &nx) {
   (void)nx; // the timeline can grow below, so ind->n_all_times is the authority
   _growSolveIfNeeded(ind, op, i, 0);
+  // Clear any sort-start stranded by an earlier call that did not return
+  // normally (an R-level error inside a user function can longjmp out of
+  // calc_lhs).  Safe to do unconditionally here: a push only ever happens
+  // inside the calc_lhs() below, which this function sets the value for.
+  _rxEvidSortStart = -1;
   // This calc_lhs() is the single firing point for evid_() (bolus(), infuse(),
   // replace(), multiply(), reset(), ...) on EVERY method.  It runs at the
   // record's own time with the record's own events already applied, and pushes
@@ -4060,8 +4073,10 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   // be.  The old ODE-only path fired from dydt() at the start of the next
   // integration interval, which inserted the event only after the solver had
   // already integrated past it.
-  bool _fire = _rxFireEvid(ind, op, i) && !_rxEvidMtimeRequeued;
-  _rxEvidMtimeRequeued = false;
+  bool _mtimeRequeued = (_rxEvidRequeueId == ind->id && _rxEvidRequeueIdx == i);
+  _rxEvidRequeueId = -1;
+  _rxEvidRequeueIdx = -1;
+  bool _fire = _rxFireEvid(ind, op, i) && !_mtimeRequeued;
   if (_fire) {
     _rxEvidSortStart = i + 1;
     ind->_atEventTime = 1;

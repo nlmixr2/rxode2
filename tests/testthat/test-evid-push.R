@@ -671,6 +671,37 @@ rxTest({
     expect_equal(dens$central, plain$central, tolerance = 1e-5)
   })
 
+  test_that("delay() combined with an evid_() push is refused", {
+    # rxode2#1214: delay() needs dense output (a non-dense method records no
+    # history and silently returns wrong lagged values), while a dense segment
+    # integrates across every observation between two key events at once and so
+    # cannot apply an event pushed at one of those observations.  Honouring
+    # either one silently breaks the other -- delay() returned 0 for every
+    # lookup -- so the combination is refused.
+    expect_error(
+      rxSolve(rxode2({
+        d/dt(central) <- -cl / v * central
+        d/dt(eff) <- delay(central, 1.0) - eff
+        if (t >= 5 && t < 5.1) {
+          bolus(100, central, 0, 0, 0)
+        }
+      }), c(cl = 1, v = 10), et(amt = 100, time = 0) |> et(seq(0, 20, by = 1))),
+      regexp = "delay\\(\\) with evid_\\(\\)")
+
+    # the same delay() model without a push still solves, and matches the
+    # identical dose written in the data
+    ref <- rxode2({
+      d/dt(central) <- -cl / v * central
+      d/dt(eff) <- delay(central, 1.0) - eff
+    })
+    p <- c(cl = 1, v = 10)
+    obs <- seq(0, 20, by = 1)
+    r <- rxSolve(ref, p, et(amt = 100, time = 0) |>
+                   et(time = 5, amt = 100, cmt = 1, evid = 1) |> et(obs))
+    expect_true(all(is.finite(r$eff)))
+    expect_true(r$eff[r$time == 20][1] > 1)
+  })
+
   test_that("evid_() at the final record does not extend the timeline", {
     # The last record starts no integration interval, so it does not push --
     # otherwise an unconditional evid_() would append a record that pushes

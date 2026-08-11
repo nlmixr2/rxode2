@@ -102,7 +102,10 @@
   truncated by the dense `dop853` driver, and `dense=TRUE` is now dropped (with
   a warning) for a model that pushes: a dense segment integrates across every
   observation between two key events at once, which cannot honour an event the
-  model decides on at one of those observations.
+  model decides on at one of those observations.  A model that combines
+  `delay()` with a pushed event is now an error rather than silently returning
+  one of two wrong answers: `delay()` requires the dense output that a pushed
+  event rules out.
 
 - An adaptive dosing helper guarded by `t == <mtime>` no longer pushes its dose
   twice when that `mtime()` names a time the event table already contains.  The
