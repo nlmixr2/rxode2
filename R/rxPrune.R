@@ -30,6 +30,25 @@
   ret
 }
 
+#' Parenthesize an operand of `%%` when needed
+#'
+#' The rxode2 grammar requires a primary expression on both sides of
+#' `%%`, so anything that is not a plain identifier or number has to be
+#' wrapped in parentheses.
+#'
+#' @param x character string of an already-translated operand
+#' @return `x`, parenthesized when it is not a primary expression
+#' @noRd
+#' @author Matthew L. Fidler
+.rxModOperand <- function(x) {
+  if (grepl("^[a-zA-Z._][a-zA-Z0-9._]*$", x) ||
+        grepl("^[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$", x)) {
+    x
+  } else {
+    paste0("(", x, ")")
+  }
+}
+
 #'  Internal Pruning function
 #'
 #' @param x List of quoted lines
@@ -129,6 +148,11 @@
           .rxPrune(x[[3]], envir = envir, strAssign=strAssign)
         ))
       }
+    } else if (identical(x[[1]], quote(`%%`))) {
+      return(paste0(
+        .rxModOperand(.rxPrune(x[[2]], envir = envir, strAssign=strAssign)), "%%",
+        .rxModOperand(.rxPrune(x[[3]], envir = envir, strAssign=strAssign))
+      ))
     } else if (identical(x[[1]], quote(`*`)) ||
       identical(x[[1]], quote(`^`)) ||
       identical(x[[1]], quote(`+`)) ||

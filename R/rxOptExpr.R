@@ -68,7 +68,12 @@
   }
 }
 
+.rxOptMod <- function(e1, e2) {
+  .addExpr(paste0(.rxModOperand(e1), "%%", .rxModOperand(e2)))
+}
+
 .rxOptEnv <- new.env(parent = emptyenv())
+.rxOptEnv[["%%"]] <- .rxOptMod
 .rxOptEnv[["^"]] <- .rxOptBin("^")
 .rxOptEnv[["**"]] <- .rxOptBin("^")
 
@@ -225,6 +230,11 @@
         }
       }
       return(paste0("(", ..rxOpt(.x2), ")"))
+    } else if (identical(x[[1]], quote(`%%`))) {
+      return(paste0(
+        .rxModOperand(..rxOpt(x[[2]])), "%%",
+        .rxModOperand(..rxOpt(x[[3]]))
+      ))
     } else if (identical(x[[1]], quote(`*`)) ||
       identical(x[[1]], quote(`^`)) ||
       identical(x[[1]], quote(`+`)) ||
