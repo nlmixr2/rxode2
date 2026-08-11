@@ -45,10 +45,14 @@ static void sWriteI32(std::vector<uint8_t> *f, int32_t v, const char *what) {
 }
 
 // Write a size-prefixed blob: uint64_t count then count elements of width w.
+// A NULL pointer is an absent array, so it writes a count of zero -- writing the
+// asked-for count with no payload behind it would leave every later field in the
+// stream shifted and read as garbage.
 static void sWriteBlob(std::vector<uint8_t> *f, const void *data, uint64_t count, size_t w,
                        const char *what) {
+  if (data == NULL) count = 0;
   sWriteU64(f, count, what);
-  if (count > 0 && data != NULL)
+  if (count > 0)
     sWrite(f, data, count * w, what);
 }
 
@@ -237,7 +241,9 @@ SEXP rxSaveState_() {
   // n4 (initsC.size()) and n6 (scaleC.size()) drive the gsolve layout and are
   // not recoverable from any scalar field, so they travel with it: ginits is
   // followed by glhs and gscale by gatol2.
-  int32_t n4_saved = op->neq, n6_saved = op->neq;
+  // Zero when the slab is not allocated: the blobs below would then be absent,
+  // and a layout claiming a length nothing was written for cannot be restored.
+  int32_t n4_saved = 0, n6_saved = 0;
   if (_globals.ginits && _globals.glhs && _globals.glhs >= _globals.ginits)
     n4_saved = (int32_t)(_globals.glhs - _globals.ginits);
   if (_globals.gscale && _globals.gatol2 && _globals.gatol2 >= _globals.gscale)
