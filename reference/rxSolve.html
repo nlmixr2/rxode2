@@ -1985,7 +1985,8 @@ extra forcing evaluations; <code>"fd"</code> central-differences the forcing, at
 symbolic one when the model carries it and falls back to finite
 differences otherwise – which is what happens above
 <code>getOption("rxode2.indLinJacMaxStates")</code> states, where the symbolic
-emission is skipped to bound the symengine work at model build.</p></dd>
+emission is skipped to bound the symengine work at model build, and on a
+sensitivity model, whose <code>df()/dy()</code> lines cover the physical states only.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>
