@@ -4030,8 +4030,11 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
             double &xout,
             int &i, int &nx) {
   // Grow if needed before accessing getSolve(i) and optionally getSolve(i+1).
-  _growSolveIfNeeded(ind, op, i, (i + 1 != nx));
-  if (i+1 != nx) {
+  // Record whether the next slot was seeded here: callers pass ind->n_all_times
+  // itself as nx, so a push below would change nx under us.
+  bool _seededNext = (i + 1 != nx);
+  _growSolveIfNeeded(ind, op, i, _seededNext);
+  if (_seededNext) {
     std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
   }
   // This calc_lhs() is the single firing point for evid_() (bolus(), infuse(),
@@ -4051,7 +4054,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
   if (_fire) {
     _rxEvidSortStart = -1;
-    if (ind->n_all_times > _nBefore && i + 1 == nx) {
+    if (!_seededNext && ind->n_all_times > _nBefore) {
       // The copy above was skipped because i+1 was past the end of the
       // timeline; the push has since created that slot, so seed it here.
       _growSolveIfNeeded(ind, op, i, 1);
