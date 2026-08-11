@@ -1319,6 +1319,16 @@ static inline void _rxSortIdoseSuffix(rx_solving_options_ind *ind, int startDose
        });
 }
 
+// ix position that _rxPushDose() re-sorts from, set by updateSolve() around the
+// calc_lhs() call that fires evid_(): the slot immediately after the record the
+// model body is being evaluated at.  A pushed event therefore lands after that
+// record and before every record still to be processed, so a dose pushed at the
+// current time is applied before the solver advances -- the same place the
+// identical event written in the data would sort.  -1 when no fire is in
+// progress (then the pre-existing ind->idx rule applies).  Thread-local because
+// a subject is solved start to finish on one thread.
+static thread_local int _rxEvidSortStart = -1;
+
 // Push a current/future event into the individual's own event arrays during ODE solving.
 // _curTime: current ODE model time (for past-time guard with solver tolerance).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
@@ -1477,8 +1487,13 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     _ind->whI = savedWhI; _ind->wh0 = savedWh0;
 
     // Re-sort ix from current event forward so new events land in the right slots
-    int sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
-                    ? _ind->idx : 0;
+    int sortStart;
+    if (_rxEvidSortStart >= 0) {
+      sortStart = min2(_rxEvidSortStart, _ind->n_all_times);
+    } else {
+      sortStart = (_ind->idx >= 0 && _ind->idx < _ind->n_all_times)
+        ? _ind->idx : 0;
+    }
     reSortMainTimeline(_ind, sortStart);
 
     // Re-sort unprocessed idose suffix
@@ -3988,6 +4003,22 @@ static inline void _growSolveIfNeeded(rx_solving_options_ind *ind,
   }
 }
 
+// Should the model body be run (and evid_() fired) at record i?
+//
+// Once per DISTINCT record time, at the FIRST record of that time.  "First of
+// the time group" is what makes the rule self-limiting: an event the model
+// pushes at the current time is inserted after record i, so it is never the
+// first record of its time group and cannot re-trigger the same condition.
+// Anchoring on record i-1 keeps this stateless -- reSortMainTimeline() only
+// ever touches slots after the current record, so ix[i-1] is stable.
+static inline bool _rxFireEvid(rx_solving_options_ind *ind,
+                               rx_solving_options *op, int i) {
+  if (!op->indOwnAlloc) return false;
+  if (i == 0) return true;
+  return !isSameTime(ind->timeThread[ind->ix[i]],
+                     ind->timeThread[ind->ix[i-1]]);
+}
+
 static inline void
 updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
             double &xout,
@@ -3997,7 +4028,30 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   if (i+1 != nx) {
     std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
   }
+  // This calc_lhs() is the single firing point for evid_() (bolus(), infuse(),
+  // replace(), multiply(), reset(), ...) on EVERY method.  It runs at the
+  // record's own time with the record's own events already applied, and pushes
+  // land in the slot right after it -- so the pushed event is applied before
+  // the solver advances, exactly as the same event written in the data would
+  // be.  The old ODE-only path fired from dydt() at the start of the next
+  // integration interval, which inserted the event only after the solver had
+  // already integrated past it.
+  bool _fire = _rxFireEvid(ind, op, i);
+  int _nBefore = ind->n_all_times;
+  if (_fire) {
+    _rxEvidSortStart = i + 1;
+    ind->_atEventTime = 1;
+  }
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+  if (_fire) {
+    _rxEvidSortStart = -1;
+    if (ind->n_all_times > _nBefore && i + 1 == nx) {
+      // The copy above was skipped because i+1 was past the end of the
+      // timeline; the push has since created that slot, so seed it here.
+      _growSolveIfNeeded(ind, op, i, 1);
+      std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
+    }
+  }
 }
 
 //================================================================================
@@ -4024,7 +4078,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   nx = ind->n_all_times;
   rc= ind->rc;
   double xp = ind->all_times[0];
-  bool _skipEvid = false;
   ind->solvedIdx = 0;
   for (i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
@@ -4140,36 +4193,8 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           ind->mainSorted = 0;
         }
       }
-      // Fire evid_() through calc_lhs at observation records, the same way
-      // ind_linCmt0 does.  codegen emits evid_() into dydt and calc_lhs only
-      // (src/codegen.c TEVID), and a matExp()/indLin() model's dydt is a no-op
-      // stub -- so without this, doses pushed by the model at run time
-      // (bolus(), infuse(), replace(), multiply(), reset(), ...) never happen
-      // on this method.  Unlike linCmt there is no internal dydt call to have
-      // already consumed the flag, so calc_lhs is the only firing point.
-      // Observation AND model-time (mtime, evid 10-99) records: an ODE method
-      // fires evid_() from dydt continuously, so a guard like
-      // `t >= mt && t < mt + 0.5` triggers wherever the integrator steps.  With
-      // no dydt the model body is only seen at records, and an mtime record is
-      // usually the very record such a guard was written against.
-      ind->idx = i + 1;
-      int _evidHere = getEvid(ind, ind->ix[i]);
-      if (op->indOwnAlloc &&
-          (isObs(_evidHere) || (_evidHere >= 10 && _evidHere <= 99))) {
-        if (_skipEvid) {
-          _skipEvid = false;
-        } else {
-          ind->_atEventTime = 1;
-        }
-      }
-      // A push inside calc_lhs can insert events at this same time and displace
-      // the current observation to ix[i+1]; without this the displaced record
-      // fires evid_() a second time and the pushed dose is counted twice.
-      // linCmt needs the same guard, but detects the growth around its solve,
-      // because its linSolve calls dydt and so pushes there instead.
-      int _nBeforePush = ind->n_all_times;
+      // evid_() fires inside updateSolve(), shared by every method.
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
-      if (ind->n_all_times > _nBeforePush) _skipEvid = true;
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
     }
@@ -4446,14 +4471,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          if (ctx->state == 2) {
-            // liblsoda continuation mode does not call f at xp (it uses the cached
-            // derivative from the previous step).  Explicitly call f at xp so that
-            // any model side-effects that depend on _atEventTime (e.g. evid_() push
-            // doses) fire at the correct time, matching dop853 behaviour.
-            std::vector<double> _evid_tmpydot(neqOde);
-            (*ctx->function)(xp, yp, _evid_tmpydot.data(), ctx->data);
-          }
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -5174,11 +5191,6 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            if (op->indOwnAlloc && ind->_atEventTime) {
-              // Pre-evaluate dydt at xp so in-model evid_() pushes at the correct
-              // time before lsode's Adams predictor evaluates at xp + H_prev.
-              { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, xp, yp, _tmp_f_ls.data()); }
-            }
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                              rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5202,11 +5214,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
               preSolve(op, ind, _xp_ls, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
               // istate is already 1 from the dose handler above (needed for restart
-              // after a dose event); also pre-evaluate to push any in-model doses
-              // at the canonical sub-interval start time.
-              if (op->indOwnAlloc && ind->_atEventTime) {
-                { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, _xp_ls, yp, _tmp_f_ls.data()); }
-              }
+              // after a dose event).
               F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
                                &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                                rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5221,12 +5229,6 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          if (op->indOwnAlloc && ind->_atEventTime) {
-            // Pre-evaluate dydt at xp so in-model evid_() pushes doses at the
-            // correct canonical start time before lsode's Adams predictor can
-            // evaluate at xp + H_prev.
-            { std::vector<double> _tmp_f_ls((size_t)neq[0]); dydt(neq, xp, yp, _tmp_f_ls.data()); }
-          }
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                            rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5617,7 +5619,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   rc= ind->rc;
   double xp = ind->all_times[0];
   ind->solvedIdx = 0;
-  bool _skipEvid = false;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -5645,7 +5646,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     if (global_debug) {
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
-    bool _linSolveCalled = false;
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err) {
         printErr(ind->err, ind->id);
@@ -5678,21 +5678,10 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           }
         }
         if (!isSameTime(xout, xp)) {
-          // Keep ind->idx=i so _rxPushDose uses sortStart=i: pushed events at
-          // the same time as the current obs sort before it (doses before obs),
-          // which preserves the correct reset-before-dose-before-obs ordering.
-          // If a push displaced the current obs to ix[i+1], _skipEvid prevents
-          // evid_() from double-firing when the displaced obs is re-processed.
-          int _nBeforePush = ind->n_all_times;
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
-          _linSolveCalled = true;
-          if (ind->n_all_times > _nBeforePush) {
-            _skipEvid = true;
-            nx = ind->n_all_times;
-          }
         }
       }
     }
@@ -5721,22 +5710,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           ind->mainSorted = 0;
         }
       }
-      ind->idx = i + 1;
-      // Fire evid_() via calc_lhs only for same-time obs (when linSolve was
-      // not called).  For non-same-time obs, preSolve already set
-      // _atEventTime=1 and linSolve's internal dydt(xout) captured and
-      // cleared it, firing evid_() once at the observation time.  Setting
-      // _atEventTime=1 again here would cause calc_lhs to fire a second time,
-      // double-counting pushed doses.
-      // _skipEvid: set when a push displaced the current obs to ix[i+1]; consume
-      // the flag here to prevent the displaced obs from re-firing evid_().
-      if (op->indOwnAlloc && isObs(getEvid(ind, ind->ix[i])) && !_linSolveCalled) {
-        if (_skipEvid) {
-          _skipEvid = false;
-        } else {
-          ind->_atEventTime = 1;
-        }
-      }
+      // evid_() fires inside updateSolve(), shared by every method.
       updateSolve(ind, op, neq, xout, i, nx);
       // Refresh nx after updateSolve: evid_() inside calc_lhs may have pushed
       // new events into the timeline, growing ind->n_all_times.

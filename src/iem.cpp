@@ -37,11 +37,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
   int neqOde = op->neq - op->numLin - op->numLinSens;
   auto sys = make_rxode2_system_iem(ind, c_dydt, calc_jac, neq);
   state_type state(neqOde > 0 ? (size_t)neqOde : (size_t)1);
-  std::vector<double> tmp_f;
-  if (op->indOwnAlloc && neqOde > 0) {
-    tmp_f.resize((size_t)neqOde, 0.0);
-  }
-
   double *yp;
 
   for(i = 0; i < ind->n_all_times; i++) {
@@ -79,10 +74,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-              if (op->indOwnAlloc && ind->_atEventTime && neqOde > 0) {
-                c_dydt(neq, xp, yp, tmp_f.data());
-              }
-
               if (neqOde > 0) {
                   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
                   : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
@@ -125,10 +116,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
                 double _xp2 = ind->extraDoseNewXout;
                 preSolve(op, ind, _xp2, xout, yp);
-                if (op->indOwnAlloc && ind->_atEventTime && neqOde > 0) {
-                  c_dydt(neq, _xp2, yp, tmp_f.data());
-                }
-
                 if (neqOde > 0) {
                     double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
                   : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
@@ -162,10 +149,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          if (op->indOwnAlloc && ind->_atEventTime && neqOde > 0) {
-            c_dydt(neq, xp, yp, tmp_f.data());
-          }
-
           if (neqOde > 0) {
               double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
                   : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
