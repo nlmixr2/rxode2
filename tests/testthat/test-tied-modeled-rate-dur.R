@@ -94,6 +94,20 @@ rxTest({
                  .sim(rbind(.dose(0, 150, -2, 2), .dose(0, 150, 0, 1), .obs)))
   })
 
+  # the data error text is printed by the solver rather than raised, so the
+  # condition message is only "could not solve the system"
+  test_that("an unpaired infusion record says what is wrong", {
+    .err <- function(evid) {
+      .ev <- data.frame(ID = 1, TIME = c(0, 1), EVID = c(evid, 0L),
+                        CMT = c(1, 2), AMT = c(150, NA))
+      paste(capture.output(try(rxSolve(mod, .ev), silent = TRUE)), collapse = " ")
+    }
+    expect_match(.err(60101L), "end of a modeled duration")
+    expect_match(.err(80101L), "start of a modeled duration")
+    expect_match(.err(70101L), "end of a modeled rate")
+    expect_match(.err(90101L), "start of a modeled rate")
+  })
+
   test_that("tied modeled duration start/stop records are adjacent", {
     .ev <- rbind(.dose(0, 150, -2, 1), .dose(0, 150, -2, 2), .obs)
     .evid <- etTrans(.ev, mod)$EVID
