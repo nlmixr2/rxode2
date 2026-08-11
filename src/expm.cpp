@@ -872,6 +872,11 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
 // cut the step, which is cheap.  Grinding tens of thousands of matrix
 // exponentials before reaching that conclusion is not.
 #define RX_INDLIN_MAXITER 20
+
+static inline int indLinMaxIterOf(rx_solving_options *op) {
+  return (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
+}
+
 // The iterate has to land a factor tighter than the step-size tolerance, or
 // the local error estimate (which differences two iterates) ends up measuring
 // iteration noise instead of discretization error and the controller chases
@@ -1634,7 +1639,7 @@ static int indLinTrySubstep(int cSub, rx_solving_options *op, rx_solving_options
                             double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                             arma::vec *u, arma::vec &yOut, arma::vec &w1,
                             double *errOut, double *ratioOut) {
-  int maxIter = (op->indLinMaxIter > 0) ? op->indLinMaxIter : RX_INDLIN_MAXITER;
+  int maxIter = indLinMaxIterOf(op);
   yOut = y0;
   int ret;
   if (scheme == RX_INDLIN_ITER_EXPRB32 || scheme == RX_INDLIN_ITER_EXPRB) {
@@ -1740,10 +1745,17 @@ static int indLinChain(int cSub, rx_solving_options *op, rx_solving_options_ind 
 // point is: the exponential Rosenbrock steps are not symmetric, and neither is
 // the constant-column map, whose two members are linearized at opposite ends of
 // the step and averaged.
+//
+// Picard needs a second pass to reach the ramp at all -- its first is the
+// left-endpoint constant-column answer -- so at `indLinMaxIter = 1` it can only
+// ever return that, and this has to say so rather than let the tableau collapse
+// an asymmetric entry with the symmetric factors.  Newton's first loop pass is
+// already a ramp pass, so one iteration is enough for it.
 static inline bool indLinSymmetric(rx_solving_options *op, int scheme,
                                    const arma::vec *u) {
   if (!indLinRampOn(op, u)) return false;
-  return (scheme == RX_INDLIN_ITER_PICARD || scheme == RX_INDLIN_ITER_NEWTON);
+  if (scheme == RX_INDLIN_ITER_NEWTON) return true;
+  return (scheme == RX_INDLIN_ITER_PICARD) && (indLinMaxIterOf(op) > 1);
 }
 
 // The order of the estimate a step at extrapolation level `useRich` is sized

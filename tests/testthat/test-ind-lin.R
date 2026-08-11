@@ -815,6 +815,22 @@ d/dt(blood)     = a*intestine - b*blood
     expect_gt(.obs("ramp"), 3.5)          # fourth order; measured 3.9
     expect_lt(.obs("constant"), 3.4)      # third order;  measured 2.9
 
+    # The symmetry is a property of the step that ran, not of the setting that
+    # asked for it.  Picard's first pass is the constant-column left-endpoint
+    # answer, so at `indLinMaxIter = 1` it can never reach the ramp -- and then
+    # the two settings have to agree bit for bit at every extrapolation level,
+    # which they only can if the tableau also drops back to the asymmetric
+    # factors.
+    .m1 <- function(fo, rich) {
+      suppressWarnings(suppressMessages(
+        rxSolve(.m, .e, method = "indLin", atol = 1e-3, rtol = 1e-3,
+                indLinMaxIter = 1L, indLinIteration = "picard",
+                indLinRichardson = rich, indLinForcing = fo)))$central
+    }
+    for (.rich in c("never", "always", "always4")) {
+      expect_identical(.m1("constant", .rich), .m1("ramp", .rich), info = .rich)
+    }
+
     # Which cashes out as the thing a user sees: at a tight tolerance the same
     # column is more accurate for no more work.
     .run <- function(fo) {
