@@ -4011,9 +4011,15 @@ static inline void _growSolveIfNeeded(rx_solving_options_ind *ind,
 // first record of its time group and cannot re-trigger the same condition.
 // Anchoring on record i-1 keeps this stateless -- reSortMainTimeline() only
 // ever touches slots after the current record, so ix[i-1] is stable.
+// The last record of the timeline does not fire: it starts no integration
+// interval, which is also where the old dydt() firing point drew the line.
+// Keeping that boundary keeps an unconditional evid_() self-limiting -- a push
+// made at the final record could only ever extend the timeline, and the record
+// it appends would push again, without bound.
 static inline bool _rxFireEvid(rx_solving_options_ind *ind,
                                rx_solving_options *op, int i) {
   if (!op->indOwnAlloc) return false;
+  if (i + 1 >= ind->n_all_times) return false;
   if (i == 0) return true;
   return !isSameTime(ind->timeThread[ind->ix[i]],
                      ind->timeThread[ind->ix[i-1]]);
