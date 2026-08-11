@@ -85,6 +85,25 @@
 
 ### Solving
 
+- Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
+  at exactly the same time now solve.  Each such dose is expanded into a
+  start/stop pair sharing one time and the solver pairs the two positionally, but
+  the event sort keys on the compartment-bearing `evid`, so tied doses
+  interleaved (`start2 start1 stop2 stop1`) and the solve failed with data errors
+  686/886 (or 797/997 for a modeled rate) -- even for doses into different
+  compartments, which is a legal data set.  `etTrans()` now re-pairs each start
+  with its own stop after the sort, matching on compartment and infusion type;
+  the pass only runs when the data set has a modeled rate/duration dose and it
+  leaves already-correct records in place.  The four data-error messages now say
+  what the problem is instead of only naming a number (#1218).
+
+- Fixed an out-of-bounds read of the extra-dose pool while advancing to the
+  first extra dose at or after the current step.  The index was bounds checked
+  before it was incremented rather than after, so a subject whose extra doses all
+  precede the step -- reachable with tied modeled duration steady state doses --
+  read one element past the end and then dereferenced it as a record index,
+  corrupting the heap.
+
 - `rxSolve()` no longer returns silently wrong, run-to-run varying results when
   a multi-row `params` data.frame (one parameter set per `id`) is combined with
   `omega = NA` or `sigma = NA`.  `c()` on a data.frame drops the data.frame

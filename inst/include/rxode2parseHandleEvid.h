@@ -31,65 +31,7 @@ extern "C" {
 }
 #endif
 
-// EVID = 0; Observations
-// EVID = 1; is illegal, but converted from NONMEM
-// EVID = 2; Non-observation, possibly covariate
-// EVID = 3; Reset ODE states to zero; Non-observation event
-// EVID = 4; Reset and then dose event;  Illegal
-// EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
-// EVID = 10-99; mtime events (from ODE system)
-// When EVID > 100
-// EVID: ## # ## ##
-//       c2 I c1 xx
-// c2 = Compartment numbers over 100
-//  I = Infusion Flag/ Special event flag
-#define EVIDF_NORMAL 0
-
-#define EVIDF_INF_RATE 1
-#define EVIDF_INF_DUR  2
-
-#define EVIDF_REPLACE  4
-#define EVIDF_MULT     5
-
-#define EVIDF_MODEL_DUR_ON   8
-#define EVIDF_MODEL_DUR_OFF  6
-
-#define EVIDF_MODEL_RATE_ON  9
-#define EVIDF_MODEL_RATE_OFF 7
-//      0 = no Infusion
-//      1 = Infusion, AMT=rate (mg/hr for instance)
-//      2 = Infusion, duration is fixed
-//      4 = Replacement event
-//      5 = Multiplication event
-//      6 = Turn off modeled duration
-//      7 = Turn off modeled rate compartment
-//      8 = Duration is modeled, AMT=dose; Rate = AMT/(Modeled Duration) NONMEM RATE=-2
-//      9 = Rate is modeled, AMT=dose; Duration = AMT/(Modeled Rate) NONMEM RATE=-1
-// c1 = Compartment numbers below 99
-// xx =  1, regular event (no lag time)
-// xx =  2, An infusion/rate event that doesn't look for start/end of infusion AND does not apply lags
-// xx =  8, possibly turn off steady state infusion with lag time (needed in case spans dur)
-// xx =  9, steady state event SS=1 with lag time
-// xx = 10, steady state event SS=1 (no lag)
-// xx = 19, steady state event at dose time (SS=2) with lag
-// xx = 20, steady state event + last observed info (not lagged)
-// xx = 21, steady state event at dose time (with absorption lag) + last observed info
-// xx = 30, Turn off compartment
-// xx = 40, Steady state constant infusion
-// xx = 50, Phantom event, used for transit compartments
-// xx = 60, Dose that does not track as a dose turn on system
-// Steady state events need a II data item > 0
-#define EVID0_REGULAR  1
-#define EVID0_RATEADJ 2
-#define EVID0_INFRM 8
-#define EVID0_SS0 9
-#define EVID0_SS 10
-#define EVID0_SS20 19
-#define EVID0_SS2 20
-#define EVID0_OFF 30
-#define EVID0_SSINF 40
-#define EVID0_PHANTOM 50
-#define EVID0_ONDOSE 60
+// The EVIDF_*/EVID0_* evid flags live in rxode2EventTranslate.h (included above)
 
 static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {
   return getDose(ind, ind->idose[i]);

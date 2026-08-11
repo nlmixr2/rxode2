@@ -804,6 +804,101 @@ LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
   return ret;
 }
 
+// Classify a record for modeled rate (RATE=-1) / modeled duration (RATE=-2)
+// start/stop pairing.  Returns +1/+2 for a duration/rate start, -1/-2 for the
+// matching stop and 0 for anything else; `cmt` is the 0-based compartment.
+// The starts getTime__() skips the pairing for are excluded: flg 9/19 pair
+// through the lagged flg=1 record that follows, and flg 40 (steady state
+// constant infusion) has no stop record at all.
+static inline int etTransModeledPairType(int evid, int *cmt) {
+  int wh, eCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &eCmt, &wh100, &whI, &wh0);
+  *cmt = eCmt;
+  int unpaired = (wh0 == EVID0_SS0 || wh0 == EVID0_SS20 || wh0 == EVID0_SSINF);
+  switch (whI) {
+  case EVIDF_MODEL_DUR_ON:
+    return unpaired ? 0 : 1;
+  case EVIDF_MODEL_RATE_ON:
+    return unpaired ? 0 : 2;
+  case EVIDF_MODEL_DUR_OFF:
+    return -1;
+  case EVIDF_MODEL_RATE_OFF:
+    return -2;
+  }
+  return 0;
+}
+
+// Modeled rate/duration doses are emitted as a start record immediately
+// followed by its stop record sharing one time; the solver pairs the two
+// positionally (handleTurnOn/OffModeled*() in rxode2parseGetTime.h).  The
+// final sort keys on (id, time, evid) and the compartment is encoded in the
+// evid, so several such doses tied at a single time interleave (start2 start1
+// stop2 stop1) and the positional pairing breaks -- see issue #1218.  Walk
+// each tied (id, time) block and put every stop back after its start, matching
+// on compartment and infusion type.  Blocks that are already correct keep
+// their order, so this only moves records the solver could not have used.
+static void etTransPairModeledRateDur(std::vector<int>& idxOutput,
+                                      const std::vector<int>& id,
+                                      const std::vector<double>& time,
+                                      const std::vector<int>& evid,
+                                      const CharacterVector& idLvl) {
+  int n = (int)idxOutput.size();
+  std::vector<int> block;
+  std::vector<int> type;
+  std::vector<int> bCmt;
+  std::vector<int> mate;
+  std::vector<bool> claimed;
+  std::string orphanWarn;
+  int i = 0;
+  while (i < n) {
+    int curId = id[idxOutput[i]];
+    double curTime = time[idxOutput[i]];
+    int j = i + 1;
+    while (j < n && id[idxOutput[j]] == curId && time[idxOutput[j]] == curTime) j++;
+    int len = j - i;
+    if (len > 1) {
+      block.assign(idxOutput.begin() + i, idxOutput.begin() + j);
+      type.resize(len);
+      bCmt.resize(len);
+      int nModeled = 0;
+      for (int k = 0; k < len; ++k) {
+        type[k] = etTransModeledPairType(evid[block[k]], &bCmt[k]);
+        if (type[k] != 0) nModeled++;
+      }
+      if (nModeled > 1) {
+        mate.assign(len, -1);
+        claimed.assign(len, false);
+        for (int k = 0; k < len; ++k) {
+          if (type[k] <= 0) continue;
+          for (int m = k + 1; m < len; ++m) {
+            if (claimed[m] || type[m] != -type[k] || bCmt[m] != bCmt[k]) continue;
+            mate[k] = m;
+            claimed[m] = true;
+            break;
+          }
+          if (mate[k] == -1) {
+            orphanWarn += " (id: " + as<std::string>(idLvl[curId-1]) +
+              ", time: " + std::to_string(curTime) +
+              ", cmt: " + std::to_string(bCmt[k]+1) + ")";
+          }
+        }
+        int pos = i;
+        for (int k = 0; k < len; ++k) {
+          if (claimed[k]) continue; // emitted next to its start
+          idxOutput[pos++] = block[k];
+          if (mate[k] != -1) idxOutput[pos++] = block[mate[k]];
+        }
+      }
+    }
+    i = j;
+  }
+  if (!orphanWarn.empty()) {
+    Rf_warningcall(R_NilValue, "%s%s",
+                   _("modeled 'rate'/'dur' dose without a matching infusion end record:"),
+                   orphanWarn.c_str());
+  }
+}
+
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -1531,6 +1626,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int nid=0;
   int cmt = 0;
   int rateI = 0;
+  bool hasModeledRateDur = false; // any RATE=-1/-2 dose (needs start/stop re-pairing after the sort)
   int cmt100; //= amt[i]/100;
   int cmt99;  //= amt[i]-amt100*100;
   int cevid;
@@ -2114,8 +2210,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (cevid != -1){
       if (rateI == 9){
         nevid = cmt100*100000+70001+cmt99*100;
+        hasModeledRateDur = true;
       } else if (rateI == 8) {
         nevid = cmt100*100000+60001+cmt99*100;
+        hasModeledRateDur = true;
       }
       id.push_back(cid);
       evid.push_back(cevid);
@@ -2615,6 +2713,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   idxOutput = as<std::vector<int>>(ord);
   while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])) {
     idxOutput.pop_back();
+  }
+  if (hasModeledRateDur) {
+    // only needed when RATE=-1/-2 is present; see issue #1218
+    etTransPairModeledRateDur(idxOutput, id, time, evid, idLvl);
   }
   if (hasIcov) {
     ordI = order1(inIdCov);

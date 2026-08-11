@@ -229,28 +229,28 @@ extern "C" void printErr(int err, int id){
     RSprintf("  Modeled duration requested in event table, but not in model; use 'dur(cmt) ='\n");
   }
   if (err & rxErrModelData686){
-    RSprintf("  Data error 686\n");
+    RSprintf("  Data error 686: end of a modeled duration ('rate=-2') infusion is not preceded by its start\n");
   }
   if (err & rxErrModelDataNeg6){
-    RSprintf("  Data Error -6\n");
+    RSprintf("  Data Error -6: end of a modeled duration ('rate=-2') infusion is the first record\n");
   }
   if (err & rxErrModelDataErr8){
-    RSprintf("  Data Error 8\n");
+    RSprintf("  Data Error 8: a modeled duration ('rate=-2') infusion starts on the last record, so it has no end\n");
   }
   if (err & rxErrModelDataErr886){
-    RSprintf("  Data error 886\n");
+    RSprintf("  Data error 886: start of a modeled duration ('rate=-2') infusion is not followed by its end\n");
   }
   if (err & rxErrModelDataErr797){
-    RSprintf("  Data error 797\n");
+    RSprintf("  Data error 797: end of a modeled rate ('rate=-1') infusion is not preceded by its start\n");
   }
   if (err & rxErrModelDataNeg7){
-    RSprintf("  Data Error -7\n");
+    RSprintf("  Data Error -7: end of a modeled rate ('rate=-1') infusion is the first record\n");
   }
   if (err & rxErrModelDataErr9){
-    RSprintf("  Data Error 9\n");
+    RSprintf("  Data Error 9: a modeled rate ('rate=-1') infusion starts on the last record, so it has no end\n");
   }
   if (err & rxErrModelDataErr997){
-    RSprintf("  Data error 997\n");
+    RSprintf("  Data error 997: start of a modeled rate ('rate=-1') infusion is not followed by its end\n");
   }
   if (err & rxErrCorruptETSort3){
     RSprintf("  Corrupted event table during sort (3)\n");

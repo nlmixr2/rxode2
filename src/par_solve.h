@@ -349,7 +349,10 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    // bound before the increment; every extra dose can be before xp (e.g. two
+    // modeled duration steady state doses tied at one time), and reading
+    // extraDoseTimeIdx[extraDoseN[0]] then walks off the end of the pool
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra + 1 < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
