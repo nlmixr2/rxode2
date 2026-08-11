@@ -5904,6 +5904,29 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
       op->useDense = 0;
     }
+    // A dense segment integrates across every observation between two key
+    // events at once, so an observation is only filled in once the segment has
+    // closed.  A model that pushes its own events cannot work that way: the
+    // event it decides on at an observation has to be applied before the solver
+    // moves past that observation (rxode2#1214).
+    // Keyed on the PARSER flag, not op->indOwnAlloc: rxSolve.default() defaults
+    // indOwnAlloc to TRUE, so that would disable dense output for every model
+    // -- including the delay() models whose history needs it.
+    //
+    // delay() needs that dense output (a non-dense method records no history
+    // and silently returns wrong lagged values), so a model asking for both is
+    // asking for two incompatible things.  Refuse instead of dropping one of
+    // them.  rxSolve() refuses this earlier with a fuller message; this is the
+    // backstop for a caller that reaches solver setup another way.
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
+                 "delay() requires dense output, which cannot apply an event "
+                 "pushed at an observation");
+    }
+    if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      op->useDense = 0;
+    }
     op->stiff = method;
 
     if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228 || method == 229 || method == 205 || method == 213 || method == 236 || method == 233 || method == 234 || method == 238 || method == 235 || method == 231 || method == 232 || method == 237 || method == 243 || method == 225 || method == 221 || method == 202 || method == 226 || method == 230 || method == 208 || method == 282 || method == 300 || method == 301 || method == 302 || method == 304 || method == 267 || method == 268 || method == 270 || method == 271 || method == 272 || method == 273 || method == 274 || method == 275 || method == 276 || method == 277 || method == 279 || method == 280 || method == 281 || method == 283 || method == 284 || method == 285 || method == 286 || method == 287 || method == 288 || method == 289 || method == 290 || method == 291 || method == 292 || method == 293 || method == 295 || method == 296 || method == 297 || method == 298) {

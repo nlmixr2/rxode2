@@ -347,7 +347,7 @@ struct rx_solving_options_ind_s {
   int indOwnAllocN;     // allocated capacity for event arrays (>= n_all_times)
   int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
-  int _atEventTime;     // set before each event-table interval; consumed once in dydt
+  int _atEventTime;     // set at an evid_() firing record; consumed once in calc_lhs
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
   int    autoMethod;             /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
   int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */

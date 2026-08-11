@@ -2917,6 +2917,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
+    # delay() and evid_() pull the solver in opposite directions and cannot both
+    # be honoured: delay() needs dense output (a non-dense method records no
+    # history and silently returns wrong lagged values), while a dense segment
+    # integrates across every observation between two key events at once and so
+    # cannot apply an event the model decides on at one of those observations
+    # (rxode2#1214).  Refuse rather than silently return one of the two wrong
+    # answers.
+    if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
+      stop("a model cannot combine delay() with evid_() event pushing ",
+           "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
+",
+           "  delay() requires dense output, which cannot apply an event pushed ",
+           "at an observation",
+           call. = FALSE)
+    }
     # Validate any non-constant past(state, tau) <- expr history lines (state is
     # a delayed ODE state, tau matches a delay(), history references no states).
     .rxValidatePast(object)
