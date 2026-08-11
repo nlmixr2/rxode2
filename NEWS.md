@@ -184,6 +184,25 @@
 
 ### Matrix exponential / inductive linearization
 
+- `rxToIndLin()` -- and therefore `rxSolve(method="indLin")` -- now converts a
+  model that mixes `linCmt()` with `d/dt()`.  It walked `$state`, which counts
+  the `linCmt()` pseudo-compartments (`depot`, `central`, `peripheral*`); those
+  have no `d/dt()` behind them, so it emitted `cmt()`/`indLin()` lines for
+  derivatives that do not exist -- one of them the literal R variable name
+  `.tmp` -- and the generated model did not parse.  Only the `d/dt()` block is
+  converted now; the solved compartments stay with the analytic solver and are
+  copied back after each step.  A term reading a `linCmt()` goes to the
+  `indLin()` forcing rather than into a rate constant, since a solved
+  compartment moves within the matrix-exponential step, and such a forcing takes
+  the iterating path so the driver refines it.
+
+- A `df(<state>)/dy(<state>)` Jacobian entry may now reference `linCmt()`.  A
+  `linCmt()` call retyped the whole statement, so the entry lost its Jacobian
+  routing and was emitted into `dydt()`, where `__PDStateVar__` does not exist:
+  the model failed to compile.  For the same reason a `matExp()` rate constant
+  or `indLin()` forcing built from a `linCmt()` concentration now reaches the
+  `ME()`/`IndF()` functions instead of reading a stale value.
+
 - `rxSensMatExp(calcSens3=)` now carries the `indLin()` forcing at third order,
   as `calcSens` and `calcSens2` already did.  Only the rate-matrix cross terms
   were generated, so third-order sensitivities of a nonlinear model were short

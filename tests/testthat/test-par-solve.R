@@ -54,12 +54,6 @@ rxTest({
     })
 
     ## Test mixed solved and ODEs
-    ## rxode2#1215: rxToIndLin() cannot rewrite a model that mixes linCmt()
-    ## with d/dt() -- the linCmt() pseudo-compartments have no derivative to
-    ## convert and the generated model does not parse.
-    if (meth == "indLin") {
-      skip("rxode2#1215")
-    }
     mod2 <- rxode2({
       ## the order of variables do not matter, the type of compartmental
       ## model is determined by the parameters specified.
