@@ -343,6 +343,115 @@ rxTest({
     expect_equal(gotLinReset$cp, wantLinReset$cp, tolerance = 1e-5)
   })
 
+  # rxode2#1214: a linCmt() model has no dydt() of its own, so it took a
+  # different evid_() firing path than the ODE methods.  Every dosing modifier
+  # pushed onto a linCmt compartment must reproduce the identical event written
+  # in the data, at the pushed time itself.
+  .linPushObs <- seq(0, 24, by = 1)
+  .linPushE <- et(amt = 100, time = 0) |>
+    et(amt = 50, time = 18) |>
+    et(.linPushObs)
+  .linPushP <- c(ka = 0.5, cl = 1, v = 10)
+  .linPushRef <- rxode2({
+    cp <- linCmt(ka, cl, v)
+  })
+
+  .linPushCheck <- function(mod, eRef) {
+    got <- rxSolve(mod, .linPushP, .linPushE)
+    want <- rxSolve(.linPushRef, .linPushP, eRef)
+    gotPush <- got[got$time >= 13, ]
+    wantPush <- want[want$time >= 13, ]
+    expect_equal(sum(got$time == 12), 2)
+    expect_equal(gotPush$time, wantPush$time)
+    expect_equal(gotPush$cp, wantPush$cp, tolerance = 1e-5)
+  }
+
+  test_that("in-model bolus() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          bolus(50, depot, 0, 0, 0)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 50, cmt = 1, evid = 1) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  test_that("in-model replace() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          replace(25, depot)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 25, cmt = 1, evid = 5) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  test_that("in-model multiply() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          multiply(2, depot)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 2, cmt = 1, evid = 6) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  # indLin excluded: matExp()/indLin() cannot represent linCmt() states, so a
+  # mixed linCmt + ODE model does not build on it.  t54+sdirk43 excluded: it
+  # needs an analytical Jacobian, which cannot be generated for a mixed model,
+  # so it silently falls back to liblsoda.
+  for (meth in setdiff(.methods0, c("indLin", "t54+sdirk43"))) {
+    test_that(paste0("in-model replace() on a mixed linCmt + ODE model (",
+                     meth, ")"), {
+      obs <- seq(0, 24, by = 1)
+      e <- et(amt = 100, time = 0) |>
+        et(amt = 50, time = 18) |>
+        et(obs)
+      eRef <- et(amt = 100, time = 0) |>
+        et(time = 12, amt = 25, cmt = 1, evid = 5) |>
+        et(amt = 50, time = 18) |>
+        et(obs)
+
+      mod <- rxode2({
+        mtime(replaceAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        d/dt(eff) <- ke0 * (cp - eff)
+        if (t >= replaceAt && t < replaceAt + 0.5 && depot > 0) {
+          replace(25, depot)
+        }
+      })
+      ref <- rxode2({
+        cp <- linCmt(ka, cl, v)
+        d/dt(eff) <- ke0 * (cp - eff)
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10, ke0 = 0.3)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotPush <- got[got$time >= 13, ]
+      wantPush <- want[want$time >= 13, ]
+
+      expect_equal(gotPush$time, wantPush$time)
+      expect_equal(gotPush$cp, wantPush$cp, tolerance = 1e-5)
+      expect_equal(gotPush$eff, wantPush$eff, tolerance = 1e-5)
+    })
+  }
+
   test_that("in-model replace() pushes a replacement event", {
     # rxode2#1214: the pushed replacement and the identical evid=5 event
     # written in the data (at the same time, t = 12) must agree on every method.
