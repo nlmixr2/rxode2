@@ -255,6 +255,35 @@ test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
   })
 })
 
+test_that("a control the daemons accept still reaches them", {
+  rxTest({
+    skip_if_not_installed("mirai")
+    # A mirai daemon is a separate process that loads its OWN rxode2, which need
+    # not be the parent's build, and rxSolve() errors on a control argument it
+    # has no formal for.  Those are dropped and reported rather than losing the
+    # chunk -- but the dangerous direction is dropping too much, which would
+    # solve a chunk under different settings than were asked for without saying
+    # so.  Same-version daemons cannot hit it by construction (the accepted set
+    # is the daemon's own rxControl() names, and that is where the forwarded
+    # list comes from), so what is left to pin is that a setting which changes
+    # the answer really does arrive.  `addDosing` changes the row count, so a
+    # dropped one is visible rather than a rounding difference.
+    mod <- rxode2({
+      cl <- exp(lcl)
+      v  <- exp(lv)
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+    })
+    e <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
+    .rows <- function(...) {
+      nrow(as.data.frame(rxSolve(mod, c(lcl = 1, lv = 3.45), e,
+                                 file = tempfile("rxFwd"), chunkSize = 2,
+                                 parallel = 2, ...)))
+    }
+    expect_gt(.rows(addDosing = TRUE), .rows(addDosing = FALSE))
+  })
+})
+
 test_that("rxode2.oom.backend option is forwarded to the mirai workers", {
   rxTest({
     skip_if_not_installed("mirai")

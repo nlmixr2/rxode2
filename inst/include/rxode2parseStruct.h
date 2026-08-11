@@ -171,6 +171,7 @@ typedef struct {
   int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
   int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
   int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
+  int    indLinForcing;        /* forcing over a substep: 0 constant, 1 linear ramp between its endpoint values */
 } rx_solving_options;
 
 

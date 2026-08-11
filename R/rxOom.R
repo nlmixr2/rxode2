@@ -260,11 +260,32 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # reach the unexported .rxOomHasArrow() helper.
     .backendOpt    <- .rxOomBackendOpt()
     .useArrowWrite <- .rxOomHasArrow()
+    .droppedCtl <- character(0)
+    .daemonVer  <- character(0)
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
       function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp, .backendOpt, .useArrowWrite) {
         library(rxode2)
         options(rxode2.oom.backend = .backendOpt)
+        # A daemon is a separate R process that loads its OWN rxode2, which need
+        # not be the build the parent is running: a source checkout under
+        # pkgload::load_all(), a library updated underneath a long-lived pool, or
+        # simply a parent newer than the library the daemons find.  rxSolve()
+        # rejects a control argument it has no formal for ("unused argument"),
+        # which loses the whole chunk over a setting that version had no notion
+        # of.  Drop those and report them back rather than fail.
+        #
+        # What the daemon accepts is asked OF THE DAEMON -- its own formals plus
+        # whatever its own rxControl() produces, which is by construction a set
+        # of names it round-trips.  Reimplementing rxSolve's acceptance rule here
+        # would drift, and the failure mode of drift is the bad one: dropping an
+        # argument a matching version would have honoured, and silently solving
+        # a chunk under different settings than were asked for.
+        .accept <- union(names(formals(rxSolve)), names(rxControl()))
+        .dropped <- setdiff(names(.fwdCtlArgs), .accept)
+        if (length(.dropped) > 0L) {
+          .fwdCtlArgs <- .fwdCtlArgs[!(names(.fwdCtlArgs) %in% .dropped)]
+        }
         .result <- do.call(rxSolve,
                            c(list(object = .modelObj, params = .chunkParamsList[[.i]],
                                   events = .chunkEvList[[.i]], inits = .inits),
@@ -303,6 +324,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
           } else NA_character_
         }
         list(file = .f, nrows = nrow(.df), paramFile = .pf,
+             dropped = .dropped,
+             rxVersion = as.character(utils::packageVersion("rxode2")),
              inits = tryCatch(.result$inits, error = function(e) NULL))
       },
       .args = list(.modelObj = .modelObj,
@@ -323,9 +346,22 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .outFiles[.i] <- .r$file
       .paramFiles[.i] <- if (is.null(.r$paramFile)) NA_character_ else .r$paramFile
       .manifest$nrows[.i] <- .r$nrows
+      .droppedCtl <- unique(c(.droppedCtl, .r$dropped))
+      if (!is.null(.r$rxVersion)) .daemonVer <- unique(c(.daemonVer, .r$rxVersion))
       if (is.null(.manifest$inits) && !is.null(.r$inits)) {
         .manifest$inits <- .r$inits
       }
+    }
+    # Never silent: the chunks were solved under different settings than were
+    # asked for, and which ones is not something a user could work out from the
+    # result.
+    if (length(.droppedCtl) > 0L) {
+      warning(sprintf(
+        "parallel chunks ignored %s: the rxode2 the mirai daemons loaded (%s) does not have %s",
+        paste0("'", .droppedCtl, "'", collapse = ", "),
+        paste(.daemonVer, collapse = ", "),
+        if (length(.droppedCtl) == 1L) "it" else "them"),
+        call. = FALSE)
     }
   } else {
     for (.i in seq_len(.nChunks)) {
