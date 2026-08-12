@@ -165,10 +165,10 @@
         ))
       } else {
         ## Unary Operators
-        return(paste0(
+        paste0(
           as.character(x[[1]]),
           .rxPrune(x[[2]], envir = envir, strAssign=strAssign)
-        ))
+        )
       }
     } else if (identical(x[[1]], quote(`ifelse`))) {
       .f2 <- .rxPrune(x[[2]], envir = envir, strAssign=strAssign)

@@ -332,10 +332,10 @@
         ))
       } else {
         ## Unary Operators
-        return(paste0(
+        paste0(
           as.character(x[[1]]),
           ..rxOpt(x[[2]])
-        ))
+        )
       }
     } else if (identical(x[[1]], quote(`~`)) ||
       identical(x[[1]], quote(`=`)) ||
