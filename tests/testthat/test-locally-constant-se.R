@@ -22,12 +22,42 @@ rxTest({
       .d <- paste0("Derivative(", .e, ", eta1)")
       expect_equal(rxFromSE(.d), "0", info = .e)
     }
+    # ftrunc() cannot be written in a model today: its arity table says 2
+    # arguments while C's Rf_ftrunc takes 1, so neither spelling builds.  Only
+    # the derivative rule is reachable, and only with the declared arity
+    expect_equal(rxFromSE("Derivative(ftrunc(p, 1), eta1)"), "0")
     # the Subs(Derivative(...)) form symengine actually produces when the
     # argument is not a bare symbol
     expect_equal(rxFromSE("Subs(Derivative(floor(_xi_1), _xi_1), (_xi_1), (p/24))"),
                  "0")
     # higher-order derivatives collapse to zero too
     expect_equal(rxFromSE("Derivative(floor(_xi_1), _xi_1, _xi_1)"), "0")
+  })
+
+  test_that("the delay family still has zero derivatives at every order", {
+    # the same .rxFromSE() branch handles the delay family; guard it against a
+    # regression from sharing the name list
+    for (.f in c("delay", "lag", "lead", "rxDelayD", "rxDelayD2", "rxDelayD3")) {
+      .d1 <- paste0("Derivative(", .f, "(A, tau), eta1)")
+      expect_equal(rxFromSE(.d1), "0", info = .f)
+      .d2 <- paste0("Derivative(", .f, "(_xi_1, tau), _xi_1, _xi_1)")
+      expect_equal(rxFromSE(.d2), "0", info = .f)
+    }
+  })
+
+  test_that("rounding-family functions evaluate numerically for dose duals", {
+    # .rxAdjEvalNum() evaluates a dosing modifier (alag/rate/dur) and its
+    # parameter derivatives at parameter values; a name it cannot find is
+    # swallowed into NA, which silently zeroes the dose duals
+    expect_equal(rxode2:::.rxAdjEvalNum("floor(p)", c(p = 1.26)), 1)
+    expect_equal(rxode2:::.rxAdjEvalNum("ceil(p)", c(p = 1.26)), 2)
+    expect_equal(rxode2:::.rxAdjEvalNum("round(p)", c(p = 1.26)), 1)
+    expect_equal(rxode2:::.rxAdjEvalNum("trunc(p)", c(p = 1.26)), 1)
+    expect_equal(rxode2:::.rxAdjEvalNum("sign(p)", c(p = 1.26)), 1)
+    expect_equal(rxode2:::.rxAdjEvalNum("ftrunc(p)", c(p = 1.26)), 1)
+    expect_equal(rxode2:::.rxAdjEvalNum("fround(p,1)", c(p = 1.26)), 1.3)
+    expect_equal(rxode2:::.rxAdjEvalNum("fprec(p,2)", c(p = 1.26)), 1.3)
+    expect_equal(rxode2:::.rxAdjEvalNum("fsign(p,-1)", c(p = 1.26)), -1.26)
   })
 
   test_that("fsign(x, y) = abs(x)*sign(y) derivatives", {

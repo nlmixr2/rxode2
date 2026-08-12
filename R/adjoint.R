@@ -544,6 +544,15 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   assign("Rx_pow", function(x, y) x^y, envir = .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), envir = .env)
   assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), envir = .env)
+  ## rounding-family functions with no base R spelling; floor/round/trunc/sign
+  ## resolve to base R, which already matches the C semantics.  Without these a
+  ## dosing modifier like `dur(central) <- fround(d1, 1)` evaluates to NA and
+  ## silently zeroes the dose duals it feeds.
+  assign("ceil", function(x) ceiling(x), envir = .env)
+  assign("fround", function(x, digits) round(x, digits), envir = .env)
+  assign("fprec", function(x, digits) signif(x, digits), envir = .env)
+  assign("fsign", function(x, y) abs(x) * sign(y), envir = .env)
+  assign("ftrunc", function(x) trunc(x), envir = .env)
   tryCatch(eval(parse(text = txt), envir = .env), error = function(e) NA_real_)
 }
 
