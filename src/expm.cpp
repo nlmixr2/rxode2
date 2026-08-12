@@ -319,11 +319,14 @@ static std::vector<indLinCounts_t> __indLinCounts;
 // at that point, and `rxIndLinSteps()` drains it along with the rest.
 static indLinCounts_t __indLinCountsSink;
 
-// `rx_get_thread`'s clamp, not `indLinOwnSlot`: sharing a slot here tears a
-// diagnostic count, and nothing on this path reallocates.
+// NULL when this thread has no slot of its own, so a caller skips the count
+// rather than sharing one.  `rx_get_thread`'s clamp would put two threads on
+// one `long`, which loses counts AND is a data race; a thread without a slot is
+// already running uncached, so undercounting it is the honest outcome.
 static inline indLinCounts_t *indLinCountsHere(void) {
   if (__indLinCounts.empty()) return &__indLinCountsSink;
-  return &__indLinCounts[rx_get_thread((int)__indLinCounts.size())];
+  const int tid = indLinOwnSlot((int)__indLinCounts.size());
+  return (tid < 0) ? NULL : &__indLinCounts[tid];
 }
 
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
@@ -2096,7 +2099,14 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
 // boundary is still a boundary (which is what keeps time-varying covariate
 // sampling a refinement rather than a change).
 // The step-disposition counters live with the other per-thread pools, above.
-extern "C" void rxIndLinCountIter(int n) { indLinCountsHere()->iter += n; }
+// `indLinCountsHere()` returns NULL for a thread with no slot of its own, so
+// every bump below is guarded rather than shared.
+#define rxIndLinBump(FIELD, BY) do {                    \
+    indLinCounts_t *_c_ = indLinCountsHere();           \
+    if (_c_ != NULL) _c_->FIELD += (BY);                \
+  } while (0)
+
+extern "C" void rxIndLinCountIter(int n) { rxIndLinBump(iter, n); }
 
 // The extrapolation level an explicit `indLinRichardson` asks for.  `auto`
 // starts at the base order and earns its way up through indLinRaiseRich().
@@ -2242,7 +2252,7 @@ static inline void indLinAcceptStep(indLinProgress_t *pr, bool inSS, double hCap
   y0 = yTry;
   pr->t += pr->h;
   pr->nAccept++;
-  indLinCountsHere()->accept++;
+  rxIndLinBump(accept, 1);
   if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
   pr->lastRejected = 0;
   pr->h *= fac;
@@ -2266,7 +2276,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                     arma::vec &yScratch, arma::mat &richTab,
                                     int *retOut) {
   const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
-  indLinCountsHere()->attempt++;
+  rxIndLinBump(attempt, 1);
   if (++(pr->nAttempt) > op->mxstep) return RX_INDLIN_ACT_ABANDON;
   // Decide from the step the controller has settled on rather than by burning
   // the switch-over count first.
@@ -2282,7 +2292,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                 InfusionRate_, on_, ME, IndF, u, yTry, w1,
                                 yScratch, richTab, &err, &ratio);
   if (ret == -2) {
-    indLinCountsHere()->cutConv++;
+    rxIndLinBump(cutConv, 1);
     indLinStiffGate(autoScheme, autoRich, autoSt, &(pr->scheme), &(pr->useRich));
     pr->h *= indLinCutFactor(ratio, FACMIN);
     pr->lastRejected = 1;
@@ -2294,7 +2304,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   }
   double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
   if (err > 1.0) {
-    indLinCountsHere()->rejErr++;
+    rxIndLinBump(rejErr, 1);
     pr->h *= fac;
     pr->lastRejected = 1;
     return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
@@ -2584,8 +2594,14 @@ static int indLinRun(int cSub, rx_solving_options *op, rx_solving_options_ind *i
 // decompositions, `ind->err` instead of an error -- but an Armadillo
 // allocation can still raise `std::bad_alloc`, and an exception leaving
 // `par_indLin`'s parallel region is `std::terminate`, i.e. a lost session
-// rather than a failed subject.  Turn anything that escapes into the
-// convergence-failure code the caller already NA-fills on.
+// rather than a failed subject.  Turn anything that escapes into a failed
+// subject, under its own error code so the message names what happened.
+//
+// This does not hide an R error or a user interrupt: R signals those with
+// `longjmp` (a udf's R error reaches C through `Rf_error` at the end of
+// `_rxode2_evalUdfS`'s BEGIN_RCPP/END_RCPP), and a `longjmp` unwinds straight
+// past a `catch`.  A udf model is also classified `notThreadSafe`, so it never
+// runs under a team in the first place.
 extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
                       double tp, double *yp_, double tf,
                       double *InfusionRate_, int *on_,
@@ -2593,7 +2609,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   try {
     return indLinRun(cSub, op, ind, tp, yp_, tf, InfusionRate_, on_, ME, IndF);
   } catch (...) {
-    if (ind != NULL) ind->err |= rxErrIndLinCode;
+    if (ind != NULL) ind->err |= rxErrIndLinExcept;
     return -1;
   }
 }
