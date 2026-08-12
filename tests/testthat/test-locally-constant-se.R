@@ -1,18 +1,47 @@
 rxTest({
   # rxode2 issue #1230: floor()/ceil()/round()/trunc()/sign() (and fround(),
-  # fprec(), fsign()) parse and solve, but could not be loaded into a symengine
-  # environment, so any model using them was unusable with every nlmixr2
-  # estimation method.  They are locally constant, so the derivative is 0 almost
-  # everywhere.
+  # fprec(), fsign(), ftrunc()) parse and solve, but could not be loaded into a
+  # symengine environment, so any model using them was unusable with every
+  # nlmixr2 estimation method.  They are locally constant, so the derivative is
+  # 0 almost everywhere.  The same load bug hit every other function symengine
+  # has no method for; see "every parser-known function loads into symengine".
 
   .locallyConstant <- c("floor(p/24)", "ceil(p/24)", "round(p/24)",
                         "trunc(p/24)", "sign(p-12)", "fround(p,2)",
-                        "fprec(p,3)")
+                        "fprec(p,3)", "ftrunc(p)")
 
   test_that("locally constant functions load into symengine", {
     for (.e in c(.locallyConstant, "fsign(p-12,q)")) {
       .m <- paste0("fl=", .e, "\nd/dt(A)=-fl*A\n")
       expect_error(rxS(.m, TRUE, promoteLinSens = TRUE), NA, info = .e)
+    }
+  })
+
+  test_that("every parser-known function loads into symengine", {
+    # the same bug hit a whole family (bessel_*, gammaq, fmax2, logspace_add,
+    # the llik*D* derivative helpers, dSELU, ...): symengine's Math group
+    # generic has no method for them, so the assignment stored a non-Basic and
+    # the model was silently emitted with `<var>=.expr`.  rxS() now loads every
+    # .rxSEeq function with a known arity except the ones symengine
+    # differentiates itself (.rxSEnative), so this guards the split
+    .tbl <- rxode2:::.rxSEeq
+    .tbl <- .tbl[!is.na(.tbl) & .tbl >= 1 & .tbl <= 5]
+    # linCmtA/linCmtB need a solved-system pointer, not a plain lhs, and the
+    # internal-only spellings are deliberately not accepted by the parser
+    .tbl <- .tbl[!(names(.tbl) %in% c("linCmtA", "linCmtB",
+                                      rxode2:::.rxSEinternalOnly))]
+    for (.nm in names(.tbl)) {
+      .args <- paste(paste0("p", seq_len(.tbl[[.nm]])), collapse = ",")
+      .m <- paste0("fl=", .nm, "(", .args, ")\nd/dt(A)=-fl*A\n")
+      .s <- suppressWarnings(try(rxS(.m, TRUE, promoteLinSens = FALSE),
+                                 silent = TRUE))
+      expect_false(inherits(.s, "try-error"), info = .nm)
+      # and the loaded value really is a symengine object, not a try-error
+      # character vector emitted into the model as `fl=.expr`
+      if (!inherits(.s, "try-error")) {
+        expect_true(any(grepl(paste0("^fl=", .nm, "\\("), .s$..lhs)) ||
+                      !any(grepl("\\.expr", .s$..lhs)), info = .nm)
+      }
     }
   })
 
@@ -28,10 +57,7 @@ rxTest({
     # including the second argument of the two-argument forms
     expect_equal(rxFromSE("Derivative(fround(p, n), n)"), "0")
     expect_equal(rxFromSE("Derivative(fprec(p, n), n)"), "0")
-    # ftrunc() cannot be written in a model today: its arity table says 2
-    # arguments while C's Rf_ftrunc takes 1, so neither spelling builds.  Only
-    # the derivative rule is reachable, and only with the declared arity
-    expect_equal(rxFromSE("Derivative(ftrunc(p, 1), eta1)"), "0")
+    expect_equal(rxFromSE("Derivative(ftrunc(p), eta1)"), "0")
     # the Subs(Derivative(...)) form symengine actually produces when the
     # argument is not a bare symbol
     expect_equal(rxFromSE("Subs(Derivative(floor(_xi_1), _xi_1), (_xi_1), (p/24))"),
@@ -141,5 +167,50 @@ cp=center/v
     expect_error(suppressMessages(rxode2(.m, calcSens = TRUE, calcJac = TRUE)), NA)
     expect_error(suppressMessages(rxode2(.m, calcSens = "eta1", calcSens2 = "eta1",
                                          calcJac = TRUE)), NA)
+  })
+
+  test_that("ftrunc() takes one argument, like C's Rf_ftrunc()", {
+    .m <- suppressMessages(rxode2("ft=ftrunc(p)\ntr=trunc(p)\nd/dt(A)=0\n"))
+    for (.p in c(2.7, -2.7, 0, 1)) {
+      .s <- rxSolve(.m, c(p = .p), et(0), returnType = "data.frame",
+                    addDosing = FALSE)
+      expect_equal(.s$ft, trunc(.p), info = as.character(.p))
+      expect_equal(.s$ft, .s$tr, info = as.character(.p))
+    }
+    # the arity table said 2, so neither spelling built: one argument tripped
+    # the parser and two tripped the C compiler
+    expect_error(suppressMessages(rxode2("ft=ftrunc(p,1)\nd/dt(A)=0\n")))
+  })
+
+  test_that("dSwish() expands to a balanced symengine expression", {
+    # the expansion was missing its closing paren, so the text could not be
+    # parsed back and any model using dSwish() failed to load
+    .t <- "dSwish(p1)"
+    .se <- rxToSE(.t)
+    expect_error(str2lang(.se), NA)
+    .ev <- new.env(parent = baseenv())
+    for (.p in c(-2.3, -0.7, 0, 0.4, 1.9)) {
+      assign("p1", .p, envir = .ev)
+      expect_equal(eval(str2lang(.se), envir = .ev), dSwish(.p), info = as.character(.p))
+    }
+    expect_error(rxS("fl=dSwish(p1)\nd/dt(A)=-fl*A\n"), NA)
+  })
+
+  test_that("the parser only advertises functions that compile", {
+    # a name in the arity table but with no C implementation was accepted by the
+    # parser and then generated C that could not compile ("implicit declaration
+    # of function 'abs0'"), which rxode2 asked the user to report as a bug.
+    # abs0() and polygamma() exist only between rxToSE() and rxFromSE();
+    # d2PReLU() had no implementation anywhere
+    for (.e in c("abs0(p)", "polygamma(1,p)", "d2PReLU(p,q)")) {
+      .m <- paste0("fl=", .e, "\nd/dt(A)=-A\n")
+      expect_error(suppressMessages(rxode2(.m)), info = .e)
+    }
+    # ... while both directions still convert them
+    expect_equal(rxToSE("digamma(a)"), "polygamma(0,a)")
+    expect_equal(rxFromSE("polygamma(0, a)"), "digamma(a)")
+    expect_equal(rxFromSE("polygamma(1, a)"), "trigamma(a)")
+    expect_equal(rxToSE("psigamma(a,2)"), "polygamma(2,a)")
+    expect_equal(rxToSE("abs0(a)"), rxToSE("fabs(a)"))
   })
 })

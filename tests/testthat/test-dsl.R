@@ -364,8 +364,10 @@ rxTest({
 
     expect_equal(rxFromSE("Derivative(Swish(x), x)"), "dSwish(x)")
 
+    # the trailing paren closes the leading one; without it the expansion could
+    # not be parsed back, so a dSwish() model failed to load into symengine
     expect_equal(rxToSE("dSwish(x)"),
-                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x)))")
+                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x))))")
 
   })
 

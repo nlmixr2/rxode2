@@ -155,7 +155,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "fsign" = 2,
   "fprec" = 2,
   "fround" = 2,
-  "ftrunc" = 2,
+  ## C's Rf_ftrunc() takes one argument
+  "ftrunc" = 1,
   "transit" = NA,
   "gammaq" = 2,
   "gammapDer" = 2,
@@ -303,7 +304,10 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "dlReLU"=1,
   "PReLU"=2,
   "dPReLU"=2,
-  "d2PReLU"=2,
+  ## no d2PReLU: PReLU is piecewise linear, so its second x derivative is 0 and
+  ## rxode2parseD() returns that literal.  The name had no C, R or derivative
+  ## implementation, so the parser accepted it and then generated C that could
+  ## not compile ("implicit declaration of function 'd2PReLU'")
   "dPReLUa"=2,
   "dPReLUa1"=2,
   "Swish"=1,
@@ -319,6 +323,27 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 ## (delay/lag/lead and their derivative helpers) plus the locally constant ones.
 .rxSEzeroD <- c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3",
                 .rxSElocallyConstant)
+
+## symengine differentiates these itself, so rxS() must NOT shadow them with an
+## opaque FunctionSymbol -- that would throw the symbolic derivative away.  Every
+## OTHER .rxSEeq function with a known arity does get one (see .rxSEopaque):
+## symengine's Math group generic has no method for it, so the assignment would
+## store a non-Basic and the next arithmetic on it fails.  abs() and atan2() are
+## native but are shadowed on purpose, since rxode2parseD() registers their
+## derivative chain (abs -> dabs -> dabs2 -> 0); polygamma() is bound to
+## symengine::psigamma() in rxS() itself.
+.rxSEnative <- c("lgamma", "acos", "acosh", "asin", "asinh", "atan", "atanh",
+                 "beta", "cos", "cosh", "erf", "erfc", "exp", "gamma", "log",
+                 "sin", "sinh", "sqrt", "tan", "tanh", "lowergamma",
+                 "uppergamma", "polygamma")
+
+## Functions loaded into the rxS() environment as opaque FunctionSymbols.  This
+## is a deny list rather than an allow list so a function added to .rxSEeq is
+## loadable by default; a name with an NA arity is excluded because .rxToSE()
+## handles those specially (max/min/logit/tlast/...).
+.rxSEopaque <- function() {
+  setdiff(names(.rxSEeq)[!is.na(.rxSEeq)], .rxSEnative)
+}
 
 .rxOnly <- c(
   ## Now random number generators
@@ -1272,6 +1297,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         return(invisible(NULL))
       }
       .expr <- try(eval(parse(text = .expr)), silent = TRUE)
+      if (inherits(.expr, "try-error")) {
+        ## the try-error is a character vector, so without this it is stored as
+        ## the variable's value and emitted into the model as `<var>=.expr`,
+        ## which only fails later (or not at all, when nothing reads the
+        ## variable) with no hint of where it came from
+        stop(sprintf(gettext("could not load '%s' into symengine: %s"),
+                     rxFromSE(.var), conditionMessage(attr(.expr, "condition"))),
+             call. = FALSE)
+      }
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
             (!.isNum)) {
@@ -1660,7 +1694,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     # x*exp(-x)/(1.0 + exp(-x))^2 + (1.0 + exp(-x))^(-1);
     return(
       paste0("((", .x, ")*exp(-(", .x, "))/(1.0 + exp(-(", .x,
-             ")))^2 + 1.0/(1.0 + exp(-(", .x, ")))")
+             ")))^2 + 1.0/(1.0 + exp(-(", .x, "))))")
       )
   } else {
     stop("'dSwish' can only take 1 argument", call. = FALSE)
@@ -3200,10 +3234,12 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
     "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
     "lag0", "lead0", "diff0",
-    # locally constant functions; symengine's Math group generic has no method
-    # for floor()/ceil()/round()/trunc()/sign(), so load them as opaque
-    # FunctionSymbols (like rxMod/rxGt) and give them a zero derivative
-    .rxSElocallyConstant, "fsign",
+    # every parser-known function symengine cannot handle itself -- the locally
+    # constant floor()/ceil()/round()/trunc()/sign() family, the special
+    # functions (bessel_*, gammaq, fmax2, logspace_add, ...) and the emitted
+    # derivative helpers (llikNormDmean, dSELU, ...).  Without this the
+    # assignment stores a non-Basic and the model is silently corrupted
+    .rxSEopaque(),
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
@@ -4164,14 +4200,22 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
   }
 }
 
+## Spellings that only exist between rxToSE() and rxFromSE(): .rxSEeq carries
+## their arity so both directions can convert them, but there is no C
+## implementation, so the parser must not advertise them -- writing one in a
+## model used to generate C that could not compile ("implicit declaration of
+## function 'abs0'"), which rxode2 then asked the user to report as a bug.
+## abs0() is written abs()/fabs() and polygamma(n, x) is psigamma(x, n).
+.rxSEinternalOnly <- c("abs0", "polygamma")
+
 .rxSupportedFunsExtra <- FALSE
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
-  .ret <- c(
+  .ret <- setdiff(c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
     "linCmt", names(.rxOnly), ls(.symengineFs())
-  )
+  ), .rxSEinternalOnly)
   if (extra) {
-    .ret <- c(.ret, c("linCmtA","linCmtB",
+    .ret <- c(.ret, .rxSEinternalOnly, c("linCmtA","linCmtB",
       "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
       "rxGt", "rxAnd", "rxOr", "rxNot", "dabs", "dabs2", "abs0",
       "dabs1", "abs1"
@@ -4245,7 +4289,8 @@ rxSupportedFuns <- function() {
   "fsign" = 2,
   "fprec" = 2,
   "fround" = 2,
-  "ftrunc" = 2,
+  ## C's Rf_ftrunc() takes one argument
+  "ftrunc" = 1,
   "transit" = NA,
   "gammaq" = 2,
   "gammapDer" = 2,
