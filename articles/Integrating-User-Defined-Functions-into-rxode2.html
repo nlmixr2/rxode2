@@ -212,7 +212,7 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="va">mb1</span> <span class="op">&lt;-</span> <span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span>withoutC<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>,<span class="va">e</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">mb1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/rxTheme.html">rxTheme</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">mb1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/rxTheme.html">rxTheme</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: `aes_string()` was deprecated in ggplot2 3.0.0.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use tidy evaluation idioms with `aes()`.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> See also `vignette("ggplot2-in-packages")` for more information.</span></span>
@@ -246,7 +246,7 @@ Lets see how this very simple function performs:</p>
 <span><span class="va">mb2</span> <span class="op">&lt;-</span> <span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span>withC<span class="op">=</span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>,<span class="va">e</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">mb1</span>, <span class="va">mb2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/rxTheme.html">rxTheme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu">xgxr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/rxTheme.html">rxTheme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu">xgxr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Scale for <span style="color: #00BB00;">y</span> is already present.</span></span>
 <span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">y</span>, which will replace the existing scale.</span></span></code></pre></div>
 <p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/convertC-1.png" class="r-plt" alt="" width="700"></p>
@@ -254,8 +254,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr       min        lq      mean    median        uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 15.345043 15.856220 16.830537 16.097513 16.532933 29.65418   100</span></span>
-<span><span class="co">#&gt;     withC  8.655738  8.935437  9.713848  9.177636  9.486814 15.93774   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 11.580562 11.930602 13.009203 12.292421 12.961386 24.05091   100</span></span>
+<span><span class="co">#&gt;     withC  6.949092  7.247167  7.659038  7.477818  7.629807 13.18440   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -836,7 +836,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5561115f73e8&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55eb4798cfd0&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -846,7 +846,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5561123de690&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55eb48761be8&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
