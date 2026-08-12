@@ -264,6 +264,37 @@ static inline indLinAutoState_t *indLinAutoFor(int cSub) {
   return a;
 }
 
+// -- Step-disposition diagnostics ---------------------------------------------
+//
+// `$counts` is full: slvr counts accepted steps and dadt/jac already carry the
+// exponentials computed and reused.  These answer a different question -- WHY a
+// step was retried.  A step cut because the fixed-point iteration would not
+// contract is one the error controller would have allowed, so this count is the
+// ceiling on what replacing that iteration can win; a step rejected on error is
+// not.  Read with `rxIndLinSteps()`, which sums the threads and resets.
+//
+// Per thread and summed at read, not atomics: every increment sits in the
+// innermost substep loop, where a contended atomic would cost more than the
+// step it counts.  Padded so two threads never share a cache line.
+typedef struct {
+  long attempt;
+  long accept;
+  long rejErr;    // rejected: local error estimate too large
+  long cutConv;   // cut: iteration did not converge (ret == -2)
+  long iter;      // total iteration passes over all substeps
+  char pad[64];
+} indLinCounts_t;
+static std::vector<indLinCounts_t> __indLinCounts;
+// `indLin()` is reachable before any solve has sized the pool; count into a
+// sink there rather than branching around every increment.  Nothing is threaded
+// at that point, and `rxIndLinSteps()` drains it along with the rest.
+static indLinCounts_t __indLinCountsSink;
+
+static inline indLinCounts_t *indLinCountsHere(void) {
+  if (__indLinCounts.empty()) return &__indLinCountsSink;
+  return &__indLinCounts[rx_get_thread((int)__indLinCounts.size())];
+}
+
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
@@ -274,6 +305,12 @@ extern "C" void ensureIndLinExpCache(int nCores) {
   }
   if ((int)__indLinAutoState.size() < nCores) {
     __indLinAutoState.resize(nCores);
+  }
+  // Grown but never zeroed here: the counts accumulate until `rxIndLinSteps()`
+  // reads them, which is across solves, and `rxSolveFree()` runs at the START
+  // of the next one.  `resize` value-initializes the new slots.
+  if ((int)__indLinCounts.size() < nCores) {
+    __indLinCounts.resize(nCores);
   }
   for (int i = 0; i < (int)__indLinAutoState.size(); i++) {
     __indLinAutoState[i].cSub = -1;      // nothing survives into another solve
@@ -292,6 +329,9 @@ extern "C" void ensureIndLinExpCache(int nCores) {
 extern "C" void freeIndLinExpCache(void) {
   __indLinExpCache.clear();
   __indLinAutoState.clear();
+  // `__indLinCounts` is deliberately NOT cleared: `rxSolveFree()` calls this at
+  // the START of the next solve, and the counts have to survive until
+  // `rxIndLinSteps()` reads them.  It is five longs per core.
 }
 
 // exp(H*t) into `out`, reusing an identical earlier exponential when there is
@@ -505,10 +545,6 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
   }
   }
 }
-
-
-bool expm_assign=false;
-SEXP expm_s;
 
 // P(h) = A^-1(exp(Ah) - I) = h*phi1(Ah), the operator the substep map applies
 // to the forcing.  Needed as a MATRIX only by the Newton iteration, which forms
@@ -2019,26 +2055,8 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
 // tuned `hmax` keeps at least the accuracy they had, and every old substep
 // boundary is still a boundary (which is what keeps time-varying covariate
 // sampling a refinement rather than a change).
-// -- Step-disposition diagnostics ---------------------------------------------
-//
-// `$counts` is full: slvr counts accepted steps and dadt/jac already carry the
-// exponentials computed and reused.  These answer a different question -- WHY a
-// step was retried.  A step cut because the fixed-point iteration would not
-// contract is one the error controller would have allowed, so this count is the
-// ceiling on what replacing that iteration can win; a step rejected on error is
-// not.  Read with `rxIndLinSteps()`, which also resets.
-//
-// Plain `long` rather than atomics: `par_indLin` is forced single-threaded
-// (`solveMethodThreadSafe`), and these are diagnostics, so a torn count under a
-// future threaded build would mislead but not corrupt.  Revisit if indLin ever
-// becomes reentrant.
-static long __indLinNAttempt = 0;
-static long __indLinNAccept  = 0;
-static long __indLinNRejErr  = 0;   // rejected: local error estimate too large
-static long __indLinNCutConv = 0;   // cut: iteration did not converge (ret == -2)
-static long __indLinNIter    = 0;   // total iteration passes over all substeps
-
-extern "C" void rxIndLinCountIter(int n) { __indLinNIter += n; }
+// The step-disposition counters live with the other per-thread pools, above.
+extern "C" void rxIndLinCountIter(int n) { indLinCountsHere()->iter += n; }
 
 // The extrapolation level an explicit `indLinRichardson` asks for.  `auto`
 // starts at the base order and earns its way up through indLinRaiseRich().
@@ -2184,7 +2202,7 @@ static inline void indLinAcceptStep(indLinProgress_t *pr, bool inSS, double hCap
   y0 = yTry;
   pr->t += pr->h;
   pr->nAccept++;
-  __indLinNAccept++;
+  indLinCountsHere()->accept++;
   if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
   pr->lastRejected = 0;
   pr->h *= fac;
@@ -2208,7 +2226,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                     arma::vec &yScratch, arma::mat &richTab,
                                     int *retOut) {
   const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
-  __indLinNAttempt++;
+  indLinCountsHere()->attempt++;
   if (++(pr->nAttempt) > op->mxstep) return RX_INDLIN_ACT_ABANDON;
   // Decide from the step the controller has settled on rather than by burning
   // the switch-over count first.
@@ -2224,7 +2242,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                 InfusionRate_, on_, ME, IndF, u, yTry, w1,
                                 yScratch, richTab, &err, &ratio);
   if (ret == -2) {
-    __indLinNCutConv++;
+    indLinCountsHere()->cutConv++;
     indLinStiffGate(autoScheme, autoRich, autoSt, &(pr->scheme), &(pr->useRich));
     pr->h *= indLinCutFactor(ratio, FACMIN);
     pr->lastRejected = 1;
@@ -2236,7 +2254,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   }
   double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
   if (err > 1.0) {
-    __indLinNRejErr++;
+    indLinCountsHere()->rejErr++;
     pr->h *= fac;
     pr->lastRejected = 1;
     return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
@@ -2530,18 +2548,30 @@ extern "C" SEXP _rxode2_rxIndLinSteps(void) {
   rxProtect rx_protect;
   SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 5));
   SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 5));
-  REAL(ret)[0] = (double) __indLinNAttempt;
-  REAL(ret)[1] = (double) __indLinNAccept;
-  REAL(ret)[2] = (double) __indLinNRejErr;
-  REAL(ret)[3] = (double) __indLinNCutConv;
-  REAL(ret)[4] = (double) __indLinNIter;
+  // Summed over the threads that did the work, plus the pre-solve sink; this
+  // runs on the R thread with no solve in flight, so a plain read is enough.
+  indLinCounts_t tot = __indLinCountsSink;
+  for (int i = 0; i < (int)__indLinCounts.size(); i++) {
+    tot.attempt += __indLinCounts[i].attempt;
+    tot.accept  += __indLinCounts[i].accept;
+    tot.rejErr  += __indLinCounts[i].rejErr;
+    tot.cutConv += __indLinCounts[i].cutConv;
+    tot.iter    += __indLinCounts[i].iter;
+  }
+  REAL(ret)[0] = (double) tot.attempt;
+  REAL(ret)[1] = (double) tot.accept;
+  REAL(ret)[2] = (double) tot.rejErr;
+  REAL(ret)[3] = (double) tot.cutConv;
+  REAL(ret)[4] = (double) tot.iter;
   SET_STRING_ELT(nm, 0, Rf_mkChar("attempt"));
   SET_STRING_ELT(nm, 1, Rf_mkChar("accept"));
   SET_STRING_ELT(nm, 2, Rf_mkChar("rejErr"));
   SET_STRING_ELT(nm, 3, Rf_mkChar("cutConv"));
   SET_STRING_ELT(nm, 4, Rf_mkChar("iter"));
   Rf_setAttrib(ret, R_NamesSymbol, nm);
-  __indLinNAttempt = __indLinNAccept = __indLinNRejErr = 0;
-  __indLinNCutConv = __indLinNIter = 0;
+  __indLinCountsSink = indLinCounts_t();
+  for (int i = 0; i < (int)__indLinCounts.size(); i++) {
+    __indLinCounts[i] = indLinCounts_t();
+  }
   return ret;
 }
