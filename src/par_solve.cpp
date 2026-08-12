@@ -4106,10 +4106,13 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
 
 //================================================================================
 // Inductive linearization routines
+// The caller binds the model functions: `par_indLin` once before its parallel
+// region, `ind_indLin` for the per-individual entry.  `assignFuns` reaches
+// `R_GetCCallable` and writes the generated DLL's global function pointers, so
+// it must not run per subject inside the loop -- no other `ind_*` driver does.
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             t_update_inis u_inis) {
   clock_t t0 = clock();
-  assignFuns();
   int i;
   int neq[2];
   neq[1] = solveid;
@@ -4292,7 +4295,10 @@ extern "C" void par_indLin(rx_solve *rx){
     localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + solveid - 1);
-      ind_indLin(rx, solveid, update_inis);
+      // `ind_indLin0` rather than the `ind_indLin` wrapper: the wrapper binds
+      // the model functions, which `assignFuns()` above already did once for
+      // the whole team.
+      ind_indLin0(rx, op, solveid, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
