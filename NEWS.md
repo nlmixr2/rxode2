@@ -112,6 +112,17 @@
   dropped silently -- the model still parsed and built, it simply lost the label
   (#1205).
 
+### Estimation / symengine translation
+
+- A model using the modulo operator `%%` can now be estimated.  `%%` was
+  missing from the infix operator tables of the `if`/`else` rewriter
+  (`rxPrune()`) and of `rxOptExpr()`, so both emitted it as the prefix call
+  `%%(a, b)`, which is not parsable rxode2.  Since every nlmixr2 estimation
+  method runs those two stages, a model that solved fine failed to fit with a
+  syntax error -- blocking `%%` as the way to write a square-wave or circadian
+  time-dependent parameter.  Operands that are not a plain name or number are
+  parenthesized, as the grammar requires (#1229).
+
 ### Solving
 
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall

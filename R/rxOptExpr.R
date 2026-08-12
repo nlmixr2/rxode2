@@ -68,7 +68,20 @@
   }
 }
 
+.rxOptMod <- function(e1, e2) {
+  .ret <- paste0(.rxModOperand(e1), "%%", .rxModOperand(e2))
+  .num <- rex::rex(start, any_spaces, regNum, any_spaces, end)
+  if (regexpr(.num, paste0(e1), perl = TRUE) != -1 &&
+        regexpr(.num, paste0(e2), perl = TRUE) != -1) {
+    # constants are left inline, as the other binary operators do; unlike them
+    # `%%` is not folded here, since rxode2 truncates toward zero and R floors
+    return(.ret)
+  }
+  .addExpr(.ret)
+}
+
 .rxOptEnv <- new.env(parent = emptyenv())
+.rxOptEnv[["%%"]] <- .rxOptMod
 .rxOptEnv[["^"]] <- .rxOptBin("^")
 .rxOptEnv[["**"]] <- .rxOptBin("^")
 
@@ -225,6 +238,11 @@
         }
       }
       return(paste0("(", ..rxOpt(.x2), ")"))
+    } else if (identical(x[[1]], quote(`%%`))) {
+      return(paste0(
+        .rxModOperand(..rxOpt(x[[2]])), "%%",
+        .rxModOperand(..rxOpt(x[[3]]))
+      ))
     } else if (identical(x[[1]], quote(`*`)) ||
       identical(x[[1]], quote(`^`)) ||
       identical(x[[1]], quote(`+`)) ||
@@ -314,10 +332,10 @@
         ))
       } else {
         ## Unary Operators
-        return(paste0(
+        paste0(
           as.character(x[[1]]),
           ..rxOpt(x[[2]])
-        ))
+        )
       }
     } else if (identical(x[[1]], quote(`~`)) ||
       identical(x[[1]], quote(`=`)) ||
