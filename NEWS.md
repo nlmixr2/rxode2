@@ -48,6 +48,15 @@
   exposes the whole naming sequence for packages that capture a model
   expression with `substitute()`.
 
+- `rxSolve(method="indLin")` now solves subjects in parallel and honors
+  `cores`.  Inductive linearization was held to a single core because it was
+  listed with the Fortran COMMON-block solvers (`lsoda`, `lsode`, `bdf`); it is
+  not one of them, and its matrix-exponential and scheme caches were already
+  per thread.  It now goes through the same thread-safety switch as
+  `liblsoda`, so a model whose functions are not thread safe still drops to one
+  core with the usual warning.  The answer, and the `rxIndLinSteps()` step
+  counts, are unchanged from the single-core solve.
+
 ## Bug fixes
 
 ### Compilation
