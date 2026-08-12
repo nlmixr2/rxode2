@@ -147,7 +147,6 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
   case 2: {
     int iflag=0;
     int m = H.n_rows;
-    // FIXME C++ implementation for threading.
     out = H;
     F77_CALL(matexprbs)(&order, &m, &t, out.memptr(), &iflag);
     // matexpRBS used to warn through the R API from inside the parallel
@@ -159,9 +158,17 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
     }
     break;
   }
-  default:
+  default: {
     H *= t;
-    out = arma::expmat(H);
+    // The bool form, not `out = arma::expmat(H)`: the one-argument overload
+    // throws on failure, and `ARMA_DONT_PRINT_ERRORS` suppresses the message,
+    // not the throw.  An exception leaving an omp region is std::terminate.
+    if (!arma::expmat(out, H)) {
+      RSprintf(_("matrix exponential failed\n"));
+      out.zeros();
+    }
+    break;
+  }
   }
 }
 
@@ -251,10 +258,32 @@ typedef struct {
 } indLinAutoState_t;
 static std::vector<indLinAutoState_t> __indLinAutoState;
 
+// This thread's slot in a pool of `n`, or -1 when it has none.
+//
+// `rx_get_thread()` CLAMPS to the last slot instead, which is right for the
+// pools it was written for -- two threads sharing a counter tears a number.
+// It is not right here: the exponential cache's write path calls
+// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, which
+// is a use-after-free rather than a torn read.  A thread with no slot of its
+// own simply does not cache.  An external OpenMP driver (nlmixr2est) is
+// supposed to have configured `op->cores` to cover its team; this is what
+// happens when it has not.
+static inline int indLinOwnSlot(int n) {
+  if (n <= 0) return -1;
+#ifdef _OPENMP
+  int tn = getRxThreadId();
+  if (tn < 0) tn = omp_get_thread_num();
+  if (tn < 0) tn = 0;
+  return (tn < n) ? tn : -1;
+#else
+  return 0;
+#endif
+}
+
 static inline indLinAutoState_t *indLinAutoFor(int cSub) {
-  if (__indLinAutoState.empty()) return NULL;
-  indLinAutoState_t *a =
-    &__indLinAutoState[rx_get_thread((int)__indLinAutoState.size())];
+  const int tid = indLinOwnSlot((int)__indLinAutoState.size());
+  if (tid < 0) return NULL;   // every caller is NULL-safe: Picard, no ratchet
+  indLinAutoState_t *a = &__indLinAutoState[tid];
   if (a->cSub != cSub) {
     a->cSub = cSub;
     a->scheme = RX_INDLIN_ITER_PICARD;
@@ -290,6 +319,8 @@ static std::vector<indLinCounts_t> __indLinCounts;
 // at that point, and `rxIndLinSteps()` drains it along with the rest.
 static indLinCounts_t __indLinCountsSink;
 
+// `rx_get_thread`'s clamp, not `indLinOwnSlot`: sharing a slot here tears a
+// diagnostic count, and nothing on this path reallocates.
 static inline indLinCounts_t *indLinCountsHere(void) {
   if (__indLinCounts.empty()) return &__indLinCountsSink;
   return &__indLinCounts[rx_get_thread((int)__indLinCounts.size())];
@@ -300,6 +331,15 @@ extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
+  // Cover `omp_get_max_threads()` as well as the cores this solve asked for,
+  // for the reason `ensureExtraDosing` gives: an external OpenMP driver can
+  // bring more threads than `op->cores`.  Without a slot each they fall back to
+  // computing uncached (indLinOwnSlot), which is correct but slow, so size for
+  // the common case and let the guard cover the rest.
+  {
+    int mx = omp_get_max_threads();
+    if (mx > nCores) nCores = mx;
+  }
   if ((int)__indLinExpCache.size() < nCores) {
     __indLinExpCache.resize(nCores);
   }
@@ -342,9 +382,9 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   const int n = (int) H.n_rows;
   const size_t n2 = (size_t) n * (size_t) n;
   expCache_t *c = NULL;
-  if (!__indLinExpCacheOff && !__indLinExpCache.empty() &&
-      n2 <= RX_INDLIN_EXPCACHE_MAXN2) {
-    c = &__indLinExpCache[rx_get_thread((int)__indLinExpCache.size())];
+  const int tid = indLinOwnSlot((int)__indLinExpCache.size());
+  if (!__indLinExpCacheOff && tid >= 0 && n2 <= RX_INDLIN_EXPCACHE_MAXN2) {
+    c = &__indLinExpCache[tid];
     for (int j = 0; j < RX_INDLIN_EXPCACHE_N; j++) {
       expCacheSlot_t &s = c->slot[j];
       if (s.n == n && memcmp(&s.t, &t, sizeof(double)) == 0 &&
@@ -2382,10 +2422,10 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
 //'        inductive linearization
 //' @name rxIndLin_
 //' @noRd
-extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                      double tp, double *yp_, double tf,
-		      double *InfusionRate_, int *on_,
-		      t_ME ME, t_IndF  IndF){
+static int indLinRun(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                     double tp, double *yp_, double tf,
+                     double *InfusionRate_, int *on_,
+                     t_ME ME, t_IndF  IndF){
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   // Use per-individual tolerance arrays when available (set by
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
@@ -2537,6 +2577,25 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   //   }
   // }
   return 1;
+}
+
+// The solve-side entry point.  Everything it reaches is written not to throw --
+// `RSprintf` instead of the R API, the bool forms of the Armadillo
+// decompositions, `ind->err` instead of an error -- but an Armadillo
+// allocation can still raise `std::bad_alloc`, and an exception leaving
+// `par_indLin`'s parallel region is `std::terminate`, i.e. a lost session
+// rather than a failed subject.  Turn anything that escapes into the
+// convergence-failure code the caller already NA-fills on.
+extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                      double tp, double *yp_, double tf,
+                      double *InfusionRate_, int *on_,
+                      t_ME ME, t_IndF  IndF){
+  try {
+    return indLinRun(cSub, op, ind, tp, yp_, tf, InfusionRate_, on_, ME, IndF);
+  } catch (...) {
+    if (ind != NULL) ind->err |= rxErrIndLinCode;
+    return -1;
+  }
 }
 
 // Step dispositions for the last solve (or since the last read), as a named
