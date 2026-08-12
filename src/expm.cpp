@@ -636,6 +636,100 @@ static inline int indLinUseSymJac(rx_solving_options *op) {
   }
 }
 
+// Shims for calling the MODEL-GENERATED `ME()`, `IndF()` and `calc_jac()`
+// bodies (rxode2#1200).
+//
+// Those bodies always write the FULL COMPILED state count (`tb.de.n`, which is
+// `op->neq`); codegen bakes that count in as a literal (`src/codegen.c`, the
+// `ode_mexp` / `ode_indLinVec` branches) and knows nothing about a
+// per-individual `ind->neqOverride`.  Everything in this file sizes its buffers
+// by the EFFECTIVE count `rxEffNeq()`, so under an override those buffers are
+// short and the generated write runs past their end -- quadratically so for
+// `ME`.  Route every generated-code call through a full-size scratch and copy
+// the leading effective block back out.
+//
+// The override always shortens (`rxEffNeq() <= op->neq`, the caller's
+// contract), and the states it drops are the trailing ones, which do not feed
+// back into the leading block, so the leading block IS the effective system's
+// matrix / forcing.  With no override -- the only case rxode2 itself reaches --
+// `neq == op->neq` and the generated code still writes straight into the
+// caller's buffer, so the numerics are bit-identical to before.
+//
+// The STATE they read is padded for the same reason: a generated body reads
+// `__zzStateVar__[0 .. op->neq-1]` too, and most of the states handed in here
+// are this file's own `neq`-sized scratch vectors (`y0`, `w`, `U2`, the
+// finite-difference `yPert`), where reading the full count is an overrun of an
+// exactly-sized heap buffer.  The padding is zero, which is the value the
+// dropped trailing states have no say over anyway.
+//
+// The scratch is a plain local vector rather than a per-thread pool: it is only
+// allocated on the override path, and there it is immediately followed by a
+// matrix exponential of the same size.
+static inline void indLinPadState(const double *y, int neq,
+                                  std::vector<double> &yFull) {
+  std::copy(y, y + neq, yFull.begin());
+}
+
+static inline void indLinME(t_ME ME, int cSub, double tcov, double tEval,
+                            double *mat, const double *y,
+                            int neq, rx_solving_options *op) {
+  if (neq >= op->neq) {
+    ME(cSub, tcov, tEval, mat, y);
+    return;
+  }
+  const int nAll = op->neq;
+  std::vector<double> yFull((size_t)nAll, 0.0);
+  indLinPadState(y, neq, yFull);
+  std::vector<double> full((size_t)nAll*(size_t)nAll);
+  ME(cSub, tcov, tEval, &full[0], &yFull[0]);
+  // Column major, both sides.
+  for (int j = 0; j < neq; ++j) {
+    std::copy(&full[0] + (size_t)j*nAll, &full[0] + (size_t)j*nAll + neq,
+              mat + (size_t)j*neq);
+  }
+}
+
+static inline void indLinIndF(t_IndF IndF, int cSub, double tcov, double tEval,
+                              double *f, const double *y,
+                              int neq, rx_solving_options *op) {
+  if (neq >= op->neq) {
+    IndF(cSub, tcov, tEval, f, y);
+    return;
+  }
+  const int nAll = op->neq;
+  std::vector<double> yFull((size_t)nAll, 0.0);
+  indLinPadState(y, neq, yFull);
+  std::vector<double> full((size_t)nAll);
+  IndF(cSub, tcov, tEval, &full[0], &yFull[0]);
+  std::copy(&full[0], &full[0] + neq, f);
+}
+
+// `calc_jac` takes its row stride as an argument (`__NROWPD__`), but the
+// entries it writes are still keyed by the compiled state count, so a short
+// stride is not enough on its own.  Unlike `ME`/`IndF` it writes only the
+// entries the model declares, hence the zero fill.  Its state argument is
+// non-const only because the generated prototype is; the body reads it.
+static inline void indLinCalcJac(int cSub, double tEval, const double *y,
+                                 double *jac, int neq, rx_solving_options *op) {
+  int nj[2]; nj[1] = cSub;
+  if (neq >= op->neq) {
+    nj[0] = neq;
+    calc_jac(nj, tEval, const_cast<double*>(y), jac, (unsigned int) neq);
+    return;
+  }
+  const int nAll = op->neq;
+  nj[0] = nAll;
+  std::vector<double> yFull((size_t)nAll, 0.0);
+  indLinPadState(y, neq, yFull);
+  std::vector<double> full((size_t)nAll*(size_t)nAll, 0.0);
+  calc_jac(nj, tEval, &yFull[0], &full[0], (unsigned int) nAll);
+  // Row major, both sides (parseDfdy.h emits `[i*__NROWPD__ + j]`).
+  for (int i = 0; i < neq; ++i) {
+    std::copy(&full[0] + (size_t)i*nAll, &full[0] + (size_t)i*nAll + neq,
+              jac + (size_t)i*neq);
+  }
+}
+
 // The forcing Jacobian from the model's own analytic Jacobian.
 //
 // `calc_jac` is d(RHS)/dy for the WHOLE right-hand side, which in this
@@ -655,14 +749,14 @@ static inline int indLinUseSymJac(rx_solving_options *op) {
 // converges to the same fixed point under any J) while exprb -- whose order
 // conditions assume J is exact -- lost four orders of accuracy and took sixty
 // times the steps.
-static void indLinForcingJacSym(int cSub, int neq, double tcov, double tEval,
+static void indLinForcingJacSym(int cSub, rx_solving_options *op, int neq,
+                                double tcov, double tEval,
                                 const double *y, t_ME ME, arma::mat &Jf,
                                 arma::mat &Jfull, arma::mat &Amat) {
   Jfull.zeros(neq, neq);
   Amat.zeros(neq, neq);
-  int nj[2]; nj[0] = neq; nj[1] = cSub;
-  calc_jac(nj, tEval, const_cast<double*>(y), Jfull.memptr(), (unsigned int) neq);
-  ME(cSub, tcov, tEval, Amat.memptr(), const_cast<double*>(y));
+  indLinCalcJac(cSub, tEval, y, Jfull.memptr(), neq, op);
+  indLinME(ME, cSub, tcov, tEval, Amat.memptr(), y, neq, op);
   Jf = Jfull.t() - Amat;
 }
 
@@ -678,9 +772,9 @@ static void indLinForcingJacFd(int cSub, rx_solving_options *op,
     const double yj = y[j];
     const double eps = 6e-6 * std::max(fabs(yj), 1.0);
     yPert[j] = yj + eps;
-    IndF(cSub, tcov, tEval, fPlus.memptr(), yPert.memptr());
+    indLinIndF(IndF, cSub, tcov, tEval, fPlus.memptr(), yPert.memptr(), neq, op);
     yPert[j] = yj - eps;
-    IndF(cSub, tcov, tEval, fMinus.memptr(), yPert.memptr());
+    indLinIndF(IndF, cSub, tcov, tEval, fMinus.memptr(), yPert.memptr(), neq, op);
     yPert[j] = yj;
     const double d = 0.5/eps;
     for (int i = 0; i < neq; ++i) {
@@ -701,7 +795,7 @@ static void indLinForcingJac(int cSub, rx_solving_options *op,
                              arma::mat &Jfull, arma::mat &Amat) {
   if (IndF == NULL) { Jf.zeros(neq, neq); return; }
   if (indLinUseSymJac(op)) {
-    indLinForcingJacSym(cSub, neq, tcov, tEval, y, ME, Jf, Jfull, Amat);
+    indLinForcingJacSym(cSub, op, neq, tcov, tEval, y, ME, Jf, Jfull, Amat);
     return;
   }
   indLinForcingJacFd(cSub, op, neq, tcov, tEval, y, IndF, Jf, yPert, fPlus, fMinus);
@@ -724,7 +818,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
   arma::mat m0(neq, neq);
-  ME(cSub, tcov, tme, m0.memptr(), yc_);
+  indLinME(ME, cSub, tcov, tme, m0.memptr(), yc_, neq, op);
   const arma::vec InfusionRate(InfusionRate_, neq, false, false);
   arma::vec yp(yp_, neq, false, true);
   arma::vec yc(yc_, neq, false, true);
@@ -841,7 +935,7 @@ static int indLinRampBuild(int cSub, rx_solving_options *op, rx_solving_options_
                          tMid, rmp->f0.memptr(), on_, ME, op, ind);
   if (ret <= 0) return ret;
   arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
-  ME(cSub, tcov, tMid, Aloc.memptr(), y0.memptr());
+  indLinME(ME, cSub, tcov, tMid, Aloc.memptr(), y0.memptr(), neq, op);
   indLinPmat(op, ind, neq, Aloc, h, 2, rmp->P2, phiZ, phiTmp);
   return 1;
 }
@@ -861,7 +955,8 @@ static inline int indLinPass(int cSub, rx_solving_options *op, rx_solving_option
                              const indLinRamp_t *rmp) {
   double *force = InfusionRate_;
   if (u != NULL) {
-    IndF(cSub, tcov, tEval, u->memptr(), w);
+    const int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
+    indLinIndF(IndF, cSub, tcov, tEval, u->memptr(), w, neq, op);
     if (rmp != NULL) {
       const arma::vec out = rmp->base + rmp->P2*(*u - rmp->f0);
       std::copy(out.begin(), out.end(), w);
@@ -1047,11 +1142,11 @@ static int indLinExprb2(int cSub, rx_solving_options *op, rx_solving_options_ind
                         arma::mat &augE, arma::mat &Aloc,
                         arma::mat &Jfull, arma::mat &Amat) {
   // A at the step start.
-  ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
+  indLinME(ME, cSub, tcov, tEval, Aloc.memptr(), y0.memptr(), neq, op);
   // f(y_n): IndF when there is one, otherwise the bare infusion rate.
   arma::vec f0(neq);
   if (u != NULL) {
-    IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
+    indLinIndF(IndF, cSub, tcov, tEval, f0.memptr(), y0.memptr(), neq, op);
     indLinForcingJac(cSub, op, neq, tcov, tEval, y0.memptr(), IndF, ME,
                      Jf, yPert, fPlus, fMinus, Jfull, Amat);
   } else {
@@ -1136,10 +1231,10 @@ static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_in
                          arma::vec &fMinus, arma::mat &aug, arma::vec &augY,
                          arma::mat &augE, arma::mat &Aloc,
                          arma::mat &Jfull, arma::mat &Amat) {
-  ME(cSub, tcov, tEval, Aloc.memptr(), const_cast<double*>(y0.memptr()));
+  indLinME(ME, cSub, tcov, tEval, Aloc.memptr(), y0.memptr(), neq, op);
   arma::vec f0(neq);
   if (u != NULL) {
-    IndF(cSub, tcov, tEval, f0.memptr(), const_cast<double*>(y0.memptr()));
+    indLinIndF(IndF, cSub, tcov, tEval, f0.memptr(), y0.memptr(), neq, op);
     indLinForcingJac(cSub, op, neq, tcov, tEval, y0.memptr(), IndF, ME,
                      Jf, yPert, fPlus, fMinus, Jfull, Amat);
   } else {
@@ -1173,7 +1268,7 @@ static int indLinExprb32(int cSub, rx_solving_options *op, rx_solving_options_in
     return 1;
   }
   arma::vec fU2(neq);
-  IndF(cSub, tcov, tEval, fU2.memptr(), U2.memptr());
+  indLinIndF(IndF, cSub, tcov, tEval, fU2.memptr(), U2.memptr(), neq, op);
   arma::vec D2 = fU2 - f0 - Jf*(U2 - y0);
   // phi3(hJ) D_2 from one exponential of size neq+3, using
   //   exp([[X, W],[0, K]])  with W = [w_p ... w_1] and K the UNIT superdiagonal
@@ -1348,7 +1443,7 @@ static inline void indLinNewtonPmat(int cSub, rx_solving_options *op,
     return;
   }
   arma::mat Aloc(neq, neq), phiZ(neq, neq), phiTmp(neq, neq);
-  ME(cSub, tcov, subTf, Aloc.memptr(), w.memptr());
+  indLinME(ME, cSub, tcov, subTf, Aloc.memptr(), w.memptr(), neq, op);
   indLinPmat(op, ind, neq, Aloc, h, 1, Ph, phiZ, phiTmp);
 }
 
@@ -2346,7 +2441,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
     case 2: {
       // Evaluate the forcing at the interval-start state, the same vector
       // `meOnly()` hands to `ME` below (it is `meOnly()` that advances `yp_`).
-      IndF(cSub, tcov, _subTf, u.memptr(), yp_);
+      indLinIndF(IndF, cSub, tcov, _subTf, u.memptr(), yp_, neq, op);
       _ret = meOnly(cSub, yp_, yp_, _subTp, _subTf, tcov, _subTf, u.memptr(), on_, ME, op, ind);
       break;
     }
