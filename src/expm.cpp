@@ -648,6 +648,14 @@ static inline int indLinUseSymJac(rx_solving_options *op) {
 // `ME`.  Route every generated-code call through a full-size scratch and copy
 // the leading effective block back out.
 //
+// An override does not narrow which bodies get called: `ME`/`IndF` come from
+// `ind->fns` (== `&rx->fns`), and `calc_jac` is a file-scope global; both are
+// bound by `rxAssignPtr()`, which `rxSolve()` calls with the model that also
+// sized `op->neq`, and nothing rebinds them per individual (nlmixr2est's
+// odeSwap swaps only the dydt family, into a struct with no `me`/`indf`).  So
+// the body running under an override is still the one compiled for `op->neq`
+// states.
+//
 // The override always shortens (`rxEffNeq() <= op->neq`, the caller's
 // contract), and the states it drops are the trailing ones, which do not feed
 // back into the leading block, so the leading block IS the effective system's
@@ -808,12 +816,8 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
   // back to op->neq.  Keeps allocations / loops consistent with what the
   // outer indLin solver wrote.
   //
-  // This is also the right size for the `ME`/`IndF`/`calc_jac` buffers below,
-  // which the model-generated bodies index by their own compiled state count:
-  // an override says how many states the INSTALLED model has, so rxEffNeq() is
-  // that count (see the contract on rxEffNeq() in inst/include/rxode2.h, and
-  // rxode2#1200).  Sizing them from op->neq -- the pool width -- would
-  // mis-stride the output whenever a narrower model is installed.
+  // It is NOT the size the generated `ME` writes -- see the shims above -- so
+  // the `ME` call goes through `indLinME()`.
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   int type = op->indLinMatExpType;
   int order = op->indLinMatExpOrder;
@@ -2364,7 +2368,6 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
                       double tp, double *yp_, double tf,
 		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF){
-  // The installed model's state count, not the pool width -- see meOnly().
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   // Use per-individual tolerance arrays when available (set by
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
