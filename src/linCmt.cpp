@@ -539,6 +539,47 @@ extern "C" int linCmtZeroJac(int i) {
  * @author Matthew Fidler
  *
 */
+// linCmtB's which1 = -3 case: the dose-time (moving boundary) sensitivity.
+//
+// `amt` holds the amounts at the requested time from the which1=-1/which2=-1
+// call the caller is required to have made, and the linear system's own
+// right-hand side gives d/dL exactly (see linCmtStan::dAdt()).  Returns
+// NA_REAL for a call that does not describe the model `lc` is set up for, for
+// an individual with an infusion (linCmtHasInfusion()), or for an out of range
+// `which2`.
+static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
+                                     const Eigen::Matrix<double, Eigen::Dynamic, 1> &amt,
+                                     rx_solving_options_ind *ind,
+                                     const double *rate,
+                                     int ncmt, int oral0, int which2, int trans,
+                                     double p1, double v1,
+                                     double p2, double p3,
+                                     double p4, double p5,
+                                     double ka) {
+  if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
+      (int)amt.size() != ncmt + oral0) {
+    return NA_REAL;
+  }
+  if (linCmtHasInfusion(ind)) return NA_REAL;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
+  switch (ncmt + 10*oral0) {
+  case 1:  th << p1, v1; break;
+  case 11: th << p1, v1, ka; break;
+  case 2:  th << p1, v1, p2, p3; break;
+  case 12: th << p1, v1, p2, p3, ka; break;
+  case 3:  th << p1, v1, p2, p3, p4, p5; break;
+  case 13: th << p1, v1, p2, p3, p4, p5, ka; break;
+  default: return NA_REAL;
+  }
+  Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
+    stan::math::macros2micros(th, ncmt, trans);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> dot(ncmt + oral0);
+  lc.dAdt(amt, gm, ka, rate, dot);
+  if (which2 == -3) return -dot(oral0, 0) / lc.getVc(th);
+  if (which2 >= 0 && which2 < ncmt + oral0) return -dot(which2, 0);
+  return NA_REAL;
+}
+
 // linCmtSensIsAD() (the AD jacobian classifier; forward-mode fvar 3/30,
 // reverse-mode 31, auto 100 -> unscaled thetaSens + passthrough trueTheta; the
 // finite-difference methods keep the scaled path) lives in linCmtSensType.h so
@@ -588,35 +629,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
     } else if (which1 == -3) {
-      // Dose-time (moving boundary) sensitivity; see the header comment.
-      // `fx` holds the amounts at `_t` from the which1=-1/which2=-1 call that
-      // the caller is required to have made, and the linear system's own
-      // right-hand side gives d/dL exactly.
-      if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
-          (int)fx.size() != ncmt + oral0) {
-        return NA_REAL;
-      }
-      Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
-      switch (ncmt + 10*oral0) {
-      case 1:  th << p1, v1; break;
-      case 11: th << p1, v1, ka; break;
-      case 2:  th << p1, v1, p2, p3; break;
-      case 12: th << p1, v1, p2, p3, ka; break;
-      case 3:  th << p1, v1, p2, p3, p4, p5; break;
-      case 13: th << p1, v1, p2, p3, p4, p5, ka; break;
-      default: return NA_REAL;
-      }
-      if (linCmtHasInfusion(ind)) return NA_REAL;
-      Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
-        stan::math::macros2micros(th, ncmt, trans);
-      Eigen::Matrix<double, Eigen::Dynamic, 1> dot(ncmt + oral0);
-      lc.dAdt(fx, gm, ka, getLinRate, dot);
-      if (which2 == -3) {
-        return -dot(oral0, 0) / lc.getVc(th);
-      } else if (which2 >= 0 && which2 < ncmt + oral0) {
-        return -dot(which2, 0);
-      }
-      return NA_REAL;
+      return linCmtBdoseTime(lc, fx, ind, getLinRate, ncmt, oral0, which2,
+                             trans, p1, v1, p2, p3, p4, p5, ka);
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
