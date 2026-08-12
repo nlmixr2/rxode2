@@ -310,6 +310,16 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "dSwish"=1
 )
 
+## Locally constant functions; their derivative is 0 almost everywhere, so the
+## jumps at the breakpoints are ignored the same way abs()/rxGt() already are.
+.rxSElocallyConstant <- c("floor", "ceil", "round", "trunc", "ftrunc",
+                          "fround", "fprec", "sign")
+
+## Functions whose Derivative() collapses to 0 at every order: the delay family
+## (delay/lag/lead and their derivative helpers) plus the locally constant ones.
+.rxSEzeroD <- c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3",
+                .rxSElocallyConstant)
+
 .rxOnly <- c(
   ## Now random number generators
   "rnorm" = NA,
@@ -2916,14 +2926,22 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           ))
         }
       } else if (identical(x[[1]], quote(`Derivative`))) {
-        ## delay-family functions (delay/rxDelayD/lag/lead) have zero derivatives
-        ## of every order, so Derivative(<delay-family>, ...) collapses to 0.
-        ## This also covers the higher-order (length(x) > 3) derivatives produced
-        ## when the sensitivity machinery differentiates a delayed term more than
-        ## once -- symengine keeps Derivative(delay(...), v1, v2) unevaluated.
-        if (length(x) >= 3 && is.call(x[[2]]) &&
-              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
-          return("0")
+        ## The delay family (delay/rxDelayD/lag/lead) and the locally constant
+        ## functions (floor/ceil/round/trunc/sign/...) have zero derivatives of
+        ## every order, so Derivative(<fn>, ...) collapses to 0.  This also
+        ## covers the higher-order (length(x) > 3) derivatives produced when the
+        ## sensitivity machinery differentiates such a term more than once --
+        ## symengine keeps Derivative(delay(...), v1, v2) unevaluated.
+        if (length(x) >= 3 && is.call(x[[2]])) {
+          .fun0 <- as.character(x[[2]][[1L]])
+          if (any(.fun0 == .rxSEzeroD)) {
+            return("0")
+          }
+          ## fsign(x, y) = abs(x)*sign(y); its first derivative (registered in
+          ## rxode2parseD()) is itself locally constant, so orders 2+ are 0.
+          if (length(x) > 3 && any(.fun0 == "fsign")) {
+            return("0")
+          }
         }
         if (length(x) == 3) {
           .fun <- as.character(x[[2]])
@@ -2979,7 +2997,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
+          if (any(.fun[1] == .rxSEzeroD)) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -3182,6 +3200,10 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
     "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
     "lag0", "lead0", "diff0",
+    # locally constant functions; symengine's Math group generic has no method
+    # for floor()/ceil()/round()/trunc()/sign(), so load them as opaque
+    # FunctionSymbols (like rxMod/rxGt) and give them a zero derivative
+    .rxSElocallyConstant, "fsign",
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)

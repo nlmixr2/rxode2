@@ -653,6 +653,18 @@
   `t` back to first order: on a Michaelis-Menten model with an `exp(-t)` input
   the error at `atol=rtol=1e-9` falls from 4.6e-03 to 1.1e-07.
 
+### Estimation / symengine translation
+
+- `floor()`, `ceil()`, `round()`, `trunc()`, `sign()`, `fround()`, `fprec()` and
+  `fsign()` can now be used with the nlmixr2 estimation methods.  They parsed
+  and solved, but symengine's `Math` group generic has no method for them, so
+  loading such a model raised `non-numeric argument to binary operator` and no
+  estimation method could run it -- which ruled out `floor(time/24)`, the
+  natural way to write a circadian or square-wave switch.  They are now loaded
+  as opaque function symbols (like `rxMod()`) and are locally constant, so their
+  derivative is 0 at every order; `fsign(x, y)` is `abs(x)*sign(y)`, so its `x`
+  derivative is `sign(x)*sign(y)` (#1230).
+
 ### Serialization
 
 - A saved solver state now round-trips the `indLin()` convergence set

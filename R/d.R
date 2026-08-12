@@ -27,6 +27,19 @@
   }
 )
 
+## fsign(x, y) = abs(x)*sign(y); locally constant in y, sign(x)*sign(y) in x.
+## The other rounding-family functions (floor/ceil/round/trunc/sign/fround/
+## fprec/ftrunc) are locally constant in every argument and are collapsed to 0
+## directly in .rxFromSE() (see .rxSElocallyConstant).
+.rxD$fsign <- list(
+  function(x, y) {
+    return(paste0("sign(", x, ")*sign(", y, ")"))
+  },
+  function(x, y) {
+    return("0")
+  }
+)
+
 .rxD$erfinv <- list(
   function(x) {
     ## http://specialfunctionswiki.org/index.php/Derivative_of_inverse_error_function
