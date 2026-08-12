@@ -26,6 +26,15 @@ nsub <- 1000
                            returnType = "data.frame"))
 }
 
+## Say up front whether this build threads indLin at all, so a flat table is
+## never mistaken for "it does not scale".  The exponential cache is per
+## thread, and these subjects share one operand, so `dadt` (exponentials
+## COMPUTED) is the number of cache slots that were touched.
+.slots <- sum(suppressMessages(rxSolve(.lin, params = .linPar, events = .ev,
+                                       method = "indLin", cores = 4L))$counts$dadt)
+cat(sprintf("indLin thread slots touched at cores=4: %d%s\n\n", .slots,
+            if (.slots > 1) "" else "  <-- NOT THREADED, timings below are meaningless"))
+
 for (.m in list(list(n = "linear matExp()", m = .lin, p = .linPar),
                 list(n = "Michaelis-Menten indLin()", m = .mm, p = .mmPar))) {
   invisible(.solve(.m$m, .m$p, 1L))                    # warm up
