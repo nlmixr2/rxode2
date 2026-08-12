@@ -216,6 +216,45 @@
   supplied (`The following parameter(s) are required for solving: eta.b`).  The
   matching `sigma` code already guarded this.
 
+### Sensitivities
+
+- A model that mixes `linCmt()` with `d/dt()` now expands its sensitivities
+  once.  The `linCmt()` call has to be resolved before the sensitivity
+  expansion, and the model was re-parsed with `calcSens=` afterwards, which
+  differentiated the already-expanded model a second (and, with
+  `eventSens=`, a third) time.  The result carried
+  `rx__sens_rx__sens_<state>_BY_<p>___BY_<p>__` compartments nobody asked for
+  and an interleaved compartment layout, which the event-sensitivity map then
+  read as a second-order Hessian block.  The `linCmt()` text is now built
+  first and the sensitivities expanded once, from that text.  As a
+  consequence `summary()` of such a model prints the `linCmt()` model as
+  written, without the generated `rx__sens_*` equations after it (#1119).
+
+- `.rxLinCmt()` no longer invents a `peripheral1` compartment for a one
+  compartment oral `linCmt()` (nor a `peripheral2` for a two compartment oral
+  one): the compartment count it decodes includes the depot, and it was read as
+  the number of disposition compartments.  An ODE state named like the invented
+  compartment was dropped from `rxStateOde()`, so it never got a sensitivity
+  expansion -- its `rx__sens_<state>_BY_<param>__` compartment did not exist at
+  all -- and it also raised a bogus "share a name with linCmt() reserved
+  compartments" warning (#1119).
+
+- `eventSens="jump"` now applies to the ODE compartments of a model that also
+  has a `linCmt()`.  Every `linCmt()` model was downgraded to finite differences
+  because the moving-boundary jump for a modeled `alag()`/`f()` on a `linCmt()`
+  compartment is not implemented; the ODE compartments of such a model carry
+  ordinary solved sensitivity compartments and are unaffected by that.  The
+  downgrade is now limited to the models that need it: a pure `linCmt()` model,
+  a reserved-name collision, or a modeled `alag()`/`f()`/`rate()`/`dur()` on a
+  `linCmt()` compartment itself (#1119).
+
+- The event-sensitivity jump map is now checked against the true compartment
+  indices rather than assuming them.  The runtime injection addresses the
+  sensitivity compartment of (state `k`, parameter `p`) as
+  `nState + p*nState + k`; a model whose compartments do not lie that way falls
+  back to finite differences instead of having jumps written into the wrong
+  compartment (#1119).
+
 ### Compilation
 
 - The statement form of `ifelse()` -- `ifelse(cond, stmt, stmt)`, where each

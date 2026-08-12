@@ -201,6 +201,15 @@ rxTest({
     # pure linCmt downgrades to FD (#1119)
     expect_equal(m$eventSens, "fd")
     expect_null(m$eventSensInfo)
+    # ... and still does when the analytic jump is asked for explicitly: there
+    # is no ODE compartment to carry it (#1119 part B).
+    mJump <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
+    }, calcSens = "eta_lag", eventSens = "jump",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(mJump$eventSens, "fd")
+    expect_null(mJump$eventSensInfo)
   })
 
   test_that("pure linCmt hybrid event path matches the ODE equivalent", {
@@ -225,13 +234,30 @@ rxTest({
     expect_equal(sLin$central, sOde$central, tolerance = 1e-5)
   })
 
-  test_that("mixed ODE+linCmt with explicit jump still downgrades to fd", {
-    # Even eventSens="jump" downgrades to FD when linCmt() is present (#1119):
-    # the linCmt-compartment moving-boundary jump is not implemented, so all
-    # linCmt models use finite differences for event sensitivities.
+  test_that("mixed ODE+linCmt keeps the analytic jump on its ODE compartments", {
+    # The ODE compartments of a mixed model carry ordinary solved sensitivity
+    # compartments, so the analytic jump applies to them (#1119); only the
+    # linCmt() compartments' own moving-boundary jump is unimplemented.
     m <- rxode2({
       C2 <- linCmt(CL, V)
       alag(eff) <- exp(tlag + eta_lag)
+      d/dt(eff) <- kin - kout * eff
+    }, calcSens = "eta_lag", eventSens = "jump",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_equal(m$eventSens, "jump")
+    expect_false(is.null(m$eventSensInfo))
+    # the map covers the ODE compartment only -- the linCmt block is excluded
+    expect_equal(m$eventSensInfo$map$states, "eff")
+    expect_equal(m$eventSensInfo$map$sensParams, "eta_lag")
+  })
+
+  test_that("a modeled alag on a linCmt() compartment still downgrades to fd", {
+    # The linCmt() amounts (and their sensitivities) are recomputed from the
+    # analytic solution at every step, so a jump written into them would be
+    # overwritten -- fall back to finite differences (#1119 part B).
+    m <- rxode2({
+      C2 <- linCmt(CL, V)
+      alag(central) <- exp(tlag + eta_lag)
       d/dt(eff) <- kin - kout * eff
     }, calcSens = "eta_lag", eventSens = "jump",
     linCmtSens = "linCmtA", linCmtSensType = "A")
@@ -239,12 +265,252 @@ rxTest({
     expect_null(m$eventSensInfo)
   })
 
+  test_that("mixed ODE+linCmt jump sensitivities match finite differences", {
+    # The regression #1119 reports: adding a linCmt() term to a model whose ODE
+    # compartment carries a modeled alag() used to zero out (or drop entirely)
+    # that compartment's sensitivity.
+    .mk <- function(lin) {
+      if (lin) {
+        rxode2({
+          ka <- exp(tka)
+          cl <- exp(tcl)
+          v <- exp(tv)
+          alag(gut) <- 2 * exp(eta_lag)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+          C2 <- linCmt(cl, v)
+        }, calcSens = "eta_lag", eventSens = "jump",
+        linCmtSens = "linCmtA", linCmtSensType = "A")
+      } else {
+        rxode2({
+          ka <- exp(tka)
+          alag(gut) <- 2 * exp(eta_lag)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+        }, calcSens = "eta_lag", eventSens = "jump")
+      }
+    }
+    e <- eventTable() |>
+      add.dosing(dose = 100, cmt = "gut") |>
+      add.sampling(seq(0, 12, 0.25))
+    p <- c(tka = log(1.2), tcl = log(4), tv = log(20), eta_lag = 0.1)
+    .fd <- function(m, st, h = 1e-5) {
+      .p1 <- p; .p1[["eta_lag"]] <- p[["eta_lag"]] + h
+      .p0 <- p; .p0[["eta_lag"]] <- p[["eta_lag"]] - h
+      (rxSolve(m, e, params = .p1)[[st]] - rxSolve(m, e, params = .p0)[[st]]) / (2 * h)
+    }
+    mLin <- .mk(TRUE)
+    mOde <- .mk(FALSE)
+    expect_equal(mLin$eventSens, "jump")
+    sLin <- rxSolve(mLin, e, params = p)
+    sOde <- rxSolve(mOde, e, params = p)
+    for (.st in c("gut", "eff")) {
+      .an <- sLin[[paste0("rx__sens_", .st, "_BY_eta_lag__")]]
+      expect_false(is.null(.an))
+      expect_true(max(abs(.an)) > 1)                       # not silently zero
+      expect_equal(.an, .fd(mLin, .st), tolerance = 1e-4)  # matches FD
+      # and matches the pure-ODE model it was derived from
+      expect_equal(.an, sOde[[paste0("rx__sens_", .st, "_BY_eta_lag__")]],
+                   tolerance = 1e-6)
+    }
+  })
+
+  test_that("a mixed model's jump parameters keep their compartment order", {
+    # The filter took its parameter order from `map$map`, which is sorted by
+    # parameter NAME -- but the runtime addresses the sensitivity compartment of
+    # (state k, param p) as nState + p*nState + k, i.e. in COMPARTMENT order.
+    # With two event parameters whose alphabetical order differs from their
+    # compartment order the jump values landed in the wrong compartment (#1119).
+    .mk <- function(lin) {
+      if (lin) {
+        rxode2({
+          ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+          alag(gut) <- 2 * exp(eta_lag)
+          f(gut) <- expit(eta_f)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+          C2 <- linCmt(cl, v)
+        }, calcSens = c("eta_lag", "eta_f"), eventSens = "jump",
+        linCmtSens = "linCmtA", linCmtSensType = "A")
+      } else {
+        rxode2({
+          ka <- exp(tka)
+          alag(gut) <- 2 * exp(eta_lag)
+          f(gut) <- expit(eta_f)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+        }, calcSens = c("eta_lag", "eta_f"), eventSens = "jump")
+      }
+    }
+    mLin <- .mk(TRUE)
+    mOde <- .mk(FALSE)
+    expect_equal(mLin$eventSens, "jump")
+    # declaration order, not alphabetical
+    expect_equal(mLin$eventSensInfo$map$sensParams, c("eta_lag", "eta_f"))
+    e <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 3, dosing.interval = 8, cmt = "gut") |>
+      add.sampling(seq(0.1, 24, 0.25))
+    p <- c(tka = log(1.2), tcl = log(4), tv = log(20),
+           eta_lag = 0.1, eta_f = 0.05)
+    sLin <- rxSolve(mLin, e, params = p)
+    sOde <- rxSolve(mOde, e, params = p)
+    for (.st in c("gut", "eff")) {
+      for (.pr in c("eta_lag", "eta_f")) {
+        .nm <- paste0("rx__sens_", .st, "_BY_", .pr, "__")
+        .h <- 1e-5
+        .p1 <- p; .p1[[.pr]] <- p[[.pr]] + .h
+        .p0 <- p; .p0[[.pr]] <- p[[.pr]] - .h
+        .fd <- (rxSolve(mLin, e, params = .p1)[[.st]] -
+                  rxSolve(mLin, e, params = .p0)[[.st]]) / (2 * .h)
+        # the modeled-F rows carry the finite difference's own truncation error
+        # across the dose discontinuity, hence the looser bound here; the
+        # linCmt-vs-ODE identity below is the tight check
+        expect_equal(sLin[[.nm]], .fd, tolerance = 5e-3, info = .nm)
+        expect_equal(sLin[[.nm]], sOde[[.nm]], tolerance = 1e-6, info = .nm)
+      }
+    }
+  })
+
+  test_that("an ODE state named like a linCmt peripheral keeps its sensitivity", {
+    # `.rxLinCmt()` used to invent a `peripheral1` for every ORAL linCmt model
+    # (numLin counts the depot), so a same-named ODE state was dropped from
+    # rxStateOde() and never got a sensitivity expansion at all (#1119).
+    m <- rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl)
+      v <- exp(tv)
+      alag(gut) <- 2 * exp(eta_lag)
+      d/dt(gut) <- -ka * gut
+      d/dt(peripheral1) <- ka * gut - 0.3 * peripheral1
+      C2 <- linCmt(cl, v, ka)
+    }, calcSens = "eta_lag", eventSens = "jump",
+    linCmtSens = "linCmtA", linCmtSensType = "A")
+    expect_true("peripheral1" %in% rxStateOde(m))
+    expect_true("rx__sens_peripheral1_BY_eta_lag__" %in% rxState(m))
+    expect_length(.rxLinCmtNameCollision(m), 0L)
+    e <- eventTable() |>
+      add.dosing(dose = 100, cmt = "gut") |>
+      add.sampling(seq(0, 12, 0.25))
+    p <- c(tka = log(1.2), tcl = log(4), tv = log(20), eta_lag = 0.1)
+    s <- rxSolve(m, e, params = p)
+    .h <- 1e-5
+    .p1 <- p; .p1[["eta_lag"]] <- p[["eta_lag"]] + .h
+    .p0 <- p; .p0[["eta_lag"]] <- p[["eta_lag"]] - .h
+    expect_equal(s[["rx__sens_peripheral1_BY_eta_lag__"]],
+                 (rxSolve(m, e, params = .p1)$peripheral1 -
+                    rxSolve(m, e, params = .p0)$peripheral1) / (2 * .h),
+                 tolerance = 1e-4)
+  })
+
+  test_that(".rxEventSensLayoutOk accepts only the layout the runtime addresses", {
+    # handle_evid() addresses the sensitivity compartment of (state k, param p)
+    # as nState + p*nState + k, so the states have to be compartments 1..nState
+    # and their sensitivity compartments the param-major block after them.
+    .states <- c("a", "b")
+    .params <- c("p", "q")
+    .ok <- data.frame(
+      state = c("a", "b", "a", "b"), param = c("p", "p", "q", "q"),
+      stateCmt = c(1L, 2L, 1L, 2L), sensCmt = c(3L, 4L, 5L, 6L),
+      stringsAsFactors = FALSE)
+    expect_true(.rxEventSensLayoutOk(.states, .params, .ok))
+    # state-major instead of param-major
+    .swap <- .ok; .swap$sensCmt <- c(3L, 5L, 4L, 6L)
+    expect_false(.rxEventSensLayoutOk(.states, .params, .swap))
+    # sensitivity block does not start right after the states
+    .shift <- .ok; .shift$sensCmt <- .ok$sensCmt + 1L
+    expect_false(.rxEventSensLayoutOk(.states, .params, .shift))
+    # states are not compartments 1..nState
+    .moved <- .ok; .moved$stateCmt <- c(2L, 3L, 2L, 3L)
+    expect_false(.rxEventSensLayoutOk(.states, .params, .moved))
+    # a (state, param) pair is missing
+    expect_false(.rxEventSensLayoutOk(.states, .params, .ok[-1, , drop = FALSE]))
+    expect_false(.rxEventSensLayoutOk(character(0), .params, .ok))
+    expect_false(.rxEventSensLayoutOk(.states, character(0), .ok))
+  })
+
+  test_that(".rxEventSensFilterMap disables jump on an unaddressable layout", {
+    # The safety fallback: rather than write jump values into whatever
+    # compartment the assumed formula lands on, drop the jump metadata (the
+    # caller then records the model as `fd`).
+    .mk <- function(lin) {
+      if (lin) {
+        rxode2({
+          ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+          alag(gut) <- 2 * exp(eta_lag)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+          C2 <- linCmt(cl, v)
+        }, calcSens = "eta_lag", eventSens = "jump",
+        linCmtSens = "linCmtA", linCmtSensType = "A")
+      } else {
+        rxode2({
+          ka <- exp(tka)
+          alag(gut) <- 2 * exp(eta_lag)
+          d/dt(gut) <- -ka * gut
+          d/dt(eff) <- ka * gut - 0.3 * eff
+        }, calcSens = "eta_lag", eventSens = "jump")
+      }
+    }
+    for (.lin in c(FALSE, TRUE)) {
+      .m <- .mk(.lin)
+      .map <- .rxEventSensMap(.m)
+      expect_false(is.null(.rxEventSensFilterMap(.m, .map)))
+      # move the sensitivity compartments off the block the runtime assumes
+      .bad <- .map
+      .bad$map$sensCmt <- .bad$map$sensCmt + 1L
+      expect_null(.rxEventSensFilterMap(.m, .bad))
+      # and move the states off the leading block
+      .bad2 <- .map
+      .bad2$map$stateCmt <- .bad2$map$stateCmt + 1L
+      .bad2$stateCmt <- .bad2$stateCmt + 1L
+      expect_null(.rxEventSensFilterMap(.m, .bad2))
+    }
+  })
+
+  test_that(".rxLinCmt() names exactly the linCmt() compartments", {
+    .lin <- function(...) rxModelVars(rxode2(...))
+    .chk <- function(mv) {
+      .n <- .rxLinNcmt(mv)
+      expect_equal(.rxLinCmt(mv),
+                   utils::tail(mv$state, .n[["numLin"]] + .n[["numLinSens"]]))
+    }
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); C2 <- linCmt(cl, v)}, calcSens = "tcl"))
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); ka <- 1; C2 <- linCmt(cl, v, ka)},
+              calcSens = "tcl"))
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10
+      C2 <- linCmt(cl, v, q, v2)}, calcSens = "tcl"))
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; ka <- 1
+      C2 <- linCmt(cl, v, q, v2, ka)}, calcSens = "tcl"))
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; q2 <- 0.5; v3 <- 100
+      C2 <- linCmt(cl, v, q, v2, q2, v3)}, calcSens = "tcl"))
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; q2 <- 0.5; v3 <- 100
+      ka <- 1
+      C2 <- linCmt(cl, v, q, v2, q2, v3, ka)}, calcSens = "tcl"))
+    # and without sensitivities at all (linCmtA): the physical compartments only
+    .chk(.lin({cl <- exp(tcl); v <- exp(tv); ka <- 1; C2 <- linCmt(cl, v, ka)}))
+  })
+
+  test_that("a linCmt() model expands its sensitivities exactly once", {
+    # The linCmt() branch used to re-parse the ALREADY expanded model with
+    # `calcSens=`, expanding a second (and third) time (#1119).
+    m <- rxode2({
+      cl <- exp(tcl)
+      v <- exp(tv)
+      d/dt(gut) <- -1 * gut
+      d/dt(eff) <- 1 * gut - 0.3 * eff
+      C2 <- linCmt(cl, v)
+    }, calcSens = "tcl")
+    expect_false(any(grepl("rx__sens_rx__sens_", rxState(m), fixed = TRUE)))
+    expect_equal(rxStateOde(m),
+                 c("gut", "eff", "rx__sens_gut_BY_tcl__", "rx__sens_eff_BY_tcl__"))
+  })
+
   test_that("ODE d/dt() colliding with a linCmt reserved compartment name warns", {
     # Naming an ODE compartment `depot` alongside an oral/multi-cmt linCmt (which
     # reserves `depot`) conflates the two compartments: the ODE state loses its
     # sensitivity expansion, so its sensitivities are silently incorrect.  Warn.
     expect_warning(
-      rxode2({
+      mBad <- rxode2({
         ka <- exp(tka)
         alag(depot) <- 2 * exp(eta_lag)
         d/dt(depot)   <- -ka * depot
@@ -254,7 +520,10 @@ rxTest({
       linCmtSens = "linCmtA", linCmtSensType = "A"),
       "share a name with linCmt"
     )
-    # a valid (non-colliding) linCmt model: no warning; downgrades to fd (#1119)
+    # ... and the analytic jump is disabled for it, not just warned about
+    expect_equal(mBad$eventSens, "fd")
+    expect_null(mBad$eventSensInfo)
+    # a valid (non-colliding) linCmt model: no warning; explicit fd is honored
     mOk <- suppressWarnings(rxode2({
       ka <- exp(tka)
       alag(gut) <- 2 * exp(eta_lag)

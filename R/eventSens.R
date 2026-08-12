@@ -242,6 +242,46 @@
     grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE), logical(1))]
 }
 
+#' ODE (non-linCmt) physical states of a model
+#'
+#' The linCmt() compartments are identified by NAME (`.rxLinCmt()`); everything
+#' else in `normal.state` is an ordinary ODE state.
+#'
+#' @param mv A model-vars list.
+#' @return character vector of ODE state names (possibly empty).
+#' @noRd
+.rxEventSensOdeStates <- function(mv) {
+  setdiff(mv$normal.state, .rxLinCmt(mv))
+}
+
+#' Does the jump map match the compartment layout the runtime assumes?
+#'
+#' `handle_evid()` addresses the first-order sensitivity compartment of
+#' (state `k`, param `p`) as `nState + p*nState + k` (0-based), i.e. the ODE
+#' states are the leading `nState` compartments and their sensitivity
+#' compartments follow as one param-major block.  `.rxEventSensMap()` carries
+#' the TRUE compartment indices, so check them rather than assume.
+#'
+#' @param states ODE state names, in map order.
+#' @param sensParams Sensitivity parameter names, in map order.
+#' @param map1 First-order map rows (columns `state`, `param`, `stateCmt`,
+#'   `sensCmt`).
+#' @return `TRUE` when the true indices match the assumed layout.
+#' @noRd
+.rxEventSensLayoutOk <- function(states, sensParams, map1) {
+  .ns <- length(states)
+  if (.ns == 0L || length(sensParams) == 0L) return(FALSE)
+  ## every (state, param) pair must be present exactly once
+  if (nrow(map1) != .ns * length(sensParams)) return(FALSE)
+  .k <- match(map1$state, states)
+  .p <- match(map1$param, sensParams)
+  if (anyNA(.k) || anyNA(.p)) return(FALSE)
+  ## the states themselves must be compartments 1..nState (`cmt < nState` is
+  ## how the runtime decides a dosed compartment is one of them)
+  if (!identical(as.integer(map1$stateCmt), as.integer(.k))) return(FALSE)
+  identical(as.integer(map1$sensCmt), as.integer(.ns + (.p - 1L) * .ns + .k))
+}
+
 #' Restrict jump sensitivities to ODE states for mixed ODE+linCmt models
 #'
 #' For pure linCmt models (no ODE states), event sensitivities are handled by the
@@ -255,21 +295,34 @@
 .rxEventSensFilterMap <- function(obj, map) {
   .mv <- rxModelVars(obj)
   .lin <- .rxLinNcmt(.mv)
-  if (.lin["numLin"] <= 0L) return(map)
+  if (.lin["numLin"] <= 0L) {
+    if (!.rxEventSensLayoutOk(map$states, map$sensParams, map$map)) return(NULL)
+    return(map)
+  }
   ## Defensive: a linCmt reserved-name collision (see .rxLinCmtNameCollision)
-  ## yields silently-incorrect sensitivities; disable jump.  (linCmt models now
+  ## yields silently-incorrect sensitivities; disable jump.  (Such models
   ## downgrade to FD upstream via .rxEventSensEffectiveMode, so this is a guard
   ## for any path that still reaches here.)
   if (length(.rxLinCmtNameCollision(obj)) > 0L) return(NULL)
-  .odeStates <- setdiff(.mv$normal.state, .rxLinCmt(.mv))
-  if (length(.odeStates) == 0L) return(map)
+  .odeStates <- .rxEventSensOdeStates(.mv)
+  ## Pure linCmt: no ODE compartment can carry an analytic jump.
+  if (length(.odeStates) == 0L) return(NULL)
   .stateCmt <- unname(map$stateCmt[.odeStates])
   ## The jump runtime assumes ODE states are the leading contiguous block
   ## [1..nState]. If not, keep behavior safe by disabling jump for this model.
-  if (!identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
+  if (anyNA(.stateCmt) || !identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
   .map1 <- map$map[map$map$state %in% .odeStates, , drop = FALSE]
   if (nrow(.map1) == 0L) return(NULL)
-  .sensParams <- unique(.map1$param)
+  ## Keep `map$sensParams`' order: it is the order of the sensitivity
+  ## COMPARTMENTS, which is what the runtime addresses with (nState + p*nState
+  ## + k) and what `.rxEventSensCLines()` builds its parameter index from.
+  ## `map$map` is sorted by parameter NAME, so taking the order from it put a
+  ## multi-parameter model's jump values in the wrong compartment.
+  .sensParams <- map$sensParams[map$sensParams %in% .map1$param]
+  ## The linCmt() block sits after the ODE states and their sensitivity
+  ## compartments, so the assumed (nState + p*nState + k) addressing still has
+  ## to hold for the ODE part; verify against the true indices.
+  if (!.rxEventSensLayoutOk(.odeStates, .sensParams, .map1)) return(NULL)
   .map2 <- map$map2
   if (!is.null(.map2) && nrow(.map2) > 0L) {
     .map2 <- .map2[
@@ -303,25 +356,57 @@
 
 #' Resolve effective event-sensitivity mode for linCmt-containing models
 #'
-#' `fdAll` is the explicit full finite-difference fallback. Models that include
-#' linCmt() always resolve to `fd` regardless of the requested mode (see the
-#' comment in the body); the requested mode is honored otherwise.
+#' `fdAll` is the explicit full finite-difference fallback.  A linCmt() model
+#' downgrades to `fd` only when the analytic jump cannot cover it -- no ODE
+#' compartment to jump, a linCmt reserved-name collision, or a modeled
+#' alag/F/rate/dur on a linCmt() compartment itself (nlmixr2/rxode2#1119 part
+#' B, not implemented); the requested mode is honored otherwise.
 #'
 #' @param requested Requested mode from `.rxEventSensMode()`.
-#' @param mv Parsed model vars.
+#' @param obj Parsed model vars (or anything `rxModelVars()` accepts).
 #' @return Effective mode string (`jump`, `fd`, or `both`).
 #' @noRd
-.rxEventSensEffectiveMode <- function(requested, mv) {
-  if (identical(requested, "fdAll")) return("fd")
-  ## linCmt() models downgrade to finite differences for event-timing
-  ## sensitivities.  The analytic moving-boundary (jump) sensitivity for a
-  ## modeled alag()/f() on a linCmt compartment is not implemented (see
-  ## nlmixr2/rxode2#1119); rather than emit an incomplete/incorrect analytic
-  ## jump, all linCmt models use FD for event sensitivities (the FOCEi/nlmixr2est
-  ## finite-difference event path).  Structural-parameter linCmt sensitivities
-  ## are unaffected (they are continuous and handled by linCmtB directly).
-  if (.rxLinNcmt(mv)["numLin"] > 0L) return("fd")
+.rxEventSensEffectiveMode <- function(requested, obj) {
+  if (identical(requested, "fdAll") || identical(requested, "fd")) return("fd")
+  .mv <- rxModelVars(obj)
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(requested)
+  ## Mixed ODE+linCmt(): the ODE compartments keep the analytic jump (their
+  ## sensitivity compartments are ordinary solved states; the linCmt() block
+  ## sits after them and is untouched by the injection).
+  if (length(.rxEventSensOdeStates(.mv)) == 0L) return("fd")
+  ## A d/dt() on a linCmt()-reserved name conflates the two compartments, so
+  ## the ODE state never gets its sensitivity expansion.
+  if (length(.rxLinCmtNameCollision(obj)) > 0L) return("fd")
+  ## The moving-boundary jump for a modeled alag()/f()/rate()/dur() on a
+  ## linCmt() COMPARTMENT is not implemented: linCmt amounts and their
+  ## sensitivities are recomputed from linCmt's own analytic solution every
+  ## step, so a jump written into them is overwritten.  Fall back to finite
+  ## differences for the whole model rather than report a partial answer.
+  .linCmt <- unname(.mv$stateOrd[.rxLinCmt(.mv)])
+  .prop <- .rxEventSensProp(.mv)
+  .eventCmt <- unique(c(.prop$lagCmt, .prop$fCmt, .prop$rateCmt, .prop$durCmt))
+  if (any(.eventCmt %in% .linCmt[!is.na(.linCmt)])) return("fd")
   requested
+}
+
+#' Downgrade to `fd` when the jump map cannot be built for this model
+#'
+#' `.rxEventSensFilterMap()` rejects a model whose compartment layout does not
+#' match what the runtime jump injection addresses.  Record that as `fd` so the
+#' model falls back to the finite-difference event path instead of ending up
+#' with neither.  Models with no sensitivity compartments at all keep the
+#' requested mode (there is nothing to jump).
+#'
+#' @param mode Mode from `.rxEventSensEffectiveMode()`.
+#' @param obj Built model (rxUi, rxode2, modelVars).
+#' @return Effective mode string.
+#' @noRd
+.rxEventSensModeForMap <- function(mode, obj) {
+  if (identical(mode, "fd")) return("fd")
+  .map <- .rxEventSensMap(obj)
+  if (is.null(.map)) return(mode)
+  if (is.null(.rxEventSensFilterMap(obj, .map))) return("fd")
+  mode
 }
 
 #' Decode which compartments carry modeled alag/F/rate/dur

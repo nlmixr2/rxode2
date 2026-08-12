@@ -428,19 +428,26 @@ rxode2 <- # nolint
       linCmtSens <- "linCmtA"
     }
     assignInMyNamespace(".linCmtSens", linCmtSens)
-    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
+    ## Detection parse -- no sensitivity/Jacobian expansion yet.  A linCmt()
+    ## model has to have its linCmt() resolved (linCmtGen) BEFORE the
+    ## sensitivities are expanded: expanding first and then re-parsing the
+    ## expanded text with `calcSens=` (what this used to do) ran the expansion
+    ## twice, splicing spurious 2nd/3rd-order rx__sens_rx__sens_*__ compartments
+    ## into the model and interleaving the state layout, which broke the
+    ## sensitivities of every mixed ODE+linCmt() model (nlmixr2/rxode2#1119).
+    ## `linCmtGen()` rewrites the text of whatever was parsed LAST, so it has to
+    ## run directly after this parse -- hence also `indLin=FALSE` here, since
+    ## rxToIndLin() would leave a rewritten matrix-exponential model as the last
+    ## parse.
+    .env$.mv <- rxGetModel(model, collapseModel = collapseModel, indLin = FALSE)
     .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
       calcJac <- TRUE
-      .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac,
-                             collapseModel = collapseModel, indLin = indLin,
-                             calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     }
     if (.isLinCmt) {
       .env$.linCmtM <- rxNorm(.env$.mv)
       .vars <- c(.env$.mv$params, .env$.mv$lhs, .env$.mv$slhs)
-      .env$.mv <- rxGetModel(.Call(
+      model <- .Call(
         `_rxode2_linCmtGen`,
         length(.env$.mv$state),
         .vars,
@@ -450,10 +457,54 @@ rxode2 <- # nolint
           )[match.arg(linCmtSens)],
           NULL
         ), verbose
-      ),
-      calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel,
-      indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
+      )
     }
+    ## The linCmt()-resolved but NOT yet sensitivity-expanded text.  Every
+    ## re-parse below restarts from here: re-parsing the EXPANDED text with
+    ## `calcSens=` expands a second time (nlmixr2/rxode2#1119).
+    .modelBase <- model
+    .eventSensKeyAtParse <- .rxEventSensCacheKey
+    .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
+                           collapseModel = collapseModel, indLin = indLin,
+                           calcSens2 = calcSens2, calcSens3 = calcSens3)
+    .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
+    ## Warn when sensitivities are requested on a linCmt() model whose ODE
+    ## compartment name collides with a linCmt reserved name: the ODE state loses
+    ## its sensitivity expansion, so its sensitivities are silently incorrect.
+    if (!is.null(calcSens)) {
+      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
+      if (length(.linCollide) > 0L) {
+        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
+                "' share a name with linCmt() reserved compartments; ",
+                "sensitivities will be incorrect -- rename them", call. = FALSE)
+      }
+    }
+    .indLinSens <- length(.env$.mv$indLin) > 0L &&
+      length(.env$.mv$sens) > 0L
+    if (.indLinSens) {
+      .eventSensEffectiveMode <- "jump"
+    }
+    if (.eventSensActiveReq || .indLinSens) {
+      .eventSensEffectiveMode <- .rxEventSensModeForMap(.eventSensEffectiveMode, .env$.mv)
+    }
+    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
+      .indLinSens
+    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
+      length(.rxEventSensOdeStates(.env$.mv)) > 0L
+    .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
+    assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
+    ## Re-parse only when the decision above changed an input to the parse: the
+    ## jump injection needs the full state Jacobian, and the mode is folded into
+    ## the parsed md5/cache key.  Always from `.modelBase`, never from the
+    ## already-expanded text.
+    if ((.eventSensNeedsJac && !isTRUE(calcJac)) ||
+          !identical(.eventSensCacheKey, .eventSensKeyAtParse)) {
+      if (.eventSensNeedsJac) calcJac <- TRUE
+      .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
+                             collapseModel = collapseModel, indLin = indLin,
+                             calcSens2 = calcSens2, calcSens3 = calcSens3)
+    }
+    .env$eventSens <- .eventSensEffectiveMode
     model <- rxNorm(.env$.mv)
     class(model) <- "rxModelText"
     .env$.model <- model
@@ -479,44 +530,6 @@ rxode2 <- # nolint
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
-    .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
-    ## Warn when sensitivities are requested on a linCmt() model whose ODE
-    ## compartment name collides with a linCmt reserved name: the ODE state loses
-    ## its sensitivity expansion, so its sensitivities are silently incorrect.
-    if (!is.null(calcSens)) {
-      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
-      if (length(.linCollide) > 0L) {
-        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
-                "' share a name with linCmt() reserved compartments; ",
-                "sensitivities will be incorrect -- rename them", call. = FALSE)
-      }
-    }
-    .indLinSens <- length(.env$.mv$indLin) > 0L &&
-      length(.env$.mv$sens) > 0L
-    if (.indLinSens) {
-      .eventSensEffectiveMode <- "jump"
-    }
-    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
-      .indLinSens
-    .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
-      length(.eventSensOdeStates) > 0L
-    if (.eventSensNeedsJac && !isTRUE(calcJac)) {
-      calcJac <- TRUE
-      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
-                             calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    }
-    .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
-    if (!identical(.eventSensCacheKey, .rxEventSensCacheKey)) {
-      assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
-      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
-                             calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    }
-    .env$eventSens <- .eventSensEffectiveMode
     ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
     ## derivatives); NULL for mode "fd" or models without sensitivities.
     .env$eventSensInfo <- if (.eventSensActive) .rxEventSensInfo(.env$.mv, .eventSensEffectiveMode) else NULL
