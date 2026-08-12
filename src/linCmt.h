@@ -2813,6 +2813,48 @@ namespace stan {
         return Jf;
       }
 
+      //' Right-hand side of the linear compartment system at given amounts
+      //'
+      //' dA/dt = M A + r, with M built from the micro-constants (k10/k12/k21/
+      //' k13/k31 and ka) and r the infusion rates set by `setPtr()` (depot
+      //' first when oral, then central).
+      //'
+      //' This is the moving-boundary (dose-time) sensitivity of the system: a
+      //' linear system whose WHOLE input is delayed by L solves
+      //' A(t; L) = A(t - L; 0), so dA/dL = -dA/dt exactly, at every t and for
+      //' any dosing regimen (bolus, infusion or steady state).  It holds only
+      //' while every dose feeding the system carries that same L.
+      //'
+      //' @param A Current amounts.
+      //' @param g Micro-constant matrix from `macros2micros()`.
+      //' @param ka Absorption rate (ignored when not oral).
+      //' @param rate Infusion rates, depot first when oral (`getNrate()` long).
+      //' @param out Filled with dA/dt; resized by the caller.
+      //'
+      //' @return nothing, updates `out` instead
+      void dAdt(const Eigen::Matrix<double, Eigen::Dynamic, 1>& A,
+                const Eigen::Matrix<double, Eigen::Dynamic, 2>& g,
+                double ka, const double *rate,
+                Eigen::Matrix<double, Eigen::Dynamic, 1>& out) const {
+        const int c = oral0_;  // central compartment index
+        out.setZero();
+        if (oral0_) {
+          out(0, 0) = -ka * A(0, 0) + rate[0];
+          out(c, 0) = ka * A(0, 0) + rate[1];
+        } else {
+          out(c, 0) = rate[0];
+        }
+        out(c, 0) -= g(0, 1) * A(c, 0);
+        if (ncmt_ >= 2) {
+          out(c, 0)     += -g(1, 0) * A(c, 0) + g(1, 1) * A(c + 1, 0);
+          out(c + 1, 0)  =  g(1, 0) * A(c, 0) - g(1, 1) * A(c + 1, 0);
+          if (ncmt_ >= 3) {
+            out(c, 0)     += -g(2, 0) * A(c, 0) + g(2, 1) * A(c + 2, 0);
+            out(c + 2, 0)  =  g(2, 0) * A(c, 0) - g(2, 1) * A(c + 2, 0);
+          }
+        }
+      }
+
       double adjustF(const Eigen::VectorXd ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
                      double &vc) {

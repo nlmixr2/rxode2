@@ -218,6 +218,19 @@
 
 ### Sensitivities
 
+- `linCmtB()` gained a dose-time (moving boundary) sensitivity, `which1 = -3`:
+  the derivative of a `linCmt()` model with respect to a delay applied to every
+  dose feeding it, which is what a modeled `alag()` on its dosed compartment
+  produces.  `which2 = -3` gives it for the reported concentration, `which2 >= 0`
+  for the amount in that compartment; chain-rule it with `d(alag)/dp` for the
+  sensitivity wrt a model parameter.  The system is linear and its whole input
+  is delayed together, so the derivative is exactly `-dA/dt` -- it matches a
+  finite difference to round-off for bolus and steady-state-bolus regimens
+  across one to three compartments, IV and oral.  It reports `NA` for an
+  individual with an infusion (`dA/dt` needs the infusion rate, which is not
+  carried into the pass that computes the output) and requires that every dose
+  reaching the linear system share the same `alag()` (#1119).
+
 - A model that mixes `linCmt()` with `d/dt()` now expands its sensitivities
   once.  The `linCmt()` call has to be resolved before the sensitivity
   expansion, and the model was re-parsed with `calcSens=` afterwards, which

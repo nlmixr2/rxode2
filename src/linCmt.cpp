@@ -9,6 +9,7 @@
 #define SORT gfx::timsort
 #include "linCmt.h"
 #include "linCmtSensType.h"
+#include "../inst/include/rxode2EventTranslate.h"
 
 #ifdef RXODE2_NO_STAN_TBB_OBSERVER
 // stan-math's init_chainablestack.hpp is kept out of the build (no linkable
@@ -27,6 +28,27 @@ extern t_update_inis update_inis;
 
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
+
+// Does this individual have any infusion (or steady-state infusion) dose?
+//
+// The dose-time sensitivity (linCmtB which1 = -3) needs dA/dt, which includes
+// the infusion rate -- and `ind->InfusionRate` is only maintained while
+// SOLVING.  rxode2_df.cpp's output pass re-runs calc_lhs from the saved
+// amounts after iniSubject() has cleared the rates, so an infusion's
+// contribution would silently drop out of the reported value.  Report NA
+// instead of a wrong number; a bolus (including steady-state bolus) regimen is
+// exact.
+static inline int linCmtHasInfusion(rx_solving_options_ind *ind) {
+  if (ind->linSS == linCmtSsInf || ind->linSS == linCmtSsInf8) return 1;
+  for (int i = 0; i < ind->ndoses; ++i) {
+    int wh, cmt, wh100, whI, wh0;
+    getWh(getEvid(ind, ind->idose[i]), &wh, &cmt, &wh100, &whI, &wh0);
+    if (whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 // Create linear compartment models for testing
 using namespace Rcpp;
@@ -466,6 +488,19 @@ extern "C" int linCmtZeroJac(int i) {
  *  When which1 is -2, the gradient of the linear compartment model
  *  with respect to the parameter is returned.
  *
+ *  When which1 is -3, the DOSE-TIME (moving boundary) sensitivity is
+ *  returned -- the derivative with respect to a delay applied to every dose
+ *  feeding the linear system, i.e. what a modeled `alag()` on its dosed
+ *  compartment produces (nlmixr2/rxode2#1119).  which2 = -3 gives it for the
+ *  reported concentration, which2 >= 0 for the amount in that compartment.
+ *  The system is linear and its whole input is delayed together, so
+ *  A(t; L) = A(t - L; 0) and the derivative is exactly -dA/dt; chain-rule it
+ *  with d(alag)/dp to get the sensitivity wrt a model parameter.  This
+ *  requires that EVERY dose reaching the linear system carries the same
+ *  `alag()`; it is not the per-compartment derivative of a model that lags
+ *  its compartments differently.  An individual with any infusion gets
+ *  `NA_REAL` -- see linCmtHasInfusion().
+ *
  *  The parameter order is as follows:
  *
  *   p1, v1, p2, p3, p4, p5, ka; for 3 compartment models
@@ -552,6 +587,36 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       return fx(which1);
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
+    } else if (which1 == -3) {
+      // Dose-time (moving boundary) sensitivity; see the header comment.
+      // `fx` holds the amounts at `_t` from the which1=-1/which2=-1 call that
+      // the caller is required to have made, and the linear system's own
+      // right-hand side gives d/dL exactly.
+      if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
+          (int)fx.size() != ncmt + oral0) {
+        return NA_REAL;
+      }
+      Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
+      switch (ncmt + 10*oral0) {
+      case 1:  th << p1, v1; break;
+      case 11: th << p1, v1, ka; break;
+      case 2:  th << p1, v1, p2, p3; break;
+      case 12: th << p1, v1, p2, p3, ka; break;
+      case 3:  th << p1, v1, p2, p3, p4, p5; break;
+      case 13: th << p1, v1, p2, p3, p4, p5, ka; break;
+      default: return NA_REAL;
+      }
+      if (linCmtHasInfusion(ind)) return NA_REAL;
+      Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
+        stan::math::macros2micros(th, ncmt, trans);
+      Eigen::Matrix<double, Eigen::Dynamic, 1> dot(ncmt + oral0);
+      lc.dAdt(fx, gm, ka, getLinRate, dot);
+      if (which2 == -3) {
+        return -dot(oral0, 0) / lc.getVc(th);
+      } else if (which2 >= 0 && which2 < ncmt + oral0) {
+        return -dot(which2, 0);
+      }
+      return NA_REAL;
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
