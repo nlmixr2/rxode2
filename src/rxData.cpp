@@ -5587,9 +5587,13 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 }
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
-  /* lsoda (1), indLin (3), lsode (106), and bdf (107) use non-reentrant
-   * Fortran COMMON blocks and must run single-threaded. */
-  return stiff != 1 && stiff != 3 && stiff != 106 && stiff != 107;
+  /* lsoda (1), lsode (106), and bdf (107) use non-reentrant Fortran COMMON
+   * blocks and must run single-threaded.  indLin (3) was on this list by
+   * association and is not one of them: its default backend (matexp_MH09) is
+   * plain C with a stack workspace, its one Fortran backend (matexpRBS) uses
+   * automatic arrays with no SAVE/COMMON, and its caches are already per
+   * thread (src/expm.cpp). */
+  return stiff != 1 && stiff != 106 && stiff != 107;
 }
 
 
@@ -6014,8 +6018,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
-          // Thread safe, but possibly not reproducible
-          if (op->cores > 1) {
+          // Thread safe, but possibly not reproducible.  Never for indLin (3):
+          // swapping it for liblsodaR would silently change the solver rather
+          // than how it is threaded.
+          if (op->cores > 1 && op->stiff != 3) {
             op->stiff = method = 4;
           }
           rxSolveDat->throttle = false;
@@ -6043,7 +6049,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       } else {
         switch (thread) {
         case threadSafeRepNumThread:
-          if (op->cores > 1) {
+          if (op->cores > 1 && op->stiff != 3) {
             op->stiff = method = 4;
           }
           break;
