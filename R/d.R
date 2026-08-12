@@ -27,13 +27,15 @@
   }
 )
 
-## fsign(x, y) = abs(x)*sign(y); locally constant in y, sign(x)*sign(y) in x.
-## The other rounding-family functions (floor/ceil/round/trunc/sign/fround/
-## fprec/ftrunc) are locally constant in every argument and are collapsed to 0
-## directly in .rxFromSE() (see .rxSElocallyConstant).
+## fsign(x, y) transfers the sign of y onto abs(x); it is locally constant in y,
+## and abs(x) times a sign in x.  That sign is written as fsign(1, y) rather than
+## sign(y) because y == 0 counts as positive (`(y >= 0) ? fabs(x) : -fabs(x)`),
+## where sign(0) is 0.  The other rounding-family functions (floor/ceil/round/
+## trunc/sign/fround/fprec/ftrunc) are locally constant in every argument and are
+## collapsed to 0 directly in .rxFromSE() (see .rxSElocallyConstant).
 .rxD$fsign <- list(
   function(x, y) {
-    return(paste0("sign(", x, ")*sign(", y, ")"))
+    return(paste0("sign(", x, ")*fsign(1, ", y, ")"))
   },
   function(x, y) {
     return("0")

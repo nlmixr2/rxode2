@@ -662,8 +662,9 @@
   estimation method could run it -- which ruled out `floor(time/24)`, the
   natural way to write a circadian or square-wave switch.  They are now loaded
   as opaque function symbols (like `rxMod()`) and are locally constant, so their
-  derivative is 0 at every order; `fsign(x, y)` is `abs(x)*sign(y)`, so its `x`
-  derivative is `sign(x)*sign(y)` (#1230).
+  derivative is 0 at every order.  `fsign(x, y)` transfers the sign of `y` onto
+  `abs(x)`, so it gets a real derivative instead: `sign(x)*fsign(1, y)` in `x`
+  and 0 in `y` (#1230).
 
 ### Serialization
 
