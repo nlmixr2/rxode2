@@ -7,6 +7,9 @@
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
 
+// defined below, used by the adaptive dosing statement handlers
+static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v);
+
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
     !strcmp(")", name) ||
@@ -79,6 +82,7 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
+    rxPushDoseNoteArg("obs", "value", v0);
     sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbt, "obs(%s", v0);
@@ -88,6 +92,7 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
                                     d_get_child(rest, j)->end);
       char *arg = cur + 1;
       while (*arg == ' ' || *arg == '\t') arg++;
+      rxPushDoseNoteArg("obs", "value", arg);
       sAppend(&sb, ", (double) %s", arg);
       sAppend(&sbDt, ", (double) %s", arg);
       sAppend(&sbt, ", %s", arg);
@@ -546,6 +551,96 @@ static inline int isStrInteger(const char *s) {
   return 1;
 }
 
+// The adaptive dosing statements (evid_(), bolus(), infuse(), infuseDur(),
+// replace(), multiply(), phantom(), obs()) consume their arguments as raw text
+// and skip the parse-tree children, so an identifier appearing *only* there is
+// never registered as a model variable; the generated C then references an
+// undeclared symbol and the model fails to build with a compiler error that
+// looks like a broken toolchain.  Record the identifiers here and check them
+// once the whole model has been parsed -- the variable may legitimately be
+// assigned further down the model.  See #1231.
+static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v) {
+  if (v == NULL) return;
+  const char *p = v;
+  while (*p != '\0') {
+    if (isdigit((unsigned char)(*p)) ||
+        (*p == '.' && isdigit((unsigned char)(p[1])))) {
+      // numeric literal, including an exponent like 1e-7
+      while (isdigit((unsigned char)(*p)) || *p == '.') p++;
+      if (*p == 'e' || *p == 'E') {
+        p++;
+        if (*p == '+' || *p == '-') p++;
+      }
+      continue;
+    }
+    if (*p == '"' || *p == '\'') {
+      // string literal (a compartment name); skip it wholesale
+      char quote = *p;
+      p++;
+      while (*p != '\0' && *p != quote) p++;
+      if (*p == quote) p++;
+      continue;
+    }
+    if (isalpha((unsigned char)(*p)) || *p == '.' || *p == '_') {
+      const char *st = p;
+      while (isalnum((unsigned char)(*p)) || *p == '.' || *p == '_') p++;
+      int len = (int)(p - st);
+      const char *q = p;
+      while (*q == ' ' || *q == '\t') q++;
+      // a function call or a THETA[]/ETA[] reference, not a plain variable
+      if (*q == '(' || *q == '[') continue;
+      char nm[128];
+      if (len > 0 && len < (int)sizeof(nm)) {
+        memcpy(nm, st, (size_t)len);
+        nm[len] = '\0';
+        addLine(&sbDoseArgVar, "%s", nm);
+        addLine(&sbDoseArgCtx,
+                "'%s' is only used as the '%s' argument of '%s()'; an adaptive dosing argument does not declare a model variable, assign it first (like '%sVal <- %s')",
+                nm, arg, fn, arg, nm);
+      }
+      continue;
+    }
+    p++;
+  }
+}
+
+// Is `v` something the model already knows about -- a variable/parameter, a
+// compartment, a string-assigned variable, or a reserved name?
+static inline int rxPushDoseArgIsDeclared(const char *v) {
+  if (isReservedVariable(v)) return 1;
+  if (!strcmp(v, "pi") || !strcmp(v, "NA") || !strcmp(v, "NaN") ||
+      !strcmp(v, "Inf") || !strcmp(v, "T") || !strcmp(v, "F") ||
+      !strcmp(v, "TRUE") || !strcmp(v, "FALSE")) return 1;
+  for (int i = 0; i < NV; i++) {
+    if (!strcmp(tb.ss.line[i], v)) return 1;
+  }
+  for (int i = 0; i < tb.de.n; i++) {
+    if (!strcmp(tb.de.line[i], v)) return 1;
+  }
+  for (int i = 0; i < tb.str.n; i++) {
+    if (!strcmp(tb.str.line[i], v)) return 1;
+  }
+  return 0;
+}
+
+// Report the identifiers collected by rxPushDoseNoteArg() that the model never
+// declares.  Run after the whole model has been parsed, so a variable assigned
+// below the dosing statement still counts as declared.  See #1231.
+static inline void assertAdaptiveDosingArgsDeclared(void) {
+  for (int j = 0; j < sbDoseArgVar.n; j++) {
+    const char *v = sbDoseArgVar.line[j];
+    if (rxPushDoseArgIsDeclared(v)) continue;
+    int dup = 0; // only complain once per name
+    for (int k = 0; k < j; k++) {
+      if (!strcmp(sbDoseArgVar.line[k], v)) { dup = 1; break; }
+    }
+    if (dup) continue;
+    sPrint(&_gbuf, "%s", sbDoseArgCtx.line[j]);
+    updateSyntaxCol();
+    trans_syntax_error_report_fn0(_gbuf.s);
+  }
+}
+
 static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
   while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
   if (isStrInteger(vCmt)) {
@@ -595,6 +690,10 @@ static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
+    rxPushDoseNoteArg("bolus", "amt",  vAmt);
+    rxPushDoseNoteArg("bolus", "ii",   vIi);
+    rxPushDoseNoteArg("bolus", "addl", vAddl);
+    rxPushDoseNoteArg("bolus", "ss",   vSs);
 
     // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
     //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
@@ -640,6 +739,11 @@ static inline int handleInfuseStatement(nodeInfo ni, char *name, int *i, int nch
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
+    rxPushDoseNoteArg("infuse", "amt",  vAmt);
+    rxPushDoseNoteArg("infuse", "rate", vRate);
+    rxPushDoseNoteArg("infuse", "ii",   vIi);
+    rxPushDoseNoteArg("infuse", "addl", vAddl);
+    rxPushDoseNoteArg("infuse", "ss",   vSs);
 
     // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
     //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
@@ -687,6 +791,11 @@ static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int 
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
+    rxPushDoseNoteArg("infuseDur", "amt",  vAmt);
+    rxPushDoseNoteArg("infuseDur", "dur",  vDur);
+    rxPushDoseNoteArg("infuseDur", "ii",   vIi);
+    rxPushDoseNoteArg("infuseDur", "addl", vAddl);
+    rxPushDoseNoteArg("infuseDur", "ss",   vSs);
 
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
     sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
@@ -729,6 +838,7 @@ static inline int handleReplaceStatement(nodeInfo ni, char *name, int *i, int nc
     *i = nch; // skip all children; we process the whole statement at once
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     aType(TEVID);
+    rxPushDoseNoteArg("replace", "amt", vAmt);
     sAppend(&sb,   "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
             vAmt, cmtExpr);
     sAppend(&sbDt, "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
@@ -768,6 +878,7 @@ static inline int handleMultiplyStatement(nodeInfo ni, char *name, int *i, int n
     *i = nch; // skip all children; we process the whole statement at once
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     aType(TEVID);
+    rxPushDoseNoteArg("multiply", "amt", vAmt);
     sAppend(&sb,   "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
             vAmt, cmtExpr);
     sAppend(&sbDt, "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
@@ -807,6 +918,10 @@ static inline int handlePhantomStatement(nodeInfo ni, char *name, int *i, int nc
     // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
     //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
     //           16=ss, 17=')'
+    rxPushDoseNoteArg("phantom", "amt",  vAmt);
+    rxPushDoseNoteArg("phantom", "ii",   vIi);
+    rxPushDoseNoteArg("phantom", "addl", vAddl);
+    rxPushDoseNoteArg("phantom", "ss",   vSs);
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
     sAppend(&sb,  "_rxPushDose(_ind, t, t, 7, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
             vAmt, cmtExpr, vIi, vAddl, vSs);
@@ -886,6 +1001,13 @@ static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
     char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
     char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
     aType(TEVID);
+    rxPushDoseNoteArg("evid_", "time", vTime);
+    rxPushDoseNoteArg("evid_", "evid", vEvid);
+    rxPushDoseNoteArg("evid_", "amt",  vAmt);
+    rxPushDoseNoteArg("evid_", "rate", vRate);
+    rxPushDoseNoteArg("evid_", "ii",   vIi);
+    rxPushDoseNoteArg("evid_", "addl", vAddl);
+    rxPushDoseNoteArg("evid_", "ss",   vSs);
     const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
     sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
             vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);

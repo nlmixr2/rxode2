@@ -50,6 +50,26 @@
 
 ## Bug fixes
 
+### Parsing
+
+- A variable that is used *only* as an argument to an adaptive dosing call
+  (`evid_()`, `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()`, `obs()`) is now a parse-time error instead of an uncompilable
+  model.  These statements consume their arguments as text, so such a variable
+  was never registered and the generated C referenced an undeclared identifier;
+  the failure only showed up as a compiler error that looked like a broken
+  toolchain.  The message now names the variable, the argument and the
+  function, and points at the fix (assign it to a model variable first):
+
+  ```
+  'DOSE' is only used as the 'amt' argument of 'infuseDur()'; an adaptive
+  dosing argument does not declare a model variable, assign it first (like
+  'amtVal <- DOSE')
+  ```
+
+  The check runs once the whole model is parsed, so a variable assigned below
+  the dosing statement still counts as declared (#1231).
+
 ### Compilation
 
 - A model that fails to build now shows the compiler's own error lines (and
