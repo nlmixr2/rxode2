@@ -1843,4 +1843,154 @@ d/dt(blood)     = a*intestine - b*blood
              subset(evid == 1L & time == 24)),
       1L)
   })
+
+  # --- parallel population solving (rxode2#1216) -------------------------------
+  # indLin was pinned to one core by solveMethodThreadSafe(), which listed it
+  # with the Fortran COMMON-block solvers.  Subjects are independent and every
+  # cache in expm.cpp is per thread, so how many threads produced an answer must
+  # not be visible in it -- these compare at `tolerance = 0`, not approximately.
+  #
+  # Every one of these passes fixed `params` on purpose.  rxPreGenEta() draws
+  # per thread and hands them out with `schedule(static)`, so an `omega` model's
+  # etas ARE a function of the core count -- for every method, not just this one.
+  # Adding `omega`/`nSub` here would be comparing different draws.
+
+  .indLinCoresEq <- function(model, params, events, ..., cores = c(2L, 4L)) {
+    .one <- suppressMessages(rxSolve(model, params = params, events = events,
+                                     method = "indLin", cores = 1L, ...))
+    for (.nc in cores) {
+      expect_equal(as.data.frame(suppressMessages(
+        rxSolve(model, params = params, events = events, method = "indLin",
+                cores = .nc, ...))),
+        as.data.frame(.one), tolerance = 0)
+    }
+    invisible(.one)
+  }
+
+  # A pure matExp() model (no forcing) and one whose forcing is state free are
+  # different drivers from .mmMe's state-dependent one, so all three are here.
+  .parMe <- suppressMessages(rxode2(paste("matExp()", "cmt(depot)", "cmt(central)",
+                                          "k_depot_central = ka",
+                                          "k_central_output = ke", sep = "\n")))
+  .parMeF <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
+                                           "k_central_output = ke",
+                                           "indLin(central) <- kin", sep = "\n")))
+  .parEv <- as.data.frame(et(amt = 100, cmt = "depot") |>
+                            et(seq(0, 24, by = 1)) |> et(id = 1:40))
+
+  test_that("a pure matExp() population is unchanged by the core count", {
+    .indLinCoresEq(.parMe, c(ka = 1, ke = 0.2), .parEv, hmax = 0.5)
+  })
+
+  test_that("a state-free indLin() forcing is unchanged by the core count", {
+    .indLinCoresEq(.parMeF, c(ke = 0.2, kin = 1),
+                   as.data.frame(et(amt = 10, cmt = "central") |>
+                                   et(seq(0, 24, by = 1)) |> et(id = 1:40)),
+                   hmax = 0.5)
+  })
+
+  test_that("each indLin iteration scheme is unchanged by the core count", {
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
+                          et(id = 1:40))
+    for (.it in c("picard", "newton", "exprb", "exprb32", "auto")) {
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
+                     indLinIteration = .it)
+    }
+    # "auto" for both is the case that carries per-thread state ACROSS substeps
+    # of a subject -- __indLinAutoState's earned scheme and Richardson level --
+    # so it is the one a shared auto-state would show up in.
+    .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
+                   indLinIteration = "auto", indLinRichardson = "auto")
+    # Both forcing-Jacobian sources: symbolic goes through the generated
+    # calc_jac (which does _setThreadInd), fd calls IndF 2n times per step.
+    for (.j in c("symbolic", "fd")) {
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
+                     indLinIteration = "newton", indLinJac = .j)
+    }
+  })
+
+  test_that("each matrix-exponential backend is unchanged by the core count", {
+    # Includes the Fortran expokit backend (2): it uses automatic arrays with
+    # no SAVE/COMMON, which is what makes it safe to run threaded.
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
+                          et(id = 1:40))
+    for (.ty in 1:4) {
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-8, rtol = 1e-8,
+                     indLinMatExpType = .ty)
+    }
+  })
+
+  test_that("infusions, addl dosing and steady state survive threading", {
+    .obs <- seq(0, 48, by = 2)
+    .indLinCoresEq(.mmMe, .mmPar,
+                   as.data.frame(et(amt = 3, rate = 1) |> et(.obs) |> et(id = 1:40)),
+                   atol = 1e-10, rtol = 1e-10)
+    .indLinCoresEq(.mmMe, .mmPar,
+                   as.data.frame(et(amt = 3, ii = 12, addl = 3) |> et(.obs) |>
+                                   et(id = 1:40)),
+                   atol = 1e-10, rtol = 1e-10)
+    # Steady state on the linear model: the Michaelis-Menten one does not
+    # converge under ss=1 at any tolerance, which is a property of inductive
+    # linearization on that model and has nothing to do with threading.
+    .indLinCoresEq(.parMe, c(ka = 1, ke = 0.2),
+                   as.data.frame(et(amt = 100, cmt = "depot", ii = 12, ss = 1) |>
+                                   et(.obs) |> et(id = 1:40)),
+                   atol = 1e-10, rtol = 1e-10)
+  })
+
+  test_that("the step-disposition counters sum across threads", {
+    # Five plain `long`s would tear here; per-thread slots summed at read give
+    # the same totals whatever produced them.
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
+                          et(id = 1:40))
+    .steps <- function(nc) {
+      invisible(.Call("_rxode2_rxIndLinSteps", PACKAGE = "rxode2"))  # read to reset
+      invisible(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
+                                         method = "indLin", atol = 1e-8,
+                                         rtol = 1e-8, cores = nc)))
+      .Call("_rxode2_rxIndLinSteps", PACKAGE = "rxode2")
+    }
+    .one <- .steps(1L)
+    expect_gt(.one[["attempt"]], 0)
+    expect_equal(.steps(4L), .one)
+  })
+
+  test_that("indLin really does use the cores it is given", {
+    # Not a timing test: the exponential cache is per thread, so a population of
+    # identical subjects computes its one exponential once per thread that ran
+    # and reuses it after that.  `dadt` counts exponentials computed, so it
+    # bounds the number of cache slots that were touched.  `<= cores` is the
+    # invariant (a slot index past the pool would break it); `> 1` is the proof
+    # that more than one thread ran, and is why this needs enough subjects that
+    # the dynamic schedule cannot hand them all to one thread.
+    skip_if(rxCores() < 4L)
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |>
+                           et(id = 1:200))
+    .nSlot <- function(nc) {
+      sum(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
+                                   events = .ev, method = "indLin",
+                                   hmax = 0.5, cores = nc))$counts$dadt)
+    }
+    expect_equal(.nSlot(1L), 1)
+    expect_lte(.nSlot(4L), 4)
+    expect_gt(.nSlot(4L), 1)
+  })
+
+  test_that("a model the parser called not thread safe still gets one core", {
+    # Dropping indLin from solveMethodThreadSafe() hands it to the normal
+    # thread-flag switch; it must not hand it more than the model allows.  A
+    # user-defined R function is the ordinary way to earn that classification --
+    # calling back into R from a worker is what the flag exists for.
+    udfKin <- function(x) 1.0
+    .m <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
+                                        "k_central_output = ke",
+                                        "indLin(central) <- udfKin(t)",
+                                        sep = "\n")))
+    expect_equal(rxModelVars(.m)$flags[["thread"]], 0L)
+    expect_warning(rxSolve(.m, params = c(ke = 0.2),
+                           events = as.data.frame(et(amt = 10, cmt = "central") |>
+                                                    et(0:5) |> et(id = 1:8)),
+                           method = "indLin", cores = 4L),
+                   "not thread safe")
+  })
 })
