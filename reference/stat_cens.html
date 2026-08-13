@@ -141,7 +141,7 @@
 
 
 <dl><dt id="arg-mapping">mapping<a class="anchor" aria-label="anchor" href="#arg-mapping"></a></dt>
-<dd><p>Set of aesthetic mappings created by <code><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes()</a></code>. If specified and
+<dd><p>Set of aesthetic mappings created by <code><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes()</a></code>. If specified and
 <code>inherit.aes = TRUE</code> (the default), it is combined with the default mapping
 at the top level of the plot. You must supply <code>mapping</code> if there is no plot
 mapping.</p></dd>
@@ -151,10 +151,10 @@ mapping.</p></dd>
 <dd><p>The data to be displayed in this layer. There are three
 options:</p>
 <p>If <code>NULL</code>, the default, the data is inherited from the plot
-data as specified in the call to <code><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot()</a></code>.</p>
+data as specified in the call to <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot()</a></code>.</p>
 <p>A <code>data.frame</code>, or other object, will override the plot
 data. All objects will be fortified to produce a data frame. See
-<code><a href="https://rdrr.io/pkg/ggplot2/man/fortify.html" class="external-link">fortify()</a></code> for which variables will be created.</p>
+<code><a href="https://ggplot2.tidyverse.org/reference/fortify.html" class="external-link">fortify()</a></code> for which variables will be created.</p>
 <p>A <code>function</code> will be called with a single argument,
 the plot data. The return value must be a <code>data.frame</code>, and
 will be used as the layer data. A <code>function</code> can be created
@@ -164,13 +164,13 @@ from a <code>formula</code> (e.g. <code>~ head(.x, 10)</code>).</p></dd>
 <dt id="arg-position">position<a class="anchor" aria-label="anchor" href="#arg-position"></a></dt>
 <dd><p>A position adjustment to use on the data for this layer. This
 can be used in various ways, including to prevent overplotting and
-improving the display. The <code>position</code> argument accepts the following:</p><ul><li><p>The result of calling a position function, such as <code><a href="https://rdrr.io/pkg/ggplot2/man/position_jitter.html" class="external-link">position_jitter()</a></code>.
+improving the display. The <code>position</code> argument accepts the following:</p><ul><li><p>The result of calling a position function, such as <code><a href="https://ggplot2.tidyverse.org/reference/position_jitter.html" class="external-link">position_jitter()</a></code>.
 This method allows for passing extra arguments to the position.</p></li>
 <li><p>A string naming the position adjustment. To give the position as a
 string, strip the function name of the <code>position_</code> prefix. For example,
-to use <code><a href="https://rdrr.io/pkg/ggplot2/man/position_jitter.html" class="external-link">position_jitter()</a></code>, give the position as <code>"jitter"</code>.</p></li>
+to use <code><a href="https://ggplot2.tidyverse.org/reference/position_jitter.html" class="external-link">position_jitter()</a></code>, give the position as <code>"jitter"</code>.</p></li>
 <li><p>For more information and other ways to specify the position, see the
-<a href="https://rdrr.io/pkg/ggplot2/man/layer_positions.html" class="external-link">layer position</a> documentation.</p></li>
+<a href="https://ggplot2.tidyverse.org/reference/layer_positions.html" class="external-link">layer position</a> documentation.</p></li>
 </ul></dd>
 
 
@@ -188,7 +188,7 @@ but unobserved levels are omitted.</p></dd>
 <dd><p>If <code>FALSE</code>, overrides the default aesthetics,
 rather than combining with them. This is most useful for helper functions
 that define both data and aesthetics and shouldn't inherit behaviour from
-the default plot specification, e.g. <code><a href="https://rdrr.io/pkg/ggplot2/man/annotation_borders.html" class="external-link">annotation_borders()</a></code>.</p></dd>
+the default plot specification, e.g. <code><a href="https://ggplot2.tidyverse.org/reference/annotation_borders.html" class="external-link">annotation_borders()</a></code>.</p></dd>
 
 
 <dt id="arg-width">width<a class="anchor" aria-label="anchor" href="#arg-width"></a></dt>
@@ -197,7 +197,7 @@ censoring box</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Other arguments passed on to <code><a href="https://rdrr.io/pkg/ggplot2/man/layer.html" class="external-link">layer()</a></code>'s <code>params</code> argument. These
+<dd><p>Other arguments passed on to <code><a href="https://ggplot2.tidyverse.org/reference/layer.html" class="external-link">layer()</a></code>'s <code>params</code> argument. These
 arguments broadly fall into one of 4 categories below. Notably, further
 arguments to the <code>position</code> argument, or aesthetics that are required
 can <em>not</em> be passed through <code>...</code>. Unknown arguments that are not part
@@ -218,9 +218,9 @@ documentation lists which parameters it can accept.</p></li>
 to the <code>stat</code> part of the layer. An example of this is
 <code>geom_area(stat = "density", adjust = 0.5)</code>. The stat's documentation
 lists which parameters it can accept.</p></li>
-<li><p>The <code>key_glyph</code> argument of <code><a href="https://rdrr.io/pkg/ggplot2/man/layer.html" class="external-link">layer()</a></code> may also be passed on through
+<li><p>The <code>key_glyph</code> argument of <code><a href="https://ggplot2.tidyverse.org/reference/layer.html" class="external-link">layer()</a></code> may also be passed on through
 <code>...</code>. This can be one of the functions described as
-<a href="https://rdrr.io/pkg/ggplot2/man/draw_key.html" class="external-link">key glyphs</a>, to change the display of the layer in the legend.</p></li>
+<a href="https://ggplot2.tidyverse.org/reference/draw_key.html" class="external-link">key glyphs</a>, to change the display of the layer in the legend.</p></li>
 </ul></dd>
 
 </dl></div>
