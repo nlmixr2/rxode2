@@ -66,4 +66,29 @@ rxTest({
   test_that("file and string returns the same result", {
     expect_equal(rxModelVars(ode)$md5["parsed_md5"], rxModelVars(ode3)$md5["parsed_md5"])
   })
+
+  .pmd5 <- function(m, ...) unname(rxModelVars(rxode2(m, ...))$md5["parsed_md5"])
+
+  test_that("default linCmtSens shares a parsed_md5 with explicit linCmtA", {
+    .m <- "cl <- 1\nv <- 20\ncp <- linCmt()"
+    ## default is c(\"linCmtA\", \"linCmtB\"), which match.arg() resolves to
+    ## \"linCmtA\" -- identical compiled code, so they must share a cache key
+    expect_equal(.pmd5(.m), .pmd5(.m, linCmtSens = "linCmtA"))
+    ## a genuinely different linCmtSens must NOT collide
+    expect_false(.pmd5(.m, linCmtSens = "linCmtA") == .pmd5(.m, linCmtSens = "linCmtB"))
+  })
+
+  test_that("parsed_md5 does not depend on what was built before it", {
+    ## a prior non-default linCmtSens build must not shift a later default hash
+    .plain <- "d/dt(y) = r * y * (1 - y/K);"
+    .h1 <- .pmd5(.plain)
+    invisible(rxode2("cl <- 1\nv <- 20\ncp <- linCmt()", linCmtSens = "linCmtB"))
+    expect_equal(.pmd5(.plain), .h1)
+    ## a prior indLin build must not leak into a later plain model hash
+    .p2 <- "d/dt(x) = -k * x"
+    .h2 <- .pmd5(.p2)
+    invisible(rxode2("d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central",
+                     indLin = TRUE))
+    expect_equal(.pmd5(.p2), .h2)
+  })
 })

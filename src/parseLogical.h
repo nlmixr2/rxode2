@@ -87,13 +87,21 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
     if (i == 0){
       return 1;
     } else if (i == 1){
+      // reset the buffers; they still hold the preceding statement's text
+      // (each statement handler is what clears them)
+      sb.o=0;sbDt.o=0; sbt.o=0;
       aAppendN("if (", 4);
       sAppendN(&sbt, "if (", 4);
       return 1;
     } else if (i == 3){
       aType(TLOGIC);
+      // Both branch statements only run conditionally; see
+      // handleCmtPropertyIndLin().
+      tb.nCond++;
       aAppendN(") {", 3);
-      sAppendN(&sbt,") {", 3);
+      // normalized text uses the same spelling as 'if (...){' so rxNorm() is a
+      // fixed point when the statement is re-parsed
+      sAppendN(&sbt,"){", 2);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
@@ -104,13 +112,14 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
       sb.o=0;sbDt.o=0; sbt.o=0;
       aType(TLOGIC);
       aAppendN("}\nelse {", 8);
-      sAppendN(&sbt,"}\nelse {", 1);
+      sAppendN(&sbt,"}\nelse {", 8);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
       addLine(&sbNrmL, "%s\n", sbt.s);
       return 1;
     } else if (i == 7){
+      if (tb.nCond > 0) tb.nCond--;
       sb.o=0;sbDt.o=0; sbt.o=0;
       aType(TLOGIC);
       aAppendN("}", 1);
@@ -313,6 +322,9 @@ static inline int assertLogicalNoWhileElse(nodeInfo ni, char *name, int i, D_Par
 static inline int handleLogicalIfOrWhile(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn, int *isWhile) {
   if (nodeHas(selection_statement) && i==1) {
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Statements inside the block (including its 'else') only run
+    // conditionally; see handleCmtPropertyIndLin().
+    tb.nCond++;
     if (*isWhile) {
       sAppendN(&sb, "_itwhile=0;\nwhile (", 19);
       sAppendN(&sbDt, "_itwhile=0;\nwhile (", 19);
@@ -394,6 +406,7 @@ static inline int handleLogicalExpr(nodeInfo ni, char *name, int i, D_ParseNode 
 
 static inline int finalizeLineSelectionStatement(nodeInfo ni, char *name, int isWhile) {
   if (nodeHas(selection_statement)){
+    if (tb.nCond > 0) tb.nCond--;
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     aType(TLOGIC);
     /* aType(300); */

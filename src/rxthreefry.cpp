@@ -830,20 +830,42 @@ arma::mat rxMvrandn_(NumericMatrix A_,
 }
 
 std::vector<sitmo::threefry> _eng;
+// Engines reserved for the in-solve simeta()/simeps() resample; see
+// simEngKey() for why they cannot share _eng.
+std::vector<sitmo::threefry> _engSim;
+
+// rxSolve() restores R's RNG state between seedEng() and the parameter
+// simulation, so the runif()-derived seeds handed out by getRxSeed1() repeat
+// there: _eng's keys are the same ones cvPost()/rxRmvn_() go on to use for the
+// simulated etas.  Keying the resample engines off a threefry draw instead of
+// off `seed` itself keeps simeta()/simeps() from replaying those parameters.
+static inline uint32_t simEngKey(uint32_t seed) {
+  sitmo::threefry k;
+  k.seed(seed);
+  return (uint32_t)(k() & 0xffffffffU);
+}
 
 extern "C" void seedEng(int ncores) {
   uint32_t seed = getRxSeed1(ncores);
   _eng.clear();
+  _engSim.clear();
   for (int i= 0; i < ncores; i++) {
     sitmo::threefry eng0;
     eng0.seed(seed + i);
     _eng.push_back(eng0);
+    sitmo::threefry engSim0;
+    engSim0.seed(simEngKey(seed + i));
+    _engSim.push_back(engSim0);
   }
   seed = getRxSeed1(ncores);
 }
 
 extern "C" void setSeedEng1(uint32_t seed) {
-  (_eng[rx_get_thread(op_global.cores)]).seed(seed);
+  int thread = rx_get_thread(op_global.cores);
+  (_eng[thread]).seed(seed);
+  if (thread < (int)_engSim.size()) {
+    (_engSim[thread]).seed(simEngKey(seed));
+  }
 }
 
 //' This seeds the engine based on the number of cores used in random number generation
@@ -1689,6 +1711,98 @@ void rxRmvnA(arma::mat & A_, arma::rowvec & mu, arma::mat &sigma,
   }
 }
 
+// Serial variant of rxRmvn2_() that draws from an already seeded engine.
+static void rxRmvn2Eng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                       sitmo::threefry& eng, bool isChol=false) {
+  int n = A.n_rows;
+  int d = mu.n_elem;
+  if (n < 1 || d < 1) return;
+  arma::mat ch;
+  if (sigma.is_zero()) {
+    ch = sigma;
+  } else if (isChol) {
+    ch = arma::trimatu(sigma);
+  } else {
+    ch = arma::trimatu(arma::chol(sigma));
+  }
+  boost::random::normal_distribution<> snorm(0.0, 1.0);
+  for (int i = 0; i < n*d; ++i) {
+    A[i] = snorm(eng);
+  }
+  if (d == 1) {
+    double sd = ch(0, 0);
+    for (int i = 0; i < n; ++i) {
+      A[i] = A[i]*sd + mu(0);
+    }
+  } else {
+    arma::rowvec work(d);
+    for (int ir = 0; ir < n; ++ir) {
+      for (int ic = d; ic--;) {
+        double acc = 0.0;
+        for (int ii = 0; ii <= ic; ++ii) {
+          acc += A.at(ir, ii) * ch.at(ii, ic);
+        }
+        work.at(ic) = acc;
+      }
+      work += mu;
+      A(arma::span(ir), arma::span::all) = work;
+    }
+  }
+}
+
+// Serial variant of rxMvrandn__() that draws from an already seeded engine.
+static void rxMvrandnEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                         const arma::vec& lower, const arma::vec& upper,
+                         sitmo::threefry& eng, double a=0.4, double tol=2.05,
+                         double nlTol=1e-10, int nlMaxiter=100) {
+  int n = A.n_rows;
+  int d = mu.n_elem;
+  if (n < 1 || d < 1) return;
+  if (sigma.is_zero()) {
+    if (d == 1) {
+      for (int i = 0; i < n; ++i) A[i] = mu(0);
+    } else {
+      A.zeros();
+      A.each_row() += mu;
+    }
+    return;
+  }
+  arma::vec low = lower - trans(mu);
+  arma::vec up  = upper - trans(mu);
+  if (d == 1) {
+    double sd = sqrt(sigma(0, 0));
+    double l = low(0)/sd;
+    double u = up(0)/sd;
+    for (int i = 0; i < n; ++i) {
+      A[i] = sd*trandn(l, u, eng, a, tol) + mu(0);
+    }
+  } else {
+    arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol, nlTol, nlMaxiter, 1);
+    ret.each_row() += mu;
+    std::copy(ret.begin(), ret.end(), A.begin());
+  }
+}
+
+// Armadillo-only simulation drawing from an already seeded engine; this is the
+// in-solve counterpart of rxRmvnA().
+static void rxRmvnAEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                       arma::vec& lower, arma::vec& upper, sitmo::threefry& eng,
+                       bool isChol=false, double a=0.4, double tol=2.05,
+                       double nlTol=1e-10, int nlMaxiter=100) {
+  bool trunc = anyFinite(lower) || anyFinite(upper);
+  if (trunc) {
+    arma::mat sigma0 = sigma;
+    if (isChol) {
+      sigma0 = sigma * sigma.t();
+    }
+    arma::vec lower0 = fillVec(lower, A.n_cols);
+    arma::vec upper0 = fillVec(upper, A.n_cols);
+    rxMvrandnEng(A, mu, sigma0, lower0, upper0, eng, a, tol, nlTol, nlMaxiter);
+  } else {
+    rxRmvn2Eng(A, mu, sigma, eng, isChol);
+  }
+}
+
 void simvar(double *out, int type, int csim, rx_solve* rx) {
   int n = 0;
   if (type == 0) { // eps
@@ -1702,8 +1816,20 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
   arma::rowvec mu(n, arma::fill::zeros);
   arma::mat sigma = getArmaMat(type, csim, rx);
 
+  // simeta()/simeps() run inside the parallel solve, so the draw has to come
+  // from this thread's engine (seeded on the main thread by seedEng() and
+  // setSeedEng1()).  rxRmvnA() would re-seed with getRxSeed1(), which uses R's
+  // RNG and must never be called from an OpenMP worker thread.
+  int thread = rx_get_thread(op_global.cores);
   // FIXME? allow changing of a, tol nlTol and nlMaxiter?
-  rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
+  if (thread < 0 || thread >= (int)_engSim.size()) {
+    // Not seeded; should not happen during a solve.  Use a per-thread stream
+    // rather than reaching for R's RNG off the main thread.
+    static thread_local sitmo::threefry engFallback;
+    rxRmvnAEng(A, mu, sigma, lower, upper, engFallback, false, 0.4, 2.05, 1e-10, 100);
+    return;
+  }
+  rxRmvnAEng(A, mu, sigma, lower, upper, _engSim[thread], false, 0.4, 2.05, 1e-10, 100);
 }
 // ---------------------------------------------------------------------------
 // rxPreGenEta: pre-generate all nsolve * neta eta draws before the parallel

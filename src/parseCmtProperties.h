@@ -109,8 +109,19 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
   if (nodeHas(indLin_prop)){
     sb.o=0;sbDt.o=0; sbt.o=0;
     tb.hasIndLinProp = 1;
-    char lhsVar[150];
-    snprintf(lhsVar, sizeof(lhsVar), "rx_indLin_%s", v);
+    // Sized from `v`, not a fixed buffer: `v` is a compartment name, and
+    // rxSensMatExp() names a second-order sensitivity compartment
+    // `rx__sens_<state>_BY_<p>_BY_<q>__`, which passes 150 bytes with ordinary
+    // parameter names.  snprintf() into a fixed buffer truncated silently, so
+    // two distinct compartments could share one C symbol -- one forcing
+    // overwriting the other in a model that still compiled.
+    //
+    // A copy rather than a pointer into `_gbuf`: `new_or_ith()` below writes
+    // `_gbuf` on its interpolation-clash path, which would realloc it out from
+    // under the name that is about to be registered.
+    size_t lhsN = strlen(v) + 11;
+    char *lhsVar = R_alloc(lhsN, sizeof(char));
+    snprintf(lhsVar, lhsN, "rx_indLin_%s", v);
     if (new_or_ith(lhsVar)) {
       addSymbolStr(lhsVar);
       new_or_ith(lhsVar);
@@ -119,10 +130,23 @@ static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
     if (tb.lho[tb.ix] == 0) {
       tb.lho[tb.ix] = tb.lhi++;
     }
-    sAppend(&sb, "%s = ", lhsVar);
-    sAppend(&sbDt, "%s = ", lhsVar);
+    // doDot2(), not a plain sAppend(): the compartment name can carry a `.`
+    // (`rx__sens_central_BY_eta.cl__`, from a sensitivity wrt a dotted
+    // parameter), and everything else that names this variable -- its
+    // declaration, its `_PL[]` read, and codegen's `_matf[] +=` line -- writes
+    // it through doDot() as `_DoT_`.  Emitting the raw name here left the
+    // assignment referring to an undeclared identifier, which C then read as a
+    // struct member access.
+    doDot2(&sb, &sbDt, lhsVar);
+    sAppendN(&sb, " = ", 3);
+    sAppendN(&sbDt, " = ", 3);
     sAppend(&sbt, "indLin(%s)=", v);
     aType(TASSIGN);
+    // The forcing's right-hand side is parsed next; record the symbols it
+    // reads so wIndLin can report the state-dependent forcings.  Cleared in
+    // finalizeLine() / by ENDLINE.
+    tb.curIndLin = tb.id + 1;
+    tb.curStmt = pushIndLinStmt(tb.id, 1);
     return 1;
   }
   return 0;
@@ -231,6 +255,11 @@ static inline int handleRemainingAssignmentsCalcPropMtime(nodeInfo ni, char *nam
 
 static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, char *name, D_ParseNode *pn, char *v) {
   if (nodeHas(assignment)  || (!rx_syntax_allow_ini && nodeHas(ini))) {
+    // The right-hand side is parsed next; remember what it assigns so an
+    // indLin() forcing can be traced through it (see recordIndLinRef()).
+    // Cleared by ENDLINE.
+    tb.curLhs = tb.ix;
+    tb.curStmt = (tb.ix >= 0) ? pushIndLinStmt(tb.ix, 0) : -1;
     if (tb.ix+1 == NV && tb.NEnd != NV){
       // New assignment
       tb.ixL = tb.ix;

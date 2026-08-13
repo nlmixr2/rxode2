@@ -403,6 +403,171 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   }
 }
 
+// Replay the recorded assignments and indLin() forcings in source order to work
+// out which forcings depend on a compartment.  dep[i] tracks whether symbol i
+// currently holds something derived from a state, so a forcing that reaches a
+// state only through an assigned variable (cp = central/20; indLin(central) <-
+// -vmax*cp/(km+cp)) is seen, while one whose variable was reassigned to
+// something state free before it is read is not.  A statement inside an
+// if/while/ifelse may not run, so it adds to what is already known instead of
+// replacing it -- the conservative direction, since a missed state would be
+// solved without the inductive iteration it needs.  fdep[] is the same for each
+// compartment's forcing.
+// A compartment is state dependent by definition; 2 marks the state itself so
+// indLinStmtTarget() can refuse to overwrite it.
+static inline void indLinSeedStateDep(int *dep) {
+  for (int i = 0; i < NV; ++i) {
+    dep[i] = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.ss.line[i], tb.de.line[d])) {
+        dep[i] = 2;
+        break;
+      }
+    }
+  }
+}
+
+// Does statement `s` read anything that currently holds a state?
+static inline int indLinStmtReadsDep(int s, int *dep) {
+  int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+  for (int r = tb.stmtR0[s]; r < r1; ++r) {
+    if (dep[tb.stmtRef[r]]) return 1;
+  }
+  return 0;
+}
+
+// The slot statement `s` writes, or -1 when it writes nothing trackable.  A
+// state is never assigned, and must stay flagged if the parser ever routes one
+// through here.
+static inline int indLinStmtTarget(int s, int *dep) {
+  int t = tb.stmtT[s];
+  if (tb.stmtK[s] == 0) {
+    if (t < 0 || t >= NV || dep[t] == 2) return -1;
+  } else if (t < 0 || t >= tb.de.n) {
+    return -1;
+  }
+  return t;
+}
+
+// `fany` (optional) records which compartments have an indLin() forcing at all,
+// state dependent or not.
+static inline void indLinReplay(int *dep, int *fdep, int *fany) {
+  indLinSeedStateDep(dep);
+  for (int d = 0; d < tb.de.n; ++d) {
+    fdep[d] = 0;
+    if (fany != NULL) fany[d] = 0;
+  }
+  for (int s = 0; s < tb.stmtN; ++s) {
+    int t = indLinStmtTarget(s, dep);
+    if (t < 0) continue;
+    int v = indLinStmtReadsDep(s, dep);
+    int *cur = (tb.stmtK[s] == 0) ? dep : fdep;
+    cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
+    if (tb.stmtK[s] == 1 && fany != NULL) fany[t] = 1;
+  }
+}
+
+// Walk back from symbol `j` through whatever gave it its state dependence
+// until a compartment is reached, so the error message can name something the
+// user actually wrote.  Bounded by the statement count, so a self-referential
+// chain cannot spin.
+static inline int indLinDepSource(int j, int *dep) {
+  int cur = j;
+  for (int guard = 0; guard <= tb.stmtN; ++guard) {
+    if (dep[cur] == 2) return cur;
+    int found = -1;
+    for (int s = tb.stmtN; s--;) {
+      if (tb.stmtK[s] != 0 || tb.stmtT[s] != cur) continue;
+      int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+      for (int r = tb.stmtR0[s]; r < r1; ++r) {
+        if (dep[tb.stmtRef[r]]) { found = tb.stmtRef[r]; break; }
+      }
+      if (found >= 0) break;
+    }
+    if (found < 0) return cur;
+    cur = found;
+  }
+  return cur;
+}
+
+// A matExp() rate constant that reads a compartment is not a rate constant: the
+// matrix exponential is only valid when the rate matrix is constant over the
+// step, which is also what the event-sensitivity jump code assumes
+// (rxode2parseHandleEvid.h).  Report the first one, naming the constant and the
+// compartment it reaches, and point at indLin() -- which is where a
+// state-dependent term belongs and where the solver can iterate it.
+//
+// Sensitivity models are held to the same rule.  rxSensMatExp() takes its rate
+// matrix from the same term-wise split the plain conversion uses, so every rate
+// constant it emits -- primal, homogeneous, non-depleting cross term, at every
+// order -- is state free, and the nonlinear part rides in the indLin() forcing
+// (rxode2#1187).
+static inline void assertNoStateDependentMicro(void) {
+  if (!tb.isMexp || tb.de.n <= 0 || NV <= 0) return;
+  int *dep  = (int*)R_alloc(NV, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n, sizeof(int));
+  indLinReplay(dep, fdep, NULL);
+  char cmt1[100], cmt2[100];
+  for (int j = 0; j < NV; ++j) {
+    if (dep[j] != 1) continue;
+    if (!parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) continue;
+    int have1 = 0, have2 = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], cmt1)) have1 = 1;
+      if (!strcmp(tb.de.line[d], cmt2)) have2 = 1;
+    }
+    if (!have1 || !have2) continue;
+    const char *src = tb.ss.line[indLinDepSource(j, dep)];
+    updateSyntaxCol();
+    sPrint(&_bufw,
+           _("matrix exponential rate constant '%s' depends on the compartment '%s'; rate constants must be constant in the states -- put the state-dependent part in 'indLin(%s) <- ...' instead"),
+           tb.ss.line[j], src, cmt1);
+    trans_syntax_error_report_fn0(_bufw.s);
+    break;
+  }
+}
+
+// modelVars$indLin$wIndLin: the 0-indexed positions in modelVars$state whose
+// indLin() forcing depends on a state (named with those states for reading).  A
+// forcing built only from parameters/covariates (eg indLin(Gc) <- Gprod) stays
+// unflagged and keeps the cheap non-iterating path.
+static inline SEXP calcWIndLin(SEXP state) {
+  rxProtectGuard;
+  int ns = Rf_length(state);
+  int *dep  = (int*)R_alloc(NV > 0 ? NV : 1, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  int *fany = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  indLinReplay(dep, fdep, fany);
+  int *isDep = (int*)R_alloc(ns > 0 ? ns : 1, sizeof(int));
+  int n = 0;
+  for (int k = 0; k < ns; ++k) {
+    isDep[k] = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], CHAR(STRING_ELT(state, k)))) {
+        // A linCmt() concentration moves continuously within a step, so a
+        // forcing in a model that has one cannot be treated as constant over
+        // the interval the way a locf covariate can -- take the iterating path
+        // so the driver re-evaluates and refines it (rxode2#1215).
+        isDep[k] = fdep[d] || (tb.linCmt && fany[d]);
+        break;
+      }
+    }
+    if (isDep[k]) n++;
+  }
+  SEXP w  = rxP(Rf_allocVector(INTSXP, n));
+  SEXP wn = rxP(Rf_allocVector(STRSXP, n));
+  int *wi = INTEGER(w);
+  for (int k = 0, j = 0; k < ns; ++k) {
+    if (!isDep[k]) continue;
+    wi[j] = k;
+    SET_STRING_ELT(wn, j, STRING_ELT(state, k));
+    j++;
+  }
+  Rf_setAttrib(w, R_NamesSymbol, wn);
+  rxUPAll();
+  return w;
+}
+
 static inline void populateDfdy(SEXP dfdy) {
   char *df, *dy;
   for (int i=0; i<tb.ndfdy; i++) {                     /* name state vars */

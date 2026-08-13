@@ -467,7 +467,7 @@ sha1.rxUi <- function(x, digits = 14L, zapsmall = 7L, ..., algo = "sha1")  {
 rxUiGet.ini <- function(x, ...) {
   get("iniDf", x[[1]])
 }
-attr(rxUiGet.ini, "desc") <- "Model initilizations/bounds object"
+attr(rxUiGet.ini, "desc") <- "Model initializations/bounds object"
 attr(rxUiGet.ini,"rstudio") <- NA
 
 #'@export

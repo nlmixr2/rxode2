@@ -49,6 +49,7 @@ extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
 extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -1534,7 +1535,17 @@ extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
 static inline int _rxTid(void) {
   int t = _rxThreadIdOverride;
   if (t < 0) t = omp_get_thread_num();
-  return (t < 0) ? 0 : t;
+  if (t < 0) return 0;
+  // Every `_globals` per-thread slice is sized by op->cores, recorded in
+  // nInfusionRateThreads when they are allocated.  A thread id at or past
+  // that count indexes out of bounds: gInfusionRate[] is an array of
+  // pointers, so it yields a garbage pointer (a NULL there segfaults in
+  // iniSubject), and the flat arrays (gon, gTlastS, gatol2Thread, ...) are
+  // silently overrun.  Clamp to the last valid slot, matching the policy
+  // rx_get_thread() already applies in rxomp.h.
+  int mx = _globals.nInfusionRateThreads;
+  if (mx <= 0) return 0;
+  return (t < mx) ? t : mx - 1;
 }
 
 static inline double *getLinCmtSaveThread() {
@@ -2833,6 +2844,14 @@ extern "C" void freeExtraDosingC() {
 
 extern "C" void allocExtraDosingC() {
   allocExtraDosing(omp_get_max_threads());
+}
+
+// Called from par_solve(), the one choke point every solve goes through --
+// including a downstream package driving par_solve directly rather than
+// through rxSolve_()'s setup.  Runs before the parallel region, and
+// iniSubject() (which hands these pools out) runs inside it.
+extern "C" void ensureExtraDosingC(int ncores) {
+  ensureExtraDosing(ncores);
 }
 
 void resetFkeep();
@@ -5667,8 +5686,14 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinN = 0;
   op->indLinPhiTol = 1e-7;
   op->indLinPhiM = 0;
-  op->indLinMatExpType = 2;
+  op->indLinMatExpType = 3; // Al-Mohy; see rxsolve.R's indLinMatExpType
   op->indLinMatExpOrder = 6;
+  op->indLinStepSearch = 1; // secant
+  op->indLinMaxIter = 20;
+  op->indLinRichardson = 2; // auto
+  op->indLinIteration = 3;  // auto (stiffness-gated)
+  op->indLinJac = 0; // auto: symbolic when the model carries one
+  op->indLinForcing = 1; // ramp: integrate the forcing as a line over the substep
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -5756,6 +5781,8 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
+    ensureExtraDosing((int)op->cores);
     int _bneq = (int)op->neq;
     int _lrw, _liw;
     if (op->stiff == 107) {
@@ -5779,9 +5806,13 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
 }
 extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   int stiff = op->stiff;
-  /* lsoda (1), indLin (3), lsode (106), and bdf (107) use non-reentrant
-   * Fortran COMMON blocks and must run single-threaded. */
-  return stiff != 1 && stiff != 3 && stiff != 106 && stiff != 107;
+  /* lsoda (1), lsode (106), and bdf (107) use non-reentrant Fortran COMMON
+   * blocks and must run single-threaded.  indLin (3) was on this list by
+   * association and is not one of them: its default backend (matexp_MH09) is
+   * plain C with a stack workspace, its one Fortran backend (matexpRBS) uses
+   * automatic arrays with no SAVE/COMMON, and its caches are already per
+   * thread (src/expm.cpp). */
+  return stiff != 1 && stiff != 106 && stiff != 107;
 }
 
 
@@ -6096,6 +6127,29 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
       op->useDense = 0;
     }
+    // A dense segment integrates across every observation between two key
+    // events at once, so an observation is only filled in once the segment has
+    // closed.  A model that pushes its own events cannot work that way: the
+    // event it decides on at an observation has to be applied before the solver
+    // moves past that observation (rxode2#1214).
+    // Keyed on the PARSER flag, not op->indOwnAlloc: rxSolve.default() defaults
+    // indOwnAlloc to TRUE, so that would disable dense output for every model
+    // -- including the delay() models whose history needs it.
+    //
+    // delay() needs that dense output (a non-dense method records no history
+    // and silently returns wrong lagged values), so a model asking for both is
+    // asking for two incompatible things.  Refuse instead of dropping one of
+    // them.  rxSolve() refuses this earlier with a fuller message; this is the
+    // backstop for a caller that reaches solver setup another way.
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
+                 "delay() requires dense output, which cannot apply an event "
+                 "pushed at an observation");
+    }
+    if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      op->useDense = 0;
+    }
     op->stiff = method;
 
     if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228 || method == 229 || method == 205 || method == 213 || method == 236 || method == 233 || method == 234 || method == 238 || method == 235 || method == 231 || method == 232 || method == 237 || method == 243 || method == 225 || method == 221 || method == 202 || method == 226 || method == 230 || method == 208 || method == 282 || method == 300 || method == 301 || method == 302 || method == 304 || method == 267 || method == 268 || method == 270 || method == 271 || method == 272 || method == 273 || method == 274 || method == 275 || method == 276 || method == 277 || method == 279 || method == 280 || method == 281 || method == 283 || method == 284 || method == 285 || method == 286 || method == 287 || method == 288 || method == 289 || method == 290 || method == 291 || method == 292 || method == 293 || method == 295 || method == 296 || method == 297 || method == 298) {
@@ -6183,8 +6237,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
-          // Thread safe, but possibly not reproducible
-          if (op->cores > 1) {
+          // Thread safe, but possibly not reproducible.  Never for indLin (3):
+          // swapping it for liblsodaR would silently change the solver rather
+          // than how it is threaded.
+          if (op->cores > 1 && op->stiff != 3) {
             op->stiff = method = 4;
           }
           rxSolveDat->throttle = false;
@@ -6212,7 +6268,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       } else {
         switch (thread) {
         case threadSafeRepNumThread:
-          if (op->cores > 1) {
+          if (op->cores > 1 && op->stiff != 3) {
             op->stiff = method = 4;
           }
           break;
@@ -6249,6 +6305,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
+    ensureExtraDosing((int)op->cores);
 
     CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
     int _bneq = (int)_mvState.size();
@@ -6332,6 +6390,37 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinMatExpType=asInt(rxControl[Rxc_indLinMatExpType], "indLinMatExpType");
     op->indLinPhiM = asInt(rxControl[Rxc_indLinPhiM],"indLinPhiM");
     op->indLinMatExpOrder=asInt(rxControl[Rxc_indLinMatExpOrder], "indLinMatExpOrder");
+    op->indLinStepSearch=asInt(rxControl[Rxc_indLinStepSearch], "indLinStepSearch");
+    op->indLinMaxIter=asInt(rxControl[Rxc_indLinMaxIter], "indLinMaxIter");
+    op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
+    op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
+    op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
+    op->indLinForcing=asInt(rxControl[Rxc_indLinForcing], "indLinForcing");
+    // The symbolic forcing Jacobian cannot be trusted on a sensitivity model.
+    // indLinForcingJacSym() wants calc_jac over the WHOLE system, but
+    // rxSensMatExp() emits df()/dy() rows for the physical block only -- it has
+    // to, because _esJacColF() (rxode2parseHandleEvid.h) calls calc_jac with a
+    // buffer sized by the physical state count.  `calc_jac - A` would therefore
+    // hand back -A for every sensitivity row, which newton merely converges
+    // slowly through but exprb/exprb32 use directly and get a wrong answer from.
+    // Difference the forcing instead; that is right for every row, and only the
+    // newton/exprb schemes ever ask for one.
+    //
+    // An explicit "symbolic" is downgraded too, not just "auto": the same thing
+    // indLinUseSymJac() already does when the model carries no df()/dy() at all
+    // ("cannot force what is not there").
+    //
+    // Deliberately blunt.  An ODE model built with calcSens= and then converted
+    // by method="indLin"'s auto-conversion has df()/dy() for every compartment,
+    // sensitivity ones included, so its symbolic Jacobian would have been fine;
+    // it loses nothing but the 2n forcing evaluations, and only under the
+    // schemes that ask for a Jacobian at all.  Whether calc_jac spans the system
+    // is a property of which generator wrote the model, which is not something
+    // modelVars records -- so err toward the source that is right either way.
+    if (op->indLinJac != 2 &&
+        Rf_length(as<SEXP>(rxSolveDat->mv[RxMv_sens])) > 0) {
+      op->indLinJac = 2;
+    }
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){

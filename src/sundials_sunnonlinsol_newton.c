@@ -71,7 +71,7 @@ SUNNonlinearSolver SUNNonlinSol_Newton(N_Vector y, SUNContext sunctx)
 
   /* Create content */
   content = NULL;
-  content = (SUNNonlinearSolverContent_Newton)malloc(sizeof *content);
+  content = (SUNNonlinearSolverContent_Newton)calloc(1, sizeof *content);
   SUNAssertNull(content, SUN_ERR_MALLOC_FAIL);
 
   /* Initialize all components of content to 0/NULL */

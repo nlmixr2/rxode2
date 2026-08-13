@@ -14,13 +14,21 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   
   # 1. Parse model to get model variables and load symengine environment
   .mv <- rxModelVars(model)
-  .env <- .rxLoadPrune(model, doConst = doConst)
-  .states <- rxState(.env)
-  
+  # promoteLinSens=FALSE: a linCmt() the conversion inlines into a rate constant
+  # must stay `linCmtA()`.  Promoting it to `linCmtB()` would make the CONVERTED
+  # model request Stan sensitivities the source model never had, adding
+  # rx__sens_* pseudo-compartments to it (rxode2#1215).
+  .env <- .rxLoadPrune(model, doConst = doConst, promoteLinSens = FALSE)
+  # `$state` counts linCmt() pseudo-compartments (depot/central/peripheral*),
+  # which have no d/dt() behind them: nothing to convert, and the analytic
+  # solver keeps handling them.  Converting them emitted cmt()/indLin() lines
+  # for a derivative that does not exist (rxode2#1215).
+  .states <- setdiff(rxState(.env), .rxLinCmt(.mv))
+
   if (length(.states) == 0L) {
     stop("No state variables (compartments) found in the model.", call. = FALSE)
   }
-  
+
   # 2. Call the C/C++ registered function to get inductive linearization matrices
   .ret <- eval(parse(text = rxIndLin_((.states))))
   
@@ -54,7 +62,12 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
           } else {
             .code <- c(.code, paste0(.kname, " = ", .val))
           }
-          .offTerms <- c(.offTerms, symengine::S(.val))
+          # eval-in-env, not symengine::S(): S() re-parses, and symengine's
+          # parser rejects an ordinary rxode2 name like `eta.Cl`.  The SE
+          # layer already binds every model symbol in `.env` (created with
+          # symengine::Symbol(), which tolerates dots), so evaluating there is
+          # how the rest of rxode2 turns an expression into a Basic.
+          .offTerms <- c(.offTerms, eval(parse(text = .val), envir = .env))
         }
       }
     }
@@ -62,11 +75,13 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     # Diagonal column sum: elimination/output rate from cmt1
     .diag <- .ret0[j, j]
     if (.diag != "0" || length(.offTerms) > 0) {
-      .sumExpr <- symengine::S(.diag)
+      .sumExpr <- eval(parse(text = .diag), envir = .env)
       for (.t in .offTerms) {
         .sumExpr <- .sumExpr + .t
       }
-      .elimStr <- as.character(symengine::S(paste0("-(", rxFromSE(.sumExpr), ")")))
+      # Negate the Basic directly rather than round-tripping through a string:
+      # same simplification, and no re-parse to fail on a dotted name.
+      .elimStr <- as.character(-.sumExpr)
       if (.elimStr != "0") {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {
@@ -87,6 +102,67 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     }
   }
   
+  # 4b. Explicit Jacobian (df/dy) lines.
+  #
+  # `calc_jac` is already declared and compiled for a matExp() model; it is
+  # empty only because nothing emits df()/dy(), which is what sets `found_jac`
+  # in the parser.  Emitting it is what lets a Newton iteration or an
+  # exponential-Rosenbrock step have a Jacobian at all -- and note the failure
+  # mode if it is skipped is a SILENT zero Jacobian, not an error.
+  #
+  # Differentiate the full right-hand side, `rx__d_dt_<state>__`, which the
+  # symengine load already built and which `rxIndLin_()` above has just read.
+  # Deriving it instead from the split (A from `.ret0` plus the forcing) would
+  # be fewer symengine calls, but the forcing is only available here as text
+  # that has been through rxFromSE() -- so it can carry C-level helpers such as
+  # `Rx_pow_di()`, which are legal rxode2 syntax but not functions in the
+  # symengine environment.  The per-state Basic `rx__indLinForce_<state>__`
+  # that would avoid that (R/symengine.R:1152-1161) is only captured for a
+  # model already written in `indLin()` form, not on this conversion path.
+  # This is the same derivation `rxSensMatExp()` performs at :345-352.
+  #
+  # `.jacMax` bounds the symbolic work: symengine is the slowest thing in this
+  # pipeline and the solver must not depend on it, so above this many states
+  # the emission is skipped and the runtime falls back to differencing IndF().
+  #
+  # Compartments the conversion invents -- an `output` sink created by a
+  # `k_<cmt>_output` rate -- are not in `.states` and get no row.  They have no
+  # dynamics of their own in the source model, so their row was zero before
+  # this change too.
+  .jacMax <- getOption("rxode2.indLinJacMaxStates", 24L)
+  if (length(.states) <= .jacMax) {
+    .isZeroTxt <- function(.t) .t == "0" || .t == "0.0" || .t == "-0"
+    # Direct symengine::D on Basics held in locals, as rxSensMatExp does:
+    # `with(.env, ...)` would not see them, since it ignores the calling frame.
+    #
+    # Route the name through rxToSE() first.  A compartment may legitimately be
+    # called `I`, `E` or `Catalan`, and symengine parses those as constants
+    # rather than symbols -- `symengine::S("I")` is the imaginary unit, so
+    # differentiating by it fails with "Input is not a SYMBOL".  rxToSE() maps
+    # each to the `rx_SymPy_Res_*` name the environment actually binds it under
+    # (`.rxSEreserved`, R/symengine.R:524).
+    .stateSym <- lapply(.states, function(.s) symengine::S(rxToSE(.s)))
+    names(.stateSym) <- .states
+    for (.ii in seq_along(.states)) {
+      .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")
+      if (!exists(.ddtName, envir = .env, inherits = FALSE)) next
+      .rhsI <- base::get(.ddtName, envir = .env, inherits = FALSE)
+      # A constant derivative -- `d/dt(depot) <- 0`, a common way to declare a
+      # dosing-only compartment -- is stored as a plain numeric rather than a
+      # symengine Basic, and symengine::D() rejects it outright.  Its row is
+      # zero anyway, so there is nothing to emit.
+      if (!inherits(.rhsI, "Basic")) next
+      for (.jj in seq_along(.states)) {
+        .d <- symengine::D(.rhsI, .stateSym[[.jj]])
+        .dTxt <- rxFromSE(.d)
+        if (!.isZeroTxt(.dTxt)) {
+          .code <- c(.code, paste0("df(", .states[.ii], ")/dy(", .states[.jj],
+                                   ") = ", .dTxt))
+        }
+      }
+    }
+  }
+
   # 5. Extract and preserve the non-ODE lines from the original normalized model
   .normModel <- .mv$model["normModel"]
   .lines <- unlist(strsplit(.normModel, "[\n;]"))
@@ -120,9 +196,16 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #'   of one built by a previous call to this function).
 #' @param byVar Parameter name to differentiate wrt.
 #' @param states Physical state names.
+#' @param statesSe The symengine name of each of `states`, in the same order.
+#' @param byVarSe The symengine name of `byVar`.
+#'
+#'   Both are required rather than defaulted from `rxToSE()`: `rxToSE()` parses,
+#'   and parsing stops working once symengine `Basic` arithmetic has been done in
+#'   the same session (`user function '[[' requires 0 arguments`).  The caller
+#'   has to map every name before it touches a Basic.
 #' @return symengine expression for the total derivative.
 #' @noRd
-.rxIndLinTotalD <- function(expr, byVar, states) {
+.rxIndLinTotalD <- function(expr, byVar, states, statesSe, byVarSe) {
   .isZero <- function(.e) {
     .z <- rxFromSE(.e)
     .z == "0" || .z == "0.0" || .z == "-0"
@@ -135,22 +218,28 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   .add <- function(.term) {
     if (is.null(.tot)) .tot <<- .term else .tot <<- .tot + .term
   }
-  if (byVar %in% .vars) {
-    .add(symengine::D(expr, symengine::S(byVar)))
+  # Symbol(), not S(): S() re-parses, so it rejects a dotted rxode2 name
+  # (`eta.cl`) and reads a compartment called `I`, `E` or `Catalan` as the
+  # matching mathematical constant, which D() then refuses to differentiate by.
+  # The names differentiated by are symengine-side (rxToSE()); the names built
+  # INTO a sensitivity compartment are model-side, since that is what cmt()
+  # declared.
+  if (byVarSe %in% .vars) {
+    .add(symengine::D(expr, symengine::Symbol(byVarSe)))
   }
-  for (.l in states) {
-    if (!(.l %in% .vars)) next
-    .dl <- symengine::D(expr, symengine::S(.l))
+  for (.i in seq_along(states)) {
+    if (!(statesSe[[.i]] %in% .vars)) next
+    .dl <- symengine::D(expr, symengine::Symbol(statesSe[[.i]]))
     if (!.isZero(.dl)) {
-      .add(.dl * symengine::S(paste0("rx__sens_", .l, "_BY_", byVar, "__")))
+      .add(.dl * symengine::Symbol(paste0("rx__sens_", states[[.i]], "_BY_", byVar, "__")))
     }
   }
   for (.s in .vars) {
     if (!startsWith(.s, "rx__sens_") || !endsWith(.s, "__")) next
-    .ds <- symengine::D(expr, symengine::S(.s))
+    .ds <- symengine::D(expr, symengine::Symbol(.s))
     if (.isZero(.ds)) next
     .target <- paste0(substring(.s, 1L, nchar(.s) - 2L), "_BY_", byVar, "__")
-    .add(.ds * symengine::S(.target))
+    .add(.ds * symengine::Symbol(.target))
   }
   if (is.null(.tot)) symengine::S("0") else .tot
 }
@@ -160,11 +249,15 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @param base Starting symengine expression (a Jacobian entry).
 #' @param byVars Character vector of variables to differentiate by, in order.
 #' @param states Physical state names.
+#' @param statesSe The symengine name of each of `states`, in the same order.
+#' @param byVarsSe The symengine name of each of `byVars`, in the same order.
 #' @return symengine expression for the repeated total derivative.
 #' @noRd
-.rxIndLinChainD <- function(base, byVars, states) {
+.rxIndLinChainD <- function(base, byVars, states, statesSe, byVarsSe) {
   .e <- base
-  for (.v in byVars) .e <- .rxIndLinTotalD(.e, .v, states)
+  for (.i in seq_along(byVars)) {
+    .e <- .rxIndLinTotalD(.e, byVars[[.i]], states, statesSe, byVarsSe[[.i]])
+  }
   .e
 }
 
@@ -211,13 +304,18 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 
 #' Differentiate and expand a matrix exponential model with forward sensitivities
 #'
+#' The system is split the way [indLin()] splits it: a rate matrix that is
+#' constant in the states, expressed as `k_from_to` micro-constants, plus an
+#' `indLin()` forcing carrying everything else.  Each sensitivity compartment
+#' gets the same rate matrix, the `(dA/dp).X` cross terms as non-depleting
+#' transfers, and its own forcing `d(f)/dp + (df/dy).S^p`.
+#'
 #' @param model rxode2 model, text, or function
 #' @param calcSens A character vector of parameter names for which sensitivities should be calculated.
 #' @param calcSens2 character vector (or `NULL`) requesting second-order
 #'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>__` (`p` over `calcSens`, `q` over
 #'   `calcSens2`; every `calcSens2` element must also be in `calcSens`).
-#'   Expressed as `k_from_to` micro-constant transfers like the first-order
-#'   ones.  Ignored for `linCmt()` states (those use Stan forward-AD).
+#'   Ignored for `linCmt()` states (those use Stan forward-AD).
 #' @param calcSens3 character vector (or `NULL`) requesting third-order
 #'   sensitivities `rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__` (`r` over `calcSens3`).
 #'   Requires `calcSens2`; every `calcSens3` element must also be in `calcSens2`.
@@ -271,31 +369,89 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     stop("No state variables (compartments) found in the model.", call. = FALSE)
   }
 
-  # 2. Build the system Jacobian A[i, j] = d(d/dt X_i)/d X_j directly from the
-  #    materialized derivatives.  For linear models A is constant; for nonlinear
-  #    models (e.g. Michaelis-Menten) the entries are state-dependent expressions.
+  # 1b. Map every model name to the symengine name it is bound under, BEFORE
+  # touching a single Basic.  rxToSE() parses, and parsing stops working once
+  # symengine arithmetic has been done ("user function '[[' requires 0
+  # arguments"), so this cannot be deferred into the loops below.  The mapping
+  # matters because a compartment may legitimately be called `I`, `E` or
+  # `Catalan`, which symengine reads as the matching mathematical constant
+  # rather than a symbol (`.rxSEreserved`, R/symengine.R:524).
+  # The anonymous wrapper is required: rxToSE() resolves its argument with
+  # substitute(), so handing it to vapply() as a bare FUN passes it the literal
+  # `X[[i]]` expression and it reports `user function '[[' requires 0 arguments`.
+  .toSe <- function(.n) rxToSE(.n)
+  .statesSe <- vapply(.states, .toSe, character(1), USE.NAMES = FALSE)
+  .parSe <- vapply(unique(c(calcSens, calcSens2, calcSens3)), .toSe, character(1))
+
+  # 2. Split the system the way indLin() does: dX/dt = A.X + F(X), with A
+  #    CONSTANT IN THE STATES.  That is the premise of the matrix exponential
+  #    (rxode2#1186); anything that cannot leave a state-free coefficient is the
+  #    nonlinear residual and belongs in the indLin() forcing, where the solver
+  #    iterates it.  The Jacobian is still needed -- for the df()/dy() block and
+  #    for the forcing -- but it is no longer what the rate constants come from.
   .zero <- symengine::S("0")
   .isZero <- function(.e) {
     .z <- rxFromSE(.e)
     .z == "0" || .z == "0.0" || .z == "-0"
   }
+  # `.zero +` coerces a plain numeric (how a constant `d/dt(depot) <- 0` is
+  # stored) to a Basic, which symengine::D() and the arithmetic below require.
   .rhs <- lapply(.states, function(.s) {
     .v <- paste0("rx__d_dt_", .s, "__")
     if (exists(.v, envir = .env, inherits = FALSE)) {
-      base::get(.v, envir = .env, inherits = FALSE)
+      .zero + base::get(.v, envir = .env, inherits = FALSE)
     } else {
       .zero
     }
   })
   names(.rhs) <- .states
-  .stateSym <- lapply(.states, function(.s) symengine::S(.s))
+  # Symbol(), not S(): S() re-parses, so it turns the mapped-away reserved
+  # names back into constants and cannot read a dotted rxode2 name at all.
+  .stateSym <- lapply(.statesSe, symengine::Symbol)
   names(.stateSym) <- .states
-  .A <- lapply(.states, function(.i) {
+  # Full Jacobian, for the df()/dy() block only.
+  .jac <- lapply(.states, function(.i) {
     .row <- lapply(.states, function(.j) symengine::D(.rhs[[.i]], .stateSym[[.j]]))
     names(.row) <- .states
     .row
   })
+  names(.jac) <- .states
+  # The rate matrix, from the same term-wise routing indLin() uses.  rxIndLin_()
+  # generates R code that reads the locals `.env` and `.states`, so both have to
+  # be in scope here.  `.states` drops `output` and any linCmt() compartment, so
+  # the routing treats those as parameters -- correct, since neither has matExp
+  # dynamics of its own (linCmt sensitivities come from Stan forward-AD).
+  .aTxt <- eval(parse(text = rxIndLin_(.states)))[.states, .states, drop = FALSE]
+  # eval-in-env rather than symengine::S(): S() re-parses, and symengine's
+  # parser rejects an ordinary rxode2 name such as `eta.Cl` (same reason as
+  # indLin():57-62).  A coefficient is state free, so it cannot carry the
+  # C-level helpers (Rx_pow_di() and friends) the forcing text can.
+  .A <- lapply(.states, function(.i) {
+    .row <- lapply(.states, function(.j) {
+      .t <- .aTxt[.i, .j]
+      if (.t == "0") .zero else .zero + eval(parse(text = .t), envir = .env)
+    })
+    names(.row) <- .states
+    .row
+  })
   names(.A) <- .states
+  # The forcing, as the residual the rate matrix does not reproduce.  Taken
+  # symbolically rather than from rxIndLin_()'s `_rxF` column, which is text
+  # that has been through rxFromSE() and so can carry C-level helpers such as
+  # Rx_pow_di() that do not exist in the symengine environment -- the hazard
+  # indLin():105-113 documents.  The split is term wise, so the residual is the
+  # same expression; symengine cancels the A.X part outright.  This is also
+  # what carries a state-free input term (`d/dt(x) = k0 - ke*x`), which the
+  # Jacobian never saw.
+  .force <- lapply(.states, function(.i) {
+    .f <- .rhs[[.i]]
+    for (.j in .states) {
+      .aij <- .A[[.i]][[.j]]
+      if (!.isZero(.aij)) .f <- .f - .aij * .stateSym[[.j]]
+    }
+    .f
+  })
+  names(.force) <- .states
   # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j])
   .elimOf <- function(.j) {
     .e <- -.A[[.j]][[.j]]
@@ -343,33 +499,62 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     for (.i in .states) {
       if (.i == .j) next
       .aij <- .A[[.i]][[.j]]
-      if (!.isZero(.aij)) {
-        .code <- c(.code, paste0("k_", .j, "_", .i, " = ", rxFromSE(.aij)))
+      if (.isZero(.aij)) next
+      .kname <- paste0("k_", .j, "_", .i)
+      .val <- rxFromSE(.aij)
+      # A matExp()-form input can carry the rate as a model parameter, in which
+      # case the coefficient IS the micro-constant name; declare it rather than
+      # assigning it to itself (same case indLin():51-56 handles).
+      if (.val == .kname || .val == paste0("k.", .j, ".", .i)) {
+        .code <- c(.code, paste0("param(", .val, ")"))
+      } else {
+        .code <- c(.code, paste0(.kname, " = ", .val))
       }
     }
     .elim <- .elimOf(.j)
     if (!.isZero(.elim)) {
-      .code <- c(.code, paste0("k_", .j, "_output = ", rxFromSE(.elim)))
+      .knameOut <- paste0("k_", .j, "_output")
+      .elimVal <- rxFromSE(.elim)
+      if (.elimVal == .knameOut || .elimVal == paste0("k.", .j, ".output")) {
+        .code <- c(.code, paste0("param(", .elimVal, ")"))
+      } else {
+        .code <- c(.code, paste0(.knameOut, " = ", .elimVal))
+      }
     }
   }
 
-  # 4b. Explicit Jacobian (df/dy) lines from `.A`.  matExp()/indLin() models
-  # have a no-op dydt(), so the event-sensitivity Jacobian column would be
-  # zero; these df()/dy() lines populate calc_jac with the known Jacobian,
-  # which handle_evid reads instead for these models.  Emitted unconditionally
-  # (any eventSens="jump" solve needs it).
+  # 4a. The primal forcing.  Everything the rate matrix cannot represent goes
+  # here, so the states themselves are right for a nonlinear model -- A.X is
+  # not f(X).  An indLin() line in the input model was dropped by the preserve
+  # loop below and is re-derived here.
+  for (.i in .states) {
+    .fi <- .force[[.i]]
+    if (!.isZero(.fi)) {
+      .code <- c(.code, paste0("indLin(", .i, ") <- ", rxFromSE(.fi)))
+    }
+  }
+
+  # 4b. Explicit Jacobian (df/dy) lines from the FULL Jacobian (A + dF/dX).
+  # matExp()/indLin() models have a no-op dydt(), so the event-sensitivity
+  # Jacobian column would be zero; these df()/dy() lines populate calc_jac with
+  # the known Jacobian, which handle_evid reads instead for these models.
+  # Emitted unconditionally (any eventSens="jump" solve needs it), and only for
+  # the physical block -- _esJacColF() (rxode2parseHandleEvid.h) sizes its
+  # calc_jac buffer by the physical state count, so rows for the sensitivity
+  # compartments would write past it.
   for (.i in .states) {
     for (.j in .states) {
-      .aij <- .A[[.i]][[.j]]
-      if (!.isZero(.aij)) {
-        .code <- c(.code, paste0("df(", .i, ")/dy(", .j, ") = ", rxFromSE(.aij)))
+      .jij <- .jac[[.i]][[.j]]
+      if (!.isZero(.jij)) {
+        .code <- c(.code, paste0("df(", .i, ")/dy(", .j, ") = ", rxFromSE(.jij)))
       }
     }
   }
 
   # 5. Sensitivity blocks for each parameter.
   for (.p in calcSens) {
-    .pSym <- symengine::S(.p)
+    .pSe <- .parSe[[.p]]
+    .pSym <- symengine::Symbol(.pSe)
     .S <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
     # 5a. Diagonal block: sensitivity states obey the same dynamics as the
     #     originals (reuse the original micro-constants).
@@ -395,6 +580,17 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         }
       }
     }
+    # 5bf. Forcing: the part of the system that is not in A contributes
+    #     d(F_i)/dp + sum_j (d(F_i)/dX_j) S^p_j to the sensitivity compartment,
+    #     which is exactly .rxIndLinTotalD() (rxode2#1187).
+    for (.i in .states) {
+      .fi <- .force[[.i]]
+      if (.isZero(.fi)) next
+      .g <- .rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe)
+      if (!.isZero(.g)) {
+        .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
+      }
+    }
   }
 
   # 5c. Second-order sensitivity blocks (Hessian path, if calcSens2 given).
@@ -409,9 +605,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # symbols, which fails when a coefficient depends on the state it multiplies).
   if (!is.null(calcSens2)) {
     for (.p in calcSens) {
-      .pSym <- symengine::S(.p)
+      .pSe <- .parSe[[.p]]
+      .pSym <- symengine::Symbol(.pSe)
       .S1p <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
       for (.q in calcSens2) {
+        .qSe <- .parSe[[.q]]
         .S1q <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "__")
         .S2 <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .q, "__")
         # homogeneous block: S^{pq} obeys the same dynamics as X / S^p (reuse).
@@ -433,17 +631,30 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         .acc <- .rxIndLinNdAccumulator()
         for (.i in .states) {
           for (.k in .states) {
-            .c2a <- .rxIndLinTotalD(.A[[.i]][[.k]], .q, .states) # from S^p_k
+            .c2a <- .rxIndLinTotalD(.A[[.i]][[.k]], .q, .states, .statesSe, .qSe) # from S^p_k
             .acc$add(.S1p(.k), .S2(.i), .c2a)
           }
           for (.j in .states) {
             .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
             .acc$add(.S1q(.j), .S2(.i), .dAdp) # from S^q_j
-            .c2c <- .rxIndLinTotalD(.dAdp, .q, .states) # from X_j
+            .c2c <- .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe) # from X_j
             .acc$add(.j, .S2(.i), .c2c)
           }
         }
         .code <- c(.code, .acc$emit())
+        # forcing: the first-order forcing differentiated once more.  The second
+        # pass chains through the states (-> S^q) and through the
+        # rx__sens_*_BY_<p>__ symbols the first pass introduced (-> _BY_p_BY_q),
+        # which is the naming .S2() emits.  No accumulator is needed: a forcing
+        # is keyed by one target compartment, so p == q still gives one line.
+        for (.i in .states) {
+          .fi <- .force[[.i]]
+          if (.isZero(.fi)) next
+          .g2 <- .rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe, c(.pSe, .qSe))
+          if (!.isZero(.g2)) {
+            .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
+          }
+        }
       }
     }
   }
@@ -460,14 +671,18 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   #   from S^q_j:       totalD_r(dAdp_ij)
   #   from S^r_j:       totalD_q(dAdp_ij)
   #   from X_j:         totalD_r(totalD_q(dAdp_ij))
+  # The forcing is chained one variable further as well (rxode2#1188).
   if (!is.null(calcSens3)) {
     for (.p in calcSens) {
-      .pSym <- symengine::S(.p)
+      .pSe <- .parSe[[.p]]
+      .pSym <- symengine::Symbol(.pSe)
       .S1p <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "__")
       for (.q in calcSens2) {
+        .qSe <- .parSe[[.q]]
         .S1q <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "__")
         .S2pq <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .q, "__")
         for (.r in calcSens3) {
+          .rSe <- .parSe[[.r]]
           .S1r <- function(.s) paste0("rx__sens_", .s, "_BY_", .r, "__")
           .S2pr <- function(.s) paste0("rx__sens_", .s, "_BY_", .p, "_BY_", .r, "__")
           .S2qr <- function(.s) paste0("rx__sens_", .s, "_BY_", .q, "_BY_", .r, "__")
@@ -492,19 +707,35 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           for (.i in .states) {
             for (.k in .states) {
               .Aik <- .A[[.i]][[.k]]
-              .acc$add(.S2pq(.k), .S3(.i), .rxIndLinTotalD(.Aik, .r, .states)) # from S^{pq}_k
-              .acc$add(.S2pr(.k), .S3(.i), .rxIndLinTotalD(.Aik, .q, .states)) # from S^{pr}_k
-              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states)) # from S^p_k
+              .acc$add(.S2pq(.k), .S3(.i), .rxIndLinTotalD(.Aik, .r, .states, .statesSe, .rSe)) # from S^{pq}_k
+              .acc$add(.S2pr(.k), .S3(.i), .rxIndLinTotalD(.Aik, .q, .states, .statesSe, .qSe)) # from S^{pr}_k
+              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from S^p_k
             }
             for (.j in .states) {
               .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
               .acc$add(.S2qr(.j), .S3(.i), .dAdp) # from S^{qr}_j
-              .acc$add(.S1q(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .r, .states)) # from S^q_j
-              .acc$add(.S1r(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .q, .states)) # from S^r_j
-              .acc$add(.j, .S3(.i), .rxIndLinChainD(.dAdp, c(.q, .r), .states)) # from X_j
+              .acc$add(.S1q(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .r, .states, .statesSe, .rSe)) # from S^q_j
+              .acc$add(.S1r(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe)) # from S^r_j
+              .acc$add(.j, .S3(.i), .rxIndLinChainD(.dAdp, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from X_j
             }
           }
           .code <- c(.code, .acc$emit())
+          # forcing: the second-order forcing differentiated once more.  The
+          # third pass chains through the states (-> S^r) and through the
+          # rx__sens_*_BY_<p>__ / _BY_<p>_BY_<q>__ symbols the earlier passes
+          # introduced (-> _BY_p_BY_q_BY_r), which is what .S3() emits.  Every
+          # name it can reach is declared: calcSens3 is a subset of calcSens2,
+          # which is a subset of calcSens.  No accumulator, for the same reason
+          # as second order -- a forcing is keyed by one target compartment.
+          for (.i in .states) {
+            .fi <- .force[[.i]]
+            if (.isZero(.fi)) next
+            .g3 <- .rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
+                                   c(.pSe, .qSe, .rSe))
+            if (!.isZero(.g3)) {
+              .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
+            }
+          }
         }
       }
     }

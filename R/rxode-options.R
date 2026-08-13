@@ -36,50 +36,38 @@
   .ver <- .rxVersion
   .ver["version"] <- as.character(utils::packageVersion("rxode2"))
   assignInMyNamespace(".rxVersion", .ver)
+  ## data.table is an Imports and is used unconditionally, so keep it eager
   requireNamespace("data.table", quietly=TRUE)
-  if (requireNamespace("pillar", quietly = TRUE)) {
-    .s3register("pillar::type_sum", "rxEvid")
-    .s3register("pillar::type_sum", "rxRateDur")
-    .s3register("pillar::pillar_shaft", "rxEvid")
-    .s3register("pillar::pillar_shaft", "rxRateDur")
-  }
-  if (requireNamespace("tibble", quietly = TRUE)) {
-    .s3register("tibble::as_tibble", "rxEt")
-    .s3register("tibble::as_tibble", "rxSolveOom")
-  }
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    .s3register("data.table::as.data.table", "rxEt")
-    .s3register("data.table::as.data.table", "rxSolveOom")
-  }
-  if (requireNamespace("arrow", quietly = TRUE)) {
-    .s3register("arrow::as_arrow_table", "rxSolveOom")
-  }
-  if (requireNamespace("dplyr", quietly=TRUE)) {
-    .s3register("dplyr::dplyr_reconstruct", "rxEt")
-    .s3register("dplyr::filter", "rxEt")
-    .s3register("dplyr::select", "rxEt")
-    .s3register("dplyr::rename", "rxEt")
-    .s3register("dplyr::mutate", "rxEt")
-    .s3register("dplyr::rename", "rxUi")
-    .s3register("dplyr::rename", "function")
-  }
-  if (requireNamespace("nlme", quietly=TRUE)) {
-    .s3register("nlme::fixef", "rxUi")
-    .s3register("nlme::fixef", "function")
-  }
-  if (requireNamespace("units", quietly = TRUE)) {
-    .s3register("units::set_units", "rxEt")
-    .s3register("units::set_units", "rxRateDur")
-    .s3register("units::drop_units", "rxEt")
-    .s3register("units::units<-", "rxEvid")
-    .s3register("units::drop_units", "rxSolve")
-    assignInMyNamespace(".hasUnits", TRUE)
-  } else {
-    assignInMyNamespace(".hasUnits", FALSE)
-  }
-  if (requireNamespace("digest", quietly = TRUE)) {
-    .s3register("digest::sha1", "rxUi")
-  }
+  ## `.s3register()` registers immediately when the other namespace is
+  ## already loaded and otherwise installs an onLoad hook, so the suggested
+  ## packages must not be loaded here -- doing so made `library(rxode2)`
+  ## pay for pillar/arrow/units/dplyr on every session.
+  .s3register("pillar::type_sum", "rxEvid")
+  .s3register("pillar::type_sum", "rxRateDur")
+  .s3register("pillar::pillar_shaft", "rxEvid")
+  .s3register("pillar::pillar_shaft", "rxRateDur")
+  .s3register("tibble::as_tibble", "rxEt")
+  .s3register("tibble::as_tibble", "rxSolveOom")
+  .s3register("data.table::as.data.table", "rxEt")
+  .s3register("data.table::as.data.table", "rxSolveOom")
+  .s3register("arrow::as_arrow_table", "rxSolveOom")
+  .s3register("dplyr::dplyr_reconstruct", "rxEt")
+  .s3register("dplyr::dplyr_reconstruct", "rxEtPreview")
+  .s3register("dplyr::filter", "rxEt")
+  .s3register("dplyr::select", "rxEt")
+  .s3register("dplyr::rename", "rxEt")
+  .s3register("dplyr::mutate", "rxEt")
+  .s3register("dplyr::rename", "rxUi")
+  .s3register("dplyr::rename", "function")
+  .s3register("nlme::fixef", "rxUi")
+  .s3register("nlme::fixef", "function")
+  .s3register("units::set_units", "rxEt")
+  .s3register("units::set_units", "rxRateDur")
+  .s3register("units::drop_units", "rxEt")
+  .s3register("units::units<-", "rxEvid")
+  .s3register("units::drop_units", "rxSolve")
+  .s3register("digest::sha1", "rxUi")
+  assignInMyNamespace(".hasUnits", nzchar(system.file(package = "units")))
   .s3register("lotri::as.lotri", "call")
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl

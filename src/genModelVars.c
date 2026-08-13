@@ -153,8 +153,12 @@ SEXP generateModelVars(void) {
     } else {
       SET_VECTOR_ELT(matLst, 1, R_NilValue);
     }
-    SET_VECTOR_ELT(matLst, 2, rxP(Rf_ScalarLogical(0)));
-    SET_VECTOR_ELT(matLst, 3, rxP(Rf_allocVector(INTSXP, 0)));
+    // A state whose indLin() forcing reads a state needs the inductive
+    // fixed-point iteration (rxode2#1185); with none, keep the cheap
+    // single-pass codes 1/2.
+    SEXP wIndLin = rxP(calcWIndLin(state));
+    SET_VECTOR_ELT(matLst, 2, rxP(Rf_ScalarLogical(Rf_length(wIndLin) > 0)));
+    SET_VECTOR_ELT(matLst, 3, wIndLin);
   } else {
     matLst = rxP(Rf_allocVector(VECSXP, 0));
   }

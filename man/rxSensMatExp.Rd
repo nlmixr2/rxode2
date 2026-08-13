@@ -21,8 +21,7 @@ rxSensMatExp(
 \item{calcSens2}{character vector (or \code{NULL}) requesting second-order
 sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>__} (\code{p} over \code{calcSens}, \code{q} over
 \code{calcSens2}; every \code{calcSens2} element must also be in \code{calcSens}).
-Expressed as \code{k_from_to} micro-constant transfers like the first-order
-ones.  Ignored for \code{linCmt()} states (those use Stan forward-AD).}
+Ignored for \code{linCmt()} states (those use Stan forward-AD).}
 
 \item{calcSens3}{character vector (or \code{NULL}) requesting third-order
 sensitivities \verb{rx__sens_<x>_BY_<p>_BY_<q>_BY_<r>__} (\code{r} over \code{calcSens3}).
@@ -37,7 +36,11 @@ reuse instead of reloading \code{model}; when \code{NULL} it is built internally
 A character string representing the matrix exponential sensitivity-expanded model code
 }
 \description{
-Differentiate and expand a matrix exponential model with forward sensitivities
+The system is split the way \code{\link[=indLin]{indLin()}} splits it: a rate matrix that is
+constant in the states, expressed as \code{k_from_to} micro-constants, plus an
+\code{indLin()} forcing carrying everything else.  Each sensitivity compartment
+gets the same rate matrix, the \verb{(dA/dp).X} cross terms as non-depleting
+transfers, and its own forcing \verb{d(f)/dp + (df/dy).S^p}.
 }
 \author{
 Matthew L. Fidler

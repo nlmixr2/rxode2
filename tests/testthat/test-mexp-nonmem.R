@@ -235,15 +235,310 @@ rxTest({
       d/dt(central) = ka * depot - Vm * central / (Km + central)
     "
     mexp_sens_mm <- rxSensMatExp(ode_code_mm, calcSens = c("ka", "Vm", "Km"))
+    # The nonlinear part rides in the indLin() forcing -- on the primal and on
+    # every sensitivity compartment it reaches -- so no rate constant reads a
+    # compartment (rxode2#1186, #1187).
+    .lines <- strsplit(mexp_sens_mm, "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(central\\) <- ", .lines)))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Vm__\\) <- ", .lines)))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Km__\\) <- ", .lines)))
+    .k <- grep("^k_", .lines, value = TRUE)
+    .rhsVars <- unique(unlist(lapply(.k, function(.l) {
+      all.vars(parse(text = sub("^[^=]*=", "", .l)))
+    })))
+    expect_false(any(c("depot", "central") %in% .rhsVars))
+
     mod_mexp_mm <- rxode2(mexp_sens_mm)
-    res_mexp_mm <- rxSolve(mod_mexp_mm, et, method = "indLin", params = c(ka = 0.5, Vm = 10, Km = 5))
-    
-    # Verify the sensitivity columns are present and contain numeric values
-    expect_true(all(c("rx__sens_depot_BY_ka__", "rx__sens_central_BY_ka__",
-                      "rx__sens_central_BY_Vm__", "rx__sens_central_BY_Km__") %in% colnames(res_mexp_mm)))
-    expect_true(is.numeric(res_mexp_mm$rx__sens_central_BY_ka__))
-    expect_true(is.numeric(res_mexp_mm$rx__sens_central_BY_Vm__))
-    expect_true(is.numeric(res_mexp_mm$rx__sens_central_BY_Km__))
+    # A forcing that reads a state puts the model on the iterating solver path.
+    expect_true(rxModelVars(mod_mexp_mm)$indLin$fullIndLin)
+
+    mod_ode_mm <- rxode2(ode_code_mm, calcSens = c("ka", "Vm", "Km"))
+    pars_mm <- c(ka = 0.5, Vm = 10, Km = 5)
+    res_mexp_mm <- rxSolve(mod_mexp_mm, et, method = "indLin", params = pars_mm)
+    res_ode_mm <- rxSolve(mod_ode_mm, et, params = pars_mm, atol = 1e-12, rtol = 1e-12)
+
+    expect_equal(res_mexp_mm$central, res_ode_mm$central, tolerance = 1e-4)
+    expect_equal(res_mexp_mm$rx__sens_depot_BY_ka__,
+                 res_ode_mm$rx__sens_depot_BY_ka__, tolerance = 1e-4)
+    expect_equal(res_mexp_mm$rx__sens_central_BY_ka__,
+                 res_ode_mm$rx__sens_central_BY_ka__, tolerance = 1e-4)
+    expect_equal(res_mexp_mm$rx__sens_central_BY_Vm__,
+                 res_ode_mm$rx__sens_central_BY_Vm__, tolerance = 1e-4)
+    expect_equal(res_mexp_mm$rx__sens_central_BY_Km__,
+                 res_ode_mm$rx__sens_central_BY_Km__, tolerance = 1e-4)
+
+    # The forcing Jacobian only gets formed under the schemes that need one, so
+    # solve under each of them as well.  rxSensMatExp() emits df()/dy() for the
+    # physical block only, so `calc_jac - A` would be -A on every sensitivity
+    # row; an explicit indLinJac="symbolic" has to fall back to differencing the
+    # forcing just as "auto" does, or exprb/exprb32 integrate the wrong Jacobian.
+    for (.sch in c("newton", "exprb", "exprb32")) {
+      for (.jac in c("auto", "symbolic", "fd")) {
+        .r <- rxSolve(mod_mexp_mm, et, method = "indLin", params = pars_mm,
+                      indLinIteration = .sch, indLinJac = .jac)
+        expect_equal(.r$central, res_ode_mm$central, tolerance = 1e-4)
+        expect_equal(.r$rx__sens_central_BY_Vm__,
+                     res_ode_mm$rx__sens_central_BY_Vm__, tolerance = 1e-4)
+      }
+    }
+  })
+
+  test_that("rxSensMatExp() carries a state-free input term into the forcing", {
+    # `k0` is invisible to the Jacobian, so the old Jacobian-derived rate matrix
+    # dropped it outright; it is part of the forcing residual now.
+    ode_code <- "d/dt(x) = k0 - ke*x"
+    .code <- rxSensMatExp(ode_code, calcSens = c("ke", "k0"))
+    expect_true(any(grepl("^indLin\\(x\\) <- k0$", strsplit(.code, "\n")[[1L]])))
+    expect_true(any(grepl("^indLin\\(rx__sens_x_BY_k0__\\) <- 1$",
+                          strsplit(.code, "\n")[[1L]])))
+
+    .et <- eventTable() |> add.sampling(seq(0, 10, by = 1))
+    .p <- c(k0 = 3, ke = 0.4)
+    .m <- rxSolve(rxode2(.code), .et, method = "indLin", params = .p)
+    .o <- rxSolve(rxode2(ode_code, calcSens = c("ke", "k0")), .et, params = .p,
+                  atol = 1e-12, rtol = 1e-12)
+    expect_equal(.m$x, .o$x, tolerance = 1e-4)
+    expect_equal(.m$rx__sens_x_BY_ke__, .o$rx__sens_x_BY_ke__, tolerance = 1e-4)
+    expect_equal(.m$rx__sens_x_BY_k0__, .o$rx__sens_x_BY_k0__, tolerance = 1e-4)
+  })
+
+  test_that("rxSensMatExp() keeps an already-matExp() model's indLin() forcing", {
+    # The preserve loop drops any indLin() line in the input, so the forcing has
+    # to be re-derived rather than passed through.  It used to be re-expressed
+    # as a state-dependent rate constant instead, which propagated A(X).X in
+    # place of f(X).
+    mexp_code <- paste("matExp()", "cmt(depot)", "cmt(central)",
+                       "k_depot_central = ka",
+                       "indLin(central) <- -Vm*central/(Km + central)",
+                       sep = "\n")
+    ode_code <- "
+      d/dt(depot) = -ka*depot
+      d/dt(central) = ka*depot - Vm*central/(Km + central)
+    "
+    .code <- rxSensMatExp(mexp_code, calcSens = c("ka", "Vm", "Km"))
+    .lines <- strsplit(.code, "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(central\\) <- ", .lines)))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Vm__\\) <- ", .lines)))
+
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(ka = 0.5, Vm = 10, Km = 5)
+    .m <- rxSolve(rxode2(.code), .et, method = "indLin", params = .p)
+    .o <- rxSolve(rxode2(ode_code, calcSens = c("ka", "Vm", "Km")), .et,
+                  params = .p, atol = 1e-12, rtol = 1e-12)
+    expect_equal(.m$central, .o$central, tolerance = 1e-4)
+    expect_equal(.m$rx__sens_central_BY_ka__,
+                 .o$rx__sens_central_BY_ka__, tolerance = 1e-4)
+    expect_equal(.m$rx__sens_central_BY_Vm__,
+                 .o$rx__sens_central_BY_Vm__, tolerance = 1e-4)
+    expect_equal(.m$rx__sens_central_BY_Km__,
+                 .o$rx__sens_central_BY_Km__, tolerance = 1e-4)
+  })
+
+  test_that("rxSensMatExp() handles reserved and dotted names in a forcing", {
+    # `I`, `E` and `Catalan` are symengine constants, so a compartment with one
+    # of those names has to be differentiated by its rx_SymPy_Res_* symbol; a
+    # dotted parameter (`eta.cl`) cannot be re-parsed by symengine at all and
+    # gives a sensitivity compartment whose name carries a `.`.
+    .ie <- "d/dt(I) = -ka*I\nd/dt(E) = ka*I - kout*E/(km + E)\n"
+    .code <- rxSensMatExp(.ie, calcSens = c("ka", "kout"))
+    expect_true(any(grepl("^indLin\\(rx__sens_E_BY_kout__\\) <- ",
+                          strsplit(.code, "\n")[[1L]])))
+    expect_no_error(suppressMessages(rxode2(.code)))
+
+    .dot <- "cl <- exp(tcl + eta.cl)\nd/dt(central) = -cl/v*central - vm*central/(km + central)\n"
+    .codeDot <- rxSensMatExp(.dot, calcSens = "eta.cl")
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_eta.cl__\\) <- ",
+                          strsplit(.codeDot, "\n")[[1L]])))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(tcl = log(4), eta.cl = 0.1, v = 70, vm = 5, km = 1)
+    .m <- rxSolve(rxode2(.codeDot), .et, method = "indLin", params = .p)
+    .o <- rxSolve(rxode2(.dot, calcSens = "eta.cl"), .et, params = .p,
+                  atol = 1e-12, rtol = 1e-12)
+    expect_equal(.m$central, .o$central, tolerance = 1e-4)
+    expect_equal(.m[["rx__sens_central_BY_eta.cl__"]],
+                 .o[["rx__sens_central_BY_eta.cl__"]], tolerance = 1e-4)
+  })
+
+  test_that("a long indLin() compartment name gets its own C symbol", {
+    # The forcing's LHS symbol is `rx_indLin_<cmt>`, and a second-order
+    # sensitivity compartment name passes 150 bytes with ordinary parameter
+    # names.  A fixed buffer truncated it silently, so two compartments shared
+    # one symbol and one forcing overwrote the other in a model that still
+    # compiled.
+    .st <- "centralCompartmentConcentrationStateVariable"
+    .p1 <- "etaBetweenSubjectVariabilityParameterNumberOne"
+    .p2 <- "etaBetweenSubjectVariabilityParameterNumberTwo"
+    .code <- rxSensMatExp(
+      sprintf("d/dt(%s) = -%s*%s - %s*%s/(km + %s)\n", .st, .p1, .st, .p2, .st, .st),
+      calcSens = c(.p1, .p2), calcSens2 = c(.p1, .p2))
+    .lines <- grep("^indLin\\(", strsplit(.code, "\n")[[1L]], value = TRUE)
+    expect_gt(length(.lines), 1L)
+    .m <- suppressMessages(rxode2(.code))
+    .c <- paste(summary(rxC(.m)), collapse = "\n")
+    .sym <- unique(regmatches(.c, gregexpr("rx_indLin_[A-Za-z0-9_]+", .c))[[1L]])
+    expect_equal(length(.sym), length(.lines))
+    expect_gt(max(nchar(.sym)), 150L)
+  })
+
+  test_that("rxSensMatExp() splits a state dependency hidden behind an lhs", {
+    # The split reads the symengine right-hand side, which has every lhs
+    # substituted into it, not the source text.  So a nonlinearity reached
+    # through an intermediate still lands in the forcing rather than becoming a
+    # state-reading rate constant.
+    .code <- rxSensMatExp("my_rate = vmax/(km + central)\nd/dt(central) = -my_rate*central\n",
+                          calcSens = "vmax")
+    .lines <- strsplit(.code, "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(central\\) <- ", .lines)))
+    expect_length(grep("^k_", .lines), 0L)
+    expect_no_error(suppressMessages(rxode2(.code)))
+
+    # ... and an lhs whose name merely starts with `k_` is inlined the same way,
+    # so dropping its line does not turn it into a required parameter.
+    .m <- suppressMessages(rxode2(rxSensMatExp(
+      "k_el = CL/V\nd/dt(central) = -k_el*central\n", calcSens = "CL")))
+    expect_equal(sort(rxModelVars(.m)$params), c("CL", "V"))
+  })
+
+  test_that("event-time jumps are right when the nonlinearity is in the forcing", {
+    # The replace/multiply dtau rows need f_cmt, the right-hand side at the
+    # pre-event state.  For a matExp() model that used to come from the
+    # Jacobian row dotted with the state, which is f_cmt only while the whole
+    # right-hand side is A.X -- with a Michaelis-Menten forcing it is short by
+    # a factor Km/(Km + central), and these sensitivities came out ~3.6% off.
+    .ode <- "alag(central) <- tlag*exp(eta_lag)\nd/dt(central) = -Vm*central/(Km + central)\n"
+    .mx <- rxode2(rxSensMatExp(.ode, calcSens = "eta_lag"), eventSens = "jump")
+    .od <- rxode2(.ode, calcSens = "eta_lag", eventSens = "jump")
+    .p <- c(tlag = 1.5, eta_lag = 0.1, Vm = 8, Km = 4)
+    # et() reads `evid`/`amt` with NSE, so bind plain scalars rather than
+    # indexing into a list inside the call
+    for (.i in 1:2) {
+      .evid <- c(5L, 6L)[.i]
+      .amt <- c(50, 2)[.i]
+      .e <- et(amt = 100, cmt = "central") |>
+        et(time = 3, amt = .amt, cmt = "central", evid = .evid) |>
+        et(seq(0, 10, by = 0.7))
+      .a <- rxSolve(.mx, .e, method = "indLin", params = .p)
+      .b <- rxSolve(.od, .e, params = .p, atol = 1e-12, rtol = 1e-12)
+      expect_equal(.a$central, .b$central, tolerance = 1e-4)
+      # non-trivial: a wrong f_cmt shows up here, not in the states
+      expect_gt(max(abs(.b$rx__sens_central_BY_eta_lag__)), 1)
+      expect_equal(.a$rx__sens_central_BY_eta_lag__,
+                   .b$rx__sens_central_BY_eta_lag__, tolerance = 1e-4)
+    }
+  })
+
+  test_that("rxSensMatExp() emits a third-order forcing", {
+    .mm <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - Vm*central/(Km + central)\n"
+    .lines <- strsplit(rxSensMatExp(.mm, calcSens = c("ka", "Vm"),
+                                    calcSens2 = "Vm", calcSens3 = "Vm"), "\n")[[1L]]
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Vm_BY_Vm_BY_Vm__\\) <- ",
+                          .lines)))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_ka_BY_Vm_BY_Vm__\\) <- ",
+                          .lines)))
+    # a linear model has no forcing at any order
+    .lin <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    expect_false(any(grepl("^indLin\\(",
+                           strsplit(rxSensMatExp(.lin, calcSens = c("ka", "cl"),
+                                                 calcSens2 = "cl", calcSens3 = "cl"),
+                                    "\n")[[1L]])))
+  })
+
+  test_that("rxSensMatExp() second-order forcing matches the ODE calcSens2 path", {
+    ode_code <- "
+      d/dt(depot) = -ka*depot
+      d/dt(central) = ka*depot - Vm*central/(Km + central)
+    "
+    .code <- rxSensMatExp(ode_code, calcSens = c("ka", "Vm", "Km"),
+                          calcSens2 = c("Vm", "Km"))
+    expect_true(any(grepl("^indLin\\(rx__sens_central_BY_Vm_BY_Vm__\\) <- ",
+                          strsplit(.code, "\n")[[1L]])))
+
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(ka = 0.5, Vm = 10, Km = 5)
+    .m <- rxSolve(rxode2(.code), .et, method = "indLin", params = .p)
+    .o <- rxSolve(rxode2(ode_code, calcSens = c("ka", "Vm", "Km"),
+                         calcSens2 = c("Vm", "Km")), .et, params = .p,
+                  atol = 1e-12, rtol = 1e-12)
+    for (.cn in c("rx__sens_central_BY_ka_BY_Vm__", "rx__sens_central_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_Km_BY_Vm__", "rx__sens_central_BY_ka_BY_Km__",
+                  "rx__sens_central_BY_Vm_BY_Km__", "rx__sens_central_BY_Km_BY_Km__")) {
+      expect_equal(.m[[.cn]], .o[[.cn]], tolerance = 1e-4)
+    }
+  })
+
+  test_that("rxSensMatExp() third-order forcing matches the ODE calcSens3 path", {
+    ode_code <- "
+      d/dt(depot) = -ka*depot
+      d/dt(central) = ka*depot - Vm*central/(Km + central)
+    "
+    .cs <- c("ka", "Vm", "Km")
+    .m <- suppressMessages(rxode2(rxSensMatExp(ode_code, calcSens = .cs,
+                                               calcSens2 = c("Vm", "Km"),
+                                               calcSens3 = "Vm")))
+    .o <- suppressMessages(rxode2(ode_code, calcSens = .cs,
+                                  calcSens2 = c("Vm", "Km"), calcSens3 = "Vm"))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0) |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(ka = 0.5, Vm = 10, Km = 5)
+    .rm <- rxSolve(.m, .et, method = "indLin", params = .p, atol = 1e-12, rtol = 1e-12)
+    .ro <- rxSolve(.o, .et, params = .p, atol = 1e-12, rtol = 1e-12)
+    for (.cn in c("rx__sens_central_BY_ka_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_Vm_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_Km_BY_Vm_BY_Vm__",
+                  "rx__sens_central_BY_ka_BY_Km_BY_Vm__",
+                  "rx__sens_central_BY_Vm_BY_Km_BY_Vm__",
+                  "rx__sens_central_BY_Km_BY_Km_BY_Vm__")) {
+      # non-trivial: without the forcing these are not merely inaccurate, they
+      # are a different quantity
+      expect_gt(max(abs(.ro[[.cn]])), 0.01)
+      expect_equal(.rm[[.cn]], .ro[[.cn]], tolerance = 1e-4)
+    }
+
+    # ... and against finite differences of the second-order sensitivities,
+    # which is the reference that does not share the ODE path's own machinery
+    .h <- 1e-3
+    .pu <- .p; .pu[["Vm"]] <- .p[["Vm"]] + .h
+    .pd <- .p; .pd[["Vm"]] <- .p[["Vm"]] - .h
+    .ru <- rxSolve(.m, .et, method = "indLin", params = .pu, atol = 1e-12, rtol = 1e-12)
+    .rd <- rxSolve(.m, .et, method = "indLin", params = .pd, atol = 1e-12, rtol = 1e-12)
+    for (.nm in c("Vm_BY_Vm", "Km_BY_Vm", "ka_BY_Vm")) {
+      expect_equal(.rm[[paste0("rx__sens_central_BY_", .nm, "_BY_Vm__")]],
+                   (.ru[[paste0("rx__sens_central_BY_", .nm, "__")]] -
+                      .rd[[paste0("rx__sens_central_BY_", .nm, "__")]]) / (2 * .h),
+                   tolerance = 1e-4)
+    }
+  })
+
+  test_that("rxSensMatExp() third-order forcing handles a fully repeated parameter", {
+    # p == q == r: every differentiation path lands on the same compartment, so
+    # the chained forcing must still be one line per target and the cross terms
+    # must sum rather than collide.
+    ode_code <- "
+      d/dt(central) = -Vm*central/(Km + central)
+    "
+    .code <- rxSensMatExp(ode_code, calcSens = "Vm", calcSens2 = "Vm", calcSens3 = "Vm")
+    .lines <- strsplit(.code, "\n")[[1L]]
+    expect_equal(sum(grepl("^indLin\\(rx__sens_central_BY_Vm_BY_Vm_BY_Vm__\\) <- ",
+                           .lines)), 1L)
+    .m <- suppressMessages(rxode2(.code))
+    .o <- suppressMessages(rxode2(ode_code, calcSens = "Vm", calcSens2 = "Vm",
+                                  calcSens3 = "Vm"))
+    .et <- eventTable() |>
+      add.dosing(dose = 100, nbr.doses = 1, start.time = 0, cmt = "central") |>
+      add.sampling(seq(0, 10, by = 1))
+    .p <- c(Vm = 10, Km = 5)
+    .rm <- rxSolve(.m, .et, method = "indLin", params = .p, atol = 1e-12, rtol = 1e-12)
+    .ro <- rxSolve(.o, .et, params = .p, atol = 1e-12, rtol = 1e-12)
+    expect_gt(max(abs(.ro$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__)), 0.01)
+    expect_equal(.rm$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__,
+                 .ro$rx__sens_central_BY_Vm_BY_Vm_BY_Vm__, tolerance = 1e-4)
   })
 
   test_that("matExp symengine env can build jacobians and sensitivities", {
@@ -588,6 +883,324 @@ rxTest({
                       grepl("exp\\(THETA\\[3\\]\\)", .jac)))
     expect_true(any(grepl("df\\(central\\)/dy\\(THETA_2_\\)", .jac) &
                       grepl("central", .jac)))
+  })
+
+  test_that("an indLin() forcing that references a state is evaluated at that state", {
+    # rxode2#1183: the forcing function took no state vector and codegen skipped
+    # the __zzStateVar__ population loop for ode_indLinVec, so the state locals
+    # kept their NA_REAL declaration and a Michaelis-Menten forcing solved to NA.
+    # The matExp model is a string so the micro-constant name stays out of R.
+    mexp <- suppressMessages(rxode2(paste("matExp()",
+                                          "cmt(depot)",
+                                          "cmt(central)",
+                                          "k_depot_central = 1",
+                                          "vmax = 10",
+                                          "km = 5",
+                                          "indLin(central) <- -vmax*central/(km+central)",
+                                          "cp = central/20",
+                                          sep = "\n")))
+    ode <- suppressMessages(rxode2({
+      vmax <- 10
+      km <- 5
+      d/dt(depot) <- -1 * depot
+      d/dt(central) <- 1 * depot - vmax * central / (km + central)
+      cp <- central / 20
+    }))
+    e <- et(amt = 100, cmt = "depot") |> et(seq(0, 20, by = 0.5))
+    ref <- rxSolve(ode, e, atol = 1e-10, rtol = 1e-10)
+
+    fine <- rxSolve(mexp, e, method = "indLin", hmax = 0.001)
+    expect_false(any(is.na(fine$central)))
+    expect_equal(fine$central, ref$central, tolerance = 1e-3)
+    expect_gt(max(abs(ref$central)), 1)
+
+    # rxode2#1185: the relinearization step is chosen from a local error
+    # estimate now, so `atol`/`rtol` -- not `hmax` -- is what refines the
+    # answer.  It is still first order, so the error falls like the square root
+    # of the tolerance.
+    dCoarse <- max(abs(rxSolve(mexp, e, method = "indLin",
+                               atol = 1e-4, rtol = 1e-4)$central - ref$central))
+    dFine <- max(abs(rxSolve(mexp, e, method = "indLin",
+                             atol = 1e-8, rtol = 1e-8)$central - ref$central))
+    expect_lt(dFine, dCoarse / 2)
+
+    # Same forcing through the braced rxode2({...}) front end rather than a
+    # string.  One compartment, so no k_from_to micro constant is needed.
+    mexpBraced <- suppressMessages(rxode2({
+      matExp()
+      cmt(central)
+      vmax <- 10
+      km <- 5
+      indLin(central) <- -vmax * central / (km + central)
+    }))
+    odeMm <- suppressMessages(rxode2({
+      vmax <- 10
+      km <- 5
+      d/dt(central) <- -vmax * central / (km + central)
+    }))
+    eb <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
+    refMm <- rxSolve(odeMm, eb, atol = 1e-10, rtol = 1e-10)
+    fineBraced <- rxSolve(mexpBraced, eb, method = "indLin", hmax = 0.001)
+    expect_false(any(is.na(fineBraced$central)))
+    expect_equal(fineBraced$central, refMm$central, tolerance = 1e-3)
+  })
+
+  test_that("wIndLin reports the states whose indLin() forcing depends on a state", {
+    # rxode2#1184: modelVars$indLin$wIndLin was hardcoded empty, so it claimed
+    # no state ever carries a state-dependent forcing.  It is now filled by
+    # replaying the parsed assignments and indLin() forcings in source order, so
+    # hand-written matExp() models are covered too.  fullIndLin stays FALSE, so
+    # rxData.cpp still selects doIndLin 1/2 and nothing changes numerically.
+    .wIndLin <- function(code) {
+      rxModelVars(suppressMessages(rxode2(paste(code, collapse = "\n"))))$indLin$wIndLin
+    }
+
+    # a linear matExp() model has no forcing at all
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "k_central_output = 0.1",
+                            "cp = central/20")),
+                 setNames(integer(0), character(0)))
+
+    # a forcing that references no state keeps the cheap non-iterating path
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(Gc)",
+                            "k_Gc_output = 0.1",
+                            "Gprod = 3",
+                            "indLin(Gc) <- Gprod")),
+                 setNames(integer(0), character(0)))
+
+    # Michaelis-Menten: the forcing on central references central
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "vmax = 10",
+                            "km = 5",
+                            "indLin(central) <- -vmax*central/(km+central)",
+                            "cp = central/20")),
+                 c(central = 1L))
+
+    # van der Pol: the forcing on dy references both y and dy
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(y)",
+                            "cmt(dy)",
+                            "k_dy_y = 1",
+                            "indLin(dy) <- mu*(1-y^2)*dy - y")),
+                 c(dy = 1L))
+
+    # a forcing may reference a state other than its own
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "kin = 3",
+                            "indLin(central) <- kin*depot")),
+                 c(central = 1L))
+
+    # each forcing is classified on its own
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "cmt(b)",
+                            "k_a_b = 1",
+                            "kin = 3",
+                            "vmax = 1",
+                            "km = 2",
+                            "indLin(a) <- kin",
+                            "indLin(b) <- -vmax*b/(km+b)")),
+                 c(b = 1L))
+
+    # an unconditional forcing overwrites rx_indLin_<state>, so only the last
+    # one counts
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- a",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- kin",
+                            "indLin(a) <- a")),
+                 c(a = 0L))
+
+    # a forcing inside an if/while may not run, so it adds to the forcings
+    # already recorded rather than replacing them
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "} else {",
+                            "  indLin(a) <- kin",
+                            "}")),
+                 c(a = 0L))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "indLin(a) <- kin",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "}")),
+                 c(a = 0L))
+    # ... but an unconditional forcing after the block still wins
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  indLin(a) <- a",
+                            "}",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+    # nested blocks nest: the forcing is still only conditional
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "if (t < 2) {",
+                            "  if (t < 1) {",
+                            "    indLin(a) <- a",
+                            "  }",
+                            "  indLin(a) <- kin",
+                            "}")),
+                 c(a = 0L))
+    # a while block counts the same way
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  indLin(a) <- a",
+                            "  n = n + 1",
+                            "}")),
+                 c(a = 0L))
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(a)",
+                            "kin = 3",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  indLin(a) <- a",
+                            "  n = n + 1",
+                            "}",
+                            "indLin(a) <- kin")),
+                 setNames(integer(0), character(0)))
+
+    # the compartment may be declared after the forcing that references it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(depot)",
+                            "indLin(depot) <- kin*central",
+                            "cmt(central)",
+                            "k_depot_central = 1",
+                            "kin = 3")),
+                 c(depot = 0L))
+
+    # the forcing may reach the state through an lhs rather than naming it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "vmax = 1",
+                            "km = 2",
+                            "cp = central/20",
+                            "indLin(central) <- -vmax*cp/(km+cp)")),
+                 c(central = 0L))
+    # ... through a chain of them
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "cp = central/20",
+                            "eff = 3*cp",
+                            "indLin(central) <- -eff")),
+                 c(central = 0L))
+    # ... but an lhs that never sees a state does not flag it
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "eff = 2*kin",
+                            "indLin(central) <- eff")),
+                 setNames(integer(0), character(0)))
+
+    # statement order decides: an lhs reassigned to something state free before
+    # the forcing reads it no longer carries the state
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "cp = kin",
+                            "indLin(central) <- cp")),
+                 setNames(integer(0), character(0)))
+    # ... but reassigning it after the forcing has read it changes nothing
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "indLin(central) <- cp",
+                            "cp = kin")),
+                 c(central = 0L))
+    # ... and a conditional reassignment may not happen, so it only adds
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "if (t < 2) {",
+                            "  cp = kin",
+                            "}",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+    # ... including a reassignment inside a while block
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "kin = 3",
+                            "cp = central/20",
+                            "n = 0",
+                            "while (n < 1) {",
+                            "  cp = kin",
+                            "  n = n + 1",
+                            "}",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+    # a self-referencing update keeps the dependency
+    expect_equal(.wIndLin(c("matExp()",
+                            "cmt(central)",
+                            "k_central_output = 0.1",
+                            "cp = central/20",
+                            "cp = cp*2",
+                            "indLin(central) <- cp")),
+                 c(central = 0L))
+
+    # a model converted from ODEs by indLin() round-trips: the conversion puts
+    # every state-dependent term in the A matrix, so its forcing is state free
+    .conv <- suppressMessages(rxode2(indLin(suppressMessages(rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central + kin
+    })))))
+    expect_false(is.null(rxModelVars(.conv)$indLin$f))
+    expect_equal(rxModelVars(.conv)$indLin$wIndLin,
+                 setNames(integer(0), character(0)))
+
+    # rxode2#1185 drives fullIndLin off wIndLin, so a state-dependent forcing
+    # now selects the iterating dispatch (codes 3/4) and a state-free one does
+    # not
+    .mexp <- suppressMessages(rxode2(paste("matExp()",
+                                           "cmt(central)",
+                                           "vmax = 10",
+                                           "km = 5",
+                                           "indLin(central) <- -vmax*central/(km+central)",
+                                           sep = "\n")))
+    expect_true(rxModelVars(.mexp)$indLin$fullIndLin)
+    expect_false(rxModelVars(.conv)$indLin$fullIndLin)
+
+    # a plain ODE model has no indLin element to report
+    expect_length(rxModelVars(suppressMessages(rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    })))$indLin, 0)
   })
 
   test_that("rxSensMatExp() calcSens2/calcSens3 match the generic ODE path (linear)", {

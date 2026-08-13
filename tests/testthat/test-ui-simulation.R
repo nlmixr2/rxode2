@@ -777,6 +777,180 @@ rxTest({
     })
   })
 
+  test_that(".rxParamsZero keeps a multi-row params data.frame rectangular", {
+    # c() on a data.frame drops the data.frame class and returns a ragged list
+    # (per-id columns keep length nid, the appended zeros have length one), which
+    # was then read out of bounds while solving.
+    .omega <- matrix(0.1, 1, 1, dimnames = list("eta.base", "eta.base"))
+    .rxParamsZero <- getFromNamespace(".rxParamsZero", "rxode2")
+    .df <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+
+    .out <- .rxParamsZero(.df, .omega)
+    expect_s3_class(.out, "data.frame")
+    expect_equal(nrow(.out), 4L)
+    expect_equal(.out$eta.base, rep(0.0, 4))
+    expect_equal(lengths(.out), c(id = 4L, tbase = 4L, eta.base = 4L))
+
+    # a zero row params stays a zero row data.frame
+    .out0 <- .rxParamsZero(.df[0, ], .omega)
+    expect_s3_class(.out0, "data.frame")
+    expect_equal(nrow(.out0), 0L)
+    expect_equal(.out0$eta.base, numeric(0))
+
+    # a matrix params keeps its dim -- c() would drop it the same way
+    .mat <- cbind(tbase = as.numeric(1:4))
+    .outM <- .rxParamsZero(.mat, .omega)
+    expect_true(is.matrix(.outM))
+    expect_equal(dim(.outM), c(4L, 2L))
+    expect_equal(colnames(.outM), c("tbase", "eta.base"))
+    expect_equal(.outM[, "eta.base"], rep(0.0, 4))
+
+    # a matrix already carrying the column has it zeroed rather than doubled
+    .outM2 <- .rxParamsZero(cbind(tbase = as.numeric(1:4),
+                                           eta.base = 100), .omega)
+    expect_equal(colnames(.outM2), c("tbase", "eta.base"))
+    expect_equal(.outM2[, "eta.base"], rep(0.0, 4))
+
+    # a named numeric vector still gets the zeros appended
+    expect_equal(.rxParamsZero(c(tbase = 1.0), .omega),
+                 c(tbase = 1.0, eta.base = 0.0))
+
+    # a model with no random effects is a no-op rather than rep(0, NA)
+    expect_identical(.rxParamsZero(.df, NULL), .df)
+  })
+
+  test_that("omega=NA/sigma=NA solve correctly with a multi-row params data.frame", {
+    # Trivial on purpose: with omega=NA the etas are zero, so base == tbase
+    # exactly, with no solver tolerance involved.
+    f <- function() {
+      ini({
+        tbase <- 1
+        eta.base ~ 0.1
+        addSd <- 1
+      })
+      model({
+        base <- tbase + eta.base
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+
+    .n <- 200L
+    .expected <- as.numeric(seq_len(.n))
+    .pars <- data.frame(id = seq_len(.n), tbase = .expected)
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # Identical input must give the identical, correct answer every time.  Note
+    # the corruption did NOT show up in the returned $params (which reported the
+    # etas as zero) -- only in the solved values, so assert on those.
+    for (.i in seq_len(20)) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame"))
+      expect_equal(.rx$base, .expected)
+    }
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, sigma = NA,
+              returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    # sigma=NA on its own used to error outright with a multi-row params.  The
+    # etas are still simulated here, so assert on the residual being zero
+    # (sim == base) rather than on the value of base.
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame"))
+    expect_equal(.rx$sim, .rx$base)
+
+    # a matrix params is the same shape problem: c() drops its dim, which used
+    # to fail with "The following parameter(s) are required for solving"
+    .mat <- cbind(tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, sigma = NA,
+              returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+  })
+
+  test_that("omega=NA is a no-op for a model with no between subject variability", {
+    f <- function() {
+      ini({
+        tbase <- 1
+        addSd <- 1
+      })
+      model({
+        base <- tbase
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # previously raised "invalid 'times' argument" from rep(0, dim(NULL)[1])
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, as.numeric(1:4))
+  })
+
+  test_that("supplying one eta leaves the others simulated", {
+    f <- function() {
+      ini({
+        ta <- 0
+        tb <- 0
+        eta.a ~ 0.09
+        eta.b ~ 0.09
+        addSd <- 1
+      })
+      model({
+        a <- ta + eta.a
+        b <- tb + eta.b
+        base <- a + b
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .n <- 8L
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # eta.a is supplied, so it is dropped from the omega -- but the subset that
+    # drops it took a single remaining eta down to a scalar, whose dim is NULL,
+    # and all(NULL == c(0L, 0L)) is TRUE, so the whole omega was dropped and
+    # eta.b was neither simulated nor supplied ("The following parameter(s) are
+    # required for solving: eta.b").  A matrix params reached this only once a
+    # matrix's column names became visible to that filter.
+    for (.pars in list(
+      data.frame(id = seq_len(.n), ta = 0, tb = 0, addSd = 1, eta.a = 0),
+      cbind(ta = 0, tb = 0, addSd = 1, eta.a = 0)[rep(1L, .n), , drop = FALSE])) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, returnType = "data.frame"))
+      # eta.a was taken as given (a == ta == 0) and eta.b still varies
+      expect_equal(.rx$a, rep(0.0, .n))
+      expect_true(length(unique(.rx$b)) > 1L)
+    }
+  })
+
+  test_that("sigma=NA is a no-op for a model with no residual error", {
+    f <- function() {
+      ini({
+        tbase <- 1
+      })
+      model({
+        base <- tbase
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # simulationSigma is a 0x0 matrix here, so the old c() appended nothing but
+    # still dropped the data.frame class, failing with "The following
+    # parameter(s) are required for solving: tbase"
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame"))
+    expect_equal(.rx$base, as.numeric(1:4))
+  })
+
   test_that("negative binomial simulation", {
     f <- function() {
       ini({

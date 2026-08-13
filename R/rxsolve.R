@@ -32,16 +32,41 @@
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @param sigdig Specifies the "significant digits" that the ode
-#'   solving requests.  When specified this controls the relative and
-#'   absolute tolerances of the ODE solvers.  By default the tolerance
-#'   is `0.5*10^(-sigdig-2)` for regular ODEs. For the
-#'   sensitivity equations the default is `0.5*10\^(-sigdig-1.5)`
-#'   (sensitivity changes only applicable for liblsoda).  This also
-#'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10\^(-sigdig)` and for the sensitivities
-#'   `0.5*10\^(-sigdig+0.625)`.  By default
-#'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
+#' @param sigdig Specifies the "significant digits" that the ODE
+#'   solving requests.  This is `NULL` by default, and while it is
+#'   `NULL` it has no effect at all: `rxSolve()` uses the standard
+#'   `atol`/`rtol` (and the standard sensitivity and steady-state
+#'   tolerances).  `sigdig` only changes a tolerance when you ask for
+#'   it explicitly.
+#'
+#'   When it is supplied, the tolerances are derived with one
+#'   solver-independent formula -- the same for stiff, non-stiff and
+#'   auto-switching solvers.  The `rtol` exponent IS `sigdig` and
+#'   `atol` sits three orders below it:
+#'
+#'   * `rtol = 10^(-sigdig)`, `atol = 10^(-sigdig-3)`
+#'   * the sensitivity tolerances match the main solve, so
+#'     `rtolSens = rtol` and `atolSens = atol` (gradients and
+#'     covariances are built from them)
+#'   * the steady-state tolerances run one order looser than the
+#'     corresponding main tolerance, so `ssRtol = ssRtolSens = 10*rtol`
+#'     and `ssAtol = ssAtolSens = 10*atol`
+#'
+#'   Each of these is set only when you did not pass that tolerance
+#'   yourself; a tolerance you supply always wins.  Because they are
+#'   resolved independently, an explicit `atol`/`rtol` overrides the
+#'   main solve but does *not* propagate to the sensitivity or
+#'   steady-state tolerances -- set those directly if you need them
+#'   changed too.
+#'
+#'   This mapping matches how `nlmixr2est` derives solver tolerances
+#'   from its optimization `sigdig`, so a `sigdig` used for estimation
+#'   and the same `sigdig` used for a plain `rxSolve()` mean the same
+#'   thing.  Note it is keyed to `sigdig` as a request for that many
+#'   significant digits, and is looser than the `atol`/`rtol` defaults
+#'   for small `sigdig` -- at `sigdig = 4` it gives `rtol = 1e-4`
+#'   against a default `rtol = 1e-6`.  Raise `sigdig`, or set
+#'   `atol`/`rtol` directly, when you want a tighter solve.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -113,14 +138,14 @@
 #'   determine the step size when `dense=TRUE`
 #'
 #'   For `method="indLin"`, `hmax` caps how long an interval is treated
-#'   as having a CONSTANT Jacobian/matrix-exponential term before
-#'   re-linearizing (previously silently ignored for this method). For a
-#'   true (state-independent) `matExp()` model this makes no numerical
-#'   difference; for an `indLin()`-forcing model with a state-dependent
-#'   term (e.g. Michaelis-Menten elimination), the default `hmax` (tied to
-#'   the spacing of your own sampling/dosing times) may be too coarse for
-#'   the desired accuracy -- set an explicit, smaller `hmax` to force more
-#'   frequent relinearization.
+#'   as having a CONSTANT matrix-exponential term before re-linearizing.
+#'   A model with a state-dependent `indLin()` forcing now chooses its own
+#'   relinearization step from a local error estimate, so `atol`/`rtol`
+#'   (and `maxsteps`) are what control its accuracy and `hmax` only sets an
+#'   upper bound on the step.  A model whose forcing reads no state, or
+#'   which has none, has a rate matrix that is constant in the states, so
+#'   there is no error to control and `hmax` only changes how many
+#'   (mathematically equivalent) matrix exponentials are taken.
 #'
 #' @param hmaxSd The number of standard deviations of the time
 #'     difference to add to hmax. The default is 0
@@ -158,20 +183,99 @@
 #' @param indLinMatExpType This is them matrix exponential type that
 #'     is use for rxode2.  Currently the following are supported:
 #'
-#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham (2009)
+#' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham
+#'   (2009); the default.  It is the fastest on the models where the
+#'   exponential is a measurable share of the solve, and all four agree
+#'   to solver tolerance.
 #'
 #' * `arma` Use the exponential matrix from RcppArmadillo
 #'
 #' * `expokit` Use the exponential matrix from Roger B. Sidje (1998)
 #'
+#' * `taylor` Taylor scaling and squaring, needing no linear solve
+#'
 #'
 #' @param indLinMatExpOrder an integer, the order of approximation to
-#'     be used, for the `Al-Mohy` and `expokit` values.
-#'     The best value for this depends on machine precision (and
-#'     slightly on the matrix). We use `6` as a default.
+#'     be used, for the `expokit` value.  The best value for this
+#'     depends on machine precision (and slightly on the matrix). We
+#'     use `6` as a default.  It no longer applies to `Al-Mohy`, whose
+#'     degree is not free to choose: each accuracy threshold in the
+#'     Al-Mohy-Higham table belongs to one specific degree, so the
+#'     degree and the scaling are selected together from the matrix
+#'     norm.  `taylor` has always chosen its degree the same way.
 #'
 #' @param indLinPhiTol the requested accuracy tolerance on
 #'     exponential matrix.
+#'
+#' @param indLinStepSearch how `method="indLin"` picks the relaxation factor
+#'     for its fixed-point iteration.  `"secant"` (the default) estimates the
+#'     iteration's contraction ratio from the last two residuals and costs
+#'     nothing extra; `"exact"` spends one more matrix exponential per iteration
+#'     to locate the residual-minimizing factor in closed form; `"none"` is
+#'     plain, undamped Picard iteration.  All three converge to the same answer
+#'     -- the relaxation does not move the fixed point -- so this trades
+#'     iterations against work per iteration.
+#'
+#' @param indLinMaxIter the maximum number of `method="indLin"` fixed-point
+#'     iterations per relinearization step.  Running out is not an error: the
+#'     iteration contracts in proportion to the step, so the solver reads it as
+#'     a step that is too long and retries with a shorter one.
+#'
+#' @param indLinRichardson how far `method="indLin"` extrapolates each
+#'     relinearization step.  The base step is second order; running it also at
+#'     half length and combining removes the leading error term for third order
+#'     at three fixed-point solves, and adding a quarter-length run gives a
+#'     three-entry Romberg column for fourth order at seven.  Each level pays
+#'     for itself only once the tolerance is tight enough that taking far fewer
+#'     steps outweighs the extra solves per step: a second-order step needing
+#'     `N` steps becomes a `p`-th order one needing about `N^(2/p)`, so third
+#'     order wins once `3*N^(2/3) < N` (`N > 27`) and fourth once
+#'     `7*N^(1/2) < 3*N^(2/3)` (`N > 161`).  `"auto"` (the default) starts each
+#'     interval second order and raises the level as the step the controller
+#'     settles on crosses those thresholds.  `"never"` (or `FALSE`), `"always"`
+#'     (or `TRUE`, third order) and `"always4"` (fourth order) force the choice.
+#'
+#' @param indLinIteration how `method="indLin"` solves each relinearization
+#'     step.  `"picard"` is the relaxed fixed-point iteration; `"newton"`
+#'     replaces it with a Newton iteration, which removes the contraction
+#'     condition so convergence stops limiting the step; `"exprb"` uses an
+#'     exponential Rosenbrock step, which does not iterate at all -- it puts the
+#'     full linearization into the exponential, so nothing can fail to converge.
+#'     Their costs differ sharply by problem: on a non-stiff model the iteration
+#'     never limits the step and Picard is cheapest, while on a stiff one it is
+#'     the only thing limiting it.  `"auto"` (the default) therefore starts on
+#'     Picard and switches only once steps are actually being cut for
+#'     non-convergence, so a model that never needs a Jacobian never forms one.
+#'     `"exprb32"` is the Luan-Ostermann third-order exponential Rosenbrock
+#'     pair, which carries its own embedded error estimate and so does not need
+#'     the extrapolation column that `"exprb"` takes its estimate from.
+#'
+#' @param indLinJac where the forcing Jacobian comes from when
+#'     `method="indLin"` needs one, which is only under the `"newton"`,
+#'     `"exprb"` and `"exprb32"` iteration schemes -- Picard needs none, so a
+#'     non-stiff model under the default `"auto"` scheme never forms one at
+#'     all.  `"symbolic"` uses the model's own analytic Jacobian, available
+#'     because the `matExp()` conversion emits `df()/dy()` lines, and costs no
+#'     extra forcing evaluations; `"fd"` central-differences the forcing, at
+#'     `2n` evaluations per Jacobian.  `"auto"` (the default) takes the
+#'     symbolic one when the model carries it and falls back to finite
+#'     differences otherwise -- which is what happens above
+#'     `getOption("rxode2.indLinJacMaxStates")` states, where the symbolic
+#'     emission is skipped to bound the symengine work at model build, and on a
+#'     sensitivity model, whose `df()/dy()` lines cover the physical states only.
+#'
+#' @param indLinForcing how `method="indLin"` carries the `indLin()` forcing
+#'     across one relinearization step.  `"ramp"` (the default) evaluates it at
+#'     both ends of the step and integrates the line between them exactly, with
+#'     the rate matrix taken at the step midpoint; `"constant"` holds it fixed
+#'     across the step and averages a start-linearized and an end-linearized
+#'     answer to reach the same second order.  The ramp step is symmetric, so
+#'     its error expands in even powers of the step alone and
+#'     `indLinRichardson` removes two orders per extrapolation level from it
+#'     rather than one -- which is where most of the difference between the two
+#'     shows up, since the default `indLinRichardson="auto"` extrapolates.  It
+#'     applies to the `"picard"` and `"newton"` schemes; the exponential
+#'     Rosenbrock ones never freeze the forcing.
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
@@ -249,7 +353,7 @@
 #'   negative and your base is zero, this will return the `machine
 #'   epsilon^(negative power)`.  By default this is turned on.
 #'
-#' @param safeLog Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  By default this is turned on.
+#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -705,6 +809,18 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param zeroVarParamHandle Determines what happens when `params`
+#'   supplies a value for an omega/sigma item whose variance is zero
+#'   (say `eta.base ~ fix(0)`).  Such an item is dropped from the matrix
+#'   that is simulated from and given to the model as a literal zero
+#'   instead; the options are:
+#'
+#'  - `warn` (default) replace the supplied value with zero and warn
+#'
+#'  - `ignore` replace the supplied value with zero silently
+#'
+#'  - `keep` use the supplied value instead of zero
+#'
 #' @param ssSolved When `TRUE` this will return the solved steady
 #'   state solutions for the linear compartment model.  When `FALSE`
 #'   this will solve to steady state using the linear solutions
@@ -773,7 +889,7 @@
 #' @param linCmtScale The scale of the linear compartment model.  This
 #'   is applied to sensitivity approximation using numeric
 #'   differences.  When `TRUE` or `NULL` use default scaling, when
-#'   `FALSE` use no scaling.  If it is one elment numeric, the value
+#'   `FALSE` use no scaling.  If it is one element numeric, the value
 #'   is duplicated 7 times and applies to all the parameters.
 #'   Otherwise this is a seven element numeric vector implying the
 #'   scaling for each of the linear compartmental model parameters.
@@ -1062,7 +1178,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     keep = NULL,
                     indLinPhiTol = 1e-7,
                     indLinPhiM = 0L,
-                    indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+                    indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
                     indLinMatExpOrder = 6L,
                     drop = NULL,
                     idFactor = TRUE,
@@ -1131,6 +1247,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     file=NULL,
                     chunkSize=NULL,
                     parallel=0L,
+                    zeroVarParamHandle=c("warn", "ignore", "keep"),
+                    indLinStepSearch = c("secant", "exact", "none"),
+                    indLinMaxIter = 20L,
+                    indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+                    indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+                    indLinJac = c("auto", "symbolic", "fd"),
+                    indLinForcing = c("ramp", "constant"),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1300,6 +1423,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
     }
+    if (missing(zeroVarParamHandle) &&
+          !is.null(getOption("rxode2.zeroVarParamHandle", NULL))) {
+      zeroVarParamHandle <- getOption("rxode2.zeroVarParamHandle")
+    }
+    zeroVarParamHandle <- match.arg(zeroVarParamHandle)
     if (any(names(.xtra) == "covs")) {
       stop("covariates can no longer be specified by 'covs' include them in the event dataset", .call = FALSE)
     }
@@ -1329,10 +1457,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .omega <- lotri(omega)
     }
-    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=4, any.missing=FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
     } else {
-      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L)
+      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L, "taylor" = 4L)
       .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
     if (checkmate::testIntegerish(sumType, len=1, lower=1,
@@ -1408,7 +1536,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
-    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1,
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=2,
                                    len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
     }
@@ -1439,29 +1567,39 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     if (!is.null(sigdig)) {
       checkmate::assertNumeric(sigdig, lower=2, finite=TRUE, any.missing=FALSE, len=1)
+      # `sigdig` sets the ODE solver tolerances with ONE simple, solver-independent
+      # formula: the `rtol` exponent IS `sigdig`, and `atol` sits three orders below.
+      # Keeping it uniform (same for stiff, non-stiff and auto-switch solvers) makes
+      # it easy to document and lets an optimizer converge to exactly the precision
+      # the solve supports (a caller keys its convergence tolerance to `10^-sigdig`
+      # too).  Sensitivity solves match the main solve; steady-state runs looser.
+      .sigRtol <- 10^(-sigdig)
+      .sigAtol <- 10^(-sigdig - 3)
       if (missing(atol)) {
-        atol <- 0.5 * 10^(-sigdig - 2)
+        atol <- .sigAtol
       }
       if (missing(rtol)) {
-        rtol <- 0.5 * 10^(-sigdig - 2)
+        rtol <- .sigRtol
       }
+      # sensitivity solves match the main solve (gradients/covariances are built
+      # from them); steady-state solves run one order looser than the main solve
       if (missing(atolSens)) {
-        atolSens <- 0.5 * 10^(-sigdig - 1.5)
+        atolSens <- .sigAtol
       }
       if (missing(rtolSens)) {
-        rtolSens <- 0.5 * 10^(-sigdig - 1.5)
+        rtolSens <- .sigRtol
       }
       if (missing(ssAtol)) {
-        ssAtol <- 0.5 * 10^(-sigdig)
+        ssAtol <- 10 * .sigAtol
       }
       if (missing(ssRtol)) {
-        ssRtol <- 0.5 * 10^(-sigdig)
+        ssRtol <- 10 * .sigRtol
       }
       if (missing(ssAtolSens)) {
-        ssAtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssAtolSens <- 10 * .sigAtol
       }
       if (missing(ssRtolSens)) {
-        ssRtolSens <- 0.5 * 10^(-sigdig + 0.625)
+        ssRtolSens <- 10 * .sigRtol
       }
     }
     checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
@@ -1510,6 +1648,48 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (isTRUE(dense) && method == 7L) {
       warning("dense output is not supported for ck54. Ignoring dense=TRUE", call.=FALSE)
       dense <- FALSE
+    }
+    if (checkmate::testIntegerish(indLinStepSearch, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      .indLinStepSearch <- as.integer(indLinStepSearch)
+    } else {
+      .indLinStepSearch <- unname(c("none" = 0L, "secant" = 1L,
+                                    "exact" = 2L)[match.arg(indLinStepSearch)])
+    }
+    checkmate::assertIntegerish(indLinMaxIter, len=1, lower=1, any.missing=FALSE)
+    indLinMaxIter <- as.integer(indLinMaxIter)
+    if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L &&
+          !is.na(indLinRichardson)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=4,
+                                         any.missing=FALSE)) {
+      .indLinRichardson <- as.integer(indLinRichardson)
+    } else {
+      .indLinRichardson <- unname(c("never" = 0L, "always" = 1L,
+                                    "auto" = 2L,
+                                    "always4" = 3L,
+                                    "always5" = 4L)[match.arg(indLinRichardson)])
+    }
+    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=4,
+                                  any.missing=FALSE)) {
+      .indLinIteration <- as.integer(indLinIteration)
+    } else {
+      .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L,
+                                   "auto" = 3L,
+                                   "exprb32" = 4L)[match.arg(indLinIteration)])
+    }
+    if (checkmate::testIntegerish(indLinJac, len=1, lower=0, upper=2,
+                                  any.missing=FALSE)) {
+      .indLinJac <- as.integer(indLinJac)
+    } else {
+      .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
+                             "fd" = 2L)[match.arg(indLinJac)])
+    }
+    if (checkmate::testIntegerish(indLinForcing, len=1, lower=0, upper=1,
+                                  any.missing=FALSE)) {
+      .indLinForcing <- as.integer(indLinForcing)
+    } else {
+      .indLinForcing <- unname(c("constant" = 0L,
+                                 "ramp" = 1L)[match.arg(indLinForcing)])
     }
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
@@ -1782,7 +1962,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       file=file,
       chunkSize=chunkSize,
       parallel=parallel,
-      .zeros=unique(.zeros)
+      .zeros=unique(.zeros),
+      zeroVarParamHandle=zeroVarParamHandle,
+      indLinStepSearch=.indLinStepSearch,
+      indLinMaxIter=indLinMaxIter,
+      indLinRichardson=.indLinRichardson,
+      indLinIteration=.indLinIteration,
+      indLinJac=.indLinJac,
+      indLinForcing=.indLinForcing
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1995,6 +2182,102 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   .bad
 }
 
+#' The parameter names a `params` carries, whatever shape it is
+#'
+#' `names()` of a `matrix` is `NULL` -- its names are the column names -- so a
+#' matrix `params` looks to have no parameters at all when asked with `names()`.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
+#' @return the parameter names, or `NULL` when there are none
+#' @noRd
+.rxParamsNms <- function(params) {
+  if (is.matrix(params)) {
+    colnames(params)
+  } else {
+    names(params)
+  }
+}
+
+#' Which zero variance omega/sigma items to fix at zero in `params`
+#'
+#' An omega/sigma item whose variance is zero is dropped from the matrix that is
+#' simulated from and supplied to the model as a literal zero instead.  When
+#' `params` already carries a value for one, `handle` decides what happens to
+#' it: `"warn"` and `"ignore"` replace it with zero (`"warn"` says so),
+#' `"keep"` leaves the supplied value alone.
+#'
+#' @param zeros names of the omega/sigma items with zero variance
+#' @param params the `params` given to `rxSolve()`
+#' @param handle one of `"warn"`, `"ignore"`, `"keep"`; `NULL` (a control from
+#'   an older rxode2) is treated as `"warn"`
+#' @return the subset of `zeros` to set to zero in `params`
+#' @noRd
+.rxZeroVarParams <- function(zeros, params, handle) {
+  if (is.null(handle)) handle <- "warn"
+  .have <- intersect(zeros, .rxParamsNms(params))
+  if (length(.have) == 0L) return(zeros)
+  if (handle == "keep") return(setdiff(zeros, .have))
+  if (handle == "warn") {
+    warning("'params' value(s) replaced by zero for the zero variance omega/sigma item(s): '",
+            paste(.have, collapse = "', '"),
+            "'\nuse zeroVarParamHandle=\"keep\" to use the supplied value(s), ",
+            "or \"ignore\" to silence this",
+            call. = FALSE)
+  }
+  zeros
+}
+
+#' Fix the parameters named by an omega/sigma matrix at zero
+#'
+#' Used for `omega=NA`/`sigma=NA`, which request that the corresponding random
+#' effects be set to zero.  `c()` on a `data.frame` drops the `data.frame` class
+#' and returns a ragged list -- the per-id columns keep length `nid` while the
+#' appended zeros have length one -- which is then read out of bounds while
+#' solving, so a multi-row `params` must be given a real column instead.
+#'
+#' A `matrix` (one row per id) is the same story: `c()` drops its `dim`, so the
+#' zeros are added as extra columns instead.
+#'
+#' @param params parameter `data.frame`/`matrix` (one row per id) or named
+#'   numeric vector
+#' @param mat the omega/sigma matrix naming the parameters to zero, or the
+#'   names themselves; when `NULL` the model has no such random effects and
+#'   `params` is returned unchanged
+#' @return `params` with each parameter named by `mat` set to zero
+#' @noRd
+.rxParamsZero <- function(params, mat) {
+  if (is.null(mat)) return(params)
+  .nms <- if (is.character(mat)) {
+    mat
+  } else {
+    # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
+    .matNms <- dimnames(mat)[[2]]
+    if (length(.matNms) == 0L) .matNms <- dimnames(mat)[[1]]
+    .matNms
+  }
+  if (length(.nms) == 0L) return(params)
+  if (inherits(params, "data.frame")) {
+    for (.n in .nms) {
+      # rep() rather than a scalar so a zero row params stays a zero row frame
+      params[[.n]] <- rep(0.0, nrow(params))
+    }
+    params
+  } else if (is.matrix(params)) {
+    .have <- intersect(.nms, colnames(params))
+    if (length(.have) > 0L) params[, .have] <- 0.0
+    .add <- setdiff(.nms, .have)
+    if (length(.add) > 0L) {
+      params <- cbind(params,
+                      matrix(0.0, nrow(params), length(.add),
+                             dimnames = list(NULL, .add)))
+    }
+    params
+  } else {
+    c(params, setNames(rep(0.0, length(.nms)), .nms))
+  }
+}
+
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
   .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
@@ -2038,7 +2321,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$omega)) {
     if (is.na(.rxControl$omega)) {
       .omega <- object$omega
-      params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
+      params <- .rxParamsZero(params, .omega)
       .rxControl$omega <- NULL
     }
   }
@@ -2046,12 +2329,15 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .omega <- .rxControl$omega
     .v <- vapply(dimnames(.omega)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
-      .omega <- .omega[.v, .v]
+      # drop=FALSE or selecting a single remaining eta gives a scalar, whose
+      # dim is NULL, and all(NULL == c(0L, 0L)) is TRUE -- so the whole omega
+      # went away and that eta stopped being simulated
+      .omega <- .omega[.v, .v, drop = FALSE]
       if (all(dim(.omega) == c(0L, 0L))) {
         .rxControl$omega <- NULL
       } else {
@@ -2071,7 +2357,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.logical(.rxControl$sigma)) {
     if (is.na(.rxControl$sigma)) {
       .sigma <- object$simulationSigma
-      params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
+      params <- .rxParamsZero(params, .sigma)
       .rxControl$sigma <- NULL
     }
   }
@@ -2079,7 +2365,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .sigma <- .rxControl$sigma
     .v <- vapply(dimnames(.sigma)[[1]],
                  function(v) {
-                   !(v %in% names(params))
+                   !(v %in% .rxParamsNms(params))
                  }, logical(1), USE.NAMES = FALSE)
     if (length(.v) == 1L) {
       if (!.v) .rxControl$sigma <- NULL
@@ -2107,8 +2393,47 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(theta = theta, eta = eta))
 }
 
-#' @rdname rxSolve
-#' @export
+#' Does this model actually carry `d/dt()` equations?
+#'
+#' `rxModelVars(x)$state` also counts `linCmt()` pseudo-compartments, so it is
+#' non-empty for models that have no differential equations at all.
+#'
+#' @param x model to test
+#' @return logical, `TRUE` when the normalized model has at least one `d/dt()`
+#' @noRd
+.rxHasOde <- function(x) {
+  .norm <- try(rxNorm(x), silent = TRUE)
+  if (inherits(.norm, "try-error") || is.null(.norm)) {
+    return(TRUE)
+  }
+  any(grepl("d/dt(", .norm, fixed = TRUE))
+}
+
+#' Was `method="indLin"` asked for in these `rxSolve()` dots?
+#'
+#' @param ... the `rxSolve()` dots to inspect
+#' @return logical, `TRUE` when the dots select the inductive-linearization method
+#' @noRd
+.rxIndLinRequested <- function(...) {
+  .dots <- list(...)
+  .m <- .dots$method
+  if (is.null(.m)) {
+    for (.d in .dots) {
+      if (inherits(.d, "rxControl") && !is.null(.d$method)) {
+        .m <- .d$method
+        break
+      }
+    }
+  }
+  if (is.null(.m) || length(.m) != 1L) {
+    return(FALSE)
+  }
+  if (is.numeric(.m)) {
+    return(isTRUE(.m == 3L))
+  }
+  isTRUE(as.character(.m) == "indLin")
+}
+
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
@@ -2152,7 +2477,11 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
-  if (isTRUE(useLinCmt)) {
+  # `method="indLin"` asks for the matrix exponential of this model's own rate
+  # matrix, so the ODE-to-linCmt() auto-conversion must not fire: it leaves a
+  # model with linCmt() pseudo-compartments and no d/dt() lines at all, which
+  # rxToIndLin() cannot convert.
+  if (isTRUE(useLinCmt) && !.rxIndLinRequested(...)) {
     .linInfo <- .odeToLinDetect(object) # nolint
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
@@ -2443,16 +2772,44 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   } else if (.ctl$method == 3L) {
-    if (length(rxModelVars(object)$state) > 0L) {
+    # `$state` also counts linCmt() pseudo-compartments, which have no d/dt()
+    # line behind them; converting such a model would look for derivatives that
+    # do not exist.  There is nothing to convert when no d/dt() is present, and
+    # the model solves as it stands.
+    if (length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
       .calcSens <- NULL
+      .modelEnv <- NULL
       if (rxIs(object, "rxode2")) {
         .e <- attr(class(object), ".rxode2.env")
         if (is.environment(.e)) {
           .calcSens <- .e$calcSens
         }
+        # An rxode2 object is itself an environment; the attribute above is a
+        # legacy handle that no longer matches one built from text or a file.
+        # Cache against whichever is actually there.
+        .modelEnv <- if (is.environment(.e)) .e else if (is.environment(object)) object else NULL
       }
-      .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
-      object <- rxode2(.mexpCode)
+      # Converting an ODE model to matExp() form runs symengine and then builds
+      # the generated model, which together cost several times more than the
+      # solve they are preparing for.  Both are a pure function of this model,
+      # so cache the result on the model's own environment: an rxode2 object is
+      # immutable once built and `calcSens` is read from that same environment,
+      # so nothing can invalidate it.  A text or function `object` has no such
+      # environment and still converts per call.
+      .useCache <- isTRUE(getOption("rxode2.indLinConvCache", TRUE))
+      .converted <- if (.useCache && is.environment(.modelEnv)) {
+        .modelEnv$.rxIndLinModel
+      } else {
+        NULL
+      }
+      if (is.null(.converted)) {
+        .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
+        .converted <- rxode2(.mexpCode)
+        if (.useCache && is.environment(.modelEnv)) {
+          assign(".rxIndLinModel", .converted, envir = .modelEnv)
+        }
+      }
+      object <- .converted
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
@@ -2572,6 +2929,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # output; a non-dense method requested explicitly is an error.
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
+    # delay() and evid_() pull the solver in opposite directions and cannot both
+    # be honoured: delay() needs dense output (a non-dense method records no
+    # history and silently returns wrong lagged values), while a dense segment
+    # integrates across every observation between two key events at once and so
+    # cannot apply an event the model decides on at one of those observations
+    # (rxode2#1214).  Refuse rather than silently return one of the two wrong
+    # answers.
+    if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
+      stop("a model cannot combine delay() with evid_() event pushing ",
+           "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
+",
+           "  delay() requires dense output, which cannot apply an event pushed ",
+           "at an observation",
+           call. = FALSE)
+    }
     # Validate any non-constant past(state, tau) <- expr history lines (state is
     # a delayed ODE state, tau matches a delay(), history references no states).
     .rxValidatePast(object)
@@ -3013,7 +3385,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   if (getOption("rxode2.debug", FALSE)) {
     .rx <- rxNorm(object)
-    qs2::qs_save(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs2"))
+    saveRDS(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.rds"))
   }
   if (inherits(object, "function") ||
         inherits(object, "rxUi")) {
@@ -3122,13 +3494,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- params
       params <- .tmp
     }
-    if (inherits(params, "data.frame")) {
-      for (v in .ctl$.zeros) {
-        params[[v]] <- 0.0
-      }
+    .zeros <- .rxZeroVarParams(.ctl$.zeros, params, .ctl$zeroVarParamHandle)
+    if (inherits(params, "data.frame") || is.matrix(params)) {
+      params <- .rxParamsZero(params, .zeros)
     } else if (inherits(params, "numeric") ||
                  inherits(params, "integer")) {
-      params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
+      params <- c(params, setNames(rep(0.0, length(.zeros)), .zeros))
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
@@ -4078,7 +4449,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'         solving nor user Jacobian specification
 #'
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
-#'         must be setup specially to use this solving routine.
+#'         must be setup specially to use this solving routine.  Supports
+#'         parallel thread-based solving and honors `cores`.
 #'
 #' * `"f78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 #'
@@ -4162,8 +4534,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"em"` -- Explicit Euler stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`).
 #'
-#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-#'    from the sundialr package sources).  Supports thread-parallel solving and
+#' * `"cvode"` -- CVODE BDF stiff solver from the SUNDIALS library (sources
+#'    and headers vendored into rxode2).  Supports thread-parallel solving and
 #'    per-compartment absolute tolerances.
 #'
 #' * `"trapz"` -- Explicit trapezoidal rule (Heun's method), a 2nd-order

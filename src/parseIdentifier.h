@@ -1,34 +1,81 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Parsing pieces
+
+// Start recording the statement about to be parsed: `target` is the symbol it
+// assigns (kind 0) or the compartment its indLin() forcing is for (kind 1).
+// Statements are kept in source order and replayed in genModelVars, so a later
+// unconditional assignment simply overwrites what an earlier one established.
+static inline int pushIndLinStmt(int target, int kind) {
+  if (tb.stmtN + 1 > tb.stmtAlloc) {
+    tb.stmtAlloc += MXSYM;
+    tb.stmtT  = R_Realloc(tb.stmtT,  tb.stmtAlloc, int);
+    tb.stmtK  = R_Realloc(tb.stmtK,  tb.stmtAlloc, int);
+    tb.stmtC  = R_Realloc(tb.stmtC,  tb.stmtAlloc, int);
+    tb.stmtR0 = R_Realloc(tb.stmtR0, tb.stmtAlloc, int);
+    tb.stmtRn = R_Realloc(tb.stmtRn, tb.stmtAlloc, int);
+  }
+  tb.stmtT[tb.stmtN]  = target;
+  tb.stmtK[tb.stmtN]  = kind;
+  tb.stmtC[tb.stmtN]  = (tb.nCond > 0);
+  tb.stmtR0[tb.stmtN] = tb.stmtRefN;
+  tb.stmtRn[tb.stmtN] = 0;
+  return tb.stmtN++;
+}
+
+// Remember that the statement being parsed reads symbol `symbolIx`.  Only
+// right-hand sides count: an indLin() forcing (its left-hand side is consumed
+// before tb.curIndLin is set) or the part of an assignment after its `=`.
+static inline void recordIndLinRef(int symbolIx) {
+  if (tb.curStmt < 0 || symbolIx < 0) return;
+  if (tb.curIndLin == 0 && !(tb.curLhs >= 0 && tb.didEq == 1)) return;
+  for (int i = tb.stmtR0[tb.curStmt]; i < tb.stmtRefN; ++i) {
+    if (tb.stmtRef[i] == symbolIx) return;
+  }
+  if (tb.stmtRefN + 1 > tb.stmtRefAlloc) {
+    tb.stmtRefAlloc += MXSYM;
+    tb.stmtRef = R_Realloc(tb.stmtRef, tb.stmtRefAlloc, int);
+  }
+  tb.stmtRef[tb.stmtRefN++] = symbolIx;
+  tb.stmtRn[tb.curStmt]++;
+}
+
 static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
   // Handles identifiers, add it as a symbol if needed.
   if (isIdentifier(ni, name)) {
+    int symbolIx;
     if (new_or_ith(value)){
       // If it is new, add it
       addSymbolStr(value);
+      symbolIx = NV-1;
       tb.interp[NV-1] = tb.interpC;
       // Ignored variables
       if (isTbsVar(value)){
         // If it is Transform both sides, suppress printouts
         tb.lh[NV-1] = isSuppressedParam; // Suppress param printout.
       }
-    } else if (isDefiningParameterRecursively(value)){
-      // This is x = x*exp(matt)
-      // lhs defined in terms of a parameter
-      if (tb.lag[tb.ix] != 0) {
-        // Self-reference only through lag()/lead()/diff() (eg an AR(1) recurrence
-        // b = phi*lag(b,1) + innov): the reference reads the PREVIOUS record's
-        // stored lhs value, not the current uninitialized one, so this is a legal
-        // first-order recurrence -- keep it a normal lhs (printLhsLag reads _PL).
-      } else if (tb.lh[tb.ix] == isSuppressedLHS){
-        tb.lh[tb.ix] = notLHS;
-      } else {
-        tb.lh[tb.ix] = isLHSparam;
-        if (tb.lho[tb.ix] == 0) {
-          tb.lho[tb.ix] = tb.lhi++;
+    } else {
+      symbolIx = tb.ix;
+      if (isDefiningParameterRecursively(value)){
+        // This is x = x*exp(matt)
+        // lhs defined in terms of a parameter
+        if (tb.lag[tb.ix] != 0) {
+          // Self-reference only through lag()/lead()/diff() (eg an AR(1) recurrence
+          // b = phi*lag(b,1) + innov): the reference reads the PREVIOUS record's
+          // stored lhs value, not the current uninitialized one, so this is a legal
+          // first-order recurrence -- keep it a normal lhs (printLhsLag reads _PL).
+        } else if (tb.lh[tb.ix] == isSuppressedLHS){
+          tb.lh[tb.ix] = notLHS;
+        } else {
+          tb.lh[tb.ix] = isLHSparam;
+          if (tb.lho[tb.ix] == 0) {
+            tb.lho[tb.ix] = tb.lhi++;
+          }
         }
       }
     }
+    // A no-op outside an indLin() forcing / an assignment right-hand side; it
+    // only feeds modelVars$indLin$wIndLin.
+    recordIndLinRef(symbolIx);
   } else if (nodeHas(relational_op)) {
     // Relational operators include assignments
     // These secondary assignments are not supported

@@ -1,10 +1,13 @@
 #' Push a future dose or observation event from within an rxode2 model
 #'
 #' @description
-#' `evid_()` is a model-only function that schedules a future dosing or
-#' observation event during ODE solving.  It is evaluated at each output
-#' time point and inserts the requested event into the individual's event
-#' timeline for future processing.
+#' `evid_()` is a model-only function that schedules a current or future
+#' dosing or observation event during ODE solving.  The model body is run
+#' once per distinct record time, at the first record of that time, and the
+#' event is inserted immediately after it -- so an event pushed at the
+#' current time is applied before the solver advances, exactly like the same
+#' event written in the data.  The final record of the timeline does not
+#' push (it starts no integration interval).
 #'
 #' This function has no meaning outside an rxode2 model block and will
 #' throw an error if called directly from R.

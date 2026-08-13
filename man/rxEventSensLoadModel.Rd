@@ -19,6 +19,8 @@ model through a direct C++ \code{ind_solve()} loop, bypassing \code{rxSolve()}: 
 rxode2's event ("jump") sensitivity function pointers and runtime dims to
 \code{model} and turns the jumps on.  The jump blocks are bounds-guarded, so
 smaller models solved afterwards skip the injection safely.  Pair with
-\code{rxEventSensDeactivate()} after the run.
+\code{rxEventSensDeactivate()} after the run.  The C API entry points behind this
+(\code{rxode2EventSensLoadFull()} and the shape save/restore) are in rxode2's
+function-pointer table, for callers that need the swap from C++.
 }
 \keyword{internal}

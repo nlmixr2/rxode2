@@ -20,7 +20,10 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 2u;
+static const uint32_t rxSerializeFormatVer = 3u;
+// Format 3 added the gsolve layout sizes n4/n6 after state_size, and appended
+// the op->indLin convergence set at the end of the stream.  It also carries
+// op->indLinForcing, written with the other indLin settings.
 
 // ---------------------------------------------------------------------------
 // Low-level write helpers -- all abort via Rf_error on failure
@@ -44,10 +47,14 @@ static void sWriteI32(std::vector<uint8_t> *f, int32_t v, const char *what) {
 }
 
 // Write a size-prefixed blob: uint64_t count then count elements of width w.
+// A NULL pointer is an absent array, so it writes a count of zero -- writing the
+// asked-for count with no payload behind it would leave every later field in the
+// stream shifted and read as garbage.
 static void sWriteBlob(std::vector<uint8_t> *f, const void *data, uint64_t count, size_t w,
                        const char *what) {
+  if (data == NULL) count = 0;
   sWriteU64(f, count, what);
-  if (count > 0 && data != NULL)
+  if (count > 0)
     sWrite(f, data, count * w, what);
 }
 
@@ -141,6 +148,8 @@ SEXP rxSaveState_() {
   W_DBL(hmax2);
   W_I32(indLinN); W_DBL(indLinPhiTol); W_I32(indLinPhiM);
   W_I32(indLinMatExpType); W_I32(indLinMatExpOrder);
+  W_I32(indLinStepSearch); W_I32(indLinMaxIter); W_I32(indLinRichardson);
+  W_I32(indLinIteration); W_I32(indLinJac); W_I32(indLinForcing);
   W_I32(nDisplayProgress); W_I32(ncoresRV); W_I32(isChol);
   W_I32(nsvar); W_I32(abort); W_I32(minSS); W_I32(maxSS);
   W_I32(doIndLin); W_I32(strictSS);
@@ -231,6 +240,19 @@ SEXP rxSaveState_() {
   }
   sWriteI32(f, state_size_saved, "state_size");
 
+  // n4 (initsC.size()) and n6 (scaleC.size()) drive the gsolve layout and are
+  // not recoverable from any scalar field, so they travel with it: ginits is
+  // followed by glhs and gscale by gatol2.
+  // Zero when the slab is not allocated: the blobs below would then be absent,
+  // and a layout claiming a length nothing was written for cannot be restored.
+  int32_t n4_saved = 0, n6_saved = 0;
+  if (_globals.ginits && _globals.glhs && _globals.glhs >= _globals.ginits)
+    n4_saved = (int32_t)(_globals.glhs - _globals.ginits);
+  if (_globals.gscale && _globals.gatol2 && _globals.gatol2 >= _globals.gscale)
+    n6_saved = (int32_t)(_globals.gatol2 - _globals.gscale);
+  sWriteI32(f, n4_saved, "n4");
+  sWriteI32(f, n6_saved, "n6");
+
   // gLin (linH values): linB * 7 * nsub * nsim doubles
   sWriteDoubleBlob(f, _globals.gLin,
                    (uint64_t)((int64_t)rx->linB * 7 * rx->nsub * rx->nsim),
@@ -241,22 +263,9 @@ SEXP rxSaveState_() {
                    (uint64_t)((int64_t)rx->nMtime * rx->nsub * rx->nsim),
                    "gmtime");
 
-  // ginits: n4 = initsC.size() -- stored in op->neq when pure ODE; use pointer arithmetic
-  // ginits pointer in gsolve: gsolve + n0 + nlin + 3*nsave + n2
-  // Easiest: compute size as scaleC offset - ginits
-  // But we don't have scaleC.size() directly. Use _globals.gscale - _globals.ginits.
-  {
-    uint64_t n4 = 0, n6 = 0;
-    if (_globals.ginits && _globals.gscale && _globals.gscale > _globals.ginits)
-      n4 = (uint64_t)(_globals.gscale - _globals.ginits);
-    sWriteDoubleBlob(f, _globals.ginits, n4, "ginits");
-
-    // gscale: n6 = scaleC.size()
-    // gscale is followed by gIndSim in the slab; use gIndSim - gscale
-    if (_globals.gscale && _globals.gIndSim && _globals.gIndSim > _globals.gscale)
-      n6 = (uint64_t)(_globals.gIndSim - _globals.gscale);
-    sWriteDoubleBlob(f, _globals.gscale, n6, "gscale");
-  }
+  // ginits (n4 doubles) and gscale (n6 doubles) -- the sizes written just above
+  sWriteDoubleBlob(f, _globals.ginits, (uint64_t)(n4_saved > 0 ? n4_saved : 0), "ginits");
+  sWriteDoubleBlob(f, _globals.gscale, (uint64_t)(n6_saved > 0 ? n6_saved : 0), "gscale");
 
   // gIndSim: n7 = nIndSim * nsub * nsim doubles
   sWriteDoubleBlob(f, _globals.gIndSim,
@@ -444,6 +453,15 @@ SEXP rxSaveState_() {
     sWriteDoubleBlob(f, ind->linH, (uint64_t)(rx->linB ? 7 : 0), "linH");
   }
 
+  // -- Section 9: op->indLin convergence set (format 3+) --------------------
+  // op->indLinN is written as a scalar above, but the set itself lives in
+  // _globals.gindLin and is rebuilt from mv$indLin[[4]] on an ordinary setup;
+  // a restored doIndLin 3/4 solve has no such setup, so it round-trips here.
+  {
+    uint64_t iln = (op->indLin != NULL && op->indLinN > 0) ? (uint64_t)op->indLinN : 0u;
+    sWriteIntBlob(f, op->indLin, iln, "indLin");
+  }
+
   RawVector ret(vec.size());
   std::copy(vec.begin(), vec.end(), ret.begin());
   return ret;
@@ -619,9 +637,15 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   }
   uint32_t fmt = sReadU32(f, "format_ver");
   if (fmt > rxSerializeFormatVer) {
-    
+
     (Rf_error)("rxRestoreState: file format version %u > supported %u",
                fmt, rxSerializeFormatVer);
+  }
+  if (fmt < 3u) {
+    // Format 3 carries the gsolve layout sizes (n4/n6) that format 2 left the
+    // reader to guess wrongly, so a format 2 file could never be restored.
+    (Rf_error)("rxRestoreState: file format version %u is no longer supported; "
+               "re-save the state with this version of rxode2", fmt);
   }
 
   uint32_t vlen = sReadU32(f, "pkg_ver_len");
@@ -678,6 +702,8 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_DBL(hmax2);
   R_I32(indLinN); R_DBL(indLinPhiTol); R_I32(indLinPhiM);
   R_I32(indLinMatExpType); R_I32(indLinMatExpOrder);
+  R_I32(indLinStepSearch); R_I32(indLinMaxIter); R_I32(indLinRichardson);
+  R_I32(indLinIteration); R_I32(indLinJac); R_I32(indLinForcing);
   R_I32(nDisplayProgress); R_I32(ncoresRV); R_I32(isChol);
   R_I32(nsvar); R_I32(abort); R_I32(minSS); R_I32(maxSS);
   R_I32(doIndLin); R_I32(strictSS);
@@ -759,6 +785,14 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
   // -- Section 6: gsolve meaningful subsections ------------------------------
   int32_t state_size_saved = sReadI32(f, "state_size");
+  int32_t n4_saved = sReadI32(f, "n4");
+  int32_t n6_saved = sReadI32(f, "n6");
+  // These size the gsolve slab and then bound the blob reads into it; a
+  // negative one from a corrupt file becomes a huge unsigned bound, so the
+  // reads would no longer be bounded at all.
+  if (state_size_saved < 0 || n4_saved < 0 || n6_saved < 0) {
+    (Rf_error)("rxRestoreState: corrupt state (negative layout size)");
+  }
 
   // Allocate gsolve using rxFillMemLayout with saved dimensions
   rx_mem_layout _mem;
@@ -768,8 +802,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     rx->linB, op->nLlik, rx->nIndSim, (int)rx->nsub,
     (int64_t)rx->nall, rx->maxAllTimes,
     op->numLinSens, op->numLin,
-    (int64_t)op->neq,  // n4_actual: use neq as proxy (actual restored below)
-    (int64_t)op->neq,  // n6_actual: use neq as proxy
+    (int64_t)n4_saved, (int64_t)n6_saved,
     &_mem);
 
   if (_globals.gsolve != NULL) free(_globals.gsolve);
@@ -970,10 +1003,12 @@ SEXP rxRestoreState_(SEXP rawSexp) {
 
   // gParPos, gParPos2 (gsvar, govar covered by gParPos2)
   {
-    uint64_t expected_gpp = (rx->npars > 0 && _globals.gParPos) ? (uint64_t)rx->npars : 0u;
+    // gParPos was written only when the saving solve had one, so take the
+    // file's count rather than predicting it from the (already freed) pointer.
+    uint64_t n_gpp;
     int *buf;
 
-    buf = sReadIntBlobExpected(f, expected_gpp, "gParPos");
+    buf = sReadIntBlob(f, &n_gpp, "gParPos");
     if (_globals.gParPos != NULL) free(_globals.gParPos);
     _globals.gParPos = buf;
     
@@ -1149,6 +1184,27 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     ind->jac_counter  = _globals.jac_counter  + si;
     ind->BadDose      = _globals.gBadDose + (int64_t)neq * si;
     ind->rc           = _globals.grc + si;
+  }
+
+  // -- Section 10: op->indLin convergence set --------------------------------
+  {
+    uint64_t expected = (uint64_t)(op->indLinN > 0 ? op->indLinN : 0);
+    uint64_t n = sReadU64(f, "indLin");
+    if (n != expected) {
+      (Rf_error)("rxRestoreState: indLin size mismatch (file: %llu, expected: %llu)",
+                 (unsigned long long)n, (unsigned long long)expected);
+    }
+    // gindLin is an R_Calloc allocation (rxSolveFreeC R_Free()s it), so read
+    // straight into R's allocator -- a malloc'd staging buffer would leak if
+    // R_Calloc() raised on the way past it.
+    if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
+    if (n > 0) {
+      _globals.gindLin = R_Calloc((int)n, int);
+      op->indLin = _globals.gindLin;
+      sRead(f, _globals.gindLin, (size_t)n * sizeof(int), "indLin");
+    } else {
+      op->indLin = NULL;
+    }
   }
 
   _globals.alloc = true;

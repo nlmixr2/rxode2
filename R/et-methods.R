@@ -74,6 +74,7 @@
   env$ndose <- .retEnv$ndose
   env$randomType <- .retEnv$randomType
   env$canResize <- .retEnv$canResize
+  .etAddExtraCols(env, .etExtraCols(.retEnv)) # nolint
   invisible(NULL)
 }
 
@@ -90,8 +91,7 @@
     .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
   }
   if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
-  .show <- env$show
-  .cols <- intersect(names(.show)[.show], names(.mat))
+  .cols <- .etDisplayCols(names(.mat), env$show, .etExtraCols(env)) # nolint
   .ret <- .mat[, .cols, drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
   .ret
@@ -116,7 +116,7 @@
     NULL
   } else {
     rownames(.d) <- seq_len(nrow(.d))
-    .d
+    .etMarkDisplay(.d, env) # nolint
   }
 }
 
@@ -321,6 +321,12 @@
       names(df)[.i] <- .colMap[.upper[.i]]
     }
   }
+  # rename the assigned-column tag with the columns it points at (#1154)
+  .extra <- .etExtraColsAttr(df) # nolint
+  if (length(.extra) > 0L) {
+    .map <- stats::setNames(names(df), .nms)[.extra]
+    attr(df, "rxEtExtraCols") <- unname(ifelse(is.na(.map), .extra, .map))
+  }
   df
 }
 
@@ -372,10 +378,12 @@
   if (!is.data.frame(df)) {
     stop("'df' must be a data.frame", call. = FALSE)
   }
+  .extra <- .etExtraColsAttr(df) # nolint
   .u <- .etImportAutoUnits(env, df)
   df <- .etImportConvertUnits(df, .u$tu, .u$du, .u$hasTimeU, .u$hasDoseU)
   df <- .etImportStandardizeIdEvid(df)
   .etImportUpdateEnv(env, df)
+  .etAddExtraCols(env, intersect(.extra, names(df))) # nolint
   invisible(NULL)
 }
 
@@ -399,7 +407,10 @@
 #' @author Matthew L. Fidler
 .etMethodImportEventTable2 <- function(env, df, ...) {
   if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  .extra <- .etExtraColsAttr(df) # nolint
   df <- as.data.frame(df)
+  # as.data.frame() may drop it; re-tag first so the rename below tracks it
+  if (length(.extra) > 0L) attr(df, "rxEtExtraCols") <- .extra
   df <- .etImportNormalizeNames(df)
   df <- .etImportIdToInteger(df)
   df <- .etImportDropNaTime(df)
@@ -492,6 +503,7 @@
   .newEnv$ndose      <- env$ndose
   .newEnv$randomType <- env$randomType
   .newEnv$canResize  <- env$canResize
+  .newEnv$extraCols  <- .etExtraCols(env) # nolint
   .newEnv$methods <- .etBuildMethods(.newEnv)
   .cp <- list()
   attr(.cp, "names")     <- character(0)
@@ -575,7 +587,7 @@
     NULL
   } else {
     rownames(.s) <- seq_len(nrow(.s))
-    .s
+    .etMarkDisplay(.s, env) # nolint
   }
 }
 

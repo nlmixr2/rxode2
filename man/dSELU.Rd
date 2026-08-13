@@ -19,12 +19,14 @@ Derivative of the Scaled Exponential Linear Unit (SELU) Activation Function
 }
 \examples{
 dSELU(c(-1, 0, 1, 2))
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
   r=dSELU(time)
 })
 e <- et(c(-1, 0, 1, 2))
 rxSolve(x, e)
+}
 }
 \seealso{
 Other Activation Functions:

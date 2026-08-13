@@ -31,65 +31,7 @@ extern "C" {
 }
 #endif
 
-// EVID = 0; Observations
-// EVID = 1; is illegal, but converted from NONMEM
-// EVID = 2; Non-observation, possibly covariate
-// EVID = 3; Reset ODE states to zero; Non-observation event
-// EVID = 4; Reset and then dose event;  Illegal
-// EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
-// EVID = 10-99; mtime events (from ODE system)
-// When EVID > 100
-// EVID: ## # ## ##
-//       c2 I c1 xx
-// c2 = Compartment numbers over 100
-//  I = Infusion Flag/ Special event flag
-#define EVIDF_NORMAL 0
-
-#define EVIDF_INF_RATE 1
-#define EVIDF_INF_DUR  2
-
-#define EVIDF_REPLACE  4
-#define EVIDF_MULT     5
-
-#define EVIDF_MODEL_DUR_ON   8
-#define EVIDF_MODEL_DUR_OFF  6
-
-#define EVIDF_MODEL_RATE_ON  9
-#define EVIDF_MODEL_RATE_OFF 7
-//      0 = no Infusion
-//      1 = Infusion, AMT=rate (mg/hr for instance)
-//      2 = Infusion, duration is fixed
-//      4 = Replacement event
-//      5 = Multiplication event
-//      6 = Turn off modeled duration
-//      7 = Turn off modeled rate compartment
-//      8 = Duration is modeled, AMT=dose; Rate = AMT/(Modeled Duration) NONMEM RATE=-2
-//      9 = Rate is modeled, AMT=dose; Duration = AMT/(Modeled Rate) NONMEM RATE=-1
-// c1 = Compartment numbers below 99
-// xx =  1, regular event (no lag time)
-// xx =  2, An infusion/rate event that doesn't look for start/end of infusion AND does not apply lags
-// xx =  8, possibly turn off steady state infusion with lag time (needed in case spans dur)
-// xx =  9, steady state event SS=1 with lag time
-// xx = 10, steady state event SS=1 (no lag)
-// xx = 19, steady state event at dose time (SS=2) with lag
-// xx = 20, steady state event + last observed info (not lagged)
-// xx = 21, steady state event at dose time (with absorption lag) + last observed info
-// xx = 30, Turn off compartment
-// xx = 40, Steady state constant infusion
-// xx = 50, Phantom event, used for transit compartments
-// xx = 60, Dose that does not track as a dose turn on system
-// Steady state events need a II data item > 0
-#define EVID0_REGULAR  1
-#define EVID0_RATEADJ 2
-#define EVID0_INFRM 8
-#define EVID0_SS0 9
-#define EVID0_SS 10
-#define EVID0_SS20 19
-#define EVID0_SS2 20
-#define EVID0_OFF 30
-#define EVID0_SSINF 40
-#define EVID0_PHANTOM 50
-#define EVID0_ONDOSE 60
+// The EVIDF_*/EVID0_* evid flags live in rxode2EventTranslate.h (included above)
 
 static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {
   return getDose(ind, ind->idose[i]);
@@ -551,10 +493,10 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
 // rows in the paper's replace/additive/multiplicative tables.  Source
 // depends on model type (see _rxEsUseCalcJac, set from mv$indLin):
 //   - matExp()/indLin() models: dydt() is a no-op stub (matrix-exponential
-//     primal solve, not RHS evaluation), so both come from calc_jac -- the
-//     column directly, and f_cmt from the identity dX/dt = A*X (exact for
-//     the reconstructed matExp system) via row `cmt` of the Jacobian dotted
-//     with the current state.
+//     primal solve, not RHS evaluation), so the column comes from calc_jac,
+//     and f_cmt from ME() and IndF() -- the rate matrix dotted with the
+//     current state plus the forcing.  NOT from the Jacobian row: that is
+//     f_cmt only while the whole right-hand side is A.X.
 //   - ordinary ODE models: calc_jac is normally an empty stub (only
 //     populated by explicit user-written df/dy lines) but dydt is fully
 //     functional, so the column comes from a central difference of dydt and
@@ -562,39 +504,91 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
 //     computed for it (accurate to O(eps^2), avoids a third dydt call).
 // `_esJcol` (size >= ns) and `*_esFc` are left untouched if neither source
 // is available (caller must pre-zero/guard on the relevant function pointer).
+// Pass `_esFc = NULL` when the caller's jump row has no f_cmt term.
+// matExp()/indLin(): the column straight out of calc_jac, and the Jacobian row
+// dotted with the state as a provisional f_cmt (the right answer whenever the
+// model has no forcing; _esJacColMeF() replaces it when it does).
+static inline void _esJacColCalcJac(int *_esNj, double xout, double *yp, int cmt,
+                                    int ns, double *_esJcol, double *_esFc) {
+  double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
+  if (_esPD == NULL) return;
+  calc_jac(_esNj, xout, yp, _esPD, (unsigned int) ns);
+  double _f = 0.0;
+  for (int _k = 0; _k < ns; _k++) {
+    _esJcol[_k] = _esPD[_k * ns + cmt];
+    _f += _esPD[cmt * ns + _k] * yp[_k];
+  }
+  if (_esFc != NULL) *_esFc = _f;
+  free(_esPD);
+}
+
+// f_cmt for a matExp()/indLin() model, from the rate matrix and the forcing.
+//
+// The Jacobian row dotted with the state is f_cmt only for a model whose whole
+// right-hand side is A.X.  Once part of it lives in an indLin() forcing --
+// which is where rxode2#1186/#1187 put every nonlinear term -- J is A + dF/dX,
+// so that dot product both misses F(X) and double counts (dF/dX).X.  ME() is
+// the rate matrix (column major, A[i][j] = _mat[j*neq + i]) and IndF() is the
+// forcing, seeded with the infusion rate, which is part of the true right-hand
+// side at this instant too.  Leaves `*_esFc` alone if ME() is unavailable.
+static inline void _esJacColMeF(int id, double xout, double *yp, int cmt,
+                                int neq, double *_esFc,
+                                rx_solving_options_ind *ind) {
+  rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
+  t_ME _esME = _esRx->fns.me;
+  if (_esME == NULL) return;
+  double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
+  if (_esA == NULL) return;
+  _esME(id, xout, xout, _esA, yp);
+  double _fa = 0.0;
+  for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + cmt] * yp[_j];
+  free(_esA);
+  t_IndF _esIndF = _esRx->fns.indf;
+  if (_esIndF != NULL) {
+    double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
+    if (_esFv != NULL) {
+      _esIndF(id, xout, xout, _esFv, yp);
+      _fa += _esFv[cmt];
+      free(_esFv);
+    }
+  }
+  *_esFc = _fa;
+}
+
+// Ordinary ODE: central difference of dydt about yp[cmt], which yields f_cmt as
+// the average of the two evaluations already made (O(eps^2), no third call).
+static inline void _esJacColFd(int *_esNj, double xout, double *yp, int cmt,
+                               int ns, int neq, double *_esJcol, double *_esFc) {
+  double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
+  double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
+  if (_esF0 != NULL && _esF1 != NULL) {
+    double _esXc = yp[cmt];
+    double _esAx = _esXc < 0 ? -_esXc : _esXc;
+    double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
+    yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
+    yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
+    yp[cmt] = _esXc; // restore pre-event state
+    double _esInv = 1.0 / (2.0 * _esEps);
+    for (int _k = 0; _k < ns; _k++) {
+      _esJcol[_k] = (_esF1[_k] - _esF0[_k]) * _esInv;
+    }
+    if (_esFc != NULL) *_esFc = 0.5 * (_esF0[cmt] + _esF1[cmt]);
+  }
+  if (_esF0 != NULL) free(_esF0);
+  if (_esF1 != NULL) free(_esF1);
+}
+
 static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
-                              int neq, double *_esJcol, double *_esFc) {
+                              int neq, double *_esJcol, double *_esFc,
+                              rx_solving_options_ind *ind) {
   int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
   if (_rxEsUseCalcJac) {
-    double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
-    if (_esPD != NULL) {
-      calc_jac(_esNj, xout, yp, _esPD, (unsigned int) ns);
-      double _f = 0.0;
-      for (int _k = 0; _k < ns; _k++) {
-        _esJcol[_k] = _esPD[_k * ns + cmt];
-        _f += _esPD[cmt * ns + _k] * yp[_k];
-      }
-      *_esFc = _f;
-      free(_esPD);
-    }
+    _esJacColCalcJac(_esNj, xout, yp, cmt, ns, _esJcol, _esFc);
+    // Only the replace/multiply dtau rows need f_cmt; the additive-bolus rows
+    // pass NULL and skip the two extra evaluations.
+    if (_esFc != NULL) _esJacColMeF(id, xout, yp, cmt, neq, _esFc, ind);
   } else if (dydtEs != NULL) {
-    double *_esF0 = (double*) calloc((size_t)neq, sizeof(double));
-    double *_esF1 = (double*) calloc((size_t)neq, sizeof(double));
-    if (_esF0 != NULL && _esF1 != NULL) {
-      double _esXc = yp[cmt];
-      double _esAx = _esXc < 0 ? -_esXc : _esXc;
-      double _esEps = 6e-6 * (_esAx > 1.0 ? _esAx : 1.0);
-      yp[cmt] = _esXc + _esEps; dydtEs(_esNj, xout, yp, _esF1);
-      yp[cmt] = _esXc - _esEps; dydtEs(_esNj, xout, yp, _esF0);
-      yp[cmt] = _esXc; // restore pre-event state
-      double _esInv = 1.0 / (2.0 * _esEps);
-      for (int _k = 0; _k < ns; _k++) {
-        _esJcol[_k] = (_esF1[_k] - _esF0[_k]) * _esInv;
-      }
-      *_esFc = 0.5 * (_esF0[cmt] + _esF1[cmt]);
-    }
-    if (_esF0 != NULL) free(_esF0);
-    if (_esF1 != NULL) free(_esF1);
+    _esJacColFd(_esNj, xout, yp, cmt, ns, neq, _esJcol, _esFc);
   }
 }
 
@@ -1580,7 +1574,7 @@ static inline int handle_evid(int evid, int neq,
           if (_esDLagB != NULL && _esJcol != NULL) {
             dLagEs(id, xout, yp, _esDLagB);
             double _esFc = 0.0;
-            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
             double _esX1 = yp[cmt];
             double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
             for (int _p = 0; _p < _np; _p++) {
@@ -1657,7 +1651,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
               double _esFc = 0.0;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
               double _esOneMAlpha = 1.0 - _esAlpha;
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
@@ -1832,8 +1826,8 @@ static inline int handle_evid(int evid, int neq,
             double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
             if (_esDLagB != NULL && _esJcol != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              double _esFc; // unused here (additive-bolus dtau row has no f_c term)
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc);
+              // NULL: the additive-bolus dtau row has no f_c term
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, NULL, ind);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
@@ -1927,8 +1921,7 @@ static inline int handle_evid(int evid, int neq,
             if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
                 _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
               dLagEs(id, xout, yp, _esDLagB2);
-              double _esFc2;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, &_esFc2);
+              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, NULL, ind);
               d2LagEs(id, xout, yp, _esD2LagB);
               if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
               dLagJacEs(id, xout, yp, _esJacQB);

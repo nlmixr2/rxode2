@@ -1,3 +1,27 @@
+#' Fork a model's meta environment for piping
+#'
+#' Shallow copy: only the meta environment itself is new, so the piped and
+#' original model no longer share the `.simModelBase` cache slot (which is
+#' dropped here, as in .copyEnv/.copyUi).  Bindings are carried over as-is --
+#' nested environments stay shared and closures keep their environment -- so
+#' reference-semantics metadata behaves exactly as it did when meta was shared.
+#'
+#' @param env meta environment to fork
+#'
+#' @return New meta environment
+#' @author Matthew L. Fidler
+#' @noRd
+.copyMetaForPiping <- function(env) {
+  .ret <- new.env(parent=parent.env(env))
+  lapply(ls(envir=env, all.names=TRUE), function(item) {
+    if (item == ".simModelBase") {
+      return(NULL)
+    }
+    assign(item, get(item, envir=env), envir=.ret)
+  })
+  .ret
+}
+
 #' Copy an environment and all of its contents
 #'
 #' This is a recursive copy that creates a new environment for every

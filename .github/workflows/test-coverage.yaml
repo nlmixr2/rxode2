@@ -24,7 +24,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 10
+          cache-version: 11
           extra-packages: |
             any::covr
             any::xml2
@@ -36,6 +36,29 @@ jobs:
 
       - name: Test coverage
         run: |
+          # covr merges every covr_trace_* file left in the install path, and
+          # every R process that loads the instrumented package writes one --
+          # including the child processes the tests start (`R CMD INSTALL` of a
+          # throw-away package, the OMP_NUM_THREADS child).  A child that dies
+          # before its trace finishes writing leaves a truncated gzip stream,
+          # and the readRDS() of that one file aborts the whole merge.  Skip the
+          # unreadable traces instead, naming each one that is dropped.
+          .mergeCoverage <- covr:::merge_coverage.character
+          utils::assignInNamespace(
+            "merge_coverage.character",
+            function(x, ...) {
+              .ok <- vapply(x, function(.f) {
+                !inherits(try(readRDS(.f), silent = TRUE), "try-error")
+              }, logical(1))
+              if (any(!.ok)) {
+                message("dropping ", sum(!.ok), " of ", length(x),
+                        " unreadable covr trace file(s): ",
+                        paste(basename(x[!.ok]), collapse = ", "))
+              }
+              .mergeCoverage(x[.ok], ...)
+            },
+            "covr"
+          )
           cov <- covr::package_coverage(
             quiet = FALSE,
             clean = FALSE,

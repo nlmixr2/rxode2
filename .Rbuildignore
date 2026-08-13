@@ -50,7 +50,7 @@ rxode2.*\.(zip|pdf)$
 ^/?src/.Rhistory
 ^/?src/dparser/.*$
 ^/?src/liblsoda/.*$
-LICENSE
+^LICENSE$
 /?config.status
 /?config.log
 ^/?docs/*$

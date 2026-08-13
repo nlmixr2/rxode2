@@ -15,6 +15,12 @@ Nothing
 \description{
 Set the preferred factoring by state
 }
+\details{
+Like \code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}}, this no longer affects the conversion: a
+multi-state product cannot yield a state-free rate constant whichever state
+is factored out, so it becomes an \code{indLin()} forcing instead.  The setting is
+kept so existing code keeps working.
+}
 \author{
 Matthew Fidler
 }

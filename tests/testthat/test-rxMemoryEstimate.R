@@ -398,4 +398,98 @@ rxTest({
     expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromBundle$gall_times))
     expect_equal(as.numeric(.fromFile$gall_times), as.numeric(.fromSolve$gall_times))
   })
+
+  # --- method="indLin" ---------------------------------------------------------
+  # What a matExp() model costs depends on which of the four drivers it runs:
+  # a pure matrix exponential holds one rate matrix, while true inductive
+  # linearization iterates and carries a Jacobian, P(h) and its inverse too.
+  # Both are per THREAD, so they grew with rxode2#1216 making indLin parallel.
+
+  .memOde <- suppressMessages(rxode2(paste0(
+    "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - ke*central\n")))
+  .memPure <- suppressMessages(rxode2(paste("matExp()", "cmt(depot)", "cmt(central)",
+                                            "k_depot_central = ka",
+                                            "k_central_output = ke", sep = "\n")))
+  .memFree <- suppressMessages(rxode2(paste("matExp()", "cmt(depot)", "cmt(central)",
+                                            "k_depot_central = ka",
+                                            "k_central_output = ke",
+                                            "indLin(central) <- kin", sep = "\n")))
+  .memIl <- suppressMessages(rxode2(rxToIndLin(paste0(
+    "d/dt(depot) = -ka*depot\n",
+    "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"))))
+  .memEv <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |>
+                            et(id = 1:100))
+
+  test_that(".rxMemDoIndLin names the driver the model will run", {
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memOde)), 0L)   # not a matExp model
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memPure)), 1L)  # pure matrix exponential
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memFree)), 2L)  # + state-free forcing
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memIl)), 4L)    # inductive linearization
+  })
+
+  test_that("an ODE model is charged nothing for indLin", {
+    .e <- rxMemoryEstimate(.memEv, model = .memOde,
+                           control = rxControl(cores = 4L, method = "liblsoda"))
+    expect_equal(as.numeric(.e$indLinExpCache), 0)
+    expect_equal(as.numeric(.e$indLinWork), 0)
+  })
+
+  test_that("a matExp() model is charged even when the control says otherwise", {
+    # rxSolve() force-selects method 3 for any matExp() model, so the control
+    # cannot veto the allocation.
+    .e <- rxMemoryEstimate(.memEv, model = .memPure,
+                           control = rxControl(cores = 4L, method = "liblsoda"))
+    expect_gt(as.numeric(.e$indLinExpCache), 0)
+    expect_gt(as.numeric(.e$indLinWork), 0)
+  })
+
+  test_that("the indLin estimate grows with the driver's augmented dimension", {
+    .est <- function(m) {
+      rxMemoryEstimate(.memEv, model = m, control = rxControl(cores = 4L))
+    }
+    .pure <- .est(.memPure)
+    .free <- .est(.memFree)
+    # The forcing can be nonzero in every compartment, so meOnly() augments
+    # further than a bolus does.
+    expect_gt(as.numeric(.free$indLinExpCache), as.numeric(.pure$indLinExpCache))
+    # The iterating driver holds far more scratch than the fixed grid.
+    expect_gt(as.numeric(.est(.memIl)$indLinWork), as.numeric(.pure$indLinWork))
+  })
+
+  test_that("the indLin estimate is per thread, not per subject", {
+    .cache <- function(nc) {
+      as.numeric(rxMemoryEstimate(.memEv, model = .memIl,
+                                  control = rxControl(cores = nc))$indLinExpCache)
+    }
+    expect_equal(.cache(4L), 4 * .cache(1L))
+    expect_equal(.cache(8L), 8 * .cache(1L))
+  })
+
+  test_that("indLin components are included in the total", {
+    .e <- rxMemoryEstimate(.memEv, model = .memIl, control = rxControl(cores = 4L))
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes",
+               "effectiveSubs")
+    .comps <- .e[!names(.e) %in% .meta]
+    expect_true("indLinExpCache" %in% names(.comps))
+    expect_true("indLinWork" %in% names(.comps))
+    expect_equal(as.numeric(.e$total),
+                 sum(vapply(.comps, as.numeric, numeric(1))))
+  })
+
+  test_that("the exponential cache stops being charged once it stops caching", {
+    # matrixExpCached() skips the cache above RX_INDLIN_EXPCACHE_MAXN2 (a
+    # 128-row operand), so the estimate has to fall off the same cliff rather
+    # than growing without bound.  The iterating driver reaches it at 3*neq.
+    .cache <- function(neq, doIndLin) {
+      unname(rxMemoryComponents_(
+        neq = neq, stateSize = neq, nlhs = 0L, npars = neq, neta = 0L, neps = 0L,
+        ncov = 0L, nsim = 1L, cores = 4L, nMtime = 0L, extraCmt = 0L, linB = 0L,
+        nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 10L,
+        nallTotal = 100, maxAllTimes = 10, stiff = 3L,
+        doIndLin = doIndLin)[["indLinExpCache"]])
+    }
+    expect_gt(.cache(42L, 3L), .cache(10L, 3L))   # 3*42 = 126, still cached
+    expect_lt(.cache(43L, 3L), .cache(42L, 3L))   # 3*43 = 129, over the cap
+    expect_lt(.cache(128L, 1L), .cache(127L, 1L)) # pure matExp: neq+1
+  })
 })

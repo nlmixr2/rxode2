@@ -20,6 +20,7 @@
 #'
 #' Swish(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'    r<- Swish(time)
@@ -28,6 +29,7 @@
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(x, e)
+#' }
 #'
 Swish <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
@@ -46,12 +48,14 @@ Swish <- function(x) {
 #' @examples
 #' dSwish(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'   r <- dSwish(time)
 #' })
 #' e <- et(c(-1, 0, 1, 2))
 #' rxSolve(x, e)
+#' }
 dSwish <- function(x) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   .Call(`_rxode2_activationF`, x, 18L)

@@ -95,6 +95,7 @@ sbuf firstErr;
 int firstErrD=0;
 
 vLines sbPm, sbPmDt, sbNrmL;
+vLines sbDoseArgVar, sbDoseArgCtx;
 sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
@@ -287,6 +288,8 @@ void parseFree(int last) {
   lineFree(&sbPm);
   lineFree(&sbPmDt);
   lineFree(&sbNrmL);
+  lineFree(&sbDoseArgVar);
+  lineFree(&sbDoseArgCtx);
   lineFree(&(tb.ss));
   lineFree(&(tb.de));
   lineFree(&(tb.str));
@@ -309,6 +312,12 @@ void parseFree(int last) {
   R_Free(tb.di);
   R_Free(tb.didx);
   R_Free(tb.dprop);
+  R_Free(tb.stmtT);
+  R_Free(tb.stmtK);
+  R_Free(tb.stmtC);
+  R_Free(tb.stmtR0);
+  R_Free(tb.stmtRn);
+  R_Free(tb.stmtRef);
   R_Free(tb.si);
   R_Free(tb.sin);
   R_Free(tb.strValI);
@@ -369,6 +378,8 @@ void reset(void) {
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   lineIni(&depotLines);
   lineIni(&centralLines);
   lineIni(&_dupStrs);
@@ -389,6 +400,12 @@ void reset(void) {
   tb.di		= R_Calloc(MXDER, int);
   tb.didx   = R_Calloc(MXDER, int);
   tb.dprop  = R_Calloc(MXDER, int);
+  tb.stmtT   = R_Calloc(MXSYM, int);
+  tb.stmtK   = R_Calloc(MXSYM, int);
+  tb.stmtC   = R_Calloc(MXSYM, int);
+  tb.stmtR0  = R_Calloc(MXSYM, int);
+  tb.stmtRn  = R_Calloc(MXSYM, int);
+  tb.stmtRef = R_Calloc(MXSYM, int);
   tb.didxn  = 1;
   tb.si     = R_Calloc(MXDER, int);
   tb.sin    = R_Calloc(MXDER, int);
@@ -464,6 +481,14 @@ void reset(void) {
   tb.hasDdt     = 0;
   tb.curDdt     = 0;
   tb.hasIndLinProp = 0;
+  tb.stmtN      = 0;
+  tb.stmtAlloc  = MXSYM;
+  tb.stmtRefN   = 0;
+  tb.stmtRefAlloc = MXSYM;
+  tb.curStmt    = -1;
+  tb.curIndLin  = 0;
+  tb.curLhs     = -1;
+  tb.nCond      = 0;
   tb.hasDelay   = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
@@ -600,6 +625,8 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   // do not free these, they remain until next parse for quick parsing of linCmt() models
   lineIni(&depotLines);
   lineIni(&centralLines);
@@ -622,6 +649,7 @@ void trans_internal(const char* parse_file, int isStr){
     if (tb.hasIndLinProp && !tb.isMexp) {
       trans_syntax_error_report_fn0("indLin() cannot be used without matExp() defined in the model");
     }
+    assertAdaptiveDosingArgsDeclared();
     nodeInfo dummyNi;
     niReset(&dummyNi);
     for (int j = 0; j < NV; j++) {
@@ -657,6 +685,9 @@ void trans_internal(const char* parse_file, int isStr){
         tb.didx[i] = abs(tb.didx[i]);
         tb.idu[i] = 1;
       }
+      // Has to come after the loop above: that is what registers the
+      // compartments, so the state list is not complete until it has run.
+      assertNoStateDependentMicro();
     }
   }
 }
@@ -850,6 +881,8 @@ void transIniNull(void) {
   lineNull(&(sbPm));
   lineNull(&(sbPmDt));
   lineNull(&(sbNrmL));
+  lineNull(&(sbDoseArgVar));
+  lineNull(&(sbDoseArgCtx));
   lineNull(&(depotLines));
   lineNull(&(centralLines));
   sNull(&(_gbuf));

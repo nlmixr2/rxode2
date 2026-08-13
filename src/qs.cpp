@@ -4,16 +4,6 @@
 #include "../inst/include/rxode2parse.h"
 
 Rcpp::Function loadNamespaceQs("loadNamespace", R_BaseNamespace);
-Rcpp::Environment qsNs;
-bool loadQsC = false;
-
-
-static void loadQs() {
-  if (!loadQsC) {
-    qsNs = loadNamespaceQs("qs2");
-    loadQsC = true;
-  }
-}
 
 extern "C" SEXP _rxode2_qsDes(SEXP const x) {
 BEGIN_RCPP
@@ -26,19 +16,16 @@ END_RCPP
 Rcpp::Function getRxFn(std::string name);
 
 extern "C" SEXP getRxode2ParseDf(void) {
-  loadQs();
   Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslation"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseDfBuiltin(void) {
-  loadQs();
   Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslationBuiltin"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
-  loadQs();
   Rcpp::Function getPtr = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetPointerAssignment"));
   return getPtr();
 }

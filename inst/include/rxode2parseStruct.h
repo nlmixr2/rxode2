@@ -52,7 +52,7 @@ typedef void (*t_dDur)(int _cSub, double t, double *y, double *_dDurSave);
 typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
 
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
+typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 
 typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
 typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);
@@ -117,6 +117,9 @@ typedef struct {
   int indLinPhiM;
   int indLinMatExpType;
   int indLinMatExpOrder;
+  int indLinStepSearch; // 0 = none, 1 = secant, 2 = exact
+  int indLinMaxIter;
+  int indLinRichardson; // 1 = Richardson-extrapolate to third order
   int nDisplayProgress;
   int ncoresRV;
   int isChol;
@@ -166,6 +169,9 @@ typedef struct {
   int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
   int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
   int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
+  int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
+  int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
+  int    indLinForcing;        /* forcing over a substep: 0 constant, 1 linear ramp between its endpoint values */
 } rx_solving_options;
 
 
@@ -341,7 +347,7 @@ struct rx_solving_options_ind_s {
   int indOwnAllocN;     // allocated capacity for event arrays (>= n_all_times)
   int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
   int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
-  int _atEventTime;     // set before each event-table interval; consumed once in dydt
+  int _atEventTime;     // set at an evid_() firing record; consumed once in calc_lhs
   int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
   int    autoMethod;             /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
   int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */

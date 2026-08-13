@@ -19,11 +19,13 @@ Leaky ReLU activation function
 
 lReLU(c(-1, 0, 1))
 
+\donttest{
 # Can use in rxode2 as well
 
 r <- rxode2({r <- lReLU(time)})
 e <- et(c(-1, 0, 1))
 rxSolve(r, e)
+}
 }
 \seealso{
 Other Activation Functions:

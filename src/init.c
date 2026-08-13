@@ -50,8 +50,14 @@ SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam
 SEXP _rxode2_setEventSensUseCalcJac(SEXP useCalcJac);
 SEXP _rxode2_setEventSensNParam3(SEXP nParam3);
 void rxode2EventSensLoad(SEXP trans, int active, int nState, int nParam, int nParam2);
-void rxode2EventSensSetActive(int active);
 SEXP _rxode2_eventSensLoad(SEXP trans, SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
+SEXP _rxode2_eventSensLoadFull(SEXP trans, SEXP active, SEXP nState, SEXP nParam, SEXP nParam2, SEXP nParam3, SEXP useCalcJac);
+SEXP _rxode2_eventSensSetDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2, SEXP nParam3, SEXP useCalcJac);
+SEXP _rxode2_eventSensGetDims(void);
+SEXP _rxode2_rxIndLinSteps(void);
+SEXP _rxode2_eventSensDeactivate(void);
+SEXP _rxode2_eventSensShapeSave(void);
+SEXP _rxode2_eventSensShapeRestore(SEXP buf);
 SEXP _rxode2_parseModel(SEXP type);
 SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
@@ -530,13 +536,22 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2setIndSolveLast = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndSolveLast2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setIndSolveLast2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolveLast2, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndCmt = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndCmt, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensShapeSizePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensShapeSize, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensShapeSavePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensShapeSave, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensShapeRestorePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensShapeRestore, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensLoadFullPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensLoadFull, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensGetDimsPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensGetDims, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensSetDimsPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetDims, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensSetActivePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetActive, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2EventSensDeactivatePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensDeactivate, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 88
+#define nVec 97
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -620,12 +635,21 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 79, rxode2getIndSolveLast2);
   SET_VECTOR_ELT(ret, 80, rxode2setIndSolveLast2);
   SET_VECTOR_ELT(ret, 81, rxode2rxUnifEng);
-  SET_VECTOR_ELT(ret, 82, rxode2rxRegisterParLoader);
-  SET_VECTOR_ELT(ret, 83, rxode2rxRemoveParLoader);
-  SET_VECTOR_ELT(ret, 84, rxode2rxRegisterDydtForce);
-  SET_VECTOR_ELT(ret, 85, rxode2rxRemoveDydtForce);
-  SET_VECTOR_ELT(ret, 86, rxode2rxRegisterParLoaderNamed);
-  SET_VECTOR_ELT(ret, 87, rxode2getIndCmt);
+  SET_VECTOR_ELT(ret, 82, rxode2getIndCmt);
+  SET_VECTOR_ELT(ret, 83, rxode2setIndCmt);
+  SET_VECTOR_ELT(ret, 84, rxode2EventSensShapeSizePtr);
+  SET_VECTOR_ELT(ret, 85, rxode2EventSensShapeSavePtr);
+  SET_VECTOR_ELT(ret, 86, rxode2EventSensShapeRestorePtr);
+  SET_VECTOR_ELT(ret, 87, rxode2EventSensLoadFullPtr);
+  SET_VECTOR_ELT(ret, 88, rxode2EventSensGetDimsPtr);
+  SET_VECTOR_ELT(ret, 89, rxode2EventSensSetDimsPtr);
+  SET_VECTOR_ELT(ret, 90, rxode2EventSensSetActivePtr);
+  SET_VECTOR_ELT(ret, 91, rxode2EventSensDeactivatePtr);
+  SET_VECTOR_ELT(ret, 92, rxode2rxRegisterParLoader);
+  SET_VECTOR_ELT(ret, 93, rxode2rxRemoveParLoader);
+  SET_VECTOR_ELT(ret, 94, rxode2rxRegisterDydtForce);
+  SET_VECTOR_ELT(ret, 95, rxode2rxRemoveDydtForce);
+  SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -637,6 +661,13 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 5, Rf_mkChar("rxode2isRstudio"));
   SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectE"));
   SET_STRING_ELT(retN, 7, Rf_mkChar("rxode2sortIds"));
+  // These two labels do not describe slots 8 and 9 (which are getSolvingOptions
+  // and getSolvingOptionsInd), but they are FROZEN.  A released downstream package
+  // may have snapshotted this name vector at build time and compare it at load, so
+  // renaming a slot breaks that package with no way to patch it retroactively.  The
+  // contract is the POSITION; the names are only labels, and correcting one is never
+  // worth breaking a reverse dependency.  Append new slots at the end -- never rename
+  // or reorder an existing one.
   SET_STRING_ELT(retN, 8, Rf_mkChar("getSolvingOptionsInd"));
   SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getUpdateInis"));
   SET_STRING_ELT(retN, 10, Rf_mkChar("rxode2_rxode2_rxModelVars_"));
@@ -711,12 +742,26 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 79, Rf_mkChar("rxode2getIndSolveLast2"));
   SET_STRING_ELT(retN, 80, Rf_mkChar("rxode2setIndSolveLast2"));
   SET_STRING_ELT(retN, 81, Rf_mkChar("rxode2rxUnifEng"));
-  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2rxRegisterParLoader"));
-  SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2rxRemoveParLoader"));
-  SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2rxRegisterDydtForce"));
-  SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2rxRemoveDydtForce"));
-  SET_STRING_ELT(retN, 86, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
-  SET_STRING_ELT(retN, 87, Rf_mkChar("rxode2getIndCmt"));
+  SET_STRING_ELT(retN, 82, Rf_mkChar("rxode2getIndCmt"));
+  SET_STRING_ELT(retN, 83, Rf_mkChar("rxode2setIndCmt"));
+  SET_STRING_ELT(retN, 84, Rf_mkChar("rxode2EventSensShapeSize"));
+  SET_STRING_ELT(retN, 85, Rf_mkChar("rxode2EventSensShapeSave"));
+  SET_STRING_ELT(retN, 86, Rf_mkChar("rxode2EventSensShapeRestore"));
+  SET_STRING_ELT(retN, 87, Rf_mkChar("rxode2EventSensLoadFull"));
+  SET_STRING_ELT(retN, 88, Rf_mkChar("rxode2EventSensGetDims"));
+  SET_STRING_ELT(retN, 89, Rf_mkChar("rxode2EventSensSetDims"));
+  SET_STRING_ELT(retN, 90, Rf_mkChar("rxode2EventSensSetActive"));
+  SET_STRING_ELT(retN, 91, Rf_mkChar("rxode2EventSensDeactivate"));
+  SET_STRING_ELT(retN, 92, Rf_mkChar("rxode2rxRegisterParLoader"));
+  SET_STRING_ELT(retN, 93, Rf_mkChar("rxode2rxRemoveParLoader"));
+  SET_STRING_ELT(retN, 94, Rf_mkChar("rxode2rxRegisterDydtForce"));
+  SET_STRING_ELT(retN, 95, Rf_mkChar("rxode2rxRemoveDydtForce"));
+  SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
+
+  // Nothing is validated here.  Every reverse dependency calls this at load, so a
+  // check that fails takes them all down at once and they cannot be patched
+  // retroactively.  The "every slot is filled" invariant is asserted in rxode2's own
+  // test suite instead (tests/testthat/test-event-sensitivities-api.R).
 
 #undef nVec
 
@@ -732,6 +777,8 @@ SEXP _rxode2_rxode2Ptr(void) {
 
 SEXP _rxode2_powerD(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP);
+SEXP _rxode2_powerLDL(SEXP, SEXP, SEXP, SEXP, SEXP,
+                      SEXP);
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
 SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS);
 SEXP _rxode2_macros2micros(SEXP p1, SEXP v1,
@@ -760,7 +807,7 @@ SEXP _rxode2_mexpit(SEXP p);
 SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
-SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
@@ -801,6 +848,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},
     {"_rxode2_itostr", (DL_FUNC) &_rxode2_itostr, 2},
     {"_rxode2_powerD", (DL_FUNC) &_rxode2_powerD, 6},
+    {"_rxode2_powerLDL", (DL_FUNC) &_rxode2_powerLDL, 6},
     {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
@@ -837,6 +885,13 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setEventSensUseCalcJac", (DL_FUNC) &_rxode2_setEventSensUseCalcJac, 1},
     {"_rxode2_setEventSensNParam3", (DL_FUNC) &_rxode2_setEventSensNParam3, 1},
     {"_rxode2_eventSensLoad", (DL_FUNC) &_rxode2_eventSensLoad, 5},
+    {"_rxode2_eventSensLoadFull", (DL_FUNC) &_rxode2_eventSensLoadFull, 7},
+    {"_rxode2_eventSensSetDims", (DL_FUNC) &_rxode2_eventSensSetDims, 6},
+    {"_rxode2_eventSensGetDims", (DL_FUNC) &_rxode2_eventSensGetDims, 0},
+    {"_rxode2_rxIndLinSteps", (DL_FUNC) &_rxode2_rxIndLinSteps, 0},
+    {"_rxode2_eventSensDeactivate", (DL_FUNC) &_rxode2_eventSensDeactivate, 0},
+    {"_rxode2_eventSensShapeSave", (DL_FUNC) &_rxode2_eventSensShapeSave, 0},
+    {"_rxode2_eventSensShapeRestore", (DL_FUNC) &_rxode2_eventSensShapeRestore, 1},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},
@@ -957,7 +1012,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
-    {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 19},
+    {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 21},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},

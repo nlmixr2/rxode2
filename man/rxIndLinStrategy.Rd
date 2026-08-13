@@ -24,6 +24,13 @@ When there is more than one state in a ODE that cannot be
 separated this specifies how it is incorporated into the matrix
 exponential.
 }
+\details{
+This no longer affects the conversion.  The \code{matExp()} rate matrix has to be
+constant in the states, and dividing any one state out of a multi-state
+product always leaves a coefficient that still reads a state, so such a term
+goes to the \code{indLin()} forcing whichever state is preferred.  The setting is
+kept so existing code keeps working.
+}
 \author{
 Matthew L. Fidler
 }

@@ -84,7 +84,7 @@ SUNLinearSolver SUNLinSol_Dense(SUNDIALS_MAYBE_UNUSED N_Vector y, SUNMatrix A,
 
   /* Create content */
   content = NULL;
-  content = (SUNLinearSolverContent_Dense)malloc(sizeof *content);
+  content = (SUNLinearSolverContent_Dense)calloc(1, sizeof *content);
   SUNAssertNull(content, SUN_ERR_MALLOC_FAIL);
 
   /* Attach content */

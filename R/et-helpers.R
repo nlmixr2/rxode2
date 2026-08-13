@@ -242,6 +242,9 @@
 #'
 .etHandlePositionalDataFrame <- function(xVal, envRef, et) {
   .df <- as.data.frame(xVal)
+  # as.data.frame() may drop it; re-tag first so the rename below tracks it
+  .extra <- .etExtraColsAttr(xVal) # nolint
+  if (length(.extra) > 0L) attr(.df, "rxEtExtraCols") <- .extra
   .df <- .etImportNormalizeNames(.df)
   # Convert deSolve-style (var/value/method) to canonical rxEt format
   if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
@@ -297,6 +300,7 @@
     envRef$show["addl"] <- TRUE
   }
   envRef$chunks <- .addRowsToChunks(envRef$chunks, .df) # nolint
+  .etImportExtraCols(envRef, .df, names(.df)) # nolint
   list(done = TRUE, et = et)
 }
 

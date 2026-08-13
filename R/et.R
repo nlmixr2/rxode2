@@ -653,16 +653,20 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   if (!is.null(.direct)) return(.direct)
 
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
-  # "id" returns the unique sorted ids present in the materialized table
-  if (arg == "id" && !is.null(.env)) {
-    return(.etPresentIds(.env)) # nolint
-  }
+  # "id" falls through to step 3 and returns the per-row id column
+  # (data-frame semantics, #1154); unique ids are available via x$env$ids
   if (!is.null(.env) && exists(arg, envir = .env, inherits = FALSE)) {
     return(get(arg, envir = .env, inherits = FALSE))
   }
 
   # 3. Materialize and return data column (time, amt, evid, etc.)
   if (!is.null(.env)) {
+    if (arg == "id") {
+      # computed from row counts rather than .etMaterialize(), which
+      # draws window/addl times from the RNG; the id column itself does
+      # not depend on the drawn values (rows sort by id first)
+      return(.etIdColumn(obj)) # nolint
+    }
     .mat <- .etMaterialize(obj) # nolint
     if (arg %in% names(.mat)) {
       .val <- .mat[[arg]]
@@ -731,12 +735,14 @@ names.rxEt <- function(x) {
   if (missing(j)) {
     # Row-only subset: return rxEt
     .full <- .etMaterialize(x) # nolint
+    if (!missing(i)) .etCheckLogicalRowIndex(i, nrow(.full)) # nolint
     .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
     .newEnv <- new.env(parent = emptyenv())
     .newEnv$units      <- .env0$units
     .newEnv$show       <- .env0$show
     .newEnv$randomType <- .env0$randomType
     .newEnv$canResize  <- FALSE
+    .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
     .newEnv$chunks     <- list()
     if (nrow(.sub) > 0L) {
       .newEnv$ids  <- sort(unique(as.integer(.sub$id)))
@@ -753,14 +759,230 @@ names.rxEt <- function(x) {
   }
   .mat <- as.data.frame(x, all = TRUE)
   if (missing(i)) return(.mat[, j, drop = drop])
+  .etCheckLogicalRowIndex(i, nrow(.mat)) # nolint
   .mat[i, j, drop = drop]
+}
+
+#' Guard against silent logical recycling in rxEt row subsets (#1154)
+#'
+#' @param i row index supplied to `[.rxEt`
+#' @param nrow number of rows in the materialized event table
+#' @return nothing; stops when a logical index cannot recycle cleanly
+#' @noRd
+.etCheckLogicalRowIndex <- function(i, nrow) {
+  if (is.logical(i) && length(i) > 1L && length(i) != nrow) {
+    stop(sprintf("logical row index of length %d does not match the number of event table rows (%d)",
+                 length(i), nrow), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Non-canonical columns that were explicitly assigned on an event table
+#'
+#' Columns that merely rode along with an imported data frame are not
+#' listed here, so they stay hidden in the default `as.data.frame()`
+#' output the way they were before #1154.
+#'
+#' @param env event table environment (or `NULL`)
+#' @return character vector of column names, possibly empty
+#' @noRd
+.etExtraCols <- function(env) {
+  if (!is.environment(env)) return(character(0))
+  .extra <- env$extraCols
+  if (is.null(.extra)) return(character(0))
+  as.character(.extra)
+}
+
+#' Columns displayed for an event table
+#'
+#' The canonical columns flagged in `show`, followed by any explicitly
+#' assigned columns (e.g. `ev$wt <- 70`) so they are not silently
+#' swallowed by the event table (#1154).
+#'
+#' @param nms names available in the data being displayed
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @param pre columns to place first (e.g. `id`)
+#' @return character vector of column names present in `nms`
+#' @noRd
+.etDisplayCols <- function(nms, show, extraCols = character(0), pre = character(0)) {
+  .cols <- pre
+  if (!is.null(show)) .cols <- c(.cols, names(show)[show])
+  intersect(unique(c(.cols, extraCols)), nms)
+}
+
+#' Provenance for explicitly assigned columns carried on a data frame
+#'
+#' `as.data.frame()` tags the columns that were explicitly assigned so a
+#' round trip back through `et()`/`$import.EventTable()` keeps showing
+#' them instead of demoting them to hidden imported covariates (#1154).
+#' A data frame built by hand carries no tag, so its covariates stay
+#' hidden the way they always have.
+#'
+#' @param df object to read the tag from
+#' @return character vector of column names, possibly empty
+#' @noRd
+.etExtraColsAttr <- function(df) {
+  .extra <- attr(df, "rxEtExtraCols", exact = TRUE)
+  if (is.null(.extra)) return(character(0))
+  as.character(.extra)
+}
+
+#' Carry an imported data frame's assigned-column tag into an event table
+#'
+#' @param env event table environment to modify by reference
+#' @param df object the tag was read from (before any renaming)
+#' @param nms names of the data actually stored
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etImportExtraCols <- function(env, df, nms) {
+  .etAddExtraCols(env, intersect(.etExtraColsAttr(df), nms)) # nolint
+}
+
+#' Mark an event table frame so it prints only its display columns
+#'
+#' Every column is kept for programmatic access; only the printed output
+#' is limited to `.etDisplayCols()`, so an un-grouped `$get.dosing()` no
+#' longer dumps hidden internal/covariate columns the way a compressed
+#' preview never did.
+#'
+#' @param x data frame to mark, or `NULL`
+#' @param env event table environment supplying `show`/`extraCols`
+#' @return `x` with the `rxEtPreview` print class attached
+#' @noRd
+.etMarkDisplay <- function(x, env) {
+  if (is.null(x) || inherits(x, "rxEtPreview")) return(x)
+  attr(x, "rxEtShow") <- env$show
+  attr(x, "rxEtExtraCols") <- .etExtraCols(env) # nolint
+  attr(x, "rxEtMarkedCols") <- names(x)
+  class(x) <- c("rxEtPreview", class(x))
+  x
+}
+
+#' Columns hidden when an event table frame prints
+#'
+#' Only columns that were present -- and hidden -- when the frame was
+#' marked are dropped, so a column added or renamed afterwards still
+#' prints instead of silently disappearing.
+#'
+#' @param nms names of the data being printed
+#' @param marked names present when the frame was marked, or `NULL`
+#' @param show named logical vector of canonical columns to show
+#' @param extraCols explicitly assigned non-canonical columns
+#' @return character vector of columns to keep, in `nms` order
+#' @noRd
+.etKeepCols <- function(nms, marked, show, extraCols = character(0)) {
+  if (is.null(marked)) marked <- nms
+  .hide <- setdiff(marked, .etDisplayCols(marked, show, extraCols, pre = "id"))
+  # not setdiff(): that would drop duplicated column names as well
+  .keep <- nms[!(nms %in% .hide)]
+  if (length(.keep) == 0L) return(nms)
+  .keep
+}
+
+#' Drop the display marking once an event table frame is modified
+#'
+#' The marking describes the columns the accessor returned, so it is only
+#' meaningful while the frame is unchanged.  Mutating one in place makes
+#' it the caller's own data frame -- the same way `dplyr` verbs do via
+#' `dplyr_reconstruct()` -- so the print class goes away rather than
+#' hiding a column that was just assigned.
+#'
+#' @param x object being assigned into
+#' @return `x` without the `rxEtPreview` class
+#' @noRd
+.etUnmarkDisplay <- function(x) {
+  if (inherits(x, "rxEtPreview")) {
+    class(x) <- setdiff(class(x), "rxEtPreview")
+  }
+  x
+}
+
+#' @export
+`$<-.rxEtPreview` <- function(x, name, value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[<-.rxEtPreview` <- function(x, ..., value) {
+  .etUnmarkDisplay(NextMethod()) # nolint
+}
+
+#' @export
+`[.rxEtPreview` <- function(x, ...) {
+  .ret <- NextMethod()
+  # The marking says which columns were hidden when the accessor built the
+  # frame, so it still describes a row subset -- `head(ev$get.dosing())` keeps
+  # printing display columns only.  Picking columns makes it the caller's own
+  # frame: `dplyr`'s column verbs (select(), relocate()) subset with `[`
+  # rather than going through `dplyr_reconstruct()`, so this is what degrades
+  # them to a plain data frame the way mutate()/filter() already were.  A bare
+  # rename is deliberately still marked: `.etKeepCols()` hides only the names
+  # marked at the time, so a renamed column keeps printing either way.
+  # `[.data.frame` keeps the marker attributes on the row form but drops them
+  # on the column form, so `x[TRUE]` would otherwise keep the class with
+  # nothing left to drive it and print every column anyway.
+  if (!is.data.frame(.ret) ||
+        is.null(attr(.ret, "rxEtShow", exact = TRUE)) ||
+        !identical(names(.ret), names(x))) {
+    return(.etUnmarkDisplay(.ret)) # nolint
+  }
+  # A compressed preview is the exception: its groups count rows, and print()
+  # both synthesizes the `id` column from them and heads the output with how
+  # many individuals they cover, so dropping rows makes the marking a lie.
+  if (!is.null(attr(.ret, "rxEtPreviewGroups", exact = TRUE)) &&
+        !identical(nrow(.ret), nrow(x))) {
+    return(.etUnmarkDisplay(.ret)) # nolint
+  }
+  .ret
+}
+
+#' Record a non-canonical column as explicitly assigned
+#'
+#' @param env event table environment to modify by reference
+#' @param cols character vector of column names to add
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etAddExtraCols <- function(env, cols) {
+  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  env$extraCols <- unique(c(.etExtraCols(env), as.character(cols))) # nolint
+  invisible(NULL)
+}
+
+#' Forget a non-canonical column that was removed from an event table
+#'
+#' @param env event table environment to modify by reference
+#' @param cols character vector of column names to drop
+#' @return nothing, called for the side effect on `env`
+#' @noRd
+.etDropExtraCols <- function(env, cols) {
+  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  env$extraCols <- setdiff(.etExtraCols(env), as.character(cols)) # nolint
+  invisible(NULL)
 }
 
 #' @export
 `$<-.rxEt` <- function(x, name, value) {
   .df <- .etMaterialize(x) # nolint
   .df[[name]] <- value
-  .rxEtRebuildShell(x, .df) # nolint
+  .ret <- .rxEtRebuildShell(x, .df) # nolint
+  # an explicitly assigned column should display, so the default
+  # as.data.frame() output reflects what will be solved (#1154)
+  .env <- .rxEtEnv(.ret) # nolint
+  if (is.null(value)) {
+    # the column was deleted, so it is neither shown nor tracked
+    .etDropExtraCols(.env, name) # nolint
+  } else if (name %in% names(.env$show)) {
+    .env$show[name] <- TRUE
+  } else {
+    .etAddExtraCols(.env, name) # nolint
+  }
+  .ret
 }
 
 drop_units.rxEt <- function(x) {
@@ -880,6 +1102,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       .newEnv$ndose      <- .env0$ndose
       .newEnv$randomType <- NA_integer_
       .newEnv$canResize  <- FALSE
+      .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
       .newEnv$groups     <- .sim$groups
       .newEnv$chunks     <- .sim$chunks
       return(structure(c(list(.env = .newEnv),
@@ -1230,6 +1453,9 @@ etSeq <- function(..., samples = c("clear", "use"),
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- unique(unlist(lapply(.etItems, function(.a) {
+    .etExtraCols(.rxEtEnv(.a)) # nolint
+  }), use.names = FALSE))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
@@ -1372,6 +1598,9 @@ etRbind <- function(..., samples = c("use", "clear"),
   .newEnv$ndose      <- .ndose
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- unique(unlist(lapply(Filter(is.rxEt, .ets), function(.a) { # nolint
+    .etExtraCols(.rxEtEnv(.a)) # nolint
+  }), use.names = FALSE))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
@@ -1491,14 +1720,18 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
   }
   .show <- .env$show
   .full <- .etMaterialize(x) # nolint
+  # keep explicitly assigned columns (e.g. covariates from ev$wt <- ...), #1154
+  .extraCols <- intersect(.etExtraCols(.env), names(.full)) # nolint
   if (isTRUE(.lst$all)) {
-    .full
+    .ret <- .full
   } else {
     .showCols <- names(.show)[.show]
     .showCols <- intersect(.showCols, names(.full))
-    .full[, .showCols, drop = FALSE]
+    .ret <- .full[, c(.showCols, setdiff(.extraCols, .showCols)), drop = FALSE]
   }
-
+  # tag which columns were assigned so et(as.data.frame(ev)) still shows them
+  if (length(.extraCols) > 0L) attr(.ret, "rxEtExtraCols") <- .extraCols
+  .ret
 }
 
 .datatable.aware <- TRUE # nolint
@@ -1580,6 +1813,7 @@ etExpand <- function(et) {
   }
   .newEnv$randomType <- NA_integer_
   .newEnv$canResize  <- FALSE
+  .newEnv$extraCols  <- .etExtraCols(.env) # nolint
   structure(c(list(.env = .newEnv),
               .etBuildMethods(.newEnv)), # nolint
             class = "rxEt")

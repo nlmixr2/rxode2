@@ -60,12 +60,12 @@ SUNLinearSolver SUNLinSolNewEmpty(SUNContext sunctx)
 
   /* create linear solver object */
   LS = NULL;
-  LS = (SUNLinearSolver)malloc(sizeof *LS);
+  LS = (SUNLinearSolver)calloc(1, sizeof *LS);
   SUNAssertNull(LS, SUN_ERR_MALLOC_FAIL);
 
   /* create linear solver ops structure */
   ops = NULL;
-  ops = (SUNLinearSolver_Ops)malloc(sizeof *ops);
+  ops = (SUNLinearSolver_Ops)calloc(1, sizeof *ops);
   SUNAssertNull(ops, SUN_ERR_MALLOC_FAIL);
 
   /* initialize operations to NULL */

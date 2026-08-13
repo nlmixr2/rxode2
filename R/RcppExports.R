@@ -948,7 +948,7 @@ rxInv <- function(matrix) {
 #' * `cholOmegaInv` gives the
 #'     Cholesky decomposition of the Omega Inverse matrix.
 #' * `omegaInv` gives the Omega Inverse matrix.
-#' * `d(omegaInv)` gives the `d(Omega^-1)` withe respect to the
+#' * `d(omegaInv)` gives the `d(Omega^-1)` with respect to the
 #'     theta parameter specified in `thetaNumber`.
 #' * `d(D)` gives the `d(diagonal(Omega^-1))` with respect to
 #'     the theta parameter specified in the `thetaNumber`
@@ -1003,12 +1003,18 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @param nsub      Number of subjects.
 #' @param nallTotal Total events across all subjects (sum of obs + doses).
 #' @param maxAllTimes Maximum events for any single subject.
+#' @param stiff     The solving method (\code{op$stiff}); only 3
+#'   (\code{"indLin"}) allocates anything extra here.
+#' @param doIndLin  Which matrix-exponential driver runs: 0 not a
+#'   \code{matExp()} model, 1 pure matrix exponential, 2 plus a state-free
+#'   \code{indLin()} forcing, 3/4 true inductive linearization (the adaptive,
+#'   iterating driver).  These cost very different amounts.
 #' @return Named numeric vector; each element is bytes for that allocation.
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 #' @noRd
-rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes) {
-    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes)
+rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin) {
+    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin)
 }
 
 rxOptRep_ <- function(input) {

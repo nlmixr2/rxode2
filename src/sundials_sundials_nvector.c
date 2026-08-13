@@ -53,12 +53,12 @@ N_Vector N_VNewEmpty(SUNContext sunctx)
 
   /* create vector object */
   v = NULL;
-  v = (N_Vector)malloc(sizeof *v);
+  v = (N_Vector)calloc(1, sizeof *v);
   SUNAssertNull(v, SUN_ERR_MALLOC_FAIL);
 
   /* create vector ops structure */
   ops = NULL;
-  ops = (N_Vector_Ops)malloc(sizeof *ops);
+  ops = (N_Vector_Ops)calloc(1, sizeof *ops);
   SUNAssertNull(ops, SUN_ERR_MALLOC_FAIL);
 
   /* initialize operations to NULL */

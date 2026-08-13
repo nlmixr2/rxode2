@@ -197,6 +197,25 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
       }
 		}
+    // Reset ind->linCmtSave -- the PER-THREAD linCmt() inter-event amount
+    // ("alast") save buffer (gLinSave sliced by thread id in
+    // getLinCmtSaveThread()), shared by every subject run on the same OpenMP
+    // thread and never otherwise cleared.  This is a cross-subject leak: when
+    // linCmt() takes its restore path (solvedIdx >= idx -- e.g. in the
+    // pre-dose window a modeled alag() creates) it returns without rewriting
+    // linCmtSave, and linSolve()/copyLinCmt() then copy the previous
+    // subject's amounts into this subject's solve buffer, which later steps
+    // use as Alast.  Wrong for every subject after the first on a thread
+    // whenever cores < nSub.  Slot 0 of the per-subject advance buffer
+    // (getAdvan(0)) needs no reset here: the op->inits memcpy above covers it,
+    // and it must NOT be zeroed -- nonzero linCmt() initial amounts supplied
+    // via inits= ride along in op->inits and are honored from slot 0.
+    // Pure-ODE models (numLin == numLinSens == 0) are skipped -> ODE solves
+    // are unchanged.
+    if ((op->numLin + op->numLinSens) > 0 && ind->linCmtSave != NULL) {
+      memset(ind->linCmtSave, 0,
+             (size_t)(op->numLin + op->numLinSens) * sizeof(double));
+    }
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {
@@ -330,7 +349,10 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    // bound before the increment; every extra dose can be before xp (e.g. two
+    // modeled duration steady state doses tied at one time), and reading
+    // extraDoseTimeIdx[extraDoseN[0]] then walks off the end of the pool
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra + 1 < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
@@ -405,7 +427,12 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
   }
-  ind->_atEventTime = 1;
+  // NOTE: ind->_atEventTime is deliberately NOT set here.  evid_() is fired
+  // once per record from updateSolve() (see par_solve.cpp) so that every
+  // method -- ODE, linCmt() and indLin() alike -- pushes the event at the
+  // record it was decided at.  Setting it here fired evid_() from dydt() at
+  // the START of the next integration interval, i.e. after the solver had
+  // already been asked to integrate past the pushed event's own time.
 }
 
 

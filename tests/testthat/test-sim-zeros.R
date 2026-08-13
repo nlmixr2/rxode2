@@ -151,7 +151,7 @@ rxTest({
 
     # ok now try just the control
 
-    .ctl <- rxControl(omega=lotri::lotri(eta1~c(0.0)))
+    .ctl <- rxControl(omega=lotri::lotri(eta1~0.0))
     expect_equal(.ctl$omega, NULL)
     expect_equal(.ctl$.zeros, "eta1")
 
@@ -167,7 +167,7 @@ rxTest({
     expect_equal(.ctl$omegaUpper, c(eta1=1, eta2=1))
 
     # sigma
-    .ctl <- rxControl(sigma=lotri::lotri(eps1~c(0.0)))
+    .ctl <- rxControl(sigma=lotri::lotri(eps1~0.0))
     expect_equal(.ctl$sigma, NULL)
     expect_equal(.ctl$.zeros, "eps1")
 
@@ -182,5 +182,105 @@ rxTest({
     expect_equal(.ctl$sigmaLower, c(eps1=-1, eps2=-1))
     expect_equal(.ctl$sigmaUpper, c(eps1=1, eps2=1))
 
+  })
+
+  test_that("a zeroed omega item reaches a matrix params too", {
+    f <- function() {
+      ini({
+        tbase <- 1
+        eta.base ~ fix(0)
+        addSd <- 1
+      })
+      model({
+        base <- tbase + eta.base
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .n <- 8L
+    .expected <- as.numeric(seq_len(.n))
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # the zeroed items were added to a data.frame params and appended to a
+    # named numeric one, but a matrix params matched neither branch, so the
+    # eta was never supplied and the solve failed with "The following
+    # parameter(s) are required for solving: eta.base"
+    .mat <- cbind(tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    .df <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .df, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected)
+
+    # a ui model never gets here when params supplies the item: the omega
+    # filter in .rxSolveFromUi() drops it from the omega first, so the supplied
+    # value is used.  That held for a data.frame already and now holds for a
+    # matrix too, which used to be invisible to that filter (names() of a
+    # matrix is NULL).
+    .matEta <- cbind(tbase = .expected, addSd = 1, eta.base = 5)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .matEta, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected + 5)
+
+    .dfEta <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1,
+                         eta.base = 5)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .dfEta, returnType = "data.frame"))
+    expect_equal(.rx$base, .expected + 5)
+  })
+
+  test_that("zeroVarParamHandle decides what a supplied zero variance value does", {
+    # the classic (non ui) path, where .zeros really is reached
+    tmp <- rxode2("base = tbase + eta.base;")
+    .n <- 4L
+    .expected <- as.numeric(seq_len(.n))
+    .ev <- et(0) |> et(id = seq_len(.n))
+    .om <- lotri::lotri(eta.base ~ 0.0)
+    .rxZeroVarParams <- getFromNamespace(".rxZeroVarParams", "rxode2")
+
+    .solve <- function(params, ...) {
+      suppressMessages(
+        rxSolve(tmp, .ev, params = params, omega = .om,
+                returnType = "data.frame", ...))$base
+    }
+
+    for (.p in list(cbind(tbase = .expected, eta.base = 5),
+                    data.frame(tbase = .expected, eta.base = 5))) {
+      # default: the supplied value is replaced by zero, and says so
+      expect_warning(.solve(.p), "replaced by zero")
+      expect_equal(suppressWarnings(.solve(.p)), .expected)
+      # ignore: replaced by zero, silently
+      expect_silent(.rx <- .solve(.p, zeroVarParamHandle = "ignore"))
+      expect_equal(.rx, .expected)
+      # keep: the supplied value is used -- the fit a matrix params gave before
+      expect_silent(.rx <- .solve(.p, zeroVarParamHandle = "keep"))
+      expect_equal(.rx, .expected + 5)
+    }
+
+    # nothing supplied for it: filled in with zero, and no warning either way
+    for (.p in list(cbind(tbase = .expected),
+                    data.frame(tbase = .expected))) {
+      expect_silent(.rx <- .solve(.p))
+      expect_equal(.rx, .expected)
+      expect_silent(.rx <- .solve(.p, zeroVarParamHandle = "keep"))
+      expect_equal(.rx, .expected)
+    }
+
+    # nothing supplied for it -> zero it whatever the handle says
+    expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1), "keep"),
+                 "eta.base")
+    expect_equal(.rxZeroVarParams("eta.base",
+                                           c(tbase = 1, eta.base = 5), "keep"),
+                 character(0))
+
+    # a control from an older rxode2 has no such element at all
+    expect_warning(
+      expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5),
+                                             NULL),
+                   "eta.base"),
+      "replaced by zero")
   })
 })

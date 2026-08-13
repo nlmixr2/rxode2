@@ -22,7 +22,8 @@ NULL
     units = c(dosing = NA_character_, time = NA_character_),
     show = .etDefaultShow(), # nolint
     randomType = NA_integer_,
-    canResize = TRUE
+    canResize = TRUE,
+    extraCols = character(0)
   )
   .env <- tryCatch(.rxEtEnv(x), error = function(e) NULL) # nolint
   if (is.environment(.env)) {
@@ -30,6 +31,7 @@ NULL
     .meta$show <- .env$show
     .meta$randomType <- .env$randomType
     .meta$canResize <- .env$canResize
+    .meta$extraCols <- .etExtraCols(.env) # nolint
   }
   .lst <- attr(attr(x, "class"), ".rxode2.lst", exact = TRUE)
   if (is.na(.meta$randomType) && !is.null(.lst$randomType)) {
@@ -108,7 +110,8 @@ NULL
     ),
     show = .show,
     randomType = suppressWarnings(max(c(.x$randomType, .y$randomType), na.rm = TRUE)),
-    canResize = isTRUE(.x$canResize) && isTRUE(.y$canResize)
+    canResize = isTRUE(.x$canResize) && isTRUE(.y$canResize),
+    extraCols = unique(c(.x$extraCols, .y$extraCols))
   )
 }
 
@@ -128,7 +131,8 @@ NULL
     units = c(dosing = NA_character_, time = NA_character_),
     show = .etDefaultShow(), # nolint
     randomType = NA_integer_,
-    canResize = TRUE
+    canResize = TRUE,
+    extraCols = character(0)
   )
   if (is.null(meta)) return(.ret)
   if (!is.null(meta$units)) .ret$units[names(meta$units)] <- meta$units
@@ -137,6 +141,7 @@ NULL
   }
   if (!is.null(meta$randomType)) .ret$randomType <- as.integer(meta$randomType)
   if (!is.null(meta$canResize)) .ret$canResize <- isTRUE(meta$canResize)
+  if (!is.null(meta$extraCols)) .ret$extraCols <- as.character(meta$extraCols)
   if (is.infinite(.ret$randomType)) .ret$randomType <- NA_integer_
   .ret
 }
@@ -177,6 +182,7 @@ NULL
     .env$randomType <- .meta$randomType
   }
   .env$canResize <- .meta$canResize
+  .etAddExtraCols(.env, .meta$extraCols) # nolint
   .proxy <- .etMaterialize(.et) # nolint
   attr(.proxy, "class") <- c("rxEt", "data.frame")
   attr(.proxy, ".rxEtEnv") <- .env
@@ -298,6 +304,15 @@ vec_cast.tibble.rxEt <- function(x, to, ...) {
 dplyr_reconstruct.rxEt <- function(data, template) {
   if (inherits(data, "rxEt")) {
     class(data) <- setdiff(class(data), "rxEt")
+  }
+  data
+}
+
+# dplyr keeps the class but drops the marker attributes a display-only
+# print needs, so degrade to a plain data frame the way rxEt does.
+dplyr_reconstruct.rxEtPreview <- function(data, template) {
+  if (inherits(data, "rxEtPreview")) {
+    class(data) <- setdiff(class(data), "rxEtPreview")
   }
   data
 }

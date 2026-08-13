@@ -4,7 +4,12 @@
 \alias{rxLastCompile}
 \title{Get the last compiled model information as alist}
 \usage{
-rxLastCompile()
+rxLastCompile(what = c("msg", "stderr", "stdout", "c"))
+}
+\arguments{
+\item{what}{Which elements to message to the console; by default all of
+them.  Use \code{what="stderr"} for the compiler error alone, or
+\code{what=character(0)} to message nothing and only take the returned list.}
 }
 \value{
 A list contains the following elements:
@@ -22,10 +27,12 @@ also message the contents to the console.
 Get the last compiled model information as alist
 }
 \examples{
+\donttest{
 rxode2({
   a <- b
 })
 rxLastCompile()
+}
 }
 \author{
 Matthew L. Fidler

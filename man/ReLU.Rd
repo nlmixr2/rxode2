@@ -22,6 +22,7 @@ The ReLU function is defined as the positive part of its argument: \eqn{f(x) = m
 
 ReLU(c(-1, 0, 1, 2))
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
    r=ReLU(time)
@@ -30,6 +31,7 @@ x <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{

@@ -210,8 +210,32 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     linB      = as.integer(.flags["linB"]),
     nMtime    = as.integer(.mv[["nMtime"]]),
     nLlik     = as.integer(.flags["nLlik"]),
-    nIndSim   = as.integer(.flags["nIndSim"])
+    nIndSim   = as.integer(.flags["nIndSim"]),
+    doIndLin  = .rxMemDoIndLin(.mv)
   )
+}
+#' Which matrix-exponential driver a model will run under
+#'
+#' Mirrors the `op$doIndLin` assignment in `src/rxData.cpp`, because what
+#' `method="indLin"` costs depends entirely on which of the four it is: a pure
+#' matrix exponential holds one rate matrix, while true inductive linearization
+#' iterates and carries a Jacobian, `P(h)` and its inverse as well.
+#'
+#' @param mv `rxModelVars()` of the model.
+#' @return 0 (not a `matExp()` model), 1 (pure matrix exponential), 2 (plus a
+#'   state-free `indLin()` forcing), 3 or 4 (true inductive linearization,
+#'   without and with a separate inhomogeneous term).
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemDoIndLin <- function(mv) {
+  .il <- mv[["indLin"]]
+  if (length(.il) != 4L) return(0L)
+  .hasF <- !is.null(.il[[2L]])
+  if (isTRUE(as.logical(.il[[3L]]))) {
+    if (.hasF) 4L else 3L
+  } else {
+    if (.hasF) 2L else 1L
+  }
 }
 #' Extract memory-relevant options from an rxControl object
 #'
@@ -229,6 +253,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
   .nSub  <- if (is.null(ctrl$nSub))  1L else as.integer(ctrl$nSub)
   .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
+  .stiff <- if (is.null(ctrl$method)) NA_integer_ else as.integer(ctrl$method)
   list(
     cores      = .cores,
     nsim       = .nsim,
@@ -236,7 +261,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     neps       = as.integer(.neps),
     nLlikAlloc = ctrl$nLlikAlloc,
     nSub       = .nSub,
-    nStud      = .nStud
+    nStud      = .nStud,
+    stiff      = .stiff
   )
 }
 #' Detect total physical RAM in bytes
@@ -400,6 +426,16 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param numLinSens Number of linear sensitivity parameters (FOCEi +
 #'   linCmt).
 #' @param numLin Number of linear compartment terms (FOCEi + linCmt).
+#' @param stiff Solving method as an integer (\code{\link{odeMethodToInt}});
+#'   only \code{3} (\code{"indLin"}) allocates anything extra.  Taken from
+#'   \code{control} when given, and overridden to \code{3} for any
+#'   \code{matExp()} model, since \code{rxSolve()} force-selects that method
+#'   for one whatever the control says.
+#' @param doIndLin Which matrix-exponential driver runs: \code{0} not a
+#'   \code{matExp()} model, \code{1} pure matrix exponential, \code{2} plus a
+#'   state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
+#'   linearization.  Taken from \code{model} when given.  These cost very
+#'   different amounts, so it is worth getting right.
 #' @return A named list of class \code{"rxMemoryEstimate"} whose
 #'   elements are raw byte counts plus \code{outputData},
 #'   \code{ramBytes}, \code{freeRamBytes}, \code{total},
@@ -449,7 +485,9 @@ rxMemoryEstimate <- function(
   nLlik     = 0L,
   nIndSim   = NULL,
   numLinSens = 0L,
-  numLin    = 0L) {
+  numLin    = 0L,
+  stiff     = NA_integer_,
+  doIndLin  = 0L) {
   .resolved <- .rxMemResolveInput(dat, control)
   dat <- .resolved$dat
   control <- .resolved$control
@@ -475,6 +513,7 @@ rxMemoryEstimate <- function(
     linB      <- .mi$linB
     nMtime    <- .mi$nMtime
     nLlik     <- .mi$nLlik
+    doIndLin  <- .mi$doIndLin
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
@@ -486,10 +525,26 @@ rxMemoryEstimate <- function(
     if (.ci$neta > 0L) neta <- .ci$neta
     if (.ci$neps > 0L) neps <- .ci$neps
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
+    if (!is.na(.ci$stiff)) stiff <- .ci$stiff
   }
   if (cores <= 0L) {
     cores <- 1L
   }
+  # `rxSolve()` force-selects method 3 for any matExp() model whatever the
+  # caller asked for (rxSolve.default), so the MODEL settles this, not the
+  # control -- a `matExp()` model with `method="liblsoda"` still solves, and
+  # still allocates, as indLin.
+  if (doIndLin > 0L) {
+    stiff <- 3L
+  } else if (is.na(stiff)) {
+    stiff <- -1L
+  }
+  # `method="indLin"` on an ODE model: rxSolve() rewrites it with rxToIndLin()
+  # before it gets here, so this only fires when rxMemoryEstimate() is called
+  # directly on the unconverted model.  Cost it as the iterating driver -- that
+  # is what a converted nonlinear model runs, and guessing low is the failure
+  # mode this estimate exists to avoid.
+  if (stiff == 3L && doIndLin == 0L) doIndLin <- 3L
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
   .nallVec     <- .summary$nobs + .summary$ndoses
@@ -532,7 +587,9 @@ rxMemoryEstimate <- function(
     numLin     = as.integer(numLin),
     nsub       = as.integer(.nsub),
     nallTotal  = as.double(.solveNallTotal),
-    maxAllTimes = as.double(.solveMaxAllTimes)
+    maxAllTimes = as.double(.solveMaxAllTimes),
+    stiff      = as.integer(stiff),
+    doIndLin   = as.integer(doIndLin)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
@@ -571,8 +628,16 @@ rxMemoryEstimate <- function(
   if (is.na(.est$freeRamBytes) || .est$freeRamBytes <= 0 || .est$effectiveSubs <= 0) {
     return(1L)
   }
-  .memPerSub <- as.numeric(.est$total) / max(1L, .est$effectiveSubs)
-  .avail <- .est$freeRamBytes * safetyFactor
+  # Per-THREAD allocations do not shrink when the chunk does: one subject at a
+  # time still needs the whole per-thread exponential cache and solver scratch.
+  # Dividing them by the subject count would understate the chunk, and would
+  # keep understating it however small the chunks got.  Take them off the top.
+  .fixedNames <- c("indLinExpCache", "indLinWork")
+  .fixed <- sum(vapply(.est[intersect(names(.est), .fixedNames)],
+                       as.numeric, numeric(1)))
+  .memPerSub <- (as.numeric(.est$total) - .fixed) / max(1L, .est$effectiveSubs)
+  .avail <- .est$freeRamBytes * safetyFactor - .fixed
+  if (.memPerSub <= 0 || .avail <= 0) return(1L)
   max(1L, as.integer(floor(.avail / .memPerSub)))
 }
 
@@ -613,6 +678,8 @@ print.rxMemoryEstimate <- function(x, ...) {
     ordId         = "ordId (subject ordering)",
     gInfusionRate = "gInfusionRate (per-thread infusion)",
     inds_global   = "inds_global (per-subject structs)",
+    indLinExpCache = "indLinExpCache (per-thread exponential cache)",
+    indLinWork    = "indLinWork (per-thread indLin scratch)",
     outputData    = "outputData (estimated returned data)"
   )
 

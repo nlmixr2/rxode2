@@ -364,8 +364,10 @@ rxTest({
 
     expect_equal(rxFromSE("Derivative(Swish(x), x)"), "dSwish(x)")
 
+    # the trailing paren closes the leading one; without it the expansion could
+    # not be parsed back, so a dSwish() model failed to load into symengine
     expect_equal(rxToSE("dSwish(x)"),
-                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x)))")
+                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x))))")
 
   })
 
@@ -408,41 +410,43 @@ rxTest({
       "(20*tanh(10*(a-b))-20*tanh(10*(a-b))^3)"
     )
 
+    ## Inequality derivatives are the nascent-delta bump +/-(k/2)*sech^2(k*(a-b))
+    ## centered on the boundary a==b (no atanh(2*tol-1) shift); see R/d.R.
     expect_equal(
       rxFromSE("Derivative(rxGeq(a,b), a)"),
-      "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxGeq(a,b), b)"),
-      "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxLeq(a,b), a)"),
-      "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxLeq(a,b), b)"),
-      "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxLt(a,b), a)"),
-      "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxLt(a,b), b)"),
-      "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
       rxFromSE("Derivative(rxGt(a,b), a)"),
-      "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(5-5*tanh(10*(a-b))^2)"
     )
     expect_equal(
       rxFromSE("Derivative(rxGt(a,b), b)"),
-      "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
+      "(-5+5*tanh(10*(a-b))^2)"
     )
 
     expect_equal(
@@ -458,6 +462,23 @@ rxTest({
       rxFromSE("Derivative(rxNot(a), a)"),
       "(-1)"
     )
+  })
+
+  test_that("abs/min/max derivatives use the centered relational bump", {
+    ## Composite operators expand through rxGt/rxLt, so their derivatives must
+    ## carry the centered bump.  (`get` is masked in a symengine env; capture
+    ## the Basic from assign()'s return value -- see CLAUDE.md.)
+    .s <- rxS("rx_pred_ = max(a, b)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "(a-b)*(5-5*tanh(10*(a-b))^2)+(a>b)")
+
+    .s <- rxS("rx_pred_ = min(a, b)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "(a-b)*(-5+5*tanh(10*(a-b))^2)+(a<b)")
+
+    .s <- rxS("rx_pred_ = abs(a)")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "-1+2*a*(5-5*tanh(10*(a-0))^2)+2*(a>0)")
   })
 
   # Test factor expansion by `rxSplitPlusQ'

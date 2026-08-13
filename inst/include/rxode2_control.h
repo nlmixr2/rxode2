@@ -131,4 +131,11 @@
 #define Rxc_chunkSize 126
 #define Rxc_parallel 127
 #define Rxc__zeros 128
+#define Rxc_zeroVarParamHandle 129
+#define Rxc_indLinStepSearch 130
+#define Rxc_indLinMaxIter 131
+#define Rxc_indLinRichardson 132
+#define Rxc_indLinIteration 133
+#define Rxc_indLinJac 134
+#define Rxc_indLinForcing 135
 #endif // __rxode2_control_H__

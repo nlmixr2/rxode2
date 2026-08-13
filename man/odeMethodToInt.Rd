@@ -39,7 +39,8 @@ solving, but allows user Jacobian specification.
 \item \code{"dop853"} -- DOP853 solver.  Does not support parallel thread-based
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
-must be setup specially to use this solving routine.
+must be setup specially to use this solving routine.  Supports
+parallel thread-based solving and honors \code{cores}.
 \item \code{"f78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
@@ -99,8 +100,8 @@ the \code{order} parameter to configure the number of intermediate
 steps.
 \item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}).
-\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (vendored
-from the sundialr package sources).  Supports thread-parallel solving and
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (sources
+and headers vendored into rxode2).  Supports thread-parallel solving and
 per-compartment absolute tolerances.
 \item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
 fixed-step Runge-Kutta method implemented via the libode library.

@@ -57,3 +57,11 @@ src/StanHeaders.def
 /.mcp.json
 /.claude/
 /.cache/
+tests/testthat/Rplots.pdf
+tests/testthat/_problems/
+
+# Build artifacts (R CMD build/INSTALL/check output)
+*.Rcheck/
+*.tar.gz
+*.tgz
+inst/tools/*.Rout

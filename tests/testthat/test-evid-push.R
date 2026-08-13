@@ -257,6 +257,9 @@ rxTest({
     test_that(paste0("in-model reset() matches an evid=3 reset event (",
                      meth,
                      ")"), {
+                       # rxode2#1214: the pushed reset and the identical
+                       # evid=3 event written in the data must give the same
+                       # solution on every method.
                        obs <- seq(0, 24, by = 1)
                        e <- et(amt = 100, time = 0) |>
                          et(amt = 50, time = 18) |>
@@ -289,7 +292,11 @@ rxTest({
                        wantReset <- want[want$time >= 13, ]
 
                        expect_equal(sum(got$time == 12), 2)
-                       expect_true(all(got$cp[got$time == 12] > 0))
+                       # The mtime() trigger record reports the state at the
+                       # moment the model decides to reset (pre-reset); the
+                       # observation at that same time reports post-reset.
+                       expect_true(got$cp[got$time == 12][1] > 0)
+                       expect_equal(got$cp[got$time == 12][2], 0)
                        expect_true(all(gotReset$cp[gotReset$time < 18] == 0))
                        expect_equal(gotReset$time, wantReset$time)
                        expect_equal(gotReset$depot, wantReset$depot, tolerance = 1e-5)
@@ -327,19 +334,133 @@ rxTest({
     wantLinReset <- wantLin[wantLin$time >= 13, ]
 
     expect_equal(sum(gotLin$time == 12), 2)
-    expect_true(all(gotLin$cp[gotLin$time == 12] == 0))
+    # Same ordering as the ODE methods: the mtime() trigger record is pre-reset,
+    # the observation at that time is post-reset.
+    expect_true(gotLin$cp[gotLin$time == 12][1] > 0)
+    expect_equal(gotLin$cp[gotLin$time == 12][2], 0)
     expect_true(all(gotLinReset$cp[gotLinReset$time < 18] == 0))
     expect_equal(gotLinReset$time, wantLinReset$time)
     expect_equal(gotLinReset$cp, wantLinReset$cp, tolerance = 1e-5)
   })
 
+  # rxode2#1214: a linCmt() model has no dydt() of its own, so it took a
+  # different evid_() firing path than the ODE methods.  Every dosing modifier
+  # pushed onto a linCmt compartment must reproduce the identical event written
+  # in the data, at the pushed time itself.
+  .linPushObs <- seq(0, 24, by = 1)
+  .linPushE <- et(amt = 100, time = 0) |>
+    et(amt = 50, time = 18) |>
+    et(.linPushObs)
+  .linPushP <- c(ka = 0.5, cl = 1, v = 10)
+  .linPushRef <- rxode2({
+    cp <- linCmt(ka, cl, v)
+  })
+
+  .linPushCheck <- function(mod, eRef) {
+    got <- rxSolve(mod, .linPushP, .linPushE)
+    want <- rxSolve(.linPushRef, .linPushP, eRef)
+    gotPush <- got[got$time >= 13, ]
+    wantPush <- want[want$time >= 13, ]
+    expect_equal(sum(got$time == 12), 2)
+    expect_equal(gotPush$time, wantPush$time)
+    expect_equal(gotPush$cp, wantPush$cp, tolerance = 1e-5)
+  }
+
+  test_that("in-model bolus() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          bolus(50, depot, 0, 0, 0)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 50, cmt = 1, evid = 1) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  test_that("in-model replace() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          replace(25, depot)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 25, cmt = 1, evid = 5) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  test_that("in-model multiply() push matches the same event in the data (linCmt)", {
+    .linPushCheck(
+      rxode2({
+        mtime(pushAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        if (t >= pushAt && t < pushAt + 0.5 && depot > 0) {
+          multiply(2, depot)
+        }
+      }),
+      et(amt = 100, time = 0) |>
+        et(time = 12, amt = 2, cmt = 1, evid = 6) |>
+        et(amt = 50, time = 18) |>
+        et(.linPushObs))
+  })
+
+  # indLin excluded: matExp()/indLin() cannot represent linCmt() states, so a
+  # mixed linCmt + ODE model does not build on it.  t54+sdirk43 excluded: it
+  # needs an analytical Jacobian, which cannot be generated for a mixed model,
+  # so it silently falls back to liblsoda.
+  for (meth in setdiff(.methods0, c("indLin", "t54+sdirk43"))) {
+    test_that(paste0("in-model replace() on a mixed linCmt + ODE model (",
+                     meth, ")"), {
+      obs <- seq(0, 24, by = 1)
+      e <- et(amt = 100, time = 0) |>
+        et(amt = 50, time = 18) |>
+        et(obs)
+      eRef <- et(amt = 100, time = 0) |>
+        et(time = 12, amt = 25, cmt = 1, evid = 5) |>
+        et(amt = 50, time = 18) |>
+        et(obs)
+
+      mod <- rxode2({
+        mtime(replaceAt) <- 12
+        cp <- linCmt(ka, cl, v)
+        d/dt(eff) <- ke0 * (cp - eff)
+        if (t >= replaceAt && t < replaceAt + 0.5 && depot > 0) {
+          replace(25, depot)
+        }
+      })
+      ref <- rxode2({
+        cp <- linCmt(ka, cl, v)
+        d/dt(eff) <- ke0 * (cp - eff)
+      })
+
+      p <- c(ka = 0.5, cl = 1, v = 10, ke0 = 0.3)
+      got <- rxSolve(mod, p, e, method = meth)
+      want <- rxSolve(ref, p, eRef, method = meth)
+      gotPush <- got[got$time >= 13, ]
+      wantPush <- want[want$time >= 13, ]
+
+      expect_equal(gotPush$time, wantPush$time)
+      expect_equal(gotPush$cp, wantPush$cp, tolerance = 1e-5)
+      expect_equal(gotPush$eff, wantPush$eff, tolerance = 1e-5)
+    })
+  }
+
   test_that("in-model replace() pushes a replacement event", {
+    # rxode2#1214: the pushed replacement and the identical evid=5 event
+    # written in the data (at the same time, t = 12) must agree on every method.
     obs <- seq(0, 24, by = 1)
     e <- et(amt = 100, time = 0) |>
       et(amt = 50, time = 18) |>
       et(obs)
     eRef <- et(amt = 100, time = 0) |>
-      et(time = 13, amt = 25, cmt = 1, evid = 5) |>
+      et(time = 12, amt = 25, cmt = 1, evid = 5) |>
       et(amt = 50, time = 18) |>
       et(obs)
 
@@ -378,12 +499,15 @@ rxTest({
     test_that(paste0("in-model multiply() pushes a multiplication event (",
                      meth,
                      ")"), {
+                       # rxode2#1214: the pushed multiplication and the
+                       # identical evid=6 event written in the data (at the same
+                       # time, t = 12) must agree on every method.
                        obs <- seq(0, 24, by = 1)
                        e <- et(amt = 100, time = 0) |>
                          et(amt = 50, time = 18) |>
                          et(obs)
                        eRef <- et(amt = 100, time = 0) |>
-                         et(time = 13, amt = 2, cmt = 1, evid = 6) |>
+                         et(time = 12, amt = 2, cmt = 1, evid = 6) |>
                          et(amt = 50, time = 18) |>
                          et(obs)
 
@@ -459,11 +583,13 @@ rxTest({
 
   for (meth in .methods0) {
     test_that(paste0("in-model bolus() passes ii to repeated bolus events (", meth, ")"), {
+      # rxode2#1214: the pushed bolus series and the identical evid=1 events
+      # written in the data (t = 12, 24, 36) must agree on every method.
       obs <- seq(0, 40, by = 1)
       e <- et(amt = 100, time = 0) |>
         et(obs)
       eRef <- et(amt = 100, time = 0) |>
-        et(time = 13, amt = 50, cmt = 1, evid = 1) |>
+        et(time = 12, amt = 50, cmt = 1, evid = 1) |>
         et(time = 24, amt = 50, cmt = 1, evid = 1) |>
         et(time = 36, amt = 50, cmt = 1, evid = 1) |>
         et(obs)
@@ -498,6 +624,188 @@ rxTest({
     })
   }
 
+  for (meth in .methods0) {
+    test_that(paste0("a rescheduled mtime() fires evid_() only once (", meth, ")"), {
+      # rxode2#1214: recomputeMtimeIfNeeded() reschedules a state-dependent
+      # mtime and the driver re-processes the same slot (its `i--`).  The record
+      # in that slot moves away, so the model body must run once for that time,
+      # on the settled pass -- not once per pass.
+      mod <- rxode2({
+        mtime(pushAt) <- 12 + 0.02 * central
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t >= 11.9 && t < 12.05) {
+          bolus(10, depot, 0, 0, 0)
+        }
+      })
+      p <- c(ka = 0.5, cl = 1, v = 10)
+      e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+      r <- rxSolve(mod, p, e, method = meth, addDosing = TRUE)
+      pushed <- r[!is.na(r$evid) & r$evid == 1 & r$amt == 10, ]
+      expect_equal(nrow(pushed), 1)
+      expect_equal(pushed$time, 12)
+    })
+  }
+
+  test_that("evid_() pushes are unaffected by dense=TRUE", {
+    # rxode2#1214: a dense segment integrates across every observation between
+    # two key events at once, which cannot honour an event the model decides on
+    # at one of those observations.  dense= is dropped (with a warning) for a
+    # model that pushes, and the solution matches the non-dense one exactly.
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+      if (t >= 12 && t < 12.5) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    e <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
+    plain <- rxSolve(mod, p, e, method = "dop853")
+    expect_warning(dens <- rxSolve(mod, p, e, method = "dop853", dense = TRUE),
+                   regexp = "evid_")
+    expect_equal(dens$time, plain$time)
+    expect_equal(dens$depot, plain$depot, tolerance = 1e-5)
+    expect_equal(dens$central, plain$central, tolerance = 1e-5)
+  })
+
+  test_that("delay() combined with an evid_() push is refused", {
+    # rxode2#1214: delay() needs dense output (a non-dense method records no
+    # history and silently returns wrong lagged values), while a dense segment
+    # integrates across every observation between two key events at once and so
+    # cannot apply an event pushed at one of those observations.  Honouring
+    # either one silently breaks the other -- delay() returned 0 for every
+    # lookup -- so the combination is refused.
+    expect_error(
+      rxSolve(rxode2({
+        d/dt(central) <- -cl / v * central
+        d/dt(eff) <- delay(central, 1.0) - eff
+        if (t >= 5 && t < 5.1) {
+          bolus(100, central, 0, 0, 0)
+        }
+      }), c(cl = 1, v = 10), et(amt = 100, time = 0) |> et(seq(0, 20, by = 1))),
+      regexp = "delay\\(\\) with evid_\\(\\)")
+
+    # the refusal is also enforced in solver setup, so a caller that does not
+    # come through rxSolve.default() cannot slip past it
+    mod <- rxode2({
+      d/dt(central) <- -cl / v * central
+      d/dt(eff) <- delay(central, 1.0) - eff
+      if (t >= 5 && t < 5.1) {
+        bolus(100, central, 0, 0, 0)
+      }
+    })
+    expect_error(
+      mod$solve(c(cl = 1, v = 10),
+                et(amt = 100, time = 0) |> et(seq(0, 20, by = 1))),
+      regexp = "delay\\(\\) with evid_\\(\\)")
+
+    # the same delay() model without a push still solves, and matches the
+    # identical dose written in the data
+    ref <- rxode2({
+      d/dt(central) <- -cl / v * central
+      d/dt(eff) <- delay(central, 1.0) - eff
+    })
+    p <- c(cl = 1, v = 10)
+    obs <- seq(0, 20, by = 1)
+    r <- rxSolve(ref, p, et(amt = 100, time = 0) |>
+                   et(time = 5, amt = 100, cmt = 1, evid = 1) |> et(obs))
+    expect_true(all(is.finite(r$eff)))
+    expect_true(r$eff[r$time == 20][1] > 1)
+  })
+
+  test_that("evid_() at the final record does not extend the timeline", {
+    # The last record starts no integration interval, so it does not push --
+    # otherwise an unconditional evid_() would append a record that pushes
+    # again, without bound.
+    mod <- rxode2({
+      d/dt(central) <- -cl / vd * central
+      cp <- central / vd
+      if (t >= 5) {
+        bolus(50, central, 0, 0, 0)
+      }
+    })
+    p <- c(cl = 1, vd = 10)
+    e <- et(amt = 100, time = 0) |> et(seq(0, 5, by = 1))
+    r <- rxSolve(mod, p, e, addDosing = TRUE)
+    expect_equal(max(r$time), 5)
+    expect_equal(sum(!is.na(r$evid) & r$evid == 1 & r$amt == 50), 0)
+  })
+
+  test_that("mtime() at a time already in the event table pushes once (rxode2#1152)", {
+    # The classic block form and the functional/ui form of the same model must
+    # push the same single dose.  They did not: rxSolve() defaults to
+    # useLinCmt=TRUE for a ui model, so this one is auto-converted to a
+    # linCmt() model and solved by the linCmt driver -- which used to fire
+    # evid_() from BOTH its internal dydt(xout) and a calc_lhs() pass for the
+    # same-time observation.  With mtime(visit1) <- 24 and 24 also in the
+    # sampling grid, both fired and the bolus was pushed twice.  There is now a
+    # single firing point (rxode2#1214), so every path pushes once.
+    ev <- et(amt = 300, cmt = "depot", time = 0) |> et(seq(0, 72, by = 1))
+    cnt <- function(d) {
+      d <- as.data.frame(d)
+      dose <- d[!is.na(d$evid) & d$evid != 0, ]
+      c(nAt24 = sum(dose$time == 24), total = sum(dose$amt))
+    }
+    p <- c(ka = 1.57, cl = 2.72, v = 31.5)
+
+    classic <- rxode2({
+      mtime(visit1) <- 24
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      if (t == visit1) bolus(300, depot, 0, 0, 0)
+    })
+    ui <- suppressMessages(function() {
+      ini({
+        ka <- 1.57
+        cl <- 2.72
+        v <- 31.5
+      })
+      model({
+        mtime(visit1) <- 24
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+        if (t == visit1) bolus(300, depot, 0, 0, 0)
+      })
+    })
+
+    want <- c(nAt24 = 1, total = 600)
+    expect_equal(cnt(rxSolve(classic, p, ev, addDosing = TRUE)), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE))), want)
+    # the ODE form of the same ui model (no linCmt conversion) must agree
+    expect_equal(cnt(suppressMessages(
+      rxSolve(ui, ev, addDosing = TRUE, useLinCmt = FALSE))), want)
+
+    # dropping 24 from the grid was the documented workaround; it must give the
+    # same answer as keeping it
+    evNo24 <- et(amt = 300, cmt = "depot", time = 0) |>
+      et(setdiff(seq(0, 72, by = 1), 24))
+    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE))), want)
+
+    # two mtime()s in the grid scaled the doubling; 300 + 300 + 300, not 1500
+    ui2 <- suppressMessages(function() {
+      ini({
+        ka <- 1.57
+        cl <- 2.72
+        v <- 31.5
+      })
+      model({
+        mtime(visit1) <- 24
+        mtime(visit2) <- 48
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+        if (t == visit1 || t == visit2) bolus(300, depot, 0, 0, 0)
+      })
+    })
+    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE))),
+                 c(nAt24 = 1, total = 900))
+  })
+
   test_that("past-time evid_() produces a warning", {
     m3 <- rxode2({
       d/dt(x) <- -x
@@ -523,7 +831,10 @@ rxTest({
     e <- et(amt = 100, time = 0) |> et(c(0, 6, 12))
     p <- c(cl = 1, vd = 10)
     r <- rxSolve(m4, p, e)
-    expect_equal(nrow(r), 5) # 5 observations should be in the output
+    # 0, 6, 12 from the data; 5.5 pushed from t=0, 11 from t=5.5, 11.5 from
+    # t=6, then 16.5 and 17 from t=11 and t=11.5 (the model body runs once per
+    # distinct record time, so each newly pushed time pushes again while t<12)
+    expect_equal(sort(r$time), c(0, 5.5, 6, 11, 11.5, 12, 16.5, 17))
   })
 
   test_that("obs() pushes multiple observation rows", {

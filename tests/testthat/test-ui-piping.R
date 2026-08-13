@@ -2364,4 +2364,99 @@ rxTest({
 
 
   })
+
+  test_that("piping appends a state after the simulation model is cached (persistent meta)", {
+    # Realizing $simulationModel populates meta$.simModelBase.  Piping copies
+    # the previous model's meta env (to keep sticky items); the copy must not
+    # share the env by reference -- otherwise either model can pick up the
+    # other's cached simulation model, in whichever order they are solved.
+    f <- function() {
+      ini({
+        ke <- 1
+        sd <- 0.1
+      })
+      model({
+        d/dt(CENTRAL) <- -ke * CENTRAL
+        cp <- CENTRAL
+        cp ~ add(sd)
+      })
+    }
+    m <- rxode2(f)
+    # prime the cached simulation model before modifying the model
+    expect_false(is.null(m$simulationModel))
+
+    m2 <- m %>% model(d/dt(AUC) <- cp, append = TRUE)
+    # the meta env must not be shared by reference after piping
+    expect_false(identical(rxUiDecompress(m)$meta, rxUiDecompress(m2)$meta))
+    # the appended state must be present in the (rebuilt) simulation model
+    expect_true("AUC" %in% rxModelVars(m2$simulationModel)$state)
+
+    .ev <- et(amt = 100, cmt = "CENTRAL") %>% et(0:5)
+    s <- suppressWarnings(rxSolve(m2, .ev))
+    expect_true("AUC" %in% names(s))
+
+    # solving the piped model must not contaminate the original model
+    expect_false("AUC" %in% rxModelVars(m$simulationModel)$state)
+    s1 <- suppressWarnings(rxSolve(m, .ev))
+    expect_false("AUC" %in% names(s1))
+
+    # reverse order: solve the original first, then the piped model
+    m3 <- rxode2(f)
+    expect_false(is.null(m3$simulationModel))
+    m4 <- m3 %>% model(d/dt(AUC) <- cp, append = TRUE)
+    s3 <- suppressWarnings(rxSolve(m3, .ev))
+    expect_false("AUC" %in% names(s3))
+    s4 <- suppressWarnings(rxSolve(m4, .ev))
+    expect_true("AUC" %in% names(s4))
+
+    # ini() piping must not leak the piped estimates into the original's
+    # cached simulation model (theta is stored on the cached TOS)
+    m5 <- rxode2(f)
+    expect_false(is.null(m5$simulationModel))
+    m6 <- m5 %>% ini(ke = 5)
+    expect_false(is.null(m6$simulationModel))
+    expect_equal(m5$simulationModel$theta[["ke"]], 1)
+    expect_equal(m6$simulationModel$theta[["ke"]], 5)
+  })
+
+  test_that("forking the meta env on piping preserves metadata semantics", {
+    # Only the meta env itself is new; metadata carried over must behave as it
+    # did when meta was shared -- nested envs stay shared (reference
+    # semantics), closures keep working, and parent chains are intact.
+    f <- function() {
+      ini({
+        ke <- 1
+        sd <- 0.1
+      })
+      model({
+        d/dt(CENTRAL) <- -ke * CENTRAL
+        cp <- CENTRAL
+        cp ~ add(sd)
+      })
+    }
+    m <- rxode2(f)
+
+    .ctx <- new.env(parent = baseenv())
+    evalq({
+      k <- 1
+      getK <- function() k
+      expr <- quote(sum(1, 2))
+    }, .ctx)
+    m$ctx <- .ctx
+    m$plainMeta <- "kept"
+
+    m2 <- m %>% model(d/dt(AUC) <- cp, append = TRUE)
+
+    # plain metadata carries over
+    expect_equal(m2$ctx$k, 1)
+    expect_equal(m2$plainMeta, "kept")
+    # closures stored in meta still evaluate
+    expect_equal(m2$ctx$getK(), 1)
+    # parent chain of a nested env survives (baseenv() -> sum() visible)
+    expect_equal(eval(m2$ctx$expr, m2$ctx), 3)
+    # nested envs keep reference semantics: still the same env, not a clone
+    expect_true(identical(m2$ctx, .ctx))
+    m2$ctx$k <- 5
+    expect_equal(.ctx$getK(), 5)
+  })
 })

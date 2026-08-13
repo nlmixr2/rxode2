@@ -67,20 +67,24 @@ summary(rxC(rxode2model))
 With a model that did not compile successfully, you can get the code by:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$c)
+cat(rxode2::rxLastCompile(character(0))$c)
 ```
 
 To get the compile error you can use:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stderr)
 ```
 
-If you need stout too you can get that with
+If you need stdout too you can get that with
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stdout)
 ```
+
+`rxLastCompile()` messages the sections named by its `what=` argument (all of
+them by default), so `character(0)` takes the list without echoing anything;
+`rxLastCompile("stderr")` echoes just the compiler error.
 
 ### Regenerate Grammar, Documentation and Build Artifacts
 
@@ -140,6 +144,15 @@ devtools::document()
 > change breaks a reverse dependency, the released reverse dependency cannot be
 > patched retroactively, so the fix belongs in rxode2 — not in the reverse
 > dependency.
+>
+> **Never add an unrequested check, assertion, or validation on a path that a
+> reverse dependency executes** (package load, `.onLoad` helpers,
+> `_rxode2_rxode2Ptr()`, `rxSolve`, `rxUi` accessors). CRAN runs every strong
+> reverse dependency against a submission, so one such check that fires fails all
+> of them at once and gets the submission rejected. The same goes for
+> "correcting" any already-released name, label, slot, column, or return value:
+> tidying it is never worth the break. Assert in rxode2's own tests instead, and
+> if a real incompatibility needs a guard, ask first.
 
 **Event Table** (`src/et.cpp`, `src/etTran.cpp`, `R/et.R`):
 
@@ -284,6 +297,30 @@ that package loads. To add a new function `foo` (copy any existing entry, e.g.
 Appending at a new index is backward compatible (older consumers read the lower
 indices and ignore the new one). Changing any `inst/include/*.h` header requires
 a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
+
+> [!IMPORTANT]
+> **The pointer table is APPEND-ONLY, and `_rxode2_rxode2Ptr()` never validates
+> anything.** The positional table exists precisely so a new rxode2 can be
+> submitted while every already-released reverse dependency keeps working. Two
+> rules, both absolute:
+>
+> 1. **Never rename, reorder, remove, or repurpose an existing slot -- including
+>    its `SET_STRING_ELT(retN, ...)` LABEL.** The label is not documentation you
+>    may tidy: a released downstream package may have snapshotted the name vector
+>    at build time and compare it at load. Slots 8 and 9 are deliberately
+>    mislabeled and frozen for exactly this reason; correcting them in 5.1.6 made
+>    every reverse-dependency check fail at CRAN. If a label is wrong, leave it
+>    wrong and add a comment. Only ever append at the end.
+> 2. **Never add a check to `_rxode2_rxode2Ptr()` or to a downstream package's
+>    load path.** Every reverse dependency calls it at load, so a check that fails
+>    takes them all down at once, and a released reverse dependency cannot be
+>    patched retroactively. Assert invariants in rxode2's own test suite instead
+>    (`tests/testthat/test-event-sensitivities-api.R`), never at load time.
+>
+> The same reasoning applies to the **semantics** of an already-released entry
+> point: changing what `getIndCmt()` returns for a given input is a breaking
+> change to code you cannot patch. Add a new entry point instead of changing an
+> existing one, and do not do either as an incidental "fix" -- ask first.
 
 #### `src/init.c` is the MANUAL `.Call` registration table (hardcoded arities)
 

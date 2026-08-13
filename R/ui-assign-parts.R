@@ -122,7 +122,18 @@
   oldModel <- rxUiDecompress(oldModel)
   lapply(c("meta", "sticky", "model", "modelName"), function(x) {
     if (exists(x, envir=oldModel)) {
-      assign(x, get(x, envir=oldModel), envir=newModel)
+      if (x == "meta") {
+        # meta must be forked, not shared by reference: the simulation-model
+        # cache (`.simModelBase`) lives in meta, so a shared env lets either
+        # model pick up the other's cached simulation model after piping.
+        # This is the invariant rxUiGet.simulationModel documents and
+        # .copyUi() already follows.  The fork is shallow (see
+        # .copyMetaForPiping) so metadata carried over keeps the reference
+        # semantics it had when meta was shared.
+        assign(x, .copyMetaForPiping(get(x, envir=oldModel)), envir=newModel)
+      } else {
+        assign(x, get(x, envir=oldModel), envir=newModel)
+      }
     }
   })
   if (rename || .modelsNearlySame(newModel, oldModel)) {
@@ -182,7 +193,7 @@
 #' information (like data)
 #'
 #' @param x The rxUi object
-#' @param envir environment where the assignment ocurs
+#' @param envir environment where the assignment occurs
 #' @param value the value that will be assigned
 #' @return The rxode2 ui/function
 #' @export

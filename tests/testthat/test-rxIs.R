@@ -1,7 +1,7 @@
 rxTest({
   test_that("rxIs tests", {
-    skip_if_not(file.exists(test_path("test-data-setup.qs2")))
-    dat <- qs2::qs_read(test_path("test-data-setup.qs2"))
+    skip_if_not(file.exists(test_path("test-data-setup.rds")))
+    dat <- readRDS(test_path("test-data-setup.rds"))
     dat <- tibble::as_tibble(dat)
     expect_true(rxIs(dat, "data.frame"))
     expect_true(rxIs(dat, "tbl"))

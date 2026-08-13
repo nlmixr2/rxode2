@@ -13,14 +13,16 @@
 #'
 #' ELU(c(-1, 0, 1, 2), 2)
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
-#'    r=SELU(time)
+#'    r=ELU(time, 2)
 #' })
 #'
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(x, e)
+#' }
 #'
 ELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
@@ -47,6 +49,7 @@ ELU <- function(x, alpha=1) {
 #' dELUa(c(-1, 0, 1, 2), 2)
 #' d2ELUa(c(-1, 0, 1, 2), 2)
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' r <- rxode2({
 #'   r1=dELU(time, 2)
@@ -58,6 +61,7 @@ ELU <- function(x, alpha=1) {
 #'
 #' e <- et(c(-1, 0, 1, 2))
 #' rxSolve(r, e)
+#' }
 dELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)

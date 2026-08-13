@@ -4,7 +4,11 @@ R_NegInf <- -Inf # nolint
 R_PosInf <- Inf # nolint
 NA_LOGICAL <- NA # nolint
 
-.linCmtSens <- NULL
+## Must match what `rxode2()` stores for its `linCmtSens` default (the default
+## choice vector collapsed to the value `match.arg()` picks): it is folded into
+## the parsed md5, so a NULL here would make the first build of a session hash
+## differently from every later one (c() drops NULL).
+.linCmtSens <- "linCmtA"
 .clearME <- function() {
   assignInMyNamespace(".rxMECode", "")
   assignInMyNamespace(".indLinInfo", list())
@@ -292,6 +296,7 @@ NA_LOGICAL <- NA # nolint
 #' @eval .rxodeBuildCode()
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
+#' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion removeSource
 #' @importFrom stats setNames update dnorm integrate
@@ -322,8 +327,9 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     rxParseSuppressMsg()
-    .modelName <- try(as.character(substitute(model)), silent=TRUE)
-    if (inherits(.modelName, "try-error")) .modelName <- NULL
+    # named where it is used, so a `rxModelName()` method sees the model
+    # expression only after it has been forced
+    .modelNameExpr <- substitute(model)
     if (!missing(modName)) {
       if (!checkmate::testCharacter(modName, max.len = 1)) {
         stop("'modName' has to be a single length character", call. = FALSE)
@@ -381,7 +387,10 @@ rxode2 <- # nolint
           stop("model functions can only be called with one argument", call.=FALSE)
         }
         .tmp <- rxUiDecompress(.rxFunction2ui(model))
-        assign("modelName", .modelName, envir=.tmp)
+        # unconditional: `model()` named this after the function
+        # `.rxFunction2ui()` rebuilt, so an unnamed model has to clear that
+        assign("modelName", .rxModelNameFromExpr(.modelNameExpr, envir=envir),
+               envir=.tmp)
         return(rxUiCompress(.tmp))
       } else if (is(model, "rxode2")) {
         package <- get("package", model)
@@ -408,20 +417,37 @@ rxode2 <- # nolint
     assignInMyNamespace(".rxEventSensCacheKey",
                         if (.eventSensActiveReq) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
-    .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel, indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
+    ## Set BEFORE the parse: `.linCmtSens` is folded into the parsed md5, so
+    ## assigning it afterwards hashed this build with the previous call's value.
+    ## The default is the whole choice vector, which `match.arg()` resolves to
+    ## its first element -- so collapse an in-effect default to that scalar and
+    ## the default and an explicit "linCmtA" share one cache key instead of
+    ## compiling the identical model twice.  Only the untouched default is
+    ## collapsed; an explicit value is passed through so validation is unchanged.
+    if (identical(linCmtSens, c("linCmtA", "linCmtB"))) {
+      linCmtSens <- "linCmtA"
+    }
     assignInMyNamespace(".linCmtSens", linCmtSens)
+    ## Detection parse -- no sensitivity/Jacobian expansion yet.  A linCmt()
+    ## model has to have its linCmt() resolved (linCmtGen) BEFORE the
+    ## sensitivities are expanded: expanding first and then re-parsing the
+    ## expanded text with `calcSens=` (what this used to do) ran the expansion
+    ## twice, splicing spurious 2nd/3rd-order rx__sens_rx__sens_*__ compartments
+    ## into the model and interleaving the state layout, which broke the
+    ## sensitivities of every mixed ODE+linCmt() model (nlmixr2/rxode2#1119).
+    ## `linCmtGen()` rewrites the text of whatever was parsed LAST, so it has to
+    ## run directly after this parse -- hence also `indLin=FALSE` here, since
+    ## rxToIndLin() would leave a rewritten matrix-exponential model as the last
+    ## parse.
+    .env$.mv <- rxGetModel(model, collapseModel = collapseModel, indLin = FALSE)
     .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
       calcJac <- TRUE
-      .env$.mv <- rxGetModel(model, calcSens = calcSens, calcJac = calcJac,
-                             collapseModel = collapseModel, indLin = indLin,
-                             calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
     }
     if (.isLinCmt) {
       .env$.linCmtM <- rxNorm(.env$.mv)
       .vars <- c(.env$.mv$params, .env$.mv$lhs, .env$.mv$slhs)
-      .env$.mv <- rxGetModel(.Call(
+      model <- .Call(
         `_rxode2_linCmtGen`,
         length(.env$.mv$state),
         .vars,
@@ -431,10 +457,54 @@ rxode2 <- # nolint
           )[match.arg(linCmtSens)],
           NULL
         ), verbose
-      ),
-      calcSens = calcSens, calcJac = calcJac, collapseModel = collapseModel,
-      indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
+      )
     }
+    ## The linCmt()-resolved but NOT yet sensitivity-expanded text.  Every
+    ## re-parse below restarts from here: re-parsing the EXPANDED text with
+    ## `calcSens=` expands a second time (nlmixr2/rxode2#1119).
+    .modelBase <- model
+    .eventSensKeyAtParse <- .rxEventSensCacheKey
+    .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
+                           collapseModel = collapseModel, indLin = indLin,
+                           calcSens2 = calcSens2, calcSens3 = calcSens3)
+    .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
+    ## Warn when sensitivities are requested on a linCmt() model whose ODE
+    ## compartment name collides with a linCmt reserved name: the ODE state loses
+    ## its sensitivity expansion, so its sensitivities are silently incorrect.
+    if (!is.null(calcSens)) {
+      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
+      if (length(.linCollide) > 0L) {
+        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
+                "' share a name with linCmt() reserved compartments; ",
+                "sensitivities will be incorrect -- rename them", call. = FALSE)
+      }
+    }
+    .indLinSens <- length(.env$.mv$indLin) > 0L &&
+      length(.env$.mv$sens) > 0L
+    if (.indLinSens) {
+      .eventSensEffectiveMode <- "jump"
+    }
+    if (.eventSensActiveReq || .indLinSens) {
+      .eventSensEffectiveMode <- .rxEventSensModeForMap(.eventSensEffectiveMode, .env$.mv)
+    }
+    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
+      .indLinSens
+    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
+      length(.rxEventSensOdeStates(.env$.mv)) > 0L
+    .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
+    assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
+    ## Re-parse only when the decision above changed an input to the parse: the
+    ## jump injection needs the full state Jacobian, and the mode is folded into
+    ## the parsed md5/cache key.  Always from `.modelBase`, never from the
+    ## already-expanded text.
+    if ((.eventSensNeedsJac && !isTRUE(calcJac)) ||
+          !identical(.eventSensCacheKey, .eventSensKeyAtParse)) {
+      if (.eventSensNeedsJac) calcJac <- TRUE
+      .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
+                             collapseModel = collapseModel, indLin = indLin,
+                             calcSens2 = calcSens2, calcSens3 = calcSens3)
+    }
+    .env$eventSens <- .eventSensEffectiveMode
     model <- rxNorm(.env$.mv)
     class(model) <- "rxModelText"
     .env$.model <- model
@@ -460,44 +530,6 @@ rxode2 <- # nolint
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
-    .eventSensEffectiveMode <- .rxEventSensEffectiveMode(.eventSensMode, .env$.mv)
-    ## Warn when sensitivities are requested on a linCmt() model whose ODE
-    ## compartment name collides with a linCmt reserved name: the ODE state loses
-    ## its sensitivity expansion, so its sensitivities are silently incorrect.
-    if (!is.null(calcSens)) {
-      .linCollide <- .rxLinCmtNameCollision(.env$.mv)
-      if (length(.linCollide) > 0L) {
-        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
-                "' share a name with linCmt() reserved compartments; ",
-                "sensitivities will be incorrect -- rename them", call. = FALSE)
-      }
-    }
-    .indLinSens <- length(.env$.mv$indLin) > 0L &&
-      length(.env$.mv$sens) > 0L
-    if (.indLinSens) {
-      .eventSensEffectiveMode <- "jump"
-    }
-    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
-      .indLinSens
-    .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
-      length(.eventSensOdeStates) > 0L
-    if (.eventSensNeedsJac && !isTRUE(calcJac)) {
-      calcJac <- TRUE
-      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
-                             calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    }
-    .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
-    if (!identical(.eventSensCacheKey, .rxEventSensCacheKey)) {
-      assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
-      .env$.mv <- rxGetModel(rxNorm(.env$.mv), calcSens = calcSens,
-                             calcJac = calcJac, collapseModel = collapseModel,
-                             indLin = indLin, calcSens2 = calcSens2, calcSens3 = calcSens3)
-      .eventSensOdeStates <- setdiff(.env$.mv$normal.state, .rxLinCmt(.env$.mv))
-    }
-    .env$eventSens <- .eventSensEffectiveMode
     ## Phase-A event-sensitivity metadata (index map + dosing-parameter total
     ## derivatives); NULL for mode "fd" or models without sensitivities.
     .env$eventSensInfo <- if (.eventSensActive) .rxEventSensInfo(.env$.mv, .eventSensEffectiveMode) else NULL
@@ -702,6 +734,11 @@ rxode2 <- # nolint
       .f <- get(.n, envir = .env$cmpMgr)
       if (is.function(.f)) assign(.n, removeSource(.f), envir = .env$cmpMgr)
     }
+    ## Two closures escape the sweep above -- assignPtr's `.f`, and `.badBuild` inside
+    ## the LIST .rxDll$.call, which ls() never walks.  They hold independent references
+    ## to the same srcfilealias, so leaving either keeps the session alive and the sweep
+    ## measures as no change at all.  See rxStripModelSrc().
+    rxStripModelSrc(.env)
     .env$calcJac <- (length(.mv$dfdy) > 0)
     .env$calcSens <- (length(.mv$sens) > 0)
     class(.env) <- "rxode2"
@@ -843,6 +880,14 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
   }
   .oldEventSensKey <- .rxEventSensCacheKey
   on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
+  ## `.indLinInfo` is a session global folded into the parsed md5 by rxMd5().  It
+  ## is an OUTPUT of parsing (this call's own indLin/mexp branches below re-set
+  ## it before codegen), never an input, so clear any value left by a prior
+  ## build BEFORE the parse below hashes the model -- otherwise a stale
+  ## descriptor from an earlier matrix-exponential build (or from a rxSensMatExp
+  ## that never fully compiled) makes an unrelated plain model hash differently
+  ## depending on build order.
+  assignInMyNamespace(".indLinInfo", list())
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
     .calcSens <- TRUE
@@ -1270,7 +1315,8 @@ coef.rxode2 <- function(object,
 }
 
 .rxPre <- function(model,
-                   modName = NULL) {
+                   modName = NULL,
+                   eventSensCode = NULL) {
   if (!is.null(modName)) {
     if (is.null(.pkg)) {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_", .Platform$r_arch, "_")
@@ -1283,7 +1329,82 @@ coef.rxode2 <- function(object,
     .cache <- .rxModelVarsCCache
     .modelPrefix <- paste0("rx_", .mv$md5["parsed_md5"], "_", .Platform$r_arch, "_")
   }
+  # `eventSensCode` changes the GENERATED C but is not part of the model text, so
+  # without it two variants of one model (event sensitivities on vs off) derive the
+  # same prefix -- and therefore the same .c/.so path in the rxode2 cache.  The second
+  # build overwrites the first, while any model object created earlier still resolves
+  # its entry points BY NAME (R_GetCCallable) and so silently starts executing the
+  # other variant: declared `lhs` width unchanged, most slots never written.  See #1171.
+  #
+  # Only extend the prefix when there IS event-sensitivity code, so every existing
+  # cache entry keeps its current path and nothing is invalidated for the common case.
+  .esKey <- .rxEventSensKey(eventSensCode)
+  if (nzchar(.esKey)) {
+    .modelPrefix <- paste0(substr(.modelPrefix, 0, nchar(.modelPrefix) - 1), "es", .esKey, "_")
+  }
   return(.modelPrefix)
+}
+
+#' Drop the srcrefs that pin a whole R session onto a compiled model
+#'
+#' A compiled model is kept in `.rxModels` for the life of the session, so
+#' anything it retains is retained forever.  [utils::removeSource()] is already
+#' swept over the model environment and its `cmpMgr`, but two closures escape
+#' that sweep -- `.f` in `assignPtr`'s environment and `.badBuild` in the list
+#' `.rxDll$.call` -- and each holds an independent reference to a srcref whose
+#' `srcfilealias` captures the session, so both must be stripped.  Called
+#' internally by [rxode2()]; exported for downstream packages that build models
+#' themselves.
+#'
+#' @param mod compiled rxode2 model
+#' @return `mod`, modified in place
+#' @examples
+#' \donttest{
+#' mod <- rxode2({
+#'   d/dt(intestine) <- -a * intestine
+#'   d/dt(blood) <- a * intestine - b * blood
+#' })
+#' rxStripModelSrc(mod)
+#' }
+#' @export
+#' @keywords internal
+rxStripModelSrc <- function(mod) {
+  if (!is.environment(mod)) return(mod)
+  .strip <- function(env, nm) {
+    if (!is.environment(env)) return(invisible(NULL))
+    .f <- tryCatch(get(nm, envir = env, inherits = FALSE), error = function(e) NULL)
+    if (is.function(.f)) {
+      tryCatch(assign(nm, removeSource(.f), envir = env), error = function(e) NULL)
+    }
+    invisible(NULL)
+  }
+  .ap <- tryCatch(get("assignPtr", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.function(.ap)) .strip(environment(.ap), ".f")
+  .dll <- tryCatch(get(".rxDll", envir = mod, inherits = FALSE), error = function(e) NULL)
+  if (is.list(.dll) && is.function(.dll$.call)) .strip(environment(.dll$.call), ".badBuild")
+  mod
+}
+
+#' Short digest of the event-sensitivity code bodies, or "" when there are none
+#'
+#' Part of the compiled-model cache key: two builds of one model text whose
+#' `eventSensCode` differs generate different C and must not share a `.so`.
+#' @param eventSensCode character vector of C body lines, or NULL
+#' @return a short hex string, or "" when there is no event-sensitivity code
+#' @noRd
+.rxEventSensKey <- function(eventSensCode) {
+  if (is.null(eventSensCode)) return("")
+  .code <- as.character(eventSensCode)
+  # NA is normalized to "" IN PLACE rather than dropped: dropping changes the vector's
+  # LENGTH, which both makes c("a", NA) and c("a") key differently (a needless
+  # recompile) and -- worse -- lets two different slot layouts collapse onto one key.
+  .code[is.na(.code)] <- ""
+  if (length(.code) == 0L || !any(nzchar(.code))) return("")
+  # digest the VECTOR, not a pasted string: a slot's body may itself contain newlines,
+  # so any in-band separator is ambiguous -- c("a\nb", "") and c("a", "b") would have to
+  # be told apart by trailing-separator count alone.  Serializing the vector keeps the
+  # element boundaries.
+  substr(digest::digest(.code, algo = "md5"), 1L, 8L)
 }
 
 .md5Rx <- NULL
@@ -1661,6 +1782,10 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 .rxCompileEnv$cc <- NA_character_
 #' Get the last compiled model information as alist
 #'
+#' @param what Which elements to message to the console; by default all of
+#'   them.  Use `what="stderr"` for the compiler error alone, or
+#'   `what=character(0)` to message nothing and only take the returned list.
+#'
 #' @return A list contains the following elements:
 #'
 #' * `msg` the message for a bad compilation, or NULL if successful.
@@ -1677,16 +1802,154 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
+#' \donttest{
 #' rxode2({
 #'   a <- b
 #' })
 #' rxLastCompile()
-rxLastCompile <- function() {
-  lapply(names(.rxCompileEnv$lst), function(nm) {
-    cli::rule(left = nm)
+#' }
+rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
+  what <- intersect(what, names(.rxCompileEnv$lst))
+  lapply(what, function(nm) {
+    message(cli::rule(left = nm))
     message(.rxCompileEnv$lst[[nm]])
   })
   return(invisible(.rxCompileEnv$lst))
+}
+#' Compiler diagnostic lines from a compilation's standard error
+#'
+#' @param stderr Character vector (or single string) of the compiler's
+#'   standard error.
+#'
+#' @param max Maximum number of diagnostic lines to return.
+#'
+#' @return Character vector of the compiler's error lines (warnings and
+#'   progress chatter dropped), at most `max` long.  The number of
+#'   diagnostic lines found before truncation is in the `"n"` attribute.
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxCompileErrLines <- function(stderr, max = getOption("rxode2.compileErrLines", 10L)) {
+  # this runs while reporting a build failure, so a bad option must not throw
+  max <- suppressWarnings(try(as.integer(max), silent = TRUE))
+  if (inherits(max, "try-error") || length(max) != 1L ||
+        is.na(max) || max < 1L) {
+    max <- 10L
+  }
+  if (length(stderr) == 0L) return(structure(character(0), n = 0L))
+  # a localized toolchain emits bytes that need not be valid in this locale,
+  # and strsplit() and every regex below would choke on them
+  .txt <- iconv(paste(stderr, collapse = "\n"), "", "UTF-8", sub = "?")
+  if (length(.txt) != 1L || is.na(.txt)) return(structure(character(0), n = 0L))
+  .lines <- unlist(strsplit(.txt, "\n", fixed = TRUE))
+  .lines <- sub("\r$", "", .lines)
+  .lines <- .lines[nzchar(trimws(.lines))]
+  # "error:", "fatal error:" and the MSVC-style "error C2065:"
+  .reErr <- paste0("(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:",
+                   "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z]+[0-9]+[[:space:]]*:")
+  # a compiler, linker or loader diagnostic, not a warning or a progress line
+  .re <- paste0(.reErr,
+                "|undefined reference to",
+                "|undefined symbol",
+                "|unable to load shared object",
+                "|cannot open output file",
+                "|cannot find -l",
+                "|cannot execute",
+                # the tool may be named by its full path
+                "|(^|[[:space:]])([^[:space:]]*[/\\\\])?(ld|collect2|cc1|cc1plus)(\\.exe)?:",
+                "|ld returned [0-9]+ exit status")
+  .err <- unique(.lines[grepl(.re, .lines, perl = TRUE, ignore.case = TRUE)])
+  # R CMD SHLIB's own wrapper line says nothing the diagnostics do not
+  .err <- .err[!grepl("^ERROR: compilation failed", .err)]
+  # a line the tool names may have dragged in that is only a warning
+  .err <- .err[!grepl("(^|[^[:alnum:]_])warning[[:space:]]*:", .err,
+                      perl = TRUE, ignore.case = TRUE) |
+                 grepl(.reErr, .err, perl = TRUE, ignore.case = TRUE)]
+  .n <- length(.err)
+  if (.n > max) .err <- .err[seq_len(max)]
+  structure(.err, n = .n)
+}
+#' Does a failed compilation look like a broken toolchain?
+#'
+#' @param stderr Character vector (or single string) of the compiler's
+#'   standard error.
+#'
+#' @param errLines Compiler diagnostics from [.rxCompileErrLines()].
+#'
+#' @return `TRUE` when the failure points at the user's compiler setup
+#'   (nothing was compiled, a tool was missing, a library was not found)
+#'   rather than at the C code rxode2 generated.  A diagnostic naming a
+#'   source file and line is about the code being compiled -- that is,
+#'   rxode2's generated C -- while a compiler driver, linker or loader that
+#'   fails without ever reaching the source is about the setup.
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxCompileToolchainProblem <- function(stderr, errLines = .rxCompileErrLines(stderr)) {
+  if (length(errLines) == 0L) return(TRUE)
+  # eg "rx_abc.c:214:23: error: 'ETA' undeclared", or the MSVC-style
+  # "rx_abc.c(214): error C2065: 'ETA': undeclared identifier"
+  .located <- paste0(
+    "(^|[[:space:]])[^[:space:]]+",
+    "(:[0-9]+(:[0-9]+)?:|\\([0-9]+(,[0-9]+)?\\)[[:space:]]*:)",
+    "[[:space:]]*(fatal[[:space:]]+)?error([[:space:]]+[A-Z]+[0-9]+)?[[:space:]]*:"
+  )
+  if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) return(FALSE)
+  # a symbol rxode2 asked for and did not supply is also rxode2's to fix
+  !any(grepl("undefined reference to|undefined symbol", errLines,
+             perl = TRUE, ignore.case = TRUE))
+}
+#' Message a failed model build
+#'
+#' Shows the compiler's own diagnostics (and nothing else) plus how to get
+#' the full compiler output, and blames the toolchain only when the failure
+#' actually looks like a toolchain problem.
+#'
+#' @param msg The message describing what step failed.
+#'
+#' @param stderr Standard error of the compilation, possibly `NULL`.
+#'
+#' @param kind One of `"compile"` (the model did not build), `"load"` (it
+#'   built but would not load) or `"modelVars"` (it loaded without the model
+#'   variables).
+#'
+#' @return Nothing, called for the messages
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.rxBadBuildMsg <- function(msg, stderr, kind = "compile") {
+  .err <- .rxCompileErrLines(stderr)
+  .toolchain <- .rxCompileToolchainProblem(stderr, .err)
+  message(paste0("Error building the model: ", msg))
+  if (length(.err) > 0L) {
+    message(paste(.err, collapse = "\n"))
+    .n <- attr(.err, "n")
+    if (.n > length(.err)) {
+      message(sprintf("(%d more compiler error line(s) not shown)", .n - length(.err)))
+    }
+  }
+  message("for the full compiler output and the generated C code use:")
+  message("  rxode2::rxLastCompile(\"stderr\") # the whole compiler error")
+  message("  rxode2::rxLastCompile(\"c\")      # the generated C code")
+  message("  rxode2::rxLastCompile()         # everything, as a list too")
+  if (kind == "load") {
+    message("the model compiled but could not be loaded")
+  }
+  if (kind == "modelVars" || !.toolchain) {
+    message("this points at the C code rxode2 generated, not at your setup;")
+    message("please report it at https://github.com/nlmixr2/rxode2/issues")
+    return(invisible())
+  }
+  if (.Platform$OS.type == "windows") {
+    message("this could be because your Rtools is not set up correctly")
+  } else {
+    message("please make sure you have a working C compiler set up")
+  }
+  message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
+  invisible()
 }
 #' Was the last compilation successful?
 #'
@@ -1742,7 +2005,7 @@ rxCompile.rxModelVars <- function(model, # Model
   model <- rxGetModel(model)
 
   if (is.null(prefix)) {
-    prefix <- .rxPre(model, modName)
+    prefix <- .rxPre(model, modName, eventSensCode)
   }
   if (is.null(dir)) {
     if (getOption("rxode2.tempfiles", TRUE)) {
@@ -1770,6 +2033,32 @@ rxCompile.rxModelVars <- function(model, # Model
   .cDllFile <- file.path(.dir, sprintf("%s%s", substr(prefix, 0, nchar(prefix) - 1), .Platform$dynlib.ext))
   .allModVars <- NULL
   .needCompile <- TRUE
+  # .out is filled in by the compilation below; the load/model-variable
+  # failures are reachable without compiling, so .badBuild is defined here
+  # (and tolerates a NULL .out) rather than inside the compilation branch.
+  .out <- NULL
+  # whatever is saved belongs to an earlier model; a cached load that never
+  # compiles would otherwise leave rxLastCompile() reporting that one, and
+  # .rxLastCompileSuccess() still reporting its failure
+  .rxCompileEnv$lst <- list()
+  .rxCompileEnv$success <- TRUE
+  .badBuild <- function(msg, cSrc = TRUE, kind = "compile", detail = NULL) {
+    if (!is.null(.out)) {
+      .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
+    }
+    .rxCompileEnv$lst[["msg"]] <- gettext(msg)
+    if (cSrc && file.exists(.cFile)) {
+      .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
+    }
+    if (length(detail) > 0L) {
+      # eg what the loader said, which is the only account of that failure
+      .rxCompileEnv$lst[["stderr"]] <-
+        paste(c(.rxCompileEnv$lst[["stderr"]], detail), collapse = "\n")
+    }
+    .rxCompileEnv$success <- FALSE
+    .rxBadBuildMsg(msg, .rxCompileEnv$lst[["stderr"]], kind)
+    stop(msg, call. = FALSE)
+  }
   if (file.exists(.cDllFile)) {
     .modVars <- sprintf("%smodel_vars", prefix)
     if (!missing(prefix) && !missing(dir) &&
@@ -1854,8 +2143,37 @@ rxCompile.rxModelVars <- function(model, # Model
         .j <- 0
         .i <- 0
         .trans <- c(.mv$trans, .mv$md5)
-        ## Load model into memory if needed
-        if (.Call(`_rxode2_codeLoaded`) == 0L) .rxModelVarsCharacter(setNames(.mv$model, NULL))
+        ## Load model into memory if needed.
+        ##
+        ## `_rxode2_codegen` below emits C from the parser's GLOBAL
+        ## `.rxModelVarsLast`, not from `model` -- so the parsed state has to be
+        ## THIS model.  Testing `codeLoaded() == 0L` alone is not enough: it only
+        ## asks whether *some* model is loaded.  Whenever the loaded model is a
+        ## DIFFERENT one, the C written out is that other model's while the
+        ## artifact keeps this model's md5-derived name, and the returned
+        ## `modVars` (read back from the DLL) describe the wrong model entirely.
+        ##
+        ## `rxode2()` never hits this, because it parses and then immediately
+        ## compiles.  A RE-compile does: an existing model object whose .so is
+        ## gone (a saved fit restored in a new session -- its DLL lived in the
+        ## original session's tempdir) reaches here via rxDynLoad() ->
+        ## `$compile()` long after some other model was parsed.  Measured on a
+        ## restored SAEM fit: the mu-referenced prediction model `param(tcl,tv)`
+        ## came back as the fit's base model `param(tcl,eta.cl,tv,eta.v)`, so
+        ## every later solve failed with "parameter(s) are required for solving:
+        ## eta.v, eta.cl".
+        ##
+        ## Re-parse unless the loaded model is provably this one.  Only the model
+        ## SYNTAX (`normModel`) is parsed: the sibling `indLin` slot holds
+        ## generated matrix-exponential C, and it is restored from `.indLinInfo`
+        ## / `.rxMECode` a few lines below anyway.
+        .lastMd5 <- .rxModelVarsLast$md5["parsed_md5"]
+        if (.Call(`_rxode2_codeLoaded`) == 0L ||
+              length(.lastMd5) != 1L || anyNA(.lastMd5) ||
+              !identical(as.character(.lastMd5),
+                         as.character(.mv$md5["parsed_md5"]))) {
+          .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
+        }
         .prefix2 <- .rxModelVarsCCache[[3]]
         ## SEXP pMd5, SEXP timeId, SEXP fixInis
         .newMod <- FALSE
@@ -1943,27 +2261,9 @@ rxCompile.rxModelVars <- function(model, # Model
         .stderr <- rawToChar(.out$stderr)
         .rxCompileEnv$lst <- list()
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
-          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, sep = "\n")
+          .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, collapse = "\n")
         }
         .rxCompileEnv$success <- TRUE
-        .badBuild <- function(msg, cSrc = TRUE) {
-          .rxCompileEnv$lst[["msg"]] <- gettext(msg)
-          .rxCompileEnv$lst[["stdout"]] <- rawToChar(.out$stdout)
-          if (cSrc) {
-            .rxCompileEnv$lst[["c"]] <- paste(readLines(.cFile), collapse = "\n")
-          } else {
-            dyn.load(.cDllFile)
-          }
-          message("Error building the model: see rxode2::rxLastCompile()")
-          .rxCompileEnv$success <- FALSE
-          if (.Platform$OS.type == "windows") {
-            message("this could be because your Rtools is not set up correctly")
-          } else {
-            message("please make sure you have a working C compiler set up")
-          }
-          message("you may use nlmixr2::nlmixr2CheckInstall() to help diagnose installation issues")
-          stop(msg, call. = FALSE)
-        }
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }
@@ -1975,7 +2275,9 @@ rxCompile.rxModelVars <- function(model, # Model
       rxUnloadAll()
       .tmp <- try(dynLoad(.cDllFile), silent = TRUE)
       if (inherits(.tmp, "try-error")) {
-        .badBuild("Error loading model (though dll exists)", cSrc = FALSE)
+        .badBuild("Error loading model (though dll exists)", cSrc = FALSE,
+                  kind = "load",
+                  detail = conditionMessage(attr(.tmp, "condition")))
       } else {
         warning("unloaded all rxode2 dlls before loading the current DLL", call. = FALSE)
       }
@@ -1984,7 +2286,7 @@ rxCompile.rxModelVars <- function(model, # Model
     if (is.loaded(.modVars)) {
       .allModVars <- eval(parse(text = sprintf(".Call(\"%s\")", .modVars)), envir = .GlobalEnv)
     } else {
-      .badBuild("Error, model doesn't have correct model variables.")
+      .badBuild("Error, model doesn't have correct model variables.", kind = "modelVars")
     }
   }
   ## removeSource() so this generated closure does not carry a srcref back to

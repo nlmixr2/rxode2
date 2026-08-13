@@ -296,8 +296,8 @@ rxTest({
   test_that("Can solve the system.", {
 
     ## Now Try multi-subject data.
-    skip_if_not(file.exists(test_path("test-data-setup.qs2")))
-    dat <- qs2::qs_read(test_path("test-data-setup.qs2"))
+    skip_if_not(file.exists(test_path("test-data-setup.rds")))
+    dat <- readRDS(test_path("test-data-setup.rds"))
 
     pk7a <-
       suppressWarnings(rxSolve(

@@ -414,69 +414,67 @@ rxTest({
 
 })
 
-test_that("evid4", {
+rxTest({
+  test_that("evid4", {
 
-  df <- "unjXVBZLQAAAAAAAAA|;[2w|gWj2@.BAC\"><F{+,tB@nC\"OG>cYAAA:CVtAADHMA@AAAH7m0<fKSxAAAHAAAqCAA@QBALtBtaL:ulyT9D<6FlgSH3VY{:CzWmyT92D:3VKf^Uk0D/KlgSH)W3eN\"gA6}[aRBkMhY@DIAAAmyT92D/KQVv`B.zUsYp3dW9}c[HcX&&2x~Rmt>ole6)~[4w?8~<*_~002|T)NAkM(.P4sqVA$!_r+7ZIG\"&2OCt8octWple6|M#FZ4AS.~mTdE}e[4dAU\"AAlBAABtEAIA.AAAe+8^eQCELgO[aAk}B\"tWG$Y.GFCAFAAAbf=[]@|REvG92CEAAAl%?#%85plMbAAAmu:x2o1a,<][cCM%RzQLAA&a7SOQC2y1`Is;Hf6*&S0CU\"?0(ZD@$IHO+U1=mkG/2AEA.&jYcSa]fy>,SSOFp{}Zna%`zzxx3O*<{Qij[umQr4kz~%u\"9l7>H9X~X>s_^5hFC^l9;4I]_8A~Iia?11?yTGxIHel!1Rn*eek:?q~(S5f5^!T$_:%%h`2+v1t`Y5/no;uG\"0719JtYbx2`Dc/1C+6;rCx}P+r~b0P6G"
-
-  df <- df |>
-    qs2::base91_decode() |>
-    qs2::qs_deserialize()
+    df <- readRDS(test_path("nmtest-evid4.rds"))
 
 
-  evid4 <- function() {
-    ini({
-      # Where initial conditions/variables are specified
-      lka  <- log(2.097)   #log ka (1/h)
-      lcl  <- log(2.568724)#log Cl (L/h)
-      lv   <- log(69.1925) #log V (L)
-      allocl <- fix(0.75)  #WT on Cl
-      allov  <- fix(1.00)  #WT on V
-    })
-    model({
-      # Where the model is specified
-      cl <- exp(lcl + allocl*(log(WT/70)))
-      v  <- exp(lv + allov*(log(WT/70)))
-      ka <- exp(lka)
-      lin <- linCmt()
-    })
-  }
+    evid4 <- function() {
+      ini({
+        # Where initial conditions/variables are specified
+        lka  <- log(2.097)   #log ka (1/h)
+        lcl  <- log(2.568724)#log Cl (L/h)
+        lv   <- log(69.1925) #log V (L)
+        allocl <- fix(0.75)  #WT on Cl
+        allov  <- fix(1.00)  #WT on V
+      })
+      model({
+        # Where the model is specified
+        cl <- exp(lcl + allocl*(log(WT/70)))
+        v  <- exp(lv + allov*(log(WT/70)))
+        ka <- exp(lka)
+        lin <- linCmt()
+      })
+    }
 
-  evid4ode <- function() {
-    ini({
-      # Where initial conditions/variables are specified
-      lka  <- log(2.097)   #log ka (1/h)
-      lcl  <- log(2.568724)#log Cl (L/h)
-      lv   <- log(69.1925) #log V (L)
-      allocl <- fix(0.75)  #WT on Cl
-      allov  <- fix(1.00)  #WT on V
-    })
-    model({
-      # Where the model is specified
-      cl <- exp(lcl + allocl*(log(WT/70)))
-      v  <- exp(lv + allov*(log(WT/70)))
-      ka <- exp(lka)
-      kel <- cl/v
-      d/dt(depot)   <- -ka*depot
-      d/dt(central) <- ka*depot - kel*central
-      lin <- central/v
-    })
-  }
+    evid4ode <- function() {
+      ini({
+        # Where initial conditions/variables are specified
+        lka  <- log(2.097)   #log ka (1/h)
+        lcl  <- log(2.568724)#log Cl (L/h)
+        lv   <- log(69.1925) #log V (L)
+        allocl <- fix(0.75)  #WT on Cl
+        allov  <- fix(1.00)  #WT on V
+      })
+      model({
+        # Where the model is specified
+        cl <- exp(lcl + allocl*(log(WT/70)))
+        v  <- exp(lv + allov*(log(WT/70)))
+        ka <- exp(lka)
+        kel <- cl/v
+        d/dt(depot)   <- -ka*depot
+        d/dt(central) <- ka*depot - kel*central
+        lin <- central/v
+      })
+    }
 
 
-  f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
 
-  f1o <- rxSolve(evid4ode, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    f1o <- rxSolve(evid4ode, df[1:5,], addDosing=TRUE, returnType="data.frame")
 
-  f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
+    f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
 
-  f2o <- rxSolve(evid4ode, df, addDosing=TRUE, returnType="data.frame")
+    f2o <- rxSolve(evid4ode, df, addDosing=TRUE, returnType="data.frame")
 
-  expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
+    expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
 
-  expect_equal(f1o$lin, f2o$lin[seq_along(f1o$lin)])
+    expect_equal(f1o$lin, f2o$lin[seq_along(f1o$lin)])
 
-  expect_equal(f1$lin, f1o$lin, tolerance = 1e-6)
+    expect_equal(f1$lin, f1o$lin, tolerance = 1e-6)
 
-  expect_equal(f2$lin, f2o$lin, tolerance = 1e-6)
+    expect_equal(f2$lin, f2o$lin, tolerance = 1e-6)
 
+  })
 })

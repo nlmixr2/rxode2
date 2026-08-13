@@ -242,6 +242,46 @@
     grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE), logical(1))]
 }
 
+#' ODE (non-linCmt) physical states of a model
+#'
+#' The linCmt() compartments are identified by NAME (`.rxLinCmt()`); everything
+#' else in `normal.state` is an ordinary ODE state.
+#'
+#' @param mv A model-vars list.
+#' @return character vector of ODE state names (possibly empty).
+#' @noRd
+.rxEventSensOdeStates <- function(mv) {
+  setdiff(mv$normal.state, .rxLinCmt(mv))
+}
+
+#' Does the jump map match the compartment layout the runtime assumes?
+#'
+#' `handle_evid()` addresses the first-order sensitivity compartment of
+#' (state `k`, param `p`) as `nState + p*nState + k` (0-based), i.e. the ODE
+#' states are the leading `nState` compartments and their sensitivity
+#' compartments follow as one param-major block.  `.rxEventSensMap()` carries
+#' the TRUE compartment indices, so check them rather than assume.
+#'
+#' @param states ODE state names, in map order.
+#' @param sensParams Sensitivity parameter names, in map order.
+#' @param map1 First-order map rows (columns `state`, `param`, `stateCmt`,
+#'   `sensCmt`).
+#' @return `TRUE` when the true indices match the assumed layout.
+#' @noRd
+.rxEventSensLayoutOk <- function(states, sensParams, map1) {
+  .ns <- length(states)
+  if (.ns == 0L || length(sensParams) == 0L) return(FALSE)
+  ## every (state, param) pair must be present exactly once
+  if (nrow(map1) != .ns * length(sensParams)) return(FALSE)
+  .k <- match(map1$state, states)
+  .p <- match(map1$param, sensParams)
+  if (anyNA(.k) || anyNA(.p)) return(FALSE)
+  ## the states themselves must be compartments 1..nState (`cmt < nState` is
+  ## how the runtime decides a dosed compartment is one of them)
+  if (!identical(as.integer(map1$stateCmt), as.integer(.k))) return(FALSE)
+  identical(as.integer(map1$sensCmt), as.integer(.ns + (.p - 1L) * .ns + .k))
+}
+
 #' Restrict jump sensitivities to ODE states for mixed ODE+linCmt models
 #'
 #' For pure linCmt models (no ODE states), event sensitivities are handled by the
@@ -255,21 +295,34 @@
 .rxEventSensFilterMap <- function(obj, map) {
   .mv <- rxModelVars(obj)
   .lin <- .rxLinNcmt(.mv)
-  if (.lin["numLin"] <= 0L) return(map)
+  if (.lin["numLin"] <= 0L) {
+    if (!.rxEventSensLayoutOk(map$states, map$sensParams, map$map)) return(NULL)
+    return(map)
+  }
   ## Defensive: a linCmt reserved-name collision (see .rxLinCmtNameCollision)
-  ## yields silently-incorrect sensitivities; disable jump.  (linCmt models now
+  ## yields silently-incorrect sensitivities; disable jump.  (Such models
   ## downgrade to FD upstream via .rxEventSensEffectiveMode, so this is a guard
   ## for any path that still reaches here.)
   if (length(.rxLinCmtNameCollision(obj)) > 0L) return(NULL)
-  .odeStates <- setdiff(.mv$normal.state, .rxLinCmt(.mv))
-  if (length(.odeStates) == 0L) return(map)
+  .odeStates <- .rxEventSensOdeStates(.mv)
+  ## Pure linCmt: no ODE compartment can carry an analytic jump.
+  if (length(.odeStates) == 0L) return(NULL)
   .stateCmt <- unname(map$stateCmt[.odeStates])
   ## The jump runtime assumes ODE states are the leading contiguous block
   ## [1..nState]. If not, keep behavior safe by disabling jump for this model.
-  if (!identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
+  if (anyNA(.stateCmt) || !identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
   .map1 <- map$map[map$map$state %in% .odeStates, , drop = FALSE]
   if (nrow(.map1) == 0L) return(NULL)
-  .sensParams <- unique(.map1$param)
+  ## Keep `map$sensParams`' order: it is the order of the sensitivity
+  ## COMPARTMENTS, which is what the runtime addresses with (nState + p*nState
+  ## + k) and what `.rxEventSensCLines()` builds its parameter index from.
+  ## `map$map` is sorted by parameter NAME, so taking the order from it put a
+  ## multi-parameter model's jump values in the wrong compartment.
+  .sensParams <- map$sensParams[map$sensParams %in% .map1$param]
+  ## The linCmt() block sits after the ODE states and their sensitivity
+  ## compartments, so the assumed (nState + p*nState + k) addressing still has
+  ## to hold for the ODE part; verify against the true indices.
+  if (!.rxEventSensLayoutOk(.odeStates, .sensParams, .map1)) return(NULL)
   .map2 <- map$map2
   if (!is.null(.map2) && nrow(.map2) > 0L) {
     .map2 <- .map2[
@@ -303,25 +356,57 @@
 
 #' Resolve effective event-sensitivity mode for linCmt-containing models
 #'
-#' `fdAll` is the explicit full finite-difference fallback. Models that include
-#' linCmt() always resolve to `fd` regardless of the requested mode (see the
-#' comment in the body); the requested mode is honored otherwise.
+#' `fdAll` is the explicit full finite-difference fallback.  A linCmt() model
+#' downgrades to `fd` only when the analytic jump cannot cover it -- no ODE
+#' compartment to jump, a linCmt reserved-name collision, or a modeled
+#' alag/F/rate/dur on a linCmt() compartment itself (nlmixr2/rxode2#1119 part
+#' B, not implemented); the requested mode is honored otherwise.
 #'
 #' @param requested Requested mode from `.rxEventSensMode()`.
-#' @param mv Parsed model vars.
+#' @param obj Parsed model vars (or anything `rxModelVars()` accepts).
 #' @return Effective mode string (`jump`, `fd`, or `both`).
 #' @noRd
-.rxEventSensEffectiveMode <- function(requested, mv) {
-  if (identical(requested, "fdAll")) return("fd")
-  ## linCmt() models downgrade to finite differences for event-timing
-  ## sensitivities.  The analytic moving-boundary (jump) sensitivity for a
-  ## modeled alag()/f() on a linCmt compartment is not implemented (see
-  ## nlmixr2/rxode2#1119); rather than emit an incomplete/incorrect analytic
-  ## jump, all linCmt models use FD for event sensitivities (the FOCEi/nlmixr2est
-  ## finite-difference event path).  Structural-parameter linCmt sensitivities
-  ## are unaffected (they are continuous and handled by linCmtB directly).
-  if (.rxLinNcmt(mv)["numLin"] > 0L) return("fd")
+.rxEventSensEffectiveMode <- function(requested, obj) {
+  if (identical(requested, "fdAll") || identical(requested, "fd")) return("fd")
+  .mv <- rxModelVars(obj)
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(requested)
+  ## Mixed ODE+linCmt(): the ODE compartments keep the analytic jump (their
+  ## sensitivity compartments are ordinary solved states; the linCmt() block
+  ## sits after them and is untouched by the injection).
+  if (length(.rxEventSensOdeStates(.mv)) == 0L) return("fd")
+  ## A d/dt() on a linCmt()-reserved name conflates the two compartments, so
+  ## the ODE state never gets its sensitivity expansion.
+  if (length(.rxLinCmtNameCollision(obj)) > 0L) return("fd")
+  ## The moving-boundary jump for a modeled alag()/f()/rate()/dur() on a
+  ## linCmt() COMPARTMENT is not implemented: linCmt amounts and their
+  ## sensitivities are recomputed from linCmt's own analytic solution every
+  ## step, so a jump written into them is overwritten.  Fall back to finite
+  ## differences for the whole model rather than report a partial answer.
+  .linCmt <- unname(.mv$stateOrd[.rxLinCmt(.mv)])
+  .prop <- .rxEventSensProp(.mv)
+  .eventCmt <- unique(c(.prop$lagCmt, .prop$fCmt, .prop$rateCmt, .prop$durCmt))
+  if (any(.eventCmt %in% .linCmt[!is.na(.linCmt)])) return("fd")
   requested
+}
+
+#' Downgrade to `fd` when the jump map cannot be built for this model
+#'
+#' `.rxEventSensFilterMap()` rejects a model whose compartment layout does not
+#' match what the runtime jump injection addresses.  Record that as `fd` so the
+#' model falls back to the finite-difference event path instead of ending up
+#' with neither.  Models with no sensitivity compartments at all keep the
+#' requested mode (there is nothing to jump).
+#'
+#' @param mode Mode from `.rxEventSensEffectiveMode()`.
+#' @param obj Built model (rxUi, rxode2, modelVars).
+#' @return Effective mode string.
+#' @noRd
+.rxEventSensModeForMap <- function(mode, obj) {
+  if (identical(mode, "fd")) return("fd")
+  .map <- .rxEventSensMap(obj)
+  if (is.null(.map)) return(mode)
+  if (is.null(.rxEventSensFilterMap(obj, .map))) return("fd")
+  mode
 }
 
 #' Decode which compartments carry modeled alag/F/rate/dur
@@ -787,6 +872,35 @@
        durQ = .buildQ(map$durCmt, "dur", .q2All))
 }
 
+#' Rewrite indexed nlmixr2 parameters into their codegen locals
+#'
+#' Maps nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
+#' `_THETA_n_`/`_ETA_n_`, or to the plain `THETA_n_`/`ETA_n_` when the model
+#' declares that name itself.
+#'
+#' @param expr Character vector of C expressions, one per assignment line.
+#' @param plainParams Parameter names the model declares plainly (no leading
+#'   underscore).
+#' @return `expr` with every indexed parameter rewritten.
+#' @noRd
+.rxEventSensCExpr <- function(expr, plainParams = character(0)) {
+  # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
+  # model declares the plain name THETA_n_ itself (then use it, no leading _).
+  .rw <- function(expr, kind) {
+    # expr is a vector of assignment lines; collect tokens from every element
+    # (not just the first) or indices unique to later lines leak into the C.
+    .toks <- unique(unlist(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))))
+    for (.tok in .toks) {
+      .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
+      .plain <- paste0(kind, "_", .n, "_")
+      .repl <- if (.plain %in% plainParams) .plain else paste0("_", .plain)
+      expr <- gsub(.tok, .repl, expr, fixed = TRUE)
+    }
+    expr
+  }
+  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
+}
+
 #' Generate the C assignment lines for the dLag / dF functions
 #'
 #' Produces the body assignment lines writing each dosing-parameter total
@@ -800,22 +914,6 @@
 #' @return list with `nSensParam`, `paramIdx` (named 0-based), and character
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
 #' @noRd
-.rxEventSensCExpr <- function(expr, plainParams = character(0)) {
-  # THETA[n]/ETA[n] map to the codegen locals _THETA_n_/_ETA_n_ unless the
-  # model declares the plain name THETA_n_ itself (then use it, no leading _).
-  .rw <- function(expr, kind) {
-    .toks <- unique(regmatches(expr, gregexpr(paste0(kind, "\\[[0-9]+\\]"), expr))[[1]])
-    for (.tok in .toks) {
-      .n <- sub(paste0(kind, "\\[([0-9]+)\\]"), "\\1", .tok)
-      .plain <- paste0(kind, "_", .n, "_")
-      .repl <- if (.plain %in% plainParams) .plain else paste0("_", .plain)
-      expr <- gsub(.tok, .repl, expr, fixed = TRUE)
-    }
-    expr
-  }
-  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
-}
-
 .rxEventSensCLines <- function(info) {
   if (is.null(info)) return(NULL)
   .pp <- info$params                     # declared param names (plain THETA_n_ vs indexed)
@@ -935,9 +1033,7 @@
 .rxSetEventSensDims <- function(object) {
   .info <- tryCatch(object$eventSensInfo, error = function(e) NULL)
   if (is.null(.info) || identical(.info$mode, "fd")) {
-    .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
-    .Call(`_rxode2_setEventSensNParam3`, 0L)
-    return(invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L)))
+    return(invisible(.Call(`_rxode2_eventSensDeactivate`)))
   }
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
@@ -945,10 +1041,45 @@
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   ## number of third-order (calcSens3) parameters; 0 when no Phase H1 path
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(object)))
-  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
-  invisible(.Call(`_rxode2_setEventSensDims`, 1L,
-                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2)))
+  invisible(.Call(`_rxode2_eventSensSetDims`, 1L,
+                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2),
+                  as.integer(.nParam3),
+                  as.integer(.rxEventSensUseCalcJac(object))))
+}
+
+#' Read the installed event-sensitivity runtime dims
+#'
+#' Mirrors the C API's `rxode2EventSensGetDims()`; mostly for tests and for
+#' checking what a solve or [rxEventSensLoadModel()] installed.
+#'
+#' @return named integer vector: `active`, `nState`, `nParam`, `nParam2`,
+#'   `nParam3`, `useCalcJac`.
+#' @noRd
+.rxGetEventSensDims <- function() {
+  .Call(`_rxode2_eventSensGetDims`)
+}
+
+#' Save / restore the installed event-sensitivity shape
+#'
+#' R view of the C API's `rxode2EventSensShapeSave()` /
+#' `rxode2EventSensShapeRestore()`: the whole shape, dims plus the model's
+#' dosing-derivative function pointers, so a caller can bracket a batch of
+#' solves that install a different model's shape.  The raw vector holds live
+#' function pointers -- valid only in the session that produced it, never
+#' serialize it.
+#'
+#' @param buf A raw vector from `.rxEventSensShapeSave()`.
+#' @return `.rxEventSensShapeSave()` a raw vector; `.rxEventSensShapeRestore()`
+#'   invisibly `NULL`.
+#' @noRd
+.rxEventSensShapeSave <- function() {
+  .Call(`_rxode2_eventSensShapeSave`)
+}
+
+#' @rdname dot-rxEventSensShapeSave
+#' @noRd
+.rxEventSensShapeRestore <- function(buf) {
+  invisible(.Call(`_rxode2_eventSensShapeRestore`, buf))
 }
 
 #' Point the rxode2 event-sensitivity globals at a jump-sensitivity model
@@ -958,7 +1089,9 @@
 #' rxode2's event ("jump") sensitivity function pointers and runtime dims to
 #' `model` and turns the jumps on.  The jump blocks are bounds-guarded, so
 #' smaller models solved afterwards skip the injection safely.  Pair with
-#' `rxEventSensDeactivate()` after the run.
+#' `rxEventSensDeactivate()` after the run.  The C API entry points behind this
+#' (`rxode2EventSensLoadFull()` and the shape save/restore) are in rxode2's
+#' function-pointer table, for callers that need the swap from C++.
 #'
 #' @param model A built jump-sensitivity model (carrying `eventSensInfo`).
 #' @return invisibly `TRUE` when the jumps were activated, `FALSE` otherwise
@@ -973,10 +1106,9 @@ rxEventSensLoadModel <- function(model) {
   .nParam <- length(.info$map$sensParams)
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  .Call(`_rxode2_eventSensLoad`, .trans, 1L, as.integer(.nState),
-        as.integer(.nParam), as.integer(.nParam2))
-  .Call(`_rxode2_setEventSensUseCalcJac`, as.integer(.rxEventSensUseCalcJac(model)))
-  .Call(`_rxode2_setEventSensNParam3`, as.integer(.nParam3))
+  .Call(`_rxode2_eventSensLoadFull`, .trans, 1L, as.integer(.nState),
+        as.integer(.nParam), as.integer(.nParam2), as.integer(.nParam3),
+        as.integer(.rxEventSensUseCalcJac(model)))
   invisible(TRUE)
 }
 
@@ -989,9 +1121,7 @@ rxEventSensLoadModel <- function(model) {
 #' @export
 #' @keywords internal
 rxEventSensDeactivate <- function() {
-  .Call(`_rxode2_setEventSensUseCalcJac`, 0L)
-  .Call(`_rxode2_setEventSensNParam3`, 0L)
-  invisible(.Call(`_rxode2_setEventSensDims`, 0L, 0L, 0L, 0L))
+  invisible(.Call(`_rxode2_eventSensDeactivate`))
 }
 
 #' Assemble the event-sensitivity information for a built model

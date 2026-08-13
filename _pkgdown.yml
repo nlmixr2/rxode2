@@ -13,6 +13,8 @@ reference:
   desc: Define, parse, compile, and manage rxode2 ODE models.
   contents:
   - rxode2
+  - rxModelName
+  - rxModelNameLhs
   - rxCompile
   - rxLastCompile
   - rxClean
@@ -66,6 +68,7 @@ reference:
   - assertRxUiIovNoCor
   - assertVariableExists
   - assertVariableNew
+  - coef.rxUi
   - indLin
   - ini
   - ini<-
@@ -340,7 +343,7 @@ navbar:
           href: articles/rxode2-syntax.html
         - text: "ODE solvers"
           href: articles/ode-solvers.html
-        - text: "Matrix Exponentials / Inductive Linearization"
+        - text: "Matrix Exponential Solving"
           href: articles/rxode2-ind-lin.html
         - text: "Interactive tutorials"
           href: articles/rxode2-tutorials.html

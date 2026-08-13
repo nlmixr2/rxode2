@@ -128,6 +128,23 @@ lhs symbols?
   int hasDdt;
   int curDdt; // currently parsing the RHS of a d/dt() statement
   int hasIndLinProp;
+  // Every assignment and every indLin(state) <- expr forcing, in source order,
+  // with the symbols its right-hand side reads.  Replayed in genModelVars to
+  // report which states carry a state-dependent forcing (wIndLin).
+  int *stmtT; // target: symbol index (stmtK 0) or de index (stmtK 1)
+  int *stmtK; // 0 = ordinary assignment, 1 = indLin() forcing
+  int *stmtC; // inside an if/while/ifelse block, so it may not run
+  int *stmtR0; // first stmtRef index
+  int *stmtRn; // number of stmtRef entries
+  int stmtN;
+  int stmtAlloc;
+  int *stmtRef; // symbols read, grouped by statement
+  int stmtRefN;
+  int stmtRefAlloc;
+  int curStmt; // statement being parsed, -1 outside one
+  int curIndLin; // 1 + de index while parsing an indLin() RHS, 0 otherwise
+  int curLhs; // symbol index being assigned, -1 outside an assignment
+  int nCond; // depth of the enclosing if/while/ifelse blocks
   int hasDelay; // Has delay() function (delay differential equation)
 } symtab;
 
@@ -212,6 +229,10 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
 extern vLines depotLines;
 extern vLines centralLines;
 extern vLines sbPm, sbPmDt, sbNrmL;
+// Identifiers seen inside an adaptive dosing argument, and a description of
+// where each came from.  Checked once the whole model has been parsed, since
+// the variable may be assigned further down (see #1231).
+extern vLines sbDoseArgVar, sbDoseArgCtx;
 
 #define FBIO 1
 #define ALAG 2
@@ -453,7 +474,7 @@ extern sbuf sb, sbDt; /* buffer w/ current parsed & translated line */
 extern sbuf sbt;
 
 
-#define ENDLINE tb.ixL=-1; tb.didEq=0; tb.NEnd=NV;
+#define ENDLINE tb.ixL=-1; tb.didEq=0; tb.NEnd=NV; tb.curLhs=-1; tb.curStmt=-1;
 
 #define aAppendN(str, len) sAppendN(&sb, str, len); sAppendN(&sbDt, str, len);
 #define aProp(prop) curLineProp(&sbPm, prop); curLineProp(&sbPmDt, prop); curLineProp(&sbNrmL, prop);

@@ -667,7 +667,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @param argumentNumber distribution argument index (1-based); argument 1 uses
 #'   the bare function name for `err`, later arguments append the index (matching
-#'   the named-parameter convention in [.errHandleSingleDistributionArgument]).
+#'   the named-parameter convention in `.errHandleSingleDistributionArgument`).
 #' @param funName error distribution function name
 #' @param value numeric literal value
 #' @param env parse environment (holds `df`, the working `$iniDf`, and
