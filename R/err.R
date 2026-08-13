@@ -762,7 +762,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       # referenced variable is validated as a model quantity later, like other
       # modeled residual references.
       assign("lastDistAssign", .curName, envir=env)
-      return(NULL)
+      NULL
     } else {
       .w <- which(names(.namedArgumentsToPredDf) == funName)
       if (length(.w) == 1) {

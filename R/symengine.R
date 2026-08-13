@@ -2443,7 +2443,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         if (!identical(x[[2]][[1]], quote(`(`))) {
           .num <- paste0("(", .num, ")")
         }
-        return(paste0(.num, "/", .f(x[[3]], envir)))
+        paste0(.num, "/", .f(x[[3]], envir))
       } else {
         return(.rxFromSE(x))
       }
