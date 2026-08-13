@@ -558,69 +558,97 @@ static inline int isStrInteger(const char *s) {
 // undeclared symbol and the model fails to build with a compiler error that
 // looks like a broken toolchain.  Record the identifiers here and check them
 // once the whole model has been parsed -- the variable may legitimately be
-// assigned further down the model.  See #1231.
+// assigned further down the model.  See #1231.  The scan is split into the
+// per-token helpers below, driven by the loop in rxPushDoseNoteArg().
+static inline int rxDoseArgIsNumStart(const char *p) {
+  return isdigit((unsigned char)(*p)) || (*p == '.' && isdigit((unsigned char)(p[1])));
+}
+
+static inline int rxDoseArgIsIdStart(const char *p) {
+  return isalpha((unsigned char)(*p)) || *p == '.' || *p == '_';
+}
+
+// numeric literal, including an exponent like 1e-7; the exponent digits are
+// picked up by the next pass through the tokenizer loop
+static inline const char *rxDoseArgSkipNum(const char *p) {
+  while (isdigit((unsigned char)(*p)) || *p == '.') p++;
+  if (*p == 'e' || *p == 'E') {
+    p++;
+    if (*p == '+' || *p == '-') p++;
+  }
+  return p;
+}
+
+// string literal (a compartment name); skip it wholesale
+static inline const char *rxDoseArgSkipStr(const char *p) {
+  char quote = *p;
+  p++;
+  while (*p != '\0' && *p != quote) p++;
+  if (*p == quote) p++;
+  return p;
+}
+
+static inline void rxDoseArgRecord(const char *fn, const char *arg, const char *st, int len) {
+  char nm[128];
+  if (len <= 0 || len >= (int)sizeof(nm)) return;
+  memcpy(nm, st, (size_t)len);
+  nm[len] = '\0';
+  addLine(&sbDoseArgVar, "%s", nm);
+  addLine(&sbDoseArgCtx,
+          "'%s' is only used as the '%s' argument of '%s()'; an adaptive dosing argument does not declare a model variable, assign it first (like '%sVal <- %s')",
+          nm, arg, fn, arg, nm);
+}
+
+static inline const char *rxDoseArgSkipId(const char *fn, const char *arg, const char *p) {
+  const char *st = p;
+  while (isalnum((unsigned char)(*p)) || *p == '.' || *p == '_') p++;
+  const char *q = p;
+  while (*q == ' ' || *q == '\t') q++;
+  // a function call or a THETA[]/ETA[] reference, not a plain variable
+  if (*q != '(' && *q != '[') rxDoseArgRecord(fn, arg, st, (int)(p - st));
+  return p;
+}
+
 static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v) {
   if (v == NULL) return;
   const char *p = v;
   while (*p != '\0') {
-    if (isdigit((unsigned char)(*p)) ||
-        (*p == '.' && isdigit((unsigned char)(p[1])))) {
-      // numeric literal, including an exponent like 1e-7
-      while (isdigit((unsigned char)(*p)) || *p == '.') p++;
-      if (*p == 'e' || *p == 'E') {
-        p++;
-        if (*p == '+' || *p == '-') p++;
-      }
-      continue;
-    }
-    if (*p == '"' || *p == '\'') {
-      // string literal (a compartment name); skip it wholesale
-      char quote = *p;
+    if (rxDoseArgIsNumStart(p)) {
+      p = rxDoseArgSkipNum(p);
+    } else if (*p == '"' || *p == '\'') {
+      p = rxDoseArgSkipStr(p);
+    } else if (rxDoseArgIsIdStart(p)) {
+      p = rxDoseArgSkipId(fn, arg, p);
+    } else {
       p++;
-      while (*p != '\0' && *p != quote) p++;
-      if (*p == quote) p++;
-      continue;
     }
-    if (isalpha((unsigned char)(*p)) || *p == '.' || *p == '_') {
-      const char *st = p;
-      while (isalnum((unsigned char)(*p)) || *p == '.' || *p == '_') p++;
-      int len = (int)(p - st);
-      const char *q = p;
-      while (*q == ' ' || *q == '\t') q++;
-      // a function call or a THETA[]/ETA[] reference, not a plain variable
-      if (*q == '(' || *q == '[') continue;
-      char nm[128];
-      if (len > 0 && len < (int)sizeof(nm)) {
-        memcpy(nm, st, (size_t)len);
-        nm[len] = '\0';
-        addLine(&sbDoseArgVar, "%s", nm);
-        addLine(&sbDoseArgCtx,
-                "'%s' is only used as the '%s' argument of '%s()'; an adaptive dosing argument does not declare a model variable, assign it first (like '%sVal <- %s')",
-                nm, arg, fn, arg, nm);
-      }
-      continue;
-    }
-    p++;
   }
+}
+
+static inline int rxDoseArgInLines(vLines *l, int n, const char *v) {
+  for (int i = 0; i < n; i++) {
+    if (!strcmp(l->line[i], v)) return 1;
+  }
+  return 0;
+}
+
+static inline int rxDoseArgIsConstant(const char *v) {
+  static const char *constants[] = {"pi", "NA", "NaN", "Inf",
+                                    "T", "F", "TRUE", "FALSE"};
+  for (int i = 0; i < (int)(sizeof(constants)/sizeof(*constants)); i++) {
+    if (!strcmp(constants[i], v)) return 1;
+  }
+  return 0;
 }
 
 // Is `v` something the model already knows about -- a variable/parameter, a
 // compartment, a string-assigned variable, or a reserved name?
 static inline int rxPushDoseArgIsDeclared(const char *v) {
-  if (isReservedVariable(v)) return 1;
-  if (!strcmp(v, "pi") || !strcmp(v, "NA") || !strcmp(v, "NaN") ||
-      !strcmp(v, "Inf") || !strcmp(v, "T") || !strcmp(v, "F") ||
-      !strcmp(v, "TRUE") || !strcmp(v, "FALSE")) return 1;
-  for (int i = 0; i < NV; i++) {
-    if (!strcmp(tb.ss.line[i], v)) return 1;
-  }
-  for (int i = 0; i < tb.de.n; i++) {
-    if (!strcmp(tb.de.line[i], v)) return 1;
-  }
-  for (int i = 0; i < tb.str.n; i++) {
-    if (!strcmp(tb.str.line[i], v)) return 1;
-  }
-  return 0;
+  return isReservedVariable(v) ||
+    rxDoseArgIsConstant(v) ||
+    rxDoseArgInLines(&tb.ss, NV, v) ||
+    rxDoseArgInLines(&tb.de, tb.de.n, v) ||
+    rxDoseArgInLines(&tb.str, tb.str.n, v);
 }
 
 // Report the identifiers collected by rxPushDoseNoteArg() that the model never
