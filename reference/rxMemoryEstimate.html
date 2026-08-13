@@ -143,7 +143,9 @@ be supplied via a compiled rxode2 model object or overridden individually.</p>
 <span>  nLlik <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  nIndSim <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  numLinSens <span class="op">=</span> <span class="fl">0L</span>,</span>
-<span>  numLin <span class="op">=</span> <span class="fl">0L</span></span>
+<span>  numLin <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  stiff <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
+<span>  doIndLin <span class="op">=</span> <span class="fl">0L</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -243,6 +245,22 @@ linCmt).</p></dd>
 <dt id="arg-numlin">numLin<a class="anchor" aria-label="anchor" href="#arg-numlin"></a></dt>
 <dd><p>Number of linear compartment terms (FOCEi + linCmt).</p></dd>
 
+
+<dt id="arg-stiff">stiff<a class="anchor" aria-label="anchor" href="#arg-stiff"></a></dt>
+<dd><p>Solving method as an integer (<code><a href="odeMethodToInt.html">odeMethodToInt</a></code>);
+only <code>3</code> (<code>"indLin"</code>) allocates anything extra.  Taken from
+<code>control</code> when given, and overridden to <code>3</code> for any
+<code>matExp()</code> model, since <code><a href="rxSolve.html">rxSolve()</a></code> force-selects that method
+for one whatever the control says.</p></dd>
+
+
+<dt id="arg-doindlin">doIndLin<a class="anchor" aria-label="anchor" href="#arg-doindlin"></a></dt>
+<dd><p>Which matrix-exponential driver runs: <code>0</code> not a
+<code>matExp()</code> model, <code>1</code> pure matrix exponential, <code>2</code> plus a
+state-free <code><a href="indLin.html">indLin()</a></code> forcing, <code>3</code>/<code>4</code> true inductive
+linearization.  Taken from <code>model</code> when given.  These cost very
+different amounts, so it is worth getting right.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -293,8 +311,10 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gomega (omega matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   indLinExpCache (per-thread exponential cache) 0 B ( 0.0%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   indLinWork (per-thread indLin scratch)     0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.90 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.94 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># With rxControl: population simulation with omega and 4 cores</span></span></span>
 <span class="r-in"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="rxSolve.html">rxControl</a></span><span class="op">(</span></span></span>
@@ -319,8 +339,10 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gcov (covariates)                          0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gsigma (sigma matrix)                      0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   gall_timesS (extra sim times)              0 B ( 0.0%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   indLinExpCache (per-thread exponential cache) 0 B ( 0.0%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   indLinWork (per-thread indLin scratch)     0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.90 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 976 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.94 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>

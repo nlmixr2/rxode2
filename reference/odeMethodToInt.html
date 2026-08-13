@@ -156,7 +156,8 @@ solving, but allows user Jacobian specification.</p></li>
 <li><p><code>"dop853"</code> – DOP853 solver.  Does not support parallel thread-based
 solving nor user Jacobian specification</p></li>
 <li><p><code>"indLin"</code> – Solving through inductive linearization.  The rxode2 dll
-must be setup specially to use this solving routine.</p></li>
+must be setup specially to use this solving routine.  Supports
+parallel thread-based solving and honors <code>cores</code>.</p></li>
 <li><p><code>"f78"</code> – Runge-Kutta Fehlberg 78 solver using Boost's odeint library.</p></li>
 <li><p><code>"rk4"</code> – Runge-Kutta 4 solver using Boost's odeint library.</p></li>
 <li><p><code>"ck54"</code> – Cash-Karp 5(4) solver using Boost's odeint library.</p></li>
