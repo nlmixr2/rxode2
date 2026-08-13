@@ -1215,8 +1215,10 @@ ignore the prior, and rxode2 supplies the assertions for that:
 \item \code{assertRxUiNoPriors()} – for a method that cannot use priors at all; a
 model that specifies one is an error
 \item \code{assertRxUiNormalPriors()} – for a method that supports priors but
-only normal ones (\code{dnorm()}/\code{normal()}, \code{std_normal()}); anything
-else, including a covariance-block prior such as \code{lkj_corr()}, is an
+only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{std_normal()},
+and the \code{multi_normal()} family, which is what the shorthand above
+produces for correlated parameters. Anything else, including a
+covariance matrix prior such as \code{lkj_corr()} or \code{inv_wishart()}, is an
 error
 }
 

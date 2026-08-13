@@ -545,8 +545,10 @@ ignore the prior, and rxode2 supplies the assertions for that:
 - `assertRxUiNoPriors()` -- for a method that cannot use priors at all; a
   model that specifies one is an error
 - `assertRxUiNormalPriors()` -- for a method that supports priors but only
-  normal ones (`dnorm()`/`normal()`, `std_normal()`); anything else, including
-  a covariance-block prior such as `lkj_corr()`, is an error
+  normal ones.  That covers `dnorm()`/`normal()`, `std_normal()`, and the
+  `multi_normal()` family, which is what the shorthand above produces for
+  correlated parameters.  Anything else, including a covariance matrix prior
+  such as `lkj_corr()` or `inv_wishart()`, is an error
 
 So if a method silently ignored your prior, that is a bug in the method, not
 expected behaviour.
