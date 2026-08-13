@@ -95,6 +95,7 @@ sbuf firstErr;
 int firstErrD=0;
 
 vLines sbPm, sbPmDt, sbNrmL;
+vLines sbDoseArgVar, sbDoseArgCtx;
 sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
@@ -287,6 +288,8 @@ void parseFree(int last) {
   lineFree(&sbPm);
   lineFree(&sbPmDt);
   lineFree(&sbNrmL);
+  lineFree(&sbDoseArgVar);
+  lineFree(&sbDoseArgCtx);
   lineFree(&(tb.ss));
   lineFree(&(tb.de));
   lineFree(&(tb.str));
@@ -375,6 +378,8 @@ void reset(void) {
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   lineIni(&depotLines);
   lineIni(&centralLines);
   lineIni(&_dupStrs);
@@ -620,6 +625,8 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   // do not free these, they remain until next parse for quick parsing of linCmt() models
   lineIni(&depotLines);
   lineIni(&centralLines);
@@ -642,6 +649,7 @@ void trans_internal(const char* parse_file, int isStr){
     if (tb.hasIndLinProp && !tb.isMexp) {
       trans_syntax_error_report_fn0("indLin() cannot be used without matExp() defined in the model");
     }
+    assertAdaptiveDosingArgsDeclared();
     nodeInfo dummyNi;
     niReset(&dummyNi);
     for (int j = 0; j < NV; j++) {
@@ -873,6 +881,8 @@ void transIniNull(void) {
   lineNull(&(sbPm));
   lineNull(&(sbPmDt));
   lineNull(&(sbNrmL));
+  lineNull(&(sbDoseArgVar));
+  lineNull(&(sbDoseArgCtx));
   lineNull(&(depotLines));
   lineNull(&(centralLines));
   sNull(&(_gbuf));
