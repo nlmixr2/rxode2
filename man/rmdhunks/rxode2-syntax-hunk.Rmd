@@ -397,6 +397,101 @@ In general all the that are supported are in the following table
 .rxDocTable(rxResidualError, "rxode2/nlmixr2 esidual error specification")
 ```
 
+## Prior distributions in the `ini({})` block
+
+When an estimation method supports priors, the prior on a parameter is
+given in the `ini({})` block with:
+
+``` r
+prior(name) ~ dist(...)
+```
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the `ini({})` block.
+
+``` r
+one.compartment <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkj_corr(2)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+A prior can be put on:
+
+- a population parameter, ie `prior(tka)`
+- a single between subject variability term, ie `prior(eta.ka)`
+- a whole covariance block, using one of the matrix-valued distributions,
+  ie `prior(eta.cl, eta.v) ~ lkj_corr(2)`.  The names given have to be
+  exactly one block of the matrix.
+
+### Prior distribution names
+
+The R name is used whenever R parameterizes the distribution the same way
+'Stan' does (`dnorm()`, `dlnorm()`, `dgamma()`, `dbeta()`, `dcauchy()`,
+`dunif()`, ...).  When there is no faithful R equivalent, the 'Stan' name is
+used instead (`student_t()`, `lkj_corr()`, `inv_wishart()`, ...).
+
+Both spellings are accepted, and the arguments may be given positionally or
+by name, so these are all the same prior:
+
+``` r
+prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+```
+
+`dt()` is deliberately **not** accepted as a spelling of `student_t()`:
+R's `dt()` is the standardized (or noncentral) t, while the 'Stan'
+`student_t(nu, mu, sigma)` is a location-scale t, so treating them as the
+same would silently change the prior.  Use `student_t()` with its own
+parameterization.
+
+The full list of supported distributions, including the 'Stan' name for each,
+is returned by `lotri::lotriPriorDists()`.
+
+### Bounds and truncated priors
+
+The bounds are not repeated in the prior; they come from the parameter
+itself.  A parameter that is already bounded below by zero therefore gets a
+half distribution:
+
+``` r
+add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+```
+
+The prior is checked against those bounds, so putting a distribution with
+positive support on a parameter that allows negative values is an error.
+
+### Where the prior is stored
+
+Priors are kept in the `prior` column of the model's `$iniDf` and are printed
+back as part of the `ini({})` block, so they survive printing and piping.
+Estimation methods that do not use priors ignore the column.
+
 # Note on strings in rxode2
 
 Strings are converted to double values inside of `rxode2`, hence you
