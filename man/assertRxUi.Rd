@@ -11,6 +11,7 @@
 \alias{assertRxUiNormal}
 \alias{assertRxUiNoPriors}
 \alias{assertRxUiNormalPriors}
+\alias{assertRxUiNoOmegaDf}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
@@ -37,6 +38,8 @@ assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
 assertRxUiNoPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoOmegaDf(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
@@ -91,10 +94,14 @@ not support it
 distributions; used by estimation methods that cannot use them, so that
 a specified prior is an error instead of being silently ignored
 \item \code{assertRxUiNormalPriors} -- Make sure that every prior the model
-specifies is a normal prior (\code{dnorm()}/\code{normal()}, \code{std_normal()}, or
-the multivariate \code{multi_normal()} that the \code{lotri} normal prior
+specifies is a normal prior (\code{dnorm()}, \code{stdNormal()}, or
+the multivariate \code{multiNormal()} that the \code{lotri} normal prior
 shorthand produces for correlated parameters); used by estimation
 methods that support priors but only normal ones
+\item \code{assertRxUiNoOmegaDf} -- Make sure the model does not give prior
+degrees of freedom for an omega block (ie \code{invWishart(4)}, the
+\verb{$OMEGAPD} of a NONMEM NWPRI model); used by estimation methods that
+cannot use them
 }
 }
 \examples{

@@ -1093,7 +1093,7 @@ order independent; they can be put anywhere in the \code{ini({})} block.
     prior(tcl)           ~ dnorm(1, 10)
     prior(add.sd)        ~ dcauchy(0, 5)
     prior(eta.ka)        ~ dgamma(2, 1)
-    prior(eta.cl, eta.v) ~ lkj_corr(2)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
   \})
   model(\{
     ka <- exp(tka + eta.ka)
@@ -1112,8 +1112,8 @@ A prior can be put on:
 \item a population parameter, ie \code{prior(tka)}
 \item a single between subject variability term, ie \code{prior(eta.ka)}
 \item a whole covariance block, using one of the matrix-valued
-distributions, ie \code{prior(eta.cl, eta.v) ~ lkj_corr(2)}. The names
-given have to be exactly one block of the matrix.
+distributions, ie \code{prior(eta.cl, eta.v) ~ lkjCorr(2)}. The names given
+have to be exactly one block of the matrix.
 }
 \subsection{The normal prior shorthand}{
 
@@ -1168,25 +1168,34 @@ variance is a point mass rather than a prior, so it is an error.
 
 \subsection{Prior distribution names}{
 
-The R name is used whenever R parameterizes the distribution the same
-way ‘Stan’ does (\code{dnorm()}, \code{dlnorm()}, \code{dgamma()}, \code{dbeta()},
-\code{dcauchy()}, \code{dunif()}, …). When there is no faithful R equivalent, the
-‘Stan’ name is used instead (\code{student_t()}, \code{lkj_corr()},
-\code{inv_wishart()}, …).
+There are three spellings of every distribution, and all of them are
+accepted:
+\enumerate{
+\item the \strong{R} name, when R parameterizes the distribution the same way
+‘Stan’ does – \code{dnorm()}, \code{dlnorm()}, \code{dgamma()}, \code{dbeta()},
+\code{dcauchy()}, \code{dunif()}
+\item the \strong{camelCase} name, which is the ‘Stan’ name written the way the
+rest of the package is written – \code{invWishart()}, \code{lkjCorr()},
+\code{studentT()}
+\item the \strong{‘Stan’} name itself – \code{inv_wishart()}, \code{lkj_corr()},
+\code{student_t()}
+}
 
-Both spellings are accepted, and the arguments may be given positionally
-or by name, so these are all the same prior:
+The canonical one, which is what gets stored on the \code{iniDf} and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise. The arguments may be given positionally or by name, so these
+are all the same prior:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(tka) ~ dnorm(0, 10)
 prior(tka) ~ normal(0, 10)
 prior(tka) ~ dnorm(sd=10, mean=0)
 }\if{html}{\out{</div>}}
 
-\code{dt()} is deliberately \strong{not} accepted as a spelling of \code{student_t()}:
-R’s \code{dt()} is the standardized (or noncentral) t, while the ‘Stan’
-\code{student_t(nu, mu, sigma)} is a location-scale t, so treating them as
-the same would silently change the prior. Use \code{student_t()} with its own
-parameterization.
+\code{dt()} is deliberately \strong{not} accepted as a spelling of \code{studentT()}:
+R’s \code{dt()} is the standardized (or noncentral) t, while
+\code{studentT(nu, mu, sigma)} (the ‘Stan’ \code{student_t}) is a location-scale
+t, so treating them as the same would silently change the prior. Use
+\code{studentT()} with its own parameterization.
 
 The full list of supported distributions, including the ‘Stan’ name for
 each, is returned by \code{lotri::lotriPriorDists()}.
@@ -1220,11 +1229,10 @@ ignore the prior, and rxode2 supplies the assertions for that:
 \item \code{assertRxUiNoPriors()} – for a method that cannot use priors at all; a
 model that specifies one is an error
 \item \code{assertRxUiNormalPriors()} – for a method that supports priors but
-only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{std_normal()},
-and the \code{multi_normal()} family, which is what the shorthand above
-produces for correlated parameters. Anything else, including a
-covariance matrix prior such as \code{lkj_corr()} or \code{inv_wishart()}, is an
-error
+only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{stdNormal()}, and
+the \code{multiNormal()} family, which is what the shorthand above produces
+for correlated parameters. Anything else, including a covariance
+matrix prior such as \code{lkjCorr()} or \code{invWishart()}, is an error
 }
 
 So if a method silently ignored your prior, that is a bug in the method,

@@ -55,10 +55,15 @@
 #'    a specified prior is an error instead of being silently ignored
 #'
 #' - `assertRxUiNormalPriors` -- Make sure that every prior the model
-#'    specifies is a normal prior (`dnorm()`/`normal()`, `std_normal()`, or
-#'    the multivariate `multi_normal()` that the `lotri` normal prior
+#'    specifies is a normal prior (`dnorm()`, `stdNormal()`, or
+#'    the multivariate `multiNormal()` that the `lotri` normal prior
 #'    shorthand produces for correlated parameters); used by estimation
 #'    methods that support priors but only normal ones
+#'
+#' - `assertRxUiNoOmegaDf` -- Make sure the model does not give prior
+#'    degrees of freedom for an omega block (ie `invWishart(4)`, the
+#'    `$OMEGAPD` of a NONMEM NWPRI model); used by estimation methods that
+#'    cannot use them
 #'
 #' @return the rxUi model
 #'
@@ -323,7 +328,7 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #' Distributions that count as a normal prior
 #'
 #' The multivariate ones are included because the `lotri` normal prior
-#' shorthand (`tcl + tv ~ c(1, 0.01, 1)`) produces a `multi_normal()`
+#' shorthand (`tcl + tv ~ c(1, 0.01, 1)`) produces a `multiNormal()`
 #' whenever the parameters are correlated; that is still a normal prior.
 #'
 #' @noRd
@@ -374,6 +379,51 @@ assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
     stop("'", .var.name, "' specifies non-normal prior distribution(s): ",
          paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
          "; this estimation method only supports normal priors", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' Distributions that give degrees of freedom for an omega block
+#'
+#' These are the Wishart family, ie the `$OMEGAPD` of a NONMEM NWPRI
+#' model.  `invWishart(4)` on a block says the prior degrees of freedom
+#' are 4 and that the block itself is the scale matrix.
+#'
+#' @noRd
+.rxOmegaDfStanNames <- c("wishart", "inv_wishart",
+                         "wishart_cholesky", "inv_wishart_cholesky")
+
+#' Are these priors degrees of freedom on an omega block?
+#'
+#' @param prior character vector of priors as stored in the `prior` column
+#' @return logical vector
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorIsOmegaDf <- function(prior) {
+  vapply(prior, function(p) {
+    .fn <- try(str2lang(p)[[1]], silent=TRUE)
+    if (inherits(.fn, "try-error")) return(FALSE)
+    .fn <- as.character(.fn)
+    if (length(.fn) != 1L) return(FALSE)
+    .stan <- .rxPriorStanName(.fn)
+    !is.na(.stan) && .stan %in% .rxOmegaDfStanNames
+  }, logical(1), USE.NAMES=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(.rxPriorIsOmegaDf(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' gives prior degrees of freedom for the omega ",
+         "block(s) ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         ", which this estimation method cannot use", extra,
          call.=FALSE)
   }
   invisible(ui)

@@ -103,7 +103,7 @@ rxTest({
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
-    .txt <- "multi_normal(0, lotri(tka + tcl ~ c(1, 0.01, 1)))"
+    .txt <- "multiNormal(0, lotri(tka + tcl ~ c(1, 0.01, 1)))"
     .ini$prior[.ini$name %in% c("tka", "tcl")] <- .txt
     assign("iniDf", .ini, envir=u)
 
@@ -116,9 +116,46 @@ rxTest({
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
-    .ini$prior[.ini$name == "eta.ka"] <- "lkj_corr(2)"
+    .ini$prior[.ini$name == "eta.ka"] <- "lkjCorr(2)"
     assign("iniDf", .ini, envir=u)
-    expect_error(assertRxUiNormalPriors(u), "lkj_corr")
+    expect_error(assertRxUiNormalPriors(u), "lkjCorr")
+  })
+
+  test_that("assertRxUiNoOmegaDf() rejects omega degrees of freedom", {
+    skip_if_not(.hasPriorSupport())
+    ## `invWishart(4)` on an omega block is the NWPRI $OMEGAPD
+    u <- .modNoPriors()
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
+    assign("iniDf", .ini, envir=u)
+
+    expect_error(assertRxUiNoOmegaDf(u), "eta.ka")
+    expect_error(assertRxUiNoOmegaDf(u), "invWishart")
+    expect_error(assertRxUiNoOmegaDf(u), "cannot use")
+    ## it is a prior, so the other assertions see it too
+    expect_error(assertRxUiNoPriors(u))
+    expect_error(assertRxUiNormalPriors(u))
+  })
+
+  test_that("assertRxUiNoOmegaDf() passes when there is no omega df", {
+    skip_if_not(.hasPriorSupport())
+    u <- .modNoPriors()
+    expect_error(assertRxUiNoOmegaDf(u), NA)
+
+    ## a normal prior is not an omega degrees of freedom
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
+    assign("iniDf", .ini, envir=u)
+    expect_error(assertRxUiNoOmegaDf(u), NA)
+
+    ## and neither is an lkjCorr(), which is a correlation prior rather
+    ## than degrees of freedom
+    .ini$prior[.ini$name == "tka"] <- NA_character_
+    .ini$prior[.ini$name == "eta.ka"] <- "lkjCorr(2)"
+    assign("iniDf", .ini, envir=u)
+    expect_error(assertRxUiNoOmegaDf(u), NA)
   })
 
   test_that("an unparsable prior is not treated as normal", {

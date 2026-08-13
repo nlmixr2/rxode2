@@ -425,7 +425,7 @@ one.compartment <- function() {
     prior(tcl)           ~ dnorm(1, 10)
     prior(add.sd)        ~ dcauchy(0, 5)
     prior(eta.ka)        ~ dgamma(2, 1)
-    prior(eta.cl, eta.v) ~ lkj_corr(2)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
   })
   model({
     ka <- exp(tka + eta.ka)
@@ -444,7 +444,7 @@ A prior can be put on:
 - a population parameter, ie `prior(tka)`
 - a single between subject variability term, ie `prior(eta.ka)`
 - a whole covariance block, using one of the matrix-valued distributions,
-  ie `prior(eta.cl, eta.v) ~ lkj_corr(2)`.  The names given have to be
+  ie `prior(eta.cl, eta.v) ~ lkjCorr(2)`.  The names given have to be
   exactly one block of the matrix.
 
 ### The normal prior shorthand
@@ -501,13 +501,20 @@ is a point mass rather than a prior, so it is an error.
 
 ### Prior distribution names
 
-The R name is used whenever R parameterizes the distribution the same way
-'Stan' does (`dnorm()`, `dlnorm()`, `dgamma()`, `dbeta()`, `dcauchy()`,
-`dunif()`, ...).  When there is no faithful R equivalent, the 'Stan' name is
-used instead (`student_t()`, `lkj_corr()`, `inv_wishart()`, ...).
+There are three spellings of every distribution, and all of them are
+accepted:
 
-Both spellings are accepted, and the arguments may be given positionally or
-by name, so these are all the same prior:
+1. the **R** name, when R parameterizes the distribution the same way 'Stan'
+   does -- `dnorm()`, `dlnorm()`, `dgamma()`, `dbeta()`, `dcauchy()`,
+   `dunif()`
+2. the **camelCase** name, which is the 'Stan' name written the way the rest
+   of the package is written -- `invWishart()`, `lkjCorr()`, `studentT()`
+3. the **'Stan'** name itself -- `inv_wishart()`, `lkj_corr()`, `student_t()`
+
+The canonical one, which is what gets stored on the `iniDf` and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise.  The arguments may be given positionally or by name, so these are
+all the same prior:
 
 ``` r
 prior(tka) ~ dnorm(0, 10)
@@ -515,11 +522,11 @@ prior(tka) ~ normal(0, 10)
 prior(tka) ~ dnorm(sd=10, mean=0)
 ```
 
-`dt()` is deliberately **not** accepted as a spelling of `student_t()`:
-R's `dt()` is the standardized (or noncentral) t, while the 'Stan'
-`student_t(nu, mu, sigma)` is a location-scale t, so treating them as the
-same would silently change the prior.  Use `student_t()` with its own
-parameterization.
+`dt()` is deliberately **not** accepted as a spelling of `studentT()`:
+R's `dt()` is the standardized (or noncentral) t, while
+`studentT(nu, mu, sigma)` (the 'Stan' `student_t`) is a location-scale t, so
+treating them as the same would silently change the prior.  Use `studentT()`
+with its own parameterization.
 
 The full list of supported distributions, including the 'Stan' name for each,
 is returned by `lotri::lotriPriorDists()`.
@@ -550,10 +557,10 @@ ignore the prior, and rxode2 supplies the assertions for that:
 - `assertRxUiNoPriors()` -- for a method that cannot use priors at all; a
   model that specifies one is an error
 - `assertRxUiNormalPriors()` -- for a method that supports priors but only
-  normal ones.  That covers `dnorm()`/`normal()`, `std_normal()`, and the
-  `multi_normal()` family, which is what the shorthand above produces for
+  normal ones.  That covers `dnorm()`/`normal()`, `stdNormal()`, and the
+  `multiNormal()` family, which is what the shorthand above produces for
   correlated parameters.  Anything else, including a covariance matrix prior
-  such as `lkj_corr()` or `inv_wishart()`, is an error
+  such as `lkjCorr()` or `invWishart()`, is an error
 
 So if a method silently ignored your prior, that is a bug in the method, not
 expected behaviour.
