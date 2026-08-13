@@ -171,9 +171,9 @@ the persisted weight values land in a network that can stride them.  Pair a
 
 ## The function-pointer table
 
-The hooks above are C callables *inside* `rxode2`.  Because CRAN discourages
-`R_RegisterCCallable` ABI coupling across packages, `rxode2` shares its C entry
-points through a positional **function-pointer table** rather than by name:
+The hooks above are C callables *inside* `rxode2`. `rxode2`
+shares its C entry points through a positional **function-pointer
+table** rather than by name:
 
 * `rxode2::.rxode2ptrs()` returns the table (an external-pointer list) built by
   `_rxode2_rxode2Ptr()` in `src/init.c`.
