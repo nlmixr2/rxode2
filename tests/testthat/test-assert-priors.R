@@ -96,6 +96,21 @@ rxTest({
     expect_error(assertRxUiNormalPriors(u), NA)
   })
 
+  test_that("a multivariate normal counts as a normal prior", {
+    skip_if_not(.hasPriorSupport())
+    ## the lotri shorthand `tcl + tv ~ c(1, 0.01, 1)` makes one of these
+    ## whenever the parameters are correlated
+    u <- .modNoPriors()
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .txt <- "multi_normal(0, lotri(tka + tcl ~ c(1, 0.01, 1)))"
+    .ini$prior[.ini$name %in% c("tka", "tcl")] <- .txt
+    assign("iniDf", .ini, envir=u)
+
+    expect_error(assertRxUiNormalPriors(u), NA)
+    expect_error(assertRxUiNoPriors(u))
+  })
+
   test_that("a block prior is not a normal prior", {
     skip_if_not(.hasPriorSupport())
     u <- .modNoPriors()

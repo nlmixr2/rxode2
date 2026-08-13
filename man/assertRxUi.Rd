@@ -91,8 +91,10 @@ not support it
 distributions; used by estimation methods that cannot use them, so that
 a specified prior is an error instead of being silently ignored
 \item \code{assertRxUiNormalPriors} -- Make sure that every prior the model
-specifies is a normal prior (\code{dnorm()}/\code{normal()}, or \code{std_normal()});
-used by estimation methods that support priors but only normal ones
+specifies is a normal prior (\code{dnorm()}/\code{normal()}, \code{std_normal()}, or
+the multivariate \code{multi_normal()} that the \code{lotri} normal prior
+shorthand produces for correlated parameters); used by estimation
+methods that support priors but only normal ones
 }
 }
 \examples{

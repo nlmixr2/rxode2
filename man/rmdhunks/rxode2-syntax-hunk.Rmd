@@ -447,6 +447,53 @@ A prior can be put on:
   ie `prior(eta.cl, eta.v) ~ lkj_corr(2)`.  The names given have to be
   exactly one block of the matrix.
 
+### The normal prior shorthand
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax.  Putting a *population parameter* on the left
+of a `~` gives it a normal prior with a **zero mean** and the given
+variance:
+
+``` r
+ini({
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+})
+```
+
+The number on the right is a variance, so `tka ~ 4` has a standard
+deviation of 2.  The value given with `<-` stays the initial estimate; it is
+*not* the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter and
+an eta -- that combination used to be a "duplicated parameter" error.  A name
+that is not a population parameter still specifies an eta exactly as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+``` r
+tcl ~ 1
+tv  ~ c(0.01, 1)
+```
+
+and the `sd()`, `var()`, `cor()`, `cov()` and `chol()` transformations:
+
+``` r
+tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+```
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is.  A zero variance
+is a point mass rather than a prior, so it is an error.
+
 ### Prior distribution names
 
 The R name is used whenever R parameterizes the distribution the same way

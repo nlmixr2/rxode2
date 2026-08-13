@@ -55,8 +55,10 @@
 #'    a specified prior is an error instead of being silently ignored
 #'
 #' - `assertRxUiNormalPriors` -- Make sure that every prior the model
-#'    specifies is a normal prior (`dnorm()`/`normal()`, or `std_normal()`);
-#'    used by estimation methods that support priors but only normal ones
+#'    specifies is a normal prior (`dnorm()`/`normal()`, `std_normal()`, or
+#'    the multivariate `multi_normal()` that the `lotri` normal prior
+#'    shorthand produces for correlated parameters); used by estimation
+#'    methods that support priors but only normal ones
 #'
 #' @return the rxUi model
 #'
@@ -320,8 +322,13 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 
 #' Distributions that count as a normal prior
 #'
+#' The multivariate ones are included because the `lotri` normal prior
+#' shorthand (`tcl + tv ~ c(1, 0.01, 1)`) produces a `multi_normal()`
+#' whenever the parameters are correlated; that is still a normal prior.
+#'
 #' @noRd
-.rxNormalPriorStanNames <- c("normal", "std_normal")
+.rxNormalPriorStanNames <- c("normal", "std_normal", "multi_normal",
+                             "multi_normal_cholesky", "multi_normal_prec")
 
 #' Is each prior a normal prior?
 #'

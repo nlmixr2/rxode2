@@ -1115,6 +1115,52 @@ A prior can be put on:
 distributions, ie \code{prior(eta.cl, eta.v) ~ lkj_corr(2)}. The names
 given have to be exactly one block of the matrix.
 }
+\subsection{The normal prior shorthand}{
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax. Putting a \emph{population parameter} on the
+left of a \code{~} gives it a normal prior with a \strong{zero mean} and the given
+variance:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+\})
+}\if{html}{\out{</div>}}
+
+The number on the right is a variance, so \code{tka ~ 4} has a standard
+deviation of 2. The value given with \verb{<-} stays the initial estimate; it
+is \emph{not} the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter
+and an eta – that combination used to be a “duplicated parameter” error.
+A name that is not a population parameter still specifies an eta exactly
+as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl ~ 1
+tv  ~ c(0.01, 1)
+}\if{html}{\out{</div>}}
+
+and the \code{sd()}, \code{var()}, \code{cor()}, \code{cov()} and \code{chol()} transformations:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+}\if{html}{\out{</div>}}
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is. A zero
+variance is a point mass rather than a prior, so it is an error.
+}
+
 \subsection{Prior distribution names}{
 
 The R name is used whenever R parameterizes the distribution the same
