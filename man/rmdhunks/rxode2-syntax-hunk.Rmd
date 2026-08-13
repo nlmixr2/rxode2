@@ -519,6 +519,21 @@ ini({
 It works on a 1x1 block as well, since an inverse Wishart of dimension one
 is an inverse gamma.  An improper `nu <= p - 1` is an error.
 
+When every block shares the same degrees of freedom, a one-sided `~` sets
+them all at once instead of naming each block:
+
+``` r
+ini({
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+})
+```
+
+Each block is still checked individually, and naming a block as well is a
+duplicate rather than an override.
+
 A `TNPRI` model instead puts a normal prior on the omega *elements*, jointly
 with the thetas.  Prepending `om.` to a between subject variability names its
 omega element, so the normal prior shorthand can be used on it:

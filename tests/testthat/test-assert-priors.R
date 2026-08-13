@@ -250,6 +250,50 @@ rxTest({
     expect_equal(nrow(rxUiPriors(.modNoPriors())), 0L)
   })
 
+  test_that("priors print in the ini block and can be re-parsed", {
+    skip_if_not(.hasPriorSupport())
+
+    ## printing a ui and re-estimating from it both go through the ini
+    ## block, so the priors have to render there in the right language
+    f <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        eta.cl + eta.v ~ c(0.3,
+                           0.01, 0.1)
+        add.sd <- 0.7
+        prior(tka) ~ dnorm(0, 10)
+        prior(eta.cl, eta.v) ~ invWishart(4)
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+    u <- f()
+
+    ## the priors made it onto the iniDf
+    expect_equal(u$iniDf$prior[u$iniDf$name == "tka"], "dnorm(0, 10)")
+    expect_equal(u$iniDf$prior[u$iniDf$name == "eta.cl"], "invWishart(4)")
+
+    ## the ini block prints them, naming the whole block for the matrix one
+    .ini <- paste(deparse(u$iniFun), collapse=" ")
+    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .ini, fixed=TRUE))
+    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .ini, fixed=TRUE))
+
+    ## and so does printing the model itself
+    .out <- paste(capture.output(print(u)), collapse="\n")
+    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .out, fixed=TRUE))
+    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .out, fixed=TRUE))
+
+    ## what is printed is valid input that gives the same priors back
+    .again <- eval(u$iniFun)
+    expect_equal(as.data.frame(.again)$prior, as.data.frame(lotri::as.lotri(u$iniDf))$prior)
+  })
+
   test_that("an unparsable prior is not treated as normal", {
     u <- .modNoPriors()
     .ini <- u$iniDf

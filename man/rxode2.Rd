@@ -1185,6 +1185,20 @@ this is the \verb{$OMEGAP}/\verb{$OMEGAPD} pair:
 It works on a 1x1 block as well, since an inverse Wishart of dimension
 one is an inverse gamma. An improper \code{nu <= p - 1} is an error.
 
+When every block shares the same degrees of freedom, a one-sided \code{~}
+sets them all at once instead of naming each block:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+\})
+}\if{html}{\out{</div>}}
+
+Each block is still checked individually, and naming a block as well is
+a duplicate rather than an override.
+
 A \code{TNPRI} model instead puts a normal prior on the omega \emph{elements},
 jointly with the thetas. Prepending \code{om.} to a between subject
 variability names its omega element, so the normal prior shorthand can
