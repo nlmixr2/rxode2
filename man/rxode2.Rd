@@ -1283,6 +1283,24 @@ on an omega but only a Wishart one, ie it supports \code{NWPRI} but not
 \code{TNPRI}
 }
 
+A method that \emph{implements} priors asks instead of asserts. The
+predicates return \code{TRUE}/\code{FALSE} rather than throwing:
+\itemize{
+\item \code{testRxUiPriors()} – does the model specify any prior at all
+\item \code{testRxUiNormalPriors()} – is every prior a normal one
+\item \code{testRxUiOmegaDf()} – does an omega carry degrees of freedom (\code{NWPRI})
+\item \code{testRxUiOmegaNormalPriors()} – does an omega carry a normal prior
+(\code{TNPRI})
+}
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time. So a method can branch on which one it got.
+
+\code{rxUiPriors()} returns the priors themselves – \code{name}, \code{prior},
+\code{neta1}/\code{neta2} (\code{NA} for a population parameter) and the parameter’s
+\code{lower}/\code{upper}, which is what a truncated prior needs for its bounds.
+
 So if a method silently ignored your prior, that is a bug in the method,
 not expected behaviour.
 }

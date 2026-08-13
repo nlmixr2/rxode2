@@ -608,6 +608,23 @@ ignore the prior, and rxode2 supplies the assertions for that:
 - `assertRxUiNoOmegaNormalPriors()` -- for a method that can put a prior on
   an omega but only a Wishart one, ie it supports `NWPRI` but not `TNPRI`
 
+A method that *implements* priors asks instead of asserts.  The predicates
+return `TRUE`/`FALSE` rather than throwing:
+
+- `testRxUiPriors()` -- does the model specify any prior at all
+- `testRxUiNormalPriors()` -- is every prior a normal one
+- `testRxUiOmegaDf()` -- does an omega carry degrees of freedom (`NWPRI`)
+- `testRxUiOmegaNormalPriors()` -- does an omega carry a normal prior
+  (`TNPRI`)
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time.  So a method can branch on which one it got.
+
+`rxUiPriors()` returns the priors themselves -- `name`, `prior`,
+`neta1`/`neta2` (`NA` for a population parameter) and the parameter's
+`lower`/`upper`, which is what a truncated prior needs for its bounds.
+
 So if a method silently ignored your prior, that is a bug in the method, not
 expected behaviour.
 

@@ -24,6 +24,7 @@ Other Assertions:
 \code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }

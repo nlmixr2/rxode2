@@ -357,6 +357,93 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
   }, logical(1), USE.NAMES=FALSE)
 }
 
+#' Priors specified in a model
+#'
+#' This is the accessor an estimation method uses to *implement* priors,
+#' as opposed to the `assertRxUi*` functions which reject the ones it
+#' cannot implement.
+#'
+#' @param ui rxode2 ui model
+#'
+#' @return data frame of the parameters that carry a prior, with the
+#'   columns `name`, `prior` (the prior as written, ie `"invWishart(4)"`),
+#'   `neta1`/`neta2` (`NA` for a population parameter) and `lower`/`upper`
+#'   from the parameter, which is what gives a truncated prior its bounds.
+#'   Zero rows when the model has no priors, including when the installed
+#'   'lotri' predates prior support.
+#'
+#' @family Assertions
+#' @author Matthew L. Fidler
+#' @export
+#' @examples
+#'
+#' \donttest{
+#' one.cmt <- function() {
+#'  ini({
+#'    tka <- 0.45
+#'    eta.ka ~ 0.6
+#'    add.sd <- 0.7
+#'  })
+#'  model({
+#'    ka <- exp(tka + eta.ka)
+#'    linCmt() ~ add(add.sd)
+#'  })
+#' }
+#'
+#' rxUiPriors(one.cmt)
+#' }
+rxUiPriors <- function(ui) {
+  ui <- assertRxUi(ui)
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      neta1=integer(0), neta2=integer(0),
+                      lower=numeric(0), upper=numeric(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             neta1=.iniDf$neta1[.w], neta2=.iniDf$neta2[.w],
+             lower=.iniDf$lower[.w], upper=.iniDf$upper[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  length(.rxUiPriors(ui)$name) > 0L
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  ## vacuously true when there is nothing to reject, which mirrors
+  ## `assertRxUiNormalPriors()` passing on a model with no priors
+  if (length(.p$name) == 0L) return(TRUE)
+  all(.rxPriorIsNormal(.p$prior))
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(FALSE)
+  any(.rxPriorIsOmegaDf(.p$prior))
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiOmegaPriors(ui)
+  if (length(.p$name) == 0L) return(FALSE)
+  any(.rxPriorIsNormal(.p$prior))
+}
+
 #' @export
 #' @rdname assertRxUi
 assertRxUiNoPriors <- function(ui, extra="", .var.name=.vname(ui)) {

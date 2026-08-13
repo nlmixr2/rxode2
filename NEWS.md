@@ -2,6 +2,20 @@
 
 ## New features
 
+- `rxUiPriors()` returns the priors a model specifies, with the parameter
+  name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
+  the parameter's `lower`/`upper` bounds.  The predicates
+  `testRxUiPriors()`, `testRxUiNormalPriors()`, `testRxUiOmegaDf()` and
+  `testRxUiOmegaNormalPriors()` report what kind of priors are present, so a
+  method that *implements* priors can branch instead of asserting.
+  `testRxUiOmegaDf()` and `testRxUiOmegaNormalPriors()` are mutually
+  exclusive, since an omega prior is either degrees of freedom (`NWPRI`) or
+  a normal prior (`TNPRI`) and lotri rejects a model that gives both.
+
+- `assertRxUiNoOmegaDf()` and `assertRxUiNoOmegaNormalPriors()` reject the
+  omega prior forms a method cannot use, the `NWPRI` and `TNPRI` ones
+  respectively.
+
 - `assertRxUiNoPriors()` and `assertRxUiNormalPriors()` let an estimation
   method declare which prior distributions it can use.  A prior specified in
   the `ini({})` block must never be silently ignored -- that would make the

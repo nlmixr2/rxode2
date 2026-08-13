@@ -184,6 +184,72 @@ rxTest({
     expect_error(assertRxUiNoOmegaNormalPriors(u), NA)
   })
 
+  test_that("the test* predicates report what an estimation method needs", {
+    skip_if_not(.hasPriorSupport())
+
+    ## no priors at all
+    u <- .modNoPriors()
+    expect_false(testRxUiPriors(u))
+    expect_true(testRxUiNormalPriors(u))    # vacuously, as the assert passes
+    expect_false(testRxUiOmegaDf(u))
+    expect_false(testRxUiOmegaNormalPriors(u))
+
+    ## a normal prior on a population parameter only
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
+    assign("iniDf", .ini, envir=u)
+    expect_true(testRxUiPriors(u))
+    expect_true(testRxUiNormalPriors(u))
+    expect_false(testRxUiOmegaDf(u))
+    expect_false(testRxUiOmegaNormalPriors(u))
+
+    ## NWPRI: degrees of freedom on the omega
+    .ini$prior[.ini$name == "tka"] <- NA_character_
+    .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
+    assign("iniDf", .ini, envir=u)
+    expect_true(testRxUiPriors(u))
+    expect_false(testRxUiNormalPriors(u))
+    expect_true(testRxUiOmegaDf(u))
+    expect_false(testRxUiOmegaNormalPriors(u))
+
+    ## TNPRI: a normal prior on the omega
+    .ini$prior[.ini$name == "eta.ka"] <- "dnorm(0, 0.1)"
+    assign("iniDf", .ini, envir=u)
+    expect_true(testRxUiPriors(u))
+    expect_true(testRxUiNormalPriors(u))
+    expect_false(testRxUiOmegaDf(u))
+    expect_true(testRxUiOmegaNormalPriors(u))
+
+    ## the two omega forms are mutually exclusive, so a model never
+    ## reports both
+    expect_false(testRxUiOmegaDf(u) && testRxUiOmegaNormalPriors(u))
+  })
+
+  test_that("rxUiPriors() gives what is needed to build the prior", {
+    skip_if_not(.hasPriorSupport())
+    u <- .modNoPriors()
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
+    .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
+    assign("iniDf", .ini, envir=u)
+
+    .p <- rxUiPriors(u)
+    expect_true(inherits(.p, "data.frame"))
+    expect_equal(nrow(.p), 2L)
+    expect_true(all(c("name", "prior", "neta1", "neta2", "lower", "upper") %in%
+                      names(.p)))
+    ## the population parameter has no eta numbers, the omega does
+    expect_true(is.na(.p$neta1[.p$name == "tka"]))
+    expect_false(is.na(.p$neta1[.p$name == "eta.ka"]))
+    ## the bounds come along, which is what a truncated prior needs
+    expect_equal(.p$lower[.p$name == "tka"], -Inf)
+
+    ## and it is empty rather than an error when there are no priors
+    expect_equal(nrow(rxUiPriors(.modNoPriors())), 0L)
+  })
+
   test_that("an unparsable prior is not treated as normal", {
     u <- .modNoPriors()
     .ini <- u$iniDf

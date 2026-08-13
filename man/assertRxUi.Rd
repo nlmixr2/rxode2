@@ -9,6 +9,10 @@
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
+\alias{testRxUiPriors}
+\alias{testRxUiNormalPriors}
+\alias{testRxUiOmegaDf}
+\alias{testRxUiOmegaNormalPriors}
 \alias{assertRxUiNoPriors}
 \alias{assertRxUiNormalPriors}
 \alias{assertRxUiNoOmegaDf}
@@ -35,6 +39,14 @@ assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 assertRxUiTransformNormal(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiPriors(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiOmegaDf(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiOmegaNormalPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNoPriors(ui, extra = "", .var.name = .vname(ui))
 
@@ -145,6 +157,7 @@ Other Assertions:
 \code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
