@@ -38,6 +38,12 @@ using namespace Rcpp;
 //' @param nsub      Number of subjects.
 //' @param nallTotal Total events across all subjects (sum of obs + doses).
 //' @param maxAllTimes Maximum events for any single subject.
+//' @param stiff     The solving method (\code{op$stiff}); only 3
+//'   (\code{"indLin"}) allocates anything extra here.
+//' @param doIndLin  Which matrix-exponential driver runs: 0 not a
+//'   \code{matExp()} model, 1 pure matrix exponential, 2 plus a state-free
+//'   \code{indLin()} forcing, 3/4 true inductive linearization (the adaptive,
+//'   iterating driver).  These cost very different amounts.
 //' @return Named numeric vector; each element is bytes for that allocation.
 //'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 //'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
@@ -62,7 +68,9 @@ NumericVector rxMemoryComponents_(
   int    numLin,
   int    nsub,
   double nallTotal,
-  double maxAllTimes)
+  double maxAllTimes,
+  int    stiff,
+  int    doIndLin)
 {
   rx_mem_layout _mem;
   rxFillMemLayout(
@@ -99,6 +107,51 @@ NumericVector rxMemoryComponents_(
   double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double);
   double b_inds        = (double)nsub  * sizeof(rx_solving_options_ind);
 
+  /* -- method="indLin" (src/expm.cpp) ---------------------------------------
+   *
+   * Unlike everything above, these scale with CORES and not with subjects: the
+   * exponential cache and the solver's Armadillo scratch are per thread, and a
+   * subject is solved start to finish on one thread.  `.rxOomChunkSize()` has
+   * to hold them out of its per-subject division for that reason.
+   *
+   * `m` is the dimension of the matrix actually exponentiated, which is NOT
+   * `neq`: `meOnly()` augments by one row per compartment carrying a nonzero
+   * forcing, and the iterating schemes augment further (exprb2 neq+1, exprb32
+   * neq+3, and the `indLinPmat()` phi fallback neq*(p+1), up to 3*neq).  Take
+   * the worst case each driver can reach, since the estimate exists to answer
+   * "will this fit", and an estimate that is too low is the useless kind.
+   */
+  double b_indLinCache = 0.0;
+  double b_indLinWork  = 0.0;
+  if (stiff == 3 && doIndLin > 0) {
+    const double dneq = (double) neq;
+    double m;
+    switch (doIndLin) {
+    case 1:  m = dneq + 1.0;  break;   /* pure matExp: augmented while infusing */
+    case 2:  m = 2.0 * dneq;  break;   /* + a forcing that may fill every row   */
+    default: m = 3.0 * dneq;  break;   /* iterating: the indLinPmat p=2 fallback */
+    }
+    /* The cache holds RX_INDLIN_EXPCACHE_N slots per thread, each a key and a
+     * value of m*m doubles -- but caching is SKIPPED above
+     * RX_INDLIN_EXPCACHE_MAXN2, so past that only the empty slots cost
+     * anything.  Both constants live in src/expm.cpp. */
+    const double slots  = 16.0;                     /* RX_INDLIN_EXPCACHE_N     */
+    const double maxN2  = 16384.0;                  /* RX_INDLIN_EXPCACHE_MAXN2 */
+    const double m2     = m * m;
+    const double perSlot = (m2 <= maxN2) ? 2.0 * m2 * sizeof(double) : 0.0;
+    /* An empty slot is still two std::vector headers plus the key fields. */
+    const double slotHdr = 2.0 * 24.0 + 2.0 * sizeof(double);
+    b_indLinCache = (double)cores * slots * (perSlot + slotHdr);
+    /* Scratch live at once in one thread.  The fixed-grid drivers (1/2) only
+     * ever hold meOnly()'s rate matrix and its augmented exponential; the
+     * iterating ones additionally hold the Jacobian, P(h), its inverse, the
+     * ramp and the Richardson table. */
+    const double sq = (doIndLin <= 2) ? (dneq*dneq + 2.0*m2)
+                                      : (12.0*dneq*dneq + 2.0*m2);
+    const double vec = (doIndLin <= 2) ? (4.0*dneq) : (25.0*dneq);
+    b_indLinWork = (double)cores * (sq + vec) * sizeof(double);
+  }
+
   NumericVector out = NumericVector::create(
     Named("gsolve")        = (double)_mem.gsolve_total * sizeof(double),
     Named("gsolve_n0")     = (double)_mem.n0           * sizeof(double),
@@ -113,6 +166,8 @@ NumericVector rxMemoryComponents_(
     Named("ordId")         = b_ordId,
     Named("gInfusionRate") = b_gInfRate,
     Named("inds_global")   = b_inds,
+    Named("indLinExpCache")= b_indLinCache,
+    Named("indLinWork")    = b_indLinWork,
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 

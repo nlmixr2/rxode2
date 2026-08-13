@@ -48,6 +48,17 @@
   exposes the whole naming sequence for packages that capture a model
   expression with `substitute()`.
 
+- `rxMemoryEstimate()` now accounts for what `method="indLin"` allocates, as
+  two new components: `indLinExpCache` (the per-thread matrix-exponential
+  cache) and `indLinWork` (the per-thread solver scratch).  Both depend on
+  which driver the model runs -- a pure `matExp()` model holds one rate matrix,
+  while true inductive linearization iterates and carries a Jacobian, `P(h)`
+  and its inverse as well -- and both scale with `cores` rather than with
+  subjects, so `rxSolve()` reaches the same out-of-memory decision for
+  `method="indLin"` that it already reached for every other solver, and
+  `rxSolveChunked()` sizes its chunks without charging per-thread buffers to
+  each subject.
+
 - `rxSolve(method="indLin")` now solves subjects in parallel and honors
   `cores`.  Inductive linearization was held to a single core because it was
   listed with the Fortran COMMON-block solvers (`lsoda`, `lsode`, `bdf`); it is
