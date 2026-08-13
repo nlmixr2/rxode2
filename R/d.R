@@ -35,10 +35,10 @@
 ## collapsed to 0 directly in .rxFromSE() (see .rxSElocallyConstant).
 .rxD$fsign <- list(
   function(x, y) {
-    return(paste0("sign(", x, ")*fsign(1, ", y, ")"))
+    paste0("sign(", x, ")*fsign(1, ", y, ")")
   },
   function(x, y) {
-    return("0")
+    "0"
   }
 )
 
@@ -589,7 +589,7 @@
   return("0")
 })
 .rxD$is.infinite <- list(function(a) {
-  return("0")
+  "0"
 })
 
 .rxD$gammap <- list(

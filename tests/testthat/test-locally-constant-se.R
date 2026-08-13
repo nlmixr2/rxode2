@@ -24,12 +24,12 @@ rxTest({
     # the model was silently emitted with `<var>=.expr`.  rxS() now loads every
     # .rxSEeq function with a known arity except the ones symengine
     # differentiates itself (.rxSEnative), so this guards the split
-    .tbl <- rxode2:::.rxSEeq
+    .tbl <- .rxSEeq
     .tbl <- .tbl[!is.na(.tbl) & .tbl >= 1 & .tbl <= 5]
     # linCmtA/linCmtB need a solved-system pointer, not a plain lhs, and the
     # internal-only spellings are deliberately not accepted by the parser
     .tbl <- .tbl[!(names(.tbl) %in% c("linCmtA", "linCmtB",
-                                      rxode2:::.rxSEinternalOnly))]
+                                      .rxSEinternalOnly))]
     for (.nm in names(.tbl)) {
       .args <- paste(paste0("p", seq_len(.tbl[[.nm]])), collapse = ",")
       .m <- paste0("fl=", .nm, "(", .args, ")\nd/dt(A)=-fl*A\n")
@@ -81,20 +81,20 @@ rxTest({
     # .rxAdjEvalNum() evaluates a dosing modifier (alag/rate/dur) and its
     # parameter derivatives at parameter values; a name it cannot find is
     # swallowed into NA, which silently zeroes the dose duals
-    expect_equal(rxode2:::.rxAdjEvalNum("floor(p)", c(p = 1.26)), 1)
-    expect_equal(rxode2:::.rxAdjEvalNum("ceil(p)", c(p = 1.26)), 2)
-    expect_equal(rxode2:::.rxAdjEvalNum("round(p)", c(p = 1.26)), 1)
-    expect_equal(rxode2:::.rxAdjEvalNum("trunc(p)", c(p = 1.26)), 1)
-    expect_equal(rxode2:::.rxAdjEvalNum("sign(p)", c(p = 1.26)), 1)
-    expect_equal(rxode2:::.rxAdjEvalNum("ftrunc(p)", c(p = 1.26)), 1)
-    expect_equal(rxode2:::.rxAdjEvalNum("fround(p,1)", c(p = 1.26)), 1.3)
-    expect_equal(rxode2:::.rxAdjEvalNum("fprec(p,2)", c(p = 1.26)), 1.3)
-    expect_equal(rxode2:::.rxAdjEvalNum("fsign(p,-1)", c(p = 1.26)), -1.26)
+    expect_equal(.rxAdjEvalNum("floor(p)", c(p = 1.26)), 1)
+    expect_equal(.rxAdjEvalNum("ceil(p)", c(p = 1.26)), 2)
+    expect_equal(.rxAdjEvalNum("round(p)", c(p = 1.26)), 1)
+    expect_equal(.rxAdjEvalNum("trunc(p)", c(p = 1.26)), 1)
+    expect_equal(.rxAdjEvalNum("sign(p)", c(p = 1.26)), 1)
+    expect_equal(.rxAdjEvalNum("ftrunc(p)", c(p = 1.26)), 1)
+    expect_equal(.rxAdjEvalNum("fround(p,1)", c(p = 1.26)), 1.3)
+    expect_equal(.rxAdjEvalNum("fprec(p,2)", c(p = 1.26)), 1.3)
+    expect_equal(.rxAdjEvalNum("fsign(p,-1)", c(p = 1.26)), -1.26)
     # each of these disagrees with the base R spelling and must match the C
     # solver: a half rounds away from zero, and fsign() takes 0 as positive
-    expect_equal(rxode2:::.rxAdjEvalNum("round(p)", c(p = 2.5)), 3)
-    expect_equal(rxode2:::.rxAdjEvalNum("round(p)", c(p = -2.5)), -3)
-    expect_equal(rxode2:::.rxAdjEvalNum("fsign(p,q)", c(p = 2.5, q = 0)), 2.5)
+    expect_equal(.rxAdjEvalNum("round(p)", c(p = 2.5)), 3)
+    expect_equal(.rxAdjEvalNum("round(p)", c(p = -2.5)), -3)
+    expect_equal(.rxAdjEvalNum("fsign(p,q)", c(p = 2.5, q = 0)), 2.5)
   })
 
   test_that("the numeric shims agree with the compiled model", {
@@ -108,7 +108,7 @@ rxTest({
                     c(p = -3.5, q = 2))) {
       .s <- rxSolve(.m, .p, et(0), returnType = "data.frame", addDosing = FALSE)
       for (.n in names(.txt)) {
-        expect_equal(rxode2:::.rxAdjEvalNum(.txt[[.n]], .p), .s[[.n]],
+        expect_equal(.rxAdjEvalNum(.txt[[.n]], .p), .s[[.n]],
                      info = paste(.txt[[.n]], paste(.p, collapse = ",")))
       }
     }
