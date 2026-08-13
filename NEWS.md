@@ -2,6 +2,15 @@
 
 ## New features
 
+- `assertRxUiNoPriors()` and `assertRxUiNormalPriors()` let an estimation
+  method declare which prior distributions it can use.  A prior specified in
+  the `ini({})` block must never be silently ignored -- that would make the
+  fit do something other than what the model says -- so a method that cannot
+  use priors calls `assertRxUiNoPriors()` and one that only handles normal
+  priors calls `assertRxUiNormalPriors()`.  Both are no-ops when the
+  installed `lotri` has no prior support, since then there are no priors to
+  reject.
+
 - `rxSolve(zeroVarParamHandle=)` says what happens when `params` supplies a
   value for an omega/sigma item whose variance is zero (say
   `eta.base ~ fix(0)`).  Such an item is dropped from the matrix that is

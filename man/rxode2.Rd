@@ -560,7 +560,7 @@ table:\tabular{lll}{
    expm1(x) \tab exp(x)-1 \tab  \cr
    lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
    sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
-   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
+   fsign(x, y) \tab abs(x) carrying the sign of y, where y equal to 0 counts as positive \tab  \cr
    fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
    fround(x, digits) \tab Round, used by R’s round() \tab  \cr
    ftrunc(x) \tab Truncated towards zero \tab  \cr
@@ -1063,6 +1063,119 @@ In general all the that are supported are in the following table
    log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
 }
 
+}
+
+}
+
+\subsection{Prior distributions in the \code{ini({})} block}{
+
+When an estimation method supports priors, the prior on a parameter is
+given in the \code{ini({})} block with:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(name) ~ dist(...)
+}\if{html}{\out{</div>}}
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the \code{ini({})} block.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{one.compartment <- function() \{
+  ini(\{
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkj_corr(2)
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  \})
+\}
+}\if{html}{\out{</div>}}
+
+A prior can be put on:
+\itemize{
+\item a population parameter, ie \code{prior(tka)}
+\item a single between subject variability term, ie \code{prior(eta.ka)}
+\item a whole covariance block, using one of the matrix-valued
+distributions, ie \code{prior(eta.cl, eta.v) ~ lkj_corr(2)}. The names
+given have to be exactly one block of the matrix.
+}
+\subsection{Prior distribution names}{
+
+The R name is used whenever R parameterizes the distribution the same
+way ‘Stan’ does (\code{dnorm()}, \code{dlnorm()}, \code{dgamma()}, \code{dbeta()},
+\code{dcauchy()}, \code{dunif()}, …). When there is no faithful R equivalent, the
+‘Stan’ name is used instead (\code{student_t()}, \code{lkj_corr()},
+\code{inv_wishart()}, …).
+
+Both spellings are accepted, and the arguments may be given positionally
+or by name, so these are all the same prior:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+}\if{html}{\out{</div>}}
+
+\code{dt()} is deliberately \strong{not} accepted as a spelling of \code{student_t()}:
+R’s \code{dt()} is the standardized (or noncentral) t, while the ‘Stan’
+\code{student_t(nu, mu, sigma)} is a location-scale t, so treating them as
+the same would silently change the prior. Use \code{student_t()} with its own
+parameterization.
+
+The full list of supported distributions, including the ‘Stan’ name for
+each, is returned by \code{lotri::lotriPriorDists()}.
+}
+
+\subsection{Bounds and truncated priors}{
+
+The bounds are not repeated in the prior; they come from the parameter
+itself. A parameter that is already bounded below by zero therefore gets
+a half distribution:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+}\if{html}{\out{</div>}}
+
+The prior is checked against those bounds, so putting a distribution
+with positive support on a parameter that allows negative values is an
+error.
+}
+
+\subsection{Where the prior is stored}{
+
+Priors are kept in the \code{prior} column of the model’s \verb{$iniDf} and are
+printed back as part of the \code{ini({})} block, so they survive printing
+and piping.
+
+A prior you specify is never silently dropped. An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+\itemize{
+\item \code{assertRxUiNoPriors()} – for a method that cannot use priors at all; a
+model that specifies one is an error
+\item \code{assertRxUiNormalPriors()} – for a method that supports priors but
+only normal ones (\code{dnorm()}/\code{normal()}, \code{std_normal()}); anything
+else, including a covariance-block prior such as \code{lkj_corr()}, is an
+error
+}
+
+So if a method silently ignored your prior, that is a bug in the method,
+not expected behaviour.
 }
 
 }

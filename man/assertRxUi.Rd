@@ -9,6 +9,8 @@
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
+\alias{assertRxUiNoPriors}
+\alias{assertRxUiNormalPriors}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
@@ -31,6 +33,10 @@ assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 assertRxUiTransformNormal(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoPriors(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
@@ -81,6 +87,12 @@ population effect, only)
 \item \code{assertRxUiNoAutoregressive} -- Make sure the model does not have an
 autoregressive residual (ie \code{ar()}); used by estimation methods that do
 not support it
+\item \code{assertRxUiNoPriors} -- Make sure the model does not specify any prior
+distributions; used by estimation methods that cannot use them, so that
+a specified prior is an error instead of being silently ignored
+\item \code{assertRxUiNormalPriors} -- Make sure that every prior the model
+specifies is a normal prior (\code{dnorm()}/\code{normal()}, or \code{std_normal()});
+used by estimation methods that support priors but only normal ones
 }
 }
 \examples{

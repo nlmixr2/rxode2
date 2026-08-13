@@ -490,7 +490,19 @@ positive support on a parameter that allows negative values is an error.
 
 Priors are kept in the `prior` column of the model's `$iniDf` and are printed
 back as part of the `ini({})` block, so they survive printing and piping.
-Estimation methods that do not use priors ignore the column.
+
+A prior you specify is never silently dropped.  An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+
+- `assertRxUiNoPriors()` -- for a method that cannot use priors at all; a
+  model that specifies one is an error
+- `assertRxUiNormalPriors()` -- for a method that supports priors but only
+  normal ones (`dnorm()`/`normal()`, `std_normal()`); anything else, including
+  a covariance-block prior such as `lkj_corr()`, is an error
+
+So if a method silently ignored your prior, that is a bug in the method, not
+expected behaviour.
 
 # Note on strings in rxode2
 

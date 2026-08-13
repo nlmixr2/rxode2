@@ -50,6 +50,14 @@
 #'    autoregressive residual (ie `ar()`); used by estimation methods that do
 #'    not support it
 #'
+#' - `assertRxUiNoPriors` -- Make sure the model does not specify any prior
+#'    distributions; used by estimation methods that cannot use them, so that
+#'    a specified prior is an error instead of being silently ignored
+#'
+#' - `assertRxUiNormalPriors` -- Make sure that every prior the model
+#'    specifies is a normal prior (`dnorm()`/`normal()`, or `std_normal()`);
+#'    used by estimation methods that support priors but only normal ones
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -266,6 +274,103 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
   invisible(ui)
 }
 
+
+#' Priors specified in a model
+#'
+#' The `prior` column only exists when the installed 'lotri' supports
+#' prior distributions, so its absence means "no priors" rather than an
+#' error.
+#'
+#' @param ui rxode2 ui
+#' @return data frame of the parameters that have a prior, with `name`
+#'   and `prior` columns; zero rows when there are none
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiPriors <- function(ui) {
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' The 'Stan' name of a prior distribution, or NA
+#'
+#' Looked up dynamically so that this still works with a 'lotri' that
+#' predates `lotriPriorDists()` (in which case there cannot be any
+#' priors to look up anyway).
+#'
+#' @param name canonical distribution name as stored in the `prior` column
+#' @return the 'Stan' spelling, or `NA_character_` when it is not known
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorStanName <- function(name) {
+  .ns <- asNamespace("lotri")
+  if (!exists("lotriPriorDists", envir=.ns, inherits=FALSE)) {
+    return(NA_character_)
+  }
+  .d <- get("lotriPriorDists", envir=.ns)()
+  .w <- which(.d$name == name | .d$stanName == name)
+  if (length(.w) != 1L) return(NA_character_)
+  .d$stanName[.w]
+}
+
+#' Distributions that count as a normal prior
+#'
+#' @noRd
+.rxNormalPriorStanNames <- c("normal", "std_normal")
+
+#' Is each prior a normal prior?
+#'
+#' @param prior character vector of priors as stored in the `prior` column
+#' @return logical vector
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorIsNormal <- function(prior) {
+  vapply(prior, function(p) {
+    .fn <- try(str2lang(p)[[1]], silent=TRUE)
+    if (inherits(.fn, "try-error")) return(FALSE)
+    .fn <- as.character(.fn)
+    if (length(.fn) != 1L) return(FALSE)
+    .stan <- .rxPriorStanName(.fn)
+    !is.na(.stan) && .stan %in% .rxNormalPriorStanNames
+  }, logical(1), USE.NAMES=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) > 0L) {
+    stop("'", .var.name, "' specifies prior distribution(s) on ",
+         paste0("'", .p$name, "'", collapse=", "),
+         ", which this estimation method cannot use", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(!.rxPriorIsNormal(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' specifies non-normal prior distribution(s): ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         "; this estimation method only supports normal priors", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
 
 #' @export
 #' @rdname assertRxUi
