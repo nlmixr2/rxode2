@@ -158,6 +158,32 @@ rxTest({
     expect_error(assertRxUiNoOmegaDf(u), NA)
   })
 
+  test_that("assertRxUiNoOmegaNormalPriors() rejects a normal prior on omega", {
+    skip_if_not(.hasPriorSupport())
+    ## `om.eta.ka ~ 0.01` is what a NONMEM TNPRI model needs, and it lands
+    ## on the omega row for eta.ka
+    u <- .modNoPriors()
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "eta.ka"] <- "dnorm(0, 0.1)"
+    assign("iniDf", .ini, envir=u)
+
+    expect_error(assertRxUiNoOmegaNormalPriors(u), "eta.ka")
+    expect_error(assertRxUiNoOmegaNormalPriors(u), "normal prior on the omega")
+
+    ## a Wishart on the same omega is not a normal prior, so it passes
+    .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
+    assign("iniDf", .ini, envir=u)
+    expect_error(assertRxUiNoOmegaNormalPriors(u), NA)
+
+    ## and a normal prior on a *population* parameter is not an omega
+    ## prior, so it passes too
+    .ini$prior[.ini$name == "eta.ka"] <- NA_character_
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
+    assign("iniDf", .ini, envir=u)
+    expect_error(assertRxUiNoOmegaNormalPriors(u), NA)
+  })
+
   test_that("an unparsable prior is not treated as normal", {
     u <- .modNoPriors()
     .ini <- u$iniDf

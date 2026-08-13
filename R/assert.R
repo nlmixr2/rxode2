@@ -65,6 +65,11 @@
 #'    `$OMEGAPD` of a NONMEM NWPRI model); used by estimation methods that
 #'    cannot use them
 #'
+#' - `assertRxUiNoOmegaNormalPriors` -- Make sure the model does not put a
+#'    normal prior on an omega parameter (ie `om.eta.cl ~ 0.01`, what a
+#'    NONMEM TNPRI model needs); used by estimation methods that can put a
+#'    prior on an omega but only a Wishart one
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -422,6 +427,41 @@ assertRxUiNoOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' gives prior degrees of freedom for the omega ",
          "block(s) ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         ", which this estimation method cannot use", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' Priors that sit on an omega element rather than a population parameter
+#'
+#' @param ui rxode2 ui
+#' @return data frame with `name` and `prior` for the omega rows that
+#'   carry a prior; zero rows when there are none
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiOmegaPriors <- function(ui) {
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior) & !is.na(.iniDf$neta1))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiOmegaPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(.rxPriorIsNormal(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' puts a normal prior on the omega parameter(s) ",
          paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
          ", which this estimation method cannot use", extra,
          call.=FALSE)

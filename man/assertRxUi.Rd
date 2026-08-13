@@ -12,6 +12,7 @@
 \alias{assertRxUiNoPriors}
 \alias{assertRxUiNormalPriors}
 \alias{assertRxUiNoOmegaDf}
+\alias{assertRxUiNoOmegaNormalPriors}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
@@ -40,6 +41,8 @@ assertRxUiNoPriors(ui, extra = "", .var.name = .vname(ui))
 assertRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNoOmegaDf(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoOmegaNormalPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
@@ -102,6 +105,10 @@ methods that support priors but only normal ones
 degrees of freedom for an omega block (ie \code{invWishart(4)}, the
 \verb{$OMEGAPD} of a NONMEM NWPRI model); used by estimation methods that
 cannot use them
+\item \code{assertRxUiNoOmegaNormalPriors} -- Make sure the model does not put a
+normal prior on an omega parameter (ie \code{om.eta.cl ~ 0.01}, what a
+NONMEM TNPRI model needs); used by estimation methods that can put a
+prior on an omega but only a Wishart one
 }
 }
 \examples{

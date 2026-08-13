@@ -1166,6 +1166,49 @@ what a multivariate normal with a diagonal covariance is. A zero
 variance is a point mass rather than a prior, so it is an error.
 }
 
+\subsection{Priors on the omega values}{
+
+The two NONMEM prior flavours want different things from an omega.
+
+An \code{NWPRI} model gives the omega block degrees of freedom. The scale
+matrix of the Wishart family is optional, because the block it is put on
+already \emph{is} that matrix, so only the degrees of freedom are needed –
+this is the \verb{$OMEGAP}/\verb{$OMEGAPD} pair:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  prior(eta.cl, eta.v) ~ invWishart(4)
+\})
+}\if{html}{\out{</div>}}
+
+It works on a 1x1 block as well, since an inverse Wishart of dimension
+one is an inverse gamma. An improper \code{nu <= p - 1} is an error.
+
+A \code{TNPRI} model instead puts a normal prior on the omega \emph{elements},
+jointly with the thetas. Prepending \code{om.} to a between subject
+variability names its omega element, so the normal prior shorthand can
+be used on it:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl ~ 0.3
+  eta.v ~ 0.1
+  om.eta.cl ~ 0.01     # normal prior on the omega element of eta.cl
+  om.eta.v ~ 0.04
+\})
+}\if{html}{\out{</div>}}
+
+The omega itself is untouched; only the prior is added. Correlated omega
+priors work the same way, including the per-row line form. An \code{om.} name
+has to match a real between subject variability – it never quietly
+creates one.
+
+Naming the eta directly means the same thing, so \code{prior(om.eta.cl)} and
+\code{prior(eta.cl)} are interchangeable. The \code{om.} spelling exists so the
+shorthand has a name to put on the left of a \code{~}, since \code{eta.cl ~ ...}
+already means the omega value itself.
+}
+
 \subsection{Prior distribution names}{
 
 There are three spellings of every distribution, and all of them are
@@ -1233,6 +1276,11 @@ only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{stdNormal()}
 the \code{multiNormal()} family, which is what the shorthand above produces
 for correlated parameters. Anything else, including a covariance
 matrix prior such as \code{lkjCorr()} or \code{invWishart()}, is an error
+\item \code{assertRxUiNoOmegaDf()} – for a method that cannot use prior degrees
+of freedom on an omega block, ie the \code{NWPRI} form above
+\item \code{assertRxUiNoOmegaNormalPriors()} – for a method that can put a prior
+on an omega but only a Wishart one, ie it supports \code{NWPRI} but not
+\code{TNPRI}
 }
 
 So if a method silently ignored your prior, that is a bug in the method,
