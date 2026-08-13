@@ -9,6 +9,7 @@
 #define SORT gfx::timsort
 #include "linCmt.h"
 #include "linCmtSensType.h"
+#include "../inst/include/rxode2EventTranslate.h"
 
 #ifdef RXODE2_NO_STAN_TBB_OBSERVER
 // stan-math's init_chainablestack.hpp is kept out of the build (no linkable
@@ -27,6 +28,27 @@ extern t_update_inis update_inis;
 
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
+
+// Does this individual have any infusion (or steady-state infusion) dose?
+//
+// The dose-time sensitivity (linCmtB which1 = -3) needs dA/dt, which includes
+// the infusion rate -- and `ind->InfusionRate` is only maintained while
+// SOLVING.  rxode2_df.cpp's output pass re-runs calc_lhs from the saved
+// amounts after iniSubject() has cleared the rates, so an infusion's
+// contribution would silently drop out of the reported value.  Report NA
+// instead of a wrong number; a bolus (including steady-state bolus) regimen is
+// exact.
+static inline int linCmtHasInfusion(rx_solving_options_ind *ind) {
+  if (ind->linSS == linCmtSsInf || ind->linSS == linCmtSsInf8) return 1;
+  for (int i = 0; i < ind->ndoses; ++i) {
+    int wh, cmt, wh100, whI, wh0;
+    getWh(getEvid(ind, ind->idose[i]), &wh, &cmt, &wh100, &whI, &wh0);
+    if (whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 // Create linear compartment models for testing
 using namespace Rcpp;
@@ -85,6 +107,28 @@ static inline double * getLinCmtDoubleAddr(linB_t &lcb, int type) {
   return NULL;
 }
 
+// Fill a macro-parameter vector in the order macros2micros() expects, which
+// depends on the compartment count and whether the model is oral.  Templated
+// on the target because the callers hold theta either as its own Matrix or as
+// an Eigen::Map over per-thread scratch.  Returns 0 for a shape that is not a
+// linCmt() model, leaving the vector untouched.
+template <typename T>
+static inline int linCmtFillTheta(T &th, int ncmt, int oral0,
+                                  double p1, double v1,
+                                  double p2, double p3,
+                                  double p4, double p5,
+                                  double ka) {
+  switch (ncmt + 10*oral0) {
+  case 1:  th << p1, v1; return 1;
+  case 11: th << p1, v1, ka; return 1;
+  case 2:  th << p1, v1, p2, p3; return 1;
+  case 12: th << p1, v1, p2, p3, ka; return 1;
+  case 3:  th << p1, v1, p2, p3, p4, p5; return 1;
+  case 13: th << p1, v1, p2, p3, p4, p5, ka; return 1;
+  }
+  return 0;
+}
+
 // [[Rcpp::export]]
 RObject linCmtModelDouble(double dt,
                           double p1, double v1, double p2,
@@ -116,15 +160,7 @@ RObject linCmtModelDouble(double dt,
   theta0.resize(lc.getNpars());
   Eigen::Map<Eigen::Matrix<double, -1, 1>> theta(theta0.data(), theta0.size());
 
-  int sw = ncmt + 10*oral0;
-  switch (sw) {
-  case 1:  theta << p1, v1; break;
-  case 11: theta << p1, v1, ka; break;
-  case 2:  theta << p1, v1, p2, p3; break;
-  case 12: theta << p1, v1, p2, p3, ka; break;
-  case 3:  theta << p1, v1, p2, p3, p4, p5; break;
-  case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
-  }
+  linCmtFillTheta(theta, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
 
   int numSens = lc.numSens();
   Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens0(numSens);
@@ -325,15 +361,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   }
   lc.setPtr(a, r, asave);
   // Setup parameter matrix
-  int sw = ncmt + 10*oral0;
-  switch (sw) {
-  case 1:  theta << p1, v1; break;
-  case 11: theta << p1, v1, ka; break;
-  case 2:  theta << p1, v1, p2, p3; break;
-  case 12: theta << p1, v1, p2, p3, ka; break;
-  case 3:  theta << p1, v1, p2, p3, p4, p5; break;
-  case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
-  }
+  linCmtFillTheta(theta, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
 
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
@@ -430,6 +458,41 @@ extern "C" int linCmtZeroJac(int i) {
 
 
 
+// linCmtB's which1 = -3 case: the dose-time (moving boundary) sensitivity.
+//
+// `amt` holds the amounts at the requested time from the which1=-1/which2=-1
+// call the caller is required to have made, and the linear system's own
+// right-hand side gives d/dL exactly (see linCmtStan::dAdt()).  Returns
+// NA_REAL for a call that does not describe the model `lc` is set up for, for
+// an individual with an infusion (linCmtHasInfusion()), or for an out of range
+// `which2`.
+static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
+                                     const Eigen::Matrix<double, Eigen::Dynamic, 1> &amt,
+                                     rx_solving_options_ind *ind,
+                                     const double *rate,
+                                     int ncmt, int oral0, int which2, int trans,
+                                     double p1, double v1,
+                                     double p2, double p3,
+                                     double p4, double p5,
+                                     double ka) {
+  if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
+      (int)amt.size() != ncmt + oral0) {
+    return NA_REAL;
+  }
+  if (linCmtHasInfusion(ind)) return NA_REAL;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
+  if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
+    return NA_REAL;
+  }
+  Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
+    stan::math::macros2micros(th, ncmt, trans);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> dot(ncmt + oral0);
+  lc.dAdt(amt, gm, ka, rate, dot);
+  if (which2 == -3) return -dot(oral0, 0) / lc.getVc(th);
+  if (which2 >= 0 && which2 < ncmt + oral0) return -dot(which2, 0);
+  return NA_REAL;
+}
+
 /*
  *  linCmtB
  *
@@ -465,6 +528,19 @@ extern "C" int linCmtZeroJac(int i) {
  *
  *  When which1 is -2, the gradient of the linear compartment model
  *  with respect to the parameter is returned.
+ *
+ *  When which1 is -3, the DOSE-TIME (moving boundary) sensitivity is
+ *  returned -- the derivative with respect to a delay applied to every dose
+ *  feeding the linear system, i.e. what a modeled `alag()` on its dosed
+ *  compartment produces (nlmixr2/rxode2#1119).  which2 = -3 gives it for the
+ *  reported concentration, which2 >= 0 for the amount in that compartment.
+ *  The system is linear and its whole input is delayed together, so
+ *  A(t; L) = A(t - L; 0) and the derivative is exactly -dA/dt; chain-rule it
+ *  with d(alag)/dp to get the sensitivity wrt a model parameter.  This
+ *  requires that EVERY dose reaching the linear system carries the same
+ *  `alag()`; it is not the per-compartment derivative of a model that lags
+ *  its compartments differently.  An individual with any infusion gets
+ *  `NA_REAL` -- see linCmtHasInfusion().
  *
  *  The parameter order is as follows:
  *
@@ -552,6 +628,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       return fx(which1);
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
+    } else if (which1 == -3) {
+      return linCmtBdoseTime(lc, fx, ind, getLinRate, ncmt, oral0, which2,
+                             trans, p1, v1, p2, p3, p4, p5, ka);
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
@@ -582,15 +661,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
     theta(getLinCmtDoubleAddr(lcb, linCmtBaddrTheta), lc.getNpars());
 
-  int sw = ncmt + 10*oral0;
-  switch (sw) {
-  case 1:  theta << p1, v1; break;
-  case 11: theta << p1, v1, ka; break;
-  case 2:  theta << p1, v1, p2, p3; break;
-  case 12: theta << p1, v1, p2, p3, ka; break;
-  case 3:  theta << p1, v1, p2, p3, p4, p5; break;
-  case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
-  }
+  linCmtFillTheta(theta, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
 
   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
     thetaSens(getLinCmtDoubleAddr(lcb, linCmtBaddrThetaSens), lcb.numSens);

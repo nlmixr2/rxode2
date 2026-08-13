@@ -1631,35 +1631,35 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   if (.ncmt["numLin"] <= 0) {
     return(.ret)
   }
-  .vars <- c("p1", "v1","p2", "p3", "p4", "p5")
-  .vars <- .vars[seq(1, 2*.ncmt["numLin"])]
+  ## `numLin` counts every physical linCmt compartment, the depot included, so
+  ## the number of disposition (central + peripheral) compartments -- and hence
+  ## the number of structural parameters -- is `numLin - depotLin`.  Treating
+  ## `numLin` as the disposition count invented a `peripheral1` for every oral
+  ## model, which then dropped a same-named ODE state out of `rxStateOde()` (so
+  ## it never got a sensitivity expansion) and tripped a bogus reserved-name
+  ## collision (nlmixr2/rxode2#1119).
+  .nDisp <- .ncmt["numLin"] - .ncmt["depotLin"]
+  if (.nDisp <= 0) {
+    return(.ret)
+  }
+  .vars <- c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nDisp)]
+  .periph <- if (.nDisp > 1L) paste0("peripheral", seq_len(.nDisp - 1L)) else character(0)
   if (.ncmt["depotLin"] > 0) {
     .ret <- c(.ret, "depot")
     .vars <- c(.vars, "ka")
   }
-  if (.ncmt["numLin"] > 0L) {
-    .ret <- c(.ret, "central")
-    if (.ncmt["numLin"] > 1L) {
-        .ret <- c(.ret, paste0("peripheral", seq_len(.ncmt["numLin"] - 1L)))
-    }
-  }
+  .ret <- c(.ret, "central", .periph)
   if (.ncmt["numLinSens"] > 0L) {
     .ret <- c(.ret,
-              paste0("rx__sens_central_BY_", .vars))
-    if (.ncmt["numLin"] > 1L) {
-      .ret <- c(.ret,
-                do.call(`c`,
-                        lapply(paste0("peripheral", seq_len(.ncmt["numLin"] - 1L)),
-                               function(x) {
-                                 paste0("rx__sens_", x, "_BY_", .vars)
-                               })))
-    }
+              unlist(lapply(c("central", .periph), function(.x) {
+                paste0("rx__sens_", .x, "_BY_", .vars)
+              }), use.names = FALSE))
     if (.ncmt["depotLin"] > 0) {
       .ret <- c(.ret,
                 "rx__sens_depot_BY_ka")
     }
   }
-  .ret
+  unname(.ret)
 }
 
 #' Get the ODE states only
