@@ -1,5 +1,7 @@
 rxTest({
 
+  .rxode2 <- loadNamespace("rxode2")
+
   ## Newer 'lotri' adds a `prior` column to the ini data frame for prior
   ## distributions.  rxode2 has to work with an `iniDf` that has it and
   ## with one that does not, since which one you get depends on the
@@ -43,12 +45,12 @@ rxTest({
                        err=NA_character_, stringsAsFactors=FALSE)
 
     ## a target without `prior` leaves the row alone
-    .noPrior <- rxode2:::.iniDfMatchColumns(.row, .iniDfNoPrior())
+    .noPrior <- .rxode2$.iniDfMatchColumns(.row, .iniDfNoPrior())
     expect_equal(names(.noPrior), names(.iniDfNoPrior()))
     expect_error(rbind(.iniDfNoPrior(), .noPrior), NA)
 
     ## a target with `prior` gains the column, filled with NA
-    .withPrior <- rxode2:::.iniDfMatchColumns(.row, .iniDfWithPrior())
+    .withPrior <- .rxode2$.iniDfMatchColumns(.row, .iniDfWithPrior())
     expect_equal(names(.withPrior), names(.iniDfWithPrior()))
     expect_true(is.na(.withPrior$prior))
     expect_error(rbind(.iniDfWithPrior(), .withPrior), NA)
@@ -56,7 +58,7 @@ rxTest({
     ## and an extra column on the row is dropped rather than breaking rbind
     .extra <- .row
     .extra$prior <- "dnorm(0, 1)"
-    expect_equal(names(rxode2:::.iniDfMatchColumns(.extra, .iniDfNoPrior())),
+    expect_equal(names(.rxode2$.iniDfMatchColumns(.extra, .iniDfNoPrior())),
                  names(.iniDfNoPrior()))
   })
 
