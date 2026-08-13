@@ -539,6 +539,26 @@ extern "C" int linCmtZeroJac(int i) {
  * @author Matthew Fidler
  *
 */
+// Fill a macro-parameter vector in the order macros2micros() expects, which
+// depends on the compartment count and whether the model is oral.  Returns 0
+// for a shape that is not a linCmt() model.
+static inline int linCmtFillTheta(Eigen::Matrix<double, Eigen::Dynamic, 1> &th,
+                                  int ncmt, int oral0,
+                                  double p1, double v1,
+                                  double p2, double p3,
+                                  double p4, double p5,
+                                  double ka) {
+  switch (ncmt + 10*oral0) {
+  case 1:  th << p1, v1; return 1;
+  case 11: th << p1, v1, ka; return 1;
+  case 2:  th << p1, v1, p2, p3; return 1;
+  case 12: th << p1, v1, p2, p3, ka; return 1;
+  case 3:  th << p1, v1, p2, p3, p4, p5; return 1;
+  case 13: th << p1, v1, p2, p3, p4, p5, ka; return 1;
+  }
+  return 0;
+}
+
 // linCmtB's which1 = -3 case: the dose-time (moving boundary) sensitivity.
 //
 // `amt` holds the amounts at the requested time from the which1=-1/which2=-1
@@ -562,14 +582,8 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
   }
   if (linCmtHasInfusion(ind)) return NA_REAL;
   Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
-  switch (ncmt + 10*oral0) {
-  case 1:  th << p1, v1; break;
-  case 11: th << p1, v1, ka; break;
-  case 2:  th << p1, v1, p2, p3; break;
-  case 12: th << p1, v1, p2, p3, ka; break;
-  case 3:  th << p1, v1, p2, p3, p4, p5; break;
-  case 13: th << p1, v1, p2, p3, p4, p5, ka; break;
-  default: return NA_REAL;
+  if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
+    return NA_REAL;
   }
   Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
     stan::math::macros2micros(th, ncmt, trans);
