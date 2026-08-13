@@ -137,11 +137,11 @@ rxTest({
     .Call("_rxode2_rxRegisterTestParLoaderNamed", "rxode2:test", PACKAGE = "rxode2")
     on.exit({
       .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
-      rxode2:::.rxClearActiveParLoaderC()
+      .rxClearActiveParLoaderC()
     }, add = TRUE)
 
     ## simulate a package that set the flag directly and never cleared it
-    rxode2:::.rxSetActiveParLoaderC("rxode2:test")
+    .rxSetActiveParLoaderC("rxode2:test")
     ## a ui solve of an unflagged model must clear it rather than inherit it
     expect_equal(rxSolve(rxode2(.u), .ev, returnType = "data.frame")$oa[1], 1)
   })
