@@ -540,9 +540,33 @@ void reset(void) {
 
 static void rxSyntaxError(struct D_Parser *ap);
 
+// Is `var` the name of one of the model's state variables?
+static inline int dfDyIsState(const char *var) {
+  int j;
+  for (j=0; j<tb.de.n; j++) {                       /* name state vars */
+    if (!strcmp(var, tb.ss.line[tb.di[j]])) return 1;
+  }
+  return 0;
+}
+
+// Is `var` a parameter, ie is dfdy entry `i` a df(State)/dy(Parameter)?  Records
+// that on tb.sdfdy[i] when it is.
+static inline int dfDyIsParameter(int i, const char *var) {
+  int j, islhs;
+  for (j=0; j<NV; j++) {
+    islhs = tb.lh[j];
+    if (islhs>1 && tb.lh[i] != isLhsStateExtra) continue; /* is a state var */
+    if ((islhs != 1 || tb.ini[j] == 1) && !strcmp(var, tb.ss.line[j])){
+      tb.sdfdy[i] = 1;
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline void assertCorrectDfDy(void) {
-  char *buf1, *buf2, bufe[2048];
-  int i, j, found, islhs;
+  char *num, *den, bufe[2048];
+  int i;
   for (i=0; i<tb.ndfdy; i++) {                     /* name state vars */
     // A df()/dy() whose numerator or denominator never resolved to a symbol
     // (e.g. a re-parsed df(state)/dy(THETA[n]) Jacobian where the THETA index
@@ -552,48 +576,15 @@ static inline void assertCorrectDfDy(void) {
     if (tb.df[i] < 0 || tb.df[i] >= NV || tb.dy[i] < 0 || tb.dy[i] >= NV) {
       continue;
     }
-    buf1=tb.ss.line[tb.df[i]];
-    found=0;
-    for (j=0; j<tb.de.n; j++) {                     /* name state vars */
-      buf2=tb.ss.line[tb.di[j]];
-      if (!strcmp(buf1, buf2)){
-	found=1;
-	break;
-      }
-    }
-    if (!found){
-      buf2=tb.ss.line[tb.dy[i]];
-      snprintf(bufe, 2048, NOSTATE,buf1,buf2,buf1);
+    num=tb.ss.line[tb.df[i]];
+    den=tb.ss.line[tb.dy[i]];
+    if (!dfDyIsState(num)){
+      snprintf(bufe, 2048, NOSTATE,num,den,num);
       trans_syntax_error_report_fn0(bufe);
     }
-    // Now the dy()
-    buf1=tb.ss.line[tb.dy[i]];
-    found=0;
-    for (j=0; j<tb.de.n; j++) {                     /* name state vars */
-      buf2=tb.ss.line[tb.di[j]];
-      if (!strcmp(buf1, buf2)){
-	found=1;
-	break;
-      }
-    }
-    if (!found){
-      for (j=0; j<NV; j++) {
-	islhs = tb.lh[j];
-	buf2=tb.ss.line[j];
-	if (islhs>1 && tb.lh[i] != isLhsStateExtra) continue; /* is a state var */
-	buf2=tb.ss.line[j];
-	if ((islhs != 1 || tb.ini[j] == 1) &&!strcmp(buf1, buf2)){
-	  found=1;
-	  // This is a df(State)/dy(Parameter)
-	  tb.sdfdy[i] = 1;
-	  break;
-	}
-      }
-    }
-    if (!found){
-      buf2=tb.ss.line[tb.df[i]];
-      buf2=tb.ss.line[tb.dy[i]];
-      snprintf(bufe,2048,NOSTATEVAR,buf1,buf2,buf2);
+    // Now the dy(); it may name either a state or a parameter
+    if (!dfDyIsState(den) && !dfDyIsParameter(i, den)){
+      snprintf(bufe,2048,NOSTATEVAR,den,den,den);
       trans_syntax_error_report_fn0(bufe);
     }
   }

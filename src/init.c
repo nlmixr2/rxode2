@@ -281,6 +281,14 @@ void rxOptionsIni(void);
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
+/* rxRegisterParLoader / rxRemoveParLoader + t_rxParLoader come from rxode2.h;
+   they are exported to downstream packages via the function-pointer table
+   (_rxode2_rxode2Ptr below), not R_RegisterCCallable. */
+
+/* dydt forcing hook: rxCallDydtForce is called from generated model code and so
+   is resolved via R_GetCCallable; rxRegisterDydtForce / rxRemoveDydtForce are
+   exported to plugins via the function-pointer table (like the par loaders). */
+void rxCallDydtForce(int *neq, double t, double *y, double *dydt);
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
 void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
@@ -537,8 +545,13 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2EventSensSetDimsPtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetDims, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2EventSensSetActivePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensSetActive, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2EventSensDeactivatePtr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxode2EventSensDeactivate, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveParLoader = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveParLoader, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 92
+#define nVec 97
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -632,6 +645,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 89, rxode2EventSensSetDimsPtr);
   SET_VECTOR_ELT(ret, 90, rxode2EventSensSetActivePtr);
   SET_VECTOR_ELT(ret, 91, rxode2EventSensDeactivatePtr);
+  SET_VECTOR_ELT(ret, 92, rxode2rxRegisterParLoader);
+  SET_VECTOR_ELT(ret, 93, rxode2rxRemoveParLoader);
+  SET_VECTOR_ELT(ret, 94, rxode2rxRegisterDydtForce);
+  SET_VECTOR_ELT(ret, 95, rxode2rxRemoveDydtForce);
+  SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -734,6 +752,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 89, Rf_mkChar("rxode2EventSensSetDims"));
   SET_STRING_ELT(retN, 90, Rf_mkChar("rxode2EventSensSetActive"));
   SET_STRING_ELT(retN, 91, Rf_mkChar("rxode2EventSensDeactivate"));
+  SET_STRING_ELT(retN, 92, Rf_mkChar("rxode2rxRegisterParLoader"));
+  SET_STRING_ELT(retN, 93, Rf_mkChar("rxode2rxRemoveParLoader"));
+  SET_STRING_ELT(retN, 94, Rf_mkChar("rxode2rxRegisterDydtForce"));
+  SET_STRING_ELT(retN, 95, Rf_mkChar("rxode2rxRemoveDydtForce"));
+  SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -788,9 +811,30 @@ SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SE
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
+extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
+extern SEXP _rxode2_rxRemoveTestParLoaders(void);
+extern SEXP _rxode2_rxRegisterTestParLoaderNamed(SEXP);
+extern SEXP _rxode2_rxRegisterTestDydtForce(void);
+extern SEXP _rxode2_rxRemoveTestDydtForce(void);
+extern SEXP _rxode2_rxGetInjectedPars(void);
+extern SEXP _rxode2_rxSetForcedPars(SEXP, SEXP);
+extern SEXP _rxode2_rxClearForcedPars(void);
+extern SEXP _rxode2_rxSetActiveParLoader(SEXP);
+extern SEXP _rxode2_rxClearActiveParLoader(void);
+
 void R_init_rxode2(DllInfo *info){
   allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxRegisterTestParLoaders", (DL_FUNC) &_rxode2_rxRegisterTestParLoaders, 1},
+    {"_rxode2_rxRemoveTestParLoaders", (DL_FUNC) &_rxode2_rxRemoveTestParLoaders, 0},
+    {"_rxode2_rxRegisterTestParLoaderNamed", (DL_FUNC) &_rxode2_rxRegisterTestParLoaderNamed, 1},
+    {"_rxode2_rxRegisterTestDydtForce", (DL_FUNC) &_rxode2_rxRegisterTestDydtForce, 0},
+    {"_rxode2_rxRemoveTestDydtForce", (DL_FUNC) &_rxode2_rxRemoveTestDydtForce, 0},
+    {"_rxode2_rxGetInjectedPars", (DL_FUNC) &_rxode2_rxGetInjectedPars, 0},
+    {"_rxode2_rxSetForcedPars", (DL_FUNC) &_rxode2_rxSetForcedPars, 2},
+    {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
+    {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
+    {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
@@ -1046,6 +1090,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "rxCallDydtForce", (DL_FUNC) &rxCallDydtForce);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);

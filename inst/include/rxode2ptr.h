@@ -327,6 +327,28 @@ extern "C" {
   typedef void (*setRxThreadId_t)(int id);
   extern setRxThreadId_t setRxThreadId;
 
+  // Register / remove an external parameter-block loader (t_rxParLoader from
+  // rxode2.h); rxode2 calls registered loaders once per solve so a package can
+  // fill reserved par_ptr slots with externally-owned values.
+  typedef void (*rxRegisterParLoader_t)(t_rxParLoader cb);
+  extern rxRegisterParLoader_t rxRegisterParLoader;
+  typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
+  extern rxRemoveParLoader_t rxRemoveParLoader;
+  // Register a NAMED loader ("<package>:<function>") that runs only for a model
+  // flagging that name (rxParLoader()), so an injector never touches an unrelated
+  // model's par_ptr.
+  typedef void (*rxRegisterParLoaderNamed_t)(const char* name, t_rxParLoader cb);
+  extern rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed;
+
+  // Register / remove a dydt forcing hook (t_rxDydtForce from rxode2.h); the
+  // generated model calls all registered hooks at the end of its RHS so a
+  // package can add forcing to state derivatives (e.g. NN-weight variational
+  // states).
+  typedef void (*rxRegisterDydtForce_t)(t_rxDydtForce cb);
+  extern rxRegisterDydtForce_t rxRegisterDydtForce;
+  typedef void (*rxRemoveDydtForce_t)(t_rxDydtForce cb);
+  extern rxRemoveDydtForce_t rxRemoveDydtForce;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -421,6 +443,11 @@ extern "C" {
       rxode2EventSensSetDims = (rxode2EventSensSetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 89));
       rxode2EventSensSetActive = (rxode2EventSensSetActive_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 90));
       rxode2EventSensDeactivate = (rxode2EventSensDeactivate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 91));
+      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 92));
+      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 93));
+      rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 94));
+      rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 95));
+      rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 96));
     }
     return R_NilValue;
   }
@@ -518,6 +545,11 @@ extern "C" {
   rxode2EventSensSetDims_t rxode2EventSensSetDims = NULL;           \
   rxode2EventSensSetActive_t rxode2EventSensSetActive = NULL;       \
   rxode2EventSensDeactivate_t rxode2EventSensDeactivate = NULL;     \
+  rxRegisterParLoader_t rxRegisterParLoader = NULL;     \
+  rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
+  rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
+  rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
+  rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

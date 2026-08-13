@@ -68,6 +68,34 @@
   core with the usual warning.  The answer, and the `rxIndLinSteps()` step
   counts, are unchanged from the single-core solve.
 
+- Solve-time hooks let a package change what a solve sees from outside the
+  model text.  `rxForcedPars(ui) <- c(cl = 1.2)` sets parameter values that
+  override `params`/data and the initial estimates on every solve; they are
+  stored on the ui (hidden from the printed model, registered `sticky`), so
+  they survive piping and travel into a `nlmixr2` fit built from that model,
+  which keeps a fit carrying externally-owned values (e.g. trained weights)
+  self-contained.  For a block that is computed rather than fixed, a package
+  registers a C **par-loader** (`rxRegisterParLoader()`) that runs once per
+  solve, single-threaded, after the global parameter matrix is laid out and
+  before integration; `rxInjectedPars()` reports what it changed, and those
+  values are saved on the solved object so re-solving reproduces them in a
+  session where the injecting package's buffer is gone.  A loader registered
+  with `rxRegisterParLoaderNamed("<pkg>:<fn>")` runs *only* for a model that
+  flags that name with `rxParLoader(ui) <- "<pkg>:<fn>"`, so an injector cannot
+  reach an unrelated model; an unnamed loader keeps running on every solve.
+  `rxRegisterDydtForce()` adds a term to a state derivative at the end of the
+  generated model's RHS, so it is integrated like any other -- it runs inside
+  the parallel per-subject solve, so such a callback must be thread safe and
+  must check `neq[0]` before writing a `dydt` slot.  `rxRegisterUiPrep(name,
+  fn)` calls `fn(ui)` at the start of every ui solve, before parameters are
+  loaded, so a package can rebuild C-side state that a saved-and-reloaded ui no
+  longer has; resolve positions by name rather than a stored index, and keep it
+  cheap and a no-op for models it does not own, since it runs on every ui
+  solve.  A failing prep hook is downgraded to a warning.  Pair each
+  registration with `rxRemoveParLoader()` / `rxRemoveDydtForce()` /
+  `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
+  article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
+
 ## Bug fixes
 
 ### Parsing
