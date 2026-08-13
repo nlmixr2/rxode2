@@ -189,6 +189,28 @@
   invisible()
 }
 
+#' Match a hand constructed ini row to the columns of an `iniDf`
+#'
+#' The columns present in an `iniDf` depend on the version of 'lotri'
+#' that produced it; newer versions add a `prior` column holding the
+#' prior distribution.  Rows constructed by hand in this package
+#' therefore cannot hard-code the column list, or `rbind()` fails with
+#' "numbers of columns of arguments do not match".  This reshapes such a
+#' row to whatever the target actually has, filling anything missing
+#' with an `NA` of the right type and dropping anything extra.
+#'
+#' @param row hand constructed data frame of new ini row(s)
+#' @param iniDf the ini data frame `row` will be combined with
+#' @return `row`, with the same columns in the same order as `iniDf`
+#' @author Matthew L. Fidler
+#' @noRd
+.iniDfMatchColumns <- function(row, iniDf) {
+  for (.a in setdiff(names(iniDf), names(row))) {
+    row[[.a]] <- rep(iniDf[[.a]][NA_integer_], length.out=nrow(row))
+  }
+  row[, names(iniDf), drop=FALSE]
+}
+
 #'  Add a covariance term between two eta values
 #'
 #' @param ini Data frame of initial estimates
@@ -234,7 +256,7 @@
   if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .minfo(paste0("add covariance between {.code ", ini$name[.w1], "} and {.code ", ini$name[.w2], "} with initial estimate {.code ", est, "}"))
   }
-  rbind(ini,.ini2)
+  rbind(ini, .iniDfMatchColumns(.ini2, ini))
 }
 
 #' This function handles the lotri process and integrates into current UI

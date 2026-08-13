@@ -230,6 +230,10 @@ linMod <- function(variable, power, dv="dv",
     .theta1$backTransform <- NA_character_
     .theta1$condition <- NA_character_
     .theta1$err <- NA_character_
+    ## `.rxBlankIni()` only carries a subset of the columns, and which
+    ## columns an `iniDf` has depends on the version of 'lotri' that
+    ## built it, so match whatever the real one has
+    .theta1 <- .iniDfMatchColumns(.theta1, iniDf)
     .est <- rep(0, length(.pre))
     if (data) {
       .dat <- rxUdfUiData()

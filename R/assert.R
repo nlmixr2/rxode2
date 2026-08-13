@@ -703,9 +703,12 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
 #' testIniDf(TRUE)
 testIniDf <- function(iniDf) {
   if (checkmate::testDataFrame(iniDf)) {
+    ## `prior` comes from 'lotri' and is only present with newer
+    ## versions of it; since this is a subset check the same list works
+    ## whether or not the column is there
     checkmate::testSubset(names(iniDf),
                           c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
-                            "fix", "label", "backTransform", "condition", "err"))
+                            "fix", "label", "backTransform", "condition", "prior", "err"))
   } else {
     FALSE
   }

@@ -98,6 +98,17 @@
 
 ## Bug fixes
 
+### Initial conditions data frame
+
+- The `iniDf` now tolerates the `prior` column that newer versions of `lotri`
+  add for prior distributions (#1248).  `testIniDf()`/`assertIniDf()` used to
+  reject every model built with such a `lotri`, and the ini rows that are
+  constructed by hand internally (adding a covariance between two etas,
+  promoting a parameter, `linMod()`) hard-coded the column list and so failed
+  to `rbind()` with "numbers of columns of arguments do not match".  These now
+  match whatever columns the `iniDf` actually has, so rxode2 works both with
+  `lotri` versions that have the column and with versions that do not.
+
 ### Parsing
 
 - A variable that is used *only* as an argument to an adaptive dosing call
