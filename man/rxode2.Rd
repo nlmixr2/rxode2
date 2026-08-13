@@ -1156,6 +1156,11 @@ and the \code{sd()}, \code{var()}, \code{cor()}, \code{cov()} and \code{chol()} 
               0.5, 3)   # variances of 4 and 9
 }\if{html}{\out{</div>}}
 
+The matrix means exactly what it means for an eta block: the
+off-diagonal is a \strong{covariance}, not a correlation. A prior block and
+an eta block written the same way give the same matrix, so \code{cor()} is
+how you give a correlation here just as it is there.
+
 An uncorrelated block is simply independent normal priors, since that is
 what a multivariate normal with a diagonal covariance is. A zero
 variance is a point mass rather than a prior, so it is an error.
