@@ -342,7 +342,8 @@ solving, but allows user Jacobian specification.
 \item \code{"dop853"} -- DOP853 solver.  Does not support parallel thread-based
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
-must be setup specially to use this solving routine.
+must be setup specially to use this solving routine.  Supports
+parallel thread-based solving and honors \code{cores}.
 \item \code{"f78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 \item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
 \item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.

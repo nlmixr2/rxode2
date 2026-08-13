@@ -147,7 +147,6 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
   case 2: {
     int iflag=0;
     int m = H.n_rows;
-    // FIXME C++ implementation for threading.
     out = H;
     F77_CALL(matexprbs)(&order, &m, &t, out.memptr(), &iflag);
     // matexpRBS used to warn through the R API from inside the parallel
@@ -159,9 +158,17 @@ static inline void matrixExp(arma::mat& H, arma::mat& out, double t, int type,
     }
     break;
   }
-  default:
+  default: {
     H *= t;
-    out = arma::expmat(H);
+    // The bool form, not `out = arma::expmat(H)`: the one-argument overload
+    // throws on failure, and `ARMA_DONT_PRINT_ERRORS` suppresses the message,
+    // not the throw.  An exception leaving an omp region is std::terminate.
+    if (!arma::expmat(out, H)) {
+      RSprintf(_("matrix exponential failed\n"));
+      out.zeros();
+    }
+    break;
+  }
   }
 }
 
@@ -251,10 +258,32 @@ typedef struct {
 } indLinAutoState_t;
 static std::vector<indLinAutoState_t> __indLinAutoState;
 
+// This thread's slot in a pool of `n`, or -1 when it has none.
+//
+// `rx_get_thread()` CLAMPS to the last slot instead, which is right for the
+// pools it was written for -- two threads sharing a counter tears a number.
+// It is not right here: the exponential cache's write path calls
+// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, which
+// is a use-after-free rather than a torn read.  A thread with no slot of its
+// own simply does not cache.  An external OpenMP driver (nlmixr2est) is
+// supposed to have configured `op->cores` to cover its team; this is what
+// happens when it has not.
+static inline int indLinOwnSlot(int n) {
+  if (n <= 0) return -1;
+#ifdef _OPENMP
+  int tn = getRxThreadId();
+  if (tn < 0) tn = omp_get_thread_num();
+  if (tn < 0) tn = 0;
+  return (tn < n) ? tn : -1;
+#else
+  return 0;
+#endif
+}
+
 static inline indLinAutoState_t *indLinAutoFor(int cSub) {
-  if (__indLinAutoState.empty()) return NULL;
-  indLinAutoState_t *a =
-    &__indLinAutoState[rx_get_thread((int)__indLinAutoState.size())];
+  const int tid = indLinOwnSlot((int)__indLinAutoState.size());
+  if (tid < 0) return NULL;   // every caller is NULL-safe: Picard, no ratchet
+  indLinAutoState_t *a = &__indLinAutoState[tid];
   if (a->cSub != cSub) {
     a->cSub = cSub;
     a->scheme = RX_INDLIN_ITER_PICARD;
@@ -264,16 +293,67 @@ static inline indLinAutoState_t *indLinAutoFor(int cSub) {
   return a;
 }
 
+// -- Step-disposition diagnostics ---------------------------------------------
+//
+// `$counts` is full: slvr counts accepted steps and dadt/jac already carry the
+// exponentials computed and reused.  These answer a different question -- WHY a
+// step was retried.  A step cut because the fixed-point iteration would not
+// contract is one the error controller would have allowed, so this count is the
+// ceiling on what replacing that iteration can win; a step rejected on error is
+// not.  Read with `rxIndLinSteps()`, which sums the threads and resets.
+//
+// Per thread and summed at read, not atomics: every increment sits in the
+// innermost substep loop, where a contended atomic would cost more than the
+// step it counts.  Padded so two threads never share a cache line.
+typedef struct {
+  long attempt;
+  long accept;
+  long rejErr;    // rejected: local error estimate too large
+  long cutConv;   // cut: iteration did not converge (ret == -2)
+  long iter;      // total iteration passes over all substeps
+  char pad[64];
+} indLinCounts_t;
+static std::vector<indLinCounts_t> __indLinCounts;
+// `indLin()` is reachable before any solve has sized the pool; count into a
+// sink there rather than branching around every increment.  Nothing is threaded
+// at that point, and `rxIndLinSteps()` drains it along with the rest.
+static indLinCounts_t __indLinCountsSink;
+
+// NULL when this thread has no slot of its own, so a caller skips the count
+// rather than sharing one.  `rx_get_thread`'s clamp would put two threads on
+// one `long`, which loses counts AND is a data race; a thread without a slot is
+// already running uncached, so undercounting it is the honest outcome.
+static inline indLinCounts_t *indLinCountsHere(void) {
+  if (__indLinCounts.empty()) return &__indLinCountsSink;
+  const int tid = indLinOwnSlot((int)__indLinCounts.size());
+  return (tid < 0) ? NULL : &__indLinCounts[tid];
+}
+
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
+  // Cover `omp_get_max_threads()` as well as the cores this solve asked for,
+  // for the reason `ensureExtraDosing` gives: an external OpenMP driver can
+  // bring more threads than `op->cores`.  Without a slot each they fall back to
+  // computing uncached (indLinOwnSlot), which is correct but slow, so size for
+  // the common case and let the guard cover the rest.
+  {
+    int mx = omp_get_max_threads();
+    if (mx > nCores) nCores = mx;
+  }
   if ((int)__indLinExpCache.size() < nCores) {
     __indLinExpCache.resize(nCores);
   }
   if ((int)__indLinAutoState.size() < nCores) {
     __indLinAutoState.resize(nCores);
+  }
+  // Grown but never zeroed here: the counts accumulate until `rxIndLinSteps()`
+  // reads them, which is across solves, and `rxSolveFree()` runs at the START
+  // of the next one.  `resize` value-initializes the new slots.
+  if ((int)__indLinCounts.size() < nCores) {
+    __indLinCounts.resize(nCores);
   }
   for (int i = 0; i < (int)__indLinAutoState.size(); i++) {
     __indLinAutoState[i].cSub = -1;      // nothing survives into another solve
@@ -292,6 +372,9 @@ extern "C" void ensureIndLinExpCache(int nCores) {
 extern "C" void freeIndLinExpCache(void) {
   __indLinExpCache.clear();
   __indLinAutoState.clear();
+  // `__indLinCounts` is deliberately NOT cleared: `rxSolveFree()` calls this at
+  // the START of the next solve, and the counts have to survive until
+  // `rxIndLinSteps()` reads them.  It is five longs per core.
 }
 
 // exp(H*t) into `out`, reusing an identical earlier exponential when there is
@@ -302,9 +385,9 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   const int n = (int) H.n_rows;
   const size_t n2 = (size_t) n * (size_t) n;
   expCache_t *c = NULL;
-  if (!__indLinExpCacheOff && !__indLinExpCache.empty() &&
-      n2 <= RX_INDLIN_EXPCACHE_MAXN2) {
-    c = &__indLinExpCache[rx_get_thread((int)__indLinExpCache.size())];
+  const int tid = indLinOwnSlot((int)__indLinExpCache.size());
+  if (!__indLinExpCacheOff && tid >= 0 && n2 <= RX_INDLIN_EXPCACHE_MAXN2) {
+    c = &__indLinExpCache[tid];
     for (int j = 0; j < RX_INDLIN_EXPCACHE_N; j++) {
       expCacheSlot_t &s = c->slot[j];
       if (s.n == n && memcmp(&s.t, &t, sizeof(double)) == 0 &&
@@ -505,10 +588,6 @@ arma::vec phiv(double t, arma::mat& A, arma::vec& u,
   }
   }
 }
-
-
-bool expm_assign=false;
-SEXP expm_s;
 
 // P(h) = A^-1(exp(Ah) - I) = h*phi1(Ah), the operator the substep map applies
 // to the forcing.  Needed as a MATRIX only by the Newton iteration, which forms
@@ -2019,26 +2098,15 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
 // tuned `hmax` keeps at least the accuracy they had, and every old substep
 // boundary is still a boundary (which is what keeps time-varying covariate
 // sampling a refinement rather than a change).
-// -- Step-disposition diagnostics ---------------------------------------------
-//
-// `$counts` is full: slvr counts accepted steps and dadt/jac already carry the
-// exponentials computed and reused.  These answer a different question -- WHY a
-// step was retried.  A step cut because the fixed-point iteration would not
-// contract is one the error controller would have allowed, so this count is the
-// ceiling on what replacing that iteration can win; a step rejected on error is
-// not.  Read with `rxIndLinSteps()`, which also resets.
-//
-// Plain `long` rather than atomics: `par_indLin` is forced single-threaded
-// (`solveMethodThreadSafe`), and these are diagnostics, so a torn count under a
-// future threaded build would mislead but not corrupt.  Revisit if indLin ever
-// becomes reentrant.
-static long __indLinNAttempt = 0;
-static long __indLinNAccept  = 0;
-static long __indLinNRejErr  = 0;   // rejected: local error estimate too large
-static long __indLinNCutConv = 0;   // cut: iteration did not converge (ret == -2)
-static long __indLinNIter    = 0;   // total iteration passes over all substeps
+// The step-disposition counters live with the other per-thread pools, above.
+// `indLinCountsHere()` returns NULL for a thread with no slot of its own, so
+// every bump below is guarded rather than shared.
+#define rxIndLinBump(FIELD, BY) do {                    \
+    indLinCounts_t *_c_ = indLinCountsHere();           \
+    if (_c_ != NULL) _c_->FIELD += (BY);                \
+  } while (0)
 
-extern "C" void rxIndLinCountIter(int n) { __indLinNIter += n; }
+extern "C" void rxIndLinCountIter(int n) { rxIndLinBump(iter, n); }
 
 // The extrapolation level an explicit `indLinRichardson` asks for.  `auto`
 // starts at the base order and earns its way up through indLinRaiseRich().
@@ -2184,7 +2252,7 @@ static inline void indLinAcceptStep(indLinProgress_t *pr, bool inSS, double hCap
   y0 = yTry;
   pr->t += pr->h;
   pr->nAccept++;
-  __indLinNAccept++;
+  rxIndLinBump(accept, 1);
   if ((pr->lastRejected || inSS) && fac > 1.0) fac = 1.0;
   pr->lastRejected = 0;
   pr->h *= fac;
@@ -2208,7 +2276,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                     arma::vec &yScratch, arma::mat &richTab,
                                     int *retOut) {
   const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
-  __indLinNAttempt++;
+  rxIndLinBump(attempt, 1);
   if (++(pr->nAttempt) > op->mxstep) return RX_INDLIN_ACT_ABANDON;
   // Decide from the step the controller has settled on rather than by burning
   // the switch-over count first.
@@ -2224,7 +2292,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
                                 InfusionRate_, on_, ME, IndF, u, yTry, w1,
                                 yScratch, richTab, &err, &ratio);
   if (ret == -2) {
-    __indLinNCutConv++;
+    rxIndLinBump(cutConv, 1);
     indLinStiffGate(autoScheme, autoRich, autoSt, &(pr->scheme), &(pr->useRich));
     pr->h *= indLinCutFactor(ratio, FACMIN);
     pr->lastRejected = 1;
@@ -2236,7 +2304,7 @@ static indLinAction_t indLinAttempt(int cSub, rx_solving_options *op,
   }
   double fac = indLinStepFactor(err, expo, SAFE, FACMIN, FACMAX);
   if (err > 1.0) {
-    __indLinNRejErr++;
+    rxIndLinBump(rejErr, 1);
     pr->h *= fac;
     pr->lastRejected = 1;
     return (pr->h < 1e-10*span) ? RX_INDLIN_ACT_ABANDON : RX_INDLIN_ACT_RETRY;
@@ -2364,10 +2432,10 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
 //'        inductive linearization
 //' @name rxIndLin_
 //' @noRd
-extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
-                      double tp, double *yp_, double tf,
-		      double *InfusionRate_, int *on_,
-		      t_ME ME, t_IndF  IndF){
+static int indLinRun(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                     double tp, double *yp_, double tf,
+                     double *InfusionRate_, int *on_,
+                     t_ME ME, t_IndF  IndF){
   int neq = (ind != NULL) ? rxEffNeq(ind, op) : op->neq;
   // Use per-individual tolerance arrays when available (set by
   // _setIndPointersByThread + iniSubject), falling back to op->rtol2/atol2.
@@ -2521,6 +2589,31 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
   return 1;
 }
 
+// The solve-side entry point.  Everything it reaches is written not to throw --
+// `RSprintf` instead of the R API, the bool forms of the Armadillo
+// decompositions, `ind->err` instead of an error -- but an Armadillo
+// allocation can still raise `std::bad_alloc`, and an exception leaving
+// `par_indLin`'s parallel region is `std::terminate`, i.e. a lost session
+// rather than a failed subject.  Turn anything that escapes into a failed
+// subject, under its own error code so the message names what happened.
+//
+// This does not hide an R error or a user interrupt: R signals those with
+// `longjmp` (a udf's R error reaches C through `Rf_error` at the end of
+// `_rxode2_evalUdfS`'s BEGIN_RCPP/END_RCPP), and a `longjmp` unwinds straight
+// past a `catch`.  A udf model is also classified `notThreadSafe`, so it never
+// runs under a team in the first place.
+extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *ind,
+                      double tp, double *yp_, double tf,
+                      double *InfusionRate_, int *on_,
+                      t_ME ME, t_IndF  IndF){
+  try {
+    return indLinRun(cSub, op, ind, tp, yp_, tf, InfusionRate_, on_, ME, IndF);
+  } catch (...) {
+    if (ind != NULL) ind->err |= rxErrIndLinExcept;
+    return -1;
+  }
+}
+
 // Step dispositions for the last solve (or since the last read), as a named
 // integer vector; reading resets, so a measurement is one call before and the
 // numbers after.  `cutConv` is the count that matters: those are steps the
@@ -2530,18 +2623,30 @@ extern "C" SEXP _rxode2_rxIndLinSteps(void) {
   rxProtect rx_protect;
   SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 5));
   SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 5));
-  REAL(ret)[0] = (double) __indLinNAttempt;
-  REAL(ret)[1] = (double) __indLinNAccept;
-  REAL(ret)[2] = (double) __indLinNRejErr;
-  REAL(ret)[3] = (double) __indLinNCutConv;
-  REAL(ret)[4] = (double) __indLinNIter;
+  // Summed over the threads that did the work, plus the pre-solve sink; this
+  // runs on the R thread with no solve in flight, so a plain read is enough.
+  indLinCounts_t tot = __indLinCountsSink;
+  for (int i = 0; i < (int)__indLinCounts.size(); i++) {
+    tot.attempt += __indLinCounts[i].attempt;
+    tot.accept  += __indLinCounts[i].accept;
+    tot.rejErr  += __indLinCounts[i].rejErr;
+    tot.cutConv += __indLinCounts[i].cutConv;
+    tot.iter    += __indLinCounts[i].iter;
+  }
+  REAL(ret)[0] = (double) tot.attempt;
+  REAL(ret)[1] = (double) tot.accept;
+  REAL(ret)[2] = (double) tot.rejErr;
+  REAL(ret)[3] = (double) tot.cutConv;
+  REAL(ret)[4] = (double) tot.iter;
   SET_STRING_ELT(nm, 0, Rf_mkChar("attempt"));
   SET_STRING_ELT(nm, 1, Rf_mkChar("accept"));
   SET_STRING_ELT(nm, 2, Rf_mkChar("rejErr"));
   SET_STRING_ELT(nm, 3, Rf_mkChar("cutConv"));
   SET_STRING_ELT(nm, 4, Rf_mkChar("iter"));
   Rf_setAttrib(ret, R_NamesSymbol, nm);
-  __indLinNAttempt = __indLinNAccept = __indLinNRejErr = 0;
-  __indLinNCutConv = __indLinNIter = 0;
+  __indLinCountsSink = indLinCounts_t();
+  for (int i = 0; i < (int)__indLinCounts.size(); i++) {
+    __indLinCounts[i] = indLinCounts_t();
+  }
   return ret;
 }

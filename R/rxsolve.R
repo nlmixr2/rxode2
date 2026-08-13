@@ -4159,7 +4159,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'         solving nor user Jacobian specification
 #'
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
-#'         must be setup specially to use this solving routine.
+#'         must be setup specially to use this solving routine.  Supports
+#'         parallel thread-based solving and honors `cores`.
 #'
 #' * `"f78"` -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
 #'

@@ -23,7 +23,9 @@ rxMemoryEstimate(
   nLlik = 0L,
   nIndSim = NULL,
   numLinSens = 0L,
-  numLin = 0L
+  numLin = 0L,
+  stiff = NA_integer_,
+  doIndLin = 0L
 )
 }
 \arguments{
@@ -81,6 +83,18 @@ model.}
 linCmt).}
 
 \item{numLin}{Number of linear compartment terms (FOCEi + linCmt).}
+
+\item{stiff}{Solving method as an integer (\code{\link{odeMethodToInt}});
+only \code{3} (\code{"indLin"}) allocates anything extra.  Taken from
+\code{control} when given, and overridden to \code{3} for any
+\code{matExp()} model, since \code{rxSolve()} force-selects that method
+for one whatever the control says.}
+
+\item{doIndLin}{Which matrix-exponential driver runs: \code{0} not a
+\code{matExp()} model, \code{1} pure matrix exponential, \code{2} plus a
+state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
+linearization.  Taken from \code{model} when given.  These cost very
+different amounts, so it is worth getting right.}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose

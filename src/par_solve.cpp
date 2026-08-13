@@ -289,6 +289,9 @@ extern "C" void printErr(int err, int id){
   if (err & rxErrIndLinCode){
     RSprintf("  Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver\n");
   }
+  if (err & rxErrIndLinExcept){
+    RSprintf("  Inductive linearization failed with an unhandled exception (most likely out of memory)\n");
+  }
 }
 
 rx_solving_options op_global;
@@ -4106,10 +4109,13 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
 
 //================================================================================
 // Inductive linearization routines
+// The caller binds the model functions: `par_indLin` once before its parallel
+// region, `ind_indLin` for the per-individual entry.  `assignFuns` reaches
+// `R_GetCCallable` and writes the generated DLL's global function pointers, so
+// it must not run per subject inside the loop -- no other `ind_*` driver does.
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             t_update_inis u_inis) {
   clock_t t0 = clock();
-  assignFuns();
   int i;
   int neq[2];
   neq[1] = solveid;
@@ -4258,7 +4264,19 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
 
 extern "C" void ind_indLin(rx_solve *rx,
                            int solveid, t_update_inis u_inis){
+  // `ind_solve` reaches this, and an external driver (nlmixr2est's FOCEi) calls
+  // that from its OWN thread team -- where `assignFuns()` would have every
+  // thread hit `R_GetCCallable` and, on a miss, write the model's global
+  // function pointers.  No other `ind_*` driver binds here at all; they rely on
+  // the caller having done it during setup.  Keep the bind for the serial call
+  // and skip it under a team.  `getRxThreadId() >= 0` is the external driver's
+  // own signal, and is what `omp_in_parallel()` cannot see: rxode2's statically
+  // linked libgomp does not know about another DLL's team.
+#ifdef _OPENMP
+  if (getRxThreadId() < 0 && !omp_in_parallel()) assignFuns();
+#else
   assignFuns();
+#endif
   rx_solving_options *op = &op_global;
   ind_indLin0(rx, op, solveid, u_inis);
 }
@@ -4292,7 +4310,10 @@ extern "C" void par_indLin(rx_solve *rx){
     localAbort = abort;
     if (localAbort == 0){
       setSeedEng1(seed0 + solveid - 1);
-      ind_indLin(rx, solveid, update_inis);
+      // `ind_indLin0` rather than the `ind_indLin` wrapper: the wrapper binds
+      // the model functions, which `assignFuns()` above already did once for
+      // the whole team.
+      ind_indLin0(rx, op, solveid, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
