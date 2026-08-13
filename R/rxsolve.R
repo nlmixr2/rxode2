@@ -4156,7 +4156,15 @@ rxParLoader <- function(ui) {
 ## Returns TRUE if a flag was set (so the caller clears afterward).
 .rxApplyParLoader <- function(ui) {
   .pl <- tryCatch(rxParLoader(ui), error = function(e) NULL)
-  if (is.null(.pl) || length(.pl) == 0L || !nzchar(.pl[1L])) return(FALSE)
+  if (is.null(.pl) || length(.pl) == 0L || !nzchar(.pl[1L])) {
+    ## clear, like .rxApplyForcedPars() does on its no-op paths: a model with no
+    ## flag must never inherit a flag an earlier solve left set (a nested ui solve,
+    ## or a name set directly by a package whose own clean-up did not run).
+    ## Otherwise that loader would fire for this unrelated model -- exactly what
+    ## naming the loader is supposed to prevent.
+    .rxClearActiveParLoaderC()
+    return(FALSE)
+  }
   .rxSetActiveParLoaderC(.pl[1L])
   TRUE
 }

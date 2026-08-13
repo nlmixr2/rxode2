@@ -4753,6 +4753,32 @@ extern "C" SEXP _rxode2_rxRemoveTestParLoaders(void) {
   return R_NilValue;
 }
 
+// Test-only NAMED par loader: registers loader A under a caller-supplied name so
+// tests can confirm it fires only for a model that flags that name.
+extern "C" SEXP _rxode2_rxRegisterTestParLoaderNamed(SEXP nameSEXP) {
+  if (TYPEOF(nameSEXP) != STRSXP || Rf_length(nameSEXP) < 1) {
+    (Rf_error)("'name' must be a character string");
+  }
+  rxRegisterParLoaderNamed(CHAR(STRING_ELT(nameSEXP, 0)), rxTestParLoaderA);
+  return R_NilValue;
+}
+
+// Test-only dydt forcing (tests/testthat/test-par-loader.R): adds a constant to
+// the first state's derivative, so a solve shows the forcing was integrated.
+extern "C" void rxTestDydtForce(int *neq, double t, double *y, double *dydt) {
+  (void) t; (void) y;
+  if (neq == NULL || neq[0] < 1) return;   // guard: runs for every model solved
+  dydt[0] += 1.0;
+}
+extern "C" SEXP _rxode2_rxRegisterTestDydtForce(void) {
+  rxRegisterDydtForce(rxTestDydtForce);
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxRemoveTestDydtForce(void) {
+  rxRemoveDydtForce(rxTestDydtForce);
+  return R_NilValue;
+}
+
 static inline void rxSolve_resample(const RObject &obj,
                                     const List &rxControl,
                                     const Nullable<CharacterVector> &specParams,

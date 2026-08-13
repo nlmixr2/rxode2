@@ -813,6 +813,9 @@ SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
 extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
 extern SEXP _rxode2_rxRemoveTestParLoaders(void);
+extern SEXP _rxode2_rxRegisterTestParLoaderNamed(SEXP);
+extern SEXP _rxode2_rxRegisterTestDydtForce(void);
+extern SEXP _rxode2_rxRemoveTestDydtForce(void);
 extern SEXP _rxode2_rxGetInjectedPars(void);
 extern SEXP _rxode2_rxSetForcedPars(SEXP, SEXP);
 extern SEXP _rxode2_rxClearForcedPars(void);
@@ -824,6 +827,9 @@ void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_rxRegisterTestParLoaders", (DL_FUNC) &_rxode2_rxRegisterTestParLoaders, 1},
     {"_rxode2_rxRemoveTestParLoaders", (DL_FUNC) &_rxode2_rxRemoveTestParLoaders, 0},
+    {"_rxode2_rxRegisterTestParLoaderNamed", (DL_FUNC) &_rxode2_rxRegisterTestParLoaderNamed, 1},
+    {"_rxode2_rxRegisterTestDydtForce", (DL_FUNC) &_rxode2_rxRegisterTestDydtForce, 0},
+    {"_rxode2_rxRemoveTestDydtForce", (DL_FUNC) &_rxode2_rxRemoveTestDydtForce, 0},
     {"_rxode2_rxGetInjectedPars", (DL_FUNC) &_rxode2_rxGetInjectedPars, 0},
     {"_rxode2_rxSetForcedPars", (DL_FUNC) &_rxode2_rxSetForcedPars, 2},
     {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},

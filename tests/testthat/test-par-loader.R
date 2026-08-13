@@ -83,4 +83,125 @@ rxTest({
     expect_null(rxInjectedPars(.plain))
   })
 
+  test_that("a named par-loader fires only for a model that flags it", {
+
+    .mk <- function() {
+      .u <- function() {
+        model({
+          a <- 1
+          b <- 2
+          oa <- a
+          ob <- b
+          d/dt(x) <- 0
+        })
+      }
+      rxode2(.u)
+    }
+    .ev <- et(amt = 0) |> et(0, 1, by = 1)
+
+    .Call("_rxode2_rxRegisterTestParLoaderNamed", "rxode2:test", PACKAGE = "rxode2")
+    on.exit(.Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2"), add = TRUE)
+
+    ## an UNFLAGGED model is untouched, even though the loader is registered
+    .plain <- rxSolve(.mk(), .ev, returnType = "data.frame")
+    expect_equal(.plain$oa[1], 1)
+
+    ## the flagged model gets the injection
+    .flagged <- .mk()
+    rxParLoader(.flagged) <- "rxode2:test"
+    expect_equal(rxParLoader(.flagged), "rxode2:test")
+    .s <- rxSolve(.flagged, .ev, returnType = "data.frame")
+    expect_equal(.s$oa[1], 111)
+
+    ## and the flag does not leak: the next unflagged solve is untouched again
+    .after <- rxSolve(.mk(), .ev, returnType = "data.frame")
+    expect_equal(.after$oa[1], 1)
+
+    ## a model flagging a DIFFERENT name does not run this loader either
+    .other <- .mk()
+    rxParLoader(.other) <- "somePkg:other"
+    expect_equal(rxSolve(.other, .ev, returnType = "data.frame")$oa[1], 1)
+  })
+
+  test_that("a leaked active par-loader name does not reach an unflagged model", {
+
+    .u <- function() {
+      model({
+        a <- 1
+        oa <- a
+        d/dt(x) <- 0
+      })
+    }
+    .ev <- et(amt = 0) |> et(0, 1, by = 1)
+
+    .Call("_rxode2_rxRegisterTestParLoaderNamed", "rxode2:test", PACKAGE = "rxode2")
+    on.exit({
+      .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
+      rxode2:::.rxClearActiveParLoaderC()
+    }, add = TRUE)
+
+    ## simulate a package that set the flag directly and never cleared it
+    rxode2:::.rxSetActiveParLoaderC("rxode2:test")
+    ## a ui solve of an unflagged model must clear it rather than inherit it
+    expect_equal(rxSolve(rxode2(.u), .ev, returnType = "data.frame")$oa[1], 1)
+  })
+
+  test_that("a registered dydt-force callback is integrated into the solve", {
+
+    .m <- rxode2({
+      d/dt(x) <- 0
+    })
+    .ev <- et(amt = 0) |> et(0, 2, by = 1)
+
+    ## with no forcing registered the derivative is 0 -> x stays at 0
+    expect_equal(rxSolve(.m, .ev, returnType = "data.frame")$x, c(0, 0, 0))
+
+    .Call("_rxode2_rxRegisterTestDydtForce", PACKAGE = "rxode2")
+    on.exit(.Call("_rxode2_rxRemoveTestDydtForce", PACKAGE = "rxode2"), add = TRUE)
+
+    ## the callback adds 1 to dx/dt -> x(t) = t
+    expect_equal(rxSolve(.m, .ev, returnType = "data.frame")$x, c(0, 1, 2),
+                 tolerance = 1e-5)
+
+    ## removing it restores the unforced solve
+    .Call("_rxode2_rxRemoveTestDydtForce", PACKAGE = "rxode2")
+    expect_equal(rxSolve(.m, .ev, returnType = "data.frame")$x, c(0, 0, 0))
+  })
+
+  test_that("ui prep hooks run on every ui solve and a bad one only warns", {
+
+    .u <- function() {
+      model({
+        a <- 1
+        oa <- a
+        d/dt(x) <- 0
+      })
+    }
+    .ev <- et(amt = 0) |> et(0, 1, by = 1)
+    .seen <- new.env(parent = emptyenv())
+    .seen$n <- 0L
+
+    rxRegisterUiPrep("rxode2:testPrep", function(ui) .seen$n <- .seen$n + 1L)
+    on.exit(rxRemoveUiPrep("rxode2:testPrep"), add = TRUE)
+
+    rxSolve(rxode2(.u), .ev, returnType = "data.frame")
+    expect_equal(.seen$n, 1L)
+    rxSolve(rxode2(.u), .ev, returnType = "data.frame")
+    expect_equal(.seen$n, 2L)
+
+    ## a hook that errors is downgraded to a warning so it cannot break the solve,
+    ## and the other registered hook still runs (hence n becomes 3)
+    rxRegisterUiPrep("rxode2:testBad", function(ui) stop("boom"))
+    on.exit(rxRemoveUiPrep("rxode2:testBad"), add = TRUE)
+    expect_warning(.s <- rxSolve(rxode2(.u), .ev, returnType = "data.frame"))
+    expect_equal(.s$oa[1], 1)
+    expect_equal(.seen$n, 3L)
+
+    ## removing the hooks stops them running
+    rxRemoveUiPrep("rxode2:testBad")
+    rxRemoveUiPrep("rxode2:testPrep")
+    rxSolve(rxode2(.u), .ev, returnType = "data.frame")
+    expect_equal(.seen$n, 3L)
+  })
+
 })
