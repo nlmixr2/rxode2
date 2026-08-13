@@ -62,9 +62,7 @@
   function, and points at the fix (assign it to a model variable first):
 
   ```
-  'DOSE' is only used as the 'amt' argument of 'infuseDur()'; an adaptive
-  dosing argument does not declare a model variable, assign it first (like
-  'amtVal <- DOSE')
+  undeclared 'DOSE' in 'amt' of 'infuseDur()'; assign first: 'amtVal <- DOSE'
   ```
 
   The check runs once the whole model is parsed, so a variable assigned below

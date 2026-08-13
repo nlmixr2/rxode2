@@ -594,8 +594,7 @@ static inline void rxDoseArgRecord(const char *fn, const char *arg, const char *
   memcpy(nm, st, (size_t)len);
   nm[len] = '\0';
   addLine(&sbDoseArgVar, "%s", nm);
-  addLine(&sbDoseArgCtx,
-          "'%s' is only used as the '%s' argument of '%s()'; an adaptive dosing argument does not declare a model variable, assign it first (like '%sVal <- %s')",
+  addLine(&sbDoseArgCtx, "undeclared '%s' in '%s' of '%s()'; assign first: '%sVal <- %s'",
           nm, arg, fn, arg, nm);
 }
 
