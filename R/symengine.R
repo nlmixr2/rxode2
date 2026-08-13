@@ -155,7 +155,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "fsign" = 2,
   "fprec" = 2,
   "fround" = 2,
-  "ftrunc" = 2,
+  ## C's Rf_ftrunc() takes one argument
+  "ftrunc" = 1,
   "transit" = NA,
   "gammaq" = 2,
   "gammapDer" = 2,
@@ -303,12 +304,46 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "dlReLU"=1,
   "PReLU"=2,
   "dPReLU"=2,
-  "d2PReLU"=2,
+  ## no d2PReLU: PReLU is piecewise linear, so its second x derivative is 0 and
+  ## rxode2parseD() returns that literal.  The name had no C, R or derivative
+  ## implementation, so the parser accepted it and then generated C that could
+  ## not compile ("implicit declaration of function 'd2PReLU'")
   "dPReLUa"=2,
   "dPReLUa1"=2,
   "Swish"=1,
   "dSwish"=1
 )
+
+## Locally constant functions; their derivative is 0 almost everywhere, so the
+## jumps at the breakpoints are ignored the same way abs()/rxGt() already are.
+.rxSElocallyConstant <- c("floor", "ceil", "round", "trunc", "ftrunc",
+                          "fround", "fprec", "sign")
+
+## Functions whose Derivative() collapses to 0 at every order: the delay family
+## (delay/lag/lead and their derivative helpers) plus the locally constant ones.
+.rxSEzeroD <- c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3",
+                .rxSElocallyConstant)
+
+## symengine differentiates these itself, so rxS() must NOT shadow them with an
+## opaque FunctionSymbol -- that would throw the symbolic derivative away.  Every
+## OTHER .rxSEeq function with a known arity does get one (see .rxSEopaque):
+## symengine's Math group generic has no method for it, so the assignment would
+## store a non-Basic and the next arithmetic on it fails.  abs() and atan2() are
+## native but are shadowed on purpose, since rxode2parseD() registers their
+## derivative chain (abs -> dabs -> dabs2 -> 0); polygamma() is bound to
+## symengine::psigamma() in rxS() itself.
+.rxSEnative <- c("lgamma", "acos", "acosh", "asin", "asinh", "atan", "atanh",
+                 "beta", "cos", "cosh", "erf", "erfc", "exp", "gamma", "log",
+                 "sin", "sinh", "sqrt", "tan", "tanh", "lowergamma",
+                 "uppergamma", "polygamma")
+
+## Functions loaded into the rxS() environment as opaque FunctionSymbols.  This
+## is a deny list rather than an allow list so a function added to .rxSEeq is
+## loadable by default; a name with an NA arity is excluded because .rxToSE()
+## handles those specially (max/min/logit/tlast/...).
+.rxSEopaque <- function() {
+  setdiff(names(.rxSEeq)[!is.na(.rxSEeq)], .rxSEnative)
+}
 
 .rxOnly <- c(
   ## Now random number generators
@@ -1262,6 +1297,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         return(invisible(NULL))
       }
       .expr <- try(eval(parse(text = .expr)), silent = TRUE)
+      if (inherits(.expr, "try-error")) {
+        ## the try-error is a character vector, so without this it is stored as
+        ## the variable's value and emitted into the model as `<var>=.expr`,
+        ## which only fails later (or not at all, when nothing reads the
+        ## variable) with no hint of where it came from
+        stop(sprintf(gettext("could not load '%s' into symengine: %s"),
+                     rxFromSE(.var), conditionMessage(attr(.expr, "condition"))),
+             call. = FALSE)
+      }
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
             (!.isNum)) {
@@ -1650,7 +1694,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     # x*exp(-x)/(1.0 + exp(-x))^2 + (1.0 + exp(-x))^(-1);
     return(
       paste0("((", .x, ")*exp(-(", .x, "))/(1.0 + exp(-(", .x,
-             ")))^2 + 1.0/(1.0 + exp(-(", .x, ")))")
+             ")))^2 + 1.0/(1.0 + exp(-(", .x, "))))")
       )
   } else {
     stop("'dSwish' can only take 1 argument", call. = FALSE)
@@ -2916,14 +2960,22 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           ))
         }
       } else if (identical(x[[1]], quote(`Derivative`))) {
-        ## delay-family functions (delay/rxDelayD/lag/lead) have zero derivatives
-        ## of every order, so Derivative(<delay-family>, ...) collapses to 0.
-        ## This also covers the higher-order (length(x) > 3) derivatives produced
-        ## when the sensitivity machinery differentiates a delayed term more than
-        ## once -- symengine keeps Derivative(delay(...), v1, v2) unevaluated.
-        if (length(x) >= 3 && is.call(x[[2]]) &&
-              any(as.character(x[[2]][[1L]]) == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
-          return("0")
+        ## The delay family (delay/rxDelayD/lag/lead) and the locally constant
+        ## functions (floor/ceil/round/trunc/sign/...) have zero derivatives of
+        ## every order, so Derivative(<fn>, ...) collapses to 0.  This also
+        ## covers the higher-order (length(x) > 3) derivatives produced when the
+        ## sensitivity machinery differentiates such a term more than once --
+        ## symengine keeps Derivative(delay(...), v1, v2) unevaluated.
+        if (length(x) >= 3 && is.call(x[[2]])) {
+          .fun0 <- as.character(x[[2]][[1L]])
+          if (any(.fun0 == .rxSEzeroD)) {
+            return("0")
+          }
+          ## fsign(x, y) = abs(x)*sign(y); its first derivative (registered in
+          ## rxode2parseD()) is itself locally constant, so orders 2+ are 0.
+          if (length(x) > 3 && any(.fun0 == "fsign")) {
+            return("0")
+          }
         }
         if (length(x) == 3) {
           .fun <- as.character(x[[2]])
@@ -2979,7 +3031,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (length(.with) != 1) {
             .errD(force = TRUE)
           }
-          if (any(.fun[1] == c("lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3"))) {
+          if (any(.fun[1] == .rxSEzeroD)) {
             return("0")
           }
           .rxD <- rxode2parseD()
@@ -3182,6 +3234,12 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
     "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
     "lag0", "lead0", "diff0",
+    # every parser-known function symengine cannot handle itself -- the locally
+    # constant floor()/ceil()/round()/trunc()/sign() family, the special
+    # functions (bessel_*, gammaq, fmax2, logspace_add, ...) and the emitted
+    # derivative helpers (llikNormDmean, dSELU, ...).  Without this the
+    # assignment stores a non-Basic and the model is silently corrupted
+    .rxSEopaque(),
     "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
@@ -4142,14 +4200,22 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
   }
 }
 
+## Spellings that only exist between rxToSE() and rxFromSE(): .rxSEeq carries
+## their arity so both directions can convert them, but there is no C
+## implementation, so the parser must not advertise them -- writing one in a
+## model used to generate C that could not compile ("implicit declaration of
+## function 'abs0'"), which rxode2 then asked the user to report as a bug.
+## abs0() is written abs()/fabs() and polygamma(n, x) is psigamma(x, n).
+.rxSEinternalOnly <- c("abs0", "polygamma")
+
 .rxSupportedFunsExtra <- FALSE
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
-  .ret <- c(
+  .ret <- setdiff(c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
     "linCmt", names(.rxOnly), ls(.symengineFs())
-  )
+  ), .rxSEinternalOnly)
   if (extra) {
-    .ret <- c(.ret, c("linCmtA","linCmtB",
+    .ret <- c(.ret, .rxSEinternalOnly, c("linCmtA","linCmtB",
       "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
       "rxGt", "rxAnd", "rxOr", "rxNot", "dabs", "dabs2", "abs0",
       "dabs1", "abs1"
@@ -4223,7 +4289,8 @@ rxSupportedFuns <- function() {
   "fsign" = 2,
   "fprec" = 2,
   "fround" = 2,
-  "ftrunc" = 2,
+  ## C's Rf_ftrunc() takes one argument
+  "ftrunc" = 1,
   "transit" = NA,
   "gammaq" = 2,
   "gammapDer" = 2,

@@ -161,6 +161,54 @@
   time-dependent parameter.  Operands that are not a plain name or number are
   parenthesized, as the grammar requires (#1229).
 
+- `floor()`, `ceil()`, `round()`, `trunc()`, `sign()`, `fround()`, `fprec()` and
+  `fsign()` can now be used with the nlmixr2 estimation methods.  They parsed
+  and solved, but symengine's `Math` group generic has no method for them, so
+  loading such a model raised `non-numeric argument to binary operator` and no
+  estimation method could run it -- which ruled out `floor(time/24)`, the
+  natural way to write a circadian or square-wave switch.  They are now loaded
+  as opaque function symbols (like `rxMod()`) and are locally constant, so their
+  derivative is 0 at every order.  `fsign(x, y)` transfers the sign of `y` onto
+  `abs(x)`, so it gets a real derivative instead: `sign(x)*fsign(1, y)` in `x`
+  and 0 in `y` (#1230).
+
+- Every other parser-known function symengine has no method for now loads too,
+  rather than silently corrupting the model.  This covers the special functions
+  (`bessel_i()`, `bessel_j()`, `bessel_k()`, `bessel_y()`, `logspace_add()`,
+  `logspace_sub()`, `fmax2()`, `fmin2()`, `gammaq()`, `gammapDer()`,
+  `gammapInv()`, `gammapInva()`, `gammaqInv()`, `gammaqInva()`) and the
+  derivative helpers rxode2 itself emits (`llikNormDmean()`, `dSELU()`,
+  `d4GELU()`, `d2PReLU()`, `dSwish()`, ...).  The failed assignment used to be
+  stored as the variable's value and written into the model as `<var>=.expr`,
+  which failed later with no hint of where it came from -- or not at all, when
+  nothing read the variable.  The set is now a deny list of the functions
+  symengine differentiates itself, so a function added to the parser is loadable
+  by default, and an assignment that still cannot be loaded says which variable
+  and why instead of continuing.
+
+- `ftrunc(x)` builds.  Its arity was recorded as two arguments while C's
+  `Rf_ftrunc()` takes one, so `ftrunc(x)` was rejected by the parser and
+  `ftrunc(x, digits)` failed to compile -- the function could not be used at
+  all.
+
+- `dSwish()` can be used with the estimation methods.  Its symengine expansion
+  was missing a closing parenthesis, so the text could not be parsed back and
+  the model failed to load.
+
+- The parser no longer accepts a function it cannot generate compilable C for.
+  `abs0()` and `polygamma()` exist only between `rxToSE()` and `rxFromSE()`
+  (`abs0(x)` is written `abs(x)`/`fabs(x)`, and `polygamma(n, x)` is
+  `psigamma(x, n)`), and `d2PReLU()` had no implementation anywhere -- `PReLU()`
+  is piecewise linear, so its second `x` derivative is the literal 0
+  `rxode2parseD()` already returns.  Writing any of the three built C with an
+  undeclared function, which rxode2 reported as a code-generation bug and asked
+  the user to file; they now fail at the model text with the usual unsupported
+  function message.  Both symengine directions still convert them.
+
+- The description of `fsign()` in `rxSyntaxFunctions` said `abs(x)*sign(y)`,
+  which is wrong when `y` is 0: the function carries the sign of `y` onto
+  `abs(x)` and treats 0 as positive, so it returns `abs(x)` there rather than 0.
+
 ### Solving
 
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall

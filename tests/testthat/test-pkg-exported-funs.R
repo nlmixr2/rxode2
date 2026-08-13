@@ -77,7 +77,7 @@ rxTest({
       "/* SEXP vector wrappers ---------------------------------------- */",
       "SEXP _mm_mm(SEXP C, SEXP Vmax, SEXP Km) {",
       "  int n = LENGTH(C);",
-      "  SEXP out = PROTECT(allocVector(REALSXP, n));",
+      "  SEXP out = PROTECT(Rf_allocVector(REALSXP, n));",
       "  double *c = REAL(C), *vmax = REAL(Vmax), *km = REAL(Km);",
       "  double *res = REAL(out);",
       "  for (int i = 0; i < n; i++) res[i] = mm(c[i], vmax[i], km[i]);",
@@ -85,7 +85,7 @@ rxTest({
       "}",
       "SEXP _mm_mm_dC(SEXP C, SEXP Vmax, SEXP Km) {",
       "  int n = LENGTH(C);",
-      "  SEXP out = PROTECT(allocVector(REALSXP, n));",
+      "  SEXP out = PROTECT(Rf_allocVector(REALSXP, n));",
       "  double *c = REAL(C), *vmax = REAL(Vmax), *km = REAL(Km);",
       "  double *res = REAL(out);",
       "  for (int i = 0; i < n; i++) res[i] = mm_dC(c[i], vmax[i], km[i]);",
@@ -93,7 +93,7 @@ rxTest({
       "}",
       "SEXP _mm_mm_dVmax(SEXP C, SEXP Vmax, SEXP Km) {",
       "  int n = LENGTH(C);",
-      "  SEXP out = PROTECT(allocVector(REALSXP, n));",
+      "  SEXP out = PROTECT(Rf_allocVector(REALSXP, n));",
       "  double *c = REAL(C), *vmax = REAL(Vmax), *km = REAL(Km);",
       "  double *res = REAL(out);",
       "  for (int i = 0; i < n; i++) res[i] = mm_dVmax(c[i], vmax[i], km[i]);",
@@ -101,7 +101,7 @@ rxTest({
       "}",
       "SEXP _mm_mm_dKm(SEXP C, SEXP Vmax, SEXP Km) {",
       "  int n = LENGTH(C);",
-      "  SEXP out = PROTECT(allocVector(REALSXP, n));",
+      "  SEXP out = PROTECT(Rf_allocVector(REALSXP, n));",
       "  double *c = REAL(C), *vmax = REAL(Vmax), *km = REAL(Km);",
       "  double *res = REAL(out);",
       "  for (int i = 0; i < n; i++) res[i] = mm_dKm(c[i], vmax[i], km[i]);",
@@ -257,6 +257,10 @@ rxTest({
       "  suppressWarnings(try(rxRmFun('mm_dC'),    silent = TRUE))",
       "  suppressWarnings(try(rxRmFun('mm_dVmax'), silent = TRUE))",
       "  suppressWarnings(try(rxRmFun('mm_dKm'),   silent = TRUE))",
+      "  ## unloading the namespace does not unload the shared object, so",
+      "  ## without this the DLL stays loaded for the rest of the session and a",
+      "  ## later library(mm) from a different library silently keeps using it",
+      "  suppressWarnings(try(library.dynam.unload('mm', libpath), silent = TRUE))",
       "}"
     ), file.path(pkgDir, "R", "zzz.R"))
 
@@ -357,6 +361,32 @@ rxTest({
     .c3 <- quote(mm(Km = Km, Vmax = Vmax, C = Cp))
     class(.c3) <- "mm"
     expect_equal(rxode2::rxUdfUi(.c3)$replace, "mm(Cp,Vmax,Km)")
+
+    ## The reordering above is checked by calling rxUdfUi() directly, which
+    ## bypasses the dispatch that puts the class on the call.  Named arguments
+    ## are a `ui` feature (the low-level rxode2({}) parser does not take them),
+    ## so go through a model function as well: reordered named arguments must
+    ## give the same model as the canonical positional call.
+    .mkMm <- function(rhs) {
+      eval(parse(text = paste0(
+        "function() {\n",
+        "  ini({ lVc <- 1; lVmax <- 1.6; lKm <- 0; add.sd <- 1 })\n",
+        "  model({\n",
+        "    Vc <- exp(lVc); Vmax <- exp(lVmax); Km <- exp(lKm)\n",
+        "    Cp <- A1/Vc\n",
+        "    d/dt(A1) <- -", rhs, "\n",
+        "    Cp ~ add(add.sd)\n",
+        "  })\n",
+        "}")))()
+    }
+    .uiPos <- .mkMm("mm(Cp, Vmax, Km)")
+    .uiNam <- .mkMm("mm(Km = Km, Vmax = Vmax, C = Cp)")
+    expect_true(any(grepl("d/dt(A1)=-mm(Cp,Vmax,Km)", strsplit(rxode2::rxNorm(.uiPos), "\n")[[1]],
+                          fixed = TRUE)))
+    expect_equal(rxode2::rxNorm(.uiNam), rxode2::rxNorm(.uiPos))
+    .evUi <- rxode2::et(amt = 100) |> rxode2::et(0, 24, by = 0.5)
+    expect_equal(rxode2::rxSolve(.uiNam, .evUi)$A1,
+                 rxode2::rxSolve(.uiPos, .evUi)$A1)
 
     ## -- ODE simulation ---------------------------------------------------
     .mod <- rxode2::rxode2({
