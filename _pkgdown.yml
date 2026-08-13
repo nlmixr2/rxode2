@@ -55,6 +55,10 @@ reference:
   - rxSolveChunked
   - rxCbindStudyIndividual
   - as.arrow
+  - rxRegisterUiPrep
+  - rxParLoader
+  - rxInjectedPars
+  - rxForcedPars
 - title: Model UI & Piping
   desc: Work with rxUi model objects, piping, and model modification.
   contents:
@@ -85,6 +89,7 @@ reference:
   - rxSetPipingAuto
   - rxUiCompress
   - rxUiDecompress
+  - rxUiPriors
   - rxode2<-
   - testIniDf
   - testRxLinCmt

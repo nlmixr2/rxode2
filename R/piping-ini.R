@@ -731,7 +731,9 @@
   }
 }
 
-# TODO: while nlmixr2est is changed
+# Kept as an alias because nlmixr2est still calls
+# `rxode2::.iniHandleFixOrUnfix()`; it can go once that calls
+# `.iniHandleLine()` directly (nlmixr2/rxode2#1250)
 #' @rdname dot-iniHandleLine
 #' @export
 .iniHandleFixOrUnfix <- .iniHandleLine
@@ -918,7 +920,7 @@ as.lotri.call <- function(x, ..., default = "") {
     .ret[[1]] <- quote(`lotri`)
   }
   if (identical(.ret[[1]], quote(`lotri`))) {
-    return(eval(.ret))
+    eval(.ret)
   } else {
     stop("unsupported object of class 'call' used with `as.lotri`")
   }
@@ -941,7 +943,7 @@ as.lotri.call <- function(x, ..., default = "") {
   }
   .c <- as.character(.rhs)
   if (any(rxui$iniDf$name == .c)) return(TRUE)
-  return(FALSE)
+  FALSE
 }
 
 #' Set random effects and residual error to zero
