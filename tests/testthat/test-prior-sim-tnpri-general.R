@@ -182,4 +182,53 @@ rxTest({
     expect_true(all(vapply(.s$sigmaList,
                            function(x) all(eigen(x)$values > 0), logical(1))))
   })
+
+  test_that("an nlmixr2 fit's $cov names simulate", {
+    ## The exact column names a nlmixr2 fit carries: the thetas (including
+    ## the residual ones) and the omega entries, where `om.` is the eta and
+    ## `cov.` the covariance -- and `cov.` is written row-then-column, so
+    ## `cov.eta.v.eta.cl` is the (eta.v, eta.cl) entry.
+    .m <- rxode2({
+      ka <- exp(0.45)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      cp <- linCmt() + add.err
+    })
+    .om <- lotri::lotri(eta.cl + eta.v ~ c(0.3,
+                                           0.05, 0.2))
+    .cn <- c("tcl", "tv", "add.err",
+             "om.eta.cl", "cov.eta.v.eta.cl", "om.eta.v")
+    .tm <- diag(c(0.02, 0.03, 0.01, 0.002, 0.0004, 0.002))
+    dimnames(.tm) <- list(.cn, .cn)
+
+    ## the three omega entries are found and the thetas are left alone
+    .el <- .rx$.rxJointElFromNames(.om, .cn)
+    expect_equal(rownames(.el),
+                 c("om.eta.cl", "cov.eta.v.eta.cl", "om.eta.v"))
+    expect_equal(unname(.el[, "neta1"]), c(1L, 2L, 2L))
+    expect_equal(unname(.el[, "neta2"]), c(1L, 1L, 2L))
+
+    withr::with_seed(13, {
+      .s <- suppressWarnings(
+        rxSolve(.m, .ev(), params=c(tcl=1, tv=3.45, add.err=0.7),
+                omega=.om, thetaMat=.tm, nSub=2, nStud=400,
+                omegaSeparation="tnpri"))
+    })
+
+    .d1 <- vapply(.s$omegaList, function(x) x[1, 1], double(1))
+    .off <- vapply(.s$omegaList, function(x) x[2, 1], double(1))
+    .d2 <- vapply(.s$omegaList, function(x) x[2, 2], double(1))
+
+    expect_equal(mean(.d1), 0.3, tolerance=0.05)
+    expect_equal(sd(.d1), sqrt(0.002), tolerance=0.15)
+    expect_equal(mean(.off), 0.05, tolerance=0.15)
+    expect_equal(sd(.off), sqrt(0.0004), tolerance=0.15)
+    expect_equal(mean(.d2), 0.2, tolerance=0.05)
+
+    ## the thetas are still drawn alongside them
+    expect_equal(sd(unique(.s$params$tcl)), sqrt(0.02), tolerance=0.15)
+
+    expect_true(all(vapply(.s$omegaList,
+                           function(x) all(eigen(x)$values > 0), logical(1))))
+  })
 })
