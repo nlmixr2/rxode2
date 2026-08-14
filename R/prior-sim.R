@@ -93,22 +93,6 @@
   NULL
 }
 
-#' Does this prior span the omega elements as well as the thetas?
-#'
-#' A NONMEM `TNPRI` joint block names its omega entries with an `om.`
-#' prefix, which is what marks the prior as joint.
-#'
-#' @param prior prior as stored in the `prior` column
-#' @return logical
-#' @noRd
-#' @author Matthew L. Fidler
-.rxPriorIsJoint <- function(prior) {
-  vapply(prior, function(p) {
-    .nm <- .rxPriorCovNames(p)
-    !is.null(.nm) && any(grepl("^om[.].", .nm))
-  }, logical(1), USE.NAMES=FALSE)
-}
-
 #' Complain about a prior this cannot simulate from
 #'
 #' @param name parameter name(s)
@@ -123,31 +107,86 @@
        call.=FALSE)
 }
 
-#' The `thetaMat` the population parameter priors describe
+#' What each name a prior can be written on is worth
 #'
-#' Each normal prior contributes its variance, and each `multiNormal()`
-#' contributes its whole block, so the result is block diagonal over the
-#' parameters that carry a prior.  The prior mean has to be the initial
-#' estimate: prior simulation samples around what the model says the
-#' parameter is, so a prior centered anywhere else is an error rather
-#' than a silently different simulation.
+#' A prior's mean has to be what the model already says the entry is: the
+#' initial estimate for a population parameter, and the omega value for an
+#' `om.` omega element.  This is the lookup both come from.
 #'
 #' @param ui rxode2 ui model
-#' @return list with `thetaMat` (named matrix, or `NULL`) and `theta`
-#'   (data frame of the parameters it covers)
+#' @return named numeric, keyed by parameter name and by `om.<eta>`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorEstLookup <- function(ui) {
+  .iniDf <- ui$iniDf
+  .ret <- setNames(.iniDf$est, .iniDf$name)
+  .d <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  if (length(.d) > 0L) {
+    .ret <- c(.ret, setNames(.iniDf$est[.d], paste0("om.", .iniDf$name[.d])))
+  }
+  .ret
+}
+
+#' Which omega element does each `om.` name address?
+#'
+#' `om.eta.cl` is the omega element of `eta.cl`, which is its diagonal --
+#' an off diagonal has no `om.` spelling, so a joint prior covers the
+#' omega variances rather than every element of the matrix.
+#'
+#' @param ui rxode2 ui model
+#' @param nm character vector of `om.` prefixed names
+#' @return data frame with `name`, `neta1` and `neta2`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorOmegaElPos <- function(ui, nm) {
+  .iniDf <- ui$iniDf
+  .d <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  .idx <- setNames(.iniDf$neta1[.d], paste0("om.", .iniDf$name[.d]))
+  .i <- unname(.idx[nm])
+  if (anyNA(.i)) {
+    stop("prior given for unknown omega element(s): '",
+         paste(nm[is.na(.i)], collapse="', '"), "'", call.=FALSE)
+  }
+  data.frame(name=nm, neta1=.i, neta2=.i, stringsAsFactors=FALSE)
+}
+
+#' The `thetaMat` the model's normal priors describe
+#'
+#' Each normal prior contributes its variance and each `multiNormal()` its
+#' whole block, so the result is block diagonal over the entries that
+#' carry a prior.  An `om.` name is an omega element rather than a
+#' population parameter, and a block may mix the two -- that joint
+#' variance over the thetas and the omega values is what NONMEM calls
+#' `TNPRI`.
+#'
+#' The prior mean has to be what the model already says the entry is,
+#' since the draw is added to that value; a prior centered anywhere else
+#' is an error rather than a silently different simulation.
+#'
+#' @param ui rxode2 ui model
+#' @return list with `thetaMat` (named matrix, or `NULL`), `theta` (the
+#'   entries it covers) and `omegaEl` (the omega elements among them, or
+#'   `NULL`)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorThetaMat <- function(ui) {
   .iniDf <- ui$iniDf
-  .w <- which(is.na(.iniDf$neta1) & !is.na(.iniDf$prior))
+  .w <- which(!is.na(.iniDf$prior) &
+                (is.na(.iniDf$neta1) | .rxPriorIsNormal(.iniDf$prior)))
+  ## an omega row carrying a Wishart is degrees of freedom, not a normal
+  ## prior, and is handled by `.rxPriorOmegaNu()`
+  .w <- .w[is.na(.iniDf$neta1[.w]) | .rxPriorIsNormal(.iniDf$prior[.w])]
   if (length(.w) == 0L) {
-    return(list(thetaMat=NULL, theta=NULL))
+    return(list(thetaMat=NULL, theta=NULL, omegaEl=NULL))
   }
-  .est <- setNames(.iniDf$est, .iniDf$name)
+  .est <- .rxPriorEstLookup(ui)
   .blocks <- list()
   .seen <- character(0)
   for (.i in .w) {
+    ## a prior on an omega row is on that row's omega *element*, which is
+    ## spelled with the `om.` prefix
     .name <- .iniDf$name[.i]
+    if (!is.na(.iniDf$neta1[.i])) .name <- paste0("om.", .name)
     .prior <- .iniDf$prior[.i]
     if (.name %in% .seen) next
     .p <- .rxPriorParse(.prior)
@@ -159,6 +198,8 @@
                    paste0("only normal and multivariate normal priors can be ",
                           "simulated on a population parameter"))
     }
+    ## a `std_normal()` has no arguments to read, so it is a unit normal
+    ## on something whose value must therefore be zero
     if (.p$stanName == "multi_normal") {
       .nm <- .rxPriorCovNames(.prior)
       .cov <- .rxPriorCovMat(.prior)
@@ -191,11 +232,13 @@
     }
   }
   if (length(.blocks) == 0L) {
-    return(list(thetaMat=NULL, theta=NULL))
+    return(list(thetaMat=NULL, theta=NULL, omegaEl=NULL))
   }
+  .om <- .seen[grepl("^om[.].", .seen)]
   list(thetaMat=.rxPriorBlockDiag(.blocks),
        theta=data.frame(name=.seen, est=unname(.est[.seen]),
-                        stringsAsFactors=FALSE))
+                        stringsAsFactors=FALSE),
+       omegaEl=if (length(.om) == 0L) NULL else .rxPriorOmegaElPos(ui, .om))
 }
 
 #' The prior mean has to be the initial estimate
@@ -282,26 +325,6 @@
   .ret
 }
 
-#' Priors that sit on the omega elements themselves
-#'
-#' A NONMEM `TNPRI` model puts a normal prior on the omega *values*,
-#' either on its own (`om.eta.cl ~ 0.01`, which lands on the omega row)
-#' or jointly with the thetas (`tcl + om.eta.cl ~ c(...)`, which lands
-#' wherever the block starts).  Both are found here.
-#'
-#' @param ui rxode2 ui model
-#' @return character vector of the parameter names carrying such a prior
-#' @noRd
-#' @author Matthew L. Fidler
-.rxPriorOmegaElements <- function(ui) {
-  .iniDf <- ui$iniDf
-  .w <- which(!is.na(.iniDf$prior))
-  if (length(.w) == 0L) return(character(0))
-  .isEl <- !is.na(.iniDf$neta1[.w]) & .rxPriorIsNormal(.iniDf$prior[.w])
-  .isJoint <- .rxPriorIsJoint(.iniDf$prior[.w])
-  unique(.iniDf$name[.w][.isEl | .isJoint])
-}
-
 #' Reject the models this cannot simulate priors for
 #'
 #' A prior must never be silently ignored, so a model whose priors would
@@ -352,20 +375,21 @@
     return(NULL)
   }
   .rxPriorSimAssertSupported(ui, ctl)
-  ## TNPRI is detected here so it is rejected rather than silently
-  ## simulated as an ordinary theta, which would be dropped for not
-  ## matching a model parameter
-  .el <- .rxPriorOmegaElements(ui)
-  if (length(.el) > 0L) {
-    stop("prior simulation of a normal prior on the omega values (a NONMEM ",
-         "'TNPRI') is not implemented yet: '",
-         paste(.el, collapse="', '"), "'",
-         call.=FALSE)
-  }
   .th <- .rxPriorThetaMat(ui)
   .nu <- .rxPriorOmegaNu(ui)
+  ## TNPRI is rejected here rather than silently simulated as an ordinary
+  ## theta, which `rxSimTheta()` would drop for not matching a model
+  ## parameter.  The C++ side that services `priorOmegaEl` does not exist
+  ## yet; this comes out when it does.
+  if (!is.null(.th$omegaEl)) {
+    stop("prior simulation of a normal prior on the omega values (a NONMEM ",
+         "'TNPRI') is not implemented yet: '",
+         paste(.th$omegaEl$name, collapse="', '"), "'",
+         call.=FALSE)
+  }
   if (is.null(.th$thetaMat) && length(.nu) == 0L) return(NULL)
-  list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu, omegaEl=NULL)
+  list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu,
+       omegaEl=.th$omegaEl)
 }
 
 #' Turn the per-block prior degrees of freedom into a 'lotri' omega

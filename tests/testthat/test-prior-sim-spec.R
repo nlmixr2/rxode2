@@ -116,14 +116,36 @@ rxTest({
   })
 
   test_that("a normal prior on the omega values is rejected for now", {
-    ## a NONMEM TNPRI, which lands on the omega row
-    .u <- .withPrior(.base(), "eta.ka", "dnorm(0, 0.1)")
+    ## a NONMEM TNPRI, which lands on the omega row.  `eta.ka` is 0.6, and
+    ## an omega element prior is centered on the omega value the same way
+    ## a theta one is centered on its estimate
+    .u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
     expect_error(.rx$.rxPriorSimSpec(.u, list()), "TNPRI")
 
     ## and the joint form, which lands wherever the block starts
     .u <- .withPrior(.base(), "tcl",
                      "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
     expect_error(.rx$.rxPriorSimSpec(.u, list()), "TNPRI")
+  })
+
+  test_that("an omega element prior is centered on the omega value", {
+    ## the value the draw is added to is the omega, not zero
+    .u <- .withPrior(.base(), "eta.ka", "dnorm(0, 0.1)")
+    expect_error(.rx$.rxPriorSimSpec(.u, list()), "is not the initial estimate")
+  })
+
+  test_that("a joint block spans the thetas and the omega elements", {
+    ## a TNPRI variance matrix covers both, with covariances between them
+    .u <- .withPrior(.base(), "tcl",
+                     "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
+    .th <- .rx$.rxPriorThetaMat(.u)
+
+    expect_equal(dimnames(.th$thetaMat)[[1]], c("tcl", "om.eta.ka"))
+    expect_equal(unname(.th$thetaMat["tcl", "om.eta.ka"]), 0.001)
+    ## and the omega member is mapped back to where it lives in the omega
+    expect_equal(.th$omegaEl$name, "om.eta.ka")
+    expect_equal(.th$omegaEl$neta1, 3L)
+    expect_equal(.th$omegaEl$neta2, 3L)
   })
 
   test_that("a chunked solve with priors is an error", {
