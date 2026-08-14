@@ -112,7 +112,7 @@ Imports:
     checkmate,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 1.0.4),
+    lotri (>= 1.0.7),
     memoise,
     methods,
     mirai,
