@@ -540,3 +540,44 @@ test_that("rxSolveOom supports lazy dplyr queries through a DuckDB connection", 
     expect_equal(nrow(got), 6L)              # one t=0 row per subject
   })
 })
+
+rxTest({
+
+  test_that("a chunked solve refuses to simulate omega uncertainty", {
+    skip_on_cran()
+
+    ## #1252: the pre-draw is nStud=1 and omega is stripped from what each
+    ## chunk is forwarded, so `nStud > 1` returned a plausible looking
+    ## result simulated entirely from the point estimate omega, with the
+    ## between study variability gone and nothing to signal it.  It is a
+    ## clear error until the chunking can carry the draws.
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    expect_error(
+      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "nStud")
+
+    ## the combinations that do work are untouched
+    expect_error(
+      rxSolve(.m, .ev, params=.p, omega=.om, nStud=1,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      NA)
+    expect_error(
+      rxSolve(.m, .ev, params=c(.p, eta.ka=0.1, eta.cl=0.1),
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      NA)
+    ## and an unchunked solve still simulates all the studies
+    .r <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3)
+    expect_equal(length(unique(.r$sim)), 3L)
+  })
+
+})
