@@ -346,7 +346,7 @@
     stop("prior simulation does not yet support nested/occasion models (the ",
          "omega has the condition(s) '",
          paste(unique(.cnd[!(.cnd %in% "id")]), collapse="', '"),
-         "'); see the rxode2 issue tracker",
+         "'); see rxode2 issue #1253",
          call.=FALSE)
   }
   ## A chunked solve pre-draws its parameters in `rxOom` and strips the
@@ -354,7 +354,7 @@
   ## drawn from at all.
   if (!is.null(ctl$file) || !is.null(ctl$chunkSize)) {
     stop("prior simulation does not yet support a chunked solve ('file=' or ",
-         "'chunkSize='); see the rxode2 issue tracker",
+         "'chunkSize='); see rxode2 issue #1252",
          call.=FALSE)
   }
   invisible()

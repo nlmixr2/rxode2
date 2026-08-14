@@ -28,8 +28,8 @@
   `usePrior=FALSE` ignores the priors.  Priors take precedence over a
   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
   one given at the call site wins over the priors instead.  Nested/occasion
-  models and chunked solves are a clear error rather than a solve that
-  silently drops the prior.
+  models (#1253) and chunked solves (#1252) are a clear error rather than a
+  solve that silently drops the prior.
 
 - `rxUiPriors()` returns the priors a model specifies, with the parameter
   name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and

@@ -1406,8 +1406,9 @@ wins over them instead, also with a warning – an explicit argument is
 never silently discarded.
 
 Prior simulation does not yet cover nested/occasion models (\verb{| id},
-\verb{| occ}) or a chunked solve (\verb{file =}/\verb{chunkSize =}); both are a clear
-error rather than a solve that quietly drops the prior.
+\verb{| occ}, rxode2 issue #1253) or a chunked solve
+(\verb{file =}/\verb{chunkSize =}, rxode2 issue #1252); both are a clear error
+rather than a solve that quietly drops the prior.
 }
 
 }
