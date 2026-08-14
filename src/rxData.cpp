@@ -2063,21 +2063,99 @@ void rxSimTheta(CharacterVector &thetaN,
 // the cone and taking the closest projection then picks the least
 // positive definite draw, so a study that reaches it is not a draw from
 // the stated prior.  It warns for that reason.
+// Which thetaMat column carries each entry.  Matched by *name* rather
+// than by position: a column can be dropped before the draw (an item the
+// model does not have, or a zero variance), which would shift every index.
+static std::vector<int> rxPriorElCols(const CharacterVector &elN,
+                                      const CharacterVector &thetaN) {
+  std::vector<int> col(elN.size(), -1);
+  for (int r = 0; r < elN.size(); ++r) {
+    for (int j = 0; j < thetaN.size(); ++j) {
+      if (elN[r] == thetaN[j]) { col[r] = j; break; }
+    }
+  }
+  return col;
+}
+
+// One candidate matrix: the point estimate with the drawn deviation added
+// into each entry the prior names.  The matrix is symmetric, so an off
+// diagonal is written both ways.
+static arma::mat rxPriorCand(const arma::mat &cur, const arma::mat &base,
+                             const IntegerMatrix &el,
+                             const std::vector<int> &col,
+                             const NumericVector &dev, int dim) {
+  arma::mat cand = cur;
+  for (int r = 0; r < el.nrow(); ++r) {
+    if (col[r] < 0) continue;
+    int a = el(r, 0) - 1, b = el(r, 1) - 1;
+    if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
+    cand(a, b) = base(a, b) + dev[col[r]];
+    cand(b, a) = cand(a, b);
+  }
+  return cand;
+}
+
+// The reason the matrix has to be positive definite is that the draw that
+// uses it takes its Cholesky, so that is the test.  `is_sympd()` is
+// stricter and would reject a projection that is perfectly usable.
+static bool rxPriorUsable(const arma::mat &m) {
+  arma::mat chk;
+  return arma::chol(chk, m);
+}
+
+// The fallback: project every kept draw onto the positive definite cone
+// and take the closest projection that worked.
+//
+// `rxNearPD()` copies its input into `ret` when it fails, which would give
+// a distance of zero and win the comparison -- so the flag decides, not the
+// distance.
+static bool rxPriorNearest(const std::vector<NumericVector> &keep,
+                           const arma::mat &cur, const arma::mat &base,
+                           const IntegerMatrix &el,
+                           const std::vector<int> &col, int dim,
+                           arma::mat &bestMat, NumericVector &bestDev) {
+  double best = -1.0;
+  for (size_t k = 0; k < keep.size(); ++k) {
+    arma::mat bad = rxPriorCand(cur, base, el, col, keep[k], dim);
+    arma::mat np;
+    if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
+    if (!rxPriorUsable(np)) continue;
+    double d = arma::norm(np - bad, "fro");
+    if (best < 0.0 || d < best) { best = d; bestMat = np; bestDev = keep[k]; }
+  }
+  return best >= 0.0;
+}
+
+// A pure TNPRI has no `cvPost()` draw to seed the list, so it arrives
+// empty; a model that also gives a block degrees of freedom does, and
+// those draws must not be thrown away.
+static void rxPriorSeedList(List &matList, const arma::mat &base,
+                            const CharacterVector &matN, int nStud) {
+  if (matList.size() != 0) return;
+  matList = List(nStud);
+  for (int i = 0; i < nStud; ++i) {
+    NumericMatrix cur = wrap(base);
+    cur.attr("dimnames") = List::create(matN, matN);
+    matList[i] = cur;
+  }
+}
+
 static void rxPriorJointMat(NumericMatrix &thetaM,
-                              CharacterVector &thetaN,
-                              List &omegaList,
-                              NumericMatrix &omegaM,
-                              CharacterVector &omegaN,
-                              const RObject &priorOmegaEl,
-                              const Nullable<NumericMatrix> &thetaMat,
-                              const Nullable<NumericVector> &thetaDf,
-                              const bool &thetaIsChol,
-                              const NumericVector &thetaLower,
-                              const NumericVector &thetaUpper,
-                              int nCoresRV,
-                              int nStud,
-                              int priorPdRetry,
-                              const char *what) {
+                            CharacterVector &thetaN,
+                            List &omegaList,
+                            NumericMatrix &omegaM,
+                            CharacterVector &omegaN,
+                            const RObject &priorOmegaEl,
+                            const Nullable<NumericMatrix> &thetaMat,
+                            const Nullable<NumericVector> &thetaDf,
+                            const bool &thetaIsChol,
+                            const NumericVector &thetaLower,
+                            const NumericVector &thetaUpper,
+                            int nCoresRV,
+                            int nStud,
+                            int priorPdRetry,
+                            const char *what) {
+  if (Rf_isNull(priorOmegaEl)) return;
   IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
   if (el.nrow() == 0) return;
   RObject elDn = el.attr("dimnames");
@@ -2085,91 +2163,35 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
     rxSolveFree();
     stop(_("'prior%sEl' must name its rows"), what);
   }
-  CharacterVector elN = as<CharacterVector>((as<List>(elDn))[0]);
-  // Match by name rather than by position: a thetaMat column can be
-  // dropped before the draw (an item the model does not have, or a zero
-  // variance), which would shift every index.
-  std::vector<int> col(el.nrow(), -1);
-  for (int r = 0; r < el.nrow(); ++r) {
-    for (int j = 0; j < thetaN.size(); ++j) {
-      if (elN[r] == thetaN[j]) { col[r] = j; break; }
-    }
-  }
+  std::vector<int> col = rxPriorElCols(as<CharacterVector>((as<List>(elDn))[0]),
+                                       thetaN);
   int dim = omegaN.size();
   arma::mat base = as<arma::mat>(omegaM);
-  // A pure TNPRI has no `cvPost()` draw to seed it, so the list arrives
-  // empty; a model that also gives a block degrees of freedom does, and
-  // those draws must not be thrown away.
-  if (omegaList.size() == 0) {
-    omegaList = List(nStud);
-    for (int i = 0; i < nStud; ++i) {
-      NumericMatrix cur = wrap(base);
-      cur.attr("dimnames") = List::create(omegaN, omegaN);
-      omegaList[i] = cur;
-    }
-  }
+  rxPriorSeedList(omegaList, base, omegaN, nStud);
   int nFallback = 0;
   for (int i = 0; i < nStud; ++i) {
     arma::mat cur = as<arma::mat>(as<NumericMatrix>(omegaList[i]));
     // attempt 0 is the row the joint draw already made -- do not waste it
     NumericVector dev = thetaM(i, _);
     std::vector<NumericVector> keep;
-    bool ok = false;
-    arma::mat cand = cur;
-    for (int k = 0; k < priorPdRetry; ++k) {
-      cand = cur;
-      for (int r = 0; r < el.nrow(); ++r) {
-        if (col[r] < 0) continue;
-        int a = el(r, 0) - 1, b = el(r, 1) - 1;
-        if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
-        cand(a, b) = base(a, b) + dev[col[r]];
-        cand(b, a) = cand(a, b);
-      }
-      // the reason the omega has to be positive definite is that the
-      // eta draw takes its Cholesky, so that is the test -- `is_sympd()`
-      // is stricter and would reject a usable projection below
-      arma::mat chk;
-      if (arma::chol(chk, cand)) { ok = true; break; }
+    arma::mat cand = rxPriorCand(cur, base, el, col, dev, dim);
+    for (int k = 1; !rxPriorUsable(cand) && k <= priorPdRetry; ++k) {
       keep.push_back(dev);
-      if (k + 1 < priorPdRetry) {
-        NumericMatrix one =
-          as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf), nCoresRV,
-                                       thetaIsChol, 1, true, thetaLower,
-                                       thetaUpper));
-        dev = one(0, _);
-      }
+      if (k == priorPdRetry) break;
+      // the WHOLE joint vector is redrawn, not just the failing entries
+      NumericMatrix one =
+        as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf), nCoresRV,
+                                     thetaIsChol, 1, true, thetaLower,
+                                     thetaUpper));
+      dev = one(0, _);
+      cand = rxPriorCand(cur, base, el, col, dev, dim);
     }
-    if (!ok) {
-      // project every kept draw and take the closest one that projected
-      double best = -1.0;
-      arma::mat bestMat;
-      NumericVector bestDev;
-      for (size_t k = 0; k < keep.size(); ++k) {
-        arma::mat bad = cur;
-        for (int r = 0; r < el.nrow(); ++r) {
-          if (col[r] < 0) continue;
-          int a = el(r, 0) - 1, b = el(r, 1) - 1;
-          if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
-          bad(a, b) = base(a, b) + keep[k][col[r]];
-          bad(b, a) = bad(a, b);
-        }
-        arma::mat np;
-        // rxNearPD() copies the input into `ret` when it fails, which
-        // would give a distance of zero and win -- so the flag decides,
-        // not the distance
-        if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
-        arma::mat chk;
-        if (!arma::chol(chk, np)) continue;
-        double d = arma::norm(np - bad, "fro");
-        if (best < 0.0 || d < best) { best = d; bestMat = np; bestDev = keep[k]; }
-      }
-      if (best < 0.0) {
+    if (!keep.empty() && !rxPriorUsable(cand)) {
+      if (!rxPriorNearest(keep, cur, base, el, col, dim, cand, dev)) {
         rxSolveFree();
         stop(_("could not draw a positive definite '%s' from the prior for study %d after %d tries"),
              what, i + 1, priorPdRetry);
       }
-      cand = bestMat;
-      dev = bestDev;
       nFallback++;
     }
     thetaM(i, _) = dev;
@@ -2479,7 +2501,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // The joint (TNPRI) draw runs here rather than in place of rxSimTheta():
   // `omegaList` does not exist until after `rxSimOmega()`, and this needs
   // both it and the drawn `thetaM`.
-  if (!Rf_isNull(priorOmegaEl) && simOmega && simVar) {
+  if (simOmega && simVar) {
     rxPriorJointMat(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
                     thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
                     nCoresRV, nStud, priorPdRetry, "omega");
@@ -2502,7 +2524,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // zero, so every gate that decides whether the drawn sigma is used has to
   // ask this instead
   bool sigmaByStudy = (dfObs > 0 || !Rf_isNull(priorSigmaEl));
-  if (!Rf_isNull(priorSigmaEl) && simSigma && simVar) {
+  if (simSigma && simVar) {
     rxPriorJointMat(thetaM, thetaN, sigmaList, sigmaM, sigmaN, priorSigmaEl,
                     thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
                     nCoresRV, nStud, priorPdRetry, "sigma");

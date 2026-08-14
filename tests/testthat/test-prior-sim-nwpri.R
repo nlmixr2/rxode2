@@ -48,7 +48,7 @@ rxTest({
     })
   }
 
-  .ev <- function() et(amt=100) %>% et(seq(0, 24, by=8))
+  .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
 
   test_that("the population parameters are drawn from their prior", {
     skip_if_not(.hasPriorSupport())

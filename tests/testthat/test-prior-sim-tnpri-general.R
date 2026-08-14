@@ -16,7 +16,7 @@ rxTest({
     })
   }
 
-  .ev <- function() et(amt=100) %>% et(seq(0, 24, by=8))
+  .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
 
   .omega <- function() {
     lotri::lotri(eta.ka + eta.cl ~ c(0.3,

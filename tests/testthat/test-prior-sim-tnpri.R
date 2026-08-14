@@ -8,7 +8,7 @@ rxTest({
     exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
   }
 
-  .ev <- function() et(amt=100) %>% et(seq(0, 24, by=8))
+  .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
 
   ## A joint block over `tcl` and the omega element of `eta.cl`, with a
   ## covariance between them -- the thing a block that is all one kind
