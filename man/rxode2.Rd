@@ -1320,6 +1320,97 @@ not expected behaviour.
 }
 
 }
+
+\subsection{Simulating from the priors}{
+
+\code{rxSolve()} uses the priors for its uncertainty simulation, which is
+what NONMEM does with \verb{$PRIOR NWPRI} and \verb{$PRIOR TNPRI}. Nothing extra
+has to be turned on: a model that carries priors uses them whenever
+variability is being simulated, that is when \code{nStud} is greater than one
+(or whatever \code{simVariability} forces).
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{one.cmt <- function() \{
+  ini(\{
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+    add.sd <- 0.7
+    tka ~ 0.01                            # normal prior on tka
+    prior(eta.cl, eta.v) ~ invWishart(20) # degrees of freedom, per block
+    prior(eta.ka) ~ invWishart(4)
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    linCmt() ~ add(add.sd)
+  \})
+\}
+
+s <- rxSolve(one.cmt, ev, nSub = 10, nStud = 100)
+s$thetaMat   # the per study population parameter draws
+s$omegaList  # the per study omega, one draw per study
+}\if{html}{\out{</div>}}
+
+Each omega block is drawn with \strong{its own} degrees of freedom, which the
+single \code{dfSub} argument cannot express – above, the 2x2 block is drawn
+with 20 and the 1x1 with 4. A block with no prior is left at its point
+estimate. \code{dfWishart()} helps pick a degrees of freedom that matches a
+target relative standard error.
+\subsection{The prior mean is the estimate}{
+
+A draw is added to the value the model already gives, so a normal prior
+on a population parameter has to be centered on its estimate, and one on
+an omega element on that omega value. \code{tka ~ 0.01} is exactly that – the
+number is the variance and the mean comes from \code{tka <- 0.45}. Writing a
+prior centered somewhere else is an error rather than a simulation that
+quietly differs from what the model says:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{tka <- 0.45
+prior(tka) ~ dnorm(0, 0.1)
+#> Error: cannot simulate from the prior on 'tka' (dnorm(0, 0.1)): the
+#>   prior mean (0) is not the initial estimate (0.45)
+}\if{html}{\out{</div>}}
+}
+
+\subsection{A joint prior over the thetas and the omegas}{
+
+A \code{TNPRI} variance matrix covers the population parameters and the omega
+values together, with covariances between them. Prefix an omega element
+with \code{om.} to name it, and put both in one block:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{tcl + om.eta.cl ~ c(0.02,
+                    0.004, 0.005)
+}\if{html}{\out{</div>}}
+
+Drawn that way the omega is not guaranteed positive definite. A study
+whose draw is not gets the whole joint vector redrawn, up to
+\code{priorPdRetry} times (10 by default). If none of them is, the nearest
+positive definite matrix of the kept draws is used and \code{rxSolve()} warns
+– that projection lands on the boundary of the positive definite cone,
+so those studies are not draws from the stated prior. A model that
+reaches the fallback often wants a larger \code{priorPdRetry} or a tighter
+prior.
+}
+
+\subsection{Turning it off, and precedence}{
+
+\code{usePrior = FALSE} ignores the priors and falls back to a supplied
+\code{thetaMat}/\code{dfSub}; \code{usePrior = TRUE} requires them and says why if it
+cannot honor them. A \code{thetaMat}/\code{dfSub} carried in the model’s \code{meta}
+block loses to the priors, with a warning. One given at the call site
+wins over them instead, also with a warning – an explicit argument is
+never silently discarded.
+
+Prior simulation does not yet cover nested/occasion models (\verb{| id},
+\verb{| occ}) or a chunked solve (\verb{file =}/\verb{chunkSize =}); both are a clear
+error rather than a solve that quietly drops the prior.
+}
+
+}
 }
 \section{Note on strings in rxode2}{
 Strings are converted to double values inside of \code{rxode2}, hence you can

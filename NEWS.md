@@ -2,6 +2,35 @@
 
 ## New features
 
+- `rxSolve()` simulates parameter uncertainty from the prior distributions
+  the model's `ini({})` block specifies, which is what NONMEM does with
+  `$PRIOR NWPRI` and `$PRIOR TNPRI`.  A model that carries priors uses them
+  whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
+  all that is needed.
+
+  Each omega block is drawn from an inverse Wishart with **its own**
+  degrees of freedom (`prior(eta.cl, eta.v) ~ invWishart(20)`), which the
+  single `dfSub` argument cannot express; a block with no prior is left at
+  its point estimate.  A normal prior on a population parameter
+  (`tka ~ 0.01`) gives the `thetaMat`, and a block may name omega elements
+  as well (`tcl + om.eta.cl ~ c(...)`) for one joint variance over the
+  thetas and the omega values.
+
+  A prior mean has to be what the model already says the entry is, since
+  the draw is added to that value; a prior centered elsewhere is an error
+  rather than a simulation that quietly differs from the model.
+
+  Because a jointly drawn omega is not guaranteed positive definite, such a
+  draw is retried up to `priorPdRetry` times (10 by default); if none is,
+  the nearest positive definite matrix of the kept draws is used with a
+  warning, since the projection is biased toward singularity.
+
+  `usePrior=FALSE` ignores the priors.  Priors take precedence over a
+  `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
+  one given at the call site wins over the priors instead.  Nested/occasion
+  models and chunked solves are a clear error rather than a solve that
+  silently drops the prior.
+
 - `rxUiPriors()` returns the priors a model specifies, with the parameter
   name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
   the parameter's `lower`/`upper` bounds.  The predicates

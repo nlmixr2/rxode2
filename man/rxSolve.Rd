@@ -197,6 +197,10 @@ rxSolve(
   indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
   indLinJac = c("auto", "symbolic", "fd"),
   indLinForcing = c("ramp", "constant"),
+  usePrior = NA,
+  priorPdRetry = 10L,
+  priorOmega = NULL,
+  priorOmegaEl = NULL,
   envir = parent.frame()
 )
 
@@ -1675,6 +1679,27 @@ rather than one -- which is where most of the difference between the two
 shows up, since the default \code{indLinRichardson="auto"} extrapolates.  It
 applies to the \code{"picard"} and \code{"newton"} schemes; the exponential
 Rosenbrock ones never freeze the forcing.}
+
+\item{usePrior}{Whether the prior distributions specified in the model's
+\code{ini({})} block drive the uncertainty simulation.  \code{NA} (or \code{"auto"},
+the default) uses them whenever the model has them and variability is
+being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
+\code{TRUE} requires them, and is an error when the model has none or when
+no variability would be simulated; \code{FALSE} ignores them and falls back
+to a supplied \code{thetaMat}/\code{dfSub}.  The priors take precedence over a
+\code{thetaMat}/\code{dfSub} carried in the model's \code{meta} block, with a warning;
+one given at the call site wins over the priors instead.}
+
+\item{priorPdRetry}{How many times a prior draw of a covariance matrix is
+retried when it is not positive definite.  After that many tries the
+nearest positive definite matrix of the kept draws is used and a
+warning is given.  Only prior draws retry; \code{cvPost()} is unchanged.}
+
+\item{priorOmega}{Internal.  The per-block prior degrees of freedom of the
+omega, built from the \code{ini({})} block; not meant to be set directly.}
+
+\item{priorOmegaEl}{Internal.  Which \code{thetaMat} columns are omega elements
+of a joint prior; not meant to be set directly.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

@@ -138,4 +138,8 @@
 #define Rxc_indLinIteration 133
 #define Rxc_indLinJac 134
 #define Rxc_indLinForcing 135
+#define Rxc_usePrior 136
+#define Rxc_priorPdRetry 137
+#define Rxc_priorOmega 138
+#define Rxc_priorOmegaEl 139
 #endif // __rxode2_control_H__
