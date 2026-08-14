@@ -2460,3 +2460,29 @@ rxTest({
     expect_equal(.ctx$getK(), 5)
   })
 })
+
+test_that(".rxIniDfTemplate matches the iniDf it is rbind()ed onto (#1249)", {
+  ## .addVariableToIniDf builds a new row from .rxIniDfTemplate and rbinds it
+  ## onto the model's iniDf.  A column added to iniDf but not to the template
+  ## makes EVERY "add a variable" path fail with "numbers of columns of
+  ## arguments do not match" -- which is what adding the `prior` column did.
+  one <- function() {
+    ini({
+      tka <- log(1.5)
+      eta.ka ~ 0.3
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      d/dt(a) <- -ka * a
+      a ~ add(add.sd)
+    })
+  }
+  ui <- one()
+  expect_equal(names(rxode2:::.rxIniDfTemplate), names(ui$iniDf))
+
+  ## and the path itself: adding a variable that is not yet in the model must
+  ## extend iniDf rather than error
+  ui2 <- rxode2::rxRename(ui, ka2 = ka)
+  expect_true(is.data.frame(ui2$iniDf))
+})
