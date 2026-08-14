@@ -9,6 +9,14 @@
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
+\alias{testRxUiPriors}
+\alias{testRxUiNormalPriors}
+\alias{testRxUiOmegaDf}
+\alias{testRxUiOmegaNormalPriors}
+\alias{assertRxUiNoPriors}
+\alias{assertRxUiNormalPriors}
+\alias{assertRxUiNoOmegaDf}
+\alias{assertRxUiNoOmegaNormalPriors}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
@@ -31,6 +39,22 @@ assertRxUiSingleEndpoint(ui, extra = "", .var.name = .vname(ui))
 assertRxUiTransformNormal(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiNormal(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiPriors(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiOmegaDf(ui, extra = "", .var.name = .vname(ui))
+
+testRxUiOmegaNormalPriors(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoPriors(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNormalPriors(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoOmegaDf(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoOmegaNormalPriors(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
@@ -81,6 +105,22 @@ population effect, only)
 \item \code{assertRxUiNoAutoregressive} -- Make sure the model does not have an
 autoregressive residual (ie \code{ar()}); used by estimation methods that do
 not support it
+\item \code{assertRxUiNoPriors} -- Make sure the model does not specify any prior
+distributions; used by estimation methods that cannot use them, so that
+a specified prior is an error instead of being silently ignored
+\item \code{assertRxUiNormalPriors} -- Make sure that every prior the model
+specifies is a normal prior (\code{dnorm()}, \code{stdNormal()}, or
+the multivariate \code{multiNormal()} that the \code{lotri} normal prior
+shorthand produces for correlated parameters); used by estimation
+methods that support priors but only normal ones
+\item \code{assertRxUiNoOmegaDf} -- Make sure the model does not give prior
+degrees of freedom for an omega block (ie \code{invWishart(4)}, the
+\verb{$OMEGAPD} of a NONMEM NWPRI model); used by estimation methods that
+cannot use them
+\item \code{assertRxUiNoOmegaNormalPriors} -- Make sure the model does not put a
+normal prior on an omega parameter (ie \code{om.eta.cl ~ 0.01}, what a
+NONMEM TNPRI model needs); used by estimation methods that can put a
+prior on an omega but only a Wishart one
 }
 }
 \examples{
@@ -117,6 +157,7 @@ Other Assertions:
 \code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }

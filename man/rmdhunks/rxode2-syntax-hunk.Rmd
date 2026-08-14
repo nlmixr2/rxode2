@@ -397,6 +397,252 @@ In general all the that are supported are in the following table
 .rxDocTable(rxResidualError, "rxode2/nlmixr2 esidual error specification")
 ```
 
+## Prior distributions in the `ini({})` block
+
+When an estimation method supports priors, the prior on a parameter is
+given in the `ini({})` block with:
+
+``` r
+prior(name) ~ dist(...)
+```
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the `ini({})` block.
+
+``` r
+one.compartment <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+A prior can be put on:
+
+- a population parameter, ie `prior(tka)`
+- a single between subject variability term, ie `prior(eta.ka)`
+- a whole covariance block, using one of the matrix-valued distributions,
+  ie `prior(eta.cl, eta.v) ~ lkjCorr(2)`.  The names given have to be
+  exactly one block of the matrix.
+
+### The normal prior shorthand
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax.  Putting a *population parameter* on the left
+of a `~` gives it a normal prior with a **zero mean** and the given
+variance:
+
+``` r
+ini({
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+})
+```
+
+The number on the right is a variance, so `tka ~ 4` has a standard
+deviation of 2.  The value given with `<-` stays the initial estimate; it is
+*not* the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter and
+an eta -- that combination used to be a "duplicated parameter" error.  A name
+that is not a population parameter still specifies an eta exactly as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+``` r
+tcl ~ 1
+tv  ~ c(0.01, 1)
+```
+
+and the `sd()`, `var()`, `cor()`, `cov()` and `chol()` transformations:
+
+``` r
+tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+```
+
+The matrix means exactly what it means for an eta block: the off-diagonal is
+a **covariance**, not a correlation.  A prior block and an eta block written
+the same way give the same matrix, so `cor()` is how you give a correlation
+here just as it is there.
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is.  A zero variance
+is a point mass rather than a prior, so it is an error.
+
+### Priors on the omega values
+
+The two NONMEM prior flavours want different things from an omega.
+
+An `NWPRI` model gives the omega block degrees of freedom.  The scale matrix
+of the Wishart family is optional, because the block it is put on already
+*is* that matrix, so only the degrees of freedom are needed -- this is the
+`$OMEGAP`/`$OMEGAPD` pair:
+
+``` r
+ini({
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  prior(eta.cl, eta.v) ~ invWishart(4)
+})
+```
+
+It works on a 1x1 block as well, since an inverse Wishart of dimension one
+is an inverse gamma.  An improper `nu <= p - 1` is an error.
+
+When every block shares the same degrees of freedom, a one-sided `~` sets
+them all at once instead of naming each block:
+
+``` r
+ini({
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+})
+```
+
+Each block is still checked individually, and naming a block as well is a
+duplicate rather than an override.
+
+A `TNPRI` model instead puts a normal prior on the omega *elements*, jointly
+with the thetas.  Prepending `om.` to a between subject variability names its
+omega element, so the normal prior shorthand can be used on it:
+
+``` r
+ini({
+  eta.cl ~ 0.3
+  eta.v ~ 0.1
+  om.eta.cl ~ 0.01     # normal prior on the omega element of eta.cl
+  om.eta.v ~ 0.04
+})
+```
+
+The omega itself is untouched; only the prior is added.  Correlated omega
+priors work the same way, including the per-row line form.  An `om.` name has
+to match a real between subject variability -- it never quietly creates one.
+
+Naming the eta directly means the same thing, so `prior(om.eta.cl)` and
+`prior(eta.cl)` are interchangeable.  The `om.` spelling exists so the
+shorthand has a name to put on the left of a `~`, since `eta.cl ~ ...`
+already means the omega value itself.
+
+### Prior distribution names
+
+There are three spellings of every distribution, and all of them are
+accepted:
+
+1. the **R** name, when R parameterizes the distribution the same way 'Stan'
+   does -- `dnorm()`, `dlnorm()`, `dgamma()`, `dbeta()`, `dcauchy()`,
+   `dunif()`
+2. the **camelCase** name, which is the 'Stan' name written the way the rest
+   of the package is written -- `invWishart()`, `lkjCorr()`, `studentT()`
+3. the **'Stan'** name itself -- `inv_wishart()`, `lkj_corr()`, `student_t()`
+
+The canonical one, which is what gets stored on the `iniDf` and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise.  The arguments may be given positionally or by name, so these are
+all the same prior:
+
+``` r
+prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+```
+
+`dt()` is deliberately **not** accepted as a spelling of `studentT()`:
+R's `dt()` is the standardized (or noncentral) t, while
+`studentT(nu, mu, sigma)` (the 'Stan' `student_t`) is a location-scale t, so
+treating them as the same would silently change the prior.  Use `studentT()`
+with its own parameterization.
+
+The full list of supported distributions, including the 'Stan' name for each,
+is returned by `lotri::lotriPriorDists()`.
+
+### Bounds and truncated priors
+
+The bounds are not repeated in the prior; they come from the parameter
+itself.  A parameter that is already bounded below by zero therefore gets a
+half distribution:
+
+``` r
+add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+```
+
+The prior is checked against those bounds, so putting a distribution with
+positive support on a parameter that allows negative values is an error.
+
+### Where the prior is stored
+
+Priors are kept in the `prior` column of the model's `$iniDf` and are printed
+back as part of the `ini({})` block, so they survive printing and piping.
+
+A prior you specify is never silently dropped.  An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+
+- `assertRxUiNoPriors()` -- for a method that cannot use priors at all; a
+  model that specifies one is an error
+- `assertRxUiNormalPriors()` -- for a method that supports priors but only
+  normal ones.  That covers `dnorm()`/`normal()`, `stdNormal()`, and the
+  `multiNormal()` family, which is what the shorthand above produces for
+  correlated parameters.  Anything else, including a covariance matrix prior
+  such as `lkjCorr()` or `invWishart()`, is an error
+- `assertRxUiNoOmegaDf()` -- for a method that cannot use prior degrees of
+  freedom on an omega block, ie the `NWPRI` form above
+- `assertRxUiNoOmegaNormalPriors()` -- for a method that can put a prior on
+  an omega but only a Wishart one, ie it supports `NWPRI` but not `TNPRI`
+
+A method that *implements* priors asks instead of asserts.  The predicates
+return `TRUE`/`FALSE` rather than throwing:
+
+- `testRxUiPriors()` -- does the model specify any prior at all
+- `testRxUiNormalPriors()` -- is every prior a normal one
+- `testRxUiOmegaDf()` -- does an omega carry degrees of freedom (`NWPRI`)
+- `testRxUiOmegaNormalPriors()` -- does an omega carry a normal prior
+  (`TNPRI`)
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time.  So a method can branch on which one it got.
+
+`rxUiPriors()` returns the priors themselves -- `name`, `prior`,
+`neta1`/`neta2` (`NA` for a population parameter) and the parameter's
+`lower`/`upper`, which is what a truncated prior needs for its bounds.
+
+So if a method silently ignored your prior, that is a bug in the method, not
+expected behaviour.
+
 # Note on strings in rxode2
 
 Strings are converted to double values inside of `rxode2`, hence you

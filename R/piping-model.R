@@ -513,11 +513,11 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     return(unique(do.call("c", lapply(seq_along(.types), function(i) {
       .v <- .getModelLineFromExpression(.types[[i]], rxui, isErr, isDrop)
       if (is.na(.v[1])) {
-        return(NULL)
+        NULL
       } else if (.v[1] < 0) {
-        return(NULL)
+        NULL
       } else {
-        return(.v)
+        .v
       }
     }))))
   }
@@ -669,10 +669,10 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   if (is.atomic(x)) {
     character()
   } else if (is.name(x)) {
-    return(as.character(x))
+    as.character(x)
   } else if (.matchesLangTemplate(x, str2lang("d/dt(.name)"))) {
     # ODE expressions only pull out the state name and not "d" or "dt"
-    return(as.character(x[[3]][[2]]))
+    as.character(x[[3]][[2]])
   } else {
     if (is.call(x)) {
       if (ignorePipe && identical(x[[1]], quote(`|`))) {
@@ -980,7 +980,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         .minfo(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
     }
-    assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
+    assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir=rxui)
   } else {
     if (is.na(promote)) {
     } else if (!promote) {
@@ -1015,7 +1015,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
       } else if (promote) {
         .minfo(paste0("promote {.code ", var, "} to population parameter with initial estimate {.number ", value, "}"))
         # need to reassess model for mu2 enhancement
-        assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
+        assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir=rxui)
         rxui2 <- rxui
         model(rxui2) <- rxui$lstExpr
         rxui2 <- rxUiDecompress(rxui2)
@@ -1027,7 +1027,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
     }
-    assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
+    assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir=rxui)
   }
   invisible()
 }

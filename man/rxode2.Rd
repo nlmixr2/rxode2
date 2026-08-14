@@ -560,7 +560,7 @@ table:\tabular{lll}{
    expm1(x) \tab exp(x)-1 \tab  \cr
    lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
    sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
-   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
+   fsign(x, y) \tab abs(x) carrying the sign of y, where y equal to 0 counts as positive \tab  \cr
    fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
    fround(x, digits) \tab Round, used by R’s round() \tab  \cr
    ftrunc(x) \tab Truncated towards zero \tab  \cr
@@ -1063,6 +1063,260 @@ In general all the that are supported are in the following table
    log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
 }
 
+}
+
+}
+
+\subsection{Prior distributions in the \code{ini({})} block}{
+
+When an estimation method supports priors, the prior on a parameter is
+given in the \code{ini({})} block with:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(name) ~ dist(...)
+}\if{html}{\out{</div>}}
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the \code{ini({})} block.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{one.compartment <- function() \{
+  ini(\{
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  \})
+\}
+}\if{html}{\out{</div>}}
+
+A prior can be put on:
+\itemize{
+\item a population parameter, ie \code{prior(tka)}
+\item a single between subject variability term, ie \code{prior(eta.ka)}
+\item a whole covariance block, using one of the matrix-valued
+distributions, ie \code{prior(eta.cl, eta.v) ~ lkjCorr(2)}. The names given
+have to be exactly one block of the matrix.
+}
+\subsection{The normal prior shorthand}{
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax. Putting a \emph{population parameter} on the
+left of a \code{~} gives it a normal prior with a \strong{zero mean} and the given
+variance:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+\})
+}\if{html}{\out{</div>}}
+
+The number on the right is a variance, so \code{tka ~ 4} has a standard
+deviation of 2. The value given with \verb{<-} stays the initial estimate; it
+is \emph{not} the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter
+and an eta – that combination used to be a “duplicated parameter” error.
+A name that is not a population parameter still specifies an eta exactly
+as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl ~ 1
+tv  ~ c(0.01, 1)
+}\if{html}{\out{</div>}}
+
+and the \code{sd()}, \code{var()}, \code{cor()}, \code{cov()} and \code{chol()} transformations:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+}\if{html}{\out{</div>}}
+
+The matrix means exactly what it means for an eta block: the
+off-diagonal is a \strong{covariance}, not a correlation. A prior block and
+an eta block written the same way give the same matrix, so \code{cor()} is
+how you give a correlation here just as it is there.
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is. A zero
+variance is a point mass rather than a prior, so it is an error.
+}
+
+\subsection{Priors on the omega values}{
+
+The two NONMEM prior flavours want different things from an omega.
+
+An \code{NWPRI} model gives the omega block degrees of freedom. The scale
+matrix of the Wishart family is optional, because the block it is put on
+already \emph{is} that matrix, so only the degrees of freedom are needed –
+this is the \verb{$OMEGAP}/\verb{$OMEGAPD} pair:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  prior(eta.cl, eta.v) ~ invWishart(4)
+\})
+}\if{html}{\out{</div>}}
+
+It works on a 1x1 block as well, since an inverse Wishart of dimension
+one is an inverse gamma. An improper \code{nu <= p - 1} is an error.
+
+When every block shares the same degrees of freedom, a one-sided \code{~}
+sets them all at once instead of naming each block:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+\})
+}\if{html}{\out{</div>}}
+
+Each block is still checked individually, and naming a block as well is
+a duplicate rather than an override.
+
+A \code{TNPRI} model instead puts a normal prior on the omega \emph{elements},
+jointly with the thetas. Prepending \code{om.} to a between subject
+variability names its omega element, so the normal prior shorthand can
+be used on it:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl ~ 0.3
+  eta.v ~ 0.1
+  om.eta.cl ~ 0.01     # normal prior on the omega element of eta.cl
+  om.eta.v ~ 0.04
+\})
+}\if{html}{\out{</div>}}
+
+The omega itself is untouched; only the prior is added. Correlated omega
+priors work the same way, including the per-row line form. An \code{om.} name
+has to match a real between subject variability – it never quietly
+creates one.
+
+Naming the eta directly means the same thing, so \code{prior(om.eta.cl)} and
+\code{prior(eta.cl)} are interchangeable. The \code{om.} spelling exists so the
+shorthand has a name to put on the left of a \code{~}, since \code{eta.cl ~ ...}
+already means the omega value itself.
+}
+
+\subsection{Prior distribution names}{
+
+There are three spellings of every distribution, and all of them are
+accepted:
+\enumerate{
+\item the \strong{R} name, when R parameterizes the distribution the same way
+‘Stan’ does – \code{dnorm()}, \code{dlnorm()}, \code{dgamma()}, \code{dbeta()},
+\code{dcauchy()}, \code{dunif()}
+\item the \strong{camelCase} name, which is the ‘Stan’ name written the way the
+rest of the package is written – \code{invWishart()}, \code{lkjCorr()},
+\code{studentT()}
+\item the \strong{‘Stan’} name itself – \code{inv_wishart()}, \code{lkj_corr()},
+\code{student_t()}
+}
+
+The canonical one, which is what gets stored on the \code{iniDf} and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise. The arguments may be given positionally or by name, so these
+are all the same prior:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+}\if{html}{\out{</div>}}
+
+\code{dt()} is deliberately \strong{not} accepted as a spelling of \code{studentT()}:
+R’s \code{dt()} is the standardized (or noncentral) t, while
+\code{studentT(nu, mu, sigma)} (the ‘Stan’ \code{student_t}) is a location-scale
+t, so treating them as the same would silently change the prior. Use
+\code{studentT()} with its own parameterization.
+
+The full list of supported distributions, including the ‘Stan’ name for
+each, is returned by \code{lotri::lotriPriorDists()}.
+}
+
+\subsection{Bounds and truncated priors}{
+
+The bounds are not repeated in the prior; they come from the parameter
+itself. A parameter that is already bounded below by zero therefore gets
+a half distribution:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+}\if{html}{\out{</div>}}
+
+The prior is checked against those bounds, so putting a distribution
+with positive support on a parameter that allows negative values is an
+error.
+}
+
+\subsection{Where the prior is stored}{
+
+Priors are kept in the \code{prior} column of the model’s \verb{$iniDf} and are
+printed back as part of the \code{ini({})} block, so they survive printing
+and piping.
+
+A prior you specify is never silently dropped. An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+\itemize{
+\item \code{assertRxUiNoPriors()} – for a method that cannot use priors at all; a
+model that specifies one is an error
+\item \code{assertRxUiNormalPriors()} – for a method that supports priors but
+only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{stdNormal()}, and
+the \code{multiNormal()} family, which is what the shorthand above produces
+for correlated parameters. Anything else, including a covariance
+matrix prior such as \code{lkjCorr()} or \code{invWishart()}, is an error
+\item \code{assertRxUiNoOmegaDf()} – for a method that cannot use prior degrees
+of freedom on an omega block, ie the \code{NWPRI} form above
+\item \code{assertRxUiNoOmegaNormalPriors()} – for a method that can put a prior
+on an omega but only a Wishart one, ie it supports \code{NWPRI} but not
+\code{TNPRI}
+}
+
+A method that \emph{implements} priors asks instead of asserts. The
+predicates return \code{TRUE}/\code{FALSE} rather than throwing:
+\itemize{
+\item \code{testRxUiPriors()} – does the model specify any prior at all
+\item \code{testRxUiNormalPriors()} – is every prior a normal one
+\item \code{testRxUiOmegaDf()} – does an omega carry degrees of freedom (\code{NWPRI})
+\item \code{testRxUiOmegaNormalPriors()} – does an omega carry a normal prior
+(\code{TNPRI})
+}
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time. So a method can branch on which one it got.
+
+\code{rxUiPriors()} returns the priors themselves – \code{name}, \code{prior},
+\code{neta1}/\code{neta2} (\code{NA} for a population parameter) and the parameter’s
+\code{lower}/\code{upper}, which is what a truncated prior needs for its bounds.
+
+So if a method silently ignored your prior, that is a bug in the method,
+not expected behaviour.
 }
 
 }

@@ -2,6 +2,29 @@
 
 ## New features
 
+- `rxUiPriors()` returns the priors a model specifies, with the parameter
+  name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
+  the parameter's `lower`/`upper` bounds.  The predicates
+  `testRxUiPriors()`, `testRxUiNormalPriors()`, `testRxUiOmegaDf()` and
+  `testRxUiOmegaNormalPriors()` report what kind of priors are present, so a
+  method that *implements* priors can branch instead of asserting.
+  `testRxUiOmegaDf()` and `testRxUiOmegaNormalPriors()` are mutually
+  exclusive, since an omega prior is either degrees of freedom (`NWPRI`) or
+  a normal prior (`TNPRI`) and lotri rejects a model that gives both.
+
+- `assertRxUiNoOmegaDf()` and `assertRxUiNoOmegaNormalPriors()` reject the
+  omega prior forms a method cannot use, the `NWPRI` and `TNPRI` ones
+  respectively.
+
+- `assertRxUiNoPriors()` and `assertRxUiNormalPriors()` let an estimation
+  method declare which prior distributions it can use.  A prior specified in
+  the `ini({})` block must never be silently ignored -- that would make the
+  fit do something other than what the model says -- so a method that cannot
+  use priors calls `assertRxUiNoPriors()` and one that only handles normal
+  priors calls `assertRxUiNormalPriors()`.  Both are no-ops when the
+  installed `lotri` has no prior support, since then there are no priors to
+  reject.
+
 - `rxSolve(zeroVarParamHandle=)` says what happens when `params` supplies a
   value for an omega/sigma item whose variance is zero (say
   `eta.base ~ fix(0)`).  Such an item is dropped from the matrix that is
@@ -97,6 +120,17 @@
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
 ## Bug fixes
+
+### Initial conditions data frame
+
+- The `iniDf` now tolerates the `prior` column that newer versions of `lotri`
+  add for prior distributions (#1248).  `testIniDf()`/`assertIniDf()` used to
+  reject every model built with such a `lotri`, and the ini rows that are
+  constructed by hand internally (adding a covariance between two etas,
+  promoting a parameter, `linMod()`) hard-coded the column list and so failed
+  to `rbind()` with "numbers of columns of arguments do not match".  These now
+  match whatever columns the `iniDf` actually has, so rxode2 works both with
+  `lotri` versions that have the column and with versions that do not.
 
 ### Parsing
 

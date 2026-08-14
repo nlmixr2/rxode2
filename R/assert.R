@@ -50,6 +50,26 @@
 #'    autoregressive residual (ie `ar()`); used by estimation methods that do
 #'    not support it
 #'
+#' - `assertRxUiNoPriors` -- Make sure the model does not specify any prior
+#'    distributions; used by estimation methods that cannot use them, so that
+#'    a specified prior is an error instead of being silently ignored
+#'
+#' - `assertRxUiNormalPriors` -- Make sure that every prior the model
+#'    specifies is a normal prior (`dnorm()`, `stdNormal()`, or
+#'    the multivariate `multiNormal()` that the `lotri` normal prior
+#'    shorthand produces for correlated parameters); used by estimation
+#'    methods that support priors but only normal ones
+#'
+#' - `assertRxUiNoOmegaDf` -- Make sure the model does not give prior
+#'    degrees of freedom for an omega block (ie `invWishart(4)`, the
+#'    `$OMEGAPD` of a NONMEM NWPRI model); used by estimation methods that
+#'    cannot use them
+#'
+#' - `assertRxUiNoOmegaNormalPriors` -- Make sure the model does not put a
+#'    normal prior on an omega parameter (ie `om.eta.cl ~ 0.01`, what a
+#'    NONMEM TNPRI model needs); used by estimation methods that can put a
+#'    prior on an omega but only a Wishart one
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -266,6 +286,284 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
   invisible(ui)
 }
 
+
+#' Priors specified in a model
+#'
+#' The `prior` column only exists when the installed 'lotri' supports
+#' prior distributions, so its absence means "no priors" rather than an
+#' error.
+#'
+#' @param ui rxode2 ui
+#' @return data frame of the parameters that have a prior, with `name`
+#'   and `prior` columns; zero rows when there are none
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiPriors <- function(ui) {
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' The 'Stan' name of a prior distribution, or NA
+#'
+#' Looked up dynamically so that this still works with a 'lotri' that
+#' predates `lotriPriorDists()` (in which case there cannot be any
+#' priors to look up anyway).
+#'
+#' @param name canonical distribution name as stored in the `prior` column
+#' @return the 'Stan' spelling, or `NA_character_` when it is not known
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorStanName <- function(name) {
+  .ns <- asNamespace("lotri")
+  if (!exists("lotriPriorDists", envir=.ns, inherits=FALSE)) {
+    return(NA_character_)
+  }
+  .d <- get("lotriPriorDists", envir=.ns)()
+  .w <- which(.d$name == name | .d$stanName == name)
+  if (length(.w) != 1L) return(NA_character_)
+  .d$stanName[.w]
+}
+
+#' Distributions that count as a normal prior
+#'
+#' The multivariate ones are included because the `lotri` normal prior
+#' shorthand (`tcl + tv ~ c(1, 0.01, 1)`) produces a `multiNormal()`
+#' whenever the parameters are correlated; that is still a normal prior.
+#'
+#' @noRd
+.rxNormalPriorStanNames <- c("normal", "std_normal", "multi_normal",
+                             "multi_normal_cholesky", "multi_normal_prec")
+
+#' Is each prior a normal prior?
+#'
+#' @param prior character vector of priors as stored in the `prior` column
+#' @return logical vector
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorIsNormal <- function(prior) {
+  vapply(prior, function(p) {
+    .fn <- try(str2lang(p)[[1]], silent=TRUE)
+    if (inherits(.fn, "try-error")) return(FALSE)
+    .fn <- as.character(.fn)
+    if (length(.fn) != 1L) return(FALSE)
+    .stan <- .rxPriorStanName(.fn)
+    !is.na(.stan) && .stan %in% .rxNormalPriorStanNames
+  }, logical(1), USE.NAMES=FALSE)
+}
+
+#' Priors specified in a model
+#'
+#' This is the accessor an estimation method uses to *implement* priors,
+#' as opposed to the `assertRxUi*` functions which reject the ones it
+#' cannot implement.
+#'
+#' @param ui rxode2 ui model
+#'
+#' @return data frame of the parameters that carry a prior, with the
+#'   columns `name`, `prior` (the prior as written, ie `"invWishart(4)"`),
+#'   `neta1`/`neta2` (`NA` for a population parameter) and `lower`/`upper`
+#'   from the parameter, which is what gives a truncated prior its bounds.
+#'   Zero rows when the model has no priors, including when the installed
+#'   'lotri' predates prior support.
+#'
+#' @family Assertions
+#' @author Matthew L. Fidler
+#' @export
+#' @examples
+#'
+#' \donttest{
+#' one.cmt <- function() {
+#'  ini({
+#'    tka <- 0.45; label("Ka")
+#'    tcl <- log(c(0, 2.7, 100)); label("Cl")
+#'    tv <- 3.45; label("V")
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#'    add.sd <- 0.7
+#'  })
+#'  model({
+#'    ka <- exp(tka + eta.ka)
+#'    cl <- exp(tcl + eta.cl)
+#'    v <- exp(tv + eta.v)
+#'    linCmt() ~ add(add.sd)
+#'  })
+#' }
+#'
+#' # a model with no priors gives a zero row data frame; a prior is added
+#' # with `prior(tka) ~ dnorm(0, 10)` in the `ini({})` block, which needs a
+#' # 'lotri' new enough to support them
+#' rxUiPriors(one.cmt)
+#' }
+rxUiPriors <- function(ui) {
+  ui <- assertRxUi(ui)
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      neta1=integer(0), neta2=integer(0),
+                      lower=numeric(0), upper=numeric(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             neta1=.iniDf$neta1[.w], neta2=.iniDf$neta2[.w],
+             lower=.iniDf$lower[.w], upper=.iniDf$upper[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  length(.rxUiPriors(ui)$name) > 0L
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  ## vacuously true when there is nothing to reject, which mirrors
+  ## `assertRxUiNormalPriors()` passing on a model with no priors
+  if (length(.p$name) == 0L) return(TRUE)
+  all(.rxPriorIsNormal(.p$prior))
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(FALSE)
+  any(.rxPriorIsOmegaDf(.p$prior))
+}
+
+#' @export
+#' @rdname assertRxUi
+testRxUiOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiOmegaPriors(ui)
+  if (length(.p$name) == 0L) return(FALSE)
+  any(.rxPriorIsNormal(.p$prior))
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) > 0L) {
+    stop("'", .var.name, "' specifies prior distribution(s) on ",
+         paste0("'", .p$name, "'", collapse=", "),
+         ", which this estimation method cannot use", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(!.rxPriorIsNormal(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' specifies non-normal prior distribution(s): ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         "; this estimation method only supports normal priors", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' Distributions that give degrees of freedom for an omega block
+#'
+#' These are the Wishart family, ie the `$OMEGAPD` of a NONMEM NWPRI
+#' model.  `invWishart(4)` on a block says the prior degrees of freedom
+#' are 4 and that the block itself is the scale matrix.
+#'
+#' @noRd
+.rxOmegaDfStanNames <- c("wishart", "inv_wishart",
+                         "wishart_cholesky", "inv_wishart_cholesky")
+
+#' Are these priors degrees of freedom on an omega block?
+#'
+#' @param prior character vector of priors as stored in the `prior` column
+#' @return logical vector
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorIsOmegaDf <- function(prior) {
+  vapply(prior, function(p) {
+    .fn <- try(str2lang(p)[[1]], silent=TRUE)
+    if (inherits(.fn, "try-error")) return(FALSE)
+    .fn <- as.character(.fn)
+    if (length(.fn) != 1L) return(FALSE)
+    .stan <- .rxPriorStanName(.fn)
+    !is.na(.stan) && .stan %in% .rxOmegaDfStanNames
+  }, logical(1), USE.NAMES=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(.rxPriorIsOmegaDf(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' gives prior degrees of freedom for the omega ",
+         "block(s) ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         ", which this estimation method cannot use", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
+
+#' Priors that sit on an omega element rather than a population parameter
+#'
+#' @param ui rxode2 ui
+#' @return data frame with `name` and `prior` for the omega rows that
+#'   carry a prior; zero rows when there are none
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiOmegaPriors <- function(ui) {
+  .iniDf <- ui$iniDf
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(data.frame(name=character(0), prior=character(0),
+                      stringsAsFactors=FALSE))
+  }
+  .w <- which(!is.na(.iniDf$prior) & !is.na(.iniDf$neta1))
+  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
+             stringsAsFactors=FALSE)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .p <- .rxUiOmegaPriors(ui)
+  if (length(.p$name) == 0L) return(invisible(ui))
+  .bad <- which(.rxPriorIsNormal(.p$prior))
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' puts a normal prior on the omega parameter(s) ",
+         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
+         ", which this estimation method cannot use", extra,
+         call.=FALSE)
+  }
+  invisible(ui)
+}
 
 #' @export
 #' @rdname assertRxUi
@@ -703,9 +1001,12 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
 #' testIniDf(TRUE)
 testIniDf <- function(iniDf) {
   if (checkmate::testDataFrame(iniDf)) {
+    ## `prior` comes from 'lotri' and is only present with newer
+    ## versions of it; since this is a subset check the same list works
+    ## whether or not the column is there
     checkmate::testSubset(names(iniDf),
                           c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
-                            "fix", "label", "backTransform", "condition", "err"))
+                            "fix", "label", "backTransform", "condition", "prior", "err"))
   } else {
     FALSE
   }
