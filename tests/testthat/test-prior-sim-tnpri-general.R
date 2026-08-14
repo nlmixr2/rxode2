@@ -147,4 +147,39 @@ rxTest({
     .ctl <- rxControl(omega=.nm, thetaMat=.tm, omegaSeparation="auto")
     expect_null(.rx$.rxTnpriApplyControl(.ctl)$priorOmegaEl)
   })
+
+  test_that("sigma is drawn jointly the same way", {
+    ## a covariance step carries the residual entries too -- `nonmem2rx`
+    ## writes `eps1, sigma1.2, eps2`
+    .m <- rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl)
+      v <- exp(tv)
+      cp <- linCmt() + add.eps + add2.eps
+    })
+    .sg <- lotri::lotri(add.eps + add2.eps ~ c(0.4,
+                                               0.05, 0.3))
+    .nm <- c("add.eps", "sigma2.1", "add2.eps")
+    .tm <- diag(c(0.01, 0.003, 0.0004, 0.003))
+    dimnames(.tm) <- list(c("tka", .nm), c("tka", .nm))
+
+    withr::with_seed(9, {
+      .s <- suppressWarnings(
+        rxSolve(.m, .ev(), params=.params, sigma=.sg, thetaMat=.tm,
+                nSub=2, nStud=300, sigmaSeparation="tnpri"))
+    })
+
+    expect_equal(length(.s$sigmaList), 300L)
+
+    .d1 <- vapply(.s$sigmaList, function(x) x[1, 1], double(1))
+    .off <- vapply(.s$sigmaList, function(x) x[2, 1], double(1))
+
+    expect_equal(mean(.d1), 0.4, tolerance=0.05)
+    expect_equal(sd(.d1), sqrt(0.003), tolerance=0.15)
+    expect_equal(mean(.off), 0.05, tolerance=0.15)
+    expect_gt(length(unique(.off)), 100L)
+
+    expect_true(all(vapply(.s$sigmaList,
+                           function(x) all(eigen(x)$values > 0), logical(1))))
+  })
 })

@@ -31,6 +31,26 @@
   models (#1253) and chunked solves (#1252) are a clear error rather than a
   solve that silently drops the prior.
 
+- `rxSolve(omegaSeparation="tnpri")` (and `sigmaSeparation="tnpri"`) draws
+  the omega/sigma entries carried in a `thetaMat` jointly with the thetas,
+  rather than redrawing their correlations with a separation strategy.
+  This is the general form of the `TNPRI` above, for a `thetaMat` that did
+  not come from an `ini({})` block prior.
+
+  A covariance step already gives one: `nonmem2rx` emits a `thetaMat` with
+  columns like `IIVCL, omega1.2, IIVV1, ...` and a nlmixr2 fit's `$cov`
+  uses `om.<eta>`/`cov.<eta1>.<eta2>`.  Both spellings are recognized, as
+  are the sigma equivalents.  Until now the off-diagonal entries were
+  dropped as "too many items" and the correlations were redrawn from LKJ,
+  discarding what the covariance step measured; drawing them jointly also
+  keeps the covariance *between* a theta and an omega entry, which no
+  separation strategy can carry.
+
+  It is opt-in because an eta-named `thetaMat` column already means that
+  eta's variance under the existing strategy, so the same column cannot
+  silently change meaning.  `omega` has to be a matrix, since the draws
+  are added to it.
+
 - `rxUiPriors()` returns the priors a model specifies, with the parameter
   name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
   the parameter's `lower`/`upper` bounds.  The predicates

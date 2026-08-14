@@ -1411,6 +1411,40 @@ Prior simulation does not yet cover nested/occasion models (\verb{| id},
 rather than a solve that quietly drops the prior.
 }
 
+\subsection{A thetaMat that already carries the omegas}{
+
+The same joint draw works without an \code{ini({})} prior, for a \code{thetaMat}
+that came from a covariance step. \code{nonmem2rx} gives one directly, and so
+does a nlmixr2 fit:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{mod <- nonmem2rx("run3.lst")
+colnames(mod$thetaMat)
+#> "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"
+
+rxSolve(mod, data.sim, nStud = 100, omegaSeparation = "tnpri")
+}\if{html}{\out{</div>}}
+
+\code{omegaSeparation = "tnpri"} says those entries are the omega itself and
+should be drawn from the \code{thetaMat} jointly with the thetas, instead of
+having their correlations redrawn by the \code{lkj}/\code{separation} strategies –
+which discard the off-diagonal entries the covariance step measured, and
+cannot carry a covariance between a theta and an omega entry at all.
+\code{sigmaSeparation = "tnpri"} does the same for the residual entries.
+
+Columns are matched to entries by name, in whichever spelling produced
+them:\tabular{lll}{
+    \tab diagonal \tab off-diagonal \cr
+   nlmixr2 fit \verb{$cov} \tab \code{om.eta.cl} \tab \code{cov.eta.cl.eta.v} \cr
+   \code{nonmem2rx} \tab \code{eta.cl} \tab \code{omega1.2}, \code{omega.2.1} \cr
+}
+
+
+This is opt-in rather than automatic: an eta-named column already means
+that eta’s variance under the existing separation strategy, so it cannot
+change meaning on its own. \code{omega} has to be a matrix, since the drawn
+entries are added to it.
+}
+
 }
 }
 \section{Note on strings in rxode2}{

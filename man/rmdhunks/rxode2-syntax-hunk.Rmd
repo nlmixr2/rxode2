@@ -734,6 +734,40 @@ Prior simulation does not yet cover nested/occasion models (`| id`,
 rxode2 issue #1252); both are a clear error rather than a solve that
 quietly drops the prior.
 
+### A thetaMat that already carries the omegas
+
+The same joint draw works without an `ini({})` prior, for a `thetaMat`
+that came from a covariance step.  `nonmem2rx` gives one directly, and so
+does a nlmixr2 fit:
+
+```
+mod <- nonmem2rx("run3.lst")
+colnames(mod$thetaMat)
+#> "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"
+
+rxSolve(mod, data.sim, nStud = 100, omegaSeparation = "tnpri")
+```
+
+`omegaSeparation = "tnpri"` says those entries are the omega itself and
+should be drawn from the `thetaMat` jointly with the thetas, instead of
+having their correlations redrawn by the `lkj`/`separation` strategies --
+which discard the off-diagonal entries the covariance step measured, and
+cannot carry a covariance between a theta and an omega entry at all.
+`sigmaSeparation = "tnpri"` does the same for the residual entries.
+
+Columns are matched to entries by name, in whichever spelling produced
+them:
+
+| | diagonal | off-diagonal |
+|---|---|---|
+| nlmixr2 fit `$cov` | `om.eta.cl` | `cov.eta.cl.eta.v` |
+| `nonmem2rx` | `eta.cl` | `omega1.2`, `omega.2.1` |
+
+This is opt-in rather than automatic: an eta-named column already means
+that eta's variance under the existing separation strategy, so it cannot
+change meaning on its own.  `omega` has to be a matrix, since the drawn
+entries are added to it.
+
 # Note on strings in rxode2
 
 Strings are converted to double values inside of `rxode2`, hence you
