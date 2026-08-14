@@ -377,16 +377,6 @@
   .rxPriorSimAssertSupported(ui, ctl)
   .th <- .rxPriorThetaMat(ui)
   .nu <- .rxPriorOmegaNu(ui)
-  ## TNPRI is rejected here rather than silently simulated as an ordinary
-  ## theta, which `rxSimTheta()` would drop for not matching a model
-  ## parameter.  The C++ side that services `priorOmegaEl` does not exist
-  ## yet; this comes out when it does.
-  if (!is.null(.th$omegaEl)) {
-    stop("prior simulation of a normal prior on the omega values (a NONMEM ",
-         "'TNPRI') is not implemented yet: '",
-         paste(.th$omegaEl$name, collapse="', '"), "'",
-         call.=FALSE)
-  }
   if (is.null(.th$thetaMat) && length(.nu) == 0L) return(NULL)
   list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu,
        omegaEl=.th$omegaEl)
@@ -531,8 +521,14 @@
               call.=FALSE)
     }
   }
-  ## wired here even though it stays NULL until the joint (TNPRI) draw
-  ## exists, so that adding it is a C++ only change
-  ctl$priorOmegaEl <- .spec$omegaEl
+  ## the C++ side matches by row name, so a thetaMat column that gets
+  ## pruned before the draw cannot shift the mapping
+  if (!is.null(.spec$omegaEl)) {
+    ctl$priorOmegaEl <-
+      matrix(c(as.integer(.spec$omegaEl$neta1),
+               as.integer(.spec$omegaEl$neta2)),
+             ncol=2L,
+             dimnames=list(.spec$omegaEl$name, c("neta1", "neta2")))
+  }
   ctl
 }

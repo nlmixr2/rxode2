@@ -3508,6 +3508,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (inherits(.ctl$thetaMat, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$thetaMat)
+    ## a joint (TNPRI) prior puts the omega elements in the thetaMat as
+    ## well, named `om.<eta>`.  They are not model parameters, so without
+    ## this they would be pruned as "too many items" and the prior on them
+    ## would vanish.
+    if (!is.null(.ctl$priorOmegaEl)) {
+      .extraNames <- c(.extraNames, rownames(.ctl$priorOmegaEl))
+    }
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {

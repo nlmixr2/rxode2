@@ -2052,6 +2052,136 @@ void rxSimTheta(CharacterVector &thetaN,
 }
 
 
+// A NONMEM TNPRI draws the omega *elements* as part of one joint normal
+// with the thetas.  Drawn that way the omega is not guaranteed positive
+// definite, so a study whose draw is not gets the whole joint vector
+// redrawn, up to `priorPdRetry` times.  If none of them is, every kept
+// draw is projected onto the positive definite cone and the closest
+// projection is used.
+//
+// That fallback is biased: `rxNearPD()` projects onto the *boundary* of
+// the cone and taking the closest projection then picks the least
+// positive definite draw, so a study that reaches it is not a draw from
+// the stated prior.  It warns for that reason.
+static void rxPriorJointOmega(NumericMatrix &thetaM,
+                              CharacterVector &thetaN,
+                              List &omegaList,
+                              NumericMatrix &omegaM,
+                              CharacterVector &omegaN,
+                              const RObject &priorOmegaEl,
+                              const Nullable<NumericMatrix> &thetaMat,
+                              const Nullable<NumericVector> &thetaDf,
+                              const bool &thetaIsChol,
+                              const NumericVector &thetaLower,
+                              const NumericVector &thetaUpper,
+                              int nCoresRV,
+                              int nStud,
+                              int priorPdRetry) {
+  IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
+  if (el.nrow() == 0) return;
+  RObject elDn = el.attr("dimnames");
+  if (Rf_isNull(elDn)) {
+    rxSolveFree();
+    stop(_("'priorOmegaEl' must name its rows"));
+  }
+  CharacterVector elN = as<CharacterVector>((as<List>(elDn))[0]);
+  // Match by name rather than by position: a thetaMat column can be
+  // dropped before the draw (an item the model does not have, or a zero
+  // variance), which would shift every index.
+  std::vector<int> col(el.nrow(), -1);
+  for (int r = 0; r < el.nrow(); ++r) {
+    for (int j = 0; j < thetaN.size(); ++j) {
+      if (elN[r] == thetaN[j]) { col[r] = j; break; }
+    }
+  }
+  int dim = omegaN.size();
+  arma::mat base = as<arma::mat>(omegaM);
+  // A pure TNPRI has no `cvPost()` draw to seed it, so the list arrives
+  // empty; a model that also gives a block degrees of freedom does, and
+  // those draws must not be thrown away.
+  if (omegaList.size() == 0) {
+    omegaList = List(nStud);
+    for (int i = 0; i < nStud; ++i) {
+      NumericMatrix cur = wrap(base);
+      cur.attr("dimnames") = List::create(omegaN, omegaN);
+      omegaList[i] = cur;
+    }
+  }
+  int nFallback = 0;
+  for (int i = 0; i < nStud; ++i) {
+    arma::mat cur = as<arma::mat>(as<NumericMatrix>(omegaList[i]));
+    // attempt 0 is the row the joint draw already made -- do not waste it
+    NumericVector dev = thetaM(i, _);
+    std::vector<NumericVector> keep;
+    bool ok = false;
+    arma::mat cand = cur;
+    for (int k = 0; k < priorPdRetry; ++k) {
+      cand = cur;
+      for (int r = 0; r < el.nrow(); ++r) {
+        if (col[r] < 0) continue;
+        int a = el(r, 0) - 1, b = el(r, 1) - 1;
+        if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
+        cand(a, b) = base(a, b) + dev[col[r]];
+        cand(b, a) = cand(a, b);
+      }
+      // the reason the omega has to be positive definite is that the
+      // eta draw takes its Cholesky, so that is the test -- `is_sympd()`
+      // is stricter and would reject a usable projection below
+      arma::mat chk;
+      if (arma::chol(chk, cand)) { ok = true; break; }
+      keep.push_back(dev);
+      if (k + 1 < priorPdRetry) {
+        NumericMatrix one =
+          as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf), nCoresRV,
+                                       thetaIsChol, 1, true, thetaLower,
+                                       thetaUpper));
+        dev = one(0, _);
+      }
+    }
+    if (!ok) {
+      // project every kept draw and take the closest one that projected
+      double best = -1.0;
+      arma::mat bestMat;
+      NumericVector bestDev;
+      for (size_t k = 0; k < keep.size(); ++k) {
+        arma::mat bad = cur;
+        for (int r = 0; r < el.nrow(); ++r) {
+          if (col[r] < 0) continue;
+          int a = el(r, 0) - 1, b = el(r, 1) - 1;
+          if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
+          bad(a, b) = base(a, b) + keep[k][col[r]];
+          bad(b, a) = bad(a, b);
+        }
+        arma::mat np;
+        // rxNearPD() copies the input into `ret` when it fails, which
+        // would give a distance of zero and win -- so the flag decides,
+        // not the distance
+        if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
+        arma::mat chk;
+        if (!arma::chol(chk, np)) continue;
+        double d = arma::norm(np - bad, "fro");
+        if (best < 0.0 || d < best) { best = d; bestMat = np; bestDev = keep[k]; }
+      }
+      if (best < 0.0) {
+        rxSolveFree();
+        stop(_("could not draw a positive definite 'omega' from the prior for study %d after %d tries"),
+             i + 1, priorPdRetry);
+      }
+      cand = bestMat;
+      dev = bestDev;
+      nFallback++;
+    }
+    thetaM(i, _) = dev;
+    NumericMatrix out = wrap(cand);
+    out.attr("dimnames") = List::create(omegaN, omegaN);
+    omegaList[i] = out;
+  }
+  if (nFallback > 0) {
+    warning(_("%d of %d studies needed the nearest positive definite 'omega' after %d prior draws; those studies are not draws from the stated prior"),
+            nFallback, nStud, priorPdRetry);
+  }
+}
+
 void rxSimOmega(bool &simOmega,
                 bool &omegaSep,
                 NumericMatrix &omegaM,
@@ -2344,6 +2474,14 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // thrown away.
   bool omegaByStudy = (dfSub > 0 || !Rf_isNull(priorOmega) ||
                        !Rf_isNull(priorOmegaEl));
+  // The joint (TNPRI) draw runs here rather than in place of rxSimTheta():
+  // `omegaList` does not exist until after `rxSimOmega()`, and this needs
+  // both it and the drawn `thetaM`.
+  if (!Rf_isNull(priorOmegaEl) && simOmega && simVar) {
+    rxPriorJointOmega(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
+                      thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
+                      nCoresRV, nStud, priorPdRetry);
+  }
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
     setZeroMatrix(2);

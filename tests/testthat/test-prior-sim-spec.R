@@ -115,17 +115,24 @@ rxTest({
                  "only normal and multivariate normal")
   })
 
-  test_that("a normal prior on the omega values is rejected for now", {
+  test_that("a normal prior on the omega values reaches the spec", {
     ## a NONMEM TNPRI, which lands on the omega row.  `eta.ka` is 0.6, and
     ## an omega element prior is centered on the omega value the same way
     ## a theta one is centered on its estimate
     .u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
-    expect_error(.rx$.rxPriorSimSpec(.u, list()), "TNPRI")
+    .s <- .rx$.rxPriorSimSpec(.u, list())
+
+    expect_equal(dimnames(.s$thetaMat)[[1]], "om.eta.ka")
+    expect_equal(unname(.s$thetaMat[1, 1]), 0.01)
+    expect_equal(.s$omegaEl$name, "om.eta.ka")
 
     ## and the joint form, which lands wherever the block starts
     .u <- .withPrior(.base(), "tcl",
                      "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
-    expect_error(.rx$.rxPriorSimSpec(.u, list()), "TNPRI")
+    .s <- .rx$.rxPriorSimSpec(.u, list())
+
+    expect_equal(dimnames(.s$thetaMat)[[1]], c("tcl", "om.eta.ka"))
+    expect_equal(.s$omegaEl$name, "om.eta.ka")
   })
 
   test_that("an omega element prior is centered on the omega value", {
