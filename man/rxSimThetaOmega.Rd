@@ -75,6 +75,17 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} does not use a separation strategy at all: the omega
+entries themselves are carried in the \code{thetaMat} and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls \code{TNPRI}.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+\code{omega} has to be a matrix, since the draws are added to it, and the
+\code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
+\code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see \code{priorPdRetry}.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -160,6 +171,8 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
+same way \code{omegaSeparation="tnpri"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}

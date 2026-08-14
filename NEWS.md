@@ -2,6 +2,58 @@
 
 ## New features
 
+- `rxSolve()` simulates parameter uncertainty from the prior distributions
+  the model's `ini({})` block specifies, which is what NONMEM does with
+  `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`
+  block needs `lotri` 1.0.7 or newer; with an older `lotri` the block
+  cannot express one and prior simulation simply does not engage.
+  `omegaSeparation="tnpri"` below works with any `lotri`.  A model that carries priors uses them
+  whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
+  all that is needed.
+
+  Each omega block is drawn from an inverse Wishart with **its own**
+  degrees of freedom (`prior(eta.cl, eta.v) ~ invWishart(20)`), which the
+  single `dfSub` argument cannot express; a block with no prior is left at
+  its point estimate.  A normal prior on a population parameter
+  (`tka ~ 0.01`) gives the `thetaMat`, and a block may name omega elements
+  as well (`tcl + om.eta.cl ~ c(...)`) for one joint variance over the
+  thetas and the omega values.
+
+  A prior mean has to be what the model already says the entry is, since
+  the draw is added to that value; a prior centered elsewhere is an error
+  rather than a simulation that quietly differs from the model.
+
+  Because a jointly drawn omega is not guaranteed positive definite, such a
+  draw is retried up to `priorPdRetry` times (10 by default); if none is,
+  the nearest positive definite matrix of the kept draws is used with a
+  warning, since the projection is biased toward singularity.
+
+  `usePrior=FALSE` ignores the priors.  Priors take precedence over a
+  `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
+  one given at the call site wins over the priors instead.  Nested/occasion
+  models (#1253) and chunked solves (#1252) are a clear error rather than a
+  solve that silently drops the prior.
+
+- `rxSolve(omegaSeparation="tnpri")` (and `sigmaSeparation="tnpri"`) draws
+  the omega/sigma entries carried in a `thetaMat` jointly with the thetas,
+  rather than redrawing their correlations with a separation strategy.
+  This is the general form of the `TNPRI` above, for a `thetaMat` that did
+  not come from an `ini({})` block prior.
+
+  A covariance step already gives one: `nonmem2rx` emits a `thetaMat` with
+  columns like `IIVCL, omega1.2, IIVV1, ...` and a nlmixr2 fit's `$cov`
+  uses `om.<eta>`/`cov.<eta1>.<eta2>`.  Both spellings are recognized, as
+  are the sigma equivalents.  Until now the off-diagonal entries were
+  dropped as "too many items" and the correlations were redrawn from LKJ,
+  discarding what the covariance step measured; drawing them jointly also
+  keeps the covariance *between* a theta and an omega entry, which no
+  separation strategy can carry.
+
+  It is opt-in because an eta-named `thetaMat` column already means that
+  eta's variance under the existing strategy, so the same column cannot
+  silently change meaning.  `omega` has to be a matrix, since the draws
+  are added to it.
+
 - `rxUiPriors()` returns the priors a model specifies, with the parameter
   name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
   the parameter's `lower`/`upper` bounds.  The predicates

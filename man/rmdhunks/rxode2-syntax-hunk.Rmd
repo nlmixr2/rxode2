@@ -643,6 +643,131 @@ specification time.  So a method can branch on which one it got.
 So if a method silently ignored your prior, that is a bug in the method, not
 expected behaviour.
 
+## Simulating from the priors
+
+`rxSolve()` uses the priors for its uncertainty simulation, which is what
+NONMEM does with `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Nothing extra has to
+be turned on: a model that carries priors uses them whenever variability
+is being simulated, that is when `nStud` is greater than one (or whatever
+`simVariability` forces).
+
+```
+one.cmt <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+    add.sd <- 0.7
+    tka ~ 0.01                            # normal prior on tka
+    prior(eta.cl, eta.v) ~ invWishart(20) # degrees of freedom, per block
+    prior(eta.ka) ~ invWishart(4)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    linCmt() ~ add(add.sd)
+  })
+}
+
+s <- rxSolve(one.cmt, ev, nSub = 10, nStud = 100)
+s$thetaMat   # the per study population parameter draws
+s$omegaList  # the per study omega, one draw per study
+```
+
+Each omega block is drawn with **its own** degrees of freedom, which the
+single `dfSub` argument cannot express -- above, the 2x2 block is drawn
+with 20 and the 1x1 with 4.  A block with no prior is left at its point
+estimate.  `dfWishart()` helps pick a degrees of freedom that matches a
+target relative standard error.
+
+### The prior mean is the estimate
+
+A draw is added to the value the model already gives, so a normal prior on
+a population parameter has to be centered on its estimate, and one on an
+omega element on that omega value.  `tka ~ 0.01` is exactly that -- the
+number is the variance and the mean comes from `tka <- 0.45`.  Writing a
+prior centered somewhere else is an error rather than a simulation that
+quietly differs from what the model says:
+
+```
+tka <- 0.45
+prior(tka) ~ dnorm(0, 0.1)
+#> Error: cannot simulate from the prior on 'tka' (dnorm(0, 0.1)): the
+#>   prior mean (0) is not the initial estimate (0.45)
+```
+
+### A joint prior over the thetas and the omegas
+
+A `TNPRI` variance matrix covers the population parameters and the omega
+values together, with covariances between them.  Prefix an omega element
+with `om.` to name it, and put both in one block:
+
+```
+tcl + om.eta.cl ~ c(0.02,
+                    0.004, 0.005)
+```
+
+Drawn that way the omega is not guaranteed positive definite.  A study
+whose draw is not gets the whole joint vector redrawn, up to
+`priorPdRetry` times (10 by default).  If none of them is, the nearest
+positive definite matrix of the kept draws is used and `rxSolve()` warns
+-- that projection lands on the boundary of the positive definite cone,
+so those studies are not draws from the stated prior.  A model that
+reaches the fallback often wants a larger `priorPdRetry` or a tighter
+prior.
+
+### Turning it off, and precedence
+
+`usePrior = FALSE` ignores the priors and falls back to a supplied
+`thetaMat`/`dfSub`; `usePrior = TRUE` requires them and says why if it
+cannot honor them.  A `thetaMat`/`dfSub` carried in the model's `meta`
+block loses to the priors, with a warning.  One given at the call site
+wins over them instead, also with a warning -- an explicit argument is
+never silently discarded.
+
+Prior simulation does not yet cover nested/occasion models (`| id`,
+`| occ`, rxode2 issue #1253) or a chunked solve (`file =`/`chunkSize =`,
+rxode2 issue #1252); both are a clear error rather than a solve that
+quietly drops the prior.
+
+### A thetaMat that already carries the omegas
+
+The same joint draw works without an `ini({})` prior, for a `thetaMat`
+that came from a covariance step.  `nonmem2rx` gives one directly, and so
+does a nlmixr2 fit:
+
+```
+mod <- nonmem2rx("run3.lst")
+colnames(mod$thetaMat)
+#> "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"
+
+rxSolve(mod, data.sim, nStud = 100, omegaSeparation = "tnpri")
+```
+
+`omegaSeparation = "tnpri"` says those entries are the omega itself and
+should be drawn from the `thetaMat` jointly with the thetas, instead of
+having their correlations redrawn by the `lkj`/`separation` strategies --
+which discard the off-diagonal entries the covariance step measured, and
+cannot carry a covariance between a theta and an omega entry at all.
+`sigmaSeparation = "tnpri"` does the same for the residual entries.
+
+Columns are matched to entries by name, in whichever spelling produced
+them:
+
+| | diagonal | off-diagonal |
+|---|---|---|
+| nlmixr2 fit `$cov` | `om.eta.cl` | `cov.eta.cl.eta.v` |
+| `nonmem2rx` | `eta.cl` | `omega1.2`, `omega.2.1` |
+
+This is opt-in rather than automatic: an eta-named column already means
+that eta's variance under the existing separation strategy, so it cannot
+change meaning on its own.  `omega` has to be a matrix, since the drawn
+entries are added to it.
+
 # Note on strings in rxode2
 
 Strings are converted to double values inside of `rxode2`, hence you
