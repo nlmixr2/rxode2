@@ -141,6 +141,7 @@
 #define Rxc_priorPdRetry 137
 #define Rxc_priorOmega 138
 #define Rxc_priorOmegaEl 139
+#define Rxc_priorSigmaEl 140
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

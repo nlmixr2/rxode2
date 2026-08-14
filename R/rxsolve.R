@@ -499,6 +499,18 @@
 #'     matrix is less than 10 and `"separation"` when greater
 #'    than equal to 10.
 #'
+#'  * `"tnpri"` does not use a separation strategy at all: the omega
+#'     entries themselves are carried in the `thetaMat` and are drawn from
+#'     it jointly with the thetas, which is what a covariance step from
+#'     NONMEM or 'nlmixr2' gives and what NONMEM calls `TNPRI`.  This keeps
+#'     the off diagonal entries and the covariances between the thetas and
+#'     the omega entries, which the strategies above redraw or discard.
+#'     `omega` has to be a matrix, since the draws are added to it, and the
+#'     `thetaMat` columns are matched to entries by name -- `om.eta.cl` or
+#'     `eta.cl` for a diagonal, and `cov.eta.cl.eta.v` or `omega2.1` for an
+#'     off diagonal.  A drawn matrix that is not positive definite is
+#'     redrawn, see `priorPdRetry`.
+#'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
 #'   simulation), how should the `thetaMat` values be turned int
@@ -611,6 +623,9 @@
 #'    matrix is less than 10 and `"separation"` when greater
 #'    than equal to 10.
 #'
+#' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
+#'    same way `omegaSeparation="tnpri"` does for the omega.
+#'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
 #'
@@ -633,7 +648,12 @@
 #'   omega, built from the `ini({})` block; not meant to be set directly.
 #'
 #' @param priorOmegaEl Internal.  Which `thetaMat` columns are omega elements
-#'   of a joint prior; not meant to be set directly.
+#'   of a joint prior; not meant to be set directly -- use
+#'   `omegaSeparation="tnpri"`.
+#'
+#' @param priorSigmaEl Internal.  Which `thetaMat` columns are sigma elements
+#'   of a joint prior; not meant to be set directly -- use
+#'   `sigmaSeparation="tnpri"`.
 #'
 #' @param resample A character vector of model variables to resample
 #'   from the input dataset; This sampling is done with replacement.
@@ -1169,7 +1189,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
-                    sigmaSeparation = c("auto", "lkj", "separation"),
+                    sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
                     sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     nDisplayProgress = 10000L,
                     amountUnits = NA_character_, timeUnits = "hours",
@@ -1178,7 +1198,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     eta = NULL, addDosing = FALSE,
                     stateTrim = Inf, updateObject = FALSE,
                     omega = NULL, omegaDf = NULL, omegaIsChol = FALSE,
-                    omegaSeparation = c("auto", "lkj", "separation"),
+                    omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
                     omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     omegaLower = -Inf, omegaUpper = Inf,
                     nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
@@ -1279,6 +1299,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     priorPdRetry=10L,
                     priorOmega=NULL,
                     priorOmegaEl=NULL,
+                    priorSigmaEl=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -2013,7 +2034,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       usePrior=.usePrior,
       priorPdRetry=priorPdRetry,
       priorOmega=priorOmega,
-      priorOmegaEl=priorOmegaEl
+      priorOmegaEl=priorOmegaEl,
+      priorSigmaEl=priorSigmaEl
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -3505,6 +3527,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .names <- c(.names, .col[.w])
   }
 
+  ## `omegaSeparation="tnpri"` says the omega (and `sigmaSeparation` the
+  ## sigma) entries are carried in the thetaMat and should be drawn from
+  ## it jointly with the thetas.  Resolved before the pruning below, which
+  ## would otherwise drop those columns as "too many items".
+  .ctl <- .rxTnpriApplyControl(.ctl)
+
   if (inherits(.ctl$thetaMat, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$thetaMat)
@@ -3514,6 +3542,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     ## would vanish.
     if (!is.null(.ctl$priorOmegaEl)) {
       .extraNames <- c(.extraNames, rownames(.ctl$priorOmegaEl))
+    }
+    if (!is.null(.ctl$priorSigmaEl)) {
+      .extraNames <- c(.extraNames, rownames(.ctl$priorSigmaEl))
     }
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]

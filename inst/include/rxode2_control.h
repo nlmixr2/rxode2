@@ -142,4 +142,5 @@
 #define Rxc_priorPdRetry 137
 #define Rxc_priorOmega 138
 #define Rxc_priorOmegaEl 139
+#define Rxc_priorSigmaEl 140
 #endif // __rxode2_control_H__

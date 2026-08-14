@@ -2063,7 +2063,7 @@ void rxSimTheta(CharacterVector &thetaN,
 // the cone and taking the closest projection then picks the least
 // positive definite draw, so a study that reaches it is not a draw from
 // the stated prior.  It warns for that reason.
-static void rxPriorJointOmega(NumericMatrix &thetaM,
+static void rxPriorJointMat(NumericMatrix &thetaM,
                               CharacterVector &thetaN,
                               List &omegaList,
                               NumericMatrix &omegaM,
@@ -2076,13 +2076,14 @@ static void rxPriorJointOmega(NumericMatrix &thetaM,
                               const NumericVector &thetaUpper,
                               int nCoresRV,
                               int nStud,
-                              int priorPdRetry) {
+                              int priorPdRetry,
+                              const char *what) {
   IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
   if (el.nrow() == 0) return;
   RObject elDn = el.attr("dimnames");
   if (Rf_isNull(elDn)) {
     rxSolveFree();
-    stop(_("'priorOmegaEl' must name its rows"));
+    stop(_("'prior%sEl' must name its rows"), what);
   }
   CharacterVector elN = as<CharacterVector>((as<List>(elDn))[0]);
   // Match by name rather than by position: a thetaMat column can be
@@ -2164,8 +2165,8 @@ static void rxPriorJointOmega(NumericMatrix &thetaM,
       }
       if (best < 0.0) {
         rxSolveFree();
-        stop(_("could not draw a positive definite 'omega' from the prior for study %d after %d tries"),
-             i + 1, priorPdRetry);
+        stop(_("could not draw a positive definite '%s' from the prior for study %d after %d tries"),
+             what, i + 1, priorPdRetry);
       }
       cand = bestMat;
       dev = bestDev;
@@ -2177,8 +2178,8 @@ static void rxPriorJointOmega(NumericMatrix &thetaM,
     omegaList[i] = out;
   }
   if (nFallback > 0) {
-    warning(_("%d of %d studies needed the nearest positive definite 'omega' after %d prior draws; those studies are not draws from the stated prior"),
-            nFallback, nStud, priorPdRetry);
+    warning(_("%d of %d studies needed the nearest positive definite '%s' after %d prior draws; those studies are not draws from the stated prior"),
+            nFallback, nStud, what, priorPdRetry);
   }
 }
 
@@ -2420,7 +2421,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
                      const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL),
                      const RObject &priorOmega = R_NilValue,
                      const RObject &priorOmegaEl = R_NilValue,
-                     int priorPdRetry = 10) {
+                     int priorPdRetry = 10,
+                     const RObject &priorSigmaEl = R_NilValue) {
   if (nSub > 0 && nStud > 0 && (int64_t)nSub * nStud > INT_MAX) {
     stop(_("the combination of subjects (%d) and studies (%d) is too large"), nSub, nStud);
   }
@@ -2478,9 +2480,9 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // `omegaList` does not exist until after `rxSimOmega()`, and this needs
   // both it and the drawn `thetaM`.
   if (!Rf_isNull(priorOmegaEl) && simOmega && simVar) {
-    rxPriorJointOmega(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
-                      thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
-                      nCoresRV, nStud, priorPdRetry);
+    rxPriorJointMat(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
+                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "omega");
   }
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
@@ -2496,6 +2498,15 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
              sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
              sigmaLower, sigmaUpper, sigmaIsChol,
              sigmaSeparation, sigmaXform, dfObs, nStud, nObs, simVariability);
+  // the sigma equivalent of `omegaByStudy`: a joint draw leaves `dfObs` at
+  // zero, so every gate that decides whether the drawn sigma is used has to
+  // ask this instead
+  bool sigmaByStudy = (dfObs > 0 || !Rf_isNull(priorSigmaEl));
+  if (!Rf_isNull(priorSigmaEl) && simSigma && simVar) {
+    rxPriorJointMat(thetaM, thetaN, sigmaList, sigmaM, sigmaN, priorSigmaEl,
+                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "sigma");
+  }
 
   tmp = as<arma::mat>(sigmaM);
   if (tmp.is_zero()) {
@@ -2568,7 +2579,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
     }
     if (scol > 0) {
       if (simSubjects) {
-        if (dfObs > 0  && simVar) {
+        if (sigmaByStudy && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs*nSub,
                                              false, sigmaLower, sigmaUpper));
         } else {
@@ -2582,7 +2593,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
           }
         }
       } else {
-        if (dfObs > 0  && simVar) {
+        if (sigmaByStudy && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs,
                                              false, sigmaLower, sigmaUpper));
         } else {
@@ -2625,14 +2636,14 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   } else if (Rf_isMatrix(omega)) {
     _rxModels[".omegaN"]= as<CharacterVector>((as<List>((as<NumericMatrix>(omega)).attr("dimnames")))[1]);
   }
-  if (dfObs > 0 && simVar) {
+  if (sigmaByStudy && simVar) {
     _rxModels[".sigmaL"] = sigmaList;
   }
   if (Rf_isNull(sigma) || rxIsChar(sigma) || Rf_length(sigma) == 0) {
   } else {
     // Fill in sigma information for simeta()
     arma::mat sigma0;
-    if (dfObs > 0 && simVar) {
+    if (sigmaByStudy && simVar) {
       sigma0 = as<arma::mat>(sigmaList[0]);
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
@@ -2782,7 +2793,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                           sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform,
                           nCoresRV, nObs, dfSub, dfObs, simSubjects,
                           simVariability,
-                          R_NilValue, R_NilValue, 10);
+                          R_NilValue, R_NilValue, 10, R_NilValue);
 }
 
 #define defrx_params R_NilValue
@@ -3987,7 +3998,8 @@ static inline void rxSolve_simulate(const RObject &obj,
                                simVariability,
                                rxControl[Rxc_priorOmega],
                                rxControl[Rxc_priorOmegaEl],
-                               asInt(rxControl[Rxc_priorPdRetry], "priorPdRetry"));
+                               asInt(rxControl[Rxc_priorPdRetry], "priorPdRetry"),
+                               rxControl[Rxc_priorSigmaEl]);
     if (cbindPar1) {
       lst = cbindThetaOmega(rxSolveDat->par1, lst);
       rxSolveDat->par1cbind = true;

@@ -611,3 +611,49 @@
   matrix(c(.i1, .i2), ncol=2L,
          dimnames=list(.name, c("neta1", "neta2")))
 }
+
+#' Resolve `omegaSeparation`/`sigmaSeparation` of `"tnpri"`
+#'
+#' `"tnpri"` says the omega (or sigma) entries are carried in the
+#' `thetaMat` and should be drawn from it jointly with the thetas, rather
+#' than having their correlations redrawn by the separation strategy.
+#' That is what a covariance step from NONMEM or nlmixr2 gives, and it
+#' keeps the covariances between the thetas and the omega entries that
+#' the separation strategy throws away.
+#'
+#' Resolved in R rather than C++ so the matched column names can be kept
+#' out of the pruning that drops a `thetaMat` column the model has no
+#' parameter for.
+#'
+#' @param ctl `rxControl` list
+#' @return the amended `rxControl` list
+#' @noRd
+#' @author Matthew L. Fidler
+.rxTnpriApplyControl <- function(ctl) {
+  for (.w in c("omega", "sigma")) {
+    .sep <- ctl[[paste0(.w, "Separation")]]
+    if (!identical(.sep, "tnpri")) next
+    .el <- paste0("prior", if (.w == "omega") "Omega" else "Sigma", "El")
+    ## a prior in the model's `ini({})` block already said which entries
+    ## these are, and it is the more specific statement
+    if (!is.null(ctl[[.el]])) next
+    if (!inherits(ctl$thetaMat, "matrix")) {
+      stop("'", .w, "Separation=\"tnpri\"' needs a 'thetaMat' carrying the ",
+           .w, " entries", call.=FALSE)
+    }
+    .mat <- ctl[[.w]]
+    if (!inherits(.mat, "matrix")) {
+      stop("'", .w, "Separation=\"tnpri\"' needs '", .w, "' to be a matrix, ",
+           "since the drawn entries are added to it", call.=FALSE)
+    }
+    .pos <- .rxJointElFromNames(.mat, colnames(ctl$thetaMat), what=.w)
+    if (is.null(.pos)) {
+      stop("'", .w, "Separation=\"tnpri\"' was given but no 'thetaMat' column ",
+           "names a ", .w, " entry; expected one of '", dimnames(.mat)[[1]][1],
+           "', 'om.", dimnames(.mat)[[1]][1], "' or '", .w, "1.1'",
+           call.=FALSE)
+    }
+    ctl[[.el]] <- .pos
+  }
+  ctl
+}
