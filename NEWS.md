@@ -171,6 +171,14 @@
   `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
+## Breaking changes
+
+- The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
+  alias for `.iniHandleLine()` -- the same function -- kept only while
+  nlmixr2est called the old name, which it no longer does
+  (nlmixr2/nlmixr2est#925).  Anything still calling it should call
+  `.iniHandleLine()`, which takes the same arguments and does the same thing.
+
 ## Bug fixes
 
 ### Initial conditions data frame

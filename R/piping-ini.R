@@ -731,13 +731,6 @@
   }
 }
 
-# Kept as an alias because nlmixr2est still calls
-# `rxode2::.iniHandleFixOrUnfix()`; it can go once that calls
-# `.iniHandleLine()` directly (nlmixr2/rxode2#1250)
-#' @rdname dot-iniHandleLine
-#' @export
-.iniHandleFixOrUnfix <- .iniHandleLine
-
 #' Simplify variants of fix and unfix to just those two
 #'
 #' @param expr An R call or similar object
