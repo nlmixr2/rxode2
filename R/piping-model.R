@@ -818,6 +818,11 @@ rxSetPipingAuto()
     label = NA_character_,
     backTransform = NA_character_,
     condition = NA_character_,
+    ## must stay column-for-column identical to the iniDf this template is
+    ## rbind()ed onto in .addVariableToIniDf -- a column added to iniDf and not
+    ## added here makes EVERY "add a variable to the model" path fail with
+    ## "numbers of columns of arguments do not match"
+    prior = NA_character_,
     err = NA_character_
   )
 
