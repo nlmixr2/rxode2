@@ -137,6 +137,10 @@
 #define Rxc_indLinIteration 133
 #define Rxc_indLinJac 134
 #define Rxc_indLinForcing 135
+#define Rxc_usePrior 136
+#define Rxc_priorPdRetry 137
+#define Rxc_priorOmega 138
+#define Rxc_priorOmegaEl 139
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

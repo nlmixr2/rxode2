@@ -614,6 +614,27 @@
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
 #'
+#' @param usePrior Whether the prior distributions specified in the model's
+#'   `ini({})` block drive the uncertainty simulation.  `NA` (or `"auto"`,
+#'   the default) uses them whenever the model has them and variability is
+#'   being simulated (`nStud > 1`, or whatever `simVariability` forces);
+#'   `TRUE` requires them, and is an error when the model has none or when
+#'   no variability would be simulated; `FALSE` ignores them and falls back
+#'   to a supplied `thetaMat`/`dfSub`.  The priors take precedence over a
+#'   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
+#'   one given at the call site wins over the priors instead.
+#'
+#' @param priorPdRetry How many times a prior draw of a covariance matrix is
+#'   retried when it is not positive definite.  After that many tries the
+#'   nearest positive definite matrix of the kept draws is used and a
+#'   warning is given.  Only prior draws retry; `cvPost()` is unchanged.
+#'
+#' @param priorOmega Internal.  The per-block prior degrees of freedom of the
+#'   omega, built from the `ini({})` block; not meant to be set directly.
+#'
+#' @param priorOmegaEl Internal.  Which `thetaMat` columns are omega elements
+#'   of a joint prior; not meant to be set directly.
+#'
 #' @param resample A character vector of model variables to resample
 #'   from the input dataset; This sampling is done with replacement.
 #'   When `NULL` or `FALSE` no resampling is done.  When
@@ -1254,6 +1275,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
                     indLinJac = c("auto", "symbolic", "fd"),
                     indLinForcing = c("ramp", "constant"),
+                    usePrior=NA,
+                    priorPdRetry=10L,
+                    priorOmega=NULL,
+                    priorOmegaEl=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1634,6 +1659,18 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(hmxi, lower=0, any.missing=FALSE, len=1)
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
+    ## `usePrior=NA` is "auto" (use the priors when the model has them and
+    ## variability is being simulated); the string spelling is accepted so
+    ## `usePrior="auto"` reads the way the documentation does
+    .usePrior <- usePrior
+    if (is.character(.usePrior)) {
+      .usePrior <- switch(match.arg(.usePrior, c("auto", "true", "false")),
+                          auto=NA, true=TRUE, false=FALSE)
+    }
+    checkmate::assertLogical(.usePrior, len=1)
+    checkmate::assertIntegerish(priorPdRetry, len=1, lower=1,
+                                any.missing=FALSE)
+    priorPdRetry <- as.integer(priorPdRetry)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
@@ -1969,7 +2006,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indLinRichardson=.indLinRichardson,
       indLinIteration=.indLinIteration,
       indLinJac=.indLinJac,
-      indLinForcing=.indLinForcing
+      indLinForcing=.indLinForcing,
+      ## appended at the end: the C++ side reads `rxControl` positionally
+      ## through the generated `Rxc_*` defines, so a new field may only be
+      ## added here, never inserted
+      usePrior=.usePrior,
+      priorPdRetry=priorPdRetry,
+      priorOmega=priorOmega,
+      priorOmegaEl=priorOmegaEl
     )
     class(.ret) <- "rxControl"
     return(.ret)
