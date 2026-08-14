@@ -532,3 +532,82 @@
   }
   ctl
 }
+
+## Recognizing omega/sigma entries carried in a `thetaMat`
+##
+## A `thetaMat` from a real covariance step carries the omega and sigma
+## entries next to the thetas, and simulating from the whole thing is
+## what NONMEM calls `TNPRI`.  Every producer spells those entries
+## differently, so all of the spellings in use are recognized:
+##
+##   nlmixr2est  `om.<eta>`            `cov.<eta1>.<eta2>`
+##   nonmem2rx   `<eta>`               `omega<i>.<j>`, `omega.<i>.<j>`
+##   ini({})     `om.<eta>`            --
+##
+## and the sigma equivalents.  An eta name contains dots of its own, so a
+## name is matched by *building* the candidates for each element and
+## comparing, never by splitting on dots.
+
+#' Every spelling of the `(i, j)` entry of a named matrix
+#'
+#' @param nm dimnames of the omega/sigma matrix
+#' @param i,j element position, 1 based
+#' @param what `"omega"` or `"sigma"`
+#' @return character vector of names that address that element
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJointElNames <- function(nm, i, j, what="omega") {
+  .diagPre <- if (what == "omega") "om." else "sig."
+  .idxPre <- if (what == "omega") c("omega", "omega.") else c("sigma", "sigma.")
+  if (i == j) {
+    ## the bare name is how a covariance step names a variance; the
+    ## prefixed one is what nlmixr2est and the `ini({})` block write
+    return(c(nm[i], paste0(.diagPre, nm[i]),
+             paste0(.idxPre, i, ".", i)))
+  }
+  ## the matrix is symmetric, so either order addresses the same entry
+  c(paste0("cov.", nm[i], ".", nm[j]),
+    paste0("cov.", nm[j], ".", nm[i]),
+    paste0(.idxPre, i, ".", j),
+    paste0(.idxPre, j, ".", i))
+}
+
+#' Which `thetaMat` columns are entries of this matrix?
+#'
+#' @param mat omega/sigma matrix (named)
+#' @param cols `thetaMat` column names
+#' @param what `"omega"` or `"sigma"`
+#' @param diagOnly when `TRUE` a bare eta name is *not* taken as an entry,
+#'   which is how the existing separation strategy reads it
+#' @return integer matrix of `(neta1, neta2)` with the matching column
+#'   name as its row names, or `NULL` when nothing matched
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJointElFromNames <- function(mat, cols, what="omega", bareName=TRUE) {
+  if (!is.matrix(mat) || dim(mat)[1] == 0L || length(cols) == 0L) return(NULL)
+  .nm <- dimnames(mat)[[1]]
+  if (is.null(.nm)) return(NULL)
+  .n <- length(.nm)
+  .name <- character(0)
+  .i1 <- integer(0)
+  .i2 <- integer(0)
+  for (.i in seq_len(.n)) {
+    for (.j in seq_len(.i)) {
+      .cand <- .rxJointElNames(.nm, .i, .j, what)
+      if (!bareName && .i == .j) .cand <- .cand[-1]
+      .w <- which(cols %in% .cand)
+      if (length(.w) == 0L) next
+      if (length(.w) > 1L) {
+        stop("more than one 'thetaMat' column addresses the same ", what,
+             " entry (", .nm[.i], ", ", .nm[.j], "): '",
+             paste(cols[.w], collapse="', '"), "'", call.=FALSE)
+      }
+      .name <- c(.name, cols[.w])
+      .i1 <- c(.i1, .i)
+      .i2 <- c(.i2, .j)
+    }
+  }
+  if (length(.name) == 0L) return(NULL)
+  matrix(c(.i1, .i2), ncol=2L,
+         dimnames=list(.name, c("neta1", "neta2")))
+}

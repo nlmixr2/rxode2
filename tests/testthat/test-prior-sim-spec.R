@@ -218,4 +218,50 @@ rxTest({
     expect_equal(unname(.s$thetaMat[1, 1]), 0.01)
     expect_equal(vapply(.s$omegaNu, function(x) x$nu, double(1)), c(20, 4))
   })
+
+  test_that("thetaMat columns are matched to omega entries by every spelling", {
+    ## A thetaMat from a real covariance step carries the omega entries
+    ## next to the thetas, and every producer spells them differently.
+    .om <- matrix(0, 3, 3,
+                  dimnames=list(c("eta.cl", "eta.v", "eta.ka"),
+                                c("eta.cl", "eta.v", "eta.ka")))
+
+    ## nlmixr2est: `om.<eta>` and `cov.<eta1>.<eta2>` (.foceiOmegaCovNames)
+    .e <- .rx$.rxJointElFromNames(.om, c("tka", "om.eta.cl",
+                                         "cov.eta.cl.eta.v", "om.eta.v"))
+    expect_equal(rownames(.e),
+                 c("om.eta.cl", "cov.eta.cl.eta.v", "om.eta.v"))
+    expect_equal(unname(.e[, "neta1"]), c(1L, 2L, 2L))
+    expect_equal(unname(.e[, "neta2"]), c(1L, 1L, 2L))
+
+    ## nonmem2rx: the bare eta name, and `omega<i>.<j>`/`omega.<i>.<j>`
+    .e <- .rx$.rxJointElFromNames(.om, c("t.CL", "eta.cl", "omega1.2",
+                                         "eta.v", "omega.3.1"))
+    expect_equal(rownames(.e),
+                 c("eta.cl", "omega1.2", "eta.v", "omega.3.1"))
+    ## either order addresses the same entry, since the matrix is symmetric
+    expect_equal(unname(.e["omega.3.1", ]), c(3L, 1L))
+
+    ## a thetaMat with nothing to match is not an omega source
+    expect_null(.rx$.rxJointElFromNames(.om, c("tka", "tcl")))
+
+    ## the bare eta name already means an SD under the separation
+    ## strategy, so it can be excluded
+    .e <- .rx$.rxJointElFromNames(.om, c("eta.cl", "om.eta.v"),
+                                  bareName=FALSE)
+    expect_equal(rownames(.e), "om.eta.v")
+
+    ## two spellings of one entry is ambiguous rather than first-wins
+    expect_error(.rx$.rxJointElFromNames(.om, c("om.eta.cl", "eta.cl")),
+                 "more than one")
+  })
+
+  test_that("sigma entries are matched the same way", {
+    .sg <- matrix(0, 2, 2, dimnames=list(c("eps1", "eps2"),
+                                         c("eps1", "eps2")))
+    .e <- .rx$.rxJointElFromNames(.sg, c("eps1", "sigma1.2", "eps2"),
+                                  what="sigma")
+    expect_equal(rownames(.e), c("eps1", "sigma1.2", "eps2"))
+    expect_equal(unname(.e["sigma1.2", ]), c(2L, 1L))
+  })
 })
