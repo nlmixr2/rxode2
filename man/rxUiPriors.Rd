@@ -14,8 +14,8 @@ data frame of the parameters that carry a prior, with the
 columns \code{name}, \code{prior} (the prior as written, ie \code{"invWishart(4)"}),
 \code{neta1}/\code{neta2} (\code{NA} for a population parameter) and \code{lower}/\code{upper}
 from the parameter, which is what gives a truncated prior its bounds.
-Zero rows when the model has no priors, including when the installed
-'lotri' predates prior support.
+Zero rows when the model has no priors, and also when the \code{iniDf} has
+no \code{prior} column at all.
 }
 \description{
 This is the accessor an estimation method uses to \emph{implement} priors,

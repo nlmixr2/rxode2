@@ -311,9 +311,9 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 
 #' The 'Stan' name of a prior distribution, or NA
 #'
-#' Looked up dynamically so that this still works with a 'lotri' that
-#' predates `lotriPriorDists()` (in which case there cannot be any
-#' priors to look up anyway).
+#' Looked up dynamically rather than with a hard `lotri::` reference, so
+#' that an `iniDf` carrying a prior can still be classified even if it
+#' came from somewhere other than the installed 'lotri'.
 #'
 #' @param name canonical distribution name as stored in the `prior` column
 #' @return the 'Stan' spelling, or `NA_character_` when it is not known
@@ -369,8 +369,8 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #'   columns `name`, `prior` (the prior as written, ie `"invWishart(4)"`),
 #'   `neta1`/`neta2` (`NA` for a population parameter) and `lower`/`upper`
 #'   from the parameter, which is what gives a truncated prior its bounds.
-#'   Zero rows when the model has no priors, including when the installed
-#'   'lotri' predates prior support.
+#'   Zero rows when the model has no priors, and also when the `iniDf` has
+#'   no `prior` column at all.
 #'
 #' @family Assertions
 #' @author Matthew L. Fidler
