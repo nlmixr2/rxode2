@@ -4,7 +4,10 @@
 
 - `rxSolve()` simulates parameter uncertainty from the prior distributions
   the model's `ini({})` block specifies, which is what NONMEM does with
-  `$PRIOR NWPRI` and `$PRIOR TNPRI`.  A model that carries priors uses them
+  `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`
+  block needs `lotri` 1.0.7 or newer; with an older `lotri` the block
+  cannot express one and prior simulation simply does not engage.
+  `omegaSeparation="tnpri"` below works with any `lotri`.  A model that carries priors uses them
   whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
   all that is needed.
 
