@@ -2071,7 +2071,8 @@ void rxSimOmega(bool &simOmega,
                 double dfSub = 0,
                 uint32_t nStud = 1,
                 uint32_t nSub = 1,
-                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL),
+                const RObject &priorOmega = R_NilValue) {
   int j;
   bool simVar;
   if (simVariability[0] == NA_LOGICAL) {
@@ -2146,7 +2147,27 @@ void rxSimOmega(bool &simOmega,
     }
   }
   if (simVar){
-    if (dfSub > 0 && simOmega) {
+    // `priorOmega` is the `ini({})` block's per block degrees of freedom,
+    // shaped as a 'lotri'.  `cvPost_()` already draws per block from one of
+    // those: it ignores the scalar `nu` argument and reads each block's own,
+    // then reassembles the full matrix -- which is the whole of the NWPRI
+    // omega half.  A block with no prior carries `nu = 1`, which is how
+    // `cvPost_()` spells "leave this one at its point estimate".
+    if (!Rf_isNull(priorOmega) && simOmega) {
+      RObject ol = _rxode2_cvPost_(as<SEXP>(R_NilValue),
+                                   as<SEXP>(priorOmega),
+                                   as<SEXP>(IntegerVector::create(nStud)),
+                                   as<SEXP>(LogicalVector::create(false)),
+                                   as<SEXP>(LogicalVector::create(false)),
+                                   as<SEXP>(IntegerVector::create(1)),
+                                   as<SEXP>(IntegerVector::create(1)));
+      // `cvPost_()` returns a bare matrix when n == 1 and a list otherwise
+      if (TYPEOF(ol) == VECSXP) {
+        omegaList = ol;
+      } else {
+        omegaList = List::create(ol);
+      }
+    } else if (dfSub > 0 && simOmega) {
       if (omegaSep) {
         int defaultType = 2;
         if (omegaSeparation == "auto"){
@@ -2314,7 +2335,15 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
              omegaList, thetaN, thetaM, "omega", omega, omegaDf,
              omegaLower, omegaUpper, omegaIsChol,
-             omegaSeparation, omegaXform, dfSub, nStud, nSub, simVariability);
+             omegaSeparation, omegaXform, dfSub, nStud, nSub, simVariability,
+             priorOmega);
+  // Whether the omega varies by study at all.  `dfSub` is the only source
+  // today; a prior draw leaves it at 0, so every gate that decides whether
+  // the drawn matrix is used, exported, or handed to `simeta()` has to ask
+  // this instead -- otherwise the matrices are built and then silently
+  // thrown away.
+  bool omegaByStudy = (dfSub > 0 || !Rf_isNull(priorOmega) ||
+                       !Rf_isNull(priorOmegaEl));
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
     setZeroMatrix(2);
@@ -2381,7 +2410,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
     }
     // Now Omega Covariates
     if (ocol > 0) {
-      if (dfSub > 0 && simVar) {
+      if (omegaByStudy && simVar) {
         // nm = ret0[j]; // parameter column
         RObject ol = wrap(omegaList[i]);
         RObject nm0 = rxSimSigma(wrap(omegaList[i]), wrap(omegaDf), nCoresRV, false, nSub,
@@ -2452,7 +2481,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   if (simTheta) {
     _rxModels[".theta"] = thetaM;
   }
-  if (dfSub > 0 && simVar) {
+  if (omegaByStudy && simVar) {
     _rxModels[".omegaL"] = omegaList;
     _rxModels[".omegaN"] = omegaN;
   } else if (Rf_isMatrix(omega)) {
@@ -2518,7 +2547,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   } else {
     // Fill in omega information for simeta()
     arma::mat omega0;
-    if (dfSub > 0 && simVar) {
+    if (omegaByStudy && simVar) {
       omega0 = as<arma::mat>(omegaList[0]);
       rx->neta = omega0.n_rows;
       if (_globals.gomega != NULL) free(_globals.gomega);
