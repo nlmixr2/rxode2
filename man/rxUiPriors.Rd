@@ -27,16 +27,25 @@ cannot implement.
 \donttest{
 one.cmt <- function() {
  ini({
-   tka <- 0.45
+   tka <- 0.45; label("Ka")
+   tcl <- log(c(0, 2.7, 100)); label("Cl")
+   tv <- 3.45; label("V")
    eta.ka ~ 0.6
+   eta.cl ~ 0.3
+   eta.v ~ 0.1
    add.sd <- 0.7
  })
  model({
    ka <- exp(tka + eta.ka)
+   cl <- exp(tcl + eta.cl)
+   v <- exp(tv + eta.v)
    linCmt() ~ add(add.sd)
  })
 }
 
+# a model with no priors gives a zero row data frame; a prior is added
+# with `prior(tka) ~ dnorm(0, 10)` in the `ini({})` block, which needs a
+# 'lotri' new enough to support them
 rxUiPriors(one.cmt)
 }
 }
