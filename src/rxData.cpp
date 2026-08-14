@@ -2233,24 +2233,13 @@ arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
   }
 }
 
-//' Simulate Parameters from a Theta/Omega specification
-//'
-//' @param params Named Vector of rxode2 model parameters
-//'
-//' @param nObs Number of observations to simulate (with `sigma` matrix)
-//'
-//' @inheritParams rxSolve
-//'
-//' @param simSubjects boolean indicated rxode2 should simulate subjects in studies (`TRUE`,
-//'         default) or studies (`FALSE`)
-//'
-//' @return a data frame with the simulated subjects
-//'
-//' @author Matthew L.Fidler
-//'
-//' @export
-//[[Rcpp::export]]
-List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
+// The exported `rxSimThetaOmega()` below is frozen at 28 arguments: it is
+// registered with that arity in `src/init.c`, re-exported through
+// `R_RegisterCCallable()` and declared in `inst/include/rxode2_RcppExports.h`,
+// so changing its signature would break every already-built reverse
+// dependency.  The prior simulation arguments go on this internal one
+// instead, and the exported function forwards defaults for them.
+List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
                      const Nullable<NumericVector> &omegaDf= R_NilValue,
                      const NumericVector &omegaLower = NumericVector::create(R_NegInf),
@@ -2277,7 +2266,10 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      double dfSub = 0,
                      double dfObs = 0,
                      bool simSubjects=true,
-                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL),
+                     const RObject &priorOmega = R_NilValue,
+                     const RObject &priorOmegaEl = R_NilValue,
+                     int priorPdRetry = 10) {
   if (nSub > 0 && nStud > 0 && (int64_t)nSub * nStud > INT_MAX) {
     stop(_("the combination of subjects (%d) and studies (%d) is too large"), nSub, nStud);
   }
@@ -2569,6 +2561,61 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     // matrix list (n x n;  nStud matrices)
   }
   return ret0;
+}
+
+//' Simulate Parameters from a Theta/Omega specification
+//'
+//' @param params Named Vector of rxode2 model parameters
+//'
+//' @param nObs Number of observations to simulate (with `sigma` matrix)
+//'
+//' @inheritParams rxSolve
+//'
+//' @param simSubjects boolean indicated rxode2 should simulate subjects in studies (`TRUE`,
+//'         default) or studies (`FALSE`)
+//'
+//' @return a data frame with the simulated subjects
+//'
+//' @author Matthew L.Fidler
+//'
+//' @export
+//[[Rcpp::export]]
+List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
+                     const RObject &omega= R_NilValue,
+                     const Nullable<NumericVector> &omegaDf= R_NilValue,
+                     const NumericVector &omegaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
+                     const bool &omegaIsChol = false,
+                     std::string omegaSeparation= "auto",//("lkj", "separation")
+                     const int omegaXform = 1,
+                     int nSub = 1,
+                     const Nullable<NumericMatrix> &thetaMat = R_NilValue,
+                     const NumericVector &thetaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
+                     const Nullable<NumericVector> &thetaDf  = R_NilValue,
+                     const bool &thetaIsChol = false,
+                     int nStud = 1,
+                     const RObject sigma = R_NilValue,
+                     const NumericVector &sigmaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &sigmaUpper = NumericVector::create(R_PosInf),
+                     const Nullable<NumericVector> &sigmaDf= R_NilValue,
+                     const bool &sigmaIsChol = false,
+                     std::string sigmaSeparation= "auto",//("lkj", "separation")
+                     const int sigmaXform = 1,
+                     int nCoresRV = 1,
+                     int nObs = 1,
+                     double dfSub = 0,
+                     double dfObs = 0,
+                     bool simSubjects=true,
+                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+  return rxSimThetaOmega0(params, omega, omegaDf, omegaLower, omegaUpper,
+                          omegaIsChol, omegaSeparation, omegaXform, nSub,
+                          thetaMat, thetaLower, thetaUpper, thetaDf,
+                          thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper,
+                          sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform,
+                          nCoresRV, nObs, dfSub, dfObs, simSubjects,
+                          simVariability,
+                          R_NilValue, R_NilValue, 10);
 }
 
 #define defrx_params R_NilValue
@@ -3750,7 +3797,7 @@ static inline void rxSolve_simulate(const RObject &obj,
     if (!cbindPar1) {
       params0 = as<Nullable<NumericVector>>(rxSolveDat->par1);
     }
-    List lst = rxSimThetaOmega(params0,
+    List lst = rxSimThetaOmega0(params0,
                                omega,
                                omegaDf,
                                asNv(rxControl[Rxc_omegaLower], "omegaLower"),
@@ -3770,7 +3817,10 @@ static inline void rxSolve_simulate(const RObject &obj,
                                asInt(rxControl[Rxc_sigmaXform], "sigmaXform"),
                                nCoresRV, curObs,
                                dfSub, dfObs, simSubjects,
-                               simVariability);
+                               simVariability,
+                               rxControl[Rxc_priorOmega],
+                               rxControl[Rxc_priorOmegaEl],
+                               asInt(rxControl[Rxc_priorPdRetry], "priorPdRetry"));
     if (cbindPar1) {
       lst = cbindThetaOmega(rxSolveDat->par1, lst);
       rxSolveDat->par1cbind = true;
