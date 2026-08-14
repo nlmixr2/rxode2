@@ -367,3 +367,148 @@
   if (is.null(.th$thetaMat) && length(.nu) == 0L) return(NULL)
   list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu, omegaEl=NULL)
 }
+
+#' Turn the per-block prior degrees of freedom into a 'lotri' omega
+#'
+#' `cvPost()` already draws per-block: given a 'lotri' it ignores the
+#' scalar `nu` argument and reads each block's own from
+#' `attr(omega, "lotri")[[block]]$nu`, then reassembles the full matrix.
+#' So the whole of the `NWPRI` omega half is handing it an omega shaped
+#' that way, which is what this builds.
+#'
+#' @param ui rxode2 ui model
+#' @param omegaNu list from `.rxPriorOmegaNu()`
+#' @return a `lotri` object carrying one `nu` per block, or `NULL` when
+#'   no block has degrees of freedom
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorOmegaLotri <- function(ui, omegaNu) {
+  if (length(omegaNu) == 0L) return(NULL)
+  .omega <- ui$omega
+  if (!is.matrix(.omega) || dim(.omega)[1] == 0L) return(NULL)
+  ## the prior attributes would otherwise travel with the matrix and be
+  ## re-read downstream as if they were the block structure
+  attributes(.omega) <- attributes(.omega)[c("dim", "dimnames")]
+  .nu <- setNames(vapply(omegaNu, function(x) x$nu, double(1)),
+                  vapply(omegaNu, function(x) x$names[1], character(1)))
+  .blk <- lotri::lotriMatInv(.omega)
+  names(.blk) <- paste0("blk", seq_along(.blk))
+  ## a block with no prior keeps `nu = 1`, which is how `cvPost()` spells
+  ## "leave this one at its point estimate"
+  .lst <- setNames(lapply(.blk, function(b) {
+    list(nu=unname(.nu[dimnames(b)[[1]][1]]))
+  }), names(.blk))
+  .lst <- lapply(.lst, function(x) {
+    if (is.na(x$nu)) list(nu=1.0) else x
+  })
+  .ret <- .blk
+  attr(.ret, "lotri") <- .lst
+  attr(.ret, "start") <- 1L
+  class(.ret) <- "lotri"
+  .ret
+}
+
+#' Should the model's priors drive this solve?
+#'
+#' The C++ side resolves `simVar = (simVariability == NA) ? (nStud > 1) :
+#' simVariability`, and every gate that decides whether a drawn matrix is
+#' used hangs off it.  Reproducing it here rather than testing `nStud > 1`
+#' keeps the two from disagreeing: `nStud = 1, simVariability = TRUE`
+#' really does simulate, and `simVariability = FALSE` really does not.
+#'
+#' @param ctl `rxControl` list
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorEffSimVar <- function(ctl) {
+  .sv <- ctl$simVariability
+  if (is.null(.sv) || length(.sv) != 1L || is.na(.sv)) {
+    return(isTRUE(ctl$nStud > 1))
+  }
+  isTRUE(.sv)
+}
+
+#' Did this control item come from the model's `meta` block?
+#'
+#' `.uiRxControl()` merges the `meta` block and the caller's arguments
+#' into one list, and by the time the control exists the two look the
+#' same -- `...` at that point is the whole expanded control, not what
+#' the caller typed.  What still tells them apart is `meta` itself: an
+#' item that matches what `meta` holds came from there, and anything else
+#' non-default was given at the call site.
+#'
+#' @param ui rxode2 ui model
+#' @param name control item name
+#' @param value the value in the control
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorFromMeta <- function(ui, name, value) {
+  .meta <- try(ui$meta, silent=TRUE)
+  if (!is.environment(.meta) || !exists(name, envir=.meta, inherits=FALSE)) {
+    return(FALSE)
+  }
+  isTRUE(all.equal(get(name, envir=.meta), value))
+}
+
+#' Put the model's priors into the solve control
+#'
+#' @param ui rxode2 ui model
+#' @param ctl `rxControl` list
+#' @return the amended `rxControl` list
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorApplyControl <- function(ui, ctl) {
+  .use <- ctl$usePrior
+  if (isFALSE(.use)) return(ctl)
+  .simVar <- .rxPriorEffSimVar(ctl)
+  if (!isTRUE(.use) && !.simVar) return(ctl)
+  .spec <- .rxPriorSimSpec(ui, ctl)
+  if (is.null(.spec)) {
+    if (isTRUE(.use)) {
+      stop("'usePrior=TRUE' but the model specifies no prior distributions",
+           call.=FALSE)
+    }
+    return(ctl)
+  }
+  if (!.simVar) {
+    ## `usePrior=TRUE` got here, so say why the priors would vanish rather
+    ## than passing them to a solve that draws nothing
+    stop("'usePrior=TRUE' but no variability would be simulated; set ",
+         "'nStud' greater than 1 or 'simVariability=TRUE'",
+         call.=FALSE)
+  }
+  if (!is.null(.spec$thetaMat)) {
+    if (is.null(ctl$thetaMat)) {
+      ctl$thetaMat <- .spec$thetaMat
+    } else if (.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
+      warning("the prior distributions in 'ini({})' replace the 'thetaMat' ",
+              "the model's 'meta' block carries", call.=FALSE)
+      ctl$thetaMat <- .spec$thetaMat
+    } else {
+      warning("'thetaMat' was given, so the prior distributions on the ",
+              "population parameters were not used; drop it or set ",
+              "'usePrior=FALSE' to keep it without this warning",
+              call.=FALSE)
+    }
+  }
+  .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
+  if (!is.null(.omega)) {
+    if (is.null(ctl$dfSub) || ctl$dfSub == 0) {
+      ctl$priorOmega <- .omega
+    } else if (.rxPriorFromMeta(ui, "dfSub", ctl$dfSub)) {
+      warning("the prior degrees of freedom in 'ini({})' replace the 'dfSub' ",
+              "the model's 'meta' block carries", call.=FALSE)
+      ctl$priorOmega <- .omega
+    } else {
+      warning("'dfSub' was given, so the prior degrees of freedom on the ",
+              "omega block(s) were not used; drop it or set ",
+              "'usePrior=FALSE' to keep it without this warning",
+              call.=FALSE)
+    }
+  }
+  ## wired here even though it stays NULL until the joint (TNPRI) draw
+  ## exists, so that adding it is a C++ only change
+  ctl$priorOmegaEl <- .spec$omegaEl
+  ctl
+}

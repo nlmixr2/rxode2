@@ -2427,6 +2427,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         all(dim(.rxControl$sigma) == c(0,0))) {
     .rxControl$sigma <- NULL
   }
+  ## the prior distributions the model's `ini({})` block specifies drive
+  ## the uncertainty simulation
+  .rxControl <- .rxPriorApplyControl(object, .rxControl)
   if (inherits(object, "rxode2tos")) {
     .rx <- object
   } else {
