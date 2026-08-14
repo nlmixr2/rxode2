@@ -200,6 +200,17 @@ size is greater or equal to 10</p></li>
 <li><p><code>"auto"</code> chooses <code>"lkj"</code> when the dimension of the
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
+<li><p><code>"tnpri"</code> does not use a separation strategy at all: the omega
+entries themselves are carried in the <code>thetaMat</code> and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls <code>TNPRI</code>.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+<code>omega</code> has to be a matrix, since the draws are added to it, and the
+<code>thetaMat</code> columns are matched to entries by name – <code>om.eta.cl</code> or
+<code>eta.cl</code> for a diagonal, and <code>cov.eta.cl.eta.v</code> or <code>omega2.1</code> for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see <code>priorPdRetry</code>.</p></li>
 </ul></dd>
 
 
@@ -308,6 +319,8 @@ size is greater or equal to 10</p></li>
 <li><p><code>"auto"</code> chooses <code>"lkj"</code> when the dimension of the
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
+<li><p><code>"tnpri"</code> draws the sigma entries jointly from the <code>thetaMat</code>, the
+same way <code>omegaSeparation="tnpri"</code> does for the omega.</p></li>
 </ul></dd>
 
 

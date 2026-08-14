@@ -564,68 +564,76 @@ draws</td>
 </td>
 </tr>
 <tr class="even">
+<td>Prior-based uncertainty (<code>NWPRI</code>/<code>TNPRI</code>)</td>
+<td>yes – priors in the <code>ini({})</code> block drive
+<code>rxSolve(nStud=)</code>, with per-block omega degrees of
+freedom</td>
+<td>yes – <code>NMsim_NWPRI</code>
+</td>
+</tr>
+<tr class="odd">
 <td>Bootstrap uncertainty</td>
 <td>manual (supply draws)</td>
 <td>built-in (simulate all bootstrap models)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>OpenMP within-process parallelism</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Cluster / distributed submission</td>
 <td>yes (<code>mirai</code>)</td>
 <td>yes (via PSN)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Out-of-memory / disk-backed solve</td>
 <td>yes (<code>rxSolve(file=)</code>, Parquet/DuckDB)</td>
 <td>writes NONMEM tables to disk</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Model piping (<code>\|&gt;</code>)</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Parameter estimation</td>
 <td>via nlmixr2</td>
 <td>no (NONMEM only)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Symbolic Jacobians / sensitivities</td>
 <td>yes (up to 3rd order + jump sensitivities)</td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Delay differential equations</td>
 <td>yes (<code><a href="../reference/delay.html">delay()</a></code>, auto sensitivities)</td>
 <td>yes (RADAR5 / <code>ADVAN16</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Automatic ODE -&gt; <code>linCmt()</code> conversion</td>
 <td>yes (<code>useLinCmt=TRUE</code>)</td>
 <td>no</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>1-3 cmt analytical solutions</td>
 <td>
 <code>linCmt()</code> with gradients</td>
 <td>ADVAN1/2/3/4/11/12 via NONMEM</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Multiple ODE solver backends</td>
 <td>LSODA (C/Fortran), DOP853, ros4, <code>"dop853+ros4"</code>
 </td>
 <td>NONMEM ADVAN</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Runs without licensed software</td>
 <td>yes</td>
 <td>no</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>CRAN</td>
 <td>yes</td>
 <td>yes</td>

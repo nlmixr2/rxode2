@@ -922,6 +922,144 @@ which is what a truncated prior needs for its bounds.</p>
 method, not expected behaviour.</p>
 </div>
 </div>
+<div class="section level3">
+<h3 id="simulating-from-the-priors">Simulating from the priors<a class="anchor" aria-label="anchor" href="#simulating-from-the-priors"></a>
+</h3>
+<p><code><a href="../reference/rxSolve.html">rxSolve()</a></code> uses the priors for its uncertainty
+simulation, which is what NONMEM does with <code>$PRIOR NWPRI</code> and
+<code>$PRIOR TNPRI</code>. Nothing extra has to be turned on: a model
+that carries priors uses them whenever variability is being simulated,
+that is when <code>nStud</code> is greater than one (or whatever
+<code>simVariability</code> forces).</p>
+<pre><code><span><span class="va">one.cmt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
+<span>    <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">3.45</span></span>
+<span>    <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>,</span>
+<span>                       <span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
+<span>    <span class="va">eta.ka</span> <span class="op">~</span> <span class="fl">0.6</span></span>
+<span>    <span class="va">add.sd</span> <span class="op">&lt;-</span> <span class="fl">0.7</span></span>
+<span>    <span class="va">tka</span> <span class="op">~</span> <span class="fl">0.01</span>                            <span class="co"># normal prior on tka</span></span>
+<span>    <span class="fu">prior</span><span class="op">(</span><span class="va">eta.cl</span>, <span class="va">eta.v</span><span class="op">)</span> <span class="op">~</span> <span class="fu">invWishart</span><span class="op">(</span><span class="fl">20</span><span class="op">)</span> <span class="co"># degrees of freedom, per block</span></span>
+<span>    <span class="fu">prior</span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span> <span class="op">~</span> <span class="fu">invWishart</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">+</span> <span class="va">eta.ka</span><span class="op">)</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span><span class="op">)</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tv</span> <span class="op">+</span> <span class="va">eta.v</span><span class="op">)</span></span>
+<span>    <span class="fu">linCmt</span><span class="op">(</span><span class="op">)</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">one.cmt</span>, <span class="va">ev</span>, nSub <span class="op">=</span> <span class="fl">10</span>, nStud <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
+<span><span class="va">s</span><span class="op">$</span><span class="va">thetaMat</span>   <span class="co"># the per study population parameter draws</span></span>
+<span><span class="va">s</span><span class="op">$</span><span class="va">omegaList</span>  <span class="co"># the per study omega, one draw per study</span></span></code></pre>
+<p>Each omega block is drawn with <strong>its own</strong> degrees of
+freedom, which the single <code>dfSub</code> argument cannot express –
+above, the 2x2 block is drawn with 20 and the 1x1 with 4. A block with
+no prior is left at its point estimate. <code><a href="../reference/dfWishart.html">dfWishart()</a></code> helps
+pick a degrees of freedom that matches a target relative standard
+error.</p>
+<div class="section level4">
+<h4 id="the-prior-mean-is-the-estimate">The prior mean is the estimate<a class="anchor" aria-label="anchor" href="#the-prior-mean-is-the-estimate"></a>
+</h4>
+<p>A draw is added to the value the model already gives, so a normal
+prior on a population parameter has to be centered on its estimate, and
+one on an omega element on that omega value. <code>tka ~ 0.01</code> is
+exactly that – the number is the variance and the mean comes from
+<code>tka &lt;- 0.45</code>. Writing a prior centered somewhere else is
+an error rather than a simulation that quietly differs from what the
+model says:</p>
+<pre><code><span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
+<span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Error: cannot simulate from the prior on 'tka' (dnorm(0, 0.1)): the</span></span>
+<span><span class="co">#&gt;   prior mean (0) is not the initial estimate (0.45)</span></span></code></pre>
+</div>
+<div class="section level4">
+<h4 id="a-joint-prior-over-the-thetas-and-the-omegas">A joint prior over the thetas and the omegas<a class="anchor" aria-label="anchor" href="#a-joint-prior-over-the-thetas-and-the-omegas"></a>
+</h4>
+<p>A <code>TNPRI</code> variance matrix covers the population parameters
+and the omega values together, with covariances between them. Prefix an
+omega element with <code>om.</code> to name it, and put both in one
+block:</p>
+<pre><code><span><span class="va">tcl</span> <span class="op">+</span> <span class="va">om.eta.cl</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.02</span>,</span>
+<span>                    <span class="fl">0.004</span>, <span class="fl">0.005</span><span class="op">)</span></span></code></pre>
+<p>Drawn that way the omega is not guaranteed positive definite. A study
+whose draw is not gets the whole joint vector redrawn, up to
+<code>priorPdRetry</code> times (10 by default). If none of them is, the
+nearest positive definite matrix of the kept draws is used and
+<code><a href="../reference/rxSolve.html">rxSolve()</a></code> warns – that projection lands on the boundary of
+the positive definite cone, so those studies are not draws from the
+stated prior. A model that reaches the fallback often wants a larger
+<code>priorPdRetry</code> or a tighter prior.</p>
+</div>
+<div class="section level4">
+<h4 id="turning-it-off-and-precedence">Turning it off, and precedence<a class="anchor" aria-label="anchor" href="#turning-it-off-and-precedence"></a>
+</h4>
+<p><code>usePrior = FALSE</code> ignores the priors and falls back to a
+supplied <code>thetaMat</code>/<code>dfSub</code>;
+<code>usePrior = TRUE</code> requires them and says why if it cannot
+honor them. A <code>thetaMat</code>/<code>dfSub</code> carried in the
+model’s <code>meta</code> block loses to the priors, with a warning. One
+given at the call site wins over them instead, also with a warning – an
+explicit argument is never silently discarded.</p>
+<p>Prior simulation does not yet cover nested/occasion models
+(<code>| id</code>, <code>| occ</code>, rxode2 issue #1253) or a chunked
+solve (<code>file =</code>/<code>chunkSize =</code>, rxode2 issue
+#1252); both are a clear error rather than a solve that quietly drops
+the prior.</p>
+</div>
+<div class="section level4">
+<h4 id="a-thetamat-that-already-carries-the-omegas">A thetaMat that already carries the omegas<a class="anchor" aria-label="anchor" href="#a-thetamat-that-already-carries-the-omegas"></a>
+</h4>
+<p>The same joint draw works without an <code>ini({})</code> prior, for
+a <code>thetaMat</code> that came from a covariance step.
+<code>nonmem2rx</code> gives one directly, and so does a nlmixr2
+fit:</p>
+<pre><code><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">nonmem2rx</span><span class="op">(</span><span class="st">"run3.lst"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">thetaMat</span><span class="op">)</span></span>
+<span><span class="co">#&gt; "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">data.sim</span>, nStud <span class="op">=</span> <span class="fl">100</span>, omegaSeparation <span class="op">=</span> <span class="st">"tnpri"</span><span class="op">)</span></span></code></pre>
+<p><code>omegaSeparation = "tnpri"</code> says those entries are the
+omega itself and should be drawn from the <code>thetaMat</code> jointly
+with the thetas, instead of having their correlations redrawn by the
+<code>lkj</code>/<code>separation</code> strategies – which discard the
+off-diagonal entries the covariance step measured, and cannot carry a
+covariance between a theta and an omega entry at all.
+<code>sigmaSeparation = "tnpri"</code> does the same for the residual
+entries.</p>
+<p>Columns are matched to entries by name, in whichever spelling
+produced them:</p>
+<table class="table">
+<thead><tr class="header">
+<th></th>
+<th>diagonal</th>
+<th>off-diagonal</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>nlmixr2 fit <code>$cov</code>
+</td>
+<td><code>om.eta.cl</code></td>
+<td><code>cov.eta.cl.eta.v</code></td>
+</tr>
+<tr class="even">
+<td><code>nonmem2rx</code></td>
+<td><code>eta.cl</code></td>
+<td>
+<code>omega1.2</code>, <code>omega.2.1</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This is opt-in rather than automatic: an eta-named column already
+means that eta’s variance under the existing separation strategy, so it
+cannot change meaning on its own. <code>omega</code> has to be a matrix,
+since the drawn entries are added to it.</p>
+</div>
+</div>
 <div class="section level2">
 <h2 id="note-on-strings-in-rxode2">Note on strings in rxode2<a class="anchor" aria-label="anchor" href="#note-on-strings-in-rxode2"></a>
 </h2>
@@ -983,7 +1121,7 @@ open source tool , Plevyak (2015).</p>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h3>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span></span>
@@ -1018,7 +1156,7 @@ variables via the <code>d/dt(identifier)</code> operator as part of the
 model specification, and which are model parameters via the
 <code>params=</code> argument in <code>rxode2</code>
 <code><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve()</a></code> method:</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span>, modName <span class="op">=</span> <span class="st">"m1"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># model parameters -- a named vector is required</span></span>

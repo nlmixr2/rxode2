@@ -175,7 +175,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  sigmaUpper <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,</span>
+<span>  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span><span class="op">)</span>,</span>
 <span>  sigmaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"identity"</span>, <span class="st">"variance"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
 <span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
 <span>  nDisplayProgress <span class="op">=</span> <span class="fl">10000L</span>,</span>
@@ -191,7 +191,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  omega <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,</span>
+<span>  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span><span class="op">)</span>,</span>
 <span>  omegaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variance"</span>, <span class="st">"identity"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
 <span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
 <span>  omegaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
@@ -294,6 +294,11 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  indLinIteration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"picard"</span>, <span class="st">"newton"</span>, <span class="st">"exprb"</span>, <span class="st">"exprb32"</span><span class="op">)</span>,</span>
 <span>  indLinJac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"symbolic"</span>, <span class="st">"fd"</span><span class="op">)</span>,</span>
 <span>  indLinForcing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ramp"</span>, <span class="st">"constant"</span><span class="op">)</span>,</span>
+<span>  usePrior <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  priorPdRetry <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  priorOmega <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  priorOmegaEl <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  priorSigmaEl <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -1057,6 +1062,8 @@ size is greater or equal to 10</p></li>
 <li><p><code>"auto"</code> chooses <code>"lkj"</code> when the dimension of the
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
+<li><p><code>"tnpri"</code> draws the sigma entries jointly from the <code>thetaMat</code>, the
+same way <code>omegaSeparation="tnpri"</code> does for the omega.</p></li>
 </ul></dd>
 
 
@@ -1202,6 +1209,17 @@ size is greater or equal to 10</p></li>
 <li><p><code>"auto"</code> chooses <code>"lkj"</code> when the dimension of the
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
+<li><p><code>"tnpri"</code> does not use a separation strategy at all: the omega
+entries themselves are carried in the <code>thetaMat</code> and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls <code>TNPRI</code>.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+<code>omega</code> has to be a matrix, since the draws are added to it, and the
+<code>thetaMat</code> columns are matched to entries by name – <code>om.eta.cl</code> or
+<code>eta.cl</code> for a diagonal, and <code>cov.eta.cl.eta.v</code> or <code>omega2.1</code> for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see <code>priorPdRetry</code>.</p></li>
 </ul></dd>
 
 
@@ -2004,6 +2022,42 @@ rather than one – which is where most of the difference between the two
 shows up, since the default <code>indLinRichardson="auto"</code> extrapolates.  It
 applies to the <code>"picard"</code> and <code>"newton"</code> schemes; the exponential
 Rosenbrock ones never freeze the forcing.</p></dd>
+
+
+<dt id="arg-useprior">usePrior<a class="anchor" aria-label="anchor" href="#arg-useprior"></a></dt>
+<dd><p>Whether the prior distributions specified in the model's
+<code>ini({})</code> block drive the uncertainty simulation.  <code>NA</code> (or <code>"auto"</code>,
+the default) uses them whenever the model has them and variability is
+being simulated (<code>nStud &gt; 1</code>, or whatever <code>simVariability</code> forces);
+<code>TRUE</code> requires them, and is an error when the model has none or when
+no variability would be simulated; <code>FALSE</code> ignores them and falls back
+to a supplied <code>thetaMat</code>/<code>dfSub</code>.  The priors take precedence over a
+<code>thetaMat</code>/<code>dfSub</code> carried in the model's <code>meta</code> block, with a warning;
+one given at the call site wins over the priors instead.</p></dd>
+
+
+<dt id="arg-priorpdretry">priorPdRetry<a class="anchor" aria-label="anchor" href="#arg-priorpdretry"></a></dt>
+<dd><p>How many times a prior draw of a covariance matrix is
+retried when it is not positive definite.  After that many tries the
+nearest positive definite matrix of the kept draws is used and a
+warning is given.  Only prior draws retry; <code><a href="cvPost.html">cvPost()</a></code> is unchanged.</p></dd>
+
+
+<dt id="arg-prioromega">priorOmega<a class="anchor" aria-label="anchor" href="#arg-prioromega"></a></dt>
+<dd><p>Internal.  The per-block prior degrees of freedom of the
+omega, built from the <code>ini({})</code> block; not meant to be set directly.</p></dd>
+
+
+<dt id="arg-prioromegael">priorOmegaEl<a class="anchor" aria-label="anchor" href="#arg-prioromegael"></a></dt>
+<dd><p>Internal.  Which <code>thetaMat</code> columns are omega elements
+of a joint prior; not meant to be set directly – use
+<code>omegaSeparation="tnpri"</code>.</p></dd>
+
+
+<dt id="arg-priorsigmael">priorSigmaEl<a class="anchor" aria-label="anchor" href="#arg-priorsigmael"></a></dt>
+<dd><p>Internal.  Which <code>thetaMat</code> columns are sigma elements
+of a joint prior; not meant to be set directly – use
+<code>sigmaSeparation="tnpri"</code>.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>
