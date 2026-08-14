@@ -41,6 +41,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-simulx-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-single-subject.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-split-bolus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-sticky.html</loc></url>
@@ -296,6 +297,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxExpandSens_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFixPop.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFixRes.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxForcedPars.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxForget.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFun.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxFunParse.html</loc></url>
@@ -312,6 +314,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIndLinState.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIndLinStrategy.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxInits.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxInjectedPars.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIntToBase.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxIntToLetter.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxInv.html</loc></url>
@@ -341,6 +344,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxOmegaVarCovDeriv.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxOmegaVarCovDeriv_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxOptExpr.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxParLoader.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxParams.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxParseErr.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxParsePk.html</loc></url>
@@ -354,6 +358,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxPrune.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRateDur.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRawToC.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxRegisterUiPrep.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxReload.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRemoveControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRename.html</loc></url>
@@ -420,6 +425,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiDeparse.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiDevelop.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiGet.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiPriors.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUnloadAll.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUse.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxValidate.html</loc></url>

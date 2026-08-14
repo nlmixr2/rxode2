@@ -148,7 +148,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Covariates</h1>
             
-            <h4 data-toc-skip class="date">2026-08-13</h4>
+            <h4 data-toc-skip class="date">2026-08-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-covariates.Rmd" class="external-link"><code>vignettes/rxode2-covariates.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-covariates.Rmd</code></div>
@@ -383,6 +383,62 @@ observation carried backward (NOCB):</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">eff</span>, ylab<span class="op">=</span><span class="st">"Effect"</span>, xlab<span class="op">=</span><span class="st">"Time"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-covariates_files/figure-html/time-varying-nocb-effect-1.png" class="r-plt" alt="" width="100%"></p>
+</div>
+<div class="section level2">
+<h2 id="forced-parameters">Forced parameters<a class="anchor" aria-label="anchor" href="#forced-parameters"></a>
+</h2>
+<p>Sometimes a parameter’s value is owned <em>outside</em> the usual
+<code>params</code>/data/<code>ini</code> channel and must be applied on
+<strong>every</strong> solve of a model – for example weights fit by an
+external optimizer that should travel with the model so it stays
+self-contained. <code><a href="../reference/rxForcedPars.html">rxForcedPars()</a></code> stores such values in a
+hidden slot on the model (a named numeric vector). On each solve they
+are injected into every subject/simulation column at solve setup,
+overriding whatever <code>params</code> or the data supplied:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span> <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">2</span> <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span><span class="op">)</span> <span class="op">*</span> <span class="va">WT</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">cl</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">depot</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">8</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ev</span><span class="op">$</span><span class="va">WT</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span></span>
+<span><span class="co">## baseline: WT = 1 from the data</span></span>
+<span><span class="va">s0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">ev</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## force WT = 2 for every solve of this model</span></span>
+<span><span class="fu"><a href="../reference/rxForcedPars.html">rxForcedPars</a></span><span class="op">(</span><span class="va">ui</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>WT <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">ev</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="va">s0</span><span class="op">$</span><span class="va">time</span>, cp_WT1 <span class="op">=</span> <span class="va">s0</span><span class="op">$</span><span class="va">cp</span>, cp_forcedWT2 <span class="op">=</span> <span class="va">s1</span><span class="op">$</span><span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   time   cp_WT1 cp_forcedWT2</span></span>
+<span><span class="co">#&gt; 1    1 87.34238     76.28688</span></span>
+<span><span class="co">#&gt; 2    2 76.28687     58.19676</span></span>
+<span><span class="co">#&gt; 3    3 66.63068     44.39636</span></span>
+<span><span class="co">#&gt; 4    4 58.19676     33.86868</span></span>
+<span><span class="co">#&gt; 5    5 50.83038     25.83732</span></span>
+<span><span class="co">#&gt; 6    6 44.39641     19.71047</span></span></code></pre></div>
+<p>Because the value lives on the model, it is carried through model
+piping and into any <code>nlmixr2</code> fit built from the model, so
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>/<code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate()</a></code> on that fit reuse it with
+no external state. The forced values are also reported by
+<code><a href="../reference/rxInjectedPars.html">rxInjectedPars()</a></code> on the solved object:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxInjectedPars.html">rxInjectedPars</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; WT </span></span>
+<span><span class="co">#&gt;  2</span></span></code></pre></div>
+<p>Clear forcing by assigning <code>NULL</code>:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxForcedPars.html">rxForcedPars</a></span><span class="op">(</span><span class="va">ui</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span></code></pre></div>
+<p>Names that are not model parameters are ignored, and forcing applies
+only to population-constant parameters/covariates (a single value per
+parameter), not to per-record time-varying covariates.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
