@@ -30,9 +30,16 @@
 
   `usePrior=FALSE` ignores the priors.  Priors take precedence over a
   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
-  one given at the call site wins over the priors instead.  Nested/occasion
-  models (#1253) and chunked solves (#1252) are a clear error rather than a
-  solve that silently drops the prior.
+  one given at the call site wins over the priors instead.  Chunked solves
+  (#1252) are a clear error rather than a solve that silently drops the
+  prior.
+
+  Nested/occasion models are supported (#1253): each prior's degrees of
+  freedom go on the nesting level holding its block, and a level with no
+  prior stays at its estimate.  Because a level is drawn as a whole, a
+  prior covering only part of a level is an error -- drawing it would
+  redraw the rest of the level and correlate blocks the model declared
+  independent.
 
 - `rxSolve(omegaSeparation="tnpri")` (and `sigmaSeparation="tnpri"`) draws
   the omega/sigma entries carried in a `thetaMat` jointly with the thetas,
