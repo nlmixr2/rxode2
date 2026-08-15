@@ -2,12 +2,9 @@
 % Please edit documentation in R/piping-ini.R
 \name{.iniHandleLine}
 \alias{.iniHandleLine}
-\alias{.iniHandleFixOrUnfix}
 \title{Update the iniDf of a model}
 \usage{
 .iniHandleLine(expr, rxui, envir = parent.frame(), append = NULL)
-
-.iniHandleFixOrUnfix(expr, rxui, envir = parent.frame(), append = NULL)
 }
 \arguments{
 \item{expr}{Expression for parsing}

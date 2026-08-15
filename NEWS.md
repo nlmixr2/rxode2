@@ -171,6 +171,32 @@
   `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
+## Breaking changes
+
+- The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
+  alias for `.iniHandleLine()` -- the same function -- kept only while
+  nlmixr2est called the old name, which it no longer does
+  (nlmixr2/nlmixr2est#925).  Anything still calling it should call
+  `.iniHandleLine()`, which takes the same arguments and does the same thing.
+## New features
+
+- A prior distribution can now be set by piping, not only written in the
+  `ini({})` block (#1254):
+
+```r
+mod |> ini(prior(tka) ~ dnorm(0, 10))
+mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
+```
+
+  Piping a prior replaces whatever was on that parameter, the way piping a
+  label or an estimate does.  The line is validated by `lotri` in the
+  context of the real parameters rather than by a second implementation
+  here, so a piped prior is checked exactly like one written in the block.
+
+  Note the normal prior shorthand keeps its piping meaning: `mod |>
+  ini(tka ~ 4)` still changes the initial estimate, as it always has.  Use
+  the explicit `prior()` form to set a prior by piping.
+
 ## Bug fixes
 
 - A chunked solve (`rxSolve(file=, chunkSize=)`) with `nStud > 1` and an
@@ -183,6 +209,14 @@
   is tracked in #1252; until then the combination is refused instead of
   answered wrongly.  `nStud = 1`, a chunked solve without `omega`, and an
   unchunked `nStud > 1` solve are all unaffected.
+- The `lkj`/`separation` omega strategy no longer hangs on a simulated
+  standard deviation it cannot use (#1255).  `cvPost()` retried a
+  non-finite draw with no bound, but the failure is often not random: with
+  the default `omegaXform = "variance"` the transform is a `sqrt()`, so a
+  **negative** simulated standard deviation gives `NaN` on every attempt
+  and the solve span at 100% CPU with no error, no warning and no way to
+  tell a hang from a slow solve.  The attempts are now bounded and the
+  error names the cause and points at `thetaLower = 0`.
 
 
 ### Initial conditions data frame

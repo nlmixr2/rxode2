@@ -581,7 +581,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   lapply(lines, function(line) {
     line <- .changeDropNullLine(line)
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
-      .iniHandleFixOrUnfix(line, rxui, envir=envir)
+      .iniHandleLine(line, rxui, envir=envir)
     } else {
       .isErr  <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)

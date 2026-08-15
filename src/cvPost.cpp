@@ -510,10 +510,21 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
           }
           bool goodSolve = false;
           arma::mat reti;
+          // A non-finite draw can be a one-off, but it can also be
+          // deterministic: rcvC1() turns each value into a standard
+          // deviation with diagXformType, and the default "variance"
+          // transform is a sqrt(), so a negative simulated value gives
+          // NaN on every attempt.  Retrying forever spun at 100% CPU
+          // with no error and no way to tell a hang from a slow solve,
+          // so the attempts are bounded and the cause is named.
+          int tries = 0;
           while (!goodSolve) {
             reti = rcvC1(sd, nu, diagXformType, type-1, returnChol);
             if (reti.is_finite()) {
               goodSolve = true;
+            } else if (++tries >= 100) {
+              rxError(_("could not draw a finite covariance matrix for simulated standard deviation %d after %d tries; a negative simulated standard deviation cannot be transformed by the 'omegaXform' in use (constraining the draws with 'thetaLower=0' avoids this)"),
+                      (int)(i + 1), tries);
             }
           }
           RObject retc = wrap(reti);
