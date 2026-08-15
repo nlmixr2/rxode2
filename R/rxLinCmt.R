@@ -28,6 +28,31 @@ findLhs <- function(x) {
   }
 }
 
+#' Does this model still carry an unexpanded `linCmt()`?
+#'
+#' The parser records `linCmt()` in a parser-global flag
+#' (`_rxode2_isLinCmt`) that only an actual parse refreshes, so a model
+#' handed around as model variables has to be asked directly; otherwise
+#' the flag describes whatever was parsed last (nlmixr2/rxode2#1227).
+#'
+#' @param model anything `rxNorm()` accepts
+#'
+#' @return `TRUE` when the normalized model text still contains a
+#'   `linCmt()` that has not been expanded to `linCmtA()`/`linCmtB()`
+#'
+#' @noRd
+#' @author Matthew L. Fidler
+.rxHasUnexpandedLinCmt <- function(model) {
+  .txt <- try(rxNorm(model), silent = TRUE)
+  if (inherits(.txt, "try-error") || !is.character(.txt) ||
+        length(.txt) == 0L || anyNA(.txt)) {
+    return(FALSE)
+  }
+  .txt <- paste(.txt, collapse = "\n")
+  # `linCmtA(`/`linCmtB(` are the expanded forms and must not match
+  any(regexpr("(^|[^[:alnum:]._])linCmt[[:space:]]*\\(", .txt) != -1L)
+}
+
 #' Get the linear compartment model true function
 #'
 #' @inheritParams rxode2
@@ -37,7 +62,7 @@ findLhs <- function(x) {
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
                      verbose = FALSE) {
   .mv <- rxGetModel(model) # nolint
-  if (.Call(`_rxode2_isLinCmt`) == 1L) { # nolint
+  if (.rxHasUnexpandedLinCmt(.mv)) {
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
     .Call(
       `_rxode2_linCmtGen`, # nolint
