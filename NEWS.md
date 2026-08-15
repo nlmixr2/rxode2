@@ -199,6 +199,16 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- The `lkj`/`separation` omega strategy no longer hangs on a simulated
+  standard deviation it cannot use (#1255).  `cvPost()` retried a
+  non-finite draw with no bound, but the failure is often not random: with
+  the default `omegaXform = "variance"` the transform is a `sqrt()`, so a
+  **negative** simulated standard deviation gives `NaN` on every attempt
+  and the solve span at 100% CPU with no error, no warning and no way to
+  tell a hang from a slow solve.  The attempts are now bounded and the
+  error names the cause and points at `thetaLower = 0`.
+
+
 ### Initial conditions data frame
 
 - The `iniDf` now tolerates the `prior` column that `lotri` 1.0.5 adds for
