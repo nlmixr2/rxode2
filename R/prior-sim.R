@@ -354,7 +354,7 @@
   ## drawn from at all.
   if (!is.null(ctl$file) || !is.null(ctl$chunkSize)) {
     stop("prior simulation does not yet support a chunked solve ('file=' or ",
-         "'chunkSize='); see rxode2 issue #1252",
+         "'chunkSize='); see rxode2 issue #1263",
          call.=FALSE)
   }
   invisible()
