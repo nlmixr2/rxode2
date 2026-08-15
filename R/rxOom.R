@@ -148,6 +148,22 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # rxSolve_ calls seedEng(op->cores) BEFORE rxSimThetaOmega, advancing rxSeed
   # by 2*ncores.  We replicate that here with rxSeedEng() so our standalone
   # rxSimThetaOmega sees the same effective seed as the internal call in rxSolve_.
+  # A chunked solve cannot draw omega uncertainty: the pre-draw below is
+  # `nStud = 1L`, and omega is stripped from what each chunk is forwarded,
+  # so `nStud > 1` would return a plausible looking result simulated
+  # entirely from the point estimate omega with the between study
+  # variability silently gone.  Refuse it rather than answer wrongly.
+  # Supporting it needs the pre-draw, the by-subject chunk slicing and the
+  # `$omegaList` plumbing reworked together; that is nlmixr2/rxode2#1252.
+  if (!is.null(.ctl$omega) && !is.null(.ctl$nStud) &&
+        length(.ctl$nStud) == 1L && !is.na(.ctl$nStud) && .ctl$nStud > 1L) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot simulate omega uncertainty; ",
+         "with 'nStud' > 1 the between subject variability would be drawn from the ",
+         "point estimate omega and the between study variability dropped without warning ",
+         "(see nlmixr2/rxode2#1252).  Solve with 'nStud=1', or without chunking.",
+         call.=FALSE)
+  }
+
   .preDrawnParams <- NULL
   if (!is.null(.ctl$omega)) {
     .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {

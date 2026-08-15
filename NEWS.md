@@ -199,6 +199,16 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- A chunked solve (`rxSolve(file=, chunkSize=)`) with `nStud > 1` and an
+  `omega` is now an error rather than a result with the between study
+  variability silently missing (#1252).  The pre-draw is `nStud = 1` and
+  omega is stripped from what each chunk is forwarded, so such a solve
+  returned plausible looking output simulated entirely from the point
+  estimate omega, with nothing to signal that the uncertainty had been
+  dropped.  Carrying the draws through the chunking is a larger change and
+  is tracked in #1252; until then the combination is refused instead of
+  answered wrongly.  `nStud = 1`, a chunked solve without `omega`, and an
+  unchunked `nStud > 1` solve are all unaffected.
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with
