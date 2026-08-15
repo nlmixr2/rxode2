@@ -100,6 +100,30 @@ rxTest({
     expect_true(.isExpanded(rxode2(.lin)))
   })
 
+  test_that("'linCmt' that is not a linCmt() call is left alone", {
+    # neither of these sets the parser's linCmt flag, so neither may be
+    # treated as a linCmt() model
+    .str <- rxModelVars('printf("linCmt()");\nd/dt(b)=1;\n')
+    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.str))
+    expect_equal(rxState(rxode2(.str)), "b")
+
+    .cmt <- rxModelVars("d/dt(linCmt)=1;\nlinCmt(0)=0;\n")
+    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.cmt))
+    expect_equal(rxState(rxode2(.cmt)), "linCmt")
+  })
+
+  test_that("re-parsing model variables keeps the ini and state layout", {
+    .mv <- rxModelVars(paste("k=0.1;", "v=10;", "cp=linCmt();",
+                             "kin=1;", "d/dt(eff)=kin-kin*eff*cp;",
+                             "eff(0)=1;", sep = "\n"))
+    .m <- rxode2(.mv)
+    expect_equal(rxInits(.m)[["eff"]], 1)
+    expect_equal(rxInits(.m)[["k"]], 0.1)
+    expect_equal(rxInits(.m)[["v"]], 10)
+    expect_equal(rxInits(.m)[["kin"]], 1)
+    expect_equal(rxState(.mv), rxState(.m))
+  })
+
   test_that("rxGetLin() expands model variables it is handed", {
     .mv <- rxModelVars(rxode2({
       k <- 0.1

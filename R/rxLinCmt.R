@@ -35,22 +35,31 @@ findLhs <- function(x) {
 #' handed around as model variables has to be asked directly; otherwise
 #' the flag describes whatever was parsed last (nlmixr2/rxode2#1227).
 #'
-#' @param model anything `rxNorm()` accepts
+#' The model's own `flags` answer instead: `linCmtFlg` is nonzero for
+#' every linear compartment model (the parser always adds a central
+#' compartment), and `ncmt` is only ever filled in by parsing an
+#' already-expanded `linCmtA()`/`linCmtB()` call -- so a nonzero
+#' `linCmtFlg` with `ncmt` still zero is exactly `tb.linCmt == 1`.
 #'
-#' @return `TRUE` when the normalized model text still contains a
-#'   `linCmt()` that has not been expanded to `linCmtA()`/`linCmtB()`
+#' @param model anything `rxModelVars()` accepts; pass model variables
+#'   where they are already at hand, since anything else is parsed
+#'
+#' @return `TRUE` when the model contains a `linCmt()` that has not been
+#'   expanded to `linCmtA()`/`linCmtB()`
 #'
 #' @noRd
 #' @author Matthew L. Fidler
 .rxHasUnexpandedLinCmt <- function(model) {
-  .txt <- try(rxNorm(model), silent = TRUE)
-  if (inherits(.txt, "try-error") || !is.character(.txt) ||
-        length(.txt) == 0L || anyNA(.txt)) {
+  .mv <- try(rxModelVars(model), silent = TRUE)
+  if (inherits(.mv, "try-error")) {
     return(FALSE)
   }
-  .txt <- paste(.txt, collapse = "\n")
-  # `linCmtA(`/`linCmtB(` are the expanded forms and must not match
-  any(regexpr("(^|[^[:alnum:]._])linCmt[[:space:]]*\\(", .txt) != -1L)
+  .flags <- .mv$flags
+  if (!is.numeric(.flags) ||
+        !all(c("ncmt", "linCmtFlg") %in% names(.flags))) {
+    return(FALSE)
+  }
+  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L
 }
 
 #' Get the linear compartment model true function
