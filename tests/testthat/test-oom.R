@@ -543,14 +543,13 @@ test_that("rxSolveOom supports lazy dplyr queries through a DuckDB connection", 
 
 rxTest({
 
-  test_that("a chunked solve refuses to simulate omega uncertainty", {
+  test_that("a chunked solve simulates omega uncertainty like an unchunked one", {
     skip_on_cran()
 
-    ## #1252: the pre-draw is nStud=1 and omega is stripped from what each
-    ## chunk is forwarded, so `nStud > 1` returned a plausible looking
-    ## result simulated entirely from the point estimate omega, with the
-    ## between study variability gone and nothing to signal it.  It is a
-    ## clear error until the chunking can carry the draws.
+    ## #1252: the pre-draw used to be nStud=1 and omega was stripped from
+    ## what each chunk is forwarded, so `nStud > 1` returned a plausible
+    ## looking result simulated entirely from the point estimate omega,
+    ## with the between study variability gone and nothing to signal it.
     .m <- rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -561,23 +560,94 @@ rxTest({
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
     .p <- c(tka=0.45, tcl=1, tv=3.45)
 
-    expect_error(
-      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "nStud")
+    .solve <- function(...) {
+      ## the omega draw runs on R's RNG while the etas run on rxode2's, so
+      ## both have to be pinned for a chunked and an unchunked solve to be
+      ## comparable at all
+      set.seed(42)
+      rxSetSeed(1234)
+      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10, ...)
+    }
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
-    ## the combinations that do work are untouched
-    expect_error(
-      rxSolve(.m, .ev, params=.p, omega=.om, nStud=1,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      NA)
-    expect_error(
-      rxSolve(.m, .ev, params=c(.p, eta.ka=0.1, eta.cl=0.1),
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      NA)
-    ## and an unchunked solve still simulates all the studies
-    .r <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3)
-    expect_equal(length(unique(.r$sim)), 3L)
+    .full  <- .solve()
+    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+
+    ## the whole point: the chunked solve is the unchunked solve
+    expect_equal(.key(as.data.frame(.chunk))$cp,
+                 .key(as.data.frame(.full))$cp,
+                 tolerance=1e-8)
+
+    ## and the drawn omegas are reported, not just used
+    expect_equal(length(.chunk$omegaList), 3L)
+    expect_equal(.chunk$omegaList, .full$omegaList)
+
+    ## there really is between study variability to have gotten right
+    expect_false(isTRUE(all.equal(.full$omegaList[[1]], .full$omegaList[[2]])))
+
+    ## every study reached the output
+    expect_equal(length(unique(as.data.frame(.chunk)$sim.id)), 3L)
+  })
+
+  test_that("chunk boundaries do not shift which study a subject belongs to", {
+    skip_on_cran()
+
+    ## the pre-draw is study major, so a chunk's rows are one stride per
+    ## study rather than a contiguous block -- slicing it contiguously would
+    ## hand the later chunks another study's etas, which shows up as the
+    ## answer depending on the chunk size
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    .solve <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10, ...)
+    }
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
+
+    .ref <- .key(as.data.frame(.solve()))
+    for (.cs in c(1L, 2L, 3L, 6L)) {
+      .got <- .key(as.data.frame(
+        .solve(file=tempfile(fileext=".parquet"), chunkSize=.cs)))
+      expect_equal(.got$cp, .ref$cp, tolerance=1e-8)
+    }
+  })
+
+  test_that("a chunked solve reports its parameters study major", {
+    skip_on_cran()
+
+    ## chunks are concatenated subject major, so `$params` has to be put
+    ## back in the order an unchunked solve reports
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    set.seed(42); rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10)
+    set.seed(42); rxSetSeed(1234)
+    .chunk <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10,
+                      file=tempfile(fileext=".parquet"), chunkSize=2)
+
+    .cp <- .chunk$params
+    expect_equal(nrow(.cp), nrow(.full$params))
+    expect_equal(as.integer(.cp$sim.id), as.integer(.full$params$sim.id))
+    expect_equal(as.integer(as.character(.cp$id)),
+                 as.integer(as.character(.full$params$id)))
+    expect_equal(.cp$eta.ka, .full$params$eta.ka, tolerance=1e-8)
   })
 
 })
