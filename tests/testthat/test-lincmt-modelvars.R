@@ -110,6 +110,11 @@ rxTest({
     .cmt <- rxModelVars("d/dt(linCmt)=1;\nlinCmt(0)=0;\n")
     expect_false(rxode2:::.rxHasUnexpandedLinCmt(.cmt))
     expect_equal(rxState(rxode2(.cmt)), "linCmt")
+
+    # an expanded call is expanded however few compartments it declares
+    .lin0 <- rxModelVars(paste0("cp=linCmtA(rx__PTR__, t, 0, 0, 0, -1, 2, ",
+                                "k, v, 0.0, 0.0, 0.0, 0.0, 0.0);\n"))
+    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.lin0))
   })
 
   test_that("re-parsing model variables keeps the ini and state layout", {
@@ -122,6 +127,14 @@ rxTest({
     expect_equal(rxInits(.m)[["v"]], 10)
     expect_equal(rxInits(.m)[["kin"]], 1)
     expect_equal(rxState(.mv), rxState(.m))
+    # the re-parse has to be an identity, or it would move the compile
+    # cache key of every model that goes through it
+    .mv2 <- rxModelVars(setNames(rxNorm(.mv), NULL))
+    expect_equal(.mv2$md5[["parsed_md5"]], .mv$md5[["parsed_md5"]])
+    for (.n in c("params", "lhs", "state", "ini", "dvid", "alag", "slhs",
+                 "interp", "strAssign", "udf", "stateOrd", "lhsOrd", "flags")) {
+      expect_equal(.mv2[[.n]], .mv[[.n]], info = .n)
+    }
   })
 
   test_that("rxGetLin() expands model variables it is handed", {

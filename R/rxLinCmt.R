@@ -37,9 +37,11 @@ findLhs <- function(x) {
 #'
 #' The model's own `flags` answer instead: `linCmtFlg` is nonzero for
 #' every linear compartment model (the parser always adds a central
-#' compartment), and `ncmt` is only ever filled in by parsing an
-#' already-expanded `linCmtA()`/`linCmtB()` call -- so a nonzero
-#' `linCmtFlg` with `ncmt` still zero is exactly `tb.linCmt == 1`.
+#' compartment), while `ncmt` and `linCmt` (`tb.linCmtN`) are written
+#' only by parsing an already-expanded `linCmtA()`/`linCmtB()` call --
+#' so a nonzero `linCmtFlg` with both still at the values the parse
+#' reset them to is `tb.linCmt == 1`.  Both are checked because either
+#' one alone can be the argument an expanded call passes.
 #'
 #' @param model anything `rxModelVars()` accepts; pass model variables
 #'   where they are already at hand, since anything else is parsed
@@ -56,10 +58,11 @@ findLhs <- function(x) {
   }
   .flags <- .mv$flags
   if (!is.numeric(.flags) ||
-        !all(c("ncmt", "linCmtFlg") %in% names(.flags))) {
+        !all(c("ncmt", "linCmt", "linCmtFlg") %in% names(.flags))) {
     return(FALSE)
   }
-  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L
+  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L &&
+    .flags[["linCmt"]] == -100L
 }
 
 #' Get the linear compartment model true function
