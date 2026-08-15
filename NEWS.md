@@ -178,6 +178,24 @@
   nlmixr2est called the old name, which it no longer does
   (nlmixr2/nlmixr2est#925).  Anything still calling it should call
   `.iniHandleLine()`, which takes the same arguments and does the same thing.
+## New features
+
+- A prior distribution can now be set by piping, not only written in the
+  `ini({})` block (#1254):
+
+```r
+mod |> ini(prior(tka) ~ dnorm(0, 10))
+mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
+```
+
+  Piping a prior replaces whatever was on that parameter, the way piping a
+  label or an estimate does.  The line is validated by `lotri` in the
+  context of the real parameters rather than by a second implementation
+  here, so a piped prior is checked exactly like one written in the block.
+
+  Note the normal prior shorthand keeps its piping meaning: `mod |>
+  ini(tka ~ 4)` still changes the initial estimate, as it always has.  Use
+  the explicit `prior()` form to set a prior by piping.
 
 ## Bug fixes
 
