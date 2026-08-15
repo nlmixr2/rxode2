@@ -164,7 +164,7 @@ rxTest({
                  "chunked solve")
   })
 
-  test_that("a nested or occasion model with priors is an error", {
+  test_that("a nested model puts each prior's degrees of freedom on its level", {
     skip_if_not(.hasPriorSupport())
 
     .u <- rxode2(function() {
@@ -183,7 +183,45 @@ rxTest({
       })
     })
 
-    expect_error(.rx$.rxPriorSimSpec(.u, list()), "nested/occasion")
+    ## a conditioned model routes through `expandPars_()`, which reads the
+    ## degrees of freedom off the omega itself and never looks at
+    ## `priorOmega` -- so this is where they have to land
+    .om <- .rx$.rxPriorOmegaLotri(.u, .rx$.rxPriorOmegaNu(.u))
+    expect_true(inherits(.om, "lotri"))
+    expect_equal(attr(.om, "lotri")$id$nu, 4)
+    ## a level with no prior keeps nu = 1, ie stays at its estimate
+    expect_equal(attr(.om, "lotri")$occ$nu, 1)
+
+    ## and the spec is built rather than refused
+    expect_error(.rx$.rxPriorSimSpec(.u, list()), NA)
+  })
+
+  test_that("a prior covering only part of a nesting level is an error", {
+    skip_if_not(.hasPriorSupport())
+
+    ## `cvPost()` draws a nesting level as one inverse-Wishart, so a
+    ## prior on part of a level would redraw the rest of it and correlate
+    ## blocks the model declared independent.  There is nowhere to put a
+    ## second `nu`, so this has to be refused rather than approximated.
+    .u <- rxode2(function() {
+      ini({
+        tcl <- 1
+        add.sd <- 0.7
+        eta.ka ~ 0.5 | id
+        eta.cl ~ 0.3 | id
+        eta.o ~ 0.1 | occ
+        prior(eta.cl) ~ invWishart(4)
+      })
+      model({
+        ka <- exp(eta.ka)
+        cl <- exp(tcl + eta.cl + eta.o)
+        v <- 1
+        linCmt() ~ add(add.sd)
+      })
+    })
+
+    expect_error(.rx$.rxPriorOmegaLotri(.u, .rx$.rxPriorOmegaNu(.u)),
+                 "covers only part")
   })
 
   test_that("the ini({}) syntax reaches the spec end to end", {

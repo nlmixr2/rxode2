@@ -293,12 +293,21 @@
 #' @author Matthew L. Fidler
 .rxPriorOmegaNu <- function(ui) {
   .omega <- ui$omega
-  if (!is.matrix(.omega) || dim(.omega)[1] == 0L) return(list())
+  ## a conditioned model carries the omega as a 'lotri' of nesting
+  ## levels; the blocks are one level down, but a prior still names its
+  ## block the same way, so flatten to blocks and treat both alike
+  if (inherits(.omega, "lotri")) {
+    .blks <- unlist(lapply(.omega, lotri::lotriMatInv), recursive=FALSE)
+  } else if (!is.matrix(.omega) || dim(.omega)[1] == 0L) {
+    return(list())
+  } else {
+    .blks <- lotri::lotriMatInv(.omega)
+  }
   .iniDf <- ui$iniDf
   .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
   .prior <- setNames(.iniDf$prior[.w], .iniDf$name[.w])
   .ret <- list()
-  for (.blk in lotri::lotriMatInv(.omega)) {
+  for (.blk in .blks) {
     .nm <- dimnames(.blk)[[1]]
     .p <- .prior[.nm[1]]
     if (is.na(.p)) next
@@ -337,18 +346,12 @@
 #' @author Matthew L. Fidler
 .rxPriorSimAssertSupported <- function(ui, ctl) {
   .iniDf <- ui$iniDf
-  ## A conditioned block (`eta ~ 0.1 | id`, `| occ`) makes `$omega` a
-  ## 'lotri' rather than a plain matrix, which routes the solve through
-  ## `expandPars_()` -- a path that never reaches the prior draw and
-  ## would silently fall back to one degree of freedom per block.
-  .cnd <- .iniDf$condition[!is.na(.iniDf$neta1)]
-  if (length(.cnd) > 0L && !all(.cnd %in% "id")) {
-    stop("prior simulation does not yet support nested/occasion models (the ",
-         "omega has the condition(s) '",
-         paste(unique(.cnd[!(.cnd %in% "id")]), collapse="', '"),
-         "'); see rxode2 issue #1253",
-         call.=FALSE)
-  }
+  ## A conditioned block (`eta ~ 0.1 | id`, `| occ`) carries `$omega` as a
+  ## 'lotri' of nesting levels rather than a plain matrix.  That is
+  ## supported -- `.rxPriorOmegaNested()` puts each prior's degrees of
+  ## freedom on its level and errors on the cases a level cannot express
+  ## -- so there is nothing to reject here.
+  ##
   ## A chunked solve pre-draws its parameters in `rxOom` and strips the
   ## omega from what each chunk is given, so the prior would never be
   ## drawn from at all.
@@ -399,6 +402,7 @@
 .rxPriorOmegaLotri <- function(ui, omegaNu) {
   if (length(omegaNu) == 0L) return(NULL)
   .omega <- ui$omega
+  if (inherits(.omega, "lotri")) return(.rxPriorOmegaNested(.omega, omegaNu))
   if (!is.matrix(.omega) || dim(.omega)[1] == 0L) return(NULL)
   ## the prior attributes would otherwise travel with the matrix and be
   ## re-read downstream as if they were the block structure
@@ -420,6 +424,86 @@
   attr(.ret, "start") <- 1L
   class(.ret) <- "lotri"
   .ret
+}
+
+#' Attach the prior degrees of freedom to a nested omega
+#'
+#' A conditioned model (`eta ~ 0.1 | occ`) already carries its omega as a
+#' 'lotri' whose elements are the nesting levels, and `expandPars_()`
+#' honors a `nu` on each of those levels -- it splits the levels with
+#' `lotriSep()`, which carries the attribute through, and draws each
+#' level that has `nu > 1`.  So the whole job here is deciding which
+#' level each prior belongs to.
+#'
+#' Levels are drawn whole, which is the constraint that shapes the rest.
+#' `cvPost()` applies one inverse-Wishart to the entire level matrix, so
+#' a level holding two independent blocks comes back *correlated* -- the
+#' flat path avoids that by splitting into blocks and giving each its
+#' own `nu`, but a nesting level has nowhere to put a second `nu`.  A
+#' prior that would only cover part of its level is therefore an error
+#' rather than a draw that quietly correlates parameters the model
+#' declared independent, or that redraws blocks with no prior at all.
+#'
+#' @param omega `ui$omega`, a 'lotri' with one element per nesting level
+#' @param omegaNu list from `.rxPriorOmegaNu()`
+#' @return the same 'lotri' carrying one `nu` per level, or `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorOmegaNested <- function(omega, omegaNu) {
+  .cnd <- names(omega)
+  if (is.null(.cnd) || length(.cnd) == 0L) return(NULL)
+  .lst <- attr(omega, "lotri")
+  if (is.null(.lst)) .lst <- setNames(vector("list", length(.cnd)), .cnd)
+  .used <- rep(FALSE, length(omegaNu))
+  for (.i in seq_along(.cnd)) {
+    .nm <- dimnames(omega[[.cnd[.i]]])[[1]]
+    .cur <- .lst[[.cnd[.i]]]
+    if (is.null(.cur)) .cur <- list()
+    .here <- vapply(omegaNu, function(x) any(x$names %in% .nm), logical(1))
+    if (!any(.here)) {
+      ## no prior at this level, so `nu = 1`: leave it at the estimate
+      .cur$nu <- 1.0
+      .lst[[.cnd[.i]]] <- .cur
+      next
+    }
+    .w <- which(.here)
+    for (.j in .w) {
+      if (!all(omegaNu[[.j]]$names %in% .nm)) {
+        stop("the prior on '", paste(omegaNu[[.j]]$names, collapse=", "),
+             "' spans more than one nesting level, so it cannot be drawn ",
+             "as one block; give each level its own prior",
+             call.=FALSE)
+      }
+    }
+    if (length(.w) > 1L) {
+      stop("the '", .cnd[.i], "' level has more than one prior ('",
+           paste(vapply(omegaNu[.w], function(x) paste(x$names, collapse=", "),
+                        character(1)), collapse="' and '"),
+           "'), but a nesting level is drawn as a whole and can carry only ",
+           "one degrees of freedom; use a single prior over the level",
+           call.=FALSE)
+    }
+    if (!setequal(omegaNu[[.w]]$names, .nm)) {
+      stop("the prior on '", paste(omegaNu[[.w]]$names, collapse=", "),
+           "' covers only part of the '", .cnd[.i], "' level ('",
+           paste(.nm, collapse=", "),
+           "'); a nesting level is drawn as a whole, so the rest of the ",
+           "level would be redrawn too -- put the prior on the whole level",
+           call.=FALSE)
+    }
+    .used[.w] <- TRUE
+    .cur$nu <- omegaNu[[.w]]$nu
+    .lst[[.cnd[.i]]] <- .cur
+  }
+  if (!all(.used)) {
+    stop("the prior on '",
+         paste(vapply(omegaNu[!.used], function(x) paste(x$names, collapse=", "),
+                      character(1)), collapse="' and '"),
+         "' does not match any nesting level of the omega",
+         call.=FALSE)
+  }
+  attr(omega, "lotri") <- .lst
+  omega
 }
 
 #' Should the model's priors drive this solve?
@@ -508,12 +592,28 @@
   }
   .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
   if (!is.null(.omega)) {
+    ## Where the degrees of freedom have to be put depends on which path
+    ## the solve takes.  A nested omega is a 'lotri', and `rxSolve()`
+    ## routes exactly that to `expandPars_()`, which reads `omega` and
+    ## never looks at `priorOmega` -- it splits the levels itself and
+    ## draws each one carrying `nu > 1`.  A flat omega goes the other
+    ## way, through `rxSimThetaOmega()`, which is the only reader of
+    ## `priorOmega`.  Putting it on the wrong one is silent: the solve
+    ## succeeds and simply never draws.
+    ## test the model's omega, not the built one -- the flat path also
+    ## returns a 'lotri' (its blocks), so testing the result would send a
+    ## flat model down the nested branch
+    .nested <- inherits(ui$omega, "lotri")
+    .assign <- function(ctl) {
+      if (.nested) ctl$omega <- .omega else ctl$priorOmega <- .omega
+      ctl
+    }
     if (is.null(ctl$dfSub) || ctl$dfSub == 0) {
-      ctl$priorOmega <- .omega
+      ctl <- .assign(ctl)
     } else if (.rxPriorFromMeta(ui, "dfSub", ctl$dfSub)) {
       warning("the prior degrees of freedom in 'ini({})' replace the 'dfSub' ",
               "the model's 'meta' block carries", call.=FALSE)
-      ctl$priorOmega <- .omega
+      ctl <- .assign(ctl)
     } else {
       warning("'dfSub' was given, so the prior degrees of freedom on the ",
               "omega block(s) were not used; drop it or set ",
