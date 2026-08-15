@@ -66,8 +66,8 @@ rxTest({
   test_that("both levels can carry their own degrees of freedom", {
     skip_on_cran()
     set.seed(5)
-    .r <- rxSolve(.mod("prior(eta.cl) ~ invWishart(6)") %>%
-                    ini(prior(eta.v) ~ invWishart(5)),
+    .r <- rxSolve(ini(.mod("prior(eta.cl) ~ invWishart(6)"),
+                      prior(eta.v) ~ invWishart(5)),
                   .ev(), nStud=3, nSub=4)
 
     .d <- .diag(.r)
