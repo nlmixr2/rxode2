@@ -56,10 +56,19 @@ findLhs <- function(x) {
   if (inherits(.mv, "try-error")) {
     return(FALSE)
   }
+  .need <- c("ncmt", "linCmt", "linCmtFlg")
   .flags <- .mv$flags
-  if (!is.numeric(.flags) ||
-        !all(c("ncmt", "linCmt", "linCmtFlg") %in% names(.flags))) {
-    return(FALSE)
+  if (!is.numeric(.flags) || !all(.need %in% names(.flags))) {
+    # model variables too old (or too damaged) to carry the flags: a parse
+    # always produces them, and the normalized text round-trips exactly
+    .mv <- try(rxModelVars(setNames(rxNorm(.mv), NULL)), silent = TRUE)
+    if (inherits(.mv, "try-error")) {
+      return(FALSE)
+    }
+    .flags <- .mv$flags
+    if (!is.numeric(.flags) || !all(.need %in% names(.flags))) {
+      return(FALSE)
+    }
   }
   .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L &&
     .flags[["linCmt"]] == -100L

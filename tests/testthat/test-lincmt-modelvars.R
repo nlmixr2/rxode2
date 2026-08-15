@@ -137,6 +137,20 @@ rxTest({
     }
   })
 
+  test_that("model variables that do not carry the flags still expand", {
+    .mv <- rxModelVars("k=0.1;\nv=10;\ncp=linCmt();\n")
+    names(.mv$flags) <- NULL
+    expect_true(rxode2:::.rxHasUnexpandedLinCmt(.mv))
+    expect_true(.isExpanded(rxode2(.mv)))
+
+    .mv$flags <- NULL
+    expect_true(rxode2:::.rxHasUnexpandedLinCmt(.mv))
+
+    .ode <- rxModelVars("a=1;\nd/dt(b)=a;\n")
+    .ode$flags <- NULL
+    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.ode))
+  })
+
   test_that("rxGetLin() expands model variables it is handed", {
     .mv <- rxModelVars(rxode2({
       k <- 0.1
