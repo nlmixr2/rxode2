@@ -93,11 +93,20 @@ rxTest({
     # a plain ODE model handed in as model variables must not be treated as a
     # linCmt() model just because a linCmt() model was parsed just before it
     invisible(rxGetModel(rxNorm(.lin)))
-    expect_equal(rxState(rxode2(.ode)), "b")
+    .b <- rxode2(.ode)
+    expect_equal(rxState(.b), "b")
+    expect_equal(rxModelVars(.b)$flags[["linCmtFlg"]], 0L)
 
-    # ... and a linCmt() model must expand even when the last parse was not one
+    # ... and a linCmt() model must expand even when the last parse was not one.
+    # Assert what the model IS, not only that no linCmt() is left: the model the
+    # expansion rewrites comes from parser state, so a wrong one would also have
+    # no linCmt() in it.
     invisible(rxGetModel(rxNorm(.ode)))
-    expect_true(.isExpanded(rxode2(.lin)))
+    .l <- rxode2(.lin)
+    expect_true(.isExpanded(.l))
+    expect_equal(rxState(.l), "central")
+    expect_equal(rxModelVars(.l)$flags[["ncmt"]], 1L)
+    expect_false("b" %in% rxState(.l))
   })
 
   test_that("'linCmt' that is not a linCmt() call is left alone", {
