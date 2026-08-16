@@ -499,6 +499,18 @@
 #'     matrix is less than 10 and `"separation"` when greater
 #'    than equal to 10.
 #'
+#'  * `"tnpri"` does not use a separation strategy at all: the omega
+#'     entries themselves are carried in the `thetaMat` and are drawn from
+#'     it jointly with the thetas, which is what a covariance step from
+#'     NONMEM or 'nlmixr2' gives and what NONMEM calls `TNPRI`.  This keeps
+#'     the off diagonal entries and the covariances between the thetas and
+#'     the omega entries, which the strategies above redraw or discard.
+#'     `omega` has to be a matrix, since the draws are added to it, and the
+#'     `thetaMat` columns are matched to entries by name -- `om.eta.cl` or
+#'     `eta.cl` for a diagonal, and `cov.eta.cl.eta.v` or `omega2.1` for an
+#'     off diagonal.  A drawn matrix that is not positive definite is
+#'     redrawn, see `priorPdRetry`.
+#'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
 #'   simulation), how should the `thetaMat` values be turned int
@@ -611,8 +623,37 @@
 #'    matrix is less than 10 and `"separation"` when greater
 #'    than equal to 10.
 #'
+#' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
+#'    same way `omegaSeparation="tnpri"` does for the omega.
+#'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
+#'
+#' @param usePrior Whether the prior distributions specified in the model's
+#'   `ini({})` block drive the uncertainty simulation.  `NA` (or `"auto"`,
+#'   the default) uses them whenever the model has them and variability is
+#'   being simulated (`nStud > 1`, or whatever `simVariability` forces);
+#'   `TRUE` requires them, and is an error when the model has none or when
+#'   no variability would be simulated; `FALSE` ignores them and falls back
+#'   to a supplied `thetaMat`/`dfSub`.  The priors take precedence over a
+#'   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
+#'   one given at the call site wins over the priors instead.
+#'
+#' @param priorPdRetry How many times a prior draw of a covariance matrix is
+#'   retried when it is not positive definite.  After that many tries the
+#'   nearest positive definite matrix of the kept draws is used and a
+#'   warning is given.  Only prior draws retry; `cvPost()` is unchanged.
+#'
+#' @param priorOmega Internal.  The per-block prior degrees of freedom of the
+#'   omega, built from the `ini({})` block; not meant to be set directly.
+#'
+#' @param priorOmegaEl Internal.  Which `thetaMat` columns are omega elements
+#'   of a joint prior; not meant to be set directly -- use
+#'   `omegaSeparation="tnpri"`.
+#'
+#' @param priorSigmaEl Internal.  Which `thetaMat` columns are sigma elements
+#'   of a joint prior; not meant to be set directly -- use
+#'   `sigmaSeparation="tnpri"`.
 #'
 #' @param resample A character vector of model variables to resample
 #'   from the input dataset; This sampling is done with replacement.
@@ -1148,7 +1189,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
-                    sigmaSeparation = c("auto", "lkj", "separation"),
+                    sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
                     sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     nDisplayProgress = 10000L,
                     amountUnits = NA_character_, timeUnits = "hours",
@@ -1157,7 +1198,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     eta = NULL, addDosing = FALSE,
                     stateTrim = Inf, updateObject = FALSE,
                     omega = NULL, omegaDf = NULL, omegaIsChol = FALSE,
-                    omegaSeparation = c("auto", "lkj", "separation"),
+                    omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
                     omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     omegaLower = -Inf, omegaUpper = Inf,
                     nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
@@ -1254,6 +1295,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
                     indLinJac = c("auto", "symbolic", "fd"),
                     indLinForcing = c("ramp", "constant"),
+                    usePrior=NA,
+                    priorPdRetry=10L,
+                    priorOmega=NULL,
+                    priorOmegaEl=NULL,
+                    priorSigmaEl=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1634,6 +1680,18 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(hmxi, lower=0, any.missing=FALSE, len=1)
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
     checkmate::assertLogical(simVariability, len=1)
+    ## `usePrior=NA` is "auto" (use the priors when the model has them and
+    ## variability is being simulated); the string spelling is accepted so
+    ## `usePrior="auto"` reads the way the documentation does
+    .usePrior <- usePrior
+    if (is.character(.usePrior)) {
+      .usePrior <- switch(match.arg(.usePrior, c("auto", "true", "false")),
+                          auto=NA, true=TRUE, false=FALSE)
+    }
+    checkmate::assertLogical(.usePrior, len=1)
+    checkmate::assertIntegerish(priorPdRetry, len=1, lower=1,
+                                any.missing=FALSE)
+    priorPdRetry <- as.integer(priorPdRetry)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
@@ -1969,7 +2027,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       indLinRichardson=.indLinRichardson,
       indLinIteration=.indLinIteration,
       indLinJac=.indLinJac,
-      indLinForcing=.indLinForcing
+      indLinForcing=.indLinForcing,
+      ## appended at the end: the C++ side reads `rxControl` positionally
+      ## through the generated `Rxc_*` defines, so a new field may only be
+      ## added here, never inserted
+      usePrior=.usePrior,
+      priorPdRetry=priorPdRetry,
+      priorOmega=priorOmega,
+      priorOmegaEl=priorOmegaEl,
+      priorSigmaEl=priorSigmaEl
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2383,6 +2449,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         all(dim(.rxControl$sigma) == c(0,0))) {
     .rxControl$sigma <- NULL
   }
+  ## the prior distributions the model's `ini({})` block specifies drive
+  ## the uncertainty simulation
+  .rxControl <- .rxPriorApplyControl(object, .rxControl)
   if (inherits(object, "rxode2tos")) {
     .rx <- object
   } else {
@@ -3466,9 +3535,25 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .names <- c(.names, .col[.w])
   }
 
+  ## `omegaSeparation="tnpri"` says the omega (and `sigmaSeparation` the
+  ## sigma) entries are carried in the thetaMat and should be drawn from
+  ## it jointly with the thetas.  Resolved before the pruning below, which
+  ## would otherwise drop those columns as "too many items".
+  .ctl <- .rxTnpriApplyControl(.ctl)
+
   if (inherits(.ctl$thetaMat, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$thetaMat)
+    ## a joint (TNPRI) prior puts the omega elements in the thetaMat as
+    ## well, named `om.<eta>`.  They are not model parameters, so without
+    ## this they would be pruned as "too many items" and the prior on them
+    ## would vanish.
+    if (!is.null(.ctl$priorOmegaEl)) {
+      .extraNames <- c(.extraNames, rownames(.ctl$priorOmegaEl))
+    }
+    if (!is.null(.ctl$priorSigmaEl)) {
+      .extraNames <- c(.extraNames, rownames(.ctl$priorSigmaEl))
+    }
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]
     if (length(.ignore)>0) {

@@ -82,6 +82,18 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .rxMemSummarizeDat(.dat)
 }
 
+# The per study omega/sigma draws are written by the C++ side into the shared
+# `.rxModels` environment rather than returned, so a chunked solve has to read
+# them in the parent -- the only process that ran the draw.  Missing is normal
+# (no draw was made), so this returns NULL rather than erroring.
+.rxOomDrawnList <- function(what) {
+  .e <- .rxModels
+  if (!is.environment(.e) || !exists(what, envir=.e, inherits=FALSE)) return(NULL)
+  .l <- get(what, envir=.e, inherits=FALSE)
+  if (is.null(.l) || length(.l) == 0L) return(NULL)
+  .l
+}
+
 # -- Main OOM solve loop -------------------------------------------------------
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
@@ -148,7 +160,31 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # rxSolve_ calls seedEng(op->cores) BEFORE rxSimThetaOmega, advancing rxSeed
   # by 2*ncores.  We replicate that here with rxSeedEng() so our standalone
   # rxSimThetaOmega sees the same effective seed as the internal call in rxSolve_.
+  # The pre-draw covers every study as well as every subject, so `nStud > 1`
+  # draws its omega uncertainty here once rather than in each chunk -- which
+  # is what makes it right: a per-chunk draw would give each chunk its own
+  # study omegas, so subjects in different chunks would not share a study.
+  .nStud <- if (!is.null(.ctl$nStud) && length(.ctl$nStud) == 1L &&
+                  !is.na(.ctl$nStud) && .ctl$nStud > 1L) {
+    as.integer(.ctl$nStud)
+  } else {
+    1L
+  }
+
   .preDrawnParams <- NULL
+  .preDrawnOmegaL <- NULL
+  .preDrawnSigmaL <- NULL
+
+  # The pre-draw is study major: all `nSub` subjects of study 1, then of study
+  # 2, and so on -- the same layout `rxSimThetaOmega()` gives the unchunked
+  # solve.  A chunk holds a contiguous run of SUBJECTS, so its rows are one
+  # stride per study rather than one contiguous block.  Taking the contiguous
+  # block instead would hand the later chunks another study's etas.
+  .preDrawnSlice <- function(.first, .n) {
+    as.integer(vapply(seq_len(.nStud) - 1L,
+                      function(.s) .s * .nSub + seq.int(.first, length.out=.n),
+                      double(.n)))
+  }
   if (!is.null(.ctl$omega)) {
     .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {
       as.integer(.ctl$cores)
@@ -168,8 +204,20 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       omegaXform      = if (!is.null(.ctl$omegaXform))  .ctl$omegaXform  else 1L,
       nSub            = .nSub,
       nCoresRV        = 1L,
-      nStud           = 1L
+      nStud           = .nStud,
+      # `dfSub` is what turns the omega uncertainty draw on, so the pre-draw
+      # has to carry it or `nStud > 1` would still come back with every study
+      # sharing the point estimate omega
+      dfSub           = if (!is.null(.ctl$dfSub)) .ctl$dfSub else 0,
+      simVariability  = if (!is.null(.ctl$simVariability)) .ctl$simVariability else NA
     )
+    # The drawn per study omegas live in the shared `.rxModels` environment that
+    # the C++ side writes.  They are read here, in the parent, because that is
+    # the only process that ran the draw -- a chunk never sees them, so without
+    # this `$omegaList`/`$sigmaList` would come back empty on a chunked solve
+    # while a plain one reports them.
+    .preDrawnOmegaL <- .rxOomDrawnList(".omegaL")
+    .preDrawnSigmaL <- .rxOomDrawnList(".sigmaL")
     # Strip omega from forwarded args -- etas are now baked into per-chunk params
     .fwdCtlArgs$omega           <- NULL
     .fwdCtlArgs$omegaDf         <- NULL
@@ -246,7 +294,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .chunkEvList[[.i]] <- .extractChunkEvents(.chunkList[[.i]])
       .nThis <- length(.chunkList[[.i]])
       .chunkParamsList[[.i]] <- if (!is.null(.preDrawnParams)) {
-        .preDrawnParams[(.cumSub + 1L):(.cumSub + .nThis), , drop = FALSE]
+        .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       } else {
         params
       }
@@ -369,7 +417,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .nThis    <- length(.chunkIds)
       .chunkEvents <- .extractChunkEvents(.chunkIds)
       .chunkParams <- if (!is.null(.preDrawnParams)) {
-        .preDrawnParams[(.cumSub + 1L):(.cumSub + .nThis), , drop = FALSE]
+        .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       } else {
         rxSetSeed(as.integer(
           (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
@@ -395,6 +443,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   }
   # Drop param chunks that failed to write (NA); keep only valid files.
   .manifest$paramChunks <- .paramFiles[!is.na(.paramFiles)]
+
+  # `$omegaList`/`$sigmaList` are what tell a user the between study
+  # variability was actually simulated, so a chunked solve has to report them
+  # like a plain one does
+  .manifest$omegaList <- .preDrawnOmegaL
+  .manifest$sigmaList <- .preDrawnSigmaL
 
   saveRDS(.manifest, paste0(.prefix, "_manifest.rds"))
   .rxSolveOomFromManifest(.manifest)
@@ -469,16 +523,28 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 .rxOomParams <- function(manifest) {
   .pc <- manifest$paramChunks
   .pq <- .rxOomParquetFiles(.pc)
-  if (length(.pq) > 0L) {
-    if (.rxOomHasDuckdb()) {
-      return(.rxOomDuckQuery(.pq, "SELECT * FROM {tbl}"))
-    }
-    if (.rxOomHasArrow()) {
-      return(do.call(rbind, lapply(.pq, function(.f)
-        as.data.frame(arrow::read_parquet(.f)))))
-    }
+  .ret <- if (length(.pq) > 0L && .rxOomHasDuckdb()) {
+    .rxOomDuckQuery(.pq, "SELECT * FROM {tbl}")
+  } else if (length(.pq) > 0L && .rxOomHasArrow()) {
+    do.call(rbind, lapply(.pq, function(.f) as.data.frame(arrow::read_parquet(.f))))
+  } else {
+    do.call(rbind, lapply(.pc, readRDS))
   }
-  do.call(rbind, lapply(.pc, readRDS))
+  .rxOomOrderParams(.ret)
+}
+
+# Chunks are concatenated in chunk order, which is subject major: chunk 1 holds
+# its subjects across every study, then chunk 2 does.  An unchunked solve
+# reports the parameter table study major instead, so ordering here is what
+# keeps `$params` the same table either way -- the rows are already identical.
+.rxOomOrderParams <- function(pars) {
+  if (is.null(pars) || !is.data.frame(pars) || nrow(pars) == 0L) return(pars)
+  if (!all(c("sim.id", "id") %in% names(pars))) return(pars)
+  .o <- order(pars[["sim.id"]], pars[["id"]])
+  if (identical(.o, seq_len(nrow(pars)))) return(pars)
+  .ret <- pars[.o, , drop = FALSE]
+  rownames(.ret) <- NULL
+  .ret
 }
 
 .rxOomInits <- function(manifest) manifest$inits
@@ -662,6 +728,14 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
   }
   if (name %in% c("inits", "init")) {
     return(.rxOomInits(.m))
+  }
+  ## the per study draws come off the manifest rather than the chunk files:
+  ## they are one matrix per study, not a column to read back out of the rows
+  if (name == "omegaList") {
+    return(.m$omegaList)
+  }
+  if (name == "sigmaList") {
+    return(.m$sigmaList)
   }
   .pq <- .rxOomParquetFiles(.m$chunks)
   if (length(.pq) > 0L && .rxOomHasDuckdb()) {

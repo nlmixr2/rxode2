@@ -337,6 +337,7 @@ common workflow is:
 | `$MIXTURE` models | `nonmem2rx` imports; no auto-validation | yes |
 | EBE-based simulation | yes -- `nonmem2rx` imports EBEs into `$etaData` | yes -- `NMsim_EBE` |
 | Uncertainty from covariance step | yes -- `nonmem2rx` imports covariance matrix for draws | yes -- `NMsim_VarCov` / `NMsim_NWPRI` |
+| Prior-based uncertainty (`NWPRI`/`TNPRI`) | yes -- priors in the `ini({})` block drive `rxSolve(nStud=)`, with per-block omega degrees of freedom | yes -- `NMsim_NWPRI` |
 | Bootstrap uncertainty | manual (supply draws) | built-in (simulate all bootstrap models) |
 | OpenMP within-process parallelism | yes | no |
 | Cluster / distributed submission | yes (`mirai`) | yes (via PSN) |

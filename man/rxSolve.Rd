@@ -78,7 +78,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -94,7 +94,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -197,6 +197,11 @@ rxSolve(
   indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
   indLinJac = c("auto", "symbolic", "fd"),
   indLinForcing = c("ramp", "constant"),
+  usePrior = NA,
+  priorPdRetry = 10L,
+  priorOmega = NULL,
+  priorOmegaEl = NULL,
+  priorSigmaEl = NULL,
   envir = parent.frame()
 )
 
@@ -916,6 +921,8 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
+same way \code{omegaSeparation="tnpri"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -1038,6 +1045,17 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} does not use a separation strategy at all: the omega
+entries themselves are carried in the \code{thetaMat} and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls \code{TNPRI}.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+\code{omega} has to be a matrix, since the draws are added to it, and the
+\code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
+\code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see \code{priorPdRetry}.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -1675,6 +1693,32 @@ rather than one -- which is where most of the difference between the two
 shows up, since the default \code{indLinRichardson="auto"} extrapolates.  It
 applies to the \code{"picard"} and \code{"newton"} schemes; the exponential
 Rosenbrock ones never freeze the forcing.}
+
+\item{usePrior}{Whether the prior distributions specified in the model's
+\code{ini({})} block drive the uncertainty simulation.  \code{NA} (or \code{"auto"},
+the default) uses them whenever the model has them and variability is
+being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
+\code{TRUE} requires them, and is an error when the model has none or when
+no variability would be simulated; \code{FALSE} ignores them and falls back
+to a supplied \code{thetaMat}/\code{dfSub}.  The priors take precedence over a
+\code{thetaMat}/\code{dfSub} carried in the model's \code{meta} block, with a warning;
+one given at the call site wins over the priors instead.}
+
+\item{priorPdRetry}{How many times a prior draw of a covariance matrix is
+retried when it is not positive definite.  After that many tries the
+nearest positive definite matrix of the kept draws is used and a
+warning is given.  Only prior draws retry; \code{cvPost()} is unchanged.}
+
+\item{priorOmega}{Internal.  The per-block prior degrees of freedom of the
+omega, built from the \code{ini({})} block; not meant to be set directly.}
+
+\item{priorOmegaEl}{Internal.  Which \code{thetaMat} columns are omega elements
+of a joint prior; not meant to be set directly -- use
+\code{omegaSeparation="tnpri"}.}
+
+\item{priorSigmaEl}{Internal.  Which \code{thetaMat} columns are sigma elements
+of a joint prior; not meant to be set directly -- use
+\code{sigmaSeparation="tnpri"}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

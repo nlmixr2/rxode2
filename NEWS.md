@@ -29,6 +29,64 @@
   whose parameter order the `gpars` layout actually uses, which a hook that
   resolves parameter positions by name needs.  Existing one-argument hooks are
   unaffected.
+- `rxSolve()` simulates parameter uncertainty from the prior distributions
+  the model's `ini({})` block specifies, which is what NONMEM does with
+  `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`
+  block needs `lotri` 1.0.7 or newer; with an older `lotri` the block
+  cannot express one and prior simulation simply does not engage.
+  `omegaSeparation="tnpri"` below works with any `lotri`.  A model that carries priors uses them
+  whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
+  all that is needed.
+
+  Each omega block is drawn from an inverse Wishart with **its own**
+  degrees of freedom (`prior(eta.cl, eta.v) ~ invWishart(20)`), which the
+  single `dfSub` argument cannot express; a block with no prior is left at
+  its point estimate.  A normal prior on a population parameter
+  (`tka ~ 0.01`) gives the `thetaMat`, and a block may name omega elements
+  as well (`tcl + om.eta.cl ~ c(...)`) for one joint variance over the
+  thetas and the omega values.
+
+  A prior mean has to be what the model already says the entry is, since
+  the draw is added to that value; a prior centered elsewhere is an error
+  rather than a simulation that quietly differs from the model.
+
+  Because a jointly drawn omega is not guaranteed positive definite, such a
+  draw is retried up to `priorPdRetry` times (10 by default); if none is,
+  the nearest positive definite matrix of the kept draws is used with a
+  warning, since the projection is biased toward singularity.
+
+  `usePrior=FALSE` ignores the priors.  Priors take precedence over a
+  `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
+  one given at the call site wins over the priors instead.  Chunked solves
+  (#1252) are a clear error rather than a solve that silently drops the
+  prior.
+
+  Nested/occasion models are supported (#1253): each prior's degrees of
+  freedom go on the nesting level holding its block, and a level with no
+  prior stays at its estimate.  Because a level is drawn as a whole, a
+  prior covering only part of a level is an error -- drawing it would
+  redraw the rest of the level and correlate blocks the model declared
+  independent.
+
+- `rxSolve(omegaSeparation="tnpri")` (and `sigmaSeparation="tnpri"`) draws
+  the omega/sigma entries carried in a `thetaMat` jointly with the thetas,
+  rather than redrawing their correlations with a separation strategy.
+  This is the general form of the `TNPRI` above, for a `thetaMat` that did
+  not come from an `ini({})` block prior.
+
+  A covariance step already gives one: `nonmem2rx` emits a `thetaMat` with
+  columns like `IIVCL, omega1.2, IIVV1, ...` and a nlmixr2 fit's `$cov`
+  uses `om.<eta>`/`cov.<eta1>.<eta2>`.  Both spellings are recognized, as
+  are the sigma equivalents.  Until now the off-diagonal entries were
+  dropped as "too many items" and the correlations were redrawn from LKJ,
+  discarding what the covariance step measured; drawing them jointly also
+  keeps the covariance *between* a theta and an omega entry, which no
+  separation strategy can carry.
+
+  It is opt-in because an eta-named `thetaMat` column already means that
+  eta's variance under the existing strategy, so the same column cannot
+  silently change meaning.  `omega` has to be a matrix, since the draws
+  are added to it.
 
 - `rxUiPriors()` returns the priors a model specifies, with the parameter
   name, the prior, its `neta1`/`neta2` (`NA` for a population parameter) and
@@ -147,18 +205,69 @@
   `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
+## Breaking changes
+
+- The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
+  alias for `.iniHandleLine()` -- the same function -- kept only while
+  nlmixr2est called the old name, which it no longer does
+  (nlmixr2/nlmixr2est#925).  Anything still calling it should call
+  `.iniHandleLine()`, which takes the same arguments and does the same thing.
+## New features
+
+- A prior distribution can now be set by piping, not only written in the
+  `ini({})` block (#1254):
+
+```r
+mod |> ini(prior(tka) ~ dnorm(0, 10))
+mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
+```
+
+  Piping a prior replaces whatever was on that parameter, the way piping a
+  label or an estimate does.  The line is validated by `lotri` in the
+  context of the real parameters rather than by a second implementation
+  here, so a piped prior is checked exactly like one written in the block.
+
+  Note the normal prior shorthand keeps its piping meaning: `mod |>
+  ini(tka ~ 4)` still changes the initial estimate, as it always has.  Use
+  the explicit `prior()` form to set a prior by piping.
+
 ## Bug fixes
+
+- A chunked solve (`rxSolve(file=`/`chunkSize=`)) with `nStud > 1` now
+  simulates the omega uncertainty it was asked for.  It previously returned a
+  plausible looking result drawn entirely from the point estimate omega, with
+  the between study variability silently gone (#1252).
+
+  The draw is made once in the parent, so every chunk shares the same per
+  study omegas -- drawing per chunk would put subjects in different chunks
+  into different studies.  `$omegaList`/`$sigmaList` are reported on a chunked
+  solve as they are on a plain one.
+
+  This changes existing chunked results with `nStud > 1`; they were wrong
+  before.  Note that reproducing a chunked solve exactly needs both seeds
+  pinned, `set.seed()` as well as `rxSetSeed()`, because the omega draw runs
+  on R's RNG while the etas run on rxode2's.
+
+- The `lkj`/`separation` omega strategy no longer hangs on a simulated
+  standard deviation it cannot use (#1255).  `cvPost()` retried a
+  non-finite draw with no bound, but the failure is often not random: with
+  the default `omegaXform = "variance"` the transform is a `sqrt()`, so a
+  **negative** simulated standard deviation gives `NaN` on every attempt
+  and the solve span at 100% CPU with no error, no warning and no way to
+  tell a hang from a slow solve.  The attempts are now bounded and the
+  error names the cause and points at `thetaLower = 0`.
+
 
 ### Initial conditions data frame
 
-- The `iniDf` now tolerates the `prior` column that newer versions of `lotri`
-  add for prior distributions (#1248).  `testIniDf()`/`assertIniDf()` used to
+- The `iniDf` now tolerates the `prior` column that `lotri` 1.0.5 adds for
+  prior distributions (#1248).  `testIniDf()`/`assertIniDf()` used to
   reject every model built with such a `lotri`, and the ini rows that are
   constructed by hand internally (adding a covariance between two etas,
   promoting a parameter, `linMod()`) hard-coded the column list and so failed
   to `rbind()` with "numbers of columns of arguments do not match".  These now
-  match whatever columns the `iniDf` actually has, so rxode2 works both with
-  `lotri` versions that have the column and with versions that do not.
+  match whatever columns the `iniDf` actually has, so an `iniDf` without the
+  column still works.
 
 ### Parsing
 
@@ -198,6 +307,15 @@
   without recompiling (the model's dll was already present) no longer errors
   with `could not find function ".badBuild"` or reports a previous model's
   compiler output.
+
+- Re-compiling a `linCmt()` model from its own `rxModelVars()` no longer
+  fails with `implicit declaration of function 'linCmt'`.  Whether to expand
+  `linCmt()` was read from a parser global that only an actual parse
+  refreshes, and `rxGetModel()` returns model variables it is handed without
+  re-parsing them, so the expansion was skipped -- or run on a model that had
+  no `linCmt()` -- depending on what happened to be parsed last.  The model
+  itself is asked now, so `rxode2(rxModelVars(ui))` builds and the result no
+  longer depends on build order (#1227).
 
 - `rxLastCompile()` now prints its section rules -- `cli::rule()` was called
   but its result was never messaged -- and takes `what=` to choose which

@@ -2,11 +2,11 @@ rxTest({
 
   .rxode2 <- loadNamespace("rxode2")
 
-  ## Newer 'lotri' adds a `prior` column to the ini data frame for prior
-  ## distributions.  rxode2 has to work with an `iniDf` that has it and
-  ## with one that does not, since which one you get depends on the
-  ## installed version of 'lotri'.  These tests construct both shapes by
-  ## hand so they do not depend on that version.
+  ## 'lotri' 1.0.5 adds a `prior` column to the ini data frame for prior
+  ## distributions.  Nothing here assumes the column is present: an
+  ## `iniDf` built by hand, or one from an object saved before it
+  ## existed, does not have it.  These tests construct both shapes by
+  ## hand so they hold either way.
 
   .iniDfNoPrior <- function() {
     data.frame(ntheta=c(1L, NA_integer_),
