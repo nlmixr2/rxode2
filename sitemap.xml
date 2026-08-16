@@ -358,6 +358,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxPrune.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRateDur.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRawToC.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxRegisterUiAssembled.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRegisterUiPrep.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxReload.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxRemoveControl.html</loc></url>
@@ -372,6 +373,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSeedEng.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSensMatExp.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSerialize.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetActiveParLoader.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetControl.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetCovariateNamesForPiping.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxSetIni0.html</loc></url>
