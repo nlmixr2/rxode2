@@ -3,6 +3,7 @@ rxTest({
   # sticky parser global instead of from the model it was handed, so
   # re-compiling a linCmt() model from its own rxModelVars() emitted linCmt()
   # verbatim into the generated C.
+  .rx <- loadNamespace("rxode2")
 
   .isExpanded <- function(model) {
     !any(regexpr("(^|[^[:alnum:]._])linCmt[[:space:]]*\\(",
@@ -30,7 +31,7 @@ rxTest({
     expect_true(.isExpanded(.m))
     expect_equal(rxModelVars(.m)$flags[["ncmt"]], 1L)
 
-    .s <- rxSolve(.m, et(amt = 100) %>% et(0:3),
+    .s <- rxSolve(.m, et(amt = 100) |> et(0:3),
                   params = c(tk = -1, tv = 3))
     expect_true(all(is.finite(.s$cp)))
   })
@@ -77,7 +78,7 @@ rxTest({
     .m <- rxode2(rxModelVars(f()))
     expect_true(.isExpanded(.m))
     expect_true("eff" %in% rxState(.m))
-    .s <- rxSolve(.m, et(amt = 100) %>% et(0:3),
+    .s <- rxSolve(.m, et(amt = 100) |> et(0:3),
                   params = c(tk = -1, tv = 3, tkin = 0.1))
     expect_true(all(is.finite(.s$eff)))
   })
@@ -113,17 +114,17 @@ rxTest({
     # neither of these sets the parser's linCmt flag, so neither may be
     # treated as a linCmt() model
     .str <- rxModelVars('printf("linCmt()");\nd/dt(b)=1;\n')
-    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.str))
+    expect_false(.rx$.rxHasUnexpandedLinCmt(.str))
     expect_equal(rxState(rxode2(.str)), "b")
 
     .cmt <- rxModelVars("d/dt(linCmt)=1;\nlinCmt(0)=0;\n")
-    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.cmt))
+    expect_false(.rx$.rxHasUnexpandedLinCmt(.cmt))
     expect_equal(rxState(rxode2(.cmt)), "linCmt")
 
     # an expanded call is expanded however few compartments it declares
     .lin0 <- rxModelVars(paste0("cp=linCmtA(rx__PTR__, t, 0, 0, 0, -1, 2, ",
                                 "k, v, 0.0, 0.0, 0.0, 0.0, 0.0);\n"))
-    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.lin0))
+    expect_false(.rx$.rxHasUnexpandedLinCmt(.lin0))
   })
 
   test_that("re-parsing model variables keeps the ini and state layout", {
@@ -149,15 +150,15 @@ rxTest({
   test_that("model variables that do not carry the flags still expand", {
     .mv <- rxModelVars("k=0.1;\nv=10;\ncp=linCmt();\n")
     names(.mv$flags) <- NULL
-    expect_true(rxode2:::.rxHasUnexpandedLinCmt(.mv))
+    expect_true(.rx$.rxHasUnexpandedLinCmt(.mv))
     expect_true(.isExpanded(rxode2(.mv)))
 
     .mv$flags <- NULL
-    expect_true(rxode2:::.rxHasUnexpandedLinCmt(.mv))
+    expect_true(.rx$.rxHasUnexpandedLinCmt(.mv))
 
     .ode <- rxModelVars("a=1;\nd/dt(b)=a;\n")
     .ode$flags <- NULL
-    expect_false(rxode2:::.rxHasUnexpandedLinCmt(.ode))
+    expect_false(.rx$.rxHasUnexpandedLinCmt(.ode))
   })
 
   test_that("rxGetLin() expands model variables it is handed", {
