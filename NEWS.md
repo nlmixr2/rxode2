@@ -2,6 +2,33 @@
 
 ## New features
 
+- `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
+  parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
+  estimation method's internal solves, for example.  Previously the only way in
+  was to `.Call()` rxode2's compiled entry points by name from another package,
+  which is not a supported interface (and `R CMD check` flags it).
+
+- `rxRegisterUiAssembled()` / `rxRemoveUiAssembled()` register a hook called
+  with a freshly assembled `rxUi` **before** it is compressed.  This is the
+  point at which a package can attach parse-time state to a model: a
+  user-defined function (`rxUdfUi()`) can only return code, and once the ui is
+  compressed `rxUiDecompress()` yields a fresh environment on every call, so an
+  in-place assignment made any later is invisible to the caller.  The hook
+  receives the ui environment and may assign into it; pair that with `sticky` so
+  the slot survives piping and `saveRDS()`.
+
+- A parameter carried in `rxForcedPars()` now counts as **supplied** when solve
+  parameters are resolved.  Previously the forced values were written after
+  resolution had already rejected the solve, so a parameter that existed only as
+  a forced parameter failed with "the following parameter(s) are required for
+  solving" and needed a placeholder data column purely to get past the check.
+  This lets a model own parameters that never appear in the data.
+
+- A solve-time ui preparation hook registered with `rxRegisterUiPrep()` may now
+  take `(ui, solveModel)` rather than only `(ui)`.  `solveModel` is the model
+  whose parameter order the `gpars` layout actually uses, which a hook that
+  resolves parameter positions by name needs.  Existing one-argument hooks are
+  unaffected.
 - `rxSolve()` simulates parameter uncertainty from the prior distributions
   the model's `ini({})` block specifies, which is what NONMEM does with
   `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`

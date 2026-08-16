@@ -56,7 +56,9 @@ reference:
   - rxCbindStudyIndividual
   - as.arrow
   - rxRegisterUiPrep
+  - rxRegisterUiAssembled
   - rxParLoader
+  - rxSetActiveParLoader
   - rxInjectedPars
   - rxForcedPars
 - title: Model UI & Piping

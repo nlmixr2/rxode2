@@ -76,6 +76,39 @@ test_that("forcedPars is hidden from the printed model and survives piping", {
   expect_true(all(s2$cp < s0$cp))
 })
 
+test_that("forcedPars SUPPLIES a parameter that has no other source", {
+  ## WT is a covariate of the model but is absent from the event table, so
+  ## parameter resolution has no source for it.  Before forcedPars counted as
+  ## supplied this failed with "required for solving" -- the forced value was
+  ## only written after resolution had already rejected the solve.
+  ui <- rxode2(.forcedMod)
+  ev <- et(amt = 100)
+  ev <- et(ev, seq(1, 8, by = 1))     # NOTE: no WT column
+  expect_error(rxSolve(ui, ev), "required for solving")
+
+  rxForcedPars(ui) <- c(WT = 2)
+  s <- rxSolve(ui, ev)
+  expect_false(any(is.na(s$cp)))
+  ## and the value used is the forced one: compare against supplying it directly
+  rxForcedPars(ui) <- NULL
+  sRef <- rxSolve(ui, ev, params = c(WT = 2))
+  expect_equal(s$cp, sRef$cp, tolerance = 1e-8)
+})
+
+test_that("a user-supplied param still wins the resolution slot it already fills", {
+  ## forcedPars only ADDS names that resolution has no source for; a name the
+  ## caller supplied is left in place (the forced value still overrides it at
+  ## injection time, which is the documented precedence).
+  ui <- rxode2(.forcedMod)
+  ev <- et(amt = 100)
+  ev <- et(ev, seq(1, 8, by = 1))
+  rxForcedPars(ui) <- c(WT = 2)
+  s <- rxSolve(ui, ev, params = c(WT = 5))
+  rxForcedPars(ui) <- NULL
+  sForced <- rxSolve(ui, ev, params = c(WT = 2))
+  expect_equal(s$cp, sForced$cp, tolerance = 1e-8)
+})
+
 test_that("forcedPars names that are not model params are ignored", {
   ui <- rxode2(.forcedMod)
   ev <- .forcedEv()

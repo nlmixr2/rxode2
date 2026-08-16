@@ -351,6 +351,11 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     }
     assign("modelName", .funName, envir=.mod)
     class(.mod) <- "rxUi"
+    ## let packages attach parse-time state to the freshly assembled ui.  This
+    ## MUST run before rxUiCompress(): a compressed ui is a list, and
+    ## rxUiDecompress() returns a fresh environment on every call, so an
+    ## in-place assignment made any later is invisible to the caller.
+    .rxRunUiAssembledHooks(.mod)
     return(rxUiCompress(.mod))
   }
   on.exit({.varSelect$cov <- NULL})

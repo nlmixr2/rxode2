@@ -2605,7 +2605,15 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   }
   ## let packages rehydrate transient C state from the ui's serializable slots
   ## (e.g. NN shapes) before parameters are loaded -- keeps a reloaded ui solvable.
-  .rxRunUiPrepHooks(object)
+  ## `.lst[[1L]]` is the model actually solved, whose parameter order the gpars
+  ## layout uses; a hook resolving parameter positions by name needs it.
+  .rxRunUiPrepHooks(object, .lst[[1L]])
+  ## a forced parameter is SUPPLIED, not merely overridden: without this the
+  ## parameter-resolution ladder rejects the solve ("required for solving")
+  ## before the forced values are ever written, so a model whose parameters are
+  ## owned externally (e.g. neural-network weights carried on the ui) would need
+  ## a placeholder data column purely to get past the check.
+  .lst$params <- .rxForcedParsAsSupplied(object, .lst[[1L]], .lst$params)
   ## forced (externally-owned) parameters carried on the ui -- injected into every
   ## solve column at setup (rxCallParLoaders), overriding params/data/inits.
   if (.rxApplyForcedPars(object, .lst[[1L]])) {
@@ -4187,6 +4195,41 @@ rxForcedPars <- function(ui) {
   TRUE
 }
 
+## Make a ui's forcedPars count as SUPPLIED parameters for the next solve.
+##
+## `.rxApplyForcedPars()` writes the forced values into the gpars matrix at solve
+## setup, which is AFTER parameter resolution has already decided whether every
+## required parameter has a source.  A parameter that exists only as a forcedPar
+## therefore fails with "the following parameter(s) are required for solving"
+## before its value is ever applied.  This adds the missing forced names to the
+## `params` passed to `rxSolve.default` so resolution succeeds; the value written
+## here is provisional -- `.rxApplyForcedPars()` overwrites it in every column.
+##
+## Names the caller already supplied are left alone (their forced value still
+## wins later), and names absent from the solved model's parameters are ignored,
+## matching `.rxApplyForcedPars()`.
+.rxForcedParsAsSupplied <- function(forcedSrc, solveModel, params) {
+  .fp <- tryCatch(rxForcedPars(forcedSrc), error = function(e) NULL)
+  if (is.null(.fp) || length(.fp) == 0L) return(params)
+  .fp <- .fp[!is.na(names(.fp)) & nzchar(names(.fp))]
+  .fp <- .fp[names(.fp) %in% rxModelVars(solveModel)$params]
+  if (length(.fp) == 0L) return(params)
+  if (is.null(params)) {
+    return(.fp)
+  } else if (is.data.frame(params)) {
+    .add <- setdiff(names(.fp), names(params))
+    for (.n in .add) params[[.n]] <- unname(.fp[[.n]])
+    return(params)
+  } else if (is.numeric(params) && !is.null(names(params))) {
+    .add <- setdiff(names(.fp), names(params))
+    if (length(.add) == 0L) return(params)
+    return(c(params, .fp[.add]))
+  }
+  ## anything else (unnamed numeric, matrix, ...) is a form this cannot safely
+  ## extend; leave it untouched rather than corrupt the caller's parameters.
+  params
+}
+
 #' Parameter-loader flag on a model
 #'
 #' A model that needs an externally-owned parameter injector -- a registered
@@ -4235,6 +4278,38 @@ rxParLoader <- function(ui) {
 }
 .rxClearActiveParLoaderC <- function() {
   invisible(.Call(`_rxode2_rxClearActiveParLoader`))
+}
+
+#' Activate a registered parameter loader for solves
+#'
+#' `rxParLoader()` flags the loader a MODEL owns, which `rxSolve()` applies for
+#' that model's solve.  These activate a loader directly, for solves that do not
+#' go through `rxSolve.rxUi()` -- an estimation method's internal solves, for
+#' example, where the model being solved is assembled by the method rather than
+#' handed to it.
+#'
+#' Only the registered loader whose name is active runs, so a package can inject
+#' its own parameters without touching an unrelated model's `par_ptr`.  Activate
+#' for as short a span as possible and clear afterwards (`on.exit()`), because
+#' the flag is global to the session, not attached to a model.
+#'
+#' @param name Loader name, `"<package>:<function>"`, as registered from C with
+#'   `rxRegisterParLoaderNamed()`.
+#' @return Invisibly `NULL`; called for the side effect.
+#' @seealso [rxParLoader()], [rxForcedPars()]
+#' @export
+#' @author Matthew L. Fidler
+rxSetActiveParLoader <- function(name) {
+  if (!is.character(name) || length(name) != 1L || is.na(name)) {
+    stop("'name' must be a single loader name", call. = FALSE)
+  }
+  .rxSetActiveParLoaderC(name)
+}
+
+#' @rdname rxSetActiveParLoader
+#' @export
+rxClearActiveParLoader <- function() {
+  .rxClearActiveParLoaderC()
 }
 
 ## bridge: flag the active par-loader from a ui's parLoader item before a solve.
@@ -4297,14 +4372,85 @@ rxRemoveUiPrep <- function(name) {
   invisible(NULL)
 }
 
-.rxRunUiPrepHooks <- function(object) {
+.rxRunUiPrepHooks <- function(object, solveModel = NULL) {
   .nm <- ls(envir = .rxUiPrepHooks, all.names = TRUE)
   if (length(.nm) == 0L) return(invisible())
   for (.n in .nm) {
     .fn <- get(.n, envir = .rxUiPrepHooks)
-    tryCatch(.fn(object),
+    tryCatch({
+      ## a hook may take (ui) or (ui, solveModel); the second argument is the
+      ## model whose parameter order the gpars layout actually uses, which a
+      ## hook that resolves parameter positions by name needs.
+      if (length(formals(.fn)) >= 2L) .fn(object, solveModel) else .fn(object)
+    },
+    error = function(e) {
+      warning("rxode2 ui-prep hook '", .n, "' failed: ",
+              conditionMessage(e), call. = FALSE)
+    })
+  }
+  invisible()
+}
+
+## ---- ui-assembly hooks ----------------------------------------------------
+## Registry of functions called with a freshly assembled ui, before it is
+## compressed.  A package uses this to attach parse-time state to the model
+## (e.g. values a user-defined function generated while the model was parsed,
+## which the `rxUdfUi()` return list has no field to carry).  This is
+## deliberately the last point at which the ui is still an environment the
+## caller shares: after `rxUiCompress()` the ui is a list, and
+## `rxUiDecompress()` hands back a fresh environment on each call, so any later
+## in-place assignment is invisible to the caller.
+.rxUiAssembledHooks <- new.env(parent = emptyenv())
+
+#' Register or remove a ui assembly hook
+#'
+#' Package developers register a function called with a freshly assembled `rxUi`
+#' before it is compressed.  Use it to attach parse-time state to the model --
+#' for example values that a user-defined function (see [rxUdfUi()]) generated
+#' while the model was being parsed, which the `rxUdfUi()` return list has no
+#' field to carry.
+#'
+#' The hook receives the ui **environment** and may assign into it in place;
+#' pair that with the `sticky` mechanism (see [rxForcedPars()]) so the slot
+#' survives model piping and `saveRDS()`.  A hook must not reorder
+#' `rxModelVars(ui)$params`, must be cheap, and must be a no-op for models it
+#' does not own.
+#'
+#' @param name Unique hook name; re-registering the same name replaces it.
+#' @param fn Function of one argument (the freshly assembled ui environment).
+#'   The return value is ignored; errors are downgraded to a warning so a buggy
+#'   hook cannot break unrelated model builds.
+#' @return Invisibly, the hook name (register) or `NULL` (remove).
+#' @export
+#' @author Matthew L. Fidler
+rxRegisterUiAssembled <- function(name, fn) {
+  if (!is.character(name) || length(name) != 1L) {
+    stop("'name' must be a single string", call. = FALSE)
+  }
+  if (!is.function(fn)) {
+    stop("'fn' must be a function of one argument (the ui)", call. = FALSE)
+  }
+  assign(name, fn, envir = .rxUiAssembledHooks)
+  invisible(name)
+}
+
+#' @rdname rxRegisterUiAssembled
+#' @export
+rxRemoveUiAssembled <- function(name) {
+  if (exists(name, envir = .rxUiAssembledHooks, inherits = FALSE)) {
+    rm(list = name, envir = .rxUiAssembledHooks)
+  }
+  invisible(NULL)
+}
+
+.rxRunUiAssembledHooks <- function(ui) {
+  .nm <- ls(envir = .rxUiAssembledHooks, all.names = TRUE)
+  if (length(.nm) == 0L) return(invisible())
+  for (.n in .nm) {
+    .fn <- get(.n, envir = .rxUiAssembledHooks)
+    tryCatch(.fn(ui),
              error = function(e) {
-               warning("rxode2 ui-prep hook '", .n, "' failed: ",
+               warning("rxode2 ui-assembled hook '", .n, "' failed: ",
                        conditionMessage(e), call. = FALSE)
              })
   }
