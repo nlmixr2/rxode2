@@ -4195,6 +4195,38 @@ rxParLoader <- function(ui) {
   invisible(.Call(`_rxode2_rxClearActiveParLoader`))
 }
 
+#' Activate a registered parameter loader for solves
+#'
+#' `rxParLoader()` flags the loader a MODEL owns, which `rxSolve()` applies for
+#' that model's solve.  These activate a loader directly, for solves that do not
+#' go through `rxSolve.rxUi()` -- an estimation method's internal solves, for
+#' example, where the model being solved is assembled by the method rather than
+#' handed to it.
+#'
+#' Only the registered loader whose name is active runs, so a package can inject
+#' its own parameters without touching an unrelated model's `par_ptr`.  Activate
+#' for as short a span as possible and clear afterwards (`on.exit()`), because
+#' the flag is global to the session, not attached to a model.
+#'
+#' @param name Loader name, `"<package>:<function>"`, as registered from C with
+#'   `rxRegisterParLoaderNamed()`.
+#' @return Invisibly `NULL`; called for the side effect.
+#' @seealso [rxParLoader()], [rxForcedPars()]
+#' @export
+#' @author Matthew L. Fidler
+rxSetActiveParLoader <- function(name) {
+  if (!is.character(name) || length(name) != 1L || is.na(name)) {
+    stop("'name' must be a single loader name", call. = FALSE)
+  }
+  .rxSetActiveParLoaderC(name)
+}
+
+#' @rdname rxSetActiveParLoader
+#' @export
+rxClearActiveParLoader <- function() {
+  .rxClearActiveParLoaderC()
+}
+
 ## bridge: flag the active par-loader from a ui's parLoader item before a solve.
 ## Returns TRUE if a flag was set (so the caller clears afterward).
 .rxApplyParLoader <- function(ui) {

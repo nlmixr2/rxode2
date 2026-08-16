@@ -2,6 +2,12 @@
 
 ## New features
 
+- `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
+  parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
+  estimation method's internal solves, for example.  Previously the only way in
+  was to `.Call()` rxode2's compiled entry points by name from another package,
+  which is not a supported interface (and `R CMD check` flags it).
+
 - `rxRegisterUiAssembled()` / `rxRemoveUiAssembled()` register a hook called
   with a freshly assembled `rxUi` **before** it is compressed.  This is the
   point at which a package can attach parse-time state to a model: a
