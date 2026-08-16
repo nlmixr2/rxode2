@@ -28,6 +28,52 @@ findLhs <- function(x) {
   }
 }
 
+#' Does this model still carry an unexpanded `linCmt()`?
+#'
+#' The parser records `linCmt()` in a parser-global flag
+#' (`_rxode2_isLinCmt`) that only an actual parse refreshes, so a model
+#' handed around as model variables has to be asked directly; otherwise
+#' the flag describes whatever was parsed last (nlmixr2/rxode2#1227).
+#'
+#' The model's own `flags` answer instead: `linCmtFlg` is nonzero for
+#' every linear compartment model (the parser always adds a central
+#' compartment), while `ncmt` and `linCmt` (`tb.linCmtN`) are written
+#' only by parsing an already-expanded `linCmtA()`/`linCmtB()` call --
+#' so a nonzero `linCmtFlg` with both still at the values the parse
+#' reset them to is `tb.linCmt == 1`.  Both are checked because either
+#' one alone can be the argument an expanded call passes.
+#'
+#' @param model anything `rxModelVars()` accepts; pass model variables
+#'   where they are already at hand, since anything else is parsed
+#'
+#' @return `TRUE` when the model contains a `linCmt()` that has not been
+#'   expanded to `linCmtA()`/`linCmtB()`
+#'
+#' @noRd
+#' @author Matthew L. Fidler
+.rxHasUnexpandedLinCmt <- function(model) {
+  .mv <- try(rxModelVars(model), silent = TRUE)
+  if (inherits(.mv, "try-error")) {
+    return(FALSE)
+  }
+  .need <- c("ncmt", "linCmt", "linCmtFlg")
+  .flags <- .mv$flags
+  if (!is.numeric(.flags) || !all(.need %in% names(.flags))) {
+    # model variables too old (or too damaged) to carry the flags: a parse
+    # always produces them, and the normalized text round-trips exactly
+    .mv <- try(rxModelVars(setNames(rxNorm(.mv), NULL)), silent = TRUE)
+    if (inherits(.mv, "try-error")) {
+      return(FALSE)
+    }
+    .flags <- .mv$flags
+    if (!is.numeric(.flags) || !all(.need %in% names(.flags))) {
+      return(FALSE)
+    }
+  }
+  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L &&
+    .flags[["linCmt"]] == -100L
+}
+
 #' Get the linear compartment model true function
 #'
 #' @inheritParams rxode2
@@ -37,7 +83,7 @@ findLhs <- function(x) {
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
                      verbose = FALSE) {
   .mv <- rxGetModel(model) # nolint
-  if (.Call(`_rxode2_isLinCmt`) == 1L) { # nolint
+  if (.rxHasUnexpandedLinCmt(.mv)) {
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
     .Call(
       `_rxode2_linCmtGen`, # nolint

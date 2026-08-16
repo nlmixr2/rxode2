@@ -440,7 +440,11 @@ rxode2 <- # nolint
     ## rxToIndLin() would leave a rewritten matrix-exponential model as the last
     ## parse.
     .env$.mv <- rxGetModel(model, collapseModel = collapseModel, indLin = FALSE)
-    .isLinCmt <- .Call(`_rxode2_isLinCmt`) == 1L
+    ## Ask the model, not the parser global: the flag is sticky across parses and
+    ## `rxGetModel()` does not re-parse model variables it is handed, so reading
+    ## it here both missed a real linCmt() model and claimed one that was not
+    ## (nlmixr2/rxode2#1227).
+    .isLinCmt <- .rxHasUnexpandedLinCmt(.env$.mv)
     if (.eventSensNeedsJac && !.isLinCmt && !isTRUE(calcJac)) {
       calcJac <- TRUE
     }
@@ -888,6 +892,17 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
   ## that never fully compiled) makes an unrelated plain model hash differently
   ## depending on build order.
   assignInMyNamespace(".indLinInfo", list())
+  ## Model variables are returned below WITHOUT re-parsing, so the parser-global
+  ## linCmt() state -- both `_rxode2_isLinCmt` and the text `linCmtGen()`
+  ## rewrites -- would still describe whatever was parsed last.  Model variables
+  ## that still carry an unexpanded `linCmt()` then never got expanded, and
+  ## `linCmt()` reached the C code generator verbatim (nlmixr2/rxode2#1227).
+  ## Re-parse from the normalized text so the parse state matches the model in
+  ## hand; already-expanded (`linCmtA()`/`linCmtB()`) models short-circuit as
+  ## before.
+  if (inherits(model, "rxModelVars") && .rxHasUnexpandedLinCmt(model)) {
+    model <- setNames(rxNorm(model), NULL)
+  }
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
     .calcSens <- TRUE

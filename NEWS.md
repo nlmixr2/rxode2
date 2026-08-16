@@ -281,6 +281,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   with `could not find function ".badBuild"` or reports a previous model's
   compiler output.
 
+- Re-compiling a `linCmt()` model from its own `rxModelVars()` no longer
+  fails with `implicit declaration of function 'linCmt'`.  Whether to expand
+  `linCmt()` was read from a parser global that only an actual parse
+  refreshes, and `rxGetModel()` returns model variables it is handed without
+  re-parsing them, so the expansion was skipped -- or run on a model that had
+  no `linCmt()` -- depending on what happened to be parsed last.  The model
+  itself is asked now, so `rxode2(rxModelVars(ui))` builds and the result no
+  longer depends on build order (#1227).
+
 - `rxLastCompile()` now prints its section rules -- `cli::rule()` was called
   but its result was never messaged -- and takes `what=` to choose which
   sections are messaged (`rxLastCompile("stderr")` for the compiler error
