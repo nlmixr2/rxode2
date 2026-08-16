@@ -31,8 +31,52 @@
   .Call(`_rxode2_rxode2Ptr`, PACKAGE = "rxode2")
 }
 
+#' Compiler-environment hygiene for model builds
+#'
+#' Some packages permanently leak build environment variables into the
+#' session -- notably `rstan::stan_model()` sets `PKG_CPPFLAGS` (with a
+#' forced C++ `-include`), `PKG_LIBS` and `USE_CXX17` and never restores
+#' them -- and `R CMD SHLIB` then applies them to rxode2's C model
+#' compiles, which die with "compilation terminated".  At load time
+#' rxode2 snapshots these variables; every model build swaps the
+#' snapshot in for the duration of the compile and restores the session
+#' values afterward, so rxode2 always compiles no matter what another
+#' package did to the build environment.
+#'
+#' (If rxode2 is loaded AFTER the leak has already happened the snapshot
+#' captures the leaked values; loading rxode2 before compiling Stan
+#' models -- the usual order -- captures the clean state.)
+#' @noRd
+.rxCompileEnvVars <- c("PKG_CPPFLAGS", "PKG_CXXFLAGS", "PKG_CFLAGS",
+                       "PKG_LIBS", "PKG_FFLAGS", "USE_CXX17", "USE_CXX14")
+.rxCompileEnvClean <- new.env(parent = emptyenv())
+
+#' Evaluate `expr` with the load-time (clean) compiler environment
+#' @noRd
+.rxWithCleanCompileEnv <- function(expr) {
+  .clean <- get0("snapshot", envir = .rxCompileEnvClean)
+  if (is.null(.clean)) return(force(expr))
+  .cur <- Sys.getenv(.rxCompileEnvVars, unset = NA_character_)
+  .set <- function(vals) {
+    for (.v in .rxCompileEnvVars) {
+      if (is.na(vals[[.v]])) {
+        Sys.unsetenv(.v)
+      } else {
+        do.call(Sys.setenv, stats::setNames(list(vals[[.v]]), .v))
+      }
+    }
+  }
+  .set(.clean)
+  on.exit(.set(.cur), add = TRUE)
+  force(expr)
+}
+
 ## nocov start
 .onLoad <- function(libname, pkgname) {
+  # snapshot the build environment BEFORE anything can leak into it (see
+  # .rxWithCleanCompileEnv)
+  assign("snapshot", Sys.getenv(.rxCompileEnvVars, unset = NA_character_),
+         envir = .rxCompileEnvClean)
   .ver <- .rxVersion
   .ver["version"] <- as.character(utils::packageVersion("rxode2"))
   assignInMyNamespace(".rxVersion", .ver)

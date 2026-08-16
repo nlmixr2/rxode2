@@ -2255,9 +2255,14 @@ rxCompile.rxModelVars <- function(model, # Model
           on.exit(Sys.setenv("BINPREF" = .oldBinpref), add = TRUE)
         }
         rxode2::rxReq("sys")
-        .rxWithWd(.dir, {
+        # swap in the load-time (clean) compiler environment for the build:
+        # another package may have leaked PKG_CPPFLAGS/PKG_LIBS/USE_CXX17
+        # into the session (rstan::stan_model does, with a forced C++
+        # -include), which otherwise makes this C compile die with
+        # "compilation terminated"
+        .rxWithCleanCompileEnv(.rxWithWd(.dir, {
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
-        })
+        }))
         .stderr <- rawToChar(.out$stderr)
         .rxCompileEnv$lst <- list()
         if (!(all(.stderr == "") && length(.stderr) == 1)) {
