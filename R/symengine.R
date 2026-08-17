@@ -36,7 +36,11 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 .SEsingle <- list(
   "rxNot" = c("(!(", "))"),
-  "loggamma" = c("lgamma(", ")")
+  "loggamma" = c("lgamma(", ")"),
+  ## abs stays symbolic as abs0() between rxToSE() and rxFromSE() (so its
+  ## EXACT derivative table entry .rxD$abs0 -> dabs() drives the chain
+  ## rule); on the way out it is written abs(), which every backend has
+  "abs0" = c("abs(", ")")
 )
 
 .rxSEdouble <- list(
@@ -2012,7 +2016,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                identical(x[[1]], quote(`abs0`))) {
     if (length(x) != 2) stop("abs only takes 1 argument", call.=FALSE)
     .r <- .rxToSE(x[[2]], envir = envir)
-    return(paste0("(2.0*(", .r, ")*rxGt(", .r, ",0.0)-(", .r, "))"))
+    ## Keep abs symbolic as abs0() so its EXACT derivative table entry
+    ## (.rxD$abs0 -> dabs(), the sign function) drives the chain rule.
+    ## The old rewrite 2*x*rxGt(x,0) - x had the right VALUE, but its
+    ## derivative went through rxGt's tanh-SMOOTHED step (a deliberate
+    ## nascent-delta for genuine if/else discontinuities), so d|x|/dx came
+    ## out sign(x) + 2*k*x*(1 - tanh(k*x)^2) -- e.g. a sensitivity column
+    ## scaled x1.42 at x = 0.1 (nlmixr2/nlmixr2est#952).  abs is
+    ## continuous; its a.e.-exact derivative is what every consumer wants.
+    return(paste0("abs0(", .r, ")"))
   } else if (identical(x[[1]], quote(`d4GELU`))) {
     return(.rxToSEd4GELU(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`d4softplus`))) {

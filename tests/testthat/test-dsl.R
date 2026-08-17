@@ -478,7 +478,11 @@ rxTest({
 
     .s <- rxS("rx_pred_ = abs(a)")
     .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
-    expect_equal(rxFromSE(.d), "-1+2*a*(5-5*tanh(10*(a-0))^2)+2*(a>0)")
+    # abs is continuous: its derivative is the EXACT sign (dabs), not a
+    # smoothed step -- the old indicator rewrite made d|x|/dx come out
+    # sign(x) + 2*k*x*(1 - tanh(k x)^2), scaling sensitivity columns by a
+    # theta-dependent factor (nlmixr2/nlmixr2est#952)
+    expect_equal(rxFromSE(.d), "dabs(a)")
   })
 
   # Test factor expansion by `rxSplitPlusQ'
@@ -696,9 +700,13 @@ rxTest({
   })
 
   test_that("abs tests", {
-    expect_equal(rxToSE("abs(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
-    expect_equal(rxToSE("fabs(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
-    expect_equal(rxToSE("abs0(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
+    # abs stays symbolic (abs0) so the exact derivative table drives the
+    # chain rule; the value renders back as abs()
+    expect_equal(rxToSE("abs(a)"), "abs0(a)")
+    expect_equal(rxToSE("fabs(a)"), "abs0(a)")
+    expect_equal(rxToSE("abs0(a)"), "abs0(a)")
+    expect_equal(rxFromSE("abs0(a)"), "abs(a)")
+    expect_equal(rxFromSE("Derivative(abs0(a), a)"), "dabs(a)")
   })
 
   test_that("parsing errors", {
