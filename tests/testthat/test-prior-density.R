@@ -314,6 +314,61 @@ rxTest({
     expect_equal(unname(r$gradTheta["tka"]), g, tolerance=1e-6)
   })
 
+  test_that("two finite bounds deep in either tail agree by symmetry (log-space branches)", {
+    skip_if_not(.hasPriorSupport())
+    ## dnorm(0, 1) truncated to [10, 20] and its mirror [-20, -10]: the plain
+    ## pnorm(upper)-pnorm(lower) underflows to exactly 0 on BOTH windows (so
+    ## neither can serve as an independent "expected" value), but by the
+    ## symmetry of a standard normal around 0 the two windows carry exactly
+    ## the same probability mass, and each exercises a different branch of
+    ## .rxPriorLogCdfDiff() (upper <= center vs lower >= center)
+    uHi <- .withPrior(.base(), "tka", "dnorm(0, 1)")
+    .iniHi <- uHi$iniDf
+    .iniHi$lower[.iniHi$name == "tka"] <- 10
+    .iniHi$upper[.iniHi$name == "tka"] <- 20
+    assign("iniDf", .iniHi, envir=uHi)
+
+    uLo <- .withPrior(.base(), "tka", "dnorm(0, 1)")
+    .iniLo <- uLo$iniDf
+    .iniLo$lower[.iniLo$name == "tka"] <- -20
+    .iniLo$upper[.iniLo$name == "tka"] <- -10
+    assign("iniDf", .iniLo, envir=uLo)
+
+    rHi <- rxPriorLogDensity(uHi, theta=c(tka=15))
+    rLo <- rxPriorLogDensity(uLo, theta=c(tka=-15))
+    expect_true(is.finite(rHi$value))
+    expect_true(is.finite(rLo$value))
+    expect_equal(rHi$value, rLo$value, tolerance=1e-10)
+    ## the naive (unstable) formula underflows to 0 - Inf on both, confirming
+    ## this really does exercise the catastrophic-cancellation branches
+    expect_equal(pnorm(20, 0, 1) - pnorm(10, 0, 1), 0)
+    expect_equal(pnorm(-10, 0, 1) - pnorm(-20, 0, 1), 0)
+
+    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta=c(tka=x))$value, 15)
+    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance=1e-6)
+  })
+
+  test_that("a two-finite-bound window straddling the mean matches the direct formula", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
+    .ini <- u$iniDf
+    .ini$lower[.ini$name == "tka"] <- -1
+    .ini$upper[.ini$name == "tka"] <- 1
+    assign("iniDf", .ini, envir=u)
+    r <- rxPriorLogDensity(u, theta=c(tka=0.2))
+    expect_equal(r$value,
+                 dnorm(0.2, 0, 1, log=TRUE) - log(pnorm(1, 0, 1) - pnorm(-1, 0, 1)),
+                 tolerance=1e-10)
+  })
+
+  test_that("an invWishart with too few degrees of freedom is refused", {
+    skip_if_not(.hasPriorSupport())
+    ## a 2x2 block needs nu > 1
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(1)")
+    om <- u$omega
+    expect_error(rxPriorLogDensity(u, omega=om), "degrees of freedom")
+  })
+
   test_that("a population parameter literally named 'om.<x>' is refused, not confused with omega", {
     skip_if_not(.hasPriorSupport())
     u <- rxUiDecompress(.base())
