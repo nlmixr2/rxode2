@@ -86,6 +86,7 @@ reference:
   - rxAppendModel
   - rxFixPop
   - rxFixRes
+  - rxPriorLogDensity
   - rxRename
   - rxSetCovariateNamesForPiping
   - rxSetPipingAuto
