@@ -33,6 +33,7 @@ Other Assertions:
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
