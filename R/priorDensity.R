@@ -281,11 +281,11 @@
 #'
 #' @param name parameter name, or an `om.<eta>` omega element
 #' @param g gradient contribution
-#' @param ui rxode2 ui model
-#' @param gThetaEnv environment holding the mutable `gTheta` named numeric
-#' @param gOmega mutable omega-gradient matrix (or `NULL`); modified in place
-#'   via `<<-` in the caller's frame, so this returns the updated matrix
-#' @return the (possibly updated) `gOmega`
+#' @param gThetaEnv environment holding the mutable `gTheta` named numeric;
+#'   updated in place, since an environment is a mutable reference
+#' @param gOmega the omega-gradient matrix so far (or `NULL`)
+#' @return the (possibly updated) `gOmega`; `gThetaEnv$gTheta` is updated
+#'   as a side effect
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorAddGrad <- function(name, g, gThetaEnv, gOmega) {
@@ -325,7 +325,12 @@
 #' @return list with `value` (scalar log density, summed over every prior
 #'   term), `gradTheta` (named numeric, d/dtheta) and `gradOmega` (a matrix
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was
-#'   not given)
+#'   not given). `gradOmega` is entrywise, treating `omega[i, j]` and
+#'   `omega[j, i]` as independent, the way `-Oi %*% Psi %*% Oi`-style matrix
+#'   calculus is usually reported; a caller whose free parameter moves both
+#'   symmetric entries together (a Cholesky or log-Cholesky
+#'   parameterization, say) needs `gradOmega[i, j] + gradOmega[j, i]`, which
+#'   is `2 * gradOmega[i, j]` since `gradOmega` is itself symmetric
 #' @family Assertions
 #' @author Matthew L. Fidler
 #' @export

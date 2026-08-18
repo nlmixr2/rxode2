@@ -19,7 +19,12 @@ when a prior touches an omega element or block; \code{NULL} otherwise}
 list with \code{value} (scalar log density, summed over every prior
 term), \code{gradTheta} (named numeric, d/dtheta) and \code{gradOmega} (a matrix
 the same dimension as \code{omega}, d/dOmega, or \code{NULL} when \code{omega} was
-not given)
+not given). \code{gradOmega} is entrywise, treating \code{omega[i, j]} and
+\code{omega[j, i]} as independent, the way \code{-Oi \%*\% Psi \%*\% Oi}-style matrix
+calculus is usually reported; a caller whose free parameter moves both
+symmetric entries together (a Cholesky or log-Cholesky
+parameterization, say) needs \code{gradOmega[i, j] + gradOmega[j, i]}, which
+is \code{2 * gradOmega[i, j]} since \code{gradOmega} is itself symmetric
 }
 \description{
 Every estimation method that implements a prior needs the same thing:
