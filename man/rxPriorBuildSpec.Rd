@@ -4,13 +4,13 @@
 \alias{rxPriorBuildSpec}
 \title{Build the C spec \code{rxPriorLogDensityEval()} (and the C API) evaluates}
 \usage{
-rxPriorBuildSpec(ui, method = c("general", "nwpri"))
+rxPriorBuildSpec(ui, method = c("general", "nwpri", "tnpri"))
 }
 \arguments{
 \item{ui}{rxode2 ui model}
 
-\item{method}{\code{"general"} (default) or \code{"nwpri"}; see this file's header
-comment for what differs}
+\item{method}{\code{"general"} (default), \code{"nwpri"} or \code{"tnpri"}; see this
+file's header comment for what differs}
 }
 \value{
 external pointer to a \code{rx_prior_spec_t}

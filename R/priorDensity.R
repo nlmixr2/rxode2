@@ -19,13 +19,15 @@
 ## and exposes a thin R convenience wrapper over the C entry points for
 ## direct use and testing.
 ##
-## Two methods are supported, matching two genuinely different conventions:
+## Three methods are supported, matching three genuinely different
+## conventions:
 ##
 ## - `"general"`: a textbook Bayesian log density for whatever `lotri`
 ##   reports -- `dnorm()`/`stdNormal()`, `dcauchy()` (including the
 ##   half-Cauchy case, `prior(add.sd) ~ dcauchy(0, 5)` with `add.sd`'s own
-##   `lower = 0`), the joint theta+omega `multiNormal()` block, and a
-##   textbook inverse-Wishart on an omega block.
+##   `lower = 0`), the joint theta+omega `multiNormal()` block (an `om.<eta>`
+##   member addresses the raw omega value), and a textbook inverse-Wishart
+##   on an omega block.
 ## - `"nwpri"`: NONMEM's own `$PRIOR NWPRI` parameterization (NONMEM7
 ##   Technical Guide, "Three Stage EM Analysis", eq. 1.154-1.171). Theta
 ##   reuses the same multivariate-normal math (eq. 1.156 is the textbook MVN
@@ -35,12 +37,28 @@
 ##   version every method but BAYES uses) is `d_W = rho + n + 1` with scale
 ##   `rho * Psi`, not `rho`/`Psi` directly, and gives a different value and
 ##   gradient (see the `type` comment on `rx_prior_term_t`,
-##   `inst/include/rxode2prior.h`, for the derivation). NONMEM's prior
-##   machinery has no Cauchy analogue at all, so `"nwpri"` refuses one.
-##   TNPRI ("Appendix I: Note on TNPRI" in the same guide) is a `$SIML`
-##   sampling recipe, not an `$EST`-time objective term -- rxode2 already
-##   has the equivalent machinery for that on the simulation side
-##   (`prior-sim.R`), so there is nothing to add here for it.
+##   `inst/include/rxode2prior.h`, for the derivation).
+## - `"tnpri"`: the assumption Monolix's Bayesian estimation makes (all
+##   estimated parameters are jointly normal) and that NONMEM's own
+##   estimation applies to omega via its inverse Cholesky, the same way
+##   nlmixr2est's own FOCEI already parameterizes the omega optimization
+##   (`op_focei.cholOmegaInv`, `src/inner.cpp`). An `om.<eta>` member in a
+##   joint `multiNormal()`-style block (`tcl + om.eta.cl ~ c(...)`, or
+##   several `om.<eta>` members together, eg `om.eta1 + om.eta2 ~ c(1, 0.1,
+##   1)`, which is how a correlation between two etas' Cholesky diagonals
+##   enters -- there is no way to name an off-diagonal Cholesky entry
+##   directly) addresses the diagonal of `chol(Omega_block^-1)` rather than
+##   the raw omega value. The returned `gradOmega` is still always in raw
+##   (natural) Omega-entry space, chain-ruled back from Cholesky space (see
+##   `rxode2prior.h`) -- deliberately so, since that lets one kernel serve
+##   both a method that reparameterizes the omega optimization this same
+##   way (FOCEI, which chain-rules once more on its own) and one that
+##   doesn't (SAEM, which estimates Omega directly and uses this gradient
+##   as-is).
+##
+## Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so both refuse
+## one; `"tnpri"` also refuses `invWishart()` (that is `"nwpri"`'s own
+## mechanism, not `"tnpri"`'s).
 
 #' Distributions `rxPriorLogDensity()` can evaluate
 #'
@@ -54,7 +72,55 @@
 #'
 #' @noRd
 .rxPriorTermTypeCode <- c(normal=0L, cauchy=1L, multiNormal=2L,
-                          invWishart=3L, invWishartNwpri=4L)
+                          invWishart=3L, invWishartNwpri=4L, tnpri=5L)
+
+#' The covariance matrix a `multiNormal()` prior carries, without going
+#' through `lotri::lotri()`'s own validation
+#'
+#' `.rxPriorCovMat()` (`prior-sim.R`) evaluates the embedded `lotri(...)`
+#' call via `lotri::lotri()` itself, which requires at least one name it
+#' recognizes as an already-known parameter -- fine for a block anchored by
+#' a real theta (`tcl + om.eta.ka ~ c(...)`), but `lotri::lotri()` refuses
+#' a block whose members are ALL `om.<eta>` on their own (`om.eta1 +
+#' om.eta2 ~ c(...)`, exactly the "tnpri" joint-omega case), with "prior
+#' given for unknown parameter(s)". This reads the same embedded lower-
+#' triangular vector directly and fills the matrix by hand (column-major
+#' lower triangle including the diagonal -- the same convention every
+#' `lotri`-built covariance in this ecosystem already uses, eg `eta.cl +
+#' eta.v ~ c(0.3, 0.01, 0.1)`), so it never needs `lotri::lotri()` to
+#' recognize the names at all.
+#'
+#' @param names character vector of the block's member names, in order
+#'   (from `.rxPriorCovNames()`)
+#' @param prior prior as stored in the `prior` column
+#' @return numeric matrix (unnamed dimnames), or `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorCovMatFromNames <- function(names, prior) {
+  .p <- .rxPriorParse(prior)
+  if (is.null(.p)) return(NULL)
+  for (.a in .p$args) {
+    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) next
+    .b <- .a[[2]]
+    if (is.call(.b) && identical(.b[[1]], quote(`{`))) .b <- .b[[2]]
+    if (!(is.call(.b) && identical(.b[[1]], quote(`~`)))) return(NULL)
+    .vec <- try(eval(.b[[3]], envir=.rxPriorEvalEnv()), silent=TRUE)
+    if (inherits(.vec, "try-error") || !is.numeric(.vec)) return(NULL)
+    .n <- length(names)
+    if (length(.vec) != .n * (.n + 1) / 2) return(NULL)
+    .m <- matrix(0, .n, .n)
+    .k <- 1L
+    for (.j in seq_len(.n)) {
+      for (.i in .j:.n) {
+        .m[.i, .j] <- .vec[.k]
+        .m[.j, .i] <- .vec[.k]
+        .k <- .k + 1L
+      }
+    }
+    return(.m)
+  }
+  NULL
+}
 
 #' Complain about a prior this kernel cannot evaluate
 #'
@@ -133,11 +199,11 @@
 #' meant to move away from.
 #'
 #' @param ui rxode2 ui model
-#' @param method `"general"` or `"nwpri"`; see the file header
+#' @param method `"general"`, `"nwpri"` or `"tnpri"`; see the file header
 #' @return list of terms; each is `list(type=, names=, ...)`
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorDensityTerms <- function(ui, method=c("general", "nwpri")) {
+.rxPriorDensityTerms <- function(ui, method=c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
   .iniDf <- ui$iniDf
@@ -174,6 +240,11 @@
         .rxPriorDensityStop(.key, .prior, paste0("'", .p$fn, "' is not yet evaluated by ",
                                           "rxPriorLogDensity(); only 'invWishart()' is"))
       }
+      if (identical(method, "tnpri")) {
+        .rxPriorDensityStop(.key, .prior,
+                     paste0("'invWishart()' is not part of the TNPRI method; use ",
+                            "method=\"nwpri\" for an omega degrees-of-freedom prior"))
+      }
       if (length(.p$args) > 1L) {
         .rxPriorDensityStop(.key, .prior,
                      paste0("an explicit inverse-Wishart scale matrix argument is not ",
@@ -206,6 +277,11 @@
     if (identical(.p$stanName, "multi_normal")) {
       .nm <- .rxPriorCovNames(.prior)
       .cov <- .rxPriorCovMat(.prior)
+      if (is.null(.cov) && !is.null(.nm)) {
+        ## a block with no theta anchor (all om.<eta> members) trips
+        ## lotri::lotri()'s own validation -- read the vector by hand
+        .cov <- .rxPriorCovMatFromNames(.nm, .prior)
+      }
       if (is.null(.nm) || is.null(.cov)) {
         .rxPriorDensityStop(.key, .prior, "the covariance could not be read back")
       }
@@ -223,16 +299,24 @@
       }, character(1), USE.NAMES=FALSE)
       dimnames(.cov) <- list(.nm, .nm)
       .seenPrior <- .rxPriorMarkSeen(.seenPrior, .nm, .prior)
-      .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
-                                            mu=.mu, Sigma=.cov)
+      .omMembers <- .nm[startsWith(.nm, "om.")]
+      if (identical(method, "tnpri") && length(.omMembers) > 0L) {
+        .blocks <- .rxPriorTnpriBlocks(ui, substring(.omMembers, 4))
+        .terms[[length(.terms) + 1L]] <- list(type="tnpri", names=.nm,
+                                              mu=.mu, Sigma=.cov, blocks=.blocks)
+      } else {
+        .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
+                                              mu=.mu, Sigma=.cov)
+      }
       .seen <- c(.seen, .nm)
       next
     }
     if (.p$stanName %in% c("normal", "std_normal", "cauchy")) {
-      if (identical(.p$stanName, "cauchy") && identical(method, "nwpri")) {
+      if (identical(.p$stanName, "cauchy") && method %in% c("nwpri", "tnpri")) {
         .rxPriorDensityStop(.key, .prior,
-                     paste0("'dcauchy()' is not part of NONMEM's NWPRI prior ",
-                            "machinery; use method=\"general\" for a Cauchy prior"))
+                     paste0("'dcauchy()' is not part of NONMEM's ",
+                            toupper(method), " prior machinery; use ",
+                            "method=\"general\" for a Cauchy prior"))
       }
       if (identical(.p$stanName, "std_normal")) {
         .mu <- 0; .sd <- 1
@@ -243,10 +327,17 @@
           .rxPriorDensityStop(.key, .prior, "the parameters could not be read back")
         }
       }
-      .terms[[length(.terms) + 1L]] <- list(
-        type=if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
-        names=.key, mu=as.double(.mu), sd=as.double(.sd),
-        lower=.iniDf$lower[.i], upper=.iniDf$upper[.i])
+      if (identical(method, "tnpri") && .isOmega) {
+        .blocks <- .rxPriorTnpriBlocks(ui, .name)
+        .terms[[length(.terms) + 1L]] <- list(
+          type="tnpri", names=.key, mu=as.double(.mu), Sigma=matrix(as.double(.sd)^2, 1, 1),
+          blocks=.blocks)
+      } else {
+        .terms[[length(.terms) + 1L]] <- list(
+          type=if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
+          names=.key, mu=as.double(.mu), sd=as.double(.sd),
+          lower=.iniDf$lower[.i], upper=.iniDf$upper[.i])
+      }
       .seen <- c(.seen, .key)
       next
     }
@@ -312,6 +403,35 @@
   }
 }
 
+#' The distinct omega blocks a `"tnpri"` term's `om.<eta>` members span
+#'
+#' A block has to be handled in full for its Cholesky (`Omega^-1`'s
+#' Cholesky depends on every entry, referenced by a prior or not), so this
+#' returns each distinct block's full eta index list, deduplicated -- two
+#' members of the same block only produce one block entry.
+#'
+#' @param ui rxode2 ui model
+#' @param etaNames character vector of eta names (no `om.` prefix)
+#' @return list of `list(dim=, etaIdx=)`, one per distinct block
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorTnpriBlocks <- function(ui, etaNames) {
+  .seen <- character(0)
+  .blocks <- list()
+  for (.eta in etaNames) {
+    if (.eta %in% .seen) next
+    .blk <- .rxPriorOmegaBlockFor(ui, .eta)
+    if (is.null(.blk)) {
+      stop("could not find the omega block for '", .eta, "'", call.=FALSE)
+    }
+    .nm <- dimnames(.blk)[[1]]
+    .idx <- vapply(.nm, function(n) .rxPriorKeyIndex(ui, paste0("om.", n))$etaIdx, integer(1))
+    .blocks[[length(.blocks) + 1L]] <- list(dim=length(.nm), etaIdx=as.integer(.idx))
+    .seen <- c(.seen, .nm)
+  }
+  .blocks
+}
+
 #' Flatten `.rxPriorDensityTerms()`'s output into `_rxode2_rxPriorBuildSpec()`'s
 #' plain-vector representation
 #'
@@ -326,6 +446,7 @@
   .thetaIdx <- integer(0); .etaIdx <- integer(0)
   .mu <- numeric(0); .scale <- numeric(0)
   .lower <- numeric(0); .upper <- numeric(0); .nu <- numeric(0)
+  .nBlocks <- integer(0); .blockDim <- integer(0); .blockEtaIdx <- integer(0)
   ## validate the omega numbering is dense (see .rxPriorEtaOrder()) before
   ## computing any etaIdx from it -- only when a term actually needs it, so
   ## a model with unusual (but unused) omega structure stays a no-op
@@ -344,7 +465,8 @@
       .lower <- c(.lower, .t$lower)
       .upper <- c(.upper, .t$upper)
       .nu <- c(.nu, 0)
-    } else if (identical(.t$type, "multiNormal")) {
+      .nBlocks <- c(.nBlocks, 0L)
+    } else if (.t$type %in% c("multiNormal", "tnpri")) {
       .mu <- c(.mu, .t$mu)
       ## Sigma is symmetric, so the column-major flatten R gives is already
       ## the row-major flatten src/priorDensity.cpp expects
@@ -352,16 +474,25 @@
       .lower <- c(.lower, -Inf)
       .upper <- c(.upper, Inf)
       .nu <- c(.nu, 0)
+      if (identical(.t$type, "tnpri")) {
+        .nBlocks <- c(.nBlocks, length(.t$blocks))
+        .blockDim <- c(.blockDim, vapply(.t$blocks, `[[`, integer(1), "dim"))
+        .blockEtaIdx <- c(.blockEtaIdx, unlist(lapply(.t$blocks, `[[`, "etaIdx")))
+      } else {
+        .nBlocks <- c(.nBlocks, 0L)
+      }
     } else {
       .mu <- c(.mu, rep(0, length(.t$names)))
       .scale <- c(.scale, as.numeric(.t$Psi))
       .lower <- c(.lower, -Inf)
       .upper <- c(.upper, Inf)
       .nu <- c(.nu, .t$nu)
+      .nBlocks <- c(.nBlocks, 0L)
     }
   }
   list(type=.type, n=.n, thetaIdx=.thetaIdx, etaIdx=.etaIdx, mu=.mu, scale=.scale,
-       lower=.lower, upper=.upper, nu=.nu)
+       lower=.lower, upper=.upper, nu=.nu, nBlocks=.nBlocks, blockDim=.blockDim,
+       blockEtaIdx=.blockEtaIdx)
 }
 
 #' Build the C spec `rxPriorLogDensityEval()` (and the C API) evaluates
@@ -375,13 +506,13 @@
 #' OpenMP-parallel objective/gradient evaluation.
 #'
 #' @param ui rxode2 ui model
-#' @param method `"general"` (default) or `"nwpri"`; see this file's header
-#'   comment for what differs
+#' @param method `"general"` (default), `"nwpri"` or `"tnpri"`; see this
+#'   file's header comment for what differs
 #' @return external pointer to a `rx_prior_spec_t`
 #' @family Assertions
 #' @author Matthew L. Fidler
 #' @export
-rxPriorBuildSpec <- function(ui, method=c("general", "nwpri")) {
+rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
   .terms <- .rxPriorDensityTerms(ui, method=method)
@@ -418,10 +549,13 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri")) {
 #'   of its blocks has a prior -- the underlying C kernel addresses omega
 #'   positionally (the model's own eta numbering), not by submatrix, so a
 #'   smaller matrix containing only the referenced block is not enough
-#' @param method `"general"` (default) or `"nwpri"`; see this file's header
-#'   comment for what differs. `"nwpri"` implements NONMEM's own `$PRIOR
-#'   NWPRI` omega parameterization and refuses a Cauchy prior, which has no
-#'   NONMEM analogue.
+#' @param method `"general"` (default), `"nwpri"` or `"tnpri"`; see this
+#'   file's header comment for what differs. `"nwpri"` implements NONMEM's
+#'   own `$PRIOR NWPRI` omega parameterization; `"tnpri"` treats an
+#'   `om.<eta>` member as the diagonal of `chol(Omega^-1)` rather than the
+#'   raw omega value (Monolix's Bayesian-estimation assumption, and
+#'   nlmixr2est's own FOCEI omega parameterization). Neither has a Cauchy
+#'   analogue, so both refuse one.
 #' @return list with `value` (scalar log density, summed over every prior
 #'   term), `gradTheta` (named numeric, d/dtheta) and `gradOmega` (a matrix
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was
@@ -462,7 +596,7 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri")) {
 #'
 #' rxPriorLogDensity(one.cmt, theta=c(tka=0.1, add.sd=0.5))
 #' }
-rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "nwpri")) {
+rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
   .iniDf <- ui$iniDf

@@ -8,7 +8,7 @@ rxPriorLogDensity(
   ui,
   theta = NULL,
   omega = NULL,
-  method = c("general", "nwpri")
+  method = c("general", "nwpri", "tnpri")
 )
 }
 \arguments{
@@ -24,9 +24,13 @@ of its blocks has a prior -- the underlying C kernel addresses omega
 positionally (the model's own eta numbering), not by submatrix, so a
 smaller matrix containing only the referenced block is not enough}
 
-\item{method}{\code{"general"} (default) or \code{"nwpri"}; see this file's header
-comment for what differs. \code{"nwpri"} implements NONMEM's own \verb{$PRIOR NWPRI} omega parameterization and refuses a Cauchy prior, which has no
-NONMEM analogue.}
+\item{method}{\code{"general"} (default), \code{"nwpri"} or \code{"tnpri"}; see this
+file's header comment for what differs. \code{"nwpri"} implements NONMEM's
+own \verb{$PRIOR NWPRI} omega parameterization; \code{"tnpri"} treats an
+\verb{om.<eta>} member as the diagonal of \code{chol(Omega^-1)} rather than the
+raw omega value (Monolix's Bayesian-estimation assumption, and
+nlmixr2est's own FOCEI omega parameterization). Neither has a Cauchy
+analogue, so both refuse one.}
 }
 \value{
 list with \code{value} (scalar log density, summed over every prior

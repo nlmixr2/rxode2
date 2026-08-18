@@ -9,10 +9,16 @@
   variability around the initial estimate. Supports `dnorm()`/`stdNormal()`,
   `dcauchy()` (bounds-truncated using the parameter's own `lower`/`upper`),
   the joint theta+omega `multiNormal()` block, and `invWishart()` degrees of
-  freedom on an omega block, with two methods: `"general"` (a textbook
-  Bayesian log density) and `"nwpri"` (NONMEM's own `$PRIOR NWPRI` omega
+  freedom on an omega block, with three methods: `"general"` (a textbook
+  Bayesian log density), `"nwpri"` (NONMEM's own `$PRIOR NWPRI` omega
   parameterization, NONMEM7 Technical Guide eq. 1.157/1.159/1.170, which is
-  not the same density as the textbook one and has no Cauchy analogue)
+  not the same density as the textbook one), and `"tnpri"` (the assumption
+  Monolix's Bayesian estimation and NONMEM's own estimation make -- an
+  `om.<eta>` member addresses the diagonal of `chol(Omega^-1)` rather than
+  the raw omega value, matching nlmixr2est's own FOCEI omega
+  parameterization, with the returned gradient chain-ruled back to the raw
+  omega scale so it also serves a method like SAEM that estimates omega
+  directly). Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue
   (nlmixr2/nlmixr2est#929).
 
   The value/gradient math itself (`rxPriorLogDensityEval()`) is pure C++

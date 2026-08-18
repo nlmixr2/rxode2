@@ -618,6 +618,135 @@ rxTest({
     expect_equal(rGeneral$gradTheta, rNwpri$gradTheta)
   })
 
+  ## method="tnpri": the NONMEM/Monolix assumption that all estimated
+  ## parameters -- including omega, via its inverse Cholesky -- are jointly
+  ## normal (matches nlmixr2est's own FOCEI parameterization,
+  ## op_focei.cholOmegaInv). Verified against central-difference numeric
+  ## gradients of the FULL Omega -> Omega^-1 -> chol(.) -> MVN pipeline,
+  ## not just internal consistency.
+
+  test_that("tnpri on a single 1x1 omega diagonal matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "eta.ka", "dnorm(1.0, 0.1)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    r <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    ## value: dnorm(chol(1/0.55), 1.0, 0.1, log=TRUE)
+    expect_equal(r$value, dnorm(sqrt(1 / 0.55), 1.0, 0.1, log=TRUE), tolerance=1e-8)
+    g <- .numGrad(function(v) {
+      om2 <- om; om2["eta.ka", "eta.ka"] <- v
+      rxPriorLogDensity(u, omega=om2, method="tnpri")$value
+    }, 0.55)
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), g, tolerance=1e-6)
+  })
+
+  test_that("tnpri on a joint 2x2 omega block (no theta anchor) matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(rxode2(function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        eta.cl + eta.v ~ c(0.30, 0.02, 0.10)
+        eta.ka ~ 0.6
+        add.sd <- 0.7
+        om.eta.cl + om.eta.v ~ c(0.9, 0.005, 0.7)
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }))
+    om <- u$omega
+    om["eta.cl", "eta.cl"] <- 0.35
+    om["eta.v", "eta.v"] <- 0.12
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.03
+    r <- rxPriorLogDensity(u, omega=om, method="tnpri")
+
+    f <- function(cl, v, cv) {
+      m <- om
+      m["eta.cl", "eta.cl"] <- cl; m["eta.v", "eta.v"] <- v
+      m["eta.cl", "eta.v"] <- m["eta.v", "eta.cl"] <- cv
+      rxPriorLogDensity(u, omega=m, method="tnpri")$value
+    }
+    eps <- 1e-6
+    g_cl <- (f(0.35 + eps, 0.12, 0.03) - f(0.35 - eps, 0.12, 0.03)) / (2 * eps)
+    g_v  <- (f(0.35, 0.12 + eps, 0.03) - f(0.35, 0.12 - eps, 0.03)) / (2 * eps)
+    g_cv <- (f(0.35, 0.12, 0.03 + eps) - f(0.35, 0.12, 0.03 - eps)) / (2 * eps)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance=1e-4)
+    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance=1e-4)
+    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance=1e-4)
+    ## a real (om.-only) joint block never touches eta.ka's own block
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), 0)
+  })
+
+  test_that("tnpri on a joint theta+omega block matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(rxode2(function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        eta.ka ~ 0.6
+        add.sd <- 0.7
+        tcl + om.eta.ka ~ c(0.02, 0.005, 0.03)
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        linCmt() ~ add(add.sd)
+      })
+    }))
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    r <- rxPriorLogDensity(u, theta=c(tcl=1.2), omega=om, method="tnpri")
+
+    gTheta <- .numGrad(function(v) {
+      rxPriorLogDensity(u, theta=c(tcl=v), omega=om, method="tnpri")$value
+    }, 1.2)
+    gOmega <- .numGrad(function(v) {
+      om2 <- om; om2["eta.ka", "eta.ka"] <- v
+      rxPriorLogDensity(u, theta=c(tcl=1.2), omega=om2, method="tnpri")$value
+    }, 0.55)
+    expect_equal(unname(r$gradTheta["tcl"]), gTheta, tolerance=1e-6)
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), gOmega, tolerance=1e-6)
+  })
+
+  test_that("tnpri and general give genuinely different omega values", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "eta.ka", "dnorm(1.0, 0.1)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    rGeneral <- rxPriorLogDensity(u, omega=om, method="general")
+    rTnpri <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    expect_false(isTRUE(all.equal(rGeneral$value, rTnpri$value)))
+  })
+
+  test_that("tnpri theta-only prior reuses the same multivariate-normal math as general", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
+    rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
+    rTnpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="tnpri")
+    expect_equal(rGeneral$value, rTnpri$value)
+    expect_equal(rGeneral$gradTheta, rTnpri$gradTheta)
+  })
+
+  test_that("a Cauchy prior is refused under method=\"tnpri\"", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
+    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="tnpri"), "TNPRI")
+  })
+
+  test_that("invWishart() is refused under method=\"tnpri\"", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    expect_error(rxPriorLogDensity(u, omega=om, method="tnpri"), "TNPRI method")
+  })
+
   test_that("rxPriorBuildSpec() returns a reusable external pointer", {
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")

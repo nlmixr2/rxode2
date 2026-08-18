@@ -230,15 +230,15 @@ static double evalMultiNormalTerm(const rx_prior_term_t &term, const double *the
   return -0.5 * n * std::log(2.0 * M_PI) - 0.5 * cholLogDet(L, n) - 0.5 * quad;
 }
 
-// Gather term's p x p omega submatrix (row-major) from the caller's array.
-static void gatherOmegaBlock(const rx_prior_term_t &term, const double *omega,
+// Gather a p x p omega submatrix (row-major) from the caller's array, for
+// the block whose (1-based, global) eta indices are blockEtaIdx[0..p-1].
+static void gatherOmegaBlock(const int *blockEtaIdx, int p, const double *omega,
                              int omegaDim, std::vector<double> &Om) {
-  int p = term.n;
   Om.assign((size_t)p * p, 0.0);
   for (int i = 0; i < p; ++i) {
-    int ei = term.etaIdx[i] - 1;
+    int ei = blockEtaIdx[i] - 1;
     for (int j = 0; j < p; ++j) {
-      int ej = term.etaIdx[j] - 1;
+      int ej = blockEtaIdx[j] - 1;
       Om[i * p + j] = omega[(size_t)ei * omegaDim + ej];
     }
   }
@@ -255,17 +255,70 @@ static void matMul(const double *A, const double *B, int p, std::vector<double> 
     }
 }
 
-// Scatter a p x p gradient matrix (row-major, from a term's own submatrix
-// numbering) into the caller's full-size gradOmega.
-static void scatterOmegaGrad(const rx_prior_term_t &term, const std::vector<double> &g,
+// A^T %*% B, all p x p, row-major.
+static void matMulT(const double *A, const double *B, int p, std::vector<double> &C) {
+  C.assign((size_t)p * p, 0.0);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      double sum = 0.0;
+      for (int k = 0; k < p; ++k) sum += A[k * p + i] * B[k * p + j];
+      C[i * p + j] = sum;
+    }
+}
+
+// Scatter a p x p gradient matrix (row-major) into the caller's full-size
+// gradOmega, for the block whose (1-based, global) eta indices are
+// blockEtaIdx[0..p-1].
+static void scatterOmegaGrad(const int *blockEtaIdx, const std::vector<double> &g,
                              int p, int omegaDim, double *gradOmega) {
   for (int i = 0; i < p; ++i) {
-    int ei = term.etaIdx[i] - 1;
+    int ei = blockEtaIdx[i] - 1;
     for (int j = 0; j < p; ++j) {
-      int ej = term.etaIdx[j] - 1;
+      int ej = blockEtaIdx[j] - 1;
       gradOmega[(size_t)ei * omegaDim + ej] += g[i * p + j];
     }
   }
+}
+
+// Inverse of a lower-triangular matrix L (n x n, row-major), via forward
+// substitution. Linv is itself lower triangular.
+static void triLowerInverse(const std::vector<double> &L, int n, std::vector<double> &Linv) {
+  Linv.assign((size_t)n * n, 0.0);
+  for (int j = 0; j < n; ++j) {
+    Linv[j * n + j] = 1.0 / L[j * n + j];
+    for (int i = j + 1; i < n; ++i) {
+      double s = 0.0;
+      for (int k = j; k < i; ++k) s += L[i * n + k] * Linv[k * n + j];
+      Linv[i * n + j] = -s / L[i * n + i];
+    }
+  }
+}
+
+// The "Cholesky backward" step: given A = L L^T (L lower triangular, from
+// cholesky()) and an upstream gradient Lbar (only the lower-triangular
+// entries of Lbar are meaningful), returns the equivalent gradient Abar
+// w.r.t. A -- Iain Murray, "Differentiation of the Cholesky decomposition"
+// (2016), eq. 8: S = L^T Lbar; P = Phi(S) (lower-triangular projection,
+// diagonal halved); Abar = L^-T P L^-1, symmetrized. Verified against
+// central-difference gradients of a full Omega -> Omega^-1 -> chol(.)
+// pipeline (both diagonal and off-diagonal entries) before use here.
+static void cholBackward(const std::vector<double> &L, const std::vector<double> &Lbar,
+                         int n, std::vector<double> &Abar) {
+  std::vector<double> S;
+  matMulT(L.data(), Lbar.data(), n, S); // L^T Lbar
+  std::vector<double> P((size_t)n * n, 0.0);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < i; ++j) P[i * n + j] = S[i * n + j];
+    P[i * n + i] = 0.5 * S[i * n + i];
+  }
+  std::vector<double> Linv;
+  triLowerInverse(L, n, Linv);
+  std::vector<double> LinvT_P, raw;
+  matMulT(Linv.data(), P.data(), n, LinvT_P); // Linv^T P
+  matMul(LinvT_P.data(), Linv.data(), n, raw); // (Linv^T P) Linv
+  Abar.assign((size_t)n * n, 0.0);
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j) Abar[i * n + j] = 0.5 * (raw[i * n + j] + raw[j * n + i]);
 }
 
 // Textbook inverse-Wishart(nu, Psi) log density (the "general" method).
@@ -313,7 +366,7 @@ static double evalInvWishartTerm(const rx_prior_term_t &term, const double *omeg
                                  int omegaDim, double *gradOmega) {
   int p = term.n;
   std::vector<double> Om;
-  gatherOmegaBlock(term, omega, omegaDim, Om);
+  gatherOmegaBlock(term.etaIdx, p, omega, omegaDim, Om);
   std::vector<double> Lom, Lpsi;
   if (!cholesky(Om.data(), p, Lom) || !cholesky(term.scale, p, Lpsi)) return -INFINITY;
   double logdetOm = cholLogDet(Lom, p), logdetPsi = cholLogDet(Lpsi, p);
@@ -330,7 +383,108 @@ static double evalInvWishartTerm(const rx_prior_term_t &term, const double *omeg
   double val = (term.type == 3) ?
     invWishartGeneralValueGrad(term, p, Oi, logdetOm, logdetPsi, tr, OiPsiOi, grad) :
     invWishartNwpriValueGrad(term, p, Oi, logdetOm, logdetPsi, tr, OiPsiOi, grad);
-  scatterOmegaGrad(term, grad, p, omegaDim, gradOmega);
+  scatterOmegaGrad(term.etaIdx, grad, p, omegaDim, gradOmega);
+  return val;
+}
+
+// Which block (0-based) and local diagonal position a type-5 member's
+// global eta index falls at. Block sizes are tiny (a handful of etas), so
+// a linear scan is the right tool.
+static void tnpriMemberBlockLocal(const rx_prior_term_t &term, int e,
+                                  int *block, int *local, int *blockOff) {
+  int off = 0;
+  for (int b = 0; b < term.nBlocks; ++b) {
+    int bd = term.blockDim[b];
+    const int *be = term.blockEtaIdx + off;
+    for (int i = 0; i < bd; ++i) {
+      if (be[i] == e) { *block = b; *local = i; *blockOff = off; return; }
+    }
+    off += bd;
+  }
+  *block = -1; *local = -1; *blockOff = -1; // unreachable for a well-formed spec
+}
+
+// type 5: a joint multivariate-normal block on the diagonal entries of one
+// or more omega blocks' chol(Omega_block^-1) -- the NONMEM/Monolix TNPRI
+// method (matches Monolix's Bayesian-estimation assumption that ALL
+// estimated parameters are jointly normal, and nlmixr2est's own FOCEI
+// parameterization of the omega optimization via chol(Omega^-1),
+// op_focei.cholOmegaInv in src/inner.cpp). The returned gradOmega is
+// ALWAYS in natural (raw) Omega-entry space, chain-ruled back from
+// chol(Omega^-1)-space via cholBackward() -- the same convention every
+// other omega-referencing term type here uses -- specifically so this one
+// kernel serves methods that reparameterize the omega optimization
+// differently: FOCEI (which works in cholOmegaInv-space and must chain
+// this once more, on its own) and SAEM (which estimates Omega directly and
+// can use this gradient as-is, with no further chain rule at all).
+// Returns -INFINITY (no gradient contribution) if any referenced block, or
+// its inverse, is not positive definite.
+static double evalTnpriTerm(const rx_prior_term_t &term, const double *theta,
+                            const double *omega, int omegaDim,
+                            double *gradTheta, double *gradOmega) {
+  int nb = term.nBlocks;
+  std::vector<std::vector<double> > L(nb), OmInv(nb);
+  std::vector<int> blockOff(nb);
+  int off = 0;
+  for (int b = 0; b < nb; ++b) {
+    blockOff[b] = off;
+    int bd = term.blockDim[b];
+    std::vector<double> Om;
+    gatherOmegaBlock(term.blockEtaIdx + off, bd, omega, omegaDim, Om);
+    std::vector<double> La;
+    if (!cholesky(Om.data(), bd, La)) return -INFINITY;
+    cholInverse(La, bd, OmInv[b]); // Omega_block^{-1}
+    if (!cholesky(OmInv[b].data(), bd, L[b])) return -INFINITY;
+    off += bd;
+  }
+
+  int n = term.n;
+  std::vector<double> x(n), d(n);
+  std::vector<int> memberBlock(n, -1), memberLocal(n, -1);
+  for (int k = 0; k < n; ++k) {
+    if (term.thetaIdx[k] > 0) {
+      x[k] = theta[term.thetaIdx[k] - 1];
+    } else {
+      int dummyOff;
+      tnpriMemberBlockLocal(term, term.etaIdx[k], &memberBlock[k], &memberLocal[k], &dummyOff);
+      int b = memberBlock[k], i = memberLocal[k], bd = term.blockDim[b];
+      x[k] = L[b][i * bd + i];
+    }
+    d[k] = x[k] - term.mu[k];
+  }
+
+  std::vector<double> Ls;
+  if (!cholesky(term.scale, n, Ls)) return -INFINITY;
+  std::vector<double> s;
+  cholSolve(Ls, n, d.data(), s); // Sigma^{-1} d
+  double quad = 0.0;
+  for (int k = 0; k < n; ++k) quad += d[k] * s[k];
+  double val = -0.5 * n * std::log(2.0 * M_PI) - 0.5 * cholLogDet(Ls, n) - 0.5 * quad;
+
+  std::vector<std::vector<double> > Lbar(nb);
+  for (int b = 0; b < nb; ++b) {
+    int bd = term.blockDim[b];
+    Lbar[b].assign((size_t)bd * bd, 0.0);
+  }
+  for (int k = 0; k < n; ++k) {
+    double g = -s[k];
+    if (term.thetaIdx[k] > 0) {
+      gradTheta[term.thetaIdx[k] - 1] += g;
+    } else {
+      int b = memberBlock[k], i = memberLocal[k], bd = term.blockDim[b];
+      Lbar[b][i * bd + i] += g;
+    }
+  }
+  for (int b = 0; b < nb; ++b) {
+    int bd = term.blockDim[b];
+    std::vector<double> Abar;
+    cholBackward(L[b], Lbar[b], bd, Abar);
+    std::vector<double> tmp, OmegaBar;
+    matMul(OmInv[b].data(), Abar.data(), bd, tmp);
+    matMul(tmp.data(), OmInv[b].data(), bd, OmegaBar);
+    for (size_t idx = 0; idx < OmegaBar.size(); ++idx) OmegaBar[idx] = -OmegaBar[idx];
+    scatterOmegaGrad(term.blockEtaIdx + blockOff[b], OmegaBar, bd, omegaDim, gradOmega);
+  }
   return val;
 }
 
@@ -348,6 +502,8 @@ extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
       val += evalMultiNormalTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     } else if (term.type == 3 || term.type == 4) {
       val += evalInvWishartTerm(term, omega, omegaDim, gradOmega);
+    } else if (term.type == 5) {
+      val += evalTnpriTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     }
   }
   return val;
@@ -369,6 +525,8 @@ static void rxPriorFreeSpec(void *specPtr) {
     delete[] spec->terms[t].etaIdx;
     delete[] spec->terms[t].mu;
     delete[] spec->terms[t].scale;
+    delete[] spec->terms[t].blockDim;
+    delete[] spec->terms[t].blockEtaIdx;
   }
   delete[] spec->terms;
   delete spec;
@@ -387,21 +545,25 @@ static void _rxode2_rxPriorFreeSpecFinalizer(SEXP specSEXP) {
   R_ClearExternalPtr(specSEXP);
 }
 
-// specList: type, n (integer, one per term), thetaIdx, etaIdx (integer,
-// concatenated across terms, length sum(n)), mu, scale (numeric,
+// specList: type, n, nBlocks (integer, one per term), thetaIdx, etaIdx
+// (integer, concatenated across terms, length sum(n)), mu, scale (numeric,
 // concatenated; scale is n*n per term, row-major, back to back), lower,
-// upper, nu (numeric, one per term).
+// upper, nu (numeric, one per term), blockDim (integer, concatenated
+// across terms, length sum(nBlocks)), blockEtaIdx (integer, concatenated
+// across every term's every block, length sum(sum(blockDim) per term));
+// blockDim/blockEtaIdx are type-5 (tnpri) only, empty vectors otherwise.
 extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
   SEXP typeS = VECTOR_ELT(specList, 0), nS = VECTOR_ELT(specList, 1),
     thetaIdxS = VECTOR_ELT(specList, 2), etaIdxS = VECTOR_ELT(specList, 3),
     muS = VECTOR_ELT(specList, 4), scaleS = VECTOR_ELT(specList, 5),
     lowerS = VECTOR_ELT(specList, 6), upperS = VECTOR_ELT(specList, 7),
-    nuS = VECTOR_ELT(specList, 8);
+    nuS = VECTOR_ELT(specList, 8), nBlocksS = VECTOR_ELT(specList, 9),
+    blockDimS = VECTOR_ELT(specList, 10), blockEtaIdxS = VECTOR_ELT(specList, 11);
   int nTerms = LENGTH(typeS);
   rx_prior_spec_t *spec = new rx_prior_spec_t;
   spec->nTerms = nTerms;
   spec->terms = new rx_prior_term_t[nTerms];
-  int memberOff = 0, scaleOff = 0;
+  int memberOff = 0, scaleOff = 0, blockDimOff = 0, blockEtaOff = 0;
   for (int t = 0; t < nTerms; ++t) {
     rx_prior_term_t &term = spec->terms[t];
     term.type = INTEGER(typeS)[t];
@@ -420,8 +582,21 @@ extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
     term.lower = REAL(lowerS)[t];
     term.upper = REAL(upperS)[t];
     term.nu = REAL(nuS)[t];
+    term.nBlocks = INTEGER(nBlocksS)[t];
+    term.blockDim = new int[term.nBlocks];
+    int nBlockEta = 0;
+    for (int b = 0; b < term.nBlocks; ++b) {
+      term.blockDim[b] = INTEGER(blockDimS)[blockDimOff + b];
+      nBlockEta += term.blockDim[b];
+    }
+    term.blockEtaIdx = new int[nBlockEta];
+    for (int k = 0; k < nBlockEta; ++k) {
+      term.blockEtaIdx[k] = INTEGER(blockEtaIdxS)[blockEtaOff + k];
+    }
     memberOff += term.n;
     scaleOff += nScale;
+    blockDimOff += term.nBlocks;
+    blockEtaOff += nBlockEta;
   }
   SEXP ret = PROTECT(R_MakeExternalPtr(spec, R_NilValue, R_NilValue));
   R_RegisterCFinalizerEx(ret, _rxode2_rxPriorFreeSpecFinalizer, TRUE);
