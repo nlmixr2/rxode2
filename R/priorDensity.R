@@ -39,22 +39,20 @@
 ##   gradient (see the `type` comment on `rx_prior_term_t`,
 ##   `inst/include/rxode2prior.h`, for the derivation).
 ## - `"tnpri"`: the assumption Monolix's Bayesian estimation makes (all
-##   estimated parameters are jointly normal) and that NONMEM's own
-##   estimation applies to omega via its inverse Cholesky, the same way
-##   nlmixr2est's own FOCEI already parameterizes the omega optimization
-##   (`op_focei.cholOmegaInv`, `src/inner.cpp`). An `om.<eta>` member in a
-##   joint `multiNormal()`-style block (`tcl + om.eta.cl ~ c(...)`, or
-##   several `om.<eta>` members together, eg `om.eta1 + om.eta2 ~ c(1, 0.1,
-##   1)`, which is how a correlation between two etas' Cholesky diagonals
-##   enters -- there is no way to name an off-diagonal Cholesky entry
-##   directly) addresses the diagonal of `chol(Omega_block^-1)` rather than
-##   the raw omega value. The returned `gradOmega` is still always in raw
-##   (natural) Omega-entry space, chain-ruled back from Cholesky space (see
-##   `rxode2prior.h`) -- deliberately so, since that lets one kernel serve
-##   both a method that reparameterizes the omega optimization this same
-##   way (FOCEI, which chain-rules once more on its own) and one that
-##   doesn't (SAEM, which estimates Omega directly and uses this gradient
-##   as-is).
+##   estimated parameters are jointly normal), which NONMEM's own $SIML
+##   TNPRI recipe ("Appendix I: Note on TNPRI") applies to omega on its
+##   Cholesky scale ONLY BECAUSE it is sampling values that must stay
+##   positive definite -- the PRIOR ITSELF is still specified, and
+##   evaluated, on the raw omega value, exactly like `"general"` already
+##   does for an `om.<eta>` member (same `type=0`/`type=2` terms; there is
+##   no Cholesky decomposition anywhere in this kernel). `chol(Omega^-1)`
+##   is entirely a CALLER's own affair: nlmixr2est's FOCEI varies
+##   `op_focei.cholOmegaInv` internally (`src/inner.cpp`), so it has to
+##   reconstruct Omega from that state before calling this kernel, and
+##   chain-rule the Omega-space gradient this kernel returns back into its
+##   own `cholOmegaInv`-space afterward -- this kernel never does that
+##   conversion. A method that estimates Omega directly (SAEM) uses the
+##   returned gradient as-is.
 ##
 ## Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so both refuse
 ## one; `"tnpri"` also refuses `invWishart()` (that is `"nwpri"`'s own
@@ -72,7 +70,7 @@
 #'
 #' @noRd
 .rxPriorTermTypeCode <- c(normal=0L, cauchy=1L, multiNormal=2L,
-                          invWishart=3L, invWishartNwpri=4L, tnpri=5L)
+                          invWishart=3L, invWishartNwpri=4L)
 
 #' The covariance matrix a `multiNormal()` prior carries, without going
 #' through `lotri::lotri()`'s own validation
@@ -82,8 +80,9 @@
 #' recognizes as an already-known parameter -- fine for a block anchored by
 #' a real theta (`tcl + om.eta.ka ~ c(...)`), but `lotri::lotri()` refuses
 #' a block whose members are ALL `om.<eta>` on their own (`om.eta1 +
-#' om.eta2 ~ c(...)`, exactly the "tnpri" joint-omega case), with "prior
-#' given for unknown parameter(s)". This reads the same embedded lower-
+#' om.eta2 ~ c(...)`), with "prior given for unknown parameter(s)" -- under
+#' any method, since raw omega values are what a joint block always
+#' addresses here. This reads the same embedded lower-
 #' triangular vector directly and fills the matrix by hand (column-major
 #' lower triangle including the diagonal -- the same convention every
 #' `lotri`-built covariance in this ecosystem already uses, eg `eta.cl +
@@ -304,15 +303,10 @@
       }, character(1), USE.NAMES=FALSE)
       dimnames(.cov) <- list(.nm, .nm)
       .seenPrior <- .rxPriorMarkSeen(.seenPrior, .nm, .prior)
-      .omMembers <- .nm[startsWith(.nm, "om.")]
-      if (identical(method, "tnpri") && length(.omMembers) > 0L) {
-        .blocks <- .rxPriorTnpriBlocks(ui, substring(.omMembers, 4))
-        .terms[[length(.terms) + 1L]] <- list(type="tnpri", names=.nm,
-                                              mu=.mu, Sigma=.cov, blocks=.blocks)
-      } else {
-        .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
-                                              mu=.mu, Sigma=.cov)
-      }
+      ## "tnpri" builds the exact same term as "general" here -- the prior
+      ## is on the raw omega value either way; see the file header comment
+      .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
+                                            mu=.mu, Sigma=.cov)
       .seen <- c(.seen, .nm)
       next
     }
@@ -332,17 +326,10 @@
           .rxPriorDensityStop(.key, .prior, "the parameters could not be read back")
         }
       }
-      if (identical(method, "tnpri") && .isOmega) {
-        .blocks <- .rxPriorTnpriBlocks(ui, .name)
-        .terms[[length(.terms) + 1L]] <- list(
-          type="tnpri", names=.key, mu=as.double(.mu), Sigma=matrix(as.double(.sd)^2, 1, 1),
-          blocks=.blocks)
-      } else {
-        .terms[[length(.terms) + 1L]] <- list(
-          type=if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
-          names=.key, mu=as.double(.mu), sd=as.double(.sd),
-          lower=.iniDf$lower[.i], upper=.iniDf$upper[.i])
-      }
+      .terms[[length(.terms) + 1L]] <- list(
+        type=if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
+        names=.key, mu=as.double(.mu), sd=as.double(.sd),
+        lower=.iniDf$lower[.i], upper=.iniDf$upper[.i])
       .seen <- c(.seen, .key)
       next
     }
@@ -408,35 +395,6 @@
   }
 }
 
-#' The distinct omega blocks a `"tnpri"` term's `om.<eta>` members span
-#'
-#' A block has to be handled in full for its Cholesky (`Omega^-1`'s
-#' Cholesky depends on every entry, referenced by a prior or not), so this
-#' returns each distinct block's full eta index list, deduplicated -- two
-#' members of the same block only produce one block entry.
-#'
-#' @param ui rxode2 ui model
-#' @param etaNames character vector of eta names (no `om.` prefix)
-#' @return list of `list(dim=, etaIdx=)`, one per distinct block
-#' @noRd
-#' @author Matthew L. Fidler
-.rxPriorTnpriBlocks <- function(ui, etaNames) {
-  .seen <- character(0)
-  .blocks <- list()
-  for (.eta in etaNames) {
-    if (.eta %in% .seen) next
-    .blk <- .rxPriorOmegaBlockFor(ui, .eta)
-    if (is.null(.blk)) {
-      stop("could not find the omega block for '", .eta, "'", call.=FALSE)
-    }
-    .nm <- dimnames(.blk)[[1]]
-    .idx <- vapply(.nm, function(n) .rxPriorKeyIndex(ui, paste0("om.", n))$etaIdx, integer(1))
-    .blocks[[length(.blocks) + 1L]] <- list(dim=length(.nm), etaIdx=as.integer(.idx))
-    .seen <- c(.seen, .nm)
-  }
-  .blocks
-}
-
 #' Flatten `.rxPriorDensityTerms()`'s output into `_rxode2_rxPriorBuildSpec()`'s
 #' plain-vector representation
 #'
@@ -451,7 +409,6 @@
   .thetaIdx <- integer(0); .etaIdx <- integer(0)
   .mu <- numeric(0); .scale <- numeric(0)
   .lower <- numeric(0); .upper <- numeric(0); .nu <- numeric(0)
-  .nBlocks <- integer(0); .blockDim <- integer(0); .blockEtaIdx <- integer(0)
   ## validate the omega numbering is dense (see .rxPriorEtaOrder()) before
   ## computing any etaIdx from it -- only when a term actually needs it, so
   ## a model with unusual (but unused) omega structure stays a no-op
@@ -470,8 +427,7 @@
       .lower <- c(.lower, .t$lower)
       .upper <- c(.upper, .t$upper)
       .nu <- c(.nu, 0)
-      .nBlocks <- c(.nBlocks, 0L)
-    } else if (.t$type %in% c("multiNormal", "tnpri")) {
+    } else if (identical(.t$type, "multiNormal")) {
       .mu <- c(.mu, .t$mu)
       ## Sigma is symmetric, so the column-major flatten R gives is already
       ## the row-major flatten src/priorDensity.cpp expects
@@ -479,25 +435,16 @@
       .lower <- c(.lower, -Inf)
       .upper <- c(.upper, Inf)
       .nu <- c(.nu, 0)
-      if (identical(.t$type, "tnpri")) {
-        .nBlocks <- c(.nBlocks, length(.t$blocks))
-        .blockDim <- c(.blockDim, vapply(.t$blocks, `[[`, integer(1), "dim"))
-        .blockEtaIdx <- c(.blockEtaIdx, unlist(lapply(.t$blocks, `[[`, "etaIdx")))
-      } else {
-        .nBlocks <- c(.nBlocks, 0L)
-      }
     } else {
       .mu <- c(.mu, rep(0, length(.t$names)))
       .scale <- c(.scale, as.numeric(.t$Psi))
       .lower <- c(.lower, -Inf)
       .upper <- c(.upper, Inf)
       .nu <- c(.nu, .t$nu)
-      .nBlocks <- c(.nBlocks, 0L)
     }
   }
   list(type=.type, n=.n, thetaIdx=.thetaIdx, etaIdx=.etaIdx, mu=.mu, scale=.scale,
-       lower=.lower, upper=.upper, nu=.nu, nBlocks=.nBlocks, blockDim=.blockDim,
-       blockEtaIdx=.blockEtaIdx)
+       lower=.lower, upper=.upper, nu=.nu)
 }
 
 #' Build the C spec `rxPriorLogDensityEval()` (and the C API) evaluates
@@ -556,11 +503,12 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
 #'   smaller matrix containing only the referenced block is not enough
 #' @param method `"general"` (default), `"nwpri"` or `"tnpri"`; see this
 #'   file's header comment for what differs. `"nwpri"` implements NONMEM's
-#'   own `$PRIOR NWPRI` omega parameterization; `"tnpri"` treats an
-#'   `om.<eta>` member as the diagonal of `chol(Omega^-1)` rather than the
-#'   raw omega value (Monolix's Bayesian-estimation assumption, and
-#'   nlmixr2est's own FOCEI omega parameterization). Neither has a Cauchy
-#'   analogue, so both refuse one.
+#'   own `$PRIOR NWPRI` omega parameterization; `"tnpri"` is the same
+#'   raw-omega `om.<eta>` treatment as `"general"` (Monolix's
+#'   Bayesian-estimation assumption is on the natural parameter, same as
+#'   here -- `chol(Omega^-1)` is FOCEI's own internal affair, not this
+#'   kernel's). Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so
+#'   both refuse one.
 #' @return list with `value` (scalar log density, summed over every prior
 #'   term), `gradTheta` (named numeric, d/dtheta) and `gradOmega` (a matrix
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was
@@ -655,6 +603,49 @@ rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "n
     dimnames(.gradOmega) <- dimnames(omega)
   }
   list(value=.r[[1]], gradTheta=.gradTheta, gradOmega=.gradOmega)
+}
+
+#' Chain-rule a natural-scale omega gradient into FOCEI's cholOmegaInv scale
+#'
+#' `rxPriorLogDensity()`'s `gradOmega` is always on the raw omega scale --
+#' the prior itself is defined there, for every method (see this file's
+#' header comment). A caller whose optimizer varies
+#' `chol(Omega^-1)` internally instead (FOCEI's `op_focei.cholOmegaInv`,
+#' `nlmixr2est/src/inner.cpp`) still needs that gradient chain-ruled into its
+#' own parameterization; a method that estimates Omega directly (SAEM) uses
+#' `gradOmega` as-is and does not need this. This is a thin shim over the
+#' pure C++ `rxPriorOmegaToCholOmegaInvGrad()` (`inst/include/rxode2prior.h`),
+#' exposed the same way for a downstream package's own C++ objective.
+#'
+#' @param omega a single omega block (p x p numeric matrix, positive
+#'   definite)
+#' @param gradOmega the corresponding block of `rxPriorLogDensity()`'s
+#'   `gradOmega`, i.e. `gradOmega[block, block]` (p x p, symmetric)
+#' @return p x p matrix, the gradient with respect to the upper-triangular
+#'   free elements of `U = chol(solve(omega))` (`omega^-1 = t(U) %*% U`);
+#'   its strict lower triangle is exactly 0 since those entries address no
+#'   free parameter of `U`. `NULL` if `omega` is not positive definite.
+#' @family Assertions
+#' @author Matthew L. Fidler
+#' @export
+#' @examples
+#'
+#' \donttest{
+#' omega <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+#' gradOmega <- matrix(c(1, 0.2, 0.2, -0.5), 2, 2)
+#' rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
+#' }
+rxPriorOmegaToCholOmegaInvGrad <- function(omega, gradOmega) {
+  .p <- nrow(omega)
+  if (.p != ncol(omega) || !identical(dim(omega), dim(gradOmega))) {
+    stop("'omega' and 'gradOmega' must be square matrices of the same dimension",
+         call.=FALSE)
+  }
+  .ret <- .Call(`_rxode2_rxPriorOmegaToCholOmegaInvGrad`, matrix(as.numeric(omega), .p, .p),
+               matrix(as.numeric(gradOmega), .p, .p))
+  if (is.null(.ret)) return(NULL)
+  dimnames(.ret) <- dimnames(omega)
+  .ret
 }
 
 #' The current value of a population-parameter prior term's key

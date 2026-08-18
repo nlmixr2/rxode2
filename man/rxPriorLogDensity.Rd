@@ -26,11 +26,12 @@ smaller matrix containing only the referenced block is not enough}
 
 \item{method}{\code{"general"} (default), \code{"nwpri"} or \code{"tnpri"}; see this
 file's header comment for what differs. \code{"nwpri"} implements NONMEM's
-own \verb{$PRIOR NWPRI} omega parameterization; \code{"tnpri"} treats an
-\verb{om.<eta>} member as the diagonal of \code{chol(Omega^-1)} rather than the
-raw omega value (Monolix's Bayesian-estimation assumption, and
-nlmixr2est's own FOCEI omega parameterization). Neither has a Cauchy
-analogue, so both refuse one.}
+own \verb{$PRIOR NWPRI} omega parameterization; \code{"tnpri"} is the same
+raw-omega \verb{om.<eta>} treatment as \code{"general"} (Monolix's
+Bayesian-estimation assumption is on the natural parameter, same as
+here -- \code{chol(Omega^-1)} is FOCEI's own internal affair, not this
+kernel's). Neither \code{"nwpri"} nor \code{"tnpri"} has a Cauchy analogue, so
+both refuse one.}
 }
 \value{
 list with \code{value} (scalar log density, summed over every prior
@@ -101,6 +102,7 @@ Other Assertions:
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
 \code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}

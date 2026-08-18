@@ -14,7 +14,7 @@ extern "C" {
 
 // One prior term: a single (possibly truncated) normal/Cauchy penalty on
 // one member, a joint multivariate-normal block (spanning population
-// parameters and/or omega diagonal elements), an inverse-Wishart
+// parameters and/or omega diagonal elements), or an inverse-Wishart
 // degrees-of-freedom penalty on an omega block -- either the textbook
 // inverse-Wishart density (type 3, the "general" method) or NONMEM's own
 // $PRIOR NWPRI parameterization (type 4, the "nwpri" method), which are
@@ -24,38 +24,42 @@ extern "C" {
 // not rho/Psi directly -- deriving type 4 by plugging those into the
 // type-3 formula gives the wrong answer (rederiving eq. 1.157 directly and
 // simplifying eq. 1.159 with d_W-n-1=rho both agree on the closed form
-// type 4 actually implements) -- or a joint multivariate-normal block on
-// the DIAGONAL entries of chol(Omega^-1) rather than on the raw omega
-// values (type 5, the "tnpri" method, matching how nlmixr2est's own FOCEI
-// already parameterizes the omega optimization -- op_focei.cholOmegaInv,
-// src/inner.cpp -- and the analogous assumption Monolix's Bayesian
-// estimation makes). Type 5's members address a POSITION IN A CHOLESKY
-// FACTOR, not a raw omega value, so it carries its own block bookkeeping
-// (nBlocks/blockDim/blockEtaIdx below); there is no direct way to name an
-// off-diagonal Cholesky entry -- the correlation between two omega
-// elements' diagonal Cholesky entries only ever enters through the joint
-// term's own Sigma (eg `om.eta1 + om.eta2 ~ c(1, 0.1, 1)`), the same way
-// type 2 already lets multiple members covary. Neither type 4 nor type 5
-// has a Cauchy analogue -- type 1 exists only for the "general" method.
+// type 4 actually implements). Neither has a Cauchy analogue -- type 1
+// exists only for the "general" method.
+//
+// A "tnpri" prior (Monolix's Bayesian-estimation assumption that ALL
+// estimated parameters are jointly normal, and NONMEM's own estimation
+// applies the same assumption to omega) needs NO term type of its own:
+// the prior is specified, and evaluated, on the RAW omega value, exactly
+// like type 0/2 already do for a "general" om.<eta> member -- there is no
+// Cholesky decomposition anywhere in the TERM EVALUATION. R/priorDensity.R's
+// "tnpri" method therefore builds the exact same type 0/2 terms "general"
+// would for an om.<eta> member; the only difference is which distributions
+// it refuses (Cauchy, like "nwpri", and invWishart(), which is "nwpri"'s
+// own mechanism).
+//
+// A caller whose optimizer varies cholOmegaInv internally instead of Omega
+// itself (FOCEI, op_focei.cholOmegaInv in nlmixr2est/src/inner.cpp) still
+// needs the natural-scale gradient this kernel returns chain-ruled into its
+// own parameterization -- that conversion (NOT part of evaluating the
+// prior itself) is rxPriorOmegaToCholOmegaInvGrad() below. A method that
+// estimates Omega directly (SAEM) skips that step and uses the returned
+// gradOmega as-is.
 //
 // `thetaIdx[k]`/`etaIdx[k]` are 1-based positions in the caller's own
 // `theta`/`omega` arrays for member `k` (exactly one of the pair is
 // nonzero) -- the same `ntheta`/`neta1` numbering rxode2's `iniDf` already
 // assigns, which is also the numbering nlmixr2est's own op_focei uses for
 // its theta vector and omega matrix, so the evaluator never needs a name
-// lookup. For type 5, `etaIdx[k]` still means "the diagonal position for
-// this eta", just interpreted as addressing chol(Omega_block^-1)[i,i]
-// rather than Omega[i,i] directly -- which block, and that block's other
-// (possibly unreferenced) members, come from `blockDim`/`blockEtaIdx`.
+// lookup.
 typedef struct rx_prior_term_t {
   int type;      // 0=normal, 1=cauchy, 2=multiNormal, 3=invWishart (general),
-                 // 4=invWishart (NONMEM NWPRI), 5=multiNormal on chol(Omega^-1)
-                 // diagonal (NONMEM/Monolix TNPRI)
+                 // 4=invWishart (NONMEM NWPRI)
   int n;         // number of members (1 for normal/cauchy)
   int *thetaIdx; // length n; 0 when member k is an omega element
   int *etaIdx;   // length n; 0 when member k is a population parameter
   double *mu;    // length n; unused (NULL) for invWishart
-  double *scale; // normal/cauchy: length-1 sd/scale. multiNormal/tnpri: n*n
+  double *scale; // normal/cauchy: length-1 sd/scale. multiNormal: n*n
                  // row-major covariance Sigma. invWishart (3 or 4): n*n
                  // row-major scale matrix Psi (the block's own ini() values).
   double lower;  // truncation bounds (normal/cauchy only; +-Inf otherwise)
@@ -63,15 +67,6 @@ typedef struct rx_prior_term_t {
   double nu;     // invWishart (3): classical degrees of freedom. invWishart
                  // (4): NONMEM's "rho" -- the invWishart(rho) argument as
                  // written, i.e. NOT d_W.
-  // type 5 (tnpri) only: the distinct omega blocks this term's members
-  // span. A block must be handled in full (Omega_block^-1 and its
-  // Cholesky depend on every entry, referenced or not), so each block
-  // carries its own full eta index list, in local (Cholesky row/col)
-  // order. Concatenated across blocks, length sum(blockDim); block b's
-  // slice starts at sum(blockDim[0..b-1]).
-  int nBlocks;
-  int *blockDim;     // length nBlocks
-  int *blockEtaIdx;  // length sum(blockDim)
 } rx_prior_term_t;
 
 typedef struct rx_prior_spec_t {
@@ -115,6 +110,31 @@ double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
                               const double *theta, int thetaLen,
                               const double *omega, int omegaDim,
                               double *gradTheta, double *gradOmega);
+
+// Chain-rules a natural (raw omega-scale) gradient for ONE omega block --
+// from rxPriorLogDensityEval()'s gradOmega, or from anywhere else -- into
+// the equivalent gradient w.r.t. that block's own
+// U = chol(Omega_block^-1) (upper triangular, Omega_block^-1 = U^T U,
+// nlmixr2est's own op_focei.cholOmegaInv convention -- src/rxInv.cpp's
+// rxToCholOmega() treats it as trimatu()). Not specific to any prior term
+// type: ANY omega-space gradient a caller has needs this same conversion
+// to be usable by an optimizer that varies cholOmegaInv directly (FOCEI).
+//
+// Derived via the standard matrix-inverse VJP (Abar = -Omega Gbar Omega,
+// since Omega = (Omega^-1)^-1) composed with the VJP of A = U^T U
+// (Ubar = upperTriangle(2 U Abar)); verified against central-difference
+// gradients of the full U -> Omega(U) -> objective pipeline before use
+// here.
+//
+// omegaBlock/gradOmegaBlock are the block's own p x p row-major
+// submatrices (gradOmegaBlock symmetric); gradCholOmegaInv (output, p x p
+// row-major) is populated in full, with its strict lower triangle (which
+// addresses no free parameter of U) set to exactly 0. Returns false
+// (gradCholOmegaInv untouched) if omegaBlock is not positive definite. No
+// R/Rcpp call of any kind -- safe to call from any OpenMP thread.
+bool rxPriorOmegaToCholOmegaInvGrad(const double *omegaBlock, int p,
+                                    const double *gradOmegaBlock,
+                                    double *gradCholOmegaInv);
 
 #if defined(__cplusplus)
 }

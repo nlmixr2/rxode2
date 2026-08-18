@@ -13,13 +13,11 @@
   Bayesian log density), `"nwpri"` (NONMEM's own `$PRIOR NWPRI` omega
   parameterization, NONMEM7 Technical Guide eq. 1.157/1.159/1.170, which is
   not the same density as the textbook one), and `"tnpri"` (the assumption
-  Monolix's Bayesian estimation and NONMEM's own estimation make -- an
-  `om.<eta>` member addresses the diagonal of `chol(Omega^-1)` rather than
-  the raw omega value, matching nlmixr2est's own FOCEI omega
-  parameterization, with the returned gradient chain-ruled back to the raw
-  omega scale so it also serves a method like SAEM that estimates omega
-  directly). Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue
-  (nlmixr2/nlmixr2est#929).
+  Monolix's Bayesian estimation and NONMEM's own estimation make -- all
+  estimated parameters, including omega, are jointly normal; an `om.<eta>`
+  member is on the same raw omega scale as `"general"`, since neither
+  Monolix nor NONMEM place the prior on a Cholesky factor). Neither
+  `"nwpri"` nor `"tnpri"` has a Cauchy analogue (nlmixr2/nlmixr2est#929).
 
   The value/gradient math itself (`rxPriorLogDensityEval()`) is pure C++
   with no R/Rcpp call of any kind, added to rxode2's C function-pointer
@@ -28,6 +26,16 @@
   region -- `rxPriorLogDensity()` is a thin R convenience wrapper over it.
   `rxPriorBuildSpec(ui, method)` builds the reusable spec the evaluator
   needs (an R-only, one-time, main-thread step).
+
+  `rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)` chain-rules a
+  raw-omega-scale gradient (from `rxPriorLogDensity()`, or from anywhere
+  else) into the equivalent gradient with respect to the upper-triangular
+  free elements of `chol(Omega^-1)` -- the parameterization FOCEI's own
+  `op_focei.cholOmegaInv` varies internally (`nlmixr2est/src/inner.cpp`).
+  A method that estimates omega directly (SAEM) does not need this
+  conversion. Like the density kernel itself, the underlying
+  `rxPriorOmegaToCholOmegaInvGrad()` C++ function is pure, with no R/Rcpp
+  call, and is exposed through the same function-pointer table.
 
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
