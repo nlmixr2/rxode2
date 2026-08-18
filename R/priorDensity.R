@@ -29,6 +29,43 @@
 .rxPriorDensityStanNames <- c("normal", "std_normal", "cauchy",
                               "multi_normal", "inv_wishart")
 
+#' log(F(upper) - F(lower)), stable even when the window sits deep in a tail
+#'
+#' `log(pf(upper) - pf(lower))` catastrophically cancels once both calls
+#' round to the same double (eg `dnorm(0, 1)` truncated to `[10, Inf)`: both
+#' `pnorm()` calls round to 1, the difference is exactly 0, and `log(0)` -
+#' subtracted off - turns the density into `+Inf` instead of the correct
+#' large-but-finite tail value). Picking whichever tail keeps both
+#' log-probabilities away from `log(1)` and subtracting in log space (the
+#' standard `log1p(-exp(lb - la))` trick) avoids that.
+#'
+#' @param pf a CDF function with the `pnorm()`/`pcauchy()` signature
+#'   (`pf(q, ..., lower.tail=, log.p=)`)
+#' @param lower,upper truncation bounds (either may be infinite)
+#' @param center the distribution's own location (mean/location), which
+#'   side of it `lower`/`upper` fall on decides which tail is stable
+#' @param ... the distribution's own parameters, passed on to `pf`
+#' @return scalar; `-Inf` when the window truly carries no mass
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorLogCdfDiff <- function(pf, lower, upper, center, ...) {
+  if (!is.finite(lower) && !is.finite(upper)) return(0)
+  if (!is.finite(lower)) return(pf(upper, ..., lower.tail=TRUE, log.p=TRUE))
+  if (!is.finite(upper)) return(pf(lower, ..., lower.tail=FALSE, log.p=TRUE))
+  if (upper <= center) {
+    .la <- pf(upper, ..., lower.tail=TRUE, log.p=TRUE)
+    .lb <- pf(lower, ..., lower.tail=TRUE, log.p=TRUE)
+  } else if (lower >= center) {
+    .la <- pf(lower, ..., lower.tail=FALSE, log.p=TRUE)
+    .lb <- pf(upper, ..., lower.tail=FALSE, log.p=TRUE)
+  } else {
+    ## the window straddles the center: neither tail probability is close
+    ## to 0 or 1, so the plain difference does not need the log-space form
+    return(log(pf(upper, ...) - pf(lower, ...)))
+  }
+  .la + log1p(-exp(.lb - .la))
+}
+
 #' log density and derivative of a (possibly truncated) univariate normal
 #'
 #' @param x value
@@ -41,7 +78,7 @@
   z <- (x - mean) / sd
   .val <- -log(sd) - 0.5 * log(2 * pi) - 0.5 * z * z
   if (is.finite(lower) || is.finite(upper)) {
-    .val <- .val - log(stats::pnorm(upper, mean, sd) - stats::pnorm(lower, mean, sd))
+    .val <- .val - .rxPriorLogCdfDiff(stats::pnorm, lower, upper, mean, mean=mean, sd=sd)
   }
   list(value=.val, grad=-(x - mean) / (sd * sd))
 }
@@ -57,8 +94,8 @@
   z <- (x - location) / scale
   .val <- -log(pi) - log(scale) - log1p(z * z)
   if (is.finite(lower) || is.finite(upper)) {
-    .val <- .val - log(stats::pcauchy(upper, location, scale) -
-                          stats::pcauchy(lower, location, scale))
+    .val <- .val - .rxPriorLogCdfDiff(stats::pcauchy, lower, upper, location,
+                                      location=location, scale=scale)
   }
   list(value=.val, grad=-2 * (x - location) / (scale * scale * (1 + z * z)))
 }
@@ -134,6 +171,34 @@
   NULL
 }
 
+#' Record that these keys now carry `prior`, erroring on a conflict
+#'
+#' A block prior (`multiNormal()`/`invWishart()`) can name a member whose
+#' own `iniDf` row was already processed under a *different* prior text --
+#' not reachable through real `ini()` syntax (`lotri` itself refuses two
+#' priors on one parameter), but a hand-edited or piped `iniDf` can still
+#' reach it, and it must be a clear error rather than one prior silently
+#' overwriting or summing with the other.
+#'
+#' @param seenPrior named character accumulator so far (`key` -> prior text)
+#' @param keys keys about to be recorded
+#' @param prior the prior text they are being recorded under
+#' @return the updated `seenPrior`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorMarkSeen <- function(seenPrior, keys, prior) {
+  .old <- unname(seenPrior[keys])
+  .conflict <- !is.na(.old) & .old != prior
+  if (any(.conflict)) {
+    stop("'", paste(keys[.conflict], collapse="', '"), "' carries two ",
+         "different priors ('", paste(unique(.old[.conflict]), collapse="', '"),
+         "' and '", prior, "'); this can only happen on a hand-edited or ",
+         "piped 'iniDf'", call.=FALSE)
+  }
+  seenPrior[keys] <- prior
+  seenPrior
+}
+
 #' Build one prior term per `iniDf` row (or row group) that carries a prior
 #'
 #' Unlike `.rxPriorThetaMat()`/`.rxPriorOmegaNu()` (`prior-sim.R`), the
@@ -154,6 +219,7 @@
   .w <- which(!is.na(.iniDf$prior))
   .terms <- list()
   .seen <- character(0)
+  .seenPrior <- character(0)
   for (.i in .w) {
     .isOmega <- !is.na(.iniDf$neta1[.i])
     if (.isOmega && .iniDf$neta1[.i] != .iniDf$neta2[.i]) {
@@ -161,9 +227,18 @@
            "') is not supported", call.=FALSE)
     }
     .name <- .iniDf$name[.i]
+    if (!.isOmega && startsWith(.name, "om.")) {
+      ## `om.<eta>` is how this kernel spells an omega diagonal element
+      ## internally (matching `.rxPriorThetaMat()`); a population
+      ## parameter that happens to be named that way would be ambiguous
+      stop("the population parameter '", .name, "' collides with this ",
+           "kernel's internal 'om.<eta>' spelling of an omega element; ",
+           "rename the parameter", call.=FALSE)
+    }
     .key <- if (.isOmega) paste0("om.", .name) else .name
-    if (.key %in% .seen) next
     .prior <- .iniDf$prior[.i]
+    .seenPrior <- .rxPriorMarkSeen(.seenPrior, .key, .prior)
+    if (.key %in% .seen) next
     .p <- .rxPriorParse(.prior)
     if (is.null(.p) || is.na(.p$stanName)) {
       .rxPriorStop(.key, .prior, "the distribution is not known to 'lotri'")
@@ -194,9 +269,11 @@
                             " block needs degrees of freedom greater than ",
                             length(.nm) - 1, ", but ", .nu, " was given"))
       }
+      .omKeys <- paste0("om.", .nm)
+      .seenPrior <- .rxPriorMarkSeen(.seenPrior, .omKeys, .prior)
       .terms[[length(.terms) + 1L]] <- list(type="invWishart", names=.nm,
                                             nu=as.double(.nu), Psi=.blk)
-      .seen <- c(.seen, paste0("om.", .nm))
+      .seen <- c(.seen, .omKeys)
       next
     }
     if (identical(.p$stanName, "multi_normal")) {
@@ -219,6 +296,7 @@
         } else n
       }, character(1), USE.NAMES=FALSE)
       dimnames(.cov) <- list(.nm, .nm)
+      .seenPrior <- .rxPriorMarkSeen(.seenPrior, .nm, .prior)
       .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
                                             mu=.mu, Sigma=.cov)
       .seen <- c(.seen, .nm)
@@ -327,10 +405,12 @@
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was
 #'   not given). `gradOmega` is entrywise, treating `omega[i, j]` and
 #'   `omega[j, i]` as independent, the way `-Oi %*% Psi %*% Oi`-style matrix
-#'   calculus is usually reported; a caller whose free parameter moves both
-#'   symmetric entries together (a Cholesky or log-Cholesky
+#'   calculus is usually reported. A caller whose free parameter moves an
+#'   *off-diagonal* pair together (a Cholesky or log-Cholesky
 #'   parameterization, say) needs `gradOmega[i, j] + gradOmega[j, i]`, which
-#'   is `2 * gradOmega[i, j]` since `gradOmega` is itself symmetric
+#'   is `2 * gradOmega[i, j]` for `i != j` since `gradOmega` is itself
+#'   symmetric -- but NOT for a diagonal entry, whose own free parameter is
+#'   `gradOmega[i, i]` alone; doubling it as well would be wrong
 #' @family Assertions
 #' @author Matthew L. Fidler
 #' @export

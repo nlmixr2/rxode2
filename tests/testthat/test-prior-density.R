@@ -47,6 +47,26 @@ rxTest({
     }, double(1))
   }
 
+  .base3 <- function() {
+    rxode2(function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        eta.ka + eta.cl + eta.v ~ c(0.6,
+                                    0.02, 0.3,
+                                    0.01, 0.01, 0.1)
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    })
+  }
+
   .dmvnormLog <- function(x, mu, Sigma) {
     k <- length(x)
     d <- x - mu
@@ -209,6 +229,114 @@ rxTest({
     r2b <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"),
                               omega=om)
     expect_equal(r1$value, r2a$value + r2b$value)
+  })
+
+  test_that("invWishart on a 3x3 block matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base3(), c("eta.ka", "eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    om["eta.cl", "eta.cl"] <- 0.28
+    om["eta.v", "eta.v"] <- 0.12
+    om["eta.ka", "eta.cl"] <- om["eta.cl", "eta.ka"] <- 0.015
+    om["eta.ka", "eta.v"] <- om["eta.v", "eta.ka"] <- 0.008
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
+    r <- rxPriorLogDensity(u, omega=om)
+
+    nm <- rownames(om)
+    eps <- 1e-6
+    f <- function(m) rxPriorLogDensity(u, omega=m)$value
+    for (i in 1:3) for (j in 1:i) {
+      mp <- om; mm <- om
+      mp[i, j] <- mp[i, j] + eps; if (i != j) mp[j, i] <- mp[j, i] + eps
+      mm[i, j] <- mm[i, j] - eps; if (i != j) mm[j, i] <- mm[j, i] - eps
+      gnum <- (f(mp) - f(mm)) / (2 * eps)
+      gana <- if (i == j) r$gradOmega[nm[i], nm[j]] else 2 * r$gradOmega[nm[i], nm[j]]
+      expect_equal(unname(gana), gnum, tolerance=1e-4,
+                   info=paste0("(", nm[i], ", ", nm[j], ")"))
+    }
+  })
+
+  test_that("two independent invWishart blocks do not bleed into each other", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
+    u <- .withPrior(u, c("eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.7
+    om["eta.cl", "eta.cl"] <- 0.35
+    om["eta.v", "eta.v"] <- 0.12
+    r <- rxPriorLogDensity(u, omega=om)
+
+    ## same as evaluating each block's own prior alone and summing
+    rKa <- rxPriorLogDensity(.withPrior(.base(), "eta.ka", "invWishart(4)"), omega=om)
+    rClV <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"),
+                              omega=om)
+    expect_equal(r$value, rKa$value + rClV$value)
+    expect_equal(r$gradOmega, rKa$gradOmega + rClV$gradOmega)
+    ## neither block's gradient touches the other's entries
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"]),
+                 unname(rClV$gradOmega["eta.cl", "eta.v"]))
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]),
+                 unname(rKa$gradOmega["eta.ka", "eta.ka"]))
+  })
+
+  test_that("a permuted omega dimname order still routes gradients correctly", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    om["eta.cl", "eta.cl"] <- 0.35
+    om["eta.v", "eta.v"] <- 0.12
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
+    r1 <- rxPriorLogDensity(u, omega=om)
+
+    ## same matrix, rows/cols reordered
+    ord <- c("eta.v", "eta.ka", "eta.cl")
+    omPerm <- om[ord, ord]
+    r2 <- rxPriorLogDensity(u, omega=omPerm)
+
+    expect_equal(r1$value, r2$value)
+    expect_equal(r1$gradOmega["eta.cl", "eta.v"], r2$gradOmega["eta.cl", "eta.v"])
+    expect_equal(r1$gradOmega["eta.cl", "eta.cl"], r2$gradOmega["eta.cl", "eta.cl"])
+    expect_equal(dimnames(r2$gradOmega), dimnames(omPerm))
+  })
+
+  test_that("dnorm(0,1) truncated deep into the tail stays finite (no cancellation)", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
+    .ini <- u$iniDf
+    .ini$lower[.ini$name == "tka"] <- 10
+    assign("iniDf", .ini, envir=u)
+    r <- rxPriorLogDensity(u, theta=c(tka=10.5))
+    expect_true(is.finite(r$value))
+    expected <- dnorm(10.5, 0, 1, log=TRUE) - pnorm(10, 0, 1, lower.tail=FALSE, log.p=TRUE)
+    expect_equal(r$value, expected, tolerance=1e-8)
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta=c(tka=x))$value, 10.5)
+    expect_equal(unname(r$gradTheta["tka"]), g, tolerance=1e-6)
+  })
+
+  test_that("a population parameter literally named 'om.<x>' is refused, not confused with omega", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .ini$name[.ini$name == "tka"] <- "om.tka"
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "om.tka"] <- "dnorm(0, 1)"
+    assign("iniDf", .ini, envir=u)
+    expect_error(rxPriorLogDensity(u, theta=c(om.tka=0.1)), "collides")
+  })
+
+  test_that("two different priors on the same key is refused rather than silently resolved", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
+    ## hand-corrupt as if a second, different prior were stored under the same
+    ## key -- not reachable through real 'ini()' syntax (lotri itself refuses
+    ## two priors on one parameter), but a piped 'iniDf' could still do this
+    u2 <- .withPrior(.base(), c("tka", "tcl"),
+                     "multiNormal(c(0.45, 1), lotri(tka + tcl ~ c(0.02, 0.001, 0.03)))")
+    .ini <- u2$iniDf
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 1)"
+    assign("iniDf", .ini, envir=u2)
+    expect_error(rxPriorLogDensity(u2, theta=c(tka=0.5, tcl=1)), "different priors")
   })
 
   test_that("an off-diagonal omega prior is refused, not silently evaluated", {
