@@ -148,7 +148,7 @@ URL: https://nlmixr2.github.io/rxode2/,
 Biarch: true
 LinkingTo:
     sitmo,
-    lotri (>= 1.0.0),
+    lotri (>= 1.0.5),
     PreciseSums (>= 0.7),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
