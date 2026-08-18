@@ -2,6 +2,41 @@
 
 ## New features
 
+- `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
+  as a Bayesian penalty at the current parameter values -- the value and
+  gradient kernel an estimation method's objective function needs, as
+  opposed to `rxSolve()`'s use of the same priors to simulate study-level
+  variability around the initial estimate. Supports `dnorm()`/`stdNormal()`,
+  `dcauchy()` (bounds-truncated using the parameter's own `lower`/`upper`),
+  the joint theta+omega `multiNormal()` block, and `invWishart()` degrees of
+  freedom on an omega block, with three methods: `"general"` (a textbook
+  Bayesian log density), `"nwpri"` (NONMEM's own `$PRIOR NWPRI` omega
+  parameterization, NONMEM7 Technical Guide eq. 1.157/1.159/1.170, which is
+  not the same density as the textbook one), and `"tnpri"` (the assumption
+  Monolix's Bayesian estimation and NONMEM's own estimation make -- all
+  estimated parameters, including omega, are jointly normal; an `om.<eta>`
+  member is on the same raw omega scale as `"general"`, since neither
+  Monolix nor NONMEM place the prior on a Cholesky factor). Neither
+  `"nwpri"` nor `"tnpri"` has a Cauchy analogue (nlmixr2/nlmixr2est#929).
+
+  The value/gradient math itself (`rxPriorLogDensityEval()`) is pure C++
+  with no R/Rcpp call of any kind, added to rxode2's C function-pointer
+  table (`inst/include/rxode2prior.h`) so a downstream package's own C++
+  objective function can call it directly from inside an OpenMP-parallel
+  region -- `rxPriorLogDensity()` is a thin R convenience wrapper over it.
+  `rxPriorBuildSpec(ui, method)` builds the reusable spec the evaluator
+  needs (an R-only, one-time, main-thread step).
+
+  `rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)` chain-rules a
+  raw-omega-scale gradient (from `rxPriorLogDensity()`, or from anywhere
+  else) into the equivalent gradient with respect to the upper-triangular
+  free elements of `chol(Omega^-1)` -- the parameterization FOCEI's own
+  `op_focei.cholOmegaInv` varies internally (`nlmixr2est/src/inner.cpp`).
+  A method that estimates omega directly (SAEM) does not need this
+  conversion. Like the density kernel itself, the underlying
+  `rxPriorOmegaToCholOmegaInvGrad()` C++ function is pure, with no R/Rcpp
+  call, and is exposed through the same function-pointer table.
+
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
   estimation method's internal solves, for example.  Previously the only way in

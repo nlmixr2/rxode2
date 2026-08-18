@@ -24,6 +24,7 @@
 #define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
 
 #include "rxode2_control.h"
+#include "rxode2prior.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 
 #ifndef __RXODE2PTR_H__  // directly refer to abi need to be excluded

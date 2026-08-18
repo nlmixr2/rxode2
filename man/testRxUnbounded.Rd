@@ -66,6 +66,9 @@ Other Assertions:
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}}
 }

@@ -1405,9 +1405,20 @@ block loses to the priors, with a warning. One given at the call site
 wins over them instead, also with a warning – an explicit argument is
 never silently discarded.
 
-Prior simulation does not yet cover nested/occasion models (\verb{| id},
-\verb{| occ}, rxode2 issue #1253) or a chunked solve
-(\verb{file =}/\verb{chunkSize =}, rxode2 issue #1252); both are a clear error
+Prior simulation covers nested/occasion models (\verb{| id}, \verb{| occ}). Each
+prior’s degrees of freedom go on the nesting level that holds its block,
+and a level with no prior stays at its estimate. One draw is shared
+across the occasions of a study, since the level is drawn once.
+
+A nesting level is drawn as a whole, so a prior has to cover its level.
+A prior on part of a level – one of two independent blocks at \verb{| id},
+say – is an error, because drawing the level would redraw the other
+block too and correlate blocks the model declared independent, and there
+is nowhere to put a second degrees of freedom. Put the prior on the
+whole level instead.
+
+Prior simulation does not yet cover a chunked solve
+(\verb{file =}/\verb{chunkSize =}, rxode2 issue #1252), which is a clear error
 rather than a solve that quietly drops the prior.
 }
 
