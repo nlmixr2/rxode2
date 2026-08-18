@@ -110,8 +110,13 @@
     if (length(.vec) != .n * (.n + 1) / 2) return(NULL)
     .m <- matrix(0, .n, .n)
     .k <- 1L
-    for (.j in seq_len(.n)) {
-      for (.i in .j:.n) {
+    ## row-major lower triangle (row i's entries (i,1)..(i,i) in order),
+    ## the NONMEM $OMEGA BLOCK / 'lotri' convention -- NOT column-major;
+    ## the two coincide for n=2 but diverge from n=3 on (verified against
+    ## lotri::lotri(a+b+c~c(1,2,3,4,5,6)), which places 3 at (2,2) and 4 at
+    ## (3,1), not 4 at (2,2)/3 at (3,1))
+    for (.i in seq_len(.n)) {
+      for (.j in seq_len(.i)) {
         .m[.i, .j] <- .vec[.k]
         .m[.j, .i] <- .vec[.k]
         .k <- .k + 1L

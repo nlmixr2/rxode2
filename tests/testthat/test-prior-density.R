@@ -765,6 +765,19 @@ rxTest({
     expect_equal(unname(r$gradOmega["eta.ka", "eta.v"]), 0)
   })
 
+  test_that(".rxPriorCovMatFromNames() matches lotri::lotri()'s own fill order for n>=3", {
+    ## row-major and column-major lower-triangular fills coincide for n=2
+    ## (both give (1,1),(2,1),(2,2)), so a 2x2-only check cannot tell them
+    ## apart -- this compares directly against lotri::lotri()'s own output
+    ## for n=3, where they diverge (a second antigravity review pass found
+    ## this fallback used column-major, silently misassembling from n=3 on)
+    .rx <- loadNamespace("rxode2")
+    .got <- .rx$`.rxPriorCovMatFromNames`(
+      c("a", "b", "c"), "multiNormal(c(0,0,0), lotri(a + b + c ~ c(1, 2, 3, 4, 5, 6)))")
+    .truth <- unname(unclass(lotri::lotri(a + b + c ~ c(1, 2, 3, 4, 5, 6))))
+    expect_equal(unname(.got), .truth)
+  })
+
   test_that("tnpri on a 3x3 omega block matches its numeric gradient", {
     skip_if_not(.hasPriorSupport())
     u <- rxUiDecompress(.base3())
