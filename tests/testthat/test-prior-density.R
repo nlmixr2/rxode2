@@ -142,6 +142,22 @@ rxTest({
                  tolerance=1e-6)
   })
 
+  test_that("a standalone (non-joint) normal prior on an omega diagonal element works", {
+    skip_if_not(.hasPriorSupport())
+    ## a NONMEM TNPRI written directly on the omega row, not via multiNormal()
+    u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    r <- rxPriorLogDensity(u, omega=om)
+    expect_equal(r$value, dnorm(0.55, 0.6, 0.1, log=TRUE))
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]),
+                 .numGrad(function(v) {
+                   om2 <- om; om2["eta.ka", "eta.ka"] <- v
+                   rxPriorLogDensity(u, omega=om2)$value
+                 }, 0.55),
+                 tolerance=1e-6)
+  })
+
   test_that("invWishart on a 2x2 block matches its numeric gradient", {
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
