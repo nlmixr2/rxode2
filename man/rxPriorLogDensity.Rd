@@ -4,7 +4,12 @@
 \alias{rxPriorLogDensity}
 \title{Value and gradient of a model's prior log density, on the natural scale}
 \usage{
-rxPriorLogDensity(ui, theta = NULL, omega = NULL)
+rxPriorLogDensity(
+  ui,
+  theta = NULL,
+  omega = NULL,
+  method = c("general", "nwpri")
+)
 }
 \arguments{
 \item{ui}{rxode2 ui model}
@@ -12,8 +17,16 @@ rxPriorLogDensity(ui, theta = NULL, omega = NULL)
 \item{theta}{named numeric vector of current population-parameter
 values; only the ones a prior is on need to be present}
 
-\item{omega}{current omega matrix (named like \code{ui$omega}), needed only
-when a prior touches an omega element or block; \code{NULL} otherwise}
+\item{omega}{current omega matrix, needed only when a prior touches an
+omega element or block; \code{NULL} otherwise. Must carry every eta in the
+model (like \code{ui$omega} itself, in any name order) even when only one
+of its blocks has a prior -- the underlying C kernel addresses omega
+positionally (the model's own eta numbering), not by submatrix, so a
+smaller matrix containing only the referenced block is not enough}
+
+\item{method}{\code{"general"} (default) or \code{"nwpri"}; see this file's header
+comment for what differs. \code{"nwpri"} implements NONMEM's own \verb{$PRIOR NWPRI} omega parameterization and refuses a Cauchy prior, which has no
+NONMEM analogue.}
 }
 \value{
 list with \code{value} (scalar log density, summed over every prior
@@ -39,6 +52,14 @@ that is specific to the estimation method's own parameterization and is
 its caller's responsibility to add (chain-ruling \code{gradTheta}/\code{gradOmega}
 through \code{d(natural)/d(unconstrained)}), the same way \code{adviJacLogDet()}
 (\code{nlmixr2est/src/inner.cpp}) already does for the full-Bayes ADVI path.
+}
+\details{
+This is a thin R-level convenience shim: the actual math is the pure
+C++ \code{rxPriorLogDensityEval()} (\code{inst/include/rxode2prior.h}), exposed
+through rxode2's C function-pointer table so a downstream package's own
+C++ objective can call it directly (no R/Rcpp touch, safe from inside an
+OpenMP-parallel region) instead of round-tripping through R for every
+evaluation the way this function does.
 }
 \examples{
 
@@ -75,6 +96,7 @@ Other Assertions:
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}

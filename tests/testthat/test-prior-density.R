@@ -83,6 +83,38 @@ rxTest({
     expect_null(r$gradOmega)
   })
 
+  test_that("a model without priors is a thin no-op through the C API, for every method", {
+    skip_if_not(.hasPriorSupport())
+    ## a caller (nlmixr2est) should be able to call rxPriorBuildSpec() on
+    ## every fit unconditionally, whether or not the model carries a prior
+    ## or which method it asks for, and get a valid, cheap, zero-effect
+    ## spec back rather than needing its own "does this model have a
+    ## prior" branch first
+    u <- .base()
+    theta <- c(tka=0.45, tcl=1, tv=3.45, add.sd=0.7)
+    omega <- u$omega
+    for (.m in c("general", "nwpri")) {
+      spec <- rxPriorBuildSpec(u, method=.m)
+      expect_true(inherits(spec, "externalptr"))
+      r <- .Call(`_rxode2_rxPriorLogDensity`, spec, unname(theta), omega)
+      expect_equal(r[[1]], 0)
+      expect_true(all(r[[2]] == 0))
+      expect_true(all(r[[3]] == 0))
+    }
+  })
+
+  test_that("a model whose iniDf has no prior column at all is also a no-op", {
+    ## older 'lotri': the column is absent rather than all NA
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .ini$prior <- NULL
+    assign("iniDf", .ini, envir=u)
+    expect_false("prior" %in% names(u$iniDf))
+    spec <- rxPriorBuildSpec(u)
+    r <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.45, 1, 3.45, 0.7), u$omega)
+    expect_equal(r[[1]], 0)
+  })
+
   test_that("a normal prior matches dnorm() and its numeric gradient", {
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
@@ -426,5 +458,113 @@ rxTest({
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     expect_error(rxPriorLogDensity(u), "omega")
+  })
+
+  test_that("a partial omega covering only the referenced block is refused, not truncated", {
+    skip_if_not(.hasPriorSupport())
+    ## the C kernel addresses omega positionally, by the model's own eta
+    ## numbering -- a submatrix missing the other etas cannot be reindexed
+    ## into that numbering, so this has to be a clear (loud) error rather
+    ## than silently reading the wrong entries
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
+    .om <- u$omega
+    .partial <- .om[c("eta.cl", "eta.v"), c("eta.cl", "eta.v")]
+    expect_error(rxPriorLogDensity(u, omega=.partial))
+  })
+
+  ## method="nwpri": NONMEM7 Technical Guide eq. 1.157/1.159/1.170 (its own
+  ## $PRIOR NWPRI omega parameterization), verified against hand-derived
+  ## closed forms and central-difference numeric gradients, not just
+  ## internal consistency with the "general" method's textbook formula --
+  ## the two are genuinely different densities (see rxode2prior.h).
+
+  test_that("nwpri 1x1 omega block matches NONMEM's closed form and its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.8
+    r <- rxPriorLogDensity(u, omega=om, method="nwpri")
+
+    rho <- 4; Psi <- 0.6; Omega <- 0.8; n <- 1
+    d_W <- rho + n + 1
+    expected <- -0.5 * (rho * (Psi / Omega) + rho * log(Omega) -
+                          d_W * log(Psi) - d_W * n * log(rho))
+    expect_equal(r$value, expected, tolerance=1e-10)
+
+    g <- .numGrad(function(v) {
+      om2 <- om; om2["eta.ka", "eta.ka"] <- v
+      rxPriorLogDensity(u, omega=om2, method="nwpri")$value
+    }, 0.8)
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), g, tolerance=1e-6)
+  })
+
+  test_that("nwpri 2x2 omega block matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    om["eta.cl", "eta.cl"] <- 0.35
+    om["eta.v", "eta.v"] <- 0.12
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
+    r <- rxPriorLogDensity(u, omega=om, method="nwpri")
+
+    f <- function(cl, v, cv) {
+      m <- om
+      m["eta.cl", "eta.cl"] <- cl; m["eta.v", "eta.v"] <- v
+      m["eta.cl", "eta.v"] <- m["eta.v", "eta.cl"] <- cv
+      rxPriorLogDensity(u, omega=m, method="nwpri")$value
+    }
+    eps <- 1e-6
+    g_cl <- (f(0.35 + eps, 0.12, 0.02) - f(0.35 - eps, 0.12, 0.02)) / (2 * eps)
+    g_v  <- (f(0.35, 0.12 + eps, 0.02) - f(0.35, 0.12 - eps, 0.02)) / (2 * eps)
+    g_cv <- (f(0.35, 0.12, 0.02 + eps) - f(0.35, 0.12, 0.02 - eps)) / (2 * eps)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance=1e-4)
+    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance=1e-4)
+    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance=1e-4)
+  })
+
+  test_that("nwpri and general give genuinely different omega values", {
+    skip_if_not(.hasPriorSupport())
+    ## a real cross-check, not just "the code ran": if these ever matched
+    ## exactly, the nwpri path would silently be computing the textbook
+    ## formula instead of NONMEM's
+    u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.8
+    rGeneral <- rxPriorLogDensity(u, omega=om, method="general")
+    rNwpri <- rxPriorLogDensity(u, omega=om, method="nwpri")
+    expect_false(isTRUE(all.equal(rGeneral$value, rNwpri$value)))
+    expect_false(isTRUE(all.equal(unname(rGeneral$gradOmega["eta.ka", "eta.ka"]),
+                                  unname(rNwpri$gradOmega["eta.ka", "eta.ka"]))))
+  })
+
+  test_that("a Cauchy prior is refused under method=\"nwpri\"", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
+    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="nwpri"), "NWPRI")
+    ## the same model still works under the default "general" method
+    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5)), NA)
+  })
+
+  test_that("nwpri theta prior reuses the same multivariate-normal math as general", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
+    rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
+    rNwpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="nwpri")
+    expect_equal(rGeneral$value, rNwpri$value)
+    expect_equal(rGeneral$gradTheta, rNwpri$gradTheta)
+  })
+
+  test_that("rxPriorBuildSpec() returns a reusable external pointer", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
+    spec <- rxPriorBuildSpec(u)
+    expect_true(is.function(inherits) && inherits(spec, "externalptr"))
+    ## the same spec can be reused for a different theta without rebuilding --
+    ## exercised indirectly, since rxPriorLogDensity() rebuilds each call;
+    ## this just confirms the pointer itself is usable more than once via
+    ## the internal .Call it wraps
+    r1 <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.1), matrix(numeric(0), 0, 0))
+    r2 <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.5), matrix(numeric(0), 0, 0))
+    expect_false(isTRUE(all.equal(r1[[1]], r2[[1]])))
   })
 })

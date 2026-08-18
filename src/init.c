@@ -218,6 +218,8 @@ SEXP _rxode2_rxAllowUnload(SEXP);
 
 void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
 SEXP _rxode2_rxAdjointSweep(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxPriorBuildSpec(SEXP);
+SEXP _rxode2_rxPriorLogDensity(SEXP, SEXP, SEXP);
 void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
 SEXP _rxode2_rxAdjointTrajSweep(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandGrid_(SEXP, SEXP, SEXP);
@@ -550,8 +552,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRegisterDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxPriorLogDensityEval = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorLogDensityEval, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxPriorFreeSpec = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorFreeSpec, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 97
+#define nVec 99
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -650,6 +654,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 94, rxode2rxRegisterDydtForce);
   SET_VECTOR_ELT(ret, 95, rxode2rxRemoveDydtForce);
   SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
+  SET_VECTOR_ELT(ret, 97, rxode2rxPriorLogDensityEval);
+  SET_VECTOR_ELT(ret, 98, rxode2rxPriorFreeSpec);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -757,6 +763,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 94, Rf_mkChar("rxode2rxRegisterDydtForce"));
   SET_STRING_ELT(retN, 95, Rf_mkChar("rxode2rxRemoveDydtForce"));
   SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
+  SET_STRING_ELT(retN, 97, Rf_mkChar("rxPriorLogDensityEval"));
+  SET_STRING_ELT(retN, 98, Rf_mkChar("rxPriorFreeSpec"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -943,6 +951,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
     {"_rxode2_rxAdjointSweep", (DL_FUNC) &_rxode2_rxAdjointSweep, 9},
     {"_rxode2_rxAdjointTrajSweep", (DL_FUNC) &_rxode2_rxAdjointTrajSweep, 9},
+    {"_rxode2_rxPriorBuildSpec", (DL_FUNC) &_rxode2_rxPriorBuildSpec, 1},
+    {"_rxode2_rxPriorLogDensity", (DL_FUNC) &_rxode2_rxPriorLogDensity, 3},
     {"_rxode2_rxExpandGrid_", (DL_FUNC) &_rxode2_rxExpandGrid_, 3},
     {"_rxode2_rxExpandSens_", (DL_FUNC) &_rxode2_rxExpandSens_, 2},
     {"_rxode2_rxExpandSens2_",(DL_FUNC) &_rxode2_rxExpandSens2_, 3},

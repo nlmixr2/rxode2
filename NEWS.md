@@ -9,7 +9,19 @@
   variability around the initial estimate. Supports `dnorm()`/`stdNormal()`,
   `dcauchy()` (bounds-truncated using the parameter's own `lower`/`upper`),
   the joint theta+omega `multiNormal()` block, and `invWishart()` degrees of
-  freedom on an omega block (nlmixr2/nlmixr2est#929).
+  freedom on an omega block, with two methods: `"general"` (a textbook
+  Bayesian log density) and `"nwpri"` (NONMEM's own `$PRIOR NWPRI` omega
+  parameterization, NONMEM7 Technical Guide eq. 1.157/1.159/1.170, which is
+  not the same density as the textbook one and has no Cauchy analogue)
+  (nlmixr2/nlmixr2est#929).
+
+  The value/gradient math itself (`rxPriorLogDensityEval()`) is pure C++
+  with no R/Rcpp call of any kind, added to rxode2's C function-pointer
+  table (`inst/include/rxode2prior.h`) so a downstream package's own C++
+  objective function can call it directly from inside an OpenMP-parallel
+  region -- `rxPriorLogDensity()` is a thin R convenience wrapper over it.
+  `rxPriorBuildSpec(ui, method)` builds the reusable spec the evaluator
+  needs (an R-only, one-time, main-thread step).
 
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an

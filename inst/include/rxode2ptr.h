@@ -21,6 +21,15 @@ extern "C" {
   typedef void (*rxode2AdjointTrajSweep_t)(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
   extern rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep;
 
+  // Shared prior log-density kernel (nlmixr2/nlmixr2est#929, src/priorDensity.cpp):
+  // pure C++, no R/Rcpp touch, safe from inside an OpenMP-parallel objective.
+  // Build the spec once (R/priorDensity.R's rxPriorBuildSpec(), main thread
+  // only) and call this per evaluation.
+  typedef double (*rxPriorLogDensityEval_t)(const rx_prior_spec_t *spec, const double *theta, int thetaLen, const double *omega, int omegaDim, double *gradTheta, double *gradOmega);
+  extern rxPriorLogDensityEval_t rxPriorLogDensityEval;
+  typedef void (*rxPriorFreeSpec_t)(void *spec);
+  extern rxPriorFreeSpec_t rxPriorFreeSpec;
+
   // Set / get the current solve's exact ODE atol/rtol (for tightening the cov step).
   typedef void (*rxSetSolveAtolRtol_t)(double atol, double rtol);
   extern rxSetSolveAtolRtol_t rxSetSolveAtolRtol;
@@ -448,6 +457,8 @@ extern "C" {
       rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 94));
       rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 95));
       rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 96));
+      rxPriorLogDensityEval = (rxPriorLogDensityEval_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 97));
+      rxPriorFreeSpec = (rxPriorFreeSpec_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 98));
     }
     return R_NilValue;
   }
@@ -550,6 +561,8 @@ extern "C" {
   rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
   rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
   rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
+  rxPriorLogDensityEval_t rxPriorLogDensityEval = NULL; \
+  rxPriorFreeSpec_t rxPriorFreeSpec = NULL;             \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

@@ -24,6 +24,7 @@ Other Assertions:
 \code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
 \code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
