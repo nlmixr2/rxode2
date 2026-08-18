@@ -186,6 +186,124 @@ static inline void addGrad(const rx_prior_term_t &term, int k, double g,
   }
 }
 
+// type 0/1: a single (possibly truncated) normal/Cauchy penalty.
+static double evalNormalCauchyTerm(const rx_prior_term_t &term, const double *theta,
+                                   const double *omega, int omegaDim,
+                                   double *gradTheta, double *gradOmega) {
+  double x = termValue(term, 0, theta, omega, omegaDim);
+  double mean = term.mu[0], sd = term.scale[0];
+  double z = (x - mean) / sd;
+  double v, g;
+  if (term.type == 0) {
+    v = -std::log(sd) - 0.5 * std::log(2.0 * M_PI) - 0.5 * z * z;
+    g = -(x - mean) / (sd * sd);
+    if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
+      v -= logNormCdfDiff(term.lower, term.upper, mean, sd);
+    }
+  } else {
+    v = -std::log(M_PI) - std::log(sd) - std::log1p(z * z);
+    g = -2.0 * (x - mean) / (sd * sd * (1.0 + z * z));
+    if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
+      v -= logCauchyCdfDiff(term.lower, term.upper, mean, sd);
+    }
+  }
+  addGrad(term, 0, g, gradTheta, gradOmega, omegaDim);
+  return v;
+}
+
+// type 2: a joint multivariate-normal block (theta and/or omega diagonal
+// members). Returns -INFINITY (no gradient contribution) if Sigma is not
+// positive definite.
+static double evalMultiNormalTerm(const rx_prior_term_t &term, const double *theta,
+                                  const double *omega, int omegaDim,
+                                  double *gradTheta, double *gradOmega) {
+  int n = term.n;
+  std::vector<double> L;
+  if (!cholesky(term.scale, n, L)) return -INFINITY;
+  std::vector<double> d(n);
+  for (int k = 0; k < n; ++k) d[k] = termValue(term, k, theta, omega, omegaDim) - term.mu[k];
+  std::vector<double> s;
+  cholSolve(L, n, d.data(), s); // Sigma^{-1} d
+  double quad = 0.0;
+  for (int k = 0; k < n; ++k) quad += d[k] * s[k];
+  for (int k = 0; k < n; ++k) addGrad(term, k, -s[k], gradTheta, gradOmega, omegaDim);
+  return -0.5 * n * std::log(2.0 * M_PI) - 0.5 * cholLogDet(L, n) - 0.5 * quad;
+}
+
+// type 3/4: an inverse-Wishart degrees-of-freedom penalty on an omega
+// block -- either the textbook density (3, "general") or NONMEM's own
+// $PRIOR NWPRI parameterization (4, "nwpri"); see the rx_prior_term_t
+// comment in rxode2prior.h for why these are genuinely different
+// densities, not the same formula with nu/Psi substituted differently.
+// Returns -INFINITY (no gradient contribution) if the live omega block or
+// the (fixed) scale matrix Psi is not positive definite.
+static double evalInvWishartTerm(const rx_prior_term_t &term, const double *omega,
+                                 int omegaDim, double *gradOmega) {
+  int p = term.n;
+  std::vector<double> Om((size_t)p * p);
+  for (int i = 0; i < p; ++i) {
+    int ei = term.etaIdx[i] - 1;
+    for (int j = 0; j < p; ++j) {
+      int ej = term.etaIdx[j] - 1;
+      Om[i * p + j] = omega[(size_t)ei * omegaDim + ej];
+    }
+  }
+  std::vector<double> Lom, Lpsi;
+  if (!cholesky(Om.data(), p, Lom) || !cholesky(term.scale, p, Lpsi)) return -INFINITY;
+  double logdetOm = cholLogDet(Lom, p), logdetPsi = cholLogDet(Lpsi, p);
+  std::vector<double> Oi;
+  cholInverse(Lom, p, Oi); // Omega^{-1}
+  double tr = 0.0; // tr(Psi * Omega^{-1})
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) tr += term.scale[i * p + j] * Oi[j * p + i];
+  std::vector<double> OiPsi((size_t)p * p, 0.0), OiPsiOi((size_t)p * p, 0.0);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      double sum = 0.0;
+      for (int k = 0; k < p; ++k) sum += Oi[i * p + k] * term.scale[k * p + j];
+      OiPsi[i * p + j] = sum;
+    }
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      double sum = 0.0;
+      for (int k = 0; k < p; ++k) sum += OiPsi[i * p + k] * Oi[k * p + j];
+      OiPsiOi[i * p + j] = sum;
+    }
+  double val;
+  if (term.type == 3) {
+    // Textbook inverse-Wishart(nu, Psi) log density (the "general" method).
+    double logNC = (term.nu * p / 2.0) * std::log(2.0) + logMvGamma(term.nu / 2.0, p);
+    val = (term.nu / 2.0) * logdetPsi - ((term.nu + p + 1) / 2.0) * logdetOm -
+      0.5 * tr - logNC;
+    for (int i = 0; i < p; ++i) {
+      int ei = term.etaIdx[i] - 1;
+      for (int j = 0; j < p; ++j) {
+        int ej = term.etaIdx[j] - 1;
+        double g = -((term.nu + p + 1) / 2.0) * Oi[i * p + j] + 0.5 * OiPsiOi[i * p + j];
+        gradOmega[(size_t)ei * omegaDim + ej] += g;
+      }
+    }
+  } else {
+    // NONMEM $PRIOR NWPRI, modal (non-BAYES) convention: NONMEM7 Technical
+    // Guide eq. 1.157/1.159/1.170. term.nu is NONMEM's own "rho" (the
+    // invWishart(rho) argument); d_W = rho+n+1 collapses (d_W-n-1) to rho,
+    // giving the closed forms below (see the term-type comment in
+    // rxode2prior.h for the derivation notes).
+    double rho = term.nu;
+    double d_W = rho + p + 1.0;
+    val = -0.5 * (rho * tr + rho * logdetOm - d_W * logdetPsi - d_W * p * std::log(rho));
+    for (int i = 0; i < p; ++i) {
+      int ei = term.etaIdx[i] - 1;
+      for (int j = 0; j < p; ++j) {
+        int ej = term.etaIdx[j] - 1;
+        double g = 0.5 * rho * (OiPsiOi[i * p + j] - Oi[i * p + j]);
+        gradOmega[(size_t)ei * omegaDim + ej] += g;
+      }
+    }
+  }
+  return val;
+}
+
 extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
                                         const double *theta, int thetaLen,
                                         const double *omega, int omegaDim,
@@ -195,101 +313,11 @@ extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
   for (int t = 0; t < spec->nTerms; ++t) {
     const rx_prior_term_t &term = spec->terms[t];
     if (term.type == 0 || term.type == 1) {
-      double x = termValue(term, 0, theta, omega, omegaDim);
-      double mean = term.mu[0], sd = term.scale[0];
-      double z = (x - mean) / sd;
-      double v, g;
-      if (term.type == 0) {
-        v = -std::log(sd) - 0.5 * std::log(2.0 * M_PI) - 0.5 * z * z;
-        g = -(x - mean) / (sd * sd);
-        if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
-          v -= logNormCdfDiff(term.lower, term.upper, mean, sd);
-        }
-      } else {
-        v = -std::log(M_PI) - std::log(sd) - std::log1p(z * z);
-        g = -2.0 * (x - mean) / (sd * sd * (1.0 + z * z));
-        if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
-          v -= logCauchyCdfDiff(term.lower, term.upper, mean, sd);
-        }
-      }
-      val += v;
-      addGrad(term, 0, g, gradTheta, gradOmega, omegaDim);
+      val += evalNormalCauchyTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     } else if (term.type == 2) {
-      int n = term.n;
-      std::vector<double> L;
-      if (!cholesky(term.scale, n, L)) { val = -INFINITY; continue; }
-      std::vector<double> d(n);
-      for (int k = 0; k < n; ++k) d[k] = termValue(term, k, theta, omega, omegaDim) - term.mu[k];
-      std::vector<double> s;
-      cholSolve(L, n, d.data(), s); // Sigma^{-1} d
-      double quad = 0.0;
-      for (int k = 0; k < n; ++k) quad += d[k] * s[k];
-      val += -0.5 * n * std::log(2.0 * M_PI) - 0.5 * cholLogDet(L, n) - 0.5 * quad;
-      for (int k = 0; k < n; ++k) addGrad(term, k, -s[k], gradTheta, gradOmega, omegaDim);
+      val += evalMultiNormalTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     } else if (term.type == 3 || term.type == 4) {
-      int p = term.n;
-      std::vector<double> Om((size_t)p * p);
-      for (int i = 0; i < p; ++i) {
-        int ei = term.etaIdx[i] - 1;
-        for (int j = 0; j < p; ++j) {
-          int ej = term.etaIdx[j] - 1;
-          Om[i * p + j] = omega[(size_t)ei * omegaDim + ej];
-        }
-      }
-      std::vector<double> Lom, Lpsi;
-      if (!cholesky(Om.data(), p, Lom) || !cholesky(term.scale, p, Lpsi)) {
-        val = -INFINITY; continue;
-      }
-      double logdetOm = cholLogDet(Lom, p), logdetPsi = cholLogDet(Lpsi, p);
-      std::vector<double> Oi;
-      cholInverse(Lom, p, Oi); // Omega^{-1}
-      double tr = 0.0; // tr(Psi * Omega^{-1})
-      for (int i = 0; i < p; ++i)
-        for (int j = 0; j < p; ++j) tr += term.scale[i * p + j] * Oi[j * p + i];
-      std::vector<double> OiPsi((size_t)p * p, 0.0), OiPsiOi((size_t)p * p, 0.0);
-      for (int i = 0; i < p; ++i)
-        for (int j = 0; j < p; ++j) {
-          double sum = 0.0;
-          for (int k = 0; k < p; ++k) sum += Oi[i * p + k] * term.scale[k * p + j];
-          OiPsi[i * p + j] = sum;
-        }
-      for (int i = 0; i < p; ++i)
-        for (int j = 0; j < p; ++j) {
-          double sum = 0.0;
-          for (int k = 0; k < p; ++k) sum += OiPsi[i * p + k] * Oi[k * p + j];
-          OiPsiOi[i * p + j] = sum;
-        }
-      if (term.type == 3) {
-        // Textbook inverse-Wishart(nu, Psi) log density (the "general" method).
-        double logNC = (term.nu * p / 2.0) * std::log(2.0) + logMvGamma(term.nu / 2.0, p);
-        val += (term.nu / 2.0) * logdetPsi - ((term.nu + p + 1) / 2.0) * logdetOm -
-          0.5 * tr - logNC;
-        for (int i = 0; i < p; ++i) {
-          int ei = term.etaIdx[i] - 1;
-          for (int j = 0; j < p; ++j) {
-            int ej = term.etaIdx[j] - 1;
-            double g = -((term.nu + p + 1) / 2.0) * Oi[i * p + j] + 0.5 * OiPsiOi[i * p + j];
-            gradOmega[(size_t)ei * omegaDim + ej] += g;
-          }
-        }
-      } else {
-        // NONMEM $PRIOR NWPRI, modal (non-BAYES) convention: NONMEM7
-        // Technical Guide eq. 1.157/1.159/1.170. term.nu is NONMEM's own
-        // "rho" (the invWishart(rho) argument); d_W = rho+n+1 collapses
-        // (d_W-n-1) to rho, giving the closed forms below (see the term-type
-        // comment in rxode2prior.h for the derivation notes).
-        double rho = term.nu;
-        double d_W = rho + p + 1.0;
-        val += -0.5 * (rho * tr + rho * logdetOm - d_W * logdetPsi - d_W * p * std::log(rho));
-        for (int i = 0; i < p; ++i) {
-          int ei = term.etaIdx[i] - 1;
-          for (int j = 0; j < p; ++j) {
-            int ej = term.etaIdx[j] - 1;
-            double g = 0.5 * rho * (OiPsiOi[i * p + j] - Oi[i * p + j]);
-            gradOmega[(size_t)ei * omegaDim + ej] += g;
-          }
-        }
-      }
+      val += evalInvWishartTerm(term, omega, omegaDim, gradOmega);
     }
   }
   return val;

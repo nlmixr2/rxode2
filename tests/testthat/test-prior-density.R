@@ -622,13 +622,13 @@ rxTest({
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     spec <- rxPriorBuildSpec(u)
-    expect_true(is.function(inherits) && inherits(spec, "externalptr"))
+    expect_true(inherits(spec, "externalptr"))
     ## the same spec can be reused for a different theta without rebuilding --
     ## exercised indirectly, since rxPriorLogDensity() rebuilds each call;
     ## this just confirms the pointer itself is usable more than once via
     ## the internal .Call it wraps
-    r1 <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.1), matrix(numeric(0), 0, 0))
-    r2 <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.5), matrix(numeric(0), 0, 0))
+    r1 <- .Call(`_rxode2_rxPriorLogDensity`, spec, 0.1, matrix(numeric(0), 0, 0))
+    r2 <- .Call(`_rxode2_rxPriorLogDensity`, spec, 0.5, matrix(numeric(0), 0, 0))
     expect_false(isTRUE(all.equal(r1[[1]], r2[[1]])))
   })
 })
