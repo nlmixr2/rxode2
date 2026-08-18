@@ -715,6 +715,107 @@ rxTest({
     expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), gOmega, tolerance=1e-6)
   })
 
+  test_that("a tnpri term spanning two distinct omega blocks matches numeric gradients, with no cross-block leak", {
+    skip_if_not(.hasPriorSupport())
+    ## ini() itself refuses a bare `om.<eta1> + om.<eta2> ~ c(...)` (or an
+    ## explicit prior() ~ multiNormal(...)) that spans more than one
+    ## covariance block ("is not a single covariance block, so it cannot
+    ## share a prior") -- a real, separate restriction unrelated to this
+    ## kernel. rxPriorBuildSpec()/rxPriorLogDensity() are still supposed to
+    ## handle a spec that spans multiple blocks (a caller could build one
+    ## some other way), so this constructs the iniDf by hand, the same way
+    ## the "gapped omega diagonal indices" test above does.
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .str <- "multiNormal(c(0.6, 0.3), lotri(om.eta.ka + om.eta.cl ~ c(0.5, 0.02, 0.9)))"
+    .ini$prior[.ini$name == "eta.ka"] <- .str
+    .ini$prior[.ini$name == "eta.cl"] <- .str
+    assign("iniDf", .ini, envir=u)
+
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.55
+    om["eta.cl", "eta.cl"] <- 0.35
+    om["eta.v", "eta.v"] <- 0.12
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
+    r <- rxPriorLogDensity(u, omega=om, method="tnpri")
+
+    f <- function(ka, cl, v, cv) {
+      m <- om
+      m["eta.ka", "eta.ka"] <- ka
+      m["eta.cl", "eta.cl"] <- cl
+      m["eta.v", "eta.v"] <- v
+      m["eta.cl", "eta.v"] <- m["eta.v", "eta.cl"] <- cv
+      rxPriorLogDensity(u, omega=m, method="tnpri")$value
+    }
+    eps <- 1e-6
+    g_ka <- (f(0.55 + eps, 0.35, 0.12, 0.02) - f(0.55 - eps, 0.35, 0.12, 0.02)) / (2 * eps)
+    g_cl <- (f(0.55, 0.35 + eps, 0.12, 0.02) - f(0.55, 0.35 - eps, 0.12, 0.02)) / (2 * eps)
+    g_v  <- (f(0.55, 0.35, 0.12 + eps, 0.02) - f(0.55, 0.35, 0.12 - eps, 0.02)) / (2 * eps)
+    g_cv <- (f(0.55, 0.35, 0.12, 0.02 + eps) - f(0.55, 0.35, 0.12, 0.02 - eps)) / (2 * eps)
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), g_ka, tolerance=1e-4)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance=1e-4)
+    ## the eta.cl block's gradient correctly "leaks" onto eta.v even though
+    ## eta.v carries no prior term of its own -- chol(Omega_block^-1)'s
+    ## diagonal depends on the whole block, not just the referenced entry
+    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance=1e-4)
+    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance=1e-4)
+    ## but the two blocks never cross-contaminate each other
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.cl"]), 0)
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.v"]), 0)
+  })
+
+  test_that("tnpri on a 3x3 omega block matches its numeric gradient", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(.base3())
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .str <- paste0("multiNormal(c(0.7, 0.4, 0.35), lotri(om.eta.ka + om.eta.cl + om.eta.v ~ ",
+                   "c(0.03, 0.005, 0.02, 0.004, 0.003, 0.015)))")
+    .ini$prior[.ini$name %in% c("eta.ka", "eta.cl", "eta.v")] <- .str
+    assign("iniDf", .ini, envir=u)
+
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.65
+    om["eta.cl", "eta.cl"] <- 0.32
+    om["eta.v", "eta.v"] <- 0.11
+    om["eta.ka", "eta.cl"] <- om["eta.cl", "eta.ka"] <- 0.018
+    om["eta.ka", "eta.v"] <- om["eta.v", "eta.ka"] <- 0.006
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.021
+    r <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    expect_true(is.finite(r$value))
+
+    nm <- c("eta.ka", "eta.cl", "eta.v")
+    f <- function(m) rxPriorLogDensity(u, omega=m, method="tnpri")$value
+    eps <- 1e-6
+    for (i in 1:3) for (j in 1:i) {
+      mp <- om; mm <- om
+      mp[nm[i], nm[j]] <- mp[nm[i], nm[j]] + eps; if (i != j) mp[nm[j], nm[i]] <- mp[nm[j], nm[i]] + eps
+      mm[nm[i], nm[j]] <- mm[nm[i], nm[j]] - eps; if (i != j) mm[nm[j], nm[i]] <- mm[nm[j], nm[i]] - eps
+      gnum <- (f(mp) - f(mm)) / (2 * eps)
+      gana <- if (i == j) r$gradOmega[nm[i], nm[j]] else 2 * r$gradOmega[nm[i], nm[j]]
+      expect_equal(unname(gana), gnum, tolerance=1e-3, info=paste0("(", nm[i], ", ", nm[j], ")"))
+    }
+  })
+
+  test_that("a non-positive-definite live omega block contributes -Inf under tnpri", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .ini$prior <- NA_character_
+    .str <- "multiNormal(c(0.3, 0.1), lotri(om.eta.cl + om.eta.v ~ c(0.9, 0.005, 0.7)))"
+    .ini$prior[.ini$name == "eta.cl"] <- .str
+    .ini$prior[.ini$name == "eta.v"] <- .str
+    assign("iniDf", .ini, envir=u)
+    om <- u$omega
+    ## valid variances but a correlation magnitude > 1: indefinite
+    om["eta.cl", "eta.cl"] <- 0.3
+    om["eta.v", "eta.v"] <- 0.1
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 1.0
+    r <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    expect_identical(r$value, -Inf)
+  })
+
   test_that("tnpri and general give genuinely different omega values", {
     skip_if_not(.hasPriorSupport())
     u <- .withPrior(.base(), "eta.ka", "dnorm(1.0, 0.1)")
