@@ -393,6 +393,70 @@ rxTest({
                  tolerance=1e-10)
   })
 
+  test_that("a Cauchy prior with two finite bounds exercises both tail branches", {
+    skip_if_not(.hasPriorSupport())
+    ## dcauchy(0, 1) truncated to [10, 20] and its mirror [-20, -10]: same
+    ## symmetry argument as the normal-distribution version above, this
+    ## time exercising logCauchyCdfDiff()'s zu<=0/zl>=0 branches (the
+    ## straddling-the-mean case is already covered by the half-Cauchy tests)
+    uHi <- .withPrior(.base(), "tka", "dcauchy(0, 1)")
+    .iniHi <- uHi$iniDf
+    .iniHi$lower[.iniHi$name == "tka"] <- 10
+    .iniHi$upper[.iniHi$name == "tka"] <- 20
+    assign("iniDf", .iniHi, envir=uHi)
+
+    uLo <- .withPrior(.base(), "tka", "dcauchy(0, 1)")
+    .iniLo <- uLo$iniDf
+    .iniLo$lower[.iniLo$name == "tka"] <- -20
+    .iniLo$upper[.iniLo$name == "tka"] <- -10
+    assign("iniDf", .iniLo, envir=uLo)
+
+    rHi <- rxPriorLogDensity(uHi, theta=c(tka=15))
+    rLo <- rxPriorLogDensity(uLo, theta=c(tka=-15))
+    expect_true(is.finite(rHi$value))
+    expect_equal(rHi$value, rLo$value, tolerance=1e-10)
+    ## cross-check against the direct (non-log-space) formula, which is
+    ## still numerically fine at these bounds for a Cauchy (no cancellation
+    ## risk the way the normal case has -- Cauchy's tail decays polynomially)
+    expected <- dcauchy(15, 0, 1, log=TRUE) - log(pcauchy(20, 0, 1) - pcauchy(10, 0, 1))
+    expect_equal(rHi$value, expected, tolerance=1e-8)
+
+    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta=c(tka=x))$value, 15)
+    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance=1e-6)
+  })
+
+  test_that("a non-positive-definite live omega contributes -Inf, not an error or NaN", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
+    om <- u$omega
+    ## a live covariance that has gone indefinite mid-optimization: valid
+    ## variances but a correlation magnitude > 1
+    om["eta.cl", "eta.cl"] <- 0.3
+    om["eta.v", "eta.v"] <- 0.1
+    om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 1.0
+    for (.m in c("general", "nwpri")) {
+      r <- rxPriorLogDensity(u, omega=om, method=.m)
+      expect_identical(r$value, -Inf)
+    }
+  })
+
+  test_that("gapped omega diagonal indices are refused, not silently overrun", {
+    skip_if_not(.hasPriorSupport())
+    ## the C kernel sizes omega positionally from the eta count; a gapped
+    ## neta1 (only reachable via a hand-edited iniDf) would read/write past
+    ## the end of that array if this were not caught first. Grab a valid
+    ## omega BEFORE introducing the gap -- ui$omega itself (via lotri) also
+    ## can't build one from a gapped iniDf, so this isolates the check this
+    ## test is actually for from that unrelated failure.
+    u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
+    om <- u$omega
+    .ini <- u$iniDf
+    .w <- which(.ini$name == "eta.v" & .ini$neta1 == .ini$neta2)
+    .ini$neta1[.w] <- .ini$neta2[.w] <- 5L
+    assign("iniDf", .ini, envir=u)
+    expect_error(rxPriorLogDensity(u, omega=om), "dense")
+  })
+
   test_that("an invWishart with too few degrees of freedom is refused", {
     skip_if_not(.hasPriorSupport())
     ## a 2x2 block needs nu > 1

@@ -27,8 +27,6 @@ extern "C" {
   // only) and call this per evaluation.
   typedef double (*rxPriorLogDensityEval_t)(const rx_prior_spec_t *spec, const double *theta, int thetaLen, const double *omega, int omegaDim, double *gradTheta, double *gradOmega);
   extern rxPriorLogDensityEval_t rxPriorLogDensityEval;
-  typedef void (*rxPriorFreeSpec_t)(void *spec);
-  extern rxPriorFreeSpec_t rxPriorFreeSpec;
 
   // Set / get the current solve's exact ODE atol/rtol (for tightening the cov step).
   typedef void (*rxSetSolveAtolRtol_t)(double atol, double rtol);
@@ -458,7 +456,6 @@ extern "C" {
       rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 95));
       rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 96));
       rxPriorLogDensityEval = (rxPriorLogDensityEval_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 97));
-      rxPriorFreeSpec = (rxPriorFreeSpec_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 98));
     }
     return R_NilValue;
   }
@@ -562,7 +559,6 @@ extern "C" {
   rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
   rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
   rxPriorLogDensityEval_t rxPriorLogDensityEval = NULL; \
-  rxPriorFreeSpec_t rxPriorFreeSpec = NULL;             \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

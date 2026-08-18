@@ -138,10 +138,32 @@ static void cholInverse(const std::vector<double> &L, int n, std::vector<double>
   }
 }
 
+// log-gamma, for a positive argument only, via the standard g=7/n=9 Lanczos
+// approximation. std::lgamma() (POSIX libm) writes the sign of Gamma(x) to
+// the global `signgam` on every call -- unused here, but a genuine data
+// race under concurrent calls from multiple OpenMP threads regardless, so
+// it cannot be used inside rxPriorLogDensityEval(). x is always positive
+// here (nu/2 - (p-1)/2 > 0, guaranteed by the nu > p-1 check
+// R/priorDensity.R makes when the spec is built), so the reflection
+// formula for non-positive arguments is not needed.
+static double lgammaPositive(double x) {
+  static const double g = 7.0;
+  static const double c[9] = {
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  };
+  double xx = x - 1.0;
+  double t = xx + g + 0.5;
+  double a = c[0];
+  for (int i = 1; i < 9; ++i) a += c[i] / (xx + i);
+  return 0.5 * std::log(2.0 * M_PI) + (xx + 0.5) * std::log(t) - t + std::log(a);
+}
+
 // log of the multivariate gamma function, log Gamma_p(a).
 static double logMvGamma(double a, int p) {
   double s = (double)p * (p - 1) / 4.0 * std::log(M_PI);
-  for (int i = 1; i <= p; ++i) s += std::lgamma(a + (1 - i) / 2.0);
+  for (int i = 1; i <= p; ++i) s += lgammaPositive(a + (1 - i) / 2.0);
   return s;
 }
 
@@ -273,7 +295,15 @@ extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
   return val;
 }
 
-extern "C" void rxPriorFreeSpec(void *specPtr) {
+// Frees a spec built by _rxode2_rxPriorBuildSpec(). Internal linkage only
+// (called exclusively by the R external-pointer finalizer below, in this
+// same translation unit) -- deliberately NOT part of the downstream C API:
+// the finalizer is the ONLY thing that may free a spec, since a raw
+// pointer obtained by a downstream caller and freed independently would
+// race the finalizer into a double free once R's GC runs. A caller that
+// wants the spec to outlive one R call must instead keep the R external
+// pointer object itself alive (referenced from its own fit state).
+static void rxPriorFreeSpec(void *specPtr) {
   if (specPtr == NULL) return;
   rx_prior_spec_t *spec = (rx_prior_spec_t *)specPtr;
   for (int t = 0; t < spec->nTerms; ++t) {

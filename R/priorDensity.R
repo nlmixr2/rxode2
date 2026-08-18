@@ -263,6 +263,14 @@
 #' Matches `iniDf$neta1` for the diagonal (variance) rows, which is also
 #' the numbering nlmixr2est's own `op_focei` uses for its omega matrix.
 #'
+#' The C evaluator addresses `omega` *positionally* (`etaIdx - 1`) against
+#' a dimension sized from this vector's length -- were `neta1` ever gapped
+#' (not a dense `1:n`, eg from a hand-edited `iniDf`), a term referencing
+#' the index past the gap would read/write past the end of that array. This
+#' asserts the numbering is dense before that can happen, the same
+#' "a piped model can dodge it" defense `prior-sim.R` already applies to
+#' the inverse-Wishart degrees-of-freedom check.
+#'
 #' @param ui rxode2 ui model
 #' @return character vector of eta names, in index order
 #' @noRd
@@ -270,7 +278,13 @@
 .rxPriorEtaOrder <- function(ui) {
   .iniDf <- ui$iniDf
   .d <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
-  .iniDf$name[.d][order(.iniDf$neta1[.d])]
+  .idx <- .iniDf$neta1[.d]
+  if (length(.idx) > 0L && !isTRUE(all.equal(sort(.idx), as.double(seq_along(.idx))))) {
+    stop("the model's omega diagonal indices ('neta1') are not a dense ",
+         "1:n sequence (", paste(sort(.idx), collapse=", "), "); this can ",
+         "only happen on a hand-edited or piped 'iniDf'", call.=FALSE)
+  }
+  .iniDf$name[.d][order(.idx)]
 }
 
 #' The `(thetaIdx, etaIdx)` a term member's key addresses
@@ -312,6 +326,12 @@
   .thetaIdx <- integer(0); .etaIdx <- integer(0)
   .mu <- numeric(0); .scale <- numeric(0)
   .lower <- numeric(0); .upper <- numeric(0); .nu <- numeric(0)
+  ## validate the omega numbering is dense (see .rxPriorEtaOrder()) before
+  ## computing any etaIdx from it -- only when a term actually needs it, so
+  ## a model with unusual (but unused) omega structure stays a no-op
+  if (any(vapply(terms, function(t) any(startsWith(t$names, "om.")), logical(1)))) {
+    .rxPriorEtaOrder(ui)
+  }
   for (.t in terms) {
     .type <- c(.type, .rxPriorTermTypeCode[[.t$type]])
     .n <- c(.n, length(.t$names))

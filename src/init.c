@@ -553,9 +553,8 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRemoveDydtForce = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRemoveDydtForce, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorLogDensityEval = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorLogDensityEval, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2rxPriorFreeSpec = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorFreeSpec, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 99
+#define nVec 98
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -655,7 +654,6 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 95, rxode2rxRemoveDydtForce);
   SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
   SET_VECTOR_ELT(ret, 97, rxode2rxPriorLogDensityEval);
-  SET_VECTOR_ELT(ret, 98, rxode2rxPriorFreeSpec);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -764,7 +762,6 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 95, Rf_mkChar("rxode2rxRemoveDydtForce"));
   SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
   SET_STRING_ELT(retN, 97, Rf_mkChar("rxPriorLogDensityEval"));
-  SET_STRING_ELT(retN, 98, Rf_mkChar("rxPriorFreeSpec"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
