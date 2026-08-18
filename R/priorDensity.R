@@ -620,7 +620,11 @@ rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "n
 #' @param omega a single omega block (p x p numeric matrix, positive
 #'   definite)
 #' @param gradOmega the corresponding block of `rxPriorLogDensity()`'s
-#'   `gradOmega`, i.e. `gradOmega[block, block]` (p x p, symmetric)
+#'   `gradOmega`, i.e. `gradOmega[block, block]` (p x p); need not be
+#'   symmetric on entry (`rxPriorLogDensity()`'s own `gradOmega` always is,
+#'   but this treats it entrywise and symmetrizes internally either way,
+#'   since only a symmetric perturbation of `omega` is ever reachable by
+#'   varying `U`)
 #' @return p x p matrix, the gradient with respect to the upper-triangular
 #'   free elements of `U = chol(solve(omega))` (`omega^-1 = t(U) %*% U`);
 #'   its strict lower triangle is exactly 0 since those entries address no

@@ -6,6 +6,7 @@
 #define STRICT_R_HEADERS
 #include <R.h>
 #include <Rinternals.h>
+#include <algorithm>
 #include <cmath>
 #include <vector>
 #include "../inst/include/rxode2prior.h"
@@ -366,9 +367,21 @@ extern "C" bool rxPriorOmegaToCholOmegaInvGrad(const double *omegaBlock, int p,
   std::vector<double> Lu; // lower-triangular chol(Omega^{-1}); U = Lu^T is upper
   if (!cholesky(Ainv.data(), p, Lu)) return false;
 
-  // Abar = -Omega * G * Omega  (VJP of Omega = A^{-1}, A = Omega^{-1})
+  // Omega(U) is symmetric by construction (it's inv(U^T U)), so only the
+  // symmetric part of an entrywise gradOmegaBlock (rxPriorLogDensityEval's
+  // own convention -- see its doc comment) has any effect on a directional
+  // derivative along the U manifold; the antisymmetric part contracts to
+  // zero against a symmetric dOmega and must be dropped here, not left for
+  // the caller to have already symmetrized.
+  std::vector<double> Gsym((size_t)p * p);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      Gsym[i * p + j] = 0.5 * (gradOmegaBlock[i * p + j] + gradOmegaBlock[j * p + i]);
+    }
+
+  // Abar = -Omega * Gsym * Omega  (VJP of Omega = A^{-1}, A = Omega^{-1})
   std::vector<double> OmegaG, Abar;
-  matMul(omegaBlock, gradOmegaBlock, p, OmegaG);
+  matMul(omegaBlock, Gsym.data(), p, OmegaG);
   matMul(OmegaG.data(), omegaBlock, p, Abar);
   for (size_t idx = 0; idx < Abar.size(); ++idx) Abar[idx] = -Abar[idx];
 
@@ -487,13 +500,18 @@ extern "C" SEXP _rxode2_rxPriorLogDensity(SEXP specSEXP, SEXP thetaS, SEXP omega
 }
 
 // omegaBlockS/gradOmegaBlockS: the block's own p x p matrices (any name
-// order dropped -- plain numeric matrices; both are symmetric, so R's
-// column-major storage reads identically to the row-major layout the pure
-// function expects). Returns the p x p gradCholOmegaInv matrix, or NULL if
-// omegaBlockS is not positive definite. gradCholOmegaInv is NOT symmetric
-// (only its upper triangle is meaningful), so -- unlike the symmetric
-// inputs -- the row-major result has to be explicitly transposed into R's
-// column-major matrix storage, not just reinterpreted.
+// order dropped -- plain numeric matrices). omegaBlockS is always
+// symmetric, so R's column-major storage reads identically to the
+// row-major layout the pure function expects; gradOmegaBlockS need not
+// be -- reading it "row-major" out of R's column-major storage yields its
+// transpose, but rxPriorOmegaToCholOmegaInvGrad() symmetrizes its
+// gradOmegaBlock internally before use, and symmetrization is
+// transpose-invariant, so no explicit fix-up is needed here either.
+// Returns the p x p gradCholOmegaInv matrix, or NULL if omegaBlockS is
+// not positive definite. gradCholOmegaInv is NOT symmetric (only its
+// upper triangle is meaningful), so -- unlike the inputs -- the row-major
+// result has to be explicitly transposed into R's column-major matrix
+// storage, not just reinterpreted.
 extern "C" SEXP _rxode2_rxPriorOmegaToCholOmegaInvGrad(SEXP omegaBlockS, SEXP gradOmegaBlockS) {
   int p = (int)std::sqrt((double)LENGTH(omegaBlockS));
   std::vector<double> rowMajor((size_t)p * p);

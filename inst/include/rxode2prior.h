@@ -120,18 +120,24 @@ double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
 // type: ANY omega-space gradient a caller has needs this same conversion
 // to be usable by an optimizer that varies cholOmegaInv directly (FOCEI).
 //
-// Derived via the standard matrix-inverse VJP (Abar = -Omega Gbar Omega,
+// Derived via the standard matrix-inverse VJP (Abar = -Omega Gsym Omega,
 // since Omega = (Omega^-1)^-1) composed with the VJP of A = U^T U
 // (Ubar = upperTriangle(2 U Abar)); verified against central-difference
 // gradients of the full U -> Omega(U) -> objective pipeline before use
-// here.
+// here. Gsym is gradOmegaBlock symmetrized ((G + G^T)/2) internally before
+// use: Omega(U) is symmetric by construction, so only gradOmegaBlock's
+// symmetric part has any effect on a directional derivative along the U
+// manifold -- gradOmegaBlock need not already be symmetric on entry (the
+// entrywise convention rxPriorLogDensityEval's own gradOmega uses is
+// accepted as-is; its antisymmetric part, if any, is correctly dropped
+// here rather than silently corrupting the result).
 //
 // omegaBlock/gradOmegaBlock are the block's own p x p row-major
-// submatrices (gradOmegaBlock symmetric); gradCholOmegaInv (output, p x p
-// row-major) is populated in full, with its strict lower triangle (which
-// addresses no free parameter of U) set to exactly 0. Returns false
-// (gradCholOmegaInv untouched) if omegaBlock is not positive definite. No
-// R/Rcpp call of any kind -- safe to call from any OpenMP thread.
+// submatrices; gradCholOmegaInv (output, p x p row-major) is populated in
+// full, with its strict lower triangle (which addresses no free parameter
+// of U) set to exactly 0. Returns false (gradCholOmegaInv untouched) if
+// omegaBlock is not positive definite. No R/Rcpp call of any kind -- safe
+// to call from any OpenMP thread.
 bool rxPriorOmegaToCholOmegaInvGrad(const double *omegaBlock, int p,
                                     const double *gradOmegaBlock,
                                     double *gradCholOmegaInv);

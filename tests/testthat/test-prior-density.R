@@ -783,6 +783,27 @@ rxTest({
     expect_true(all(ret[lower.tri(ret)] == 0))
   })
 
+  test_that("rxPriorOmegaToCholOmegaInvGrad() matches its numeric gradient (1x1)", {
+    omega <- matrix(2)
+    gradOmega <- matrix(0.5)
+    ret <- rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
+    num <- .numGradCholOmegaInv(omega, gradOmega)
+    expect_equal(unname(ret), num, tolerance=1e-5)
+  })
+
+  test_that("rxPriorOmegaToCholOmegaInvGrad() symmetrizes an asymmetric gradOmega entrywise", {
+    ## Omega(U) is symmetric by construction, so only gradOmega's symmetric
+    ## part has any effect -- an asymmetric entrywise gradOmega (as
+    ## rxPriorLogDensity()'s own gradOmega convention permits in general)
+    ## must still match the numeric gradient of the U -> Omega(U) pipeline,
+    ## not just the symmetrized-on-entry case already covered above.
+    omega <- matrix(c(2, 1, 1, 2), 2, 2)
+    gradOmega <- matrix(c(1, 2, 0, 1), 2, 2)
+    ret <- rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
+    num <- .numGradCholOmegaInv(omega, gradOmega)
+    expect_equal(unname(ret), num, tolerance=1e-5)
+  })
+
   test_that("rxPriorOmegaToCholOmegaInvGrad() returns NULL for a non-positive-definite omega", {
     badOmega <- matrix(c(1, 2, 2, 1), 2, 2)
     gradOmega <- matrix(1, 2, 2)
