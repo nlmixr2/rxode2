@@ -2,6 +2,15 @@
 
 ## New features
 
+- `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
+  as a Bayesian penalty at the current parameter values -- the value and
+  gradient kernel an estimation method's objective function needs, as
+  opposed to `rxSolve()`'s use of the same priors to simulate study-level
+  variability around the initial estimate. Supports `dnorm()`/`stdNormal()`,
+  `dcauchy()` (bounds-truncated using the parameter's own `lower`/`upper`),
+  the joint theta+omega `multiNormal()` block, and `invWishart()` degrees of
+  freedom on an omega block (nlmixr2/nlmixr2est#929).
+
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
   estimation method's internal solves, for example.  Previously the only way in
