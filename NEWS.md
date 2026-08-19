@@ -581,11 +581,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   for the amount in that compartment; chain-rule it with `d(alag)/dp` for the
   sensitivity wrt a model parameter.  The system is linear and its whole input
   is delayed together, so the derivative is exactly `-dA/dt` -- it matches a
-  finite difference to round-off for bolus and steady-state-bolus regimens
-  across one to three compartments, IV and oral.  It reports `NA` for an
-  individual with an infusion (`dA/dt` needs the infusion rate, which is not
-  carried into the pass that computes the output) and requires that every dose
-  reaching the linear system share the same `alag()` (#1119).
+  finite difference to round-off for bolus, infusion, and steady-state-bolus
+  regimens across one to three compartments, IV and oral.  It reports `NA` for
+  a steady-state infusion (its amounts are established analytically, so the
+  infusion rate afterward is not well defined at that index -- #1236) and
+  requires that every dose reaching the linear system share the same
+  `alag()` (#1119).
 
 - A model that mixes `linCmt()` with `d/dt()` now expands its sensitivities
   once.  The `linCmt()` call has to be resolved before the sensitivity

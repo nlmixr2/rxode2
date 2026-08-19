@@ -3,6 +3,9 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include <cstdlib>
+#include <cstring>
+#include <algorithm>
 #include "rxomp.h"
 #include "../inst/include/rxode2.h"
 #include "timsort.h"
@@ -29,25 +32,65 @@ extern t_update_inis update_inis;
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
-// Does this individual have any infusion (or steady-state infusion) dose?
+// Does this individual have a steady-state infusion (rate/dur) dose?
 //
 // The dose-time sensitivity (linCmtB which1 = -3) needs dA/dt, which includes
-// the infusion rate -- and `ind->InfusionRate` is only maintained while
-// SOLVING.  rxode2_df.cpp's output pass re-runs calc_lhs from the saved
-// amounts after iniSubject() has cleared the rates, so an infusion's
-// contribution would silently drop out of the reported value.  Report NA
-// instead of a wrong number; a bolus (including steady-state bolus) regimen is
-// exact.
-static inline int linCmtHasInfusion(rx_solving_options_ind *ind) {
-  if (ind->linSS == linCmtSsInf || ind->linSS == linCmtSsInf8) return 1;
+// the infusion rate.  A regular (non-SS) infusion's rate is recovered at
+// output time via the linCmtRateHist cache (see linCmtBRateSlot() /
+// linCmtBdoseTime() below, nlmixr2/rxode2#1236).  A steady-state infusion
+// establishes its amounts analytically (handleSSinf8()/solveSSinf(), setting
+// ind->linSS only transiently around that single call) and, for a one-shot
+// SS dose with no following schedule, deliberately leaves ind->InfusionRate
+// at 0 afterward -- the closed-form amount is exact but is not the limit of
+// an ongoing rate, so -dA/dt is not well defined by the cache at the SS
+// dose's own index; report NA there instead of a value that depends on
+// solve-order happenstance.  A steady-state BOLUS (linCmtSsBolus) never
+// touches InfusionRate and is unaffected -- it stays exact (see
+// test-lincmt-dose-time-sens.R).
+static inline int linCmtHasSsInfusion(rx_solving_options_ind *ind) {
   for (int i = 0; i < ind->ndoses; ++i) {
     int wh, cmt, wh100, whI, wh0;
     getWh(getEvid(ind, ind->idose[i]), &wh, &cmt, &wh100, &whI, &wh0);
-    if (whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
+    if ((wh0 == EVID0_SS0 || wh0 == EVID0_SS || wh0 == EVID0_SS20 ||
+         wh0 == EVID0_SS2 || wh0 == EVID0_SSINF) &&
+        whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
       return 1;
     }
   }
   return 0;
+}
+
+// Per-idx cache of the infusion rate feeding a linCmt() model, keyed the same
+// way as the amounts cached via getAdvan()/Alast: written once, while the
+// index is genuinely being solved (ind->InfusionRate live and correct), and
+// read back on any later re-query of that same index (the output pass in
+// rxode2_df.cpp, which clears ind->InfusionRate before recomputing lhs, or a
+// backward re-query within the same solve).  width is op->numLin, the size of
+// the rate vector linCmtBdoseTime()'s dAdt() expects.  linCmtB() writes this
+// for every genuinely-solved idx (whether or not the model actually has an
+// infusion -- it is simply 0 for a bolus-only regimen), so a re-query (grow =
+// 0) should always find it; NULL is a defensive fallback for an idx that
+// somehow was not, rather than a case expected to occur.
+static inline double *linCmtBRateSlot(rx_solving_options_ind *ind, int idx, int width, int grow) {
+  if (idx < 0 || width <= 0) return NULL;
+  if (ind->linCmtRateHistW != width) {
+    free(ind->linCmtRateHist);
+    ind->linCmtRateHist = NULL;
+    ind->linCmtRateHistCap = 0;
+    ind->linCmtRateHistW = width;
+  }
+  if (idx >= ind->linCmtRateHistCap) {
+    if (!grow) return NULL;
+    int newCap = ind->linCmtRateHistCap > 0 ? ind->linCmtRateHistCap : 64;
+    while (idx >= newCap) newCap *= 2;
+    double *np = (double*) realloc(ind->linCmtRateHist, (size_t)newCap * width * sizeof(double));
+    if (np == NULL) (Rf_error)("cannot allocate linCmt rate history");
+    memset(np + (size_t)ind->linCmtRateHistCap * width, 0,
+           (size_t)(newCap - ind->linCmtRateHistCap) * width * sizeof(double));
+    ind->linCmtRateHist = np;
+    ind->linCmtRateHistCap = newCap;
+  }
+  return ind->linCmtRateHist + (size_t)idx * width;
 }
 
 // Create linear compartment models for testing
@@ -462,10 +505,13 @@ extern "C" int linCmtZeroJac(int i) {
 //
 // `amt` holds the amounts at the requested time from the which1=-1/which2=-1
 // call the caller is required to have made, and the linear system's own
-// right-hand side gives d/dL exactly (see linCmtStan::dAdt()).  Returns
-// NA_REAL for a call that does not describe the model `lc` is set up for, for
-// an individual with an infusion (linCmtHasInfusion()), or for an out of range
-// `which2`.
+// right-hand side gives d/dL exactly (see linCmtStan::dAdt()).  `rate` is
+// either the live ind->InfusionRate slice (while genuinely solving) or the
+// linCmtBRateSlot() cache for that idx (a re-query, e.g. the output pass);
+// see the caller in linCmtB().  Returns NA_REAL for a call that does not
+// describe the model `lc` is set up for, when `rate` could not be recovered
+// (NULL -- see linCmtBRateSlot()), for a steady-state infusion
+// (linCmtHasSsInfusion()), or for an out of range `which2`.
 static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
                                      const Eigen::Matrix<double, Eigen::Dynamic, 1> &amt,
                                      rx_solving_options_ind *ind,
@@ -479,7 +525,8 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
       (int)amt.size() != ncmt + oral0) {
     return NA_REAL;
   }
-  if (linCmtHasInfusion(ind)) return NA_REAL;
+  if (rate == NULL) return NA_REAL;
+  if (linCmtHasSsInfusion(ind)) return NA_REAL;
   Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
   if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
     return NA_REAL;
@@ -543,8 +590,10 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
  *  violate this -- calling `linCmtB(which1 = -3)` while its linCmt()
  *  compartments carry more than one distinct `alag()` expression -- is
  *  refused at build time by `.rxLinCmtDoseTimeSensCheck()` (R/eventSens.R)
- *  rather than silently given the single-delay answer.  An individual with
- *  any infusion gets `NA_REAL` -- see linCmtHasInfusion().
+ *  rather than silently given the single-delay answer.  A regular infusion's
+ *  rate is recovered at output time via the linCmtBRateSlot() per-idx cache
+ *  (nlmixr2/rxode2#1236); an individual with a steady-state infusion still
+ *  gets `NA_REAL` -- see linCmtHasSsInfusion().
  *
  *  The parameter order is as follows:
  *
@@ -633,7 +682,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
     } else if (which1 == -3) {
-      return linCmtBdoseTime(lc, fx, ind, getLinRate, ncmt, oral0, which2,
+      // Mirrors the fx/J restore-vs-solve condition above (idx already
+      // solved -> a re-query, e.g. the output pass, where ind->InfusionRate
+      // has since been cleared/moved on; use the cached rate instead).
+      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
+        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+      return linCmtBdoseTime(lc, fx, ind, rate, ncmt, oral0, which2,
                              trans, p1, v1, p2, p3, p4, p5, ka);
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
@@ -687,6 +741,15 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   double *asave = ind->linCmtSave;
   double *r = getLinRate;
   double *a;
+
+  // idx is genuinely being solved right now (not a re-query of an
+  // already-solved index, e.g. the output pass) -- ind->InfusionRate is live
+  // and correct, so cache it for linCmtBdoseTime() (which1 = -3) to read back
+  // on a later re-query, once ind->InfusionRate has been cleared/moved on.
+  if (op->numLin > 0 && (ind->doSS || ind->solvedIdx < idx)) {
+    double *rslot = linCmtBRateSlot(ind, idx, op->numLin, 1);
+    if (rslot != NULL) std::copy(r, r + op->numLin, rslot);
+  }
 
   if (ind->linCmtAlast == NULL) {
     a = getAdvan(ind->solvedIdx);

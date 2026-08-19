@@ -367,6 +367,20 @@ struct rx_solving_options_ind_s {
   double  delayT0;         /* initial time; history before this is the IC */
   double  delayMinT;       /* smallest delay duration seen; caps the step size */
   int     delayWarmed;     /* 1 once the RHS has been evaluated to learn delays */
+  // linCmtB(which1 = -3) (the dose-time/moving-boundary sensitivity, see
+  // src/linCmt.cpp) needs the infusion rate at output time, but
+  // ind->InfusionRate is only maintained while solving -- rxode2_df.cpp's
+  // output pass clears it (nlmixr2/rxode2#1236).  linCmtB() records the live
+  // rate here, once per output index, while it is actually being solved
+  // (mirroring how the amounts themselves are cached via getAdvan()/Alast);
+  // linCmtBdoseTime() reads it back on a re-query (the output pass, or any
+  // backward re-query of an already-solved index) instead of the
+  // (by-then-cleared) live rate.  Flat idx-major layout: idx*linCmtRateHistW
+  // + j, j in [0, linCmtRateHistW).  Kept after the solve (freed with the
+  // subject) so the output pass can still read it, like delayHist above.
+  double *linCmtRateHist;   /* flat idx-indexed rate history, or NULL when unused */
+  int     linCmtRateHistCap; /* capacity in idx slots */
+  int     linCmtRateHistW;   /* doubles per idx slot (op->numLin); realloc if changed */
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival

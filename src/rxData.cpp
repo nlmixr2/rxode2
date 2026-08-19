@@ -1888,6 +1888,12 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->delayHistNeq = 0;
   ind->delayHistN = 0;
   ind->delayHistOn = 0;
+  // linCmtB(which1 = -3)'s output-time rate history (nlmixr2/rxode2#1236);
+  // kept after the solve for the same reason as delayHist above.
+  free(ind->linCmtRateHist);
+  ind->linCmtRateHist = NULL;
+  ind->linCmtRateHistCap = 0;
+  ind->linCmtRateHistW = 0;
 }
 
 extern "C" void gFree(){
