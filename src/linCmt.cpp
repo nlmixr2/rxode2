@@ -539,8 +539,12 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
  *  with d(alag)/dp to get the sensitivity wrt a model parameter.  This
  *  requires that EVERY dose reaching the linear system carries the same
  *  `alag()`; it is not the per-compartment derivative of a model that lags
- *  its compartments differently.  An individual with any infusion gets
- *  `NA_REAL` -- see linCmtHasInfusion().
+ *  its compartments differently (nlmixr2/rxode2#1237).  A model that would
+ *  violate this -- calling `linCmtB(which1 = -3)` while its linCmt()
+ *  compartments carry more than one distinct `alag()` expression -- is
+ *  refused at build time by `.rxLinCmtDoseTimeSensCheck()` (R/eventSens.R)
+ *  rather than silently given the single-delay answer.  An individual with
+ *  any infusion gets `NA_REAL` -- see linCmtHasInfusion().
  *
  *  The parameter order is as follows:
  *

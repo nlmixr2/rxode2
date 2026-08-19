@@ -565,6 +565,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Sensitivities
 
+- `rxode2()` now refuses to build a model that calls `linCmtB(which1 = -3)`
+  (the dose-time sensitivity) while its `linCmt()` compartments carry more
+  than one distinct modeled `alag()` -- e.g. `alag(depot)` driven by one
+  parameter and `alag(central)` by another.  `which1 = -3` is the derivative
+  wrt ONE delay applied to every dose feeding the linear system; such a model
+  previously solved and silently returned that single-delay answer instead of
+  the true per-compartment sensitivity, which the entry point cannot compute
+  (#1237).
+
 - `linCmtB()` gained a dose-time (moving boundary) sensitivity, `which1 = -3`:
   the derivative of a `linCmt()` model with respect to a delay applied to every
   dose feeding it, which is what a modeled `alag()` on its dosed compartment

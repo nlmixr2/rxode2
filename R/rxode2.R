@@ -483,6 +483,11 @@ rxode2 <- # nolint
                 "sensitivities will be incorrect -- rename them", call. = FALSE)
       }
     }
+    ## linCmtB(which1 = -3) (the dose-time sensitivity, nlmixr2/rxode2#1119)
+    ## assumes every dose feeding the linear system shares one alag(); refuse
+    ## rather than silently return the single-delay answer for a model that
+    ## lags its linCmt() compartments differently (nlmixr2/rxode2#1237).
+    .rxLinCmtDoseTimeSensCheck(.env$.mv)
     .indLinSens <- length(.env$.mv$indLin) > 0L &&
       length(.env$.mv$sens) > 0L
     if (.indLinSens) {
