@@ -474,6 +474,135 @@
   .df[!duplicated(.df[c("state", "param")]), , drop = FALSE]
 }
 
+#' Recursively collect calls to a named function inside an expression
+#'
+#' @param expr An R language object (call, symbol, or literal).
+#' @param fname Function name to match (e.g. `"linCmtB"`).
+#' @return list of matching call objects (possibly empty).
+#' @noRd
+.rxFindNamedCalls <- function(expr, fname) {
+  if (!is.call(expr)) return(list())
+  .out <- if (identical(as.character(expr[[1]])[1], fname)) list(expr) else list()
+  for (.a in as.list(expr)[-1]) .out <- c(.out, .rxFindNamedCalls(.a, fname))
+  .out
+}
+
+#' Constants assigned to plain names by a normalized model's own lines
+#'
+#' `linCmtB()`'s mode selectors (`which1`/`which2`) are always literal in
+#' every generated or hand-written call this package has seen, but nothing in
+#' the grammar enforces that -- a model could stash `-3` in a variable first.
+#' `rxNorm()` output is one assignment per line in evaluation order, so a
+#' plain `name=<number>;` line is a genuine scalar constant for every later
+#' line; fold those in so `.rxLinCmtDoseTimeSensUsed()` still recognizes the
+#' selector.
+#'
+#' @param norm Character vector, one normalized model line per element.
+#' @return An environment (parent `baseenv()`) with one binding per constant.
+#' @noRd
+.rxLinCmtConstEnv <- function(norm) {
+  .env <- new.env(parent = baseenv())
+  .re <- "^([A-Za-z._][A-Za-z0-9._]*)=(-?[0-9]+(\\.[0-9]+)?)L?;$"
+  for (.line in grep(.re, norm, value = TRUE)) {
+    assign(sub(.re, "\\1", .line), as.numeric(sub(.re, "\\2", .line)), envir = .env)
+  }
+  .env
+}
+
+#' Does the model call `linCmtB(which1 = -3)` (the dose-time sensitivity)?
+#'
+#' `which1` is the 6th argument to `linCmtB()`
+#' (`rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans, ...`); only a
+#' (possibly indirect, via `.rxLinCmtConstEnv()`) `-3` there triggers
+#' `linCmtBdoseTime()` (`src/linCmt.cpp`).
+#'
+#' @param mv Model vars (or normalized model text, one line per element).
+#' @return `TRUE`/`FALSE`.
+#' @noRd
+.rxLinCmtDoseTimeSensUsed <- function(mv) {
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .lines <- grep("linCmtB(", .norm, fixed = TRUE, value = TRUE)
+  if (length(.lines) == 0L) return(FALSE)
+  .constEnv <- .rxLinCmtConstEnv(.norm)
+  for (.line in .lines) {
+    .rhs <- sub("^[^=]*=(.*);$", "\\1", .line)
+    .expr <- tryCatch(str2lang(.rhs), error = function(e) NULL)
+    if (is.null(.expr)) next
+    for (.call in .rxFindNamedCalls(.expr, "linCmtB")) {
+      .args <- as.list(.call)[-1]
+      if (length(.args) < 6L) next
+      .which1 <- tryCatch(eval(.args[[6]], envir = .constEnv),
+                          error = function(e) NA_real_)
+      if (isTRUE(.which1 == -3)) return(TRUE)
+    }
+  }
+  FALSE
+}
+
+#' The modeled `alag()` expression on each linCmt() physical compartment
+#'
+#' @param mv Model vars.
+#' @return Named character vector (alag expression text, named by linCmt
+#'   compartment); `NULL` when no linCmt() compartment carries a modeled
+#'   `alag()`.
+#' @noRd
+.rxLinCmtDoseTimeLagExprs <- function(mv) {
+  .linPhys <- grep("^rx__sens_", .rxLinCmt(mv), value = TRUE, invert = TRUE)
+  if (length(.linPhys) == 0L) return(NULL)
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .re <- "^alag\\(([^)]+)\\)=(.*);$"
+  .lines <- grep(.re, .norm, value = TRUE)
+  if (length(.lines) == 0L) return(NULL)
+  .cmt <- sub(.re, "\\1", .lines)
+  .expr <- sub(.re, "\\2", .lines)
+  .keep <- .cmt %in% .linPhys
+  if (!any(.keep)) return(NULL)
+  stats::setNames(.expr[.keep], .cmt[.keep])
+}
+
+#' Refuse `linCmtB(which1 = -3)` when it cannot give a correct answer
+#'
+#' `linCmtB(which1 = -3)` is the derivative wrt ONE delay applied to every dose
+#' feeding the linear system (see the header comment on `linCmtB` in
+#' `src/linCmt.cpp`); it silently returns the single-delay answer for a model
+#' that lags its linCmt() compartments differently instead of the true
+#' per-compartment sensitivity (nlmixr2/rxode2#1237).  Error instead of
+#' solving when the model both uses `which1 = -3` and carries more than one
+#' distinct `alag()` expression across its linCmt() compartments.
+#'
+#' This is a static, text-level check: it does not know which compartments
+#' actually receive doses (that is event-table, not model, information), so a
+#' model with one modeled `alag()` that ALSO doses an unlagged (implicit
+#' delay-0) linCmt() compartment still passes -- that was already the
+#' documented requirement before this guard existed and remains a gap only
+#' the full per-compartment fix (shared with #1236) closes.
+#'
+#' A single compartment's `alag()` may be assigned conditionally (different
+#' text per `if`/`else` branch) without violating the shared-delay
+#' assumption by itself -- only more than one linCmt() compartment carrying
+#' different `alag()` expressions is the violation this refuses.  So this
+#' requires BOTH more than one distinct compartment carrying a modeled
+#' `alag()` AND more than one distinct expression across them; branches of
+#' one compartment's own conditional alag() do not by themselves trigger it.
+#'
+#' @param mv Model vars.
+#' @return invisibly `NULL`; called for the `stop()` side effect.
+#' @noRd
+.rxLinCmtDoseTimeSensCheck <- function(mv) {
+  if (!.rxLinCmtDoseTimeSensUsed(mv)) return(invisible(NULL))
+  .lag <- .rxLinCmtDoseTimeLagExprs(mv)
+  if (length(.lag) == 0L) return(invisible(NULL))
+  .cmts <- unique(names(.lag))
+  if (length(.cmts) < 2L || length(unique(unname(.lag))) < 2L) {
+    return(invisible(NULL))
+  }
+  stop("'linCmtB(which1 = -3)' (the dose-time sensitivity) assumes every ",
+       "dose feeding the linear system shares one alag(); this model lags ",
+       "linCmt() compartment(s) '", paste(.cmts, collapse = "', '"),
+       "' differently ('", paste(unique(unname(.lag)), collapse = "' vs '"),
+       "'), which it cannot represent -- see nlmixr2/rxode2#1237", call. = FALSE)
+}
+
 #' Free symbols of a dosing expression in symengine (SE-mangled) names
 #'
 #' `map$sensParams` are SE-mangled names (e.g. `ETA_3_`); `all.vars()` of the
