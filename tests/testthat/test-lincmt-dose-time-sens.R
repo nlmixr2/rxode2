@@ -128,10 +128,97 @@ rxTest({
     expect_equal(s$dCentral / exp(.p[["tv"]]), .fdCol(m, e, "cp"), tolerance = 1e-5)
   })
 
-  test_that("linCmtB(-3) reports NA for an infusion rather than a wrong value", {
-    # dA/dt includes the infusion rate, and ind->InfusionRate is only
-    # maintained while solving -- the output pass recomputes the lhs from the
-    # saved amounts with the rates cleared.  Report NA instead (#1119).
+  test_that("linCmtB(-3) matches finite differences for an infusion (#1236)", {
+    # dA/dt includes the infusion rate; ind->InfusionRate is only maintained
+    # while solving, so the output pass (which recomputes the lhs from the
+    # saved amounts after clearing the rates) recovers it from the per-idx
+    # linCmtBRateSlot() cache written while genuinely solving instead.
+    .cases <- list(
+      list(
+        nm = "1cmt IV single infusion",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
+          alag(central) <- lag
+          cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+          dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+        }),
+        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
+          add.sampling(seq(0.1, 12, 0.25))
+      ),
+      list(
+        nm = "1cmt IV multiple infusions",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
+          alag(central) <- lag
+          cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+          dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+        }),
+        e = eventTable() |>
+          add.dosing(dose = 100, rate = 25, nbr.doses = 4, dosing.interval = 6, cmt = "central") |>
+          add.sampling(seq(0.1, 30, 0.25))
+      ),
+      list(
+        nm = "1cmt IV infusion specified by duration",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
+          alag(central) <- lag
+          cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+          dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+        }),
+        e = eventTable() |> add.dosing(dose = 100, dur = 4, cmt = "central") |>
+          add.sampling(seq(0.1, 12, 0.25))
+      ),
+      list(
+        nm = "1cmt oral infusion into depot",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+          alag(depot) <- lag
+          cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+          dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+        }),
+        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "depot") |>
+          add.sampling(seq(0.1, 24, 0.25))
+      ),
+      list(
+        nm = "2cmt IV infusion into central (with peripheral)",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); q <- exp(tq); v2 <- exp(tv2)
+          lag <- 2 * exp(eta_lag)
+          alag(central) <- lag
+          cp <- linCmtB(rx__PTR__, t, 2, 2, 0, -1, -1, 1, cl, v, q, v2, 0, 0, 0)
+          dcp <- lag * linCmtB(rx__PTR__, t, 2, 2, 0, -3, -3, 1, cl, v, q, v2, 0, 0, 0)
+        }),
+        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "central") |>
+          add.sampling(seq(0.1, 24, 0.25))
+      ),
+      list(
+        nm = "linCmt() mixed with an ODE compartment (numLin < neq), infusion",
+        m = rxode2({
+          cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag); ke0 <- 0.5
+          alag(central) <- lag
+          cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+          dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+          d/dt(ce) <- (cp - ce) * ke0
+        }),
+        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
+          add.sampling(seq(0.1, 12, 0.25))
+      )
+    )
+    for (.c in .cases) {
+      .s <- rxSolve(.c$m, .c$e, params = .p)
+      expect_false(any(is.na(.s$dcp)), info = .c$nm)
+      expect_true(max(abs(.s$dcp)) > 1e-3, info = .c$nm)  # not trivially zero
+      expect_equal(.s$dcp, .fdCol(.c$m, .c$e, "cp"),
+                   tolerance = 1e-5, info = .c$nm)
+    }
+  })
+
+  test_that("linCmtB(-3) matches finite differences for an infusion with method='dop853'", {
+    # The default (liblsoda/advan) and dop853 solve drivers walk ind->idx the
+    # same way for a linCmt()-only model (dense dop853 output, which does not,
+    # is disabled for any model with numLin > 0 -- see rxData.cpp), but
+    # exercise it explicitly since linCmtBRateSlot()'s cache is keyed on
+    # ind->idx/solvedIdx/doSS, common state every driver sets.
     m <- rxode2({
       cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
       alag(central) <- lag
@@ -140,9 +227,40 @@ rxTest({
     })
     e <- eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
       add.sampling(seq(0.1, 12, 0.25))
-    s <- rxSolve(m, e, params = .p)
-    expect_true(all(is.na(s$dcp)))
-    expect_false(any(is.na(s$cp)))   # the model itself still solves
+    s <- rxSolve(m, e, params = .p, method = "dop853")
+    expect_false(any(is.na(s$dcp)))
+    h <- 1e-5
+    p1 <- .p; p1[["eta_lag"]] <- .p[["eta_lag"]] + h
+    p0 <- .p; p0[["eta_lag"]] <- .p[["eta_lag"]] - h
+    fd <- (rxSolve(m, e, params = p1, method = "dop853")$cp -
+             rxSolve(m, e, params = p0, method = "dop853")$cp) / (2 * h)
+    expect_equal(s$dcp, fd, tolerance = 1e-5)
+  })
+
+  test_that("linCmtB(-3) reports NA for a steady-state infusion", {
+    # A steady-state infusion establishes its amounts analytically
+    # (handleSSinf8()/solveSSinf()); ind->InfusionRate afterward reflects
+    # solve-order happenstance rather than a well-defined "rate at this
+    # index", so -dA/dt is not trustworthy there -- refused (#1236). A
+    # steady-state BOLUS is unaffected (never touches InfusionRate) and stays
+    # exact -- see the "1cmt IV steady-state bolus" case above.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+    })
+    .es <- list(
+      "periodic ss" = et(amt = 100, rate = 25, ii = 24, ss = 1, cmt = "central") |>
+        et(seq(0.1, 24, 0.25)),
+      "continuous ss" = et(amt = 0, rate = 25, ss = 1, cmt = "central") |>
+        et(seq(0.1, 24, 0.25))
+    )
+    for (.nm in names(.es)) {
+      s <- rxSolve(m, .es[[.nm]], params = .p)
+      expect_true(all(is.na(s$dcp)), info = .nm)
+      expect_false(any(is.na(s$cp)), info = .nm)   # the model itself still solves
+    }
   })
 
   test_that("linCmtB(-3) rejects a mismatched model shape", {
