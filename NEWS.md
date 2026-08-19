@@ -482,6 +482,13 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   loaded, rather than losing the solve over a setting that version had no notion
   of.  What they can take is asked of the daemon itself, so a matching pool
   drops nothing.
+- `rxSolve()`'s thread-safety dispatch no longer has a code path that could
+  silently substitute `liblsodaR` for the solving method a user explicitly
+  requested. The path was reachable only once a currently-disabled model
+  classification was re-enabled, so it never fired in a release, but every
+  `par_*` solver already reseeds its RNG per subject as a pure function of
+  that subject's position, so the swap was never buying the reproducibility
+  it was meant to protect (#1240).
 - An event pushed by the model with `evid_()` (and the `bolus()`, `infuse()`,
   `replace()`, `multiply()`, `reset()`, `phantom()` and `obs()` helpers) now
   gives the same solution as the identical event written in the data, on every

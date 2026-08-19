@@ -6514,12 +6514,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
-          // Thread safe, but possibly not reproducible.  Never for indLin (3):
-          // swapping it for liblsodaR would silently change the solver rather
-          // than how it is threaded.
-          if (op->cores > 1 && op->stiff != 3) {
-            op->stiff = method = 4;
-          }
+          // Every par_* solver seeds its RNG per-subject as
+          // seed0 + rx->ordId[solveid] - 1 immediately before solving that
+          // subject (see par_solve.cpp), so the result is already a pure
+          // function of solveid and does not depend on which thread picks up
+          // which subject or on scheduling order.  There is therefore nothing
+          // to gain by silently swapping the user's requested solver for
+          // liblsodaR here -- doing so previously changed the solver a user
+          // explicitly named without any message (issue #1240).
           rxSolveDat->throttle = false;
           break;
         case threadSafe:
@@ -6545,9 +6547,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       } else {
         switch (thread) {
         case threadSafeRepNumThread:
-          if (op->cores > 1 && op->stiff != 3) {
-            op->stiff = method = 4;
-          }
+          // See the op->cores == 0 arm above: the RNG stream is already
+          // reproducible per solveid, so no solver swap is needed here either.
           break;
         case threadSafe:
           // Thread safe, and reproducible
