@@ -322,6 +322,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   The check runs once the whole model is parsed, so a variable assigned below
   the dosing statement still counts as declared (#1231).
 
+- A wrong-arity `linCmtA()`/`linCmtB()` call (e.g. `linCmtA(a,1,1,0)`, one
+  argument short) now reports a parse-time syntax error instead of
+  segfaulting R.  `handleFunctionLinCmt()` indexed its fixed argument
+  positions without checking how many arguments were actually given, so a
+  short call dereferenced a NULL parse node (#1266).
+
 ### Compilation
 
 - A model that fails to build now shows the compiler's own error lines (and

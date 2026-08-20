@@ -377,6 +377,16 @@ test_that("depot is captured", {
                  "rx__sens_central_BY_ka", "rx__sens_depot_BY_ka"))
 })
 
+test_that("wrong-arity linCmtA()/linCmtB() reports a syntax error instead of crashing (#1266)", {
+  expect_error(rxModelVars("cp=linCmtA(a,1,1,0);"))
+  expect_error(rxModelVars("cp=linCmtA();"))
+  expect_error(rxModelVars("cp=linCmtB(a,1,1,0,0,0);"))
+  expect_error(rxModelVars("cp=linCmtB();"))
+
+  expect_error(rxModelVars("cp=linCmtA(a,1,1,0,0);"), NA)
+  expect_error(rxModelVars("cp=linCmtB(a,1,1,0,0,0,0);"), NA)
+})
+
 test_that("linCmt() should not error for nlmixr2 models with endpoints", {
 
   run1 <- function() {
