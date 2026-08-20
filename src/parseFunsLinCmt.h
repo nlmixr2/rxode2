@@ -14,6 +14,15 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
   if (!strcmp("linCmtA", tf->v) ||
       (tf->isLinB=!strcmp("linCmtB", tf->v))) {
     D_ParseNode *xpn1 = d_get_child(tf->pn, 3);
+    int ii = d_get_number_of_children(xpn1) + 1;
+    int minArgs = tf->isLinB ? 7 : 5;
+    if (ii < minArgs) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' takes at least %d arguments"),
+             tf->v, minArgs);
+      trans_syntax_error_report_fn(_gbuf.s);
+      return 1;
+    }
     D_ParseNode *xpn2 = d_get_child(xpn1, 1);
     char *v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
     tb.linCmtN = toInt(v2+1);
