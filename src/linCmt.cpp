@@ -27,6 +27,16 @@ stan::math::ChainableStack rxode2MainThreadAdTape;
 
 extern rx_solving_options op_global;
 extern t_update_inis update_inis;
+extern "C" rx_solve *getRxSolve_(void);
+extern "C" double linCmtB(rx_solve *rx, int id,
+                          double _t, int linCmt,
+                          int ncmt, int oral0,
+                          int which1, int which2,
+                          int trans,
+                          double p1, double v1,
+                          double p2, double p3,
+                          double p4, double p5,
+                          double ka);
 
 
 #define getLinRate ind->InfusionRate + op->linOffset
@@ -562,6 +572,43 @@ NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2,
     for (int k = 0; k < m; k++) transMat(k, dir) = ret(k, 0).d_;
   }
   return transMat;
+}
+
+// Test-only entry point for Phase 2 of the sensitivity-carry subsystem
+// (project_lincmt_timevarying_covariate_bug / the linCmt-subject-ad plan):
+// exercises linCmtB()'s which1=-5/-6 (cumulative carry) sentinels through a
+// REAL, already-solved subject context, not a fabricated ind/rx_solve. Must
+// be called from R right after an rxSolve() of a real linCmt() model in the
+// SAME session (getRxSolve_() returns whatever the most recent solve left
+// behind, exactly like every other post-solve accessor in this package --
+// see rxSerialize.cpp/rxData.cpp). `id` is the 0-based subject index.
+// `t`/`tPrior` are that subject's real per-row output time and the real
+// time of the PRECEDING row (0 for the first row), read back from the
+// solved data.frame -- ind->idx/ind->tprior are set here to mirror exactly
+// what rxode2_df.cpp's own per-row output-pass loop already does before
+// calling calc_lhs for row i, so linCmtB's dt computation
+// (ind->doSS ? tout-tprior : _t-tprior) sees the same values a real
+// generated model's calc_lhs would produce.
+// [[Rcpp::export]]
+NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
+                                   NumericVector p1, double v1,
+                                   int ncmt, int oral0, int trans,
+                                   IntegerVector which1, IntegerVector which2,
+                                   Nullable<NumericVector> addVal = R_NilValue) {
+  rx_solve *rx = getRxSolve_();
+  rx_solving_options_ind *ind = &(rx->subjects[id]);
+  int n = t.size();
+  NumericVector out(n);
+  NumericVector av = addVal.isNull() ? NumericVector(n, 0.0) : NumericVector(addVal);
+  for (int i = 0; i < n; i++) {
+    ind->idx = i;
+    ind->tprior = tPrior[i];
+    // p2 only means anything for which1=-7 (the additive-carry sentinel),
+    // where it carries the caller-supplied local contribution to add.
+    out[i] = linCmtB(rx, id, t[i], 0, ncmt, oral0, which1[i], which2[i], trans,
+                      p1[i], v1, av[i], 0.0, 0.0, 0.0, 0.0);
+  }
+  return out;
 }
 
 // PROTOTYPE: phase-aware hybrid WITHIN one subject. Real subjects often look
@@ -1496,6 +1543,111 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       else if (ncmt == 2) lc.linCmtStan2<fv>(gF, yp0, kaV, ret);
       else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0, kaV, ret);
       return ret(row, 0).d_;
+    } else if (which1 == -7) {
+      // Add a caller-supplied local contribution (dPredDTheta_i *
+      // dThetaDEta_i, computed by the caller -- R for now, generated model
+      // code once Phase 3 wires this in) into the stored cumulative carry
+      // at (row,col), ON TOP OF whatever which1=-5 already accumulated for
+      // this row via the state-transition multiply. which2 packs (row,col)
+      // as row + m*col like -4/-5/-6; the value to add rides in p2 (unused
+      // by this sentinel otherwise -- no theta is read here).
+      int m = ncmt + oral0;
+      int row = which2 % m;
+      int col = which2 / m;
+      ind->linCmtCarryT[row*4 + col] += p2;
+      return ind->linCmtCarryT[row*4 + col];
+    } else if (which1 == -5 || which1 == -6) {
+      // Cumulative-carry sentinels (per-subject storage: ind->linCmtCarryT,
+      // see rxode2parseStruct.h; reset at iniSubject() in par_solve.h).
+      // which2 packs (row, col) as row + m*col exactly like which1=-4, but
+      // reads/writes are into the STORED 4x4 (stride-4) submatrix, not a
+      // one-off local matrix.
+      //
+      // which1=-6 is a pure read: return the current cumulative
+      // ind->linCmtCarryT[row*4+col] with no recomputation -- lets a caller
+      // inspect T_i without re-triggering an advance.
+      //
+      // which1=-5 is the mutating advance: T_i = M_i * T_{i-1}, where M_i is
+      // THIS interval's local transition matrix (the same quantity which1=-4
+      // returns one column of, recomputed here for every column since the
+      // full m x m matrix is needed for the multiply). Must be called
+      // EXACTLY ONCE per row per subject (documented contract, mirroring
+      // which1=-3/-4's own single-evaluation-per-row assumption) -- calling
+      // it more than once for the same row would apply the same transition
+      // twice. Composing with this row's OWN local contribution
+      // (dPredDTheta_i * dThetaDEta_i) is left to the caller (R for now,
+      // generated model code once Phase 3 wires this in) -- this sentinel
+      // only carries the state-transition part forward.
+      int m = ncmt + oral0;
+      int row = which2 % m;
+      int col = which2 / m;
+      if (which1 == -6) {
+        return ind->linCmtCarryT[row*4 + col];
+      }
+      // Unlike which1=-4 (which always follows a which1=-1,-1 call earlier
+      // in the same calc_lhs invocation, guaranteeing lc is already sized
+      // for this ncmt/oral0/trans), which1=-5 may be the first touch of lc
+      // on this thread for a standalone re-query -- size it defensively.
+      if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+        lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
+      }
+      int npars = lc.getNpars();
+      typedef stan::math::fvar<double> fv;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
+      linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(npars);
+      for (int k = 0; k < npars; k++) thetaF(k, 0) = fv(thetaD(k, 0), 0.0);
+      Eigen::Matrix<fv, Eigen::Dynamic, 2> gF = stan::math::macros2micros(thetaF, ncmt, trans);
+      fv kaV(0.0, 0.0);
+      if (oral0) kaV = thetaF(ncmt*2, 0);
+
+      double dt = ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior);
+      lc.setDt(dt);
+      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
+        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+      // linCmtBRateSlot() returns NULL when this idx's rate was never
+      // cached live -- expected for -5 called as a standalone re-query well
+      // after the whole subject finished solving (the cache is only ever
+      // written while an idx is genuinely being solved for the first time,
+      // src/linCmt.cpp ~line 1698), which never happens again once
+      // ind->solvedIdx has reached its final value. In that situation
+      // ind->InfusionRate (getLinRate) is still a safe, defined per-thread
+      // buffer to fall back to -- same defensive intent already documented
+      // on linCmtBRateSlot() itself ("NULL is a defensive fallback ... not
+      // a case expected to occur"), just now actually handled by a caller.
+      if (rate == NULL) rate = getLinRate;
+      lc.setRate(const_cast<double*>(rate));
+
+      // Full local m x m transition matrix: one forward-mode pass per column.
+      double localM[16];
+      for (int c = 0; c < m; c++) {
+        Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0c =
+          Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+        yp0c(c, 0) = fv(0.0, 1.0);
+        Eigen::Matrix<fv, Eigen::Dynamic, 1> retc(m);
+        if (ncmt == 1) lc.linCmtStan1<fv>(gF, yp0c, kaV, retc);
+        else if (ncmt == 2) lc.linCmtStan2<fv>(gF, yp0c, kaV, retc);
+        else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0c, kaV, retc);
+        for (int r = 0; r < m; r++) localM[r*4 + c] = retc(r, 0).d_;
+      }
+      // T_new = M * T_old (only the top-left m x m submatrix participates;
+      // untouched entries of the 4x4 buffer stay 0 from iniSubject()'s reset).
+      double tNew[16];
+      for (int r = 0; r < m; r++) {
+        for (int c = 0; c < m; c++) {
+          double s = 0.0;
+          for (int k2 = 0; k2 < m; k2++) {
+            s += localM[r*4 + k2] * ind->linCmtCarryT[k2*4 + c];
+          }
+          tNew[r*4 + c] = s;
+        }
+      }
+      for (int r = 0; r < m; r++) {
+        for (int c = 0; c < m; c++) {
+          ind->linCmtCarryT[r*4 + c] = tNew[r*4 + c];
+        }
+      }
+      return ind->linCmtCarryT[row*4 + col];
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
