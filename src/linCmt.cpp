@@ -621,6 +621,11 @@ NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
     }
     ind->idx = i;
     ind->tprior = tPrior[i];
+    // The -5 advance derives its interval from its own previous invocation
+    // time (ind->linCmtCarryTlast) rather than ind->tprior (stale in the
+    // post-solve lhs pass) -- seed it per call so this harness keeps its
+    // documented caller-supplied t/tPrior interval semantics.
+    if (which1[i] == -5) ind->linCmtCarryTlast = tPrior[i];
     double p2i = which1[i] == -7 ? av[i] : theta(i, 2);
     out[i] = linCmtB(rx, id, t[i], 0, ncmt, oral0, which1[i], which2[i], trans,
                       theta(i, 0), theta(i, 1), p2i, theta(i, 3),
@@ -1619,6 +1624,16 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
         lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
       }
+      // The advance interval comes from this sentinel's OWN previous
+      // invocation time, not ind->tprior: calc_lhs fires exactly once per
+      // event row in solve order, but in the post-solve lhs pass ind->tprior
+      // is stale (frozen at the solve's final interval), so _t - tprior is
+      // wrong for every row but the last.  linCmtCarryTlast is reset to NAN
+      // at iniSubject(); the first row advances over dt = 0 (M = I,
+      // harmless: the carry state is still 0).
+      double carryDt = ISNAN(ind->linCmtCarryTlast) ? 0.0 :
+        (_t - ind->linCmtCarryTlast);
+      ind->linCmtCarryTlast = _t;
       int npars = lc.getNpars();
       typedef stan::math::fvar<double> fv;
       Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
@@ -1629,8 +1644,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       fv kaV(0.0, 0.0);
       if (oral0) kaV = thetaF(ncmt*2, 0);
 
-      double dt = ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior);
-      lc.setDt(dt);
+      lc.setDt(carryDt);
       const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
         linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
       // linCmtBRateSlot() returns NULL when this idx's rate was never

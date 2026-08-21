@@ -398,6 +398,13 @@ struct rx_solving_options_ind_s {
   // Opt-in: unused unless a model actually requests which1=-5/-6/-7.
 #define RX_LINCMT_CARRY_MAXPAIRS 8
   double linCmtCarryT[4*RX_LINCMT_CARRY_MAXPAIRS];
+  // Time of this subject's previous which1=-5 carry advance.  calc_lhs fires
+  // exactly once per event row in solve order (dose rows included, output
+  // filtering notwithstanding), but in the post-solve lhs pass ind->tprior is
+  // stale (frozen at the solve's final interval), so the -5 advance derives
+  // its interval dt from its OWN previous invocation time instead.  NAN =
+  // no prior advance (first row -> dt 0, harmless: the carry state is 0).
+  double linCmtCarryTlast;
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival
