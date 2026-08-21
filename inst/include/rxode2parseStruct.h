@@ -381,6 +381,17 @@ struct rx_solving_options_ind_s {
   double *linCmtRateHist;   /* flat idx-indexed rate history, or NULL when unused */
   int     linCmtRateHistCap; /* capacity in idx slots */
   int     linCmtRateHistW;   /* doubles per idx slot (op->numLin); realloc if changed */
+  // Cumulative sensitivity carry state for the linCmt()-time-varying-covariate
+  // fix (project_lincmt_timevarying_covariate_bug): d(Alast_i)/d(eta), one
+  // column per carried eta/theta direction (up to 4), one row per linCmt()
+  // compartment (up to 4, ncmt+oral0 <= 3+1). Fixed 4x4 flat, row-major,
+  // stride 4 regardless of the model's actual m so iniSubject() can reset it
+  // without needing to know m -- linCmtB(which1=-5/-6, src/linCmt.cpp) only
+  // ever reads/writes the top-left m x m submatrix. Reset to all-zero each
+  // subject (Alast starts at 0, so d(Alast_0)/d(eta) = 0), mirroring how
+  // linCmtSave is reset above. Opt-in: unused unless a model actually
+  // requests which1=-5/-6.
+  double linCmtCarryT[16];
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival
