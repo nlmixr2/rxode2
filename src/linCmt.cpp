@@ -574,14 +574,14 @@ NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2,
   return transMat;
 }
 
-// Test-only entry point for Phase 2 of the sensitivity-carry subsystem
+// Test-only entry point for Phases 2/3b.2 of the sensitivity-carry subsystem
 // (project_lincmt_timevarying_covariate_bug / the linCmt-subject-ad plan):
-// exercises linCmtB()'s which1=-5/-6 (cumulative carry) sentinels through a
-// REAL, already-solved subject context, not a fabricated ind/rx_solve. Must
-// be called from R right after an rxSolve() of a real linCmt() model in the
-// SAME session (getRxSolve_() returns whatever the most recent solve left
-// behind, exactly like every other post-solve accessor in this package --
-// see rxSerialize.cpp/rxData.cpp). `id` is the 0-based subject index.
+// exercises linCmtB()'s which1=-5/-6/-7 (cumulative carry) sentinels through
+// a REAL, already-solved subject context, not a fabricated ind/rx_solve.
+// Must be called from R right after an rxSolve() of a real linCmt() model in
+// the SAME session (getRxSolve_() returns whatever the most recent solve
+// left behind, exactly like every other post-solve accessor in this package
+// -- see rxSerialize.cpp/rxData.cpp). `id` is the 0-based subject index.
 // `t`/`tPrior` are that subject's real per-row output time and the real
 // time of the PRECEDING row (0 for the first row), read back from the
 // solved data.frame -- ind->idx/ind->tprior are set here to mirror exactly
@@ -589,24 +589,42 @@ NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2,
 // calling calc_lhs for row i, so linCmtB's dt computation
 // (ind->doSS ? tout-tprior : _t-tprior) sees the same values a real
 // generated model's calc_lhs would produce.
+// `theta` is n x 7 (p1, v1, p2, p3, p4, p5, ka) -- per ROW, so a
+// time-varying covariate on ANY linCmt() parameter (not just p1) is
+// representable, which the 3b.2 multi-pair test needs (e.g. eta.cl on cl
+// AND eta.v on a wt-driven v). For which1=-7 the value to add rides in the
+// p2 argument slot of linCmtB (per that sentinel's contract), so addVal[i]
+// is passed THERE and theta(i,2) is ignored for those rows (no theta is
+// read by -7 anyway).
 // [[Rcpp::export]]
 NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
-                                   NumericVector p1, double v1,
+                                   NumericMatrix theta,
                                    int ncmt, int oral0, int trans,
                                    IntegerVector which1, IntegerVector which2,
                                    Nullable<NumericVector> addVal = R_NilValue) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   int n = t.size();
+  if (theta.nrow() != n || theta.ncol() != 7) {
+    Rcpp::stop("theta must be length(t) x 7 (p1, v1, p2, p3, p4, p5, ka)");
+  }
+  int m = ncmt + oral0;
   NumericVector out(n);
   NumericVector av = addVal.isNull() ? NumericVector(n, 0.0) : NumericVector(addVal);
   for (int i = 0; i < n; i++) {
+    if (which1[i] == -5 || which1[i] == -6 || which1[i] == -7) {
+      int pair = which2[i] / m;
+      if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) {
+        Rcpp::stop("carry pair index %d out of range (which2=%d, m=%d): at most RX_LINCMT_CARRY_MAXPAIRS=%d simultaneous carry-eligible (linCmt parameter, eta) pairs are supported",
+                   pair, which2[i], m, RX_LINCMT_CARRY_MAXPAIRS);
+      }
+    }
     ind->idx = i;
     ind->tprior = tPrior[i];
-    // p2 only means anything for which1=-7 (the additive-carry sentinel),
-    // where it carries the caller-supplied local contribution to add.
+    double p2i = which1[i] == -7 ? av[i] : theta(i, 2);
     out[i] = linCmtB(rx, id, t[i], 0, ncmt, oral0, which1[i], which2[i], trans,
-                      p1[i], v1, av[i], 0.0, 0.0, 0.0, 0.0);
+                      theta(i, 0), theta(i, 1), p2i, theta(i, 3),
+                      theta(i, 4), theta(i, 5), theta(i, 6));
   }
   return out;
 }
@@ -1546,43 +1564,53 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     } else if (which1 == -7) {
       // Add a caller-supplied local contribution (dPredDTheta_i *
       // dThetaDEta_i, computed by the caller -- R for now, generated model
-      // code once Phase 3 wires this in) into the stored cumulative carry
-      // at (row,col), ON TOP OF whatever which1=-5 already accumulated for
-      // this row via the state-transition multiply. which2 packs (row,col)
-      // as row + m*col like -4/-5/-6; the value to add rides in p2 (unused
+      // code once Phase 3b.3 wires this in) into the stored cumulative carry
+      // at (row, pair), ON TOP OF whatever which1=-5 already accumulated for
+      // this row via the state-transition multiply. which2 packs (row, pair)
+      // as row + m*pair like -5/-6; the value to add rides in p2 (unused
       // by this sentinel otherwise -- no theta is read here).
       int m = ncmt + oral0;
       int row = which2 % m;
-      int col = which2 / m;
-      ind->linCmtCarryT[row*4 + col] += p2;
-      return ind->linCmtCarryT[row*4 + col];
+      int pair = which2 / m;
+      if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
+      ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair] += p2;
+      return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
     } else if (which1 == -5 || which1 == -6) {
       // Cumulative-carry sentinels (per-subject storage: ind->linCmtCarryT,
       // see rxode2parseStruct.h; reset at iniSubject() in par_solve.h).
-      // which2 packs (row, col) as row + m*col exactly like which1=-4, but
-      // reads/writes are into the STORED 4x4 (stride-4) submatrix, not a
-      // one-off local matrix.
+      // The stored buffer is 4 rows (compartments; top m = ncmt+oral0 used)
+      // x RX_LINCMT_CARRY_MAXPAIRS columns, row-major, stride
+      // RX_LINCMT_CARRY_MAXPAIRS. Each COLUMN is one carry-eligible
+      // (linCmt-parameter, eta) pair's own carried d(Alast)/d(eta) m-vector,
+      // evolving independently as s_i = M_i*s_{i-1} + (which1=-7
+      // contributions). which2 packs (row, pair) as row + m*pair -- THIS is
+      // the encoding 3b.3's codegen must emit. A pair index >=
+      // RX_LINCMT_CARRY_MAXPAIRS returns NA (visible poison, no OOB write);
+      // the model-build layer must enforce the cap before emitting code.
       //
       // which1=-6 is a pure read: return the current cumulative
-      // ind->linCmtCarryT[row*4+col] with no recomputation -- lets a caller
-      // inspect T_i without re-triggering an advance.
+      // ind->linCmtCarryT[(row,pair)] with no recomputation -- lets a caller
+      // inspect s_i without re-triggering an advance.
       //
-      // which1=-5 is the mutating advance: T_i = M_i * T_{i-1}, where M_i is
-      // THIS interval's local transition matrix (the same quantity which1=-4
-      // returns one column of, recomputed here for every column since the
-      // full m x m matrix is needed for the multiply). Must be called
-      // EXACTLY ONCE per row per subject (documented contract, mirroring
-      // which1=-3/-4's own single-evaluation-per-row assumption) -- calling
-      // it more than once for the same row would apply the same transition
-      // twice. Composing with this row's OWN local contribution
-      // (dPredDTheta_i * dThetaDEta_i) is left to the caller (R for now,
-      // generated model code once Phase 3 wires this in) -- this sentinel
-      // only carries the state-transition part forward.
+      // which1=-5 is the mutating advance: s_i = M_i * s_{i-1} for EVERY
+      // pair column at once, where M_i is THIS interval's local transition
+      // matrix (the same quantity which1=-4 returns one column of,
+      // recomputed here for every column since the full m x m matrix is
+      // needed for the multiply). M_i depends only on this row's OWN theta
+      // values -- identical no matter which eta a pair differentiates
+      // against -- so ONE advance serves every pair. Must be called EXACTLY
+      // ONCE PER ROW per subject (documented contract -- NOT once per row
+      // per pair; a second call for the same row would apply the same
+      // transition twice to every column). Composing each pair's OWN local
+      // contribution (dPredDTheta_i * dThetaDEta_i) is left to the caller
+      // via which1=-7 -- this sentinel only carries the state-transition
+      // part forward.
       int m = ncmt + oral0;
       int row = which2 % m;
-      int col = which2 / m;
+      int pair = which2 / m;
+      if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
       if (which1 == -6) {
-        return ind->linCmtCarryT[row*4 + col];
+        return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
       }
       // Unlike which1=-4 (which always follows a which1=-1,-1 call earlier
       // in the same calc_lhs invocation, guaranteeing lc is already sized
@@ -1630,24 +1658,27 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0c, kaV, retc);
         for (int r = 0; r < m; r++) localM[r*4 + c] = retc(r, 0).d_;
       }
-      // T_new = M * T_old (only the top-left m x m submatrix participates;
-      // untouched entries of the 4x4 buffer stay 0 from iniSubject()'s reset).
-      double tNew[16];
+      // Advance EVERY pair column at once: s_new = M * s_old per column
+      // (only the top m rows participate; untouched rows of the buffer stay
+      // 0 from iniSubject()'s reset).
+      double tNew[4*RX_LINCMT_CARRY_MAXPAIRS];
       for (int r = 0; r < m; r++) {
-        for (int c = 0; c < m; c++) {
+        for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
           double s = 0.0;
           for (int k2 = 0; k2 < m; k2++) {
-            s += localM[r*4 + k2] * ind->linCmtCarryT[k2*4 + c];
+            s += localM[r*4 + k2] *
+              ind->linCmtCarryT[k2*RX_LINCMT_CARRY_MAXPAIRS + c];
           }
-          tNew[r*4 + c] = s;
+          tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c] = s;
         }
       }
       for (int r = 0; r < m; r++) {
-        for (int c = 0; c < m; c++) {
-          ind->linCmtCarryT[r*4 + c] = tNew[r*4 + c];
+        for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
+          ind->linCmtCarryT[r*RX_LINCMT_CARRY_MAXPAIRS + c] =
+            tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c];
         }
       }
-      return ind->linCmtCarryT[row*4 + col];
+      return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);

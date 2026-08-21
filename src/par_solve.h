@@ -218,10 +218,10 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     }
     // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
     // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
-    // and linCmtB()'s which1=-5/-6 in linCmt.cpp). Alast starts at 0 for a
-    // fresh subject, so its sensitivity does too; a fixed 16-double memset
-    // is used (not gated on m) since the struct field itself is always the
-    // full 4x4 regardless of the model's actual ncmt+oral0.
+    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
+    // a fresh subject, so its sensitivity does too; the full fixed-size
+    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
+    // (not gated on m or the pair count actually in use).
     if ((op->numLin + op->numLinSens) > 0) {
       memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
     }

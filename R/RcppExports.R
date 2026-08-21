@@ -369,8 +369,8 @@ linCmtAlastTransitionMatrixProto <- function(p1, v1, p2, p3, p4, p5, ka, rateNV,
     .Call(`_rxode2_linCmtAlastTransitionMatrixProto`, p1, v1, p2, p3, p4, p5, ka, rateNV, dt, ncmt, oral0, trans)
 }
 
-linCmtCarryLiveTest <- function(id, t, tPrior, p1, v1, ncmt, oral0, trans, which1, which2, addVal = NULL) {
-    .Call(`_rxode2_linCmtCarryLiveTest`, id, t, tPrior, p1, v1, ncmt, oral0, trans, which1, which2, addVal)
+linCmtCarryLiveTest <- function(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal = NULL) {
+    .Call(`_rxode2_linCmtCarryLiveTest`, id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal)
 }
 
 linCmtSubjectHybridDoseObsADProto <- function(phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {

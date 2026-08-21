@@ -144,10 +144,13 @@ for (i in seq_len(nRows)) {
 
     ## Single .Call: which1=-5 (multiply-carry) THEN which1=-6 THEN
     ## which1=-7 (add local contribution) for THIS row, strictly ordered.
+    ## theta is per-row n x 7 (p1, v1, p2, p3, p4, p5, ka) since 3b.2's
+    ## multi-pair extension made every linCmt() parameter per-row capable.
+    thetaRow <- matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1)
     liveOut <- linCmtCarryLiveTest(
       id = 0L, t = c(grid$time[i], grid$time[i]),
       tPrior = c(grid$time[i - 1], grid$time[i - 1]),
-      p1 = c(cl_i, cl_i), v1 = tvVal,
+      theta = thetaRow[c(1, 1), , drop = FALSE],
       ncmt = 1L, oral0 = 0L, trans = 1L,
       which1 = c(-5L, -7L), which2 = c(0L, 0L),
       addVal = c(0, localContrib))
@@ -159,7 +162,7 @@ for (i in seq_len(nRows)) {
 
   if (grid$evid[i] == 0) {
     sNow <- linCmtCarryLiveTest(id = 0L, t = grid$time[i], tPrior = grid$time[i],
-                                p1 = cl_i, v1 = tvVal,
+                                theta = matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1),
                                 ncmt = 1L, oral0 = 0L, trans = 1L,
                                 which1 = -6L, which2 = 0L)
     predSensLive[i] <- sNow / tvVal

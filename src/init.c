@@ -439,7 +439,7 @@ SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
                                                SEXP, SEXP, SEXP);
 
 SEXP _rxode2_linCmtCarryLiveTest(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                 SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+                                 SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -896,7 +896,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_linCmtSubjectForwardADEtaCovariateProto", (DL_FUNC) &_rxode2_linCmtSubjectForwardADEtaCovariateProto, 8},
     {"_rxode2_linCmtAlastTransitionMatrixProto", (DL_FUNC) &_rxode2_linCmtAlastTransitionMatrixProto, 12},
     {"_rxode2_linCmtSubjectHybridDoseObsADProto", (DL_FUNC) &_rxode2_linCmtSubjectHybridDoseObsADProto, 18},
-    {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 11},
+    {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
     {"_rxode2_macros2micros", (DL_FUNC) &_rxode2_macros2micros, 8},
