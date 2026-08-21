@@ -527,13 +527,24 @@ List linCmtSubjectForwardADEtaCovariateProto(NumericVector dtVec, NumericVector 
 //   stale-adjoint risk and no need to re-roll phase 1 per observation.
 //
 //   Phase 2 (observation-heavy): the bridged virtual dose plus any ordinary
-//   phase-2-only doses are summed as independent superposition terms inside
-//   each observation's own nested_rev_autodiff scope, exactly like
-//   linCmtSubjectSuperpositionADProto -- flat per-observation cost regardless
-//   of how many observations follow.
+//   phase-2-only doses (bolus OR infusion, via the same two-phase
+//   during/after decomposition as linCmtSubjectSuperpositionADProto) are
+//   summed as independent superposition terms inside each observation's own
+//   nested_rev_autodiff scope -- flat per-observation cost regardless of how
+//   many observations follow.
+//
+// phase1RateVec[iv] is the infusion rate (into bolusCmt) active WHILE
+// evolving phase1DtVec[iv] -- 0 for an ordinary step. This mirrors the
+// production per-timepoint event loop's own convention (rate set, then
+// evolve), so an infusion in phase 1 is just several consecutive steps with
+// a nonzero rate followed by steps with rate=0 -- no special-casing needed
+// in the roll-through itself, unlike phase 2's superposition terms, which
+// each need the explicit two-phase treatment since they must stand alone as
+// independent closed-form contributions.
 //
 // [[Rcpp::export]]
 List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector phase1AmtVec,
+                                       NumericVector phase1RateVec,
                                        NumericVector obsT, NumericVector doseT,
                                        NumericVector doseAmt, NumericVector doseDur,
                                        double p1, double v1, double p2,
@@ -563,10 +574,13 @@ List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector 
     Eigen::Matrix<fv, Eigen::Dynamic, 1> yp =
       Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
 
+    std::vector<double> stepRate(m, 0.0);
     for (int iv = 0; iv < nP1; iv++) {
       if (phase1AmtVec[iv] != 0.0) yp(bolusCmt, 0) = yp(bolusCmt, 0) + phase1AmtVec[iv];
       lc.setDt(phase1DtVec[iv]);
-      lc.setRate(zeroRate.data());
+      std::fill(stepRate.begin(), stepRate.end(), 0.0);
+      stepRate[bolusCmt] = phase1RateVec[iv];
+      lc.setRate(stepRate.data());
       Eigen::Matrix<fv, Eigen::Dynamic, 2> g = stan::math::macros2micros(thetaF, ncmt, trans);
       fv kaV(0.0, 0.0);
       if (oral0) kaV = thetaF(ncmt*2, 0);
@@ -618,12 +632,15 @@ List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector 
       total = total + retTerm;
     }
 
-    // Ordinary phase-2 doses, same as linCmtSubjectSuperpositionADProto.
+    // Ordinary phase-2 doses -- bolus and infusion, same two-phase pattern
+    // as linCmtSubjectSuperpositionADProto (during-infusion term direct;
+    // end-of-infusion state as a virtual bolus for everything after).
     for (int jd = 0; jd < nDose; jd++) {
       if (doseT[jd] > obsT[io] + 1e-9) continue;
       double dur = doseDur[jd];
       Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> retTerm(m);
       if (dur <= 0.0) {
+        // Plain bolus.
         double elapsed = obsT[io] - doseT[jd];
         lc.setDt(elapsed);
         lc.setRate(zeroRate.data());
@@ -633,10 +650,41 @@ List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector 
         if (ncmt == 1) lc.linCmtStan1<stan::math::var>(g, yp0, kaV, retTerm);
         else if (ncmt == 2) lc.linCmtStan2<stan::math::var>(g, yp0, kaV, retTerm);
         else if (ncmt == 3) lc.linCmtStan3<stan::math::var>(g, yp0, kaV, retTerm);
-        total = total + retTerm;
+      } else if (obsT[io] < doseT[jd] + dur - 1e-9) {
+        // Phase 1 of this dose: still infusing.
+        double elapsed = obsT[io] - doseT[jd];
+        lc.setDt(elapsed);
+        std::vector<double> infRate(m, 0.0);
+        infRate[bolusCmt] = doseAmt[jd] / dur;
+        lc.setRate(infRate.data());
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> yp0 =
+          Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>::Zero(m);
+        if (ncmt == 1) lc.linCmtStan1<stan::math::var>(g, yp0, kaV, retTerm);
+        else if (ncmt == 2) lc.linCmtStan2<stan::math::var>(g, yp0, kaV, retTerm);
+        else if (ncmt == 3) lc.linCmtStan3<stan::math::var>(g, yp0, kaV, retTerm);
+      } else {
+        // Phase 2 of this dose: infusion complete -- recompute the
+        // end-of-infusion state fresh (cheap, one extra kernel call), then
+        // decay it as a virtual bolus.
+        lc.setDt(dur);
+        std::vector<double> infRate(m, 0.0);
+        infRate[bolusCmt] = doseAmt[jd] / dur;
+        lc.setRate(infRate.data());
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> ypZero =
+          Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>::Zero(m);
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> endOfInf(m);
+        if (ncmt == 1) lc.linCmtStan1<stan::math::var>(g, ypZero, kaV, endOfInf);
+        else if (ncmt == 2) lc.linCmtStan2<stan::math::var>(g, ypZero, kaV, endOfInf);
+        else if (ncmt == 3) lc.linCmtStan3<stan::math::var>(g, ypZero, kaV, endOfInf);
+
+        double elapsedAfter = obsT[io] - (doseT[jd] + dur);
+        lc.setDt(elapsedAfter);
+        lc.setRate(zeroRate.data());
+        if (ncmt == 1) lc.linCmtStan1<stan::math::var>(g, endOfInf, kaV, retTerm);
+        else if (ncmt == 2) lc.linCmtStan2<stan::math::var>(g, endOfInf, kaV, retTerm);
+        else if (ncmt == 3) lc.linCmtStan3<stan::math::var>(g, endOfInf, kaV, retTerm);
       }
-      // (infusion phase-2 doses omitted from this prototype for brevity --
-      // same two-phase pattern as linCmtSubjectSuperpositionADProto applies.)
+      total = total + retTerm;
     }
 
     NumericVector fx(m);

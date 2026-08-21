@@ -365,8 +365,8 @@ linCmtSubjectForwardADEtaCovariateProto <- function(dtVec, amtVec, covVec, tcl, 
     .Call(`_rxode2_linCmtSubjectForwardADEtaCovariateProto`, dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal)
 }
 
-linCmtSubjectHybridDoseObsADProto <- function(phase1DtVec, phase1AmtVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`, phase1DtVec, phase1AmtVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
+linCmtSubjectHybridDoseObsADProto <- function(phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
+    .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`, phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
 }
 
 linCmtSubjectReverseADTimeVaryingProto <- function(dtVec, amtVec, thetaMat, rateNV, ncmt, oral0, trans, bolusCmt) {

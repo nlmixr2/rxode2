@@ -654,13 +654,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // linCmtSubjectHybridDoseObsADProto
-List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector phase1AmtVec, NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector doseDur, double p1, double v1, double p2, double p3, double p4, double p5, double ka, int ncmt, int oral0, int trans, int bolusCmt);
-RcppExport SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP phase1DtVecSEXP, SEXP phase1AmtVecSEXP, SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP doseDurSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector phase1AmtVec, NumericVector phase1RateVec, NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector doseDur, double p1, double v1, double p2, double p3, double p4, double p5, double ka, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP phase1DtVecSEXP, SEXP phase1AmtVecSEXP, SEXP phase1RateVecSEXP, SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP doseDurSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type phase1DtVec(phase1DtVecSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type phase1AmtVec(phase1AmtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phase1RateVec(phase1RateVecSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type obsT(obsTSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type doseT(doseTSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type doseAmt(doseAmtSEXP);
@@ -676,7 +677,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
     Rcpp::traits::input_parameter< int >::type trans(transSEXP);
     Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
-    rcpp_result_gen = Rcpp::wrap(linCmtSubjectHybridDoseObsADProto(phase1DtVec, phase1AmtVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt));
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectHybridDoseObsADProto(phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt));
     return rcpp_result_gen;
 END_RCPP
 }

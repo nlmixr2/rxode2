@@ -35,10 +35,13 @@
 #                                            at a fraction of the cost
 #  - linCmtSubjectHybridDoseObsADProto       phase-aware hybrid: forward-mode
 #                                            roll-through for a dose-heavy
-#                                            phase, bridged via the exact
-#                                            constant-theta reconstruction
-#                                            into nested superposition for a
-#                                            dense observation phase
+#                                            phase (bolus or infusion, via a
+#                                            per-step phase1RateVec), bridged
+#                                            via the exact constant-theta
+#                                            reconstruction into nested
+#                                            superposition (bolus or two-phase
+#                                            infusion) for a dense observation
+#                                            phase
 #
 # All every-call comparisons below reuse bench/lincmt_oracle.R's .linCmtCall()
 # sequential harness as ground truth (already validated against production
@@ -293,13 +296,79 @@ source(file.path("bench", "lincmt_oracle.R"))
   }
 
   hyb <- .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-              phase1Dt, phase1Amt,
+              phase1Dt, phase1Amt, rep(0, nDosesP1),
               obsT, numeric(0), numeric(0), numeric(0),
               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
   worst <- 0
   for (i in seq_len(nObsP2)) worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
   .report(sprintf("hybridDoseObs[%s]", cfg$name), worst)
+}
+
+# ---------------------------------------------------------------------------
+# 9. linCmtSubjectHybridDoseObsADProto WITH INFUSIONS in both phases: phase 1
+#    is repeated infusions (a loading regimen given by infusion, not bolus --
+#    the case the phase1RateVec extension exists for), phase 2 has its own
+#    dense observations plus one additional infusion dose (exercising the
+#    two-phase during/after decomposition alongside the phase-1 bridge term).
+# ---------------------------------------------------------------------------
+.checkHybridDoseObsInfusion <- function(cfg, nInfP1 = 6, dtInf = 1.0, infDur = 0.5,
+                                        nObsP2 = 8, dtObs = 0.3,
+                                        p2InfStart = 1.2, p2InfDur = 0.8, p2InfAmt = 80) {
+  nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
+  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
+              ka = cfg$ka, rate = rep(0, cfg$nstate),
+              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+
+  # Phase 1: nInfP1 repeated infusions, each infDur long, dtInf apart (infusion
+  # starts, not doses), via the oracle's own sequential rate-on/rate-off steps.
+  alast <- numeric(nAlast)
+  tPrev <- 0
+  for (rep_ in seq_len(nInfP1)) {
+    infStart <- (rep_ - 1) * dtInf
+    rOn <- cfgR; rOn$rate <- { r <- rep(0, cfg$nstate); r[1] <- 100 / infDur; r }
+    s <- .linCmtCall(infDur, rOn, alast, sensType = 3L)
+    alast <- s$Alast
+    rOff <- cfgR # rate=0
+    s <- .linCmtCall(dtInf - infDur, rOff, alast, sensType = 3L)
+    alast <- s$Alast
+  }
+  phase1EndT <- nInfP1 * dtInf
+
+  # Phase 2: dense observations, plus one infusion dose starting at
+  # p2InfStart (relative to phase-1 end), lasting p2InfDur.
+  obsT <- dtObs * seq_len(nObsP2)
+  oracleJ <- vector("list", nObsP2)
+  aTmp <- alast; tPrev <- 0; infGiven <- FALSE; infDone <- FALSE
+  for (i in seq_len(nObsP2)) {
+    to <- obsT[i]
+    steps <- sort(unique(c(p2InfStart, p2InfStart + p2InfDur, to)))
+    steps <- steps[steps > tPrev & steps <= to + 1e-9]
+    for (st in steps) {
+      thisRate <- cfgR
+      thisRate$rate <- if (tPrev >= p2InfStart - 1e-9 && tPrev < p2InfStart + p2InfDur - 1e-9) {
+        r <- rep(0, cfg$nstate); r[1] <- p2InfAmt / p2InfDur; r
+      } else rep(0, cfg$nstate)
+      s <- .linCmtCall(st - tPrev, thisRate, aTmp, sensType = 3L)
+      aTmp <- s$Alast
+      tPrev <- st
+    }
+    oracleJ[[i]] <- s$J
+  }
+
+  # Phase 1 for the prototype: nInfP1 * 2 steps (rate-on, rate-off) per cycle.
+  phase1Dt <- as.vector(rbind(rep(infDur, nInfP1), rep(dtInf - infDur, nInfP1)))
+  phase1Amt <- rep(0, length(phase1Dt))
+  phase1Rate <- as.vector(rbind(rep(100 / infDur, nInfP1), rep(0, nInfP1)))
+
+  hyb <- .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
+              phase1Dt, phase1Amt, phase1Rate,
+              obsT, p2InfStart, p2InfAmt, p2InfDur,
+              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  worst <- 0
+  for (i in seq_len(nObsP2)) worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
+  .report(sprintf("hybridDoseObs(infusion, both phases)[%s]", cfg$name), worst)
 }
 
 # ---------------------------------------------------------------------------
@@ -317,6 +386,7 @@ runLinCmtSubjectADProtoTests <- function() {
   for (cfg in configs) add(.checkTimeVaryingOwnThetaOnly(cfg))
   for (r in .checkEtaCovariateFix()) add(r)
   for (cfg in configs) add(.checkHybridDoseObs(cfg))
+  for (cfg in configs) add(.checkHybridDoseObsInfusion(cfg))
 
   pass <- vapply(results, function(r) isTRUE(r$pass), logical(1))
   message(sprintf("\n%d/%d checks passed", sum(pass), length(pass)))
@@ -384,7 +454,7 @@ benchLinCmtSubjectADProto <- function() {
       phase1Dt <- rep(dtDose, nDoses); phase1Amt <- rep(100, nDoses)
       obsT <- dtObs * seq_len(20)
       .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-            phase1Dt, phase1Amt, obsT, numeric(0), numeric(0), numeric(0),
+            phase1Dt, phase1Amt, rep(0, nDoses), obsT, numeric(0), numeric(0), numeric(0),
             cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
             cfg$ncmt, cfg$oral0, cfg$trans, 0L)
     }))
@@ -401,7 +471,7 @@ benchLinCmtSubjectADProto <- function() {
       phase1Dt <- rep(dtDose, 20); phase1Amt <- rep(100, 20)
       obsT <- dtObs * seq_len(nObs)
       .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-            phase1Dt, phase1Amt, obsT, numeric(0), numeric(0), numeric(0),
+            phase1Dt, phase1Amt, rep(0, 20), obsT, numeric(0), numeric(0), numeric(0),
             cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
             cfg$ncmt, cfg$oral0, cfg$trans, 0L)
     }))
