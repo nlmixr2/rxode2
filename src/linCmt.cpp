@@ -127,6 +127,12 @@ typedef struct {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Js;
   Eigen::Matrix<double, Eigen::Dynamic, 1> Jg;
+  // d(Alast_i)/d(Alast_{i-1}) -- the state-transition Jacobian, only ever
+  // populated on demand (which1 == -4, see linCmtB() below), not on every
+  // ordinary call -- this is exclusively for the time-varying-covariate AD
+  // fix (see project_lincmt_timevarying_covariate_bug); an ordinary,
+  // constant-theta solve never requests it and pays nothing extra.
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> JAlast;
 } linB_t;
 
 std::vector<linB_t> __linCmtB;
@@ -1445,6 +1451,51 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
       return linCmtBdoseTime(lc, fx, ind, rate, ncmt, oral0, which2,
                              trans, p1, v1, p2, p3, p4, p5, ka);
+    } else if (which1 == -4) {
+      // d(Alast_i)/d(Alast_{i-1}) -- the state-transition Jacobian, the one
+      // missing ingredient for a general (arbitrary covariate formula)
+      // time-varying-covariate fix (project_lincmt_timevarying_covariate_bug).
+      // Self-contained (recomputes theta/g fresh from the passed-in p1/v1/...
+      // rather than relying on any state cached by a prior -1,-1 call) so it
+      // does not depend on call-ordering assumptions the other sentinels
+      // above rely on. which2 packs (row, col) as row + m*col, row = output
+      // compartment, col = which PREVIOUS-timepoint compartment is being
+      // differentiated against; m = ncmt+oral0 is derivable by the caller
+      // from its own model knowledge. A constant matrix (the closed form is
+      // linear in Alast) recomputed via one forward-mode (fvar) pass per
+      // call -- opt-in only: an ordinary constant-theta solve never requests
+      // which1=-4, so this adds no cost to the common case. Validated (as
+      // linCmtAlastTransitionMatrixProto) against rxode2's own
+      // linToOde()-generated equivalent ODE model to machine epsilon across
+      // all 1/2/3-cmt IV/oral configs -- see
+      // feedback_lincmt_verify_against_linToOde_not_invented_odes.
+      int m = ncmt + oral0;
+      int row = which2 % m;
+      int col = which2 / m;
+      int npars = lc.getNpars();
+      typedef stan::math::fvar<double> fv;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
+      linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(npars);
+      for (int k = 0; k < npars; k++) thetaF(k, 0) = fv(thetaD(k, 0), 0.0);
+      Eigen::Matrix<fv, Eigen::Dynamic, 2> gF = stan::math::macros2micros(thetaF, ncmt, trans);
+      fv kaV(0.0, 0.0);
+      if (oral0) kaV = thetaF(ncmt*2, 0);
+
+      double dt = ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior);
+      lc.setDt(dt);
+      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
+        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+      lc.setRate(const_cast<double*>(rate));
+
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0 =
+        Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+      yp0(col, 0) = fv(0.0, 1.0);
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> ret(m);
+      if (ncmt == 1) lc.linCmtStan1<fv>(gF, yp0, kaV, ret);
+      else if (ncmt == 2) lc.linCmtStan2<fv>(gF, yp0, kaV, ret);
+      else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0, kaV, ret);
+      return ret(row, 0).d_;
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
