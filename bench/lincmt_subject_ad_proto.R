@@ -42,13 +42,46 @@
 #                                            superposition (bolus or two-phase
 #                                            infusion) for a dense observation
 #                                            phase
+#  - linCmtAlastTransitionMatrixProto        the missing ingredient for a
+#                                            GENERAL (arbitrary covariate
+#                                            formula) time-varying-covariate
+#                                            fix: d(this row's Alast)/d(the
+#                                            PREVIOUS row's Alast), a constant
+#                                            (m x m) matrix since the closed
+#                                            form is linear in Alast. NOT
+#                                            validated against
+#                                            bench/lincmt_oracle.R's
+#                                            .linCmtCall() like everything
+#                                            else in this file -- an earlier
+#                                            attempt to do that (feeding a
+#                                            synthetic, non-physical Alast/
+#                                            Asave_ vector into .linCmtCall's
+#                                            sensType=30 reconstruction path)
+#                                            produced a spurious 2x
+#                                            discrepancy for 3-cmt-oral that
+#                                            was a bug in that improvised test
+#                                            harness, not in this prototype or
+#                                            in production code -- confirmed
+#                                            by cross-checking against
+#                                            rxode2's OWN linToOde()-generated
+#                                            equivalent ODE model instead
+#                                            (exact machine-epsilon agreement,
+#                                            all 6 configs). Validated that
+#                                            way here specifically because
+#                                            nothing else in this codebase
+#                                            exercises d(pred)/d(Alast)
+#                                            directly, so there was no
+#                                            existing trusted oracle for it.
 #
 # All every-call comparisons below reuse bench/lincmt_oracle.R's .linCmtCall()
 # sequential harness as ground truth (already validated against production
 # sensType=3/30 elsewhere), so this file does not re-derive that trust -- it
-# only checks the NEW prototypes against it.
+# only checks the NEW prototypes against it. The one exception is the
+# transition-matrix check above, which uses linToOde() instead, for the
+# reason explained there.
 
 source(file.path("bench", "lincmt_oracle.R"))
+suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 
 .protoTol <- 1e-8 # round-off-scale tolerance for AD-vs-AD comparisons
 
@@ -372,6 +405,65 @@ source(file.path("bench", "lincmt_oracle.R"))
 }
 
 # ---------------------------------------------------------------------------
+# 10. linCmtAlastTransitionMatrixProto: validated against rxode2's OWN
+#    linToOde()-generated equivalent ODE model (see the header comment for
+#    why .linCmtCall() is not used here). Builds the linCmt() UI text for a
+#    given config (matching macros2micros' cl/v/q1/vp1/q2/vp2/ka naming),
+#    converts it via linToOde(), and solves from a unit initial condition in
+#    each compartment in turn -- by linearity, that IS column j of the
+#    state-transition matrix, computed via a completely independent code path
+#    (rxode2's numerical ODE integrator, not linCmtStan1/2/3 at all).
+# ---------------------------------------------------------------------------
+.buildLinCmtOdeUi <- function(cfg) {
+  iniLines <- c(sprintf("tcl<-log(%.10f)", cfg$p1), sprintf("tv<-log(%.10f)", cfg$v1))
+  modLines <- c("cl<-exp(tcl)", "v<-exp(tv)")
+  if (cfg$ncmt >= 2) {
+    iniLines <- c(iniLines, sprintf("tq1<-log(%.10f)", cfg$p2), sprintf("tvp1<-log(%.10f)", cfg$p3))
+    modLines <- c(modLines, "q1<-exp(tq1)", "vp1<-exp(tvp1)")
+  }
+  if (cfg$ncmt >= 3) {
+    iniLines <- c(iniLines, sprintf("tq2<-log(%.10f)", cfg$p4), sprintf("tvp2<-log(%.10f)", cfg$p5))
+    modLines <- c(modLines, "q2<-exp(tq2)", "vp2<-exp(tvp2)")
+  }
+  if (cfg$oral0) {
+    iniLines <- c(iniLines, sprintf("tka<-log(%.10f)", cfg$ka))
+    modLines <- c(modLines, "ka<-exp(tka)")
+  }
+  iniLines <- c(iniLines, "add.sd<-0.1")
+  txt <- sprintf("function() { ini({ %s }); model({ %s; cp <- linCmt(); cp ~ add(add.sd) }) }",
+                paste(iniLines, collapse = "; "), paste(modLines, collapse = "; "))
+  eval(parse(text = txt))
+}
+
+.stateNamesFor <- function(cfg) {
+  nm <- character(0)
+  if (cfg$oral0) nm <- c(nm, "depot")
+  nm <- c(nm, "central")
+  if (cfg$ncmt >= 2) nm <- c(nm, "peripheral1")
+  if (cfg$ncmt >= 3) nm <- c(nm, "peripheral2")
+  nm
+}
+
+.checkTransitionMatrix <- function(cfg, dt = 0.7) {
+  m <- cfg$nstate
+  nm <- .stateNamesFor(cfg)
+  f <- .buildLinCmtOdeUi(cfg)
+  odeUi <- suppressMessages(rxode2::linToOde(f))
+  odeMod <- suppressMessages(rxode2::rxode2(odeUi))
+  proto <- .Call(`_rxode2_linCmtAlastTransitionMatrixProto`,
+                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+                 cfg$rate, dt, cfg$ncmt, cfg$oral0, cfg$trans)
+  worst <- 0
+  for (j in seq_len(m)) {
+    ic <- stats::setNames(numeric(m), nm); ic[j] <- 1
+    s <- suppressMessages(rxode2::rxSolve(odeMod, events = rxode2::et(0, dt, length.out = 2), inits = ic))
+    got <- as.numeric(s[s$time == dt, nm])
+    worst <- max(worst, max(abs(got - proto[, j])))
+  }
+  .report(sprintf("transitionMatrix(linToOde ref)[%s]", cfg$name), worst, tol = 1e-6)
+}
+
+# ---------------------------------------------------------------------------
 # Top-level runner: every correctness check, every config.
 # ---------------------------------------------------------------------------
 runLinCmtSubjectADProtoTests <- function() {
@@ -387,6 +479,7 @@ runLinCmtSubjectADProtoTests <- function() {
   for (r in .checkEtaCovariateFix()) add(r)
   for (cfg in configs) add(.checkHybridDoseObs(cfg))
   for (cfg in configs) add(.checkHybridDoseObsInfusion(cfg))
+  for (cfg in configs) add(.checkTransitionMatrix(cfg))
 
   pass <- vapply(results, function(r) isTRUE(r$pass), logical(1))
   message(sprintf("\n%d/%d checks passed", sum(pass), length(pass)))

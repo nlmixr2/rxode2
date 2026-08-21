@@ -21,6 +21,8 @@
 #   chooseLinCmtSubjectADStrategy(time, evid, thetaMat)                  # defaults
 #   chooseLinCmtSubjectADStrategy(time, evid, thetaMat,
 #     control = linCmtSubjectADControl(maxDosesInPhase2 = 8))            # tuned
+#   chooseLinCmtSubjectADStrategy(time, evid, thetaMat,
+#     interpMethod = "linear")                                          # errors if theta varies
 #   runDispatchTests()   # validates the dispatcher's choices are both
 #                         # sensible AND correct (matches the oracle) across
 #                         # a battery of canonical subject shapes
@@ -32,6 +34,13 @@
 # rxSolve() options once this dispatcher is wired into production, so a user
 # can tune the phase-2 dose-count cap, the superposition-fallback ceiling, or
 # the time-varying-covariate detection tolerance for their own data.
+#
+# Covariate interpolation ("locf"/"nocb"/"midpoint"/"linear", matching
+# rxode2's own covsInterpolation option): only "linear" is unsupported for a
+# covariate that actually varies -- see checkCovariateInterpolationSupported()
+# for why locf/nocb/midpoint are all exactly representable (piecewise
+# constant between covariate records) while linear is not (genuinely
+# continuous, and linCmt() only ever samples once per dose/observation row).
 
 source(file.path("bench", "lincmt_subject_ad_proto.R"))
 
@@ -70,6 +79,64 @@ detectTimeVaryingTheta <- function(thetaMat, control = linCmtSubjectADControl())
   scale <- pmax(1e-12, apply(thetaMat, 2, function(col) max(abs(col))))
   varies <- any(ranges > control$timeVaryingRelTol * scale)
   list(varies = varies, ranges = ranges, whichCols = which(ranges > control$timeVaryingRelTol * scale))
+}
+
+# ---------------------------------------------------------------------------
+# Covariate interpolation method vs. what a closed-form linCmt() solve can
+# actually represent. rxode2 supports four methods (confirmed in
+# ~/src/rxode2/src/approx.cpp's rx_approxP(), R/rxsolve.R:385-410,1186,1449):
+# "linear"=0, "locf"=1 (default), "nocb"=2, "midpoint"=3.
+#
+# linCmt() only ever samples a covariate ONCE per dose/observation row, at
+# that row's own exact instant (no solver sub-stepping the way an ODE model
+# gets, which is why _update_par_ptr() being called continuously for an ODE
+# model doesn't help linCmt() at all) -- so whatever single value comes back
+# from that one sample is then treated as constant across the WHOLE elapsed
+# interval to the next row.
+#
+# For "locf" (last recorded value), "nocb" (next recorded value), and
+# "midpoint" (their average), that single per-row sample IS the exact,
+# correct value for that row's own instant, AND the true covariate is
+# genuinely piecewise-constant between covariate-recording times regardless
+# of dose/observation row spacing -- so a single sample per row is exact, not
+# an approximation, for all three. Only "linear" is a real problem: it means
+# the covariate (and therefore theta, whenever the covariate enters theta's
+# formula nonlinearly -- e.g. any allometric/power covariate effect, which is
+# the overwhelmingly common case in practice) is supposed to vary
+# CONTINUOUSLY between covariate-recording times. A single per-row sample
+# then silently discretizes that continuous variation into a step function,
+# with no warning today (confirmed: no gate exists, and no test checks
+# linCmt() solve/gradient correctness under any interpolation method,
+# tests/testthat/test-interp.R only checks parser-level tagging). A closed
+# form for the resulting genuinely-time-varying-rate ODE does not exist in
+# general (only in a narrow special case -- an additive, not power-law,
+# covariate effect on a single-compartment model's rate constant, which
+# reduces to a linearly-time-varying decay rate with its own closed form --
+# not implemented here since it is not the common case).
+#
+# So: error clearly, rather than silently return a wrong gradient (or a wrong
+# value), whenever a covariate that GENUINELY varies for this subject
+# ("varies" from detectTimeVaryingTheta()) is configured for "linear"
+# interpolation. "locf"/"nocb"/"midpoint" all proceed through the ordinary
+# time-varying-covariate path with no special-casing needed.
+# ---------------------------------------------------------------------------
+checkCovariateInterpolationSupported <- function(interpMethod, varies) {
+  interpMethod <- tolower(as.character(interpMethod))
+  if (!varies) return(invisible(TRUE)) # constant theta -- interpolation method is moot
+  if (interpMethod %in% c("linear", "0")) {
+    stop(paste0(
+      "linCmt() does not support 'linear' covariate interpolation for a ",
+      "covariate that actually varies across this subject's records: ",
+      "linCmt() samples a covariate once per dose/observation row and treats ",
+      "it as constant across the whole elapsed interval to the next row, ",
+      "which is exact for 'locf'/'nocb'/'midpoint' (all genuinely piecewise-",
+      "constant) but not for 'linear' (genuinely continuous between ",
+      "covariate records) -- this combination is not supported on the ",
+      "rxode2 side. Use covsInterpolation='locf'/'nocb'/'midpoint', or solve ",
+      "this model as an ODE (d/dt()) instead of linCmt()."),
+      call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 # ---------------------------------------------------------------------------
@@ -136,9 +203,19 @@ chooseDoseObsStrategy <- function(time, evid, control = linCmtSubjectADControl()
 # linCmtSubjectADControl()) -- pass a customized one to tune the phase-2
 # dose-count cap, the superposition-fallback ceiling, or the time-varying
 # detection tolerance without touching this function's body.
+#
+# `interpMethod` (default "locf", rxode2's own default) is the covariate
+# interpolation method in force for whichever covariate(s) feed thetaMat's
+# varying column(s) -- pass the real per-model/per-covariate setting once
+# this is wired to actual model metadata. Checked BEFORE any strategy is
+# chosen: an unsupported "linear" combination errors immediately rather than
+# silently returning a wrong gradient or value from any strategy below.
 # ---------------------------------------------------------------------------
-chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat, control = linCmtSubjectADControl()) {
+chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
+                                          control = linCmtSubjectADControl(),
+                                          interpMethod = "locf") {
   tv <- detectTimeVaryingTheta(thetaMat, control)
+  checkCovariateInterpolationSupported(interpMethod, tv$varies)
   if (tv$varies) {
     return(list(strategy = "etaCovariate", timeVarying = tv,
                reason = "time-varying covariate detected on column(s) in thetaMat",
@@ -342,6 +419,36 @@ runDispatchTests <- function() {
   message(sprintf("  [timeVaryingDetect/%s] dispatcher chose: %-13s %s",
                   cfg$name, choice$strategy, if (ok) "-- PASS" else "-- FAIL (expected etaCovariate)"))
   add(list(name = "timeVaryingDetect", pass = ok, strategyOk = ok))
+
+  # Scenario F: covariate-interpolation-method gate. "linear" + genuinely
+  # varying theta must error; "locf"/"nocb"/"midpoint" + varying, and
+  # "linear" + CONSTANT theta (moot -- nothing to interpolate), must all
+  # proceed normally.
+  errorsOnLinear <- tryCatch({
+    chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = "linear")
+    FALSE
+  }, error = function(e) grepl("linear", conditionMessage(e), fixed = TRUE))
+  message(sprintf("  [interpMethod=linear, varies] %s", if (errorsOnLinear) "errored as expected -- PASS" else "FAIL (should have errored)"))
+  add(list(name = "interpLinearErrors", pass = errorsOnLinear, strategyOk = errorsOnLinear))
+
+  okOthers <- TRUE
+  for (m in c("locf", "nocb", "midpoint")) {
+    ok_m <- tryCatch({
+      chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = m)
+      TRUE
+    }, error = function(e) FALSE)
+    message(sprintf("  [interpMethod=%s, varies] %s", m, if (ok_m) "proceeded as expected -- PASS" else "FAIL (should not have errored)"))
+    okOthers <- okOthers && ok_m
+  }
+  add(list(name = "interpOthersProceed", pass = okOthers, strategyOk = okOthers))
+
+  constantTheta <- matrix(c(1.0, 20, 1.0, 20), nrow = 2, byrow = TRUE)
+  okConstantLinear <- tryCatch({
+    chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), constantTheta, interpMethod = "linear")
+    TRUE
+  }, error = function(e) FALSE)
+  message(sprintf("  [interpMethod=linear, constant theta] %s", if (okConstantLinear) "proceeded as expected -- PASS" else "FAIL (should not have errored, nothing to interpolate)"))
+  add(list(name = "interpLinearMootWhenConstant", pass = okConstantLinear, strategyOk = okConstantLinear))
 
   pass <- vapply(results, function(r) isTRUE(r$pass) && isTRUE(r$strategyOk), logical(1))
   message(sprintf("\n%d/%d dispatch checks passed (correctness AND strategy choice)", sum(pass), length(pass)))

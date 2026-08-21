@@ -653,6 +653,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtAlastTransitionMatrixProto
+NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector rateNV, double dt, int ncmt, int oral0, int trans);
+RcppExport SEXP _rxode2_linCmtAlastTransitionMatrixProto(SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP rateNVSEXP, SEXP dtSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rateNV(rateNVSEXP);
+    Rcpp::traits::input_parameter< double >::type dt(dtSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtAlastTransitionMatrixProto(p1, v1, p2, p3, p4, p5, ka, rateNV, dt, ncmt, oral0, trans));
+    return rcpp_result_gen;
+END_RCPP
+}
 // linCmtSubjectHybridDoseObsADProto
 List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector phase1AmtVec, NumericVector phase1RateVec, NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector doseDur, double p1, double v1, double p2, double p3, double p4, double p5, double ka, int ncmt, int oral0, int trans, int bolusCmt);
 RcppExport SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP phase1DtVecSEXP, SEXP phase1AmtVecSEXP, SEXP phase1RateVecSEXP, SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP doseDurSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {

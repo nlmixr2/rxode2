@@ -498,6 +498,66 @@ List linCmtSubjectForwardADEtaCovariateProto(NumericVector dtVec, NumericVector 
   return out;
 }
 
+// PROTOTYPE: the missing ingredient for a general (arbitrary covariate
+// formula) time-varying-covariate fix. Confirmed by tracing nlmixr2est's
+// actual generated code (see project_lincmt_timevarying_covariate_bug):
+// d(theta_row)/d(eta) is ALREADY computed correctly today (it's an ordinary
+// symbolic derivative of the plain covariate formula, not something opaque),
+// and is simply multiplied against linCmtB()'s existing (buggy-in-isolation)
+// d(pred)/d(theta_row) with no carry across rows. Nothing needs to change
+// about how theta's own eta-sensitivity is computed -- the FIX is to also
+// carry d(Alast)/d(eta) across rows, via:
+//
+//   T_i = dAlastDAlastPrev * T_{i-1} + dPredDTheta_i * dThetaDEta_i
+//
+// dPredDTheta_i already exists (linCmtB()'s ordinary Jacobian). This
+// prototype computes the ONE missing piece: dAlastDAlastPrev, the (m x m)
+// state-transition Jacobian -- d(this row's Alast)/d(the PREVIOUS row's
+// Alast), holding theta fixed. Because linCmtStan1/2/3's closed form is
+// LINEAR in its yp/Alast input (e.g. `ret = yp*E + ...`), this Jacobian is a
+// CONSTANT matrix (independent of yp's actual value) -- exactly a linear
+// system's own state-transition matrix -- computed here via m cheap
+// forward-mode (fvar) passes, one unit tangent seed per compartment.
+//
+// [[Rcpp::export]]
+NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2,
+                                               double p3, double p4, double p5,
+                                               double ka, NumericVector rateNV,
+                                               double dt,
+                                               int ncmt, int oral0, int trans) {
+  stan::math::linCmtStan lc(ncmt, oral0, trans, true, 0, 0);
+  int npars = lc.getNpars();
+  int m = ncmt + oral0;
+  typedef stan::math::fvar<double> fv;
+
+  Eigen::Matrix<double, Eigen::Dynamic, 1> thetaDbl(npars);
+  linCmtFillTheta(thetaDbl, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> rate =
+    as<Eigen::Matrix<double, Eigen::Dynamic, 1> >(rateNV);
+
+  NumericMatrix transMat(m, m);
+  for (int dir = 0; dir < m; dir++) {
+    Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(npars);
+    for (int k = 0; k < npars; k++) thetaF(k, 0) = fv(thetaDbl(k, 0), 0.0); // theta not being differentiated here
+    Eigen::Matrix<fv, Eigen::Dynamic, 1> yp =
+      Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+    yp(dir, 0) = fv(0.0, 1.0); // seed unit tangent in direction `dir`
+
+    lc.setDt(dt);
+    lc.setRate(rate.data());
+    Eigen::Matrix<fv, Eigen::Dynamic, 2> g = stan::math::macros2micros(thetaF, ncmt, trans);
+    fv kaV(0.0, 0.0);
+    if (oral0) kaV = thetaF(ncmt*2, 0);
+    Eigen::Matrix<fv, Eigen::Dynamic, 1> ret(m);
+    if (ncmt == 1) lc.linCmtStan1<fv>(g, yp, kaV, ret);
+    else if (ncmt == 2) lc.linCmtStan2<fv>(g, yp, kaV, ret);
+    else if (ncmt == 3) lc.linCmtStan3<fv>(g, yp, kaV, ret);
+
+    for (int k = 0; k < m; k++) transMat(k, dir) = ret(k, 0).d_;
+  }
+  return transMat;
+}
+
 // PROTOTYPE: phase-aware hybrid WITHIN one subject. Real subjects often look
 // like this: many closely-spaced doses (a loading regimen up to steady
 // state) followed by a rich, dense observation history. Neither single
