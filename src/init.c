@@ -408,6 +408,32 @@ SEXP iniPreciseSumsPtr(SEXP ptr);
 
 SEXP _rxode2_iniDparserPtr(SEXP ptr);
 
+SEXP _rxode2_linCmtSubjectReverseADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                         SEXP, SEXP, SEXP, SEXP, SEXP,
+                                         SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectReverseADBatchProto(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                              SEXP, SEXP, SEXP, SEXP, SEXP,
+                                              SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectSuperpositionADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                                               SEXP, SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectReverseADTimeVaryingProto(SEXP, SEXP, SEXP, SEXP,
+                                                    SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectReverseADEtaCovariateProto(SEXP, SEXP, SEXP, SEXP,
+                                                     SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectForwardADEtaCovariateProto(SEXP, SEXP, SEXP, SEXP,
+                                                     SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                                               SEXP, SEXP, SEXP, SEXP, SEXP,
+                                               SEXP, SEXP);
+
 SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -855,6 +881,13 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 3},
     {"_rxode2_getLinInfo_", (DL_FUNC) &_rxode2_getLinInfo_, 1},
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 22},
+    {"_rxode2_linCmtSubjectReverseADProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADProto, 14},
+    {"_rxode2_linCmtSubjectReverseADBatchProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADBatchProto, 14},
+    {"_rxode2_linCmtSubjectSuperpositionADProto", (DL_FUNC) &_rxode2_linCmtSubjectSuperpositionADProto, 15},
+    {"_rxode2_linCmtSubjectReverseADTimeVaryingProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADTimeVaryingProto, 8},
+    {"_rxode2_linCmtSubjectReverseADEtaCovariateProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADEtaCovariateProto, 8},
+    {"_rxode2_linCmtSubjectForwardADEtaCovariateProto", (DL_FUNC) &_rxode2_linCmtSubjectForwardADEtaCovariateProto, 8},
+    {"_rxode2_linCmtSubjectHybridDoseObsADProto", (DL_FUNC) &_rxode2_linCmtSubjectHybridDoseObsADProto, 17},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
     {"_rxode2_macros2micros", (DL_FUNC) &_rxode2_macros2micros, 8},

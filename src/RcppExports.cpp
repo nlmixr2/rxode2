@@ -593,6 +593,160 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtSubjectReverseADProto
+List linCmtSubjectReverseADProto(NumericVector dtVec, NumericVector amtVec, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector rateNV, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectReverseADProto(SEXP dtVecSEXP, SEXP amtVecSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dtVec(dtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amtVec(amtVecSEXP);
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rateNV(rateNVSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectReverseADProto(dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectReverseADEtaCovariateProto
+List linCmtSubjectReverseADEtaCovariateProto(NumericVector dtVec, NumericVector amtVec, NumericVector covVec, double tcl, double tv, double refCov, double covExp, double etaVal);
+RcppExport SEXP _rxode2_linCmtSubjectReverseADEtaCovariateProto(SEXP dtVecSEXP, SEXP amtVecSEXP, SEXP covVecSEXP, SEXP tclSEXP, SEXP tvSEXP, SEXP refCovSEXP, SEXP covExpSEXP, SEXP etaValSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dtVec(dtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amtVec(amtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type covVec(covVecSEXP);
+    Rcpp::traits::input_parameter< double >::type tcl(tclSEXP);
+    Rcpp::traits::input_parameter< double >::type tv(tvSEXP);
+    Rcpp::traits::input_parameter< double >::type refCov(refCovSEXP);
+    Rcpp::traits::input_parameter< double >::type covExp(covExpSEXP);
+    Rcpp::traits::input_parameter< double >::type etaVal(etaValSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectReverseADEtaCovariateProto(dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectForwardADEtaCovariateProto
+List linCmtSubjectForwardADEtaCovariateProto(NumericVector dtVec, NumericVector amtVec, NumericVector covVec, double tcl, double tv, double refCov, double covExp, double etaVal);
+RcppExport SEXP _rxode2_linCmtSubjectForwardADEtaCovariateProto(SEXP dtVecSEXP, SEXP amtVecSEXP, SEXP covVecSEXP, SEXP tclSEXP, SEXP tvSEXP, SEXP refCovSEXP, SEXP covExpSEXP, SEXP etaValSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dtVec(dtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amtVec(amtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type covVec(covVecSEXP);
+    Rcpp::traits::input_parameter< double >::type tcl(tclSEXP);
+    Rcpp::traits::input_parameter< double >::type tv(tvSEXP);
+    Rcpp::traits::input_parameter< double >::type refCov(refCovSEXP);
+    Rcpp::traits::input_parameter< double >::type covExp(covExpSEXP);
+    Rcpp::traits::input_parameter< double >::type etaVal(etaValSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectForwardADEtaCovariateProto(dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectHybridDoseObsADProto
+List linCmtSubjectHybridDoseObsADProto(NumericVector phase1DtVec, NumericVector phase1AmtVec, NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector doseDur, double p1, double v1, double p2, double p3, double p4, double p5, double ka, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectHybridDoseObsADProto(SEXP phase1DtVecSEXP, SEXP phase1AmtVecSEXP, SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP doseDurSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type phase1DtVec(phase1DtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phase1AmtVec(phase1AmtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type obsT(obsTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseT(doseTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseAmt(doseAmtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseDur(doseDurSEXP);
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectHybridDoseObsADProto(phase1DtVec, phase1AmtVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectReverseADTimeVaryingProto
+List linCmtSubjectReverseADTimeVaryingProto(NumericVector dtVec, NumericVector amtVec, NumericMatrix thetaMat, NumericVector rateNV, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectReverseADTimeVaryingProto(SEXP dtVecSEXP, SEXP amtVecSEXP, SEXP thetaMatSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dtVec(dtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amtVec(amtVecSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type thetaMat(thetaMatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rateNV(rateNVSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectReverseADTimeVaryingProto(dtVec, amtVec, thetaMat, rateNV, ncmt, oral0, trans, bolusCmt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectReverseADBatchProto
+List linCmtSubjectReverseADBatchProto(NumericVector dtVec, NumericVector amtVec, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector rateNV, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectReverseADBatchProto(SEXP dtVecSEXP, SEXP amtVecSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dtVec(dtVecSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amtVec(amtVecSEXP);
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rateNV(rateNVSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectReverseADBatchProto(dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSubjectSuperpositionADProto
+List linCmtSubjectSuperpositionADProto(NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector doseDur, double p1, double v1, double p2, double p3, double p4, double p5, double ka, int ncmt, int oral0, int trans, int bolusCmt);
+RcppExport SEXP _rxode2_linCmtSubjectSuperpositionADProto(SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP doseDurSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type obsT(obsTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseT(doseTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseAmt(doseAmtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseDur(doseDurSEXP);
+    Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
+    Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
+    Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
+    Rcpp::traits::input_parameter< double >::type p3(p3SEXP);
+    Rcpp::traits::input_parameter< double >::type p4(p4SEXP);
+    Rcpp::traits::input_parameter< double >::type p5(p5SEXP);
+    Rcpp::traits::input_parameter< double >::type ka(kaSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSubjectSuperpositionADProto(obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxOmegaVarCovDeriv_
 List rxOmegaVarCovDeriv_(arma::mat omega, int order);
 RcppExport SEXP _rxode2_rxOmegaVarCovDeriv_(SEXP omegaSEXP, SEXP orderSEXP) {
