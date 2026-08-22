@@ -125,38 +125,12 @@ extern "C" void ensureLinCmtA(int nCores) {
   }
 }
 
-#define RX_LINSUP_MAXM 4
-#define RX_LINSUP_MAXP 7
-
-// One term of a subject's superposition decomposition
-// (rxControl(linCmtSensStrategy="superposition"), see linCmtSupRow()): an
-// amount deposited at time t whose own theta-dependence rides in J (row-major
-// m x RX_LINSUP_MAXP; all zero for a plain dose), or a step change in the
-// infusion-rate vector at time t.  Under constant theta each term evolves
-// independently and the state at any later time is their sum.
-typedef struct {
-  double t;
-  int isRate;
-  double amt[RX_LINSUP_MAXM];
-  double J[RX_LINSUP_MAXM*RX_LINSUP_MAXP];
-  double rate[RX_LINSUP_MAXM];
-} linSupEntry;
-
 // Global linear compartment B model object
 // Refactored to per-thread vector for thread safety, matching linCmtA pattern.
 typedef struct {
   stan::math::linCmtStan lc;
   double data[14];
   int numSens;
-  // Superposition-strategy state; a subject is solved start to finish on one
-  // thread, so per-thread storage keyed on (supId, supLastIdx) suffices.
-  std::vector<linSupEntry> supList;
-  int supId = -1;
-  int supLastIdx = -1;
-  double supLastT = 0.0;
-  double supLastFx[RX_LINSUP_MAXM];
-  double supLastJ[RX_LINSUP_MAXM*RX_LINSUP_MAXP];
-  double supPrevRate[RX_LINSUP_MAXM];
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   Eigen::Matrix<double, Eigen::Dynamic, 1> yp;
   Eigen::Matrix<double, Eigen::Dynamic, 2> g;
@@ -1315,132 +1289,6 @@ static inline void linCmtRevTapeInit() {
   (void)_rxLinCmtTape;
 }
 
-// Superposition evaluation at tEval of the terms e[0..n): value and (when
-// Jout != NULL) the full m x npars Jacobian (stride RX_LINSUP_MAXP), by one
-// reverse-mode nest per call -- every var lives inside the nest, so the tape
-// is empty between calls and the m adjoint sweeps cost only this call's own
-// graph.  An amount term enters as A0 + J0*(theta - theta0): exact in value
-// and, because the kernel is linear in its initial state, exact in gradient
-// (dM*A0 + M*J0), which is what lets a primed/consolidated state carry its
-// own sensitivity.
-static void linCmtSupEval(stan::math::linCmtStan &lc, const double *thetaD,
-                          int ncmt, int oral0, int trans,
-                          const linSupEntry *e, int n, double tEval,
-                          double *fxOut, double *Jout) {
-  typedef stan::math::var var;
-  int npars = lc.getNpars();
-  int m = ncmt + oral0;
-  double zeroRate[RX_LINSUP_MAXM] = {0.0, 0.0, 0.0, 0.0};
-  linCmtRevTapeInit();
-  stan::math::nested_rev_autodiff nested;
-  Eigen::Matrix<var, Eigen::Dynamic, 1> theta(npars);
-  for (int j = 0; j < npars; j++) theta(j, 0) = thetaD[j];
-  Eigen::Matrix<var, Eigen::Dynamic, 2> g =
-    stan::math::macros2micros(theta, ncmt, trans);
-  var kaV = 0.0;
-  if (oral0) kaV = theta(ncmt*2, 0);
-  Eigen::Matrix<var, Eigen::Dynamic, 1> total =
-    Eigen::Matrix<var, Eigen::Dynamic, 1>::Zero(m);
-  Eigen::Matrix<var, Eigen::Dynamic, 1> yp0(m), ret(m);
-  for (int i = 0; i < n; i++) {
-    double dt = tEval - e[i].t;
-    if (dt < 0.0) dt = 0.0;
-    lc.setDt(dt);
-    if (e[i].isRate) {
-      lc.setRate(const_cast<double*>(e[i].rate));
-      for (int c = 0; c < m; c++) yp0(c, 0) = 0.0;
-    } else {
-      lc.setRate(zeroRate);
-      for (int c = 0; c < m; c++) {
-        var v = e[i].amt[c];
-        const double *Jc = e[i].J + c*RX_LINSUP_MAXP;
-        for (int j = 0; j < npars; j++) {
-          if (Jc[j] != 0.0) v += Jc[j] * (theta(j, 0) - thetaD[j]);
-        }
-        yp0(c, 0) = v;
-      }
-    }
-    if (ncmt == 1) lc.linCmtStan1<var>(g, yp0, kaV, ret);
-    else if (ncmt == 2) lc.linCmtStan2<var>(g, yp0, kaV, ret);
-    else lc.linCmtStan3<var>(g, yp0, kaV, ret);
-    for (int c = 0; c < m; c++) total(c, 0) += ret(c, 0);
-  }
-  for (int k = 0; k < m; k++) fxOut[k] = total(k, 0).val();
-  if (Jout != NULL) {
-    for (int k = 0; k < m; k++) {
-      nested.set_zero_all_adjoints();
-      total(k, 0).grad();
-      for (int j = 0; j < npars; j++) {
-        Jout[k*RX_LINSUP_MAXP + j] = theta(j, 0).adj();
-      }
-    }
-  }
-}
-
-// Thread-safety check for the reverse-mode nest above: nSub subjects (each a
-// distinct theta scaling) evaluated under an OpenMP team of nThreads, nRep
-// times; returns rep 0's values/Jacobians with attr "maxRepDiff" = the
-// largest deviation any later rep showed (must be exactly 0).
-//[[Rcpp::export]]
-NumericMatrix linCmtSupRevThreadStress(NumericVector obsT, NumericVector doseT,
-                                       NumericVector doseAmt, NumericVector th,
-                                       int ncmt, int oral0, int trans,
-                                       int bolusCmt, int nSub, int nThreads,
-                                       int nRep) {
-  int m = ncmt + oral0;
-  int nObs = obsT.size(), nDose = doseT.size();
-  int blk = m + m*RX_LINSUP_MAXP;
-  int ncol = nObs * blk;
-  NumericMatrix out(nSub, ncol);
-  double *op_ = REAL(out);
-  std::vector<double> ref((size_t)nSub*ncol, 0.0);
-  std::vector<double> thv(7, 0.0);
-  for (int j = 0; j < 7 && j < th.size(); j++) thv[j] = th[j];
-  double worst = 0.0;
-  for (int rep = 0; rep < nRep; rep++) {
-#ifdef _OPENMP
-#pragma omp parallel for num_threads(nThreads) schedule(dynamic) reduction(max:worst)
-#endif
-    for (int s = 0; s < nSub; s++) {
-      stan::math::linCmtStan lc(ncmt, oral0, trans, true, 0, 0);
-      int npars = lc.getNpars();
-      double f = 1.0 + 0.01*s;
-      Eigen::Matrix<double, Eigen::Dynamic, 1> thE(npars);
-      linCmtFillTheta(thE, ncmt, oral0, thv[0]*f, thv[1]*f, thv[2]*f,
-                      thv[3]*f, thv[4]*f, thv[5]*f, thv[6]*f);
-      std::vector<linSupEntry> L(nDose);
-      for (int d = 0; d < nDose; d++) {
-        memset(&L[d], 0, sizeof(linSupEntry));
-        L[d].t = doseT[d];
-        L[d].amt[bolusCmt] = doseAmt[d];
-      }
-      double fx[RX_LINSUP_MAXM], J[RX_LINSUP_MAXM*RX_LINSUP_MAXP];
-      for (int io = 0; io < nObs; io++) {
-        int nAct = 0;
-        for (int d = 0; d < nDose; d++) if (doseT[d] <= obsT[io]) nAct = d + 1;
-        linCmtSupEval(lc, thE.data(), ncmt, oral0, trans, L.data(), nAct,
-                      obsT[io], fx, J);
-        for (int k = 0; k < blk; k++) {
-          double v = (k < m) ? fx[k] : J[k - m];
-          size_t pos = (size_t)s + (size_t)nSub*((size_t)io*blk + k);
-          if (rep == 0) {
-            ref[pos] = v;
-            op_[pos] = v;
-          } else {
-            double dd = fabs(v - ref[pos]);
-            if (dd > worst) worst = dd;
-          }
-        }
-      }
-    }
-  }
-  out.attr("maxRepDiff") = worst;
-  return out;
-}
-
-static int linCmtSupRowN = 0, linCmtSupPrimeN = 0, linCmtSupDoseN = 0,
-  linCmtSupRateN = 0, linCmtSupConsolidateN = 0;
-
 // Which thread slots linCmtB() has run on since the last reset -- the
 // observable that a solve really was multi-threaded (tests assert on it).
 #define RX_LINCMTB_THREAD_SEEN 256
@@ -1454,162 +1302,6 @@ int linCmtBThreadsSeen(bool reset) {
     if (reset) linCmtBThreadSeen[i] = 0;
   }
   return n;
-}
-
-//[[Rcpp::export]]
-IntegerVector linCmtSupStats(bool reset) {
-  IntegerVector r = IntegerVector::create(_["rows"] = linCmtSupRowN,
-                                          _["primes"] = linCmtSupPrimeN,
-                                          _["doses"] = linCmtSupDoseN,
-                                          _["rateSteps"] = linCmtSupRateN,
-                                          _["consolidations"] = linCmtSupConsolidateN);
-  if (reset) {
-    linCmtSupRowN = linCmtSupPrimeN = linCmtSupDoseN = linCmtSupRateN =
-      linCmtSupConsolidateN = 0;
-  }
-  return r;
-}
-
-// Does the superposition strategy fill this row?  Only where the sequential
-// AD jacobian would have been computed, and never for the steady-state
-// kernel or a modeled-lag/extra dose (those apply amounts strictly between
-// event rows); the sequential kernel takes such rows and the next regular
-// row re-primes from its result, so switching either way mid-subject is
-// exact.
-static inline bool linCmtSupEngage(rx_solve *rx, rx_solving_options_ind *ind,
-                                   int idx) {
-  if (rx->linCmtSensStrategy != 2) return false;
-  if (rx->ndiff == 0 || ind->linCmtHparIndex >= -1) return false;
-  if (!linCmtSensIsAD(rx->sensType)) return false;
-  if (ind->doSS || ind->linSS != 0 || idx < 0) return false;
-  if (ind->extraDoseN[0] > ind->idxExtra || ind->pendingDosesN[0] > 0) return false;
-  return true;
-}
-
-// Row-at-a-time superposition filler for linCmtB(): produces the same fx/J
-// and the same saved amount+Jacobian block as the sequential AD kernel, from
-// a per-subject list of terms instead of the carried Alast.  The list is
-// (re)primed from the buffer's own state (amounts + restored Jacobian at
-// tprior) whenever anything other than this strategy last wrote it -- a new
-// pass, a row it did not fill (SS, extra dose), a reset, a time-frame shift
-// -- so the sequential and superposition states are interchangeable at every
-// row.  Doses need no event-table parsing: whatever handle_evid() added since
-// the last fill shows up as the amount delta, and an infusion as a step in
-// the live rate vector.  Beyond the ceiling the whole list collapses into one
-// primed term (exact, since the term carries its Jacobian).
-static void linCmtSupRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
-                         rx_solving_options *op, int id, int idx, double _t,
-                         double *a, const double *r,
-                         int ncmt, int oral0, int trans, const double *thetaD) {
-  stan::math::linCmtStan &lc = lcb.lc;
-  int m = ncmt + oral0;
-  int npars = lc.getNpars();
-  int nRate = op->numLin < m ? op->numLin : m;
-  int ceiling = rx->linCmtSupersededDoseCeiling;
-  if (ceiling < 1) ceiling = 1;
-  double tprior = ind->tprior;
-  std::vector<linSupEntry> &L = lcb.supList;
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jb = lc.restoreJac(a);
-  bool prime = (lcb.supId != id) || (lcb.supLastIdx != idx - 1) ||
-    (lcb.supLastT != tprior);
-  if (!prime) {
-    for (int k = 0; k < m && !prime; k++) {
-      for (int j = 0; j < npars; j++) {
-        if (Jb(k, j) != lcb.supLastJ[k*RX_LINSUP_MAXP + j]) { prime = true; break; }
-      }
-    }
-  }
-  linSupEntry e;
-  if (prime) {
-    L.clear();
-    memset(&e, 0, sizeof(linSupEntry));
-    e.t = tprior;
-    for (int k = 0; k < m; k++) {
-      e.amt[k] = a[k];
-      for (int j = 0; j < npars; j++) e.J[k*RX_LINSUP_MAXP + j] = Jb(k, j);
-    }
-    L.push_back(e);
-    for (int c = 0; c < RX_LINSUP_MAXM; c++) lcb.supPrevRate[c] = 0.0;
-#pragma omp atomic
-    linCmtSupPrimeN++;
-  } else {
-    memset(&e, 0, sizeof(linSupEntry));
-    e.t = tprior;
-    bool any = false;
-    for (int k = 0; k < m; k++) {
-      double d = a[k] - lcb.supLastFx[k];
-      if (d != 0.0) { e.amt[k] = d; any = true; }
-    }
-    if (any) {
-      L.push_back(e);
-#pragma omp atomic
-      linCmtSupDoseN++;
-    }
-  }
-  // The 2/3-cmt kernels only integrate a POSITIVE rate (their infusion
-  // terms are guarded by R > 0), so a rate step can only ever be added; a
-  // decrease (an infusion ending) instead collapses the list into one primed
-  // term at tprior -- the end-of-infusion state as a virtual dose, the same
-  // decomposition the validated prototype used -- and restarts from the
-  // absolute rate.
-  bool rateUp = false, rateDown = false;
-  for (int c = 0; c < nRate; c++) {
-    double d = r[c] - lcb.supPrevRate[c];
-    if (d > 0.0) rateUp = true;
-    if (d < 0.0) rateDown = true;
-  }
-  bool consolidate = rateDown || ((int)L.size() + (rateUp ? 1 : 0) > ceiling);
-  if (consolidate) {
-    double fxc[RX_LINSUP_MAXM], Jc[RX_LINSUP_MAXM*RX_LINSUP_MAXP];
-    linCmtSupEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(),
-                  tprior, fxc, Jc);
-    memset(&e, 0, sizeof(linSupEntry));
-    e.t = tprior;
-    for (int k = 0; k < m; k++) {
-      e.amt[k] = fxc[k];
-      for (int j = 0; j < npars; j++) e.J[k*RX_LINSUP_MAXP + j] = Jc[k*RX_LINSUP_MAXP + j];
-    }
-    L.clear();
-    L.push_back(e);
-    for (int c = 0; c < RX_LINSUP_MAXM; c++) lcb.supPrevRate[c] = 0.0;
-#pragma omp atomic
-    linCmtSupConsolidateN++;
-  }
-  memset(&e, 0, sizeof(linSupEntry));
-  e.t = tprior;
-  e.isRate = 1;
-  bool anyRate = false;
-  for (int c = 0; c < nRate; c++) {
-    double d = r[c] - lcb.supPrevRate[c];
-    if (d != 0.0) { e.rate[c] = d; anyRate = true; }
-    lcb.supPrevRate[c] = r[c];
-  }
-  if (anyRate) {
-    L.push_back(e);
-#pragma omp atomic
-    linCmtSupRateN++;
-  }
-  double fxo[RX_LINSUP_MAXM], Jo[RX_LINSUP_MAXM*RX_LINSUP_MAXP];
-  linCmtSupEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(), _t,
-                fxo, Jo);
-  for (int k = 0; k < m; k++) {
-    lcb.fx(k, 0) = fxo[k];
-    for (int j = 0; j < npars; j++) lcb.J(k, j) = Jo[k*RX_LINSUP_MAXP + j];
-  }
-  lc.saveJac(lcb.J);
-  for (int k = 0; k < m; k++) ind->linCmtSave[k] = fxo[k];
-  // remember exactly what the buffer will hand back next row
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Js2 =
-    lc.restoreJac(ind->linCmtSave);
-  for (int k = 0; k < m; k++) {
-    lcb.supLastFx[k] = fxo[k];
-    for (int j = 0; j < npars; j++) lcb.supLastJ[k*RX_LINSUP_MAXP + j] = Js2(k, j);
-  }
-  lcb.supId = id;
-  lcb.supLastIdx = idx;
-  lcb.supLastT = _t;
-#pragma omp atomic
-  linCmtSupRowN++;
 }
 
 /*
@@ -2326,10 +2018,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      if (linCmtSupEngage(rx, ind, idx)) {
-        linCmtSupRow(lcb, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans,
-                     getLinCmtDoubleAddr(lcb, linCmtBaddrTheta));
-      } else if (rx->ndiff == 0) {
+      if (rx->ndiff == 0) {
         lc.linAcalcAlast(yp, g, theta);
         lc.calcFx(thetaSens);
         lc.fHCalcJac(thetaSens,ind->linH, fx, Js);

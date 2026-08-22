@@ -202,9 +202,6 @@ rxSolve(
   priorOmega = NULL,
   priorOmegaEl = NULL,
   priorSigmaEl = NULL,
-  linCmtSensStrategy = c("forward", "auto", "superposition", "hybrid"),
-  linCmtMaxDosesInPhase2 = 5L,
-  linCmtSupersededDoseCeiling = 30L,
   envir = parent.frame()
 )
 
@@ -1722,24 +1719,6 @@ of a joint prior; not meant to be set directly -- use
 \item{priorSigmaEl}{Internal.  Which \code{thetaMat} columns are sigma elements
 of a joint prior; not meant to be set directly -- use
 \code{sigmaSeparation="tnpri"}.}
-
-\item{linCmtSensStrategy}{Per-subject evaluation strategy for the
-\code{linCmt()} sensitivities: \code{"forward"} (sequential forward pass, the
-current behavior and default), \code{"superposition"} (per-observation sum
-over active doses; efficient for few doses with dense sampling),
-\code{"hybrid"} (dose-heavy phase rolled through sequentially, then
-superposition for the observation-heavy phase), or \code{"auto"} (choose per
-subject from the dosing/observation pattern).  Currently only stored
-and validated; the non-default strategies are being wired in.}
-
-\item{linCmtMaxDosesInPhase2}{For the \code{"hybrid"}/\code{"auto"} strategies, the
-maximum number of active doses allowed in the observation-heavy phase
-before the subject falls back to the sequential forward pass.}
-
-\item{linCmtSupersededDoseCeiling}{For the \code{"superposition"}/\code{"auto"}
-strategies, the maximum number of superseded (fully absorbed/washed
-out) doses tracked before the subject falls back to the sequential
-forward pass.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

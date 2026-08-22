@@ -909,24 +909,6 @@
 #'
 #' - `endpoint5H` -- five point endpoint difference where step size is fixed
 #'
-#' @param linCmtSensStrategy Per-subject evaluation strategy for the
-#'   `linCmt()` sensitivities: `"forward"` (sequential forward pass, the
-#'   current behavior and default), `"superposition"` (per-observation sum
-#'   over active doses; efficient for few doses with dense sampling),
-#'   `"hybrid"` (dose-heavy phase rolled through sequentially, then
-#'   superposition for the observation-heavy phase), or `"auto"` (choose per
-#'   subject from the dosing/observation pattern).  Currently only stored
-#'   and validated; the non-default strategies are being wired in.
-#'
-#' @param linCmtMaxDosesInPhase2 For the `"hybrid"`/`"auto"` strategies, the
-#'   maximum number of active doses allowed in the observation-heavy phase
-#'   before the subject falls back to the sequential forward pass.
-#'
-#' @param linCmtSupersededDoseCeiling For the `"superposition"`/`"auto"`
-#'   strategies, the maximum number of superseded (fully absorbed/washed
-#'   out) doses tracked before the subject falls back to the sequential
-#'   forward pass.
-#'
 #' @param linCmtSensH The step size for the forward and central
 #'   differences when using the option `centralH`, `forwardH`,
 #'   `foward3H` or `endpoint5H` options.
@@ -1318,9 +1300,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     priorOmega=NULL,
                     priorOmegaEl=NULL,
                     priorSigmaEl=NULL,
-                    linCmtSensStrategy=c("forward", "auto", "superposition", "hybrid"),
-                    linCmtMaxDosesInPhase2=5L,
-                    linCmtSupersededDoseCeiling=30L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
@@ -1556,21 +1535,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
-    if (checkmate::testIntegerish(linCmtSensStrategy, len=1, lower=0, upper=3,
-                                  any.missing=FALSE)) {
-      .linCmtSensStrategy <- as.integer(linCmtSensStrategy)
-    } else {
-      .linCmtSensStrategy <- c("forward"=0L,
-                               "auto"=1L,
-                               "superposition"=2L,
-                               "hybrid"=3L)[match.arg(linCmtSensStrategy)]
-    }
-    checkmate::assertIntegerish(linCmtMaxDosesInPhase2, len=1, lower=0,
-                                any.missing=FALSE)
-    linCmtMaxDosesInPhase2 <- as.integer(linCmtMaxDosesInPhase2)
-    checkmate::assertIntegerish(linCmtSupersededDoseCeiling, len=1, lower=1,
-                                any.missing=FALSE)
-    linCmtSupersededDoseCeiling <- as.integer(linCmtSupersededDoseCeiling)
     if (is.logical(linCmtScale)) {
       checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
       if (linCmtScale) {
@@ -2071,12 +2035,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       priorPdRetry=priorPdRetry,
       priorOmega=priorOmega,
       priorOmegaEl=priorOmegaEl,
-      priorSigmaEl=priorSigmaEl,
-      # time-varying-covariate detection is build-time (the sensitivity-carry
-      # eligibility machinery), so no rel-tol knob is needed here
-      linCmtSensStrategy=.linCmtSensStrategy,
-      linCmtMaxDosesInPhase2=linCmtMaxDosesInPhase2,
-      linCmtSupersededDoseCeiling=linCmtSupersededDoseCeiling
+      priorSigmaEl=priorSigmaEl
     )
     class(.ret) <- "rxControl"
     return(.ret)

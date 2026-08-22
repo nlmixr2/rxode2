@@ -414,16 +414,8 @@ linCmtSubjectSuperpositionFwdADProto <- function(obsT, doseT, doseAmt, doseDur, 
     .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
 }
 
-linCmtSupRevThreadStress <- function(obsT, doseT, doseAmt, th, ncmt, oral0, trans, bolusCmt, nSub, nThreads, nRep) {
-    .Call(`_rxode2_linCmtSupRevThreadStress`, obsT, doseT, doseAmt, th, ncmt, oral0, trans, bolusCmt, nSub, nThreads, nRep)
-}
-
 linCmtBThreadsSeen <- function(reset) {
     .Call(`_rxode2_linCmtBThreadsSeen`, reset)
-}
-
-linCmtSupStats <- function(reset) {
-    .Call(`_rxode2_linCmtSupStats`, reset)
 }
 
 #' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)

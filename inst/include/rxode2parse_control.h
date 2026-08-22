@@ -142,9 +142,6 @@
 #define Rxc_priorOmega 138
 #define Rxc_priorOmegaEl 139
 #define Rxc_priorSigmaEl 140
-#define Rxc_linCmtSensStrategy 141
-#define Rxc_linCmtMaxDosesInPhase2 142
-#define Rxc_linCmtSupersededDoseCeiling 143
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

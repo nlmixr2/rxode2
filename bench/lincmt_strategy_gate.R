@@ -1,3 +1,10 @@
+# RECORD OF A DECISION, not a live benchmark.  The superposition strategy it
+# measured (rxControl(linCmtSensStrategy="superposition"), phase 4.2) was
+# removed from the package after this gate's verdict, so the "sup" arm and
+# rxode2:::linCmtSupStats() below no longer exist in the current tree; the
+# measured results are kept in bench/results/lincmt_strategy_gate_1cmt_3cmt.rds.
+# To re-run it as written, check out eac2a66d2..f1bb62bc2.
+#
 # Measurement gate before phase 4.3 of the linCmt() speed plan (see
 # ~/.claude/plans/the-lincmt-solutions-are-calm-seahorse.md).  Phase 4.2 found
 # that plain sequential reverse-mode AD (linCmtSensType="ADr", threaded since
