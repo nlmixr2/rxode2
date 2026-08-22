@@ -31,6 +31,12 @@ rxTest({
     s <- rxSolve(m, p, et(amt = 100) |> et(c(1, 2, 3.5)), returnType = "data.frame")
     expect_equal(s$tm, exp(-0.1 * c(1, 1, 1.5)), tolerance = 1e-12)
   })
+  test_that("which1=-4 as the only linCmtB() call sizes the kernel itself", {
+    m <- suppressWarnings(rxode2(
+      "tm = linCmtB(rx__PTR__, t, 1, 1, 0, -4, 0, 1, 1, 10, 0, 0, 0, 0, 0)"))
+    s <- rxSolve(m, et(amt = 100) |> et(c(1, 2)), returnType = "data.frame")
+    expect_equal(s$tm, exp(-0.1 * c(1, 1)), tolerance = 1e-12)
+  })
   test_that("a valid shape still accumulates", {
     # calc_lhs runs on the dose row too, so the observation rows see the
     # third and fourth 0.5 increments

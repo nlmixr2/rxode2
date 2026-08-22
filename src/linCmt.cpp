@@ -900,6 +900,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       int row = which2 % m;
       int col = which2 / m;
       if (which2 < 0 || col >= m) return NA_REAL;
+      // may be the first touch of lc on this thread (a model with no -1 call)
+      if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+        lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
+      }
       int npars = lc.getNpars();
       typedef stan::math::fvar<double> fv;
       Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
