@@ -37,20 +37,20 @@ rxTest({
         rawAlast <- rawAlast + amt_i
       } else {
         dtPrev <- grid$time[i] - grid$time[i - 1]
-        res <- rxode2:::linCmtModelDouble(dtPrev, cl_i, tvVal, 0, 0, 0, 0, 0,
+        res <- linCmtModelDouble(dtPrev, cl_i, tvVal, 0, 0, 0, 0, 0,
                                           c(rawAlast, 0, 0), 0, 1L, 0L, 1L, TRUE,
                                           0L, 0, 0, 0, 0L, 0L, 30L, 0.001)
         # d(cl)/d(eta.cl) = cl for this multiplicative covariate model
         localContrib <- res$J[1, 1] * cl_i
         thetaRow <- matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1)
-        rxode2:::linCmtCarryLiveTest(0L, rep(grid$time[i], 2), rep(grid$time[i - 1], 2),
+        linCmtCarryLiveTest(0L, rep(grid$time[i], 2), rep(grid$time[i - 1], 2),
                                      thetaRow[c(1, 1), , drop = FALSE], 1L, 0L, 1L,
                                      c(-5L, -7L), c(0L, 0L), c(0, localContrib))
         rawAlast <- as.numeric(res$Alast)[1]
       }
       if (amt_i != 0 && i > 1) rawAlast <- rawAlast + amt_i
       if (grid$evid[i] == 0) {
-        sens[i] <- rxode2:::linCmtCarryLiveTest(0L, grid$time[i], grid$time[i],
+        sens[i] <- linCmtCarryLiveTest(0L, grid$time[i], grid$time[i],
                                                 matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1),
                                                 1L, 0L, 1L, -6L, 0L) / tvVal
       }

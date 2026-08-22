@@ -10,7 +10,7 @@ rxTest({
   call3 <- function(sensType) {
     a <- numeric(nAlast(3L, 1L))
     a[1:4] <- c(50, 20, 5, 2)
-    rxode2:::linCmtModelDouble(0.7, 1.0, 20, 2.0, 40, 0.5, 60, 1.1,
+    linCmtModelDouble(0.7, 1.0, 20, 2.0, 40, 0.5, 60, 1.1,
                                a, rep(0, 4), 3L, 1L, 1L, TRUE,
                                0L, 0, 0, 0, 0L, 0L, as.integer(sensType), 0.001)
   }

@@ -8,7 +8,7 @@ rxTest({
     ncmt + oral0 + ncmt * npars + oral0
   }
   call3 <- function(alast, sensType, ka = 1.1) {
-    rxode2:::linCmtModelDouble(0.7, 1.0, 20, 2.0, 40, 0.5, 60, ka,
+    linCmtModelDouble(0.7, 1.0, 20, 2.0, 40, 0.5, 60, ka,
                                alast, rep(0, 4), 3L, 1L, 1L, TRUE,
                                0L, 0, 0, 0, 0L, 0L, as.integer(sensType), 0.001)
   }
@@ -41,8 +41,8 @@ rxTest({
         cp <- linCmt()
       })
     }
-    ev <- et(amt = 100, cmt = "depot") %>%
-      et(amt = -100, time = 0.5, cmt = "depot") %>%
+    ev <- et(amt = 100, cmt = "depot") |>
+      et(amt = -100, time = 0.5, cmt = "depot") |>
       et(seq(0, 6, by = 0.5))
     ode <- rxSolve(linToOde(rxode2(m)), ev, returnType = "data.frame",
                    useLinCmt = FALSE, atol = 1e-10, rtol = 1e-10)$cp
@@ -59,7 +59,7 @@ rxTest({
                }, ""))
     mg <- suppressWarnings(rxode2(paste(lines, collapse = "\n")))
     pars <- c(cl = 1, v = 20, q = 2, vp = 40, q2 = 0.5, vp2 = 60, ka = 1.1)
-    evg <- et(amt = 100, cmt = 1) %>% et(amt = -100, time = 0.5, cmt = 1) %>%
+    evg <- et(amt = 100, cmt = 1) |> et(amt = -100, time = 0.5, cmt = 1) |>
       et(seq(0.25, 6, by = 0.5))
     solve <- function(p, st) {
       rxSolve(mg, p, evg, linCmtSensType = st, returnType = "data.frame")

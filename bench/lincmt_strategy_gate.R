@@ -145,9 +145,9 @@ benchLinCmtStrategyGate <- function(cfgIdx = c(1L, 4L, 6L),
       .gateSolve(m, cfg, evt, "forward", 1L) # warm the model cache
       tF1 <- .gateTime(function() .gateSolve(m, cfg, evt, "forward", 1L), repsProd)
       tR1 <- .gateTime(function() .gateSolve(m, cfg, evt, "adr", 1L), repsProd)
-      invisible(rxode2:::linCmtSupStats(TRUE))
+      invisible(utils::getFromNamespace("linCmtSupStats", "rxode2")(TRUE))
       tS1 <- .gateTime(function() .gateSolve(m, cfg, evt, "sup", 1L), repsProd)
-      st <- rxode2:::linCmtSupStats(TRUE)
+      st <- utils::getFromNamespace("linCmtSupStats", "rxode2")(TRUE)
       tFN <- .gateTime(function() .gateSolve(m, cfg, evt, "forward", nThr), repsProd)
       tRN <- .gateTime(function() .gateSolve(m, cfg, evt, "adr", nThr), repsProd)
       tSN <- .gateTime(function() .gateSolve(m, cfg, evt, "sup", nThr), repsProd)

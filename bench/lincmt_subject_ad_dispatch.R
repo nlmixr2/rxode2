@@ -379,7 +379,7 @@ runDispatchTests <- function() {
                                expectStrategy = "hybrid"))
 
     # Scenario B: few doses, many observations -- superposition's own sweet spot.
-    doseT <- c(0)
+    doseT <- 0
     obsT <- 0.3 * seq_len(20)
     time <- c(doseT, obsT); evid <- c(1, rep(0, 20))
     amt <- c(100, rep(0, 20)); dur <- rep(0, 21)

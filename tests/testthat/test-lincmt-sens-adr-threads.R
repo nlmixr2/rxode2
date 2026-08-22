@@ -37,15 +37,15 @@ rxTest({
     fwd <- solve("AD", 1L)
     rev1 <- solve("ADr", 1L)
     expect_true(cmp(rev1, fwd) < 1e-9)
-    invisible(rxode2:::linCmtBThreadsSeen(TRUE))
+    invisible(linCmtBThreadsSeen(TRUE))
     solve("ADr", 1L)
-    expect_equal(rxode2:::linCmtBThreadsSeen(TRUE), 1L)
+    expect_equal(linCmtBThreadsSeen(TRUE), 1L)
     worst <- 0
     seen <- integer(0)
     for (i in seq_len(25)) {
-      invisible(rxode2:::linCmtBThreadsSeen(TRUE))
+      invisible(linCmtBThreadsSeen(TRUE))
       revN <- solve("ADr", nThr)
-      seen <- c(seen, rxode2:::linCmtBThreadsSeen(TRUE))
+      seen <- c(seen, linCmtBThreadsSeen(TRUE))
       worst <- max(worst, cmp(revN, rev1))
     }
     expect_true(worst < 1e-12)
@@ -53,18 +53,18 @@ rxTest({
   })
 
   test_that("linCmtSensType=\"auto\" (the default) resolves to reverse mode, threaded", {
-    invisible(rxode2:::linCmtBSensTypesSeen(TRUE))
-    invisible(rxode2:::linCmtBThreadsSeen(TRUE))
+    invisible(linCmtBSensTypesSeen(TRUE))
+    invisible(linCmtBThreadsSeen(TRUE))
     auto <- rxSolve(m, pars, ev, cores = 0L, returnType = "data.frame")
-    expect_true(31L %in% rxode2:::linCmtBSensTypesSeen(TRUE))
-    expect_true(rxode2:::linCmtBThreadsSeen(TRUE) > 1L)
+    expect_true(31L %in% linCmtBSensTypesSeen(TRUE))
+    expect_true(linCmtBThreadsSeen(TRUE) > 1L)
     expect_true(cmp(auto, solve("AD", 1L)) < 1e-9)
   })
 
   test_that("cores=0 (auto) no longer throttles ADr to one core", {
-    invisible(rxode2:::linCmtBThreadsSeen(TRUE))
+    invisible(linCmtBThreadsSeen(TRUE))
     revA <- solve("ADr", 0L)
-    expect_true(rxode2:::linCmtBThreadsSeen(TRUE) > 1L)
+    expect_true(linCmtBThreadsSeen(TRUE) > 1L)
     expect_true(cmp(revA, solve("AD", 1L)) < 1e-9)
   })
 })
