@@ -353,22 +353,6 @@ linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, n
     .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
 }
 
-linCmtSubjectReverseADProto <- function(dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectReverseADProto`, dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt)
-}
-
-linCmtSubjectReverseADEtaCovariateProto <- function(dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal) {
-    .Call(`_rxode2_linCmtSubjectReverseADEtaCovariateProto`, dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal)
-}
-
-linCmtSubjectForwardADEtaCovariateProto <- function(dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal) {
-    .Call(`_rxode2_linCmtSubjectForwardADEtaCovariateProto`, dtVec, amtVec, covVec, tcl, tv, refCov, covExp, etaVal)
-}
-
-linCmtAlastTransitionMatrixProto <- function(p1, v1, p2, p3, p4, p5, ka, rateNV, dt, ncmt, oral0, trans) {
-    .Call(`_rxode2_linCmtAlastTransitionMatrixProto`, p1, v1, p2, p3, p4, p5, ka, rateNV, dt, ncmt, oral0, trans)
-}
-
 #' Toggle the linCmt() carry-advance runtime fast path (test/benchmark hook)
 #'
 #' @param enable logical; new state
@@ -394,24 +378,8 @@ linCmtCarryLiveTest <- function(id, t, tPrior, theta, ncmt, oral0, trans, which1
     .Call(`_rxode2_linCmtCarryLiveTest`, id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal)
 }
 
-linCmtSubjectHybridDoseObsADProto <- function(phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`, phase1DtVec, phase1AmtVec, phase1RateVec, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
-}
-
-linCmtSubjectReverseADTimeVaryingProto <- function(dtVec, amtVec, thetaMat, rateNV, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectReverseADTimeVaryingProto`, dtVec, amtVec, thetaMat, rateNV, ncmt, oral0, trans, bolusCmt)
-}
-
-linCmtSubjectReverseADBatchProto <- function(dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectReverseADBatchProto`, dtVec, amtVec, p1, v1, p2, p3, p4, p5, ka, rateNV, ncmt, oral0, trans, bolusCmt)
-}
-
-linCmtSubjectSuperpositionADProto <- function(obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectSuperpositionADProto`, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
-}
-
-linCmtSubjectSuperpositionFwdADProto <- function(obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
-    .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
+linCmtBSensTypesSeen <- function(reset) {
+    .Call(`_rxode2_linCmtBSensTypesSeen`, reset)
 }
 
 linCmtBThreadsSeen <- function(reset) {
