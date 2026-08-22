@@ -480,10 +480,48 @@ runLinCmtSubjectADProtoTests <- function() {
   for (cfg in configs) add(.checkHybridDoseObs(cfg))
   for (cfg in configs) add(.checkHybridDoseObsInfusion(cfg))
   for (cfg in configs) add(.checkTransitionMatrix(cfg))
+  for (cfg in configs) add(.checkSuperpositionFwdBolus(cfg))
+  for (cfg in configs) add(.checkSuperpositionFwdMixed(cfg))
 
   pass <- vapply(results, function(r) isTRUE(r$pass), logical(1))
   message(sprintf("\n%d/%d checks passed", sum(pass), length(pass)))
   invisible(list(results = results, allPass = all(pass)))
+}
+
+# ---------------------------------------------------------------------------
+# 10. linCmtSubjectSuperpositionFwdADProto: forward-mode (fvar) variant of the
+#     superposition kernel (phase 4.1 fwd-vs-rev decision).  Must match the
+#     reverse superposition prototype to round-off on identical inputs --
+#     both bolus-only and mixed infusion+bolus regimens.
+# ---------------------------------------------------------------------------
+.checkSuperpositionFwd <- function(cfg, obsT, doseT, doseAmt, doseDur, label) {
+  rev <- .Call(`_rxode2_linCmtSubjectSuperpositionADProto`,
+               obsT, doseT, doseAmt, doseDur,
+               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  fwd <- .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`,
+               obsT, doseT, doseAmt, doseDur,
+               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  worst <- 0
+  for (i in seq_along(obsT)) {
+    worst <- max(worst,
+                 max(abs(rev[[i]]$val - fwd[[i]]$val)),
+                 max(abs(rev[[i]]$J - fwd[[i]]$J)))
+  }
+  .report(sprintf("%s[%s]", label, cfg$name), worst)
+}
+
+.checkSuperpositionFwdBolus <- function(cfg, nDose = 6, nObsPerDose = 2, dt = 0.7) {
+  doseT <- seq(0, by = dt * nObsPerDose, length.out = nDose)
+  obsT <- sort(unique(c(doseT, as.vector(outer(doseT, dt * seq_len(nObsPerDose - 1), "+")))))
+  .checkSuperpositionFwd(cfg, obsT, doseT, rep(100, nDose), rep(0, nDose),
+                         "superpositionFwd(bolus)")
+}
+
+.checkSuperpositionFwdMixed <- function(cfg) {
+  .checkSuperpositionFwd(cfg, c(0.5, 2.5, 3.5, 5.0), c(0, 3.0), c(100, 50),
+                         c(2.0, 0), "superpositionFwd(infusion+bolus)")
 }
 
 # ---------------------------------------------------------------------------
@@ -588,6 +626,65 @@ benchLinCmtSubjectADProto <- function() {
                               rep(dt, n), amt, cov, tcl, tv, refCov, covExp, 0.1)))
     cat(sprintf("  n=%4d  forward-eta=%.5fs  reverse-eta=%.5fs  ratio(rev/fwd)=%.1fx\n",
                 n, tfwd, trev, trev / tfwd))
+  }
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
+# Phase 4.1 decision bench: forward-mode (fvar) vs reverse-mode (var)
+# superposition kernel.  The production question: reverse is single-core
+# guarded (linCmtSensForwardAdThreadSafe(), Stan shared ChainableStack) while
+# fvar is stack-local and OpenMP-parallel-safe, so reverse's effective cost
+# is rev/1-thread vs fwd/N-threads.  Run per config; the plan records the
+# 3cmt-oral (npars=7, worst for forward) and 1cmt-iv (npars=2, best) ends.
+# ---------------------------------------------------------------------------
+benchLinCmtSuperpositionFwdVsRev <- function(cfgIdx = c(1L, 6L)) {
+  timeIt <- function(callExpr, reps = 10) {
+    t <- system.time(for (r in seq_len(reps)) eval(callExpr))["elapsed"]
+    t / reps
+  }
+  dt <- 0.3
+  for (ci in cfgIdx) {
+    cfg <- .linCmtConfigs()[[ci]]
+    cat(sprintf("\n=== fwd vs rev superposition [%s] ===\n", cfg$name))
+    cat("-- few doses (1), dense observations (superposition's home turf) --\n")
+    for (n in c(20, 50, 100, 200)) {
+      obsT <- dt * seq_len(n)
+      trev <- timeIt(quote({
+        .Call(`_rxode2_linCmtSubjectSuperpositionADProto`, obsT, 0, 100, 0,
+              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+      }))
+      tfwd <- timeIt(quote({
+        .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`, obsT, 0, 100, 0,
+              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+      }))
+      tprod <- timeIt(quote({
+        alast <- cfg$alast0
+        for (iv in seq_len(n)) { s <- .linCmtCall(dt, cfg, alast, sensType = 30L); alast <- s$Alast }
+      }))
+      cat(sprintf("  n=%4d  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx  prodseq(R-loop)=%.5fs\n",
+                  n, trev, tfwd, tfwd / trev, tprod))
+    }
+    cat("-- steady dosing: 8 active doses, dense observations --\n")
+    for (n in c(50, 100, 200)) {
+      doseT <- seq(0, by = dt * 4, length.out = 8)
+      obsT <- max(doseT) + dt * seq_len(n)
+      doseAmt <- rep(100, 8); doseDur <- rep(0, 8)
+      trev <- timeIt(quote({
+        .Call(`_rxode2_linCmtSubjectSuperpositionADProto`, obsT, doseT, doseAmt, doseDur,
+              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+      }))
+      tfwd <- timeIt(quote({
+        .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`, obsT, doseT, doseAmt, doseDur,
+              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
+              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+      }))
+      cat(sprintf("  n=%4d (8 doses)  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx\n",
+                  n, trev, tfwd, tfwd / trev))
+    }
   }
   invisible(NULL)
 }

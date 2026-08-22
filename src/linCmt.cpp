@@ -1177,6 +1177,107 @@ List linCmtSubjectSuperpositionADProto(NumericVector obsT, NumericVector doseT,
   return out;
 }
 
+// PROTOTYPE (phase 4.1 decision bench): forward-mode (fvar) variant of the
+// superposition evaluation above.  One directional pass per parameter (npars
+// kernel sweeps per observation, like production sensType=30) instead of one
+// reverse sweep per output row.  fvar is stack-local (no shared tape), so this
+// form is OpenMP-parallel-safe where the reverse form is single-core-guarded
+// by linCmtSensForwardAdThreadSafe().
+//[[Rcpp::export]]
+List linCmtSubjectSuperpositionFwdADProto(NumericVector obsT, NumericVector doseT,
+                                          NumericVector doseAmt,
+                                          NumericVector doseDur,
+                                          double p1, double v1, double p2,
+                                          double p3, double p4, double p5,
+                                          double ka,
+                                          int ncmt, int oral0, int trans,
+                                          int bolusCmt) {
+  typedef stan::math::fvar<double> fv;
+  int nObs = obsT.size();
+  int nDose = doseT.size();
+  stan::math::linCmtStan lc(ncmt, oral0, trans, true, 0, 0);
+  int npars = lc.getNpars();
+  int m = ncmt + oral0;
+
+  Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
+  linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+
+  int numLin = m;
+  std::vector<double> zeroRate(numLin, 0.0);
+  std::vector<double> infRate(numLin, 0.0);
+
+  List out(nObs);
+  for (int io = 0; io < nObs; io++) {
+    NumericVector fx(m);
+    NumericMatrix J(m, npars);
+    for (int dir = 0; dir < npars; dir++) {
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> theta(npars);
+      for (int j = 0; j < npars; j++) {
+        theta(j, 0) = fv(thetaD(j, 0), dir == j ? 1.0 : 0.0);
+      }
+      Eigen::Matrix<fv, Eigen::Dynamic, 2> g =
+        stan::math::macros2micros(theta, ncmt, trans);
+      fv kaV(0.0, 0.0);
+      if (oral0) kaV = theta(ncmt*2, 0);
+
+      Eigen::Matrix<fv, Eigen::Dynamic, 1> total =
+        Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+      for (int jd = 0; jd < nDose; jd++) {
+        if (doseT[jd] > obsT[io] + 1e-9) continue;
+        double dur = doseDur[jd];
+        Eigen::Matrix<fv, Eigen::Dynamic, 1> retTerm(m);
+        if (dur <= 0.0) {
+          double elapsed = obsT[io] - doseT[jd];
+          lc.setDt(elapsed);
+          lc.setRate(zeroRate.data());
+          Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0 =
+            Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+          yp0(bolusCmt, 0) = fv(doseAmt[jd], 0.0);
+          if (ncmt == 1) lc.linCmtStan1<fv>(g, yp0, kaV, retTerm);
+          else if (ncmt == 2) lc.linCmtStan2<fv>(g, yp0, kaV, retTerm);
+          else if (ncmt == 3) lc.linCmtStan3<fv>(g, yp0, kaV, retTerm);
+        } else if (obsT[io] < doseT[jd] + dur - 1e-9) {
+          double elapsed = obsT[io] - doseT[jd];
+          lc.setDt(elapsed);
+          std::fill(infRate.begin(), infRate.end(), 0.0);
+          infRate[bolusCmt] = doseAmt[jd] / dur;
+          lc.setRate(infRate.data());
+          Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0 =
+            Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+          if (ncmt == 1) lc.linCmtStan1<fv>(g, yp0, kaV, retTerm);
+          else if (ncmt == 2) lc.linCmtStan2<fv>(g, yp0, kaV, retTerm);
+          else if (ncmt == 3) lc.linCmtStan3<fv>(g, yp0, kaV, retTerm);
+        } else {
+          lc.setDt(dur);
+          std::fill(infRate.begin(), infRate.end(), 0.0);
+          infRate[bolusCmt] = doseAmt[jd] / dur;
+          lc.setRate(infRate.data());
+          Eigen::Matrix<fv, Eigen::Dynamic, 1> ypZero =
+            Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
+          Eigen::Matrix<fv, Eigen::Dynamic, 1> endOfInf(m);
+          if (ncmt == 1) lc.linCmtStan1<fv>(g, ypZero, kaV, endOfInf);
+          else if (ncmt == 2) lc.linCmtStan2<fv>(g, ypZero, kaV, endOfInf);
+          else if (ncmt == 3) lc.linCmtStan3<fv>(g, ypZero, kaV, endOfInf);
+
+          double elapsedAfter = obsT[io] - (doseT[jd] + dur);
+          lc.setDt(elapsedAfter);
+          lc.setRate(zeroRate.data());
+          if (ncmt == 1) lc.linCmtStan1<fv>(g, endOfInf, kaV, retTerm);
+          else if (ncmt == 2) lc.linCmtStan2<fv>(g, endOfInf, kaV, retTerm);
+          else if (ncmt == 3) lc.linCmtStan3<fv>(g, endOfInf, kaV, retTerm);
+        }
+        total = total + retTerm;
+      }
+      for (int k = 0; k < m; k++) {
+        if (dir == 0) fx[k] = total(k, 0).val_;
+        J(k, dir) = total(k, 0).d_;
+      }
+    }
+    out[io] = List::create(_["val"] = fx, _["J"] = J);
+  }
+  return out;
+}
+
 /*
  *  linCmtA
  *

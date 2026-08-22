@@ -410,6 +410,10 @@ linCmtSubjectSuperpositionADProto <- function(obsT, doseT, doseAmt, doseDur, p1,
     .Call(`_rxode2_linCmtSubjectSuperpositionADProto`, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
 }
 
+linCmtSubjectSuperpositionFwdADProto <- function(obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt) {
+    .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`, obsT, doseT, doseAmt, doseDur, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans, bolusCmt)
+}
+
 #' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
 #'
 #' C++/RcppArmadillo implementation of the non-Cholesky Omega derivatives used
