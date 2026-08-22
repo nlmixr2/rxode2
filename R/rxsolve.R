@@ -5664,3 +5664,15 @@ rxUiDeparse.rxControl <- function(object, var) {
   }, character(1), USE.NAMES=FALSE)
   str2lang(paste(var, " <- rxControl(", paste(.retD, collapse=","),")"))
 }
+
+#' Test-only accessor for the linCmt() sensitivity control values
+#'
+#' Returns `sensType`/`sensH` as they landed in the C-level `rx_solve` struct
+#' after the last solve, so a test can confirm `linCmtSensH` was read from its
+#' own `rxControl` slot instead of `linCmtSensType`'s (nlmixr2/rxode2#1276).
+#'
+#' @return A list with `sensType` and `sensH`
+#' @noRd
+.rxLinCmtSensDebug <- function() {
+  rxLinCmtSensDebug_()
+}

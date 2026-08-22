@@ -6098,6 +6098,14 @@ extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
   return stiff != 1 && stiff != 106 && stiff != 107;
 }
 
+// Test-only accessor for the linCmt() finite-difference control values that
+// land in the global rx_solve struct (nlmixr2/rxode2#1276): rx->sensType and
+// rx->sensH must come from their own, distinct rxControl slots.
+// [[Rcpp::export]]
+List rxLinCmtSensDebug_() {
+  rx_solve *rx = getRxSolve_();
+  return List::create(_["sensType"]=rx->sensType, _["sensH"]=rx->sensH);
+}
 
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
@@ -6261,7 +6269,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
-    rx->sensH   = asDouble(rxControl[Rxc_linCmtSensType], "linCmtSensH");
+    rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

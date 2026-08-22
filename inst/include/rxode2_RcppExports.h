@@ -505,6 +505,27 @@ namespace rxode2 {
         return Rcpp::as<SEXP >(rcpp_result_gen);
     }
 
+    inline List rxLinCmtSensDebug_() {
+        typedef SEXP(*Ptr_rxLinCmtSensDebug_)();
+        static Ptr_rxLinCmtSensDebug_ p_rxLinCmtSensDebug_ = NULL;
+        if (p_rxLinCmtSensDebug_ == NULL) {
+            validateSignature("List(*rxLinCmtSensDebug_)()");
+            p_rxLinCmtSensDebug_ = (Ptr_rxLinCmtSensDebug_)R_GetCCallable("rxode2", "_rxode2_rxLinCmtSensDebug_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxLinCmtSensDebug_();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<List >(rcpp_result_gen);
+    }
+
     inline SEXP rxSolve_(const RObject& obj, const List& rxControl, const Nullable<CharacterVector>& specParams, const Nullable<List>& extraArgs, const RObject& params, const RObject& events, const RObject& inits, const int setupOnly) {
         typedef SEXP(*Ptr_rxSolve_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxSolve_ p_rxSolve_ = NULL;
