@@ -198,7 +198,7 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
           break;
         case 211: // 1 compartment, oral, which2=2
         case 421: // 2 compartment, oral, which2=4
-        case 621: // 2 compartment, oral, which2=6
+        case 631: // 3 compartment, oral, which2=6
           addLinCmtBdiff(diffKa);
           break;
         default:
