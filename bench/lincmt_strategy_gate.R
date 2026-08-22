@@ -22,6 +22,17 @@
 #
 # Usage (package root):  Rscript bench/lincmt_strategy_gate.R
 # or source() it and call benchLinCmtStrategyGate().
+#
+# Measured 2026-08-21 (44 subjects, 11 threads; bench/results/
+# lincmt_strategy_gate_1cmt_3cmt.rds): ADr beats forward 1.4-1.6x (2cmt-oral)
+# and 1.7-2.1x (3cmt-oral), parity at 1cmt-iv.  The hybrid is within +-10% of
+# ADr at 2cmt-oral and 1.1-1.7x SLOWER at 3cmt-oral even before wrapper
+# overhead (its phase-1 forward roll-through costs npars passes per dose row
+# where ADr pays one reverse nest); it only wins at 1cmt-iv (1.2-2.3x, the
+# least reliable estimate, on solves already under 0.1s).  Superposition is
+# 6-11x slower than ADr on this dose-heavy shape, as designed.  Verdict:
+# sequential ADr is the production default; the hybrid is not worth a
+# production port.
 
 if (requireNamespace("devtools", quietly = TRUE) &&
       file.exists("DESCRIPTION") && file.exists("src/linCmt.cpp")) {
