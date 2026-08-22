@@ -320,6 +320,7 @@ double gamma_p_inva(double a, double p);
 
 int compareFactorVal(int val, const char *factor, const char *value);
 int compareFactorInt(int val, const char *factor, int value);
+SEXP _rxode2_rxLinCmtSensDebug_(void);
 SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
                       SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSolveFromRaw_(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -1042,6 +1043,7 @@ void R_init_rxode2(DllInfo *info){
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},
+    {"_rxode2_rxLinCmtSensDebug_", (DL_FUNC) &_rxode2_rxLinCmtSensDebug_, 0},
     {"_rxode2_rxSolve_", (DL_FUNC) _rxode2_rxSolve_, 8},
     {"getRxThreads_R", (DL_FUNC) getRxThreads_R, 1},
     {"setRxthreads", (DL_FUNC) setRxthreads, 3},

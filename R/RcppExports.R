@@ -740,6 +740,10 @@ rxSolveFromRaw_ <- function(obj, rawObj, solveState, rxControl, specParams, extr
     .Call(`_rxode2_rxSolveFromRaw_`, obj, rawObj, solveState, rxControl, specParams, extraArgs, params, events, inits)
 }
 
+rxLinCmtSensDebug_ <- function() {
+    .Call(`_rxode2_rxLinCmtSensDebug_`)
+}
+
 rxSolve_ <- function(obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly) {
     .Call(`_rxode2_rxSolve_`, obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly)
 }
