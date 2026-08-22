@@ -1351,16 +1351,16 @@ and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 \item{linCmtSensType}{The type of linear compartment
 sensitivity/gradients to use.  The current options are:
 \itemize{
-\item \code{auto} -- for one compartment models this will use the \code{AD}
-method, for 2 and 3 compartment model this will use \code{forwardG}.
-\item \code{AD} -- automatic differentiation (using stan math).  This now
-uses forward-mode AD (\verb{stan::math::fvar}), which differentiates the
-same analytic solution as the reverse-mode path but on the C++
-stack with no reverse autodiff tape, matching the reverse result to
-round-off while avoiding the per-call tape setup/teardown.
-\item \code{ADr} -- reverse-mode automatic differentiation (the prior \code{AD}
-behavior, \verb{stan::math::jacobian}).  Kept as an escape hatch for
-validation; \code{AD} (forward) is preferred.
+\item \code{auto} (the default) -- uses \code{ADr}.
+\item \code{ADr} -- reverse-mode automatic differentiation
+(\verb{stan::math::jacobian}): each row is differentiated on its own
+nested tape with one adjoint sweep per compartment, which costs less
+than one forward pass per parameter for 2 and 3 compartment models
+and the same for one compartment.  The tape is per thread, so this
+solves across threads like \code{AD}.
+\item \code{AD} -- forward-mode automatic differentiation
+(\verb{stan::math::fvar}), differentiating the same analytic solution on
+the C++ stack; matches \code{ADr} to round-off.
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forwardG} -- forward sensitivity where the step size is determined by the

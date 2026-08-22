@@ -871,18 +871,18 @@
 #' @param linCmtSensType The type of linear compartment
 #'   sensitivity/gradients to use.  The current options are:
 #'
-#' - `auto` -- for one compartment models this will use the `AD`
-#'   method, for 2 and 3 compartment model this will use `forwardG`.
+#' - `auto` (the default) -- uses `ADr`.
 #'
-#' - `AD` -- automatic differentiation (using stan math).  This now
-#'   uses forward-mode AD (`stan::math::fvar`), which differentiates the
-#'   same analytic solution as the reverse-mode path but on the C++
-#'   stack with no reverse autodiff tape, matching the reverse result to
-#'   round-off while avoiding the per-call tape setup/teardown.
+#' - `ADr` -- reverse-mode automatic differentiation
+#'   (`stan::math::jacobian`): each row is differentiated on its own
+#'   nested tape with one adjoint sweep per compartment, which costs less
+#'   than one forward pass per parameter for 2 and 3 compartment models
+#'   and the same for one compartment.  The tape is per thread, so this
+#'   solves across threads like `AD`.
 #'
-#' - `ADr` -- reverse-mode automatic differentiation (the prior `AD`
-#'   behavior, `stan::math::jacobian`).  Kept as an escape hatch for
-#'   validation; `AD` (forward) is preferred.
+#' - `AD` -- forward-mode automatic differentiation
+#'   (`stan::math::fvar`), differentiating the same analytic solution on
+#'   the C++ stack; matches `ADr` to round-off.
 #'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
@@ -1539,8 +1539,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar) -- default AD
-                           "ADr"=31L,      # reverse-mode AD (escape hatch)
+      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar)
+                           "ADr"=31L,      # reverse-mode AD (what "auto" resolves to)
                            "forward"=1L,
                            "central"=2L,
                            "forward3"=4L,

@@ -2,6 +2,16 @@
 
 ## New features
 
+- The default `linCmt()` sensitivity method (`linCmtSensType="auto"`) is now
+  reverse-mode AD (`"ADr"`).  Each row is differentiated on its own nested
+  Stan tape with one adjoint sweep per compartment (at most 4) instead of
+  one forward pass per parameter (up to 7), which measured about 2x faster
+  than the forward-mode default for 2 and 3 compartment models and the same
+  for one compartment, with results matching forward mode to round-off.
+  Reverse mode now also solves across threads (the Stan tape is per thread
+  under `STAN_THREADS`), so it is no longer forced onto one core; the
+  forward-mode path remains available as `linCmtSensType="AD"`.
+
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
