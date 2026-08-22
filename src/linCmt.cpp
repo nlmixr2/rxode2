@@ -217,6 +217,53 @@ static inline void linCmtRevTapeInit() {
   (void)_rxLinCmtTape;
 }
 
+// Alast snapshot returned by linCmtModelDouble().
+static inline NumericVector linCmtModelDoubleAlast(const double *asave, int nAlast) {
+  NumericVector Alast(nAlast);
+  for (int i = 0; i < nAlast; i++) {
+    Alast[i] = asave[i];
+  }
+  return Alast;
+}
+
+// Jacobian for linCmtModelDouble(); false for a sensType it does not
+// support.  The AD methods (3 and 31 reverse, 30 forward fvar) need no
+// step; 10/20 use sensH, 1/2 the kernel's own step choice.
+static inline bool linCmtModelDoubleJac(stan::math::linCmtStan &lc, int sensType,
+                                        double sensH,
+                                        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> &thetaSens,
+                                        Eigen::Matrix<double, Eigen::Dynamic, 1> &fx,
+                                        Eigen::Matrix<double, -1, -1> &Js) {
+  Eigen::Matrix<double, Eigen::Dynamic, 1> h =
+    Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(thetaSens.size());
+  switch (sensType) {
+  case 1: // forward
+    lc.fForwardJac(thetaSens, h.data(), fx, Js);
+    return true;
+  case 2:  // central
+    lc.fCentralJac(thetaSens, h.data(), fx, Js);
+    return true;
+  case 3:
+  case 31: // reverse-mode AD (the production default via auto)
+    linCmtRevTapeInit();
+    stan::math::jacobian(lc, thetaSens, fx, Js);
+    return true;
+  case 30:  // forward-mode AD (fvar); should match case 3 to round-off
+    lc.linCmtFwdJac(thetaSens, fx, Js);
+    return true;
+  case 10:
+    h.setConstant(sensH);
+    lc.fForwardJac(thetaSens, h.data(), fx, Js);
+    return true;
+  case 20:
+    h.setConstant(sensH);
+    lc.fCentralJac(thetaSens, h.data(), fx, Js);
+    return true;
+  default:
+    return false;
+  }
+}
+
 // [[Rcpp::export]]
 RObject linCmtModelDouble(double dt,
                           double p1, double v1, double p2,
@@ -273,45 +320,16 @@ RObject linCmtModelDouble(double dt,
   List retList;
   if (deriv) {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-    Eigen::Matrix<double, -1, -1> Js(ncmt+ oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
+    Eigen::Matrix<double, -1, -1> Js(ncmt+ oral0, numSens);
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J =
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, 2*ncmt+ oral0, NA_REAL);
     lc.resizeModel();
 
-    // Getting the sensitivity with numerical differencs
     Eigen::Matrix<double, Eigen::Dynamic, 1> yp(ncmt+oral0, 1);
     Eigen::Matrix<double, Eigen::Dynamic, 2> g(ncmt, 2);
     lc.linAcalcAlast(yp, g, theta);
 
-    // double d = lc.fdoubleh(thetaSens);
-
-    Eigen::Matrix<double, Eigen::Dynamic, 1> h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), 1, 0.001);
-    h.setZero();
-
-    switch (sensType) {
-    case 1: // forward
-      lc.fForwardJac(thetaSens, h.data(), fx, Js);
-      break;
-    case 2:  // central
-      lc.fCentralJac(thetaSens, h.data(), fx, Js);
-      break;
-    case 3:
-    case 31: // reverse-mode AD (the production default via auto)
-      linCmtRevTapeInit();
-      stan::math::jacobian(lc, thetaSens, fx, Js);
-      break;
-    case 30:  // forward-mode AD (fvar); should match case 3 to round-off
-      lc.linCmtFwdJac(thetaSens, fx, Js);
-      break;
-    case 10:
-      h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
-      lc.fForwardJac(thetaSens, h.data(), fx, Js);
-      break;
-    case 20:
-      h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
-      lc.fCentralJac(thetaSens, h.data(), fx, Js);
-      break;
-    default:
+    if (!linCmtModelDoubleJac(lc, sensType, sensH, thetaSens, fx, Js)) {
       delete[] a;
       delete[] r;
       delete[] asave;
@@ -322,14 +340,10 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
     lc.getJacCp(J, fx, theta, Jg);
     double val = lc.adjustF(fx, theta);
-    NumericVector Alast(nAlast);
-    for (int i = 0; i < nAlast; i++) {
-      Alast[i] = asave[i];
-    }
     retList = List::create(_["val"] = wrap(val),
                            _["J"] = wrap(J),
                            _["Jg"] = wrap(Jg),
-                           _["Alast"] = Alast);
+                           _["Alast"] = linCmtModelDoubleAlast(asave, nAlast));
   } else {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, Eigen::Dynamic, 1> yp(oral0+ncmt, 1);
@@ -337,12 +351,8 @@ RObject linCmtModelDouble(double dt,
     lc.linAcalcAlast(yp, g, theta);
     fx = lc(theta);
     double val = lc.adjustF(fx, theta);
-    NumericVector Alast(nAlast);
-    for (int i = 0; i < nAlast; i++) {
-      Alast[i] = asave[i];
-    }
     retList = List::create(_["val"] = wrap(val),
-                           _["Alast"] = Alast);
+                           _["Alast"] = linCmtModelDoubleAlast(asave, nAlast));
   }
   delete[] a;
   delete[] r;
@@ -839,6 +849,370 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
 // reverse-mode 31, auto 100 -> unscaled thetaSens + passthrough trueTheta; the
 // finite-difference methods keep the scaled path) lives in linCmtSensType.h so
 // linCmt.cpp, par_solve.cpp and rxData.cpp share one definition.
+typedef stan::math::fvar<double> linCmtFv;
+
+// Live rate for a carry sentinel: the cached per-idx slot on a re-query
+// (the output pass, where ind->InfusionRate has moved on), otherwise
+// ind->InfusionRate -- also the fallback when the slot was never cached,
+// i.e. a standalone re-query after the subject finished solving.
+static inline const double *linCmtBcarryRate(rx_solving_options_ind *ind,
+                                             rx_solving_options *op, int idx) {
+  const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
+    linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+  if (rate == NULL) rate = getLinRate;
+  return rate;
+}
+
+// Micro constants and ka as fvar seeds (derivative part 0) from the row's
+// own macro parameters, for the state-transition passes below.
+static inline void linCmtBcarryMicros(stan::math::linCmtStan &lc, int ncmt, int oral0,
+                                      int trans,
+                                      double p1, double v1, double p2, double p3,
+                                      double p4, double p5, double ka,
+                                      Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> &gF,
+                                      linCmtFv &kaV) {
+  int npars = lc.getNpars();
+  Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
+  linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 1> thetaF(npars);
+  for (int k = 0; k < npars; k++) thetaF(k, 0) = linCmtFv(thetaD(k, 0), 0.0);
+  gF = stan::math::macros2micros(thetaF, ncmt, trans);
+  kaV = linCmtFv(0.0, 0.0);
+  if (oral0) kaV = thetaF(ncmt*2, 0);
+}
+
+// One column of the local state-transition matrix d(Alast_i)/d(Alast_{i-1})
+// (constant: the closed form is linear in Alast) -- a forward-mode pass
+// seeded on previous-timepoint compartment col.
+static inline void linCmtBtransitionColumn(stan::math::linCmtStan &lc,
+                                           const Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> &gF,
+                                           linCmtFv kaV, int ncmt, int m, int col,
+                                           double *out) {
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 1> yp0 =
+    Eigen::Matrix<linCmtFv, Eigen::Dynamic, 1>::Zero(m);
+  yp0(col, 0) = linCmtFv(0.0, 1.0);
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 1> ret(m);
+  if (ncmt == 1) lc.linCmtStan1<linCmtFv>(gF, yp0, kaV, ret);
+  else if (ncmt == 2) lc.linCmtStan2<linCmtFv>(gF, yp0, kaV, ret);
+  else lc.linCmtStan3<linCmtFv>(gF, yp0, kaV, ret);
+  for (int r = 0; r < m; r++) out[r] = ret(r, 0).d_;
+}
+
+// which1 == -4: entry (row, col) of d(Alast_i)/d(Alast_{i-1}), which2 =
+// row + m*col, m = ncmt+oral0.  Recomputes theta/g from the passed-in
+// parameters so it does not depend on state cached by a prior -1,-1 call;
+// opt-in only, so an ordinary solve pays nothing for it.  Validated against
+// rxode2's own linToOde() ODE (useLinCmt=FALSE) across all 1/2/3-cmt
+// IV/oral configs.
+static inline double linCmtBtransition(linB_t &lcb, rx_solve *rx,
+                                       rx_solving_options_ind *ind,
+                                       rx_solving_options *op, int idx, double _t,
+                                       int ncmt, int oral0, int which2, int trans,
+                                       double p1, double v1, double p2, double p3,
+                                       double p4, double p5, double ka) {
+  int m = linCmtCarryM(ncmt, oral0);
+  if (m == 0) return NA_REAL;
+  int row = which2 % m;
+  int col = which2 / m;
+  if (which2 < 0 || col >= m) return NA_REAL;
+  // may be the first touch of this slot (a model with no -1 call)
+  if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
+  }
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> gF;
+  linCmtFv kaV;
+  linCmtBcarryMicros(lcb.lc, ncmt, oral0, trans, p1, v1, p2, p3, p4, p5, ka, gF, kaV);
+  // ind->tprior is stale in the post-solve lhs pass (frozen at the solve's
+  // final interval, see linCmtBcarryAdvance), so the interval is the time
+  // since the previous event row in solve order.
+  double dt;
+  if (ind->doSS) {
+    dt = ind->tout - ind->tprior;
+  } else {
+    dt = idx > 0 ? _t - getTime(ind->ix[idx - 1], ind) : 0.0;
+  }
+  lcb.lc.setDt(dt);
+  lcb.lc.setRate(const_cast<double*>(linCmtBcarryRate(ind, op, idx)));
+  double colOut[4];
+  linCmtBtransitionColumn(lcb.lc, gF, kaV, ncmt, m, col, colOut);
+  return colOut[row];
+}
+
+// which1 == -7: add a caller-supplied local contribution (dPredDTheta_i *
+// dThetaDEta_i, riding in the otherwise unused p2) to the stored cumulative
+// carry at (row, pair), which2 = row + m*pair, on top of what -5 carried.
+static inline double linCmtBcarryAdd(rx_solving_options_ind *ind, int ncmt, int oral0,
+                                     int which2, double p2) {
+  int m = linCmtCarryM(ncmt, oral0);
+  if (m == 0) return NA_REAL;
+  int row = which2 % m;
+  int pair = which2 / m;
+  if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
+  ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair] += p2;
+  return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
+}
+
+// Runtime per-subject fast path for the -5 advance (phase 3b.4): while this
+// subject's theta has been bit-identical on every row of the CURRENT pass,
+// the carried recurrence telescopes to G*J_n with J the production
+// constant-theta Jacobian (exact there), so skipping the M advance --
+// leaving the carry AND tracker columns un-multiplied -- makes the emitted
+// -7 adds accumulate G*(J_i - J_{i-1}) = G*J_n.  The first row is always
+// skippable (carry state is 0).  Mode lives in ind and resets at
+// iniSubject(), so the comparison is within-pass only -- etas changing
+// between inner iterations never cross it.  Tlast still advances so a
+// later theta change resumes the slow path with the correct interval.
+// PRECONDITION: exact only for the tracker-column calling convention
+// nlmixr2est's carry codegen emits (each pair's -7 add is G*(J_i - P) with
+// P the pair's tracker column, itself updated by a -7 add of J_i - P).  A
+// caller feeding -7 an arbitrary local contribution must pin the slow path
+// with linCmtCarrySetFast(FALSE) or set ind->linCmtCarryVarying = 2 (as
+// linCmtCarryLiveTest does).  Returns true when the advance was skipped.
+static inline bool linCmtBcarryFast(rx_solving_options_ind *ind, const double *thNow,
+                                    double _t) {
+  if (!linCmtCarryFastEnabled) return false;
+  if (ind->linCmtCarryVarying == 0) {
+    memcpy(ind->linCmtCarryPrevTheta, thNow, 7*sizeof(double));
+    ind->linCmtCarryVarying = 1;
+  } else if (ind->linCmtCarryVarying == 1 &&
+             memcmp(ind->linCmtCarryPrevTheta, thNow, 7*sizeof(double)) != 0) {
+    // Exact bit compare; any difference (including NaN anywhere) flips
+    // permanently to the slow path for this pass.
+    ind->linCmtCarryVarying = 2;
+  }
+  if (ind->linCmtCarryVarying == 2) return false;
+  ind->linCmtCarryTlast = _t;
+#pragma omp atomic
+  linCmtCarryAdvFastN++;
+  return true;
+}
+
+// s_new = M * s_old for every pair column (top m rows; the untouched rows
+// stay 0 from iniSubject()'s reset).  localM is 4x4 row-major.
+static inline void linCmtBcarryApplyM(rx_solving_options_ind *ind, const double *localM,
+                                      int m) {
+  double tNew[4*RX_LINCMT_CARRY_MAXPAIRS];
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
+      double s = 0.0;
+      for (int k2 = 0; k2 < m; k2++) {
+        s += localM[r*4 + k2] *
+          ind->linCmtCarryT[k2*RX_LINCMT_CARRY_MAXPAIRS + c];
+      }
+      tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c] = s;
+    }
+  }
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
+      ind->linCmtCarryT[r*RX_LINCMT_CARRY_MAXPAIRS + c] =
+        tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c];
+    }
+  }
+}
+
+// which1 == -6 (read) / -5 (advance) of the cumulative carry
+// ind->linCmtCarryT (4 rows x RX_LINCMT_CARRY_MAXPAIRS columns, row-major;
+// each column is one carry-eligible (linCmt-parameter, eta) pair's own
+// d(Alast)/d(eta) m-vector evolving as s_i = M_i*s_{i-1} + (-7 adds)).
+// which2 = row + m*pair is the encoding the carry codegen emits; a pair
+// index past the cap returns NA (no OOB write) -- the model-build layer
+// enforces the cap.  -6 returns the stored value with no recomputation.
+// -5 applies THIS interval's local transition matrix M_i (which depends
+// only on the row's own theta, so one advance serves every pair) to every
+// column at once; it must be called EXACTLY ONCE PER ROW per subject.  Each
+// pair's own local contribution is composed by the caller via -7.
+static inline double linCmtBcarryAdvance(linB_t &lcb, rx_solve *rx,
+                                         rx_solving_options_ind *ind,
+                                         rx_solving_options *op, int idx, double _t,
+                                         int ncmt, int oral0, int which1, int which2,
+                                         int trans,
+                                         double p1, double v1, double p2, double p3,
+                                         double p4, double p5, double ka) {
+  int m = linCmtCarryM(ncmt, oral0);
+  if (m == 0) return NA_REAL;
+  int row = which2 % m;
+  int pair = which2 / m;
+  if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
+  int slot = row*RX_LINCMT_CARRY_MAXPAIRS + pair;
+  if (which1 == -6) return ind->linCmtCarryT[slot];
+#pragma omp atomic
+  linCmtCarryAdvCallsN++;
+  double thNow[7] = {p1, v1, p2, p3, p4, p5, ka};
+  if (linCmtBcarryFast(ind, thNow, _t)) return ind->linCmtCarryT[slot];
+  // may be the first touch of lc on this thread (a standalone re-query)
+  if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
+  }
+  // The advance interval is the time since this sentinel's OWN previous
+  // invocation: calc_lhs fires once per event row in solve order, but in
+  // the post-solve lhs pass ind->tprior is frozen at the solve's final
+  // interval.  Tlast is NAN after iniSubject(), so the first row advances
+  // over dt = 0 (M = I on a zero carry state).
+  double carryDt = ISNAN(ind->linCmtCarryTlast) ? 0.0 :
+    (_t - ind->linCmtCarryTlast);
+  ind->linCmtCarryTlast = _t;
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> gF;
+  linCmtFv kaV;
+  linCmtBcarryMicros(lcb.lc, ncmt, oral0, trans, p1, v1, p2, p3, p4, p5, ka, gF, kaV);
+  lcb.lc.setDt(carryDt);
+  lcb.lc.setRate(const_cast<double*>(linCmtBcarryRate(ind, op, idx)));
+  double localM[16];
+  for (int c = 0; c < m; c++) {
+    double colOut[4];
+    linCmtBtransitionColumn(lcb.lc, gF, kaV, ncmt, m, c, colOut);
+    for (int r = 0; r < m; r++) localM[r*4 + c] = colOut[r];
+  }
+  linCmtBcarryApplyM(ind, localM, m);
+  return ind->linCmtCarryT[slot];
+}
+
+// Reads of the row's stored Jacobian/amounts/concentration gradient.
+static inline bool linCmtBread(linB_t &lcb, int which1, int which2, double *out) {
+  if (which1 >= 0 && which2 >= 0) {
+    *out = lcb.J(which1, which2);
+    return true;
+  }
+  if (which1 >= 0 && which2 == -2) {
+    *out = lcb.fx(which1);
+    return true;
+  }
+  if (which1 == -2 && which2 >= 0) {
+    *out = lcb.Jg(which2);
+    return true;
+  }
+  return false;
+}
+
+// Sentinel reads and carry calls (which1/which2 not both -1).  These assume
+// the -1,-1 solve for this row has already run.  Returns false for a
+// combination no sentinel handles, in which case linCmtB() falls through
+// to the ordinary solve path.
+static inline bool linCmtBquery(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+                                rx_solving_options *op, int idx, double _t,
+                                int ncmt, int oral0, int which1, int which2, int trans,
+                                double p1, double v1, double p2, double p3,
+                                double p4, double p5, double ka, double *out) {
+  if (linCmtBread(lcb, which1, which2, out)) return true;
+  if (which1 == -3) {
+    // idx already solved -> a re-query (e.g. the output pass) where
+    // ind->InfusionRate has since been cleared/moved on; use the cached rate.
+    const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
+      linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+    *out = linCmtBdoseTime(lcb.lc, lcb.fx, ind, rate, ncmt, oral0, which2,
+                           trans, p1, v1, p2, p3, p4, p5, ka);
+  } else if (which1 == -4) {
+    *out = linCmtBtransition(lcb, rx, ind, op, idx, _t, ncmt, oral0, which2, trans,
+                             p1, v1, p2, p3, p4, p5, ka);
+  } else if (which1 == -7) {
+    *out = linCmtBcarryAdd(ind, ncmt, oral0, which2, p2);
+  } else if (which1 == -5 || which1 == -6) {
+    *out = linCmtBcarryAdvance(lcb, rx, ind, op, idx, _t, ncmt, oral0, which1, which2,
+                               trans, p1, v1, p2, p3, p4, p5, ka);
+  } else {
+    return false;
+  }
+  return true;
+}
+
+static inline void linCmtBsetupSs(stan::math::linCmtStan &lc, rx_solving_options_ind *ind) {
+  if (ind->linSS == linCmtSsInf) {
+    lc.setSsInf(ind->linSSvar, ind->linSStau);
+  } else if (ind->linSS == linCmtSsBolus) {
+    lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
+  }
+}
+
+// idx is genuinely being solved right now (not a re-query of an already
+// solved index, e.g. the output pass) -- ind->InfusionRate is live, so cache
+// it for linCmtBdoseTime() (which1 = -3) to read back on a later re-query.
+static inline void linCmtBcacheRate(rx_solving_options_ind *ind, rx_solving_options *op,
+                                    int idx, const double *r) {
+  if (op->numLin > 0 && (ind->doSS || ind->solvedIdx < idx)) {
+    double *rslot = linCmtBRateSlot(ind, idx, op->numLin, 1);
+    if (rslot != NULL) std::copy(r, r + op->numLin, rslot);
+  }
+}
+
+// Finite-difference family for a sensType: 1 forward (1/10/6, 6 with gill H
+// estimate), 2 central (2/20), 3 three-point forward (4/40/7), 4 five-point
+// endpoint (5/50); 0 for the AD methods.
+static inline int linCmtBfdKind(int sensType) {
+  static const int kind[51] = {
+    0, 1, 2, 0, 3, 4, 1, 3, 0, 0,  // 0-9
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 10-19
+    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 20-29
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 30-39
+    3, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 40-49
+    4                              // 50
+  };
+  return (sensType >= 0 && sensType <= 50) ? kind[sensType] : 0;
+}
+
+static inline void linCmtBfdJac(linB_t &lcb, int kind, double *linH,
+                                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
+                                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
+  lcb.lc.linAcalcAlast(lcb.yp, lcb.g, theta);
+  lcb.lc.calcFx(thetaSens);
+  if (kind == 1) {
+    lcb.lc.fForwardJac(thetaSens, linH, lcb.fx, lcb.Js);
+  } else if (kind == 2) {
+    lcb.lc.fCentralJac(thetaSens, linH, lcb.fx, lcb.Js);
+  } else if (kind == 3) {
+    lcb.lc.fF3Jac(thetaSens, linH, lcb.fx, lcb.Js);
+  } else {
+    lcb.lc.fEndpoint5Jac(thetaSens, linH, lcb.fx, lcb.Js);
+  }
+}
+
+// The row's Jacobian by rx->sensType: a finite-difference family, reverse-
+// mode AD (31), or forward-mode AD (3/30 and anything unspecified).
+static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+                              Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
+                              Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
+  if (rx->sensType >= 0 && rx->sensType < RX_LINCMTB_SENS_SEEN) {
+#pragma omp atomic write
+    linCmtBSensSeen[rx->sensType] = 1;
+  }
+  int kind = linCmtBfdKind(rx->sensType);
+  if (kind != 0) {
+    linCmtBfdJac(lcb, kind, ind->linH, theta, thetaSens);
+  } else if (rx->sensType == 31) {
+    linCmtRevTapeInit();
+    stan::math::jacobian(lcb.lc, thetaSens, lcb.fx, lcb.Js);
+  } else {
+    lcb.lc.linCmtFwdJac(thetaSens, lcb.fx, lcb.Js);
+  }
+  lcb.lc.updateJfromJs(lcb.J, lcb.Js);
+  lcb.lc.saveJac(lcb.J);
+}
+
+// Fill the row's fx/J: restore an already-solved idx (or the lhs pass),
+// otherwise advance the kernel from the previous state over dt and take
+// the Jacobian.  ind->tprior is the prior solved time, ind->tout the time
+// solved, _t the requested time (with ODE solving not necessarily tout).
+static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+                                   rx_solving_options *op, int idx, double _t,
+                                   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
+                                   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
+  if ((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11) {
+    double *acur = getAdvan(idx);
+    lcb.J = lcb.lc.restoreJac(acur);
+    lcb.fx = lcb.lc.restoreFx(acur);
+    return;
+  }
+  lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
+  if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
+    linCmtBjac(lcb, rx, ind, theta, thetaSens);
+    return;
+  }
+  if (rx->ndiff != 0 && ind->linCmtHparIndex >= 0) {
+    thetaSens(ind->linCmtHparIndex, 0) += ind->linCmtH;
+  }
+  lcb.lc.linAcalcAlast(lcb.yp, lcb.g, theta);
+  lcb.lc.calcFx(thetaSens);
+  lcb.lc.fHCalcJac(thetaSens, ind->linH, lcb.fx, lcb.Js);
+}
+
 extern "C" double linCmtB(rx_solve *rx, int id,
                           double _t, int linCmt,
                           int ncmt, int oral0,
@@ -856,292 +1230,27 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #pragma omp atomic write
     linCmtBThreadSeen[_tid] = 1;
   }
-#define fx        lcb.fx
-#define Jg        lcb.Jg
-#define lc        lcb.lc
-#define J         lcb.J
-#define Js        lcb.Js
-#define yp        lcb.yp
-#define g         lcb.g
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
-  bool resized = false;
-  // Create the solved system object
   if (which1 != -1 || which2 != -1) {
-    // If we are calculating the LHS values or other values, these are
-    // stored in the corresponding compartments.
-    //
-    // This assumes that the linear compartment solution of which=-1,
-    // -1 has already been called
-    //
-    // This also handles the case where _t = ind->tcur, where the
-    // solution is already known
-    // double *acur = getAdvan(idx);
-    // J  = lc.restoreJac(acur);
-    // fx = lc.restoreFx(acur);
-    if (which1 >= 0 && which2 >= 0) {
-      // w1, w2 are > 0
-      return J(which1, which2);
-    } else if (which1 >= 0 && which2 == -2) {
-      // w2 < 0
-      return fx(which1);
-    } else if (which1 == -2 && which2 >= 0) {
-      return Jg(which2);
-    } else if (which1 == -3) {
-      // Mirrors the fx/J restore-vs-solve condition above (idx already
-      // solved -> a re-query, e.g. the output pass, where ind->InfusionRate
-      // has since been cleared/moved on; use the cached rate instead).
-      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
-        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
-      return linCmtBdoseTime(lc, fx, ind, rate, ncmt, oral0, which2,
-                             trans, p1, v1, p2, p3, p4, p5, ka);
-    } else if (which1 == -4) {
-      // d(Alast_i)/d(Alast_{i-1}) -- the state-transition Jacobian, the one
-      // missing ingredient for a general (arbitrary covariate formula)
-      // time-varying-covariate fix (project_lincmt_timevarying_covariate_bug).
-      // Self-contained (recomputes theta/g fresh from the passed-in p1/v1/...
-      // rather than relying on any state cached by a prior -1,-1 call) so it
-      // does not depend on call-ordering assumptions the other sentinels
-      // above rely on. which2 packs (row, col) as row + m*col, row = output
-      // compartment, col = which PREVIOUS-timepoint compartment is being
-      // differentiated against; m = ncmt+oral0 is derivable by the caller
-      // from its own model knowledge. A constant matrix (the closed form is
-      // linear in Alast) recomputed via one forward-mode (fvar) pass per
-      // call -- opt-in only: an ordinary constant-theta solve never requests
-      // which1=-4, so this adds no cost to the common case. Validated (as
-      // linCmtAlastTransitionMatrixProto) against rxode2's own
-      // linToOde()-generated equivalent ODE model to machine epsilon across
-      // all 1/2/3-cmt IV/oral configs -- see
-      // feedback_lincmt_verify_against_linToOde_not_invented_odes.
-      int m = linCmtCarryM(ncmt, oral0);
-      if (m == 0) return NA_REAL;
-      int row = which2 % m;
-      int col = which2 / m;
-      if (which2 < 0 || col >= m) return NA_REAL;
-      // may be the first touch of this slot (a model with no -1 call)
-      if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-        linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
-      }
-      int npars = lc.getNpars();
-      typedef stan::math::fvar<double> fv;
-      Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
-      linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
-      Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(npars);
-      for (int k = 0; k < npars; k++) thetaF(k, 0) = fv(thetaD(k, 0), 0.0);
-      Eigen::Matrix<fv, Eigen::Dynamic, 2> gF = stan::math::macros2micros(thetaF, ncmt, trans);
-      fv kaV(0.0, 0.0);
-      if (oral0) kaV = thetaF(ncmt*2, 0);
-
-      // ind->tprior is stale in the post-solve lhs pass (frozen at the
-      // solve's final interval, see which1 == -5), so the interval is the
-      // time since the previous event row in solve order.
-      double dt;
-      if (ind->doSS) {
-        dt = ind->tout - ind->tprior;
-      } else {
-        dt = idx > 0 ? _t - getTime(ind->ix[idx - 1], ind) : 0.0;
-      }
-      lc.setDt(dt);
-      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
-        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
-      if (rate == NULL) rate = getLinRate;
-      lc.setRate(const_cast<double*>(rate));
-
-      Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0 =
-        Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
-      yp0(col, 0) = fv(0.0, 1.0);
-      Eigen::Matrix<fv, Eigen::Dynamic, 1> ret(m);
-      if (ncmt == 1) lc.linCmtStan1<fv>(gF, yp0, kaV, ret);
-      else if (ncmt == 2) lc.linCmtStan2<fv>(gF, yp0, kaV, ret);
-      else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0, kaV, ret);
-      return ret(row, 0).d_;
-    } else if (which1 == -7) {
-      // Add a caller-supplied local contribution (dPredDTheta_i *
-      // dThetaDEta_i, computed by the caller -- R for now, generated model
-      // code once Phase 3b.3 wires this in) into the stored cumulative carry
-      // at (row, pair), ON TOP OF whatever which1=-5 already accumulated for
-      // this row via the state-transition multiply. which2 packs (row, pair)
-      // as row + m*pair like -5/-6; the value to add rides in p2 (unused
-      // by this sentinel otherwise -- no theta is read here).
-      int m = linCmtCarryM(ncmt, oral0);
-      if (m == 0) return NA_REAL;
-      int row = which2 % m;
-      int pair = which2 / m;
-      if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
-      ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair] += p2;
-      return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
-    } else if (which1 == -5 || which1 == -6) {
-      // Cumulative-carry sentinels (per-subject storage: ind->linCmtCarryT,
-      // see rxode2parseStruct.h; reset at iniSubject() in par_solve.h).
-      // The stored buffer is 4 rows (compartments; top m = ncmt+oral0 used)
-      // x RX_LINCMT_CARRY_MAXPAIRS columns, row-major, stride
-      // RX_LINCMT_CARRY_MAXPAIRS. Each COLUMN is one carry-eligible
-      // (linCmt-parameter, eta) pair's own carried d(Alast)/d(eta) m-vector,
-      // evolving independently as s_i = M_i*s_{i-1} + (which1=-7
-      // contributions). which2 packs (row, pair) as row + m*pair -- THIS is
-      // the encoding 3b.3's codegen must emit. A pair index >=
-      // RX_LINCMT_CARRY_MAXPAIRS returns NA (visible poison, no OOB write);
-      // the model-build layer must enforce the cap before emitting code.
-      //
-      // which1=-6 is a pure read: return the current cumulative
-      // ind->linCmtCarryT[(row,pair)] with no recomputation -- lets a caller
-      // inspect s_i without re-triggering an advance.
-      //
-      // which1=-5 is the mutating advance: s_i = M_i * s_{i-1} for EVERY
-      // pair column at once, where M_i is THIS interval's local transition
-      // matrix (the same quantity which1=-4 returns one column of,
-      // recomputed here for every column since the full m x m matrix is
-      // needed for the multiply). M_i depends only on this row's OWN theta
-      // values -- identical no matter which eta a pair differentiates
-      // against -- so ONE advance serves every pair. Must be called EXACTLY
-      // ONCE PER ROW per subject (documented contract -- NOT once per row
-      // per pair; a second call for the same row would apply the same
-      // transition twice to every column). Composing each pair's OWN local
-      // contribution (dPredDTheta_i * dThetaDEta_i) is left to the caller
-      // via which1=-7 -- this sentinel only carries the state-transition
-      // part forward.
-      int m = linCmtCarryM(ncmt, oral0);
-      if (m == 0) return NA_REAL;
-      int row = which2 % m;
-      int pair = which2 / m;
-      if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
-      if (which1 == -6) {
-        return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
-      }
-#pragma omp atomic
-      linCmtCarryAdvCallsN++;
-      // Runtime per-subject fast path (phase 3b.4): while this subject's
-      // theta has been identical on every row of the CURRENT pass, the
-      // carried recurrence telescopes to G*J_n with J the production
-      // constant-theta Jacobian (exact there), so skipping the M advance --
-      // leaving the carry AND tracker columns un-multiplied -- makes the
-      // emitted -7 adds accumulate G*(J_i - J_{i-1}) = G*J_n.  First row is
-      // always skippable (carry state is 0, M*0 = 0 bit-identically).  Mode
-      // lives in ind and resets at iniSubject(), so the comparison is
-      // within-pass only -- etas changing between inner iterations never
-      // cross it.  Tlast must still advance so a later theta change resumes
-      // the slow path with the correct interval.
-      // PRECONDITION: this skip is exact only for the tracker-column
-      // calling convention nlmixr2est's carry codegen emits (each pair's
-      // -7 add is G*(J_i - P) with P the pair's tracker column, itself
-      // updated by a -7 add of J_i - P), because that is what telescopes.
-      // A caller feeding -7 an arbitrary local contribution (the generic
-      // s_i = M_i*s_{i-1} + c_i reading of this sentinel) must pin the slow
-      // path with linCmtCarrySetFast(FALSE) or set ind->linCmtCarryVarying
-      // = 2 (as linCmtCarryLiveTest does).
-      if (linCmtCarryFastEnabled) {
-        double thNow[7] = {p1, v1, p2, p3, p4, p5, ka};
-        if (ind->linCmtCarryVarying == 0) {
-          memcpy(ind->linCmtCarryPrevTheta, thNow, sizeof(thNow));
-          ind->linCmtCarryVarying = 1;
-          ind->linCmtCarryTlast = _t;
-#pragma omp atomic
-          linCmtCarryAdvFastN++;
-          return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
-        }
-        if (ind->linCmtCarryVarying == 1) {
-          // Exact bit compare; any difference (including NaN anywhere)
-          // flips permanently to the slow path for this pass.
-          if (memcmp(ind->linCmtCarryPrevTheta, thNow, sizeof(thNow)) == 0) {
-            ind->linCmtCarryTlast = _t;
-#pragma omp atomic
-            linCmtCarryAdvFastN++;
-            return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
-          }
-          ind->linCmtCarryVarying = 2;
-        }
-      }
-      // Unlike which1=-4 (which always follows a which1=-1,-1 call earlier
-      // in the same calc_lhs invocation, guaranteeing lc is already sized
-      // for this ncmt/oral0/trans), which1=-5 may be the first touch of lc
-      // on this thread for a standalone re-query -- size it defensively.
-      if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-        linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
-      }
-      // The advance interval comes from this sentinel's OWN previous
-      // invocation time, not ind->tprior: calc_lhs fires exactly once per
-      // event row in solve order, but in the post-solve lhs pass ind->tprior
-      // is stale (frozen at the solve's final interval), so _t - tprior is
-      // wrong for every row but the last.  linCmtCarryTlast is reset to NAN
-      // at iniSubject(); the first row advances over dt = 0 (M = I,
-      // harmless: the carry state is still 0).
-      double carryDt = ISNAN(ind->linCmtCarryTlast) ? 0.0 :
-        (_t - ind->linCmtCarryTlast);
-      ind->linCmtCarryTlast = _t;
-      int npars = lc.getNpars();
-      typedef stan::math::fvar<double> fv;
-      Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
-      linCmtFillTheta(thetaD, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
-      Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(npars);
-      for (int k = 0; k < npars; k++) thetaF(k, 0) = fv(thetaD(k, 0), 0.0);
-      Eigen::Matrix<fv, Eigen::Dynamic, 2> gF = stan::math::macros2micros(thetaF, ncmt, trans);
-      fv kaV(0.0, 0.0);
-      if (oral0) kaV = thetaF(ncmt*2, 0);
-
-      lc.setDt(carryDt);
-      const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
-        linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
-      // linCmtBRateSlot() returns NULL when this idx's rate was never
-      // cached live -- expected for -5 called as a standalone re-query well
-      // after the whole subject finished solving (the cache is only ever
-      // written while an idx is genuinely being solved for the first time,
-      // src/linCmt.cpp ~line 1698), which never happens again once
-      // ind->solvedIdx has reached its final value. In that situation
-      // ind->InfusionRate (getLinRate) is still a safe, defined per-thread
-      // buffer to fall back to -- same defensive intent already documented
-      // on linCmtBRateSlot() itself ("NULL is a defensive fallback ... not
-      // a case expected to occur"), just now actually handled by a caller.
-      if (rate == NULL) rate = getLinRate;
-      lc.setRate(const_cast<double*>(rate));
-
-      // Full local m x m transition matrix: one forward-mode pass per column.
-      double localM[16];
-      for (int c = 0; c < m; c++) {
-        Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0c =
-          Eigen::Matrix<fv, Eigen::Dynamic, 1>::Zero(m);
-        yp0c(c, 0) = fv(0.0, 1.0);
-        Eigen::Matrix<fv, Eigen::Dynamic, 1> retc(m);
-        if (ncmt == 1) lc.linCmtStan1<fv>(gF, yp0c, kaV, retc);
-        else if (ncmt == 2) lc.linCmtStan2<fv>(gF, yp0c, kaV, retc);
-        else if (ncmt == 3) lc.linCmtStan3<fv>(gF, yp0c, kaV, retc);
-        for (int r = 0; r < m; r++) localM[r*4 + c] = retc(r, 0).d_;
-      }
-      // Advance EVERY pair column at once: s_new = M * s_old per column
-      // (only the top m rows participate; untouched rows of the buffer stay
-      // 0 from iniSubject()'s reset).
-      double tNew[4*RX_LINCMT_CARRY_MAXPAIRS];
-      for (int r = 0; r < m; r++) {
-        for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
-          double s = 0.0;
-          for (int k2 = 0; k2 < m; k2++) {
-            s += localM[r*4 + k2] *
-              ind->linCmtCarryT[k2*RX_LINCMT_CARRY_MAXPAIRS + c];
-          }
-          tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c] = s;
-        }
-      }
-      for (int r = 0; r < m; r++) {
-        for (int c = 0; c < RX_LINCMT_CARRY_MAXPAIRS; c++) {
-          ind->linCmtCarryT[r*RX_LINCMT_CARRY_MAXPAIRS + c] =
-            tNew[r*RX_LINCMT_CARRY_MAXPAIRS + c];
-        }
-      }
-      return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
+    double out;
+    if (linCmtBquery(lcb, rx, ind, op, idx, _t, ncmt, oral0, which1, which2, trans,
+                     p1, v1, p2, p3, p4, p5, ka, &out)) {
+      return out;
     }
-  } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+  } else if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
   } else {
-    lc.setSsType(ind->linSS);
+    lcb.lc.setSsType(ind->linSS);
   }
   if (id == 0 && ind->linH[0] == 0) {
-    lc.resetFlags();
+    lcb.lc.resetFlags();
   }
-  lc.setId(id);
+  lcb.lc.setId(id);
 
   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
-    theta(getLinCmtDoubleAddr(lcb, linCmtBaddrTheta), lc.getNpars());
-
+    theta(getLinCmtDoubleAddr(lcb, linCmtBaddrTheta), lcb.lc.getNpars());
   linCmtFillTheta(theta, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
 
   Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
@@ -1150,150 +1259,15 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // isAD (unscaled thetaSens + passthrough trueTheta) is used by every AD
   // jacobian path: forward-mode (3/30/auto), reverse-mode (31). The finite
   // difference methods keep the scaled path.
-  lc.sensTheta(theta, thetaSens, linCmtSensIsAD(rx->sensType), rx->linCmtScale);
-  if (ind->linSS == linCmtSsInf) {
-    lc.setSsInf(ind->linSSvar, ind->linSStau);
-  } else if (ind->linSS == linCmtSsBolus) {
-    lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
-  }
+  lcb.lc.sensTheta(theta, thetaSens, linCmtSensIsAD(rx->sensType), rx->linCmtScale);
+  linCmtBsetupSs(lcb.lc, ind);
 
-  // Get number of items in Alast
-  int nAlast = lc.getNalast();
-
-  // Get/Set the pointers
-  double *asave = ind->linCmtSave;
   double *r = getLinRate;
-  double *a;
+  linCmtBcacheRate(ind, op, idx, r);
+  double *a = (ind->linCmtAlast == NULL) ? getAdvan(ind->solvedIdx) : ind->linCmtAlast;
+  lcb.lc.setPtr(a, r, ind->linCmtSave);
 
-  // idx is genuinely being solved right now (not a re-query of an
-  // already-solved index, e.g. the output pass) -- ind->InfusionRate is live
-  // and correct, so cache it for linCmtBdoseTime() (which1 = -3) to read back
-  // on a later re-query, once ind->InfusionRate has been cleared/moved on.
-  if (op->numLin > 0 && (ind->doSS || ind->solvedIdx < idx)) {
-    double *rslot = linCmtBRateSlot(ind, idx, op->numLin, 1);
-    if (rslot != NULL) std::copy(r, r + op->numLin, rslot);
-  }
-
-  if (ind->linCmtAlast == NULL) {
-    a = getAdvan(ind->solvedIdx);
-  } else {
-    a = ind->linCmtAlast;
-  }
-  lc.setPtr(a, r, asave);
-
-  // Setup parameter matrix
-
-
-  // Here we restore the last solved value
-  if (!ind->doSS && ind->solvedIdx >= idx) {
-    double *acur = getAdvan(idx);
-    J = lc.restoreJac(acur);
-    fx = lc.restoreFx(acur);
-  } else {
-    // Calculate everything while solving using linCmt()
-    if (ind->_rxFlag == 11) {
-      // If we are calculating the LHS values or other values, these are
-      // stored in the corresponding compartments.
-      //
-      // This also handles the case where _t = ind->tcur, where the
-      // solution is already known
-      // ind->linCmtSave = getAdvan(idx);
-      double *acur = getAdvan(idx);
-      J = lc.restoreJac(acur);
-      fx = lc.restoreFx(acur);
-    } else {
-      // Here we are doing ODE solving OR only linear solving
-      // so we calculate these values here.
-      //
-      // For these cases:
-
-      // ind->tprior gives the prior known time or current time solved to
-      //
-      // ind->tout gives the time solved
-      //
-      // _t gives the time requested to solve for (which with ODE
-      // solving may not be tout); note that if _t = ind->tprior the
-      // solution is the last solution solved or initial conditions
-      //
-
-      // Get/Set the dt; This is only applicable in the ODE/linCmt() case
-      double dt;
-      if (ind->doSS) {
-        dt = ind->tout - ind->tprior;
-      } else {
-        dt =  _t - ind->tprior;
-      }
-      lc.setDt(dt);
-      if (rx->ndiff == 0) {
-        lc.linAcalcAlast(yp, g, theta);
-        lc.calcFx(thetaSens);
-        lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
-      } else if (ind->linCmtHparIndex >= -1) {
-        if (ind->linCmtHparIndex >= 0) {
-          thetaSens(ind->linCmtHparIndex, 0) += ind->linCmtH;
-        }
-        lc.linAcalcAlast(yp, g, theta);
-        lc.calcFx(thetaSens);
-        lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
-      } else {
-        if (rx->sensType >= 0 && rx->sensType < RX_LINCMTB_SENS_SEEN) {
-#pragma omp atomic write
-          linCmtBSensSeen[rx->sensType] = 1;
-        }
-        switch (rx->sensType) {
-        case 1: // forward
-        case 10:
-        case 6: // forward difference with gill H est
-          lc.linAcalcAlast(yp, g, theta);
-          lc.calcFx(thetaSens);
-          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 20:
-        case 2:  // central
-          lc.linAcalcAlast(yp, g, theta);
-          lc.calcFx(thetaSens);
-          lc.fCentralJac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 40: // 3-point forward difference
-        case 4:  // 3-point forward difference
-        case 7:  // 3-point forward difference with gill H est
-          lc.linAcalcAlast(yp, g, theta);
-          lc.calcFx(thetaSens);
-          lc.fF3Jac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 50: // 5-point endpoint difference
-        case 5: // 5-point endpoint difference
-          lc.linAcalcAlast(yp, g, theta);
-          lc.calcFx(thetaSens);
-          lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
-          break;
-
-        case 31: // reverse-mode AD (escape hatch / validation)
-          linCmtRevTapeInit();
-          stan::math::jacobian(lc, thetaSens, fx, Js);
-          break;
-
-        case 3:  // "AD": now forward-mode (fvar); matches reverse to round-off
-        case 30: // explicit forward-mode AD
-        default: // auto and anything unspecified -> forward-mode AD
-          lc.linCmtFwdJac(thetaSens, fx, Js);
-          break;
-        }
-        lc.updateJfromJs(J, Js);
-        lc.saveJac(J);
-      }
-    }
-  }
-  lc.getJacCp(J, fx, theta, Jg);
-  return lc.adjustF(fx, theta, ind->linCmtHV);
-#undef fx
-#undef J
-#undef Jg
-#undef lc
-#undef Js
-#undef yp
-#undef g
+  linCmtBsolveRow(lcb, rx, ind, op, idx, _t, theta, thetaSens);
+  lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
+  return lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
 }
