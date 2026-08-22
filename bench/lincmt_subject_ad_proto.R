@@ -413,6 +413,10 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 #    each compartment in turn -- by linearity, that IS column j of the
 #    state-transition matrix, computed via a completely independent code path
 #    (rxode2's numerical ODE integrator, not linCmtStan1/2/3 at all).
+#    useLinCmt=FALSE is REQUIRED: rxSolve() on a UI auto-detects a linear
+#    d/dt() system and routes it back through linCmt() by default, which made
+#    the original version of this check a self-comparison (agreement 3e-16).
+#    Against the real integrator at atol/rtol=1e-12 the agreement is ~2e-12.
 # ---------------------------------------------------------------------------
 .buildLinCmtOdeUi <- function(cfg) {
   iniLines <- c(sprintf("tcl<-log(%.10f)", cfg$p1), sprintf("tv<-log(%.10f)", cfg$v1))
@@ -456,11 +460,15 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   worst <- 0
   for (j in seq_len(m)) {
     ic <- stats::setNames(numeric(m), nm); ic[j] <- 1
-    s <- suppressMessages(rxode2::rxSolve(odeMod, events = rxode2::et(0, dt, length.out = 2), inits = ic))
+    s <- suppressMessages(rxode2::rxSolve(odeMod, events = rxode2::et(0, dt, length.out = 2), inits = ic,
+                                          useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12))
+    if (j == 1 && any(grepl("linCmt", rxode2::rxModelVars(s)$model["normModel"]))) {
+      stop("transition-matrix reference was routed back through linCmt(); not an independent check")
+    }
     got <- as.numeric(s[s$time == dt, nm])
     worst <- max(worst, max(abs(got - proto[, j])))
   }
-  .report(sprintf("transitionMatrix(linToOde ref)[%s]", cfg$name), worst, tol = 1e-6)
+  .report(sprintf("transitionMatrix(linToOde ref)[%s]", cfg$name), worst, tol = 1e-9)
 }
 
 # ---------------------------------------------------------------------------
