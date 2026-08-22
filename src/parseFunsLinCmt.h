@@ -198,12 +198,34 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
           break;
         case 211: // 1 compartment, oral, which2=2
         case 421: // 2 compartment, oral, which2=4
-        case 621: // 2 compartment, oral, which2=6
+        case 631: // 3 compartment, oral, which2=6
           addLinCmtBdiff(diffKa);
           break;
         default:
           REprintf("Unknown linCmtB which1=-2: %d\n", sw);
           return 0;
+        }
+      } else if (which1 >= 0 && which2 >= 0) {
+        // Direct amount-Jacobian read J(which1=row, which2=theta column)
+        // (the linCmt() sensitivity-carry codegen, nlmixr2est phase 3b.3):
+        // without registering the column's derivative here ndiff stays 0,
+        // the solve computes no Jacobian, and the read restores zeros.
+        // Column order matches linCmtFillTheta: p1, v1[, p2, p3[, p4, p5]]
+        // then ka at 2*ncmt when oral.
+        if (tb.hasKa && which2 == 2*tb.ncmt) {
+          addLinCmtBdiff(diffKa);
+        } else if (which2 == 0) {
+          addLinCmtBdiff(diffP1);
+        } else if (which2 == 1) {
+          addLinCmtBdiff(diffV1);
+        } else if (which2 == 2) {
+          addLinCmtBdiff(diffP2);
+        } else if (which2 == 3) {
+          addLinCmtBdiff(diffP3);
+        } else if (which2 == 4) {
+          addLinCmtBdiff(diffP4);
+        } else if (which2 == 5) {
+          addLinCmtBdiff(diffP5);
         }
       }
     }

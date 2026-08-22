@@ -11,7 +11,11 @@ rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
 definite)}
 
 \item{gradOmega}{the corresponding block of \code{rxPriorLogDensity()}'s
-\code{gradOmega}, i.e. \code{gradOmega[block, block]} (p x p, symmetric)}
+\code{gradOmega}, i.e. \code{gradOmega[block, block]} (p x p); need not be
+symmetric on entry (\code{rxPriorLogDensity()}'s own \code{gradOmega} always is,
+but this treats it entrywise and symmetrizes internally either way,
+since only a symmetric perturbation of \code{omega} is ever reachable by
+varying \code{U})}
 }
 \value{
 p x p matrix, the gradient with respect to the upper-triangular

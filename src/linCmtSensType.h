@@ -20,17 +20,15 @@ static inline int linCmtSensIsAD(int sensType) {
   }
 }
 
-// True for the forward-mode AD Jacobian methods that are safe to solve across
-// threads.  3 and 30 are explicit forward-mode fvar -- stack-local with no
-// shared AD state.  100 (auto) is included because it always resolves to the
-// forward-mode path: setupLinH() remaps 100 -> 3 and it is the only runtime
-// mutation of rx->sensType (nothing resolves auto to reverse-mode or a
-// finite-difference method).  Reverse-mode AD (31) is deliberately excluded --
-// it uses Stan's shared ChainableStack.  The finite-difference methods are
-// excluded -- they share a first-subject scaling/step-size setup that is not
-// per-thread.
-static inline int linCmtSensForwardAdThreadSafe(int sensType) {
-  return (sensType == 3 || sensType == 30 || sensType == 100);
+// True for the AD Jacobian methods that can run across threads: 3/30
+// (forward-mode fvar, stack-local), 31 (reverse mode -- rxode2 builds with
+// -DSTAN_THREADS, so the Stan tape is thread_local and linCmtB() creates a
+// worker's tape before its first var, see linCmtRevTapeInit()) and 100 (auto,
+// which rxData.cpp resolves to 31 when the control is read; setupLinH()
+// keeps the same remap for ind_solve()).  The finite-difference methods stay excluded:
+// their first-subject scaling/step-size setup is shared, not per-thread.
+static inline int linCmtSensAdThreadSafe(int sensType) {
+  return (sensType == 3 || sensType == 30 || sensType == 31 || sensType == 100);
 }
 
 #endif // __LINCMTSENSTYPE_H__

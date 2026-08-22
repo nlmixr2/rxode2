@@ -216,6 +216,17 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       memset(ind->linCmtSave, 0,
              (size_t)(op->numLin + op->numLinSens) * sizeof(double));
     }
+    // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
+    // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
+    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
+    // a fresh subject, so its sensitivity does too; the full fixed-size
+    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
+    // (not gated on m or the pair count actually in use).
+    if ((op->numLin + op->numLinSens) > 0) {
+      memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
+      ind->linCmtCarryTlast = NAN;
+      ind->linCmtCarryVarying = 0;
+    }
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {

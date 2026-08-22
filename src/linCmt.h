@@ -1996,7 +1996,10 @@ namespace stan {
           (yp(oral0_ + 1, 0)*sol3.C2) * E +
           (yp(oral0_ + 2, 0)*sol3.C3) * E ;
 
-        if (oral0_ == 1 && yp(0, 0) >= 0.0) {
+        // No sign test on yp(0, 0): a negative depot amount (negative dose,
+        // carried sensitivity state) is valid for a linear system, and skipping
+        // the branch left ret(0, 0) unassigned (#1275).
+        if (oral0_ == 1) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;

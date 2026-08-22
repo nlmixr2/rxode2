@@ -6269,6 +6269,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
+    // "auto" resolves here, at the one place the control is read, so every
+    // solve path (threaded rxSolve() and ind_solve()) sees the same method.
+    if (rx->sensType == 100) rx->sensType = 31; // ADr
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
@@ -6518,13 +6521,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
-      // linCmtB is thread safe on the forward-mode AD Jacobian path: each thread
-      // evaluates its own subject on its own __linCmtB[rx_get_thread()] slot with
-      // stack-local fvar and no shared AD arena.  linCmtSensForwardAdThreadSafe()
-      // (linCmtSensType.h) is the shared classifier -- it excludes reverse-mode
-      // AD (31, Stan's shared ChainableStack) and the finite-difference paths
-      // (first-subject scaling/step setup), which keep the single-core guard.
-      int linCmtBThreadSafe = linCmtSensForwardAdThreadSafe(rx->sensType);
+      // linCmtB is thread safe on the AD Jacobian paths: each thread evaluates
+      // its own subject on its own __linCmtB[rx_get_thread()] slot, forward
+      // mode with stack-local fvar and reverse mode on STAN_THREADS' per-thread
+      // tape.  linCmtSensAdThreadSafe() (linCmtSensType.h) is the shared
+      // classifier -- only the finite-difference paths (first-subject
+      // scaling/step setup) keep the single-core guard.
+      int linCmtBThreadSafe = linCmtSensAdThreadSafe(rx->sensType);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:

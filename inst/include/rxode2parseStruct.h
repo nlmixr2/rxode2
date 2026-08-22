@@ -381,6 +381,43 @@ struct rx_solving_options_ind_s {
   double *linCmtRateHist;   /* flat idx-indexed rate history, or NULL when unused */
   int     linCmtRateHistCap; /* capacity in idx slots */
   int     linCmtRateHistW;   /* doubles per idx slot (op->numLin); realloc if changed */
+  // Cumulative sensitivity carry state for the linCmt()-time-varying-covariate
+  // fix (project_lincmt_timevarying_covariate_bug): d(Alast_i)/d(eta), one
+  // column per carried (linCmt-parameter, eta) pair, one row per linCmt()
+  // compartment (up to 4, ncmt+oral0 <= 3+1). Up to RX_LINCMT_CARRY_MAXPAIRS
+  // simultaneous pairs (8 covers an eta on every one of the 7 linCmt()
+  // parameters plus one spare; ~256 bytes/subject, still tiny). Fixed flat,
+  // row-major, stride RX_LINCMT_CARRY_MAXPAIRS regardless of the model's
+  // actual m so iniSubject() can reset it without needing to know m --
+  // linCmtB(which1=-5/-6/-7, src/linCmt.cpp) only ever reads/writes the top
+  // m rows. The model-build layer (nlmixr2est's carry codegen) must enforce
+  // the pair cap BEFORE emitting code; linCmtB itself guards an out-of-range
+  // pair index by returning NA (visible poison, never an out-of-bounds
+  // write). Reset to all-zero each subject (Alast starts at 0, so
+  // d(Alast_0)/d(eta) = 0), mirroring how linCmtSave is reset above.
+  // Opt-in: unused unless a model actually requests which1=-5/-6/-7.
+#define RX_LINCMT_CARRY_MAXPAIRS 8
+  double linCmtCarryT[4*RX_LINCMT_CARRY_MAXPAIRS];
+  // Time of this subject's previous which1=-5 carry advance.  calc_lhs fires
+  // exactly once per event row in solve order (dose rows included, output
+  // filtering notwithstanding), but in the post-solve lhs pass ind->tprior is
+  // stale (frozen at the solve's final interval), so the -5 advance derives
+  // its interval dt from its OWN previous invocation time instead.  NAN =
+  // no prior advance (first row -> dt 0, harmless: the carry state is 0).
+  double linCmtCarryTlast;
+  // Runtime per-subject fast path for the which1=-5 carry advance: while this
+  // subject's theta vector (p1..ka as passed to -5) has been IDENTICAL on
+  // every row of the CURRENT solve pass, the carried recurrence telescopes to
+  // G*J (the production constant-theta Jacobian is exact there), so the
+  // advance's m forward-mode transition-matrix passes can be skipped and the
+  // carry/tracker columns left un-multiplied -- the emitted -7 adds then
+  // accumulate G*(J_i - J_{i-1}), which sums to exactly G*J_n.  Within-pass
+  // only by construction: both fields reset at iniSubject(), which fires
+  // before every lhs walk, so etas changing BETWEEN inner iterations never
+  // enter the comparison.  0 = no row seen this pass, 1 = constant so far,
+  // 2 = variation seen (slow path for the rest of the pass).
+  double linCmtCarryPrevTheta[7];
+  int linCmtCarryVarying;
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival
