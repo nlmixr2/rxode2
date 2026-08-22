@@ -571,6 +571,13 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Sensitivities
 
+- A 3-compartment oral `linCmt()` model whose depot amount goes negative (a
+  negative dose larger than what is left in the depot) no longer drops the
+  depot from that interval's solution.  The depot branch was skipped for a
+  negative amount, which returned the wrong amounts and sensitivities under
+  forward-mode AD and crashed under reverse-mode AD (`linCmtSensType="ADr"`)
+  (#1275).
+
 - `rxode2()` now refuses to build a model that calls `linCmtB(which1 = -3)`
   (the dose-time sensitivity) while its `linCmt()` compartments carry more
   than one distinct modeled `alag()` -- e.g. `alag(depot)` driven by one
