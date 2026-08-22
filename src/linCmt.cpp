@@ -574,6 +574,49 @@ NumericMatrix linCmtAlastTransitionMatrixProto(double p1, double v1, double p2,
   return transMat;
 }
 
+// Phase 3b.4 runtime fast-path state for the which1=-5 carry advance (see
+// the -5 branch in linCmtB below).  The enable flag is set from the R main
+// thread only (test/benchmark toggle; default on); the counters are
+// incremented under omp atomic inside threaded inner solves and prove from
+// R that the mechanism engaged (feedback_tests_assert_mechanism_used):
+// AdvCalls counts every -5 invocation, AdvFast the subset that skipped the
+// transition-matrix work.
+static int linCmtCarryFastEnabled = 1;
+static uint64_t linCmtCarryAdvCallsN = 0;
+static uint64_t linCmtCarryAdvFastN = 0;
+
+//' Toggle the linCmt() carry-advance runtime fast path (test/benchmark hook)
+//'
+//' @param enable logical; new state
+//' @return the previous state, invisibly
+//' @keywords internal
+//' @export
+// [[Rcpp::export]]
+LogicalVector linCmtCarrySetFast(bool enable) {
+  bool prev = linCmtCarryFastEnabled != 0;
+  linCmtCarryFastEnabled = enable ? 1 : 0;
+  return LogicalVector::create(prev);
+}
+
+//' Read (and optionally reset) the linCmt() carry-advance fast-path counters
+//'
+//' @param reset logical; when TRUE zero the counters after reading
+//' @return named numeric vector: advCalls (every which1=-5 invocation),
+//'   advFast (subset that took the constant-theta skip)
+//' @keywords internal
+//' @export
+// [[Rcpp::export]]
+NumericVector linCmtCarryFastStats(bool reset = false) {
+  NumericVector out = NumericVector::create(
+    _["advCalls"] = (double)linCmtCarryAdvCallsN,
+    _["advFast"] = (double)linCmtCarryAdvFastN);
+  if (reset) {
+    linCmtCarryAdvCallsN = 0;
+    linCmtCarryAdvFastN = 0;
+  }
+  return out;
+}
+
 // Test-only entry point for Phases 2/3b.2 of the sensitivity-carry subsystem
 // (project_lincmt_timevarying_covariate_bug / the linCmt-subject-ad plan):
 // exercises linCmtB()'s which1=-5/-6/-7 (cumulative carry) sentinels through
@@ -624,8 +667,14 @@ NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
     // The -5 advance derives its interval from its own previous invocation
     // time (ind->linCmtCarryTlast) rather than ind->tprior (stale in the
     // post-solve lhs pass) -- seed it per call so this harness keeps its
-    // documented caller-supplied t/tPrior interval semantics.
-    if (which1[i] == -5) ind->linCmtCarryTlast = tPrior[i];
+    // documented caller-supplied t/tPrior interval semantics.  Also pin the
+    // slow path (mode 2): this harness's manual drive predates the 3b.4
+    // constant-theta skip and its callers (the phase 2/3b.2 benches) assert
+    // the full M-advance semantics, constant theta included.
+    if (which1[i] == -5) {
+      ind->linCmtCarryTlast = tPrior[i];
+      ind->linCmtCarryVarying = 2;
+    }
     double p2i = which1[i] == -7 ? av[i] : theta(i, 2);
     out[i] = linCmtB(rx, id, t[i], 0, ncmt, oral0, which1[i], which2[i], trans,
                       theta(i, 0), theta(i, 1), p2i, theta(i, 3),
@@ -1616,6 +1665,41 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
       if (which1 == -6) {
         return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
+      }
+#pragma omp atomic
+      linCmtCarryAdvCallsN++;
+      // Runtime per-subject fast path (phase 3b.4): while this subject's
+      // theta has been identical on every row of the CURRENT pass, the
+      // carried recurrence telescopes to G*J_n with J the production
+      // constant-theta Jacobian (exact there), so skipping the M advance --
+      // leaving the carry AND tracker columns un-multiplied -- makes the
+      // emitted -7 adds accumulate G*(J_i - J_{i-1}) = G*J_n.  First row is
+      // always skippable (carry state is 0, M*0 = 0 bit-identically).  Mode
+      // lives in ind and resets at iniSubject(), so the comparison is
+      // within-pass only -- etas changing between inner iterations never
+      // cross it.  Tlast must still advance so a later theta change resumes
+      // the slow path with the correct interval.
+      if (linCmtCarryFastEnabled) {
+        double thNow[7] = {p1, v1, p2, p3, p4, p5, ka};
+        if (ind->linCmtCarryVarying == 0) {
+          memcpy(ind->linCmtCarryPrevTheta, thNow, sizeof(thNow));
+          ind->linCmtCarryVarying = 1;
+          ind->linCmtCarryTlast = _t;
+#pragma omp atomic
+          linCmtCarryAdvFastN++;
+          return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
+        }
+        if (ind->linCmtCarryVarying == 1) {
+          // Exact bit compare; any difference (including NaN anywhere)
+          // flips permanently to the slow path for this pass.
+          if (memcmp(ind->linCmtCarryPrevTheta, thNow, sizeof(thNow)) == 0) {
+            ind->linCmtCarryTlast = _t;
+#pragma omp atomic
+            linCmtCarryAdvFastN++;
+            return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
+          }
+          ind->linCmtCarryVarying = 2;
+        }
       }
       // Unlike which1=-4 (which always follows a which1=-1,-1 call earlier
       // in the same calc_lhs invocation, guaranteeing lc is already sized

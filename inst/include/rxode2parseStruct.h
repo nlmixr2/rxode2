@@ -405,6 +405,19 @@ struct rx_solving_options_ind_s {
   // its interval dt from its OWN previous invocation time instead.  NAN =
   // no prior advance (first row -> dt 0, harmless: the carry state is 0).
   double linCmtCarryTlast;
+  // Runtime per-subject fast path for the which1=-5 carry advance: while this
+  // subject's theta vector (p1..ka as passed to -5) has been IDENTICAL on
+  // every row of the CURRENT solve pass, the carried recurrence telescopes to
+  // G*J (the production constant-theta Jacobian is exact there), so the
+  // advance's m forward-mode transition-matrix passes can be skipped and the
+  // carry/tracker columns left un-multiplied -- the emitted -7 adds then
+  // accumulate G*(J_i - J_{i-1}), which sums to exactly G*J_n.  Within-pass
+  // only by construction: both fields reset at iniSubject(), which fires
+  // before every lhs walk, so etas changing BETWEEN inner iterations never
+  // enter the comparison.  0 = no row seen this pass, 1 = constant so far,
+  // 2 = variation seen (slow path for the rest of the pass).
+  double linCmtCarryPrevTheta[7];
+  int linCmtCarryVarying;
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival
