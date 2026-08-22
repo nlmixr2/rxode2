@@ -188,6 +188,16 @@ static inline int linCmtFillTheta(T &th, int ncmt, int oral0,
   return 0;
 }
 
+// Reverse-mode AD under -DSTAN_THREADS keeps one tape per thread
+// (AutodiffStackSingleton::instance_ is thread_local) but creates it lazily;
+// an OpenMP worker that never built a ChainableStack has a null tape and
+// crashes on its first var.  One static thread_local per thread creates it
+// exactly once (a no-op on a thread that already has one).
+static inline void linCmtRevTapeInit() {
+  static thread_local stan::math::ChainableStack _rxLinCmtTape;
+  (void)_rxLinCmtTape;
+}
+
 // [[Rcpp::export]]
 RObject linCmtModelDouble(double dt,
                           double p1, double v1, double p2,
@@ -228,9 +238,11 @@ RObject linCmtModelDouble(double dt,
   Eigen::Matrix<double, 7, 1> scale;
   scale.setZero();
 
-  // sensType 3 (reverse AD) and 30 (forward AD, fvar) both use the unscaled
-  // (isAD = true) path so the Jacobian comes out in true-theta units.
-  lc.sensTheta(theta, thetaSens, sensType == 3 || sensType == 30, scale.data());
+  // The AD methods (3 and 31 reverse, 30 forward fvar, 100 auto -> reverse)
+  // use the unscaled (isAD = true) path so the Jacobian comes out in
+  // true-theta units.
+  if (sensType == 100) sensType = 31;
+  lc.sensTheta(theta, thetaSens, linCmtSensIsAD(sensType), scale.data());
 
   double *a = new double[nAlast];
   double *asave = new double[nAlast];
@@ -265,6 +277,8 @@ RObject linCmtModelDouble(double dt,
       lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
     case 3:
+    case 31: // reverse-mode AD (the production default via auto)
+      linCmtRevTapeInit();
       stan::math::jacobian(lc, thetaSens, fx, Js);
       break;
     case 30:  // forward-mode AD (fvar); should match case 3 to round-off
@@ -278,6 +292,11 @@ RObject linCmtModelDouble(double dt,
       h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
       lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
+    default:
+      delete[] a;
+      delete[] r;
+      delete[] asave;
+      Rcpp::stop("linCmtModelDouble: unsupported sensType %d", sensType);
     }
     lc.updateJfromJs(J, Js);
     lc.saveJac(J);
@@ -419,16 +438,6 @@ NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
                       theta(i, 4), theta(i, 5), theta(i, 6));
   }
   return out;
-}
-
-// Reverse-mode AD under -DSTAN_THREADS keeps one tape per thread
-// (AutodiffStackSingleton::instance_ is thread_local) but creates it lazily;
-// an OpenMP worker that never built a ChainableStack has a null tape and
-// crashes on its first var.  One static thread_local per thread creates it
-// exactly once (a no-op on a thread that already has one).
-static inline void linCmtRevTapeInit() {
-  static thread_local stan::math::ChainableStack _rxLinCmtTape;
-  (void)_rxLinCmtTape;
 }
 
 // Which thread slots linCmtB() has run on since the last reset -- the
@@ -815,7 +824,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Per-thread linCmtB state (matching linCmtA pattern for thread safety)
   int _tid = rx_get_thread(__linCmtB.size());
   linB_t &lcb = __linCmtB[_tid];
-  if (_tid < RX_LINCMTB_THREAD_SEEN) linCmtBThreadSeen[_tid] = 1;
+  if (_tid < RX_LINCMTB_THREAD_SEEN) {
+#pragma omp atomic write
+    linCmtBThreadSeen[_tid] = 1;
+  }
 #define fx        lcb.fx
 #define Jg        lcb.Jg
 #define lc        lcb.lc
@@ -965,6 +977,14 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // within-pass only -- etas changing between inner iterations never
       // cross it.  Tlast must still advance so a later theta change resumes
       // the slow path with the correct interval.
+      // PRECONDITION: this skip is exact only for the tracker-column
+      // calling convention nlmixr2est's carry codegen emits (each pair's
+      // -7 add is G*(J_i - P) with P the pair's tracker column, itself
+      // updated by a -7 add of J_i - P), because that is what telescopes.
+      // A caller feeding -7 an arbitrary local contribution (the generic
+      // s_i = M_i*s_{i-1} + c_i reading of this sentinel) must pin the slow
+      // path with linCmtCarrySetFast(FALSE) or set ind->linCmtCarryVarying
+      // = 2 (as linCmtCarryLiveTest does).
       if (linCmtCarryFastEnabled) {
         double thNow[7] = {p1, v1, p2, p3, p4, p5, ka};
         if (ind->linCmtCarryVarying == 0) {
@@ -1188,6 +1208,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
       } else {
         if (rx->sensType >= 0 && rx->sensType < RX_LINCMTB_SENS_SEEN) {
+#pragma omp atomic write
           linCmtBSensSeen[rx->sensType] = 1;
         }
         switch (rx->sensType) {
