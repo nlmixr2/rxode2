@@ -6261,6 +6261,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
+    // "auto" resolves here, at the one place the control is read, so every
+    // solve path (threaded rxSolve() and ind_solve()) sees the same method.
+    if (rx->sensType == 100) rx->sensType = 31; // ADr
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensType], "linCmtSensH");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");

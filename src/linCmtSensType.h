@@ -24,7 +24,8 @@ static inline int linCmtSensIsAD(int sensType) {
 // (forward-mode fvar, stack-local), 31 (reverse mode -- rxode2 builds with
 // -DSTAN_THREADS, so the Stan tape is thread_local and linCmtB() creates a
 // worker's tape before its first var, see linCmtRevTapeInit()) and 100 (auto,
-// which setupLinH() remaps to 31).  The finite-difference methods stay excluded:
+// which rxData.cpp resolves to 31 when the control is read; setupLinH()
+// keeps the same remap for ind_solve()).  The finite-difference methods stay excluded:
 // their first-subject scaling/step-size setup is shared, not per-thread.
 static inline int linCmtSensAdThreadSafe(int sensType) {
   return (sensType == 3 || sensType == 30 || sensType == 31 || sensType == 100);
