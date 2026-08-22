@@ -6517,13 +6517,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
-      // linCmtB is thread safe on the forward-mode AD Jacobian path: each thread
-      // evaluates its own subject on its own __linCmtB[rx_get_thread()] slot with
-      // stack-local fvar and no shared AD arena.  linCmtSensForwardAdThreadSafe()
-      // (linCmtSensType.h) is the shared classifier -- it excludes reverse-mode
-      // AD (31, Stan's shared ChainableStack) and the finite-difference paths
-      // (first-subject scaling/step setup), which keep the single-core guard.
-      int linCmtBThreadSafe = linCmtSensForwardAdThreadSafe(rx->sensType);
+      // linCmtB is thread safe on the AD Jacobian paths: each thread evaluates
+      // its own subject on its own __linCmtB[rx_get_thread()] slot, forward
+      // mode with stack-local fvar and reverse mode on STAN_THREADS' per-thread
+      // tape.  linCmtSensAdThreadSafe() (linCmtSensType.h) is the shared
+      // classifier -- only the finite-difference paths (first-subject
+      // scaling/step setup) keep the single-core guard.
+      int linCmtBThreadSafe = linCmtSensAdThreadSafe(rx->sensType);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
