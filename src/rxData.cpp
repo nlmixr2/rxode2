@@ -6262,6 +6262,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensType], "linCmtSensH");
+    rx->linCmtSensStrategy = asInt(rxControl[Rxc_linCmtSensStrategy],
+                                   "linCmtSensStrategy");
+    rx->linCmtMaxDosesInPhase2 = asInt(rxControl[Rxc_linCmtMaxDosesInPhase2],
+                                       "linCmtMaxDosesInPhase2");
+    rx->linCmtSupersededDoseCeiling =
+      asInt(rxControl[Rxc_linCmtSupersededDoseCeiling],
+            "linCmtSupersededDoseCeiling");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

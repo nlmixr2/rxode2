@@ -486,6 +486,11 @@ typedef struct rx_solve_s {
   int ndiff;
   int sensType;
   double sensH;
+  // linCmt() per-subject sensitivity strategy: 0=forward (sequential,
+  // default), 1=auto, 2=superposition, 3=hybrid; plus its structural knobs
+  int linCmtSensStrategy;
+  int linCmtMaxDosesInPhase2;
+  int linCmtSupersededDoseCeiling;
   int linB;
 
   // flag to determine if the linear compartment model has first order
