@@ -2,6 +2,16 @@
 
 ## New features
 
+- The default `linCmt()` sensitivity method (`linCmtSensType="auto"`) is now
+  reverse-mode AD (`"ADr"`).  Each row is differentiated on its own nested
+  Stan tape with one adjoint sweep per compartment (at most 4) instead of
+  one forward pass per parameter (up to 7), which measured about 2x faster
+  than the forward-mode default for 2 and 3 compartment models and the same
+  for one compartment, with results matching forward mode to round-off.
+  Reverse mode now also solves across threads (the Stan tape is per thread
+  under `STAN_THREADS`), so it is no longer forced onto one core; the
+  forward-mode path remains available as `linCmtSensType="AD"`.
+
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
@@ -570,6 +580,22 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   matching `sigma` code already guarded this.
 
 ### Sensitivities
+
+- A 3-compartment oral `linCmt()` model whose depot amount goes negative (a
+  negative dose larger than what is left in the depot) no longer drops the
+  depot from that interval's solution.  The depot branch was skipped for a
+  negative amount, which returned the wrong amounts and sensitivities under
+  forward-mode AD and crashed under reverse-mode AD (`linCmtSensType="ADr"`)
+  (#1275).
+
+- A 3-compartment oral model's `linCmtB(which1 = -2, which2 = 6)` read (the
+  `d/d(ka)` sensitivity column) is now registered by the parser; it was
+  rejected as an unknown read, which left that column unfilled.
+
+- `linCmtB()` gained internal per-subject sensitivity-carry sentinels
+  (`which1 = -4` to `-7`) that nlmixr2est uses to keep a `linCmt()` eta
+  gradient exact when a time-varying covariate makes a parameter differ
+  between rows; they are not reached by a model that does not request them.
 
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read

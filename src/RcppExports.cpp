@@ -593,6 +593,70 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtCarrySetFast
+LogicalVector linCmtCarrySetFast(bool enable);
+RcppExport SEXP _rxode2_linCmtCarrySetFast(SEXP enableSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type enable(enableSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtCarrySetFast(enable));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtCarryFastStats
+NumericVector linCmtCarryFastStats(bool reset);
+RcppExport SEXP _rxode2_linCmtCarryFastStats(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtCarryFastStats(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtCarryLiveTest
+NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior, NumericMatrix theta, int ncmt, int oral0, int trans, IntegerVector which1, IntegerVector which2, Nullable<NumericVector> addVal);
+RcppExport SEXP _rxode2_linCmtCarryLiveTest(SEXP idSEXP, SEXP tSEXP, SEXP tPriorSEXP, SEXP thetaSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP which1SEXP, SEXP which2SEXP, SEXP addValSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type id(idSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type t(tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type tPrior(tPriorSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type which1(which1SEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type which2(which2SEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type addVal(addValSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtCarryLiveTest(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtBSensTypesSeen
+IntegerVector linCmtBSensTypesSeen(bool reset);
+RcppExport SEXP _rxode2_linCmtBSensTypesSeen(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtBSensTypesSeen(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtBThreadsSeen
+int linCmtBThreadsSeen(bool reset);
+RcppExport SEXP _rxode2_linCmtBThreadsSeen(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtBThreadsSeen(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxOmegaVarCovDeriv_
 List rxOmegaVarCovDeriv_(arma::mat omega, int order);
 RcppExport SEXP _rxode2_rxOmegaVarCovDeriv_(SEXP omegaSEXP, SEXP orderSEXP) {

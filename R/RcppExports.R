@@ -353,6 +353,39 @@ linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, n
     .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
 }
 
+#' Toggle the linCmt() carry-advance runtime fast path (test/benchmark hook)
+#'
+#' @param enable logical; new state
+#' @return the previous state, invisibly
+#' @keywords internal
+#' @export
+linCmtCarrySetFast <- function(enable) {
+    .Call(`_rxode2_linCmtCarrySetFast`, enable)
+}
+
+#' Read (and optionally reset) the linCmt() carry-advance fast-path counters
+#'
+#' @param reset logical; when TRUE zero the counters after reading
+#' @return named numeric vector: advCalls (every which1=-5 invocation),
+#'   advFast (subset that took the constant-theta skip)
+#' @keywords internal
+#' @export
+linCmtCarryFastStats <- function(reset = FALSE) {
+    .Call(`_rxode2_linCmtCarryFastStats`, reset)
+}
+
+linCmtCarryLiveTest <- function(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal = NULL) {
+    .Call(`_rxode2_linCmtCarryLiveTest`, id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal)
+}
+
+linCmtBSensTypesSeen <- function(reset) {
+    .Call(`_rxode2_linCmtBSensTypesSeen`, reset)
+}
+
+linCmtBThreadsSeen <- function(reset) {
+    .Call(`_rxode2_linCmtBThreadsSeen`, reset)
+}
+
 #' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
 #'
 #' C++/RcppArmadillo implementation of the non-Cholesky Omega derivatives used
