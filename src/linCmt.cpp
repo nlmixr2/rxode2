@@ -153,6 +153,25 @@ extern "C" void ensureLinCmtB(int nCores) {
   }
 }
 
+// (Re)size a thread's linCmtB slot for a model shape: the kernel AND the
+// per-slot scratch (fx/J/Js/Jg/yp/g, numSens).  Every path that can be the
+// first touch of a slot for a shape must go through here -- sizing only the
+// kernel leaves isSame() true for the next ordinary call, which then skips
+// this block and runs on zero-length scratch.
+static inline void linCmtBsetModel(linB_t &lcb, int ncmt, int oral0, int trans,
+                                   int linSS, rx_solve *rx) {
+  lcb.lc.setModelType(ncmt, oral0, trans, linSS, rx->ndiff);
+  int npars = lcb.lc.getNpars();
+  lcb.fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+  lcb.J = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, npars, NA_REAL);
+  lcb.numSens = lcb.lc.numSens();
+  lcb.Js = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(ncmt + oral0, lcb.numSens);
+  lcb.Jg = Eigen::Matrix<double, Eigen::Dynamic, 1>(npars);
+  lcb.yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
+  lcb.g = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
+  lcb.lc.setForwardOpts(rx->linCmtSuspect, rx->linCmtForwardMax);
+}
+
 #define linCmtBaddrTheta 0
 #define linCmtBaddrThetaSens 1
 static inline double * getLinCmtDoubleAddr(linB_t &lcb, int type) {
@@ -900,9 +919,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       int row = which2 % m;
       int col = which2 / m;
       if (which2 < 0 || col >= m) return NA_REAL;
-      // may be the first touch of lc on this thread (a model with no -1 call)
+      // may be the first touch of this slot (a model with no -1 call)
       if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-        lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
+        linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
       }
       int npars = lc.getNpars();
       typedef stan::math::fvar<double> fv;
@@ -1038,7 +1057,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // for this ncmt/oral0/trans), which1=-5 may be the first touch of lc
       // on this thread for a standalone re-query -- size it defensively.
       if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-        lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
+        linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
       }
       // The advance interval comes from this sentinel's OWN previous
       // invocation time, not ind->tprior: calc_lhs fires exactly once per
@@ -1111,23 +1130,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
     }
   } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-    lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
-    // only resize when needed
-    fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
-    int npars = lc.getNpars();
-    // NA fill and resize
-    J = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, npars, NA_REAL);
-
-    lcb.numSens = lc.numSens();
-    Js = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(ncmt+oral0, lcb.numSens);//(ncmt + oral0, 2*ncmt + oral0);
-    // thetaSens.resize(numSens);
-
-    // AlastA.resize(ncmt + oral0);
-    Jg = Eigen::Matrix<double, Eigen::Dynamic, 1>(lc.getNpars());
-
-    yp = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
-    g = Eigen::Matrix<double, Eigen::Dynamic, 2>(ncmt, 2);
-    lc.setForwardOpts(rx->linCmtSuspect, rx->linCmtForwardMax);
+    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
   } else {
     lc.setSsType(ind->linSS);
   }

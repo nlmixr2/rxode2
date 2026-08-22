@@ -60,4 +60,17 @@ rxTest({
     live <- sens[grid$evid == 0]
     expect_true(max(abs(live - fd) / abs(fd)) < 1e-6)
   })
+
+  test_that("an ordinary solve after the live-driven sentinels still works", {
+    # the standalone -5 advance sized the main thread's kernel without its
+    # scratch, so the next ordinary call on that slot ran on zero-length
+    # buffers and segfaulted
+    a <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, cl, v, 0, 0, 0, 0, 0"
+    m <- suppressWarnings(rxode2(paste0("cp=linCmtB(", sprintf(a, -1L, -1L), ")\n",
+                                        "tm=linCmtB(", sprintf(a, -4L, 0L), ")")))
+    s <- rxSolve(m, c(cl = 1, v = 10), et(amt = 100) |> et(c(1, 2, 3.5)),
+                 returnType = "data.frame")
+    expect_equal(s$tm, exp(-0.1 * c(1, 1, 1.5)), tolerance = 1e-12)
+    expect_equal(s$cp, 10 * exp(-0.1 * c(1, 2, 3.5)), tolerance = 1e-12)
+  })
 })
