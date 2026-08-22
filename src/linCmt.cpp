@@ -440,6 +440,15 @@ NumericVector linCmtCarryLiveTest(int id, NumericVector t, NumericVector tPrior,
   return out;
 }
 
+// Compartment count m = ncmt + oral0 for the carry sentinels, or 0 when the
+// shape is not one linCmt() can produce.  A hand-written linCmtB() call can
+// pass any ncmt/oral0, and ind->linCmtCarryT only has 4 rows, so every
+// sentinel that indexes by row must refuse anything else.
+static inline int linCmtCarryM(int ncmt, int oral0) {
+  if (ncmt < 1 || ncmt > 3 || oral0 < 0 || oral0 > 1) return 0;
+  return ncmt + oral0;
+}
+
 // Which thread slots linCmtB() has run on since the last reset -- the
 // observable that a solve really was multi-threaded (tests assert on it).
 #define RX_LINCMTB_THREAD_SEEN 256
@@ -886,9 +895,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // linToOde()-generated equivalent ODE model to machine epsilon across
       // all 1/2/3-cmt IV/oral configs -- see
       // feedback_lincmt_verify_against_linToOde_not_invented_odes.
-      int m = ncmt + oral0;
+      int m = linCmtCarryM(ncmt, oral0);
+      if (m == 0) return NA_REAL;
       int row = which2 % m;
       int col = which2 / m;
+      if (which2 < 0 || col >= m) return NA_REAL;
       int npars = lc.getNpars();
       typedef stan::math::fvar<double> fv;
       Eigen::Matrix<double, Eigen::Dynamic, 1> thetaD(npars);
@@ -921,10 +932,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // this row via the state-transition multiply. which2 packs (row, pair)
       // as row + m*pair like -5/-6; the value to add rides in p2 (unused
       // by this sentinel otherwise -- no theta is read here).
-      int m = ncmt + oral0;
+      int m = linCmtCarryM(ncmt, oral0);
+      if (m == 0) return NA_REAL;
       int row = which2 % m;
       int pair = which2 / m;
-      if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
+      if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
       ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair] += p2;
       return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
     } else if (which1 == -5 || which1 == -6) {
@@ -957,10 +969,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // contribution (dPredDTheta_i * dThetaDEta_i) is left to the caller
       // via which1=-7 -- this sentinel only carries the state-transition
       // part forward.
-      int m = ncmt + oral0;
+      int m = linCmtCarryM(ncmt, oral0);
+      if (m == 0) return NA_REAL;
       int row = which2 % m;
       int pair = which2 / m;
-      if (pair < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
+      if (which2 < 0 || pair >= RX_LINCMT_CARRY_MAXPAIRS) return NA_REAL;
       if (which1 == -6) {
         return ind->linCmtCarryT[row*RX_LINCMT_CARRY_MAXPAIRS + pair];
       }
