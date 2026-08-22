@@ -910,10 +910,19 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       fv kaV(0.0, 0.0);
       if (oral0) kaV = thetaF(ncmt*2, 0);
 
-      double dt = ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior);
+      // ind->tprior is stale in the post-solve lhs pass (frozen at the
+      // solve's final interval, see which1 == -5), so the interval is the
+      // time since the previous event row in solve order.
+      double dt;
+      if (ind->doSS) {
+        dt = ind->tout - ind->tprior;
+      } else {
+        dt = idx > 0 ? _t - getTime(ind->ix[idx - 1], ind) : 0.0;
+      }
       lc.setDt(dt);
       const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
         linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+      if (rate == NULL) rate = getLinRate;
       lc.setRate(const_cast<double*>(rate));
 
       Eigen::Matrix<fv, Eigen::Dynamic, 1> yp0 =

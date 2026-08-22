@@ -21,6 +21,16 @@ rxTest({
     s <- rxSolve(mk(3L, 1L, -7L, 4L * 8L), ev, returnType = "data.frame")
     expect_true(all(is.na(s$cp)))
   })
+  test_that("which1=-4 uses the interval since the previous row in the output pass", {
+    # 1-cmt IV: d(A_i)/d(A_{i-1}) = exp(-(cl/v) * dt); ind->tprior is stale
+    # in the lhs pass, so a per-row dt must not come from it
+    a <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, cl, v, 0, 0, 0, 0, 0"
+    m <- suppressWarnings(rxode2(paste0("cp=linCmtB(", sprintf(a, -1L, -1L), ")\n",
+                                        "tm=linCmtB(", sprintf(a, -4L, 0L), ")")))
+    p <- c(cl = 1, v = 10)
+    s <- rxSolve(m, p, et(amt = 100) |> et(c(1, 2, 3.5)), returnType = "data.frame")
+    expect_equal(s$tm, exp(-0.1 * c(1, 1, 1.5)), tolerance = 1e-12)
+  })
   test_that("a valid shape still accumulates", {
     # calc_lhs runs on the dose row too, so the observation rows see the
     # third and fourth 0.5 increments
