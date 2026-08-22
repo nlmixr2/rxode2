@@ -571,6 +571,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Sensitivities
 
+- `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
+  `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read
+  from its own control slot instead of `linCmtSensType`'s.  `rx->sensH` was
+  populated from the `linCmtSensType` control index a second time, so a fixed-
+  step `linCmt()` sensitivity used the integer sensType code itself as its
+  step size (e.g. `10.0` for `forwardH`) instead of the intended default of
+  `1e-4`, wildly distorting those finite-difference sensitivities (harmless
+  for the AD sensitivity types, which never read `sensH`) (#1276).
+
 - `rxode2()` now refuses to build a model that calls `linCmtB(which1 = -3)`
   (the dose-time sensitivity) while its `linCmt()` compartments carry more
   than one distinct modeled `alag()` -- e.g. `alag(depot)` driven by one
