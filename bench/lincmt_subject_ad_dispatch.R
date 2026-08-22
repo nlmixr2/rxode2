@@ -1,3 +1,5 @@
+# HISTORICAL RECORD: the prototype exports this script calls were removed from
+# src/linCmt.cpp in fb37eabe8; check out 73f2e13d0 (or earlier) to re-run it.
 # Dispatch/detection logic choosing among the linCmt() subject-AD prototypes
 # in src/linCmt.cpp (see bench/lincmt_subject_ad_proto.R for the prototypes
 # themselves and ~/.claude/plans/the-lincmt-solutions-are-calm-seahorse.md

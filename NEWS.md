@@ -588,6 +588,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   forward-mode AD and crashed under reverse-mode AD (`linCmtSensType="ADr"`)
   (#1275).
 
+- A 3-compartment oral model's `linCmtB(which1 = -2, which2 = 6)` read (the
+  `d/d(ka)` sensitivity column) is now registered by the parser; it was
+  rejected as an unknown read, which left that column unfilled.
+
+- `linCmtB()` gained internal per-subject sensitivity-carry sentinels
+  (`which1 = -4` to `-7`) that nlmixr2est uses to keep a `linCmt()` eta
+  gradient exact when a time-varying covariate makes a parameter differ
+  between rows; they are not reached by a model that does not request them.
+
 - `rxode2()` now refuses to build a model that calls `linCmtB(which1 = -3)`
   (the dose-time sensitivity) while its `linCmt()` compartments carry more
   than one distinct modeled `alag()` -- e.g. `alag(depot)` driven by one

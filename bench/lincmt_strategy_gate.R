@@ -1,3 +1,5 @@
+# HISTORICAL RECORD: the prototype exports this script calls were removed from
+# src/linCmt.cpp in fb37eabe8; check out 73f2e13d0 (or earlier) to re-run it.
 # RECORD OF A DECISION, not a live benchmark.  The superposition strategy it
 # measured (rxControl(linCmtSensStrategy="superposition"), phase 4.2) was
 # removed from the package after this gate's verdict, so the "sup" arm and

@@ -1,3 +1,5 @@
+# HISTORICAL RECORD: the prototype exports this script calls were removed from
+# src/linCmt.cpp in fb37eabe8; check out 73f2e13d0 (or earlier) to re-run it.
 # Phase 1 proof of concept for the linCmt() sensitivity-carry subsystem
 # (see ~/.claude/plans/the-lincmt-solutions-are-calm-seahorse.md, "New
 # subsystem: linCmt() sensitivity-carry").
