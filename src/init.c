@@ -423,6 +423,10 @@ SEXP _rxode2_linCmtSubjectSuperpositionADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_linCmtSubjectSuperpositionFwdADProto(SEXP, SEXP, SEXP, SEXP, SEXP,
                                                   SEXP, SEXP, SEXP, SEXP, SEXP,
                                                   SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_linCmtSupRevThreadStress(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
+                                      SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_linCmtSupStats(SEXP);
+SEXP _rxode2_linCmtBThreadsSeen(SEXP);
 
 SEXP _rxode2_linCmtSubjectReverseADTimeVaryingProto(SEXP, SEXP, SEXP, SEXP,
                                                     SEXP, SEXP, SEXP, SEXP);
@@ -899,6 +903,9 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_linCmtSubjectReverseADBatchProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADBatchProto, 14},
     {"_rxode2_linCmtSubjectSuperpositionADProto", (DL_FUNC) &_rxode2_linCmtSubjectSuperpositionADProto, 15},
     {"_rxode2_linCmtSubjectSuperpositionFwdADProto", (DL_FUNC) &_rxode2_linCmtSubjectSuperpositionFwdADProto, 15},
+    {"_rxode2_linCmtSupRevThreadStress", (DL_FUNC) &_rxode2_linCmtSupRevThreadStress, 11},
+    {"_rxode2_linCmtSupStats", (DL_FUNC) &_rxode2_linCmtSupStats, 1},
+    {"_rxode2_linCmtBThreadsSeen", (DL_FUNC) &_rxode2_linCmtBThreadsSeen, 1},
     {"_rxode2_linCmtSubjectReverseADTimeVaryingProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADTimeVaryingProto, 8},
     {"_rxode2_linCmtSubjectReverseADEtaCovariateProto", (DL_FUNC) &_rxode2_linCmtSubjectReverseADEtaCovariateProto, 8},
     {"_rxode2_linCmtSubjectForwardADEtaCovariateProto", (DL_FUNC) &_rxode2_linCmtSubjectForwardADEtaCovariateProto, 8},

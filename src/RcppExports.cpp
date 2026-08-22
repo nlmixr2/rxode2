@@ -837,6 +837,49 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtSupRevThreadStress
+NumericMatrix linCmtSupRevThreadStress(NumericVector obsT, NumericVector doseT, NumericVector doseAmt, NumericVector th, int ncmt, int oral0, int trans, int bolusCmt, int nSub, int nThreads, int nRep);
+RcppExport SEXP _rxode2_linCmtSupRevThreadStress(SEXP obsTSEXP, SEXP doseTSEXP, SEXP doseAmtSEXP, SEXP thSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP bolusCmtSEXP, SEXP nSubSEXP, SEXP nThreadsSEXP, SEXP nRepSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type obsT(obsTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseT(doseTSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type doseAmt(doseAmtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type th(thSEXP);
+    Rcpp::traits::input_parameter< int >::type ncmt(ncmtSEXP);
+    Rcpp::traits::input_parameter< int >::type oral0(oral0SEXP);
+    Rcpp::traits::input_parameter< int >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
+    Rcpp::traits::input_parameter< int >::type nSub(nSubSEXP);
+    Rcpp::traits::input_parameter< int >::type nThreads(nThreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type nRep(nRepSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSupRevThreadStress(obsT, doseT, doseAmt, th, ncmt, oral0, trans, bolusCmt, nSub, nThreads, nRep));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtBThreadsSeen
+int linCmtBThreadsSeen(bool reset);
+RcppExport SEXP _rxode2_linCmtBThreadsSeen(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtBThreadsSeen(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSupStats
+IntegerVector linCmtSupStats(bool reset);
+RcppExport SEXP _rxode2_linCmtSupStats(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSupStats(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxOmegaVarCovDeriv_
 List rxOmegaVarCovDeriv_(arma::mat omega, int order);
 RcppExport SEXP _rxode2_rxOmegaVarCovDeriv_(SEXP omegaSEXP, SEXP orderSEXP) {
