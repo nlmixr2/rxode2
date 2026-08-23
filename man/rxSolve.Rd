@@ -162,7 +162,7 @@ rxSolve(
   linCmtSensH = 1e-04,
   linCmtSensStrategy = c("auto", "sequential", "hybrid"),
   linCmtHybridMinObs = 2L,
-  linCmtHybridMinDirs = 3L,
+  linCmtHybridMinDirs = 2L,
   linCmtHybridMaxActive = 30L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -1394,21 +1394,24 @@ differences when using the option \code{centralH}, \code{forwardH},
 
 \item{linCmtSensStrategy}{How a subject's \code{linCmt()} sensitivities are
 evaluated row by row: \code{"sequential"} carries the state from row to row
-and differentiates every row with \code{linCmtSensType}; \code{"hybrid"} does
-that up to the subject's trailing run of observation rows and then
-evaluates those rows as a superposition over the carried state, with
-one reverse-mode sweep per row that covers only the concentration
-(exact for the \code{d(cp)/d(theta)} an estimation method reads);
-\code{"auto"} (the default) uses \code{"hybrid"} for a subject only when the
-trailing observation run is at least \code{linCmtHybridMinObs} rows, the
-model requests at least \code{linCmtHybridMinDirs} directions and the
-solution has at least two compartments (depot included), and
-\code{"sequential"} otherwise.  Measured through the solver, the hybrid
-rows cost about the same as the sequential ones with two requested
-directions and 1.1-1.3x less with three, so the default threshold is
-three.  Results agree to round-off either way; a subject whose
-steady-state infusion or modeled lag leaves doses pending stays
-sequential.}
+and differentiates every row with \code{linCmtSensType}; \code{"hybrid"} rolls
+the rows up to the subject's trailing run of observations through the
+sequential kernel in forward mode, then evaluates those observation
+rows as a superposition over the carried state: the theta-only
+constants of the closed form are differentiated once per subject and
+each row costs one allocation-free forward pass per requested
+direction through the dt-dependent tail of the solution (exact for
+every compartment).  \code{"auto"} (the default) uses \code{"hybrid"} for a
+subject only when the trailing observation run is at least
+\code{linCmtHybridMinObs} rows, the model requests at least
+\code{linCmtHybridMinDirs} directions and the solution has at least two
+compartments (depot included), and \code{"sequential"} otherwise.  Measured
+through the solver on an optimized build, the hybrid rows are cheaper
+than the sequential forward-mode rows at every direction count
+(1.05-1.2x at the solve level, where the per-row solver overhead is
+most of the time), so the default threshold is two.  Results agree to
+round-off either way; a subject whose steady-state infusion or modeled
+lag leaves doses pending stays sequential.}
 
 \item{linCmtHybridMinObs}{For \code{linCmtSensStrategy="auto"}, the smallest
 trailing observation run for which the hybrid evaluation is used.}

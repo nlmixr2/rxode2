@@ -753,7 +753,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   } else {
     rx->linCmtSensStrategy = 0;
     rx->linCmtHybridMinObs = 2;
-    rx->linCmtHybridMinDirs = 3;
+    rx->linCmtHybridMinDirs = 2;
     rx->linCmtHybridMaxActive = 30;
     rx->linCmtBraw = 1;
   }

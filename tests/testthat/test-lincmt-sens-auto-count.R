@@ -23,10 +23,13 @@ rxTest({
                       amt = 0, evid = 0, cmt = 1, rate = 0)
     rbind(dose, obs)
   }))
+  # the count rule is the SEQUENTIAL kernel's; the default strategy would
+  # take the hybrid path for this trailing observation run and roll the
+  # dose phase in forward mode regardless
   seen <- function(m, st, cores = 1L) {
     invisible(linCmtBSensTypesSeen(TRUE))
     r <- rxSolve(m, pars, ev, linCmtSensType = st, cores = cores,
-                 returnType = "data.frame")
+                 linCmtSensStrategy = "sequential", returnType = "data.frame")
     list(st = linCmtBSensTypesSeen(TRUE), r = r)
   }
   cmp <- function(a, b, cols) {

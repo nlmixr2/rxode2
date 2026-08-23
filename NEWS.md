@@ -31,20 +31,25 @@
 
 - `rxSolve(linCmtSensStrategy=)` adds a per-subject hybrid evaluation of the
   `linCmt()` sensitivities.  A subject's rows up to its trailing run of
-  observations are solved as before; those observation rows are then
-  evaluated as a superposition over the carried state with one reverse-mode
-  sweep per row covering only the concentration, which is what an
-  estimation method reads.  `"auto"` (the default) engages it for a subject
-  when the trailing run has at least `linCmtHybridMinObs` rows, the model
-  requests at least `linCmtHybridMinDirs` directions (three by default,
-  where the measured gain is 1.1-1.3x; with two directions the rows cost
-  about the same) and the solution has at least two compartments;
-  `"sequential"` turns it off and `"hybrid"` forces it.  Results agree with
-  the sequential evaluation to round-off, including steady-state rows,
-  infusions and a model that reads raw Jacobian rows (which then gets every
-  row); a subject with a pending steady-state infusion turn-off or modeled
-  lag stays sequential.  `linCmtHybStats()` reports how many subjects and
-  rows took the hybrid path.
+  observations are rolled through the sequential kernel in forward mode;
+  those observation rows are then evaluated as a superposition over the
+  carried state.  The theta-only constants of the closed form (the
+  elimination constant or the 2/3-compartment eigen-decomposition, and ka)
+  and their derivatives are taken once per subject, and each observation
+  row costs one allocation-free forward pass per requested direction
+  through the dt-dependent tail of the solution, giving every compartment's
+  sensitivity.  `"auto"` (the default) engages it for a subject when the
+  trailing run has at least `linCmtHybridMinObs` rows, the model requests
+  at least `linCmtHybridMinDirs` directions (two by default) and the
+  solution has at least two compartments; `"sequential"` turns it off and
+  `"hybrid"` forces it.  On an optimized build the hybrid rows are cheaper
+  than the sequential forward-mode rows at every direction count (about
+  1.05-1.2x at the solve level, where the per-row solver overhead is most
+  of the time).  Results agree with the sequential evaluation to round-off,
+  including steady-state rows, infusions and a model that reads raw
+  Jacobian rows; a subject with a pending steady-state infusion turn-off or
+  modeled lag stays sequential.  `linCmtHybStats()` reports how many
+  subjects and rows took the hybrid path.
 
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors

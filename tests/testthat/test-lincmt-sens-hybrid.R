@@ -117,13 +117,13 @@ rxTest({
     aut <- .solve(m, 2L, 0L, ev, "auto")
     expect_true(.cmp(aut, ref) < 1e-9)
     expect_equal(.stats()[["rows"]], 5L)
-    # auto: fewer than linCmtHybridMinDirs directions stays sequential
-    m2 <- .gradModel(2L, 0L, 0:1)
+    # auto: fewer than linCmtHybridMinDirs (two) directions stays sequential
+    m2 <- .gradModel(2L, 0L, 0L)
     invisible(.stats())
     .solve(m2, 2L, 0L, ev, "auto")
     expect_equal(.stats()[["rows"]], 0L)
     invisible(.stats())
-    .solve(m2, 2L, 0L, ev, "auto", linCmtHybridMinDirs = 2L)
+    .solve(m2, 2L, 0L, ev, "auto", linCmtHybridMinDirs = 1L)
     expect_equal(.stats()[["rows"]], 5L)
     # auto: a trailing run shorter than linCmtHybridMinObs stays sequential
     invisible(.stats())

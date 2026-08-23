@@ -18,7 +18,11 @@
 
 if (requireNamespace("devtools", quietly = TRUE) &&
       file.exists("DESCRIPTION") && file.exists("src/linCmt.cpp")) {
-  devtools::load_all(".", quiet = TRUE)
+  # compile = FALSE: build first with pkgbuild::compile_dll(".", debug = FALSE)
+  # (or benchmark an installed package).  load_all()'s own debug build is
+  # -O0, which inflates every ratio here (the fvar kernels far more than
+  # the rest), so timings taken through it are not representative.
+  devtools::load_all(".", quiet = TRUE, compile = FALSE)
 } else {
   library(rxode2)
 }
@@ -235,14 +239,19 @@ for (cfg in .cfgs[c(4, 6)]) {
         ev <- .benchEv(nDose, nObs)
         evt <- rxode2::etTrans(ev, m)
         for (cores in unique(c(1L, nThr))) {
+          # sequential under the auto sensType rule, sequential forced to
+          # forward mode (the hybrid's own dose-phase mode), and the hybrid
           .solve(m, cfg, evt, "sequential", cores = cores)
           tS <- .timeIt(function() .solve(m, cfg, evt, "sequential", cores = cores))
+          tF <- .timeIt(function() .solve(m, cfg, evt, "sequential", cores = cores,
+                                          linCmtSensType = "AD"))
           tH <- .timeIt(function() .solve(m, cfg, evt, "hybrid", cores = cores))
-          cat(sprintf("  %-10s k=%d doses=%3d obs=%3d cores=%2d  sequential %.4fs  hybrid %.4fs  ratio %.2fx\n",
-                      cfg$name, k, nDose, nObs, cores, tS, tH, tS / tH))
+          cat(sprintf("  %-10s k=%d doses=%3d obs=%3d cores=%2d  sequential %.4fs  forward %.4fs  hybrid %.4fs  ratio %.2fx  ratioFwd %.2fx\n",
+                      cfg$name, k, nDose, nObs, cores, tS, tF, tH, tS / tH, tF / tH))
           benchRows[[length(benchRows) + 1L]] <-
             data.frame(config = cfg$name, k = k, nDose = nDose, nObs = nObs,
-                       cores = cores, sequential = tS, hybrid = tH, ratio = tS / tH)
+                       cores = cores, sequential = tS, forward = tF, hybrid = tH,
+                       ratio = tS / tH, ratioFwd = tF / tH)
         }
       }
     }
