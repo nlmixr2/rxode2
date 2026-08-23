@@ -125,6 +125,22 @@ extern "C" void ensureLinCmtA(int nCores) {
   }
 }
 
+#define RX_LINHYB_MAXM 4
+#define RX_LINHYB_MAXP 7
+
+// One superposition term of the hybrid strategy's observation phase: an
+// amount deposited at time t whose own theta-dependence rides in J
+// (row-major m x RX_LINHYB_MAXP; all zero for a plain dose), or a step
+// change in the infusion-rate vector at time t.  Under constant theta the
+// terms evolve independently and the state at a later time is their sum.
+typedef struct {
+  double t;
+  int isRate;
+  double amt[RX_LINHYB_MAXM];
+  double J[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
+  double rate[RX_LINHYB_MAXM];
+} linHybEntry;
+
 // Global linear compartment B model object
 // Refactored to per-thread vector for thread safety, matching linCmtA pattern.
 typedef struct {
@@ -143,6 +159,18 @@ typedef struct {
   // fix (see project_lincmt_timevarying_covariate_bug); an ordinary,
   // constant-theta solve never requests it and pays nothing extra.
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> JAlast;
+  // Hybrid-strategy state (rxControl(linCmtSensStrategy), see
+  // linCmtHybRow()).  A subject is solved start to finish on one thread, so
+  // per-thread storage keyed on (hybId, hybLastIdx, hybLastT) suffices.
+  std::vector<linHybEntry> hybList;
+  int hybId = -1;
+  int hybLastIdx = -1;
+  double hybLastT = 0.0;
+  double hybLastFx[RX_LINHYB_MAXM];
+  double hybLastJ[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
+  double hybPrevRate[RX_LINHYB_MAXM];
+  double hybTheta[RX_LINHYB_MAXP];
+  int hybFull = 0;
 } linB_t;
 
 std::vector<linB_t> __linCmtB;
@@ -215,6 +243,324 @@ static inline int linCmtFillTheta(T &th, int ncmt, int oral0,
 static inline void linCmtRevTapeInit() {
   static thread_local stan::math::ChainableStack _rxLinCmtTape;
   (void)_rxLinCmtTape;
+}
+
+// ---- hybrid sensitivity strategy ------------------------------------------
+//
+// rxControl(linCmtSensStrategy="auto"/"hybrid"): a subject's rows up to the
+// start of its trailing observation-only run are solved by the sequential
+// kernel (phase 1, whatever linCmtSensType picked); from that row on the
+// per-row amount+Jacobian buffer is filled by superposition over the phase-1
+// end state (phase 2), one reverse-mode nest per row that sweeps only the
+// pred (central) output.  A FOCEi inner model reads only d(cp)/d(theta), so
+// that single sweep replaces one forward pass per requested direction or one
+// adjoint sweep per compartment.
+//
+// Buffer contract for a phase-2 row: amounts for every compartment are exact
+// (plain doubles from the term sum); the Jacobian block holds the central row
+// and, for a model that reads raw rows (rx->linCmtBraw), every row; otherwise
+// the other rows are written as zero.  Nothing downstream reads those rows:
+// d(cp)/d(theta) (getJacCp) uses only the central row, the carry sentinels
+// compute their transition matrix from theta, and any row the SEQUENTIAL
+// kernel takes while the phase-2 state is live (steady state, a modeled-lag
+// or extra dose, a theta change between rows) is preceded by
+// linCmtHybFlush(), which rewrites the previous row's block with the full
+// Jacobian from the term list so the carried state is complete again.
+
+static int linCmtHybSubjN = 0, linCmtHybRowN = 0, linCmtHybDoseN = 0,
+  linCmtHybRateN = 0, linCmtHybConsN = 0, linCmtHybFlushN = 0,
+  linCmtHybFullN = 0;
+
+//' Read (and optionally reset) the linCmt() hybrid-strategy counters
+//'
+//' @param reset logical; when TRUE zero the counters after reading
+//' @return named integer vector: subjects (phase-2 primes), rows (phase-2
+//'   rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
+//'   the sequential kernel), fullRows (rows swept for every Jacobian row)
+//' @keywords internal
+//' @export
+//[[Rcpp::export]]
+IntegerVector linCmtHybStats(bool reset = false) {
+  IntegerVector r = IntegerVector::create(_["subjects"] = linCmtHybSubjN,
+                                          _["rows"] = linCmtHybRowN,
+                                          _["doses"] = linCmtHybDoseN,
+                                          _["rateSteps"] = linCmtHybRateN,
+                                          _["consolidations"] = linCmtHybConsN,
+                                          _["flushes"] = linCmtHybFlushN,
+                                          _["fullRows"] = linCmtHybFullN);
+  if (reset) {
+    linCmtHybSubjN = linCmtHybRowN = linCmtHybDoseN = linCmtHybRateN =
+      linCmtHybConsN = linCmtHybFlushN = linCmtHybFullN = 0;
+  }
+  return r;
+}
+
+// Value and Jacobian of the superposition of terms e[0..n) at tEval, by one
+// reverse-mode nest (every var lives inside it, so the tape is empty between
+// calls).  An amount term enters as A0 + J0*(theta - theta0): exact in value
+// and, because the kernel is linear in its initial state, in gradient.  With
+// fullJ == 0 only the central row (oral0) is swept; the other rows of Jout
+// are zero.
+static void linCmtHybEval(stan::math::linCmtStan &lc, const double *thetaD,
+                          int ncmt, int oral0, int trans,
+                          const linHybEntry *e, int n, double tEval,
+                          double *fxOut, double *Jout, int fullJ) {
+  typedef stan::math::var var;
+  int npars = lc.getNpars();
+  int m = ncmt + oral0;
+  double zeroRate[RX_LINHYB_MAXM] = {0.0, 0.0, 0.0, 0.0};
+  linCmtRevTapeInit();
+  stan::math::nested_rev_autodiff nested;
+  Eigen::Matrix<var, Eigen::Dynamic, 1> theta(npars);
+  for (int j = 0; j < npars; j++) theta(j, 0) = thetaD[j];
+  Eigen::Matrix<var, Eigen::Dynamic, 2> g =
+    stan::math::macros2micros(theta, ncmt, trans);
+  var kaV = 0.0;
+  if (oral0) kaV = theta(ncmt*2, 0);
+  Eigen::Matrix<var, Eigen::Dynamic, 1> total =
+    Eigen::Matrix<var, Eigen::Dynamic, 1>::Zero(m);
+  Eigen::Matrix<var, Eigen::Dynamic, 1> yp0(m), ret(m);
+  for (int i = 0; i < n; i++) {
+    double dt = tEval - e[i].t;
+    if (dt < 0.0) dt = 0.0;
+    lc.setDt(dt);
+    if (e[i].isRate) {
+      lc.setRate(const_cast<double*>(e[i].rate));
+      for (int c = 0; c < m; c++) yp0(c, 0) = 0.0;
+    } else {
+      lc.setRate(zeroRate);
+      for (int c = 0; c < m; c++) {
+        var v = e[i].amt[c];
+        const double *Jc = e[i].J + c*RX_LINHYB_MAXP;
+        for (int j = 0; j < npars; j++) {
+          if (Jc[j] != 0.0) v += Jc[j] * (theta(j, 0) - thetaD[j]);
+        }
+        yp0(c, 0) = v;
+      }
+    }
+    if (ncmt == 1) lc.linCmtStan1<var>(g, yp0, kaV, ret);
+    else if (ncmt == 2) lc.linCmtStan2<var>(g, yp0, kaV, ret);
+    else lc.linCmtStan3<var>(g, yp0, kaV, ret);
+    for (int c = 0; c < m; c++) total(c, 0) += ret(c, 0);
+  }
+  for (int k = 0; k < m; k++) fxOut[k] = total(k, 0).val();
+  for (int k = 0; k < m; k++) {
+    double *Jk = Jout + k*RX_LINHYB_MAXP;
+    if (!fullJ && k != oral0) {
+      for (int j = 0; j < npars; j++) Jk[j] = 0.0;
+      continue;
+    }
+    nested.set_zero_all_adjoints();
+    total(k, 0).grad();
+    for (int j = 0; j < npars; j++) Jk[j] = theta(j, 0).adj();
+  }
+}
+
+// Per-subject pre-pass, run once per pass on the subject's first
+// linCmtB() row (ind->ix is sorted by then): the trailing run of observation
+// rows in solve order is the superposition phase.  Engaging is a performance
+// choice only (the filler is exact wherever it runs), so a row the scan
+// cannot see -- a pushed dose, a modeled time -- is simply handled as an
+// ordinary row later.
+static inline void linCmtHybPrepass(rx_solve *rx, rx_solving_options_ind *ind,
+                                    int ncmt, int oral0) {
+  ind->linCmtHybStart = -1;
+  if (rx->linCmtSensStrategy == 1 || rx->ndiff == 0) return;
+  int n = ind->n_all_times;
+  int j = n;
+  while (j > 0 && isObs(getEvid(ind, ind->ix[j-1]))) j--;
+  int nObs = n - j;
+  if (nObs < 1 || j < 1) return;
+  if (rx->linCmtSensStrategy == 2) {
+    ind->linCmtHybStart = j;
+    return;
+  }
+  int m = ncmt + oral0;
+  int nreq = linCmtSensNreq(rx->ndiff, ncmt, oral0);
+  if (m >= 2 && nObs >= rx->linCmtHybridMinObs && nreq >= rx->linCmtHybridMinDirs) {
+    ind->linCmtHybStart = j;
+  }
+}
+
+// Does the hybrid filler take this row?  Only from the subject's pre-pass
+// boundary on, where the sequential AD Jacobian would have been computed,
+// only for a pure linCmt() solve (no ODE integration), and never for the
+// steady-state kernel or a modeled-lag/extra dose (those rows go to the
+// sequential kernel after linCmtHybFlush()).
+static inline bool linCmtHybEngage(rx_solve *rx, rx_solving_options_ind *ind,
+                                   int idx, int ncmt, int oral0) {
+  if (rx->linCmtSensStrategy == 1) return false;
+  if (ind->linCmtHybStart == -2) linCmtHybPrepass(rx, ind, ncmt, oral0);
+  if (ind->linCmtHybStart < 0 || idx < ind->linCmtHybStart || ind->linCmtHybOff) return false;
+  if (rx->ndiff == 0 || ind->linCmtHparIndex >= -1) return false;
+  if (!linCmtSensIsAD(rx->sensType)) return false;
+  if (ind->doSS || ind->linSS != 0 || idx < 0) return false;
+  if (rxEffNeq(ind, rx->op) - rx->op->numLin - rx->op->numLinSens != 0) return false;
+  if (ind->extraDoseN[0] > ind->idxExtra || ind->pendingDosesN[0] > 0) return false;
+  return true;
+}
+
+// The phase-2 state on this thread continues the row before idx.
+static inline bool linCmtHybLive(linB_t &lcb, int id, int idx, double tprior) {
+  return lcb.hybId == id && lcb.hybLastIdx == idx - 1 && lcb.hybLastT == tprior;
+}
+
+static inline void linCmtHybJtoM(const double *J, int m, int npars,
+                                 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &Jm) {
+  Jm.resize(m, npars);
+  for (int k = 0; k < m; k++) {
+    for (int j = 0; j < npars; j++) Jm(k, j) = J[k*RX_LINHYB_MAXP + j];
+  }
+}
+
+// The previous row was filled by the hybrid with only the central Jacobian
+// row; rewrite that row's saved block (a, the state the sequential kernel is
+// about to carry forward) with the full Jacobian from the term list, then
+// drop the phase-2 state.
+static void linCmtHybFlush(linB_t &lcb, rx_solving_options_ind *ind, double *a,
+                           const double *r, int ncmt, int oral0, int trans) {
+  int m = ncmt + oral0;
+  int npars = lcb.lc.getNpars();
+  double fx[RX_LINHYB_MAXM], J[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
+  linCmtHybEval(lcb.lc, lcb.hybTheta, ncmt, oral0, trans, lcb.hybList.data(),
+                (int)lcb.hybList.size(), lcb.hybLastT, fx, J, 1);
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jm;
+  linCmtHybJtoM(J, m, npars, Jm);
+  lcb.lc.setPtr(a, const_cast<double*>(r), a);
+  lcb.lc.saveJac(Jm);
+  lcb.lc.setPtr(a, const_cast<double*>(r), ind->linCmtSave);
+  lcb.hybLastIdx = -1;
+#pragma omp atomic
+  linCmtHybFlushN++;
+}
+
+// Row-at-a-time hybrid filler: produces the row's fx/J and saved block from
+// the per-thread term list instead of the carried Alast.  The list is primed
+// from the buffer's own state (amounts + the sequential kernel's Jacobian at
+// tprior) at the pre-pass boundary and whenever anything other than this
+// filler last wrote the row before -- so the phase-1 end state is the first
+// term, carrying its own sensitivity.  Later rows need no event-table
+// parsing: an amount added since the last fill (a dose the pre-pass did not
+// see, e.g. a pushed one) is a new term, a change in the live rate vector a
+// rate-step term; a rate decrease or the active-term ceiling collapses the
+// list into one primed term (exact, the term carries its Jacobian).
+static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+                         rx_solving_options *op, int id, int idx, double _t,
+                         double *a, const double *r,
+                         int ncmt, int oral0, int trans, const double *thetaD) {
+  stan::math::linCmtStan &lc = lcb.lc;
+  int m = ncmt + oral0;
+  int npars = lc.getNpars();
+  int nRate = op->numLin < m ? op->numLin : m;
+  int ceiling = rx->linCmtHybridMaxActive;
+  if (ceiling < 1) ceiling = 1;
+  double tprior = ind->tprior;
+  std::vector<linHybEntry> &L = lcb.hybList;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jb = lc.restoreJac(a);
+  bool prime = !linCmtHybLive(lcb, id, idx, tprior);
+  if (!prime) {
+    int k0 = lcb.hybFull ? 0 : oral0;
+    int k1 = lcb.hybFull ? m : oral0 + 1;
+    for (int k = k0; k < k1 && !prime; k++) {
+      for (int j = 0; j < npars; j++) {
+        if (Jb(k, j) != lcb.hybLastJ[k*RX_LINHYB_MAXP + j]) { prime = true; break; }
+      }
+    }
+  }
+  linHybEntry e;
+  if (prime) {
+    L.clear();
+    memset(&e, 0, sizeof(linHybEntry));
+    e.t = tprior;
+    for (int k = 0; k < m; k++) {
+      e.amt[k] = a[k];
+      for (int j = 0; j < npars; j++) e.J[k*RX_LINHYB_MAXP + j] = Jb(k, j);
+    }
+    L.push_back(e);
+    for (int c = 0; c < RX_LINHYB_MAXM; c++) lcb.hybPrevRate[c] = 0.0;
+    for (int j = 0; j < npars; j++) lcb.hybTheta[j] = thetaD[j];
+    lcb.hybFull = rx->linCmtBraw ? 1 : 0;
+#pragma omp atomic
+    linCmtHybSubjN++;
+  } else {
+    memset(&e, 0, sizeof(linHybEntry));
+    e.t = tprior;
+    bool any = false;
+    for (int k = 0; k < m; k++) {
+      double d = a[k] - lcb.hybLastFx[k];
+      if (d != 0.0) { e.amt[k] = d; any = true; }
+    }
+    if (any) {
+      L.push_back(e);
+#pragma omp atomic
+      linCmtHybDoseN++;
+    }
+  }
+  // The 2/3-cmt kernels only integrate a POSITIVE rate, so a rate step can
+  // only be added; a decrease (an infusion ending) collapses the list into
+  // one primed term at tprior and restarts from the absolute rate.
+  bool rateUp = false, rateDown = false;
+  for (int c = 0; c < nRate; c++) {
+    double d = r[c] - lcb.hybPrevRate[c];
+    if (d > 0.0) rateUp = true;
+    if (d < 0.0) rateDown = true;
+  }
+  bool consolidate = rateDown || ((int)L.size() + (rateUp ? 1 : 0) > ceiling);
+  if (consolidate) {
+    double fxc[RX_LINHYB_MAXM], Jc[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
+    linCmtHybEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(),
+                  tprior, fxc, Jc, 1);
+    memset(&e, 0, sizeof(linHybEntry));
+    e.t = tprior;
+    for (int k = 0; k < m; k++) {
+      e.amt[k] = fxc[k];
+      for (int j = 0; j < npars; j++) e.J[k*RX_LINHYB_MAXP + j] = Jc[k*RX_LINHYB_MAXP + j];
+    }
+    L.clear();
+    L.push_back(e);
+    for (int c = 0; c < RX_LINHYB_MAXM; c++) lcb.hybPrevRate[c] = 0.0;
+#pragma omp atomic
+    linCmtHybConsN++;
+  }
+  memset(&e, 0, sizeof(linHybEntry));
+  e.t = tprior;
+  e.isRate = 1;
+  bool anyRate = false;
+  for (int c = 0; c < nRate; c++) {
+    double d = r[c] - lcb.hybPrevRate[c];
+    if (d != 0.0) { e.rate[c] = d; anyRate = true; }
+    lcb.hybPrevRate[c] = r[c];
+  }
+  if (anyRate) {
+    L.push_back(e);
+#pragma omp atomic
+    linCmtHybRateN++;
+  }
+  double fxo[RX_LINHYB_MAXM], Jo[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
+  linCmtHybEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(), _t,
+                fxo, Jo, lcb.hybFull);
+  for (int k = 0; k < m; k++) {
+    lcb.fx(k, 0) = fxo[k];
+    for (int j = 0; j < npars; j++) lcb.J(k, j) = Jo[k*RX_LINHYB_MAXP + j];
+  }
+  lc.saveJac(lcb.J);
+  for (int k = 0; k < m; k++) ind->linCmtSave[k] = fxo[k];
+  // remember exactly what the buffer will hand back next row
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Js2 =
+    lc.restoreJac(ind->linCmtSave);
+  for (int k = 0; k < m; k++) {
+    lcb.hybLastFx[k] = fxo[k];
+    for (int j = 0; j < npars; j++) lcb.hybLastJ[k*RX_LINHYB_MAXP + j] = Js2(k, j);
+  }
+  lcb.hybId = id;
+  lcb.hybLastIdx = idx;
+  lcb.hybLastT = _t;
+#pragma omp atomic
+  linCmtHybRowN++;
+  if (lcb.hybFull) {
+#pragma omp atomic
+    linCmtHybFullN++;
+  }
 }
 
 // Alast snapshot returned by linCmtModelDouble().
@@ -1191,7 +1537,8 @@ static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind 
 // the Jacobian.  ind->tprior is the prior solved time, ind->tout the time
 // solved, _t the requested time (with ODE solving not necessarily tout).
 static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
-                                   rx_solving_options *op, int idx, double _t,
+                                   rx_solving_options *op, int id, int idx, double _t,
+                                   double *a, const double *r, int ncmt, int oral0, int trans,
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
   if ((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11) {
@@ -1202,6 +1549,22 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
   }
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
   if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
+    const double *thD = getLinCmtDoubleAddr(lcb, linCmtBaddrTheta);
+    bool live = linCmtHybLive(lcb, id, idx, ind->tprior);
+    if (linCmtHybEngage(rx, ind, idx, ncmt, oral0)) {
+      if (live && memcmp(thD, lcb.hybTheta, lcb.lc.getNpars()*sizeof(double)) != 0) {
+        // theta changed between rows: the superposition terms would mix
+        // two thetas, so hand the rest of the pass to the sequential kernel
+        if (!lcb.hybFull) linCmtHybFlush(lcb, ind, a, r, ncmt, oral0, trans);
+        lcb.hybLastIdx = -1;
+        ind->linCmtHybOff = 1;
+      } else {
+        linCmtHybRow(lcb, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans, thD);
+        return;
+      }
+    } else if (live && !lcb.hybFull) {
+      linCmtHybFlush(lcb, ind, a, r, ncmt, oral0, trans);
+    }
     linCmtBjac(lcb, rx, ind, theta, thetaSens);
     return;
   }
@@ -1267,7 +1630,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   double *a = (ind->linCmtAlast == NULL) ? getAdvan(ind->solvedIdx) : ind->linCmtAlast;
   lcb.lc.setPtr(a, r, ind->linCmtSave);
 
-  linCmtBsolveRow(lcb, rx, ind, op, idx, _t, theta, thetaSens);
+  linCmtBsolveRow(lcb, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans, theta, thetaSens);
   lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
   return lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
 }
