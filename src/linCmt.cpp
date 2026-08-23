@@ -141,6 +141,23 @@ typedef struct {
   double rate[RX_LINHYB_MAXM];
 } linHybEntry;
 
+typedef stan::math::fvar<double> linCmtFv;
+
+// The theta-only constants of the closed form (the elimination constant, or
+// the eigen-decomposition L/C of the 2/3-cmt system, plus ka) and their
+// derivatives in every parameter direction, computed once per phase-2
+// window (theta is constant across it) so that each observation row needs
+// only the dt-dependent tail of the kernel.
+typedef struct {
+  int valid;
+  int ncmt, oral0, trans, npars;
+  double theta[RX_LINHYB_MAXP];
+  double k10, dk10[RX_LINHYB_MAXP];
+  double ka, dka[RX_LINHYB_MAXP];
+  double L[3], dL[RX_LINHYB_MAXP][3];
+  double C[3][3][3], dC[RX_LINHYB_MAXP][3][3][3];
+} linHybWin;
+
 // Global linear compartment B model object
 // Refactored to per-thread vector for thread safety, matching linCmtA pattern.
 typedef struct {
@@ -171,6 +188,8 @@ typedef struct {
   double hybPrevRate[RX_LINHYB_MAXM];
   double hybTheta[RX_LINHYB_MAXP];
   int hybFull = 0;
+  linHybWin hybWin{};
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> hybJb;
 } linB_t;
 
 std::vector<linB_t> __linCmtB;
@@ -251,32 +270,36 @@ static inline void linCmtRevTapeInit() {
 // start of its trailing observation-only run are solved by the sequential
 // kernel (phase 1, whatever linCmtSensType picked); from that row on the
 // per-row amount+Jacobian buffer is filled by superposition over the phase-1
-// end state (phase 2), one reverse-mode nest per row that sweeps only the
-// pred (central) output.  A FOCEi inner model reads only d(cp)/d(theta), so
-// that single sweep replaces one forward pass per requested direction or one
-// adjoint sweep per compartment.
+// end state (phase 2).  Theta is constant across the window, so the
+// theta-only constants of the closed form (k10, or the 2/3-cmt
+// eigen-decomposition, and ka) and their derivatives are taken once per
+// window by forward-mode passes (linCmtHybWinFill) and each row evaluates
+// only the dt-dependent tail of the kernel (linCmtStanNTail) -- no tape, no
+// allocation -- in one forward pass per parameter: a few dozen flops per
+// direction instead of the sequential kernel's full per-row pass (forward:
+// one per requested direction; reverse: one tape build plus a sweep per
+// compartment).
 //
-// Buffer contract for a phase-2 row: amounts for every compartment are exact
-// (plain doubles from the term sum); the Jacobian block holds the central row
-// and, for a model that reads raw rows (rx->linCmtBraw), every row; otherwise
-// the other rows are written as zero.  Nothing downstream reads those rows:
-// d(cp)/d(theta) (getJacCp) uses only the central row, the carry sentinels
-// compute their transition matrix from theta, and any row the SEQUENTIAL
-// kernel takes while the phase-2 state is live (steady state, a modeled-lag
-// or extra dose, a theta change between rows) is preceded by
-// linCmtHybFlush(), which rewrites the previous row's block with the full
-// Jacobian from the term list so the carried state is complete again.
+// Buffer contract for a phase-2 row: amounts and every row of the Jacobian
+// block are exact (the tail yields all compartments).  Any row the
+// SEQUENTIAL kernel takes while the phase-2 state is live (steady state, a
+// modeled-lag or extra dose, a theta change between rows) is preceded by
+// linCmtHybFlush(), which re-evaluates the previous row's block from the
+// term list and drops the phase-2 state; a model that reads raw Jacobian
+// rows (rx->linCmtBraw) is counted separately (fullRows) but needs nothing
+// extra.
 
 static int linCmtHybSubjN = 0, linCmtHybRowN = 0, linCmtHybDoseN = 0,
   linCmtHybRateN = 0, linCmtHybConsN = 0, linCmtHybFlushN = 0,
-  linCmtHybFullN = 0;
+  linCmtHybFullN = 0, linCmtHybWinN = 0;
 
 //' Read (and optionally reset) the linCmt() hybrid-strategy counters
 //'
 //' @param reset logical; when TRUE zero the counters after reading
 //' @return named integer vector: subjects (phase-2 primes), rows (phase-2
 //'   rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
-//'   the sequential kernel), fullRows (rows swept for every Jacobian row)
+//'   the sequential kernel), fullRows (rows of a model that reads raw
+//'   Jacobian rows), windows (window-constant recomputations)
 //' @keywords internal
 //' @export
 //[[Rcpp::export]]
@@ -287,72 +310,153 @@ IntegerVector linCmtHybStats(bool reset = false) {
                                           _["rateSteps"] = linCmtHybRateN,
                                           _["consolidations"] = linCmtHybConsN,
                                           _["flushes"] = linCmtHybFlushN,
-                                          _["fullRows"] = linCmtHybFullN);
+                                          _["fullRows"] = linCmtHybFullN,
+                                          _["windows"] = linCmtHybWinN);
   if (reset) {
     linCmtHybSubjN = linCmtHybRowN = linCmtHybDoseN = linCmtHybRateN =
-      linCmtHybConsN = linCmtHybFlushN = linCmtHybFullN = 0;
+      linCmtHybConsN = linCmtHybFlushN = linCmtHybFullN = linCmtHybWinN = 0;
   }
   return r;
 }
 
-// Value and Jacobian of the superposition of terms e[0..n) at tEval, by one
-// reverse-mode nest (every var lives inside it, so the tape is empty between
-// calls).  An amount term enters as A0 + J0*(theta - theta0): exact in value
-// and, because the kernel is linear in its initial state, in gradient.  With
-// fullJ == 0 only the central row (oral0) is swept; the other rows of Jout
-// are zero.
-static void linCmtHybEval(stan::math::linCmtStan &lc, const double *thetaD,
-                          int ncmt, int oral0, int trans,
-                          const linHybEntry *e, int n, double tEval,
-                          double *fxOut, double *Jout, int fullJ) {
-  typedef stan::math::var var;
+// Window constants and their derivative in each parameter direction, by
+// npars forward-mode passes through macros2micros and the
+// eigen-decomposition (once per window; the per-row cost is in the tail).
+static void linCmtHybWinFill(stan::math::linCmtStan &lc, linHybWin &w,
+                             const double *thetaD, int ncmt, int oral0, int trans) {
   int npars = lc.getNpars();
-  int m = ncmt + oral0;
-  double zeroRate[RX_LINHYB_MAXM] = {0.0, 0.0, 0.0, 0.0};
-  linCmtRevTapeInit();
-  stan::math::nested_rev_autodiff nested;
-  Eigen::Matrix<var, Eigen::Dynamic, 1> theta(npars);
-  for (int j = 0; j < npars; j++) theta(j, 0) = thetaD[j];
-  Eigen::Matrix<var, Eigen::Dynamic, 2> g =
-    stan::math::macros2micros(theta, ncmt, trans);
-  var kaV = 0.0;
-  if (oral0) kaV = theta(ncmt*2, 0);
-  Eigen::Matrix<var, Eigen::Dynamic, 1> total =
-    Eigen::Matrix<var, Eigen::Dynamic, 1>::Zero(m);
-  Eigen::Matrix<var, Eigen::Dynamic, 1> yp0(m), ret(m);
-  for (int i = 0; i < n; i++) {
-    double dt = tEval - e[i].t;
-    if (dt < 0.0) dt = 0.0;
-    lc.setDt(dt);
-    if (e[i].isRate) {
-      lc.setRate(const_cast<double*>(e[i].rate));
-      for (int c = 0; c < m; c++) yp0(c, 0) = 0.0;
-    } else {
-      lc.setRate(zeroRate);
-      for (int c = 0; c < m; c++) {
-        var v = e[i].amt[c];
-        const double *Jc = e[i].J + c*RX_LINHYB_MAXP;
-        for (int j = 0; j < npars; j++) {
-          if (Jc[j] != 0.0) v += Jc[j] * (theta(j, 0) - thetaD[j]);
+  w.ncmt = ncmt; w.oral0 = oral0; w.trans = trans; w.npars = npars;
+  for (int j = 0; j < npars; j++) w.theta[j] = thetaD[j];
+  Eigen::Matrix<linCmtFv, Eigen::Dynamic, 1> thetaF(npars);
+  for (int j = 0; j < npars; j++) {
+    for (int i = 0; i < npars; i++) thetaF(i, 0) = linCmtFv(thetaD[i], i == j ? 1.0 : 0.0);
+    Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> gF =
+      stan::math::macros2micros(thetaF, ncmt, trans);
+    linCmtFv kaV = oral0 ? thetaF(ncmt*2, 0) : linCmtFv(0.0, 0.0);
+    w.dka[j] = kaV.d_;
+    if (j == 0) w.ka = kaV.val_;
+    if (ncmt == 1) {
+      w.dk10[j] = gF(0, 1).d_;
+      if (j == 0) w.k10 = gF(0, 1).val_;
+    } else if (ncmt == 2) {
+      stan::math::solComp2struct<linCmtFv> s =
+        stan::math::computeSolComp2(gF(0, 1), gF(1, 0), gF(1, 1));
+      for (int i = 0; i < 2; i++) {
+        w.dL[j][i] = s.L(i, 0).d_;
+        if (j == 0) w.L[i] = s.L(i, 0).val_;
+        for (int r = 0; r < 2; r++) {
+          w.dC[j][0][r][i] = s.C1(r, i).d_;
+          w.dC[j][1][r][i] = s.C2(r, i).d_;
+          if (j == 0) {
+            w.C[0][r][i] = s.C1(r, i).val_;
+            w.C[1][r][i] = s.C2(r, i).val_;
+          }
         }
-        yp0(c, 0) = v;
+      }
+    } else {
+      stan::math::solComp3struct<linCmtFv> s =
+        stan::math::computeSolComp3(gF(0, 1), gF(1, 0), gF(1, 1), gF(2, 0), gF(2, 1));
+      for (int i = 0; i < 3; i++) {
+        w.dL[j][i] = s.L(i, 0).d_;
+        if (j == 0) w.L[i] = s.L(i, 0).val_;
+        for (int r = 0; r < 3; r++) {
+          w.dC[j][0][r][i] = s.C1(r, i).d_;
+          w.dC[j][1][r][i] = s.C2(r, i).d_;
+          w.dC[j][2][r][i] = s.C3(r, i).d_;
+          if (j == 0) {
+            w.C[0][r][i] = s.C1(r, i).val_;
+            w.C[1][r][i] = s.C2(r, i).val_;
+            w.C[2][r][i] = s.C3(r, i).val_;
+          }
+        }
       }
     }
-    if (ncmt == 1) lc.linCmtStan1<var>(g, yp0, kaV, ret);
-    else if (ncmt == 2) lc.linCmtStan2<var>(g, yp0, kaV, ret);
-    else lc.linCmtStan3<var>(g, yp0, kaV, ret);
-    for (int c = 0; c < m; c++) total(c, 0) += ret(c, 0);
   }
-  for (int k = 0; k < m; k++) fxOut[k] = total(k, 0).val();
-  for (int k = 0; k < m; k++) {
-    double *Jk = Jout + k*RX_LINHYB_MAXP;
-    if (!fullJ && k != oral0) {
-      for (int j = 0; j < npars; j++) Jk[j] = 0.0;
+  w.valid = 1;
+#pragma omp atomic
+  linCmtHybWinN++;
+}
+
+// Value and full Jacobian of the superposition of terms e[0..n) at tEval:
+// one forward-mode pass per parameter through the kernel tail, with the
+// window constants' tangents seeded from linCmtHybWinFill.  An amount term
+// enters as A0 + J0*(theta - theta0): exact in value and, because the
+// kernel is linear in its initial state, in gradient -- its tangent in
+// direction j is J0's column j.  Nothing here allocates.
+static void linCmtHybEval(stan::math::linCmtStan &lc, linHybWin &w,
+                          const double *thetaD,
+                          int ncmt, int oral0, int trans,
+                          const linHybEntry *e, int n, double tEval,
+                          double *fxOut, double *Jout) {
+  int npars = lc.getNpars();
+  int m = ncmt + oral0;
+  if (!w.valid || w.ncmt != ncmt || w.oral0 != oral0 || w.trans != trans ||
+      w.npars != npars || memcmp(w.theta, thetaD, npars*sizeof(double)) != 0) {
+    linCmtHybWinFill(lc, w, thetaD, ncmt, oral0, trans);
+  }
+  double zeroRate[RX_LINHYB_MAXM] = {0.0, 0.0, 0.0, 0.0};
+  // Only the requested directions are differentiated (column j <-> numDiff_
+  // bit, same order as updateJfromJs: p1, v1, p2..p5, ka last); a column
+  // nobody asked for is a finite 0, as on the sequential path.
+  int nd = lc.numDiff_;
+  if (nd == 0) nd = 127;
+  int want[RX_LINHYB_MAXP];
+  for (int j = 0; j < npars; j++) {
+    int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
+    want[j] = (nd & bit) != 0;
+  }
+  bool first = true;
+  for (int j = 0; j < npars; j++) {
+    if (!want[j]) {
+      for (int k = 0; k < m; k++) Jout[k*RX_LINHYB_MAXP + j] = 0.0;
       continue;
     }
-    nested.set_zero_all_adjoints();
-    total(k, 0).grad();
-    for (int j = 0; j < npars; j++) Jk[j] = theta(j, 0).adj();
+    linCmtFv total[RX_LINHYB_MAXM], yp[RX_LINHYB_MAXM], ret[RX_LINHYB_MAXM];
+    for (int c = 0; c < RX_LINHYB_MAXM; c++) total[c] = linCmtFv(0.0, 0.0);
+    linCmtFv kaV(w.ka, w.dka[j]);
+    linCmtFv k10(w.k10, w.dk10[j]);
+    stan::math::solComp2struct<linCmtFv> s2;
+    stan::math::solComp3struct<linCmtFv> s3;
+    if (ncmt == 2) {
+      for (int i = 0; i < 2; i++) {
+        s2.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 2; r++) {
+          s2.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s2.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+        }
+      }
+    } else if (ncmt == 3) {
+      for (int i = 0; i < 3; i++) {
+        s3.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 3; r++) {
+          s3.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s3.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+          s3.C3(r, i) = linCmtFv(w.C[2][r][i], w.dC[j][2][r][i]);
+        }
+      }
+    }
+    for (int i = 0; i < n; i++) {
+      double dt = tEval - e[i].t;
+      if (dt < 0.0) dt = 0.0;
+      lc.setDt(dt);
+      if (e[i].isRate) {
+        lc.setRate(const_cast<double*>(e[i].rate));
+        for (int c = 0; c < m; c++) yp[c] = linCmtFv(0.0, 0.0);
+      } else {
+        lc.setRate(zeroRate);
+        for (int c = 0; c < m; c++) yp[c] = linCmtFv(e[i].amt[c], e[i].J[c*RX_LINHYB_MAXP + j]);
+      }
+      for (int c = 0; c < RX_LINHYB_MAXM; c++) ret[c] = linCmtFv(0.0, 0.0);
+      if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret);
+      else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret);
+      else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret);
+      for (int c = 0; c < m; c++) total[c] += ret[c];
+    }
+    for (int k = 0; k < m; k++) {
+      if (first) fxOut[k] = total[k].val_;
+      Jout[k*RX_LINHYB_MAXP + j] = total[k].d_;
+    }
+    first = false;
   }
 }
 
@@ -421,8 +525,8 @@ static void linCmtHybFlush(linB_t &lcb, rx_solving_options_ind *ind, double *a,
   int m = ncmt + oral0;
   int npars = lcb.lc.getNpars();
   double fx[RX_LINHYB_MAXM], J[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
-  linCmtHybEval(lcb.lc, lcb.hybTheta, ncmt, oral0, trans, lcb.hybList.data(),
-                (int)lcb.hybList.size(), lcb.hybLastT, fx, J, 1);
+  linCmtHybEval(lcb.lc, lcb.hybWin, lcb.hybTheta, ncmt, oral0, trans,
+                lcb.hybList.data(), (int)lcb.hybList.size(), lcb.hybLastT, fx, J);
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jm;
   linCmtHybJtoM(J, m, npars, Jm);
   lcb.lc.setPtr(a, const_cast<double*>(r), a);
@@ -460,7 +564,8 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   // re-evaluate it (re-priming from the buffer would read this row's own
   // pred-only block as the carried state).
   bool again = lcb.hybId == id && lcb.hybLastIdx == idx && lcb.hybLastT == _t;
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jb = lc.restoreJac(a);
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &Jb = lcb.hybJb;
+  lc.restoreJacTo(a, Jb);
   bool prime = !again && !linCmtHybLive(lcb, id, idx, tprior);
   if (!prime) {
     int k0 = lcb.hybFull ? 0 : oral0;
@@ -514,8 +619,8 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   bool consolidate = !again && (rateDown || ((int)L.size() + (rateUp ? 1 : 0) > ceiling));
   if (consolidate) {
     double fxc[RX_LINHYB_MAXM], Jc[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
-    linCmtHybEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(),
-                  tprior, fxc, Jc, 1);
+    linCmtHybEval(lc, lcb.hybWin, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(),
+                  tprior, fxc, Jc);
     memset(&e, 0, sizeof(linHybEntry));
     e.t = tprior;
     for (int k = 0; k < m; k++) {
@@ -543,8 +648,8 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
     linCmtHybRateN++;
   }
   double fxo[RX_LINHYB_MAXM], Jo[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
-  linCmtHybEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(), _t,
-                fxo, Jo, lcb.hybFull);
+  linCmtHybEval(lc, lcb.hybWin, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(), _t,
+                fxo, Jo);
   for (int k = 0; k < m; k++) {
     lcb.fx(k, 0) = fxo[k];
     for (int j = 0; j < npars; j++) lcb.J(k, j) = Jo[k*RX_LINHYB_MAXP + j];
@@ -552,11 +657,10 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   lc.saveJac(lcb.J);
   for (int k = 0; k < m; k++) ind->linCmtSave[k] = fxo[k];
   // remember exactly what the buffer will hand back next row
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Js2 =
-    lc.restoreJac(ind->linCmtSave);
+  lc.restoreJacTo(ind->linCmtSave, Jb);
   for (int k = 0; k < m; k++) {
     lcb.hybLastFx[k] = fxo[k];
-    for (int j = 0; j < npars; j++) lcb.hybLastJ[k*RX_LINHYB_MAXP + j] = Js2(k, j);
+    for (int j = 0; j < npars; j++) lcb.hybLastJ[k*RX_LINHYB_MAXP + j] = Jb(k, j);
   }
   lcb.hybId = id;
   lcb.hybLastIdx = idx;
@@ -1520,16 +1624,17 @@ static inline void linCmtBfdJac(linB_t &lcb, int kind, double *linH,
 // The row's Jacobian by rx->sensType: a finite-difference family, reverse-
 // mode AD (31), or forward-mode AD (3/30 and anything unspecified).
 static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+                              int sensType,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
-  if (rx->sensType >= 0 && rx->sensType < RX_LINCMTB_SENS_SEEN) {
+  if (sensType >= 0 && sensType < RX_LINCMTB_SENS_SEEN) {
 #pragma omp atomic write
-    linCmtBSensSeen[rx->sensType] = 1;
+    linCmtBSensSeen[sensType] = 1;
   }
-  int kind = linCmtBfdKind(rx->sensType);
+  int kind = linCmtBfdKind(sensType);
   if (kind != 0) {
     linCmtBfdJac(lcb, kind, ind->linH, theta, thetaSens);
-  } else if (rx->sensType == 31) {
+  } else if (sensType == 31) {
     linCmtRevTapeInit();
     stan::math::jacobian(lcb.lc, thetaSens, lcb.fx, lcb.Js);
   } else {
@@ -1580,7 +1685,12 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
     } else if (live && !lcb.hybFull) {
       linCmtHybFlush(lcb, ind, a, r, ncmt, oral0, trans);
     }
-    linCmtBjac(lcb, rx, ind, theta, thetaSens);
+    // A hybrid subject's dose phase is rolled through in forward mode (one
+    // pass per requested direction) -- the strategy's cost model; reverse
+    // mode's per-row tape is only worth it for a long sequential run.
+    int sensType = rx->sensType;
+    if (ind->linCmtHybStart >= 0 && sensType == 31) sensType = 3;
+    linCmtBjac(lcb, rx, ind, sensType, theta, thetaSens);
     return;
   }
   if (rx->ndiff != 0 && ind->linCmtHparIndex >= 0) {

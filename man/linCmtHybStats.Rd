@@ -12,7 +12,8 @@ linCmtHybStats(reset = FALSE)
 \value{
 named integer vector: subjects (phase-2 primes), rows (phase-2
 rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
-the sequential kernel), fullRows (rows swept for every Jacobian row)
+the sequential kernel), fullRows (rows of a model that reads raw
+Jacobian rows), windows (window-constant recomputations)
 }
 \description{
 Read (and optionally reset) the linCmt() hybrid-strategy counters

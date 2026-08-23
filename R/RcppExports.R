@@ -354,7 +354,8 @@ convertId_ <- function(x) {
 #' @param reset logical; when TRUE zero the counters after reading
 #' @return named integer vector: subjects (phase-2 primes), rows (phase-2
 #'   rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
-#'   the sequential kernel), fullRows (rows swept for every Jacobian row)
+#'   the sequential kernel), fullRows (rows of a model that reads raw
+#'   Jacobian rows), windows (window-constant recomputations)
 #' @keywords internal
 #' @export
 linCmtHybStats <- function(reset = FALSE) {
