@@ -107,6 +107,7 @@ lhs symbols?
   int ncmt;
   int linB;
   int ndiff; // flag of the linCmtB derivatives requested
+  int linCmtBraw; // model reads raw linCmtB amount-Jacobian rows (which1 >= 0)
   // curPropN
   int curPropN;
   int depotN;

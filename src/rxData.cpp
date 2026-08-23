@@ -6274,6 +6274,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->sensType = linCmtSensResolveAuto(rx->sensType, rx->ndiff,
                                          INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ncmt],
                                          INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ka]);
+    rx->linCmtSensStrategy = asInt(rxControl[Rxc_linCmtSensStrategy],
+                                   "linCmtSensStrategy");
+    rx->linCmtHybridMinObs = asInt(rxControl[Rxc_linCmtHybridMinObs],
+                                   "linCmtHybridMinObs");
+    rx->linCmtHybridMinDirs = asInt(rxControl[Rxc_linCmtHybridMinDirs],
+                                    "linCmtHybridMinDirs");
+    rx->linCmtHybridMaxActive = asInt(rxControl[Rxc_linCmtHybridMaxActive],
+                                      "linCmtHybridMaxActive");
+    // flag 16 only exists in model variables parsed by this version
+    rx->linCmtBraw = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtBraw) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtBraw] : 1;
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");

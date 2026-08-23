@@ -418,6 +418,15 @@ struct rx_solving_options_ind_s {
   // 2 = variation seen (slow path for the rest of the pass).
   double linCmtCarryPrevTheta[7];
   int linCmtCarryVarying;
+  // Hybrid linCmt() sensitivity strategy (rxControl(linCmtSensStrategy)):
+  // the solve-order row index where this subject's trailing
+  // observation-only run starts (-1 = the strategy does not engage for this
+  // subject), chosen by the O(n) pre-pass in iniSubject(); rows from there
+  // on are filled by superposition over the phase-1 end state.  linCmtHybOff
+  // is set when the filler has to hand the rest of the pass back to the
+  // sequential kernel (theta changed between rows).  Both reset per pass.
+  int linCmtHybStart;
+  int linCmtHybOff;
   // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
   // compartments.  At a modeled-lag dose the sensitivity of a compartment that
   // does NOT receive the bolus has a genuine jump discontinuity at the arrival
@@ -486,6 +495,15 @@ typedef struct rx_solve_s {
   int ndiff;
   int sensType;
   double sensH;
+  // linCmt() per-subject sensitivity strategy: 0=auto, 1=sequential,
+  // 2=hybrid; the engage thresholds for auto; and whether the model reads
+  // raw amount-Jacobian rows (linCmtB(which1 >= 0, which2 >= 0)), which
+  // makes the hybrid filler keep every Jacobian row instead of only pred's.
+  int linCmtSensStrategy;
+  int linCmtHybridMinObs;
+  int linCmtHybridMinDirs;
+  int linCmtHybridMaxActive;
+  int linCmtBraw;
   int linB;
 
   // flag to determine if the linear compartment model has first order

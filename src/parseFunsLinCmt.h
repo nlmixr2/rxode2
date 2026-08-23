@@ -212,6 +212,7 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
         // the solve computes no Jacobian, and the read restores zeros.
         // Column order matches linCmtFillTheta: p1, v1[, p2, p3[, p4, p5]]
         // then ka at 2*ncmt when oral.
+        tb.linCmtBraw = 1;
         if (tb.hasKa && which2 == 2*tb.ncmt) {
           addLinCmtBdiff(diffKa);
         } else if (which2 == 0) {
