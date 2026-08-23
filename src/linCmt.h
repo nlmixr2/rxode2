@@ -690,6 +690,12 @@ namespace stan {
         int nd = numDiff_;
         if (nd == 0) nd = 127; // all terms
         int i = 0, j=0;
+        // A column nobody requested is never differentiated, but saveJac()
+        // carries every column into the next row's Alast reconstruction
+        // (AlastA = A - J*theta), so it must be a finite 0 there -- the
+        // NA the slot starts with would poison the carried state (seen as
+        // an all-NA solve after a steady-state row under a partial mask).
+        J.setZero();
 
         switch (ncmt_) {
         case 1: {
