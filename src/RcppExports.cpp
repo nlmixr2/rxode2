@@ -615,6 +615,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtCarrySentinelMax
+IntegerVector linCmtCarrySentinelMax();
+RcppExport SEXP _rxode2_linCmtCarrySentinelMax() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(linCmtCarrySentinelMax());
+    return rcpp_result_gen;
+END_RCPP
+}
 // linCmtCarryFastStats
 NumericVector linCmtCarryFastStats(bool reset);
 RcppExport SEXP _rxode2_linCmtCarryFastStats(SEXP resetSEXP) {

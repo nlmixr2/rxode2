@@ -425,6 +425,7 @@ SEXP _rxode2_linCmtCarryLiveTest(SEXP, SEXP, SEXP, SEXP, SEXP,
                                  SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_linCmtCarrySetFast(SEXP);
+SEXP _rxode2_linCmtCarrySentinelMax(void);
 SEXP _rxode2_linCmtCarryFastStats(SEXP);
 
 SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -879,6 +880,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_linCmtBSensTypesSeen", (DL_FUNC) &_rxode2_linCmtBSensTypesSeen, 1},
     {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},
     {"_rxode2_linCmtCarrySetFast", (DL_FUNC) &_rxode2_linCmtCarrySetFast, 1},
+    {"_rxode2_linCmtCarrySentinelMax", (DL_FUNC) &_rxode2_linCmtCarrySentinelMax, 0},
     {"_rxode2_linCmtCarryFastStats", (DL_FUNC) &_rxode2_linCmtCarryFastStats, 1},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},

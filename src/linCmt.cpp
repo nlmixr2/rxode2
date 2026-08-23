@@ -841,6 +841,18 @@ LogicalVector linCmtCarrySetFast(bool enable) {
   return LogicalVector::create(prev);
 }
 
+//' Highest carry sentinel `linCmtB(which1 = -k)` this build understands
+//'
+//' nlmixr2est gates its carry codegen on this: `-8` (the fast-path pin an
+//' event-modifier jump needs) is only emitted when the loaded rxode2 has it.
+//' @return integer, the magnitude of the most negative carry sentinel
+//' @keywords internal
+//' @export
+// [[Rcpp::export]]
+IntegerVector linCmtCarrySentinelMax() {
+  return IntegerVector::create(8L);
+}
+
 //' Read (and optionally reset) the linCmt() carry-advance fast-path counters
 //'
 //' @param reset logical; when TRUE zero the counters after reading
@@ -1562,6 +1574,12 @@ static inline bool linCmtBquery(linB_t &lcb, rx_solve *rx, rx_solving_options_in
                              p1, v1, p2, p3, p4, p5, ka);
   } else if (which1 == -7) {
     *out = linCmtBcarryAdd(ind, ncmt, oral0, which2, p2);
+  } else if (which1 == -8) {
+    // Pin this subject's pass to the full -5 advance: a caller feeding -7
+    // a contribution that does not telescope (an event jump) must not have
+    // the constant-theta fast path skip the M products that propagate it.
+    ind->linCmtCarryVarying = 2;
+    *out = 0.0;
   } else if (which1 == -5 || which1 == -6) {
     *out = linCmtBcarryAdvance(lcb, rx, ind, op, idx, _t, ncmt, oral0, which1, which2,
                                trans, p1, v1, p2, p3, p4, p5, ka);

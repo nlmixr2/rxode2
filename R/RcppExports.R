@@ -376,6 +376,17 @@ linCmtCarrySetFast <- function(enable) {
     .Call(`_rxode2_linCmtCarrySetFast`, enable)
 }
 
+#' Highest carry sentinel `linCmtB(which1 = -k)` this build understands
+#'
+#' nlmixr2est gates its carry codegen on this: `-8` (the fast-path pin an
+#' event-modifier jump needs) is only emitted when the loaded rxode2 has it.
+#' @return integer, the magnitude of the most negative carry sentinel
+#' @keywords internal
+#' @export
+linCmtCarrySentinelMax <- function() {
+    .Call(`_rxode2_linCmtCarrySentinelMax`)
+}
+
 #' Read (and optionally reset) the linCmt() carry-advance fast-path counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading

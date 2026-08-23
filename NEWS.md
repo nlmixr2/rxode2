@@ -639,9 +639,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   rejected as an unknown read, which left that column unfilled.
 
 - `linCmtB()` gained internal per-subject sensitivity-carry sentinels
-  (`which1 = -4` to `-7`) that nlmixr2est uses to keep a `linCmt()` eta
+  (`which1 = -4` to `-8`) that nlmixr2est uses to keep a `linCmt()` eta
   gradient exact when a time-varying covariate makes a parameter differ
-  between rows; they are not reached by a model that does not request them.
+  between rows (`-8` pins a subject's pass to the full transition advance so
+  an event-modifier jump fed to `-7` is propagated); they are not reached by
+  a model that does not request them.
 
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read
