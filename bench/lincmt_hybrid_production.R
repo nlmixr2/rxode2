@@ -160,6 +160,7 @@ check <- function(label, ok) {
 .part <- Sys.getenv("RX_HYB_BENCH", "")
 .doValidate <- .part != "bench"
 .doBench <- .part != "validate"
+nThr <- getRxThreads()
 
 ## ---- A: configs x regimens x k -------------------------------------------
 if (.doValidate) {
@@ -191,7 +192,6 @@ for (cfg in .cfgs[c(2, 4, 6)]) {
 
 ## ---- D: threads ------------------------------------------------------------
 cat("== D: threaded multi-subject solve vs single thread ==\n")
-nThr <- getRxThreads()
 for (cfg in .cfgs[c(3, 6)]) {
   m <- .gradModel(cfg, 3L)
   ev <- .evMixed(nSub = 24L)
