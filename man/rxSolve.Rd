@@ -160,6 +160,10 @@ rxSolve(
     "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
+  linCmtSensStrategy = c("auto", "sequential", "hybrid"),
+  linCmtHybridMinObs = 2L,
+  linCmtHybridMinDirs = 3L,
+  linCmtHybridMaxActive = 30L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1386,7 +1390,37 @@ determined by the shi 2021 optimization for central differences
 
 \item{linCmtSensH}{The step size for the forward and central
 differences when using the option \code{centralH}, \code{forwardH},
-\code{foward3H} or \code{endpoint5H} options.
+\code{foward3H} or \code{endpoint5H} options.}
+
+\item{linCmtSensStrategy}{How a subject's \code{linCmt()} sensitivities are
+evaluated row by row: \code{"sequential"} carries the state from row to row
+and differentiates every row with \code{linCmtSensType}; \code{"hybrid"} does
+that up to the subject's trailing run of observation rows and then
+evaluates those rows as a superposition over the carried state, with
+one reverse-mode sweep per row that covers only the concentration
+(exact for the \code{d(cp)/d(theta)} an estimation method reads);
+\code{"auto"} (the default) uses \code{"hybrid"} for a subject only when the
+trailing observation run is at least \code{linCmtHybridMinObs} rows, the
+model requests at least \code{linCmtHybridMinDirs} directions and the
+solution has at least two compartments (depot included), and
+\code{"sequential"} otherwise.  Measured through the solver, the hybrid
+rows cost about the same as the sequential ones with two requested
+directions and 1.1-1.3x less with three, so the default threshold is
+three.  Results agree to round-off either way; a subject whose
+steady-state infusion or modeled lag leaves doses pending stays
+sequential.}
+
+\item{linCmtHybridMinObs}{For \code{linCmtSensStrategy="auto"}, the smallest
+trailing observation run for which the hybrid evaluation is used.}
+
+\item{linCmtHybridMinDirs}{For \code{linCmtSensStrategy="auto"}, the smallest
+number of requested sensitivity directions for which the hybrid
+evaluation is used.}
+
+\item{linCmtHybridMaxActive}{The largest number of superposition terms a
+subject's observation phase keeps before they are collapsed into one
+term (exact; bounds the per-row cost when doses keep arriving during
+that phase).
 #'}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that

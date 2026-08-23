@@ -29,6 +29,24 @@
   Every solve path resolves the same way (`rxSolve()`, threaded solves,
   `ind_solve()` and `linCmtModelDouble()`).
 
+- `rxSolve(linCmtSensStrategy=)` adds a per-subject hybrid evaluation of the
+  `linCmt()` sensitivities.  A subject's rows up to its trailing run of
+  observations are solved as before; those observation rows are then
+  evaluated as a superposition over the carried state with one reverse-mode
+  sweep per row covering only the concentration, which is what an
+  estimation method reads.  `"auto"` (the default) engages it for a subject
+  when the trailing run has at least `linCmtHybridMinObs` rows, the model
+  requests at least `linCmtHybridMinDirs` directions (three by default,
+  where the measured gain is 1.1-1.3x; with two directions the rows cost
+  about the same) and the solution has at least two compartments;
+  `"sequential"` turns it off and `"hybrid"` forces it.  Results agree with
+  the sequential evaluation to round-off, including steady-state rows,
+  infusions and a model that reads raw Jacobian rows (which then gets every
+  row); a subject with a pending steady-state infusion turn-off or modeled
+  lag stays sequential.  `linCmtHybStats()` reports how many subjects and
+  rows took the hybrid path.
+
+
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
@@ -597,6 +615,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   matching `sigma` code already guarded this.
 
 ### Sensitivities
+
+- A model reading only some `linCmtB()` sensitivity directions (a FOCEi inner
+  model with fewer etas than `linCmt()` parameters) solved every row as `NA`
+  after a steady-state dose: the Jacobian columns nobody requested were
+  carried into the next row's state reconstruction as the `NA` the buffer
+  starts with, instead of zero.
 
 - A 3-compartment oral `linCmt()` model whose depot amount goes negative (a
   negative dose larger than what is left in the depot) no longer drops the
