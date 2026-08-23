@@ -61,7 +61,10 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which2 = toInt(v2+1);
 
-      if (which2 == -2) {
+      if (which2 == -2 && which1 >= 0 && which1 < tb.ncmt + tb.hasKa) {
+        // Amount read for compartment which1 (linCmtBread's fx case): no
+        // derivative column is requested, nothing to register.
+      } else if (which2 == -2) {
         // amounts in function are returned
 
         // which1 is the compartment number, but it includes the
