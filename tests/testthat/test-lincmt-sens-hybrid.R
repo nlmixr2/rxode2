@@ -161,6 +161,61 @@ rxTest({
     expect_true(st[["rows"]] > 0L)
   })
 
+  test_that("phase-2 state never leaks into a later solve with the same row layout", {
+    # an earlier hybrid solve leaves per-thread state whose (id, idx, tprior)
+    # can coincide with the next solve's rows; it must be dropped at the
+    # start of every subject's pass
+    mA <- .gradModel(1L, 1L, 0:2)
+    mB <- .gradModel(1L, 1L, 0:2)
+    ev <- data.frame(id = 1, time = c(0, 0.5, 1, 2, 4, 8, 12, 24),
+                     amt = c(100, rep(0, 7)), evid = c(1, rep(0, 7)), cmt = 1,
+                     rate = 0, ii = 0, ss = 0)
+    pA <- .parsFor(1L, 1L)
+    pB <- pA * c(cl = 0.5, v = 1.4, q = 1, vp = 1, q2 = 1, vp2 = 1, ka = 2)
+    refB <- rxSolve(mB, params = pB, events = ev, returnType = "data.frame",
+                    linCmtSensStrategy = "sequential")
+    for (stB in c("hybrid", "sequential", "auto")) {
+      rxSolve(mA, params = pA, events = ev, returnType = "data.frame",
+              linCmtSensStrategy = "hybrid")
+      b <- rxSolve(mB, params = pB, events = ev, returnType = "data.frame",
+                   linCmtSensStrategy = stB)
+      expect_true(.cmp(b, refB) < 1e-9)
+    }
+  })
+
+  test_that("several linCmtB(-1, -1) calls per row stay on the row's own terms", {
+    # a generated inner model calls the value several times per row (pred,
+    # r, their sensitivities); the second call must not re-prime from the
+    # row's own pred-only block
+    lin <- rxode2({
+      rx_expr_3 ~ exp(ETA[1] + THETA[1])
+      rx_expr_4 ~ exp(ETA[2] + THETA[2])
+      rx_expr_5 ~ exp(ETA[3] + THETA[3])
+      rx_pred_ = linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+      s1 = rx_expr_3 * linCmtB(rx__PTR__, t, 2, 1, 1, -2, 0, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+      s2 = rx_expr_4 * linCmtB(rx__PTR__, t, 2, 1, 1, -2, 1, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+      s3 = rx_expr_5 * linCmtB(rx__PTR__, t, 2, 1, 1, -2, 2, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+      rx_r_ = Rx_pow_di((linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5) * THETA[4]), 2)
+      r3 = 2 * rx_expr_5 * linCmtB(rx__PTR__, t, 2, 1, 1, -2, 2, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5) * (linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, rx_expr_3, rx_expr_4, 0, 0, 0, 0, rx_expr_5) * THETA[4]) * THETA[4]
+      cmt(rxLinCmt)
+    })
+    ev <- et(amt = 100) |> et(c(0.5, 1, 2, 4, 8, 12, 24))
+    params <- data.frame("THETA[1]" = log(4), "THETA[2]" = log(70), "THETA[3]" = log(1),
+                         "THETA[4]" = 0.1, "ETA[1]" = 0.1, "ETA[2]" = -0.1, "ETA[3]" = 0.05,
+                         check.names = FALSE)
+    ref <- rxSolve(lin, params = params, events = ev, linCmtSensStrategy = "sequential",
+                   returnType = "data.frame")
+    invisible(.stats())
+    hyb <- rxSolve(lin, params = params, events = ev, linCmtSensStrategy = "auto",
+                   returnType = "data.frame")
+    st <- .stats()
+    expect_equal(st[["rows"]], 7L)
+    expect_equal(st[["subjects"]], 1L)
+    for (cc in c("rx_pred_", "s1", "s2", "s3", "rx_r_", "r3")) {
+      expect_equal(hyb[[cc]], ref[[cc]], tolerance = 1e-9)
+    }
+  })
+
   test_that("threads match single thread and the sequential reference", {
     m <- .gradModel(3L, 1L, 0:2)
     ev <- .evDoseThenObs(nSub = 24L)

@@ -390,7 +390,6 @@ static inline void linCmtHybPrepass(rx_solve *rx, rx_solving_options_ind *ind,
 static inline bool linCmtHybEngage(rx_solve *rx, rx_solving_options_ind *ind,
                                    int idx, int ncmt, int oral0) {
   if (rx->linCmtSensStrategy == 1) return false;
-  if (ind->linCmtHybStart == -2) linCmtHybPrepass(rx, ind, ncmt, oral0);
   if (ind->linCmtHybStart < 0 || idx < ind->linCmtHybStart || ind->linCmtHybOff) return false;
   if (rx->ndiff == 0 || ind->linCmtHparIndex >= -1) return false;
   if (!linCmtSensIsAD(rx->sensType)) return false;
@@ -456,8 +455,13 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   if (ceiling < 1) ceiling = 1;
   double tprior = ind->tprior;
   std::vector<linHybEntry> &L = lcb.hybList;
+  // Generated code may call linCmtB(-1, -1) several times for one row before
+  // par_solve() marks it solved; the list is already this row's, so only
+  // re-evaluate it (re-priming from the buffer would read this row's own
+  // pred-only block as the carried state).
+  bool again = lcb.hybId == id && lcb.hybLastIdx == idx && lcb.hybLastT == _t;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Jb = lc.restoreJac(a);
-  bool prime = !linCmtHybLive(lcb, id, idx, tprior);
+  bool prime = !again && !linCmtHybLive(lcb, id, idx, tprior);
   if (!prime) {
     int k0 = lcb.hybFull ? 0 : oral0;
     int k1 = lcb.hybFull ? m : oral0 + 1;
@@ -468,7 +472,9 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
     }
   }
   linHybEntry e;
-  if (prime) {
+  if (again) {
+    // nothing to add
+  } else if (prime) {
     L.clear();
     memset(&e, 0, sizeof(linHybEntry));
     e.t = tprior;
@@ -500,12 +506,12 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   // only be added; a decrease (an infusion ending) collapses the list into
   // one primed term at tprior and restarts from the absolute rate.
   bool rateUp = false, rateDown = false;
-  for (int c = 0; c < nRate; c++) {
+  for (int c = 0; c < nRate && !again; c++) {
     double d = r[c] - lcb.hybPrevRate[c];
     if (d > 0.0) rateUp = true;
     if (d < 0.0) rateDown = true;
   }
-  bool consolidate = rateDown || ((int)L.size() + (rateUp ? 1 : 0) > ceiling);
+  bool consolidate = !again && (rateDown || ((int)L.size() + (rateUp ? 1 : 0) > ceiling));
   if (consolidate) {
     double fxc[RX_LINHYB_MAXM], Jc[RX_LINHYB_MAXM*RX_LINHYB_MAXP];
     linCmtHybEval(lc, thetaD, ncmt, oral0, trans, L.data(), (int)L.size(),
@@ -526,7 +532,7 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   e.t = tprior;
   e.isRate = 1;
   bool anyRate = false;
-  for (int c = 0; c < nRate; c++) {
+  for (int c = 0; c < nRate && !again; c++) {
     double d = r[c] - lcb.hybPrevRate[c];
     if (d != 0.0) { e.rate[c] = d; anyRate = true; }
     lcb.hybPrevRate[c] = r[c];
@@ -555,6 +561,7 @@ static void linCmtHybRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
   lcb.hybId = id;
   lcb.hybLastIdx = idx;
   lcb.hybLastT = _t;
+  if (again) return;
 #pragma omp atomic
   linCmtHybRowN++;
   if (lcb.hybFull) {
@@ -1550,6 +1557,14 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
   if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
     const double *thD = getLinCmtDoubleAddr(lcb, linCmtBaddrTheta);
+    if (ind->linCmtHybStart == -2) {
+      // first computed row of this subject's pass: whatever phase-2 state
+      // this thread still holds belongs to an earlier subject or solve (its
+      // id/idx/tprior can coincide), so drop it before testing liveness
+      lcb.hybId = -1;
+      lcb.hybLastIdx = -1;
+      linCmtHybPrepass(rx, ind, ncmt, oral0);
+    }
     bool live = linCmtHybLive(lcb, id, idx, ind->tprior);
     if (linCmtHybEngage(rx, ind, idx, ncmt, oral0)) {
       if (live && memcmp(thD, lcb.hybTheta, lcb.lc.getNpars()*sizeof(double)) != 0) {

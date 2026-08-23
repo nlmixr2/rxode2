@@ -156,7 +156,13 @@ check <- function(label, ok) {
   invisible(list(ref = ref, hyb = hyb, st = st))
 }
 
+# RX_HYB_BENCH=validate runs A-D only; =bench runs E only; unset runs both.
+.part <- Sys.getenv("RX_HYB_BENCH", "")
+.doValidate <- .part != "bench"
+.doBench <- .part != "validate"
+
 ## ---- A: configs x regimens x k -------------------------------------------
+if (.doValidate) {
 cat("== A: 6 configs x bolus/infusion/mixed x k=1,2,3, 3 subjects ==\n")
 for (cfg in .cfgs) {
   for (k in 1:3) {
@@ -198,8 +204,10 @@ for (cfg in .cfgs[c(3, 6)]) {
                 cfg$name, nThr, worstN, .cmpCols(s1, ref)),
         worstN == 0 && .cmpCols(s1, ref) < 1e-9)
 }
+}
 
 ## ---- E: benchmark ---------------------------------------------------------
+if (.doBench) {
 cat("== E: benchmark, real rxSolve() path, doses then a trailing observation run ==\n")
 .benchEv <- function(nDose, nObs, nSub = 44L) {
   do.call(rbind, lapply(seq_len(nSub), function(i) {
@@ -241,6 +249,7 @@ for (cfg in .cfgs[c(4, 6)]) {
 bench <- do.call(rbind, benchRows)
 dir.create("bench/results", showWarnings = FALSE)
 saveRDS(bench, "bench/results/lincmt_hybrid_production.rds")
+}
 
 cat(sprintf("\n%d passed, %d failed\n", nPass, nFail))
 if (nFail > 0) stop("hybrid production validation failed")
