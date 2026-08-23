@@ -175,9 +175,11 @@ for (cfg in .cfgs) {
 
 ## ---- B: steady state -------------------------------------------------------
 cat("== B: steady-state regimens (ss=1 infusion/bolus, then ss=2, then bolus) ==\n")
+# subject 1's steady-state infusion leaves its turn-off pending for the whole
+# pass, so only subject 2 engages (6 trailing rows); subject 1 stays sequential
 for (cfg in .cfgs) {
   m <- .gradModel(cfg, 2L)
-  .runCase(paste(cfg$name, "ss k=2"), cfg, m, .evSs(), 2L * 6L)
+  .runCase(paste(cfg$name, "ss k=2"), cfg, m, .evSs(), 6L)
 }
 
 ## ---- C: interleaved --------------------------------------------------------
