@@ -15,9 +15,13 @@
 - `linCmtSensType="auto"` now chooses between `"AD"` and `"ADr"` per model by
   counting the sensitivity directions the model requests: forward mode costs
   one pass per requested direction (the kernel honors the parser's
-  direction mask), reverse mode one adjoint sweep per compartment
-  regardless, so `"AD"` is used when the requested count is at most the
-  number of compartments (depot included) and `"ADr"` otherwise.  The 2x
+  direction mask), reverse mode one adjoint sweep per compartment plus a
+  fixed per-row tape cost, so `"ADr"` is used only when the model requests
+  at least as many directions as it has compartments (depot included) and
+  at least three; `"AD"` otherwise.  The boundary was measured through the
+  solver: one and two compartment solutions are still faster forward when
+  the requested count equals the compartment count, three and four
+  compartment solutions are already 1.1-1.3x faster in reverse there.  The 2x
   measured for reverse mode above requested every direction; a FOCEi inner
   model asks only for its eta directions, and with a single eta reverse
   mode is slower than forward (about 0.6-0.9x on two and three compartment

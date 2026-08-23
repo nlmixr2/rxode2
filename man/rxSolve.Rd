@@ -1351,11 +1351,12 @@ sensitivity/gradients to use.  The current options are:
 \item \code{auto} (the default) -- picks \code{AD} or \code{ADr} per model by counting the
 sensitivity directions the model requests: forward mode costs one
 pass per requested direction, reverse mode one adjoint sweep per
-compartment, so \code{AD} is used when the requested count is at most the
-number of compartments (depot included) and \code{ADr} otherwise.  A
-FOCEi inner model asks only for its eta directions, so a model with
-one or two etas on a two or three compartment solution stays on
-\code{AD}; one with an eta on every parameter gets \code{ADr}.
+compartment plus a fixed per-row tape cost, so \code{ADr} is used only
+when the model requests at least as many directions as it has
+compartments (depot included) and at least three; \code{AD} otherwise.
+A FOCEi inner model asks only for its eta directions, so a model
+with one or two etas on a two or three compartment solution stays
+on \code{AD}; one with an eta on every parameter gets \code{ADr}.
 \item \code{ADr} -- reverse-mode automatic differentiation
 (\verb{stan::math::jacobian}): each row is differentiated on its own
 nested tape with one adjoint sweep per compartment, independent of

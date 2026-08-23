@@ -874,11 +874,12 @@
 #' - `auto` (the default) -- picks `AD` or `ADr` per model by counting the
 #'   sensitivity directions the model requests: forward mode costs one
 #'   pass per requested direction, reverse mode one adjoint sweep per
-#'   compartment, so `AD` is used when the requested count is at most the
-#'   number of compartments (depot included) and `ADr` otherwise.  A
-#'   FOCEi inner model asks only for its eta directions, so a model with
-#'   one or two etas on a two or three compartment solution stays on
-#'   `AD`; one with an eta on every parameter gets `ADr`.
+#'   compartment plus a fixed per-row tape cost, so `ADr` is used only
+#'   when the model requests at least as many directions as it has
+#'   compartments (depot included) and at least three; `AD` otherwise.
+#'   A FOCEi inner model asks only for its eta directions, so a model
+#'   with one or two etas on a two or three compartment solution stays
+#'   on `AD`; one with an eta on every parameter gets `ADr`.
 #'
 #' - `ADr` -- reverse-mode automatic differentiation
 #'   (`stan::math::jacobian`): each row is differentiated on its own

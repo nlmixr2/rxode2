@@ -1,11 +1,14 @@
 rxTest({
   # linCmtSensType = "auto" resolves per model by the number of requested
   # sensitivity directions: forward mode (3) costs one pass per requested
-  # direction, reverse mode (31) one adjoint sweep per compartment, so auto
-  # is forward when nreq <= ncmt + oral0 and reverse otherwise.  Every solve
-  # path (single thread, threads, linCmtModelDouble) has to resolve alike.
-  args <- "rx__PTR__, t, 1, 2, 1, %d, %d, 1, cl, v, q, vp, q2, vp2, ka"
-  mk <- function(dirs) {
+  # direction, reverse mode (31) one adjoint sweep per compartment plus a
+  # per-row tape cost, so auto is reverse only when nreq >= max(m, 3) with
+  # m = ncmt + oral0 (measured boundary, bench/lincmt_auto_boundary.R) and
+  # forward otherwise.  Every solve path (single thread, threads,
+  # linCmtModelDouble) has to resolve alike.
+  mk <- function(dirs, ncmt = 2L, oral0 = 1L) {
+    args <- sprintf("rx__PTR__, t, 1, %d, %d, %%d, %%d, 1, cl, v, q, vp, q2, vp2, ka",
+                    ncmt, oral0)
     lines <- c(sprintf("cp=linCmtB(%s)", sprintf(args, -1L, -1L)),
                vapply(dirs, function(k) {
                  sprintf("d%d=linCmtB(%s)", k, sprintf(args, -2L, k))
@@ -33,18 +36,32 @@ rxTest({
   }
   # 2-cmt oral: m = 3
   one <- mk(0L)        # one direction  -> forward
-  three <- mk(0:2)     # three          -> forward (nreq == m)
+  two <- mk(0:1)       # two            -> forward (nreq < m)
+  three <- mk(0:2)     # three          -> reverse (nreq == m, m >= 3)
   all5 <- mk(0:4)      # five           -> reverse
 
-  test_that("auto is forward when the requested count is at most m", {
+  test_that("auto is forward when fewer directions than compartments are requested", {
     expect_equal(seen(one, "auto")$st, 3L)
-    expect_equal(seen(three, "auto")$st, 3L)
+    expect_equal(seen(two, "auto")$st, 3L)
     expect_false(31L %in% seen(one, "auto", 0L)$st)
   })
 
-  test_that("auto is reverse when the requested count exceeds m", {
+  test_that("auto is reverse from nreq == m on a three-compartment solution", {
+    expect_equal(seen(three, "auto")$st, 31L)
     expect_equal(seen(all5, "auto")$st, 31L)
     expect_equal(seen(all5, "auto", 0L)$st, 31L)
+  })
+
+  test_that("a one- or two-compartment solution stays forward at nreq == m", {
+    # 1-cmt oral: m = 2, npars = 3 (cl, v, ka); the tape cost is only
+    # amortized from three directions up
+    m2two <- mk(0:1, ncmt = 1L, oral0 = 1L)
+    m2three <- mk(c(0L, 1L, 2L), ncmt = 1L, oral0 = 1L)
+    expect_equal(seen(m2two, "auto")$st, 3L)
+    expect_equal(seen(m2three, "auto")$st, 31L)
+    # 1-cmt iv: m = 1, npars = 2 -- never reaches three directions
+    m1two <- mk(0:1, ncmt = 1L, oral0 = 0L)
+    expect_equal(seen(m1two, "auto")$st, 3L)
   })
 
   test_that("the explicit names still override the count rule", {

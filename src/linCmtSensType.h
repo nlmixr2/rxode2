@@ -47,15 +47,22 @@ static inline int linCmtSensNreq(int ndiff, int ncmt, int oral0) {
 
 // Resolve linCmtSensType="auto" (100) for a model.  Forward-mode fvar costs
 // one pass per REQUESTED direction (the kernel honors the ndiff mask), reverse
-// mode one adjoint sweep per compartment regardless, so forward (3) wins when
-// the requested count is at most m = ncmt + oral0 and reverse (31) otherwise.
-// No requested direction means no Jacobian is taken; forward is returned so
-// the value-only solve stays on the cheaper stack-local path.  Every solve
-// path must resolve through here (rxData.cpp at the control read, setupLinH()
-// for ind_solve(), linCmtModelDouble() for the R-level kernel) so they agree.
+// mode one adjoint sweep per compartment plus a fixed per-row tape cost, so
+// reverse (31) only pays once at least as many directions as compartments
+// (m = ncmt + oral0) are requested AND at least three: measured
+// (bench/lincmt_auto_boundary.R) a one- or two-compartment solution is still
+// faster forward at nreq == m and the tape cost is only amortized from three
+// directions up, while three and four compartments favor reverse already at
+// nreq == m.  No requested direction means no Jacobian is taken; forward is
+// returned so the value-only solve stays on the cheaper stack-local path.
+// Every solve path must resolve through here (rxData.cpp at the control
+// read, setupLinH() for ind_solve(), linCmtModelDouble() for the R-level
+// kernel) so they agree.
 static inline int linCmtSensResolveAuto(int sensType, int ndiff, int ncmt, int oral0) {
   if (sensType != 100) return sensType;
-  return (linCmtSensNreq(ndiff, ncmt, oral0) <= ncmt + oral0) ? 3 : 31;
+  int m = ncmt + oral0;
+  int thr = (m > 3) ? m : 3;
+  return (linCmtSensNreq(ndiff, ncmt, oral0) >= thr) ? 31 : 3;
 }
 
 #endif // __LINCMTSENSTYPE_H__
