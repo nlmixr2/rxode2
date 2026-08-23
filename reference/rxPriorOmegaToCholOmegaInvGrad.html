@@ -153,7 +153,11 @@ definite)</p></dd>
 
 <dt id="arg-gradomega">gradOmega<a class="anchor" aria-label="anchor" href="#arg-gradomega"></a></dt>
 <dd><p>the corresponding block of <code><a href="rxPriorLogDensity.html">rxPriorLogDensity()</a></code>'s
-<code>gradOmega</code>, i.e. <code>gradOmega[block, block]</code> (p x p, symmetric)</p></dd>
+<code>gradOmega</code>, i.e. <code>gradOmega[block, block]</code> (p x p); need not be
+symmetric on entry (<code><a href="rxPriorLogDensity.html">rxPriorLogDensity()</a></code>'s own <code>gradOmega</code> always is,
+but this treats it entrywise and symmetrizes internally either way,
+since only a symmetric perturbation of <code>omega</code> is ever reachable by
+varying <code>U</code>)</p></dd>
 
 </dl></div>
     <div class="section level2">
