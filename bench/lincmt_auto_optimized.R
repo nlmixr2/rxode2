@@ -227,6 +227,44 @@ benchLinCmtAutoOptimized <- function(nSub = 44L, reps = 3L, threaded = TRUE,
   invisible(NULL)
 }
 
+# THREADS=only: fill the all-thread columns of existing checkpoints on an
+# otherwise idle machine (the single-thread cells are taken in parallel on
+# pinned cores; the threaded cells need the whole machine, one at a time).
+fillThreadedLinCmtAutoOptimized <- function(nSub = 44L, reps = 3L, nThr = getRxThreads(),
+                                            maxSec = Inf, maxLoad = 2) {
+  t0 <- proc.time()[["elapsed"]]
+  evs <- lapply(.shapes, .shape, nSub = nSub); names(evs) <- .shapes
+  fs <- list.files("bench/results/auto_opt", pattern = "\\.rds$", full.names = TRUE)
+  for (fn in fs) {
+    res <- readRDS(fn)
+    if (!anyNA(res$fwdN)) next
+    if (proc.time()[["elapsed"]] - t0 > maxSec) { cat("MAXSEC reached before", fn, "\n"); return(invisible(NULL)) }
+    load1 <- as.numeric(strsplit(readLines("/proc/loadavg", n = 1L), " ")[[1]][1])
+    if (load1 > maxLoad) stop(sprintf("load average %.1f > %.1f: not measuring threaded cells", load1, maxLoad))
+    cfg <- res[1, c("ncmt", "oral0", "trans")]
+    pars <- c(.transPars(cfg$ncmt, cfg$trans), ka = .ka)
+    for (i in seq_len(nrow(res))) {
+      if (!is.na(res$fwdN[i])) next
+      dirs <- .dirSets(cfg$ncmt, cfg$oral0)
+      dirs <- dirs[[which(vapply(dirs, function(d) d$name == res$dirSet[i], TRUE))]]$dirs
+      mod <- .gradModel(cfg, dirs)
+      evt <- evs[[res$shape[i]]]
+      solve1 <- function(st, strat) {
+        rxSolve(mod, pars, evt, linCmtSensType = st, linCmtSensStrategy = strat,
+                cores = nThr, returnType = "data.frame")
+      }
+      solve1("AD", "sequential")  # warm
+      res$fwdN[i] <- .tm(function() solve1("AD", "sequential"), reps)
+      res$revN[i] <- .tm(function() solve1("ADr", "sequential"), reps)
+      res$hybN[i] <- .tm(function() solve1("AD", "hybrid"), reps)
+    }
+    prov <- attr(res, "provenance"); prov$threaded <- .provenance(); attr(res, "provenance") <- prov
+    tmp <- paste0(fn, ".tmp"); saveRDS(res, tmp); file.rename(tmp, fn)
+    cat("threaded", fn, sprintf("(%.0fs elapsed, load %.1f)\n", proc.time()[["elapsed"]] - t0, load1))
+  }
+  invisible(NULL)
+}
+
 # combine the checkpoints into one file
 combineLinCmtAutoOptimized <- function() {
   fs <- list.files("bench/results/auto_opt", pattern = "\\.rds$", full.names = TRUE)
@@ -240,8 +278,12 @@ combineLinCmtAutoOptimized <- function() {
 if (sys.nframe() == 0L) {
   cfgEnv <- Sys.getenv("CONFIGS", "")
   configs <- if (nzchar(cfgEnv)) strsplit(cfgEnv, ",")[[1]] else NULL
-  threaded <- Sys.getenv("THREADS", "1") != "0"
+  thr <- Sys.getenv("THREADS", "1")
   maxSec <- as.numeric(Sys.getenv("MAXSEC", "Inf"))
-  benchLinCmtAutoOptimized(configs = configs, threaded = threaded, maxSec = maxSec)
+  if (thr == "only") {
+    fillThreadedLinCmtAutoOptimized(maxSec = maxSec)
+  } else {
+    benchLinCmtAutoOptimized(configs = configs, threaded = thr != "0", maxSec = maxSec)
+  }
   combineLinCmtAutoOptimized()
 }
