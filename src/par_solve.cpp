@@ -7161,13 +7161,10 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
 
 void setupLinH(rx_solve *rx, int solveid,
                t_dydt dydt, t_update_inis u_inis) {
-  if (rx->sensType == 100) {
-    // auto -> reverse-mode AD: one nested tape per row with m adjoint sweeps
-    // (m = compartments, at most 4) against npars forward passes (up to 7),
-    // measured ~2x faster than forward mode for 2-3 compartment models and
-    // at parity for one compartment; the tape is per-thread (STAN_THREADS).
-    rx->sensType = 31; // ADr
-  }
+  // normally already resolved at the control read (rxData.cpp); same rule here
+  // so an ind_solve() caller that set rx->sensType itself agrees.
+  rx->sensType = linCmtSensResolveAuto(rx->sensType, rx->ndiff,
+                                       rx->linCmtNcmt, rx->linCmtOral0);
   rx_solving_options *op = &op_global;
   int neq[2];
   neq[0] = op->neq;

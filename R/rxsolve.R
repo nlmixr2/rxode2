@@ -871,18 +871,25 @@
 #' @param linCmtSensType The type of linear compartment
 #'   sensitivity/gradients to use.  The current options are:
 #'
-#' - `auto` (the default) -- uses `ADr`.
+#' - `auto` (the default) -- picks `AD` or `ADr` per model by counting the
+#'   sensitivity directions the model requests: forward mode costs one
+#'   pass per requested direction, reverse mode one adjoint sweep per
+#'   compartment, so `AD` is used when the requested count is at most the
+#'   number of compartments (depot included) and `ADr` otherwise.  A
+#'   FOCEi inner model asks only for its eta directions, so a model with
+#'   one or two etas on a two or three compartment solution stays on
+#'   `AD`; one with an eta on every parameter gets `ADr`.
 #'
 #' - `ADr` -- reverse-mode automatic differentiation
 #'   (`stan::math::jacobian`): each row is differentiated on its own
-#'   nested tape with one adjoint sweep per compartment, which costs less
-#'   than one forward pass per parameter for 2 and 3 compartment models
-#'   and the same for one compartment.  The tape is per thread, so this
+#'   nested tape with one adjoint sweep per compartment, independent of
+#'   how many directions are requested.  The tape is per thread, so this
 #'   solves across threads like `AD`.
 #'
 #' - `AD` -- forward-mode automatic differentiation
 #'   (`stan::math::fvar`), differentiating the same analytic solution on
-#'   the C++ stack; matches `ADr` to round-off.
+#'   the C++ stack with one pass per requested direction; matches `ADr`
+#'   to round-off.
 #'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
