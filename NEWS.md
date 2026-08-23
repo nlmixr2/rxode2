@@ -42,10 +42,14 @@
   trailing run has at least `linCmtHybridMinObs` rows, the model requests
   at least `linCmtHybridMinDirs` directions (two by default) and the
   solution has at least two compartments; `"sequential"` turns it off and
-  `"hybrid"` forces it.  On an optimized build the hybrid rows are cheaper
-  than the sequential forward-mode rows at every direction count (about
-  1.05-1.2x at the solve level, where the per-row solver overhead is most
-  of the time).  Results agree with the sequential evaluation to round-off,
+  `"hybrid"` forces it.  Measured on an optimized build over every kernel,
+  parameterization, direction mask and event shape
+  (`bench/lincmt_auto_optimized.R`), the hybrid rows are never slower than
+  the sequential forward-mode rows beyond timer noise; they are cheaper by
+  1.05-1.2x on three compartment solutions (more with more requested
+  directions) and by 1.0-1.04x on one and two compartment solutions, where
+  the per-row solver overhead is most of the time.  Results agree with the
+  sequential evaluation to round-off,
   including steady-state rows, infusions and a model that reads raw
   Jacobian rows; a subject with a pending steady-state infusion turn-off or
   modeled lag stays sequential.  `linCmtHybStats()` reports how many

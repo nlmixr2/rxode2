@@ -1406,10 +1406,13 @@ subject only when the trailing observation run is at least
 \code{linCmtHybridMinObs} rows, the model requests at least
 \code{linCmtHybridMinDirs} directions and the solution has at least two
 compartments (depot included), and \code{"sequential"} otherwise.  Measured
-through the solver on an optimized build, the hybrid rows are cheaper
-than the sequential forward-mode rows at every direction count
-(1.05-1.2x at the solve level, where the per-row solver overhead is
-most of the time), so the default threshold is two.  Results agree to
+through the solver on an optimized build over every kernel,
+parameterization, direction mask and event shape
+(\code{bench/lincmt_auto_optimized.R}), the hybrid rows are never slower
+than the sequential forward-mode rows beyond timer noise and are
+cheaper by 1.05-1.2x on three compartment solutions (more with more
+requested directions) and by 1.0-1.04x on one and two compartment
+solutions, so the default threshold is two.  Results agree to
 round-off either way; a subject whose steady-state infusion or modeled
 lag leaves doses pending stays sequential.}
 
