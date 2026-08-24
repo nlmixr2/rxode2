@@ -3227,7 +3227,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
     if (length(.args) == 0) {
       .args <- NaN
     }
-    return(symengine::FunctionSymbol(name, .args))
+    symengine::FunctionSymbol(name, .args)
   }
 })
 
