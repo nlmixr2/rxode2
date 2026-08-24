@@ -54,34 +54,35 @@ static inline void mergeNormParamStatements(SEXP params) {
   // text reproduces the same parameter order.  When no declared name survived
   // as a parameter (they all became states) the statements declare nothing and
   // are dropped.
-  sbuf merged;
-  sNull(&merged);
-  sIniTo(&merged, SBUF_MXBUF);
+  //
+  // sbt and sbNrmL2 are scratch globals freed by parseFree(); everything the
+  // model needed from sbt has already been emitted by the time model variables
+  // are generated, and using globals here means an R error raised by addLine()
+  // or sAppend() cannot leak a buffer.
+  sClear(&sbt);
   if (hi >= lo) {
-    sAppendN(&merged, "param(", 6);
+    sAppendN(&sbt, "param(", 6);
     for (int j = lo; j <= hi; j++) {
-      if (j != lo) sAppendN(&merged, ",", 1);
-      sAppend(&merged, "%s", CHAR(STRING_ELT(params, j)));
+      if (j != lo) sAppendN(&sbt, ",", 1);
+      sAppend(&sbt, "%s", CHAR(STRING_ELT(params, j)));
     }
-    sAppendN(&merged, ");\n", 3);
+    sAppendN(&sbt, ");\n", 3);
   }
-  vLines newL;
-  lineNull(&newL);
-  lineIni(&newL);
+  lineIni(&sbNrmL2);
   int seen = 0;
   for (int i = 0; i < sbNrmL.n; i++) {
     const char *cur = sbNrmL.line[i];
     if (rxIsNormParamLine(cur)) {
-      if (seen++ || merged.o == 0) continue;
-      cur = merged.s;
+      if (seen++ || sbt.o == 0) continue;
+      cur = sbt.s;
     }
-    curLineProp(&newL, sbNrmL.lProp[i]);
-    curLineType(&newL, sbNrmL.lType[i]);
-    addLine(&newL, "%s", cur);
+    curLineProp(&sbNrmL2, sbNrmL.lProp[i]);
+    curLineType(&sbNrmL2, sbNrmL.lType[i]);
+    addLine(&sbNrmL2, "%s", cur);
   }
-  sFree(&merged);
-  lineFree(&sbNrmL);
-  sbNrmL = newL;
+  vLines swap = sbNrmL;
+  sbNrmL = sbNrmL2;
+  sbNrmL2 = swap;
   // sbNrm is the concatenation of the normalized lines; rebuild it so the two
   // cannot disagree.
   sClear(&sbNrm);
