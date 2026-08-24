@@ -167,6 +167,14 @@ typedef struct {
   // row Jacobian (linCmtSeqTailJac); per-thread, refilled on a theta or
   // shape change.
   linCmtWin win{};
+  // Last-row value memo: a repeated (-1,-1) call for the same row (the
+  // generated model executes the value line from dydt, calc_lhs and the
+  // output pass) returns the cached adjustF() result and leaves J/Jg/fx
+  // standing for the reads.  Keyed on everything the value depends on;
+  // invalidated by a model reshape and by any carry/dose-time sentinel.
+  int memoId = -1, memoIdx = -1, memoFlag = -1, memoDoSS = -1, memoHpar = -9;
+  double memoT = 0.0, memoH = 0.0, memoHV = 0.0, memoVal = 0.0;
+  double memoArgs[7] = {0, 0, 0, 0, 0, 0, 0};
 } linB_t;
 
 std::vector<linB_t> __linCmtB;
@@ -184,6 +192,7 @@ extern "C" void ensureLinCmtB(int nCores) {
 // this block and runs on zero-length scratch.
 static inline void linCmtBsetModel(linB_t &lcb, int ncmt, int oral0, int trans,
                                    int linSS, rx_solve *rx) {
+  lcb.memoIdx = -1; // reshape invalidates the last-row value memo
   lcb.lc.setModelType(ncmt, oral0, trans, linSS, rx->ndiff);
   int npars = lcb.lc.getNpars();
   lcb.fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
@@ -252,22 +261,30 @@ static inline void linCmtRevTapeInit() {
 // families keep the full evaluator.
 
 static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
+static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
 
 //' Read (and optionally reset) the amortized linCmt() sequential counters
 //'
 //' @param reset logical; when TRUE zero the counters after reading
 //' @return named integer vector: windows (window-constant recomputations),
 //'   seqTailRows (rows evaluated from the window's dt-dependent tail),
-//'   seqFullRows (rows that fell back to the full forward evaluator)
+//'   seqFullRows (rows that fell back to the full forward evaluator),
+//'   valueCompute (value executions that solved the row),
+//'   valueRestore (value executions that restored an already-solved row),
+//'   memoHit (value executions short-circuited by the last-row memo)
 //' @keywords internal
 //' @export
 //[[Rcpp::export]]
 IntegerVector linCmtSeqStats(bool reset = false) {
   IntegerVector r = IntegerVector::create(_["windows"] = linCmtWinN,
                                           _["seqTailRows"] = linCmtSeqTailN,
-                                          _["seqFullRows"] = linCmtSeqFullN);
+                                          _["seqFullRows"] = linCmtSeqFullN,
+                                          _["valueCompute"] = linCmtValCompN,
+                                          _["valueRestore"] = linCmtValRestN,
+                                          _["memoHit"] = linCmtMemoHitN);
   if (reset) {
     linCmtWinN = linCmtSeqTailN = linCmtSeqFullN = 0;
+    linCmtValCompN = linCmtValRestN = linCmtMemoHitN = 0;
   }
   return r;
 }
@@ -1306,6 +1323,10 @@ static inline bool linCmtBquery(linB_t &lcb, rx_solve *rx, rx_solving_options_in
                                 double p1, double v1, double p2, double p3,
                                 double p4, double p5, double ka, double *out) {
   if (linCmtBread(lcb, which1, which2, out)) return true;
+  // A dose-time/carry sentinel may touch lc state between value calls;
+  // pure reads (above) do not.  Drop the last-row value memo either way --
+  // correctness over a lost short-circuit.
+  lcb.memoIdx = -1;
   if (which1 == -3) {
     // idx already solved -> a re-query (e.g. the output pass) where
     // ind->InfusionRate has since been cleared/moved on; use the cached rate.
@@ -1421,11 +1442,15 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
   if ((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11) {
+#pragma omp atomic
+    linCmtValRestN++;
     double *acur = getAdvan(idx);
     lcb.lc.restoreJacTo(acur, lcb.J);
     lcb.lc.restoreFxTo(acur, lcb.fx);
     return;
   }
+#pragma omp atomic
+  linCmtValCompN++;
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
   if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
     linCmtBjac(lcb, rx, ind, rx->sensType, theta, thetaSens);
