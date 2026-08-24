@@ -349,6 +349,23 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   setdiff(names(.rxSEeq)[!is.na(.rxSEeq)], .rxSEnative)
 }
 
+## The build-time known function names loaded into every rxS() environment as
+## opaque FunctionSymbols; rxS() adds the run-time ones (user functions and user
+## derivative tables) to these.  Evaluated once when the package is built.
+.rxSEfunNames <- c(
+  "linCmtA", "linCmtB",
+  "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
+  "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
+  "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
+  "lag0", "lead0", "diff0",
+  # every parser-known function symengine cannot handle itself -- the locally
+  # constant floor()/ceil()/round()/trunc()/sign() family, the special
+  # functions (bessel_*, gammaq, fmax2, logspace_add, ...) and the emitted
+  # derivative helpers (llikNormDmean, dSELU, ...).  Without this the
+  # assignment stores a non-Basic and the model is silently corrupted
+  .rxSEopaque(),
+  "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi")
+
 .rxOnly <- c(
   ## Now random number generators
   "rnorm" = NA,
@@ -3191,18 +3208,47 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
   }
 }
 
-.rxFunction <- function(name) {
-  .f <- function(...) {
-    1
-  }
-  body(.f) <- bquote({
+## Cache of the opaque FunctionSymbol closures handed to rxS().  A closure
+## depends only on its name, so every symengine environment shares one closure
+## per name instead of rxS() building (and R's JIT byte-compiling) a fresh set of
+## ~250 of them on every call (#1283).
+.rxFunctionCache <- new.env(parent = emptyenv())
+
+## Every opaque FunctionSymbol closure shares one body, written once here and
+## byte-compiled when the package is built (the factory is compiled explicitly
+## because a closure made by an interpreted factory keeps an interpreted body).
+## The name is captured lexically rather than spliced into a fresh body with
+## bquote(), which is what made each of these a distinct, separately
+## JIT-compiled function at run time.
+.rxFunctionMake <- compiler::cmpfun(function(name) {
+  force(name)
+  function(...) {
     .args <- unlist(list(...))
     if (length(.args) == 0) {
       .args <- NaN
     }
-    return(symengine::FunctionSymbol(.(name), .args))
-  })
-  return(.f)
+    symengine::FunctionSymbol(name, .args)
+  }
+})
+
+## Every function rxode2 itself knows about is built HERE, when the package is
+## built, and restored from the lazy-load database, so no rxS() call -- not even
+## the first of a session -- creates or compiles them.  Names registered at run
+## time (rxFun()/rxD() user functions) are not known at build time and are built
+## on first use by .rxFunction() below.
+local({
+  for (.f in c(ls(.rxD), .rxSEfunNames)) {
+    assign(.f, .rxFunctionMake(.f), envir = .rxFunctionCache)
+  }
+})
+
+.rxFunction <- function(name) {
+  .f <- .rxFunctionCache[[name]]
+  if (is.null(.f)) {
+    .f <- .rxFunctionMake(name)
+    assign(name, .f, envir = .rxFunctionCache)
+  }
+  .f
 }
 
 #' Load a model into a symengine environment
@@ -3239,21 +3285,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$..lhs0 <- NULL
   .env$..doConst <- doConst
   .rxD <- rxode2parseD()
-  for (.f in c(
-    ls(.symengineFs()),
-    ls(.rxD), "linCmtA", "linCmtB",
-    "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
-    "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2",
-    "rxTBSdL", "rxTBSdL2", "rxTBSdLx", "lag", "lead",
-    "lag0", "lead0", "diff0",
-    # every parser-known function symengine cannot handle itself -- the locally
-    # constant floor()/ceil()/round()/trunc()/sign() family, the special
-    # functions (bessel_*, gammaq, fmax2, logspace_add, ...) and the emitted
-    # derivative helpers (llikNormDmean, dSELU, ...).  Without this the
-    # assignment stores a non-Basic and the model is silently corrupted
-    .rxSEopaque(),
-    "delay", "rxDelayD", "rxDelayD2", "rxDelayD3", "rxTBSi"
-  )) {
+  for (.f in c(ls(.symengineFs()), ls(.rxD), .rxSEfunNames)) {
     assign(.f, .rxFunction(.f), envir = .env)
   }
 
@@ -3311,7 +3343,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
   # the history function still references a defined variable in the output model
   .env$..laggedVars <- .rxCollectLaggedVars(.expr)
-  .ret <- .rxToSE(.expr, envir=.env)
+  # loads the model into .env by side effect; the returned text is not used
+  .rxToSE(.expr, envir=.env)
   class(.env) <- "rxS"
   return(.env)
 }
