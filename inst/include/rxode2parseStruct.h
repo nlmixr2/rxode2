@@ -486,6 +486,10 @@ typedef struct rx_solve_s {
   int ndiff;
   int sensType;
   double sensH;
+  // Transition-matrix propagation of the sequential row Jacobian: 1 = auto
+  // (engage where the row gap repeats, see linCmtSeqTailJac), 0 = off (the
+  // tail's own operation order).  Both evaluate the same exact closed form.
+  int linCmtSensPhi;
   // Whether the model reads raw amount-Jacobian rows
   // (linCmtB(which1 >= 0, which2 >= 0)); parse-time metadata -- the
   // sequential evaluator writes the full Jacobian block either way.

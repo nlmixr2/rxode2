@@ -143,4 +143,5 @@
 #define Rxc_priorOmega 138
 #define Rxc_priorOmegaEl 139
 #define Rxc_priorSigmaEl 140
+#define Rxc_linCmtSensPhi 141
 #endif // __rxode2_control_H__

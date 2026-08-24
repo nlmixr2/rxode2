@@ -175,6 +175,13 @@ typedef struct {
   // are exact by construction, no new closed-form algebra) and cached
   // alongside the exponentials.  A row then propagates with 2*m*m plain
   // double multiply-adds per direction instead of an fvar tail pass.
+  // Phi is reused only within one subject: the window itself is per
+  // THREAD and outlives a subject, so a matrix carried across subjects
+  // would make "which rows propagate through Phi" depend on how subjects
+  // happened to be handed to threads, and with it the last digits of the
+  // result.  Keying the cache to the current subject keeps a solve
+  // identical whatever the thread count, for one build per subject.
+  int phiId, phiLastIdx;
   int phiBuilt[RX_LINWIN_DELTAS];
   double phi[RX_LINWIN_DELTAS][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
   double dPhi[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
@@ -421,6 +428,9 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
   w.deltaNext = 0;
   w.missRun = 0;
   w.lastDelta = NA_REAL;
+  w.phiId = -1;
+  w.phiLastIdx = -1;
+  for (int s = 0; s < RX_LINWIN_DELTAS; s++) w.phiBuilt[s] = 0;
   {
     const char *e = getenv("RX_LINCMT_DELTA_MEMO");
     w.deltaMemoOn = !(e != NULL && e[0] == 'o' && e[1] == 'f' && e[2] == 'f');
@@ -433,11 +443,13 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
 // the exact operation order of the fvar tail evaluation (u = (-L)*delta;
 // E = exp(u); dE_j = ((-dL_j)*delta)*E), so a memo hit is bitwise
 // identical to recomputing the exponentials inside the tail.
-static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
+static int linCmtWinDeltaSlot(linCmtWin &w, double delta, int *hit) {
+  *hit = 0;
   for (int s = 0; s < w.nDelta; s++) {
     if (memcmp(&w.delta[s], &delta, sizeof(double)) == 0) {
       w.missRun = 0;
       w.lastDelta = delta; // keep the re-arm detector's "previous gap" exact
+      *hit = 1;
 #pragma omp atomic
       linCmtExpHitN++;
       return s;
@@ -485,20 +497,24 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
   return s;
 }
 
-// EXPLORATION ONLY (RX_LINCMT_PHI, default 0 = off): assemble the
-// interval's state-transition matrix Phi(delta) and its per-direction
-// tangents by probing the tail kernel with unit-basis prior states and a
-// zero rate.  Column c is exactly the tail's response to yp = e_c, so the
-// entries need no new closed-form algebra and inherit the kernel's own
-// accuracy; a row then propagates with plain double multiply-adds.  Only
-// the association order differs from a direct tail evaluation, so results
-// are round-off equivalent, NOT bitwise identical.  Infusion rows are
-// affine rather than linear in the prior state and keep the tail path.
-static int linCmtPhiMode() {
-  static int mode = -1;
-  if (mode < 0) {
+// Assemble the interval's state-transition matrix Phi(delta) and its
+// per-direction tangents by probing the tail kernel with unit-basis prior
+// states and a zero rate.  Column c is exactly the tail's response to
+// yp = e_c, so the entries need no new closed-form algebra and inherit the
+// kernel's own arithmetic; a row of the same interval then propagates with
+// plain double multiply-adds instead of an fvar tail pass per direction.
+// Both forms evaluate the same exact closed-form solution -- only the
+// order in which the products are accumulated differs (Phi is summed
+// first, then applied), so the two can disagree in the last few digits
+// with neither being the more correct.  Infusion rows are affine rather
+// than linear in the prior state and keep the tail path.
+// RX_LINCMT_PHI is a benchmarking force only (unset = follow the
+// rxSolve(linCmtSensPhi=) control): -1 unset, 0 off, 1 on.
+static int linCmtPhiForce() {
+  static int mode = -2;
+  if (mode == -2) {
     const char *e = getenv("RX_LINCMT_PHI");
-    mode = (e == NULL) ? 0 : atoi(e);
+    mode = (e == NULL) ? -1 : atoi(e);
   }
   return mode;
 }
@@ -590,7 +606,7 @@ static int linCmtAblateMode() {
 // linCmtFwdJac exactly: fx, the masked Js (columns in canonical requested
 // order, as updateJfromJs expects) and the Asave_ amounts for the next
 // row's carry.
-static bool linCmtSeqTailJac(linB_t &lcb) {
+static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   stan::math::linCmtStan &lc = lcb.lc;
   if (lc.type_ != linCmtNormal) return false;
   int ncmt = lc.ncmt_, oral0 = lc.oral0_, trans = lc.trans_;
@@ -606,7 +622,8 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
   // One delta-memo lookup per row; every requested direction reuses the
   // slot (the exponentials are shared, only the tangent differs by j).
   int memoOn = (linCmtDeltaMemoForce >= 0) ? linCmtDeltaMemoForce : w.deltaMemoOn;
-  int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_) : -1;
+  int dHit = 0;
+  int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, &dHit) : -1;
   // double Alast reconstruction once per row (shared by every direction);
   // J's columns align with linCmtFillTheta's order (ka last when oral).
   lc.restoreJacTo(lc.A_, lc.fwdJ_);
@@ -626,7 +643,37 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
   bool first = true;
   const int ablate = linCmtAblateMode();
   lcb.fx.resize(m);
-  if (linCmtPhiMode() && dSlot >= 0) {
+  // Engage rule: a transition matrix only pays for itself when it is
+  // REUSED, and a delta-memo HIT is exactly the evidence that this row's
+  // interval has occurred before under this theta.  So Phi is assembled on
+  // the first hit for a slot and reused thereafter, and never on a miss --
+  // a design whose intervals never repeat builds no Phi at all, so it
+  // cannot be slowed down by this path.  Infusion rows are affine rather
+  // than linear in the prior state and keep the tail below.
+  int phiForce = linCmtPhiForce();
+  int phiOn = (phiForce >= 0) ? phiForce : phiCtl;
+  // ... and a row index that has not advanced means a new solve reached
+  // this window, even when the subject identifier happens to repeat.
+  if (phiOn && (w.phiId != subjId || idx < w.phiLastIdx)) {
+    // Start every subject from the same blank interval state.  The window
+    // is per THREAD and outlives a subject, so without this the answer to
+    // "has this interval been seen before" -- and with it which rows
+    // propagate through a matrix and which evaluate the tail -- would
+    // depend on how subjects happened to be handed to threads, and the
+    // last digits of a solve would move with the thread count.  Restarting
+    // per subject costs a few exponentials and one matrix per subject and
+    // keeps a solve identical however many threads run it.
+    w.phiId = subjId;
+    w.nDelta = 0;
+    w.deltaNext = 0;
+    w.missRun = 0;
+    w.lastDelta = NA_REAL;
+    for (int i = 0; i < RX_LINWIN_DELTAS; i++) w.phiBuilt[i] = 0;
+    dHit = 0;
+    dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, &dHit) : -1;
+  }
+  if (phiOn) w.phiLastIdx = idx;
+  if (phiOn && dSlot >= 0 && (dHit || w.phiBuilt[dSlot])) {
     bool rateFree = true;
     for (int c = 0; c < m; c++) {
       if (lc.rate_[c] != 0.0) { rateFree = false; break; }
@@ -1712,7 +1759,7 @@ static inline void linCmtBfdJac(linB_t &lcb, int kind, double *linH,
 // The row's Jacobian by rx->sensType: a finite-difference family, reverse-
 // mode AD (31), or forward-mode AD (3/30 and anything unspecified).
 static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
-                              int sensType,
+                              int sensType, int id, int idx,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
   if (sensType >= 0 && sensType < RX_LINCMTB_SENS_SEEN) {
@@ -1725,7 +1772,7 @@ static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind 
   } else if (sensType == 31) {
     linCmtRevTapeInit();
     stan::math::jacobian(lcb.lc, thetaSens, lcb.fx, lcb.Js);
-  } else if (linCmtSeqTailJac(lcb)) {
+  } else if (linCmtSeqTailJac(lcb, rx->linCmtSensPhi, id, idx)) {
 #pragma omp atomic
     linCmtSeqTailN++;
   } else {
@@ -1758,7 +1805,7 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
   linCmtValCompN++;
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
   if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
-    linCmtBjac(lcb, rx, ind, rx->sensType, theta, thetaSens);
+    linCmtBjac(lcb, rx, ind, rx->sensType, id, idx, theta, thetaSens);
     return;
   }
   if (rx->ndiff != 0 && ind->linCmtHparIndex >= 0) {

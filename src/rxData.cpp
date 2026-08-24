@@ -6278,6 +6278,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtBraw = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtBraw) ?
       INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtBraw] : 1;
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
+    rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
+      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 1;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

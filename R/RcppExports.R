@@ -370,6 +370,8 @@ linCmtDeltaMemo <- function(on = -1L) {
 #'   valueCompute (value executions that solved the row),
 #'   valueRestore (value executions that restored an already-solved row),
 #'   memoHit (value executions short-circuited by the last-row memo),
+#'   valueLite (already-solved value re-executions served by the thin
+#'   fx-plus-scaling path with the Jacobian restore skipped),
 #'   expBuild (delta-keyed exponential-memo builds: one per distinct row
 #'   gap per theta window), expHit (rows whose exponentials came from the
 #'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
