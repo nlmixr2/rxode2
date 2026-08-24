@@ -29,27 +29,22 @@
   Every solve path resolves the same way (`rxSolve()`, threaded solves,
   `ind_solve()` and `linCmtModelDouble()`).
 
-- `rxSolve(linCmtSensStrategy=)` adds a per-subject hybrid evaluation of the
-  `linCmt()` sensitivities.  A subject's rows up to its trailing run of
-  observations are rolled through the sequential kernel in forward mode;
-  those observation rows are then evaluated as a superposition over the
-  carried state.  The theta-only constants of the closed form (the
-  elimination constant or the 2/3-compartment eigen-decomposition, and ka)
-  and their derivatives are taken once per subject, and each observation
-  row costs one allocation-free forward pass per requested direction
-  through the dt-dependent tail of the solution, giving every compartment's
-  sensitivity.  `"auto"` (the default) engages it for a subject when the
-  trailing run has at least `linCmtHybridMinObs` rows, the model requests
-  at least `linCmtHybridMinDirs` directions (two by default) and the
-  solution has at least two compartments; `"sequential"` turns it off and
-  `"hybrid"` forces it.  On an optimized build the hybrid rows are cheaper
-  than the sequential forward-mode rows at every direction count (about
-  1.05-1.2x at the solve level, where the per-row solver overhead is most
-  of the time).  Results agree with the sequential evaluation to round-off,
-  including steady-state rows, infusions and a model that reads raw
-  Jacobian rows; a subject with a pending steady-state infusion turn-off or
-  modeled lag stays sequential.  `linCmtHybStats()` reports how many
-  subjects and rows took the hybrid path.
+- The `linCmt()` forward-mode sensitivity evaluation is amortized across
+  rows: the theta-only constants of the closed form (the elimination
+  constant or the 2/3-compartment eigen-decomposition, and ka) and their
+  derivatives are taken once per theta-keyed window, and each ordinary row
+  costs one allocation-free forward pass per requested direction through
+  the dt-dependent tail of the solution (steady-state rows and the
+  finite-difference families keep the full evaluator).  Together with the
+  removal of per-row heap allocation from the sensitivity hot path this
+  makes the sequential sensitivity solve 1.6x (two-compartment) to 2.1x
+  (three-compartment) faster on an optimized build, with results identical
+  to round-off.  `linCmtSeqStats()` reports the window refills and how
+  many rows took the amortized tail.  The per-subject hybrid strategy this
+  window machinery was first built for (`rxSolve(linCmtSensStrategy=)` and
+  the `linCmtHybrid*` thresholds, introduced on this development branch and
+  never released) was measured to win nowhere once the sequential path
+  itself was amortized, and has been removed.
 
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors

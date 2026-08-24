@@ -561,14 +561,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// linCmtHybStats
-IntegerVector linCmtHybStats(bool reset);
-RcppExport SEXP _rxode2_linCmtHybStats(SEXP resetSEXP) {
+// linCmtSeqStats
+IntegerVector linCmtSeqStats(bool reset);
+RcppExport SEXP _rxode2_linCmtSeqStats(SEXP resetSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
-    rcpp_result_gen = Rcpp::wrap(linCmtHybStats(reset));
+    rcpp_result_gen = Rcpp::wrap(linCmtSeqStats(reset));
     return rcpp_result_gen;
 END_RCPP
 }

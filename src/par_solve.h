@@ -227,13 +227,6 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       ind->linCmtCarryTlast = NAN;
       ind->linCmtCarryVarying = 0;
     }
-    // Hybrid linCmt() sensitivity strategy: the per-subject phase boundary
-    // is found lazily by linCmtB() on the subject's first row (-2 = not yet
-    // scanned; ind->ix is not sorted until the solve loop starts), and
-    // linCmtHybOff records a hand-back to the sequential kernel for the rest
-    // of this pass.  Both reset per pass.
-    ind->linCmtHybStart = -2;
-    ind->linCmtHybOff = 0;
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {

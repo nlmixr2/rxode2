@@ -349,17 +349,16 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
-#' Read (and optionally reset) the linCmt() hybrid-strategy counters
+#' Read (and optionally reset) the amortized linCmt() sequential counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading
-#' @return named integer vector: subjects (phase-2 primes), rows (phase-2
-#'   rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
-#'   the sequential kernel), fullRows (rows of a model that reads raw
-#'   Jacobian rows), windows (window-constant recomputations)
+#' @return named integer vector: windows (window-constant recomputations),
+#'   seqTailRows (rows evaluated from the window's dt-dependent tail),
+#'   seqFullRows (rows that fell back to the full forward evaluator)
 #' @keywords internal
 #' @export
-linCmtHybStats <- function(reset = FALSE) {
-    .Call(`_rxode2_linCmtHybStats`, reset)
+linCmtSeqStats <- function(reset = FALSE) {
+    .Call(`_rxode2_linCmtSeqStats`, reset)
 }
 
 linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType = 3L, sensH = 0.001) {

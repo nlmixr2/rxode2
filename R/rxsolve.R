@@ -921,39 +921,7 @@
 #'   differences when using the option `centralH`, `forwardH`,
 #'   `foward3H` or `endpoint5H` options.
 #'
-#' @param linCmtSensStrategy How a subject's `linCmt()` sensitivities are
-#'   evaluated row by row: `"sequential"` carries the state from row to row
-#'   and differentiates every row with `linCmtSensType`; `"hybrid"` rolls
-#'   the rows up to the subject's trailing run of observations through the
-#'   sequential kernel in forward mode, then evaluates those observation
-#'   rows as a superposition over the carried state: the theta-only
-#'   constants of the closed form are differentiated once per subject and
-#'   each row costs one allocation-free forward pass per requested
-#'   direction through the dt-dependent tail of the solution (exact for
-#'   every compartment).  `"auto"` (the default) uses `"hybrid"` for a
-#'   subject only when the trailing observation run is at least
-#'   `linCmtHybridMinObs` rows, the model requests at least
-#'   `linCmtHybridMinDirs` directions and the solution has at least two
-#'   compartments (depot included), and `"sequential"` otherwise.  Measured
-#'   through the solver on an optimized build, the hybrid rows are cheaper
-#'   than the sequential forward-mode rows at every direction count
-#'   (1.05-1.2x at the solve level, where the per-row solver overhead is
-#'   most of the time), so the default threshold is two.  Results agree to
-#'   round-off either way; a subject whose steady-state infusion or modeled
-#'   lag leaves doses pending stays sequential.
 #'
-#' @param linCmtHybridMinObs For `linCmtSensStrategy="auto"`, the smallest
-#'   trailing observation run for which the hybrid evaluation is used.
-#'
-#' @param linCmtHybridMinDirs For `linCmtSensStrategy="auto"`, the smallest
-#'   number of requested sensitivity directions for which the hybrid
-#'   evaluation is used.
-#'
-#' @param linCmtHybridMaxActive The largest number of superposition terms a
-#'   subject's observation phase keeps before they are collapsed into one
-#'   term (exact; bounds the per-row cost when doses keep arriving during
-#'   that phase).
-#'#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1299,10 +1267,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
-                    linCmtSensStrategy=c("auto", "sequential", "hybrid"),
-                    linCmtHybridMinObs=2L,
-                    linCmtHybridMinDirs=2L,
-                    linCmtHybridMaxActive=30L,
                     linCmtGillFtol=0,
                     linCmtGillK=20L,
                     linCmtGillStep=4,
@@ -1580,20 +1544,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
-    if (checkmate::testIntegerish(linCmtSensStrategy, len=1, lower=0, upper=2,
-                                  any.missing=FALSE)) {
-      .linCmtSensStrategy <- as.integer(linCmtSensStrategy)
-    } else {
-      .linCmtSensStrategy <- c("auto"=0L,
-                               "sequential"=1L,
-                               "hybrid"=2L)[match.arg(linCmtSensStrategy)]
-    }
-    checkmate::assertIntegerish(linCmtHybridMinObs, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMinObs <- as.integer(linCmtHybridMinObs)
-    checkmate::assertIntegerish(linCmtHybridMinDirs, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMinDirs <- as.integer(linCmtHybridMinDirs)
-    checkmate::assertIntegerish(linCmtHybridMaxActive, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMaxActive <- as.integer(linCmtHybridMaxActive)
     if (is.logical(linCmtScale)) {
       checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
       if (linCmtScale) {
@@ -2094,11 +2044,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       priorPdRetry=priorPdRetry,
       priorOmega=priorOmega,
       priorOmegaEl=priorOmegaEl,
-      priorSigmaEl=priorSigmaEl,
-      linCmtSensStrategy=.linCmtSensStrategy,
-      linCmtHybridMinObs=linCmtHybridMinObs,
-      linCmtHybridMinDirs=linCmtHybridMinDirs,
-      linCmtHybridMaxActive=linCmtHybridMaxActive
+      priorSigmaEl=priorSigmaEl
     )
     class(.ret) <- "rxControl"
     return(.ret)
