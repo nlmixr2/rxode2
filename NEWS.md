@@ -47,6 +47,23 @@
   `rxPriorOmegaToCholOmegaInvGrad()` C++ function is pure, with no R/Rcpp
   call, and is exposed through the same function-pointer table.
 
+- `rxPriorLogDensity()`/`rxPriorBuildSpec()` now evaluate a marginal
+  `dnorm()`/`dcauchy()` prior placed directly on ONE omega covariance
+  (off-diagonal) element, not just a diagonal (variance) one --
+  `prior(eta.cl, eta.v) ~ dnorm(0, 0.1)` in a model whose `eta.cl`/`eta.v`
+  covary. This is distinct from a whole-block distribution
+  (`invWishart()`/`multiNormal()`), which still requires naming the
+  model's entire connected block; a marginal prior only needs its two
+  names to covary with each other, so it also works on a two-name subset
+  of a larger correlated block. Previously refused outright with "a prior
+  on an off-diagonal omega element is not supported" -- unreachable
+  through real `ini()` syntax until lotri's own `prior(a, b) ~ dnorm(...)`
+  parsing was relaxed to allow it (see lotri's own NEWS). `rxSolve(...,
+  usePrior=TRUE)`'s simulation path does not yet support this (it draws a
+  deviation added to the model's own initial estimate, which this needs
+  its own machinery for) and gives a clear error rather than the
+  confusing one this would otherwise have produced.
+
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
   estimation method's internal solves, for example.  Previously the only way in

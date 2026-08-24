@@ -172,19 +172,42 @@ static double logMvGamma(double a, int p) {
 static inline double termValue(const rx_prior_term_t &term, int k,
                                const double *theta, const double *omega, int omegaDim) {
   if (term.thetaIdx[k] > 0) return theta[term.thetaIdx[k] - 1];
-  int e = term.etaIdx[k] - 1;
-  return omega[(size_t)e * omegaDim + e];
+  int e1 = term.etaIdx[k] - 1;
+  if (term.etaIdx2 != NULL && term.etaIdx2[k] > 0) {
+    int e2 = term.etaIdx2[k] - 1;
+    return omega[(size_t)e1 * omegaDim + e2];
+  }
+  return omega[(size_t)e1 * omegaDim + e1];
 }
 
-// Scatter a scalar gradient contribution for term member k.
+// Scatter a scalar gradient contribution for term member k.  An
+// off-diagonal (covariance) member writes ONLY the ONE cell termValue()
+// actually read -- matching the entrywise convention documented in
+// R/priorDensity.R exactly: gradOmega[i,j] and gradOmega[j,i] are treated
+// as independent (this term contributes to the (e1,e2) direction only,
+// nothing to (e2,e1)), and a caller that moves the symmetric pair TOGETHER
+// sums both cells itself -- see that summed total against a central
+// difference in tests/testthat/test-prior-density.R before changing this:
+// writing the scalar into BOTH cells here was tried and measured exactly
+// 2x the correct total (it double-counts once entrywise, once again when a
+// downstream Gsym=0.5*(G+G^T) symmetrization or explicit sum recombines
+// the pair). evalInvWishartTerm's own gradient (below) is NOT the same
+// situation -- its entries come out symmetric from genuine matrix algebra
+// (both (i,j) and (j,i) are independently, correctly nonzero), not from a
+// deliberate double-write of a single scalar.
 static inline void addGrad(const rx_prior_term_t &term, int k, double g,
                            double *gradTheta, double *gradOmega, int omegaDim) {
   if (term.thetaIdx[k] > 0) {
     gradTheta[term.thetaIdx[k] - 1] += g;
-  } else {
-    int e = term.etaIdx[k] - 1;
-    gradOmega[(size_t)e * omegaDim + e] += g;
+    return;
   }
+  int e1 = term.etaIdx[k] - 1;
+  if (term.etaIdx2 != NULL && term.etaIdx2[k] > 0) {
+    int e2 = term.etaIdx2[k] - 1;
+    gradOmega[(size_t)e1 * omegaDim + e2] += g;
+    return;
+  }
+  gradOmega[(size_t)e1 * omegaDim + e1] += g;
 }
 
 // type 0/1: a single (possibly truncated) normal/Cauchy penalty.
@@ -413,6 +436,7 @@ static void rxPriorFreeSpec(void *specPtr) {
   for (int t = 0; t < spec->nTerms; ++t) {
     delete[] spec->terms[t].thetaIdx;
     delete[] spec->terms[t].etaIdx;
+    delete[] spec->terms[t].etaIdx2;
     delete[] spec->terms[t].mu;
     delete[] spec->terms[t].scale;
   }
@@ -436,13 +460,14 @@ static void _rxode2_rxPriorFreeSpecFinalizer(SEXP specSEXP) {
 // specList: type, n (integer, one per term), thetaIdx, etaIdx (integer,
 // concatenated across terms, length sum(n)), mu, scale (numeric,
 // concatenated; scale is n*n per term, row-major, back to back), lower,
-// upper, nu (numeric, one per term).
+// upper, nu (numeric, one per term), etaIdx2 (integer, concatenated,
+// length sum(n) -- 0 unless member k is an off-diagonal covariance cell).
 extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
   SEXP typeS = VECTOR_ELT(specList, 0), nS = VECTOR_ELT(specList, 1),
     thetaIdxS = VECTOR_ELT(specList, 2), etaIdxS = VECTOR_ELT(specList, 3),
     muS = VECTOR_ELT(specList, 4), scaleS = VECTOR_ELT(specList, 5),
     lowerS = VECTOR_ELT(specList, 6), upperS = VECTOR_ELT(specList, 7),
-    nuS = VECTOR_ELT(specList, 8);
+    nuS = VECTOR_ELT(specList, 8), etaIdx2S = VECTOR_ELT(specList, 9);
   int nTerms = LENGTH(typeS);
   rx_prior_spec_t *spec = new rx_prior_spec_t;
   spec->nTerms = nTerms;
@@ -454,10 +479,12 @@ extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
     term.n = INTEGER(nS)[t];
     term.thetaIdx = new int[term.n];
     term.etaIdx = new int[term.n];
+    term.etaIdx2 = new int[term.n];
     term.mu = new double[term.n];
     for (int k = 0; k < term.n; ++k) {
       term.thetaIdx[k] = INTEGER(thetaIdxS)[memberOff + k];
       term.etaIdx[k] = INTEGER(etaIdxS)[memberOff + k];
+      term.etaIdx2[k] = INTEGER(etaIdx2S)[memberOff + k];
       term.mu[k] = REAL(muS)[memberOff + k];
     }
     int nScale = term.n * term.n;

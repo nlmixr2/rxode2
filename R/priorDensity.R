@@ -218,10 +218,17 @@
   .seenPrior <- character(0)
   for (.i in .w) {
     .isOmega <- !is.na(.iniDf$neta1[.i])
-    if (.isOmega && .iniDf$neta1[.i] != .iniDf$neta2[.i]) {
-      stop("a prior on an off-diagonal omega element ('", .iniDf$name[.i],
-           "') is not supported", call.=FALSE)
-    }
+    ## an off-diagonal (covariance) omega row: a marginal normal/Cauchy
+    ## prior on that one cell is supported below via the same "om."-prefixed
+    ## key normal/cauchy terms already use (.name is already the row's own
+    ## "(eta_i,eta_j)" string, so .key = paste0("om.", .name) needs no
+    ## special-casing here) -- but a whole-block distribution (invWishart(),
+    ## multiNormal()) applies to a DIAGONAL row's own block lookup
+    ## (.rxPriorOmegaBlockFor()/.rxPriorCovNames()), which lotri never
+    ## stores a whole-block prior on for an off-diagonal row in the first
+    ## place (a matrix/multivariate distribution is only ever kept on a
+    ## block's first DIAGONAL name), so those branches are naturally
+    ## unreachable for one and need no extra guard here.
     .name <- .iniDf$name[.i]
     if (!.isOmega && startsWith(.name, "om.")) {
       ## `om.<eta>` is how this kernel spells an omega diagonal element
@@ -370,28 +377,41 @@
   .iniDf$name[.d][order(.idx)]
 }
 
-#' The `(thetaIdx, etaIdx)` a term member's key addresses
+#' The `(thetaIdx, etaIdx, etaIdx2)` a term member's key addresses
 #'
 #' @param ui rxode2 ui model
-#' @param key parameter name, or an `om.<eta>` omega element
-#' @return list with `thetaIdx`/`etaIdx` (1-based; the other is `0L`)
+#' @param key parameter name, an `om.<eta>` diagonal omega element, or an
+#'   `om.(eta_i,eta_j)` off-diagonal (covariance) omega element -- the
+#'   `om.` prefix in front of the off-diagonal row's own `iniDf$name`
+#'   (already `"(eta_i,eta_j)"`), which is what `.rxPriorDensityTerms()`
+#'   builds unmodified for such a row
+#' @return list with `thetaIdx`/`etaIdx`/`etaIdx2` (1-based; `etaIdx2` is
+#'   `0L` except for a covariance-pair key)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorKeyIndex <- function(ui, key) {
   .iniDf <- ui$iniDf
   if (startsWith(key, "om.")) {
     .eta <- substring(key, 4)
+    if (grepl("^[(].*,.*[)]$", .eta)) {
+      .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 != .iniDf$neta2 & .iniDf$name == .eta)
+      if (length(.w) != 1L) {
+        stop("could not find the omega covariance element '", .eta, "'", call.=FALSE)
+      }
+      return(list(thetaIdx=0L, etaIdx=as.integer(.iniDf$neta1[.w]),
+                  etaIdx2=as.integer(.iniDf$neta2[.w])))
+    }
     .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2 & .iniDf$name == .eta)
     if (length(.w) != 1L) {
       stop("could not find the omega element '", .eta, "'", call.=FALSE)
     }
-    list(thetaIdx=0L, etaIdx=as.integer(.iniDf$neta1[.w]))
+    list(thetaIdx=0L, etaIdx=as.integer(.iniDf$neta1[.w]), etaIdx2=0L)
   } else {
     .w <- which(is.na(.iniDf$neta1) & .iniDf$name == key)
     if (length(.w) != 1L) {
       stop("could not find the population parameter '", key, "'", call.=FALSE)
     }
-    list(thetaIdx=as.integer(.iniDf$ntheta[.w]), etaIdx=0L)
+    list(thetaIdx=as.integer(.iniDf$ntheta[.w]), etaIdx=0L, etaIdx2=0L)
   }
 }
 
@@ -406,7 +426,7 @@
 #' @author Matthew L. Fidler
 .rxPriorFlattenSpec <- function(ui, terms) {
   .type <- integer(0); .n <- integer(0)
-  .thetaIdx <- integer(0); .etaIdx <- integer(0)
+  .thetaIdx <- integer(0); .etaIdx <- integer(0); .etaIdx2 <- integer(0)
   .mu <- numeric(0); .scale <- numeric(0)
   .lower <- numeric(0); .upper <- numeric(0); .nu <- numeric(0)
   ## validate the omega numbering is dense (see .rxPriorEtaOrder()) before
@@ -421,6 +441,7 @@
     .idx <- lapply(.t$names, .rxPriorKeyIndex, ui=ui)
     .thetaIdx <- c(.thetaIdx, vapply(.idx, `[[`, integer(1), "thetaIdx"))
     .etaIdx <- c(.etaIdx, vapply(.idx, `[[`, integer(1), "etaIdx"))
+    .etaIdx2 <- c(.etaIdx2, vapply(.idx, `[[`, integer(1), "etaIdx2"))
     if (.t$type %in% c("normal", "cauchy")) {
       .mu <- c(.mu, .t$mu)
       .scale <- c(.scale, .t$sd)
@@ -444,7 +465,7 @@
     }
   }
   list(type=.type, n=.n, thetaIdx=.thetaIdx, etaIdx=.etaIdx, mu=.mu, scale=.scale,
-       lower=.lower, upper=.upper, nu=.nu)
+       lower=.lower, upper=.upper, nu=.nu, etaIdx2=.etaIdx2)
 }
 
 #' Build the C spec `rxPriorLogDensityEval()` (and the C API) evaluates

@@ -490,14 +490,88 @@ rxTest({
     expect_error(rxPriorLogDensity(u2, theta=c(tka=0.5, tcl=1)), "different priors")
   })
 
-  test_that("an off-diagonal omega prior is refused, not silently evaluated", {
+  test_that("a marginal prior on an off-diagonal omega (covariance) element is evaluated, not refused", {
+    ## a whole-block distribution (invWishart()/multiNormal()) still applies
+    ## to the block's own DIAGONAL lookup, not an off-diagonal row -- only a
+    ## marginal normal/Cauchy on the one covariance cell is supported here
     skip_if_not(.hasPriorSupport())
-    u <- .withPrior(.base(), "eta.cl", "invWishart(20)")
+    u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
+    expect_equal(.ini$name[.w], "(eta.cl,eta.v)")
     .ini$prior[.w] <- "dnorm(0, 1)"
     assign("iniDf", .ini, envir=u)
-    expect_error(rxPriorLogDensity(u), "off-diagonal")
+    ## the block's own covariance element is 0.01 (c(0.3, 0.01, 0.1))
+    r <- rxPriorLogDensity(u, omega=u$omega)
+    expect_equal(r$value, dnorm(0.01, 0, 1, log=TRUE))
+  })
+
+  test_that("real ini()/prior() syntax reaches an off-diagonal covariance element", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxode2(function() {
+      ini({
+        tka <- 0.45; tcl <- 1; tv <- 3.45
+        eta.cl + eta.v ~ c(0.3, 0.05, 0.2)
+        add.sd <- 0.7
+        prior(eta.cl, eta.v) ~ dnorm(0, 0.1)
+      })
+      model({
+        ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    })
+    expect_true("(eta.cl,eta.v)" %in% rxUiPriors(u)$name)
+    r <- rxPriorLogDensity(u, omega=u$omega)
+    expect_equal(r$value, dnorm(0.05, 0, 0.1, log=TRUE))
+  })
+
+  test_that("the off-diagonal covariance gradient matches a central difference", {
+    ## the direct verification of addGrad()'s off-diagonal branch: writes
+    ## ONLY the one cell termValue() read (not both symmetric cells -- an
+    ## earlier version of this wrote both and was measured exactly 2x the
+    ## correct total against this same check)
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
+    .ini$prior[.w] <- "dnorm(0, 0.1)"
+    assign("iniDf", .ini, envir=u)
+    om <- u$omega
+    g <- .numGrad(function(v) {
+      om2 <- om; om2["eta.cl", "eta.v"] <- v; om2["eta.v", "eta.cl"] <- v
+      rxPriorLogDensity(u, omega=om2)$value
+    }, om["eta.cl", "eta.v"])
+    r <- rxPriorLogDensity(u, omega=om)
+    ## a caller that moves the symmetric pair TOGETHER sums both cells
+    ## (R/priorDensity.R's own documented gradOmega convention)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"] + r$gradOmega["eta.v", "eta.cl"]),
+                 unname(g), tolerance=1e-6)
+  })
+
+  test_that("a whole-block invWishart() prior is unaffected by the off-diagonal relaxation", {
+    skip_if_not(.hasPriorSupport())
+    u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(20)")
+    r <- rxPriorLogDensity(u, omega=u$omega)
+    expect_true(is.finite(r$value))
+  })
+
+  test_that("prior simulation (usePrior=TRUE) refuses an off-diagonal covariance prior with a clear message", {
+    skip_if_not(.hasPriorSupport())
+    u <- rxode2(function() {
+      ini({
+        tka <- 0.45; tcl <- 1; tv <- 3.45
+        eta.cl + eta.v ~ c(0.3, 0.05, 0.2)
+        add.sd <- 0.7
+        prior(eta.cl, eta.v) ~ dnorm(0, 0.1)
+      })
+      model({
+        ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    })
+    expect_error(
+      rxSolve(u, events=data.frame(id=1, time=0, amt=0, dv=0), nSub=2, usePrior=TRUE),
+      "off-diagonal")
   })
 
   test_that("an unsupported distribution is a clear error, not a silent wrong value", {
