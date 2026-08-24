@@ -54,6 +54,28 @@ rxTest({
     }
   })
 
+  test_that("an explicit nStud sizes the pool the same way nsim does", {
+    m <- rxode2({
+      ka <- 1
+      cl <- 1
+      v <- 20
+      cp <- linCmt()
+      sim <- cp + eta.cl
+    })
+    .n <- 200L
+    .d <- data.frame(ID=rep(seq_len(.n), each=2L),
+                     TIME=rep(c(0, 4), .n),
+                     AMT=rep(c(100, 0), .n),
+                     EVID=rep(c(1L, 0L), .n))
+    .om <- lotri::lotri(eta.cl ~ 0.1)
+    sStud <- rxSolve(m, .d, omega=.om, nStud=3, returnType="data.frame")
+    sSim <- rxSolve(m, .d, omega=.om, nsim=3, returnType="data.frame")
+    expect_equal(nrow(sStud), .n * 3L)
+    expect_equal(nrow(sSim), nrow(sStud))
+    expect_equal(sort(unique(sStud$sim.id)), 1:3)
+    expect_true(all(is.finite(sStud$sim)))
+  })
+
   test_that("an empty data set still refuses to solve", {
     m <- rxode2({
       cl <- 1
