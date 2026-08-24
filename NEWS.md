@@ -77,7 +77,11 @@
   identical results, tested), sized at four gaps from measured designs,
   and can be disabled with `RX_LINCMT_DELTA_MEMO=off`; a design with no
   gap reuse stops building after eight consecutive misses so it pays
-  essentially nothing.  `linCmtSeqStats()` reports the builds and hits.
+  essentially nothing; a stretch whose gap repeats the previous row's --
+  what a regular sampling schedule produces and an irregular one does not
+  -- re-arms it, so an irregular stretch no longer disables the memo for
+  the regular rows that follow it under the same parameters.
+  `linCmtSeqStats()` reports the builds and hits.
 
 - `linCmtB()` derivatives are now emitted as direct reads of the
   sensitivity state columns: the parser registers a derivative slot when

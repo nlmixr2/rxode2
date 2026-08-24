@@ -86,6 +86,31 @@ rxTest({
     expect_true(st[["expBuild"]] >= 8L)
   })
 
+  test_that("memo re-arms when a regular stretch follows an irregular one", {
+    mod <- .gradModel(2, 1, 0:4)
+    pars <- .parsFor(2, 1)
+    # an irregular stretch trips the give-up guard, then a long regular
+    # stretch under the SAME theta: the cached gaps are all stale, so
+    # without a re-arm the regular rows could never enter the memo and
+    # would hit nothing at all
+    irr <- cumsum(seq(0.31, 4, length.out = 15))
+    ev <- .evObs(c(irr, max(irr) + seq(0.5, 50, by = 0.5)))
+    rxode2:::linCmtDeltaMemo(1L)
+    rxode2:::linCmtSeqStats(TRUE)
+    sOn <- .solve(mod, pars, ev)
+    st <- rxode2:::linCmtSeqStats(TRUE)
+    rxode2:::linCmtDeltaMemo(0L)
+    sOff <- .solve(mod, pars, ev)
+    rxode2:::linCmtDeltaMemo(-1L)
+    # exact caching either way
+    expect_identical(sOn, sOff)
+    # the 100-row regular stretch is served by the memo (it hit zero
+    # times before the re-arm); builds stay bounded by the guard plus the
+    # one re-arm build
+    expect_true(st[["expHit"]] > 80L)
+    expect_true(st[["expBuild"]] <= 12L)
+  })
+
   test_that("threaded solve is bit-identical to single-threaded with the memo", {
     mod <- .gradModel(3, 1, 0:6)
     pars <- .parsFor(3, 1)

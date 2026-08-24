@@ -155,8 +155,14 @@ typedef struct {
   int deltaMemoOn;
   // Give-up guard: a design with no gap reuse pays the build with no hit
   // ever -- after RX_LINWIN_MISSRUN consecutive misses the window stops
-  // building (any hit resets the run; a window refill re-arms).
+  // building (any hit resets the run; a window refill re-arms).  While
+  // disarmed the cache still holds only the gaps of the stretch that
+  // tripped it, so a later regular stretch's gap could never enter it --
+  // lastDelta re-arms on a row whose gap repeats the previous row's,
+  // which is what a regular stretch produces on its second row and what
+  // a genuinely irregular one never does.
   int missRun;
+  double lastDelta;
   int nDelta, deltaNext;
   double delta[RX_LINWIN_DELTAS];
   double expL[RX_LINWIN_DELTAS][3];
@@ -414,6 +420,7 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
   w.nDelta = 0;
   w.deltaNext = 0;
   w.missRun = 0;
+  w.lastDelta = NA_REAL;
   {
     const char *e = getenv("RX_LINCMT_DELTA_MEMO");
     w.deltaMemoOn = !(e != NULL && e[0] == 'o' && e[1] == 'f' && e[2] == 'f');
@@ -430,13 +437,27 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
   for (int s = 0; s < w.nDelta; s++) {
     if (memcmp(&w.delta[s], &delta, sizeof(double)) == 0) {
       w.missRun = 0;
+      w.lastDelta = delta; // keep the re-arm detector's "previous gap" exact
 #pragma omp atomic
       linCmtExpHitN++;
       return s;
     }
   }
-  if (w.missRun >= RX_LINWIN_MISSRUN) return -1; // no reuse: stop building
-  w.missRun++;
+  // Miss.  A row whose gap repeats the previous row's is the signature of
+  // a regular stretch; an irregular one never produces it, so re-arming on
+  // it costs a genuinely irregular design nothing (it keeps building only
+  // where reuse is actually returning).  A stretch that resumes with a
+  // gap PAIR rather than a single repeated gap stays disarmed -- the
+  // cached gaps are stale and no consecutive repeat appears; that residual
+  // case only forgoes hits, it is never wrong.
+  int deltaRepeat = (memcmp(&w.lastDelta, &delta, sizeof(double)) == 0);
+  w.lastDelta = delta;
+  if (w.missRun >= RX_LINWIN_MISSRUN) {
+    if (!deltaRepeat) return -1; // no reuse: stop building
+    w.missRun = 0;               // reuse is back: re-arm
+  } else {
+    w.missRun++;
+  }
   int s = w.deltaNext;
   w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
   if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
