@@ -44,5 +44,18 @@ rxTest({
           "double cacheUdf(double a, double b, double c) { return a+b+c; }")
     expect_equal(.ddt("d/dt(x) <- -cacheUdf(a, b, c)*x"),
                  "-x*cacheUdf(a, b, c)")
+
+    # a derivative table added with rxD() after the package was built is picked
+    # up by rxS() the same way -- it comes from ls(rxode2parseD()), not from the
+    # build-time name list
+    rxD("cacheUdf", list(
+      function(a, b, c) "1",
+      function(a, b, c) "1",
+      function(a, b, c) "1"))
+    expect_true("cacheUdf" %in% ls(rxode2parseD()))
+    .s <- rxS(rxModelVars("d/dt(x) <- -cacheUdf(a, b, c)*x"))
+    expect_identical(mget("cacheUdf", envir = .s)[[1]],
+                     rxode2:::.rxFunctionCache[["cacheUdf"]])
+    expect_equal(rxFromSE("Derivative(cacheUdf(a, b, c), a)"), "1")
   })
 })
