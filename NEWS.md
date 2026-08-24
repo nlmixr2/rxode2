@@ -64,8 +64,9 @@
   a uniform sampling schedule needs one exponential build per window and
   every other row is multiply-only.  The memo is exact caching (bitwise
   identical results, tested), sized at four gaps from measured designs,
-  and can be disabled with `RX_LINCMT_DELTA_MEMO=off`;
-  `linCmtSeqStats()` reports the builds and hits.
+  and can be disabled with `RX_LINCMT_DELTA_MEMO=off`; a design with no
+  gap reuse stops building after eight consecutive misses so it pays
+  essentially nothing.  `linCmtSeqStats()` reports the builds and hits.
 
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors

@@ -31,12 +31,11 @@ parsFor <- function(ncmt, oral0) {
   p
 }
 mkEv <- function(nSub, obsT) {
-  do.call(rbind, lapply(seq_len(nSub), function(i) {
-    rbind(data.frame(id = i, time = 0, amt = 100, evid = 1, cmt = 1,
-                     rate = 0, ii = 0, ss = 0),
-          data.frame(id = i, time = obsT, amt = 0, evid = 0, cmt = 1,
-                     rate = 0, ii = 0, ss = 0))
-  }))
+  # et() events (the project protocol): a plain data.frame this size makes
+  # etTrans dominate the timing and dilutes the kernel effect ~10x.
+  ev <- rxode2::et(amt = 100, time = 0, cmt = 1)
+  ev <- rxode2::et(ev, obsT)
+  rxode2::et(ev, id = seq_len(nSub))
 }
 
 timeCell <- function(mod, pars, ev, memo) {
@@ -68,7 +67,7 @@ res <- do.call(rbind, lapply(cells, function(cl) {
   mod <- gradModel(cl$ncmt, cl$oral0, cl$dirs)
   pars <- parsFor(cl$ncmt, cl$oral0)
   ev <- eval(cl$ev)
-  nObs <- sum(ev$evid == 0)
+  nObs <- sum(as.data.frame(ev)$evid == 0)
   # warm-up (compile/caches) then timed; forward mode forced (the memo
   # lives on the forward tail path; this tree's auto could pick reverse)
   invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,

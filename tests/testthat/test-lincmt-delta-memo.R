@@ -69,7 +69,7 @@ rxTest({
     expect_true(st[["expHit"]] > 150L)
   })
 
-  test_that("fully non-uniform design builds once per distinct gap", {
+  test_that("fully non-uniform design gives up after the miss run", {
     mod <- .gradModel(2, 1, 0:4)
     pars <- .parsFor(2, 1)
     obsT <- cumsum(seq(0.31, 4, length.out = 25))
@@ -79,8 +79,11 @@ rxTest({
     invisible(.solve(mod, pars, ev))
     st <- rxode2:::linCmtSeqStats(TRUE)
     rxode2:::linCmtDeltaMemo(-1L)
-    # every gap distinct: builds track rows, hits stay low (re-queries only)
-    expect_true(st[["expBuild"]] >= 20L)
+    # every gap distinct: the give-up guard stops building after
+    # RX_LINWIN_MISSRUN consecutive misses so a no-reuse design pays
+    # (almost) nothing; correctness already covered by the bitwise test
+    expect_true(st[["expBuild"]] <= 10L)
+    expect_true(st[["expBuild"]] >= 8L)
   })
 
   test_that("threaded solve is bit-identical to single-threaded with the memo", {

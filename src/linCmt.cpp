@@ -128,6 +128,7 @@ extern "C" void ensureLinCmtA(int nCores) {
 #define RX_LINWIN_MAXM 4
 #define RX_LINWIN_MAXP 7
 #define RX_LINWIN_DELTAS 4
+#define RX_LINWIN_MISSRUN 8
 
 typedef stan::math::fvar<double> linCmtFv;
 
@@ -152,6 +153,10 @@ typedef struct {
   // distinct delta; interleaved q24h dosing: <= 4).  Round-robin
   // replacement; reset whenever the window refills.
   int deltaMemoOn;
+  // Give-up guard: a design with no gap reuse pays the build with no hit
+  // ever -- after RX_LINWIN_MISSRUN consecutive misses the window stops
+  // building (any hit resets the run; a window refill re-arms).
+  int missRun;
   int nDelta, deltaNext;
   double delta[RX_LINWIN_DELTAS];
   double expL[RX_LINWIN_DELTAS][3];
@@ -385,6 +390,7 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
   // A new window invalidates the delta memo (its tangents embed dL/dka).
   w.nDelta = 0;
   w.deltaNext = 0;
+  w.missRun = 0;
   {
     const char *e = getenv("RX_LINCMT_DELTA_MEMO");
     w.deltaMemoOn = !(e != NULL && e[0] == 'o' && e[1] == 'f' && e[2] == 'f');
@@ -400,11 +406,14 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
 static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
   for (int s = 0; s < w.nDelta; s++) {
     if (memcmp(&w.delta[s], &delta, sizeof(double)) == 0) {
+      w.missRun = 0;
 #pragma omp atomic
       linCmtExpHitN++;
       return s;
     }
   }
+  if (w.missRun >= RX_LINWIN_MISSRUN) return -1; // no reuse: stop building
+  w.missRun++;
   int s = w.deltaNext;
   w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
   if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
