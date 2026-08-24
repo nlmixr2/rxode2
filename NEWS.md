@@ -250,6 +250,16 @@
   `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
+- Building a symengine environment with `rxS()` is about twice as fast
+  (#1283).  The opaque function symbols it loads (`linCmtA()`, `delay()`,
+  `lag()`, the derivative helpers, ...) were built by splicing each name into a
+  fresh function body, so R created and byte-compiled about 250 new closures on
+  every call.  They now share one body, are built when the package itself is
+  built, and are reused by every symengine environment; a user function
+  registered at run time with `rxFun()` or `rxD()` is built the same way on
+  first use.  This speeds up every consumer that loads models into symengine
+  repeatedly, such as an nlmixr2 fit.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
