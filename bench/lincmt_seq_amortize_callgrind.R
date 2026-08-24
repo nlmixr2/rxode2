@@ -1,3 +1,8 @@
+# HISTORICAL RECORD: this script exercises rxControl(linCmtSensStrategy=)
+# and/or linCmtHybStats(), removed when the hybrid strategy was retired (the
+# amortized sequential evaluator, linCmtSeqTailJac, subsumed it).  To re-run,
+# check out the commit range 473c6c52c..6939902d8 of this branch; the saved
+# bench/results/*.rds remain the evidence of record.
 # Callgrind target for the sequential-kernel profile (phase 0 of the
 # amortization project).  Run AFTER lincmt_seq_amortize_phase0.R:
 #   valgrind --tool=callgrind --callgrind-out-file=/tmp/cg.lincmt.%p \

@@ -1,3 +1,8 @@
+# HISTORICAL RECORD: this script exercises rxControl(linCmtSensStrategy=)
+# and/or linCmtHybStats(), removed when the hybrid strategy was retired (the
+# amortized sequential evaluator, linCmtSeqTailJac, subsumed it).  To re-run,
+# check out the commit range 473c6c52c..6939902d8 of this branch; the saved
+# bench/results/*.rds remain the evidence of record.
 # HISTORICAL RECORD: the prototype exports this script calls were removed from
 # src/linCmt.cpp in fb37eabe8; check out 73f2e13d0 (or earlier) to re-run it.
 # RECORD OF A DECISION, not a live benchmark.  The superposition strategy it

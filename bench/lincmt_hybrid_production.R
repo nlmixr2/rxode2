@@ -1,3 +1,8 @@
+# HISTORICAL RECORD: this script exercises rxControl(linCmtSensStrategy=)
+# and/or linCmtHybStats(), removed when the hybrid strategy was retired (the
+# amortized sequential evaluator, linCmtSeqTailJac, subsumed it).  To re-run,
+# check out the commit range 473c6c52c..6939902d8 of this branch; the saved
+# bench/results/*.rds remain the evidence of record.
 # Phase 4.3 of the linCmt() speed plan (see
 # ~/.claude/plans/the-lincmt-solutions-are-calm-seahorse.md): the hybrid
 # sensitivity strategy wired into production linCmtB()
