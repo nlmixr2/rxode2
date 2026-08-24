@@ -3343,7 +3343,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
   # the history function still references a defined variable in the output model
   .env$..laggedVars <- .rxCollectLaggedVars(.expr)
-  .ret <- .rxToSE(.expr, envir=.env)
+  # loads the model into .env by side effect; the returned text is not used
+  .rxToSE(.expr, envir=.env)
   class(.env) <- "rxS"
   return(.env)
 }
