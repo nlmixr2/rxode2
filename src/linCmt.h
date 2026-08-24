@@ -128,6 +128,17 @@ namespace stan {
       bool fxIsZero_ = false;
       int sensV1_ = -1;
 
+      // Persistent forward-mode work buffers (linCmtFwdJac): sized lazily
+      // per row via resize() (a no-op at the same size), so the p seed
+      // passes and the row itself make no heap allocations.
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> fwdJ_;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> fwdA_;
+      Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdThetaF_;
+      Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdFullTheta_;
+      Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdYp_;
+      Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdRet_;
+      Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 2> fwdG_;
+
       double c1_, c2_;
 
       //' The initialization of this class
@@ -317,8 +328,11 @@ namespace stan {
       //'  If the scaling is already setup, (scaleSetup_ == true) then
       //'  the scaled sensitivity is calculated.
       //'
+      // theta binds a Map or a Matrix without copying (Eigen::Ref): this is
+      // called once per parameter per linCmtB() call, so a by-value Matrix
+      // here was one heap allocation per element per row.
       void sensThetaElt(int d,
-                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1>>& theta,
                         Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>& sensTheta,
                         int nd, int& i, int& j,
                         double &mn, double &mx, double *scale,
@@ -398,7 +412,7 @@ namespace stan {
       }
 
       void sensThetaElt(int d,
-                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1>>& theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& sensThetaIn,
                         int nd, int& i, int& j,
                         double &mn, double &mx, double *scale,
@@ -2091,6 +2105,15 @@ namespace stan {
         return Alast;
       }
 
+      // restoreFx() into a caller-owned vector (no allocation once sized).
+      void restoreFxTo(const double *A,
+                       Eigen::Matrix<double, Eigen::Dynamic, 1> &fx) const {
+        fx.resize(ncmt_ + oral0_);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          fx(i, 0) = A[i];
+        }
+      }
+
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
       restoreJac(double *A) const {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
@@ -2242,7 +2265,7 @@ namespace stan {
         }
       }
 
-      void saveJac(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
+      void saveJac(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J) {
         // Save A1-A4
         for (int i = oral0_; i < ncmt_ + oral0_; i++) {
           Asave_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0] = J(i, 0);
@@ -2284,18 +2307,17 @@ namespace stan {
       }
 
       template <typename T>
-      void saveAlast(Eigen::Matrix<T, Eigen::Dynamic, 1> ret0) const {
+      void saveAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& ret0) const {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           T smv = ret0(i, 0);
           Asave_[i] = smv.val();
         }
       }
 
-      void linAcalcAlast(Eigen::Matrix<double, Eigen::Dynamic, 1> yp,
-                         Eigen::Matrix<double, Eigen::Dynamic, 2> g,
+      void linAcalcAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& yp,
+                         const Eigen::Matrix<double, Eigen::Dynamic, 2>& g,
                          const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        yp_ = yp;
-        g_ = g;
+        (void)yp; (void)g;
         yp_ = getAlast(theta);
         g_ = stan::math::macros2micros(theta, ncmt_, trans_);
       }
@@ -2411,8 +2433,10 @@ namespace stan {
         int nFull = ncmt_*2 + oral0_;
 
         // Pre-compute double Alast data ONCE (same for all seed directions)
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J = restoreJac(&A_[0]);
-        Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(m, 1);
+        restoreJacTo(&A_[0], fwdJ_);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J = fwdJ_;
+        fwdA_.resize(m);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> &AlastA = fwdA_;
         {
           // Extract double parameter values from thetaIn (already unscaled)
           Eigen::Matrix<double, Eigen::Dynamic, 1> fullThetaDbl =
@@ -2432,9 +2456,12 @@ namespace stan {
           }
         }
 
-        // Allocate all fvar work buffers ONCE (reused across all p seed directions)
-        Eigen::Matrix<fv, Eigen::Dynamic, 1> thetaF(p), fullTheta(nFull), yp(m), ret(m);
-        Eigen::Matrix<fv, Eigen::Dynamic, 2> g(ncmt_, 2);
+        // Persistent fvar work buffers (resize is a no-op at the same size)
+        fwdThetaF_.resize(p); fwdFullTheta_.resize(nFull);
+        fwdYp_.resize(m); fwdRet_.resize(m); fwdG_.resize(ncmt_, 2);
+        Eigen::Matrix<fv, Eigen::Dynamic, 1> &thetaF = fwdThetaF_,
+          &fullTheta = fwdFullTheta_, &yp = fwdYp_, &ret = fwdRet_;
+        Eigen::Matrix<fv, Eigen::Dynamic, 2> &g = fwdG_;
 
         for (int j = 0; j < p; j++) thetaF(j, 0) = fv(thetaIn(j, 0), 0.0);
         fx.resize(m);
@@ -2734,12 +2761,13 @@ namespace stan {
         return NA_REAL;
       }
 
-      Eigen::Matrix<double, -1, -1>
+      void
       getJacCp(const Eigen::Matrix<double, -1, -1>& J0,
                const Eigen::VectorXd& ret0,
                const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
                Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
-        Eigen::Matrix<double, Eigen::Dynamic, 1> J = J0.row(oral0_);
+        // no per-call temporaries: J is an expression over J0's central row
+        auto J = J0.row(oral0_).transpose();
         Jf = J;
 
         double v = getVc(theta);
@@ -2846,8 +2874,6 @@ namespace stan {
           // v = theta(1, 0);
           break;
         }
-
-        return Jf;
       }
 
       //' Right-hand side of the linear compartment system at given amounts
@@ -2892,14 +2918,14 @@ namespace stan {
         }
       }
 
-      double adjustF(const Eigen::VectorXd ret0,
+      double adjustF(const Eigen::VectorXd& ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
                      double &vc) {
         vc = getVc(theta);
         return ret0(oral0_, 0) / vc;
       }
 
-      double adjustF(const Eigen::VectorXd ret0,
+      double adjustF(const Eigen::VectorXd& ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         double vc=0;
         return adjustF(ret0, theta, vc);
@@ -2909,7 +2935,7 @@ namespace stan {
 
     // Double initialization need to be outside of the linCmtStan struct
     template <>
-    void linCmtStan::saveAlast<double>(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) const {
+    void linCmtStan::saveAlast<double>(const Eigen::Matrix<double, Eigen::Dynamic, 1>& ret0) const {
       for (int i = 0; i < ncmt_ + oral0_; i++) {
         Asave_[i] = ret0(i, 0);
       }

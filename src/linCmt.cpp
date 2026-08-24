@@ -1091,7 +1091,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
     if (which < 0) {
-      fx = lc.restoreFx(acur);
+      lc.restoreFxTo(acur, fx);
       return lc.adjustF(fx, theta);
     } else {
       return acur[which];
@@ -1106,7 +1106,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
       // This also handles the case where _t = ind->tcur, where the
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
-      fx = lc.restoreFx(getAdvan(idx));
+      lc.restoreFxTo(getAdvan(idx), fx);
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -1673,8 +1673,8 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
   if ((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11) {
     double *acur = getAdvan(idx);
-    lcb.J = lcb.lc.restoreJac(acur);
-    lcb.fx = lcb.lc.restoreFx(acur);
+    lcb.lc.restoreJacTo(acur, lcb.J);
+    lcb.lc.restoreFxTo(acur, lcb.fx);
     return;
   }
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
