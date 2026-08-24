@@ -68,6 +68,18 @@
   gap reuse stops building after eight consecutive misses so it pays
   essentially nothing.  `linCmtSeqStats()` reports the builds and hits.
 
+- `linCmtB()` derivatives are now emitted as direct reads of the
+  sensitivity state columns: the parser registers a derivative slot when
+  a `rx__sens_<cmt>_BY_<slot>` state is referenced as a bare symbol, and
+  the derivative table writes the concentration gradient as arithmetic
+  over those states (matching the internal per-`trans` scaling exactly,
+  so results are bitwise identical; a `trans` without a covered scaling
+  keeps the call form).  A FOCEi inner model drops from about eleven
+  `linCmtB()` executions per row to the single value call.  The measured
+  effect is modest (the read calls already short-circuited cheaply):
+  about 1.0-1.1x on the sensitivity solve and 1.04x on a dense FOCEi
+  fit, with the identical objective.
+
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
