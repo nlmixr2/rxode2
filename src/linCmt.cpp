@@ -127,6 +127,7 @@ extern "C" void ensureLinCmtA(int nCores) {
 
 #define RX_LINWIN_MAXM 4
 #define RX_LINWIN_MAXP 7
+#define RX_LINWIN_DELTAS 4
 
 typedef stan::math::fvar<double> linCmtFv;
 
@@ -143,6 +144,20 @@ typedef struct {
   double ka, dka[RX_LINWIN_MAXP];
   double L[3], dL[RX_LINWIN_MAXP][3];
   double C[3][3][3], dC[RX_LINWIN_MAXP][3][3][3];
+  // Delta-keyed memo of the tail's dt-dependent exponentials: for a row
+  // gap delta, E_i = exp(-L_i*delta) (k10 plays L for 1-cmt) plus
+  // exp(-ka*delta) when oral, with the tangent in every direction built
+  // with the exact fvar operation order -- a hit is bitwise identical to
+  // recomputation.  Sized from measured gap reuse (uniform designs: 1
+  // distinct delta; interleaved q24h dosing: <= 4).  Round-robin
+  // replacement; reset whenever the window refills.
+  int deltaMemoOn;
+  int nDelta, deltaNext;
+  double delta[RX_LINWIN_DELTAS];
+  double expL[RX_LINWIN_DELTAS][3];
+  double dExpL[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][3];
+  double expKa[RX_LINWIN_DELTAS];
+  double dExpKa[RX_LINWIN_DELTAS][RX_LINWIN_MAXP];
 } linCmtWin;
 
 // Global linear compartment B model object
@@ -262,6 +277,7 @@ static inline void linCmtRevTapeInit() {
 
 static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
 static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
+static int linCmtExpBuildN = 0, linCmtExpHitN = 0;
 
 //' Read (and optionally reset) the amortized linCmt() sequential counters
 //'
@@ -271,7 +287,10 @@ static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
 //'   seqFullRows (rows that fell back to the full forward evaluator),
 //'   valueCompute (value executions that solved the row),
 //'   valueRestore (value executions that restored an already-solved row),
-//'   memoHit (value executions short-circuited by the last-row memo)
+//'   memoHit (value executions short-circuited by the last-row memo),
+//'   expBuild (delta-keyed exponential-memo builds: one per distinct row
+//'   gap per theta window), expHit (rows whose exponentials came from the
+//'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
 //' @keywords internal
 //' @export
 //[[Rcpp::export]]
@@ -281,10 +300,13 @@ IntegerVector linCmtSeqStats(bool reset = false) {
                                           _["seqFullRows"] = linCmtSeqFullN,
                                           _["valueCompute"] = linCmtValCompN,
                                           _["valueRestore"] = linCmtValRestN,
-                                          _["memoHit"] = linCmtMemoHitN);
+                                          _["memoHit"] = linCmtMemoHitN,
+                                          _["expBuild"] = linCmtExpBuildN,
+                                          _["expHit"] = linCmtExpHitN);
   if (reset) {
     linCmtWinN = linCmtSeqTailN = linCmtSeqFullN = 0;
     linCmtValCompN = linCmtValRestN = linCmtMemoHitN = 0;
+    linCmtExpBuildN = linCmtExpHitN = 0;
   }
   return r;
 }
@@ -343,8 +365,53 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
     }
   }
   w.valid = 1;
+  // A new window invalidates the delta memo (its tangents embed dL/dka).
+  w.nDelta = 0;
+  w.deltaNext = 0;
+  {
+    const char *e = getenv("RX_LINCMT_DELTA_MEMO");
+    w.deltaMemoOn = !(e != NULL && e[0] == 'o' && e[1] == 'f' && e[2] == 'f');
+  }
 #pragma omp atomic
   linCmtWinN++;
+}
+
+// Find (or build) the delta memo slot for this row's gap.  The build uses
+// the exact operation order of the fvar tail evaluation (u = (-L)*delta;
+// E = exp(u); dE_j = ((-dL_j)*delta)*E), so a memo hit is bitwise
+// identical to recomputing the exponentials inside the tail.
+static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
+  for (int s = 0; s < w.nDelta; s++) {
+    if (memcmp(&w.delta[s], &delta, sizeof(double)) == 0) {
+#pragma omp atomic
+      linCmtExpHitN++;
+      return s;
+    }
+  }
+  int s = w.deltaNext;
+  w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
+  if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
+  w.delta[s] = delta;
+  int nL = (w.ncmt == 1) ? 1 : w.ncmt;
+  for (int i = 0; i < nL; i++) {
+    double Lv = (w.ncmt == 1) ? w.k10 : w.L[i];
+    double E = exp((-Lv)*delta);
+    w.expL[s][i] = E;
+    for (int j = 0; j < w.npars; j++) {
+      double dLv = (w.ncmt == 1) ? w.dk10[j] : w.dL[j][i];
+      w.dExpL[s][j][i] = ((-dLv)*delta)*E;
+    }
+  }
+  if (w.oral0) {
+    double E = exp((-w.ka)*delta);
+    w.expKa[s] = E;
+    for (int j = 0; j < w.npars; j++) {
+      w.dExpKa[s][j] = ((-w.dka[j])*delta)*E;
+    }
+  }
+#pragma omp atomic
+  linCmtExpBuildN++;
+  return s;
 }
 
 // Sequential window+tail row Jacobian (the amortization the hybrid's
@@ -372,6 +439,9 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
       w.npars != npars || memcmp(w.theta, thetaD, npars*sizeof(double)) != 0) {
     linCmtWinFill(lc, w, thetaD, ncmt, oral0, trans);
   }
+  // One delta-memo lookup per row; every requested direction reuses the
+  // slot (the exponentials are shared, only the tangent differs by j).
+  int dSlot = w.deltaMemoOn ? linCmtWinDeltaSlot(w, lc.dt_) : -1;
   // double Alast reconstruction once per row (shared by every direction);
   // J's columns align with linCmtFillTheta's order (ka last when oral).
   lc.restoreJacTo(lc.A_, lc.fwdJ_);
@@ -418,9 +488,20 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
     linCmtFv yp[RX_LINWIN_MAXM], ret[RX_LINWIN_MAXM];
     for (int c = 0; c < m; c++) yp[c] = linCmtFv(ypv[c], J(c, j));
     for (int c = 0; c < RX_LINWIN_MAXM; c++) ret[c] = linCmtFv(0.0, 0.0);
-    if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret);
-    else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret);
-    else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret);
+    linCmtFv preEv[RX_LINWIN_MAXM];
+    const linCmtFv *preE = NULL;
+    if (dSlot >= 0) {
+      int nL = (ncmt == 1) ? 1 : ncmt;
+      for (int i = 0; i < nL; i++) {
+        preEv[i] = linCmtFv(w.expL[dSlot][i], w.dExpL[dSlot][j][i]);
+      }
+      preEv[nL] = oral0 ? linCmtFv(w.expKa[dSlot], w.dExpKa[dSlot][j]) :
+        linCmtFv(0.0, 0.0);
+      preE = preEv;
+    }
+    if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret, preE);
+    else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret, preE);
+    else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret, preE);
     if (first) {
       for (int c = 0; c < m; c++) {
         lcb.fx(c, 0) = ret[c].val_;

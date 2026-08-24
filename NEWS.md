@@ -57,6 +57,16 @@
   `linCmtSeqStats()` now also reports the value-execution classes and the
   memo hits.
 
+- A delta-keyed memo caches the tail's dt-dependent exponentials (and
+  their derivative in every requested direction) per distinct row gap
+  under the theta window, so designs with repeated observation spacing
+  evaluate their sensitivity rows without recomputing any exponential --
+  a uniform sampling schedule needs one exponential build per window and
+  every other row is multiply-only.  The memo is exact caching (bitwise
+  identical results, tested), sized at four gaps from measured designs,
+  and can be disabled with `RX_LINCMT_DELTA_MEMO=off`;
+  `linCmtSeqStats()` reports the builds and hits.
+
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and

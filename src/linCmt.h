@@ -1038,18 +1038,22 @@ namespace stan {
       // The part of the one-compartment solution that depends on dt_, rate_
       // and the prior state, given the elimination constant; the hybrid
       // strategy (linCmt.cpp) evaluates it with constants fixed per window.
+      // preE, when non-NULL, supplies the delta-keyed memoized exponentials
+      // (linCmt.cpp linCmtWinDeltaSlot): [exp(-k10*dt_), exp(-ka*dt_)] --
+      // exact caching of the same values, never an approximation.
       template <typename T>
-      void linCmtStan1Tail(const T k10, const T* yp, T ka, T* ret) const {
+      void linCmtStan1Tail(const T k10, const T* yp, T ka, T* ret,
+                           const T* preE = NULL) const {
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
         // Constants that would be in common and could be calculated once:
-        const T E            = exp(-k10 * dt_);
+        const T E            = preE ? preE[0] : exp(-k10 * dt_);
 
         ret[oral0_] = yp[oral0_]*E;
         T R            = rate_[0];
 
         // Handle oral absorption case
         if (oral0_ == 1) {
-          const T Ea =  exp(-ka*dt_);
+          const T Ea =  preE ? preE[1] : exp(-ka*dt_);
           const T ka10 = ka - k10;
 
           R += rate_[1];
@@ -1408,13 +1412,17 @@ namespace stan {
       template <typename T>
       void
       linCmtStan2Tail(const stan::math::solComp2struct<T>& sol2,
-                      const T* yp, T ka, T* ret) const {
+                      const T* yp, T ka, T* ret,
+                      const T* preE = NULL) const {
         T rDepot = 0.0;
         T R      = rate_[oral0_];
 
         Eigen::Matrix<T, 2, 1> Xo;
         Eigen::Matrix<T, 2, 1> Rm;
-        Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt_);
+        // preE = [exp(-L_0*dt_), exp(-L_1*dt_), exp(-ka*dt_)] (exact memo)
+        Eigen::Matrix<T, 2, 1> E;
+        if (preE) { E(0, 0) = preE[0]; E(1, 0) = preE[1]; }
+        else E = exp(-sol2.L * dt_);
         Eigen::Matrix<T, 2, 1> Ea = E;
 
         Xo =(yp[oral0_]*sol2.C1) * E +
@@ -1424,7 +1432,7 @@ namespace stan {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
-          Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, exp(-ka*dt_));
+          Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, preE ? preE[2] : exp(-ka*dt_));
           Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
           Ea =  (E - expa).array()/(ka2 - sol2.L).array();
           T cf = ka*yp[0] - rDepot;
@@ -2030,13 +2038,17 @@ namespace stan {
       template <typename T>
       void
       linCmtStan3Tail(const stan::math::solComp3struct<T>& sol3,
-                      const T* yp, T ka, T* ret) const {
+                      const T* yp, T ka, T* ret,
+                      const T* preE = NULL) const {
         T rDepot = 0.0;
         T R      = rate_[oral0_];
 
         Eigen::Matrix<T, 3, 1> Xo;
         Eigen::Matrix<T, 3, 1> Rm;
-        Eigen::Matrix<T, 3, 1> E = exp(-sol3.L * dt_);
+        // preE = [exp(-L_0*dt_) .. exp(-L_2*dt_), exp(-ka*dt_)] (exact memo)
+        Eigen::Matrix<T, 3, 1> E;
+        if (preE) { E(0, 0) = preE[0]; E(1, 0) = preE[1]; E(2, 0) = preE[2]; }
+        else E = exp(-sol3.L * dt_);
         Eigen::Matrix<T, 3, 1> Ea = E;
 
         Xo = (yp[oral0_]*sol3.C1) * E  +
@@ -2050,7 +2062,7 @@ namespace stan {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
-          Eigen::Matrix<T, 3, 1> expa = Eigen::Matrix<T, 3, 1>::Constant(3, 1, exp(-ka*dt_));
+          Eigen::Matrix<T, 3, 1> expa = Eigen::Matrix<T, 3, 1>::Constant(3, 1, preE ? preE[3] : exp(-ka*dt_));
           Eigen::Matrix<T, 3, 1> ka3 = Eigen::Matrix<T, 3, 1>::Constant(3, 1, ka);
 
           Ea =  (E - expa).array()/(ka3 - sol3.L).array();
