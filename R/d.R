@@ -789,24 +789,105 @@
     if (.wn + 1 > .nc * 2) {
       return("0")
     }
+    .slot <- c("p1", "v1", "p2", "p3", "p4", "p5")[.wn + 1]
     if (.args6 == "-1" && .args7 == "-1") {
-      ## This is the derivative of the linear compartment solution
-      # Return the gradent with respect to the parameter
+      ## Derivative of the linear compartment solution with respect to the
+      ## parameter slot: emit the concentration-gradient arithmetic over the
+      ## sensitivity STATE columns (direct buffer read; the parser registers
+      ## the slot from the symbol reference) when the trans scaling is
+      ## covered; otherwise keep the call emission.
+      .out <- .rxLinCmtBstateGrad(.slot, .nc, as.numeric(.args[8]), .args)
+      if (!is.null(.out)) return(.out)
       .args[6] <- "-2"
       .args[7] <- .w
     } else if (.args7 == "-2") {
-      ## This is the amount in each of the saved compartments
-      ## and which1 represents the amount in the compartment (zero indexed)
+      ## Derivative of an amount read: the raw Jacobian entry IS the
+      ## sensitivity state (trans-independent) -- read it directly.
       if (as.numeric(.args6) >= .oral0 + .nc) {
         return("0")
       }
-      .args[7] <- .w
+      .row <- .rxLinCmtBrowName(as.numeric(.args6), .oral0)
+      if (.row == "depot") {
+        return("0") # depot amounts do not depend on the p/v slots
+      }
+      return(paste0("rx__sens_", .row, "_BY_", .slot))
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
     }
     return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
   })
   return(.fun)
+}
+
+# Compartment index (zero based, depot first when oral) -> state name
+.rxLinCmtBrowName <- function(ci, oral0) {
+  if (oral0 == 1) {
+    c("depot", "central", "peripheral1", "peripheral2")[ci + 1]
+  } else {
+    c("central", "peripheral1", "peripheral2")[ci + 1]
+  }
+}
+
+# Concentration-gradient arithmetic over the sensitivity state columns,
+# mirroring getJacCp()'s per-trans operation ORDER exactly (so the emitted
+# text evaluates bitwise-identically to the linCmtB(-2, slot) read).
+# Returns NULL when the trans scaling is not covered (caller keeps the
+# call emission).  `slot` is "p1".."p5" or "ka"; theta expression text
+# comes from args 9..15 (p1, v1, p2, p3, p4, p5, ka).
+.rxLinCmtBstateGrad <- function(slot, nc, trans, args) {
+  .sw <- nc * 100 + trans
+  .s <- paste0("(rx__sens_central_BY_", slot, ")")
+  .t1 <- paste0("(", args[10], ")") # v1 slot expression
+  .t3 <- paste0("(", args[12], ")") # p3 slot expression
+  .t5 <- paste0("(", args[14], ")") # p5 slot expression
+  if (.sw %in% c(101, 102, 111, 201, 202, 203, 204, 205, 301, 302)) {
+    # v = v1: dconc/dv1 = -central/(v*v) + J/v; others J/v
+    if (slot == "v1") {
+      return(paste0("(-(central)/(", .t1, "*", .t1, ")+", .s, "/", .t1, ")"))
+    }
+    return(paste0("(", .s, "/", .t1, ")"))
+  }
+  if (.sw == 110) { # 1-cmt, v = 1/v1
+    if (slot == "v1") {
+      return(paste0("((central)+", .s, "*", .t1, ")"))
+    }
+    return(paste0("(", .s, "*", .t1, ")"))
+  }
+  if (.sw == 210) { # 2-cmt, v = 1/(v1 + p3)
+    .m <- paste0("(", .t1, "+", .t3, ")")
+    if (slot %in% c("v1", "p3")) {
+      return(paste0("((central)+", .s, "*", .m, ")"))
+    }
+    return(paste0("(", .s, "*", .m, ")"))
+  }
+  if (.sw == 310) { # 3-cmt, v = 1/(v1 + p3 + p5)
+    .m <- paste0("(", .t1, "+", .t3, "+", .t5, ")")
+    if (slot %in% c("v1", "p3", "p5")) {
+      return(paste0("((central)+", .s, "*", .m, ")"))
+    }
+    return(paste0("(", .s, "*", .m, ")"))
+  }
+  if (.sw == 211) { # 2-cmt, v = 1/(1/v1 + p3)
+    .m <- paste0("(1/", .t1, "+", .t3, ")")
+    if (slot == "v1") {
+      return(paste0("(-(central)/(", .t1, "*", .t1, ")+", .s, "*", .m, ")"))
+    }
+    if (slot == "p3") {
+      return(paste0("((central)+", .s, "*", .m, ")"))
+    }
+    return(paste0("(", .s, "*", .m, ")"))
+  }
+  if (.sw == 311) { # 3-cmt, v = 1/(1/v1 + p3 + p5)
+    .m <- paste0("(1/", .t1, "+", .t3, "+", .t5, ")")
+    if (slot == "v1") {
+      return(paste0("(-(central)/(", .t1, "*", .t1, ")+", .s, "*", .m, ")"))
+    }
+    if (slot %in% c("p3", "p5")) {
+      return(paste0("((central)+", .s, "*", .m, ")"))
+    }
+    return(paste0("(", .s, "*", .m, ")"))
+  }
+  NULL
 }
 
 .rxD$linCmtB <- list(
@@ -857,16 +938,20 @@
     }
     if (.args6 == "-1" && .args7 == "-1") {
       ## This is the derivative of the linear compartment solution
-      # Return the gradent with respect to the parameter
+      # Return the gradient with respect to ka via the state columns when
+      # the trans scaling is covered; otherwise keep the call emission.
+      .out <- .rxLinCmtBstateGrad("ka", .nc, as.numeric(.args[8]), .args)
+      if (!is.null(.out)) return(.out)
       .args[6] <- "-2"
       .args[7] <- .which
     } else if (.args7 == "-2") {
-      ## This is the amount in each of the saved compartments
-      ## and which1 represents the amount in the compartment (zero indexed)
+      ## Derivative of an amount read with respect to ka: the raw Jacobian
+      ## entry IS the sensitivity state (trans-independent).
       if (as.numeric(.args6) >= .oral0 + .nc) {
         return("0")
       }
-      .args[7] <- .which
+      .row <- .rxLinCmtBrowName(as.numeric(.args6), .oral0)
+      return(paste0("rx__sens_", .row, "_BY_ka"))
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
     }
