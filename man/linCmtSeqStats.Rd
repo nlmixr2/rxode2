@@ -12,7 +12,10 @@ linCmtSeqStats(reset = FALSE)
 \value{
 named integer vector: windows (window-constant recomputations),
 seqTailRows (rows evaluated from the window's dt-dependent tail),
-seqFullRows (rows that fell back to the full forward evaluator)
+seqFullRows (rows that fell back to the full forward evaluator),
+valueCompute (value executions that solved the row),
+valueRestore (value executions that restored an already-solved row),
+memoHit (value executions short-circuited by the last-row memo)
 }
 \description{
 Read (and optionally reset) the amortized linCmt() sequential counters

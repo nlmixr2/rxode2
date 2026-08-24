@@ -46,6 +46,17 @@
   never released) was measured to win nowhere once the sequential path
   itself was amortized, and has been removed.
 
+- A last-row value memo removes the repeated work of the generated model
+  executing the same `linCmtB()` value call many times per row (measured:
+  about fifteen executions per row -- five full computations and ten
+  restores).  A repeat with an identical key returns the cached value with
+  the Jacobian left standing for the sensitivity reads; sentinel calls and
+  model reshapes invalidate the memo.  Measured on an optimized build this
+  makes the sequential sensitivity solve a further 1.5x (two-compartment)
+  to 2.3x (three-compartment, sparse) faster; results are identical.
+  `linCmtSeqStats()` now also reports the value-execution classes and the
+  memo hits.
+
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
