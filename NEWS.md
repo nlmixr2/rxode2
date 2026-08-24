@@ -338,6 +338,25 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   positions without checking how many arguments were actually given, so a
   short call dereferenced a NULL parse node (#1266).
 
+- A `param()`/`params()` statement, and the interpolation statements
+  (`locf()`, `linear()`, `nocb()`, `midpoint()`), no longer splice the
+  preceding line into their own normalized text.  They build that text by
+  appending to the normalizing buffer and, unlike an assignment, did not
+  reset it when the statement started, so `"y=z*a;param(a,c);"` normalized to
+  `"paramy=z*a(a,c);"` -- text that no longer parses -- whenever such a
+  statement followed an assignment or a `d/dt()` line (#1279).
+
+- Repeated `param()` statements in one model now normalize to the single
+  merged declaration that `rxModelVars()$params` already reports, instead of
+  being kept as separate statements.  A generated model that appends a
+  `param()` statement to an already-built model text (for example to add
+  `DV` to a general-likelihood prediction model) previously left a normalized
+  model whose first `param()` statement did not name every parameter, so
+  code that read or edited that statement silently missed the later
+  declarations.  The merged statement spans the declared parameters and
+  anything that landed between them in the parameter vector, so re-parsing
+  the normalized text gives back the same parameter order (#1279).
+
 ### Compilation
 
 - A model that fails to build now shows the compiler's own error lines (and
