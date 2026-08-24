@@ -33,7 +33,8 @@ rxTest({
   .solve <- function(mod, pars, ev) {
     as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
                                   addDosing = FALSE,
-                                  linCmtSensType = "AD"))
+                                  linCmtSensType = "AD",
+                                  linCmtSensPhi = "off"))
   }
 
   test_that("delta memo is bitwise-exact on a mixed dose/obs design", {
@@ -121,11 +122,13 @@ rxTest({
     }))
     s1 <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
                                         addDosing = FALSE,
-                                        linCmtSensType = "AD"))
+                                        linCmtSensType = "AD",
+                                  linCmtSensPhi = "off"))
     for (r in 1:5) {
       sN <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 2L,
                                           addDosing = FALSE,
-                                          linCmtSensType = "AD"))
+                                          linCmtSensType = "AD",
+                                  linCmtSensPhi = "off"))
       expect_identical(s1, sN)
     }
   })

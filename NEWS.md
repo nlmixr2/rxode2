@@ -83,6 +83,32 @@
   the regular rows that follow it under the same parameters.
   `linCmtSeqStats()` reports the builds and hits.
 
+- Where a `linCmt()` sensitivity row's interval repeats -- as it does under
+  regular sampling, and across the dosing intervals of a repeated regimen
+  -- that interval's state-transition matrix is now assembled once and the
+  later rows of the same width propagate through it, instead of evaluating
+  the closed form again in every requested direction.  Measured at 1.1 to
+  1.6 times faster on those designs, most at three compartments and many
+  directions.  The matrix is built only on evidence the interval recurs, so
+  a design whose intervals never repeat builds none and is unaffected, and
+  each subject starts from a blank interval state so a solve is unchanged
+  by the number of threads it runs on.  Rate-bearing rows of an infusion
+  and steady-state rows keep the previous route.
+
+  This is the same exact closed-form solution evaluated in a different
+  order: the interval's matrix is summed first and then applied, where the
+  previous route accumulated the same products as it went.  Floating-point
+  addition is not associative, so the two can differ in the last few digits
+  -- neither is an approximation of the other and neither is the more
+  correct.  Measured over every compartment count, parameterization,
+  regimen and direction mask, the largest disagreement was a few units in
+  the last place of the values involved (against an independently
+  integrated reference the new order was in fact the closer of the two
+  slightly more often).  `rxSolve(linCmtSensPhi="off")` restores the
+  previous order for anyone who needs to reproduce earlier results digit
+  for digit; `linCmtSeqStats()` reports how many matrices were built and
+  how many rows used one.
+
 - `linCmtB()` derivatives are now emitted as direct reads of the
   sensitivity state columns: the parser registers a derivative slot when
   a `rx__sens_<cmt>_BY_<slot>` state is referenced as a bare symbol, and
