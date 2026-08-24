@@ -163,6 +163,15 @@ typedef struct {
   double dExpL[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][3];
   double expKa[RX_LINWIN_DELTAS];
   double dExpKa[RX_LINWIN_DELTAS][RX_LINWIN_MAXP];
+  // EXPLORATION ONLY (RX_LINCMT_PHI): the interval's state-transition
+  // matrix Phi(delta) and its per-direction tangents, assembled by
+  // probing the tail kernel with unit-basis prior states (so the entries
+  // are exact by construction, no new closed-form algebra) and cached
+  // alongside the exponentials.  A row then propagates with 2*m*m plain
+  // double multiply-adds per direction instead of an fvar tail pass.
+  int phiBuilt[RX_LINWIN_DELTAS];
+  double phi[RX_LINWIN_DELTAS][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
+  double dPhi[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
 } linCmtWin;
 
 // Global linear compartment B model object
@@ -288,6 +297,8 @@ static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
 static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
 static int linCmtValLiteN = 0;
 static int linCmtExpBuildN = 0, linCmtExpHitN = 0;
+static int linCmtPhiBuildN = 0;
+static int linCmtPhiRowN = 0;
 // -1: follow the per-window RX_LINCMT_DELTA_MEMO latch; 0/1: force.
 static int linCmtDeltaMemoForce = -1;
 
@@ -332,12 +343,15 @@ IntegerVector linCmtSeqStats(bool reset = false) {
                                           _["memoHit"] = linCmtMemoHitN,
                                           _["valueLite"] = linCmtValLiteN,
                                           _["expBuild"] = linCmtExpBuildN,
-                                          _["expHit"] = linCmtExpHitN);
+                                          _["expHit"] = linCmtExpHitN,
+                                          _["phiBuild"] = linCmtPhiBuildN,
+                                          _["phiRows"] = linCmtPhiRowN);
   if (reset) {
     linCmtWinN = linCmtSeqTailN = linCmtSeqFullN = 0;
     linCmtValCompN = linCmtValRestN = linCmtMemoHitN = 0;
     linCmtValLiteN = 0;
     linCmtExpBuildN = linCmtExpHitN = 0;
+    linCmtPhiBuildN = linCmtPhiRowN = 0;
   }
   return r;
 }
@@ -427,6 +441,7 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
   w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
   if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
   w.delta[s] = delta;
+  w.phiBuilt[s] = 0;
   int nL = (w.ncmt == 1) ? 1 : w.ncmt;
   for (int i = 0; i < nL; i++) {
     double Lv = (w.ncmt == 1) ? w.k10 : w.L[i];
@@ -447,6 +462,99 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta) {
 #pragma omp atomic
   linCmtExpBuildN++;
   return s;
+}
+
+// EXPLORATION ONLY (RX_LINCMT_PHI, default 0 = off): assemble the
+// interval's state-transition matrix Phi(delta) and its per-direction
+// tangents by probing the tail kernel with unit-basis prior states and a
+// zero rate.  Column c is exactly the tail's response to yp = e_c, so the
+// entries need no new closed-form algebra and inherit the kernel's own
+// accuracy; a row then propagates with plain double multiply-adds.  Only
+// the association order differs from a direct tail evaluation, so results
+// are round-off equivalent, NOT bitwise identical.  Infusion rows are
+// affine rather than linear in the prior state and keep the tail path.
+static int linCmtPhiMode() {
+  static int mode = -1;
+  if (mode < 0) {
+    const char *e = getenv("RX_LINCMT_PHI");
+    mode = (e == NULL) ? 0 : atoi(e);
+  }
+  return mode;
+}
+
+static void linCmtPhiBuild(stan::math::linCmtStan &lc, linCmtWin &w, int dSlot,
+                           int ncmt, int oral0, int npars, int nd) {
+  int m = ncmt + oral0;
+  double zeroRate[RX_LINWIN_MAXM] = {0.0, 0.0, 0.0, 0.0};
+  double *origRate = lc.rate_;
+  lc.rate_ = zeroRate;
+  bool haveVal = false;
+  int nL = (ncmt == 1) ? 1 : ncmt;
+  for (int j = 0; j < npars; j++) {
+    int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
+    if ((nd & bit) == 0) continue;
+    linCmtFv kaV(w.ka, w.dka[j]);
+    linCmtFv k10(w.k10, w.dk10[j]);
+    stan::math::solComp2struct<linCmtFv> s2;
+    stan::math::solComp3struct<linCmtFv> s3;
+    if (ncmt == 2) {
+      for (int i = 0; i < 2; i++) {
+        s2.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 2; r++) {
+          s2.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s2.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+        }
+      }
+    } else if (ncmt == 3) {
+      for (int i = 0; i < 3; i++) {
+        s3.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 3; r++) {
+          s3.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s3.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+          s3.C3(r, i) = linCmtFv(w.C[2][r][i], w.dC[j][2][r][i]);
+        }
+      }
+    }
+    linCmtFv preEv[RX_LINWIN_MAXM];
+    for (int i = 0; i < nL; i++) {
+      preEv[i] = linCmtFv(w.expL[dSlot][i], w.dExpL[dSlot][j][i]);
+    }
+    preEv[nL] = oral0 ? linCmtFv(w.expKa[dSlot], w.dExpKa[dSlot][j]) :
+      linCmtFv(0.0, 0.0);
+    for (int c = 0; c < m; c++) {
+      linCmtFv yp[RX_LINWIN_MAXM], ret[RX_LINWIN_MAXM];
+      for (int r = 0; r < m; r++) yp[r] = linCmtFv(r == c ? 1.0 : 0.0, 0.0);
+      for (int r = 0; r < RX_LINWIN_MAXM; r++) ret[r] = linCmtFv(0.0, 0.0);
+      if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret, preEv);
+      else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret, preEv);
+      else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret, preEv);
+      for (int r = 0; r < m; r++) {
+        if (!haveVal) w.phi[dSlot][r][c] = ret[r].val_;
+        w.dPhi[dSlot][j][r][c] = ret[r].d_;
+      }
+    }
+    haveVal = true;
+  }
+  lc.rate_ = origRate;
+  w.phiBuilt[dSlot] = 1;
+#pragma omp atomic
+  linCmtPhiBuildN++;
+}
+
+// EXPLORATION ONLY (RX_LINCMT_ABLATE, default 0 = off): ablation levels
+// used to measure what share of a sensitivity row is the per-direction
+// fvar work, i.e. the ceiling of a transition-matrix propagation that
+// would replace it with plain-double multiply-adds.  1 skips the Tail
+// kernel, 2 skips the whole per-direction body (constant fill, yp/preE
+// construction and the kernel).  Both produce WRONG (but finite and
+// bounded) derivatives -- timing counterfactuals, never a solve mode.
+static int linCmtAblateMode() {
+  static int mode = -1;
+  if (mode < 0) {
+    const char *e = getenv("RX_LINCMT_ABLATE");
+    mode = (e == NULL) ? 0 : atoi(e);
+  }
+  return mode;
 }
 
 // Sequential window+tail row Jacobian (the amortization the hybrid's
@@ -495,10 +603,62 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
   if (nd == 0) nd = 127;
   int si = 0;
   bool first = true;
+  const int ablate = linCmtAblateMode();
   lcb.fx.resize(m);
+  if (linCmtPhiMode() && dSlot >= 0) {
+    bool rateFree = true;
+    for (int c = 0; c < m; c++) {
+      if (lc.rate_[c] != 0.0) { rateFree = false; break; }
+    }
+    if (rateFree) {
+      if (!w.phiBuilt[dSlot]) {
+        linCmtPhiBuild(lc, w, dSlot, ncmt, oral0, npars, nd);
+      }
+      for (int j = 0; j < npars; j++) {
+        int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
+        if ((nd & bit) == 0) continue;
+        for (int r = 0; r < m; r++) {
+          double d = 0.0;
+          for (int c = 0; c < m; c++) {
+            d += w.phi[dSlot][r][c]*J(c, j) + w.dPhi[dSlot][j][r][c]*ypv[c];
+          }
+          if (first) {
+            double v = 0.0;
+            for (int c = 0; c < m; c++) v += w.phi[dSlot][r][c]*ypv[c];
+            lcb.fx(r, 0) = v;
+            lc.Asave_[r] = v;
+          }
+          lcb.Js(r, si) = d;
+        }
+        first = false;
+        si++;
+      }
+      if (first) return false;
+#pragma omp atomic
+      linCmtPhiRowN++;
+      return true;
+    }
+  }
   for (int j = 0; j < npars; j++) {
     int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
     if ((nd & bit) == 0) continue;
+    if (ablate == 2) {
+      // Counterfactual cost of a transition-matrix step: 2*m*m double
+      // multiply-adds per direction, no fvar, no transcendentals.
+      double e0 = (dSlot >= 0) ? w.expL[dSlot][0] : 0.5;
+      for (int c = 0; c < m; c++) {
+        double v = 0.0, d = 0.0;
+        for (int r = 0; r < m; r++) {
+          v += e0*ypv[r];
+          d += e0*J(r, j);
+        }
+        if (first) { lcb.fx(c, 0) = v; lc.Asave_[c] = v; }
+        lcb.Js(c, si) = d;
+      }
+      first = false;
+      si++;
+      continue;
+    }
     linCmtFv kaV(w.ka, w.dka[j]);
     linCmtFv k10(w.k10, w.dk10[j]);
     stan::math::solComp2struct<linCmtFv> s2;
@@ -535,7 +695,14 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
         linCmtFv(0.0, 0.0);
       preE = preEv;
     }
-    if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret, preE);
+    if (ablate == 1) {
+      // Counterfactual: the per-direction constants are still built, only
+      // the tail kernel itself is replaced by a bounded stand-in.
+      double e0 = (dSlot >= 0) ? w.expL[dSlot][0] : 0.5;
+      for (int c = 0; c < m; c++) {
+        ret[c] = linCmtFv(e0*yp[c].val_, e0*yp[c].d_);
+      }
+    } else if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret, preE);
     else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret, preE);
     else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret, preE);
     if (first) {
