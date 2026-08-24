@@ -278,6 +278,14 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
+  per-individual solve pool as `nsub` times the number of individual solves
+  it needs.  The over-allocation grew with the square of the number of
+  subjects, so a large study either ran out of memory or overflowed the size
+  to a negative number and stopped with `nothing to solve` -- which is what
+  made `nlmixr2est::addNpde()` and `vpcSim()` fail on a large fit
+  (nlmixr2/nlmixr2#412).  Results are unchanged.
+
 - A chunked solve (`rxSolve(file=`/`chunkSize=`)) with `nStud > 1` now
   simulates the omega uncertainty it was asked for.  It previously returned a
   plausible looking result drawn entirely from the point estimate omega, with

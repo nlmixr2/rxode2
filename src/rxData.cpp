@@ -4247,12 +4247,18 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           }
         }
       }
-      // if (nid == 0){
-      // } else
-      if (nid == rxSolveDat->nPopPar || rxSolveDat->nPopPar == 1){
+      // One `rx_solving_options_ind` is needed per individual SOLVE, that is
+      // `nsub*nsim`, which is `nPopPar` whenever the parameters were expanded
+      // per subject (`nPopPar == 1` is a single population set, i.e. nsim=1 and
+      // one solve per subject).  Multiplying nid by nPopPar over-allocated by a
+      // factor of nsub: a large study then either exhausted memory or overflowed
+      // `int` and reported "nothing to solve" (nlmixr2/nlmixr2#412).
+      if (rxSolveDat->nPopPar == 0) {
+        ntot = 0;
+      } else if (nid > rxSolveDat->nPopPar) {
         ntot = nid;
       } else {
-        ntot = nid*rxSolveDat->nPopPar;
+        ntot = rxSolveDat->nPopPar;
       }
     } else {
       if (rxSolveDat->nPopPar != 0) ntot = rxSolveDat->nPopPar;
