@@ -1493,6 +1493,22 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
     linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
   } else {
+    // Last-row value memo: the generated model executes this value call
+    // many times per row (compute phase and restore path alike); a repeat
+    // with an identical key returns the cached result with J/Jg/fx left
+    // standing for the reads.  The key covers every input the value
+    // depends on; sentinels and reshapes invalidate (see linCmtBquery /
+    // linCmtBsetModel).
+    const double args[7] = {p1, v1, p2, p3, p4, p5, ka};
+    if (lcb.memoIdx == idx && lcb.memoId == id && lcb.memoT == _t &&
+        lcb.memoFlag == ind->_rxFlag && lcb.memoDoSS == (int)ind->doSS &&
+        lcb.memoHpar == ind->linCmtHparIndex &&
+        lcb.memoH == ind->linCmtH && lcb.memoHV == ind->linCmtHV &&
+        memcmp(lcb.memoArgs, args, sizeof(args)) == 0) {
+#pragma omp atomic
+      linCmtMemoHitN++;
+      return lcb.memoVal;
+    }
     lcb.lc.setSsType(ind->linSS);
   }
   if (id == 0 && ind->linH[0] == 0) {
@@ -1520,5 +1536,14 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
   linCmtBsolveRow(lcb, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans, theta, thetaSens);
   lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
-  return lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
+  double val = lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
+  lcb.memoId = id; lcb.memoIdx = idx; lcb.memoT = _t;
+  lcb.memoFlag = ind->_rxFlag; lcb.memoDoSS = (int)ind->doSS;
+  lcb.memoHpar = ind->linCmtHparIndex;
+  lcb.memoH = ind->linCmtH; lcb.memoHV = ind->linCmtHV;
+  lcb.memoArgs[0] = p1; lcb.memoArgs[1] = v1; lcb.memoArgs[2] = p2;
+  lcb.memoArgs[3] = p3; lcb.memoArgs[4] = p4; lcb.memoArgs[5] = p5;
+  lcb.memoArgs[6] = ka;
+  lcb.memoVal = val;
+  return val;
 }
