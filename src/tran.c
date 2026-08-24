@@ -95,6 +95,7 @@ sbuf firstErr;
 int firstErrD=0;
 
 vLines sbPm, sbPmDt, sbNrmL;
+vLines sbNrmL2;
 vLines sbDoseArgVar, sbDoseArgCtx;
 sbuf sbNrm;
 sbuf sbExtra;
@@ -298,6 +299,7 @@ void parseFree(int last) {
   lineFree(&sbPm);
   lineFree(&sbPmDt);
   lineFree(&sbNrmL);
+  lineFree(&sbNrmL2);
   lineFree(&sbDoseArgVar);
   lineFree(&sbDoseArgCtx);
   lineFree(&(tb.ss));
@@ -882,6 +884,7 @@ void transIniNull(void) {
   lineNull(&(sbPm));
   lineNull(&(sbPmDt));
   lineNull(&(sbNrmL));
+  lineNull(&(sbNrmL2));
   lineNull(&(sbDoseArgVar));
   lineNull(&(sbDoseArgCtx));
   lineNull(&(depotLines));

@@ -229,6 +229,8 @@ static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2)
 extern vLines depotLines;
 extern vLines centralLines;
 extern vLines sbPm, sbPmDt, sbNrmL;
+// scratch line buffer used to rewrite sbNrmL (see mergeNormParamStatements)
+extern vLines sbNrmL2;
 // Identifiers seen inside an adaptive dosing argument, and a description of
 // where each came from.  Checked once the whole model has been parsed, since
 // the variable may be assigned further down (see #1231).
