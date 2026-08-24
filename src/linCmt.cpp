@@ -291,7 +291,8 @@ static inline void linCmtRevTapeInit() {
 
 static int linCmtHybSubjN = 0, linCmtHybRowN = 0, linCmtHybDoseN = 0,
   linCmtHybRateN = 0, linCmtHybConsN = 0, linCmtHybFlushN = 0,
-  linCmtHybFullN = 0, linCmtHybWinN = 0;
+  linCmtHybFullN = 0, linCmtHybWinN = 0, linCmtSeqTailN = 0,
+  linCmtSeqFullN = 0;
 
 //' Read (and optionally reset) the linCmt() hybrid-strategy counters
 //'
@@ -311,10 +312,13 @@ IntegerVector linCmtHybStats(bool reset = false) {
                                           _["consolidations"] = linCmtHybConsN,
                                           _["flushes"] = linCmtHybFlushN,
                                           _["fullRows"] = linCmtHybFullN,
-                                          _["windows"] = linCmtHybWinN);
+                                          _["windows"] = linCmtHybWinN,
+                                          _["seqTailRows"] = linCmtSeqTailN,
+                                          _["seqFullRows"] = linCmtSeqFullN);
   if (reset) {
     linCmtHybSubjN = linCmtHybRowN = linCmtHybDoseN = linCmtHybRateN =
-      linCmtHybConsN = linCmtHybFlushN = linCmtHybFullN = linCmtHybWinN = 0;
+      linCmtHybConsN = linCmtHybFlushN = linCmtHybFullN = linCmtHybWinN =
+      linCmtSeqTailN = linCmtSeqFullN = 0;
   }
   return r;
 }
@@ -458,6 +462,94 @@ static void linCmtHybEval(stan::math::linCmtStan &lc, linHybWin &w,
     }
     first = false;
   }
+}
+
+// Sequential window+tail row Jacobian (the amortization the hybrid's
+// observation phase already uses, applied to EVERY ordinary row): the
+// theta-only constants (k10 or the eigen-decomposition L/C, and ka) and
+// their tangents come from the theta-keyed window, so each requested
+// direction evaluates only the dt-dependent tail -- no macros2micros and
+// no eigen-decomposition per row.  Mathematically identical to
+// linCmtFwdJac under the AD path (isAD passthrough); steady-state rows
+// never come here (the SS kernels are not factored into constants+tail),
+// and any other shape falls back to the full evaluator.  Outputs match
+// linCmtFwdJac exactly: fx, the masked Js (columns in canonical requested
+// order, as updateJfromJs expects) and the Asave_ amounts for the next
+// row's carry.
+static bool linCmtSeqTailJac(linB_t &lcb) {
+  stan::math::linCmtStan &lc = lcb.lc;
+  if (lc.type_ != linCmtNormal) return false;
+  int ncmt = lc.ncmt_, oral0 = lc.oral0_, trans = lc.trans_;
+  int npars = lc.getNpars();
+  if (npars > RX_LINHYB_MAXP || ncmt + oral0 > RX_LINHYB_MAXM) return false;
+  int m = ncmt + oral0;
+  const double *thetaD = getLinCmtDoubleAddr(lcb, linCmtBaddrTheta);
+  linHybWin &w = lcb.hybWin;
+  if (!w.valid || w.ncmt != ncmt || w.oral0 != oral0 || w.trans != trans ||
+      w.npars != npars || memcmp(w.theta, thetaD, npars*sizeof(double)) != 0) {
+    linCmtHybWinFill(lc, w, thetaD, ncmt, oral0, trans);
+  }
+  // double Alast reconstruction once per row (shared by every direction);
+  // J's columns align with linCmtFillTheta's order (ka last when oral).
+  lc.restoreJacTo(lc.A_, lc.fwdJ_);
+  const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J = lc.fwdJ_;
+  double AlastA[RX_LINHYB_MAXM], ypv[RX_LINHYB_MAXM];
+  for (int c = 0; c < m; c++) {
+    double s = lc.A_[c];
+    for (int k = 0; k < npars; k++) s -= J(c, k)*thetaD[k];
+    AlastA[c] = s;
+    double v = AlastA[c];
+    for (int k = 0; k < npars; k++) v += J(c, k)*thetaD[k];
+    ypv[c] = v;
+  }
+  int nd = lc.numDiff_;
+  if (nd == 0) nd = 127;
+  int si = 0;
+  bool first = true;
+  lcb.fx.resize(m);
+  for (int j = 0; j < npars; j++) {
+    int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
+    if ((nd & bit) == 0) continue;
+    linCmtFv kaV(w.ka, w.dka[j]);
+    linCmtFv k10(w.k10, w.dk10[j]);
+    stan::math::solComp2struct<linCmtFv> s2;
+    stan::math::solComp3struct<linCmtFv> s3;
+    if (ncmt == 2) {
+      for (int i = 0; i < 2; i++) {
+        s2.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 2; r++) {
+          s2.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s2.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+        }
+      }
+    } else if (ncmt == 3) {
+      for (int i = 0; i < 3; i++) {
+        s3.L(i, 0) = linCmtFv(w.L[i], w.dL[j][i]);
+        for (int r = 0; r < 3; r++) {
+          s3.C1(r, i) = linCmtFv(w.C[0][r][i], w.dC[j][0][r][i]);
+          s3.C2(r, i) = linCmtFv(w.C[1][r][i], w.dC[j][1][r][i]);
+          s3.C3(r, i) = linCmtFv(w.C[2][r][i], w.dC[j][2][r][i]);
+        }
+      }
+    }
+    linCmtFv yp[RX_LINHYB_MAXM], ret[RX_LINHYB_MAXM];
+    for (int c = 0; c < m; c++) yp[c] = linCmtFv(ypv[c], J(c, j));
+    for (int c = 0; c < RX_LINHYB_MAXM; c++) ret[c] = linCmtFv(0.0, 0.0);
+    if (ncmt == 1) lc.linCmtStan1Tail<linCmtFv>(k10, yp, kaV, ret);
+    else if (ncmt == 2) lc.linCmtStan2Tail<linCmtFv>(s2, yp, kaV, ret);
+    else lc.linCmtStan3Tail<linCmtFv>(s3, yp, kaV, ret);
+    if (first) {
+      for (int c = 0; c < m; c++) {
+        lcb.fx(c, 0) = ret[c].val_;
+        lc.Asave_[c] = ret[c].val_;
+      }
+      first = false;
+    }
+    for (int c = 0; c < m; c++) lcb.Js(c, si) = ret[c].d_;
+    si++;
+  }
+  if (first) return false; // nothing requested: let the full path decide
+  return true;
 }
 
 // Per-subject pre-pass, run once per pass on the subject's first
@@ -1655,7 +1747,12 @@ static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind 
   } else if (sensType == 31) {
     linCmtRevTapeInit();
     stan::math::jacobian(lcb.lc, thetaSens, lcb.fx, lcb.Js);
+  } else if (linCmtSeqTailJac(lcb)) {
+#pragma omp atomic
+    linCmtSeqTailN++;
   } else {
+#pragma omp atomic
+    linCmtSeqFullN++;
     lcb.lc.linCmtFwdJac(thetaSens, lcb.fx, lcb.Js);
   }
   lcb.lc.updateJfromJs(lcb.J, lcb.Js);
