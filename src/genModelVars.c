@@ -300,6 +300,10 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(trann,21,Rf_mkChar("IndF"));
   SET_STRING_ELT(tran, 21,Rf_mkChar(_bufw.s));
 
+  // nlmixr2/rxode2#1279: collapse repeated param() statements into the single
+  // merged declaration the parameter vector already reports.
+  mergeNormParamStatements(params);
+
   SET_STRING_ELT(modeln,0,Rf_mkChar("normModel"));
   SET_STRING_ELT(model,0,Rf_mkChar(sbNrm.s));
 
