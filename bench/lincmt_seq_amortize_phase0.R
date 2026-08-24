@@ -4,8 +4,12 @@
 # profile script consumes.  Optimized build only; run pinned:
 #   taskset -c <idle> Rscript bench/lincmt_seq_amortize_phase0.R
 # Env: CONFIG=2cmt (default), REPS=3.
+# RXTREE picks which rxode2 build to time (the quiet-machine A/B loads the
+# baseline / post-A throwaway worktrees); the model text and data are
+# identical across trees.
 suppressMessages({
-  devtools::load_all("~/src/rxode2-lincmt-carry-jump", compile = FALSE, quiet = TRUE)
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+                     compile = FALSE, quiet = TRUE)
   devtools::load_all("~/src/nlmixr2est-matexp-bench", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
