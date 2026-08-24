@@ -17,8 +17,9 @@ outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 # guard against a busy machine; a small persistent baseline from other
 # pinned work is acceptable for pinned single-core cells (load recorded
-# per row)
-stopifnot(loadAvg() < 3)
+# per row).  MAXLOAD overrides for an explicitly contended, provenance-
+# marked run (the results carry the load per row either way).
+stopifnot(loadAvg() < as.numeric(Sys.getenv("MAXLOAD", "3")))
 
 trueTheta <- list(
   `1cmt` = c(ka = 1.2, cl = 4, v = 30),
