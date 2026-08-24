@@ -239,8 +239,16 @@ fillThreadedLinCmtAutoOptimized <- function(nSub = 44L, reps = 3L, nThr = getRxT
     res <- readRDS(fn)
     if (!anyNA(res$fwdN)) next
     if (proc.time()[["elapsed"]] - t0 > maxSec) { cat("MAXSEC reached before", fn, "\n"); return(invisible(NULL)) }
+    # this run's own 11-thread bursts lift the 1-minute load average past any
+    # small threshold between checkpoints, so the guard looks for a COMPETING
+    # heavy process instead.  One other agent's single-tree build/benchmark
+    # (~1-2 cores of 22) is tolerated -- unavoidable, recorded in the
+    # per-checkpoint load -- but anything above 300% cpu stops the fill.
     load1 <- as.numeric(strsplit(readLines("/proc/loadavg", n = 1L), " ")[[1]][1])
-    if (load1 > maxLoad) stop(sprintf("load average %.1f > %.1f: not measuring threaded cells", load1, maxLoad))
+    comp <- suppressWarnings(system(sprintf(
+      "ps -eo pid,pcpu,comm --no-headers --sort=-pcpu | awk '$1 != %d && $2 > 300 {print $1\" \"$2\" \"$3; exit}'",
+      Sys.getpid()), intern = TRUE))
+    if (length(comp) && nzchar(comp[1])) stop(sprintf("competing heavy process (%s): not measuring threaded cells", comp[1]))
     cfg <- res[1, c("ncmt", "oral0", "trans")]
     pars <- c(.transPars(cfg$ncmt, cfg$trans), ka = .ka)
     for (i in seq_len(nrow(res))) {
