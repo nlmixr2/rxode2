@@ -18,6 +18,7 @@
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
 #include "rxProtect.h"
+#include "parseParamMerge.h"
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
