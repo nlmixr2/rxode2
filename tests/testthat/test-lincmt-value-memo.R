@@ -105,4 +105,32 @@ rxTest({
       expect_identical(ref[, -1], sN[, -1])
     }
   })
+
+  test_that("thin value path serves solved-row re-executions; lazy restore feeds reads", {
+    # Plain value + state-symbol reads: the lhs/output-pass value
+    # re-executions take the thin path (fx + scaling only)
+    mS <- rxode2("cp = linCmtB(rx__PTR__, t, 0, 2, 1, -1, -1, 1, cl, v, q, vp, 0, 0, ka)
+g1 = rx__sens_central_BY_p1/v")
+    ev <- .evObs(nSub = 2L, nObs = 10L)
+    invisible(.stats())
+    sS <- rxSolve(mS, .parsFor(2, 1), ev, returnType = "data.frame",
+                  cores = 1L, linCmtSensType = "AD")
+    st <- .stats()
+    expect_gt(st[["valueLite"]], 0L)
+    # Call-form reads after a thin value execution must see this row's
+    # J/Jg (the lazy restore), not the previous row's -- anchored against
+    # reverse mode, an independent evaluator
+    mC <- .gradModel(2, 1, 0:4, nVal = 1L)
+    invisible(.stats())
+    sF <- rxSolve(mC, .parsFor(2, 1), ev, returnType = "data.frame",
+                  cores = 1L, linCmtSensType = "AD")
+    st2 <- .stats()
+    expect_gt(st2[["valueLite"]], 0L)
+    sR <- rxSolve(mC, .parsFor(2, 1), ev, returnType = "data.frame",
+                  cores = 1L, linCmtSensType = "ADr")
+    for (cc in grep("^(cp1|d[0-9]+)$", names(sF), value = TRUE)) {
+      expect_true(max(abs(sF[[cc]] - sR[[cc]]) /
+                        pmax(1e-8, abs(sR[[cc]]))) < 1e-8)
+    }
+  })
 })

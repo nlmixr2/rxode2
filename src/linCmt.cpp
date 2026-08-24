@@ -192,6 +192,9 @@ typedef struct {
   // output pass) returns the cached adjustF() result and leaves J/Jg/fx
   // standing for the reads.  Keyed on everything the value depends on;
   // invalidated by a model reshape and by any carry/dose-time sentinel.
+  // Row last served by the thin value path (fx + Vc only): J/Jg are stale
+  // for that row until a call-form query lazily restores them.
+  int liteId = -1, liteIdx = -1;
   int memoId = -1, memoIdx = -1, memoFlag = -1, memoDoSS = -1, memoHpar = -9;
   double memoT = 0.0, memoH = 0.0, memoHV = 0.0, memoVal = 0.0;
   double memoArgs[7] = {0, 0, 0, 0, 0, 0, 0};
@@ -213,6 +216,7 @@ extern "C" void ensureLinCmtB(int nCores) {
 static inline void linCmtBsetModel(linB_t &lcb, int ncmt, int oral0, int trans,
                                    int linSS, rx_solve *rx) {
   lcb.memoIdx = -1; // reshape invalidates the last-row value memo
+  lcb.liteId = lcb.liteIdx = -1;
   lcb.lc.setModelType(ncmt, oral0, trans, linSS, rx->ndiff);
   int npars = lcb.lc.getNpars();
   lcb.fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
@@ -282,6 +286,7 @@ static inline void linCmtRevTapeInit() {
 
 static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
 static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
+static int linCmtValLiteN = 0;
 static int linCmtExpBuildN = 0, linCmtExpHitN = 0;
 // -1: follow the per-window RX_LINCMT_DELTA_MEMO latch; 0/1: force.
 static int linCmtDeltaMemoForce = -1;
@@ -310,6 +315,8 @@ int linCmtDeltaMemo(int on = -1) {
 //'   valueCompute (value executions that solved the row),
 //'   valueRestore (value executions that restored an already-solved row),
 //'   memoHit (value executions short-circuited by the last-row memo),
+//'   valueLite (already-solved value re-executions served by the thin
+//'   fx-plus-scaling path with the Jacobian restore skipped),
 //'   expBuild (delta-keyed exponential-memo builds: one per distinct row
 //'   gap per theta window), expHit (rows whose exponentials came from the
 //'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
@@ -323,11 +330,13 @@ IntegerVector linCmtSeqStats(bool reset = false) {
                                           _["valueCompute"] = linCmtValCompN,
                                           _["valueRestore"] = linCmtValRestN,
                                           _["memoHit"] = linCmtMemoHitN,
+                                          _["valueLite"] = linCmtValLiteN,
                                           _["expBuild"] = linCmtExpBuildN,
                                           _["expHit"] = linCmtExpHitN);
   if (reset) {
     linCmtWinN = linCmtSeqTailN = linCmtSeqFullN = 0;
     linCmtValCompN = linCmtValRestN = linCmtMemoHitN = 0;
+    linCmtValLiteN = 0;
     linCmtExpBuildN = linCmtExpHitN = 0;
   }
   return r;
@@ -1593,6 +1602,18 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   if (which1 != -1 || which2 != -1) {
+    if (lcb.liteIdx == idx && lcb.liteId == id) {
+      // The thin value path left J/Jg stale for this row; a call-form
+      // query consumes them -- restore once, lazily.
+      Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
+        theta(getLinCmtDoubleAddr(lcb, linCmtBaddrTheta), lcb.lc.getNpars());
+      linCmtFillTheta(theta, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+      double *acur = getAdvan(idx);
+      lcb.lc.restoreJacTo(acur, lcb.J);
+      lcb.lc.restoreFxTo(acur, lcb.fx);
+      lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
+      lcb.liteId = lcb.liteIdx = -1;
+    }
     double out;
     if (linCmtBquery(lcb, rx, ind, op, idx, _t, ncmt, oral0, which1, which2, trans,
                      p1, v1, p2, p3, p4, p5, ka, &out)) {
@@ -1618,6 +1639,34 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       return lcb.memoVal;
     }
     lcb.lc.setSsType(ind->linSS);
+  }
+  // Thin value path (the dydt/calc_lhs consolidation, linCmtB only): an
+  // already-solved row's value re-execution (the calc_lhs walk and the
+  // output pass) needs only fx and the concentration scaling -- skip
+  // sensTheta, the SS setup, the rate cache, the m x npars Jacobian
+  // restore and getJacCp.  J/Jg are left stale for the row and restored
+  // lazily if a call-form query (carry sentinel/read) follows.
+  // FD-perturbed evaluations keep the full path.
+  if (which1 == -1 && which2 == -1 &&
+      ind->linCmtAlast == NULL && ind->linCmtHparIndex < -1 &&
+      ((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11)) {
+    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
+      thetaL(getLinCmtDoubleAddr(lcb, linCmtBaddrTheta), lcb.lc.getNpars());
+    linCmtFillTheta(thetaL, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka);
+    lcb.lc.restoreFxTo(getAdvan(idx), lcb.fx);
+    double val = lcb.lc.adjustF(lcb.fx, thetaL, ind->linCmtHV);
+#pragma omp atomic
+    linCmtValLiteN++;
+    lcb.liteId = id; lcb.liteIdx = idx;
+    lcb.memoId = id; lcb.memoIdx = idx; lcb.memoT = _t;
+    lcb.memoFlag = ind->_rxFlag; lcb.memoDoSS = (int)ind->doSS;
+    lcb.memoHpar = ind->linCmtHparIndex;
+    lcb.memoH = ind->linCmtH; lcb.memoHV = ind->linCmtHV;
+    lcb.memoArgs[0] = p1; lcb.memoArgs[1] = v1; lcb.memoArgs[2] = p2;
+    lcb.memoArgs[3] = p3; lcb.memoArgs[4] = p4; lcb.memoArgs[5] = p5;
+    lcb.memoArgs[6] = ka;
+    lcb.memoVal = val;
+    return val;
   }
   if (id == 0 && ind->linH[0] == 0) {
     lcb.lc.resetFlags();

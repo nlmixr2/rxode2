@@ -57,6 +57,17 @@
   `linCmtSeqStats()` now also reports the value-execution classes and the
   memo hits.
 
+- A thin value path consolidates the two per-row visits a fit makes to a
+  pure `linCmtB()` row (the solver's state fill and the left-hand-side
+  walk): a value re-execution of an already-solved row now returns the
+  saved amounts and concentration scaling only, skipping the sensitivity
+  setup, the rate cache, the Jacobian restore and the concentration
+  gradient recompute.  The Jacobian is restored lazily if a sentinel or
+  read call for that row follows, so carry models are unaffected (tested
+  against reverse mode).  `linCmtSeqStats()` reports the served
+  executions as `valueLite`; in a FOCEi posthoc evaluation the
+  left-hand-side walk is served entirely by this path.
+
 - A delta-keyed memo caches the tail's dt-dependent exponentials (and
   their derivative in every requested direction) per distinct row gap
   under the theta window, so designs with repeated observation spacing
