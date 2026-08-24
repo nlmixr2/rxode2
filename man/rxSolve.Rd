@@ -160,7 +160,7 @@ rxSolve(
     "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
-  linCmtSensPhi = c("auto", "off"),
+  linCmtSensPhi = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1389,14 +1389,14 @@ determined by the shi 2021 optimization for central differences
 differences when using the option \code{centralH}, \code{forwardH},
 \code{foward3H} or \code{endpoint5H} options.}
 
-\item{linCmtSensPhi}{Controls how a \code{linCmt()} sensitivity row is
-evaluated when the interval between rows repeats, as it does under
-regular sampling.  With \code{"auto"} (default) the interval's
-state-transition matrix is assembled once for that interval and each
-later row of the same width propagates through it; with \code{"off"} every
-row evaluates the closed form in the order earlier versions used.
-Both are the same exact closed-form solution, evaluated in a different
-order, so the two can differ in the last few digits; use \code{"off"} to
+\item{linCmtSensPhi}{When \code{TRUE} (default), a \code{linCmt()} sensitivity
+row whose interval repeats -- as intervals do under regular sampling
+-- is evaluated by assembling that interval's state-transition matrix
+once and propagating each later row of the same width through it.
+Intervals that do not repeat are unaffected.  When \code{FALSE} every row
+evaluates the closed form in the order earlier versions used.  Both
+are the same exact closed-form solution evaluated in a different
+order, so the two can differ in the last few digits; use \code{FALSE} to
 reproduce earlier results digit for digit.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that

@@ -71,8 +71,8 @@ for (cs in cases) {
   cols <- c("cp", paste0("d", cs$dirs))
   for (rn in names(regimens)) {
     ev <- regimens[[rn]]()
-    off <- runArm(mod, cs$p, ev, "off")
-    on  <- runArm(mod, cs$p, ev, "auto")
+    off <- runArm(mod, cs$p, ev, FALSE)
+    on  <- runArm(mod, cs$p, ev, TRUE)
     a <- as.matrix(as.data.frame(off$s)[, cols, drop=FALSE])
     b <- as.matrix(as.data.frame(on$s)[, cols, drop=FALSE])
     den <- pmax(abs(a), 1e-300)

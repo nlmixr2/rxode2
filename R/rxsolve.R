@@ -921,14 +921,14 @@
 #'   differences when using the option `centralH`, `forwardH`,
 #'   `foward3H` or `endpoint5H` options.
 #'
-#' @param linCmtSensPhi Controls how a `linCmt()` sensitivity row is
-#'   evaluated when the interval between rows repeats, as it does under
-#'   regular sampling.  With `"auto"` (default) the interval's
-#'   state-transition matrix is assembled once for that interval and each
-#'   later row of the same width propagates through it; with `"off"` every
-#'   row evaluates the closed form in the order earlier versions used.
-#'   Both are the same exact closed-form solution, evaluated in a different
-#'   order, so the two can differ in the last few digits; use `"off"` to
+#' @param linCmtSensPhi When `TRUE` (default), a `linCmt()` sensitivity
+#'   row whose interval repeats -- as intervals do under regular sampling
+#'   -- is evaluated by assembling that interval's state-transition matrix
+#'   once and propagating each later row of the same width through it.
+#'   Intervals that do not repeat are unaffected.  When `FALSE` every row
+#'   evaluates the closed form in the order earlier versions used.  Both
+#'   are the same exact closed-form solution evaluated in a different
+#'   order, so the two can differ in the last few digits; use `FALSE` to
 #'   reproduce earlier results digit for digit.
 #'
 #'
@@ -1277,7 +1277,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
-                    linCmtSensPhi=c("auto", "off"),
+                    linCmtSensPhi=TRUE,
                     linCmtGillFtol=0,
                     linCmtGillK=20L,
                     linCmtGillStep=4,
@@ -1572,15 +1572,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    if (checkmate::testIntegerish(linCmtSensPhi, len=1)) {
-      .linCmtSensPhi <- as.integer(linCmtSensPhi)
-    } else if (checkmate::testLogical(linCmtSensPhi, len=1, any.missing=FALSE)) {
-      .linCmtSensPhi <- as.integer(linCmtSensPhi)
-    } else {
-      .linCmtSensPhi <- c("auto"=1L, "off"=0L)[match.arg(linCmtSensPhi)]
-    }
-    checkmate::assertIntegerish(.linCmtSensPhi, lower=0, upper=1,
-                                any.missing=FALSE, len=1)
+    # a control list built by an earlier rxControl() hands this back as the
+    # integer it stores, so coerce before asserting rather than demanding
+    # the user-facing logical here
+    .linCmtSensPhi <- as.logical(linCmtSensPhi)
+    checkmate::assertLogical(.linCmtSensPhi, any.missing=FALSE, len=1)
     .linCmtSensPhi <- as.integer(.linCmtSensPhi)
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)

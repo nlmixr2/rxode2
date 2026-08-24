@@ -41,7 +41,7 @@ rxTest({
     p <- .pars(3L)
     # Regular sampling: one interval, so one matrix serves every later row.
     linCmtSeqStats(TRUE)
-    invisible(.solve(mod, p, et(.bolus(), seq(0.25, 24, by = 0.25)), "auto"))
+    invisible(.solve(mod, p, et(.bolus(), seq(0.25, 24, by = 0.25)), TRUE))
     st <- linCmtSeqStats(TRUE)
     expect_true(st[["phiBuild"]] >= 1L)
     expect_true(st[["phiRows"]] > 0.9 * st[["seqTailRows"]])
@@ -54,7 +54,7 @@ rxTest({
     linCmtSeqStats(TRUE)
     invisible(.solve(mod, p2,
                      et(.bolus(), cumsum(seq(0.05, 0.55, length.out = 96))),
-                     "auto"))
+                     TRUE))
     st2 <- linCmtSeqStats(TRUE)
     expect_equal(st2[["phiBuild"]], 0L)
     expect_equal(st2[["phiRows"]], 0L)
@@ -64,7 +64,7 @@ rxTest({
   test_that("linCmtSensPhi='off' never builds a transition matrix", {
     mod <- .gradModel(2L, 1L, 0:4)
     linCmtSeqStats(TRUE)
-    invisible(.solve(mod, .pars(2L), et(.bolus(), seq(0.25, 24, by = 0.25)), "off"))
+    invisible(.solve(mod, .pars(2L), et(.bolus(), seq(0.25, 24, by = 0.25)), FALSE))
     st <- linCmtSeqStats(TRUE)
     expect_equal(st[["phiBuild"]], 0L)
     expect_equal(st[["phiRows"]], 0L)
@@ -88,8 +88,8 @@ rxTest({
                       seq(0.25, 24, by = 0.25))
       )
       for (rn in names(evs)) {
-        a <- .solve(mod, p, evs[[rn]], "off")
-        b <- .solve(mod, p, evs[[rn]], "auto")
+        a <- .solve(mod, p, evs[[rn]], FALSE)
+        b <- .solve(mod, p, evs[[rn]], TRUE)
         cols <- c("cp", paste0("d", cfg$d))
         am <- as.matrix(a[, cols, drop = FALSE])
         bm <- as.matrix(b[, cols, drop = FALSE])
@@ -111,9 +111,9 @@ rxTest({
       d
     }))
     one <- as.data.frame(rxSolve(mod, p, ev, cores = 1L, addDosing = FALSE,
-                                 linCmtSensType = "AD", linCmtSensPhi = "auto"))
+                                 linCmtSensType = "AD", linCmtSensPhi = TRUE))
     two <- as.data.frame(rxSolve(mod, p, ev, cores = 2L, addDosing = FALSE,
-                                 linCmtSensType = "AD", linCmtSensPhi = "auto"))
+                                 linCmtSensType = "AD", linCmtSensPhi = TRUE))
     expect_identical(one, two)
   })
 })

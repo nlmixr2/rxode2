@@ -51,9 +51,9 @@ for (tr in c(1L, 10L)) {
   for (rn in c("uniform", "nonunif")) {
     e <- if (rn == "uniform") ev else evNU
     off <- as.data.frame(rxode2::rxSolve(mod, P3, e, cores=1L, addDosing=FALSE,
-                                         linCmtSensType="AD", linCmtSensPhi="off"))
+                                         linCmtSensType="AD", linCmtSensPhi=FALSE))
     on  <- as.data.frame(rxode2::rxSolve(mod, P3, e, cores=1L, addDosing=FALSE,
-                                         linCmtSensType="AD", linCmtSensPhi="auto"))
+                                         linCmtSensType="AD", linCmtSensPhi=TRUE))
     ref <- as.data.frame(rxode2::rxSolve(odeMod, P3, e, cores=1L, addDosing=FALSE,
                                          useLinCmt=FALSE, atol=1e-12, rtol=1e-12,
                                          maxsteps=200000L))
@@ -92,11 +92,11 @@ taken elementwise and is inflated where a gradient column crosses zero.\n")
 P3b <- P3; P3b["p1"] <- 2.1000001
 rxode2:::linCmtSeqStats(TRUE)
 invisible(rxode2::rxSolve(mkGrad(1L), P3b, evNU, cores=1L, addDosing=FALSE,
-                          linCmtSensType="AD", linCmtSensPhi="auto"))
+                          linCmtSensType="AD", linCmtSensPhi=TRUE))
 stNU <- rxode2:::linCmtSeqStats(TRUE)
 rxode2:::linCmtSeqStats(TRUE)
 invisible(rxode2::rxSolve(mkGrad(1L), P3b, ev, cores=1L, addDosing=FALSE,
-                          linCmtSensType="AD", linCmtSensPhi="auto"))
+                          linCmtSensType="AD", linCmtSensPhi=TRUE))
 stU <- rxode2:::linCmtSeqStats(TRUE)
 cat(sprintf("\nfresh window, never-repeating intervals: phiBuild=%d phiRows=%d tailRows=%d\n",
             stNU[["phiBuild"]], stNU[["phiRows"]], stNU[["seqTailRows"]]))

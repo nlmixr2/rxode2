@@ -104,7 +104,7 @@
   regimen and direction mask, the largest disagreement was a few units in
   the last place of the values involved (against an independently
   integrated reference the new order was in fact the closer of the two
-  slightly more often).  `rxSolve(linCmtSensPhi="off")` restores the
+  slightly more often).  `rxSolve(linCmtSensPhi=FALSE)` restores the
   previous order for anyone who needs to reproduce earlier results digit
   for digit; `linCmtSeqStats()` reports how many matrices were built and
   how many rows used one.

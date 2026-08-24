@@ -42,14 +42,14 @@ one <- function(cl, phi) {
 }
 res <- list()
 for (cl in cells) {
-  invisible(one(cl, "off")); invisible(one(cl, "auto"))   # warm both
-  rxode2:::linCmtSeqStats(TRUE); invisible(one(cl, "auto"))
+  invisible(one(cl, FALSE)); invisible(one(cl, TRUE))   # warm both
+  rxode2:::linCmtSeqStats(TRUE); invisible(one(cl, TRUE))
   st <- rxode2:::linCmtSeqStats(TRUE)
   offT <- numeric(ROUNDS); onT <- numeric(ROUNDS); ld <- numeric(ROUNDS)
   for (r in seq_len(ROUNDS)) {            # alternate within each round
     ld[r] <- loadAvg()
-    offT[r] <- one(cl, "off")
-    onT[r]  <- one(cl, "auto")
+    offT[r] <- one(cl, FALSE)
+    onT[r]  <- one(cl, TRUE)
   }
   n <- NSUB*NOBS
   res[[length(res)+1L]] <- data.frame(
