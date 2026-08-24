@@ -42,7 +42,7 @@ Change the below R code to:
 - Once the inline string method is complete, use the `rxode2({})`
   method to specify the ODE inline.
 
-```{r rxode2_model, exercise=TRUE}
+```{r rxode2Model, exercise=TRUE}
 ## This example creates an ODE with a file tmp.rxode2
 ## The learnr won't create the file, so change this to be an inline
 ## string
@@ -54,7 +54,7 @@ print(model)
 ```
 
 
-<div id="rxode2_model-hint">
+<div id="rxode2Model-hint">
 You may wish to take out the `sink` statements and change the `cat` to `ode=`
 </div>
 
@@ -62,7 +62,7 @@ You may wish to take out the `sink` statements and change the `cat` to `ode=`
 
 Now change the string-based model to an inline `rxode2` model:
 
-```{r rxode2_inline, exercise=TRUE}
+```{r rxode2Inline, exercise=TRUE}
 ## This is an ode model defined by a string;
 ## Change it to be defined inline, that is rxode2({})
 out = "d/dt(center)=-kel*center"
@@ -71,7 +71,7 @@ print(model)
 ```
 
 
-```{r rxode2_inline-solution}
+```{r rxode2Inline-solution}
 model <- rxode2({
   d/dt(center) <- -kel*center
 })
@@ -833,3 +833,7 @@ causes rxode2 to use the variable/expression while solving but suppress
 output to either the matrix or data-frame returned in R.
 
 Also note `linCmt()` can be used to specify linear compartmental models.
+
+## What's Next?
+
+Now that you've mastered the basic syntax of `rxode2` models, it's time to learn how to interact with them. In the next tutorial, **[rxode2 events](rxode01events.Rmd)**, you will discover how to create event tables to define dosing schedules and sampling times for your simulations.
