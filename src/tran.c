@@ -231,6 +231,16 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
   if (handleLevelStr(ni, name, value)) return;
   if (nch != 0) {
     int isWhile=0;
+    // param()/params() and the interpolation statements (locf()/linear()/
+    // nocb()/midpoint()) build their normalized text by appending to sbt and
+    // read it back in finalizeLineParam()/finalizeLineInterp().  Unlike an
+    // assignment, neither resets sbt when the statement starts, so following an
+    // assignment they spliced that line's text into their own -- e.g.
+    // "y=z*a;param(a,c);" normalized to "paramy=z*a(a,c);", which no longer
+    // parses (nlmixr2/rxode2#1279).
+    if (nodeHas(param_statement) || nodeHas(interp_statement)) {
+      sClear(&sb); sClear(&sbDt); sClear(&sbt);
+    }
     if (nodeHas(power_expression)) {
       aAppendN("Rx_pow(", 7);
     } else if (nodeHas(mod_expression)) {
