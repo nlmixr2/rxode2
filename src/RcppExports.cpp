@@ -561,6 +561,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtDeltaMemo
+int linCmtDeltaMemo(int on);
+RcppExport SEXP _rxode2_linCmtDeltaMemo(SEXP onSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type on(onSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtDeltaMemo(on));
+    return rcpp_result_gen;
+END_RCPP
+}
 // linCmtSeqStats
 IntegerVector linCmtSeqStats(bool reset);
 RcppExport SEXP _rxode2_linCmtSeqStats(SEXP resetSEXP) {

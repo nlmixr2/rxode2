@@ -278,6 +278,23 @@ static inline void linCmtRevTapeInit() {
 static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
 static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
 static int linCmtExpBuildN = 0, linCmtExpHitN = 0;
+// -1: follow the per-window RX_LINCMT_DELTA_MEMO latch; 0/1: force.
+static int linCmtDeltaMemoForce = -1;
+
+//' Force the delta-keyed exponential memo on or off (tests/benchmarks)
+//'
+//' @param on integer: 1 forces the memo on, 0 forces it off, -1 (the
+//'   default) follows the RX_LINCMT_DELTA_MEMO environment latch read at
+//'   window-fill time
+//' @return the previous setting, invisibly usable to restore it
+//' @keywords internal
+//' @export
+//[[Rcpp::export]]
+int linCmtDeltaMemo(int on = -1) {
+  int prev = linCmtDeltaMemoForce;
+  linCmtDeltaMemoForce = on;
+  return prev;
+}
 
 //' Read (and optionally reset) the amortized linCmt() sequential counters
 //'
@@ -441,7 +458,8 @@ static bool linCmtSeqTailJac(linB_t &lcb) {
   }
   // One delta-memo lookup per row; every requested direction reuses the
   // slot (the exponentials are shared, only the tangent differs by j).
-  int dSlot = w.deltaMemoOn ? linCmtWinDeltaSlot(w, lc.dt_) : -1;
+  int memoOn = (linCmtDeltaMemoForce >= 0) ? linCmtDeltaMemoForce : w.deltaMemoOn;
+  int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_) : -1;
   // double Alast reconstruction once per row (shared by every direction);
   // J's columns align with linCmtFillTheta's order (ka last when oral).
   lc.restoreJacTo(lc.A_, lc.fwdJ_);

@@ -28,9 +28,12 @@ rxTest({
                       cmt = 1, rate = 0, ii = 0, ss = 0)
     rbind(dose, obs)
   }
+  # force forward mode: this tree's auto rule would pick reverse for
+  # many-direction models, and the memo lives on the forward tail path
   .solve <- function(mod, pars, ev) {
     as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
-                                  addDosing = FALSE))
+                                  addDosing = FALSE,
+                                  linCmtSensType = "AD"))
   }
 
   test_that("delta memo is bitwise-exact on a mixed dose/obs design", {
@@ -44,8 +47,11 @@ rxTest({
                            amt = 0, evid = 0, cmt = 1, rate = 0, ii = 0,
                            ss = 0))
     ev <- ev[order(ev$time), ]
-    sOn <- withr::with_envvar(c(RX_LINCMT_DELTA_MEMO = NA), .solve(mod, pars, ev))
-    sOff <- withr::with_envvar(c(RX_LINCMT_DELTA_MEMO = "off"), .solve(mod, pars, ev))
+    rxode2:::linCmtDeltaMemo(1L)
+    sOn <- .solve(mod, pars, ev)
+    rxode2:::linCmtDeltaMemo(0L)
+    sOff <- .solve(mod, pars, ev)
+    rxode2:::linCmtDeltaMemo(-1L)
     expect_identical(sOn, sOff)
   })
 
@@ -53,9 +59,11 @@ rxTest({
     mod <- .gradModel(2, 1, 0:4)
     pars <- .parsFor(2, 1)
     ev <- .evObs(seq(0.5, 100, by = 0.5))
+    rxode2:::linCmtDeltaMemo(1L)
     rxode2:::linCmtSeqStats(TRUE)
     invisible(.solve(mod, pars, ev))
     st <- rxode2:::linCmtSeqStats(TRUE)
+    rxode2:::linCmtDeltaMemo(-1L)
     # one gap from dose to first obs + the repeated 0.5 gap
     expect_true(st[["expBuild"]] <= 4L)
     expect_true(st[["expHit"]] > 150L)
@@ -66,9 +74,11 @@ rxTest({
     pars <- .parsFor(2, 1)
     obsT <- cumsum(seq(0.31, 4, length.out = 25))
     ev <- .evObs(obsT)
+    rxode2:::linCmtDeltaMemo(1L)
     rxode2:::linCmtSeqStats(TRUE)
     invisible(.solve(mod, pars, ev))
     st <- rxode2:::linCmtSeqStats(TRUE)
+    rxode2:::linCmtDeltaMemo(-1L)
     # every gap distinct: builds track rows, hits stay low (re-queries only)
     expect_true(st[["expBuild"]] >= 20L)
   })
@@ -82,10 +92,12 @@ rxTest({
       d
     }))
     s1 <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
-                                        addDosing = FALSE))
+                                        addDosing = FALSE,
+                                        linCmtSensType = "AD"))
     for (r in 1:5) {
       sN <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 2L,
-                                          addDosing = FALSE))
+                                          addDosing = FALSE,
+                                          linCmtSensType = "AD"))
       expect_identical(s1, sN)
     }
   })

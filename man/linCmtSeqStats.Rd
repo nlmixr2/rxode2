@@ -15,7 +15,10 @@ seqTailRows (rows evaluated from the window's dt-dependent tail),
 seqFullRows (rows that fell back to the full forward evaluator),
 valueCompute (value executions that solved the row),
 valueRestore (value executions that restored an already-solved row),
-memoHit (value executions short-circuited by the last-row memo)
+memoHit (value executions short-circuited by the last-row memo),
+expBuild (delta-keyed exponential-memo builds: one per distinct row
+gap per theta window), expHit (rows whose exponentials came from the
+delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
 }
 \description{
 Read (and optionally reset) the amortized linCmt() sequential counters

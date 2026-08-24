@@ -349,6 +349,18 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
+#' Force the delta-keyed exponential memo on or off (tests/benchmarks)
+#'
+#' @param on integer: 1 forces the memo on, 0 forces it off, -1 (the
+#'   default) follows the RX_LINCMT_DELTA_MEMO environment latch read at
+#'   window-fill time
+#' @return the previous setting, invisibly usable to restore it
+#' @keywords internal
+#' @export
+linCmtDeltaMemo <- function(on = -1L) {
+    .Call(`_rxode2_linCmtDeltaMemo`, on)
+}
+
 #' Read (and optionally reset) the amortized linCmt() sequential counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading
@@ -357,7 +369,10 @@ convertId_ <- function(x) {
 #'   seqFullRows (rows that fell back to the full forward evaluator),
 #'   valueCompute (value executions that solved the row),
 #'   valueRestore (value executions that restored an already-solved row),
-#'   memoHit (value executions short-circuited by the last-row memo)
+#'   memoHit (value executions short-circuited by the last-row memo),
+#'   expBuild (delta-keyed exponential-memo builds: one per distinct row
+#'   gap per theta window), expHit (rows whose exponentials came from the
+#'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
 #' @keywords internal
 #' @export
 linCmtSeqStats <- function(reset = FALSE) {

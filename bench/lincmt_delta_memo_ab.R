@@ -40,15 +40,15 @@ mkEv <- function(nSub, obsT) {
 }
 
 timeCell <- function(mod, pars, ev, memo) {
-  env <- if (memo) c(RX_LINCMT_DELTA_MEMO = NA) else c(RX_LINCMT_DELTA_MEMO = "off")
-  withr::with_envvar(env, {
-    ts <- vapply(seq_len(REPS), function(r) {
-      t0 <- proc.time()[["elapsed"]]
-      invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE))
-      proc.time()[["elapsed"]] - t0
-    }, 0.0)
-    median(ts)
-  })
+  rxode2:::linCmtDeltaMemo(if (memo) 1L else 0L)
+  on.exit(rxode2:::linCmtDeltaMemo(-1L))
+  ts <- vapply(seq_len(REPS), function(r) {
+    t0 <- proc.time()[["elapsed"]]
+    invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
+                              linCmtSensType = "AD"))
+    proc.time()[["elapsed"]] - t0
+  }, 0.0)
+  median(ts)
 }
 
 cells <- list(
@@ -69,15 +69,18 @@ res <- do.call(rbind, lapply(cells, function(cl) {
   pars <- parsFor(cl$ncmt, cl$oral0)
   ev <- eval(cl$ev)
   nObs <- sum(ev$evid == 0)
-  # warm-up (compile/caches) then timed
-  invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE))
+  # warm-up (compile/caches) then timed; forward mode forced (the memo
+  # lives on the forward tail path; this tree's auto could pick reverse)
+  invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
+                            linCmtSensType = "AD"))
   tOff <- timeCell(mod, pars, ev, memo = FALSE)
   tOn <- timeCell(mod, pars, ev, memo = TRUE)
+  rxode2:::linCmtDeltaMemo(1L)
   rxode2:::linCmtSeqStats(TRUE)
-  withr::with_envvar(c(RX_LINCMT_DELTA_MEMO = NA),
-                     invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L,
-                                               addDosing = FALSE)))
+  invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
+                            linCmtSensType = "AD"))
   st <- rxode2:::linCmtSeqStats(TRUE)
+  rxode2:::linCmtDeltaMemo(-1L)
   data.frame(cell = cl$name, nObs = nObs,
              usObsOff = 1e6*tOff/nObs, usObsOn = 1e6*tOn/nObs,
              gain = tOff/tOn, expBuild = st[["expBuild"]],
