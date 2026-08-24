@@ -53,4 +53,16 @@ rxTest({
       expect_equal(s3$sim[s3$sim.id == .i], s1$sim)
     }
   })
+
+  test_that("an empty data set still refuses to solve", {
+    m <- rxode2({
+      cl <- 1
+      v <- 20
+      ka <- 1
+      cp <- linCmt()
+    })
+    .d <- data.frame(ID=integer(0), TIME=numeric(0), AMT=numeric(0),
+                     EVID=integer(0))
+    expect_error(rxSolve(m, .d))
+  })
 })

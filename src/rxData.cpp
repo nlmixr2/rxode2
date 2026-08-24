@@ -4253,7 +4253,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       // one solve per subject).  Multiplying nid by nPopPar over-allocated by a
       // factor of nsub: a large study then either exhausted memory or overflowed
       // `int` and reported "nothing to solve" (nlmixr2/nlmixr2#412).
-      if (rxSolveDat->nPopPar == 0) {
+      if (nid == 0 || rxSolveDat->nPopPar == 0) {
+        // both were 0 under the old expression too, so the ntot <= 0 guard
+        // below keeps firing exactly where it used to
         ntot = 0;
       } else if (nid > rxSolveDat->nPopPar) {
         ntot = nid;
