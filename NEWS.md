@@ -364,6 +364,36 @@
   largest for small models and in a `pkgload::load_all()` session, where the
   discarded closures were byte-compiled again on each call.
 
+- Translating a model no longer grows process memory without bound (#1289).
+  Three leaks, none of them visible to `gc()`, `rxUnloadAll()` or `rxClean()`,
+  and all of them paid again every time an already-translated model was
+  translated again:
+
+  - `.rxModelVarsCharacter()` derived the parse prefix from `tempfile()`, so it
+    differed on every call.  `rxTrans.character()` is memoised and memoise keys
+    on its arguments, so each call missed the cache *and* added an entry to it
+    -- about 0.4 MB per `rxModelVars()`/`rxNorm()` call.  The prefix is now
+    derived from the model, which is the only thing it has to distinguish.
+    Translating also leaves the parsed model in the C parser's state, which the
+    code generator reads, so the two callers that translate *for* that state
+    (rather than for the returned model variables) now ask for a real
+    translation -- otherwise a cache hit left the parser holding some other
+    model and `rxDelete()` followed by `$compile()` could not regenerate its
+    code.
+
+  - `reset()` (src/tran.c) allocated `tb.lho` beside `tb.lh`, but `parseFree()`
+    freed only `tb.lh`, leaking `MXSYM * sizeof(int)` (~200 KB) per parse.
+
+  - `.udfAddToSearch()` appended the calling environment to a list that was
+    never pruned, pinning a call frame per `$` on a `rxUi`, per `rxSolve()` and
+    per `rxode2()`; its index also had to mint a new name per environment, and
+    R interns names for the life of the session.  The list is now bounded by
+    `options(rxode2.udfSearchLimit = )` (default 20, oldest forgotten first)
+    and membership is tested by identity.
+
+  Repeating the reprex from the issue -- 500 `rxNorm()` calls on one model --
+  grew process memory by ~190 MB before and does not measurably grow it now.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an

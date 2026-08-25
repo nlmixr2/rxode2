@@ -301,6 +301,9 @@ void parseFree(int last) {
   lineFree(&_dupStrs);
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
+  // tb.lho is R_Calloc'd beside tb.lh in reset(); freeing one and not the other
+  // leaked MXSYM*sizeof(int) on every model parse (~200 KB, invisible to gc()).
+  R_Free(tb.lho);
   R_Free(tb.interp);
   R_Free(tb.lag);
   R_Free(tb.alag);
