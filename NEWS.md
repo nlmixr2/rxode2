@@ -89,11 +89,15 @@
   later rows of the same width propagate through it, instead of evaluating
   the closed form again in every requested direction.  Measured at 1.1 to
   1.6 times faster on those designs, most at three compartments and many
-  directions.  The matrix is built only on evidence the interval recurs, so
-  a design whose intervals never repeat builds none and is unaffected, and
-  each subject starts from a blank interval state so a solve is unchanged
-  by the number of threads it runs on.  Rate-bearing rows of an infusion
-  and steady-state rows keep the previous route.
+  directions.  The matrix is built only when a *different* row is seen to
+  share an interval width -- the one thing that shows the interval really
+  does recur in the design -- so a design whose intervals never repeat
+  builds none and is unaffected, in a fit as in a single solve.  (A row
+  re-queried while a fit's inner problem re-walks a subject is the same
+  interval asked about twice, not a recurrence, and does not count.)  Each
+  subject starts from a blank interval state, so a solve is unchanged by
+  the number of threads it runs on.  Rate-bearing rows of an infusion and
+  steady-state rows keep the previous route.
 
   This is the same exact closed-form solution evaluated in a different
   order: the interval's matrix is summed first and then applied, where the

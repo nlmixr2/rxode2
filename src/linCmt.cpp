@@ -161,10 +161,24 @@ typedef struct {
   // lastDelta re-arms on a row whose gap repeats the previous row's,
   // which is what a regular stretch produces on its second row and what
   // a genuinely irregular one never does.
+  //
+  // All of that evidence is about the DESIGN, so it has to be gathered
+  // per ROW rather than per call.  One row reaches this code several
+  // times -- the generated model runs the value line from dydt and from
+  // calc_lhs, and a fit's inner problem re-walks a subject many times --
+  // and each of those executions looks the same gap up again.  Counting
+  // a re-execution as a repeat made every design look regular inside a
+  // fit: the guard never disarmed, and a matrix was built for gaps that
+  // never actually recur.  lastIdx gates the bookkeeping to genuinely
+  // new rows, and deltaIdx records which row put a gap into the cache so
+  // a hit from a different row can be told apart from that same row
+  // asking a second time.
   int missRun;
   double lastDelta;
+  int lastIdx;
   int nDelta, deltaNext;
   double delta[RX_LINWIN_DELTAS];
+  int deltaIdx[RX_LINWIN_DELTAS];
   double expL[RX_LINWIN_DELTAS][3];
   double dExpL[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][3];
   double expKa[RX_LINWIN_DELTAS];
@@ -428,6 +442,7 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
   w.deltaNext = 0;
   w.missRun = 0;
   w.lastDelta = NA_REAL;
+  w.lastIdx = -1;
   w.phiId = -1;
   w.phiLastIdx = -1;
   for (int s = 0; s < RX_LINWIN_DELTAS; s++) w.phiBuilt[s] = 0;
@@ -443,13 +458,27 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
 // the exact operation order of the fvar tail evaluation (u = (-L)*delta;
 // E = exp(u); dE_j = ((-dL_j)*delta)*E), so a memo hit is bitwise
 // identical to recomputing the exponentials inside the tail.
-static int linCmtWinDeltaSlot(linCmtWin &w, double delta, int *hit) {
+// crossRow reports a hit from a DIFFERENT row than the one that cached
+// the gap -- the only evidence that the interval actually recurs in the
+// design, and so the only thing allowed to re-arm the guard or engage a
+// transition matrix.  A row asking again (several executions per row in a
+// solve, many more across a fit's inner re-walks) still reuses the cached
+// exponentials, which is free and bitwise identical; it just is not
+// evidence.
+static int linCmtWinDeltaSlot(linCmtWin &w, double delta, int idx, int *hit,
+                              int *crossRow) {
   *hit = 0;
+  *crossRow = 0;
+  int newRow = (idx != w.lastIdx);
   for (int s = 0; s < w.nDelta; s++) {
     if (memcmp(&w.delta[s], &delta, sizeof(double)) == 0) {
-      w.missRun = 0;
-      w.lastDelta = delta; // keep the re-arm detector's "previous gap" exact
       *hit = 1;
+      if (newRow) {
+        *crossRow = (w.deltaIdx[s] != idx);
+        w.missRun = 0;
+        w.lastDelta = delta; // keep the re-arm detector's "previous gap" exact
+        w.lastIdx = idx;
+      }
 #pragma omp atomic
       linCmtExpHitN++;
       return s;
@@ -462,18 +491,24 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta, int *hit) {
   // gap PAIR rather than a single repeated gap stays disarmed -- the
   // cached gaps are stale and no consecutive repeat appears; that residual
   // case only forgoes hits, it is never wrong.
-  int deltaRepeat = (memcmp(&w.lastDelta, &delta, sizeof(double)) == 0);
-  w.lastDelta = delta;
-  if (w.missRun >= RX_LINWIN_MISSRUN) {
-    if (!deltaRepeat) return -1; // no reuse: stop building
-    w.missRun = 0;               // reuse is back: re-arm
-  } else {
-    w.missRun++;
+  int deltaRepeat = newRow && (memcmp(&w.lastDelta, &delta, sizeof(double)) == 0);
+  if (newRow) {
+    w.lastDelta = delta;
+    w.lastIdx = idx;
+    if (w.missRun >= RX_LINWIN_MISSRUN) {
+      if (!deltaRepeat) return -1; // no reuse: stop building
+      w.missRun = 0;               // reuse is back: re-arm
+    } else {
+      w.missRun++;
+    }
+  } else if (w.missRun >= RX_LINWIN_MISSRUN) {
+    return -1; // disarmed: a re-execution is not evidence to re-arm on
   }
   int s = w.deltaNext;
   w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
   if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
   w.delta[s] = delta;
+  w.deltaIdx[s] = idx;
   w.phiBuilt[s] = 0;
   int nL = (w.ncmt == 1) ? 1 : w.ncmt;
   for (int i = 0; i < nL; i++) {
@@ -622,8 +657,8 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   // One delta-memo lookup per row; every requested direction reuses the
   // slot (the exponentials are shared, only the tangent differs by j).
   int memoOn = (linCmtDeltaMemoForce >= 0) ? linCmtDeltaMemoForce : w.deltaMemoOn;
-  int dHit = 0;
-  int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, &dHit) : -1;
+  int dHit = 0, dCross = 0;
+  int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, idx, &dHit, &dCross) : -1;
   // double Alast reconstruction once per row (shared by every direction);
   // J's columns align with linCmtFillTheta's order (ka last when oral).
   lc.restoreJacTo(lc.A_, lc.fwdJ_);
@@ -644,10 +679,15 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   const int ablate = linCmtAblateMode();
   lcb.fx.resize(m);
   // Engage rule: a transition matrix only pays for itself when it is
-  // REUSED, and a delta-memo HIT is exactly the evidence that this row's
-  // interval has occurred before under this theta.  So Phi is assembled on
-  // the first hit for a slot and reused thereafter, and never on a miss --
-  // a design whose intervals never repeat builds no Phi at all, so it
+  // REUSED, and the evidence for that is a delta-memo hit from a
+  // DIFFERENT row (dCross) -- that, and only that, says this interval
+  // recurs in the design under this theta.  A hit from the same row
+  // asking again is not evidence: one row reaches here several times in a
+  // solve and far more across a fit's inner re-walks, and treating those
+  // as reuse engaged a matrix on gaps that never recur.  So Phi is
+  // assembled on the first cross-row hit for a slot and reused
+  // thereafter, and never on a miss -- a design whose intervals never
+  // repeat builds no Phi at all, in a fit as in a single solve, so it
   // cannot be slowed down by this path.  Infusion rows are affine rather
   // than linear in the prior state and keep the tail below.
   int phiForce = linCmtPhiForce();
@@ -668,12 +708,13 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
     w.deltaNext = 0;
     w.missRun = 0;
     w.lastDelta = NA_REAL;
+    w.lastIdx = -1;
     for (int i = 0; i < RX_LINWIN_DELTAS; i++) w.phiBuilt[i] = 0;
-    dHit = 0;
-    dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, &dHit) : -1;
+    dHit = dCross = 0;
+    dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, idx, &dHit, &dCross) : -1;
   }
   if (phiOn) w.phiLastIdx = idx;
-  if (phiOn && dSlot >= 0 && (dHit || w.phiBuilt[dSlot])) {
+  if (phiOn && dSlot >= 0 && (dCross || w.phiBuilt[dSlot])) {
     bool rateFree = true;
     for (int c = 0; c < m; c++) {
       if (lc.rate_[c] != 0.0) { rateFree = false; break; }

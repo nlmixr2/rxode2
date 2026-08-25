@@ -6,10 +6,16 @@
 # the wall clock.
 #
 # Protocol (project benchmark discipline):
-#   - rxode2 from THIS worktree, OPTIMIZED: pkgbuild::compile_dll(debug=FALSE)
-#     with R_MAKEVARS_USER forcing -O3 to win (src/Makevars puts -O3 before
-#     R's -O2, so a plain build leaves -O2 effective); loaded compile=FALSE.
-#     VERIFY: readelf --debug-dump=info src/linCmt.o | grep DW_AT_producer
+#   - rxode2 from THIS worktree, built the ORDINARY optimized way:
+#     pkgbuild::compile_dll(debug=FALSE), loaded compile=FALSE, taking
+#     whatever optimization that yields.  src/Makevars lists -O3 before
+#     R's -O2, so -O2 wins -- and that is what an installed package
+#     actually runs, so it is what a benchmark must use.  Do NOT force
+#     -O3 (R_MAKEVARS_USER or otherwise): a package may not override the
+#     user's optimization flags, and numbers taken that way do not
+#     represent what anyone runs.  Never benchmark through a plain
+#     load_all() (-O0).  A/B ratios are valid only with both arms built
+#     identically; absolute numbers never cross build flag sets.
 #   - nlmixr2est from ~/src/nlmixr2est-lincmt-speed (load_all, helpers=FALSE).
 #   - Single-thread (cores = 1); run pinned:
 #       CELL=2cmt-uniform ROUNDS=3 CORE=21 taskset -c 21 Rscript bench/lincmt_phi_fit_ab.R
@@ -22,7 +28,43 @@
 #
 # One cell per invocation so each run fits a foreground timeout.
 #
-# RESULTS (2026-08-24, -O3, pinned core 21, load 0.4-2.0, 3 rounds,
+# RESULTS (2026-08-25, DEFAULT optimization, pinned core 21, load ~1.3,
+# 2 rounds, arms alternated; medians) -- after the engage rule was made
+# row-aware:
+#
+#   cell              arm     sec   nIter  ms/iter  phiBuild  reuse
+#   2cmt-uniform      phiOn  28.40   1167    24.34     75895    495
+#   2cmt-uniform      phiOff 45.36   1302    34.84         0      -
+#   2cmt-uniform      ode    23.05   1263    18.25         0      -
+#   2cmt-nonuniform   phiOn  37.86   1086    34.86         0      -
+#   2cmt-nonuniform   phiOff 37.98   1086    34.97         0      -
+#
+# phiOff/phiOn:            wall     per-iteration
+#   2cmt uniform          1.60x         1.431x
+#   2cmt nonuniform       1.00x         1.003x
+#
+# The uniform per-iteration gain is LARGER at the default -O2 (1.43x)
+# than it was at the forced -O3 (1.22x): less aggressive optimization
+# makes the fvar tail the matrix replaces relatively more expensive.
+# The non-uniform cell is now exactly inert -- no matrix is built in
+# either arm, so the two arms run identical code, and they agree to the
+# last digit AND take the same number of iterations (1086).  The 0.80x
+# wall and the 32% iteration divergence recorded for that cell below
+# were both artifacts of the spurious building, not properties of the
+# design.  Against the integrated arm the closed form remains 1.33x
+# more expensive per unit work (24.34 vs 18.25 ms/iter).
+#
+# RESULTS BELOW ARE SUPERSEDED in two ways, kept for the reasoning:
+#   (a) they were taken at a forced -O3, which is not what an installed
+#       package runs (see the protocol note above); and
+#   (b) the 2cmt-nonuniform row records a BUG since fixed -- the engage
+#       rule counted a row re-querying its own gap as evidence that the
+#       interval recurs, so a strictly non-repeating design built 8.6M
+#       matrices at 4:1 "reuse" inside a fit.  Evidence is now row-aware
+#       and that cell builds none.  Re-measured numbers at the default
+#       optimization are in RESULTS (2026-08-25) further below.
+#
+# RESULTS (2026-08-24, forced -O3, pinned core 21, load 0.4-2.0, 3 rounds,
 # arms alternated; medians).  Read the PER-ITERATION column, not wall
 # clock: the arms converge in different numbers of outer iterations, and
 # that difference swamps the timing.
