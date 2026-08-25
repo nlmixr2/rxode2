@@ -1615,16 +1615,24 @@ and does not mix ODEs with the solution.  The default is <code>TRUE</code>.</p><
 
 <dt id="arg-lincmtsenstype">linCmtSensType<a class="anchor" aria-label="anchor" href="#arg-lincmtsenstype"></a></dt>
 <dd><p>The type of linear compartment
-sensitivity/gradients to use.  The current options are:</p><ul><li><p><code>auto</code> (the default) – uses <code>ADr</code>.</p></li>
+sensitivity/gradients to use.  The current options are:</p><ul><li><p><code>auto</code> (the default) – picks <code>AD</code> or <code>ADr</code> per model by counting the
+sensitivity directions the model requests: forward mode costs one
+pass per requested direction, reverse mode one adjoint sweep per
+compartment plus a fixed per-row tape cost, so <code>ADr</code> is used only
+when the model requests at least as many directions as it has
+compartments (depot included) and at least three; <code>AD</code> otherwise.
+A FOCEi inner model asks only for its eta directions, so a model
+with one or two etas on a two or three compartment solution stays
+on <code>AD</code>; one with an eta on every parameter gets <code>ADr</code>.</p></li>
 <li><p><code>ADr</code> – reverse-mode automatic differentiation
 (<code>stan::math::jacobian</code>): each row is differentiated on its own
-nested tape with one adjoint sweep per compartment, which costs less
-than one forward pass per parameter for 2 and 3 compartment models
-and the same for one compartment.  The tape is per thread, so this
+nested tape with one adjoint sweep per compartment, independent of
+how many directions are requested.  The tape is per thread, so this
 solves across threads like <code>AD</code>.</p></li>
 <li><p><code>AD</code> – forward-mode automatic differentiation
 (<code>stan::math::fvar</code>), differentiating the same analytic solution on
-the C++ stack; matches <code>ADr</code> to round-off.</p></li>
+the C++ stack with one pass per requested direction; matches <code>ADr</code>
+to round-off.</p></li>
 <li><p><code>forward</code> – forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)</p></li>
 <li><p><code>forwardG</code> – forward sensitivity where the step size is determined by the
