@@ -17,6 +17,33 @@
   Stan tape is per thread under `STAN_THREADS`, so it is no longer forced
   onto one core.  Results match forward mode to round-off.
 
+- `rxSolve(linCmtSensStrategy=)` adds a per-subject hybrid evaluation of the
+  `linCmt()` sensitivities.  A subject's rows up to its trailing run of
+  observations are rolled through the sequential kernel in forward mode;
+  those observation rows are then evaluated as a superposition over the
+  carried state.  The theta-only constants of the closed form (the
+  elimination constant or the 2/3-compartment eigen-decomposition, and ka)
+  and their derivatives are taken once per subject, and each observation
+  row costs one allocation-free forward pass per requested direction
+  through the dt-dependent tail of the solution, giving every compartment's
+  sensitivity.  `"auto"` (the default) engages it for a subject when the
+  trailing run has at least `linCmtHybridMinObs` rows, the model requests
+  at least `linCmtHybridMinDirs` directions (two by default) and the
+  solution has at least two compartments; `"sequential"` turns it off and
+  `"hybrid"` forces it.  Measured on an optimized build over every kernel,
+  parameterization, direction mask and event shape
+  (`bench/lincmt_auto_optimized.R`), the hybrid rows are never slower than
+  the sequential forward-mode rows beyond timer noise; they are cheaper by
+  1.05-1.2x on three compartment solutions (more with more requested
+  directions) and by 1.0-1.04x on one and two compartment solutions, where
+  the per-row solver overhead is most of the time.  Results agree with the
+  sequential evaluation to round-off,
+  including steady-state rows, infusions and a model that reads raw
+  Jacobian rows; a subject with a pending steady-state infusion turn-off or
+  modeled lag stays sequential.  `linCmtHybStats()` reports how many
+  subjects and rows took the hybrid path.
+
+
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
@@ -605,6 +632,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   matching `sigma` code already guarded this.
 
 ### Sensitivities
+
+- A model reading only some `linCmtB()` sensitivity directions (a FOCEi inner
+  model with fewer etas than `linCmt()` parameters) solved every row as `NA`
+  after a steady-state dose: the Jacobian columns nobody requested were
+  carried into the next row's state reconstruction as the `NA` the buffer
+  starts with, instead of zero.
 
 - A 3-compartment oral `linCmt()` model whose depot amount goes negative (a
   negative dose larger than what is left in the depot) no longer drops the

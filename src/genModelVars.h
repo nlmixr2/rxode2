@@ -21,7 +21,7 @@
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,16));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,17));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -37,8 +37,9 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[13] = tb.hasMix;
   INTEGER(sLinCmt)[14] = tb.evid_;
   INTEGER(sLinCmt)[15] = tb.hasDelay;
+  INTEGER(sLinCmt)[16] = tb.linCmtBraw;
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 16));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 17));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -55,6 +56,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 13, Rf_mkChar("mix"));
   SET_STRING_ELT(sLinCmtN, 14, Rf_mkChar("evid_"));
   SET_STRING_ELT(sLinCmtN, 15, Rf_mkChar("hasDelay"));
+  SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);

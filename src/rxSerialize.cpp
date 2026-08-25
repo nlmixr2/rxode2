@@ -20,7 +20,10 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 3u;
+static const uint32_t rxSerializeFormatVer = 4u;
+// Format 4 added the linCmt() sensitivity-strategy fields
+// (linCmtSensStrategy/linCmtHybridMinObs/linCmtHybridMinDirs/
+// linCmtHybridMaxActive/linCmtBraw) after sensH.
 // Format 3 added the gsolve layout sizes n4/n6 after state_size, and appended
 // the op->indLin convergence set at the end of the stream.  It also carries
 // op->indLinForcing, written with the other indLin settings.
@@ -187,6 +190,9 @@ SEXP rxSaveState_() {
   W_RX_BOOL(ss2cancelAllPending);
   W_RX_I32(npars); W_RX_I32(ndiff); W_RX_I32(sensType);
   W_RX_DBL(sensH);
+  W_RX_I32(linCmtSensStrategy); W_RX_I32(linCmtHybridMinObs);
+  W_RX_I32(linCmtHybridMinDirs); W_RX_I32(linCmtHybridMaxActive);
+  W_RX_I32(linCmtBraw);
   W_RX_I32(linB); W_RX_I32(linCmtOral0); W_RX_I32(linCmtNcmt);
   W_RX_DBL(linCmtGillFtol); W_RX_I32(linCmtGillK);
   W_RX_DBL(linCmtGillStep); W_RX_DBL(linCmtGillRtol);
@@ -740,6 +746,17 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_RX_BOOL(ss2cancelAllPending);
   R_RX_I32(npars); R_RX_I32(ndiff); R_RX_I32(sensType);
   R_RX_DBL(sensH);
+  if (fmt >= 4u) {
+    R_RX_I32(linCmtSensStrategy); R_RX_I32(linCmtHybridMinObs);
+    R_RX_I32(linCmtHybridMinDirs); R_RX_I32(linCmtHybridMaxActive);
+    R_RX_I32(linCmtBraw);
+  } else {
+    rx->linCmtSensStrategy = 0;
+    rx->linCmtHybridMinObs = 2;
+    rx->linCmtHybridMinDirs = 2;
+    rx->linCmtHybridMaxActive = 30;
+    rx->linCmtBraw = 1;
+  }
   R_RX_I32(linB); R_RX_I32(linCmtOral0); R_RX_I32(linCmtNcmt);
   R_RX_DBL(linCmtGillFtol); R_RX_I32(linCmtGillK);
   R_RX_DBL(linCmtGillStep); R_RX_DBL(linCmtGillRtol);

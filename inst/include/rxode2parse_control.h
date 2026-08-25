@@ -142,6 +142,10 @@
 #define Rxc_priorOmega 138
 #define Rxc_priorOmegaEl 139
 #define Rxc_priorSigmaEl 140
+#define Rxc_linCmtSensStrategy 141
+#define Rxc_linCmtHybridMinObs 142
+#define Rxc_linCmtHybridMinDirs 143
+#define Rxc_linCmtHybridMaxActive 144
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -191,6 +195,7 @@
 #define RxMvFlag_mix 13
 #define RxMvFlag_evid_ 14
 #define RxMvFlag_hasDelay 15
+#define RxMvFlag_linCmtBraw 16
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

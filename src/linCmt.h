@@ -690,6 +690,12 @@ namespace stan {
         int nd = numDiff_;
         if (nd == 0) nd = 127; // all terms
         int i = 0, j=0;
+        // A column nobody requested is never differentiated, but saveJac()
+        // carries every column into the next row's Alast reconstruction
+        // (AlastA = A - J*theta), so it must be a finite 0 there -- the
+        // NA the slot starts with would poison the carried state (seen as
+        // an all-NA solve after a steady-state row under a partial mask).
+        J.setZero();
 
         switch (ncmt_) {
         case 1: {
@@ -1012,12 +1018,19 @@ namespace stan {
                        const Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                        T ka,
                        Eigen::Matrix<T, Eigen::Dynamic, 1> &ret) const {
-#define k10   g(0, 1)
+        linCmtStan1Tail<T>(g(0, 1), yp.data(), ka, ret.data());
+      }
+
+      // The part of the one-compartment solution that depends on dt_, rate_
+      // and the prior state, given the elimination constant; the hybrid
+      // strategy (linCmt.cpp) evaluates it with constants fixed per window.
+      template <typename T>
+      void linCmtStan1Tail(const T k10, const T* yp, T ka, T* ret) const {
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
         // Constants that would be in common and could be calculated once:
         const T E            = exp(-k10 * dt_);
 
-        ret(oral0_, 0) = yp(oral0_, 0)*E;
+        ret[oral0_] = yp[oral0_]*E;
         T R            = rate_[0];
 
         // Handle oral absorption case
@@ -1026,19 +1039,18 @@ namespace stan {
           const T ka10 = ka - k10;
 
           R += rate_[1];
-          ret(0, 0) = rate_[0] * (1.0 - Ea) / ka + yp(0, 0) * Ea;
+          ret[0] = rate_[0] * (1.0 - Ea) / ka + yp[0] * Ea;
 
           if (abs(ka10) <= sqrt(DBL_EPSILON)) {
-            ret(1, 0) += (yp(0, 0) * k10 - rate_[0]) * dt_ * E;
+            ret[1] += (yp[0] * k10 - rate_[0]) * dt_ * E;
           } else {
-            ret(1, 0) += (yp(0, 0) * ka  - rate_[0]) * (E - Ea) / ka10;
+            ret[1] += (yp[0] * ka  - rate_[0]) * (E - Ea) / ka10;
           }
         }
         // Handle the case with infusion
         if (abs(R) > sqrt(DBL_EPSILON)) {
-          ret(oral0_, 0) += R * (1.0 - E) / k10;
+          ret[oral0_] += R * (1.0 - E) / k10;
         }
-#undef k10
       }
 
       //////////////////////////////////////////////////////////////////
@@ -1370,7 +1382,19 @@ namespace stan {
 
         stan::math::solComp2struct<T> sol2 =
           stan::math::computeSolComp2(k10, k12, k21);
+        linCmtStan2Tail<T>(sol2, yp.data(), ka, ret.data());
+#undef k12
+#undef k21
+#undef k10
+        return;
+      }
 
+      // The dt_/rate_/prior-state part of the two-compartment solution
+      // given its eigen-decomposition (constant per theta).
+      template <typename T>
+      void
+      linCmtStan2Tail(const stan::math::solComp2struct<T>& sol2,
+                      const T* yp, T ka, T* ret) const {
         T rDepot = 0.0;
         T R      = rate_[oral0_];
 
@@ -1379,8 +1403,8 @@ namespace stan {
         Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt_);
         Eigen::Matrix<T, 2, 1> Ea = E;
 
-        Xo =(yp(oral0_, 0)*sol2.C1) * E +
-          (yp(oral0_ + 1, 0)*sol2.C2) * E;
+        Xo =(yp[oral0_]*sol2.C1) * E +
+          (yp[oral0_ + 1]*sol2.C2) * E;
 
         if (oral0_ == 1) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
@@ -1389,11 +1413,11 @@ namespace stan {
           Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, exp(-ka*dt_));
           Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
           Ea =  (E - expa).array()/(ka2 - sol2.L).array();
-          T cf = ka*yp(0, 0) - rDepot;
+          T cf = ka*yp[0] - rDepot;
           Xo += (cf*sol2.C1)*Ea;
-          ret(0, 0) = yp(0, 0)*expa(0, 0);
+          ret[0] = yp[0]*expa(0, 0);
           if (rate_[0] > 0) {
-            ret(0, 0) += rDepot*(1.0-expa(0, 0))/ka;
+            ret[0] += rDepot*(1.0-expa(0, 0))/ka;
           }
         }
         if (R > 0.0) {
@@ -1402,12 +1426,8 @@ namespace stan {
           Rm = (o2 - E).array()/sol2.L.array();
           Xo += (R*sol2.C1)*Rm;
         }
-        ret(oral0_, 0)     = Xo(0, 0);
-        ret(oral0_ + 1, 0) = Xo(1, 0);
-#undef k12
-#undef k21
-#undef k10
-        return;
+        ret[oral0_]     = Xo(0, 0);
+        ret[oral0_ + 1] = Xo(1, 0);
       }
 
       //////////////////////////////////////////////////////////////////
@@ -1983,7 +2003,20 @@ namespace stan {
 
         stan::math::solComp3struct<T> sol3 =
           stan::math::computeSolComp3(k10, k12, k21, k13, k31);
+        linCmtStan3Tail<T>(sol3, yp.data(), ka, ret.data());
+#undef k12
+#undef k21
+#undef k13
+#undef k31
+#undef k10
+      }
 
+      // The dt_/rate_/prior-state part of the three-compartment solution
+      // given its eigen-decomposition (constant per theta).
+      template <typename T>
+      void
+      linCmtStan3Tail(const stan::math::solComp3struct<T>& sol3,
+                      const T* yp, T ka, T* ret) const {
         T rDepot = 0.0;
         T R      = rate_[oral0_];
 
@@ -1992,13 +2025,13 @@ namespace stan {
         Eigen::Matrix<T, 3, 1> E = exp(-sol3.L * dt_);
         Eigen::Matrix<T, 3, 1> Ea = E;
 
-        Xo = (yp(oral0_, 0)*sol3.C1) * E  +
-          (yp(oral0_ + 1, 0)*sol3.C2) * E +
-          (yp(oral0_ + 2, 0)*sol3.C3) * E ;
+        Xo = (yp[oral0_]*sol3.C1) * E  +
+          (yp[oral0_ + 1]*sol3.C2) * E +
+          (yp[oral0_ + 2]*sol3.C3) * E ;
 
-        // No sign test on yp(0, 0): a negative depot amount (negative dose,
+        // No sign test on yp[0]: a negative depot amount (negative dose,
         // carried sensitivity state) is valid for a linear system, and skipping
-        // the branch left ret(0, 0) unassigned (#1275).
+        // the branch left ret[0] unassigned (#1275).
         if (oral0_ == 1) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
@@ -2007,9 +2040,9 @@ namespace stan {
           Eigen::Matrix<T, 3, 1> ka3 = Eigen::Matrix<T, 3, 1>::Constant(3, 1, ka);
 
           Ea =  (E - expa).array()/(ka3 - sol3.L).array();
-          T cf = ka*yp(0, 0) - rDepot;
+          T cf = ka*yp[0] - rDepot;
           Xo += (cf*sol3.C1)*Ea;
-          ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
+          ret[0] = rDepot*(1.0-expa(0, 0))/ka + yp[0]*expa(0, 0);
         }
         if (R > 0.0) {
           // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
@@ -2017,14 +2050,9 @@ namespace stan {
           Rm = (o3 - E).array()/sol3.L.array();
           Xo += (R*sol3.C1)*Rm;
         }
-        ret(oral0_, 0)     = Xo(0, 0);
-        ret(oral0_ + 1, 0) = Xo(1, 0);
-        ret(oral0_ + 2, 0) = Xo(2, 0);
-#undef k12
-#undef k21
-#undef k13
-#undef k31
-#undef k10
+        ret[oral0_]     = Xo(0, 0);
+        ret[oral0_ + 1] = Xo(1, 0);
+        ret[oral0_ + 2] = Xo(2, 0);
       }
 
       //' This sets the pointer for the linear compartment model
@@ -2065,9 +2093,16 @@ namespace stan {
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
       restoreJac(double *A) const {
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
+        restoreJacTo(A, J);
+        return J;
+      }
+
+      // restoreJac() into a caller-owned matrix (no allocation once sized).
+      void restoreJacTo(const double *A,
+                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J) const {
         // Save A1-A4
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
-                                                                2*ncmt_ + oral0_);
+        J.resize(ncmt_ + oral0_, 2*ncmt_ + oral0_);
         for (int i = oral0_; i < ncmt_ + oral0_; i++) {
           J(i, 0) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0];
           J(i, 1) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 1];
@@ -2090,7 +2125,6 @@ namespace stan {
           }
           J(0, 2*ncmt_) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*ncmt_];
         }
-        return J;
       }
 
       // Double initialization need to be outside of the linCmtStan struct
