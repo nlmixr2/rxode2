@@ -2,32 +2,20 @@
 
 ## New features
 
-- The default `linCmt()` sensitivity method (`linCmtSensType="auto"`) is now
-  reverse-mode AD (`"ADr"`).  Each row is differentiated on its own nested
-  Stan tape with one adjoint sweep per compartment (at most 4) instead of
-  one forward pass per parameter (up to 7), which measured about 2x faster
-  than the forward-mode default for 2 and 3 compartment models and the same
-  for one compartment, with results matching forward mode to round-off.
-  Reverse mode now also solves across threads (the Stan tape is per thread
-  under `STAN_THREADS`), so it is no longer forced onto one core; the
-  forward-mode path remains available as `linCmtSensType="AD"`.
+- `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
+  development version made reverse-mode AD (`"ADr"`) the default on the
+  strength of timings that had been taken through `devtools::load_all()`,
+  which compiles at `-O0`; on an optimized build forward mode is at least as
+  fast as reverse for every number of requested sensitivity directions on
+  every configuration, and reverse is 2-4x slower on a three compartment
+  oral model, because its per-row tape build costs more than the extra
+  forward passes.  `"auto"` therefore resolves to `"AD"` on every solve
+  path (`rxSolve()`, threaded solves, `ind_solve()` and
+  `linCmtModelDouble()`), and `"ADr"` remains an explicit option.
 
-- `linCmtSensType="auto"` now chooses between `"AD"` and `"ADr"` per model by
-  counting the sensitivity directions the model requests: forward mode costs
-  one pass per requested direction (the kernel honors the parser's
-  direction mask), reverse mode one adjoint sweep per compartment plus a
-  fixed per-row tape cost, so `"ADr"` is used only when the model requests
-  at least as many directions as it has compartments (depot included) and
-  at least three; `"AD"` otherwise.  The boundary was measured through the
-  solver: one and two compartment solutions are still faster forward when
-  the requested count equals the compartment count, three and four
-  compartment solutions are already 1.1-1.3x faster in reverse there.  The 2x
-  measured for reverse mode above requested every direction; a FOCEi inner
-  model asks only for its eta directions, and with a single eta reverse
-  mode is slower than forward (about 0.6-0.9x on two and three compartment
-  oral models), while an eta on every parameter keeps the 1.3-1.9x gain.
-  Every solve path resolves the same way (`rxSolve()`, threaded solves,
-  `ind_solve()` and `linCmtModelDouble()`).
+- Reverse-mode AD (`linCmtSensType="ADr"`) now solves across threads: the
+  Stan tape is per thread under `STAN_THREADS`, so it is no longer forced
+  onto one core.  Results match forward mode to round-off.
 
 - The `linCmt()` forward-mode sensitivity evaluation is amortized across
   rows: the theta-only constants of the closed form (the elimination
@@ -364,6 +352,18 @@
   `rxRemoveUiPrep()` in `.onUnload()`.  See the [solve-time hooks
   article](https://nlmixr2.github.io/rxode2/articles/rxode2-solve-hooks.html).
 
+- Building a symengine environment with `rxS()` no longer rebuilds its function
+  symbols on every call (#1283).  The opaque symbols it loads (`linCmtA()`,
+  `delay()`, `lag()`, the derivative helpers, ...) were made by splicing each
+  name into a fresh function body, so R created -- and byte-compiled -- about
+  250 new closures per call.  They now share one body, are built when the
+  package itself is built, and are reused by every symengine environment; a user
+  function registered at run time with `rxFun()` or `rxD()` is built the same
+  way on first use.  This removes a fixed per-call cost for every consumer that
+  loads models into symengine repeatedly, such as an nlmixr2 fit; the saving is
+  largest for small models and in a `pkgload::load_all()` session, where the
+  discarded closures were byte-compiled again on each call.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
@@ -391,6 +391,14 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   the explicit `prior()` form to set a prior by piping.
 
 ## Bug fixes
+
+- A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
+  per-individual solve pool as `nsub` times the number of individual solves
+  it needs.  The over-allocation grew with the square of the number of
+  subjects, so a large study either ran out of memory or overflowed the size
+  to a negative number and stopped with `nothing to solve` -- which is what
+  made `nlmixr2est::addNpde()` and `vpcSim()` fail on a large fit
+  (nlmixr2/nlmixr2#412).  Results are unchanged.
 
 - A chunked solve (`rxSolve(file=`/`chunkSize=`)) with `nStud > 1` now
   simulates the omega uncertainty it was asked for.  It previously returned a

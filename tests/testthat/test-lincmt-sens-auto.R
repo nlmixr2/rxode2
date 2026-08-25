@@ -1,11 +1,9 @@
 rxTest({
-  # linCmtSensType = "auto" resolves per model by the number of requested
-  # sensitivity directions: forward mode (3) costs one pass per requested
-  # direction, reverse mode (31) one adjoint sweep per compartment plus a
-  # per-row tape cost, so auto is reverse only when nreq >= max(m, 3) with
-  # m = ncmt + oral0 (measured boundary, bench/lincmt_auto_boundary.R) and
-  # forward otherwise.  Every solve path (single thread, threads,
-  # linCmtModelDouble) has to resolve alike.
+  # linCmtSensType = "auto" resolves to forward-mode AD (3) on every solve
+  # path.  On an optimized build forward mode is at least as fast as reverse
+  # for every requested-direction count on every configuration
+  # (bench/lincmt_auto_optimized.R), so there is no count rule; "AD" and
+  # "ADr" remain explicit overrides and have to agree to round-off.
   mk <- function(dirs, ncmt = 2L, oral0 = 1L) {
     args <- sprintf("rx__PTR__, t, 1, %d, %d, %%d, %%d, 1, cl, v, q, vp, q2, vp2, ka",
                     ncmt, oral0)
@@ -37,51 +35,41 @@ rxTest({
       max(abs(a[[cc]] - b[[cc]]) / pmax(1e-8, abs(b[[cc]])))
     }, 0))
   }
-  # 2-cmt oral: m = 3
-  one <- mk(0L)        # one direction  -> forward
-  two <- mk(0:1)       # two            -> forward (nreq < m)
-  three <- mk(0:2)     # three          -> reverse (nreq == m, m >= 3)
-  all5 <- mk(0:4)      # five           -> reverse
+  # 2-cmt oral: m = 3, npars = 5
+  one <- mk(0L)
+  three <- mk(0:2)
+  all5 <- mk(0:4)
 
-  test_that("auto is forward when fewer directions than compartments are requested", {
+  test_that("auto is forward for any number of requested directions", {
     expect_equal(seen(one, "auto")$st, 3L)
-    expect_equal(seen(two, "auto")$st, 3L)
-    expect_false(31L %in% seen(one, "auto", 0L)$st)
-  })
-
-  test_that("auto is reverse from nreq == m on a three-compartment solution", {
-    expect_equal(seen(three, "auto")$st, 31L)
-    expect_equal(seen(all5, "auto")$st, 31L)
-    expect_equal(seen(all5, "auto", 0L)$st, 31L)
-  })
-
-  test_that("a one- or two-compartment solution stays forward at nreq == m", {
-    # 1-cmt oral: m = 2, npars = 3 (cl, v, ka); the tape cost is only
-    # amortized from three directions up
-    m2two <- mk(0:1, ncmt = 1L, oral0 = 1L)
-    m2three <- mk(c(0L, 1L, 2L), ncmt = 1L, oral0 = 1L)
-    expect_equal(seen(m2two, "auto")$st, 3L)
-    expect_equal(seen(m2three, "auto")$st, 31L)
-    # 1-cmt iv: m = 1, npars = 2 -- never reaches three directions
+    expect_equal(seen(three, "auto")$st, 3L)
+    expect_equal(seen(all5, "auto")$st, 3L)
+    expect_false(31L %in% seen(all5, "auto", 0L)$st)
+    # 3-cmt oral with every direction, 1-cmt iv with both
+    m4all <- mk(0:6, ncmt = 3L, oral0 = 1L)
+    expect_equal(seen(m4all, "auto")$st, 3L)
     m1two <- mk(0:1, ncmt = 1L, oral0 = 0L)
     expect_equal(seen(m1two, "auto")$st, 3L)
   })
 
-  test_that("the explicit names still override the count rule", {
+  test_that("the explicit names override auto", {
     expect_equal(seen(one, "ADr")$st, 31L)
+    expect_equal(seen(all5, "ADr")$st, 31L)
     expect_equal(seen(all5, "AD")$st, 3L)
   })
 
-  test_that("both resolutions agree with each other to round-off", {
+  test_that("auto, AD and ADr agree with each other to round-off", {
     a <- seen(all5, "auto")$r
     f <- seen(all5, "AD")$r
-    expect_true(cmp(a, f, c("cp", paste0("d", 0:4))) < 1e-9)
-    a1 <- seen(one, "auto")$r
-    r1 <- seen(one, "ADr")$r
-    expect_true(cmp(a1, r1, c("cp", "d0")) < 1e-9)
+    r <- seen(all5, "ADr")$r
+    cols <- c("cp", paste0("d", 0:4))
+    expect_true(cmp(a, f, cols) < 1e-12)
+    expect_true(cmp(a, r, cols) < 1e-9)
     if (getRxThreads() > 1L) {
-      aN <- seen(one, "auto", getRxThreads())$r
-      expect_true(cmp(aN, a1, c("cp", "d0")) < 1e-12)
+      aN <- seen(all5, "auto", getRxThreads())$r
+      expect_true(cmp(aN, a, cols) < 1e-12)
+      rN <- seen(all5, "ADr", getRxThreads())$r
+      expect_true(cmp(rN, r, cols) < 1e-12)
     }
   })
 
@@ -92,7 +80,7 @@ rxTest({
     expect_false(31L %in% linCmtBSensTypesSeen(TRUE))
   })
 
-  test_that("linCmtModelDouble resolves auto by the same count", {
+  test_that("linCmtModelDouble resolves auto to forward as well", {
     nAlast <- function(ncmt, oral0) {
       npars <- 2L * ncmt + oral0
       ncmt + oral0 + ncmt * npars + oral0
@@ -105,9 +93,11 @@ rxTest({
                         0L, 0, 0, 0, 0L, as.integer(ndiff), as.integer(sensType), 0.001)
     }
     fwd <- call2(30L, 0L)
+    rev <- call2(31L, 31L)
     for (nd in c(0L, 2L, 31L)) {
       r <- call2(100L, nd)
       expect_equal(r$val, fwd$val, tolerance = 1e-12)
     }
+    expect_equal(rev$val, fwd$val, tolerance = 1e-9)
   })
 })
