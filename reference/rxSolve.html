@@ -257,6 +257,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>    <span class="st">"ADr"</span>, <span class="st">"central"</span>, <span class="st">"forward"</span>, <span class="st">"forwardG"</span>, <span class="st">"forwardH"</span>, <span class="st">"centralH"</span>, <span class="st">"forward3H"</span>,</span>
 <span>    <span class="st">"endpointH5"</span>, <span class="st">"forwardG"</span><span class="op">)</span>,</span>
 <span>  linCmtSensH <span class="op">=</span> <span class="fl">1e-04</span>,</span>
+<span>  linCmtSensPhi <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1653,8 +1654,19 @@ determined by the shi 2021 optimization for central differences
 <dt id="arg-lincmtsensh">linCmtSensH<a class="anchor" aria-label="anchor" href="#arg-lincmtsensh"></a></dt>
 <dd><p>The step size for the forward and central
 differences when using the option <code>centralH</code>, <code>forwardH</code>,
-<code>foward3H</code> or <code>endpoint5H</code> options.
-#'</p></dd>
+<code>foward3H</code> or <code>endpoint5H</code> options.</p></dd>
+
+
+<dt id="arg-lincmtsensphi">linCmtSensPhi<a class="anchor" aria-label="anchor" href="#arg-lincmtsensphi"></a></dt>
+<dd><p>When <code>TRUE</code> (default), a <code>linCmt()</code> sensitivity
+row whose interval repeats – as intervals do under regular sampling
+– is evaluated by assembling that interval's state-transition matrix
+once and propagating each later row of the same width through it.
+Intervals that do not repeat are unaffected.  When <code>FALSE</code> every row
+evaluates the closed form in the order earlier versions used.  Both
+are the same exact closed-form solution evaluated in a different
+order, so the two can differ in the last few digits; use <code>FALSE</code> to
+reproduce earlier results digit for digit.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
