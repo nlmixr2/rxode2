@@ -111,3 +111,17 @@ cat(sprintf("wall full %.2f s; posthoc %.2f; setupish %.2f; solve pass %.4f s; p
     res$parHistRows, res$objf, res$load))
 cat("env counters:\n"); print(res$envCounters[!is.na(res$envCounters)])
 saveRDS(res, "bench/results/lincmt_fit_cost_breakdown.rds")
+
+# ---------------------------------------------------------------------------
+# SUPERSEDED NUMBERS (2026-08-24).  Re-running THIS script unchanged on the
+# current tree at the default optimization gives, for identical work
+# (21.23M rows vs 21.51M; 690 iterations vs 687; same objective -11387.7):
+#     optimize 24.45 s   vs the recorded 1201.16 s   -> 49x
+#     1.15 us/computed row vs the recorded 55.83     -> 48.5x
+# The recorded run's own provenance already flagged that its build did not
+# engage the value memo; the cumulative solve-side optimizations account for
+# only ~2-2.7x, so the balance is the BUILD -- a -O0 .so (a plain load_all()
+# rebuilds one, and that trap was later documented on this branch).
+# The "~56 us/row, so the solve is ~a tenth of a fit" inference must NOT be
+# quoted.  See bench/lincmt_fit_solve_fraction.R and
+# bench/results/lincmt_fit_cost_breakdown_rerun_current.rds.
