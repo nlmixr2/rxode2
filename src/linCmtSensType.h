@@ -45,24 +45,21 @@ static inline int linCmtSensNreq(int ndiff, int ncmt, int oral0) {
   return nreq;
 }
 
-// Resolve linCmtSensType="auto" (100) for a model.  Forward-mode fvar costs
-// one pass per REQUESTED direction (the kernel honors the ndiff mask), reverse
-// mode one adjoint sweep per compartment plus a fixed per-row tape cost, so
-// reverse (31) only pays once at least as many directions as compartments
-// (m = ncmt + oral0) are requested AND at least three: measured
-// (bench/lincmt_auto_boundary.R) a one- or two-compartment solution is still
-// faster forward at nreq == m and the tape cost is only amortized from three
-// directions up, while three and four compartments favor reverse already at
-// nreq == m.  No requested direction means no Jacobian is taken; forward is
-// returned so the value-only solve stays on the cheaper stack-local path.
-// Every solve path must resolve through here (rxData.cpp at the control
-// read, setupLinH() for ind_solve(), linCmtModelDouble() for the R-level
-// kernel) so they agree.
+// Resolve linCmtSensType="auto" (100) for a model: forward-mode fvar (3).
+// On an optimized build (bench/lincmt_auto_optimized.R, -O3, single thread
+// pinned to an idle core) forward mode is at least as fast as reverse for
+// every requested-direction count on every configuration -- reverse's
+// per-row tape build costs more than the extra fvar passes even with all
+// seven directions requested (3-cmt oral: reverse 2-4x slower).  The earlier
+// count-based rule came from timings taken through devtools::load_all(),
+// which compiles at -O0 and inverts the comparison.  Reverse stays available
+// as an explicit "ADr".  The ndiff / ncmt / oral0 arguments are kept so every
+// solve path (rxData.cpp at the control read, setupLinH() for ind_solve(),
+// linCmtModelDouble() for the R-level kernel) resolves through one signature.
 static inline int linCmtSensResolveAuto(int sensType, int ndiff, int ncmt, int oral0) {
+  (void)ndiff; (void)ncmt; (void)oral0;
   if (sensType != 100) return sensType;
-  int m = ncmt + oral0;
-  int thr = (m > 3) ? m : 3;
-  return (linCmtSensNreq(ndiff, ncmt, oral0) >= thr) ? 31 : 3;
+  return 3;
 }
 
 #endif // __LINCMTSENSTYPE_H__

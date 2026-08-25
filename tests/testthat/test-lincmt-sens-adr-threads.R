@@ -52,16 +52,19 @@ rxTest({
     expect_true(max(seen) > 1L)
   })
 
-  # this model requests 5 directions on m = 3 compartments, so the count-based
-  # auto rule resolves it to reverse mode (test-lincmt-sens-auto-count.R
-  # covers the forward side of the rule)
-  test_that("linCmtSensType=\"auto\" (the default) resolves to reverse mode, threaded", {
+  # "auto" resolves to forward mode whatever the model requests
+  # (test-lincmt-sens-auto.R covers the resolution itself); here it only has
+  # to keep solving across threads and agree with the explicit names
+  test_that("linCmtSensType=\"auto\" (the default) resolves to forward mode, threaded", {
     invisible(linCmtBSensTypesSeen(TRUE))
     invisible(linCmtBThreadsSeen(TRUE))
     auto <- rxSolve(m, pars, ev, cores = 0L, returnType = "data.frame")
-    expect_true(31L %in% linCmtBSensTypesSeen(TRUE))
+    seenAuto <- linCmtBSensTypesSeen(TRUE)
+    expect_true(3L %in% seenAuto)
+    expect_false(31L %in% seenAuto)
     expect_true(linCmtBThreadsSeen(TRUE) > 1L)
-    expect_true(cmp(auto, solve("AD", 1L)) < 1e-9)
+    expect_true(cmp(auto, solve("AD", 1L)) < 1e-12)
+    expect_true(cmp(auto, solve("ADr", 1L)) < 1e-9)
   })
 
   test_that("cores=0 (auto) no longer throttles ADr to one core", {
