@@ -129,14 +129,18 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     ind->linCmtAlast = NULL;
     ind->ssTime = NA_REAL;
     _setIndPointersByThread(ind);
-    // Apply this individual's sticky tolerance factor to the thread-local
-    // tolerance arrays.
-    if (ind->atol2 != NULL) {
+    // This individual's sticky tolerance factor, applied to the thread-local
+    // tolerance arrays.  Derived from the solve's base tolerances
+    // (op->atol2 ...) rather than from what the arrays hold: they belong to
+    // the THREAD, so they still carry the previous subject's loosening, and
+    // scaling those would give this subject a tolerance that depends on what
+    // ran before it.
+    if (ind->atol2 != NULL && op->atol2 != NULL) {
       for (int _i = op->neq; _i--;) {
-        ind->atol2[_i]  = min2(ind->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
-        ind->rtol2[_i]  = min2(ind->rtol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
-        ind->ssAtol[_i] = min2(ind->ssAtol[_i] * ind->tolFactor, maxAtolRtolFactor);
-        ind->ssRtol[_i] = min2(ind->ssRtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+        ind->atol2[_i]  = min2(op->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->rtol2[_i]  = min2(op->rtol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssAtol[_i] = min2(op->ssAtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssRtol[_i] = min2(op->ssRtol[_i] * ind->tolFactor, maxAtolRtolFactor);
       }
     }
 		for (int i=rxLlikSaveSize*op->nLlik; i--;) {

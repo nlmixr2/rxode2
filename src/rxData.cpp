@@ -1582,10 +1582,17 @@ static inline double *getCurDoseSThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gCurDoseS);
 }
 
+extern rx_solving_options_ind **inds_threadCur;
+
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   inds_thread[rx_get_thread(op->cores)] = *ind;
+  // ... and the individual itself, for writes that have to reach the subject
+  // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
+  if (inds_threadCur != NULL) {
+    inds_threadCur[rx_get_thread(op->cores)] = ind;
+  }
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
     ind->InfusionRate = getInfusionRateThread();
@@ -1702,9 +1709,12 @@ extern "C" void atolRtolFactorC_(double factor) {
     _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
 
-  // Persist the cumulative factor on the individual currently being solved
-  // on this thread so that iniSubject() can reapply it on every re-solve.
-  rx_solving_options_ind *_ind = &(inds_thread[rx_get_thread(op->cores)]);
+  // Persist the cumulative factor on the individual being solved so that
+  // iniSubject() reapplies it on every re-solve.  It has to be the individual
+  // itself, not `inds_thread[]`, which is a copy: a factor written there is
+  // lost when the next subject overwrites the slot.
+  rx_solving_options_ind *_ind = (inds_threadCur == NULL) ? NULL :
+    inds_threadCur[rx_get_thread(op->cores)];
   if (_ind != NULL) {
     _ind->tolFactor = min2(_ind->tolFactor * factor, maxAtolRtolFactor);
   }

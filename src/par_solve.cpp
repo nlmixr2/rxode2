@@ -300,6 +300,10 @@ extern int nPastEvid_global;
 rx_solving_options_ind *inds_global = NULL;
 
 rx_solving_options_ind *inds_thread = NULL;
+// The individual each thread is currently solving.  `inds_thread` holds a COPY
+// of it (_setIndPointersByThread), so anything that has to write back to the
+// subject -- atolRtolFactorC_'s sticky tolerance factor -- goes through here.
+rx_solving_options_ind **inds_threadCur = NULL;
 
 
 void par_flush_console() {
@@ -507,6 +511,8 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_thread);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
   inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
+  if (inds_threadCur != NULL) R_Free(inds_threadCur);
+  inds_threadCur = R_Calloc(max2(1, cores), rx_solving_options_ind*);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -4960,7 +4966,9 @@ extern "C" void rxFreeLast(){
   freeExtraDosingC();
   R_Free(inds_global);
   R_Free(inds_thread);
+  R_Free(inds_threadCur);
   inds_thread = NULL;
+  inds_threadCur = NULL;
   inds_global=NULL;
 }
 
