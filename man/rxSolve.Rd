@@ -1352,20 +1352,18 @@ and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 \item{linCmtSensType}{The type of linear compartment
 sensitivity/gradients to use.  The current options are:
 \itemize{
-\item \code{auto} (the default) -- picks \code{AD} or \code{ADr} per model by counting the
-sensitivity directions the model requests: forward mode costs one
-pass per requested direction, reverse mode one adjoint sweep per
-compartment plus a fixed per-row tape cost, so \code{ADr} is used only
-when the model requests at least as many directions as it has
-compartments (depot included) and at least three; \code{AD} otherwise.
-A FOCEi inner model asks only for its eta directions, so a model
-with one or two etas on a two or three compartment solution stays
-on \code{AD}; one with an eta on every parameter gets \code{ADr}.
+\item \code{auto} (the default) -- forward-mode automatic differentiation
+(\code{AD}).  On an optimized build forward mode is at least as fast as
+reverse mode for every number of requested sensitivity directions on
+every configuration (reverse is 2-4x slower on a three compartment
+oral model: its per-row tape build costs more than the extra forward
+passes), so \code{auto} resolves to \code{AD} on every solve path.
 \item \code{ADr} -- reverse-mode automatic differentiation
 (\verb{stan::math::jacobian}): each row is differentiated on its own
 nested tape with one adjoint sweep per compartment, independent of
 how many directions are requested.  The tape is per thread, so this
-solves across threads like \code{AD}.
+solves across threads like \code{AD}.  Slower than \code{AD} on an optimized
+build; kept as an explicit option for validation.
 \item \code{AD} -- forward-mode automatic differentiation
 (\verb{stan::math::fvar}), differentiating the same analytic solution on
 the C++ stack with one pass per requested direction; matches \code{ADr}

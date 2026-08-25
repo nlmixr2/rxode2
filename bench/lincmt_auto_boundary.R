@@ -1,3 +1,9 @@
+# SUPERSEDED: this measurement was taken through devtools::load_all(), which
+# compiles at -O0, and its conclusion (a count-based auto rule) does not hold
+# on an optimized build -- see bench/lincmt_auto_optimized.R and
+# bench/results/lincmt_auto_optimized.rds (every kernel, trans, mask and
+# shape, pinned single thread): forward mode is at least as fast as reverse
+# in every realistic cell.  Kept as the record of what the earlier rule rested on.
 # Boundary measurement for the count-based linCmtSensType="auto" rule
 # (PR #1280): forward-mode fvar costs one pass per requested direction k,
 # reverse mode one adjoint sweep per compartment m = ncmt + oral0.  This

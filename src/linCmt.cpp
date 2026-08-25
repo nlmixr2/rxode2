@@ -761,9 +761,9 @@ RObject linCmtModelDouble(double dt,
   Eigen::Matrix<double, 7, 1> scale;
   scale.setZero();
 
-  // The AD methods (3/30 forward fvar, 31 reverse, 100 auto resolved by the
-  // requested-direction count) use the unscaled (isAD = true) path so the
-  // Jacobian comes out in true-theta units.
+  // The AD methods (3/30 forward fvar, 31 reverse, 100 auto -> forward) use
+  // the unscaled (isAD = true) path so the Jacobian comes out in true-theta
+  // units.
   sensType = linCmtSensResolveAuto(sensType, ndiff, ncmt, oral0);
   lc.sensTheta(theta, thetaSens, linCmtSensIsAD(sensType), scale.data());
 
