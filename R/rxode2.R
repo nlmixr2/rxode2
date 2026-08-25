@@ -2543,7 +2543,12 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     ## the translation replaces it with the parsed-md5 prefix anyway -- while
     ## making it stable across calls, so repeated translations of one model
     ## stop minting a new name (which R interns for the life of the session).
-    .prefix <- paste0("parseModel4", rxMd5(.parseModel)$digest,
+    ## It digests the text itself rather than calling rxMd5(): rxMd5() folds in
+    ## `.udfMd5Info()`, which carries `Sys.time()` once a user defined function
+    ## is in use, so the prefix would vary from call to call again -- exactly
+    ## what this avoids -- in the sessions the leak matters most in.
+    .prefix <- paste0("parseModel4",
+                      digest::digest(.parseModel, serialize = TRUE, algo = "md5"),
                       "_", .Platform$r_arch, "_")
     .ret <- .rxTransCharacter(.parseModel, modelPrefix = .prefix, modVars = TRUE)
     .cFile <- list(.exists, ifelse(.exists, obj, ""), .prefix)
