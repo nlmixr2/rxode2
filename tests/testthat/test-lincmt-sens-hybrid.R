@@ -65,7 +65,7 @@ rxTest({
     rxSolve(m, params = .parsFor(ncmt, oral0), events = ev, returnType = "data.frame",
             linCmtSensStrategy = strategy, ...)
   }
-  .stats <- function() rxode2:::linCmtHybStats(TRUE)
+  .stats <- function() utils::getFromNamespace("linCmtHybStats", "rxode2")(TRUE)
 
   test_that("hybrid matches sequential on every config and direction count", {
     for (cfg in list(c(1L, 0L), c(1L, 1L), c(2L, 0L), c(2L, 1L), c(3L, 0L), c(3L, 1L))) {

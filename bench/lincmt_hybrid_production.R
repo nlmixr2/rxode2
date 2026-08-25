@@ -147,11 +147,13 @@ check <- function(label, ok) {
   worst
 }
 
+.hybStats <- utils::getFromNamespace("linCmtHybStats", "rxode2")
+
 .runCase <- function(label, cfg, m, ev, rows, tol = 1e-9, ...) {
   ref <- .solve(m, cfg, ev, "sequential", ...)
-  invisible(rxode2:::linCmtHybStats(TRUE))
+  invisible(.hybStats(TRUE))
   hyb <- .solve(m, cfg, ev, "hybrid", ...)
-  st <- rxode2:::linCmtHybStats(TRUE)
+  st <- .hybStats(TRUE)
   worst <- .cmpCols(hyb, ref)
   check(sprintf("%-30s rel diff %.2e  subj=%d rows=%d rates=%d cons=%d flush=%d full=%d",
                 label, worst, st[["subjects"]], st[["rows"]], st[["rateSteps"]],
