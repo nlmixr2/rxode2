@@ -43,4 +43,27 @@ rxTest({
     s <- rxSolve(mk(3L, 1L, -7L, 3L), ev, returnType = "data.frame")
     expect_equal(s$cp, c(1.0, 1.5))
   })
+  test_that("which1=-8 pins the full -5 advance for the subject's pass", {
+    # constant theta: without the pin the 3b.4 fast path skips every -5
+    # advance after the first row; with -8 emitted before it, none are skipped
+    base <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, 1, 10, 0, 0, 0, 0, 0"
+    mkAdv <- function(pin) {
+      suppressWarnings(rxode2(paste0(
+        "cp=linCmtB(", sprintf(base, -1L, -1L), ")\n",
+        if (pin) paste0("pn=linCmtB(", sprintf(base, -8L, 0L), ")\n") else "",
+        "ad=linCmtB(", sprintf(base, -5L, 0L), ")")))
+    }
+    evA <- et(amt = 100) |> et(c(1, 2, 3))
+    prev <- linCmtCarrySetFast(TRUE)
+    on.exit(linCmtCarrySetFast(prev), add = TRUE)
+    linCmtCarryFastStats(reset = TRUE)
+    s0 <- rxSolve(mkAdv(FALSE), evA, returnType = "data.frame")
+    skippedNoPin <- linCmtCarryFastStats(reset = TRUE)[["advFast"]]
+    s1 <- rxSolve(mkAdv(TRUE), evA, returnType = "data.frame")
+    skippedPin <- linCmtCarryFastStats(reset = TRUE)[["advFast"]]
+    expect_gt(skippedNoPin, 0)
+    expect_equal(skippedPin, 0)
+    expect_true(all(s1$pn == 0))
+    expect_equal(s0$cp, s1$cp)
+  })
 })

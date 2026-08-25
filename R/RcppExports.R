@@ -349,17 +349,36 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
-#' Read (and optionally reset) the linCmt() hybrid-strategy counters
+#' Force the delta-keyed exponential memo on or off (tests/benchmarks)
 #'
-#' @param reset logical; when TRUE zero the counters after reading
-#' @return named integer vector: subjects (phase-2 primes), rows (phase-2
-#'   rows filled), doses, rateSteps, consolidations, flushes (hand-backs to
-#'   the sequential kernel), fullRows (rows of a model that reads raw
-#'   Jacobian rows), windows (window-constant recomputations)
+#' @param on integer: 1 forces the memo on, 0 forces it off, -1 (the
+#'   default) follows the RX_LINCMT_DELTA_MEMO environment latch read at
+#'   window-fill time
+#' @return the previous setting, invisibly usable to restore it
 #' @keywords internal
 #' @export
-linCmtHybStats <- function(reset = FALSE) {
-    .Call(`_rxode2_linCmtHybStats`, reset)
+linCmtDeltaMemo <- function(on = -1L) {
+    .Call(`_rxode2_linCmtDeltaMemo`, on)
+}
+
+#' Read (and optionally reset) the amortized linCmt() sequential counters
+#'
+#' @param reset logical; when TRUE zero the counters after reading
+#' @return named integer vector: windows (window-constant recomputations),
+#'   seqTailRows (rows evaluated from the window's dt-dependent tail),
+#'   seqFullRows (rows that fell back to the full forward evaluator),
+#'   valueCompute (value executions that solved the row),
+#'   valueRestore (value executions that restored an already-solved row),
+#'   memoHit (value executions short-circuited by the last-row memo),
+#'   valueLite (already-solved value re-executions served by the thin
+#'   fx-plus-scaling path with the Jacobian restore skipped),
+#'   expBuild (delta-keyed exponential-memo builds: one per distinct row
+#'   gap per theta window), expHit (rows whose exponentials came from the
+#'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
+#' @keywords internal
+#' @export
+linCmtSeqStats <- function(reset = FALSE) {
+    .Call(`_rxode2_linCmtSeqStats`, reset)
 }
 
 linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType = 3L, sensH = 0.001) {
@@ -374,6 +393,17 @@ linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, n
 #' @export
 linCmtCarrySetFast <- function(enable) {
     .Call(`_rxode2_linCmtCarrySetFast`, enable)
+}
+
+#' Highest carry sentinel `linCmtB(which1 = -k)` this build understands
+#'
+#' nlmixr2est gates its carry codegen on this: `-8` (the fast-path pin an
+#' event-modifier jump needs) is only emitted when the loaded rxode2 has it.
+#' @return integer, the magnitude of the most negative carry sentinel
+#' @keywords internal
+#' @export
+linCmtCarrySentinelMax <- function() {
+    .Call(`_rxode2_linCmtCarrySentinelMax`)
 }
 
 #' Read (and optionally reset) the linCmt() carry-advance fast-path counters

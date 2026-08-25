@@ -160,10 +160,7 @@ rxSolve(
     "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
-  linCmtSensStrategy = c("auto", "sequential", "hybrid"),
-  linCmtHybridMinObs = 2L,
-  linCmtHybridMinDirs = 2L,
-  linCmtHybridMaxActive = 30L,
+  linCmtSensPhi = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1390,42 +1387,15 @@ determined by the shi 2021 optimization for central differences
 differences when using the option \code{centralH}, \code{forwardH},
 \code{foward3H} or \code{endpoint5H} options.}
 
-\item{linCmtSensStrategy}{How a subject's \code{linCmt()} sensitivities are
-evaluated row by row: \code{"sequential"} carries the state from row to row
-and differentiates every row with \code{linCmtSensType}; \code{"hybrid"} rolls
-the rows up to the subject's trailing run of observations through the
-sequential kernel in forward mode, then evaluates those observation
-rows as a superposition over the carried state: the theta-only
-constants of the closed form are differentiated once per subject and
-each row costs one allocation-free forward pass per requested
-direction through the dt-dependent tail of the solution (exact for
-every compartment).  \code{"auto"} (the default) uses \code{"hybrid"} for a
-subject only when the trailing observation run is at least
-\code{linCmtHybridMinObs} rows, the model requests at least
-\code{linCmtHybridMinDirs} directions and the solution has at least two
-compartments (depot included), and \code{"sequential"} otherwise.  Measured
-through the solver on an optimized build over every kernel,
-parameterization, direction mask and event shape
-(\code{bench/lincmt_auto_optimized.R}), the hybrid rows are never slower
-than the sequential forward-mode rows beyond timer noise and are
-cheaper by 1.05-1.2x on three compartment solutions (more with more
-requested directions) and by 1.0-1.04x on one and two compartment
-solutions, so the default threshold is two.  Results agree to
-round-off either way; a subject whose steady-state infusion or modeled
-lag leaves doses pending stays sequential.}
-
-\item{linCmtHybridMinObs}{For \code{linCmtSensStrategy="auto"}, the smallest
-trailing observation run for which the hybrid evaluation is used.}
-
-\item{linCmtHybridMinDirs}{For \code{linCmtSensStrategy="auto"}, the smallest
-number of requested sensitivity directions for which the hybrid
-evaluation is used.}
-
-\item{linCmtHybridMaxActive}{The largest number of superposition terms a
-subject's observation phase keeps before they are collapsed into one
-term (exact; bounds the per-row cost when doses keep arriving during
-that phase).
-#'}
+\item{linCmtSensPhi}{When \code{TRUE} (default), a \code{linCmt()} sensitivity
+row whose interval repeats -- as intervals do under regular sampling
+-- is evaluated by assembling that interval's state-transition matrix
+once and propagating each later row of the same width through it.
+Intervals that do not repeat are unaffected.  When \code{FALSE} every row
+evaluates the closed form in the order earlier versions used.  Both
+are the same exact closed-form solution evaluated in a different
+order, so the two can differ in the last few digits; use \code{FALSE} to
+reproduce earlier results digit for digit.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

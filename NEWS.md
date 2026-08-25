@@ -17,31 +17,101 @@
   Stan tape is per thread under `STAN_THREADS`, so it is no longer forced
   onto one core.  Results match forward mode to round-off.
 
-- `rxSolve(linCmtSensStrategy=)` adds a per-subject hybrid evaluation of the
-  `linCmt()` sensitivities.  A subject's rows up to its trailing run of
-  observations are rolled through the sequential kernel in forward mode;
-  those observation rows are then evaluated as a superposition over the
-  carried state.  The theta-only constants of the closed form (the
-  elimination constant or the 2/3-compartment eigen-decomposition, and ka)
-  and their derivatives are taken once per subject, and each observation
-  row costs one allocation-free forward pass per requested direction
-  through the dt-dependent tail of the solution, giving every compartment's
-  sensitivity.  `"auto"` (the default) engages it for a subject when the
-  trailing run has at least `linCmtHybridMinObs` rows, the model requests
-  at least `linCmtHybridMinDirs` directions (two by default) and the
-  solution has at least two compartments; `"sequential"` turns it off and
-  `"hybrid"` forces it.  Measured on an optimized build over every kernel,
-  parameterization, direction mask and event shape
-  (`bench/lincmt_auto_optimized.R`), the hybrid rows are never slower than
-  the sequential forward-mode rows beyond timer noise; they are cheaper by
-  1.05-1.2x on three compartment solutions (more with more requested
-  directions) and by 1.0-1.04x on one and two compartment solutions, where
-  the per-row solver overhead is most of the time.  Results agree with the
-  sequential evaluation to round-off,
-  including steady-state rows, infusions and a model that reads raw
-  Jacobian rows; a subject with a pending steady-state infusion turn-off or
-  modeled lag stays sequential.  `linCmtHybStats()` reports how many
-  subjects and rows took the hybrid path.
+- The `linCmt()` forward-mode sensitivity evaluation is amortized across
+  rows: the theta-only constants of the closed form (the elimination
+  constant or the 2/3-compartment eigen-decomposition, and ka) and their
+  derivatives are taken once per theta-keyed window, and each ordinary row
+  costs one allocation-free forward pass per requested direction through
+  the dt-dependent tail of the solution (steady-state rows and the
+  finite-difference families keep the full evaluator).  Together with the
+  removal of per-row heap allocation from the sensitivity hot path this
+  makes the sequential sensitivity solve 1.6x (two-compartment) to 2.1x
+  (three-compartment) faster on an optimized build, with results identical
+  to round-off.  `linCmtSeqStats()` reports the window refills and how
+  many rows took the amortized tail.  The per-subject hybrid strategy this
+  window machinery was first built for (`rxSolve(linCmtSensStrategy=)` and
+  the `linCmtHybrid*` thresholds, introduced on this development branch and
+  never released) was measured to win nowhere once the sequential path
+  itself was amortized, and has been removed.
+
+- A last-row value memo removes the repeated work of the generated model
+  executing the same `linCmtB()` value call many times per row (measured:
+  about fifteen executions per row -- five full computations and ten
+  restores).  A repeat with an identical key returns the cached value with
+  the Jacobian left standing for the sensitivity reads; sentinel calls and
+  model reshapes invalidate the memo.  Measured on an optimized build this
+  makes the sequential sensitivity solve a further 1.5x (two-compartment)
+  to 2.3x (three-compartment, sparse) faster; results are identical.
+  `linCmtSeqStats()` now also reports the value-execution classes and the
+  memo hits.
+
+- A thin value path consolidates the two per-row visits a fit makes to a
+  pure `linCmtB()` row (the solver's state fill and the left-hand-side
+  walk): a value re-execution of an already-solved row now returns the
+  saved amounts and concentration scaling only, skipping the sensitivity
+  setup, the rate cache, the Jacobian restore and the concentration
+  gradient recompute.  The Jacobian is restored lazily if a sentinel or
+  read call for that row follows, so carry models are unaffected (tested
+  against reverse mode).  `linCmtSeqStats()` reports the served
+  executions as `valueLite`; in a FOCEi posthoc evaluation the
+  left-hand-side walk is served entirely by this path.
+
+- A delta-keyed memo caches the tail's dt-dependent exponentials (and
+  their derivative in every requested direction) per distinct row gap
+  under the theta window, so designs with repeated observation spacing
+  evaluate their sensitivity rows without recomputing any exponential --
+  a uniform sampling schedule needs one exponential build per window and
+  every other row is multiply-only.  The memo is exact caching (bitwise
+  identical results, tested), sized at four gaps from measured designs,
+  and can be disabled with `RX_LINCMT_DELTA_MEMO=off`; a design with no
+  gap reuse stops building after eight consecutive misses so it pays
+  essentially nothing; a stretch whose gap repeats the previous row's --
+  what a regular sampling schedule produces and an irregular one does not
+  -- re-arms it, so an irregular stretch no longer disables the memo for
+  the regular rows that follow it under the same parameters.
+  `linCmtSeqStats()` reports the builds and hits.
+
+- Where a `linCmt()` sensitivity row's interval repeats -- as it does under
+  regular sampling, and across the dosing intervals of a repeated regimen
+  -- that interval's state-transition matrix is now assembled once and the
+  later rows of the same width propagate through it, instead of evaluating
+  the closed form again in every requested direction.  Measured at 1.1 to
+  1.6 times faster on those designs, most at three compartments and many
+  directions.  The matrix is built only when a *different* row is seen to
+  share an interval width -- the one thing that shows the interval really
+  does recur in the design -- so a design whose intervals never repeat
+  builds none and is unaffected, in a fit as in a single solve.  (A row
+  re-queried while a fit's inner problem re-walks a subject is the same
+  interval asked about twice, not a recurrence, and does not count.)  Each
+  subject starts from a blank interval state, so a solve is unchanged by
+  the number of threads it runs on.  Rate-bearing rows of an infusion and
+  steady-state rows keep the previous route.
+
+  This is the same exact closed-form solution evaluated in a different
+  order: the interval's matrix is summed first and then applied, where the
+  previous route accumulated the same products as it went.  Floating-point
+  addition is not associative, so the two can differ in the last few digits
+  -- neither is an approximation of the other and neither is the more
+  correct.  Measured over every compartment count, parameterization,
+  regimen and direction mask, the largest disagreement was a few units in
+  the last place of the values involved (against an independently
+  integrated reference the new order was in fact the closer of the two
+  slightly more often).  `rxSolve(linCmtSensPhi=FALSE)` restores the
+  previous order for anyone who needs to reproduce earlier results digit
+  for digit; `linCmtSeqStats()` reports how many matrices were built and
+  how many rows used one.
+
+- `linCmtB()` derivatives are now emitted as direct reads of the
+  sensitivity state columns: the parser registers a derivative slot when
+  a `rx__sens_<cmt>_BY_<slot>` state is referenced as a bare symbol, and
+  the derivative table writes the concentration gradient as arithmetic
+  over those states (matching the internal per-`trans` scaling exactly,
+  so results are bitwise identical; a `trans` without a covered scaling
+  keeps the call form).  A FOCEi inner model drops from about eleven
+  `linCmtB()` executions per row to the single value call.  The measured
+  effect is modest (the read calls already short-circuited cheaply):
+  about 1.0-1.1x on the sensitivity solve and 1.04x on a dense FOCEi
+  fit, with the identical objective.
 
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
@@ -651,9 +721,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   rejected as an unknown read, which left that column unfilled.
 
 - `linCmtB()` gained internal per-subject sensitivity-carry sentinels
-  (`which1 = -4` to `-7`) that nlmixr2est uses to keep a `linCmt()` eta
+  (`which1 = -4` to `-8`) that nlmixr2est uses to keep a `linCmt()` eta
   gradient exact when a time-varying covariate makes a parameter differ
-  between rows; they are not reached by a model that does not request them.
+  between rows (`-8` pins a subject's pass to the full transition advance so
+  an event-modifier jump fed to `-7` is propagated); they are not reached by
+  a model that does not request them.
 
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read

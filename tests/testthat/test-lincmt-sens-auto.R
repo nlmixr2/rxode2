@@ -27,7 +27,7 @@ rxTest({
   seen <- function(m, st, cores = 1L) {
     invisible(linCmtBSensTypesSeen(TRUE))
     r <- rxSolve(m, pars, ev, linCmtSensType = st, cores = cores,
-                 linCmtSensStrategy = "sequential", returnType = "data.frame")
+                 returnType = "data.frame")
     list(st = linCmtBSensTypesSeen(TRUE), r = r)
   }
   cmp <- function(a, b, cols) {

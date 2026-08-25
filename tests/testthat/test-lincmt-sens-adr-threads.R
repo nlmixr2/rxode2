@@ -32,7 +32,7 @@ rxTest({
   # take the hybrid path, whose dose phase is always forward mode
   solve <- function(st, cores) {
     rxSolve(m, pars, ev, linCmtSensType = st, cores = cores,
-            linCmtSensStrategy = "sequential", returnType = "data.frame")
+            returnType = "data.frame")
   }
   nThr <- getRxThreads()
 
@@ -61,8 +61,7 @@ rxTest({
   test_that("linCmtSensType=\"auto\" (the default) resolves to forward mode, threaded", {
     invisible(linCmtBSensTypesSeen(TRUE))
     invisible(linCmtBThreadsSeen(TRUE))
-    auto <- rxSolve(m, pars, ev, cores = 0L, linCmtSensStrategy = "sequential",
-                    returnType = "data.frame")
+    auto <- rxSolve(m, pars, ev, cores = 0L, returnType = "data.frame")
     seenAuto <- linCmtBSensTypesSeen(TRUE)
     expect_true(3L %in% seenAuto)
     expect_false(31L %in% seenAuto)

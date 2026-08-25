@@ -919,42 +919,17 @@
 #'   differences when using the option `centralH`, `forwardH`,
 #'   `foward3H` or `endpoint5H` options.
 #'
-#' @param linCmtSensStrategy How a subject's `linCmt()` sensitivities are
-#'   evaluated row by row: `"sequential"` carries the state from row to row
-#'   and differentiates every row with `linCmtSensType`; `"hybrid"` rolls
-#'   the rows up to the subject's trailing run of observations through the
-#'   sequential kernel in forward mode, then evaluates those observation
-#'   rows as a superposition over the carried state: the theta-only
-#'   constants of the closed form are differentiated once per subject and
-#'   each row costs one allocation-free forward pass per requested
-#'   direction through the dt-dependent tail of the solution (exact for
-#'   every compartment).  `"auto"` (the default) uses `"hybrid"` for a
-#'   subject only when the trailing observation run is at least
-#'   `linCmtHybridMinObs` rows, the model requests at least
-#'   `linCmtHybridMinDirs` directions and the solution has at least two
-#'   compartments (depot included), and `"sequential"` otherwise.  Measured
-#'   through the solver on an optimized build over every kernel,
-#'   parameterization, direction mask and event shape
-#'   (`bench/lincmt_auto_optimized.R`), the hybrid rows are never slower
-#'   than the sequential forward-mode rows beyond timer noise and are
-#'   cheaper by 1.05-1.2x on three compartment solutions (more with more
-#'   requested directions) and by 1.0-1.04x on one and two compartment
-#'   solutions, so the default threshold is two.  Results agree to
-#'   round-off either way; a subject whose steady-state infusion or modeled
-#'   lag leaves doses pending stays sequential.
+#' @param linCmtSensPhi When `TRUE` (default), a `linCmt()` sensitivity
+#'   row whose interval repeats -- as intervals do under regular sampling
+#'   -- is evaluated by assembling that interval's state-transition matrix
+#'   once and propagating each later row of the same width through it.
+#'   Intervals that do not repeat are unaffected.  When `FALSE` every row
+#'   evaluates the closed form in the order earlier versions used.  Both
+#'   are the same exact closed-form solution evaluated in a different
+#'   order, so the two can differ in the last few digits; use `FALSE` to
+#'   reproduce earlier results digit for digit.
 #'
-#' @param linCmtHybridMinObs For `linCmtSensStrategy="auto"`, the smallest
-#'   trailing observation run for which the hybrid evaluation is used.
 #'
-#' @param linCmtHybridMinDirs For `linCmtSensStrategy="auto"`, the smallest
-#'   number of requested sensitivity directions for which the hybrid
-#'   evaluation is used.
-#'
-#' @param linCmtHybridMaxActive The largest number of superposition terms a
-#'   subject's observation phase keeps before they are collapsed into one
-#'   term (exact; bounds the per-row cost when doses keep arriving during
-#'   that phase).
-#'#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1300,10 +1275,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
-                    linCmtSensStrategy=c("auto", "sequential", "hybrid"),
-                    linCmtHybridMinObs=2L,
-                    linCmtHybridMinDirs=2L,
-                    linCmtHybridMaxActive=30L,
+                    linCmtSensPhi=TRUE,
                     linCmtGillFtol=0,
                     linCmtGillK=20L,
                     linCmtGillStep=4,
@@ -1581,20 +1553,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
-    if (checkmate::testIntegerish(linCmtSensStrategy, len=1, lower=0, upper=2,
-                                  any.missing=FALSE)) {
-      .linCmtSensStrategy <- as.integer(linCmtSensStrategy)
-    } else {
-      .linCmtSensStrategy <- c("auto"=0L,
-                               "sequential"=1L,
-                               "hybrid"=2L)[match.arg(linCmtSensStrategy)]
-    }
-    checkmate::assertIntegerish(linCmtHybridMinObs, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMinObs <- as.integer(linCmtHybridMinObs)
-    checkmate::assertIntegerish(linCmtHybridMinDirs, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMinDirs <- as.integer(linCmtHybridMinDirs)
-    checkmate::assertIntegerish(linCmtHybridMaxActive, len=1, lower=1, any.missing=FALSE)
-    linCmtHybridMaxActive <- as.integer(linCmtHybridMaxActive)
     if (is.logical(linCmtScale)) {
       checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
       if (linCmtScale) {
@@ -1612,6 +1570,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    # a control list built by an earlier rxControl() hands this back as the
+    # integer it stores, so coerce before asserting rather than demanding
+    # the user-facing logical here
+    .linCmtSensPhi <- as.logical(linCmtSensPhi)
+    checkmate::assertLogical(.linCmtSensPhi, any.missing=FALSE, len=1)
+    .linCmtSensPhi <- as.integer(.linCmtSensPhi)
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE,
@@ -2096,10 +2060,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       priorOmega=priorOmega,
       priorOmegaEl=priorOmegaEl,
       priorSigmaEl=priorSigmaEl,
-      linCmtSensStrategy=.linCmtSensStrategy,
-      linCmtHybridMinObs=linCmtHybridMinObs,
-      linCmtHybridMinDirs=linCmtHybridMinDirs,
-      linCmtHybridMaxActive=linCmtHybridMaxActive
+      linCmtSensPhi=.linCmtSensPhi
     )
     class(.ret) <- "rxControl"
     return(.ret)

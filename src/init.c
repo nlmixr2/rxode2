@@ -413,7 +413,8 @@ SEXP _rxode2_iniDparserPtr(SEXP ptr);
 
 
 SEXP _rxode2_linCmtBThreadsSeen(SEXP);
-SEXP _rxode2_linCmtHybStats(SEXP);
+SEXP _rxode2_linCmtSeqStats(SEXP);
+SEXP _rxode2_linCmtDeltaMemo(SEXP);
 SEXP _rxode2_linCmtBSensTypesSeen(SEXP);
 
 
@@ -425,6 +426,7 @@ SEXP _rxode2_linCmtCarryLiveTest(SEXP, SEXP, SEXP, SEXP, SEXP,
                                  SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_linCmtCarrySetFast(SEXP);
+SEXP _rxode2_linCmtCarrySentinelMax(void);
 SEXP _rxode2_linCmtCarryFastStats(SEXP);
 
 SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -875,10 +877,12 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_getLinInfo_", (DL_FUNC) &_rxode2_getLinInfo_, 1},
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 22},
     {"_rxode2_linCmtBThreadsSeen", (DL_FUNC) &_rxode2_linCmtBThreadsSeen, 1},
-    {"_rxode2_linCmtHybStats", (DL_FUNC) &_rxode2_linCmtHybStats, 1},
+    {"_rxode2_linCmtSeqStats", (DL_FUNC) &_rxode2_linCmtSeqStats, 1},
+    {"_rxode2_linCmtDeltaMemo", (DL_FUNC) &_rxode2_linCmtDeltaMemo, 1},
     {"_rxode2_linCmtBSensTypesSeen", (DL_FUNC) &_rxode2_linCmtBSensTypesSeen, 1},
     {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},
     {"_rxode2_linCmtCarrySetFast", (DL_FUNC) &_rxode2_linCmtCarrySetFast, 1},
+    {"_rxode2_linCmtCarrySentinelMax", (DL_FUNC) &_rxode2_linCmtCarrySentinelMax, 0},
     {"_rxode2_linCmtCarryFastStats", (DL_FUNC) &_rxode2_linCmtCarryFastStats, 1},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},

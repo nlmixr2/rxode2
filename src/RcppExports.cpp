@@ -561,14 +561,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// linCmtHybStats
-IntegerVector linCmtHybStats(bool reset);
-RcppExport SEXP _rxode2_linCmtHybStats(SEXP resetSEXP) {
+// linCmtDeltaMemo
+int linCmtDeltaMemo(int on);
+RcppExport SEXP _rxode2_linCmtDeltaMemo(SEXP onSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type on(onSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtDeltaMemo(on));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtSeqStats
+IntegerVector linCmtSeqStats(bool reset);
+RcppExport SEXP _rxode2_linCmtSeqStats(SEXP resetSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
-    rcpp_result_gen = Rcpp::wrap(linCmtHybStats(reset));
+    rcpp_result_gen = Rcpp::wrap(linCmtSeqStats(reset));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -612,6 +623,16 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< bool >::type enable(enableSEXP);
     rcpp_result_gen = Rcpp::wrap(linCmtCarrySetFast(enable));
+    return rcpp_result_gen;
+END_RCPP
+}
+// linCmtCarrySentinelMax
+IntegerVector linCmtCarrySentinelMax();
+RcppExport SEXP _rxode2_linCmtCarrySentinelMax() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(linCmtCarrySentinelMax());
     return rcpp_result_gen;
 END_RCPP
 }
