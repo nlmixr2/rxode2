@@ -110,6 +110,7 @@ Imports:
     backports,
     cli (>= 2.0.0),
     checkmate,
+    compiler,
     ggplot2 (>= 3.4.0),
     inline,
     lotri (>= 1.0.5),
