@@ -52,6 +52,9 @@ rxTest({
     expect_true(max(seen) > 1L)
   })
 
+  # this model requests 5 directions on m = 3 compartments, so the count-based
+  # auto rule resolves it to reverse mode (test-lincmt-sens-auto-count.R
+  # covers the forward side of the rule)
   test_that("linCmtSensType=\"auto\" (the default) resolves to reverse mode, threaded", {
     invisible(linCmtBSensTypesSeen(TRUE))
     invisible(linCmtBThreadsSeen(TRUE))

@@ -243,12 +243,12 @@ static inline bool linCmtModelDoubleJac(stan::math::linCmtStan &lc, int sensType
   case 2:  // central
     lc.fCentralJac(thetaSens, h.data(), fx, Js);
     return true;
-  case 3:
-  case 31: // reverse-mode AD (the production default via auto)
+  case 31: // reverse-mode AD
     linCmtRevTapeInit();
     stan::math::jacobian(lc, thetaSens, fx, Js);
     return true;
-  case 30:  // forward-mode AD (fvar); should match case 3 to round-off
+  case 3:   // "AD": forward-mode fvar, the same as linCmtB()'s own dispatch
+  case 30:  // explicit forward-mode AD; matches 31 to round-off
     lc.linCmtFwdJac(thetaSens, fx, Js);
     return true;
   case 10:
@@ -304,10 +304,10 @@ RObject linCmtModelDouble(double dt,
   Eigen::Matrix<double, 7, 1> scale;
   scale.setZero();
 
-  // The AD methods (3 and 31 reverse, 30 forward fvar, 100 auto -> reverse)
-  // use the unscaled (isAD = true) path so the Jacobian comes out in
-  // true-theta units.
-  if (sensType == 100) sensType = 31;
+  // The AD methods (3/30 forward fvar, 31 reverse, 100 auto resolved by the
+  // requested-direction count) use the unscaled (isAD = true) path so the
+  // Jacobian comes out in true-theta units.
+  sensType = linCmtSensResolveAuto(sensType, ndiff, ncmt, oral0);
   lc.sensTheta(theta, thetaSens, linCmtSensIsAD(sensType), scale.data());
 
   double *a = new double[nAlast];

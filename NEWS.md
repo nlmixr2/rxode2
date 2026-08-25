@@ -12,6 +12,23 @@
   under `STAN_THREADS`), so it is no longer forced onto one core; the
   forward-mode path remains available as `linCmtSensType="AD"`.
 
+- `linCmtSensType="auto"` now chooses between `"AD"` and `"ADr"` per model by
+  counting the sensitivity directions the model requests: forward mode costs
+  one pass per requested direction (the kernel honors the parser's
+  direction mask), reverse mode one adjoint sweep per compartment plus a
+  fixed per-row tape cost, so `"ADr"` is used only when the model requests
+  at least as many directions as it has compartments (depot included) and
+  at least three; `"AD"` otherwise.  The boundary was measured through the
+  solver: one and two compartment solutions are still faster forward when
+  the requested count equals the compartment count, three and four
+  compartment solutions are already 1.1-1.3x faster in reverse there.  The 2x
+  measured for reverse mode above requested every direction; a FOCEi inner
+  model asks only for its eta directions, and with a single eta reverse
+  mode is slower than forward (about 0.6-0.9x on two and three compartment
+  oral models), while an eta on every parameter keeps the 1.3-1.9x gain.
+  Every solve path resolves the same way (`rxSolve()`, threaded solves,
+  `ind_solve()` and `linCmtModelDouble()`).
+
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
