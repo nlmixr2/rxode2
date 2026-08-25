@@ -2,32 +2,20 @@
 
 ## New features
 
-- The default `linCmt()` sensitivity method (`linCmtSensType="auto"`) is now
-  reverse-mode AD (`"ADr"`).  Each row is differentiated on its own nested
-  Stan tape with one adjoint sweep per compartment (at most 4) instead of
-  one forward pass per parameter (up to 7), which measured about 2x faster
-  than the forward-mode default for 2 and 3 compartment models and the same
-  for one compartment, with results matching forward mode to round-off.
-  Reverse mode now also solves across threads (the Stan tape is per thread
-  under `STAN_THREADS`), so it is no longer forced onto one core; the
-  forward-mode path remains available as `linCmtSensType="AD"`.
+- `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
+  development version made reverse-mode AD (`"ADr"`) the default on the
+  strength of timings that had been taken through `devtools::load_all()`,
+  which compiles at `-O0`; on an optimized build forward mode is at least as
+  fast as reverse for every number of requested sensitivity directions on
+  every configuration, and reverse is 2-4x slower on a three compartment
+  oral model, because its per-row tape build costs more than the extra
+  forward passes.  `"auto"` therefore resolves to `"AD"` on every solve
+  path (`rxSolve()`, threaded solves, `ind_solve()` and
+  `linCmtModelDouble()`), and `"ADr"` remains an explicit option.
 
-- `linCmtSensType="auto"` now chooses between `"AD"` and `"ADr"` per model by
-  counting the sensitivity directions the model requests: forward mode costs
-  one pass per requested direction (the kernel honors the parser's
-  direction mask), reverse mode one adjoint sweep per compartment plus a
-  fixed per-row tape cost, so `"ADr"` is used only when the model requests
-  at least as many directions as it has compartments (depot included) and
-  at least three; `"AD"` otherwise.  The boundary was measured through the
-  solver: one and two compartment solutions are still faster forward when
-  the requested count equals the compartment count, three and four
-  compartment solutions are already 1.1-1.3x faster in reverse there.  The 2x
-  measured for reverse mode above requested every direction; a FOCEi inner
-  model asks only for its eta directions, and with a single eta reverse
-  mode is slower than forward (about 0.6-0.9x on two and three compartment
-  oral models), while an eta on every parameter keeps the 1.3-1.9x gain.
-  Every solve path resolves the same way (`rxSolve()`, threaded solves,
-  `ind_solve()` and `linCmtModelDouble()`).
+- Reverse-mode AD (`linCmtSensType="ADr"`) now solves across threads: the
+  Stan tape is per thread under `STAN_THREADS`, so it is no longer forced
+  onto one core.  Results match forward mode to round-off.
 
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
