@@ -398,8 +398,22 @@
       if (length(.w) != 1L) {
         stop("could not find the omega covariance element '", .eta, "'", call.=FALSE)
       }
-      return(list(thetaIdx=0L, etaIdx=as.integer(.iniDf$neta1[.w]),
-                  etaIdx2=as.integer(.iniDf$neta2[.w])))
+      .e1 <- as.integer(.iniDf$neta1[.w])
+      .e2 <- as.integer(.iniDf$neta2[.w])
+      ## the C kernel indexes omega[e1][e2] with no bounds check of its own
+      ## (termValue()/addGrad() in src/priorDensity.cpp cannot safely call
+      ## back into R to error -- they run inside an OpenMP-parallel region),
+      ## so this is the one place that can and must catch a corrupted or
+      ## unusually-piped iniDf whose off-diagonal row references an eta
+      ## index with no corresponding diagonal row, before it ever reaches
+      ## that C++ code as an out-of-bounds omega[][] read/write.
+      .diag <- !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2
+      if (!(.e1 %in% .iniDf$neta1[.diag]) || !(.e2 %in% .iniDf$neta1[.diag])) {
+        stop("the omega covariance element '", .eta, "' references an eta ",
+             "index with no corresponding diagonal omega element; this can ",
+             "only happen on a hand-edited or piped 'iniDf'", call.=FALSE)
+      }
+      return(list(thetaIdx=0L, etaIdx=.e1, etaIdx2=.e2))
     }
     .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2 & .iniDf$name == .eta)
     if (length(.w) != 1L) {

@@ -555,6 +555,23 @@ rxTest({
     expect_true(is.finite(r$value))
   })
 
+  test_that("an off-diagonal row referencing a non-existent eta index is refused, not read out of bounds", {
+    # .rxPriorKeyIndex() is the one place that can safely error (the C
+    # kernel's termValue()/addGrad() cannot -- they run inside an
+    # OpenMP-parallel region with no R call of any kind); this is the
+    # regression test for that guard. Only reachable via a hand-edited or
+    # piped iniDf, same as the "off-diagonal ... refused" test elsewhere in
+    # this file.
+    skip_if_not(.hasPriorSupport())
+    u <- rxUiDecompress(.base())
+    .ini <- u$iniDf
+    .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
+    .ini$neta2[.w] <- 99L # no diagonal row has neta1 == 99
+    .ini$prior[.w] <- "dnorm(0, 1)"
+    assign("iniDf", .ini, envir = u)
+    expect_error(rxPriorLogDensity(u, omega = u$omega), "no corresponding diagonal")
+  })
+
   test_that("prior simulation (usePrior=TRUE) refuses an off-diagonal covariance prior with a clear message", {
     skip_if_not(.hasPriorSupport())
     u <- rxode2(function() {
