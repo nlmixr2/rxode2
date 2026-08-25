@@ -622,6 +622,24 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Solving
 
+- `rxSolve()` on a model function's `rxUi` no longer loses what the model's
+  `meta` block carries -- most visibly a `sigma`, whose residual variables the
+  solve then rejected as unsupplied parameters.  `rxSolve.rxUi()` is not a
+  registered S3 method, so a call from user code lands on `rxSolve.default()`,
+  which hands the model back to `rxSolve()` with the whole `rxControl()`
+  expanded into named arguments; the `meta` block is only read for options the
+  caller did not name, so naming all of them hid it.  The entries `meta`
+  supplies that are still at their default are now left unnamed on the way
+  back.  (A call from inside the package, including from `test_check()`, found
+  `rxSolve.rxUi()` directly and was never affected.)
+
+- `rxSolve(method="indLin")` on a model function's `rxUi` now solves.  The
+  `matExp()` conversion ran before that same hand-back, so it replaced the ui
+  with a plain model built from the ui's equations and the `ini()` values were
+  never supplied -- the solve stopped asking for the population parameters.
+  A function or `rxUi` is now converted on re-entry, when the simulation model
+  and its parameters are both in hand.
+
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
   at exactly the same time now solve.  Each such dose is expanded into a
   start/stop pair sharing one time and the solver pairs the two positionally, but
