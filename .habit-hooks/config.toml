@@ -1,0 +1,14 @@
+plugins = ["r", "cpp", "c", "fortran", "generic"]
+
+[sensors.lintr]
+files = ["**/*.R", "**/*.r"]
+
+[sensors.clang-tidy-cpp]
+files = ["**/*.cpp", "**/*.cc", "**/*.cxx", "**/*.hpp", "**/*.hh", "**/*.hxx", "!**/sundials_inc/**"]
+
+[sensors.clang-tidy-c]
+files = ["**/*.c", "!**/sundials_inc/**"]
+
+[sensors.gfortran]
+files = ["**/*.f90", "**/*.F90", "**/*.f95", "**/*.F95", "**/*.f03", "**/*.F03", "**/*.f08", "**/*.F08"]
+
