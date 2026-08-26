@@ -20,7 +20,9 @@
 extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neqUnused,
                              t_dydt c_dydt, t_update_inis u_inis) {
   (void) neqUnused;
-  int cSub = rx->ordId[solveid] - 1;
+  // `solveid` is a subject id, not a position in rx->ordId (see
+  // ind_liblsoda0() in par_solve.cpp).
+  int cSub = solveid;
   rx_solving_options_ind *ind = &(rx->subjects[cSub]);
   int nBase = op->adjNbase, np = op->adjNp, eff = rxEffNeq(ind, op);
   int fxOff = op->adjFxOff, fpOff = op->adjFpOff, sensOff = op->adjSensOff;
@@ -186,9 +188,12 @@ extern "C" void par_ab_adj(rx_solve *rx) {
 #pragma omp atomic read
     localAbort = abort;
     if (localAbort == 0) {
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+      // rx->ordId walks the subjects most-expensive-first (sortIds), so
+      // this loop counts positions; the driver takes a subject id.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       int neq[2]; neq[0] = op->neq; neq[1] = 0;
-      ind_ab_adj_0(rx, op, solveid, neq, dydt, update_inis);
+      ind_ab_adj_0(rx, op, _id, neq, dydt, update_inis);
       if (displayProgress) {
 #pragma omp critical
         cur++;

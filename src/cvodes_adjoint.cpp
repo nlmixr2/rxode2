@@ -485,7 +485,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
                                 int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t tclk = clock();
-  neq[1] = rx->ordId[solveid] - 1;
+  // `solveid` is a subject id, not a position in rx->ordId (see
+  // ind_liblsoda0() in par_solve.cpp).
+  neq[1] = solveid;
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   neq[0] = rxEffNeq(ind, op);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;

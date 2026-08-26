@@ -364,6 +364,19 @@
   largest for small models and in a `pkgload::load_all()` session, where the
   discarded closures were byte-compiled again on each call.
 
+- The same subject-id fix is applied to every remaining `method=`
+  (nlmixr2/nlmixr2est#1020).  The explicit Runge-Kutta family, the multistep
+  and symplectic solvers, the Rosenbrock and implicit solvers, CVODE/CVODES
+  and the discrete-adjoint solvers all read `ind_solve()`'s subject id as a
+  position in `rx->ordId`, so under an external per-individual driver they
+  integrated the wrong individual exactly as the default solvers did.  Two
+  identical FOCEi fits at 12 threads, 6 subjects, before and after: `ros4`
+  2.8899 / -19.4187 -> -112.6064 twice; `cvode` 610.5607 / 790.9127 ->
+  -112.6070 twice; `ab` -39.6840 / -26.7254 -> -112.6066 twice; `em` -47.4500
+  / -103.7914 -> -112.6019 twice; `vern76` 2363.7034 / 1829.7461 -> -112.6064
+  twice; `f78` -28.7380 / 32.8981 -> -112.6066 twice; `dop5` -36.3624 /
+  -14.9451 -> -112.5733 twice; `rk4` -98.6288 / -101.5320 -> -112.6011 twice.
+
 - `ind_solve()` now solves the subject it is asked for, whatever order the
   solve loop is in (nlmixr2/nlmixr2est#1020).  Its `cid` argument is a subject
   id, and `ind_lsoda0()`/`ind_dop0()` read it that way -- but

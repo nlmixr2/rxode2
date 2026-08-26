@@ -157,7 +157,9 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     int istate = 1;
     void* ctx = NULL;
 
-    neq[1] = rx->ordId[solveid]-1;
+    // `solveid` is a subject id, not a position in rx->ordId (see
+    // ind_liblsoda0() in par_solve.cpp).
+    neq[1] = solveid;
     rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
     int eff = rxEffNeq(ind, op);
     neq[0] = eff;
