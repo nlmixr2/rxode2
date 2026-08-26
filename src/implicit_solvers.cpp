@@ -47,6 +47,9 @@ static void par_implicit_tmpl(rx_solve *rx, const char *err_msg) {
       }
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
 }
 
 // -- ros6 -- OdeROW6A (32) -----------------------------------------------------

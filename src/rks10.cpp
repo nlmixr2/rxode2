@@ -222,6 +222,9 @@ extern "C" void par_rks10(rx_solve *rx) {
       }
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
 }
 
 extern "C" void rks10_solveWith1Pt(int *neq, double *yp, double *xp, double xout,

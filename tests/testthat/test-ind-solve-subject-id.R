@@ -83,4 +83,30 @@ rxTest({
       expect_equal(.r$z, .ref$z, info = .meth)
     }
   })
+
+  test_that("every solver closes the seed block it claimed", {
+    # A par_*() loop claims a block with getRxSeed1(cores) but consumes one
+    # seed per subject, so it has to close the block with
+    # setRxSeedFinal(seed0 + nsolve).  97 solvers never did, leaving the global
+    # seed short of what they used -- a second solve in the same session then
+    # re-consumed seeds the first had already spent.
+    .m <- rxode2({
+      d/dt(a) <- -k * a
+      z <- rxnorm()
+    })
+    .ev <- et(amt = 1) %>% et(0:1) %>% et(id = 1:8)
+    .advance <- function(meth) {
+      rxSetSeed(42)
+      invisible(suppressWarnings(rxSolve(.m, .ev, c(k = 1), method = meth,
+                                         returnType = "data.frame")))
+      rxGetSeed() - 42
+    }
+    .ref <- .advance("liblsoda")
+    for (.meth in c("lsoda", "lsode", "bdf", "dop853", "rk4", "f78", "dop5",
+                    "ck54", "ros4", "vern65", "vern98", "cvode", "abm", "em",
+                    "backwardEuler", "gauss6", "radauiia5", "sdirk43", "trapz",
+                    "ssp3", "euler", "heun", "midpoint", "rk3", "mm")) {
+      expect_equal(.advance(.meth), .ref, info = .meth)
+    }
+  })
 })

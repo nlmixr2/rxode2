@@ -5387,6 +5387,9 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
       if (op->abort) abort = 1;
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1) op->abort = 1;
   else if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
 }

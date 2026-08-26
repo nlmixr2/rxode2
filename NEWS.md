@@ -423,6 +423,16 @@
   by an earlier solve.  Simulated values from these four methods therefore
   change; the other methods are unaffected.
 
+- Solving twice in one session with an explicit `seed=` no longer re-uses seeds
+  the first solve already spent.  Each `par_*()` loop claims a block of
+  per-subject seeds with `getRxSeed1(cores)` but consumes one per subject, so
+  it has to close the block with `setRxSeedFinal(seed0 + nsolve)`; 97 solvers
+  never did, leaving the global seed advanced by `cores` rather than by
+  `nsolve`.  `par_cvodesadj()` additionally never called `setSeedEng1()` at
+  all, so its subjects inherited whatever stream happened to be current
+  instead of a per-subject one.  Simulated values from the affected methods
+  change.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an

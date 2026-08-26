@@ -263,6 +263,9 @@ extern "C" void par_abm(rx_solve *rx){
       }
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
 }
 
 extern "C" void abm_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {

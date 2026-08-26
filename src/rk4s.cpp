@@ -8977,6 +8977,9 @@ extern "C" void par_rk4s(rx_solve *rx){
       }
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
 }
 
 #endif // IN_PAR_SOLVE
