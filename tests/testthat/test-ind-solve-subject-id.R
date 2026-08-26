@@ -63,4 +63,24 @@ rxTest({
       expect_equal(.r$cp, .ref$cp, tolerance = 1e-2, info = .meth)
     }
   })
+
+  test_that("every solver seeds a subject's random stream the same way", {
+    # Each par_*() loop seeds the per-subject stream right before solving that
+    # subject.  lsoda/lsode/bdf/indLin used to seed `seed0 + solveid - 1` where
+    # the rest seed `seed0 + id`, so the same seed gave a different simulation
+    # depending on which solver ran, and subject 0 was seeded outside the block
+    # setRxSeedFinal() reserves.
+    .m <- rxode2({
+      d/dt(a) <- -k * a
+      z <- rxnorm()
+    })
+    .ev <- et(amt = 1) %>% et(0:3) %>% et(id = 1:3)
+    .ref <- rxSolve(.m, .ev, c(k = 1), method = "liblsoda", seed = 42,
+                    returnType = "data.frame", addDosing = FALSE)
+    for (.meth in c("dop853", "rk4", "lsoda", "lsode", "bdf")) {
+      .r <- rxSolve(.m, .ev, c(k = 1), method = .meth, seed = 42,
+                    returnType = "data.frame", addDosing = FALSE)
+      expect_equal(.r$z, .ref$z, info = .meth)
+    }
+  })
 })

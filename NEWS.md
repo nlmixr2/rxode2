@@ -413,6 +413,16 @@
   walk positions, so the load-balancing order is unchanged and `rxSolve()`
   results are unaffected.
 
+- `method="lsoda"`, `"lsode"`, `"bdf"` and `"indLin"` now draw the same random
+  numbers for a subject as every other solver does.  Each `par_*()` loop seeds
+  the per-subject stream immediately before solving that subject; these four
+  seeded `seed0 + solveid - 1` where the others seed `seed0 + id`, so a model
+  containing `rxnorm()` or similar gave a different simulation under `lsoda`
+  than under `liblsoda` from the same `seed=`, and the first subject was seeded
+  outside the block `setRxSeedFinal()` reserves, which could repeat a seed used
+  by an earlier solve.  Simulated values from these four methods therefore
+  change; the other methods are unaffected.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an

@@ -4309,11 +4309,13 @@ extern "C" void par_indLin(rx_solve *rx){
 #pragma omp atomic read
     localAbort = abort;
     if (localAbort == 0){
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       // `ind_indLin0` rather than the `ind_indLin` wrapper: the wrapper binds
       // the model functions, which `assignFuns()` above already did once for
       // the whole team.
-      ind_indLin0(rx, op, solveid, update_inis);
+      ind_indLin0(rx, op, _id, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
@@ -5170,11 +5172,13 @@ extern "C" void par_lsoda(rx_solve *rx) {
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       int neq[2];
       neq[0] = baseNeq;
       neq[1] = 0;
-      ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
+      ind_lsoda0(rx, op, _id, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
@@ -5372,9 +5376,11 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++) {
     if (abort == 0) {
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       int neq[2]; neq[0] = baseNeq; neq[1] = 0;
-      ind_lsode0(rx, op, solveid, neq, rwork, lrw, iwork, liw, mf);
+      ind_lsode0(rx, op, _id, neq, rwork, lrw, iwork, liw, mf);
       if (displayProgress) {
         curTick = par_progress(solveid + 1, nsolve, curTick, 1, t0, 0);
       }
