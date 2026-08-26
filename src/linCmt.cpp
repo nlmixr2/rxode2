@@ -203,7 +203,10 @@ typedef struct {
 
 // Global linear compartment B model object
 // Refactored to per-thread vector for thread safety, matching linCmtA pattern.
-typedef struct {
+// Tagged rather than anonymous: the members are C++ (Eigen matrices, a Stan
+// object), so a typedef naming an anonymous struct for linkage is what clang
+// warns about under -Wnon-c-typedef-for-linkage.
+typedef struct linB_s {
   stan::math::linCmtStan lc;
   double data[14];
   int numSens;

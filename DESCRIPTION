@@ -89,6 +89,7 @@ Suggests:
     withr,
     xgxr (>= 1.1.6),
     pillar,
+    ps,
     tibble,
     units (>= 0.6-0),
     rsconnect,

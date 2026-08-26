@@ -364,27 +364,54 @@
   largest for small models and in a `pkgload::load_all()` session, where the
   discarded closures were byte-compiled again on each call.
 
+- Translating a model no longer grows process memory without bound (#1289).
+  Three leaks, none of them visible to `gc()`, `rxUnloadAll()` or `rxClean()`,
+  and all of them paid again every time an already-translated model was
+  translated again:
+
+  - `.rxModelVarsCharacter()` derived the parse prefix from `tempfile()`, so it
+    differed on every call.  `rxTrans.character()` is memoised and memoise keys
+    on its arguments, so each call missed the cache *and* added an entry to it
+    -- about 0.4 MB per `rxModelVars()`/`rxNorm()` call.  The prefix is now
+    derived from the model, which is the only thing it has to distinguish.
+    Translating also leaves the parsed model in the C parser's state, which the
+    code generator reads, so the two callers that translate *for* that state
+    (rather than for the returned model variables) now ask for a real
+    translation -- otherwise a cache hit left the parser holding some other
+    model and `rxDelete()` followed by `$compile()` could not regenerate its
+    code.
+
+  - `reset()` (src/tran.c) allocated `tb.lho` beside `tb.lh`, but `parseFree()`
+    freed only `tb.lh`, leaking `MXSYM * sizeof(int)` (~200 KB) per parse.
+
+  - `.udfAddToSearch()` appended the calling environment to a list that was
+    never pruned, pinning a call frame per `$` on a `rxUi`, per `rxSolve()` and
+    per `rxode2()`; its index also had to mint a new name per environment, and
+    R interns names for the life of the session.  The list is now bounded by
+    `options(rxode2.udfSearchLimit = )` (default 20, oldest forgotten first)
+    and membership is tested by identity.
+
+  Repeating the reprex from the issue -- 500 `rxNorm()` calls on one model --
+  grew process memory by ~190 MB before and does not measurably grow it now.
+
 - `ind_solve()` now solves the subject it is asked for, whatever order the
   solve loop is in (nlmixr2/nlmixr2est#1020).  Its `cid` argument is a subject
-  id, and `ind_lsoda0()`/`ind_dop0()` read it that way -- but
-  `ind_liblsoda0()`, `ind_dop0_dense()`, `ind_linCmt0()` and `ind_linCmt0H()`
-  mapped it through `rx->ordId` first, i.e. read it as a position in the
-  run-time-ordered solve sequence.  The two readings agree only while
-  `rx->ordId` is the identity.  `sortIds()` deliberately reorders subjects
-  most-expensive-first once there are at least `throttle` times more threads
-  than subjects, and from then on an external per-individual driver -- such as
-  nlmixr2est's FOCEi, which solves one subject at a time through `ind_solve()`
-  -- had its subject id reinterpreted as a position, so the WRONG INDIVIDUAL
-  was integrated while the caller attributed the result to the subject it asked
-  for.  Measured on a two-subject FOCEi fit: 734 of 746 solves went to the
-  wrong subject.  A fit's objective function and estimates therefore depended
-  on the solve order, and since that order comes from wall-clock timing, the
-  same fit on the same data gave different answers from run to run.  Both the
-  ODE (`liblsoda`, `dop853` dense) and the `linCmt()` paths were affected.  All
-  four drivers now read the argument as a subject id and the position -> id
-  mapping happens in the loops that walk positions (`par_liblsoda()`,
-  `par_liblsodaR()`, `par_dop()`, `par_linCmt()`), so the load-balancing order
-  is unchanged and `rxSolve()` results are unaffected.
+  id -- `ind_solve()` itself indexes `rx->subjects[cid]` with it -- but most of
+  the per-individual drivers it dispatches to mapped it through `rx->ordId`
+  first, i.e. read it as a position in the run-time-ordered solve sequence.
+  The two readings agree only while `rx->ordId` is the identity, and
+  `sortIds()` deliberately reorders subjects most-expensive-first once there
+  are at least `throttle` times more threads than subjects.  From then on an
+  external per-individual driver -- such as nlmixr2est's FOCEi, which solves
+  one subject at a time through `ind_solve()` -- had its subject id
+  reinterpreted as a position, so the wrong individual was integrated while the
+  caller attributed the result to the subject it asked for.  A fit's objective
+  function and estimates therefore depended on the solve order, and since that
+  order comes from wall-clock timing, the same fit on the same data could give
+  different answers from run to run.  Every driver now reads the argument as a
+  subject id and the position -> id mapping happens in the `par_*()` loops that
+  walk positions, so the load-balancing order is unchanged and `rxSolve()`
+  results are unaffected.
 
 ## Breaking changes
 
@@ -483,6 +510,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   short call dereferenced a NULL parse node (#1266).
 
 ### Compilation
+
+- The per-thread `linCmtB()` object is a tagged struct rather than an anonymous
+  one named by its typedef, which is what recent clang warns about
+  (`-Wnon-c-typedef-for-linkage`) since its members are C++ (Eigen matrices, a
+  Stan object).  The warning was the macOS `R CMD check` failure.
 
 - A model that fails to build now shows the compiler's own error lines (and
   only those -- warnings and progress chatter are dropped, and the list is
@@ -613,6 +645,24 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `abs(x)` and treats 0 as positive, so it returns `abs(x)` there rather than 0.
 
 ### Solving
+
+- `rxSolve()` on a model function's `rxUi` no longer loses what the model's
+  `meta` block carries -- most visibly a `sigma`, whose residual variables the
+  solve then rejected as unsupplied parameters.  `rxSolve.rxUi()` is not a
+  registered S3 method, so a call from user code lands on `rxSolve.default()`,
+  which hands the model back to `rxSolve()` with the whole `rxControl()`
+  expanded into named arguments; the `meta` block is only read for options the
+  caller did not name, so naming all of them hid it.  The entries `meta`
+  supplies that are still at their default are now left unnamed on the way
+  back.  (A call from inside the package, including from `test_check()`, found
+  `rxSolve.rxUi()` directly and was never affected.)
+
+- `rxSolve(method="indLin")` on a model function's `rxUi` now solves.  The
+  `matExp()` conversion ran before that same hand-back, so it replaced the ui
+  with a plain model built from the ui's equations and the `ini()` values were
+  never supplied -- the solve stopped asking for the population parameters.
+  A function or `rxUi` is now converted on re-entry, when the simulation model
+  and its parameters are both in hand.
 
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
   at exactly the same time now solve.  Each such dose is expanded into a
