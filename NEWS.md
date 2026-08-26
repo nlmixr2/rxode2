@@ -364,6 +364,28 @@
   largest for small models and in a `pkgload::load_all()` session, where the
   discarded closures were byte-compiled again on each call.
 
+- `ind_solve()` now solves the subject it is asked for, whatever order the
+  solve loop is in (nlmixr2/nlmixr2est#1020).  Its `cid` argument is a subject
+  id, and `ind_lsoda0()`/`ind_dop0()` read it that way -- but
+  `ind_liblsoda0()`, `ind_dop0_dense()`, `ind_linCmt0()` and `ind_linCmt0H()`
+  mapped it through `rx->ordId` first, i.e. read it as a position in the
+  run-time-ordered solve sequence.  The two readings agree only while
+  `rx->ordId` is the identity.  `sortIds()` deliberately reorders subjects
+  most-expensive-first once there are at least `throttle` times more threads
+  than subjects, and from then on an external per-individual driver -- such as
+  nlmixr2est's FOCEi, which solves one subject at a time through `ind_solve()`
+  -- had its subject id reinterpreted as a position, so the WRONG INDIVIDUAL
+  was integrated while the caller attributed the result to the subject it asked
+  for.  Measured on a two-subject FOCEi fit: 734 of 746 solves went to the
+  wrong subject.  A fit's objective function and estimates therefore depended
+  on the solve order, and since that order comes from wall-clock timing, the
+  same fit on the same data gave different answers from run to run.  Both the
+  ODE (`liblsoda`, `dop853` dense) and the `linCmt()` paths were affected.  All
+  four drivers now read the argument as a subject id and the position -> id
+  mapping happens in the loops that walk positions (`par_liblsoda()`,
+  `par_liblsodaR()`, `par_dop()`, `par_linCmt()`), so the load-balancing order
+  is unchanged and `rxSolve()` results are unaffected.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
