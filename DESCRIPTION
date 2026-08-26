@@ -141,8 +141,6 @@ Description: Facilities for running simulations from ordinary
     'CVODE' sources and headers are released under the BSD-3-Clause license.
     The information is available in the inst/COPYRIGHTS.
 BugReports: https://github.com/nlmixr2/rxode2/issues/
-Remotes:
-    nlmixr2/lotri@offdiag-cov-prior
 NeedsCompilation: yes
 VignetteBuilder: knitr
 License: GPL (>= 3)
