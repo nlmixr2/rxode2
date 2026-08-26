@@ -1046,4 +1046,55 @@ rxTest({
                  }))
 
   })
+
+  test_that("piping a ui's ini() keeps an eta when only one is shared", {
+    # a single surviving eta is subset out of the omega with [.w, .w]; without
+    # drop=FALSE that is a bare scalar with no dimnames, and the eta was
+    # silently dropped from the piped ini() -- the destination kept its own
+    # estimate with no error and no message
+    .from <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl * central
+        cp <- central
+        cp ~ add(add.sd)
+      })
+    }
+    .to <- function() {
+      ini({
+        tka <- 0.1
+        eta.ka ~ 0.1
+        add.sd <- 0.2
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - central
+        cp <- central
+        cp ~ add(add.sd)
+      })
+    }
+    .fromUi <- rxode2(.from)
+    .toUi <- rxode2(.to)
+    # eta.ka is the only random effect the two models share
+    .piped <- .toUi |> ini(.fromUi)
+    .iniDf <- as.data.frame(.piped$iniDf)
+    .etaKa <- .iniDf[.iniDf$name == "eta.ka", ]
+    expect_equal(nrow(.etaKa), 1L)
+    expect_equal(.etaKa$est, 0.6)
+    expect_equal(.piped$omega, lotri::lotri(eta.ka ~ 0.6))
+    # the theta it shares comes across too, and eta.cl does not
+    expect_equal(.iniDf$est[.iniDf$name == "tka"], 0.45)
+    expect_false("eta.cl" %in% .iniDf$name)
+  })
+
 })

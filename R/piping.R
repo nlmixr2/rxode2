@@ -127,7 +127,10 @@
       .drop <- c(.drop, .dn)
     } else  {
       .drop <- c(.drop, .dn[-.w])
-      .curLotri <- .curLotri[.w, .w]
+      # drop=FALSE keeps a single surviving eta a 1x1 matrix; as a bare scalar
+      # it carries no dimnames, and as.data.frame() below then yields zero rows
+      # -- the eta is silently left out of the piped ini()
+      .curLotri <- .curLotri[.w, .w, drop = FALSE]
       class(.curLotri) <- c("lotriFix", "matrix", "array")
       .ini2 <- as.data.frame(.curLotri)
     }

@@ -422,6 +422,13 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- Piping a model's `ini()` into another model keeps a random effect the two
+  models share when it is the *only* one they share.  The surviving eta is
+  subset out of the omega matrix with `[.w, .w]`, which without `drop = FALSE`
+  collapses to a bare scalar with no dimnames, and the eta was then silently
+  left out of the piped `ini()` -- the destination model kept its own initial
+  estimate, with no error and no message.
+
 - A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
   per-individual solve pool as `nsub` times the number of individual solves
   it needs.  The over-allocation grew with the square of the number of
