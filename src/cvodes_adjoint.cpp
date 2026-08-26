@@ -485,9 +485,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
                                 int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t tclk = clock();
-  // `solveid` is a subject id, not a position in rx->ordId (see
-  // ind_liblsoda0() in par_solve.cpp).
-  neq[1] = solveid;
+  neq[1] = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   neq[0] = rxEffNeq(ind, op);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
@@ -516,11 +514,20 @@ extern "C" void par_cvodesadj(rx_solve *rx) {
   // CVODES manages its own per-subject SUNContext; run serially for now.
   rx_solving_options *op = rx->op;
   int nsolve = (int)(rx->nsim * rx->nsub);
+  uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; ++solveid) {
     int neq[2]; neq[0] = op->neq; neq[1] = 0;
-    ind_cvodesadj_0(rx, op, solveid, neq, dydt, update_inis);
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    // this loop seeded nothing at all, so its subjects inherited whatever
+    // stream was current -- seed per subject like every other par_*() loop
+    setSeedEng1(seed0 + _id);
+    ind_cvodesadj_0(rx, op, _id, neq, dydt, update_inis);
     if (op->badSolve) break;
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
 }
 
 #endif // IN_PAR_SOLVE

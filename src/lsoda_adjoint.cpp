@@ -133,9 +133,7 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
 extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt,
                                   int solveid, t_dydt_liblsoda c_dydt_ll, t_dydt c_dydt,
                                   t_update_inis u_inis) {
-  // `solveid` is a subject id, not a position in rx->ordId (see
-  // ind_liblsoda0() in par_solve.cpp).
-  int cSub = solveid;
+  int cSub = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[cSub]);
   int nBase = op->adjNbase;
   int np    = op->adjNp;
@@ -578,8 +576,7 @@ extern "C" void par_liblsodaadj(rx_solve *rx) {
 #pragma omp atomic read
     localAbort = abort;
     if (localAbort == 0) {
-      // rx->ordId walks the subjects most-expensive-first (sortIds), so
-      // this loop counts positions; the driver takes a subject id.
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
       int _id = rx->ordId[solveid] - 1;
       setSeedEng1(seed0 + _id);
       ind_liblsodaadj_0(rx, op, opt, _id, dydt_liblsoda, dydt, update_inis);

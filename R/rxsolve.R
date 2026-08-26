@@ -2144,6 +2144,34 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
 }
 
+#' Let a ui's `meta` block still fill in the control when re-dispatching
+#'
+#' `rxSolve.default()` hands a function or `rxUi` back to `rxSolve()` with the
+#' whole `rxControl()` expanded into named arguments.  `.uiRxControl()` only
+#' reads the model's `meta` block for options the caller did NOT name, so every
+#' one of them would be named and the `meta` block ignored -- a model carrying,
+#' say, a `sigma` there would solve without it and be rejected for the residual
+#' parameters it needs.  Drop the entries that `meta` supplies and that are
+#' still at their default, so the ui path fills them in as it does when it is
+#' dispatched to directly.
+#'
+#' @param ctl control list about to be handed over as named arguments
+#' @param ui the function or `rxUi` being re-dispatched to
+#' @return `ctl` without the entries the model's `meta` block should supply
+#' @noRd
+.rxCtlUnnameMeta <- function(ctl, ui) {
+  .meta <- try(ui$meta, silent = TRUE)
+  if (!is.environment(.meta)) return(ctl)
+  .nms <- intersect(names(ctl), ls(.meta, all.names = TRUE))
+  if (length(.nms) == 0L) return(ctl)
+  .d <- if (is.null(.rxControlDefault)) rxControl() else .rxControlDefault
+  .keep <- vapply(.nms, function(x) !identical(ctl[[x]], .d[[x]]),
+                  logical(1), USE.NAMES = FALSE)
+  .drop <- .nms[!.keep]
+  if (length(.drop) == 0L) return(ctl)
+  ctl[!(names(ctl) %in% .drop)]
+}
+
 ## Default rxControl object cached once; avoids rebuilding 125-field list each
 ## call.  Only used by .uiRxControl to probe field names and as a fast-path
 ## return when no overrides exist.
@@ -2878,7 +2906,15 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # line behind them; converting such a model would look for derivatives that
     # do not exist.  There is nothing to convert when no d/dt() is present, and
     # the model solves as it stands.
-    if (length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
+    #
+    # A function or rxUi is handed back to `rxSolve()` further down, and only
+    # that path knows the model's parameter values (the ini block).  Converting
+    # here would replace it with a plain matExp() model built from the ui's
+    # equations, so the theta values would never be supplied and the solve
+    # would fail asking for them; convert the simulation model on re-entry
+    # instead.
+    if (!inherits(object, "function") && !inherits(object, "rxUi") &&
+          length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
       .calcSens <- NULL
       .modelEnv <- NULL
       if (rxIs(object, "rxode2")) {
@@ -3492,7 +3528,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (inherits(object, "function") ||
         inherits(object, "rxUi")) {
     .lst <- c(list(object, params = params, events = events, inits = inits),
-              .ctl)
+              .rxCtlUnnameMeta(.ctl, object))
 
     return(do.call(rxSolve, .lst))
   }
