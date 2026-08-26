@@ -517,7 +517,8 @@ extern "C" void par_cvodesadj(rx_solve *rx) {
   for (int solveid = 0; solveid < nsolve; ++solveid) {
     int neq[2]; neq[0] = op->neq; neq[1] = 0;
     // rx->ordId walks positions (sortIds); the drivers take subject ids.
-    ind_cvodesadj_0(rx, op, rx->ordId[solveid] - 1, neq, dydt, update_inis);
+    int _id = rx->ordId[solveid] - 1;
+    ind_cvodesadj_0(rx, op, _id, neq, dydt, update_inis);
     if (op->badSolve) break;
   }
 }
