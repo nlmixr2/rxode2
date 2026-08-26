@@ -4,7 +4,6 @@
 .udfEnv$envir <- NULL
 .udfEnv$envList <- list()
 .udfEnv$searchList <- list()
-.udfEnv$hashSearchList <- new.env(parent = emptyenv())
 .udfEnv$rxSEeqUsr <- NULL
 .udfEnv$rxCcode <- NULL
 .udfEnv$symengineFs <- new.env(parent = emptyenv())
@@ -173,6 +172,26 @@ rxRmFunParse <- function(name) {
 
 
 
+#' Number of past environments kept for finding user defined functions
+#'
+#' Every `$` on a `rxUi`, every `rxSolve()` and every `rxode2()` records the
+#' environment it was called from here, and an entry pins that environment --
+#' usually a call frame that is otherwise dead -- for as long as it is kept.
+#' An unbounded list therefore grew for the life of the session and could not
+#' be reclaimed by `gc()`.  Keeping the most recent ones preserves the search
+#' (a long-lived environment, e.g. the global environment, is simply re-added
+#' the next time it is used) while bounding what is held.
+#'
+#' @return integer limit, at least 1
+#' @noRd
+.udfSearchListMax <- function() {
+  .n <- getOption("rxode2.udfSearchLimit", 20L)
+  if (!checkmate::testIntegerish(.n, lower = 1, len = 1, any.missing = FALSE)) {
+    return(20L)
+  }
+  as.integer(.n)
+}
+
 .udfAddToSearch <- function(envir) {
   if (is.list(envir)) {
     lapply(seq_along(envir),
@@ -181,15 +200,25 @@ rxRmFunParse <- function(name) {
            })
     return(invisible())
   }
-  if (length(.udfEnv$searchList) == 0L) {
-    .udfEnv$searchList <- list(envir)
-    .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
+  .lst <- .udfEnv$searchList
+  ## `identical()` on environments is a pointer comparison, so membership over
+  ## a bounded list is cheap.  The list used to be indexed by a hash keyed on
+  ## `data.table::address()`, which had to mint a new name per environment --
+  ## and R interns every name it is given for the life of the session, so the
+  ## index leaked too, just more slowly than the list it indexed.
+  for (.i in seq_along(.lst)) {
+    if (identical(.lst[[.i]], envir)) {
+      return(invisible())
+    }
   }
-  if (exists(data.table::address(envir), envir = .udfEnv$hashSearchList, inherits = FALSE)) {
-    return(invisible())
+  ## appended, so the search order (oldest environment first) is unchanged;
+  ## only environments older than the limit are forgotten
+  .lst <- c(.lst, list(envir))
+  .max <- .udfSearchListMax()
+  if (length(.lst) > .max) {
+    .lst <- .lst[seq(length(.lst) - .max + 1L, length(.lst))]
   }
-  .udfEnv$searchList <- c(.udfEnv$searchList, list(envir))
-  .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
+  .udfEnv$searchList <- .lst
   invisible()
 }
 
@@ -224,7 +253,6 @@ rxRmFunParse <- function(name) {
 .udfEnvReset <- function(lock=TRUE) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
-  .udfEnv$hashSearchList <- new.env(parent = emptyenv())
 }
 #' See if the UI function exists in given environment.
 #'

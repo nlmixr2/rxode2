@@ -1166,15 +1166,48 @@ rxTest({
 
   })
 
+  # `linCmtB()` derivatives no longer emit another `linCmtB()` call: the
+  # sensitivities are ordinary state columns, so the derivative is read from
+  # them directly.  `w1`/`w2` still name the slot the old call carried --
+  # `w1` the compartment (-2 = the linear compartment solution), `w2` the
+  # parameter -- and this maps that pair to the text now emitted.  `w1 = NULL`
+  # means the parameter is not in the model, so the derivative is zero.
   f <- function(txt, var, w1, w2) {
-    .txt <- paste0("Derivative(", txt, ",", var, ")")
-    .txt <- str2lang(rxFromSE(.txt))
+    .args <- strsplit(sub("\\)$", "", sub("^linCmtB\\(", "", txt)), ",", fixed = TRUE)[[1]]
+    .ncmt <- as.numeric(.args[4])
+    .oral0 <- as.numeric(.args[5])
+    .v1 <- .args[10]
+    # rxFromSE() reads its argument unevaluated, so hand it a variable
+    .expr <- paste0("Derivative(", txt, ",", var, ")")
+    .got <- rxFromSE(.expr)
     if (is.null(w1)) {
-      expect_equal(0, .txt)
-    } else {
-      expect_equal(eval(.txt[[7]]), w1)
-      expect_equal(eval(.txt[[8]]), w2)
+      expect_equal(.got, "0")
+      return(invisible())
     }
+    .slot <- if (w2 == 2 * .ncmt) "ka" else c("p1", "v1", "p2", "p3", "p4", "p5")[w2 + 1]
+    if (w1 == -2) {
+      # derivative of the solution: the concentration gradient over the
+      # sensitivity states (trans 1, so v = v1)
+      .expect <- if (.slot == "v1") {
+        paste0("(-(central)/((", .v1, ")*(", .v1, "))+(rx__sens_central_BY_v1)/(", .v1, "))")
+      } else {
+        paste0("((rx__sens_central_BY_", .slot, ")/(", .v1, "))")
+      }
+    } else {
+      # derivative of an amount: the sensitivity state itself.  A depot amount
+      # depends on ka alone.
+      .row <- if (.oral0 == 1) {
+        c("depot", "central", "peripheral1", "peripheral2")[w1 + 1]
+      } else {
+        c("central", "peripheral1", "peripheral2")[w1 + 1]
+      }
+      .expect <- if (.row == "depot" && .slot != "ka") {
+        "0"
+      } else {
+        paste0("rx__sens_", .row, "_BY_", .slot)
+      }
+    }
+    expect_equal(.got, .expect)
   }
 
   test_that("test linCmtB 3 compartment oral derivatives", {
