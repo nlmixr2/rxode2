@@ -83,8 +83,8 @@ rxTest({
     # a different dose per subject, so a solve landing on the wrong individual
     # shifts cp by a factor of two or more -- far outside solver-order noise
     .ev <- do.call(rbind, lapply(1:4, function(i) {
-      as.data.frame(et(amt = 100 * i, ii = 12, until = 48) %>%
-                      et(seq(0, 48, by = 2)) %>%
+      as.data.frame(et(amt = 100 * i, ii = 12, until = 48) |>
+                      et(seq(0, 48, by = 2)) |>
                       et(id = i))
     }))
     .p <- c(ka = 1.5, cl = 2.7, v = 31)
@@ -112,7 +112,7 @@ rxTest({
       d/dt(a) <- -k * a
       z <- rxnorm()
     })
-    .ev <- et(amt = 1) %>% et(0:3) %>% et(id = 1:3)
+    .ev <- et(amt = 1) |> et(0:3) |> et(id = 1:3)
     .ref <- rxSolve(.m, .ev, c(k = 1), method = "liblsoda", seed = 42,
                     returnType = "data.frame", addDosing = FALSE)
     for (.meth in c("dop853", "rk4", "lsoda", "lsode", "bdf")) {
@@ -134,7 +134,7 @@ rxTest({
       d/dt(a) <- -k * a
       z <- rxnorm()
     })
-    .ev <- et(amt = 1) %>% et(0:1) %>% et(id = 1:8)
+    .ev <- et(amt = 1) |> et(0:1) |> et(id = 1:8)
     .advance <- function(meth) {
       rxSetSeed(42)
       invisible(suppressWarnings(rxSolve(.m, .ev, c(k = 1), method = meth,
@@ -160,7 +160,7 @@ rxTest({
                   "d/dt(center) <- ka * depot - cl / v * center",
                   sep = "\n")
     .adj <- rxode2(.rxAdjointExpand(.txt, c("cl", "v"))$text)
-    .ev <- et(amt = 100, cmt = "depot") %>% et(c(1, 2, 6, 8, 12)) %>% et(id = 1:6)
+    .ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 6, 8, 12)) |> et(id = 1:6)
     .p <- c(cl = 3.5, v = 25)
     .advance <- function(meth) {
       rxSetSeed(42)
