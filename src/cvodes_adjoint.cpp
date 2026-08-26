@@ -485,7 +485,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
                                 int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t tclk = clock();
-  neq[1] = rx->ordId[solveid] - 1;
+  neq[1] = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   neq[0] = rxEffNeq(ind, op);
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
@@ -516,7 +516,8 @@ extern "C" void par_cvodesadj(rx_solve *rx) {
   int nsolve = (int)(rx->nsim * rx->nsub);
   for (int solveid = 0; solveid < nsolve; ++solveid) {
     int neq[2]; neq[0] = op->neq; neq[1] = 0;
-    ind_cvodesadj_0(rx, op, solveid, neq, dydt, update_inis);
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    ind_cvodesadj_0(rx, op, rx->ordId[solveid] - 1, neq, dydt, update_inis);
     if (op->badSolve) break;
   }
 }

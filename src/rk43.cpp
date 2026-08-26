@@ -34,7 +34,7 @@ extern "C" void ind_rk43_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int istate = 1;
   void* ctx = NULL;
 
-  neq[1] = rx->ordId[solveid]-1;
+  neq[1] = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   int eff = rxEffNeq(ind, op);
   neq[0] = eff;
@@ -212,8 +212,10 @@ extern "C" void par_rk43(rx_solve *rx) {
 #endif
     localAbort = abort;
     if (localAbort == 0) {
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_rk43_0(rx, op, solveid, neq, dydt, update_inis);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
+      ind_rk43_0(rx, op, _id, neq, dydt, update_inis);
 
       if (op->badSolve) {
 #ifdef _OPENMP

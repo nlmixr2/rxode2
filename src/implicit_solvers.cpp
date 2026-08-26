@@ -35,8 +35,10 @@ static void par_implicit_tmpl(rx_solve *rx, const char *err_msg) {
 #endif
     localAbort = abort;
     if (localAbort == 0) {
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_implicit_0<OdeSolver>(rx, op, solveid, neq, dydt, update_inis, err_msg);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
+      ind_implicit_0<OdeSolver>(rx, op, _id, neq, dydt, update_inis, err_msg);
       if (op->badSolve) {
 #ifdef _OPENMP
 #pragma omp atomic write
