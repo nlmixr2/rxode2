@@ -492,6 +492,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Compilation
 
+- The per-thread `linCmtB()` object is a tagged struct rather than an anonymous
+  one named by its typedef, which is what recent clang warns about
+  (`-Wnon-c-typedef-for-linkage`) since its members are C++ (Eigen matrices, a
+  Stan object).  The warning was the macOS `R CMD check` failure.
+
 - A model that fails to build now shows the compiler's own error lines (and
   only those -- warnings and progress chatter are dropped, and the list is
   capped by `options(rxode2.compileErrLines=)`), followed by how to get the
