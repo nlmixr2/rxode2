@@ -1582,10 +1582,25 @@ static inline double *getCurDoseSThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gCurDoseS);
 }
 
+extern rx_solving_options_ind **inds_threadCur;
+extern int inds_threadCurN;
+
+// The individual this thread is currently solving, or NULL between solves.
+static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
+  if (inds_threadCur == NULL) return NULL;
+  int _t = rx_get_thread(op->cores);
+  if (_t < 0 || _t >= inds_threadCurN) return NULL;
+  return inds_threadCur + _t;
+}
+
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   inds_thread[rx_get_thread(op->cores)] = *ind;
+  // ... and the individual itself, for writes that have to reach the subject
+  // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
+  rx_solving_options_ind **_cur = curIndSlot(op);
+  if (_cur != NULL) *_cur = ind;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
     ind->InfusionRate = getInfusionRateThread();
@@ -1668,6 +1683,12 @@ extern "C" void setZeroMatrix(int which) {
 
 double maxAtolRtolFactor = 0.1;
 
+// Upper bound for a subject's accumulated tolerance MULTIPLIER.
+// `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
+// iniSubject() applies that bound when it scales the base tolerances; this only
+// keeps repeated atolRtolFactorC_() calls from running the factor to infinity.
+#define maxTolFactor 1e12
+
 //[[Rcpp::interfaces(cpp)]]
 //[[Rcpp::export]]
 void atolRtolFactor_(double factor) {
@@ -1702,11 +1723,16 @@ extern "C" void atolRtolFactorC_(double factor) {
     _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
 
-  // Persist the cumulative factor on the individual currently being solved
-  // on this thread so that iniSubject() can reapply it on every re-solve.
-  rx_solving_options_ind *_ind = &(inds_thread[rx_get_thread(op->cores)]);
+  // Persist the cumulative factor on the individual being solved so that
+  // iniSubject() reapplies it on every re-solve.  It has to be the individual
+  // itself, not `inds_thread[]`, which is a copy: a factor written there is
+  // lost when the next subject overwrites the slot.  Note this is a
+  // multiplier, so it is bounded by maxTolFactor and not by
+  // maxAtolRtolFactor (which bounds the tolerance iniSubject() derives).
+  rx_solving_options_ind **_cur = curIndSlot(op);
+  rx_solving_options_ind *_ind = (_cur == NULL) ? NULL : *_cur;
   if (_ind != NULL) {
-    _ind->tolFactor = min2(_ind->tolFactor * factor, maxAtolRtolFactor);
+    _ind->tolFactor = min2(_ind->tolFactor * factor, maxTolFactor);
   }
   // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
   // avoid races between threads sharing the op structure.

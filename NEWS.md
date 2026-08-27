@@ -394,6 +394,45 @@
   Repeating the reprex from the issue -- 500 `rxNorm()` calls on one model --
   grew process memory by ~190 MB before and does not measurably grow it now.
 
+- `ind_solve()` now solves the subject it is asked for, whatever order the
+  solve loop is in (nlmixr2/nlmixr2est#1020).  Its `cid` argument is a subject
+  id -- `ind_solve()` itself indexes `rx->subjects[cid]` with it -- but most of
+  the per-individual drivers it dispatches to mapped it through `rx->ordId`
+  first, i.e. read it as a position in the run-time-ordered solve sequence.
+  The two readings agree only while `rx->ordId` is the identity, and
+  `sortIds()` deliberately reorders subjects most-expensive-first once there
+  are at least `throttle` times more threads than subjects.  From then on an
+  external per-individual driver -- such as nlmixr2est's FOCEi, which solves
+  one subject at a time through `ind_solve()` -- had its subject id
+  reinterpreted as a position, so the wrong individual was integrated while the
+  caller attributed the result to the subject it asked for.  A fit's objective
+  function and estimates therefore depended on the solve order, and since that
+  order comes from wall-clock timing, the same fit on the same data could give
+  different answers from run to run.  Every driver now reads the argument as a
+  subject id and the position -> id mapping happens in the `par_*()` loops that
+  walk positions, so the load-balancing order is unchanged and `rxSolve()`
+  results are unaffected.
+
+- `method="lsoda"`, `"lsode"`, `"bdf"` and `"indLin"` now draw the same random
+  numbers for a subject as every other solver does.  Each `par_*()` loop seeds
+  the per-subject stream immediately before solving that subject; these four
+  seeded `seed0 + solveid - 1` where the others seed `seed0 + id`, so a model
+  containing `rxnorm()` or similar gave a different simulation under `lsoda`
+  than under `liblsoda` from the same `seed=`, and the first subject was seeded
+  outside the block `setRxSeedFinal()` reserves, which could repeat a seed used
+  by an earlier solve.  Simulated values from these four methods therefore
+  change; the other methods are unaffected.
+
+- Solving twice in one session with an explicit `seed=` no longer re-uses seeds
+  the first solve already spent.  Each `par_*()` loop claims a block of
+  per-subject seeds with `getRxSeed1(cores)` but consumes one per subject, so
+  it has to close the block with `setRxSeedFinal(seed0 + nsolve)`; 97 solvers
+  never did, leaving the global seed advanced by `cores` rather than by
+  `nsolve`.  `par_cvodesadj()` additionally never called `setSeedEng1()` at
+  all, so its subjects inherited whatever stream happened to be current
+  instead of a per-subject one.  Simulated values from the affected methods
+  change.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
@@ -672,6 +711,21 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   never supplied -- the solve stopped asking for the population parameters.
   A function or `rxUi` is now converted on re-entry, when the simulation model
   and its parameters are both in hand.
+
+- A subject's sticky ODE tolerance now stays with that subject.  The
+  per-individual `tolFactor` (and the loosening `nlmixr2est` applies through
+  `atolRtolFactor_()`) was folded into the tolerance arrays a thread already
+  held, so it survived into whatever subject that thread solved next and
+  compounded once per subject; every subject after a loosened one was solved at
+  the wrong tolerance, with the result depending on how the subjects happened to
+  be distributed over the threads.  Each subject's tolerances are now derived
+  from the solve's base `atol`/`rtol`/`ssAtol`/`ssRtol` and its own factor.  The
+  factor is also recorded on the subject itself rather than on the thread's
+  copy, so it is no longer lost, and it is bounded as a multiplier instead of
+  being clamped to `maxAtolRtolFactor` -- which had made a request to loosen
+  tolerances tighten them on the next solve.  A loosening requested when no
+  subject is being solved no longer attaches itself to whichever subject was
+  solved last.
 
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
   at exactly the same time now solve.  Each such dose is expanded into a
