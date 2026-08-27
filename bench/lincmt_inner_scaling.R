@@ -20,11 +20,35 @@
 #
 # Optimized build, loaded without recompiling, pinned, single thread.
 
+## NMLIB points at a library holding an INSTALLED nlmixr2est; empty uses
+## the default library.  INNEROPT selects the inner optimizer.  Running
+## both optimizers against ONE installed build is the comparison that
+## isolates them -- same code, same flags, one knob.
+##
+## INSTALL, DO NOT load_all().  devtools::load_all() builds at -O0, and
+## `compile = FALSE` merely loads whatever .so is already there, whose
+## provenance is then unknown.  This is not only a timing hazard: -O0
+## changes floating-point contraction and precision, which moves where
+## the inner convergence test falls, which changes HOW MANY TIMES the
+## inner problem iterates.  An earlier version of this header claimed
+## counts were build-independent and used that to compare across trees.
+## They are not.  Measured: an -O0 tree matched an installed one exactly
+## at one and two random effects and then jumped 3.1x at three -- a
+## convergence criterion missed at higher dimension, not a uniform
+## slowdown.  Nothing here is comparable across builds unless both were
+## built the same way, counts included.
+NMLIB    <- Sys.getenv("NMLIB", "")
+INNEROPT <- Sys.getenv("INNEROPT", "")
+if (nzchar(NMLIB)) .libPaths(c(NMLIB, .libPaths()))
 suppressMessages({
   devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
                      compile = FALSE, quiet = TRUE)
   library(nlmixr2est)
 })
+cat(sprintf("nlmixr2est %s from %s\n",
+            as.character(utils::packageVersion("nlmixr2est")),
+            dirname(system.file(package = "nlmixr2est"))))
+
 rxode2::setRxThreads(1L)
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 
@@ -76,9 +100,10 @@ for (nEta in 1:5) {
   t0 <- proc.time()[["elapsed"]]
   fit <- suppressWarnings(suppressMessages(nlmixr2(
     mkUi(nEta), dat, est = "focei",
-    control = foceiControl(calcTables = FALSE, print = 0L, covMethod = "",
-                           maxOuterIterations = budget,
-                           rxControl = rxControl(cores = 1L)))))
+    control = do.call(foceiControl, c(
+      list(calcTables = FALSE, print = 0L, covMethod = "",
+           maxOuterIterations = budget, rxControl = rxControl(cores = 1L)),
+      if (nzchar(INNEROPT)) list(innerOpt = INNEROPT) else list())))))
   wall <- proc.time()[["elapsed"]] - t0
   p <- linCmtSeqProf(); k <- linCmtSeqStats()
   fe <- tryCatch(fit$env$optReturn$feval, error = function(e) NA_real_)
@@ -86,8 +111,9 @@ for (nEta in 1:5) {
     nEta = nEta, feval = as.numeric(fe), sec = unname(fit$time$optimize),
     kernelRows = p[["rows"]], dirs = p[["phiDirs"]] + p[["tailDirs"]],
     secKernel = p[["secAll"]], load = loadAvg())
-  cat(sprintf("nEta=%d  feval %s  %.2f s  kernel entries %s\n",
-              nEta, format(fe), unname(fit$time$optimize), format(p[["rows"]])))
+  cat(sprintf("[%s] nEta=%d  feval %s  %.2f s  kernel entries %s\n",
+              if (nzchar(INNEROPT)) INNEROPT else "default", nEta, format(fe),
+              unname(fit$time$optimize), format(p[["rows"]])))
 }
 r <- do.call(rbind, rows)
 obsRows <- nSub*nObs
@@ -104,5 +130,9 @@ cat(sprintf("\nentries/evaluation ~ %.0f + %.0f * nEta   (relative slope %.2f pe
 cat(sprintf("ratio 5 eta / 1 eta: entries %.2fx, time %.2fx\n",
             r$entriesPerEval[5]/r$entriesPerEval[1],
             (r$sec[5]/r$feval[5])/(r$sec[1]/r$feval[1])))
-saveRDS(r, "bench/results/inner_scaling.rds")
-cat("wrote bench/results/inner_scaling.rds\n")
+tag <- if (nzchar(INNEROPT)) INNEROPT else "default"
+attr(r, "arm") <- list(nmLib = NMLIB, innerOpt = tag, budget = budget,
+                       nmVersion = as.character(utils::packageVersion("nlmixr2est")),
+                       nmPath = dirname(system.file(package = "nlmixr2est")))
+saveRDS(r, sprintf("bench/results/inner_scaling_%s.rds", tag))
+cat(sprintf("wrote bench/results/inner_scaling_%s.rds\n", tag))
