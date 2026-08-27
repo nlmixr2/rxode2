@@ -592,6 +592,21 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Solving
 
+- A subject's sticky ODE tolerance now stays with that subject.  The
+  per-individual `tolFactor` (and the loosening `nlmixr2est` applies through
+  `atolRtolFactor_()`) was folded into the tolerance arrays a thread already
+  held, so it survived into whatever subject that thread solved next and
+  compounded once per subject; every subject after a loosened one was solved at
+  the wrong tolerance, with the result depending on how the subjects happened to
+  be distributed over the threads.  Each subject's tolerances are now derived
+  from the solve's base `atol`/`rtol`/`ssAtol`/`ssRtol` and its own factor.  The
+  factor is also recorded on the subject itself rather than on the thread's
+  copy, so it is no longer lost, and it is bounded as a multiplier instead of
+  being clamped to `maxAtolRtolFactor` -- which had made a request to loosen
+  tolerances tighten them on the next solve.  A loosening requested when no
+  subject is being solved no longer attaches itself to whichever subject was
+  solved last.
+
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
   at exactly the same time now solve.  Each such dose is expanded into a
   start/stop pair sharing one time and the solver pairs the two positionally, but
