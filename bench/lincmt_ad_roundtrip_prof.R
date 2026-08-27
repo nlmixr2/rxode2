@@ -14,6 +14,38 @@
 # plain load_all -- that builds at -O0 and has produced a 49x artifact on
 # this code before.
 
+# WHAT IT FOUND (2026-08-27, 2-cmt oral, 5 directions, 40 subjects x 200 obs).
+#
+#   kernel entries      8000 / 8000 solve rows = 1.00 per row
+#   directions served  40000 / 8000            = 5.00 per row
+#   value line          3.01 executions per row (1 compute, 1 restore,
+#                       1.01 through the thin lite path; memoHit 0)
+#   per-row shared      0.065 us      per-direction kernel 0.020-0.133 us
+#
+# The kernel is entered ONCE PER ROW and serves every direction inside one
+# call, so there is no per-direction entry into the expensive path and the
+# call path cannot be what makes cost scale with direction count.  The
+# per-row carry reconstruction the AD round-trip plan targeted is 21% of
+# that kernel on a uniform grid and 7.7% on a log-spaced one -- the plan's
+# own stop gate.
+#
+# DENOMINATOR WARNING.  Wall clock here is NOT solve cost: this rxSolve
+# materializes a six-column output frame for 8000 rows and re-runs etTrans,
+# giving 78.5 us per row against the amortize bench's 6.98 us per
+# observation for the same sensitivity work.  An earlier version of this
+# header put the kernel at 0.4% of wall on that basis; against the real
+# solve cost it is roughly 2-4%.  Small either way, but quote the right one.
+#
+# WHAT IS STILL UNEXPLAINED.  Per-direction kernel work is 0.020-0.133 us.
+# The gradient-slope sweep measures a per-direction slope of 3.03 us/obs in
+# a FIT -- 23 to 150 times that.  Since the kernel is entered once per row
+# whatever the direction count, that factor is not per-direction solve
+# work.  The leading candidate is the limitation already on record for that
+# sweep: a higher-dimensional inner problem takes more inner iterations and
+# each re-solves the whole subject.  Testable by counting kernel entries per
+# objective evaluation against eta count in a fit; that is the next
+# measurement, not the entry path.
+
 suppressMessages(devtools::load_all("~/src/rxode2-lincmt-carry-jump",
                                     compile = FALSE, quiet = TRUE))
 setRxThreads(1L)
