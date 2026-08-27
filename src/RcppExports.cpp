@@ -583,6 +583,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// linCmtSeqProf
+NumericVector linCmtSeqProf(bool reset);
+RcppExport SEXP _rxode2_linCmtSeqProf(SEXP resetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type reset(resetSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtSeqProf(reset));
+    return rcpp_result_gen;
+END_RCPP
+}
 // linCmtModelDouble
 RObject linCmtModelDouble(double dt, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans, bool deriv, int type, double tau, double tinf, double amt, int bolusCmt, int ndiff, int sensType, double sensH);
 RcppExport SEXP _rxode2_linCmtModelDouble(SEXP dtSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP derivSEXP, SEXP typeSEXP, SEXP tauSEXP, SEXP tinfSEXP, SEXP amtSEXP, SEXP bolusCmtSEXP, SEXP ndiffSEXP, SEXP sensTypeSEXP, SEXP sensHSEXP) {

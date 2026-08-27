@@ -414,6 +414,7 @@ SEXP _rxode2_iniDparserPtr(SEXP ptr);
 
 SEXP _rxode2_linCmtBThreadsSeen(SEXP);
 SEXP _rxode2_linCmtSeqStats(SEXP);
+SEXP _rxode2_linCmtSeqProf(SEXP);
 SEXP _rxode2_linCmtDeltaMemo(SEXP);
 SEXP _rxode2_linCmtBSensTypesSeen(SEXP);
 
@@ -878,6 +879,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 22},
     {"_rxode2_linCmtBThreadsSeen", (DL_FUNC) &_rxode2_linCmtBThreadsSeen, 1},
     {"_rxode2_linCmtSeqStats", (DL_FUNC) &_rxode2_linCmtSeqStats, 1},
+    {"_rxode2_linCmtSeqProf", (DL_FUNC) &_rxode2_linCmtSeqProf, 1},
     {"_rxode2_linCmtDeltaMemo", (DL_FUNC) &_rxode2_linCmtDeltaMemo, 1},
     {"_rxode2_linCmtBSensTypesSeen", (DL_FUNC) &_rxode2_linCmtBSensTypesSeen, 1},
     {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},

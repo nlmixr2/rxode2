@@ -3,6 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -386,6 +387,43 @@ IntegerVector linCmtSeqStats(bool reset = false) {
   return r;
 }
 
+//' Phase 0 profile: seconds inside linCmtSeqTailJac, split between the work
+//' done once per ROW and the work done per DIRECTION.  Zero unless
+//' RXODE2_LINCMT_PROF was set before the first solve.  Pinned single-thread
+//' runs only; see the note at the accumulators.
+//'
+//' @param reset zero the accumulators after reading
+//' @return named numeric vector of seconds and counts
+//' @export
+//[[Rcpp::export]]
+NumericVector linCmtSeqProf(bool reset = false) {
+  double all = 0, win = 0, row = 0, phi = 0, tail = 0;
+  double rows = 0, phiDirs = 0, tailDirs = 0;
+  for (int i = 0; i < RX_LINPROF_MAXTHREAD; i++) {
+    all += linCmtProfAcc[i].all;   win += linCmtProfAcc[i].win;
+    row += linCmtProfAcc[i].row;   phi += linCmtProfAcc[i].phi;
+    tail += linCmtProfAcc[i].tail;
+    rows += (double)linCmtProfAcc[i].rows;
+    phiDirs += (double)linCmtProfAcc[i].phiDirs;
+    tailDirs += (double)linCmtProfAcc[i].tailDirs;
+  }
+  NumericVector r = NumericVector::create(
+    _["secAll"] = all, _["secWinFill"] = win, _["secRowShared"] = row,
+    _["secPhiDir"] = phi, _["secTailDir"] = tail,
+    _["secOther"] = all - win - row - phi - tail,
+    _["rows"] = rows, _["phiDirs"] = phiDirs, _["tailDirs"] = tailDirs,
+    _["enabled"] = (double)(linCmtProfEnabled() ? 1 : 0));
+  if (reset) {
+    for (int i = 0; i < RX_LINPROF_MAXTHREAD; i++) {
+      linCmtProfAcc[i].all = linCmtProfAcc[i].win = linCmtProfAcc[i].row = 0;
+      linCmtProfAcc[i].phi = linCmtProfAcc[i].tail = 0;
+      linCmtProfAcc[i].rows = linCmtProfAcc[i].dirs = 0;
+      linCmtProfAcc[i].phiDirs = linCmtProfAcc[i].tailDirs = 0;
+    }
+  }
+  return r;
+}
+
 // Window constants and their derivative in each parameter direction, by
 // npars forward-mode passes through macros2micros and the
 // eigen-decomposition (once per window; the per-row cost is in the tail).
@@ -644,9 +682,57 @@ static int linCmtAblateMode() {
 // linCmtFwdJac exactly: fx, the masked Js (columns in canonical requested
 // order, as updateJfromJs expects) and the Asave_ amounts for the next
 // row's carry.
+// -- Phase 0 instrumentation: where does a per-direction row actually go? ---
+//
+// DIAGNOSTIC ONLY, and off unless RXODE2_LINCMT_PROF is set, because the
+// question it answers has been answered wrongly by reasoning twice in this
+// project (the P5 reads were predicted at 2-4x and measured at 1.00-1.06x;
+// the 56 us/row fit breakdown was refuted by a rebuild).  It attributes the
+// time inside linCmtSeqTailJac between the work done ONCE PER ROW and the
+// work done PER DIRECTION, which is the split the persistence question turns
+// on.
+//
+// Meaningful only pinned and single-threaded: the accumulators are per
+// thread but a solve that moves subjects between threads still sums to the
+// same total, while a clock read inside a parallel region is not something to
+// build a conclusion on.  One steady_clock read is ~20-25 ns against a
+// per-direction cost measured in microseconds, so the probe perturbs by a few
+// percent -- reported, not hidden.
+#define RX_LINPROF_MAXTHREAD 128
+typedef struct {
+  double all, win, row, phi, tail;
+  long rows, dirs, phiDirs, tailDirs;
+  char pad[64];
+} linCmtProf_t;
+static linCmtProf_t linCmtProfAcc[RX_LINPROF_MAXTHREAD];
+static int linCmtProfOn = -1;
+static inline bool linCmtProfEnabled(void) {
+  if (linCmtProfOn < 0) linCmtProfOn = (getenv("RXODE2_LINCMT_PROF") != NULL);
+  return linCmtProfOn != 0;
+}
+static inline linCmtProf_t *linCmtProfSlot(void) {
+#ifdef _OPENMP
+  int t = omp_get_thread_num();
+#else
+  int t = 0;
+#endif
+  if (t < 0 || t >= RX_LINPROF_MAXTHREAD) t = 0;
+  return &linCmtProfAcc[t];
+}
+static inline double linCmtProfNow(void) {
+  return std::chrono::duration<double>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+#define RX_PROF_T0(v) double v = prof ? linCmtProfNow() : 0.0
+#define RX_PROF_ADD(fld, v) if (prof) pa->fld += linCmtProfNow() - (v)
+
 static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   stan::math::linCmtStan &lc = lcb.lc;
   if (lc.type_ != linCmtNormal) return false;
+  const bool prof = linCmtProfEnabled();
+  linCmtProf_t *pa = prof ? linCmtProfSlot() : NULL;
+  RX_PROF_T0(_pAll);
+  if (prof) pa->rows++;
   int ncmt = lc.ncmt_, oral0 = lc.oral0_, trans = lc.trans_;
   int npars = lc.getNpars();
   if (npars > RX_LINWIN_MAXP || ncmt + oral0 > RX_LINWIN_MAXM) return false;
@@ -655,7 +741,9 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   linCmtWin &w = lcb.win;
   if (!w.valid || w.ncmt != ncmt || w.oral0 != oral0 || w.trans != trans ||
       w.npars != npars || memcmp(w.theta, thetaD, npars*sizeof(double)) != 0) {
+    RX_PROF_T0(_pWin);
     linCmtWinFill(lc, w, thetaD, ncmt, oral0, trans);
+    RX_PROF_ADD(win, _pWin);
   }
   // One delta-memo lookup per row; every requested direction reuses the
   // slot (the exponentials are shared, only the tangent differs by j).
@@ -664,6 +752,7 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   int dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, idx, &dHit, &dCross) : -1;
   // double Alast reconstruction once per row (shared by every direction);
   // J's columns align with linCmtFillTheta's order (ka last when oral).
+  RX_PROF_T0(_pRow);
   lc.restoreJacTo(lc.A_, lc.fwdJ_);
   const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J = lc.fwdJ_;
   double AlastA[RX_LINWIN_MAXM], ypv[RX_LINWIN_MAXM];
@@ -675,6 +764,7 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
     for (int k = 0; k < npars; k++) v += J(c, k)*thetaD[k];
     ypv[c] = v;
   }
+  RX_PROF_ADD(row, _pRow);
   int nd = lc.numDiff_;
   if (nd == 0) nd = 127;
   int si = 0;
@@ -726,6 +816,7 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
       if (!w.phiBuilt[dSlot]) {
         linCmtPhiBuild(lc, w, dSlot, ncmt, oral0, npars, nd);
       }
+      RX_PROF_T0(_pPhi);
       for (int j = 0; j < npars; j++) {
         int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
         if ((nd & bit) == 0) continue;
@@ -745,12 +836,15 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
         first = false;
         si++;
       }
+      RX_PROF_ADD(phi, _pPhi);
+      if (prof) { pa->phiDirs += si; RX_PROF_ADD(all, _pAll); }
       if (first) return false;
 #pragma omp atomic
       linCmtPhiRowN++;
       return true;
     }
   }
+  RX_PROF_T0(_pTail);
   for (int j = 0; j < npars; j++) {
     int bit = (oral0 && j == 2*ncmt) ? diffKa : (diffP1 << j);
     if ((nd & bit) == 0) continue;
@@ -827,6 +921,8 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
     for (int c = 0; c < m; c++) lcb.Js(c, si) = ret[c].d_;
     si++;
   }
+  RX_PROF_ADD(tail, _pTail);
+  if (prof) { pa->tailDirs += si; RX_PROF_ADD(all, _pAll); }
   if (first) return false; // nothing requested: let the full path decide
   return true;
 }

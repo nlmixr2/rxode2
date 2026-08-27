@@ -381,6 +381,18 @@ linCmtSeqStats <- function(reset = FALSE) {
     .Call(`_rxode2_linCmtSeqStats`, reset)
 }
 
+#' Phase 0 profile: seconds inside linCmtSeqTailJac, split between the work
+#' done once per ROW and the work done per DIRECTION.  Zero unless
+#' RXODE2_LINCMT_PROF was set before the first solve.  Pinned single-thread
+#' runs only; see the note at the accumulators.
+#'
+#' @param reset zero the accumulators after reading
+#' @return named numeric vector of seconds and counts
+#' @export
+linCmtSeqProf <- function(reset = FALSE) {
+    .Call(`_rxode2_linCmtSeqProf`, reset)
+}
+
 linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType = 3L, sensH = 0.001) {
     .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH)
 }
