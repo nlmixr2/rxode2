@@ -303,10 +303,15 @@ extern "C" const char *rxGetIdSim(int id, int *sim) {
   if (sim != NULL) *sim = 1;
   if (id < 0 || nlvl <= 0 || nlvl > rx->factors.n) return NULL;
   if (id < nlvl) return rx->factors.line[id];
-  // only when the levels really do cover exactly one simulation
-  if ((int)rx->nsub != nlvl) return NULL;
+  // Only expand when nsub/nsim describe the solve these levels came from.
+  // hasFactors is the provenance: rxSolve_ev1Update() sets it to >= 2 (ID +
+  // CMT) for the rxEtTran table it just read the levels from, 0 for a solve
+  // whose data carried no levels, and rxSetIdLvlFactors() sets 1 for levels a
+  // host supplied without solving.  Only the first pairs with this solve's
+  // nsub/nsim; the others would read a previous solve's.
+  if (rx->hasFactors < 2 || rx->nsim <= 1 || (int)rx->nsub != nlvl) return NULL;
   int csim = id / nlvl;
-  if (rx->nsim > 0 && csim >= (int)rx->nsim) return NULL;
+  if (csim >= (int)rx->nsim) return NULL;
   if (sim != NULL) *sim = csim + 1;
   return rx->factors.line[id % nlvl];
 }

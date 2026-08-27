@@ -106,6 +106,10 @@ rxTest({
     # past nsub*nsim there is still nothing to resolve
     expect_match(.warnLabels(NULL, 20L, setLvl = FALSE),
                  "for subject\\(s\\): internal #21")
+    # and once a host overwrites the levels itself, nsub/nsim no longer
+    # describe them, so the expansion must not fire off the stale pair
+    expect_match(.warnLabels(c("1", "2", "3"), 4L),
+                 "for subject\\(s\\): internal #5")
   })
 
   test_that("the id levels are left cleared for the rest of the suite", {
