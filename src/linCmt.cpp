@@ -348,6 +348,50 @@ int linCmtDeltaMemo(int on = -1) {
   return prev;
 }
 
+// -- Phase 0 instrumentation: where does a per-direction row actually go? ---
+//
+// DIAGNOSTIC ONLY, and off unless RXODE2_LINCMT_PROF is set, because the
+// question it answers has been answered wrongly by reasoning twice in this
+// project (the P5 reads were predicted at 2-4x and measured at 1.00-1.06x;
+// the 56 us/row fit breakdown was refuted by a rebuild).  It attributes the
+// time inside linCmtSeqTailJac between the work done ONCE PER ROW and the
+// work done PER DIRECTION, which is the split the persistence question turns
+// on.
+//
+// Meaningful only pinned and single-threaded: the accumulators are per
+// thread but a solve that moves subjects between threads still sums to the
+// same total, while a clock read inside a parallel region is not something to
+// build a conclusion on.  One steady_clock read is ~20-25 ns against a
+// per-direction cost measured in microseconds, so the probe perturbs by a few
+// percent -- reported, not hidden.
+#define RX_LINPROF_MAXTHREAD 128
+typedef struct {
+  double all, win, row, phi, tail;
+  long rows, dirs, phiDirs, tailDirs;
+  char pad[64];
+} linCmtProf_t;
+static linCmtProf_t linCmtProfAcc[RX_LINPROF_MAXTHREAD];
+static int linCmtProfOn = -1;
+static inline bool linCmtProfEnabled(void) {
+  if (linCmtProfOn < 0) linCmtProfOn = (getenv("RXODE2_LINCMT_PROF") != NULL);
+  return linCmtProfOn != 0;
+}
+static inline linCmtProf_t *linCmtProfSlot(void) {
+#ifdef _OPENMP
+  int t = omp_get_thread_num();
+#else
+  int t = 0;
+#endif
+  if (t < 0 || t >= RX_LINPROF_MAXTHREAD) t = 0;
+  return &linCmtProfAcc[t];
+}
+static inline double linCmtProfNow(void) {
+  return std::chrono::duration<double>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+#define RX_PROF_T0(v) double v = prof ? linCmtProfNow() : 0.0
+#define RX_PROF_ADD(fld, v) if (prof) pa->fld += linCmtProfNow() - (v)
+
 //' Read (and optionally reset) the amortized linCmt() sequential counters
 //'
 //' @param reset logical; when TRUE zero the counters after reading
@@ -682,50 +726,6 @@ static int linCmtAblateMode() {
 // linCmtFwdJac exactly: fx, the masked Js (columns in canonical requested
 // order, as updateJfromJs expects) and the Asave_ amounts for the next
 // row's carry.
-// -- Phase 0 instrumentation: where does a per-direction row actually go? ---
-//
-// DIAGNOSTIC ONLY, and off unless RXODE2_LINCMT_PROF is set, because the
-// question it answers has been answered wrongly by reasoning twice in this
-// project (the P5 reads were predicted at 2-4x and measured at 1.00-1.06x;
-// the 56 us/row fit breakdown was refuted by a rebuild).  It attributes the
-// time inside linCmtSeqTailJac between the work done ONCE PER ROW and the
-// work done PER DIRECTION, which is the split the persistence question turns
-// on.
-//
-// Meaningful only pinned and single-threaded: the accumulators are per
-// thread but a solve that moves subjects between threads still sums to the
-// same total, while a clock read inside a parallel region is not something to
-// build a conclusion on.  One steady_clock read is ~20-25 ns against a
-// per-direction cost measured in microseconds, so the probe perturbs by a few
-// percent -- reported, not hidden.
-#define RX_LINPROF_MAXTHREAD 128
-typedef struct {
-  double all, win, row, phi, tail;
-  long rows, dirs, phiDirs, tailDirs;
-  char pad[64];
-} linCmtProf_t;
-static linCmtProf_t linCmtProfAcc[RX_LINPROF_MAXTHREAD];
-static int linCmtProfOn = -1;
-static inline bool linCmtProfEnabled(void) {
-  if (linCmtProfOn < 0) linCmtProfOn = (getenv("RXODE2_LINCMT_PROF") != NULL);
-  return linCmtProfOn != 0;
-}
-static inline linCmtProf_t *linCmtProfSlot(void) {
-#ifdef _OPENMP
-  int t = omp_get_thread_num();
-#else
-  int t = 0;
-#endif
-  if (t < 0 || t >= RX_LINPROF_MAXTHREAD) t = 0;
-  return &linCmtProfAcc[t];
-}
-static inline double linCmtProfNow(void) {
-  return std::chrono::duration<double>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-#define RX_PROF_T0(v) double v = prof ? linCmtProfNow() : 0.0
-#define RX_PROF_ADD(fld, v) if (prof) pa->fld += linCmtProfNow() - (v)
-
 static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx) {
   stan::math::linCmtStan &lc = lcb.lc;
   if (lc.type_ != linCmtNormal) return false;
