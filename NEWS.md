@@ -6,9 +6,11 @@
   nlmixr2est during `focei`/`saem` estimation) populate the global subject-id
   factor table directly, so aggregated solver warnings can be attributed to the
   real subject id even when the data passed to `rxSolve_()` is not a classed
-  `rxEtTran` table.  When the id still cannot be resolved, the
-  aggregated-warning flush prints the 1-based internal solve index (e.g.
-  `internal #1`) instead of a bare `Unknown`.
+  `rxEtTran` table.  It takes a character vector of ids, coerces an
+  integer/real/logical one, and clears the levels for any other type.  When the
+  id still cannot be resolved, the aggregated-warning flush prints the 1-based
+  internal solve index (e.g. `internal #1`) instead of a bare `Unknown`; a
+  subject whose id is literally `Unknown` is still printed as itself.
 
 - `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
   development version made reverse-mode AD (`"ADr"`) the default on the

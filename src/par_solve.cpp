@@ -187,29 +187,51 @@ extern "C" void nullGlobals() {
   lineNull(&(rx_global.factorNames));
 }
 
-// Populate the global solve state's ID factor levels directly from a
-// character vector of subject ids.  rxSolve_ev1Update() normally fills
-// rx_global.factors from an `rxEtTran` event table's idLvl attribute, but
-// nlmixr2est's FOCEi/SAEM estimation strips that class (it passes a plain
-// data.frame / numeric matrix to rxSolve_), so during a fit the factor
-// table is empty and getId() falls through to "Unknown".  nlmixr2est calls
-// this helper (via a version-skew-safe R_GetCCallable lookup) right after
-// estimation setup so warnings aggregated by solveWarn.cpp can be attributed
-// to the real subject id.  We only populate the ID group (group 0) because
-// getId() reads factorNs[0]/factors.n.  lineIni() self-frees any prior
-// buffers, so repeated calls (cov steps / theta resets) do not leak; setting
-// hasFactors=1 lets rxSolveFree() reclaim the buffers afterwards.
+// Populate the global solve state's ID factor levels directly from a vector
+// of subject ids.  rxSolve_ev1Update() normally fills rx_global.factors from
+// an `rxEtTran` event table's idLvl attribute, but nlmixr2est's FOCEi/SAEM
+// estimation strips that class (it passes a plain data.frame / numeric matrix
+// to rxSolve_), so during a fit the factor table is empty and getId() falls
+// through to "Unknown".  nlmixr2est calls this helper (via a version-skew-safe
+// R_GetCCallable lookup) right after estimation setup so warnings aggregated
+// by solveWarn.cpp can be attributed to the real subject id.  We only populate
+// the ID group (group 0) because getId() reads factorNs[0]/factors.n.
+// lineIni() self-frees any prior buffers, so repeated calls (cov steps / theta
+// resets) do not leak; setting hasFactors=1 lets rxSolveFree() reclaim the
+// buffers afterwards.
+//
+// `idLvl` is normally a character vector.  An integer/real/logical vector is
+// coerced (an estimation host whose ID column is numeric can pass it as-is);
+// any other type -- and NULL -- clears the ID levels rather than reaching into
+// a non-STRSXP, so a mis-typed call from a downstream package degrades to the
+// "internal #N" fallback instead of erroring or reading the wrong memory.
 extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
   rx_solve *rx = &rx_global;
+  int nprot = 0;
+  switch (idLvl == NULL ? NILSXP : TYPEOF(idLvl)) {
+  case STRSXP:
+    break;
+  case INTSXP:
+  case REALSXP:
+  case LGLSXP:
+    idLvl = PROTECT(Rf_coerceVector(idLvl, STRSXP)); nprot++;
+    break;
+  default:
+    idLvl = R_NilValue;
+    break;
+  }
   lineIni(&(rx->factors));
   lineIni(&(rx->factorNames));
-  int len = Rf_length(idLvl);
+  int len = (TYPEOF(idLvl) == STRSXP) ? Rf_length(idLvl) : 0;
   addLine(&(rx->factorNames), "%s", "ID");
   for (int i = 0; i < len; i++) {
     addLine(&(rx->factors), "%s", CHAR(STRING_ELT(idLvl, i)));
   }
-  rx->hasFactors = 0;
-  rx->factorNs[rx->hasFactors++] = len; // factorNs[0] = len, hasFactors = 1
+  // count what was actually added, so factorNs[0] can never claim more levels
+  // than rx->factors holds
+  rx->factorNs[0] = rx->factors.n;
+  rx->hasFactors = 1;
+  if (nprot) UNPROTECT(nprot);
 }
 
 // Test-only entry point (registered in init.c, called via .Call) that
@@ -217,15 +239,15 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // needing a stiff fit: set the id factor levels from `idLvl`, push one
 // aggregated warning per supplied internal `ids` entry, then flush.  Used by
 // tests/testthat/test-solve-warn-id.R.  A character `idLvl` yields real
-// labels; an empty character(0) (or a non-character SEXP) leaves the factor
-// table empty so the "internal #N" fallback in solveWarn.cpp is exercised.
+// labels; an empty character(0) (or a non-vector SEXP) leaves the factor table
+// empty so the "internal #N" fallback in solveWarn.cpp is exercised.
+// rxSetIdLvlFactors() handles every input type, so it is always the one that
+// resets the table -- nullGlobals() only drops the pointers (it is the
+// load-time initializer for buffers that do not exist yet) and would leak the
+// levels a previous call allocated.
 extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP) {
   rxSolveWarnReset();
-  if (TYPEOF(idLvl) == STRSXP) {
-    rxSetIdLvlFactors(idLvl);
-  } else {
-    nullGlobals();
-  }
+  rxSetIdLvlFactors(idLvl);
   SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
   int n = Rf_length(ids);
   int *pids = INTEGER(ids);
@@ -256,6 +278,15 @@ static inline const char *getId(int id) {
 
 extern "C" const char *rxGetId(int id) {
   return getId(id);
+}
+
+// Whether `id` resolves to a real subject label.  Callers that need to
+// distinguish "no label available" from a label that happens to read
+// "Unknown" (a legitimate ID level) must ask this rather than string-compare
+// rxGetId()'s result -- see rxSolveWarnFlush() in solveWarn.cpp.
+extern "C" int rxIdResolved(int id) {
+  rx_solve *rx = &rx_global;
+  return (id >= 0 && id < rx->factorNs[0] && id < rx->factors.n);
 }
 
 // Test-only entry point (registered in init.c): return rxGetId() labels for a

@@ -10,7 +10,6 @@
 #include <map>
 #include <set>
 #include <string>
-#include <cstring>
 
 #define _(String) (String)
 
@@ -19,6 +18,7 @@
 
 extern "C" void RSprintf(const char *format, ...);
 extern "C" const char *rxGetId(int id);
+extern "C" int rxIdResolved(int id);
 extern "C" int getSilentErr(void);
 
 /* Aggregator state. Keyed by exact message string so any caller can plug
@@ -119,14 +119,15 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
         /* rxGetId resolves the internal solve index to the user's subject id
            via the global factor table.  When that table isn't populated
            (e.g. nlmixr2est estimation that didn't call rxSetIdLvlFactors, or
-           an older nlmixr2est), it returns the literal "Unknown"; fall back
-           to the 1-based internal index so the message stays honest and
-           non-misleading rather than printing a bare "Unknown". */
-        const char *idStr = rxGetId(*iit);
-        if (strcmp(idStr, "Unknown") == 0) {
-          RSprintf(_("internal #%d"), *iit + 1);
+           an older nlmixr2est), no label exists; fall back to the 1-based
+           internal index so the message stays honest and non-misleading
+           rather than printing a bare "Unknown".  Ask rxIdResolved() rather
+           than string-comparing rxGetId()'s result: "Unknown" is a legal
+           subject id, and a dataset that uses it must still print it. */
+        if (rxIdResolved(*iit)) {
+          RSprintf("%s", rxGetId(*iit));
         } else {
-          RSprintf("%s", idStr);
+          RSprintf(_("internal #%d"), *iit + 1);
         }
       }
       if (nIds > nShow) {

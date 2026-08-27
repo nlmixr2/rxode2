@@ -339,6 +339,7 @@ void rxSolveWarnPush(int id, const char *msg, ...);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 void rxSetIdLvlFactors(SEXP idLvl);
+int rxIdResolved(int id);
 SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP ids);
 SEXP _rxTestGetIdLabels(SEXP ids);
 
