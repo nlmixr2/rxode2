@@ -4376,11 +4376,13 @@ extern "C" void par_indLin(rx_solve *rx){
 #pragma omp atomic read
     localAbort = abort;
     if (localAbort == 0){
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       // `ind_indLin0` rather than the `ind_indLin` wrapper: the wrapper binds
       // the model functions, which `assignFuns()` above already did once for
       // the whole team.
-      ind_indLin0(rx, op, solveid, update_inis);
+      ind_indLin0(rx, op, _id, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
@@ -4439,16 +4441,12 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   clock_t t0 = clock();
   int i;
   int neq[2];
-  // Here we pick the sorted solveid
-  // rx->ordId[solveid]-1
-  // This -1 is because R is 1 indexed and C/C++ is 0 indexed
-  // This uses data.table for ordering which will return a 1 as the first item
-  // This way we solve based on the item that takes the likely takes most time to solve
-  //
-  // First this is ordered by the number of times needed to solve
-  // If called externally again this is then ordered by the total time that the solver spent in an id.
-  //
-  neq[1] = rx->ordId[solveid]-1;
+  // `solveid` is a subject id, not a position in rx->ordId -- the same
+  // convention as ind_lsoda0() and ind_dop0().  ind_solve() is the
+  // per-individual entry point for external drivers (nlmixr2est's FOCEi solves
+  // one subject at a time through it) and they pass ids.  The loops that walk
+  // positions map to an id before calling.
+  neq[1] = solveid;
   /* double *yp = &yp0[neq[1]*neq[0]]; */
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   // Per-individual effective neq honors ind->neqOverride (rxEffNeq); under
@@ -4732,9 +4730,12 @@ extern "C" void par_linCmt(rx_solve *rx) {
 #pragma omp atomic read
         localAbort = abort;
       if (localAbort == 0){
-        setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+        // rx->ordId walks the subjects most-expensive-first (sortIds), so this
+        // loop counts positions; the drivers take subject ids.
+        int _id = rx->ordId[solveid] - 1;
+        setSeedEng1(seed0 + _id);
 
-        ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
+        ind_linCmt0(rx, op, _id, neq, dydt, update_inis);
 
         if (displayProgress && thread == 0) {
 #pragma omp critical
@@ -4821,8 +4822,11 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
 #pragma omp atomic read
         localAbort = abort;
       if (localAbort == 0){
-        setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
-        ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
+        // rx->ordId walks the subjects most-expensive-first (sortIds), so this
+        // loop counts positions; the drivers take subject ids.
+        int _id = rx->ordId[solveid] - 1;
+        setSeedEng1(seed0 + _id);
+        ind_liblsoda0(rx, op, opt, _id, dydt_liblsoda, update_inis);
         if (displayProgress && thread == 0) {
 #pragma omp critical
           cur++;
@@ -4907,8 +4911,11 @@ extern "C" void par_liblsoda(rx_solve *rx){
 #pragma omp atomic read
         localAbort = abort;
     if (localAbort == 0){
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
-      ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
+      // rx->ordId walks the subjects most-expensive-first (sortIds), so this
+      // loop counts positions; the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
+      ind_liblsoda0(rx, op, opt, _id, dydt_liblsoda, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
@@ -5232,11 +5239,13 @@ extern "C" void par_lsoda(rx_solve *rx) {
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++){
     if (abort == 0){
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       int neq[2];
       neq[0] = baseNeq;
       neq[1] = 0;
-      ind_lsoda0(rx, op, solveid, neq, rwork, lrw, iwork, liw, jt,
+      ind_lsoda0(rx, op, _id, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){
         curTick = par_progress(solveid, nsolve, curTick, 1, t0, 0);
@@ -5434,15 +5443,20 @@ static void par_lsode_bdf(rx_solve *rx, int mf) {
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsolve; solveid++) {
     if (abort == 0) {
-      setSeedEng1(seed0 + solveid - 1);
+      // rx->ordId walks positions (sortIds); the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       int neq[2]; neq[0] = baseNeq; neq[1] = 0;
-      ind_lsode0(rx, op, solveid, neq, rwork, lrw, iwork, liw, mf);
+      ind_lsode0(rx, op, _id, neq, rwork, lrw, iwork, liw, mf);
       if (displayProgress) {
         curTick = par_progress(solveid + 1, nsolve, curTick, 1, t0, 0);
       }
       if (op->abort) abort = 1;
     }
   }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
   if (abort == 1) op->abort = 1;
   else if (displayProgress && curTick < 50) par_progress(nsolve, nsolve, curTick, 1, t0, 0);
 }
@@ -5494,7 +5508,8 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   const char **err_msg = NULL;
   int nx;
   int neq[2];
-  neq[1] = rx->ordId[solveid]-1;
+  // `solveid` is a subject id, not a position in rx->ordId (see ind_liblsoda0()).
+  neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
   // Per-individual effective neq (rxEffNeq) -- see ind_liblsoda0 for context.
   neq[0] = rxEffNeq(ind, op);
@@ -5754,7 +5769,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   int nx;
   int neq[2];
   neq[0] = op->neq;
-  neq[1] = rx->ordId[solveid]-1;
+  // `solveid` is a subject id, not a position in rx->ordId (see ind_liblsoda0()).
+  neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
@@ -6372,7 +6388,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   double *inits;
   int *rc;
   int nx;
-  neq[1] = rx->ordId[solveid]-1;
+  // `solveid` is a subject id, not a position in rx->ordId (see ind_liblsoda0()).
+  neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
   int eff = rxEffNeq(ind, op);
   neq[0] = eff;
@@ -6623,11 +6640,14 @@ void par_dop(rx_solve *rx){
 #pragma omp atomic read
     localAbort = abort;
     if (localAbort == 0){
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1);
+      // rx->ordId walks the subjects most-expensive-first (sortIds), so this
+      // loop counts positions; the drivers take subject ids.
+      int _id = rx->ordId[solveid] - 1;
+      setSeedEng1(seed0 + _id);
       if (op->useDense)
-        ind_dop0_dense(rx, op, solveid, neq, dydt, update_inis);
+        ind_dop0_dense(rx, op, _id, neq, dydt, update_inis);
       else
-        ind_dop0(rx, op, solveid, neq, dydt, update_inis);
+        ind_dop0(rx, op, _id, neq, dydt, update_inis);
       if (displayProgress){
 #pragma omp critical
         cur++;
