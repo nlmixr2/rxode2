@@ -54,7 +54,11 @@ loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][
 
 nSub <- 40L; nObs <- 100L
 budget <- as.integer(Sys.getenv("MAXITER", "40"))
-etaPars <- c("ka", "cl", "v", "q", "vp")
+## Which parameters carry the random effects, in order.  The default puts
+## v third, so "dimension reaches 3" and "an eta lands on v" are confounded
+## at exactly the cell where the jump appears.  ETAORDER separates them.
+etaPars <- strsplit(Sys.getenv("ETAORDER", "ka,cl,v,q,vp"), ",")[[1]]
+stopifnot(all(etaPars %in% c("ka", "cl", "v", "q", "vp")))
 trueTheta <- c(ka = 1.2, cl = 4, v = 30, q = 8, vp = 60)
 
 set.seed(1002003)
@@ -108,7 +112,8 @@ for (nEta in 1:5) {
   p <- linCmtSeqProf(); k <- linCmtSeqStats()
   fe <- tryCatch(fit$env$optReturn$feval, error = function(e) NA_real_)
   rows[[length(rows)+1L]] <- data.frame(
-    nEta = nEta, feval = as.numeric(fe), sec = unname(fit$time$optimize),
+    nEta = nEta, etas = paste(etaPars[seq_len(nEta)], collapse="+"),
+    feval = as.numeric(fe), sec = unname(fit$time$optimize),
     kernelRows = p[["rows"]], dirs = p[["phiDirs"]] + p[["tailDirs"]],
     secKernel = p[["secAll"]], load = loadAvg())
   cat(sprintf("[%s] nEta=%d  feval %s  %.2f s  kernel entries %s\n",
@@ -122,7 +127,7 @@ r$innerSolvesPerSubj <- r$entriesPerEval / obsRows
 r$usPerEvalPerDir <- 1e6*r$sec/r$feval/r$nEta/obsRows
 
 cat("\n== kernel entries per objective evaluation vs eta count ==\n")
-print(r[, c("nEta", "feval", "sec", "kernelRows", "entriesPerEval",
+print(r[, c("nEta", "etas", "feval", "sec", "kernelRows", "entriesPerEval",
             "innerSolvesPerSubj", "usPerEvalPerDir")], row.names = FALSE, digits = 4)
 b <- stats::coef(stats::lm(entriesPerEval ~ nEta, r))
 cat(sprintf("\nentries/evaluation ~ %.0f + %.0f * nEta   (relative slope %.2f per eta)\n",
@@ -130,7 +135,8 @@ cat(sprintf("\nentries/evaluation ~ %.0f + %.0f * nEta   (relative slope %.2f pe
 cat(sprintf("ratio 5 eta / 1 eta: entries %.2fx, time %.2fx\n",
             r$entriesPerEval[5]/r$entriesPerEval[1],
             (r$sec[5]/r$feval[5])/(r$sec[1]/r$feval[1])))
-tag <- if (nzchar(INNEROPT)) INNEROPT else "default"
+tag <- paste0(if (nzchar(INNEROPT)) INNEROPT else "default",
+              if (nzchar(Sys.getenv("ETATAG"))) paste0("_", Sys.getenv("ETATAG")) else "")
 attr(r, "arm") <- list(nmLib = NMLIB, innerOpt = tag, budget = budget,
                        nmVersion = as.character(utils::packageVersion("nlmixr2est")),
                        nmPath = dirname(system.file(package = "nlmixr2est")))
