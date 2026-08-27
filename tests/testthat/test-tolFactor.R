@@ -53,6 +53,22 @@ rxTest({
     expect_equal(.got[4], 10)
   })
 
+  test_that("one subject's tolerance factor does not leak onto the next subject", {
+    # Solved sequentially on one thread, subject 1 first.  The per-thread
+    # tolerance arrays used to be scaled in place, so subject 1's loosening was
+    # still in them when subjects 2-4 were solved; they are now rebuilt from the
+    # solve's base tolerances every time.
+    .cols <- c("intestine", "blood")
+    .base <- as.data.frame(rxSolve(.mod, .p, .ev, tolFactor = NULL, cores = 1))
+    .loose <- as.data.frame(rxSolve(.mod, .p, .ev, tolFactor = c(1e8, 1, 1, 1),
+                                    cores = 1))
+    expect_equal(.base[.base$id != 1, .cols], .loose[.loose$id != 1, .cols])
+    # ...and subject 1 itself really was solved at the looser tolerance, so the
+    # comparison above is not vacuous
+    expect_false(isTRUE(all.equal(.base[.base$id == 1, .cols],
+                                  .loose[.loose$id == 1, .cols])))
+  })
+
   test_that("tolFactor=1 for all subjects does not change results vs NULL", {
     .base <- rxSolve(.mod, .p, .ev, tolFactor = NULL)
     .tf1  <- rxSolve(.mod, .p, .ev, tolFactor = rep(1, 4))
