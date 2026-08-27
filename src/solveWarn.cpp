@@ -18,7 +18,7 @@
 
 extern "C" void RSprintf(const char *format, ...);
 extern "C" const char *rxGetId(int id);
-extern "C" int rxIdResolved(int id);
+extern "C" const char *rxGetIdSim(int id, int *sim);
 extern "C" int getSilentErr(void);
 
 /* Aggregator state. Keyed by exact message string so any caller can plug
@@ -116,18 +116,24 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
       for (std::set<int>::const_iterator iit = e.ids.begin();
            iit != e.ids.end() && k < nShow; ++iit, ++k) {
         if (k > 0) RSprintf(", ");
-        /* rxGetId resolves the internal solve index to the user's subject id
-           via the global factor table.  When that table isn't populated
-           (e.g. nlmixr2est estimation that didn't call rxSetIdLvlFactors, or
-           an older nlmixr2est), no label exists; fall back to the 1-based
-           internal index so the message stays honest and non-misleading
-           rather than printing a bare "Unknown".  Ask rxIdResolved() rather
-           than string-comparing rxGetId()'s result: "Unknown" is a legal
-           subject id, and a dataset that uses it must still print it. */
-        if (rxIdResolved(*iit)) {
-          RSprintf("%s", rxGetId(*iit));
-        } else {
+        /* rxGetIdSim resolves the internal solve index to the user's subject
+           id via the global factor table, and to the simulation that solve
+           belongs to when there is more than one.  When the table isn't
+           populated (e.g. nlmixr2est estimation that didn't call
+           rxSetIdLvlFactors, or an older nlmixr2est) no label exists; fall
+           back to the 1-based internal index so the message stays honest and
+           non-misleading rather than printing a bare "Unknown".  Ask for the
+           label rather than string-comparing rxGetId()'s result: "Unknown" is
+           a legal subject id, and a dataset that uses it must still print
+           it. */
+        int sim = 1;
+        const char *idStr = rxGetIdSim(*iit, &sim);
+        if (idStr == NULL) {
           RSprintf(_("internal #%d"), *iit + 1);
+        } else if (sim > 1) {
+          RSprintf(_("%s (sim %d)"), idStr, sim);
+        } else {
+          RSprintf("%s", idStr);
         }
       }
       if (nIds > nShow) {

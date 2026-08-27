@@ -245,9 +245,16 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // resets the table -- nullGlobals() only drops the pointers (it is the
 // load-time initializer for buffers that do not exist yet) and would leak the
 // levels a previous call allocated.
-extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP) {
+//
+// `setLvl=FALSE` skips the reset and flushes against whatever the last real
+// rxSolve() left behind, which is the only way to reach the multiple-
+// simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
+// the levels).
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
   rxSolveWarnReset();
-  rxSetIdLvlFactors(idLvl);
+  if (Rf_asLogical(setLvlSEXP) != FALSE) {
+    rxSetIdLvlFactors(idLvl);
+  }
   SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
   int n = Rf_length(ids);
   int *pids = INTEGER(ids);
@@ -280,13 +287,28 @@ extern "C" const char *rxGetId(int id) {
   return getId(id);
 }
 
-// Whether `id` resolves to a real subject label.  Callers that need to
-// distinguish "no label available" from a label that happens to read
-// "Unknown" (a legitimate ID level) must ask this rather than string-compare
-// rxGetId()'s result -- see rxSolveWarnFlush() in solveWarn.cpp.
-extern "C" int rxIdResolved(int id) {
+// Resolve a solve index to its subject label, or NULL when no label exists.
+// Callers that must distinguish "no label available" from a label that happens
+// to read "Unknown" (a legitimate ID level) have to ask this rather than
+// string-compare rxGetId()'s result -- see rxSolveWarnFlush() in solveWarn.cpp.
+//
+// `*sim` receives the 1-based simulation number.  The ID levels only ever
+// cover one simulation's worth of subjects, but a multiple-simulation solve
+// runs nsub*nsim of them, laid out simulation-major (subjects[csub +
+// csim*nsub]) -- so a solve index past the end of the levels is subject
+// `id % nsub` of simulation `id / nsub + 1`, not an unknown subject.
+extern "C" const char *rxGetIdSim(int id, int *sim) {
   rx_solve *rx = &rx_global;
-  return (id >= 0 && id < rx->factorNs[0] && id < rx->factors.n);
+  int nlvl = rx->factorNs[0];
+  if (sim != NULL) *sim = 1;
+  if (id < 0 || nlvl <= 0 || nlvl > rx->factors.n) return NULL;
+  if (id < nlvl) return rx->factors.line[id];
+  // only when the levels really do cover exactly one simulation
+  if ((int)rx->nsub != nlvl) return NULL;
+  int csim = id / nlvl;
+  if (rx->nsim > 0 && csim >= (int)rx->nsim) return NULL;
+  if (sim != NULL) *sim = csim + 1;
+  return rx->factors.line[id % nlvl];
 }
 
 // Test-only entry point (registered in init.c): return rxGetId() labels for a
