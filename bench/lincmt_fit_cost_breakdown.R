@@ -9,9 +9,9 @@
 #   subject inner evaluations = valueCompute / rowsPerSubject.
 # Run pinned: taskset -c 21 Rscript bench/lincmt_fit_cost_breakdown.R
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])

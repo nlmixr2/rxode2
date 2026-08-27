@@ -28,9 +28,9 @@
 # Run pinned on a quiet machine:
 #   ROUNDS=3 CORE=21 taskset -c 21 Rscript bench/lincmt_fit_solve_fraction.R
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all(Sys.getenv("NLTREE", "~/src/nlmixr2est-lincmt-speed"),
+  devtools::load_all(Sys.getenv("NLTREE", "~/src/nlmixr2est"),
                      compile = FALSE, helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
@@ -38,12 +38,12 @@ rxode2::setRxThreads(1L)
 nRound <- as.integer(Sys.getenv("ROUNDS", "3"))
 core   <- Sys.getenv("CORE", "unpinned")
 cfg    <- Sys.getenv("CFG", "2cmt")
-outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
+outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 
 ## ---- provenance: the flags actually used ---------------------------------
 optFlags <- tryCatch({
-  o <- file.path(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  o <- file.path(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                  "src", "linCmt.o")
   p <- system(sprintf("readelf --debug-dump=info %s 2>/dev/null | grep -m1 -o 'GNU C++17.*'",
                       path.expand(o)), intern = TRUE)
@@ -229,9 +229,9 @@ fReplay    <- solveSecOn / optOn
 fLower <- 1 - 1/R
 
 summ <- list(
-  provenance = list(commit = system("git -C ~/src/rxode2-lincmt-carry-jump rev-parse --short HEAD",
+  provenance = list(commit = system("git -C ~/src/rxode2-lincmt-analytic rev-parse --short HEAD",
                                     intern = TRUE),
-                    nlCommit = system("git -C ~/src/nlmixr2est-lincmt-speed rev-parse --short HEAD",
+                    nlCommit = system("git -C ~/src/nlmixr2est rev-parse --short HEAD",
                                       intern = TRUE),
                     producerFlags = optFlags, core = core, rounds = nRound,
                     cfg = cfg, nSub = nSub, nObs = nObs, spacing = "uniform",

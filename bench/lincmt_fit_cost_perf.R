@@ -20,9 +20,9 @@
 # The first (warm-up) fit re-uses the model cache primed by the breakdown
 # script run, so compile time does not pollute the profile.
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 trueTheta <- c(ka = 1.2, cl = 4, v = 30, q = 8, vp = 60)

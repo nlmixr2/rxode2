@@ -7,7 +7,7 @@
 # Usage: taskset -c <idle core> Rscript bench/lincmt_delta_memo_fit_ab.R
 message("== lincmt_delta_memo_fit_ab ==")
 suppressMessages(devtools::load_all(".", compile = FALSE, quiet = TRUE))
-suppressMessages(devtools::load_all("~/src/nlmixr2est-lincmt-speed",
+suppressMessages(devtools::load_all("~/src/nlmixr2est",
                                     helpers = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 REPS <- as.integer(Sys.getenv("REPS", "3"))

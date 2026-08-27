@@ -12,7 +12,7 @@
 # median.  Use the WARM median as "the linCmt value floor" for a plain
 # rxode2 value solve; results are saved to
 # bench/results/seq_amortize_floor_requiet.rds by RUN=save.
-suppressMessages(devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+suppressMessages(devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                                     compile = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 cfg <- Sys.getenv("CONFIG", "2cmt")
@@ -39,7 +39,7 @@ cat(sprintf("FLOOR %s 400x1000: first %.4f s; warm median %.4f s = %.3f us/obs (
             cfg, tset[1], median(warm), median(warm)/(400*1000)*1e6,
             paste(sprintf("%.2f", lset), collapse=",")))
 if (nzchar(Sys.getenv("RUN"))) {
-  fn <- "~/src/rxode2-lincmt-carry-jump/bench/results/seq_amortize_floor_requiet.rds"
+  fn <- "~/src/rxode2-lincmt-analytic/bench/results/seq_amortize_floor_requiet.rds"
   old <- if (file.exists(fn)) readRDS(fn) else NULL
   row <- data.frame(cfg = cfg, tree = Sys.getenv("RXTREE", "HEAD"),
                     firstSec = tset[1], warmMedianSec = median(warm),

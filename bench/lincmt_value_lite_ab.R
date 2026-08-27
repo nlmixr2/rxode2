@@ -12,7 +12,7 @@ tree <- Sys.getenv("TREE", ".")
 out <- Sys.getenv("OUT", "bench/results/lincmt_value_lite_ab_after.rds")
 mode <- Sys.getenv("MODE", "all")
 suppressMessages(devtools::load_all(tree, quiet = TRUE, compile = FALSE))
-suppressMessages(devtools::load_all("~/src/nlmixr2est-lincmt-speed",
+suppressMessages(devtools::load_all("~/src/nlmixr2est",
                                     quiet = TRUE, helpers = FALSE))
 rxode2::setRxThreads(1L)
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
