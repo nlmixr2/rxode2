@@ -302,18 +302,31 @@ extern "C" const char *rxGetIdSim(int id, int *sim) {
   int nlvl = rx->factorNs[0];
   if (sim != NULL) *sim = 1;
   if (id < 0 || nlvl <= 0 || nlvl > rx->factors.n) return NULL;
+  // Whether nsub/nsim describe the solve these levels came from.  hasFactors
+  // is the provenance: rxSolve_ev1Update() sets it to >= 2 (ID + CMT) for the
+  // rxEtTran table it just read the levels from, 0 for a solve whose data
+  // carried no levels, and rxSetIdLvlFactors() sets 1 for levels a host
+  // supplied without solving.  Only the first pairs with the current counts;
+  // the others would read a previous solve's.
+  int trust = (rx->hasFactors >= 2 && rx->nsub > 0 && rx->nsim > 0);
+  int nsub = trust ? (int)rx->nsub : 0;
+  int nsim = trust ? (int)rx->nsim : 1;
+  if (trust && nsub == nlvl) {
+    // the levels enumerate exactly one simulation's worth of subjects
+    int csim = id / nsub;
+    if (csim >= nsim) return NULL;
+    if (sim != NULL) *sim = csim + 1;
+    return rx->factors.line[id % nsub];
+  }
+  // Otherwise the levels do not name this solve's subjects one-for-one.  No
+  // solve reaches here today -- etTrans() builds the ID levels from the same
+  // unique ids that set nsub, and `nSub=` replicates a one-subject table as
+  // extra simulations rather than extra subjects, so nsub == nlvl throughout.
+  // Should that ever stop holding, refuse rather than name the wrong subject:
+  // past nsub an index is a later simulation, not a later level.
+  if (trust && nsim > 1 && id >= nsub) return NULL;
   if (id < nlvl) return rx->factors.line[id];
-  // Only expand when nsub/nsim describe the solve these levels came from.
-  // hasFactors is the provenance: rxSolve_ev1Update() sets it to >= 2 (ID +
-  // CMT) for the rxEtTran table it just read the levels from, 0 for a solve
-  // whose data carried no levels, and rxSetIdLvlFactors() sets 1 for levels a
-  // host supplied without solving.  Only the first pairs with this solve's
-  // nsub/nsim; the others would read a previous solve's.
-  if (rx->hasFactors < 2 || rx->nsim <= 1 || (int)rx->nsub != nlvl) return NULL;
-  int csim = id / nlvl;
-  if (csim >= (int)rx->nsim) return NULL;
-  if (sim != NULL) *sim = csim + 1;
-  return rx->factors.line[id % nlvl];
+  return NULL;
 }
 
 // Test-only entry point (registered in init.c): return rxGetId() labels for a

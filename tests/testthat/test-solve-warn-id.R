@@ -112,6 +112,41 @@ rxTest({
                  "for subject\\(s\\): internal #5")
   })
 
+  test_that("nSub= replicated subjects are labelled by their sim.id", {
+    # `nSub=` replicates a one-subject table as extra *simulations* of the one
+    # subject (nsub stays 1, nsim becomes 4), and the output carries only a
+    # sim.id column running 1..nsub*nsim -- no id column, since rxode2_df.cpp
+    # emits one only when nsub > 1.  So the label a user can match here is the
+    # simulation number, and "1 (sim 3)" is the row whose sim.id is 3.
+    .f <- function() {
+      ini({
+        tka <- 0.5
+        tcl <- -3.2
+        tv <- -1
+        eta.cl ~ 0.1
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+        cp <- center / v
+      })
+    }
+    .e <- et(amt = 100) %>% et(seq(0, 24, 4))
+    withr::with_seed(1, rxSolve(.f, .e, nSub = 4, addDosing = FALSE))
+    expect_match(.warnLabels(NULL, c(0L, 2L), setLvl = FALSE),
+                 "for subject\\(s\\): 1, 1 \\(sim 3\\)")
+    # nSub= and nStud= together just multiply out to nsim = 8
+    withr::with_seed(1, rxSolve(.f, .e, nSub = 4, nStud = 2, addDosing = FALSE))
+    expect_match(.warnLabels(NULL, c(0L, 5L), setLvl = FALSE),
+                 "for subject\\(s\\): 1, 1 \\(sim 6\\)")
+    # and past nsub*nsim there is nothing to resolve
+    expect_match(.warnLabels(NULL, 8L, setLvl = FALSE),
+                 "for subject\\(s\\): internal #9")
+  })
+
   test_that("the id levels are left cleared for the rest of the suite", {
     # These tests write rx_global's ID factor table directly; later test files
     # read it back when a solve builds its output data frame, so hand it back
