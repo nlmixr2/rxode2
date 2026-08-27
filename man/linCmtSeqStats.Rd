@@ -20,7 +20,10 @@ valueLite (already-solved value re-executions served by the thin
 fx-plus-scaling path with the Jacobian restore skipped),
 expBuild (delta-keyed exponential-memo builds: one per distinct row
 gap per theta window), expHit (rows whose exponentials came from the
-delta memo; disable with RX_LINCMT_DELTA_MEMO=off)
+delta memo; disable with RX_LINCMT_DELTA_MEMO=off), dualRows (rows
+whose tail took one multi-direction pass, linCmtSensType="ADm"),
+phiAnalyticRows (rows propagated through the closed-form transition
+matrix; RX_LINCMT_PHI=2)
 }
 \description{
 Read (and optionally reset) the amortized linCmt() sequential counters

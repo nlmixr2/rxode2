@@ -3,6 +3,7 @@
 
 #include "macros2micros.h"
 #include "solComp.h"
+#include "linCmtDualN.h"
 #include "linCmtDiffConstant.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
@@ -138,6 +139,15 @@ namespace stan {
       Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdYp_;
       Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1> fwdRet_;
       Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 2> fwdG_;
+
+      // Persistent multi-directional (dualN) work buffers for the full
+      // evaluator; sized lazily via resize() like the fvar set above, so a
+      // row makes no heap allocations.
+      Eigen::Matrix<stan::math::dualN<RX_LINCMT_DUAL_MAX>, Eigen::Dynamic, 1> dualThetaF_;
+      Eigen::Matrix<stan::math::dualN<RX_LINCMT_DUAL_MAX>, Eigen::Dynamic, 1> dualFullTheta_;
+      Eigen::Matrix<stan::math::dualN<RX_LINCMT_DUAL_MAX>, Eigen::Dynamic, 1> dualYp_;
+      Eigen::Matrix<stan::math::dualN<RX_LINCMT_DUAL_MAX>, Eigen::Dynamic, 1> dualRet_;
+      Eigen::Matrix<stan::math::dualN<RX_LINCMT_DUAL_MAX>, Eigen::Dynamic, 2> dualG_;
 
       double c1_, c2_;
 
@@ -585,6 +595,23 @@ namespace stan {
       void trueThetaElt(int d,
                         const Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1>& theta,
                         Eigen::Matrix<stan::math::fvar<double>, Eigen::Dynamic, 1>& fullTheta,
+                        int &nd, int& i, int& j) const {
+        if ((nd & d) != 0) {
+          fullTheta(j, 0) = theta(i, 0);
+          i++;
+        } else {
+          fullTheta(j, 0) = trueTheta_(j, 0);
+        }
+        j++;
+      }
+
+      //' Multi-directional forward-mode (dualN) overload of trueThetaElt;
+      //' identical passthrough to the fvar version above, so a dualN pass
+      //' differentiates exactly the function the per-direction fvar passes do.
+      template <int N>
+      void trueThetaElt(int d,
+                        const Eigen::Matrix<stan::math::dualN<N>, Eigen::Dynamic, 1>& theta,
+                        Eigen::Matrix<stan::math::dualN<N>, Eigen::Dynamic, 1>& fullTheta,
                         int &nd, int& i, int& j) const {
         if ((nd & d) != 0) {
           fullTheta(j, 0) = theta(i, 0);
@@ -1422,7 +1449,12 @@ namespace stan {
         // preE = [exp(-L_0*dt_), exp(-L_1*dt_), exp(-ka*dt_)] (exact memo)
         Eigen::Matrix<T, 2, 1> E;
         if (preE) { E(0, 0) = preE[0]; E(1, 0) = preE[1]; }
-        else E = exp(-sol2.L * dt_);
+        // Elementwise rather than exp(-sol2.L * dt_): the vectorized form
+        // resolves through Stan's apply_scalar_unary, which only covers
+        // arithmetic and stan-scalar containers, so it excludes the
+        // multi-direction dualN scalar.  Same operations in the same order,
+        // so the fvar result is unchanged bit for bit.
+        else for (int i_ = 0; i_ < 2; ++i_) E(i_, 0) = exp(-sol2.L(i_, 0) * dt_);
         Eigen::Matrix<T, 2, 1> Ea = E;
 
         Xo =(yp[oral0_]*sol2.C1) * E +
@@ -2048,7 +2080,8 @@ namespace stan {
         // preE = [exp(-L_0*dt_) .. exp(-L_2*dt_), exp(-ka*dt_)] (exact memo)
         Eigen::Matrix<T, 3, 1> E;
         if (preE) { E(0, 0) = preE[0]; E(1, 0) = preE[1]; E(2, 0) = preE[2]; }
-        else E = exp(-sol3.L * dt_);
+        // Elementwise; see linCmtStan2Tail for why.
+        else for (int i_ = 0; i_ < 3; ++i_) E(i_, 0) = exp(-sol3.L(i_, 0) * dt_);
         Eigen::Matrix<T, 3, 1> Ea = E;
 
         Xo = (yp[oral0_]*sol3.C1) * E  +
@@ -2486,6 +2519,78 @@ namespace stan {
           }
           for (int k = 0; k < m; k++) Js(k, i) = ret(k, 0).d();
           thetaF(i, 0) = fv(thetaIn(i, 0), 0.0);  // reset tangent for next seed
+        }
+        for (int i = 0; i < m; i++) Asave_[i] = fx(i, 0);
+      }
+
+      // Multi-directional forward-mode Jacobian: ONE pass through the same
+      // templated kernels with a dualN scalar, so the primal -- every exp(),
+      // division and eigen-decomposition -- is computed once and all the
+      // requested directions ride through it, where linCmtFwdJac repeats the
+      // whole evaluation once per direction with one tangent each.  Unlike
+      // linCmtSeqTailJac this is not restricted to ordinary rows: the
+      // steady-state kernels get the same sharing.  Results are bitwise
+      // identical to linCmtFwdJac -- dualN reproduces the operation order of
+      // each stan/math/fwd rule it replaces, and carries fvar's Eigen cost
+      // traits so the small matrix products unroll the same way.
+      //
+      // This instantiates ONE dual width, the widest a linCmt() model can
+      // ask for (2*ncmt + oral0 <= 7), where the row tail below instantiates
+      // each requested count separately.  The chain reached from here drags
+      // in macros2micros, the eigen-decomposition and all nine steady-state
+      // kernels, and seven copies of that dominated both the object size and
+      // the compile time of this translation unit.  Unused tangent slots
+      // stay zero and every dualN rule is elementwise in the tangent, so the
+      // live slots are bit for bit what a narrower width gives; the cost is
+      // some wasted arithmetic on the rows that do not reach the tail
+      // (steady state, and shapes the window cannot factor), a small
+      // minority of a solve.
+      void linCmtDualJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        typedef stan::math::dualN<RX_LINCMT_DUAL_MAX> dv;
+        int p = (int)thetaIn.size();
+        if (p < 1 || p > RX_LINCMT_DUAL_MAX) {
+          linCmtFwdJac(thetaIn, fx, Js);
+          return;
+        }
+        int m = ncmt_ + oral0_;
+        int nFull = ncmt_*2 + oral0_;
+
+        // Double Alast reconstruction, identical to linCmtFwdJac's.
+        restoreJacTo(&A_[0], fwdJ_);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J = fwdJ_;
+        fwdA_.resize(m);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> &AlastA = fwdA_;
+        {
+          Eigen::Matrix<double, Eigen::Dynamic, 1> fullThetaDbl =
+            trueTheta<double>(thetaIn);
+          double p1_ = fullThetaDbl(0), v1_ = fullThetaDbl(1);
+          double p2_ = 0, p3_ = 0, p4_ = 0, p5_ = 0, ka_ = 0;
+          if (ncmt_ >= 2) { p2_ = fullThetaDbl(2); p3_ = fullThetaDbl(3); }
+          if (ncmt_ >= 3) { p4_ = fullThetaDbl(4); p5_ = fullThetaDbl(5); }
+          if (oral0_) ka_ = fullThetaDbl(ncmt_*2);
+          for (int i = 0; i < m; i++) {
+            AlastA(i, 0) = A_[i] - J(i,0)*p1_ - J(i,1)*v1_;
+            if (ncmt_ >= 2) {
+              AlastA(i, 0) -= J(i,2)*p2_ + J(i,3)*p3_;
+              if (ncmt_ >= 3) AlastA(i, 0) -= J(i,4)*p4_ + J(i,5)*p5_;
+            }
+            if (oral0_) AlastA(i, 0) -= J(i, 2*ncmt_)*ka_;
+          }
+        }
+
+        dualFullTheta_.resize(nFull); dualYp_.resize(m); dualRet_.resize(m);
+        dualG_.resize(ncmt_, 2); dualThetaF_.resize(p);
+        for (int j = 0; j < p; j++) dualThetaF_(j, 0) = dv::seed(thetaIn(j, 0), j);
+        fx.resize(m);
+
+        evalADInplace<dv>(dualThetaF_, dualFullTheta_, dualG_, dualYp_,
+                          dualRet_, J, AlastA);
+
+        for (int k = 0; k < m; k++) {
+          fx(k, 0) = dualRet_(k, 0).v_;
+          for (int j = 0; j < p; j++) Js(k, j) = dualRet_(k, 0).d_[j];
         }
         for (int i = 0; i < m; i++) Asave_[i] = fx(i, 0);
       }

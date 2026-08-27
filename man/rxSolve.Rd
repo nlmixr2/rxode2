@@ -157,7 +157,7 @@ rxSolve(
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
   linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
-    "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
+    "ADm", "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
@@ -1365,6 +1365,12 @@ build; kept as an explicit option for validation.
 (\verb{stan::math::fvar}), differentiating the same analytic solution on
 the C++ stack with one pass per requested direction; matches \code{ADr}
 to round-off.
+\item \code{ADm} -- the same forward-mode differentiation carrying every
+requested direction through a single pass, so the solution itself
+(each exponential, division and eigen-decomposition) is evaluated
+once instead of once per direction.  Bitwise identical to \code{AD}, and
+unlike the amortized ordinary-row path it also shares the work on
+steady-state rows.
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forwardG} -- forward sensitivity where the step size is determined by the
@@ -1387,15 +1393,20 @@ determined by the shi 2021 optimization for central differences
 differences when using the option \code{centralH}, \code{forwardH},
 \code{foward3H} or \code{endpoint5H} options.}
 
-\item{linCmtSensPhi}{When \code{TRUE} (default), a \code{linCmt()} sensitivity
-row whose interval repeats -- as intervals do under regular sampling
--- is evaluated by assembling that interval's state-transition matrix
-once and propagating each later row of the same width through it.
-Intervals that do not repeat are unaffected.  When \code{FALSE} every row
-evaluates the closed form in the order earlier versions used.  Both
-are the same exact closed-form solution evaluated in a different
-order, so the two can differ in the last few digits; use \code{FALSE} to
-reproduce earlier results digit for digit.}
+\item{linCmtSensPhi}{Which state-transition matrix a \code{linCmt()}
+sensitivity row propagates through, if any.  \code{TRUE} (the default) or
+\code{2} assembles the matrix and its parameter derivatives from their
+closed form in the constants the theta window already holds; that costs
+about one kernel evaluation, so it is assembled for any interval and
+cached where the interval repeats, and it carries the depot and
+infusion terms.  \code{1} assembles it instead by probing the kernel with
+unit-basis prior states, which costs one evaluation per direction per
+column and so is only worth paying on an interval that repeats;
+rate-bearing rows are excluded.  \code{FALSE} or \code{0} evaluates the closed
+form row by row in the order earlier versions used.  All three are the
+same exact closed-form solution evaluated in a different order, so they
+can differ in the last few digits; use \code{FALSE} to reproduce earlier
+results digit for digit.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

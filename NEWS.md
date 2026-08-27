@@ -2,6 +2,52 @@
 
 ## New features
 
+- A `linCmt()` sensitivity row's state-transition matrix and its parameter
+  derivatives are now assembled from their CLOSED FORM in the constants the
+  theta-keyed window already holds -- the eigenvalues and spectral
+  matrices, `ka`, and each of their tangents -- rather than by probing the
+  kernel with unit-basis prior states.  The probe needs one kernel
+  evaluation per direction per column, so it could only pay for itself on
+  an interval that demonstrably recurs, and it had to exclude rate-bearing
+  rows; the closed form costs about one kernel evaluation altogether, so it
+  is assembled for any interval -- irregular designs, first occurrences and
+  infusions included -- and cached where the interval repeats, which is
+  where the reuse is worth more than any build.  This is the same exact
+  closed form summed in a different order (the matrix assembled, then
+  applied), the order the transition-matrix path already shipped, so it can
+  differ from the row-by-row order in the last few digits: measured against
+  the row tail the disagreement is a few units in the last place, and
+  against reverse mode it is the same spread the row tail itself has.
+  Where the probe engages -- and its entries are exact by construction --
+  the two matrices agree to 1e-14.
+  Measured on an optimized build against the previous default, the
+  closed-form route is never meaningfully slower and is up to 2.2x faster
+  on the designs the probe could not serve.  Which designs those are is
+  the whole of it: where the sampling is regular the probe already served
+  nearly every row and nothing changes, and the gain is on schedules whose
+  intervals do not repeat.  It carries into a fit -- a 40 subject by 100
+  observation two compartment oral FOCEi fit runs 1.37x faster on an
+  irregular schedule (53.4s to 38.9s) and unchanged on a uniform one, with
+  the objective function identical to 1e-11.  The probe-built route stays
+  available as `linCmtSensPhi=1`, and `FALSE` still evaluates row by row
+  in the order earlier versions used.  `linCmtSeqStats()` reports the rows
+  served as `phiAnalyticRows`.
+
+- `linCmtSensType="ADm"` differentiates the `linCmt()` closed form with
+  every requested direction carried through a SINGLE forward-mode pass,
+  where `"AD"` repeats the whole evaluation once per direction with one
+  tangent each.  The solution itself -- each exponential, each division of
+  the depot transfer, the eigen-decomposition -- is therefore evaluated
+  once per row rather than once per direction.  Results are bitwise
+  identical to `"AD"`: the multi-direction scalar reproduces the operation
+  order of every forward-mode rule it replaces, and carries the same Eigen
+  cost traits so the small matrix products unroll the same way (validated
+  over 1/2/3 compartments x IV/oral x every `trans` x every steady-state
+  form x infusion x every requested-direction mask).  Unlike the amortized
+  ordinary-row path this also shares the work on steady-state rows, which
+  have no constants/tail factorization and so were paying a full evaluation
+  per direction.  `linCmtSeqStats()` reports the rows served as `dualRows`.
+
 - `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
   development version made reverse-mode AD (`"ADr"`) the default on the
   strength of timings that had been taken through `devtools::load_all()`,

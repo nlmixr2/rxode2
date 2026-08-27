@@ -6286,8 +6286,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtBraw = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtBraw) ?
       INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtBraw] : 1;
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
+    // A control list built before this slot existed (an older reverse
+    // dependency's) gets the same route rxSolve()'s own default resolves to,
+    // so the two cannot drift: 2 = the closed-form transition matrix.
     rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
-      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 1;
+      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

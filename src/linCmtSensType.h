@@ -7,7 +7,8 @@
 // the classification cannot drift between translation units.
 
 // True for the automatic-differentiation Jacobian methods: forward-mode fvar
-// (3/30), reverse-mode (31) and the auto default (100).  The finite-difference
+// (3/30), multi-direction forward-mode dualN (32), reverse-mode (31) and the
+// auto default (100).  The finite-difference
 // methods (1,2,4,5,6,7,10,20,40,50) return false.  linCmtB reads ind->linH only
 // on the finite-difference methods, so these are exactly the AD methods that do
 // not need finite-difference step-size estimation.
@@ -22,14 +23,16 @@ static inline int linCmtSensIsAD(int sensType) {
 }
 
 // True for the AD Jacobian methods that can run across threads: 3/30
-// (forward-mode fvar, stack-local), 31 (reverse mode -- rxode2 builds with
+// (forward-mode fvar, stack-local), 32 (multi-direction forward-mode dualN,
+// stack-local for the same reason), 31 (reverse mode -- rxode2 builds with
 // -DSTAN_THREADS, so the Stan tape is thread_local and linCmtB() creates a
 // worker's tape before its first var, see linCmtRevTapeInit()) and 100 (auto,
-// which linCmtSensResolveAuto() turns into one of those two).  The
+// which linCmtSensResolveAuto() turns into one of those).  The
 // finite-difference methods stay excluded: their first-subject
 // scaling/step-size setup is shared, not per-thread.
 static inline int linCmtSensAdThreadSafe(int sensType) {
-  return (sensType == 3 || sensType == 30 || sensType == 31 || sensType == 100);
+  return (sensType == 3 || sensType == 30 || sensType == 31 ||
+          sensType == 32 || sensType == 100);
 }
 
 // Number of linCmtB() sensitivity directions a model requests: the bits of
