@@ -1,3 +1,4 @@
+^src/compile_commands.json$
 ^.habit-hooks$
 ^bench$
 ^.RData$
