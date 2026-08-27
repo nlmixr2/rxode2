@@ -422,12 +422,33 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
-- Piping a model's `ini()` into another model keeps a random effect the two
-  models share when it is the *only* one they share.  The surviving eta is
-  subset out of the omega matrix with `[.w, .w]`, which without `drop = FALSE`
-  collapses to a bare scalar with no dimnames, and the eta was then silently
-  left out of the piped `ini()` -- the destination model kept its own initial
-  estimate, with no error and no message.
+- Piping a model's `ini()` into another model no longer silently leaves shared
+  random effects behind.  Three cases dropped an eta with no error and no
+  message, leaving the destination model on its own initial estimate: when the
+  two models shared exactly *one* eta, when a shared eta was `fix()`ed (it came
+  across unfixed), and when the source model had random effects at more than
+  one level (`| occ`), which dropped every eta.
+
+- `ini()` piping of a random effect now honors `unfix()` and a `| condition`.
+  `mod |> ini(eta.ka ~ unfix(0.7))` changed the estimate but left the eta
+  fixed; `mod |> ini(eta.occ ~ 0.2 | occ)` stopped with `incorrect number of
+  dimensions`; and a correlated block, `mod |> ini(eta.a + eta.b ~ c(0.6, 0.01,
+  0.3) | occ)`, stopped with `argument is of length zero`.
+
+- A piped correlated block now records its covariance at the level of the etas
+  it links rather than always at `id`, so a `| occ` block no longer lands split
+  across two omegas.
+
+- `ini()` piping now says when a piped `| condition` does not match the level
+  the random effect already sits at.  Piping an estimate does not restructure
+  the model, so the eta keeps its own level, which used to happen silently.
+
+- A piped random effect keeps its label the way a piped population parameter
+  always has; subsetting the omega used to drop the labels with the estimates.
+
+- `ini()` piping no longer adds a covariance between two random effects that
+  sit at different levels.  The resulting `$omega` could not be assembled at
+  all, so the model stopped as soon as anything asked for it.
 
 - A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
   per-individual solve pool as `nsub` times the number of individual solves

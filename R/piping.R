@@ -82,6 +82,38 @@
   .ret
 }
 
+#' Subset one omega block down to the etas shared with the destination model
+#'
+#' @param mat a single `lotriFix` matrix from the source model
+#'
+#' @param iniDf This is the ini data frame from the prior ui
+#'
+#' @return list with `mat`, the subset block (`NULL` when no eta is shared),
+#'   and `drop`, the names of the etas that were left out
+#'
+#' @author Matthew L Fidler
+#' @noRd
+.quoteExpandRxUiOmegaBlock <- function(mat, iniDf) {
+  .dn <- dimnames(mat)
+  if (is.null(.dn)) return(list(mat=NULL, drop=NULL))
+  .dn <- .dn[[1]]
+  .w <- which(.dn %in% iniDf$name)
+  if (length(.w) == 0L) return(list(mat=NULL, drop=.dn))
+  .fix <- attr(mat, "lotriFix")
+  .labels <- attr(mat, "lotriLabels")
+  # drop=FALSE keeps a single surviving eta a 1x1 matrix; as a bare scalar it
+  # carries no dimnames, and as.data.frame() below then yields zero rows -- the
+  # eta is silently left out of the piped ini()
+  .mat <- mat[.w, .w, drop=FALSE]
+  # `[` also strips the matrices carrying the fixed entries and the labels,
+  # which would silently unfix a `fix()`ed eta and lose its label as it is
+  # piped over
+  if (!is.null(.fix)) attr(.mat, "lotriFix") <- .fix[.w, .w, drop=FALSE]
+  if (length(.labels) == length(.dn)) attr(.mat, "lotriLabels") <- .labels[.w]
+  class(.mat) <- c("lotriFix", "matrix", "array")
+  list(mat=.mat, drop=.dn[-.w])
+}
+
 #' Expand the quoted lines to include relevant lines from UI
 #'
 #' @param cur This is the current piped in `rxUi` interface
@@ -104,9 +136,9 @@
   .lotriEst <- lotri::lotriEst(.curLotri)
   attr(.curLotri, "lotriEst") <- NULL
   .ini1 <- NULL
+  .drop <- NULL
   if (!is.null(.lotriEst)) {
     .w <- which(.lotriEst$name %in% iniDf$name)
-    .drop <- NULL
     if (length(.w) == 0L) {
      .drop <- .lotriEst$name
     } else {
@@ -118,21 +150,23 @@
       .ini1 <- as.data.frame(.ret)
     }
   }
-  .dn <- dimnames(.curLotri)
   .ini2 <- NULL
-  if (!is.null(.dn)) {
-    .dn <- .dn[[1]]
-    .w <- which(.dn %in% iniDf$name)
-    if (length(.w) == 0L) {
-      .drop <- c(.drop, .dn)
-    } else  {
-      .drop <- c(.drop, .dn[-.w])
-      # drop=FALSE keeps a single surviving eta a 1x1 matrix; as a bare scalar
-      # it carries no dimnames, and as.data.frame() below then yields zero rows
-      # -- the eta is silently left out of the piped ini()
-      .curLotri <- .curLotri[.w, .w, drop = FALSE]
-      class(.curLotri) <- c("lotriFix", "matrix", "array")
-      .ini2 <- as.data.frame(.curLotri)
+  if (inherits(.curLotri, "list")) {
+    # random effects at more than one level come back as a list of blocks, one
+    # per condition, and the list itself has no dimnames
+    .blocks <- lapply(.curLotri, .quoteExpandRxUiOmegaBlock, iniDf=iniDf)
+    .drop <- c(.drop, unlist(lapply(.blocks, function(b) b$drop), use.names=FALSE))
+    .blocks <- lapply(.blocks, function(b) b$mat)
+    .blocks <- .blocks[!vapply(.blocks, is.null, logical(1), USE.NAMES=FALSE)]
+    if (length(.blocks) > 0L) {
+      class(.blocks) <- c("lotriFix", "list")
+      .ini2 <- as.data.frame(.blocks)
+    }
+  } else {
+    .block <- .quoteExpandRxUiOmegaBlock(.curLotri, iniDf)
+    .drop <- c(.drop, .block$drop)
+    if (!is.null(.block$mat)) {
+      .ini2 <- as.data.frame(.block$mat)
     }
   }
   .iniDf <- rbind(.ini1, .ini2)
@@ -398,13 +432,23 @@
       .isLotri <- TRUE
       # Check to see if this is an error call
       if (is.call(.cur[[3]])) {
-        .call <- deparse1(.cur[[3]][[1]])
+        .rhs <- .cur[[3]]
+        # a `| condition` wraps the estimate, so look at what it wraps
+        if (identical(.rhs[[1]], quote(`|`)) && length(.rhs) == 3L &&
+              is.call(.rhs[[2]])) {
+          .rhs <- .rhs[[2]]
+        }
+        .call <- deparse1(.rhs[[1]])
         if (.call == "+" &&
-              length(.cur[[3]]) >= 2 &&
-              is.call(.cur[[3]][[2]])) {
-          .call <- deparse1(.cur[[3]][[2]][[1]])
+              length(.rhs) >= 2 &&
+              is.call(.rhs[[2]])) {
+          .call <- deparse1(.rhs[[2]][[1]])
         }
         if (.call %in% names(.errDist)) {
+          .isLotri <- FALSE
+        } else if (.call == "unfix") {
+          # the lotri round-trip below has no way to represent `unfix()`, so it
+          # comes back as a plain estimate and would silently leave the eta fixed
           .isLotri <- FALSE
         }
       }
