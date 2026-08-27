@@ -1608,9 +1608,19 @@ rxTrans.default <- function(model,
 ## valid).  Set by rxode2() before parsing; see .rxEventSensMode().
 .rxEventSensCacheKey <- ""
 
-#' @rdname rxTrans
-#' @export
-rxTrans.character <- memoise::memoise(function(model,
+#' The body of [rxTrans.character()], without the memoisation
+#'
+#' `rxTrans.character()` is memoised, and translating is not only a
+#' computation: it also leaves the parsed model in the C parser's state, which
+#' the code generator reads.  A caller that needs that state (rather than the
+#' returned model variables) has to translate for real, so it calls this
+#' directly -- see the `force` argument of [.rxModelVarsCharacter()].
+#'
+#' @inheritParams rxTrans
+#' @return a named vector of translated model properties, or the model
+#'   variables when `modVars` is `TRUE`
+#' @noRd
+.rxTransCharacter <- function(model,
                                                modelPrefix = "", # Model Prefix
                                                md5 = "", # Md5 of model
                                                modName = NULL, # Model name for DLL
@@ -1686,7 +1696,11 @@ rxTrans.character <- memoise::memoise(function(model,
   } else {
     return(c(.ret$trans, .ret$md5))
   }
-})
+}
+
+#' @rdname rxTrans
+#' @export
+rxTrans.character <- memoise::memoise(.rxTransCharacter)
 
 #' @rdname rxIsLoaded
 #' @export
@@ -2491,12 +2505,27 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 
 .rxModelVarsCCache <- NULL
 .rxModelVarsLast <- NULL
+#' Model variables of a model given as text, and the parser state that goes with it
+#'
+#' Always translates for real, never through the memoised `rxTrans.character()`.
+#' Translating is not only a computation: it leaves the parsed model in the C
+#' parser's state, and callers of this function depend on that state -- code
+#' generation reads it, and so do model loading, model piping and the model
+#' description.  A cache hit would return the same model variables while
+#' leaving the parser holding whatever model it last saw.
+#'
+#' Not memoising here is also what keeps the cache from growing: the prefix
+#' below used to be `tempfile()`-derived, and since memoise keys on every
+#' argument, each call missed the cache and added an entry to it that was kept
+#' for the life of the session.
+#'
+#' @param obj model text (or a file name)
+#' @return model variables
+#' @noRd
 .rxModelVarsCharacter <- function(obj) {
   .oldEventSensKey <- .rxEventSensCacheKey
   on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
   if (length(obj) == 1) {
-    .parseModel <- tempfile("parseModel4")
-    .prefix <- paste0(basename(.parseModel), "_", .Platform$r_arch, "_")
     .exists <- try(file.exists(obj), silent = TRUE)
     if (inherits(.exists, "try-error")) {
       .exists <- FALSE
@@ -2508,7 +2537,20 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     } else {
       .parseModel <- paste(obj, collapse = "\n")
     }
-    .ret <- rxTrans(.parseModel, modelPrefix = .prefix, modVars = TRUE)
+    ## The prefix has to be unique per model, and it used to be made unique per
+    ## CALL with `tempfile("parseModel4")`.  Deriving it from the model keeps
+    ## it unique per model -- all it has to be, since for a model given as text
+    ## the translation replaces it with the parsed-md5 prefix anyway -- while
+    ## making it stable across calls, so repeated translations of one model
+    ## stop minting a new name (which R interns for the life of the session).
+    ## It digests the text itself rather than calling rxMd5(): rxMd5() folds in
+    ## `.udfMd5Info()`, which carries `Sys.time()` once a user defined function
+    ## is in use, so the prefix would vary from call to call again -- exactly
+    ## what this avoids -- in the sessions the leak matters most in.
+    .prefix <- paste0("parseModel4",
+                      digest::digest(.parseModel, serialize = TRUE, algo = "md5"),
+                      "_", .Platform$r_arch, "_")
+    .ret <- .rxTransCharacter(.parseModel, modelPrefix = .prefix, modVars = TRUE)
     .cFile <- list(.exists, ifelse(.exists, obj, ""), .prefix)
     assignInMyNamespace(".rxModelVarsCCache", .cFile)
     assignInMyNamespace(".rxModelVarsLast", .ret)
