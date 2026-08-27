@@ -839,12 +839,12 @@ type=1L is Jacobian expand grid (adds symbols)</p></dd>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">rxExpandGrid</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span>, <span class="fu">expand.grid.jc</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Unit: microseconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min      lq     mean  median      uq</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 20.290 21.1725 21.78571 21.5100 21.8065</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 14.801 15.5170 18.99962 16.0855 17.5200</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min      lq     mean median      uq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 24.207 24.7270 25.60845 24.977 25.4025</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 17.506 18.4875 23.55914 18.818 20.9215</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      max neval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   48.707   100</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  238.578   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   56.685   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  388.627   100</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
