@@ -15,6 +15,16 @@
   a 301-line model, is now flat.  Model text that is only whitespace and
   comments is now treated as a blank model, as an empty string always was.
 
+  One degenerate form is no longer accepted as a consequence: an `if` or
+  `while` with no body at all and no braces (`if (a > 1)`, `while (a > 1)`,
+  `if (a > 1) else b <- 1`).  These used to parse because a statement could be
+  empty, which is the ambiguity being removed -- an empty body makes
+  `if (a > 1) b <- 1` ambiguous, since `b <- 1` could be the body or the next
+  statement, so the old behavior cannot be kept alongside the fix.  Write an
+  empty body as `{}` or `;` (`if (a > 1) {}`), both of which parse as before.
+  Bodies that only look empty, such as a block holding nothing but a comment,
+  are unaffected.
+
 - `rxNorm()` parses a model once rather than twice.  With no condition set it
   asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a
   digest of the normalized model -- so the model was normalized to build the

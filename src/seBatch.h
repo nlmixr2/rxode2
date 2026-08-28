@@ -100,16 +100,38 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
     seArenaFree(&ctx);
   }
 
-  /* Each result is freed as soon as it has been copied into ret, so an OOM
-     longjmp out of Rf_mkChar() strands only the results not yet converted. */
+  /* Copy every result into one R_alloc'd block and release the per-result
+     malloc()s BEFORE touching the R API, so that by the time Rf_mkChar() (which
+     allocates, and so can longjmp on memory exhaustion) is called there is
+     nothing outstanding left to strand.  A thread cannot call R_alloc, which is
+     why the results were strdup'd in the first place; this is where they stop
+     being malloc'd.  The copy is one pass over text that has just been parsed
+     and emitted, so it does not show up. */
+  size_t total = 0;
+  for (i = 0; i < n; i++) {
+    if (out[i] != NULL) total += strlen(out[i]) + 1;
+  }
+  char *buf = (total > 0) ? R_alloc(total, 1) : NULL;
+  const char **res = (const char**) R_alloc((size_t) n, sizeof(char*));
+  size_t at = 0;
   for (i = 0; i < n; i++) {
     if (out[i] == NULL) {
+      res[i] = NULL;
+    } else {
+      size_t len = strlen(out[i]) + 1;
+      memcpy(buf + at, out[i], len);
+      res[i] = buf + at;
+      at += len;
+      free(out[i]);
+      out[i] = NULL;
+    }
+  }
+
+  for (i = 0; i < n; i++) {
+    if (res[i] == NULL) {
       SET_STRING_ELT(ret, i, NA_STRING);
     } else {
-      char *s = out[i];
-      out[i] = NULL;
-      SET_STRING_ELT(ret, i, Rf_mkChar(s));
-      free(s);
+      SET_STRING_ELT(ret, i, Rf_mkChar(res[i]));
     }
   }
   UNPROTECT(1);
