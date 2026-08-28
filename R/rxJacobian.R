@@ -430,7 +430,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (!exists("..fixR", envir = .newmod)) {
     if (exists("rx_r_", envir = .newmod)) {
       ## Breaks focei for non-trivial examples
-      ## if (!rxErrEnv.hasAdd) {
+      ## if (!.rxErrEnv$hasAdd) {
       ##   ## Convert abs() to abs1()
       ##   .r <- get("rx_r_", envir = .newmod)
       ##   .r <- paste0("abs1(", rxFromSE(.r), ")")

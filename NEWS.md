@@ -447,6 +447,17 @@
   instead of a per-subject one.  Simulated values from the affected methods
   change.
 
+## Bug fixes
+
+- `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
+  they were given.  All three guarded the count with `length(x == n)` instead
+  of `length(x) == n`; `x` is a call, so `x == n` compares its elements and
+  `length()` of that is always at least one, leaving the guard permanently true
+  and the error below it unreachable.  Too few arguments failed with
+  "subscript out of bounds" from the missing element, and extra arguments were
+  silently dropped -- `psigamma(a,b,c)` translated as `psigamma(a,b)` and
+  `polygamma(0,x,y)` as `polygamma(0,x)`.  Correct calls are unaffected.
+
 ## Breaking changes
 
 - The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
