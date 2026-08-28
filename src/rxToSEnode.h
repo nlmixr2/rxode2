@@ -15,10 +15,12 @@
 #define __RX_TO_SE_NODE_H__
 
 #include "seFromSEarena.h"
+#include "seParseNode.h"
 
 static D_ParserTables *rtPt = &parser_tables_rxode2rxToSE;
 
-/* one field per production in inst/rxToSE.g; -1 = not yet asked */
+/* One field per production in inst/rxToSE.g; -1 = not yet asked.  Kept
+   separate from seNodeInfo on purpose -- see the note there. */
 typedef struct rtNodeInfo {
   int translation_unit;
   int expression;
@@ -74,20 +76,10 @@ static inline void rtNiReset(rtNodeInfo *ni) {
 
 #define rtNiIs(pn, what) (strcmp(rtSTRINGIFY(what), rtNodeName(pn)) == 0)
 
-static const char *rtNodeName(D_ParseNode *pn) {
-  return (const char*) rtPt->symbols[pn->symbol].name;
-}
-
-static const char *rtNodeText(seCtx *ctx, D_ParseNode *pn) {
-  const char *b = pn->start_loc.s, *e = pn->end;
-  while (b < e && (*b == ' ' || *b == '\t' || *b == '\n')) b++;
-  while (e > b && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n')) e--;
-  return seDup(ctx, b, (size_t)(e - b));
-}
-
-static int rtIsLit(D_ParseNode *pn, char c) {
-  return rtNodeName(pn)[0] == c;
-}
+/* this grammar's spelling of the shared node readers; see seParseNode.h */
+#define rtNodeName(pn) seNodeNameT(rtPt, (pn))
+#define rtNodeText(ctx, pn) seNodeTextOf((ctx), (pn))
+#define rtIsLit(pn, c) seIsLitT(rtPt, (pn), (c))
 
 static const char *rtEmit(seCtx *ctx, D_ParseNode *pn);
 

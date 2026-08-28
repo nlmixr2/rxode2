@@ -27,10 +27,16 @@
 #define __SE_FROM_SE_NODE_H__
 
 #include "seFromSEarena.h"
+#include "seParseNode.h"
 
 static D_ParserTables *sePt = &parser_tables_rxode2seFromSE;
 
-/* one field per production in inst/seFromSE.g; -1 = not yet asked */
+/* One field per production in inst/seFromSE.g; -1 = not yet asked.
+   The resemblance to rtNodeInfo is not a shared abstraction waiting to be
+   named: these fields ARE this grammar's productions, because seNodeHas()
+   makes the field name and the compared string one token (src/tran.h).
+   Sharing the struct would mean neither grammar could gain or drop a
+   production without the other. */
 typedef struct seNodeInfo {
   int translation_unit;
   int expression;
@@ -74,21 +80,10 @@ static inline void seNiReset(seNodeInfo *ni) {
   (seNIB(what) == -1 ? (seNIB(what) = !strcmp(seSTRINGIFY(what), name)) \
    : seNIB(what))
 
-static const char *seNodeName(D_ParseNode *pn) {
-  return (const char*) sePt->symbols[pn->symbol].name;
-}
-
-static const char *seNodeText(seCtx *ctx, D_ParseNode *pn) {
-  const char *b = pn->start_loc.s, *e = pn->end;
-  while (b < e && (*b == ' ' || *b == '\t' || *b == '\n')) b++;
-  while (e > b && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n')) e--;
-  return seDup(ctx, b, (size_t)(e - b));
-}
-
-/* literals, matched on the first character of the symbol name */
-static int seIsLit(D_ParseNode *pn, char c) {
-  return seNodeName(pn)[0] == c;
-}
+/* this grammar's spelling of the shared node readers; see seParseNode.h */
+#define seNodeName(pn) seNodeNameT(sePt, (pn))
+#define seNodeText(ctx, pn) seNodeTextOf((ctx), (pn))
+#define seIsLit(pn, c) seIsLitT(sePt, (pn), (c))
 
 static int seIsPowOp(D_ParseNode *pn) {
   const char *s = seNodeName(pn);

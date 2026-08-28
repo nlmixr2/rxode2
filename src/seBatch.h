@@ -37,6 +37,9 @@ extern int getRxThreads(int64_t n, bool throttle);
 
 typedef const char *(*seXlateFn)(seCtx *ctx, const char *in);
 
+/* .Call shape for both translators: character vector in, character vector out,
+   one for one.  An element the emitter declines comes back NA_character_, and
+   the R shim routes just those to the R walker. */
 static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
                        const seDeriv *derivs, int nd) {
   if (TYPEOF(strVec) != STRSXP) {

@@ -17,48 +17,19 @@
  * point can later run the per-expression loop under OpenMP (symengine itself
  * is built without thread-safe refcounting, so only this half can be threaded).
  */
-#define STRICT_R_HEADERS
-#define USE_FC_LEN_T
-#include <R.h>
-#include <Rinternals.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-
-/* dparser function-pointer table.  tran.c has the dparserPtrIni definitions;
-   here we only want the extern declarations. */
-#include <dparserPtr.h>
+#include "seParse.h"
 #include "seFromSE.g.d_parser.h"
 
 #include "seFromSEemit.h"
 #include "seBatch.h"
 
-/* ------------------------------------------------------------ entry point --
-   Pure string -> string: no R API, no symengine.  Returns a pointer into
-   ctx's arena, or NULL when the caller must fall back to the R walker. */
 static const char *seFromSE1(seCtx *ctx, const char *in) {
-  ctx->failed = 0;
-  D_Parser *p = new_D_Parser(&parser_tables_rxode2seFromSE,
-                             sizeof(D_ParseNode_User));
-  if (p == NULL) return NULL;
-  p->save_parse_tree = 1;
-  p->error_recovery = 0;
-  D_ParseNode *pn = dparse(p, (char*) in, (int) strlen(in));
-  const char *out = NULL;
-  if (pn != NULL && p->syntax_errors == 0) {
-    out = seEmit(ctx, pn);
-    if (ctx->failed) out = NULL;
-  }
-  if (pn != NULL) free_D_ParseNode(p, pn);
-  free_D_Parser(p);
-  return out;
+  return seParseEmit(ctx, in, &parser_tables_rxode2seFromSE, seEmit);
 }
 
-/* .Call entry: character vector in, character vector out.  Elements the C
-   emitter declines are returned as NA_character_ so the R shim can route just
-   those to .rxFromSE(). */
-/* Bring the derivative templates across from R into plain C.  Done once, here,
+/* .Call entry (below); the R fallback for a declined element is .rxFromSE().
+
+   Bring the derivative templates across from R into plain C.  Done once, here,
    where the R API is allowed: CHAR() pointers stay valid while the caller's
    vectors are protected, so the walk itself never touches R.  Caller frees. */
 static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {

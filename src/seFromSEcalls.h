@@ -93,29 +93,8 @@ static D_ParseNode *seStripP(D_ParseNode *pn) {
   }
 }
 
-/* collect arg_list left spine into args[], returns count or -1 if too many */
-static int seArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
-  int n = 0;
-  D_ParseNode *stack[32];
-  int top = 0;
-  for (;;) {
-    int nch = d_get_number_of_children(pn);
-    if (nch == 3 && seIsLit(d_get_child(pn, 1), ',')) {
-      if (top >= 32) return -1;
-      stack[top++] = d_get_child(pn, 2);
-      pn = d_get_child(pn, 0);
-      continue;
-    }
-    break;
-  }
-  if (n >= max) return -1;
-  args[n++] = pn;                 /* leftmost */
-  while (top > 0) {
-    if (n >= max) return -1;
-    args[n++] = stack[--top];
-  }
-  return n;
-}
+/* collect arg_list left spine into args[], in source order; see seParseNode.h */
+#define seArgs(pn, args, max) seArgsFlattenT(sePt, (pn), (args), (max))
 
 /* log() takes .rxFromSE()'s .SE1p route, where .rxP1rmF() hunts a literal 1
    down the argument's +/- spine to build log1p().  It only recurses through

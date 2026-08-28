@@ -143,27 +143,8 @@ static const char *rtPassFns[] = {
    forms.  Both go to the R walker. */
 #define rtNpassFns ((int)(sizeof(rtPassFns)/sizeof(rtPassFns[0])))
 
-/* collect an arg_list's left spine in source order */
-static int rtArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
-  D_ParseNode *stack[16];
-  int top = 0, n = 0;
-  for (;;) {
-    if (d_get_number_of_children(pn) == 3 && rtIsLit(d_get_child(pn, 1), ',')) {
-      if (top >= 16) return -1;
-      stack[top++] = d_get_child(pn, 2);
-      pn = d_get_child(pn, 0);
-      continue;
-    }
-    break;
-  }
-  if (n >= max) return -1;
-  args[n++] = pn;
-  while (top > 0) {
-    if (n >= max) return -1;
-    args[n++] = stack[--top];
-  }
-  return n;
-}
+/* collect an arg_list's left spine in source order; see seParseNode.h */
+#define rtArgs(pn, args, max) seArgsFlattenT(rtPt, (pn), (args), (max))
 
 /* THETA[1] -> THETA_1_ */
 static const char *rtIndex(seCtx *ctx, D_ParseNode *pn) {
