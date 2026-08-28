@@ -2,6 +2,19 @@
 
 ## New features
 
+- Model parsing is no longer superlinear in model size.  `statement` in the
+  `dparser` grammar could derive the empty string (its last alternative was a
+  bare `end_statement`, which is `(';')*`), so `statement_list : (statement)+`
+  admitted any number of empty statements at every position.  `dparser`
+  resolved that ambiguity by greediness, re-walking the whole accumulated parse
+  tree at each position, and every parse in the package paid for it --
+  `rxode2()`, `rxNorm()`, `rxModelVars()`, `rxS()` and `rxOptExpr()` alike.
+  Requiring a semicolon in that alternative makes the grammar unambiguous.  On
+  a 301-line model `rxNorm()` drops from 3.18s to 0.07s and `rxOptExpr()` from
+  5.61s to 0.43s; per-line parse cost, which grew tenfold between a 25-line and
+  a 301-line model, is now flat.  Model text that is only whitespace and
+  comments is now treated as a blank model, as an empty string always was.
+
 - Symbolic derivative setup (`rxS()`, `.rxJacobian()`, `.rxSens()`, and so the
   `nlmixr2est` model builds that use them) is 4-5x faster.  The cost was never
   `symengine` itself -- `symengine::D()` is under 1% of the total -- but the R
@@ -15,6 +28,9 @@
   the emitter does not reproduce exactly fall back to the R walker, so output
   is unchanged.  `.rxSens()` on a fifteen-state model drops from 1.27s to
   0.19s.  Set `options(rxode2.symengineC = FALSE)` to force the R walker.
+  The `symengine` expressions of a jacobian or sensitivity build are now
+  translated as one batch rather than one call per line, and the batch is
+  spread across threads once it is large enough to pay for them.
 
 - `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
   development version made reverse-mode AD (`"ADr"`) the default on the
