@@ -65,6 +65,53 @@ rxTest({
     expect_equal(.rc$nbad, 0L, info = .rc$msg)
   })
 
+  test_that("the seFromSE grammar and the C kind map still agree", {
+    # src/seFromSEnode.h maps production NAMES to kinds, and the walk then
+    # relies on those kinds for meaning.  A grammar edit the map has not been
+    # told about does not fail loudly, it changes answers: rename
+    # power_expression and seIsBareNumber() stops seeing through it, so `d^2`
+    # emits d^2 instead of Rx_pow_di(d,2).
+    #
+    # At runtime that is handled by refusing the C path entirely (rxFromSE()
+    # falls back to the R walker, which is correct but slower).  This is where
+    # it has to be noticed.  If this fails, update the `map` in
+    # src/seFromSEnode.h to match inst/seFromSE.g -- do NOT delete the test.
+    .problems <- .Call(`_rxode2_rxFromSEGrammarProblems`)
+    expect_equal(length(.problems), 0L,
+                 info = paste(.problems, collapse = "\n"))
+  })
+
+  test_that("the committed parser tables match inst/seFromSE.g", {
+    # src/seFromSE.g.d_parser.h is generated from inst/seFromSE.g by
+    # .rxodeBuildCode().  Editing the grammar without regenerating leaves the
+    # emitter parsing the OLD language, which no drift check inside C can see.
+    .g <- test_path("..", "..", "inst", "seFromSE.g")
+    .h <- test_path("..", "..", "src", "seFromSE.g.d_parser.h")
+    skip_if_not(file.exists(.g) && file.exists(.h),
+                "source tree not available (installed package)")
+    # every production the grammar defines must appear in the generated symbol
+    # table; a rename or addition that was never regenerated shows up here
+    .lines <- readLines(.g, warn = FALSE)
+    .lines <- .lines[!grepl("^\\s*//", .lines)]
+    # the grammar puts the production name on its own line and the ':' on the
+    # next, so work on the joined text: a name is what follows the start or a
+    # rule-ending ';'
+    .txt <- paste(.lines, collapse = "\n")
+    .prod <- regmatches(.txt, gregexpr(
+      "(^|;)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*:", .txt))[[1]]
+    .prod <- unique(gsub("^[;[:space:]]*|[[:space:]]*:$", "", .prod))
+    expect_gt(length(.prod), 10L)
+    .tab <- paste(readLines(.h, warn = FALSE), collapse = "\n")
+    .missing <- .prod[!vapply(.prod, function(p) {
+      grepl(paste0('"', p, '"'), .tab, fixed = TRUE)
+    }, logical(1))]
+    expect_equal(length(.missing), 0L,
+                 info = paste0("inst/seFromSE.g defines ",
+                               paste(.missing, collapse = ", "),
+                               " but src/seFromSE.g.d_parser.h does not have ",
+                               "it; regenerate with .rxodeBuildCode()"))
+  })
+
   test_that("the C emitter agrees with the R walker wherever it accepts", {
     # src/seFromSE.c returns NA_character_ for anything it does not reproduce
     # exactly, and rxFromSE() then falls back to .rxFromSE().  Declining is

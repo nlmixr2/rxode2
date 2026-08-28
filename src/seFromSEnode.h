@@ -41,6 +41,28 @@ typedef enum {
 static unsigned char *seKindTab = NULL;
 static unsigned int seKindN = 0;
 
+/* Drift guard.  The kind table is keyed on production NAMES, but the walk then
+   relies on those kinds for meaning, so a grammar edit that this map has not
+   been told about does not fail loudly -- it changes answers.  Rename
+   power_expression and seIsBareNumber() stops seeing through it, so `d^2`
+   emits d^2 instead of Rx_pow_di(d,2): wrong output, silently.
+   So validate, and on any mismatch refuse to use the C path at all rather than
+   emit something that is subtly wrong.  Falling back to the R walker is always
+   correct, just slower.
+   No error or warning is raised here: rxFromSE() is on a path every reverse
+   dependency executes.  The problems are reported to R instead, and
+   test-symengine-translate-fixture.R fails on them. */
+#define SE_MAX_PROBLEMS 8
+static char seProblem[SE_MAX_PROBLEMS][160];
+static int seNproblems = 0;
+static int seKindsOk = 0;
+
+static void seAddProblem(const char *fmt, const char *a) {
+  if (seNproblems >= SE_MAX_PROBLEMS) return;
+  snprintf(seProblem[seNproblems], sizeof(seProblem[0]), fmt, a);
+  seNproblems++;
+}
+
 /* Resolve every grammar symbol to its kind.  Called once from the batch entry
    point, before any work -- and before any parallel region, since it writes
    these statics. */
@@ -66,22 +88,43 @@ static void seKindsInit(void) {
     {"/", SE_K_DIVIDE}, {"**", SE_K_POW}, {"^", SE_K_POW}
   };
   const int nmap = (int)(sizeof(map)/sizeof(map[0]));
+  int seen[sizeof(map)/sizeof(map[0])];
   unsigned int i;
   int j;
   if (seKindTab != NULL) return;
+  seNproblems = 0;
+  for (j = 0; j < nmap; j++) seen[j] = 0;
   seKindN = sePt->nsymbols;
   seKindTab = (unsigned char*) calloc(seKindN, sizeof(unsigned char));
-  if (seKindTab == NULL) return;              /* seKindOf() then sees OTHER */
+  if (seKindTab == NULL) {
+    seAddProblem("could not allocate the kind table%s", "");
+    return;
+  }
   for (i = 0; i < seKindN; i++) {
     const char *nm = (const char*) sePt->symbols[i].name;
     if (nm == NULL) continue;
     for (j = 0; j < nmap; j++) {
       if (strcmp(nm, map[j].name) == 0) {
         seKindTab[i] = (unsigned char) map[j].kind;
+        seen[j] = 1;
         break;
       }
     }
+    /* a production the map has never heard of: the walk would treat it as
+       meaningless and quietly change what it emits */
+    if (seKindTab[i] == SE_K_OTHER && sePt->symbols[i].kind == D_SYMBOL_NTERM) {
+      seAddProblem("grammar has production '%s', which the kind map in "
+                   "src/seFromSEnode.h does not know", nm);
+    }
   }
+  /* a name the map still expects but the grammar no longer defines */
+  for (j = 0; j < nmap; j++) {
+    if (!seen[j]) {
+      seAddProblem("kind map expects '%s', which inst/seFromSE.g no longer "
+                   "defines", map[j].name);
+    }
+  }
+  seKindsOk = (seNproblems == 0);
 }
 
 static seKind seKindOf(D_ParseNode *pn) {

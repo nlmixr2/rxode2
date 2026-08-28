@@ -69,6 +69,15 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS) {
   seKindsInit();
   seNamedInit();
   seCtx ctx;
+  if (!seKindsOk) {
+    /* the grammar and the kind map disagree; emitting could be subtly wrong,
+       so decline everything and let rxFromSE() use the R walker.  The problems
+       are reported through _rxode2_rxFromSEGrammarProblems(), which
+       test-symengine-translate-fixture.R asserts on. */
+    for (i = 0; i < n; i++) SET_STRING_ELT(ret, i, NA_STRING);
+    UNPROTECT(1);
+    return ret;
+  }
   ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(strVec, i);
@@ -78,6 +87,19 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS) {
     else SET_STRING_ELT(ret, i, Rf_mkChar(out));
   }
   seArenaFree(&ctx);
+  UNPROTECT(1);
+  return ret;
+}
+
+/* Grammar/kind-map agreement, for rxode2's own tests.  Returns a character
+   vector of problems; zero length means the C emitter is usable. */
+SEXP _rxode2_rxFromSEGrammarProblems(void) {
+  int i;
+  seKindsInit();
+  SEXP ret = PROTECT(Rf_allocVector(STRSXP, seNproblems));
+  for (i = 0; i < seNproblems; i++) {
+    SET_STRING_ELT(ret, i, Rf_mkChar(seProblem[i]));
+  }
   UNPROTECT(1);
   return ret;
 }
