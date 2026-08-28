@@ -4766,8 +4766,8 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"lsoda"` -- LSODA solver.  Does not support parallel thread-based
 #'       solving, but allows user Jacobian specification.
 #'
-#' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
-#'         solving nor user Jacobian specification
+#' * `"dop853"` -- DOP853 solver.  Supports parallel thread-based solving;
+#'         does not support user Jacobian specification.
 #'
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.  Supports
@@ -5578,6 +5578,20 @@ rxIsDense <- function(method) {
 }
 
 #' Check whether an ODE method code is thread-safe for parallel solving
+#'
+#' Deliberately stricter than the C gate `solveMethodThreadSafe()`
+#' (`src/rxData.cpp`), which excludes only the non-reentrant Fortran COMMON
+#' block solvers `lsoda` (1), `lsode` (106) and `bdf` (107).  This predicate
+#' additionally lists `liblsoda` (2), which IS thread safe in C.
+#'
+#' The extra entries are unreachable rather than wrong: the only caller is
+#' `.parseAutoSwitchMethod()`, and `lsoda`/`liblsoda` are switchers that
+#' [rxIsStiff()] and [rxIsNonStiff()] both return `FALSE` for, so a composite
+#' naming either is rejected as "must be a non-stiff method" / "must be a stiff
+#' method" before it gets here.  Only 106 and 107 are load bearing.  Left as is
+#' so the two predicates keep the same shape; do not "fix" the divergence by
+#' dropping 2L without checking every caller, since widening this predicate
+#' would admit composites the C AutoSwitch driver does not implement.
 #'
 #' @param code Integer method code as returned by [odeMethodToInt()].
 #' @return `TRUE` if safe to use in parallel OpenMP loops.
