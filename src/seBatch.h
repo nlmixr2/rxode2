@@ -37,6 +37,42 @@ extern int getRxThreads(int64_t n, bool throttle);
 
 typedef const char *(*seXlateFn)(seCtx *ctx, const char *in);
 
+/* Convert the batch's results into the output vector, freeing each one as it
+   goes, under R_UnwindProtect so that an allocation failure part way through
+   cannot strand the rest. */
+typedef struct seConvert {
+  R_xlen_t n;
+  char **out;
+  SEXP ret;
+} seConvert;
+
+static SEXP seConvertResults(void *data) {
+  seConvert *c = (seConvert*) data;
+  R_xlen_t i;
+  for (i = 0; i < c->n; i++) {
+    if (c->out[i] == NULL) {
+      SET_STRING_ELT(c->ret, i, NA_STRING);
+    } else {
+      SET_STRING_ELT(c->ret, i, Rf_mkChar(c->out[i]));
+      free(c->out[i]);
+      c->out[i] = NULL;
+    }
+  }
+  return c->ret;
+}
+
+static void seFreeResults(void *data, Rboolean jump) {
+  seConvert *c = (seConvert*) data;
+  R_xlen_t i;
+  (void) jump;   /* the same cleanup either way */
+  for (i = 0; i < c->n; i++) {
+    if (c->out[i] != NULL) {
+      free(c->out[i]);
+      c->out[i] = NULL;
+    }
+  }
+}
+
 /* .Call shape for both translators: character vector in, character vector out,
    one for one.  An element the emitter declines comes back NA_character_, and
    the R shim routes just those to the R walker. */
@@ -100,41 +136,16 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
     seArenaFree(&ctx);
   }
 
-  /* Copy every result into one R_alloc'd block and release the per-result
-     malloc()s BEFORE touching the R API, so that by the time Rf_mkChar() (which
-     allocates, and so can longjmp on memory exhaustion) is called there is
-     nothing outstanding left to strand.  A thread cannot call R_alloc, which is
-     why the results were strdup'd in the first place; this is where they stop
-     being malloc'd.  The copy is one pass over text that has just been parsed
-     and emitted, so it does not show up. */
-  size_t total = 0;
-  for (i = 0; i < n; i++) {
-    if (out[i] != NULL) total += strlen(out[i]) + 1;
-  }
-  char *buf = (total > 0) ? R_alloc(total, 1) : NULL;
-  const char **res = (const char**) R_alloc((size_t) n, sizeof(char*));
-  size_t at = 0;
-  for (i = 0; i < n; i++) {
-    if (out[i] == NULL) {
-      res[i] = NULL;
-    } else {
-      size_t len = strlen(out[i]) + 1;
-      memcpy(buf + at, out[i], len);
-      res[i] = buf + at;
-      at += len;
-      free(out[i]);
-      out[i] = NULL;
-    }
-  }
-
-  for (i = 0; i < n; i++) {
-    if (res[i] == NULL) {
-      SET_STRING_ELT(ret, i, NA_STRING);
-    } else {
-      SET_STRING_ELT(ret, i, Rf_mkChar(res[i]));
-    }
-  }
-  UNPROTECT(1);
+  /* Rf_mkChar() allocates, so the conversion below can unwind to the top level
+     with strdup'd results still outstanding.  A thread cannot call R_alloc,
+     which is why the results are malloc'd in the first place, so they have to
+     be freed by hand -- and R_UnwindProtect is what guarantees that happens on
+     the error path as well as the normal one.  seFreeResults() is idempotent:
+     the conversion nulls each pointer as it frees it. */
+  seConvert cv; cv.n = n; cv.out = out; cv.ret = ret;
+  SEXP cont = PROTECT(R_MakeUnwindCont());   /* R_NilValue here is "bad value" */
+  R_UnwindProtect(seConvertResults, &cv, seFreeResults, &cv, cont);
+  UNPROTECT(2);
   return ret;
 }
 
