@@ -601,6 +601,49 @@ static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
     if (nargs < 0) return seFail(ctx);
   }
 
+  /* log() takes the .SE1p route: .rxP1rmF() hunts a literal `1` down the
+     argument's +/- spine to make log1p().  It only recurses through '+' and
+     '-', so for any other argument shape it returns .rxFromSE(x) unchanged and
+     we can emit here -- but on an additive argument it also rebuilds the text
+     itself, bypassing the constant fold (log(a + 2.718281828459045) keeps the
+     digits rather than folding to M_E).  So bail on an additive argument, and
+     on beta() which .rxFromSE() rewrites to lbeta(). */
+  if (strcmp(name, "log") == 0 && nargs == 1) {
+    D_ParseNode *a0 = args[0];
+    while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
+    if (d_get_number_of_children(a0) == 3 &&
+        strcmp(seNodeName(d_get_child(a0, 0)), "(") != 0) {
+      const char *op = seNodeName(d_get_child(a0, 1));
+      if (op[0] == '+' || op[0] == '-') return seFail(ctx);
+    }
+    if (d_get_number_of_children(a0) == 2 &&
+        strcmp(seNodeName(a0), "unary_expression") == 0) {
+      return seFail(ctx);
+    }
+    if (strcmp(seNodeName(a0), "function_call") == 0) {
+      const char *fn = seNodeText(ctx, d_get_child(a0, 0));
+      if (strcmp(fn, "beta") == 0) return seFail(ctx);
+    }
+    /* NB: the log path passes the RAW argument, not .stripP()ed */
+    const char *inner = seEmit(ctx, args[0]);
+    if (ctx->failed) return "";
+    const char *lret = seCat(ctx, "log(", inner, ")", NULL, NULL, NULL);
+    if (!strcmp(lret, "log(2)")) return "M_LN2";
+    if (!strcmp(lret, "log(10)")) return "M_LN10";
+    if (!strcmp(lret, "log(M_SQRT_PI)")) return "M_LN_SQRT_PI";
+    if (!strcmp(lret, "log(sqrt((M_PI_2)))") || !strcmp(lret, "log(sqrt(M_PI_2))") ||
+        !strcmp(lret, "log((M_PI_2)^(1/2))") || !strcmp(lret, "log((M_PI_2)^0.5)") ||
+        !strcmp(lret, "log(M_PI_2^(1/2))") || !strcmp(lret, "log(M_PI_2^0.5)")) {
+      return "M_LN_SQRT_PId2";
+    }
+    if (!strcmp(lret, "log(sqrt((M_2PI)))") || !strcmp(lret, "log(sqrt(M_2PI))") ||
+        !strcmp(lret, "log((M_2PI)^0.5)") || !strcmp(lret, "log((M_2PI)^(1/2))") ||
+        !strcmp(lret, "log(M_2PI^0.5)") || !strcmp(lret, "log(M_2PI^(1/2))")) {
+      return "M_LN_SQRT_2PI";
+    }
+    return lret;
+  }
+
   /* .SEsingle: abs0(x) -> abs(x).  rxNot and loggamma are left to R (rxNot
      wraps in "(!(" "))" and loggamma collides with the .SE1p lgamma1p path). */
   const char *emitName = NULL;
