@@ -57,6 +57,26 @@ static const char *seFromSE1(seCtx *ctx, const char *in) {
 /* .Call entry: character vector in, character vector out.  Elements the C
    emitter declines are returned as NA_character_ so the R shim can route just
    those to .rxFromSE(). */
+/* Bring the derivative templates across from R into plain C.  Done once, here,
+   where the R API is allowed: CHAR() pointers stay valid while the caller's
+   vectors are protected, so the walk itself never touches R.  Caller frees. */
+static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {
+  int n = (TYPEOF(dName) == STRSXP) ? (int) Rf_xlength(dName) : 0;
+  seDeriv *d = NULL;
+  int i;
+  *nOut = 0;
+  if (n <= 0) return NULL;
+  d = (seDeriv*) malloc(sizeof(seDeriv) * (size_t) n);
+  if (d == NULL) return NULL;
+  for (i = 0; i < n; i++) {
+    d[i].name = CHAR(STRING_ELT(dName, i));
+    d[i].which = INTEGER(dWhich)[i];
+    d[i].tmpl = CHAR(STRING_ELT(dTmpl, i));
+  }
+  *nOut = n;
+  return d;
+}
+
 SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
                           SEXP dName, SEXP dWhich, SEXP dTmpl) {
   if (TYPEOF(strVec) != STRSXP) {
@@ -70,23 +90,8 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
   seNamedInit();
   seCtx ctx;
   ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
-  /* Flatten the derivative templates into plain C once, here, where the R API
-     is allowed.  CHAR() pointers stay valid while the caller's vectors are
-     protected, so the walk itself never touches R. */
-  int nd = (TYPEOF(dName) == STRSXP) ? (int) Rf_xlength(dName) : 0;
-  seDeriv *derivs = NULL;
-  if (nd > 0) {
-    derivs = (seDeriv*) malloc(sizeof(seDeriv) * (size_t) nd);
-    if (derivs == NULL) nd = 0;
-  }
-  {
-    int j;
-    for (j = 0; j < nd; j++) {
-      derivs[j].name = CHAR(STRING_ELT(dName, j));
-      derivs[j].which = INTEGER(dWhich)[j];
-      derivs[j].tmpl = CHAR(STRING_ELT(dTmpl, j));
-    }
-  }
+  int nd = 0;
+  seDeriv *derivs = seDerivsFromR(dName, dWhich, dTmpl, &nd);
   ctx.derivs = derivs; ctx.nderivs = nd;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(strVec, i);

@@ -127,8 +127,14 @@
 ## Raw symengine-syntax strings pinned directly at the rxFromSE emitter: the
 ## branches that a model round-trip does not reliably produce.
 .seRaw <- c(
-  "Derivative(f(x), x)", "Derivative(f(x, y), x)", "Derivative(f(x, y), y)",
-  "Subs(Derivative(f(x), x), x, y)",
+  ## An unregistered function must still report that it is unsupported.  The
+  ## name has to be one nothing else can define: `f` was used here first and
+  ## picked up a four-argument `f` left in scope by another test file, turning
+  ## the expected "not supported" into an arity complaint depending on which
+  ## files ran.
+  "Derivative(rxNoSuchFn(x), x)", "Derivative(rxNoSuchFn(x, y), x)",
+  "Derivative(rxNoSuchFn(x, y), y)",
+  "Subs(Derivative(rxNoSuchFn(x), x), x, y)",
   "THETA_1_ + ETA_1_", "THETA_10_*ETA_2_",
   "rx__d_dt_depot__", "rx__df_center_dy_cl__", "rx__sens_center_BY_cl__",
   "rx_f_depot_", "rx_lag_depot_", "rx_rate_depot_", "rx_dur_depot_",
