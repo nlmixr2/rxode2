@@ -2410,8 +2410,25 @@ rxUnload <- rxDynUnload
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
+#' The `.rxConditionLst` key for an already-normalized model
+#'
+#' Split out of `rxCondition()` so `rxNorm()` can look a condition up with the
+#' normalized model it is about to return anyway.  Normalizing is a parse, and
+#' `rxCondition()` normalizes purely to build this key, so calling it from
+#' `rxNorm()` used to parse the same model twice per call.
+#'
+#' @param norm normalized model text, exactly as `rxNorm(obj, FALSE)` returns
+#'   it (unnamed, length one) -- the key is a digest, so any difference in
+#'   attributes is a different key
+#' @return the md5 key into `.rxConditionLst`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxConditionKey <- function(norm) {
+  digest::digest(norm, algo = "md5", serialize = TRUE)
+}
+
 rxCondition <- function(obj, condition = NULL) {
-  .key <- digest::digest(rxode2::rxNorm(obj, FALSE), algo = "md5", serialize = TRUE)
+  .key <- .rxConditionKey(rxode2::rxNorm(obj, FALSE))
   if (!missing(condition) && is.null(condition)) {
     condition <- FALSE
   }
@@ -2475,29 +2492,37 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     }
     return(paste(.ret, collapse = "\n"))
   } else {
-    if (is(condition, "logical")) {
-      if (!condition) {
-        condition <- NULL
-      } else {
-        .tmp <- rxode2::rxExpandIfElse(obj)
-        return(names(.tmp))
-      }
-    } else if (is.null(condition)) {
-      condition <- rxode2::rxCondition(obj)
-    }
-    if (is.null(condition)) {
+    .norm <- function() {
       .tmp <- rxode2::rxModelVars(obj)$model["normModel"]
       names(.tmp) <- NULL
-      return(.tmp)
-    } else {
-      if (is(condition, "character")) {
-        .tmp <- rxode2::rxExpandIfElse(obj)[condition]
-        names(.tmp) <- NULL
+      .tmp
+    }
+    if (is(condition, "logical")) {
+      ## explicit FALSE asks for the unconditional model; no condition lookup
+      if (!condition) {
+        return(.norm())
+      }
+      return(names(rxode2::rxExpandIfElse(obj)))
+    }
+    if (is.null(condition)) {
+      ## rxCondition()'s lookup key is a digest of the normalized model, and
+      ## the normalized model is also what this returns when no condition is
+      ## set.  Normalize ONCE and use the same text for both: calling
+      ## rxCondition() here parsed the model a second time purely to build the
+      ## key, and a parse is by far the most expensive thing rxNorm() does.
+      .tmp <- .norm()
+      condition <-
+        getFromNamespace(".rxConditionLst", "rxode2")[[.rxConditionKey(.tmp)]]
+      if (is.null(condition)) {
         return(.tmp)
-      } else {
-        return(rxNorm(obj, FALSE))
       }
     }
+    if (is(condition, "character")) {
+      .tmp <- rxode2::rxExpandIfElse(obj)[condition]
+      names(.tmp) <- NULL
+      return(.tmp)
+    }
+    return(rxNorm(obj, FALSE))
   }
 }
 

@@ -990,8 +990,6 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))
-  .mv <- rxModelVars(x)
-  .params <- .mv$params
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL

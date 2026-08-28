@@ -15,6 +15,15 @@
   a 301-line model, is now flat.  Model text that is only whitespace and
   comments is now treated as a blank model, as an empty string always was.
 
+- `rxNorm()` parses a model once rather than twice.  With no condition set it
+  asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a
+  digest of the normalized model -- so the model was normalized to build the
+  key, the text discarded, and then normalized again to be returned.  It is now
+  normalized once and the same text used for both.  `rxOptExpr()` also dropped
+  an unused `rxModelVars()` call, so one `rxOptExpr()` now parses once instead
+  of three times.  On a 301-line model `rxNorm()` drops a further 0.074s ->
+  0.039s and `rxOptExpr()` 0.43s -> 0.34s.
+
 - Symbolic derivative setup (`rxS()`, `.rxJacobian()`, `.rxSens()`, and so the
   `nlmixr2est` model builds that use them) is 4-5x faster.  The cost was never
   `symengine` itself -- `symengine::D()` is under 1% of the total -- but the R
