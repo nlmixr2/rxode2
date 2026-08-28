@@ -31,273 +31,8 @@
 #include <dparserPtr.h>
 #include "seFromSE.g.d_parser.h"
 
-/* ------------------------------------------------------------------ arena --
-   Bump allocator so the recursive emitter can return strings without any
-   ownership bookkeeping, and so nothing calls R's allocator (not thread safe)
-   inside the walk. */
-#define SE_BLK (1 << 14)
-
-typedef struct seBlk {
-  struct seBlk *next;
-  size_t used, cap;
-  char *mem;
-} seBlk;
-
-typedef struct {
-  seBlk *head;
-  int failed;          /* 1 = hand this expression back to the R walker */
-  int numDer;          /* .rxFromNumDer: 0 error, 1 forward, 2 central */
-} seCtx;
-
-static seBlk *seBlkNew(size_t need) {
-  size_t cap = need > SE_BLK ? need : SE_BLK;
-  seBlk *b = (seBlk*) malloc(sizeof(seBlk));
-  if (b == NULL) return NULL;
-  b->mem = (char*) malloc(cap);
-  if (b->mem == NULL) { free(b); return NULL; }
-  b->used = 0; b->cap = cap; b->next = NULL;
-  return b;
-}
-
-static void seArenaFree(seCtx *ctx) {
-  seBlk *b = ctx->head;
-  while (b != NULL) {
-    seBlk *n = b->next;
-    free(b->mem); free(b);
-    b = n;
-  }
-  ctx->head = NULL;
-}
-
-static char *seAlloc(seCtx *ctx, size_t n) {
-  seBlk *b = ctx->head;
-  if (b == NULL || b->used + n > b->cap) {
-    seBlk *nb = seBlkNew(n);
-    if (nb == NULL) { ctx->failed = 1; return NULL; }
-    nb->next = ctx->head; ctx->head = nb; b = nb;
-  }
-  char *p = b->mem + b->used;
-  b->used += n;
-  return p;
-}
-
-static const char *seDup(seCtx *ctx, const char *s, size_t n) {
-  char *p = seAlloc(ctx, n + 1);
-  if (p == NULL) return "";
-  memcpy(p, s, n); p[n] = '\0';
-  return p;
-}
-
-static const char *seStr(seCtx *ctx, const char *s) {
-  return seDup(ctx, s, strlen(s));
-}
-
-/* concatenate up to 6 pieces */
-static const char *seCat(seCtx *ctx, const char *a, const char *b,
-                         const char *c, const char *d, const char *e,
-                         const char *f) {
-  size_t n = 0;
-  const char *v[6]; int i, nv = 0;
-  v[nv++] = a; v[nv++] = b; v[nv++] = c; v[nv++] = d; v[nv++] = e; v[nv++] = f;
-  for (i = 0; i < nv; i++) if (v[i] != NULL) n += strlen(v[i]);
-  char *p = seAlloc(ctx, n + 1);
-  if (p == NULL) return "";
-  char *q = p;
-  for (i = 0; i < nv; i++) {
-    if (v[i] == NULL) continue;
-    size_t l = strlen(v[i]); memcpy(q, v[i], l); q += l;
-  }
-  *q = '\0';
-  return p;
-}
-
-static const char *seFail(seCtx *ctx) {
-  ctx->failed = 1;
-  return "";
-}
-
-/* ------------------------------------------------------------- constants --
-   Mirrors .rxSEcnt in R/symengine.R.  `val` is what paste() renders the
-   constant as (15 significant digits), which is exactly what .rxFromSEnum()
-   prefix-matches against.  Keep in the SAME ORDER as .rxSEcnt: the R loop
-   returns the first match. */
-typedef struct { const char *name; const char *val; } seCnt;
-
-static const seCnt seCnts[] = {
-  {"M_E",           "2.71828182845905"},
-  {"M_PI",          "3.14159265358979"},
-  {"M_PI_2",        "1.5707963267949"},
-  {"M_PI_4",        "0.785398163397448"},
-  {"M_1_PI",        "0.318309886183791"},
-  {"M_2_PI",        "0.636619772367581"},
-  {"M_2PI",         "6.28318530717959"},
-  {"M_SQRT_PI",     "1.77245385090552"},
-  {"M_2_SQRTPI",    "1.12837916709551"},
-  {"M_1_SQRT_2PI",  "0.398942280401433"},
-  {"M_SQRT2",       "1.4142135623731"},
-  {"M_SQRT_3",      "1.73205080756888"},
-  {"M_SQRT_32",     "5.65685424949238"},
-  {"M_SQRT_2dPI",   "0.797884560802865"},
-  {"M_LN_SQRT_PI",  "0.5723649429247"},
-  {"M_LN_SQRT_2PI", "0.918938533204673"},
-  {"M_LN_SQRT_PId2","0.225791352644727"},
-  {"M_LOG10_2",     "0.301029995663981"},
-  {"M_LOG2E",       "1.44269504088896"},
-  {"M_LOG10E",      "0.434294481903252"},
-  {"M_LN2",         "0.693147180559945"},
-  {"M_LN10",        "2.30258509299405"}
-};
-#define seNcnt ((int)(sizeof(seCnts)/sizeof(seCnts[0])))
-
-/* .rxFromSEnum(): prefix-match a rendered leaf against the constant table. */
-static const char *seFromSEnum(seCtx *ctx, const char *ret) {
-  size_t l = strlen(ret);
-  if (l > 5) {
-    int i;
-    for (i = 0; i < seNcnt; i++) {
-      /* substr(val, 1, l) == ret; when l > nchar(val), substr gives val */
-      size_t vl = strlen(seCnts[i].val);
-      size_t cmpn = l < vl ? l : vl;
-      if (cmpn == l && strncmp(seCnts[i].val, ret, cmpn) == 0) {
-        return seCnts[i].name;
-      }
-    }
-  }
-  return seStr(ctx, ret);
-}
-
-/* ------------------------------------------------------------ demangling --
-   The sequence of sub() calls in .rxFromSE()'s leaf branch, in the SAME order
-   (innermost sub() first).  Each is first-match-only, applied to the running
-   string, exactly as sub() is. */
-
-/* ^((?:TH|)ETA)_([1-9][0-9]*)_$ -> \1[\2] */
-static int seThEt(seCtx *ctx, const char **s) {
-  const char *p = *s;
-  size_t pre;
-  if (strncmp(p, "THETA_", 6) == 0) pre = 5;
-  else if (strncmp(p, "ETA_", 4) == 0) pre = 3;
-  else return 0;
-  const char *d = p + pre + 1;
-  if (*d < '1' || *d > '9') return 0;
-  const char *q = d;
-  while (*q >= '0' && *q <= '9') q++;
-  if (*q != '_' || *(q + 1) != '\0') return 0;
-  *s = seCat(ctx, seDup(ctx, p, pre), "[", seDup(ctx, d, (size_t)(q - d)),
-             "]", NULL, NULL);
-  return 1;
-}
-
-/* ^rx__d_dt_(.*)__$ -> d/dt(\1) */
-static int sePrefixSuffix(seCtx *ctx, const char **s, const char *pre,
-                          const char *suf, const char *open,
-                          const char *close) {
-  const char *p = *s;
-  size_t lp = strlen(pre), ls = strlen(suf), l = strlen(p);
-  if (l < lp + ls || strncmp(p, pre, lp) != 0) return 0;
-  if (ls > 0 && strcmp(p + l - ls, suf) != 0) return 0;
-  size_t inner = l - lp - ls;
-  *s = seCat(ctx, open, seDup(ctx, p + lp, inner), close, NULL, NULL, NULL);
-  return 1;
-}
-
-/* ^rx__df_(.*)_dy_((?:TH|)ETA)_([1-9][0-9]*)___$ -> df(\1)/dy(\2[\3])
-   .* is greedy, so the LAST "_dy_" wins */
-static int seDfDyTh(seCtx *ctx, const char **s) {
-  const char *p = *s;
-  size_t l = strlen(p);
-  if (strncmp(p, "rx__df_", 7) != 0) return 0;
-  if (l < 10 || strcmp(p + l - 3, "___") != 0) return 0;
-  const char *body = p + 7;
-  size_t bl = l - 7 - 3;
-  /* greedy: search for the last "_dy_" */
-  const char *dy = NULL, *q;
-  for (q = body; q + 4 <= body + bl; q++) {
-    if (strncmp(q, "_dy_", 4) == 0) dy = q;
-  }
-  if (dy == NULL) return 0;
-  const char *r = dy + 4;
-  size_t pre;
-  if (strncmp(r, "THETA_", 6) == 0) pre = 5;
-  else if (strncmp(r, "ETA_", 4) == 0) pre = 3;
-  else return 0;
-  const char *d = r + pre + 1;
-  if (*d < '1' || *d > '9') return 0;
-  const char *e = d;
-  while (*e >= '0' && *e <= '9') e++;
-  if (e != body + bl) return 0;
-  *s = seCat(ctx, "df(", seDup(ctx, body, (size_t)(dy - body)), ")/dy(",
-             seDup(ctx, r, pre), seCat(ctx, "[", seDup(ctx, d, (size_t)(e - d)),
-                                       "])", NULL, NULL, NULL), NULL);
-  return 1;
-}
-
-/* ^rx__df_(.*)_dy_(.*)__$ -> df(\1)/dy(\2); first .* greedy */
-static int seDfDy(seCtx *ctx, const char **s) {
-  const char *p = *s;
-  size_t l = strlen(p);
-  if (strncmp(p, "rx__df_", 7) != 0) return 0;
-  if (l < 9 || strcmp(p + l - 2, "__") != 0) return 0;
-  const char *body = p + 7;
-  size_t bl = l - 7 - 2;
-  const char *dy = NULL, *q;
-  for (q = body; q + 4 <= body + bl; q++) {
-    if (strncmp(q, "_dy_", 4) == 0) dy = q;
-  }
-  if (dy == NULL) return 0;
-  *s = seCat(ctx, "df(", seDup(ctx, body, (size_t)(dy - body)), ")/dy(",
-             seDup(ctx, dy + 4, (size_t)((body + bl) - (dy + 4))), ")", NULL);
-  return 1;
-}
-
-/* ^rx_rate_(.*)_ etc: NOT anchored at the end, .* greedy -> last '_' wins */
-static int seUnanchored(seCtx *ctx, const char **s, const char *pre,
-                        const char *fun) {
-  const char *p = *s;
-  size_t lp = strlen(pre), l = strlen(p);
-  if (l <= lp || strncmp(p, pre, lp) != 0) return 0;
-  const char *last = NULL, *q;
-  for (q = p + lp; *q != '\0'; q++) if (*q == '_') last = q;
-  if (last == NULL) return 0;
-  /* sub() replaces only the matched span; anything after it is kept */
-  *s = seCat(ctx, fun, "(", seDup(ctx, p + lp, (size_t)(last - (p + lp))),
-             ")", seStr(ctx, last + 1), NULL);
-  return 1;
-}
-
-/* .rxSEreserved (R/symengine.R).  `val` is sprintf("%.16f", value); I is
-   complex, so is.numeric() is FALSE there and it falls through as a symbol. */
-static const seCnt seRes[] = {
-  {"e",           "2.7182818284590451"},
-  {"E",           "2.7182818284590451"},
-  {"EulerGamma",  "0.5772156649015329"},
-  {"Catalan",     "0.9159655941772190"},
-  {"GoldenRatio", "2.1180339887498949"},
-  {"I",           NULL}
-};
-#define seNres ((int)(sizeof(seRes)/sizeof(seRes[0])))
-
-/* sub("[(]rx_SymPy_Res_", "(", .ret) -- first match only, as sub() is */
-static const char *seUnRes(seCtx *ctx, const char *s) {
-  const char *p = strstr(s, "(rx_SymPy_Res_");
-  if (p == NULL) return s;
-  size_t pre = (size_t)(p - s);
-  return seCat(ctx, seDup(ctx, s, pre + 1), p + 14, NULL, NULL, NULL, NULL);
-}
-
-static const char *seDemangle(seCtx *ctx, const char *name) {
-  const char *s = name;
-  seThEt(ctx, &s);
-  sePrefixSuffix(ctx, &s, "rx__d_dt_", "__", "d/dt(", ")");
-  seDfDyTh(ctx, &s);
-  seDfDy(ctx, &s);
-  sePrefixSuffix(ctx, &s, "rx_", "_ini_0__", "", "(0)");
-  seUnanchored(ctx, &s, "rx_f_", "f");
-  seUnanchored(ctx, &s, "rx_lag_", "alag");
-  seUnanchored(ctx, &s, "rx_dur_", "dur");
-  seUnanchored(ctx, &s, "rx_rate_", "rate");
-  return s;
-}
+#include "seFromSEarena.h"
+#include "seFromSEnames.h"
 
 /* ---------------------------------------------------------------- walker -- */
 
@@ -316,6 +51,32 @@ static const char *seNodeText(seCtx *ctx, D_ParseNode *pn) {
 
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn);
 
+/* Productions that only wrap a single child and carry no meaning of their own.
+   The grammar spells the precedence ladder out (add -> mul -> unary -> power
+   -> primary), so every walk has to be able to see through it; naming that
+   once keeps seIsBareNumber(), seStripP() and seFold() from each repeating
+   the ladder. */
+static int seIsWrapper(const char *nm) {
+  return strcmp(nm, "expression") == 0 ||
+    strcmp(nm, "add_expression") == 0 ||
+    strcmp(nm, "mul_expression") == 0 ||
+    strcmp(nm, "unary_expression") == 0 ||
+    strcmp(nm, "power_expression") == 0 ||
+    strcmp(nm, "primary_expression") == 0;
+}
+
+/* a numeric literal node ("number" wraps "integer"/"float") */
+static int seIsNumberNode(const char *nm) {
+  return strcmp(nm, "number") == 0 || strcmp(nm, "integer") == 0 ||
+    strcmp(nm, "float") == 0;
+}
+
+/* a node whose value stands on its own, with no children to combine */
+static int seIsLeafNode(const char *nm) {
+  return seIsNumberNode(nm) || strcmp(nm, "symbol") == 0 ||
+    strcmp(nm, "identifier") == 0 || strcmp(nm, "function_call") == 0;
+}
+
 /* Does this exponent subtree reduce to a bare numeric literal?  This is the
    is.numeric(x[[3]]) test in .rxFromSE(): TRUE only for a literal, so `d^2`
    becomes Rx_pow_di(d,2) while `a^(-2)` (a call to unary minus) does not and
@@ -324,16 +85,8 @@ static const char *seEmit(seCtx *ctx, D_ParseNode *pn);
 static int seIsBareNumber(D_ParseNode *pn) {
   for (;;) {
     const char *nm = seNodeName(pn);
-    int nch = d_get_number_of_children(pn);
-    if (strcmp(nm, "number") == 0) return 1;
-    if (strcmp(nm, "integer") == 0 || strcmp(nm, "float") == 0) return 1;
-    if (nch == 1 &&
-        (strcmp(nm, "unary_expression") == 0 ||
-         strcmp(nm, "power_expression") == 0 ||
-         strcmp(nm, "primary_expression") == 0 ||
-         strcmp(nm, "expression") == 0 ||
-         strcmp(nm, "mul_expression") == 0 ||
-         strcmp(nm, "add_expression") == 0)) {
+    if (seIsNumberNode(nm)) return 1;
+    if (d_get_number_of_children(pn) == 1 && seIsWrapper(nm)) {
       pn = d_get_child(pn, 0);
       continue;
     }
@@ -375,19 +128,16 @@ static seFoldRes seFoldCall(D_ParseNode *pn) {
   return SE_FOLD_BAIL;
 }
 
-static seFoldRes seFold(D_ParseNode *pn, double *out) {
+/* leaf classification: what would R's baseenv() eval make of this node alone? */
+static seFoldRes seFoldLeaf(D_ParseNode *pn, double *out) {
   const char *nm = seNodeName(pn);
-  int nch = d_get_number_of_children(pn);
-
   if (strcmp(nm, "function_call") == 0) return seFoldCall(pn);
-
   if (strcmp(nm, "symbol") == 0 || strcmp(nm, "identifier") == 0) {
     size_t n = (size_t)(pn->end - pn->start_loc.s);
     /* pi is bound in baseenv(); every other bare name we emit is not */
     if (n == 2 && strncmp(pn->start_loc.s, "pi", 2) == 0) return SE_FOLD_BAIL;
     return SE_FOLD_NO;
   }
-
   if (strcmp(nm, "integer") == 0 || strcmp(nm, "float") == 0) {
     char buf[64];
     size_t n = (size_t)(pn->end - pn->start_loc.s);
@@ -396,15 +146,35 @@ static seFoldRes seFold(D_ParseNode *pn, double *out) {
     *out = atof(buf);
     return SE_FOLD_YES;
   }
+  return SE_FOLD_NO;   /* not a leaf; caller keeps walking */
+}
 
+/* combine two folded operands under one arithmetic operator */
+static seFoldRes seFoldBinary(char op, seFoldRes ra, double a,
+                              seFoldRes rb, double b, double *out) {
+  if (ra == SE_FOLD_BAIL || rb == SE_FOLD_BAIL) return SE_FOLD_BAIL;
+  if (ra != SE_FOLD_YES || rb != SE_FOLD_YES) return SE_FOLD_NO;
+  switch (op) {
+  case '+': *out = a + b; return SE_FOLD_YES;
+  case '-': *out = a - b; return SE_FOLD_YES;
+  case '*': *out = a * b; return SE_FOLD_YES;
+  case '/': *out = a / b; return SE_FOLD_YES;
+  default:  return SE_FOLD_BAIL;   /* '^' -- R's ^ vs C pow edge cases */
+  }
+}
+
+static seFoldRes seFold(D_ParseNode *pn, double *out) {
+  const char *nm = seNodeName(pn);
+  int nch = d_get_number_of_children(pn);
+
+  if (seIsLeafNode(nm) && strcmp(nm, "number") != 0) return seFoldLeaf(pn, out);
   if (nch == 1) return seFold(d_get_child(pn, 0), out);
 
   if (nch == 2 && strcmp(nm, "unary_expression") == 0) {
     double v;
     seFoldRes r = seFold(d_get_child(pn, 1), &v);
     if (r != SE_FOLD_YES) return r;
-    const char *op = seNodeName(d_get_child(pn, 0));
-    *out = (op[0] == '-') ? -v : v;
+    *out = (seNodeName(d_get_child(pn, 0))[0] == '-') ? -v : v;
     return SE_FOLD_YES;
   }
 
@@ -415,47 +185,39 @@ static seFoldRes seFold(D_ParseNode *pn, double *out) {
       return seFold(d_get_child(pn, 1), out);
     }
     const char *mid = seNodeName(d_get_child(pn, 1));
-    if (strcmp(mid, ",") == 0) {          /* arg_list ',' expression */
-      double a, b;
-      seFoldRes ra = seFold(d_get_child(pn, 0), &a);
-      seFoldRes rb = seFold(d_get_child(pn, 2), &b);
-      if (ra == SE_FOLD_YES && rb == SE_FOLD_YES) { *out = b; return SE_FOLD_YES; }
-      return SE_FOLD_NO;
-    }
     double a, b;
     seFoldRes ra = seFold(d_get_child(pn, 0), &a);
     seFoldRes rb = seFold(d_get_child(pn, 2), &b);
-    if (ra == SE_FOLD_BAIL || rb == SE_FOLD_BAIL) return SE_FOLD_BAIL;
-    if (ra != SE_FOLD_YES || rb != SE_FOLD_YES) return SE_FOLD_NO;
-    switch (mid[0]) {
-    case '+': *out = a + b; return SE_FOLD_YES;
-    case '-': *out = a - b; return SE_FOLD_YES;
-    case '*': *out = a * b; return SE_FOLD_YES;
-    case '/': *out = a / b; return SE_FOLD_YES;
-    default:  return SE_FOLD_BAIL;   /* '^' -- R's ^ vs C pow edge cases */
+    if (mid[0] == ',') {                    /* arg_list ',' expression */
+      if (ra == SE_FOLD_YES && rb == SE_FOLD_YES) { *out = b; return SE_FOLD_YES; }
+      return SE_FOLD_NO;
     }
+    return seFoldBinary(mid[0], ra, a, rb, b, out);
   }
   return SE_FOLD_NO;
 }
 
-/* R's as.character() on a double: 15 significant digits, trailing zeros
-   dropped.  This matters for the constant table -- R parses "2.718281828459045"
-   to a double first, so .rxFromSEnum() sees the 16-character
-   as.character() form "2.71828182845905" and prefix-matches M_E.  Matching
-   the raw 17-character source text instead would silently miss every
-   constant. */
-static const char *seDblToStr(seCtx *ctx, double v) {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%.15g", v);
-  return seStr(ctx, buf);
-}
-
-static const char *seNumToStr(seCtx *ctx, double v) {
-  return seFromSEnum(ctx, seDblToStr(ctx, v));
-}
 
 static const char *seEmitParen(seCtx *ctx, D_ParseNode *pn) {
   return seCat(ctx, "(", seEmit(ctx, d_get_child(pn, 1)), ")", NULL, NULL, NULL);
+}
+
+/* How `a ^ b` is spelled in C.  .rxFromSE() decides this from the EXPONENT's
+   shape, not its value: a literal 2 becomes Rx_pow_di but a call to unary
+   minus does not, which is why d^(-1) is (1/(d)) while a^(-2) stays a^-2. */
+static const char *seEmitPower(seCtx *ctx, const char *x2, const char *x3,
+                               D_ParseNode *rhs) {
+  if (strcmp(x3, "1") == 0) return x2;
+  if (strcmp(x3, "-1") == 0) return seCat(ctx, "(1/(", x2, "))", NULL, NULL, NULL);
+  if (!seIsBareNumber(rhs)) return NULL;          /* caller joins with '^' */
+  double d = atof(x3);
+  if (d == floor(d)) return seCat(ctx, "Rx_pow_di(", x2, ",", x3, ")", NULL);
+  if (strcmp(x3, "0.5") == 0) {
+    if (strcmp(x2, "pi") == 0 || strcmp(x2, "M_PI") == 0) return "M_SQRT_PI";
+    if (strcmp(x2, "M_2_PI") == 0 || strcmp(x2, "(M_2_PI)") == 0) return "M_SQRT_2dPI";
+    return seCat(ctx, "sqrt(", x2, ")", NULL, NULL, NULL);
+  }
+  return seCat(ctx, "Rx_pow(", x2, ",", x3, ")", NULL);
 }
 
 static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
@@ -473,51 +235,10 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
 
   int isPow = (op[0] == '^') || (op[0] == '*' && op[1] == '*');
   if (isPow) {
-    if (strcmp(x3, "1") == 0) return x2;
-    if (strcmp(x3, "-1") == 0) return seCat(ctx, "(1/(", x2, "))", NULL, NULL, NULL);
-    if (seIsBareNumber(rhs)) {
-      double d = atof(x3);
-      if (d == floor(d)) {
-        return seCat(ctx, "Rx_pow_di(", x2, ",", x3, ")", NULL);
-      }
-      if (strcmp(x3, "0.5") == 0) {
-        if (strcmp(x2, "pi") == 0 || strcmp(x2, "M_PI") == 0) return "M_SQRT_PI";
-        if (strcmp(x2, "M_2_PI") == 0 || strcmp(x2, "(M_2_PI)") == 0) return "M_SQRT_2dPI";
-        return seCat(ctx, "sqrt(", x2, ")", NULL, NULL, NULL);
-      }
-      return seCat(ctx, "Rx_pow(", x2, ",", x3, ")", NULL);
-    }
+    const char *pw = seEmitPower(ctx, x2, x3, rhs);
+    if (pw != NULL) return pw;
   }
-  const char *ret = seCat(ctx, x2, isPow ? "^" : op, x3, NULL, NULL, NULL);
-
-  /* the pi peepholes from .rxFromSE(); string compares on the joined result */
-  if (!strcmp(ret, "pi*2") || !strcmp(ret, "2*pi") ||
-      !strcmp(ret, "M_PI*2") || !strcmp(ret, "2*M_PI")) return "M_2PI";
-  if (!strcmp(ret, "pi/2") || !strcmp(ret, "pi*0.5") || !strcmp(ret, "0.5*pi") ||
-      !strcmp(ret, "M_PI/2") || !strcmp(ret, "M_PI*0.5") ||
-      !strcmp(ret, "0.5*M_PI")) return "M_PI_2";
-  if (!strcmp(ret, "pi/4") || !strcmp(ret, "pi*0.25") || !strcmp(ret, "0.25*pi") ||
-      !strcmp(ret, "M_PI/4") || !strcmp(ret, "M_PI*0.25") ||
-      !strcmp(ret, "0.25*M_PI")) return "M_PI_4";
-  if (!strcmp(ret, "1/pi") || !strcmp(ret, "1/M_PI")) return "M_1_PI";
-  if (!strcmp(ret, "2/pi") || !strcmp(ret, "2/M_PI")) return "M_2_PI";
-  if (!strcmp(ret, "(M_2_PI)^0.5") || !strcmp(ret, "(M_2_PI)^(1/2)") ||
-      !strcmp(ret, "M_2_PI^0.5") || !strcmp(ret, "M_2_PI^(1/2)") ||
-      !strcmp(ret, "sqrt((M_2_PI))")) return "M_SQRT_2dPI";
-  if (!strcmp(ret, "(pi)^0.5") || !strcmp(ret, "(pi)^(1/2)") ||
-      !strcmp(ret, "pi^0.5") || !strcmp(ret, "pi^(1/2)") ||
-      !strcmp(ret, "(M_PI)^0.5") || !strcmp(ret, "(M_PI)^(1/2)") ||
-      !strcmp(ret, "M_PI^0.5") || !strcmp(ret, "M_PI^(1/2)")) return "M_SQRT_PI";
-  if (!strcmp(ret, "log(2)/log(10)")) return "M_LOG10_2";
-  if (!strcmp(ret, "1/log(10)")) return "M_LOG10E";
-  if (!strcmp(ret, "1/log(2)")) return "M_LOG2E";
-  if (!strcmp(ret, "2/M_SQRT_PI") || !strcmp(ret, "2/(M_SQRT_PI)")) return "M_2_SQRTPI";
-  if (!strcmp(ret, "1/sqrt(M_2PI)") || !strcmp(ret, "1/(sqrt((M_2PI)))") ||
-      !strcmp(ret, "1/(M_2PI^0.5)") || !strcmp(ret, "1/(M_2PI^(1/2))") ||
-      !strcmp(ret, "1/((M_2PI)^0.5)") || !strcmp(ret, "1/((M_2PI)^(1/2))")) {
-    return "M_1_SQRT_2PI";
-  }
-  return ret;
+  return seNamedConstant(seCat(ctx, x2, isPow ? "^" : op, x3, NULL, NULL, NULL));
 }
 
 /* Functions that reach .rxFromSE()'s GENERIC call branch unchanged: no
@@ -547,16 +268,9 @@ static const seFn seFns[] = {
 static D_ParseNode *seStripP(D_ParseNode *pn) {
   for (;;) {
     int nch = d_get_number_of_children(pn);
-    if (nch == 1) {
-      const char *nm = seNodeName(pn);
-      if (strcmp(nm, "expression") == 0 || strcmp(nm, "add_expression") == 0 ||
-          strcmp(nm, "mul_expression") == 0 || strcmp(nm, "unary_expression") == 0 ||
-          strcmp(nm, "power_expression") == 0 ||
-          strcmp(nm, "primary_expression") == 0) {
-        pn = d_get_child(pn, 0);
-        continue;
-      }
-      return pn;
+    if (nch == 1 && seIsWrapper(seNodeName(pn))) {
+      pn = d_get_child(pn, 0);
+      continue;
     }
     if (nch == 3 && strcmp(seNodeName(d_get_child(pn, 0)), "(") == 0) {
       return d_get_child(pn, 1);
@@ -589,9 +303,47 @@ static int seArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   return n;
 }
 
+/* log() takes .rxFromSE()'s .SE1p route, where .rxP1rmF() hunts a literal 1
+   down the argument's +/- spine to build log1p().  It only recurses through
+   '+' and '-', so on any other argument shape it hands back .rxFromSE(x)
+   unchanged and we can emit the same text.  On an additive argument it
+   rebuilds the text itself and bypasses the constant fold, so that shape goes
+   to R -- as does beta(), which .rxFromSE() rewrites to lbeta().
+   Returns NULL when the caller should bail. */
+static const char *seEmitLog(seCtx *ctx, D_ParseNode *arg) {
+  D_ParseNode *a0 = arg;
+  while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
+  int nch = d_get_number_of_children(a0);
+  if (nch == 3 && strcmp(seNodeName(d_get_child(a0, 0)), "(") != 0) {
+    const char *op = seNodeName(d_get_child(a0, 1));
+    if (op[0] == '+' || op[0] == '-') return NULL;
+  }
+  if (nch == 2 && strcmp(seNodeName(a0), "unary_expression") == 0) return NULL;
+  if (strcmp(seNodeName(a0), "function_call") == 0 &&
+      strcmp(seNodeText(ctx, d_get_child(a0, 0)), "beta") == 0) {
+    return NULL;
+  }
+  /* NB: the log path passes the RAW argument, not the .stripP()ed one */
+  const char *inner = seEmit(ctx, arg);
+  if (ctx->failed) return "";
+  return seNamedConstant(seCat(ctx, "log(", inner, ")", NULL, NULL, NULL));
+}
+
+/* the emitted name for a call, or NULL if it must go to the R walker */
+static const char *seCallName(const char *name, int nargs) {
+  int i;
+  if (strcmp(name, "abs0") == 0 && nargs == 1) return "abs";  /* .SEsingle */
+  for (i = 0; i < seNfns; i++) {
+    if (strcmp(name, seFns[i].name) == 0) {
+      /* R raises "'%s' takes %s arguments" here; let it produce the message */
+      return (seFns[i].nargs == nargs) ? seFns[i].name : NULL;
+    }
+  }
+  return NULL;
+}
+
 static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
-  D_ParseNode *nameNode = d_get_child(pn, 0);
-  const char *name = seNodeText(ctx, nameNode);
+  const char *name = seNodeText(ctx, d_get_child(pn, 0));
   int nch = d_get_number_of_children(pn), i;
 
   D_ParseNode *argNode = NULL;
@@ -608,63 +360,12 @@ static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
     if (nargs < 0) return seFail(ctx);
   }
 
-  /* log() takes the .SE1p route: .rxP1rmF() hunts a literal `1` down the
-     argument's +/- spine to make log1p().  It only recurses through '+' and
-     '-', so for any other argument shape it returns .rxFromSE(x) unchanged and
-     we can emit here -- but on an additive argument it also rebuilds the text
-     itself, bypassing the constant fold (log(a + 2.718281828459045) keeps the
-     digits rather than folding to M_E).  So bail on an additive argument, and
-     on beta() which .rxFromSE() rewrites to lbeta(). */
   if (strcmp(name, "log") == 0 && nargs == 1) {
-    D_ParseNode *a0 = args[0];
-    while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
-    if (d_get_number_of_children(a0) == 3 &&
-        strcmp(seNodeName(d_get_child(a0, 0)), "(") != 0) {
-      const char *op = seNodeName(d_get_child(a0, 1));
-      if (op[0] == '+' || op[0] == '-') return seFail(ctx);
-    }
-    if (d_get_number_of_children(a0) == 2 &&
-        strcmp(seNodeName(a0), "unary_expression") == 0) {
-      return seFail(ctx);
-    }
-    if (strcmp(seNodeName(a0), "function_call") == 0) {
-      const char *fn = seNodeText(ctx, d_get_child(a0, 0));
-      if (strcmp(fn, "beta") == 0) return seFail(ctx);
-    }
-    /* NB: the log path passes the RAW argument, not .stripP()ed */
-    const char *inner = seEmit(ctx, args[0]);
-    if (ctx->failed) return "";
-    const char *lret = seCat(ctx, "log(", inner, ")", NULL, NULL, NULL);
-    if (!strcmp(lret, "log(2)")) return "M_LN2";
-    if (!strcmp(lret, "log(10)")) return "M_LN10";
-    if (!strcmp(lret, "log(M_SQRT_PI)")) return "M_LN_SQRT_PI";
-    if (!strcmp(lret, "log(sqrt((M_PI_2)))") || !strcmp(lret, "log(sqrt(M_PI_2))") ||
-        !strcmp(lret, "log((M_PI_2)^(1/2))") || !strcmp(lret, "log((M_PI_2)^0.5)") ||
-        !strcmp(lret, "log(M_PI_2^(1/2))") || !strcmp(lret, "log(M_PI_2^0.5)")) {
-      return "M_LN_SQRT_PId2";
-    }
-    if (!strcmp(lret, "log(sqrt((M_2PI)))") || !strcmp(lret, "log(sqrt(M_2PI))") ||
-        !strcmp(lret, "log((M_2PI)^0.5)") || !strcmp(lret, "log((M_2PI)^(1/2))") ||
-        !strcmp(lret, "log(M_2PI^0.5)") || !strcmp(lret, "log(M_2PI^(1/2))")) {
-      return "M_LN_SQRT_2PI";
-    }
-    return lret;
+    const char *lg = seEmitLog(ctx, args[0]);
+    return (lg == NULL) ? seFail(ctx) : lg;
   }
 
-  /* .SEsingle: abs0(x) -> abs(x).  rxNot and loggamma are left to R (rxNot
-     wraps in "(!(" "))" and loggamma collides with the .SE1p lgamma1p path). */
-  const char *emitName = NULL;
-  if (strcmp(name, "abs0") == 0 && nargs == 1) {
-    emitName = "abs";
-  } else {
-    for (i = 0; i < seNfns; i++) {
-      if (strcmp(name, seFns[i].name) == 0) {
-        if (seFns[i].nargs != nargs) return seFail(ctx);  /* R raises here */
-        emitName = seFns[i].name;
-        break;
-      }
-    }
-  }
+  const char *emitName = seCallName(name, nargs);
   if (emitName == NULL) return seFail(ctx);
 
   const char *body = "";
@@ -673,18 +374,30 @@ static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
     if (ctx->failed) return "";
     body = (i == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
   }
-  const char *ret = seCat(ctx, emitName, "(", body, ")", NULL, NULL);
+  return seNamedConstant(seCat(ctx, emitName, "(", body, ")", NULL, NULL));
+}
 
-  /* the constant peepholes at the end of the generic branch */
-  if (!strcmp(ret, "exp(1)")) return "M_E";
-  if (!strcmp(ret, "sqrt(3)")) return "M_SQRT_3";
-  if (!strcmp(ret, "sqrt(2)")) return "M_SQRT2";
-  if (!strcmp(ret, "sqrt(32)")) return "M_SQRT_32";
-  if (!strcmp(ret, "sqrt(pi)")) return "M_SQRT_PI";
-  if (!strcmp(ret, "sqrt(M_2_PI)") || !strcmp(ret, "sqrt((M_2_PI))")) {
-    return "M_SQRT_2dPI";
+/* one symengine symbol as rxode2 text: constant table, then the reserved
+   names, then the mangling chain */
+static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
+  const char *raw = seNodeText(ctx, pn);
+  int i;
+  /* .cnst in .rxFromSE(): rx_SymPy_Res_<name> unshadows a reserved name */
+  if (strncmp(raw, "rx_SymPy_Res_", 13) == 0) {
+    for (i = 0; i < seNres; i++) {
+      if (strcmp(raw + 13, seRes[i].name) == 0) return seRes[i].name;
+    }
   }
-  return ret;
+  /* .rxSEreserved: numeric in R, emitted with sprintf("%.16f", .).  The later
+     `if (.ret == "E") return("M_E")` in .rxFromSE() is dead code -- "E" is in
+     .rxSEreserved and returns its numeric rendering first. */
+  for (i = 0; i < seNres; i++) {
+    if (strcmp(raw, seRes[i].name) == 0) {
+      if (seRes[i].val == NULL) break;      /* I: complex, falls through */
+      return seRes[i].val;
+    }
+  }
+  return seUnRes(ctx, seDemangle(ctx, seFromSEnum(ctx, raw)));
 }
 
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
@@ -692,42 +405,20 @@ static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
   const char *nm = seNodeName(pn);
   int nch = d_get_number_of_children(pn);
 
-  if (strcmp(nm, "symbol") == 0) {
-    const char *raw = seNodeText(ctx, pn);
-    int i;
-    /* .cnst in .rxFromSE(): rx_SymPy_Res_<name> unshadows a reserved name */
-    if (strncmp(raw, "rx_SymPy_Res_", 13) == 0) {
-      for (i = 0; i < seNres; i++) {
-        if (strcmp(raw + 13, seRes[i].name) == 0) return seRes[i].name;
-      }
-    }
-    /* .rxSEreserved: numeric in R, emitted with sprintf("%.16f", .).  Note the
-       later `if (.ret == "E") return("M_E")` in .rxFromSE() is dead code --
-       "E" is in .rxSEreserved and returns its numeric rendering first. */
-    for (i = 0; i < seNres; i++) {
-      if (strcmp(raw, seRes[i].name) == 0) {
-        if (seRes[i].val == NULL) break;   /* I: complex, falls through */
-        return seRes[i].val;
-      }
-    }
-    return seUnRes(ctx, seDemangle(ctx, seFromSEnum(ctx, raw)));
-  }
-  if (strcmp(nm, "number") == 0 || strcmp(nm, "integer") == 0 ||
-      strcmp(nm, "float") == 0) {
+  if (strcmp(nm, "symbol") == 0) return seEmitSymbol(ctx, pn);
+  if (seIsNumberNode(nm)) {
     /* do NOT recurse: a terminal's only child is named after its regex.
        Round-trip through a double so the rendering matches what R's parser
        plus as.character() produce (see seDblToStr). */
     return seNumToStr(ctx, atof(seNodeText(ctx, pn)));
   }
   if (strcmp(nm, "function_call") == 0) return seFunctionCall(ctx, pn);
-
   if (nch == 1) return seEmit(ctx, d_get_child(pn, 0));
-
   if (nch == 2 && strcmp(nm, "unary_expression") == 0) {
-    const char *op = seNodeName(d_get_child(pn, 0));
     const char *inner = seEmit(ctx, d_get_child(pn, 1));
     if (ctx->failed) return "";
-    return seCat(ctx, op, inner, NULL, NULL, NULL, NULL);
+    return seCat(ctx, seNodeName(d_get_child(pn, 0)), inner,
+                 NULL, NULL, NULL, NULL);
   }
   if (nch == 3) {
     if (strcmp(seNodeName(d_get_child(pn, 0)), "(") == 0) {
