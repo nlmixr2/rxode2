@@ -2422,6 +2422,40 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   isTRUE(getOption("rxode2.symengineC", TRUE))
 }
 
+#' Translate many symengine expressions at once
+#'
+#' rxFromSE() is called once per emitted line, and most of that call is fixed
+#' cost: the NSE front end, `.udfEnvSet()`, and marshalling the derivative
+#' templates across to C.  Handing the whole set over at once pays that once
+#' instead of once per line, and lets src/seBatch.h run the translations in
+#' parallel (a batch of one is never worth a thread).
+#'
+#' Anything the C emitter declines comes back `NA` and is routed to the R
+#' walker individually, so the result is what `rxFromSE()` would have given
+#' for each element.
+#'
+#' @param x character vector of symengine expressions
+#' @return character vector of rxode2 expressions
+#' @author Matthew L. Fidler
+#' @noRd
+.rxFromSEvec <- function(x) {
+  .x <- .rxUnXi(as.character(x))
+  if (.rxFromSEuseC()) {
+    .ret <- .rxFromSEC(.x)
+    .na <- which(is.na(.ret))
+    if (length(.na) == 0L) {
+      return(.ret)
+    }
+  } else {
+    .ret <- rep(NA_character_, length(.x))
+    .na <- seq_along(.x)
+  }
+  for (.i in .na) {
+    .ret[.i] <- .rxFromSE(eval(parse(text = paste0("quote({", .x[.i], "})"))))
+  }
+  .ret
+}
+
 .rxFromSEC <- function(x, numDer = .rxSEstate$fromNumDer) {
   .d <- .rxDtemplates()
   .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer),

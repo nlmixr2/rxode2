@@ -32,6 +32,7 @@
 #include "seFromSE.g.d_parser.h"
 
 #include "seFromSEemit.h"
+#include "seBatch.h"
 
 /* ------------------------------------------------------------ entry point --
    Pure string -> string: no R API, no symengine.  Returns a pointer into
@@ -79,29 +80,11 @@ static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {
 
 SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
                           SEXP dName, SEXP dWhich, SEXP dTmpl) {
-  if (TYPEOF(strVec) != STRSXP) {
-    Rf_error("%s", "'strVec' must be a character vector");
-  }
-  R_xlen_t n = Rf_xlength(strVec), i;
-  int numDer = Rf_asInteger(numDerS);
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
-  /* resolve the named-constant buckets once; never inside the per-expression
-     loop (and never inside a future parallel region -- it writes statics) */
+  /* resolve the named-constant buckets once, before any thread starts */
   seNamedInit();
-  seCtx ctx;
-  ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
   int nd = 0;
   seDeriv *derivs = seDerivsFromR(dName, dWhich, dTmpl, &nd);
-  ctx.derivs = derivs; ctx.nderivs = nd;
-  for (i = 0; i < n; i++) {
-    SEXP el = STRING_ELT(strVec, i);
-    if (el == NA_STRING) { SET_STRING_ELT(ret, i, NA_STRING); continue; }
-    const char *out = seFromSE1(&ctx, CHAR(el));
-    if (out == NULL) SET_STRING_ELT(ret, i, NA_STRING);
-    else SET_STRING_ELT(ret, i, Rf_mkChar(out));
-  }
-  seArenaFree(&ctx);
+  SEXP ret = seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), derivs, nd);
   free(derivs);
-  UNPROTECT(1);
   return ret;
 }

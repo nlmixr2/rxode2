@@ -29,6 +29,7 @@
 #include "rxToSE.g.d_parser.h"
 
 #include "rxToSEemit.h"
+#include "seBatch.h"
 
 /* Pure string -> string: no R API, no symengine.  Returns a pointer into
    ctx's arena, or NULL when the caller must fall back to the R walker. */
@@ -54,22 +55,5 @@ static const char *rxToSE1(seCtx *ctx, const char *in) {
    emitter declines are returned as NA_character_ so the R shim can route just
    those to rxToSE(). */
 SEXP _rxode2_rxToSEChar(SEXP strVec) {
-  if (TYPEOF(strVec) != STRSXP) {
-    Rf_error("%s", "'strVec' must be a character vector");
-  }
-  R_xlen_t n = Rf_xlength(strVec), i;
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
-  seCtx ctx;
-  ctx.head = NULL; ctx.failed = 0; ctx.numDer = 0;
-  ctx.derivs = NULL; ctx.nderivs = 0;
-  for (i = 0; i < n; i++) {
-    SEXP el = STRING_ELT(strVec, i);
-    if (el == NA_STRING) { SET_STRING_ELT(ret, i, NA_STRING); continue; }
-    const char *out = rxToSE1(&ctx, CHAR(el));
-    if (out == NULL) SET_STRING_ELT(ret, i, NA_STRING);
-    else SET_STRING_ELT(ret, i, Rf_mkChar(out));
-  }
-  seArenaFree(&ctx);
-  UNPROTECT(1);
-  return ret;
+  return seRunBatch(strVec, rxToSE1, 0, NULL, 0);
 }
