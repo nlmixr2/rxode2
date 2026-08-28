@@ -36,7 +36,7 @@ static seFoldRes seFoldCall(D_ParseNode *pn) {
   int nch = d_get_number_of_children(pn), i;
   for (i = 0; i < nch; i++) {
     D_ParseNode *ch = d_get_child(pn, i);
-    if (seKindOf(ch) == SE_K_ARGLIST) {
+    if (seNiArgList(ch)) {
       double v;
       seFoldRes r = seFold(ch, &v);
       if (r != SE_FOLD_YES) return SE_FOLD_NO;
@@ -48,15 +48,17 @@ static seFoldRes seFoldCall(D_ParseNode *pn) {
 
 /* leaf classification: what would R's baseenv() eval make of this node alone? */
 static seFoldRes seFoldLeaf(D_ParseNode *pn, double *out) {
-  seKind k = seKindOf(pn);
-  if (k == SE_K_CALL) return seFoldCall(pn);
-  if (k == SE_K_SYMBOL || k == SE_K_IDENTIFIER) {
+  const char *name = seNodeName(pn);
+  seNodeInfo ni;
+  seNiReset(&ni);
+  if (seNodeHas(function_call)) return seFoldCall(pn);
+  if (seNodeHas(symbol) || seNodeHas(identifier)) {
     size_t n = (size_t)(pn->end - pn->start_loc.s);
     /* pi is bound in baseenv(); every other bare name we emit is not */
     if (n == 2 && strncmp(pn->start_loc.s, "pi", 2) == 0) return SE_FOLD_BAIL;
     return SE_FOLD_NO;
   }
-  if (k == SE_K_INTEGER || k == SE_K_FLOAT) {
+  if (seNodeHas(integer_num) || seNodeHas(float_num)) {
     char buf[64];
     size_t n = (size_t)(pn->end - pn->start_loc.s);
     if (n >= sizeof(buf)) return SE_FOLD_NO;
@@ -68,16 +70,16 @@ static seFoldRes seFoldLeaf(D_ParseNode *pn, double *out) {
 }
 
 /* combine two folded operands under one arithmetic operator */
-static seFoldRes seFoldBinary(seKind op, seFoldRes ra, double a,
+static seFoldRes seFoldBinary(char op, seFoldRes ra, double a,
                               seFoldRes rb, double b, double *out) {
   if (ra == SE_FOLD_BAIL || rb == SE_FOLD_BAIL) return SE_FOLD_BAIL;
   if (ra != SE_FOLD_YES || rb != SE_FOLD_YES) return SE_FOLD_NO;
   switch (op) {
-  case SE_K_PLUS:   *out = a + b; return SE_FOLD_YES;
-  case SE_K_MINUS:  *out = a - b; return SE_FOLD_YES;
-  case SE_K_TIMES:  *out = a * b; return SE_FOLD_YES;
-  case SE_K_DIVIDE: *out = a / b; return SE_FOLD_YES;
-  default: return SE_FOLD_BAIL;    /* SE_K_POW -- R's ^ vs C pow edge cases */
+  case '+': *out = a + b; return SE_FOLD_YES;
+  case '-': *out = a - b; return SE_FOLD_YES;
+  case '*': *out = a * b; return SE_FOLD_YES;
+  case '/': *out = a / b; return SE_FOLD_YES;
+  default:  return SE_FOLD_BAIL;   /* '^'/'**' -- R's ^ vs C pow edge cases */
   }
 }
 
@@ -86,14 +88,14 @@ static seFoldRes seFoldBinary(seKind op, seFoldRes ra, double a,
 static seFoldRes seFoldTernary(D_ParseNode *pn, double *out) {
   /* '(' expression ')' -- the paren token is child 0, a binary node's
      operator is child 1 */
-  if (seKindOf(d_get_child(pn, 0)) == SE_K_LPAREN) {
+  if (seIsLit(d_get_child(pn, 0), '(')) {
     return seFold(d_get_child(pn, 1), out);
   }
-  seKind mid = seKindOf(d_get_child(pn, 1));
+  char mid = seNodeName(d_get_child(pn, 1))[0];
   double a, b;
   seFoldRes ra = seFold(d_get_child(pn, 0), &a);
   seFoldRes rb = seFold(d_get_child(pn, 2), &b);
-  if (mid == SE_K_COMMA) {                  /* arg_list ',' expression */
+  if (mid == ',') {                         /* arg_list ',' expression */
     if (ra == SE_FOLD_YES && rb == SE_FOLD_YES) { *out = b; return SE_FOLD_YES; }
     return SE_FOLD_NO;
   }
@@ -101,17 +103,25 @@ static seFoldRes seFoldTernary(D_ParseNode *pn, double *out) {
 }
 
 static seFoldRes seFold(D_ParseNode *pn, double *out) {
-  seKind k = seKindOf(pn);
+  const char *name = seNodeName(pn);
+  seNodeInfo ni;
   int nch = d_get_number_of_children(pn);
+  seNiReset(&ni);
 
-  if (seIsLeafNode(k) && k != SE_K_NUMBER) return seFoldLeaf(pn, out);
+  /* a leaf other than "number", which only wraps integer_num/float_num.  Asked
+     through the local ni so the memo is shared with the tests below, the way
+     tran.c hands its nodeInfo to the helpers it calls for the same node. */
+  if (seNodeHas(integer_num) || seNodeHas(float_num) || seNodeHas(symbol) ||
+      seNodeHas(identifier) || seNodeHas(function_call)) {
+    return seFoldLeaf(pn, out);
+  }
   if (nch == 1) return seFold(d_get_child(pn, 0), out);
 
-  if (nch == 2 && k == SE_K_UNARY) {
+  if (nch == 2 && seNodeHas(unary_expression)) {
     double v;
     seFoldRes r = seFold(d_get_child(pn, 1), &v);
     if (r != SE_FOLD_YES) return r;
-    *out = (seKindOf(d_get_child(pn, 0)) == SE_K_MINUS) ? -v : v;
+    *out = seIsLit(d_get_child(pn, 0), '-') ? -v : v;
     return SE_FOLD_YES;
   }
 

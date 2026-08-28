@@ -70,13 +70,16 @@ function_name : identifier ;
 
 symbol : identifier ;
 
-number : float | integer ;
+// float_num/integer_num rather than float/integer: the walker tests node
+// kinds with seNodeHas(), which stringifies the production name and uses it as
+// a seNodeInfo field, and `float` is a C keyword
+number : float_num | integer_num ;
 
 // symengine symbols carry rxode2's mangled names: THETA_1_, ETA_2_,
 // rx__d_dt_depot__, rx__df_a_dy_b__, rx__sens_a_BY_p__, rx_f_depot_,
 // and user names with dots such as eta.ka
 identifier: "[a-zA-Z_][a-zA-Z0-9_.]*" $term -1;
 
-integer: "[0-9]+" $term -1;
+integer_num: "[0-9]+" $term -1;
 
-float: "([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][\-\+]?[0-9]+)?|[0-9]+[eE][\-\+]?[0-9]+" $term -2;
+float_num: "([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][\-\+]?[0-9]+)?|[0-9]+[eE][\-\+]?[0-9]+" $term -2;

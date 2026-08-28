@@ -48,7 +48,7 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   if (fr == SE_FOLD_BAIL) return seFail(ctx);
   if (fr == SE_FOLD_YES) x3 = seNumToStr(ctx, fv);
 
-  int isPow = (seKindOf(opNode) == SE_K_POW);
+  int isPow = seIsPowOp(opNode);
   if (isPow) {
     const char *pw = seEmitPower(ctx, x2, x3, rhs);
     if (pw != NULL) return pw;
@@ -85,26 +85,28 @@ static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
 
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
-  seKind k = seKindOf(pn);
+  const char *name = seNodeName(pn);
+  seNodeInfo ni;
   int nch = d_get_number_of_children(pn);
+  seNiReset(&ni);
 
-  if (k == SE_K_SYMBOL) return seEmitSymbol(ctx, pn);
-  if (seIsNumberNode(k)) {
+  if (seNodeHas(symbol)) return seEmitSymbol(ctx, pn);
+  if (seNodeHas(number) || seNodeHas(integer_num) || seNodeHas(float_num)) {
     /* do NOT recurse: a terminal's only child is named after its regex.
        Round-trip through a double so the rendering matches what R's parser
        plus as.character() produce (see seDblToStr). */
     return seNumToStr(ctx, atof(seNodeText(ctx, pn)));
   }
-  if (k == SE_K_CALL) return seFunctionCall(ctx, pn);
+  if (seNodeHas(function_call)) return seFunctionCall(ctx, pn);
   if (nch == 1) return seEmit(ctx, d_get_child(pn, 0));
-  if (nch == 2 && k == SE_K_UNARY) {
+  if (nch == 2 && seNodeHas(unary_expression)) {
     const char *inner = seEmit(ctx, d_get_child(pn, 1));
     if (ctx->failed) return "";
     return seCat(ctx, seNodeName(d_get_child(pn, 0)), inner,
                  NULL, NULL, NULL, NULL);
   }
   if (nch == 3) {
-    if (seKindOf(d_get_child(pn, 0)) == SE_K_LPAREN) {
+    if (seIsLit(d_get_child(pn, 0), '(')) {
       return seEmitParen(ctx, pn);
     }
     return seBinary(ctx, pn);

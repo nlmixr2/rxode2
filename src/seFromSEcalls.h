@@ -43,11 +43,11 @@ static const seFn seFns[] = {
 static D_ParseNode *seStripP(D_ParseNode *pn) {
   for (;;) {
     int nch = d_get_number_of_children(pn);
-    if (nch == 1 && seIsWrapper(seKindOf(pn))) {
+    if (nch == 1 && seNiWrapper(pn)) {
       pn = d_get_child(pn, 0);
       continue;
     }
-    if (nch == 3 && seKindOf(d_get_child(pn, 0)) == SE_K_LPAREN) {
+    if (nch == 3 && seIsLit(d_get_child(pn, 0), '(')) {
       return d_get_child(pn, 1);
     }
     return pn;
@@ -61,7 +61,7 @@ static int seArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   int top = 0;
   for (;;) {
     int nch = d_get_number_of_children(pn);
-    if (nch == 3 && seKindOf(d_get_child(pn, 1)) == SE_K_COMMA) {
+    if (nch == 3 && seIsLit(d_get_child(pn, 1), ',')) {
       if (top >= 32) return -1;
       stack[top++] = d_get_child(pn, 2);
       pn = d_get_child(pn, 0);
@@ -89,12 +89,12 @@ static const char *seEmitLog(seCtx *ctx, D_ParseNode *arg) {
   D_ParseNode *a0 = arg;
   while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
   int nch = d_get_number_of_children(a0);
-  if (nch == 3 && seKindOf(d_get_child(a0, 0)) != SE_K_LPAREN) {
-    seKind op = seKindOf(d_get_child(a0, 1));
-    if (op == SE_K_PLUS || op == SE_K_MINUS) return NULL;
+  if (nch == 3 && !seIsLit(d_get_child(a0, 0), '(')) {
+    char op = seNodeName(d_get_child(a0, 1))[0];
+    if (op == '+' || op == '-') return NULL;
   }
-  if (nch == 2 && seKindOf(a0) == SE_K_UNARY) return NULL;
-  if (seKindOf(a0) == SE_K_CALL &&
+  if (nch == 2 && seNiIs(a0, unary_expression)) return NULL;
+  if (seNiIs(a0, function_call) &&
       strcmp(seNodeText(ctx, d_get_child(a0, 0)), "beta") == 0) {
     return NULL;
   }
@@ -122,7 +122,7 @@ static const char *seCallName(const char *name, int nargs) {
 static int seCallArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   int nch = d_get_number_of_children(pn), i;
   for (i = 0; i < nch; i++) {
-    if (seKindOf(d_get_child(pn, i)) == SE_K_ARGLIST) {
+    if (seNiArgList(d_get_child(pn, i))) {
       return seArgs(d_get_child(pn, i), args, max);
     }
   }
