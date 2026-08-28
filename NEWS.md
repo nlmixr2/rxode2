@@ -2,6 +2,20 @@
 
 ## New features
 
+- Symbolic derivative setup (`rxS()`, `.rxJacobian()`, `.rxSens()`, and so the
+  `nlmixr2est` model builds that use them) is 4-5x faster.  The cost was never
+  `symengine` itself -- `symengine::D()` is under 1% of the total -- but the R
+  text translation around it: `rxFromSE()` re-parsed every `symengine` string
+  with R's `parse()`, emitted through nested `paste0()` and a nine-deep `sub()`
+  regex chain, and saved and restored the whole `options()` list on every leaf.
+  Two changes address it.  The `.rxSEcnt` constant renderings are now computed
+  once when the package is built instead of by `eval(parse())` on each numeric
+  leaf.  A new `dparser` grammar (`inst/seFromSE.g`) and C emitter
+  (`src/seFromSE.c`) then translate `symengine` output directly; expressions
+  the emitter does not reproduce exactly fall back to the R walker, so output
+  is unchanged.  `.rxSens()` on a fifteen-state model drops from 1.27s to
+  0.19s.  Set `options(rxode2.symengineC = FALSE)` to force the R walker.
+
 - `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
   development version made reverse-mode AD (`"ADr"`) the default on the
   strength of timings that had been taken through `devtools::load_all()`,
