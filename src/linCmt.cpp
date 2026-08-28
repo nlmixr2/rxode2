@@ -129,6 +129,12 @@ extern "C" void ensureLinCmtA(int nCores) {
 #define RX_LINWIN_MAXP 7
 #define RX_LINWIN_DELTAS 4
 #define RX_LINWIN_MISSRUN 8
+// One slot outside the round-robin, used only while the give-up guard has
+// disarmed the speculative memo: it holds the CURRENT row's gap so that
+// row's own repeat executions are served, without the guard ever reading it
+// as evidence that the design reuses an interval.
+#define RX_LINWIN_SOLO RX_LINWIN_DELTAS
+#define RX_LINWIN_SLOTS (RX_LINWIN_DELTAS + 1)
 
 typedef stan::math::fvar<double> linCmtFv;
 
@@ -155,12 +161,19 @@ typedef struct {
   int deltaMemoOn;
   // Give-up guard: a design with no gap reuse pays the build with no hit
   // ever -- after RX_LINWIN_MISSRUN consecutive misses the window stops
-  // building (any hit resets the run; a window refill re-arms).  While
-  // disarmed the cache still holds only the gaps of the stretch that
-  // tripped it, so a later regular stretch's gap could never enter it --
-  // lastDelta re-arms on a row whose gap repeats the previous row's,
-  // which is what a regular stretch produces on its second row and what
-  // a genuinely irregular one never does.
+  // building INTO THE ROUND-ROBIN (any hit resets the run; a window refill
+  // re-arms).  While disarmed the cache still holds only the gaps of the
+  // stretch that tripped it, so a later regular stretch's gap could never
+  // enter it -- lastDelta re-arms on a row whose gap repeats the previous
+  // row's, which is what a regular stretch produces on its second row and
+  // what a genuinely irregular one never does.
+  //
+  // What the guard must NOT give up is the reuse that is there whatever
+  // the schedule: one row is looked up several times under one theta, and
+  // disarming used to make each of those executions recompute.  The solo
+  // slot (RX_LINWIN_SOLO, outside the round-robin and never reported as
+  // crossRow) holds the current row's gap while disarmed, so an irregular
+  // design builds per ROW rather than per EXECUTION.
   //
   // All of that evidence is about the DESIGN, so it has to be gathered
   // per ROW rather than per call.  One row reaches this code several
@@ -177,12 +190,12 @@ typedef struct {
   double lastDelta;
   int lastIdx;
   int nDelta, deltaNext;
-  double delta[RX_LINWIN_DELTAS];
-  int deltaIdx[RX_LINWIN_DELTAS];
-  double expL[RX_LINWIN_DELTAS][3];
-  double dExpL[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][3];
-  double expKa[RX_LINWIN_DELTAS];
-  double dExpKa[RX_LINWIN_DELTAS][RX_LINWIN_MAXP];
+  double delta[RX_LINWIN_SLOTS];
+  int deltaIdx[RX_LINWIN_SLOTS];
+  double expL[RX_LINWIN_SLOTS][3];
+  double dExpL[RX_LINWIN_SLOTS][RX_LINWIN_MAXP][3];
+  double expKa[RX_LINWIN_SLOTS];
+  double dExpKa[RX_LINWIN_SLOTS][RX_LINWIN_MAXP];
   // EXPLORATION ONLY (RX_LINCMT_PHI): the interval's state-transition
   // matrix Phi(delta) and its per-direction tangents, assembled by
   // probing the tail kernel with unit-basis prior states (so the entries
@@ -196,7 +209,7 @@ typedef struct {
   // result.  Keying the cache to the current subject keeps a solve
   // identical whatever the thread count, for one build per subject.
   int phiId, phiLastIdx;
-  int phiBuilt[RX_LINWIN_DELTAS];
+  int phiBuilt[RX_LINWIN_SLOTS];
   // The closed-form assembly (linCmtPhiAnalyticRow) caches into the same
   // phi/dPhi storage but under its own built flag: a solve never mixes the
   // two routes, and keeping the flags apart means a later solve at the same
@@ -210,10 +223,10 @@ typedef struct {
   // the wider one and the extra directions would read whatever was there.
   // The probe-built route is not exposed to this because it discards its
   // matrices at the start of every subject of every solve.
-  int phiABuilt[RX_LINWIN_DELTAS];
+  int phiABuilt[RX_LINWIN_SLOTS];
   int phiANd;
-  double phi[RX_LINWIN_DELTAS][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
-  double dPhi[RX_LINWIN_DELTAS][RX_LINWIN_MAXP][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
+  double phi[RX_LINWIN_SLOTS][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
+  double dPhi[RX_LINWIN_SLOTS][RX_LINWIN_MAXP][RX_LINWIN_MAXM][RX_LINWIN_MAXM];
 } linCmtWin;
 
 // Global linear compartment B model object
@@ -343,7 +356,7 @@ static int linCmtWinN = 0, linCmtSeqTailN = 0, linCmtSeqFullN = 0;
 static int linCmtSeqDualN = 0;
 static int linCmtValCompN = 0, linCmtValRestN = 0, linCmtMemoHitN = 0;
 static int linCmtValLiteN = 0;
-static int linCmtExpBuildN = 0, linCmtExpHitN = 0;
+static int linCmtExpBuildN = 0, linCmtExpHitN = 0, linCmtExpSoloN = 0;
 static int linCmtPhiBuildN = 0;
 static int linCmtPhiRowN = 0;
 // Rows propagated through the closed-form (analytic) transition matrix.
@@ -379,7 +392,9 @@ int linCmtDeltaMemo(int on = -1) {
 //'   fx-plus-scaling path with the Jacobian restore skipped),
 //'   expBuild (delta-keyed exponential-memo builds: one per distinct row
 //'   gap per theta window), expHit (rows whose exponentials came from the
-//'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off), dualRows (rows
+//'   delta memo; disable with RX_LINCMT_DELTA_MEMO=off), expSolo (of
+//'   those builds, the ones that went to the within-row slot the guard
+//'   keeps serving after it stops speculating), dualRows (rows
 //'   whose tail took one multi-direction pass, linCmtSensType="ADm"),
 //'   phiAnalyticRows (rows propagated through the closed-form transition
 //'   matrix; RX_LINCMT_PHI=2)
@@ -399,12 +414,13 @@ IntegerVector linCmtSeqStats(bool reset = false) {
                                           _["phiBuild"] = linCmtPhiBuildN,
                                           _["phiRows"] = linCmtPhiRowN,
                                           _["dualRows"] = linCmtSeqDualN,
-                                          _["phiAnalyticRows"] = linCmtPhiARowN);
+                                          _["phiAnalyticRows"] = linCmtPhiARowN,
+                                          _["expSolo"] = linCmtExpSoloN);
   if (reset) {
     linCmtWinN = linCmtSeqTailN = linCmtSeqFullN = 0;
     linCmtValCompN = linCmtValRestN = linCmtMemoHitN = 0;
     linCmtValLiteN = 0;
-    linCmtExpBuildN = linCmtExpHitN = 0;
+    linCmtExpBuildN = linCmtExpHitN = linCmtExpSoloN = 0;
     linCmtPhiBuildN = linCmtPhiRowN = 0;
     linCmtSeqDualN = linCmtPhiARowN = 0;
   }
@@ -471,9 +487,10 @@ static void linCmtWinFill(stan::math::linCmtStan &lc, linCmtWin &w,
   w.missRun = 0;
   w.lastDelta = NA_REAL;
   w.lastIdx = -1;
+  w.delta[RX_LINWIN_SOLO] = NA_REAL;
   w.phiId = -1;
   w.phiLastIdx = -1;
-  for (int s = 0; s < RX_LINWIN_DELTAS; s++) w.phiBuilt[s] = w.phiABuilt[s] = 0;
+  for (int s = 0; s < RX_LINWIN_SLOTS; s++) w.phiBuilt[s] = w.phiABuilt[s] = 0;
   w.phiANd = -1;
   {
     const char *e = getenv("RX_LINCMT_DELTA_MEMO");
@@ -521,21 +538,45 @@ static int linCmtWinDeltaSlot(linCmtWin &w, double delta, int idx, int *hit,
   // cached gaps are stale and no consecutive repeat appears; that residual
   // case only forgoes hits, it is never wrong.
   int deltaRepeat = newRow && (memcmp(&w.lastDelta, &delta, sizeof(double)) == 0);
+  int solo = 0;
   if (newRow) {
     w.lastDelta = delta;
     w.lastIdx = idx;
     if (w.missRun >= RX_LINWIN_MISSRUN) {
-      if (!deltaRepeat) return -1; // no reuse: stop building
-      w.missRun = 0;               // reuse is back: re-arm
+      if (deltaRepeat) w.missRun = 0; // reuse is back: re-arm
+      else solo = 1;                  // no cross-row reuse: stop speculating
     } else {
       w.missRun++;
     }
   } else if (w.missRun >= RX_LINWIN_MISSRUN) {
-    return -1; // disarmed: a re-execution is not evidence to re-arm on
+    solo = 1; // disarmed: a re-execution is not evidence to re-arm on
   }
-  int s = w.deltaNext;
-  w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
-  if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
+  int s;
+  if (solo) {
+    // Disarmed, so nothing here may claim the interval recurs -- but a row
+    // is looked up several times under one theta (once per linCmtB() call
+    // the model generates, and again on a fit's inner re-walks), and those
+    // repeats are reuse that is present whatever the schedule.  The solo
+    // slot serves them, so an irregular design builds its exponentials --
+    // and, under linCmtSensPhi = 2, assembles its transition matrix -- once
+    // per ROW instead of once per EXECUTION.  It stays outside the
+    // round-robin the scan above walks and never reports crossRow, so the
+    // guard's reading of the design, and with it the probe-built route's
+    // engage rule, are exactly as before.
+    if (memcmp(&w.delta[RX_LINWIN_SOLO], &delta, sizeof(double)) == 0) {
+      *hit = 1;
+#pragma omp atomic
+      linCmtExpHitN++;
+      return RX_LINWIN_SOLO;
+    }
+    s = RX_LINWIN_SOLO;
+#pragma omp atomic
+    linCmtExpSoloN++;
+  } else {
+    s = w.deltaNext;
+    w.deltaNext = (w.deltaNext + 1) % RX_LINWIN_DELTAS;
+    if (w.nDelta < RX_LINWIN_DELTAS) w.nDelta++;
+  }
   w.delta[s] = delta;
   w.deltaIdx[s] = idx;
   w.phiBuilt[s] = w.phiABuilt[s] = 0;
@@ -713,7 +754,7 @@ static bool linCmtPhiAnalyticRow(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
   // A cached matrix carries only the columns its mask asked for; a wider
   // mask has to rebuild.
   if (w.phiANd != nd) {
-    for (int i = 0; i < RX_LINWIN_DELTAS; i++) w.phiABuilt[i] = 0;
+    for (int i = 0; i < RX_LINWIN_SLOTS; i++) w.phiABuilt[i] = 0;
     w.phiANd = nd;
   }
   double phiLoc[RX_LINWIN_MAXM][RX_LINWIN_MAXM];
@@ -1157,7 +1198,8 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx,
     w.missRun = 0;
     w.lastDelta = NA_REAL;
     w.lastIdx = -1;
-    for (int i = 0; i < RX_LINWIN_DELTAS; i++) w.phiBuilt[i] = w.phiABuilt[i] = 0;
+    w.delta[RX_LINWIN_SOLO] = NA_REAL;
+    for (int i = 0; i < RX_LINWIN_SLOTS; i++) w.phiBuilt[i] = w.phiABuilt[i] = 0;
     dHit = dCross = 0;
     dSlot = memoOn ? linCmtWinDeltaSlot(w, lc.dt_, idx, &dHit, &dCross) : -1;
   }

@@ -33,6 +33,26 @@
   in the order earlier versions used.  `linCmtSeqStats()` reports the rows
   served as `phiAnalyticRows`.
 
+- The `linCmt()` sensitivity delta memo now keeps serving a row's own
+  repeat executions after its give-up guard has disarmed.  The guard stops
+  the window building exponentials for gaps that never recur, which is what
+  a schedule with no repeated interval produces; but one row is looked up
+  several times under one set of parameters -- once per `linCmtB()` call
+  the model generates, and again on every inner re-walk of a fit -- and
+  disarming was discarding those repeats too, so an irregular design
+  rebuilt the exponentials, and with `linCmtSensPhi=2` reassembled the
+  transition matrix, once per EXECUTION rather than once per row.  A slot
+  outside the round-robin now holds the current row's gap while the guard
+  is disarmed; it is never read as evidence that an interval recurs, so the
+  guard's reading of the design and the probe-built route's engage rule are
+  unchanged.  Results are bitwise identical either way (the memo is exact
+  caching, tested with it forced on and off).  Measured on a 40 subject by
+  100 observation two compartment oral FOCEi fit, an irregular sampling
+  schedule runs 1.14x faster and a uniform one is unchanged, which brings
+  the cost of an irregular schedule relative to a uniform one from 1.31x to
+  1.08x.  `linCmtSeqStats()` reports the builds served this way as
+  `expSolo`.
+
 - `linCmtSensType="ADm"` differentiates the `linCmt()` closed form with
   every requested direction carried through a SINGLE forward-mode pass,
   where `"AD"` repeats the whole evaluation once per direction with one
@@ -110,8 +130,8 @@
   every other row is multiply-only.  The memo is exact caching (bitwise
   identical results, tested), sized at four gaps from measured designs,
   and can be disabled with `RX_LINCMT_DELTA_MEMO=off`; a design with no
-  gap reuse stops building after eight consecutive misses so it pays
-  essentially nothing; a stretch whose gap repeats the previous row's --
+  gap reuse stops building speculatively after eight consecutive misses so
+  it pays essentially nothing; a stretch whose gap repeats the previous row's --
   what a regular sampling schedule produces and an irregular one does not
   -- re-arms it, so an irregular stretch no longer disables the memo for
   the regular rows that follow it under the same parameters.
