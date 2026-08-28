@@ -2369,6 +2369,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxFromSE.envir <- new.env(parent=emptyenv())
 .rxFromSE.envir$parent <- NULL
 
+
+## The C emitter (src/seFromSE.c) for symengine text -> rxode2/C.  It returns
+## NA_character_ for anything it does not reproduce exactly, and those fall back
+## to the R walker below; falling back is always safe, guessing is not.  Set
+## options(rxode2.symengineC = FALSE) to force the R walker (the differential
+## fixture test runs both).
+.rxFromSEuseC <- function() {
+  isTRUE(getOption("rxode2.symengineC", TRUE))
+}
+
+.rxFromSEC <- function(x, numDer = .rxFromNumDer) {
+  .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer))
+}
+
 #' @rdname rxToSE
 #' @export
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
@@ -2379,7 +2393,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
   if (is(substitute(x), "character")) {
-    return(.rxFromSE(eval(parse(text = paste0("quote({", .rxUnXi(x), "})")))))
+    .x <- .rxUnXi(x)
+    if (length(.x) == 1L && .rxFromSEuseC()) {
+      .c <- .rxFromSEC(.x)
+      if (!is.na(.c)) {
+        return(.c)
+      }
+    }
+    return(.rxFromSE(eval(parse(text = paste0("quote({", .x, "})")))))
   } else if (is(substitute(x), "{")) {
     x <- deparse1(substitute(x))
     if (x[1] == "{") {
@@ -2409,7 +2430,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           } else {
             if (!is.null(attr(class(.val2), "package"))) {
               if (attr(class(.val2), "package") == "symengine") {
-                .val2 <- eval(parse(text = paste0("quote({", .rxUnXi(as.character(.val2)), "})")))
+                .txt <- .rxUnXi(as.character(.val2))
+                if (length(.txt) == 1L && .rxFromSEuseC()) {
+                  .c <- .rxFromSEC(.txt)
+                  if (!is.na(.c)) {
+                    return(.c)
+                  }
+                }
+                .val2 <- eval(parse(text = paste0("quote({", .txt, "})")))
                 .ret <- .rxFromSE(.val2)
                 return(.ret)
               }
