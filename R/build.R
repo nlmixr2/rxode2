@@ -155,6 +155,8 @@ d/dt(blood)     = a*intestine - b*blood
   .mkGrammar("tran", "rxode2parse")
   ## symengine printer output -> rxode2/C, walked by src/seFromSE.c
   .mkGrammar("seFromSE", "rxode2seFromSE")
+  ## rxode2 -> symengine text, walked by src/rxToSE.c
+  .mkGrammar("rxToSE", "rxode2rxToSE")
 
 
   # generate control
