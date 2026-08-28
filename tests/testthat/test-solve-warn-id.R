@@ -95,7 +95,7 @@ rxTest({
         cp <- center / v
       })
     }
-    .e <- et(amt = 100) %>% et(seq(0, 24, 4)) %>% et(id = 1:3)
+    .e <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:3)
     withr::with_seed(42, rxSolve(.f, .e, nStud = 2, addDosing = FALSE))
     # rxGetId() alone cannot see past the levels ...
     expect_equal(.Call("_rxTestGetIdLabels", 0:5, PACKAGE = "rxode2"),
@@ -134,7 +134,7 @@ rxTest({
         cp <- center / v
       })
     }
-    .e <- et(amt = 100) %>% et(seq(0, 24, 4))
+    .e <- et(amt = 100) |> et(seq(0, 24, 4))
     withr::with_seed(1, rxSolve(.f, .e, nSub = 4, addDosing = FALSE))
     expect_match(.warnLabels(NULL, c(0L, 2L), setLvl = FALSE),
                  "for subject\\(s\\): 1, 1 \\(sim 3\\)")
