@@ -21,10 +21,23 @@ typedef struct seBlk {
   char *mem;
 } seBlk;
 
+/* One registered derivative: rxode2parseD()[[name]][[which]], reduced to a
+   template by .rxDtemplates() so rendering it is substitution rather than a
+   call back into R.  The char* point into the caller's protected STRSXP and
+   are read-only for the life of the batch, which keeps the walk free of the
+   R API. */
+typedef struct {
+  const char *name;
+  int which;
+  const char *tmpl;
+} seDeriv;
+
 typedef struct {
   seBlk *head;
   int failed;          /* 1 = hand this expression back to the R walker */
   int numDer;          /* .rxFromNumDer: 0 error, 1 forward, 2 central */
+  const seDeriv *derivs;
+  int nderivs;
 } seCtx;
 
 static seBlk *seBlkNew(size_t need) {

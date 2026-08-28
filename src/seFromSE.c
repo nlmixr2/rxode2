@@ -57,18 +57,37 @@ static const char *seFromSE1(seCtx *ctx, const char *in) {
 /* .Call entry: character vector in, character vector out.  Elements the C
    emitter declines are returned as NA_character_ so the R shim can route just
    those to .rxFromSE(). */
-SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS) {
+SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
+                          SEXP dName, SEXP dWhich, SEXP dTmpl) {
   if (TYPEOF(strVec) != STRSXP) {
     Rf_error("%s", "'strVec' must be a character vector");
   }
   R_xlen_t n = Rf_xlength(strVec), i;
   int numDer = Rf_asInteger(numDerS);
   SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
-  /* resolve grammar symbol -> kind once; never inside the per-expression loop
-     (and never inside a future parallel region -- it writes statics) */
+  /* resolve the named-constant buckets once; never inside the per-expression
+     loop (and never inside a future parallel region -- it writes statics) */
   seNamedInit();
   seCtx ctx;
   ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
+  /* Flatten the derivative templates into plain C once, here, where the R API
+     is allowed.  CHAR() pointers stay valid while the caller's vectors are
+     protected, so the walk itself never touches R. */
+  int nd = (TYPEOF(dName) == STRSXP) ? (int) Rf_xlength(dName) : 0;
+  seDeriv *derivs = NULL;
+  if (nd > 0) {
+    derivs = (seDeriv*) malloc(sizeof(seDeriv) * (size_t) nd);
+    if (derivs == NULL) nd = 0;
+  }
+  {
+    int j;
+    for (j = 0; j < nd; j++) {
+      derivs[j].name = CHAR(STRING_ELT(dName, j));
+      derivs[j].which = INTEGER(dWhich)[j];
+      derivs[j].tmpl = CHAR(STRING_ELT(dTmpl, j));
+    }
+  }
+  ctx.derivs = derivs; ctx.nderivs = nd;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(strVec, i);
     if (el == NA_STRING) { SET_STRING_ELT(ret, i, NA_STRING); continue; }
@@ -77,6 +96,7 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS) {
     else SET_STRING_ELT(ret, i, Rf_mkChar(out));
   }
   seArenaFree(&ctx);
+  free(derivs);
   UNPROTECT(1);
   return ret;
 }

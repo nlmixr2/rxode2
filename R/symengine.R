@@ -640,6 +640,8 @@ rxD <- function(name, derivatives) {
     warning(sprintf(gettext("replacing defined derivatives for '%s'"), name), call. = FALSE)
   }
   assign(name, derivatives, envir = .rxD)
+  ## the C translator caches these as templates; see .rxDtemplates()
+  .rxSEstate$dTemplates <- NULL
   return(invisible())
 }
 
@@ -669,6 +671,9 @@ rxD <- function(name, derivatives) {
 ## model is translated; same state, same environment
 .rxSEstate$sumProdSum <- FALSE
 .rxSEstate$sumProdProd <- FALSE
+## Derivative templates extracted from rxode2parseD(); see .rxDtemplates().
+## Dropped whenever the derivative table changes (rxD/rxFun/rxRmFun).
+.rxSEstate$dTemplates <- NULL
 
 #' rxode2 to symengine environment
 #'
@@ -2397,7 +2402,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 .rxFromSEC <- function(x, numDer = .rxSEstate$fromNumDer) {
-  .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer))
+  .d <- .rxDtemplates()
+  .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer),
+        .d$name, .d$which, .d$template)
 }
 
 #' @rdname rxToSE
@@ -2718,6 +2725,30 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         if (.x1 == "^" && .x3 == "-1") {
           return(paste0("(1/(", .x2, "))"))
         }
+        ## Arithmetic identities, the same shape as the ^1 rule just above.
+        ## The operand fold turns a constant right-hand side into its value
+        ## first, so a/gamma(2) reaches here as a/1 -> a.  Only the right
+        ## operand is folded, which is why the multiply and add rules test both
+        ## sides but the divide and subtract rules test only the right: 0-x is
+        ## -x, not x, and 1/x is not x.
+        if (.x1 == "/" && .x3 == "1") {
+          return(.x2)
+        }
+        if (.x1 == "*" && .x3 == "1") {
+          return(.x2)
+        }
+        if (.x1 == "*" && .x2 == "1") {
+          return(.x3)
+        }
+        if (.x1 == "+" && .x3 == "0") {
+          return(.x2)
+        }
+        if (.x1 == "+" && .x2 == "0") {
+          return(.x3)
+        }
+        if (.x1 == "-" && .x3 == "0") {
+          return(.x2)
+        }
         if (.x1 == "^" && is.numeric(x[[3]])) {
           if (round(x[[3]]) == x[[3]]) {
             return(paste0("Rx_pow_di(", .x2, ",", .x3, ")"))
@@ -2790,6 +2821,18 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         ## if (.x1 == "^") {
         ##   return(paste0("Rx_pow(", .x2, ",", .x3, ")"))
         ## }
+        ## The right operand was already folded above; do the same for the
+        ## whole expression so a fully constant one collapses to its value
+        ## rather than being emitted as arithmetic on constants -- 1/gamma(2)
+        ## is 1, not 1/1.  Evaluated in baseenv() for the same reason as the
+        ## operand fold: the default frame's scope chain reaches the user's
+        ## global environment and would leak workspace variables in
+        ## (nlmixr2/rxode2#1109).  Runs AFTER the constant peepholes so pi*2
+        ## still comes out as M_2PI rather than 6.28...
+        .retv <- try(eval(parse(text = .ret), envir = baseenv()), silent = TRUE)
+        if (inherits(.retv, "numeric") && length(.retv) == 1L) {
+          return(.rxFromSEnum(.retv))
+        }
         return(.ret)
       } else {
         ## Unary Operators

@@ -60,7 +60,7 @@ SEXP _rxode2_eventSensShapeSave(void);
 SEXP _rxode2_eventSensShapeRestore(SEXP buf);
 SEXP _rxode2_parseModel(SEXP type);
 /* symengine text -> rxode2/C, src/seFromSE.c */
-SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS);
+SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP dName, SEXP dWhich, SEXP dTmpl);
 SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_setRstudio(SEXP);
@@ -940,7 +940,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_eventSensShapeRestore", (DL_FUNC) &_rxode2_eventSensShapeRestore, 1},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
-    {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 2},
+    {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 5},
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},
     {"rxode2_get_mv", (DL_FUNC) &rxode2_get_mv, 0},
     {"_rxode2_rxGetSeed", (DL_FUNC) &_rxode2_rxGetSeed, 0},

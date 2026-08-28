@@ -43,8 +43,9 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   const char *x3 = seEmit(ctx, rhs);
   if (ctx->failed) return "";
 
+  /* the fold is asked of the EMITTED text, exactly as .rxFromSE() asks it */
   double fv;
-  seFoldRes fr = seFold(rhs, &fv);
+  seFoldRes fr = seFoldStr(x3, &fv);
   if (fr == SE_FOLD_BAIL) return seFail(ctx);
   if (fr == SE_FOLD_YES) x3 = seNumToStr(ctx, fv);
 
@@ -53,9 +54,29 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
     const char *pw = seEmitPower(ctx, x2, x3, rhs);
     if (pw != NULL) return pw;
   }
+  /* Arithmetic identities, mirroring .rxFromSE().  Only the right operand is
+     folded, which is why divide and subtract test only that side: 0-x is -x,
+     not x, and 1/x is not x. */
+  if (!isPow) {
+    char op = seNodeName(opNode)[0];
+    if (op == '/' && !strcmp(x3, "1")) return x2;
+    if (op == '*' && !strcmp(x3, "1")) return x2;
+    if (op == '*' && !strcmp(x2, "1")) return x3;
+    if (op == '+' && !strcmp(x3, "0")) return x2;
+    if (op == '+' && !strcmp(x2, "0")) return x3;
+    if (op == '-' && !strcmp(x3, "0")) return x2;
+  }
   /* symengine may print '**'; rxode2 always emits '^' */
-  return seNamedConstant(seCat(ctx, x2, isPow ? "^" : seNodeName(opNode), x3,
-                               NULL, NULL, NULL));
+  const char *ret = seNamedConstant(seCat(ctx, x2, isPow ? "^" : seNodeName(opNode),
+                                          x3, NULL, NULL, NULL));
+  /* The right operand was folded above; do the same for the whole expression
+     so a fully constant one collapses to its value.  AFTER the named-constant
+     lookup, so pi*2 stays M_2PI rather than becoming 6.28... */
+  double wv;
+  seFoldRes wr = seFoldStr(ret, &wv);
+  if (wr == SE_FOLD_BAIL) return seFail(ctx);
+  if (wr == SE_FOLD_YES) return seNumToStr(ctx, wv);
+  return ret;
 }
 
 #include "seFromSEcalls.h"

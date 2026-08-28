@@ -157,16 +157,26 @@ message("capturing under library(rxode2) ...")
 message("capturing under pkgload::load_all() ...")
 .b <- .runCapture('suppressMessages(pkgload::load_all(".", quiet = TRUE))', "load_all", .inFile)
 
-## Keep only rows both loaders agree on.
+## The working tree is the oracle; the installed build is a cross-check.
+##
+## This used to keep only the rows both loaders agreed on, as a guard against
+## baking in a pkgload-only quirk.  That silently drops exactly the rows worth
+## pinning as soon as behaviour changes on purpose relative to the installed
+## version, so the load_all() capture now wins and the differences are
+## reported instead.  Read the list: every entry should be a change you meant
+## to make.
 .reconcile <- function(a, b, what) {
   stopifnot(identical(a$input, b$input))
-  keep <- a$output == b$output & a$isError == b$isError
-  if (any(!keep)) {
-    message(sprintf("  %s: dropped %d of %d loader-dependent row(s): %s",
-                    what, sum(!keep), nrow(a),
-                    paste(utils::head(a$input[!keep], 5L), collapse = ", ")))
+  diff <- b$output != a$output | b$isError != a$isError
+  if (any(diff)) {
+    message(sprintf("  %s: %d row(s) differ from the installed build:",
+                    what, sum(diff)))
+    for (.i in utils::head(which(diff), 12L)) {
+      message(sprintf("    %s\n      installed: %s\n      worktree : %s",
+                      a$input[.i], a$output[.i], b$output[.i]))
+    }
   }
-  a[keep, , drop = FALSE]
+  b
 }
 
 fromSE    <- .reconcile(.a$fromSE,        .b$fromSE,        "fromSE")

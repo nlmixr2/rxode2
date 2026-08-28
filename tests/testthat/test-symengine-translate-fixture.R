@@ -72,7 +72,10 @@ rxTest({
     # every expression the C path DOES accept matches the recorded output.
     .f <- readRDS(.fixtureFile)
     .df <- .f$fromSE
-    .got <- .Call(`_rxode2_rxFromSEChar`, .df$input, 1L)
+    # through the shim, not .Call() directly: the entry point's argument list
+    # grows as the emitter learns more (it gained the derivative templates),
+    # and a hard-coded .Call() only finds out at run time
+    .got <- rxode2:::.rxFromSEC(.df$input, 1L)
     .h <- which(!is.na(.got))
     expect_gt(length(.h), 100L) # it must actually be doing something
 

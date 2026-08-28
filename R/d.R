@@ -1001,6 +1001,60 @@
 #' cannot be taken.
 #' @author Matthew L. Fidler
 #' @export
+#' Derivative templates for the C translator
+#'
+#' Every entry in the derivative table is an R function of the argument
+#' STRINGS returning a string, and nearly all of them are pure `paste0()`
+#' builders.  Calling one with sentinel arguments therefore hands back the
+#' template it would have built, with the sentinels marking where each
+#' argument goes -- so `src/seFromSE.c` can render a `Derivative()` node by
+#' substitution instead of calling back into R once per node (which would also
+#' put the R API back inside a walk that is deliberately free of it).
+#'
+#' A closure that is not a pure template is detected and left out: each is
+#' called twice with different sentinels, and the two results must agree after
+#' renaming.  `linCmtB` validates its argument and errors, so it fails this and
+#' keeps using the R walker.
+#'
+#' @return list with `name`, `which` and `template`, parallel vectors
+#' @author Matthew L. Fidler
+#' @noRd
+.rxDtemplates <- function() {
+  .cached <- .rxSEstate$dTemplates
+  if (!is.null(.cached)) {
+    return(.cached)
+  }
+  .rxD <- rxode2parseD()
+  .name <- character(0)
+  .which <- integer(0)
+  .tmpl <- character(0)
+  for (.nm in ls(.rxD)) {
+    .lst <- get(.nm, envir = .rxD)
+    for (.k in seq_along(.lst)) {
+      .f <- .lst[[.k]]
+      if (!is.function(.f)) next
+      .na <- length(formals(.f))
+      .a <- sprintf("@@%d@@", seq_len(.na))
+      .b <- sprintf("##%d##", seq_len(.na))
+      .t1 <- tryCatch(do.call(.f, as.list(.a)), error = function(e) NULL)
+      .t2 <- tryCatch(do.call(.f, as.list(.b)), error = function(e) NULL)
+      if (!is.character(.t1) || length(.t1) != 1L ||
+            !is.character(.t2) || length(.t2) != 1L) {
+        next
+      }
+      .conv <- .t1
+      for (.i in seq_len(.na)) .conv <- gsub(.a[.i], .b[.i], .conv, fixed = TRUE)
+      if (!identical(.conv, .t2)) next
+      .name <- c(.name, .nm)
+      .which <- c(.which, .k)
+      .tmpl <- c(.tmpl, .t1)
+    }
+  }
+  .cached <- list(name = .name, which = as.integer(.which), template = .tmpl)
+  .rxSEstate$dTemplates <- .cached
+  .cached
+}
+
 rxode2parseD <- function() {
   return(.rxD)
 }

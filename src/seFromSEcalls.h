@@ -168,11 +168,123 @@ static int seCallArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   return 0;                                   /* zero-argument call */
 }
 
+/* Zero-derivative functions (.rxSEzeroD): the delay family and the locally
+   constant rounding family differentiate to 0 at every order. */
+static const char *seZeroD[] = {
+  "lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3",
+  "floor", "ceil", "round", "trunc", "ftrunc", "fround", "fprec", "sign"
+};
+#define seNzeroD ((int)(sizeof(seZeroD)/sizeof(seZeroD[0])))
+
+/* The meaningful node under a call argument.  seArgs() hands back the arg_list
+   node for a single argument, and the grammar's precedence ladder sits on top
+   of every value, so descend single-child nodes until one carries meaning. */
+static D_ParseNode *seArgNode(D_ParseNode *pn) {
+  for (;;) {
+    if (seNiIs(pn, symbol) || seNiIs(pn, number) || seNiIs(pn, function_call)) {
+      return pn;
+    }
+    if (d_get_number_of_children(pn) != 1) return pn;
+    pn = d_get_child(pn, 0);
+  }
+}
+
+/* Render a derivative template, substituting @@k@@ with args[k-1]. */
+static const char *seFillTemplate(seCtx *ctx, const char *tmpl,
+                                  const char **args, int nargs) {
+  const char *out = "";
+  const char *p = tmpl, *seg = tmpl;
+  for (;;) {
+    if (*p == '\0') {
+      if (p != seg) out = seCat(ctx, out, seDup(ctx, seg, (size_t)(p - seg)),
+                                NULL, NULL, NULL, NULL);
+      return out;
+    }
+    if (p[0] == '@' && p[1] == '@') {
+      const char *d = p + 2;
+      int k = 0;
+      while (*d >= '0' && *d <= '9') { k = k * 10 + (*d - '0'); d++; }
+      if (d != p + 2 && d[0] == '@' && d[1] == '@' && k >= 1 && k <= nargs) {
+        if (p != seg) out = seCat(ctx, out, seDup(ctx, seg, (size_t)(p - seg)),
+                                  NULL, NULL, NULL, NULL);
+        out = seCat(ctx, out, args[k - 1], NULL, NULL, NULL, NULL);
+        p = d + 2;
+        seg = p;
+        continue;
+      }
+    }
+    p++;
+  }
+}
+
+static const char *seFindDeriv(seCtx *ctx, const char *name, int which) {
+  int i;
+  for (i = 0; i < ctx->nderivs; i++) {
+    if (ctx->derivs[i].which != which) continue;
+    if (name[0] != ctx->derivs[i].name[0]) continue;
+    if (strcmp(name, ctx->derivs[i].name) == 0) return ctx->derivs[i].tmpl;
+  }
+  return NULL;
+}
+
+/* Derivative(f(a1, ..., an), v) -- the first-order form.  Higher orders, the
+   finite-difference fallbacks (.errD) and anything without a registered
+   template go to the R walker. */
+static const char *seDerivative(seCtx *ctx, D_ParseNode **args, int nargs) {
+  int i;
+  if (nargs != 2) return seFail(ctx);
+  D_ParseNode *fnNode = seArgNode(args[0]);
+  const char *var = seEmit(ctx, seArgNode(args[1]));
+  if (ctx->failed) return "";
+
+  if (!seNiIs(fnNode, function_call)) {
+    /* Derivative(abs0, v) reaches .rxFromSE() with a bare name */
+    if (seNiIs(fnNode, symbol) &&
+        strcmp(seNodeText(ctx, fnNode), "abs0") == 0) {
+      return seCat(ctx, "abs(", var, ")", NULL, NULL, NULL);
+    }
+    return seFail(ctx);
+  }
+
+  const char *fname = seNodeText(ctx, d_get_child(fnNode, 0));
+  for (i = 0; i < seNzeroD; i++) {
+    if (fname[0] == seZeroD[i][0] && strcmp(fname, seZeroD[i]) == 0) return "0";
+  }
+  /* NB: no abs0 shortcut here.  .rxFromSE() guards it with
+     `length(as.character(x[[2]])) == 1`, which is only true when the
+     differentiated thing is the bare NAME abs0; for the call abs0(a) that
+     vector is c("abs0","a") and the registered derivative wins, giving
+     dabs(a) rather than abs(a). */
+
+  D_ParseNode *fargs[8];
+  int nf = seCallArgs(fnNode, fargs, 8);
+  if (nf <= 0) return seFail(ctx);
+  const char *emitted[8];
+  for (i = 0; i < nf; i++) {
+    emitted[i] = seEmit(ctx, fargs[i]);
+    if (ctx->failed) return "";
+  }
+  /* which(.var == .args) must select exactly one argument */
+  int with = -1;
+  for (i = 0; i < nf; i++) {
+    if (strcmp(emitted[i], var) == 0) {
+      if (with >= 0) return seFail(ctx);       /* ambiguous; R uses .errD() */
+      with = i;
+    }
+  }
+  if (with < 0) return seFail(ctx);
+  const char *tmpl = seFindDeriv(ctx, fname, with + 1);
+  if (tmpl == NULL) return seFail(ctx);        /* unregistered, or linCmtB */
+  return seFillTemplate(ctx, tmpl, emitted, nf);
+}
+
 static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
   const char *name = seNodeText(ctx, d_get_child(pn, 0));
   D_ParseNode *args[8];
   int i, nargs = seCallArgs(pn, args, 8);
   if (nargs < 0) return seFail(ctx);
+
+  if (strcmp(name, "Derivative") == 0) return seDerivative(ctx, args, nargs);
 
   /* f(NaN) is how a zero-argument call survives the trip through symengine.
      Compared on the argument's source span rather than its node kind: for a

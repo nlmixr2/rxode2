@@ -449,6 +449,17 @@
 
 ## Bug fixes
 
+- Symbolic translation now simplifies constant arithmetic instead of emitting
+  it.  A fully constant expression folds to its value (`1/gamma(2)` is `1`, not
+  `1/1`), extending the fold that was already applied to the right-hand operand
+  of every binary operator, and the arithmetic identities are applied: `x/1`,
+  `x*1`, `1*x`, `x+0`, `0+x` and `x-0` all reduce to `x`, the same identity as
+  the `x^1` rule that was already there.  Only the right-hand operand is
+  folded, so `0-x` and `1/x` are correctly left alone.  The named constants
+  still win, so `pi*2` remains `M_2PI` rather than becoming `6.28...`.  This
+  shows up most in generated sensitivity code, where differentiating leaves a
+  great many `*1` and `+0` terms behind; the emitted values are unchanged.
+
 - `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
   they were given.  All three guarded the count with `length(x == n)` instead
   of `length(x) == n`; `x` is a call, so `x == n` compares its elements and

@@ -1,140 +1,121 @@
 /*
  * seFromSEfold.h -- would R have constant-folded this operand?
  *
- * .rxFromSE() runs try(eval(parse(text=.x3), envir=baseenv())) on every right
- * operand it emits and, when that yields a number, re-renders it.  That is not
- * the same question as "is this expression constant": an ordinary model symbol
- * is unbound in baseenv() so nothing folds, but `pi` IS bound there and
- * `sqrt(2)` does evaluate.  So the answer has three values, and the third one
- * -- BAIL -- means hand the whole expression to the R walker rather than guess.
+ * .rxFromSE() runs try(eval(parse(text=.x3), envir=baseenv())) on the right
+ * operand it has ALREADY EMITTED, and re-renders the result when it is a
+ * number.  Two things follow, and both matter:
  *
- * Included by seFromSE.c after the node classifiers it uses.
+ *  - the question is asked of the emitted TEXT, not of the parse tree.  By
+ *    then log(2) has become M_LN2, which does not evaluate in baseenv(), so
+ *    1/log(2) stays 1/M_LN2.  Deciding from the tree instead would wrongly
+ *    treat it as a constant call.
+ *  - "R could not fold it" and "we do not know what R would have done" are
+ *    different answers.  An ordinary model symbol is unbound in baseenv() so
+ *    nothing folds, but `pi` IS bound there and gamma(2) really does evaluate
+ *    (1/gamma(2) comes out as 1/1).  The third outcome, BAIL, hands the whole
+ *    expression to the R walker rather than guess.
  */
 #ifndef __SE_FROM_SE_FOLD_H__
 #define __SE_FROM_SE_FOLD_H__
 
-/* Constant fold of the right operand, mirroring
-   try(eval(parse(text=.x3), envir=baseenv())).
-
-   Three outcomes, because "R could not fold it" and "we do not know what R
-   would have done" are different things:
-     SE_FOLD_YES  -- pure numeric arithmetic, we computed it
-     SE_FOLD_NO   -- R's eval would have failed or returned a non-number, so
-                     no fold happens and we can carry on (an ordinary model
-                     symbol is not bound in baseenv(), and neither is an
-                     emitted name like M_PI or Rx_pow_di(a,2))
-     SE_FOLD_BAIL -- R's eval MIGHT have succeeded, so hand the whole
-                     expression to the R walker rather than guess.  That is
-                     `pi` (bound in baseenv) and any call whose arguments are
-                     all constants, since "sqrt(2)" does evaluate there. */
 typedef enum { SE_FOLD_NO = 0, SE_FOLD_YES = 1, SE_FOLD_BAIL = 2 } seFoldRes;
 
-static seFoldRes seFold(D_ParseNode *pn, double *out);
+/* a tiny arithmetic evaluator that also validates: ok stays 1 only if the
+   whole string was numbers, + - * /, parens and spaces */
+typedef struct { const char *p; int ok; } seEval;
 
-/* a call R might constant-fold: every argument folds to a number */
-static seFoldRes seFoldCall(D_ParseNode *pn) {
-  int nch = d_get_number_of_children(pn), i;
-  for (i = 0; i < nch; i++) {
-    D_ParseNode *ch = d_get_child(pn, i);
-    if (seNiArgList(ch)) {
-      double v;
-      seFoldRes r = seFold(ch, &v);
-      if (r != SE_FOLD_YES) return SE_FOLD_NO;
-    }
-  }
-  /* no arg_list at all (zero-arg call) or every argument was constant */
-  return SE_FOLD_BAIL;
+static double seEvalAdd(seEval *s);
+
+static void seEvalWs(seEval *s) {
+  while (*s->p == ' ' || *s->p == '\t') s->p++;
 }
 
-/* leaf classification: what would R's baseenv() eval make of this node alone? */
-static seFoldRes seFoldLeaf(D_ParseNode *pn, double *out) {
-  const char *name = seNodeName(pn);
-  seNodeInfo ni;
-  seNiReset(&ni);
-  if (seNodeHas(function_call)) return seFoldCall(pn);
-  if (seNodeHas(symbol) || seNodeHas(identifier)) {
-    size_t n = (size_t)(pn->end - pn->start_loc.s);
-    /* pi IS bound in baseenv(), so R folds it: .rxFromSE() emits "pi", evals
-       it there to 3.14159..., and .rxFromSEnum() renders that back as M_PI.
-       Doing the same here is exact -- R's pi and C's M_PI are the same double
-       -- and it is what makes 1/pi come out as M_1_PI.  Every other bare name
-       we emit is unbound there, so nothing folds. */
-    if (n == 2 && strncmp(pn->start_loc.s, "pi", 2) == 0) {
-      *out = M_PI;
-      return SE_FOLD_YES;
-    }
-    return SE_FOLD_NO;
+static double seEvalPrim(seEval *s) {
+  seEvalWs(s);
+  if (*s->p == '(') {
+    s->p++;
+    double v = seEvalAdd(s);
+    seEvalWs(s);
+    if (*s->p != ')') { s->ok = 0; return 0; }
+    s->p++;
+    return v;
   }
-  if (seNodeHas(integer_num) || seNodeHas(float_num)) {
-    char buf[64];
-    size_t n = (size_t)(pn->end - pn->start_loc.s);
-    if (n >= sizeof(buf)) return SE_FOLD_NO;
-    memcpy(buf, pn->start_loc.s, n); buf[n] = '\0';
-    *out = atof(buf);
+  char *end = NULL;
+  double v = strtod(s->p, &end);
+  if (end == s->p) { s->ok = 0; return 0; }
+  s->p = end;
+  return v;
+}
+
+static double seEvalUnary(seEval *s) {
+  seEvalWs(s);
+  if (*s->p == '-') { s->p++; return -seEvalUnary(s); }
+  if (*s->p == '+') { s->p++; return seEvalUnary(s); }
+  return seEvalPrim(s);
+}
+
+static double seEvalMul(seEval *s) {
+  double v = seEvalUnary(s);
+  for (;;) {
+    seEvalWs(s);
+    char c = *s->p;
+    if (c != '*' && c != '/') return v;
+    /* '**' is a power, which this evaluator does not do */
+    if (c == '*' && s->p[1] == '*') { s->ok = 0; return v; }
+    s->p++;
+    double r = seEvalUnary(s);
+    if (!s->ok) return v;
+    v = (c == '*') ? v * r : v / r;
+  }
+}
+
+static double seEvalAdd(seEval *s) {
+  double v = seEvalMul(s);
+  for (;;) {
+    seEvalWs(s);
+    char c = *s->p;
+    if (c != '+' && c != '-') return v;
+    s->p++;
+    double r = seEvalMul(s);
+    if (!s->ok) return v;
+    v = (c == '+') ? v + r : v - r;
+  }
+}
+
+/* name(<no letters inside>) -- the shape R can still evaluate in baseenv(),
+   which is how 1/gamma(2) becomes 1/1.  Anything with a letter inside the
+   parentheses names something unbound there, and anything already folded to a
+   constant (M_LN2, M_SQRT2) has no parentheses at all. */
+static int seConstCall(const char *s) {
+  const char *p = s;
+  while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+         *p == '.' || *p == '_') {
+    p++;
+  }
+  if (p == s || *p != '(') return 0;
+  if (s[strlen(s) - 1] != ')') return 0;
+  for (p++; *p != '\0'; p++) {
+    if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')) return 0;
+  }
+  return 1;
+}
+
+static seFoldRes seFoldStr(const char *str, double *out) {
+  if (strcmp(str, "pi") == 0) {         /* bound in baseenv(); R's pi == M_PI */
+    *out = M_PI;
     return SE_FOLD_YES;
   }
-  return SE_FOLD_NO;   /* not a leaf; caller keeps walking */
-}
-
-/* combine two folded operands under one arithmetic operator */
-static seFoldRes seFoldBinary(char op, seFoldRes ra, double a,
-                              seFoldRes rb, double b, double *out) {
-  if (ra == SE_FOLD_BAIL || rb == SE_FOLD_BAIL) return SE_FOLD_BAIL;
-  if (ra != SE_FOLD_YES || rb != SE_FOLD_YES) return SE_FOLD_NO;
-  switch (op) {
-  case '+': *out = a + b; return SE_FOLD_YES;
-  case '-': *out = a - b; return SE_FOLD_YES;
-  case '*': *out = a * b; return SE_FOLD_YES;
-  case '/': *out = a / b; return SE_FOLD_YES;
-  default:  return SE_FOLD_BAIL;   /* '^'/'**' -- R's ^ vs C pow edge cases */
-  }
-}
-
-/* the three-child shapes: a parenthesised expression, an argument list, or a
-   binary operator */
-static seFoldRes seFoldTernary(D_ParseNode *pn, double *out) {
-  /* '(' expression ')' -- the paren token is child 0, a binary node's
-     operator is child 1 */
-  if (seIsLit(d_get_child(pn, 0), '(')) {
-    return seFold(d_get_child(pn, 1), out);
-  }
-  char mid = seNodeName(d_get_child(pn, 1))[0];
-  double a, b;
-  seFoldRes ra = seFold(d_get_child(pn, 0), &a);
-  seFoldRes rb = seFold(d_get_child(pn, 2), &b);
-  if (mid == ',') {                         /* arg_list ',' expression */
-    if (ra == SE_FOLD_YES && rb == SE_FOLD_YES) { *out = b; return SE_FOLD_YES; }
-    return SE_FOLD_NO;
-  }
-  return seFoldBinary(mid, ra, a, rb, b, out);
-}
-
-static seFoldRes seFold(D_ParseNode *pn, double *out) {
-  const char *name = seNodeName(pn);
-  seNodeInfo ni;
-  int nch = d_get_number_of_children(pn);
-  seNiReset(&ni);
-
-  /* a leaf other than "number", which only wraps integer_num/float_num.  Asked
-     through the local ni so the memo is shared with the tests below, the way
-     tran.c hands its nodeInfo to the helpers it calls for the same node. */
-  if (seNodeHas(integer_num) || seNodeHas(float_num) || seNodeHas(symbol) ||
-      seNodeHas(identifier) || seNodeHas(function_call)) {
-    return seFoldLeaf(pn, out);
-  }
-  if (nch == 1) return seFold(d_get_child(pn, 0), out);
-
-  if (nch == 2 && seNodeHas(unary_expression)) {
-    double v;
-    seFoldRes r = seFold(d_get_child(pn, 1), &v);
-    if (r != SE_FOLD_YES) return r;
-    *out = seIsLit(d_get_child(pn, 0), '-') ? -v : v;
+  seEval s;
+  s.p = str;
+  s.ok = 1;
+  double v = seEvalAdd(&s);
+  seEvalWs(&s);
+  if (s.ok && *s.p == '\0') {
+    *out = v;
     return SE_FOLD_YES;
   }
-
-  if (nch == 3) return seFoldTernary(pn, out);
+  if (seConstCall(str)) return SE_FOLD_BAIL;
   return SE_FOLD_NO;
 }
-
 
 #endif /* __SE_FROM_SE_FOLD_H__ */
