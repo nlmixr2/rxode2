@@ -38,8 +38,11 @@ static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {
   int i;
   *nOut = 0;
   if (n <= 0) return NULL;
-  d = (seDeriv*) malloc(sizeof(seDeriv) * (size_t) n);
-  if (d == NULL) return NULL;
+  /* R_alloc, not malloc: STRING_ELT/INTEGER below type check and can longjmp,
+     and so can Rf_mkChar() inside seRunBatch() afterwards, either of which
+     would leave a malloc here unfreed.  R_alloc is released when the .Call
+     unwinds either way, so the caller has nothing to free. */
+  d = (seDeriv*) R_alloc((size_t) n, sizeof(seDeriv));
   for (i = 0; i < n; i++) {
     d[i].name = CHAR(STRING_ELT(dName, i));
     d[i].which = INTEGER(dWhich)[i];
@@ -55,7 +58,5 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
   seNamedInit();
   int nd = 0;
   seDeriv *derivs = seDerivsFromR(dName, dWhich, dTmpl, &nd);
-  SEXP ret = seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), derivs, nd);
-  free(derivs);
-  return ret;
+  return seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), derivs, nd);
 }

@@ -50,14 +50,17 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
   if (n == 0) { UNPROTECT(1); return ret; }
 
   /* CHAR() is R API, so pull every input out before any thread starts.  The
-     pointers stay valid while strVec is protected. */
-  const char **in = (const char**) malloc(sizeof(char*) * (size_t) n);
-  char **out = (char**) malloc(sizeof(char*) * (size_t) n);
-  if (in == NULL || out == NULL) {
-    free(in); free(out);
-    UNPROTECT(1);
-    Rf_error("%s", "could not allocate the translation batch");
-  }
+     pointers stay valid while strVec is protected.
+
+     R_alloc, not malloc: Rf_mkChar() in the conversion loop below allocates,
+     so it can longjmp out of this function on memory exhaustion, and any
+     malloc here would then never be freed.  R_alloc is released when the .Call
+     unwinds, whether it returns or errors.  Allocating on the main thread
+     before the parallel region is what makes it legal -- the threads only READ
+     these arrays, which is fine; it is R_alloc ITSELF that must not be called
+     from a thread. */
+  const char **in = (const char**) R_alloc((size_t) n, sizeof(char*));
+  char **out = (char**) R_alloc((size_t) n, sizeof(char*));
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(strVec, i);
     in[i] = (el == NA_STRING) ? NULL : CHAR(el);
@@ -97,16 +100,18 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
     seArenaFree(&ctx);
   }
 
+  /* Each result is freed as soon as it has been copied into ret, so an OOM
+     longjmp out of Rf_mkChar() strands only the results not yet converted. */
   for (i = 0; i < n; i++) {
     if (out[i] == NULL) {
       SET_STRING_ELT(ret, i, NA_STRING);
     } else {
-      SET_STRING_ELT(ret, i, Rf_mkChar(out[i]));
-      free(out[i]);
+      char *s = out[i];
+      out[i] = NULL;
+      SET_STRING_ELT(ret, i, Rf_mkChar(s));
+      free(s);
     }
   }
-  free(in);
-  free(out);
   UNPROTECT(1);
   return ret;
 }
