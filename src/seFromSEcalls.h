@@ -39,6 +39,45 @@ static const seFn seFns[] = {
 };
 #define seNfns ((int)(sizeof(seFns)/sizeof(seFns[0])))
 
+/* .SEdouble (R/symengine.R): two-argument spellings that come back as an
+   infix operator.  Checked BEFORE the generic arity branch in .rxFromSE(), and
+   the arguments are NOT .stripP()ed there. */
+typedef struct { const char *name, *open, *mid, *close; } seOp2;
+
+static const seOp2 seOps2[] = {
+  {"lbeta",     "lbeta(", ",",   ")"},
+  {"rxMod",     "(",      "%%",  ")"},
+  {"rxEq",      "(",      "==",  ")"},
+  {"rxNeq",     "(",      "!=",  ")"},
+  {"rxGeq",     "(",      ">=",  ")"},
+  {"rxLeq",     "(",      "<=",  ")"},
+  {"rxGt",      "(",      ">",   ")"},
+  {"rxLt",      "(",      "<",   ")"},
+  {"rxAnd",     "(",      "&&",  ")"},
+  {"rxOr",      "(",      "||",  ")"},
+  {"R_pow",     "(",      ")^(", ")"},
+  {"R_pow_di",  "(",      ")^(", ")"},
+  {"Rx_pow",    "(",      ")^(", ")"},
+  {"Rx_pow_di", "(",      ")^(", ")"}
+};
+#define seNops2 ((int)(sizeof(seOps2)/sizeof(seOps2[0])))
+
+/* .rxToSEDualVarFunction: names that are both a variable and a function.
+   .rxFunctionMake() turns a zero-argument rxode2 call into f(NaN) on the way
+   into symengine, so f(NaN) has to come back as f() -- NOT as a one-argument
+   call.  Only these names are promoted; exp(NaN) really is exp(NaN). */
+static const char *seDualVarFns[] = {
+  "tlast", "tlast0", "tad", "tad0", "tafd", "tafd0", "tfirst", "tfirst0",
+  "dose", "podo", "dose0", "podo0", "dosenum", "dosenum0"
+};
+#define seNdualVarFns ((int)(sizeof(seDualVarFns)/sizeof(seDualVarFns[0])))
+
+/* dosing-history functions: 0 or 1 argument, emitted verbatim */
+static const char *seDoseFns[] = {
+  "tlast", "tfirst", "dose", "podo", "tlast0", "first0", "dose0", "podo0"
+};
+#define seNdoseFns ((int)(sizeof(seDoseFns)/sizeof(seDoseFns[0])))
+
 /* .stripP(): drop one redundant layer of parentheses from an argument */
 static D_ParseNode *seStripP(D_ParseNode *pn) {
   for (;;) {
@@ -134,6 +173,58 @@ static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
   D_ParseNode *args[8];
   int i, nargs = seCallArgs(pn, args, 8);
   if (nargs < 0) return seFail(ctx);
+
+  /* f(NaN) is how a zero-argument call survives the trip through symengine.
+     Compared on the argument's source span rather than its node kind: for a
+     single argument seArgs() hands back the arg_list node itself, whose span
+     is exactly the argument text (a longer expression that merely contains
+     NaN spans more, so this cannot false-positive). */
+  if (nargs == 1 && strcmp(seNodeText(ctx, args[0]), "NaN") == 0) {
+    for (i = 0; i < seNdualVarFns; i++) {
+      if (name[0] != seDualVarFns[i][0]) continue;
+      if (strcmp(name, seDualVarFns[i]) == 0) {
+        return seCat(ctx, name, "()", NULL, NULL, NULL, NULL);
+      }
+    }
+  }
+
+  /* .SEdouble, checked before the generic branch as .rxFromSE() does */
+  for (i = 0; i < seNops2; i++) {
+    if (name[0] != seOps2[i].name[0]) continue;
+    if (strcmp(name, seOps2[i].name) != 0) continue;
+    if (nargs != 2) return seFail(ctx);       /* R raises its own message */
+    const char *a = seEmit(ctx, args[0]);
+    if (ctx->failed) return "";
+    const char *b = seEmit(ctx, args[1]);
+    if (ctx->failed) return "";
+    return seNamedConstant(seCat(ctx, seOps2[i].open, a, seOps2[i].mid, b,
+                                 seOps2[i].close, NULL));
+  }
+
+  /* polygamma(a, b): the order flips and small orders have their own names */
+  if (strcmp(name, "polygamma") == 0) {
+    if (nargs != 2) return seFail(ctx);
+    const char *a = seEmit(ctx, args[0]);
+    if (ctx->failed) return "";
+    const char *b = seEmit(ctx, args[1]);
+    if (ctx->failed) return "";
+    if (!strcmp(a, "0")) return seCat(ctx, "digamma(", b, ")", NULL, NULL, NULL);
+    if (!strcmp(a, "1")) return seCat(ctx, "trigamma(", b, ")", NULL, NULL, NULL);
+    if (!strcmp(a, "2")) return seCat(ctx, "tetragamma(", b, ")", NULL, NULL, NULL);
+    if (!strcmp(a, "3")) return seCat(ctx, "pentagamma(", b, ")", NULL, NULL, NULL);
+    return seCat(ctx, "psigamma(", b, ",", a, ")", NULL);
+  }
+
+  /* tlast()/podo()/... take 0 or 1 argument and keep their name */
+  for (i = 0; i < seNdoseFns; i++) {
+    if (name[0] != seDoseFns[i][0]) continue;
+    if (strcmp(name, seDoseFns[i]) != 0) continue;
+    if (nargs == 0) return seCat(ctx, name, "()", NULL, NULL, NULL, NULL);
+    if (nargs != 1) return seFail(ctx);
+    const char *a = seEmit(ctx, seStripP(args[0]));
+    if (ctx->failed) return "";
+    return seCat(ctx, name, "(", a, ")", NULL, NULL);
+  }
 
   if (strcmp(name, "log") == 0 && nargs == 1) {
     const char *lg = seEmitLog(ctx, args[0]);

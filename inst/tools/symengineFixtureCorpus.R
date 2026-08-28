@@ -139,6 +139,26 @@
   "1/2", "3/4", "-1/2", "0", "1", "-1",
   "abs0(x)", "rxNot(x)", "rxEq(x, y)", "rxNeq(x, y)",
   "rxAnd(x, y)", "rxOr(x, y)", "rxLt(x, y)", "rxGt(x, y)",
+  ## the .SEdouble spellings, which come back as infix operators
+  "rxGeq(x, y)", "rxLeq(x, y)", "rxMod(x, y)", "lbeta(x, y)",
+  "Rx_pow(x, y)", "Rx_pow_di(x, 2)", "R_pow(x, y)", "R_pow_di(x, 2)",
+  "rxEq(a + b, c*d)", "rxAnd(rxLt(a, b), rxGt(c, d))",
+  ## polygamma's small orders have their own names, the rest fold to psigamma
+  "polygamma(2, x)", "polygamma(3, x)", "polygamma(4, x)", "polygamma(9, x)",
+  ## .rxFunctionMake() renders a zero-argument call as f(NaN) on the way into
+  ## symengine, so these have to come back as f() -- but only for the
+  ## dual variable/function names; exp(NaN) really is exp(NaN)
+  "tlast(NaN)", "tlast0(NaN)", "tad(NaN)", "tad0(NaN)", "tafd(NaN)",
+  "tafd0(NaN)", "tfirst(NaN)", "tfirst0(NaN)", "dose(NaN)", "podo(NaN)",
+  "dose0(NaN)", "podo0(NaN)", "dosenum(NaN)", "dosenum0(NaN)",
+  "exp(NaN)", "sqrt(NaN)",
+  ## the dosing-history family: 0 or 1 argument
+  "tlast()", "tfirst()", "dose()", "podo()",
+  "tlast0()", "first0()", "dose0()", "podo0()",
+  "tlast(a)", "tfirst(a)", "dose(a)", "podo(a)",
+  "tlast0(a)", "first0(a)", "dose0(a)", "podo0(a)",
+  ## pi is bound in baseenv(), so R folds it -- and only on the RIGHT operand
+  "1/pi", "2/pi", "a*pi", "pi*a", "a/pi", "pi/a", "a+pi", "pi+a",
   "polygamma(0, x)", "polygamma(1, x)",
   "lag(x, 1)", "lag0(x, 1)", "diff(x, 1)", "delay(x, tau)",
   "linCmtA(a, b, c)", "max(x, y)", "min(x, y)",

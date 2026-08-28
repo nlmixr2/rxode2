@@ -54,8 +54,15 @@ static seFoldRes seFoldLeaf(D_ParseNode *pn, double *out) {
   if (seNodeHas(function_call)) return seFoldCall(pn);
   if (seNodeHas(symbol) || seNodeHas(identifier)) {
     size_t n = (size_t)(pn->end - pn->start_loc.s);
-    /* pi is bound in baseenv(); every other bare name we emit is not */
-    if (n == 2 && strncmp(pn->start_loc.s, "pi", 2) == 0) return SE_FOLD_BAIL;
+    /* pi IS bound in baseenv(), so R folds it: .rxFromSE() emits "pi", evals
+       it there to 3.14159..., and .rxFromSEnum() renders that back as M_PI.
+       Doing the same here is exact -- R's pi and C's M_PI are the same double
+       -- and it is what makes 1/pi come out as M_1_PI.  Every other bare name
+       we emit is unbound there, so nothing folds. */
+    if (n == 2 && strncmp(pn->start_loc.s, "pi", 2) == 0) {
+      *out = M_PI;
+      return SE_FOLD_YES;
+    }
     return SE_FOLD_NO;
   }
   if (seNodeHas(integer_num) || seNodeHas(float_num)) {
