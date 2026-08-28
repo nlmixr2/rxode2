@@ -879,6 +879,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   supplied (`The following parameter(s) are required for solving: eta.b`).  The
   matching `sigma` code already guarded this.
 
+- `?rxSolve` no longer states that `method="dop853"` cannot solve in
+  parallel.  Only the non-reentrant Fortran COMMON block solvers (`lsoda`,
+  `lsode`, `bdf`) are excluded from threading by `solveMethodThreadSafe()`;
+  `dop853` has been thread-safe and has honored `cores`.  Documentation only,
+  no behavior change (#1305).
+
 ### Sensitivities
 
 - A model reading only some `linCmtB()` sensitivity directions (a FOCEi inner
