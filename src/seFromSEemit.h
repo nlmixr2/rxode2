@@ -39,7 +39,7 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   const char *x2 = seEmit(ctx, d_get_child(pn, 0));
   if (ctx->failed) return "";
   D_ParseNode *rhs = d_get_child(pn, 2);
-  const char *op = seNodeName(d_get_child(pn, 1));
+  D_ParseNode *opNode = d_get_child(pn, 1);
   const char *x3 = seEmit(ctx, rhs);
   if (ctx->failed) return "";
 
@@ -48,12 +48,14 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   if (fr == SE_FOLD_BAIL) return seFail(ctx);
   if (fr == SE_FOLD_YES) x3 = seNumToStr(ctx, fv);
 
-  int isPow = (op[0] == '^') || (op[0] == '*' && op[1] == '*');
+  int isPow = (seKindOf(opNode) == SE_K_POW);
   if (isPow) {
     const char *pw = seEmitPower(ctx, x2, x3, rhs);
     if (pw != NULL) return pw;
   }
-  return seNamedConstant(seCat(ctx, x2, isPow ? "^" : op, x3, NULL, NULL, NULL));
+  /* symengine may print '**'; rxode2 always emits '^' */
+  return seNamedConstant(seCat(ctx, x2, isPow ? "^" : seNodeName(opNode), x3,
+                               NULL, NULL, NULL));
 }
 
 #include "seFromSEcalls.h"
@@ -83,26 +85,26 @@ static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
 
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
-  const char *nm = seNodeName(pn);
+  seKind k = seKindOf(pn);
   int nch = d_get_number_of_children(pn);
 
-  if (strcmp(nm, "symbol") == 0) return seEmitSymbol(ctx, pn);
-  if (seIsNumberNode(nm)) {
+  if (k == SE_K_SYMBOL) return seEmitSymbol(ctx, pn);
+  if (seIsNumberNode(k)) {
     /* do NOT recurse: a terminal's only child is named after its regex.
        Round-trip through a double so the rendering matches what R's parser
        plus as.character() produce (see seDblToStr). */
     return seNumToStr(ctx, atof(seNodeText(ctx, pn)));
   }
-  if (strcmp(nm, "function_call") == 0) return seFunctionCall(ctx, pn);
+  if (k == SE_K_CALL) return seFunctionCall(ctx, pn);
   if (nch == 1) return seEmit(ctx, d_get_child(pn, 0));
-  if (nch == 2 && strcmp(nm, "unary_expression") == 0) {
+  if (nch == 2 && k == SE_K_UNARY) {
     const char *inner = seEmit(ctx, d_get_child(pn, 1));
     if (ctx->failed) return "";
     return seCat(ctx, seNodeName(d_get_child(pn, 0)), inner,
                  NULL, NULL, NULL, NULL);
   }
   if (nch == 3) {
-    if (strcmp(seNodeName(d_get_child(pn, 0)), "(") == 0) {
+    if (seKindOf(d_get_child(pn, 0)) == SE_K_LPAREN) {
       return seEmitParen(ctx, pn);
     }
     return seBinary(ctx, pn);

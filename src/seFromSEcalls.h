@@ -43,11 +43,11 @@ static const seFn seFns[] = {
 static D_ParseNode *seStripP(D_ParseNode *pn) {
   for (;;) {
     int nch = d_get_number_of_children(pn);
-    if (nch == 1 && seIsWrapper(seNodeName(pn))) {
+    if (nch == 1 && seIsWrapper(seKindOf(pn))) {
       pn = d_get_child(pn, 0);
       continue;
     }
-    if (nch == 3 && strcmp(seNodeName(d_get_child(pn, 0)), "(") == 0) {
+    if (nch == 3 && seKindOf(d_get_child(pn, 0)) == SE_K_LPAREN) {
       return d_get_child(pn, 1);
     }
     return pn;
@@ -61,7 +61,7 @@ static int seArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   int top = 0;
   for (;;) {
     int nch = d_get_number_of_children(pn);
-    if (nch == 3 && strcmp(seNodeName(d_get_child(pn, 1)), ",") == 0) {
+    if (nch == 3 && seKindOf(d_get_child(pn, 1)) == SE_K_COMMA) {
       if (top >= 32) return -1;
       stack[top++] = d_get_child(pn, 2);
       pn = d_get_child(pn, 0);
@@ -89,12 +89,12 @@ static const char *seEmitLog(seCtx *ctx, D_ParseNode *arg) {
   D_ParseNode *a0 = arg;
   while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
   int nch = d_get_number_of_children(a0);
-  if (nch == 3 && strcmp(seNodeName(d_get_child(a0, 0)), "(") != 0) {
-    const char *op = seNodeName(d_get_child(a0, 1));
-    if (op[0] == '+' || op[0] == '-') return NULL;
+  if (nch == 3 && seKindOf(d_get_child(a0, 0)) != SE_K_LPAREN) {
+    seKind op = seKindOf(d_get_child(a0, 1));
+    if (op == SE_K_PLUS || op == SE_K_MINUS) return NULL;
   }
-  if (nch == 2 && strcmp(seNodeName(a0), "unary_expression") == 0) return NULL;
-  if (strcmp(seNodeName(a0), "function_call") == 0 &&
+  if (nch == 2 && seKindOf(a0) == SE_K_UNARY) return NULL;
+  if (seKindOf(a0) == SE_K_CALL &&
       strcmp(seNodeText(ctx, d_get_child(a0, 0)), "beta") == 0) {
     return NULL;
   }
@@ -109,6 +109,7 @@ static const char *seCallName(const char *name, int nargs) {
   int i;
   if (strcmp(name, "abs0") == 0 && nargs == 1) return "abs";  /* .SEsingle */
   for (i = 0; i < seNfns; i++) {
+    if (name[0] != seFns[i].name[0]) continue;   /* reject before strcmp */
     if (strcmp(name, seFns[i].name) == 0) {
       /* R raises "'%s' takes %s arguments" here; let it produce the message */
       return (seFns[i].nargs == nargs) ? seFns[i].name : NULL;
@@ -121,7 +122,7 @@ static const char *seCallName(const char *name, int nargs) {
 static int seCallArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
   int nch = d_get_number_of_children(pn), i;
   for (i = 0; i < nch; i++) {
-    if (strcmp(seNodeName(d_get_child(pn, i)), "arg_list") == 0) {
+    if (seKindOf(d_get_child(pn, i)) == SE_K_ARGLIST) {
       return seArgs(d_get_child(pn, i), args, max);
     }
   }

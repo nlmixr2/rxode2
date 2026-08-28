@@ -64,6 +64,10 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS) {
   R_xlen_t n = Rf_xlength(strVec), i;
   int numDer = Rf_asInteger(numDerS);
   SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
+  /* resolve grammar symbol -> kind once; never inside the per-expression loop
+     (and never inside a future parallel region -- it writes statics) */
+  seKindsInit();
+  seNamedInit();
   seCtx ctx;
   ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
   for (i = 0; i < n; i++) {

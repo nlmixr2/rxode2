@@ -274,11 +274,45 @@ static const seNamed seNamedTab[] = {
 };
 #define seNnamed ((int)(sizeof(seNamedTab)/sizeof(seNamedTab[0])))
 
+/* seNamedConstant() runs on every binary and every call node, so it must not
+   walk the whole table.  Bucket the entries by first character once (a
+   counting sort over ~70 short literals), then a lookup touches only the
+   handful that could match -- and rejects outright when nothing in the table
+   starts with that character, which is the common case for a model symbol. */
+static short seNamedOrder[seNnamed];
+static short seNamedStart[257];
+static int seNamedReady = 0;
+
+static void seNamedInit(void) {
+  int counts[257], i, c;
+  if (seNamedReady) return;
+  for (i = 0; i < 257; i++) counts[i] = 0;
+  for (i = 0; i < seNnamed; i++) {
+    c = (unsigned char) seNamedTab[i].text[0];
+    counts[c + 1]++;
+  }
+  for (i = 1; i < 257; i++) counts[i] += counts[i - 1];
+  for (i = 0; i < 257; i++) seNamedStart[i] = (short) counts[i];
+  for (i = 0; i < seNnamed; i++) {
+    c = (unsigned char) seNamedTab[i].text[0];
+    seNamedOrder[counts[c]++] = (short) i;
+  }
+  seNamedReady = 1;
+}
+
 /* the finished text if it names a constant, otherwise the text unchanged */
 static const char *seNamedConstant(const char *ret) {
-  int i;
-  for (i = 0; i < seNnamed; i++) {
-    if (strcmp(ret, seNamedTab[i].text) == 0) return seNamedTab[i].name;
+  int c, i;
+  /* The entry point initializes before any work, so this branch is always
+     taken false in the hot path (and inside a future parallel region).  It is
+     here because an uninitialized bucket table would silently stop folding
+     constants -- a wrong answer rather than a safe bail. */
+  if (!seNamedReady) seNamedInit();
+  c = (unsigned char) ret[0];
+  int lo = seNamedStart[c], hi = seNamedStart[c + 1];
+  for (i = lo; i < hi; i++) {
+    const seNamed *e = &seNamedTab[seNamedOrder[i]];
+    if (strcmp(ret, e->text) == 0) return e->name;
   }
   return ret;
 }
