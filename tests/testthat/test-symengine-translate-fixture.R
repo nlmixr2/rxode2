@@ -105,6 +105,42 @@ rxTest({
     expect_equal(.withC, .withR)
   })
 
+  test_that("the rxToSE C emitter agrees with the R walker wherever it accepts", {
+    # src/rxToSE.c returns NA_character_ for anything it does not reproduce
+    # exactly, and rxToSE() then falls back.  Declining is always safe;
+    # disagreeing is not.
+    .f <- readRDS(.fixtureFile)
+    .df <- .f$toSE
+    .got <- rxode2:::.rxToSEC(.df$input)
+    .h <- which(!is.na(.got))
+    expect_gt(length(.h), 80L)   # it must actually be doing something
+
+    .bad <- .h[.got[.h] != .df$output[.h] | .df$isError[.h]]
+    .msg <- ""
+    if (length(.bad) > 0L) {
+      .n <- min(length(.bad), 10L)
+      .msg <- paste0(
+        "rxToSE C emitter disagrees on ", length(.bad), " of ", length(.h),
+        " accepted expressions\n",
+        paste0("  input:    ", .df$input[.bad[seq_len(.n)]], "\n",
+               "  expected: ", .df$output[.bad[seq_len(.n)]], "\n",
+               "  got:      ", .got[.bad[seq_len(.n)]], collapse = "\n"))
+    }
+    expect_equal(length(.bad), 0L, info = .msg)
+  })
+
+  test_that("rxToSE() gives the same answer with the C path on and off", {
+    .f <- readRDS(.fixtureFile)
+    .in <- .f$toSE$input[!.f$toSE$isError]
+    .withC <- withr::with_options(
+      list(rxode2.symengineC = TRUE),
+      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE))
+    .withR <- withr::with_options(
+      list(rxode2.symengineC = FALSE),
+      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE))
+    expect_equal(.withC, .withR)
+  })
+
   test_that("rxToSE() reproduces the recorded output byte for byte", {
     .f <- readRDS(.fixtureFile)
     .r <- .cmp(.f$toSE, function(x) rxode2::rxToSE(x), "rxToSE")

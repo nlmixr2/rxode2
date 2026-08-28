@@ -79,7 +79,7 @@ static const char *seDup(seCtx *ctx, const char *s, size_t n) {
   return p;
 }
 
-static const char *seStr(seCtx *ctx, const char *s) {
+static inline const char *seStr(seCtx *ctx, const char *s) {
   return seDup(ctx, s, strlen(s));
 }
 
@@ -102,7 +102,7 @@ static const char *seCat(seCtx *ctx, const char *a, const char *b,
   return p;
 }
 
-static const char *seFail(seCtx *ctx) {
+static inline const char *seFail(seCtx *ctx) {
   ctx->failed = 1;
   return "";
 }

@@ -116,6 +116,20 @@
   "max(a,b)", "min(a,b)", "floor(a)", "ceiling(a)", "round(a)", "trunc(a)",
   "sign(a)", "a %% b", "log(a)/log(b)", "exp(a+b)*exp(a-b)",
   "1/a", "(-1)*a", "-(a+b)", "a*(b+c)*(d+e)", "((a))",
+  ## rxode2 writes C's constants and symengine wants the expression they stand
+  ## for.  These were absent, so the C emitter passed M_LN2 through verbatim
+  ## and only test-dsl.R noticed -- the corpus had log(2) as an input but
+  ## never M_LN2, which is the direction that was broken.
+  "M_E", "M_PI", "M_PI_2", "M_PI_4", "M_1_PI", "M_2_PI", "M_2PI",
+  "M_SQRT_PI", "M_2_SQRTPI", "M_1_SQRT_2PI", "M_SQRT2", "M_SQRT_3",
+  "M_SQRT_32", "M_SQRT_2dPI", "M_LN_SQRT_PI", "M_LN_SQRT_2PI",
+  "M_LN_SQRT_PId2", "M_LOG10_2", "M_LOG2E", "M_LOG10E", "M_LN2", "M_LN10",
+  "a*M_PI", "M_LN2+b", "exp(M_LN10)",
+  ## bare dual variable/function names mean the call, and the tad/tafd family
+  ## expands to a difference from the dosing time
+  "tlast", "tlast0", "tfirst", "tfirst0", "dose", "dose0", "podo", "podo0",
+  "dosenum", "tad", "tad0", "tafd", "tafd0",
+  "tad*2", "a+tlast", "exp(tafd)",
   "pi", "pi*2", "pi/2", "pi/4", "1/pi", "2/pi", "sqrt(pi)", "sqrt(2)",
   "log(2)", "log(10)", "1/log(2)", "1/log(10)", "sqrt(2*pi)",
   "a*pi", "exp(1)", "cos(pi*a)", "sin(pi*a)",

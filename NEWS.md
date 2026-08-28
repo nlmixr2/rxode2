@@ -449,6 +449,25 @@
 
 ## Bug fixes
 
+- `loggamma()` no longer fails to compile.  It is symengine's name for
+  `lgamma()` and the parser accepted it, but code generation emits the rxode2
+  name verbatim as the C name and there is no `loggamma()` in C, so a model
+  using that spelling parsed and then failed at the compiler.  (`gammafn()` and
+  `lgammafn()` in the same table work only because they happen to coincide with
+  `Rmath.h`.)  Its derivative was never affected: symengine differentiates
+  `loggamma` natively to `polygamma(0, x)`, so a model differentiating it
+  already got the exact `digamma()`.
+
+- `ceiling()` is now a supported function.  rxode2 knew C's `ceil()` but not
+  the name R users actually write, and because `ceiling` was absent from the
+  function table it fell through to the user-defined-R-function path, found
+  base R's *primitive* `ceiling`, and reported "user function 'ceiling'
+  requires 0 arguments (supplied 1)" -- `formals()` of a primitive is empty.
+  `floor()` had worked the whole time.  `ceiling()` now parses, compiles to
+  `ceil()`, takes one argument, and is locally constant like `ceil()`,
+  `floor()` and `round()`, so its derivative is 0 and it can be used in models
+  that take sensitivities.
+
 - Symbolic translation now simplifies constant arithmetic instead of emitting
   it.  A fully constant expression folds to its value (`1/gamma(2)` is `1`, not
   `1/1`), extending the fold that was already applied to the right-hand operand

@@ -145,6 +145,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "floor" = 1,
   "round" = 1,
   "ceil" = 1,
+  ## R spells it ceiling(); rxode2 accepts both, and inst/include/
+  ## rxode2_model_shared.h gives the generated C a ceiling() that calls ceil()
+  "ceiling" = 1,
   "trunc" = 1,
   ## Special R functions
   "bessel_i" = 3,
@@ -320,7 +323,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 ## Locally constant functions; their derivative is 0 almost everywhere, so the
 ## jumps at the breakpoints are ignored the same way abs()/rxGt() already are.
-.rxSElocallyConstant <- c("floor", "ceil", "round", "trunc", "ftrunc",
+.rxSElocallyConstant <- c("floor", "ceil", "ceiling", "round", "trunc", "ftrunc",
                           "fround", "fprec", "sign")
 
 ## Functions whose Derivative() collapses to 0 at every order: the delay family
@@ -700,6 +703,14 @@ rxD <- function(name, derivatives) {
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
+## The C translator (src/rxToSE.c) for rxode2 -> symengine text.  Returns
+## NA_character_ for anything it does not reproduce exactly, and those fall
+## back to the R walker below.  Shares options(rxode2.symengineC=) with
+## .rxFromSEC(): both are the same translation moved to C.
+.rxToSEC <- function(x) {
+  .Call(`_rxode2_rxToSEChar`, as.character(x))
+}
+
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
   .udfEnvSet(parent)
@@ -711,6 +722,16 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .rxSEstate$lastAssignedDdt <- ""
   if (is(substitute(x), "character")) {
     force(x)
+    ## The C emitter only accepts self-contained expressions -- no envir side
+    ## effects, no user functions, no linCmt() -- so when it accepts one the
+    ## answer cannot depend on `envir`, and when it does not it returns NA and
+    ## the R walker below runs exactly as before.
+    if (length(x) == 1L && .rxFromSEuseC()) {
+      .c <- .rxToSEC(x)
+      if (!is.na(.c)) {
+        return(.c)
+      }
+    }
   } else if (is(substitute(x), "{")) {
     x <- deparse1(substitute(x))
     if (x[1] == "{") {
@@ -4431,6 +4452,7 @@ rxSupportedFuns <- function() {
   "floor" = 1,
   "round" = 1,
   "ceil" = 1,
+  "ceiling" = 1,
   "trunc" = 1,
   ## Special R functions
   "bessel_i" = 3,

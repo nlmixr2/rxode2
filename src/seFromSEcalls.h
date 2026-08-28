@@ -172,7 +172,8 @@ static int seCallArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
    constant rounding family differentiate to 0 at every order. */
 static const char *seZeroD[] = {
   "lead", "lag", "delay", "rxDelayD", "rxDelayD2", "rxDelayD3",
-  "floor", "ceil", "round", "trunc", "ftrunc", "fround", "fprec", "sign"
+  "floor", "ceil", "ceiling", "round", "trunc", "ftrunc", "fround", "fprec",
+  "sign"
 };
 #define seNzeroD ((int)(sizeof(seZeroD)/sizeof(seZeroD[0])))
 
