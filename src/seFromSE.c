@@ -171,11 +171,6 @@ static const char *seFromSEnum(seCtx *ctx, const char *ret) {
    (innermost sub() first).  Each is first-match-only, applied to the running
    string, exactly as sub() is. */
 
-static int seIsNameChar(char c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-    (c >= '0' && c <= '9') || c == '_' || c == '.';
-}
-
 /* ^((?:TH|)ETA)_([1-9][0-9]*)_$ -> \1[\2] */
 static int seThEt(seCtx *ctx, const char **s) {
   const char *p = *s;
@@ -518,12 +513,128 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   return ret;
 }
 
-/* v1 handles plain algebra only.  Every function call -- including Derivative,
-   Subs, polygamma, the lag/lead/delay family and the .rxSEsingle/.rxSEdouble
-   rewrites -- still goes to the R walker. */
+/* Functions that reach .rxFromSE()'s GENERIC call branch unchanged: no
+   special-case handler, not in .SE1p/.SE1m/.SEsingle/.SEdouble, and not one of
+   the rewrites keyed on the argument's shape.  Everything else -- log (its
+   log(beta(..)) and log1p rewrites), lgamma/loggamma (lgamma1p), sin/cos/tan
+   (sinpi/cospi/tanpi), Derivative, Subs, polygamma, the lag/lead/delay family,
+   linCmt, max/min, the tlast/podo family, the llik family, rxTBS and the
+   rxEq/rxAnd/... operator spellings -- goes to the R walker.
+
+   This is an ALLOW-list on purpose.  A deny-list silently mistranslates the
+   day someone adds a handler in R. */
+typedef struct { const char *name; int nargs; } seFn;
+
+static const seFn seFns[] = {
+  {"exp", 1}, {"sqrt", 1}, {"erf", 1}, {"erfc", 1},
+  {"gamma", 1}, {"factorial", 1}, {"lfactorial", 1},
+  {"sinh", 1}, {"cosh", 1}, {"tanh", 1},
+  {"asin", 1}, {"acos", 1}, {"atan", 1},
+  {"asinh", 1}, {"acosh", 1}, {"atanh", 1},
+  {"floor", 1}, {"ceiling", 1}, {"trunc", 1}, {"sign", 1},
+  {"beta", 2}, {"atan2", 2}, {"choose", 2}, {"lchoose", 2}
+};
+#define seNfns ((int)(sizeof(seFns)/sizeof(seFns[0])))
+
+/* .stripP(): drop one redundant layer of parentheses from an argument */
+static D_ParseNode *seStripP(D_ParseNode *pn) {
+  for (;;) {
+    int nch = d_get_number_of_children(pn);
+    if (nch == 1) {
+      const char *nm = seNodeName(pn);
+      if (strcmp(nm, "expression") == 0 || strcmp(nm, "add_expression") == 0 ||
+          strcmp(nm, "mul_expression") == 0 || strcmp(nm, "unary_expression") == 0 ||
+          strcmp(nm, "power_expression") == 0 ||
+          strcmp(nm, "primary_expression") == 0) {
+        pn = d_get_child(pn, 0);
+        continue;
+      }
+      return pn;
+    }
+    if (nch == 3 && strcmp(seNodeName(d_get_child(pn, 0)), "(") == 0) {
+      return d_get_child(pn, 1);
+    }
+    return pn;
+  }
+}
+
+/* collect arg_list left spine into args[], returns count or -1 if too many */
+static int seArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
+  int n = 0;
+  D_ParseNode *stack[32];
+  int top = 0;
+  for (;;) {
+    int nch = d_get_number_of_children(pn);
+    if (nch == 3 && strcmp(seNodeName(d_get_child(pn, 1)), ",") == 0) {
+      if (top >= 32) return -1;
+      stack[top++] = d_get_child(pn, 2);
+      pn = d_get_child(pn, 0);
+      continue;
+    }
+    break;
+  }
+  if (n >= max) return -1;
+  args[n++] = pn;                 /* leftmost */
+  while (top > 0) {
+    if (n >= max) return -1;
+    args[n++] = stack[--top];
+  }
+  return n;
+}
+
 static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
-  (void) pn;
-  return seFail(ctx);
+  D_ParseNode *nameNode = d_get_child(pn, 0);
+  const char *name = seNodeText(ctx, nameNode);
+  int nch = d_get_number_of_children(pn), i;
+
+  D_ParseNode *argNode = NULL;
+  for (i = 0; i < nch; i++) {
+    if (strcmp(seNodeName(d_get_child(pn, i)), "arg_list") == 0) {
+      argNode = d_get_child(pn, i);
+      break;
+    }
+  }
+  D_ParseNode *args[8];
+  int nargs = 0;
+  if (argNode != NULL) {
+    nargs = seArgs(argNode, args, 8);
+    if (nargs < 0) return seFail(ctx);
+  }
+
+  /* .SEsingle: abs0(x) -> abs(x).  rxNot and loggamma are left to R (rxNot
+     wraps in "(!(" "))" and loggamma collides with the .SE1p lgamma1p path). */
+  const char *emitName = NULL;
+  if (strcmp(name, "abs0") == 0 && nargs == 1) {
+    emitName = "abs";
+  } else {
+    for (i = 0; i < seNfns; i++) {
+      if (strcmp(name, seFns[i].name) == 0) {
+        if (seFns[i].nargs != nargs) return seFail(ctx);  /* R raises here */
+        emitName = seFns[i].name;
+        break;
+      }
+    }
+  }
+  if (emitName == NULL) return seFail(ctx);
+
+  const char *body = "";
+  for (i = 0; i < nargs; i++) {
+    const char *a = seEmit(ctx, seStripP(args[i]));
+    if (ctx->failed) return "";
+    body = (i == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
+  }
+  const char *ret = seCat(ctx, emitName, "(", body, ")", NULL, NULL);
+
+  /* the constant peepholes at the end of the generic branch */
+  if (!strcmp(ret, "exp(1)")) return "M_E";
+  if (!strcmp(ret, "sqrt(3)")) return "M_SQRT_3";
+  if (!strcmp(ret, "sqrt(2)")) return "M_SQRT2";
+  if (!strcmp(ret, "sqrt(32)")) return "M_SQRT_32";
+  if (!strcmp(ret, "sqrt(pi)")) return "M_SQRT_PI";
+  if (!strcmp(ret, "sqrt(M_2_PI)") || !strcmp(ret, "sqrt((M_2_PI))")) {
+    return "M_SQRT_2dPI";
+  }
+  return ret;
 }
 
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
