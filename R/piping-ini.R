@@ -238,6 +238,16 @@
   .w2 <- which(ini$name == neta2)
   if (length(.w1) != 1) stop("cannot find parameter '", neta1, "'", call.=FALSE)
   if (length(.w2) != 1) stop("cannot find parameter '", neta2, "'", call.=FALSE)
+  if (!identical(ini$condition[.w1], ini$condition[.w2])) {
+    # a covariance only exists inside one level; adding it across two builds an
+    # omega that cannot be assembled
+    if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
+      .minfo(paste0("not adding a covariance between {.code ", neta1, "} and {.code ", neta2,
+                    "}; they are at different levels ({.code ", ini$condition[.w1], "} and {.code ",
+                    ini$condition[.w2], "})"))
+    }
+    return(ini)
+  }
   if (ini$neta1[.w1] < ini$neta1[.w2]) {
     .tmp <- .w1
     .w1 <- .w2
@@ -249,10 +259,14 @@
   }
   .fix <- FALSE
   if (doFix) .fix <- TRUE
+  # the covariance belongs at the level of the two etas it links; hard-coding
+  # "id" puts a correlated `| occ` block's covariance in the wrong omega
+  .condition <- ini$condition[.w1]
+  if (is.na(.condition)) .condition <- "id"
   .ini2 <- data.frame(ntheta= NA_integer_, neta1=ini$neta1[.w1], neta2=ini$neta1[.w2],
                       name=paste0("(", neta2, ",", neta1, ")"), lower= -Inf, est=est, upper=Inf,
-                      fix=.fix, label=NA_character_, backTransform=NA_character_, condition="id",
-                      err=NA_character_)
+                      fix=.fix, label=NA_character_, backTransform=NA_character_,
+                      condition=.condition, err=NA_character_)
   if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .minfo(paste0("add covariance between {.code ", ini$name[.w1], "} and {.code ", ini$name[.w2], "} with initial estimate {.code ", est, "}"))
   }
@@ -359,6 +373,39 @@
 # a tilde
 .isLotriAssignment <- function(expr) {
   .matchesLangTemplate(expr, str2lang(". ~ ."))
+}
+
+#' Say so when a piped `| condition` does not match the eta's own level
+#'
+#' `ini()` piping changes an estimate, not the structure of the model, so the
+#' level a random effect already sits at is kept.  Without this the piped
+#' condition would just be discarded with nothing said.
+#'
+#' @param etas character vector of the random effects on the piped line
+#'
+#' @param condition the condition the piped line carries
+#'
+#' @param rxui the destination `rxUi`
+#'
+#' @return Nothing, called for the message
+#'
+#' @author Matthew L Fidler
+#' @noRd
+.iniInformDifferentEtaCondition <- function(etas, condition, rxui) {
+  if (length(condition) != 1L || is.na(condition)) return(invisible())
+  if (!isTRUE(getOption("rxode2.verbose.pipe", TRUE))) return(invisible())
+  .ini <- rxui$iniDf
+  if (is.null(.ini)) return(invisible())
+  for (.eta in etas) {
+    .w <- which(.ini$name == .eta & !is.na(.ini$neta1) & .ini$neta1 == .ini$neta2)
+    if (length(.w) != 1L) next
+    .cur <- .ini$condition[.w]
+    if (!is.na(.cur) && !identical(.cur, condition)) {
+      .minfo(paste0("keeping {.code ", .eta, "} at level {.code ", .cur,
+                    "}; piping an estimate does not move it to {.code ", condition, "}"))
+    }
+  }
+  invisible()
 }
 
 #' Modify the label in an iniDf
@@ -755,17 +802,31 @@
   } else if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
   } else if (.isLotriAssignment(expr)) {
+    .lotriVal <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
+                      envir=envir)
+    if (!is.matrix(.lotriVal)) {
+      # a `~ v | condition` random effect comes back as a list of blocks keyed
+      # by condition; a single piped line always has exactly one block
+      .iniInformDifferentEtaCondition(all.vars(expr[[2]]), names(.lotriVal)[1], rxui)
+      .lotriVal <- .lotriVal[[1]]
+    }
     .rhs <- expr[[2]]
     if (length(.rhs) > 1) {
       if (identical(.rhs[[1]], quote(`+`))) {
-        .iniHandleLotriMatrix(eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
-                                   envir=envir),
-                              rxui)
+        .iniHandleLotriMatrix(.lotriVal, rxui)
         return(invisible())
       }
     }
-    expr[[3]] <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
-                      envir=envir)[1, 1]
+    # subsetting drops the flags lotri parsed out of `~ fix(v)`/`~ unfix(v)`,
+    # so put the wrapper back for .iniHandleFixOrUnfixEqual()
+    .fixMat <- attr(.lotriVal, "lotriFix")
+    .unfixMat <- attr(.lotriVal, "lotriUnfix")
+    expr[[3]] <- .lotriVal[1, 1]
+    if (!is.null(.fixMat) && isTRUE(.fixMat[1, 1])) {
+      expr[[3]] <- as.call(list(quote(`fix`), expr[[3]]))
+    } else if (!is.null(.unfixMat) && isTRUE(.unfixMat[1, 1])) {
+      expr[[3]] <- as.call(list(quote(`unfix`), expr[[3]]))
+    }
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
   } else if (.isTildeExpr(expr)) {
     .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
