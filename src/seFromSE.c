@@ -501,6 +501,13 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
       !strcmp(ret, "0.25*M_PI")) return "M_PI_4";
   if (!strcmp(ret, "1/pi") || !strcmp(ret, "1/M_PI")) return "M_1_PI";
   if (!strcmp(ret, "2/pi") || !strcmp(ret, "2/M_PI")) return "M_2_PI";
+  if (!strcmp(ret, "(M_2_PI)^0.5") || !strcmp(ret, "(M_2_PI)^(1/2)") ||
+      !strcmp(ret, "M_2_PI^0.5") || !strcmp(ret, "M_2_PI^(1/2)") ||
+      !strcmp(ret, "sqrt((M_2_PI))")) return "M_SQRT_2dPI";
+  if (!strcmp(ret, "(pi)^0.5") || !strcmp(ret, "(pi)^(1/2)") ||
+      !strcmp(ret, "pi^0.5") || !strcmp(ret, "pi^(1/2)") ||
+      !strcmp(ret, "(M_PI)^0.5") || !strcmp(ret, "(M_PI)^(1/2)") ||
+      !strcmp(ret, "M_PI^0.5") || !strcmp(ret, "M_PI^(1/2)")) return "M_SQRT_PI";
   if (!strcmp(ret, "log(2)/log(10)")) return "M_LOG10_2";
   if (!strcmp(ret, "1/log(10)")) return "M_LOG10E";
   if (!strcmp(ret, "1/log(2)")) return "M_LOG2E";

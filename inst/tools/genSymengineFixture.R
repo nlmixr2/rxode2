@@ -146,6 +146,12 @@ options(rxprogress.disable = TRUE)
   "lag(x, 1)", "lag0(x, 1)", "diff(x, 1)", "delay(x, tau)",
   "linCmtA(a, b, c)", "max(x, y)", "min(x, y)",
   "erf(x)", "erfc(x)", "gamma(x)", "loggamma(x)", "zeta(x)",
+  ## the constant peepholes in .rxFromSE()'s binary branch; test-dsl.R checks
+  ## some of these and the C emitter silently dropped two whole lists at first
+  "pi**(1/2)", "pi^(1/2)", "(pi)^(1/2)", "pi^0.5", "(pi)^0.5",
+  "log(pi**(1/2))", "log(pi^(1/2))", "log(pi^0.5)",
+  "2/sqrt(pi)", "1/sqrt(2*pi)", "log(2)/log(10)", "1/log(2)", "1/log(10)",
+  "sqrt(3)", "sqrt(32)", "exp(1)", "log(sqrt(2*pi))", "log(sqrt(pi/2))",
   "x + y*z - w/v", "(x + y)*(z - w)", "exp(x)*log(y)/sqrt(z)"
 )
 
