@@ -438,6 +438,13 @@ extern int nPastEvid_global;
 rx_solving_options_ind *inds_global = NULL;
 
 rx_solving_options_ind *inds_thread = NULL;
+// The individual each thread is currently solving.  `inds_thread` holds a COPY
+// of it (_setIndPointersByThread), so anything that has to write back to the
+// subject -- atolRtolFactorC_'s sticky tolerance factor -- goes through here.
+rx_solving_options_ind **inds_threadCur = NULL;
+// Its length, so a read or write cannot run off the end if `op->cores` is
+// raised after the allocation.
+int inds_threadCurN = 0;
 
 
 void par_flush_console() {
@@ -645,6 +652,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_thread);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
   inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
+  R_Free(inds_threadCur);
+  inds_threadCurN = max2(1, cores);
+  inds_threadCur = R_Calloc(inds_threadCurN, rx_solving_options_ind*);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -5105,7 +5115,10 @@ extern "C" void rxFreeLast(){
   freeExtraDosingC();
   R_Free(inds_global);
   R_Free(inds_thread);
+  R_Free(inds_threadCur);
+  inds_threadCurN = 0;
   inds_thread = NULL;
+  inds_threadCur = NULL;
   inds_global=NULL;
 }
 
@@ -7946,6 +7959,15 @@ extern "C" void par_solve(rx_solve *rx) {
     for (uint32_t _sid = 0; _sid < nsubAll; _sid++) {
       iniSubject((int)_sid, 1, &rx->subjects[_sid], op, rx, update_inis);
     }
+  }
+  // No subject is in flight once the solve returns, so drop each thread's
+  // current-individual pointer.  Otherwise a downstream atolRtolFactorC_()
+  // call made between solves would pin its sticky factor on whichever subject
+  // that thread happened to solve last.  nlmixr2est's retry loop is unaffected:
+  // it relaxes right after its own ind_solve(), which does not come through
+  // here.
+  if (inds_threadCur != NULL) {
+    for (int _t = inds_threadCurN; _t--;) inds_threadCur[_t] = NULL;
   }
   /* Standalone rxSolve users see one summary line per call instead of a
      flood. nlmixr2est does not enter through par_solve for inner iterations

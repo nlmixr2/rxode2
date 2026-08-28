@@ -161,6 +161,23 @@
   `rxPriorOmegaToCholOmegaInvGrad()` C++ function is pure, with no R/Rcpp
   call, and is exposed through the same function-pointer table.
 
+- `rxPriorLogDensity()`/`rxPriorBuildSpec()` now evaluate a marginal
+  `dnorm()`/`dcauchy()` prior placed directly on ONE omega covariance
+  (off-diagonal) element, not just a diagonal (variance) one --
+  `prior(eta.cl, eta.v) ~ dnorm(0, 0.1)` in a model whose `eta.cl`/`eta.v`
+  covary. This is distinct from a whole-block distribution
+  (`invWishart()`/`multiNormal()`), which still requires naming the
+  model's entire connected block; a marginal prior only needs its two
+  names to covary with each other, so it also works on a two-name subset
+  of a larger correlated block. Previously refused outright with "a prior
+  on an off-diagonal omega element is not supported" -- unreachable
+  through real `ini()` syntax until lotri's own `prior(a, b) ~ dnorm(...)`
+  parsing was relaxed to allow it (see lotri's own NEWS). `rxSolve(...,
+  usePrior=TRUE)`'s simulation path does not yet support this (it draws a
+  deviation added to the model's own initial estimate, which this needs
+  its own machinery for) and gives a clear error rather than the
+  confusing one this would otherwise have produced.
+
 - `rxSetActiveParLoader()` / `rxClearActiveParLoader()` activate a registered
   parameter loader for solves that do not go through `rxSolve.rxUi()` -- an
   estimation method's internal solves, for example.  Previously the only way in
@@ -473,6 +490,34 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- Piping a model's `ini()` into another model no longer silently leaves shared
+  random effects behind.  Three cases dropped an eta with no error and no
+  message, leaving the destination model on its own initial estimate: when the
+  two models shared exactly *one* eta, when a shared eta was `fix()`ed (it came
+  across unfixed), and when the source model had random effects at more than
+  one level (`| occ`), which dropped every eta.
+
+- `ini()` piping of a random effect now honors `unfix()` and a `| condition`.
+  `mod |> ini(eta.ka ~ unfix(0.7))` changed the estimate but left the eta
+  fixed; `mod |> ini(eta.occ ~ 0.2 | occ)` stopped with `incorrect number of
+  dimensions`; and a correlated block, `mod |> ini(eta.a + eta.b ~ c(0.6, 0.01,
+  0.3) | occ)`, stopped with `argument is of length zero`.
+
+- A piped correlated block now records its covariance at the level of the etas
+  it links rather than always at `id`, so a `| occ` block no longer lands split
+  across two omegas.
+
+- `ini()` piping now says when a piped `| condition` does not match the level
+  the random effect already sits at.  Piping an estimate does not restructure
+  the model, so the eta keeps its own level, which used to happen silently.
+
+- A piped random effect keeps its label the way a piped population parameter
+  always has; subsetting the omega used to drop the labels with the estimates.
+
+- `ini()` piping no longer adds a covariance between two random effects that
+  sit at different levels.  The resulting `$omega` could not be assembled at
+  all, so the model stopped as soon as anything asked for it.
+
 - A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
   per-individual solve pool as `nsub` times the number of individual solves
   it needs.  The over-allocation grew with the square of the number of
@@ -696,6 +741,21 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   A function or `rxUi` is now converted on re-entry, when the simulation model
   and its parameters are both in hand.
 
+- A subject's sticky ODE tolerance now stays with that subject.  The
+  per-individual `tolFactor` (and the loosening `nlmixr2est` applies through
+  `atolRtolFactor_()`) was folded into the tolerance arrays a thread already
+  held, so it survived into whatever subject that thread solved next and
+  compounded once per subject; every subject after a loosened one was solved at
+  the wrong tolerance, with the result depending on how the subjects happened to
+  be distributed over the threads.  Each subject's tolerances are now derived
+  from the solve's base `atol`/`rtol`/`ssAtol`/`ssRtol` and its own factor.  The
+  factor is also recorded on the subject itself rather than on the thread's
+  copy, so it is no longer lost, and it is bounded as a multiplier instead of
+  being clamped to `maxAtolRtolFactor` -- which had made a request to loosen
+  tolerances tighten them on the next solve.  A loosening requested when no
+  subject is being solved no longer attaches itself to whichever subject was
+  solved last.
+
 - Modeled duration (`rate = -2`) and modeled rate (`rate = -1`) doses that fall
   at exactly the same time now solve.  Each such dose is expanded into a
   start/stop pair sharing one time and the solver pairs the two positionally, but
@@ -804,6 +864,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `omega` was dropped and the remaining effect was neither simulated nor
   supplied (`The following parameter(s) are required for solving: eta.b`).  The
   matching `sigma` code already guarded this.
+
+- `?rxSolve` no longer states that `method="dop853"` cannot solve in
+  parallel.  Only the non-reentrant Fortran COMMON block solvers (`lsoda`,
+  `lsode`, `bdf`) are excluded from threading by `solveMethodThreadSafe()`;
+  `dop853` has been thread-safe and has honored `cores`.  Documentation only,
+  no behavior change (#1305).
 
 ### Sensitivities
 
