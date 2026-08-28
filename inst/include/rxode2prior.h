@@ -52,12 +52,28 @@ extern "C" {
 // assigns, which is also the numbering nlmixr2est's own op_focei uses for
 // its theta vector and omega matrix, so the evaluator never needs a name
 // lookup.
+//
+// `etaIdx2[k]` is 0 for every existing use (a population parameter, or a
+// diagonal omega element) -- member k then addresses `omega[e][e]` via
+// `etaIdx[k]` alone, exactly as before this field was added.  A type 0/1/2
+// member whose `etaIdx2[k]` is nonzero instead addresses the OFF-DIAGONAL
+// covariance cell `omega[etaIdx[k]-1][etaIdx2[k]-1]` -- a marginal prior on
+// one covariance element (lotri's `prior(eta.i, eta.j) ~ dnorm(...)`),
+// distinct from an invWishart()/multiNormal() block prior spanning many
+// cells at once (type 3/4 never uses `etaIdx2`; its `etaIdx[0..n-1]` is
+// still a plain list of the block's own diagonal indices).  Purely
+// additive: every reader that only ever checked `etaIdx[k] != 0` to detect
+// "this member touches omega" is still correct unchanged, since `etaIdx[k]`
+// is always the nonzero, primary index for an off-diagonal member too.
 typedef struct rx_prior_term_t {
   int type;      // 0=normal, 1=cauchy, 2=multiNormal, 3=invWishart (general),
                  // 4=invWishart (NONMEM NWPRI)
   int n;         // number of members (1 for normal/cauchy)
   int *thetaIdx; // length n; 0 when member k is an omega element
   int *etaIdx;   // length n; 0 when member k is a population parameter
+  int *etaIdx2;  // length n; 0 unless member k is an off-diagonal omega
+                 // covariance cell, in which case it is that cell's SECOND
+                 // (1-based) eta index -- see the field-level comment above
   double *mu;    // length n; unused (NULL) for invWishart
   double *scale; // normal/cauchy: length-1 sd/scale. multiNormal: n*n
                  // row-major covariance Sigma. invWishart (3 or 4): n*n
