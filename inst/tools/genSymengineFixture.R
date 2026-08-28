@@ -146,63 +146,16 @@ for (nm in names(.models)) {
 .rx <- unique(.rx[nzchar(.rx) & !is.na(.rx)])
 
 ## ------------------------------------------------------- expected output ----
-## Capture in FRESH subprocesses, never in this one.  Stages (1)-(4) above build
-## symengine environments, and that registers function names which change how
-## rxFromSE() treats a later unknown function (eg "zeta(x)" errors in a clean
-## session but succeeds once a model has been loaded).  Recording from this
-## process would bake that contamination into the oracle.
-##
-## Capture twice -- once under library(), once under pkgload::load_all() -- and
-## keep only the rows where they agree, so the fixture is valid both under
-## devtools::test() and under R CMD check.  The four passes run in the SAME
-## order the test file uses, because within one session an earlier pass can
-## register a name that a later pass then sees.
-
+## .runCapture(): see the file for why capture happens in fresh subprocesses.
 .inputs <- list(se = .se, rx = .rx)
 .inFile <- tempfile(fileext = ".rds")
 saveRDS(.inputs, .inFile, version = 2)
-
-.captureScript <- function(loader) {
-  sprintf('
-    %s
-    .in <- readRDS("%s")
-    .capture <- function(inputs, fn) {
-      out <- character(length(inputs)); err <- logical(length(inputs))
-      for (i in seq_along(inputs)) {
-        r <- tryCatch(fn(inputs[i]),
-                      error = function(e) structure(conditionMessage(e), class = "sgErr"))
-        if (inherits(r, "sgErr")) { err[i] <- TRUE; out[i] <- as.character(r) }
-        else if (is.character(r) && length(r) == 1L) out[i] <- r
-        else { err[i] <- TRUE; out[i] <- "<non-character>" }
-      }
-      data.frame(input = inputs, output = out, isError = err, stringsAsFactors = FALSE)
-    }
-    res <- list(
-      fromSE        = .capture(.in$se, function(x) rxode2::rxFromSE(x)),
-      fromSEforward = .capture(.in$se, function(x) rxode2::rxFromSE(x, "forward")),
-      fromSEcentral = .capture(.in$se, function(x) rxode2::rxFromSE(x, "central")),
-      toSE          = .capture(.in$rx, function(x) rxode2::rxToSE(x)))
-    saveRDS(res, "%%s", version = 2)
-  ', loader, .inFile)
-}
-
-.runCapture <- function(loader, label) {
-  outFile <- tempfile(fileext = ".rds")
-  scr <- sprintf(.captureScript(loader), outFile)
-  f <- tempfile(fileext = ".R")
-  writeLines(scr, f)
-  st <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", shQuote(f)),
-                stdout = FALSE, stderr = FALSE)
-  if (!file.exists(outFile)) {
-    stop("capture subprocess failed (", label, "), status ", st)
-  }
-  readRDS(outFile)
-}
+source("inst/tools/symengineFixtureCapture.R", local = TRUE)
 
 message("capturing under library(rxode2) ...")
-.a <- .runCapture('suppressMessages(library(rxode2))', "library")
+.a <- .runCapture('suppressMessages(library(rxode2))', "library", .inFile)
 message("capturing under pkgload::load_all() ...")
-.b <- .runCapture('suppressMessages(pkgload::load_all(".", quiet = TRUE))', "load_all")
+.b <- .runCapture('suppressMessages(pkgload::load_all(".", quiet = TRUE))', "load_all", .inFile)
 
 ## Keep only rows both loaders agree on.
 .reconcile <- function(a, b, what) {
