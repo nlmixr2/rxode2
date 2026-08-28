@@ -575,6 +575,25 @@ rxRmFun <- function(name) {
   "M_LN2" = "log(2)",
   "M_LN10" = "log(10)"
 )
+
+## Rendered form of each .rxSEcnt constant, computed ONCE when the package is
+## built (same idiom as .rxFunctionCache).  .rxFromSEnum() used to eval(parse())
+## all 22 of these on every numeric leaf it saw -- ~342us per leaf, ~30% of all
+## symbolic-derivative time -- purely to rediscover values that are fixed at
+## build time.  NA marks a constant that did not evaluate; it never matches.
+.rxSEcntStr <- local({
+  .op <- options(digits = 22)
+  on.exit(options(.op))
+  E <- exp(1)
+  vapply(unname(.rxSEcnt), function(.v) {
+    .tmp <- try(paste(eval(parse(text = .v))), silent = TRUE)
+    if (inherits(.tmp, "try-error") || length(.tmp) != 1L) {
+      NA_character_
+    } else {
+      .tmp
+    }
+  }, character(1), USE.NAMES = FALSE)
+})
 ## "rxTBS", "rxTBSd"
 
 .rxSEreserved <- list(
@@ -2551,19 +2570,11 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
   .ret <- as.character(x)
   .retl <- nchar(.ret)
   if (length(.retl) == 1L && .retl > 5) {
-    .op <- options()
-    options(digits = 22)
-    on.exit(options(.op))
-    .rx <- names(.rxSEcnt)
-    .val <- setNames(.rxSEcnt, NULL)
-    E <- exp(1)
-    for (.i in seq_along(.rx)) {
-      .tmp <- try(eval(parse(text = paste0("substr(paste(", .val[.i], "), 1, .retl)"))), silent = TRUE)
-      if (!inherits(.tmp, "try-error")) {
-        if (.ret == .tmp) {
-          return(.rx[.i])
-        }
-      }
+    ## prefix match against the build-time renderings in .rxSEcntStr; first
+    ## match wins, matching the original loop order over .rxSEcnt
+    .m <- which(substr(.rxSEcntStr, 1L, .retl) == .ret)
+    if (length(.m) > 0L) {
+      return(names(.rxSEcnt)[.m[1L]])
     }
   }
   return(.ret)
