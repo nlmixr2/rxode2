@@ -904,9 +904,26 @@
       }
       .res
     } else {
-      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+      ## RXDEBUG (temporary): report each chunk's shape so a macOS-only serial
+      ## failure can be identified; remove once diagnosed.
+      .res <- character(.nChunks)
+      for (.i in seq_len(.nChunks)) {
+        .r <- .rxOptExprChunk(.i, .chunks, msg)
+        cat(sprintf("RXDEBUG chunk %d class=%s len=%d nchar=%s\n", .i,
+                    paste(class(.r), collapse = "/"), length(.r),
+                    paste(nchar(.r), collapse = ",")))
+        .res[.i] <- .r
+      }
+      .res
     }
-  }, error = function(e) NULL)
+  }, error = function(e) {
+    ## RXDEBUG (temporary)
+    cat(sprintf(paste0("RXDEBUG chunk failure: parallel=%s nChunks=%d nDaemons=%d ",
+                       "useMirai=%s ownDaemons=%s cores=%d msg=%s\n"),
+                parallel, .nChunks, .nDaemons, .useMirai, .ownDaemons,
+                as.integer(rxCores()), conditionMessage(e)))
+    NULL
+  })
 
   # A chunk is only a fragment of the model, so it can fail to optimize where the whole
   # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
