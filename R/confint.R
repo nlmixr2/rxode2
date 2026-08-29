@@ -1,3 +1,84 @@
+#' Simulated percentiles, with confidence bands, from a solved rxode2 object
+#'
+#' Summarizes a solved object into the percentiles of the simulated values at
+#' each time and, when the simulation can support it, a confidence band around
+#' each of those percentiles.
+#'
+#' The percentiles are always taken over the simulated individuals; how (and
+#' whether) the band around them is obtained depends on the simulation:
+#'
+#' * `ci = FALSE` -- no band; the pooled percentiles are returned.
+#'
+#' * `nStud > 1` -- the percentiles are computed within each study and the band
+#'   is the quantile of those study-level percentiles.  This is the meaningful
+#'   case, since the studies differ by the `thetaMat`/`omega` uncertainty draw.
+#'
+#' * a single study of at least 2500 individuals -- the individuals are split
+#'   into `round(sqrt(n))` sub-samples, and the band is the quantile of the
+#'   sub-sample percentiles, that is, the sampling variability of the percentile
+#'   itself.  It does not include parameter uncertainty.
+#'
+#' * anything smaller -- no band, with a message saying so.
+#'
+#' @param object solved rxode2 object
+#' @param parm compartments or calculated (`lhs`) variables to summarize; when
+#'   `NULL` everything `rxStack()` returns is summarized
+#' @param level width of the interval taken over the simulated individuals,
+#'   that is, which percentiles are reported at each time
+#' @param ... other options:
+#'
+#'   * `ci` -- width of the confidence band placed around each percentile,
+#'     defaulting to `level`.  `ci = FALSE` (or `0`) returns the percentiles
+#'     with no band.
+#'
+#'   * `mean` -- when `TRUE` report the mean and its interval with
+#'     [meanProbs()] instead of the empirical quantiles; `mean = "binom"` uses
+#'     [binomProbs()] for a 0/1 variable.
+#'
+#'   * `by` -- character vector of extra columns of `object` to stratify by.
+#'
+#'   * `useT`, `pred` -- passed to [meanProbs()]; `n`, `m`, `M`, `tol`, `pred`,
+#'     `ciMethod` -- passed to [binomProbs()].
+#'
+#'   * `doSim` -- passed to [rxStack()].
+#'
+#' @return A `data.frame` (a `tibble` when \pkg{tibble} is present) with one row
+#'   per time, endpoint and requested percentile.  Without a band it is class
+#'   `rxSolveConfint1` with the percentile in `p1` and its value in `eff`; with
+#'   a band it is class `rxSolveConfint2` with the percentile in `p1` and the
+#'   band in the `p<lower>`, `p50` and `p<upper>` columns.  Both carry a
+#'   `Percentile` label used by [plot()].
+#'
+#' @author Matthew L. Fidler
+#'
+#' @examples
+#'
+#' \donttest{
+#'
+#' mod <- rxode2({
+#'   ka <- 1
+#'   cl <- 1 * exp(eta.cl)
+#'   v <- 20
+#'   d/dt(depot) <- -ka * depot
+#'   d/dt(center) <- ka * depot - cl / v * center
+#'   cp <- center / v
+#' })
+#'
+#' ev <- et(amt=100) |> et(seq(0, 24, length.out=25))
+#'
+#' s <- rxSolve(mod, ev, omega=lotri(eta.cl ~ 0.1), nSub=100)
+#'
+#' # 100 individuals in one study: percentiles only
+#' confint(s, "cp", level=0.95, ci=FALSE)
+#'
+#' # with 20 studies the percentiles get a confidence band
+#' s2 <- rxSolve(mod, ev, omega=lotri(eta.cl ~ 0.1), nSub=100, nStud=20,
+#'               thetaMat=lotri(ka ~ 0.01))
+#'
+#' confint(s2, "cp", level=0.95)
+#'
+#' }
+#'
 #' @export
 confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   sim.id <- id <- NULL # rcheck nonsense
