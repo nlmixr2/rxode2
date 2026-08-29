@@ -2031,7 +2031,13 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                                        rx_solving_options_ind *ind,
                                        int *i, void *ctx,
                                        int eff) {
-  int itol = 0;
+  // dop853's itol=1 selects the per-compartment tolerance vectors, which is what
+  // the main-timeline loop uses (ind_dop0).  This used to pass itol=0 with the
+  // scalar op->RTOL/op->ATOL, so a solve whose tolerances differ per compartment
+  // -- a sensitivity model, where they are scaled per equation -- integrated its
+  // steady-state intervals to different tolerances than the rest of the solve.
+  // (Unrelated to the LSODA calls below, whose itol=1 means scalar.)
+  int itol = 1;
   // Single-interval / steady-state sub-solves advance the FORWARD primal only.
   // The discrete-adjoint method variants use method code = base + 200 (e.g.
   // rk4s=206 -> rk4=6, liblsodaadj=202 -> liblsoda=2, dop853s=200 -> dop853=0);
@@ -2460,8 +2466,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                        *xp,
                        yp,
                        xout,
-                       &(op->RTOL),
-                       &(op->ATOL),
+                       op->rtol2,
+                       op->atol2,
                        itol,
                        solout,
                        0,

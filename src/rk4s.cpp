@@ -7410,13 +7410,28 @@ static inline void rks_run_method(const rksTableau &T, rx_solving_options_ind *i
 // AutoSwitch stiffness heuristic for the interval [xp,xout]: Gershgorin spectral
 // radius of J=F_X(y) times the interval length.  (For the adjoint the exact
 // threshold only affects which method runs -- the transpose is exact for either.)
+//
+// This path stays PREDICTIVE, unlike the forward composites in par_solve.cpp,
+// which probe and fall back.  It has to be: every step this interval produces is
+// tagged with the method that made it, so the choice must be made before the
+// interval runs and cannot be revised afterwards.  It also keeps the interval
+// length rather than a step size, which over-estimates the stiffness -- here
+// that errs toward the stiff secondary, which is the safe direction, and the
+// forward paths' reason for dropping it (a wasted switch on a non-stiff problem)
+// does not apply because there is no wasted probe to pay for.
+//
+// The threshold is written as a ratio against a stability size so that
+// autoSwitchNonstifftol reaches it; the constant is chosen so the 0.9 default
+// reproduces the `> 50.0` this used to hard-code.
+#define RKS_STABILITY_SIZE (50.0 / 0.9)
 static inline bool compositeStiff(rx_solving_options_ind *ind, rx_solving_options *op,
                                   int cSub, double *y, double xp, double xout) {
   int n = op->adjNbase, fxOff = op->adjFxOff;
   calc_lhs(cSub, xp, y, ind->lhs);
   double specrad = 0;
   for (int i = 0; i < n; ++i) { double rs = 0; for (int j = 0; j < n; ++j) rs += fabs(ind->lhs[fxOff+i*n+j]); if (rs > specrad) specrad = rs; }
-  return specrad * fabs(xout - xp) > 50.0;
+  double tol = (op->autoSwitchNonstifftol > 0.0) ? op->autoSwitchNonstifftol : 0.9;
+  return specrad * fabs(xout - xp) > RKS_STABILITY_SIZE * tol;
 }
 
 static inline void rks_step_interval(rx_solving_options_ind *ind, rx_solving_options *op,
