@@ -117,7 +117,9 @@ rxTest({
   })
 
   test_that("the autoSwitch controls reach the composite", {
-    ## They were documented, parsed, stored on op, and read by nothing.
+    ## Every one of these was documented, parsed, stored on op, and read by
+    ## nothing.  Each is checked the same way: it has to change which method
+    ## runs where -- otherwise it is still dead -- without changing the answer.
     .go <- function(...) {
       rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4",
               atol = 1e-8, rtol = 1e-8, ...)
@@ -125,15 +127,20 @@ rxTest({
     .ref2 <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda",
                      atol = 1e-12, rtol = 1e-12)
     .base <- .go()
-    ## each control changes which method runs where ...
-    expect_false(identical(.go(autoSwitchStiffFirst = TRUE)$L, .base$L))
-    expect_false(identical(.go(autoSwitchNonstifftol = 0.05)$L, .base$L))
-    ## ... and none of them changes the answer
-    for (.x in list(.base, .go(autoSwitchStiffFirst = TRUE),
-                    .go(autoSwitchNonstifftol = 0.05))) {
-      expect_true(max(abs(.x$L - .ref2$L)) < 1e-5)
+    .live <- list(autoSwitchNonstifftol = 0.05,   # trip the detector sooner
+                  autoSwitchStifftol = 0.05,      # ... on the re-probe after a switch
+                  autoSwitchStiffFirst = TRUE,    # start on the secondary
+                  autoSwitchMaxStiff = 1L,        # stick to it after one stiff interval
+                  autoSwitchMaxNonstiff = 50L,    # stay on it far longer
+                  autoSwitchSwitchMax = 200L)     # ... and refuse to come back sooner
+    for (.nm in names(.live)) {
+      .x <- do.call(.go, stats::setNames(list(.live[[.nm]]), .nm))
+      expect_false(identical(.x$L, .base$L),
+                   info = paste(.nm, "had no effect on the solve"))
+      expect_true(max(abs(.x$L - .ref2$L)) < 1e-5,
+                  info = paste(.nm, "changed the answer, not just the method mix"))
     }
-    ## autoSwitchDtfac is accepted and inert
+    ## autoSwitchDtfac is kept for compatibility and documented as inert
     expect_identical(.go(autoSwitchDtfac = 4)$L, .base$L)
   })
 })
