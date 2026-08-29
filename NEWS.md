@@ -23,7 +23,10 @@
   statement, so the old behavior cannot be kept alongside the fix.  Write an
   empty body as `{}` or `;` (`if (a > 1) {}`), both of which parse as before.
   Bodies that only look empty, such as a block holding nothing but a comment,
-  are unaffected.
+  are unaffected.  R rejects all three of these too, so the grammar now agrees
+  with R where it used to be more permissive, and they are reported as an
+  ordinary model syntax error naming what to write instead rather than as a
+  bare parser error.
 
 - `rxNorm()` parses a model once rather than twice.  With no condition set it
   asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a

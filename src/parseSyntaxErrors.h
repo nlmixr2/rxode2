@@ -288,8 +288,79 @@ static inline void printErrorLineHiglightRegion(Parser *p, char *after) {
 }
 
 
+/* An `if`/`while` with no body at all is the one construct this grammar cannot
+   accept and cannot explain for itself: `statement` is deliberately not
+   nullable (inst/tran.g), so the parse simply fails at whatever follows, and
+   dparser's generic "syntax error" with a caret says nothing about why.  The
+   message says what to write instead.
+
+   Recognized by walking back from the failure: skip whitespace and comments,
+   expect ')', match back to its '(', skip whitespace again, and look for the
+   keyword.  Returns the keyword, or NULL when this is some other error. */
+/* spelled out rather than isalnum(), which is locale dependent and would need
+   another header for one comparison */
+static inline int rxIsWordChar(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') || c == '_' || c == '.';
+}
+
+static inline const char *rxBodilessIfWhile(Parser *p) {
+  int line = 1, col = 0, depth;
+  const char *s = gBuf, *at;
+  if (gBuf == NULL) return NULL;
+  for (; *s != '\0'; s++) {
+    if (line == p->user.loc.line && col == p->user.loc.col) break;
+    if (*s == '\n') { line++; col = 0; } else { col++; }
+  }
+  at = s;
+  /* back over whitespace */
+  while (at > gBuf) {
+    const char *b = at - 1;
+    if (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') { at = b; continue; }
+    break;
+  }
+  /* `if (c) else s` fails AT the else, so step back over it and keep looking;
+     the missing body is the then-branch */
+  if (at - gBuf >= 4 && !strncmp(at - 4, "else", 4) &&
+      (at - gBuf == 4 || !rxIsWordChar(at[-5]))) {
+    at -= 4;
+    while (at > gBuf) {
+      const char *b = at - 1;
+      if (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') { at = b; continue; }
+      break;
+    }
+  }
+  if (at == gBuf || at[-1] != ')') return NULL;
+  /* match the condition's parentheses back to their opening '(' */
+  at--;                       /* now on ')' */
+  depth = 0;
+  while (at > gBuf) {
+    if (*at == ')') depth++;
+    else if (*at == '(') { depth--; if (depth == 0) break; }
+    at--;
+  }
+  if (depth != 0 || *at != '(') return NULL;
+  while (at > gBuf && (at[-1] == ' ' || at[-1] == '\t')) at--;
+  if (at - gBuf >= 2 && !strncmp(at - 2, "if", 2) &&
+      (at - gBuf == 2 || !rxIsWordChar(at[-3]))) return "if";
+  if (at - gBuf >= 5 && !strncmp(at - 5, "while", 5) &&
+      (at - gBuf == 5 || !rxIsWordChar(at[-6]))) return "while";
+  return NULL;
+}
+
 static void rxSyntaxError(struct D_Parser *ap) {
   if (!rx_suppress_syntax_info){
+    Parser *pb = (Parser *)ap;
+    const char *kw = rxBodilessIfWhile(pb);
+    if (kw != NULL) {
+      /* _gbuf is an sbuf, so the message is built on the heap the way every
+         other reported syntax error in this parser builds its own */
+      sPrint(&_gbuf,
+             "'%s' needs a statement for its body; use '%s (...) {}' for an empty one",
+             kw, kw);
+      trans_syntax_error_report_fn(_gbuf.s);
+      return;
+    }
     printSyntaxErrorHeader();
     Parser *p = (Parser *)ap;
     printPriorLines(p);

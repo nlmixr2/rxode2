@@ -11,9 +11,30 @@ rxTest({
   test_that("an if/while with no body at all is a syntax error", {
     ## An empty body cannot be allowed back: it is exactly what made
     ## `if (a > 1) b <- 1` ambiguous between a body and a following statement.
+    ## R rejects the same three inputs.
     expect_error(rxNorm("if (a>1)"))
     expect_error(rxNorm("while (a>1)"))
     expect_error(rxNorm("if (a>1) else b=1"))
+  })
+
+  test_that("the bodiless if/while error says what to write instead", {
+    ## Reported through trans_syntax_error_report_fn(), so it is shaped like
+    ## every other model syntax error rather than dparser's bare caret.
+    .msg <- function(x) {
+      .o <- utils::capture.output(
+        try(rxNorm(x), silent = TRUE), type = "output")
+      paste(.o, collapse = "\n")
+    }
+    expect_match(.msg("if (a>1)"),
+                 "'if' needs a statement for its body", fixed = TRUE)
+    expect_match(.msg("while (a>1)"),
+                 "'while' needs a statement for its body", fixed = TRUE)
+    ## `if (c) else s` fails at the `else`; the missing body is the then-branch
+    expect_match(.msg("if (a>1) else b=1"),
+                 "'if' needs a statement for its body", fixed = TRUE)
+    ## an unrelated syntax error must NOT be relabelled as this one
+    expect_false(grepl("needs a statement for its body", .msg("a = 1 +"),
+                       fixed = TRUE))
   })
 
   test_that("an empty body written as {} or ; still parses", {
