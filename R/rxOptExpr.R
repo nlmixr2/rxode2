@@ -409,16 +409,529 @@
   }
 }
 
+# -- Chunked optimization ------------------------------------------------------
+
+# Split the model into contiguous chunks of roughly `targetChars` characters.
+# Optimizing a chunk is strongly superlinear in its size, so the largest chunk
+# dominates the total; balancing on characters rather than lines minimizes it,
+# since a sensitivity equation costs far more than a short assignment.
+.rxBalancedChunks <- function(lines, targetChars) {
+  .w <- pmax(1L, nchar(lines))
+  .k <- max(1L, min(length(lines), as.integer(ceiling(sum(.w) / max(1, targetChars)))))
+  if (.k <= 1L) return(list(lines))
+  unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
+}
+
+# A state initial condition (state(0)=), a dosing modifier (f/F/alag/lag/rate/dur(cmt)=)
+# or a delay pre-history (past(cmt, tau)=)
+# is a syntax error in a chunk that lacks the matching d/dt() ("'W(0)' present, but
+# d/dt(W) not defined").  Such a line cannot simply be moved to the chunk that has the
+# d/dt(): its right-hand side may read a variable that a later line reassigns, so its
+# position is load-bearing.  Rewrite its left-hand side to a unique plain name *in place*
+# instead -- which parses anywhere as an ordinary assignment -- and undo that with
+# .rxRestoreCmt() once the chunks are optimized.  The line never moves, so semantics are
+# preserved exactly.  Whitespace is kept verbatim (the caller's text need not be
+# canonical, since the whole model is deliberately never normalized): a canonical
+# left-hand side embeds the compartment name bare (readable), while a spacing variant
+# the grammar also accepts (`depot (0)=`, `f( depot )=`) is hex-encoded whole, so the
+# disguised name is always a valid identifier and the restore is byte-exact either way.
+# past(cmt, tau)= always takes the hex form: its second argument is an arbitrary
+# expression (`past(G, exp(THETA[8]))`), which no canonical bare-name form could carry.
+# A construct not recognised here is left alone; its chunk then fails and falls back to
+# the whole model.
+.rxDisguiseCmt <- function(modTxt) {
+  .ln <- strsplit(modTxt, "\n", fixed = TRUE)[[1]]
+  .eq <- regexpr("=", .ln, fixed = TRUE)
+  .raw <- ifelse(.eq > 0L, substr(.ln, 1L, .eq - 1L), "")
+  .lhs <- trimws(.raw)
+  .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+  .trail <- substr(.raw, nchar(.lead) + nchar(.lhs) + 1L, nchar(.raw))
+  .rhs <- ifelse(.eq > 0L, substr(.ln, .eq, nchar(.ln)), "")
+  .id <- "[a-zA-Z][a-zA-Z0-9_.]*"
+  .icRe <- paste0("^(", .id, ")[ \t]*\\(0\\)$")
+  .modRe <- paste0("^([fF]|alag|lag|rate|dur)[ \t]*\\([ \t]*(", .id, ")[ \t]*\\)$")
+  .pastRe <- paste0("^past[ \t]*\\([ \t]*", .id, "[ \t]*,.*\\)$")
+  .isIc <- .eq > 0L & grepl(.icRe, .lhs)
+  .isMod <- .eq > 0L & grepl(.modRe, .lhs)
+  .isPast <- .eq > 0L & grepl(.pastRe, .lhs)
+  .icCan <- .isIc & grepl(paste0("^", .id, "\\(0\\)$"), .lhs)
+  .modCan <- .isMod & grepl(paste0("^([fF]|alag|lag|rate|dur)\\(", .id, "\\)$"), .lhs)
+  .hex <- (.isIc | .isMod | .isPast) & !(.icCan | .modCan)
+  .new <- .lhs
+  .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
+  .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
+  .new[.modCan] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
+                          character(1))
+  .new[.hex] <- vapply(.lhs[.hex], function(.l) {
+    paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
+  }, character(1), USE.NAMES = FALSE)
+  paste(ifelse(.isIc | .isMod | .isPast, paste0(.lead, .new, .trail, .rhs), .ln),
+        collapse = "\n")
+}
+
+# Reverse .rxDisguiseCmt().  Only the left-hand side is rewritten (split at the first
+# "="), so the optimized right-hand side is kept verbatim.  The rx__disg_lhs__ form is
+# hex-decoded back to the original left-hand side, byte for byte.
+.rxRestoreCmt <- function(txt) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .disg <- grepl("^[ \t]*rx__disg_(ic|mod|lhs)__", .ln)
+  if (any(.disg)) {
+    .eq <- regexpr("=", .ln[.disg], fixed = TRUE)
+    .raw <- substr(.ln[.disg], 1L, .eq - 1L)
+    .rest <- substr(.ln[.disg], .eq, nchar(.ln[.disg]))
+    .lead <- sub("^([ \t]*).*$", "\\1", .raw)
+    .tok <- trimws(.raw)
+    .trail <- substr(.raw, nchar(.lead) + nchar(.tok) + 1L, nchar(.raw))
+    .tok <- sub("^rx__disg_ic__(.*)__$", "\\1(0)", .tok)
+    .tok <- sub("^rx__disg_mod__([a-zA-Z]+)__(.*)__$", "\\1(\\2)", .tok)
+    .isHex <- grepl("^rx__disg_lhs__([0-9a-f][0-9a-f])+__$", .tok)
+    .tok[.isHex] <- vapply(sub("^rx__disg_lhs__([0-9a-f]+)__$", "\\1", .tok[.isHex]),
+                           function(.h) {
+                             rawToChar(as.raw(strtoi(substring(.h, seq(1L, nchar(.h), 2L),
+                                                               seq(2L, nchar(.h), 2L)), 16L)))
+                           }, character(1), USE.NAMES = FALSE)
+    .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
+  }
+  paste(.ln, collapse = "\n")
+}
+
+# delay(state, T) -- and its sensitivity derivatives rxDelayD/rxDelayD2/rxDelayD3 --
+# parses only where d/dt(state) is defined, so a chunk boundary separating the two makes
+# the chunk a syntax error: the parser's :ERR: block prints mid-fit and the whole model
+# falls back to the unchunked pass.  Unlike the left-hand sides above, a delay() call is
+# a right-hand-side *expression* whose repeated occurrences are worth factoring (each is
+# a dense-history interpolation at runtime), so it is only disguised where it must be:
+# in a chunk that lacks the matching d/dt(), the whole call is replaced in place by a
+# unique plain name -- which parses anywhere -- and restored verbatim by
+# .rxRestoreDelay() once the chunks are reassembled.  A chunk holding both keeps the
+# call and its factoring.  A call whose state has no d/dt() anywhere in the model is
+# left alone, so a malformed model still fails its chunk and reaches the whole-model
+# fallback, which raises exactly what the unchunked call raises.  Likewise a call this
+# scan cannot delimit (spanning lines, or a non-name first argument) is left alone.
+.rxDisguiseDelayChunks <- function(chunks) {
+  .ddtRe <- "^[ \t]*d[ \t]*/[ \t]*dt[ \t]*\\([ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*\\)[ \t]*(=|<-|~)"
+  .ddtOf <- function(.ln) {
+    .m <- regmatches(.ln, regexec(.ddtRe, .ln))
+    unique(vapply(.m[lengths(.m) == 3L], `[`, character(1), 2L))
+  }
+  .allDdt <- unique(unlist(lapply(chunks, .ddtOf)))
+  .fnRe <- "(?<![a-zA-Z0-9_.])(rxDelayD3|rxDelayD2|rxDelayD|delay)[ \t]*\\("
+  .map <- character(0) # id -> original call text, shared across chunks
+  .oneLine <- function(.l, .ddt) {
+    .pos <- 1L
+    repeat {
+      .m <- regexpr(.fnRe, substr(.l, .pos, nchar(.l)), perl = TRUE)
+      if (.m == -1L) break
+      .start <- .pos + as.integer(.m) - 1L
+      .open <- .start + attr(.m, "match.length") - 1L
+      .ch <- strsplit(substr(.l, .open, nchar(.l)), "", fixed = TRUE)[[1]]
+      .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
+      if (is.na(.rel)) { # no matching ")" on this line: leave the call alone
+        .pos <- .open + 1L
+        next
+      }
+      .end <- .open + .rel - 1L
+      .inner <- substr(.l, .open + 1L, .end - 1L)
+      .st <- regmatches(.inner,
+                        regexec("^[ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*,", .inner))[[1]]
+      # keep scanning inside the arguments (nested calls) when this call stays
+      if (length(.st) != 2L || .st[2L] %in% .ddt || !(.st[2L] %in% .allDdt)) {
+        .pos <- .open + 1L
+        next
+      }
+      .call <- substr(.l, .start, .end)
+      .hit <- match(.call, .map)
+      if (is.na(.hit)) {
+        .id <- sprintf("rx__disg_delay_%d__", length(.map) + 1L)
+        .map[[.id]] <<- .call
+      } else {
+        .id <- names(.map)[.hit]
+      }
+      .l <- paste0(substr(.l, 1L, .start - 1L), .id, substr(.l, .end + 1L, nchar(.l)))
+      .pos <- .start + nchar(.id)
+    }
+    .l
+  }
+  .chunks <- lapply(chunks, function(.ln) {
+    .ddt <- .ddtOf(.ln)
+    vapply(.ln, .oneLine, character(1), .ddt = .ddt, USE.NAMES = FALSE)
+  })
+  list(chunks = .chunks, map = .map)
+}
+
+# Reverse .rxDisguiseDelayChunks(): each unique name is put back as the original call
+# text, byte for byte, wherever the optimizer left it (in place, or hoisted into a
+# rx_expr_ temporary's definition).
+.rxRestoreDelay <- function(txt, map) {
+  for (.id in names(map)) {
+    txt <- gsub(.id, map[[.id]], txt, fixed = TRUE)
+  }
+  txt
+}
+
+# Index of the ")" matching the "(" at `open`, or NA when the line does not close it.
+.rxMatchParen <- function(line, open) {
+  .ch <- strsplit(substr(line, open, nchar(line)), "", fixed = TRUE)[[1]]
+  .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
+  if (is.na(.rel)) NA_integer_ else open + .rel - 1L
+}
+
+# Split "state, tau" at its top-level comma.  NULL when there is no such comma or the
+# first argument is not a plain name (`delay(f(x), tau)` is not a state).  A state may
+# lead with "." (`d/dt(.y.1)` parses), so a name is not required to start with a letter.
+# `code` is the code-only form of `inner` (see .rxCodeOnly()); the comma is found in it,
+# so a string holding one does not split the arguments, and the text is taken from
+# `inner`, which still has the string.  The two agree column for column.
+.rxSplitStateTau <- function(inner, code = inner) {
+  .ch <- strsplit(code, "", fixed = TRUE)[[1]]
+  .depth <- cumsum((.ch == "(") - (.ch == ")"))
+  .at <- which(.ch == "," & .depth == 0L)[1L]
+  if (is.na(.at)) return(NULL)
+  .st <- trimws(substr(inner, 1L, .at - 1L))
+  if (!grepl("^[a-zA-Z.][a-zA-Z0-9_.]*$", .st)) return(NULL)
+  list(state = .st, tau = trimws(substr(inner, .at + 1L, nchar(inner))))
+}
+
+# Comparable form of a duration: whatever spacing the text carries, two durations that
+# parse to the same expression compare equal.  Text that does not parse compares as itself.
+.rxTauKey <- function(tau) {
+  .e <- tryCatch(parse(text = tau)[[1L]], error = function(e) NULL)
+  if (is.null(.e)) trimws(tau) else deparse1(.e)
+}
+
+# The code part of a line: the comment dropped, and the inside of every string literal
+# blanked out.  Neither is code, so a delay() written in one is not a delay() call, and the
+# scan below must neither read one nor be stopped by an unbalanced parenthesis in one.
+# Blanking rather than removing keeps every column where it was, so what the scan does read
+# it reads from the right place.
+.rxCodeOnly <- function(line) {
+  if (!grepl("[#\"']", line)) return(line)
+  .ch <- strsplit(line, "", fixed = TRUE)[[1]]
+  .q <- ""
+  .i <- 1L
+  while (.i <= length(.ch)) {
+    .c <- .ch[.i]
+    if (nzchar(.q)) {
+      .ch[.i] <- " "
+      if (.c == "\\") {                    # escaped: whatever follows is not a delimiter
+        .i <- .i + 1L
+        if (.i <= length(.ch)) .ch[.i] <- " "
+      } else if (.c == .q) {
+        .ch[.i] <- .c                      # keep the quote that closes it
+        .q <- ""
+      }
+    } else if (.c == "\"" || .c == "'") {
+      .q <- .c
+    } else if (.c == "#") {
+      return(paste(.ch[seq_len(.i - 1L)], collapse = ""))
+    }
+    .i <- .i + 1L
+  }
+  paste(.ch, collapse = "")
+}
+
+# Durations of every delay(state, tau) in `txt`, per state, in order of first appearance.
+# Found by matching parentheses rather than by parsing, the way .rxDisguiseDelayChunks()
+# already scans for the same calls: `txt` is reassembled optimizer output, which is rxode2
+# syntax and not guaranteed to be valid R, and a scan that quietly stopped working on some
+# model shape would silently leave a past() line unmatched.
+#
+# A call the scan cannot read -- one split over lines, say -- sets the "incomplete"
+# attribute: the result is then a subset of the model's delay() calls, so neither the
+# order of what it did read nor the absence of a duration from it says anything.
+#
+# A call is LOCATED on the code-only form of the line and READ off the line itself: a
+# duration may legitimately hold a string (`delay(G, 1+(OCC=="first"))`), and the masking
+# that keeps the scan out of a string exists only to say what is code, not to alter it.
+# The two agree column for column, which is why .rxCodeOnly() blanks rather than removes.
+.rxDelayDurs <- function(txt) {
+  .re <- "(?<![a-zA-Z0-9_.])delay[ \t]*\\("
+  .out <- list()
+  .incomplete <- FALSE
+  .lines <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  for (.i in seq_along(.lines)) {
+    .raw <- .lines[.i]
+    .l <- .rxCodeOnly(.raw)
+    .pos <- 1L
+    repeat {
+      .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)
+      if (.m == -1L) break
+      .open <- .pos + as.integer(.m) + attr(.m, "match.length") - 2L
+      .end <- .rxMatchParen(.l, .open)
+      if (is.na(.end)) { # no matching ")" on this line: skip it and keep scanning
+        .incomplete <- TRUE
+        .pos <- .open + 1L
+        next
+      }
+      .a <- .rxSplitStateTau(substr(.raw, .open + 1L, .end - 1L),
+                             substr(.l, .open + 1L, .end - 1L))
+      if (!is.null(.a)) {
+        .prev <- .out[[.a$state]]
+        if (!(.rxTauKey(.a$tau) %in% vapply(.prev, .rxTauKey, character(1)))) {
+          .out[[.a$state]] <- c(.prev, .a$tau)
+        }
+      }
+      .pos <- .open + 1L   # keep scanning, including nested delay() calls
+    }
+  }
+  attr(.out, "incomplete") <- .incomplete
+  .out
+}
+
+# The parts of a `past(state, tau) = ...` line, or NULL when the line is not one.  The
+# left-hand side is delimited by the parenthesis matching `past(`, NOT by the first "=" --
+# a duration may itself contain one (`past(G, h(x)==1)`).  Delimited on the code-only form
+# of the line, for the same reason .rxDelayDurs() scans that: a parenthesis inside a string
+# does not close the call.  The duration text still comes from the line itself.
+.rxPastLineParts <- function(line) {
+  .m <- regexpr("^[ \t]*past[ \t]*\\(", line)
+  if (.m == -1L) return(NULL)
+  .code <- .rxCodeOnly(line)
+  .open <- attr(.m, "match.length")
+  .end <- .rxMatchParen(.code, .open)
+  if (is.na(.end)) return(NULL)
+  .rest <- substr(line, .end + 1L, nchar(line))
+  if (!grepl("^[ \t]*(=|<-|~)", .rest)) return(NULL)
+  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L),
+                         substr(.code, .open + 1L, .end - 1L))
+  if (is.null(.a)) return(NULL)
+  c(.a, list(lead = sub("^([ \t]*).*$", "\\1", line), rest = .rest))
+}
+
+# Re-point a past() duration at the duration its delay() calls actually ended up with.
+#
+# On the whole-model path ..rxOptLhs() renders the past() duration through the optimizer,
+# so it picks up the same rx_expr_ temporary the matching delay(state, tau) calls do.  The
+# chunked path cannot: .rxDisguiseCmt() hides the whole past() left-hand side from the
+# optimizer and restores it byte-exactly, so a duration factored out of the delay() calls
+# would leave past(state, tau) naming an expression no delay(state, ...) uses any more --
+# which .rxValidatePast() rejects at solve time.
+#
+# This is text only, and no model semantics are involved: the duration on a past() line is
+# never evaluated (it exists so a history can be matched to its delay(); see
+# src/parseCmtProperties.h).  Optimizing never reorders statements, so a state's delay()
+# durations keep their order of first appearance, and `orig` -- the text before optimizing
+# -- says which optimized duration each past() line meant.  It is required: without it a
+# duration that stopped matching cannot be told from one that never matched.
+#
+# Only a duration that DID match a delay() before optimizing is ever re-pointed.  A
+# duration that matched nothing then matches nothing now for a reason of the model's own --
+# a typo, say -- and re-pointing it would turn a duration .rxValidatePast() rejects into
+# one it accepts, which is the one thing this pass must not do.  And a state's durations
+# are only matched up when the two texts agree on how many it has: optimizing can drop one
+# (`0*delay(G,10)` folds to `0`), and the survivor is then not the one a history that named
+# the dropped duration meant -- re-pointing it there would quietly hand a delay() term
+# another one's history, and the model would solve, wrongly.  Nothing is guessed at: what
+# does not line up is left for the validator to report.
+.rxRealignPastTau <- function(txt, orig) {
+  .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
+  .parts <- lapply(.ln, .rxPastLineParts)
+  .isPast <- which(!vapply(.parts, is.null, logical(1)))
+  if (length(.isPast) == 0L) return(txt)
+  .opt <- .rxDelayDurs(txt)
+  # a delay() the scan could not read -- one split over lines, say -- leaves an incomplete
+  # picture, and nothing can be concluded from it: the durations it did read are not the
+  # same calls, in the same order, as the ones optimizing produced, and a duration missing
+  # from it may be there in the model.  Leave every line alone, which is what this pass did
+  # before it existed: the validator still says whatever it would have said.
+  if (isTRUE(attr(.opt, "incomplete"))) return(txt)
+  .org <- .rxDelayDurs(orig)
+  if (isTRUE(attr(.org, "incomplete"))) return(txt)
+  .did <- FALSE
+  for (.i in .isPast) {
+    .p <- .parts[[.i]]
+    .o <- .opt[[.p$state]]
+    if (is.null(.o)) next
+    .key <- .rxTauKey(.p$tau)
+    if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
+    .g <- .org[[.p$state]]
+    .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
+    # it did not match a delay() before optimizing either: not ours to rewrite
+    if (!(.key %in% .gk)) next
+    if (length(.g) != length(.o)) next   # a duration was dropped: nothing lines up
+    .j <- match(.key, .gk)
+    if (is.na(.j)) next
+    .new <- .o[[.j]]
+    # keep the caller's spacing: only the duration inside past(...) is rewritten
+    .ln[.i] <- paste0(.p$lead, "past(", .p$state, ",", .new, ")", .p$rest)
+    .did <- TRUE
+  }
+  if (!.did) return(txt)
+  paste(.ln, collapse = "\n")
+}
+
+# A chunk is itself a (smaller) model, so optimize it with rxOptExpr() and chunking off.
+# Each chunk restarts its rx_expr_ counter at zero, so the names one chunk introduces would
+# collide with another's once reassembled; prefix them per chunk.
+#
+# Only the names *this* call introduced may be renamed.  A rx_expr_ name already present in
+# the chunk -- the model was optimized before, say -- must be left exactly as it is: its
+# definition and its uses can sit in different chunks, and renaming them per chunk would
+# rename them differently and pull them apart.  Matching whole words likewise keeps a
+# variable that merely contains "rx_expr_" (say `my_rx_expr_var`) from being rewritten.
+#
+# Errors are deliberately not caught here: a chunk that cannot be optimized must reach
+# .rxOptExprChunked(), which falls back to the whole model.
+.rxOptExprChunk <- function(i, chunks, msg) {
+  .txt <- paste(chunks[[i]], collapse = "\n")
+  .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
+  .re <- "\\brx_expr_[0-9]+\\b"
+  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]),
+                  unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  for (.v in .new) {
+    .o <- gsub(paste0("\\b", .v, "\\b"),
+               sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+  }
+  .o
+}
+
+# Chunked (optionally parallel) common subexpression optimization.  Subexpressions are only
+# shared within a chunk, so the optimized text is not the text the whole-model call would
+# produce -- it carries more temporaries -- but it is an equivalent model, with the same
+# states and parameters and the same solution, and a malformed model still raises the same
+# error.  What is optimized changes; what the model *means* does not.
+.rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
+  # superlinear in model size, and is what actually dominates optimizing a large model: on a
+  # 275-line augmented model the whole-model call is ~113s, of which the common subexpression
+  # search is only ~15s.  Chunking is fast precisely because rxOptExpr() normalizes each
+  # chunk on its own, so normalizing the whole model here would pay the very cost this is
+  # avoiding.  Text is already line-oriented and is split as-is; only an object needs rxNorm.
+  #
+  # Mirror how rxModelVars() reads a character, in its order: a length-1 string may be a
+  # filename (the file holds the model text; read it) or a registered model name (it has no
+  # "=", "<-" or "~"; only rxNorm() can resolve it); anything else is literal model text.
+  if (is.character(x) && length(x) == 1L &&
+        isTRUE(tryCatch(file.exists(x), error = function(e) FALSE,
+                        warning = function(w) FALSE))) {
+    x <- readLines(x, warn = FALSE)
+  } else if (is.character(x) && length(x) == 1L && !grepl("[=~]|<-", x)) {
+    x <- rxNorm(x)
+  }
+  .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
+  # Chunk only when it will actually pay.  What chunking buys is amortizing the
+  # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
+  # which is what `chunkLines` counts.  Measured, whole-model against chunked,
+  # on second-order sensitivity models:
+  #
+  #    70 KB   0.39s vs  2.00s   chunking 5.1x WORSE
+  #   261 KB   2.03s vs  2.16s            1.07
+  #   636 KB   5.42s vs  5.61s            1.03
+  #   975 KB   9.24s vs  8.60s            0.93
+  #   1.39 MB 15.39s vs  4.42s            0.29
+  #   3.14 MB 59.75s vs  6.70s   chunking 8.9x BETTER
+  #
+  # The knee is near 1 MB and the payoff is very asymmetric: at most ~7% lost
+  # below it against 3-9x gained above, so the threshold sits below the knee.
+  # A model with few but enormous lines is chunked; one with many short lines is
+  # not, which is the opposite of what the line count would have decided.
+  if (nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
+        length(.ln) <= chunkLines) {
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+  }
+  # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
+  # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line or a
+  # boundary-split delay() call is disguised.  A model that already uses such a name would
+  # have it silently captured --
+  # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
+  if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+  }
+
+  # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
+  .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
+                               mean(pmax(1L, nchar(.ln))) * chunkLines)
+  # Disguise delay() calls that a chunk boundary separated from their d/dt().
+  .delay <- .rxDisguiseDelayChunks(.chunks)
+  .chunks <- .delay$chunks
+  .nChunks <- length(.chunks)
+
+  # `parallel` carries rxControl(cores=)'s semantics: 0 means the rxode2 thread setting
+  # (rxCores(), which setRxThreads()/OMP_THREAD_LIMIT control -- so CRAN and users tune
+  # this with the same knob as the solver), n > 0 means n.  Never use more daemons than
+  # there are chunks, nor more than that thread setting; a single daemon has no
+  # parallelism to offer, only dispatch overhead, so 1 runs serially.
+  .nDaemons <- as.integer(parallel)
+  if (is.na(.nDaemons) || .nDaemons < 0L) .nDaemons <- 0L
+  if (.nDaemons == 0L) .nDaemons <- max(1L, as.integer(rxCores()))
+  .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
+  .useMirai <- .nDaemons > 1L
+  # A caller's existing mirai pool is used as-is and never shut down; a pool of our own
+  # is only worth starting (a few seconds: each daemon loads rxode2) when there are
+  # enough chunks for the parallel win to beat that startup.
+  .ownDaemons <- FALSE
+  if (.useMirai) {
+    .have <- tryCatch(sum(mirai::status()$connections) > 0L, error = function(e) FALSE)
+    if (!.have) {
+      .ownDaemons <- .nChunks >= 4L
+      .useMirai <- .ownDaemons
+    }
+  }
+  .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
+                  if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
+
+  .opt <- tryCatch({
+    if (.useMirai) {
+      if (.ownDaemons) {
+        mirai::daemons(.nDaemons)
+        on.exit(mirai::daemons(0), add = TRUE)
+      }
+      # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
+      # environment, so a chunk is optimized by the same code path serially and in parallel.
+      .tasks <- mirai::mirai_map(
+        seq_len(.nChunks),
+        function(.i, .chunks, .msg, .optOne) {
+          library(rxode2)
+          .optOne(.i, .chunks, .msg)
+        },
+        .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+      )
+      # A chunk that failed in a daemon comes back as an error object rather than throwing,
+      # and would otherwise be pasted into the model text; raise it so the fallback below
+      # optimizes the whole model instead.
+      .res <- character(.nChunks)
+      for (.i in seq_len(.nChunks)) {
+        .r <- .tasks[[.i]][]
+        if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || !is.character(.r)) {
+          stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
+                       tryCatch(conditionMessage(.r),
+                                error = function(e) paste(utils::head(unclass(.r), 1L),
+                                                          collapse = ""))),
+               call. = FALSE)
+        }
+        .res[.i] <- .r
+      }
+      .res
+    } else {
+      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+    }
+  }, error = function(e) NULL)
+
+  # A chunk is only a fragment of the model, so it can fail to optimize where the whole
+  # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
+  # or only part of a statement.  It can equally fail because the model is malformed, and
+  # the chunk alone cannot tell those apart.  The whole model can: it optimizes cleanly for
+  # a mere fragment, and raises exactly what the unchunked call raises for a broken model.
+  # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
+  # model never lands here.)
+  if (is.null(.opt)) {
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+  }
+  .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
+  .rxRealignPastTau(.out, .txt)
+}
+
 #' Common subexpression elimination in C
 #'
 #' Hands the normalized model, one statement per element, to src/rxCse.c.  The
 #' C pass counts subexpressions in a hash rather than a named R list, so it is
-#' linear where the R walker is quadratic, and it does the counting per
-#' statement across threads.
+#' linear where the R walker is quadratic, and it counts each statement in an
+#' OpenMP region.
 #'
 #' Returns `NA_character_` when the C pass declines -- an unsupported left-hand
-#' side, an `if`/`else` block, a numeric literal it will not render exactly, or
-#' simply no repeated subexpression.  The caller then runs the R
+#' side, `past()`, an `if`/`else` block, a numeric literal it will not render
+#' exactly, or simply no repeated subexpression.  The caller then runs the R
 #' implementation, so declining is always safe.
 #'
 #' @param norm normalized model text, as `rxNorm()` returns it
@@ -448,18 +961,60 @@
 #'
 #'  finding duplicate expressions in model...
 #'
-#' @param chunkLines Accepted and ignored.  Until rxode2 5.1.7 a model
-#'     longer than this many lines was optimized in contiguous chunks,
-#'     which existed only because parsing was strongly superlinear in
-#'     model size.  That is fixed (the grammar was ambiguous, see NEWS),
-#'     and the common subexpression search itself now runs in C, so the
-#'     whole model is always optimized in one pass -- which also shares
-#'     subexpressions across what used to be chunk boundaries.
+#' @param chunkLines Integer; when positive (the default is 40),
+#'     a model longer than this many lines is optimized in contiguous
+#'     cost-balanced chunks of roughly this many lines instead of in a
+#'     single pass; a model at or under it is optimized whole, exactly
+#'     as before.  `0` always optimizes the whole model at once.
 #'
-#' @param parallel Accepted and ignored.  The chunks it used to
-#'     parallelize no longer exist; the subexpression search threads
-#'     internally instead, using the same `rxCores()` setting
-#'     (`setRxThreads()`, `OMP_THREAD_LIMIT`).
+#'     Chunking pays off for a large machine-generated model -- a
+#'     sensitivity- or Jacobian-augmented model, say.  Normalizing a
+#'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
+#'     its size, and for such a model it, not the common subexpression
+#'     search, is what dominates: optimizing a 275-line augmented model
+#'     takes ~113s, of which the subexpression search is only ~15s.
+#'     Chunking amortizes that parse -- `rxOptExpr()` normalizes each
+#'     chunk on its own -- taking the same model to ~11s:
+#'
+#'     \tabular{rrrr}{
+#'       lines \tab whole \tab chunked \tab \cr
+#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: not chunked) \cr
+#'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
+#'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
+#'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
+#'     }
+#'
+#'     Common subexpressions are then only shared within a chunk, so the
+#'     model is equivalent but carries more temporaries.  That costs no
+#'     measurable solve time, but it does make the C compilation of the
+#'     model somewhat slower, which partly offsets the gain.
+#'
+#'     A chunk is a fragment, so it can fail to optimize where the whole
+#'     model would not.  If any chunk fails, the whole model is optimized
+#'     instead, so a malformed model still raises the error the unchunked
+#'     call raises; falling back costs the unchunked time only on that
+#'     rare path.
+#'
+#'     Chunking therefore does not give the same optimized text as the
+#'     whole-model call -- it shares fewer subexpressions and so carries
+#'     more temporaries -- but it gives an equivalent model: the same
+#'     states and parameters, the same solution, and the same errors.
+#'
+#' @param parallel Integer; number of `mirai` daemons used to optimize
+#'     the chunks in parallel.  Only used when the model is chunked.  It
+#'     carries the same semantics as `rxControl(cores=)`: `0` (the
+#'     default) means the rxode2 thread setting `rxCores()`, so CRAN and
+#'     users tune it with the same knob as the solver (`setRxThreads()`,
+#'     `OMP_THREAD_LIMIT`) or by passing `parallel=` directly; `1` runs
+#'     the chunks serially.
+#'     It is capped by the number of chunks and by `rxCores()`, so it
+#'     will not oversubscribe past the threads the user asked for.
+#'
+#'     An existing `mirai` daemon pool is used as-is and left running.
+#'     Otherwise a pool is started for the call and shut down when it
+#'     returns; that startup (loading rxode2 into each daemon) costs a
+#'     few seconds, so a pool is only started when the model splits into
+#'     at least 4 chunks, where the parallel win covers it.
 #'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
@@ -470,11 +1025,10 @@
 #' @export
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
                       parallel = 0L) {
-  ## `chunkLines` and `parallel` are accepted and ignored.  Chunking existed to
-  ## keep individual parses short, which stopped being a cost when the grammar
-  ## ambiguity was removed, and its output was strictly worse -- per-chunk
-  ## rx_expr_c<i>_ temporaries and no sharing across chunk boundaries.  The
-  ## arguments stay so the call sites that pass them keep working.
+  .chunkLines <- as.integer(chunkLines)
+  if (!is.na(.chunkLines) && .chunkLines > 0L) {
+    return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
+  }
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))
@@ -484,6 +1038,9 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
+  ## The C pass first; it returns NA when it will not reproduce the R walker
+  ## exactly, and the R implementation below then runs.  Chunking calls this
+  ## same whole-model path once per chunk, so chunks go through C too.
   .cse <- .rxOptExprC(.norm)
   if (!is.na(.cse)) {
     return(.cse)

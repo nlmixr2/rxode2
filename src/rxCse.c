@@ -116,41 +116,34 @@ static double csNow(void) {
 #define CS_PHASE(lbl) do { if (csDebug()) { double _n = csNow();                \
       REprintf("  phase %-10s %7.3fs\n", lbl, _n - _t0); _t0 = _n; } } while (0)
 
-static void csTrace(const char *what, D_ParseNode *pn) {
-  int i, n;
-  if (!csDebug()) return;
-  n = d_get_number_of_children(pn);
-  REprintf("    %s node=%s nch=%d:", what, csNodeName(pn), n);
-  for (i = 0; i < n; i++) REprintf(" [%s]", csNodeName(d_get_child(pn, i)));
-  REprintf("\n");
-}
 
 static void csCountStmt(csCtx *c, const char *line, int idx) {
-  csParse o;
+  csParse o = {NULL, NULL};
   D_ParseNode *s;
   c->stmt = idx; c->pos = 0; c->arena.failed = 0;
   if (!csParseOpen(&o, line)) {
-    if (csDebug()) REprintf("rxCse: PARSE declined [%s]\n", line);
+    c->failWhy = "parse"; c->failLine = line;
     c->arena.failed = 1; csParseClose(&o); return;
   }
   s = csStmtNode(o.pn);
   if (csStmtIsAssign(s)) {
-    csTrace("lhs", csUnwrap(d_get_child(s, 0)));
     (void) csLhs(c, d_get_child(s, 0));            /* validates the lhs form */
     if (c->arena.failed) {
-      if (csDebug()) REprintf("rxCse: LHS declined [%s]\n", line);
+      if (c->failWhy == NULL) c->failWhy = "lhs";
     } else {
       (void) csA(c, d_get_child(s, 2));
-      if (c->arena.failed && csDebug()) REprintf("rxCse: RHS declined [%s]\n", line);
+      if (c->arena.failed && c->failWhy == NULL) c->failWhy = "rhs";
     }
   }
-  if (c->arena.failed) c->anyFail = 1;
+  if (c->arena.failed) { c->anyFail = 1; c->failLine = line; }
   csParseClose(&o);
 }
 
 /* ------------------------------------------------------------------ pass 2 */
 static const char *csOptStmt(csCtx *c, const char *line, int idx) {
-  csParse o, o2;
+  /* Initialized here, not by csParseOpen: the `!c->arena.failed &&` below can
+     short circuit past the open and still reach csParseClose. */
+  csParse o = {NULL, NULL}, o2 = {NULL, NULL};
   D_ParseNode *s;
   const char *out = NULL;
   c->stmt = idx; c->pos = 0; c->nused = 0; c->arena.failed = 0;
@@ -161,6 +154,8 @@ static const char *csOptStmt(csCtx *c, const char *line, int idx) {
     const char *lhs = csLhs(c, d_get_child(s, 0));
     const char *op = csAssignOp(c, s);
     const char *keyed = csA(c, d_get_child(s, 2));   /* machine A */
+    /* csParseOpen() allocates the D_Parser BEFORE it can fail, so the failing
+       path has to close it too */
     if (!c->arena.failed && csParseOpen(&o2, keyed)) {
       D_ParseNode *s2 = csStmtNode(o2.pn);
       const char *rhs = NULL;
@@ -169,14 +164,32 @@ static const char *csOptStmt(csCtx *c, const char *line, int idx) {
       if (!c->arena.failed) out = seCat(csArena(c), lhs, op, rhs, NULL, NULL, NULL);
       csParseClose(&o2);
     } else {
+      csParseClose(&o2);
       c->arena.failed = 1;
     }
   } else {
     out = csB(c, d_get_child(s, 0));                 /* machine B alone */
   }
   csParseClose(&o);
-  if (c->arena.failed) c->anyFail = 1;
+  if (c->arena.failed) { c->anyFail = 1; c->failLine = line; }
   return c->arena.failed ? NULL : out;
+}
+
+/* Hand the finished text to R under R_UnwindProtect: Rf_mkChar() allocates and
+   can longjmp, and `outText` is malloc'd, so the cleanup is what frees it on
+   the error path.  Same pattern as src/seBatch.h. */
+typedef struct csFinish { char *text; } csFinish;
+
+static SEXP csFinishFun(void *data) {
+  csFinish *f = (csFinish*) data;
+  return Rf_ScalarString(Rf_mkChar(f->text));
+}
+
+static void csFinishClean(void *data, Rboolean jump) {
+  csFinish *f = (csFinish*) data;
+  (void) jump;
+  free(f->text);
+  f->text = NULL;
 }
 
 /* ---------------------------------------------------------------- the call */
@@ -192,6 +205,7 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
   const char **repNames = NULL;
   int *nUsedBy = NULL;
   SEXP ret = R_NilValue;
+  char *outText = NULL;
   double _t0 = 0;
   if (csDebug()) _t0 = csNow();
 
@@ -208,7 +222,11 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
     in[i] = CHAR(el);
   }
 
-  if (n >= CS_MIN_PARALLEL) {
+  /* Debugging runs single threaded so the reported decline is deterministic --
+     with several threads you get whichever one happened to fail.  Safety no
+     longer depends on this: nothing in the region touches the R API, the
+     reason is recorded and printed afterwards. */
+  if (n >= CS_MIN_PARALLEL && !csDebug()) {
     nthr = getRxThreads((int64_t) n, true);
     if (nthr < 1) nthr = 1;
     if ((R_xlen_t) nthr > n) nthr = (int) n;
@@ -240,7 +258,15 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
         for (j = 0; j < n; j++) csCountStmt(&ctxs[me], in[j], (int) j);
       }
     }
-    for (t = 0; t < nthr; t++) if (ctxs[t].anyFail) ok = 0;
+    for (t = 0; t < nthr; t++) {
+      if (!ctxs[t].anyFail) continue;
+      ok = 0;
+      if (csDebug()) {                      /* printed HERE, outside the region */
+        REprintf("rxCse: declined (%s) [%s]\n",
+                 ctxs[t].failWhy == NULL ? "?" : ctxs[t].failWhy,
+                 ctxs[t].failLine == NULL ? "?" : ctxs[t].failLine);
+      }
+    }
   }
   CS_PHASE("count");
 
@@ -289,8 +315,11 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
       memcpy(cand[j].reduced, cand[j].key, cand[j].len + 1);
       snprintf(cand[j].name, 32, "rx_expr_%d", j);
       for (k = 0; k < j; k++) {
-        (void) csReplace1(cand[j].reduced, cap, cand[k].reduced, cand[k].name);
+        if (csReplace1(&cand[j].reduced, &cap, cand[k].reduced, cand[k].name) < 0) {
+          ok = 0; break;                 /* out of memory: decline, never guess */
+        }
       }
+      if (!ok) break;
       repNames[j] = cand[j].name;
       /* first wins on a duplicate reduced text, matching R's list, and it
          keeps the stored index exact (csMapAdd would SUM on a re-add) */
@@ -333,7 +362,14 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
             if (o != NULL && ctxs[me].nused > 0) {
               int u;
               usedBy[j2] = (const char**) malloc(sizeof(char*) * (size_t) ctxs[me].nused);
-              if (usedBy[j2] != NULL) {
+              if (usedBy[j2] == NULL) {
+                /* Must NOT be silent: this list is what places each
+                   `rx_expr_i~...` definition before its first use, so losing it
+                   would emit a statement referencing a temporary that is never
+                   defined. */
+                ctxs[me].anyFail = 1;
+                ctxs[me].failWhy = "out of memory recording temporaries";
+              } else {
                 for (u = 0; u < ctxs[me].nused; u++) usedBy[j2][u] = ctxs[me].used[u];
                 nUsedBy[j2] = ctxs[me].nused;
               }
@@ -360,13 +396,13 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
             if (usedBy[i][u] == cand[j2].name) { hit = 1; break; }
           if (!hit) continue;
           /* the body is machine B over the REDUCED key, re-parsed */
-          { csParse od; csCtx dc; const char *body = NULL;
+          { csParse od = {NULL, NULL}; csCtx dc; const char *body = NULL;
             memset(&dc, 0, sizeof(dc));
             if (csParseOpen(&od, cand[j2].reduced)) {
               D_ParseNode *sd = csStmtNode(od.pn);
               if (!csStmtIsAssign(sd)) body = csB(&dc, d_get_child(sd, 0));
-              csParseClose(&od);
             }
+            csParseClose(&od);   /* also on the failing path */
             if (body == NULL || dc.arena.failed) { ok = 0; seArenaFree(&dc.arena); break; }
             if (!csBufAdd(&b, cand[j2].name) || !csBufAdd(&b, "~") ||
                 !csBufAdd(&b, body) || !csBufAdd(&b, "\n")) ok = 0;
@@ -378,8 +414,11 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
         if (!csBufAdd(&b, out[i])) { ok = 0; break; }
         if (i + 1 < n && !csBufAdd(&b, "\n")) { ok = 0; break; }
       }
-      if (ok && b.s != NULL) ret = Rf_ScalarString(Rf_mkChar(b.s));
       free(emitted);
+      /* b.s is handed to the caller below, AFTER teardown: Rf_mkChar allocates
+         and can longjmp, and everything here is hand-managed memory that the
+         teardown block would then never reach. */
+      if (ok) { outText = b.s; b.s = NULL; }
       free(b.s);
     }
     CS_PHASE("emit");
@@ -404,6 +443,20 @@ SEXP _rxode2_rxCse(SEXP linesVec) {
   }
   free(ctxs);
 
-  if (ret == R_NilValue) return Rf_ScalarString(NA_STRING);
+  /* every other hand-managed allocation is released by here; outText is the
+     last one, and R_UnwindProtect is what frees it if Rf_mkChar longjmps */
+  if (outText == NULL) return Rf_ScalarString(NA_STRING);
+  {
+    csFinish fin; fin.text = outText;
+    SEXP cont = PROTECT(R_MakeUnwindCont());
+    ret = R_UnwindProtect(csFinishFun, &fin, csFinishClean, &fin, cont);
+    /* csFinishClean() NULLs the pointer, so this frees it if the cleanup did
+       not already run and is a no-op if it did.  Correct either way, which
+       matters because whether R_UnwindProtect runs the cleanup on a NORMAL
+       return is not something to take on faith. */
+    free(fin.text);
+    fin.text = NULL;
+    UNPROTECT(1);
+  }
   return ret;
 }

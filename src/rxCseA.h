@@ -53,8 +53,9 @@ static inline const char *csAdd(csCtx *c, const char *t) {
 }
 
 static const char *csA(csCtx *c, D_ParseNode *pn);
-extern int csTraceOn(void);
-#define CS_FAIL(c, why) (csTraceOn() ? (void)REprintf("    A-fail: %s\n", why) : (void)0, seFail(csArena(c)))
+/* Records WHY rather than printing it: this runs inside an OpenMP region and
+   REprintf is R API.  The driver prints it once the region is over. */
+#define CS_FAIL(c, why) ((c)->failWhy = (why), seFail(csArena(c)))
 
 /* `f(a, b)` -- ", " between arguments (R/rxOptExpr.R:24) */
 static inline const char *csACall(csCtx *c, D_ParseNode *pn) {
@@ -159,14 +160,20 @@ static const char *csA(csCtx *c, D_ParseNode *pn) {
       if (csIsNum(e1) && csIsNum(e2)) return out;
       return csAdd(c, out);
     }
-    if ((op[0] == '^' || (op[0] == '*' && op[1] == '*')) && csIntPow(e2, &p)) {
-      /* `e1^n` for integerish n >= 2 becomes ((e1)*(e1)*...) BEFORE counting,
-         so the expanded product is the candidate (R/rxOptExpr.R:44-48) */
-      long i;
-      out = seCat(csArena(c), "((", e1, ")", NULL, NULL, NULL);
-      for (i = 1; i < p; i++) out = seCat(csArena(c), out, "*(", e1, ")", NULL, NULL);
-      out = seCat(csArena(c), out, ")", NULL, NULL, NULL, NULL);
-      return csAdd(c, out);
+    if (op[0] == '^' || (op[0] == '*' && op[1] == '*')) {
+      int pw = csIntPow(e2, &p);
+      /* -1 means integerish but far too large: R would expand it, so declining
+         is the only way to stay byte exact */
+      if (pw < 0) return CS_FAIL(c, "exponent too large to expand");
+      if (pw > 0) {
+        /* `e1^n` for integerish n >= 2 becomes ((e1)*(e1)*...) BEFORE counting,
+           so the expanded product is the candidate (R/rxOptExpr.R:44-48) */
+        long i;
+        out = seCat(csArena(c), "((", e1, ")", NULL, NULL, NULL);
+        for (i = 1; i < p; i++) out = seCat(csArena(c), out, "*(", e1, ")", NULL, NULL);
+        out = seCat(csArena(c), out, ")", NULL, NULL, NULL, NULL);
+        return csAdd(c, out);
+      }
     }
     if (op[0] == '*' && op[1] == '*') op = "^";         /* R parses ** as ^ */
     out = seCat(csArena(c), e1, op, e2, NULL, NULL, NULL);
@@ -174,7 +181,7 @@ static const char *csA(csCtx *c, D_ParseNode *pn) {
     return csAdd(c, out);
   }
 
-  if (csTraceOn()) REprintf("    A-fail: unhandled node=%s nch=%d\n", name, nch);
+  c->failWhy = "unhandled node";
   return seFail(csArena(c));
 }
 

@@ -37,6 +37,42 @@ rxTest({
     expect_identical(.c, .r)
   })
 
+  test_that("many nested replacements do not silently truncate", {
+    ## Reducing a candidate rewrites it in terms of the shorter ones, and each
+    ## rewrite makes it LONGER -- `(a+1)` (5 chars) becomes `rx_expr_0` (9).
+    ## A fixed-size buffer for the reduced text would run out and silently skip
+    ## a replacement, emitting text that differs from the R walker without
+    ## declining.  Found by review; this is the input that triggered it.
+    .terms <- paste(sprintf("(a+%d)", 1:17), collapse = "*")
+    .m <- paste0("x = ", .terms, "\ny = ", .terms)
+    .norm <- rxNorm(.m)
+    .c <- .rxOptExprC(.norm)
+    expect_false(is.na(.c))
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    })
+    expect_identical(.c, .r)
+    ## and every temporary it defines is actually used, i.e. nothing was skipped
+    .defs <- grep("^rx_expr_[0-9]+~", strsplit(.c, "\n")[[1]], value = TRUE)
+    expect_gt(length(.defs), 10L)
+  })
+
+  test_that("negative literals fold the way R folds them", {
+    ## R's parser does NOT make `-1` an atomic double -- is.atomic(quote(-1)) is
+    ## FALSE and it is a call to unary minus, which is why R does not fold
+    ## `1 + -1` and neither may the C pass.  Raised twice in review on the
+    ## assumption that R folds these; it does not.
+    expect_false(is.atomic(quote(-1)))
+    for (.e in c("1 + -1", "1 / -1", "2 * -3", "-1 * x")) {
+      .m <- paste0("a = ", .e, " + q\nb = ", .e, " + q")
+      .c <- .rxOptExprC(rxNorm(.m))
+      withr::with_options(list(rxode2.optExprC = FALSE), {
+        .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+      })
+      if (!is.na(.c)) expect_identical(.c, .r, info = .e)
+    }
+  })
+
   test_that("the C pass is independent of the thread count", {
     ## the count runs per statement across threads and is merged by
     ## min(firstSeen); if that were wrong the rx_expr_ numbering would move

@@ -25,16 +25,29 @@ static inline int csIsBoundary(char ch) {
     ch == '&' || ch == '|';
 }
 
-/* replace1 (src/rxOptRep.cpp:9-69): first occurrence only, both boundaries */
-static inline int csReplace1(char *str, size_t cap, const char *from, const char *to) {
-  char *at = strstr(str, from);
-  size_t fl = strlen(from), tl = strlen(to), sl = strlen(str);
-  size_t off;
+/* replace1 (src/rxOptRep.cpp:9-69): first occurrence only, both boundaries.
+   Grows the buffer as needed rather than giving up: a replacement makes the
+   string LONGER whenever the name is longer than the text it replaces
+   (`(a+1)` -> `rx_expr_0` adds four bytes), and a candidate can absorb many
+   of them.  Silently skipping one because a fixed buffer ran out would emit
+   text that differs from the R walker WITHOUT declining, which is the one
+   outcome this whole file exists to prevent.  Returns -1 if it cannot grow. */
+static inline int csReplace1(char **str, size_t *cap, const char *from, const char *to) {
+  char *at = strstr(*str, from);
+  size_t fl = strlen(from), tl = strlen(to), sl = strlen(*str);
+  size_t off, need;
   if (at == NULL) return 0;
-  off = (size_t)(at - str);
-  if (off > 0 && !csIsBoundary(str[off - 1])) return 0;
-  if (off + fl != sl && !csIsBoundary(str[off + fl])) return 0;
-  if (sl - fl + tl + 1 > cap) return 0;
+  off = (size_t)(at - *str);
+  if (off > 0 && !csIsBoundary((*str)[off - 1])) return 0;
+  if (off + fl != sl && !csIsBoundary((*str)[off + fl])) return 0;
+  need = sl - fl + tl + 1;
+  if (need > *cap) {
+    size_t want = need * 2;
+    char *p = (char*) realloc(*str, want);
+    if (p == NULL) return -1;
+    *str = p; *cap = want;
+    at = *str + off;
+  }
   memmove(at + tl, at + fl, sl - off - fl + 1);
   memcpy(at, to, tl);
   return 1;

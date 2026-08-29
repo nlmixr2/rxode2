@@ -24,6 +24,9 @@ typedef struct csCtx {
   int nused;
   int usedCap;
   int anyFail;          /* sticky: did ANY statement decline in this context */
+  const char *failWhy;  /* and why, reported AFTER the parallel region -- the
+                           R API (REprintf) must not be reached from inside it */
+  const char *failLine;
 } csCtx;
 
 #define csArena(c) (&(c)->arena)
@@ -92,13 +95,16 @@ static inline const char *csModOperand(csCtx *c, const char *s) {
    expansion in .rxOptBin (R/rxOptExpr.R:45-47): checkmate::checkIntegerish on
    as.numeric(text), lower = 2.  as.numeric("(-1)") is NA, so a parenthesized
    exponent never expands; nor does "2.5". */
+/* returns 1 to expand, 0 to leave alone, -1 to DECLINE (integerish but far too
+   large to expand -- R has no upper limit and would expand it, so quietly
+   leaving `x^5000` alone would differ from the R walker) */
 static inline int csIntPow(const char *s, long *out) {
   const char *p = s;
   long v = 0;
   int digits = 0;
   if (p == NULL) return 0;
   while (*p == ' ') p++;
-  while (*p >= '0' && *p <= '9') { v = v * 10 + (*p - '0'); digits++; p++; if (v > 4096) return 0; }
+  while (*p >= '0' && *p <= '9') { v = v * 10 + (*p - '0'); digits++; p++; if (v > 4096) return -1; }
   if (digits == 0) return 0;
   if (*p == '.') { p++; while (*p == '0') p++; }   /* "3.0" is integerish */
   while (*p == ' ') p++;
