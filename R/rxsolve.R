@@ -2775,6 +2775,16 @@ rxSolveCacheEnv$.order <- character()
   invisible(value)
 }
 
+## Is a cached Jacobian-augmented model entry still usable?  `NA_character_`
+## marks a model whose Jacobian generation failed (kept so the failure is not
+## retried); anything else must be an entry whose compiled model is still
+## loaded, since the cache outlives an rxUnload().
+.rxJacCacheOk <- function(cached) {
+  if (identical(cached, NA_character_)) return(TRUE)
+  if (!is.list(cached) || is.null(cached$obj)) return(FALSE)
+  isTRUE(tryCatch(rxIsLoaded(cached$obj), error = function(e) FALSE))
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -3169,9 +3179,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
       .jacEnv <- new.env(parent = emptyenv())
       .jacEnv$errMsg <- NULL
-      .filteredCode <- tryCatch({
+      # The cache holds the compiled Jacobian-augmented model, not just its
+      # text.  Re-parsing that text on every solve costs O(nStates^2) -- the
+      # augmented model carries a df()/dy() line per Jacobian entry -- and every
+      # implicit method and every AutoSwitch composite went through here on
+      # every call (nlmixr2/rxode2#1307).
+      .jacCache <- tryCatch({
         .cached <- .rxSolveCacheGet(.key)
-        if (!is.null(.cached)) {
+        if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
           .cached
         } else {
           .mv <- suppressMessages({
@@ -3195,17 +3210,20 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             }
           }
           .fc <- paste(.fc, collapse="\n")
-          .rxSolveCacheSet(.key, .fc)
-          .fc
+          .jacObject <- rxode2(.fc)
+          .entry <- list(code = .fc, obj = .jacObject,
+                         md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
+          .rxSolveCacheSet(.key, .entry)
+          .entry
         }
       }, error = function(e) {
         assign("errMsg", conditionMessage(e), envir = .jacEnv)
         .rxSolveCacheSet(.key, NA_character_)
         NA_character_
       })
-      if (!is.na(.filteredCode)) {
-        .jacObject <- rxode2(.filteredCode)
-        .jacMd5 <- rxModelVars(.jacObject)$md5["parsed_md5"]
+      if (!identical(.jacCache, NA_character_)) {
+        .jacObject <- .jacCache$obj
+        .jacMd5 <- .jacCache$md5
         if (.jacMd5 != .mvCur$md5["parsed_md5"]) {
           # Model changed (Jacobian equations were added); recurse with new model.
           object <- .jacObject
