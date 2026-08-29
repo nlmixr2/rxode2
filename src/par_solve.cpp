@@ -1980,12 +1980,46 @@ extern "C" void par_rko10(rx_solve *rx);
 extern "C" void par_rkh10(rx_solve *rx);
 
 
+// Load/store dop853's stiffness-probe state around one dop853() call.  The
+// probe runs once per interval, so without carrying hlamb and the verdict
+// counters between calls the detector restarts every few accepted steps and can
+// never reach its limit -- which is why the composite used to switch only when
+// dop853 hard-failed (nlmixr2/rxode2#1307).
+static inline void rxStiffLoad(dop853_stiff_t *st, rx_solving_options *op,
+                               rx_solving_options_ind *ind) {
+  st->hlamb  = ind->autoStiffHlamb;
+  st->iasti  = ind->autoStiffIasti;
+  st->nonsti = ind->autoStiffNonsti;
+  st->naccpt = ind->autoStiffNaccpt;
+  // Julia's AutoSwitch test is eigen_est*dt/alg_stability_size > tol; 6.1 is
+  // dop853's stability size, so autoSwitchNonstifftol scales it.
+  st->threshold = 6.1 * ((op->autoSwitchNonstifftol > 0.0) ?
+                         op->autoSwitchNonstifftol : 0.9);
+  st->maxStiff = 0;  // 0 = Hairer's 15 verdicts
+  st->xLast = 0.0;
+}
+
+static inline void rxStiffSave(const dop853_stiff_t *st,
+                               rx_solving_options_ind *ind) {
+  ind->autoStiffHlamb  = st->hlamb;
+  ind->autoStiffIasti  = st->iasti;
+  ind->autoStiffNonsti = st->nonsti;
+  ind->autoStiffNaccpt = st->naccpt;
+}
+
+// nstiff for the composite probe: 1 = evaluate the estimate on every accepted
+// step.  It costs 2n flops on quantities the step has already computed, and the
+// verdict counters (now persistent) supply the hysteresis.
+#define RX_AUTOSWITCH_NSTIFF 1
+
 /* Run one ODE interval with the specified method code.
    On entry:  *xp = interval start time; yp = current state.
    On return: *xp = xout (if successful), yp = updated state.
    *istate <= 0 or ind->rc[0] == -2019 signals failure.
    *idid is set for dop853 (method==0); positive = success, -4 = stiff detected.
-   autoSwitchPrimary: when true, dop853 uses nstiff=50 to enable internal stiffness test. */
+   autoSwitchPrimary: when true, dop853 runs its stiffness estimator (and keeps
+   its state on ind across intervals), and a failure is the composite's signal to
+   fall back rather than a user-visible error. */
 static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                                        int *neq, double *yp, double *xp,
                                        double xout, int *istate, int *idid,
@@ -2415,6 +2449,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         preSolve(op, ind, *xp, xout, yp);
         neq[0] = eff - op->numLin - op->numLinSens;
         double _h0use = (ind->autoHcur > 0.0) ? ind->autoHcur : op->H0;
+        dop853_stiff_t _st;
+        if (autoSwitchPrimary) rxStiffLoad(&_st, op, ind);
         *idid = dop853(neq,
                        dydt,
                        *xp,
@@ -2435,13 +2471,20 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
                        _h0use,
                        op->mxstep,
                        1,
-                       autoSwitchPrimary ? 50 : -1,
+                       autoSwitchPrimary ? RX_AUTOSWITCH_NSTIFF : -1,
                        0,
                        NULL,
                        0,
                        NULL,
-                       ind->id
+                       ind->id,
+                       autoSwitchPrimary ? &_st : NULL
                        );
+        if (autoSwitchPrimary) {
+          rxStiffSave(&_st, ind);
+          // Hand the caller the point the probe actually reached, so the stiff
+          // secondary can continue from there rather than redo the interval.
+          *xp = _st.xLast;
+        }
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
       }
@@ -2454,8 +2497,14 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         ind->rc[0] = -2019;
         break;
       } else if (ind->err){
-        printErr(ind->err, ind->id);
-        *i = ind->n_all_times-1;
+        // As the composite's probe this is not a user-visible failure: the
+        // caller clears ind->err and re-solves with the stiff secondary.
+        // Reporting it here would also truncate the caller's event loop
+        // (*i) for an interval that is about to be solved successfully.
+        if (!autoSwitchPrimary) {
+          printErr(ind->err, ind->id);
+          *i = ind->n_all_times-1;
+        }
         break;
       }
       break;
@@ -2508,7 +2557,12 @@ static inline void solveWith1Pt(int *neq,
          over-estimated the spectral radius on the long tau-sized intervals
          used during steady-state solving and spuriously toggled autoMethod,
          which then corrupted the main-timeline (dense) solve.  Dropping it
-         keeps the composite consistent across the SS and main-solve paths. */
+         keeps the composite consistent across the SS and main-solve paths.
+
+         On a switch the secondary continues from wherever the probe got to
+         rather than redoing the interval, so a switch costs one integration
+         (nlmixr2/rxode2#1307).  Only a dop853 primary reports that point, so
+         any other primary still restarts from the saved state. */
       double _ypStack[64];
       double *_ypDyn = NULL;
       double *_ypSave = (eff <= 64) ? _ypStack
@@ -2527,8 +2581,15 @@ static inline void solveWith1Pt(int *neq,
         bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
         if (_failed) {
           ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
-          memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
-          xp = _xpOrig;
+          // yp/xp are the probe's last fully accepted step when the primary is
+          // dop853 and it got anywhere; otherwise rewind to the interval start.
+          bool _continueFrom = (op->stiff == 0) &&
+            ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
+                              : (xp < _xpOrig && xp > xout));
+          if (!_continueFrom) {
+            memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
+            xp = _xpOrig;
+          }
           _rxSolveOneInterval(op->stiff2, false,
                               neq, yp, &xp, xout, istate, &idid,
                               op, ind, i, ctx, eff);
@@ -5891,18 +5952,19 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                 rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                 double xp, double xout, double *yp,
-                                int *istate, int itol, int eff) {
+                                int *istate, int itol, int eff, int *iRec) {
   (void) rx;
   // Non-composite: plain dop853 (unchanged behavior).
   if (op->stiff2 <= 0) {
     return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
                   ind->HMAX, op->H0, op->mxstep, 1, -1,
-                  0, NULL, 0, NULL, ind->id);
+                  0, NULL, 0, NULL, ind->id, NULL);
   }
   int idid;
   if (ind->autoMethod == 0) {
-    // Probe with dop853; nstiff=50 enables its built-in stiffness estimator.
+    // Probe with dop853, its stiffness estimator on and its state carried over
+    // from the previous interval.
     double _ypStack[64];
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
@@ -5913,23 +5975,32 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
       return -4;
     }
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    dop853_stiff_t st;
+    rxStiffLoad(&st, op, ind);
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, 50,
-                  0, NULL, 0, NULL, ind->id);
+                  ind->HMAX, op->H0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
+                  0, NULL, 0, NULL, ind->id, &st);
+    rxStiffSave(&st, ind);
     bool failed = (idid <= 0 || ind->err);
     if (failed) {
-      // Stiffness: restore the interval-start state and re-solve with the
-      // requested stiff secondary (op->stiff2) via the shared per-method
-      // interval solver (its preSolve() is idempotent).
+      // Stiffness: hand the stiff secondary (op->stiff2) the rest of the
+      // interval, starting from the probe's last fully accepted step, via the
+      // shared per-method interval solver (its preSolve() is idempotent).  Only
+      // rewind when the probe accepted nothing.
       ind->rc[0] = 0;
       ind->err = 0;
       *istate = 1;
-      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
-      double xpLoc = xp;
-      int _di = 0, _sd = 1;
+      double xpLoc = st.xLast;
+      bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
+                                      : (xpLoc < xp && xpLoc > xout);
+      if (!continueFrom) {
+        memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+        xpLoc = xp;
+      }
+      int _sd = 1;
       _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
-                          &_sd, op, ind, &_di, NULL, eff);
+                          &_sd, op, ind, iRec, NULL, eff);
       idid = (*istate > 0 && !ind->err) ? 1 : -4;
     }
     if (_ypDyn) free(_ypDyn);
@@ -5937,9 +6008,10 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
   } else {
     // Persistently stiff: go straight to the stiff secondary.
     double xpLoc = xp;
-    int _di = 0, _sd = 1;
+    int _sd = 1;
+    *istate = 1;
     _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
-                        &_sd, op, ind, &_di, NULL, eff);
+                        &_sd, op, ind, iRec, NULL, eff);
     idid = (*istate > 0 && !ind->err) ? 1 : -4;
     rxAutoSwitchCount(op, ind, false, false);
   }
@@ -6026,7 +6098,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
-                                        ind->extraDoseNewXout, yp, &istate, itol, eff);
+                                        ind->extraDoseNewXout, yp, &istate, itol, eff, &i);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6046,7 +6118,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
-                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff);
+                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6057,7 +6129,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
-                                      &istate, itol, eff);
+                                      &istate, itol, eff, &i);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6266,15 +6338,17 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
                   rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                  neqOde, NULL, 0, dc, ind->id);
+                  neqOde, NULL, 0, dc, ind->id, NULL);
   }
   // Reactive switching, mirroring dopSegmentAutoSwitch (see its comment): probe
-  // with dop853 (nstiff=50 enables its built-in stiffness estimator) and re-solve
-  // the segment with ros4 if it reports stiffness; skip the probe once
-  // persistently stiff (autoMethod==1).  No interval-length Gershgorin pre-check.
+  // with dop853 (its stiffness estimator on, its state carried over from the
+  // previous segment) and hand the rest of the segment to ros4 if it reports
+  // stiffness; skip the probe once persistently stiff (autoMethod==1).  No
+  // interval-length Gershgorin pre-check.
   int idid;
   if (ind->autoMethod == 0) {
     int hist0 = ind->delayHistN;
+    int obs0 = dc->obs_next;
     double _ypStack[64];
     double *_ypDyn = NULL;
     double *ypSave = (eff <= 64) ? _ypStack
@@ -6285,20 +6359,34 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
       return -4;
     }
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+    dop853_stiff_t st;
+    rxStiffLoad(&st, op, ind);
     idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
                   dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, 50,
-                  neqOde, NULL, 0, dc, ind->id);
+                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
+                  neqOde, NULL, 0, dc, ind->id, &st);
+    rxStiffSave(&st, ind);
     bool failed = (idid <= 0 || ind->err);
     if (failed) {
-      // Stiffness: discard dop853's partial delay history, restore the
-      // segment-start state, and re-solve the whole segment with ros4 (which
-      // re-fills all observations in the segment).
-      ind->delayHistN = hist0;
+      // Stiffness: ros4 takes the segment over from the probe's last fully
+      // accepted step.  Everything before that point is already correct -- the
+      // observations dopDenseSolout filled and the dense history it recorded --
+      // so both are kept, and the switch costs one integration rather than two.
+      // Rewinding all three (state, history, obs_next) together is what makes
+      // the fallback consistent; the old code rewound the state and the history
+      // but not obs_next, so a re-solved segment kept the probe's fills.
       ind->rc[0] = 0;
       ind->err = 0;
-      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
-      idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+      double xpLoc = st.xLast;
+      bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
+                                      : (xpLoc < xp && xpLoc > xout);
+      if (!continueFrom) {
+        ind->delayHistN = hist0;
+        dc->obs_next = obs0;
+        memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+        xpLoc = xp;
+      }
+      idid = rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xpLoc, xout, yp,
                                 dc->obs_next, dc->segment_end, solveid);
     }
     if (_ypDyn) free(_ypDyn);

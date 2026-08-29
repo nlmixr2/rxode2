@@ -4167,6 +4167,10 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->autoCount  = 0;
   ind->autoHcur   = 0.0;
   ind->autoLastSwitchIntervals = 0;
+  ind->autoStiffHlamb  = 0.0;
+  ind->autoStiffIasti  = 0;
+  ind->autoStiffNonsti = 0;
+  ind->autoStiffNaccpt = 0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;

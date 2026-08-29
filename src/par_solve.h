@@ -154,6 +154,19 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     // interleave with original observations are not silently dropped.
     if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
+    // AutoSwitch state is per subject solve.  It lives here rather than in
+    // setupRxInd() because op (and therefore the autoSwitch* controls) is only
+    // known at solve time, and because ind structs are reused across the
+    // solveids of a simulation.  inLhs==1 is the output pass, after the solve.
+    if (inLhs == 0) {
+      ind->autoMethod = (op->autoSwitchStiffFirst != 0) ? 1 : 0;
+      ind->autoCount = 0;
+      ind->autoLastSwitchIntervals = 0;
+      ind->autoStiffHlamb = 0.0;
+      ind->autoStiffIasti = 0;
+      ind->autoStiffNonsti = 0;
+      ind->autoStiffNaccpt = 0;
+    }
 		ind->cacheME=0;
 		ind->curShift=0.0;
 		ind->lastIsSs2 = false;

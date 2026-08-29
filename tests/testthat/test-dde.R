@@ -147,9 +147,13 @@ rxTest({
     ## pure dop853 fails on this stiff problem ...
     expect_error(rxSolve(.st, .ev, method = "dop853"))
     ## ... but the composite default solves it by switching to ros4, matching
-    ## the pure ros4 solution.
-    .comp <- rxSolve(.st, .ev)
-    .ros  <- rxSolve(.st, .ev, method = "ros4")
+    ## the pure ros4 solution.  Both are compared at a tight tolerance: over
+    ## 0-3 this solution moves by only ~1.5e-4, so at the default tolerances
+    ## the two discretizations differ by more than the whole variation and the
+    ## comparison says nothing.  They converge on each other as the tolerance
+    ## tightens, which is the actual claim.
+    .comp <- rxSolve(.st, .ev, atol = 1e-10, rtol = 1e-10)
+    .ros  <- rxSolve(.st, .ev, method = "ros4", atol = 1e-10, rtol = 1e-10)
     expect_false(any(is.na(.comp$y)))
     expect_equal(.comp$y, .ros$y, tolerance = 1e-4)
 
