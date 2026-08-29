@@ -2530,6 +2530,67 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
 static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *ind,
                               bool dop853Tried, bool dop853Failed);
 
+// One interval of an AutoSwitch composite, point to point: probe the primary
+// and, when it reports stiffness or fails, hand the rest of the interval to the
+// stiff secondary (op->stiff2).  Once persistently stiff (autoMethod==1) the
+// probe is skipped.  This is the single-interval sibling of
+// rxSegmentAutoSwitch; steady-state dosing advances through here repeatedly.
+//
+// The previous interval-length Gershgorin pre/post check lived here; it
+// over-estimated the spectral radius on the long tau-sized intervals used
+// during steady-state solving and spuriously toggled autoMethod, which then
+// corrupted the main-timeline (dense) solve.  Dropping it keeps the composite
+// consistent across the SS and main-solve paths.
+//
+// On a switch the secondary continues from wherever the probe got to rather
+// than redoing the interval, so a switch costs one integration
+// (nlmixr2/rxode2#1307).  Only a dop853 primary reports that point, so any
+// other primary restarts from the saved state.
+static inline void solveWith1PtComposite(int *neq, double *yp, double xout, double xp,
+                                         int *i, int *istate,
+                                         rx_solving_options *op,
+                                         rx_solving_options_ind *ind,
+                                         void *ctx, int eff) {
+  int idid = 1;
+  if (ind->autoMethod != 0) {
+    // Persistently stiff: go straight to the secondary.
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xp, xout, istate, &idid,
+                        op, ind, i, ctx, eff);
+    rxAutoSwitchCount(op, ind, false, false);
+    return;
+  }
+  double _ypStack[64];
+  double *_ypDyn = NULL;
+  double *_ypSave = (eff <= 64) ? _ypStack
+                                : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+  if (_ypSave == NULL) {
+    ind->err = 1;
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    return;
+  }
+  memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
+  double _xpOrig = xp;
+  _rxSolveOneInterval(op->stiff, true, neq, yp, &xp, xout, istate, &idid,
+                      op, ind, i, ctx, eff);
+  bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
+  if (_failed) {
+    ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
+    // yp/xp are the probe's last fully accepted step when the primary is dop853
+    // and it got anywhere; otherwise rewind to the interval start.
+    bool _continueFrom = (op->stiff == 0) &&
+      ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
+                        : (xp < _xpOrig && xp > xout));
+    if (!_continueFrom) {
+      memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
+      xp = _xpOrig;
+    }
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xp, xout, istate, &idid,
+                        op, ind, i, ctx, eff);
+  }
+  if (_ypDyn != NULL) free(_ypDyn);
+  rxAutoSwitchCount(op, ind, true, _failed);
+}
+
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
                                 double *InfusionRate,
@@ -2542,7 +2603,7 @@ static inline void solveWith1Pt(int *neq,
                                 rx_solving_options_ind *ind,
                                 t_update_inis u_inis,
                                 void *ctx){
-  int idid = 1, itol=0;
+  int idid = 1;
   // Per-individual effective neq under neqOverride; allocations are still
   // sized for op->neq, only stepping uses the smaller stride.
   int eff = rxEffNeq(ind, op);
@@ -2552,74 +2613,14 @@ static inline void solveWith1Pt(int *neq,
       preSolve(op, ind, xp, xout, yp);
       linSolve(neq, ind, yp, &xp, xout);
     }
+  } else if (op->stiff2 > 0) {
+    solveWith1PtComposite(neq, yp, xout, xp, i, istate, op, ind, ctx, eff);
   } else {
-    bool _autoSwitchActive = (op->stiff2 > 0);
-    if (!_autoSwitchActive) {
-      /* Single (non-composite) method: run it directly. */
-      _rxSolveOneInterval(op->stiff, false,
-                          neq, yp, &xp, xout, istate, &idid,
-                          op, ind, i, ctx, eff);
-    } else {
-      /* Reactive AutoSwitch composite -- the same scheme as
-         rxSegmentAutoSwitch / denseSegmentSolve: probe with the primary
-         (dop853's built-in stiffness estimator is enabled by the
-         autoSwitchPrimary flag, nstiff=50) and only fall back to the stiff
-         secondary (op->stiff2) when the primary reports stiffness/failure.
-         Once persistently stiff (autoMethod==1) the probe is skipped.
-
-         The previous interval-length Gershgorin pre/post check lived here; it
-         over-estimated the spectral radius on the long tau-sized intervals
-         used during steady-state solving and spuriously toggled autoMethod,
-         which then corrupted the main-timeline (dense) solve.  Dropping it
-         keeps the composite consistent across the SS and main-solve paths.
-
-         On a switch the secondary continues from wherever the probe got to
-         rather than redoing the interval, so a switch costs one integration
-         (nlmixr2/rxode2#1307).  Only a dop853 primary reports that point, so
-         any other primary still restarts from the saved state. */
-      double _ypStack[64];
-      double *_ypDyn = NULL;
-      double *_ypSave = (eff <= 64) ? _ypStack
-                                    : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
-      if (_ypSave == NULL) {
-        ind->err = 1;
-        if (ind->rc[0] == 0) ind->rc[0] = -2019;
-        return;
-      }
-      memcpy(_ypSave, yp, (size_t)eff * sizeof(double));
-      double _xpOrig = xp;
-      if (ind->autoMethod == 0) {
-        _rxSolveOneInterval(op->stiff, true,
-                            neq, yp, &xp, xout, istate, &idid,
-                            op, ind, i, ctx, eff);
-        bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
-        if (_failed) {
-          ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
-          // yp/xp are the probe's last fully accepted step when the primary is
-          // dop853 and it got anywhere; otherwise rewind to the interval start.
-          bool _continueFrom = (op->stiff == 0) &&
-            ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
-                              : (xp < _xpOrig && xp > xout));
-          if (!_continueFrom) {
-            memcpy(yp, _ypSave, (size_t)eff * sizeof(double));
-            xp = _xpOrig;
-          }
-          _rxSolveOneInterval(op->stiff2, false,
-                              neq, yp, &xp, xout, istate, &idid,
-                              op, ind, i, ctx, eff);
-        }
-        rxAutoSwitchCount(op, ind, true, _failed);
-      } else {
-        _rxSolveOneInterval(op->stiff2, false,
-                            neq, yp, &xp, xout, istate, &idid,
-                            op, ind, i, ctx, eff);
-        rxAutoSwitchCount(op, ind, false, false);
-      }
-      if (_ypDyn != NULL) { free(_ypDyn); _ypDyn = NULL; }
-    }
+    /* Single (non-composite) method: run it directly. */
+    _rxSolveOneInterval(op->stiff, false, neq, yp, &xp, xout, istate, &idid,
+                        op, ind, i, ctx, eff);
   }
 }
-
 
 
 //' This function is used to check if the steady state can be handled

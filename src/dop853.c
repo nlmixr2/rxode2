@@ -147,18 +147,49 @@ double contd8 (dop853_ctx_t *ctx, int ii, double x)
 } /* contd8 */
 
 
-/* Write the persistent stiffness-probe state back on every dopcor() exit.  The
-   macro reads dopcor's locals, so it is only valid inside dopcor and is
+/* The stiffness probe's state travels in and out of dopcor: seeded from the
+   caller's dop853_stiff_t so the estimate and the verdict counters survive from
+   one interval to the next, and written back on every exit.  Kept in these two
+   helpers rather than inline so dopcor carries one call each instead of the
+   defaulting and the NULL check repeated at every seed and every return. */
+static void dopStiffBegin (dop853_stiff_t *out, const dop853_stiff_t *st, double x)
+{
+  out->hlamb = 0.0;
+  out->iasti = 0;
+  out->nonsti = 0;
+  out->naccpt = 0;
+  out->threshold = 6.1;   /* dop853's real-axis stability size */
+  out->maxStiff = 15;     /* Hairer's verdict count */
+  out->xLast = x;
+  if (st == NULL)
+    return;
+  out->hlamb = st->hlamb;
+  out->iasti = st->iasti;
+  out->nonsti = st->nonsti;
+  out->naccpt = st->naccpt;
+  if (st->threshold > 0.0)
+    out->threshold = st->threshold;
+  if (st->maxStiff > 0)
+    out->maxStiff = st->maxStiff;
+}
+
+static void dopStiffEnd (dop853_stiff_t *st, double hlamb, long int iasti,
+                         long int nonsti, long int naccpt, double xLast)
+{
+  if (st == NULL)
+    return;
+  st->hlamb  = hlamb;
+  st->iasti  = iasti;
+  st->nonsti = nonsti;
+  st->naccpt = naccpt;
+  st->xLast  = xLast;
+}
+
+/* The macro reads dopcor's locals, so it is only valid inside dopcor and is
    #undef'd right after it. */
-#define DOPCOR_RETURN(v) do {                    \
-    if (st != NULL) {                            \
-      st->hlamb  = hlamb;                        \
-      st->iasti  = iasti;                        \
-      st->nonsti = nonsti;                       \
-      st->naccpt = naccptAll;                    \
-      st->xLast  = xAcc;                         \
-    }                                            \
-    return (v);                                  \
+#define DOPCOR_RETURN(v) do {                                           \
+    dopStiffEnd (st, hlamb, iasti, nonsti, naccptAll, xAcc);            \
+    return (v);                                                         \
   } while (0)
 
 /* core integrator */
@@ -179,7 +210,8 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
      they continue from the previous interval; xAcc is reported back as the last
      fully accepted x.  DOPCOR_RETURN writes them back on every exit. */
   long int naccptAll, stiffMax;
-  double   stiffLim, xAcc = x;
+  double   stiffLim, xAcc;
+  dop853_stiff_t sp;
   int i, j;
   double   c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c14, c15, c16;
   double   b1, b6, b7, b8, b9, b10, b11, b12, bhh1, bhh2, bhh3;
@@ -393,13 +425,14 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
   atoli = atoler[0];
   rtoli = rtoler[0];
   last  = 0;
-  hlamb  = (st != NULL) ? st->hlamb  : 0.0;
-  iasti  = (st != NULL) ? st->iasti  : 0;
-  nonsti = (st != NULL) ? st->nonsti : 0;
-  naccptAll = (st != NULL) ? st->naccpt : 0;
-  stiffLim = (st != NULL && st->threshold > 0.0) ? st->threshold : 6.1;
-  stiffMax = (st != NULL && st->maxStiff > 0) ? st->maxStiff : 15;
-  if (st != NULL) st->xLast = x;
+  dopStiffBegin (&sp, st, x);
+  hlamb     = sp.hlamb;
+  iasti     = sp.iasti;
+  nonsti    = sp.nonsti;
+  naccptAll = sp.naccpt;
+  stiffLim  = sp.threshold;
+  stiffMax  = sp.maxStiff;
+  xAcc      = sp.xLast;
   fcn (nptr, x, y, k1);
   hmax = fabs (hmax);
   iord = 8;
