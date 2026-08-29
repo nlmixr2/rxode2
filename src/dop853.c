@@ -566,6 +566,15 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                 }
               if (stden > 0.0)
                 hlamb = fabs (h) * sqrt (stnum / stden);
+              else
+                /* The step moved the state by nothing measurable, so it carries
+                   no stiffness signal.  Hairer keeps the previous estimate here,
+                   which is fine within one call because that estimate is one
+                   step old -- but this one persists across intervals, so a value
+                   left over from an earlier stiff stretch would be read as a
+                   fresh stiff verdict on a flat trajectory.  Score it clean, as
+                   the per-call code did by starting hlamb at zero. */
+                hlamb = 0.0;
               if (hlamb > stiffLim)
                 {
                   nonsti = 0;
