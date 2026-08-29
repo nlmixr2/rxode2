@@ -6367,6 +6367,11 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
     rxDelayHistPush(ind, op, ctx->xold, ctx->hout, ctx);
   }
 
+  // Forward-only, by construction: this fills observations from the main
+  // timeline, which ind_dop0_dense walks in ix[] order over an event table
+  // rxSolve() has sorted ascending, so x always advances.  (rxRos4DenseSegment,
+  // which takes segments over from here, carries a direction flag because it is
+  // also reachable from paths that do not have that guarantee.)
   while (dc->obs_next <= dc->segment_end) {
     int    idx   = dc->obs_next;
     int    raw   = ind->ix[idx];
