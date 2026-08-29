@@ -810,7 +810,24 @@
   }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
-  if (length(.ln) <= chunkLines) {
+  # Chunk only when it will actually pay.  What chunking buys is amortizing the
+  # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
+  # which is what `chunkLines` counts.  Measured, whole-model against chunked,
+  # on second-order sensitivity models:
+  #
+  #    70 KB   0.39s vs  2.00s   chunking 5.1x WORSE
+  #   261 KB   2.03s vs  2.16s            1.07
+  #   636 KB   5.42s vs  5.61s            1.03
+  #   975 KB   9.24s vs  8.60s            0.93
+  #   1.39 MB 15.39s vs  4.42s            0.29
+  #   3.14 MB 59.75s vs  6.70s   chunking 8.9x BETTER
+  #
+  # The knee is near 1 MB and the payoff is very asymmetric: at most ~7% lost
+  # below it against 3-9x gained above, so the threshold sits below the knee.
+  # A model with few but enormous lines is chunked; one with many short lines is
+  # not, which is the opposite of what the line count would have decided.
+  if (nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
+        length(.ln) <= chunkLines) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
@@ -905,6 +922,31 @@
   .rxRealignPastTau(.out, .txt)
 }
 
+#' Common subexpression elimination in C
+#'
+#' Hands the normalized model, one statement per element, to src/rxCse.c.  The
+#' C pass counts subexpressions in a hash rather than a named R list, so it is
+#' linear where the R walker is quadratic, and it counts each statement in an
+#' OpenMP region.
+#'
+#' Returns `NA_character_` when the C pass declines -- an unsupported left-hand
+#' side, `past()`, an `if`/`else` block, a numeric literal it will not render
+#' exactly, or simply no repeated subexpression.  The caller then runs the R
+#' implementation, so declining is always safe.
+#'
+#' @param norm normalized model text, as `rxNorm()` returns it
+#' @return optimized model text, or `NA_character_` to decline
+#' @author Matthew L. Fidler
+#' @noRd
+.rxOptExprC <- function(norm) {
+  if (!isTRUE(getOption("rxode2.optExprC", TRUE))) return(NA_character_)
+  if (!is.character(norm) || length(norm) != 1L || is.na(norm)) return(NA_character_)
+  .l <- strsplit(norm, "\n", fixed = TRUE)[[1]]
+  .l <- .l[nzchar(trimws(.l))]
+  if (length(.l) == 0L) return(NA_character_)
+  .Call(`_rxode2_rxCse`, .l)
+}
+
 #' Optimize rxode2 for computer evaluation
 #'
 #' This optimizes rxode2 code for computer evaluation by only
@@ -919,60 +961,30 @@
 #'
 #'  finding duplicate expressions in model...
 #'
-#' @param chunkLines Integer; when positive (the default is 40),
-#'     a model longer than this many lines is optimized in contiguous
+#' @param chunkLines Integer; when positive (the default is 40), a model
+#'     longer than this many lines is optimized in contiguous
 #'     cost-balanced chunks of roughly this many lines instead of in a
-#'     single pass; a model at or under it is optimized whole, exactly
-#'     as before.  `0` always optimizes the whole model at once.
-#'
-#'     Chunking pays off for a large machine-generated model -- a
-#'     sensitivity- or Jacobian-augmented model, say.  Normalizing a
-#'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
-#'     its size, and for such a model it, not the common subexpression
-#'     search, is what dominates: optimizing a 275-line augmented model
-#'     takes ~113s, of which the subexpression search is only ~15s.
-#'     Chunking amortizes that parse -- `rxOptExpr()` normalizes each
-#'     chunk on its own -- taking the same model to ~11s:
-#'
-#'     \tabular{rrrr}{
-#'       lines \tab whole \tab chunked \tab \cr
-#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: not chunked) \cr
-#'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
-#'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
-#'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
-#'     }
-#'
-#'     Common subexpressions are then only shared within a chunk, so the
-#'     model is equivalent but carries more temporaries.  That costs no
-#'     measurable solve time, but it does make the C compilation of the
-#'     model somewhat slower, which partly offsets the gain.
-#'
-#'     A chunk is a fragment, so it can fail to optimize where the whole
-#'     model would not.  If any chunk fails, the whole model is optimized
-#'     instead, so a malformed model still raises the error the unchunked
-#'     call raises; falling back costs the unchunked time only on that
-#'     rare path.
-#'
-#'     Chunking therefore does not give the same optimized text as the
-#'     whole-model call -- it shares fewer subexpressions and so carries
-#'     more temporaries -- but it gives an equivalent model: the same
-#'     states and parameters, the same solution, and the same errors.
+#'     single pass; `0` always optimizes the whole model at once.
+#'     Chunking amortizes the strongly superlinear cost of normalizing a
+#'     large machine-generated model, which is what dominates the
+#'     optimization of a sensitivity- or Jacobian-augmented model.
+#'     Subexpressions are then shared only within a chunk, so the result
+#'     is an equivalent model -- the same states, parameters, solution
+#'     and errors -- carrying more temporaries.  A chunk is a fragment,
+#'     so if any chunk fails to optimize the whole model is optimized
+#'     instead.
 #'
 #' @param parallel Integer; number of `mirai` daemons used to optimize
-#'     the chunks in parallel.  Only used when the model is chunked.  It
+#'     the chunks in parallel, used only when the model is chunked.  It
 #'     carries the same semantics as `rxControl(cores=)`: `0` (the
-#'     default) means the rxode2 thread setting `rxCores()`, so CRAN and
-#'     users tune it with the same knob as the solver (`setRxThreads()`,
-#'     `OMP_THREAD_LIMIT`) or by passing `parallel=` directly; `1` runs
-#'     the chunks serially.
-#'     It is capped by the number of chunks and by `rxCores()`, so it
-#'     will not oversubscribe past the threads the user asked for.
-#'
-#'     An existing `mirai` daemon pool is used as-is and left running.
-#'     Otherwise a pool is started for the call and shut down when it
-#'     returns; that startup (loading rxode2 into each daemon) costs a
-#'     few seconds, so a pool is only started when the model splits into
-#'     at least 4 chunks, where the parallel win covers it.
+#'     default) means the rxode2 thread setting `rxCores()`
+#'     (`setRxThreads()`, `OMP_THREAD_LIMIT`); `1` runs the chunks
+#'     serially.  It is capped by the number of chunks and by
+#'     `rxCores()`, so it will not oversubscribe.  An existing `mirai`
+#'     daemon pool is used as-is and left running; otherwise a pool is
+#'     started for the call and shut down when it returns, and only when
+#'     the model splits into at least 4 chunks, where the parallel win
+#'     covers the startup.
 #'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
@@ -990,14 +1002,20 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))
-  .mv <- rxModelVars(x)
-  .params <- .mv$params
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
-  .p <- eval(parse(text = paste0("quote({", rxNorm(x), "})")))
+  .norm <- rxNorm(x)
+  ## The C pass first; it returns NA when it will not reproduce the R walker
+  ## exactly, and the R implementation below then runs.  Chunking calls this
+  ## same whole-model path once per chunk, so chunks go through C too.
+  .cse <- .rxOptExprC(.norm)
+  if (!is.na(.cse)) {
+    return(.cse)
+  }
+  .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
   .rxOptEnv$.list <- .rxOptEnv$.list[which(unlist(.rxOptEnv$.list) > 1L)]
   .exprs <- names(.rxOptEnv$.list)[order(nchar(names(.rxOptEnv$.list)))]

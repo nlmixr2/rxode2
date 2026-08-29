@@ -90,6 +90,23 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
   }
 }
 #define Rx_pow_di(a, b) Rx_pow_di_(a, b, _solveData)
+
+// Names rxode2 accepts that C does not provide.  The parser takes these
+// spellings (they are in .parseFuns, via the symengine tables in
+// R/symengine.R) and codegen emits the rxode2 name verbatim as the C name, so
+// without these the model parses and then fails to compile.
+//
+// ceiling() is what R users write for C's ceil(); it is locally constant and
+// differentiates to 0 (.rxSElocallyConstant).  loggamma() is symengine's name
+// for lgamma(), which symengine differentiates natively to polygamma(0, x),
+// so it reaches C only when a model uses that spelling directly.
+static inline double ceiling(double a) {
+  return ceil(a);
+}
+
+static inline double loggamma(double a) {
+  return lgamma(a);
+}
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
 #define _IR (_ind->InfusionRate)

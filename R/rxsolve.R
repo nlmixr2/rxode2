@@ -2556,6 +2556,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   isTRUE(as.character(.m) == "indLin")
 }
 
+#' @rdname rxSolve
+#' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
