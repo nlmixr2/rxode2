@@ -12,7 +12,7 @@
 #
 # Protocol (matches bench/lincmt_vs_ode_focei.R):
 #   - rxode2 from THIS worktree, optimized .so, loaded compile = FALSE.
-#   - nlmixr2est from ~/src/nlmixr2est-matexp-bench (origin/main detached
+#   - nlmixr2est from ~/src/nlmixr2est (origin/main detached
 #     worktree -- the lincmt-speed branch predates PR #998).
 #   - Single-thread, whole Rscript pinned:
 #       CONFIG=1cmt MODE=solve REPS=3 taskset -c <idle> Rscript bench/lincmt_three_arm_ceiling.R
@@ -22,8 +22,8 @@
 # MODE=fit    : FOCEi fits, 40x10 (3 reps) + one larger 2cmt fit (1 rep)
 
 suppressMessages({
-  devtools::load_all("~/src/rxode2-lincmt-carry-jump", compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-matexp-bench", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 
@@ -31,7 +31,7 @@ cfg    <- Sys.getenv("CONFIG", "1cmt")
 mode   <- Sys.getenv("MODE", "solve")
 nRep   <- as.integer(Sys.getenv("REPS", "3"))
 core   <- Sys.getenv("CORE", "unpinned")
-outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
+outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 stopifnot(loadAvg() < 2)
@@ -288,8 +288,8 @@ attr(res, "provenance") <- list(
   date = format(Sys.time()), config = cfg, mode = mode, reps = nRep, core = core,
   posthocObjf = objs, etaMax = etaMax,
   sensType = "AD (forward) forced; matExp arm method=indLin",
-  rxode2 = system("git -C ~/src/rxode2-lincmt-carry-jump rev-parse --short HEAD", intern = TRUE),
-  nlmixr2est = system("git -C ~/src/nlmixr2est-matexp-bench rev-parse --short HEAD", intern = TRUE))
+  rxode2 = system("git -C ~/src/rxode2-lincmt-analytic rev-parse --short HEAD", intern = TRUE),
+  nlmixr2est = system("git -C ~/src/nlmixr2est rev-parse --short HEAD", intern = TRUE))
 dir.create(outDir, showWarnings = FALSE)
 saveRDS(res, file.path(outDir, fn))
 cat("saved", fn, "\n")

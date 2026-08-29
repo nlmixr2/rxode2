@@ -871,8 +871,16 @@
   .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
                   if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
 
-  .opt <- tryCatch({
-    if (.useMirai) {
+  # Collect the chunks, then check them ONCE.  The two routes used to carry their own
+  # acceptance rule -- the serial one vapply(character(1)), the parallel one merely
+  # is.character() -- so a chunk result that was character but not a single string was
+  # rejected serially and pasted in parallel.  The two routes then returned DIFFERENT
+  # MODELS from the same call, which is the one thing they must never do, and the
+  # difference showed up only where that case arose (a Windows check, where the serial
+  # route fell back to the whole model and the parallel route did not).  One rule now
+  # decides for both, and it is applied after collection rather than inside it.
+  .optRes <- tryCatch({
+    .res <- if (.useMirai) {
       if (.ownDaemons) {
         mirai::daemons(.nDaemons)
         on.exit(mirai::daemons(0), add = TRUE)
@@ -887,26 +895,31 @@
         },
         .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
       )
-      # A chunk that failed in a daemon comes back as an error object rather than throwing,
-      # and would otherwise be pasted into the model text; raise it so the fallback below
-      # optimizes the whole model instead.
-      .res <- character(.nChunks)
-      for (.i in seq_len(.nChunks)) {
-        .r <- .tasks[[.i]][]
-        if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || !is.character(.r)) {
-          stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
-                       tryCatch(conditionMessage(.r),
-                                error = function(e) paste(utils::head(unclass(.r), 1L),
-                                                          collapse = ""))),
-               call. = FALSE)
-        }
-        .res[.i] <- .r
-      }
-      .res
+      # A chunk that failed in a daemon comes back as an error object rather than
+      # throwing, so it reaches the check below as a value like any other.
+      lapply(seq_len(.nChunks), function(.i) .tasks[[.i]][])
     } else {
-      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+      lapply(seq_len(.nChunks), function(.i) {
+        tryCatch(.rxOptExprChunk(.i, .chunks, msg), error = function(e) e)
+      })
     }
-  }, error = function(e) NULL)
+    vapply(seq_len(.nChunks), function(.i) {
+      .r <- .res[[.i]]
+      if (inherits(.r, "miraiError") || inherits(.r, "errorValue") ||
+            inherits(.r, "condition") || !is.character(.r) || length(.r) != 1L ||
+            is.na(.r)) {
+        .what <- tryCatch(conditionMessage(.r), error = function(e) {
+          paste0(class(.r)[1], "[", length(.r), "]")
+        })
+        stop(sprintf("chunk %d did not optimize to a single model string%s: %s", .i,
+                     if (.useMirai) " in a mirai daemon" else "", .what),
+             call. = FALSE)
+      }
+      .r
+    }, character(1))
+  }, error = function(e) e)
+  .failed <- inherits(.optRes, "condition")
+  .opt <- if (.failed) NULL else .optRes
 
   # A chunk is only a fragment of the model, so it can fail to optimize where the whole
   # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
@@ -916,6 +929,12 @@
   # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
   # model never lands here.)
   if (is.null(.opt)) {
+    # Say why.  Falling back silently makes a chunked call that quietly stopped chunking
+    # indistinguishable from one that never chunked, which is how the serial/parallel
+    # divergence above went unnoticed until a platform surfaced it.
+    if (.failed)
+      .malert(sprintf("chunked optimization fell back to the whole %s: %s",
+                      msg, conditionMessage(.optRes)))
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))

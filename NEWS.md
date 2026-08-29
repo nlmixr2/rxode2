@@ -2,6 +2,77 @@
 
 ## New features
 
+- A `linCmt()` sensitivity row's state-transition matrix and its parameter
+  derivatives are now assembled from their CLOSED FORM in the constants the
+  theta-keyed window already holds -- the eigenvalues and spectral
+  matrices, `ka`, and each of their tangents -- rather than by probing the
+  kernel with unit-basis prior states.  The probe needs one kernel
+  evaluation per direction per column, so it could only pay for itself on
+  an interval that demonstrably recurs, and it had to exclude rate-bearing
+  rows; the closed form costs about one kernel evaluation altogether, so it
+  is assembled for any interval -- irregular designs, first occurrences and
+  infusions included -- and cached where the interval repeats, which is
+  where the reuse is worth more than any build.  This is the same exact
+  closed form summed in a different order (the matrix assembled, then
+  applied), the order the transition-matrix path already shipped, so it can
+  differ from the row-by-row order in the last few digits: measured against
+  the row tail the disagreement is a few units in the last place, and
+  against reverse mode it is the same spread the row tail itself has.
+  Where the probe engages -- and its entries are exact by construction --
+  the two matrices agree to 1e-14.
+  Measured on an optimized build against the previous default, the
+  closed-form route is never meaningfully slower and is up to 2.2x faster
+  on the designs the probe could not serve.  Which designs those are is
+  the whole of it: where the sampling is regular the probe already served
+  nearly every row and nothing changes, and the gain is on schedules whose
+  intervals do not repeat.  It carries into a fit -- a 40 subject by 100
+  observation two compartment oral FOCEi fit runs 1.37x faster on an
+  irregular schedule (53.4s to 38.9s) and unchanged on a uniform one, with
+  the objective function identical to 1e-11.  The probe-built route stays
+  available as `linCmtSensPhi=1`, and `FALSE` still evaluates row by row
+  in the order earlier versions used.  `linCmtSeqStats()` reports the rows
+  served as `phiAnalyticRows`.
+
+- The `linCmt()` sensitivity delta memo now keeps serving a row's own
+  repeat executions after its give-up guard has disarmed.  The guard stops
+  the window building exponentials for gaps that never recur, which is what
+  a schedule with no repeated interval produces; but one row is looked up
+  several times under one set of parameters -- once per `linCmtB()` call
+  the model generates, and again on every inner re-walk of a fit -- and
+  disarming was discarding those repeats too, so an irregular design
+  rebuilt the exponentials, and with `linCmtSensPhi=2` reassembled the
+  transition matrix, once per EXECUTION rather than once per row.  A slot
+  outside the round-robin now holds the current row's gap while the guard
+  is disarmed; it is never read as evidence that an interval recurs, so the
+  guard's reading of the design and the probe-built route's engage rule are
+  unchanged.  Results are bitwise identical either way (the memo is exact
+  caching, tested with it forced on and off).  Measured on a 40 subject by
+  100 observation two compartment oral FOCEi fit, an irregular sampling
+  schedule runs 1.14x faster and a uniform one is unchanged, which brings
+  the cost of an irregular schedule relative to a uniform one from 1.31x to
+  1.08x.  `linCmtSeqStats()` reports the builds served this way as
+  `expSolo`.
+
+- `linCmtSensType="ADm"` differentiates the `linCmt()` closed form with
+  every requested direction carried through a SINGLE forward-mode pass,
+  where `"AD"` repeats the whole evaluation once per direction with one
+  tangent each.  The solution itself -- each exponential, each division of
+  the depot transfer, the eigen-decomposition -- is therefore evaluated
+  once per row rather than once per direction.  Results match `"AD"`: the
+  multi-direction scalar reproduces the operation order of every
+  forward-mode rule it replaces, and carries the same Eigen cost traits so
+  the small matrix products unroll the same way (validated over 1/2/3
+  compartments x IV/oral x every `trans` x every steady-state form x
+  infusion x every requested-direction mask).  On the amortized row path
+  that is bitwise on every platform tested.  The two are different template
+  instantiations, though, so a compiler may contract a multiply-add into an
+  FMA in one and not the other; through the full evaluator that is what
+  clang on arm64 does, and there the two agree to round-off rather than to
+  the bit.  Unlike the amortized
+  ordinary-row path this also shares the work on steady-state rows, which
+  have no constants/tail factorization and so were paying a full evaluation
+  per direction.  `linCmtSeqStats()` reports the rows served as `dualRows`.
+
 - Model parsing is no longer superlinear in model size.  `statement` in the
   `dparser` grammar could derive the empty string (its last alternative was a
   bare `end_statement`, which is `(';')*`), so `statement_list : (statement)+`
@@ -148,8 +219,8 @@
   every other row is multiply-only.  The memo is exact caching (bitwise
   identical results, tested), sized at four gaps from measured designs,
   and can be disabled with `RX_LINCMT_DELTA_MEMO=off`; a design with no
-  gap reuse stops building after eight consecutive misses so it pays
-  essentially nothing; a stretch whose gap repeats the previous row's --
+  gap reuse stops building speculatively after eight consecutive misses so
+  it pays essentially nothing; a stretch whose gap repeats the previous row's --
   what a regular sampling schedule produces and an irregular one does not
   -- re-arms it, so an irregular stretch no longer disables the memo for
   the regular rows that follow it under the same parameters.

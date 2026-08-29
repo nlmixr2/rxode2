@@ -48,11 +48,11 @@ rxTest({
                            amt = 0, evid = 0, cmt = 1, rate = 0, ii = 0,
                            ss = 0))
     ev <- ev[order(ev$time), ]
-    rxode2:::linCmtDeltaMemo(1L)
+    rxode2::linCmtDeltaMemo(1L)
     sOn <- .solve(mod, pars, ev)
-    rxode2:::linCmtDeltaMemo(0L)
+    rxode2::linCmtDeltaMemo(0L)
     sOff <- .solve(mod, pars, ev)
-    rxode2:::linCmtDeltaMemo(-1L)
+    rxode2::linCmtDeltaMemo(-1L)
     expect_identical(sOn, sOff)
   })
 
@@ -60,11 +60,11 @@ rxTest({
     mod <- .gradModel(2, 1, 0:4)
     pars <- .parsFor(2, 1)
     ev <- .evObs(seq(0.5, 100, by = 0.5))
-    rxode2:::linCmtDeltaMemo(1L)
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(1L)
+    rxode2::linCmtSeqStats(TRUE)
     invisible(.solve(mod, pars, ev))
-    st <- rxode2:::linCmtSeqStats(TRUE)
-    rxode2:::linCmtDeltaMemo(-1L)
+    st <- rxode2::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(-1L)
     # one gap from dose to first obs + the repeated 0.5 gap
     expect_true(st[["expBuild"]] <= 4L)
     expect_true(st[["expHit"]] > 150L)
@@ -75,16 +75,49 @@ rxTest({
     pars <- .parsFor(2, 1)
     obsT <- cumsum(seq(0.31, 4, length.out = 25))
     ev <- .evObs(obsT)
-    rxode2:::linCmtDeltaMemo(1L)
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(1L)
+    rxode2::linCmtSeqStats(TRUE)
     invisible(.solve(mod, pars, ev))
-    st <- rxode2:::linCmtSeqStats(TRUE)
-    rxode2:::linCmtDeltaMemo(-1L)
-    # every gap distinct: the give-up guard stops building after
-    # RX_LINWIN_MISSRUN consecutive misses so a no-reuse design pays
-    # (almost) nothing; correctness already covered by the bitwise test
-    expect_true(st[["expBuild"]] <= 10L)
-    expect_true(st[["expBuild"]] >= 8L)
+    st <- rxode2::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(-1L)
+    # every gap distinct: the give-up guard stops SPECULATING after
+    # RX_LINWIN_MISSRUN consecutive misses, so a no-reuse design builds
+    # into the round-robin only while it is learning that
+    .armed <- st[["expBuild"]] - st[["expSolo"]]
+    expect_true(.armed <= 10L)
+    expect_true(.armed >= 8L)
+    # what the guard must NOT give up: one row is looked up several times
+    # under one theta, and those repeats are reuse whatever the schedule.
+    # The within-row slot keeps serving them, so the rows after the guard
+    # trips still get a slot -- one per ROW, never one per execution
+    expect_true(st[["expSolo"]] > 0L)
+    expect_true(st[["expSolo"]] <= st[["seqTailRows"]])
+  })
+
+  test_that("the within-row slot is exact on a fully non-uniform design", {
+    # the slot the guard keeps after it disarms is the one path the other
+    # cases here never reach, and it feeds the closed-form transition
+    # matrix as well as the tail -- both must be bitwise exact
+    mod <- .gradModel(3, 1, 0:6)
+    pars <- .parsFor(3, 1)
+    ev <- .evObs(cumsum(seq(0.17, 3, length.out = 40)))
+    for (.phi in list(FALSE, 2L)) {
+      rxode2::linCmtDeltaMemo(1L)
+      rxode2::linCmtSeqStats(TRUE)
+      sOn <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
+                                           addDosing = FALSE,
+                                           linCmtSensType = "AD",
+                                           linCmtSensPhi = .phi))
+      st <- rxode2::linCmtSeqStats(TRUE)
+      rxode2::linCmtDeltaMemo(0L)
+      sOff <- as.data.frame(rxode2::rxSolve(mod, pars, ev, cores = 1L,
+                                            addDosing = FALSE,
+                                            linCmtSensType = "AD",
+                                            linCmtSensPhi = .phi))
+      rxode2::linCmtDeltaMemo(-1L)
+      expect_identical(sOn, sOff)
+      expect_true(st[["expSolo"]] > 0L)
+    }
   })
 
   test_that("memo re-arms when a regular stretch follows an irregular one", {
@@ -96,20 +129,20 @@ rxTest({
     # would hit nothing at all
     irr <- cumsum(seq(0.31, 4, length.out = 15))
     ev <- .evObs(c(irr, max(irr) + seq(0.5, 50, by = 0.5)))
-    rxode2:::linCmtDeltaMemo(1L)
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(1L)
+    rxode2::linCmtSeqStats(TRUE)
     sOn <- .solve(mod, pars, ev)
-    st <- rxode2:::linCmtSeqStats(TRUE)
-    rxode2:::linCmtDeltaMemo(0L)
+    st <- rxode2::linCmtSeqStats(TRUE)
+    rxode2::linCmtDeltaMemo(0L)
     sOff <- .solve(mod, pars, ev)
-    rxode2:::linCmtDeltaMemo(-1L)
+    rxode2::linCmtDeltaMemo(-1L)
     # exact caching either way
     expect_identical(sOn, sOff)
     # the 100-row regular stretch is served by the memo (it hit zero
-    # times before the re-arm); builds stay bounded by the guard plus the
-    # one re-arm build
+    # times before the re-arm); speculative builds stay bounded by the
+    # guard plus the one re-arm build
     expect_true(st[["expHit"]] > 80L)
-    expect_true(st[["expBuild"]] <= 12L)
+    expect_true(st[["expBuild"]] - st[["expSolo"]] <= 12L)
   })
 
   test_that("threaded solve is bit-identical to single-threaded with the memo", {

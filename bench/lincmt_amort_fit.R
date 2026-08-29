@@ -1,9 +1,9 @@
 # The 40x100 FOCEi fit cell (the dense-design inversion): linCmt arm on the
 # RXTREE build vs the ODE arm; part of the quiet-machine A/B.
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-matexp-bench", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 arm <- Sys.getenv("ARM", "linCmt")

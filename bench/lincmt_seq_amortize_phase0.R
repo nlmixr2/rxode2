@@ -13,15 +13,15 @@
 # baseline / post-A throwaway worktrees); the model text and data are
 # identical across trees.
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-matexp-bench", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 
 cfg  <- Sys.getenv("CONFIG", "2cmt")
 nRep <- as.integer(Sys.getenv("REPS", "3"))
-outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
+outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 # guard against a busy machine; a small persistent baseline from other

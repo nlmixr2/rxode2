@@ -12,9 +12,9 @@ suppressMessages({
   mode <- Sys.getenv("MODE", "head")
   tree <- switch(Sys.getenv("TREE", if (mode == "base") "base" else "head"),
                  base = "~/src/rxode2-p5-base",
-                 head = "~/src/rxode2-lincmt-carry-jump")
+                 head = "~/src/rxode2-lincmt-analytic")
   devtools::load_all(tree, compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE,
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE,
                      quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
