@@ -20,6 +20,11 @@ options(rxprogress.disable = TRUE)
 
 source("inst/tools/optExprFixtureCorpus.R", local = TRUE)
 
+## These are internal, and a standalone script has to say so explicitly rather
+## than reach in with `:::`.
+.rxJacobian <- getFromNamespace(".rxJacobian", "rxode2")
+.rxSens <- getFromNamespace(".rxSens", "rxode2")
+
 ## -------------------------------------------------------------- harvest ----
 ## Each pair is (model text in, optimized text out).  A model the reference
 ## itself cannot optimize is recorded with its error message instead, so the
@@ -60,11 +65,11 @@ for (nm in names(.optUiModels)) {
   ## the derivative lines are not a model on their own -- they reference the
   ## states, so they are appended to the model text the way rxode2 assembles it
   .base <- rxode2::rxNorm(.m)
-  .jac <- try(suppressMessages(rxode2:::.rxJacobian(.env)), silent = TRUE)
+  .jac <- try(suppressMessages(.rxJacobian(.env)), silent = TRUE)
   if (!inherits(.jac, "try-error") && is.character(.jac) && length(.jac) > 0L) {
     .add(paste0("jac_", nm), paste(c(.base, .jac), collapse = "\n"))
   }
-  .sens <- try(suppressMessages(rxode2:::.rxSens(.env, .pars)), silent = TRUE)
+  .sens <- try(suppressMessages(.rxSens(.env, .pars)), silent = TRUE)
   if (!inherits(.sens, "try-error") && is.character(.sens) && length(.sens) > 0L) {
     .add(paste0("sens_", nm), paste(c(.base, .jac, .sens), collapse = "\n"))
   } else {

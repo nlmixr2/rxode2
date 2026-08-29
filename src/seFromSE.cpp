@@ -52,7 +52,7 @@ static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {
   return d;
 }
 
-SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
+extern "C" SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
                           SEXP dName, SEXP dWhich, SEXP dTmpl) {
   /* resolve the named-constant buckets once, before any thread starts */
   seNamedInit();

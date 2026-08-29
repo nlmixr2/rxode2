@@ -20,6 +20,11 @@ options(rxprogress.disable = TRUE)
 ## run from the package root, as the header says
 source("inst/tools/symengineFixtureCorpus.R", local = TRUE)
 
+## These are internal, and a standalone script has to say so explicitly rather
+## than reach in with `:::`.
+.rxJacobian <- getFromNamespace(".rxJacobian", "rxode2")
+.rxSens <- getFromNamespace(".rxSens", "rxode2")
+
 ## ---------------------------------------------------------------- harvest ---
 .se <- character(0)   # symengine-syntax strings -> rxFromSE fixture
 .rx <- character(0)   # rxode2-syntax strings    -> rxToSE  fixture
@@ -96,8 +101,8 @@ for (nm in names(.models)) {
   if (inherits(ui, "try-error")) next
   env <- try({
     e <- rxode2::rxS(rxode2::rxNorm(rxode2::rxModelVars(ui)))
-    rxode2:::.rxJacobian(e)
-    rxode2:::.rxSens(e)
+    .rxJacobian(e)
+    .rxSens(e)
     e
   }, silent = TRUE)
   if (inherits(env, "try-error")) { message("skip jac/sens ", nm); next }
@@ -129,8 +134,8 @@ for (nm in names(.models)) {
   }
   env <- try({
     e <- rxode2::rxS(pm)
-    rxode2:::.rxJacobian(e)
-    rxode2:::.rxSens(e)
+    .rxJacobian(e)
+    .rxSens(e)
     e
   }, silent = TRUE)
   if (inherits(env, "try-error")) { message("skip prune jac/sens ", nm); next }

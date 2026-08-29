@@ -97,27 +97,35 @@ static inline void csNiReset(csNodeInfo *ni) {
    own -- the precedence ladder is spelled out (or -> and -> rel -> add -> mul
    -> unary -> power -> primary), so a walk that did not see through these
    would render, and count, the same text once per rung. */
+/* the rungs of that ladder */
+static inline int csIsLadderNode(D_ParseNode *pn) {
+  const char *name = csNodeName(pn);
+  csNodeInfo ni; csNiReset(&ni);
+  return csNodeHas(expression) || csNodeHas(or_expression) ||
+    csNodeHas(and_expression) || csNodeHas(rel_expression) ||
+    csNodeHas(add_expression) || csNodeHas(mul_expression) ||
+    csNodeHas(unary_expression) || csNodeHas(power_expression) ||
+    csNodeHas(primary_expression);
+}
+
+/* the single-child wrappers that are not precedence rungs */
+static inline int csIsWrapperNode(D_ParseNode *pn) {
+  const char *name = csNodeName(pn);
+  csNodeInfo ni; csNiReset(&ni);
+  return csNodeHas(number) || csNodeHas(lhs) || csNodeHas(lhs_primary) ||
+    /* seArgsFlattenT() hands back the LIST node itself when there is only one
+       argument, so these have to be seen through too -- the same trap the
+       seFromSE emitter hit. */
+    csNodeHas(arg_list) || csNodeHas(lhs_args) ||
+    csNodeHas(translation_unit);
+}
+
 static inline D_ParseNode *csUnwrap(D_ParseNode *pn) {
-  for (;;) {
-    if (d_get_number_of_children(pn) != 1) return pn;
-    const char *name = csNodeName(pn);
-    csNodeInfo ni; csNiReset(&ni);
-    if (csNodeHas(expression) || csNodeHas(or_expression) ||
-        csNodeHas(and_expression) || csNodeHas(rel_expression) ||
-        csNodeHas(add_expression) || csNodeHas(mul_expression) ||
-        csNodeHas(unary_expression) || csNodeHas(power_expression) ||
-        csNodeHas(primary_expression) || csNodeHas(number) ||
-        csNodeHas(lhs) || csNodeHas(lhs_primary) ||
-        /* seArgsFlattenT() hands back the LIST node itself when there is only
-           one argument, so these have to be seen through too -- the same trap
-           the seFromSE emitter hit. */
-        csNodeHas(arg_list) || csNodeHas(lhs_args) ||
-        csNodeHas(translation_unit)) {
-      pn = d_get_child(pn, 0);
-      continue;
-    }
-    return pn;
+  while (d_get_number_of_children(pn) == 1 &&
+         (csIsLadderNode(pn) || csIsWrapperNode(pn))) {
+    pn = d_get_child(pn, 0);
   }
+  return pn;
 }
 
 #endif /* __RX_CSE_NODE_H__ */

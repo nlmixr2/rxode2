@@ -304,47 +304,56 @@ static inline int rxIsWordChar(char c) {
     (c >= '0' && c <= '9') || c == '_' || c == '.';
 }
 
-static inline const char *rxBodilessIfWhile(Parser *p) {
-  int line = 1, col = 0, depth;
-  const char *s = gBuf, *at;
-  if (gBuf == NULL) return NULL;
-  for (; *s != '\0'; s++) {
-    if (line == p->user.loc.line && col == p->user.loc.col) break;
-    if (*s == '\n') { line++; col = 0; } else { col++; }
-  }
-  at = s;
-  /* back over whitespace */
-  while (at > gBuf) {
-    const char *b = at - 1;
-    if (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') { at = b; continue; }
-    break;
-  }
-  /* `if (c) else s` fails AT the else, so step back over it and keep looking;
-     the missing body is the then-branch */
-  if (at - gBuf >= 4 && !strncmp(at - 4, "else", 4) &&
-      (at - gBuf == 4 || !rxIsWordChar(at[-5]))) {
-    at -= 4;
-    while (at > gBuf) {
-      const char *b = at - 1;
-      if (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') { at = b; continue; }
-      break;
-    }
-  }
-  if (at == gBuf || at[-1] != ')') return NULL;
-  /* match the condition's parentheses back to their opening '(' */
+/* back over whitespace, never past the start of the buffer */
+static inline const char *rxBackWs(const char *at) {
+  while (at > gBuf && (at[-1] == ' ' || at[-1] == '\t' ||
+                       at[-1] == '\r' || at[-1] == '\n')) at--;
+  return at;
+}
+
+/* does `word` end exactly at `at`, on a word boundary? */
+static inline int rxWordEndsAt(const char *at, const char *word) {
+  size_t n = strlen(word);
+  if ((size_t)(at - gBuf) < n || strncmp(at - n, word, n) != 0) return 0;
+  return (size_t)(at - gBuf) == n || !rxIsWordChar(*(at - n - 1));
+}
+
+/* `at` points just past a ')': match back to its '(', or NULL */
+static inline const char *rxMatchParenBack(const char *at) {
+  int depth = 0;
   at--;                       /* now on ')' */
-  depth = 0;
   while (at > gBuf) {
     if (*at == ')') depth++;
     else if (*at == '(') { depth--; if (depth == 0) break; }
     at--;
   }
-  if (depth != 0 || *at != '(') return NULL;
+  return (depth == 0 && *at == '(') ? at : NULL;
+}
+
+/* the byte in gBuf the parser failed at */
+static inline const char *rxFailPoint(Parser *p) {
+  int line = 1, col = 0;
+  const char *s = gBuf;
+  for (; *s != '\0'; s++) {
+    if (line == p->user.loc.line && col == p->user.loc.col) break;
+    if (*s == '\n') { line++; col = 0; } else { col++; }
+  }
+  return s;
+}
+
+static inline const char *rxBodilessIfWhile(Parser *p) {
+  const char *at;
+  if (gBuf == NULL) return NULL;
+  at = rxBackWs(rxFailPoint(p));
+  /* `if (c) else s` fails AT the else, so step back over it and keep looking;
+     the missing body is the then-branch */
+  if (rxWordEndsAt(at, "else")) at = rxBackWs(at - 4);
+  if (at == gBuf || at[-1] != ')') return NULL;
+  at = rxMatchParenBack(at);
+  if (at == NULL) return NULL;
   while (at > gBuf && (at[-1] == ' ' || at[-1] == '\t')) at--;
-  if (at - gBuf >= 2 && !strncmp(at - 2, "if", 2) &&
-      (at - gBuf == 2 || !rxIsWordChar(at[-3]))) return "if";
-  if (at - gBuf >= 5 && !strncmp(at - 5, "while", 5) &&
-      (at - gBuf == 5 || !rxIsWordChar(at[-6]))) return "while";
+  if (rxWordEndsAt(at, "if")) return "if";
+  if (rxWordEndsAt(at, "while")) return "while";
   return NULL;
 }
 

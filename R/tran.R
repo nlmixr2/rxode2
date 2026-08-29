@@ -22,6 +22,7 @@
 #' @importFrom stats setNames
 #' @importFrom methods is
 #' @importFrom utils assignInMyNamespace
+#' @importFrom compiler cmpfun
 #' @examples
 #' rxode2parse("a=3")
 rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"), verbose=FALSE,

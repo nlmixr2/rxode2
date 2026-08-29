@@ -16,18 +16,30 @@ optimizing the model:
 
 finding duplicate expressions in model...}
 
-\item{chunkLines}{Accepted and ignored.  Until rxode2 5.1.7 a model
-longer than this many lines was optimized in contiguous chunks,
-which existed only because parsing was strongly superlinear in
-model size.  That is fixed (the grammar was ambiguous, see NEWS),
-and the common subexpression search itself now runs in C, so the
-whole model is always optimized in one pass -- which also shares
-subexpressions across what used to be chunk boundaries.}
+\item{chunkLines}{Integer; when positive (the default is 40), a model
+longer than this many lines is optimized in contiguous
+cost-balanced chunks of roughly this many lines instead of in a
+single pass; \code{0} always optimizes the whole model at once.
+Chunking amortizes the strongly superlinear cost of normalizing a
+large machine-generated model, which is what dominates the
+optimization of a sensitivity- or Jacobian-augmented model.
+Subexpressions are then shared only within a chunk, so the result
+is an equivalent model -- the same states, parameters, solution
+and errors -- carrying more temporaries.  A chunk is a fragment,
+so if any chunk fails to optimize the whole model is optimized
+instead.}
 
-\item{parallel}{Accepted and ignored.  The chunks it used to
-parallelize no longer exist; the subexpression search threads
-internally instead, using the same \code{rxCores()} setting
-(\code{setRxThreads()}, \code{OMP_THREAD_LIMIT}).}
+\item{parallel}{Integer; number of \code{mirai} daemons used to optimize
+the chunks in parallel, used only when the model is chunked.  It
+carries the same semantics as \code{rxControl(cores=)}: \code{0} (the
+default) means the rxode2 thread setting \code{rxCores()}
+(\code{setRxThreads()}, \code{OMP_THREAD_LIMIT}); \code{1} runs the chunks
+serially.  It is capped by the number of chunks and by
+\code{rxCores()}, so it will not oversubscribe.  An existing \code{mirai}
+daemon pool is used as-is and left running; otherwise a pool is
+started for the call and shut down when it returns, and only when
+the model splits into at least 4 chunks, where the parallel win
+covers the startup.}
 }
 \value{
 Optimized rxode2 model text.  The order and type lhs and

@@ -89,6 +89,76 @@ static inline const char *csAIndex(csCtx *c, D_ParseNode *pn) {
   return seCat(csArena(c), nm, "[", ix, "]", NULL, NULL);
 }
 
+static inline const char *csAUnary(csCtx *c, D_ParseNode *pn) {
+  const char *op = csNodeText(csArena(c), d_get_child(pn, 0));
+  const char *e1 = csA(c, d_get_child(pn, 1));
+  const char *out;
+  if (c->arena.failed) return "";
+  if (op[0] == '!') {                                 /* !x -> "!(x)" via .rxOptFn */
+    return csAdd(c, seCat(csArena(c), "!(", e1, ")", NULL, NULL, NULL));
+  }
+  if (op[0] == '+') out = e1;                         /* unary + is dropped */
+  else out = seCat(csArena(c), "-", e1, NULL, NULL, NULL, NULL);
+  if (csIsNum(out)) return out;                       /* a bare number is not counted */
+  return csAdd(c, out);
+}
+
+static inline int csAIsPow(const char *op) {
+  return op[0] == '^' || (op[0] == '*' && op[1] == '*');
+}
+
+/* `e1^n` for integerish n >= 2 becomes ((e1)*(e1)*...) BEFORE counting, so the
+   expanded product is the candidate (R/rxOptExpr.R:44-48).  Returns NULL when
+   the exponent is not integerish, so the caller falls through to `^`. */
+static inline const char *csAPow(csCtx *c, const char *e1, const char *e2) {
+  const char *out;
+  long i, p;
+  int pw = csIntPow(e2, &p);
+  /* -1 means integerish but far too large: R would expand it, so declining is
+     the only way to stay byte exact */
+  if (pw < 0) return CS_FAIL(c, "exponent too large to expand");
+  if (pw == 0) return NULL;
+  out = seCat(csArena(c), "((", e1, ")", NULL, NULL, NULL);
+  for (i = 1; i < p; i++) out = seCat(csArena(c), out, "*(", e1, ")", NULL, NULL);
+  out = seCat(csArena(c), out, ")", NULL, NULL, NULL, NULL);
+  return csAdd(c, out);
+}
+
+static inline const char *csABinary(csCtx *c, D_ParseNode *pn) {
+  const char *op = csNodeText(csArena(c), csUnwrap(d_get_child(pn, 1)));
+  const char *e1, *e2, *out;
+  /* Operand ORDER matters, because it is the order .addExpr() sees and so the
+     first-encounter tie-break for two candidates of equal nchar.  R's
+     .rxOptBin is lazy: for `^` the very first thing it touches is
+     as.numeric(e2) (R/rxOptExpr.R:45), which forces the RIGHT operand before
+     the left; every other operator forces e1 first, in the `&&` at :50.  */
+  if (csAIsPow(op)) {
+    e2 = csA(c, d_get_child(pn, 2));
+    if (c->arena.failed) return "";
+    e1 = csA(c, d_get_child(pn, 0));
+  } else {
+    e1 = csA(c, d_get_child(pn, 0));
+    if (c->arena.failed) return "";
+    e2 = csA(c, d_get_child(pn, 2));
+  }
+  if (c->arena.failed) return "";
+  if (op[0] == '%') {                                 /* %% is never folded */
+    out = seCat(csArena(c), csModOperand(c, e1), "%%", csModOperand(c, e2),
+                NULL, NULL, NULL);
+    if (csIsNum(e1) && csIsNum(e2)) return out;
+    return csAdd(c, out);
+  }
+  if (csAIsPow(op)) {
+    out = csAPow(c, e1, e2);
+    if (c->arena.failed) return "";
+    if (out != NULL) return out;
+    op = "^";                                         /* R parses ** as ^ */
+  }
+  out = seCat(csArena(c), e1, op, e2, NULL, NULL, NULL);
+  if (csIsNum(e1) && csIsNum(e2)) return out;         /* constants stay inline */
+  return csAdd(c, out);
+}
+
 static const char *csA(csCtx *c, D_ParseNode *pn) {
   const char *name;
   csNodeInfo ni;
@@ -112,74 +182,13 @@ static const char *csA(csCtx *c, D_ParseNode *pn) {
   }
   if (csNodeHas(index_expression)) return csAIndex(c, pn);
   if (csNodeHas(function_call)) return csACall(c, pn);
-
   if (nch == 3 && csIsLit(d_get_child(pn, 0), '(')) {   /* ( expression ) */
     const char *in = csA(c, d_get_child(pn, 1));
     if (c->arena.failed) return "";
     return seCat(csArena(c), "(", in, ")", NULL, NULL, NULL);
   }
-
-  if (nch == 2) {                                       /* unary */
-    const char *op = csNodeText(csArena(c), d_get_child(pn, 0));
-    const char *e1 = csA(c, d_get_child(pn, 1));
-    const char *out;
-    if (c->arena.failed) return "";
-    if (op[0] == '!') {                                 /* !x -> "!(x)" via .rxOptFn */
-      out = seCat(csArena(c), "!(", e1, ")", NULL, NULL, NULL);
-      return csAdd(c, out);
-    }
-    if (op[0] == '+') out = e1;                         /* unary + is dropped */
-    else out = seCat(csArena(c), "-", e1, NULL, NULL, NULL, NULL);
-    if (csIsNum(out)) return out;                       /* a bare number is not counted */
-    return csAdd(c, out);
-  }
-
-  if (nch == 3) {                                       /* binary */
-    const char *op = csNodeText(csArena(c), csUnwrap(d_get_child(pn, 1)));
-    const char *e1, *e2, *out;
-    long p;
-    /* Operand ORDER matters, because it is the order .addExpr() sees and so the
-       first-encounter tie-break for two candidates of equal nchar.  R's
-       .rxOptBin is lazy: for `^` the very first thing it touches is
-       as.numeric(e2) (R/rxOptExpr.R:45), which forces the RIGHT operand before
-       the left; every other operator forces e1 first, in the `&&` at :50.  */
-    if (op[0] == '^' || (op[0] == '*' && op[1] == '*')) {
-      e2 = csA(c, d_get_child(pn, 2));
-      if (c->arena.failed) return "";
-      e1 = csA(c, d_get_child(pn, 0));
-      if (c->arena.failed) return "";
-    } else {
-      e1 = csA(c, d_get_child(pn, 0));
-      if (c->arena.failed) return "";
-      e2 = csA(c, d_get_child(pn, 2));
-      if (c->arena.failed) return "";
-    }
-    if (op[0] == '%') {                                 /* %% is never folded */
-      out = seCat(csArena(c), csModOperand(c, e1), "%%", csModOperand(c, e2),
-                  NULL, NULL, NULL);
-      if (csIsNum(e1) && csIsNum(e2)) return out;
-      return csAdd(c, out);
-    }
-    if (op[0] == '^' || (op[0] == '*' && op[1] == '*')) {
-      int pw = csIntPow(e2, &p);
-      /* -1 means integerish but far too large: R would expand it, so declining
-         is the only way to stay byte exact */
-      if (pw < 0) return CS_FAIL(c, "exponent too large to expand");
-      if (pw > 0) {
-        /* `e1^n` for integerish n >= 2 becomes ((e1)*(e1)*...) BEFORE counting,
-           so the expanded product is the candidate (R/rxOptExpr.R:44-48) */
-        long i;
-        out = seCat(csArena(c), "((", e1, ")", NULL, NULL, NULL);
-        for (i = 1; i < p; i++) out = seCat(csArena(c), out, "*(", e1, ")", NULL, NULL);
-        out = seCat(csArena(c), out, ")", NULL, NULL, NULL, NULL);
-        return csAdd(c, out);
-      }
-    }
-    if (op[0] == '*' && op[1] == '*') op = "^";         /* R parses ** as ^ */
-    out = seCat(csArena(c), e1, op, e2, NULL, NULL, NULL);
-    if (csIsNum(e1) && csIsNum(e2)) return out;         /* constants stay inline */
-    return csAdd(c, out);
-  }
+  if (nch == 2) return csAUnary(c, pn);
+  if (nch == 3) return csABinary(c, pn);
 
   c->failWhy = "unhandled node";
   return seFail(csArena(c));

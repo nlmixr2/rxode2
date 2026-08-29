@@ -35,6 +35,18 @@ static const char *seEmitPower(seCtx *ctx, const char *x2, const char *x3,
   return seCat(ctx, "Rx_pow(", x2, ",", x3, ")", NULL);
 }
 
+/* Arithmetic identities, mirroring .rxFromSE().  Only the right operand is
+   folded, which is why divide and subtract test only that side: 0-x is -x,
+   not x, and 1/x is not x.  NULL when none applies. */
+static const char *seBinIdentity(const char *x2, char op, const char *x3) {
+  if ((op == '/' || op == '*') && !strcmp(x3, "1")) return x2;
+  if (op == '*' && !strcmp(x2, "1")) return x3;
+  if (op == '+' && !strcmp(x3, "0")) return x2;
+  if (op == '+' && !strcmp(x2, "0")) return x3;
+  if (op == '-' && !strcmp(x3, "0")) return x2;
+  return NULL;
+}
+
 static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
   const char *x2 = seEmit(ctx, d_get_child(pn, 0));
   if (ctx->failed) return "";
@@ -54,17 +66,9 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
     const char *pw = seEmitPower(ctx, x2, x3, rhs);
     if (pw != NULL) return pw;
   }
-  /* Arithmetic identities, mirroring .rxFromSE().  Only the right operand is
-     folded, which is why divide and subtract test only that side: 0-x is -x,
-     not x, and 1/x is not x. */
   if (!isPow) {
-    char op = seNodeName(opNode)[0];
-    if (op == '/' && !strcmp(x3, "1")) return x2;
-    if (op == '*' && !strcmp(x3, "1")) return x2;
-    if (op == '*' && !strcmp(x2, "1")) return x3;
-    if (op == '+' && !strcmp(x3, "0")) return x2;
-    if (op == '+' && !strcmp(x2, "0")) return x3;
-    if (op == '-' && !strcmp(x3, "0")) return x2;
+    const char *id = seBinIdentity(x2, seNodeName(opNode)[0], x3);
+    if (id != NULL) return id;
   }
   /* symengine may print '**'; rxode2 always emits '^' */
   const char *ret = seNamedConstant(seCat(ctx, x2, isPow ? "^" : seNodeName(opNode),

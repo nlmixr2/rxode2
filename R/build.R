@@ -221,7 +221,7 @@ d/dt(blood)     = a*intestine - b*blood
   cat("\n#endif // __rxode2_control_H__\n")
   sink()
   message("done")
-  return(invisible(""))
+  invisible("")
 }
 #' This creates the list of "blessed" rxode2 items
 #'

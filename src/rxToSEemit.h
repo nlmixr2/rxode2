@@ -183,8 +183,63 @@ static const char *rtSymbol(seCtx *ctx, D_ParseNode *pn) {
   return raw;
 }
 
+/* the one-argument rewrites; NULL when `name` is not one */
+static const char *rtCall1(seCtx *ctx, const char *name, D_ParseNode **args) {
+  int i;
+  for (i = 0; i < rtNops1; i++) {
+    const char *a;
+    if (name[0] != rtOps1[i].name[0]) continue;
+    if (strcmp(name, rtOps1[i].name) != 0) continue;
+    a = rtEmit(ctx, args[0]);
+    if (ctx->failed) return "";
+    return seCat(ctx, rtOps1[i].open, a, rtOps1[i].close, NULL, NULL, NULL);
+  }
+  return NULL;
+}
+
+/* ... and the two-argument ones */
+static const char *rtCall2(seCtx *ctx, const char *name, D_ParseNode **args) {
+  int i;
+  for (i = 0; i < rtNops2; i++) {
+    const char *a, *b;
+    if (name[0] != rtOps2[i].name[0]) continue;
+    if (strcmp(name, rtOps2[i].name) != 0) continue;
+    a = rtEmit(ctx, args[0]);
+    if (ctx->failed) return "";
+    b = rtEmit(ctx, args[1]);
+    if (ctx->failed) return "";
+    return seCat(ctx, rtOps2[i].open, a, rtOps2[i].mid, b, rtOps2[i].close, NULL);
+  }
+  return NULL;
+}
+
+/* a function symengine knows by the same name */
+static const char *rtCallPass(seCtx *ctx, const char *name,
+                              D_ParseNode **args, int nargs) {
+  int i, j;
+  for (i = 0; i < rtNpassFns; i++) {
+    const char *body = "";
+    if (name[0] != rtPassFns[i][0]) continue;
+    if (strcmp(name, rtPassFns[i]) != 0) continue;
+    /* exp(1) is Euler's number, which symengine spells E; log(1) and sqrt(1)
+       get no such treatment, so this is the one case, not a general fold */
+    if (nargs == 1 && strcmp(name, "exp") == 0 &&
+        strcmp(rtNodeText(ctx, args[0]), "1") == 0) {
+      return "E";
+    }
+    for (j = 0; j < nargs; j++) {
+      const char *a = rtEmit(ctx, args[j]);
+      if (ctx->failed) return "";
+      body = (j == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
+    }
+    return seCat(ctx, name, "(", body, ")", NULL, NULL);
+  }
+  return NULL;
+}
+
 static const char *rtCall(seCtx *ctx, D_ParseNode *pn) {
   const char *name = rtNodeText(ctx, d_get_child(pn, 0));
+  const char *got;
   D_ParseNode *args[8];
   D_ParseNode *argNode = NULL;
   int nch = d_get_number_of_children(pn), nargs = 0, i;
@@ -195,45 +250,16 @@ static const char *rtCall(seCtx *ctx, D_ParseNode *pn) {
     nargs = rtArgs(argNode, args, 8);
     if (nargs < 0) return rtFail(ctx);
   }
-
   if (nargs == 1) {
-    for (i = 0; i < rtNops1; i++) {
-      if (name[0] != rtOps1[i].name[0]) continue;
-      if (strcmp(name, rtOps1[i].name) != 0) continue;
-      const char *a = rtEmit(ctx, args[0]);
-      if (ctx->failed) return "";
-      return seCat(ctx, rtOps1[i].open, a, rtOps1[i].close, NULL, NULL, NULL);
-    }
+    got = rtCall1(ctx, name, args);
+    if (got != NULL) return got;
   }
   if (nargs == 2) {
-    for (i = 0; i < rtNops2; i++) {
-      if (name[0] != rtOps2[i].name[0]) continue;
-      if (strcmp(name, rtOps2[i].name) != 0) continue;
-      const char *a = rtEmit(ctx, args[0]);
-      if (ctx->failed) return "";
-      const char *b = rtEmit(ctx, args[1]);
-      if (ctx->failed) return "";
-      return seCat(ctx, rtOps2[i].open, a, rtOps2[i].mid, b, rtOps2[i].close, NULL);
-    }
+    got = rtCall2(ctx, name, args);
+    if (got != NULL) return got;
   }
-  for (i = 0; i < rtNpassFns; i++) {
-    if (name[0] != rtPassFns[i][0]) continue;
-    if (strcmp(name, rtPassFns[i]) != 0) continue;
-    /* exp(1) is Euler's number, which symengine spells E; log(1) and sqrt(1)
-       get no such treatment, so this is the one case, not a general fold */
-    if (nargs == 1 && strcmp(name, "exp") == 0 &&
-        strcmp(rtNodeText(ctx, args[0]), "1") == 0) {
-      return "E";
-    }
-    const char *body = "";
-    int j;
-    for (j = 0; j < nargs; j++) {
-      const char *a = rtEmit(ctx, args[j]);
-      if (ctx->failed) return "";
-      body = (j == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
-    }
-    return seCat(ctx, name, "(", body, ")", NULL, NULL);
-  }
+  got = rtCallPass(ctx, name, args, nargs);
+  if (got != NULL) return got;
   return rtFail(ctx);                 /* user function, linCmt, llik, ... */
 }
 
@@ -247,6 +273,33 @@ static const char *rtBinaryOp(seCtx *ctx, const char *op, const char *a,
     return seCat(ctx, rtOps2[i].open, a, rtOps2[i].mid, b, rtOps2[i].close, NULL);
   }
   return NULL;
+}
+
+static const char *rtEmitUnary(seCtx *ctx, D_ParseNode *pn) {
+  D_ParseNode *opNode = d_get_child(pn, 0);
+  const char *inner = rtEmit(ctx, d_get_child(pn, 1));
+  if (ctx->failed) return "";
+  if (rtIsLit(opNode, '!')) return seCat(ctx, "rxNot(", inner, ")", NULL, NULL, NULL);
+  /* NB: rxToSE() puts a space after a unary sign -- "-a" becomes "- a" */
+  return seCat(ctx, rtNodeName(opNode), " ", inner, NULL, NULL, NULL);
+}
+
+static const char *rtEmitBinary(seCtx *ctx, D_ParseNode *pn) {
+  D_ParseNode *opNode = d_get_child(pn, 1);
+  const char *op, *rw;
+  const char *a = rtEmit(ctx, d_get_child(pn, 0));
+  const char *b;
+  if (ctx->failed) return "";
+  b = rtEmit(ctx, d_get_child(pn, 2));
+  if (ctx->failed) return "";
+  /* rel_op wraps the operator token one level down */
+  op = rtNiIs(opNode, rel_op) ? rtNodeName(d_get_child(opNode, 0))
+    : rtNodeName(opNode);
+  rw = rtBinaryOp(ctx, op, a, b);
+  if (rw != NULL) return rw;
+  /* symengine reads '^'; rxode2 writes either */
+  if (op[0] == '*' && op[1] == '*') op = "^";
+  return seCat(ctx, a, op, b, NULL, NULL, NULL);
 }
 
 static const char *rtEmit(seCtx *ctx, D_ParseNode *pn) {
@@ -263,36 +316,13 @@ static const char *rtEmit(seCtx *ctx, D_ParseNode *pn) {
   if (rtNodeHas(index_expression)) return rtIndex(ctx, pn);
   if (rtNodeHas(function_call)) return rtCall(ctx, pn);
   if (nch == 1) return rtEmit(ctx, d_get_child(pn, 0));
-
-  if (nch == 2 && rtNodeHas(unary_expression)) {
-    D_ParseNode *opNode = d_get_child(pn, 0);
-    const char *inner = rtEmit(ctx, d_get_child(pn, 1));
-    if (ctx->failed) return "";
-    if (rtIsLit(opNode, '!')) {
-      return seCat(ctx, "rxNot(", inner, ")", NULL, NULL, NULL);
-    }
-    /* NB: rxToSE() puts a space after a unary sign -- "-a" becomes "- a" */
-    return seCat(ctx, rtNodeName(opNode), " ", inner, NULL, NULL, NULL);
-  }
-
+  if (nch == 2 && rtNodeHas(unary_expression)) return rtEmitUnary(ctx, pn);
   if (nch == 3) {
     if (rtIsLit(d_get_child(pn, 0), '(')) {
       return seCat(ctx, "(", rtEmit(ctx, d_get_child(pn, 1)), ")",
                    NULL, NULL, NULL);
     }
-    D_ParseNode *opNode = d_get_child(pn, 1);
-    const char *a = rtEmit(ctx, d_get_child(pn, 0));
-    if (ctx->failed) return "";
-    const char *b = rtEmit(ctx, d_get_child(pn, 2));
-    if (ctx->failed) return "";
-    /* rel_op wraps the operator token one level down */
-    const char *op = rtNiIs(opNode, rel_op)
-      ? rtNodeName(d_get_child(opNode, 0)) : rtNodeName(opNode);
-    const char *rw = rtBinaryOp(ctx, op, a, b);
-    if (rw != NULL) return rw;
-    /* symengine reads '^'; rxode2 writes either */
-    if (op[0] == '*' && op[1] == '*') op = "^";
-    return seCat(ctx, a, op, b, NULL, NULL, NULL);
+    return rtEmitBinary(ctx, pn);
   }
   return rtFail(ctx);
 }

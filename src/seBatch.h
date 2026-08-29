@@ -30,7 +30,7 @@
 
 /* rxode2's own thread count: respects setRxThreads() and throttles small
    batches, so it is also the "is this worth threading" gate */
-extern int getRxThreads(int64_t n, bool throttle);
+extern "C" int getRxThreads(int64_t n, bool throttle);
 
 /* below this many expressions the parallel region costs more than it saves */
 #define SE_MIN_PARALLEL 250

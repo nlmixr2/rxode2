@@ -25,6 +25,6 @@ static const char *rxToSE1(seCtx *ctx, const char *in) {
 }
 
 /* .Call entry; the R fallback for a declined element is rxToSE(). */
-SEXP _rxode2_rxToSEChar(SEXP strVec) {
+extern "C" SEXP _rxode2_rxToSEChar(SEXP strVec) {
   return seRunBatch(strVec, rxToSE1, 0, NULL, 0);
 }

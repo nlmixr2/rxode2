@@ -14,8 +14,5 @@ PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@
 PKG_CPPFLAGS = @SUNDIALS_INC@
 
 # Release options -- -O3 gives meaningful speedup on the ODE hot paths
-# SHLIB_OPENMP_CFLAGS so the C translators (src/seFromSE.c, src/rxToSE.c) can
-# run their per-expression batch loop in parallel; no other C file in the
-# package uses OpenMP, so this activates nothing else.
-PKG_CFLAGS  =  -D_isrxode2_ @O2@ $(SHLIB_OPENMP_CFLAGS)
+PKG_CFLAGS  =  -D_isrxode2_ @O2@
 PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -include rxode2_sundials_stan_compat.h -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -DARMA_DONT_USE_OPENMP -DEIGEN_DONT_PARALLELIZE

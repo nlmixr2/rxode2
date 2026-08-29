@@ -207,132 +207,169 @@ static const char *seFindDeriv(seCtx *ctx, const char *name, int which) {
   return NULL;
 }
 
+/* which(.var == .args) must select exactly one argument; -1 otherwise */
+static int seDerivWhich(const char **emitted, int nf, const char *var) {
+  int i, with = -1;
+  for (i = 0; i < nf; i++) {
+    if (strcmp(emitted[i], var) != 0) continue;
+    if (with >= 0) return -1;                  /* ambiguous; R uses .errD() */
+    with = i;
+  }
+  return with;
+}
+
+static int seIsZeroD(const char *fname) {
+  int i;
+  for (i = 0; i < seNzeroD; i++) {
+    if (fname[0] == seZeroD[i][0] && strcmp(fname, seZeroD[i]) == 0) return 1;
+  }
+  return 0;
+}
+
 /* Derivative(f(a1, ..., an), v) -- the first-order form.  Higher orders, the
    finite-difference fallbacks (.errD) and anything without a registered
    template go to the R walker. */
 static const char *seDerivative(seCtx *ctx, D_ParseNode **args, int nargs) {
-  int i;
+  int i, nf, with;
+  D_ParseNode *fnNode, *fargs[8];
+  const char *var, *fname, *tmpl, *emitted[8];
   if (nargs != 2) return seFail(ctx);
-  D_ParseNode *fnNode = seArgNode(args[0]);
-  const char *var = seEmit(ctx, seArgNode(args[1]));
+  fnNode = seArgNode(args[0]);
+  var = seEmit(ctx, seArgNode(args[1]));
   if (ctx->failed) return "";
 
   if (!seNiIs(fnNode, function_call)) {
     /* Derivative(abs0, v) reaches .rxFromSE() with a bare name */
-    if (seNiIs(fnNode, symbol) &&
-        strcmp(seNodeText(ctx, fnNode), "abs0") == 0) {
+    if (seNiIs(fnNode, symbol) && strcmp(seNodeText(ctx, fnNode), "abs0") == 0) {
       return seCat(ctx, "abs(", var, ")", NULL, NULL, NULL);
     }
     return seFail(ctx);
   }
 
-  const char *fname = seNodeText(ctx, d_get_child(fnNode, 0));
-  for (i = 0; i < seNzeroD; i++) {
-    if (fname[0] == seZeroD[i][0] && strcmp(fname, seZeroD[i]) == 0) return "0";
-  }
+  fname = seNodeText(ctx, d_get_child(fnNode, 0));
+  if (seIsZeroD(fname)) return "0";
   /* NB: no abs0 shortcut here.  .rxFromSE() guards it with
      `length(as.character(x[[2]])) == 1`, which is only true when the
      differentiated thing is the bare NAME abs0; for the call abs0(a) that
      vector is c("abs0","a") and the registered derivative wins, giving
      dabs(a) rather than abs(a). */
 
-  D_ParseNode *fargs[8];
-  int nf = seCallArgs(fnNode, fargs, 8);
+  nf = seCallArgs(fnNode, fargs, 8);
   if (nf <= 0) return seFail(ctx);
-  const char *emitted[8];
   for (i = 0; i < nf; i++) {
     emitted[i] = seEmit(ctx, fargs[i]);
     if (ctx->failed) return "";
   }
-  /* which(.var == .args) must select exactly one argument */
-  int with = -1;
-  for (i = 0; i < nf; i++) {
-    if (strcmp(emitted[i], var) == 0) {
-      if (with >= 0) return seFail(ctx);       /* ambiguous; R uses .errD() */
-      with = i;
-    }
-  }
+  with = seDerivWhich(emitted, nf, var);
   if (with < 0) return seFail(ctx);
-  const char *tmpl = seFindDeriv(ctx, fname, with + 1);
+  tmpl = seFindDeriv(ctx, fname, with + 1);
   if (tmpl == NULL) return seFail(ctx);        /* unregistered, or linCmtB */
   return seFillTemplate(ctx, tmpl, emitted, nf);
 }
 
-static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
-  const char *name = seNodeText(ctx, d_get_child(pn, 0));
-  D_ParseNode *args[8];
-  int i, nargs = seCallArgs(pn, args, 8);
-  if (nargs < 0) return seFail(ctx);
-
-  if (strcmp(name, "Derivative") == 0) return seDerivative(ctx, args, nargs);
-
-  /* f(NaN) is how a zero-argument call survives the trip through symengine.
-     Compared on the argument's source span rather than its node kind: for a
-     single argument seArgs() hands back the arg_list node itself, whose span
-     is exactly the argument text (a longer expression that merely contains
-     NaN spans more, so this cannot false-positive). */
-  if (nargs == 1 && strcmp(seNodeText(ctx, args[0]), "NaN") == 0) {
-    for (i = 0; i < seNdualVarFns; i++) {
-      if (name[0] != seDualVarFns[i][0]) continue;
-      if (strcmp(name, seDualVarFns[i]) == 0) {
-        return seCat(ctx, name, "()", NULL, NULL, NULL, NULL);
-      }
+/* f(NaN) is how a zero-argument call survives the trip through symengine.
+   Compared on the argument's source span rather than its node kind: for a
+   single argument seArgs() hands back the arg_list node itself, whose span is
+   exactly the argument text (a longer expression that merely contains NaN
+   spans more, so this cannot false-positive).  NULL = not one of these. */
+static const char *seNaNZeroArg(seCtx *ctx, const char *name,
+                                D_ParseNode **args, int nargs) {
+  int i;
+  if (nargs != 1 || strcmp(seNodeText(ctx, args[0]), "NaN") != 0) return NULL;
+  for (i = 0; i < seNdualVarFns; i++) {
+    if (name[0] != seDualVarFns[i][0]) continue;
+    if (strcmp(name, seDualVarFns[i]) == 0) {
+      return seCat(ctx, name, "()", NULL, NULL, NULL, NULL);
     }
   }
+  return NULL;
+}
 
-  /* .SEdouble, checked before the generic branch as .rxFromSE() does */
+/* .SEdouble, checked before the generic branch as .rxFromSE() does */
+static const char *seOps2Call(seCtx *ctx, const char *name,
+                              D_ParseNode **args, int nargs) {
+  int i;
   for (i = 0; i < seNops2; i++) {
+    const char *a, *b;
     if (name[0] != seOps2[i].name[0]) continue;
     if (strcmp(name, seOps2[i].name) != 0) continue;
     if (nargs != 2) return seFail(ctx);       /* R raises its own message */
-    const char *a = seEmit(ctx, args[0]);
+    a = seEmit(ctx, args[0]);
     if (ctx->failed) return "";
-    const char *b = seEmit(ctx, args[1]);
+    b = seEmit(ctx, args[1]);
     if (ctx->failed) return "";
     return seNamedConstant(seCat(ctx, seOps2[i].open, a, seOps2[i].mid, b,
                                  seOps2[i].close, NULL));
   }
+  return NULL;
+}
 
-  /* polygamma(a, b): the order flips and small orders have their own names */
-  if (strcmp(name, "polygamma") == 0) {
-    if (nargs != 2) return seFail(ctx);
-    const char *a = seEmit(ctx, args[0]);
-    if (ctx->failed) return "";
-    const char *b = seEmit(ctx, args[1]);
-    if (ctx->failed) return "";
-    if (!strcmp(a, "0")) return seCat(ctx, "digamma(", b, ")", NULL, NULL, NULL);
-    if (!strcmp(a, "1")) return seCat(ctx, "trigamma(", b, ")", NULL, NULL, NULL);
-    if (!strcmp(a, "2")) return seCat(ctx, "tetragamma(", b, ")", NULL, NULL, NULL);
-    if (!strcmp(a, "3")) return seCat(ctx, "pentagamma(", b, ")", NULL, NULL, NULL);
-    return seCat(ctx, "psigamma(", b, ",", a, ")", NULL);
-  }
+/* polygamma(a, b): the order flips and small orders have their own names */
+static const char *sePolygamma(seCtx *ctx, D_ParseNode **args, int nargs) {
+  const char *a, *b;
+  if (nargs != 2) return seFail(ctx);
+  a = seEmit(ctx, args[0]);
+  if (ctx->failed) return "";
+  b = seEmit(ctx, args[1]);
+  if (ctx->failed) return "";
+  if (!strcmp(a, "0")) return seCat(ctx, "digamma(", b, ")", NULL, NULL, NULL);
+  if (!strcmp(a, "1")) return seCat(ctx, "trigamma(", b, ")", NULL, NULL, NULL);
+  if (!strcmp(a, "2")) return seCat(ctx, "tetragamma(", b, ")", NULL, NULL, NULL);
+  if (!strcmp(a, "3")) return seCat(ctx, "pentagamma(", b, ")", NULL, NULL, NULL);
+  return seCat(ctx, "psigamma(", b, ",", a, ")", NULL);
+}
 
-  /* tlast()/podo()/... take 0 or 1 argument and keep their name */
+/* tlast()/podo()/... take 0 or 1 argument and keep their name */
+static const char *seDoseFn(seCtx *ctx, const char *name,
+                            D_ParseNode **args, int nargs) {
+  int i;
   for (i = 0; i < seNdoseFns; i++) {
+    const char *a;
     if (name[0] != seDoseFns[i][0]) continue;
     if (strcmp(name, seDoseFns[i]) != 0) continue;
     if (nargs == 0) return seCat(ctx, name, "()", NULL, NULL, NULL, NULL);
     if (nargs != 1) return seFail(ctx);
-    const char *a = seEmit(ctx, seStripP(args[0]));
+    a = seEmit(ctx, seStripP(args[0]));
     if (ctx->failed) return "";
     return seCat(ctx, name, "(", a, ")", NULL, NULL);
   }
+  return NULL;
+}
 
-  if (strcmp(name, "log") == 0 && nargs == 1) {
-    const char *lg = seEmitLog(ctx, args[0]);
-    return (lg == NULL) ? seFail(ctx) : lg;
-  }
-
+static const char *seGenericCall(seCtx *ctx, const char *name,
+                                 D_ParseNode **args, int nargs) {
+  int i;
+  const char *body = "";
   const char *emitName = seCallName(name, nargs);
   if (emitName == NULL) return seFail(ctx);
-
-  const char *body = "";
   for (i = 0; i < nargs; i++) {
     const char *a = seEmit(ctx, seStripP(args[i]));
     if (ctx->failed) return "";
     body = (i == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
   }
   return seNamedConstant(seCat(ctx, emitName, "(", body, ")", NULL, NULL));
+}
+
+static const char *seFunctionCall(seCtx *ctx, D_ParseNode *pn) {
+  const char *name = seNodeText(ctx, d_get_child(pn, 0));
+  const char *got;
+  D_ParseNode *args[8];
+  int nargs = seCallArgs(pn, args, 8);
+  if (nargs < 0) return seFail(ctx);
+
+  if (strcmp(name, "Derivative") == 0) return seDerivative(ctx, args, nargs);
+  got = seNaNZeroArg(ctx, name, args, nargs);
+  if (got != NULL) return got;
+  got = seOps2Call(ctx, name, args, nargs);
+  if (got != NULL) return got;
+  if (strcmp(name, "polygamma") == 0) return sePolygamma(ctx, args, nargs);
+  got = seDoseFn(ctx, name, args, nargs);
+  if (got != NULL) return got;
+  if (strcmp(name, "log") == 0 && nargs == 1) {
+    const char *lg = seEmitLog(ctx, args[0]);
+    return (lg == NULL) ? seFail(ctx) : lg;
+  }
+  return seGenericCall(ctx, name, args, nargs);
 }
 
 #endif /* __SE_FROM_SE_CALLS_H__ */

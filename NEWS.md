@@ -44,14 +44,12 @@
 
 - `rxOptExpr()` decides whether to chunk on the model's SIZE rather than its
   line count.  Chunking amortizes the parse, and parse cost tracks characters,
-  so a model with many short lines was being chunked when it should not have
-  been.  Measured, whole-model against chunked: a 70 KB model is 5.1x SLOWER
-  chunked, while a 3.1 MB one is 8.9x faster, with the crossover near 1 MB.
-  The threshold is `options(rxode2.optExprChunkChars = )`, default 512 KB;
-  `chunkLines=` still caps the chunk size and `chunkLines = 0` still forces a
-  single whole-model pass.  A model between 40 lines and the size threshold is
-  now optimized whole, so it gets better sharing and no `rx_expr_c<i>_`
-  temporaries.
+  so a model with many short lines was being chunked when chunking made it
+  slower.  The threshold is `options(rxode2.optExprChunkChars = )`, default
+  512 KB; `chunkLines=` still caps the chunk size and `chunkLines = 0` still
+  forces a single whole-model pass.  A model between 40 lines and the size
+  threshold is now optimized whole, so it gets better sharing and no
+  `rx_expr_c<i>_` temporaries.
 
 - `rxNorm()` parses a model once rather than twice.  With no condition set it
   asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a

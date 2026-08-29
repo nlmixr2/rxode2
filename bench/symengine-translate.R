@@ -20,6 +20,11 @@ if (length(.args) && .args[1] == "load_all") {
 }
 options(rxprogress.disable = TRUE)
 
+## These are internal, and a standalone script has to say so explicitly rather
+## than reach in with `:::`.
+.rxJacobian <- getFromNamespace(".rxJacobian", "rxode2")
+.rxSens <- getFromNamespace(".rxSens", "rxode2")
+
 ## Linear chain of n compartments with n parameters: the cheapest way to scale
 ## states and parameters together and watch the O(S^2*P) sensitivity blow-up.
 .chain <- function(n) {
@@ -39,8 +44,8 @@ options(rxprogress.disable = TRUE)
   .vars <- c(.pars, .etas)
   gc(FALSE)
   .tS <- system.time(.s <- rxode2::rxS(.nm))[["elapsed"]]
-  .tJ <- system.time(rxode2:::.rxJacobian(.s, c(.mv$state, .vars)))[["elapsed"]]
-  .tSn <- system.time(rxode2:::.rxSens(.s, .vars))[["elapsed"]]
+  .tJ <- system.time(.rxJacobian(.s, c(.mv$state, .vars)))[["elapsed"]]
+  .tSn <- system.time(.rxSens(.s, .vars))[["elapsed"]]
   c(rxS = .tS, jac = .tJ, sens = .tSn, total = .tS + .tJ + .tSn)
 }
 

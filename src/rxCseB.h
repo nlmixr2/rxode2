@@ -78,11 +78,80 @@ static inline const char *csBCall(csCtx *c, D_ParseNode *pn) {
   return seCat(csArena(c), out, ")", NULL, NULL, NULL, NULL);
 }
 
+/* collapse nested parentheses: (((y))) -> (y)  (R/rxOptExpr.R:226-240) */
+static const char *csBParen(csCtx *c, D_ParseNode *pn) {
+  D_ParseNode *in = csUnwrap(d_get_child(pn, 1));
+  while (d_get_number_of_children(in) == 3 && csIsLit(d_get_child(in, 0), '(')) {
+    in = csUnwrap(d_get_child(in, 1));
+  }
+  return seCat(csArena(c), "(", csB(c, in), ")", NULL, NULL, NULL);
+}
+
+/* `op` is a one-character operator (`*`, `+`, ...) */
+static int csIsOp(const char *op, char ch) { return op[0] == ch && op[1] == '\0'; }
+
+/* the simplifications that apply when the LEFT operand is a literal `va`;
+   NULL when none does */
+static const char *csBLhsLit(csCtx *c, double va, const char *op, D_ParseNode *r) {
+  if (va == 1.0 && csIsOp(op, '*')) return csB(c, r);
+  if (va != 0.0) return NULL;
+  if (csIsOp(op, '*') || csIsOp(op, '/')) return seStr(csArena(c), "0");
+  if (csIsOp(op, '+')) return csB(c, r);
+  if (csIsOp(op, '-')) return seCat(csArena(c), "-", csB(c, r), NULL, NULL, NULL, NULL);
+  return NULL;
+}
+
+/* ... and the RIGHT operand.  Note there is deliberately no `x/1` case, and no
+   divide-by-zero error -- see the header. */
+static const char *csBRhsLit(csCtx *c, D_ParseNode *l, const char *op, double vb) {
+  if (vb == 1.0 && csIsOp(op, '*')) return csB(c, l);
+  if (vb != 0.0) return NULL;
+  if (csIsOp(op, '*')) return seStr(csArena(c), "0");
+  if (csIsOp(op, '+') || csIsOp(op, '-')) return csB(c, l);
+  return NULL;
+}
+
+static const char *csBBinary(csCtx *c, D_ParseNode *pn) {
+  D_ParseNode *l = d_get_child(pn, 0), *r = d_get_child(pn, 2);
+  const char *op = csNodeText(csArena(c), csUnwrap(d_get_child(pn, 1)));
+  const char *got;
+  double va, vb;
+  if (op[0] == '%') {                             /* %% never folds */
+    return seCat(csArena(c), csModOperand(c, csB(c, l)), "%%",
+                 csModOperand(c, csB(c, r)), NULL, NULL, NULL);
+  }
+  if (op[0] == '*' && op[1] == '*') op = "^";
+  /* 1. LHS is unary-minus-on-a-literal */
+  if (csBNegNum(c, l, &va)) {
+    if (csBNum(c, r, &vb)) {
+      got = csBFold(c, va, op, vb);
+      if (got != NULL) return got;
+    }
+    if (va == -1.0 && csIsOp(op, '*')) {                 /* -1*x -> -x */
+      return seCat(csArena(c), "-", csB(c, r), NULL, NULL, NULL, NULL);
+    }
+  }
+  /* 2. both literals, then 3. LHS only, then 4. RHS only */
+  if (csBNum(c, l, &va)) {
+    if (csBNum(c, r, &vb)) {
+      got = csBFold(c, va, op, vb);
+      if (got != NULL) return got;
+    }
+    got = csBLhsLit(c, va, op, r);
+    if (got != NULL) return got;
+  }
+  if (csBNum(c, r, &vb)) {
+    got = csBRhsLit(c, l, op, vb);
+    if (got != NULL) return got;
+  }
+  /* 5. default: no spaces around the operator */
+  return seCat(csArena(c), csB(c, l), op, csB(c, r), NULL, NULL, NULL);
+}
+
 static const char *csB(csCtx *c, D_ParseNode *pn) {
   const char *name;
   csNodeInfo ni;
   int nch;
-  double va, vb;
   if (c->arena.failed) return "";
   pn = csUnwrap(pn);
   name = csNodeName(pn);
@@ -103,74 +172,12 @@ static const char *csB(csCtx *c, D_ParseNode *pn) {
                  csB(c, d_get_child(pn, 2)), "]", NULL, NULL);
   }
   if (csNodeHas(function_call)) return csBCall(c, pn);
-
-  if (nch == 3 && csIsLit(d_get_child(pn, 0), '(')) {
-    /* collapse nested parentheses: (((y))) -> (y)  (R/rxOptExpr.R:226-240) */
-    D_ParseNode *in = csUnwrap(d_get_child(pn, 1));
-    for (;;) {
-      if (d_get_number_of_children(in) == 3 && csIsLit(d_get_child(in, 0), '(')) {
-        in = csUnwrap(d_get_child(in, 1));
-        continue;
-      }
-      break;
-    }
-    return seCat(csArena(c), "(", csB(c, in), ")", NULL, NULL, NULL);
-  }
-
+  if (nch == 3 && csIsLit(d_get_child(pn, 0), '(')) return csBParen(c, pn);
   if (nch == 2) {                                   /* unary: op then operand */
     return seCat(csArena(c), csNodeText(csArena(c), d_get_child(pn, 0)),
                  csB(c, d_get_child(pn, 1)), NULL, NULL, NULL, NULL);
   }
-
-  if (nch == 3) {
-    D_ParseNode *l = d_get_child(pn, 0), *r = d_get_child(pn, 2);
-    const char *op = csNodeText(csArena(c), csUnwrap(d_get_child(pn, 1)));
-    const char *folded;
-    if (op[0] == '%') {                             /* %% never folds */
-      return seCat(csArena(c), csModOperand(c, csB(c, l)), "%%",
-                   csModOperand(c, csB(c, r)), NULL, NULL, NULL);
-    }
-    if (op[0] == '*' && op[1] == '*') op = "^";
-    /* 1. LHS is unary-minus-on-a-literal */
-    if (csBNegNum(c, l, &va)) {
-      if (csBNum(c, r, &vb)) {
-        folded = csBFold(c, va, op, vb);
-        if (folded != NULL) return folded;
-      }
-      if (va == -1.0 && op[0] == '*' && op[1] == '\0') {   /* -1*x -> -x */
-        return seCat(csArena(c), "-", csB(c, r), NULL, NULL, NULL, NULL);
-      }
-    }
-    /* 2. both literals */
-    if (csBNum(c, l, &va) && csBNum(c, r, &vb)) {
-      folded = csBFold(c, va, op, vb);
-      if (folded != NULL) return folded;
-    }
-    /* 3. LHS literal */
-    if (csBNum(c, l, &va)) {
-      if (va == 1.0 && op[0] == '*' && op[1] == '\0') return csB(c, r);
-      if (va == 0.0) {
-        if (op[0] == '*' && op[1] == '\0') return seStr(csArena(c), "0");
-        if (op[0] == '+' && op[1] == '\0') return csB(c, r);
-        if (op[0] == '-' && op[1] == '\0')
-          return seCat(csArena(c), "-", csB(c, r), NULL, NULL, NULL, NULL);
-        if (op[0] == '/' && op[1] == '\0') return seStr(csArena(c), "0");
-      }
-    }
-    /* 4. RHS literal.  Note there is deliberately no `x/1` case, and no
-       divide-by-zero error -- see the header. */
-    if (csBNum(c, r, &vb)) {
-      if (vb == 1.0 && op[0] == '*' && op[1] == '\0') return csB(c, l);
-      if (vb == 0.0) {
-        if (op[0] == '*' && op[1] == '\0') return seStr(csArena(c), "0");
-        if (op[0] == '+' && op[1] == '\0') return csB(c, l);
-        if (op[0] == '-' && op[1] == '\0') return csB(c, l);
-      }
-    }
-    /* 5. default: no spaces around the operator */
-    return seCat(csArena(c), csB(c, l), op, csB(c, r), NULL, NULL, NULL);
-  }
-
+  if (nch == 3) return csBBinary(c, pn);
   return seFail(csArena(c));
 }
 

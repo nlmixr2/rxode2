@@ -14,10 +14,10 @@ rxTest({
   # into ONE model, so the passing case is a single compile; on failure it
   # bisects to name the offenders rather than reporting "something broke".
 
-  .fns <- rxode2:::.parseEnv$.parseFuns
-  .num <- rxode2:::.parseEnv$.parseNum
-  .sng <- names(rxode2:::.rxSEsingle)
-  .dbl <- names(rxode2:::.rxSEdouble)
+  .fns <- .parseEnv$.parseFuns
+  .num <- .parseEnv$.parseNum
+  .sng <- names(.rxSEsingle)
+  .dbl <- names(.rxSEdouble)
 
   # .parseNum covers most; the rest take their arity from the symengine
   # single/double rewrite tables
@@ -35,7 +35,7 @@ rxTest({
   # 'diff(a,1)' supported" otherwise), so give them one
   .covArg <- c("first", "last")
   # `%%` is an infix operator, not a callable name
-  .notCallable <- c("%%")
+  .notCallable <- "%%"
 
   .testable <- Filter(function(f) {
     !(f %in% .notCallable) && !is.na(.arity(f)) &&

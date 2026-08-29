@@ -31,18 +31,19 @@ typedef struct csCtx {
 
 #define csArena(c) (&(c)->arena)
 
-/* `regNum` from R/dsl.R:44-47, anchored, with the surrounding whitespace that
-   .rxOptBin allows (R/rxOptExpr.R:38-42): an optional sign, then an integer, a
-   float, or a bare exponent form.  This is what decides "both operands are
-   numeric, so render it but do not count it". */
-static inline int csIsNum(const char *s) {
-  const char *p = s;
+static inline int csDig(char ch) { return ch >= '0' && ch <= '9'; }
+static inline int csAlpha(char ch) {
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+}
+static inline int csIdent0(char ch) { return csAlpha(ch) || ch == '.' || ch == '_'; }
+static inline int csIdentCh(char ch) { return csIdent0(ch) || csDig(ch); }
+
+/* an UNSIGNED number -- digits with at most one '.', then an optional
+   exponent; 0 if there is not one, otherwise *pp is left just past it */
+static inline int csScanNum(const char **pp) {
+  const char *p = *pp;
   int digits = 0, dot = 0;
-  if (p == NULL) return 0;
-  while (*p == ' ' || *p == '\t') p++;
-  if (*p == '-') p++;
-  if (*p == '\0') return 0;
-  while ((*p >= '0' && *p <= '9') || (*p == '.' && !dot)) {
+  while (csDig(*p) || (*p == '.' && !dot)) {
     if (*p == '.') dot = 1; else digits++;
     p++;
   }
@@ -50,9 +51,23 @@ static inline int csIsNum(const char *s) {
   if (*p == 'e' || *p == 'E') {
     p++;
     if (*p == '+' || *p == '-') p++;
-    if (!(*p >= '0' && *p <= '9')) return 0;
-    while (*p >= '0' && *p <= '9') p++;
+    if (!csDig(*p)) return 0;
+    while (csDig(*p)) p++;
   }
+  *pp = p;
+  return 1;
+}
+
+/* `regNum` from R/dsl.R:44-47, anchored, with the surrounding whitespace that
+   .rxOptBin allows (R/rxOptExpr.R:38-42): an optional sign, then an integer, a
+   float, or a bare exponent form.  This is what decides "both operands are
+   numeric, so render it but do not count it". */
+static inline int csIsNum(const char *s) {
+  const char *p = s;
+  if (p == NULL) return 0;
+  while (*p == ' ' || *p == '\t') p++;
+  if (*p == '-') p++;
+  if (!csScanNum(&p)) return 0;
   while (*p == ' ' || *p == '\t') p++;
   return *p == '\0';
 }
@@ -63,26 +78,13 @@ static inline int csIsNum(const char *s) {
 static inline int csModBare(const char *s) {
   const char *p = s;
   if (p == NULL || *p == '\0') return 0;
-  if ((*p >= '0' && *p <= '9') || *p == '.') {
-    int dot = 0, digits = 0;
-    while ((*p >= '0' && *p <= '9') || (*p == '.' && !dot)) {
-      if (*p == '.') dot = 1; else digits++;
-      p++;
-    }
-    if (digits == 0) return 0;
-    if (*p == 'e' || *p == 'E') {
-      p++;
-      if (*p == '+' || *p == '-') p++;
-      if (!(*p >= '0' && *p <= '9')) return 0;
-      while (*p >= '0' && *p <= '9') p++;
-    }
-    return *p == '\0';
+  if (csDig(*p) || *p == '.') {
+    /* a leading '.' that is not a decimal point declines, so `.x` is
+       parenthesized; that is what R does here too */
+    return csScanNum(&p) && *p == '\0';
   }
-  if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || *p == '.' || *p == '_'))
-    return 0;
-  p++;
-  while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-         (*p >= '0' && *p <= '9') || *p == '.' || *p == '_') p++;
+  if (!csIdent0(*p)) return 0;
+  while (csIdentCh(*p)) p++;
   return *p == '\0';
 }
 

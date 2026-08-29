@@ -31,7 +31,7 @@ rxTest({
 
   test_that("a sensitivity model using ceiling() builds and solves", {
     .m <- rxode2::rxode2("cl = ceiling(lcl)*0.1 + 0.5\nd/dt(A) = -cl*A",
-                         calcSens = c("lcl"))
+                         calcSens = "lcl")
     .r <- rxode2::rxSolve(.m, rxode2::et(0:3) |> rxode2::et(amt = 1),
                           params = c(lcl = 1.7), returnType = "data.frame")
     expect_true("rx__sens_A_BY_lcl__" %in% names(.r))

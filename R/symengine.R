@@ -1835,7 +1835,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .n <- .rxToSE(x[[2]], envir = envir)
     .mtt <- .rxToSE(x[[3]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
-    return(paste0("exp(log(podo0(", .rxSEstate$lastAssignedDdt, "))+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t-tlast0(", .rxSEstate$lastAssignedDdt, ")))-((", .n, " + 1)/(", .mtt, "))*(t-tlast0(",.rxSEstate$lastAssignedDdt, "))-lgamma(1+", .n, "))"))
+    paste0("exp(log(podo0(", .rxSEstate$lastAssignedDdt, "))+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t-tlast0(", .rxSEstate$lastAssignedDdt, ")))-((", .n, " + 1)/(", .mtt, "))*(t-tlast0(",.rxSEstate$lastAssignedDdt, "))-lgamma(1+", .n, "))")
   } else {
     stop("'transit' can only take 2-3 arguments", call. = FALSE)
   }
@@ -3374,7 +3374,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 ## The name is captured lexically rather than spliced into a fresh body with
 ## bquote(), which is what made each of these a distinct, separately
 ## JIT-compiled function at run time.
-.rxFunctionMake <- compiler::cmpfun(function(name) {
+.rxFunctionMake <- cmpfun(function(name) {
   force(name)
   function(...) {
     .args <- unlist(list(...))
@@ -4021,7 +4021,7 @@ rxErrEnvF$`return` <- function(est) {
     }
     .extra <- sprintf("rx_yj_~%s;\nrx_lambda_~%s;\nrx_hi_~%s\nrx_low_~%s\n", .yj, .lambda, .hi, .low)
   }
-  return(sprintf("%s%s=%s;", .extra, .rxErrEnv$ret, est))
+  sprintf("%s%s=%s;", .extra, .rxErrEnv$ret, est)
 }
 
 
