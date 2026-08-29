@@ -111,3 +111,68 @@
     stats::quantile(.value, probs=.probs, na.rm=TRUE)
   }
 }
+
+#' Did the solve actually simulate the `thetaMat` uncertainty?
+#'
+#' `rxSolve()` only draws from `thetaMat` when the variability is being
+#' simulated, which is `nStud > 1` unless `simVariability` forces it.
+#'
+#' @param object solved rxode2 object
+#' @param .nStud number of studies the object was solved with
+#' @return `NA` when no `thetaMat` was given, otherwise `TRUE`/`FALSE` for
+#'   whether it was drawn from
+#' @author Matthew L. Fidler
+#' @noRd
+.confintThetaMatUsed <- function(object, .nStud) {
+  if (is.null(object$env$.args$thetaMat)) return(NA)
+  .simVar <- object$env$.args$simVariability
+  if (!checkmate::testLogical(.simVar, len=1L, any.missing=FALSE)) {
+    .simVar <- .nStud > 1L
+  }
+  isTRUE(.simVar)
+}
+
+#' Group a stacked solve into the replicates a confidence band is taken over
+#'
+#' The band needs replicate estimates of a percentile.  Separate studies supply
+#' them directly; a single study large enough to sub-sample supplies them by
+#' being split into `round(sqrt(n))` pieces.
+#'
+#' @param .stk stacked data from `rxStack()`, already a `data.table`
+#' @param .ci requested band width; `0` asks for no band
+#' @param .nStud,.nSub the studies and subjects the object was solved with
+#' @return list with `stk` (the stacked data, labeled so `sim.id` identifies the
+#'   replicate) and `n`, the number of replicates, `NA_integer_` when the
+#'   simulation cannot supply any
+#' @author Matthew L. Fidler
+#' @noRd
+.confintReplicates <- function(.stk, .ci, .nStud, .nSub) {
+  if (!(.ci == 0 || !any(names(.stk) == "sim.id") || !isTRUE(.nStud > 1L))) {
+    # each study is its own uncertainty draw
+    return(list(stk=.stk, n=.nStud))
+  }
+  if (any(names(.stk) == "sim.id")) {
+    .stk$id <- factor(paste(.stk$sim.id, .stk$id))
+    .ntot <- length(levels(.stk$id))
+    .stk$id <- as.integer(.stk$id)
+  } else if (any(names(.stk) == "id")) {
+    .ntot <- length(unique(.stk$id))
+  } else {
+    .ntot <- .nSub
+    if (.ntot == 1L && .nStud > 1L) {
+      .ntot <- .nStud
+    }
+  }
+  if (.ci == 0) return(list(stk=.stk, n=NA_integer_))
+  if (.ntot < 2500) {
+    .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations") # nolint
+    return(list(stk=.stk, n=NA_integer_))
+  }
+  # one study, but enough individuals to sub-sample it
+  if (!any(names(.stk) == "sim.id")) {
+    # `id` can be a factor (character subject identifiers); densify to 1:.ntot
+    # so the modulus taken by the caller splits it into equal sub-samples
+    .stk$sim.id <- as.integer(factor(.stk$id))
+  }
+  list(stk=.stk, n=round(sqrt(.ntot)))
+}

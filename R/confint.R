@@ -20,6 +20,11 @@
 #'
 #' * anything smaller -- no band, with a message saying so.
 #'
+#' When the solve was given a `thetaMat`, `confint()` also says whether that
+#' `thetaMat` was actually drawn from -- it is ignored unless the variability is
+#' being simulated (`nStud > 1`, or `simVariability=TRUE`) -- so it is clear
+#' whether the reported interval carries parameter uncertainty.
+#'
 #' @param object solved rxode2 object
 #' @param parm compartments or calculated (`lhs`) variables to summarize; when
 #'   `NULL` everything `rxStack()` returns is summarized
@@ -81,7 +86,8 @@
 #'
 #' confint(s, "cp", level=0.95, ci=FALSE)
 #'
-#' # with 20 studies the percentiles get a confidence band
+#' # with 20 studies the percentiles get a confidence band, and the
+#' # `thetaMat` is drawn from
 #' s2 <- rxSolve(mod, ev, nSub=100, nStud=20, thetaMat=lotri(tka ~ 0.01))
 #'
 #' confint(s2, "cp", level=0.95)
@@ -134,36 +140,15 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   )
   class(.lst) <- "rxHidden"
   # `.n` is the number of replicate summaries the confidence band is taken
-  # over; it stays NA when the simulation cannot supply any
-  .n <- NA_integer_
-  if (.ci ==0 || !any(names(.stk) == "sim.id") ||
-        !isTRUE(.nStud > 1L)) {
-    if (any(names(.stk) == "sim.id")) {
-      .stk$id <- factor(paste(.stk$sim.id, .stk$id))
-      .ntot <- length(levels(.stk$id))
-      .stk$id <- as.integer(.stk$id)
-    } else if (any(names(.stk) == "id")) {
-      .ntot <- length(unique(.stk$id))
-    } else {
-      .ntot <- .nSub
-      if (.ntot == 1L && .nStud > 1L) {
-        .ntot <- .nStud
-      }
-    }
-    if (.ci != 0 && .ntot >= 2500) {
-      # one study, but enough individuals to sub-sample it
-      .n <- round(sqrt(.ntot))
-      if (!any(names(.stk) == "sim.id")) {
-        # `id` can be a factor (character subject identifiers); densify to
-        # 1:.ntot so the modulus below splits it into `.n` sub-samples
-        .stk$sim.id <- as.integer(factor(.stk$id))
-      }
-    } else if (.ci != 0.0) {
-      .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations") # nolint
-    }
-  } else {
-    # each study is its own uncertainty draw
-    .n <- .nStud
+  # over; it is NA when the simulation cannot supply any
+  .rep <- .confintReplicates(.stk, .ci, .nStud, .nSub)
+  .stk <- .rep$stk
+  .n <- .rep$n
+  .thetaMatUsed <- .confintThetaMatUsed(object, .nStud)
+  if (isTRUE(.thetaMatUsed)) {
+    .minfo("this simulation drew from 'thetaMat', so parameter uncertainty is included") # nolint
+  } else if (isFALSE(.thetaMatUsed)) {
+    .mwarn("this simulation did not draw from 'thetaMat' ('nStud' <= 1), so parameter uncertainty is not included; use 'nStud' > 1 or 'simVariability=TRUE'") # nolint
   }
   message("summarizing data...", appendLF = FALSE)
   if (is.na(.n)) {

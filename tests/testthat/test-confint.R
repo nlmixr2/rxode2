@@ -72,6 +72,29 @@ rxTest({
     expect_true(all(c("p1", "eff") %in% names(.ci2)))
   })
 
+  test_that("confint() says whether the thetaMat was simulated (#1308)", {
+    rxSetSeed(42)
+    .used <- suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
+                                      nStud=20, nSub=10))
+    expect_message(confint(.used, "cp"), regexp="drew from")
+    # with nStud <= 1 rxSolve() ignores the thetaMat, so the interval carries no
+    # parameter uncertainty
+    rxSetSeed(42)
+    .notUsed <- suppressWarnings(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
+                                         nStud=1, nSub=10))
+    expect_message(confint(.notUsed, "cp"), regexp="did not draw from")
+    # unless it is forced
+    rxSetSeed(42)
+    .forced <- rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat, nStud=1, nSub=10,
+                       simVariability=TRUE)
+    expect_message(confint(.forced, "cp"), regexp="drew from")
+    # nothing is said when no thetaMat was given
+    rxSetSeed(42)
+    .none <- rxSolve(.ciModel, .ciEt, nSub=10)
+    .msg <- testthat::capture_messages(confint(.none, "cp"))
+    expect_false(any(grepl("thetaMat", .msg, fixed=TRUE)))
+  })
+
   test_that("confint(ciMethod=) reaches binomProbs() (#1308)", {
     .mod <- rxode2({
       ka <- 1

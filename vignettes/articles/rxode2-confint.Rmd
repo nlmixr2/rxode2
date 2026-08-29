@@ -96,7 +96,7 @@ percentiles are computed within each study and the band is the quantile
 of those study-level percentiles.  The band then reflects the parameter
 uncertainty, which is usually what is wanted.
 
-```{r nStud, message = FALSE}
+```{r nStud}
 rxSetSeed(42)
 
 simStud <- rxSolve(
@@ -188,6 +188,31 @@ head(ciNone)
 `ci = FALSE` also pools across studies when there are several, so it
 gives the percentiles of all `nStud * nSub` simulated individuals
 together.
+
+## `confint()` tells you whether `thetaMat` was used
+
+A `thetaMat` passed to `rxSolve()` is only drawn from when the variability
+is actually being simulated -- that is, when `nStud > 1`, or when
+`simVariability = TRUE` forces it.  With `nStud = 1` it is silently
+ignored, so a summary of that solve carries no parameter uncertainty no
+matter how many individuals it has.
+
+`confint()` says which of the two happened while it builds the summary:
+
+```{r thetaMatUsed}
+ciStud <- confint(simStud, "cp", level = 0.95)
+```
+
+```{r thetaMatIgnored}
+rxSetSeed(42)
+
+simIgnored <- rxSolve(pkModel, ev, thetaMat = thetaVcov,
+                      nStud = 1, nSub = 2500)
+
+ciIgnored <- confint(simIgnored, "cp", level = 0.95)
+```
+
+Nothing is said when the solve had no `thetaMat` at all.
 
 ## The two bands are not the same quantity
 

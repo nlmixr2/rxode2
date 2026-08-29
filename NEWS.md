@@ -478,6 +478,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `confint()` on a solved object now says whether the `thetaMat` the solve was
+  given was actually drawn from.  A `thetaMat` is ignored unless the
+  variability is being simulated (`nStud > 1`, or `simVariability=TRUE`), so
+  the message makes it clear whether the reported interval carries parameter
+  uncertainty.  Nothing is said when the solve had no `thetaMat` (#1308).
+
 - `confint()` on a solved object again uses the study dimension to build the
   confidence bands around the simulated percentiles when `nStud > 1`.  When
   the event table holds a single subject, rxode2 numbers the `nStud * nSub`

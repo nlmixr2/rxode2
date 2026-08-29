@@ -56,6 +56,11 @@ sub-sample percentiles, that is, the sampling variability of the percentile
 itself.  It does not include parameter uncertainty.
 \item anything smaller -- no band, with a message saying so.
 }
+
+When the solve was given a \code{thetaMat}, \code{confint()} also says whether that
+\code{thetaMat} was actually drawn from -- it is ignored unless the variability is
+being simulated (\code{nStud > 1}, or \code{simVariability=TRUE}) -- so it is clear
+whether the reported interval carries parameter uncertainty.
 }
 \examples{
 
@@ -87,7 +92,8 @@ s <- rxSolve(mod, ev, nSub=100)
 
 confint(s, "cp", level=0.95, ci=FALSE)
 
-# with 20 studies the percentiles get a confidence band
+# with 20 studies the percentiles get a confidence band, and the
+# `thetaMat` is drawn from
 s2 <- rxSolve(mod, ev, nSub=100, nStud=20, thetaMat=lotri(tka ~ 0.01))
 
 confint(s2, "cp", level=0.95)
