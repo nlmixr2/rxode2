@@ -77,9 +77,22 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .ciMethod <- .args$method
   }
   .stk <- rxStack(object, parm, doSim=.doSim) # nolint
+  .nStud <- object$env$.args$nStud
+  if (!checkmate::testIntegerish(.nStud, len=1L, any.missing=FALSE)) .nStud <- 1L
+  .nSub <- object$env$.args$nSub
+  if (!checkmate::testIntegerish(.nSub, len=1L, any.missing=FALSE)) .nSub <- 1L
   if (!any(names(.stk) == "id") &&
         any(names(.stk) == "sim.id")) {
-    names(.stk) <- gsub("sim.id", "id", names(.stk))
+    if (.nStud > 1L && .nSub > 1L) {
+      # With a single-subject event table rxode2 solves nStud*nSub simulations
+      # numbered study-major in `sim.id` and emits no `id` column; split it back
+      # into study (`sim.id`) and individual (`id`) so the study dimension can
+      # still be used for the confidence bands
+      .stk$id <- as.integer(.stk$sim.id)
+      .stk$sim.id <- (.stk$id - 1L) %/% as.integer(.nSub) + 1L
+    } else {
+      names(.stk) <- gsub("sim.id", "id", names(.stk))
+    }
   }
   for (.v in .by) {
     .stk[[.v]] <- object[[.v]]
@@ -99,15 +112,17 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id") ||
-        !isTRUE(object$env$.args$nStud > 1L)) {
+        !isTRUE(.nStud > 1L)) {
     if (any(names(.stk) == "sim.id")) {
       .stk$id <- factor(paste(.stk$sim.id, .stk$id))
       .ntot <- length(levels(.stk$id))
       .stk$id <- as.integer(.stk$id)
+    } else if (any(names(.stk) == "id")) {
+      .ntot <- length(unique(.stk$id))
     } else {
-      .ntot <- object$env$.args$nSub
-      if (.ntot == 1L && object$env$.args$nStud > 1L) {
-        .ntot <- object$env$.args$nStud
+      .ntot <- .nSub
+      if (.ntot == 1L && .nStud > 1L) {
+        .ntot <- .nStud
       }
     }
     if (.ci == 0 || .ntot < 2500) {
@@ -151,11 +166,13 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     } else {
       .n <- round(sqrt(.ntot))
       if (!any(names(.stk) == "sim.id")) {
-        .stk$sim.id <- .stk$id
+        # `id` can be a factor (character subject identifiers); densify to
+        # 1:.ntot so the modulus below splits it into `.n` sub-samples
+        .stk$sim.id <- as.integer(factor(.stk$id))
       }
     }
   } else {
-    .n <- object$env$.args$nStud
+    .n <- .nStud
   }
   message("summarizing data...", appendLF = FALSE)
   .ret <- .stk[, id := sim.id %% .n]

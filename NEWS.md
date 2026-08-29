@@ -461,6 +461,16 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `confint()` on a solved object again uses the study dimension to build the
+  confidence bands around the simulated percentiles when `nStud > 1`.  When
+  the event table holds a single subject, rxode2 numbers the `nStud * nSub`
+  simulations in `sim.id` and emits no `id` column, and `confint()` read that
+  `sim.id` as the individual identifier; it therefore ignored `nStud`, said
+  "you need at least 2500 simulations", and returned plain pooled percentiles.
+  It now recovers the study/individual split, so a `nStud > 1` simulation run
+  from a one-subject event table gives the same answer as the same simulation
+  run from an event table that lists the subjects explicitly (#1308).
+
 - A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
   per-individual solve pool as `nsub` times the number of individual solves
   it needs.  The over-allocation grew with the square of the number of
