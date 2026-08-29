@@ -23,7 +23,10 @@
 #' When the solve was given a `thetaMat`, `confint()` also says whether that
 #' `thetaMat` was actually drawn from -- it is ignored unless the variability is
 #' being simulated (`nStud > 1`, or `simVariability=TRUE`) -- so it is clear
-#' whether the reported interval carries parameter uncertainty.
+#' whether the summarized values carry parameter uncertainty.  This describes
+#' the simulated values, not the band: a solve can carry parameter uncertainty
+#' and still have no study dimension left to place a band with (`nSub = 1`, or
+#' `ci = FALSE`).
 #'
 #' @param object solved rxode2 object
 #' @param parm compartments or calculated (`lhs`) variables to summarize; when
@@ -146,9 +149,9 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .n <- .rep$n
   .thetaMatUsed <- .confintThetaMatUsed(object, .nStud)
   if (isTRUE(.thetaMatUsed)) {
-    .minfo("this simulation drew from 'thetaMat', so parameter uncertainty is included") # nolint
+    .minfo("this simulation drew from 'thetaMat', so the simulated values include parameter uncertainty") # nolint
   } else if (isFALSE(.thetaMatUsed)) {
-    .mwarn("this simulation did not draw from 'thetaMat' ('nStud' <= 1), so parameter uncertainty is not included; use 'nStud' > 1 or 'simVariability=TRUE'") # nolint
+    .mwarn("this simulation did not draw from 'thetaMat' ('nStud' <= 1), so the simulated values do not include parameter uncertainty; use 'nStud' > 1 or 'simVariability=TRUE'") # nolint
   }
   message("summarizing data...", appendLF = FALSE)
   if (is.na(.n)) {

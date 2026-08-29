@@ -497,7 +497,14 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 - `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
   was read out of an undocumented `method` argument, so the documented
   spelling was silently ignored and the interval always came back from
-  `binomProbs()`'s own default.  `method=` keeps working (#1308).
+  `binomProbs()`'s own default.  `method=` keeps working when it names a
+  `ciMethod`, and is left alone otherwise (#1308).
+
+- `confint()` counts the individuals in the solved data rather than reading
+  `nSub` back off the solve arguments, so a data set that carries its own
+  subjects reaches the 2500 individual threshold that puts confidence bands
+  around the percentiles.  A solve of 2500 or more subjects supplied as data
+  now returns the banded summary instead of the pooled percentiles (#1308).
 
 - Piping a model's `ini()` into another model no longer silently leaves shared
   random effects behind.  Three cases dropped an eta with no error and no

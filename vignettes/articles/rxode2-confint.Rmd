@@ -214,6 +214,14 @@ ciIgnored <- confint(simIgnored, "cp", level = 0.95)
 
 Nothing is said when the solve had no `thetaMat` at all.
 
+The message describes the simulated *values*, not the band.  A solve can
+carry parameter uncertainty and still have no study dimension left to
+place a band with -- `nStud = 20, nSub = 1` gives 20 studies of one
+subject each, so each study percentile is that subject's single value and
+a band built from them would be identical at 2.5%, 50% and 97.5%.
+`confint()` reports the pooled percentiles in that case, and those do
+carry the parameter uncertainty.
+
 ## The two bands are not the same quantity
 
 It is worth comparing the two directly.  Both simulations below have

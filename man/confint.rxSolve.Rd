@@ -60,7 +60,10 @@ itself.  It does not include parameter uncertainty.
 When the solve was given a \code{thetaMat}, \code{confint()} also says whether that
 \code{thetaMat} was actually drawn from -- it is ignored unless the variability is
 being simulated (\code{nStud > 1}, or \code{simVariability=TRUE}) -- so it is clear
-whether the reported interval carries parameter uncertainty.
+whether the summarized values carry parameter uncertainty.  This describes
+the simulated values, not the band: a solve can carry parameter uncertainty
+and still have no study dimension left to place a band with (\code{nSub = 1}, or
+\code{ci = FALSE}).
 }
 \examples{
 

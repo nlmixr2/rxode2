@@ -77,16 +77,16 @@
     checkmate::assertNumeric(.tol, len=1, any.missing=FALSE, lower=.Machine$double.eps, .var.name="tol")
   }
   .ciMethod <- "wald"
-  if (any(names(.args) == "ciMethod")) {
+  .ciMethods <- c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")
+  if (any(names(.args) == "ciMethod") && !is.null(.args$ciMethod)) {
     .ciMethod <- .args$ciMethod
-  } else if (any(names(.args) == "method")) {
-    # `ciMethod` was read out of `method` before rxode2 5.1.7
+    checkmate::assertChoice(.ciMethod, .ciMethods, .var.name="ciMethod")
+  } else if (any(names(.args) == "method") &&
+               checkmate::testChoice(.args$method, .ciMethods)) {
+    # `ciMethod` was read out of `method` before rxode2 5.1.7; a `method` that
+    # is not a `ciMethod` is left alone, the way it always was
     .ciMethod <- .args$method
   }
-  checkmate::assertChoice(.ciMethod,
-                          c("wilson", "wilsonCorrect", "agrestiCoull",
-                            "wald", "wc", "ac"),
-                          .var.name="ciMethod")
   list(doSim=.doSim, by=.by, ci=.ci, mean=.mean, binom=.binom, n=.nC,
        pred=.pred, useT=.useT, mM=.mM, tol=.tol, ciMethod=.ciMethod)
 }

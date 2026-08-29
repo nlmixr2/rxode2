@@ -116,6 +116,35 @@ rxTest({
     .legacy <- suppressMessages(confint(.s, "hi", mean="binom", method="wilson"))
     expect_equal(.wilson$eff, .legacy$eff)
     expect_error(suppressMessages(confint(.s, "hi", mean="binom", ciMethod="nope")))
+    # a `method=` that is not a `ciMethod`, and an explicit NULL, are left alone
+    # rather than raising; they never reached binomProbs() before either
+    expect_error(suppressMessages(confint(.s, "cp", method="foo")), NA)
+    expect_error(suppressMessages(confint(.s, "cp", ciMethod=NULL)), NA)
+  })
+
+  test_that("confint() gives no band when each study holds one subject (#1308)", {
+    # nStud > 1 with nSub = 1 has a study dimension but no within-study sample:
+    # every study percentile is that study's single value, so a band built from
+    # them would be identical at 2.5/50/97.5.  Report the pooled percentiles
+    # instead.
+    rxSetSeed(42)
+    .s <- suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
+                                   nStud=20))
+    expect_equal(.s$env$.args$nSub, 1)
+    .ci <- suppressMessages(confint(.s, "cp", level=0.95))
+    expect_true(inherits(.ci, "rxSolveConfint1"))
+    expect_true(all(c("p1", "eff") %in% names(.ci)))
+  })
+
+  test_that("confint() counts individuals in the data, not nSub (#1308)", {
+    # subjects supplied as data rather than through nSub still have to reach the
+    # 2500 threshold on their own count
+    rxSetSeed(42)
+    .s <- suppressMessages(rxSolve(.ciModel, .ciEt |> et(id=1:2600)))
+    expect_equal(.s$env$.args$nSub, 1)
+    .ci <- suppressMessages(confint(.s, "cp", level=0.95))
+    expect_true(inherits(.ci, "rxSolveConfint2"))
+    expect_true(all(c("p2.5", "p50", "p97.5") %in% names(.ci)))
   })
 
   test_that("confint(ci=FALSE) always gives the simple percentiles (#1308)", {
