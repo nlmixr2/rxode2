@@ -186,7 +186,24 @@
     ## a prior on an omega row is on that row's omega *element*, which is
     ## spelled with the `om.` prefix
     .name <- .iniDf$name[.i]
-    if (!is.na(.iniDf$neta1[.i])) .name <- paste0("om.", .name)
+    if (!is.na(.iniDf$neta1[.i])) {
+      if (.iniDf$neta1[.i] != .iniDf$neta2[.i]) {
+        ## a marginal prior on an omega COVARIANCE element is supported for
+        ## estimation-time priors (rxPriorLogDensity()/rxPriorBuildSpec()),
+        ## but not yet here: the draw this function sets up is added to the
+        ## model's own initial estimate (see this function's own doc above),
+        ## and .rxPriorEstLookup()/.rxPriorOmegaElPos() only ever populate a
+        ## DIAGONAL "om.<eta>" key -- proceeding would silently skip the
+        ## mean assertion below (the covariance element has no lookup entry)
+        ## and later fail with a confusing "unknown omega element" instead
+        ## of this explicit, accurate one.
+        .rxPriorStop(.iniDf$name[.i], .iniDf$prior[.i],
+                     paste0("prior simulation does not yet support a marginal ",
+                            "prior on an off-diagonal omega covariance element ",
+                            "(estimation-time priors are unaffected)"))
+      }
+      .name <- paste0("om.", .name)
+    }
     .prior <- .iniDf$prior[.i]
     if (.name %in% .seen) next
     .p <- .rxPriorParse(.prior)
