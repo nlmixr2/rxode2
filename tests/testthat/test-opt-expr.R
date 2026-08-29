@@ -50,14 +50,18 @@ rxTest({
   }
 
   test_that("the default chunks a large model; chunkLines=0 optimizes it whole", {
-    .m <- .chunkModel()
-    .def <- suppressMessages(rxOptExpr(.m, "model"))
-    # per-chunk rx_expr_c<i>_ names prove the default took the chunked path
-    expect_true(grepl("rx_expr_c[0-9]+_", .def))
-    expect_identical(.def, suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L)))
-    # chunkLines = 0 still forces the single whole-model pass
-    .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
-    expect_false(grepl("rx_expr_c[0-9]+_", .whole))
+    ## chunking now engages on model SIZE, not line count -- these models are
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      .m <- .chunkModel()
+      .def <- suppressMessages(rxOptExpr(.m, "model"))
+      # per-chunk rx_expr_c<i>_ names prove the default took the chunked path
+      expect_true(grepl("rx_expr_c[0-9]+_", .def))
+      expect_identical(.def, suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L)))
+      # chunkLines = 0 still forces the single whole-model pass
+      .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+      expect_false(grepl("rx_expr_c[0-9]+_", .whole))
+    })
   })
 
   test_that("chunked optimization yields an equivalent model", {
@@ -111,73 +115,103 @@ rxTest({
   })
 
   test_that("grammar-accepted spacing variants chunk without falling back", {
-    # `depot (0)=` and `f( depot )=` used to be disguised into an identifier containing
-    # spaces, a syntax error that silently sent every such model down the whole-model
-    # fallback; they are now hex-encoded, so the chunked path handles them.
-    .pad <- vapply(1:60, function(i) {
-      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
-    }, character(1))
-    .m <- paste(c("d/dt(depot)=-exp(THETA[1]+ETA[1])*depot",
-                  "d/dt(center)=exp(THETA[1]+ETA[1])*depot-exp(THETA[2])*center",
-                  "depot (0)=exp(THETA[4])",
-                  "f( depot )=exp(THETA[5])",
-                  "alag (depot)=exp(THETA[6])",
-                  .pad, "rx_pred_=center"), collapse = "\n")
-    .out <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
-    # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
-    expect_true(grepl("rx_expr_c[0-9]+_", .out))
-    # the spacing-variant lines are restored byte-exact and the model still parses
-    expect_true(grepl("depot (0)=", .out, fixed = TRUE))
-    expect_true(grepl("f( depot )=", .out, fixed = TRUE))
-    expect_true(grepl("alag (depot)=", .out, fixed = TRUE))
-    expect_error(rxModelVars(.out), NA)
+    ## chunking now engages on model SIZE, not line count -- these models are
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      # `depot (0)=` and `f( depot )=` used to be disguised into an identifier containing
+      # spaces, a syntax error that silently sent every such model down the whole-model
+      # fallback; they are now hex-encoded, so the chunked path handles them.
+      .pad <- vapply(1:60, function(i) {
+        sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+      }, character(1))
+      .m <- paste(c("d/dt(depot)=-exp(THETA[1]+ETA[1])*depot",
+                    "d/dt(center)=exp(THETA[1]+ETA[1])*depot-exp(THETA[2])*center",
+                    "depot (0)=exp(THETA[4])",
+                    "f( depot )=exp(THETA[5])",
+                    "alag (depot)=exp(THETA[6])",
+                    .pad, "rx_pred_=center"), collapse = "\n")
+      .out <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
+      expect_true(grepl("rx_expr_c[0-9]+_", .out))
+      # the spacing-variant lines are restored byte-exact and the model still parses
+      expect_true(grepl("depot (0)=", .out, fixed = TRUE))
+      expect_true(grepl("f( depot )=", .out, fixed = TRUE))
+      expect_true(grepl("alag (depot)=", .out, fixed = TRUE))
+      expect_error(rxModelVars(.out), NA)
+    })
   })
 
   test_that("a chunk boundary separating delay() from its d/dt() no longer falls back", {
-    # delay(state, T) parses only where d/dt(state) is defined; a boundary between the
-    # two used to fail the chunk, print the parser's :ERR: block, and lose the chunking
-    # speedup to the whole-model fallback.  The call is now disguised across the
-    # boundary and restored byte-exact.
-    .pad <- vapply(1:60, function(i) {
-      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
-    }, character(1))
-    .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
-                  .pad,
-                  "a=delay(x, exp(THETA[2]))+exp(THETA[1]+ETA[1])",
-                  "b=rxDelayD(x, exp(THETA[2]))*2+exp(THETA[1]+ETA[1])",
-                  "rx_pred_=a+b"), collapse = "\n")
-    .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
-    # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
-    expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
-    # the calls are restored byte-exact, nothing disguised is left, and it still parses
-    expect_true(grepl("delay(x, exp(THETA[2]))", .chunk, fixed = TRUE))
-    expect_true(grepl("rxDelayD(x, exp(THETA[2]))", .chunk, fixed = TRUE))
-    expect_false(grepl("rx__disg_delay_", .chunk, fixed = TRUE))
-    expect_error(rxModelVars(.chunk), NA)
-    # same states and parameters as the whole-model pass
-    .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
-    .rv <- function(.x) {
-      .mv <- rxModelVars(.x)
-      list(state = .mv$state, params = sort(.mv$params[!grepl("^rx_expr_", .mv$params)]))
-    }
-    expect_identical(.rv(.whole), .rv(.chunk))
+    ## chunking now engages on model SIZE, not line count -- these models are
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      # delay(state, T) parses only where d/dt(state) is defined; a boundary between the
+      # two used to fail the chunk, print the parser's :ERR: block, and lose the chunking
+      # speedup to the whole-model fallback.  The call is now disguised across the
+      # boundary and restored byte-exact.
+      .pad <- vapply(1:60, function(i) {
+        sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+      }, character(1))
+      .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
+                    .pad,
+                    "a=delay(x, exp(THETA[2]))+exp(THETA[1]+ETA[1])",
+                    "b=rxDelayD(x, exp(THETA[2]))*2+exp(THETA[1]+ETA[1])",
+                    "rx_pred_=a+b"), collapse = "\n")
+      .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
+      expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
+      # the calls are restored byte-exact, nothing disguised is left, and it still parses
+      expect_true(grepl("delay(x, exp(THETA[2]))", .chunk, fixed = TRUE))
+      expect_true(grepl("rxDelayD(x, exp(THETA[2]))", .chunk, fixed = TRUE))
+      expect_false(grepl("rx__disg_delay_", .chunk, fixed = TRUE))
+      expect_error(rxModelVars(.chunk), NA)
+      # same states and parameters as the whole-model pass
+      .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+      .rv <- function(.x) {
+        .mv <- rxModelVars(.x)
+        list(state = .mv$state, params = sort(.mv$params[!grepl("^rx_expr_", .mv$params)]))
+      }
+      expect_identical(.rv(.whole), .rv(.chunk))
+    })
   })
 
   test_that("a chunk holding delay() and its d/dt() keeps optimizing the call", {
-    # co-located calls are NOT disguised, so their arguments still join the chunk's
-    # common-subexpression pool
-    .pad <- vapply(1:60, function(i) {
-      sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
-    }, character(1))
-    .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
-                  "a=delay(x, exp(THETA[2]))+1",
-                  "b=delay(x, exp(THETA[2]))*2",
-                  .pad,
-                  "rx_pred_=a+b"), collapse = "\n")
-    .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
-    expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
-    # the delay argument was factored in place of the literal exp(THETA[2])
-    expect_true(grepl("delay\\(x, rx_expr_c[0-9]+_[0-9]+\\)", .chunk))
+    ## chunking now engages on model SIZE, not line count -- these models are
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      # co-located calls are NOT disguised, so their arguments still join the chunk's
+      # common-subexpression pool
+      .pad <- vapply(1:60, function(i) {
+        sprintf("v%d=exp(THETA[1]+ETA[1])*exp(THETA[2]*%d)", i, i)
+      }, character(1))
+      .m <- paste(c("d/dt(x)=-exp(THETA[1])*x",
+                    "a=delay(x, exp(THETA[2]))+1",
+                    "b=delay(x, exp(THETA[2]))*2",
+                    .pad,
+                    "rx_pred_=a+b"), collapse = "\n")
+      .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
+      # the delay argument was factored in place of the literal exp(THETA[2])
+      expect_true(grepl("delay\\(x, rx_expr_c[0-9]+_[0-9]+\\)", .chunk))
+    })
+  })
+
+  test_that("chunking engages on model size, not line count", {
+    ## What chunking buys is amortizing the parse, whose cost tracks characters.
+    ## Measured, a 70 KB model is 5x SLOWER chunked while a 3.1 MB model is 8.9x
+    ## faster, so the trigger is characters and the line count only caps it.
+    .small <- .chunkModel(60L)                     # many lines, few characters
+    expect_gt(length(strsplit(.small, "\n")[[1]]), 40L)
+    expect_lt(nchar(.small), 524288L)
+    .whole <- suppressMessages(rxOptExpr(.small, "model", chunkLines = 0L))
+    expect_identical(suppressMessages(rxOptExpr(.small, "model")), .whole)
+    expect_false(grepl("rx_expr_c[0-9]", .whole))
+
+    ## and with the threshold dropped it does chunk, producing its own names
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      .ch <- suppressMessages(rxOptExpr(.small, "model", chunkLines = 40L))
+    })
+    expect_true(grepl("rx_expr_c[0-9]", .ch))
   })
 
   test_that("a delay() state with no d/dt() anywhere raises the whole-model error", {

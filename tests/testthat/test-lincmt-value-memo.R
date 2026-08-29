@@ -42,7 +42,7 @@ rxTest({
                cmt = 1, rate = 0, ii = c(12, 0, 0, 0, 0),
                ss = c(1, 0, 0, 0, 0))
   }
-  .stats <- function() rxode2:::linCmtSeqStats(TRUE)
+  .stats <- function() rxode2::linCmtSeqStats(TRUE)
 
   test_that("value memo hits on repeated value calls and preserves results", {
     m <- .gradModel(2, 1, 0:4, nVal = 3L)

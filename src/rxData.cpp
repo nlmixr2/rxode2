@@ -895,11 +895,28 @@ List rxModelVars_blank() {
 //' @return model variables
 //'
 //' @noRd
+// True when the text holds no statement at all -- only whitespace and '#'
+// comments.  The grammar cannot match that (`statement_list : (statement)+`,
+// and `statement` is deliberately not nullable; see inst/tran.g), so it is
+// routed to the blank model here, which is where "" has always gone.
+static inline bool rxModelIsBlankText(const std::string &s) {
+  for (size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+    if (c == '#') {
+      while (i < s.size() && s[i] != '\n') ++i;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 List rxModelVars_character(const RObject &obj){
   CharacterVector modList = asCv(obj, "rxModelVars_character(obj)");
   if (modList.size() == 1){
     std::string sobj =as<std::string>(obj);
-    if (sobj == ""){
+    if (rxModelIsBlankText(sobj)){
       // Blank rxode2 model
       return rxModelVars_blank();
     } else if (fileExists(sobj)) {
@@ -6312,8 +6329,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtBraw = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtBraw) ?
       INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtBraw] : 1;
     rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
+    // A control list built before this slot existed (an older reverse
+    // dependency's) gets the same route rxSolve()'s own default resolves to,
+    // so the two cannot drift: 2 = the closed-form transition matrix.
     rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
-      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 1;
+      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

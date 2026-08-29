@@ -890,6 +890,13 @@
 #'   the C++ stack with one pass per requested direction; matches `ADr`
 #'   to round-off.
 #'
+#' - `ADm` -- the same forward-mode differentiation carrying every
+#'   requested direction through a single pass, so the solution itself
+#'   (each exponential, division and eigen-decomposition) is evaluated
+#'   once instead of once per direction.  Bitwise identical to `AD`, and
+#'   unlike the amortized ordinary-row path it also shares the work on
+#'   steady-state rows.
+#'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
 #'
@@ -919,15 +926,20 @@
 #'   differences when using the option `centralH`, `forwardH`,
 #'   `foward3H` or `endpoint5H` options.
 #'
-#' @param linCmtSensPhi When `TRUE` (default), a `linCmt()` sensitivity
-#'   row whose interval repeats -- as intervals do under regular sampling
-#'   -- is evaluated by assembling that interval's state-transition matrix
-#'   once and propagating each later row of the same width through it.
-#'   Intervals that do not repeat are unaffected.  When `FALSE` every row
-#'   evaluates the closed form in the order earlier versions used.  Both
-#'   are the same exact closed-form solution evaluated in a different
-#'   order, so the two can differ in the last few digits; use `FALSE` to
-#'   reproduce earlier results digit for digit.
+#' @param linCmtSensPhi Which state-transition matrix a `linCmt()`
+#'   sensitivity row propagates through, if any.  `TRUE` (the default) or
+#'   `2` assembles the matrix and its parameter derivatives from their
+#'   closed form in the constants the theta window already holds; that costs
+#'   about one kernel evaluation, so it is assembled for any interval and
+#'   cached where the interval repeats, and it carries the depot and
+#'   infusion terms.  `1` assembles it instead by probing the kernel with
+#'   unit-basis prior states, which costs one evaluation per direction per
+#'   column and so is only worth paying on an interval that repeats;
+#'   rate-bearing rows are excluded.  `FALSE` or `0` evaluates the closed
+#'   form row by row in the order earlier versions used.  All three are the
+#'   same exact closed-form solution evaluated in a different order, so they
+#'   can differ in the last few digits; use `FALSE` to reproduce earlier
+#'   results digit for digit.
 #'
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
@@ -1270,7 +1282,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSensType=c("auto",
                                      "endpoint5", "endpoint5G",
                                      "forward3", "forward3G",
-                                     "AD", "ADr", "central",
+                                     "AD", "ADm", "ADr", "central",
                                      "forward", "forwardG",
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
@@ -1536,7 +1548,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar)
+      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar), one pass per direction
+                           "ADm"=32L,      # forward-mode AD, all directions in one pass
                            "ADr"=31L,      # reverse-mode AD (what "auto" resolves to)
                            "forward"=1L,
                            "central"=2L,
@@ -1572,10 +1585,18 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     # a control list built by an earlier rxControl() hands this back as the
     # integer it stores, so coerce before asserting rather than demanding
-    # the user-facing logical here
-    .linCmtSensPhi <- as.logical(linCmtSensPhi)
-    checkmate::assertLogical(.linCmtSensPhi, any.missing=FALSE, len=1)
-    .linCmtSensPhi <- as.integer(.linCmtSensPhi)
+    # the user-facing logical here.  An integer selects WHICH transition
+    # matrix: 0 off, 1 probe-built, 2 closed form; TRUE is the default one.
+    if (is.logical(linCmtSensPhi)) {
+      checkmate::assertLogical(linCmtSensPhi, any.missing=FALSE, len=1)
+      # TRUE selects the closed-form matrix (2); the probe-built one (1) is
+      # kept but has to be named
+      .linCmtSensPhi <- if (linCmtSensPhi) 2L else 0L
+    } else {
+      checkmate::assertIntegerish(linCmtSensPhi, lower=0, upper=2,
+                                  any.missing=FALSE, len=1)
+      .linCmtSensPhi <- as.integer(linCmtSensPhi)
+    }
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE,
@@ -2556,6 +2577,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   isTRUE(as.character(.m) == "indLin")
 }
 
+#' @rdname rxSolve
+#' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          useLinCmt = TRUE,
                          theta = NULL, eta = NULL, envir=parent.frame()) {

@@ -10,11 +10,11 @@
 # Loads rxode2 only; the model compile happens before the hot region and
 # in child processes callgrind does not trace.
 suppressMessages(
-  devtools::load_all("~/src/rxode2-lincmt-carry-jump", compile = FALSE, quiet = TRUE))
+  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 cfg <- Sys.getenv("CONFIG", "2cmt")
 prep <- readRDS(path.expand(sprintf(
-  "~/src/rxode2-lincmt-carry-jump/bench/results/phase0_prep_%s.rds", cfg)))
+  "~/src/rxode2-lincmt-analytic/bench/results/phase0_prep_%s.rds", cfg)))
 im <- rxode2::rxode2(prep$modelText)
 obsT <- sort(unique(round(exp(seq(log(0.25), log(32), length.out = 1000L)), 4)))
 ev <- rxode2::et(amt = 100, time = 0, cmt = 1) |> rxode2::et(obsT)

@@ -810,7 +810,24 @@
   }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
-  if (length(.ln) <= chunkLines) {
+  # Chunk only when it will actually pay.  What chunking buys is amortizing the
+  # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
+  # which is what `chunkLines` counts.  Measured, whole-model against chunked,
+  # on second-order sensitivity models:
+  #
+  #    70 KB   0.39s vs  2.00s   chunking 5.1x WORSE
+  #   261 KB   2.03s vs  2.16s            1.07
+  #   636 KB   5.42s vs  5.61s            1.03
+  #   975 KB   9.24s vs  8.60s            0.93
+  #   1.39 MB 15.39s vs  4.42s            0.29
+  #   3.14 MB 59.75s vs  6.70s   chunking 8.9x BETTER
+  #
+  # The knee is near 1 MB and the payoff is very asymmetric: at most ~7% lost
+  # below it against 3-9x gained above, so the threshold sits below the knee.
+  # A model with few but enormous lines is chunked; one with many short lines is
+  # not, which is the opposite of what the line count would have decided.
+  if (nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
+        length(.ln) <= chunkLines) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
@@ -854,8 +871,16 @@
   .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
                   if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
 
-  .opt <- tryCatch({
-    if (.useMirai) {
+  # Collect the chunks, then check them ONCE.  The two routes used to carry their own
+  # acceptance rule -- the serial one vapply(character(1)), the parallel one merely
+  # is.character() -- so a chunk result that was character but not a single string was
+  # rejected serially and pasted in parallel.  The two routes then returned DIFFERENT
+  # MODELS from the same call, which is the one thing they must never do, and the
+  # difference showed up only where that case arose (a Windows check, where the serial
+  # route fell back to the whole model and the parallel route did not).  One rule now
+  # decides for both, and it is applied after collection rather than inside it.
+  .optRes <- tryCatch({
+    .res <- if (.useMirai) {
       if (.ownDaemons) {
         mirai::daemons(.nDaemons)
         on.exit(mirai::daemons(0), add = TRUE)
@@ -870,26 +895,31 @@
         },
         .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
       )
-      # A chunk that failed in a daemon comes back as an error object rather than throwing,
-      # and would otherwise be pasted into the model text; raise it so the fallback below
-      # optimizes the whole model instead.
-      .res <- character(.nChunks)
-      for (.i in seq_len(.nChunks)) {
-        .r <- .tasks[[.i]][]
-        if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || !is.character(.r)) {
-          stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
-                       tryCatch(conditionMessage(.r),
-                                error = function(e) paste(utils::head(unclass(.r), 1L),
-                                                          collapse = ""))),
-               call. = FALSE)
-        }
-        .res[.i] <- .r
-      }
-      .res
+      # A chunk that failed in a daemon comes back as an error object rather than
+      # throwing, so it reaches the check below as a value like any other.
+      lapply(seq_len(.nChunks), function(.i) .tasks[[.i]][])
     } else {
-      vapply(seq_len(.nChunks), .rxOptExprChunk, character(1), chunks = .chunks, msg = msg)
+      lapply(seq_len(.nChunks), function(.i) {
+        tryCatch(.rxOptExprChunk(.i, .chunks, msg), error = function(e) e)
+      })
     }
-  }, error = function(e) NULL)
+    vapply(seq_len(.nChunks), function(.i) {
+      .r <- .res[[.i]]
+      if (inherits(.r, "miraiError") || inherits(.r, "errorValue") ||
+            inherits(.r, "condition") || !is.character(.r) || length(.r) != 1L ||
+            is.na(.r)) {
+        .what <- tryCatch(conditionMessage(.r), error = function(e) {
+          paste0(class(.r)[1], "[", length(.r), "]")
+        })
+        stop(sprintf("chunk %d did not optimize to a single model string%s: %s", .i,
+                     if (.useMirai) " in a mirai daemon" else "", .what),
+             call. = FALSE)
+      }
+      .r
+    }, character(1))
+  }, error = function(e) e)
+  .failed <- inherits(.optRes, "condition")
+  .opt <- if (.failed) NULL else .optRes
 
   # A chunk is only a fragment of the model, so it can fail to optimize where the whole
   # model would not -- it may hold a compartment-scoped line the disguise did not recognise,
@@ -899,10 +929,41 @@
   # (A chunk with nothing left to reduce returns its text and does not error, so an ordinary
   # model never lands here.)
   if (is.null(.opt)) {
+    # Say why.  Falling back silently makes a chunked call that quietly stopped chunking
+    # indistinguishable from one that never chunked, which is how the serial/parallel
+    # divergence above went unnoticed until a platform surfaced it.
+    if (.failed)
+      .malert(sprintf("chunked optimization fell back to the whole %s: %s",
+                      msg, conditionMessage(.optRes)))
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
   .rxRealignPastTau(.out, .txt)
+}
+
+#' Common subexpression elimination in C
+#'
+#' Hands the normalized model, one statement per element, to src/rxCse.c.  The
+#' C pass counts subexpressions in a hash rather than a named R list, so it is
+#' linear where the R walker is quadratic, and it counts each statement in an
+#' OpenMP region.
+#'
+#' Returns `NA_character_` when the C pass declines -- an unsupported left-hand
+#' side, `past()`, an `if`/`else` block, a numeric literal it will not render
+#' exactly, or simply no repeated subexpression.  The caller then runs the R
+#' implementation, so declining is always safe.
+#'
+#' @param norm normalized model text, as `rxNorm()` returns it
+#' @return optimized model text, or `NA_character_` to decline
+#' @author Matthew L. Fidler
+#' @noRd
+.rxOptExprC <- function(norm) {
+  if (!isTRUE(getOption("rxode2.optExprC", TRUE))) return(NA_character_)
+  if (!is.character(norm) || length(norm) != 1L || is.na(norm)) return(NA_character_)
+  .l <- strsplit(norm, "\n", fixed = TRUE)[[1]]
+  .l <- .l[nzchar(trimws(.l))]
+  if (length(.l) == 0L) return(NA_character_)
+  .Call(`_rxode2_rxCse`, .l)
 }
 
 #' Optimize rxode2 for computer evaluation
@@ -919,60 +980,30 @@
 #'
 #'  finding duplicate expressions in model...
 #'
-#' @param chunkLines Integer; when positive (the default is 40),
-#'     a model longer than this many lines is optimized in contiguous
+#' @param chunkLines Integer; when positive (the default is 40), a model
+#'     longer than this many lines is optimized in contiguous
 #'     cost-balanced chunks of roughly this many lines instead of in a
-#'     single pass; a model at or under it is optimized whole, exactly
-#'     as before.  `0` always optimizes the whole model at once.
-#'
-#'     Chunking pays off for a large machine-generated model -- a
-#'     sensitivity- or Jacobian-augmented model, say.  Normalizing a
-#'     model (`rxNorm()`, i.e. parsing it) is strongly superlinear in
-#'     its size, and for such a model it, not the common subexpression
-#'     search, is what dominates: optimizing a 275-line augmented model
-#'     takes ~113s, of which the subexpression search is only ~15s.
-#'     Chunking amortizes that parse -- `rxOptExpr()` normalizes each
-#'     chunk on its own -- taking the same model to ~11s:
-#'
-#'     \tabular{rrrr}{
-#'       lines \tab whole \tab chunked \tab \cr
-#'       34 \tab 0.5s \tab 0.5s \tab (a typical model: not chunked) \cr
-#'       119 \tab 2.0s \tab 0.8s \tab 2.5x \cr
-#'       149 \tab 22.2s \tab 3.9s \tab 5.7x \cr
-#'       275 \tab 112.7s \tab 10.6s \tab 10.7x \cr
-#'     }
-#'
-#'     Common subexpressions are then only shared within a chunk, so the
-#'     model is equivalent but carries more temporaries.  That costs no
-#'     measurable solve time, but it does make the C compilation of the
-#'     model somewhat slower, which partly offsets the gain.
-#'
-#'     A chunk is a fragment, so it can fail to optimize where the whole
-#'     model would not.  If any chunk fails, the whole model is optimized
-#'     instead, so a malformed model still raises the error the unchunked
-#'     call raises; falling back costs the unchunked time only on that
-#'     rare path.
-#'
-#'     Chunking therefore does not give the same optimized text as the
-#'     whole-model call -- it shares fewer subexpressions and so carries
-#'     more temporaries -- but it gives an equivalent model: the same
-#'     states and parameters, the same solution, and the same errors.
+#'     single pass; `0` always optimizes the whole model at once.
+#'     Chunking amortizes the strongly superlinear cost of normalizing a
+#'     large machine-generated model, which is what dominates the
+#'     optimization of a sensitivity- or Jacobian-augmented model.
+#'     Subexpressions are then shared only within a chunk, so the result
+#'     is an equivalent model -- the same states, parameters, solution
+#'     and errors -- carrying more temporaries.  A chunk is a fragment,
+#'     so if any chunk fails to optimize the whole model is optimized
+#'     instead.
 #'
 #' @param parallel Integer; number of `mirai` daemons used to optimize
-#'     the chunks in parallel.  Only used when the model is chunked.  It
+#'     the chunks in parallel, used only when the model is chunked.  It
 #'     carries the same semantics as `rxControl(cores=)`: `0` (the
-#'     default) means the rxode2 thread setting `rxCores()`, so CRAN and
-#'     users tune it with the same knob as the solver (`setRxThreads()`,
-#'     `OMP_THREAD_LIMIT`) or by passing `parallel=` directly; `1` runs
-#'     the chunks serially.
-#'     It is capped by the number of chunks and by `rxCores()`, so it
-#'     will not oversubscribe past the threads the user asked for.
-#'
-#'     An existing `mirai` daemon pool is used as-is and left running.
-#'     Otherwise a pool is started for the call and shut down when it
-#'     returns; that startup (loading rxode2 into each daemon) costs a
-#'     few seconds, so a pool is only started when the model splits into
-#'     at least 4 chunks, where the parallel win covers it.
+#'     default) means the rxode2 thread setting `rxCores()`
+#'     (`setRxThreads()`, `OMP_THREAD_LIMIT`); `1` runs the chunks
+#'     serially.  It is capped by the number of chunks and by
+#'     `rxCores()`, so it will not oversubscribe.  An existing `mirai`
+#'     daemon pool is used as-is and left running; otherwise a pool is
+#'     started for the call and shut down when it returns, and only when
+#'     the model splits into at least 4 chunks, where the parallel win
+#'     covers the startup.
 #'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
@@ -990,14 +1021,20 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts))
-  .mv <- rxModelVars(x)
-  .params <- .mv$params
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
-  .p <- eval(parse(text = paste0("quote({", rxNorm(x), "})")))
+  .norm <- rxNorm(x)
+  ## The C pass first; it returns NA when it will not reproduce the R walker
+  ## exactly, and the R implementation below then runs.  Chunking calls this
+  ## same whole-model path once per chunk, so chunks go through C too.
+  .cse <- .rxOptExprC(.norm)
+  if (!is.na(.cse)) {
+    return(.cse)
+  }
+  .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
   .rxOptEnv$.list <- .rxOptEnv$.list[which(unlist(.rxOptEnv$.list) > 1L)]
   .exprs <- names(.rxOptEnv$.list)[order(nchar(names(.rxOptEnv$.list)))]

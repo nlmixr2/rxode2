@@ -59,7 +59,7 @@ for (cfg in names(mods)) {
     md <- mods[[cfg]]
     invisible(rxode2::rxSolve(md$m, md$p, ev, cores=1L, addDosing=FALSE,
                               linCmtSensType="AD"))         # warm
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtSeqStats(TRUE)
     tv <- numeric(REPS); ld <- numeric(REPS)
     for (r in seq_len(REPS)) {
       ld[r] <- loadAvg()
@@ -68,7 +68,7 @@ for (cfg in names(mods)) {
                                 linCmtSensType="AD"))
       tv[r] <- proc.time()[["elapsed"]] - t0
     }
-    st <- rxode2:::linCmtSeqStats(TRUE)
+    st <- rxode2::linCmtSeqStats(TRUE)
     nrows <- NSUB*NOBS
     res[[length(res)+1L]] <- data.frame(
       tree=TREE, cfg=cfg, regimen=rn, sec=median(tv),
