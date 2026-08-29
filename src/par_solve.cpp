@@ -2547,7 +2547,7 @@ static inline void solveWith1Pt(int *neq,
                           op, ind, i, ctx, eff);
     } else {
       /* Reactive AutoSwitch composite -- the same scheme as
-         dopSegmentAutoSwitch / denseSegmentSolve: probe with the primary
+         rxSegmentAutoSwitch / denseSegmentSolve: probe with the primary
          (dop853's built-in stiffness estimator is enabled by the
          autoSwitchPrimary flag, nstiff=50) and only fall back to the stiff
          secondary (op->stiff2) when the primary reports stiffness/failure.
@@ -5941,18 +5941,67 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
   }
 }
 
-// Solve one non-dense interval [xp, xout] with the dop853+ros4 AutoSwitch
-// composite (point-to-point, no dense output): the analogue of
-// denseSegmentSolve for the standard non-dense path.  Reactive switching --
-// dop853 (with its stiffness estimator on) is tried first, and the interval is
-// re-solved with the requested stiff secondary (op->stiff2) if dop853 reports
-// stiffness; once a problem is persistently stiff the probe is skipped
-// (autoMethod==1).  The caller has already run preSolve() and set neq[0] to the
-// ODE dimension.
-static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
-                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
-                                double xp, double xout, double *yp,
-                                int *istate, int itol, int eff, int *iRec) {
+// Solve one non-dense interval [xp, xout] with an AutoSwitch composite
+// (point-to-point, no dense output): the analogue of denseSegmentSolve for the
+// standard non-dense path.  Reactive switching -- the primary (op->stiff) is
+// tried first and the rest of the interval handed to the stiff secondary
+// (op->stiff2) if the primary reports stiffness or fails; once a problem is
+// persistently stiff the probe is skipped (autoMethod==1).  The caller has
+// already run preSolve() and set neq[0] to the ODE dimension.
+//
+// A dop853 primary is called directly so it can carry its stiffness estimator's
+// state across intervals; any other primary goes through _rxSolveOneInterval
+// and, having no such estimator, switches only when it actually fails.  That is
+// the same contract the steady-state leg (solveWith1Pt) has always had.
+// Composite segment for a primary that is not dop853: probe with the primary,
+// and on failure hand the interval to the stiff secondary from the start (only
+// dop853 reports where it stopped, so there is nothing to continue from).
+static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
+                                      rx_solving_options_ind *ind, int *neq,
+                                      double xp, double xout, double *yp,
+                                      int *istate, int eff, int *iRec) {
+  int idid = 1;
+  double xpLoc = xp;
+  if (ind->autoMethod != 0) {
+    *istate = 1;
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                        &idid, op, ind, iRec, NULL, eff);
+    rxAutoSwitchCount(op, ind, false, false);
+    return (*istate > 0 && !ind->err) ? 1 : -4;
+  }
+  double _ypStack[64];
+  double *_ypDyn = NULL;
+  double *ypSave = (eff <= 64) ? _ypStack
+                               : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
+  if (ypSave == NULL) {
+    ind->err = 1;
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    return -4;
+  }
+  memcpy(ypSave, yp, (size_t)eff * sizeof(double));
+  *istate = 1;
+  _rxSolveOneInterval(op->stiff, true, neq, yp, &xpLoc, xout, istate,
+                      &idid, op, ind, iRec, NULL, eff);
+  bool failed = (*istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
+  if (failed) {
+    ind->rc[0] = 0;
+    ind->err = 0;
+    *istate = 1;
+    idid = 1;
+    memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+    xpLoc = xp;
+    _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
+                        &idid, op, ind, iRec, NULL, eff);
+  }
+  if (_ypDyn) free(_ypDyn);
+  rxAutoSwitchCount(op, ind, true, failed);
+  return (*istate > 0 && !ind->err) ? 1 : -4;
+}
+
+static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                               double xp, double xout, double *yp,
+                               int *istate, int itol, int eff, int *iRec) {
   (void) rx;
   // Non-composite: plain dop853 (unchanged behavior).
   if (op->stiff2 <= 0) {
@@ -5961,6 +6010,8 @@ static int dopSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                   ind->HMAX, op->H0, op->mxstep, 1, -1,
                   0, NULL, 0, NULL, ind->id, NULL);
   }
+  if (op->stiff != 0) return rxSegmentAutoSwitchGeneric(op, ind, neq, xp, xout, yp,
+                                                        istate, eff, iRec);
   int idid;
   if (ind->autoMethod == 0) {
     // Probe with dop853, its stiffness estimator on and its state carried over
@@ -6097,7 +6148,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
+            idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
                                         ind->extraDoseNewXout, yp, &istate, itol, eff, &i);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -6117,7 +6168,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
-            idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
+            idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
                                         ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -6128,7 +6179,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
-          idid = dopSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
+          idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                       &istate, itol, eff, &i);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
@@ -6340,7 +6391,7 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
                   rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
                   neqOde, NULL, 0, dc, ind->id, NULL);
   }
-  // Reactive switching, mirroring dopSegmentAutoSwitch (see its comment): probe
+  // Reactive switching, mirroring rxSegmentAutoSwitch (see its comment): probe
   // with dop853 (its stiffness estimator on, its state carried over from the
   // previous segment) and hand the rest of the segment to ros4 if it reports
   // stiffness; skip the probe once persistently stiff (autoMethod==1).  No
@@ -6641,7 +6692,9 @@ extern "C" void ind_dop(rx_solve *rx, int solveid,
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  if (op->useDense)
+  // The dense segment path is dop853 + ros4; a composite with any other
+  // primary uses the non-dense record loop (rxData.cpp clears useDense for it).
+  if (op->useDense && (op->stiff2 <= 0 || op->stiff == 0))
     ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
   else
     ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
@@ -7368,6 +7421,16 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
       return;
+    } else if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
+      // AutoSwitch composite whose primary is not dop853.  Its own driver knows
+      // nothing about op->stiff2, so it would silently run as the plain
+      // primary on the main timeline while the steady-state leg switched --
+      // one solve, two behaviors.  Route it through the generic record loop,
+      // which solves each interval with the primary and falls back to the
+      // stiff secondary.  The 2xx discrete-adjoint family has its own
+      // composite scheme (rk4s.cpp) and is left to it.
+      ind_dop(rx, cid, c_dydt, u_inis);
+      return;
     } else {
       switch (op->stiff){
       case 3:
@@ -7650,7 +7713,16 @@ extern "C" void par_solve(rx_solve *rx) {
       // Pre-generate all eta draws before the parallel loop.
       // simeta() reads from the buffer instead of calling rxRmvnA() per subject.
       rxPreGenEta(rx, etaCores);
-      switch(op->stiff){
+      // See ind_solve: a composite whose primary is not dop853 runs the generic
+      // record loop, the only main-timeline driver that knows about
+      // op->stiff2.  Dispatching on -1 then skips the per-method switch (which
+      // has no default) without skipping the teardown below it.
+      int _dispatch = op->stiff;
+      if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
+        par_dop(rx);
+        _dispatch = -1;
+      }
+      switch(_dispatch){
       case 3:
         par_indLin(rx);
         break;

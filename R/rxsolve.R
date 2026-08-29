@@ -1041,14 +1041,15 @@
 #'   enables continuous interpolation so the solver can take large internal
 #'   steps and reconstruct the solution cheaply at each observation time.
 #'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
-#'   `"ros4"`.  For composite AutoSwitch methods (e.g. `"dop5+ros4"`), dense
-#'   output is enabled only when **both** the primary and stiff secondary
-#'   support dense output; `"ros4"` is the only stiff method that does, so
-#'   valid dense composites are `"dop853+ros4"`, `"dop5+ros4"`, and
-#'   `"bs+ros4"`.  A warning is issued and `dense` is set to `FALSE` when a
-#'   composite stiff secondary does not support dense output.  Silently
-#'   ignored for non-dense single methods.  Not yet supported for `linCmt()`
-#'   models (a warning is emitted and the standard path is used instead).
+#'   `"ros4"`.  `"dop853+ros4"` is the only dense AutoSwitch composite: the
+#'   secondary must be dense too (`"ros4"` is the only stiff method that is),
+#'   and handing a dense segment from the primary to the secondary mid-segment
+#'   is implemented for a `"dop853"` primary.  Other composites solve densely
+#'   only if you drop the secondary.  A warning is issued and `dense` is set to
+#'   `FALSE` when a composite stiff secondary does not support dense output.
+#'   Silently ignored for non-dense single methods.  Not yet supported for
+#'   `linCmt()` models (a warning is emitted and the standard path is used
+#'   instead).
 #'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
