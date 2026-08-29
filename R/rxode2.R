@@ -2023,6 +2023,61 @@ rxNumLoaded <- function() {
   .dlls <- getLoadedDLLs()
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
 }
+
+#' Make `rxode2.compile.O` actually take effect for `R CMD SHLIB`
+#'
+#' `R CMD SHLIB` builds `ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS)
+#' $(CFLAGS)`, so the `-O` this package writes into the generated Makevars'
+#' `PKG_CFLAGS` is followed by R's own `CFLAGS` -- and the compiler takes the
+#' last `-O` it is given.  A `CFLAGS` assignment in the package Makevars does not
+#' help either: the user Makevars is read after it.  The user Makevars is the one
+#' place whose `CFLAGS` wins, so this writes a temporary one and points
+#' `R_MAKEVARS_USER` at it for the duration of the build.
+#'
+#' The real user Makevars is inlined AFTER our line, so anyone who sets `CFLAGS`
+#' there keeps control; only R's default `-O` is displaced.  (Inlining it is what
+#' preserves their settings at all, since pointing `R_MAKEVARS_USER` elsewhere
+#' stops R from reading their file.  `R CMD config CFLAGS` already reflects it,
+#' so their flags survive in both lines and the later one -- theirs -- wins.)  Everything else in
+#' R's `CFLAGS` (hardening, `-g`, prefix maps) is carried over untouched -- only
+#' the `-O` is swapped.
+#'
+#' @return path to the temporary Makevars, or `NULL` when nothing needs changing
+#' @noRd
+.rxCompileOMakevars <- function() {
+  .o <- getOption("rxode2.compile.O", "3")
+  if (length(.o) != 1L) return(NULL)
+  .o <- as.character(.o)
+  if (is.na(.o) || .o == "") return(NULL)
+  .cflags <- tryCatch(
+    gsub("\n", "", rawToChar(sys::exec_internal(
+      file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)),
+    error = function(e) "")
+  if (.cflags == "") return(NULL)
+  # already what was asked for, so leave the environment alone
+  if (grepl(paste0("(^| )-O", .o, "( |$)"), .cflags)) return(NULL)
+  .new <- paste0(gsub("(^| )-O[0-9a-zA-Z]+", " ", .cflags), " -O", .o)
+  .user <- Sys.getenv("R_MAKEVARS_USER")
+  if (.user == "") {
+    .user <- path.expand(file.path(
+      "~", ".R",
+      if (.Platform$OS.type == "windows") "Makevars.win" else "Makevars"))
+  }
+  .lines <- paste0("CFLAGS = ", .new)
+  if (file.exists(.user)) {
+    # inlined rather than `include`d: make's include does not handle a path
+    # with spaces, which a Windows home directory routinely has
+    .lines <- c(.lines, readLines(.user, warn = FALSE))
+  }
+  .f <- tempfile("rxode2-Makevars-")
+  # binary connection with an explicit "\n": make treats a CRLF line ending as
+  # part of the value, so a text connection on Windows would hand the compiler
+  # a stray carriage return
+  .con <- file(.f, "wb")
+  on.exit(close(.con), add = TRUE)
+  writeLines(.lines, .con, sep = "\n")
+  .f
+}
 .pkg <- NULL
 #' @rdname rxCompile
 #' @export
@@ -2289,6 +2344,21 @@ rxCompile.rxModelVars <- function(model, # Model
           on.exit(Sys.setenv("BINPREF" = .oldBinpref), add = TRUE)
         }
         rxode2::rxReq("sys")
+        # `rxode2.compile.O` lands in PKG_CFLAGS, which R's own CFLAGS then
+        # overrides; this is what makes the requested -O the effective one
+        .mkO <- .rxCompileOMakevars()
+        if (!is.null(.mkO)) {
+          .oldMkO <- Sys.getenv("R_MAKEVARS_USER", unset = NA_character_)
+          Sys.setenv("R_MAKEVARS_USER" = .mkO)
+          on.exit({
+            if (is.na(.oldMkO)) {
+              Sys.unsetenv("R_MAKEVARS_USER")
+            } else {
+              Sys.setenv("R_MAKEVARS_USER" = .oldMkO)
+            }
+            unlink(.mkO)
+          }, add = TRUE)
+        }
         # swap in the load-time (clean) compiler environment for the build:
         # another package may have leaked PKG_CPPFLAGS/PKG_LIBS/USE_CXX17
         # into the session (rstan::stan_model does, with a forced C++

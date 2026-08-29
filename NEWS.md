@@ -51,6 +51,15 @@
   threshold is now optimized whole, so it gets better sharing and no
   `rx_expr_c<i>_` temporaries.
 
+- `options(rxode2.compile.O=)` now reaches the compiler.  The level was written
+  into the generated model's `PKG_CFLAGS`, and `R CMD SHLIB` puts `PKG_CFLAGS`
+  ahead of R's own `CFLAGS` in `ALL_CFLAGS`, so R's `-O2` came last and won --
+  the option had no effect and every model was built at `-O2` whatever it was
+  set to.  The level is now applied through a temporary user Makevars for the
+  duration of the build, so the documented default (`-O3`) is what models are
+  actually compiled at.  Only the `-O` is changed; R's other flags, and any
+  `CFLAGS` the user sets in their own Makevars, are left alone.
+
 - `rxNorm()` parses a model once rather than twice.  With no condition set it
   asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a
   digest of the normalized model -- so the model was normalized to build the
