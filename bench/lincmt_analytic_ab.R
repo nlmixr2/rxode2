@@ -75,13 +75,13 @@ for (dn in names(designs)) {
                                                     linCmtSensType = arm$sens,
                                                     linCmtSensPhi = arm$phi))
         run()
-        rxode2:::linCmtSeqStats(TRUE)
+        rxode2::linCmtSeqStats(TRUE)
         ts <- vapply(seq_len(REPS), function(r) {
           t0 <- proc.time()[["elapsed"]]
           run()
           proc.time()[["elapsed"]] - t0
         }, 0.0)
-        st <- rxode2:::linCmtSeqStats(TRUE)
+        st <- rxode2::linCmtSeqStats(TRUE)
         res[[length(res) + 1L]] <-
           data.frame(design = dn, ncmt = nc, nDir = k,
                      arm = sprintf("%s/phi%d", arm$sens, arm$phi),

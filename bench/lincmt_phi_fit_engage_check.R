@@ -71,7 +71,7 @@ simData <- function(simTimes) {
 
 fitStats <- function(simTimes) {
   dat <- simData(simTimes)
-  invisible(rxode2:::linCmtSeqStats(TRUE))
+  invisible(rxode2::linCmtSeqStats(TRUE))
   f <- nlmixr2est::nlmixr2(
     uiLin, dat, "focei",
     nlmixr2est::foceiControl(maxOuterIterations = 0L, print = 0L,
@@ -79,7 +79,7 @@ fitStats <- function(simTimes) {
                              rxControl = rxode2::rxControl(
                                cores = 1L, linCmtSensType = "AD",
                                linCmtSensPhi = TRUE)))
-  list(stats = rxode2:::linCmtSeqStats(TRUE), objf = f$objf)
+  list(stats = rxode2::linCmtSeqStats(TRUE), objf = f$objf)
 }
 
 ## Gaps strictly increasing: no interval ever recurs.

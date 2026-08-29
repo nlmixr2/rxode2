@@ -196,12 +196,12 @@ ctlOde <- nlmixr2est::foceiControl(
   rxControl = rxode2::rxControl(cores = 1L))
 
 fitOne <- function(ui, control) {
-  rxode2:::linCmtSeqStats(TRUE)
+  rxode2::linCmtSeqStats(TRUE)
   t0 <- proc.time()[["elapsed"]]
   fit <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(ui, dat, est = "focei", control = control)))
   sec <- proc.time()[["elapsed"]] - t0
-  st <- rxode2:::linCmtSeqStats(TRUE)
+  st <- rxode2::linCmtSeqStats(TRUE)
   list(sec = sec, objf = fit$objective, st = st,
        nIter = tryCatch(nrow(fit$parHistData), error = function(e) NA_integer_))
 }

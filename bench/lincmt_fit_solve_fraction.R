@@ -109,12 +109,12 @@ ctlOf <- function(phi) nlmixr2est::foceiControl(
   rxControl = rxode2::rxControl(cores = 1L, linCmtSensType = "AD",
                                 linCmtSensPhi = phi))
 fitOne <- function(phi) {
-  invisible(rxode2:::linCmtSeqStats(TRUE))
+  invisible(rxode2::linCmtSeqStats(TRUE))
   t0 <- proc.time()[["elapsed"]]
   fit <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(ui, dat, est = "focei", control = ctlOf(phi))))
   wall <- proc.time()[["elapsed"]] - t0
-  st <- rxode2:::linCmtSeqStats(TRUE)
+  st <- rxode2::linCmtSeqStats(TRUE)
   list(wall = wall, stats = st, objf = fit$objective,
        time = as.data.frame(fit$time),
        nIter = tryCatch(nrow(fit$parHistData), error = function(e) NA_integer_),
@@ -144,7 +144,7 @@ evSmall <- ev
 evBig   <- rxode2::et(amt = 100, cmt = "depot") |>
   rxode2::et(seq(simTimes[1], by = gap, length.out = nObs * 10L))
 timeSolve <- function(evx, phi, nRep) {
-  invisible(rxode2:::linCmtSeqStats(TRUE))
+  invisible(rxode2::linCmtSeqStats(TRUE))
   tt <- numeric(nRep)
   for (r in seq_len(nRep)) {
     t0 <- proc.time()[["elapsed"]]
@@ -153,7 +153,7 @@ timeSolve <- function(evx, phi, nRep) {
     tt[r] <- proc.time()[["elapsed"]] - t0
     stopifnot(nrow(s) > 0)
   }
-  st <- rxode2:::linCmtSeqStats(TRUE)
+  st <- rxode2::linCmtSeqStats(TRUE)
   list(sec = median(tt), rows = as.numeric(st[["valueCompute"]]) / nRep)
 }
 onePass <- function(phi, nRep = 15L) {

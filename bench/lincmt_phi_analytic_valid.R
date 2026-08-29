@@ -85,7 +85,7 @@ for (ncmt in 1:3) {
       if (dT > worstTail) { worstTail <- dT; where <- sprintf("%dcmt oral%d trans%d", ncmt, oral0, trans) }
       worstRev <- max(worstRev, dR)
       worstTailRev <- max(worstTailRev, dRT)
-      st <- rxode2:::linCmtSeqStats(TRUE)
+      st <- rxode2::linCmtSeqStats(TRUE)
     }
   }
 }
@@ -106,9 +106,9 @@ for (ncmt in 2:3) {
   sol <- function(phi) rxode2::rxSolve(m, params = .parsFor(ncmt, 1L), events = evU,
                                        returnType = "data.frame", cores = 1L,
                                        linCmtSensType = "AD", linCmtSensPhi = phi)
-  invisible(rxode2:::linCmtSeqStats(TRUE))
-  p1 <- sol(1L); s1 <- rxode2:::linCmtSeqStats(TRUE)
-  p2 <- sol(2L); s2 <- rxode2:::linCmtSeqStats(TRUE)
+  invisible(rxode2::linCmtSeqStats(TRUE))
+  p1 <- sol(1L); s1 <- rxode2::linCmtSeqStats(TRUE)
+  p2 <- sol(2L); s2 <- rxode2::linCmtSeqStats(TRUE)
   d <- .colScaled(p2, p1)
   message(sprintf("  %dcmt oral: %.3e   probeRows=%d analyticRows=%d",
                   ncmt, d, s1[["phiRows"]], s2[["phiAnalyticRows"]]))

@@ -736,11 +736,295 @@ static void linCmtPhiBuild(stan::math::linCmtStan &lc, linCmtWin &w, int dSlot,
 // ka == k10 limit, its sqrt(DBL_EPSILON) infusion test, and the R > 0.0
 // test of the two and three compartment kernels -- because those are
 // behavior, not tidiness.
+// The interval's exponentials and their tangents, indexed by PARAMETER (the
+// window's own layout).  A delta-memo hit supplies them; a miss builds them
+// with the memo's own operation order, so a row's result does not depend on
+// whether the memo happened to hold the gap.
+//
+// Filled LAZILY.  A cached matrix on a row with no rate needs none of this,
+// and that is the common case on a regular design -- computing it eagerly
+// would put three exponentials back on every row the cache exists to spare.
+typedef struct {
+  double E[3], dE[RX_LINWIN_MAXP][3], expa, dexpa[RX_LINWIN_MAXP];
+  int have;
+} linCmtRowExp;
+
+static void linCmtRowExpFill(linCmtRowExp &e, const linCmtWin &w, int ncmt,
+                             int oral0, int nL, int dSlot, const int *jIdx,
+                             int nreq, double dt) {
+  e.have = 1;
+  const int cached = (dSlot >= 0);
+  for (int i = 0; i < nL; i++) {
+    if (cached) {
+      e.E[i] = w.expL[dSlot][i];
+      for (int s = 0; s < nreq; s++) e.dE[jIdx[s]][i] = w.dExpL[dSlot][jIdx[s]][i];
+    } else {
+      double Lv = (ncmt == 1) ? w.k10 : w.L[i];
+      e.E[i] = exp((-Lv)*dt);
+      for (int s = 0; s < nreq; s++) {
+        int j_ = jIdx[s];
+        double dLv = (ncmt == 1) ? w.dk10[j_] : w.dL[j_][i];
+        e.dE[j_][i] = ((-dLv)*dt)*e.E[i];
+      }
+    }
+  }
+  if (oral0) {
+    if (cached) {
+      e.expa = w.expKa[dSlot];
+      for (int s = 0; s < nreq; s++) e.dexpa[jIdx[s]] = w.dExpKa[dSlot][jIdx[s]];
+    } else {
+      e.expa = exp((-w.ka)*dt);
+      for (int s = 0; s < nreq; s++) e.dexpa[jIdx[s]] = ((-w.dka[jIdx[s]])*dt)*e.expa;
+    }
+  }
+}
+
+#define RX_LINCMT_GET_E()                                               \
+  if (!e.have)                                                          \
+    linCmtRowExpFill(e, w, ncmt, oral0, nL, dSlot, jIdx, nreq, dt)
+
+// One compartment: k10 is the only eigenvalue and C is 1, so the disposition
+// block is a scalar.  Oral adds the depot column, which is where the kernel's
+// degenerate ka == k10 limit lives -- reproduced, not tidied, because it is
+// behavior.
+static void linCmtPhiAssemble1(const linCmtWin &w, const linCmtRowExp &e,
+                               int oral0, const int *jIdx, int nreq, double dt,
+                               double (*phi)[RX_LINWIN_MAXM],
+                               double (*dphi)[RX_LINWIN_MAXM][RX_LINWIN_MAXM]) {
+  const double *E = e.E;
+  const double (*dE)[3] = e.dE;
+  const double expa = e.expa;
+  const double *dexpa = e.dexpa;
+  phi[oral0][oral0] = E[0];
+  for (int s = 0; s < nreq; s++) dphi[jIdx[s]][oral0][oral0] = dE[jIdx[s]][0];
+  if (oral0) {
+    phi[0][0] = expa;
+    for (int s = 0; s < nreq; s++) dphi[jIdx[s]][0][0] = dexpa[jIdx[s]];
+    const double ka10 = w.ka - w.k10;
+    if (fabs(ka10) <= sqrt(DBL_EPSILON)) {
+      // the ka == k10 limit: ret[1] += (yp[0]*k10 - rate[0]) * dt * E
+      phi[1][0] = w.k10*dt*E[0];
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        dphi[j][1][0] = (w.dk10[j]*dt)*E[0] + (w.k10*dt)*dE[j][0];
+      }
+    } else {
+      const double T = (E[0] - expa)/ka10;
+      phi[1][0] = w.ka*T;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        const double dT = ((dE[j][0] - dexpa[j]) - T*(w.dka[j] - w.dk10[j]))/ka10;
+        dphi[j][1][0] = w.dka[j]*T + w.ka*dT;
+      }
+    }
+  }
+}
+
+// Two and three compartments: Phi's disposition block is the spectral sum
+// sum_i C_c[r][i] E_i, and the depot column ka * sum_i C_1[r][i] Ea_i with
+// Ea_i = (E_i - expa)/(ka - L_i).
+static void linCmtPhiAssembleN(const linCmtWin &w, const linCmtRowExp &e,
+                               int ncmt, int oral0, const int *jIdx, int nreq,
+                               double dt, double (*phi)[RX_LINWIN_MAXM],
+                               double (*dphi)[RX_LINWIN_MAXM][RX_LINWIN_MAXM]) {
+  const int n = ncmt;
+  const double *E = e.E;
+  const double (*dE)[3] = e.dE;
+  const double expa = e.expa;
+  const double *dexpa = e.dexpa;
+  for (int r = 0; r < n; r++) {
+    for (int c = 0; c < n; c++) {
+      double v = 0.0;
+      for (int i = 0; i < n; i++) v += w.C[c][r][i]*E[i];
+      phi[oral0 + r][oral0 + c] = v;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        double dv = 0.0;
+        for (int i = 0; i < n; i++) {
+          dv += w.dC[j][c][r][i]*E[i] + w.C[c][r][i]*dE[j][i];
+        }
+        dphi[j][oral0 + r][oral0 + c] = dv;
+      }
+    }
+  }
+  if (oral0) {
+    double Ea[3], dEa[RX_LINWIN_MAXP][3];
+    for (int i = 0; i < n; i++) {
+      const double den = w.ka - w.L[i];
+      Ea[i] = (E[i] - expa)/den;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        dEa[j][i] = ((dE[j][i] - dexpa[j]) - Ea[i]*(w.dka[j] - w.dL[j][i]))/den;
+      }
+    }
+    for (int r = 0; r < n; r++) {
+      double P = 0.0;
+      for (int i = 0; i < n; i++) P += w.C[0][r][i]*Ea[i];
+      phi[oral0 + r][0] = w.ka*P;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        double dP = 0.0;
+        for (int i = 0; i < n; i++) {
+          dP += w.dC[j][0][r][i]*Ea[i] + w.C[0][r][i]*dEa[j][i];
+        }
+        dphi[j][oral0 + r][0] = w.dka[j]*P + w.ka*dP;
+      }
+    }
+    phi[0][0] = expa;
+    for (int s = 0; s < nreq; s++) dphi[jIdx[s]][0][0] = dexpa[jIdx[s]];
+  }
+}
+
+// Phi(delta) and its tangent in each requested direction, from the window's
+// eigenvalues and spectral matrices.  Column oral0+c is the response to a
+// unit of disposition compartment c, column 0 (oral only) the response to a
+// unit in the depot.
+static void linCmtPhiAssemble(const linCmtWin &w, linCmtRowExp &e, int ncmt,
+                              int oral0, int m, int nL, int dSlot,
+                              const int *jIdx, int nreq, double dt,
+                              double (*phi)[RX_LINWIN_MAXM],
+                              double (*dphi)[RX_LINWIN_MAXM][RX_LINWIN_MAXM]) {
+  RX_LINCMT_GET_E();
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < m; c++) {
+      phi[r][c] = 0.0;
+      for (int s = 0; s < nreq; s++) dphi[jIdx[s]][r][c] = 0.0;
+    }
+  }
+  if (ncmt == 1) linCmtPhiAssemble1(w, e, oral0, jIdx, nreq, dt, phi, dphi);
+  else linCmtPhiAssembleN(w, e, ncmt, oral0, jIdx, nreq, dt, phi, dphi);
+}
+
+// One compartment: the infusion's approach to steady state is
+// R*(1 - E)/k10, and the depot transfer carries the same degenerate
+// ka == k10 limit the transition matrix does.
+static void linCmtPhiAffine1(const linCmtWin &w, const linCmtRowExp &e,
+                             int oral0, const int *jIdx, int nreq, double dt,
+                             double rDepot, double R, double *bv,
+                             double (*dbv)[RX_LINWIN_MAXM]) {
+  const double *E = e.E;
+  const double (*dE)[3] = e.dE;
+  const double expa = e.expa;
+  const double *dexpa = e.dexpa;
+  if (rDepot != 0.0) {
+    const double ka10 = w.ka - w.k10;
+    if (fabs(ka10) <= sqrt(DBL_EPSILON)) {
+      bv[1] += -rDepot*dt*E[0];
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        dbv[j][1] += -rDepot*dt*dE[j][0];
+      }
+    } else {
+      const double T = (E[0] - expa)/ka10;
+      bv[1] += -rDepot*T;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        const double dT = ((dE[j][0] - dexpa[j]) - T*(w.dka[j] - w.dk10[j]))/ka10;
+        dbv[j][1] += -rDepot*dT;
+      }
+    }
+  }
+  if (fabs(R) > sqrt(DBL_EPSILON)) {
+    const double k2 = w.k10*w.k10;
+    bv[oral0] += R*((1.0 - E[0])/w.k10);
+    for (int s = 0; s < nreq; s++) {
+      const int j = jIdx[s];
+      dbv[j][oral0] += R*(((-dE[j][0])*w.k10 - (1.0 - E[0])*w.dk10[j])/k2);
+    }
+  }
+}
+
+// Two and three compartments: the same two terms summed over the spectral
+// decomposition, with Rm_i = (1 - E_i)/L_i in place of the scalar form.
+static void linCmtPhiAffineN(const linCmtWin &w, const linCmtRowExp &e,
+                             int ncmt, int oral0, const int *jIdx, int nreq,
+                             double dt, double rDepot, double R, double *bv,
+                             double (*dbv)[RX_LINWIN_MAXM]) {
+  const int n = ncmt;
+  const double *E = e.E;
+  const double (*dE)[3] = e.dE;
+  const double expa = e.expa;
+  const double *dexpa = e.dexpa;
+  if (rDepot != 0.0) {
+    double Ea[3], dEa[RX_LINWIN_MAXP][3];
+    for (int i = 0; i < n; i++) {
+      const double den = w.ka - w.L[i];
+      Ea[i] = (E[i] - expa)/den;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        dEa[j][i] = ((dE[j][i] - dexpa[j]) - Ea[i]*(w.dka[j] - w.dL[j][i]))/den;
+      }
+    }
+    for (int r = 0; r < n; r++) {
+      double P = 0.0;
+      for (int i = 0; i < n; i++) P += w.C[0][r][i]*Ea[i];
+      bv[oral0 + r] += -rDepot*P;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        double dP = 0.0;
+        for (int i = 0; i < n; i++) {
+          dP += w.dC[j][0][r][i]*Ea[i] + w.C[0][r][i]*dEa[j][i];
+        }
+        dbv[j][oral0 + r] += -rDepot*dP;
+      }
+    }
+  }
+  if (R > 0.0) {
+    double Rm[3], dRm[RX_LINWIN_MAXP][3];
+    for (int i = 0; i < n; i++) {
+      const double L2 = w.L[i]*w.L[i];
+      Rm[i] = (1.0 - E[i])/w.L[i];
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        dRm[j][i] = ((-dE[j][i])*w.L[i] - (1.0 - E[i])*w.dL[j][i])/L2;
+      }
+    }
+    for (int r = 0; r < n; r++) {
+      double v = 0.0;
+      for (int i = 0; i < n; i++) v += w.C[0][r][i]*Rm[i];
+      bv[oral0 + r] += R*v;
+      for (int s = 0; s < nreq; s++) {
+        const int j = jIdx[s];
+        double dv = 0.0;
+        for (int i = 0; i < n; i++) {
+          dv += w.dC[j][0][r][i]*Rm[i] + w.C[0][r][i]*dRm[j][i];
+        }
+        dbv[j][oral0 + r] += R*dv;
+      }
+    }
+  }
+}
+
+static void linCmtPhiAffine(const linCmtWin &w, linCmtRowExp &e, int ncmt,
+                            int oral0, int m, int nL, int dSlot,
+                            const int *jIdx, int nreq, double dt,
+                            const double *rate, double rDepot, double R,
+                            double *bv, double (*dbv)[RX_LINWIN_MAXM]) {
+  RX_LINCMT_GET_E();
+  const double expa = e.expa;
+  const double *dexpa = e.dexpa;
+  for (int r = 0; r < m; r++) {
+    bv[r] = 0.0;
+    for (int s = 0; s < nreq; s++) dbv[jIdx[s]][r] = 0.0;
+  }
+  if (rDepot != 0.0) {
+    const double ka2 = w.ka*w.ka;
+    bv[0] += rDepot*(1.0 - expa)/w.ka;
+    for (int s = 0; s < nreq; s++) {
+      const int j = jIdx[s];
+      dbv[j][0] += rDepot*((-dexpa[j])*w.ka - (1.0 - expa)*w.dka[j])/ka2;
+    }
+  }
+  if (ncmt == 1) linCmtPhiAffine1(w, e, oral0, jIdx, nreq, dt, rDepot, R, bv, dbv);
+  else linCmtPhiAffineN(w, e, ncmt, oral0, jIdx, nreq, dt, rDepot, R, bv, dbv);
+}
+
+#undef RX_LINCMT_GET_E
+
 static bool linCmtPhiAnalyticRow(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
                                  int npars, int nd, int dSlot, int m,
                                  const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J,
                                  const double *ypv, double dt, const double *rate) {
-  const int n = ncmt;
   const int nL = (ncmt == 1) ? 1 : ncmt;
   int jIdx[RX_LINWIN_MAXP];
   int nreq = 0;
@@ -762,221 +1046,24 @@ static bool linCmtPhiAnalyticRow(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
   const bool cached = (dSlot >= 0);
   double (*phi)[RX_LINWIN_MAXM] = cached ? w.phi[dSlot] : phiLoc;
   double (*dphi)[RX_LINWIN_MAXM][RX_LINWIN_MAXM] = cached ? w.dPhi[dSlot] : dphiLoc;
-
-  // Interval exponentials and their tangents, indexed by PARAMETER (the
-  // window's own layout).  A delta-memo hit supplies them; a miss builds
-  // them here with the memo's operation order, so this path does not depend
-  // on the memo the way the probe-built matrix does.
-  double E[3], dE[RX_LINWIN_MAXP][3], expa = 0.0, dexpa[RX_LINWIN_MAXP];
-  bool haveE = false;
-#define RX_LINCMT_GET_E()                                               \
-  if (!haveE) {                                                         \
-    haveE = true;                                                       \
-    if (cached) {                                                       \
-      for (int i = 0; i < nL; i++) {                                    \
-        E[i] = w.expL[dSlot][i];                                        \
-        for (int s = 0; s < nreq; s++) dE[jIdx[s]][i] = w.dExpL[dSlot][jIdx[s]][i]; \
-      }                                                                 \
-      if (oral0) {                                                      \
-        expa = w.expKa[dSlot];                                          \
-        for (int s = 0; s < nreq; s++) dexpa[jIdx[s]] = w.dExpKa[dSlot][jIdx[s]]; \
-      }                                                                 \
-    } else {                                                            \
-      for (int i = 0; i < nL; i++) {                                    \
-        double Lv = (ncmt == 1) ? w.k10 : w.L[i];                       \
-        E[i] = exp((-Lv)*dt);                                           \
-        for (int s = 0; s < nreq; s++) {                                \
-          int j_ = jIdx[s];                                             \
-          double dLv = (ncmt == 1) ? w.dk10[j_] : w.dL[j_][i];          \
-          dE[j_][i] = ((-dLv)*dt)*E[i];                                 \
-        }                                                               \
-      }                                                                 \
-      if (oral0) {                                                      \
-        expa = exp((-w.ka)*dt);                                         \
-        for (int s = 0; s < nreq; s++) dexpa[jIdx[s]] = ((-w.dka[jIdx[s]])*dt)*expa; \
-      }                                                                 \
-    }                                                                   \
-  }
+  linCmtRowExp e;
+  e.have = 0;
+  e.expa = 0.0;
 
   if (!cached || !w.phiABuilt[dSlot]) {
-    RX_LINCMT_GET_E();
-    for (int r = 0; r < m; r++) {
-      for (int c = 0; c < m; c++) {
-        phi[r][c] = 0.0;
-        for (int s = 0; s < nreq; s++) dphi[jIdx[s]][r][c] = 0.0;
-      }
-    }
-    if (ncmt == 1) {
-      phi[oral0][oral0] = E[0];
-      for (int s = 0; s < nreq; s++) dphi[jIdx[s]][oral0][oral0] = dE[jIdx[s]][0];
-      if (oral0) {
-        phi[0][0] = expa;
-        for (int s = 0; s < nreq; s++) dphi[jIdx[s]][0][0] = dexpa[jIdx[s]];
-        const double ka10 = w.ka - w.k10;
-        if (fabs(ka10) <= sqrt(DBL_EPSILON)) {
-          // the ka == k10 limit: ret[1] += (yp[0]*k10 - rate[0]) * dt * E
-          phi[1][0] = w.k10*dt*E[0];
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            dphi[j][1][0] = (w.dk10[j]*dt)*E[0] + (w.k10*dt)*dE[j][0];
-          }
-        } else {
-          const double T = (E[0] - expa)/ka10;
-          phi[1][0] = w.ka*T;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            const double dT = ((dE[j][0] - dexpa[j]) - T*(w.dka[j] - w.dk10[j]))/ka10;
-            dphi[j][1][0] = w.dka[j]*T + w.ka*dT;
-          }
-        }
-      }
-    } else {
-      for (int r = 0; r < n; r++) {
-        for (int c = 0; c < n; c++) {
-          double v = 0.0;
-          for (int i = 0; i < n; i++) v += w.C[c][r][i]*E[i];
-          phi[oral0 + r][oral0 + c] = v;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            double dv = 0.0;
-            for (int i = 0; i < n; i++) {
-              dv += w.dC[j][c][r][i]*E[i] + w.C[c][r][i]*dE[j][i];
-            }
-            dphi[j][oral0 + r][oral0 + c] = dv;
-          }
-        }
-      }
-      if (oral0) {
-        double Ea[3], dEa[RX_LINWIN_MAXP][3];
-        for (int i = 0; i < n; i++) {
-          const double den = w.ka - w.L[i];
-          Ea[i] = (E[i] - expa)/den;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            dEa[j][i] = ((dE[j][i] - dexpa[j]) - Ea[i]*(w.dka[j] - w.dL[j][i]))/den;
-          }
-        }
-        for (int r = 0; r < n; r++) {
-          double P = 0.0;
-          for (int i = 0; i < n; i++) P += w.C[0][r][i]*Ea[i];
-          phi[oral0 + r][0] = w.ka*P;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            double dP = 0.0;
-            for (int i = 0; i < n; i++) {
-              dP += w.dC[j][0][r][i]*Ea[i] + w.C[0][r][i]*dEa[j][i];
-            }
-            dphi[j][oral0 + r][0] = w.dka[j]*P + w.ka*dP;
-          }
-        }
-        phi[0][0] = expa;
-        for (int s = 0; s < nreq; s++) dphi[jIdx[s]][0][0] = dexpa[jIdx[s]];
-      }
-    }
+    linCmtPhiAssemble(w, e, ncmt, oral0, m, nL, dSlot, jIdx, nreq, dt,
+                      phi, dphi);
     if (cached) w.phiABuilt[dSlot] = 1;
   }
 
-  // The affine part: depot and infusion.  Rates come from the event table,
-  // not from theta, so this depends on the ROW and is built per row -- but
-  // only on rows that carry a rate at all.
   double bv[RX_LINWIN_MAXM], dbv[RX_LINWIN_MAXP][RX_LINWIN_MAXM];
   const double rDepot = oral0 ? rate[0] : 0.0;
   const double R = rate[oral0] + rDepot;
   const bool affine = (rDepot != 0.0) ||
     (ncmt == 1 ? (fabs(R) > sqrt(DBL_EPSILON)) : (R > 0.0));
-  if (affine) {
-    RX_LINCMT_GET_E();
-    for (int r = 0; r < m; r++) {
-      bv[r] = 0.0;
-      for (int s = 0; s < nreq; s++) dbv[jIdx[s]][r] = 0.0;
-    }
-    if (rDepot != 0.0) {
-      const double ka2 = w.ka*w.ka;
-      bv[0] += rDepot*(1.0 - expa)/w.ka;
-      for (int s = 0; s < nreq; s++) {
-        const int j = jIdx[s];
-        dbv[j][0] += rDepot*((-dexpa[j])*w.ka - (1.0 - expa)*w.dka[j])/ka2;
-      }
-    }
-    if (ncmt == 1) {
-      if (rDepot != 0.0) {
-        const double ka10 = w.ka - w.k10;
-        if (fabs(ka10) <= sqrt(DBL_EPSILON)) {
-          bv[1] += -rDepot*dt*E[0];
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            dbv[j][1] += -rDepot*dt*dE[j][0];
-          }
-        } else {
-          const double T = (E[0] - expa)/ka10;
-          bv[1] += -rDepot*T;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            const double dT = ((dE[j][0] - dexpa[j]) - T*(w.dka[j] - w.dk10[j]))/ka10;
-            dbv[j][1] += -rDepot*dT;
-          }
-        }
-      }
-      if (fabs(R) > sqrt(DBL_EPSILON)) {
-        const double k2 = w.k10*w.k10;
-        bv[oral0] += R*((1.0 - E[0])/w.k10);
-        for (int s = 0; s < nreq; s++) {
-          const int j = jIdx[s];
-          dbv[j][oral0] += R*(((-dE[j][0])*w.k10 - (1.0 - E[0])*w.dk10[j])/k2);
-        }
-      }
-    } else {
-      if (rDepot != 0.0) {
-        double Ea[3], dEa[RX_LINWIN_MAXP][3];
-        for (int i = 0; i < n; i++) {
-          const double den = w.ka - w.L[i];
-          Ea[i] = (E[i] - expa)/den;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            dEa[j][i] = ((dE[j][i] - dexpa[j]) - Ea[i]*(w.dka[j] - w.dL[j][i]))/den;
-          }
-        }
-        for (int r = 0; r < n; r++) {
-          double P = 0.0;
-          for (int i = 0; i < n; i++) P += w.C[0][r][i]*Ea[i];
-          bv[oral0 + r] += -rDepot*P;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            double dP = 0.0;
-            for (int i = 0; i < n; i++) {
-              dP += w.dC[j][0][r][i]*Ea[i] + w.C[0][r][i]*dEa[j][i];
-            }
-            dbv[j][oral0 + r] += -rDepot*dP;
-          }
-        }
-      }
-      if (R > 0.0) {
-        double Rm[3], dRm[RX_LINWIN_MAXP][3];
-        for (int i = 0; i < n; i++) {
-          const double L2 = w.L[i]*w.L[i];
-          Rm[i] = (1.0 - E[i])/w.L[i];
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            dRm[j][i] = ((-dE[j][i])*w.L[i] - (1.0 - E[i])*w.dL[j][i])/L2;
-          }
-        }
-        for (int r = 0; r < n; r++) {
-          double v = 0.0;
-          for (int i = 0; i < n; i++) v += w.C[0][r][i]*Rm[i];
-          bv[oral0 + r] += R*v;
-          for (int s = 0; s < nreq; s++) {
-            const int j = jIdx[s];
-            double dv = 0.0;
-            for (int i = 0; i < n; i++) {
-              dv += w.dC[j][0][r][i]*Rm[i] + w.C[0][r][i]*dRm[j][i];
-            }
-            dbv[j][oral0 + r] += R*dv;
-          }
-        }
-      }
-    }
-  }
-#undef RX_LINCMT_GET_E
+  if (affine)
+    linCmtPhiAffine(w, e, ncmt, oral0, m, nL, dSlot, jIdx, nreq, dt, rate,
+                    rDepot, R, bv, dbv);
 
   for (int r = 0; r < m; r++) {
     double v = affine ? bv[r] : 0.0;
@@ -1004,18 +1091,16 @@ static bool linCmtPhiAnalyticRow(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
 // order, and the kernel is the identical template, so slot si here computes
 // exactly what the fvar pass for that direction computes: results are
 // bitwise identical, not merely equal to round-off.
+// The window's eigen-decomposition, seeded into the dual spectral structures:
+// the VALUES once for the row, then one TANGENT per requested direction into
+// that direction's slot.  Only the eigen-decomposition is laid out per
+// compartment count, so keeping the ncmt branch here leaves the caller
+// reading as the sequence it is -- seed, evaluate, unpack.
 template <int N>
-static bool linCmtSeqTailDualN(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
-                               int npars, int nd, int dSlot, int m,
-                               const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J,
-                               const double *ypv) {
+static void linCmtDualSpectralValue(const linCmtWin &w, int ncmt,
+                                    stan::math::solComp2struct<stan::math::dualN<N> > &s2,
+                                    stan::math::solComp3struct<stan::math::dualN<N> > &s3) {
   typedef stan::math::dualN<N> dv;
-  stan::math::linCmtStan &lc = lcb.lc;
-  int nL = (ncmt == 1) ? 1 : ncmt;
-  dv kaV(w.ka), k10(w.k10);
-  stan::math::solComp2struct<dv> s2;
-  stan::math::solComp3struct<dv> s3;
-  // Window constants: values once, tangents per requested slot below.
   if (ncmt == 2) {
     for (int i = 0; i < 2; i++) {
       s2.L(i, 0) = dv(w.L[i]);
@@ -1034,6 +1119,45 @@ static bool linCmtSeqTailDualN(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
       }
     }
   }
+}
+
+template <int N>
+static void linCmtDualSpectralTangent(const linCmtWin &w, int ncmt, int j, int si,
+                                      stan::math::solComp2struct<stan::math::dualN<N> > &s2,
+                                      stan::math::solComp3struct<stan::math::dualN<N> > &s3) {
+  if (ncmt == 2) {
+    for (int i = 0; i < 2; i++) {
+      s2.L(i, 0).d_[si] = w.dL[j][i];
+      for (int r = 0; r < 2; r++) {
+        s2.C1(r, i).d_[si] = w.dC[j][0][r][i];
+        s2.C2(r, i).d_[si] = w.dC[j][1][r][i];
+      }
+    }
+  } else if (ncmt == 3) {
+    for (int i = 0; i < 3; i++) {
+      s3.L(i, 0).d_[si] = w.dL[j][i];
+      for (int r = 0; r < 3; r++) {
+        s3.C1(r, i).d_[si] = w.dC[j][0][r][i];
+        s3.C2(r, i).d_[si] = w.dC[j][1][r][i];
+        s3.C3(r, i).d_[si] = w.dC[j][2][r][i];
+      }
+    }
+  }
+}
+
+template <int N>
+static bool linCmtSeqTailDualN(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
+                               int npars, int nd, int dSlot, int m,
+                               const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &J,
+                               const double *ypv) {
+  typedef stan::math::dualN<N> dv;
+  stan::math::linCmtStan &lc = lcb.lc;
+  int nL = (ncmt == 1) ? 1 : ncmt;
+  dv kaV(w.ka), k10(w.k10);
+  stan::math::solComp2struct<dv> s2;
+  stan::math::solComp3struct<dv> s3;
+  // Window constants: values once, tangents per requested slot below.
+  linCmtDualSpectralValue<N>(w, ncmt, s2, s3);
   dv preEv[RX_LINWIN_MAXM];
   const dv *preE = NULL;
   if (dSlot >= 0) {
@@ -1052,24 +1176,7 @@ static bool linCmtSeqTailDualN(linB_t &lcb, linCmtWin &w, int ncmt, int oral0,
     if (si >= N) return false;
     kaV.d_[si] = w.dka[j];
     k10.d_[si] = w.dk10[j];
-    if (ncmt == 2) {
-      for (int i = 0; i < 2; i++) {
-        s2.L(i, 0).d_[si] = w.dL[j][i];
-        for (int r = 0; r < 2; r++) {
-          s2.C1(r, i).d_[si] = w.dC[j][0][r][i];
-          s2.C2(r, i).d_[si] = w.dC[j][1][r][i];
-        }
-      }
-    } else if (ncmt == 3) {
-      for (int i = 0; i < 3; i++) {
-        s3.L(i, 0).d_[si] = w.dL[j][i];
-        for (int r = 0; r < 3; r++) {
-          s3.C1(r, i).d_[si] = w.dC[j][0][r][i];
-          s3.C2(r, i).d_[si] = w.dC[j][1][r][i];
-          s3.C3(r, i).d_[si] = w.dC[j][2][r][i];
-        }
-      }
-    }
+    linCmtDualSpectralTangent<N>(w, ncmt, j, si, s2, s3);
     if (dSlot >= 0) {
       for (int i = 0; i < nL; i++) preEv[i].d_[si] = w.dExpL[dSlot][j][i];
       if (oral0) preEv[nL].d_[si] = w.dExpKa[dSlot][j];

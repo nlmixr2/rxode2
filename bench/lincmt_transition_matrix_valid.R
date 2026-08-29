@@ -66,10 +66,10 @@ for (cs in cases) {
   mod <- gradModel(cs$ncmt, cs$oral0, cs$trans, cs$dirs)
   for (rn in names(regimens)) {
     ev <- regimens[[rn]]()
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtSeqStats(TRUE)
     s <- rxode2::rxSolve(mod, cs$p, ev, cores = 1L, addDosing = FALSE,
                          linCmtSensType = "AD")
-    st <- rxode2:::linCmtSeqStats(TRUE)
+    st <- rxode2::linCmtSeqStats(TRUE)
     cols <- c("cp", paste0("d", cs$dirs))
     out[[paste(cs$nm, rn)]] <- list(
       case = cs$nm, regimen = rn,

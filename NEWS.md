@@ -58,12 +58,17 @@
   where `"AD"` repeats the whole evaluation once per direction with one
   tangent each.  The solution itself -- each exponential, each division of
   the depot transfer, the eigen-decomposition -- is therefore evaluated
-  once per row rather than once per direction.  Results are bitwise
-  identical to `"AD"`: the multi-direction scalar reproduces the operation
-  order of every forward-mode rule it replaces, and carries the same Eigen
-  cost traits so the small matrix products unroll the same way (validated
-  over 1/2/3 compartments x IV/oral x every `trans` x every steady-state
-  form x infusion x every requested-direction mask).  Unlike the amortized
+  once per row rather than once per direction.  Results match `"AD"`: the
+  multi-direction scalar reproduces the operation order of every
+  forward-mode rule it replaces, and carries the same Eigen cost traits so
+  the small matrix products unroll the same way (validated over 1/2/3
+  compartments x IV/oral x every `trans` x every steady-state form x
+  infusion x every requested-direction mask).  On the amortized row path
+  that is bitwise on every platform tested.  The two are different template
+  instantiations, though, so a compiler may contract a multiply-add into an
+  FMA in one and not the other; through the full evaluator that is what
+  clang on arm64 does, and there the two agree to round-off rather than to
+  the bit.  Unlike the amortized
   ordinary-row path this also shares the work on steady-state rows, which
   have no constants/tail factorization and so were paying a full evaluation
   per direction.  `linCmtSeqStats()` reports the rows served as `dualRows`.

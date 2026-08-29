@@ -63,17 +63,17 @@ mkDat <- function(tim) {
 dat <- lapply(schedules, mkDat)
 
 fitOnce <- function(d, phi, memo) {
-  rxode2:::linCmtDeltaMemo(if (memo) -1L else 0L)
-  on.exit(rxode2:::linCmtDeltaMemo(-1L))
+  rxode2::linCmtDeltaMemo(if (memo) -1L else 0L)
+  on.exit(rxode2::linCmtDeltaMemo(-1L))
   ctl <- nlmixr2est::foceiControl(
     print = 0, calcTables = FALSE, covMethod = "",
     maxOuterIterations = MAXIT,
     rxControl = rxode2::rxControl(linCmtSensType = "AD", cores = 1L,
                                   linCmtSensPhi = phi))
-  rxode2:::linCmtSeqStats(TRUE)
+  rxode2::linCmtSeqStats(TRUE)
   f <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(mod(), d, est = "focei", control = ctl)))
-  st <- rxode2:::linCmtSeqStats(TRUE)
+  st <- rxode2::linCmtSeqStats(TRUE)
   list(t = as.numeric(f$time$optimize), objf = f$objf,
        nEval = f$env$optReturn$feval, st = st)
 }

@@ -51,8 +51,8 @@ ctl <- nlmixr2est::foceiControl(print = 0, calcTables = FALSE,
                                   linCmtSensType = "AD", cores = 1L))
 
 fitOnce <- function(memo) {
-  rxode2:::linCmtDeltaMemo(if (memo) 1L else 0L)
-  on.exit(rxode2:::linCmtDeltaMemo(-1L))
+  rxode2::linCmtDeltaMemo(if (memo) 1L else 0L)
+  on.exit(rxode2::linCmtDeltaMemo(-1L))
   t0 <- proc.time()[["elapsed"]]
   f <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(mod(), dat, est = "focei", control = ctl)))

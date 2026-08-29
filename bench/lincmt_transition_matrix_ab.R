@@ -58,14 +58,14 @@ if (WHAT == "solve") {
     nObs <- cl$nSub*1000L
     invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
                               linCmtSensType = "AD"))
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtSeqStats(TRUE)
     ts <- vapply(seq_len(REPS), function(r) {
       t0 <- proc.time()[["elapsed"]]
       invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
                                 linCmtSensType = "AD"))
       proc.time()[["elapsed"]] - t0
     }, 0.0)
-    st <- rxode2:::linCmtSeqStats(TRUE)
+    st <- rxode2::linCmtSeqStats(TRUE)
     data.frame(cell = cl$nm, phi = MODE, sec = median(ts),
                usPerObs = 1e6*median(ts)/nObs,
                phiRows = unname(st[["phiRows"]]),

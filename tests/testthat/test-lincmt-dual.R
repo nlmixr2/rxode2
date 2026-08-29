@@ -67,7 +67,7 @@ rxTest({
     rxSolve(m, params = .parsFor(ncmt, oral0), events = ev,
             returnType = "data.frame", linCmtSensPhi = phi, ...)
   }
-  .stats <- function() rxode2:::linCmtSeqStats(TRUE)
+  .stats <- function() rxode2::linCmtSeqStats(TRUE)
 
   test_that("ADm is bitwise identical to AD on every config and direction count", {
     for (cfg in list(c(1L, 0L), c(1L, 1L), c(2L, 0L), c(2L, 1L), c(3L, 0L), c(3L, 1L))) {
@@ -142,9 +142,32 @@ rxTest({
     expect_true(.sameBits(s1, s2))
   })
 
-  test_that("linCmtModelDouble serves ADm and matches AD bit for bit", {
+  # The FULL evaluator, not the row tail: this entry point runs
+  # macros2micros and getJacCp as well, and it is the one place the two
+  # scalars are not held to the bit.
+  #
+  # dualN reproduces every fvar rule's operation order, so the two compute
+  # the same expression in the same association -- but they are different
+  # template instantiations, and a compiler is free to contract a*b+c into
+  # an FMA in one and not the other.  That is what happens here: the tail
+  # comparisons above are bitwise on every platform tested, while this one
+  # is bitwise under gcc on x86-64 and differs in the last places under
+  # clang on arm64.  Neither is more correct and nothing in the code can
+  # settle it, so the assertion is what the design actually guarantees --
+  # the same value to round-off -- and the observed distance is reported
+  # rather than hidden behind a TRUE/FALSE, so a real divergence still
+  # fails loudly and legibly.
+  .relMax <- function(x, y) {
+    x <- as.numeric(x); y <- as.numeric(y)
+    if (!identical(length(x), length(y))) return(Inf)
+    d <- abs(x - y)
+    sc <- pmax(abs(x), abs(y))
+    max(ifelse(sc > 0, d / sc, d))
+  }
+  test_that("linCmtModelDouble serves ADm and agrees with AD to round-off", {
     for (cfg in list(c(1L, 1L), c(2L, 1L), c(3L, 1L))) {
-      ncmt <- cfg[1]; oral0 <- cfg[2]
+      ncmt <- cfg[1]
+      oral0 <- cfg[2]
       nstate <- ncmt + oral0
       npars <- 2L * ncmt + oral0
       nAlast <- nstate + ncmt * npars + oral0
@@ -156,10 +179,12 @@ rxTest({
               ncmt, oral0, 1L, TRUE, 0L, 0, 0, 0, 0L, 0L,
               as.integer(sensType), 0.001)
       }
-      a <- call1(3L); b <- call1(32L)
-      expect_true(identical(as.numeric(a$val), as.numeric(b$val)))
-      expect_true(identical(as.numeric(a$J), as.numeric(b$J)))
-      expect_true(identical(as.numeric(a$Jg), as.numeric(b$Jg)))
+      a <- call1(3L)
+      b <- call1(32L)
+      # the value is one shared primal and does hold to the bit
+      expect_identical(as.numeric(a$val), as.numeric(b$val))
+      expect_lt(.relMax(a$J, b$J), 1e-12)
+      expect_lt(.relMax(a$Jg, b$Jg), 1e-12)
     }
   })
 })
