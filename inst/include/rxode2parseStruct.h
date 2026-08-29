@@ -438,6 +438,7 @@ struct rx_solving_options_ind_s {
   long int autoStiffIasti;  /* consecutive stiff verdicts */
   long int autoStiffNonsti; /* clean verdicts since the last stiff one */
   long int autoStiffNaccpt; /* accepted steps across the subject's intervals */
+  int      autoBackoff;     /* re-probe wait multiplier while on the secondary */
   rx_fn_pointers *fns;
   rx_solving_options *op;
   rx_solve *rx;

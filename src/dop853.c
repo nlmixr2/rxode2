@@ -179,7 +179,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
      they continue from the previous interval; xAcc is reported back as the last
      fully accepted x.  DOPCOR_RETURN writes them back on every exit. */
   long int naccptAll, stiffMax;
-  double   stiffLim, xAcc = x;
+  double   stiffLim, clearLim, xAcc = x;
   int i, j;
   double   c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c14, c15, c16;
   double   b1, b6, b7, b8, b9, b10, b11, b12, bhh1, bhh2, bhh3;
@@ -398,6 +398,8 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
   nonsti = (st != NULL) ? st->nonsti : 0;
   naccptAll = (st != NULL) ? st->naccpt : 0;
   stiffLim = (st != NULL && st->threshold > 0.0) ? st->threshold : 6.1;
+  clearLim = (st != NULL && st->clearLimit > 0.0 && st->clearLimit < stiffLim) ?
+    st->clearLimit : stiffLim;
   stiffMax = (st != NULL && st->maxStiff > 0) ? st->maxStiff : 15;
   if (st != NULL) st->xLast = x;
   fcn (nptr, x, y, k1);
@@ -590,8 +592,11 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 		      DOPCOR_RETURN(-4);
                     }
                 }
-              else
+              else if (hlamb < clearLim)
                 {
+                  /* clean verdict; between clearLim and stiffLim neither
+                     counter moves, which is what makes a clearLim below
+                     stiffLim a hysteresis band */
                   nonsti++;
                   /* six clean verdicts clear the alarm -- and clear the clean
                      count too, so the rule applies again the next time one is

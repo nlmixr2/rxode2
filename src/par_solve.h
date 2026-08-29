@@ -166,6 +166,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       ind->autoStiffIasti = 0;
       ind->autoStiffNonsti = 0;
       ind->autoStiffNaccpt = 0;
+      ind->autoBackoff = 0;
     }
 		ind->cacheME=0;
 		ind->curShift=0.0;

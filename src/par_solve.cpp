@@ -1995,6 +1995,10 @@ static inline void rxStiffLoad(dop853_stiff_t *st, rx_solving_options *op,
   // dop853's stability size, so autoSwitchNonstifftol scales it.
   st->threshold = 6.1 * ((op->autoSwitchNonstifftol > 0.0) ?
                          op->autoSwitchNonstifftol : 0.9);
+  // autoSwitchStifftol is where the alarm clears again.  Equal to
+  // autoSwitchNonstifftol by default, so there is no band unless asked for.
+  st->clearLimit = 6.1 * ((op->autoSwitchStifftol > 0.0) ?
+                          op->autoSwitchStifftol : 0.9);
   st->maxStiff = 0;  // 0 = Hairer's 15 verdicts
   st->xLast = 0.0;
 }
@@ -5913,11 +5917,16 @@ extern "C" void ind_linCmt(rx_solve *rx, int solveid,
 //
 // rxAutoSwitchCount keeps a little hysteresis so a persistently stiff problem
 // stops paying the wasted dop853 probe every interval:
-//   dop853Tried + failed  -> count stiff intervals; after maxStiff, stick on
-//                            the stiff secondary (autoMethod=1)
-//   dop853Tried + ok      -> reset the stiff counter
-//   stiff secondary used  -> after maxNonstiff intervals, optimistically try
-//                            the primary again (autoMethod=0)
+//   primary tried + failed -> count stiff intervals; after maxStiff, stick on
+//                             the stiff secondary (autoMethod=1)
+//   primary tried + ok      -> reset the stiff counter, and forget the back-off
+//   stiff secondary used    -> after enough intervals, optimistically try the
+//                             primary again (autoMethod=0)
+//
+// The wait before re-probing is max(autoSwitchMaxNonstiff, autoSwitchSwitchMax)
+// intervals, doubled on each re-probe that fails again (capped at 64x).  Without
+// the back-off a persistently stiff subject pays a wasted probe every few
+// intervals for the whole solve.
 static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *ind,
                               bool dop853Tried, bool dop853Failed) {
   if (dop853Tried) {
@@ -5927,13 +5936,23 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
         ind->autoMethod = 1;
         ind->autoCount = 0;
         ind->autoLastSwitchIntervals = 0;
+        ind->autoBackoff = (ind->autoBackoff > 0) ?
+          ((ind->autoBackoff < 64) ? ind->autoBackoff * 2 : 64) : 1;
       }
     } else {
       if (ind->autoCount > 0) ind->autoCount = 0;
+      // the primary is coping again, so the next switch starts from scratch
+      ind->autoBackoff = 0;
     }
   } else {
     ind->autoLastSwitchIntervals++;
     int back = (op->autoSwitchMaxNonstiff > 0) ? op->autoSwitchMaxNonstiff : 3;
+    if (op->autoSwitchSwitchMax > back) back = op->autoSwitchSwitchMax;
+    if (ind->autoBackoff > 1) {
+      // guard the multiply: `back` is user-supplied
+      back = (back > INT_MAX / ind->autoBackoff) ? INT_MAX
+                                                 : back * ind->autoBackoff;
+    }
     if (ind->autoLastSwitchIntervals >= back) {
       ind->autoMethod = 0;
       ind->autoLastSwitchIntervals = 0;

@@ -1080,26 +1080,33 @@
 #'   a good first choice) only for large QSP or PBPK models where Jacobian
 #'   factorization becomes the bottleneck.
 #'
-#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; stiffness ratio threshold
-#'   used when the solver is in non-stiff mode.  If
-#'   `rho * |dt| / S(primary) > autoSwitchNonstifftol`, the interval is
-#'   considered stiff and the secondary solver is tried.  Default `9/10`.
+#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; the stiffness ratio at
+#'   which an interval is called stiff.  Each accepted step of a `dop853`
+#'   primary estimates the dominant eigenvalue and forms
+#'   `rho * h / S(dop853)` with `S(dop853) = 6.1`; a step above
+#'   `autoSwitchNonstifftol` is a stiff verdict, and 15 verdicts hand the rest
+#'   of the interval to the stiff secondary.  Only a `dop853` primary carries
+#'   this estimate; any other primary switches when it fails.  Default `9/10`.
 #'
-#' @param autoSwitchStifftol Numeric in `(0, 1]`; non-stiffness ratio threshold
-#'   used when the solver is in stiff mode.  If
-#'   `rho * |dt| / S(primary) < autoSwitchStifftol`, the interval is considered
-#'   non-stiff and the switch-back counter is incremented.  Default `9/10`.
+#' @param autoSwitchStifftol Numeric in `(0, 1]`; the ratio below which a step
+#'   counts as non-stiff and, after six such steps, clears the stiff alarm.
+#'   Setting it below `autoSwitchNonstifftol` gives the detector a hysteresis
+#'   band, so an estimate hovering at the threshold does not toggle.  Default
+#'   `9/10` -- equal to `autoSwitchNonstifftol`, i.e. no band.
 #'
-#' @param autoSwitchDtfac Numeric `>= 1`; factor by which the suggested step
-#'   size is multiplied when switching to the stiff solver, and divided when
-#'   switching back.  Default `2.0`.
+#' @param autoSwitchDtfac Accepted for backwards compatibility and currently
+#'   inert.  It scaled a suggested step size across a switch, for a predictive
+#'   switching scheme that has been replaced by the reactive one described
+#'   above.  Default `2.0`.
 #'
-#' @param autoSwitchMaxStiff Integer; number of consecutive stiff-detected
-#'   intervals before permanently switching to the stiff solver.  Default `10L`.
+#' @param autoSwitchMaxStiff Integer; number of consecutive intervals in which
+#'   the primary reported stiffness before the solve stops probing it and stays
+#'   on the stiff secondary.  Default `10L`.
 #'
-#' @param autoSwitchMaxNonstiff Integer; number of consecutive non-stiff
-#'   intervals (while in stiff mode) before switching back to the fast
-#'   non-stiff solver.  Default `3L`.
+#' @param autoSwitchMaxNonstiff Integer; intervals to spend on the stiff
+#'   secondary before optimistically probing the primary again.  Each probe
+#'   that fails doubles the wait (capped at 64x), so a persistently stiff
+#'   subject stops paying for probes.  Default `3L`.
 #'
 #' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
 #'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
@@ -1107,9 +1114,9 @@
 #' @param autoSwitchSwitchMax Non-negative integer; minimum number of
 #'   integration intervals that must elapse after a switch before the solver
 #'   is allowed to switch back in the opposite direction.  Acts as an
-#'   oscillation guard: if the stiffness ratio fluctuates near a threshold,
-#'   this prevents rapid back-and-forth between solvers.  Set to `0L` to
-#'   disable the guard entirely.  Default `5L`.
+#'   oscillation guard, and raises `autoSwitchMaxNonstiff` when it is larger.
+#'   Set to `0L` to leave the wait to `autoSwitchMaxNonstiff` alone.
+#'   Default `5L`.
 #'
 #' @param stiff2 Integer method code for the stiff secondary solver used in
 #'   AutoSwitch composite methods.  Normally set automatically when `method` is
