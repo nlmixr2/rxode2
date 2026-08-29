@@ -61,25 +61,34 @@ itself.  It does not include parameter uncertainty.
 
 \donttest{
 
-mod <- rxode2({
-  ka <- 1
-  cl <- 1 * exp(eta.cl)
-  v <- 20
-  d/dt(depot) <- -ka * depot
-  d/dt(center) <- ka * depot - cl / v * center
-  cp <- center / v
-})
+mod <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
 
 ev <- et(amt=100) |> et(seq(0, 24, length.out=25))
 
-s <- rxSolve(mod, ev, omega=lotri(eta.cl ~ 0.1), nSub=100)
-
 # 100 individuals in one study: percentiles only
+s <- rxSolve(mod, ev, nSub=100)
+
 confint(s, "cp", level=0.95, ci=FALSE)
 
 # with 20 studies the percentiles get a confidence band
-s2 <- rxSolve(mod, ev, omega=lotri(eta.cl ~ 0.1), nSub=100, nStud=20,
-              thetaMat=lotri(ka ~ 0.01))
+s2 <- rxSolve(mod, ev, nSub=100, nStud=20, thetaMat=lotri(tka ~ 0.01))
 
 confint(s2, "cp", level=0.95)
 
