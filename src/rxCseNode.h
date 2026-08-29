@@ -19,64 +19,29 @@
 
 static D_ParserTables *csPt = &parser_tables_rxode2cse;
 
-/* One field per production in inst/rxCse.g; -1 = not yet asked.  Kept separate
-   from seNodeInfo/rtNodeInfo on purpose -- see the note in seFromSEnode.h. */
+/* Every production in inst/rxCse.g, named ONCE: the list below generates both
+   the memo field and its reset, so adding a production is one line and the two
+   cannot fall out of step.  -1 = not yet asked.  Kept separate from
+   seNodeInfo/rtNodeInfo on purpose -- see the note in seFromSEnode.h. */
+#define CS_PRODUCTIONS(X)  \
+  X(translation_unit) X(statement) X(assign_op) X(end_statement) \
+  X(lhs) X(lhs_primary) X(lhs_args) X(expression) X(or_expression) \
+  X(and_expression) X(rel_expression) X(rel_op) X(add_expression) \
+  X(mul_expression) X(unary_expression) X(power_expression) \
+  X(primary_expression) X(index_expression) X(function_call) \
+  X(arg_list) X(function_name) X(symbol) X(number) X(identifier) \
+  X(integer_num) X(float_num)
+
 typedef struct csNodeInfo {
-  int translation_unit;
-  int statement;
-  int assign_op;
-  int end_statement;
-  int lhs;
-  int lhs_primary;
-  int lhs_args;
-  int expression;
-  int or_expression;
-  int and_expression;
-  int rel_expression;
-  int rel_op;
-  int add_expression;
-  int mul_expression;
-  int unary_expression;
-  int power_expression;
-  int primary_expression;
-  int index_expression;
-  int function_call;
-  int arg_list;
-  int function_name;
-  int symbol;
-  int number;
-  int identifier;
-  int integer_num;
-  int float_num;
+#define CS_PRODUCTIONS_FIELD(what) int what;
+  CS_PRODUCTIONS(CS_PRODUCTIONS_FIELD)
+#undef CS_PRODUCTIONS_FIELD
 } csNodeInfo;
 
 static inline void csNiReset(csNodeInfo *ni) {
-  ni->translation_unit = -1;
-  ni->statement = -1;
-  ni->assign_op = -1;
-  ni->end_statement = -1;
-  ni->lhs = -1;
-  ni->lhs_primary = -1;
-  ni->lhs_args = -1;
-  ni->expression = -1;
-  ni->or_expression = -1;
-  ni->and_expression = -1;
-  ni->rel_expression = -1;
-  ni->rel_op = -1;
-  ni->add_expression = -1;
-  ni->mul_expression = -1;
-  ni->unary_expression = -1;
-  ni->power_expression = -1;
-  ni->primary_expression = -1;
-  ni->index_expression = -1;
-  ni->function_call = -1;
-  ni->arg_list = -1;
-  ni->function_name = -1;
-  ni->symbol = -1;
-  ni->number = -1;
-  ni->identifier = -1;
-  ni->integer_num = -1;
-  ni->float_num = -1;
+#define CS_PRODUCTIONS_CLEAR(what) ni->what = -1;
+  CS_PRODUCTIONS(CS_PRODUCTIONS_CLEAR)
+#undef CS_PRODUCTIONS_CLEAR
 }
 
 #define csSTRINGIFY(...) csSTRINGIFY_AUX(__VA_ARGS__)

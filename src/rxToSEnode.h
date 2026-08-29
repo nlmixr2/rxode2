@@ -19,52 +19,26 @@
 
 static D_ParserTables *rtPt = &parser_tables_rxode2rxToSE;
 
-/* One field per production in inst/rxToSE.g; -1 = not yet asked.  Kept
-   separate from seNodeInfo on purpose -- see the note there. */
+/* Every production in inst/rxToSE.g, named ONCE: the list below generates both
+   the memo field and its reset.  -1 = not yet asked.  Kept separate from
+   seNodeInfo on purpose -- see the note there. */
+#define RT_PRODUCTIONS(X)  \
+  X(translation_unit) X(expression) X(or_expression) X(and_expression) \
+  X(rel_expression) X(rel_op) X(add_expression) X(mul_expression) \
+  X(unary_expression) X(power_expression) X(primary_expression) \
+  X(index_expression) X(function_call) X(arg_list) X(function_name) \
+  X(symbol) X(number) X(identifier) X(integer_num) X(float_num)
+
 typedef struct rtNodeInfo {
-  int translation_unit;
-  int expression;
-  int or_expression;
-  int and_expression;
-  int rel_expression;
-  int rel_op;
-  int add_expression;
-  int mul_expression;
-  int unary_expression;
-  int power_expression;
-  int primary_expression;
-  int index_expression;
-  int function_call;
-  int arg_list;
-  int function_name;
-  int symbol;
-  int number;
-  int identifier;
-  int integer_num;
-  int float_num;
+#define RT_PRODUCTIONS_FIELD(what) int what;
+  RT_PRODUCTIONS(RT_PRODUCTIONS_FIELD)
+#undef RT_PRODUCTIONS_FIELD
 } rtNodeInfo;
 
 static inline void rtNiReset(rtNodeInfo *ni) {
-  ni->translation_unit = -1;
-  ni->expression = -1;
-  ni->or_expression = -1;
-  ni->and_expression = -1;
-  ni->rel_expression = -1;
-  ni->rel_op = -1;
-  ni->add_expression = -1;
-  ni->mul_expression = -1;
-  ni->unary_expression = -1;
-  ni->power_expression = -1;
-  ni->primary_expression = -1;
-  ni->index_expression = -1;
-  ni->function_call = -1;
-  ni->arg_list = -1;
-  ni->function_name = -1;
-  ni->symbol = -1;
-  ni->number = -1;
-  ni->identifier = -1;
-  ni->integer_num = -1;
-  ni->float_num = -1;
+#define RT_PRODUCTIONS_CLEAR(what) ni->what = -1;
+  RT_PRODUCTIONS(RT_PRODUCTIONS_CLEAR)
+#undef RT_PRODUCTIONS_CLEAR
 }
 
 #define rtSTRINGIFY(...) rtSTRINGIFY_AUX(__VA_ARGS__)

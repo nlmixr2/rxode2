@@ -1,5 +1,5 @@
 /*
- * rxCse.c -- common subexpression elimination in C.
+ * rxCse.cpp -- the rxCse .Call: common subexpression elimination in C.
  *
  * rxOptExpr() counts subexpressions in a named R list and looks them up with
  * [[text]], a linear scan, so the search is O(k^2) in the number of distinct
@@ -26,6 +26,7 @@
 #include "rxCseB.h"
 #include "rxCseLhs.h"
 #include "rxCseSel.h"
+#include "rxCseStmt.h"
 #include "rxomp.h"
 #include <time.h>
 
@@ -54,49 +55,6 @@ static int csBufAdd(csBuf *b, const char *s) {
   return 1;
 }
 
-/* --------------------------------------------------------------- one parse */
-typedef struct csParse { D_Parser *p; D_ParseNode *pn; } csParse;
-
-static int csParseOpen(csParse *o, const char *in) {
-  o->p = new_D_Parser(&parser_tables_rxode2cse, sizeof(D_ParseNode_User));
-  o->pn = NULL;
-  if (o->p == NULL) return 0;
-  o->p->save_parse_tree = 1;
-  o->p->error_recovery = 0;
-  o->pn = dparse(o->p, (char*) in, (int) strlen(in));
-  if (o->pn == NULL || o->p->syntax_errors != 0) return 0;
-  return 1;
-}
-
-static void csParseClose(csParse *o) {
-  if (o->pn != NULL) free_D_ParseNode(o->p, o->pn);
-  if (o->p != NULL) free_D_Parser(o->p);
-  o->pn = NULL; o->p = NULL;
-}
-
-/* the `statement` node under translation_unit */
-static D_ParseNode *csStmtNode(D_ParseNode *pn) {
-  D_ParseNode *s = pn;
-  while (d_get_number_of_children(s) == 1) s = d_get_child(s, 0);
-  return s;
-}
-
-/* Is this statement `lhs <op> rhs`?  Otherwise it is a bare call such as
-   dvid(3, 4), which ..rxOpt() renders with machine B alone -- machine A is
-   only ever applied to an assignment's right-hand side
-   (R/rxOptExpr.R:344). */
-static int csStmtIsAssign(D_ParseNode *s) {
-  return d_get_number_of_children(s) >= 3 &&
-    !strcmp(csNodeName(csUnwrap(d_get_child(s, 1))), "assign_op");
-}
-
-/* `<-` becomes `=`; `=` and `~` are kept (R/rxOptExpr.R:355-357) */
-static const char *csAssignOp(csCtx *c, D_ParseNode *s) {
-  const char *op = csNodeText(csArena(c), csUnwrap(d_get_child(s, 1)));
-  if (!strcmp(op, "<-")) return "=";
-  return op;
-}
-
 /* ------------------------------------------------------------------ pass 1 */
 /* set RXCSE_DEBUG=1 to see which statement made the pass decline */
 int csTraceOn(void);
@@ -116,64 +74,6 @@ static double csNow(void) {
 #define CS_PHASE(lbl) do { if (csDebug()) { double _n = csNow();                \
       REprintf("  phase %-10s %7.3fs\n", lbl, _n - _t0); _t0 = _n; } } while (0)
 
-
-static void csCountStmt(csCtx *c, const char *line, int idx) {
-  csParse o = {NULL, NULL};
-  D_ParseNode *s;
-  c->stmt = idx; c->pos = 0; c->arena.failed = 0;
-  if (!csParseOpen(&o, line)) {
-    c->failWhy = "parse"; c->failLine = line;
-    c->arena.failed = 1; csParseClose(&o); return;
-  }
-  s = csStmtNode(o.pn);
-  if (csStmtIsAssign(s)) {
-    (void) csLhs(c, d_get_child(s, 0));            /* validates the lhs form */
-    if (c->arena.failed) {
-      if (c->failWhy == NULL) c->failWhy = "lhs";
-    } else {
-      (void) csA(c, d_get_child(s, 2));
-      if (c->arena.failed && c->failWhy == NULL) c->failWhy = "rhs";
-    }
-  }
-  if (c->arena.failed) { c->anyFail = 1; c->failLine = line; }
-  csParseClose(&o);
-}
-
-/* ------------------------------------------------------------------ pass 2 */
-static const char *csOptStmt(csCtx *c, const char *line, int idx) {
-  /* Initialized here, not by csParseOpen: the `!c->arena.failed &&` below can
-     short circuit past the open and still reach csParseClose. */
-  csParse o = {NULL, NULL}, o2 = {NULL, NULL};
-  D_ParseNode *s;
-  const char *out = NULL;
-  c->stmt = idx; c->pos = 0; c->nused = 0; c->arena.failed = 0;
-  if (!csParseOpen(&o, line)) { c->arena.failed = 1; c->anyFail = 1;
-    csParseClose(&o); return NULL; }
-  s = csStmtNode(o.pn);
-  if (csStmtIsAssign(s)) {
-    const char *lhs = csLhs(c, d_get_child(s, 0));
-    const char *op = csAssignOp(c, s);
-    const char *keyed = csA(c, d_get_child(s, 2));   /* machine A */
-    /* csParseOpen() allocates the D_Parser BEFORE it can fail, so the failing
-       path has to close it too */
-    if (!c->arena.failed && csParseOpen(&o2, keyed)) {
-      D_ParseNode *s2 = csStmtNode(o2.pn);
-      const char *rhs = NULL;
-      if (csStmtIsAssign(s2)) c->arena.failed = 1;
-      else rhs = csB(c, d_get_child(s2, 0));         /* machine B */
-      if (!c->arena.failed) out = seCat(csArena(c), lhs, op, rhs, NULL, NULL, NULL);
-      csParseClose(&o2);
-    } else {
-      csParseClose(&o2);
-      c->arena.failed = 1;
-    }
-  } else {
-    out = csB(c, d_get_child(s, 0));                 /* machine B alone */
-  }
-  csParseClose(&o);
-  if (c->arena.failed) { c->anyFail = 1; c->failLine = line; }
-  return c->arena.failed ? NULL : out;
-}
 
 /* Hand the finished text to R under R_UnwindProtect: Rf_mkChar() allocates and
    can longjmp, and `outText` is malloc'd, so the cleanup is what frees it on
@@ -255,14 +155,10 @@ static int csRunAlloc(csRun *r) {
   return 1;
 }
 
-/* pass 1: count every statement's subexpressions, then merge the per-thread
-   maps.  min(firstSeen) on merge is what makes the naming independent of how
-   the statements were distributed across threads. */
-static int csCountPhase(csRun *r) {
-  int t, ok = 1;
-  R_xlen_t n = r->n;
-  csCtx *ctxs = r->ctxs;
-  const char **in = r->in;
+/* Both passes are the same walk -- every statement once, each thread using its
+   own context -- so the walk is written once and the pass is the argument. */
+template <typename Fn>
+static void csEachStmt(csRun *r, Fn job) {
 #ifdef _OPENMP
 #pragma omp parallel num_threads(r->nthr)
 #endif
@@ -276,22 +172,43 @@ static int csCountPhase(csRun *r) {
 #ifdef _OPENMP
 #pragma omp for schedule(static)
 #endif
-      for (j = 0; j < n; j++) csCountStmt(&ctxs[me], in[j], (int) j);
+      for (j = 0; j < r->n; j++) job(&r->ctxs[me], j);
     }
   }
+}
+
+/* A thread cannot touch the R API, so a decline is recorded in the context and
+   reported once the region is over.  0 = some statement declined. */
+static int csReportDeclines(csRun *r) {
+  int t, ok = 1;
   for (t = 0; t < r->nthr; t++) {
-    if (!ctxs[t].anyFail) continue;
+    if (!r->ctxs[t].anyFail) continue;
     ok = 0;
-    if (csDebug()) {                    /* printed HERE, outside the region */
+    if (csDebug()) {
       REprintf("rxCse: declined (%s) [%s]\n",
-               ctxs[t].failWhy == NULL ? "?" : ctxs[t].failWhy,
-               ctxs[t].failLine == NULL ? "?" : ctxs[t].failLine);
+               r->ctxs[t].failWhy == NULL ? "?" : r->ctxs[t].failWhy,
+               r->ctxs[t].failLine == NULL ? "?" : r->ctxs[t].failLine);
     }
   }
-  if (!ok) return 0;
+  return ok;
+}
+
+/* min(firstSeen) on merge is what makes the naming independent of how the
+   statements were distributed across threads. */
+static int csMergeCounts(csRun *r) {
+  int t;
   if (!csMapInit(&r->all, 4096)) return 0;
-  for (t = 0; t < r->nthr; t++) if (!csMapMerge(&r->all, r->ctxs[t].count)) return 0;
+  for (t = 0; t < r->nthr; t++) {
+    if (!csMapMerge(&r->all, r->ctxs[t].count)) return 0;
+  }
   return 1;
+}
+
+/* pass 1: how many times does each subexpression appear across the model? */
+static int csCountPhase(csRun *r) {
+  const char **in = r->in;
+  csEachStmt(r, [in](csCtx *c, R_xlen_t j) { csCountStmt(c, in[j], (int) j); });
+  return csReportDeclines(r) && csMergeCounts(r);
 }
 
 /* count > 1, then drop bare numbers, bare THETA[n]/ETA[n] and anything leading
@@ -351,64 +268,51 @@ static int csReducePhase(csRun *r) {
   return 1;
 }
 
-/* pass 2: the same walk, substituting the names in, recording which
-   temporaries each statement used */
-static int csRewritePhase(csRun *r) {
+/* the outputs pass 2 fills in, and the replacement map every thread reads */
+static int csRewriteSetup(csRun *r) {
   int t;
-  R_xlen_t i, n = r->n;
-  csCtx *ctxs = r->ctxs;
-  const char **in = r->in;
-  const char **out;
-  const char ***usedBy;
-  int *nUsedBy;
-  r->out = (const char**) calloc((size_t) n, sizeof(char*));
-  r->usedBy = (const char***) calloc((size_t) n, sizeof(char**));
-  r->nUsedBy = (int*) calloc((size_t) n, sizeof(int));
+  r->out = (const char**) calloc((size_t) r->n, sizeof(char*));
+  r->usedBy = (const char***) calloc((size_t) r->n, sizeof(char**));
+  r->nUsedBy = (int*) calloc((size_t) r->n, sizeof(int));
   if (r->out == NULL || r->usedBy == NULL || r->nUsedBy == NULL) return 0;
-  out = r->out; usedBy = r->usedBy; nUsedBy = r->nUsedBy;
   for (t = 0; t < r->nthr; t++) {
-    ctxs[t].rep = &r->rep;
-    ctxs[t].repNames = r->repNames;
-    ctxs[t].usedCap = r->ncand;
-    ctxs[t].used = (const char**) calloc((size_t) r->ncand, sizeof(char*));
-    if (ctxs[t].used == NULL) return 0;
+    r->ctxs[t].rep = &r->rep;
+    r->ctxs[t].repNames = r->repNames;
+    r->ctxs[t].usedCap = r->ncand;
+    r->ctxs[t].used = (const char**) calloc((size_t) r->ncand, sizeof(char*));
+    if (r->ctxs[t].used == NULL) return 0;
   }
-#ifdef _OPENMP
-#pragma omp parallel num_threads(r->nthr)
-#endif
-  {
-    int me = 0;
-#ifdef _OPENMP
-    me = omp_get_thread_num();
-#endif
-    if (me < r->nthr) {
-      R_xlen_t j;
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-      for (j = 0; j < n; j++) {
-        const char *o = csOptStmt(&ctxs[me], in[j], (int) j);
-        out[j] = o;
-        if (o != NULL && ctxs[me].nused > 0) {
-          int u;
-          usedBy[j] = (const char**) malloc(sizeof(char*) * (size_t) ctxs[me].nused);
-          if (usedBy[j] == NULL) {
-            /* Must NOT be silent: this list is what places each
-               `rx_expr_i~...` definition before its first use, so losing it
-               would emit a statement referencing a temporary never defined. */
-            ctxs[me].anyFail = 1;
-            ctxs[me].failWhy = "out of memory recording temporaries";
-          } else {
-            for (u = 0; u < ctxs[me].nused; u++) usedBy[j][u] = ctxs[me].used[u];
-            nUsedBy[j] = ctxs[me].nused;
-          }
-        }
-      }
-    }
-  }
-  for (i = 0; i < n; i++) if (out[i] == NULL) return 0;
-  for (t = 0; t < r->nthr; t++) if (ctxs[t].anyFail) return 0;
   return 1;
+}
+
+/* which temporaries this statement referenced, in the order it used them */
+static void csRecordUsed(csRun *r, csCtx *c, R_xlen_t j) {
+  int u;
+  if (c->nused == 0) return;
+  r->usedBy[j] = (const char**) malloc(sizeof(char*) * (size_t) c->nused);
+  if (r->usedBy[j] == NULL) {
+    /* Must NOT be silent: this list is what places each `rx_expr_i~...`
+       definition before its first use, so losing it would emit a statement
+       referencing a temporary that is never defined. */
+    c->anyFail = 1;
+    c->failWhy = "out of memory recording temporaries";
+    return;
+  }
+  for (u = 0; u < c->nused; u++) r->usedBy[j][u] = c->used[u];
+  r->nUsedBy[j] = c->nused;
+}
+
+/* pass 2: the same walk, substituting the chosen names in */
+static int csRewritePhase(csRun *r) {
+  R_xlen_t i;
+  const char **in = r->in;
+  if (!csRewriteSetup(r)) return 0;
+  csEachStmt(r, [r, in](csCtx *c, R_xlen_t j) {
+    r->out[j] = csOptStmt(c, in[j], (int) j);
+    if (r->out[j] != NULL) csRecordUsed(r, c, j);
+  });
+  for (i = 0; i < r->n; i++) if (r->out[i] == NULL) return 0;
+  return csReportDeclines(r);
 }
 
 /* the body of a definition is machine B over the REDUCED key, re-parsed */
@@ -424,9 +328,38 @@ static const char *csDefBody(csCtx *dc, const char *reduced) {
   return dc->arena.failed ? NULL : body;
 }
 
-/* assemble, emitting each definition immediately before the first statement
-   that uses it, ascending index, once globally.  Returns the text, which the
-   caller owns, or NULL. */
+/* did statement `i` reference the temporary named by candidate `j`? */
+static int csUsesCand(csRun *r, R_xlen_t i, int j) {
+  int u;
+  for (u = 0; u < r->nUsedBy[i]; u++) {
+    if (r->usedBy[i][u] == r->cand[j].name) return 1;
+  }
+  return 0;
+}
+
+/* Every temporary statement `i` is the FIRST to use, defined here and marked
+   so no later statement defines it again.  Ascending index, so nested
+   temporaries are defined before the ones that reference them. */
+static int csEmitDefsFor(csRun *r, R_xlen_t i, char *emitted, csBuf *b) {
+  int j;
+  for (j = 0; j < r->ncand; j++) {
+    const char *body;
+    csCtx dc;
+    int ok;
+    if (emitted[j] || !csUsesCand(r, i, j)) continue;
+    body = csDefBody(&dc, r->cand[j].reduced);
+    ok = body != NULL &&
+      csBufAdd(b, r->cand[j].name) && csBufAdd(b, "~") &&
+      csBufAdd(b, body) && csBufAdd(b, "\n");
+    seArenaFree(&dc.arena);
+    if (!ok) return 0;
+    emitted[j] = 1;
+  }
+  return 1;
+}
+
+/* assemble the model: each definition immediately before the first statement
+   that uses it.  Returns the text, which the caller owns, or NULL. */
 static char *csEmitPhase(csRun *r) {
   csBuf b;
   char *emitted = (char*) calloc((size_t) r->ncand, 1);
@@ -435,26 +368,8 @@ static char *csEmitPhase(csRun *r) {
   memset(&b, 0, sizeof(b));
   if (emitted == NULL) return NULL;
   for (i = 0; ok && i < r->n; i++) {
-    int j;
-    for (j = 0; j < r->ncand; j++) {              /* ascending index */
-      int u, hit = 0;
-      const char *body;
-      csCtx dc;
-      if (emitted[j]) continue;
-      for (u = 0; u < r->nUsedBy[i]; u++)
-        if (r->usedBy[i][u] == r->cand[j].name) { hit = 1; break; }
-      if (!hit) continue;
-      body = csDefBody(&dc, r->cand[j].reduced);
-      if (body == NULL ||
-          !csBufAdd(&b, r->cand[j].name) || !csBufAdd(&b, "~") ||
-          !csBufAdd(&b, body) || !csBufAdd(&b, "\n")) ok = 0;
-      seArenaFree(&dc.arena);
-      if (!ok) break;
-      emitted[j] = 1;
-    }
-    if (!ok) break;
-    if (!csBufAdd(&b, r->out[i])) { ok = 0; break; }
-    if (i + 1 < r->n && !csBufAdd(&b, "\n")) { ok = 0; break; }
+    ok = csEmitDefsFor(r, i, emitted, &b) && csBufAdd(&b, r->out[i]) &&
+      (i + 1 == r->n || csBufAdd(&b, "\n"));
   }
   free(emitted);
   if (ok) return b.s;
@@ -462,53 +377,69 @@ static char *csEmitPhase(csRun *r) {
   return NULL;
 }
 
-extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
-  R_xlen_t n, i;
-  const char **in;
-  int nthr = 1;
-  csRun r;
-  char *outText = NULL;
-  double _t0 = csNow();
-  SEXP ret;
-
-  if (TYPEOF(linesVec) != STRSXP) Rf_error("%s", "'linesVec' must be character");
-  n = Rf_xlength(linesVec);
-  if (n == 0) return Rf_ScalarString(NA_STRING);
-
-  /* CHAR() before any thread starts, with R_alloc so an error cannot leak it
-     (the rule from src/seBatch.h:88-104) */
-  in = (const char**) R_alloc((size_t) n, sizeof(char*));
+/* the model's statements as C strings.  CHAR() before any thread starts, with
+   R_alloc so an error cannot leak them (the rule from src/seBatch.h:88-104);
+   NULL when any element is NA, which declines the whole call. */
+static const char **csReadLines(SEXP linesVec, R_xlen_t n) {
+  const char **in = (const char**) R_alloc((size_t) n, sizeof(char*));
+  R_xlen_t i;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(linesVec, i);
-    if (el == NA_STRING) return Rf_ScalarString(NA_STRING);
+    if (el == NA_STRING) return NULL;
     in[i] = CHAR(el);
   }
+  return in;
+}
 
-  /* Debugging runs single threaded so the reported decline is deterministic --
-     with several threads you get whichever one happened to fail.  Safety does
-     not depend on this: nothing in the regions touches the R API, the reason
-     is recorded and printed afterwards. */
-  if (n >= CS_MIN_PARALLEL && !csDebug()) {
-    nthr = getRxThreads((int64_t) n, true);
-    if (nthr < 1) nthr = 1;
-    if ((R_xlen_t) nthr > n) nthr = (int) n;
-  }
+/* Debugging runs single threaded so the reported decline is deterministic --
+   with several threads you get whichever one happened to fail.  Safety does
+   not depend on this: nothing in the regions touches the R API, the reason is
+   recorded and printed afterwards. */
+static int csPickThreads(R_xlen_t n) {
+  int nthr;
+  if (n < CS_MIN_PARALLEL || csDebug()) return 1;
+  nthr = getRxThreads((int64_t) n, true);
+  if (nthr < 1) nthr = 1;
+  if ((R_xlen_t) nthr > n) nthr = (int) n;
+  return nthr;
+}
 
-  csRunInit(&r, n, in, nthr);
-  if (csRunAlloc(&r) && csCountPhase(&r)) {
+/* count -> select -> reduce -> rewrite -> emit; NULL if any of them declines */
+static char *csRunAll(csRun *r) {
+  char *outText = NULL;
+  double _t0 = csNow();
+  if (csRunAlloc(r) && csCountPhase(r)) {
     CS_PHASE("count");
-    if (csSelectPhase(&r)) {
+    if (csSelectPhase(r)) {
       CS_PHASE("select");
-      if (csReducePhase(&r)) {
+      if (csReducePhase(r)) {
         CS_PHASE("reduce");
-        if (csRewritePhase(&r)) {
+        if (csRewritePhase(r)) {
           CS_PHASE("rewrite");
-          outText = csEmitPhase(&r);
+          outText = csEmitPhase(r);
           CS_PHASE("emit");
         }
       }
     }
   }
+  return outText;
+}
+
+extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
+  R_xlen_t n;
+  const char **in;
+  csRun r;
+  char *outText;
+  SEXP ret;
+
+  if (TYPEOF(linesVec) != STRSXP) Rf_error("%s", "'linesVec' must be character");
+  n = Rf_xlength(linesVec);
+  if (n == 0) return Rf_ScalarString(NA_STRING);
+  in = csReadLines(linesVec, n);
+  if (in == NULL) return Rf_ScalarString(NA_STRING);
+
+  csRunInit(&r, n, in, csPickThreads(n));
+  outText = csRunAll(&r);
   csRunFree(&r);
 
   /* every other hand-managed allocation is released by here; outText is the

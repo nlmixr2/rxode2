@@ -31,46 +31,29 @@
 
 static D_ParserTables *sePt = &parser_tables_rxode2seFromSE;
 
-/* One field per production in inst/seFromSE.g; -1 = not yet asked.
+/* Every production in inst/seFromSE.g, named ONCE: the list below generates
+   both the memo field and its reset.  -1 = not yet asked.
    The resemblance to rtNodeInfo is not a shared abstraction waiting to be
    named: these fields ARE this grammar's productions, because seNodeHas()
    makes the field name and the compared string one token (src/tran.h).
    Sharing the struct would mean neither grammar could gain or drop a
    production without the other. */
+#define SE_PRODUCTIONS(X)  \
+  X(translation_unit) X(expression) X(add_expression) \
+  X(mul_expression) X(unary_expression) X(power_expression) \
+  X(primary_expression) X(function_call) X(arg_list) X(function_name) \
+  X(symbol) X(number) X(identifier) X(integer_num) X(float_num)
+
 typedef struct seNodeInfo {
-  int translation_unit;
-  int expression;
-  int add_expression;
-  int mul_expression;
-  int unary_expression;
-  int power_expression;
-  int primary_expression;
-  int function_call;
-  int arg_list;
-  int function_name;
-  int symbol;
-  int number;
-  int identifier;
-  int integer_num;
-  int float_num;
+#define SE_PRODUCTIONS_FIELD(what) int what;
+  SE_PRODUCTIONS(SE_PRODUCTIONS_FIELD)
+#undef SE_PRODUCTIONS_FIELD
 } seNodeInfo;
 
 static inline void seNiReset(seNodeInfo *ni) {
-  ni->translation_unit = -1;
-  ni->expression = -1;
-  ni->add_expression = -1;
-  ni->mul_expression = -1;
-  ni->unary_expression = -1;
-  ni->power_expression = -1;
-  ni->primary_expression = -1;
-  ni->function_call = -1;
-  ni->arg_list = -1;
-  ni->function_name = -1;
-  ni->symbol = -1;
-  ni->number = -1;
-  ni->identifier = -1;
-  ni->integer_num = -1;
-  ni->float_num = -1;
+#define SE_PRODUCTIONS_CLEAR(what) ni->what = -1;
+  SE_PRODUCTIONS(SE_PRODUCTIONS_CLEAR)
+#undef SE_PRODUCTIONS_CLEAR
 }
 
 #define seSTRINGIFY(...) seSTRINGIFY_AUX(__VA_ARGS__)
