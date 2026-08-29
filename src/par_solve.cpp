@@ -1992,13 +1992,17 @@ static inline void rxStiffLoad(dop853_stiff_t *st, rx_solving_options *op,
   st->nonsti = ind->autoStiffNonsti;
   st->naccpt = ind->autoStiffNaccpt;
   // Julia's AutoSwitch test is eigen_est*dt/alg_stability_size > tol; 6.1 is
-  // dop853's stability size, so autoSwitchNonstifftol scales it.
-  st->threshold = 6.1 * ((op->autoSwitchNonstifftol > 0.0) ?
-                         op->autoSwitchNonstifftol : 0.9);
-  // autoSwitchStifftol is where the alarm clears again.  Equal to
-  // autoSwitchNonstifftol by default, so there is no band unless asked for.
-  st->clearLimit = 6.1 * ((op->autoSwitchStifftol > 0.0) ?
-                          op->autoSwitchStifftol : 0.9);
+  // dop853's stability size, so the tolerance scales it.  Julia has two: one
+  // for deciding to leave the non-stiff method and one, applied while in stiff
+  // mode, for deciding to come back.  Here the detector only ever runs on the
+  // primary, so the stiff-mode tolerance is the one that governs a RE-probe --
+  // the optimistic retry after this subject has already switched at least once,
+  // which autoBackoff marks.  A lower autoSwitchStifftol makes that retry trip
+  // sooner, i.e. makes stiff mode stickier, which is what it means in Julia.
+  // Both default to 0.9, so a subject that has never switched is unaffected.
+  double tol = (ind->autoBackoff > 0) ? op->autoSwitchStifftol
+                                      : op->autoSwitchNonstifftol;
+  st->threshold = 6.1 * ((tol > 0.0) ? tol : 0.9);
   st->maxStiff = 0;  // 0 = Hairer's 15 verdicts
   st->xLast = 0.0;
 }

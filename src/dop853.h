@@ -217,11 +217,6 @@ typedef struct {
   long int naccpt;     /* accepted steps counted across calls (drives nstiff) */
   /* in -- tuning */
   double   threshold;  /* hlamb limit; <= 0 uses dop853's stability size, 6.1 */
-  double   clearLimit; /* hlamb below this counts as a clean verdict; <= 0 uses
-                          `threshold`, i.e. no hysteresis band.  Setting it
-                          below `threshold` makes the detector a Schmitt
-                          trigger: the alarm is raised above `threshold` and
-                          only cleared below `clearLimit`. */
   long int maxStiff;   /* verdicts before reporting stiffness; <= 0 uses 15 */
   /* out */
   double   xLast;      /* last fully accepted x (== the initial x if none) */

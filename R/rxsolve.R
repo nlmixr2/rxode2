@@ -1088,11 +1088,12 @@
 #'   of the interval to the stiff secondary.  Only a `dop853` primary carries
 #'   this estimate; any other primary switches when it fails.  Default `9/10`.
 #'
-#' @param autoSwitchStifftol Numeric in `(0, 1]`; the ratio below which a step
-#'   counts as non-stiff and, after six such steps, clears the stiff alarm.
-#'   Setting it below `autoSwitchNonstifftol` gives the detector a hysteresis
-#'   band, so an estimate hovering at the threshold does not toggle.  Default
-#'   `9/10` -- equal to `autoSwitchNonstifftol`, i.e. no band.
+#' @param autoSwitchStifftol Numeric in `(0, 1]`; the same ratio, but applied
+#'   once the subject has already switched at least once -- that is, on the
+#'   optimistic re-probe of the primary rather than on the first attempt.
+#'   Lowering it below `autoSwitchNonstifftol` makes the re-probe give up
+#'   sooner, so stiff mode is stickier.  Default `9/10`, equal to
+#'   `autoSwitchNonstifftol`, i.e. a re-probe behaves like a first probe.
 #'
 #' @param autoSwitchDtfac Accepted for backwards compatibility and currently
 #'   inert.  It scaled a suggested step size across a switch, for a predictive

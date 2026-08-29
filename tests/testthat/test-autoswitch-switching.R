@@ -88,6 +88,34 @@ rxTest({
     }
   })
 
+  test_that("a dense composite hands the segment over without losing observations", {
+    ## The dense path is the subtle one: dopDenseSolout fills observations from
+    ## the interpolant and advances a cursor as it goes, so when ros4 takes over
+    ## mid-segment the state, the delay history and that cursor all have to
+    ## agree.  The fallback used to rewind the first two and not the third, so a
+    ## segment it believed it had re-solved kept the abandoned attempt's
+    ## observation values -- and nothing asserted on them, because the dense
+    ## composite was only ever checked on its final state.
+    ##
+    ## Observations are dense inside each segment (the segment runs dose to
+    ## dose, so every interior point is filled by interpolation, not by
+    ## stepping to it) and the model is stiff enough to force the hand-over.
+    .dev <- et(amt = 50, cmt = "depot", ii = 24, addl = 2) |> et(seq(0, 72, by = 0.1))
+    .ref <- rxSolve(.tmdd, .dev, params = .tmddP, method = "lsoda",
+                    atol = 1e-12, rtol = 1e-12)
+    .dd <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853",
+                   dense = TRUE, atol = 1e-10, rtol = 1e-10)
+    .dn <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853+ros4",
+                   dense = TRUE, atol = 1e-10, rtol = 1e-10)
+    expect_false(any(is.na(.dn$L)))
+    ## a hand-over actually happened -- otherwise this asserts nothing
+    expect_false(identical(.dn$L, .dd$L))
+    ## every observation, not just the segment ends
+    expect_true(max(abs(.dn$L - .ref$L)) < 1e-6)
+    ## and the interior points are genuinely filled, not held at a segment value
+    expect_true(all(diff(.dn$L[.dn$time > 0 & .dn$time < 24]) != 0))
+  })
+
   test_that("the autoSwitch controls reach the composite", {
     ## They were documented, parsed, stored on op, and read by nothing.
     .go <- function(...) {

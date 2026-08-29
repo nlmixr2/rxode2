@@ -429,19 +429,23 @@ struct rx_solving_options_ind_s {
   double *esPendingJump;   /* per-thread neq buffer, or NULL when unused */
   double  esPendingTau;    /* event time the pending jump belongs to */
   int     esHasPending;    /* 1 while a deferred jump is waiting to be flushed */
+  rx_fn_pointers *fns;
+  rx_solving_options *op;
+  rx_solve *rx;
   // AutoSwitch: dop853's stiffness-probe state, carried across the per-interval
   // dop853() calls of one subject solve (dop853_stiff_t, src/dop853.h).  The
   // probe is per interval, so without this the accepted-step count and the
   // verdict counters restart every few steps and the detector can never reach
-  // its limit.  Reset per subject in setupRxInd().
+  // its limit.  Reset per subject solve in iniSubject().
+  //
+  // APPENDED AT THE END ON PURPOSE: everything above keeps its offset, so a
+  // downstream object file built against an older copy of this header still
+  // finds every field it knows about where it expects it.
   double   autoStiffHlamb;  /* h*rho(J) estimate carried between intervals */
   long int autoStiffIasti;  /* consecutive stiff verdicts */
   long int autoStiffNonsti; /* clean verdicts since the last stiff one */
   long int autoStiffNaccpt; /* accepted steps across the subject's intervals */
   int      autoBackoff;     /* re-probe wait multiplier while on the secondary */
-  rx_fn_pointers *fns;
-  rx_solving_options *op;
-  rx_solve *rx;
 };
 
 typedef struct rx_solve_s {

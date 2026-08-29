@@ -882,8 +882,8 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 - The documented AutoSwitch controls do something again.
   `autoSwitchNonstifftol` sets the ratio at which a step is called stiff (the
   same `eigen_est * h / stability_size` test Julia's AutoSwitch uses),
-  `autoSwitchStifftol` sets where the alarm clears -- below
-  `autoSwitchNonstifftol` it gives the detector a hysteresis band --
+  `autoSwitchStifftol` sets the same ratio for the optimistic re-probe after a
+  subject has already switched, so lowering it makes stiff mode stickier,
   `autoSwitchStiffFirst` starts the solve on the stiff secondary, and
   `autoSwitchSwitchMax` guards the switch back.  All five had been left without
   a consumer when the composite became reactive.  `autoSwitchDtfac` has nothing

@@ -352,7 +352,7 @@ Seven parameters control the switching logic, all passed directly to
 | Parameter | Default | Meaning |
 |---|---|---|
 | `autoSwitchNonstifftol` | `0.9` | Stiffness ratio `rho*h/6.1` above which an accepted step is a stiff verdict; 15 verdicts hand the rest of the interval to the secondary |
-| `autoSwitchStifftol` | `0.9` | Ratio below which a step is a clean verdict; six clear the alarm.  Set below `autoSwitchNonstifftol` for a hysteresis band |
+| `autoSwitchStifftol` | `0.9` | The same ratio on the optimistic re-probe after a subject has already switched.  Set below `autoSwitchNonstifftol` to make stiff mode stickier |
 | `autoSwitchMaxStiff` | `10L` | Consecutive stiff-detected intervals before the solve stops probing the primary |
 | `autoSwitchMaxNonstiff` | `3L` | Intervals on the secondary before the primary is probed again; the wait doubles on each probe that fails (capped at 64x) |
 | `autoSwitchSwitchMax` | `5L` | Minimum intervals after a switch before a switch back is allowed; raises `autoSwitchMaxNonstiff` when larger |
