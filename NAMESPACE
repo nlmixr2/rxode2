@@ -178,6 +178,7 @@ S3method(rxSolve,default)
 S3method(rxSolve,nlmixr2FitCore)
 S3method(rxSolve,nlmixr2FitData)
 S3method(rxSolve,rxSolve)
+S3method(rxSolve,rxUi)
 S3method(rxSolve,rxode2tos)
 S3method(rxTrans,character)
 S3method(rxTrans,default)
@@ -871,6 +872,7 @@ importFrom(Rcpp,
 )
 importFrom(RcppParallel,RcppParallelLibs)
 importFrom(checkmate,qassert)
+importFrom(compiler,cmpfun)
 importFrom(dparser,dparse)
 importFrom(ggplot2,
   "%+replace%",

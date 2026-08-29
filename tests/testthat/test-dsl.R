@@ -89,7 +89,9 @@ rxTest({
 
     expect_equal(rxToSE(tanpi(a)), "tan(pi*(a))")
     expect_equal(rxFromSE(tan(pi * a)), "tanpi(a)")
-    expect_equal(rxFromSE("tan(pi/2)"), "tanpi(1/2)")
+    # the tanpi route strips the pi factor and leaves 1/2, which the constant
+    # fold then collapses to 0.5 (same value, one fewer division emitted)
+    expect_equal(rxFromSE("tan(pi/2)"), "tanpi(0.5)")
 
     ## nlmixr2est#513: a trig argument that is a compound expression divided by
     ## something (eg sin(2*3.14*(time-mtime1)/period)) must keep its argument;

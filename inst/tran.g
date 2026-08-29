@@ -41,7 +41,13 @@ statement
   | compound_statement
   | selection_statement
   | ifelse_statement
-  | end_statement ;
+  // At least one ';'.  `end_statement` is `(';')*`, so writing it bare here
+  // made `statement` nullable, and `(statement)+` above then admits any number
+  // of empty statements at every position -- an ambiguity dparser resolves by
+  // greediness, at a cost quadratic in the length of the whole model.  Blank
+  // lines are consumed as whitespace, not as a statement, so requiring the
+  // semicolon costs nothing and makes the parse linear.
+  | ';' end_statement ;
 
 
 compound_statement : '{' statement_list? '}' ;

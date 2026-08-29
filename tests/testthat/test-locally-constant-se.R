@@ -143,7 +143,10 @@ rxTest({
     # (rxFromSE() captures its argument, so build the text first)
     .both <- paste0("Subs(Derivative(fsign(_xi_1, 2.0*p), _xi_1), (_xi_1), (1.0 + p))",
                     " + 2.0*Subs(Derivative(fsign(1.0 + p, _xi_2), _xi_2), (_xi_2), (2.0*p))")
-    expect_equal(rxFromSE(.both), "sign(1+p)*fsign(1,2*p)+0")
+    # the second Subs collapses to 0 and the x+0 identity then drops the term
+    # entirely, which is the same statement as before: nothing of the
+    # differentiated fsign() survives
+    expect_equal(rxFromSE(.both), "sign(1+p)*fsign(1,2*p)")
   })
 
   test_that("symengine differentiation of a locally constant lhs", {

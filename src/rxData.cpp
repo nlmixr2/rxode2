@@ -895,11 +895,28 @@ List rxModelVars_blank() {
 //' @return model variables
 //'
 //' @noRd
+// True when the text holds no statement at all -- only whitespace and '#'
+// comments.  The grammar cannot match that (`statement_list : (statement)+`,
+// and `statement` is deliberately not nullable; see inst/tran.g), so it is
+// routed to the blank model here, which is where "" has always gone.
+static inline bool rxModelIsBlankText(const std::string &s) {
+  for (size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+    if (c == '#') {
+      while (i < s.size() && s[i] != '\n') ++i;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 List rxModelVars_character(const RObject &obj){
   CharacterVector modList = asCv(obj, "rxModelVars_character(obj)");
   if (modList.size() == 1){
     std::string sobj =as<std::string>(obj);
-    if (sobj == ""){
+    if (rxModelIsBlankText(sobj)){
       // Blank rxode2 model
       return rxModelVars_blank();
     } else if (fileExists(sobj)) {
