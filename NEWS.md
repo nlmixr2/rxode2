@@ -488,6 +488,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   from a one-subject event table gives the same answer as the same simulation
   run from an event table that lists the subjects explicitly (#1308).
 
+- `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
+  was read out of an undocumented `method` argument, so the documented
+  spelling was silently ignored and the interval always came back from
+  `binomProbs()`'s own default.  `method=` keeps working (#1308).
+
 - Piping a model's `ini()` into another model no longer silently leaves shared
   random effects behind.  Three cases dropped an eta with no error and no
   message, leaving the destination model on its own initial estimate: when the

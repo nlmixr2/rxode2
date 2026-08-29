@@ -72,6 +72,29 @@ rxTest({
     expect_true(all(c("p1", "eff") %in% names(.ci2)))
   })
 
+  test_that("confint(ciMethod=) reaches binomProbs() (#1308)", {
+    .mod <- rxode2({
+      ka <- 1
+      cl <- 1 * exp(eta.cl)
+      v <- 20
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      hi <- (cp > 2)
+    })
+    rxSetSeed(42)
+    .s <- suppressMessages(rxSolve(.mod, et(amt=100) |> et(seq(0, 24, by=8)),
+                                   omega=lotri(eta.cl ~ 0.1), nSub=100))
+    .wald <- suppressMessages(confint(.s, "hi", mean="binom", ciMethod="wald"))
+    .wilson <- suppressMessages(confint(.s, "hi", mean="binom", ciMethod="wilson"))
+    expect_false(isTRUE(all.equal(.wald$eff, .wilson$eff)))
+    # `ciMethod` used to be read out of an undocumented `method`, which still
+    # works
+    .legacy <- suppressMessages(confint(.s, "hi", mean="binom", method="wilson"))
+    expect_equal(.wilson$eff, .legacy$eff)
+    expect_error(suppressMessages(confint(.s, "hi", mean="binom", ciMethod="nope")))
+  })
+
   test_that("confint(ci=FALSE) always gives the simple percentiles (#1308)", {
     rxSetSeed(42)
     .s <- suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,

@@ -86,78 +86,10 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   `:=` <- NULL # nolint
   rxode2::rxReq("data.table")
   checkmate::assertNumeric(level, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
-  .args <- list(...)
-  if (any(names(.args) == "doSim")) {
-    checkmate::assertLogical(.args$doSim, len=1,
-                             any.missing=FALSE, .var.name="doSim")
-    .doSim <- .args$doSim
-  } else {
-    .doSim<-TRUE
-  }
-  .by <- NULL
-  if (any(names(.args) == "by")) {
-    .by <- .args$by
-    checkmate::assertSubset(.by, names(object), .var.name="by")
-  }
-  .ci <- level
-  if (any(names(.args) == "ci")) {
-    .ci <- .args$ci
-    if (inherits(.ci, "logical")) {
-      checkmate::assertLogical(.ci, len=1, any.missing=FALSE, .var.name="ci")
-      if (!.ci) {
-        .ci <- 0.0
-      }
-    } else {
-      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE, .var.name="ci")
-    }
-  }
-  .mean <- FALSE
-  .binom <- FALSE
-  .nC <- 0L
-  .pred <- FALSE
-  .useT <- TRUE
-  .mM <- 500000
-  .tol <- .Machine$double.eps^0.25
-  if (any(names(.args) == "useT")) {
-    .useT <- .args$useT
-    checkmate::assertLogical(.useT, len=1, any.missing=FALSE, .var.name="useT")
-  }
-  if (any(names(.args) == "mean")) {
-    .mean <- .args$mean
-    if (inherits(.mean, "character") &&
-          length(.mean) == 1L &&
-          .mean == "binom") {
-      .binom <- TRUE
-      .mean <- FALSE
-    } else {
-      checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
-    }
-  }
-  if (any(names(.args) == "pred")) {
-    .pred <- .args$pred
-    checkmate::assertLogical(.pred, len=1, any.missing=FALSE, .var.name="pred")
-  }
-  if (any(names(.args) == "n")) {
-    .nC <- unique(.args$n)
-    checkmate::assertIntegerish(.nC, len=1, any.missing=FALSE, lower=0L, .var.name="n")
-  }
-  if (any(names(.args) == "m")) {
-    .mM <- unique(.args$m)
-    checkmate::assertIntegerish(.mM, len=1, any.missing=FALSE, lower=0L, .var.name="m")
-  }
-  if (any(names(.args) == "M")) {
-    .mM <- unique(.args$M)
-    checkmate::assertIntegerish(.mM, len=1, any.missing=FALSE, lower=1000L, .var.name="M")
-  }
-  if (any(names(.args) == "tol")) {
-    .tol <- unique(.args$tol)
-    checkmate::assertNumeric(.tol, len=1, any.missing=FALSE, lower=.Machine$double.eps, .var.name="tol")
-  }
-  .ciMethod <- "wald"
-  if (any(names(.args) == "ciMethod")) {
-    .ciMethod <- .args$method
-  }
-  .stk <- rxStack(object, parm, doSim=.doSim) # nolint
+  .opt <- .confintOptions(list(...), object, level)
+  .by <- .opt$by
+  .ci <- .opt$ci
+  .stk <- rxStack(object, parm, doSim=.opt$doSim) # nolint
   .nStud <- object$env$.args$nStud
   if (!checkmate::testIntegerish(.nStud, len=1L, any.missing=FALSE)) .nStud <- 1L
   .nSub <- object$env$.args$nSub
@@ -188,10 +120,13 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     ci = paste0("p", .p2 * 100),
     parm = levels(.stk$trt),
     by = .by,
-    mean = .mean,
-    binom=.binom
+    mean = .opt$mean,
+    binom = .opt$binom
   )
   class(.lst) <- "rxHidden"
+  # `.n` is the number of replicate summaries the confidence band is taken
+  # over; it stays NA when the simulation cannot supply any
+  .n <- NA_integer_
   if (.ci ==0 || !any(names(.stk) == "sim.id") ||
         !isTRUE(.nStud > 1L)) {
     if (any(names(.stk) == "sim.id")) {
@@ -206,73 +141,41 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
         .ntot <- .nStud
       }
     }
-    if (.ci == 0 || .ntot < 2500) {
-      if (.ci != 0.0) {
-        .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations") # nolint
-      }
-      message("summarizing data...", appendLF = FALSE)
-      if (.mean) {
-        .stk <- .stk[, list(
-          p1 = .p, eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE, useT=.useT,
-                                           n=.nC, pred=.pred),
-          Percentile = sprintf("%s%%", .p * 100)
-        ),
-        by = c("time", "trt", .by)
-        ]
-      } else if (.binom) {
-        .stk <- .stk[, list(
-          p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                            n=.nC, m=.mM, M=.mM, tol=.tol,
-                                            pred=.pred, ciMethod=.ciMethod),
-          Percentile = sprintf("%s%%", .p * 100)
-        ),
-        by = c("time", "trt", .by)
-        ]
-      } else {
-        .stk <- .stk[, list(
-          p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
-          Percentile = sprintf("%s%%", .p * 100)
-        ),
-        by = c("time", "trt", .by)
-        ]
-      }
-      if (requireNamespace("tibble", quietly = TRUE)) {
-        .stk <- tibble::as_tibble(.stk)
-      }
-      .cls <- c("rxSolveConfint1", class(.stk))
-      attr(.cls, ".rx") <- .lst
-      class(.stk) <- .cls
-      message("done")
-      return(.stk)
-    } else {
+    if (.ci != 0 && .ntot >= 2500) {
+      # one study, but enough individuals to sub-sample it
       .n <- round(sqrt(.ntot))
       if (!any(names(.stk) == "sim.id")) {
         # `id` can be a factor (character subject identifiers); densify to
         # 1:.ntot so the modulus below splits it into `.n` sub-samples
         .stk$sim.id <- as.integer(factor(.stk$id))
       }
+    } else if (.ci != 0.0) {
+      .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations") # nolint
     }
   } else {
+    # each study is its own uncertainty draw
     .n <- .nStud
   }
   message("summarizing data...", appendLF = FALSE)
-  .ret <- .stk[, id := sim.id %% .n]
-  if (.mean) {
-    .ret <- .ret[, list(p1 = .p,
-                        eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE, n=.nC,
-                                                useT=.useT,
-                                                pred=.pred)),
-                 by = c("id", "time", "trt", .by)]
-  } else if (.binom) {
-    .ret <- .ret[, list(p1 = .p,
-                        eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                                 n=.nC, m=.mM, M=.mM, tol=.tol,
-                                                 pred=.pred, ciMethod=.ciMethod)),
-                 by = c("id", "time", "trt", .by)]
-  } else {
-    .ret <- .ret[, list(p1 = .p,
-                        eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
+  if (is.na(.n)) {
+    .stk <- .stk[, list(
+      p1 = .p, eff = .confintProbs(.SD$value, .p, .opt),
+      Percentile = sprintf("%s%%", .p * 100)
+    ),
+    by = c("time", "trt", .by)
+    ]
+    if (requireNamespace("tibble", quietly = TRUE)) {
+      .stk <- tibble::as_tibble(.stk)
+    }
+    .cls <- c("rxSolveConfint1", class(.stk))
+    attr(.cls, ".rx") <- .lst
+    class(.stk) <- .cls
+    message("done")
+    return(.stk)
   }
+  .ret <- .stk[, id := sim.id %% .n]
+  .ret <- .ret[, list(p1 = .p, eff = .confintProbs(.SD$value, .p, .opt)),
+               by = c("id", "time", "trt", .by)]
   .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
                           sprintf("p%s", .p2 * 100)),
                by = c("p1", "time", "trt", .by)]
