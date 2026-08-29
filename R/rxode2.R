@@ -2398,18 +2398,6 @@ rxLoad <- rxDynLoad
 rxUnload <- rxDynUnload
 
 .rxConditionLst <- list()
-#' Current Condition for rxode2 object
-#'
-#' @param obj rxode2 object
-#' @param condition If specified and is one of the conditions in the
-#'     rxode2 object (as determined by [rxExpandIfElse()]),
-#'     assign the rxode2 current condition to this parameter.  If the
-#'     condition is not one of the known condition, the condition is
-#'     set to `NULL`, implying no conditioning currently used.
-#' @return Current condition for rxode2 object
-#' @author Matthew L. Fidler
-#' @keywords internal
-#' @export
 #' The `.rxConditionLst` key for an already-normalized model
 #'
 #' Split out of `rxCondition()` so `rxNorm()` can look a condition up with the
@@ -2427,6 +2415,18 @@ rxUnload <- rxDynUnload
   digest::digest(norm, algo = "md5", serialize = TRUE)
 }
 
+#' Current Condition for rxode2 object
+#'
+#' @param obj rxode2 object
+#' @param condition If specified and is one of the conditions in the
+#'     rxode2 object (as determined by [rxExpandIfElse()]),
+#'     assign the rxode2 current condition to this parameter.  If the
+#'     condition is not one of the known condition, the condition is
+#'     set to `NULL`, implying no conditioning currently used.
+#' @return Current condition for rxode2 object
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
 rxCondition <- function(obj, condition = NULL) {
   .key <- .rxConditionKey(rxode2::rxNorm(obj, FALSE))
   if (!missing(condition) && is.null(condition)) {

@@ -112,11 +112,11 @@ rxTest({
     expect_true(inherits(rxModelVars("d/dt(G)=-G\n"), "rxModelVars"))
   })
 
-  # A past() line is compartment-scoped: it only parses in a chunk that also has
-  # the matching d/dt().  .rxDelaySensAugment() appends past() after every d/dt(),
-  # so on a model long enough to chunk it lands in the last chunk, away from its
-  # d/dt() -- .rxDisguiseCmt() must hide it for the chunk to parse standalone.
-  test_that("past() survives chunked expression optimization", {
+  # past() is compartment-scoped and .rxDelaySensAugment() appends it after every
+  # d/dt(), so on a long model it can end up far from its d/dt().  It has to
+  # survive expression optimization wherever it lands, and the optimized model
+  # has to solve to the same answer.
+  test_that("past() survives expression optimization on a long model", {
     .filler <- paste(sprintf("v%d = %d * exp(kg * t) + sin(v0 * %d)", 1:45, 1:45, 1:45),
                      collapse = "\n")
     .mod <- paste0(
@@ -127,17 +127,8 @@ rxTest({
       .filler, "\n", "R2 = D + v1 + v45\n",
       "past(G, T) = a * exp(b * t)\n")
 
-    .dg <- rxode2:::.rxDisguiseCmt(.mod)
-    # the past line is hidden as an ordinary assignment, so a chunk parses alone
-    expect_false(any(grepl("^past", strsplit(.dg, "\n")[[1]])))
-    expect_true(any(grepl("^rx__disg_lhs__", strsplit(.dg, "\n")[[1]])))
-    # ... and is restored byte-exactly, spacing included
-    expect_equal(strsplit(rxode2:::.rxRestoreCmt(.dg), "\n")[[1]],
-                 strsplit(.mod, "\n")[[1]])
-
-    .o <- suppressMessages(rxOptExpr(.mod, "m", chunkLines = 40L))
+    .o <- suppressMessages(rxOptExpr(.mod, "m"))
     expect_true(any(grepl("^past\\(G, *T\\)", strsplit(.o, "\n")[[1]])))
-    expect_false(grepl("rx__disg_", .o, fixed = TRUE))
     # optimizing must not change what the model means
     .ev <- et(seq(0, 30, by = 1))
     .s1 <- rxSolve(rxode2(.mod), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10,

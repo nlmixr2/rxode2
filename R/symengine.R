@@ -678,6 +678,14 @@ rxD <- function(name, derivatives) {
 ## Dropped whenever the derivative table changes (rxD/rxFun/rxRmFun).
 .rxSEstate$dTemplates <- NULL
 
+## The C translator (src/rxToSE.c) for rxode2 -> symengine text.  Returns
+## NA_character_ for anything it does not reproduce exactly, and those fall
+## back to the R walker below.  Shares options(rxode2.symengineC=) with
+## .rxFromSEC(): both are the same translation moved to C.
+.rxToSEC <- function(x) {
+  .Call(`_rxode2_rxToSEChar`, as.character(x))
+}
+
 #' rxode2 to symengine environment
 #'
 #' @param x expression
@@ -703,14 +711,6 @@ rxD <- function(name, derivatives) {
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
-## The C translator (src/rxToSE.c) for rxode2 -> symengine text.  Returns
-## NA_character_ for anything it does not reproduce exactly, and those fall
-## back to the R walker below.  Shares options(rxode2.symengineC=) with
-## .rxFromSEC(): both are the same translation moved to C.
-.rxToSEC <- function(x) {
-  .Call(`_rxode2_rxToSEChar`, as.character(x))
-}
-
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
   .udfEnvSet(parent)

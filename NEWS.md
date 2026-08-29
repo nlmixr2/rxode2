@@ -28,6 +28,30 @@
   ordinary model syntax error naming what to write instead rather than as a
   bare parser error.
 
+- The common-subexpression search in `rxOptExpr()` runs in C.  It counted
+  subexpressions in a named R list and looked them up with `[[text]]`, a linear
+  scan, so the search was quadratic in the number of distinct subexpressions --
+  which on a second-order sensitivity model is enormous.  A new dparser grammar
+  (`inst/rxCse.g`) and C pass (`src/rxCse.c`) count into a hash instead, one
+  statement at a time across threads, and the counts are merged by the earliest
+  position each subexpression was seen so the result does not depend on the
+  thread count.  On a 286-line second-order model the search drops from ~143s
+  to ~1.5s.  Output is byte-identical; anything the C pass will not reproduce
+  exactly -- an unsupported left-hand side, `past()`, a numeric literal it
+  cannot render the way `as.character()` would -- makes it decline so the R
+  implementation runs.  Set `options(rxode2.optExprC = FALSE)` to force the R
+  implementation.
+
+- `rxOptExpr()` no longer chunks.  `chunkLines=` and `parallel=` are accepted
+  and ignored.  Chunking existed only because parsing was strongly superlinear
+  in model size, which was fixed by removing the grammar ambiguity above, and
+  its output was worse -- subexpressions were shared only within a chunk, so a
+  chunked model carried more temporaries.  Models over 40 lines therefore
+  optimize to different (better) text than before: the per-chunk
+  `rx_expr_c<i>_` temporaries are gone and subexpressions are shared across the
+  whole model.  The `mirai` daemon pool that parallelized the chunks is gone
+  with them; `mirai` is still used by `rxSolve()`'s out-of-memory chunking.
+
 - `rxNorm()` parses a model once rather than twice.  With no condition set it
   asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a
   digest of the normalized model -- so the model was normalized to build the

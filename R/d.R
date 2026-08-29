@@ -971,36 +971,6 @@
 #
 # Otherwise which1 & which2 are returns the Jacobain of the system
 
-#' This gives the derivative table for rxode2
-#'
-#' This will help allow registration of functions in `rxode2`
-#'
-#' @return Derivative table environment for rxode2
-#' @details
-#'
-#' This environment is a derivative table;
-#'
-#' For example:
-#'
-#' Derivative(f(a,b,c), a) = fa()
-#' Derivative(f(a,b,c), b) = fb()
-#' Derivative(f(a,b,c), c) = fc()
-#'
-#' Then the derivative table for `f` would be:
-#'
-#' assign("f", list(fa(a,b,c), fb(a,b,c), fc(a,b,c)), rxode2parseD())
-#'
-#'  fa translates the arguments to the derivative with respect to a
-#'  fb translates the arguments to the derivative with respect to b
-#'
-#' If any of the list is NULL then rxode2 won't know how to take a
-#' derivative with respect to the argument.
-#'
-#' If the list is shorter than the length of the arguments then the
-#' argument then the derivative of arguments that are not specified
-#' cannot be taken.
-#' @author Matthew L. Fidler
-#' @export
 #' Derivative templates for the C translator
 #'
 #' Every entry in the derivative table is an R function of the argument
@@ -1055,6 +1025,36 @@
   .cached
 }
 
+#' This gives the derivative table for rxode2
+#'
+#' This will help allow registration of functions in `rxode2`
+#'
+#' @return Derivative table environment for rxode2
+#' @details
+#'
+#' This environment is a derivative table;
+#'
+#' For example:
+#'
+#' Derivative(f(a,b,c), a) = fa()
+#' Derivative(f(a,b,c), b) = fb()
+#' Derivative(f(a,b,c), c) = fc()
+#'
+#' Then the derivative table for `f` would be:
+#'
+#' assign("f", list(fa(a,b,c), fb(a,b,c), fc(a,b,c)), rxode2parseD())
+#'
+#'  fa translates the arguments to the derivative with respect to a
+#'  fb translates the arguments to the derivative with respect to b
+#'
+#' If any of the list is NULL then rxode2 won't know how to take a
+#' derivative with respect to the argument.
+#'
+#' If the list is shorter than the length of the arguments then the
+#' argument then the derivative of arguments that are not specified
+#' cannot be taken.
+#' @author Matthew L. Fidler
+#' @export
 rxode2parseD <- function() {
   return(.rxD)
 }
