@@ -327,9 +327,16 @@ when the stiff regions are severe.
 | `"vern98+ros4"` | `AutoVern9(RosShamp4())` | Highest-order primary with lighter stiff secondary |
 | `"vern98+ros43"` | `AutoVern9(Rodas4P())` | Highest-order primary; best on demanding tolerances |
 | `"vern98+sdirk43"` | `AutoVern9(SDIRK43())` | High-order primary with L-stable stiff backup |
-| `"dop853+ros4"` | -- | DOP853 primary; lower-overhead stiff fallback; supports `dense=TRUE` |
-| `"dop853+ros43"` | -- | DOP853 primary; more robust stiff handling; supports `dense=TRUE` |
+| `"dop853+ros4"` | -- | DOP853 primary; lower-overhead stiff fallback; the only composite that supports `dense=TRUE` |
+| `"dop853+ros43"` | -- | DOP853 primary; more robust stiff handling |
 | `"bs32+ros4"` | `AutoBS3(RosShamp4())` | Low-order primary; useful for rough problems or coarser tolerances |
+
+A `dop853` primary detects stiffness itself, from the estimate its steps already
+produce, and so can switch before it is in trouble.  Every other primary switches
+when it fails, which still works but costs the failed attempt.  `dense=TRUE` is
+supported for `"dop853+ros4"` only: the secondary has to be dense too (`ros4` is
+the only stiff method that is), and taking over a dense segment part-way through
+is implemented for a `dop853` primary.
 
 **Note on Julia's `Rosenbrock23()`:** Julia's `Rosenbrock23()` is a 2nd/3rd-order
 Rosenbrock W-method (Shampine, 1982).  rxode2 does not have a 2nd/3rd-order
@@ -339,16 +346,17 @@ is the lowest-order adaptive Rosenbrock-family secondary available, making
 
 #### Tuning AutoSwitch behavior
 
-Six parameters control the switching logic, all passed directly to
+Seven parameters control the switching logic, all passed directly to
 `rxSolve()` or `rxControl()`:
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `autoSwitchNonstifftol` | `0.9` | Stiffness ratio threshold (in non-stiff mode) above which the interval is considered stiff and retried |
-| `autoSwitchStifftol` | `0.9` | Non-stiffness ratio threshold (in stiff mode) below which the switch-back counter is incremented |
-| `autoSwitchMaxStiff` | `10L` | Consecutive stiff-detected intervals before permanently switching to the stiff solver |
-| `autoSwitchMaxNonstiff` | `3L` | Consecutive non-stiff intervals (while in stiff mode) before switching back to the primary |
-| `autoSwitchDtfac` | `2.0` | Factor applied to the suggested step size when switching to stiff; divided when switching back |
+| `autoSwitchNonstifftol` | `0.9` | Stiffness ratio `rho*h/6.1` above which an accepted step is a stiff verdict; 15 verdicts hand the rest of the interval to the secondary |
+| `autoSwitchStifftol` | `0.9` | Ratio below which a step is a clean verdict; six clear the alarm.  Set below `autoSwitchNonstifftol` for a hysteresis band |
+| `autoSwitchMaxStiff` | `10L` | Consecutive stiff-detected intervals before the solve stops probing the primary |
+| `autoSwitchMaxNonstiff` | `3L` | Intervals on the secondary before the primary is probed again; the wait doubles on each probe that fails (capped at 64x) |
+| `autoSwitchSwitchMax` | `5L` | Minimum intervals after a switch before a switch back is allowed; raises `autoSwitchMaxNonstiff` when larger |
+| `autoSwitchDtfac` | `2.0` | Accepted and inert.  It scaled a step size across a switch for a predictive scheme that the reactive one replaced |
 | `autoSwitchStiffFirst` | `FALSE` | Start with the stiff solver instead of the non-stiff primary |
 
 For pharmacometric applications:
@@ -384,20 +392,20 @@ exactly this quantity (Hairer & Wanner's `nstiff` heuristic), so when
 
 | | Julia `AutoSwitch` | rxode2 composite |
 |---|---|---|
-| Granularity | per accepted **step** | per ODE **interval** (event-to-event segment) |
-| Decision style | **proactive** -- `is_stiff` chooses the algorithm for the *next* step | **reactive** -- run the primary, re-solve the interval with the stiff method only if it reports stiffness or fails |
-| Stiffness source | the integrator's `eigen_est` (every stepper supplies one) | the primary's own per-step estimator (e.g. DOP853's `nstiff`) **or** an outright solve failure (step-size collapse) |
-| Hysteresis | `maxstiffstep` / `maxnonstiffstep` / `dtfac` / `stiffalgfirst` | `autoSwitchMaxStiff` / `autoSwitchMaxNonstiff` / `autoSwitchDtfac` / `autoSwitchStiffFirst` (same defaults: `10` / `3` / `2` / `FALSE`) |
+| Granularity | per accepted **step** | detection per accepted **step**, hand-over at the point of detection |
+| Decision style | **proactive** -- `is_stiff` chooses the algorithm for the *next* step | **reactive** -- run the primary and hand the rest of the interval to the stiff method when it reports stiffness or fails |
+| Stiffness source | the integrator's `eigen_est` (every stepper supplies one) | the primary's own per-step estimator (DOP853's `nstiff`) **or** an outright solve failure (step-size collapse) |
+| Hysteresis | `maxstiffstep` / `maxnonstiffstep` / `dtfac` / `stiffalgfirst` | `autoSwitchMaxStiff` / `autoSwitchMaxNonstiff` / `autoSwitchSwitchMax` / `autoSwitchStiffFirst` |
 
-The practical upshot: because `rxode2` solves a whole inter-dose interval
-as one unit, it does not re-pick the algorithm at every internal step the
-way Julia does.  Instead it lets the non-stiff primary run (and detect
-stiffness with the same Hairer estimate, or simply fail on a stiff
-region), then re-solves that interval with the stiff secondary and uses a
-short hysteresis so a persistently stiff subject stops paying for the
-non-stiff probe.  A non-stiff primary that has no internal eigenvalue
-estimate still triggers a switch through its step-size collapse, which is
-why the reactive scheme works for every primary, not only `dop853`.
+The practical upshot: a `dop853` primary evaluates the same Hairer estimate
+Julia calls `eigen_est` on every accepted step, and carries its verdict counters
+across intervals, so it detects stiffness on the same timescale Julia does even
+though `rxode2` drives the solver one event-to-event interval at a time.  When
+it does report stiffness, the stiff secondary continues from the last step the
+primary completed rather than redoing the interval, so a switch costs one
+integration.  A primary with no internal eigenvalue estimate still switches
+through its step-size collapse, which is why the reactive scheme works for every
+primary, not only `dop853`.
 
 ### Delay differential equations (DDEs)
 
