@@ -871,6 +871,11 @@
   .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
                   if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
 
+  ## RXDEBUG (temporary): which branch, and on what machine
+  cat(sprintf(paste0("RXDEBUG ctx: parallel=%s nChunks=%d nDaemons=%d useMirai=%s ",
+                     "ownDaemons=%s cores=%d\n"),
+              parallel, .nChunks, .nDaemons, .useMirai, .ownDaemons,
+              as.integer(rxCores())))
   .opt <- tryCatch({
     if (.useMirai) {
       if (.ownDaemons) {
@@ -904,8 +909,17 @@
       }
       .res
     } else {
-      ## RXDEBUG (temporary): report each chunk's shape so a macOS-only serial
-      ## failure can be identified; remove once diagnosed.
+      ## RXDEBUG (temporary): run the ORIGINAL vapply first, with the same
+      ## diagnostics present, to tell "vapply is the cause" apart from "the
+      ## cat() calls perturbed a memory/GC bug in the C rxCse pass".
+      .vp <- tryCatch(vapply(seq_len(.nChunks), .rxOptExprChunk, character(1),
+                             chunks = .chunks, msg = msg),
+                      error = function(e) {
+                        cat("RXDEBUG vapply ERROR: ", conditionMessage(e), "\n", sep = "")
+                        NULL
+                      })
+      cat(sprintf("RXDEBUG vapply ok=%s len=%d\n", !is.null(.vp),
+                  if (is.null(.vp)) -1L else length(.vp)))
       .res <- character(.nChunks)
       for (.i in seq_len(.nChunks)) {
         .r <- .rxOptExprChunk(.i, .chunks, msg)
@@ -914,6 +928,8 @@
                     paste(nchar(.r), collapse = ",")))
         .res[.i] <- .r
       }
+      cat(sprintf("RXDEBUG loop==vapply: %s\n",
+                  if (is.null(.vp)) "NA" else identical(.vp, .res)))
       .res
     }
   }, error = function(e) {
