@@ -1,0 +1,111 @@
+rxTest({
+  # When the AutoSwitch composite "primary+stiff" switches, and when it must
+  # not.  The Jacobian plumbing the stiff secondary needs is
+  # test-autoswitch-jacobian.R.
+
+  ## Robertson: stiff enough that the non-stiff primaries below cannot solve it
+  ## on their own, so solving it at all is proof of a switch.
+  .rob <- rxode2({
+    d/dt(a)  <- -0.04 * a + 1e4 * b * cc
+    d/dt(b)  <-  0.04 * a - 1e4 * b * cc - 3e7 * b * b
+    d/dt(cc) <-  3e7 * b * b
+    a(0) <- 1
+    b(0) <- 0
+    cc(0) <- 0
+  })
+  .evr <- et(c(0.1, 1, 10, 100))
+  .refr <- rxSolve(.rob, .evr, method = "lsoda", atol = 1e-10, rtol = 1e-10)
+
+  ## Full TMDD: fast binding against slow turnover.  dop853 solves it unaided,
+  ## just slowly, so here a switch shows up as a difference from dop853 rather
+  ## than as the difference between solving and not.
+  .tmdd <- rxode2({
+    d/dt(depot) <- -ka*depot
+    d/dt(L)     <-  ka*depot - kel*L - kon*L*R + koff*RL
+    d/dt(R)     <-  ksyn - kdeg*R - kon*L*R + koff*RL
+    d/dt(RL)    <-  kon*L*R - koff*RL - kint*RL
+  })
+  .tmddP <- c(ka = 0.5, kel = 0.1, kon = 100, koff = 1,
+              ksyn = 1, kdeg = 0.5, kint = 0.2)
+  .tmddEv <- et(amt = 50, cmt = "depot", ii = 24, addl = 6) |> et(seq(0, 168, by = 0.5))
+
+  test_that("the non-dense dop853+ros4 composite switches to ros4 mid-solve", {
+    ## Widely spaced output times overwhelm the non-stiff dop853 primary, so it
+    ## must switch to ros4 per interval to solve this at all.
+    ## pure dop853 cannot solve it ...
+    expect_error(rxSolve(.rob, .evr, method = "dop853", atol = 1e-8, rtol = 1e-8))
+
+    ## ... but the non-dense composite (no dense=TRUE) does, matching lsoda.
+    .xr <- rxSolve(.rob, .evr, method = "dop853+ros4", atol = 1e-8, rtol = 1e-8)
+    expect_false(any(is.na(.xr$a)))
+    expect_true(max(abs(.xr$a - .refr$a)) < 1e-5)
+  })
+
+  test_that("the composite does not switch on a non-stiff model", {
+    ## The #1307 regression target: a 1-cmt oral model is not stiff, so
+    ## "dop853+ros4" must be dop853 throughout.  Asserted as bit-identity with
+    ## plain dop853 rather than as a wall time, which is what actually holds --
+    ## a single ros4 interval anywhere would change the trajectory.
+    .oral <- rxode2({
+      d/dt(depot)  <- -ka*depot
+      d/dt(center) <-  ka*depot - (cl/v)*center
+      cp <- center/v
+    })
+    .p <- c(ka = 1, cl = 1, v = 20)
+    .oev <- et(amt = 100, cmt = "depot", ii = 24, addl = 6) |> et(seq(0, 168, by = 0.5))
+    .d <- rxSolve(.oral, .oev, params = .p, method = "dop853")
+    .c <- rxSolve(.oral, .oev, params = .p, method = "dop853+ros4")
+    expect_identical(.c$cp, .d$cp)
+  })
+
+  test_that("the composite switches on a stiff model without grinding dop853 to mxstep", {
+    ## Full TMDD: fast binding against slow turnover.  dop853 solves it, but
+    ## slowly; the composite must actually switch (so its trajectory differs
+    ## from plain dop853) and still match lsoda.  Before the detector's state was
+    ## carried across intervals this switched zero times -- its output was
+    ## bit-identical to dop853 -- because a switch needed ~64 accepted steps
+    ## inside one observation interval.
+    .ref <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda",
+                    atol = 1e-12, rtol = 1e-12)
+    .d <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853")
+    .c <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4")
+    expect_false(identical(.c$L, .d$L))
+    expect_true(max(abs(.c$L - .ref$L)) < 1e-5)
+  })
+
+  test_that("a composite whose primary is not dop853 switches too", {
+    ## dop5 and bs cannot solve stiff Robertson on their own; paired with a
+    ## stiff secondary they must.  Before, their drivers ignored op->stiff2 and
+    ## the composite silently ran as the plain primary on the main timeline.
+    for (.p in c("dop5", "bs")) {
+      expect_error(suppressWarnings(rxSolve(.rob, .evr, method = .p, atol = 1e-8, rtol = 1e-8)),
+                   info = paste("plain", .p, "was expected to fail on Robertson"))
+      .x <- suppressWarnings(rxSolve(.rob, .evr, method = paste0(.p, "+ros4"),
+                                     atol = 1e-8, rtol = 1e-8))
+      expect_false(any(is.na(.x$a)), info = paste0(.p, "+ros4 produced NA"))
+      expect_true(max(abs(.x$a - .refr$a)) < 1e-4,
+                  info = paste0(.p, "+ros4 did not match the reference solution"))
+    }
+  })
+
+  test_that("the autoSwitch controls reach the composite", {
+    ## They were documented, parsed, stored on op, and read by nothing.
+    .go <- function(...) {
+      rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4",
+              atol = 1e-8, rtol = 1e-8, ...)
+    }
+    .ref2 <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda",
+                     atol = 1e-12, rtol = 1e-12)
+    .base <- .go()
+    ## each control changes which method runs where ...
+    expect_false(identical(.go(autoSwitchStiffFirst = TRUE)$L, .base$L))
+    expect_false(identical(.go(autoSwitchNonstifftol = 0.05)$L, .base$L))
+    ## ... and none of them changes the answer
+    for (.x in list(.base, .go(autoSwitchStiffFirst = TRUE),
+                    .go(autoSwitchNonstifftol = 0.05))) {
+      expect_true(max(abs(.x$L - .ref2$L)) < 1e-5)
+    }
+    ## autoSwitchDtfac is accepted and inert
+    expect_identical(.go(autoSwitchDtfac = 4)$L, .base$L)
+  })
+})
