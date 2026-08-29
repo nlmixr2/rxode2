@@ -100,7 +100,10 @@ plot(ci)
 The shaded ribbon spans the 2.5th to 97.5th percentile of the
 population prediction (combining BSV and parameter uncertainty); the
 solid line is the median.  The `ci` argument to `confint()` controls
-the width of the confidence bands placed around those percentiles:
+the width of the confidence bands placed around those percentiles
+(see [Summarizing simulations with confint()](rxode2-confint.html) for
+the full set of options and for what `confint()` does when there is no
+study dimension to work with):
 
 ```{r ciProfileNarrow, fig.width=7, fig.height=4}
 ## 90% interval with 95% confidence bands around it

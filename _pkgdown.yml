@@ -399,6 +399,8 @@ navbar:
         - text: "Variability and uncertainty"
         - text: "Parameter uncertainty"
           href: articles/rxode2-parameter-uncertainty.html
+        - text: "Summarizing simulations with confint()"
+          href: articles/rxode2-confint.html
         - text: "ETA/EPS resampling"
           href: articles/rxode2-eta-eps-resampling.html
   - text: "Examples"
