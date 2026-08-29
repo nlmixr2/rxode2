@@ -126,12 +126,17 @@ rxExpandGrid <- function(x, y, type = 0L) {
   on.exit({
     rxProgressAbort()
   })
-  .ret <- apply(.jac, 1, function(x) {
-    .l <- x["line"]
-    .l <- eval(parse(text = .l))
+  ## Two passes rather than one.  symengine::D() has to stay serial (this
+  ## build has no thread-safe refcounting), but the translation afterwards
+  ## does not, and doing it in one batch also pays rxFromSE()'s fixed per-call
+  ## cost once instead of once per line.
+  .se <- apply(.jac, 1, function(x) {
+    .l <- eval(parse(text = x["line"]))
     rxTick()
-    paste0(x["rx"], "=", rxFromSE(.l))
+    as.character(.l)
   })
+  .ret <- paste0(.jac[, "rx"], "=", .rxFromSEvec(.se))
+  names(.ret) <- names(.se)
   assign("..jacobian", .ret, envir = model)
   rxProgressStop()
   return(.ret)
@@ -245,23 +250,30 @@ rxExpandGrid <- function(x, y, type = 0L) {
     lapply(c(.grd$ddtS, .grd$ddS2), function(x) {
       assign(x, symengine::Symbol(x), envir = model)
     })
-    .ret <- apply(.grd, 1, function(x) {
-      .l <- x["line"]
-      .l <- eval(parse(text = .l))
-      .ret <- paste0(x["ddt"], "=", rxFromSE(.l))
-      if (exists(x["s0"], envir = model)) {
-        .l <- x["s0D"]
-        .l <- eval(parse(text = .l))
-        if (paste(.l) != "0") {
-          .ret <- paste0(
-            .ret, "\n", x["s0r"], "=", rxFromSE(.l),
-            "+0.0"
-          )
-        }
+    ## Two passes, as in .rxJacobian(): symengine stays serial, the translation
+    ## afterwards goes over in one batch.  The initial-condition derivative is
+    ## only present for some rows, so it is collected separately and spliced
+    ## back by index.
+    .se <- character(nrow(.grd))
+    .s0se <- rep(NA_character_, nrow(.grd))
+    for (.i in seq_len(nrow(.grd))) {
+      .x <- .grd[.i, ]
+      .se[.i] <- as.character(eval(parse(text = .x[["line"]])))
+      if (exists(.x[["s0"]], envir = model)) {
+        .l <- eval(parse(text = .x[["s0D"]]))
+        if (paste(.l) != "0") .s0se[.i] <- as.character(.l)
       }
       rxTick()
-      return(.ret)
-    })
+    }
+    .ret <- paste0(.grd$ddt, "=", .rxFromSEvec(.se))
+    ## apply() named its result from the data frame's row names; keep that so
+    ## downstream consumers see exactly what they saw before.
+    names(.ret) <- rownames(.grd)
+    .w <- which(!is.na(.s0se))
+    if (length(.w) > 0L) {
+      .ret[.w] <- paste0(.ret[.w], "\n", .grd$s0r[.w], "=",
+                         .rxFromSEvec(.s0se[.w]), "+0.0")
+    }
     if (!missing(vars3)) {
       ## Delay differential equations: add the third-order delayed (variational)
       ## terms (constant-delay) to each third-order sensitivity ODE.
@@ -430,7 +442,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (!exists("..fixR", envir = .newmod)) {
     if (exists("rx_r_", envir = .newmod)) {
       ## Breaks focei for non-trivial examples
-      ## if (!rxErrEnv.hasAdd) {
+      ## if (!.rxErrEnv$hasAdd) {
       ##   ## Convert abs() to abs1()
       ##   .r <- get("rx_r_", envir = .newmod)
       ##   .r <- paste0("abs1(", rxFromSE(.r), ")")

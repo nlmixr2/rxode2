@@ -2,6 +2,90 @@
 
 ## New features
 
+- Model parsing is no longer superlinear in model size.  `statement` in the
+  `dparser` grammar could derive the empty string (its last alternative was a
+  bare `end_statement`, which is `(';')*`), so `statement_list : (statement)+`
+  admitted any number of empty statements at every position.  `dparser`
+  resolved that ambiguity by greediness, re-walking the whole accumulated parse
+  tree at each position, and every parse in the package paid for it --
+  `rxode2()`, `rxNorm()`, `rxModelVars()`, `rxS()` and `rxOptExpr()` alike.
+  Requiring a semicolon in that alternative makes the grammar unambiguous.  On
+  a 301-line model `rxNorm()` drops from 3.18s to 0.07s and `rxOptExpr()` from
+  5.61s to 0.43s; per-line parse cost, which grew tenfold between a 25-line and
+  a 301-line model, is now flat.  Model text that is only whitespace and
+  comments is now treated as a blank model, as an empty string always was.
+
+  One degenerate form is no longer accepted as a consequence: an `if` or
+  `while` with no body at all and no braces (`if (a > 1)`, `while (a > 1)`,
+  `if (a > 1) else b <- 1`).  These used to parse because a statement could be
+  empty, which is the ambiguity being removed -- an empty body makes
+  `if (a > 1) b <- 1` ambiguous, since `b <- 1` could be the body or the next
+  statement, so the old behavior cannot be kept alongside the fix.  Write an
+  empty body as `{}` or `;` (`if (a > 1) {}`), both of which parse as before.
+  Bodies that only look empty, such as a block holding nothing but a comment,
+  are unaffected.  R rejects all three of these too, so the grammar now agrees
+  with R where it used to be more permissive, and they are reported as an
+  ordinary model syntax error naming what to write instead rather than as a
+  bare parser error.
+
+- The common-subexpression search in `rxOptExpr()` runs in C.  It counted
+  subexpressions in a named R list and looked them up with `[[text]]`, a linear
+  scan, so the search was quadratic in the number of distinct subexpressions --
+  which on a second-order sensitivity model is enormous.  A new dparser grammar
+  (`inst/rxCse.g`) and C pass (`src/rxCse.c`) count into a hash instead, one
+  statement at a time across threads, and the counts are merged by the earliest
+  position each subexpression was seen so the result does not depend on the
+  thread count.  On a 286-line second-order model the search drops from ~143s
+  to ~1.5s.  Output is byte-identical; anything the C pass will not reproduce
+  exactly -- an unsupported left-hand side, `past()`, a numeric literal it
+  cannot render the way `as.character()` would -- makes it decline so the R
+  implementation runs.  Set `options(rxode2.optExprC = FALSE)` to force the R
+  implementation.
+
+- `rxOptExpr()` decides whether to chunk on the model's SIZE rather than its
+  line count.  Chunking amortizes the parse, and parse cost tracks characters,
+  so a model with many short lines was being chunked when chunking made it
+  slower.  The threshold is `options(rxode2.optExprChunkChars = )`, default
+  512 KB; `chunkLines=` still caps the chunk size and `chunkLines = 0` still
+  forces a single whole-model pass.  A model between 40 lines and the size
+  threshold is now optimized whole, so it gets better sharing and no
+  `rx_expr_c<i>_` temporaries.
+
+- `options(rxode2.compile.O=)` now reaches the compiler.  The level was written
+  into the generated model's `PKG_CFLAGS`, and `R CMD SHLIB` puts `PKG_CFLAGS`
+  ahead of R's own `CFLAGS` in `ALL_CFLAGS`, so R's `-O2` came last and won --
+  the option had no effect and every model was built at `-O2` whatever it was
+  set to.  The level is now applied through a temporary user Makevars for the
+  duration of the build, so the documented default (`-O3`) is what models are
+  actually compiled at.  Only the `-O` is changed; R's other flags, and any
+  `CFLAGS` the user sets in their own Makevars, are left alone.
+
+- `rxNorm()` parses a model once rather than twice.  With no condition set it
+  asked `rxCondition()` whether one was, and `rxCondition()`'s lookup key is a
+  digest of the normalized model -- so the model was normalized to build the
+  key, the text discarded, and then normalized again to be returned.  It is now
+  normalized once and the same text used for both.  `rxOptExpr()` also dropped
+  an unused `rxModelVars()` call, so one `rxOptExpr()` now parses once instead
+  of three times.  On a 301-line model `rxNorm()` drops a further 0.074s ->
+  0.039s and `rxOptExpr()` 0.43s -> 0.34s.
+
+- Symbolic derivative setup (`rxS()`, `.rxJacobian()`, `.rxSens()`, and so the
+  `nlmixr2est` model builds that use them) is 4-5x faster.  The cost was never
+  `symengine` itself -- `symengine::D()` is under 1% of the total -- but the R
+  text translation around it: `rxFromSE()` re-parsed every `symengine` string
+  with R's `parse()`, emitted through nested `paste0()` and a nine-deep `sub()`
+  regex chain, and saved and restored the whole `options()` list on every leaf.
+  Two changes address it.  The `.rxSEcnt` constant renderings are now computed
+  once when the package is built instead of by `eval(parse())` on each numeric
+  leaf.  A new `dparser` grammar (`inst/seFromSE.g`) and C emitter
+  (`src/seFromSE.c`) then translate `symengine` output directly; expressions
+  the emitter does not reproduce exactly fall back to the R walker, so output
+  is unchanged.  `.rxSens()` on a fifteen-state model drops from 1.27s to
+  0.19s.  Set `options(rxode2.symengineC = FALSE)` to force the R walker.
+  The `symengine` expressions of a jacobian or sensitivity build are now
+  translated as one batch rather than one call per line, and the batch is
+  spread across threads once it is large enough to pay for them.
+
 - `linCmtSensType="auto"` stays forward-mode AD (`"AD"`).  An intermediate
   development version made reverse-mode AD (`"ADr"`) the default on the
   strength of timings that had been taken through `devtools::load_all()`,
@@ -449,6 +533,47 @@
   all, so its subjects inherited whatever stream happened to be current
   instead of a per-subject one.  Simulated values from the affected methods
   change.
+
+## Bug fixes
+
+- `loggamma()` no longer fails to compile.  It is symengine's name for
+  `lgamma()` and the parser accepted it, but code generation emits the rxode2
+  name verbatim as the C name and there is no `loggamma()` in C, so a model
+  using that spelling parsed and then failed at the compiler.  (`gammafn()` and
+  `lgammafn()` in the same table work only because they happen to coincide with
+  `Rmath.h`.)  Its derivative was never affected: symengine differentiates
+  `loggamma` natively to `polygamma(0, x)`, so a model differentiating it
+  already got the exact `digamma()`.
+
+- `ceiling()` is now a supported function.  rxode2 knew C's `ceil()` but not
+  the name R users actually write, and because `ceiling` was absent from the
+  function table it fell through to the user-defined-R-function path, found
+  base R's *primitive* `ceiling`, and reported "user function 'ceiling'
+  requires 0 arguments (supplied 1)" -- `formals()` of a primitive is empty.
+  `floor()` had worked the whole time.  `ceiling()` now parses, compiles to
+  `ceil()`, takes one argument, and is locally constant like `ceil()`,
+  `floor()` and `round()`, so its derivative is 0 and it can be used in models
+  that take sensitivities.
+
+- Symbolic translation now simplifies constant arithmetic instead of emitting
+  it.  A fully constant expression folds to its value (`1/gamma(2)` is `1`, not
+  `1/1`), extending the fold that was already applied to the right-hand operand
+  of every binary operator, and the arithmetic identities are applied: `x/1`,
+  `x*1`, `1*x`, `x+0`, `0+x` and `x-0` all reduce to `x`, the same identity as
+  the `x^1` rule that was already there.  Only the right-hand operand is
+  folded, so `0-x` and `1/x` are correctly left alone.  The named constants
+  still win, so `pi*2` remains `M_2PI` rather than becoming `6.28...`.  This
+  shows up most in generated sensitivity code, where differentiating leaves a
+  great many `*1` and `+0` terms behind; the emitted values are unchanged.
+
+- `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
+  they were given.  All three guarded the count with `length(x == n)` instead
+  of `length(x) == n`; `x` is a call, so `x == n` compares its elements and
+  `length()` of that is always at least one, leaving the guard permanently true
+  and the error below it unreachable.  Too few arguments failed with
+  "subscript out of bounds" from the missing element, and extra arguments were
+  silently dropped -- `psigamma(a,b,c)` translated as `psigamma(a,b)` and
+  `polygamma(0,x,y)` as `polygamma(0,x)`.  Correct calls are unaffected.
 
 ## Breaking changes
 

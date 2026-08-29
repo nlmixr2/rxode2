@@ -98,6 +98,7 @@ rxFunParse <- function(name, args, cCode) {
   }
   suppressWarnings(rxRmFunParse(name))
   .udfEnv$rxSEeqUsr <- c(.udfEnv$rxSEeqUsr, setNames(length(args), name))
+  .rxSEstate$dTemplates <- NULL
   .udfEnv$rxCcode <- c(.udfEnv$rxCcode, setNames(cCode, name))
   assign(name, symengine::Function(name), envir = .udfEnv$symengineFs)
   return(invisible())
@@ -163,6 +164,8 @@ rxRmFunParse <- function(name) {
       })
     }
     rm(list = name, envir = .rxD)
+    ## the C translator caches these as templates; see .rxDtemplates()
+    .rxSEstate$dTemplates <- NULL
   }
   if (exists(name, envir = .udfEnv$symengineFs)) {
     rm(list = name, envir = .udfEnv$symengineFs)

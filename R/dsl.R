@@ -455,8 +455,6 @@ allStrs <- function(x) {
 ## Start error function DSL
 sumProdEnv <- new.env(parent = emptyenv())
 
-rxSumProdSum <- FALSE
-rxSumProdProd <- FALSE
 
 
 sumProdEnv[["^"]] <- binaryOp("^")
@@ -464,7 +462,7 @@ sumProdEnv[["^"]] <- binaryOp("^")
 sumProdEnv[["**"]] <- binaryOp("^")
 
 sumProdEnv[["*"]] <- function(a, b) {
-  if (rxSumProdProd) {
+  if (.rxSEstate$sumProdProd) {
     a <- .dslStripParen(a)
     b <- .dslStripParen(b)
     ## log transformed
@@ -475,7 +473,7 @@ sumProdEnv[["*"]] <- function(a, b) {
 }
 
 sumProdEnv[["/"]] <- function(a, b) {
-  if (rxSumProdProd) {
+  if (.rxSEstate$sumProdProd) {
     a <- .dslStripParen(a)
     b <- .dslStripParen(b)
     sprintf("prod(%s, 1/%s)", sub(rex::rex(start, "prod(", capture(anything), ")", end), "\\1", a), b)
@@ -485,7 +483,7 @@ sumProdEnv[["/"]] <- function(a, b) {
 }
 
 sumProdEnv[["+"]] <- function(a, b) {
-  if (rxSumProdSum) {
+  if (.rxSEstate$sumProdSum) {
     a <- .dslStripParen(a)
     if (!missing(b)) {
       b <- .dslStripParen(b)
@@ -504,7 +502,7 @@ sumProdEnv[["+"]] <- function(a, b) {
 }
 
 sumProdEnv[["-"]] <- function(a, b) {
-  if (rxSumProdSum) {
+  if (.rxSEstate$sumProdSum) {
     a <- .dslStripParen(a)
     if (!missing(b)) {
       b <- .dslStripParen(b)
@@ -601,11 +599,11 @@ rxSumProd <- function(x) {
 rxSumProdModel <- function(model, expand = FALSE, sum = TRUE, prod = TRUE) {
   ## Sum for pairwise is equivalent to regular sum under 8 elements.
   rxReq("symengine")
-  assignInMyNamespace("rxSumProdSum", sum)
-  assignInMyNamespace("rxSumProdProd", prod)
+  .rxSEstate$sumProdSum <- sum
+  .rxSEstate$sumProdProd <- prod
   on.exit({
-    assignInMyNamespace("rxSumProdSum", FALSE)
-    assignInMyNamespace("rxSumProdProd", FALSE)
+    .rxSEstate$sumProdSum <- FALSE
+    .rxSEstate$sumProdProd <- FALSE
   })
   .lines <- str2lang(paste0("{",rxNorm(model), "}"))
   .ret <- character(length(.lines) - 1)

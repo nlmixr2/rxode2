@@ -2023,6 +2023,61 @@ rxNumLoaded <- function() {
   .dlls <- getLoadedDLLs()
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
 }
+
+#' Make `rxode2.compile.O` actually take effect for `R CMD SHLIB`
+#'
+#' `R CMD SHLIB` builds `ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS)
+#' $(CFLAGS)`, so the `-O` this package writes into the generated Makevars'
+#' `PKG_CFLAGS` is followed by R's own `CFLAGS` -- and the compiler takes the
+#' last `-O` it is given.  A `CFLAGS` assignment in the package Makevars does not
+#' help either: the user Makevars is read after it.  The user Makevars is the one
+#' place whose `CFLAGS` wins, so this writes a temporary one and points
+#' `R_MAKEVARS_USER` at it for the duration of the build.
+#'
+#' The real user Makevars is inlined AFTER our line, so anyone who sets `CFLAGS`
+#' there keeps control; only R's default `-O` is displaced.  (Inlining it is what
+#' preserves their settings at all, since pointing `R_MAKEVARS_USER` elsewhere
+#' stops R from reading their file.  `R CMD config CFLAGS` already reflects it,
+#' so their flags survive in both lines and the later one -- theirs -- wins.)  Everything else in
+#' R's `CFLAGS` (hardening, `-g`, prefix maps) is carried over untouched -- only
+#' the `-O` is swapped.
+#'
+#' @return path to the temporary Makevars, or `NULL` when nothing needs changing
+#' @noRd
+.rxCompileOMakevars <- function() {
+  .o <- getOption("rxode2.compile.O", "3")
+  if (length(.o) != 1L) return(NULL)
+  .o <- as.character(.o)
+  if (is.na(.o) || .o == "") return(NULL)
+  .cflags <- tryCatch(
+    gsub("\n", "", rawToChar(sys::exec_internal(
+      file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)),
+    error = function(e) "")
+  if (.cflags == "") return(NULL)
+  # already what was asked for, so leave the environment alone
+  if (grepl(paste0("(^| )-O", .o, "( |$)"), .cflags)) return(NULL)
+  .new <- paste0(gsub("(^| )-O[0-9a-zA-Z]+", " ", .cflags), " -O", .o)
+  .user <- Sys.getenv("R_MAKEVARS_USER")
+  if (.user == "") {
+    .user <- path.expand(file.path(
+      "~", ".R",
+      if (.Platform$OS.type == "windows") "Makevars.win" else "Makevars"))
+  }
+  .lines <- paste0("CFLAGS = ", .new)
+  if (file.exists(.user)) {
+    # inlined rather than `include`d: make's include does not handle a path
+    # with spaces, which a Windows home directory routinely has
+    .lines <- c(.lines, readLines(.user, warn = FALSE))
+  }
+  .f <- tempfile("rxode2-Makevars-")
+  # binary connection with an explicit "\n": make treats a CRLF line ending as
+  # part of the value, so a text connection on Windows would hand the compiler
+  # a stray carriage return
+  .con <- file(.f, "wb")
+  on.exit(close(.con), add = TRUE)
+  writeLines(.lines, .con, sep = "\n")
+  .f
+}
 .pkg <- NULL
 #' @rdname rxCompile
 #' @export
@@ -2289,6 +2344,21 @@ rxCompile.rxModelVars <- function(model, # Model
           on.exit(Sys.setenv("BINPREF" = .oldBinpref), add = TRUE)
         }
         rxode2::rxReq("sys")
+        # `rxode2.compile.O` lands in PKG_CFLAGS, which R's own CFLAGS then
+        # overrides; this is what makes the requested -O the effective one
+        .mkO <- .rxCompileOMakevars()
+        if (!is.null(.mkO)) {
+          .oldMkO <- Sys.getenv("R_MAKEVARS_USER", unset = NA_character_)
+          Sys.setenv("R_MAKEVARS_USER" = .mkO)
+          on.exit({
+            if (is.na(.oldMkO)) {
+              Sys.unsetenv("R_MAKEVARS_USER")
+            } else {
+              Sys.setenv("R_MAKEVARS_USER" = .oldMkO)
+            }
+            unlink(.mkO)
+          }, add = TRUE)
+        }
         # swap in the load-time (clean) compiler environment for the build:
         # another package may have leaked PKG_CPPFLAGS/PKG_LIBS/USE_CXX17
         # into the session (rstan::stan_model does, with a forced C++
@@ -2398,6 +2468,23 @@ rxLoad <- rxDynLoad
 rxUnload <- rxDynUnload
 
 .rxConditionLst <- list()
+#' The `.rxConditionLst` key for an already-normalized model
+#'
+#' Split out of `rxCondition()` so `rxNorm()` can look a condition up with the
+#' normalized model it is about to return anyway.  Normalizing is a parse, and
+#' `rxCondition()` normalizes purely to build this key, so calling it from
+#' `rxNorm()` used to parse the same model twice per call.
+#'
+#' @param norm normalized model text, exactly as `rxNorm(obj, FALSE)` returns
+#'   it (unnamed, length one) -- the key is a digest, so any difference in
+#'   attributes is a different key
+#' @return the md5 key into `.rxConditionLst`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxConditionKey <- function(norm) {
+  digest::digest(norm, algo = "md5", serialize = TRUE)
+}
+
 #' Current Condition for rxode2 object
 #'
 #' @param obj rxode2 object
@@ -2411,7 +2498,7 @@ rxUnload <- rxDynUnload
 #' @keywords internal
 #' @export
 rxCondition <- function(obj, condition = NULL) {
-  .key <- digest::digest(rxode2::rxNorm(obj, FALSE), algo = "md5", serialize = TRUE)
+  .key <- .rxConditionKey(rxode2::rxNorm(obj, FALSE))
   if (!missing(condition) && is.null(condition)) {
     condition <- FALSE
   }
@@ -2475,29 +2562,37 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     }
     return(paste(.ret, collapse = "\n"))
   } else {
-    if (is(condition, "logical")) {
-      if (!condition) {
-        condition <- NULL
-      } else {
-        .tmp <- rxode2::rxExpandIfElse(obj)
-        return(names(.tmp))
-      }
-    } else if (is.null(condition)) {
-      condition <- rxode2::rxCondition(obj)
-    }
-    if (is.null(condition)) {
+    .norm <- function() {
       .tmp <- rxode2::rxModelVars(obj)$model["normModel"]
       names(.tmp) <- NULL
-      return(.tmp)
-    } else {
-      if (is(condition, "character")) {
-        .tmp <- rxode2::rxExpandIfElse(obj)[condition]
-        names(.tmp) <- NULL
+      .tmp
+    }
+    if (is(condition, "logical")) {
+      ## explicit FALSE asks for the unconditional model; no condition lookup
+      if (!condition) {
+        return(.norm())
+      }
+      return(names(rxode2::rxExpandIfElse(obj)))
+    }
+    if (is.null(condition)) {
+      ## rxCondition()'s lookup key is a digest of the normalized model, and
+      ## the normalized model is also what this returns when no condition is
+      ## set.  Normalize ONCE and use the same text for both: calling
+      ## rxCondition() here parsed the model a second time purely to build the
+      ## key, and a parse is by far the most expensive thing rxNorm() does.
+      .tmp <- .norm()
+      condition <-
+        getFromNamespace(".rxConditionLst", "rxode2")[[.rxConditionKey(.tmp)]]
+      if (is.null(condition)) {
         return(.tmp)
-      } else {
-        return(rxNorm(obj, FALSE))
       }
     }
+    if (is(condition, "character")) {
+      .tmp <- rxode2::rxExpandIfElse(obj)[condition]
+      names(.tmp) <- NULL
+      return(.tmp)
+    }
+    return(rxNorm(obj, FALSE))
   }
 }
 

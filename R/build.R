@@ -133,20 +133,33 @@ d/dt(blood)     = a*intestine - b*blood
   close(.R)
 
   message("done")
-  message("Generate grammar include file")
-  dparser::mkdparse(devtools::package_file("inst/tran.g"),
-                    devtools::package_file("src/"),
-                    grammar_ident="rxode2parse")
-  l <- readLines(devtools::package_file("src/tran.g.d_parser.c"))
-  .w <- which(grepl("#line ", l))
-  if (.w > 1L) {
-    .w <- .w[1L]
-    l[.w] <- sub("[#]line([^\"]*\").*(src.*)", "#line\\1\\2",l[.w])
+  message("Generate grammar include files")
+  ## mkdparse() writes a .c; rxode2 #includes it as a .h instead, with the
+  ## generated #line pointing at src/ rather than the build machine's path.
+  .mkGrammar <- function(stem, ident) {
+    dparser::mkdparse(devtools::package_file(paste0("inst/", stem, ".g")),
+                      devtools::package_file("src/"),
+                      grammar_ident = ident)
+    .c <- devtools::package_file(paste0("src/", stem, ".g.d_parser.c"))
+    l <- readLines(.c)
+    .w <- which(grepl("#line ", l))
+    if (length(.w) > 0L && .w[1L] > 1L) {
+      .w <- .w[1L]
+      l[.w] <- sub("[#]line([^\"]*\").*(src.*)", "#line\\1\\2", l[.w])
+    }
+    .h <- file(devtools::package_file(paste0("src/", stem, ".g.d_parser.h")), "wb")
+    writeLines(l, .h)
+    close(.h)
+    unlink(.c)
   }
-  tran.g.h <- file(devtools::package_file("src/tran.g.d_parser.h"), "wb")
-  writeLines(l, tran.g.h)
-  close(tran.g.h)
-  unlink(devtools::package_file("src/tran.g.d_parser.c"))
+  .mkGrammar("tran", "rxode2parse")
+  ## symengine printer output -> rxode2/C, walked by src/seFromSE.c
+  .mkGrammar("seFromSE", "rxode2seFromSE")
+  ## rxode2 -> symengine text, walked by src/rxToSE.c
+  .mkGrammar("rxToSE", "rxode2rxToSE")
+  ## one normalized rxode2 statement, walked by src/rxCse.c for common
+  ## subexpression elimination
+  .mkGrammar("rxCse", "rxode2cse")
 
 
   # generate control
@@ -208,7 +221,7 @@ d/dt(blood)     = a*intestine - b*blood
   cat("\n#endif // __rxode2_control_H__\n")
   sink()
   message("done")
-  return(invisible(""))
+  invisible("")
 }
 #' This creates the list of "blessed" rxode2 items
 #'
