@@ -88,29 +88,63 @@ static char *_es_dup(SEXP s) {
   return dst;
 }
 
+/* The translation table (and _goodFuns) has to stay alive for the whole parse,
+   but an R error can longjmp out of the parse between the point it is claimed
+   and the matching _rxode2parse_unprotect() -- not every error path unwinds
+   through that call.  R releases the PROTECT stack on such an unwind while
+   this counter stays set, so the NEXT parse's _rxode2parse_unprotect() would
+   UNPROTECT entries it no longer owns and pop the caller's own protections off
+   the stack.  That corrupts the stack for whoever called us: on macOS it
+   surfaced as "R_Reprotect: only 137 protected items, can't reprotect index
+   143" thrown out of vapply(), which holds a PROTECT_INDEX across the calls it
+   makes.
+
+   R_PreserveObject is not undone by an unwind, so the objects and the count
+   stay in step across an error and releasing them stays correct either way.
+   The list is fixed and short (8 + 2 translation entries, plus _goodFuns). */
+#define RXP_MAX_PRESERVED 32
+static SEXP _rxode2parse_pres[RXP_MAX_PRESERVED];
 int _rxode2parse_protected = 0;
+
+SEXP _rxode2parse_preserve(SEXP x) {
+  /* unreachable with the fixed list above; never preserve what we cannot
+     release, since that would leak the object instead of the stack */
+  if (_rxode2parse_protected >= RXP_MAX_PRESERVED) return x;
+  R_PreserveObject(x);
+  _rxode2parse_pres[_rxode2parse_protected++] = x;
+  return x;
+}
+
 void _rxode2parse_assignTranslationBuiltin(void) {
   SEXP df = getRxode2ParseDfBuiltin();
-  _rxode2parse_funName = PROTECT(VECTOR_ELT(df, 0)); _rxode2parse_protected++;
-  _rxode2parse_funNameInt = PROTECT(VECTOR_ELT(df, 1)); _rxode2parse_protected++;
+  _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
+  _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
 }
 
 void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_unprotect();
-  _rxode2parse_rxFunctionName = PROTECT(VECTOR_ELT(df, 0)); _rxode2parse_protected++;
-  _rxode2parse_functionName = PROTECT(VECTOR_ELT(df, 1)); _rxode2parse_protected++;
-  _rxode2parse_functionType = PROTECT(VECTOR_ELT(df, 2)); _rxode2parse_protected++;
-  _rxode2parse_functionPackageName = PROTECT(VECTOR_ELT(df, 3)); _rxode2parse_protected++;
-  _rxode2parse_functionPackageFunction = PROTECT(VECTOR_ELT(df, 4)); _rxode2parse_protected++;
-  _rxode2parse_functionArgMin = PROTECT(VECTOR_ELT(df, 5)); _rxode2parse_protected++;
-  _rxode2parse_functionArgMax = PROTECT(VECTOR_ELT(df, 6)); _rxode2parse_protected++;
-  _rxode2parse_functionThreadSafe = PROTECT(VECTOR_ELT(df, 7));_rxode2parse_protected++;
+  _rxode2parse_rxFunctionName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
+  _rxode2parse_functionName = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  _rxode2parse_functionType = _rxode2parse_preserve(VECTOR_ELT(df, 2));
+  _rxode2parse_functionPackageName = _rxode2parse_preserve(VECTOR_ELT(df, 3));
+  _rxode2parse_functionPackageFunction = _rxode2parse_preserve(VECTOR_ELT(df, 4));
+  _rxode2parse_functionArgMin = _rxode2parse_preserve(VECTOR_ELT(df, 5));
+  _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
+  _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
   _rxode2parse_assignTranslationBuiltin();
 }
 
 void _rxode2parse_unprotect(void) {
-  if (_rxode2parse_protected) UNPROTECT(_rxode2parse_protected);
-  _rxode2parse_protected = 0;
+#ifdef RXODE2_DEBUG_PROTECT
+  if (_rxode2parse_protected != 0)
+    REprintf("parse claim imbalance: %d outstanding at release (%s:%d)\n",
+             _rxode2parse_protected, __FILE__, __LINE__);
+#endif
+  while (_rxode2parse_protected > 0) {
+    _rxode2parse_protected--;
+    R_ReleaseObject(_rxode2parse_pres[_rxode2parse_protected]);
+    _rxode2parse_pres[_rxode2parse_protected] = NULL;
+  }
 }
 
 #include "codegen2.h"
@@ -914,7 +948,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   _es_dLagJacCode = _es_dup(esDLagJacCode);
   _es_dLagQCode = _es_dup(esDLagQCode);
   _es_dDurQCode = _es_dup(esDDurQCode);
-  _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
+  _goodFuns = _rxode2parse_preserve(goodFuns);
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
     err_trans("nothing in output queue to write");

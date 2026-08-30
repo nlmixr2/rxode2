@@ -547,6 +547,18 @@
 
 ## Bug fixes
 
+- Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
+  translation table and `_goodFuns` were claimed on the protect stack by one
+  function and released by another, with the whole parse in between; an
+  `Rf_error` raised in that window (a model syntax error, say) unwound the
+  stack while the outstanding count stayed set, so the *next* parse released
+  entries it no longer owned and popped the caller's own protections.  Callers
+  holding a protect index across the parse then failed -- on macOS this
+  surfaced as `R_Reprotect: only 137 protected items, can't reprotect index
+  143` thrown out of `vapply()`, which made `rxOptExpr()` silently abandon
+  chunking and fall back to optimizing the whole model.  Those objects now use
+  `R_PreserveObject()`, which an unwind does not undo.
+
 - `loggamma()` no longer fails to compile.  It is symengine's name for
   `lgamma()` and the parser accepted it, but code generation emits the rxode2
   name verbatim as the C name and there is no `loggamma()` in C, so a model
