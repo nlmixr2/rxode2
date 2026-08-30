@@ -216,6 +216,9 @@ typedef struct {
 
 static std::vector<expCache_t> __indLinExpCache;
 static int __indLinExpCacheOff = 0;
+// Force-off switch for the block-structured exponential below (rxode2#1301),
+// read in the same place as the cache's.
+static int __indLinBlockOff = 0;
 // `indLinIteration` codes.  Picard is the historical scheme and the cheapest
 // per step; the other two exist for stiff forcings, where Picard's contraction
 // condition -- not the error controller -- is what limits the step.
@@ -311,6 +314,7 @@ typedef struct {
   long rejErr;    // rejected: local error estimate too large
   long cutConv;   // cut: iteration did not converge (ret == -2)
   long iter;      // total iteration passes over all substeps
+  long blockExp;  // exponentials taken through the block split (rxode2#1301)
   char pad[64];
 } indLinCounts_t;
 static std::vector<indLinCounts_t> __indLinCounts;
@@ -329,11 +333,253 @@ static inline indLinCounts_t *indLinCountsHere(void) {
   return (tid < 0) ? NULL : &__indLinCounts[tid];
 }
 
+// `indLinCountsHere()` returns NULL for a thread with no slot of its own, so
+// every increment is guarded rather than shared.
+#define rxIndLinBump(FIELD, BY) do {                    \
+    indLinCounts_t *_c_ = indLinCountsHere();           \
+    if (_c_ != NULL) _c_->FIELD += (BY);                \
+  } while (0)
+
+// -- Block-structured exponential for sensitivity systems (rxode2#1301) -------
+//
+// `rxSensMatExp()` emits, for `n` primal states and `k` sensitivity
+// parameters, an `n(1+k)` system whose rate matrix is block lower triangular
+// with the SAME diagonal block in every block row:
+//
+//   [ A         0   0 ]
+//   [ dA/dp_1   A   0 ]
+//   [ dA/dp_2   0   A ]
+//
+// The emitted constants say so directly -- `k_rx__sens_central_BY_ka___output`
+// is an assignment of `k_central_output`, not a re-derivation -- so the
+// diagonal blocks agree BITWISE, which is what makes the structural test below
+// a proof rather than a tolerance.
+//
+// The exponential inherits the pattern,
+//
+//   exp(Mt) = [[E,0,0],[L_1,E,0],[L_2,0,E]],   E = exp(At),
+//
+// with `L_j` the Frechet derivative `L(At, t dA/dp_j)`, so the whole thing is
+// `k` independent `2n x 2n` exponentials sharing one `E` instead of one
+// `((1+k)n)^3`.
+//
+// Two other index groups have to come along, because the operands actually
+// handed to `matrixExpCached()` carry them:
+//
+//   D ("dead", zero COLUMNS)  the `output` sink `rxSensMatExp()` appends: a
+//                             pure accumulator, so nothing reads it, but its
+//                             row reads every sensitivity block at once.
+//   Z ("driver", zero ROWS)   `meOnly()`'s infusion/forcing columns.
+//
+// A D row is what stops the naive split: its row is not confined to any one
+// block.  It is handled by giving EACH block its own private copy of the
+// accumulator, carrying the block-specific coupling in every copy and the
+// shared (primal and driver) coupling in copy 1 alone, then SUMMING the
+// accumulator rows back.  Each copy is then row-closed -- it reads only
+// indices in its own block -- so its sub-exponential is exactly the
+// corresponding sub-block of the full one, and the sum telescopes to the
+// right answer for both the primal and the driver columns.
+//
+// Per-block size is `w = 2n + |D| + |Z|` and the whole thing is skipped unless
+// `k*w^3` is strictly below the `N^3` it replaces, which is what keeps it off
+// the wide augmentations (the Newton/phi operands pair the system with a full
+// identity block, where the split would cost more than it saves).
+typedef struct {
+  int n;    // primal states per block
+  int k;    // sensitivity blocks
+  int nd;   // accumulator states (zero columns), immediately after the blocks
+  int nz;   // driver states (zero rows), trailing
+} indLinBlockSplit_t;
+
+// Trailing rows that are entirely zero.  `cap` bounds the scan; the groups
+// this looks for are a handful of states wide.
+static int indLinZeroRows(const arma::mat &H, int cap) {
+  const int N = (int) H.n_rows;
+  int m = 0;
+  while (m < cap && m < N) {
+    const int i = N - 1 - m;
+    bool z = true;
+    for (int j = 0; j < N; ++j) {
+      if (H(i, j) != 0.0) { z = false; break; }
+    }
+    if (!z) break;
+    ++m;
+  }
+  return m;
+}
+
+// Columns `[0, hi)`'s trailing entries that are entirely zero, over ALL rows.
+static int indLinZeroCols(const arma::mat &H, int hi, int cap) {
+  const int N = (int) H.n_rows;
+  int m = 0;
+  while (m < cap && m < hi) {
+    const int j = hi - 1 - m;
+    bool z = true;
+    for (int i = 0; i < N; ++i) {
+      if (H(i, j) != 0.0) { z = false; break; }
+    }
+    if (!z) break;
+    ++m;
+  }
+  return m;
+}
+
+// Is the leading `n(1+k)` block the sensitivity pattern above?
+//
+// `!(a == b)` rather than `a != b` so a NaN anywhere fails the test and the
+// general path -- which will propagate it -- is the one taken.
+static bool indLinBlockPattern(const arma::mat &H, int n, int k) {
+  const int nx = n*(k + 1);
+  // The primal rows must not read any sensitivity state.
+  for (int j = n; j < nx; ++j) {
+    for (int i = 0; i < n; ++i) {
+      if (H(i, j) != 0.0) return false;
+    }
+  }
+  for (int b = 1; b <= k; ++b) {
+    const int r0 = b*n;
+    for (int c = 1; c <= k; ++c) {
+      const int c0 = c*n;
+      if (b == c) {
+        for (int j = 0; j < n; ++j) {
+          for (int i = 0; i < n; ++i) {
+            if (!(H(r0 + i, c0 + j) == H(i, j))) return false;
+          }
+        }
+      } else {
+        for (int j = 0; j < n; ++j) {
+          for (int i = 0; i < n; ++i) {
+            if (H(r0 + i, c0 + j) != 0.0) return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
+// The cheapest valid split of `H`, or false when there is none worth taking.
+//
+// The group widths are read off `H` greedily and then walked back down, because
+// a genuinely zero row inside `A` would otherwise be mistaken for a driver and
+// leave a block width that cannot divide.
+#define RX_INDLIN_BLOCK_MAXGROUP 8
+static bool indLinBlockSplit(const arma::mat &H, indLinBlockSplit_t &sp) {
+  const int N = (int) H.n_rows;
+  // n >= 1, k >= 2 is the narrowest split that can pay at all.
+  if (N < 3) return false;
+  const int zMax = indLinZeroRows(H, RX_INDLIN_BLOCK_MAXGROUP);
+  double best = (double)N*(double)N*(double)N;
+  bool found = false;
+  for (int nz = 0; nz <= zMax; ++nz) {
+    const int dMax = indLinZeroCols(H, N - nz, RX_INDLIN_BLOCK_MAXGROUP);
+    for (int nd = 0; nd <= dMax; ++nd) {
+      const int nx = N - nz - nd;
+      if (nx < 3) break;
+      for (int n = 1; 3*n <= nx; ++n) {
+        if (nx % n != 0) continue;
+        const int k = nx/n - 1;
+        if (k < 2) continue;
+        const double w = 2.0*n + nd + nz;
+        const double cost = (double)k * w * w * w;
+        if (cost >= best) continue;
+        if (!indLinBlockPattern(H, n, k)) continue;
+        best = cost;
+        found = true;
+        sp.n = n; sp.k = k; sp.nd = nd; sp.nz = nz;
+      }
+    }
+  }
+  return found;
+}
+
+// exp(H*t) into `out` through the split, or false when `H` has none.
+//
+// Unlike `matrixExp()` this does NOT consume `H` -- it is read `k` times -- so
+// the caller's snapshot of the operand stays valid either way.
+static bool matrixExpBlock(const arma::mat &H, arma::mat &out, double t,
+                           int type, int order) {
+  if (__indLinBlockOff) return false;
+  indLinBlockSplit_t sp;
+  if (!indLinBlockSplit(H, sp)) return false;
+  const int n = sp.n, k = sp.k, nd = sp.nd, nz = sp.nz;
+  const int nx = n*(k + 1);
+  const int N = nx + nd + nz;
+  const int w = 2*n + nd + nz;
+  // Local index layout: primal, this block's sensitivities, accumulators,
+  // drivers.
+  const int lD = 2*n, lZ = 2*n + nd;
+  arma::mat aug(w, w), augE(w, w);
+  out.zeros(N, N);
+  for (int b = 1; b <= k; ++b) {
+    const int r0 = b*n, r1 = (b + 1)*n - 1;
+    aug.zeros();
+    aug.submat(0, 0, n-1, n-1)         = H.submat(0, 0, n-1, n-1);   // A
+    aug.submat(n, n, 2*n-1, 2*n-1)     = H.submat(0, 0, n-1, n-1);   // A again
+    aug.submat(n, 0, 2*n-1, n-1)       = H.submat(r0, 0, r1, n-1);   // dA/dp_b
+    if (nz > 0) {
+      // The driver columns drive the primal and this block alike, in every
+      // copy: they are what makes this copy's trajectory the true one.
+      aug.submat(0, lZ, n-1, w-1)      = H.submat(0, nx+nd, n-1, N-1);
+      aug.submat(n, lZ, 2*n-1, w-1)    = H.submat(r0, nx+nd, r1, N-1);
+    }
+    if (nd > 0) {
+      // The accumulator's coupling to THIS block, in this copy only ...
+      aug.submat(lD, n, lD+nd-1, 2*n-1) = H.submat(nx, r0, nx+nd-1, r1);
+      if (b == 1) {
+        // ... and its shared coupling (primal, drivers) in copy 1 alone, so
+        // the sum over copies counts each exactly once.
+        aug.submat(lD, 0, lD+nd-1, n-1) = H.submat(nx, 0, nx+nd-1, n-1);
+        if (nz > 0) {
+          aug.submat(lD, lZ, lD+nd-1, w-1) = H.submat(nx, nx+nd, nx+nd-1, N-1);
+        }
+      }
+    }
+    matrixExp(aug, augE, t, type, order);
+    if (b == 1) {
+      out.submat(0, 0, n-1, n-1) = augE.submat(0, 0, n-1, n-1);      // E
+      if (nz > 0) out.submat(0, nx+nd, n-1, N-1) = augE.submat(0, lZ, n-1, w-1);
+      if (nd > 0) {
+        out.submat(nx, 0, nx+nd-1, n-1) = augE.submat(lD, 0, lD+nd-1, n-1);
+        if (nz > 0) {
+          out.submat(nx, nx+nd, nx+nd-1, N-1) = augE.submat(lD, lZ, lD+nd-1, w-1);
+        }
+      }
+    } else if (nd > 0) {
+      out.submat(nx, 0, nx+nd-1, n-1) += augE.submat(lD, 0, lD+nd-1, n-1);
+      if (nz > 0) {
+        out.submat(nx, nx+nd, nx+nd-1, N-1) += augE.submat(lD, lZ, lD+nd-1, w-1);
+      }
+    }
+    out.submat(r0, 0, r1, n-1)   = augE.submat(n, 0, 2*n-1, n-1);    // L_b
+    out.submat(r0, r0, r1, r1)   = augE.submat(n, n, 2*n-1, 2*n-1);  // E
+    if (nz > 0) out.submat(r0, nx+nd, r1, N-1) = augE.submat(n, lZ, 2*n-1, w-1);
+    if (nd > 0) out.submat(nx, r0, nx+nd-1, r1) = augE.submat(lD, n, lD+nd-1, 2*n-1);
+  }
+  // Nothing leaves an accumulator or a driver.  The two identities are set
+  // separately because the accumulator-by-driver block between them is a real
+  // answer (the drivers integrated into the accumulators) and one wide `eye()`
+  // over both groups would erase it.
+  if (nd > 0) out.submat(nx, nx, nx+nd-1, nx+nd-1).eye();
+  if (nz > 0) out.submat(nx+nd, nx+nd, N-1, N-1).eye();
+  rxIndLinBump(blockExp, 1);
+  return true;
+}
+
+// `matrixExp()` through the block split when there is one.
+static inline void matrixExpMaybeBlock(arma::mat& H, arma::mat& out, double t,
+                                       int type, int order) {
+  if (matrixExpBlock(H, out, t, type, order)) return;
+  matrixExp(H, out, t, type, order);
+}
+
 // Sized before the parallel region, from rxData.cpp, alongside the other pools.
 extern "C" void ensureIndLinExpCache(int nCores) {
   // Force-miss switch: every lookup fails, so "is this a cache bug?" is one run
   // rather than a bisect.  Read here so it is live per solve.
   __indLinExpCacheOff = (getenv("RXODE2_INDLIN_NO_EXP_CACHE") != NULL);
+  // Same for the block split: "is this the structural shortcut?" is one run.
+  __indLinBlockOff = (getenv("RXODE2_INDLIN_NO_BLOCK_EXP") != NULL);
   // Cover `omp_get_max_threads()` as well as the cores this solve asked for,
   // for the reason `ensureExtraDosing` gives: an external OpenMP driver can
   // bring more threads than `op->cores`.  Without a slot each they fall back to
@@ -374,7 +620,7 @@ extern "C" void freeIndLinExpCache(void) {
   __indLinAutoState.clear();
   // `__indLinCounts` is deliberately NOT cleared: `rxSolveFree()` calls this at
   // the START of the next solve, and the counts have to survive until
-  // `rxIndLinSteps()` reads them.  It is five longs per core.
+  // `rxIndLinSteps()` reads them.  It is six longs per core.
 }
 
 // exp(H*t) into `out`, reusing an identical earlier exponential when there is
@@ -405,7 +651,7 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   // likewise a no-op stub for a matExp() model).
   if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
   if (c == NULL) {
-    matrixExp(H, out, t, type, order);
+    matrixExpMaybeBlock(H, out, t, type, order);
     return;
   }
   // The operand must be snapshotted BEFORE exponentiating, because matrixExp
@@ -416,7 +662,7 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   if (s.key.size() != n2) s.key.resize(n2);
   if (s.val.size() != n2) s.val.resize(n2);
   memcpy(s.key.data(), H.memptr(), n2*sizeof(double));
-  matrixExp(H, out, t, type, order);
+  matrixExpMaybeBlock(H, out, t, type, order);
   memcpy(s.val.data(), out.memptr(), n2*sizeof(double));
   s.t = t;
   s.n = n;
@@ -2098,13 +2344,8 @@ static int indLinTryStep(int cSub, rx_solving_options *op, rx_solving_options_in
 // tuned `hmax` keeps at least the accuracy they had, and every old substep
 // boundary is still a boundary (which is what keeps time-varying covariate
 // sampling a refinement rather than a change).
-// The step-disposition counters live with the other per-thread pools, above.
-// `indLinCountsHere()` returns NULL for a thread with no slot of its own, so
-// every bump below is guarded rather than shared.
-#define rxIndLinBump(FIELD, BY) do {                    \
-    indLinCounts_t *_c_ = indLinCountsHere();           \
-    if (_c_ != NULL) _c_->FIELD += (BY);                \
-  } while (0)
+// The step-disposition counters live with the other per-thread pools, above,
+// as does the `rxIndLinBump()` macro that guards every increment.
 
 extern "C" void rxIndLinCountIter(int n) { rxIndLinBump(iter, n); }
 
@@ -2618,11 +2859,13 @@ extern "C" int indLin(int cSub, rx_solving_options *op, rx_solving_options_ind *
 // integer vector; reading resets, so a measurement is one call before and the
 // numbers after.  `cutConv` is the count that matters: those are steps the
 // error controller would have accepted but the fixed-point iteration could not
-// converge on, so it bounds what a better iteration can recover.
+// converge on, so it bounds what a better iteration can recover.  `blockExp`
+// counts the exponentials that took the sensitivity block split (rxode2#1301),
+// which is how a test asserts the mechanism rather than only the values.
 extern "C" SEXP _rxode2_rxIndLinSteps(void) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 5));
-  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 5));
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 6));
+  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 6));
   // Summed over the threads that did the work, plus the pre-solve sink; this
   // runs on the R thread with no solve in flight, so a plain read is enough.
   indLinCounts_t tot = __indLinCountsSink;
@@ -2632,17 +2875,20 @@ extern "C" SEXP _rxode2_rxIndLinSteps(void) {
     tot.rejErr  += __indLinCounts[i].rejErr;
     tot.cutConv += __indLinCounts[i].cutConv;
     tot.iter    += __indLinCounts[i].iter;
+    tot.blockExp+= __indLinCounts[i].blockExp;
   }
   REAL(ret)[0] = (double) tot.attempt;
   REAL(ret)[1] = (double) tot.accept;
   REAL(ret)[2] = (double) tot.rejErr;
   REAL(ret)[3] = (double) tot.cutConv;
   REAL(ret)[4] = (double) tot.iter;
+  REAL(ret)[5] = (double) tot.blockExp;
   SET_STRING_ELT(nm, 0, Rf_mkChar("attempt"));
   SET_STRING_ELT(nm, 1, Rf_mkChar("accept"));
   SET_STRING_ELT(nm, 2, Rf_mkChar("rejErr"));
   SET_STRING_ELT(nm, 3, Rf_mkChar("cutConv"));
   SET_STRING_ELT(nm, 4, Rf_mkChar("iter"));
+  SET_STRING_ELT(nm, 5, Rf_mkChar("blockExp"));
   Rf_setAttrib(ret, R_NamesSymbol, nm);
   __indLinCountsSink = indLinCounts_t();
   for (int i = 0; i < (int)__indLinCounts.size(); i++) {
