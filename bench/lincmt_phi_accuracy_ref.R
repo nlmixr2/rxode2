@@ -90,14 +90,14 @@ taken elementwise and is inflated where a gradient column crosses zero.\n")
 # leaves the previous arm's intervals in the memo, so this check needs its
 # own window -- a distinct theta gives one.)
 P3b <- P3; P3b["p1"] <- 2.1000001
-rxode2:::linCmtSeqStats(TRUE)
+rxode2::linCmtSeqStats(TRUE)
 invisible(rxode2::rxSolve(mkGrad(1L), P3b, evNU, cores=1L, addDosing=FALSE,
                           linCmtSensType="AD", linCmtSensPhi=TRUE))
-stNU <- rxode2:::linCmtSeqStats(TRUE)
-rxode2:::linCmtSeqStats(TRUE)
+stNU <- rxode2::linCmtSeqStats(TRUE)
+rxode2::linCmtSeqStats(TRUE)
 invisible(rxode2::rxSolve(mkGrad(1L), P3b, ev, cores=1L, addDosing=FALSE,
                           linCmtSensType="AD", linCmtSensPhi=TRUE))
-stU <- rxode2:::linCmtSeqStats(TRUE)
+stU <- rxode2::linCmtSeqStats(TRUE)
 cat(sprintf("\nfresh window, never-repeating intervals: phiBuild=%d phiRows=%d tailRows=%d\n",
             stNU[["phiBuild"]], stNU[["phiRows"]], stNU[["seqTailRows"]]))
 cat(sprintf("fresh window, regular sampling:          phiBuild=%d phiRows=%d tailRows=%d\n",

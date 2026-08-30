@@ -7,7 +7,7 @@
 # Usage: taskset -c <idle core> Rscript bench/lincmt_delta_memo_fit_ab.R
 message("== lincmt_delta_memo_fit_ab ==")
 suppressMessages(devtools::load_all(".", compile = FALSE, quiet = TRUE))
-suppressMessages(devtools::load_all("~/src/nlmixr2est-lincmt-speed",
+suppressMessages(devtools::load_all("~/src/nlmixr2est",
                                     helpers = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 REPS <- as.integer(Sys.getenv("REPS", "3"))
@@ -51,8 +51,8 @@ ctl <- nlmixr2est::foceiControl(print = 0, calcTables = FALSE,
                                   linCmtSensType = "AD", cores = 1L))
 
 fitOnce <- function(memo) {
-  rxode2:::linCmtDeltaMemo(if (memo) 1L else 0L)
-  on.exit(rxode2:::linCmtDeltaMemo(-1L))
+  rxode2::linCmtDeltaMemo(if (memo) 1L else 0L)
+  on.exit(rxode2::linCmtDeltaMemo(-1L))
   t0 <- proc.time()[["elapsed"]]
   f <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(mod(), dat, est = "focei", control = ctl)))

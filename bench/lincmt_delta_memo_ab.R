@@ -39,8 +39,8 @@ mkEv <- function(nSub, obsT) {
 }
 
 timeCell <- function(mod, pars, ev, memo) {
-  rxode2:::linCmtDeltaMemo(if (memo) 1L else 0L)
-  on.exit(rxode2:::linCmtDeltaMemo(-1L))
+  rxode2::linCmtDeltaMemo(if (memo) 1L else 0L)
+  on.exit(rxode2::linCmtDeltaMemo(-1L))
   ts <- vapply(seq_len(REPS), function(r) {
     t0 <- proc.time()[["elapsed"]]
     invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
@@ -74,12 +74,12 @@ res <- do.call(rbind, lapply(cells, function(cl) {
                             linCmtSensType = "AD"))
   tOff <- timeCell(mod, pars, ev, memo = FALSE)
   tOn <- timeCell(mod, pars, ev, memo = TRUE)
-  rxode2:::linCmtDeltaMemo(1L)
-  rxode2:::linCmtSeqStats(TRUE)
+  rxode2::linCmtDeltaMemo(1L)
+  rxode2::linCmtSeqStats(TRUE)
   invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
                             linCmtSensType = "AD"))
-  st <- rxode2:::linCmtSeqStats(TRUE)
-  rxode2:::linCmtDeltaMemo(-1L)
+  st <- rxode2::linCmtSeqStats(TRUE)
+  rxode2::linCmtDeltaMemo(-1L)
   data.frame(cell = cl$name, nObs = nObs,
              usObsOff = 1e6*tOff/nObs, usObsOn = 1e6*tOn/nObs,
              gain = tOff/tOn, expBuild = st[["expBuild"]],

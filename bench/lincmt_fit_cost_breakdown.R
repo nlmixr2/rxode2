@@ -5,13 +5,13 @@
 # NO outer gradient) so the arithmetic is
 #   wall = setup + nOuterEval x (inner pass over 40 subjects) + R overhead
 # and the inner pass splits into solve proper vs everything else.
-# Counters: rxode2:::linCmtSeqStats() valueCompute counts SOLVED rows, so
+# Counters: rxode2::linCmtSeqStats() valueCompute counts SOLVED rows, so
 #   subject inner evaluations = valueCompute / rowsPerSubject.
 # Run pinned: taskset -c 21 Rscript bench/lincmt_fit_cost_breakdown.R
 suppressMessages({
-  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+  devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                      compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
@@ -64,11 +64,11 @@ res <- list()
 # warm-up (compiles); untimed
 invisible(fitOne(ctl))
 # (1) full fit, counters around it
-invisible(rxode2:::linCmtSeqStats(TRUE))
+invisible(rxode2::linCmtSeqStats(TRUE))
 t0 <- proc.time()[["elapsed"]]
 fit <- fitOne(ctl)
 res$wallFull <- proc.time()[["elapsed"]] - t0
-res$stats <- rxode2:::linCmtSeqStats(TRUE)
+res$stats <- rxode2::linCmtSeqStats(TRUE)
 res$objf <- fit$objective
 res$time <- as.data.frame(fit$time)
 saveRDS(res, "bench/results/lincmt_fit_cost_breakdown.rds")
@@ -83,22 +83,22 @@ res$envCounters <- sapply(cand, function(n) {
 ctlPost <- nlmixr2est::foceiControl(calcTables = FALSE, print = 0L, covMethod = "",
   maxOuterIterations = 0L,
   rxControl = rxode2::rxControl(cores = 1L, linCmtSensType = "AD"))
-invisible(rxode2:::linCmtSeqStats(TRUE))
+invisible(rxode2::linCmtSeqStats(TRUE))
 t0 <- proc.time()[["elapsed"]]
 fitP <- fitOne(ctlPost)
 res$wallPost <- proc.time()[["elapsed"]] - t0
-res$statsPost <- rxode2:::linCmtSeqStats(TRUE)
+res$statsPost <- rxode2::linCmtSeqStats(TRUE)
 saveRDS(res, "bench/results/lincmt_fit_cost_breakdown.rds")
 cat("stage2 posthoc:", res$wallPost, "s\n"); print(res$statsPost)
 # (3) setup-only-ish: maxOuter=0 AND maxInner=0 (one eta=0 evaluation/subject)
 ctlSetup <- nlmixr2est::foceiControl(calcTables = FALSE, print = 0L, covMethod = "",
   maxOuterIterations = 0L, maxInnerIterations = 0L,
   rxControl = rxode2::rxControl(cores = 1L, linCmtSensType = "AD"))
-invisible(rxode2:::linCmtSeqStats(TRUE))
+invisible(rxode2::linCmtSeqStats(TRUE))
 t0 <- proc.time()[["elapsed"]]
 fitS <- fitOne(ctlSetup)
 res$wallSetup <- proc.time()[["elapsed"]] - t0
-res$statsSetup <- rxode2:::linCmtSeqStats(TRUE)
+res$statsSetup <- rxode2::linCmtSeqStats(TRUE)
 saveRDS(res, "bench/results/lincmt_fit_cost_breakdown.rds")
 cat("stage3 setupish:", res$wallSetup, "s\n"); print(res$statsSetup)
 res$solvePassSec <- NA_real_

@@ -18,9 +18,9 @@
 ## Build: the ordinary optimized path (pkgbuild::compile_dll(debug=FALSE)
 ## then load_all(compile=FALSE)); no optimization flags are forced.
 ## Usage: Rscript bench/lincmt_phi_fit_engage_check.R
-suppressMessages(devtools::load_all("~/src/rxode2-lincmt-carry-jump", quiet = TRUE,
+suppressMessages(devtools::load_all("~/src/rxode2-lincmt-analytic", quiet = TRUE,
                                     compile = FALSE))
-suppressMessages(devtools::load_all("~/src/nlmixr2est-lincmt-speed", quiet = TRUE,
+suppressMessages(devtools::load_all("~/src/nlmixr2est", quiet = TRUE,
                                     helpers = FALSE))
 rxode2::setRxThreads(1L)
 
@@ -71,7 +71,7 @@ simData <- function(simTimes) {
 
 fitStats <- function(simTimes) {
   dat <- simData(simTimes)
-  invisible(rxode2:::linCmtSeqStats(TRUE))
+  invisible(rxode2::linCmtSeqStats(TRUE))
   f <- nlmixr2est::nlmixr2(
     uiLin, dat, "focei",
     nlmixr2est::foceiControl(maxOuterIterations = 0L, print = 0L,
@@ -79,7 +79,7 @@ fitStats <- function(simTimes) {
                              rxControl = rxode2::rxControl(
                                cores = 1L, linCmtSensType = "AD",
                                linCmtSensPhi = TRUE)))
-  list(stats = rxode2:::linCmtSeqStats(TRUE), objf = f$objf)
+  list(stats = rxode2::linCmtSeqStats(TRUE), objf = f$objf)
 }
 
 ## Gaps strictly increasing: no interval ever recurs.

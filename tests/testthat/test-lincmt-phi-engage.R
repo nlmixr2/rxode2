@@ -12,9 +12,14 @@ rxTest({
   # the other, and the check below is that two exact evaluations agree to
   # round-off, not that an approximation lands inside a tolerance.
   #
-  # The engage rule is that a transition matrix is built only when the row
-  # gap HITS the delta memo, i.e. only on evidence the interval recurs, so
-  # a design whose intervals never repeat must build none at all.
+  # The engage rule below belongs to the PROBE-BUILT matrix
+  # (linCmtSensPhi = 1): its entries cost one kernel evaluation per
+  # direction per column, so it is built only when the row gap HITS the
+  # delta memo -- only on evidence the interval recurs -- and a design whose
+  # intervals never repeat builds none at all.  The default route
+  # (linCmtSensPhi = TRUE, i.e. 2) assembles the same matrix from its closed
+  # form for about one kernel evaluation and so has no such rule; it is
+  # covered in test-lincmt-phi-analytic.R.
   .gradModel <- function(ncmt, oral0, dirs) {
     args <- sprintf("rx__PTR__, t, 1, %d, %d, %%d, %%d, 1, cl, v, q, vp, q2, vp2, ka",
                     ncmt, oral0)
@@ -41,7 +46,7 @@ rxTest({
     p <- .pars(3L)
     # Regular sampling: one interval, so one matrix serves every later row.
     linCmtSeqStats(TRUE)
-    invisible(.solve(mod, p, et(.bolus(), seq(0.25, 24, by = 0.25)), TRUE))
+    invisible(.solve(mod, p, et(.bolus(), seq(0.25, 24, by = 0.25)), 1L))
     st <- linCmtSeqStats(TRUE)
     expect_true(st[["phiBuild"]] >= 1L)
     expect_true(st[["phiRows"]] > 0.9 * st[["seqTailRows"]])
@@ -54,11 +59,22 @@ rxTest({
     linCmtSeqStats(TRUE)
     invisible(.solve(mod, p2,
                      et(.bolus(), cumsum(seq(0.05, 0.55, length.out = 96))),
-                     TRUE))
+                     1L))
     st2 <- linCmtSeqStats(TRUE)
     expect_equal(st2[["phiBuild"]], 0L)
     expect_equal(st2[["phiRows"]], 0L)
     expect_true(st2[["seqTailRows"]] > 0L)
+    # ... and this is exactly the design the closed-form route exists for:
+    # it serves those rows rather than leaving them to the tail.
+    p3 <- p
+    p3[["cl"]] <- 2.1000002
+    linCmtSeqStats(TRUE)
+    invisible(.solve(mod, p3,
+                     et(.bolus(), cumsum(seq(0.05, 0.55, length.out = 96))),
+                     TRUE))
+    st3 <- linCmtSeqStats(TRUE)
+    expect_equal(st3[["phiBuild"]], 0L)
+    expect_true(st3[["phiAnalyticRows"]] > 0L)
   })
 
   test_that("linCmtSensPhi='off' never builds a transition matrix", {
@@ -89,14 +105,16 @@ rxTest({
       )
       for (rn in names(evs)) {
         a <- .solve(mod, p, evs[[rn]], FALSE)
-        b <- .solve(mod, p, evs[[rn]], TRUE)
         cols <- c("cp", paste0("d", cfg$d))
         am <- as.matrix(a[, cols, drop = FALSE])
-        bm <- as.matrix(b[, cols, drop = FALSE])
-        # Scaled by the largest value present rather than elementwise: a
-        # gradient column that crosses zero makes an elementwise relative
-        # figure arbitrarily large for a last-bit difference.
-        expect_lt(max(abs(bm - am)) / max(abs(am)), 1e-12)
+        for (phi in c(1L, 2L)) {
+          b <- .solve(mod, p, evs[[rn]], phi)
+          bm <- as.matrix(b[, cols, drop = FALSE])
+          # Scaled by the largest value present rather than elementwise: a
+          # gradient column that crosses zero makes an elementwise relative
+          # figure arbitrarily large for a last-bit difference.
+          expect_lt(max(abs(bm - am)) / max(abs(am)), 1e-12)
+        }
       }
     }
   })

@@ -16,7 +16,7 @@
 #     represent what anyone runs.  Never benchmark through a plain
 #     load_all() (-O0).  A/B ratios are valid only with both arms built
 #     identically; absolute numbers never cross build flag sets.
-#   - nlmixr2est from ~/src/nlmixr2est-lincmt-speed (load_all, helpers=FALSE).
+#   - nlmixr2est from ~/src/nlmixr2est (load_all, helpers=FALSE).
 #   - Single-thread (cores = 1); run pinned:
 #       CELL=2cmt-uniform ROUNDS=3 CORE=21 taskset -c 21 Rscript bench/lincmt_phi_fit_ab.R
 #   - linCmtSensType = "AD" (forward) FORCED: this tree still carries the
@@ -107,15 +107,15 @@
 #    different build, dataset and observation count.)
 
 suppressMessages({
-  devtools::load_all("~/src/rxode2-lincmt-carry-jump", compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 
 cell   <- Sys.getenv("CELL", "2cmt-uniform")
 nRound <- as.integer(Sys.getenv("ROUNDS", "3"))
 core   <- Sys.getenv("CORE", "unpinned")
-outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
+outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 
@@ -196,12 +196,12 @@ ctlOde <- nlmixr2est::foceiControl(
   rxControl = rxode2::rxControl(cores = 1L))
 
 fitOne <- function(ui, control) {
-  rxode2:::linCmtSeqStats(TRUE)
+  rxode2::linCmtSeqStats(TRUE)
   t0 <- proc.time()[["elapsed"]]
   fit <- suppressWarnings(suppressMessages(
     nlmixr2est::nlmixr2(ui, dat, est = "focei", control = control)))
   sec <- proc.time()[["elapsed"]] - t0
-  st <- rxode2:::linCmtSeqStats(TRUE)
+  st <- rxode2::linCmtSeqStats(TRUE)
   list(sec = sec, objf = fit$objective, st = st,
        nIter = tryCatch(nrow(fit$parHistData), error = function(e) NA_integer_))
 }
@@ -230,7 +230,7 @@ for (r in seq_len(nRound)) {
 res <- do.call(rbind, rows)
 
 prod <- system(paste("readelf --debug-dump=info",
-                     "~/src/rxode2-lincmt-carry-jump/src/linCmt.o",
+                     "~/src/rxode2-lincmt-analytic/src/linCmt.o",
                      "2>/dev/null | grep -m1 -o 'DW_AT_producer.*'"), intern = TRUE)
 attr(res, "provenance") <- list(
   date = format(Sys.time()), cell = cell, rounds = nRound, core = core,
@@ -238,8 +238,8 @@ attr(res, "provenance") <- list(
   producer = substr(paste(prod, collapse = " "), 1, 300),
   flags = "pkgbuild::compile_dll(debug=FALSE) with R_MAKEVARS_USER forcing -O3 last",
   sensType = "AD (forward) forced; Phi serves only the forward tail path",
-  rxode2 = system("git -C ~/src/rxode2-lincmt-carry-jump rev-parse --short HEAD", intern = TRUE),
-  nlmixr2est = system("git -C ~/src/nlmixr2est-lincmt-speed rev-parse --short HEAD", intern = TRUE))
+  rxode2 = system("git -C ~/src/rxode2-lincmt-analytic rev-parse --short HEAD", intern = TRUE),
+  nlmixr2est = system("git -C ~/src/nlmixr2est rev-parse --short HEAD", intern = TRUE))
 dir.create(outDir, showWarnings = FALSE)
 saveRDS(res, file.path(outDir, sprintf("lincmt_phi_fit_ab_%s.rds", cell)))
 
