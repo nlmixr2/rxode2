@@ -466,10 +466,20 @@ static bool indLinBlockPattern(const arma::mat &H, int n, int k) {
 #define RX_INDLIN_BLOCK_MAXGROUP 8
 static bool indLinBlockSplit(const arma::mat &H, indLinBlockSplit_t &sp) {
   const int N = (int) H.n_rows;
-  // n >= 1, k >= 2 is the narrowest split that can pay at all.
-  if (N < 3) return false;
+  // n >= 1, k >= 2 is the narrowest split that can pay at all, and below a
+  // handful of states the cubic term is not what the exponential costs.
+  if (N < 6) return false;
   const int zMax = indLinZeroRows(H, RX_INDLIN_BLOCK_MAXGROUP);
-  double best = (double)N*(double)N*(double)N;
+  // Take the split only with room to spare.  `k*w^3` against `N^3` counts the
+  // multiplies and not the per-exponential fixed costs -- a norm, a
+  // degree/squaring choice and the assembly copies, all paid `k` times over --
+  // so the delivered ratio runs well below the cube ratio (measured across
+  // 1-3 compartments and k = 2-7, a cube ratio of 1.4 delivers about 1.3 and
+  // one of 7.0 delivers about 3.8).  It stays above 1 throughout, which is why
+  // the margin is small; it is there to keep the split off a tie, and it is
+  // what declines the wide augmentations (the Newton and phi operands pair the
+  // system with a full identity block).
+  double best = 0.9*(double)N*(double)N*(double)N;
   bool found = false;
   for (int nz = 0; nz <= zMax; ++nz) {
     const int dMax = indLinZeroCols(H, N - nz, RX_INDLIN_BLOCK_MAXGROUP);
