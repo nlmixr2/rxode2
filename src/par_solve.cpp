@@ -207,14 +207,14 @@ extern "C" void nullGlobals() {
 // "internal #N" fallback instead of erroring or reading the wrong memory.
 extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
   rx_solve *rx = &rx_global;
-  int nprot = 0;
+  rxProtect rx_protect;
   switch (idLvl == NULL ? NILSXP : TYPEOF(idLvl)) {
   case STRSXP:
     break;
   case INTSXP:
   case REALSXP:
   case LGLSXP:
-    idLvl = PROTECT(Rf_coerceVector(idLvl, STRSXP)); nprot++;
+    idLvl = rx_protect.protect(Rf_coerceVector(idLvl, STRSXP));
     break;
   default:
     idLvl = R_NilValue;
@@ -231,7 +231,6 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
   // than rx->factors holds
   rx->factorNs[0] = rx->factors.n;
   rx->hasFactors = 1;
-  if (nprot) UNPROTECT(nprot);
 }
 
 // Test-only entry point (registered in init.c, called via .Call) that
@@ -251,18 +250,18 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
 // the levels).
 extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
+  rxProtect rx_protect;
   rxSolveWarnReset();
   if (Rf_asLogical(setLvlSEXP) != FALSE) {
     rxSetIdLvlFactors(idLvl);
   }
-  SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
+  SEXP ids = rx_protect.protect(Rf_coerceVector(idsSEXP, INTSXP));
   int n = Rf_length(ids);
   int *pids = INTEGER(ids);
   for (int i = 0; i < n; i++) {
     rxSolveWarnPush(pids[i], "rxTest -- solve warning");
   }
   rxSolveWarnFlush(64);
-  UNPROTECT(1);
   return R_NilValue;
 }
 
@@ -335,14 +334,14 @@ extern "C" const char *rxGetIdSim(int id, int *sim) {
 // populated the subject-id factors (e.g. via rxSetIdLvlFactors) rather than
 // leaving them empty.  Used by nlmixr2est's wiring test.
 extern "C" SEXP _rxTestGetIdLabels(SEXP idsSEXP) {
-  SEXP ids = PROTECT(Rf_coerceVector(idsSEXP, INTSXP));
+  rxProtect rx_protect;
+  SEXP ids = rx_protect.protect(Rf_coerceVector(idsSEXP, INTSXP));
   int n = Rf_length(ids);
   int *pids = INTEGER(ids);
-  SEXP ans = PROTECT(Rf_allocVector(STRSXP, n));
+  SEXP ans = rx_protect.protect(Rf_allocVector(STRSXP, n));
   for (int i = 0; i < n; i++) {
     SET_STRING_ELT(ans, i, Rf_mkChar(rxGetId(pids[i])));
   }
-  UNPROTECT(2);
   return ans;
 }
 
