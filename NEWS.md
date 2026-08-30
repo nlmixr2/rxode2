@@ -2,6 +2,16 @@
 
 ## New features
 
+- `rxIndLinExpStats()` reports the per-thread matrix-exponential cache used
+  by `matExp()`/`method="indLin"` solving: `computed`, `reused`, `noSlot`
+  (exponentials taken by a thread with no cache slot of its own, so the pool
+  was never sized or is narrower than the thread team) and `slots`.  The same
+  computed/reused counts already rode out of an `rxSolve()` as
+  `$counts$dadt`/`$counts$jac`, but an estimation package drives the solver
+  directly and never builds that data frame, so from inside a fit the cache
+  was unobservable.  The counters survive the pool free that runs at the start
+  of the next solve, so a measurement can span the solves a fit is made of.
+
 - A `linCmt()` sensitivity row's state-transition matrix and its parameter
   derivatives are now assembled from their CLOSED FORM in the constants the
   theta-keyed window already holds -- the eigenvalues and spectral
