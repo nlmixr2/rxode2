@@ -1549,14 +1549,15 @@ controls.}
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
 Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  For composite AutoSwitch methods (e.g. \code{"dop5+ros4"}), dense
-output is enabled only when \strong{both} the primary and stiff secondary
-support dense output; \code{"ros4"} is the only stiff method that does, so
-valid dense composites are \code{"dop853+ros4"}, \code{"dop5+ros4"}, and
-\code{"bs+ros4"}.  A warning is issued and \code{dense} is set to \code{FALSE} when a
-composite stiff secondary does not support dense output.  Silently
-ignored for non-dense single methods.  Not yet supported for \code{linCmt()}
-models (a warning is emitted and the standard path is used instead).}
+\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+secondary must be dense too (\code{"ros4"} is the only stiff method that is),
+and handing a dense segment from the primary to the secondary mid-segment
+is implemented for a \code{"dop853"} primary.  Other composites solve densely
+only if you drop the secondary.  A warning is issued and \code{dense} is set to
+\code{FALSE} when a composite stiff secondary does not support dense output.
+Silently ignored for non-dense single methods.  Not yet supported for
+\code{linCmt()} models (a warning is emitted and the standard path is used
+instead).}
 
 \item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
 integrator when \code{method = "cvode"}.  Ignored for all other methods.
@@ -1584,26 +1585,34 @@ For most pharmacometric models with fewer than ~50 compartments the default
 a good first choice) only for large QSP or PBPK models where Jacobian
 factorization becomes the bottleneck.}
 
-\item{autoSwitchNonstifftol}{Numeric in \verb{(0, 1]}; stiffness ratio threshold
-used when the solver is in non-stiff mode.  If
-\verb{rho * |dt| / S(primary) > autoSwitchNonstifftol}, the interval is
-considered stiff and the secondary solver is tried.  Default \code{9/10}.}
+\item{autoSwitchNonstifftol}{Numeric in \verb{(0, 1]}; the stiffness ratio at
+which an interval is called stiff.  Each accepted step of a \code{dop853}
+primary estimates the dominant eigenvalue and forms
+\code{rho * h / S(dop853)} with \code{S(dop853) = 6.1}; a step above
+\code{autoSwitchNonstifftol} is a stiff verdict, and 15 verdicts hand the rest
+of the interval to the stiff secondary.  Only a \code{dop853} primary carries
+this estimate; any other primary switches when it fails.  Default \code{9/10}.}
 
-\item{autoSwitchStifftol}{Numeric in \verb{(0, 1]}; non-stiffness ratio threshold
-used when the solver is in stiff mode.  If
-\verb{rho * |dt| / S(primary) < autoSwitchStifftol}, the interval is considered
-non-stiff and the switch-back counter is incremented.  Default \code{9/10}.}
+\item{autoSwitchStifftol}{Numeric in \verb{(0, 1]}; the same ratio, but applied
+once the subject has already switched at least once -- that is, on the
+optimistic re-probe of the primary rather than on the first attempt.
+Lowering it below \code{autoSwitchNonstifftol} makes the re-probe give up
+sooner, so stiff mode is stickier.  Default \code{9/10}, equal to
+\code{autoSwitchNonstifftol}, i.e. a re-probe behaves like a first probe.}
 
-\item{autoSwitchDtfac}{Numeric \verb{>= 1}; factor by which the suggested step
-size is multiplied when switching to the stiff solver, and divided when
-switching back.  Default \code{2.0}.}
+\item{autoSwitchDtfac}{Accepted for backwards compatibility and currently
+inert.  It scaled a suggested step size across a switch, for a predictive
+switching scheme that has been replaced by the reactive one described
+above.  Default \code{2.0}.}
 
-\item{autoSwitchMaxStiff}{Integer; number of consecutive stiff-detected
-intervals before permanently switching to the stiff solver.  Default \code{10L}.}
+\item{autoSwitchMaxStiff}{Integer; number of consecutive intervals in which
+the primary reported stiffness before the solve stops probing it and stays
+on the stiff secondary.  Default \code{10L}.}
 
-\item{autoSwitchMaxNonstiff}{Integer; number of consecutive non-stiff
-intervals (while in stiff mode) before switching back to the fast
-non-stiff solver.  Default \code{3L}.}
+\item{autoSwitchMaxNonstiff}{Integer; intervals to spend on the stiff
+secondary before optimistically probing the primary again.  Each probe
+that fails doubles the wait (capped at 64x), so a persistently stiff
+subject stops paying for probes.  Default \code{3L}.}
 
 \item{autoSwitchStiffFirst}{Logical; when \code{TRUE}, start each subject solve
 with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
@@ -1611,9 +1620,9 @@ with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
 \item{autoSwitchSwitchMax}{Non-negative integer; minimum number of
 integration intervals that must elapse after a switch before the solver
 is allowed to switch back in the opposite direction.  Acts as an
-oscillation guard: if the stiffness ratio fluctuates near a threshold,
-this prevents rapid back-and-forth between solvers.  Set to \code{0L} to
-disable the guard entirely.  Default \code{5L}.}
+oscillation guard, and raises \code{autoSwitchMaxNonstiff} when it is larger.
+Set to \code{0L} to leave the wait to \code{autoSwitchMaxNonstiff} alone.
+Default \code{5L}.}
 
 \item{stiff2}{Integer method code for the stiff secondary solver used in
 AutoSwitch composite methods.  Normally set automatically when \code{method} is
