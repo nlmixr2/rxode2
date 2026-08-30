@@ -103,6 +103,42 @@ rxTest({
     expect_equal(.one$sol, .four$sol, tolerance = 1e-10)
   })
 
+  test_that("an infusion into the accumulator is integrated exactly once", {
+    # The driver-to-accumulator coupling is the one block carried in copy 1
+    # alone rather than summed, and every other case in this file leaves it
+    # zero: the infusions go to `depot`, and `output` reads `central`, not the
+    # infusion columns.  Dosing `output` itself makes that block non-zero, so
+    # duplicating it across the k copies would multiply it by k here and by
+    # nothing anywhere else.
+    .m <- suppressMessages(rxode2(rxSensMatExp(model = .mexp[["2cmt"]],
+                                               calcSens = c("ka", "cl", "v"))))
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |>
+                           et(amt = 50, rate = 10, cmt = "output") |> et(.obs))
+    .on  <- .blkSolve(.m, .th, .ev)
+    .off <- .blkSolve(.m, .th, .ev, off = TRUE)
+    expect_gt(.on$blockExp, 0)
+    expect_equal(.on$sol, .off$sol, tolerance = 1e-10)
+    # The infused amount has to actually reach the accumulator, or the block
+    # under test is still zero.
+    expect_gt(max(.on$sol$output), 5)
+  })
+
+  test_that("a sensitivity model with no accumulator splits too", {
+    # No elimination means no `output` compartment, so the accumulator group is
+    # empty and the split is the plain 2n blocks -- the branch every other model
+    # here skips.
+    .m <- suppressMessages(rxode2(rxSensMatExp(
+      model = paste("matExp()", "k_depot_central <- ka", "cp <- central/v",
+                    sep = "\n"),
+      calcSens = c("ka", "cl", "v"))))
+    expect_false("output" %in% .m$state)
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(.obs))
+    .on  <- .blkSolve(.m, .th, .ev)
+    .off <- .blkSolve(.m, .th, .ev, off = TRUE)
+    expect_gt(.on$blockExp, 0)
+    expect_equal(.on$sol, .off$sol, tolerance = 1e-10)
+  })
+
   test_that("a matExp model with no sensitivity blocks is left alone", {
     # Nothing to split: the detector needs at least two repeats of one diagonal
     # block, and a plain compartmental system has none.
