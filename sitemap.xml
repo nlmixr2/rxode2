@@ -10,6 +10,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/ode-solvers.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-clinical-trial-sim.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-cmt.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-confint.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-delay-differential-equations.html</loc></url>
@@ -82,6 +83,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/boxCox.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/coef.rxUi.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/coef.rxode2.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/confint.rxSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/cvPost.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dELU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dGELU.html</loc></url>
