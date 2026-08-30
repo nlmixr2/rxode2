@@ -2103,10 +2103,10 @@ d/dt(blood)     = a*intestine - b*blood
     # makes that visible instead of silent -- a run reading `reused == 0,
     # noSlot > 0` is an unsized pool, not a cold cache.
     #
-    # Reached by emptying the pool rather than by over-wide team, deliberately:
-    # `rx_get_thread()` CLAMPS, so a team wider than `op->cores` would put two
-    # threads on one `inds_thread[]` slot and on the shared dose pools, which is
-    # a race on the solve state and not a property of this cache at all.
+    # Reached by emptying the pool rather than by an over-wide team,
+    # deliberately: `op->cores` bounds the team by contract, so a wider one is
+    # not a case rxode2 supports -- it is a caller bug, and what it breaks is
+    # the shared solve state (`inds_thread[]`, the dose pools), not this cache.
     skip_if(rxCores() < 2L)
     .solveParMe()
     invisible(.expStats())

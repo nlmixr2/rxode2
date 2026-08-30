@@ -7786,13 +7786,14 @@ static double rxDriveTeamChecksum(rx_solve *rx, int nsolve, int *errN) {
 // (`odeSwap.cpp`'s `odeSwapSolveId`) reduced to its essentials, including the
 // `setRxThreadId()` every one of its parallel regions does.
 //
-// `nThreads` is CLAMPED to `op->cores`, and that clamp is not politeness.
-// `rx_get_thread()` clamps too, so a team wider than `op->cores` puts two
-// threads on `inds_thread[op->cores - 1]` and on the shared `_rxTid()` dose and
-// infusion-rate pools -- a race on the solve state itself, far worse than the
-// uncached exponential the cache's own guard is there to prevent.  An external
-// driver is required to size `op->cores` to its team, and this mirrors one that
-// has.  `clearExpCache` reaches the cache's no-slot fallback the safe way:
+// `nThreads` is CLAMPED to `op->cores` because that is the contract every
+// caller of `ind_solve()` owes rxode2: `op->cores` is the width of the team,
+// the per-thread pools are sized to it, and nothing may run wider (see
+// `rx_get_thread()` in rxomp.h and `_setIndPointersByThread`).  A driver here
+// that ignored it would not be testing rxode2, it would be testing what happens
+// when the contract is broken -- which is a data race on the solve state, not a
+// property of the exponential cache.  So this mirrors a driver that honors it,
+// and `clearExpCache` reaches the cache's no-slot fallback the legitimate way:
 // every thread is ownerless because the pool is empty, not because it is short.
 //
 // Nothing but the tests may drive this, so it is a `.Call` and not a

@@ -285,14 +285,19 @@ static std::vector<indLinAutoState_t> __indLinAutoState;
 
 // This thread's slot in a pool of `n`, or -1 when it has none.
 //
-// `rx_get_thread()` CLAMPS to the last slot instead, which is right for the
-// pools it was written for -- two threads sharing a counter tears a number.
-// It is not right here: the exponential cache's write path calls
-// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, which
-// is a use-after-free rather than a torn read.  A thread with no slot of its
-// own simply does not cache.  An external OpenMP driver (nlmixr2est) is
-// supposed to have configured `op->cores` to cover its team; this is what
-// happens when it has not.
+// `rx_get_thread()` CLAMPS to the last slot instead.  Neither is the normal
+// path: `op->cores` bounds the team by contract, so no thread should be without
+// a slot in the first place (rxomp.h).  They differ in what they do when a
+// caller has broken that contract anyway -- clamping keeps the write in bounds,
+// which is the lesser evil for the pools it was written for, but it is the
+// WRONG lesser evil here, because this cache's write path calls
+// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, and
+// that is a use-after-free rather than a torn read.  A thread with no slot of
+// its own simply does not cache.
+//
+// `n == 0` also lands here, which is the ordinary way the tests reach this
+// branch: an emptied pool leaves every thread ownerless without anyone having
+// to exceed `op->cores`.
 static inline int indLinOwnSlot(int n) {
   if (n <= 0) return -1;
 #ifdef _OPENMP
