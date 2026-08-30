@@ -429,8 +429,11 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
         if (ind != NULL && ind->jac_counter != NULL) ind->jac_counter[0]++;
         // ... and the same count again per thread, for the callers that never
         // see `$counts` (rxIndLinExpStats).  `tid` indexes both pools: they are
-        // resized together and neither shrinks while the other does not.
-        if (tid < (int)__indLinExpCounts.size()) __indLinExpCounts[tid].reused++;
+        // resized together and neither shrinks while the other does not, so
+        // reaching this branch at all means the slot exists.
+        if (tid >= 0 && tid < (int)__indLinExpCounts.size()) {
+          __indLinExpCounts[tid].reused++;
+        }
         return;
       }
     }

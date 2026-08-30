@@ -2005,14 +2005,18 @@ d/dt(blood)     = a*intestine - b*blood
   # and `_rxode2_rxIndLinDriveTeam` is that drive pattern without the fit.
 
   .expStats <- function(reset = TRUE) rxIndLinExpStats(reset)
-  .driveTeam <- function(nt) {
-    .Call("_rxode2_rxIndLinDriveTeam", as.integer(nt), PACKAGE = "rxode2")
+  .driveTeam <- function(nt, clearCache = FALSE) {
+    .Call("_rxode2_rxIndLinDriveTeam", as.integer(nt), clearCache,
+          PACKAGE = "rxode2")
+  }
+  .solveParMe <- function(cores = 2L) {
+    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
+                                       events = .parEv, cores = cores)))
   }
 
   test_that("rxIndLinExpStats() reports the cache an rxSolve() actually used", {
     invisible(.expStats())
-    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                       events = .parEv, cores = 2L)))
+    .solveParMe()
     .st <- .expStats()
     # A population of identical subjects has one distinct operand per distinct
     # step, so almost every lookup after the first must hit.
@@ -2029,8 +2033,7 @@ d/dt(blood)     = a*intestine - b*blood
 
   test_that("reading without reset leaves the counters alone", {
     invisible(.expStats())
-    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                       events = .parEv, cores = 2L)))
+    .solveParMe()
     .a <- rxIndLinExpStats(FALSE)
     expect_equal(rxIndLinExpStats(FALSE), .a)
     expect_equal(.expStats(), .a)
@@ -2041,8 +2044,7 @@ d/dt(blood)     = a*intestine - b*blood
     # cache pool at the START of the next solve, so a counter living in that
     # pool would read zero however busy the cache had been.
     invisible(.expStats())
-    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                       events = .parEv, cores = 2L)))
+    .solveParMe()
     .a <- rxIndLinExpStats(FALSE)
     invisible(suppressMessages(rxSolve(.mmOde, params = .mmPar,
                                        events = as.data.frame(et(amt = 3) |>
@@ -2058,41 +2060,66 @@ d/dt(blood)     = a*intestine - b*blood
     # no `rxSolve_` around it to size anything, its own OpenMP team, and the
     # `setRxThreadId()` every one of its parallel regions does.
     skip_if(rxCores() < 2L)
-    .ref <- as.data.frame(suppressMessages(
-      rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv,
-              cores = 2L)))
+    .solveParMe()
     invisible(.expStats())
-    expect_equal(.driveTeam(2L), length(unique(.parEv$id)))
+    .hit <- .driveTeam(2L)
+    expect_equal(unname(.hit[["nsolve"]]), length(unique(.parEv$id)))
     .st <- .expStats()
     expect_gt(.st[["reused"]], 0)
     expect_equal(unname(.st[["noSlot"]]), 0)
-    # The same answer as the solve it re-ran, or the hits were on a wrong key.
-    .again <- as.data.frame(suppressMessages(
-      rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv,
-              cores = 2L)))
-    expect_equal(.again, .ref)
   })
 
-  test_that("a team wider than the pool computes uncached and stays correct", {
-    # The fallback nothing drove before (#1247): a thread with no slot of its
-    # own may not `resize()` a vector a peer is `memcmp`-ing, so it simply does
-    # not cache.  `noSlot` is what makes that visible instead of silent -- and
-    # a run reading `reused == 0, noSlot > 0` is an unsized pool, not a cold
-    # cache.
+  test_that("a cache hit writes what computing the exponential would have", {
+    # What the reuse count alone cannot say: that the hits were on the RIGHT
+    # key.  The checksum is over the values the drive itself wrote, because a
+    # second `rxSolve()` would free and rebuild the solve first and so compare
+    # two fresh solves rather than the drive's output.  The cached value IS the
+    # value `matrixExp` produced for a bitwise-identical operand, so a correct
+    # cache has to agree exactly, not approximately.
     skip_if(rxCores() < 2L)
-    .ref <- as.data.frame(suppressMessages(
-      rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv,
-              cores = 2L)))
-    .slots <- rxIndLinExpStats(FALSE)[["slots"]]
+    .solveParMe()
     invisible(.expStats())
-    invisible(.driveTeam(.slots * 2 + 2))
+    .cached <- .driveTeam(2L)
+    expect_gt(.expStats()[["reused"]], 0)
+    # Same drive with the pool emptied: every exponential is recomputed.
+    .fresh <- .driveTeam(2L, clearCache = TRUE)
+    .stF <- .expStats()
+    expect_equal(unname(.stF[["reused"]]), 0)
+    expect_gt(.stF[["noSlot"]], 0)
+    expect_identical(.cached[["checksum"]], .fresh[["checksum"]])
+  })
+
+  test_that("an empty pool solves uncached and reports every thread ownerless", {
+    # The fallback nothing drove before (#1247): with no pool, `indLinOwnSlot()`
+    # returns -1 for every thread, so none of them may `resize()` a vector a
+    # peer could be `memcmp`-ing and none of them caches.  `noSlot` is what
+    # makes that visible instead of silent -- a run reading `reused == 0,
+    # noSlot > 0` is an unsized pool, not a cold cache.
+    #
+    # Reached by emptying the pool rather than by over-wide team, deliberately:
+    # `rx_get_thread()` CLAMPS, so a team wider than `op->cores` would put two
+    # threads on one `inds_thread[]` slot and on the shared dose pools, which is
+    # a race on the solve state and not a property of this cache at all.
+    skip_if(rxCores() < 2L)
+    .solveParMe()
+    invisible(.expStats())
+    .out <- .driveTeam(2L, clearCache = TRUE)
     .st <- .expStats()
     expect_gt(.st[["noSlot"]], 0)
-    expect_gte(.st[["computed"]], .st[["noSlot"]])
-    .again <- as.data.frame(suppressMessages(
-      rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv,
-              cores = 2L)))
-    expect_equal(.again, .ref)
+    expect_equal(unname(.st[["reused"]]), 0)
+    expect_equal(unname(.st[["computed"]]), unname(.st[["noSlot"]]))
+    expect_equal(unname(.st[["slots"]]), 0)
+    expect_gt(abs(.out[["checksum"]]), 0)
+  })
+
+  test_that("the external-team driver refuses a freed solve", {
+    # `rx->subjects` survives `rxSolveFree()` -- it points at `inds_global`,
+    # which only `rxFreeLast()` releases -- and `rx->nsub` keeps its stale
+    # value, so re-driving after a free would walk per-individual arrays that
+    # have already been given back.
+    .solveParMe()
+    rxSolveFree()
+    expect_equal(unname(.driveTeam(2L)[["nsolve"]]), 0)
   })
 
   test_that("the force-miss latch turns every lookup into a computation", {

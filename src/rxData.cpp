@@ -5427,6 +5427,13 @@ LogicalVector rxSolveSetup() {
   return _globals.alloc;
 }
 
+// The same flag from C: is there a global solve to read, or has `rxSolveFree()`
+// already released the per-individual arrays?  `rx->subjects` stays non-NULL
+// across a free (it points at `inds_global`, which only `rxFreeLast()` releases)
+// and `rx->nsub` keeps its stale value, so a pointer check alone is not enough
+// to tell a live solve from a freed one.
+extern "C" int rxSolveIsSetup(void) { return _globals.alloc ? 1 : 0; }
+
 // This creates the final dataset from the currently solved object.
 // Most of this is a direct C call, but some items are done in C++
 List rxSolve_df(const RObject &obj,

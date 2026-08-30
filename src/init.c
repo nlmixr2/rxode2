@@ -56,7 +56,7 @@ SEXP _rxode2_eventSensSetDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam
 SEXP _rxode2_eventSensGetDims(void);
 SEXP _rxode2_rxIndLinSteps(void);
 SEXP _rxode2_rxIndLinExpStats(SEXP);
-SEXP _rxode2_rxIndLinDriveTeam(SEXP);
+SEXP _rxode2_rxIndLinDriveTeam(SEXP, SEXP);
 SEXP _rxode2_eventSensDeactivate(void);
 SEXP _rxode2_eventSensShapeSave(void);
 SEXP _rxode2_eventSensShapeRestore(SEXP buf);
@@ -942,7 +942,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_eventSensGetDims", (DL_FUNC) &_rxode2_eventSensGetDims, 0},
     {"_rxode2_rxIndLinSteps", (DL_FUNC) &_rxode2_rxIndLinSteps, 0},
     {"_rxode2_rxIndLinExpStats", (DL_FUNC) &_rxode2_rxIndLinExpStats, 1},
-    {"_rxode2_rxIndLinDriveTeam", (DL_FUNC) &_rxode2_rxIndLinDriveTeam, 1},
+    {"_rxode2_rxIndLinDriveTeam", (DL_FUNC) &_rxode2_rxIndLinDriveTeam, 2},
     {"_rxode2_eventSensDeactivate", (DL_FUNC) &_rxode2_eventSensDeactivate, 0},
     {"_rxode2_eventSensShapeSave", (DL_FUNC) &_rxode2_eventSensShapeSave, 0},
     {"_rxode2_eventSensShapeRestore", (DL_FUNC) &_rxode2_eventSensShapeRestore, 1},
