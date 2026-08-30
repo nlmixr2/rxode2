@@ -460,9 +460,11 @@ static bool indLinBlockPattern(const arma::mat &H, int n, int k) {
 
 // The cheapest valid split of `H`, or false when there is none worth taking.
 //
-// The group widths are read off `H` greedily and then walked back down, because
-// a genuinely zero row inside `A` would otherwise be mistaken for a driver and
-// leave a block width that cannot divide.
+// Every group width up to what `H` actually admits is tried, not just the
+// widest: a genuinely zero row or column inside `A` reads as a driver or an
+// accumulator, and taking the greedy count alone would leave a block width
+// that cannot divide.  Any width that passes is a valid decomposition -- the
+// identity holds for it -- so the search is free to pick on cost.
 #define RX_INDLIN_BLOCK_MAXGROUP 8
 static bool indLinBlockSplit(const arma::mat &H, indLinBlockSplit_t &sp) {
   const int N = (int) H.n_rows;
