@@ -7709,6 +7709,53 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   par_progress_0=0;
 }
 
+extern "C" void setRxThreadId(int id);
+
+// Re-solve the global solve the way an ESTIMATION package does, for the tests
+// (issue #1302).  An `rxSolve()` is not the drive pattern in doubt: a fit never
+// re-enters `rxSolve_`, so nothing re-sizes the thread pools between its
+// iterations, and it runs `ind_solve()` from a team rxode2 did not create --
+// which is why the exponential cache could plausibly have been sized once,
+// cleared, and then never consulted for a whole fit.  This is nlmixr2est's loop
+// (`odeSwap.cpp`'s `odeSwapSolveId`) reduced to its essentials, including the
+// `setRxThreadId()` every one of its parallel regions does.
+//
+// `nThreads` above `op->cores` is the misconfigured-driver case: those threads
+// own no pool slot and must fall back to solving uncached rather than resize a
+// vector a peer is reading (see `indLinOwnSlot`).  Nothing else may drive it,
+// so it is a `.Call` and not a pointer-table entry.
+extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS) {
+  int nt = Rf_asInteger(nThreadsS);
+  if (nt < 1) nt = 1;
+  rx_solve *rx = getRxSolve_();
+  if (rx == NULL || rx->subjects == NULL || rx->op == NULL) {
+    return Rf_ScalarInteger(0);
+  }
+  // Bind the model's functions once, serially, exactly as the external driver's
+  // setup does -- `ind_indLin`'s own bind is skipped under a team on purpose.
+  assignFuns();
+  int nsolve = (int)(rx->nsim * rx->nsub);
+  if (nsolve <= 0) return Rf_ScalarInteger(0);
+#ifdef _OPENMP
+#pragma omp parallel num_threads(nt)
+  {
+    setRxThreadId(omp_get_thread_num());
+#pragma omp for schedule(static)
+    for (int solveid = 0; solveid < nsolve; solveid++) {
+      ind_solve(rx, (unsigned int)solveid, dydt_liblsoda, dydt_lsoda_dum,
+                jdum_lsoda, dydt, update_inis, global_jt);
+    }
+    setRxThreadId(-1);
+  }
+#else
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    ind_solve(rx, (unsigned int)solveid, dydt_liblsoda, dydt_lsoda_dum,
+              jdum_lsoda, dydt, update_inis, global_jt);
+  }
+#endif
+  return Rf_ScalarInteger(nsolve);
+}
+
 extern "C" void par_solve(rx_solve *rx) {
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);

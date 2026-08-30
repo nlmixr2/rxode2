@@ -251,3 +251,30 @@ rxIndLinState <- function(preferred = NULL) {
   .malert("indLin is in development and results subject to change")
   return(paste(.code, collapse = "\n"))
 }
+
+#' Matrix-exponential cache statistics for inductive linearization
+#'
+#' Reports whether the per-thread content-addressed exponential cache used by
+#' `matExp()`/`indLin()` solving actually served anything.  The same numbers ride
+#' out of an [rxSolve()] as `$counts$dadt` (computed) and `$counts$jac` (reused),
+#' but a fit drives the solver directly and never builds that data frame, so this
+#' is the only way to observe the cache from inside one.
+#'
+#' @param reset logical; when `TRUE` zero the counters after reading, so a
+#'   measurement is one call before the work and one after
+#'
+#' @return named numeric vector: `computed` (exponentials actually
+#'   exponentiated), `reused` (exponentials served from a cache slot), `noSlot`
+#'   (the subset of `computed` that ran on a thread with no cache slot of its
+#'   own, so it could not have hit -- nonzero means the pool was never sized or
+#'   is smaller than the thread team), and `slots` (the current pool size)
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
+#' @examples
+#' rxIndLinExpStats()
+rxIndLinExpStats <- function(reset = FALSE) {
+  checkmate::assertLogical(reset, len = 1, any.missing = FALSE)
+  .Call(`_rxode2_rxIndLinExpStats`, reset)
+}
