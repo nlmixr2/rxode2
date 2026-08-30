@@ -674,6 +674,34 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `confint()` on a solved object now says whether the `thetaMat` the solve was
+  given was actually drawn from.  A `thetaMat` is ignored unless the
+  variability is being simulated (`nStud > 1`, or `simVariability=TRUE`), so
+  the message makes it clear whether the reported interval carries parameter
+  uncertainty.  Nothing is said when the solve had no `thetaMat` (#1308).
+
+- `confint()` on a solved object again uses the study dimension to build the
+  confidence bands around the simulated percentiles when `nStud > 1`.  When
+  the event table holds a single subject, rxode2 numbers the `nStud * nSub`
+  simulations in `sim.id` and emits no `id` column, and `confint()` read that
+  `sim.id` as the individual identifier; it therefore ignored `nStud`, said
+  "you need at least 2500 simulations", and returned plain pooled percentiles.
+  It now recovers the study/individual split, so a `nStud > 1` simulation run
+  from a one-subject event table gives the same answer as the same simulation
+  run from an event table that lists the subjects explicitly (#1308).
+
+- `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
+  was read out of an undocumented `method` argument, so the documented
+  spelling was silently ignored and the interval always came back from
+  `binomProbs()`'s own default.  `method=` keeps working when it names a
+  `ciMethod`, and is left alone otherwise (#1308).
+
+- `confint()` counts the individuals in the solved data rather than reading
+  `nSub` back off the solve arguments, so a data set that carries its own
+  subjects reaches the 2500 individual threshold that puts confidence bands
+  around the percentiles.  A solve of 2500 or more subjects supplied as data
+  now returns the banded summary instead of the pooled percentiles (#1308).
+
 - Piping a model's `ini()` into another model no longer silently leaves shared
   random effects behind.  Three cases dropped an eta with no error and no
   message, leaving the destination model on its own initial estimate: when the
