@@ -11,6 +11,10 @@
   directly and never builds that data frame, so from inside a fit the cache
   was unobservable.  The counters survive the pool free that runs at the start
   of the next solve, so a measurement can span the solves a fit is made of.
+  Measured with the accessor on an optimized build, the cache it reports is
+  worth 1.60x on a `matExp()` FOCEi fit (93.8% of the exponentials reused) and
+  1.15x on a 200-subject `matExp()` solve; `RXODE2_INDLIN_NO_EXP_CACHE=1` is
+  the A/B switch, and `bench/indlin_expcache_ab.R` is the harness.
 
 - A `linCmt()` sensitivity row's state-transition matrix and its parameter
   derivatives are now assembled from their CLOSED FORM in the constants the
