@@ -616,6 +616,27 @@
   instead of a per-subject one.  Simulated values from the affected methods
   change.
 
+- A `matExp()` sensitivity system is now exponentiated as `k` independent
+  blocks rather than as one `n(1+k)` square.  `rxSensMatExp()` emits a rate
+  matrix that is block lower triangular with the same diagonal block `A` in
+  every block row, so its exponential is `k` Frechet blocks of size `2n`
+  sharing one `exp(A*dt)`.  The structure is read off the operand -- the
+  emitted diagonal blocks are assignments of the same constant, so they agree
+  bitwise -- and the `output` accumulator and any infusion or forcing columns
+  are carried along with it, so the assembled answer is the same matrix in a
+  different summation order and agrees with the one it replaces to 1e-15.  The
+  split is taken only where it is cheaper than the exponential it replaces,
+  and never changes which solver path a model takes.
+  Measured on an optimized build, 40 subjects with distinct parameters over an
+  irregular 100 point schedule, single thread: on the exponential path the
+  solve is 1.0x to 4.1x faster, growing with the number of sensitivity
+  parameters and with the compartment count (1.5x at two compartments with
+  three parameters, 2.1x at three compartments with four, 4.1x at three
+  compartments with seven).  Models that still reach the iterative path are
+  unchanged (1.03x), since the exponentials are a small share of their time.
+  `RXODE2_INDLIN_NO_BLOCK_EXP=1` forces the split off, and `rxIndLinSteps()`
+  reports how many exponentials took it as `blockExp`.
+
 ## Bug fixes
 
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
