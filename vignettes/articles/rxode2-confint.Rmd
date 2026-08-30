@@ -1,0 +1,297 @@
+---
+title: "Summarizing simulations with confint()"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+library(ggplot2)
+```
+
+`confint()` turns a solved `rxode2` object into the percentiles of the
+simulated values at each time, and -- when the simulation can support it
+-- a confidence band around each of those percentiles.  This article
+covers what it returns, which arguments control it, and why the returned
+columns change with the size and structure of the simulation.
+
+## A model to summarize
+
+```{r model}
+pkModel <- function() {
+  ini({
+    tka  <- log(1.57)
+    tcl  <- log(2.72)
+    tv   <- log(31.07)
+    eta.ka ~ 0.6
+    eta.cl ~ 0.09
+    eta.v  ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv  + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
+## uncertainty in the fixed effects, as it would come from the
+## covariance step of an estimation run
+thetaVcov <- lotri::lotri({
+  tka ~ 0.04
+  tcl ~ c(0.01, 0.02)
+  tv  ~ 0.03
+})
+
+ev <- et(amt = 100, time = 0) |>
+  et(seq(0, 24, by = 0.5))
+```
+
+## Two levels of summary, and two shapes of output
+
+There are two different things you may want from a simulation:
+
+- the **percentiles of the population**: at each time, the 2.5th, 50th
+  and 97.5th percentile of the simulated individuals.  This describes
+  the spread of the *individuals*.
+
+- a **confidence band around each of those percentiles**: how well each
+  percentile itself is known.  This describes the uncertainty in the
+  *summary*, and it is what the shaded ribbons of a visual predictive
+  check show.
+
+`confint()` returns the first as a `rxSolveConfint1` object, with the
+percentile in `p1` and its value in `eff`, and the second as a
+`rxSolveConfint2` object, with the percentile in `p1` and its band in
+the `p2.5`, `p50` and `p97.5` columns.
+
+`level` sets the population percentiles.  `ci` sets the width of the
+band placed around them, and defaults to `level`:
+
+```{r ciArgs, eval = FALSE}
+## 90% of the individuals, with a 95% band around each of those three curves
+confint(sim, "cp", level = 0.90, ci = 0.95)
+```
+
+## Where the band comes from
+
+The band needs replicate estimates of the percentile.  `confint()` gets
+them in one of two ways, and this is what decides which of the two
+shapes you get back.
+
+### `nStud > 1`: replicate studies
+
+This is the case the band is really meant for.  With `thetaMat` and
+`nStud`, each study is a separate draw of the fixed effects, so the
+percentiles are computed within each study and the band is the quantile
+of those study-level percentiles.  The band then reflects the parameter
+uncertainty, which is usually what is wanted.
+
+```{r nStud}
+rxSetSeed(42)
+
+simStud <- rxSolve(
+  pkModel,
+  ev,
+  thetaMat = thetaVcov,  # uncertainty in the thetas
+  nStud    = 500,        # virtual studies (one parameter draw each)
+  nSub     = 20          # subjects per study
+)
+
+ciStud <- confint(simStud, "cp", level = 0.95)
+
+class(ciStud)[1]
+
+head(ciStud)
+```
+
+```{r nStudPlot, fig.width = 7, fig.height = 4}
+plot(ciStud)
+```
+
+The solid line is the median individual, the ribbon around it is the
+95% confidence band on that median, and the outer ribbons are the same
+band on the 2.5th and 97.5th percentiles.
+
+Note that `nSub = 20` subjects per study is *not* a problem here: the
+band comes from the 500 studies, not from the 20 subjects.
+
+### One study of at least 2500 individuals: sub-sampling
+
+With a single study there are no replicates to work with, so
+`confint()` makes some: the individuals are split into
+`round(sqrt(n))` equal sub-samples, the percentiles are computed in
+each, and the band is the quantile across sub-samples.  This is the
+sampling variability of the percentile estimate itself, and it does
+**not** include any parameter uncertainty.
+
+`confint()` only does this when there are at least 2500 individuals,
+which is the point at which the sub-samples are large enough
+(`sqrt(2500) = 50` sub-samples of 50) for their percentiles to mean
+something.
+
+```{r big, message = FALSE}
+rxSetSeed(42)
+
+simBig <- rxSolve(pkModel, ev, nSub = 2500)
+
+ciBig <- confint(simBig, "cp", level = 0.95)
+
+class(ciBig)[1]
+
+head(ciBig)
+```
+
+Below 2500 individuals there is nothing to build a band from, so
+`confint()` says so and returns the percentiles alone:
+
+```{r small}
+rxSetSeed(42)
+
+simSmall <- rxSolve(pkModel, ev, nSub = 2400)
+
+ciSmall <- confint(simSmall, "cp", level = 0.95)
+
+class(ciSmall)[1]
+
+head(ciSmall)
+```
+
+This is the one surprising part of the interface: **the same
+`confint()` call returns different columns for `nSub = 2400` and
+`nSub = 2500`**.  The threshold is a property of the simulation, not of
+the call.
+
+### Asking for the percentiles only
+
+If you want the simple percentiles regardless of how large the
+simulation is -- for instance because downstream code expects fixed
+column names -- pass `ci = FALSE`:
+
+```{r noCi, message = FALSE}
+ciNone <- confint(simBig, "cp", level = 0.95, ci = FALSE)
+
+class(ciNone)[1]
+
+head(ciNone)
+```
+
+`ci = FALSE` also pools across studies when there are several, so it
+gives the percentiles of all `nStud * nSub` simulated individuals
+together.
+
+## `confint()` tells you whether `thetaMat` was used
+
+A `thetaMat` passed to `rxSolve()` is only drawn from when the variability
+is actually being simulated -- that is, when `nStud > 1`, or when
+`simVariability = TRUE` forces it.  With `nStud = 1` it is silently
+ignored, so a summary of that solve carries no parameter uncertainty no
+matter how many individuals it has.
+
+`confint()` says which of the two happened while it builds the summary:
+
+```{r thetaMatUsed}
+ciStud <- confint(simStud, "cp", level = 0.95)
+```
+
+```{r thetaMatIgnored}
+rxSetSeed(42)
+
+simIgnored <- rxSolve(pkModel, ev, thetaMat = thetaVcov,
+                      nStud = 1, nSub = 2500)
+
+ciIgnored <- confint(simIgnored, "cp", level = 0.95)
+```
+
+Nothing is said when the solve had no `thetaMat` at all.
+
+The message describes the simulated *values*, not the band.  A solve can
+carry parameter uncertainty and still have no study dimension left to
+place a band with -- `nStud = 20, nSub = 1` gives 20 studies of one
+subject each, so each study percentile is that subject's single value and
+a band built from them would be identical at 2.5%, 50% and 97.5%.
+`confint()` reports the pooled percentiles in that case, and those do
+carry the parameter uncertainty.
+
+## The two bands are not the same quantity
+
+It is worth comparing the two directly.  Both simulations below have
+10000 individuals; only the second one carries parameter uncertainty.
+
+```{r compare, message = FALSE}
+rxSetSeed(42)
+simPop <- rxSolve(pkModel, ev, nSub = 10000)
+ciPop <- confint(simPop, "cp", level = 0.95)
+
+rxSetSeed(42)
+simUnc <- rxSolve(pkModel, ev, thetaMat = thetaVcov,
+                  nStud = 500, nSub = 20)
+ciUnc <- confint(simUnc, "cp", level = 0.95)
+
+## width of the band on the median at 4 h
+subset(as.data.frame(ciPop), time == 4 & p1 == 0.5, c("p2.5", "p50", "p97.5"))
+subset(as.data.frame(ciUnc), time == 4 & p1 == 0.5, c("p2.5", "p50", "p97.5"))
+```
+
+The sub-sampled band is much narrower: with the parameters held fixed,
+10000 individuals pin the population median down tightly.  The band from
+the replicate studies is wider because the thetas themselves are only
+known to within `thetaVcov`.  If you want a band that means "how well do
+we know this curve", simulate with `thetaMat`/`nStud`; the sub-sampled
+band answers the narrower question "how much would this curve move if we
+re-drew the individuals".
+
+## Stratifying with `by`
+
+Columns carried through the solve with `keep=` can be used to split the
+summary:
+
+```{r by, message = FALSE}
+evDose <- rbind(
+  data.frame(et(amt = 100, time = 0) |> et(seq(0, 24, by = 2)) |>
+               et(id = 1:100), dose = 100),
+  data.frame(et(amt = 300, time = 0) |> et(seq(0, 24, by = 2)) |>
+               et(id = 101:200), dose = 300)
+)
+
+rxSetSeed(42)
+simBy <- rxSolve(pkModel, evDose, keep = "dose")
+
+ciBy <- confint(simBy, "cp", level = 0.95, by = "dose")
+
+head(ciBy)
+```
+
+## Means instead of percentiles
+
+`mean = TRUE` reports the mean and its confidence interval with
+`meanProbs()` rather than the empirical quantiles, and
+`mean = "binom"` uses `binomProbs()` for a 0/1 variable such as a
+target-attainment indicator:
+
+```{r mean, message = FALSE}
+head(confint(simSmall, "cp", level = 0.95, mean = TRUE))
+```
+
+## Summary
+
+| Simulation | `confint()` returns |
+|---|---|
+| any, with `ci = FALSE` | percentiles only (`p1`, `eff`) |
+| `nStud > 1` | percentiles per study, band across studies (`p1`, `p2.5`, `p50`, `p97.5`) |
+| one study, `>= 2500` individuals | percentiles per sub-sample, band across sub-samples |
+| one study, `< 2500` individuals | percentiles only, with a message |
+
+See also the [parameter uncertainty
+article](rxode2-parameter-uncertainty.html) for how to build the
+`thetaMat`/`nStud` simulation the band is meant for, and the [VPC
+article](rxode2-vpc.html) for the diagnostic version of the same idea.

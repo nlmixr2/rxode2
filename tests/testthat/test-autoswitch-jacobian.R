@@ -1,9 +1,13 @@
 rxTest({
-  # AutoSwitch composite "primary+stiff": the stiff secondary's analytical
-  # Jacobian must be generated and used whenever the secondary is an implicit
-  # (Rosenbrock / implicit-RK) method.  These methods are exactly the ones for
-  # which rxIsImplicit() is TRUE and which the C solver's _jacAvailable check
-  # expects: ros4(13), iem(14), ros43(31), ros6(32), backwardEuler(33),
+  # The AutoSwitch composite "primary+stiff" needs an analytical Jacobian
+  # whenever the secondary is an implicit (Rosenbrock / implicit-RK) method.
+  # This file covers that plumbing -- the Jacobian is generated for exactly the
+  # methods that need one, compiled once and reused, and actually reaches the
+  # solver.  Whether the composite *switches*, and when, is
+  # test-autoswitch-switching.R.
+  #
+  # rxIsImplicit() is TRUE for exactly the methods the C solver's _jacAvailable
+  # check expects: ros4(13), iem(14), ros43(31), ros6(32), backwardEuler(33),
   # gauss6(34), iiic6(35), radauiia5(36), geng5(37), sdirk43(38).
 
   ## A well-conditioned stiff linear system (eigenvalues -100, -1).
@@ -69,28 +73,25 @@ rxTest({
     expect_true(max(abs(.xss$a - .refss$a)) < 1e-4)
   })
 
-  test_that("the non-dense dop853+ros4 composite switches to ros4 mid-solve", {
-    ## A stiff Robertson problem with widely spaced output times that overwhelms
-    ## the non-stiff dop853 primary.  The composite must switch to ros4 per
-    ## interval and solve it; pure dop853 cannot.
-    .rob <- rxode2({
-      d/dt(a)  <- -0.04 * a + 1e4 * b * cc
-      d/dt(b)  <-  0.04 * a - 1e4 * b * cc - 3e7 * b * b
-      d/dt(cc) <-  3e7 * b * b
-      a(0) <- 1
-      b(0) <- 0
-      cc(0) <- 0
-    })
-    .evr <- et(c(0.1, 1, 10, 100))
-    .refr <- rxSolve(.rob, .evr, method = "lsoda", atol = 1e-10, rtol = 1e-10)
-
-    ## pure dop853 cannot solve it ...
-    expect_error(rxSolve(.rob, .evr, method = "dop853", atol = 1e-8, rtol = 1e-8))
-
-    ## ... but the non-dense composite (no dense=TRUE) does, matching lsoda.
-    .xr <- rxSolve(.rob, .evr, method = "dop853+ros4", atol = 1e-8, rtol = 1e-8)
-    expect_false(any(is.na(.xr$a)))
-    expect_true(max(abs(.xr$a - .refr$a)) < 1e-5)
+  test_that("the Jacobian-augmented model is compiled once, not once per solve", {
+    ## nlmixr2/rxode2#1307: rxSolve.default() cached the augmented model's TEXT
+    ## and then re-ran rxode2() on it every call -- a full parse of a model with
+    ## one df()/dy() line per Jacobian entry.  That, not the switching, was the
+    ## whole of the reported 2-28x slowdown, and pure ros4 paid it too.
+    .key <- paste0(rxModelVars(.stiff)$md5["parsed_md5"], "_jac")
+    rm(list = ls(envir = rxSolveCacheEnv, all.names = TRUE), envir = rxSolveCacheEnv)
+    rxSolveCacheEnv$.order <- character()
+    expect_null(.rxSolveCacheGet(.key))
+    invisible(rxSolve(.stiff, .ev, method = "ros4"))
+    .c1 <- .rxSolveCacheGet(.key)
+    expect_true(is.list(.c1))
+    expect_false(is.null(.c1$obj))
+    invisible(rxSolve(.stiff, .ev, method = "ros4"))
+    ## the SAME compiled object, not an equal one rebuilt from the text
+    expect_identical(.rxSolveCacheGet(.key)$obj, .c1$obj)
+    ## and the composite shares the entry rather than making its own
+    invisible(rxSolve(.stiff, .ev, method = "dop853+ros4"))
+    expect_identical(.rxSolveCacheGet(.key)$obj, .c1$obj)
   })
 
   test_that("dop853+ros4 composite solves a STIFF FORWARD-SENSITIVITY system with the analytic Jacobian", {

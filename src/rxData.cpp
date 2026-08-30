@@ -4167,6 +4167,11 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->autoCount  = 0;
   ind->autoHcur   = 0.0;
   ind->autoLastSwitchIntervals = 0;
+  ind->autoStiffHlamb  = 0.0;
+  ind->autoStiffIasti  = 0;
+  ind->autoStiffNonsti = 0;
+  ind->autoStiffNaccpt = 0;
+  ind->autoBackoff     = 0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -6470,10 +6475,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (op->useDense) {
       /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13). */
       int _primDense = (method == 0 || method == 10 || method == 11 || method == 13);
-      /* For AutoSwitch composites (stiff2>0), the stiff secondary must also be dense.
-         Among stiff methods, only ros4(13) supports dense output. */
+      /* For AutoSwitch composites (stiff2>0) the stiff secondary must be dense
+         too -- only ros4(13) is -- and the dense segment driver that hands a
+         segment from the primary to the secondary exists only for a dop853
+         primary, so that is the one dense composite. */
       int _autoActive = (op->stiff2 > 0);
-      int _stifDense = !_autoActive || (op->stiff2 == 13);
+      int _stifDense = !_autoActive || (op->stiff2 == 13 && method == 0);
       if (!_primDense || !_stifDense) {
         op->useDense = 0;
       }

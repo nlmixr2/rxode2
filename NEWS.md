@@ -697,6 +697,34 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `confint()` on a solved object now says whether the `thetaMat` the solve was
+  given was actually drawn from.  A `thetaMat` is ignored unless the
+  variability is being simulated (`nStud > 1`, or `simVariability=TRUE`), so
+  the message makes it clear whether the reported interval carries parameter
+  uncertainty.  Nothing is said when the solve had no `thetaMat` (#1308).
+
+- `confint()` on a solved object again uses the study dimension to build the
+  confidence bands around the simulated percentiles when `nStud > 1`.  When
+  the event table holds a single subject, rxode2 numbers the `nStud * nSub`
+  simulations in `sim.id` and emits no `id` column, and `confint()` read that
+  `sim.id` as the individual identifier; it therefore ignored `nStud`, said
+  "you need at least 2500 simulations", and returned plain pooled percentiles.
+  It now recovers the study/individual split, so a `nStud > 1` simulation run
+  from a one-subject event table gives the same answer as the same simulation
+  run from an event table that lists the subjects explicitly (#1308).
+
+- `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
+  was read out of an undocumented `method` argument, so the documented
+  spelling was silently ignored and the interval always came back from
+  `binomProbs()`'s own default.  `method=` keeps working when it names a
+  `ciMethod`, and is left alone otherwise (#1308).
+
+- `confint()` counts the individuals in the solved data rather than reading
+  `nSub` back off the solve arguments, so a data set that carries its own
+  subjects reaches the 2500 individual threshold that puts confidence bands
+  around the percentiles.  A solve of 2500 or more subjects supplied as data
+  now returns the banded summary instead of the pooled percentiles (#1308).
+
 - Piping a model's `ini()` into another model no longer silently leaves shared
   random effects behind.  Three cases dropped an eta with no error and no
   message, leaving the destination model on its own initial estimate: when the
@@ -929,6 +957,69 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `abs(x)` and treats 0 as positive, so it returns `abs(x)` there rather than 0.
 
 ### Solving
+
+- Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
+  composite is much faster, because the analytic Jacobian model is no longer
+  regenerated on every `rxSolve()`.  The augmented model's *text* was cached but
+  `rxode2()` was then re-run on it every call -- a full parse of a model
+  carrying one `df()/dy()` line per Jacobian entry, so quadratic in the number
+  of states -- followed by a second pass through `rxSolve.default()`.  The
+  compiled model is cached instead.  On a single subject with seven doses over
+  0-168 h, `"dop853+ros4"` drops from 0.0199 s to 0.0132 s on a 1-cmt oral model
+  and from 0.592 s to 0.0234 s on an 11-state PBPK model; `ros4` on its own
+  drops by the same amount.  This was the whole of the composite slowdown
+  reported in nlmixr2/rxode2#1307, and it applies equally to delay differential
+  equations (whose default method is the composite) and to FOCEi, which solves
+  once per iteration.
+
+- AutoSwitch composites now actually switch.  `dop853`'s stiffness detector is
+  gated on its accepted-step count, which restarts on every `dop853()` call, and
+  rxode2 calls it once per interval -- so reporting stiffness needed about 64
+  accepted steps inside one observation interval, which a PK interval never
+  takes.  In practice a composite only switched when `dop853` failed outright,
+  after exhausting `maxsteps`; `"dop853+ros4"` on a stiff TMDD model returned
+  bit-identical output to plain `dop853`.  The detector's estimate and verdict
+  counters now persist across the intervals of a subject solve, and are
+  evaluated on every accepted step.  The same TMDD solve is now 1.7x faster than
+  its own primary because it switches, while genuinely non-stiff models still do
+  not switch at all.
+
+- A composite that switches no longer integrates the interval twice.  The stiff
+  secondary continues from the last step the primary completed instead of
+  restarting from the interval start.  In the dense path this also fixes an
+  inconsistency: the fallback rewound the state and the delay history but not
+  the observation cursor, so a segment that was supposedly re-solved kept the
+  discarded attempt's observation values.
+
+- A composite whose primary is not `dop853` -- `"dop5+ros4"`, `"bs+ros4"`,
+  `"f78+ros4"` and the rest -- now switches on the main timeline.  Those
+  primaries' drivers ignored the stiff secondary entirely, so the composite ran
+  as the plain primary there while its steady-state intervals did switch.  The
+  stiff Robertson problem, which neither `dop5` nor `bs` can solve alone, now
+  solves through both composites.  `dense = TRUE` for a composite is documented
+  and enforced as `"dop853+ros4"` only, which is what was ever implemented;
+  asking for it on another composite used to silently run the plain primary's
+  own dense stepper.
+
+- The documented AutoSwitch controls do something again.
+  `autoSwitchNonstifftol` sets the ratio at which a step is called stiff (the
+  same `eigen_est * h / stability_size` test Julia's AutoSwitch uses),
+  `autoSwitchStifftol` sets the same ratio for the optimistic re-probe after a
+  subject has already switched, so lowering it makes stiff mode stickier,
+  `autoSwitchStiffFirst` starts the solve on the stiff secondary, and
+  `autoSwitchSwitchMax` guards the switch back.  All five had been left without
+  a consumer when the composite became reactive.  `autoSwitchDtfac` has nothing
+  to mean in a reactive scheme and is now documented as accepted and inert
+  rather than removed.  The wait before the primary is probed again now doubles
+  on each probe that fails, so a persistently stiff subject stops paying for
+  probes.
+
+- `dop853`'s stiffness estimate used the signed step size, so on a reverse-time
+  integration it was negative and the detector was silently dead.  Steady-state
+  intervals solved with `dop853` used scalar tolerances while the rest of the
+  same solve used the per-compartment ones, so a sensitivity model -- whose
+  tolerances are scaled per equation -- integrated its steady-state intervals to
+  different tolerances than everything else.
 
 - `rxSolve()` on a model function's `rxUi` no longer loses what the model's
   `meta` block carries -- most visibly a `sigma`, whose residual variables the

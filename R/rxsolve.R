@@ -1053,14 +1053,15 @@
 #'   enables continuous interpolation so the solver can take large internal
 #'   steps and reconstruct the solution cheaply at each observation time.
 #'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
-#'   `"ros4"`.  For composite AutoSwitch methods (e.g. `"dop5+ros4"`), dense
-#'   output is enabled only when **both** the primary and stiff secondary
-#'   support dense output; `"ros4"` is the only stiff method that does, so
-#'   valid dense composites are `"dop853+ros4"`, `"dop5+ros4"`, and
-#'   `"bs+ros4"`.  A warning is issued and `dense` is set to `FALSE` when a
-#'   composite stiff secondary does not support dense output.  Silently
-#'   ignored for non-dense single methods.  Not yet supported for `linCmt()`
-#'   models (a warning is emitted and the standard path is used instead).
+#'   `"ros4"`.  `"dop853+ros4"` is the only dense AutoSwitch composite: the
+#'   secondary must be dense too (`"ros4"` is the only stiff method that is),
+#'   and handing a dense segment from the primary to the secondary mid-segment
+#'   is implemented for a `"dop853"` primary.  Other composites solve densely
+#'   only if you drop the secondary.  A warning is issued and `dense` is set to
+#'   `FALSE` when a composite stiff secondary does not support dense output.
+#'   Silently ignored for non-dense single methods.  Not yet supported for
+#'   `linCmt()` models (a warning is emitted and the standard path is used
+#'   instead).
 #'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
@@ -1091,26 +1092,34 @@
 #'   a good first choice) only for large QSP or PBPK models where Jacobian
 #'   factorization becomes the bottleneck.
 #'
-#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; stiffness ratio threshold
-#'   used when the solver is in non-stiff mode.  If
-#'   `rho * |dt| / S(primary) > autoSwitchNonstifftol`, the interval is
-#'   considered stiff and the secondary solver is tried.  Default `9/10`.
+#' @param autoSwitchNonstifftol Numeric in `(0, 1]`; the stiffness ratio at
+#'   which an interval is called stiff.  Each accepted step of a `dop853`
+#'   primary estimates the dominant eigenvalue and forms
+#'   `rho * h / S(dop853)` with `S(dop853) = 6.1`; a step above
+#'   `autoSwitchNonstifftol` is a stiff verdict, and 15 verdicts hand the rest
+#'   of the interval to the stiff secondary.  Only a `dop853` primary carries
+#'   this estimate; any other primary switches when it fails.  Default `9/10`.
 #'
-#' @param autoSwitchStifftol Numeric in `(0, 1]`; non-stiffness ratio threshold
-#'   used when the solver is in stiff mode.  If
-#'   `rho * |dt| / S(primary) < autoSwitchStifftol`, the interval is considered
-#'   non-stiff and the switch-back counter is incremented.  Default `9/10`.
+#' @param autoSwitchStifftol Numeric in `(0, 1]`; the same ratio, but applied
+#'   once the subject has already switched at least once -- that is, on the
+#'   optimistic re-probe of the primary rather than on the first attempt.
+#'   Lowering it below `autoSwitchNonstifftol` makes the re-probe give up
+#'   sooner, so stiff mode is stickier.  Default `9/10`, equal to
+#'   `autoSwitchNonstifftol`, i.e. a re-probe behaves like a first probe.
 #'
-#' @param autoSwitchDtfac Numeric `>= 1`; factor by which the suggested step
-#'   size is multiplied when switching to the stiff solver, and divided when
-#'   switching back.  Default `2.0`.
+#' @param autoSwitchDtfac Accepted for backwards compatibility and currently
+#'   inert.  It scaled a suggested step size across a switch, for a predictive
+#'   switching scheme that has been replaced by the reactive one described
+#'   above.  Default `2.0`.
 #'
-#' @param autoSwitchMaxStiff Integer; number of consecutive stiff-detected
-#'   intervals before permanently switching to the stiff solver.  Default `10L`.
+#' @param autoSwitchMaxStiff Integer; number of consecutive intervals in which
+#'   the primary reported stiffness before the solve stops probing it and stays
+#'   on the stiff secondary.  Default `10L`.
 #'
-#' @param autoSwitchMaxNonstiff Integer; number of consecutive non-stiff
-#'   intervals (while in stiff mode) before switching back to the fast
-#'   non-stiff solver.  Default `3L`.
+#' @param autoSwitchMaxNonstiff Integer; intervals to spend on the stiff
+#'   secondary before optimistically probing the primary again.  Each probe
+#'   that fails doubles the wait (capped at 64x), so a persistently stiff
+#'   subject stops paying for probes.  Default `3L`.
 #'
 #' @param autoSwitchStiffFirst Logical; when `TRUE`, start each subject solve
 #'   with the stiff solver instead of the non-stiff primary.  Default `FALSE`.
@@ -1118,9 +1127,9 @@
 #' @param autoSwitchSwitchMax Non-negative integer; minimum number of
 #'   integration intervals that must elapse after a switch before the solver
 #'   is allowed to switch back in the opposite direction.  Acts as an
-#'   oscillation guard: if the stiffness ratio fluctuates near a threshold,
-#'   this prevents rapid back-and-forth between solvers.  Set to `0L` to
-#'   disable the guard entirely.  Default `5L`.
+#'   oscillation guard, and raises `autoSwitchMaxNonstiff` when it is larger.
+#'   Set to `0L` to leave the wait to `autoSwitchMaxNonstiff` alone.
+#'   Default `5L`.
 #'
 #' @param stiff2 Integer method code for the stiff secondary solver used in
 #'   AutoSwitch composite methods.  Normally set automatically when `method` is
@@ -2796,6 +2805,16 @@ rxSolveCacheEnv$.order <- character()
   invisible(value)
 }
 
+## Is a cached Jacobian-augmented model entry still usable?  `NA_character_`
+## marks a model whose Jacobian generation failed (kept so the failure is not
+## retried); anything else must be an entry whose compiled model is still
+## loaded, since the cache outlives an rxUnload().
+.rxJacCacheOk <- function(cached) {
+  if (identical(cached, NA_character_)) return(TRUE)
+  if (!is.list(cached) || is.null(cached$obj)) return(FALSE)
+  isTRUE(tryCatch(rxIsLoaded(cached$obj), error = function(e) FALSE))
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -3190,9 +3209,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
       .jacEnv <- new.env(parent = emptyenv())
       .jacEnv$errMsg <- NULL
-      .filteredCode <- tryCatch({
+      # The cache holds the compiled Jacobian-augmented model, not just its
+      # text.  Re-parsing that text on every solve costs O(nStates^2) -- the
+      # augmented model carries a df()/dy() line per Jacobian entry -- and every
+      # implicit method and every AutoSwitch composite went through here on
+      # every call (nlmixr2/rxode2#1307).
+      .jacCache <- tryCatch({
         .cached <- .rxSolveCacheGet(.key)
-        if (!is.null(.cached)) {
+        if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
           .cached
         } else {
           .mv <- suppressMessages({
@@ -3216,17 +3240,20 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             }
           }
           .fc <- paste(.fc, collapse="\n")
-          .rxSolveCacheSet(.key, .fc)
-          .fc
+          .jacObject <- rxode2(.fc)
+          .entry <- list(code = .fc, obj = .jacObject,
+                         md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
+          .rxSolveCacheSet(.key, .entry)
+          .entry
         }
       }, error = function(e) {
         assign("errMsg", conditionMessage(e), envir = .jacEnv)
         .rxSolveCacheSet(.key, NA_character_)
         NA_character_
       })
-      if (!is.na(.filteredCode)) {
-        .jacObject <- rxode2(.filteredCode)
-        .jacMd5 <- rxModelVars(.jacObject)$md5["parsed_md5"]
+      if (!identical(.jacCache, NA_character_)) {
+        .jacObject <- .jacCache$obj
+        .jacMd5 <- .jacCache$md5
         if (.jacMd5 != .mvCur$md5["parsed_md5"]) {
           # Model changed (Jacobian equations were added); recurse with new model.
           object <- .jacObject
