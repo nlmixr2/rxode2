@@ -57,7 +57,7 @@ rxTest({
     rxSolve(m, params = .parsFor(ncmt, oral0), events = ev,
             returnType = "data.frame", ...)
   }
-  .stats <- function() rxode2:::linCmtSeqStats(TRUE)
+  .stats <- function() rxode2::linCmtSeqStats(TRUE)
 
   test_that("the window+tail evaluator matches reverse mode on every config", {
     for (cfg in list(c(1L, 0L), c(1L, 1L), c(2L, 0L), c(2L, 1L), c(3L, 0L), c(3L, 1L))) {

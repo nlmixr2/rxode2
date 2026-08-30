@@ -58,14 +58,14 @@ if (WHAT == "solve") {
     nObs <- cl$nSub*1000L
     invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
                               linCmtSensType = "AD"))
-    rxode2:::linCmtSeqStats(TRUE)
+    rxode2::linCmtSeqStats(TRUE)
     ts <- vapply(seq_len(REPS), function(r) {
       t0 <- proc.time()[["elapsed"]]
       invisible(rxode2::rxSolve(mod, pars, ev, cores = 1L, addDosing = FALSE,
                                 linCmtSensType = "AD"))
       proc.time()[["elapsed"]] - t0
     }, 0.0)
-    st <- rxode2:::linCmtSeqStats(TRUE)
+    st <- rxode2::linCmtSeqStats(TRUE)
     data.frame(cell = cl$nm, phi = MODE, sec = median(ts),
                usPerObs = 1e6*median(ts)/nObs,
                phiRows = unname(st[["phiRows"]]),
@@ -73,9 +73,9 @@ if (WHAT == "solve") {
                load = loadAvg(), stringsAsFactors = FALSE)
   }))
   print(res, row.names = FALSE)
-  saveRDS(res, sprintf("bench/results/transition_ab_solve_phi%d.rds", MODE))
+  saveRDS(res, sprintf("bench/results/transition_ab_solve_phi%d_abl%s.rds", MODE, Sys.getenv("RX_LINCMT_ABLATE", "0")))
 } else {
-  suppressMessages(devtools::load_all("~/src/nlmixr2est-lincmt-speed",
+  suppressMessages(devtools::load_all("~/src/nlmixr2est",
                                       quiet = TRUE, helpers = FALSE))
   set.seed(1234)
   mod <- function() {

@@ -59,10 +59,10 @@ regimens <- list(
 )
 
 runArm <- function(mod, p, ev, phi) {
-  rxode2:::linCmtSeqStats(TRUE)
+  rxode2::linCmtSeqStats(TRUE)
   s <- rxode2::rxSolve(mod, p, ev, cores=1L, addDosing=FALSE,
                        linCmtSensType="AD", linCmtSensPhi=phi)
-  list(s=s, st=rxode2:::linCmtSeqStats(TRUE))
+  list(s=s, st=rxode2::linCmtSeqStats(TRUE))
 }
 
 res <- list()

@@ -1,21 +1,21 @@
 # Quiet-machine A/B for the last-row value memo (P4 of the dedup project,
 # plans/snazzy-mapping-kettle.md).  RXTREE selects the rxode2 build:
 #   baseline: RXTREE=~/src/rxode2-memo-base   (39aa7f58d, counters only)
-#   memo:     RXTREE=~/src/rxode2-lincmt-carry-jump
+#   memo:     RXTREE=~/src/rxode2-lincmt-analytic
 # MODE=solve (default) times the sens-path cells on the saved inner-model
 # text (bench/results/phase0_prep_<cfg>.rds); MODE=fit runs the 40x100
 # FOCEi fit cell (loads nlmixr2est).  Optimized builds only; run pinned:
 #   taskset -c <idle> Rscript bench/lincmt_value_memo_ab.R
-suppressMessages(devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump"),
+suppressMessages(devtools::load_all(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic"),
                                     compile = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 mode <- Sys.getenv("MODE", "solve")
 cfg  <- Sys.getenv("CONFIG", "2cmt")
 nRep <- as.integer(Sys.getenv("REPS", "3"))
-outDir <- path.expand("~/src/rxode2-lincmt-carry-jump/bench/results")
+outDir <- path.expand("~/src/rxode2-lincmt-analytic/bench/results")
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 stopifnot(loadAvg() < as.numeric(Sys.getenv("MAXLOAD", "3")))
-tag <- basename(path.expand(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-carry-jump")))
+tag <- basename(path.expand(Sys.getenv("RXTREE", "~/src/rxode2-lincmt-analytic")))
 
 if (mode == "solve") {
   prep <- readRDS(file.path(outDir, sprintf("phase0_prep_%s.rds", cfg)))
@@ -49,10 +49,10 @@ if (mode == "solve") {
                                   build = "pkgbuild::compile_dll(debug=FALSE)")
   saveRDS(res, f)
 } else {
-  suppressMessages(devtools::load_all("~/src/nlmixr2est-matexp-bench",
+  suppressMessages(devtools::load_all("~/src/nlmixr2est",
                                       helpers = FALSE, quiet = TRUE))
   # same model family as the phase-0 fit; 40 subjects x 100 obs
-  source(file.path(path.expand("~/src/rxode2-lincmt-carry-jump/bench"),
+  source(file.path(path.expand("~/src/rxode2-lincmt-analytic/bench"),
                    "lincmt_value_memo_fit_model.R"))
   tset <- numeric(nRep); obj <- NA_real_
   for (r in seq_len(nRep)) {

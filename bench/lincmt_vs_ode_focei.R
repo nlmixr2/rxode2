@@ -4,7 +4,7 @@
 # Protocol (see plan file "OPTIMIZED, UNCONTENDED SWEEP" block):
 #   - rxode2 from THIS worktree, OPTIMIZED (-O3 verified in the linCmt.o
 #     debug producer; loaded with compile = FALSE so nothing is rebuilt).
-#   - nlmixr2est from ~/src/nlmixr2est-lincmt-speed (load_all, helpers=FALSE).
+#   - nlmixr2est from ~/src/nlmixr2est (load_all, helpers=FALSE).
 #   - Single-thread (rxode2 cores = 1); run the whole Rscript pinned:
 #       CONFIG=1cmt REPS=3 taskset -c <idle core> Rscript bench/lincmt_vs_ode_focei.R
 #   - linCmtSensType = "AD" (forward) is FORCED: this tree still carries the
@@ -18,15 +18,15 @@
 # all three exist.
 
 suppressMessages({
-  devtools::load_all("~/src/rxode2-lincmt-carry-jump", compile = FALSE, quiet = TRUE)
-  devtools::load_all("~/src/nlmixr2est-lincmt-speed", helpers = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE)
+  devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE)
 })
 rxode2::setRxThreads(1L)
 
 cfg   <- Sys.getenv("CONFIG", "1cmt")
 nRep  <- as.integer(Sys.getenv("REPS", "3"))
 core  <- Sys.getenv("CORE", "unpinned")
-outDir <- "~/src/rxode2-lincmt-carry-jump/bench/results"
+outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 
@@ -149,8 +149,8 @@ attr(res, "provenance") <- list(
   date = format(Sys.time()), config = cfg, reps = nRep, core = core,
   flags = "linCmt.o DW_AT_producer ends -O3 (after -O2); pkgbuild::compile_dll(debug=FALSE)",
   sensType = "AD (forward) forced; this tree's auto still carries the pre-#1280 count rule",
-  rxode2 = system("git -C ~/src/rxode2-lincmt-carry-jump rev-parse --short HEAD", intern = TRUE),
-  nlmixr2est = system("git -C ~/src/nlmixr2est-lincmt-speed rev-parse --short HEAD", intern = TRUE),
+  rxode2 = system("git -C ~/src/rxode2-lincmt-analytic rev-parse --short HEAD", intern = TRUE),
+  nlmixr2est = system("git -C ~/src/nlmixr2est rev-parse --short HEAD", intern = TRUE),
   predAgreement = relDiff)
 dir.create(outDir, showWarnings = FALSE)
 saveRDS(res, file.path(outDir, sprintf("lincmt_vs_ode_focei_%s.rds", cfg)))

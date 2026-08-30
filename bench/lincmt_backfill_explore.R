@@ -30,7 +30,7 @@
 # alone.  2-cmt oral, trans=1 (cl,v,q,v2,ka).
 
 message("== lincmt_backfill_explore ==")
-rxTree <- Sys.getenv("LINCMT_RXODE2", "~/src/rxode2-lincmt-carry-jump")
+rxTree <- Sys.getenv("LINCMT_RXODE2", "~/src/rxode2-lincmt-analytic")
 suppressMessages(devtools::load_all(rxTree, compile = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 
