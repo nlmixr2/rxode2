@@ -241,6 +241,24 @@ static std::vector<indLinExpCounts_t> __indLinExpCounts;
 // shared and therefore atomic; it sits on a path that just paid for a matrix
 // exponential, so the contention is free by comparison.
 static std::atomic<long> __indLinExpNoOwn(0);
+
+// Record one exponential, computed or reused.  `tid` is the CACHE slot: the
+// counts pool is sized alongside the cache and neither shrinks while the other
+// does not, so the same index is valid in both.  A thread with no slot of its
+// own could not have hit whatever the operand was and has nowhere per-thread to
+// count either, so its computes go to the shared atomic -- which is why
+// `noSlot` is a subset of `computed` and never of `reused`.
+static inline void indLinExpCount(int tid, bool reused) {
+  if (tid >= 0 && tid < (int)__indLinExpCounts.size()) {
+    if (reused) {
+      __indLinExpCounts[tid].reused++;
+    } else {
+      __indLinExpCounts[tid].computed++;
+    }
+  } else if (!reused) {
+    __indLinExpNoOwn.fetch_add(1, std::memory_order_relaxed);
+  }
+}
 // Force-off switch for the block-structured exponential below (rxode2#1301),
 // read in the same place as the cache's.
 static int __indLinBlockOff = 0;
@@ -691,12 +709,8 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
         // out through `$counts$jac` with no extra plumbing.
         if (ind != NULL && ind->jac_counter != NULL) ind->jac_counter[0]++;
         // ... and the same count again per thread, for the callers that never
-        // see `$counts` (rxIndLinExpStats).  `tid` indexes both pools: they are
-        // resized together and neither shrinks while the other does not, so
-        // reaching this branch at all means the slot exists.
-        if (tid >= 0 && tid < (int)__indLinExpCounts.size()) {
-          __indLinExpCounts[tid].reused++;
-        }
+        // see `$counts` (rxIndLinExpStats).
+        indLinExpCount(tid, true);
         return;
       }
     }
@@ -704,13 +718,7 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   // Diagnostics: exponentials COMPUTED, reported as `$counts$dadt` (dydt() is
   // likewise a no-op stub for a matExp() model).
   if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
-  if (tid >= 0 && tid < (int)__indLinExpCounts.size()) {
-    __indLinExpCounts[tid].computed++;
-  } else {
-    // No slot of its own, so this one could not have hit whatever the operand
-    // was.  A nonzero total here IS the pool-sizing bug, not a cache miss.
-    __indLinExpNoOwn.fetch_add(1, std::memory_order_relaxed);
-  }
+  indLinExpCount(tid, false);
   if (c == NULL) {
     matrixExpMaybeBlock(H, out, t, type, order);
     return;
