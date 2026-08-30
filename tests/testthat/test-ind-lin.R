@@ -2064,6 +2064,7 @@ d/dt(blood)     = a*intestine - b*blood
     invisible(.expStats())
     .hit <- .driveTeam(2L)
     expect_equal(unname(.hit[["nsolve"]]), length(unique(.parEv$id)))
+    expect_equal(unname(.hit[["errN"]]), 0)
     .st <- .expStats()
     expect_gt(.st[["reused"]], 0)
     expect_equal(unname(.st[["noSlot"]]), 0)
@@ -2086,6 +2087,12 @@ d/dt(blood)     = a*intestine - b*blood
     .stF <- .expStats()
     expect_equal(unname(.stF[["reused"]]), 0)
     expect_gt(.stF[["noSlot"]], 0)
+    # Both drives ran every subject to the end.  Without this the assertion
+    # below is empty: an exponential wrong enough to abort a subject on its
+    # first row leaves the rest of `ind->solve` holding the PREVIOUS solve's
+    # correct values, which is exactly what the fresh drive then writes.
+    expect_equal(unname(.cached[["errN"]]), 0)
+    expect_equal(unname(.fresh[["errN"]]), 0)
     expect_identical(.cached[["checksum"]], .fresh[["checksum"]])
   })
 
@@ -2109,6 +2116,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(unname(.st[["reused"]]), 0)
     expect_equal(unname(.st[["computed"]]), unname(.st[["noSlot"]]))
     expect_equal(unname(.st[["slots"]]), 0)
+    expect_equal(unname(.out[["errN"]]), 0)
     expect_gt(abs(.out[["checksum"]]), 0)
   })
 

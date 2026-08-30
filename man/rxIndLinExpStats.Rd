@@ -24,6 +24,13 @@ out of an \code{\link[=rxSolve]{rxSolve()}} as \verb{$counts$dadt} (computed) an
 but a fit drives the solver directly and never builds that data frame, so this
 is the only way to observe the cache from inside one.
 }
+\details{
+The counters are cumulative until read with \code{reset = TRUE}, so a measurement
+is a reset before the work and a read after; a read that skips the reset
+blends the work with whatever warmed the counters earlier, which for a fit is
+its own setup solve.  A nonzero \code{noSlot} condemns the run whatever \code{reused}
+says: those exponentials could not have hit.
+}
 \examples{
 rxIndLinExpStats()
 }

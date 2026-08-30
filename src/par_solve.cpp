@@ -7725,14 +7725,32 @@ static inline int rxDriveTeamId(rx_solve *rx, int pos) {
 // and rebuilds the solve first, so it would compare two fresh solves and never
 // look at the drive's output at all.  Weighted rather than plain so a pair of
 // values swapped between rows does not cancel.
-static double rxDriveTeamChecksum(rx_solve *rx, int nsolve) {
+//
+// Two things this must NOT do, both of which would let a broken cache pass:
+//
+//   * read past what this drive wrote.  A subject that aborts leaves the tail
+//     of `ind->solve` holding whatever was there before -- for a re-drive, the
+//     PREVIOUS solve's correct values.  So the sum stops at `solvedIdx`, the
+//     last row a driver completed.
+//   * ignore how far it got.  Summing values alone, an exponential so wrong it
+//     aborts the subject on row one would checksum as the earlier good solve
+//     did.  `solvedIdx`, `rc` and `err` therefore go into the sum as well, and
+//     `errN` counts the failed subjects for the caller to assert on.
+static double rxDriveTeamChecksum(rx_solve *rx, int nsolve, int *errN) {
   rx_solving_options *op = rx->op;
   double acc = 0.0;
   long k = 0;
+  *errN = 0;
   for (int pos = 0; pos < nsolve; pos++) {
     rx_solving_options_ind *ind = &(rx->subjects[rxDriveTeamId(rx, pos)]);
+    int rc = (ind->rc == NULL) ? 0 : ind->rc[0];
+    if (rc != 0 || ind->err != 0) (*errN)++;
+    acc += (double)ind->solvedIdx + 7.0*(double)rc + 13.0*(double)ind->err;
     if (ind->solve == NULL) continue;
-    long n = (long)ind->n_all_times * (long)rxEffNeq(ind, op);
+    long rows = (long)ind->solvedIdx + 1;
+    if (rows > (long)ind->n_all_times) rows = (long)ind->n_all_times;
+    if (rows < 0) rows = 0;
+    long n = rows * (long)rxEffNeq(ind, op);
     for (long j = 0; j < n; j++, k++) acc += ind->solve[j] * (double)(k + 1);
   }
   return acc;
@@ -7760,13 +7778,13 @@ static double rxDriveTeamChecksum(rx_solve *rx, int nsolve) {
 // pointer-table entry.
 extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS, SEXP clearExpCacheS) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 2));
-  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 2));
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 3));
+  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 3));
   SET_STRING_ELT(nm, 0, Rf_mkChar("nsolve"));
   SET_STRING_ELT(nm, 1, Rf_mkChar("checksum"));
+  SET_STRING_ELT(nm, 2, Rf_mkChar("errN"));
   Rf_setAttrib(ret, R_NamesSymbol, nm);
-  REAL(ret)[0] = 0.0;
-  REAL(ret)[1] = 0.0;
+  REAL(ret)[0] = REAL(ret)[1] = REAL(ret)[2] = 0.0;
   rx_solve *rx = getRxSolve_();
   // Refuse a freed solve.  `rx->subjects` survives `rxSolveFree()` (it points at
   // `inds_global`) and `rx->nsub` is left stale, so without this the loop would
@@ -7802,8 +7820,10 @@ extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS, SEXP clearExpCacheS) {
               dydt_lsoda_dum, jdum_lsoda, dydt, update_inis, global_jt);
   }
 #endif
+  int errN = 0;
   REAL(ret)[0] = (double) nsolve;
-  REAL(ret)[1] = rxDriveTeamChecksum(rx, nsolve);
+  REAL(ret)[1] = rxDriveTeamChecksum(rx, nsolve, &errN);
+  REAL(ret)[2] = (double) errN;
   return ret;
 }
 

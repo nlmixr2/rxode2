@@ -260,6 +260,12 @@ rxIndLinState <- function(preferred = NULL) {
 #' but a fit drives the solver directly and never builds that data frame, so this
 #' is the only way to observe the cache from inside one.
 #'
+#' The counters are cumulative until read with `reset = TRUE`, so a measurement
+#' is a reset before the work and a read after; a read that skips the reset
+#' blends the work with whatever warmed the counters earlier, which for a fit is
+#' its own setup solve.  A nonzero `noSlot` condemns the run whatever `reused`
+#' says: those exponentials could not have hit.
+#'
 #' @param reset logical; when `TRUE` zero the counters after reading, so a
 #'   measurement is one call before the work and one after
 #'
