@@ -1846,14 +1846,15 @@ controls.</p></dd>
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
 Dense-capable single methods are <code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>, and
-<code>"ros4"</code>.  For composite AutoSwitch methods (e.g. <code>"dop5+ros4"</code>), dense
-output is enabled only when <strong>both</strong> the primary and stiff secondary
-support dense output; <code>"ros4"</code> is the only stiff method that does, so
-valid dense composites are <code>"dop853+ros4"</code>, <code>"dop5+ros4"</code>, and
-<code>"bs+ros4"</code>.  A warning is issued and <code>dense</code> is set to <code>FALSE</code> when a
-composite stiff secondary does not support dense output.  Silently
-ignored for non-dense single methods.  Not yet supported for <code>linCmt()</code>
-models (a warning is emitted and the standard path is used instead).</p></dd>
+<code>"ros4"</code>.  <code>"dop853+ros4"</code> is the only dense AutoSwitch composite: the
+secondary must be dense too (<code>"ros4"</code> is the only stiff method that is),
+and handing a dense segment from the primary to the secondary mid-segment
+is implemented for a <code>"dop853"</code> primary.  Other composites solve densely
+only if you drop the secondary.  A warning is issued and <code>dense</code> is set to
+<code>FALSE</code> when a composite stiff secondary does not support dense output.
+Silently ignored for non-dense single methods.  Not yet supported for
+<code>linCmt()</code> models (a warning is emitted and the standard path is used
+instead).</p></dd>
 
 
 <dt id="arg-cvodelinsolver">cvodeLinSolver<a class="anchor" aria-label="anchor" href="#arg-cvodelinsolver"></a></dt>
@@ -1881,34 +1882,42 @@ factorization becomes the bottleneck.</p></dd>
 
 
 <dt id="arg-autoswitchnonstifftol">autoSwitchNonstifftol<a class="anchor" aria-label="anchor" href="#arg-autoswitchnonstifftol"></a></dt>
-<dd><p>Numeric in <code>(0, 1]</code>; stiffness ratio threshold
-used when the solver is in non-stiff mode.  If
-<code>rho * |dt| / S(primary) &gt; autoSwitchNonstifftol</code>, the interval is
-considered stiff and the secondary solver is tried.  Default <code>9/10</code>.</p></dd>
+<dd><p>Numeric in <code>(0, 1]</code>; the stiffness ratio at
+which an interval is called stiff.  Each accepted step of a <code>dop853</code>
+primary estimates the dominant eigenvalue and forms
+<code>rho * h / S(dop853)</code> with <code>S(dop853) = 6.1</code>; a step above
+<code>autoSwitchNonstifftol</code> is a stiff verdict, and 15 verdicts hand the rest
+of the interval to the stiff secondary.  Only a <code>dop853</code> primary carries
+this estimate; any other primary switches when it fails.  Default <code>9/10</code>.</p></dd>
 
 
 <dt id="arg-autoswitchstifftol">autoSwitchStifftol<a class="anchor" aria-label="anchor" href="#arg-autoswitchstifftol"></a></dt>
-<dd><p>Numeric in <code>(0, 1]</code>; non-stiffness ratio threshold
-used when the solver is in stiff mode.  If
-<code>rho * |dt| / S(primary) &lt; autoSwitchStifftol</code>, the interval is considered
-non-stiff and the switch-back counter is incremented.  Default <code>9/10</code>.</p></dd>
+<dd><p>Numeric in <code>(0, 1]</code>; the same ratio, but applied
+once the subject has already switched at least once – that is, on the
+optimistic re-probe of the primary rather than on the first attempt.
+Lowering it below <code>autoSwitchNonstifftol</code> makes the re-probe give up
+sooner, so stiff mode is stickier.  Default <code>9/10</code>, equal to
+<code>autoSwitchNonstifftol</code>, i.e. a re-probe behaves like a first probe.</p></dd>
 
 
 <dt id="arg-autoswitchdtfac">autoSwitchDtfac<a class="anchor" aria-label="anchor" href="#arg-autoswitchdtfac"></a></dt>
-<dd><p>Numeric <code>&gt;= 1</code>; factor by which the suggested step
-size is multiplied when switching to the stiff solver, and divided when
-switching back.  Default <code>2.0</code>.</p></dd>
+<dd><p>Accepted for backwards compatibility and currently
+inert.  It scaled a suggested step size across a switch, for a predictive
+switching scheme that has been replaced by the reactive one described
+above.  Default <code>2.0</code>.</p></dd>
 
 
 <dt id="arg-autoswitchmaxstiff">autoSwitchMaxStiff<a class="anchor" aria-label="anchor" href="#arg-autoswitchmaxstiff"></a></dt>
-<dd><p>Integer; number of consecutive stiff-detected
-intervals before permanently switching to the stiff solver.  Default <code>10L</code>.</p></dd>
+<dd><p>Integer; number of consecutive intervals in which
+the primary reported stiffness before the solve stops probing it and stays
+on the stiff secondary.  Default <code>10L</code>.</p></dd>
 
 
 <dt id="arg-autoswitchmaxnonstiff">autoSwitchMaxNonstiff<a class="anchor" aria-label="anchor" href="#arg-autoswitchmaxnonstiff"></a></dt>
-<dd><p>Integer; number of consecutive non-stiff
-intervals (while in stiff mode) before switching back to the fast
-non-stiff solver.  Default <code>3L</code>.</p></dd>
+<dd><p>Integer; intervals to spend on the stiff
+secondary before optimistically probing the primary again.  Each probe
+that fails doubles the wait (capped at 64x), so a persistently stiff
+subject stops paying for probes.  Default <code>3L</code>.</p></dd>
 
 
 <dt id="arg-autoswitchstifffirst">autoSwitchStiffFirst<a class="anchor" aria-label="anchor" href="#arg-autoswitchstifffirst"></a></dt>
@@ -1920,9 +1929,9 @@ with the stiff solver instead of the non-stiff primary.  Default <code>FALSE</co
 <dd><p>Non-negative integer; minimum number of
 integration intervals that must elapse after a switch before the solver
 is allowed to switch back in the opposite direction.  Acts as an
-oscillation guard: if the stiffness ratio fluctuates near a threshold,
-this prevents rapid back-and-forth between solvers.  Set to <code>0L</code> to
-disable the guard entirely.  Default <code>5L</code>.</p></dd>
+oscillation guard, and raises <code>autoSwitchMaxNonstiff</code> when it is larger.
+Set to <code>0L</code> to leave the wait to <code>autoSwitchMaxNonstiff</code> alone.
+Default <code>5L</code>.</p></dd>
 
 
 <dt id="arg-stiff-">stiff2<a class="anchor" aria-label="anchor" href="#arg-stiff-"></a></dt>

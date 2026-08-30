@@ -678,16 +678,14 @@ simulations</td>
 <tr class="even">
 <td><code>"dop853+ros4"</code></td>
 <td>–</td>
-<td>DOP853 primary; lower-overhead stiff fallback; supports
-<code>dense=TRUE</code>
+<td>DOP853 primary; lower-overhead stiff fallback; the only composite
+that supports <code>dense=TRUE</code>
 </td>
 </tr>
 <tr class="odd">
 <td><code>"dop853+ros43"</code></td>
 <td>–</td>
-<td>DOP853 primary; more robust stiff handling; supports
-<code>dense=TRUE</code>
-</td>
+<td>DOP853 primary; more robust stiff handling</td>
 </tr>
 <tr class="even">
 <td><code>"bs32+ros4"</code></td>
@@ -697,6 +695,14 @@ tolerances</td>
 </tr>
 </tbody>
 </table>
+<p>A <code>dop853</code> primary detects stiffness itself, from the
+estimate its steps already produce, and so can switch before it is in
+trouble. Every other primary switches when it fails, which still works
+but costs the failed attempt. <code>dense=TRUE</code> is supported for
+<code>"dop853+ros4"</code> only: the secondary has to be dense too
+(<code>ros4</code> is the only stiff method that is), and taking over a
+dense segment part-way through is implemented for a <code>dop853</code>
+primary.</p>
 <p><strong>Note on Julia’s <code>Rosenbrock23()</code>:</strong> Julia’s
 <code>Rosenbrock23()</code> is a 2nd/3rd-order Rosenbrock W-method
 (Shampine, 1982). rxode2 does not have a 2nd/3rd-order adaptive
@@ -708,7 +714,7 @@ to <code>AutoTsit5(Rosenbrock23())</code>.</p>
 <div class="section level4">
 <h4 id="tuning-autoswitch-behavior">Tuning AutoSwitch behavior<a class="anchor" aria-label="anchor" href="#tuning-autoswitch-behavior"></a>
 </h4>
-<p>Six parameters control the switching logic, all passed directly to
+<p>Seven parameters control the switching logic, all passed directly to
 <code><a href="../reference/rxSolve.html">rxSolve()</a></code> or <code><a href="../reference/rxSolve.html">rxControl()</a></code>:</p>
 <table class="table">
 <colgroup>
@@ -725,34 +731,42 @@ to <code>AutoTsit5(Rosenbrock23())</code>.</p>
 <tr class="odd">
 <td><code>autoSwitchNonstifftol</code></td>
 <td><code>0.9</code></td>
-<td>Stiffness ratio threshold (in non-stiff mode) above which the
-interval is considered stiff and retried</td>
+<td>Stiffness ratio <code>rho*h/6.1</code> above which an accepted step
+is a stiff verdict; 15 verdicts hand the rest of the interval to the
+secondary</td>
 </tr>
 <tr class="even">
 <td><code>autoSwitchStifftol</code></td>
 <td><code>0.9</code></td>
-<td>Non-stiffness ratio threshold (in stiff mode) below which the
-switch-back counter is incremented</td>
+<td>The same ratio on the optimistic re-probe after a subject has
+already switched. Set below <code>autoSwitchNonstifftol</code> to make
+stiff mode stickier</td>
 </tr>
 <tr class="odd">
 <td><code>autoSwitchMaxStiff</code></td>
 <td><code>10L</code></td>
-<td>Consecutive stiff-detected intervals before permanently switching to
-the stiff solver</td>
+<td>Consecutive stiff-detected intervals before the solve stops probing
+the primary</td>
 </tr>
 <tr class="even">
 <td><code>autoSwitchMaxNonstiff</code></td>
 <td><code>3L</code></td>
-<td>Consecutive non-stiff intervals (while in stiff mode) before
-switching back to the primary</td>
+<td>Intervals on the secondary before the primary is probed again; the
+wait doubles on each probe that fails (capped at 64x)</td>
 </tr>
 <tr class="odd">
-<td><code>autoSwitchDtfac</code></td>
-<td><code>2.0</code></td>
-<td>Factor applied to the suggested step size when switching to stiff;
-divided when switching back</td>
+<td><code>autoSwitchSwitchMax</code></td>
+<td><code>5L</code></td>
+<td>Minimum intervals after a switch before a switch back is allowed;
+raises <code>autoSwitchMaxNonstiff</code> when larger</td>
 </tr>
 <tr class="even">
+<td><code>autoSwitchDtfac</code></td>
+<td><code>2.0</code></td>
+<td>Accepted and inert. It scaled a step size across a switch for a
+predictive scheme that the reactive one replaced</td>
+</tr>
+<tr class="odd">
 <td><code>autoSwitchStiffFirst</code></td>
 <td><code>FALSE</code></td>
 <td>Start with the stiff solver instead of the non-stiff primary</td>
@@ -813,7 +827,8 @@ interval with <code>dop853</code>, the primary is using Julia’s
 <td>Granularity</td>
 <td>per accepted <strong>step</strong>
 </td>
-<td>per ODE <strong>interval</strong> (event-to-event segment)</td>
+<td>detection per accepted <strong>step</strong>, hand-over at the point
+of detection</td>
 </tr>
 <tr class="even">
 <td>Decision style</td>
@@ -821,16 +836,15 @@ interval with <code>dop853</code>, the primary is using Julia’s
 <strong>proactive</strong> – <code>is_stiff</code> chooses the
 algorithm for the <em>next</em> step</td>
 <td>
-<strong>reactive</strong> – run the primary, re-solve the interval
-with the stiff method only if it reports stiffness or fails</td>
+<strong>reactive</strong> – run the primary and hand the rest of the
+interval to the stiff method when it reports stiffness or fails</td>
 </tr>
 <tr class="odd">
 <td>Stiffness source</td>
 <td>the integrator’s <code>eigen_est</code> (every stepper supplies
 one)</td>
-<td>the primary’s own per-step estimator (e.g. DOP853’s
-<code>nstiff</code>) <strong>or</strong> an outright solve failure
-(step-size collapse)</td>
+<td>the primary’s own per-step estimator (DOP853’s <code>nstiff</code>)
+<strong>or</strong> an outright solve failure (step-size collapse)</td>
 </tr>
 <tr class="even">
 <td>Hysteresis</td>
@@ -840,22 +854,23 @@ one)</td>
 </td>
 <td>
 <code>autoSwitchMaxStiff</code> / <code>autoSwitchMaxNonstiff</code>
-/ <code>autoSwitchDtfac</code> / <code>autoSwitchStiffFirst</code> (same
-defaults: <code>10</code> / <code>3</code> / <code>2</code> /
-<code>FALSE</code>)</td>
+/ <code>autoSwitchSwitchMax</code> /
+<code>autoSwitchStiffFirst</code>
+</td>
 </tr>
 </tbody>
 </table>
-<p>The practical upshot: because <code>rxode2</code> solves a whole
-inter-dose interval as one unit, it does not re-pick the algorithm at
-every internal step the way Julia does. Instead it lets the non-stiff
-primary run (and detect stiffness with the same Hairer estimate, or
-simply fail on a stiff region), then re-solves that interval with the
-stiff secondary and uses a short hysteresis so a persistently stiff
-subject stops paying for the non-stiff probe. A non-stiff primary that
-has no internal eigenvalue estimate still triggers a switch through its
-step-size collapse, which is why the reactive scheme works for every
-primary, not only <code>dop853</code>.</p>
+<p>The practical upshot: a <code>dop853</code> primary evaluates the
+same Hairer estimate Julia calls <code>eigen_est</code> on every
+accepted step, and carries its verdict counters across intervals, so it
+detects stiffness on the same timescale Julia does even though
+<code>rxode2</code> drives the solver one event-to-event interval at a
+time. When it does report stiffness, the stiff secondary continues from
+the last step the primary completed rather than redoing the interval, so
+a switch costs one integration. A primary with no internal eigenvalue
+estimate still switches through its step-size collapse, which is why the
+reactive scheme works for every primary, not only
+<code>dop853</code>.</p>
 </div>
 </div>
 <div class="section level3">
