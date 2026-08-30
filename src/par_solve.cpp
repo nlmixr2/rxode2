@@ -6,6 +6,7 @@
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <string>
 #include <vector>
@@ -7728,14 +7729,37 @@ static inline int rxDriveTeamId(rx_solve *rx, int pos) {
 //
 // Two things this must NOT do, both of which would let a broken cache pass:
 //
-//   * read past what this drive wrote.  A subject that aborts leaves the tail
-//     of `ind->solve` holding whatever was there before -- for a re-drive, the
-//     PREVIOUS solve's correct values.  So the sum stops at `solvedIdx`, the
-//     last row a driver completed.
-//   * ignore how far it got.  Summing values alone, an exponential so wrong it
-//     aborts the subject on row one would checksum as the earlier good solve
-//     did.  `solvedIdx`, `rc` and `err` therefore go into the sum as well, and
-//     `errN` counts the failed subjects for the caller to assert on.
+//   * read what this drive did not write.  A subject that aborts stops writing,
+//     and the tail of `ind->solve` then still holds the PREVIOUS solve's
+//     correct values -- so an exponential wrong enough to abort on row one
+//     would checksum exactly as the good solve before it did.
+//   * depend on a driver's error bookkeeping to know how far it got.
+//     `solvedIdx` is not a reliable bound for that: an `iniSubject` failure
+//     returns before it is even reset, leaving the previous solve's value, and
+//     a driver that breaks out of its record loop leaves it one short or one
+//     long depending on where it broke.
+//
+// Hence `rxDriveTeamZeroSolve` below: the region is cleared before the drive,
+// so whatever the checksum reads was written by THIS drive or is a zero where
+// the drive stopped -- either way it is the drive's own output and nothing
+// else's.  `solvedIdx`, `rc` and `err` still go into the sum, and `errN` counts
+// the failed subjects, so a caller can assert that every subject finished.
+static long rxDriveTeamRows(rx_solving_options_ind *ind) {
+  long rows = (long)ind->n_all_times;
+  if (rows > (long)ind->solveAllocN) rows = (long)ind->solveAllocN;
+  return (rows < 0) ? 0 : rows;
+}
+
+static void rxDriveTeamZeroSolve(rx_solve *rx, int nsolve) {
+  rx_solving_options *op = rx->op;
+  for (int pos = 0; pos < nsolve; pos++) {
+    rx_solving_options_ind *ind = &(rx->subjects[rxDriveTeamId(rx, pos)]);
+    if (ind->solve == NULL) continue;
+    long n = rxDriveTeamRows(ind) * (long)rxEffNeq(ind, op);
+    if (n > 0) memset(ind->solve, 0, (size_t)n * sizeof(double));
+  }
+}
+
 static double rxDriveTeamChecksum(rx_solve *rx, int nsolve, int *errN) {
   rx_solving_options *op = rx->op;
   double acc = 0.0;
@@ -7747,10 +7771,7 @@ static double rxDriveTeamChecksum(rx_solve *rx, int nsolve, int *errN) {
     if (rc != 0 || ind->err != 0) (*errN)++;
     acc += (double)ind->solvedIdx + 7.0*(double)rc + 13.0*(double)ind->err;
     if (ind->solve == NULL) continue;
-    long rows = (long)ind->solvedIdx + 1;
-    if (rows > (long)ind->n_all_times) rows = (long)ind->n_all_times;
-    if (rows < 0) rows = 0;
-    long n = rows * (long)rxEffNeq(ind, op);
+    long n = rxDriveTeamRows(ind) * (long)rxEffNeq(ind, op);
     for (long j = 0; j < n; j++, k++) acc += ind->solve[j] * (double)(k + 1);
   }
   return acc;
@@ -7800,6 +7821,9 @@ extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS, SEXP clearExpCacheS) {
   int nsolve = (int)(rx->nsim * rx->nsub);
   if (nsolve <= 0) return ret;
   if (Rf_asLogical(clearExpCacheS) == TRUE) freeIndLinExpCache();
+  // Clear what the drive is about to write, so the checksum below reads this
+  // drive's output and never the last one's.
+  rxDriveTeamZeroSolve(rx, nsolve);
   // Bind the model's functions once, serially, exactly as the external driver's
   // setup does -- `ind_indLin`'s own bind is skipped under a team on purpose.
   assignFuns();
