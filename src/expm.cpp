@@ -4,7 +4,10 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADER
-#define ARMA_DONT_USE_OPENMP // Known to cause speed problems
+// Known to cause speed problems; also set via PKG_CXXFLAGS, so guard it.
+#ifndef ARMA_DONT_USE_OPENMP
+#define ARMA_DONT_USE_OPENMP
+#endif
 // Must precede RcppArmadillo.h: defined after the include it has no effect, and
 // an Armadillo error message printed from a worker thread is a confirmed crash.
 #define ARMA_DONT_PRINT_ERRORS
@@ -560,7 +563,9 @@ static bool indLinBlockSplit(const arma::mat &H, indLinBlockSplit_t &sp) {
 static bool matrixExpBlock(const arma::mat &H, arma::mat &out, double t,
                            int type, int order) {
   if (__indLinBlockOff) return false;
-  indLinBlockSplit_t sp;
+  // Zero-init: the split is only meaningful when indLinBlockSplit() returns
+  // true, but the compiler cannot see that and warns about reading `sp`.
+  indLinBlockSplit_t sp = {0, 0, 0, 0};
   if (!indLinBlockSplit(H, sp)) return false;
   const int n = sp.n, k = sp.k, nd = sp.nd, nz = sp.nz;
   const int nx = n*(k + 1);
@@ -2671,11 +2676,9 @@ static int indLinDriveAdaptive(int cSub, rx_solving_options *op, rx_solving_opti
                                double *yp_, double tp, double tf, double hCap, int locf,
                                double *InfusionRate_, int *on_, t_ME ME, t_IndF IndF,
                                arma::vec *u) {
-  const double SAFE = 0.9, FACMIN = 0.1, FACMAX = 5.0;
   double span = tf - tp;
   double t = tp;
   double h = (hCap > 0.0 && std::isfinite(hCap) && hCap < span) ? hCap : span;
-  bool lastRejected = false;
   // Steady state re-solves the same tau-sized interval until it stops moving.
   // If the substep schedule drifted between passes the ssRtol/ssAtol test
   // would be reading schedule jitter rather than convergence, so allow the
