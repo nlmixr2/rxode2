@@ -58,9 +58,12 @@ dvid(5, 6)"), NA)
     # the normalized text has to parse back to the same model
     expect_equal(rxModelVars(rxNorm(.m))$params, .m$params)
 
-    .i <- rxModelVars("y=z*a;\nlocf(z);\n")
-    expect_equal(rxNorm(.i), "y=z*a;\nlocf(z);\n")
-    expect_equal(rxModelVars(rxNorm(.i))$params, .i$params)
+    for (.f in c("locf", "linear", "nocb", "midpoint")) {
+      .txt <- paste0("y=z*a;\n", .f, "(z);\n")
+      .i <- rxModelVars(.txt)
+      expect_equal(rxNorm(.i), .txt)
+      expect_equal(rxModelVars(rxNorm(.i))$params, .i$params)
+    }
   })
 
   test_that("repeated param() statements merge into one", {
@@ -77,6 +80,12 @@ dvid(5, 6)"), NA)
     expect_equal(sum(grepl("^param\\(", strsplit(rxNorm(.two), "\n")[[1]])), 1L)
     expect_equal(rxNorm(.two), rxNorm(.one))
 
+    # a parameter introduced by use before the first statement keeps its place
+    .pre <- rxModelVars("y=z*a;\nparam(a,b);\nparam(a,b,c);\nw=b*c;\n")
+    expect_equal(.pre$params, c("z", "a", "b", "c"))
+    expect_equal(rxNorm(.pre), "y=z*a;\nparam(a,b,c);\nw=b*c;\n")
+    expect_equal(rxModelVars(rxNorm(.pre))$params, .pre$params)
+
     # a parameter introduced by use between the two statements keeps its place
     .mid <- rxModelVars("param(a);\ny=z*a;\nparam(a,c);\nw=c;\n")
     expect_equal(.mid$params, c("a", "z", "c"))
@@ -86,6 +95,21 @@ dvid(5, 6)"), NA)
     # every declared name became a state, so nothing is left to declare
     expect_equal(rxNorm(rxModelVars("param(a);\nparam(a);\nd/dt(a)=-a;\n")),
                  "d/dt(a)=-a;\n")
+
+    # an interpolation set on a parameter pulled into the merged statement stays
+    .int <- rxModelVars("param(a);\nlocf(z);\ny=z*a;\nparam(a,c);\nw=c;\n")
+    expect_equal(.int$params, c("a", "z", "c"))
+    expect_equal(rxNorm(.int), "param(a,z,c);\nlocf(z);\ny=z*a;\nw=c;\n")
+    expect_equal(rxModelVars(rxNorm(.int))$interp, .int$interp)
+    expect_equal(as.character(.int$interp[["z"]]), "locf")
+
+    # a string covariate pulled into the merged statement keeps its levels
+    .lvl <- rxModelVars(paste0("param(a);\nif (SEX == \"male\") {\n b <- 1\n} else {\n b <- 2\n}\n",
+                               "param(a,c);\ny=a*b*c;\n"))
+    expect_true("SEX" %in% .lvl$params)
+    expect_equal(rxModelVars(rxNorm(.lvl))$params, .lvl$params)
+    expect_equal(rxModelVars(rxNorm(.lvl))$strCmpParams, .lvl$strCmpParams)
+    expect_equal(rxModelVars(rxNorm(.lvl))$interp, .lvl$interp)
 
     # a single param() statement is left alone
     expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
