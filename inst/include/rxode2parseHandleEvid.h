@@ -107,7 +107,9 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 // (rxode2_df.cpp) calls handleTlastInline() without advancing or syncing it, so
 // ixds can point at an unrelated dose there.  Recover the index from ind->idx
 // whenever the record is a real (non-extra) dose, and only fall back to ixds
-// for extra doses, whose idx does not map into idose.
+// for extra doses (idx < 0).  An extra dose's amount lives in extraDoseDose,
+// not in idose, so there is no dose index to recover for it; it keeps the
+// long-standing ixds behavior.
 static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return ind->ixds;
   int cur = ind->ix[ind->idx];
