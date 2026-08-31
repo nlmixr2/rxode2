@@ -1106,6 +1106,13 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #'   \code{matExp()} model, 1 pure matrix exponential, 2 plus a state-free
 #'   \code{indLin()} forcing, 3/4 true inductive linearization (the adaptive,
 #'   iterating driver).  These cost very different amounts.
+#' Not counted: a handful of fixed-size index tables whose sizes depend on
+#' values only the solver has (\code{gParPos}, the \code{gevid} tail holding
+#' \code{gpar_cov}/\code{glhs_str}, \code{gdelayCol}/\code{gdelayState},
+#' \code{gindLin}, \code{splitBolus}).  Each is tens to hundreds of ints and
+#' none scales with subjects or events, so they are left out rather than
+#' folded into a component whose scaling law is the useful part of it.
+#'
 #' @return Named numeric vector; each element is bytes for that allocation.
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).

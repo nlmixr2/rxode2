@@ -725,6 +725,11 @@
   the estimate charged one int per event, overstating it by the number of
   events per subject.
 
+- `rxMemoryEstimate()` now reports `gEtaPre`, the pre-generated eta draws.
+  `rxPreGenEta()` mallocs `nsim * nsub * neta` doubles before the parallel
+  solve loop whenever the model has etas and a nonzero omega, and none of it
+  was counted.
+
 - `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
   `rxControl(resample=)` asks for covariate resampling, and counts the
   per-thread pointer table that accompanies the `gInfusionRate` buffers.

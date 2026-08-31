@@ -778,6 +778,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     indLinWork    = "indLinWork (per-thread indLin scratch)",
     indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
     gSampleCov    = "gSampleCov (resampled covariate index)",
+    gEtaPre       = "gEtaPre (pre-generated eta draws)",
     delayHist     = "delayHist (per-individual delay() history, bound)",
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
     outputData    = "outputData (estimated returned data)"

@@ -536,6 +536,21 @@ rxTest({
     expect_equal(as.numeric(.on[["linCmtRateHist"]]), 2 * 128 * 3 * 8)
   })
 
+  test_that("gEtaPre charges the pre-generated eta draws", {
+    # rxPreGenEta() mallocs nsim*nsub*neta doubles up front whenever the model
+    # has etas and a nonzero omega
+    .s <- rxMemSummary(nobs = rep(100L, 4L), ndoses = rep(10L, 4L))
+    .none <- rxMemoryEstimate(.s, neq = 2L)
+    .om <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+    .eta <- rxMemoryEstimate(.s, neq = 2L, control = rxControl(omega = .om))
+    expect_equal(as.numeric(.none[["gEtaPre"]]), 0)
+    expect_equal(as.numeric(.eta[["gEtaPre"]]), 4 * 1 * 2 * 8)
+    # and it follows the replicate count, like every other per-individual cost
+    .studs <- rxMemoryEstimate(.s, neq = 2L,
+                               control = rxControl(omega = .om, nStud = 10L))
+    expect_equal(as.numeric(.studs[["gEtaPre"]]), 10 * as.numeric(.eta[["gEtaPre"]]))
+  })
+
   test_that("rxMemoryEstimate accepts serialized state files and bundles", {
     skip_on_cran()
     .mod <- rxode2({
