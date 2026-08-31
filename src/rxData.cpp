@@ -6097,7 +6097,7 @@ void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 // the trailing `numLin + numLinSens` compartments, so block index c is state
 // index `linOffset + c`.  propAlag is src/tran.h's bit 4 (not included here).
 static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
-  if (numLin <= 0) return 0;
+  if (numLin <= 0 || mv.size() <= RxMv_stateProp) return 0;
   IntegerVector stateProp = mv[RxMv_stateProp];
   int mask = 0;
   int n = stateProp.size();
@@ -6125,6 +6125,13 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   if (!rxDynLoad(obj)) {
     (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
   }
+
+  // Take the model variables BEFORE the restore.  rxModelVars_() can run R --
+  // a model that came from another package and no longer validates is
+  // re-parsed here -- and nothing that runs R belongs between rxRestoreState_()
+  // and the solve it set up.  This is also the order the ordinary rxSolve_()
+  // path uses: model vars first, then op.
+  List mvRaw = rxModelVars_(obj);
 
   // Restore the pre-integration solve state from binary file.
   // rxRestoreState_ calls rxSolveFreeC() (which clears ODE function pointers),
@@ -6161,9 +6168,15 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     // MODEL, so take it from the model rather than the stream: a stream
     // written before format 6 does not carry it at all, and would otherwise
     // leave the mask at 0 and let linCmtB(which1 = -3) answer a mixed-delay
-    // regimen it should refuse (nlmixr2/rxode2#1119).
-    op->linCmtLagMask = rxLinCmtLagMask(rxModelVars_(obj), op->linOffset,
-                                        op->numLin);
+    // regimen it should refuse (nlmixr2/rxode2#1119).  Only when the model
+    // describes the layout that was just restored, though -- otherwise the
+    // stream's own value (format 6 and later) is the better answer.
+    if (mvRaw.size() > RxMv_state) {
+      CharacterVector mvState = mvRaw[RxMv_state];
+      if (mvState.size() == op->neq) {
+        op->linCmtLagMask = rxLinCmtLagMask(mvRaw, op->linOffset, op->numLin);
+      }
+    }
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
