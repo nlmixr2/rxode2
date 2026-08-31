@@ -232,8 +232,11 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxIndLinReadsState <- function(e, statesSe) {
+  # An expression whose symbols cannot be read is assumed to read one, which
+  # leaves the caller on the length rule rather than on a claim it cannot back.
   .v <- tryCatch(vapply(symengine::free_symbols(e), as.character, character(1)),
-                 error = function(.e) character(0))
+                 error = function(.e) NULL)
+  if (is.null(.v)) return(TRUE)
   any(.v %in% statesSe) || any(startsWith(.v, "rx__sens_"))
 }
 
@@ -467,6 +470,12 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # `X[[i]]` expression and it reports `user function '[[' requires 0 arguments`.
   .toSe <- function(.n) rxToSE(.n)
   .statesSe <- vapply(.states, .toSe, character(1), USE.NAMES = FALSE)
+  # Every compartment the generated model can read, which is what the solver
+  # classifies a forcing on -- `.states` drops the linCmt() pseudo-compartments
+  # (they have no matExp dynamics of their own), but a forcing that reads one
+  # still moves within the step and still has to take the iterating driver.
+  .cmtSe <- c(.statesSe,
+              vapply(.rxLinCmt(.mv), .toSe, character(1), USE.NAMES = FALSE))
   .parSe <- vapply(unique(c(calcSens, calcSens2, calcSens3)), .toSe, character(1))
 
   # 2. Split the system the way indLin() does: dX/dt = A.X + F(X), with A
@@ -536,7 +545,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       .aij <- .A[[.i]][[.j]]
       if (!.rxIndLinIsZero(.aij)) .f <- .f - .aij * .stateSym[[.j]]
     }
-    .rxIndLinExpand(.f, .statesSe)
+    .rxIndLinExpand(.f, .cmtSe)
   })
   names(.force) <- .states
   # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j]).  Computed
@@ -679,7 +688,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       .fi <- .force[[.i]]
       if (.rxIndLinIsZero(.fi)) next
       .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe),
-                            .statesSe)
+                            .cmtSe)
       if (!.rxIndLinIsZero(.g)) {
         .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
       }
@@ -744,7 +753,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           .fi <- .force[[.i]]
           if (.rxIndLinIsZero(.fi)) next
           .g2 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe,
-                                                 c(.pSe, .qSe)), .statesSe)
+                                                 c(.pSe, .qSe)), .cmtSe)
           if (!.rxIndLinIsZero(.g2)) {
             .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
           }
@@ -825,7 +834,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
             .fi <- .force[[.i]]
             if (.rxIndLinIsZero(.fi)) next
             .g3 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
-                                                   c(.pSe, .qSe, .rSe)), .statesSe)
+                                                   c(.pSe, .qSe, .rSe)), .cmtSe)
             if (!.rxIndLinIsZero(.g3)) {
               .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
             }
