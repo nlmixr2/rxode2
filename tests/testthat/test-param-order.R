@@ -118,6 +118,19 @@ dvid(5, 6)"), NA)
     expect_equal(rxModelVars(rxNorm(.lvl))$strCmpParams, .lvl$strCmpParams)
     expect_equal(rxModelVars(rxNorm(.lvl))$interp, .lvl$interp)
 
+    # a parameter introduced only after the last statement keeps its place
+    .post <- rxModelVars("param(a);\nparam(b);\ny=c;\n")
+    expect_equal(.post$params, c("a", "b", "c"))
+    expect_equal(rxNorm(.post), "param(a,b);\ny=c;\n")
+    expect_equal(rxModelVars(rxNorm(.post))$params, .post$params)
+
+    # a dual lhs/parameter assigned before the first statement is merged in
+    .dual <- rxModelVars("param(q);\ny=1;\nparam(y,a);\n")
+    expect_equal(.dual$params, c("q", "y", "a"))
+    expect_equal(rxNorm(.dual), "param(q,y,a);\ny=1;\n")
+    expect_equal(rxModelVars(rxNorm(.dual))$params, .dual$params)
+    expect_equal(unclass(rxModelVars(rxNorm(.dual))$interp), unclass(.dual$interp))
+
     # a single param() statement is left alone
     expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
                  "param(a,b);\nd/dt(x)=-a*x*b;\n")
