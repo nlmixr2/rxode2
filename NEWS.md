@@ -887,6 +887,33 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   positions without checking how many arguments were actually given, so a
   short call dereferenced a NULL parse node (#1266).
 
+- A `param()`/`params()` statement, and the interpolation statements
+  (`locf()`, `linear()`, `nocb()`, `midpoint()`), no longer splice the
+  preceding line into their own normalized text.  They build that text by
+  appending to the normalizing buffer and, unlike an assignment, did not
+  reset it when the statement started, so `"y=z*a;param(a,c);"` normalized to
+  `"paramy=z*a(a,c);"` -- text that no longer parses -- whenever such a
+  statement followed an assignment or a `d/dt()` line (#1279).
+
+- Repeated `param()` statements in one model now normalize to the single
+  merged declaration that `rxModelVars()$params` already reports, instead of
+  being kept as separate statements.  A generated model that appends a
+  `param()` statement to an already-built model text (for example to add
+  `DV` to a general-likelihood prediction model) previously left a normalized
+  model whose first `param()` statement did not name every parameter, so
+  code that read or edited that statement silently missed the later
+  declarations.  The merged statement takes the place of the first `param()`
+  statement and spans the parameter vector up to the last declared
+  parameter, so re-parsing the normalized text gives back the same
+  parameter order (#1279).
+
+- A variable that is both declared in `param()` and assigned in the model now
+  gets its interpolation recorded.  Such a dual lhs/parameter takes a slot in
+  the parameter vector like any other parameter, but the slot in the
+  (uninitialized) interpolation vector was never written, so
+  `rxModelVars()$interp` held a garbage code for it and printing it could fail
+  with `malformed factor`.
+
 ### Compilation
 
 - The per-thread `linCmtB()` object is a tagged struct rather than an anonymous
