@@ -2839,7 +2839,9 @@ namespace stan {
         }
       }
 
-      double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+      // Ref, not Matrix -- see getJacCp: a Map argument would materialize a
+      // heap-allocated temporary on every call.
+      double getVc(const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1> >& theta) {
         int sw = ncmt_*100 + trans_;
         switch (sw) {
         case 311:
@@ -2878,10 +2880,16 @@ namespace stan {
         return NA_REAL;
       }
 
+      // theta is an Eigen::Ref, not a Matrix.  Every caller passes an
+      // Eigen::Map over the per-block theta buffer, and a Map does not bind
+      // to `const Matrix&` -- it MATERIALIZES one, which for a dynamic
+      // vector is a heap allocation and a copy on EVERY call.  This is on
+      // the per-row path of a FOCEi fit, so that temporary showed up as its
+      // own entry in the profile.  Ref binds the Map directly.
       void
       getJacCp(const Eigen::Matrix<double, -1, -1>& J0,
                const Eigen::VectorXd& ret0,
-               const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+               const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1> >& theta,
                Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
         // no per-call temporaries: J is an expression over J0's central row
         auto J = J0.row(oral0_).transpose();
@@ -3036,14 +3044,14 @@ namespace stan {
       }
 
       double adjustF(const Eigen::VectorXd& ret0,
-                     const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+                     const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1> >& theta,
                      double &vc) {
         vc = getVc(theta);
         return ret0(oral0_, 0) / vc;
       }
 
       double adjustF(const Eigen::VectorXd& ret0,
-                     const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+                     const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1> >& theta) {
         double vc=0;
         return adjustF(ret0, theta, vc);
       }

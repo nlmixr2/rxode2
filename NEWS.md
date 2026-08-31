@@ -2,6 +2,37 @@
 
 ## New features
 
+- `linCmt()`'s sensitivity state now belongs to the INDIVIDUAL rather than to
+  whichever thread happens to be running it.  The theta-keyed window of
+  hoisted closed-form constants and the last-row value memo are the two
+  pieces whose value across calls is the whole point of having them, and
+  holding them per thread meant both had to be keyed on the subject id and
+  were discarded whenever another individual landed on the same slot.  They
+  now live in the solving structure for the individual, allocated on first
+  touch inside the solve and released with the subject alongside the delay
+  history and the rate history; the subject-id keys are gone, and a solve
+  being independent of how subjects were handed to threads is now structural
+  rather than something the transition-matrix path has to restart per subject
+  to enforce.  Pure scratch -- the Eigen work matrices and the kernel object
+  -- deliberately stays per thread, since it is overwritten on every call and
+  a per-individual copy would be memory holding nothing.  Results are bitwise
+  identical, including across thread counts.  Measured on an idle machine by
+  alternating two cleanly built installations, a FOCEi fit runs 1.15x (two
+  compartment) to 1.19x (one compartment) faster at an identical objective
+  and an identical evaluation count.  A plain `rxSolve()` shows almost
+  nothing, and that is the expected shape: every subject of one solve shares
+  a theta, so the window was already valid as a thread walked from subject to
+  subject -- only a fit, where each individual carries its own random
+  effects, has anything here to recover.
+
+- The `linCmt()` per-row path no longer allocates.  `getVc()`, `adjustF()`
+  and `getJacCp()` took a `const Eigen::Matrix&` while every caller passes an
+  `Eigen::Map` over the parameter buffer, so each call materialized a
+  heap-allocated vector and copied into it; they take an `Eigen::Ref` now,
+  which binds the map directly.  `adjustF()` is on the value path, so that
+  temporary was being built for every row, every output and every inner pass
+  of a fit.
+
 - New internal `rxSetIdLvlFactors()` C callable lets a host package (e.g.
   nlmixr2est during `focei`/`saem` estimation) populate the global subject-id
   factor table directly, so aggregated solver warnings can be attributed to the

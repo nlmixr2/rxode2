@@ -48,6 +48,7 @@ using namespace arma;
 extern "C" void seedEng(int ncores);
 extern "C" void ensureLinCmtA(int nCores);
 extern "C" void ensureLinCmtB(int nCores);
+extern "C" void linCmtBindFree(rx_solving_options_ind *ind);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
@@ -1951,6 +1952,10 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->linCmtRateHist = NULL;
   ind->linCmtRateHistCap = 0;
   ind->linCmtRateHistW = 0;
+  // linCmtB()'s per-individual carried state (window + value memo), allocated
+  // on first touch inside the solve; same lifecycle as the two above.  It
+  // holds C++ members, so linCmt.cpp owns the delete.
+  linCmtBindFree(ind);
 }
 
 extern "C" void gFree(){

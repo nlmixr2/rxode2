@@ -250,9 +250,26 @@ typedef struct linB_s {
   // fix (see project_lincmt_timevarying_covariate_bug); an ordinary,
   // constant-theta solve never requests it and pays nothing extra.
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> JAlast;
+} linB_t;
+
+// linCmtB()'s per-INDIVIDUAL carried state, owned by rx_solving_options_ind.
+//
+// Everything here is state whose value ACROSS calls is the point: the window
+// exists to hoist theta-only work out of the row loop, and the memo exists to
+// serve the repeats the generated model makes of one row.  Held per THREAD,
+// as it was, both had to be keyed on the subject id and were discarded the
+// moment another individual landed on the same slot -- so the memo carried an
+// id it only needed because it was in the wrong place.  Held per INDIVIDUAL
+// the ids disappear, the state survives for the whole solve, and freedom from
+// the thread schedule is structural rather than something the phi path has to
+// restart per subject to enforce.
+//
+// Pure scratch (the Eigen work matrices, the kernel object) deliberately does
+// NOT come here: it is overwritten on every call and has no meaning across
+// them, so a per-individual copy would be memory allocated to hold nothing.
+typedef struct linCmtBind_s {
   // Theta-keyed window of hoisted constants for the amortized sequential
-  // row Jacobian (linCmtSeqTailJac); per-thread, refilled on a theta or
-  // shape change.
+  // row Jacobian (linCmtSeqTailJac); refilled on a theta or shape change.
   linCmtWin win{};
   // Last-row value memo: a repeated (-1,-1) call for the same row (the
   // generated model executes the value line from dydt, calc_lhs and the
@@ -261,11 +278,28 @@ typedef struct linB_s {
   // invalidated by a model reshape and by any carry/dose-time sentinel.
   // Row last served by the thin value path (fx + Vc only): J/Jg are stale
   // for that row until a call-form query lazily restores them.
-  int liteId = -1, liteIdx = -1;
-  int memoId = -1, memoIdx = -1, memoFlag = -1, memoDoSS = -1, memoHpar = -9;
+  int liteIdx = -1;
+  int memoIdx = -1, memoFlag = -1, memoDoSS = -1, memoHpar = -9;
   double memoT = 0.0, memoH = 0.0, memoHV = 0.0, memoVal = 0.0;
   double memoArgs[7] = {0, 0, 0, 0, 0, 0, 0};
-} linB_t;
+} linCmtBind;
+
+// Allocated on first touch inside the solve; released with the subject in
+// rxFreeInd().  One individual is only ever solved by one thread at a time,
+// so this needs no locking.
+static inline linCmtBind &linCmtBindGet(rx_solving_options_ind *ind) {
+  if (ind->linCmtBind == NULL) {
+    ind->linCmtBind = (void*) new linCmtBind();
+  }
+  return *((linCmtBind*)(ind->linCmtBind));
+}
+
+extern "C" void linCmtBindFree(rx_solving_options_ind *ind) {
+  if (ind->linCmtBind != NULL) {
+    delete ((linCmtBind*)(ind->linCmtBind));
+    ind->linCmtBind = NULL;
+  }
+}
 
 std::vector<linB_t> __linCmtB;
 
@@ -280,10 +314,11 @@ extern "C" void ensureLinCmtB(int nCores) {
 // first touch of a slot for a shape must go through here -- sizing only the
 // kernel leaves isSame() true for the next ordinary call, which then skips
 // this block and runs on zero-length scratch.
-static inline void linCmtBsetModel(linB_t &lcb, int ncmt, int oral0, int trans,
+static inline void linCmtBsetModel(linB_t &lcb, linCmtBind &wsp,
+                                   int ncmt, int oral0, int trans,
                                    int linSS, rx_solve *rx) {
-  lcb.memoIdx = -1; // reshape invalidates the last-row value memo
-  lcb.liteId = lcb.liteIdx = -1;
+  wsp.memoIdx = -1; // reshape invalidates the last-row value memo
+  wsp.liteIdx = -1;
   lcb.lc.setModelType(ncmt, oral0, trans, linSS, rx->ndiff);
   int npars = lcb.lc.getNpars();
   lcb.fx = Eigen::Matrix<double, Eigen::Dynamic, 1>(ncmt + oral0);
@@ -1224,8 +1259,8 @@ static int linCmtAblateMode() {
 // linCmtFwdJac exactly: fx, the masked Js (columns in canonical requested
 // order, as updateJfromJs expects) and the Asave_ amounts for the next
 // row's carry.
-static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx,
-                             int dual) {
+static bool linCmtSeqTailJac(linB_t &lcb, linCmtBind &wsp, int phiCtl,
+                             int subjId, int idx, int dual) {
   stan::math::linCmtStan &lc = lcb.lc;
   if (lc.type_ != linCmtNormal) return false;
   int ncmt = lc.ncmt_, oral0 = lc.oral0_, trans = lc.trans_;
@@ -1233,7 +1268,7 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx,
   if (npars > RX_LINWIN_MAXP || ncmt + oral0 > RX_LINWIN_MAXM) return false;
   int m = ncmt + oral0;
   const double *thetaD = getLinCmtDoubleAddr(lcb, linCmtBaddrTheta);
-  linCmtWin &w = lcb.win;
+  linCmtWin &w = wsp.win;
   if (!w.valid || w.ncmt != ncmt || w.oral0 != oral0 || w.trans != trans ||
       w.npars != npars || memcmp(w.theta, thetaD, npars*sizeof(double)) != 0) {
     linCmtWinFill(lc, w, thetaD, ncmt, oral0, trans);
@@ -1291,14 +1326,19 @@ static bool linCmtSeqTailJac(linB_t &lcb, int phiCtl, int subjId, int idx,
     return false; // nothing requested
   }
   if (phiOn == 1 && (w.phiId != subjId || idx < w.phiLastIdx)) {
-    // Start every subject from the same blank interval state.  The window
-    // is per THREAD and outlives a subject, so without this the answer to
-    // "has this interval been seen before" -- and with it which rows
-    // propagate through a matrix and which evaluate the tail -- would
-    // depend on how subjects happened to be handed to threads, and the
-    // last digits of a solve would move with the thread count.  Restarting
-    // per subject costs a few exponentials and one matrix per subject and
-    // keeps a solve identical however many threads run it.
+    // Start every pass over a subject from the same blank interval state,
+    // so that the answer to "has this interval been seen before" -- and
+    // with it which rows propagate through a matrix and which evaluate the
+    // tail -- is a property of the design and not of what ran before.
+    //
+    // The window used to be per THREAD, which is what made this necessary:
+    // without it a subject inherited whichever intervals the previous
+    // subject on that thread had cached, so the last digits of a solve
+    // moved with the thread count.  The window now belongs to the
+    // INDIVIDUAL, so that particular hazard is gone by construction and the
+    // subject-id half of this test can never fire twice; what remains is
+    // the per-pass restart (idx moving backwards), which is still the thing
+    // that keeps repeated passes over one subject identical.
     w.phiId = subjId;
     w.nDelta = 0;
     w.deltaNext = 0;
@@ -2167,7 +2207,7 @@ static inline double linCmtBtransition(linB_t &lcb, rx_solve *rx,
   if (which2 < 0 || col >= m) return NA_REAL;
   // may be the first touch of this slot (a model with no -1 call)
   if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
+    linCmtBsetModel(lcb, linCmtBindGet(ind), ncmt, oral0, trans, ind->linSS, rx);
   }
   Eigen::Matrix<linCmtFv, Eigen::Dynamic, 2> gF;
   linCmtFv kaV;
@@ -2291,7 +2331,7 @@ static inline double linCmtBcarryAdvance(linB_t &lcb, rx_solve *rx,
   if (linCmtBcarryFast(ind, thNow, _t)) return ind->linCmtCarryT[slot];
   // may be the first touch of lc on this thread (a standalone re-query)
   if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
+    linCmtBsetModel(lcb, linCmtBindGet(ind), ncmt, oral0, trans, ind->linSS, rx);
   }
   // The advance interval is the time since this sentinel's OWN previous
   // invocation: calc_lhs fires once per event row in solve order, but in
@@ -2337,7 +2377,8 @@ static inline bool linCmtBread(linB_t &lcb, int which1, int which2, double *out)
 // the -1,-1 solve for this row has already run.  Returns false for a
 // combination no sentinel handles, in which case linCmtB() falls through
 // to the ordinary solve path.
-static inline bool linCmtBquery(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+static inline bool linCmtBquery(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
+                                rx_solving_options_ind *ind,
                                 rx_solving_options *op, int idx, double _t,
                                 int ncmt, int oral0, int which1, int which2, int trans,
                                 double p1, double v1, double p2, double p3,
@@ -2346,7 +2387,7 @@ static inline bool linCmtBquery(linB_t &lcb, rx_solve *rx, rx_solving_options_in
   // A dose-time/carry sentinel may touch lc state between value calls;
   // pure reads (above) do not.  Drop the last-row value memo either way --
   // correctness over a lost short-circuit.
-  lcb.memoIdx = -1;
+  wsp.memoIdx = -1;
   if (which1 == -3) {
     // idx already solved -> a re-query (e.g. the output pass) where
     // ind->InfusionRate has since been cleared/moved on; use the cached rate.
@@ -2426,7 +2467,8 @@ static inline void linCmtBfdJac(linB_t &lcb, int kind, double *linH,
 
 // The row's Jacobian by rx->sensType: a finite-difference family, reverse-
 // mode AD (31), or forward-mode AD (3/30 and anything unspecified).
-static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+static inline void linCmtBjac(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
+                              rx_solving_options_ind *ind,
                               int sensType, int id, int idx,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
                               Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &thetaSens) {
@@ -2440,7 +2482,7 @@ static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind 
   } else if (sensType == 31) {
     linCmtRevTapeInit();
     stan::math::jacobian(lcb.lc, thetaSens, lcb.fx, lcb.Js);
-  } else if (linCmtSeqTailJac(lcb, rx->linCmtSensPhi, id, idx,
+  } else if (linCmtSeqTailJac(lcb, wsp, rx->linCmtSensPhi, id, idx,
                               sensType == 32)) {
 #pragma omp atomic
     linCmtSeqTailN++;
@@ -2463,7 +2505,8 @@ static inline void linCmtBjac(linB_t &lcb, rx_solve *rx, rx_solving_options_ind 
 // otherwise advance the kernel from the previous state over dt and take
 // the Jacobian.  ind->tprior is the prior solved time, ind->tout the time
 // solved, _t the requested time (with ODE solving not necessarily tout).
-static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options_ind *ind,
+static inline void linCmtBsolveRow(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
+                                   rx_solving_options_ind *ind,
                                    rx_solving_options *op, int id, int idx, double _t,
                                    double *a, const double *r, int ncmt, int oral0, int trans,
                                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> > &theta,
@@ -2480,7 +2523,7 @@ static inline void linCmtBsolveRow(linB_t &lcb, rx_solve *rx, rx_solving_options
   linCmtValCompN++;
   lcb.lc.setDt(ind->doSS ? (ind->tout - ind->tprior) : (_t - ind->tprior));
   if (rx->ndiff != 0 && ind->linCmtHparIndex < -1) {
-    linCmtBjac(lcb, rx, ind, rx->sensType, id, idx, theta, thetaSens);
+    linCmtBjac(lcb, wsp, rx, ind, rx->sensType, id, idx, theta, thetaSens);
     return;
   }
   if (rx->ndiff != 0 && ind->linCmtHparIndex >= 0) {
@@ -2504,15 +2547,24 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Per-thread linCmtB state (matching linCmtA pattern for thread safety)
   int _tid = rx_get_thread(__linCmtB.size());
   linB_t &lcb = __linCmtB[_tid];
-  if (_tid < RX_LINCMTB_THREAD_SEEN) {
+  // Diagnostic only (linCmtBThreads()).  The plain read in front of the
+  // atomic matters: this is on the entry of a function a FOCEi fit calls
+  // upwards of a million times per objective evaluation, and the only
+  // transition is 0 -> 1, so a racy read costs at worst one redundant
+  // store and never a wrong answer.
+  if (_tid < RX_LINCMTB_THREAD_SEEN && !linCmtBThreadSeen[_tid]) {
 #pragma omp atomic write
     linCmtBThreadSeen[_tid] = 1;
   }
   rx_solving_options_ind *ind = &(rx->subjects[id]);
+  // The individual's own carried state: window + value memo.  Because it
+  // belongs to the individual, none of the keys below need the subject id
+  // any more -- this block IS the subject.
+  linCmtBind &wsp = linCmtBindGet(ind);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   if (which1 != -1 || which2 != -1) {
-    if (lcb.liteIdx == idx && lcb.liteId == id) {
+    if (wsp.liteIdx == idx) {
       // The thin value path left J/Jg stale for this row; a call-form
       // query consumes them -- restore once, lazily.
       Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1> >
@@ -2522,15 +2574,15 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       lcb.lc.restoreJacTo(acur, lcb.J);
       lcb.lc.restoreFxTo(acur, lcb.fx);
       lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
-      lcb.liteId = lcb.liteIdx = -1;
+      wsp.liteIdx = -1;
     }
     double out;
-    if (linCmtBquery(lcb, rx, ind, op, idx, _t, ncmt, oral0, which1, which2, trans,
+    if (linCmtBquery(lcb, wsp, rx, ind, op, idx, _t, ncmt, oral0, which1, which2, trans,
                      p1, v1, p2, p3, p4, p5, ka, &out)) {
       return out;
     }
   } else if (!lcb.lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
-    linCmtBsetModel(lcb, ncmt, oral0, trans, ind->linSS, rx);
+    linCmtBsetModel(lcb, wsp, ncmt, oral0, trans, ind->linSS, rx);
   } else {
     // Last-row value memo: the generated model executes this value call
     // many times per row (compute phase and restore path alike); a repeat
@@ -2539,14 +2591,14 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // depends on; sentinels and reshapes invalidate (see linCmtBquery /
     // linCmtBsetModel).
     const double args[7] = {p1, v1, p2, p3, p4, p5, ka};
-    if (lcb.memoIdx == idx && lcb.memoId == id && lcb.memoT == _t &&
-        lcb.memoFlag == ind->_rxFlag && lcb.memoDoSS == (int)ind->doSS &&
-        lcb.memoHpar == ind->linCmtHparIndex &&
-        lcb.memoH == ind->linCmtH && lcb.memoHV == ind->linCmtHV &&
-        memcmp(lcb.memoArgs, args, sizeof(args)) == 0) {
+    if (wsp.memoIdx == idx && wsp.memoT == _t &&
+        wsp.memoFlag == ind->_rxFlag && wsp.memoDoSS == (int)ind->doSS &&
+        wsp.memoHpar == ind->linCmtHparIndex &&
+        wsp.memoH == ind->linCmtH && wsp.memoHV == ind->linCmtHV &&
+        memcmp(wsp.memoArgs, args, sizeof(args)) == 0) {
 #pragma omp atomic
       linCmtMemoHitN++;
-      return lcb.memoVal;
+      return wsp.memoVal;
     }
     lcb.lc.setSsType(ind->linSS);
   }
@@ -2567,15 +2619,15 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     double val = lcb.lc.adjustF(lcb.fx, thetaL, ind->linCmtHV);
 #pragma omp atomic
     linCmtValLiteN++;
-    lcb.liteId = id; lcb.liteIdx = idx;
-    lcb.memoId = id; lcb.memoIdx = idx; lcb.memoT = _t;
-    lcb.memoFlag = ind->_rxFlag; lcb.memoDoSS = (int)ind->doSS;
-    lcb.memoHpar = ind->linCmtHparIndex;
-    lcb.memoH = ind->linCmtH; lcb.memoHV = ind->linCmtHV;
-    lcb.memoArgs[0] = p1; lcb.memoArgs[1] = v1; lcb.memoArgs[2] = p2;
-    lcb.memoArgs[3] = p3; lcb.memoArgs[4] = p4; lcb.memoArgs[5] = p5;
-    lcb.memoArgs[6] = ka;
-    lcb.memoVal = val;
+    wsp.liteIdx = idx;
+    wsp.memoIdx = idx; wsp.memoT = _t;
+    wsp.memoFlag = ind->_rxFlag; wsp.memoDoSS = (int)ind->doSS;
+    wsp.memoHpar = ind->linCmtHparIndex;
+    wsp.memoH = ind->linCmtH; wsp.memoHV = ind->linCmtHV;
+    wsp.memoArgs[0] = p1; wsp.memoArgs[1] = v1; wsp.memoArgs[2] = p2;
+    wsp.memoArgs[3] = p3; wsp.memoArgs[4] = p4; wsp.memoArgs[5] = p5;
+    wsp.memoArgs[6] = ka;
+    wsp.memoVal = val;
     return val;
   }
   if (id == 0 && ind->linH[0] == 0) {
@@ -2601,16 +2653,16 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   double *a = (ind->linCmtAlast == NULL) ? getAdvan(ind->solvedIdx) : ind->linCmtAlast;
   lcb.lc.setPtr(a, r, ind->linCmtSave);
 
-  linCmtBsolveRow(lcb, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans, theta, thetaSens);
+  linCmtBsolveRow(lcb, wsp, rx, ind, op, id, idx, _t, a, r, ncmt, oral0, trans, theta, thetaSens);
   lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
   double val = lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
-  lcb.memoId = id; lcb.memoIdx = idx; lcb.memoT = _t;
-  lcb.memoFlag = ind->_rxFlag; lcb.memoDoSS = (int)ind->doSS;
-  lcb.memoHpar = ind->linCmtHparIndex;
-  lcb.memoH = ind->linCmtH; lcb.memoHV = ind->linCmtHV;
-  lcb.memoArgs[0] = p1; lcb.memoArgs[1] = v1; lcb.memoArgs[2] = p2;
-  lcb.memoArgs[3] = p3; lcb.memoArgs[4] = p4; lcb.memoArgs[5] = p5;
-  lcb.memoArgs[6] = ka;
-  lcb.memoVal = val;
+  wsp.memoIdx = idx; wsp.memoT = _t;
+  wsp.memoFlag = ind->_rxFlag; wsp.memoDoSS = (int)ind->doSS;
+  wsp.memoHpar = ind->linCmtHparIndex;
+  wsp.memoH = ind->linCmtH; wsp.memoHV = ind->linCmtHV;
+  wsp.memoArgs[0] = p1; wsp.memoArgs[1] = v1; wsp.memoArgs[2] = p2;
+  wsp.memoArgs[3] = p3; wsp.memoArgs[4] = p4; wsp.memoArgs[5] = p5;
+  wsp.memoArgs[6] = ka;
+  wsp.memoVal = val;
   return val;
 }
