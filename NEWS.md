@@ -695,6 +695,29 @@
   shows up most in generated sensitivity code, where differentiating leaves a
   great many `*1` and `+0` terms behind; the emitted values are unchanged.
 
+- `rxSensMatExp()` no longer emits an `indLin()` forcing that is
+  algebraically zero, which had been demoting every sensitivity model with two
+  or more compartments to the fixed-point iteration.  The generator splits the
+  system term wise as `dX/dt = A.X + F(X)` and keeps whatever `rhs - A.X`
+  leaves as the forcing; symengine holds `A_ij * X_j` as a product of a sum and
+  a symbol and does not distribute it, so from two compartments up the
+  subtraction left a residual that prints as non-zero and is zero.  A
+  structurally non-zero forcing is what classifies a model as state dependent,
+  so the whole solve took the inductive-linearization driver -- Picard/Newton
+  substepping with error control and several exponentials per substep --
+  instead of one cached matrix exponential per interval.  One compartment
+  emitted no forcing at all, which is why it was the only configuration where
+  `matExp()` was competitive.  The residual is now cancelled before it is
+  tested, and the same cancellation collapses the un-simplified `k_<cmt>_output`
+  constants the split produced (`-q/v-(-q/v-cl/v)` is now `cl/v`), which the
+  generated model re-evaluated on every `ME()` call.  A genuinely nonlinear
+  forcing is untouched: the expansion is kept only where it does not lengthen
+  what it replaced.  Measured on an optimized build, 40 subjects over an
+  irregular 200 point schedule with three sensitivity parameters, single
+  thread, the solve is 9.6x faster at two compartments and 12.5x at three, with
+  the solved values unchanged to 3e-14 -- the dropped terms contributed nothing
+  but cost.  `bench/indlin_zero_forcing_ab.R` is the harness.
+
 - `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
   they were given.  All three guarded the count with `length(x == n)` instead
   of `length(x) == n`; `x` is a call, so `x == n` compares its elements and
