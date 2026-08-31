@@ -871,9 +871,17 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `DV` to a general-likelihood prediction model) previously left a normalized
   model whose first `param()` statement did not name every parameter, so
   code that read or edited that statement silently missed the later
-  declarations.  The merged statement spans the declared parameters and
-  anything that landed between them in the parameter vector, so re-parsing
-  the normalized text gives back the same parameter order (#1279).
+  declarations.  The merged statement takes the place of the first `param()`
+  statement and spans the parameter vector up to the last declared
+  parameter, so re-parsing the normalized text gives back the same
+  parameter order (#1279).
+
+- A variable that is both declared in `param()` and assigned in the model now
+  gets its interpolation recorded.  Such a dual lhs/parameter takes a slot in
+  the parameter vector like any other parameter, but the slot in the
+  (uninitialized) interpolation vector was never written, so
+  `rxModelVars()$interp` held a garbage code for it and printing it could fail
+  with `malformed factor`.
 
 ### Compilation
 

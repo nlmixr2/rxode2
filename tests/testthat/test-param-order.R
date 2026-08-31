@@ -83,7 +83,7 @@ dvid(5, 6)"), NA)
     # a parameter introduced by use before the first statement keeps its place
     .pre <- rxModelVars("y=z*a;\nparam(a,b);\nparam(a,b,c);\nw=b*c;\n")
     expect_equal(.pre$params, c("z", "a", "b", "c"))
-    expect_equal(rxNorm(.pre), "y=z*a;\nparam(a,b,c);\nw=b*c;\n")
+    expect_equal(rxNorm(.pre), "y=z*a;\nparam(z,a,b,c);\nw=b*c;\n")
     expect_equal(rxModelVars(rxNorm(.pre))$params, .pre$params)
 
     # a parameter introduced by use between the two statements keeps its place
@@ -91,6 +91,13 @@ dvid(5, 6)"), NA)
     expect_equal(.mid$params, c("a", "z", "c"))
     expect_equal(rxNorm(.mid), "param(a,z,c);\ny=z*a;\nw=c;\n")
     expect_equal(rxModelVars(rxNorm(.mid))$params, .mid$params)
+
+    # the first statement declares only names that became states, so the merged
+    # statement must still keep the parameters introduced ahead of it in place
+    .st <- rxModelVars("param(b);\ny=c;\nparam(d);\nd/dt(b)=-b;\n")
+    expect_equal(.st$params, c("c", "d"))
+    expect_equal(rxNorm(.st), "param(c,d);\ny=c;\nd/dt(b)=-b;\n")
+    expect_equal(rxModelVars(rxNorm(.st))$params, .st$params)
 
     # every declared name became a state, so nothing is left to declare
     expect_equal(rxNorm(rxModelVars("param(a);\nparam(a);\nd/dt(a)=-a;\n")),
@@ -114,6 +121,16 @@ dvid(5, 6)"), NA)
     # a single param() statement is left alone
     expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
                  "param(a,b);\nd/dt(x)=-a*x*b;\n")
+  })
+
+  test_that("a dual lhs/parameter gets its interpolation set", {
+    # `a` is declared by param() and assigned, so it is both an lhs and a
+    # parameter; the interp vector is allocated uninitialized, so the slot has
+    # to be written on that path too
+    .m <- rxModelVars("param(a,n);\nlocf(n);\na=a+1;\ny=a*n;\n")
+    expect_equal(.m$params, c("a", "n"))
+    expect_equal(as.character(.m$interp), c("default", "locf"))
+    expect_equal(unclass(rxModelVars(rxNorm(.m))$interp), unclass(.m$interp))
   })
 
   test_that("a parameter declared by a later param() is filled at solve time", {
