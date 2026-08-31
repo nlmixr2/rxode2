@@ -1246,7 +1246,8 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `linCmt()` dose at all whose compartments were started from an initial
   condition: those amounts decay in time, so `-dA/dt` reported a nonzero
   sensitivity, but an initial condition is not delayed by `alag()` and the
-  answer is 0 (#1119, #1237).
+  answer is 0.  A plain `amt = 0` dose is not counted, so it cannot refuse a
+  regimen it contributes nothing to (#1119, #1237).
 
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read

@@ -345,6 +345,52 @@ rxTest({
     }
   })
 
+  test_that("linCmtB(-3) is not refused by a zero bolus into an unlagged compartment", {
+    # A plain `amt = 0` dose puts nothing into the compartment, so it cannot
+    # break the shared-delay assumption: refusing the regimen over it would
+    # cost a gradient that is perfectly answerable.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 0, cmt = "central", time = 0) |>
+      et(seq(0.1, 24, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
+  })
+
+  test_that("linCmtB(-3) accepts dosing a subset of the lagged compartments", {
+    # Both linCmt() compartments carry the SAME modeled alag(), so every dose
+    # is delayed alike however many of them the regimen actually uses.  Pins
+    # the gate as a SUBSET test (dosed & ~lagged) rather than an equality one:
+    # an equality test would wrongly refuse the depot-only regimen.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    .es <- list(
+      "depot only (subset of the lagged set)" =
+        et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25)),
+      "central only (subset of the lagged set)" =
+        et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25)),
+      "both lagged compartments" =
+        et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
+          et(seq(0.1, 24, 0.25))
+    )
+    for (.nm in names(.es)) {
+      s <- rxSolve(m, .es[[.nm]], params = .p)
+      expect_false(any(is.na(s$dcp)), info = .nm)
+      expect_true(max(abs(s$dcp)) > 1e-3, info = .nm)
+      expect_equal(s$dcp, .fdCol(m, .es[[.nm]], "cp"), tolerance = 1e-5, info = .nm)
+    }
+  })
+
   test_that("linCmtB(-3) ignores doses into a mixed model's ODE compartments", {
     # Only doses reaching the LINEAR system can violate the shared-delay
     # assumption; an ODE compartment of a mixed model is not part of it, so

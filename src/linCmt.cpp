@@ -68,11 +68,16 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 // doses has to be compared against op->linCmtLagMask (the ones the model
 // lags).  `*dosedMask` is a bitmask over the linCmt() block of the physical
 // compartments actually dosed (bit c = block index c, 0 = depot when oral),
-// matching
-// op->linCmtLagMask: `cmt` out of getWh() is the 0-based index into the full
-// state vector and the linCmt() block starts at op->linOffset, so block index
-// c = cmt - op->linOffset.  Doses into a mixed model's ODE compartments fall
-// outside the block and are ignored -- they do not feed the linear system.
+// matching op->linCmtLagMask: `cmt` out of getWh() is the 0-based index into
+// the full state vector and the linCmt() block starts at op->linOffset, so
+// block index c = cmt - op->linOffset.  Doses into a mixed model's ODE
+// compartments fall outside the block and are ignored -- they do not feed the
+// linear system, and neither does a plain zero bolus: it puts nothing into
+// the compartment, so it cannot break the shared-delay assumption and must
+// not be allowed to refuse an otherwise answerable regimen.  ONLY that shape
+// is skipped -- a zero `amt` on a rate/duration record is an infinite
+// infusion, and on a replace or multiply record it sets the compartment to
+// zero; both genuinely dose.
 //
 // Both answers come out of ONE pass over ind->idose.
 static inline void linCmtDoseScan(rx_solving_options_ind *ind,
@@ -89,7 +94,11 @@ static inline void linCmtDoseScan(rx_solving_options_ind *ind,
       ss = 1;
     }
     int c = cmt - op->linOffset;
-    if (c >= 0 && c < nLin) mask |= (1 << c);
+    if (c >= 0 && c < nLin &&
+        !(whI == EVIDF_NORMAL && wh0 == EVID0_REGULAR &&
+          getDoseNumber(ind, i) == 0.0)) {
+      mask |= (1 << c);
+    }
   }
   *dosedMask = mask;
   *ssInf = ss;
