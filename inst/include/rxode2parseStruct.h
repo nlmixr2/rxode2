@@ -493,6 +493,25 @@ struct rx_solving_options_ind_s {
 #define RX_LINCMT_ORIGIN_MAX 4
   double  linCmtOrigin[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
   int     linCmtOriginSeeded; /* 0 until this subject's first advance seeded it */
+  // linCmtOrigin above is the decomposition at the START of the row
+  // linCmtOriginIdx names -- the analogue of Alast -- and linCmtOriginOut is
+  // the advanced result for that row.  They have to be separate because a
+  // model that mixes linCmt() with ODEs re-enters linCmtB() many times WITHIN
+  // one row (dydt fires at every internal solver step), so the advance must be
+  // a pure function of the row's entry state, exactly as the amounts are a
+  // pure function of Alast.  The last call for the row wins, which is the same
+  // convention copyLinCmt() applies to the amounts (it evaluates dydt once at
+  // ind->tout and copies what that produced).  linCmtOriginIdx = -1 means no
+  // row has been advanced for this subject yet.
+  double  linCmtOriginOut[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginOutSeeded;
+  int     linCmtOriginIdx;
+  /* ind->linSS the row named by linCmtOriginIdx was advanced under.  A
+     steady-state linCmt() record runs its SS solve and the normal advance
+     that follows it at the SAME idx (handleSSbolus(), src/par_solve.cpp), so
+     idx alone does not identify the row -- keying on both keeps the normal
+     advance building on the SS result instead of discarding it. */
+  int     linCmtOriginSS;
   // Per-idx history of the above, kept for the same reason linCmtRateHist is:
   // the output pass re-queries an already-solved index after the live state
   // has moved on.  Flat idx-major, idx*linCmtOriginHistW + k.

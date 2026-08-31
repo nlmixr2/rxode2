@@ -250,7 +250,11 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       // attributes whatever the initial conditions put in the compartments
       // to no dose at all rather than to a phantom one.
       memset(ind->linCmtOrigin, 0, sizeof(ind->linCmtOrigin));
+      memset(ind->linCmtOriginOut, 0, sizeof(ind->linCmtOriginOut));
       ind->linCmtOriginSeeded = 0;
+      ind->linCmtOriginOutSeeded = 0;
+      ind->linCmtOriginIdx = -1;
+      ind->linCmtOriginSS = 0;
     }
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
@@ -336,7 +340,11 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     // dose: re-seed the per-origin decomposition (linCmtB which1 = -9/-10)
     // so the restored amounts are not attributed to a delayed dose.
     memset(ind->linCmtOrigin, 0, sizeof(ind->linCmtOrigin));
+    memset(ind->linCmtOriginOut, 0, sizeof(ind->linCmtOriginOut));
     ind->linCmtOriginSeeded = 0;
+    ind->linCmtOriginOutSeeded = 0;
+    ind->linCmtOriginIdx = -1;
+    ind->linCmtOriginSS = 0;
     ind->ixds++;
     // Reset dose-tracking after time reset so tad is never negative post-reset.
     // Any dose that fires after this EVID=3 re-establishes tlast from scratch.

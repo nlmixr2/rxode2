@@ -180,6 +180,57 @@ rxTest({
     expect_true(all(is.na(.s$badO)))
   })
 
+  test_that("linCmtB(-9) is right when linCmt() is mixed with an ODE", {
+    # A model that also has d/dt() re-enters linCmtB() many times within one
+    # event row (dydt fires at every internal solver step), so the advance of
+    # the decomposition has to be a pure function of the row's entry state.
+    # Accumulating instead read ~16% off here.
+    .m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka)
+      lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      d/dt(eff) <- -0.1 * eff
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      d3 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+      d9 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -9, 7, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    .e <- et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.5))
+    .s <- rxSolve(.m, .e, params = .p, inits = c(eff = 5))
+    .f <- .fd(.m, .e, "eta_lag")
+    expect_false(anyNA(.s$d9))
+    expect_true(.rel(.s$d9, .f) < 1e-6)
+    # the whole regimen doses one lagged compartment, so -3 agrees
+    expect_true(.rel(.s$d9, .s$d3) < 1e-8)
+  })
+
+  test_that("linCmtB(-9)/(-10) refuse a replace/multiply into the linCmt() block", {
+    # A replace or multiply rewrites a compartment that may hold mass from
+    # several origins, and the amounts cannot say how the rewrite divided among
+    # them -- so the decomposition stops being recoverable.  NA, not a number
+    # that keeps reporting the pre-rewrite origin forever.
+    .m <- .rxOriginModel(1L, 1L, 0L)
+    .base <- et(amt = 100, cmt = "depot")
+    for (.evid in c(5, 6)) {
+      .e <- .base |> et(amt = 0.5, cmt = "central", evid = .evid, time = 10) |>
+        et(seq(0.1, 24, 0.5))
+      .s <- rxSolve(.m, .e, params = .p)
+      expect_true(all(is.na(.s$d9)), label = paste("evid", .evid))
+    }
+    # ... but a replace on an ODE compartment is none of its business
+    .mOde <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka)
+      lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      d/dt(eff) <- -0.1 * eff
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      d9 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -9, 7, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    .eOde <- et(amt = 100, cmt = "depot") |>
+      et(amt = 1, cmt = "eff", evid = 5, time = 10) |> et(seq(0.1, 24, 0.5))
+    .s <- rxSolve(.mOde, .eOde, params = .p, inits = c(eff = 5))
+    expect_false(anyNA(.s$d9))
+  })
+
   test_that("linCmtB(-9) is per-individual", {
     .m <- .rxOriginModel(2L, 1L, 0L)
     .e <- do.call(rbind, lapply(1:5, function(i) {
