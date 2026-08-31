@@ -729,6 +729,15 @@
   `rxControl(resample=)` asks for covariate resampling, and counts the
   per-thread pointer table that accompanies the `gInfusionRate` buffers.
 
+- `rxMemoryEstimate()` now charges the two per-individual history buffers:
+  the `delay()` dense history (`ind$delayHist`) and the `linCmtB()` output-time
+  rate history (`ind$linCmtRateHist`), neither of which was counted at all.
+  Both grow by doubling inside the solve rather than being sized up front, so
+  unlike every other component these are a documented BOUND rather than a
+  mirror of a `calloc`: the capacity the doubling reaches at roughly one stored
+  step per event, floored at the initial allocation.  They are zero for a model
+  that uses neither.
+
 - `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
   per-subject event totals were summed in integer arithmetic, so a solve past
   2^31 events -- exactly the size this estimate exists to judge -- overflowed

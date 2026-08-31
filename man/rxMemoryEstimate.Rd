@@ -26,7 +26,8 @@ rxMemoryEstimate(
   numLin = 0L,
   stiff = NA_integer_,
   doIndLin = 0L,
-  indOwnAlloc = 0L
+  indOwnAlloc = 0L,
+  nDelayState = 0L
 )
 }
 \arguments{
@@ -103,6 +104,11 @@ own event and solve arrays rather than pointing into the global
 buffers.  These are allocated on top of \code{gsolve}, so they are real
 extra memory.  Taken from the model's \code{evid_} flag when \code{model}
 is given, and overridden by \code{control$indOwnAlloc} when that is set.}
+
+\item{nDelayState}{Number of ODE states \code{delay()} looks back on.
+Drives the per-individual dense-history buffer, which grows by doubling
+inside the solve, so it is charged as a documented bound rather than an
+exact mirror.  Taken from \code{model} when given.}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose

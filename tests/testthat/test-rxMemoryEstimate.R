@@ -315,7 +315,7 @@ rxTest({
         ncov = 0L, nsim = nsim, cores = 1L, nMtime = 0L, extraCmt = 0L, linB = 0L,
         nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 1L,
         nallTotal = 110, ndosesTotal = 10, maxAllTimes = 110, stiff = -1L,
-        doIndLin = 0L, indOwnAlloc = 1L, sample = 0L)[["indOwnAlloc"]])
+        doIndLin = 0L, indOwnAlloc = 1L, sample = 0L, nDelayState = 0L)[["indOwnAlloc"]])
     }
     expect_equal(.c(3L), 3 * .c(1L))
   })
@@ -479,6 +479,11 @@ rxTest({
                              control = rxControl(resample = "WT"))
     expect_equal(as.numeric(.off[["gSampleCov"]]), 0)
     expect_equal(as.numeric(.on[["gSampleCov"]]), 3 * 4 * 1 * 4)
+    # ncov * nsub * nsim: with nsim left at 1 the nsim factor is invisible, so
+    # pin it with a replicate count too
+    .onStud <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L,
+                                control = rxControl(resample = "WT", nStud = 10L))
+    expect_equal(as.numeric(.onStud[["gSampleCov"]]), 3 * 4 * 10 * 4)
   })
 
   test_that("huge event counts do not overflow to NA", {
@@ -488,6 +493,47 @@ rxTest({
     .e <- rxMemoryEstimate(.s, neq = 1L)
     expect_true(is.finite(as.numeric(.e[["total"]])))
     expect_gt(as.numeric(.e[["total"]]), 2^31)
+  })
+
+  test_that("delay() models are charged for the per-individual dense history", {
+    .dde <- rxode2({
+      d/dt(a) <- -a * delay(a, 1)
+    })
+    .ode <- rxode2({
+      d/dt(a) <- -a * a
+    })
+    expect_equal(rxModelVars(.dde)$flags[["hasDelay"]], 1L)
+    expect_equal(rxModelVars(.ode)$flags[["hasDelay"]], 0L)
+    expect_equal(.rxMemNDelayState(rxModelVars(.dde)), 1L)
+    expect_equal(.rxMemNDelayState(rxModelVars(.ode)), 0L)
+
+    .s <- rxMemSummary(nobs = rep(100L, 3L), ndoses = rep(10L, 3L))
+    .eD <- rxMemoryEstimate(.s, model = .dde)
+    .eO <- rxMemoryEstimate(.s, model = .ode)
+    expect_equal(as.numeric(.eO[["delayHist"]]), 0)
+    # a bound, not a mirror: capacity doubles from 256 to at least the busiest
+    # individual's event count, stride 8*nDelayState+3, once per individual
+    expect_equal(as.numeric(.eD[["delayHist"]]), 3 * 256 * (8 * 1 + 3) * 8)
+    expect_gt(as.numeric(.eD[["total"]]), as.numeric(.eO[["total"]]))
+  })
+
+  test_that("the delay history bound follows the doubling past 256", {
+    # 300 events per individual pushes the capacity to the next power of two
+    .s <- rxMemSummary(nobs = 290L, ndoses = 10L)
+    .dde <- rxode2({
+      d/dt(a) <- -a * delay(a, 1)
+    })
+    .e <- rxMemoryEstimate(.s, model = .dde)
+    expect_equal(as.numeric(.e[["delayHist"]]), 512 * (8 * 1 + 3) * 8)
+  })
+
+  test_that("linCmtRateHist is charged at numLin wide, and only when numLin > 0", {
+    .s <- rxMemSummary(nobs = rep(100L, 2L), ndoses = rep(10L, 2L))
+    .off <- rxMemoryEstimate(.s, neq = 2L)
+    .on  <- rxMemoryEstimate(.s, neq = 2L, numLin = 3L)
+    expect_equal(as.numeric(.off[["linCmtRateHist"]]), 0)
+    # capacity doubles from 64 to at least 110 -> 128, width numLin
+    expect_equal(as.numeric(.on[["linCmtRateHist"]]), 2 * 128 * 3 * 8)
   })
 
   test_that("rxMemoryEstimate accepts serialized state files and bundles", {
@@ -700,7 +746,7 @@ rxTest({
         ncov = 0L, nsim = 1L, cores = 4L, nMtime = 0L, extraCmt = 0L, linB = 0L,
         nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 10L,
         nallTotal = 100, ndosesTotal = 10, maxAllTimes = 10, stiff = 3L,
-        doIndLin = doIndLin, indOwnAlloc = 0L, sample = 0L)[["indLinExpCache"]])
+        doIndLin = doIndLin, indOwnAlloc = 0L, sample = 0L, nDelayState = 0L)[["indLinExpCache"]])
     }
     expect_gt(.cache(42L, 3L), .cache(10L, 3L))   # 3*42 = 126, still cached
     expect_lt(.cache(43L, 3L), .cache(42L, 3L))   # 3*43 = 129, over the cap

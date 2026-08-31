@@ -212,10 +212,28 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nLlik     = as.integer(.flags["nLlik"]),
     nIndSim   = as.integer(.flags["nIndSim"]),
     doIndLin  = .rxMemDoIndLin(.mv),
+    nDelayState = .rxMemNDelayState(.mv),
     # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
     # MODEL decides it unless the control says otherwise
     indOwnAlloc = as.integer(.flags["evid_"])
   )
+}
+#' How many ODE states delay() looks back on
+#'
+#' Mirrors the `op->nDelayState` build in `src/rxData.cpp`: the states carrying
+#' the `propDelay` bit in `stateProp`, falling back to every state when
+#' `hasDelay` is set but no state carried the bit.
+#'
+#' @param mv `rxModelVars()` of the model.
+#' @return Number of dense-history columns; 0 for a model without `delay()`.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemNDelayState <- function(mv) {
+  if (!isTRUE(as.integer(mv[["flags"]]["hasDelay"]) > 0L)) return(0L)
+  .sp <- mv[["stateProp"]]
+  if (length(.sp) == 0L) return(0L)
+  .n <- sum(bitwAnd(as.integer(.sp), 262144L) != 0L)  # propDelay, src/tran.h
+  if (.n == 0L) length(.sp) else as.integer(.n)
 }
 #' Which matrix-exponential driver a model will run under
 #'
@@ -458,6 +476,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   buffers.  These are allocated on top of \code{gsolve}, so they are real
 #'   extra memory.  Taken from the model's \code{evid_} flag when \code{model}
 #'   is given, and overridden by \code{control$indOwnAlloc} when that is set.
+#' @param nDelayState Number of ODE states \code{delay()} looks back on.
+#'   Drives the per-individual dense-history buffer, which grows by doubling
+#'   inside the solve, so it is charged as a documented bound rather than an
+#'   exact mirror.  Taken from \code{model} when given.
 #' @param doIndLin Which matrix-exponential driver runs: \code{0} not a
 #'   \code{matExp()} model, \code{1} pure matrix exponential, \code{2} plus a
 #'   state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
@@ -518,7 +540,8 @@ rxMemoryEstimate <- function(
   numLin    = 0L,
   stiff     = NA_integer_,
   doIndLin  = 0L,
-  indOwnAlloc = 0L) {
+  indOwnAlloc = 0L,
+  nDelayState = 0L) {
   .resolved <- .rxMemResolveInput(dat, control)
   dat <- .resolved$dat
   control <- .resolved$control
@@ -546,6 +569,7 @@ rxMemoryEstimate <- function(
     nLlik     <- .mi$nLlik
     doIndLin  <- .mi$doIndLin
     indOwnAlloc <- .mi$indOwnAlloc
+    nDelayState <- .mi$nDelayState
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
@@ -646,7 +670,8 @@ rxMemoryEstimate <- function(
     stiff      = as.integer(stiff),
     doIndLin   = as.integer(doIndLin),
     indOwnAlloc = as.integer(indOwnAlloc),
-    sample     = as.integer(.sample)
+    sample     = as.integer(.sample),
+    nDelayState = as.integer(nDelayState)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
@@ -753,6 +778,8 @@ print.rxMemoryEstimate <- function(x, ...) {
     indLinWork    = "indLinWork (per-thread indLin scratch)",
     indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
     gSampleCov    = "gSampleCov (resampled covariate index)",
+    delayHist     = "delayHist (per-individual delay() history, bound)",
+    linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
     outputData    = "outputData (estimated returned data)"
   )
 

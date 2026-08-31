@@ -165,4 +165,40 @@ static inline void rxFillIndAllocTotal(
   out->i32 = 2 * (nat + nind) + (nd + nind);
 }
 
+/* ---------------------------------------------------------------------------
+ * rxDelayHistCap / rxLinCmtRateHistCap
+ *
+ * The two per-individual history buffers grow by DOUBLING rather than being
+ * sized up front, so unlike everything above these cannot be mirrored from a
+ * calloc expression: `delayHistCap` starts at 256 and doubles once per
+ * accepted dense step, and how many of those a solve takes depends on
+ * stiffness and tolerances, not on anything known before solving.
+ *
+ * These return a documented BOUND, not a mirror: the capacity the doubling
+ * reaches at roughly one stored step per event, floored at the initial
+ * allocation every individual takes as soon as it stores anything.  A stiff
+ * solve taking many steps between outputs can still exceed it; an estimate
+ * that guesses low is the useless kind, so round up rather than down.
+ * --------------------------------------------------------------------------- */
+static inline int64_t rxPow2AtLeast(int64_t n, int64_t start) {
+  int64_t cap = start;
+  while (cap < n && cap < ((int64_t)1 << 40)) cap *= 2;
+  return cap;
+}
+
+/* Per individual, in DOUBLES.  n = events for that individual, nDelayState =
+   the states delay() looks back on (op->nDelayState).  Stride is
+   RX_DELAY_STRIDE(nDelayState) = 8*nDelayState + 3 (src/par_solve.cpp). */
+static inline int64_t rxDelayHistCap(int64_t n, int nDelayState) {
+  if (nDelayState <= 0) return 0;
+  return rxPow2AtLeast(n, 256) * (8 * (int64_t)nDelayState + 3);
+}
+
+/* Per individual, in DOUBLES.  linCmtBRateSlot() grows to hold one row of
+   `width` per output index (src/linCmt.cpp), starting at 64. */
+static inline int64_t rxLinCmtRateHistCap(int64_t n, int width) {
+  if (width <= 0) return 0;
+  return rxPow2AtLeast(n, 64) * (int64_t)width;
+}
+
 #endif /* RXODE2_MEMORY_CALC_H */

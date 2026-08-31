@@ -1095,6 +1095,11 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #'   \code{gsolve}, whose \code{n0} region then goes unused.
 #' @param sample 1 when \code{rxControl(resample=)} asks for covariate
 #'   resampling, which allocates \code{gSampleCov}; else 0.
+#' @param nDelayState Number of ODE states \code{delay()} looks back on
+#'   (\code{op$nDelayState}); 0 for a model without \code{delay()}.  Drives
+#'   the per-individual dense-history bound.
+#'   The \code{linCmtB(which1 = -3)} rate history is charged at
+#'   \code{numLin} wide, which is the width \code{linCmtBRateSlot()} uses.
 #' @param stiff     The solving method (\code{op$stiff}); only 3
 #'   (\code{"indLin"}) allocates anything extra here.
 #' @param doIndLin  Which matrix-exponential driver runs: 0 not a
@@ -1105,8 +1110,8 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 #' @noRd
-rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample) {
-    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample)
+rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState) {
+    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
 rxOptRep_ <- function(input) {

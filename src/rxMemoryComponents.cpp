@@ -45,6 +45,11 @@ using namespace Rcpp;
 //'   \code{gsolve}, whose \code{n0} region then goes unused.
 //' @param sample 1 when \code{rxControl(resample=)} asks for covariate
 //'   resampling, which allocates \code{gSampleCov}; else 0.
+//' @param nDelayState Number of ODE states \code{delay()} looks back on
+//'   (\code{op$nDelayState}); 0 for a model without \code{delay()}.  Drives
+//'   the per-individual dense-history bound.
+//'   The \code{linCmtB(which1 = -3)} rate history is charged at
+//'   \code{numLin} wide, which is the width \code{linCmtBRateSlot()} uses.
 //' @param stiff     The solving method (\code{op$stiff}); only 3
 //'   (\code{"indLin"}) allocates anything extra here.
 //' @param doIndLin  Which matrix-exponential driver runs: 0 not a
@@ -80,7 +85,8 @@ NumericVector rxMemoryComponents_(
   int    stiff,
   int    doIndLin,
   int    indOwnAlloc,
-  int    sample)
+  int    sample,
+  int    nDelayState)
 {
   rx_mem_layout _mem;
   rxFillMemLayout(
@@ -188,6 +194,24 @@ NumericVector rxMemoryComponents_(
     b_indOwn = (double)_ia.dbl * sizeof(double) + (double)_ia.i32 * sizeof(int);
   }
 
+  /* -- per-individual history buffers (delay() and linCmtB rate history) -----
+   *
+   * Both grow by doubling inside the solve rather than being sized up front,
+   * so these are a documented BOUND rather than a mirror -- see
+   * rxDelayHistCap()/rxLinCmtRateHistCap() in inst/include/rxMemoryCalc.h.
+   * `maxAllTimes` is the busiest individual, so charging every individual at
+   * that capacity is the conservative reading.
+   */
+  double b_delayHist = 0.0;
+  double b_linRateHist = 0.0;
+  {
+    double nind = (double)nsub * nsim;
+    b_delayHist = nind *
+      (double)rxDelayHistCap((int64_t)maxAllTimes, nDelayState) * sizeof(double);
+    b_linRateHist = nind *
+      (double)rxLinCmtRateHistCap((int64_t)maxAllTimes, numLin) * sizeof(double);
+  }
+
   NumericVector out = NumericVector::create(
     Named("gsolve")        = (double)_mem.gsolve_total * sizeof(double),
     Named("gsolve_n0")     = (double)_mem.n0           * sizeof(double),
@@ -206,6 +230,8 @@ NumericVector rxMemoryComponents_(
     Named("indLinWork")    = b_indLinWork,
     Named("indOwnAlloc")   = b_indOwn,
     Named("gSampleCov")    = b_gSampleCov,
+    Named("delayHist")     = b_delayHist,
+    Named("linCmtRateHist")= b_linRateHist,
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 
