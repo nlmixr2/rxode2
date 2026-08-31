@@ -179,6 +179,14 @@ typedef struct {
      really does share one delay (nlmixr2/rxode2#1119, #1237).  0 when the
      model declares no modeled alag() on a linCmt() compartment. */
   int    linCmtLagMask;
+  /* Bitmask over the same block of the compartments whose DOSE the model
+     moves or scales -- a modeled alag() (propAlag) or f() (propF).  Gates the
+     per-origin decomposition of the linCmt() amounts that answers the
+     PER-COMPARTMENT dose-time and bioavailability sensitivities
+     (linCmtB which1 = -9 / -10, src/linCmt.cpp).  Tracking costs one extra
+     kernel evaluation per origin per step, so a model that cannot use it
+     pays nothing.  Superset of linCmtLagMask. */
+  int    linCmtOriginMask;
 } rx_solving_options;
 
 
@@ -388,6 +396,31 @@ struct rx_solving_options_ind_s {
   double *linCmtRateHist;   /* flat idx-indexed rate history, or NULL when unused */
   int     linCmtRateHistCap; /* capacity in idx slots */
   int     linCmtRateHistW;   /* doubles per idx slot (op->numLin); realloc if changed */
+  // Per-ORIGIN decomposition of the linCmt() amounts: row q holds the part of
+  // the amount vector that arrived through doses into linCmt block
+  // compartment q.  The system is linear, so the rows sum to the amounts, and
+  // each row obeys the same dynamics as the amounts with the regimen
+  // restricted to compartment q -- which is exactly what the PER-COMPARTMENT
+  // dose-time sensitivity needs: delaying only compartment q's doses gives
+  // dA/dL_q = -(M A^(q) + r^(q)) (linCmtB which1 = -9), and scaling only its
+  // dose gives dA/dF_q = A^(q)/F_q (which1 = -10).  That answers the
+  // mixed-route regimen -- a lagged depot alongside an unlagged central --
+  // which the single shared delay of which1 = -3 has to refuse
+  // (nlmixr2/rxode2#1119 part B, #1237).
+  //
+  // Fixed stride RX_LINCMT_ORIGIN_MAX regardless of the model's actual
+  // m = ncmt + oral0 so iniSubject() can reset it without knowing m:
+  // linCmtOrigin[q*RX_LINCMT_ORIGIN_MAX + j].  Only rows/cols < m are used.
+  // Opt-in: maintained only when op->linCmtOriginMask is nonzero.
+#define RX_LINCMT_ORIGIN_MAX 4
+  double  linCmtOrigin[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginSeeded; /* 0 until this subject's first advance seeded it */
+  // Per-idx history of the above, kept for the same reason linCmtRateHist is:
+  // the output pass re-queries an already-solved index after the live state
+  // has moved on.  Flat idx-major, idx*linCmtOriginHistW + k.
+  double *linCmtOriginHist;   /* flat idx-indexed origin history, or NULL when unused */
+  int     linCmtOriginHistCap; /* capacity in idx slots */
+  int     linCmtOriginHistW;   /* doubles per idx slot (m*RX_LINCMT_ORIGIN_MAX) */
   // Cumulative sensitivity carry state for the linCmt()-time-varying-covariate
   // fix (project_lincmt_timevarying_covariate_bug): d(Alast_i)/d(eta), one
   // column per carried (linCmt-parameter, eta) pair, one row per linCmt()
