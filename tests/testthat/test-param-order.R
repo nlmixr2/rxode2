@@ -131,6 +131,24 @@ dvid(5, 6)"), NA)
     expect_equal(rxModelVars(rxNorm(.dual))$params, .dual$params)
     expect_equal(unclass(rxModelVars(rxNorm(.dual))$interp), unclass(.dual$interp))
 
+    # the `params()` spelling merges the same way
+    .alias <- rxModelVars("params(a, b);\nparams(c, d);\ny=a*b*c*d;\n")
+    expect_equal(.alias$params, c("a", "b", "c", "d"))
+    expect_equal(rxNorm(.alias), "param(a,b,c,d);\ny=a*b*c*d;\n")
+    expect_equal(rxModelVars(rxNorm(.alias))$params, .alias$params)
+
+    # the first statement declares nothing but states, the second survives
+    .st2 <- rxModelVars("param(a,b);\nd/dt(a)=-a;\nd/dt(b)=-b;\nparam(c);\ny=c;\n")
+    expect_equal(.st2$params, "c")
+    expect_equal(rxNorm(.st2), "param(c);\nd/dt(a)=-a;\nd/dt(b)=-b;\ny=c;\n")
+    expect_equal(rxModelVars(rxNorm(.st2))$params, .st2$params)
+
+    # an interpolation statement sitting between the two is kept in place
+    .int2 <- rxModelVars("param(a);\nlocf(b);\nparam(b);\ny=a*b;\n")
+    expect_equal(.int2$params, c("a", "b"))
+    expect_equal(rxNorm(.int2), "param(a,b);\nlocf(b);\ny=a*b;\n")
+    expect_equal(unclass(rxModelVars(rxNorm(.int2))$interp), unclass(.int2$interp))
+
     # a single param() statement is left alone
     expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
                  "param(a,b);\nd/dt(x)=-a*x*b;\n")
