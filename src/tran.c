@@ -688,10 +688,13 @@ void trans_internal(const char* parse_file, int isStr){
 }
 
 
-extern int _rxode2parse_protected;
+SEXP _rxode2parse_preserve(SEXP x);
 static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                              SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn) {
-  _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
+  /* claimed for the whole parse, and released by _rxode2parse_unprotect() --
+     see the comment on _rxode2parse_preserve() in codegen.c for why this
+     cannot be a PROTECT */
+  _goodFuns = _rxode2parse_preserve(goodFuns);
   // Make sure buffers are initialized.
   isEsc=INTEGER(isEscIn)[0];
   fullPrint=INTEGER(fullPrintIn)[0];

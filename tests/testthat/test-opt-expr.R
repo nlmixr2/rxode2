@@ -344,30 +344,40 @@ rxTest({
   })
 
   test_that("parallel chunking gives the identical model and leaves no daemons behind", {
-    # daemons only start when the model splits into at least 4 chunks, so use a model
-    # large enough to cross that threshold
-    .m <- .chunkModel(150L)
-    .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
-    .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
-    # optimizing the chunks in daemons must not change the model at all
-    expect_identical(.seq, .par)
-    # the pool is started for the call and shut down when it returns
-    expect_equal(sum(mirai::status()$connections), 0L)
-    # the default parallel (0 = the rxode2 thread setting) is the same model too,
-    # and equally leaves no pool behind
-    .def <- suppressMessages(rxOptExpr(.m, "model"))
-    expect_identical(.def, .seq)
-    expect_equal(sum(mirai::status()$connections), 0L)
+    ## chunking now engages on model SIZE, not line count -- this model is
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      # daemons only start when the model splits into at least 4 chunks, so use a model
+      # large enough to cross that threshold
+      .m <- .chunkModel(150L)
+      .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
+      .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
+      # the chunked path is the one under test
+      expect_true(grepl("rx_expr_c[0-9]+_", .seq))
+      # optimizing the chunks in daemons must not change the model at all
+      expect_identical(.seq, .par)
+      # the pool is started for the call and shut down when it returns
+      expect_equal(sum(mirai::status()$connections), 0L)
+      # the default parallel (0 = the rxode2 thread setting) is the same model too,
+      # and equally leaves no pool behind
+      .def <- suppressMessages(rxOptExpr(.m, "model"))
+      expect_identical(.def, .seq)
+      expect_equal(sum(mirai::status()$connections), 0L)
+    })
   })
 
   test_that("too few chunks do not pay for a daemon pool", {
-    # .chunkModel() splits into only 2 chunks: even with parallel forced on, no pool is
-    # started (its startup would cost more than it saves) and none is left behind
-    .m <- .chunkModel()
-    .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
-    .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
-    expect_identical(.par, .seq)
-    expect_equal(sum(mirai::status()$connections), 0L)
+    ## chunking now engages on model SIZE, not line count -- this model is
+    ## small in characters, so force it on to test the machinery itself
+    withr::with_options(list(rxode2.optExprChunkChars = 0L), {
+      # .chunkModel() splits into only 2 chunks: even with parallel forced on, no pool is
+      # started (its startup would cost more than it saves) and none is left behind
+      .m <- .chunkModel()
+      .par <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 2L))
+      .seq <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L, parallel = 1L))
+      expect_identical(.par, .seq)
+      expect_equal(sum(mirai::status()$connections), 0L)
+    })
   })
 
   # A past() duration is an ordinary expression, not a left-hand side; rendering it with

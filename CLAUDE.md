@@ -267,6 +267,16 @@ arguments`. When manipulating symengine objects programmatically:
     - Create a protection object `rxProtect rx_protect;`
     - Use `rx_protect.protect()` instead of `PROTECT()`; `UNPROTECT`
       will be handled when the object goes out of scope.
+  - EXCEPTION -- objects that must outlive a `longjmp`: `rxProtectGuard`'s
+    cleanup does NOT fire on `Rf_error`, so anything claimed by one function and
+    released by another with an error possible in between (the parse translation
+    table and `_goodFuns`, claimed in `_rxode2parse_assignTranslation()` /
+    `setupTrans()` and released in `_rxode2parse_unprotect()`) must not live on
+    the protect stack at all.  R unwinds that stack on the error while the
+    owner's count stays set, and the next release then pops the *caller's*
+    protections -- seen as `R_Reprotect: only N protected items, can't reprotect
+    index M` out of `vapply()`.  Use `R_PreserveObject`/`R_ReleaseObject` (via
+    `_rxode2parse_preserve()`) there, never `rxP()`/`rxUP()`.
 
 #### Exposing a C/C++ function to downstream packages (e.g. nlmixr2est)
 

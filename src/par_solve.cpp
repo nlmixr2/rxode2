@@ -188,6 +188,84 @@ extern "C" void nullGlobals() {
   lineNull(&(rx_global.factorNames));
 }
 
+// Populate the global solve state's ID factor levels directly from a vector
+// of subject ids.  rxSolve_ev1Update() normally fills rx_global.factors from
+// an `rxEtTran` event table's idLvl attribute, but nlmixr2est's FOCEi/SAEM
+// estimation strips that class (it passes a plain data.frame / numeric matrix
+// to rxSolve_), so during a fit the factor table is empty and getId() falls
+// through to "Unknown".  nlmixr2est calls this helper (via a version-skew-safe
+// R_GetCCallable lookup) right after estimation setup so warnings aggregated
+// by solveWarn.cpp can be attributed to the real subject id.  We only populate
+// the ID group (group 0) because getId() reads factorNs[0]/factors.n.
+// lineIni() self-frees any prior buffers, so repeated calls (cov steps / theta
+// resets) do not leak; setting hasFactors=1 lets rxSolveFree() reclaim the
+// buffers afterwards.
+//
+// `idLvl` is normally a character vector.  An integer/real/logical vector is
+// coerced (an estimation host whose ID column is numeric can pass it as-is);
+// any other type -- and NULL -- clears the ID levels rather than reaching into
+// a non-STRSXP, so a mis-typed call from a downstream package degrades to the
+// "internal #N" fallback instead of erroring or reading the wrong memory.
+extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
+  rx_solve *rx = &rx_global;
+  rxProtect rx_protect;
+  switch (idLvl == NULL ? NILSXP : TYPEOF(idLvl)) {
+  case STRSXP:
+    break;
+  case INTSXP:
+  case REALSXP:
+  case LGLSXP:
+    idLvl = rx_protect.protect(Rf_coerceVector(idLvl, STRSXP));
+    break;
+  default:
+    idLvl = R_NilValue;
+    break;
+  }
+  lineIni(&(rx->factors));
+  lineIni(&(rx->factorNames));
+  int len = (TYPEOF(idLvl) == STRSXP) ? Rf_length(idLvl) : 0;
+  addLine(&(rx->factorNames), "%s", "ID");
+  for (int i = 0; i < len; i++) {
+    addLine(&(rx->factors), "%s", CHAR(STRING_ELT(idLvl, i)));
+  }
+  // count what was actually added, so factorNs[0] can never claim more levels
+  // than rx->factors holds
+  rx->factorNs[0] = rx->factors.n;
+  rx->hasFactors = 1;
+}
+
+// Test-only entry point (registered in init.c, called via .Call) that
+// exercises the solve-warning subject-id labelling deterministically without
+// needing a stiff fit: set the id factor levels from `idLvl`, push one
+// aggregated warning per supplied internal `ids` entry, then flush.  Used by
+// tests/testthat/test-solve-warn-id.R.  A character `idLvl` yields real
+// labels; an empty character(0) (or a non-vector SEXP) leaves the factor table
+// empty so the "internal #N" fallback in solveWarn.cpp is exercised.
+// rxSetIdLvlFactors() handles every input type, so it is always the one that
+// resets the table -- nullGlobals() only drops the pointers (it is the
+// load-time initializer for buffers that do not exist yet) and would leak the
+// levels a previous call allocated.
+//
+// `setLvl=FALSE` skips the reset and flushes against whatever the last real
+// rxSolve() left behind, which is the only way to reach the multiple-
+// simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
+// the levels).
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  if (Rf_asLogical(setLvlSEXP) != FALSE) {
+    rxSetIdLvlFactors(idLvl);
+  }
+  SEXP ids = rx_protect.protect(Rf_coerceVector(idsSEXP, INTSXP));
+  int n = Rf_length(ids);
+  int *pids = INTEGER(ids);
+  for (int i = 0; i < n; i++) {
+    rxSolveWarnPush(pids[i], "rxTest -- solve warning");
+  }
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
 static inline const char *getId(int id) {
   rx_solve *rx = &rx_global;
   int curLen=  rx->factorNs[0];
@@ -207,6 +285,65 @@ static inline const char *getId(int id) {
 
 extern "C" const char *rxGetId(int id) {
   return getId(id);
+}
+
+// Resolve a solve index to its subject label, or NULL when no label exists.
+// Callers that must distinguish "no label available" from a label that happens
+// to read "Unknown" (a legitimate ID level) have to ask this rather than
+// string-compare rxGetId()'s result -- see rxSolveWarnFlush() in solveWarn.cpp.
+//
+// `*sim` receives the 1-based simulation number.  The ID levels only ever
+// cover one simulation's worth of subjects, but a multiple-simulation solve
+// runs nsub*nsim of them, laid out simulation-major (subjects[csub +
+// csim*nsub]) -- so a solve index past the end of the levels is subject
+// `id % nsub` of simulation `id / nsub + 1`, not an unknown subject.
+extern "C" const char *rxGetIdSim(int id, int *sim) {
+  rx_solve *rx = &rx_global;
+  int nlvl = rx->factorNs[0];
+  if (sim != NULL) *sim = 1;
+  if (id < 0 || nlvl <= 0 || nlvl > rx->factors.n) return NULL;
+  // Whether nsub/nsim describe the solve these levels came from.  hasFactors
+  // is the provenance: rxSolve_ev1Update() sets it to >= 2 (ID + CMT) for the
+  // rxEtTran table it just read the levels from, 0 for a solve whose data
+  // carried no levels, and rxSetIdLvlFactors() sets 1 for levels a host
+  // supplied without solving.  Only the first pairs with the current counts;
+  // the others would read a previous solve's.
+  int trust = (rx->hasFactors >= 2 && rx->nsub > 0 && rx->nsim > 0);
+  int nsub = trust ? (int)rx->nsub : 0;
+  int nsim = trust ? (int)rx->nsim : 1;
+  if (trust && nsub == nlvl) {
+    // the levels enumerate exactly one simulation's worth of subjects
+    int csim = id / nsub;
+    if (csim >= nsim) return NULL;
+    if (sim != NULL) *sim = csim + 1;
+    return rx->factors.line[id % nsub];
+  }
+  // Otherwise the levels do not name this solve's subjects one-for-one.  No
+  // solve reaches here today -- etTrans() builds the ID levels from the same
+  // unique ids that set nsub, and `nSub=` replicates a one-subject table as
+  // extra simulations rather than extra subjects, so nsub == nlvl throughout.
+  // Should that ever stop holding, refuse rather than name the wrong subject:
+  // past nsub an index is a later simulation, not a later level.
+  if (trust && nsim > 1 && id >= nsub) return NULL;
+  if (id < nlvl) return rx->factors.line[id];
+  return NULL;
+}
+
+// Test-only entry point (registered in init.c): return rxGetId() labels for a
+// vector of internal solve ids, reading whatever currently populates the
+// global factor table.  Lets a host package assert that estimation setup
+// populated the subject-id factors (e.g. via rxSetIdLvlFactors) rather than
+// leaving them empty.  Used by nlmixr2est's wiring test.
+extern "C" SEXP _rxTestGetIdLabels(SEXP idsSEXP) {
+  rxProtect rx_protect;
+  SEXP ids = rx_protect.protect(Rf_coerceVector(idsSEXP, INTSXP));
+  int n = Rf_length(ids);
+  int *pids = INTEGER(ids);
+  SEXP ans = rx_protect.protect(Rf_allocVector(STRSXP, n));
+  for (int i = 0; i < n; i++) {
+    SET_STRING_ELT(ans, i, Rf_mkChar(rxGetId(pids[i])));
+  }
+  return ans;
 }
 
 extern "C" void printErr(int err, int id){

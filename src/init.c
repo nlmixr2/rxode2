@@ -346,6 +346,10 @@ void setSilentErr(int silent);
 void rxSolveWarnPush(int id, const char *msg, ...);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
+void rxSetIdLvlFactors(SEXP idLvl);
+const char *rxGetIdSim(int id, int *sim);
+SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP ids, SEXP setLvl);
+SEXP _rxTestGetIdLabels(SEXP ids);
 
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                 t_update_inis u_inis);
@@ -873,6 +877,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
     {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
     {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
+    {"_rxTestSolveWarnLabels", (DL_FUNC) &_rxTestSolveWarnLabels, 3},
+    {"_rxTestGetIdLabels", (DL_FUNC) &_rxTestGetIdLabels, 1},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
     {"_rxode2_mlogit_f", (DL_FUNC) &_rxode2_mlogit_f, 2},
@@ -1100,6 +1106,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxSolveWarnPush", (DL_FUNC) &rxSolveWarnPush);
   R_RegisterCCallable("rxode2", "rxSolveWarnFlush", (DL_FUNC) &rxSolveWarnFlush);
   R_RegisterCCallable("rxode2", "rxSolveWarnReset", (DL_FUNC) &rxSolveWarnReset);
+  R_RegisterCCallable("rxode2", "rxSetIdLvlFactors", (DL_FUNC) &rxSetIdLvlFactors);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
 

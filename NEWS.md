@@ -2,6 +2,17 @@
 
 ## New features
 
+- New internal `rxSetIdLvlFactors()` C callable lets a host package (e.g.
+  nlmixr2est during `focei`/`saem` estimation) populate the global subject-id
+  factor table directly, so aggregated solver warnings can be attributed to the
+  real subject id even when the data passed to `rxSolve_()` is not a classed
+  `rxEtTran` table.  It takes a character vector of ids, coerces an
+  integer/real/logical one, and clears the levels for any other type.  When the
+  id still cannot be resolved, the aggregated-warning flush prints the 1-based
+  internal solve index (e.g. `internal #1`) instead of a bare `Unknown`; a
+  subject whose id is literally `Unknown` is still printed as itself.  In a
+  multiple-simulation solve the subjects past the first simulation are labelled
+  by subject and simulation (e.g. `2 (sim 2)`) rather than falling back.
 - `rxIndLinExpStats()` reports the per-thread matrix-exponential cache used
   by `matExp()`/`method="indLin"` solving: `computed`, `reused`, `noSlot`
   (exponentials taken by a thread with no cache slot of its own, so the pool
@@ -641,6 +652,18 @@
   reports how many exponentials took it as `blockExp`.
 
 ## Bug fixes
+
+- Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
+  translation table and `_goodFuns` were claimed on the protect stack by one
+  function and released by another, with the whole parse in between; an
+  `Rf_error` raised in that window (a model syntax error, say) unwound the
+  stack while the outstanding count stayed set, so the *next* parse released
+  entries it no longer owned and popped the caller's own protections.  Callers
+  holding a protect index across the parse then failed -- on macOS this
+  surfaced as `R_Reprotect: only 137 protected items, can't reprotect index
+  143` thrown out of `vapply()`, which made `rxOptExpr()` silently abandon
+  chunking and fall back to optimizing the whole model.  Those objects now use
+  `R_PreserveObject()`, which an unwind does not undo.
 
 - `loggamma()` no longer fails to compile.  It is symengine's name for
   `lgamma()` and the parser accepted it, but code generation emits the rxode2
