@@ -14,6 +14,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <vector>
+#include <atomic>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2dataErr.h"
 #include "rxProtect.h"
@@ -216,6 +217,48 @@ typedef struct {
 
 static std::vector<expCache_t> __indLinExpCache;
 static int __indLinExpCacheOff = 0;
+
+// -- Exponential-cache hit accounting -----------------------------------------
+//
+// `$counts$dadt` / `$counts$jac` already carry these numbers, but only out of
+// an `rxSolve()`: a fit drives `ind_solve()` from its own OpenMP team and never
+// builds an output data frame, so from inside one the cache is unobservable --
+// a cache that is sized, cleared, and never consulted looks exactly like a
+// cache that works (issue #1302).  Read with `rxIndLinExpStats()`.
+//
+// Kept in its own pool rather than folded into `indLinCounts_t`, because
+// `rxIndLinSteps()` resets that struct wholesale and the two diagnostics are
+// read independently.  Per thread and padded for the reason given there.
+typedef struct {
+  long computed;   // exponentials this thread actually exponentiated
+  long reused;     // exponentials this thread served from its cache slot
+  char pad[64];
+} indLinExpCounts_t;
+static std::vector<indLinExpCounts_t> __indLinExpCounts;
+// Exponentials computed by a thread with NO cache slot of its own -- the pool
+// was never sized, or is smaller than the team that showed up.  Those threads
+// have no per-thread slot to count into by definition, so this one counter is
+// shared and therefore atomic; it sits on a path that just paid for a matrix
+// exponential, so the contention is free by comparison.
+static std::atomic<long> __indLinExpNoOwn(0);
+
+// Record one exponential, computed or reused.  `tid` is the CACHE slot: the
+// counts pool is sized alongside the cache and neither shrinks while the other
+// does not, so the same index is valid in both.  A thread with no slot of its
+// own could not have hit whatever the operand was and has nowhere per-thread to
+// count either, so its computes go to the shared atomic -- which is why
+// `noSlot` is a subset of `computed` and never of `reused`.
+static inline void indLinExpCount(int tid, bool reused) {
+  if (tid >= 0 && tid < (int)__indLinExpCounts.size()) {
+    if (reused) {
+      __indLinExpCounts[tid].reused++;
+    } else {
+      __indLinExpCounts[tid].computed++;
+    }
+  } else if (!reused) {
+    __indLinExpNoOwn.fetch_add(1, std::memory_order_relaxed);
+  }
+}
 // Force-off switch for the block-structured exponential below (rxode2#1301),
 // read in the same place as the cache's.
 static int __indLinBlockOff = 0;
@@ -263,14 +306,19 @@ static std::vector<indLinAutoState_t> __indLinAutoState;
 
 // This thread's slot in a pool of `n`, or -1 when it has none.
 //
-// `rx_get_thread()` CLAMPS to the last slot instead, which is right for the
-// pools it was written for -- two threads sharing a counter tears a number.
-// It is not right here: the exponential cache's write path calls
-// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, which
-// is a use-after-free rather than a torn read.  A thread with no slot of its
-// own simply does not cache.  An external OpenMP driver (nlmixr2est) is
-// supposed to have configured `op->cores` to cover its team; this is what
-// happens when it has not.
+// `rx_get_thread()` CLAMPS to the last slot instead.  Neither is the normal
+// path: `op->cores` bounds the team by contract, so no thread should be without
+// a slot in the first place (rxomp.h).  They differ in what they do when a
+// caller has broken that contract anyway -- clamping keeps the write in bounds,
+// which is the lesser evil for the pools it was written for, but it is the
+// WRONG lesser evil here, because this cache's write path calls
+// `std::vector::resize()` on a slot another thread may be `memcmp`-ing, and
+// that is a use-after-free rather than a torn read.  A thread with no slot of
+// its own simply does not cache.
+//
+// `n == 0` also lands here, which is the ordinary way the tests reach this
+// branch: an emptied pool leaves every thread ownerless without anyone having
+// to exceed `op->cores`.
 static inline int indLinOwnSlot(int n) {
   if (n <= 0) return -1;
 #ifdef _OPENMP
@@ -613,6 +661,11 @@ extern "C" void ensureIndLinExpCache(int nCores) {
   if ((int)__indLinCounts.size() < nCores) {
     __indLinCounts.resize(nCores);
   }
+  // Same lifetime rule as `__indLinCounts`: grown, never zeroed here, so a
+  // measurement can span the solves a fit is made of.
+  if ((int)__indLinExpCounts.size() < nCores) {
+    __indLinExpCounts.resize(nCores);
+  }
   for (int i = 0; i < (int)__indLinAutoState.size(); i++) {
     __indLinAutoState[i].cSub = -1;      // nothing survives into another solve
     __indLinAutoState[i].scheme = RX_INDLIN_ITER_PICARD;
@@ -655,6 +708,9 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
         // -- a matExp() model's calc_jac is a stub -- so it carries the count
         // out through `$counts$jac` with no extra plumbing.
         if (ind != NULL && ind->jac_counter != NULL) ind->jac_counter[0]++;
+        // ... and the same count again per thread, for the callers that never
+        // see `$counts` (rxIndLinExpStats).
+        indLinExpCount(tid, true);
         return;
       }
     }
@@ -662,6 +718,7 @@ static inline void matrixExpCached(arma::mat& H, arma::mat& out, double t,
   // Diagnostics: exponentials COMPUTED, reported as `$counts$dadt` (dydt() is
   // likewise a no-op stub for a matExp() model).
   if (ind != NULL && ind->dadt_counter != NULL) ind->dadt_counter[0]++;
+  indLinExpCount(tid, false);
   if (c == NULL) {
     matrixExpMaybeBlock(H, out, t, type, order);
     return;
@@ -2905,6 +2962,44 @@ extern "C" SEXP _rxode2_rxIndLinSteps(void) {
   __indLinCountsSink = indLinCounts_t();
   for (int i = 0; i < (int)__indLinCounts.size(); i++) {
     __indLinCounts[i] = indLinCounts_t();
+  }
+  return ret;
+}
+
+// Exponential-cache accounting for `rxIndLinExpStats()`.  Summed over the
+// threads that did the work; this runs on the R thread with no solve in flight,
+// so the per-thread longs are a plain read and only the ownerless counter --
+// which any thread may have touched -- needs its atomic load.
+//
+// `noSlot` is the number that answers issue #1302: it is the subset of
+// `computed` that ran on a thread with no cache slot, so it can only be zero
+// when every thread that exponentiated had a slot to cache into.  A run with
+// `reused == 0` and `noSlot > 0` is an unsized pool, not a cold cache.
+extern "C" SEXP _rxode2_rxIndLinExpStats(SEXP resetS) {
+  rxProtect rx_protect;
+  const int nStat = 4;
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, nStat));
+  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, nStat));
+  const double noOwn = (double) __indLinExpNoOwn.load(std::memory_order_relaxed);
+  double computed = noOwn, reused = 0.0;
+  for (int i = 0; i < (int)__indLinExpCounts.size(); i++) {
+    computed += (double) __indLinExpCounts[i].computed;
+    reused   += (double) __indLinExpCounts[i].reused;
+  }
+  REAL(ret)[0] = computed;
+  REAL(ret)[1] = reused;
+  REAL(ret)[2] = noOwn;
+  REAL(ret)[3] = (double) __indLinExpCache.size();
+  SET_STRING_ELT(nm, 0, Rf_mkChar("computed"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("reused"));
+  SET_STRING_ELT(nm, 2, Rf_mkChar("noSlot"));
+  SET_STRING_ELT(nm, 3, Rf_mkChar("slots"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  if (Rf_asLogical(resetS) == TRUE) {
+    __indLinExpNoOwn.store(0, std::memory_order_relaxed);
+    for (int i = 0; i < (int)__indLinExpCounts.size(); i++) {
+      __indLinExpCounts[i] = indLinExpCounts_t();
+    }
   }
   return ret;
 }

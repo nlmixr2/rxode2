@@ -1554,12 +1554,16 @@ static inline int _rxTid(void) {
   if (t < 0) t = omp_get_thread_num();
   if (t < 0) return 0;
   // Every `_globals` per-thread slice is sized by op->cores, recorded in
-  // nInfusionRateThreads when they are allocated.  A thread id at or past
-  // that count indexes out of bounds: gInfusionRate[] is an array of
-  // pointers, so it yields a garbage pointer (a NULL there segfaults in
-  // iniSubject), and the flat arrays (gon, gTlastS, gatol2Thread, ...) are
-  // silently overrun.  Clamp to the last valid slot, matching the policy
-  // rx_get_thread() already applies in rxomp.h.
+  // nInfusionRateThreads when they are allocated, and op->cores is the
+  // CONTRACT: no caller may run a team wider than the count it set.  So `t >=
+  // mx` cannot happen in a correct caller, and the clamp is a backstop, not a
+  // supported mode -- see the longer note on rx_get_thread() in rxomp.h.
+  //
+  // Clamping rather than letting it through, for the reason given there: a
+  // thread id at or past the count indexes out of bounds, and gInfusionRate[]
+  // is an array of pointers, so it yields a garbage pointer (a NULL there
+  // segfaults in iniSubject) while the flat arrays (gon, gTlastS,
+  // gatol2Thread, ...) are silently overrun.
   int mx = _globals.nInfusionRateThreads;
   if (mx <= 0) return 0;
   return (t < mx) ? t : mx - 1;
@@ -1610,6 +1614,16 @@ static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
   return inds_threadCur + _t;
 }
 
+// Point this individual at the scratch belonging to the thread solving it.
+// Called from iniSubject(), so once per subject per thread.
+//
+// Everything indexed by rx_get_thread()/_rxTid() below is exclusive to one
+// thread ONLY because op->cores bounds the team -- that is the contract, and
+// the pools are sized to it.  Two threads landing on one slot would share the
+// infusion rates, the pending and ignored dose arrays, `gon` and `solveLast`,
+// which is the integration's own state and not something a lock here could
+// paper over.  If you are tempted to widen a team past op->cores, this is what
+// breaks; raise op->cores instead.
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
@@ -5426,6 +5440,13 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 LogicalVector rxSolveSetup() {
   return _globals.alloc;
 }
+
+// The same flag from C: is there a global solve to read, or has `rxSolveFree()`
+// already released the per-individual arrays?  `rx->subjects` stays non-NULL
+// across a free (it points at `inds_global`, which only `rxFreeLast()` releases)
+// and `rx->nsub` keeps its stale value, so a pointer check alone is not enough
+// to tell a live solve from a freed one.
+extern "C" int rxSolveIsSetup(void) { return _globals.alloc ? 1 : 0; }
 
 // This creates the final dataset from the currently solved object.
 // Most of this is a direct C call, but some items are done in C++

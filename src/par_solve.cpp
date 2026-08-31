@@ -6,6 +6,7 @@
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <string>
 #include <vector>
@@ -7707,6 +7708,148 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   }
   iniSubject(cid, 1, &(rx->subjects[cid]), op, rx, u_inis);
   par_progress_0=0;
+}
+
+extern "C" void setRxThreadId(int id);
+extern "C" int rxSolveIsSetup(void);
+extern "C" void freeIndLinExpCache(void);
+
+// The loop below walks POSITIONS; `ind_solve()` takes a SUBJECT ID.  rxode2
+// itself leaves `rx->ordId` the identity, but the mapping is the convention
+// every `par_*()` loop follows and the reason `ind_solve` takes an id at all.
+static inline int rxDriveTeamId(rx_solve *rx, int pos) {
+  return (rx->ordId == NULL) ? pos : rx->ordId[pos] - 1;
+}
+
+// Position-weighted sum of every solved value, so a test can compare what a
+// drive actually WROTE.  Re-running `rxSolve()` cannot do that job: it frees
+// and rebuilds the solve first, so it would compare two fresh solves and never
+// look at the drive's output at all.  Weighted rather than plain so a pair of
+// values swapped between rows does not cancel.
+//
+// Two things this must NOT do, both of which would let a broken cache pass:
+//
+//   * read what this drive did not write.  A subject that aborts stops writing,
+//     and the tail of `ind->solve` then still holds the PREVIOUS solve's
+//     correct values -- so an exponential wrong enough to abort on row one
+//     would checksum exactly as the good solve before it did.
+//   * depend on a driver's error bookkeeping to know how far it got.
+//     `solvedIdx` is not a reliable bound for that: an `iniSubject` failure
+//     returns before it is even reset, leaving the previous solve's value, and
+//     a driver that breaks out of its record loop leaves it one short or one
+//     long depending on where it broke.
+//
+// Hence `rxDriveTeamZeroSolve` below: the region is cleared before the drive,
+// so whatever the checksum reads was written by THIS drive or is a zero where
+// the drive stopped -- either way it is the drive's own output and nothing
+// else's.  `solvedIdx`, `rc` and `err` still go into the sum, and `errN` counts
+// the failed subjects, so a caller can assert that every subject finished.
+static long rxDriveTeamRows(rx_solving_options_ind *ind) {
+  long rows = (long)ind->n_all_times;
+  if (rows > (long)ind->solveAllocN) rows = (long)ind->solveAllocN;
+  return (rows < 0) ? 0 : rows;
+}
+
+static void rxDriveTeamZeroSolve(rx_solve *rx, int nsolve) {
+  rx_solving_options *op = rx->op;
+  for (int pos = 0; pos < nsolve; pos++) {
+    rx_solving_options_ind *ind = &(rx->subjects[rxDriveTeamId(rx, pos)]);
+    if (ind->solve == NULL) continue;
+    long n = rxDriveTeamRows(ind) * (long)rxEffNeq(ind, op);
+    if (n > 0) memset(ind->solve, 0, (size_t)n * sizeof(double));
+  }
+}
+
+static double rxDriveTeamChecksum(rx_solve *rx, int nsolve, int *errN) {
+  rx_solving_options *op = rx->op;
+  double acc = 0.0;
+  long k = 0;
+  *errN = 0;
+  for (int pos = 0; pos < nsolve; pos++) {
+    rx_solving_options_ind *ind = &(rx->subjects[rxDriveTeamId(rx, pos)]);
+    int rc = (ind->rc == NULL) ? 0 : ind->rc[0];
+    if (rc != 0 || ind->err != 0) (*errN)++;
+    acc += (double)ind->solvedIdx + 7.0*(double)rc + 13.0*(double)ind->err;
+    if (ind->solve == NULL) continue;
+    long n = rxDriveTeamRows(ind) * (long)rxEffNeq(ind, op);
+    for (long j = 0; j < n; j++, k++) acc += ind->solve[j] * (double)(k + 1);
+  }
+  return acc;
+}
+
+// Re-solve the global solve the way an ESTIMATION package does, for the tests
+// (issue #1302).  An `rxSolve()` is not the drive pattern in doubt: a fit never
+// re-enters `rxSolve_`, so nothing re-sizes the thread pools between its
+// iterations, and it runs `ind_solve()` from a team rxode2 did not create --
+// which is why the exponential cache could plausibly have been sized once,
+// cleared, and then never consulted for a whole fit.  This is nlmixr2est's loop
+// (`odeSwap.cpp`'s `odeSwapSolveId`) reduced to its essentials, including the
+// `setRxThreadId()` every one of its parallel regions does.
+//
+// `nThreads` is CLAMPED to `op->cores` because that is the contract every
+// caller of `ind_solve()` owes rxode2: `op->cores` is the width of the team,
+// the per-thread pools are sized to it, and nothing may run wider (see
+// `rx_get_thread()` in rxomp.h and `_setIndPointersByThread`).  A driver here
+// that ignored it would not be testing rxode2, it would be testing what happens
+// when the contract is broken -- which is a data race on the solve state, not a
+// property of the exponential cache.  So this mirrors a driver that honors it,
+// and `clearExpCache` reaches the cache's no-slot fallback the legitimate way:
+// every thread is ownerless because the pool is empty, not because it is short.
+//
+// Nothing but the tests may drive this, so it is a `.Call` and not a
+// pointer-table entry.
+extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS, SEXP clearExpCacheS) {
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 3));
+  SEXP nm  = rx_protect.protect(Rf_allocVector(STRSXP, 3));
+  SET_STRING_ELT(nm, 0, Rf_mkChar("nsolve"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("checksum"));
+  SET_STRING_ELT(nm, 2, Rf_mkChar("errN"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  REAL(ret)[0] = REAL(ret)[1] = REAL(ret)[2] = 0.0;
+  rx_solve *rx = getRxSolve_();
+  // Refuse a freed solve.  `rx->subjects` survives `rxSolveFree()` (it points at
+  // `inds_global`) and `rx->nsub` is left stale, so without this the loop would
+  // re-solve subjects whose arrays have already been released.
+  if (rx == NULL || rx->subjects == NULL || rx->op == NULL ||
+      rxSolveIsSetup() == 0) {
+    return ret;
+  }
+  rx_solving_options *op = rx->op;
+  int nt = Rf_asInteger(nThreadsS);
+  if (nt < 1) nt = 1;
+  if (op->cores > 0 && nt > op->cores) nt = op->cores;
+  int nsolve = (int)(rx->nsim * rx->nsub);
+  if (nsolve <= 0) return ret;
+  if (Rf_asLogical(clearExpCacheS) == TRUE) freeIndLinExpCache();
+  // Clear what the drive is about to write, so the checksum below reads this
+  // drive's output and never the last one's.
+  rxDriveTeamZeroSolve(rx, nsolve);
+  // Bind the model's functions once, serially, exactly as the external driver's
+  // setup does -- `ind_indLin`'s own bind is skipped under a team on purpose.
+  assignFuns();
+#ifdef _OPENMP
+#pragma omp parallel num_threads(nt)
+  {
+    setRxThreadId(omp_get_thread_num());
+#pragma omp for schedule(static)
+    for (int solveid = 0; solveid < nsolve; solveid++) {
+      ind_solve(rx, (unsigned int)rxDriveTeamId(rx, solveid), dydt_liblsoda,
+                dydt_lsoda_dum, jdum_lsoda, dydt, update_inis, global_jt);
+    }
+    setRxThreadId(-1);
+  }
+#else
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    ind_solve(rx, (unsigned int)rxDriveTeamId(rx, solveid), dydt_liblsoda,
+              dydt_lsoda_dum, jdum_lsoda, dydt, update_inis, global_jt);
+  }
+#endif
+  int errN = 0;
+  REAL(ret)[0] = (double) nsolve;
+  REAL(ret)[1] = rxDriveTeamChecksum(rx, nsolve, &errN);
+  REAL(ret)[2] = (double) errN;
+  return ret;
 }
 
 extern "C" void par_solve(rx_solve *rx) {
