@@ -76,7 +76,10 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
     while (p[0] < ind->ndoses && getDoseNumber(ind, p[0]) != -dose){
       p[0]++;
     }
-    if (getDoseNumber(ind, p[0]) != -dose){
+    // A scan that ran off the end must not be re-read: idose only holds ndoses
+    // entries for this subject, so idose[ndoses] belongs to the next subject
+    // (or is past gidose entirely for the last one) and can spuriously match.
+    if (p[0] >= ind->ndoses || getDoseNumber(ind, p[0]) != -dose){
       if (backward==2) return(NA_REAL);
       rx_solving_options *op = (ind->op ? ind->op : &op_global);
       if (omp_in_parallel()) {
