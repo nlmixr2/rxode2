@@ -6101,7 +6101,8 @@ static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
   IntegerVector stateProp = mv[RxMv_stateProp];
   int mask = 0;
   int n = stateProp.size();
-  for (int c = 0; c < numLin; ++c) {
+  int nLin = numLin < 31 ? numLin : 31;   // same clamp linCmtDoseScan() uses
+  for (int c = 0; c < nLin; ++c) {
     int i = linOffset + c;
     if (i < 0 || i >= n) continue;
     if ((stateProp[i] & 4) != 0) mask |= (1 << c);
@@ -6156,6 +6157,13 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     rx_solve* rx = getRxSolve_();
     rx_solving_options* op = rx->op;
     if (op->cores == 0) op->cores = 1;
+    // Which linCmt() compartments carry a modeled alag() is a property of the
+    // MODEL, so take it from the model rather than the stream: a stream
+    // written before format 6 does not carry it at all, and would otherwise
+    // leave the mask at 0 and let linCmtB(which1 = -3) answer a mixed-delay
+    // regimen it should refuse (nlmixr2/rxode2#1119).
+    op->linCmtLagMask = rxLinCmtLagMask(rxModelVars_(obj), op->linOffset,
+                                        op->numLin);
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);

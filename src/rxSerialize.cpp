@@ -727,7 +727,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   if (fmt >= 6u) {
     R_I32(linCmtLagMask);
   } else {
-    op->linCmtLagMask = 0;   // pre-fix behavior: nothing known to be lagged
+    // A pre-format-6 stream cannot carry it; rxSolveFromRaw_() recomputes it
+    // from the model right after this restore, so 0 is only a placeholder.
+    op->linCmtLagMask = 0;
   }
   R_I32(ssSolved);
   R_I32(indOwnAlloc);

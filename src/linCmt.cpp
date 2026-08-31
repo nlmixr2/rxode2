@@ -82,6 +82,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 // infusion, and on a replace or multiply record it sets the compartment to
 // zero; both genuinely dose.
 //
+// The scan covers the individual's WHOLE regimen: an EVID 3 reset between a
+// lagged and an unlagged dose means the two never coexist in the system, but
+// resets are not in ind->idose and this does not window on them, so such a
+// regimen is refused rather than answered.  That is the conservative
+// direction (a loud NA, not a wrong number).
+//
 // Both answers come out of ONE pass over ind->idose.
 static inline void linCmtDoseScan(rx_solving_options_ind *ind,
                                   rx_solving_options *op,
