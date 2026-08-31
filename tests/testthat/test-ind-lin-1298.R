@@ -95,6 +95,22 @@ rxTest({
     }
   })
 
+  test_that("the cross-term accumulator sums and cancels", {
+    # The `_nd` coefficients are summed by (from, to) because two families
+    # collapse onto the same pair whenever the differentiated parameters
+    # coincide, and the sum is now expanded before it is stored: a pair whose
+    # contributions cancel has to emit nothing, not a line that prints as
+    # non-zero.  The second-order model above reaches this branch, but only its
+    # totals are visible there.
+    .acc <- .rxIndLinNdAccumulator()
+    .x <- symengine::S("a") / symengine::S("b")
+    .acc$add("from", "to", .x)
+    .acc$add("from", "to", -.x)          # cancels
+    .acc$add("f2", "t2", .x)
+    .acc$add("f2", "t2", .x)             # sums
+    expect_equal(.acc$emit(), "k_f2_t2_nd = 2*a/b")
+  })
+
   test_that("a nonlinear model keeps the forcing it needs", {
     # The expansion must cancel only what is algebraically zero: a
     # Michaelis-Menten elimination cannot leave a state-free rate matrix, so
@@ -114,5 +130,19 @@ rxTest({
                                    cores = 1L))
     expect_gt(.attempts(), 0)                  # it really did iterate
     expect_true(all(is.finite(.s$cp)))
+    # ... and its sensitivities are still right, which is what a cancellation
+    # that went too far would break.
+    .th2 <- c(ka = 1.1, vm = 20, km = 5, v = 30)
+    .p <- suppressMessages(rxode2(.mm))
+    .fd <- function(nm, h) {
+      .up <- .th2; .up[[nm]] <- .th2[[nm]] + h
+      .dn <- .th2; .dn[[nm]] <- .th2[[nm]] - h
+      (suppressMessages(rxSolve(.p, .up, .ev, atol = 1e-12, rtol = 1e-12))$cp -
+         suppressMessages(rxSolve(.p, .dn, .ev, atol = 1e-12, rtol = 1e-12))$cp) / (2 * h)
+    }
+    for (.nm in c("ka", "vm", "km")) {
+      expect_equal(.s[[paste0("rx__sens_central_BY_", .nm, "__")]] / .th2[["v"]],
+                   .fd(.nm, .th2[[.nm]] * 1e-4), tolerance = 1e-4, info = .nm)
+    }
   })
 })
