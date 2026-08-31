@@ -684,6 +684,17 @@
 
 ## Bug fixes
 
+- `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
+  `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
+  adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
+  it counted the single largest allocation of an ordinary solve twice and could
+  approach double the real figure.  `gsolve_n0` is still reported (and still
+  printed indented under `gsolve`), it is just no longer added to `total`.  The
+  out-of-memory guard in `rxSolve()` and the chunk sizing in
+  `.rxOomChunkSize()`/`rxSolveChunked()` both act on `total`, so a solve that
+  fits is no longer refused and chunks are no longer about half the size they
+  should be.
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an

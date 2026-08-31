@@ -277,6 +277,19 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   NA_real_
 }
 
+#' Reported components that are already part of another component
+#'
+#' \code{gsolve_n0} is the ODE state output matrix, which
+#' \code{rxFillMemLayout()} adds INTO \code{gsolve_total}; it is reported
+#' because it is normally the single largest piece of the solve, but summing it
+#' alongside \code{gsolve} would double-count it.  \code{total} therefore
+#' means "bytes actually allocated", not "sum of everything printed".
+#'
+#' Names are the sub-item; values are the parent component they belong to.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemSubItems <- c(gsolve_n0 = "gsolve")
+
 .rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov,
                                      nsim, nsub, nobsTotal, nallTotal) {
   .addCov       <- TRUE
@@ -439,7 +452,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @return A named list of class \code{"rxMemoryEstimate"} whose
 #'   elements are raw byte counts plus \code{outputData},
 #'   \code{ramBytes}, \code{freeRamBytes}, \code{total},
-#'   \code{sizeofInd}, and \code{rxLlikSaveSize}.
+#'   \code{sizeofInd}, and \code{rxLlikSaveSize}.  \code{total} is the
+#'   number of bytes actually allocated, so it excludes \code{gsolve_n0}
+#'   (the ODE state output matrix), which is reported separately but is
+#'   already part of \code{gsolve}.
 #' @export
 #'
 #' @examples
@@ -610,7 +626,9 @@ rxMemoryEstimate <- function(
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
-  .total   <- Reduce(`+`, .wrapped)
+  # Sub-items (see `.rxMemSubItems`) are still reported, but they are pieces of
+  # a component that is already in the sum, so they are left out of it.
+  .total   <- Reduce(`+`, .wrapped[!names(.wrapped) %in% names(.rxMemSubItems)])
 
   .ret <- c(list(total = .total), .wrapped,
             list(sizeofInd      = .raw[["sizeofInd"]],
@@ -659,10 +677,20 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .bytes <- vapply(.comps, as.numeric, numeric(1))
 
-  .ord <- order(.bytes, decreasing = TRUE)
-  .nm  <- names(.comps)[.ord]
-  .sz  <- .bytes[.ord]
-  .tot <- sum(.sz)
+  # Sub-items are not ranked by size; they are printed indented directly under
+  # the component they are part of, and left out of the percentage base (they
+  # are already counted inside their parent).
+  .nm  <- names(.comps)[order(.bytes, decreasing = TRUE)]
+  .nm  <- .nm[!.nm %in% names(.rxMemSubItems)]
+  .tot <- sum(.bytes[.nm])
+  for (.s in names(.rxMemSubItems)) {
+    if (!(.s %in% names(.comps))) next
+    # `nomatch` keeps an orphan sub-item visible at the end rather than
+    # dropping it, should its parent ever stop being reported
+    .nm <- append(.nm, .s,
+                  after = match(.rxMemSubItems[[.s]], .nm, nomatch = length(.nm)))
+  }
+  .sz  <- .bytes[.nm]
 
   .labels <- c(
     gsolve        = "gsolve (double buffer total)",

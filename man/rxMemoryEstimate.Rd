@@ -100,7 +100,10 @@ different amounts, so it is worth getting right.}
 A named list of class \code{"rxMemoryEstimate"} whose
 elements are raw byte counts plus \code{outputData},
 \code{ramBytes}, \code{freeRamBytes}, \code{total},
-\code{sizeofInd}, and \code{rxLlikSaveSize}.
+\code{sizeofInd}, and \code{rxLlikSaveSize}.  \code{total} is the
+number of bytes actually allocated, so it excludes \code{gsolve_n0}
+(the ODE state output matrix), which is reported separately but is
+already part of \code{gsolve}.
 }
 \description{
 Accepts either a pre-summarized per-ID table (an \code{\link{rxMemSummary}}

@@ -19,12 +19,37 @@ rxTest({
     expect_s3_class(.est, "rxMemoryEstimate")
   })
 
-  test_that("rxMemoryEstimate total equals sum of components", {
+  test_that("rxMemoryEstimate total equals the bytes actually allocated", {
     .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
     .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
-    .comps <- .est[!names(.est) %in% .meta]
+    .comps <- .est[!names(.est) %in% c(.meta, names(.rxMemSubItems))]
     expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
+  })
+
+  test_that("gsolve_n0 is reported but not double-counted in total", {
+    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
+    # still visible ...
+    expect_true("gsolve_n0" %in% names(.est))
+    expect_gt(as.numeric(.est$gsolve_n0), 0)
+    # ... and genuinely a piece of gsolve, not a sibling of it
+    expect_lte(as.numeric(.est$gsolve_n0), as.numeric(.est$gsolve))
+    # summing every reported element would exceed total by exactly n0
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
+    .all  <- sum(vapply(.est[!names(.est) %in% .meta], as.numeric, numeric(1)))
+    expect_equal(.all - as.numeric(.est$gsolve_n0), as.numeric(.est$total))
+  })
+
+  test_that("every sub-item is smaller than the component it belongs to", {
+    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
+    for (.sub in names(.rxMemSubItems)) {
+      expect_true(.sub %in% names(.est))
+      expect_true(.rxMemSubItems[[.sub]] %in% names(.est))
+      expect_lte(as.numeric(.est[[.sub]]),
+                 as.numeric(.est[[.rxMemSubItems[[.sub]]]]))
+    }
   })
 
   test_that(".getRamBytes()/.getFreeRamBytes() query RAM natively", {
@@ -181,6 +206,22 @@ rxTest({
     if (!is.na(.est$freeRamBytes) && .est$freeRamBytes > 0) {
       expect_output(print(.est), "available memory")
     }
+  })
+
+  test_that("print.rxMemoryEstimate keeps n0 under gsolve and percents to 100", {
+    .s   <- rxMemSummary(nobs = 500L, ndoses = 50L)
+    .est <- rxMemoryEstimate(.s, neq = 3L, nlhs = 2L, npars = 4L)
+    .out <- utils::capture.output(print(.est))
+    .iG  <- grep("gsolve \\(double buffer total\\)", .out, fixed = FALSE)
+    .iN  <- grep("|_ n0:", .out, fixed = TRUE)
+    expect_length(.iG, 1L)
+    expect_length(.iN, 1L)
+    # the sub-item is printed on the line directly below its parent
+    expect_equal(.iN, .iG + 1L)
+    # percentages are a share of `total`, so the non-sub-item lines sum to 100
+    .pct <- as.numeric(sub(".*\\(\\s*([0-9.]+)%\\).*", "\\1",
+                         grep("%\\)", .out[-.iN], value = TRUE)))
+    expect_equal(sum(.pct), 100, tolerance = 0.5)
   })
 
   test_that("rxMemoryEstimate scales with subject count", {
@@ -469,7 +510,7 @@ rxTest({
     .e <- rxMemoryEstimate(.memEv, model = .memIl, control = rxControl(cores = 4L))
     .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes",
                "effectiveSubs")
-    .comps <- .e[!names(.e) %in% .meta]
+    .comps <- .e[!names(.e) %in% c(.meta, names(.rxMemSubItems))]
     expect_true("indLinExpCache" %in% names(.comps))
     expect_true("indLinWork" %in% names(.comps))
     expect_equal(as.numeric(.e$total),
