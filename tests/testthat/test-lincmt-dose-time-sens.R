@@ -362,6 +362,26 @@ rxTest({
     expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
   })
 
+  test_that("linCmtB(-3) still counts a zero-amount replace/multiply record", {
+    # Only a PLAIN zero bolus contributes nothing.  `evid = 5`/`evid = 6` with
+    # `amt = 0` set the compartment to zero at a FIXED time that no alag()
+    # shifts, so A(t; L) = A(t - L; 0) genuinely fails and the regimen has to
+    # be refused rather than answered from the lagged doses alone.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    for (.evid in c(5, 6)) {
+      e <- et(amt = 100, cmt = "depot") |>
+        et(amt = 0, cmt = "central", time = 2, evid = .evid) |>
+        et(seq(0.1, 24, 0.25))
+      s <- rxSolve(m, e, params = .p)
+      expect_true(all(is.na(s$dcp)), info = paste0("evid ", .evid))
+    }
+  })
+
   test_that("linCmtB(-3) accepts dosing a subset of the lagged compartments", {
     # Both linCmt() compartments carry the SAME modeled alag(), so every dose
     # is delayed alike however many of them the regimen actually uses.  Pins
