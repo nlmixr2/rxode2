@@ -990,6 +990,26 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   dropped silently -- the model still parsed and built, it simply lost the label
   (#1205).
 
+- A `#` comment inside an `ini({})` statement that spans more than one line no
+  longer breaks the model.  The comment was promoted by appending
+  `; label("...")` whether or not the statement on that line had finished, so a
+  comment between an opening `(` and its `)` -- or on a line ending in an
+  operator such as `+` or `~` -- put the `;` in the middle of the statement and
+  the model failed with a bare `unexpected ';'` pointing into regenerated text
+  rather than at the offending source line.  A comment is now promoted only
+  where it trails a complete statement; one inside an unfinished statement stays
+  a comment and is dropped.  A comment on the line that closes the statement
+  still becomes that parameter's label.  As with #1195 the promotion only runs
+  when source refs are kept, so the same model built fine from an installed
+  package while failing under `keep.source = TRUE` (#1318).
+
+- A comment-only `ini({})` line indented with a tab is no longer turned into the
+  label of the preceding parameter.  The comment-only test allowed leading
+  spaces only, so a tab-indented comment fell through to the label branch, whose
+  code portion then captured just the tab.  The bare `; label("...")` that
+  produced parses -- a leading `;` is legal -- so there was no error and the
+  comment silently became the label of the parameter above it (#1318).
+
 ### Estimation / symengine translation
 
 - A model using the modulo operator `%%` can now be estimated.  `%%` was

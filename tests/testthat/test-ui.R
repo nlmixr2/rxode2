@@ -192,6 +192,111 @@ rxTest({
     expect_equal(.labelOf("## mg\\L # per dose"), "mg\\L # per dose")
   })
 
+  test_that("a comment in an unfinished ini({}) statement is not a label (rxode2 issue 1318)", {
+
+    .mkSrc <- function(iniLines) {
+      c("function() {", "  ini({",
+        iniLines,
+        "    add.sd <- 0.7", "  })", "  model({",
+        "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    }
+    .resOf <- function(iniLines) {
+      suppressMessages(.rxReplaceCommentWithLabel(.mkSrc(iniLines)))
+    }
+    .labelsOf <- function(res) {
+      vapply(res[grepl("^ *label\\(", res)],
+             function(.l) as.character(parse(text = .l)[[1]][[2]]),
+             character(1), USE.NAMES = FALSE)
+    }
+
+    # `; label()` used to be appended to any commented line whether or not the
+    # statement on it had finished, so a comment between an opening `(` and its
+    # `)` -- or on a line ending in an operator -- put the `;` in the middle of
+    # the statement and the re-parse died with `unexpected ';'`.  Only a comment
+    # trailing a COMPLETE statement may be promoted.
+    .cases <- list(
+      noComment      = list(src = c("    tka <- c(", "      1.0", "    )"),
+                            labels = character(0)),
+      insideOpenCall = list(src = c("    tka <- c(", "      1.0   # note", "    )"),
+                            labels = character(0)),
+      onOpeningLine  = list(src = c("    tka <- c( # note", "      1.0", "    )"),
+                            labels = character(0)),
+      trailingPlus   = list(src = c("    tka <- 0.45 +  # note", "      0.1"),
+                            labels = character(0)),
+      trailingTilde  = list(src = c("    eta.cl + eta.v ~  # note",
+                                    "      c(1, 0.01, 1)"),
+                            labels = character(0)),
+      onClosingLine  = list(src = c("    tka <- c(", "      1.0", "    ) # note"),
+                            labels = "note"),
+      singleLineCall = list(src = "    tka <- c(1.0) # note", labels = "note"),
+      plainLine      = list(src = "    tka <- 1.0 # note", labels = "note")
+    )
+    for (.n in names(.cases)) {
+      .res <- .resOf(.cases[[.n]]$src)
+      expect_true(is.function(eval(parse(text = paste(.res, collapse = "\n"),
+                                         keep.source = FALSE))), info = .n)
+      expect_equal(.labelsOf(.res), .cases[[.n]]$labels, info = .n)
+    }
+
+    # the comment inside the call is dropped and nothing else about the model
+    # changes
+    expect_equal(.resOf(c("    tka <- c(", "      1.0   # note", "    )")),
+                 c("function () ", "{", "    ini({", "        tka <- c(1)",
+                   "        add.sd <- 0.7", "    })", "    model({",
+                   "        ka <- exp(tka)", "        linCmt() ~ add(add.sd)",
+                   "    })", "}"))
+    # a comment on the line that closes the statement still labels it
+    expect_equal(.resOf(c("    tka <- c(", "      1.0", "    ) # note")),
+                 c("function () ", "{", "    ini({", "        tka <- c(1)",
+                   "        label(\"note\")", "        add.sd <- 0.7", "    })",
+                   "    model({", "        ka <- exp(tka)",
+                   "        linCmt() ~ add(add.sd)", "    })", "}"))
+
+    # the multi-line covariance form of test-pheno.R keeps both of its labels
+    expect_equal(.labelsOf(.resOf(c(
+      "    tka <- log(0.008) # typical value of clearance",
+      "    eta.cl + eta.v ~ c(1,",
+      "                       0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)"))),
+      c("typical value of clearance", "cov(eta.cl, eta.v), var(eta.v)"))
+  })
+
+  test_that("a tab-indented comment-only ini({}) line is not a label (rxode2 issue 1318)", {
+
+    # The comment-only test allowed leading spaces only, so a tab-indented
+    # comment fell through to the label branch, whose code group captured just
+    # the tab.  The bare `; label()` that produced parses -- a leading `;` is
+    # legal -- so there was no error: the comment silently became the label of
+    # the PRECEDING parameter.
+    .src <- c("function() {", "  ini({",
+              "    tka <- 0.45",
+              "\t# tab indented comment",
+              "    tcl <- 1",
+              "    tv <- 3.45",
+              "    add.sd <- 0.7", "  })", "  model({",
+              "    ka <- exp(tka)", "    cl <- exp(tcl)", "    v <- exp(tv)",
+              "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.src))
+    expect_equal(.res,
+                 c("function () ", "{", "    ini({", "        tka <- 0.45",
+                   "        tcl <- 1", "        tv <- 3.45",
+                   "        add.sd <- 0.7", "    })", "    model({",
+                   "        ka <- exp(tka)", "        cl <- exp(tcl)",
+                   "        v <- exp(tv)", "        linCmt() ~ add(add.sd)",
+                   "    })", "}"))
+
+    # and the orphan label does not land on the parameter above it
+    .ui <- suppressMessages(eval(parse(text = paste(.res, collapse = "\n")))())
+    expect_equal(.ui$iniDf$name, c("tka", "tcl", "tv", "add.sd"))
+    expect_equal(.ui$iniDf$label, rep(NA_character_, 4L))
+
+    # a tab-indented line with code before the comment still gets its label
+    .tabCode <- c("function() {", "  ini({", "\ttka <- 0.45 # Log Ka",
+                  "    add.sd <- 0.7", "  })", "  model({",
+                  "    ka <- exp(tka)", "    linCmt() ~ add(add.sd)", "  })", "}")
+    suppressMessages(.res <- .rxReplaceCommentWithLabel(.tabCode))
+    expect_equal(.res[grepl("^ *label\\(", .res)], "        label(\"Log Ka\")")
+  })
+
   test_that("meta information parsing", {
 
     one.cmt <- function() {
