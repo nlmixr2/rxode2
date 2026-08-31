@@ -211,7 +211,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nMtime    = as.integer(.mv[["nMtime"]]),
     nLlik     = as.integer(.flags["nLlik"]),
     nIndSim   = as.integer(.flags["nIndSim"]),
-    doIndLin  = .rxMemDoIndLin(.mv)
+    doIndLin  = .rxMemDoIndLin(.mv),
+    # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
+    # MODEL decides it unless the control says otherwise
+    indOwnAlloc = as.integer(.flags["evid_"])
   )
 }
 #' Which matrix-exponential driver a model will run under
@@ -254,8 +257,12 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .nSub  <- if (is.null(ctrl$nSub))  1L else as.integer(ctrl$nSub)
   .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
   .stiff <- if (is.null(ctrl$method)) NA_integer_ else as.integer(ctrl$method)
+  # rxControl() stores -1 for "not set"; rxSolve() then takes the model's flag
+  .indOwn <- if (is.null(ctrl$indOwnAlloc)) NA_integer_ else as.integer(ctrl$indOwnAlloc)
+  if (!is.na(.indOwn) && .indOwn < 0L) .indOwn <- NA_integer_
   list(
     cores      = .cores,
+    indOwnAlloc = .indOwn,
     nsim       = .nsim,
     neta       = as.integer(.neta),
     neps       = as.integer(.neps),
@@ -444,6 +451,11 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   \code{control} when given, and overridden to \code{3} for any
 #'   \code{matExp()} model, since \code{rxSolve()} force-selects that method
 #'   for one whatever the control says.
+#' @param indOwnAlloc \code{TRUE}/\code{1} when every individual gets its
+#'   own event and solve arrays rather than pointing into the global
+#'   buffers.  These are allocated on top of \code{gsolve}, so they are real
+#'   extra memory.  Taken from the model's \code{evid_} flag when \code{model}
+#'   is given, and overridden by \code{control$indOwnAlloc} when that is set.
 #' @param doIndLin Which matrix-exponential driver runs: \code{0} not a
 #'   \code{matExp()} model, \code{1} pure matrix exponential, \code{2} plus a
 #'   state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
@@ -503,7 +515,8 @@ rxMemoryEstimate <- function(
   numLinSens = 0L,
   numLin    = 0L,
   stiff     = NA_integer_,
-  doIndLin  = 0L) {
+  doIndLin  = 0L,
+  indOwnAlloc = 0L) {
   .resolved <- .rxMemResolveInput(dat, control)
   dat <- .resolved$dat
   control <- .resolved$control
@@ -530,6 +543,7 @@ rxMemoryEstimate <- function(
     nMtime    <- .mi$nMtime
     nLlik     <- .mi$nLlik
     doIndLin  <- .mi$doIndLin
+    indOwnAlloc <- .mi$indOwnAlloc
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
@@ -542,7 +556,9 @@ rxMemoryEstimate <- function(
     if (.ci$neps > 0L) neps <- .ci$neps
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
     if (!is.na(.ci$stiff)) stiff <- .ci$stiff
+    if (!is.na(.ci$indOwnAlloc)) indOwnAlloc <- .ci$indOwnAlloc
   }
+  indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
   if (cores <= 0L) {
     cores <- 1L
   }
@@ -567,6 +583,9 @@ rxMemoryEstimate <- function(
   .nsub        <- nrow(.summary)
   .nobsTotal   <- sum(.summary$nobs)
   .nallTotal   <- sum(.nallVec)
+  # dose share of the events, so the dose count follows whatever rescaling the
+  # solve-layout / nSub / nStud branches below do to the event count
+  .doseFrac    <- if (.nallTotal > 0) sum(.summary$ndoses) / .nallTotal else 0
   .maxAllTimes <- max(.nallVec)
   .solveStats  <- .rxMemSolveLayoutStats(dat, control, model)
   .solveNallTotal <- .nallTotal
@@ -603,9 +622,11 @@ rxMemoryEstimate <- function(
     numLin     = as.integer(numLin),
     nsub       = as.integer(.nsub),
     nallTotal  = as.double(.solveNallTotal),
+    ndosesTotal = as.double(.doseFrac * .solveNallTotal),
     maxAllTimes = as.double(.solveMaxAllTimes),
     stiff      = as.integer(stiff),
-    doIndLin   = as.integer(doIndLin)
+    doIndLin   = as.integer(doIndLin),
+    indOwnAlloc = as.integer(indOwnAlloc)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
@@ -683,12 +704,14 @@ print.rxMemoryEstimate <- function(x, ...) {
   .nm  <- names(.comps)[order(.bytes, decreasing = TRUE)]
   .nm  <- .nm[!.nm %in% names(.rxMemSubItems)]
   .tot <- sum(.bytes[.nm])
-  for (.s in names(.rxMemSubItems)) {
-    if (!(.s %in% names(.comps))) next
-    # `nomatch` keeps an orphan sub-item visible at the end rather than
-    # dropping it, should its parent ever stop being reported
-    .nm <- append(.nm, .s,
-                  after = match(.rxMemSubItems[[.s]], .nm, nomatch = length(.nm)))
+  for (.p in unique(unname(.rxMemSubItems))) {
+    # insert a parent's sub-items as one block so several of them keep the
+    # order they are declared in; `nomatch` keeps an orphan visible at the end
+    # rather than dropping it, should its parent ever stop being reported
+    .kids <- names(.rxMemSubItems)[.rxMemSubItems == .p]
+    .kids <- .kids[.kids %in% names(.comps)]
+    if (length(.kids) == 0L) next
+    .nm <- append(.nm, .kids, after = match(.p, .nm, nomatch = length(.nm)))
   }
   .sz  <- .bytes[.nm]
 
@@ -708,6 +731,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     inds_global   = "inds_global (per-subject structs)",
     indLinExpCache = "indLinExpCache (per-thread exponential cache)",
     indLinWork    = "indLinWork (per-thread indLin scratch)",
+    indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
     outputData    = "outputData (estimated returned data)"
   )
 

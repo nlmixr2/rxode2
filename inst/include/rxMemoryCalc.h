@@ -118,4 +118,51 @@ static inline void rxFillMemLayout(
   out->gon_total = out->n3a_c + out->n3 + (int64_t)4 * out->nSize + nall * nsim;
 }
 
+/* ---------------------------------------------------------------------------
+ * rx_ind_alloc / rxFillIndAllocTotal
+ *
+ * When op->indOwnAlloc is set, rxAllocInd() (src/rxData.cpp) gives every
+ * individual its OWN dose/ii/all_times/timeThread/evid/ix/idose/solve arrays
+ * instead of pointing them into the global buffers.  gsolve is still calloc'd
+ * at gsolve_total, so its n0 region simply goes unused -- the per-individual
+ * solve arrays are memory ON TOP of it, not instead of it.  An estimate that
+ * ignores them undercounts, which is the direction that makes an
+ * out-of-memory guard useless.
+ *
+ * op->indOwnAlloc is NOT the same as method="indLin"; it defaults to the
+ * model's evid_ parser flag (dose-pushing models) and can be forced with
+ * rxSolve(..., indOwnAlloc = TRUE).
+ * --------------------------------------------------------------------------- */
+#ifndef EVID_EXTRA_SIZE
+#define EVID_EXTRA_SIZE 16
+#endif
+
+typedef struct {
+  int64_t dbl;  /* doubles: solve + dose + ii + all_times + timeThread */
+  int64_t i32;  /* ints:    evid + ix + idose                          */
+} rx_ind_alloc;
+
+/* Summed over every individual (nsub * nsim of them).  `nall` and `ndoses` are
+   totals across all subjects for ONE simulation; the per-individual guard
+   elements (+1) and the solve slack (EVID_EXTRA_SIZE) are charged per
+   individual, matching rxAllocInd() exactly. */
+static inline void rxFillIndAllocTotal(
+  int     neq,
+  int64_t nall,
+  int64_t ndoses,
+  int     nsub,
+  int     nsim,
+  rx_ind_alloc *out)
+{
+  int64_t nind = (int64_t)nsub * nsim;   /* individuals rxAllocInd() runs for */
+  int64_t nat  = nall * nsim;            /* events across all of them         */
+  int64_t nd   = ndoses * nsim;
+  /* newSolve is neq * (nat + EVID_EXTRA_SIZE) per individual */
+  out->dbl = (int64_t)neq * (nat + (int64_t)EVID_EXTRA_SIZE * nind) +
+    /* newDose, newIi, newAT, newTT: each nat + 1 per individual */
+    4 * (nat + nind);
+  /* newEvid, newIx: each nat + 1 per individual; newIdose: nd + 1 */
+  out->i32 = 2 * (nat + nind) + (nd + nind);
+}
+
 #endif /* RXODE2_MEMORY_CALC_H */

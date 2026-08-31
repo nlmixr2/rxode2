@@ -25,7 +25,8 @@ rxMemoryEstimate(
   numLinSens = 0L,
   numLin = 0L,
   stiff = NA_integer_,
-  doIndLin = 0L
+  doIndLin = 0L,
+  indOwnAlloc = 0L
 )
 }
 \arguments{
@@ -95,6 +96,12 @@ for one whatever the control says.}
 state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
 linearization.  Taken from \code{model} when given.  These cost very
 different amounts, so it is worth getting right.}
+
+\item{indOwnAlloc}{\code{TRUE}/\code{1} when every individual gets its
+own event and solve arrays rather than pointing into the global
+buffers.  These are allocated on top of \code{gsolve}, so they are real
+extra memory.  Taken from the model's \code{evid_} flag when \code{model}
+is given, and overridden by \code{control$indOwnAlloc} when that is set.}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose

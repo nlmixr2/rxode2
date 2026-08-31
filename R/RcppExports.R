@@ -1087,7 +1087,11 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @param numLin    Number of linear compartment terms (FOCEi mixed models).
 #' @param nsub      Number of subjects.
 #' @param nallTotal Total events across all subjects (sum of obs + doses).
+#' @param ndosesTotal Total dose events across all subjects.
 #' @param maxAllTimes Maximum events for any single subject.
+#' @param indOwnAlloc 1 if every individual gets its own event/solve arrays
+#'   (\code{op$indOwnAlloc}), else 0.  These are allocated ON TOP of
+#'   \code{gsolve}, whose \code{n0} region then goes unused.
 #' @param stiff     The solving method (\code{op$stiff}); only 3
 #'   (\code{"indLin"}) allocates anything extra here.
 #' @param doIndLin  Which matrix-exponential driver runs: 0 not a
@@ -1098,8 +1102,8 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 #' @noRd
-rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin) {
-    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin)
+rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc) {
+    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc)
 }
 
 rxOptRep_ <- function(input) {

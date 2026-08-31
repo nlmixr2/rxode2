@@ -37,7 +37,11 @@ using namespace Rcpp;
 //' @param numLin    Number of linear compartment terms (FOCEi mixed models).
 //' @param nsub      Number of subjects.
 //' @param nallTotal Total events across all subjects (sum of obs + doses).
+//' @param ndosesTotal Total dose events across all subjects.
 //' @param maxAllTimes Maximum events for any single subject.
+//' @param indOwnAlloc 1 if every individual gets its own event/solve arrays
+//'   (\code{op$indOwnAlloc}), else 0.  These are allocated ON TOP of
+//'   \code{gsolve}, whose \code{n0} region then goes unused.
 //' @param stiff     The solving method (\code{op$stiff}); only 3
 //'   (\code{"indLin"}) allocates anything extra here.
 //' @param doIndLin  Which matrix-exponential driver runs: 0 not a
@@ -68,9 +72,11 @@ NumericVector rxMemoryComponents_(
   int    numLin,
   int    nsub,
   double nallTotal,
+  double ndosesTotal,
   double maxAllTimes,
   int    stiff,
-  int    doIndLin)
+  int    doIndLin,
+  int    indOwnAlloc)
 {
   rx_mem_layout _mem;
   rxFillMemLayout(
@@ -152,6 +158,21 @@ NumericVector rxMemoryComponents_(
     b_indLinWork = (double)cores * (sq + vec) * sizeof(double);
   }
 
+  /* -- op->indOwnAlloc (rxAllocInd() in src/rxData.cpp) ----------------------
+   *
+   * Each individual gets its own event and solve arrays; gsolve is still
+   * calloc'd at gsolve_total, so this is memory on top of it rather than
+   * instead of it.  Zero for the ordinary case, where ind->solve just points
+   * into gsolve's n0 region.
+   */
+  double b_indOwn = 0.0;
+  if (indOwnAlloc) {
+    rx_ind_alloc _ia;
+    rxFillIndAllocTotal(neq, (int64_t)nallTotal, (int64_t)ndosesTotal,
+                        nsub, nsim, &_ia);
+    b_indOwn = (double)_ia.dbl * sizeof(double) + (double)_ia.i32 * sizeof(int);
+  }
+
   NumericVector out = NumericVector::create(
     Named("gsolve")        = (double)_mem.gsolve_total * sizeof(double),
     Named("gsolve_n0")     = (double)_mem.n0           * sizeof(double),
@@ -168,6 +189,7 @@ NumericVector rxMemoryComponents_(
     Named("inds_global")   = b_inds,
     Named("indLinExpCache")= b_indLinCache,
     Named("indLinWork")    = b_indLinWork,
+    Named("indOwnAlloc")   = b_indOwn,
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 

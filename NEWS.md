@@ -695,6 +695,18 @@
   fits is no longer refused and chunks are no longer about half the size they
   should be.
 
+- `rxMemoryEstimate()` now counts the per-individual event and solve arrays.
+  When `op$indOwnAlloc` is set -- which `rxSolve()` defaults to the model's
+  `evid_` parser flag, so any dose-pushing model (`bolus()`, `obs()`) gets it,
+  as does anyone passing `rxSolve(..., indOwnAlloc = TRUE)` -- `rxAllocInd()`
+  gives every individual its own `dose`/`ii`/`all_times`/`timeThread`/`evid`/
+  `ix`/`idose`/`solve` arrays, and `gsolve` is still allocated at its full size
+  regardless, so those arrays are memory on top of it.  The estimate ignored
+  them entirely, which understated `total` -- the direction that makes an
+  out-of-memory guard useless.  They are now reported as an `indOwnAlloc`
+  component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
+  alongside the rest of the layout.
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an
