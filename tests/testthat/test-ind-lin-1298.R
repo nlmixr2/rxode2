@@ -59,6 +59,9 @@ rxTest({
     # These models now solve under a DIFFERENT driver than they used to (one
     # cached exponential per interval, not the fixed-point iteration), so the
     # Hessian block has to be checked on the path it actually takes now.
+    # Second order is differenced against FIRST order rather than the primal,
+    # which is only worth something because the test above has already pinned
+    # first order to the primal: the two together are the chain.
     .code <- rxSensMatExp(model = .mexp[["2cmt"]], calcSens = c("cl", "v"),
                           calcSens2 = c("cl", "v"))
     .m <- suppressMessages(rxode2(.code))
@@ -85,17 +88,31 @@ rxTest({
   })
 
   test_that("a residual whose state terms cancel is not called state dependent", {
-    # The expansion is kept whenever it drops a free symbol, however long it
-    # gets: here the state terms cancel but the state-free part expands to 25
-    # of them, so a rule that only compared lengths would keep `central` in the
-    # forcing text and land the model on the iterating driver (doIndLin 4)
-    # rather than the state-free one (doIndLin 2).
+    # An expansion that takes the forcing from reading a compartment to reading
+    # none is kept however long it gets: here the state terms cancel but the
+    # state-free part expands to 25 of them, so a rule that only compared
+    # lengths would keep `central` in the forcing text and land the model on
+    # the iterating driver (doIndLin 4) rather than the state-free one (2).
     .m <- paste("d/dt(central) = (p1+p2+p3+p4+p5)*(p6+p7+p8+p9+p10)",
                 "- (a+b)*central - a*central - b*central")
     .code <- rxSensMatExp(model = .m, calcSens = c("p1", "a"))
     .rhs <- sub("^indLin\\([^)]*\\) *<- *", "", .forcings(.code))
     expect_false(any(grepl("central", .rhs)))
     expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 2L)
+  })
+
+  test_that("an expansion that buys no reclassification is not taken", {
+    # The other side of that rule.  `central` stays in the forcing whatever is
+    # done to it, so the model iterates either way -- and expanding the compact
+    # product into its 16 terms would only inflate what `ME()` re-evaluates on
+    # every call.  The compact form is kept.
+    .m <- paste("d/dt(central) = (p1+p2+p3+p4)*(p5+p6+p7+p8)*central*central",
+                "- (a+b)*y + a*y + b*y", "d/dt(y) = 0", sep = "\n")
+    .code <- rxSensMatExp(model = .m, calcSens = c("p1", "a"))
+    .rhs <- sub("^indLin\\([^)]*\\) *<- *", "", .forcings(.code))
+    expect_true(any(grepl("(p1+p2+p3+p4)", .rhs, fixed = TRUE)))
+    expect_false(any(grepl("p1*p5", .rhs, fixed = TRUE)))  # not distributed
+    expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 4L)
   })
 
   test_that("the elimination constant is emitted in its cancelled form", {

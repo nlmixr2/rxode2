@@ -710,11 +710,11 @@
   `matExp()` was competitive.  The residual is now cancelled before it is
   tested, and the same cancellation collapses the un-simplified `k_<cmt>_output`
   constants the split produced (`-q/v-(-q/v-cl/v)` is now `cl/v`), which the
-  generated model re-evaluated on every `ME()` call.  An expansion that drops a
-  symbol is taken however long it gets, since what the expression depends on is
-  what the classification reads; otherwise it is a rewrite of the same
-  dependencies and is kept only where it does not lengthen what it replaced, so
-  a genuinely nonlinear forcing is untouched.  Measured on an optimized build,
+  generated model re-evaluated on every `ME()` call.  An expansion that takes a
+  forcing from reading a compartment to reading none is kept however long it
+  gets, since that is the difference between the two drivers; everywhere else
+  it buys no reclassification and is kept only where it does not lengthen what
+  it replaced, so a genuinely nonlinear forcing is untouched.  Measured on an optimized build,
   40 subjects over an irregular 200 point schedule with three sensitivity
   parameters, single thread, the solve is 9.6x faster at two compartments and
   12.5x at three, with

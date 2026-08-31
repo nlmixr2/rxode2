@@ -220,6 +220,23 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   t == "0" || t == "0.0" || t == "-0"
 }
 
+#' Does an expression reference a compartment?
+#'
+#' A forcing that reads any compartment -- a physical state or one of the
+#' `rx__sens_*` sensitivity compartments -- is what makes the solver classify
+#' the model as state dependent and take the iterating driver.
+#'
+#' @param e symengine expression.
+#' @param statesSe The symengine name of each physical state.
+#' @return `TRUE` when the expression references a compartment.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxIndLinReadsState <- function(e, statesSe) {
+  .v <- tryCatch(vapply(symengine::free_symbols(e), as.character, character(1)),
+                 error = function(.e) character(0))
+  any(.v %in% statesSe) || any(startsWith(.v, "rx__sens_"))
+}
+
 #' Expand a symengine expression where the expansion is worth taking
 #'
 #' `symengine::expand()` is what cancels the algebraically-zero residual the
@@ -227,31 +244,34 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' un-simplified `k_*_output` constants the same split produces.  Two rules
 #' decide whether to keep it:
 #'
-#' - An expansion that drops a free symbol changes what the expression DEPENDS
-#'   ON, and dependence on a state is exactly what classifies a forcing as
-#'   state dependent, so it is taken however long it is.  Without this a
-#'   residual whose state terms cancel but whose state-free part expands wide
-#'   -- `(p1+..+p5)*(p6+..+p10) - (a+b)*x - a*x - b*x` -- keeps `x` in the text
-#'   and lands on the iterating driver it does not need.
-#' - Otherwise the expansion is only a rewrite of the same dependencies, and
-#'   the forcing is re-evaluated on every `ME()` call, so it is kept only when
-#'   it is no longer than what it replaced.
+#' - Given `statesSe`, an expansion that takes the expression from reading a
+#'   compartment to reading none is taken however long it gets, because that
+#'   is the difference between the iterating driver and one cached exponential
+#'   per interval.  Without it a residual whose state terms cancel but whose
+#'   state-free part expands wide -- `(p1+..+p5)*(p6+..+p10) - (a+b)*x - a*x -
+#'   b*x` -- keeps `x` in the text and iterates for nothing.
+#' - Otherwise the expansion buys no reclassification -- which is every rate
+#'   constant, elimination and cross-term coefficient, none of which the
+#'   classification reads -- and the result is re-evaluated on every `ME()`
+#'   call, so it is kept only when it is no longer than what it replaced.  A
+#'   cancellation to `0` always is.
 #'
 #' @param e symengine expression; anything that is not a `Basic` (a constant
 #'   `d/dt(x) <- 0` is stored as a plain numeric) is returned unchanged.
+#' @param statesSe The symengine name of each physical state, for an expression
+#'   whose state dependence is what will be classified (a forcing).  `NULL`
+#'   elsewhere, which leaves only the length rule.
 #' @return `e`, or its expansion.
 #' @noRd
 #' @author Matthew L. Fidler
-.rxIndLinExpand <- function(e) {
+.rxIndLinExpand <- function(e, statesSe = NULL) {
   if (!inherits(e, "Basic")) return(e)
   .x <- tryCatch(symengine::expand(e), error = function(.e) NULL)
   if (is.null(.x)) return(e)
-  # expand() can only remove a free symbol, never add one, so a smaller count
-  # is a strict subset.
-  .nSym <- function(.b) {
-    tryCatch(length(symengine::free_symbols(.b)), error = function(.e) NA_integer_)
+  if (!is.null(statesSe) && .rxIndLinReadsState(e, statesSe) &&
+      !.rxIndLinReadsState(.x, statesSe)) {
+    return(.x)
   }
-  if (isTRUE(.nSym(.x) < .nSym(e))) return(.x)
   if (nchar(as.character(.x)) > nchar(as.character(e))) return(e)
   .x
 }
@@ -350,7 +370,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     } else {
       # Two families that landed on the same pair can cancel, so the sum is
       # expanded before it is stored -- `emit()`'s zero test reads it back.
-      val <- .rxIndLinExpand(get(.key, envir = .env, inherits = FALSE) + val)
+      val <- .rxIndLinExpand(base::get(.key, envir = .env, inherits = FALSE) + val)
     }
     assign(.key, val, envir = .env)
     invisible()
@@ -358,7 +378,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   .emit <- function() {
     .lines <- character(0)
     for (.key in .order) {
-      .val <- get(.key, envir = .env, inherits = FALSE)
+      .val <- base::get(.key, envir = .env, inherits = FALSE)
       if (.rxIndLinIsZero(.val)) next
       .parts <- strsplit(.key, "\r", fixed = TRUE)[[1L]]
       .lines <- c(.lines, paste0("k_", .parts[1L], "_", .parts[2L], "_nd = ", rxFromSE(.val)))
@@ -516,7 +536,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       .aij <- .A[[.i]][[.j]]
       if (!.rxIndLinIsZero(.aij)) .f <- .f - .aij * .stateSym[[.j]]
     }
-    .rxIndLinExpand(.f)
+    .rxIndLinExpand(.f, .statesSe)
   })
   names(.force) <- .states
   # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j]).  Computed
@@ -658,7 +678,8 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     for (.i in .states) {
       .fi <- .force[[.i]]
       if (.rxIndLinIsZero(.fi)) next
-      .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe))
+      .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe),
+                            .statesSe)
       if (!.rxIndLinIsZero(.g)) {
         .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
       }
@@ -723,7 +744,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           .fi <- .force[[.i]]
           if (.rxIndLinIsZero(.fi)) next
           .g2 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe,
-                                                 c(.pSe, .qSe)))
+                                                 c(.pSe, .qSe)), .statesSe)
           if (!.rxIndLinIsZero(.g2)) {
             .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
           }
@@ -804,7 +825,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
             .fi <- .force[[.i]]
             if (.rxIndLinIsZero(.fi)) next
             .g3 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
-                                                   c(.pSe, .qSe, .rSe)))
+                                                   c(.pSe, .qSe, .rSe)), .statesSe)
             if (!.rxIndLinIsZero(.g3)) {
               .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
             }
