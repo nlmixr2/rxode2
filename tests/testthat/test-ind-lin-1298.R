@@ -159,6 +159,21 @@ rxTest({
     }
   })
 
+  test_that("the plain conversion cancels its elimination constants too", {
+    # The non-sensitivity `indLin()` path builds its `k_<cmt>_output` from the
+    # same column sum and is expanded for the same reason.  A linear ODE model
+    # has to convert to a pure matrix exponential with no forcing at all.
+    .ode <- paste("d/dt(depot) = -ka*depot",
+                  "d/dt(central) = ka*depot - (cl/v)*central - (q/v)*central + (q/vp)*periph",
+                  "d/dt(periph) = (q/v)*central - (q/vp)*periph",
+                  "cp = central/v", sep = "\n")
+    .code <- indLin(.ode)
+    expect_equal(.forcings(.code), character(0))
+    expect_true("k_central_output = cl/v" %in% .lines(.code))
+    expect_false(any(grepl("^k_[a-z_]*_output = 0", .lines(.code))))
+    expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 1L)
+  })
+
   test_that("the cross-term accumulator sums and cancels", {
     # The `_nd` coefficients are summed by (from, to) because two families
     # collapse onto the same pair whenever the differentiated parameters
