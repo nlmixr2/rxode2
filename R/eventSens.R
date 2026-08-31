@@ -573,9 +573,11 @@
 #' This is a static, text-level check: it does not know which compartments
 #' actually receive doses (that is event-table, not model, information), so a
 #' model with one modeled `alag()` that ALSO doses an unlagged (implicit
-#' delay-0) linCmt() compartment still passes -- that was already the
-#' documented requirement before this guard existed and remains a gap only
-#' the full per-compartment fix (shared with #1236) closes.
+#' delay-0) linCmt() compartment still passes here.  That case is caught
+#' while solving instead, where the regimen is known: `linCmtBdoseTime()`
+#' (`src/linCmt.cpp`) compares the compartments an individual doses against
+#' `op->linCmtLagMask` and reports `NA` for a mixed-delay regimen (and an
+#' exact 0 when no dose reaches a lagged compartment).
 #'
 #' A single compartment's `alag()` may be assigned conditionally (different
 #' text per `if`/`else` branch) without violating the shared-delay

@@ -6070,6 +6070,7 @@ static inline void iniRx(rx_solve* rx) {
   op->numLin = 0;
   op->depotLin = 0;
   op->linOffset = 0;
+  op->linCmtLagMask = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
@@ -6089,6 +6090,24 @@ static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
 }
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
+
+// Bitmask of the linCmt() block's physical compartments carrying a modeled
+// alag(), for op->linCmtLagMask.  `mv[RxMv_stateProp]` is parallel to
+// `mv[RxMv_state]`, which is the compartment order, and the linCmt() block is
+// the trailing `numLin + numLinSens` compartments, so block index c is state
+// index `linOffset + c`.  propAlag is src/tran.h's bit 4 (not included here).
+static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
+  if (numLin <= 0) return 0;
+  IntegerVector stateProp = mv[RxMv_stateProp];
+  int mask = 0;
+  int n = stateProp.size();
+  for (int c = 0; c < numLin; ++c) {
+    int i = linOffset + c;
+    if (i < 0 || i >= n) continue;
+    if ((stateProp[i] & 4) != 0) mask |= (1 << c);
+  }
+  return mask;
+}
 
 static int _rxSolveCallN = 0;
 
@@ -6752,6 +6771,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLin = numLin;
     op->depotLin = depotLin;
     op->linOffset = op->neq - numLin - numLinSens;
+    op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);

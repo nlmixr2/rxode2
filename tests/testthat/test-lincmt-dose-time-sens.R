@@ -263,6 +263,65 @@ rxTest({
     }
   })
 
+  test_that("linCmtB(-3) is exactly 0 when no dose reaches the lagged compartment", {
+    # The identity -dA/dt is the derivative wrt a delay carried by every dose.
+    # If this individual doses no lagged compartment its amounts do not depend
+    # on the delay at all, so the derivative is exactly 0 -- NOT -dA/dt, which
+    # is the (nonzero) derivative the undelayed doses would have had if they
+    # were delayed.  The IV arm of a paired IV/oral design lands here
+    # (nlmixr2/rxode2#1237).
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, rep(0, length(s$dcp)))
+    # the finite difference agrees: cp does not move with the lag parameter
+    expect_equal(.fdCol(m, e, "cp"), rep(0, nrow(s)), tolerance = 1e-8)
+  })
+
+  test_that("linCmtB(-3) refuses a regimen mixing lagged and unlagged doses", {
+    # A lagged depot plus an unlagged bolus into central is out of scope for
+    # which1 = -3 (an unlagged dose is a lag of 0, still a different delay).
+    # Which compartments the model lags is build-time information, but which
+    # ones an individual doses is DATA, so this can only be caught while
+    # solving -- report NA rather than the single-delay answer, which is
+    # biased by the undelayed dose's contribution (nlmixr2/rxode2#1237).
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
+      et(seq(0.1, 24, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_true(all(is.na(s$dcp)))
+    expect_false(any(is.na(s$cp)))   # the model itself still solves
+  })
+
+  test_that("linCmtB(-3) ignores doses into a mixed model's ODE compartments", {
+    # Only doses reaching the LINEAR system can violate the shared-delay
+    # assumption; an ODE compartment of a mixed model is not part of it, so
+    # dosing it must not turn the answer into NA.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag); ke0 <- 0.5
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+      d/dt(ce) <- (cp - ce) * ke0
+    })
+    e <- et(amt = 100, cmt = "central") |> et(amt = 5, cmt = "ce", time = 1) |>
+      et(seq(0.1, 12, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
+  })
+
   test_that("linCmtB(-3) rejects a mismatched model shape", {
     # which1 = -3 reads the amounts cached by the which1/which2 = -1 call, so a
     # call describing a different model returns NA rather than reading them.

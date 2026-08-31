@@ -172,6 +172,13 @@ typedef struct {
   int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
   int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
   int    indLinForcing;        /* forcing over a substep: 0 constant, 1 linear ramp between its endpoint values */
+  /* Bitmask over the linCmt() block's physical compartments (bit c = block
+     index c, 0 = depot when oral) of those carrying a modeled alag().  Set at
+     solve setup from the model's stateProp; read by linCmtBdoseTime()
+     (which1 = -3) to tell whether every dose reaching the linear system
+     really does share one delay (nlmixr2/rxode2#1119, #1237).  0 when the
+     model declares no modeled alag() on a linCmt() compartment. */
+  int    linCmtLagMask;
 } rx_solving_options;
 
 
