@@ -2,6 +2,23 @@
 
 ## New features
 
+- `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
+  `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
+  every dose feeding the linear system, so a regimen that doses a lagged
+  depot alongside an unlagged central -- the paired IV/oral design
+  bioavailability is routinely estimated from -- had to be refused.  Two new
+  modes read a per-origin decomposition of the linCmt() amounts instead:
+  `which1 = -9` is the derivative with respect to a delay on one
+  compartment's doses alone, and `which1 = -10` returns the amounts that
+  arrived through one compartment, which chain-rules to bioavailability as
+  `A^(q)/F_q`.  `which2` packs the origin compartment and the wanted output
+  (`q*8 + out`, `out = 7` for the reported concentration).  Both match
+  central finite differences across one to three compartments, IV and oral,
+  bolus, infusion and steady-state bolus regimens, including models that lag
+  their linCmt() compartments differently.  The decomposition is maintained
+  only for a model that declares a modeled `alag()`/`f()` on a `linCmt()`
+  compartment (nlmixr2/rxode2#1119).
+
 - `linCmt()`'s sensitivity state now belongs to the INDIVIDUAL rather than to
   whichever thread happens to be running it.  The theta-keyed window of
   hoisted closed-form constants and the last-row value memo are the two
