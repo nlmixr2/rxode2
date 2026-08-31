@@ -41,14 +41,61 @@ rxTest({
     }
   })
 
-  test_that("the second-order block emits no forcing either", {
-    # The Hessian block differentiates the first-order forcing once more, so a
-    # residual that survives first order is multiplied through the whole
-    # `calcSens x calcSens2` grid.
+  test_that("the second- and third-order blocks emit no forcing either", {
+    # The higher-order blocks differentiate the first-order forcing once and
+    # twice more, so a residual that survives first order is multiplied
+    # through the whole `calcSens x calcSens2 (x calcSens3)` grid.
     .code <- rxSensMatExp(model = .mexp[["2cmt"]], calcSens = c("ka", "cl", "v"),
                           calcSens2 = c("cl", "v"))
     expect_equal(.forcings(.code), character(0))
     expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 1L)
+    .code3 <- rxSensMatExp(model = .mexp[["2cmt"]], calcSens = c("cl", "v"),
+                           calcSens2 = c("cl", "v"), calcSens3 = "v")
+    expect_equal(.forcings(.code3), character(0))
+    expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code3)))), 1L)
+  })
+
+  test_that("the second-order sensitivities are right on the exponential path", {
+    # These models now solve under a DIFFERENT driver than they used to (one
+    # cached exponential per interval, not the fixed-point iteration), so the
+    # Hessian block has to be checked on the path it actually takes now.
+    .code <- rxSensMatExp(model = .mexp[["2cmt"]], calcSens = c("cl", "v"),
+                          calcSens2 = c("cl", "v"))
+    .m <- suppressMessages(rxode2(.code))
+    .m1 <- suppressMessages(rxode2(rxSensMatExp(model = .mexp[["2cmt"]],
+                                                calcSens = c("cl", "v"))))
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(.obs))
+    .run <- function(m, th) {
+      suppressMessages(rxSolve(m, th, .ev, method = "indLin",
+                               atol = 1e-12, rtol = 1e-12, cores = 1L))
+    }
+    .s <- .run(.m, .th)
+    # d/dq of the first-order sensitivity wrt p is the (p, q) second-order one.
+    for (.p in c("cl", "v")) {
+      for (.q in c("cl", "v")) {
+        .h <- .th[[.q]] * 1e-4
+        .up <- .th; .up[[.q]] <- .th[[.q]] + .h
+        .dn <- .th; .dn[[.q]] <- .th[[.q]] - .h
+        .nm1 <- paste0("rx__sens_central_BY_", .p, "__")
+        expect_equal(.s[[paste0("rx__sens_central_BY_", .p, "_BY_", .q, "__")]],
+                     (.run(.m1, .up)[[.nm1]] - .run(.m1, .dn)[[.nm1]]) / (2 * .h),
+                     tolerance = 1e-4, info = paste(.p, .q))
+      }
+    }
+  })
+
+  test_that("a residual whose state terms cancel is not called state dependent", {
+    # The expansion is kept whenever it drops a free symbol, however long it
+    # gets: here the state terms cancel but the state-free part expands to 25
+    # of them, so a rule that only compared lengths would keep `central` in the
+    # forcing text and land the model on the iterating driver (doIndLin 4)
+    # rather than the state-free one (doIndLin 2).
+    .m <- paste("d/dt(central) = (p1+p2+p3+p4+p5)*(p6+p7+p8+p9+p10)",
+                "- (a+b)*central - a*central - b*central")
+    .code <- rxSensMatExp(model = .m, calcSens = c("p1", "a"))
+    .rhs <- sub("^indLin\\([^)]*\\) *<- *", "", .forcings(.code))
+    expect_false(any(grepl("central", .rhs)))
+    expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 2L)
   })
 
   test_that("the elimination constant is emitted in its cancelled form", {

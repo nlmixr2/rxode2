@@ -85,7 +85,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       # column sum symengine leaves as a product of sums prints as a non-zero
       # elimination that is really zero.
       .elimStr <- as.character(.rxIndLinExpand(-.sumExpr))
-      if (.elimStr != "0") {
+      if (!.rxIndLinIsZeroTxt(.elimStr)) {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {
           .code <- c(.code, paste0("param(", .elimStr, ")"))
@@ -134,7 +134,6 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   # this change too.
   .jacMax <- getOption("rxode2.indLinJacMaxStates", 24L)
   if (length(.states) <= .jacMax) {
-    .isZeroTxt <- function(.t) .t == "0" || .t == "0.0" || .t == "-0"
     # Direct symengine::D on Basics held in locals, as rxSensMatExp does:
     # `with(.env, ...)` would not see them, since it ignores the calling frame.
     #
@@ -158,7 +157,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       for (.jj in seq_along(.states)) {
         .d <- symengine::D(.rhsI, .stateSym[[.jj]])
         .dTxt <- rxFromSE(.d)
-        if (!.isZeroTxt(.dTxt)) {
+        if (!.rxIndLinIsZeroTxt(.dTxt)) {
           .code <- c(.code, paste0("df(", .states[.ii], ")/dy(", .states[.jj],
                                    ") = ", .dTxt))
         }
@@ -205,17 +204,38 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   # has to be bound to a plain local before it is handed over.
   .se <- .rxIndLinExpand(e)
   .z <- rxFromSE(.se)
-  .z == "0" || .z == "0.0" || .z == "-0"
+  .rxIndLinIsZeroTxt(.z)
 }
 
-#' Expand a symengine expression when expansion does not grow it
+#' Is a translated expression string zero?
+#'
+#' `as.character()` of a symengine zero is `"0"`, but a float zero prints as
+#' `"0.0"` (`0.0*a`), so the text test has to accept both spellings.
+#'
+#' @param t Expression text.
+#' @return `TRUE` when the text is a zero.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxIndLinIsZeroTxt <- function(t) {
+  t == "0" || t == "0.0" || t == "-0"
+}
+
+#' Expand a symengine expression where the expansion is worth taking
 #'
 #' `symengine::expand()` is what cancels the algebraically-zero residual the
 #' term-wise `rhs - A.X` split leaves behind, and it also collapses the
-#' un-simplified `k_*_output` constants the same split produces.  It can grow a
-#' genuinely nonlinear expression instead, and the forcing it would grow is
-#' re-evaluated on every `ME()` call, so the expansion is kept only when it is
-#' no longer than what it replaced -- a cancellation to `0` always is.
+#' un-simplified `k_*_output` constants the same split produces.  Two rules
+#' decide whether to keep it:
+#'
+#' - An expansion that drops a free symbol changes what the expression DEPENDS
+#'   ON, and dependence on a state is exactly what classifies a forcing as
+#'   state dependent, so it is taken however long it is.  Without this a
+#'   residual whose state terms cancel but whose state-free part expands wide
+#'   -- `(p1+..+p5)*(p6+..+p10) - (a+b)*x - a*x - b*x` -- keeps `x` in the text
+#'   and lands on the iterating driver it does not need.
+#' - Otherwise the expansion is only a rewrite of the same dependencies, and
+#'   the forcing is re-evaluated on every `ME()` call, so it is kept only when
+#'   it is no longer than what it replaced.
 #'
 #' @param e symengine expression; anything that is not a `Basic` (a constant
 #'   `d/dt(x) <- 0` is stored as a plain numeric) is returned unchanged.
@@ -226,6 +246,12 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   if (!inherits(e, "Basic")) return(e)
   .x <- tryCatch(symengine::expand(e), error = function(.e) NULL)
   if (is.null(.x)) return(e)
+  # expand() can only remove a free symbol, never add one, so a smaller count
+  # is a strict subset.
+  .nSym <- function(.b) {
+    tryCatch(length(symengine::free_symbols(.b)), error = function(.e) NA_integer_)
+  }
+  if (isTRUE(.nSym(.x) < .nSym(e))) return(.x)
   if (nchar(as.character(.x)) > nchar(as.character(e))) return(e)
   .x
 }
