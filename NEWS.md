@@ -1288,6 +1288,28 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   an event-modifier jump fed to `-7` is propagated); they are not reached by
   a model that does not request them.
 
+- `linCmtB(which1 = -3)` -- the dose-time (moving boundary) sensitivity a
+  modeled `alag()` on a `linCmt()` compartment needs -- no longer reports a
+  biased value for an individual whose regimen does not carry one shared
+  delay.  The `-dA/dt` identity it rests on assumes every dose feeding the
+  linear system is delayed together; which compartments the model lags is
+  known when the model is built, but which ones an individual actually doses
+  is data, so it is now decided while solving.  An individual dosing only
+  unlagged `linCmt()` compartments gets an exact `0` (its amounts do not
+  depend on the delay), one mixing lagged and unlagged doses gets `NA`
+  instead of the single-delay answer, and one dosing only lagged
+  compartments is unchanged.  A paired IV/oral design -- the case that most
+  often estimates a modeled `alag()`/`f()` -- previously took a silently
+  wrong gradient on its IV arm.  The same rule fixes an individual with no
+  `linCmt()` dose at all whose compartments were started from an initial
+  condition: those amounts decay in time, so `-dA/dt` reported a nonzero
+  sensitivity, but an initial condition is not delayed by `alag()` and the
+  answer is 0.  A plain `amt = 0` dose is not counted, so it cannot refuse a
+  regimen it contributes nothing to, and neither is a dose into a mixed
+  model's ODE compartment -- including a steady-state infusion there, which
+  used to cost the `linCmt()` compartments an answer that was exact
+  (#1119, #1237).
+
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read
   from its own control slot instead of `linCmtSensType`'s.  `rx->sensH` was

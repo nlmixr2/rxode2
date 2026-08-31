@@ -310,5 +310,32 @@ rxTest({
                                   rxControl(method = "indLin"))),
         as.data.frame(indLinRef))
     })
+
+    # op->linCmtLagMask (which linCmt() compartments carry a modeled alag()) is
+    # only computed on a full setup, so the C-state replay has to carry it in
+    # the stream: without it linCmtB(which1 = -3) reads a zero mask and falls
+    # back to answering a regimen it should refuse (nlmixr2/rxode2#1119).
+    lagMod <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    lagTheta <- c(tcl = log(4), tv = log(20), tka = log(1.1), eta_lag = 0.1)
+    # doses BOTH the lagged depot and the unlagged central -- a mixed-delay
+    # regimen, which must be refused (NA) on the replay just as on the solve
+    lagEv <- et(amt = 100, cmt = "depot") |>
+      et(amt = 50, cmt = "central", time = 0) |> et(seq(0.1, 24, 0.5))
+    lagRef <- rxSolve(lagMod, lagTheta, lagEv)
+    lagFile <- tempfile(fileext = ".rxbin")
+    rxSolve(lagMod, lagTheta, lagEv, serializeFile = lagFile)
+
+    test_that("C-state replay keeps the linCmt() modeled-alag mask", {
+      expect_true(all(is.na(lagRef$dcp)))   # the behavior being preserved
+      expect_equal(
+        as.data.frame(cStateSolve(lagMod, .rxReadStateBundle(lagFile),
+                                  params = lagTheta)),
+        as.data.frame(lagRef))
+    })
   })
 })

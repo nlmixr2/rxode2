@@ -12,10 +12,14 @@ rxTest({
   .p <- c(tcl = log(4), tv = log(20), tka = log(1.1), tq = log(2),
           tv2 = log(50), eta_lag = 0.1)
 
-  .fdCol <- function(m, e, col, h = 1e-5) {
+  .fdCol <- function(m, e, col, h = 1e-5, inits = NULL) {
     .p1 <- .p; .p1[["eta_lag"]] <- .p[["eta_lag"]] + h
     .p0 <- .p; .p0[["eta_lag"]] <- .p[["eta_lag"]] - h
-    (rxSolve(m, e, params = .p1)[[col]] - rxSolve(m, e, params = .p0)[[col]]) / (2 * h)
+    .go <- function(.pp) {
+      if (is.null(inits)) rxSolve(m, e, params = .pp)[[col]]
+      else rxSolve(m, e, params = .pp, inits = inits)[[col]]
+    }
+    (.go(.p1) - .go(.p0)) / (2 * h)
   }
 
   test_that("linCmtB(-3) dose-time sensitivity matches finite differences", {
@@ -261,6 +265,208 @@ rxTest({
       expect_true(all(is.na(s$dcp)), info = .nm)
       expect_false(any(is.na(s$cp)), info = .nm)   # the model itself still solves
     }
+  })
+
+  test_that("linCmtB(-3) is exactly 0 when no dose reaches the lagged compartment", {
+    # The identity -dA/dt is the derivative wrt a delay carried by every dose.
+    # If this individual doses no lagged compartment its amounts do not depend
+    # on the delay at all, so the derivative is exactly 0 -- NOT -dA/dt, which
+    # is the (nonzero) derivative the undelayed doses would have had if they
+    # were delayed.  The IV arm of a paired IV/oral design lands here
+    # (nlmixr2/rxode2#1237).
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, rep(0, length(s$dcp)))
+    # the finite difference agrees: cp does not move with the lag parameter
+    expect_equal(.fdCol(m, e, "cp"), rep(0, nrow(s)), tolerance = 1e-8)
+  })
+
+  test_that("linCmtB(-3) is exactly 0 for an individual with no linCmt() dose", {
+    # A linCmt() compartment started from an initial condition rather than a
+    # dose still has amounts that move in time, so -dA/dt is nonzero -- but
+    # an initial condition is not delayed by alag(), so the derivative wrt the
+    # delay is 0.  Nothing dosed means nothing delayed.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+    })
+    e <- et(seq(0.1, 12, 0.5))
+    s <- rxSolve(m, e, params = .p, inits = c(central = 100))
+    expect_true(max(abs(s$cp)) > 1e-3)   # the amounts really do decay
+    expect_equal(s$dcp, rep(0, nrow(s)))
+    expect_equal(.fdCol(m, e, "cp", inits = c(central = 100)), rep(0, nrow(s)),
+                 tolerance = 1e-8)
+  })
+
+  test_that("linCmtB(-3) refuses a regimen mixing lagged and unlagged doses", {
+    # A lagged depot plus an unlagged bolus into central is out of scope for
+    # which1 = -3 (an unlagged dose is a lag of 0, still a different delay).
+    # Which compartments the model lags is build-time information, but which
+    # ones an individual doses is DATA, so this can only be caught while
+    # solving -- report NA rather than the single-delay answer, which is
+    # biased by the undelayed dose's contribution (nlmixr2/rxode2#1237).
+    .ms <- list(
+      # numLin = 2 (depot, central): lagged bit 0, dosed bits 0 and 1
+      "1cmt oral" = rxode2({
+        cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+        alag(depot) <- lag
+        cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+        dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+      }),
+      # numLin = 3 (depot, central, peripheral1): the same bits, one block wider
+      "2cmt oral" = rxode2({
+        cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); q <- exp(tq); v2 <- exp(tv2)
+        lag <- 2 * exp(eta_lag)
+        alag(depot) <- lag
+        cp <- linCmtB(rx__PTR__, t, 3, 2, 1, -1, -1, 1, cl, v, q, v2, 0, 0, ka)
+        dcp <- lag * linCmtB(rx__PTR__, t, 3, 2, 1, -3, -3, 1, cl, v, q, v2, 0, 0, ka)
+      })
+    )
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
+      et(seq(0.1, 24, 0.25))
+    for (.nm in names(.ms)) {
+      s <- rxSolve(.ms[[.nm]], e, params = .p)
+      expect_true(all(is.na(s$dcp)), info = .nm)
+      expect_false(any(is.na(s$cp)), info = .nm)   # the model itself still solves
+      # and the lagged-only regimen of the same model is still exact
+      eL <- et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25))
+      sL <- rxSolve(.ms[[.nm]], eL, params = .p)
+      expect_false(any(is.na(sL$dcp)), info = .nm)
+      expect_equal(sL$dcp, .fdCol(.ms[[.nm]], eL, "cp"), tolerance = 1e-5, info = .nm)
+    }
+  })
+
+  test_that("linCmtB(-3) is not refused by a zero bolus into an unlagged compartment", {
+    # A plain `amt = 0` dose puts nothing into the compartment, so it cannot
+    # break the shared-delay assumption: refusing the regimen over it would
+    # cost a gradient that is perfectly answerable.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 0, cmt = "central", time = 0) |>
+      et(seq(0.1, 24, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
+  })
+
+  test_that("linCmtB(-3) still counts a zero-amount replace/multiply record", {
+    # Only a PLAIN zero bolus contributes nothing.  `evid = 5`/`evid = 6` with
+    # `amt = 0` set the compartment to zero at a FIXED time that no alag()
+    # shifts, so A(t; L) = A(t - L; 0) genuinely fails and the regimen has to
+    # be refused rather than answered from the lagged doses alone.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    for (.evid in c(5, 6)) {
+      e <- et(amt = 100, cmt = "depot") |>
+        et(amt = 0, cmt = "central", time = 2, evid = .evid) |>
+        et(seq(0.1, 24, 0.25))
+      s <- rxSolve(m, e, params = .p)
+      expect_true(all(is.na(s$dcp)), info = paste0("evid ", .evid))
+    }
+  })
+
+  test_that("linCmtB(-3) still counts a zero-amount infusion record", {
+    # The other half of the same distinction: a zero `amt` on a rate record is
+    # not a no-op, so it has to keep counting as a dose.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "depot") |>
+      et(amt = 0, rate = 10, cmt = "central", time = 2) |>
+      et(seq(0.1, 24, 0.25))
+    expect_true(all(is.na(rxSolve(m, e, params = .p)$dcp)))
+  })
+
+  test_that("a steady-state infusion into an ODE compartment does not refuse linCmtB(-3)", {
+    # -dA/dt needs the rate feeding the LINEAR system (ind->InfusionRate +
+    # op->linOffset).  A steady-state infusion into a mixed model's ODE
+    # compartment never touches that slice, so it must not cost the linCmt()
+    # compartments their (exact) dose-time sensitivity.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag); ke0 <- 0.5
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+      d/dt(ce) <- (cp - ce) * ke0
+    })
+    e <- et(amt = 100, cmt = "central") |>
+      et(amt = 10, rate = 5, ss = 1, ii = 12, cmt = "ce") |>
+      et(seq(0.1, 12, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
+    # ... while a steady-state infusion into the linCmt() compartment itself
+    # still is refused
+    eLin <- et(amt = 100, rate = 25, ss = 1, ii = 12, cmt = "central") |>
+      et(seq(0.1, 12, 0.25))
+    expect_true(all(is.na(rxSolve(m, eLin, params = .p)$dcp)))
+  })
+
+  test_that("linCmtB(-3) accepts dosing a subset of the lagged compartments", {
+    # Both linCmt() compartments carry the SAME modeled alag(), so every dose
+    # is delayed alike however many of them the regimen actually uses.  Pins
+    # the gate as a SUBSET test (dosed & ~lagged) rather than an equality one:
+    # an equality test would wrongly refuse the depot-only regimen.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    .es <- list(
+      "depot only (subset of the lagged set)" =
+        et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25)),
+      "central only (subset of the lagged set)" =
+        et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25)),
+      "both lagged compartments" =
+        et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
+          et(seq(0.1, 24, 0.25))
+    )
+    for (.nm in names(.es)) {
+      s <- rxSolve(m, .es[[.nm]], params = .p)
+      expect_false(any(is.na(s$dcp)), info = .nm)
+      expect_true(max(abs(s$dcp)) > 1e-3, info = .nm)
+      expect_equal(s$dcp, .fdCol(m, .es[[.nm]], "cp"), tolerance = 1e-5, info = .nm)
+    }
+  })
+
+  test_that("linCmtB(-3) ignores doses into a mixed model's ODE compartments", {
+    # Only doses reaching the LINEAR system can violate the shared-delay
+    # assumption; an ODE compartment of a mixed model is not part of it, so
+    # dosing it must not turn the answer into NA.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag); ke0 <- 0.5
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+      d/dt(ce) <- (cp - ce) * ke0
+    })
+    e <- et(amt = 100, cmt = "central") |> et(amt = 5, cmt = "ce", time = 1) |>
+      et(seq(0.1, 12, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
   })
 
   test_that("linCmtB(-3) rejects a mismatched model shape", {

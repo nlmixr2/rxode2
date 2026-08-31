@@ -42,10 +42,16 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
-// Does this individual have a steady-state infusion (rate/dur) dose?
+// What does this individual's REGIMEN look like, as far as the dose-time
+// sensitivity (linCmtB which1 = -3) is concerned?
+//
+// Steady-state infusion:
 //
 // The dose-time sensitivity (linCmtB which1 = -3) needs dA/dt, which includes
-// the infusion rate.  A regular (non-SS) infusion's rate is recovered at
+// the infusion rate feeding the LINEAR system (ind->InfusionRate +
+// op->linOffset), so only a steady-state infusion into a linCmt() compartment
+// matters -- one into a mixed model's ODE compartment never touches that
+// slice and must not refuse the answer.  A regular (non-SS) infusion's rate is recovered at
 // output time via the linCmtRateHist cache (see linCmtBRateSlot() /
 // linCmtBdoseTime() below, nlmixr2/rxode2#1236).  A steady-state infusion
 // establishes its amounts analytically (handleSSinf8()/solveSSinf(), setting
@@ -57,17 +63,54 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 // solve-order happenstance.  A steady-state BOLUS (linCmtSsBolus) never
 // touches InfusionRate and is unaffected -- it stays exact (see
 // test-lincmt-dose-time-sens.R).
-static inline int linCmtHasSsInfusion(rx_solving_options_ind *ind) {
+//
+// Dosed compartments:
+//
+// The -dA/dt identity assumes every dose feeding the linear system carries
+// the same delay, so which linCmt() compartments this individual actually
+// doses has to be compared against op->linCmtLagMask (the ones the model
+// lags).  `*dosedMask` is a bitmask over the linCmt() block of the physical
+// compartments actually dosed (bit c = block index c, 0 = depot when oral),
+// matching op->linCmtLagMask: `cmt` out of getWh() is the 0-based index into
+// the full state vector and the linCmt() block starts at op->linOffset, so
+// block index c = cmt - op->linOffset.  Doses into a mixed model's ODE
+// compartments fall outside the block and are ignored -- they do not feed the
+// linear system, and neither does a plain zero bolus: it puts nothing into
+// the compartment, so it cannot break the shared-delay assumption and must
+// not be allowed to refuse an otherwise answerable regimen.  ONLY that shape
+// is skipped -- a zero `amt` on a rate/duration record is an infinite
+// infusion, and on a replace or multiply record it sets the compartment to
+// zero; both genuinely dose.
+//
+// The scan covers the individual's WHOLE regimen: an EVID 3 reset between a
+// lagged and an unlagged dose means the two never coexist in the system, but
+// resets are not in ind->idose and this does not window on them, so such a
+// regimen is refused rather than answered.  That is the conservative
+// direction (a loud NA, not a wrong number).
+//
+// Both answers come out of ONE pass over ind->idose.
+static inline void linCmtDoseScan(rx_solving_options_ind *ind,
+                                  rx_solving_options *op,
+                                  int *dosedMask, int *ssInf) {
+  int mask = 0, ss = 0;
+  int nLin = op->numLin < 31 ? op->numLin : 31;
   for (int i = 0; i < ind->ndoses; ++i) {
     int wh, cmt, wh100, whI, wh0;
     getWh(getEvid(ind, ind->idose[i]), &wh, &cmt, &wh100, &whI, &wh0);
+    int c = cmt - op->linOffset;
+    if (c < 0 || c >= nLin) continue;   // not part of the linear system
     if ((wh0 == EVID0_SS0 || wh0 == EVID0_SS || wh0 == EVID0_SS20 ||
          wh0 == EVID0_SS2 || wh0 == EVID0_SSINF) &&
         whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
-      return 1;
+      ss = 1;
+    }
+    if (!(whI == EVIDF_NORMAL && wh0 == EVID0_REGULAR &&
+          getDoseNumber(ind, i) == 0.0)) {
+      mask |= (1 << c);
     }
   }
-  return 0;
+  *dosedMask = mask;
+  *ssInf = ss;
 }
 
 // Per-idx cache of the infusion rate feeding a linCmt() model, keyed the same
@@ -2010,13 +2053,21 @@ extern "C" int linCmtZeroJac(int i) {
 // right-hand side gives d/dL exactly (see linCmtStan::dAdt()).  `rate` is
 // either the live ind->InfusionRate slice (while genuinely solving) or the
 // linCmtBRateSlot() cache for that idx (a re-query, e.g. the output pass);
-// see the caller in linCmtB().  Returns NA_REAL for a call that does not
-// describe the model `lc` is set up for, when `rate` could not be recovered
-// (NULL -- see linCmtBRateSlot()), for a steady-state infusion
-// (linCmtHasSsInfusion()), or for an out of range `which2`.
+// see the caller in linCmtB().  The identity holds only while every dose
+// feeding the linear system carries the same delay, which is a property of
+// this individual's REGIMEN, so op->linCmtLagMask (which compartments the
+// model lags) is compared against the compartments actually dosed: an
+// individual that doses no lagged compartment (including one that doses
+// none at all and runs off an initial condition) gets an exact 0, and one
+// mixing lagged and unlagged doses gets NA_REAL rather than the biased
+// single-delay answer (nlmixr2/rxode2#1237).  Also NA_REAL for a call that
+// does not describe the model `lc` is set up for, when `rate` could not be
+// recovered (NULL -- see linCmtBRateSlot()), for a steady-state infusion
+// (linCmtDoseScan()), or for an out of range `which2`.
 static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
                                      const Eigen::Matrix<double, Eigen::Dynamic, 1> &amt,
                                      rx_solving_options_ind *ind,
+                                     rx_solving_options *op,
                                      const double *rate,
                                      int ncmt, int oral0, int which2, int trans,
                                      double p1, double v1,
@@ -2027,8 +2078,38 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
       (int)amt.size() != ncmt + oral0) {
     return NA_REAL;
   }
+  if (which2 != -3 && (which2 < 0 || which2 >= ncmt + oral0)) return NA_REAL;
+  int dosed, ssInf;
+  linCmtDoseScan(ind, op, &dosed, &ssInf);
+  // Does this individual's regimen actually satisfy the one-shared-delay
+  // assumption the -dA/dt identity rests on (nlmixr2/rxode2#1237)?  Which
+  // compartments carry a modeled alag() is model information
+  // (op->linCmtLagMask); which ones this individual doses is DATA, so it can
+  // only be decided here.  With no modeled alag() declared on any linCmt()
+  // compartment there is nothing to compare against -- the caller is asking
+  // for a delay it applies to every dose itself, so answer as before.
+  if (op->linCmtLagMask != 0) {
+    if ((dosed & op->linCmtLagMask) == 0) {
+      // No dose reaches a lagged compartment, so the amounts do not depend on
+      // the delay at all: the derivative is exactly 0, whatever the rest of
+      // the regimen looks like.  (The IV arm of a paired IV/oral design lands
+      // here, and it is exact even for the steady-state infusion refused
+      // below.)  This covers an individual with no linCmt() dose at all,
+      // whose amounts are whatever the initial conditions put there -- those
+      // are not delayed either, so -dA/dt would be a nonzero answer to a
+      // question whose answer is 0.
+      return 0.0;
+    }
+    if ((dosed & ~op->linCmtLagMask) != 0) {
+      // Some doses are delayed and some are not, so there is no single delay
+      // to differentiate wrt.  Refuse rather than return the single-delay
+      // answer, which is biased by the undelayed doses' contribution -- see
+      // nlmixr2/rxode2#1237.
+      return NA_REAL;
+    }
+  }
   if (rate == NULL) return NA_REAL;
-  if (linCmtHasSsInfusion(ind)) return NA_REAL;
+  if (ssInf) return NA_REAL;
   Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
   if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
     return NA_REAL;
@@ -2088,14 +2169,18 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
  *  with d(alag)/dp to get the sensitivity wrt a model parameter.  This
  *  requires that EVERY dose reaching the linear system carries the same
  *  `alag()`; it is not the per-compartment derivative of a model that lags
- *  its compartments differently (nlmixr2/rxode2#1237).  A model that would
- *  violate this -- calling `linCmtB(which1 = -3)` while its linCmt()
- *  compartments carry more than one distinct `alag()` expression -- is
- *  refused at build time by `.rxLinCmtDoseTimeSensCheck()` (R/eventSens.R)
- *  rather than silently given the single-delay answer.  A regular infusion's
- *  rate is recovered at output time via the linCmtBRateSlot() per-idx cache
- *  (nlmixr2/rxode2#1236); an individual with a steady-state infusion still
- *  gets `NA_REAL` -- see linCmtHasSsInfusion().
+ *  its compartments differently (nlmixr2/rxode2#1237).  Two complementary
+ *  checks keep it from silently answering anyway: a model whose linCmt()
+ *  compartments carry more than one distinct `alag()` expression is refused
+ *  at build time by `.rxLinCmtDoseTimeSensCheck()` (R/eventSens.R), and an
+ *  individual whose REGIMEN doses both a lagged and an unlagged linCmt()
+ *  compartment -- data this package only sees while solving -- gets
+ *  `NA_REAL` here.  An individual dosing no lagged compartment at all gets
+ *  an exact 0: its amounts do not depend on the delay, whether they came
+ *  from undelayed doses or from an initial condition.  A regular
+ *  infusion's rate is recovered at output time via the linCmtBRateSlot()
+ *  per-idx cache (nlmixr2/rxode2#1236); an individual with a steady-state
+  *  infusion still gets `NA_REAL` -- see linCmtDoseScan().
  *
  *  The parameter order is as follows:
  *
@@ -2393,7 +2478,7 @@ static inline bool linCmtBquery(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
     // ind->InfusionRate has since been cleared/moved on; use the cached rate.
     const double *rate = (!ind->doSS && ind->solvedIdx >= idx) ?
       linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
-    *out = linCmtBdoseTime(lcb.lc, lcb.fx, ind, rate, ncmt, oral0, which2,
+    *out = linCmtBdoseTime(lcb.lc, lcb.fx, ind, op, rate, ncmt, oral0, which2,
                            trans, p1, v1, p2, p3, p4, p5, ka);
   } else if (which1 == -4) {
     *out = linCmtBtransition(lcb, rx, ind, op, idx, _t, ncmt, oral0, which2, trans,

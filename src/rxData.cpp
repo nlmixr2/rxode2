@@ -6075,6 +6075,7 @@ static inline void iniRx(rx_solve* rx) {
   op->numLin = 0;
   op->depotLin = 0;
   op->linOffset = 0;
+  op->linCmtLagMask = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
@@ -6095,6 +6096,25 @@ static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
+// Bitmask of the linCmt() block's physical compartments carrying a modeled
+// alag(), for op->linCmtLagMask.  `mv[RxMv_stateProp]` is parallel to
+// `mv[RxMv_state]`, which is the compartment order, and the linCmt() block is
+// the trailing `numLin + numLinSens` compartments, so block index c is state
+// index `linOffset + c`.  propAlag is src/tran.h's bit 4 (not included here).
+static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
+  if (numLin <= 0 || mv.size() <= RxMv_stateProp) return 0;
+  IntegerVector stateProp = mv[RxMv_stateProp];
+  int mask = 0;
+  int n = stateProp.size();
+  int nLin = numLin < 31 ? numLin : 31;   // same clamp linCmtDoseScan() uses
+  for (int c = 0; c < nLin; ++c) {
+    int i = linOffset + c;
+    if (i < 0 || i >= n) continue;
+    if ((stateProp[i] & 4) != 0) mask |= (1 << c);
+  }
+  return mask;
+}
+
 static int _rxSolveCallN = 0;
 
 // Restore serialized state then run integration + build output data frame.
@@ -6110,6 +6130,13 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   if (!rxDynLoad(obj)) {
     (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
   }
+
+  // Take the model variables BEFORE the restore.  rxModelVars_() can run R --
+  // a model that came from another package and no longer validates is
+  // re-parsed here -- and nothing that runs R belongs between rxRestoreState_()
+  // and the solve it set up.  This is also the order the ordinary rxSolve_()
+  // path uses: model vars first, then op.
+  List mvRaw = rxModelVars_(obj);
 
   // Restore the pre-integration solve state from binary file.
   // rxRestoreState_ calls rxSolveFreeC() (which clears ODE function pointers),
@@ -6142,6 +6169,19 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
     rx_solve* rx = getRxSolve_();
     rx_solving_options* op = rx->op;
     if (op->cores == 0) op->cores = 1;
+    // Which linCmt() compartments carry a modeled alag() is a property of the
+    // MODEL, so take it from the model rather than the stream: a stream
+    // written before format 6 does not carry it at all, and would otherwise
+    // leave the mask at 0 and let linCmtB(which1 = -3) answer a mixed-delay
+    // regimen it should refuse (nlmixr2/rxode2#1119).  Only when the model
+    // describes the layout that was just restored, though -- otherwise the
+    // stream's own value (format 6 and later) is the better answer.
+    if (mvRaw.size() > RxMv_state) {
+      CharacterVector mvState = mvRaw[RxMv_state];
+      if (mvState.size() == op->neq) {
+        op->linCmtLagMask = rxLinCmtLagMask(mvRaw, op->linOffset, op->numLin);
+      }
+    }
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
     ensureLinCmtB((int)op->cores);
@@ -6757,6 +6797,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLin = numLin;
     op->depotLin = depotLin;
     op->linOffset = op->neq - numLin - numLinSens;
+    op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
