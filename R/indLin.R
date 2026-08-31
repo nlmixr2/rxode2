@@ -80,8 +80,11 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
         .sumExpr <- .sumExpr + .t
       }
       # Negate the Basic directly rather than round-tripping through a string:
-      # same simplification, and no re-parse to fail on a dotted name.
-      .elimStr <- as.character(-.sumExpr)
+      # same simplification, and no re-parse to fail on a dotted name.  Expanded
+      # for the same reason the sensitivity path expands it (rxode2#1298): a
+      # column sum symengine leaves as a product of sums prints as a non-zero
+      # elimination that is really zero.
+      .elimStr <- as.character(.rxIndLinExpand(-.sumExpr))
       if (.elimStr != "0") {
         .knameOut <- paste0("k_", .cmt1, "_output")
         if (.elimStr == .knameOut || .elimStr == paste0("k.", .cmt1, ".output")) {
@@ -184,6 +187,49 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   return(paste(.code, collapse = "\n"))
 }
 
+#' Is a symengine expression algebraically zero?
+#'
+#' The one place the indLin/matExp generators decide a term does not exist.
+#' Tested on the expanded form: symengine keeps a product of sums as a product,
+#' so `rhs - A.X` leaves an expression that prints as non-zero even when every
+#' term cancels -- and emitting it as an `indLin()` forcing demotes the whole
+#' model from one cached exponential per interval to the fixed-point iteration
+#' (rxode2#1298).
+#'
+#' @param e symengine expression (or anything `rxFromSE()` accepts).
+#' @return `TRUE` when the expression is zero.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxIndLinIsZero <- function(e) {
+  # rxFromSE() resolves its argument by name (substitute()), so the expansion
+  # has to be bound to a plain local before it is handed over.
+  .se <- .rxIndLinExpand(e)
+  .z <- rxFromSE(.se)
+  .z == "0" || .z == "0.0" || .z == "-0"
+}
+
+#' Expand a symengine expression when expansion does not grow it
+#'
+#' `symengine::expand()` is what cancels the algebraically-zero residual the
+#' term-wise `rhs - A.X` split leaves behind, and it also collapses the
+#' un-simplified `k_*_output` constants the same split produces.  It can grow a
+#' genuinely nonlinear expression instead, and the forcing it would grow is
+#' re-evaluated on every `ME()` call, so the expansion is kept only when it is
+#' no longer than what it replaced -- a cancellation to `0` always is.
+#'
+#' @param e symengine expression; anything that is not a `Basic` (a constant
+#'   `d/dt(x) <- 0` is stored as a plain numeric) is returned unchanged.
+#' @return `e`, or its expansion.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxIndLinExpand <- function(e) {
+  if (!inherits(e, "Basic")) return(e)
+  .x <- tryCatch(symengine::expand(e), error = function(.e) NULL)
+  if (is.null(.x)) return(e)
+  if (nchar(as.character(.x)) > nchar(as.character(e))) return(e)
+  .x
+}
+
 #' Total derivative of an indLin/matExp Jacobian-entry expression
 #'
 #' `expr` is a scalar Jacobian-entry expression, differentiated wrt every
@@ -206,10 +252,6 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @return symengine expression for the total derivative.
 #' @noRd
 .rxIndLinTotalD <- function(expr, byVar, states, statesSe, byVarSe) {
-  .isZero <- function(.e) {
-    .z <- rxFromSE(.e)
-    .z == "0" || .z == "0.0" || .z == "-0"
-  }
   .vars <- tryCatch(
     vapply(symengine::free_symbols(expr), as.character, character(1)),
     error = function(e) character(0)
@@ -230,14 +272,14 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   for (.i in seq_along(states)) {
     if (!(statesSe[[.i]] %in% .vars)) next
     .dl <- symengine::D(expr, symengine::Symbol(statesSe[[.i]]))
-    if (!.isZero(.dl)) {
+    if (!.rxIndLinIsZero(.dl)) {
       .add(.dl * symengine::Symbol(paste0("rx__sens_", states[[.i]], "_BY_", byVar, "__")))
     }
   }
   for (.s in .vars) {
     if (!startsWith(.s, "rx__sens_") || !endsWith(.s, "__")) next
     .ds <- symengine::D(expr, symengine::Symbol(.s))
-    if (.isZero(.ds)) next
+    if (.rxIndLinIsZero(.ds)) next
     .target <- paste0(substring(.s, 1L, nchar(.s) - 2L), "_BY_", byVar, "__")
     .add(.ds * symengine::Symbol(.target))
   }
@@ -272,19 +314,17 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #'   `k_<from>_<to>_nd = <expr>` lines, skipping pairs that summed to zero).
 #' @noRd
 .rxIndLinNdAccumulator <- function() {
-  .isZero <- function(.e) {
-    .z <- rxFromSE(.e)
-    .z == "0" || .z == "0.0" || .z == "-0"
-  }
   .env <- new.env(parent = emptyenv())
   .order <- character(0)
   .add <- function(from, to, val) {
-    if (.isZero(val)) return(invisible())
+    if (.rxIndLinIsZero(val)) return(invisible())
     .key <- paste0(from, "\r", to)
     if (!exists(.key, envir = .env, inherits = FALSE)) {
       .order <<- c(.order, .key)
     } else {
-      val <- get(.key, envir = .env, inherits = FALSE) + val
+      # Two families that landed on the same pair can cancel, so the sum is
+      # expanded before it is stored -- `emit()`'s zero test reads it back.
+      val <- .rxIndLinExpand(get(.key, envir = .env, inherits = FALSE) + val)
     }
     assign(.key, val, envir = .env)
     invisible()
@@ -293,7 +333,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     .lines <- character(0)
     for (.key in .order) {
       .val <- get(.key, envir = .env, inherits = FALSE)
-      if (.isZero(.val)) next
+      if (.rxIndLinIsZero(.val)) next
       .parts <- strsplit(.key, "\r", fixed = TRUE)[[1L]]
       .lines <- c(.lines, paste0("k_", .parts[1L], "_", .parts[2L], "_nd = ", rxFromSE(.val)))
     }
@@ -390,10 +430,6 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   #    iterates it.  The Jacobian is still needed -- for the df()/dy() block and
   #    for the forcing -- but it is no longer what the rate constants come from.
   .zero <- symengine::S("0")
-  .isZero <- function(.e) {
-    .z <- rxFromSE(.e)
-    .z == "0" || .z == "0.0" || .z == "-0"
-  }
   # `.zero +` coerces a plain numeric (how a constant `d/dt(depot) <- 0` is
   # stored) to a Basic, which symengine::D() and the arithmetic below require.
   .rhs <- lapply(.states, function(.s) {
@@ -411,7 +447,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   names(.stateSym) <- .states
   # Full Jacobian, for the df()/dy() block only.
   .jac <- lapply(.states, function(.i) {
-    .row <- lapply(.states, function(.j) symengine::D(.rhs[[.i]], .stateSym[[.j]]))
+    .row <- lapply(.states, function(.j) .rxIndLinExpand(symengine::D(.rhs[[.i]], .stateSym[[.j]])))
     names(.row) <- .states
     .row
   })
@@ -429,7 +465,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   .A <- lapply(.states, function(.i) {
     .row <- lapply(.states, function(.j) {
       .t <- .aTxt[.i, .j]
-      if (.t == "0") .zero else .zero + eval(parse(text = .t), envir = .env)
+      if (.t == "0") .zero else .rxIndLinExpand(.zero + eval(parse(text = .t), envir = .env))
     })
     names(.row) <- .states
     .row
@@ -442,24 +478,34 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # indLin():105-113 documents.  The split is term wise, so the residual is the
   # same expression; symengine cancels the A.X part outright.  This is also
   # what carries a state-free input term (`d/dt(x) = k0 - ke*x`), which the
-  # Jacobian never saw.
+  # Jacobian never saw.  Expanded, because symengine leaves `A_ij * X_j` as a
+  # product of a sum and a symbol and so cancels only part of it: without the
+  # expansion every model with two or more compartments keeps a residual that
+  # is algebraically zero, and a structurally non-zero forcing is what puts the
+  # solve on the fixed-point iteration instead of one cached exponential per
+  # interval (rxode2#1298).
   .force <- lapply(.states, function(.i) {
     .f <- .rhs[[.i]]
     for (.j in .states) {
       .aij <- .A[[.i]][[.j]]
-      if (!.isZero(.aij)) .f <- .f - .aij * .stateSym[[.j]]
+      if (!.rxIndLinIsZero(.aij)) .f <- .f - .aij * .stateSym[[.j]]
     }
-    .f
+    .rxIndLinExpand(.f)
   })
   names(.force) <- .states
-  # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j])
-  .elimOf <- function(.j) {
+  # elimination from compartment j: -(A[j,j] + sum_{i != j} A[i,j]).  Computed
+  # once per compartment: it is read in every sensitivity block, and the same
+  # expansion that cancels the forcing is what turns `-q/v-(-q/v-cl/v)` into
+  # the `cl/v` the emitted `k_<j>_output` should have said all along.
+  .elimAll <- lapply(.states, function(.j) {
     .e <- -.A[[.j]][[.j]]
     for (.i in .states) {
       if (.i != .j) .e <- .e - .A[[.i]][[.j]]
     }
-    .e
-  }
+    .rxIndLinExpand(.e)
+  })
+  names(.elimAll) <- .states
+  .elimOf <- function(.j) .elimAll[[.j]]
 
   # 3. Build model code
   .code <- c("matExp()")
@@ -499,7 +545,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     for (.i in .states) {
       if (.i == .j) next
       .aij <- .A[[.i]][[.j]]
-      if (.isZero(.aij)) next
+      if (.rxIndLinIsZero(.aij)) next
       .kname <- paste0("k_", .j, "_", .i)
       .val <- rxFromSE(.aij)
       # A matExp()-form input can carry the rate as a model parameter, in which
@@ -512,7 +558,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       }
     }
     .elim <- .elimOf(.j)
-    if (!.isZero(.elim)) {
+    if (!.rxIndLinIsZero(.elim)) {
       .knameOut <- paste0("k_", .j, "_output")
       .elimVal <- rxFromSE(.elim)
       if (.elimVal == .knameOut || .elimVal == paste0("k.", .j, ".output")) {
@@ -529,7 +575,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # loop below and is re-derived here.
   for (.i in .states) {
     .fi <- .force[[.i]]
-    if (!.isZero(.fi)) {
+    if (!.rxIndLinIsZero(.fi)) {
       .code <- c(.code, paste0("indLin(", .i, ") <- ", rxFromSE(.fi)))
     }
   }
@@ -545,7 +591,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   for (.i in .states) {
     for (.j in .states) {
       .jij <- .jac[[.i]][[.j]]
-      if (!.isZero(.jij)) {
+      if (!.rxIndLinIsZero(.jij)) {
         .code <- c(.code, paste0("df(", .i, ")/dy(", .j, ") = ", rxFromSE(.jij)))
       }
     }
@@ -561,11 +607,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     for (.j in .states) {
       for (.i in .states) {
         if (.i == .j) next
-        if (!.isZero(.A[[.i]][[.j]])) {
+        if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
           .code <- c(.code, paste0("k_", .S(.j), "_", .S(.i), " = k_", .j, "_", .i))
         }
       }
-      if (!.isZero(.elimOf(.j))) {
+      if (!.rxIndLinIsZero(.elimOf(.j))) {
         .code <- c(.code, paste0("k_", .S(.j), "_output = k_", .j, "_output"))
       }
     }
@@ -574,8 +620,8 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     #     X_j is not depleted).
     for (.j in .states) {
       for (.i in .states) {
-        .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
-        if (!.isZero(.dAdp)) {
+        .dAdp <- .rxIndLinExpand(symengine::D(.A[[.i]][[.j]], .pSym))
+        if (!.rxIndLinIsZero(.dAdp)) {
           .code <- c(.code, paste0("k_", .j, "_", .S(.i), "_nd = ", rxFromSE(.dAdp)))
         }
       }
@@ -585,9 +631,9 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     #     which is exactly .rxIndLinTotalD() (rxode2#1187).
     for (.i in .states) {
       .fi <- .force[[.i]]
-      if (.isZero(.fi)) next
-      .g <- .rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe)
-      if (!.isZero(.g)) {
+      if (.rxIndLinIsZero(.fi)) next
+      .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe))
+      if (!.rxIndLinIsZero(.g)) {
         .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
       }
     }
@@ -616,11 +662,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         for (.j in .states) {
           for (.i in .states) {
             if (.i == .j) next
-            if (!.isZero(.A[[.i]][[.j]])) {
+            if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
               .code <- c(.code, paste0("k_", .S2(.j), "_", .S2(.i), " = k_", .j, "_", .i))
             }
           }
-          if (!.isZero(.elimOf(.j))) {
+          if (!.rxIndLinIsZero(.elimOf(.j))) {
             .code <- c(.code, paste0("k_", .S2(.j), "_output = k_", .j, "_output"))
           }
         }
@@ -635,7 +681,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
             .acc$add(.S1p(.k), .S2(.i), .c2a)
           }
           for (.j in .states) {
-            .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
+            .dAdp <- .rxIndLinExpand(symengine::D(.A[[.i]][[.j]], .pSym))
             .acc$add(.S1q(.j), .S2(.i), .dAdp) # from S^q_j
             .c2c <- .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe) # from X_j
             .acc$add(.j, .S2(.i), .c2c)
@@ -649,9 +695,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         # is keyed by one target compartment, so p == q still gives one line.
         for (.i in .states) {
           .fi <- .force[[.i]]
-          if (.isZero(.fi)) next
-          .g2 <- .rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe, c(.pSe, .qSe))
-          if (!.isZero(.g2)) {
+          if (.rxIndLinIsZero(.fi)) next
+          .g2 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe,
+                                                 c(.pSe, .qSe)))
+          if (!.rxIndLinIsZero(.g2)) {
             .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
           }
         }
@@ -691,11 +738,11 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           for (.j in .states) {
             for (.i in .states) {
               if (.i == .j) next
-              if (!.isZero(.A[[.i]][[.j]])) {
+              if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
                 .code <- c(.code, paste0("k_", .S3(.j), "_", .S3(.i), " = k_", .j, "_", .i))
               }
             }
-            if (!.isZero(.elimOf(.j))) {
+            if (!.rxIndLinIsZero(.elimOf(.j))) {
               .code <- c(.code, paste0("k_", .S3(.j), "_output = k_", .j, "_output"))
             }
           }
@@ -712,7 +759,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
               .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from S^p_k
             }
             for (.j in .states) {
-              .dAdp <- symengine::D(.A[[.i]][[.j]], .pSym)
+              .dAdp <- .rxIndLinExpand(symengine::D(.A[[.i]][[.j]], .pSym))
               .acc$add(.S2qr(.j), .S3(.i), .dAdp) # from S^{qr}_j
               .acc$add(.S1q(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .r, .states, .statesSe, .rSe)) # from S^q_j
               .acc$add(.S1r(.j), .S3(.i), .rxIndLinTotalD(.dAdp, .q, .states, .statesSe, .qSe)) # from S^r_j
@@ -729,10 +776,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           # as second order -- a forcing is keyed by one target compartment.
           for (.i in .states) {
             .fi <- .force[[.i]]
-            if (.isZero(.fi)) next
-            .g3 <- .rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
-                                   c(.pSe, .qSe, .rSe))
-            if (!.isZero(.g3)) {
+            if (.rxIndLinIsZero(.fi)) next
+            .g3 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
+                                                   c(.pSe, .qSe, .rSe)))
+            if (!.rxIndLinIsZero(.g3)) {
               .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
             }
           }
