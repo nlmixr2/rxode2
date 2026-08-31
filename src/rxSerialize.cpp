@@ -21,7 +21,9 @@ extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
 static const uint32_t rxSerializeFormatVer = 6u;
-// Format 6 added op->linCmtLagMask after linOffset.
+// Format 6 added op->linCmtLagMask after linOffset (read only when fmt >= 6:
+// it landed in the struct's tail padding, so sizeof(rx_solving_options) is
+// unchanged and the size check below cannot reject a format 5 stream).
 // Format 5 dropped the linCmt() sensitivity-strategy fields format 4 had
 // introduced (the strategy was removed; a format-4 stream's four strategy
 // ints are read and discarded), keeping linCmtBraw after sensH.
@@ -716,7 +718,18 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_I32(doIndLin); R_I32(strictSS);
   R_DBL(infSSstep); R_I32(mxhnil); R_DBL(hmxi);
   R_I32(nLlik); R_I32(numLinSens); R_I32(numLin);
-  R_I32(depotLin); R_I32(linOffset); R_I32(linCmtLagMask); R_I32(ssSolved);
+  R_I32(depotLin); R_I32(linOffset);
+  // Format 6 appended linCmtLagMask here.  An older stream does not carry it,
+  // so reading it unconditionally would shift every field after it by one.
+  // The sizeof(rx_solving_options) check above does NOT catch that: the
+  // struct ends in a run of ints, and the new int landed in tail padding the
+  // 8 byte alignment already had -- measured, sizeof is 1488 either way.
+  if (fmt >= 6u) {
+    R_I32(linCmtLagMask);
+  } else {
+    op->linCmtLagMask = 0;   // pre-fix behavior: nothing known to be lagged
+  }
+  R_I32(ssSolved);
   R_I32(indOwnAlloc);
 
 #undef R_I32

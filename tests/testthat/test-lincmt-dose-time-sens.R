@@ -382,6 +382,46 @@ rxTest({
     }
   })
 
+  test_that("linCmtB(-3) still counts a zero-amount infusion record", {
+    # The other half of the same distinction: a zero `amt` on a rate record is
+    # not a no-op, so it has to keep counting as a dose.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka); lag <- 2 * exp(eta_lag)
+      alag(depot) <- lag
+      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
+      dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
+    })
+    e <- et(amt = 100, cmt = "depot") |>
+      et(amt = 0, rate = 10, cmt = "central", time = 2) |>
+      et(seq(0.1, 24, 0.25))
+    expect_true(all(is.na(rxSolve(m, e, params = .p)$dcp)))
+  })
+
+  test_that("a steady-state infusion into an ODE compartment does not refuse linCmtB(-3)", {
+    # -dA/dt needs the rate feeding the LINEAR system (ind->InfusionRate +
+    # op->linOffset).  A steady-state infusion into a mixed model's ODE
+    # compartment never touches that slice, so it must not cost the linCmt()
+    # compartments their (exact) dose-time sensitivity.
+    m <- rxode2({
+      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag); ke0 <- 0.5
+      alag(central) <- lag
+      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
+      dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
+      d/dt(ce) <- (cp - ce) * ke0
+    })
+    e <- et(amt = 100, cmt = "central") |>
+      et(amt = 10, rate = 5, ss = 1, ii = 12, cmt = "ce") |>
+      et(seq(0.1, 12, 0.25))
+    s <- rxSolve(m, e, params = .p)
+    expect_false(any(is.na(s$dcp)))
+    expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
+    # ... while a steady-state infusion into the linCmt() compartment itself
+    # still is refused
+    eLin <- et(amt = 100, rate = 25, ss = 1, ii = 12, cmt = "central") |>
+      et(seq(0.1, 12, 0.25))
+    expect_true(all(is.na(rxSolve(m, eLin, params = .p)$dcp)))
+  })
+
   test_that("linCmtB(-3) accepts dosing a subset of the lagged compartments", {
     # Both linCmt() compartments carry the SAME modeled alag(), so every dose
     # is delayed alike however many of them the regimen actually uses.  Pins

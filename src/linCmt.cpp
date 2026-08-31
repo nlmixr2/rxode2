@@ -48,7 +48,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 // Steady-state infusion:
 //
 // The dose-time sensitivity (linCmtB which1 = -3) needs dA/dt, which includes
-// the infusion rate.  A regular (non-SS) infusion's rate is recovered at
+// the infusion rate feeding the LINEAR system (ind->InfusionRate +
+// op->linOffset), so only a steady-state infusion into a linCmt() compartment
+// matters -- one into a mixed model's ODE compartment never touches that
+// slice and must not refuse the answer.  A regular (non-SS) infusion's rate is recovered at
 // output time via the linCmtRateHist cache (see linCmtBRateSlot() /
 // linCmtBdoseTime() below, nlmixr2/rxode2#1236).  A steady-state infusion
 // establishes its amounts analytically (handleSSinf8()/solveSSinf(), setting
@@ -88,14 +91,14 @@ static inline void linCmtDoseScan(rx_solving_options_ind *ind,
   for (int i = 0; i < ind->ndoses; ++i) {
     int wh, cmt, wh100, whI, wh0;
     getWh(getEvid(ind, ind->idose[i]), &wh, &cmt, &wh100, &whI, &wh0);
+    int c = cmt - op->linOffset;
+    if (c < 0 || c >= nLin) continue;   // not part of the linear system
     if ((wh0 == EVID0_SS0 || wh0 == EVID0_SS || wh0 == EVID0_SS20 ||
          wh0 == EVID0_SS2 || wh0 == EVID0_SSINF) &&
         whI != EVIDF_NORMAL && whI != EVIDF_REPLACE && whI != EVIDF_MULT) {
       ss = 1;
     }
-    int c = cmt - op->linOffset;
-    if (c >= 0 && c < nLin &&
-        !(whI == EVIDF_NORMAL && wh0 == EVID0_REGULAR &&
+    if (!(whI == EVIDF_NORMAL && wh0 == EVID0_REGULAR &&
           getDoseNumber(ind, i) == 0.0)) {
       mask |= (1 << c);
     }
