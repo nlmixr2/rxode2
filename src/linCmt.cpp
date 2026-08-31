@@ -156,7 +156,13 @@ static inline double *linCmtBRateSlot(rx_solving_options_ind *ind, int idx, int 
 // Per-idx cache of the per-origin decomposition of the linCmt() amounts
 // (ind->linCmtOrigin), keyed and grown exactly like linCmtBRateSlot() above
 // and read back for the same reason: the output pass re-queries an index the
-// live state has already moved past.  `width` is m*RX_LINCMT_ORIGIN_MAX.
+// live state has already moved past.  A slot is
+// RX_LINCMT_ORIGIN_SLOTW(m) wide: the m*RX_LINCMT_ORIGIN_MAX decomposition
+// followed by the `seeded` state that produced it.  That state has to travel
+// WITH the row rather than be read off ind->linCmtOriginSeeded, because the
+// output pass runs after iniSubject() has cleared the live flag -- which is
+// the very reason this cache exists.
+#define RX_LINCMT_ORIGIN_SLOTW(m) ((m)*RX_LINCMT_ORIGIN_MAX + 1)
 static inline double *linCmtOriginSlot(rx_solving_options_ind *ind, int idx, int width, int grow) {
   if (idx < 0 || width <= 0) return NULL;
   if (ind->linCmtOriginHistW != width) {
@@ -2163,6 +2169,23 @@ static inline double linCmtBdoseTime(stan::math::linCmtStan &lc,
   return NA_REAL;
 }
 
+// Record this row's decomposition in the per-idx cache.
+//
+// The stored flag is 1 for any usable decomposition and 2 for a poisoned one;
+// a slot never written keeps the 0 linCmtOriginSlot() zero-fills it with, so a
+// re-query can tell "this row has no answer" from "this row's answer is 0".
+// A row that only RESTORED (no advance -- the first record of a subject, whose
+// amounts are still the initial conditions) is a usable all-zero
+// decomposition, but the live linCmtOriginSeeded stays 0 there: it also means
+// "op->inits has not been subtracted yet", which the first real advance needs.
+static inline void linCmtOriginCacheRow(rx_solving_options_ind *ind, int idx, int m) {
+  if (m <= 0 || m > RX_LINCMT_ORIGIN_MAX) return;
+  double *slot = linCmtOriginSlot(ind, idx, RX_LINCMT_ORIGIN_SLOTW(m), 1);
+  if (slot == NULL) return;
+  std::copy(ind->linCmtOrigin, ind->linCmtOrigin + m*RX_LINCMT_ORIGIN_MAX, slot);
+  slot[m*RX_LINCMT_ORIGIN_MAX] = (ind->linCmtOriginSeeded == 2) ? 2.0 : 1.0;
+}
+
 // The per-origin decomposition of the linCmt() amounts, kept in step with the
 // solve one interval at a time.
 //
@@ -2205,10 +2228,16 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
     memset(O, 0, sizeof(ind->linCmtOrigin));
     if (q0 < 0 || q0 >= m || (int)fx.size() != m) {
       ind->linCmtOriginSeeded = 2;
+      linCmtOriginCacheRow(ind, idx, m);
       return;
     }
     for (int j = 0; j < m; ++j) O[q0*st + j] = fx(j, 0);
     ind->linCmtOriginSeeded = 1;
+  } else if (ind->linCmtOriginSeeded == 2) {
+    // Poisoned by an earlier record whose origin could not be identified;
+    // there is nothing to attribute the amounts to any more.
+    linCmtOriginCacheRow(ind, idx, m);
+    return;
   } else {
     // Attribute whatever entered the compartments since the last advance.
     for (int j = 0; j < m; ++j) {
@@ -2225,6 +2254,7 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
     Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
     if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
       ind->linCmtOriginSeeded = 2;
+      linCmtOriginCacheRow(ind, idx, m);
       return;
     }
     Eigen::Matrix<double, Eigen::Dynamic, 2> g =
@@ -2241,8 +2271,7 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
       for (int j = 0; j < m; ++j) O[q*st + j] = outv(j, 0);
     }
   }
-  double *slot = linCmtOriginSlot(ind, idx, m*st, 1);
-  if (slot != NULL) std::copy(O, O + m*st, slot);
+  linCmtOriginCacheRow(ind, idx, m);
 }
 
 // linCmtB's which1 = -9 / -10 cases: the PER-COMPARTMENT dose-time and
@@ -2277,7 +2306,7 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 static inline double linCmtBorigin(stan::math::linCmtStan &lc,
                                    rx_solving_options_ind *ind,
                                    rx_solving_options *op,
-                                   const double *origin, const double *rate,
+                                   const double *origin, int seeded, const double *rate,
                                    int ncmt, int oral0, int which1, int which2,
                                    int trans,
                                    double p1, double v1,
@@ -2289,7 +2318,13 @@ static inline double linCmtBorigin(stan::math::linCmtStan &lc,
       m > RX_LINCMT_ORIGIN_MAX) {
     return NA_REAL;
   }
-  if (which2 < 0 || origin == NULL || ind->linCmtOriginSeeded == 2) return NA_REAL;
+  // `seeded` != 1 is either a row that never advanced the decomposition -- a
+  // model taking its VALUE from linCmtA() rather than the
+  // linCmtB(which1 = which2 = -1) call these modes require, or one that
+  // declares no modeled alag()/f() so op->linCmtOriginMask left it off -- or
+  // one poisoned by a record whose origin could not be identified.  Both are
+  // NA, never a 0 that reads like a real derivative.
+  if (which2 < 0 || origin == NULL || seeded != 1) return NA_REAL;
   int q   = which2 / RX_LINCMT_ORIGIN_W2;
   int out = which2 % RX_LINCMT_ORIGIN_W2;
   if (q >= m) return NA_REAL;
@@ -2699,11 +2734,19 @@ static inline bool linCmtBquery(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
     // have moved on by the time the output pass asks.
     int reQuery = (!ind->doSS && ind->solvedIdx >= idx);
     const double *rate = reQuery ? linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+    // Width must match what linCmtOriginAdvance() wrote, so it comes from the
+    // CALL's shape (ncmt + oral0), not from op->numLin.  A re-queried row
+    // carries its own seeded state; the live flag is gone by then.
+    int mOrig = ncmt + oral0;
     const double *origin = reQuery ?
-      linCmtOriginSlot(ind, idx, op->numLin*RX_LINCMT_ORIGIN_MAX, 0) :
+      linCmtOriginSlot(ind, idx, RX_LINCMT_ORIGIN_SLOTW(mOrig), 0) :
       ind->linCmtOrigin;
-    *out = linCmtBorigin(lcb.lc, ind, op, origin, rate, ncmt, oral0, which1, which2,
-                         trans, p1, v1, p2, p3, p4, p5, ka);
+    int seeded = ind->linCmtOriginSeeded;
+    if (reQuery) {
+      seeded = (origin == NULL) ? 0 : (int)origin[mOrig*RX_LINCMT_ORIGIN_MAX];
+    }
+    *out = linCmtBorigin(lcb.lc, ind, op, origin, seeded, rate, ncmt, oral0,
+                         which1, which2, trans, p1, v1, p2, p3, p4, p5, ka);
   } else if (which1 == -7) {
     *out = linCmtBcarryAdd(ind, ncmt, oral0, which2, p2);
   } else if (which1 == -8) {
@@ -2966,9 +3009,23 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // evaluation (its amounts belong to a perturbed parameter, not the solve).
   // Opt-in: a model that moves or scales no linCmt() dose pays nothing.
   if (op->linCmtOriginMask != 0 && ind->linCmtHparIndex < -1 &&
-      !((!ind->doSS && ind->solvedIdx >= idx) || ind->_rxFlag == 11)) {
-    linCmtOriginAdvance(lcb.lc, ind, op, a, lcb.fx, r, ncmt, oral0, trans,
-                        p1, v1, p2, p3, p4, p5, ka, idx);
+      ind->_rxFlag != 11) {
+    if (ind->doSS || ind->solvedIdx < idx) {
+      linCmtOriginAdvance(lcb.lc, ind, op, a, lcb.fx, r, ncmt, oral0, trans,
+                          p1, v1, p2, p3, p4, p5, ka, idx);
+    } else {
+      // A restored row advances nothing, but the FIRST record of a subject
+      // only ever restores -- its amounts are still the initial conditions --
+      // and the output pass has no other way to learn that its decomposition
+      // is a real, empty one.  Cache it once; a later restore of an index the
+      // solve has already moved past must not overwrite what it recorded.
+      int mOrig = ncmt + oral0;
+      double *slot = (mOrig > 0 && mOrig <= RX_LINCMT_ORIGIN_MAX) ?
+        linCmtOriginSlot(ind, idx, RX_LINCMT_ORIGIN_SLOTW(mOrig), 1) : NULL;
+      if (slot != NULL && slot[mOrig*RX_LINCMT_ORIGIN_MAX] == 0.0) {
+        linCmtOriginCacheRow(ind, idx, mOrig);
+      }
+    }
   }
   lcb.lc.getJacCp(lcb.J, lcb.fx, theta, lcb.Jg);
   double val = lcb.lc.adjustF(lcb.fx, theta, ind->linCmtHV);
