@@ -99,6 +99,13 @@ dvid(5, 6)"), NA)
     expect_equal(rxNorm(.st), "param(c,d);\ny=c;\nd/dt(b)=-b;\n")
     expect_equal(rxModelVars(rxNorm(.st))$params, .st$params)
 
+    # every declared name became a state, but the model still has an implicit
+    # parameter: the statements go, the parameter stays
+    .dropAll <- rxModelVars("param(a);\nd/dt(a)=-a;\ny=c;\nparam(b);\nd/dt(b)=-b;\n")
+    expect_equal(.dropAll$params, "c")
+    expect_equal(rxNorm(.dropAll), "d/dt(a)=-a;\ny=c;\nd/dt(b)=-b;\n")
+    expect_equal(rxModelVars(rxNorm(.dropAll))$params, .dropAll$params)
+
     # every declared name became a state, so nothing is left to declare
     expect_equal(rxNorm(rxModelVars("param(a);\nparam(a);\nd/dt(a)=-a;\n")),
                  "d/dt(a)=-a;\n")

@@ -40,7 +40,13 @@ static inline void mergeNormParamStatements(SEXP params) {
   for (int i = 0; i < sbNrmL.n; i++) {
     if (rxIsNormParamLine(sbNrmL.line[i])) nParam++;
   }
-  if (nParam < 2) return; // nothing to merge
+  // Nothing to merge.  A lone `param()` statement is left exactly as it is,
+  // even when every name it declares turned out to be a state and it therefore
+  // declares no parameter at all -- normalizing that away is not what #1279 is
+  // about and would change the normalized text of models that were never
+  // broken.  Two such statements are dropped below (`hi` stays -1), so the two
+  // cases do not agree; both still re-parse to the same model.
+  if (nParam < 2) return;
   int np = Rf_length(params);
   int hi = -1;
   for (int i = 0; i < sbNrmL.n; i++) {
