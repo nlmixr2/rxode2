@@ -20,7 +20,8 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 5u;
+static const uint32_t rxSerializeFormatVer = 6u;
+// Format 6 added op->linCmtLagMask after linOffset.
 // Format 5 dropped the linCmt() sensitivity-strategy fields format 4 had
 // introduced (the strategy was removed; a format-4 stream's four strategy
 // ints are read and discarded), keeping linCmtBraw after sensH.
@@ -160,7 +161,7 @@ SEXP rxSaveState_() {
   W_I32(doIndLin); W_I32(strictSS);
   W_DBL(infSSstep); W_I32(mxhnil); W_DBL(hmxi);
   W_I32(nLlik); W_I32(numLinSens); W_I32(numLin);
-  W_I32(depotLin); W_I32(linOffset); W_I32(ssSolved);
+  W_I32(depotLin); W_I32(linOffset); W_I32(linCmtLagMask); W_I32(ssSolved);
   W_I32(indOwnAlloc);
 
 #undef W_I32
@@ -715,7 +716,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_I32(doIndLin); R_I32(strictSS);
   R_DBL(infSSstep); R_I32(mxhnil); R_DBL(hmxi);
   R_I32(nLlik); R_I32(numLinSens); R_I32(numLin);
-  R_I32(depotLin); R_I32(linOffset); R_I32(ssSolved);
+  R_I32(depotLin); R_I32(linOffset); R_I32(linCmtLagMask); R_I32(ssSolved);
   R_I32(indOwnAlloc);
 
 #undef R_I32

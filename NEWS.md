@@ -1242,7 +1242,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   instead of the single-delay answer, and one dosing only lagged
   compartments is unchanged.  A paired IV/oral design -- the case that most
   often estimates a modeled `alag()`/`f()` -- previously took a silently
-  wrong gradient on its IV arm (#1119, #1237).
+  wrong gradient on its IV arm.  The same rule fixes an individual with no
+  `linCmt()` dose at all whose compartments were started from an initial
+  condition: those amounts decay in time, so `-dA/dt` reported a nonzero
+  sensitivity, but an initial condition is not delayed by `alag()` and the
+  answer is 0 (#1119, #1237).
 
 - `linCmtSensH` (the fixed finite-difference step used by the `forwardH`/
   `centralH`/`forward3H`/`endpoint5H` `linCmtSensType` options) is now read
