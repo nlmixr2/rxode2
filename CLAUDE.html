@@ -297,6 +297,7 @@
 </li>
 <li>Use <code>rx_protect.protect()</code> instead of <code>PROTECT()</code>; <code>UNPROTECT</code> will be handled when the object goes out of scope.</li>
 </ul></li>
+<li>EXCEPTION – objects that must outlive a <code>longjmp</code>: <code>rxProtectGuard</code>’s cleanup does NOT fire on <code>Rf_error</code>, so anything claimed by one function and released by another with an error possible in between (the parse translation table and <code>_goodFuns</code>, claimed in <code>_rxode2parse_assignTranslation()</code> / <code>setupTrans()</code> and released in <code>_rxode2parse_unprotect()</code>) must not live on the protect stack at all. R unwinds that stack on the error while the owner’s count stays set, and the next release then pops the <em>caller’s</em> protections – seen as <code>R_Reprotect: only N protected items, can't reprotect index M</code> out of <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code>. Use <code>R_PreserveObject</code>/<code>R_ReleaseObject</code> (via <code>_rxode2parse_preserve()</code>) there, never <code>rxP()</code>/<code>rxUP()</code>.</li>
 </ul></li>
 </ul><div class="section level4">
 <h4 id="exposing-a-cc-function-to-downstream-packages-eg-nlmixr2est">Exposing a C/C++ function to downstream packages (e.g. nlmixr2est)<a class="anchor" aria-label="anchor" href="#exposing-a-cc-function-to-downstream-packages-eg-nlmixr2est"></a></h4>
