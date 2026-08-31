@@ -110,7 +110,12 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 // for extra doses, whose idx does not map into idose.
 static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return ind->ixds;
-  int m = getDoseNumberFromIndex(ind, ind->ix[ind->idx]);
+  int cur = ind->ix[ind->idx];
+  // the solving pass syncs ixds before handle_evid(), so it usually already
+  // matches and the bisection can be skipped
+  if (ind->ixds >= 0 && ind->ixds < ind->ndoses &&
+      ind->idose[ind->ixds] == cur) return ind->ixds;
+  int m = getDoseNumberFromIndex(ind, cur);
   return (m == -1) ? ind->ixds : m;
 }
 
