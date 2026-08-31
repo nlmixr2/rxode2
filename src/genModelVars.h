@@ -18,6 +18,7 @@
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
 #include "rxProtect.h"
+#include "parseParamMerge.h"
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
@@ -619,9 +620,9 @@ static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
   return 0;
 }
 
-static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *buf,
-                                        int *li, int *pi, SEXP lhsStr, int *lhsOrd,
-                                        int *i) {
+static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, int *interp,
+                                        char *buf, int *li, int *pi, SEXP lhsStr,
+                                        int *lhsOrd, int *i) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
     SET_STRING_ELT(lhs, li[0], Rf_mkChar(buf));
@@ -632,6 +633,11 @@ static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *
       if (!strcmp("CMT", buf)) {
         tb.hasCmt = 1;
       }
+      // a dual lhs/parameter takes a slot in the parameter vector like any
+      // other parameter, so its interpolation has to be set here too; the
+      // vector is allocated uninitialized, so skipping it left the factor
+      // holding garbage.
+      interp[pi[0]] = tb.interp[i[0]] + 1;
       SET_STRING_ELT(params, pi[0], Rf_mkChar(buf));
       pi[0] = pi[0]+1;
     }
@@ -693,7 +699,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (assertStateCannotHaveDiff(islhs, i, buf)) continue;
     assertLhsAndDualLhsDiffNotLegal(islhs, i, buf);
     /* is a state var */
-    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr, lhsOrd, &i)) {
+    if (!setLhsAndDualLhsParam(islhs, lhs, params, interp, buf, &li, &pi, lhsStr, lhsOrd, &i)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
       SET_STRING_ELT(params, pi++, Rf_mkChar(_bufw.s));
