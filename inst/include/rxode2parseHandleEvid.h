@@ -89,6 +89,31 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 	}
 }
 
+static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
+  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
+  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
+  while(l <= r){
+    m = FLOOR((l+r)/2);
+    idose= ind->idose[m];
+    if (idose < idx) l = m+1;
+    else if (idose > idx) r = m-1;
+    else return m;
+  }
+  return -1;
+}
+
+// Dose index (into ind->idose) of the record currently being handled.
+// ind->ixds is the solver's running dose counter; the output/lhs pass
+// (rxode2_df.cpp) calls handleTlastInline() without advancing or syncing it, so
+// ixds can point at an unrelated dose there.  Recover the index from ind->idx
+// whenever the record is a real (non-extra) dose, and only fall back to ixds
+// for extra doses, whose idx does not map into idose.
+static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
+  if (ind->idx < 0) return ind->ixds;
+  int m = getDoseNumberFromIndex(ind, ind->ix[ind->idx]);
+  return (m == -1) ? ind->ixds : m;
+}
+
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
   unsigned int p;
   switch (ind->whI) {
@@ -109,8 +134,9 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
       return 0;
     } else {
       // The amt in rxode2 is the infusion rate, but we need the amt
-      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(ind->ixds, ind, 2, &p);
-      else tinf[0] = _getDur(ind->ixds, ind, 2, &p);
+      int doseIdx = handleTlastInlineDoseIndex(ind);
+      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(doseIdx, ind, 2, &p);
+      else tinf[0] = _getDur(doseIdx, ind, 2, &p);
       if (!ISNA(tinf[0])) {
         curDose[0] = tinf[0] * curDose[0];
         return 1;
@@ -155,18 +181,6 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
   }
 }
 
-static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
-  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
-  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
-  while(l <= r){
-    m = FLOOR((l+r)/2);
-    idose= ind->idose[m];
-    if (idose < idx) l = m+1;
-    else if (idose > idx) r = m-1;
-    else return m;
-  }
-  return -1;
-}
 
 
 static inline int syncIdx(rx_solving_options_ind *ind) {
