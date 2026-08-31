@@ -37,18 +37,25 @@ extern "C" void handleTlast(double *time, rx_solving_options_ind *ind) {
 // set badSolve so the error is handled after the parallel region completes.
 // In single-threaded context, call Rf_errorcall for an actionable error message.
 extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p) {
+  // Bounds-check before touching idose: getDoseNumber() dereferences
+  // ind->idose[l], and callers can hand over a dose counter that has run past
+  // the last dose (see the syncIdx() note in rxode2parseHandleEvid.h), so the
+  // read has to be guarded ahead of the branch, not inside it.
+  if (l < 0 || l >= ind->ndoses) {
+    if (backward==2) return(NA_REAL);
+    rx_solving_options *op = (ind->op ? ind->op : &op_global);
+    if (omp_in_parallel()) {
+      int newBadSolve = 1;
+#pragma omp atomic write
+      op->badSolve = newBadSolve;
+      return NA_REAL;
+    }
+    (Rf_errorcall)(R_NilValue, l < 0 ?
+                   "infusion start cannot be found (l <= 0)" :
+                   "infusion end cannot be found (l >= ndoses)");
+  }
   double dose = getDoseNumber(ind, l);
   if (backward==1 && l != 0){
-    if (l <= 0) {
-      rx_solving_options *op = (ind->op ? ind->op : &op_global);
-      if (omp_in_parallel()) {
-        int newBadSolve = 1;
-#pragma omp atomic write
-        op->badSolve = newBadSolve;
-        return NA_REAL;
-      }
-      (Rf_errorcall)(R_NilValue, "infusion start cannot be found (l <= 0)");
-    }
     p[0] = l-1;
     while (p[0] > 0 && getDoseNumber(ind, p[0]) != -dose){
       p[0]--;
@@ -65,17 +72,6 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
     }
     return getAllTimes(ind, ind->idose[l]) - getAllTimes(ind, ind->idose[p[0]]);
   } else {
-    if (l >= ind->ndoses) {
-      if (backward==2) return(NA_REAL);
-      rx_solving_options *op = (ind->op ? ind->op : &op_global);
-      if (omp_in_parallel()) {
-        int newBadSolve = 1;
-#pragma omp atomic write
-        op->badSolve = newBadSolve;
-        return NA_REAL;
-      }
-      (Rf_errorcall)(R_NilValue, "infusion end cannot be found (l >= ndoses)");
-    }
     p[0] = l+1;
     while (p[0] < ind->ndoses && getDoseNumber(ind, p[0]) != -dose){
       p[0]++;

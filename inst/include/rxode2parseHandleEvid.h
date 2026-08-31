@@ -116,7 +116,15 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->ixds >= 0 && ind->ixds < ind->ndoses &&
       ind->idose[ind->ixds] == cur) return ind->ixds;
   int m = getDoseNumberFromIndex(ind, cur);
-  return (m == -1) ? ind->ixds : m;
+  if (m != -1) return m;
+  // _rxPushDose() appends doses at the end of all_times and then re-sorts the
+  // unprocessed idose suffix by time, so idose is not guaranteed to stay
+  // ascending in the record index and the bisection can miss a dose that is
+  // there.  Scan for it before giving up.
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == cur) return j;
+  }
+  return ind->ixds;
 }
 
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
