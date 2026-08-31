@@ -258,11 +258,12 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
   .stiff <- if (is.null(ctrl$method)) NA_integer_ else as.integer(ctrl$method)
   # rxControl() stores -1 for "not set"; rxSolve() then takes the model's flag
-  .indOwn <- if (is.null(ctrl$indOwnAlloc)) NA_integer_ else as.integer(ctrl$indOwnAlloc)
+  .indOwn <- if (is.null(ctrl[["indOwnAlloc"]])) NA_integer_ else as.integer(ctrl[["indOwnAlloc"]])
   if (!is.na(.indOwn) && .indOwn < 0L) .indOwn <- NA_integer_
   list(
     cores      = .cores,
     indOwnAlloc = .indOwn,
+    sample     = as.integer(!is.null(ctrl[["resample"]])),
     nsim       = .nsim,
     neta       = as.integer(.neta),
     neps       = as.integer(.neps),
@@ -433,7 +434,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param neta Number of random effects (etas).
 #' @param neps Number of residual-error levels (epsilons).
 #' @param ncov Number of time-varying covariates.
-#' @param nsim Number of simulations.
+#' @param nsim Number of simulations.  \code{nStud} from \code{control} is
+#'   the replicate count, so it lands here rather than in the subject count.
 #' @param cores Number of parallel OMP threads.
 #' @param nMtime Number of model measurement times.
 #' @param extraCmt Extra compartments (0, 1 = depot, 2 =
@@ -548,6 +550,7 @@ rxMemoryEstimate <- function(
   }
 
   .ci <- NULL
+  .sample <- 0L
   if (!is.null(control)) {
     .ci   <- .rxMemExtractControl(control)
     cores <- .ci$cores
@@ -557,6 +560,7 @@ rxMemoryEstimate <- function(
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
     if (!is.na(.ci$stiff)) stiff <- .ci$stiff
     if (!is.na(.ci$indOwnAlloc)) indOwnAlloc <- .ci$indOwnAlloc
+    .sample <- .ci$sample
   }
   indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
   if (cores <= 0L) {
@@ -579,25 +583,40 @@ rxMemoryEstimate <- function(
   if (stiff == 3L && doIndLin == 0L) doIndLin <- 3L
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
-  .nallVec     <- .summary$nobs + .summary$ndoses
+  # doubles throughout: integer `sum()` returns NA past 2^31, and a solve big
+  # enough to overflow it is exactly the one this estimate exists to size
+  .nallVec     <- as.numeric(.summary$nobs) + as.numeric(.summary$ndoses)
   .nsub        <- nrow(.summary)
-  .nobsTotal   <- sum(.summary$nobs)
+  .nobsTotal   <- sum(as.numeric(.summary$nobs))
   .nallTotal   <- sum(.nallVec)
   # dose share of the events, so the dose count follows whatever rescaling the
   # solve-layout / nSub / nStud branches below do to the event count
-  .doseFrac    <- if (.nallTotal > 0) sum(.summary$ndoses) / .nallTotal else 0
+  .doseFrac    <- if (.nallTotal > 0) sum(as.numeric(.summary$ndoses)) / .nallTotal else 0
   .maxAllTimes <- max(.nallVec)
   .solveStats  <- .rxMemSolveLayoutStats(dat, control, model)
   .solveNallTotal <- .nallTotal
   .solveMaxAllTimes <- .maxAllTimes
 
+  # `nsub` and `nsim` mean to the ALLOCATOR what they mean in rxData.cpp:
+  # `nsub` is the subjects of ONE simulation and `nsim` is how many times that
+  # block is replicated (rx->nsim = nPopPar / rx->nsub), so `nall` is the
+  # events of one simulation too.  nStud is the replicate count, so it belongs
+  # in `nsim`; nSub replaces the data's subject count within a simulation.
+  # `.nsub` stays the TOTAL individual count, which is what `effectiveSubs`
+  # reports and what `.rxOomChunkSize()` divides by.
+  .nsubPerSim <- .nsub
   if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
     .subPerStudy <- if (.ci$nSub > 1L) .ci$nSub else .nsub
     .meanObsTimes <- .nobsTotal / .nsub
     .meanAllTimes <- .nallTotal / .nsub
+    .nsubPerSim <- .subPerStudy
+    nsim       <- .ci$nStud
     .nsub      <- .subPerStudy * .ci$nStud
-    .nobsTotal <- .meanObsTimes * .nsub
-    .nallTotal <- .meanAllTimes * .nsub
+    # per-simulation totals: the components multiply these back up by `nsim`
+    .nobsTotal <- .meanObsTimes * .nsubPerSim
+    .nallTotal <- .meanAllTimes * .nsubPerSim
+    .solveNallTotal <- .nallTotal
+    .solveMaxAllTimes <- .maxAllTimes
   } else if (!is.null(.solveStats)) {
     .solveNallTotal <- .solveStats$nallTotal
     .solveMaxAllTimes <- .solveStats$maxAllTimes
@@ -620,13 +639,14 @@ rxMemoryEstimate <- function(
     nIndSim    = as.integer(nIndSim),
     numLinSens = as.integer(numLinSens),
     numLin     = as.integer(numLin),
-    nsub       = as.integer(.nsub),
+    nsub       = as.integer(.nsubPerSim),
     nallTotal  = as.double(.solveNallTotal),
     ndosesTotal = as.double(.doseFrac * .solveNallTotal),
     maxAllTimes = as.double(.solveMaxAllTimes),
     stiff      = as.integer(stiff),
     doIndLin   = as.integer(doIndLin),
-    indOwnAlloc = as.integer(indOwnAlloc)
+    indOwnAlloc = as.integer(indOwnAlloc),
+    sample     = as.integer(.sample)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
@@ -732,6 +752,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     indLinExpCache = "indLinExpCache (per-thread exponential cache)",
     indLinWork    = "indLinWork (per-thread indLin scratch)",
     indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
+    gSampleCov    = "gSampleCov (resampled covariate index)",
     outputData    = "outputData (estimated returned data)"
   )
 

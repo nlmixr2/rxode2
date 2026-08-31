@@ -124,7 +124,9 @@ rxTest({
 
     expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
     expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
-    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    # ordId is the solve order over INDIVIDUALS, so grouping -- which shares
+    # event storage, not subjects -- leaves it alone
+    expect_equal(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
     expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
   })
 
@@ -139,7 +141,9 @@ rxTest({
 
     expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
     expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
-    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    # ordId is the solve order over INDIVIDUALS, so grouping -- which shares
+    # event storage, not subjects -- leaves it alone
+    expect_equal(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
   })
 
   test_that("grouped dose-only rxEt with iCov keep stays compressed in memory estimate", {
@@ -160,7 +164,9 @@ rxTest({
 
     expect_lt(as.numeric(.grouped$gall_times), as.numeric(.expanded$gall_times))
     expect_lt(as.numeric(.grouped$gevid), as.numeric(.expanded$gevid))
-    expect_lt(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
+    # ordId is the solve order over INDIVIDUALS, so grouping -- which shares
+    # event storage, not subjects -- leaves it alone
+    expect_equal(as.numeric(.grouped$ordId), as.numeric(.expanded$ordId))
     expect_equal(as.numeric(.grouped$outputData), as.numeric(.expanded$outputData))
   })
 
@@ -309,7 +315,7 @@ rxTest({
         ncov = 0L, nsim = nsim, cores = 1L, nMtime = 0L, extraCmt = 0L, linB = 0L,
         nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 1L,
         nallTotal = 110, ndosesTotal = 10, maxAllTimes = 110, stiff = -1L,
-        doIndLin = 0L, indOwnAlloc = 1L)[["indOwnAlloc"]])
+        doIndLin = 0L, indOwnAlloc = 1L, sample = 0L)[["indOwnAlloc"]])
     }
     expect_equal(.c(3L), 3 * .c(1L))
   })
@@ -405,6 +411,83 @@ rxTest({
     .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 100L)
     expect_gt(.est$total, .base$total)
+  })
+
+  test_that("event-indexed buffers scale with nSub/nStud/nsim", {
+    # `nsub`/`nsim` mean to the components what they mean in rxData.cpp: nSub
+    # replicates subjects WITHIN a simulation, so it grows rx->nall (and with
+    # it gall_times/gevid); nStud replicates the simulation, so it grows n0 and
+    # the extra-sim copies in gall_timesS instead.  Either way the ODE state
+    # matrix has to grow -- it did not before, by a factor of the replicate
+    # count, which is the direction that makes the OOM guard useless.
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)          # 1 subject, 110 events
+    .b <- rxMemoryEstimate(.s, neq = 2L)
+    .g <- function(ctrl) rxMemoryEstimate(.s, neq = 2L, control = ctrl)
+    .nStud <- .g(rxControl(nStud = 100L))
+    .nSub  <- .g(rxControl(nSub = 100L))
+    .nsim  <- .g(rxControl(nsim = 100L))
+
+    for (.e in list(.nStud, .nSub, .nsim)) {
+      expect_equal(as.integer(.e[["effectiveSubs"]]), 100L)
+      # the ODE state output matrix is 100 individuals' worth in every form
+      expect_equal(as.numeric(.e[["gsolve_n0"]]),
+                   100 * as.numeric(.b[["gsolve_n0"]]))
+      # so are the per-individual arrays
+      expect_equal(as.numeric(.e[["gpars"]]), 100 * as.numeric(.b[["gpars"]]))
+      expect_equal(as.numeric(.e[["inds_global"]]),
+                   100 * as.numeric(.b[["inds_global"]]))
+      expect_equal(as.numeric(.e[["ordId"]]), 100 * as.numeric(.b[["ordId"]]))
+    }
+
+    # nSub grows the event table of one simulation ...
+    expect_equal(as.numeric(.nSub[["gall_times"]]),
+                 100 * as.numeric(.b[["gall_times"]]))
+    expect_equal(as.numeric(.nSub[["gevid"]]), 100 * as.numeric(.b[["gevid"]]))
+    expect_equal(as.numeric(.nSub[["gall_timesS"]]), 0)
+    # ... while nStud leaves it alone and pays for the replicates in
+    # gall_timesS, which is malloc(2*(nsim-1)*nall) in rxData.cpp
+    expect_equal(as.numeric(.nStud[["gall_times"]]),
+                 as.numeric(.b[["gall_times"]]))
+    expect_equal(as.numeric(.nStud[["gall_timesS"]]), 2 * 99 * 110 * 8)
+    # rxControl(nsim=) is just the nStud form spelled differently
+    expect_equal(as.numeric(.nsim[["total"]]), as.numeric(.nStud[["total"]]))
+  })
+
+  test_that("nSub and nStud compose", {
+    .s <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .e <- rxMemoryEstimate(.s, neq = 2L, control = rxControl(nSub = 10L, nStud = 5L))
+    .b <- rxMemoryEstimate(.s, neq = 2L)
+    expect_equal(as.integer(.e[["effectiveSubs"]]), 50L)
+    # 50 individuals against the data's 5
+    expect_equal(as.numeric(.e[["gsolve_n0"]]), 10 * as.numeric(.b[["gsolve_n0"]]))
+    expect_equal(as.numeric(.e[["inds_global"]]), 10 * as.numeric(.b[["inds_global"]]))
+    # 10 subjects per simulation against the data's 5
+    expect_equal(as.numeric(.e[["gall_times"]]), 2 * as.numeric(.b[["gall_times"]]))
+  })
+
+  test_that("ordId is sized by individuals, not events", {
+    # rxData.cpp: malloc(rx->nsub * rx->nsim * sizeof(int))
+    .s <- rxMemSummary(nobs = rep(100L, 7L), ndoses = rep(10L, 7L))
+    .e <- rxMemoryEstimate(.s, neq = 2L)
+    expect_equal(as.numeric(.e[["ordId"]]), 7 * 4)
+  })
+
+  test_that("gSampleCov is charged only when resample asks for it", {
+    .s <- rxMemSummary(nobs = rep(100L, 4L), ndoses = rep(10L, 4L))
+    .off <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L)
+    .on  <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L,
+                             control = rxControl(resample = "WT"))
+    expect_equal(as.numeric(.off[["gSampleCov"]]), 0)
+    expect_equal(as.numeric(.on[["gSampleCov"]]), 3 * 4 * 1 * 4)
+  })
+
+  test_that("huge event counts do not overflow to NA", {
+    # integer sum() returns NA past 2^31, and a solve that big is exactly the
+    # one this estimate exists to size
+    .s <- rxMemSummary(nobs = rep(0L, 4L), ndoses = rep(1073741824L, 4L))
+    .e <- rxMemoryEstimate(.s, neq = 1L)
+    expect_true(is.finite(as.numeric(.e[["total"]])))
+    expect_gt(as.numeric(.e[["total"]]), 2^31)
   })
 
   test_that("rxMemoryEstimate accepts serialized state files and bundles", {
@@ -617,7 +700,7 @@ rxTest({
         ncov = 0L, nsim = 1L, cores = 4L, nMtime = 0L, extraCmt = 0L, linB = 0L,
         nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 10L,
         nallTotal = 100, ndosesTotal = 10, maxAllTimes = 10, stiff = 3L,
-        doIndLin = doIndLin, indOwnAlloc = 0L)[["indLinExpCache"]])
+        doIndLin = doIndLin, indOwnAlloc = 0L, sample = 0L)[["indLinExpCache"]])
     }
     expect_gt(.cache(42L, 3L), .cache(10L, 3L))   # 3*42 = 126, still cached
     expect_lt(.cache(43L, 3L), .cache(42L, 3L))   # 3*43 = 129, over the cap

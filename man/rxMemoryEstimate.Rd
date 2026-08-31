@@ -63,7 +63,8 @@ models.  Defaults to \code{neq}.}
 
 \item{ncov}{Number of time-varying covariates.}
 
-\item{nsim}{Number of simulations.}
+\item{nsim}{Number of simulations.  \code{nStud} from \code{control} is
+the replicate count, so it lands here rather than in the subject count.}
 
 \item{cores}{Number of parallel OMP threads.}
 

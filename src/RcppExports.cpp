@@ -2349,8 +2349,8 @@ RcppExport SEXP _rxode2_rxSymInvCholEnvCalculate(SEXP objSEXP, SEXP whatSEXP, SE
     return rcpp_result_gen;
 }
 // rxMemoryComponents_
-NumericVector rxMemoryComponents_(int neq, int stateSize, int nlhs, int npars, int neta, int neps, int ncov, int nsim, int cores, int nMtime, int extraCmt, int linB, int nLlik, int nIndSim, int numLinSens, int numLin, int nsub, double nallTotal, double ndosesTotal, double maxAllTimes, int stiff, int doIndLin, int indOwnAlloc);
-static SEXP _rxode2_rxMemoryComponents__try(SEXP neqSEXP, SEXP stateSizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nallTotalSEXP, SEXP ndosesTotalSEXP, SEXP maxAllTimesSEXP, SEXP stiffSEXP, SEXP doIndLinSEXP, SEXP indOwnAllocSEXP) {
+NumericVector rxMemoryComponents_(int neq, int stateSize, int nlhs, int npars, int neta, int neps, int ncov, int nsim, int cores, int nMtime, int extraCmt, int linB, int nLlik, int nIndSim, int numLinSens, int numLin, int nsub, double nallTotal, double ndosesTotal, double maxAllTimes, int stiff, int doIndLin, int indOwnAlloc, int sample);
+static SEXP _rxode2_rxMemoryComponents__try(SEXP neqSEXP, SEXP stateSizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nallTotalSEXP, SEXP ndosesTotalSEXP, SEXP maxAllTimesSEXP, SEXP stiffSEXP, SEXP doIndLinSEXP, SEXP indOwnAllocSEXP, SEXP sampleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< int >::type neq(neqSEXP);
@@ -2376,15 +2376,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type stiff(stiffSEXP);
     Rcpp::traits::input_parameter< int >::type doIndLin(doIndLinSEXP);
     Rcpp::traits::input_parameter< int >::type indOwnAlloc(indOwnAllocSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxMemoryComponents_(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc));
+    Rcpp::traits::input_parameter< int >::type sample(sampleSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxMemoryComponents_(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP stateSizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nallTotalSEXP, SEXP ndosesTotalSEXP, SEXP maxAllTimesSEXP, SEXP stiffSEXP, SEXP doIndLinSEXP, SEXP indOwnAllocSEXP) {
+RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP stateSizeSEXP, SEXP nlhsSEXP, SEXP nparsSEXP, SEXP netaSEXP, SEXP nepsSEXP, SEXP ncovSEXP, SEXP nsimSEXP, SEXP coresSEXP, SEXP nMtimeSEXP, SEXP extraCmtSEXP, SEXP linBSEXP, SEXP nLlikSEXP, SEXP nIndSimSEXP, SEXP numLinSensSEXP, SEXP numLinSEXP, SEXP nsubSEXP, SEXP nallTotalSEXP, SEXP ndosesTotalSEXP, SEXP maxAllTimesSEXP, SEXP stiffSEXP, SEXP doIndLinSEXP, SEXP indOwnAllocSEXP, SEXP sampleSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_rxMemoryComponents__try(neqSEXP, stateSizeSEXP, nlhsSEXP, nparsSEXP, netaSEXP, nepsSEXP, ncovSEXP, nsimSEXP, coresSEXP, nMtimeSEXP, extraCmtSEXP, linBSEXP, nLlikSEXP, nIndSimSEXP, numLinSensSEXP, numLinSEXP, nsubSEXP, nallTotalSEXP, ndosesTotalSEXP, maxAllTimesSEXP, stiffSEXP, doIndLinSEXP, indOwnAllocSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_rxMemoryComponents__try(neqSEXP, stateSizeSEXP, nlhsSEXP, nparsSEXP, netaSEXP, nepsSEXP, ncovSEXP, nsimSEXP, coresSEXP, nMtimeSEXP, extraCmtSEXP, linBSEXP, nLlikSEXP, nIndSimSEXP, numLinSensSEXP, numLinSEXP, nsubSEXP, nallTotalSEXP, ndosesTotalSEXP, maxAllTimesSEXP, stiffSEXP, doIndLinSEXP, indOwnAllocSEXP, sampleSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -3161,7 +3162,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("NumericVector(*rxInv)(SEXP)");
         signatures.insert("RObject(*rxSymInvChol)(RObject,Nullable<NumericVector>,std::string,int)");
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
-        signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double,double,int,int,int)");
+        signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double,double,int,int,int,int)");
         signatures.insert("SEXP(*rxSaveState_)()");
         signatures.insert("bool(*rxIsSerializeFile_)(SEXP)");
         signatures.insert("SEXP(*rxRestoreState_)(SEXP)");

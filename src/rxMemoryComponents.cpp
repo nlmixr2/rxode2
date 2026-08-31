@@ -35,13 +35,16 @@ using namespace Rcpp;
 //' @param nIndSim   Per-individual simulation count (typically \code{neta+neps}).
 //' @param numLinSens Number of linear sensitivity parameters (FOCEi mixed models).
 //' @param numLin    Number of linear compartment terms (FOCEi mixed models).
-//' @param nsub      Number of subjects.
+//' @param nsub      Number of subjects in ONE simulation (\code{rx$nsub});
+//'   the total individual count is \code{nsub * nsim}.
 //' @param nallTotal Total events across all subjects (sum of obs + doses).
 //' @param ndosesTotal Total dose events across all subjects.
 //' @param maxAllTimes Maximum events for any single subject.
 //' @param indOwnAlloc 1 if every individual gets its own event/solve arrays
 //'   (\code{op$indOwnAlloc}), else 0.  These are allocated ON TOP of
 //'   \code{gsolve}, whose \code{n0} region then goes unused.
+//' @param sample 1 when \code{rxControl(resample=)} asks for covariate
+//'   resampling, which allocates \code{gSampleCov}; else 0.
 //' @param stiff     The solving method (\code{op$stiff}); only 3
 //'   (\code{"indLin"}) allocates anything extra here.
 //' @param doIndLin  Which matrix-exponential driver runs: 0 not a
@@ -76,7 +79,8 @@ NumericVector rxMemoryComponents_(
   double maxAllTimes,
   int    stiff,
   int    doIndLin,
-  int    indOwnAlloc)
+  int    indOwnAlloc,
+  int    sample)
 {
   rx_mem_layout _mem;
   rxFillMemLayout(
@@ -103,15 +107,26 @@ NumericVector rxMemoryComponents_(
   double b_gall_times  = 5.0  * nallTotal * sizeof(double);
   double b_gevid       = 3.0  * nallTotal * sizeof(int);
   double b_gcov        = (double)ncov * nallTotal * sizeof(double);
-  double b_gpars       = (double)npars * nsub * sizeof(double);
+  /* gpars is calloc'd at npars*max2(nsub, nPopPar) and inds_global at
+     nPopPar, where nPopPar = nsub*nsim -- both are sized by the TOTAL
+     individual count, not the per-simulation one. */
+  double b_gpars       = (double)npars * nsub * nsim * sizeof(double);
   double b_gomega      = (double)(2 * neta + neta * neta) * sizeof(double);
   double b_gsigma      = (double)(2 * neps + neps * neps) * sizeof(double);
   double b_gall_timesS = (nsim > 1)
                            ? 2.0 * (nsim - 1) * nallTotal * sizeof(double)
                            : 0.0;
-  double b_ordId       = nallTotal * sizeof(int);
-  double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double);
-  double b_inds        = (double)nsub  * sizeof(rx_solving_options_ind);
+  /* rx->ordId is the solve ORDER over individuals, not over events:
+     malloc(rx->nsub * rx->nsim * sizeof(int)) (src/rxData.cpp, where the local
+     is confusingly named `nall`). */
+  double b_ordId       = (double)nsub * nsim * sizeof(int);
+  /* the per-thread pointer table and its length array are allocated alongside
+     the per-thread infusion buffers themselves */
+  double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double) +
+    (double)cores * (sizeof(double*) + sizeof(int));
+  /* gSampleCov: only when rxControl(resample=) asks for it */
+  double b_gSampleCov  = sample ? (double)ncov * nsub * nsim * sizeof(int) : 0.0;
+  double b_inds        = (double)nsub * nsim * sizeof(rx_solving_options_ind);
 
   /* -- method="indLin" (src/expm.cpp) ---------------------------------------
    *
@@ -190,6 +205,7 @@ NumericVector rxMemoryComponents_(
     Named("indLinExpCache")= b_indLinCache,
     Named("indLinWork")    = b_indLinWork,
     Named("indOwnAlloc")   = b_indOwn,
+    Named("gSampleCov")    = b_gSampleCov,
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 

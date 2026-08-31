@@ -707,6 +707,33 @@
   component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
   alongside the rest of the layout.
 
+- `rxMemoryEstimate()` now scales the event-indexed buffers with `nSub`,
+  `nStud` and `nsim`.  The replicated subject count was applied to the subject
+  total but never to the event total, so `rxControl(nSub = 100)` on a
+  one-subject table reported the one-subject figure for `gsolve_n0`,
+  `gall_times`, `gevid` and `gpars` -- an undercount of the largest allocation
+  by the full replicate factor, and again in the direction that makes the
+  out-of-memory guard useless.  `nsub` and `nsim` now mean to the estimate what
+  they mean in `rxData.cpp`: `nsub` is the subjects of ONE simulation and
+  `nsim` is how many times that block is replicated, so `nStud` lands in `nsim`
+  (where it also correctly pays for the extra-simulation copies in
+  `gall_timesS`) and `nSub` grows the events of a single simulation.
+  `effectiveSubs` still reports the total individual count.
+
+- `rxMemoryEstimate()` sizes `ordId` by individuals rather than events.
+  `rx$ordId` is the solve ORDER over individuals -- `nsub * nsim` ints -- but
+  the estimate charged one int per event, overstating it by the number of
+  events per subject.
+
+- `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
+  `rxControl(resample=)` asks for covariate resampling, and counts the
+  per-thread pointer table that accompanies the `gInfusionRate` buffers.
+
+- `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
+  per-subject event totals were summed in integer arithmetic, so a solve past
+  2^31 events -- exactly the size this estimate exists to judge -- overflowed
+  and then failed with "missing value where TRUE/FALSE needed".
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an
