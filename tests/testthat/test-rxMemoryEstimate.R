@@ -731,6 +731,22 @@ rxTest({
     expect_gt(as.numeric(.est(.memIl)$indLinWork), as.numeric(.pure$indLinWork))
   })
 
+  test_that("indLinWork matches the scratch formula exactly", {
+    # the sum-identity test below would pass with indLinWork stuck at 0, so pin
+    # the absolute bytes: cores * (sq + vec) * 8, with the fixed-grid driver
+    # holding meOnly()'s rate matrix and its augmented exponential (m = 2*neq
+    # for the state-free forcing) and the iterating one holding the Jacobian,
+    # P(h), its inverse, the ramp and the Richardson table
+    .neq <- length(rxModelVars(.memPure)$state)
+    .m <- .neq + 1                       # doIndLin 1: augmented while infusing
+    .e <- rxMemoryEstimate(.memEv, model = .memPure, control = rxControl(cores = 4L))
+    expect_equal(as.numeric(.e[["indLinWork"]]),
+                 4 * ((.neq * .neq + 2 * .m * .m) + 4 * .neq) * 8)
+    # and it is per thread
+    .e1 <- rxMemoryEstimate(.memEv, model = .memPure, control = rxControl(cores = 1L))
+    expect_equal(as.numeric(.e[["indLinWork"]]), 4 * as.numeric(.e1[["indLinWork"]]))
+  })
+
   test_that("the indLin estimate is per thread, not per subject", {
     .cache <- function(nc) {
       as.numeric(rxMemoryEstimate(.memEv, model = .memIl,
