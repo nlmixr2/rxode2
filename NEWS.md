@@ -16,7 +16,14 @@
   to enforce.  Pure scratch -- the Eigen work matrices and the kernel object
   -- deliberately stays per thread, since it is overwritten on every call and
   a per-individual copy would be memory holding nothing.  Results are bitwise
-  identical, including across thread counts.
+  identical, including across thread counts.  Measured on an idle machine by
+  alternating two cleanly built installations, a FOCEi fit runs 1.15x (two
+  compartment) to 1.19x (one compartment) faster at an identical objective
+  and an identical evaluation count.  A plain `rxSolve()` shows almost
+  nothing, and that is the expected shape: every subject of one solve shares
+  a theta, so the window was already valid as a thread walked from subject to
+  subject -- only a fit, where each individual carries its own random
+  effects, has anything here to recover.
 
 - The `linCmt()` per-row path no longer allocates.  `getVc()`, `adjustF()`
   and `getJacCp()` took a `const Eigen::Matrix&` while every caller passes an
