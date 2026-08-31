@@ -156,9 +156,14 @@ dvid(5, 6)"), NA)
     expect_equal(rxNorm(.int2), "param(a,b);\nlocf(b);\ny=a*b;\n")
     expect_equal(unclass(rxModelVars(rxNorm(.int2))$interp), unclass(.int2$interp))
 
-    # a single param() statement is left alone
+    # a single param() statement is left alone, even when every name it
+    # declares became a state and it declares no parameter at all
     expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
                  "param(a,b);\nd/dt(x)=-a*x*b;\n")
+    .lone <- rxModelVars("param(a);\nd/dt(a)=-a;\n")
+    expect_length(.lone$params, 0)
+    expect_equal(rxNorm(.lone), "param(a);\nd/dt(a)=-a;\n")
+    expect_equal(rxModelVars(rxNorm(.lone))$params, .lone$params)
   })
 
   test_that("a dual lhs/parameter gets its interpolation set", {
