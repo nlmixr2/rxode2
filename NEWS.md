@@ -944,6 +944,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   compatible with requested type: [type=list; target=double]".  The draw
   every chunk shares is made from a named parameter vector.
 
+- A chunked solve with `dfObs > 0` no longer simulates sigma uncertainty
+  per chunk.  `sigma` is forwarded to each chunk (the residual draw is per
+  observation, so it is not something a chunk's slice of the parameter
+  table can carry), so every chunk drew its own per study sigma and
+  subjects in different chunks ended up with different residual covariance
+  inside the same study -- which `$sigmaList` did not report either.  It is
+  now a clear error rather than a wrong answer; a fixed `sigma`
+  (`dfObs = 0`) is unaffected.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with
