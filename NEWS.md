@@ -814,6 +814,11 @@
   The pointers are taken once instead, which is 2.7x on `etTrans()` alone and
   2.8-3.8x on a solve at 160000-320000 rows.
 
+- `etTrans(allTimeVar = TRUE)` no longer errors when an `iCov` covariate is
+  supplied.  Under `allTimeVar` every covariate is emitted as a per-row
+  column, but the column for an `iCov` covariate was never allocated, so
+  taking it failed instead of returning the covariate.
+
 - `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
   `df(A)/dy(ETA[1])` instead of leaking the internal name
   `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from

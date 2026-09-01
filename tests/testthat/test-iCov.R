@@ -170,4 +170,29 @@ rxTest({
     expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
     expect_equal(as.numeric(tmp2$pars["cov", ]), c(2, 3, 1))
   })
+
+  test_that("'allTimeVar=TRUE' emits an 'iCov' covariate as a per-row column", {
+    # the per-row column for an 'iCov' covariate was never allocated under
+    # 'allTimeVar', so taking it errored instead of returning the covariate
+    mod <- rxode2({
+      d/dt(center) <- -(cl / v) * center
+      cp <- center / v + wt * 0
+    })
+
+    ev <- as.data.frame(et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:3))
+    ic <- data.frame(id = 1:3, wt = c(70, 80, 90))
+
+    tmp <- as.data.frame(etTrans(ev, mod, allTimeVar = TRUE, iCov = ic))
+    expect_equal(vapply(split(tmp$wt, tmp$ID),
+                        function(x) unique(x[!is.na(x)]), double(1),
+                        USE.NAMES = FALSE),
+                 c(70, 80, 90))
+
+    # 'allTimeVar=FALSE' keeps the covariate on the per-id table only
+    tmp2 <- etTrans(ev, mod, allTimeVar = FALSE, iCov = ic)
+    expect_false("wt" %in% names(as.data.frame(tmp2)))
+    .lst <- attr(class(tmp2), ".rxode2.lst")
+    class(.lst) <- NULL
+    expect_equal(.lst$cov1$wt, c(70, 80, 90))
+  })
 })

@@ -2860,9 +2860,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       nvTmp = NumericVector(nid);
       nme[baseSize+j] = pars[covParPos[j]];
       if (covColj < 0) {
-        // invariant covariates so don't allocate space
+        // An 'iCov' covariate is invariant within an id, so the per-row column
+        // is a zero-length placeholder -- except under 'allTimeVar', where the
+        // row loop writes it for every output row and it must be full length.
         if (allTimeVar) {
-          lst1[1+j] = NumericVector(nid);
+          lst[baseSize+j] = NumericVector(idxOutput.size()-rmAmt);
         } else {
           lst[baseSize+j] = NumericVector(0);
         }
