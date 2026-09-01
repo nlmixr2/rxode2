@@ -712,6 +712,13 @@
   `flag = x == "value"`.  Each covariate column is now coerced once, so every
   storage mode solves at the speed a double column always did.
 
+- A model that reads `CMT` as a covariate no longer slows down with the number
+  of subjects.  `CMT` is carried as an integer column, and the copy of each
+  covariate into the solving buffer -- done once per subject -- coerced the
+  whole column to double every time, costing about 3x an otherwise identical
+  double covariate at 20000 subjects.  The columns are now coerced once, as
+  above.
+
 - Building a model no longer hangs forever on a lock left behind by an
   interrupted session, and two processes no longer build the same model at
   once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess

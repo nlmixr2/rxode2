@@ -812,4 +812,45 @@ rxTest({
     expect_lt(.minElapsed(.covFlagData(.nRow, "integer")), 4 * .tDouble)
     expect_lt(.minElapsed(.covFlagData(.nRow, "logical")), 4 * .tDouble)
   })
+
+  test_that("a CMT covariate stays linear in subject count (#1325)", {
+
+    # CMT is the one covariate rxSolve() receives as an integer column, and the
+    # per-subject copy into the solving buffer used to coerce the whole column
+    # to double for each subject.  Hold it to an otherwise identical double
+    # covariate: the two now run the same code, so the threshold only has to
+    # absorb timing noise, and the defect it guards against was 3x or more.
+    .cmtData <- function(nSub, nPer) {
+      n <- nSub * nPer
+      data.frame(
+        ID = rep(seq_len(nSub), each = nPer),
+        TIME = rep(seq_len(nPer), times = nSub),
+        x = seq(-100, 0, length.out = n),
+        zz = 1.0, CMT = 1L, EVID = 0, AMT = 0
+      )
+    }
+    modCmt <- rxode2({
+      eff <- slopeA * x + CMT
+    })
+    modDbl <- rxode2({
+      eff <- slopeA * x + zz
+    })
+    .solve <- function(m, d) {
+      rxSolve(m, params = c(slopeA = -0.9), events = d, returnType = "data.frame")
+    }
+    .minElapsed <- function(m, d, reps = 3L) {
+      min(vapply(seq_len(reps),
+                 function(i) system.time(.solve(m, d))[["elapsed"]],
+                 numeric(1)))
+    }
+
+    # CMT reaches the model as the compartment number it holds
+    .small <- .cmtData(4, 3)
+    expect_equal(.solve(modCmt, .small)$eff, -0.9 * .small$x + 1)
+
+    invisible(.solve(modDbl, .cmtData(4, 3))) # compile both models first
+
+    .d <- .cmtData(20000, 3)
+    expect_lt(.minElapsed(modCmt, .d), 2 * .minElapsed(modDbl, .d))
+  })
 })
