@@ -590,6 +590,8 @@ static inline void populateDfdy(SEXP dfdy) {
         sPrint(&_bufw,"_ETA_%d_",j);
         if (!strcmp(dy,_bufw.s)){
           sPrint(&_bufw,"ETA[%d]",j);
+          foundIt=1;
+          break;
         }
       }
     }

@@ -719,6 +719,13 @@
   double covariate at 20000 subjects.  The columns are now coerced once, as
   above.
 
+- `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
+  `df(A)/dy(ETA[1])` instead of leaking the internal name
+  `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from
+  their internal spellings for display, but the ETA translation was written
+  into the buffer and then unconditionally overwritten, so only `THETA[n]`
+  survived.
+
 - Building a model no longer hangs forever on a lock left behind by an
   interrupted session, and two processes no longer build the same model at
   once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
