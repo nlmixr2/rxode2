@@ -707,14 +707,19 @@
   solver state until the error was picked up after the integration step.  The
   restore now happens before the checks, as it already did in `updateDur()`.
 
-- The internal `_getDur()` backward scan now pairs an infusion end with a start
-  of the same event type, not merely one of the opposite amount, so a bolus of
-  `+amt` can no longer be mistaken for the start of an infusion of `-amt`; this
-  matches the pairing `handleInfusionGetEndOfInfusionIndex()` already did.  An
-  orphaned infusion end sitting at dose index 0 also reports the missing start
-  instead of falling through to the forward scan and returning a negated
-  duration.  Both paths are reached through the `t_getDur` slot handed to
-  generated model code and downstream packages (nlmixr2/rxode2#1322).
+- `dose()` and `tad()` no longer read the wrong infusion when two infusions run
+  at the same rate into different compartments.  The internal `_getDur()` scan
+  that recovers an infusion's duration paired records by amount alone, so an
+  infusion of `+rate` matched the first `-rate` it found, which may belong to
+  another compartment's infusion (or, in the backward direction, be a bolus of
+  the same amount).  A fixed rate/duration infusion emits its stop record with
+  the same internal event id as its start, so the scans now compare that too --
+  the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
+  overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
+  `dose() = 60` for the first; it now reports 100.  Separately, an orphaned
+  infusion end sitting at dose index 0 reports the missing start instead of
+  falling through to the forward scan and returning a negated duration
+  (nlmixr2/rxode2#1322).
 
 - An `integer` or `logical` covariate column no longer makes `rxSolve()`
   quadratic in the number of rows.  While building the solving data set each

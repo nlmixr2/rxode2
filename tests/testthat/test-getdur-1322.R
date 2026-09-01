@@ -6,6 +6,7 @@ rxTest({
   # .getDurTest() drives it directly.  Only equality of the evid values matters
   # to the pairing, so plain distinct integers stand in for real event ids.
   .evidInf <- 10101L
+  .evidInf2 <- 10201L
   .evidBolus <- 101L
 
   test_that("backward scan finds the matching infusion start", {
@@ -51,6 +52,35 @@ rxTest({
                  "infusion start cannot be found")
   })
 
+  test_that("forward scan does not pair with another infusion's end (#1322)", {
+    # two infusions running at the same rate into different compartments: the
+    # first record's end is dose 3, but dose 2 (the other compartment's end)
+    # carries the same amount and was matched first.
+    d <- .getDurTest(time = c(0, 1, 6, 10), dose = c(10, 10, -10, -10),
+                     evid = c(.evidInf, .evidInf2, .evidInf2, .evidInf),
+                     idose = c(0L, 1L, 2L, 3L), l = 0L, backward = 2L)
+    expect_equal(d[1], 10)
+    expect_equal(d[2], 3)
+  })
+
+  test_that("dose() reports the whole infusion amount when a same-rate infusion overlaps (#1322)", {
+    # the end-to-end shape of the scan above: _getDur() recovers the amount from
+    # the rate for tad()/dose(), so the mispairing reported 6 * 10 = 60 here.
+    mod <- rxode2({
+      d/dt(a) <- -0.1 * a
+      d/dt(b) <- -0.1 * b
+      dd <- dose()
+    })
+
+    ev <- et(amt = 100, rate = 10, cmt = "a") |>
+      et(amt = 50, rate = 10, cmt = "b", time = 1) |>
+      et(seq(0, 15, by = 1))
+
+    s <- rxSolve(mod, ev)
+    expect_equal(s$dd[s$time == 0], 100)
+    expect_equal(s$dd[s$time == 1], 50)
+  })
+
   test_that("forward scan finds the infusion end", {
     d <- .getDurTest(time = c(0, 5), dose = c(100, -100),
                      evid = c(.evidInf, .evidInf), idose = c(0L, 1L),
@@ -67,6 +97,33 @@ rxTest({
                              evid = c(.evidInf, .evidInf),
                              idose = c(0L, 1L), l = 0L, backward = 0L),
                  "infusion end cannot be found")
+  })
+
+  test_that("forward scan errors when only a different-evid end is available (#1322)", {
+    expect_true(is.na(.getDurTest(time = c(0, 5), dose = c(10, -10),
+                                  evid = c(.evidInf, .evidInf2),
+                                  idose = c(0L, 1L), l = 0L, backward = 2L)[1]))
+    expect_error(.getDurTest(time = c(0, 5), dose = c(10, -10),
+                             evid = c(.evidInf, .evidInf2),
+                             idose = c(0L, 1L), l = 0L, backward = 0L),
+                 "infusion end cannot be found")
+  })
+
+  test_that("the test driver rejects arguments it cannot safely read", {
+    expect_error(.getDurTest(time = c(0, 5), dose = 100,
+                             evid = c(.evidInf, .evidInf),
+                             idose = c(0L, 1L), l = 0L, backward = 2L),
+                 "lengths are wrong")
+    # a negative or past-the-end idose entry would be redirected into the
+    # extra-dose pools, which this driver does not have
+    expect_error(.getDurTest(time = c(0, 5), dose = c(100, -100),
+                             evid = c(.evidInf, .evidInf),
+                             idose = c(-1L, 1L), l = 1L, backward = 1L),
+                 "out of range")
+    expect_error(.getDurTest(time = c(0, 5), dose = c(100, -100),
+                             evid = c(.evidInf, .evidInf),
+                             idose = c(0L, 2L), l = 0L, backward = 2L),
+                 "out of range")
   })
 
   test_that("an out of range dose index is caught before idose is read", {
@@ -106,6 +163,19 @@ rxTest({
     # the failed solves must not leave anything behind
     expect_equal(as.data.frame(rxSolve(mod, ev, c(ri = 2))),
                  as.data.frame(good))
+
+    # the other error return: the data asks for a modeled rate but the model
+    # only supplies a modeled duration
+    modDur <- rxode2({
+      a <- 6
+      b <- 0.6
+      di <- 3
+      d/dt(intestine) <- -a * intestine
+      dur(intestine) <- di
+      d/dt(blood) <- a * intestine - b * blood
+    })
+
+    expect_error(rxSolve(modDur, ev, c(di = 3)))
   })
 
 })
