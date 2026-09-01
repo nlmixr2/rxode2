@@ -187,6 +187,85 @@ static const seCnt seRes[] = {
 };
 #define seNres ((int)(sizeof(seRes)/sizeof(seRes[0])))
 
+/* ------------------------------------------------ character literals --
+   A character literal reaches symengine as the SYMBOL rxQ__<esc>__rxQ
+   (.rxStrEncode() in R/symengine.R): every byte outside [A-Za-z0-9] is
+   written as "_" followed by its two hex digits.  .rxFromSE() turns that
+   back into a quoted string (.rxRepRxQ() -> .rxStrDecode() -> deparse1()),
+   so this emitter has to as well -- otherwise the encoded symbol reaches
+   the generated model as an undefined parameter, e.g.
+     cl <- exp(... + cllow * (LowID == "Yes"))
+   compiles to `LowID==rxQ__Yes__rxQ` and the solve then reports
+   "parameter(s) are required for solving: rxQ__Yes__rxQ".
+
+   The length/prefix test mirrors .rxRepRxQ() exactly (more than 10
+   characters, leading "rxQ__", trailing 5 dropped) so both emitters agree
+   on what counts as an encoded literal.
+
+   deparse1() renders a string with its own escaping rules; rather than
+   reproduce all of them, only PRINTABLE ASCII is decoded here (where
+   deparse1() emits the byte verbatim, or backslash-escaped for the two
+   cases below).  Anything else hands the expression back to the R walker,
+   per this file's rule that falling back is safe and guessing is not. */
+static int seHexDigit(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+/* one decoded byte of the escaped body, advancing *i past what it consumed.
+   A "_" not followed by two hex digits cannot come from .rxStrEncode(), so it
+   is taken literally rather than guessed at. */
+static char seRxQByte(const char *body, size_t bn, size_t *i) {
+  char c = body[*i];
+  if (c == '_' && *i + 2 < bn) {
+    int hi = seHexDigit(body[*i + 1]), lo = seHexDigit(body[*i + 2]);
+    if (hi >= 0 && lo >= 0) {
+      *i += 3;
+      return (char)((hi << 4) | lo);
+    }
+  }
+  (*i)++;
+  return c;
+}
+
+/* deparse1()'s spelling of one byte inside a quoted string; 0 when it is not a
+   byte this emitter reproduces */
+static int seRxQEmitByte(char c, char **q) {
+  if (c == '\\' || c == '"') {
+    *(*q)++ = '\\';
+    *(*q)++ = c;
+    return 1;
+  }
+  if (c >= 0x20 && c <= 0x7e) {
+    *(*q)++ = c;
+    return 1;
+  }
+  return 0;
+}
+
+/* NULL: not an encoded literal, carry on with the normal name handling. */
+static const char *seRepRxQ(seCtx *ctx, const char *raw) {
+  size_t n = strlen(raw), bn, i = 0;
+  const char *body;
+  char *out, *q;
+  if (n <= 10 || strncmp(raw, "rxQ__", 5) != 0) return NULL;
+  body = raw + 5;
+  bn = n - 10;                       /* substr(x, 6, nchar(x) - 5) */
+  out = seAlloc(ctx, 2 * bn + 3);    /* every byte may escape, plus "" and NUL */
+  if (out == NULL) return "";
+  q = out;
+  *q++ = '"';
+  while (i < bn) {
+    /* deparse1() may not spell it this way -- hand it back to the R walker */
+    if (!seRxQEmitByte(seRxQByte(body, bn, &i), &q)) return seFail(ctx);
+  }
+  *q++ = '"';
+  *q = '\0';
+  return out;
+}
+
 /* sub("[(]rx_SymPy_Res_", "(", .ret) -- first match only, as sub() is */
 static const char *seUnRes(seCtx *ctx, const char *s) {
   const char *p = strstr(s, "(rx_SymPy_Res_");

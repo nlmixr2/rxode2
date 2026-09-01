@@ -701,6 +701,36 @@
 
 ## Bug fixes
 
+- Building a model no longer hangs forever on a lock left behind by an
+  interrupted session, and two processes no longer build the same model at
+  once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
+  (a `testthat` parallel worker, for one) inherits ONE shared build directory
+  -- but the build lock was acquired as `file.exists()` followed by `sink()`,
+  a check-then-create pair that does not exclude, so two processes could both
+  see no lock and both compile the same artifact into that directory.  The
+  losing write surfaced as "error building model", "cannot open the
+  connection" or "cannot change working directory", depending on which step
+  it lost.  Separately, nothing ever removed a lock whose owner had been
+  killed, and the wait for it was unbounded, so a single interrupted compile
+  wedged that model for the life of the cache.  The lock is now taken with
+  `dir.create()` -- the portable atomic test-and-set -- and the wait for
+  another builder is bounded (`options(rxode2.buildLockTimeout=)`, 300s by
+  default) before the abandoned lock is reclaimed.
+
+- A model comparing a string covariate against a literal (e.g. `cl <- exp(tcl
+  + eta.cl + cllow * (LowID == "Yes"))`) no longer translates to an undefined
+  parameter.  A character literal reaches symengine as the symbol
+  `rxQ__<escaped>__rxQ`, and while the R translator decodes it back to a
+  quoted string, the C translator added in 5.1.7 emitted the symbol verbatim
+  -- so the generated model carried `LowID==rxQ__Yes__rxQ` and solving it
+  failed with "the following parameter(s) are required for solving:
+  rxQ__Yes__rxQ".  Only symengine's own underscore naming reached the C path
+  (the bracket form declines and falls back to R), which is why it surfaced in
+  the sensitivity models a `nlmixr2est` FOCEi fit builds rather than in a
+  plain `rxode2()` call.  The C translator now decodes the literal, and hands
+  the expression back to the R translator for any byte whose `deparse1()`
+  spelling it cannot reproduce exactly.
+
 - `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
   infusion when the subject's dosing record starts with a bolus.  The dose
   history asked for the infusion duration with the solver's running dose
