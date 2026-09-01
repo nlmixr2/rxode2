@@ -214,9 +214,40 @@ static int seHexDigit(char c) {
   return -1;
 }
 
+/* one decoded byte of the escaped body, advancing *i past what it consumed.
+   A "_" not followed by two hex digits cannot come from .rxStrEncode(), so it
+   is taken literally rather than guessed at. */
+static char seRxQByte(const char *body, size_t bn, size_t *i) {
+  char c = body[*i];
+  if (c == '_' && *i + 2 < bn) {
+    int hi = seHexDigit(body[*i + 1]), lo = seHexDigit(body[*i + 2]);
+    if (hi >= 0 && lo >= 0) {
+      *i += 3;
+      return (char)((hi << 4) | lo);
+    }
+  }
+  (*i)++;
+  return c;
+}
+
+/* deparse1()'s spelling of one byte inside a quoted string; 0 when it is not a
+   byte this emitter reproduces */
+static int seRxQEmitByte(char c, char **q) {
+  if (c == '\\' || c == '"') {
+    *(*q)++ = '\\';
+    *(*q)++ = c;
+    return 1;
+  }
+  if (c >= 0x20 && c <= 0x7e) {
+    *(*q)++ = c;
+    return 1;
+  }
+  return 0;
+}
+
 /* NULL: not an encoded literal, carry on with the normal name handling. */
 static const char *seRepRxQ(seCtx *ctx, const char *raw) {
-  size_t n = strlen(raw), bn, i;
+  size_t n = strlen(raw), bn, i = 0;
   const char *body;
   char *out, *q;
   if (n <= 10 || strncmp(raw, "rxQ__", 5) != 0) return NULL;
@@ -226,28 +257,9 @@ static const char *seRepRxQ(seCtx *ctx, const char *raw) {
   if (out == NULL) return "";
   q = out;
   *q++ = '"';
-  i = 0;
   while (i < bn) {
-    char c = body[i];
-    if (c == '_' && i + 2 < bn) {
-      int hi = seHexDigit(body[i + 1]), lo = seHexDigit(body[i + 2]);
-      if (hi >= 0 && lo >= 0) {
-        c = (char)((hi << 4) | lo);
-        i += 3;
-      } else {
-        i++;
-      }
-    } else {
-      i++;
-    }
-    if (c == '\\' || c == '"') {
-      *q++ = '\\';
-      *q++ = c;
-    } else if (c >= 0x20 && c <= 0x7e) {
-      *q++ = c;
-    } else {
-      return seFail(ctx);           /* deparse1() may not spell it this way */
-    }
+    /* deparse1() may not spell it this way -- hand it back to the R walker */
+    if (!seRxQEmitByte(seRxQByte(body, bn, &i), &q)) return seFail(ctx);
   }
   *q++ = '"';
   *q = '\0';
