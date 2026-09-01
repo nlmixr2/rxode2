@@ -7,47 +7,10 @@ rxTest({
   # per-origin decomposition of the amounts instead and answer it.
   #
   # which2 packs the origin compartment and the wanted output: q*8 + out, with
-  # out = 7 meaning the reported concentration.  Every case below is checked
-  # against a central finite difference of that concentration.
-
-  .p <- c(tcl = log(4), tv = log(20), tka = log(1.1), tq = log(2),
-          tv2 = log(50), tq2 = log(1), tv3 = log(80),
-          eta_lag = 0.1, eta_f = 0.05)
-
-  # Build a pure linCmt() model of the requested shape whose dosed compartment
-  # (depot when oral, central otherwise) carries a modeled alag(), reporting
-  # the concentration, the shared-delay sensitivity (-3) and the
-  # per-compartment one (-9) for origin `q` and the next compartment up.
-  .rxOriginModel <- function(ncmt, oral0, q) {
-    .pars <- c("cl, v, 0, 0, 0, 0", "cl, v, qq, v2, 0, 0",
-               "cl, v, qq, v2, q2, v3")[ncmt]
-    .ka <- if (oral0) "ka" else "0"
-    .m <- ncmt + oral0
-    .cmt <- if (oral0) "depot" else "central"
-    .call <- function(w1, w2) {
-      sprintf("linCmtB(rx__PTR__, t, %d, %d, %d, %s, %s, 1, %s, %s)",
-              .m, ncmt, oral0, w1, w2, .pars, .ka)
-    }
-    .b <- if (q + 1L < .m) .call("-9", (q + 1L) * 8 + 7) else "0"
-    rxode2(sprintf("
-      cl <- exp(tcl); v <- exp(tv); qq <- exp(tq); v2 <- exp(tv2)
-      q2 <- exp(tq2); v3 <- exp(tv3); ka <- exp(tka)
-      lag <- 2 * exp(eta_lag)
-      alag(%s) <- lag
-      cp  <- %s
-      d3  <- lag * %s
-      d9  <- lag * %s
-      d9b <- lag * (%s)
-    ", .cmt, .call("-1", "-1"), .call("-3", "-3"),
-       .call("-9", q * 8 + 7), .b))
-  }
-
-  .fd <- function(m, e, par, h = 1e-6) {
-    .p1 <- .p; .p1[[par]] <- .p[[par]] + h
-    .p0 <- .p; .p0[[par]] <- .p[[par]] - h
-    (rxSolve(m, e, params = .p1)$cp - rxSolve(m, e, params = .p0)$cp) / (2 * h)
-  }
-  .rel <- function(a, b) max(abs(a - b)) / (max(abs(b)) + 1e-8)
+  # out = 7 meaning the reported concentration.  Every case here is checked
+  # against a central finite difference of that concentration.  What the modes
+  # REFUSE to answer is in test-lincmt-origin-limits.R; the shared model
+  # builder and finite-difference helpers are in helper-lincmt-origin.R.
 
   test_that("linCmtB(-9) matches finite differences across model shapes", {
     # q = 0 is the dosed compartment in every case (depot when oral, central
@@ -147,39 +110,6 @@ rxTest({
     expect_true(.rel(.s$cp, .f) > 0.1)
   })
 
-  test_that("linCmtB(-9) is exactly 0 when no dose reaches the origin", {
-    .m <- .rxOriginModel(1L, 1L, 0L)
-    .e <- et(amt = 50, cmt = "central") |> et(seq(0.1, 24, 0.5))
-    .s <- rxSolve(.m, .e, params = .p)
-    expect_true(all(.s$d9 == 0))
-  })
-
-  test_that("linCmtB(-9) reports NA for a steady-state infusion", {
-    # The SS infusion's rate is not carried past the SS solve, so -dA/dt is
-    # not recoverable for that origin (same limit as -3, see linCmtDoseScan).
-    .m <- .rxOriginModel(1L, 0L, 0L)
-    .e <- et(amt = 100, rate = 25, ii = 12, ss = 1, cmt = "central") |>
-      et(seq(0.1, 12, 0.5))
-    .s <- rxSolve(.m, .e, params = .p)
-    expect_true(all(is.na(.s$d9)))
-  })
-
-  test_that("linCmtB(-9)/(-10) reject an out of range origin or output", {
-    # q or out past the model's compartment count is NA, never an out of
-    # bounds read.
-    .m <- rxode2({
-      cl <- exp(tcl); v <- exp(tv); lag <- 2 * exp(eta_lag)
-      alag(central) <- lag
-      cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
-      badQ <- linCmtB(rx__PTR__, t, 1, 1, 0, -9, 3 * 8 + 7, 1, cl, v, 0, 0, 0, 0, 0)
-      badO <- linCmtB(rx__PTR__, t, 1, 1, 0, -10, 2, 1, cl, v, 0, 0, 0, 0, 0)
-    })
-    .e <- et(amt = 100, cmt = "central") |> et(seq(0.1, 12, 0.5))
-    .s <- rxSolve(.m, .e, params = .p)
-    expect_true(all(is.na(.s$badQ)))
-    expect_true(all(is.na(.s$badO)))
-  })
-
   test_that("linCmtB(-9) is right when linCmt() is mixed with an ODE", {
     # A model that also has d/dt() re-enters linCmtB() many times within one
     # event row (dydt fires at every internal solver step), so the advance of
@@ -201,46 +131,6 @@ rxTest({
     expect_true(.rel(.s$d9, .f) < 1e-6)
     # the whole regimen doses one lagged compartment, so -3 agrees
     expect_true(.rel(.s$d9, .s$d3) < 1e-8)
-  })
-
-  test_that("linCmtB(-9)/(-10) refuse a record the decomposition cannot follow", {
-    # A replace or multiply rewrites a compartment that may hold mass from
-    # several origins, and the amounts cannot say how the rewrite divided among
-    # them -- so the decomposition stops being recoverable.  NA, not a number
-    # that keeps reporting the pre-rewrite origin forever.
-    .m <- .rxOriginModel(1L, 1L, 0L)
-    .base <- et(amt = 100, cmt = "depot")
-    # ss = 2 ADDS a steady state to whatever was already there, so the result
-    # is neither a fresh SS solution to attribute to the SS compartment nor a
-    # dose the amounts reveal.  Attributing it wholesale read ~8% off.
-    .eSs2 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 2, time = 10) |>
-      et(seq(0.1, 40, 0.5))
-    expect_true(all(is.na(rxSolve(.m, .eSs2, params = .p)$d9)))
-    # ss = 1 replaces, which the decomposition does follow
-    .eSs1 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 1, time = 10) |>
-      et(seq(0.1, 40, 0.5))
-    .s1 <- rxSolve(.m, .eSs1, params = .p)
-    expect_false(anyNA(.s1$d9))
-    expect_true(.rel(.s1$d9, .fd(.m, .eSs1, "eta_lag")) < 1e-6)
-    for (.evid in c(5, 6)) {
-      .e <- .base |> et(amt = 0.5, cmt = "central", evid = .evid, time = 10) |>
-        et(seq(0.1, 24, 0.5))
-      .s <- rxSolve(.m, .e, params = .p)
-      expect_true(all(is.na(.s$d9)), label = paste("evid", .evid))
-    }
-    # ... but a replace on an ODE compartment is none of its business
-    .mOde <- rxode2({
-      cl <- exp(tcl); v <- exp(tv); ka <- exp(tka)
-      lag <- 2 * exp(eta_lag)
-      alag(depot) <- lag
-      d/dt(eff) <- -0.1 * eff
-      cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
-      d9 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -9, 7, 1, cl, v, 0, 0, 0, 0, ka)
-    })
-    .eOde <- et(amt = 100, cmt = "depot") |>
-      et(amt = 1, cmt = "eff", evid = 5, time = 10) |> et(seq(0.1, 24, 0.5))
-    .s <- rxSolve(.mOde, .eOde, params = .p, inits = c(eff = 5))
-    expect_false(anyNA(.s$d9))
   })
 
   test_that("linCmtB(-9) is per-individual", {
