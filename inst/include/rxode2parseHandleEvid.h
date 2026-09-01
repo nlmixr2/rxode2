@@ -167,7 +167,9 @@ static inline int handleTlastInlineExtraMatches(rx_solving_options_ind *ind, int
 //
 // Returns NA_REAL when there is no off record to pair with (a continuous
 // steady-state infusion never turns off), matching _getDur()'s backward==2
-// contract.
+// contract.  Two steady-state regimens on the same compartment at the same
+// rate share one pool and cannot be told apart here, the same limitation
+// _getDur() has over idose.
 static inline double handleTlastInlineDurExtra(rx_solving_options_ind *ind) {
   if (ind->extraDoseN == NULL) return NA_REAL;
   int trueIdx = -1 - ind->idx;
