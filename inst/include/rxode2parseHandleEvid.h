@@ -108,8 +108,8 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 // ixds can point at an unrelated dose there.  Recover the index from ind->idx
 // whenever the record is a real (non-extra) dose, and only fall back to ixds
 // for extra doses (idx < 0).  An extra dose's amount lives in extraDoseDose,
-// not in idose, so there is no dose index to recover for it; it keeps the
-// long-standing ixds behavior.
+// not in idose, so there is no dose index to recover for it; callers that need
+// an extra dose's infusion duration use handleTlastInlineDurExtra() instead.
 static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return ind->ixds;
   int cur = ind->ix[ind->idx];
@@ -127,6 +127,40 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
     if (ind->idose[j] == cur) return j;
   }
   return ind->ixds;
+}
+
+// Infusion duration of an EXTRA dose.
+// Extra doses -- the records pushDosingEvent() appends for the steady-state and
+// modeled-lag infusion paths -- carry ind->idx = -1-trueIdx and live in
+// ind->extraDose*, not in ind->idose, so _getDur()'s scan over idose cannot see
+// them and the ixds fallback measures an unrelated record's infusion.  Find the
+// matching "off" record here instead: same compartment and rate type, the
+// negated amount, the earliest one after this dose.  The extra-dose arrays are
+// in push order rather than time order (extraDoseTimeIdx carries the time
+// ordering), so scan them all rather than walking forward from trueIdx.
+// Returns NA_REAL when no off record exists (a continuous steady-state infusion
+// never turns off), matching _getDur()'s backward==2 contract.
+static inline double handleTlastInlineDurExtra(rx_solving_options_ind *ind) {
+  if (ind->extraDoseN == NULL) return NA_REAL;
+  int trueIdx = -1 - ind->idx;
+  if (trueIdx < 0 || trueIdx >= ind->extraDoseN[0]) return NA_REAL;
+  double curDose = ind->extraDoseDose[trueIdx];
+  double curTime = ind->extraDoseTime[trueIdx];
+  int wh, cmt, wh100, whI, wh0;
+  getWh(ind->extraDoseEvid[trueIdx], &wh, &cmt, &wh100, &whI, &wh0);
+  double offTime = NA_REAL;
+  for (int j = 0; j < ind->extraDoseN[0]; ++j) {
+    if (j == trueIdx || ind->extraDoseTime[j] <= curTime) continue;
+    if (ind->extraDoseDose[j] != -curDose) continue;
+    int whJ, cmtJ, wh100J, whIJ, wh0J;
+    getWh(ind->extraDoseEvid[j], &whJ, &cmtJ, &wh100J, &whIJ, &wh0J);
+    // the on/off pair shares the compartment and the rate type; only the wh0
+    // flag differs (EVID0_REGULAR vs EVID0_RATEADJ), so it is not compared
+    if (cmtJ != cmt || whIJ != whI) continue;
+    if (ISNA(offTime) || ind->extraDoseTime[j] < offTime) offTime = ind->extraDoseTime[j];
+  }
+  if (ISNA(offTime)) return NA_REAL;
+  return offTime - curTime;
 }
 
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
@@ -147,6 +181,16 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
   case EVIDF_INF_RATE:
     if (curDose[0] <= 0) {
       return 0;
+    } else if (ind->idx < 0) {
+      // extra dose: it has no idose entry, so its duration comes from the
+      // extra-dose arrays (see handleTlastInlineDurExtra)
+      tinf[0] = handleTlastInlineDurExtra(ind);
+      if (!ISNA(tinf[0])) {
+        curDose[0] = tinf[0] * curDose[0];
+        return 1;
+      } else {
+        return 0;
+      }
     } else {
       // The amt in rxode2 is the infusion rate, but we need the amt
       int doseIdx = handleTlastInlineDoseIndex(ind);
