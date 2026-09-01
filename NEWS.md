@@ -701,6 +701,17 @@
 
 ## Bug fixes
 
+- An `integer` or `logical` covariate column no longer makes `rxSolve()`
+  quadratic in the number of rows.  While building the solving data set each
+  covariate column was coerced to double once per output row; for a column
+  that is already double that coercion is free, but for an integer or logical
+  column it allocated and converted a copy of the whole column on every row.
+  The result was correct but progressively slower -- roughly 14x a double
+  column at 20000 rows and 90x at 160000 -- and the only hint was the timing,
+  since a logical covariate arises naturally from ordinary R code such as
+  `flag = x == "value"`.  Each covariate column is now coerced once, so every
+  storage mode solves at the speed a double column always did.
+
 - Building a model no longer hangs forever on a lock left behind by an
   interrupted session, and two processes no longer build the same model at
   once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess

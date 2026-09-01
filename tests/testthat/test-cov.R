@@ -705,4 +705,111 @@ rxTest({
     x2 <- rxSolve(mod2, dfadvan, keep = "CL")
     expect_equal(x1$CL, x2$CL)
   })
+
+  test_that("covariate columns behave the same in every storage mode (#1325)", {
+
+    .covFlagData <- function(nRow, type) {
+      flag <- rep(c(0, 1), length.out = nRow)
+      data.frame(
+        ID = rep(seq_len(nRow / 50), each = 50),
+        TIME = rep(seq_len(50), times = nRow / 50),
+        x = seq(-100, 0, length.out = nRow),
+        flag = switch(type,
+          double = as.double(flag),
+          integer = as.integer(flag),
+          logical = as.logical(flag)
+        ),
+        EVID = 0, AMT = 0
+      )
+    }
+
+    mod <- rxode2({
+      slope <- slopeA * (1 - flag) + slopeB * flag
+      eff <- slope * x
+    })
+    .pars <- c(slopeA = -0.9, slopeB = -1.29)
+    .solve <- function(d) {
+      rxSolve(mod, params = .pars, events = d, returnType = "data.frame")
+    }
+
+    # etTrans() carries every covariate as a double, whatever the column's
+    # storage mode in the input data
+    .trDouble <- rxode2::etTrans(.covFlagData(200, "double"), mod)
+    expect_equal(typeof(.trDouble$flag), "double")
+    for (.ty in c("integer", "logical")) {
+      .tr <- rxode2::etTrans(.covFlagData(200, .ty), mod)
+      expect_equal(typeof(.tr$flag), "double")
+      expect_equal(.tr$flag, .trDouble$flag)
+    }
+
+    # ...and the model therefore sees identical values
+    .refSolve <- .solve(.covFlagData(1000, "double"))
+    for (.ty in c("integer", "logical")) {
+      .cur <- .solve(.covFlagData(1000, .ty))
+      expect_equal(.cur$slope, .refSolve$slope)
+      expect_equal(.cur$eff, .refSolve$eff)
+    }
+
+    # the NA carry-forward/carry-back that fills a subject's first covariate
+    # value reads the same coerced column, so an NA in an integer or logical
+    # column resolves the same way an NA in a double column does
+    .naData <- function(type) {
+      d <- .covFlagData(200, type)
+      d$flag[c(1, 2, 51)] <- NA
+      d
+    }
+    .refNa <- .solve(.naData("double"))
+    for (.ty in c("integer", "logical")) {
+      expect_equal(.solve(.naData(.ty))$eff, .refNa$eff)
+    }
+  })
+
+  test_that("non-double covariate columns stay linear in row count (#1325)", {
+
+    # etTrans() used to coerce a covariate column to double once per output
+    # row.  For an integer or logical column that is a whole-column allocation
+    # and copy per row, which made rxSolve() quadratic in rows -- 20000 rows
+    # cost ~14x a double column and 160000 rows ~90x.  A double column was
+    # never copied, so it is the reference the other modes are held to.
+    #
+    # The threshold is deliberately loose (timing on a shared CI runner is
+    # noisy) but the defect it guards against is an order of magnitude past
+    # it; taking the minimum of a few repeats keeps a stray GC pause from
+    # failing the check.
+    .covFlagData <- function(nRow, type) {
+      flag <- rep(c(0, 1), length.out = nRow)
+      data.frame(
+        ID = rep(seq_len(nRow / 50), each = 50),
+        TIME = rep(seq_len(50), times = nRow / 50),
+        x = seq(-100, 0, length.out = nRow),
+        flag = switch(type,
+          double = as.double(flag),
+          integer = as.integer(flag),
+          logical = as.logical(flag)
+        ),
+        EVID = 0, AMT = 0
+      )
+    }
+
+    mod <- rxode2({
+      slope <- slopeA * (1 - flag) + slopeB * flag
+      eff <- slope * x
+    })
+    .pars <- c(slopeA = -0.9, slopeB = -1.29)
+    .solve <- function(d) {
+      rxSolve(mod, params = .pars, events = d, returnType = "data.frame")
+    }
+    .minElapsed <- function(d, reps = 3L) {
+      min(vapply(seq_len(reps),
+                 function(i) system.time(.solve(d))[["elapsed"]],
+                 numeric(1)))
+    }
+
+    invisible(.solve(.covFlagData(1000, "double"))) # compile the model first
+
+    .nRow <- 20000
+    .tDouble <- .minElapsed(.covFlagData(.nRow, "double"))
+    expect_lt(.minElapsed(.covFlagData(.nRow, "integer")), 4 * .tDouble)
+    expect_lt(.minElapsed(.covFlagData(.nRow, "logical")), 4 * .tDouble)
+  })
 })
