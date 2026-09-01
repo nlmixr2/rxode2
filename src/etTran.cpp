@@ -3094,13 +3094,40 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     covDp[j] = REAL(curCovD);
     covDn[j] = curCovD.size();
   }
+  // The output columns below are ours -- allocated above as IntegerVector /
+  // NumericVector -- so re-wrapping them per row only pays Rcpp's
+  // preserve/release bookkeeping.  Take the pointers once.
+  int    *outId    = INTEGER(lst[0]);
+  int    *outId1   = INTEGER(lst1[0]);
+  double *outTime  = REAL(lst[1]);
+  int    *outEvid  = INTEGER(lst[2]);
+  double *outAmt   = REAL(lst[3]);
+  double *outIi    = REAL(lst[4]);
+  double *outDv    = REAL(lst[5]);
+  int    *outCmt   = cmtAdd  ? INTEGER(lst[6])              : NULL;
+  int    *outCens  = censAdd ? INTEGER(lst[6+cmtAdd])       : NULL;
+  double *outLimit = limitAdd? REAL(lst[6+cmtAdd+censAdd])  : NULL;
+  std::vector<double*> keepP(keepCol.size(), NULL);
+  for (j = 0; j < (int)(keepCol.size()); j++) keepP[j] = REAL(keepL[j]);
+  // covariate output columns; the cmt covariate is the one integer column
+  std::vector<double*> covOutP(covCol.size(), NULL);
+  std::vector<int*>    covOutI(covCol.size(), NULL);
+  std::vector<double*> cov1P(covCol.size(), NULL);
+  for (j = 0; j < (int)(covCol.size()); j++) {
+    if (hasCmt && covCol[j] >= 0 && j == cmtI) {
+      covOutI[j] = INTEGER(lst[baseSize+j]);
+      continue;
+    }
+    if (!allTimeVar && covCol[j] < 0) continue;
+    covOutP[j] = REAL(lst[baseSize+j]);
+    cov1P[j]   = REAL(lst1[1+j]);
+  }
   int maxItemsPerId = 0;
   int curItems = 0;
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
-      ivTmp = as<IntegerVector>(lst[0]);
-      ivTmp[jj] = id[idxOutput[i]];
+      outId[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]) {
         maxItemsPerId = max2(curItems, maxItemsPerId);
         curItems=0;
@@ -3108,62 +3135,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         idx1--;
         if (idx1 < 0) stop(_("number of individuals not calculated correctly"));
         // Add ID
-        ivTmp = as<IntegerVector>(lst1[0]);
-        ivTmp[idx1] = id[idxOutput[i]];
+        outId1[idx1] = id[idxOutput[i]];
         lastId=id[idxOutput[i]];
       }
       // retId[i]=id[idxOutput[i]];
-      nvTmp = as<NumericVector>(lst[1]);
-      // retTime[i]=time[idxOutput[i]];
-      nvTmp[jj] = time[idxOutput[i]];
-      ivTmp = as<IntegerVector>(lst[2]);
-      ivTmp[jj] = evid[idxOutput[i]];
-      // retEvid[i]=evid[idxOutput[i]];
-      nvTmp = as<NumericVector>(lst[3]);
-      // retAmt[i]=amt[idxOutput[i]];
-      nvTmp[jj] = amt[idxOutput[i]];
-      nvTmp = as<NumericVector>(lst[4]);
-      nvTmp[jj]=ii[idxOutput[i]];
-      nvTmp = as<NumericVector>(lst[5]);
-      nvTmp[jj]=dv[idxOutput[i]];
-      kk = 6;
-      if (cmtAdd){
-        ivTmp = as<IntegerVector>(lst[kk]);
-        ivTmp[jj] = cmtF[idxOutput[i]];
-        kk++;
-      }
-      if (censAdd){
-        ivTmp = as<IntegerVector>(lst[kk]);
-        ivTmp[jj] = cens[idxOutput[i]];
-        kk++;
-      }
-      if (limitAdd){
-        nvTmp = as<NumericVector>(lst[kk]);
-        nvTmp[jj] = limit[idxOutput[i]];
-        kk++;
-      }
+      outTime[jj] = time[idxOutput[i]];
+      outEvid[jj] = evid[idxOutput[i]];
+      outAmt[jj] = amt[idxOutput[i]];
+      outIi[jj] = ii[idxOutput[i]];
+      outDv[jj] = dv[idxOutput[i]];
+      if (cmtAdd)  outCmt[jj]   = cmtF[idxOutput[i]];
+      if (censAdd) outCens[jj]  = cens[idxOutput[i]];
+      if (limitAdd) outLimit[jj] = limit[idxOutput[i]];
       // Now add the other items.
       added=false;
       if (idxInput[idxOutput[i]] == -1) {
         // not in data
         for (j = 0; j < (int)(keepCol.size()); j++){
-          nvTmp = as<NumericVector>(keepL[j]);
-          nvTmp[jj] = NA_REAL;
+          keepP[j][jj] = NA_REAL;
         }
       } else {
         for (j = 0; j < (int)(keepCol.size()); j++){
-          // idxOutput is the output id
-          nvTmp = as<NumericVector>(keepL[j]);
           // These keep variables are added.
-          SEXP cur = inDataFK[j];
-          nvTmp[jj] = REAL(cur)[idxInput[idxOutput[i]]];
+          keepP[j][jj] = REAL(inDataFK[j])[idxInput[idxOutput[i]]];
         }
       }
       for (j = 0; j < (int)(covCol.size()); j++){
         int covColj = covCol[j];
         if (hasCmt && covColj >= 0 &&j == cmtI) {
-          ivTmp = as<IntegerVector>(lst[baseSize+j]);
-          ivTmp[jj] = cmtF[idxOutput[i]];
+          covOutI[j][jj] = cmtF[idxOutput[i]];
           if (!cmtFadd){
             sub0[baseSize+j] = true;
             sub1[1+j] = false;
@@ -3173,10 +3173,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           }
         } else {
           if (!allTimeVar && covColj < 0) continue;
-          nvTmp = as<NumericVector>(lst[baseSize+j]);
+          double *covOut = covOutP[j];
           if (idxInput[idxOutput[i]] == -1){
             // These should be ignored for interpolation.
-            nvTmp[jj] = NA_REAL;
+            covOut[jj] = NA_REAL;
           } else {
             // These covariates are added; covDp[j] is the column already
             // coerced to double above.
@@ -3188,16 +3188,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               // so we get the current
               // idx1 = the index of the current id
               if (allTimeVar) {
-                nvTmp[jj] = curCovD[idxIcov[idx1]];
+                covOut[jj] = curCovD[idxIcov[idx1]];
               }
               // nvTmp = as<NumericVector>(lst1[1+j]);
               // double vCur = curCovD[idx1];
               // nvTmp[idx1] = vCur;
               // fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
             } else {
-              nvTmp[jj] = curCovD[idxInput[idxOutput[i]]];
+              covOut[jj] = curCovD[idxInput[idxOutput[i]]];
               if (addId) {
-                nvTmp = as<NumericVector>(lst1[1+j]);
+                double *cov1 = cov1P[j];
                 int iCur = i;
                 int idxOut = i;
                 int idxIn = i;
@@ -3223,14 +3223,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                                  "column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
                                  CHAR(idLvl[((inId.size() == 0) ? 1 : lastId)-1]));
                 }
-                nvTmp[idx1] = vCur;
-                fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
+                cov1[idx1] = vCur;
+                fPars[idx1*pars.size()+covParPos[j]] = cov1[idx1];
                 added = true;
               } else if (sub1[1+j]) {
-                nvTmp = as<NumericVector>(lst1[1+j]);
-                //double cur1 = nvTmp[idx1];
+                double *cov1 = cov1P[j];
                 double cur2 = curCovD[idxInput[idxOutput[i]]];
-                if (!ISNA(cur2) && nvTmp[idx1] != cur2){
+                if (!ISNA(cur2) && cov1[idx1] != cur2){
                   sub0[baseSize+j] = true;
                   sub1[1+j] = false;
                   fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
