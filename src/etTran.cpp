@@ -3065,6 +3065,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       stop(_("the columns that are kept must be either an underlying logical, string, factor, integer number, or real number"));
     }
   }
+  // The row loop below reads every covariate column once per output row.
+  // Coercing to double there costs a whole-column allocation and copy for each
+  // integer or logical column on each row, which makes the loop quadratic in
+  // the number of rows.  Coerce each column to double once, here, and keep the
+  // coerced columns alive in covD so covDp[] stays valid for the loop.  A
+  // column that is already double is not copied at all.
+  List covD(covCol.size());
+  std::vector<double*> covDp(covCol.size(), NULL);
+  std::vector<R_xlen_t> covDn(covCol.size(), 0);
+  for (j = 0; j < (int)(covCol.size()); j++) {
+    int covColj = covCol[j];
+    // cmt is carried as an integer compartment column, not a double covariate
+    if (hasCmt && covColj >= 0 && j == cmtI) continue;
+    SEXP curCov;
+    if (covColj >= 0) {
+      // This comes from the original data
+      curCov = inData[covColj];
+    } else {
+      // this comes from the individual covariate table
+      curCov = iCov_[-covColj-1];
+    }
+    if (!Rf_isNull(inDataF[j])) {
+      curCov = inDataF[j];
+    }
+    NumericVector curCovD = as<NumericVector>(curCov);
+    covD[j]  = curCovD;
+    covDp[j] = REAL(curCovD);
+    covDn[j] = curCovD.size();
+  }
   int maxItemsPerId = 0;
   int curItems = 0;
   for (i =idxOutput.size(); i--;){
@@ -3149,48 +3178,39 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             // These should be ignored for interpolation.
             nvTmp[jj] = NA_REAL;
           } else {
-            // These covariates are added.
-            SEXP cur;
-            if (covColj >= 0) {
-              // This comes from the original data
-              cur = inData[covColj];
-            } else {
-              // this comes from the individual covariate table
-              cur = iCov_[-covColj-1];
-            }
-            if (!Rf_isNull(inDataF[j])) {
-              cur = inDataF[j];
-            }
-            nvTmp2   = as<NumericVector>(cur);
+            // These covariates are added; covDp[j] is the column already
+            // coerced to double above.
+            double *curCovD = covDp[j];
+            R_xlen_t curCovDn = covDn[j];
             if (covColj < 0) {
               // By definition, not time varying, no need to check
-              // nvTmp2 in this case is the column sorted by id
+              // curCovD in this case is the column sorted by id
               // so we get the current
               // idx1 = the index of the current id
               if (allTimeVar) {
-                nvTmp[jj] = nvTmp2[idxIcov[idx1]];
+                nvTmp[jj] = curCovD[idxIcov[idx1]];
               }
               // nvTmp = as<NumericVector>(lst1[1+j]);
-              // double vCur = nvTmp2[idx1];
+              // double vCur = curCovD[idx1];
               // nvTmp[idx1] = vCur;
               // fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
             } else {
-              nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
+              nvTmp[jj] = curCovD[idxInput[idxOutput[i]]];
               if (addId) {
                 nvTmp = as<NumericVector>(lst1[1+j]);
                 int iCur = i;
                 int idxOut = i;
                 int idxIn = i;
-                double vCur = nvTmp2[idxInput[idxOutput[i]]];
+                double vCur = curCovD[idxInput[idxOutput[i]]];
                 // Could be NA, look for non NA value OR beginning of subject
                 while (ISNA(vCur) && iCur != 0 &&
                        id.size() > (idxOut = idxOutput[iCur]) &&
                        idxOut >= 0 &&
                        lastId == id[idxOut] &&
                        idxInput.size() > idxOut &&
-                       nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                       curCovDn > (idxIn = idxInput[idxOut]) &&
                        idxIn >= 0) {
-                  vCur = nvTmp2[idxIn];
+                  vCur = curCovD[idxIn];
                   iCur--;
                 }
                 if (ISNA(vCur)) iCur = i;
@@ -3200,9 +3220,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                        idxOut >= 0 &&
                        lastId == id[idxOut] &&
                        idxInput.size() > idxOut &&
-                       nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                       curCovDn > (idxIn = idxInput[idxOut]) &&
                        idxIn >= 0) {
-                  vCur = nvTmp2[idxIn];
+                  vCur = curCovD[idxIn];
                   iCur++;
                 }
                 if (ISNA(vCur)) {
@@ -3216,7 +3236,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               } else if (sub1[1+j]) {
                 nvTmp = as<NumericVector>(lst1[1+j]);
                 //double cur1 = nvTmp[idx1];
-                double cur2 = nvTmp2[idxInput[idxOutput[i]]];
+                double cur2 = curCovD[idxInput[idxOutput[i]]];
                 if (!ISNA(cur2) && nvTmp[idx1] != cur2){
                   sub0[baseSize+j] = true;
                   sub1[1+j] = false;

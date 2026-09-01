@@ -4449,6 +4449,19 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
+    // Each covariate column is copied out of dataf once per subject below.
+    // Coerce every column to double once, here, so the copies read a plain
+    // pointer.  A column that is already double is not copied at all, but an
+    // integer column -- CMT, when the model reads it as a covariate -- would
+    // otherwise be converted in full for each subject.  covD keeps the coerced
+    // columns alive so covDp[] stays valid for the copies below.
+    List covD(ncov);
+    std::vector<double*> covDp(ncov, NULL);
+    for (int ic = 0; ic < ncov; ic++) {
+      NumericVector curCovD = as<NumericVector>(dataf[covPos[ic]]);
+      covD[ic]  = curCovD;
+      covDp[ic] = REAL(curCovD);
+    }
     // Make sure the covariates are a #ncov * all times size
     int ids = id.size();
     // Get the number of subjects
@@ -4470,8 +4483,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         int groupNAll = ndoses + nobs;
         double *groupCov = &(_globals.gcov[curcovi]);
         for (ii = 0; ii < ncov; ii++){
-          NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-          std::copy(cur.begin()+lasti, cur.begin()+lasti+groupNAll,
+          double *cur = covDp[ii];
+          std::copy(cur+lasti, cur+lasti+groupNAll,
                     _globals.gcov+curcovi);
           curcovi += groupNAll;
         }
@@ -4619,8 +4632,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
             if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
             ind->cov_ptr = &(_globals.gcov[curcovi]);
             for (ii = 0; ii < ncov; ii++){
-              NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-              std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
+              double *cur = covDp[ii];
+              std::copy(cur+lasti, cur+lasti+ind->n_all_times,
                         _globals.gcov+curcovi);
               curcovi += ind->n_all_times;
             }
@@ -4726,8 +4739,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
       ind->cov_ptr = &(_globals.gcov[curcovi]);
       for (ii = 0; ii < ncov; ii++){
-        NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-        std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
+        double *cur = covDp[ii];
+        std::copy(cur+lasti, cur+lasti+ind->n_all_times,
                   _globals.gcov+curcovi);
         curcovi += ind->n_all_times;
       }
