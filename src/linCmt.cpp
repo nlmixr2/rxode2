@@ -2244,7 +2244,14 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
   // Every later call for the same row recomputes from that same entry, so the
   // many re-entries a mixed linCmt()+ODE model makes within one row (dydt
   // fires at every internal solver step) cannot accumulate; the last call
-  // wins, which is where copyLinCmt() takes the amounts from too.  A
+  // wins, which is where copyLinCmt() takes the amounts from too.
+  //
+  // Recomputing (rather than stepping) is what the surrounding machinery
+  // already does: ind->tprior is set once per event interval by preSolve(),
+  // never per internal step, so linCmtBsolveRow()'s dt = _t - ind->tprior
+  // spans the whole interval on every call and `aPrev` stays the interval's
+  // starting amounts until copyLinCmt() writes at the end of it.  Advancing
+  // incrementally instead read ~16% off on a mixed linCmt()+ODE model.  A
   // steady-state record runs its SS solve and the normal advance that follows
   // it at the SAME idx, so ind->linSS is part of the row's identity.
   if (ind->linCmtOriginIdx != idx || ind->linCmtOriginSS != ind->linSS) {
@@ -2334,6 +2341,15 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 // compartment whose amount is wanted, or RX_LINCMT_ORIGIN_CONC for the
 // reported concentration.  Summing which1 = -9 over every dosed q reproduces
 // which1 = -3 where -3 is defined.
+//
+// NA_REAL for a call that does not describe the model `lc` is set up for, an
+// The micro-constants come from the CALLER's p1..ka, while the decomposition
+// they are applied to was advanced with lc.trueTheta(thetaSens).  Those agree
+// on every ordinary row and differ only on a finite-difference H-optimization
+// probe, where linCmtBsolveRow() perturbs thetaSens but not the caller's
+// arguments -- exactly the convention which1 = -3 has always used
+// (linCmtBdoseTime() builds gm the same way from amounts that came out of the
+// perturbed solve), so the two modes stay consistent with each other.
 //
 // NA_REAL for a call that does not describe the model `lc` is set up for, an
 // out of range q/out, a poisoned decomposition, a regimen carrying a record
