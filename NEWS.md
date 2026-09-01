@@ -769,7 +769,10 @@
   infusion into the history with an amount of 0; another arrangement could
   find no matching off-record at all and drop the dose from the history.  An
   extra dose's duration is now taken from the matching off-record in the
-  extra-dose arrays (#1321).
+  extra-dose arrays, paired from the end of the pool so that an infusion
+  longer than the inter-dose interval -- which overlaps itself, leaving more
+  off records than on records -- is measured against its own off rather than
+  against the one closing an earlier overlapping infusion (#1321).
 
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one

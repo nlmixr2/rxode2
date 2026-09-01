@@ -129,38 +129,74 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   return ind->ixds;
 }
 
+// Is extra dose `a` later than extra dose `b`?  Ties broken by push index, the
+// same (time, index) ordering handleExtraDose() sorts extraDoseTimeIdx by.
+static inline int handleTlastInlineExtraIsLater(rx_solving_options_ind *ind, int a, int b) {
+  if (ind->extraDoseTime[a] != ind->extraDoseTime[b]) {
+    return ind->extraDoseTime[a] > ind->extraDoseTime[b];
+  }
+  return a > b;
+}
+
+// Does extra dose `j` carry `amt` into the same compartment with the same rate
+// type?  An on/off pair shares the compartment and whI; only the wh0 flag
+// differs (EVID0_REGULAR vs EVID0_RATEADJ), so it is not compared.
+static inline int handleTlastInlineExtraMatches(rx_solving_options_ind *ind, int j,
+                                                int cmt, int whI, double amt) {
+  if (ind->extraDoseDose[j] != amt) return 0;
+  int whJ, cmtJ, wh100J, whIJ, wh0J;
+  getWh(ind->extraDoseEvid[j], &whJ, &cmtJ, &wh100J, &whIJ, &wh0J);
+  return cmtJ == cmt && whIJ == whI;
+}
+
 // Infusion duration of an EXTRA dose.
 // Extra doses -- the records pushDosingEvent() appends for the steady-state and
 // modeled-lag infusion paths -- carry ind->idx = -1-trueIdx and live in
 // ind->extraDose*, not in ind->idose, so _getDur()'s scan over idose cannot see
-// them and the ixds fallback measures an unrelated record's infusion.  Find the
-// matching "off" record here instead: same compartment and rate type, the
-// negated amount, the earliest one after this dose.  The extra-dose arrays are
-// in push order rather than time order (extraDoseTimeIdx carries the time
-// ordering), so scan them all rather than walking forward from trueIdx.
-// Returns NA_REAL when no off record exists (a continuous steady-state infusion
-// never turns off), matching _getDur()'s backward==2 contract.
+// them and the ixds fallback measures an unrelated record's infusion.  Pair the
+// on record with its off record inside the extra-dose arrays instead.
+//
+// The pairing is done from the END: the last "on" belongs to the last "off",
+// the one before it to the one before that, and so on.  A steady-state infusion
+// longer than the inter-dose interval overlaps itself, so the pool holds more
+// off records than on records -- the leading offs close infusions that started
+// before the pool did.  Matching each on to the nearest following off would
+// hand those to the wrong dose (an ii=12 regimen infusing over 20h reported 8h);
+// counting back from the end pairs them correctly and degenerates to the
+// obvious pairing when the counts are equal.
+//
+// Returns NA_REAL when there is no off record to pair with (a continuous
+// steady-state infusion never turns off), matching _getDur()'s backward==2
+// contract.
 static inline double handleTlastInlineDurExtra(rx_solving_options_ind *ind) {
   if (ind->extraDoseN == NULL) return NA_REAL;
   int trueIdx = -1 - ind->idx;
-  if (trueIdx < 0 || trueIdx >= ind->extraDoseN[0]) return NA_REAL;
+  int n = ind->extraDoseN[0];
+  if (trueIdx < 0 || trueIdx >= n) return NA_REAL;
   double curDose = ind->extraDoseDose[trueIdx];
   double curTime = ind->extraDoseTime[trueIdx];
   int wh, cmt, wh100, whI, wh0;
   getWh(ind->extraDoseEvid[trueIdx], &wh, &cmt, &wh100, &whI, &wh0);
-  double offTime = NA_REAL;
-  for (int j = 0; j < ind->extraDoseN[0]; ++j) {
-    if (j == trueIdx || ind->extraDoseTime[j] <= curTime) continue;
-    if (ind->extraDoseDose[j] != -curDose) continue;
-    int whJ, cmtJ, wh100J, whIJ, wh0J;
-    getWh(ind->extraDoseEvid[j], &whJ, &cmtJ, &wh100J, &whIJ, &wh0J);
-    // the on/off pair shares the compartment and the rate type; only the wh0
-    // flag differs (EVID0_REGULAR vs EVID0_RATEADJ), so it is not compared
-    if (cmtJ != cmt || whIJ != whI) continue;
-    if (ISNA(offTime) || ind->extraDoseTime[j] < offTime) offTime = ind->extraDoseTime[j];
+  // how many identical infusions start after this one
+  int nOnAfter = 0;
+  for (int j = 0; j < n; ++j) {
+    if (j != trueIdx &&
+        handleTlastInlineExtraMatches(ind, j, cmt, whI, curDose) &&
+        handleTlastInlineExtraIsLater(ind, j, trueIdx)) nOnAfter++;
   }
-  if (ISNA(offTime)) return NA_REAL;
-  return offTime - curTime;
+  // this dose ends at the off record that has exactly that many offs after it
+  for (int j = 0; j < n; ++j) {
+    if (!handleTlastInlineExtraMatches(ind, j, cmt, whI, -curDose)) continue;
+    if (!handleTlastInlineExtraIsLater(ind, j, trueIdx)) continue;
+    int nOffAfter = 0;
+    for (int k = 0; k < n; ++k) {
+      if (k != j &&
+          handleTlastInlineExtraMatches(ind, k, cmt, whI, -curDose) &&
+          handleTlastInlineExtraIsLater(ind, k, j)) nOffAfter++;
+    }
+    if (nOffAfter == nOnAfter) return ind->extraDoseTime[j] - curTime;
+  }
+  return NA_REAL;
 }
 
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {

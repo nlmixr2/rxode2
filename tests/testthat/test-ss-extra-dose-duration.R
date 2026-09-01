@@ -84,20 +84,43 @@ rxTest({
     expect_true(all(.r$cen >= .ssRun(20) - 1e-6))
   })
 
+  .histModel <- rxode2({
+    alag(cen) <- 3
+    d / dt(cen) <- -0.1 * cen
+    cd <- dose(cen)
+    dn <- dosenum()
+    ta <- tad(cen)
+  })
+
   test_that("the reported dose history of an ss=1 lagged infusion is the amount", {
-    .e <- et(et(amt = 100, rate = 20, ss = 1, ii = 12, cmt = "cen"),
-             seq(0, 40, by = 4))
-    .m <- rxode2({
-      alag(cen) <- 3
-      d / dt(cen) <- -0.1 * cen
-      cd <- dose(cen)
-      dn <- dosenum()
-    })
-    .r <- rxSolve(.m, .e, returnType = "data.frame")
-    # from the lagged infusion onward the reported dose is the amount, not the
-    # rate and not 0
-    expect_true(all(.r$cd[.r$time >= 3] == 100))
-    expect_true(all(.r$dn >= 1))
+    # dur < ii, dur > ii and dur >> ii: an infusion longer than the inter-dose
+    # interval overlaps itself, which is what makes the on/off pairing in
+    # handleTlastInlineDurExtra() non-trivial
+    for (.rate in c(20, 5, 2.5)) {
+      .e <- et(et(amt = 100, rate = .rate, ss = 1, ii = 12, cmt = "cen"),
+               seq(0, 40, by = 4))
+      .r <- rxSolve(.histModel, .e, returnType = "data.frame")
+      # from the lagged infusion onward the reported dose is the amount, not the
+      # rate and not 0
+      expect_true(all(.r$cd[.r$time >= 3] == 100))
+      expect_true(all(.r$dn >= 1))
+      # the dose lands at the lag time, so time-after-dose counts from there
+      expect_equal(.r$ta[.r$time >= 3], .r$time[.r$time >= 3] - 3)
+    }
+  })
+
+  test_that("the reported dose history of an ss=2 lagged infusion is the amount", {
+    # the ss=2 dose is at 24 rather than at 0 so it is not coincident with the
+    # prior regimen's own lagged dose
+    for (.rate in c(20, 5)) {
+      .e <- et(amt = 50, rate = 10, cmt = "cen") %>%
+        et(amt = 100, rate = .rate, ss = 2, ii = 12, time = 24, cmt = "cen") %>%
+        et(seq(0, 60, by = 4))
+      .r <- rxSolve(.histModel, .e, returnType = "data.frame")
+      expect_true(all(.r$cd[.r$time > 3 & .r$time < 24] == 50))
+      expect_true(all(.r$cd[.r$time > 27] == 100))
+      expect_equal(.r$ta[.r$time > 27], .r$time[.r$time > 27] - 27)
+    }
   })
 
 })
