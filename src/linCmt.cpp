@@ -2229,6 +2229,80 @@ static inline void linCmtOriginCacheRow(rx_solving_options_ind *ind, int idx, in
 // perturbed one of them, and wherever rx->ndiff masks a parameter out of the
 // sensitivity set.  Advancing the rows with anything else would let the
 // mismatch reappear as a phantom dose on the next interval.
+// Roll the row-entry state forward the first time a NEW row is advanced.
+// Every later call for the same row recomputes from that same entry, so the
+// many re-entries a mixed linCmt()+ODE model makes within one row (dydt fires
+// at every internal solver step) cannot accumulate; the last call wins, which
+// is where copyLinCmt() takes the amounts from too.
+//
+// Recomputing (rather than stepping) is what the surrounding machinery already
+// does: ind->tprior is set once per event interval by preSolve(), never per
+// internal step, so linCmtBsolveRow()'s dt = _t - ind->tprior spans the whole
+// interval on every call and `aPrev` stays the interval's starting amounts
+// until copyLinCmt() writes at the end of it.  Advancing incrementally instead
+// read ~16% off on a mixed linCmt()+ODE model.  A steady-state record runs its
+// SS solve and the normal advance that follows it at the SAME idx, so
+// ind->linSS is part of the row's identity.
+static inline void linCmtOriginRollForward(rx_solving_options_ind *ind, int idx) {
+  if (ind->linCmtOriginIdx == idx && ind->linCmtOriginSS == ind->linSS) return;
+  if (ind->linCmtOriginIdx >= 0) {
+    memcpy(ind->linCmtOrigin, ind->linCmtOriginOut, sizeof(ind->linCmtOrigin));
+    ind->linCmtOriginSeeded = ind->linCmtOriginOutSeeded;
+  }
+  ind->linCmtOriginIdx = idx;
+  ind->linCmtOriginSS = ind->linSS;
+}
+
+// A steady-state record establishes the amounts analytically, replacing
+// whatever was there, so the whole result came through the SS dose's own
+// compartment.  Returns the seeded state to record (2 = the compartment could
+// not be identified, so nothing may be attributed).
+static inline int linCmtOriginSeedSs(rx_solving_options_ind *ind,
+                                     rx_solving_options *op, double *O,
+                                     const Eigen::Matrix<double, Eigen::Dynamic, 1> &fx,
+                                     int m) {
+  int cmt = (ind->linSS == linCmtSsBolus) ? ind->linSSbolusCmt : ind->cmt;
+  int q0 = cmt - op->linOffset;
+  memset(O, 0, sizeof(ind->linCmtOriginOut));
+  if (q0 < 0 || q0 >= m || (int)fx.size() != m) return 2;
+  for (int j = 0; j < m; ++j) O[q0*RX_LINCMT_ORIGIN_MAX + j] = fx(j, 0);
+  return 1;
+}
+
+// Attribute whatever entered the compartments since the last advance, then
+// carry every row over this interval seeing only its own rate.  Before the
+// first advance the compartments hold the initial conditions, which are not a
+// dose: op->inits is subtracted once (`sIn` == 0) so they are not booked as
+// one.  Returns the seeded state to record.
+static inline int linCmtOriginStep(stan::math::linCmtStan &lc,
+                                   rx_solving_options *op, double *O,
+                                   const double *aPrev, const double *rate,
+                                   const Eigen::Matrix<double, Eigen::Dynamic, 1> &th,
+                                   int ncmt, int oral0, int trans, int m, int sIn) {
+  const int st = RX_LINCMT_ORIGIN_MAX;
+  for (int j = 0; j < m; ++j) {
+    double sum = 0.0;
+    for (int q = 0; q < m; ++q) sum += O[q*st + j];
+    double base = (sIn == 0 && op->inits != NULL) ? op->inits[op->linOffset + j] : 0.0;
+    O[j*st + j] += aPrev[j] - sum - base;
+  }
+  if ((int)th.size() != 2*ncmt + oral0) return 2;
+  double ka = oral0 ? th(2*ncmt, 0) : 0.0;
+  Eigen::Matrix<double, Eigen::Dynamic, 2> g =
+    stan::math::macros2micros(th, ncmt, trans);
+  double rq[RX_LINCMT_ORIGIN_MAX];
+  Eigen::Matrix<double, Eigen::Dynamic, 1> in(m), outv(m);
+  for (int q = 0; q < m; ++q) {
+    for (int k = 0; k < 1 + oral0; ++k) rq[k] = 0.0;
+    int ri = linCmtOriginRateIdx(q, oral0);
+    if (ri >= 0 && rate != NULL) rq[ri] = rate[ri];
+    for (int j = 0; j < m; ++j) in(j, 0) = O[q*st + j];
+    lc.advanceWithRate(in, g, ka, rq, outv);
+    for (int j = 0; j < m; ++j) O[q*st + j] = outv(j, 0);
+  }
+  return 1;
+}
+
 static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
                                        rx_solving_options_ind *ind,
                                        rx_solving_options *op,
@@ -2239,81 +2313,18 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
                                        int ncmt, int oral0, int trans, int idx) {
   const int m = ncmt + oral0;
   if (m <= 0 || m > RX_LINCMT_ORIGIN_MAX) return;
-  const int st = RX_LINCMT_ORIGIN_MAX;
-  // Roll the row-entry state forward the first time a NEW row is advanced.
-  // Every later call for the same row recomputes from that same entry, so the
-  // many re-entries a mixed linCmt()+ODE model makes within one row (dydt
-  // fires at every internal solver step) cannot accumulate; the last call
-  // wins, which is where copyLinCmt() takes the amounts from too.
-  //
-  // Recomputing (rather than stepping) is what the surrounding machinery
-  // already does: ind->tprior is set once per event interval by preSolve(),
-  // never per internal step, so linCmtBsolveRow()'s dt = _t - ind->tprior
-  // spans the whole interval on every call and `aPrev` stays the interval's
-  // starting amounts until copyLinCmt() writes at the end of it.  Advancing
-  // incrementally instead read ~16% off on a mixed linCmt()+ODE model.  A
-  // steady-state record runs its SS solve and the normal advance that follows
-  // it at the SAME idx, so ind->linSS is part of the row's identity.
-  if (ind->linCmtOriginIdx != idx || ind->linCmtOriginSS != ind->linSS) {
-    if (ind->linCmtOriginIdx >= 0) {
-      memcpy(ind->linCmtOrigin, ind->linCmtOriginOut, sizeof(ind->linCmtOrigin));
-      ind->linCmtOriginSeeded = ind->linCmtOriginOutSeeded;
-    }
-    ind->linCmtOriginIdx = idx;
-    ind->linCmtOriginSS = ind->linSS;
-  }
+  linCmtOriginRollForward(ind, idx);
   double *O = ind->linCmtOriginOut;
   memcpy(O, ind->linCmtOrigin, sizeof(ind->linCmtOriginOut));
   int sIn = ind->linCmtOriginSeeded, sOut;
   if (ind->linSS != 0) {
-    int cmt = (ind->linSS == linCmtSsBolus) ? ind->linSSbolusCmt : ind->cmt;
-    int q0 = cmt - op->linOffset;
-    memset(O, 0, sizeof(ind->linCmtOriginOut));
-    if (q0 < 0 || q0 >= m || (int)fx.size() != m) {
-      ind->linCmtOriginOutSeeded = 2;
-      linCmtOriginCacheRow(ind, idx, m, O, 2);
-      return;
-    }
-    for (int j = 0; j < m; ++j) O[q0*st + j] = fx(j, 0);
-    sOut = 1;
+    sOut = linCmtOriginSeedSs(ind, op, O, fx, m);
   } else if (sIn == 2) {
     // Poisoned by an earlier record whose origin could not be identified;
     // there is nothing to attribute the amounts to any more.
-    ind->linCmtOriginOutSeeded = 2;
-    linCmtOriginCacheRow(ind, idx, m, O, 2);
-    return;
+    sOut = 2;
   } else {
-    // Attribute whatever entered the compartments since the last advance.
-    for (int j = 0; j < m; ++j) {
-      double sum = 0.0;
-      for (int q = 0; q < m; ++q) sum += O[q*st + j];
-      double base = 0.0;
-      if (sIn == 0 && op->inits != NULL) {
-        base = op->inits[op->linOffset + j];
-      }
-      O[j*st + j] += aPrev[j] - sum - base;
-    }
-    // Advance every row over this interval, each seeing only its own rate.
-    if ((int)th.size() != 2*ncmt + oral0) {
-      ind->linCmtOriginOutSeeded = 2;
-      linCmtOriginCacheRow(ind, idx, m, O, 2);
-      return;
-    }
-    double ka = oral0 ? th(2*ncmt, 0) : 0.0;
-    Eigen::Matrix<double, Eigen::Dynamic, 2> g =
-      stan::math::macros2micros(th, ncmt, trans);
-    double rq[RX_LINCMT_ORIGIN_MAX];
-    Eigen::Matrix<double, Eigen::Dynamic, 1> in(m), outv(m);
-    for (int q = 0; q < m; ++q) {
-      int nr = 1 + oral0;
-      for (int k = 0; k < nr; ++k) rq[k] = 0.0;
-      int ri = linCmtOriginRateIdx(q, oral0);
-      if (ri >= 0 && rate != NULL) rq[ri] = rate[ri];
-      for (int j = 0; j < m; ++j) in(j, 0) = O[q*st + j];
-      lc.advanceWithRate(in, g, ka, rq, outv);
-      for (int j = 0; j < m; ++j) O[q*st + j] = outv(j, 0);
-    }
-    sOut = 1;
+    sOut = linCmtOriginStep(lc, op, O, aPrev, rate, th, ncmt, oral0, trans, m, sIn);
   }
   ind->linCmtOriginOutSeeded = sOut;
   linCmtOriginCacheRow(ind, idx, m, O, sOut);
@@ -2360,6 +2371,49 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 // past the SS solve; see linCmtDoseScan()).
 #define RX_LINCMT_ORIGIN_W2   8
 #define RX_LINCMT_ORIGIN_CONC 7
+// Can this individual's regimen be split into origins at all?  A REPLACE or
+// MULTIPLY into the linCmt() block, or an ss = 2 steady state, changes a
+// compartment holding several origins' mass in a way the amounts alone cannot
+// divide among them -- see linCmtDoseScan().  `ssInfQ` additionally reports a
+// steady-state infusion reaching origin `q`, whose rate is not carried past
+// the SS solve.
+static inline bool linCmtOriginFollows(rx_solving_options_ind *ind,
+                                       rx_solving_options *op, int q, int *ssInfQ) {
+  int dosed, ssInf, ssInfMask, unsplit;
+  linCmtDoseScan(ind, op, &dosed, &ssInf, &ssInfMask, &unsplit);
+  if (ssInfQ != NULL) *ssInfQ = (ssInfMask & (1 << q)) != 0;
+  return unsplit == 0;
+}
+
+// The amounts that arrived through origin `q`, as the requested output.
+static inline double linCmtOriginAmount(stan::math::linCmtStan &lc, const double *origin,
+                                        const Eigen::Matrix<double, Eigen::Dynamic, 1> &th,
+                                        int oral0, int q, int out) {
+  const int st = RX_LINCMT_ORIGIN_MAX;
+  if (out == RX_LINCMT_ORIGIN_CONC) return origin[q*st + oral0] / lc.getVc(th);
+  return origin[q*st + out];
+}
+
+// -(M A^(q) + r^(q)): the system's own right-hand side on origin `q`'s row,
+// which is its dose-time derivative.
+static inline double linCmtOriginDoseTime(stan::math::linCmtStan &lc, const double *origin,
+                                          const Eigen::Matrix<double, Eigen::Dynamic, 1> &th,
+                                          const double *rate, int ncmt, int oral0,
+                                          int trans, int q, int out, double ka) {
+  const int m = ncmt + oral0, st = RX_LINCMT_ORIGIN_MAX;
+  Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
+    stan::math::macros2micros(th, ncmt, trans);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> Aq(m), dot(m);
+  for (int j = 0; j < m; ++j) Aq(j, 0) = origin[q*st + j];
+  double rq[RX_LINCMT_ORIGIN_MAX];
+  for (int k = 0; k < 1 + oral0; ++k) rq[k] = 0.0;
+  int ri = linCmtOriginRateIdx(q, oral0);
+  if (ri >= 0) rq[ri] = rate[ri];
+  lc.dAdt(Aq, gm, ka, rq, dot);
+  if (out == RX_LINCMT_ORIGIN_CONC) return -dot(oral0, 0) / lc.getVc(th);
+  return -dot(out, 0);
+}
+
 static inline double linCmtBorigin(stan::math::linCmtStan &lc,
                                    rx_solving_options_ind *ind,
                                    rx_solving_options *op,
@@ -2386,36 +2440,17 @@ static inline double linCmtBorigin(stan::math::linCmtStan &lc,
   int out = which2 % RX_LINCMT_ORIGIN_W2;
   if (q >= m) return NA_REAL;
   if (out != RX_LINCMT_ORIGIN_CONC && out >= m) return NA_REAL;
-  const int st = RX_LINCMT_ORIGIN_MAX;
   Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
   if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
     return NA_REAL;
   }
+  int ssInfQ = 0;
+  if (!linCmtOriginFollows(ind, op, q, &ssInfQ)) return NA_REAL;
   if (which1 == -10) {
-    int dosed0, ssInf0, ssInfMask0, unsplit0;
-    linCmtDoseScan(ind, op, &dosed0, &ssInf0, &ssInfMask0, &unsplit0);
-    if (unsplit0) return NA_REAL;
-    double val = (out == RX_LINCMT_ORIGIN_CONC) ? origin[q*st + oral0] : origin[q*st + out];
-    if (out == RX_LINCMT_ORIGIN_CONC) val /= lc.getVc(th);
-    return val;
+    return linCmtOriginAmount(lc, origin, th, oral0, q, out);
   }
-  if (rate == NULL) return NA_REAL;
-  int dosed, ssInf, ssInfMask, unsplit;
-  linCmtDoseScan(ind, op, &dosed, &ssInf, &ssInfMask, &unsplit);
-  if (unsplit) return NA_REAL;
-  if ((ssInfMask & (1 << q)) != 0) return NA_REAL;
-  Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
-    stan::math::macros2micros(th, ncmt, trans);
-  Eigen::Matrix<double, Eigen::Dynamic, 1> Aq(m), dot(m);
-  for (int j = 0; j < m; ++j) Aq(j, 0) = origin[q*st + j];
-  double rq[RX_LINCMT_ORIGIN_MAX];
-  int nr = 1 + oral0;
-  for (int k = 0; k < nr; ++k) rq[k] = 0.0;
-  int ri = linCmtOriginRateIdx(q, oral0);
-  if (ri >= 0) rq[ri] = rate[ri];
-  lc.dAdt(Aq, gm, ka, rq, dot);
-  if (out == RX_LINCMT_ORIGIN_CONC) return -dot(oral0, 0) / lc.getVc(th);
-  return -dot(out, 0);
+  if (rate == NULL || ssInfQ) return NA_REAL;
+  return linCmtOriginDoseTime(lc, origin, th, rate, ncmt, oral0, trans, q, out, ka);
 }
 
 /*
@@ -2764,6 +2799,33 @@ static inline bool linCmtBread(linB_t &lcb, int which1, int which2, double *out)
   return false;
 }
 
+// which1 = -9/-10 dispatch: find this row's decomposition and rate, then read
+// it.  Same re-query rule as which1 = -3 -- an already-solved idx reads the
+// per-idx caches, since both the live rate and the live decomposition have
+// moved on by the time the output pass asks, and a re-queried row carries its
+// own seeded state because the live flag is gone by then.  The cache width
+// must match what linCmtOriginAdvance() wrote, so it comes from the CALL's
+// shape (ncmt + oral0), not from op->numLin.
+static inline double linCmtBoriginQuery(linB_t &lcb, rx_solving_options_ind *ind,
+                                        rx_solving_options *op, int idx,
+                                        int ncmt, int oral0, int which1, int which2,
+                                        int trans,
+                                        double p1, double v1, double p2, double p3,
+                                        double p4, double p5, double ka) {
+  int reQuery = (!ind->doSS && ind->solvedIdx >= idx);
+  int mOrig = ncmt + oral0;
+  const double *rate = reQuery ? linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
+  const double *origin = reQuery ?
+    linCmtOriginSlot(ind, idx, RX_LINCMT_ORIGIN_SLOTW(mOrig), 0) :
+    ind->linCmtOriginOut;
+  int seeded = ind->linCmtOriginOutSeeded;
+  if (reQuery) {
+    seeded = (origin == NULL) ? 0 : (int)origin[mOrig*RX_LINCMT_ORIGIN_MAX];
+  }
+  return linCmtBorigin(lcb.lc, ind, op, origin, seeded, rate, ncmt, oral0,
+                       which1, which2, trans, p1, v1, p2, p3, p4, p5, ka);
+}
+
 // Sentinel reads and carry calls (which1/which2 not both -1).  These assume
 // the -1,-1 solve for this row has already run.  Returns false for a
 // combination no sentinel handles, in which case linCmtB() falls through
@@ -2790,24 +2852,8 @@ static inline bool linCmtBquery(linB_t &lcb, linCmtBind &wsp, rx_solve *rx,
     *out = linCmtBtransition(lcb, rx, ind, op, idx, _t, ncmt, oral0, which2, trans,
                              p1, v1, p2, p3, p4, p5, ka);
   } else if (which1 == -9 || which1 == -10) {
-    // Same re-query rule as which1 = -3: an already-solved idx reads the
-    // per-idx caches, since both the live rate and the live decomposition
-    // have moved on by the time the output pass asks.
-    int reQuery = (!ind->doSS && ind->solvedIdx >= idx);
-    const double *rate = reQuery ? linCmtBRateSlot(ind, idx, op->numLin, 0) : getLinRate;
-    // Width must match what linCmtOriginAdvance() wrote, so it comes from the
-    // CALL's shape (ncmt + oral0), not from op->numLin.  A re-queried row
-    // carries its own seeded state; the live flag is gone by then.
-    int mOrig = ncmt + oral0;
-    const double *origin = reQuery ?
-      linCmtOriginSlot(ind, idx, RX_LINCMT_ORIGIN_SLOTW(mOrig), 0) :
-      ind->linCmtOriginOut;
-    int seeded = ind->linCmtOriginOutSeeded;
-    if (reQuery) {
-      seeded = (origin == NULL) ? 0 : (int)origin[mOrig*RX_LINCMT_ORIGIN_MAX];
-    }
-    *out = linCmtBorigin(lcb.lc, ind, op, origin, seeded, rate, ncmt, oral0,
-                         which1, which2, trans, p1, v1, p2, p3, p4, p5, ka);
+    *out = linCmtBoriginQuery(lcb, ind, op, idx, ncmt, oral0, which1, which2,
+                              trans, p1, v1, p2, p3, p4, p5, ka);
   } else if (which1 == -7) {
     *out = linCmtBcarryAdd(ind, ncmt, oral0, which2, p2);
   } else if (which1 == -8) {
