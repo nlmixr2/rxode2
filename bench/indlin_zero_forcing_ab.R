@@ -27,6 +27,11 @@ suppressMessages(library(rxode2))
 stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))),
                     normalizePath(.lib)))
 
+# Which of the four matrix-exponential drivers a model lands on is the whole
+# point of the measurement, and it is not exported; bind it once the way the
+# other bench scripts reach an internal.
+.doIndLin <- utils::getFromNamespace(".rxMemDoIndLin", "rxode2")
+
 .reps <- as.integer(Sys.getenv("BENCH_REPS", "7"))
 cat("reps:", .reps, " load:",
     strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")
@@ -71,8 +76,8 @@ for (.n in 2:3) {
   .res <- rbind(.res, data.frame(
     cmt = .n,
     fixed = min(.tn), spurious = min(.to), ratio = min(.to) / min(.tn),
-    doIndLinFixed = rxode2:::.rxMemDoIndLin(rxModelVars(.mn)),
-    doIndLinSpurious = rxode2:::.rxMemDoIndLin(rxModelVars(.mo)),
+    doIndLinFixed = .doIndLin(rxModelVars(.mn)),
+    doIndLinSpurious = .doIndLin(rxModelVars(.mo)),
     maxCpDiff = max(abs(.a$cp - .b$cp))))
 }
 print(.res, digits = 4)
