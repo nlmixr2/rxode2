@@ -684,6 +684,20 @@
 
 ## Bug fixes
 
+- A model comparing a string covariate against a literal (e.g. `cl <- exp(tcl
+  + eta.cl + cllow * (LowID == "Yes"))`) no longer translates to an undefined
+  parameter.  A character literal reaches symengine as the symbol
+  `rxQ__<escaped>__rxQ`, and while the R translator decodes it back to a
+  quoted string, the C translator added in 5.1.7 emitted the symbol verbatim
+  -- so the generated model carried `LowID==rxQ__Yes__rxQ` and solving it
+  failed with "the following parameter(s) are required for solving:
+  rxQ__Yes__rxQ".  Only symengine's own underscore naming reached the C path
+  (the bracket form declines and falls back to R), which is why it surfaced in
+  the sensitivity models a `nlmixr2est` FOCEi fit builds rather than in a
+  plain `rxode2()` call.  The C translator now decodes the literal, and hands
+  the expression back to the R translator for any byte whose `deparse1()`
+  spelling it cannot reproduce exactly.
+
 - `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
   infusion when the subject's dosing record starts with a bolus.  The dose
   history asked for the infusion duration with the solver's running dose
