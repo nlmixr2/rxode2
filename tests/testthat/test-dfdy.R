@@ -290,4 +290,25 @@ d/dt(cen) = ka*depot-k*cen
       "cen(0)=0\ndf(cen)/dy(x1)=0\ndf(cen)/dy(THETA[1])=0\ndf(cen)/dy(THETA[2])=0\n",
       "df(cen)/dy(THETA[3])=0\ny=cen\ntad=t-tlast()\n")))
   })
+
+  test_that("dfdy names report ETA[n] and THETA[n], not the internal names", {
+
+    # THETA and ETA both reach populateDfdy() under their internal spellings
+    # (_THETA_1_, _ETA_1_) and are translated back for display.  The ETA half
+    # of that translation used to be discarded, so an ETA derivative reported
+    # the internal name while a THETA derivative next to it did not.
+    mod <- rxode2({
+      d / dt(A) <- -(CL / V) * A + THETA[1] * ETA[1]
+      df(A) / dy(A) <- -(CL / V)
+      df(A) / dy(THETA[1]) <- ETA[1]
+      df(A) / dy(ETA[1]) <- THETA[1]
+    })
+
+    expect_equal(
+      rxDfdy(mod),
+      c("df(A)/dy(A)", "df(A)/dy(THETA[1])", "df(A)/dy(ETA[1])")
+    )
+    expect_false(any(grepl("_ETA_", rxDfdy(mod), fixed = TRUE)))
+    expect_false(any(grepl("_THETA_", rxDfdy(mod), fixed = TRUE)))
+  })
 })
