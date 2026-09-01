@@ -701,6 +701,21 @@
 
 ## Bug fixes
 
+- `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
+  modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
+  the trailing restore of the saved index, so the corrupted value stayed live
+  solver state until the error was picked up after the integration step.  The
+  restore now happens before the checks, as it already did in `updateDur()`.
+
+- The internal `_getDur()` backward scan now pairs an infusion end with a start
+  of the same event type, not merely one of the opposite amount, so a bolus of
+  `+amt` can no longer be mistaken for the start of an infusion of `-amt`; this
+  matches the pairing `handleInfusionGetEndOfInfusionIndex()` already did.  An
+  orphaned infusion end sitting at dose index 0 also reports the missing start
+  instead of falling through to the forward scan and returning a negated
+  duration.  Both paths are reached through the `t_getDur` slot handed to
+  generated model code and downstream packages (nlmixr2/rxode2#1322).
+
 - An `integer` or `logical` covariate column no longer makes `rxSolve()`
   quadratic in the number of rows.  While building the solving data set each
   covariate column was coerced to double once per output row; for a column

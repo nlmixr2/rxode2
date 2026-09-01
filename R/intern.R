@@ -39,3 +39,27 @@
 ## .calcDerived <- function(ncmtSXP, transSXP, inp, sigdigSXP) {
 ##   .Call(`_calcDerived`, ncmtSXP, transSXP, inp, sigdigSXP)
 ## }
+
+#' Test-only driver for the internal `_getDur()` infusion-duration lookup
+#'
+#' Builds a minimal solving structure from the supplied dose records and calls
+#' `_getDur()` directly.  `backward` is 1 (scan back for the infusion start), 2
+#' (scan forward, return `NA` when the end is missing) or anything else (scan
+#' forward, error when the end is missing).
+#'
+#' @param time numeric vector of record times
+#' @param dose numeric vector of record amounts
+#' @param evid integer vector of record event ids
+#' @param idose integer vector of 0-based indices into `time`/`dose`/`evid` that
+#'   hold the dose records
+#' @param l 0-based dose index to look up
+#' @param backward scan direction, see above
+#' @return numeric of length 2: the duration and the paired dose index found
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @noRd
+.getDurTest <- function(time, dose, evid, idose, l, backward) {
+  .Call(`_rxode2_getDurTest`, as.double(time), as.double(dose),
+        as.integer(evid), as.integer(idose), as.integer(l),
+        as.integer(backward))
+}

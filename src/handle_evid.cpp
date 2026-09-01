@@ -6,6 +6,7 @@
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include "strncmp.h"
 #define _(String) (String)
@@ -55,12 +56,24 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
                    "infusion end cannot be found (l >= ndoses)");
   }
   double dose = getDoseNumber(ind, l);
-  if (backward==1 && l != 0){
-    p[0] = l-1;
-    while (p[0] > 0 && getDoseNumber(ind, p[0]) != -dose){
-      p[0]--;
+  if (backward==1){
+    // Pair on the event type as well as the amount; getDoseNumber() alone lets a
+    // bolus of +amt match an infusion end of -amt.  This matches the pairing in
+    // handleInfusionGetEndOfInfusionIndex(): same evid, opposite amount.
+    int curEvid = getEvid(ind, ind->idose[l]);
+    p[0] = 0;
+    if (l != 0) {
+      p[0] = l-1;
+      while (p[0] > 0 &&
+             (getDoseNumber(ind, p[0]) != -dose ||
+              getEvid(ind, ind->idose[p[0]]) != curEvid)){
+        p[0]--;
+      }
     }
-    if (getDoseNumber(ind, p[0]) != -dose){
+    // l == 0 has no earlier record to pair with, so the start is missing; it
+    // must not fall through to the forward scan below.
+    if (l == 0 || getDoseNumber(ind, p[0]) != -dose ||
+        getEvid(ind, ind->idose[p[0]]) != curEvid){
       rx_solving_options *op = (ind->op ? ind->op : &op_global);
       if (omp_in_parallel()) {
         int newBadSolve = 1;
@@ -92,4 +105,34 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
     }
     return getAllTimes(ind, ind->idose[p[0]]) - getAllTimes(ind, ind->idose[l]);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Test-only entry point for _getDur()
+//
+// _getDur()'s `backward == 1` branch is not reachable from inside rxode2 (the
+// one internal caller always passes 2); it is only used through the `t_getDur`
+// slot handed to generated model code and downstream packages.  This wrapper
+// builds a minimal rx_solving_options_ind from R vectors so the pairing rules
+// of both branches can be tested directly (nlmixr2/rxode2#1322).
+extern "C" SEXP _rxode2_getDurTest(SEXP timeS, SEXP doseS, SEXP evidS,
+                                   SEXP idoseS, SEXP lS, SEXP backwardS) {
+  rx_solving_options_ind ind;
+  rx_solving_options op;
+  memset(&ind, 0, sizeof(rx_solving_options_ind));
+  memset(&op, 0, sizeof(rx_solving_options));
+  ind.op = &op;
+  ind.all_times = REAL(timeS);
+  ind.dose = REAL(doseS);
+  ind.evid = INTEGER(evidS);
+  ind.idose = INTEGER(idoseS);
+  ind.n_all_times = Rf_length(timeS);
+  ind.ndoses = Rf_length(idoseS);
+  unsigned int p = 0;
+  double dur = _getDur(INTEGER(lS)[0], &ind, INTEGER(backwardS)[0], &p);
+  SEXP ret = Rf_protect(Rf_allocVector(REALSXP, 2));
+  REAL(ret)[0] = dur;
+  REAL(ret)[1] = (double)p;
+  Rf_unprotect(1);
+  return ret;
 }

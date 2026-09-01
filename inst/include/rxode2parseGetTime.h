@@ -143,6 +143,9 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   double dur, rate, amt;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind,idx), t, yp);
   rate  = getRate(ind, ind->id, ind->cmt, amt, t, yp);
+  // restore before the checks below so every return path leaves ind->idx alone
+  // (mirrors updateDur() above)
+  ind->idx=oldIdx;
   if (rate > 0){
     dur = amt/rate; // mg/hr
     setDoseP1(ind, idx, -rate);
@@ -150,7 +153,6 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
       double _laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
       setAllTimesP1(ind, idx, (ISNA(_laggedStart) ? t : _laggedStart) + dur);
     }
-    ind->idx=oldIdx;
   } else {
     rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
@@ -169,7 +171,6 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
       }
     }
   }
-  ind->idx=oldIdx;
 }
 
 static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
