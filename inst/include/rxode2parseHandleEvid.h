@@ -152,6 +152,18 @@ static inline int handleTlastInlineExtraMatches(rx_solving_options_ind *ind, int
   return cmtJ == cmt && whIJ == whI;
 }
 
+// How many extra doses carrying `amt` into that compartment come after `ref`?
+static inline int handleTlastInlineExtraCountAfter(rx_solving_options_ind *ind, int ref,
+                                                   int cmt, int whI, double amt) {
+  int n = ind->extraDoseN[0], cnt = 0;
+  for (int j = 0; j < n; ++j) {
+    if (j != ref &&
+        handleTlastInlineExtraMatches(ind, j, cmt, whI, amt) &&
+        handleTlastInlineExtraIsLater(ind, j, ref)) cnt++;
+  }
+  return cnt;
+}
+
 // Infusion duration of an EXTRA dose.
 // Extra doses -- the records pushDosingEvent() appends for the steady-state and
 // modeled-lag infusion paths -- carry ind->idx = -1-trueIdx and live in
@@ -183,29 +195,39 @@ static inline double handleTlastInlineDurExtra(rx_solving_options_ind *ind) {
   int wh, cmt, wh100, whI, wh0;
   getWh(ind->extraDoseEvid[trueIdx], &wh, &cmt, &wh100, &whI, &wh0);
   // how many identical infusions start after this one
-  int nOnAfter = 0;
-  for (int j = 0; j < n; ++j) {
-    if (j != trueIdx &&
-        handleTlastInlineExtraMatches(ind, j, cmt, whI, curDose) &&
-        handleTlastInlineExtraIsLater(ind, j, trueIdx)) nOnAfter++;
-  }
+  int nOnAfter = handleTlastInlineExtraCountAfter(ind, trueIdx, cmt, whI, curDose);
   // this dose ends at the off record that has exactly that many offs after it
   for (int j = 0; j < n; ++j) {
     if (!handleTlastInlineExtraMatches(ind, j, cmt, whI, -curDose)) continue;
     if (!handleTlastInlineExtraIsLater(ind, j, trueIdx)) continue;
-    int nOffAfter = 0;
-    for (int k = 0; k < n; ++k) {
-      if (k != j &&
-          handleTlastInlineExtraMatches(ind, k, cmt, whI, -curDose) &&
-          handleTlastInlineExtraIsLater(ind, k, j)) nOffAfter++;
+    if (handleTlastInlineExtraCountAfter(ind, j, cmt, whI, -curDose) == nOnAfter) {
+      return ind->extraDoseTime[j] - curTime;
     }
-    if (nOffAfter == nOnAfter) return ind->extraDoseTime[j] - curTime;
   }
   return NA_REAL;
 }
 
+// Amount and duration of a fixed rate/duration infusion record.  In rxode2 the
+// amt of such a record is the infusion RATE, so the amount entered into the dose
+// history is rate*duration.  Returns 0 when the record should not be entered.
+static inline int handleTlastInlineInfusion(rx_solving_options_ind *ind, double *curDose, double *tinf) {
+  if (curDose[0] <= 0) return 0;
+  if (ind->idx < 0) {
+    // extra dose: it has no idose entry, so its duration comes from the
+    // extra-dose arrays (see handleTlastInlineDurExtra)
+    tinf[0] = handleTlastInlineDurExtra(ind);
+  } else {
+    unsigned int p;
+    int doseIdx = handleTlastInlineDoseIndex(ind);
+    if (ind->fns->getdur) tinf[0] = ind->fns->getdur(doseIdx, ind, 2, &p);
+    else tinf[0] = _getDur(doseIdx, ind, 2, &p);
+  }
+  if (ISNA(tinf[0])) return 0;
+  curDose[0] = tinf[0] * curDose[0];
+  return 1;
+}
+
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
-  unsigned int p;
   switch (ind->whI) {
   case EVIDF_MODEL_RATE_ON: // modeled rate.
   case EVIDF_MODEL_DUR_ON: // modeled duration.
@@ -220,30 +242,7 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
     break;
   case EVIDF_INF_DUR:
   case EVIDF_INF_RATE:
-    if (curDose[0] <= 0) {
-      return 0;
-    } else if (ind->idx < 0) {
-      // extra dose: it has no idose entry, so its duration comes from the
-      // extra-dose arrays (see handleTlastInlineDurExtra)
-      tinf[0] = handleTlastInlineDurExtra(ind);
-      if (!ISNA(tinf[0])) {
-        curDose[0] = tinf[0] * curDose[0];
-        return 1;
-      } else {
-        return 0;
-      }
-    } else {
-      // The amt in rxode2 is the infusion rate, but we need the amt
-      int doseIdx = handleTlastInlineDoseIndex(ind);
-      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(doseIdx, ind, 2, &p);
-      else tinf[0] = _getDur(doseIdx, ind, 2, &p);
-      if (!ISNA(tinf[0])) {
-        curDose[0] = tinf[0] * curDose[0];
-        return 1;
-      } else {
-        return 0;
-      }
-    }
+    return handleTlastInlineInfusion(ind, curDose, tinf);
     break;
   }
   if (ind->wh0 == EVID0_ONDOSE) {

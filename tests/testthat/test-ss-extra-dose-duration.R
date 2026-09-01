@@ -74,8 +74,8 @@ rxTest({
   })
 
   test_that("ss=2 infusion with a modeled lag superimposes on a prior regimen", {
-    .e <- et(amt = 50, rate = 10, cmt = "cen") %>%
-      et(amt = 100, rate = 20, ss = 2, ii = 12, time = 0, cmt = "cen") %>%
+    .e <- et(amt = 50, rate = 10, cmt = "cen") |>
+      et(amt = 100, rate = 20, ss = 2, ii = 12, time = 0, cmt = "cen") |>
       et(seq(0, 40, by = 4))
     .r <- rxSolve(.ssLagModel, .e, returnType = "data.frame")
     expect_true(all(is.finite(.r$cen)))
@@ -113,8 +113,8 @@ rxTest({
     # the ss=2 dose is at 24 rather than at 0 so it is not coincident with the
     # prior regimen's own lagged dose
     for (.rate in c(20, 5)) {
-      .e <- et(amt = 50, rate = 10, cmt = "cen") %>%
-        et(amt = 100, rate = .rate, ss = 2, ii = 12, time = 24, cmt = "cen") %>%
+      .e <- et(amt = 50, rate = 10, cmt = "cen") |>
+        et(amt = 100, rate = .rate, ss = 2, ii = 12, time = 24, cmt = "cen") |>
         et(seq(0, 60, by = 4))
       .r <- rxSolve(.histModel, .e, returnType = "data.frame")
       expect_true(all(.r$cd[.r$time > 3 & .r$time < 24] == 50))
