@@ -684,6 +684,16 @@
 
 ## Bug fixes
 
+- `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
+  infusion when the subject's dosing record starts with a bolus.  The dose
+  history asked for the infusion duration with the solver's running dose
+  counter (`ind->ixds`), which the output pass never advances, so the lookup
+  either failed -- the infusion was then dropped from the history entirely,
+  leaving `dosenum()` un-incremented and `tad()` counting from the earlier
+  dose -- or silently returned a different infusion's duration, which made
+  `dose()` report the wrong amount.  The duration is now looked up from the
+  record being handled.  Solving itself was never affected (#1316).
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an
