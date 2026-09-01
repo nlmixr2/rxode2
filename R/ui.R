@@ -1,3 +1,18 @@
+#' Do the accumulated `ini({})` lines parse as a complete statement?
+#'
+#' A `; label()` may only be appended where the statement is finished; the lines
+#' are wrapped in a block so completeness is judged in the context they occupy.
+#'
+#' @param lines `ini({})` source lines accumulated for the current statement
+#' @return `TRUE` when the lines parse as complete R code
+#' @author Matthew Fidler
+#' @noRd
+.rxIniLinesComplete <- function(lines) {
+  .txt <- paste0("{\n", paste(lines, collapse="\n"), "\n}")
+  !inherits(try(parse(text=.txt, keep.source=FALSE), silent=TRUE),
+            "try-error")
+}
+
 #' Replace comments with label()
 #'
 #' @param src source function
@@ -8,10 +23,17 @@
   .env <- new.env(parent=emptyenv())#match.call(expand.dots = TRUE)[-(1:2)]
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
+  # lines of the `ini({})` statement being accumulated; a `; label()` may only be
+  # appended once they parse as complete
+  .env$pending <- character(0)
   .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{", any_spaces)
   .regOther1 <- rex::rex(any_spaces, "}", any_spaces, ")", any_spaces)
   .regOther2 <- rex::rex(any_spaces, "model", any_spaces, "(", any_spaces, "{", any_spaces)
-  .regCommentOnBlankLine <- "^ *#+ *(.*) *$"
+  # any whitespace may precede the `#`.  With spaces only, a tab-indented
+  # comment-only line fell through to .regLabel, whose code group then captured
+  # just the tab; the bare `; label()` that produced parses -- a leading `;` is
+  # legal -- so it silently became the label of the PRECEDING parameter.
+  .regCommentOnBlankLine <- "^[[:space:]]*#+ *(.*) *$"
   # `#` is excluded from the code group so it stops at the FIRST `#`.  POSIX ERE
   # is leftmost-longest, so a greedy `[^\n"]+` ran on to the LAST `#` and left
   # the earlier one in the emitted code, where it commented out the label() just
@@ -23,12 +45,20 @@
                  function(line) {
                    if (regexpr(.regIni, line, perl=TRUE) != -1) {
                      assign("inIni", TRUE, envir=.env)
+                     assign("pending", character(0), envir=.env)
                    } else if (regexpr(.regOther1, line, perl=TRUE) != -1) {
                      assign("inIni", FALSE, envir=.env)
                    } else if (regexpr(.regOther2, line, perl=TRUE) != -1) {
                      assign("inIni", FALSE, envir=.env)
                    } else if (.env$inIni) {
+                     assign("pending", c(.env$pending, line), envir=.env)
+                     .complete <- .rxIniLinesComplete(.env$pending)
+                     if (.complete) assign("pending", character(0), envir=.env)
                      if (regexpr(.regCommentOnBlankLine, line) != -1) {
+                     } else if (!.complete) {
+                       # a comment inside an unfinished statement stays a comment; a
+                       # `;` here would split the statement and the re-parse below
+                       # would fail (rxode2 issue 1318)
                      } else if (regexpr(.regLabel, line) != -1) {
                        .env$convertLabel <- TRUE
                        .label <- deparse1(sub(.regLabel, "\\2", line))
