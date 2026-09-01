@@ -2353,7 +2353,6 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 // reported concentration.  Summing which1 = -9 over every dosed q reproduces
 // which1 = -3 where -3 is defined.
 //
-// NA_REAL for a call that does not describe the model `lc` is set up for, an
 // The micro-constants come from the CALLER's p1..ka, while the decomposition
 // they are applied to was advanced with lc.trueTheta(thetaSens).  Those agree
 // on every ordinary row and differ only on a finite-difference H-optimization
@@ -2371,6 +2370,28 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 // past the SS solve; see linCmtDoseScan()).
 #define RX_LINCMT_ORIGIN_W2   8
 #define RX_LINCMT_ORIGIN_CONC 7
+// Is this a call the decomposition can answer, and which (origin, output) does
+// its which2 name?  `seeded` != 1 is either a row that never advanced the
+// decomposition -- a model taking its VALUE from linCmtA() rather than the
+// linCmtB(which1 = which2 = -1) call these modes require, or one that declares
+// no modeled alag()/f() so op->linCmtOriginMask left it off -- or one poisoned
+// by a record whose origin could not be identified.  All of them are NA, never
+// a 0 that reads like a real derivative.
+static inline bool linCmtOriginDecode(stan::math::linCmtStan &lc, const double *origin,
+                                      int seeded, int ncmt, int oral0, int which2,
+                                      int trans, int *q, int *out) {
+  const int m = ncmt + oral0;
+  if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
+      m > RX_LINCMT_ORIGIN_MAX) {
+    return false;
+  }
+  if (which2 < 0 || origin == NULL || seeded != 1) return false;
+  *q   = which2 / RX_LINCMT_ORIGIN_W2;
+  *out = which2 % RX_LINCMT_ORIGIN_W2;
+  if (*q >= m) return false;
+  return *out == RX_LINCMT_ORIGIN_CONC || *out < m;
+}
+
 // Can this individual's regimen be split into origins at all?  A REPLACE or
 // MULTIPLY into the linCmt() block, or an ss = 2 steady state, changes a
 // compartment holding several origins' mass in a way the amounts alone cannot
@@ -2424,22 +2445,10 @@ static inline double linCmtBorigin(stan::math::linCmtStan &lc,
                                    double p2, double p3,
                                    double p4, double p5,
                                    double ka) {
-  const int m = ncmt + oral0;
-  if (lc.ncmt_ != ncmt || lc.oral0_ != oral0 || lc.trans_ != trans ||
-      m > RX_LINCMT_ORIGIN_MAX) {
+  int q, out;
+  if (!linCmtOriginDecode(lc, origin, seeded, ncmt, oral0, which2, trans, &q, &out)) {
     return NA_REAL;
   }
-  // `seeded` != 1 is either a row that never advanced the decomposition -- a
-  // model taking its VALUE from linCmtA() rather than the
-  // linCmtB(which1 = which2 = -1) call these modes require, or one that
-  // declares no modeled alag()/f() so op->linCmtOriginMask left it off -- or
-  // one poisoned by a record whose origin could not be identified.  Both are
-  // NA, never a 0 that reads like a real derivative.
-  if (which2 < 0 || origin == NULL || seeded != 1) return NA_REAL;
-  int q   = which2 / RX_LINCMT_ORIGIN_W2;
-  int out = which2 % RX_LINCMT_ORIGIN_W2;
-  if (q >= m) return NA_REAL;
-  if (out != RX_LINCMT_ORIGIN_CONC && out >= m) return NA_REAL;
   Eigen::Matrix<double, Eigen::Dynamic, 1> th(lc.getNpars());
   if (!linCmtFillTheta(th, ncmt, oral0, p1, v1, p2, p3, p4, p5, ka)) {
     return NA_REAL;
