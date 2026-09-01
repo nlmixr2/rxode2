@@ -516,5 +516,4 @@ rxRmFunParse <- function(name) {
   }
   stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"),
        call.=FALSE)
-  .ret
 }

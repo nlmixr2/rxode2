@@ -2013,7 +2013,6 @@ extern "C" double *rxGetErrs(){
   if (_rxModels.exists(".sigma")){
     NumericMatrix sigma = _rxModels[".sigma"];
     if (_rxGetErrs == NULL){
-      if (_rxGetErrs != NULL) free(_rxGetErrs);
       _rxGetErrs = (double*)calloc(sigma.ncol()*sigma.nrow(), sizeof(double));
       if (_rxGetErrs == NULL) {
         rxSolveFree();

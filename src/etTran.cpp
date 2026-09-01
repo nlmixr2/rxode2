@@ -3202,7 +3202,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                 int idxOut = i;
                 int idxIn = i;
                 double vCur = curCovD[idxInput[idxOutput[i]]];
-                // Could be NA, look for non NA value OR beginning of subject
+                // Could be NA, look for non NA value OR beginning of subject.
+                // The enclosing loop walks the output rows backwards, so addId
+                // is set on a subject's LAST row and walking iCur down from
+                // there covers every one of that subject's rows.  Searching
+                // forwards as well would only reach the next subject, which
+                // the lastId guard rejects.
                 while (ISNA(vCur) && iCur != 0 &&
                        id.size() > (idxOut = idxOutput[iCur]) &&
                        idxOut >= 0 &&
@@ -3212,18 +3217,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                        idxIn >= 0) {
                   vCur = curCovD[idxIn];
                   iCur--;
-                }
-                if (ISNA(vCur)) iCur = i;
-                while (ISNA(vCur) && iCur+1 != (int)(covCol.size()) &&
-                       idxOutput.size() < iCur+1 &&
-                       id.size() > (idxOut = idxOutput[iCur+1]) &&
-                       idxOut >= 0 &&
-                       lastId == id[idxOut] &&
-                       idxInput.size() > idxOut &&
-                       curCovDn > (idxIn = idxInput[idxOut]) &&
-                       idxIn >= 0) {
-                  vCur = curCovD[idxIn];
-                  iCur++;
                 }
                 if (ISNA(vCur)) {
                   Rf_warningcall(R_NilValue,
