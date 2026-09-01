@@ -197,6 +197,22 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                       function(.s) .s * .nSub + seq.int(.first, length.out=.n),
                       double(.n)))
   }
+  # `dfObs` is what turns the sigma uncertainty draw on.  The pre-draw does not
+  # cover the residual draw -- it is per observation, not per subject, so it is
+  # not something a chunk's slice of the parameter table can carry -- and
+  # `sigma` is therefore still forwarded, so each chunk would draw its OWN per
+  # study sigma and subjects in different chunks would end up with different
+  # residual covariance inside the same study.  Refuse it rather than answer
+  # wrongly, as a chunked solve already does for the draws it cannot share.
+  if (!is.null(.ctl$sigma) && !is.null(.ctl$dfObs) &&
+        length(.ctl$dfObs) == 1L && !is.na(.ctl$dfObs) && .ctl$dfObs > 0) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot simulate sigma ",
+         "uncertainty ('dfObs' > 0): each chunk would draw its own per study ",
+         "sigma, so subjects in different chunks would not share a study.  ",
+         "Solve with 'dfObs=0', or without chunking.",
+         call.=FALSE)
+  }
+
   # A joint (TNPRI) draw carries the omega/sigma entries in the `thetaMat` and
   # draws them with the thetas.  The pre-draw below goes through the exported
   # `rxSimThetaOmega()`, which has no argument for any of that, so the chunks

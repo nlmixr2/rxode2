@@ -800,6 +800,37 @@ rxTest({
     expect_null(.none$thetaMat)
   })
 
+  test_that("a chunked solve refuses sigma uncertainty it cannot share", {
+    skip_on_cran()
+
+    ## `sigma` is still forwarded to each chunk, so with `dfObs > 0` every
+    ## chunk drew its own per study sigma and subjects in different chunks
+    ## ended up with different residual covariance inside the same study --
+    ## which `$sigmaList` did not report either, it came back NULL
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+      cp2 <- cp * (1 + prop.err)
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .sg <- lotri::lotri(prop.err ~ 0.1)
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    expect_error(
+      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
+              dfObs=20, file=tempfile(fileext=".parquet"), chunkSize=2),
+      "sigma uncertainty")
+
+    ## a fixed sigma is not refused -- there is nothing per study to share
+    expect_s3_class(
+      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "rxSolveOom")
+  })
+
   test_that("a chunked solve says why it cannot draw from a parameter table", {
     skip_on_cran()
 
