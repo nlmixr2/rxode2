@@ -92,15 +92,20 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 // `ssInfMask` (optional, may be NULL) narrows the steady-state-infusion
 // answer to the compartments it actually reaches, which the PER-COMPARTMENT
 // modes (which1 = -9/-10) can use to refuse only the affected origin instead
-// of the whole model.  `replMult` (optional) reports whether any REPLACE or
-// MULTIPLY record targets the linCmt() block at all: those rewrite a
-// compartment that may hold mass from several origins, and the amounts alone
-// cannot say how the rewrite divided among them, so the decomposition -- not
-// just one row of it -- stops being recoverable (see linCmtBorigin()).
+// of the whole model.  `unsplit` (optional) reports whether the regimen
+// carries a record the decomposition cannot follow at all -- one that changes
+// a compartment holding several origins' mass in a way the amounts alone
+// cannot divide among them, so the whole decomposition, not just one row of
+// it, stops being recoverable (see linCmtBorigin()):
+//
+//   REPLACE / MULTIPLY  rewrites or rescales a compartment outright.
+//   ss = 2 (EVID0_SS2 / EVID0_SS20)  ADDS a steady state to whatever was
+//     already there, so the result is neither a fresh SS solution to
+//     attribute to the SS compartment nor a dose the amounts reveal.
 static inline void linCmtDoseScan(rx_solving_options_ind *ind,
                                   rx_solving_options *op,
                                   int *dosedMask, int *ssInf,
-                                  int *ssInfMask = NULL, int *replMult = NULL) {
+                                  int *ssInfMask = NULL, int *unsplit = NULL) {
   int mask = 0, ss = 0, ssMask = 0, rm = 0;
   int nLin = op->numLin < 31 ? op->numLin : 31;
   for (int i = 0; i < ind->ndoses; ++i) {
@@ -114,7 +119,8 @@ static inline void linCmtDoseScan(rx_solving_options_ind *ind,
       ss = 1;
       ssMask |= (1 << c);
     }
-    if (whI == EVIDF_REPLACE || whI == EVIDF_MULT) {
+    if (whI == EVIDF_REPLACE || whI == EVIDF_MULT ||
+        wh0 == EVID0_SS2 || wh0 == EVID0_SS20) {
       rm = 1;
     }
     if (!(whI == EVIDF_NORMAL && wh0 == EVID0_REGULAR &&
@@ -125,7 +131,7 @@ static inline void linCmtDoseScan(rx_solving_options_ind *ind,
   *dosedMask = mask;
   *ssInf = ss;
   if (ssInfMask != NULL) *ssInfMask = ssMask;
-  if (replMult != NULL) *replMult = rm;
+  if (unsplit != NULL) *unsplit = rm;
 }
 
 // Per-idx cache of the infusion rate feeding a linCmt() model, keyed the same
@@ -2330,10 +2336,10 @@ static inline void linCmtOriginAdvance(stan::math::linCmtStan &lc,
 // which1 = -3 where -3 is defined.
 //
 // NA_REAL for a call that does not describe the model `lc` is set up for, an
-// out of range q/out, a poisoned decomposition, a regimen carrying a REPLACE
-// or MULTIPLY record into the linCmt() block (it rewrites a compartment that
-// may hold several origins' mass, and the amounts cannot say how the rewrite
-// divided among them), or -- for which1 = -9 -- a rate that could not be
+// out of range q/out, a poisoned decomposition, a regimen carrying a record
+// the decomposition cannot follow (a REPLACE/MULTIPLY into the linCmt() block,
+// or an ss = 2 steady state, which ADDS to whatever was already there -- see
+// linCmtDoseScan()), or -- for which1 = -9 -- a rate that could not be
 // recovered or a steady-state infusion into q itself (its rate is not carried
 // past the SS solve; see linCmtDoseScan()).
 #define RX_LINCMT_ORIGIN_W2   8
@@ -2370,17 +2376,17 @@ static inline double linCmtBorigin(stan::math::linCmtStan &lc,
     return NA_REAL;
   }
   if (which1 == -10) {
-    int dosed0, ssInf0, ssInfMask0, replMult0;
-    linCmtDoseScan(ind, op, &dosed0, &ssInf0, &ssInfMask0, &replMult0);
-    if (replMult0) return NA_REAL;
+    int dosed0, ssInf0, ssInfMask0, unsplit0;
+    linCmtDoseScan(ind, op, &dosed0, &ssInf0, &ssInfMask0, &unsplit0);
+    if (unsplit0) return NA_REAL;
     double val = (out == RX_LINCMT_ORIGIN_CONC) ? origin[q*st + oral0] : origin[q*st + out];
     if (out == RX_LINCMT_ORIGIN_CONC) val /= lc.getVc(th);
     return val;
   }
   if (rate == NULL) return NA_REAL;
-  int dosed, ssInf, ssInfMask, replMult;
-  linCmtDoseScan(ind, op, &dosed, &ssInf, &ssInfMask, &replMult);
-  if (replMult) return NA_REAL;
+  int dosed, ssInf, ssInfMask, unsplit;
+  linCmtDoseScan(ind, op, &dosed, &ssInf, &ssInfMask, &unsplit);
+  if (unsplit) return NA_REAL;
   if ((ssInfMask & (1 << q)) != 0) return NA_REAL;
   Eigen::Matrix<double, Eigen::Dynamic, 2> gm =
     stan::math::macros2micros(th, ncmt, trans);
