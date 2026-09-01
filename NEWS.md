@@ -917,6 +917,21 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   pinned, `set.seed()` as well as `rxSetSeed()`, because the omega draw runs
   on R's RNG while the etas run on rxode2's.
 
+- A chunked solve (`rxSolve(file=`/`chunkSize=`)) with a `thetaMat` now
+  solves instead of erroring out with "when specifying 'thetaMat' the
+  parameters cannot be a 'data.frame'/'matrix'" (#1263).  The chunked solve
+  hands each chunk a parameter data frame, but `thetaMat` was still forwarded
+  alongside it -- a combination `rxSolve()` refuses -- so the solve died at
+  any `nStud`, including `nStud = 1`.
+
+  The thetas are now drawn once in the parent, in the same draw the omega
+  already uses, and the `thetaMat`/`thetaDf`/`thetaLower`/`thetaUpper`/
+  `thetaIsChol` arguments are stripped from what the chunks are forwarded --
+  so every chunk shares one draw, as it must for subjects in different chunks
+  to belong to the same study.  A `thetaMat` given without an omega is drawn
+  too, and `$thetaMat` is reported on a chunked solve as it is on a plain
+  one.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with

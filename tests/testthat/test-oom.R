@@ -651,3 +651,187 @@ rxTest({
   })
 
 })
+
+rxTest({
+
+  test_that("a chunked solve simulates parameter uncertainty like an unchunked one", {
+    skip_on_cran()
+
+    ## #1263: `thetaMat` was not stripped from what each chunk is forwarded,
+    ## so every chunk was asked to draw its own thetas on top of the
+    ## parameter data frame the omega pre-draw hands it -- a combination
+    ## `rxSolve()` refuses, so the solve died rather than answered
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
+
+    .solve <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3, ...)
+    }
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
+
+    .full  <- .solve()
+    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+
+    expect_equal(.key(as.data.frame(.chunk))$cp,
+                 .key(as.data.frame(.full))$cp,
+                 tolerance=1e-8)
+
+    ## the drawn thetas are reported, not just used
+    expect_equal(.chunk$thetaMat, .full$thetaMat)
+
+    ## there really was a theta draw to have gotten right
+    expect_equal(dim(.full$thetaMat), c(3L, 3L))
+    expect_false(isTRUE(all.equal(.full$thetaMat[1, ], .full$thetaMat[2, ])))
+
+    ## one draw shared by every chunk: a per-chunk draw would put subjects
+    ## in different chunks in different studies, which shows up as the
+    ## answer depending on the chunk size
+    for (.cs in c(1L, 2L, 3L, 6L)) {
+      expect_equal(.key(as.data.frame(
+        .solve(file=tempfile(fileext=".parquet"), chunkSize=.cs)))$cp,
+        .key(as.data.frame(.full))$cp, tolerance=1e-8)
+    }
+  })
+
+  test_that("a chunked solve draws a thetaMat given without an omega", {
+    skip_on_cran()
+
+    ## without an omega nothing pre-drew at all, so the chunks were handed
+    ## the original parameter vector and the thetaMat with it
+    .m <- rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
+
+    .solve <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      suppressWarnings(
+        rxSolve(.m, .ev, params=.p, thetaMat=.tm, nStud=3, ...))
+    }
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
+
+    .full  <- .solve()
+    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+
+    expect_equal(.key(as.data.frame(.chunk))$cp,
+                 .key(as.data.frame(.full))$cp,
+                 tolerance=1e-8)
+    expect_equal(.chunk$thetaMat, .full$thetaMat)
+  })
+
+  test_that("a chunked solve with a thetaMat that is ignored still solves", {
+    skip_on_cran()
+
+    ## `nStud = 1` ignores the thetaMat, but it still has to be stripped:
+    ## forwarded, it errored out against the pre-drawn parameter data frame
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
+
+    .solve <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      suppressWarnings(
+        rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=1, ...))
+    }
+    .key <- function(d) d[order(d$id, d$time), ]
+
+    .full  <- .solve()
+    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=3)
+
+    expect_equal(.key(as.data.frame(.chunk))$cp,
+                 .key(as.data.frame(.full))$cp,
+                 tolerance=1e-8)
+    ## nothing drawn, nothing reported
+    expect_null(.chunk$thetaMat)
+  })
+
+  test_that("a chunked solve without a thetaMat reports none", {
+    skip_on_cran()
+
+    ## the drawn thetas are read out of the shared `.rxModels` environment,
+    ## so a solve that draws none must not pick up an earlier solve's
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
+
+    set.seed(42); rxSetSeed(1234)
+    .drew <- rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
+                     file=tempfile(fileext=".parquet"), chunkSize=2)
+    expect_false(is.null(.drew$thetaMat))
+
+    set.seed(42); rxSetSeed(1234)
+    .none <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10,
+                     file=tempfile(fileext=".parquet"), chunkSize=2)
+    expect_null(.none$thetaMat)
+  })
+
+  test_that("the parallel chunked path handles a thetaMat too", {
+    skip_on_cran()
+    skip_if_not_installed("mirai")
+    skip_if_not_installed("arrow")
+
+    ## the strip happens in the parent, so the daemons see a plain solve
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
+
+    .solve <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3, ...)
+    }
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
+
+    .ser <- .solve(file=tempfile("rxSer"), chunkSize=2)
+    .par <- .solve(file=tempfile("rxPar"), chunkSize=2, parallel=2)
+
+    expect_equal(.key(as.data.frame(.par))$cp,
+                 .key(as.data.frame(.ser))$cp,
+                 tolerance=1e-8)
+    expect_equal(.par$thetaMat, .ser$thetaMat)
+  })
+
+})
