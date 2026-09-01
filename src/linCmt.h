@@ -3043,6 +3043,42 @@ namespace stan {
         }
       }
 
+      //' Advance an arbitrary state vector over the current `dt_`
+      //'
+      //' The kernel (`linCmtStan1/2/3`) is affine in the starting amounts and
+      //' in the rate, so the same call that advances the amounts advances any
+      //' other vector obeying the same dynamics -- which is what the
+      //' per-origin decomposition of the amounts needs (see
+      //' `rx_solving_options_ind::linCmtOrigin`).  `rate` temporarily replaces
+      //' the rate pointer `setPtr()` installed, so the caller can supply a
+      //' masked rate; it is restored before returning.  `dt_` must already be
+      //' set for the interval.
+      //'
+      //' @param in Vector at the start of the interval.
+      //' @param g Micro-constant matrix from `macros2micros()`.
+      //' @param ka Absorption rate (ignored when not oral).
+      //' @param rate Rates for this vector, `getNrate()` long.
+      //' @param out Filled with the advanced vector.
+      //'
+      //' @return nothing, updates `out` instead
+      void advanceWithRate(const Eigen::Matrix<double, Eigen::Dynamic, 1>& in,
+                           const Eigen::Matrix<double, Eigen::Dynamic, 2>& g,
+                           double ka, const double *rate,
+                           Eigen::Matrix<double, Eigen::Dynamic, 1>& out) {
+        double *saveRate = rate_;
+        rate_ = const_cast<double*>(rate);
+        out.resize(ncmt_ + oral0_);
+        out.setZero();
+        if (ncmt_ == 1) {
+          linCmtStan1<double>(g, in, ka, out);
+        } else if (ncmt_ == 2) {
+          linCmtStan2<double>(g, in, ka, out);
+        } else {
+          linCmtStan3<double>(g, in, ka, out);
+        }
+        rate_ = saveRate;
+      }
+
       double adjustF(const Eigen::VectorXd& ret0,
                      const Eigen::Ref<const Eigen::Matrix<double, Eigen::Dynamic, 1> >& theta,
                      double &vc) {

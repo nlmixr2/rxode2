@@ -1952,6 +1952,11 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->linCmtRateHist = NULL;
   ind->linCmtRateHistCap = 0;
   ind->linCmtRateHistW = 0;
+  // linCmtB(which1 = -9/-10)'s per-origin amount history; same lifecycle.
+  free(ind->linCmtOriginHist);
+  ind->linCmtOriginHist = NULL;
+  ind->linCmtOriginHistCap = 0;
+  ind->linCmtOriginHistW = 0;
   // linCmtB()'s per-individual carried state (window + value memo), allocated
   // on first touch inside the solve; same lifecycle as the two above.  It
   // holds C++ members, so linCmt.cpp owns the delete.
@@ -6076,6 +6081,7 @@ static inline void iniRx(rx_solve* rx) {
   op->depotLin = 0;
   op->linOffset = 0;
   op->linCmtLagMask = 0;
+  op->linCmtOriginMask = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
@@ -6101,7 +6107,7 @@ void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 // `mv[RxMv_state]`, which is the compartment order, and the linCmt() block is
 // the trailing `numLin + numLinSens` compartments, so block index c is state
 // index `linOffset + c`.  propAlag is src/tran.h's bit 4 (not included here).
-static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
+static inline int rxLinCmtPropMask(List mv, int linOffset, int numLin, int bits) {
   if (numLin <= 0 || mv.size() <= RxMv_stateProp) return 0;
   IntegerVector stateProp = mv[RxMv_stateProp];
   int mask = 0;
@@ -6110,9 +6116,19 @@ static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
   for (int c = 0; c < nLin; ++c) {
     int i = linOffset + c;
     if (i < 0 || i >= n) continue;
-    if ((stateProp[i] & 4) != 0) mask |= (1 << c);
+    if ((stateProp[i] & bits) != 0) mask |= (1 << c);
   }
   return mask;
+}
+
+static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
+  return rxLinCmtPropMask(mv, linOffset, numLin, 4);
+}
+
+// Compartments whose DOSE the model moves or scales -- a modeled alag()
+// (propAlag, bit 4) or f() (propF, bit 2) -- for op->linCmtOriginMask.
+static inline int rxLinCmtOriginMask(List mv, int linOffset, int numLin) {
+  return rxLinCmtPropMask(mv, linOffset, numLin, 2 | 4);
 }
 
 static int _rxSolveCallN = 0;
@@ -6180,6 +6196,7 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       CharacterVector mvState = mvRaw[RxMv_state];
       if (mvState.size() == op->neq) {
         op->linCmtLagMask = rxLinCmtLagMask(mvRaw, op->linOffset, op->numLin);
+        op->linCmtOriginMask = rxLinCmtOriginMask(mvRaw, op->linOffset, op->numLin);
       }
     }
     seedEng((int)(op->cores));
@@ -6798,6 +6815,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->depotLin = depotLin;
     op->linOffset = op->neq - numLin - numLinSens;
     op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
+    op->linCmtOriginMask = rxLinCmtOriginMask(rxSolveDat->mv, op->linOffset, numLin);
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);

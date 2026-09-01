@@ -602,7 +602,8 @@
        "dose feeding the linear system shares one alag(); this model lags ",
        "linCmt() compartment(s) '", paste(.cmts, collapse = "', '"),
        "' differently ('", paste(unique(unname(.lag)), collapse = "' vs '"),
-       "'), which it cannot represent -- see nlmixr2/rxode2#1237", call. = FALSE)
+       "'), which it cannot represent -- use the per-compartment ",
+       "'linCmtB(which1 = -9)' instead; see nlmixr2/rxode2#1237", call. = FALSE)
 }
 
 #' Free symbols of a dosing expression in symengine (SE-mangled) names

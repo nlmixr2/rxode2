@@ -179,6 +179,14 @@ typedef struct {
      really does share one delay (nlmixr2/rxode2#1119, #1237).  0 when the
      model declares no modeled alag() on a linCmt() compartment. */
   int    linCmtLagMask;
+  /* Bitmask over the same block of the compartments whose DOSE the model
+     moves or scales -- a modeled alag() (propAlag) or f() (propF).  Gates the
+     per-origin decomposition of the linCmt() amounts that answers the
+     PER-COMPARTMENT dose-time and bioavailability sensitivities
+     (linCmtB which1 = -9 / -10, src/linCmt.cpp).  Tracking costs one extra
+     kernel evaluation per origin per step, so a model that cannot use it
+     pays nothing.  Superset of linCmtLagMask. */
+  int    linCmtOriginMask;
 } rx_solving_options;
 
 
@@ -466,6 +474,50 @@ struct rx_solving_options_ind_s {
   // Allocated on first touch inside the solve and released with the subject in
   // rxFreeInd(), the same lifecycle linCmtRateHist and delayHist above use.
   void    *linCmtBind;      /* linCmtBind*, or NULL before first touch */
+  // Per-ORIGIN decomposition of the linCmt() amounts: row q holds the part of
+  // the amount vector that arrived through doses into linCmt block
+  // compartment q.  The system is linear, so the rows sum to the amounts, and
+  // each row obeys the same dynamics as the amounts with the regimen
+  // restricted to compartment q -- which is exactly what the PER-COMPARTMENT
+  // dose-time sensitivity needs: delaying only compartment q's doses gives
+  // dA/dL_q = -(M A^(q) + r^(q)) (linCmtB which1 = -9), and scaling only its
+  // dose gives dA/dF_q = A^(q)/F_q (which1 = -10).  That answers the
+  // mixed-route regimen -- a lagged depot alongside an unlagged central --
+  // which the single shared delay of which1 = -3 has to refuse
+  // (nlmixr2/rxode2#1119 part B, #1237).
+  //
+  // Fixed stride RX_LINCMT_ORIGIN_MAX regardless of the model's actual
+  // m = ncmt + oral0 so iniSubject() can reset it without knowing m:
+  // linCmtOrigin[q*RX_LINCMT_ORIGIN_MAX + j].  Only rows/cols < m are used.
+  // Opt-in: maintained only when op->linCmtOriginMask is nonzero.
+#define RX_LINCMT_ORIGIN_MAX 4
+  double  linCmtOrigin[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginSeeded; /* 0 until this subject's first advance seeded it */
+  // linCmtOrigin above is the decomposition at the START of the row
+  // linCmtOriginIdx names -- the analogue of Alast -- and linCmtOriginOut is
+  // the advanced result for that row.  They have to be separate because a
+  // model that mixes linCmt() with ODEs re-enters linCmtB() many times WITHIN
+  // one row (dydt fires at every internal solver step), so the advance must be
+  // a pure function of the row's entry state, exactly as the amounts are a
+  // pure function of Alast.  The last call for the row wins, which is the same
+  // convention copyLinCmt() applies to the amounts (it evaluates dydt once at
+  // ind->tout and copies what that produced).  linCmtOriginIdx = -1 means no
+  // row has been advanced for this subject yet.
+  double  linCmtOriginOut[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginOutSeeded;
+  int     linCmtOriginIdx;
+  /* ind->linSS the row named by linCmtOriginIdx was advanced under.  A
+     steady-state linCmt() record runs its SS solve and the normal advance
+     that follows it at the SAME idx (handleSSbolus(), src/par_solve.cpp), so
+     idx alone does not identify the row -- keying on both keeps the normal
+     advance building on the SS result instead of discarding it. */
+  int     linCmtOriginSS;
+  // Per-idx history of the above, kept for the same reason linCmtRateHist is:
+  // the output pass re-queries an already-solved index after the live state
+  // has moved on.  Flat idx-major, idx*linCmtOriginHistW + k.
+  double *linCmtOriginHist;   /* flat idx-indexed origin history, or NULL when unused */
+  int     linCmtOriginHistCap; /* capacity in idx slots */
+  int     linCmtOriginHistW;   /* doubles per idx slot (m*RX_LINCMT_ORIGIN_MAX) */
 };
 
 typedef struct rx_solve_s {

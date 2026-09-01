@@ -20,7 +20,12 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 6u;
+static const uint32_t rxSerializeFormatVer = 7u;
+// Format 7 added op->linCmtOriginMask after linCmtLagMask (read only when
+// fmt >= 7).  Unlike format 6's field this one does grow
+// sizeof(rx_solving_options), so the size check below rejects an older
+// stream before the version check can reach it -- the same outcome, a clear
+// refusal to restore a stream this build cannot read.
 // Format 6 added op->linCmtLagMask after linOffset (read only when fmt >= 6:
 // it landed in the struct's tail padding, so sizeof(rx_solving_options) is
 // unchanged and the size check below cannot reject a format 5 stream).
@@ -163,7 +168,8 @@ SEXP rxSaveState_() {
   W_I32(doIndLin); W_I32(strictSS);
   W_DBL(infSSstep); W_I32(mxhnil); W_DBL(hmxi);
   W_I32(nLlik); W_I32(numLinSens); W_I32(numLin);
-  W_I32(depotLin); W_I32(linOffset); W_I32(linCmtLagMask); W_I32(ssSolved);
+  W_I32(depotLin); W_I32(linOffset); W_I32(linCmtLagMask);
+  W_I32(linCmtOriginMask); W_I32(ssSolved);
   W_I32(indOwnAlloc);
 
 #undef W_I32
@@ -730,6 +736,11 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     // A pre-format-6 stream cannot carry it; rxSolveFromRaw_() recomputes it
     // from the model right after this restore, so 0 is only a placeholder.
     op->linCmtLagMask = 0;
+  }
+  if (fmt >= 7u) {
+    R_I32(linCmtOriginMask);
+  } else {
+    op->linCmtOriginMask = 0;
   }
   R_I32(ssSolved);
   R_I32(indOwnAlloc);
