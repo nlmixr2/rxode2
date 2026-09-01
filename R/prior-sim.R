@@ -370,11 +370,15 @@
   ## -- so there is nothing to reject here.
   ##
   ## A chunked solve pre-draws its parameters in `rxOom` and strips the
-  ## omega from what each chunk is given, so the prior would never be
-  ## drawn from at all.
+  ## omega from what each chunk is given.  The theta half of a prior is a
+  ## `thetaMat`, which that pre-draw now covers, but its omega half rides on
+  ## `priorOmega`/`priorOmegaEl`, which the exported `rxSimThetaOmega()` the
+  ## pre-draw calls cannot take -- so the prior would never be drawn from.
   if (!is.null(ctl$file) || !is.null(ctl$chunkSize)) {
     stop("prior simulation does not yet support a chunked solve ('file=' or ",
-         "'chunkSize='); see rxode2 issue #1263",
+         "'chunkSize='): the one draw every chunk shares is made through ",
+         "'rxSimThetaOmega()', which has no argument for the omega half of a ",
+         "prior, so it would be dropped without warning",
          call.=FALSE)
   }
   invisible()

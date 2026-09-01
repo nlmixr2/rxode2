@@ -800,6 +800,42 @@ rxTest({
     expect_null(.none$thetaMat)
   })
 
+  test_that("a chunked solve refuses a joint (tnpri) thetaMat draw", {
+    skip_on_cran()
+
+    ## the omega entries a tnpri thetaMat carries are drawn jointly with the
+    ## thetas, which the pre-draw cannot express -- so the chunks would come
+    ## back drawn from the point estimate omega with the joint draw gone
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv + om.eta.ka + om.eta.cl ~
+                          c(0.01,
+                            0.001, 0.01,
+                            0.001, 0.001, 0.01,
+                            0, 0, 0, 0.001,
+                            0, 0, 0, 0, 0.001))
+
+    expect_error(
+      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
+              omegaSeparation="tnpri",
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "tnpri")
+
+    ## and it is refused, not merely unsupported: the unchunked solve does
+    ## draw a different omega per study
+    set.seed(42); rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
+                     omegaSeparation="tnpri")
+    expect_false(isTRUE(all.equal(.full$omegaList[[1]], .full$omegaList[[2]])))
+  })
+
   test_that("the parallel chunked path handles a thetaMat too", {
     skip_on_cran()
     skip_if_not_installed("mirai")

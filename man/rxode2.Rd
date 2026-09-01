@@ -1418,8 +1418,9 @@ is nowhere to put a second degrees of freedom. Put the prior on the
 whole level instead.
 
 Prior simulation does not yet cover a chunked solve
-(\verb{file =}/\verb{chunkSize =}, rxode2 issue #1252), which is a clear error
-rather than a solve that quietly drops the prior.
+(\verb{file =}/\verb{chunkSize =}), which is a clear error rather than a solve that
+quietly drops the prior: the one draw every chunk shares cannot express
+the omega half of a prior.
 }
 
 \subsection{A thetaMat that already carries the omegas}{

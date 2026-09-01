@@ -932,6 +932,13 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   too, and `$thetaMat` is reported on a chunked solve as it is on a plain
   one.
 
+  A joint (TNPRI) draw is the one case still refused: the omega/sigma
+  entries a `thetaMat` carries under `omegaSeparation="tnpri"` are drawn
+  with the thetas, which the one draw the chunks share cannot express, so
+  a chunked solve asking for it is now a clear error rather than a result
+  drawn from the point estimate omega.  Prior simulation from `ini({})`
+  stays refused under a chunked solve for the same reason.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with

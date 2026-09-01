@@ -197,6 +197,21 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                       function(.s) .s * .nSub + seq.int(.first, length.out=.n),
                       double(.n)))
   }
+  # A joint (TNPRI) draw carries the omega/sigma entries in the `thetaMat` and
+  # draws them with the thetas.  The pre-draw below goes through the exported
+  # `rxSimThetaOmega()`, which has no argument for any of that, so the chunks
+  # would come back drawn from the point estimate omega with the joint draw
+  # gone and nothing to signal it.  Refuse it rather than answer wrongly.
+  if (!is.null(.ctl$priorOmega) || !is.null(.ctl$priorOmegaEl) ||
+        !is.null(.ctl$priorSigmaEl)) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
+         "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
+         "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
+         "one draw every chunk shares cannot express them, so they would be ",
+         "dropped without warning.  Solve without chunking.",
+         call.=FALSE)
+  }
+
   # `thetaMat` is drawn here for the same reason omega is, and more sharply:
   # the pre-draw hands each chunk a parameter data frame, and `rxSolve()`
   # refuses a `thetaMat` alongside one, so a forwarded `thetaMat` did not
