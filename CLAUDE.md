@@ -224,6 +224,15 @@ devtools::document()
 - **S3 methods**: follow `generic.class` R convention (e.g., `rxSolve.rxUi`, `modelExtract.function`)
 - Avoid `snake_case` for new names; underscores only appear in S3 methods for snake_case generics from other packages (e.g., `drop_units.rxSolve`)
 - Use American English spelling for consistency and do not use unicode characters
+- **Never write `rxode2:::foo` (or any `pkg:::`) in a script under `bench/`, in a
+  test, or in package code.** CodeFactor flags every `:::` as a Major
+  Maintainability issue and fails the PR check.  To reach a non-exported
+  function, bind it once near the top with
+  `.foo <- utils::getFromNamespace(".foo", "rxode2")` and call `.foo()` -- the
+  convention `bench/symengine-translate.R`, `bench/lincmt_hybrid_production.R`
+  and `bench/lincmt_strategy_gate.R` already follow.  Inside `tests/testthat/`
+  no qualifier is needed at all: tests run in the package namespace, so call
+  the internal by its bare name.
 
 ### Working with symengine objects (`.rxToSE`/`rxFromSE`/`symengine::D`)
 
