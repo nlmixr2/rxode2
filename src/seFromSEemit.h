@@ -89,7 +89,13 @@ static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
    names, then the mangling chain */
 static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
   const char *raw = seNodeText(ctx, pn);
+  const char *lit;
   int i;
+  /* .rxRepRxQ() in .rxFromSE(): an encoded character literal becomes a quoted
+     string.  Checked first -- rxQ__<esc>__rxQ can be neither a reserved name
+     nor a number, and the mangling chain below would leave it untouched */
+  lit = seRepRxQ(ctx, raw);
+  if (lit != NULL) return lit;
   /* .cnst in .rxFromSE(): rx_SymPy_Res_<name> unshadows a reserved name */
   if (strncmp(raw, "rx_SymPy_Res_", 13) == 0) {
     for (i = 0; i < seNres; i++) {

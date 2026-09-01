@@ -2,6 +2,23 @@
 
 ## New features
 
+- `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
+  `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
+  every dose feeding the linear system, so a regimen that doses a lagged
+  depot alongside an unlagged central -- the paired IV/oral design
+  bioavailability is routinely estimated from -- had to be refused.  Two new
+  modes read a per-origin decomposition of the linCmt() amounts instead:
+  `which1 = -9` is the derivative with respect to a delay on one
+  compartment's doses alone, and `which1 = -10` returns the amounts that
+  arrived through one compartment, which chain-rules to bioavailability as
+  `A^(q)/F_q`.  `which2` packs the origin compartment and the wanted output
+  (`q*8 + out`, `out = 7` for the reported concentration).  Both match
+  central finite differences across one to three compartments, IV and oral,
+  bolus, infusion and steady-state bolus regimens, including models that lag
+  their linCmt() compartments differently.  The decomposition is maintained
+  only for a model that declares a modeled `alag()`/`f()` on a `linCmt()`
+  compartment (nlmixr2/rxode2#1119).
+
 - `linCmt()`'s sensitivity state now belongs to the INDIVIDUAL rather than to
   whichever thread happens to be running it.  The theta-keyed window of
   hoisted closed-form constants and the last-row value memo are the two
@@ -747,6 +764,63 @@
   per-subject event totals were summed in integer arithmetic, so a solve past
   2^31 events -- exactly the size this estimate exists to judge -- overflowed
   and then failed with "missing value where TRUE/FALSE needed".
+- An `integer` or `logical` covariate column no longer makes `rxSolve()`
+  quadratic in the number of rows.  While building the solving data set each
+  covariate column was coerced to double once per output row; for a column
+  that is already double that coercion is free, but for an integer or logical
+  column it allocated and converted a copy of the whole column on every row.
+  The result was correct but progressively slower -- roughly 14x a double
+  column at 20000 rows and 90x at 160000 -- and the only hint was the timing,
+  since a logical covariate arises naturally from ordinary R code such as
+  `flag = x == "value"`.  Each covariate column is now coerced once, so every
+  storage mode solves at the speed a double column always did.
+
+- A model that reads `CMT` as a covariate no longer slows down with the number
+  of subjects.  `CMT` is carried as an integer column, and the copy of each
+  covariate into the solving buffer -- done once per subject -- coerced the
+  whole column to double every time, costing about 3x an otherwise identical
+  double covariate at 20000 subjects.  The columns are now coerced once, as
+  above.
+
+- Building a model no longer hangs forever on a lock left behind by an
+  interrupted session, and two processes no longer build the same model at
+  once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
+  (a `testthat` parallel worker, for one) inherits ONE shared build directory
+  -- but the build lock was acquired as `file.exists()` followed by `sink()`,
+  a check-then-create pair that does not exclude, so two processes could both
+  see no lock and both compile the same artifact into that directory.  The
+  losing write surfaced as "error building model", "cannot open the
+  connection" or "cannot change working directory", depending on which step
+  it lost.  Separately, nothing ever removed a lock whose owner had been
+  killed, and the wait for it was unbounded, so a single interrupted compile
+  wedged that model for the life of the cache.  The lock is now taken with
+  `dir.create()` -- the portable atomic test-and-set -- and the wait for
+  another builder is bounded (`options(rxode2.buildLockTimeout=)`, 300s by
+  default) before the abandoned lock is reclaimed.
+
+- A model comparing a string covariate against a literal (e.g. `cl <- exp(tcl
+  + eta.cl + cllow * (LowID == "Yes"))`) no longer translates to an undefined
+  parameter.  A character literal reaches symengine as the symbol
+  `rxQ__<escaped>__rxQ`, and while the R translator decodes it back to a
+  quoted string, the C translator added in 5.1.7 emitted the symbol verbatim
+  -- so the generated model carried `LowID==rxQ__Yes__rxQ` and solving it
+  failed with "the following parameter(s) are required for solving:
+  rxQ__Yes__rxQ".  Only symengine's own underscore naming reached the C path
+  (the bracket form declines and falls back to R), which is why it surfaced in
+  the sensitivity models a `nlmixr2est` FOCEi fit builds rather than in a
+  plain `rxode2()` call.  The C translator now decodes the literal, and hands
+  the expression back to the R translator for any byte whose `deparse1()`
+  spelling it cannot reproduce exactly.
+
+- `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
+  infusion when the subject's dosing record starts with a bolus.  The dose
+  history asked for the infusion duration with the solver's running dose
+  counter (`ind->ixds`), which the output pass never advances, so the lookup
+  either failed -- the infusion was then dropped from the history entirely,
+  leaving `dosenum()` un-incremented and `tad()` counting from the earlier
+  dose -- or silently returned a different infusion's duration, which made
+  `dose()` report the wrong amount.  The duration is now looked up from the
+  record being handled.  Solving itself was never affected (#1316).
 
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
@@ -1053,6 +1127,26 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   it commented out the `label()` that had just been appended.  The label was
   dropped silently -- the model still parsed and built, it simply lost the label
   (#1205).
+
+- A `#` comment inside an `ini({})` statement that spans more than one line no
+  longer breaks the model.  The comment was promoted by appending
+  `; label("...")` whether or not the statement on that line had finished, so a
+  comment between an opening `(` and its `)` -- or on a line ending in an
+  operator such as `+` or `~` -- put the `;` in the middle of the statement and
+  the model failed with a bare `unexpected ';'` pointing into regenerated text
+  rather than at the offending source line.  A comment is now promoted only
+  where it trails a complete statement; one inside an unfinished statement stays
+  a comment and is dropped.  A comment on the line that closes the statement
+  still becomes that parameter's label.  As with #1195 the promotion only runs
+  when source refs are kept, so the same model built fine from an installed
+  package while failing under `keep.source = TRUE` (#1318).
+
+- A comment-only `ini({})` line indented with a tab is no longer turned into the
+  label of the preceding parameter.  The comment-only test allowed leading
+  spaces only, so a tab-indented comment fell through to the label branch, whose
+  code portion then captured just the tab.  The bare `; label("...")` that
+  produced parses -- a leading `;` is legal -- so there was no error and the
+  comment silently became the label of the parameter above it (#1318).
 
 ### Estimation / symengine translation
 

@@ -115,6 +115,23 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
   extern double maxAtolRtolFactor;
 
 
+  // Forget every dose the per-origin decomposition of the linCmt() amounts
+  // has attributed (linCmtB which1 = -9/-10, src/linCmt.cpp), so the next
+  // advance starts from a system nothing has been given yet.  Both callers
+  // mean exactly that: a fresh subject, and an EVID 3 reset, which
+  // re-establishes the compartments from op->inits -- initial conditions,
+  // not a dose, and so not something a delay moves.  Clearing `seeded` is
+  // what tells that first advance to subtract op->inits rather than book it
+  // as a phantom dose.
+  static inline void linCmtOriginReset(rx_solving_options_ind *ind) {
+    memset(ind->linCmtOrigin, 0, sizeof(ind->linCmtOrigin));
+    memset(ind->linCmtOriginOut, 0, sizeof(ind->linCmtOriginOut));
+    ind->linCmtOriginSeeded = 0;
+    ind->linCmtOriginOutSeeded = 0;
+    ind->linCmtOriginIdx = -1;
+    ind->linCmtOriginSS = 0;
+  }
+
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
@@ -244,6 +261,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
       ind->linCmtCarryTlast = NAN;
       ind->linCmtCarryVarying = 0;
+      linCmtOriginReset(ind);
     }
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
@@ -325,6 +343,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     *xout -= rx->maxShift;
     *xp = *xout;
     ind->linCmtAlast = yp ;
+    linCmtOriginReset(ind);
     ind->ixds++;
     // Reset dose-tracking after time reset so tad is never negative post-reset.
     // Any dose that fires after this EVID=3 re-establishes tlast from scratch.

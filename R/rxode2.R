@@ -2184,24 +2184,46 @@ rxCompile.rxModelVars <- function(model, # Model
   }
   if (force || .needCompile) {
     .lock <- paste0(.cFile, ".lock")
-    if (file.exists(.lock)) {
+    ## Acquire the lock ATOMICALLY.  This was file.exists() followed by sink():
+    ## a check-then-create pair, so two processes could both see no lock and
+    ## both build the SAME artifact into the same directory.  That is not
+    ## hypothetical -- rxTempDir() exports itself with Sys.setenv(), so every
+    ## subprocess (testthat's parallel workers, for one) inherits ONE shared
+    ## build directory, and the concurrent builds surface as "error building
+    ## model", "cannot open the connection" or "cannot change working
+    ## directory" depending on which write lost.  dir.create() is the portable
+    ## atomic test-and-set: it creates the directory or returns FALSE, never
+    ## both.
+    if (file.exists(.lock) && !dir.exists(.lock)) {
+      unlink(.lock)              # stale file lock from an older rxode2
+    }
+    .haveLock <- dir.create(.lock, showWarnings = FALSE)
+    if (!.haveLock) {
       message("rxode2 already building model, waiting for lock file removal")
       message(sprintf("lock file: \"%s\"", .lock))
-      while (file.exists(.lock)) {
+      ## Bounded: a builder killed mid-compile leaves the lock behind, and an
+      ## unbounded wait would then wedge every later build of this model.
+      .lockWait <- getOption("rxode2.buildLockTimeout", 300)
+      .waited <- 0
+      while (dir.exists(.lock) && .waited < .lockWait) {
         Sys.sleep(0.5)
+        .waited <- .waited + 0.5
         message(".", appendLF = FALSE)
       }
       message("")
+      if (dir.exists(.lock)) {
+        unlink(.lock, recursive = TRUE)   # abandoned; take it over
+        .haveLock <- dir.create(.lock, showWarnings = FALSE)
+      }
+    }
+    if (!.haveLock) {
       if (!(file.exists(.cDllFile))) {
         stop("error building model on another thread", call. = FALSE)
       }
     } else {
-      sink(.lock)
-      cat("\n")
-      sink()
       on.exit(
         {
-          unlink(.lock)
+          unlink(.lock, recursive = TRUE)
         },
         add = TRUE
       )
