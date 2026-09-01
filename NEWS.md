@@ -939,6 +939,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   drawn from the point estimate omega.  Prior simulation from `ini({})`
   stays refused under a chunked solve for the same reason.
 
+- A chunked solve given an `omega`/`thetaMat` and a per-subject parameter
+  `data.frame` now says so, rather than dying inside the draw with "Not
+  compatible with requested type: [type=list; target=double]".  The draw
+  every chunk shares is made from a named parameter vector.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with

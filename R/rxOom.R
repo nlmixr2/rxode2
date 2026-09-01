@@ -220,6 +220,18 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # thetas and subjects in different chunks would no longer share a study.
   # That is nlmixr2/rxode2#1263.
   if (!is.null(.ctl$omega) || !is.null(.ctl$thetaMat)) {
+    # The draw is made from a named parameter vector -- that is all
+    # `rxSimThetaOmega()` takes, and it is what the chunks are sliced out of.
+    # A per-subject parameter data frame reached it as an opaque coercion
+    # error ("Not compatible with requested type"); say what happened instead.
+    # `rxSolve()` refuses the `thetaMat` half of this unchunked as well.
+    if (is.data.frame(params) || is.matrix(params)) {
+      stop("a chunked solve ('file='/'chunkSize=') cannot draw an 'omega'/",
+           "'thetaMat' when the parameters are a 'data.frame'/'matrix'; the ",
+           "one draw every chunk shares is made from a named parameter ",
+           "vector.  Solve without chunking.",
+           call.=FALSE)
+    }
     .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {
       as.integer(.ctl$cores)
     } else {

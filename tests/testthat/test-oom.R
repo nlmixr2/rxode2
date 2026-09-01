@@ -800,6 +800,31 @@ rxTest({
     expect_null(.none$thetaMat)
   })
 
+  test_that("a chunked solve says why it cannot draw from a parameter table", {
+    skip_on_cran()
+
+    ## the draw the chunks share is made from a named parameter vector, so a
+    ## per-subject parameter data frame used to die in the coercion with
+    ## "Not compatible with requested type"
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka ~ 0.09)
+    .pdf <- data.frame(id=1:6, tka=0.45, tcl=1, tv=3.45)
+
+    expect_error(
+      rxSolve(.m, .ev, params=.pdf, omega=.om,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "named parameter vector")
+
+    ## unchunked it solves, so the message has to name the chunking
+    expect_s3_class(rxSolve(.m, .ev, params=.pdf, omega=.om), "rxSolve")
+  })
+
   test_that("a chunked solve refuses a joint (tnpri) thetaMat draw", {
     skip_on_cran()
 
