@@ -81,6 +81,45 @@ rxTest({
     expect_equal(s$dd[s$time == 1], 50)
   })
 
+  test_that("a steady state infusion with a modeled lag reports the whole dose (#1322)", {
+    # the steady state path pushes the lagged infusion's start and stop records
+    # into the extra-dose pool, and the amount-only scan paired the start with a
+    # stop at its own time, so dose() came out as 0 * rate for every row.
+    mod <- rxode2({
+      cl <- 1
+      v <- 20
+      d/dt(central) <- -(cl / v) * central
+      alag(central) <- lg
+      dd <- dose()
+      tl <- tad()
+    })
+
+    ev <- et(amt = 100, rate = 100 / 8, ss = 1, ii = 12) |> et(seq(0, 24, by = 2))
+
+    s0 <- rxSolve(mod, ev, c(lg = 0))
+    expect_equal(unique(s0$dd), 100)
+
+    # before the lagged dose lands there is no dose yet, which is what a plain
+    # (non steady state) lagged infusion has always reported
+    s2 <- rxSolve(mod, ev, c(lg = 2))
+    expect_true(is.na(s2$dd[s2$time == 0]))
+    expect_true(is.na(s2$tl[s2$time == 0]))
+    expect_equal(unique(s2$dd[s2$time > 0]), 100)
+
+    ref <- rxSolve(mod, et(amt = 100, rate = 100 / 8) |> et(seq(0, 24, by = 2)),
+                   c(lg = 2))
+    expect_true(is.na(ref$dd[ref$time == 0]))
+
+    # a steady state infusion with no modeled lag was already right
+    modNoLag <- rxode2({
+      cl <- 1
+      v <- 20
+      d/dt(central) <- -(cl / v) * central
+      dd <- dose()
+    })
+    expect_equal(unique(rxSolve(modNoLag, ev)$dd), 100)
+  })
+
   test_that("forward scan finds the infusion end", {
     d <- .getDurTest(time = c(0, 5), dose = c(100, -100),
                      evid = c(.evidInf, .evidInf), idose = c(0L, 1L),

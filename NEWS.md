@@ -716,7 +716,11 @@
   the same internal event id as its start, so the scans now compare that too --
   the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
   overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
-  `dose() = 60` for the first; it now reports 100.  Separately, an orphaned
+  `dose() = 60` for the first; it now reports 100.  A steady state infusion
+  with a modeled `alag()` reported `dose() = 0` for the same reason and now
+  reports the whole dose, and before the lagged dose lands `dose()`, `tad()`
+  and `tlast()` are `NA` -- what a plain lagged infusion has always reported.
+  Separately, an orphaned
   infusion end sitting at dose index 0 reports the missing start instead of
   falling through to the forward scan and returning a negated duration
   (nlmixr2/rxode2#1322).
