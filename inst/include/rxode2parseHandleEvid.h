@@ -129,8 +129,11 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   return ind->ixds;
 }
 
-// Is extra dose `a` later than extra dose `b`?  Ties broken by push index, the
-// same (time, index) ordering handleExtraDose() sorts extraDoseTimeIdx by.
+// Is extra dose `a` later than extra dose `b`?  Ties broken by push index.
+// This orders the pool for pairing, not for execution (handleExtraDose() sorts
+// extraDoseTimeIdx by time, then evid, then index): the pairing below only ever
+// compares records carrying the SAME amount, so any strict total order pairs
+// them identically and the evid tier is not needed here.
 static inline int handleTlastInlineExtraIsLater(rx_solving_options_ind *ind, int a, int b) {
   if (ind->extraDoseTime[a] != ind->extraDoseTime[b]) {
     return ind->extraDoseTime[a] > ind->extraDoseTime[b];
