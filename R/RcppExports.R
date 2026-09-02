@@ -1085,21 +1085,40 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @param nIndSim   Per-individual simulation count (typically \code{neta+neps}).
 #' @param numLinSens Number of linear sensitivity parameters (FOCEi mixed models).
 #' @param numLin    Number of linear compartment terms (FOCEi mixed models).
-#' @param nsub      Number of subjects.
+#' @param nsub      Number of subjects in ONE simulation (\code{rx$nsub});
+#'   the total individual count is \code{nsub * nsim}.
 #' @param nallTotal Total events across all subjects (sum of obs + doses).
+#' @param ndosesTotal Total dose events across all subjects.
 #' @param maxAllTimes Maximum events for any single subject.
+#' @param indOwnAlloc 1 if every individual gets its own event/solve arrays
+#'   (\code{op$indOwnAlloc}), else 0.  These are allocated ON TOP of
+#'   \code{gsolve}, whose \code{n0} region then goes unused.
+#' @param sample 1 when \code{rxControl(resample=)} asks for covariate
+#'   resampling, which allocates \code{gSampleCov}; else 0.
+#' @param nDelayState Number of ODE states \code{delay()} looks back on
+#'   (\code{op$nDelayState}); 0 for a model without \code{delay()}.  Drives
+#'   the per-individual dense-history bound.
+#'   The \code{linCmtB(which1 = -3)} rate history is charged at
+#'   \code{numLin} wide, which is the width \code{linCmtBRateSlot()} uses.
 #' @param stiff     The solving method (\code{op$stiff}); only 3
 #'   (\code{"indLin"}) allocates anything extra here.
 #' @param doIndLin  Which matrix-exponential driver runs: 0 not a
 #'   \code{matExp()} model, 1 pure matrix exponential, 2 plus a state-free
 #'   \code{indLin()} forcing, 3/4 true inductive linearization (the adaptive,
 #'   iterating driver).  These cost very different amounts.
+#' Not counted: a handful of fixed-size index tables whose sizes depend on
+#' values only the solver has (\code{gParPos}, the \code{gevid} tail holding
+#' \code{gpar_cov}/\code{glhs_str}, \code{gdelayCol}/\code{gdelayState},
+#' \code{gindLin}, \code{splitBolus}).  Each is tens to hundreds of ints and
+#' none scales with subjects or events, so they are left out rather than
+#' folded into a component whose scaling law is the useful part of it.
+#'
 #' @return Named numeric vector; each element is bytes for that allocation.
 #'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
 #'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
 #' @noRd
-rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin) {
-    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, maxAllTimes, stiff, doIndLin)
+rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState) {
+    .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
 rxOptRep_ <- function(input) {

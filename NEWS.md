@@ -701,6 +701,69 @@
 
 ## Bug fixes
 
+- `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
+  `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
+  adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
+  it counted the single largest allocation of an ordinary solve twice and could
+  approach double the real figure.  `gsolve_n0` is still reported (and still
+  printed indented under `gsolve`), it is just no longer added to `total`.  The
+  out-of-memory guard in `rxSolve()` and the chunk sizing in
+  `.rxOomChunkSize()`/`rxSolveChunked()` both act on `total`, so a solve that
+  fits is no longer refused and chunks are no longer about half the size they
+  should be.
+
+- `rxMemoryEstimate()` now counts the per-individual event and solve arrays.
+  When `op$indOwnAlloc` is set -- which `rxSolve()` defaults to the model's
+  `evid_` parser flag, so any dose-pushing model (`bolus()`, `obs()`) gets it,
+  as does anyone passing `rxSolve(..., indOwnAlloc = TRUE)` -- `rxAllocInd()`
+  gives every individual its own `dose`/`ii`/`all_times`/`timeThread`/`evid`/
+  `ix`/`idose`/`solve` arrays, and `gsolve` is still allocated at its full size
+  regardless, so those arrays are memory on top of it.  The estimate ignored
+  them entirely, which understated `total` -- the direction that makes an
+  out-of-memory guard useless.  They are now reported as an `indOwnAlloc`
+  component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
+  alongside the rest of the layout.
+
+- `rxMemoryEstimate()` now scales the event-indexed buffers with `nSub`,
+  `nStud` and `nsim`.  The replicated subject count was applied to the subject
+  total but never to the event total, so `rxControl(nSub = 100)` on a
+  one-subject table reported the one-subject figure for `gsolve_n0`,
+  `gall_times`, `gevid` and `gpars` -- an undercount of the largest allocation
+  by the full replicate factor, and again in the direction that makes the
+  out-of-memory guard useless.  `nsub` and `nsim` now mean to the estimate what
+  they mean in `rxData.cpp`: `nsub` is the subjects of ONE simulation and
+  `nsim` is how many times that block is replicated, so `nStud` lands in `nsim`
+  (where it also correctly pays for the extra-simulation copies in
+  `gall_timesS`) and `nSub` grows the events of a single simulation.
+  `effectiveSubs` still reports the total individual count.
+
+- `rxMemoryEstimate()` sizes `ordId` by individuals rather than events.
+  `rx$ordId` is the solve ORDER over individuals -- `nsub * nsim` ints -- but
+  the estimate charged one int per event, overstating it by the number of
+  events per subject.
+
+- `rxMemoryEstimate()` now reports `gEtaPre`, the pre-generated eta draws.
+  `rxPreGenEta()` mallocs `nsim * nsub * neta` doubles before the parallel
+  solve loop whenever the model has etas and a nonzero omega, and none of it
+  was counted.
+
+- `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
+  `rxControl(resample=)` asks for covariate resampling, and counts the
+  per-thread pointer table that accompanies the `gInfusionRate` buffers.
+
+- `rxMemoryEstimate()` now charges the two per-individual history buffers:
+  the `delay()` dense history (`ind$delayHist`) and the `linCmtB()` output-time
+  rate history (`ind$linCmtRateHist`), neither of which was counted at all.
+  Both grow by doubling inside the solve rather than being sized up front, so
+  unlike every other component these are a documented BOUND rather than a
+  mirror of a `calloc`: the capacity the doubling reaches at roughly one stored
+  step per event, floored at the initial allocation.  They are zero for a model
+  that uses neither.
+
+- `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
+  per-subject event totals were summed in integer arithmetic, so a solve past
+  2^31 events -- exactly the size this estimate exists to judge -- overflowed
+  and then failed with "missing value where TRUE/FALSE needed".
 - An `integer` or `logical` covariate column no longer makes `rxSolve()`
   quadratic in the number of rows.  While building the solving data set each
   covariate column was coerced to double once per output row; for a column
