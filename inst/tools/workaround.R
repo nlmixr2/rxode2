@@ -74,8 +74,8 @@ if (inherits(versionInfo, "try-error")) {
 .in <- gsub("@EG@", file.path(find.package("RcppEigen"),"include"), .in)
 
 
-.sl <- paste(capture.output(StanHeaders:::LdFlags()),
-             capture.output(RcppParallel:::RcppParallelLibs()))
+.sl <- paste(capture.output(StanHeaders:::LdFlags()), # nolint
+             capture.output(RcppParallel:::RcppParallelLibs())) # nolint
 # Set when the TBB link flags are stripped below; the compile-time
 # STAN_THREADS/TBB defines must then be stripped too (see @SH@ handling).
 .rxDisableTbb <- FALSE
