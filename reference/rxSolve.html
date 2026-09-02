@@ -1968,7 +1968,15 @@ chunk solving. When set, <code>rxSolve()</code> splits subjects into chunks, wri
 each chunk's result to <code>&lt;file&gt;_chunk_NNNNN.parquet</code> (or <code>.rds</code> if
 <code>arrow</code> is unavailable), and returns an <code>rxSolveOom</code> object. The manifest
 is saved to <code>&lt;file&gt;_manifest.rds</code>. Set to <code>NULL</code> (default) to use the
-normal in-memory path.</p></dd>
+normal in-memory path.</p>
+<p>A chunked solve draws the parameters once in the parent so that every
+chunk shares them, which is what keeps subjects in different chunks in
+the same study.  Four things that draw cannot express are a clear error
+rather than a quietly different answer: a joint (TNPRI) draw of the
+omega/sigma entries a <code>thetaMat</code> carries, sigma uncertainty
+(<code>dfObs &gt; 0</code>), a per-subject parameter <code>data.frame</code>/<code>matrix</code> alongside an
+<code>omega</code>/<code>thetaMat</code>, and <code>nSub</code> greater than the number of subjects the
+event table has.</p></dd>
 
 
 <dt id="arg-chunksize">chunkSize<a class="anchor" aria-label="anchor" href="#arg-chunksize"></a></dt>

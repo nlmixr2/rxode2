@@ -255,7 +255,7 @@ used internally by <code><a href="../reference/rxSolve.html">rxSolve()</a></code
 <span><span class="co">#&gt;   delayHist (per-individual delay() history, bound) 0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt;   linCmtRateHist (per-individual linCmt rates, bound) 0 B ( 0.0%)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 1664 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.52 GB available)</span></span></code></pre></div>
+<span><span class="co">#&gt;   Subjects: 10  |  sizeof(rx_solving_options_ind): 1664 B  |  0.0% of RAM (16.77 GB)  |  0.0% of available memory (14.42 GB available)</span></span></code></pre></div>
 <p>The output lists every major allocation (ODE state buffers,
 event-time arrays, output data, etc.) as well as the fraction of total
 and free RAM the solve would consume. The <code>freeRamBytes</code> line
@@ -301,7 +301,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -326,7 +326,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt;       0       0 </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -342,7 +342,7 @@ the <code>arrow</code> package is unavailable).</li>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.706  4.51  70.0 0.726    0.726 0.597   0.020<span style="text-decoration: underline;">8</span>       50.8</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.706  4.51  70.0 0.561    0.561 0.499   0.001<span style="text-decoration: underline;">23</span>      39.3</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.706  4.51  70.0 0.434    0.434 0.466   0.000<span style="text-decoration: underline;">073</span>1    30.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpTvTL7e/rxChunk5b2c67b44dc5' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpLrZ6R5/rxChunk570ae39616c' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>The print method reports how many chunks were created and the total
 row count. With <code>chunkSize = 3</code> and 10 subjects, rxode2
 creates four chunks (3 + 3 + 3 + 1).</p>
@@ -380,7 +380,7 @@ materialise columns you actually need.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cp_all</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">cp</span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -398,7 +398,7 @@ avoiding loading columns you do not need.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -408,7 +408,7 @@ avoiding loading columns you do not need.</p>
 <span><span class="co">#&gt; [1] 190</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -438,7 +438,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -463,7 +463,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt;       0       0 </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -479,7 +479,7 @@ chunks of 2 subjects each:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.623  3.28  70.0 0.880    0.880 0.949   0.056<span style="text-decoration: underline;">6</span>      61.6</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.623  3.28  70.0 0.730    0.730 0.654   0.004<span style="text-decoration: underline;">68</span>     51.1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.623  3.28  70.0 0.606    0.606 0.648   0.000<span style="text-decoration: underline;">387</span>    42.4</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpTvTL7e/rxDemo5b2c15b854d9' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 5 chunks, 190 total rows, prefix='/tmp/RtmpLrZ6R5/rxDemo570a657b998' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p>In production code, omit <code>chunkSize</code> entirely and rxode2
 auto-computes an appropriate chunk size from
 <code><a href="../reference/rxMemoryEstimate.html">rxMemoryEstimate()</a></code>.</p>
@@ -506,7 +506,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -531,7 +531,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt;       0       0 </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span></span>
 <span><span class="co">#&gt; duckdb keeps downloaded extensions and secrets in a temporary directory:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpTvTL7e/duckdb</span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /tmp/RtmpLrZ6R5/duckdb</span></span>
 <span><span class="co">#&gt; This is removed when the R session ends.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">•</span> Secrets are lost.</span></span>
@@ -547,7 +547,7 @@ save it to a file first and wrap the path with
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1    12 0.410  5.82  70.0 0.648    0.648 0.696   0.726     45.4</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1    16 0.410  5.82  70.0 0.472    0.472 0.505   0.141     33.0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1    20 0.410  5.82  70.0 0.340    0.340 0.295   0.027<span style="text-decoration: underline;">2</span>    23.8</span></span>
-<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpTvTL7e/rxFile5b2c67888aff' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;rxSolveOom: 4 chunks, 190 total rows, prefix='/tmp/RtmpLrZ6R5/rxFile570a152e760c' [DuckDB/Arrow-backed]&gt;</span></span></code></pre></div>
 <p><code><a href="../reference/rxEventTableFile.html">rxEventTableFile()</a></code> also accepts <code>"csv"</code>,
 <code>"fst"</code>, and <code>"rds"</code> formats.</p>
 </div>
@@ -655,12 +655,12 @@ that fits easily in memory even when the full dataset does not.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 3</span></span></span>
 <span><span class="co">#&gt;      id  time    cp</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     7    28 1.31 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     7    32 1.19 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     7    36 0.951</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     7    40 0.746</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     7    44 0.582</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     7    48 0.453</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     4    28 1.52 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     4    32 1.32 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     4    36 1.08 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     4    40 0.883</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     4    44 0.720</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     4    48 0.586</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="in-memory-arrow-table">In-memory Arrow Table<a class="anchor" aria-label="anchor" href="#in-memory-arrow-table"></a>
@@ -753,7 +753,7 @@ performance tuning, and custom parallel workflows.</p>
 <span><span class="co">#&gt; [13] backports_1.5.1      DBI_1.3.0            purrr_1.2.2         </span></span>
 <span><span class="co">#&gt; [16] scales_1.4.0         textshaping_1.0.5    jquerylib_0.1.4     </span></span>
 <span><span class="co">#&gt; [19] duckdb_1.5.5         cli_3.6.6            crayon_1.5.3        </span></span>
-<span><span class="co">#&gt; [22] rlang_1.3.0          bit64_4.8.4          withr_3.0.3         </span></span>
+<span><span class="co">#&gt; [22] rlang_1.3.0          bit64_4.8.6          withr_3.0.3         </span></span>
 <span><span class="co">#&gt; [25] cachem_1.1.0         yaml_2.3.12          otel_0.2.0          </span></span>
 <span><span class="co">#&gt; [28] tools_4.6.1          memoise_2.0.1        checkmate_2.3.4     </span></span>
 <span><span class="co">#&gt; [31] dplyr_1.2.1          ggplot2_4.0.3        assertthat_0.2.1    </span></span>
@@ -766,7 +766,7 @@ performance tuning, and custom parallel workflows.</p>
 <span><span class="co">#&gt; [52] Rcpp_1.1.2           systemfonts_1.3.2    xfun_0.60           </span></span>
 <span><span class="co">#&gt; [55] tibble_3.3.1         tidyselect_1.2.1     sys_3.4.3           </span></span>
 <span><span class="co">#&gt; [58] knitr_1.51           farver_2.1.2         dparser_1.3.1-13    </span></span>
-<span><span class="co">#&gt; [61] htmltools_0.5.9      rmarkdown_2.31       compiler_4.6.1      </span></span>
+<span><span class="co">#&gt; [61] htmltools_0.5.9      rmarkdown_2.32       compiler_4.6.1      </span></span>
 <span><span class="co">#&gt; [64] S7_0.2.2</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
