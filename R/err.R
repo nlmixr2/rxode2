@@ -1250,10 +1250,13 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .taken <- .errAllModelNames(env)
   .alias <- character(0)
   for (.i in .dup) {
-    .nm <- .errEndpointAliasName(.predDf$var[.i], .predDf$cond[.i],
-                                 c(.taken, names(.alias)))
+    .nm <- .errEndpointAliasName(.predDf$var[.i], .predDf$cond[.i], .taken)
     .alias[.nm] <- .predDf$var[.i]
     .predDf$var[.i] <- .nm
+    # reserve the alias AND everything derived from it: the estimation `ar()`
+    # names are dot-free, so `phase.1` and `phase_1` would otherwise generate
+    # different aliases that collapse to one `rx_arE_*` symbol
+    .taken <- c(.taken, .nm, .errEndpointDerivedNames(.nm))
   }
   env$predDf <- .predDf
   env$endpointAlias <- .alias

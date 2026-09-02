@@ -597,6 +597,29 @@ rxTest({
     expect_true(length(unique(.r[d$CMT == 3])) > 1L)
     expect_true(length(unique(.r[d$CMT == 4])) > 1L)
 
+    # conditions that differ only in a character the estimation `ar()` names
+    # normalize away must still get distinct aliases
+    ui3 <- function() {
+      ini({
+        tcl <- 1
+        tv <- 3
+        add.sd1 <- 0.7
+        add.sd2 <- 0.5
+        cor1 <- 0.5
+        cor2 <- 0.3
+      })
+      model({
+        cl <- exp(tcl)
+        v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        cp ~ add(add.sd1) + ar(cor1) | phase.1
+        cp ~ add(add.sd2) + ar(cor2) | phase_1
+      })
+    }
+    ui3 <- ui3()
+    expect_equal(length(unique(gsub("[^A-Za-z0-9]", "_", ui3$predDf$var))), 2L)
+
     # the same guard covers the AR(1) state names
     ui2 <- function() {
       ini({
