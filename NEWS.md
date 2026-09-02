@@ -701,6 +701,30 @@
 
 ## Bug fixes
 
+- `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
+  modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
+  the trailing restore of the saved index, so the corrupted value stayed live
+  solver state until the error was picked up after the integration step.  The
+  restore now happens before the checks, as it already did in `updateDur()`.
+
+- `dose()` and `tad()` no longer read the wrong infusion when two infusions run
+  at the same rate into different compartments.  The internal `_getDur()` scan
+  that recovers an infusion's duration paired records by amount alone, so an
+  infusion of `+rate` matched the first `-rate` it found, which may belong to
+  another compartment's infusion (or, in the backward direction, be a bolus of
+  the same amount).  A fixed rate/duration infusion emits its stop record with
+  the same internal event id as its start, so the scans now compare that too --
+  the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
+  overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
+  `dose() = 60` for the first; it now reports 100.  A steady state infusion
+  with a modeled `alag()` reported `dose() = 0` for the same reason and now
+  reports the whole dose, and before the lagged dose lands `dose()`, `tad()`
+  and `tlast()` are `NA` -- what a plain lagged infusion has always reported.
+  Separately, an orphaned
+  infusion end sitting at dose index 0 reports the missing start instead of
+  falling through to the forward scan and returning a negated duration
+  (nlmixr2/rxode2#1322).
+
 - `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
   `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
   adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
