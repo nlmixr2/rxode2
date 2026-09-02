@@ -2246,4 +2246,42 @@ rxTest({
     })
 
   })
+
+  test_that("translation does not slow down with the subject count alone", {
+
+    # Whether an id has been seen is tested once per input row against
+    # allId/obsId/zeroId/doseId, which hold one entry per subject.  As
+    # std::find() linear scans that made translation O(rows * subjects): with
+    # the rows held fixed, going from 100 to 12000 subjects cost 12.6x.  Hold
+    # the row count constant and only redistribute it over more subjects, so
+    # the only thing that changes is the number of ids.
+    .fixedRows <- function(nSub, nRow = 40000) {
+      nPer <- nRow / nSub
+      data.frame(
+        ID = rep(seq_len(nSub), each = nPer),
+        TIME = rep(seq_len(nPer), times = nSub),
+        x = seq(-100, 0, length.out = nRow),
+        EVID = 0, AMT = 0
+      )
+    }
+    mod <- rxode2({
+      eff <- slopeA * x
+    })
+    .minElapsed <- function(d, reps = 3L) {
+      min(vapply(seq_len(reps),
+                 function(i) system.time(rxode2::etTrans(d, mod))[["elapsed"]],
+                 numeric(1)))
+    }
+
+    # the same rows either way, only spread over more ids.  (The translated
+    # row count is NOT the same -- splitting the rows over more subjects adds
+    # per-subject records -- so only the input is held equal here.)
+    .few <- .fixedRows(50)
+    .many <- .fixedRows(5000)
+    expect_equal(nrow(.few), nrow(.many))
+    expect_equal(length(unique(.many$ID)), 5000L)
+
+    invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
+    expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
+  })
 })

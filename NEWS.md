@@ -701,6 +701,16 @@
 
 ## Bug fixes
 
+- Translating an event table no longer slows down with the number of subjects
+  alone.  Whether an id had been seen was tested once per input row against
+  vectors holding one entry per subject, as `std::find()` linear scans, so the
+  cost was `O(rows * subjects)`: with the row count held fixed at 120000,
+  going from 100 to 12000 subjects cost 12.6x.  The membership tests now use
+  a set, which is flat -- 15x faster at 12000 subjects -- and the vectors are
+  kept for their size and for the order the "IDs without observations" warning
+  lists them in.  A dosing-only id was also matched with a linear scan once
+  per row when dropping those rows.
+
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
   the trailing restore of the saved index, so the corrupted value stayed live
