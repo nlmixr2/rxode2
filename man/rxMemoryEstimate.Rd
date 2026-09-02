@@ -25,7 +25,9 @@ rxMemoryEstimate(
   numLinSens = 0L,
   numLin = 0L,
   stiff = NA_integer_,
-  doIndLin = 0L
+  doIndLin = 0L,
+  indOwnAlloc = 0L,
+  nDelayState = 0L
 )
 }
 \arguments{
@@ -62,7 +64,8 @@ models.  Defaults to \code{neq}.}
 
 \item{ncov}{Number of time-varying covariates.}
 
-\item{nsim}{Number of simulations.}
+\item{nsim}{Number of simulations.  \code{nStud} from \code{control} is
+the replicate count, so it lands here rather than in the subject count.}
 
 \item{cores}{Number of parallel OMP threads.}
 
@@ -95,12 +98,26 @@ for one whatever the control says.}
 state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
 linearization.  Taken from \code{model} when given.  These cost very
 different amounts, so it is worth getting right.}
+
+\item{indOwnAlloc}{\code{TRUE}/\code{1} when every individual gets its
+own event and solve arrays rather than pointing into the global
+buffers.  These are allocated on top of \code{gsolve}, so they are real
+extra memory.  Taken from the model's \code{evid_} flag when \code{model}
+is given, and overridden by \code{control$indOwnAlloc} when that is set.}
+
+\item{nDelayState}{Number of ODE states \code{delay()} looks back on.
+Drives the per-individual dense-history buffer, which grows by doubling
+inside the solve, so it is charged as a documented bound rather than an
+exact mirror.  Taken from \code{model} when given.}
 }
 \value{
 A named list of class \code{"rxMemoryEstimate"} whose
 elements are raw byte counts plus \code{outputData},
 \code{ramBytes}, \code{freeRamBytes}, \code{total},
-\code{sizeofInd}, and \code{rxLlikSaveSize}.
+\code{sizeofInd}, and \code{rxLlikSaveSize}.  \code{total} is the
+number of bytes actually allocated, so it excludes \code{gsolve_n0}
+(the ODE state output matrix), which is reported separately but is
+already part of \code{gsolve}.
 }
 \description{
 Accepts either a pre-summarized per-ID table (an \code{\link{rxMemSummary}}

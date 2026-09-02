@@ -211,8 +211,29 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nMtime    = as.integer(.mv[["nMtime"]]),
     nLlik     = as.integer(.flags["nLlik"]),
     nIndSim   = as.integer(.flags["nIndSim"]),
-    doIndLin  = .rxMemDoIndLin(.mv)
+    doIndLin  = .rxMemDoIndLin(.mv),
+    nDelayState = .rxMemNDelayState(.mv),
+    # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
+    # MODEL decides it unless the control says otherwise
+    indOwnAlloc = as.integer(.flags["evid_"])
   )
+}
+#' How many ODE states delay() looks back on
+#'
+#' Mirrors the `op->nDelayState` build in `src/rxData.cpp`: the states carrying
+#' the `propDelay` bit in `stateProp`, falling back to every state when
+#' `hasDelay` is set but no state carried the bit.
+#'
+#' @param mv `rxModelVars()` of the model.
+#' @return Number of dense-history columns; 0 for a model without `delay()`.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemNDelayState <- function(mv) {
+  if (!isTRUE(as.integer(mv[["flags"]]["hasDelay"]) > 0L)) return(0L)
+  .sp <- mv[["stateProp"]]
+  if (length(.sp) == 0L) return(0L)
+  .n <- sum(bitwAnd(as.integer(.sp), 262144L) != 0L)  # propDelay, src/tran.h
+  if (.n == 0L) length(.sp) else as.integer(.n)
 }
 #' Which matrix-exponential driver a model will run under
 #'
@@ -254,8 +275,13 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .nSub  <- if (is.null(ctrl$nSub))  1L else as.integer(ctrl$nSub)
   .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
   .stiff <- if (is.null(ctrl$method)) NA_integer_ else as.integer(ctrl$method)
+  # rxControl() stores -1 for "not set"; rxSolve() then takes the model's flag
+  .indOwn <- if (is.null(ctrl[["indOwnAlloc"]])) NA_integer_ else as.integer(ctrl[["indOwnAlloc"]])
+  if (!is.na(.indOwn) && .indOwn < 0L) .indOwn <- NA_integer_
   list(
     cores      = .cores,
+    indOwnAlloc = .indOwn,
+    sample     = as.integer(!is.null(ctrl[["resample"]])),
     nsim       = .nsim,
     neta       = as.integer(.neta),
     neps       = as.integer(.neps),
@@ -276,6 +302,19 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   if (!is.na(.ram) && .ram > 0) return(.ram)
   NA_real_
 }
+
+#' Reported components that are already part of another component
+#'
+#' \code{gsolve_n0} is the ODE state output matrix, which
+#' \code{rxFillMemLayout()} adds INTO \code{gsolve_total}; it is reported
+#' because it is normally the single largest piece of the solve, but summing it
+#' alongside \code{gsolve} would double-count it.  \code{total} therefore
+#' means "bytes actually allocated", not "sum of everything printed".
+#'
+#' Names are the sub-item; values are the parent component they belong to.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemSubItems <- c(gsolve_n0 = "gsolve")
 
 .rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov,
                                      nsim, nsub, nobsTotal, nallTotal) {
@@ -413,7 +452,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @param neta Number of random effects (etas).
 #' @param neps Number of residual-error levels (epsilons).
 #' @param ncov Number of time-varying covariates.
-#' @param nsim Number of simulations.
+#' @param nsim Number of simulations.  \code{nStud} from \code{control} is
+#'   the replicate count, so it lands here rather than in the subject count.
 #' @param cores Number of parallel OMP threads.
 #' @param nMtime Number of model measurement times.
 #' @param extraCmt Extra compartments (0, 1 = depot, 2 =
@@ -431,6 +471,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #'   \code{control} when given, and overridden to \code{3} for any
 #'   \code{matExp()} model, since \code{rxSolve()} force-selects that method
 #'   for one whatever the control says.
+#' @param indOwnAlloc \code{TRUE}/\code{1} when every individual gets its
+#'   own event and solve arrays rather than pointing into the global
+#'   buffers.  These are allocated on top of \code{gsolve}, so they are real
+#'   extra memory.  Taken from the model's \code{evid_} flag when \code{model}
+#'   is given, and overridden by \code{control$indOwnAlloc} when that is set.
+#' @param nDelayState Number of ODE states \code{delay()} looks back on.
+#'   Drives the per-individual dense-history buffer, which grows by doubling
+#'   inside the solve, so it is charged as a documented bound rather than an
+#'   exact mirror.  Taken from \code{model} when given.
 #' @param doIndLin Which matrix-exponential driver runs: \code{0} not a
 #'   \code{matExp()} model, \code{1} pure matrix exponential, \code{2} plus a
 #'   state-free \code{indLin()} forcing, \code{3}/\code{4} true inductive
@@ -439,7 +488,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @return A named list of class \code{"rxMemoryEstimate"} whose
 #'   elements are raw byte counts plus \code{outputData},
 #'   \code{ramBytes}, \code{freeRamBytes}, \code{total},
-#'   \code{sizeofInd}, and \code{rxLlikSaveSize}.
+#'   \code{sizeofInd}, and \code{rxLlikSaveSize}.  \code{total} is the
+#'   number of bytes actually allocated, so it excludes \code{gsolve_n0}
+#'   (the ODE state output matrix), which is reported separately but is
+#'   already part of \code{gsolve}.
 #' @export
 #'
 #' @examples
@@ -487,7 +539,9 @@ rxMemoryEstimate <- function(
   numLinSens = 0L,
   numLin    = 0L,
   stiff     = NA_integer_,
-  doIndLin  = 0L) {
+  doIndLin  = 0L,
+  indOwnAlloc = 0L,
+  nDelayState = 0L) {
   .resolved <- .rxMemResolveInput(dat, control)
   dat <- .resolved$dat
   control <- .resolved$control
@@ -514,10 +568,13 @@ rxMemoryEstimate <- function(
     nMtime    <- .mi$nMtime
     nLlik     <- .mi$nLlik
     doIndLin  <- .mi$doIndLin
+    indOwnAlloc <- .mi$indOwnAlloc
+    nDelayState <- .mi$nDelayState
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
   }
 
   .ci <- NULL
+  .sample <- 0L
   if (!is.null(control)) {
     .ci   <- .rxMemExtractControl(control)
     cores <- .ci$cores
@@ -526,7 +583,10 @@ rxMemoryEstimate <- function(
     if (.ci$neps > 0L) neps <- .ci$neps
     if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
     if (!is.na(.ci$stiff)) stiff <- .ci$stiff
+    if (!is.na(.ci$indOwnAlloc)) indOwnAlloc <- .ci$indOwnAlloc
+    .sample <- .ci$sample
   }
+  indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
   if (cores <= 0L) {
     cores <- 1L
   }
@@ -547,22 +607,40 @@ rxMemoryEstimate <- function(
   if (stiff == 3L && doIndLin == 0L) doIndLin <- 3L
   if (is.null(nIndSim)) nIndSim <- neta + neps
 
-  .nallVec     <- .summary$nobs + .summary$ndoses
+  # doubles throughout: integer `sum()` returns NA past 2^31, and a solve big
+  # enough to overflow it is exactly the one this estimate exists to size
+  .nallVec     <- as.numeric(.summary$nobs) + as.numeric(.summary$ndoses)
   .nsub        <- nrow(.summary)
-  .nobsTotal   <- sum(.summary$nobs)
+  .nobsTotal   <- sum(as.numeric(.summary$nobs))
   .nallTotal   <- sum(.nallVec)
+  # dose share of the events, so the dose count follows whatever rescaling the
+  # solve-layout / nSub / nStud branches below do to the event count
+  .doseFrac    <- if (.nallTotal > 0) sum(as.numeric(.summary$ndoses)) / .nallTotal else 0
   .maxAllTimes <- max(.nallVec)
   .solveStats  <- .rxMemSolveLayoutStats(dat, control, model)
   .solveNallTotal <- .nallTotal
   .solveMaxAllTimes <- .maxAllTimes
 
+  # `nsub` and `nsim` mean to the ALLOCATOR what they mean in rxData.cpp:
+  # `nsub` is the subjects of ONE simulation and `nsim` is how many times that
+  # block is replicated (rx->nsim = nPopPar / rx->nsub), so `nall` is the
+  # events of one simulation too.  nStud is the replicate count, so it belongs
+  # in `nsim`; nSub replaces the data's subject count within a simulation.
+  # `.nsub` stays the TOTAL individual count, which is what `effectiveSubs`
+  # reports and what `.rxOomChunkSize()` divides by.
+  .nsubPerSim <- .nsub
   if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
     .subPerStudy <- if (.ci$nSub > 1L) .ci$nSub else .nsub
     .meanObsTimes <- .nobsTotal / .nsub
     .meanAllTimes <- .nallTotal / .nsub
+    .nsubPerSim <- .subPerStudy
+    nsim       <- .ci$nStud
     .nsub      <- .subPerStudy * .ci$nStud
-    .nobsTotal <- .meanObsTimes * .nsub
-    .nallTotal <- .meanAllTimes * .nsub
+    # per-simulation totals: the components multiply these back up by `nsim`
+    .nobsTotal <- .meanObsTimes * .nsubPerSim
+    .nallTotal <- .meanAllTimes * .nsubPerSim
+    .solveNallTotal <- .nallTotal
+    .solveMaxAllTimes <- .maxAllTimes
   } else if (!is.null(.solveStats)) {
     .solveNallTotal <- .solveStats$nallTotal
     .solveMaxAllTimes <- .solveStats$maxAllTimes
@@ -585,11 +663,15 @@ rxMemoryEstimate <- function(
     nIndSim    = as.integer(nIndSim),
     numLinSens = as.integer(numLinSens),
     numLin     = as.integer(numLin),
-    nsub       = as.integer(.nsub),
+    nsub       = as.integer(.nsubPerSim),
     nallTotal  = as.double(.solveNallTotal),
+    ndosesTotal = as.double(.doseFrac * .solveNallTotal),
     maxAllTimes = as.double(.solveMaxAllTimes),
     stiff      = as.integer(stiff),
-    doIndLin   = as.integer(doIndLin)
+    doIndLin   = as.integer(doIndLin),
+    indOwnAlloc = as.integer(indOwnAlloc),
+    sample     = as.integer(.sample),
+    nDelayState = as.integer(nDelayState)
   )
 
   .meta    <- c("sizeofInd", "rxLlikSaveSize")
@@ -610,7 +692,9 @@ rxMemoryEstimate <- function(
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
-  .total   <- Reduce(`+`, .wrapped)
+  # Sub-items (see `.rxMemSubItems`) are still reported, but they are pieces of
+  # a component that is already in the sum, so they are left out of it.
+  .total   <- Reduce(`+`, .wrapped[!names(.wrapped) %in% names(.rxMemSubItems)])
 
   .ret <- c(list(total = .total), .wrapped,
             list(sizeofInd      = .raw[["sizeofInd"]],
@@ -659,10 +743,22 @@ print.rxMemoryEstimate <- function(x, ...) {
 
   .bytes <- vapply(.comps, as.numeric, numeric(1))
 
-  .ord <- order(.bytes, decreasing = TRUE)
-  .nm  <- names(.comps)[.ord]
-  .sz  <- .bytes[.ord]
-  .tot <- sum(.sz)
+  # Sub-items are not ranked by size; they are printed indented directly under
+  # the component they are part of, and left out of the percentage base (they
+  # are already counted inside their parent).
+  .nm  <- names(.comps)[order(.bytes, decreasing = TRUE)]
+  .nm  <- .nm[!.nm %in% names(.rxMemSubItems)]
+  .tot <- sum(.bytes[.nm])
+  for (.p in unique(unname(.rxMemSubItems))) {
+    # insert a parent's sub-items as one block so several of them keep the
+    # order they are declared in; `nomatch` keeps an orphan visible at the end
+    # rather than dropping it, should its parent ever stop being reported
+    .kids <- names(.rxMemSubItems)[.rxMemSubItems == .p]
+    .kids <- .kids[.kids %in% names(.comps)]
+    if (length(.kids) == 0L) next
+    .nm <- append(.nm, .kids, after = match(.p, .nm, nomatch = length(.nm)))
+  }
+  .sz  <- .bytes[.nm]
 
   .labels <- c(
     gsolve        = "gsolve (double buffer total)",
@@ -680,6 +776,11 @@ print.rxMemoryEstimate <- function(x, ...) {
     inds_global   = "inds_global (per-subject structs)",
     indLinExpCache = "indLinExpCache (per-thread exponential cache)",
     indLinWork    = "indLinWork (per-thread indLin scratch)",
+    indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
+    gSampleCov    = "gSampleCov (resampled covariate index)",
+    gEtaPre       = "gEtaPre (pre-generated eta draws)",
+    delayHist     = "delayHist (per-individual delay() history, bound)",
+    linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
     outputData    = "outputData (estimated returned data)"
   )
 
