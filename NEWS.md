@@ -737,6 +737,93 @@
   "the following parameter(s) were in the ini block but not in the model block:
   assay1".
 
+- `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
+  modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
+  the trailing restore of the saved index, so the corrupted value stayed live
+  solver state until the error was picked up after the integration step.  The
+  restore now happens before the checks, as it already did in `updateDur()`.
+
+- `dose()` and `tad()` no longer read the wrong infusion when two infusions run
+  at the same rate into different compartments.  The internal `_getDur()` scan
+  that recovers an infusion's duration paired records by amount alone, so an
+  infusion of `+rate` matched the first `-rate` it found, which may belong to
+  another compartment's infusion (or, in the backward direction, be a bolus of
+  the same amount).  A fixed rate/duration infusion emits its stop record with
+  the same internal event id as its start, so the scans now compare that too --
+  the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
+  overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
+  `dose() = 60` for the first; it now reports 100.  A steady state infusion
+  with a modeled `alag()` reported `dose() = 0` for the same reason and now
+  reports the whole dose, and before the lagged dose lands `dose()`, `tad()`
+  and `tlast()` are `NA` -- what a plain lagged infusion has always reported.
+  Separately, an orphaned
+  infusion end sitting at dose index 0 reports the missing start instead of
+  falling through to the forward scan and returning a negated duration
+  (nlmixr2/rxode2#1322).
+
+- `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
+  `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
+  adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
+  it counted the single largest allocation of an ordinary solve twice and could
+  approach double the real figure.  `gsolve_n0` is still reported (and still
+  printed indented under `gsolve`), it is just no longer added to `total`.  The
+  out-of-memory guard in `rxSolve()` and the chunk sizing in
+  `.rxOomChunkSize()`/`rxSolveChunked()` both act on `total`, so a solve that
+  fits is no longer refused and chunks are no longer about half the size they
+  should be.
+
+- `rxMemoryEstimate()` now counts the per-individual event and solve arrays.
+  When `op$indOwnAlloc` is set -- which `rxSolve()` defaults to the model's
+  `evid_` parser flag, so any dose-pushing model (`bolus()`, `obs()`) gets it,
+  as does anyone passing `rxSolve(..., indOwnAlloc = TRUE)` -- `rxAllocInd()`
+  gives every individual its own `dose`/`ii`/`all_times`/`timeThread`/`evid`/
+  `ix`/`idose`/`solve` arrays, and `gsolve` is still allocated at its full size
+  regardless, so those arrays are memory on top of it.  The estimate ignored
+  them entirely, which understated `total` -- the direction that makes an
+  out-of-memory guard useless.  They are now reported as an `indOwnAlloc`
+  component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
+  alongside the rest of the layout.
+
+- `rxMemoryEstimate()` now scales the event-indexed buffers with `nSub`,
+  `nStud` and `nsim`.  The replicated subject count was applied to the subject
+  total but never to the event total, so `rxControl(nSub = 100)` on a
+  one-subject table reported the one-subject figure for `gsolve_n0`,
+  `gall_times`, `gevid` and `gpars` -- an undercount of the largest allocation
+  by the full replicate factor, and again in the direction that makes the
+  out-of-memory guard useless.  `nsub` and `nsim` now mean to the estimate what
+  they mean in `rxData.cpp`: `nsub` is the subjects of ONE simulation and
+  `nsim` is how many times that block is replicated, so `nStud` lands in `nsim`
+  (where it also correctly pays for the extra-simulation copies in
+  `gall_timesS`) and `nSub` grows the events of a single simulation.
+  `effectiveSubs` still reports the total individual count.
+
+- `rxMemoryEstimate()` sizes `ordId` by individuals rather than events.
+  `rx$ordId` is the solve ORDER over individuals -- `nsub * nsim` ints -- but
+  the estimate charged one int per event, overstating it by the number of
+  events per subject.
+
+- `rxMemoryEstimate()` now reports `gEtaPre`, the pre-generated eta draws.
+  `rxPreGenEta()` mallocs `nsim * nsub * neta` doubles before the parallel
+  solve loop whenever the model has etas and a nonzero omega, and none of it
+  was counted.
+
+- `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
+  `rxControl(resample=)` asks for covariate resampling, and counts the
+  per-thread pointer table that accompanies the `gInfusionRate` buffers.
+
+- `rxMemoryEstimate()` now charges the two per-individual history buffers:
+  the `delay()` dense history (`ind$delayHist`) and the `linCmtB()` output-time
+  rate history (`ind$linCmtRateHist`), neither of which was counted at all.
+  Both grow by doubling inside the solve rather than being sized up front, so
+  unlike every other component these are a documented BOUND rather than a
+  mirror of a `calloc`: the capacity the doubling reaches at roughly one stored
+  step per event, floored at the initial allocation.  They are zero for a model
+  that uses neither.
+
+- `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
+  per-subject event totals were summed in integer arithmetic, so a solve past
+  2^31 events -- exactly the size this estimate exists to judge -- overflowed
+  and then failed with "missing value where TRUE/FALSE needed".
 - An `integer` or `logical` covariate column no longer makes `rxSolve()`
   quadratic in the number of rows.  While building the solving data set each
   covariate column was coerced to double once per output row; for a column
@@ -795,6 +882,21 @@
   `dose()` report the wrong amount.  The duration is now looked up from the
   record being handled.  Solving itself was never affected (#1316).
 
+- The dose history no longer measures an EXTRA dose's infusion against an
+  unrelated dose record.  The steady-state and modeled-lag infusion paths
+  append extra doses whose amount and time live in `ind->extraDose*` rather
+  than in `ind->idose`, so the duration lookup -- an index into `idose` -- had
+  no entry to find and fell back to the solver's running dose counter, reading
+  whichever regular record it happened to point at.  For a steady-state
+  infusion with a modeled `alag()` that produced a duration of 0, entering the
+  infusion into the history with an amount of 0; another arrangement could
+  find no matching off-record at all and drop the dose from the history.  An
+  extra dose's duration is now taken from the matching off-record in the
+  extra-dose arrays, paired from the end of the pool so that an infusion
+  longer than the inter-dose interval -- which overlaps itself, leaving more
+  off records than on records -- is measured against its own off rather than
+  against the one closing an earlier overlapping infusion (#1321).
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an
@@ -836,6 +938,32 @@
   still win, so `pi*2` remains `M_2PI` rather than becoming `6.28...`.  This
   shows up most in generated sensitivity code, where differentiating leaves a
   great many `*1` and `+0` terms behind; the emitted values are unchanged.
+
+- `rxSensMatExp()` no longer emits an `indLin()` forcing that is
+  algebraically zero, which had been demoting every sensitivity model with two
+  or more compartments to the fixed-point iteration.  The generator splits the
+  system term wise as `dX/dt = A.X + F(X)` and keeps whatever `rhs - A.X`
+  leaves as the forcing; symengine holds `A_ij * X_j` as a product of a sum and
+  a symbol and does not distribute it, so from two compartments up the
+  subtraction left a residual that prints as non-zero and is zero.  A
+  structurally non-zero forcing is what classifies a model as state dependent,
+  so the whole solve took the inductive-linearization driver -- Picard/Newton
+  substepping with error control and several exponentials per substep --
+  instead of one cached matrix exponential per interval.  One compartment
+  emitted no forcing at all, which is why it was the only configuration where
+  `matExp()` was competitive.  The residual is now cancelled before it is
+  tested, and the same cancellation collapses the un-simplified `k_<cmt>_output`
+  constants the split produced (`-q/v-(-q/v-cl/v)` is now `cl/v`), which the
+  generated model re-evaluated on every `ME()` call.  An expansion that takes a
+  forcing from reading a compartment to reading none is kept however long it
+  gets, since that is the difference between the two drivers; everywhere else
+  it buys no reclassification and is kept only where it does not lengthen what
+  it replaced, so a genuinely nonlinear forcing is untouched.  Measured on an optimized build,
+  40 subjects over an irregular 200 point schedule with three sensitivity
+  parameters, single thread, the solve is 9.6x faster at two compartments and
+  12.5x at three, with
+  the solved values unchanged to 3e-14 -- the dropped terms contributed nothing
+  but cost.  `bench/indlin_zero_forcing_ab.R` is the harness.
 
 - `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
   they were given.  All three guarded the count with `length(x == n)` instead

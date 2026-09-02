@@ -471,13 +471,13 @@ rxTest({
     expect_true(grepl("rxerr.rx.cp.phase2", .sim, fixed=TRUE))
 
     # the ini simulation model defines each residual exactly once
-    .ini <- vapply(rxode2:::getBaseIniSimModel(ui)[[2]][-1], deparse1, character(1),
+    .ini <- vapply(getBaseIniSimModel(ui)[[2]][-1], deparse1, character(1),
                    USE.NAMES=FALSE)
     expect_equal(sum(.ini == "rxerr.rx.cp.phase1 <- 1"), 1L)
     expect_equal(sum(.ini == "rxerr.rx.cp.phase2 <- 1"), 1L)
 
     # the symengine/estimation model builds too
-    expect_error(eval(rxode2:::getBaseSymengineModel(ui)), NA)
+    expect_error(eval(getBaseSymengineModel(ui)), NA)
   })
 
   test_that("same variable on multiple endpoints solves with separate residuals", {

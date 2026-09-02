@@ -123,7 +123,7 @@ for (cell in cells) {
     cat(sprintf("%s %s nSub=%d nObs=%d: %.4f s = %.3f us/obs (load %.2f)\n",
                 cfg, strat, nSub, nObs, median(tset), us, loadAvg()))
     if (strat == "hybrid") {
-      st <- rxode2:::linCmtHybStats(TRUE)
+      st <- utils::getFromNamespace("linCmtHybStats", "rxode2")(TRUE)
       cat("  hybrid counters:", paste(names(st), st, sep = "=", collapse = " "), "\n")
     }
   }

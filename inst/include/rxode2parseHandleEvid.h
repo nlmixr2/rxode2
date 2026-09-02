@@ -108,8 +108,8 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 // ixds can point at an unrelated dose there.  Recover the index from ind->idx
 // whenever the record is a real (non-extra) dose, and only fall back to ixds
 // for extra doses (idx < 0).  An extra dose's amount lives in extraDoseDose,
-// not in idose, so there is no dose index to recover for it; it keeps the
-// long-standing ixds behavior.
+// not in idose, so there is no dose index to recover for it; callers that need
+// an extra dose's infusion duration use handleTlastInlineDurExtra() instead.
 static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return ind->ixds;
   int cur = ind->ix[ind->idx];
@@ -129,8 +129,105 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   return ind->ixds;
 }
 
+// Is extra dose `a` later than extra dose `b`?  Ties broken by push index.
+// This orders the pool for pairing, not for execution (handleExtraDose() sorts
+// extraDoseTimeIdx by time, then evid, then index): the pairing below only ever
+// compares records carrying the SAME amount, so any strict total order pairs
+// them identically and the evid tier is not needed here.
+static inline int handleTlastInlineExtraIsLater(rx_solving_options_ind *ind, int a, int b) {
+  if (ind->extraDoseTime[a] != ind->extraDoseTime[b]) {
+    return ind->extraDoseTime[a] > ind->extraDoseTime[b];
+  }
+  return a > b;
+}
+
+// Does extra dose `j` carry `amt` into the same compartment with the same rate
+// type?  An on/off pair shares the compartment and whI; only the wh0 flag
+// differs (EVID0_REGULAR vs EVID0_RATEADJ), so it is not compared.
+static inline int handleTlastInlineExtraMatches(rx_solving_options_ind *ind, int j,
+                                                int cmt, int whI, double amt) {
+  if (ind->extraDoseDose[j] != amt) return 0;
+  int whJ, cmtJ, wh100J, whIJ, wh0J;
+  getWh(ind->extraDoseEvid[j], &whJ, &cmtJ, &wh100J, &whIJ, &wh0J);
+  return cmtJ == cmt && whIJ == whI;
+}
+
+// How many extra doses carrying `amt` into that compartment come after `ref`?
+static inline int handleTlastInlineExtraCountAfter(rx_solving_options_ind *ind, int ref,
+                                                   int cmt, int whI, double amt) {
+  int n = ind->extraDoseN[0], cnt = 0;
+  for (int j = 0; j < n; ++j) {
+    if (j != ref &&
+        handleTlastInlineExtraMatches(ind, j, cmt, whI, amt) &&
+        handleTlastInlineExtraIsLater(ind, j, ref)) cnt++;
+  }
+  return cnt;
+}
+
+// Infusion duration of an EXTRA dose.
+// Extra doses -- the records pushDosingEvent() appends for the steady-state and
+// modeled-lag infusion paths -- carry ind->idx = -1-trueIdx and live in
+// ind->extraDose*, not in ind->idose, so _getDur()'s scan over idose cannot see
+// them and the ixds fallback measures an unrelated record's infusion.  Pair the
+// on record with its off record inside the extra-dose arrays instead.
+//
+// The pairing is done from the END: the last "on" belongs to the last "off",
+// the one before it to the one before that, and so on.  A steady-state infusion
+// longer than the inter-dose interval overlaps itself, so the pool holds more
+// off records than on records -- the leading offs close infusions that started
+// before the pool did.  Matching each on to the nearest following off would
+// hand those to the wrong dose (an ii=12 regimen infusing over 20h reported 8h);
+// counting back from the end pairs them correctly and degenerates to the
+// obvious pairing when the counts are equal.
+//
+// Returns NA_REAL when there is no off record to pair with (a continuous
+// steady-state infusion never turns off), matching _getDur()'s backward==2
+// contract.  Two steady-state regimens on the same compartment at the same
+// rate share one pool and cannot be told apart here, the same limitation
+// _getDur() has over idose.
+static inline double handleTlastInlineDurExtra(rx_solving_options_ind *ind) {
+  if (ind->extraDoseN == NULL) return NA_REAL;
+  int trueIdx = -1 - ind->idx;
+  int n = ind->extraDoseN[0];
+  if (trueIdx < 0 || trueIdx >= n) return NA_REAL;
+  double curDose = ind->extraDoseDose[trueIdx];
+  double curTime = ind->extraDoseTime[trueIdx];
+  int wh, cmt, wh100, whI, wh0;
+  getWh(ind->extraDoseEvid[trueIdx], &wh, &cmt, &wh100, &whI, &wh0);
+  // how many identical infusions start after this one
+  int nOnAfter = handleTlastInlineExtraCountAfter(ind, trueIdx, cmt, whI, curDose);
+  // this dose ends at the off record that has exactly that many offs after it
+  for (int j = 0; j < n; ++j) {
+    if (!handleTlastInlineExtraMatches(ind, j, cmt, whI, -curDose)) continue;
+    if (!handleTlastInlineExtraIsLater(ind, j, trueIdx)) continue;
+    if (handleTlastInlineExtraCountAfter(ind, j, cmt, whI, -curDose) == nOnAfter) {
+      return ind->extraDoseTime[j] - curTime;
+    }
+  }
+  return NA_REAL;
+}
+
+// Amount and duration of a fixed rate/duration infusion record.  In rxode2 the
+// amt of such a record is the infusion RATE, so the amount entered into the dose
+// history is rate*duration.  Returns 0 when the record should not be entered.
+static inline int handleTlastInlineInfusion(rx_solving_options_ind *ind, double *curDose, double *tinf) {
+  if (curDose[0] <= 0) return 0;
+  if (ind->idx < 0) {
+    // extra dose: it has no idose entry, so its duration comes from the
+    // extra-dose arrays (see handleTlastInlineDurExtra)
+    tinf[0] = handleTlastInlineDurExtra(ind);
+  } else {
+    unsigned int p;
+    int doseIdx = handleTlastInlineDoseIndex(ind);
+    if (ind->fns->getdur) tinf[0] = ind->fns->getdur(doseIdx, ind, 2, &p);
+    else tinf[0] = _getDur(doseIdx, ind, 2, &p);
+  }
+  if (ISNA(tinf[0])) return 0;
+  curDose[0] = tinf[0] * curDose[0];
+  return 1;
+}
+
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
-  unsigned int p;
   switch (ind->whI) {
   case EVIDF_MODEL_RATE_ON: // modeled rate.
   case EVIDF_MODEL_DUR_ON: // modeled duration.
@@ -145,20 +242,7 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
     break;
   case EVIDF_INF_DUR:
   case EVIDF_INF_RATE:
-    if (curDose[0] <= 0) {
-      return 0;
-    } else {
-      // The amt in rxode2 is the infusion rate, but we need the amt
-      int doseIdx = handleTlastInlineDoseIndex(ind);
-      if (ind->fns->getdur) tinf[0] = ind->fns->getdur(doseIdx, ind, 2, &p);
-      else tinf[0] = _getDur(doseIdx, ind, 2, &p);
-      if (!ISNA(tinf[0])) {
-        curDose[0] = tinf[0] * curDose[0];
-        return 1;
-      } else {
-        return 0;
-      }
-    }
+    return handleTlastInlineInfusion(ind, curDose, tinf);
     break;
   }
   if (ind->wh0 == EVID0_ONDOSE) {

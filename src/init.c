@@ -437,6 +437,9 @@ SEXP _rxode2_linCmtBSensTypesSeen(SEXP);
 SEXP _rxode2_linCmtCarryLiveTest(SEXP, SEXP, SEXP, SEXP, SEXP,
                                  SEXP, SEXP, SEXP, SEXP, SEXP);
 
+// test-only driver for _getDur() (see src/handle_evid.cpp)
+SEXP _rxode2_getDurTest(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+
 SEXP _rxode2_linCmtCarrySetFast(SEXP);
 SEXP _rxode2_linCmtCarrySentinelMax(void);
 SEXP _rxode2_linCmtCarryFastStats(SEXP);
@@ -849,7 +852,7 @@ SEXP _rxode2_mexpit(SEXP p);
 SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
-SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
@@ -895,6 +898,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_linCmtDeltaMemo", (DL_FUNC) &_rxode2_linCmtDeltaMemo, 1},
     {"_rxode2_linCmtBSensTypesSeen", (DL_FUNC) &_rxode2_linCmtBSensTypesSeen, 1},
     {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},
+    {"_rxode2_getDurTest", (DL_FUNC) &_rxode2_getDurTest, 6},
     {"_rxode2_linCmtCarrySetFast", (DL_FUNC) &_rxode2_linCmtCarrySetFast, 1},
     {"_rxode2_linCmtCarrySentinelMax", (DL_FUNC) &_rxode2_linCmtCarrySentinelMax, 0},
     {"_rxode2_linCmtCarryFastStats", (DL_FUNC) &_rxode2_linCmtCarryFastStats, 1},
@@ -1079,7 +1083,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
-    {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 21},
+    {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 25},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},
