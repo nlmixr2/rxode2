@@ -260,6 +260,63 @@ rxTest({
     expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
   })
 
+  test_that("a split bolus pushed as evid=1 reserves enough room (#1322 follow-up)", {
+    # the same under-reservation as the evid=4 case above, on the commoner
+    # spelling: one translated event, splitBolusN-1 records
+    mSplit <- rxode2({
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+      if (t < 1) {
+        evid_(t + 6, 1, 50, 1, 0, 6, 9, 0)
+      }
+    })
+    mBase <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+    e <- et(amt = 100, time = 0) |> et(seq(0, 72, by = 1))
+    eBase <- e |> et(amt = 100, time = 0, cmt = 2)
+    for (.t in seq(6, 60, by = 6)) {
+      eBase <- eBase |>
+        et(amt = 50, time = .t, cmt = 1) |>
+        et(amt = 50, time = .t, cmt = 2)
+    }
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    rSplit <- rxSolve(mSplit, p, e)
+    rBase <- rxSolve(mBase, p, eBase)
+    expect_true(all(is.finite(rSplit$cp)))
+    expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
+    expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
+  })
+
+  test_that("a pushed infusion into a splitBolus compartment is not split", {
+    # _rxShouldSplitTranslatedBolus() requires whI == 0, so only a bolus splits;
+    # an infusion into the same compartment stays whole
+    mSplit <- rxode2({
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        infuse(100, 10, 1, 0, 0, 0)
+      }
+    })
+    mBase <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    obs <- c(0, 1e-8, seq(0.5, 30, by = 0.5))
+    rSplit <- rxSolve(mSplit, p, et(obs))
+    rBase <- rxSolve(mBase, p, et(amt = 100, time = 0, rate = 10, cmt = 1) |> et(obs))
+    expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
+    expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
+  })
+
   test_that("pushed fixed-rate and bolus doses are unchanged", {
     modRate <- rxode2({
       d/dt(central) <- -cl / v * central

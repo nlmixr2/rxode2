@@ -177,10 +177,13 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
  *     the unlagged time for it.  A pushed dose gets the plain flg 10/20 pair,
  *     so its trajectory differs from the same regimen in the event table.
  *
- *   - A steady-state constant infusion (flg 40) with a modeled duration
- *     (rate=-2).  etTran.cpp refuses that combination outright; here it becomes
- *     a lone flg 40 record that the solver reads through getRate(), so a model
- *     with dur() but no rate() steady-states at zero instead of erroring.
+ *   - A steady-state constant infusion (flg 40) carrying a duration, either
+ *     modeled (rate=-2) or fixed (isDur, which makes useRate = amt/dur = 0).
+ *     etTran.cpp refuses both outright; here each becomes a lone flg 40 record
+ *     carrying no usable rate, so the compartment steady-states at zero with no
+ *     error.  The fixed-duration spelling is the surprising one, since the
+ *     sibling infuse(0, rate, ...) is the legitimate way to write a constant
+ *     infusion and works.
  */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
