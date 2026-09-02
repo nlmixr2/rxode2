@@ -166,6 +166,22 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
   return 1;
 }
 
+/* Two ways this translator does NOT yet agree with etTran.cpp, both only
+ * reachable through the runtime evid_() push:
+ *
+ *   - A steady-state dose into a compartment carrying a modeled alag().
+ *     etTran.cpp's ssAtDoseTime handling rewrites flg 10 -> 9 (and 20 -> 19) for
+ *     such a compartment and expands the dose into a four record sequence (the
+ *     flg 9 steady state start, an INFRM flg 8 record, then the lagged flg 1
+ *     start and its stop).  flg 9 is not just bookkeeping -- getLag() returns
+ *     the unlagged time for it.  A pushed dose gets the plain flg 10/20 pair,
+ *     so its trajectory differs from the same regimen in the event table.
+ *
+ *   - A steady-state constant infusion (flg 40) with a modeled duration
+ *     (rate=-2).  etTran.cpp refuses that combination outright; here it becomes
+ *     a lone flg 40 record that the solver reads through getRate(), so a model
+ *     with dur() but no rate() steady-states at zero instead of erroring.
+ */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
                      double ii_val, int ss, double rate, int isDur) {

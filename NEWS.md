@@ -709,7 +709,10 @@
   data error 997/886 instead of scheduling the infusion.  The translator emits
   up to three records now, and a pushed infusion matches the same regimen
   written into the event table for fixed rate, fixed duration, modeled rate,
-  modeled duration, `evid=4`, `addl` and steady state.
+  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
+  steady-state dose pushed into a compartment that also carries a modeled
+  `alag()` is still not expanded the way the event table expands it, and remains
+  a known gap.
 
 - The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
   one.  `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
