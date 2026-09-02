@@ -257,3 +257,48 @@ test_that("nested simulation carries a correlated occasion block", {
   expect_equal(cov(.p[["iov.cl(occ==1)"]], .p[["iov.v(occ==2)"]]), 0,
                tolerance = 0.02)
 })
+
+test_that("several nesting levels each keep their own variances", {
+
+  ## The reindex has to leave each level's slice of the parameter vector
+  ## where it was and only reorder WITHIN it, so more than one level at a
+  ## time is the case that would catch a bookkeeping slip.  The existing
+  ## multi-level test (`test-occ.R`) uses equal variances within each
+  ## level, which cannot see a transposition.
+  skip_on_cran()
+  .mod <- rxode2({
+    cl <- exp(1 + eta.cl + occ.cl + eye.cl)
+    v <- exp(3.45 + eta.v + occ.v + eye.v)
+    d/dt(cent) <- -(cl / v) * cent
+  })
+  .ev <- et(amt = 100)
+  .ev <- et(.ev, 0:24)
+  .ev <- et(.ev, id = 1:2500)
+  .ev$occ <- 1 + (.ev$time >= 12)
+  .ev$eye <- 1 + (.ev$time %% 2 == 1)
+
+  .om <- lotri::lotri(
+    lotri::lotri(eta.cl ~ 0.5, eta.v ~ 0.9) | id(nu = 1e6),
+    lotri::lotri(occ.cl ~ 0.01, occ.v ~ 4) | occ(nu = 1e6),
+    lotri::lotri(eye.cl ~ 0.02, eye.v ~ 9) | eye(nu = 1e6))
+
+  withr::with_seed(21, {
+    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL,
+                                   nDisplayProgress = 1e6))
+  })
+  .p <- .s$params
+
+  for (.k in 1:2) {
+    expect_equal(var(.p[[paste0("occ.cl(occ==", .k, ")")]]), 0.01,
+                 tolerance = 0.15)
+    expect_equal(var(.p[[paste0("occ.v(occ==", .k, ")")]]), 4,
+                 tolerance = 0.15)
+    expect_equal(var(.p[[paste0("eye.cl(eye==", .k, ")")]]), 0.02,
+                 tolerance = 0.2)
+    expect_equal(var(.p[[paste0("eye.v(eye==", .k, ")")]]), 9,
+                 tolerance = 0.15)
+  }
+  ## and the id level is untouched by the levels below it
+  expect_equal(var(.p$eta.cl), 0.5, tolerance = 0.15)
+  expect_equal(var(.p$eta.v), 0.9, tolerance = 0.15)
+})
