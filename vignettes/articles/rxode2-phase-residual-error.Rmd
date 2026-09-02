@@ -20,9 +20,8 @@ A pooled population PK analysis usually combines studies that were not
 run under the same conditions.  Phase 1 data come from rich sampling
 in healthy volunteers at a single site, with a validated assay and
 controlled sample handling.  Phase 3 data come from sparse sampling in
-patients across many sites, with nominal rather than recorded times,
-more variable sample handling, and sometimes a different assay
-version.
+patients across many sites, more variable sample handling, and
+sometimes a different assay version.
 
 The structural model is the same for both -- the drug does not change
 between phases -- but the *noise around the prediction* is not.  Fitting
