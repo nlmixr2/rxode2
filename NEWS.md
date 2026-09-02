@@ -846,6 +846,21 @@
   `dose()` report the wrong amount.  The duration is now looked up from the
   record being handled.  Solving itself was never affected (#1316).
 
+- The dose history no longer measures an EXTRA dose's infusion against an
+  unrelated dose record.  The steady-state and modeled-lag infusion paths
+  append extra doses whose amount and time live in `ind->extraDose*` rather
+  than in `ind->idose`, so the duration lookup -- an index into `idose` -- had
+  no entry to find and fell back to the solver's running dose counter, reading
+  whichever regular record it happened to point at.  For a steady-state
+  infusion with a modeled `alag()` that produced a duration of 0, entering the
+  infusion into the history with an amount of 0; another arrangement could
+  find no matching off-record at all and drop the dose from the history.  An
+  extra dose's duration is now taken from the matching off-record in the
+  extra-dose arrays, paired from the end of the pool so that an infusion
+  longer than the inter-dose interval -- which overlaps itself, leaving more
+  off records than on records -- is measured against its own off rather than
+  against the one closing an earlier overlapping infusion (#1321).
+
 - Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
   translation table and `_goodFuns` were claimed on the protect stack by one
   function and released by another, with the whole parse in between; an
