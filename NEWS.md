@@ -806,6 +806,26 @@
   double covariate at 20000 subjects.  The columns are now coerced once, as
   above.
 
+- Translating an event table no longer re-wraps its own output columns once
+  per row.  The row loop in `etTrans()` took each output column as a fresh
+  `Rcpp` vector on every row -- a no-op cast, since the columns were
+  allocated as the right type, but one that still paid Rcpp's
+  preserve/release bookkeeping at every one of roughly nine sites per row.
+  The pointers are taken once instead, which is 2.7x on `etTrans()` alone and
+  2.8-3.8x on a solve at 160000-320000 rows.
+
+- `etTrans(allTimeVar = TRUE)` no longer errors when an `iCov` covariate is
+  supplied.  Under `allTimeVar` every covariate is emitted as a per-row
+  column, but the column for an `iCov` covariate was never allocated, so
+  taking it failed instead of returning the covariate.
+
+- `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
+  `df(A)/dy(ETA[1])` instead of leaking the internal name
+  `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from
+  their internal spellings for display, but the ETA translation was written
+  into the buffer and then unconditionally overwritten, so only `THETA[n]`
+  survived.
+
 - Building a model no longer hangs forever on a lock left behind by an
   interrupted session, and two processes no longer build the same model at
   once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
