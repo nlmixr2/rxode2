@@ -1417,10 +1417,10 @@ block too and correlate blocks the model declared independent, and there
 is nowhere to put a second degrees of freedom. Put the prior on the
 whole level instead.
 
-Prior simulation does not yet cover a chunked solve
-(\verb{file =}/\verb{chunkSize =}), which is a clear error rather than a solve that
-quietly drops the prior: the one draw every chunk shares cannot express
-the omega half of a prior.
+Under a chunked solve (\verb{file =}/\verb{chunkSize =}) a prior on the population
+parameters is simulated, since that half of a prior is a \code{thetaMat},
+which the one draw every chunk shares covers. A prior on an omega block
+is not, and is a clear error rather than a solve that quietly drops it.
 }
 
 \subsection{A thetaMat that already carries the omegas}{

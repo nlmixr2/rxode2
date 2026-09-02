@@ -1652,7 +1652,16 @@ chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
 each chunk's result to \verb{<file>_chunk_NNNNN.parquet} (or \code{.rds} if
 \code{arrow} is unavailable), and returns an \code{rxSolveOom} object. The manifest
 is saved to \verb{<file>_manifest.rds}. Set to \code{NULL} (default) to use the
-normal in-memory path.}
+normal in-memory path.
+
+A chunked solve draws the parameters once in the parent so that every
+chunk shares them, which is what keeps subjects in different chunks in
+the same study.  Four things that draw cannot express are a clear error
+rather than a quietly different answer: a joint (TNPRI) draw of the
+omega/sigma entries a \code{thetaMat} carries, sigma uncertainty
+(\code{dfObs > 0}), a per-subject parameter \code{data.frame}/\code{matrix} alongside an
+\code{omega}/\code{thetaMat}, and \code{nSub} greater than the number of subjects the
+event table has.}
 
 \item{chunkSize}{Integer; number of subjects per chunk when \code{file} is
 set. If \code{NULL} (default), the chunk size is auto-computed from available
