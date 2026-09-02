@@ -704,6 +704,51 @@ rxTest({
     }
   })
 
+  test_that("the thetaMat settings reach the shared draw", {
+    skip_on_cran()
+
+    ## `thetaLower`/`thetaIsChol` shape the draw, so leaving one out of the
+    ## pre-draw would give a chunked solve that quietly differs from the
+    ## unchunked one rather than failing
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .tm <- lotri::lotri(tka + tcl + tv ~
+                          c(0.25, 0.01, 0.25, 0.01, 0.01, 0.25))
+    .chol <- chol(.tm)
+    dimnames(.chol) <- dimnames(.tm)
+    .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
+
+    .chunked <- function(...) {
+      set.seed(42)
+      rxSetSeed(1234)
+      rxSolve(.m, .ev, params=.p, omega=.om, nStud=4, ...,
+              file=tempfile(fileext=".parquet"), chunkSize=2)
+    }
+
+    ## unbounded the draw straddles zero, so all-positive below is the bound
+    ## being honoured rather than a coincidence
+    expect_true(any(.chunked(thetaMat=.tm)$thetaMat < 0))
+    expect_true(all(.chunked(thetaMat=.tm, thetaLower=0)$thetaMat > 0))
+
+    ## a cholesky thetaMat is read as one -- read as a covariance it would
+    ## draw a visibly different spread, and here it reproduces the
+    ## unchunked solve exactly
+    set.seed(42); rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=4,
+                     thetaMat=.chol, thetaIsChol=TRUE)
+    .chunk <- .chunked(thetaMat=.chol, thetaIsChol=TRUE)
+    expect_equal(.key(as.data.frame(.chunk))$cp,
+                 .key(as.data.frame(.full))$cp, tolerance=1e-8)
+    expect_equal(.chunk$thetaMat, .full$thetaMat)
+  })
+
   test_that("a chunked solve draws a thetaMat given without an omega", {
     skip_on_cran()
 
@@ -831,6 +876,34 @@ rxTest({
       "rxSolveOom")
   })
 
+  test_that("a chunked solve refuses an nSub it cannot replicate", {
+    skip_on_cran()
+
+    ## chunks are cut by the ids the event table has, so `nSub` replication
+    ## of a single subject table silently came back with one subject
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+    })
+    .ev <- et(et(amt=100), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    expect_error(
+      rxSolve(.m, .ev, params=.p, omega=.om, nSub=6,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "'nSub'")
+
+    ## the same subjects spelled in the event table are fine
+    .ev6 <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    expect_s3_class(
+      rxSolve(.m, .ev6, params=.p, omega=.om, nSub=6,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "rxSolveOom")
+  })
+
   test_that("a chunked solve says why it cannot draw from a parameter table", {
     skip_on_cran()
 
@@ -882,6 +955,13 @@ rxTest({
       rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
               omegaSeparation="tnpri",
               file=tempfile(fileext=".parquet"), chunkSize=2),
+      "tnpri")
+
+    ## `rxSolveChunked()` builds its own control and never resolves the
+    ## separation into 'priorOmegaEl', so the guard has to ask for it directly
+    expect_error(
+      rxSolveChunked(.m, .p, .ev, omega=.om, thetaMat=.tm, nStud=3,
+                     omegaSeparation="tnpri", chunkSize=2),
       "tnpri")
 
     ## and it is refused, not merely unsupported: the unchunked solve does

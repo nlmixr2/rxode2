@@ -953,6 +953,24 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   now a clear error rather than a wrong answer; a fixed `sigma`
   (`dfObs = 0`) is unaffected.
 
+  A fixed `sigma` still parts the two solves' random streams, which is worth
+  knowing rather than fixed here: `rxSimThetaOmega()` interleaves each study's
+  residual draw with that study's eta draw, and the shared pre-draw carries no
+  residual draw, so from study 2 on a chunked solve draws different etas than
+  the unchunked one.  Each study's etas still come from that study's omega --
+  the simulation is right, it is simply not the same draw -- and this is
+  unchanged from before, but it reaches any model with an error term.
+
+- A chunked solve is no longer refused outright for a prior written in
+  `ini({})`.  A prior on the population parameters is a `thetaMat`, which the
+  shared pre-draw now covers.  A prior on an omega block rides on arguments
+  that draw cannot take and is still refused, now with a message that says so.
+
+- A chunked solve with `nSub` greater than the number of subjects the event
+  table has is now an error rather than a solve of one subject.  Chunks are cut
+  by the ids the event table carries, so the `nSub` replication of a
+  single-subject table never happened.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with

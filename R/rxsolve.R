@@ -1161,6 +1161,15 @@
 #'   is saved to `<file>_manifest.rds`. Set to `NULL` (default) to use the
 #'   normal in-memory path.
 #'
+#'   A chunked solve draws the parameters once in the parent so that every
+#'   chunk shares them, which is what keeps subjects in different chunks in
+#'   the same study.  Four things that draw cannot express are a clear error
+#'   rather than a quietly different answer: a joint (TNPRI) draw of the
+#'   omega/sigma entries a `thetaMat` carries, sigma uncertainty
+#'   (`dfObs > 0`), a per-subject parameter `data.frame`/`matrix` alongside an
+#'   `omega`/`thetaMat`, and `nSub` greater than the number of subjects the
+#'   event table has.
+#'
 #' @param chunkSize Integer; number of subjects per chunk when `file` is
 #'   set. If `NULL` (default), the chunk size is auto-computed from available
 #'   free RAM using `rxMemoryEstimate()`.

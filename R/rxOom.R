@@ -148,6 +148,21 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .nChunks   <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
+  # `nSub` replicates a single subject event table into that many subjects.
+  # The chunking cannot express it: chunks are cut by the ids the event table
+  # actually has, and the pre-draw is sized the same way, so the solve came
+  # back with one subject where `nSub` were asked for -- and with a `thetaMat`
+  # or `omega`, that one subject's draw rather than `nSub` of them.
+  if (!is.null(.ctl$nSub) && length(.ctl$nSub) == 1L && !is.na(.ctl$nSub) &&
+        .ctl$nSub > 1L && .ctl$nSub != .nSub) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot simulate 'nSub' (",
+         .ctl$nSub, ") subjects from an event table that has ", .nSub,
+         "; chunks are cut by subject, so give the event table one record ",
+         "set per subject ('et(id=1:", .ctl$nSub, ")'), or solve without ",
+         "chunking.",
+         call.=FALSE)
+  }
+
   .manifest <- list(
     version = 1L, prefix = .prefix,
     chunks  = character(.nChunks), nrows = integer(.nChunks),
@@ -218,8 +233,14 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # `rxSimThetaOmega()`, which has no argument for any of that, so the chunks
   # would come back drawn from the point estimate omega with the joint draw
   # gone and nothing to signal it.  Refuse it rather than answer wrongly.
+  # `omegaSeparation`/`sigmaSeparation` are asked directly as well as through
+  # the `priorOmegaEl`/`priorSigmaEl` they resolve to: `rxSolveChunked()` builds
+  # its control itself and never runs `.rxTnpriApplyControl()`, so the resolved
+  # form is not there to test.
   if (!is.null(.ctl$priorOmega) || !is.null(.ctl$priorOmegaEl) ||
-        !is.null(.ctl$priorSigmaEl)) {
+        !is.null(.ctl$priorSigmaEl) ||
+        identical(.ctl$omegaSeparation, "tnpri") ||
+        identical(.ctl$sigmaSeparation, "tnpri")) {
     stop("a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
          "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
          "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",

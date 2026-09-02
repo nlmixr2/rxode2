@@ -358,10 +358,12 @@
 #'
 #' @param ui rxode2 ui model
 #' @param ctl `rxControl` list
+#' @param omegaPrior does the model put a prior on an omega block, or on
+#'   omega entries carried in the `thetaMat`
 #' @return nothing, called for the error
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorSimAssertSupported <- function(ui, ctl) {
+.rxPriorSimAssertSupported <- function(ui, ctl, omegaPrior=TRUE) {
   .iniDf <- ui$iniDf
   ## A conditioned block (`eta ~ 0.1 | id`, `| occ`) carries `$omega` as a
   ## 'lotri' of nesting levels rather than a plain matrix.  That is
@@ -371,14 +373,15 @@
   ##
   ## A chunked solve pre-draws its parameters in `rxOom` and strips the
   ## omega from what each chunk is given.  The theta half of a prior is a
-  ## `thetaMat`, which that pre-draw now covers, but its omega half rides on
+  ## `thetaMat`, which that pre-draw covers, so a prior on the population
+  ## parameters alone is fine.  Its omega half rides on
   ## `priorOmega`/`priorOmegaEl`, which the exported `rxSimThetaOmega()` the
-  ## pre-draw calls cannot take -- so the prior would never be drawn from.
-  if (!is.null(ctl$file) || !is.null(ctl$chunkSize)) {
-    stop("prior simulation does not yet support a chunked solve ('file=' or ",
-         "'chunkSize='): the one draw every chunk shares is made through ",
-         "'rxSimThetaOmega()', which has no argument for the omega half of a ",
-         "prior, so it would be dropped without warning",
+  ## pre-draw calls cannot take -- so that half would never be drawn from.
+  if (omegaPrior && (!is.null(ctl$file) || !is.null(ctl$chunkSize))) {
+    stop("prior simulation does not yet support a prior on an omega block ",
+         "under a chunked solve ('file=' or 'chunkSize='): the one draw every ",
+         "chunk shares is made through 'rxSimThetaOmega()', which has no ",
+         "argument for it, so it would be dropped without warning",
          call.=FALSE)
   }
   invisible()
@@ -398,9 +401,13 @@
         !any(!is.na(.iniDf$prior))) {
     return(NULL)
   }
-  .rxPriorSimAssertSupported(ui, ctl)
   .th <- .rxPriorThetaMat(ui)
   .nu <- .rxPriorOmegaNu(ui)
+  ## asked after the pieces are built rather than before: only the omega
+  ## half of a prior is what a chunked solve cannot carry
+  .rxPriorSimAssertSupported(ui, ctl,
+                             omegaPrior=length(.nu) > 0L ||
+                               !is.null(.th$omegaEl))
   if (is.null(.th$thetaMat) && length(.nu) == 0L) return(NULL)
   list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu,
        omegaEl=.th$omegaEl)
