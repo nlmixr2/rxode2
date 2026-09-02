@@ -246,7 +246,8 @@ rxSymInvCreate2C <- function(src) {
 
 
 ## rxSymInvCreateC_.slow <- NULL
-rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
+rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
+                             same = NULL) {
   diag.xform <- match.arg(diag.xform)
   mat2 <- mat
   mat2 <- rxInv(mat2)
@@ -277,6 +278,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
   }
   dmat <- dim(mat1)[1] - 1
   block <- list()
+  .blockRows <- list()
   last <- 1
   if (dmat != 0) {
     for (i in 1:dmat) {
@@ -285,6 +287,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         cur <- matrix(as.double(mat[s, s]), length(s))
         last <- i + 1
         block[[length(block) + 1]] <- cur
+        .blockRows[[length(.blockRows) + 1]] <- s
       }
     }
   }
@@ -292,6 +295,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
     s <- seq(last, dmat + 1)
     cur <- matrix(as.double(mat[s, s]), length(s))
     block[[length(block) + 1]] <- cur
+    .blockRows[[length(.blockRows) + 1]] <- s
   }
   if (length(block) == 0) {
     if (diag.xform == "sqrt" && dim(mat1)[1] <= .Call(`_rxCholInv`, 0L, NULL, NULL)) {
@@ -367,19 +371,53 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
   } else {
     mat <- Matrix::.bdiag(block)
     matI <- lapply(block, rxSymInvCreateC_, diag.xform = diag.xform)
-    ini <- unlist(lapply(matI, function(x) {
+    ## Which blocks repeat an earlier one?  `same` is the per-eta map from
+    ## `lotri::lotriSameMap()`: 0 for an ordinary or master eta, otherwise
+    ## the eta index of the master it mirrors.  A repeated block is NOT a
+    ## parameter of its own -- it is the block it repeats -- so it gets no
+    ## thetas of its own and reuses its master's slice instead.  For a
+    ## block diagonal Omega whose blocks are identical, inv(Omega) and
+    ## chol(inv(Omega)) are block diagonal with identical factors, so
+    ## d(inv(Omega))/d(theta_k) is just the block diagonal sum of the
+    ## master's and every copy's contribution -- which is exactly the
+    ## derivative of the shared parameter, with no further work.
+    .masterOf <- integer(length(block))
+    if (!is.null(same) && any(same != 0L)) {
+      for (.b in seq_along(block)) {
+        .r <- .blockRows[[.b]]
+        if (any(.r > length(same))) next
+        .s <- same[.r]
+        if (any(.s == 0L)) next
+        .w <- which(vapply(.blockRows,
+                           function(z) identical(as.integer(z), as.integer(.s)),
+                           logical(1), USE.NAMES = FALSE))
+        if (length(.w) == 1L && .w < .b &&
+              dim(block[[.w]])[1] == length(.r)) {
+          .masterOf[.b] <- .w
+        }
+      }
+    }
+    .free <- which(.masterOf == 0L)
+    ini <- unlist(lapply(matI[.free], function(x) {
       x$ini
     }))
-    ntheta <- sum(sapply(matI, function(x) {
+    ntheta <- sum(sapply(matI[.free], function(x) {
       return(x$fn(NULL, -2L))
     }))
     i <- 1
-    theta.part <- lapply(matI, function(x) {
-      len <- x$fn(NULL, -2L)
-      ret <- as.integer(seq(i, by = 1, length.out = len))
-      i <<- max(ret) + 1
-      return(ret)
-    })
+    theta.part <- vector("list", length(block))
+    for (.b in seq_along(block)) {
+      if (.masterOf[.b] > 0L) {
+        theta.part[[.b]] <- theta.part[[.masterOf[.b]]]
+      } else {
+        len <- matI[[.b]]$fn(NULL, -2L)
+        theta.part[[.b]] <- as.integer(seq(i, by = 1, length.out = len))
+        i <- max(theta.part[[.b]]) + 1
+      }
+    }
+    ## the "which thetas are diagonal elements" vector is positional over
+    ## the theta vector, so it counts the free blocks only
+    theta.partFree <- theta.part[.free]
     ## FIXME move these to C/C++
     ## Drop the dependency on Matrix (since this is partially run in R)
     fn <- eval(bquote(function(theta, tn) {
@@ -388,7 +426,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
       if (is.null(tn)) {
         if (is.null(theta)) {
           return(unlist(lapply(
-            theta.part,
+            .(theta.partFree),
             function(x) {
               .j <- .k <- 1
               .ret <- logical(length(x))
@@ -477,6 +515,11 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
 #' @param mat Initial Omega matrix
 #' @param diag.xform transformation to diagonal elements of OMEGA. or `chol(Omega^-1)`
 #' @param create.env -- Create an environment to calculate the inverses. (By default TRUE)
+#' @param same Optional integer vector over the etas of `mat`, as
+#'   returned by `lotri::lotriSameMap()`: `0` for an ordinary or master
+#'   eta, otherwise the index of the eta it mirrors.  Blocks that repeat
+#'   an earlier one (NONMEM's `$OMEGA BLOCK(n) SAME`) then share that
+#'   block's parameters instead of being estimated separately.
 #' @param envir -- Environment to evaluate function, bu default it is the parent frame.
 #' @return A rxSymInv object OR a rxSymInv environment
 #' @author Matthew L. Fidler
@@ -484,7 +527,8 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
 #' @export
 rxSymInvCholCreate <- function(mat,
                                diag.xform = c("sqrt", "log", "identity"),
-                               create.env = TRUE, envir = parent.frame()) {
+                               create.env = TRUE, envir = parent.frame(),
+                               same = NULL) {
   args <- as.list(match.call(expand.dots = TRUE))[-1]
   args <- args[names(args) != "create.env"]
   if (create.env) {

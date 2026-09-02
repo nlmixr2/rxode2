@@ -1,6 +1,36 @@
 # rxode2 5.1.7 (development version)
 
+## Bug fixes
+
+- Nested (inter-occasion) simulation gave every random effect the wrong
+  variance whenever a level carried more than one parameter.  The omega
+  a level draws from is laid out occasion-major, with the parameters
+  inside each stamp, but the expansion indexed it parameter-major, so
+  the two were transposed: with `lotri(a ~ 0.01, b ~ 1, cc ~ 100) | occ`
+  every parameter in occasion 1 drew variance 0.01, every one in
+  occasion 2 drew 1, and every one in occasion 3 drew 100.  A single
+  parameter per level is unaffected, which is why this went unnoticed.
+  Any covariance specified within an occasion was likewise placed
+  between occasions of one parameter rather than between the parameters
+  of one occasion (#1345).
+
 ## New features
+
+- Correlated inter-occasion variability is now supported.  A `| occ`
+  block may carry off-diagonal elements, and they are simulated at the
+  level they were declared at.  `assertRxUiIovNoCor()` no longer reads a
+  repeated (`same()`) block as a separate level of variability.
+
+- `rxSymInvCholCreate()` gains a `same=` argument.  Blocks that repeat an
+  earlier one -- NONMEM's `$OMEGA BLOCK(n) SAME`, written `same()` in a
+  `lotri`/`ini` block -- share that block's parameters rather than being
+  estimated separately.  For a block diagonal omega whose blocks are
+  identical the derivative with respect to a shared parameter is just
+  the block diagonal sum of each copy's contribution, so this needs no
+  change to the C++ inner problem.
+
+- `$omegaSameMap` reports, for each eta, which earlier eta it repeats,
+  which is what `rxSymInvCholCreate(same=)` takes.
 
 - `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
   `linCmtB(which1 = -3)` differentiates with respect to one delay shared by

@@ -1279,10 +1279,15 @@ rxTest({
     .piped <- .toUi |> ini(.fromUi)
     .iniDf <- as.data.frame(.piped$iniDf)
     expect_equal(.iniDf$condition[.iniDf$name == "(eta.a,eta.b)"], "occ")
-    expect_equal(.piped$omega, .expected$occ)
+    # every eta here is at the `occ` level, so the omega comes back keyed by
+    # that level rather than as a bare matrix -- a bare one would read as an
+    # ID level (between subject) omega, which is not what was written
+    expect_equal(names(.piped$omega), "occ")
+    expect_equal(.piped$omega$occ, .expected$occ)
     # the same block piped directly used to stop with `argument is of length zero`
     .direct <- .toUi |> ini(eta.a + eta.b ~ c(0.6, 0.01, 0.3) | occ)
-    expect_equal(.direct$omega, .expected$occ)
+    expect_equal(names(.direct$omega), "occ")
+    expect_equal(.direct$omega$occ, .expected$occ)
   })
 
   test_that("ini() piping honors unfix() under a condition", {

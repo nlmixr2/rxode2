@@ -238,7 +238,8 @@
   .w2 <- which(ini$name == neta2)
   if (length(.w1) != 1) stop("cannot find parameter '", neta1, "'", call.=FALSE)
   if (length(.w2) != 1) stop("cannot find parameter '", neta2, "'", call.=FALSE)
-  if (!identical(ini$condition[.w1], ini$condition[.w2])) {
+  if (!identical(lotri::lotriBaseCondition(ini$condition[.w1]),
+                 lotri::lotriBaseCondition(ini$condition[.w2]))) {
     # a covariance only exists inside one level; adding it across two builds an
     # omega that cannot be assembled
     if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
@@ -261,7 +262,10 @@
   if (doFix) .fix <- TRUE
   # the covariance belongs at the level of the two etas it links; hard-coding
   # "id" puts a correlated `| occ` block's covariance in the wrong omega
-  .condition <- ini$condition[.w1]
+  ## the BASE condition: the new covariance is a parameter of its own, it
+  ## is not itself a mirror of anything, so it must not inherit a
+  ## `:same:` suffix from the eta it links
+  .condition <- lotri::lotriBaseCondition(ini$condition[.w1])
   if (is.na(.condition)) .condition <- "id"
   .ini2 <- data.frame(ntheta= NA_integer_, neta1=ini$neta1[.w1], neta2=ini$neta1[.w2],
                       name=paste0("(", neta2, ",", neta1, ")"), lower= -Inf, est=est, upper=Inf,
@@ -399,7 +403,7 @@
   for (.eta in etas) {
     .w <- which(.ini$name == .eta & !is.na(.ini$neta1) & .ini$neta1 == .ini$neta2)
     if (length(.w) != 1L) next
-    .cur <- .ini$condition[.w]
+    .cur <- lotri::lotriBaseCondition(.ini$condition[.w])
     if (!is.na(.cur) && !identical(.cur, condition)) {
       .minfo(paste0("keeping {.code ", .eta, "} at level {.code ", .cur,
                     "}; piping an estimate does not move it to {.code ", condition, "}"))
