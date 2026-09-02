@@ -1107,7 +1107,8 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   residual draw, so from study 2 on a chunked solve draws different etas than
   the unchunked one.  Each study's etas still come from that study's omega --
   the simulation is right, it is simply not the same draw -- and this is
-  unchanged from before, but it reaches any model with an error term.
+  unchanged from before, but it reaches any model with an error term
+  (#1339).
 
 - A chunked solve is no longer refused outright for a prior written in
   `ini({})`.  A prior on the population parameters is a `thetaMat`, which the
