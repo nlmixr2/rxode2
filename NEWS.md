@@ -1045,6 +1045,60 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   pinned, `set.seed()` as well as `rxSetSeed()`, because the omega draw runs
   on R's RNG while the etas run on rxode2's.
 
+- A chunked solve (`rxSolve(file=`/`chunkSize=`)) with a `thetaMat` now
+  solves instead of erroring out with "when specifying 'thetaMat' the
+  parameters cannot be a 'data.frame'/'matrix'" (#1263).  The chunked solve
+  hands each chunk a parameter data frame, but `thetaMat` was still forwarded
+  alongside it -- a combination `rxSolve()` refuses -- so the solve died at
+  any `nStud`, including `nStud = 1`.
+
+  The thetas are now drawn once in the parent, in the same draw the omega
+  already uses, and the `thetaMat`/`thetaDf`/`thetaLower`/`thetaUpper`/
+  `thetaIsChol` arguments are stripped from what the chunks are forwarded --
+  so every chunk shares one draw, as it must for subjects in different chunks
+  to belong to the same study.  A `thetaMat` given without an omega is drawn
+  too, and `$thetaMat` is reported on a chunked solve as it is on a plain
+  one.
+
+  A joint (TNPRI) draw is the one case still refused: the omega/sigma
+  entries a `thetaMat` carries under `omegaSeparation="tnpri"` are drawn
+  with the thetas, which the one draw the chunks share cannot express, so
+  a chunked solve asking for it is now a clear error rather than a result
+  drawn from the point estimate omega.  Prior simulation from `ini({})`
+  stays refused under a chunked solve for the same reason.
+
+- A chunked solve given an `omega`/`thetaMat` and a per-subject parameter
+  `data.frame` now says so, rather than dying inside the draw with "Not
+  compatible with requested type: [type=list; target=double]".  The draw
+  every chunk shares is made from a named parameter vector.
+
+- A chunked solve with `dfObs > 0` no longer simulates sigma uncertainty
+  per chunk.  `sigma` is forwarded to each chunk (the residual draw is per
+  observation, so it is not something a chunk's slice of the parameter
+  table can carry), so every chunk drew its own per study sigma and
+  subjects in different chunks ended up with different residual covariance
+  inside the same study -- which `$sigmaList` did not report either.  It is
+  now a clear error rather than a wrong answer; a fixed `sigma`
+  (`dfObs = 0`) is unaffected.
+
+  A fixed `sigma` still parts the two solves' random streams, which is worth
+  knowing rather than fixed here: `rxSimThetaOmega()` interleaves each study's
+  residual draw with that study's eta draw, and the shared pre-draw carries no
+  residual draw, so from study 2 on a chunked solve draws different etas than
+  the unchunked one.  Each study's etas still come from that study's omega --
+  the simulation is right, it is simply not the same draw -- and this is
+  unchanged from before, but it reaches any model with an error term.
+
+- A chunked solve is no longer refused outright for a prior written in
+  `ini({})`.  A prior on the population parameters is a `thetaMat`, which the
+  shared pre-draw now covers.  A prior on an omega block rides on arguments
+  that draw cannot take and is still refused, now with a message that says so.
+
+- A chunked solve with `nSub` greater than the number of subjects the event
+  table has is now an error rather than a solve of one subject.  Chunks are cut
+  by the ids the event table carries, so the `nSub` replication of a
+  single-subject table never happened.
+
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a
   non-finite draw with no bound, but the failure is often not random: with
