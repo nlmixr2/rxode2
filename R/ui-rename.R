@@ -256,7 +256,7 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   if (is.list(rxui) || inherits(rxui, "raw")) {
     rxui <- rxUiDecompress(rxui)
   }
-  .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))
+  .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, .rxEndpointSourceVar(rxui), rxui$predDf$cond, rxui$iniDf$name))
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .lst <- lapply(seq_along(.modelLines), function(i) {
     .assertRenameErrorModelLine(.modelLines[[i]], .vars)

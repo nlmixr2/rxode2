@@ -1161,6 +1161,164 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }, character(1), USE.NAMES=FALSE)
 }
 
+#' All identifiers already used by the parsed model
+#'
+#' @param env Parse environment
+#' @return Character vector of names that a generated name must avoid
+#' @author Matthew L. Fidler
+#' @noRd
+.errAllModelNames <- function(env) {
+  unique(c(unlist(lapply(env$lstExpr, allNames), use.names=FALSE),
+           env$df$name, env$iniDf$name,
+           env$predDf$cond, env$predDf$var,
+           "rxLinCmt", "rxLL"))
+}
+
+#' Names derived from an endpoint variable
+#'
+#' The residual innovation and the `ar()` state are named after the endpoint
+#' variable, so a generated alias has to keep those free too -- a user variable
+#' named `rxerr.<alias>` would otherwise take over the endpoint's simulated
+#' residual.
+#'
+#' @param var Endpoint variable
+#' @return Character vector of every name built from `var`
+#' @author Matthew L. Fidler
+#' @noRd
+.errEndpointDerivedNames <- function(var) {
+  .dotFree <- gsub("[^A-Za-z0-9]", "_", var)
+  c(paste0("rxerr.", var),
+    paste0(c("rx.arRes.", "rx.arT.", "rx.arDt.", "rx.arNf.", "rx.arPhi."), var),
+    paste0(c("rx_arE_", "rx_arT_", "rx_arEp_", "rx_arDt_", "rx_arNf_", "rx_arPhi_"),
+           .dotFree))
+}
+
+#' Generate a non-colliding endpoint alias name
+#'
+#' @param var Endpoint variable
+#' @param cond Endpoint condition
+#' @param taken Names that are already used
+#' @return `rx.<var>.<cond>`, suffixed with `.1`, `.2`, ... if needed; the
+#'   names derived from it (see [.errEndpointDerivedNames()]) are free too
+#' @author Matthew L. Fidler
+#' @noRd
+.errEndpointAliasName <- function(var, cond, taken) {
+  .base <- paste0("rx.", gsub("[^A-Za-z0-9._]", ".", var), ".",
+                  gsub("[^A-Za-z0-9._]", ".", cond))
+  .nm <- .base
+  .i <- 1L
+  while (.nm %in% taken ||
+           any(.errEndpointDerivedNames(.nm) %in% taken)) {
+    .nm <- paste0(.base, ".", .i)
+    .i <- .i + 1L
+  }
+  .nm
+}
+
+#' Give each endpoint sharing a variable its own alias
+#'
+#' When the same model variable is used by more than one endpoint (`cp ~
+#' add(a) | phase1` and `cp ~ add(b) | phase2`), `predDf$var` is duplicated and
+#' everything keyed on it collides (`rxerr.<var>`, `rx.ar*.<var>`, the
+#' simulation sigma names).  Rewrite the duplicated rows' `var` to a generated
+#' `rx.<var>.<cond>` and record the mapping in `env$endpointAlias`; the alias
+#' definition is injected where a model is assembled.
+#'
+#' @param env Parse environment
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.errAssignEndpointAliases <- function(env) {
+  # always present so the slot is part of the blessed ui
+  env$endpointAlias <- character(0)
+  .predDf <- env$predDf
+  if (is.null(.predDf)) return(invisible())
+  # `ll(x) ~ ...` does not require `x` to be a model variable, and nothing keys
+  # on `var` for these rows
+  .w <- which(as.character(.predDf$distribution) != "LL")
+  if (length(.w) == 0L) return(invisible())
+  .dupVar <- unique(.predDf$var[.w][duplicated(.predDf$var[.w])])
+  if (length(.dupVar) == 0L) return(invisible())
+  .dup <- .w[.predDf$var[.w] %in% .dupVar]
+  .dupCond <- unique(.predDf$cond[.dup][duplicated(.predDf$cond[.dup])])
+  if (length(.dupCond) > 0L) {
+    stop("endpoint(s) '", paste(.userEndpointNames(.dupCond), collapse="', '"),
+         "' are defined more than once; give each endpoint its own name with ",
+         "'| <name>' (like 'cp ~ add(add.sd1) | phase1')",
+         call.=FALSE)
+  }
+  .taken <- .errAllModelNames(env)
+  .alias <- character(0)
+  for (.i in .dup) {
+    .nm <- .errEndpointAliasName(.predDf$var[.i], .predDf$cond[.i],
+                                 c(.taken, names(.alias)))
+    .alias[.nm] <- .predDf$var[.i]
+    .predDf$var[.i] <- .nm
+  }
+  env$predDf <- .predDf
+  env$endpointAlias <- .alias
+  invisible()
+}
+
+#' Get the endpoint alias mapping of a ui
+#'
+#' @param ui rxode2 ui (or parse environment)
+#' @return Named character vector, names are the generated alias and values are
+#'   the user's variable; `character(0)` when there are no aliases (including
+#'   for a ui created before this feature existed)
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEndpointAlias <- function(ui) {
+  .a <- tryCatch(ui$endpointAlias, error=function(e) NULL)
+  if (!is.character(.a)) return(character(0))
+  .a
+}
+
+#' Model lines defining the endpoint aliases
+#'
+#' @param ui rxode2 ui (or parse environment)
+#' @return Named list of `alias ~ source` expressions, named by the alias
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEndpointAliasLines <- function(ui) {
+  .a <- .rxEndpointAlias(ui)
+  if (length(.a) == 0L) return(list())
+  .ret <- lapply(seq_along(.a), function(i) {
+    bquote(.(str2lang(names(.a)[i])) ~ .(str2lang(.a[[i]])))
+  })
+  names(.ret) <- names(.a)
+  .ret
+}
+
+#' `linCmt()` definition needed by the endpoint aliases
+#'
+#' A `linCmt()` alias sources `rxLinCmt`, which is normally inlined at each
+#' endpoint; the parser allows only one `linCmt()` per model, so define it once
+#' and let the aliases read it.
+#'
+#' @param ui rxode2 ui (or parse environment)
+#' @return `rxLinCmt ~ linCmt()` or `NULL`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEndpointLinCmtLine <- function(ui) {
+  if (!any(.rxEndpointAlias(ui) == "rxLinCmt")) return(NULL)
+  quote(rxLinCmt ~ linCmt())
+}
+
+#' `predDf$var` with generated aliases resolved back to the user's variable
+#'
+#' @param ui rxode2 ui (or parse environment)
+#' @return Character vector the same length as `predDf$var`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEndpointSourceVar <- function(ui) {
+  .v <- ui$predDf$var
+  .a <- .rxEndpointAlias(ui)
+  if (length(.a) == 0L) return(.v)
+  .w <- match(.v, names(.a))
+  ifelse(is.na(.w), .v, .a[.w])
+}
+
 #' Check for error exceptions
 #'
 #' @param env Environment to check for error exceptions
@@ -1470,6 +1628,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       if (!is.null(.env$errGlobal)) {
         stop(paste(.env$errGlobal, collapse="\n"), call.=FALSE)
       }
+      .env$endpointAlias <- character(0)
       if (!is.null(.env$predDf)) {
         .lstChr <- .env$lstChr
         .lines <- .env$predDf$line
@@ -1500,10 +1659,16 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         if (.env$earlyErr) {
           .handleErrs(.env)
         }
+        # endpoints sharing a model variable each get their own alias; the
+        # source is always defined by now, so append the definitions last
+        .errAssignEndpointAliases(.env)
+        .aliasChr <- vapply(.rxEndpointAliasLines(.env), deparse1,
+                            character(1), USE.NAMES=FALSE)
         if (any(.env$predDf$linCmt)) {
-          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()", .aliasChr),
+                                        collapse="\n"))
         } else {
-          .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, .aliasChr), collapse="\n"))
         }
       } else {
         if (.env$earlyErr) {
