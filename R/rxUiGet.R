@@ -196,7 +196,7 @@ rxUiGet.props <- function(x, ...) {
   names(.var) <- .cnds
   .lhs <- .mv$lhs
   .state <- .mv$state
-  .end <- .x$predDf$var
+  .end <- unique(.rxEndpointSourceVar(.x))
   .end <- .end[.end %in% c(.lhs, .state)]
   .lhs <- .lhs[!(.lhs %in% .end)]
   .varLhs <- .x$varLhs
@@ -315,6 +315,8 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
     return(invisible())
   }
   if (length(.info$cond) == 1) return(NULL)
+  # show the user's variable, not a generated endpoint alias
+  .info$var <- .rxEndpointSourceVar(.x)
   if (getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[order(.info$dvid), ]
   }
