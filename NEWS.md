@@ -701,6 +701,24 @@
 
 ## Bug fixes
 
+- An infusion pushed from inside the model with `evid_()` now turns back off.
+  `evid=4` (reset + dose) used both slots of the translated event for the reset
+  and the infusion start, so the stop record was dropped and the infusion ran
+  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
+  without its companion "off" record at all, so the solve failed outright with
+  data error 997/886 instead of scheduling the infusion.  The translator emits
+  up to three records now, and a pushed infusion matches the same regimen
+  written into the event table for fixed rate, fixed duration, modeled rate,
+  modeled duration, `evid=4`, `addl` and steady state.
+
+- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
+  one.  `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
+  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
+  wrote) record `idx + 1`, so a start sitting on the LAST record read the next
+  subject's first record instead of reporting that it has no stop.  The
+  event-array growth in `_rxPushDose()` also now allocates the guard slot its
+  own comment promises.
+
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
   the trailing restore of the saved index, so the corrupted value stayed live

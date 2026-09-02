@@ -1546,11 +1546,14 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       }
     }
 
-    int nDose = 0;
+    // A split bolus expands its one translated event into splitBolusN-1 records,
+    // so the RECORD count is not ev.n; reserve by the same split-aware count the
+    // idose growth below already uses, or the append loop overruns the arrays.
+    int nDose = 0, nRec = 0;
     for (int _k = 0; _k < ev.n; _k++) {
-      if (ev.isDose[_k]) {
-        nDose += (_k == splitDoseEvent) ? rx->splitBolusN - 1 : 1;
-      }
+      int nHere = (_k == splitDoseEvent) ? rx->splitBolusN - 1 : 1;
+      nRec += nHere;
+      if (ev.isDose[_k]) nDose += nHere;
     }
 
     // Check per-individual push limit (maxExtra > 0 enables the guard).
@@ -1573,27 +1576,30 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     // times; the current solver loop uses a cached nx = n_all_times and never
     // accesses getSolve(j) for j >= nx.  The solve array is grown to the correct
     // size by rxAllocInd() at the start of the next rxSolve() call.
-    if (_ind->n_all_times + ev.n > _ind->indOwnAllocN) {
-      int newCap = _ind->n_all_times + ev.n + EVID_EXTRA_SIZE;
-      // dose, all_times, ii, evid: allocate newCap+1 so that the [idx+1]
-      // "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1,
-      // getEvidP1) are always within bounds when idx == n_all_times-1.
+    if (_ind->n_all_times + nRec > _ind->indOwnAllocN) {
+      int newCap = _ind->n_all_times + nRec + EVID_EXTRA_SIZE;
+      // Every event array holds newCap+1 elements, the same invariant
+      // rxAllocInd() sets up: dose, all_times, ii and evid need the guard so the
+      // [idx+1] "plus-one" macros (setDoseP1, getDoseP1, setAllTimesP1,
+      // getAllTimesP1, getEvidP1) stay in bounds when idx == n_all_times-1, and
+      // ix and timeThread carry it so an accidental [n_all_times] read does not
+      // reach adjacent heap metadata.
       // Each successful realloc is published on _ind straight away.  realloc()
       // frees the old block when it moves one, so holding the new pointer in a
       // local until every call has succeeded would leave _ind pointing at freed
       // memory on a later failure -- and the driver loop keeps reading these
       // arrays after the abort flag is set.
-      double *a   = (double*)realloc(_ind->all_times,  newCap * sizeof(double));
+      double *a   = (double*)realloc(_ind->all_times,  (newCap+1) * sizeof(double));
       if (a   != NULL) _ind->all_times  = a;
-      double *d   = (double*)realloc(_ind->dose,       newCap * sizeof(double));
+      double *d   = (double*)realloc(_ind->dose,       (newCap+1) * sizeof(double));
       if (d   != NULL) _ind->dose       = d;
-      double *i2  = (double*)realloc(_ind->ii,         newCap * sizeof(double));
+      double *i2  = (double*)realloc(_ind->ii,         (newCap+1) * sizeof(double));
       if (i2  != NULL) _ind->ii         = i2;
-      int    *ev2 = (int*)   realloc(_ind->evid,       newCap * sizeof(int));
+      int    *ev2 = (int*)   realloc(_ind->evid,       (newCap+1) * sizeof(int));
       if (ev2 != NULL) _ind->evid       = ev2;
-      int    *ix  = (int*)   realloc(_ind->ix,         newCap * sizeof(int));
+      int    *ix  = (int*)   realloc(_ind->ix,         (newCap+1) * sizeof(int));
       if (ix  != NULL) _ind->ix         = ix;
-      double *tt  = (double*)realloc(_ind->timeThread, newCap * sizeof(double));
+      double *tt  = (double*)realloc(_ind->timeThread, (newCap+1) * sizeof(double));
       if (tt  != NULL) _ind->timeThread = tt;
       if (!a || !d || !i2 || !ev2 || !ix || !tt) {
         int bad = 1;
@@ -1603,10 +1609,10 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       }
       _ind->indOwnAllocN = newCap;
       // Zero guard elements (solve slots are grown on next rxAllocInd call)
-      memset(a + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
-      memset(d + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
-      memset(i2 + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(double));
-      memset(ev2 + _ind->n_all_times, 0, (newCap - _ind->n_all_times) * sizeof(int));
+      memset(a + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
+      memset(d + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
+      memset(i2 + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
+      memset(ev2 + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(int));
     }
 
     // Grow idose if needed

@@ -1,20 +1,23 @@
 #ifndef RXODE2_EVENT_TRANSLATE_H
 #define RXODE2_EVENT_TRANSLATE_H
 
-/* Result of translating one NONMEM/rxode2 event: 1 or 2 internal events.
+/* Result of translating one NONMEM/rxode2 event: 1 to 3 internal events.
  *
  * This header is shared by:
  *   src/etTran.cpp   - batch event-table translation
  *   inst/include/rxode2parseHandleEvid.h - runtime evid_() push
  */
 
+#define RX_TRANSLATED_EVENT_MAX 3
+
 typedef struct {
-  int    n;            /* number of output events: 1 (bolus/obs/reset) or 2 (infusion: start+stop) */
-  int    evid[2];      /* internal rxode2 evid code(s) */
-  double time[2];      /* event time(s): [0]=start, [1]=stop */
-  double amt[2];       /* amounts: [0]=+amt (or +rate), [1]=-amt (or -rate) */
-  double ii[2];        /* ii values */
-  int    isDose[2];    /* 1 if this event contributes an idose entry */
+  int    n;            /* number of output events: 1 (bolus/obs/reset), 2 (infusion:
+                        * start+stop) or 3 (evid=4 reset + infusion start+stop) */
+  int    evid[RX_TRANSLATED_EVENT_MAX];   /* internal rxode2 evid code(s) */
+  double time[RX_TRANSLATED_EVENT_MAX];   /* event time(s) */
+  double amt[RX_TRANSLATED_EVENT_MAX];    /* amounts (+amt/+rate, then -rate) */
+  double ii[RX_TRANSLATED_EVENT_MAX];     /* ii values */
+  int    isDose[RX_TRANSLATED_EVENT_MAX]; /* 1 if this event contributes an idose entry */
 } rx_translated_event;
 
 // EVID = 0; Observations
@@ -116,16 +119,62 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
  * For evid == 0 or 2: observation row pushed, isDose=0.
  * For evid 1-7: translated from NONMEM semantics.
  */
+/* Write the dose record into out->[k], plus its off record into out->[k+1] when
+ * the dose needs one; returns the number of slots used (1 or 2).
+ *
+ * A fixed rate (rateI 1) or fixed duration (rateI 2) infusion stores the RATE as
+ * its amount and is turned off by a -rate record at time + dur.  A modeled rate
+ * (rateI 9) or modeled duration (rateI 8) stores the AMT instead and is turned
+ * off by a companion record at the SAME time carrying the matching off rateI (7
+ * and 6) and a regular flg -- updateRate()/updateDur() fill in that record's
+ * rate and stop time once the model has been evaluated.  Either way the off
+ * record has to sit immediately after the on record, which is what
+ * handleTurnOnModeledRate()/handleTurnOnModeledDuration() and the
+ * getDoseP1()/getAllTimesP1() macros require.
+ *
+ * flg 40 (a constant steady-state infusion) never turns off, modeled or not --
+ * getTime__() skips the infusion-time calculation for that flg entirely, and
+ * etTran.cpp emits no off record for it either.
+ */
+static inline int
+_rxTranslateDoseInto(rx_translated_event *out, int k, double time,
+                     int cmt100, int cmt99, int rateI, int flg,
+                     double amt, double useRate, double dur, double ii_val) {
+  out->evid[k]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
+  out->time[k]   = time;
+  out->amt[k]    = (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) ? useRate : amt;
+  out->ii[k]     = ii_val;
+  out->isDose[k] = 1;
+  if ((rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) && flg != EVID0_SSINF) {
+    out->evid[k+1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
+    out->time[k+1]   = time + dur;
+    out->amt[k+1]    = -useRate;
+    out->ii[k+1]     = 0.0;
+    out->isDose[k+1] = 1;
+    return 2;
+  }
+  if ((rateI == EVIDF_MODEL_RATE_ON || rateI == EVIDF_MODEL_DUR_ON) &&
+      flg != EVID0_SSINF) {
+    int offI = (rateI == EVIDF_MODEL_RATE_ON) ? EVIDF_MODEL_RATE_OFF : EVIDF_MODEL_DUR_OFF;
+    out->evid[k+1]   = cmt100*100000 + offI*10000 + cmt99*100 + EVID0_REGULAR;
+    out->time[k+1]   = time;
+    out->amt[k+1]    = amt;
+    out->ii[k+1]     = 0.0;
+    out->isDose[k+1] = 1;
+    return 2;
+  }
+  return 1;
+}
+
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
                      double ii_val, int ss, double rate, int isDur) {
   rx_translated_event out;
   out.n = 0;
-  out.evid[0] = 0; out.evid[1] = 0;
-  out.time[0] = 0; out.time[1] = 0;
-  out.amt[0]  = 0; out.amt[1]  = 0;
-  out.ii[0]   = 0; out.ii[1]   = 0;
-  out.isDose[0] = 0; out.isDose[1] = 0;
+  for (int _i = 0; _i < RX_TRANSLATED_EVENT_MAX; ++_i) {
+    out.evid[_i] = 0; out.time[_i] = 0; out.amt[_i] = 0;
+    out.ii[_i] = 0; out.isDose[_i] = 0;
+  }
 
   /* Classic rxode2 internal evid (>= 100): pass through verbatim */
   if (evid >= 100) {
@@ -181,21 +230,8 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
 
   case 1:
     /* Dose: bolus or infusion */
-    out.evid[0]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
-    out.time[0]   = time;
-    out.amt[0]    = (rateI == 1 || rateI == 2) ? useRate : amt;
-    out.ii[0]     = ii_val;
-    out.isDose[0] = 1;
-    out.n         = 1;
-    if ((rateI == 1 || rateI == 2) && flg != 40) {
-      /* Infusion stop event */
-      out.evid[1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
-      out.time[1]   = time + dur;
-      out.amt[1]    = -useRate;
-      out.ii[1]     = 0.0;
-      out.isDose[1] = 1;
-      out.n         = 2;
-    }
+    out.n = _rxTranslateDoseInto(&out, 0, time, cmt100, cmt99, rateI, flg,
+                                 amt, useRate, dur, ii_val);
     break;
 
   case 7:
@@ -219,18 +255,14 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     break;
 
   case 4:
-    /* Reset + dose: two events (reset first, then dose) */
-    out.n         = 2;
+    /* Reset + dose: the reset first, then the dose and any off record it needs */
     out.evid[0]   = 3;
     out.time[0]   = time;
     out.amt[0]    = 0.0;
     out.ii[0]     = 0.0;
     out.isDose[0] = 0;
-    out.evid[1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
-    out.time[1]   = time;
-    out.amt[1]    = (rateI == 1 || rateI == 2) ? useRate : amt;
-    out.ii[1]     = ii_val;
-    out.isDose[1] = 1;
+    out.n         = 1 + _rxTranslateDoseInto(&out, 1, time, cmt100, cmt99, rateI,
+                                             flg, amt, useRate, dur, ii_val);
     break;
 
   case 5:
