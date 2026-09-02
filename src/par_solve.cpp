@@ -1613,6 +1613,10 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       memset(d + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
       memset(i2 + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
       memset(ev2 + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(int));
+      // ix and timeThread carry the same guard slot, so zero it here too --
+      // realloc leaves it holding whatever was in the old block
+      memset(ix + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(int));
+      memset(tt + _ind->n_all_times, 0, (newCap + 1 - _ind->n_all_times) * sizeof(double));
     }
 
     // Grow idose if needed

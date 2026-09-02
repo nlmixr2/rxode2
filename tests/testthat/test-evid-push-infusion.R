@@ -229,12 +229,18 @@ rxTest({
   test_that("a split bolus pushed as evid=4 reserves enough room (#1322 follow-up)", {
     # splitBolus expands one translated event into splitBolusN-1 records, so an
     # evid=4 push writes 1 + (splitBolusN-1) records where the capacity check
-    # only reserved ev.n = 2.  Push repeatedly so the EVID_EXTRA_SIZE slack that
-    # hid the overrun is used up.
+    # only reserved ev.n = 2.  Three targets steps n_all_times by 3 and never
+    # lands on the one offset that overruns, so this uses FOUR (nRec = 4 against
+    # a reservation of 2), which does reach past the end of the block.  Push
+    # repeatedly so the EVID_EXTRA_SIZE slack that hid the overrun is used up.
+    # The overrun is a couple of elements that malloc bucketing usually absorbs,
+    # so this exercises the boundary rather than failing deterministically
+    # without the fix -- it is here to give a heap checker something to catch.
     mSplit <- rxode2({
-      splitBolus(depot, depot, central)
+      splitBolus(depot, depot, central, peri)
       d/dt(depot) <- -ka * depot
-      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(central) <- ka * depot - cl / v * central - q * central + q * peri
+      d/dt(peri) <- q * central - q * peri
       cp <- central / v
       if (t < 1) {
         evid_(t + 6, 4, 50, 1, 0, 6, 9, 0)
@@ -242,22 +248,25 @@ rxTest({
     })
     mBase <- rxode2({
       d/dt(depot) <- -ka * depot
-      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(central) <- ka * depot - cl / v * central - q * central + q * peri
+      d/dt(peri) <- q * central - q * peri
       cp <- central / v
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 72, by = 1))
-    eBase <- e |> et(amt = 100, time = 0, cmt = 2)
+    eBase <- e |> et(amt = 100, time = 0, cmt = 2) |> et(amt = 100, time = 0, cmt = 3)
     for (.t in seq(6, 60, by = 6)) {
       eBase <- eBase |>
         et(amt = 50, time = .t, cmt = 1, evid = 4) |>
-        et(amt = 50, time = .t, cmt = 2)
+        et(amt = 50, time = .t, cmt = 2) |>
+        et(amt = 50, time = .t, cmt = 3)
     }
-    p <- c(ka = 0.5, cl = 1, v = 10)
+    p <- c(ka = 0.5, cl = 1, v = 10, q = 0.3)
     rSplit <- rxSolve(mSplit, p, e)
     rBase <- rxSolve(mBase, p, eBase)
     expect_true(all(is.finite(rSplit$cp)))
     expect_equal(rSplit$depot, rBase$depot, tolerance = 1e-5)
     expect_equal(rSplit$central, rBase$central, tolerance = 1e-5)
+    expect_equal(rSplit$peri, rBase$peri, tolerance = 1e-5)
   })
 
   test_that("a split bolus pushed as evid=1 reserves enough room (#1322 follow-up)", {
