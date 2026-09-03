@@ -109,7 +109,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   if (inherits(x, "units")) {
     return(units::drop_units(x))
   }
-  return(x)
+  x
 }
 
 .plotTime <- function(.dat, xlab) {
@@ -133,7 +133,7 @@ rxTheme <- function(base_size = 11, base_family = "",
         .timex <- .timex[-.w]
       }
     }
-    return(.timex)
+    .timex
   }
   if (inherits(.dat$time, "units")) {
     .unit <- as.character(units(.dat$time))
@@ -461,7 +461,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .ylab +
     .theme ->
   .ret
-  return(.ret)
+  .ret
 }
 
 #' @rdname plot.rxSolve
@@ -565,5 +565,5 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   ## if (getOption("rxode2.theme_bw", TRUE)){
   ##     .ret <- .ret + ggplot2::theme_bw()
   ## }
-  return(.ret)
+  .ret
 }

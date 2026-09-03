@@ -158,9 +158,8 @@ rxTest({
 
   
   test_that("plot.rxSolveConfint1 works with output tranformation", {
-    rxSetSeed(42)
-    .s <- suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
-                                  nStud=1, nSub=10))
+    .s <- rxWithSeed(42, suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
+                                                  nStud=1, nSub=10)))
     .ci <- suppressMessages(confint(.s, "cp", level=0.95, ci=FALSE))
 
     .p <- plot(.ci, cp)
