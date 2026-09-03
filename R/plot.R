@@ -384,7 +384,11 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
 #' @export
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
-  .y <- all.vars(substitute(y))
+  .y <- as.character(substitute(y))
+  if (length(.y) != 1){
+    stop("Only a single response variable is allowed with no transformations")
+  }
+  
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
   .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
@@ -415,13 +419,6 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logx <- .lst[["logx"]]
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
-  # Apply transformation if expression was more than just a variable name
-  .yExpr <- substitute(y)
-  if (!identical(.yExpr, as.name(.y[1])) && length(.y) == 1) {
-    .tempDat <- .dat
-    .tempDat[[.y[1]]] <- .dat$eff
-    .dat$eff <- eval(.yExpr, envir = .tempDat)
-  }
   if (length(.parm) > 1) {
     if (length(.by) > 0) {
       .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
@@ -472,7 +469,10 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 #' @export
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
-  .y <- all.vars(substitute(y))
+  .y <- as.character(substitute(y))
+  if (length(.y) != 1) {
+    stop("Only a single response variable is allowed with no transformations")
+  }
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
   .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
@@ -509,18 +509,6 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logx <- .lst[["logx"]]
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
-  # Apply transformation if expression was more than just a variable name
-  .yExpr <- substitute(y)
-  if (!identical(.yExpr, as.name(.y[1])) && length(.y) == 1) {
-    .tempDat <- .dat
-    .tempDat[[.y[1]]] <- .dat$p50
-    .transformed <- eval(.yExpr, envir = .tempDat)
-    # Apply transformation to all percentile columns
-    for (.pctile in .ci) {
-      .tempDat[[.y[1]]] <- .dat[[.pctile]]
-      .dat[[.pctile]] <- eval(.yExpr, envir = .tempDat)
-    }
-  }
   if (length(.parm) > 1) {
     if (length(.by) > 0) {
       .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),

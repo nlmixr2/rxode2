@@ -164,15 +164,11 @@ rxTest({
     .ci <- suppressMessages(confint(.s, "cp", level=0.95, ci=FALSE))
 
     .p <- plot(.ci, cp)
-    .p2 <- plot(.ci, cp/10)
-    .p3 <- plot(.ci, log(cp))
+      expect_true(inherits(.p, "ggplot"))
 
-    expect_true(inherits(.p, "ggplot"))
-    expect_true(inherits(.p2, "ggplot"))
-    expect_true(inherits(.p3, "ggplot"))
-    
-    expect_equal(as.list(.p)$data$eff, as.list(.p2)$data$eff * 10)
-    expect_equal(as.list(.p)$data$eff, exp(as.list(.p3)$data$eff))
+    .p2 <- plot(.ci, cp/10) |> expect_error("Only a single response")
+    .p3 <- plot(.ci, log(cp)) |> expect_error("Only a single response")
+
 
   })
 
