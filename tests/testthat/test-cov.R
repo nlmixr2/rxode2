@@ -853,4 +853,40 @@ rxTest({
     .d <- .cmtData(20000, 3)
     expect_lt(.minElapsed(modCmt, .d), 2 * .minElapsed(modDbl, .d))
   })
+
+  test_that("an NA covariate resolves from anywhere in the subject", {
+
+    # A subject's invariant covariate value is filled by scanning that
+    # subject's rows for a non-NA one.  The scan starts at the subject's LAST
+    # row and walks backwards, so it has to reach a value that sits at the
+    # subject's FIRST rows -- id 3 below is the case that pins that down.
+    mod <- rxode2({
+      eff <- 10 * flag
+    })
+    d <- data.frame(
+      ID = rep(1:3, each = 4),
+      TIME = rep(1:4, times = 3),
+      flag = c(
+        NA, NA, NA, NA, # nothing to find -> NA, with a warning
+        NA, NA, 7, 7,   # value at the last rows  -> found immediately
+        5, 5, NA, NA    # value at the FIRST rows -> found by walking back
+      ),
+      EVID = 0, AMT = 0
+    )
+
+    expect_warning(
+      .r <- rxSolve(mod, events = d, returnType = "data.frame"),
+      "column 'flag' has only 'NA' values for id '1'"
+    )
+    expect_equal(.r$eff[.r$id == 1], rep(0, 4)) # warned about, then solved as 0
+    expect_equal(.r$eff[.r$id == 2], rep(70, 4))
+    expect_equal(.r$eff[.r$id == 3], rep(50, 4))
+
+    # the per-id covariate table keeps the unresolvable value as NA
+    expect_warning(
+      .tr <- rxode2::etTrans(d, mod),
+      "column 'flag' has only 'NA' values for id '1'"
+    )
+    expect_equal(attr(class(.tr), ".rxode2.lst")$cov1$flag, c(NA, 7, 5))
+  })
 })

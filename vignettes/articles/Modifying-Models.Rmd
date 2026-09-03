@@ -301,6 +301,71 @@ mod6 <- mod5 |>
 print(mod6)
 ```
 
+### Multiple endpoints that share one prediction
+
+The `cp2 <- cp` line above exists only to give the second assay a
+variable of its own.  That is not required: the same prediction can
+carry more than one residual error model as long as each endpoint is
+named with `| <name>` after the error expression.
+
+```{r sharedEndpoint}
+mod4b <- mod |>
+  model(cp ~ add(add.sd) | assay1) |>
+  model(cp ~ lnorm(lnorm.sd) | assay2, append=TRUE)
+
+print(mod4b)
+```
+
+The first pipe names the endpoint that was already there; the second
+appends a new one on the same `cp`.
+
+The name after `|` is the endpoint's compartment/`dvid` name, so a
+record with `cmt="assay1"` is compared against `add.sd` and a record
+with `cmt="assay2"` against `lnorm.sd`.  `$multipleEndpoint` shows the
+translation:
+
+```{r sharedEndpointTable}
+mod4b$multipleEndpoint
+```
+
+Behind the scenes `rxode2` gives each of these endpoints its own
+generated variable (`rx.cp.assay1`, `rx.cp.assay2`) so that they get
+separate residual parameters and separate simulated residuals; the
+mapping is in `$endpointAlias`:
+
+```{r sharedEndpointAlias}
+mod4b$endpointAlias
+```
+
+You do not need to write those lines yourself and they never appear in
+your `model({})` block -- but they are why `$predDf$var` differs from
+the variable you typed.
+
+Because both endpoints have the same left-hand side, piping has to be
+told which one you mean; name the condition:
+
+```{r sharedEndpointPipe}
+mod4c <- mod4b |>
+  model(cp ~ prop(prop.sd) | assay2)
+
+print(mod4c)
+```
+
+Piping `cp ~ prop(prop.sd)` without the `| assay2` is an error that
+lists the conditions to choose from.  The same name drops a single
+endpoint:
+
+```{r sharedEndpointDrop}
+mod4d <- mod4c |>
+  model(-assay2)
+
+print(mod4d)
+```
+
+Each endpoint still needs its own name.  Writing `cp ~ add(add.sd1)`
+and `cp ~ add(add.sd2)` with no `|` gives two endpoints that data can
+never tell apart, so that is rejected when the model is built.
+
 ### Remove lines in the model
 
 The lines in a model can be removed in one of 2 ways either use

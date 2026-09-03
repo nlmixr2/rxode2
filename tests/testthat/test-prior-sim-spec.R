@@ -155,13 +155,23 @@ rxTest({
     expect_equal(.th$omegaEl$neta2, 3L)
   })
 
-  test_that("a chunked solve with priors is an error", {
-    ## the chunked path pre-draws its parameters and strips the omega
-    ## from each chunk, so the prior would never be drawn from
-    .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
+  test_that("a chunked solve with an omega prior is an error", {
+    ## the chunked path pre-draws its parameters through
+    ## `rxSimThetaOmega()`, which has no argument for the omega half of a
+    ## prior, so that half would never be drawn from
+    .u <- .withPrior(.base(), "eta.cl", "invWishart(20)")
     expect_error(.rx$.rxPriorSimSpec(.u, list(chunkSize=1e5)), "chunked solve")
     expect_error(.rx$.rxPriorSimSpec(.u, list(file="out.parquet")),
                  "chunked solve")
+  })
+
+  test_that("a chunked solve with a population parameter prior is not", {
+    ## that half of a prior is a `thetaMat`, which the pre-draw does cover
+    .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
+    .s <- .rx$.rxPriorSimSpec(.u, list(chunkSize=1e5))
+    expect_false(is.null(.s$thetaMat))
+    expect_equal(length(.s$omegaNu), 0L)
+    expect_null(.s$omegaEl)
   })
 
   test_that("a nested model puts each prior's degrees of freedom on its level", {

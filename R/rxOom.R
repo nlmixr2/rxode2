@@ -94,6 +94,17 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .l
 }
 
+# Drop what an earlier solve in this session left in `.rxModels`, so what the
+# pre-draw reads back is what the pre-draw itself made.
+.rxOomClearDrawn <- function(what) {
+  .e <- .rxModels
+  if (!is.environment(.e)) return(invisible())
+  for (.w in what) {
+    if (exists(.w, envir=.e, inherits=FALSE)) rm(list=.w, envir=.e)
+  }
+  invisible()
+}
+
 # -- Main OOM solve loop -------------------------------------------------------
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
@@ -137,6 +148,21 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .nChunks   <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
+  # `nSub` replicates a single subject event table into that many subjects.
+  # The chunking cannot express it: chunks are cut by the ids the event table
+  # actually has, and the pre-draw is sized the same way, so the solve came
+  # back with one subject where `nSub` were asked for -- and with a `thetaMat`
+  # or `omega`, that one subject's draw rather than `nSub` of them.
+  if (!is.null(.ctl$nSub) && length(.ctl$nSub) == 1L && !is.na(.ctl$nSub) &&
+        .ctl$nSub > 1L && .ctl$nSub != .nSub) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot simulate 'nSub' (",
+         .ctl$nSub, ") subjects from an event table that has ", .nSub,
+         "; chunks are cut by subject, so give the event table one record ",
+         "set per subject ('et(id=1:", .ctl$nSub, ")'), or solve without ",
+         "chunking.",
+         call.=FALSE)
+  }
+
   .manifest <- list(
     version = 1L, prefix = .prefix,
     chunks  = character(.nChunks), nrows = integer(.nChunks),
@@ -174,6 +200,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .preDrawnParams <- NULL
   .preDrawnOmegaL <- NULL
   .preDrawnSigmaL <- NULL
+  .preDrawnTheta  <- NULL
 
   # The pre-draw is study major: all `nSub` subjects of study 1, then of study
   # 2, and so on -- the same layout `rxSimThetaOmega()` gives the unchunked
@@ -185,12 +212,69 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                       function(.s) .s * .nSub + seq.int(.first, length.out=.n),
                       double(.n)))
   }
-  if (!is.null(.ctl$omega)) {
+  # `dfObs` is what turns the sigma uncertainty draw on.  The pre-draw does not
+  # cover the residual draw -- it is per observation, not per subject, so it is
+  # not something a chunk's slice of the parameter table can carry -- and
+  # `sigma` is therefore still forwarded, so each chunk would draw its OWN per
+  # study sigma and subjects in different chunks would end up with different
+  # residual covariance inside the same study.  Refuse it rather than answer
+  # wrongly, as a chunked solve already does for the draws it cannot share.
+  if (!is.null(.ctl$sigma) && !is.null(.ctl$dfObs) &&
+        length(.ctl$dfObs) == 1L && !is.na(.ctl$dfObs) && .ctl$dfObs > 0) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot simulate sigma ",
+         "uncertainty ('dfObs' > 0): each chunk would draw its own per study ",
+         "sigma, so subjects in different chunks would not share a study.  ",
+         "Solve with 'dfObs=0', or without chunking.",
+         call.=FALSE)
+  }
+
+  # A joint (TNPRI) draw carries the omega/sigma entries in the `thetaMat` and
+  # draws them with the thetas.  The pre-draw below goes through the exported
+  # `rxSimThetaOmega()`, which has no argument for any of that, so the chunks
+  # would come back drawn from the point estimate omega with the joint draw
+  # gone and nothing to signal it.  Refuse it rather than answer wrongly.
+  # `omegaSeparation`/`sigmaSeparation` are asked directly as well as through
+  # the `priorOmegaEl`/`priorSigmaEl` they resolve to: `rxSolveChunked()` builds
+  # its control itself and never runs `.rxTnpriApplyControl()`, so the resolved
+  # form is not there to test.
+  if (!is.null(.ctl$priorOmega) || !is.null(.ctl$priorOmegaEl) ||
+        !is.null(.ctl$priorSigmaEl) ||
+        identical(.ctl$omegaSeparation, "tnpri") ||
+        identical(.ctl$sigmaSeparation, "tnpri")) {
+    stop("a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
+         "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
+         "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
+         "one draw every chunk shares cannot express them, so they would be ",
+         "dropped without warning.  Solve without chunking.",
+         call.=FALSE)
+  }
+
+  # `thetaMat` is drawn here for the same reason omega is, and more sharply:
+  # the pre-draw hands each chunk a parameter data frame, and `rxSolve()`
+  # refuses a `thetaMat` alongside one, so a forwarded `thetaMat` did not
+  # merely draw the wrong thing -- it killed the solve outright.  Drawing per
+  # chunk would be wrong even where it ran, since each chunk would get its own
+  # thetas and subjects in different chunks would no longer share a study.
+  # That is nlmixr2/rxode2#1263.
+  if (!is.null(.ctl$omega) || !is.null(.ctl$thetaMat)) {
+    # The draw is made from a named parameter vector -- that is all
+    # `rxSimThetaOmega()` takes, and it is what the chunks are sliced out of.
+    # A per-subject parameter data frame reached it as an opaque coercion
+    # error ("Not compatible with requested type"); say what happened instead.
+    # `rxSolve()` refuses the `thetaMat` half of this unchunked as well.
+    if (is.data.frame(params) || is.matrix(params)) {
+      stop("a chunked solve ('file='/'chunkSize=') cannot draw an 'omega'/",
+           "'thetaMat' when the parameters are a 'data.frame'/'matrix'; the ",
+           "one draw every chunk shares is made from a named parameter ",
+           "vector.  Solve without chunking.",
+           call.=FALSE)
+    }
     .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {
       as.integer(.ctl$cores)
     } else {
       getRxThreads()
     }
+    .rxOomClearDrawn(c(".omegaL", ".sigmaL", ".theta"))
     rxSetSeed(.baseSeed)
     rxSeedEng(.ncores)
     .preDrawnParams <- rxSimThetaOmega(
@@ -203,6 +287,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       omegaSeparation = if (!is.null(.ctl$omegaSeparation)) .ctl$omegaSeparation else "auto",
       omegaXform      = if (!is.null(.ctl$omegaXform))  .ctl$omegaXform  else 1L,
       nSub            = .nSub,
+      # the theta draw is one row per study, added into the parameter columns
+      # it names, so it has to happen in the same call as the omega draw: it
+      # is the same `params` table the chunks are sliced out of, and running
+      # it separately would also take the RNG out of the order the unchunked
+      # solve draws in
+      thetaMat        = .ctl$thetaMat,
+      thetaLower      = if (!is.null(.ctl$thetaLower))  .ctl$thetaLower  else -Inf,
+      thetaUpper      = if (!is.null(.ctl$thetaUpper))  .ctl$thetaUpper  else  Inf,
+      thetaDf         = .ctl$thetaDf,
+      thetaIsChol     = if (!is.null(.ctl$thetaIsChol)) .ctl$thetaIsChol else FALSE,
       nCoresRV        = 1L,
       nStud           = .nStud,
       # `dfSub` is what turns the omega uncertainty draw on, so the pre-draw
@@ -214,18 +308,31 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # The drawn per study omegas live in the shared `.rxModels` environment that
     # the C++ side writes.  They are read here, in the parent, because that is
     # the only process that ran the draw -- a chunk never sees them, so without
-    # this `$omegaList`/`$sigmaList` would come back empty on a chunked solve
-    # while a plain one reports them.
+    # this `$omegaList`/`$sigmaList`/`$thetaMat` would come back empty on a
+    # chunked solve while a plain one reports them.
     .preDrawnOmegaL <- .rxOomDrawnList(".omegaL")
     .preDrawnSigmaL <- .rxOomDrawnList(".sigmaL")
-    # Strip omega from forwarded args -- etas are now baked into per-chunk params
-    .fwdCtlArgs$omega           <- NULL
-    .fwdCtlArgs$omegaDf         <- NULL
-    .fwdCtlArgs$omegaLower      <- NULL
-    .fwdCtlArgs$omegaUpper      <- NULL
-    .fwdCtlArgs$omegaIsChol     <- NULL
-    .fwdCtlArgs$omegaSeparation <- NULL
-    .fwdCtlArgs$omegaXform      <- NULL
+    .preDrawnTheta  <- .rxOomDrawnList(".theta")
+    if (!is.null(.ctl$omega)) {
+      # Strip omega from forwarded args -- etas are now baked into per-chunk params
+      .fwdCtlArgs$omega           <- NULL
+      .fwdCtlArgs$omegaDf         <- NULL
+      .fwdCtlArgs$omegaLower      <- NULL
+      .fwdCtlArgs$omegaUpper      <- NULL
+      .fwdCtlArgs$omegaIsChol     <- NULL
+      .fwdCtlArgs$omegaSeparation <- NULL
+      .fwdCtlArgs$omegaXform      <- NULL
+    }
+    if (!is.null(.ctl$thetaMat)) {
+      # Likewise for thetaMat -- the drawn thetas are baked into the per-chunk
+      # parameter table, and forwarding it would have each chunk draw its own
+      # on top of them (where it did not simply error out)
+      .fwdCtlArgs$thetaMat    <- NULL
+      .fwdCtlArgs$thetaDf     <- NULL
+      .fwdCtlArgs$thetaLower  <- NULL
+      .fwdCtlArgs$thetaUpper  <- NULL
+      .fwdCtlArgs$thetaIsChol <- NULL
+    }
   }
 
   # Normalize: ensure id column is always present so chunks can be rbind'd.
@@ -449,6 +556,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # like a plain one does
   .manifest$omegaList <- .preDrawnOmegaL
   .manifest$sigmaList <- .preDrawnSigmaL
+  # `$thetaMat` is the drawn thetas, one row per study -- the same thing a
+  # plain solve reports
+  .manifest$thetaMat  <- .preDrawnTheta
 
   saveRDS(.manifest, paste0(.prefix, "_manifest.rds"))
   .rxSolveOomFromManifest(.manifest)
@@ -736,6 +846,9 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
   }
   if (name == "sigmaList") {
     return(.m$sigmaList)
+  }
+  if (name == "thetaMat" || name == "theta.mat") {
+    return(.m$thetaMat)
   }
   .pq <- .rxOomParquetFiles(.m$chunks)
   if (length(.pq) > 0L && .rxOomHasDuckdb()) {
