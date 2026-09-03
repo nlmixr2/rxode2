@@ -12,7 +12,7 @@ rxTest({
 
   test_that("modelvars", {
     skip_on_cran()
-    rxClean()
+    rxUnloadAll()
     rigid.txt <- "
 y1(0)    = 1
 y2(0)    = 0
@@ -46,7 +46,7 @@ d/dt(y3) = a3*y1*y2
 
   test_that("modelvars track exhaustive string comparison covariates", {
     skip_on_cran()
-    rxClean()
+    rxUnloadAll()
 
     modTxt <- "
 x = 1

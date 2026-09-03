@@ -2,6 +2,29 @@
 
 ## New features
 
+- The same model variable can now be used by more than one residual-error
+  endpoint, as long as each endpoint is named, as in
+  `cp ~ add(add.sd1) | phase1` and `cp ~ add(add.sd2) | phase2`.  rxode2 gives
+  each of those endpoints its own hidden alias (`rx.cp.phase1`,
+  `rx.cp.phase2`, recorded in `$endpointAlias`) when the simulation or
+  estimation model is assembled, so they get separate residual parameters,
+  separate simulated residuals and separate `ar()` state, while the
+  `model({})` block still prints, extracts and pipes as it was written.
+  Previously this needed hand-written aliases (`cp.phase1 <- cp`, ...) and
+  otherwise failed to solve with "The simulated residual errors do not match
+  the model specification".  Two endpoints on the same `linCmt()` are
+  supported the same way.
+
+- Model piping selects one of several endpoints by its condition, as in
+  `model(cp ~ prop(prop.sd) | phase2)`, and drops one with
+  `model(-phase2)`.  Piping an endpoint that shares its variable without
+  naming a condition now says which conditions are available instead of
+  reporting the lhs as duplicated.
+
+- Two endpoints that share a condition (`cp ~ add(a)` written twice) now give
+  a clear error at parse time asking for a `| <name>`, rather than failing
+  later with a confusing message about the additive standard deviation.
+
 - `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
   `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
   every dose feeding the linear system, so a regimen that doses a lagged
@@ -701,6 +724,19 @@
 
 ## Bug fixes
 
+- The "cannot find additive standard deviation" error tested a `$predDf`
+  column that does not exist, so its multiple-endpoint hint was appended even
+  for single-endpoint models.
+
+- A modeled `ar()` correlation on an endpoint written with a condition
+  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
+  matched against the left-hand side, which never carries the condition.
+
+- An endpoint's condition is no longer treated as a residual parameter, so
+  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
+  "the following parameter(s) were in the ini block but not in the model block:
+  assay1".
+
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
   the trailing restore of the saved index, so the corrupted value stayed live
@@ -805,6 +841,26 @@
   whole column to double every time, costing about 3x an otherwise identical
   double covariate at 20000 subjects.  The columns are now coerced once, as
   above.
+
+- Translating an event table no longer re-wraps its own output columns once
+  per row.  The row loop in `etTrans()` took each output column as a fresh
+  `Rcpp` vector on every row -- a no-op cast, since the columns were
+  allocated as the right type, but one that still paid Rcpp's
+  preserve/release bookkeeping at every one of roughly nine sites per row.
+  The pointers are taken once instead, which is 2.7x on `etTrans()` alone and
+  2.8-3.8x on a solve at 160000-320000 rows.
+
+- `etTrans(allTimeVar = TRUE)` no longer errors when an `iCov` covariate is
+  supplied.  Under `allTimeVar` every covariate is emitted as a per-row
+  column, but the column for an `iCov` covariate was never allocated, so
+  taking it failed instead of returning the covariate.
+
+- `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
+  `df(A)/dy(ETA[1])` instead of leaking the internal name
+  `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from
+  their internal spellings for display, but the ETA translation was written
+  into the buffer and then unconditionally overwritten, so only `THETA[n]`
+  survived.
 
 - Building a model no longer hangs forever on a lock left behind by an
   interrupted session, and two processes no longer build the same model at
@@ -1044,6 +1100,61 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   before.  Note that reproducing a chunked solve exactly needs both seeds
   pinned, `set.seed()` as well as `rxSetSeed()`, because the omega draw runs
   on R's RNG while the etas run on rxode2's.
+
+- A chunked solve (`rxSolve(file=`/`chunkSize=`)) with a `thetaMat` now
+  solves instead of erroring out with "when specifying 'thetaMat' the
+  parameters cannot be a 'data.frame'/'matrix'" (#1263).  The chunked solve
+  hands each chunk a parameter data frame, but `thetaMat` was still forwarded
+  alongside it -- a combination `rxSolve()` refuses -- so the solve died at
+  any `nStud`, including `nStud = 1`.
+
+  The thetas are now drawn once in the parent, in the same draw the omega
+  already uses, and the `thetaMat`/`thetaDf`/`thetaLower`/`thetaUpper`/
+  `thetaIsChol` arguments are stripped from what the chunks are forwarded --
+  so every chunk shares one draw, as it must for subjects in different chunks
+  to belong to the same study.  A `thetaMat` given without an omega is drawn
+  too, and `$thetaMat` is reported on a chunked solve as it is on a plain
+  one.
+
+  A joint (TNPRI) draw is the one case still refused: the omega/sigma
+  entries a `thetaMat` carries under `omegaSeparation="tnpri"` are drawn
+  with the thetas, which the one draw the chunks share cannot express, so
+  a chunked solve asking for it is now a clear error rather than a result
+  drawn from the point estimate omega.  Prior simulation from `ini({})`
+  stays refused under a chunked solve for the same reason.
+
+- A chunked solve given an `omega`/`thetaMat` and a per-subject parameter
+  `data.frame` now says so, rather than dying inside the draw with "Not
+  compatible with requested type: [type=list; target=double]".  The draw
+  every chunk shares is made from a named parameter vector.
+
+- A chunked solve with `dfObs > 0` no longer simulates sigma uncertainty
+  per chunk.  `sigma` is forwarded to each chunk (the residual draw is per
+  observation, so it is not something a chunk's slice of the parameter
+  table can carry), so every chunk drew its own per study sigma and
+  subjects in different chunks ended up with different residual covariance
+  inside the same study -- which `$sigmaList` did not report either.  It is
+  now a clear error rather than a wrong answer; a fixed `sigma`
+  (`dfObs = 0`) is unaffected.
+
+  A fixed `sigma` still parts the two solves' random streams, which is worth
+  knowing rather than fixed here: `rxSimThetaOmega()` interleaves each study's
+  residual draw with that study's eta draw, and the shared pre-draw carries no
+  residual draw, so from study 2 on a chunked solve draws different etas than
+  the unchunked one.  Each study's etas still come from that study's omega --
+  the simulation is right, it is simply not the same draw -- and this is
+  unchanged from before, but it reaches any model with an error term
+  (#1339).
+
+- A chunked solve is no longer refused outright for a prior written in
+  `ini({})`.  A prior on the population parameters is a `thetaMat`, which the
+  shared pre-draw now covers.  A prior on an omega block rides on arguments
+  that draw cannot take and is still refused, now with a message that says so.
+
+- A chunked solve with `nSub` greater than the number of subjects the event
+  table has is now an error rather than a solve of one subject.  Chunks are cut
+  by the ids the event table carries, so the `nSub` replication of a
+  single-subject table never happened.
 
 - The `lkj`/`separation` omega strategy no longer hangs on a simulated
   standard deviation it cannot use (#1255).  `cvPost()` retried a

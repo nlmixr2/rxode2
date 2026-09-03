@@ -327,7 +327,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   test_that("rxSolve updates preserve grouped solve event attributes", {
-    on.exit(rxClean(), add = TRUE)
+    on.exit(rxUnloadAll(), add = TRUE)
     mod <- rxode2({
       KA <- 1
       CL <- 1
@@ -363,7 +363,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   test_that("rxSolve updates preserve grouped iCov keep-column output", {
-    on.exit(rxClean(), add = TRUE)
+    on.exit(rxUnloadAll(), add = TRUE)
     mod <- rxode2({
       WT2 <- WT/70
       C2 <- centr / V2
