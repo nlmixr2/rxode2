@@ -191,7 +191,11 @@ static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solvin
 
 static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   // This calculates the rate and the duration and then assigns it to the next record
-  if (idx >= ind->n_all_times){
+  // idx + 1 has to exist: the checks and updateDur() below read getEvidP1() and
+  // write setDoseP1()/setAllTimesP1(), so the LAST record has no room for the
+  // stop this start needs.  (A negative idx is an extra dose and indexes the
+  // extraDose* pools instead; it never trips this.)
+  if (idx + 1 >= ind->n_all_times){
     // error: Last record, can't be used.
     if (!(ind->err & rxErrModelDataErr8)){
       ind->err += rxErrModelDataErr8;
@@ -226,7 +230,8 @@ static inline void handleTurnOffModeledRate(int idx, rx_solve *rx, rx_solving_op
 
 static inline void handleTurnOnModeledRate(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   // This calculates the rate and the duration and then assigns it to the next record
-  if (idx >= ind->n_all_times){
+  // idx + 1 has to exist; see handleTurnOnModeledDuration() above
+  if (idx + 1 >= ind->n_all_times){
     // error: Last record, can't be used.
     if (!(ind->err & rxErrModelDataErr9)){
       ind->err += rxErrModelDataErr9;
