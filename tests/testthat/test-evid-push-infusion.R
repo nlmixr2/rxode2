@@ -425,6 +425,39 @@ rxTest({
     expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
   })
 
+  test_that("infuseDur()'s duration slot rejects the modeled-rate column mistake at flg 40 (#1350)", {
+    # infuseDur() reuses _rxPushDose's "rate" slot to carry its "dur" argument
+    # (isDur set), so a NONMEM-style column mistake -- writing -1 (modeled
+    # RATE's sentinel) into a DURATION -- collapses onto the same rateI=9 as
+    # evid_()'s legitimate rate=-1 spelling.  etTran.cpp still rejects that
+    # mistake for the event table when flg=40 (the rate/dur distinction is
+    # column-based there), so the push path has to track which argument slot
+    # produced rateI=9 to reject it too, via the isDur bit.
+    modColumnMistake <- rxode2({
+      d/dt(central) <- -cl / v * central
+      rate(central) <- 10
+      cp <- central / v
+      if (t < 1e-8) {
+        infuseDur(0, -1, 1, 0, 0, 1)
+      }
+    })
+    expect_error(rxSolve(modColumnMistake, .pars, et(.obs)), "makes no sense")
+
+    # control: the identical rateI=9 reached via evid_()'s "rate" argument
+    # (isDur unset) is the legitimate spelling and must keep working
+    modLegit <- rxode2({
+      d/dt(central) <- -cl / v * central
+      rate(central) <- 10
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 1, 0, 1, -1, 0, 0, 1)
+      }
+    })
+    got <- rxSolve(modLegit, .pars, et(.obs))
+    want <- rxSolve(.ref, .pars, et(amt = 0, time = 0, rate = 10, ss = 1, ii = 0) |> et(.obs))
+    expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
+  })
+
   test_that("a pushed steady state constant infusion by fixed rate is unchanged (#1350)", {
     # the legitimate spelling -- a constant infusion by fixed RATE -- must keep
     # working; only pairing flg 40 with a duration is rejected.  (The modeled

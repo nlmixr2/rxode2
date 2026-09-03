@@ -139,13 +139,25 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
 static inline int
 _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
                      int cmt100, int cmt99, int rateI, int flg,
-                     double amt, double useRate, double dur, double ii_val) {
+                     double amt, double useRate, double dur, double ii_val,
+                     int isDur) {
   /* A steady-state constant infusion (flg 40) never turns off, so pairing it
    * with a duration -- modeled (rateI 8) or fixed (rateI 2) -- is meaningless;
    * reject it the way etTran.cpp already does for the event table
    * (rxode2#1350).  -1 signals the caller to abort instead of silently
-   * emitting a rate-less record that steady-states the compartment to zero. */
-  if (flg == EVID0_SSINF && (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON)) {
+   * emitting a rate-less record that steady-states the compartment to zero.
+   *
+   * rateI 9 (modeled RATE) is legitimate at flg 40 -- it is the supported
+   * spelling for a modeled constant infusion -- UNLESS it was reached via
+   * infuseDur()'s duration slot (isDur set, meaning the caller wrote -1 into
+   * a *duration*, NONMEM's "this was meant to be a modeled rate but landed
+   * in the DUR column" mistake).  etTran.cpp rejects that same column
+   * mistake for the event table; infuseDur() is the only push-path caller
+   * that can produce rateI 9 with isDur set, since evid_()/infuse() always
+   * pass isDur 0. */
+  if (flg == EVID0_SSINF &&
+      (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON ||
+       (rateI == EVIDF_MODEL_RATE_ON && isDur))) {
     return -1;
   }
   out->evid[k]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
@@ -267,7 +279,7 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
   case 1:
     /* Dose: bolus or infusion */
     out.n = _rxTranslateDoseInto(&out, 0, time, cmt100, cmt99, rateI, flg,
-                                 amt, useRate, dur, ii_val);
+                                 amt, useRate, dur, ii_val, isDur);
     break;
 
   case 7:
@@ -299,7 +311,7 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.isDose[0] = 0;
     {
       int doseN = _rxTranslateDoseInto(&out, 1, time, cmt100, cmt99, rateI,
-                                       flg, amt, useRate, dur, ii_val);
+                                       flg, amt, useRate, dur, ii_val, isDur);
       out.n = (doseN < 0) ? -1 : 1 + doseN;
     }
     break;
