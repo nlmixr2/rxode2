@@ -203,14 +203,23 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.ii[_i] = 0; out.isDose[_i] = 0;
   }
 
-  /* Classic rxode2 internal evid (>= 100): pass through verbatim */
+  /* Classic rxode2 internal evid (>= 100): pass through verbatim.  A caller
+   * can hand-encode this format directly (evid_()'s "evid" documents it as a
+   * supported form), so the flg-40-plus-duration guard has to apply here too
+   * -- otherwise a hand-encoded evid reproduces the exact silent-zero bug
+   * this file otherwise rejects (rxode2#1350). */
   if (evid >= 100) {
+    int _wh, _wCmt, _wh100, _whI, _flg;
+    getWh(evid, &_wh, &_wCmt, &_wh100, &_whI, &_flg);
+    if (_flg == EVID0_SSINF && (_whI == EVIDF_INF_DUR || _whI == EVIDF_MODEL_DUR_ON)) {
+      out.n = -1;
+      return out;
+    }
     out.n         = 1;
     out.evid[0]   = evid;
     out.time[0]   = time;
     out.amt[0]    = amt;
     out.ii[0]     = ii_val;
-    int _flg      = evid % 100;
     out.isDose[0] = (_flg == 1 || _flg == 10 || _flg == 20 || _flg == 40) ? 1 : 0;
     return out;
   }

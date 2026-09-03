@@ -384,6 +384,47 @@ rxTest({
                  "makes no sense")
   })
 
+  test_that("a hand-encoded classic internal evid cannot bypass the flg-40 duration guard (#1350)", {
+    # evid_()'s "evid" documents evid >= 100 as a supported hand-encoded
+    # classic rxode2 form (cmt100*100000 + rateI*10000 + cmt99*100 + flg),
+    # passed through _rxTranslateOneEvent() verbatim rather than through
+    # _rxTranslateDoseInto() -- so the guard above has to be duplicated for
+    # this path or a hand-encoded evid reproduces the same silent zero.
+    # cmt99=1: rateI=2 (fixed dur) -> 2*10000 + 1*100 + 40 = 20140
+    modFixedDur <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 20140, 0, 1, 0, 0, 0, 0)
+      }
+    })
+    expect_error(rxSolve(modFixedDur, .pars, et(.obs)), "makes no sense")
+
+    # rateI=8 (modeled dur) -> 8*10000 + 1*100 + 40 = 80140
+    modModeledDur <- rxode2({
+      d/dt(central) <- -cl / v * central
+      dur(central) <- 10
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 80140, 0, 1, 0, 0, 0, 0)
+      }
+    })
+    expect_error(rxSolve(modModeledDur, .pars, et(.obs)), "makes no sense")
+
+    # control: rateI=1 (fixed rate) at the same flg=40 must keep working --
+    # 1*10000 + 1*100 + 40 = 10140; amt carries the rate for rateI 1/2
+    modFixedRate <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 10140, 10, 1, 0, 0, 0, 0)
+      }
+    })
+    got <- rxSolve(modFixedRate, .pars, et(.obs))
+    want <- rxSolve(.ref, .pars, et(amt = 0, time = 0, rate = 10, ss = 1, ii = 0) |> et(.obs))
+    expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
+  })
+
   test_that("a pushed steady state constant infusion by fixed rate is unchanged (#1350)", {
     # the legitimate spelling -- a constant infusion by fixed RATE -- must keep
     # working; only pairing flg 40 with a duration is rejected.  (The modeled
