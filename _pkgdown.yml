@@ -403,6 +403,8 @@ navbar:
           href: articles/rxode2-confint.html
         - text: "ETA/EPS resampling"
           href: articles/rxode2-eta-eps-resampling.html
+        - text: "Separating phase 1 and phase 3 residual error"
+          href: articles/rxode2-phase-residual-error.html
   - text: "Examples"
     icon: fas fa-hospital
     menu:

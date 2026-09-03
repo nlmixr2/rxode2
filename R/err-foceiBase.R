@@ -121,7 +121,7 @@
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find additive standard deviation for '", .cnd, "'",
-           ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+           ifelse(length(env$predDf$cond) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
     }
   }
   if (pred1$variance) {

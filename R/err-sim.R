@@ -117,8 +117,6 @@ rxGetDistributionSimulationLines <- function(line) {
   for (.e in .lst) {
     if (is.call(.e) && identical(.e[[1]], quote(`~`)) && length(.e) == 3L) {
       .lhs <- .e[[2]]
-      # strip conditioning (lhs | cond) down to the endpoint variable
-      if (is.call(.lhs) && identical(.lhs[[1]], quote(`|`))) .lhs <- .lhs[[2]]
       # unwrap ll(x)/linCmt() the same way .errHandleLlOrLinCmt() sets the
       # endpoint condition, so ll(cp) ~ ... + ar(corv) still matches cond
       if (is.call(.lhs)) {
@@ -127,6 +125,12 @@ rxGetDistributionSimulationLines <- function(line) {
         } else if (identical(.lhs[[1]], quote(`linCmt`))) {
           .lhs <- quote(`rxLinCmt`)
         }
+      }
+      # `lhs ~ err | cond` puts the condition on the rhs; when it is present it
+      # is the endpoint name, otherwise the lhs is
+      .rhs <- .e[[3]]
+      if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`)) && length(.rhs) == 3L) {
+        .lhs <- .rhs[[3]]
       }
       if (identical(deparse1(.lhs), as.character(cond))) {
         .arg <- .findAr(.e[[3]])
@@ -754,6 +758,11 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf=.predDf, lstExpr=lstExpr)
   .predDf <- .tmp$predDf
   .expr <- .tmp$lstExpr
+  # endpoints sharing a model variable get a generated alias; define it just
+  # before the error lines that use it.  A shared linCmt() needs its single
+  # allowed linCmt() call emitted once, outside the CMT branches.
+  .aliasLines <- .rxEndpointAliasLines(uiModel)
+  .aliasLinCmtLine <- .rxEndpointLinCmtLine(uiModel)
 
   .lenLines <- .lenLines + length(.expr) -
     length(.predDf$line) + length(.cmtLines) + length(prefixLines)
@@ -833,6 +842,15 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   for (.i in seq_along(.expr)) {
     if (.i %in% .predDf$line) {
       .curErr <- errLines[[.curErrLine]]
+      if (length(.aliasLines) > 0L) {
+        .aw <- match(.predDf$var[.curErrLine], names(.aliasLines))
+        if (!is.na(.aw)) .curErr <- c(list(.aliasLines[[.aw]]), .curErr)
+      }
+      if (!is.null(.aliasLinCmtLine)) {
+        .ret[[.k]] <- .aliasLinCmtLine
+        .k <- .k + 1
+        .aliasLinCmtLine <- NULL
+      }
       if (.if) {
         .ret[[.k]] <- as.call(list(quote(`if`),
                                    as.call(list(quote(`==`), quote(`CMT`),

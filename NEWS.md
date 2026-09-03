@@ -2,6 +2,29 @@
 
 ## New features
 
+- The same model variable can now be used by more than one residual-error
+  endpoint, as long as each endpoint is named, as in
+  `cp ~ add(add.sd1) | phase1` and `cp ~ add(add.sd2) | phase2`.  rxode2 gives
+  each of those endpoints its own hidden alias (`rx.cp.phase1`,
+  `rx.cp.phase2`, recorded in `$endpointAlias`) when the simulation or
+  estimation model is assembled, so they get separate residual parameters,
+  separate simulated residuals and separate `ar()` state, while the
+  `model({})` block still prints, extracts and pipes as it was written.
+  Previously this needed hand-written aliases (`cp.phase1 <- cp`, ...) and
+  otherwise failed to solve with "The simulated residual errors do not match
+  the model specification".  Two endpoints on the same `linCmt()` are
+  supported the same way.
+
+- Model piping selects one of several endpoints by its condition, as in
+  `model(cp ~ prop(prop.sd) | phase2)`, and drops one with
+  `model(-phase2)`.  Piping an endpoint that shares its variable without
+  naming a condition now says which conditions are available instead of
+  reporting the lhs as duplicated.
+
+- Two endpoints that share a condition (`cp ~ add(a)` written twice) now give
+  a clear error at parse time asking for a `| <name>`, rather than failing
+  later with a confusing message about the additive standard deviation.
+
 - `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
   `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
   every dose feeding the linear system, so a regimen that doses a lagged
@@ -725,6 +748,19 @@
   translated events rather than the records they expand into, which the `idose`
   growth beside it already did -- and now allocates the guard slot its own
   comment promises for `ix` and `timeThread` too.
+
+- The "cannot find additive standard deviation" error tested a `$predDf`
+  column that does not exist, so its multiple-endpoint hint was appended even
+  for single-endpoint models.
+
+- A modeled `ar()` correlation on an endpoint written with a condition
+  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
+  matched against the left-hand side, which never carries the condition.
+
+- An endpoint's condition is no longer treated as a residual parameter, so
+  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
+  "the following parameter(s) were in the ini block but not in the model block:
+  assay1".
 
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
