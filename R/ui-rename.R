@@ -167,6 +167,31 @@
                           if (!is.null(.env$new)) return(.env$new)
                           return(.cur)
                         }, character(1), USE.NAMES=FALSE)
+  ## A repeated (`same()`) block records the block it repeats BY NAME in
+  ## the `condition` column -- `id:same:<master>` on a diagonal row,
+  ## `id:same:<a>:<b>` on a covariance row.  Names are used precisely so
+  ## the marker survives RENUMBERING, but that means a RENAME has to be
+  ## followed here: left alone the marker points at a name that no longer
+  ## exists and `$omega` refuses to assemble with "refers to '<old>',
+  ## which is not in this block".
+  if (any(names(.iniDf) == "condition")) {
+    .sameMap <- stats::setNames(
+      vapply(lst, function(.l) as.character(.l[[3]]), character(1)),
+      vapply(lst, function(.l) as.character(.l[[4]]), character(1)))
+    .wSame <- which(!is.na(.iniDf$condition) &
+                      grepl(":same:", .iniDf$condition, fixed=TRUE))
+    if (length(.wSame) > 0L) {
+      .iniDf$condition[.wSame] <-
+        vapply(.iniDf$condition[.wSame], function(.c) {
+          .p <- strsplit(.c, ":same:", fixed=TRUE)[[1]]
+          .nm <- strsplit(.p[2], ":", fixed=TRUE)[[1]]
+          .nm <- vapply(.nm, function(.n) {
+            if (is.na(.sameMap[.n])) .n else unname(.sameMap[.n])
+          }, character(1), USE.NAMES=FALSE)
+          paste0(.p[1], ":same:", paste(.nm, collapse=":"))
+        }, character(1), USE.NAMES=FALSE)
+    }
+  }
   rxui$iniDf <- .iniDf
   if (exists("sigma", rxui)) {
     assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=rxui)

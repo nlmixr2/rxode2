@@ -11,6 +11,13 @@
   representation at all since the linkage is a relative offset backwards
   (`$omega` then errored with "must refer to an earlier parameter").
 
+- `rxRename()` now follows a repeated (`same()`) block's marker to the new
+  name.  The block a repetition mirrors is recorded BY NAME in the
+  `condition` column -- which is what lets the marker survive renumbering
+  -- so a rename has to be followed too; left alone it pointed at a name
+  that no longer existed and `$omega` refused to assemble ("refers to
+  '<old>', which is not in this block").
+
 - Nested (inter-occasion) simulation gave every random effect the wrong
   variance whenever a level carried more than one parameter.  The omega
   a level draws from is laid out occasion-major, with the parameters

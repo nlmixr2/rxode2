@@ -302,3 +302,48 @@ test_that("several nesting levels each keep their own variances", {
   expect_equal(var(.p$eta.cl), 0.5, tolerance = 0.15)
   expect_equal(var(.p$eta.v), 0.9, tolerance = 0.15)
 })
+
+rxTest({
+
+  test_that("rxRename() follows a same() marker to the new name", {
+    # The linkage is recorded BY NAME in the `condition` column, which is
+    # what makes it survive renumbering -- but it means a rename has to be
+    # followed too.  Left alone the marker points at a name that no longer
+    # exists and `$omega` refuses to assemble.  nonmem2rx hits this on
+    # every SAME model: it renames the etas to their NONMEM labels.
+    .f <- function() {
+      ini({
+        tka <- 0.45; tcl <- 1; tv <- 3.45
+        add.sd <- c(0, 0.7)
+        a1 + a2 ~ c(0.1,
+                    0.03, 0.2)
+        b1 + b2 ~ same()
+      })
+      model({
+        ka <- exp(tka + a1)
+        cl <- exp(tcl + a2)
+        v <- exp(tv + b1 + 0 * b2)
+        linCmt() ~ add(add.sd)
+      })
+    }
+    .ui <- suppressWarnings(rxode2(.f))
+    .r <- suppressWarnings(suppressMessages(
+      rxRename(.ui, IIV_CL = a1, IIV_V = a2)))
+    .i <- .r$iniDf
+    .cnd <- function(x) .i$condition[.i$name == x]
+    expect_equal(.cnd("b1"), "id:same:IIV_CL")
+    expect_equal(.cnd("b2"), "id:same:IIV_V")
+    expect_equal(.cnd("(b1,b2)"), "id:same:IIV_CL:IIV_V")
+    # the repetition still holds, and the omega assembles at all
+    expect_equal(.r$omegaSameMap, c(0L, 0L, 1L, 2L))
+    .om <- .r$omega
+    expect_equal(unname(.om["b1", "b1"]), unname(.om["IIV_CL", "IIV_CL"]))
+    expect_equal(unname(.om["b1", "b2"]), unname(.om["IIV_CL", "IIV_V"]))
+    # renaming the COPY leaves the marker pointing at the untouched master
+    .r2 <- suppressWarnings(suppressMessages(rxRename(.ui, IOV_CL = b1)))
+    .i2 <- .r2$iniDf
+    expect_equal(.i2$condition[.i2$name == "IOV_CL"], "id:same:a1")
+    expect_false(inherits(try(.r2$omega, silent = TRUE), "try-error"))
+  })
+
+})
