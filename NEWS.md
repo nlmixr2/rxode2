@@ -2,6 +2,15 @@
 
 ## Bug fixes
 
+- Piping an omega block into a model with ten or more etas no longer
+  permutes the etas that were not piped over.  They were renumbered with
+  `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before
+  "2" -- so the survivors came back in an arbitrary order.  That splits a
+  correlated block across the matrix, and it can renumber a repeated
+  (`same()`) block ahead of the block it repeats, which has no
+  representation at all since the linkage is a relative offset backwards
+  (`$omega` then errored with "must refer to an earlier parameter").
+
 - Nested (inter-occasion) simulation gave every random effect the wrong
   variance whenever a level carried more than one parameter.  The omega
   a level draws from is laid out occasion-major, with the parameters

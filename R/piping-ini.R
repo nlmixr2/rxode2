@@ -327,10 +327,16 @@
   .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
   .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
   if (length(.dfEta$neta1) > 0) {
-    .dfEta$neta1 <- factor(paste(.dfEta$neta1))
-    .dfEta$neta2 <- factor(paste(.dfEta$neta2), levels=levels(.dfEta$neta1))
-    .dfEta$neta1 <- as.integer(.dfEta$neta1)
-    .dfEta$neta2 <- as.integer(.dfEta$neta2)
+    ## Renumber the etas that were NOT piped over, keeping their DECLARED
+    ## order.  `factor(paste(n))` sorted them as TEXT, so with ten or more
+    ## etas "10" came before "2": the surviving etas were permuted for no
+    ## reason, which splits a correlated block across the matrix and can
+    ## put a repeated (`same()`) block ahead of the block it repeats --
+    ## which has no representation at all, since the linkage is a relative
+    ## offset backwards.
+    .lvl <- sort(unique(.dfEta$neta1))
+    .dfEta$neta1 <- as.integer(factor(.dfEta$neta1, levels=.lvl))
+    .dfEta$neta2 <- as.integer(factor(.dfEta$neta2, levels=.lvl))
   }
   .iniDf <- do.call("rbind", c(list(.dfTheta), list(.dfEta), .ini2))
   assign("iniDf", .iniDf, envir=rxui)
