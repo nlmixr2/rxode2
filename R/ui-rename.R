@@ -65,12 +65,12 @@
       if (identical(item, .old)) {
         .env$new <- .curLst[[1]]
       }
-      return(NULL)
+      NULL
     })
     if (!is.null(.env$new)) {
       return(.env$new)
     }
-    return(item)
+    item
   } else if (is.call(item)) {
     if (isLhs && identical(item[[1]], quote(`/`))) {
       # handle d/dt() differently so that d doesn't get renamed
@@ -91,7 +91,7 @@
                if (identical(item[[1]], .old)) {
                  .env$new <- .curLst[[1]]
                }
-               return(NULL)
+               NULL
              })
       if (!is.null(.env$new)) {
         # handle x(0) = items
@@ -103,9 +103,9 @@
           identical(item[[1]], quote(`~`))) {
       .elhs <- lapply(item[c(-1, -3)], .rxRenameRecursiveAll, lst=lst, isLhs=TRUE)
       .erhs <- lapply(item[c(-1, -2)], .rxRenameRecursiveAll, lst=lst, isLhs=FALSE)
-      return(as.call(c(item[[1]], .elhs, .erhs)))
+      as.call(c(item[[1]], .elhs, .erhs))
     } else {
-      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs))))
+      as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs)))
     }
   } else {
     stop("unknown expression", call.=FALSE)
@@ -134,7 +134,7 @@
              }
            })
     if (!is.null(.env$new)) return(.env$new)
-    return(.cur)
+    .cur
   }, character(1), USE.NAMES=FALSE)
   dimnames(mat) <- list(.d, .d)
   mat
@@ -165,8 +165,33 @@
                                    }
                                  })
                           if (!is.null(.env$new)) return(.env$new)
-                          return(.cur)
+                          .cur
                         }, character(1), USE.NAMES=FALSE)
+  ## A repeated (`same()`) block records the block it repeats BY NAME in
+  ## the `condition` column -- `id:same:<master>` on a diagonal row,
+  ## `id:same:<a>:<b>` on a covariance row.  Names are used precisely so
+  ## the marker survives RENUMBERING, but that means a RENAME has to be
+  ## followed here: left alone the marker points at a name that no longer
+  ## exists and `$omega` refuses to assemble with "refers to '<old>',
+  ## which is not in this block".
+  if (any(names(.iniDf) == "condition")) {
+    .sameMap <- stats::setNames(
+      vapply(lst, function(.l) as.character(.l[[3]]), character(1)),
+      vapply(lst, function(.l) as.character(.l[[4]]), character(1)))
+    .wSame <- which(!is.na(.iniDf$condition) &
+                      grepl(":same:", .iniDf$condition, fixed=TRUE))
+    if (length(.wSame) > 0L) {
+      .iniDf$condition[.wSame] <-
+        vapply(.iniDf$condition[.wSame], function(.c) {
+          .p <- strsplit(.c, ":same:", fixed=TRUE)[[1]]
+          .nm <- strsplit(.p[2], ":", fixed=TRUE)[[1]]
+          .nm <- vapply(.nm, function(.n) {
+            if (is.na(.sameMap[.n])) .n else unname(.sameMap[.n])
+          }, character(1), USE.NAMES=FALSE)
+          paste0(.p[1], ":same:", paste(.nm, collapse=":"))
+        }, character(1), USE.NAMES=FALSE)
+    }
+  }
   rxui$iniDf <- .iniDf
   if (exists("sigma", rxui)) {
     assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=rxui)

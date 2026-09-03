@@ -21,6 +21,7 @@
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
 \alias{rxUiGet.omega}
+\alias{rxUiGet.omegaSameMap}
 \alias{rxUiGet.funTxt}
 \alias{rxUiGet.allCovs}
 \alias{rxUiGet.muRefTable}
@@ -89,6 +90,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{lstChr}(x, ...)
 
 \method{rxUiGet}{omega}(x, ...)
+
+\method{rxUiGet}{omegaSameMap}(x, ...)
 
 \method{rxUiGet}{funTxt}(x, ...)
 

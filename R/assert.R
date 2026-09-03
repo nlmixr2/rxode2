@@ -185,8 +185,11 @@ assertRxUiPrediction <- function(ui, extra="", .var.name=.vname(ui)) {
 assertRxUiIovNoCor <- function(ui, extra="", .var.name=.vname(ui)) {
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   .iniDf <- ui$iniDf
+  ## the level is the BASE condition: a repeated (`same()`) block carries
+  ## a `:same:<master>` suffix, which is not a different level of
+  ## variability and must not be read as one
   .w <- which(!is.na(.iniDf$condition) &
-                .iniDf$condition != "id" &
+                lotri::lotriBaseCondition(.iniDf$condition) != "id" &
                  is.na(.iniDf$err) &
                  .iniDf$neta1 != .iniDf$neta2)
   if (length(.w) > 0) {
@@ -618,7 +621,7 @@ assertRxUiRandomOnIdOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   .iniDf <- ui$iniDf
-  .eta <- .iniDf[!is.na(.iniDf$neta1), "condition"]
+  .eta <- lotri::lotriBaseCondition(.iniDf[!is.na(.iniDf$neta1), "condition"])
   if (!all(.eta == "id")) {
     stop("'", .var.name, "' can only have random effects on ID", extra, call.=FALSE)
   }

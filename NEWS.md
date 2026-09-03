@@ -1,7 +1,52 @@
 # rxode2 5.1.7 (development version)
 
+## Bug fixes
+
+- Piping an omega block into a model with ten or more etas no longer
+  permutes the etas that were not piped over.  They were renumbered with
+  `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before
+  "2" -- so the survivors came back in an arbitrary order.  That splits a
+  correlated block across the matrix, and it can renumber a repeated
+  (`same()`) block ahead of the block it repeats, which has no
+  representation at all since the linkage is a relative offset backwards
+  (`$omega` then errored with "must refer to an earlier parameter").
+
+- `rxRename()` now follows a repeated (`same()`) block's marker to the new
+  name.  The block a repetition mirrors is recorded BY NAME in the
+  `condition` column -- which is what lets the marker survive renumbering
+  -- so a rename has to be followed too; left alone it pointed at a name
+  that no longer existed and `$omega` refused to assemble ("refers to
+  '<old>', which is not in this block").
+
+- Nested (inter-occasion) simulation gave every random effect the wrong
+  variance whenever a level carried more than one parameter.  The omega
+  a level draws from is laid out occasion-major, with the parameters
+  inside each stamp, but the expansion indexed it parameter-major, so
+  the two were transposed: with `lotri(a ~ 0.01, b ~ 1, cc ~ 100) | occ`
+  every parameter in occasion 1 drew variance 0.01, every one in
+  occasion 2 drew 1, and every one in occasion 3 drew 100.  A single
+  parameter per level is unaffected, which is why this went unnoticed.
+  Any covariance specified within an occasion was likewise placed
+  between occasions of one parameter rather than between the parameters
+  of one occasion (#1345).
+
 ## New features
 
+- Correlated inter-occasion variability is now supported.  A `| occ`
+  block may carry off-diagonal elements, and they are simulated at the
+  level they were declared at.  `assertRxUiIovNoCor()` no longer reads a
+  repeated (`same()`) block as a separate level of variability.
+
+- `rxSymInvCholCreate()` gains a `same=` argument.  Blocks that repeat an
+  earlier one -- NONMEM's `$OMEGA BLOCK(n) SAME`, written `same()` in a
+  `lotri`/`ini` block -- share that block's parameters rather than being
+  estimated separately.  For a block diagonal omega whose blocks are
+  identical the derivative with respect to a shared parameter is just
+  the block diagonal sum of each copy's contribution, so this needs no
+  change to the C++ inner problem.
+
+- `$omegaSameMap` reports, for each eta, which earlier eta it repeats,
+  which is what `rxSymInvCholCreate(same=)` takes.
 - The same model variable can now be used by more than one residual-error
   endpoint, as long as each endpoint is named, as in
   `cp ~ add(add.sd1) | phase1` and `cp ~ add(add.sd2) | phase2`.  rxode2 gives
