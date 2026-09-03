@@ -65,12 +65,12 @@
       if (identical(item, .old)) {
         .env$new <- .curLst[[1]]
       }
-      return(NULL)
+      NULL
     })
     if (!is.null(.env$new)) {
       return(.env$new)
     }
-    return(item)
+    item
   } else if (is.call(item)) {
     if (isLhs && identical(item[[1]], quote(`/`))) {
       # handle d/dt() differently so that d doesn't get renamed
@@ -91,7 +91,7 @@
                if (identical(item[[1]], .old)) {
                  .env$new <- .curLst[[1]]
                }
-               return(NULL)
+               NULL
              })
       if (!is.null(.env$new)) {
         # handle x(0) = items
@@ -103,9 +103,9 @@
           identical(item[[1]], quote(`~`))) {
       .elhs <- lapply(item[c(-1, -3)], .rxRenameRecursiveAll, lst=lst, isLhs=TRUE)
       .erhs <- lapply(item[c(-1, -2)], .rxRenameRecursiveAll, lst=lst, isLhs=FALSE)
-      return(as.call(c(item[[1]], .elhs, .erhs)))
+      as.call(c(item[[1]], .elhs, .erhs))
     } else {
-      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs))))
+      as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs)))
     }
   } else {
     stop("unknown expression", call.=FALSE)
@@ -134,7 +134,7 @@
              }
            })
     if (!is.null(.env$new)) return(.env$new)
-    return(.cur)
+    .cur
   }, character(1), USE.NAMES=FALSE)
   dimnames(mat) <- list(.d, .d)
   mat
@@ -165,7 +165,7 @@
                                    }
                                  })
                           if (!is.null(.env$new)) return(.env$new)
-                          return(.cur)
+                          .cur
                         }, character(1), USE.NAMES=FALSE)
   ## A repeated (`same()`) block records the block it repeats BY NAME in
   ## the `condition` column -- `id:same:<master>` on a diagonal row,

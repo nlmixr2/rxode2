@@ -9,7 +9,7 @@
 #' @keywords internal
 #' @export
 rxBlockZeros <- function(mat, i) {
-  return(!((row(mat) > i & col(mat) > i) | (row(mat) <= i & col(mat) <= i)))
+  !((row(mat) > i & col(mat) > i) | (row(mat) <= i & col(mat) <= i))
 }
 rxIsBlock <- function(mat, i) {
   if (missing(i)) {
@@ -21,7 +21,7 @@ rxIsBlock <- function(mat, i) {
       }
     }
   } else {
-    return(all(mat[rxBlockZeros(mat, i)] == 0))
+    all(mat[rxBlockZeros(mat, i)] == 0)
   }
 }
 
@@ -45,10 +45,10 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
   cache.file2 <- file.path(system.file("inv", package = "rxode2"), cache.file)
   if (allow.cache && file.exists(cache.file)) {
     load(cache.file)
-    return(ret)
+    ret
   } else if (allow.cache && file.exists(cache.file2)) {
     load(cache.file2)
-    return(ret)
+    ret
   } else {
     diag.xform <- match.arg(diag.xform)
     message("diagonal form: ", diag.xform)
@@ -57,9 +57,9 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     num <- sapply(num, function(x) {
       if (x == 1) {
         i <<- i + 1
-        return(i)
+        i
       } else {
-        return(0)
+        0
       }
     })
     mat1[upper.tri(mat1, TRUE)] <- num - 1
@@ -154,15 +154,15 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
         .str
       )
     }), collapse = "\n")
-    ## FIXME: this derivative expression is always the same. There
-    ## should be a simpler way to express this...
+    ## Note: this derivative expression is always the same; there
+    ## should be a simpler way to express it.
     i <- 0
     omega0 <- sprintf(
       "    if (theta_n == 0){\n%s\n    }",
       paste(sapply(as.vector(omat), function(x) {
         ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
         i <<- i + 1
-        return(ret)
+        ret
       }), collapse = "\n")
     )
     i <- 0
@@ -172,7 +172,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
         cnt()
         ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
         i <<- i + 1
-        return(ret)
+        ret
       }), collapse = "\n")
     )
     omega1p <- paste(unlist(lapply(vars, function(x) {
@@ -185,7 +185,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
           function(x) {
             ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
             i <<- i + 1
-            return(ret)
+            ret
           }
         ), collapse = "\n")
       )
@@ -218,14 +218,14 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     message("done")
     fmat <- matrix(sapply(as.vector(fmat), function(x) {
       force(x)
-      return(rxFromSE(x))
+      rxFromSE(x)
     }), d)
     ret <- paste0("#define warning Rf_warning\n#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
     ret <- list(ret, fmat)
     if (allow.cache) {
       save(ret, file = cache.file)
     }
-    return(ret)
+    ret
   }
 }
 
@@ -241,7 +241,7 @@ rxSymInvCholN <- function() {
 }
 
 rxSymInvCreate2C <- function(src) {
-  return(inline::cfunction(signature(theta = "numeric", tn = "integer"), src, includes = "\n#include <Rmath.h>\n"))
+  inline::cfunction(signature(theta = "numeric", tn = "integer"), src, includes = "\n#include <Rmath.h>\n")
 }
 
 
@@ -305,9 +305,9 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
       num <- sapply(num, function(x) {
         if (x == 1) {
           i <<- i + 1
-          return(i)
+          i
         } else {
-          return(0)
+          0
         }
       })
       fmat[upper.tri(fmat, TRUE)] <- num - 1
@@ -328,7 +328,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
         stop("zero matrix", call. = FALSE)
       }
       ## signature(theta="numeric", tn="integer")
-      ## FIXME move these functions to Cpp?
+      ## Possible optimization: move these functions to C++.
       fn <- eval(bquote(function(theta, tn) {
         if (is.null(tn)) {
           .ret <- matrix(rep(TRUE, .(d * d)), nrow = .(d))
@@ -344,7 +344,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
         }
         new.theta <- rep(0.0, .((d + 1) * d / 2))
         new.theta[.(w)] <- theta
-        return(.Call(`_rxCholInv`, .(as.integer(d)), as.double(new.theta), as.integer(tn)))
+        .Call(`_rxCholInv`, .(as.integer(d)), as.double(new.theta), as.integer(tn))
       }))
       ret <- list(
         fmat = fmat,
@@ -353,7 +353,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
         cache = TRUE
       )
       class(ret) <- "rxSymInvChol"
-      return(ret)
+      ret
     } else {
       ret <- rxSymInvC2(
         mat1 = mat1,
@@ -366,7 +366,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
         fn = rxSymInvCreate2C(ret[[1]])
       )
       class(ret) <- "rxSymInvChol"
-      return(ret)
+      ret
     }
   } else {
     mat <- Matrix::.bdiag(block)
@@ -402,7 +402,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
       x$ini
     }))
     ntheta <- sum(sapply(matI[.free], function(x) {
-      return(x$fn(NULL, -2L))
+      x$fn(NULL, -2L)
     }))
     i <- 1
     theta.part <- vector("list", length(block))
@@ -418,8 +418,8 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
     ## the "which thetas are diagonal elements" vector is positional over
     ## the theta vector, so it counts the free blocks only
     theta.partFree <- theta.part[.free]
-    ## FIXME move these to C/C++
-    ## Drop the dependency on Matrix (since this is partially run in R)
+    ## Possible optimization: move these to C/C++ and drop the Matrix
+    ## dependency (this part is run in R).
     fn <- eval(bquote(function(theta, tn) {
       force(matI)
       theta.part <- .(theta.part)
@@ -440,7 +440,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
                   .j <- .j + 1
                 }
               }
-              return(.ret)
+              .ret
             }
           )))
         }
@@ -458,9 +458,9 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
           new.theta <- theta[w]
           ctn <- as.integer(tn)
           if (is.na(ctn)) {
-            return(mt$fn(as.double(new.theta), ctn))
+            mt$fn(as.double(new.theta), ctn)
           } else if (ctn == -1L || ctn == 0L) {
-            return(mt$fn(as.double(new.theta), ctn))
+            mt$fn(as.double(new.theta), ctn)
           } else {
             ## the ctn should refer to the theta relative to
             ## the current submatrix; However this function
@@ -470,33 +470,33 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
               if (ctn > max(w) | ctn < min(w)) {
                 mat <- mt$fn(as.double(new.theta), 0L)
                 d <- dim(mat)[1]
-                return(matrix(rep(0, d * d), d))
+                matrix(rep(0, d * d), d)
               } else {
                 ctn <- as.integer(ctn - min(w) + 1)
-                return(mt$fn(as.double(new.theta), ctn))
+                mt$fn(as.double(new.theta), ctn)
               }
             } else {
               ctn <- as.integer(-ctn - 2)
               if (ctn > max(w) | ctn < min(w)) {
                 vec <- mt$fn(as.double(new.theta), -3L)
                 d <- length(vec)
-                return(rep(0, d))
+                rep(0, d)
               } else {
                 ctn <- as.integer(-(ctn - min(w) + 1) - 2L)
-                return(mt$fn(as.double(new.theta), ctn))
+                mt$fn(as.double(new.theta), ctn)
               }
             }
           }
         }
       )
       if (is.na(tn)) {
-        return(unlist(lst))
+        unlist(lst)
       } else if (tn >= -1) {
-        ## FIXME: lotriMat should take unnamed
-        ## return(lotri::lotriMat(lst))
-        return(as.matrix(Matrix::bdiag(lst)))
+        ## Possible simplification: lotri::lotriMat(lst), once lotriMat
+        ## accepts an unnamed list.
+        as.matrix(Matrix::bdiag(lst))
       } else {
-        return(unlist(lst))
+        unlist(lst)
       }
     }))
 
@@ -506,7 +506,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"),
       fn = fn
     )
     class(ret) <- "rxSymInvChol"
-    return(ret)
+    ret
   }
 }
 
@@ -535,20 +535,20 @@ rxSymInvCholCreate <- function(mat,
     rxi <- do.call(rxSymInvCreateC_, args, envir = envir)
     ret <- rxSymInvChol(rxi)
     ret$theta <- rxi$ini
-    return(ret)
+    ret
   } else {
-    return(do.call(rxSymInvCreateC_, args, envir = envir))
+    do.call(rxSymInvCreateC_, args, envir = envir)
   }
 }
 
 #' @export
 `$.rxSymInvCholEnv` <- function(obj, arg, exact = TRUE) {
-  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL))
+  .Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL)
 }
 
 #' @export
 "$<-.rxSymInvCholEnv" <- function(obj, arg, value) {
-  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, value))
+  .Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, value)
 }
 
 

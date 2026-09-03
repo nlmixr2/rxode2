@@ -18,9 +18,9 @@
         if (length(.w) == 1) return(0)
       }
     }
-    return(as.call(lapply(x, .dropMuCovs, muRefCovariateDataFrame=muRefCovariateDataFrame)))
+    as.call(lapply(x, .dropMuCovs, muRefCovariateDataFrame=muRefCovariateDataFrame))
   } else {
-    return(x)
+    x
   }
 }
 #' This determines if the expression has a covariate that needs to be downgraded
