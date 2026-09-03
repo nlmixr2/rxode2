@@ -346,4 +346,61 @@ rxTest({
     .expectSameAsEventTable(modBolus, et(amt = 100, time = 2))
   })
 
+  test_that("a pushed steady state constant infusion with a duration errs (#1350)", {
+    # flg 40 (ss=1, ii=0, amt=0) never turns off, so pairing it with a duration
+    # -- modeled (rate=-2) or fixed -- gives no usable rate and used to
+    # silently steady-state the compartment to zero instead of erring the way
+    # the same combination already does in the event table.
+    modModeledDur <- rxode2({
+      d/dt(central) <- -cl / v * central
+      dur(central) <- 10
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 1, 0, 1, -2, 0, 0, 1)
+      }
+    })
+    expect_error(rxSolve(modModeledDur, .pars, et(.obs)),
+                 "makes no sense")
+
+    modFixedDur <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        infuseDur(0, 10, 1, 0, 0, 1)
+      }
+    })
+    expect_error(rxSolve(modFixedDur, .pars, et(.obs)),
+                 "makes no sense")
+
+    modModeledDurReset <- rxode2({
+      d/dt(central) <- -cl / v * central
+      dur(central) <- 10
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(0, 4, 0, 1, -2, 0, 0, 1)
+      }
+    })
+    expect_error(rxSolve(modModeledDurReset, .pars, et(.obs)),
+                 "makes no sense")
+  })
+
+  test_that("a pushed steady state constant infusion by fixed rate is unchanged (#1350)", {
+    # the legitimate spelling -- a constant infusion by fixed RATE -- must keep
+    # working; only pairing flg 40 with a duration is rejected.  (The modeled
+    # rate sibling is already covered by "a pushed modeled rate constant
+    # infusion (ss=1, ii=0, amt=0) solves" above.)
+    modFixedRate <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        infuse(0, 10, 1, 0, 0, 1)
+      }
+    })
+    got <- rxSolve(modFixedRate, .pars, et(.obs))
+    want <- rxSolve(.ref, .pars, et(amt = 0, time = 0, rate = 10, ss = 1, ii = 0) |> et(.obs))
+    # the push happens during the first evaluation, so the steady state is in
+    # place from the next output row onward rather than at time 0 itself
+    expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
+  })
+
 })

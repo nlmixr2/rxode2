@@ -209,7 +209,7 @@ SEXP rxSaveState_() {
   W_RX_I32(linCmtHcmt); W_RX_I32(linCmtHmeanI); W_RX_I32(linCmtHmeanO);
   W_RX_DBL(linCmtSuspect); W_RX_I32(linCmtForwardMax);
   W_RX_I32(mixnum); W_RX_I32(input_mixnum);
-  W_RX_I32(maxExtra); W_RX_I32(extraPushAbort);
+  W_RX_I32(maxExtra); W_RX_I32(extraPushAbort); W_RX_I32(ssInfDurAbort);
   W_RX_I32(splitBolusN);
   W_RX_BOOL(sample);
 
@@ -792,7 +792,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   R_RX_I32(linCmtHcmt); R_RX_I32(linCmtHmeanI); R_RX_I32(linCmtHmeanO);
   R_RX_DBL(linCmtSuspect); R_RX_I32(linCmtForwardMax);
   R_RX_I32(mixnum); R_RX_I32(input_mixnum);
-  R_RX_I32(maxExtra); R_RX_I32(extraPushAbort);
+  R_RX_I32(maxExtra); R_RX_I32(extraPushAbort); R_RX_I32(ssInfDurAbort);
   R_RX_I32(splitBolusN);
   R_RX_BOOL(sample);
 

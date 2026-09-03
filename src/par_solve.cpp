@@ -1534,6 +1534,18 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _evid, _cmt,
                                                   _amt, _doseIi, _doseSs,
                                                   _rate, _isDurFlag);
+    if (ev.n < 0) {
+      // Steady-state constant infusion (flg 40) paired with a duration --
+      // meaningless since flg 40 never turns off (rxode2#1350).  Abort the
+      // same deferred way maxExtra does: the message fires once the parallel
+      // solve loop has finished (rxode2_df.cpp), not from inside it.
+      int bad = 1;
+#pragma omp atomic write
+      rx->ssInfDurAbort = bad;
+#pragma omp atomic write
+      op->badSolve = bad;
+      return -1;
+    }
     if (ev.n == 0) continue;
 
     int splitDoseEvent = -1;

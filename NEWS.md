@@ -2,6 +2,14 @@
 
 ## Bug fixes
 
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
+  inside a model with a duration -- modeled (`rate=-2`, e.g. via `evid_()`)
+  or fixed (`infuseDur()`) -- now errors instead of silently steady-stating
+  the compartment to zero.  That combination never had a usable rate (a
+  constant infusion never turns off, so there is nothing for the duration to
+  measure), and the event-table path already refused it; the runtime push
+  path did not check for it (#1350).
+
 - Piping an omega block into a model with ten or more etas no longer
   permutes the etas that were not piped over.  They were renumbered with
   `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before

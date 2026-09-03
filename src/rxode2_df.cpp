@@ -387,6 +387,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
           rx->maxExtra);
       }
+      if (rx->ssInfDurAbort) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue, "%s",
+          _("specifying duration with a steady state constant infusion makes no sense"));
+      }
       for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
         rx_solving_options_ind *indE = &(rx->subjects[solveid]);
         if (indE->err != 0) {
@@ -405,6 +410,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         (Rf_errorcall)(R_NilValue,
           _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
           rx->maxExtra);
+      }
+      if (rx->ssInfDurAbort) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue, "%s",
+          _("specifying duration with a steady state constant infusion makes no sense"));
       }
       if (indLinNoConv) {
         warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; loosen 'atol'/'rtol' or raise 'maxsteps'"));

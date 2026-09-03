@@ -140,6 +140,14 @@ static inline int
 _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
                      int cmt100, int cmt99, int rateI, int flg,
                      double amt, double useRate, double dur, double ii_val) {
+  /* A steady-state constant infusion (flg 40) never turns off, so pairing it
+   * with a duration -- modeled (rateI 8) or fixed (rateI 2) -- is meaningless;
+   * reject it the way etTran.cpp already does for the event table
+   * (rxode2#1350).  -1 signals the caller to abort instead of silently
+   * emitting a rate-less record that steady-states the compartment to zero. */
+  if (flg == EVID0_SSINF && (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON)) {
+    return -1;
+  }
   out->evid[k]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
   out->time[k]   = time;
   out->amt[k]    = (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) ? useRate : amt;
@@ -166,8 +174,8 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
   return 1;
 }
 
-/* Two ways this translator does NOT yet agree with etTran.cpp, both only
- * reachable through the runtime evid_() push:
+/* One way this translator does NOT yet agree with etTran.cpp, only reachable
+ * through the runtime evid_() push:
  *
  *   - A steady-state dose into a compartment carrying a modeled alag().
  *     etTran.cpp's ssAtDoseTime handling rewrites flg 10 -> 9 (and 20 -> 19) for
@@ -177,13 +185,13 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
  *     the unlagged time for it.  A pushed dose gets the plain flg 10/20 pair,
  *     so its trajectory differs from the same regimen in the event table.
  *
- *   - A steady-state constant infusion (flg 40) carrying a duration, either
- *     modeled (rate=-2) or fixed (isDur, which makes useRate = amt/dur = 0).
- *     etTran.cpp refuses both outright; here each becomes a lone flg 40 record
- *     carrying no usable rate, so the compartment steady-states at zero with no
- *     error.  The fixed-duration spelling is the surprising one, since the
- *     sibling infuse(0, rate, ...) is the legitimate way to write a constant
- *     infusion and works.
+ * A steady-state constant infusion (flg 40) carrying a duration, either
+ * modeled (rate=-2) or fixed (isDur, which makes useRate = amt/dur), is
+ * rejected below with out.n = -1 the same way etTran.cpp refuses it for the
+ * event table (rxode2#1350) -- flg 40 never turns off (getTime__() skips the
+ * infusion-time calculation for it and etTran.cpp emits no off record), so a
+ * duration is meaningless and previously produced a lone flg 40 record with
+ * no usable rate, silently steady-stating the compartment to zero.
  */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
@@ -280,8 +288,11 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.amt[0]    = 0.0;
     out.ii[0]     = 0.0;
     out.isDose[0] = 0;
-    out.n         = 1 + _rxTranslateDoseInto(&out, 1, time, cmt100, cmt99, rateI,
-                                             flg, amt, useRate, dur, ii_val);
+    {
+      int doseN = _rxTranslateDoseInto(&out, 1, time, cmt100, cmt99, rateI,
+                                       flg, amt, useRate, dur, ii_val);
+      out.n = (doseN < 0) ? -1 : 1 + doseN;
+    }
     break;
 
   case 5:
