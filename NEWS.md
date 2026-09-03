@@ -724,6 +724,31 @@
 
 ## Bug fixes
 
+- An infusion pushed from inside the model with `evid_()` now turns back off.
+  `evid=4` (reset + dose) used both slots of the translated event for the reset
+  and the infusion start, so the stop record was dropped and the infusion ran
+  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
+  without its companion "off" record at all, so the solve failed outright with
+  data error 997/886 instead of scheduling the infusion.  The translator emits
+  up to three records now, and a pushed infusion matches the same regimen
+  written into the event table for fixed rate, fixed duration, modeled rate,
+  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
+  steady-state dose pushed into a compartment that also carries a modeled
+  `alag()` is still not expanded the way the event table expands it, and a
+  steady-state constant infusion pushed with a duration rather than a rate is
+  still not rejected the way the event table rejects it; both remain known gaps.
+
+- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
+  one: `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
+  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
+  wrote) record `idx + 1`.  The only way to reach it was the lone modeled start
+  the push path used to emit, so with that fixed the guard is defensive rather
+  than a user-visible fix.  Separately, `_rxPushDose()`'s event-array growth
+  under-reserved when a bolus is split across compartments -- it counted the
+  translated events rather than the records they expand into, which the `idose`
+  growth beside it already did -- and now allocates the guard slot its own
+  comment promises for `ix` and `timeThread` too.
+
 - The "cannot find additive standard deviation" error tested a `$predDf`
   column that does not exist, so its multiple-endpoint hint was appended even
   for single-endpoint models.
