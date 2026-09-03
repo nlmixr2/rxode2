@@ -407,6 +407,26 @@ model.rxModelVars <- model.rxode2
   .ret
 }
 
+#' Get the endpoint condition (the name after `|`) of a `~` line
+#'
+#' @param expr Model line expression
+#' @return The condition as a character, or `NULL` when the line is not a `~`
+#'   line with a `| <name>` condition
+#' @author Matthew L. Fidler
+#' @noRd
+.getEndpointCondFromLine <- function(expr) {
+  if (!is.call(expr) || length(expr) != 3L ||
+        !identical(expr[[1]], quote(`~`))) {
+    return(NULL)
+  }
+  .rhs <- expr[[3]]
+  if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`)) &&
+        length(.rhs) == 3L && is.name(.rhs[[3]])) {
+    return(deparse1(.rhs[[3]]))
+  }
+  NULL
+}
+
 #' Find the line of the original expression
 #'
 #' @param expr Expression
@@ -418,6 +438,10 @@ model.rxModelVars <- model.rxode2
 #'
 #' @param returnAllLines A boolean to determine if all line numbers
 #'   should be returned, by default `FALSE`
+#'
+#' @param cond Endpoint condition (the name after `|`) when the piped
+#'   expression named one, otherwise `NULL`.  This selects a single
+#'   endpoint when several endpoints share the same lhs variable.
 #'
 #' @return The return can be:
 #'
@@ -437,9 +461,27 @@ model.rxModelVars <- model.rxode2
 #' @author Matthew L. Fidler
 #'
 #' @noRd
-.getModelLineFromExpression <- function(lhsExpr, rxui, errorLine=FALSE, returnAllLines=FALSE) {
+.getModelLineFromExpression <- function(lhsExpr, rxui, errorLine=FALSE, returnAllLines=FALSE,
+                                        cond=NULL) {
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
+  if (errorLine && !returnAllLines && !is.null(cond)) {
+    # `cp ~ prop(x) | phase1` names the endpoint directly; this is the only way
+    # to reach one of several endpoints that share a lhs variable.  Require the
+    # variable to match too, so piping an endpoint onto some *other* endpoint's
+    # condition keeps its current meaning (rename the condition).
+    .lhs <- lhsExpr
+    if (is.call(.lhs)) {
+      if (identical(.lhs[[1]], quote(`ll`)) && length(.lhs) == 2L) {
+        .lhs <- .lhs[[2]]
+      } else if (identical(.lhs[[1]], quote(`linCmt`))) {
+        .lhs <- quote(`rxLinCmt`)
+      }
+    }
+    .w <- which(rxui$predDf$cond == cond &
+                  .rxEndpointSourceVar(rxui) == deparse1(.lhs))
+    if (length(.w) == 1L) return(rxui$predDf$line[.w])
+  }
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
   .ret <- .getModelineFromExpressionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
   if (is.null(.ret)) {
@@ -493,6 +535,39 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     }
   }
   FALSE
+}
+
+#' Get the model line of an endpoint dropped by its condition name
+#'
+#' When several endpoints share one model variable each has a generated alias,
+#' so `-cp` is ambiguous; `-<cond>` names the endpoint instead.  This only
+#' applies to those shared-variable endpoints, and only when the name is not
+#' also a model variable, so no existing drop changes meaning.
+#'
+#' @param line Drop expression from `model({})` piping
+#' @param rxui rxode2 UI
+#' @return The `predDf$line` of the endpoint, or `NULL`
+#' @author Matthew L. Fidler
+#' @noRd
+.getDropEndpointLineFromCondition <- function(line, rxui) {
+  .alias <- .rxEndpointAlias(rxui)
+  if (length(.alias) == 0L) return(NULL)
+  if (!(length(line) == 2L && identical(line[[1]], quote(`-`)) &&
+          is.name(line[[2]]))) {
+    return(NULL)
+  }
+  .predDf <- rxui$predDf
+  .name <- deparse1(line[[2]])
+  .w <- which(.predDf$cond == .name & .predDf$var %in% names(.alias))
+  if (length(.w) != 1L) return(NULL)
+  # the name may also be an ordinary model variable; dropping that line is what
+  # `-name` has always meant, so leave it alone
+  .lstExpr <- rxui$lstExpr
+  .other <- setdiff(seq_along(.lstExpr), .predDf$line)
+  for (.i in .other) {
+    if (identical(.getLhs(.lstExpr[[.i]]), line[[2]])) return(NULL)
+  }
+  .predDf$line[.w]
 }
 
 .getAdditionalDropLines <- function(line, rxui, isErr, isDrop) {
@@ -585,13 +660,19 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     } else {
       .isErr  <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
+      .cond <- .getEndpointCondFromLine(line)
       if (.isDrop && .isErr) {
-        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, FALSE)
+        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, FALSE,
+                                            cond=.cond)
       } else if (.isDrop) {
-        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
-        .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
+        .ret <- .getDropEndpointLineFromCondition(line, rxui)
+        if (is.null(.ret)) {
+          .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
+          .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
+        }
       } else {
-        .ret <- .getModelLineFromExpression(.getLhs(line), rxui, .isErr, .isDrop)
+        .ret <- .getModelLineFromExpression(.getLhs(line), rxui, .isErr, .isDrop,
+                                            cond=.cond)
       }
       if (length(.ret)  == 1) {
         if (.isErr && is.na(.ret)) {
@@ -600,9 +681,18 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
         }
       }
       if (is.null(.ret)) {
-        assign(".err",
-               c(.err, paste0("the lhs expression '", deparse1(line[[2]]), "' is duplicated in the model and cannot be modified by piping")),
-               envir=.env)
+        .msg <- paste0("the lhs expression '", deparse1(line[[2]]),
+                       "' is duplicated in the model and cannot be modified by piping")
+        if (.isErr) {
+          .cnd <- rxui$predDf$cond[.rxEndpointSourceVar(rxui) == deparse1(line[[2]])]
+          if (length(.cnd) > 1L) {
+            .msg <- paste0("'", deparse1(line[[2]]), "' is used by more than one endpoint (",
+                           paste(.cnd, collapse=", "),
+                           "); name the one to modify, like '", deparse1(line[[2]]),
+                           " ~ ... | ", .cnd[1], "'")
+          }
+        }
+        assign(".err", c(.err, .msg), envir=.env)
       } else if (is.na(.ret[1])) {
           assign(".err",
                  c(.err, paste0("the lhs expression '", deparse1(line[[2]]), "' is not in the model and cannot be modified by piping")),
@@ -692,7 +782,8 @@ rxUiGet.errParams <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
   unlist(lapply(.x$lstExpr[.x$predDf$line], function(x) {
-    .getVariablesFromExpression(x[[3]])
+    # `err | cond` -- the condition names the endpoint, it is not a parameter
+    .getVariablesFromExpression(x[[3]], ignorePipe=TRUE)
   }))
 }
 attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"

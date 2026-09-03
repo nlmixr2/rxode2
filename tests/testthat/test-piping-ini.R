@@ -1279,10 +1279,15 @@ rxTest({
     .piped <- .toUi |> ini(.fromUi)
     .iniDf <- as.data.frame(.piped$iniDf)
     expect_equal(.iniDf$condition[.iniDf$name == "(eta.a,eta.b)"], "occ")
-    expect_equal(.piped$omega, .expected$occ)
+    # every eta here is at the `occ` level, so the omega comes back keyed by
+    # that level rather than as a bare matrix -- a bare one would read as an
+    # ID level (between subject) omega, which is not what was written
+    expect_equal(names(.piped$omega), "occ")
+    expect_equal(.piped$omega$occ, .expected$occ)
     # the same block piped directly used to stop with `argument is of length zero`
     .direct <- .toUi |> ini(eta.a + eta.b ~ c(0.6, 0.01, 0.3) | occ)
-    expect_equal(.direct$omega, .expected$occ)
+    expect_equal(names(.direct$omega), "occ")
+    expect_equal(.direct$omega$occ, .expected$occ)
   })
 
   test_that("ini() piping honors unfix() under a condition", {
@@ -1450,6 +1455,91 @@ rxTest({
     .omega <- .piped$omega
     expect_equal(.omega$id, lotri::lotri(eta.a ~ 0.1))
     expect_equal(.omega$occ, lotri::lotri(eta.b ~ 0.2))
+  })
+
+})
+
+rxTest({
+
+  .manyEtaMod <- function(extra, extraModel) {
+    .ini <- paste0("      t", 1:8, " <- ", 1:8, "\n", collapse = "")
+    .eta <- paste0("      e", 1:8, " ~ ", (1:8) / 100, "\n", collapse = "")
+    .mdl <- paste0("      p", 1:8, " <- exp(t", 1:8, " + e", 1:8, ")\n",
+                   collapse = "")
+    eval(parse(text = sprintf('function() {
+  ini({
+%s%s%s  })
+  model({
+%s%s    cp <- %s
+    cp ~ add(0.1)
+  })
+}', .ini, .eta, extra, .mdl, extraModel, paste0("p", 1:8, collapse = " + "))))
+  }
+
+  test_that("piping keeps the surviving etas in their declared order", {
+    # `factor(paste(neta1))` sorted the eta numbers as TEXT, so with ten or
+    # more etas "10" sorted before "2" and the etas that were NOT piped
+    # over came back permuted.
+    .ui <- rxode2(.manyEtaMod(
+      "      e9 ~ 0.09
+      e10 ~ 0.10
+      e11 ~ 0.11
+      e12 ~ 0.12
+",
+      "      q <- e9 + e10 + e11 + e12
+"))
+    .piped <- suppressMessages(ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8)))
+    .om <- .piped$omega
+    # the ten untouched etas keep their order; the piped block goes last
+    expect_equal(dimnames(.om)[[1]],
+                 c(paste0("e", 3:12), "e1", "e2"))
+    # and every one of them keeps its own variance
+    expect_equal(unname(diag(.om)[paste0("e", 3:12)]), (3:12) / 100)
+  })
+
+  test_that("piping does not split a correlated block across the matrix", {
+    .ui <- rxode2(.manyEtaMod(
+      "      e9 + e10 ~ c(0.09,
+                    0.045, 0.10)
+      e11 ~ 0.11
+      e12 ~ 0.12
+",
+      "      q <- e9 + e10 + e11 + e12
+"))
+    .piped <- suppressMessages(ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8)))
+    .om <- .piped$omega
+    .d <- dimnames(.om)[[1]]
+    expect_equal(.om["e9", "e10"], 0.045)
+    # the pair must stay ADJACENT -- a block split across the matrix is a
+    # different model, not a reordering
+    expect_equal(abs(which(.d == "e9") - which(.d == "e10")), 1L)
+  })
+
+  test_that("piping keeps a same() copy after the block it repeats", {
+    # A repetition is stored as a RELATIVE OFFSET BACKWARDS, so a copy that
+    # is renumbered ahead of its master has no representation at all --
+    # `$omega` errored with "must refer to an earlier parameter".
+    .ui <- suppressWarnings(rxode2(.manyEtaMod(
+      "      a1 + a2 ~ c(0.1,
+                  0.03, 0.2)
+      b1 + b2 ~ same()
+",
+      "      q <- a1 + a2 + b1 + b2
+")))
+    expect_equal(.ui$omegaSameMap, c(rep(0L, 10), 9L, 10L))
+    .piped <- suppressWarnings(suppressMessages(
+      ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8))))
+    .i <- .piped$iniDf
+    .n <- function(x) .i$neta1[.i$name == x]
+    expect_true(.n("a1") < .n("b1"))
+    expect_true(.n("a2") < .n("b2"))
+    # the linkage survives and still points BACKWARD
+    .m <- .piped$omegaSameMap
+    expect_true(all(.m[.m != 0] < which(.m != 0)))
+    # and the omega actually assembles
+    .om <- .piped$omega
+    expect_equal(unname(.om["b1", "b1"]), unname(.om["a1", "a1"]))
+    expect_equal(unname(.om["b1", "b2"]), unname(.om["a1", "a2"]))
   })
 
 })

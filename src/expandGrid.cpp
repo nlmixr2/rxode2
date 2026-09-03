@@ -449,11 +449,20 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
     int nnest = as<int>(above[curNest]);
     // This is the base theta count
     lastTheta = thCnt;
-    for (int i = 0; i < nestVars.size(); ++i) {
+    int npar = nestVars.size();
+    for (int i = 0; i < npar; ++i) {
       std::string curPar = as<std::string>(nestVars[i]);
       retS += curPar + "=";
       for (int k = 0; k < nnest; ++k) {
-        theta = thetaVar + std::to_string(lastTheta+k+i*nnest+firstTheta) + "]";
+        // The omega these come from is built by `lotriSep()` stamping the
+        // level's block once per nesting unit, so it is laid out
+        // occasion-major with the parameters INSIDE each stamp:
+        // (p1,p2,..)@1, (p1,p2,..)@2, ...  Indexing it parameter-major
+        // (`k + i*nnest`) transposed the two, so every parameter drew the
+        // variance -- and the covariance -- belonging to whichever one sat
+        // at that position in the block.  Invisible with a single
+        // parameter per level, wrong for every one beyond that.
+        theta = thetaVar + std::to_string(lastTheta+k*npar+i+firstTheta) + "]";
         retS += "(" + curNest + "==" + std::to_string(k+1)+")*" + theta;
         thetaNestTran[thCnt] = curPar + "(" + curNest + "==" +
           as<std::string>(curNestLvl[k])+")";

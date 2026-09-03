@@ -164,10 +164,13 @@ rxUiGet.props <- function(x, ...) {
   .w <- !is.na(.ini$ntheta) & !is.na(.ini$err)
   .resid <- .ini$name[.w]
   .w <- !is.na(.ini$neta1)
-  .cnds <- unique(.ini$condition[.w])
+  ## group on the BASE condition, so a repeated (`same()`) block does not
+  ## look like one extra level of variability per mirrored element
+  .base <- lotri::lotriBaseCondition(.ini$condition)
+  .cnds <- unique(.base[.w])
   .var <- lapply(.cnds,
                  function(cnd) {
-                   .w <- which(.ini$condition == cnd &
+                   .w <- which(.base == cnd &
                                  .ini$neta1 == .ini$neta2)
                    .ini$name[.w]
                  })
@@ -196,7 +199,7 @@ rxUiGet.props <- function(x, ...) {
   names(.var) <- .cnds
   .lhs <- .mv$lhs
   .state <- .mv$state
-  .end <- .x$predDf$var
+  .end <- unique(.rxEndpointSourceVar(.x))
   .end <- .end[.end %in% c(.lhs, .state)]
   .lhs <- .lhs[!(.lhs %in% .end)]
   .varLhs <- .x$varLhs
@@ -255,6 +258,22 @@ rxUiGet.omega <- function(x, ...) {
   .lotri
 }
 attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.omegaSameMap <- function(x, ...) {
+  ## Which etas repeat an earlier block, as `rxSymInvCholCreate(same=)`
+  ## wants it.  Deliberately NOT carried as an attribute on `$omega`:
+  ## `chol()`, `.foceiRepairOmega()` and friends drop attributes, and a
+  ## silently dropped map would turn a repeated block back into
+  ## independently estimated parameters.
+  .iniDf <- x[[1]]$iniDf
+  if (is.null(.iniDf)) return(NULL)
+  .map <- lotri::lotriSameMap(.iniDf)
+  if (length(.map) == 0L || all(.map == 0L)) return(NULL)
+  .map
+}
+attr(rxUiGet.omegaSameMap, "desc") <- "Map of omega blocks that repeat an earlier block"
 attr(rxUiGet.omega, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
 
 #' @export
@@ -315,6 +334,8 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
     return(invisible())
   }
   if (length(.info$cond) == 1) return(NULL)
+  # show the user's variable, not a generated endpoint alias
+  .info$var <- .rxEndpointSourceVar(.x)
   if (getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[order(.info$dvid), ]
   }

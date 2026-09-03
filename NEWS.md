@@ -1,6 +1,74 @@
 # rxode2 5.1.7 (development version)
 
+## Bug fixes
+
+- Piping an omega block into a model with ten or more etas no longer
+  permutes the etas that were not piped over.  They were renumbered with
+  `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before
+  "2" -- so the survivors came back in an arbitrary order.  That splits a
+  correlated block across the matrix, and it can renumber a repeated
+  (`same()`) block ahead of the block it repeats, which has no
+  representation at all since the linkage is a relative offset backwards
+  (`$omega` then errored with "must refer to an earlier parameter").
+
+- `rxRename()` now follows a repeated (`same()`) block's marker to the new
+  name.  The block a repetition mirrors is recorded BY NAME in the
+  `condition` column -- which is what lets the marker survive renumbering
+  -- so a rename has to be followed too; left alone it pointed at a name
+  that no longer existed and `$omega` refused to assemble ("refers to
+  '<old>', which is not in this block").
+
+- Nested (inter-occasion) simulation gave every random effect the wrong
+  variance whenever a level carried more than one parameter.  The omega
+  a level draws from is laid out occasion-major, with the parameters
+  inside each stamp, but the expansion indexed it parameter-major, so
+  the two were transposed: with `lotri(a ~ 0.01, b ~ 1, cc ~ 100) | occ`
+  every parameter in occasion 1 drew variance 0.01, every one in
+  occasion 2 drew 1, and every one in occasion 3 drew 100.  A single
+  parameter per level is unaffected, which is why this went unnoticed.
+  Any covariance specified within an occasion was likewise placed
+  between occasions of one parameter rather than between the parameters
+  of one occasion (#1345).
+
 ## New features
+
+- Correlated inter-occasion variability is now supported.  A `| occ`
+  block may carry off-diagonal elements, and they are simulated at the
+  level they were declared at.  `assertRxUiIovNoCor()` no longer reads a
+  repeated (`same()`) block as a separate level of variability.
+
+- `rxSymInvCholCreate()` gains a `same=` argument.  Blocks that repeat an
+  earlier one -- NONMEM's `$OMEGA BLOCK(n) SAME`, written `same()` in a
+  `lotri`/`ini` block -- share that block's parameters rather than being
+  estimated separately.  For a block diagonal omega whose blocks are
+  identical the derivative with respect to a shared parameter is just
+  the block diagonal sum of each copy's contribution, so this needs no
+  change to the C++ inner problem.
+
+- `$omegaSameMap` reports, for each eta, which earlier eta it repeats,
+  which is what `rxSymInvCholCreate(same=)` takes.
+- The same model variable can now be used by more than one residual-error
+  endpoint, as long as each endpoint is named, as in
+  `cp ~ add(add.sd1) | phase1` and `cp ~ add(add.sd2) | phase2`.  rxode2 gives
+  each of those endpoints its own hidden alias (`rx.cp.phase1`,
+  `rx.cp.phase2`, recorded in `$endpointAlias`) when the simulation or
+  estimation model is assembled, so they get separate residual parameters,
+  separate simulated residuals and separate `ar()` state, while the
+  `model({})` block still prints, extracts and pipes as it was written.
+  Previously this needed hand-written aliases (`cp.phase1 <- cp`, ...) and
+  otherwise failed to solve with "The simulated residual errors do not match
+  the model specification".  Two endpoints on the same `linCmt()` are
+  supported the same way.
+
+- Model piping selects one of several endpoints by its condition, as in
+  `model(cp ~ prop(prop.sd) | phase2)`, and drops one with
+  `model(-phase2)`.  Piping an endpoint that shares its variable without
+  naming a condition now says which conditions are available instead of
+  reporting the lhs as duplicated.
+
+- Two endpoints that share a condition (`cp ~ add(a)` written twice) now give
+  a clear error at parse time asking for a `| <name>`, rather than failing
+  later with a confusing message about the additive standard deviation.
 
 - `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
   `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
@@ -710,6 +778,44 @@
   kept for their size and for the order the "IDs without observations" warning
   lists them in.  A dosing-only id was also matched with a linear scan once
   per row when dropping those rows.
+
+- An infusion pushed from inside the model with `evid_()` now turns back off.
+  `evid=4` (reset + dose) used both slots of the translated event for the reset
+  and the infusion start, so the stop record was dropped and the infusion ran
+  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
+  without its companion "off" record at all, so the solve failed outright with
+  data error 997/886 instead of scheduling the infusion.  The translator emits
+  up to three records now, and a pushed infusion matches the same regimen
+  written into the event table for fixed rate, fixed duration, modeled rate,
+  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
+  steady-state dose pushed into a compartment that also carries a modeled
+  `alag()` is still not expanded the way the event table expands it, and a
+  steady-state constant infusion pushed with a duration rather than a rate is
+  still not rejected the way the event table rejects it; both remain known gaps.
+
+- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
+  one: `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
+  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
+  wrote) record `idx + 1`.  The only way to reach it was the lone modeled start
+  the push path used to emit, so with that fixed the guard is defensive rather
+  than a user-visible fix.  Separately, `_rxPushDose()`'s event-array growth
+  under-reserved when a bolus is split across compartments -- it counted the
+  translated events rather than the records they expand into, which the `idose`
+  growth beside it already did -- and now allocates the guard slot its own
+  comment promises for `ix` and `timeThread` too.
+
+- The "cannot find additive standard deviation" error tested a `$predDf`
+  column that does not exist, so its multiple-endpoint hint was appended even
+  for single-endpoint models.
+
+- A modeled `ar()` correlation on an endpoint written with a condition
+  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
+  matched against the left-hand side, which never carries the condition.
+
+- An endpoint's condition is no longer treated as a residual parameter, so
+  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
+  "the following parameter(s) were in the ini block but not in the model block:
+  assay1".
 
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped

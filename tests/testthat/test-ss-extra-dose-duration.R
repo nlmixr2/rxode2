@@ -103,7 +103,9 @@ rxTest({
       # from the lagged infusion onward the reported dose is the amount, not the
       # rate and not 0
       expect_true(all(.r$cd[.r$time >= 3] == 100))
-      expect_true(all(.r$dn >= 1))
+      # before the lagged dose lands there is no dose yet, so dosenum() is 0 --
+      # the same pre-dose row a plain lagged infusion reports
+      expect_true(all(.r$dn[.r$time >= 3] >= 1))
       # the dose lands at the lag time, so time-after-dose counts from there
       expect_equal(.r$ta[.r$time >= 3], .r$time[.r$time >= 3] - 3)
     }
