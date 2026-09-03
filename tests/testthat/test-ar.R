@@ -288,3 +288,35 @@ rxTest({
   })
 
 })
+
+rxTest({
+  test_that("ar() on two endpoints sharing a variable keeps separate state", {
+    .f <- function() {
+      ini({
+        tcl <- 1
+        tv <- 3
+        add.sd1 <- 0.7
+        add.sd2 <- 0.5
+        ar1.cor <- 0.5
+        ar2.cor <- 0.3
+      })
+      model({
+        cl <- exp(tcl)
+        v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        cp ~ add(add.sd1) + ar(ar1.cor) | phase1
+        cp ~ add(add.sd2) + ar(ar2.cor) | phase2
+      })
+    }
+    .ui <- .f()
+    expect_equal(.ui$predDf$var, c("rx.cp.phase1", "rx.cp.phase2"))
+    .all <- paste(vapply(rxCombineErrorLines(.ui), deparse1, character(1)),
+                  collapse="\n")
+    expect_true(grepl("rx.arRes.rx.cp.phase1", .all, fixed=TRUE))
+    expect_true(grepl("rx.arRes.rx.cp.phase2", .all, fixed=TRUE))
+    # each endpoint uses its own correlation, found through the `| cond`
+    expect_true(grepl("ar1.cor", .all, fixed=TRUE))
+    expect_true(grepl("ar2.cor", .all, fixed=TRUE))
+  })
+})

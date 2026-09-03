@@ -1066,6 +1066,9 @@
   .predDf <- ui$predDf
   if (is.null(.predDf)) return(NULL)
   .mv <- ui$mv0
+  # a generated endpoint alias is a suppressed assignment (in `slhs`), so check
+  # the user's variable it came from
+  .srcVar <- .rxEndpointSourceVar(ui)
   lapply(seq_along(.predDf$cond), function(i) {
     .cond <- .predDf$cond[i]
     .w <- which(.iniDf$condition == .cond)
@@ -1082,7 +1085,7 @@
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
     }
-    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
+    if (.predDf$distribution[i] %in% c("norm", "t") && !(.srcVar[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }

@@ -31,6 +31,28 @@
 
 - `$omegaSameMap` reports, for each eta, which earlier eta it repeats,
   which is what `rxSymInvCholCreate(same=)` takes.
+- The same model variable can now be used by more than one residual-error
+  endpoint, as long as each endpoint is named, as in
+  `cp ~ add(add.sd1) | phase1` and `cp ~ add(add.sd2) | phase2`.  rxode2 gives
+  each of those endpoints its own hidden alias (`rx.cp.phase1`,
+  `rx.cp.phase2`, recorded in `$endpointAlias`) when the simulation or
+  estimation model is assembled, so they get separate residual parameters,
+  separate simulated residuals and separate `ar()` state, while the
+  `model({})` block still prints, extracts and pipes as it was written.
+  Previously this needed hand-written aliases (`cp.phase1 <- cp`, ...) and
+  otherwise failed to solve with "The simulated residual errors do not match
+  the model specification".  Two endpoints on the same `linCmt()` are
+  supported the same way.
+
+- Model piping selects one of several endpoints by its condition, as in
+  `model(cp ~ prop(prop.sd) | phase2)`, and drops one with
+  `model(-phase2)`.  Piping an endpoint that shares its variable without
+  naming a condition now says which conditions are available instead of
+  reporting the lhs as duplicated.
+
+- Two endpoints that share a condition (`cp ~ add(a)` written twice) now give
+  a clear error at parse time asking for a `| <name>`, rather than failing
+  later with a confusing message about the additive standard deviation.
 
 - `linCmt()` models can now report a PER-COMPARTMENT dose-time sensitivity.
   `linCmtB(which1 = -3)` differentiates with respect to one delay shared by
@@ -730,6 +752,44 @@
   reports how many exponentials took it as `blockExp`.
 
 ## Bug fixes
+
+- An infusion pushed from inside the model with `evid_()` now turns back off.
+  `evid=4` (reset + dose) used both slots of the translated event for the reset
+  and the infusion start, so the stop record was dropped and the infusion ran
+  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
+  without its companion "off" record at all, so the solve failed outright with
+  data error 997/886 instead of scheduling the infusion.  The translator emits
+  up to three records now, and a pushed infusion matches the same regimen
+  written into the event table for fixed rate, fixed duration, modeled rate,
+  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
+  steady-state dose pushed into a compartment that also carries a modeled
+  `alag()` is still not expanded the way the event table expands it, and a
+  steady-state constant infusion pushed with a duration rather than a rate is
+  still not rejected the way the event table rejects it; both remain known gaps.
+
+- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
+  one: `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
+  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
+  wrote) record `idx + 1`.  The only way to reach it was the lone modeled start
+  the push path used to emit, so with that fixed the guard is defensive rather
+  than a user-visible fix.  Separately, `_rxPushDose()`'s event-array growth
+  under-reserved when a bolus is split across compartments -- it counted the
+  translated events rather than the records they expand into, which the `idose`
+  growth beside it already did -- and now allocates the guard slot its own
+  comment promises for `ix` and `timeThread` too.
+
+- The "cannot find additive standard deviation" error tested a `$predDf`
+  column that does not exist, so its multiple-endpoint hint was appended even
+  for single-endpoint models.
+
+- A modeled `ar()` correlation on an endpoint written with a condition
+  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
+  matched against the left-hand side, which never carries the condition.
+
+- An endpoint's condition is no longer treated as a residual parameter, so
+  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
+  "the following parameter(s) were in the ini block but not in the model block:
+  assay1".
 
 - `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
   modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
