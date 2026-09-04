@@ -8,11 +8,15 @@
  *   inst/include/rxode2parseHandleEvid.h - runtime evid_() push
  */
 
-#define RX_TRANSLATED_EVENT_MAX 3
+/* Up to 5: an evid=4 reset plus a steady-state dose into a compartment with a
+ * modeled alag(), which expands to four records (rxode2#1349). */
+#define RX_TRANSLATED_EVENT_MAX 5
 
 typedef struct {
-  int    n;            /* number of output events: 1 (bolus/obs/reset), 2 (infusion:
-                        * start+stop) or 3 (evid=4 reset + infusion start+stop) */
+  int    n;            /* number of output events, 1 to RX_TRANSLATED_EVENT_MAX:
+                        * 1 bolus/obs/reset, 2 infusion start+stop, 3 evid=4
+                        * reset + infusion start+stop, up to 5 for a reset plus
+                        * a lagged steady-state infusion */
   int    evid[RX_TRANSLATED_EVENT_MAX];   /* internal rxode2 evid code(s) */
   double time[RX_TRANSLATED_EVENT_MAX];   /* event time(s) */
   double amt[RX_TRANSLATED_EVENT_MAX];    /* amounts (+amt/+rate, then -rate) */
@@ -185,6 +189,67 @@ static inline int _rxAddlOccurrence(int rep, int flg, double ii_val, int addl,
  * getTime__() skips the infusion-time calculation for that flg entirely, and
  * etTran.cpp emits no off record for it either.
  */
+/* A steady-state dose into a compartment carrying a modeled alag() (flg 9 for
+ * ss=1, 19 for ss=2).  The steady-state calculation itself must run UNLAGGED
+ * -- getLag() (inst/include/rxode2parseGetTime.h) returns the unlagged time
+ * for wh0 9/19 -- while the dose the subject actually receives is lagged, so
+ * the record is expanded into an unlagged steady-state record plus the plain
+ * flg-1 records that carry the lag.  Mirrors src/etTran.cpp's ssAtDoseTime
+ * expansion exactly, in the same order (rxode2#1349):
+ *
+ *   bolus / replace / multiply : SS record, then the plain dose
+ *   modeled rate or duration   : SS record, plain on, modeled off
+ *   fixed rate or duration     : SS record, an INFRM (flg 8) off so the SS
+ *                                record's own infusion is accounted for,
+ *                                then the plain on/off pair
+ *
+ * The SS and INFRM records carry ii; the lagged plain records carry 0. */
+static inline int
+_rxTranslateSsLagDoseInto(rx_translated_event *out, int k, double time,
+                          int cmt100, int cmt99, int rateI, int flg,
+                          double amt, double useRate, double dur,
+                          double ii_val) {
+  int base = cmt100*100000 + cmt99*100;
+  out->evid[k]   = base + rateI*10000 + flg;
+  out->time[k]   = time;
+  out->amt[k]    = (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) ? useRate : amt;
+  out->ii[k]     = ii_val;
+  out->isDose[k] = 1;
+  if (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) {
+    out->evid[k+1]   = base + rateI*10000 + EVID0_INFRM;
+    out->time[k+1]   = time;
+    out->amt[k+1]    = -useRate;
+    out->ii[k+1]     = ii_val;
+    out->isDose[k+1] = 1;
+    out->evid[k+2]   = base + rateI*10000 + EVID0_REGULAR;
+    out->time[k+2]   = time;
+    out->amt[k+2]    = useRate;
+    out->ii[k+2]     = 0.0;
+    out->isDose[k+2] = 1;
+    out->evid[k+3]   = base + rateI*10000 + EVID0_REGULAR;
+    out->time[k+3]   = time + dur;
+    out->amt[k+3]    = -useRate;
+    out->ii[k+3]     = 0.0;
+    out->isDose[k+3] = 1;
+    return 4;
+  }
+  out->evid[k+1]   = base + rateI*10000 + EVID0_REGULAR;
+  out->time[k+1]   = time;
+  out->amt[k+1]    = amt;
+  out->ii[k+1]     = 0.0;
+  out->isDose[k+1] = 1;
+  if (rateI == EVIDF_MODEL_RATE_ON || rateI == EVIDF_MODEL_DUR_ON) {
+    int offI = (rateI == EVIDF_MODEL_RATE_ON) ? EVIDF_MODEL_RATE_OFF : EVIDF_MODEL_DUR_OFF;
+    out->evid[k+2]   = base + offI*10000 + EVID0_REGULAR;
+    out->time[k+2]   = time;
+    out->amt[k+2]    = amt;
+    out->ii[k+2]     = 0.0;
+    out->isDose[k+2] = 1;
+    return 3;
+  }
+  return 2;
+}
+
 static inline int
 _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
                      int cmt100, int cmt99, int rateI, int flg,
@@ -208,6 +273,10 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
       (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON ||
        (rateI == EVIDF_MODEL_RATE_ON && isDur))) {
     return -1;
+  }
+  if (flg == EVID0_SS0 || flg == EVID0_SS20) {
+    return _rxTranslateSsLagDoseInto(out, k, time, cmt100, cmt99, rateI, flg,
+                                     amt, useRate, dur, ii_val);
   }
   out->evid[k]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
   out->time[k]   = time;
@@ -256,7 +325,8 @@ _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
  */
 static inline rx_translated_event
 _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
-                     double ii_val, int ss, double rate, int isDur) {
+                     double ii_val, int ss, double rate, int isDur,
+                     int hasAlag) {
   rx_translated_event out;
   out.n = 0;
   for (int _i = 0; _i < RX_TRANSLATED_EVENT_MAX; ++_i) {
@@ -285,7 +355,12 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     return out;
   }
 
-  /* Compartment encoding */
+  /* Compartment encoding.  A negative compartment turns that compartment off
+   * (flg 30), the same signal etTran.cpp reads from a negative CMT column;
+   * steady state is meaningless there, and etTran.cpp rejects the
+   * combination outright. */
+  int turnOff = (cmt < 0);
+  if (turnOff) cmt = -cmt;
   int cmt100 = cmt / 100;
   int cmt99  = cmt % 100;
 
@@ -309,6 +384,26 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
 
   /* flg encoding (SS handling, mirrors etTran.cpp) */
   int flg = _rxDeriveFlg(ss, ii_val, amt);
+  /* A steady-state dose into a compartment with a modeled alag() is marked
+   * unlagged (flg 9/19) and expanded; etTran.cpp does the same rewrite from
+   * mv[RxMv_alag] under ssAtDoseTime (rxode2#1349).  flg 1 and 40 are not
+   * rewritten, matching etTran.cpp. */
+  if (hasAlag) {
+    if (flg == EVID0_SS)       flg = EVID0_SS0;
+    else if (flg == EVID0_SS2) flg = EVID0_SS20;
+  }
+  if (turnOff) {
+    if (flg != EVID0_REGULAR) { out.n = -1; return out; }
+    flg = EVID0_OFF;
+    rateI = 0;
+  }
+  /* A FIXED rate/duration only makes an infusion out of a dose record;
+   * etTran.cpp drops it to a bolus for every other evid (a modeled rate or
+   * duration is kept, which is how a phantom infusion stays representable). */
+  if (evid != 1 && evid != 4 &&
+      (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR)) {
+    rateI = 0;
+  }
 
   /* Switch on NONMEM evid */
   switch (evid) {
@@ -320,6 +415,26 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     out.amt[0]    = amt;
     out.ii[0]     = ii_val;
     out.isDose[0] = 0;
+    if (evid == 2 && !turnOff && cmt >= 1) {
+      /* A zero dose turns the compartment back on, as etTran.cpp emits for an
+       * EVID=2 row naming a real compartment.  Same encoding it uses
+       * (cevid - flg + 60, where cevid carries flg 1), so the rate flag is
+       * kept.  etTran.cpp also requires cmt <= baseSize; every compartment a
+       * pushed evid_() can name is a declared state, so cmt >= 1 is the
+       * reachable form of that test here. */
+      out.evid[1]   = cmt100*100000 + rateI*10000 + cmt99*100 + 1 - flg +
+        EVID0_ONDOSE;
+      out.time[1]   = time;
+      out.amt[1]    = 0.0;
+      out.ii[1]     = 0.0;
+      out.isDose[1] = 1;
+      out.n         = 2;
+    } else if (evid == 2 && turnOff) {
+      /* a negative compartment turns it off instead */
+      out.evid[0]   = cmt100*100000 + cmt99*100 + EVID0_OFF;
+      out.amt[0]    = amt;
+      out.isDose[0] = 1;
+    }
     break;
 
   case 1:
@@ -329,13 +444,16 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     break;
 
   case 7:
-    /* Phantom/transit event */
-    out.evid[0]   = cmt100*100000 + 0*10000 + cmt99*100 + 50;
-    out.time[0]   = time;
-    out.amt[0]    = amt;
-    out.ii[0]     = ii_val;
-    out.isDose[0] = 1;
-    out.n         = 1;
+    /* Phantom/transit event.  A modeled rate/duration survives so the on/off
+     * pair is emitted, matching etTran.cpp; a FIXED rate/duration is dropped
+     * to a bolus, which is also what etTran.cpp does for any evid but 1/4. */
+    {
+      int phantomRateI = (rateI == EVIDF_MODEL_RATE_ON ||
+                          rateI == EVIDF_MODEL_DUR_ON) ? rateI : 0;
+      out.n = _rxTranslateDoseInto(&out, 0, time, cmt100, cmt99, phantomRateI,
+                                   EVID0_PHANTOM, amt, useRate, dur, ii_val,
+                                   isDur);
+    }
     break;
 
   case 3:
@@ -363,23 +481,17 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     break;
 
   case 5:
-    /* Replace */
-    out.n         = 1;
-    out.evid[0]   = cmt100*100000 + 4*10000 + cmt99*100 + flg;
-    out.time[0]   = time;
-    out.amt[0]    = amt;
-    out.ii[0]     = ii_val;
-    out.isDose[0] = 1;
+    /* Replace.  Goes through the dose path so that a lagged steady state
+     * (flg 9/19) expands the same way etTran.cpp expands it; for every other
+     * flg this is the same single record as before. */
+    out.n = _rxTranslateDoseInto(&out, 0, time, cmt100, cmt99, EVIDF_REPLACE,
+                                 flg, amt, useRate, dur, ii_val, isDur);
     break;
 
   case 6:
-    /* Multiply */
-    out.n         = 1;
-    out.evid[0]   = cmt100*100000 + 5*10000 + cmt99*100 + flg;
-    out.time[0]   = time;
-    out.amt[0]    = amt;
-    out.ii[0]     = ii_val;
-    out.isDose[0] = 1;
+    /* Multiply -- see case 5 */
+    out.n = _rxTranslateDoseInto(&out, 0, time, cmt100, cmt99, EVIDF_MULT,
+                                 flg, amt, useRate, dur, ii_val, isDur);
     break;
 
   default:

@@ -636,7 +636,7 @@ List rxTranslateOneEvent_(NumericVector time, IntegerVector evid,
   for (int i = 0; i < n; ++i) {
     rx_translated_event ev =
       _rxTranslateOneEvent(time[i], evid[i], cmt[i], amt[i], ii[i], ss[i],
-                           rate[i], isDur[i]);
+                           rate[i], isDur[i], hasAlag[i]);
     if (ev.n <= 0) {
       oRow.push_back(i + 1); oN.push_back(ev.n); oK.push_back(NA_INTEGER);
       oEvid.push_back(NA_INTEGER); oIsDose.push_back(NA_INTEGER);
