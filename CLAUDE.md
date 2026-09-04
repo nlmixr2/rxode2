@@ -462,3 +462,13 @@ Evidence:
 - Regression test:
   `test-etTrans.R` `"evid=4 expanded through addl only resets on the first
   dose (matches NONMEM, issue #1351)"`.
+
+**Genuine bug found in the runtime PUSH path (`evid_()`/`bolus()`/`infuse()`),
+now FIXED**: `_rxPushDose()` (`src/par_solve.cpp`) built its `addl` loop by
+passing the original `_evid` unmodified to `_rxTranslateOneEvent()` on every
+repeat, so a pushed `evid_(time, 4, amt, cmt, rate, ii, addl, ss)` reset on
+every repetition -- unlike the data-table path above. Fixed by rewriting the
+evid passed in for `_rep > 0` from 4 to 1 (search `_doseEvid` in
+`_rxPushDose()`), mirroring `etTran.cpp`'s `case 4:`. Regression test:
+`test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+only once (rxode2#1351/#1352)"`.
