@@ -60,6 +60,7 @@ rxode2.*\.(zip|pdf)$
 ^/?man-roxygen$
 ^.*[.]log$
 tests/testthat/_snaps$
+tests/testthat/etTrans-golden$
 vignettes/*.Rmdh
 vignettes/rxode2-plot.Rmd
 vignettes/rxode2-wt.Rmd
