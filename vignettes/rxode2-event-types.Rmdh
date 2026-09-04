@@ -450,6 +450,42 @@ ev <- et(timeUnits="hr") |>
 rxSolve(m1, ev) |> plot(depot, C2, eff)
 ```
 
+## `addl` only resets the first `evid=4`
+
+This is a common surprise, so it is worth calling out on its own: when an
+`evid=4` (reset+dose) record is repeated with `addl`, only the *first*
+occurrence resets the compartments.  The `addl`-repeated doses are ordinary
+doses, not further resets.
+
+```{r}
+addlEv <- et(amt=10000, time=2, evid=4, ii=12, addl=2) |>
+    et(seq(0, 40, length.out=200))
+
+explicitEv <- et(amt=10000, time=2,  evid=4) |>
+    et(amt=10000, time=14, evid=4) |>
+    et(amt=10000, time=26, evid=4) |>
+    et(seq(0, 40, length.out=200))
+
+addl <- rxSolve(m1, addlEv)
+explicit <- rxSolve(m1, explicitEv)
+
+library(patchwork)
+plot(addl, C2) + ggtitle("addl=2 (resets once)") +
+    plot(explicit, C2) + ggtitle("three explicit evid=4 (resets every time)")
+```
+
+The two regimens are *not* the same, and this is deliberate: it matches
+NONMEM, which also resets an `evid=4` record's `addl` repeats as plain doses
+rather than repeated resets.  Write the regimen out as separate `evid=4`
+records (as in `explicitEv` above) if a reset is wanted at every repetition.
+
+The same asymmetry applies to `ss` combined with `addl`: NONMEM does not carry
+the steady-state flag into the `addl`-repeated doses either, it just keeps
+dosing normally after the first, steady-state dose -- see
+[this blog post](https://blog.nlmixr2.org/blog/2024-04-04-steady-state/) for a
+worked discussion. `rxode2` follows the same convention (see the Steady State
+section above).
+
 # Turning off compartments
 
 Setting `cmt="-depot"` with `evid=2` turns off a compartment: its

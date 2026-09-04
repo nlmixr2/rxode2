@@ -2166,6 +2166,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cevid = -1;
       break;
     case 4:
+      // NONMEM-matching, intentional: an EVID=4 record pushes exactly ONE
+      // EVID=3 reset (below), then falls through to the normal dose-record
+      // logic with 'cevid' rewritten to a plain-dose code (no reset bit).
+      // When this record also has 'addl' > 0, the later addl-expansion loop
+      // (search "cii > 0 && caddl > 0" below) starts from this already-reset
+      // 'cevid', so the repeated doses it emits are plain doses -- they do
+      // NOT reset the compartment again. This matches NONMEM: expanding an
+      // EVID=4 + ADDL record resets only on the first occurrence, and is
+      // pinned by the real-NONMEM-derived fixture
+      // tests/testthat/nmtest-evid4.rds (test-nmtest.R "evid4"), whose later
+      // ADDL-equivalent rows are plain EVID=1, not EVID=4. See GitHub issue
+      // #1351 and https://blog.nlmixr2.org/blog/2024-04-04-steady-state/ for
+      // the analogous ADDL+SS behavior. Do not "fix" this to reset on every
+      // addl repetition -- that was considered and is wrong.
       if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=4 id: %s row: %d"), CHAR(idLvl[cid-1]), i+1);
       }

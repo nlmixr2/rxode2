@@ -855,6 +855,44 @@ d/dt(blood)     = a*intestine - b*blood
         )
     })
 
+    test_that("evid=4 expanded through addl only resets on the first dose (matches NONMEM, issue #1351)", {
+      # NONMEM resets the compartment on the FIRST evid=4 occurrence only;
+      # the addl-repeated doses are plain doses, not additional resets.
+      # This is pinned by the real-NONMEM-derived fixture used in
+      # test-nmtest.R ("evid4"): its ADDL-equivalent rows are plain EVID=1
+      # after the initial EVID=4/SS record, never another EVID=4. See
+      # https://blog.nlmixr2.org/blog/2024-04-04-steady-state/ for the
+      # analogous ADDL+SS behavior. Do not "fix" this to reset on every
+      # addl repetition.
+      modAddl <- rxode2({
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+      })
+      pars <- c(cl = 1, v = 10)
+
+      addlEt <- et(amt = 100, time = 2, evid = 4, ii = 12, addl = 2) |> et(seq(0, 40, by = 1))
+      explicitEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 4) |>
+        et(amt = 100, time = 26, evid = 4) |>
+        et(seq(0, 40, by = 1))
+
+      addl <- rxSolve(modAddl, pars, addlEt)
+      explicit <- rxSolve(modAddl, pars, explicitEt)
+
+      # the addl expansion resets once, then just doses -- it must NOT match
+      # the explicit form, which resets at every evid=4 occurrence
+      expect_false(isTRUE(all.equal(addl$cp, explicit$cp)))
+
+      # only-first-resets reference, expanded by hand
+      onlyFirstResetEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 1) |>
+        et(amt = 100, time = 26, evid = 1) |>
+        et(seq(0, 40, by = 1))
+      onlyFirstReset <- rxSolve(modAddl, pars, onlyFirstResetEt)
+
+      expect_equal(addl$cp, onlyFirstReset$cp)
+    })
+
 
     mod <- rxode2parse("    CO = (187 * WT^0.81) * 60/1000
     QHT = 4 * CO/100
