@@ -242,6 +242,23 @@ rxTest({
     .expectSameAsEventTable(mod, et(amt = 100, time = 2, evid = 4, ii = 12, addl = 2))
   })
 
+  test_that("a pushed evid=4 infusion repeated with addl resets only once", {
+    # the infusion form of the test above: the first occurrence translates to
+    # three records (reset, on, off) and every repeat to two (on, off)
+    obs <- c(0, 1e-8, seq(0.5, 48, by = 0.5))
+    mod <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(2, 4, 100, 1, 10, 12, 2, 0)
+      }
+    })
+    want <- rxSolve(.ref, .pars,
+                    et(amt = 100, time = 2, rate = 10, evid = 4, ii = 12, addl = 2) |>
+                      et(obs))
+    expect_equal(rxSolve(mod, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
+  })
+
   test_that("a split bolus pushed as evid=4 reserves enough room (#1322 follow-up)", {
     # splitBolus expands one translated event into splitBolusN-1 records, so an
     # evid=4 push writes 1 + (splitBolusN-1) records where the capacity check
