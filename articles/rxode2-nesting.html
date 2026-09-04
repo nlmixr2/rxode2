@@ -150,7 +150,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Nesting levels in rxode2</h1>
             
-            <h4 data-toc-skip class="date">2026-09-03</h4>
+            <h4 data-toc-skip class="date">2026-09-04</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-nesting.Rmd" class="external-link"><code>vignettes/rxode2-nesting.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-nesting.Rmd</code></div>
@@ -390,8 +390,10 @@ variability</p>
 <span>             thetaMat<span class="op">=</span><span class="va">tMat</span>, omega<span class="op">=</span><span class="va">omega</span>,</span>
 <span>             sigma<span class="op">=</span><span class="va">sigma</span>, sigmaDf<span class="op">=</span><span class="fl">400</span>,</span>
 <span>             nStud<span class="op">=</span><span class="fl">200</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; [intdy -- t = 6.89924e-310 illegal]: 150 warning(s) for subject(s): 18 (sim 43), 13 (sim 111), 12 (sim 186)</span></span>
-<span><span class="co">#&gt; [intdy -- t = 6.89935e-310 illegal]: 14 warning(s) for subject(s): 18 (sim 43), 13 (sim 111), 12 (sim 186)</span></span>
+<pre><code><span><span class="co">#&gt; [intdy -- t = 4.64378e-310 illegal]: 45 warning(s) for subject(s): 12 (sim 186)</span></span>
+<span><span class="co">#&gt; [intdy -- t = 4.64385e-310 illegal]: 4 warning(s) for subject(s): 12 (sim 186)</span></span>
+<span><span class="co">#&gt; [intdy -- t = 6.93001e-310 illegal]: 105 warning(s) for subject(s): 18 (sim 43), 13 (sim 111)</span></span>
+<span><span class="co">#&gt; [intdy -- t = 6.93005e-310 illegal]: 10 warning(s) for subject(s): 18 (sim 43), 13 (sim 111)</span></span>
 <span><span class="co">#&gt; [lsoda -- internal t + h = t (h too small for machine precision)]: 756852 warning(s) for subject(s): 19 (sim 4), 4 (sim 31), 6 (sim 31), 7 (sim 31), 9 (sim 31), ... (74 more)</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; Warning: some ID(s) could not solve the ODEs correctly; These values are</span></span>
 <span><span class="co">#&gt; replaced with 'NA'</span></span></code></pre>
