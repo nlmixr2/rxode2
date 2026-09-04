@@ -400,6 +400,7 @@ SEXP _rxode2_parse_strncmpci(void);
 
 SEXP _rxode2_rxIsEt2(SEXP);
 SEXP _rxode2_etTransEvidIsObs(SEXP);
+SEXP _rxode2_rxTranslateOneEvent_(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSetIni0(SEXP ini0SEXP);
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
 SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP);
@@ -929,6 +930,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
+    {"_rxode2_rxTranslateOneEvent_", (DL_FUNC) &_rxode2_rxTranslateOneEvent_, 9},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
     {"_rxode2_rxIsEt2", (DL_FUNC) &_rxode2_rxIsEt2, 1},

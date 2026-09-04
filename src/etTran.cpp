@@ -617,6 +617,50 @@ RObject etTransEvidIsObs(SEXP isObsSexp) {
   evid2isObs=INTEGER(isObsSexp)[0];
   return R_NilValue;
 }
+
+// Test hook: run the shared single-event translator
+// (inst/include/rxode2EventTranslate.h) over a vector of events and return the
+// records it produces, one row per record.  This lets the test suite compare
+// the two translators record-for-record without going through a solve;
+// otherwise _rxTranslateOneEvent() is only reachable from a compiled model's
+// evid_().  A rejected event (n < 0) comes back as one row with n = -1.
+//[[Rcpp::export]]
+List rxTranslateOneEvent_(NumericVector time, IntegerVector evid,
+                          IntegerVector cmt, NumericVector amt,
+                          NumericVector ii, IntegerVector ss,
+                          NumericVector rate, IntegerVector isDur,
+                          IntegerVector hasAlag) {
+  int n = time.size();
+  std::vector<int> oRow, oN, oK, oEvid, oIsDose;
+  std::vector<double> oTime, oAmt, oIi;
+  for (int i = 0; i < n; ++i) {
+    rx_translated_event ev =
+      _rxTranslateOneEvent(time[i], evid[i], cmt[i], amt[i], ii[i], ss[i],
+                           rate[i], isDur[i]);
+    if (ev.n <= 0) {
+      oRow.push_back(i + 1); oN.push_back(ev.n); oK.push_back(NA_INTEGER);
+      oEvid.push_back(NA_INTEGER); oIsDose.push_back(NA_INTEGER);
+      oTime.push_back(NA_REAL); oAmt.push_back(NA_REAL); oIi.push_back(NA_REAL);
+      continue;
+    }
+    for (int k = 0; k < ev.n; ++k) {
+      oRow.push_back(i + 1); oN.push_back(ev.n); oK.push_back(k + 1);
+      oEvid.push_back(ev.evid[k]); oIsDose.push_back(ev.isDose[k]);
+      oTime.push_back(ev.time[k]); oAmt.push_back(ev.amt[k]);
+      oIi.push_back(ev.ii[k]);
+    }
+  }
+  List ret(8);
+  ret[0] = wrap(oRow); ret[1] = wrap(oN); ret[2] = wrap(oK);
+  ret[3] = wrap(oEvid); ret[4] = wrap(oTime); ret[5] = wrap(oAmt);
+  ret[6] = wrap(oIi); ret[7] = wrap(oIsDose);
+  ret.attr("names") = CharacterVector::create("row", "n", "k", "evid", "time",
+                                              "amt", "ii", "isDose");
+  ret.attr("class") = "data.frame";
+  ret.attr("row.names") = IntegerVector::create(NA_INTEGER, -(int)oRow.size());
+  return ret;
+}
+
 bool rxode2parseIsIntegerish(SEXP in) {
   Environment rx = rxode2env();
   Function isIntegerish = rx[".isIntegerish"];
