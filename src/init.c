@@ -138,6 +138,32 @@ SEXP _gammaqInv(SEXP, SEXP);
 SEXP _gammapInva(SEXP, SEXP);
 SEXP _gammaqInva(SEXP, SEXP);
 
+/* inverse CDFs (and their shape derivatives) for declared non-normal
+   random effects; see src/boost.cpp and R/etaDist.R */
+SEXP _rxode2_phiU(SEXP);
+SEXP _rxode2_gammapDera(SEXP, SEXP);
+SEXP _rxode2_ibeta(SEXP, SEXP, SEXP);
+SEXP _rxode2_ibetaDer(SEXP, SEXP, SEXP);
+SEXP _rxode2_ibetaInv(SEXP, SEXP, SEXP);
+SEXP _rxode2_ibetaDera(SEXP, SEXP, SEXP);
+SEXP _rxode2_ibetaDerb(SEXP, SEXP, SEXP);
+SEXP _rxode2_studentTDen(SEXP, SEXP);
+SEXP _rxode2_studentTCdf(SEXP, SEXP);
+SEXP _rxode2_studentTCdfDnu(SEXP, SEXP);
+SEXP _rxode2_studentTInv(SEXP, SEXP);
+
+double phiU(double);
+double gammapDera(double, double);
+double ibeta_(double, double, double);
+double ibetaDer(double, double, double);
+double ibetaInv(double, double, double);
+double ibetaDera(double, double, double);
+double ibetaDerb(double, double, double);
+double studentTDen(double, double);
+double studentTCdf(double, double);
+double studentTCdfDnu(double, double);
+double studentTInv(double, double);
+
 double expit(double, double, double);
 double logit(double, double, double);
 
@@ -1070,6 +1096,17 @@ void R_init_rxode2(DllInfo *info){
     {"_gammaqInv", (DL_FUNC) _gammaqInv, 2},
     {"_gammapInva", (DL_FUNC) _gammapInv, 2},
     {"_gammaqInva", (DL_FUNC) _gammaqInv, 2},
+    {"_rxode2_phiU", (DL_FUNC) _rxode2_phiU, 1},
+    {"_rxode2_gammapDera", (DL_FUNC) _rxode2_gammapDera, 2},
+    {"_rxode2_ibeta", (DL_FUNC) _rxode2_ibeta, 3},
+    {"_rxode2_ibetaDer", (DL_FUNC) _rxode2_ibetaDer, 3},
+    {"_rxode2_ibetaInv", (DL_FUNC) _rxode2_ibetaInv, 3},
+    {"_rxode2_ibetaDera", (DL_FUNC) _rxode2_ibetaDera, 3},
+    {"_rxode2_ibetaDerb", (DL_FUNC) _rxode2_ibetaDerb, 3},
+    {"_rxode2_studentTDen", (DL_FUNC) _rxode2_studentTDen, 2},
+    {"_rxode2_studentTCdf", (DL_FUNC) _rxode2_studentTCdf, 2},
+    {"_rxode2_studentTCdfDnu", (DL_FUNC) _rxode2_studentTCdfDnu, 2},
+    {"_rxode2_studentTInv", (DL_FUNC) _rxode2_studentTInv, 2},
     {"_rxode2_calcDerived", (DL_FUNC) _rxode2_calcDerived, 6},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
@@ -1190,6 +1227,17 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "compareFactorInt", (DL_FUNC) &compareFactorInt);
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
+  R_RegisterCCallable("rxode2", "phiU", (DL_FUNC) &phiU);
+  R_RegisterCCallable("rxode2", "gammapDera", (DL_FUNC) &gammapDera);
+  R_RegisterCCallable("rxode2", "ibeta", (DL_FUNC) &ibeta_);
+  R_RegisterCCallable("rxode2", "ibetaDer", (DL_FUNC) &ibetaDer);
+  R_RegisterCCallable("rxode2", "ibetaInv", (DL_FUNC) &ibetaInv);
+  R_RegisterCCallable("rxode2", "ibetaDera", (DL_FUNC) &ibetaDera);
+  R_RegisterCCallable("rxode2", "ibetaDerb", (DL_FUNC) &ibetaDerb);
+  R_RegisterCCallable("rxode2", "studentTDen", (DL_FUNC) &studentTDen);
+  R_RegisterCCallable("rxode2", "studentTCdf", (DL_FUNC) &studentTCdf);
+  R_RegisterCCallable("rxode2", "studentTCdfDnu", (DL_FUNC) &studentTCdfDnu);
+  R_RegisterCCallable("rxode2", "studentTInv", (DL_FUNC) &studentTInv);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
   R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
 

@@ -2,6 +2,38 @@
 
 ## New features
 
+- Random effects can now be declared non-Gaussian.  `lotri`'s `dist()`
+  line says what a random effect's distribution is, and
+  `rxEtaDistExpand()` turns it into an ordinary model:
+
+```r
+ini({
+  lclm  <- log(5)
+  lclrv <- log(0.09)
+  eta.cl + eta.v1 ~ c(1,
+                      0.5, 1)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+})
+model({
+  cl <- eta.cl   # a gamma distributed clearance
+  ...
+})
+```
+
+  The technique is Bauer's (NONMEM 7.5.1): keep the latent random effect
+  standard normal and change the CDF -- `z ~ N(0, 1)`, `u = phiU(z)`,
+  `eta = Q(u)` -- with correlation induced on the latent scale as a
+  Gaussian copula.  The expansion happens on the UI, so `rxSolve()`
+  simulates from the declared distribution with no special case of its
+  own, and it rewrites the declared correlation block into unconstrained
+  `rxCor.*` thetas plus a fixed identity omega, which is a form every
+  downstream estimation method already handles.
+
+- New model functions for the inverse CDFs this needs: `phiU()` (the
+  normal CDF bounded away from 0 and 1, so a quantile cannot return an
+  infinity), `ibeta()`/`ibetaDer()`/`ibetaInv()` (`pbeta`/`dbeta`/`qbeta`)
+  and `studentTCdf()`/`studentTDen()`/`studentTInv()`.
+
 - The event table and the runtime dose-pushing statements (`evid_()`,
   `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
   `phantom()`, `reset()`) now share one implementation of the NONMEM event
@@ -10,6 +42,16 @@
   them record for record, so the two can no longer drift apart.
 
 ## Bug fixes
+
+- `gammap()`'s derivative with respect to its shape argument, and every
+  derivative of `gammapInv()`/`gammaqInv()`, are now in the derivative
+  table.  They were absent, and a missing rule does not error: rxode2's
+  symbolic differentiation silently substituted a one sided finite
+  difference instead.  Any model using an inverse incomplete gamma was
+  therefore differentiated numerically without saying so -- worst exactly
+  in the tails, where the inverse CDF is steepest.  The new
+  `gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
+  supply the shape derivatives that have no elementary closed form.
 
 ### Event translation
 

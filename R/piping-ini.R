@@ -454,6 +454,80 @@
     is.call(expr[[2]]) && identical(expr[[2]][[1]], quote(`prior`))
 }
 
+#' Is this a `dist(eta) ~ family(...)` piping line?
+#'
+#' @param expr expression
+#' @return TRUE when this declares a random effect distribution
+#' @noRd
+#' @author Matthew L. Fidler
+.isIniEtaDistLine <- function(expr) {
+  is.call(expr) && length(expr) == 3L &&
+    identical(expr[[1]], quote(`~`)) &&
+    is.call(expr[[2]]) && length(expr[[2]][[1]]) == 1L &&
+    as.character(expr[[2]][[1]]) %in% c("dist", "etaDist")
+}
+
+#' This handles the dist() piping calls
+#'
+#' Validated by `lotri` the same way `.iniHandlePrior()` is: the whole
+#' `ini` is turned back into a `lotri({})` block, the declaration is
+#' appended, and the block is re-evaluated -- so the rule that a declared
+#' random effect lives in a correlation block is checked by the same code
+#' that checks a declaration written in the block to begin with.
+#'
+#' `dist(eta.cl) ~ NULL` removes a declaration.
+#'
+#' @param expr expression for dist() in `ini()` piping
+#' @param rxui rxode2 ui function
+#' @param envir evaluation environment
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleEtaDist <- function(expr, rxui, envir) {
+  .ini <- rxui$iniDf
+  .tgt <- vapply(as.list(expr[[2]])[-1],
+                 function(y) paste(deparse(y), collapse=""), character(1),
+                 USE.NAMES=FALSE)
+  ## piping replaces, so any declaration already on these random effects
+  ## is cleared before the block is rebuilt
+  if (any(names(.ini) == "etaDist")) {
+    .ini$etaDist[.ini$name %in% .tgt] <- NA_character_
+  }
+  .rm <- is.null(expr[[3]]) || identical(expr[[3]], quote(NULL))
+  if (.rm) {
+    if (any(names(.ini) == "etaDist") && all(is.na(.ini$etaDist))) {
+      .ini$etaDist <- NULL
+    }
+    assign("iniDf", .ini, envir=rxui)
+    return(invisible())
+  }
+  .lotriExpr <- lotri::lotriDataFrameToLotriExpression(.ini, useIni=FALSE)
+  .body <- .lotriExpr[[2]]
+  .body[[length(.body) + 1L]] <- expr
+  .lotriExpr[[2]] <- .body
+  .env <- new.env(parent=envir)
+  assign("lotri", lotri::lotri, envir=.env)
+  .new <- try(eval(.lotriExpr, envir=.env), silent=TRUE)
+  if (inherits(.new, "try-error")) {
+    stop("cannot declare the distribution '",
+         paste(deparse(expr), collapse=" "), "': ",
+         trimws(attr(.new, "condition")$message), call.=FALSE)
+  }
+  .newDf <- as.data.frame(.new)
+  if (!any(names(.newDf) == "etaDist")) {
+    stop("the installed 'lotri' does not support declared random effect ",
+         "distributions", call.=FALSE)
+  }
+  if (!any(names(.ini) == "etaDist")) {
+    .ini$etaDist <- rep(NA_character_, nrow(.ini))
+  }
+  ## only the etaDist column comes back; `err` and anything else rxode2
+  ## keeps on the iniDf is not lotri's to know about
+  .ini$etaDist <- .newDf$etaDist[match(.ini$name, .newDf$name)]
+  assign("iniDf", .ini, envir=rxui)
+  invisible()
+}
+
 #' This handles the prior() piping calls
 #'
 #' The line is validated by `lotri` rather than here: the whole `ini`
@@ -798,6 +872,9 @@
     ## checked before the `~` handling below, which would otherwise take
     ## `prior(tka) ~ dnorm(0, 10)` for a matrix or a type switch
     .iniHandlePrior(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isIniEtaDistLine(expr)) {
+    ## same reason as the prior line above
+    .iniHandleEtaDist(expr=expr, rxui=rxui, envir=envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {

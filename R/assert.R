@@ -1004,12 +1004,14 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
 #' testIniDf(TRUE)
 testIniDf <- function(iniDf) {
   if (checkmate::testDataFrame(iniDf)) {
-    ## `prior` comes from 'lotri' and is only present with newer
-    ## versions of it; since this is a subset check the same list works
-    ## whether or not the column is there
+    ## `prior` and `etaDist` come from 'lotri' and are only present with
+    ## newer versions of it -- and `etaDist` only when a model actually
+    ## declares a random effect distribution; since this is a subset
+    ## check the same list works whether or not the columns are there
     checkmate::testSubset(names(iniDf),
                           c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
-                            "fix", "label", "backTransform", "condition", "prior", "err"))
+                            "fix", "label", "backTransform", "condition", "prior",
+                            "etaDist", "err"))
   } else {
     FALSE
   }

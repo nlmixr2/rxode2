@@ -593,9 +593,109 @@
 })
 
 .rxD$gammap <- list(
-  NULL,
+  ## d(P(a, z))/da has no elementary closed form; `gammapDera()` supplies
+  ## it (see src/boost.cpp).  It used to be NULL, which did NOT error --
+  ## rxode2's symbolic differentiation silently substituted a one sided
+  ## finite difference instead, which is exactly the wrong thing in the
+  ## tails, where an inverse-CDF eta transform lives.
+  function(a, z) {
+    paste0("gammapDera(", a, ",", z, ")")
+  },
   function(a, z) {
     paste0("gammapDer(", a, ",", z, ")")
+  }
+)
+
+## Inverse CDFs, differentiated by the inverse function theorem.
+##
+## For q = Q(p; theta) defined by F(q; theta) = p,
+##
+##   dq/dp       =  1 / f(q; theta)
+##   dq/dtheta_j = -(dF/dtheta_j)(q; theta) / f(q; theta)
+##
+## The dq/dp rules below are therefore EXACT and elementary -- one over
+## the density at the quantile -- and dq/dp is the only derivative the
+## inner (eta) problem ever needs, because a declared random effect
+## enters as `Q(phiU(eta))` and the chain is
+##
+##   d(eta.declared)/d(eta.latent) = (1/f(q)) * dnorm(eta.latent)
+##
+## The shape derivatives use the numerically differentiated dF/dtheta
+## helpers, and are only reached by the analytic outer gradient and the
+## analytic covariance.
+
+.rxD$gammapInv <- list(
+  function(a, p) {
+    paste0("-gammapDera(", a, ",gammapInv(", a, ",", p, "))/",
+           "gammapDer(", a, ",gammapInv(", a, ",", p, "))")
+  },
+  function(a, p) {
+    paste0("1/gammapDer(", a, ",gammapInv(", a, ",", p, "))")
+  }
+)
+
+## gammaq(a, z) = 1 - gammap(a, z), so gammaqInv(a, q) = gammapInv(a, 1-q)
+.rxD$gammaq <- list(
+  function(a, z) {
+    paste0("-gammapDera(", a, ",", z, ")")
+  },
+  function(a, z) {
+    paste0("-gammapDer(", a, ",", z, ")")
+  }
+)
+
+.rxD$gammaqInv <- list(
+  function(a, q) {
+    paste0("gammapDera(", a, ",gammaqInv(", a, ",", q, "))/",
+           "gammapDer(", a, ",gammaqInv(", a, ",", q, "))")
+  },
+  function(a, q) {
+    paste0("-1/gammapDer(", a, ",gammaqInv(", a, ",", q, "))")
+  }
+)
+
+.rxD$ibeta <- list(
+  function(a, b, x) paste0("ibetaDera(", a, ",", b, ",", x, ")"),
+  function(a, b, x) paste0("ibetaDerb(", a, ",", b, ",", x, ")"),
+  function(a, b, x) paste0("ibetaDer(", a, ",", b, ",", x, ")")
+)
+
+.rxD$ibetaInv <- list(
+  function(a, b, p) {
+    paste0("-ibetaDera(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))/",
+           "ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
+  },
+  function(a, b, p) {
+    paste0("-ibetaDerb(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))/",
+           "ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
+  },
+  function(a, b, p) {
+    paste0("1/ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
+  }
+)
+
+.rxD$studentTCdf <- list(
+  function(x, nu) paste0("studentTDen(", x, ",", nu, ")"),
+  function(x, nu) paste0("studentTCdfDnu(", x, ",", nu, ")")
+)
+
+.rxD$studentTInv <- list(
+  function(p, nu) {
+    paste0("1/studentTDen(studentTInv(", p, ",", nu, "),", nu, ")")
+  },
+  function(p, nu) {
+    paste0("-studentTCdfDnu(studentTInv(", p, ",", nu, "),", nu, ")/",
+           "studentTDen(studentTInv(", p, ",", nu, "),", nu, ")")
+  }
+)
+
+## The clamp `phiU()` puts on `phi()` is deliberately absent here: it only
+## binds beyond |q| ~ 7.9, where dnorm(q) is already below 1e-14, so the
+## two agree to within their own accuracy -- and reporting a hard zero
+## there would stall the inner optimizer rather than protect it.
+.rxD$phiU <- list(
+  function(q) {
+    paste0("0.3989422804014327*exp(-0.5*(", q, ")*(", q, "))")
   }
 )
 

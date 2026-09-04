@@ -106,6 +106,12 @@
                                      lotri::lotriBaseCondition(ui$iniDf$condition) == "id")]
   .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
   .extra <- setdiff(.extra, ui$nonMuEtas)
+  ## a declared non-normal random effect has no `theta + eta` form to be
+  ## mu-referenced BY DESIGN -- it enters as `Q(phiU(eta))` -- and neither
+  ## does the latent eta `rxEtaDistExpand()` leaves behind.  Warning about
+  ## either would report the feature working as a parsing error.
+  .extra <- setdiff(.extra, .rxEtaDistVars(ui$iniDf))
+  .extra <- .extra[!grepl("^rxz[.]", .extra)]
   if (length(.extra) > 0) {
     warning("some etas defaulted to non-mu referenced, possible parsing error: ",
             paste(.extra, collapse=", "),

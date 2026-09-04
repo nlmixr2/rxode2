@@ -1699,3 +1699,113 @@ rxStateOde <- function(obj) {
   }
   setdiff(.state, .rxLinCmt(obj))
 }
+
+#' Inverse CDFs for declared non-normal random effects
+#'
+#' These are the pieces a declared non-normal random effect is built
+#' from (see the `dist()` line of an `ini({})` block).  The latent random
+#' effect stays standard normal, `phiU()` maps it to a uniform, and the
+#' family's inverse CDF maps that uniform to the random effect.
+#'
+#' `phiU()` is `phi()` bounded away from 0 and 1 by 1e-15.  `phi()`
+#' saturates to exactly 0 or 1 in double precision around `|q| = 8.3`,
+#' where an inverse CDF would return an infinity.
+#'
+#' `ibeta()`, `ibetaDer()` and `ibetaInv()` are the regularized
+#' incomplete beta function, its derivative in `x` and its inverse -- ie
+#' `pbeta()`, `dbeta()` and `qbeta()`.  `studentTCdf()`, `studentTDen()`
+#' and `studentTInv()` are the Student t CDF, density and quantile,
+#' written on the incomplete beta so the quantile is exactly the
+#' inverse of the CDF at the same tolerance.
+#'
+#' `gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
+#' are the derivatives of those CDFs with respect to their SHAPE
+#' parameters.  None has an elementary closed form, so they are central
+#' differences with one Richardson extrapolation.  They exist so that
+#' rxode2's derivative table is complete for these functions: without
+#' them a model using an inverse CDF silently degrades to a one sided
+#' finite difference, which is precisely wrong in the tails.
+#'
+#' @param q normal deviate (`phiU()`)
+#' @param a first shape parameter
+#' @param b second shape parameter
+#' @param x value at which the CDF (or its derivative) is taken
+#' @param p probability
+#' @param nu degrees of freedom
+#'
+#' @return numeric vector, recycled to the longest argument
+#'
+#' @author Matthew L. Fidler
+#'
+#' @examples
+#'
+#' phiU(c(-9, 0, 9))
+#'
+#' ibetaInv(2, 3, 0.5) ## == qbeta(0.5, 2, 3)
+#'
+#' studentTInv(0.975, 6) ## == qt(0.975, 6)
+#'
+#' @export
+phiU <- function(q) {
+  .Call(`_rxode2_phiU`, q, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+ibeta <- function(a, b, x) {
+  .Call(`_rxode2_ibeta`, a, b, x, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+ibetaDer <- function(a, b, x) {
+  .Call(`_rxode2_ibetaDer`, a, b, x, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+ibetaInv <- function(a, b, p) {
+  .Call(`_rxode2_ibetaInv`, a, b, p, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+ibetaDera <- function(a, b, x) {
+  .Call(`_rxode2_ibetaDera`, a, b, x, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+ibetaDerb <- function(a, b, x) {
+  .Call(`_rxode2_ibetaDerb`, a, b, x, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+gammapDera <- function(a, x) {
+  .Call(`_rxode2_gammapDera`, a, x, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+studentTDen <- function(x, nu) {
+  .Call(`_rxode2_studentTDen`, x, nu, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+studentTCdf <- function(x, nu) {
+  .Call(`_rxode2_studentTCdf`, x, nu, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+studentTCdfDnu <- function(x, nu) {
+  .Call(`_rxode2_studentTCdfDnu`, x, nu, PACKAGE = "rxode2")
+}
+
+#' @rdname phiU
+#' @export
+studentTInv <- function(p, nu) {
+  .Call(`_rxode2_studentTInv`, p, nu, PACKAGE = "rxode2")
+}

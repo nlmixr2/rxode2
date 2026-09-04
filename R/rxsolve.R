@@ -2438,6 +2438,10 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
+  ## a declared non-normal random effect becomes an ordinary model here,
+  ## so simulation needs no special case of its own: the latent etas are a
+  ## fixed identity omega and the transform is model code
+  object <- rxEtaDistExpand(object)
   .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
                              theta = theta, eta=eta)
   if (rxIs(params, "rx.event") || inherits(params, "rxEtFile")) {

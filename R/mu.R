@@ -1034,7 +1034,13 @@
   .estName <- .iniDf$name[!is.na(.iniDf$ntheta) |
                             (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
   .estName <- c(.estName, .errEsts)
-  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts))
+  ## a parameter used only inside a `dist()` declaration IS used by the
+  ## model: `rxEtaDistExpand()` writes it into the inverse CDF line.  The
+  ## declaration is expanded later (before simulation or estimation), so
+  ## at this point the name legitimately appears nowhere in the model
+  ## block.
+  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts,
+                                      .rxEtaDistVars(.iniDf)))
   if (length(.missingPars) > 0) {
     ui$err <-
       c(ui$err,
