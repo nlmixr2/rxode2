@@ -65,7 +65,10 @@ simfun_statement : "(simeps|simeta)" '(' ')' ;
 
 obs_statement : function ;
 
-cmt_evid: string |  identifier_r_no_output | decimalintNo0 ;
+/* A leading '-' names the compartment to TURN OFF, the same signal the event
+   table takes from a negative CMT column. */
+cmt_evid: string |  identifier_r_no_output | decimalintNo0 | cmt_evid_off ;
+cmt_evid_off: '-' ( string | identifier_r_no_output | decimalintNo0 ) ;
 
 evid_statement
   : 'evid_' '('

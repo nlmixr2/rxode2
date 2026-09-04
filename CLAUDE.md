@@ -437,3 +437,76 @@ logit(cor)), with the ini transformed and the report back-transformed -- a
 parameter-transform feature spanning the ini/theta/report handling. AR(1)
 SIMULATION, the lag/diff/lag0 fixes, opt-out asserts, and the symbolic-gradient
 AR estimation model are complete.
+
+### `evid=4` (reset+dose) expanded through `addl` resets only once -- NOT A BUG
+
+`et(amt=100, time=2, evid=4, ii=12, addl=2)` resets the compartment on the
+FIRST dose only; the two `addl`-repeated doses are plain doses, not further
+resets. Writing the same regimen as three explicit `evid=4` records instead
+resets every time and gives different output (see GitHub issue #1351 for the
+reproducer and numbers). **The `addl` form is correct and matches NONMEM** --
+do not "fix" it to reset on every repetition.
+
+Evidence:
+- NONMEM does the same for the analogous `ss` + `addl` case ("NONMEM does not
+  keep the steady state flag with additional doses, it simply keeps dosing
+  without the steady state flag") --
+  https://blog.nlmixr2.org/blog/2024-04-04-steady-state/
+- `tests/testthat/nmtest-evid4.rds` (`test-nmtest.R` test `"evid4"`) is data
+  derived from real NONMEM output: its `addl`-equivalent rows after the
+  initial `evid=4` are plain `evid=1`, never another `evid=4`.
+- Architecturally this falls out of `_rxAddlOccurrence()` (see the next
+  section): a repeat of an `evid=4` record is a plain dose, because the reset
+  is emitted once, before the series.
+- Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
+  resets on the first dose (matches NONMEM, issue #1351)"` and
+  `test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+  only once"`.
+
+### There is ONE event translator -- keep it that way
+
+`inst/include/rxode2EventTranslate.h` is the single implementation of "what
+internal records does this event produce". BOTH engines call it:
+
+- the event table, `src/etTran.cpp` (`etTrans()`), whose per-row loop derives
+  `cmt100/cmt99`, `rateI` and `flg` and then calls `_rxTranslateDoseInto()`
+  once per occurrence of the `addl` series; and
+- the runtime push, `_rxPushDose()` (`src/par_solve.cpp`), behind `evid_()`,
+  `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()` and `reset()`.
+
+`_rxDeriveFlg()`, `_rxAddlApplies()`, `_rxAddlCount()`, `_rxAddlOccurrence()`
+and `_rxAddlZeroLastIi()` in that header are the shared rules for the
+steady-state flag and for what each occurrence of an `addl` series carries.
+**Do not re-implement any of this on one side.** Every historical
+event-table-vs-dosing-time bug (#1349, #1350, #1351) came from the two
+engines having separate copies.
+
+What legitimately stays in `etTran.cpp` is everything that is not "what
+records does this event produce": reading the columns, validating against the
+model variables (`cmtSupportsInfusion`/`cmtSupportsOff`, DVID), the
+first-record `evid` 3/4 guards, `idxInput`/covariate bookkeeping, and the
+post-passes (splitBolus, the reset time shift, sorting, modeled rate/dur
+re-pairing). A hand-encoded classic internal evid (>= 100) is emitted
+verbatim rather than translated.
+
+`cmt_evid` in `inst/tran.g` accepts a leading `-` so `evid_()` can name the
+compartment to turn off, the way a negative `CMT` column does. Changing that
+grammar means regenerating `src/tran.g.d_parser.h` with `devtools::document()`
+-- and re-checking that parse time is still linear in model length, since a
+newly ambiguous rule makes dparser superlinear.
+
+Two verification gates, both cheap, both required after ANY change here:
+
+- `tests/testthat/test-etTrans-golden.R` -- ~14300 cases whose exact
+  `etTrans()` output (records, the class-attribute info list, warning and
+  error text) is snapshotted under `tests/testthat/etTrans-golden/`.
+  Comparison is `expect_identical`. If it fails, that is a bug in the new
+  code unless a human decides the old output was wrong; only then regenerate
+  with `RXODE2_ETTRANS_GOLDEN=write` (confirm first that the failing case ids
+  are exactly the ones decided on) and say so in `NEWS.md`.
+  `RXODE2_ETTRANS_GOLDEN=full` also checks the base-order sort backend.
+- `tests/testthat/test-etTrans-translator.R` -- drives both engines over the
+  same events through the `rxTranslateOneEvent_()` `.Call` hook and requires
+  them to agree record for record. There are no known divergences; the
+  list may only shrink.

@@ -1,0 +1,6 @@
+commit: 18f581963c5e5f91f43e00088ee54a6401454f12
+date: 2026-09-03 20:57:38
+R: R version 4.6.1 (2026-06-24)
+rxode2: 5.1.7
+platform: x86_64-pc-linux-gnu
+nlmixr2data: 2.0.10
