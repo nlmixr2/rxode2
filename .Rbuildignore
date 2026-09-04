@@ -166,3 +166,4 @@ tests/testthat/test-lincmt-parse.R
 ^LICENSE\.md$
 ^tools$
 ^tools/
+^src/.*[.]d$

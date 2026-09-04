@@ -14,5 +14,26 @@ PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@
 PKG_CPPFLAGS = @SUNDIALS_INC@
 
 # Release options -- -O3 gives meaningful speedup on the ODE hot paths
-PKG_CFLAGS  =  -D_isrxode2_ @O2@
-PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -include rxode2_sundials_stan_compat.h -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -DARMA_DONT_USE_OPENMP -DEIGEN_DONT_PARALLELIZE
+PKG_CFLAGS  =  -D_isrxode2_ @O2@ -MMD -MP
+PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -include rxode2_sundials_stan_compat.h -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -DARMA_DONT_USE_OPENMP -DEIGEN_DONT_PARALLELIZE -MMD -MP
+
+################################################################################
+## Header dependency tracking.
+##
+## R's build rules make an object depend on its own source only, so an object
+## goes stale -- silently -- when a header it includes changes and the source
+## does not.  That reaches across packages too: a LinkingTo package's headers
+## are just another include path, so a struct that changes there leaves the
+## objects here compiled to the previous layout.
+##
+## -MMD (in PKG_CFLAGS/PKG_CXXFLAGS above) records each object's headers in a
+## .d file beside it; -MP emits a phony target per header so one that is later
+## renamed or deleted does not break the build.  The .d files the previous
+## build wrote are read back below.
+##
+## Makevars is read before shlib.mk defines "all", so without .DEFAULT_GOAL the
+## first target of the first .d file becomes make's default goal and the shared
+## library is never linked.
+################################################################################
+.DEFAULT_GOAL := all
+-include $(wildcard *.d)
