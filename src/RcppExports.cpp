@@ -2426,7 +2426,7 @@ RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP stateSizeSEXP, SE
     return rcpp_result_gen;
 }
 // rxTestAbiSubjectCounts_
-IntegerMatrix rxTestAbiSubjectCounts_();
+List rxTestAbiSubjectCounts_();
 static SEXP _rxode2_rxTestAbiSubjectCounts__try() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -3216,7 +3216,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvChol)(RObject,Nullable<NumericVector>,std::string,int)");
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double,double,int,int,int,int,int)");
-        signatures.insert("IntegerMatrix(*rxTestAbiSubjectCounts_)()");
+        signatures.insert("List(*rxTestAbiSubjectCounts_)()");
         signatures.insert("SEXP(*rxSaveState_)()");
         signatures.insert("bool(*rxIsSerializeFile_)(SEXP)");
         signatures.insert("SEXP(*rxRestoreState_)(SEXP)");

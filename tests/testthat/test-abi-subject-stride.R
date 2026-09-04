@@ -26,7 +26,9 @@ test_that("the ABI subject accessor walks the array at the allocated stride", {
   suppressMessages(rxSolve(m, d))
 
   cnt <- rxTestAbiSubjectCounts_()
-  expect_equal(nrow(cnt), length(nObsI))
-  expect_equal(cnt[, "abi"], cnt[, "direct"])
-  expect_equal(as.integer(cnt[, "abi"]), as.integer(nObsI) + 1L)
+  # the stride the ABI walks with is the one the allocator published, and this
+  # is the translation unit that owns the struct
+  expect_equal(cnt$abiStride, cnt$localStride)
+  expect_equal(length(cnt$nAllTimes), length(nObsI))
+  expect_equal(as.integer(cnt$nAllTimes), as.integer(nObsI) + 1L)
 })

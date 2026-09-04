@@ -255,27 +255,34 @@ NumericVector rxMemoryComponents_(
   return out;
 }
 
-// Per-subject record counts, read twice: through the ABI and directly.
+// Per-subject record counts read through the ABI, plus the two strides.
 //
 // getSolvingOptionsInd() lives in src/rx2api.c, a separate translation unit
 // from the one that allocates the subject array, so a build where the two
 // disagree on the layout of rx_solving_options_ind walks the array at the
 // wrong stride and every subject but the first is read from the wrong address
-// (nlmixr2/nlmixr2est#1039).  This reads each subject's record count both ways
-// -- once through the accessor downstream packages resolve, once straight off
-// rx->subjects in this translation unit -- so a test can assert they agree
-// with each other and with the data.  Test-only; not exported to users.
+// (nlmixr2/nlmixr2est#1039).  A test compares `nAllTimes` -- read entirely
+// through the accessors downstream packages resolve -- against the dataset,
+// and `abiStride` against `localStride`, this translation unit's own view.
+//
+// Deliberately does NOT also read rx->subjects[i] directly: under the
+// staleness this exists to catch, one of the two views is walking at the
+// wrong stride, and the direct read is the one that would run off the end of
+// the allocation.  A test should fail, not read unallocated memory.
+//
+// Test-only; not exported to users.
 // [[Rcpp::export]]
-IntegerMatrix rxTestAbiSubjectCounts_() {
+List rxTestAbiSubjectCounts_() {
   rx_solve *rx = getRxSolve_();
-  if (rx == NULL || rx->subjects == NULL) return IntegerMatrix(0, 2);
-  int nsub = (int)((uint64_t)rx->nsub*(uint64_t)rx->nsim);
-  IntegerMatrix ret(nsub, 2);
-  for (int i = 0; i < nsub; ++i) {
-    ret(i, 0) = getIndNallTimes(getSolvingOptionsInd(rx, i));
-    ret(i, 1) = rx->subjects[i].n_all_times;
+  int nsub = 0;
+  if (rx != NULL && rx->subjects != NULL) {
+    nsub = (int)((uint64_t)rx->nsub*(uint64_t)rx->nsim);
   }
-  ret.attr("dimnames") = List::create(R_NilValue,
-                                      CharacterVector::create("abi", "direct"));
-  return ret;
+  IntegerVector nAllTimes(nsub);
+  for (int i = 0; i < nsub; ++i) {
+    nAllTimes[i] = getIndNallTimes(getSolvingOptionsInd(rx, i));
+  }
+  return List::create(_["nAllTimes"] = nAllTimes,
+                      _["abiStride"] = (double)rxIndSize,
+                      _["localStride"] = (double)sizeof(rx_solving_options_ind));
 }
