@@ -189,6 +189,58 @@ table:
 Note that `lag(cmt) =` is equivalent to `alag(cmt) =` and not the same
 as `= lag(wt)`
 
+### Inverse CDFs
+
+A group of these deserves a word, because they exist for one purpose:
+giving a random effect a distribution other than normal.  The technique
+(Bauer, NONMEM 7.5.1) keeps the latent random effect standard normal and
+changes the CDF,
+
+```
+z   ~ N(0, 1)
+u   = phiU(z)
+eta = Q(u; args)
+```
+
+where `Q` is the inverse CDF of the family you want.  `phiU()` is the
+normal CDF bounded away from 0 and 1, since `phi()` saturates to exactly
+0 or 1 around `|q| = 8.3` and an inverse CDF of that would return an
+infinity.
+
+Most families need nothing beyond ordinary arithmetic for `Q` -- a
+Weibull random effect is
+`scale*(-log1p(-phiU(z)))^(1/shape)`, a lognormal one is just
+`exp(meanlog + sdlog*z)`.  The three that are not elementary are served
+by `gammapInv()` (gamma, chi-square, inverse gamma), `ibetaInv()` (beta)
+and `studentTInv()` (Student t).
+
+Every one of these is differentiable through rxode2's symbolic
+machinery, which is what lets such a random effect be *estimated* and not
+merely simulated.  The derivative with respect to the probability
+argument -- the one an inner (eta) problem needs -- is exact and
+elementary, one over the density at the quantile.  The derivatives with
+respect to the shape parameters have no elementary closed form, so
+`gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
+supply them as central differences with one Richardson extrapolation.
+They exist so the derivative table is *complete*: a missing rule does not
+error, it silently substitutes a one sided finite difference, which is
+precisely wrong in the tails where an inverse CDF is steepest.
+
+You rarely write any of this by hand.  Declaring the distribution in an
+`ini({})` block writes it for you:
+
+```
+ini({
+  lclm  <- log(5)
+  lclrv <- log(0.09)
+  eta.cl ~ 1
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+})
+```
+
+See `lotri::lotriEtaDists()` for the families that can be declared this
+way, and `rxEtaDistExpand()` for the model such a declaration becomes.
+
 ## Reserved keywords
 
 There are a few reserved keywords in a rxode2 model. They are in the

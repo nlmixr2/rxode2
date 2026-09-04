@@ -222,6 +222,23 @@ rxTest({
     }
   })
 
+  test_that("the new functions are in the syntax vignette's table", {
+    ## `rxSyntaxFunctions` is what the "Supported functions" table of
+    ## vignette("rxode2-syntax") renders, so a function missing from it is
+    ## a function nobody can find
+    .new <- c("phiU(q)", "gammapDer(a, z)", "gammapDera(a, z)",
+              "ibeta(a, b, x)", "ibetaDer(a, b, x)", "ibetaInv(a, b, p)",
+              "ibetaDera(a, b, x)", "ibetaDerb(a, b, x)",
+              "studentTDen(x, nu)", "studentTCdf(x, nu)",
+              "studentTCdfDnu(x, nu)", "studentTInv(p, nu)")
+    expect_true(all(.new %in% rxSyntaxFunctions$Function))
+    ## and each is described, not just listed
+    .d <- rxSyntaxFunctions$Description[match(.new, rxSyntaxFunctions$Function)]
+    expect_true(all(nzchar(.d)))
+    ## every one of them really is a supported rxode2 function
+    expect_true(all(sub("[(].*", "", .new) %in% rxSupportedFuns()))
+  })
+
   test_that("a declaration survives into the ui", {
     .u <- .gammaMod()
     .d <- rxUiEtaDists(.u)

@@ -43,6 +43,11 @@
 #' @export
 #' @author Matthew L. Fidler
 rxUiEtaDists <- function(ui) {
+  ## accepts a model function as well as a built ui, the way the rest of
+  ## the rxUi accessors do
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ui <- suppressMessages(as.rxUi(ui))
+  }
   .iniDf <- ui$iniDf
   .empty <- data.frame(name=character(0), etaDist=character(0),
                        neta1=integer(0), condition=character(0),
@@ -81,10 +86,13 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @param txt the declaration as stored, ie `"dgamma(aCl, bCl)"`
 #' @param u the expression, as text, that supplies the uniform value
 #' @param what the random effect name, for error messages
+#' @param latent the latent normal expression, as text; when given, a
+#'   normal-based family is collapsed onto it rather than going through
+#'   `phiU()` and back
 #' @return character, an rxode2 expression
 #' @noRd
 #' @author Matthew L. Fidler
-.rxEtaDistQuantile <- function(txt, u, what) {
+.rxEtaDistQuantile <- function(txt, u, what, latent=NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
   .tab <- lotri::lotriEtaDists()
@@ -95,6 +103,14 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
          call.=FALSE) # nocov
   }
   .q <- .tab$quantile[.w]
+  ## qnorm(phiU(z)) IS z.  A normal-based family therefore collapses to a
+  ## plain function of the latent random effect, which is both faster and
+  ## more accurate than the round trip through the two CDFs -- and it is
+  ## what lets these families translate to software (NONMEM, Monolix) that
+  ## has a normal CDF but no inverse for it.
+  if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
+    .q <- sub("qnorm({u})", latent, .q, fixed=TRUE)
+  }
   .args <- as.list(.call)[-1]
   .parNames <- character(0)
   if (nzchar(.tab$parNames[.w])) {
@@ -220,6 +236,9 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' }
 #' @author Matthew L. Fidler
 rxEtaDistExpand <- function(ui) {
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ui <- suppressMessages(as.rxUi(ui))
+  }
   .ui <- rxUiDecompress(ui)
   .d <- rxUiEtaDists(.ui)
   if (nrow(.d) == 0L) return(ui)
@@ -270,7 +289,8 @@ rxEtaDistExpand <- function(ui) {
       if (length(.w) == 1L) {
         .u <- paste0("phiU(rxN.", .nm, ")")
         .pre <- c(.pre, paste0(.nm, " <- ",
-                               .rxEtaDistQuantile(.d$etaDist[.w], .u, .nm)))
+                               .rxEtaDistQuantile(.d$etaDist[.w], .u, .nm,
+                                                  latent=paste0("rxN.", .nm))))
       } else {
         ## an undeclared member of a declared block: its variance is one
         ## by the same rule, so it IS the correlated latent normal
