@@ -1531,7 +1531,13 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     // auto-schedule further repeats.  For the first dose (rep==0) with SS, we
     // pass the original _ii so flg is set correctly; for all others ii=0.
     double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
-    rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _evid, _cmt,
+    // NONMEM (and etTran.cpp's data-table addl expansion, see the case 4:
+    // comment there) resets only on the FIRST occurrence of an evid=4
+    // (reset+dose) record; addl repeats are plain doses, not further resets.
+    // rxode2#1351/#1352: without this the pushed evid_()/addl path re-reset
+    // the compartment on every repeat.
+    int _doseEvid = (_rep > 0 && _evid == 4) ? 1 : _evid;
+    rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _doseEvid, _cmt,
                                                   _amt, _doseIi, _doseSs,
                                                   _rate, _isDurFlag);
     if (ev.n < 0) {

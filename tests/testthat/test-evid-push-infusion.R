@@ -226,6 +226,22 @@ rxTest({
     expect_equal(rxSolve(mod, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
   })
 
+  test_that("a pushed evid=4 dose repeated with addl resets only once (rxode2#1351/#1352)", {
+    # _rxPushDose()'s addl loop used to pass the original evid (4, reset+dose)
+    # unmodified to every repeat, so every addl repetition re-reset the
+    # compartment -- unlike the data-table addl expansion in etTran.cpp, which
+    # resets only on the first evid=4 occurrence (matches NONMEM, see
+    # rxode2#1351). Both spellings must now agree.
+    mod <- rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(2, 4, 100, 1, 0, 12, 2, 0)
+      }
+    })
+    .expectSameAsEventTable(mod, et(amt = 100, time = 2, evid = 4, ii = 12, addl = 2))
+  })
+
   test_that("a split bolus pushed as evid=4 reserves enough room (#1322 follow-up)", {
     # splitBolus expands one translated event into splitBolusN-1 records, so an
     # evid=4 push writes 1 + (splitBolusN-1) records where the capacity check
@@ -253,10 +269,16 @@ rxTest({
       cp <- central / v
     })
     e <- et(amt = 100, time = 0) |> et(seq(0, 72, by = 1))
-    eBase <- e |> et(amt = 100, time = 0, cmt = 2) |> et(amt = 100, time = 0, cmt = 3)
-    for (.t in seq(6, 60, by = 6)) {
+    # evid=4 resets only on the FIRST addl repetition (t=6, matching NONMEM --
+    # see rxode2#1351); write the reference the same way, evid=4 once then
+    # plain doses, rather than evid=4 at every repeat.
+    eBase <- e |> et(amt = 100, time = 0, cmt = 2) |> et(amt = 100, time = 0, cmt = 3) |>
+      et(amt = 50, time = 6, cmt = 1, evid = 4) |>
+      et(amt = 50, time = 6, cmt = 2) |>
+      et(amt = 50, time = 6, cmt = 3)
+    for (.t in seq(12, 60, by = 6)) {
       eBase <- eBase |>
-        et(amt = 50, time = .t, cmt = 1, evid = 4) |>
+        et(amt = 50, time = .t, cmt = 1) |>
         et(amt = 50, time = .t, cmt = 2) |>
         et(amt = 50, time = .t, cmt = 3)
     }
