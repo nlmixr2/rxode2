@@ -668,21 +668,39 @@ static inline void assertAdaptiveDosingArgsDeclared(void) {
   }
 }
 
+// Skip leading blanks.
+static inline char *rxPushDoseSkipBlank(char *v) {
+  while (*v == ' ' || *v == '\t') v++;
+  return v;
+}
+
+// Strip the quotes from a quoted compartment name, in place.
+static inline void rxPushDoseUnquote(char **pv) {
+  char *v = *pv;
+  if (*v != '\'' && *v != '"') return;
+  char quote = *v;
+  v++;
+  char *tmp = v;
+  while (*tmp && *tmp != '\0') tmp++;
+  while (tmp > v && (tmp[-1] == ' ' || tmp[-1] == '\t')) tmp--;
+  if (tmp > v && tmp[-1] == quote) tmp--;
+  tmp[0] = '\0';
+  *pv = v;
+}
+
 static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
-  while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
+  vCmt = rxPushDoseSkipBlank(vCmt);
+  // A leading '-' names the compartment to turn off (the negative CMT the
+  // event table takes from its column).  Resolve the compartment normally and
+  // negate the result, so the shared translator sees the same signal either
+  // way.
+  int off = (*vCmt == '-');
+  if (off) vCmt = rxPushDoseSkipBlank(vCmt + 1);
   if (isStrInteger(vCmt)) {
-    sPrint(&_gbuf, "(int)(%s)", vCmt);
+    sPrint(&_gbuf, off ? "(int)(-(%s))" : "(int)(%s)", vCmt);
     return _gbuf.s;
   }
-  if (*vCmt == '\'' || *vCmt == '"') {
-    char quote = *vCmt;
-    vCmt++;
-    char *tmp = vCmt;
-    while (*tmp && *tmp != '\0') tmp++;
-    while (tmp > vCmt && (tmp[-1] == ' ' || tmp[-1] == '\t')) tmp--;
-    if (tmp > vCmt && tmp[-1] == quote) tmp--;
-    tmp[0] = '\0';
-  }
+  rxPushDoseUnquote(&vCmt);
   int hasLhs = isCmtLhsStatement(ni, name, vCmt);
   if (new_de(vCmt, fromCMTprop)) {
     add_de(ni, name, vCmt, hasLhs, fromCMTprop);
@@ -694,7 +712,7 @@ static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt)
   }
   // while DDT# is 0-indexed, the _rxPushDose() is 1-indexed, so add 1
   // to the DDT# for the _rxPushDose() call
-  sPrint(&_gbuf, "(__DDT%d__ + 1)", tb.id);
+  sPrint(&_gbuf, off ? "(-(__DDT%d__ + 1))" : "(__DDT%d__ + 1)", tb.id);
   return _gbuf.s;
 }
 

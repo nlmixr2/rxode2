@@ -1,6 +1,48 @@
 # rxode2 5.1.7 (development version)
 
+## New features
+
+- The event table and the runtime dose-pushing statements (`evid_()`,
+  `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()`, `reset()`) now share one implementation of the NONMEM event
+  semantics, so the same regimen written either way produces the same
+  internal records.  A test drives both over the same events and compares
+  them record for record, so the two can no longer drift apart.
+
 ## Bug fixes
+
+### Event translation
+
+- A steady-state dose into a compartment with a modeled `alag()` pushed
+  from inside a model now expands the way the event table expands it, so
+  the two spellings of the regimen agree.  A steady-state dose has to be
+  solved unlagged while the dose the subject receives is lagged, and only
+  the event table split the record into that pair; the pushed form solved
+  to something else (in the reported case the two differed by 9.05, and now
+  agree to 9e-07) (#1349).
+
+- `addl` no longer repeats a pushed observation, "other" (`evid=2`) or
+  reset (`evid=3`) record.  A pushed `evid_(t, 3, ..., addl = 2)` reset the
+  system three times; the event table warns and ignores `addl` for those
+  records, and the push path now does the same.
+
+- A pushed phantom dose (`evid=7`) keeps a modeled rate or duration instead
+  of silently becoming a bolus, and a pushed `evid=2` record naming a
+  compartment turns that compartment back on -- both matching what the same
+  row does in the event table.
+
+- `evid_()` now accepts a negative compartment, by name or number
+  (`evid_(t, 2, 0, -depot, 0, 0, 0, 0)`), to turn that compartment off --
+  the same signal the event table takes from a negative `CMT` column.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) written as a
+  hand-encoded classic internal `evid` (>= 100) carrying a duration now
+  errors in the event table too.  The runtime push path already refused it
+  (#1350); the event table accepted it and steady-stated the compartment to
+  zero.
+
+- A split bolus now splits every record a dose translates to rather than
+  only the first, which a lagged steady-state bolus needs.
 
 - A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
   inside a model with a duration -- modeled (`rate=-2`, e.g. via `evid_()`),

@@ -66,6 +66,14 @@ struct rx_globals {
   int *gindLin = NULL;
   int *gdelayState = NULL; /* delay() history column -> ODE state index */
   int *gdelayCol = NULL;   /* ODE state index -> delay() history column (-1 if none) */
+  /* 1 when state cmt-1 carries a modeled alag(); read by _rxPushDose() so a
+     pushed steady-state dose expands the way the event table does
+     (rxode2#1349).  Written once per solve before the parallel loop, and only
+     read inside it.  This lives here rather than on rx_solve/rx_solving_options
+     because those are sized into the serialization format and seen by
+     downstream packages. */
+  int *galagCmt = NULL;
+  int galagCmtN = 0;
   int **pendingDoses = NULL;
   int *  nPendingDoses = NULL;
   int *  nAllocPendingDoses = NULL;

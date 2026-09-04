@@ -434,6 +434,8 @@ extern "C" void printErr(int err, int id){
 
 rx_solving_options op_global;
 extern int nPastEvid_global;
+#include "rxGlobals.h"
+extern rx_globals _globals;
 
 rx_solving_options_ind *inds_global = NULL;
 
@@ -1508,12 +1510,31 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 
   rx_solve *rx = &rx_global;
 
-  // Loop over addl+1 doses: dose 0 uses the given ss, subsequent doses use ss=0
-  int nDosesToPush = (_addl > 0 && _ii > 0) ? _addl + 1 : 1;
+  // Loop over the addl series.  _rxAddlApplies()/_rxAddlCount()/
+  // _rxAddlOccurrence() (inst/include/rxode2EventTranslate.h) are shared with
+  // the event table so the two paths cannot disagree about what a repeat is:
+  // repeats drop steady state, drop ii, drop the lagged expansion, and never
+  // reset (rxode2#1351).  An observation/other/reset record is not repeated at
+  // all, which is what etTran.cpp does when it warns "'addl' is ignored".
+  // Does the dosed compartment carry a modeled alag()?  Loaded once per solve
+  // by rxLoadAlagCmt() (src/rxData.cpp) from the same mv[RxMv_alag] the event
+  // table reads, so a pushed steady-state dose expands identically
+  // (rxode2#1349).  A compartment outside the table reads as "no alag".
+  int _alagCmt = (_cmt < 0) ? -_cmt : _cmt;
+  int _hasAlag = (_globals.galagCmt != NULL && _alagCmt >= 1 &&
+                  _alagCmt <= _globals.galagCmtN)
+    ? _globals.galagCmt[_alagCmt - 1] : 0;
+  int _flg0 = _rxDeriveFlg(_ss, _ii, _amt);
+  int nDosesToPush = _rxAddlApplies(_evid) ? _rxAddlCount(_ii, _addl) : 1;
   int anyPushed = 0;
   for (int _rep = 0; _rep < nDosesToPush; _rep++) {
     double _doseTime = _time + _rep * _ii;
-    int    _doseSs   = (_rep == 0) ? _ss : 0;
+    double _doseIi = 0.0;
+    int _occFlg = _rxAddlOccurrence(_rep, _flg0, _ii, _addl, 1, &_doseIi);
+    // _rxTranslateOneEvent() re-derives flg from (ss, ii, amt), so hand it the
+    // ss that reproduces the occurrence's flg
+    int _doseSs = (_occFlg == EVID0_SS2) ? 2 :
+      ((_occFlg == EVID0_SS || _occFlg == EVID0_SSINF) ? 1 : 0);
 
     if (isSameTimeOp(_doseTime, _curTime)) {
       if (_doseTime < _curTime) {
@@ -1527,10 +1548,6 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       continue;
     }
 
-    // Each addl repetition is a standalone event; ii=0 so the solver does not
-    // auto-schedule further repeats.  For the first dose (rep==0) with SS, we
-    // pass the original _ii so flg is set correctly; for all others ii=0.
-    double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
     // NONMEM (and etTran.cpp's data-table addl expansion, see the case 4:
     // comment there) resets only on the FIRST occurrence of an evid=4
     // (reset+dose) record; addl repeats are plain doses, not further resets.
@@ -1539,7 +1556,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     int _doseEvid = (_rep > 0 && _evid == 4) ? 1 : _evid;
     rx_translated_event ev = _rxTranslateOneEvent(_doseTime, _doseEvid, _cmt,
                                                   _amt, _doseIi, _doseSs,
-                                                  _rate, _isDurFlag);
+                                                  _rate, _isDurFlag, _hasAlag);
     if (ev.n < 0) {
       // Steady-state constant infusion (flg 40) paired with a duration --
       // meaningless since flg 40 never turns off (rxode2#1350).  Abort the
@@ -1554,13 +1571,15 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     }
     if (ev.n == 0) continue;
 
-    int splitDoseEvent = -1;
+    // Every eligible record splits, not just the first: a lagged steady-state
+    // bolus translates to TWO splittable records (the flg 9/19 steady-state
+    // record and its plain flg 1 companion), and etTran.cpp splits each one
+    // independently in its own post-pass.
+    int splitK[RX_TRANSLATED_EVENT_MAX] = {0};
     if (rx->splitBolus != NULL && rx->splitBolusN >= 2 && _cmt == rx->splitBolus[0]) {
       for (int _k = 0; _k < ev.n; _k++) {
-        if (_rxShouldSplitTranslatedBolus(ev.evid[_k], _cmt, _amt, rx->splitBolus[0])) {
-          splitDoseEvent = _k;
-          break;
-        }
+        splitK[_k] = _rxShouldSplitTranslatedBolus(ev.evid[_k], _cmt, _amt,
+                                                   rx->splitBolus[0]);
       }
     }
 
@@ -1569,7 +1588,7 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     // idose growth below already uses, or the append loop overruns the arrays.
     int nDose = 0, nRec = 0;
     for (int _k = 0; _k < ev.n; _k++) {
-      int nHere = (_k == splitDoseEvent) ? rx->splitBolusN - 1 : 1;
+      int nHere = splitK[_k] ? rx->splitBolusN - 1 : 1;
       nRec += nHere;
       if (ev.isDose[_k]) nDose += nHere;
     }
@@ -1656,12 +1675,12 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     int doseSuffix = _ind->ndoses; // idose sort start
     int rawStart = _ind->n_all_times;
     for (int _k = 0; _k < ev.n; _k++) {
-      int splitStart = (_k == splitDoseEvent) ? 1 : 0;
-      int splitEnd = (_k == splitDoseEvent) ? rx->splitBolusN : 1;
+      int splitStart = splitK[_k] ? 1 : 0;
+      int splitEnd = splitK[_k] ? rx->splitBolusN : 1;
       for (int _s = splitStart; _s < splitEnd; _s++) {
         int rawIdx = _ind->n_all_times;
         int curEvid = ev.evid[_k];
-        if (_k == splitDoseEvent) {
+        if (splitK[_k]) {
           curEvid = _rxEncodeEventCmt(ev.evid[_k], rx->splitBolus[_s]);
         }
         _ind->all_times[rawIdx]  = ev.time[_k];
