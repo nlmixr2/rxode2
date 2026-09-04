@@ -151,6 +151,10 @@ etTransEvidIsObs <- function(isObsSexp) {
     .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
 }
 
+rxTranslateOneEvent_ <- function(time, evid, cmt, amt, ii, ss, rate, isDur, hasAlag) {
+    .Call(`_rxode2_rxTranslateOneEvent_`, time, evid, cmt, amt, ii, ss, rate, isDur, hasAlag)
+}
+
 #' See if the NONMEM compartment number supports infusion
 #'
 #' This export is mostly for testing purposes.

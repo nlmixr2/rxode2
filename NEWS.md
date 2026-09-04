@@ -1,6 +1,17 @@
 # rxode2 5.1.7 (development version)
 
+## New features
+
+- The event table and the runtime dose-pushing statements (`evid_()`,
+  `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()`, `reset()`) now share one implementation of the NONMEM event
+  semantics, so the same regimen written either way produces the same
+  internal records.  A test drives both over the same events and compares
+  them record for record, so the two can no longer drift apart.
+
 ## Bug fixes
+
+### Compilation
 
 - `getSolvingOptionsInd()` now walks the subject array at the stride it was
   allocated with rather than at its own translation unit's
@@ -14,6 +25,48 @@
   size or a segfault (nlmixr2/nlmixr2est#1039).  Fields keep their offsets by
   the append-only convention the struct already documents, so the stride was
   the whole of the disagreement.
+
+### Event translation
+
+- A steady-state dose into a compartment with a modeled `alag()` pushed
+  from inside a model now expands the way the event table expands it, so
+  the two spellings of the regimen agree.  A steady-state dose has to be
+  solved unlagged while the dose the subject receives is lagged, and only
+  the event table split the record into that pair; the pushed form solved
+  to something else (in the reported case the two differed by 9.05, and now
+  agree to 9e-07) (#1349).
+
+- `addl` no longer repeats a pushed observation, "other" (`evid=2`) or
+  reset (`evid=3`) record.  A pushed `evid_(t, 3, ..., addl = 2)` reset the
+  system three times; the event table warns and ignores `addl` for those
+  records, and the push path now does the same.
+
+- A pushed phantom dose (`evid=7`) keeps a modeled rate or duration instead
+  of silently becoming a bolus, and a pushed `evid=2` record naming a
+  compartment turns that compartment back on -- both matching what the same
+  row does in the event table.
+
+- `evid_()` now accepts a negative compartment, by name or number
+  (`evid_(t, 2, 0, -depot, 0, 0, 0, 0)`), to turn that compartment off --
+  the same signal the event table takes from a negative `CMT` column.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) written as a
+  hand-encoded classic internal `evid` (>= 100) carrying a duration now
+  errors in the event table too.  The runtime push path already refused it
+  (#1350); the event table accepted it and steady-stated the compartment to
+  zero.
+
+- A split bolus now splits every record a dose translates to rather than
+  only the first, which a lagged steady-state bolus needs.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
+  inside a model with a duration -- modeled (`rate=-2`, e.g. via `evid_()`),
+  fixed (`infuseDur()`), or a hand-encoded classic internal `evid` (>= 100)
+  -- now errors instead of silently steady-stating the compartment to zero.
+  That combination never had a usable rate (a constant infusion never turns
+  off, so there is nothing for the duration to measure), and the event-table
+  path already refused it; the runtime push path did not check for it
+  (#1350).
 
 - Piping an omega block into a model with ten or more etas no longer
   permutes the etas that were not piped over.  They were renumbered with
@@ -781,6 +834,16 @@
   reports how many exponentials took it as `blockExp`.
 
 ## Bug fixes
+
+- Translating an event table no longer slows down with the number of subjects
+  alone.  Whether an id had been seen was tested once per input row against
+  vectors holding one entry per subject, as `std::find()` linear scans, so the
+  cost was `O(rows * subjects)`: with the row count held fixed at 120000,
+  going from 100 to 12000 subjects cost 12.6x.  The membership tests now use
+  a set, which is flat -- 15x faster at 12000 subjects -- and the vectors are
+  kept for their size and for the order the "IDs without observations" warning
+  lists them in.  A dosing-only id was also matched with a linear scan once
+  per row when dropping those rows.
 
 - An infusion pushed from inside the model with `evid_()` now turns back off.
   `evid=4` (reset + dose) used both slots of the translated event for the reset

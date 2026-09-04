@@ -5,6 +5,7 @@
 
 #include <Rcpp.h>
 #include <algorithm>
+#include <unordered_set>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "timsort.h"
@@ -617,6 +618,55 @@ RObject etTransEvidIsObs(SEXP isObsSexp) {
   evid2isObs=INTEGER(isObsSexp)[0];
   return R_NilValue;
 }
+
+// Test hook: run the shared single-event translator
+// (inst/include/rxode2EventTranslate.h) over a vector of events and return the
+// records it produces, one row per record.  This lets the test suite compare
+// the two translators record-for-record without going through a solve;
+// otherwise _rxTranslateOneEvent() is only reachable from a compiled model's
+// evid_().  A rejected event (n < 0) comes back as one row with n = -1.
+//[[Rcpp::export]]
+List rxTranslateOneEvent_(NumericVector time, IntegerVector evid,
+                          IntegerVector cmt, NumericVector amt,
+                          NumericVector ii, IntegerVector ss,
+                          NumericVector rate, IntegerVector isDur,
+                          IntegerVector hasAlag) {
+  int n = time.size();
+  if (evid.size() != n || cmt.size() != n || amt.size() != n ||
+      ii.size() != n || ss.size() != n || rate.size() != n ||
+      isDur.size() != n || hasAlag.size() != n) {
+    stop(_("all inputs to 'rxTranslateOneEvent_' must be the same length"));
+  }
+  std::vector<int> oRow, oN, oK, oEvid, oIsDose;
+  std::vector<double> oTime, oAmt, oIi;
+  for (int i = 0; i < n; ++i) {
+    rx_translated_event ev =
+      _rxTranslateOneEvent(time[i], evid[i], cmt[i], amt[i], ii[i], ss[i],
+                           rate[i], isDur[i], hasAlag[i]);
+    if (ev.n <= 0) {
+      oRow.push_back(i + 1); oN.push_back(ev.n); oK.push_back(NA_INTEGER);
+      oEvid.push_back(NA_INTEGER); oIsDose.push_back(NA_INTEGER);
+      oTime.push_back(NA_REAL); oAmt.push_back(NA_REAL); oIi.push_back(NA_REAL);
+      continue;
+    }
+    for (int k = 0; k < ev.n; ++k) {
+      oRow.push_back(i + 1); oN.push_back(ev.n); oK.push_back(k + 1);
+      oEvid.push_back(ev.evid[k]); oIsDose.push_back(ev.isDose[k]);
+      oTime.push_back(ev.time[k]); oAmt.push_back(ev.amt[k]);
+      oIi.push_back(ev.ii[k]);
+    }
+  }
+  List ret(8);
+  ret[0] = wrap(oRow); ret[1] = wrap(oN); ret[2] = wrap(oK);
+  ret[3] = wrap(oEvid); ret[4] = wrap(oTime); ret[5] = wrap(oAmt);
+  ret[6] = wrap(oIi); ret[7] = wrap(oIsDose);
+  ret.attr("names") = CharacterVector::create("row", "n", "k", "evid", "time",
+                                              "amt", "ii", "isDose");
+  ret.attr("class") = "data.frame";
+  ret.attr("row.names") = IntegerVector::create(NA_INTEGER, -(int)oRow.size());
+  return ret;
+}
+
 bool rxode2parseIsIntegerish(SEXP in) {
   Environment rx = rxode2env();
   Function isIntegerish = rx[".isIntegerish"];
@@ -1422,14 +1472,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> id;
   id.reserve(resSize);
   std::vector<int> idIcov;
+  // These four hold one entry per subject.  Membership in them is tested once
+  // per input row, so a std::find() linear scan makes the row loop below cost
+  // O(rows * subjects) -- at a fixed 120000 rows, going from 100 to 12000
+  // subjects cost 12.6x.  The vectors stay (their size, and the order they are
+  // iterated in for the warnings, are both used); the sets alongside them make
+  // the membership test O(1) and are kept in step at every push_back.
   std::vector<int> allId;
   allId.reserve(resSize);
+  std::unordered_set<int> allIdSet;
   std::vector<int> obsId;
   obsId.reserve(resSize);
+  std::unordered_set<int> obsIdSet;
   std::vector<int> zeroId;
-  obsId.reserve(resSize);
+  zeroId.reserve(resSize);
+  std::unordered_set<int> zeroIdSet;
   std::vector<int> doseId;
   doseId.reserve(resSize);
+  std::unordered_set<int> doseIdSet;
   std::vector<int> evid;
   evid.reserve(resSize);
   std::vector<double> time;
@@ -1652,7 +1712,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int cmt99;  //= amt[i]-amt100*100;
   int cevid;
   int nevid;
-  int nevidLag;
   int caddl;
   double ctime;
   double cii;
@@ -1735,8 +1794,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else cii = inIi[i];
     if (ISNA(cii)) cii=0.0;
 
-    if (std::find(allId.begin(), allId.end(), cid) == allId.end()) {
+    if (allIdSet.find(cid) == allIdSet.end()) {
       allId.push_back(cid);
+      allIdSet.insert(cid);
       // New ID
       // Add mtime records
       for (j = nMtime; j--;) {
@@ -1920,8 +1980,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cevid=2;
         }
         if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-            std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
+            obsIdSet.find(cid) == obsIdSet.end()) {
           obsId.push_back(cid);
+          obsIdSet.insert(cid);
         }
       } else {
         if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))) {
@@ -1954,6 +2015,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (cevid == 0 && flg == 30) {
       cevid = 2;
     }
+    // set when the row carries a hand-encoded classic internal evid, which is
+    // emitted verbatim rather than translated
+    bool classicEvid = false;
     switch(cevid) {
     case 0:
       // Observation
@@ -1970,8 +2034,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-          std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
+          obsIdSet.find(cid) == obsIdSet.end()) {
         obsId.push_back(cid);
+        obsIdSet.insert(cid);
       }
       if (caddl > 0) {
         Rf_warningcall(R_NilValue, "%s", _("'addl' is ignored with observations"));
@@ -2036,8 +2101,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cmtF.push_back(cmt);
         time.push_back(ctime);
         if (ctime == 0){
-          if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
             zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
         amt.push_back(NA_REAL);
@@ -2083,8 +2149,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       break;
     case 2:
       cevid = 2;
-      if ((cevid == 0 || (cevid == 2 && evid2isObs)) && std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+      if ((cevid == 0 || (cevid == 2 && evid2isObs)) && obsIdSet.find(cid) == obsIdSet.end()){
         obsId.push_back(cid);
+        obsIdSet.insert(cid);
       }
       if (flg == 30){
         rateI = 0;
@@ -2105,8 +2172,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cmtF.push_back(cmt);
         time.push_back(ctime);
         if (ctime == 0){
-          if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
             zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
         amt.push_back(NA_REAL);
@@ -2151,8 +2219,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       time.push_back(ctime);
       hasReset = true;
       if (ctime == 0){
-        if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+        if (zeroIdSet.find(cid) == zeroIdSet.end()){
           zeroId.push_back(cid);
+          zeroIdSet.insert(cid);
         }
       }
       amt.push_back(NA_REAL);
@@ -2166,6 +2235,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cevid = -1;
       break;
     case 4:
+      // NONMEM-matching, intentional: an EVID=4 record pushes exactly ONE
+      // EVID=3 reset (below), then falls through to the normal dose-record
+      // logic with 'cevid' rewritten to a plain-dose code (no reset bit).
+      // When this record also has 'addl' > 0, the later addl-expansion loop
+      // (search "cii > 0 && caddl > 0" below) starts from this already-reset
+      // 'cevid', so the repeated doses it emits are plain doses -- they do
+      // NOT reset the compartment again. This matches NONMEM: expanding an
+      // EVID=4 + ADDL record resets only on the first occurrence, and is
+      // pinned by the real-NONMEM-derived fixture
+      // tests/testthat/nmtest-evid4.rds (test-nmtest.R "evid4"), whose later
+      // ADDL-equivalent rows are plain EVID=1, not EVID=4. See GitHub issue
+      // #1351 and https://blog.nlmixr2.org/blog/2024-04-04-steady-state/ for
+      // the analogous ADDL+SS behavior. Do not "fix" this to reset on every
+      // addl repetition -- that was considered and is wrong.
       if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=4 id: %s row: %d"), CHAR(idLvl[cid-1]), i+1);
       }
@@ -2178,8 +2261,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       time.push_back(ctime);
       hasReset = true;
       if (ctime == 0){
-        if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+        if (zeroIdSet.find(cid) == zeroIdSet.end()){
           zeroId.push_back(cid);
+          zeroIdSet.insert(cid);
         }
       }
       amt.push_back(NA_REAL);
@@ -2227,6 +2311,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         Rf_warningcall(R_NilValue, "%s", _("'ss' is ignored with classic rxode2 'EVID's"));
         flg=1;
       }
+      // Only a user-supplied evid column can carry a hand-encoded classic
+      // internal evid.  Without one, cevid was DERIVED from the amt/rate/dur
+      // columns above and has to be translated like any other dose -- the
+      // rateI/flg resets just above are themselves gated on hasEvid.
+      classicEvid = hasEvid;
     }
     if (cevid != -1){
       if (rateI == 9){
@@ -2236,312 +2325,90 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         nevid = cmt100*100000+60001+cmt99*100;
         hasModeledRateDur = true;
       }
-      id.push_back(cid);
-      evid.push_back(cevid);
-      cmtF.push_back(cmt);
-      time.push_back(ctime);
-      if (ctime == 0){
-        if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
-          zeroId.push_back(cid);
+      // A hand-encoded classic internal evid is emitted verbatim: it already
+      // names its own compartment, rate flag and steady-state flag, and the
+      // switch above has warned about and cleared anything that conflicts.
+      // The one thing still worth refusing is a constant-infusion steady state
+      // carrying a duration, which never turns off and so steady-states the
+      // compartment to zero -- the same combination the shared translator
+      // rejects for a pushed dose (rxode2#1350).
+      if (classicEvid) {
+        int wh, wCmt, wh100, whI, wh0;
+        getWh(cevid, &wh, &wCmt, &wh100, &whI, &wh0);
+        if (wh0 == EVID0_SSINF && whI == EVIDF_INF_DUR) {
+          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
+        if (wh0 == EVID0_SSINF && whI == EVIDF_MODEL_DUR_ON) {
+          stop(_("when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
       }
-      ii.push_back(cii);
-      bool keepIIadl = false;
-      bool addLagged = false;
-      if (flg == 9 || flg == 19) {
-        keepIIadl = true;
-        addLagged = true;
-      } else if ((flg == 10 || flg == 20 || flg == 40) && caddl > 0){
-        keepIIadl = true;
-        //stop(_("'ss' with 'addl' not supported (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
-      }
-      dv.push_back(NA_REAL);
-      limit.push_back(NA_REAL);
-      cens.push_back(0);
-
-      idxInput.push_back(i);
-      ndose++;
-      if (rateI > 2 && rateI != 4 && rateI != 5 && flg != 40){
-        // modeled rate/duration
+      // 'amt' validation, kept here (it needs the row's identity for the
+      // message) and in the same order as the record emission below
+      if (!classicEvid && rateI > 2 && rateI != 4 && rateI != 5 && flg != 40) {
         if (ISNA(camt) || camt == 0.0) {
           if (nevid != 2){
             stop(_("'amt' value NA or 0 for dose event (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
         }
-        amt.push_back(camt);
-        if (addLagged) {
-          // add lagged dose for steady state
-          // note that steady state is already calculated with 09 or 19
-          // add lagged dose to continue ss tau
-          // if this is not a calculated rate/dur:
-          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
-          id.push_back(cid);
-          evid.push_back(nevidLag);
-          cmtF.push_back(cmt);
-          amt.push_back(camt);
-          time.push_back(ctime);
-          //ii.push_back(cii);
-          ii.push_back(0.0);
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-
-          idxInput.push_back(-1);
-          ndose++;
-        }
-        // turn off
-        id.push_back(cid);
-        evid.push_back(nevid);
-        cmtF.push_back(cmt);
-        time.push_back(ctime);
-        amt.push_back(camt);
-        ii.push_back(0.0);
-        dv.push_back(NA_REAL);
-        limit.push_back(NA_REAL);
-        cens.push_back(0);
-
-        idxInput.push_back(-1);
-        ndose++;
-      } else if (rateI == 1 || rateI == 2){
-        // In this case amt needs to be changed.
-        // specified rate/duration
-        dur = camt/rate;
-        amt.push_back(rate); // turn on
-        if (addLagged) {
-          // add lagged dose for steady state
-          // note that steady state is already calculated with 09 or 19
-          // add lagged dose to continue ss tau
-          // if this is not a calculated rate/dur:
-          id.push_back(cid);
-          evid.push_back(cevid-flg+8);
-          cmtF.push_back(cmt);
-          amt.push_back(-rate);
-          time.push_back(ctime);
-          ii.push_back(cii);
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-
-          idxInput.push_back(-1);
-          ndose++;
-
-          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
-          id.push_back(cid);
-          evid.push_back(nevidLag);
-          cmtF.push_back(cmt);
-          amt.push_back(rate);
-          time.push_back(ctime);
-          //ii.push_back(cii);
-          ii.push_back(0.0);
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-
-          idxInput.push_back(-1);
-          ndose++;
-        }
-        // turn off
-        if (flg != 40){
-          id.push_back(cid);
-          if (flg == 9 || flg == 19) {
-            evid.push_back(cevid-flg+1);
-          } else {
-            evid.push_back(cevid);
-          }
-          cmtF.push_back(cmt);
-          time.push_back(ctime+dur);
-          amt.push_back(-rate);
-          ii.push_back(0.0);
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-
-          idxInput.push_back(-1);
-          ndose++;
-        }
-      } else {
+      } else if (classicEvid || !(rateI == 1 || rateI == 2)) {
         if (cevid != 0 && cevid != 2 && cevid != 9 && flg != 30 && ISNA(camt)) {
           stop(_("'amt' value NA for dose event; (id: %s, amt: %f, evid: %d rxode2 evid: %d, row: %d)"), CHAR(idLvl[cid-1]), camt, inEvid[i], cevid, (int)i+1);
         }
-        amt.push_back(camt);
-        if (addLagged) {
-          nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
-          id.push_back(cid);
-          evid.push_back(nevidLag);
-          cmtF.push_back(cmt);
-          amt.push_back(camt);
-          time.push_back(ctime);
-          //ii.push_back(cii);
-          ii.push_back(0.0);
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-
-          idxInput.push_back(-1);
-          ndose++;
-        }
       }
-      if (cii > 0 && caddl > 0) {
-        if (!keepIIadl) {
-          ii.pop_back();ii.push_back(0.0);
-        }
-        int cevidAddl = cevid;
-        if (addlDropSs) {
-          if (addLagged) {
-            if (rateI != 8 && rateI != 9 && rateI != 6 && rateI != 7) {
-              cevidAddl = nevid = cmt100*100000+rateI*10000+cmt99*100+1;
-              flg = 0;
-            } else {
-              cevidAddl = cmt100*100000+rateI*10000+cmt99*100+1;
-            }
-            addLagged = false;
-            keepIIadl=false;
-          } else if (flg == 10 || flg == 20) {
-            cevidAddl = cmt100*100000+rateI*10000+cmt99*100+1;
-            keepIIadl=false;
+      if (rateI == 1 || rateI == 2) dur = camt/rate;
+      // One pass per occurrence of the addl series (rep 0 is the record
+      // itself).  What each occurrence carries, and what records it expands
+      // to, comes from the shared translator in
+      // inst/include/rxode2EventTranslate.h, which the runtime evid_() push
+      // path uses as well, so the two cannot disagree.
+      int nOcc = _rxAddlCount(cii, caddl);
+      for (int rep = 0; rep < nOcc; ++rep) {
+        if (rep > 0) ctime += cii;
+        double occIi = 0.0;
+        int occFlg = _rxAddlOccurrence(rep, flg, cii, caddl, addlDropSs, &occIi);
+        rx_translated_event ev;
+        if (classicEvid) {
+          ev.n = 1;
+          ev.evid[0] = cevid;
+          ev.time[0] = ctime;
+          ev.amt[0] = camt;
+          ev.ii[0] = occIi;
+          ev.isDose[0] = 1;
+        } else {
+          ev.n = _rxTranslateDoseInto(&ev, 0, ctime, cmt100, cmt99, rateI,
+                                      occFlg, camt, rate, dur, occIi,
+                                      /*isDur=*/0);
+          if (ev.n < 0) {
+            stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
         }
-        for (j=caddl;j--;) {
-          ctime+=cii;
+        for (int k = 0; k < ev.n; ++k) {
           id.push_back(cid);
-          evid.push_back(cevidAddl);
+          evid.push_back(ev.evid[k]);
           cmtF.push_back(cmt);
-          time.push_back(ctime);
-          if (keepIIadl) {
-            ii.push_back(cii);
-          } else {
-            ii.push_back(0.0);
-          }
+          time.push_back(ev.time[k]);
+          amt.push_back(ev.amt[k]);
+          ii.push_back(ev.ii[k]);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-
-          if (addlKeepsCov) {
-            idxInput.push_back(i);
+          // only the record standing in for the input row carries its
+          // covariates; the companions it expands to never do, and a repeat
+          // only does when addlKeepsCov asks for it
+          if (rep == 0) {
+            idxInput.push_back(k == 0 ? (int)i : -1);
           } else {
-            idxInput.push_back(-1);
+            idxInput.push_back(addlKeepsCov ? (int)i : -1);
           }
           ndose++;
-          if (rateI > 2 && rateI != 4 && rateI != 5) {
-            amt.push_back(camt);
-            if (addLagged) {
-              id.push_back(cid);
-              evid.push_back(nevidLag);
-              cmtF.push_back(cmt);
-              time.push_back(ctime);
-              ii.push_back(0.0);
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(camt);
-
-              if (addlKeepsCov) {
-                idxInput.push_back(i);
-              } else {
-                idxInput.push_back(-1);
-              }
-              ndose++;
-            }
-            // turn off
-            id.push_back(cid);
-            evid.push_back(nevid);
-            cmtF.push_back(cmt);
-            time.push_back(ctime);
-            amt.push_back(camt);
-            ii.push_back(0.0);
-            dv.push_back(NA_REAL);
-            limit.push_back(NA_REAL);
-            cens.push_back(0);
-
-            if (addlKeepsCov) {
-              idxInput.push_back(i);
-            } else {
-              idxInput.push_back(-1);
-            }
-            ndose++;
-          } else if (rateI == 1 || rateI == 2){
-            amt.push_back(rate);
-            if (addLagged) {
-              id.push_back(cid);
-              evid.push_back(cevid-flg+8);
-              cmtF.push_back(cmt);
-              amt.push_back(-rate);
-              time.push_back(ctime);
-              if (keepIIadl) {
-                ii.push_back(cii);
-              } else {
-                ii.push_back(0.0);
-              }
-              //ii.push_back(0.0);
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-
-              if (addlKeepsCov) {
-                idxInput.push_back(i);
-              } else {
-                idxInput.push_back(-1);
-              }
-              ndose++;
-
-              id.push_back(cid);
-              evid.push_back(nevidLag);
-              cmtF.push_back(cmt);
-              time.push_back(ctime);
-              ii.push_back(0.0);
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(rate);
-
-              if (addlKeepsCov) {
-                idxInput.push_back(i);
-              } else {
-                idxInput.push_back(-1);
-              }
-              ndose++;
-            }
-            // turn off
-            id.push_back(cid);
-            if (flg == 9 || flg == 19) {
-              evid.push_back(cevid-flg+1);
-            } else {
-              evid.push_back(cevidAddl);
-            }
-            cmtF.push_back(cmt);
-            time.push_back(ctime+dur);
-            amt.push_back(-rate);
-            ii.push_back(0.0);
-            dv.push_back(NA_REAL);
-            limit.push_back(NA_REAL);
-            cens.push_back(0);
-
-            if (addlKeepsCov) {
-              idxInput.push_back(i);
-            } else {
-              idxInput.push_back(-1);
-            }
-            ndose++;
-          } else {
-            amt.push_back(camt);
-            if (addLagged) {
-              id.push_back(cid);
-              evid.push_back(nevidLag);
-              cmtF.push_back(cmt);
-              time.push_back(ctime);
-              ii.push_back(0.0);
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(camt);
-
-              if (addlKeepsCov) {
-                idxInput.push_back(i);
-              } else {
-                idxInput.push_back(-1);
-              }
-              ndose++;
-            }
+        }
+        if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
+          ii[ii.size() - 1] = 0.0;
+        }
+        if (rep == 0 && ctime == 0){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
+            zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
       }
@@ -2649,9 +2516,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (obsId.size() != allId.size()){
       std::string idWarn = "IDs without observations dropped:";
       for (j = allId.size(); j--;){
-        if (std::find(obsId.begin(), obsId.end(), allId[j]) == obsId.end()){
+        if (obsIdSet.find(allId[j]) == obsIdSet.end()){
           idWarn = idWarn + " " +as<std::string>(idLvl[allId[j]-1]);
           doseId.push_back(allId[j]);
+          doseIdSet.insert(allId[j]);
         }
       }
       Rf_warningcall(R_NilValue, "%s", idWarn.c_str());
@@ -2665,11 +2533,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (zeroId.size() != allId.size()) {
     std::string idWarn = "IDs without zero-time start at the first observed time:";
     for (j = allId.size(); j--;){
-      if (std::find(zeroId.begin(), zeroId.end(), allId[j]) == zeroId.end()){
+      if (zeroIdSet.find(allId[j]) == zeroIdSet.end()){
         bool skipIt=false;
         if (!keepDosingOnly){
           // Excluded from list
-          if (std::find(obsId.begin(), obsId.end(), allId[j]) == obsId.end()){
+          if (obsIdSet.find(allId[j]) == obsIdSet.end()){
             skipIt=true;
           }
         }
@@ -2713,7 +2581,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       ivEvid[j] = -ivEvid[j];                   \
     }
     for (int j = ivId.size(); j--; ){
-      if (!(std::find(doseId.begin(), doseId.end(), ivId[j]) == doseId.end())){
+      if (!(doseIdSet.find(ivId[j]) == doseIdSet.end())){
         ivId[j] = NA_INTEGER; // Drop
       }
       // Duplicated below for speed.

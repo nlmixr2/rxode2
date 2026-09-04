@@ -2005,6 +2005,8 @@ extern "C" void gFree(){
   _rxGetErrs=NULL;
   if (_globals.gdelayState != NULL) { R_Free(_globals.gdelayState); _globals.gdelayState = NULL; }
   if (_globals.gdelayCol != NULL) { R_Free(_globals.gdelayCol); _globals.gdelayCol = NULL; }
+  if (_globals.galagCmt != NULL) { R_Free(_globals.galagCmt); _globals.galagCmt = NULL; }
+  _globals.galagCmtN = 0;
   _globals.alloc = false;
 }
 
@@ -6005,6 +6007,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->whileexit= 0;
   rx->maxExtra = 100;
   rx->extraPushAbort = 0;
+  rx->ssInfDurAbort = 0;
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
 
@@ -6137,6 +6140,33 @@ static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
   return rxLinCmtPropMask(mv, linOffset, numLin, 4);
 }
 
+// Per-compartment "has a modeled alag()" table for _rxPushDose(), so a pushed
+// steady-state dose into a lagged compartment expands the way the event table
+// does (rxode2#1349).  op->linCmtLagMask answers the same question but only
+// for the linCmt() block and only for its first 31 compartments; an ODE model
+// can have more states than that, so this is a plain array over all of them.
+// Uses mv[RxMv_alag] -- the same 1-based compartment list etTran.cpp reads --
+// rather than the stateProp bit, so both engines agree by construction.
+static inline void rxLoadAlagCmt(List mv, int neq, bool ssAtDoseTime) {
+  if (_globals.galagCmt != NULL) {
+    R_Free(_globals.galagCmt);
+    _globals.galagCmt = NULL;
+  }
+  _globals.galagCmtN = 0;
+  if (neq <= 0) return;
+  _globals.galagCmt = R_Calloc(neq, int);
+  _globals.galagCmtN = neq;
+  // etTrans() only rewrites a steady-state dose to its unlagged form under
+  // ssAtDoseTime, so an all-zero table is the right answer when it is off
+  if (!ssAtDoseTime) return;
+  if (mv.size() <= RxMv_alag) return;
+  IntegerVector alag = mv[RxMv_alag];
+  for (int i = 0; i < alag.size(); ++i) {
+    int c = alag[i];
+    if (c >= 1 && c <= neq) _globals.galagCmt[c - 1] = 1;
+  }
+}
+
 // Compartments whose DOSE the model moves or scales -- a modeled alag()
 // (propAlag, bit 4) or f() (propF, bit 2) -- for op->linCmtOriginMask.
 static inline int rxLinCmtOriginMask(List mv, int linOffset, int numLin) {
@@ -6210,6 +6240,9 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
         op->linCmtLagMask = rxLinCmtLagMask(mvRaw, op->linOffset, op->numLin);
         op->linCmtOriginMask = rxLinCmtOriginMask(mvRaw, op->linOffset, op->numLin);
       }
+      // rxRestoreState_() frees the globals, so this has to be rebuilt here
+      // exactly as linCmtLagMask above is
+      rxLoadAlagCmt(mvRaw, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
     }
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
@@ -6394,6 +6427,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
     rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
@@ -6439,6 +6473,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
     rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
@@ -6828,6 +6863,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->linOffset = op->neq - numLin - numLinSens;
     op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
     op->linCmtOriginMask = rxLinCmtOriginMask(rxSolveDat->mv, op->linOffset, numLin);
+    rxLoadAlagCmt(rxSolveDat->mv, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);

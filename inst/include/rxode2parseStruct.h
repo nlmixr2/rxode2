@@ -615,6 +615,12 @@ typedef struct rx_solve_s {
   // Set to 1 (atomically) when any individual exceeds maxExtra; checked after
   // the solve completes to emit an error.
   int extraPushAbort;
+  // Set to 1 (atomically) when evid_()/infuse()/infuseDur() push a steady-state
+  // constant infusion (flg 40) paired with a duration (modeled rate=-2 or fixed
+  // dur); checked after the solve completes to emit an error, mirroring the
+  // rejection etTran.cpp already applies to the same combination in the event
+  // table (rxode2#1350).
+  int ssInfDurAbort;
   int *splitBolus;
   int splitBolusN;
   rx_fn_pointers fns;

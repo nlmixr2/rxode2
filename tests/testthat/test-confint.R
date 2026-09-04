@@ -156,4 +156,21 @@ rxTest({
     expect_true(all(c("p1", "eff") %in% names(.ci)))
   })
 
+  
+  test_that("plot.rxSolveConfint1 works with output tranformation", {
+    .s <- rxWithSeed(42, suppressMessages(rxSolve(.ciModel, .ciEt, thetaMat=.ciThetaMat,
+                                                  nStud=1, nSub=10)))
+    .ci <- suppressMessages(confint(.s, "cp", level=0.95, ci=FALSE))
+
+    .p <- plot(.ci, cp)
+      expect_true(inherits(.p, "ggplot"))
+
+    .p2 <- plot(.ci, cp/10) |> expect_error("Only a single response")
+    .p3 <- plot(.ci, log(cp)) |> expect_error("Only a single response")
+
+
+  })
+
+
+
 })

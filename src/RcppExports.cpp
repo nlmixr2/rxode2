@@ -231,6 +231,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rxTranslateOneEvent_
+List rxTranslateOneEvent_(NumericVector time, IntegerVector evid, IntegerVector cmt, NumericVector amt, NumericVector ii, IntegerVector ss, NumericVector rate, IntegerVector isDur, IntegerVector hasAlag);
+RcppExport SEXP _rxode2_rxTranslateOneEvent_(SEXP timeSEXP, SEXP evidSEXP, SEXP cmtSEXP, SEXP amtSEXP, SEXP iiSEXP, SEXP ssSEXP, SEXP rateSEXP, SEXP isDurSEXP, SEXP hasAlagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type time(timeSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type evid(evidSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type amt(amtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ii(iiSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type ss(ssSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type rate(rateSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type isDur(isDurSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type hasAlag(hasAlagSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxTranslateOneEvent_(time, evid, cmt, amt, ii, ss, rate, isDur, hasAlag));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cmtSupportsInfusion_
 LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv);
 RcppExport SEXP _rxode2_cmtSupportsInfusion_(SEXP cmtSEXP, SEXP mvSEXP) {

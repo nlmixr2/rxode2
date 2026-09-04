@@ -855,6 +855,44 @@ d/dt(blood)     = a*intestine - b*blood
         )
     })
 
+    test_that("evid=4 expanded through addl only resets on the first dose (matches NONMEM, issue #1351)", {
+      # NONMEM resets the compartment on the FIRST evid=4 occurrence only;
+      # the addl-repeated doses are plain doses, not additional resets.
+      # This is pinned by the real-NONMEM-derived fixture used in
+      # test-nmtest.R ("evid4"): its ADDL-equivalent rows are plain EVID=1
+      # after the initial EVID=4/SS record, never another EVID=4. See
+      # https://blog.nlmixr2.org/blog/2024-04-04-steady-state/ for the
+      # analogous ADDL+SS behavior. Do not "fix" this to reset on every
+      # addl repetition.
+      modAddl <- rxode2({
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+      })
+      pars <- c(cl = 1, v = 10)
+
+      addlEt <- et(amt = 100, time = 2, evid = 4, ii = 12, addl = 2) |> et(seq(0, 40, by = 1))
+      explicitEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 4) |>
+        et(amt = 100, time = 26, evid = 4) |>
+        et(seq(0, 40, by = 1))
+
+      addl <- rxSolve(modAddl, pars, addlEt)
+      explicit <- rxSolve(modAddl, pars, explicitEt)
+
+      # the addl expansion resets once, then just doses -- it must NOT match
+      # the explicit form, which resets at every evid=4 occurrence
+      expect_false(isTRUE(all.equal(addl$cp, explicit$cp)))
+
+      # only-first-resets reference, expanded by hand
+      onlyFirstResetEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 1) |>
+        et(amt = 100, time = 26, evid = 1) |>
+        et(seq(0, 40, by = 1))
+      onlyFirstReset <- rxSolve(modAddl, pars, onlyFirstResetEt)
+
+      expect_equal(addl$cp, onlyFirstReset$cp)
+    })
+
 
     mod <- rxode2parse("    CO = (187 * WT^0.81) * 60/1000
     QHT = 4 * CO/100
@@ -2245,5 +2283,48 @@ rxTest({
       expect_warning(etTrans(d, mod, combineDvid = TRUE), NA)
     })
 
+  })
+
+  test_that("translation does not slow down with the subject count alone", {
+
+    # Whether an id has been seen is tested once per input row against
+    # allId/obsId/zeroId/doseId, which hold one entry per subject.  As
+    # std::find() linear scans that made translation O(rows * subjects): with
+    # the rows held fixed, going from 100 to 12000 subjects cost 12.6x.  Hold
+    # the row count constant and only redistribute it over more subjects, so
+    # the only thing that changes is the number of ids.
+    .fixedRows <- function(nSub, nRow = 40000) {
+      nPer <- nRow / nSub
+      data.frame(
+        ID = rep(seq_len(nSub), each = nPer),
+        TIME = rep(seq_len(nPer), times = nSub),
+        x = seq(-100, 0, length.out = nRow),
+        EVID = 0, AMT = 0
+      )
+    }
+    mod <- rxode2({
+      eff <- slopeA * x
+    })
+    # A single etTrans() on this data can run faster than the OS timer's
+    # resolution (observed reading exactly 0 elapsed on a Windows CI runner),
+    # which would make any per-call comparison spuriously pass or fail.  Time
+    # a batch of calls inside one system.time() so the measured interval is
+    # always well above the clock granularity, on any platform.
+    .minElapsed <- function(d, batches = 3L, reps = 20L) {
+      min(vapply(seq_len(batches), function(i) {
+        system.time(for (r in seq_len(reps)) invisible(rxode2::etTrans(d, mod)))[["elapsed"]]
+      }, numeric(1)))
+    }
+
+    # the same rows either way, only spread over more ids.  (The translated
+    # row count is NOT the same -- splitting the rows over more subjects adds
+    # per-subject records -- so only the input is held equal here.)
+    .few <- .fixedRows(50)
+    .many <- .fixedRows(5000)
+    expect_equal(nrow(.few), nrow(.many))
+    expect_equal(length(unique(.many$ID)), 5000L)
+
+    invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
+    expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
   })
 })
