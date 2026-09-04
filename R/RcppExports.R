@@ -1129,6 +1129,10 @@ rxTestAbiSubjectCounts_ <- function() {
     .Call(`_rxode2_rxTestAbiSubjectCounts_`)
 }
 
+rxTestAbiStrideProbe_ <- function(pad, n) {
+    .Call(`_rxode2_rxTestAbiStrideProbe_`, pad, n)
+}
+
 rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
 }

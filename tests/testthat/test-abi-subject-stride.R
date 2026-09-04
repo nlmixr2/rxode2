@@ -32,3 +32,17 @@ test_that("the ABI subject accessor walks the array at the allocated stride", {
   expect_equal(length(cnt$nAllTimes), length(nObsI))
   expect_equal(as.integer(cnt$nAllTimes), as.integer(nObsI) + 1L)
 })
+
+test_that("the ABI accessor follows the published stride, not its own sizeof", {
+  # the test above only compares two views a clean build makes equal.  This one
+  # builds the disagreement on purpose: a private subject array whose entries
+  # are `pad` bytes further apart than this build's sizeof, with rxIndSize set
+  # to match.  An accessor walking with its own sizeof reads the wrong entries
+  # for any pad > 0.
+  for (pad in c(0L, 8L, 688L)) {
+    expect_equal(rxTestAbiStrideProbe_(pad, 6L), 1000L + 0:5,
+                 info = paste("pad =", pad))
+  }
+  # nothing to walk
+  expect_equal(length(rxTestAbiStrideProbe_(0L, 0L)), 0L)
+})
