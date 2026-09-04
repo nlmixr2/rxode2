@@ -6005,6 +6005,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->whileexit= 0;
   rx->maxExtra = 100;
   rx->extraPushAbort = 0;
+  rx->ssInfDurAbort = 0;
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
 
@@ -6394,6 +6395,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
     rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
@@ -6439,6 +6441,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
     rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
     rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;

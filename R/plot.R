@@ -109,7 +109,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   if (inherits(x, "units")) {
     return(units::drop_units(x))
   }
-  return(x)
+  x
 }
 
 .plotTime <- function(.dat, xlab) {
@@ -133,7 +133,7 @@ rxTheme <- function(base_size = 11, base_family = "",
         .timex <- .timex[-.w]
       }
     }
-    return(.timex)
+    .timex
   }
   if (inherits(.dat$time, "units")) {
     .unit <- as.character(units(.dat$time))
@@ -385,6 +385,10 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
   .y <- as.character(substitute(y))
+  if (length(.y) != 1){
+    stop("Only a single response variable is allowed with no transformations")
+  }
+  
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
   .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
@@ -392,7 +396,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .call <- .call[-.w]
   }
   .cmts <- c(
-    as.character(substitute(y)),
+    .y,
     names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
     as.character(unlist(.call))
   )
@@ -457,7 +461,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .ylab +
     .theme ->
   .ret
-  return(.ret)
+  .ret
 }
 
 #' @rdname plot.rxSolve
@@ -466,6 +470,9 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
   .y <- as.character(substitute(y))
+  if (length(.y) != 1) {
+    stop("Only a single response variable is allowed with no transformations")
+  }
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
   .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
@@ -473,7 +480,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .call <- .call[-.w]
   }
   .cmts <- c(
-    as.character(substitute(y)),
+    .y,
     names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
     as.character(unlist(.call))
   )
@@ -558,5 +565,5 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   ## if (getOption("rxode2.theme_bw", TRUE)){
   ##     .ret <- .ret + ggplot2::theme_bw()
   ## }
-  return(.ret)
+  .ret
 }
