@@ -437,3 +437,28 @@ logit(cor)), with the ini transformed and the report back-transformed -- a
 parameter-transform feature spanning the ini/theta/report handling. AR(1)
 SIMULATION, the lag/diff/lag0 fixes, opt-out asserts, and the symbolic-gradient
 AR estimation model are complete.
+
+### `evid=4` (reset+dose) expanded through `addl` resets only once -- NOT A BUG
+
+`et(amt=100, time=2, evid=4, ii=12, addl=2)` resets the compartment on the
+FIRST dose only; the two `addl`-repeated doses are plain doses, not further
+resets. Writing the same regimen as three explicit `evid=4` records instead
+resets every time and gives different output (see GitHub issue #1351 for the
+reproducer and numbers). **The `addl` form is correct and matches NONMEM** --
+do not "fix" it to reset on every repetition.
+
+Evidence:
+- NONMEM does the same for the analogous `ss` + `addl` case ("NONMEM does not
+  keep the steady state flag with additional doses, it simply keeps dosing
+  without the steady state flag") --
+  https://blog.nlmixr2.org/blog/2024-04-04-steady-state/
+- `tests/testthat/nmtest-evid4.rds` (`test-nmtest.R` test `"evid4"`) is data
+  derived from real NONMEM output: its `addl`-equivalent rows after the
+  initial `evid=4` are plain `evid=1`, never another `evid=4`.
+- Architecturally this falls out of `src/etTran.cpp` `case 4:` (search
+  `// NONMEM-matching, intentional`): an `evid=4` record pushes exactly one
+  `EVID=3` reset, then rewrites `cevid` to a plain-dose code before the `addl`
+  expansion loop ever runs, so the loop has no reset left to repeat.
+- Regression test:
+  `test-etTrans.R` `"evid=4 expanded through addl only resets on the first
+  dose (matches NONMEM, issue #1351)"`.
