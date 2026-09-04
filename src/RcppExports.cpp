@@ -2406,6 +2406,39 @@ RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP stateSizeSEXP, SE
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxTestAbiSubjectCounts_
+IntegerMatrix rxTestAbiSubjectCounts_();
+static SEXP _rxode2_rxTestAbiSubjectCounts__try() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(rxTestAbiSubjectCounts_());
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxTestAbiSubjectCounts_() {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxTestAbiSubjectCounts__try());
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxOptRep_
 RObject rxOptRep_(RObject input);
 RcppExport SEXP _rxode2_rxOptRep_(SEXP inputSEXP) {
@@ -3164,6 +3197,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvChol)(RObject,Nullable<NumericVector>,std::string,int)");
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double,double,int,int,int,int,int)");
+        signatures.insert("IntegerMatrix(*rxTestAbiSubjectCounts_)()");
         signatures.insert("SEXP(*rxSaveState_)()");
         signatures.insert("bool(*rxIsSerializeFile_)(SEXP)");
         signatures.insert("SEXP(*rxRestoreState_)(SEXP)");
@@ -3231,6 +3265,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvChol", (DL_FUNC)_rxode2_rxSymInvChol_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxMemoryComponents_", (DL_FUNC)_rxode2_rxMemoryComponents__try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxTestAbiSubjectCounts_", (DL_FUNC)_rxode2_rxTestAbiSubjectCounts__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSaveState_", (DL_FUNC)_rxode2_rxSaveState__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxIsSerializeFile_", (DL_FUNC)_rxode2_rxIsSerializeFile__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxRestoreState_", (DL_FUNC)_rxode2_rxRestoreState__try);

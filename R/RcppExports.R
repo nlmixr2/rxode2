@@ -1121,6 +1121,10 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
+rxTestAbiSubjectCounts_ <- function() {
+    .Call(`_rxode2_rxTestAbiSubjectCounts_`)
+}
+
 rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
 }

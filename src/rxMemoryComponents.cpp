@@ -6,6 +6,9 @@
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"       /* rxLlikSaveSize; pulls in rxode2parseStruct.h */
 #include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
+#include "rx2api.h"                       /* getSolvingOptionsInd(), getIndNallTimes()    */
+
+extern "C" rx_solve *getRxSolve_(void);
 
 using namespace Rcpp;
 
@@ -250,4 +253,29 @@ NumericVector rxMemoryComponents_(
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 
   return out;
+}
+
+// Per-subject record counts, read twice: through the ABI and directly.
+//
+// getSolvingOptionsInd() lives in src/rx2api.c, a separate translation unit
+// from the one that allocates the subject array, so a build where the two
+// disagree on the layout of rx_solving_options_ind walks the array at the
+// wrong stride and every subject but the first is read from the wrong address
+// (nlmixr2/nlmixr2est#1039).  This reads each subject's record count both ways
+// -- once through the accessor downstream packages resolve, once straight off
+// rx->subjects in this translation unit -- so a test can assert they agree
+// with each other and with the data.  Test-only; not exported to users.
+// [[Rcpp::export]]
+IntegerMatrix rxTestAbiSubjectCounts_() {
+  rx_solve *rx = getRxSolve_();
+  if (rx == NULL || rx->subjects == NULL) return IntegerMatrix(0, 2);
+  int nsub = (int)((uint64_t)rx->nsub*(uint64_t)rx->nsim);
+  IntegerMatrix ret(nsub, 2);
+  for (int i = 0; i < nsub; ++i) {
+    ret(i, 0) = getIndNallTimes(getSolvingOptionsInd(rx, i));
+    ret(i, 1) = rx->subjects[i].n_all_times;
+  }
+  ret.attr("dimnames") = List::create(R_NilValue,
+                                      CharacterVector::create("abi", "direct"));
+  return ret;
 }

@@ -1133,6 +1133,27 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline IntegerMatrix rxTestAbiSubjectCounts_() {
+        typedef SEXP(*Ptr_rxTestAbiSubjectCounts_)();
+        static Ptr_rxTestAbiSubjectCounts_ p_rxTestAbiSubjectCounts_ = NULL;
+        if (p_rxTestAbiSubjectCounts_ == NULL) {
+            validateSignature("IntegerMatrix(*rxTestAbiSubjectCounts_)()");
+            p_rxTestAbiSubjectCounts_ = (Ptr_rxTestAbiSubjectCounts_)R_GetCCallable("rxode2", "_rxode2_rxTestAbiSubjectCounts_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxTestAbiSubjectCounts_();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<IntegerMatrix >(rcpp_result_gen);
+    }
+
     inline SEXP rxSaveState_() {
         typedef SEXP(*Ptr_rxSaveState_)();
         static Ptr_rxSaveState_ p_rxSaveState_ = NULL;
