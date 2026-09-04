@@ -263,51 +263,66 @@ _rxTranslateSsLagDoseInto(rx_translated_event *out, int k, double time,
   return 2;
 }
 
+/* A FIXED rate or duration infusion: its amount IS the rate. */
+static inline int _rxIsFixedInf(int rateI) {
+  return (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR);
+}
+
+/* A MODELED rate or duration infusion: the model fills in the companion off
+ * record once it has been evaluated. */
+static inline int _rxIsModeledInf(int rateI) {
+  return (rateI == EVIDF_MODEL_RATE_ON || rateI == EVIDF_MODEL_DUR_ON);
+}
+
+/* A steady-state constant infusion (flg 40) never turns off, so pairing it
+ * with a duration -- modeled (rateI 8) or fixed (rateI 2) -- is meaningless
+ * and is rejected (rxode2#1350); left alone it emits a rate-less record that
+ * steady-states the compartment to zero.
+ *
+ * rateI 9 (modeled RATE) is legitimate at flg 40 -- it is the supported
+ * spelling for a modeled constant infusion -- UNLESS it was reached via
+ * infuseDur()'s duration slot (isDur set, meaning the caller wrote -1 into a
+ * *duration*, NONMEM's "this was meant to be a modeled rate but landed in the
+ * DUR column" mistake).  etTran.cpp rejects that same column mistake for the
+ * event table; infuseDur() is the only push-path caller that can produce
+ * rateI 9 with isDur set, since evid_()/infuse() always pass isDur 0. */
+static inline int _rxSsInfWithDur(int rateI, int flg, int isDur) {
+  return (flg == EVID0_SSINF &&
+          (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON ||
+           (rateI == EVIDF_MODEL_RATE_ON && isDur)));
+}
+
 static inline int
 _rxTranslateDoseInto(rx_translated_event *out, int k, double time,
                      int cmt100, int cmt99, int rateI, int flg,
                      double amt, double useRate, double dur, double ii_val,
                      int isDur) {
-  /* A steady-state constant infusion (flg 40) never turns off, so pairing it
-   * with a duration -- modeled (rateI 8) or fixed (rateI 2) -- is meaningless;
-   * reject it the way etTran.cpp already does for the event table
-   * (rxode2#1350).  -1 signals the caller to abort instead of silently
-   * emitting a rate-less record that steady-states the compartment to zero.
-   *
-   * rateI 9 (modeled RATE) is legitimate at flg 40 -- it is the supported
-   * spelling for a modeled constant infusion -- UNLESS it was reached via
-   * infuseDur()'s duration slot (isDur set, meaning the caller wrote -1 into
-   * a *duration*, NONMEM's "this was meant to be a modeled rate but landed
-   * in the DUR column" mistake).  etTran.cpp rejects that same column
-   * mistake for the event table; infuseDur() is the only push-path caller
-   * that can produce rateI 9 with isDur set, since evid_()/infuse() always
-   * pass isDur 0. */
-  if (flg == EVID0_SSINF &&
-      (rateI == EVIDF_INF_DUR || rateI == EVIDF_MODEL_DUR_ON ||
-       (rateI == EVIDF_MODEL_RATE_ON && isDur))) {
-    return -1;
-  }
+  /* -1 tells the caller to reject the event rather than emit nonsense */
+  if (_rxSsInfWithDur(rateI, flg, isDur)) return -1;
   if (flg == EVID0_SS0 || flg == EVID0_SS20) {
     return _rxTranslateSsLagDoseInto(out, k, time, cmt100, cmt99, rateI, flg,
                                      amt, useRate, dur, ii_val);
   }
-  out->evid[k]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
+  int base = cmt100*100000 + cmt99*100;
+  out->evid[k]   = base + rateI*10000 + flg;
   out->time[k]   = time;
-  out->amt[k]    = (rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) ? useRate : amt;
+  out->amt[k]    = _rxIsFixedInf(rateI) ? useRate : amt;
   out->ii[k]     = ii_val;
   out->isDose[k] = 1;
-  if ((rateI == EVIDF_INF_RATE || rateI == EVIDF_INF_DUR) && flg != EVID0_SSINF) {
-    out->evid[k+1]   = cmt100*100000 + rateI*10000 + cmt99*100 + flg;
+  if (flg == EVID0_SSINF) return 1;  /* a constant infusion never turns off */
+  if (_rxIsFixedInf(rateI)) {
+    /* off at time + dur, taking the rate back off */
+    out->evid[k+1]   = base + rateI*10000 + flg;
     out->time[k+1]   = time + dur;
     out->amt[k+1]    = -useRate;
     out->ii[k+1]     = 0.0;
     out->isDose[k+1] = 1;
     return 2;
   }
-  if ((rateI == EVIDF_MODEL_RATE_ON || rateI == EVIDF_MODEL_DUR_ON) &&
-      flg != EVID0_SSINF) {
+  if (_rxIsModeledInf(rateI)) {
+    /* companion at the same time, filled in once the model is evaluated */
     int offI = (rateI == EVIDF_MODEL_RATE_ON) ? EVIDF_MODEL_RATE_OFF : EVIDF_MODEL_DUR_OFF;
-    out->evid[k+1]   = cmt100*100000 + offI*10000 + cmt99*100 + EVID0_REGULAR;
+    out->evid[k+1]   = base + offI*10000 + EVID0_REGULAR;
     out->time[k+1]   = time;
     out->amt[k+1]    = amt;
     out->ii[k+1]     = 0.0;
