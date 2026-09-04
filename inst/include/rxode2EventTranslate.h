@@ -107,6 +107,55 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
   return whI == 0 && (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
 }
 
+/* The steady-state flag carried by a dose, from its ss/ii/amt.  Shared so the
+ * event table (src/etTran.cpp) and the runtime evid_() push
+ * (_rxPushDose(), src/par_solve.cpp) cannot derive it differently. */
+static inline int _rxDeriveFlg(int ss, double ii_val, double amt) {
+  if (ss == 1 && ii_val > 0)                 return EVID0_SS;
+  if (ss == 2 && ii_val > 0)                 return EVID0_SS2;
+  if (ss == 1 && ii_val == 0 && amt == 0.0)  return EVID0_SSINF;
+  return EVID0_REGULAR;
+}
+
+/* Does 'addl' repeat this NONMEM evid?  An observation (0), an "other" record
+ * (2) and a reset (3) are single events: etTran.cpp warns and ignores addl for
+ * them (src/etTran.cpp, the 'addl' is ignored with ... warnings). */
+static inline int _rxAddlApplies(int evid) {
+  return !(evid == 0 || evid == 2 || evid == 3);
+}
+
+/* Number of occurrences a record expands to: itself plus its addl repeats. */
+static inline int _rxAddlCount(double ii_val, int addl) {
+  return (ii_val > 0.0 && addl > 0) ? addl + 1 : 1;
+}
+
+/* The flg and ii carried by occurrence 'rep' of an addl series (rep 0 is the
+ * record itself, 1..addl its repeats), writing the ii to *iiOut.
+ *
+ * dropSs (etTrans()'s addlDropSs, always on for the push path): a repeat of a
+ * steady-state record -- lagged (flg 9/19) or not (10/20) -- becomes a plain
+ * dose, which also drops the lagged expansion since only flg 9/19 expands.  A
+ * repeat never resets either: the caller translates evid 4 as its plain dose
+ * for rep > 0, since the reset is emitted once, before the series.
+ *
+ * flg 40 is a constant infusion, which requires ii == 0 and so can never have
+ * addl repeats; it is defined here only to keep the mapping total. */
+static inline int _rxAddlOccurrence(int rep, int flg, double ii_val, int addl,
+                                    int dropSs, double *iiOut) {
+  int ssLike = (flg == EVID0_SS0 || flg == EVID0_SS20 || flg == EVID0_SS ||
+                flg == EVID0_SS2 || flg == EVID0_SSINF);
+  if (rep == 0) {
+    *iiOut = (ii_val > 0.0 && addl > 0 && !ssLike) ? 0.0 : ii_val;
+    return flg;
+  }
+  if (dropSs && ssLike && flg != EVID0_SSINF) {
+    *iiOut = 0.0;
+    return EVID0_REGULAR;
+  }
+  *iiOut = ssLike ? ii_val : 0.0;
+  return flg;
+}
+
 /* Translate one NONMEM-style (evid 0-7) or classic rxode2 internal (evid>=100) event
  * into the rxode2 internal representation.
  *
@@ -259,10 +308,7 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
   else if (rate == -2.0) { rateI = 8; }
 
   /* flg encoding (SS handling, mirrors etTran.cpp) */
-  int flg = 1;
-  if      (ss == 1 && ii_val > 0)                  flg = 10;
-  else if (ss == 2 && ii_val > 0)                  flg = 20;
-  else if (ss == 1 && ii_val == 0 && amt == 0.0)  flg = 40;
+  int flg = _rxDeriveFlg(ss, ii_val, amt);
 
   /* Switch on NONMEM evid */
   switch (evid) {

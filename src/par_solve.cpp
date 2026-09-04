@@ -1508,12 +1508,23 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
 
   rx_solve *rx = &rx_global;
 
-  // Loop over addl+1 doses: dose 0 uses the given ss, subsequent doses use ss=0
-  int nDosesToPush = (_addl > 0 && _ii > 0) ? _addl + 1 : 1;
+  // Loop over the addl series.  _rxAddlApplies()/_rxAddlCount()/
+  // _rxAddlOccurrence() (inst/include/rxode2EventTranslate.h) are shared with
+  // the event table so the two paths cannot disagree about what a repeat is:
+  // repeats drop steady state, drop ii, drop the lagged expansion, and never
+  // reset (rxode2#1351).  An observation/other/reset record is not repeated at
+  // all, which is what etTran.cpp does when it warns "'addl' is ignored".
+  int _flg0 = _rxDeriveFlg(_ss, _ii, _amt);
+  int nDosesToPush = _rxAddlApplies(_evid) ? _rxAddlCount(_ii, _addl) : 1;
   int anyPushed = 0;
   for (int _rep = 0; _rep < nDosesToPush; _rep++) {
     double _doseTime = _time + _rep * _ii;
-    int    _doseSs   = (_rep == 0) ? _ss : 0;
+    double _doseIi = 0.0;
+    int _occFlg = _rxAddlOccurrence(_rep, _flg0, _ii, _addl, 1, &_doseIi);
+    // _rxTranslateOneEvent() re-derives flg from (ss, ii, amt), so hand it the
+    // ss that reproduces the occurrence's flg
+    int _doseSs = (_occFlg == EVID0_SS2) ? 2 :
+      ((_occFlg == EVID0_SS || _occFlg == EVID0_SSINF) ? 1 : 0);
 
     if (isSameTimeOp(_doseTime, _curTime)) {
       if (_doseTime < _curTime) {
@@ -1527,10 +1538,6 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
       continue;
     }
 
-    // Each addl repetition is a standalone event; ii=0 so the solver does not
-    // auto-schedule further repeats.  For the first dose (rep==0) with SS, we
-    // pass the original _ii so flg is set correctly; for all others ii=0.
-    double _doseIi = (_rep == 0 && _doseSs != 0) ? _ii : 0.0;
     // NONMEM (and etTran.cpp's data-table addl expansion, see the case 4:
     // comment there) resets only on the FIRST occurrence of an evid=4
     // (reset+dose) record; addl repeats are plain doses, not further resets.
