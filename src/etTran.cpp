@@ -631,6 +631,11 @@ List rxTranslateOneEvent_(NumericVector time, IntegerVector evid,
                           NumericVector rate, IntegerVector isDur,
                           IntegerVector hasAlag) {
   int n = time.size();
+  if (evid.size() != n || cmt.size() != n || amt.size() != n ||
+      ii.size() != n || ss.size() != n || rate.size() != n ||
+      isDur.size() != n || hasAlag.size() != n) {
+    stop(_("all inputs to 'rxTranslateOneEvent_' must be the same length"));
+  }
   std::vector<int> oRow, oN, oK, oEvid, oIsDose;
   std::vector<double> oTime, oAmt, oIi;
   for (int i = 0; i < n; ++i) {

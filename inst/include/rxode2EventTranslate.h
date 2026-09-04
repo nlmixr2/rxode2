@@ -406,6 +406,10 @@ _rxTranslateOneEvent(double time, int evid, int cmt, double amt,
     else if (flg == EVID0_SS2) flg = EVID0_SS20;
   }
   if (turnOff) {
+    /* n = -1 means "reject this event"; the caller decides how to report it.
+     * Two things produce it: a steady state on a negative (turn-off)
+     * compartment, here, and a constant-infusion steady state carrying a
+     * duration, in _rxTranslateDoseInto(). */
     if (flg != EVID0_REGULAR) { out.n = -1; return out; }
     flg = EVID0_OFF;
     rateI = 0;

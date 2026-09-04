@@ -185,6 +185,40 @@ rxTest({
     expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
   })
 
+  test_that("a pushed lagged steady-state bolus splits into every target", {
+    # the lagged steady-state expansion yields TWO splittable bolus records
+    # (the flg 9 steady-state record and its plain flg 1 companion), so
+    # _rxPushDose() has to split each of them, not just the first
+    obs <- c(0, 1e-8, seq(0.5, 48, by = 0.5))
+    mSplit <- rxode2({
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      alag(central) <- 3
+      cp <- central / v
+      if (t < 1e-8) {
+        evid_(2, 1, 100, 1, 0, 12, 0, 1)
+      }
+    })
+    # the same model with the dose in the event table instead: splitBolus is a
+    # post-pass over already-translated records on both sides, so this is the
+    # comparison that has to hold
+    mBase <- rxode2({
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      alag(central) <- 3
+      cp <- central / v
+    })
+    p <- c(ka = 0.5, cl = 1, v = 10)
+    got <- rxSolve(mSplit, p, et(obs))
+    want <- rxSolve(mBase, p,
+                    et(amt = 100, time = 2, ii = 12, ss = 1, cmt = 1) |> et(obs))
+    expect_true(all(is.finite(got$cp)))
+    expect_equal(got$depot[-1], want$depot[-1], tolerance = 1e-5)
+    expect_equal(got$central[-1], want$central[-1], tolerance = 1e-5)
+  })
+
   ## A negative compartment (turn that compartment off) is understood by the
   ## shared translator, so the two engines agree on it, but evid_() cannot
   ## SPELL it yet: cmt_evid in inst/tran.g accepts only a positive compartment,
