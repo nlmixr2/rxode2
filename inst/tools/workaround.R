@@ -1,3 +1,21 @@
+## Every generated source below is rewritten on each install.  Writing one
+## byte-for-byte still gives it a new mtime, and make then rebuilds every
+## object that depends on it -- 22 of them here, and more once header
+## dependencies are tracked.  Compare first and write only on a real change.
+## All of these writes use a binary connection, so the comparison is exact.
+.writeLinesIfChanged <- function(text, path, sep = "\n") {
+  .new <- paste0(paste(text, collapse = sep), sep)
+  if (file.exists(path)) {
+    .old <- tryCatch(readChar(path, file.size(path), useBytes = TRUE),
+                     error = function(e) NULL)
+    if (identical(.old, .new)) return(invisible(FALSE))
+  }
+  .con <- file(path, "wb")
+  on.exit(close(.con))
+  writeLines(text, .con, sep = sep)
+  invisible(TRUE)
+}
+
 ## This is only for rxode2
 ## inst/include/rxode2_RcppExports.h is the header consumed by generated model
 ## code -- it should carry only <Rcpp.h>.  Strip RcppArmadillo and RcppEigen.
@@ -22,9 +40,7 @@
 .hdr_f <- "inst/include/rxode2_RcppExports.h"
 .hdr_l <- .strip_rcpp_guard(readLines(.hdr_f))
 .hdr_l <- .hdr_l[regexpr("^[#]include <RcppEigen.h>", .hdr_l) == -1]
-.hdr_out <- file(.hdr_f, "wb")
-writeLines(.hdr_l, .hdr_out)
-close(.hdr_out)
+.writeLinesIfChanged(.hdr_l, .hdr_f)
 
 ## Implementation: clean up stale guards, then ensure RcppArmadillo.h appears
 ## BEFORE rxode2.h (which includes R.h / Rinternals.h).  RcppCommon.h defines
@@ -38,18 +54,14 @@ if (!any(grepl("RcppArmadillo", .cpp_l, fixed = TRUE))) {
     .cpp_l <- append(.cpp_l, "#include <RcppArmadillo.h>", after = .rx_line[1] - 1L)
   }
 }
-.cpp_out <- file(.cpp_f, "wb")
-writeLines(.cpp_l, .cpp_out)
-close(.cpp_out)
+.writeLinesIfChanged(.cpp_l, .cpp_f)
 
 l <- readLines("R/RcppExports.R")
 w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
 if (length(w) >= 1) {
   w <- w[1]
   l <- l[seq(1, w-1)]
-  RcppExports.R <- file("R/RcppExports.R", "wb")
-  writeLines(l, RcppExports.R)
-  close(RcppExports.R)
+  .writeLinesIfChanged(l, "R/RcppExports.R")
 }
 
 compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
@@ -187,9 +199,7 @@ if (file.exists(.ef)) {
   .el <- readLines(.ef)
   .el <- gsub("abort();", "return;", .el, fixed = TRUE)
   .el <- gsub('fprintf(stderr, "%s", log_msg);', '', .el, fixed = TRUE)
-  .ef_out <- file(.ef, "wb")
-  writeLines(.el, .ef_out, sep = "\n")
-  close(.ef_out)
+  .writeLinesIfChanged(.el, .ef)
 }
 
 ## Fix 1b: sundials_sundials_logger.c
@@ -207,9 +217,7 @@ if (file.exists(.lf)) {
   .ll <- gsub("logger->error_fp   = stderr;", "logger->error_fp   = NULL;", .ll, fixed = TRUE)
   .ll <- gsub("logger->warning_fp = stdout;", "logger->warning_fp = NULL;", .ll, fixed = TRUE)
   .ll <- strsplit(.ll, "\n", fixed = TRUE)[[1]]
-  .lf_out <- file(.lf, "wb")
-  writeLines(.ll, .lf_out, sep = "\n")
-  close(.lf_out)
+  .writeLinesIfChanged(.ll, .lf)
 }
 
 ## Fix 1c: sundials_nvector_serial.c
@@ -219,9 +227,7 @@ if (file.exists(.nf)) {
   .nl <- readLines(.nf)
   .nl <- gsub("N_VPrintFile_Serial(x, stdout);",
                "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
-  .nf_out <- file(.nf, "wb")
-  writeLines(.nl, .nf_out, sep = "\n")
-  close(.nf_out)
+  .writeLinesIfChanged(.nl, .nf)
 }
 
 ## Fix 1d: sundials_sundials_nvector.c
@@ -231,9 +237,7 @@ if (file.exists(.nvf)) {
   .nv <- readLines(.nvf)
   .nv <- gsub('printf("NULL Vector\\n");', '', .nv, fixed = TRUE)
   .nv <- gsub('printf("NULL Print Op\\n");', '', .nv, fixed = TRUE)
-  .nvf_out <- file(.nvf, "wb")
-  writeLines(.nv, .nvf_out, sep = "\n")
-  close(.nvf_out)
+  .writeLinesIfChanged(.nv, .nvf)
 }
 
 ## Fix 3: Remove deprecated SUNDIALS 7.x workspace-query function usage.
@@ -255,9 +259,7 @@ if (file.exists(.nvf)) {
 if (file.exists(.nf3)) {
   .nl3 <- .strip_deprecated_pragma(readLines(.nf3))
   .nl3 <- gsub("= N_VSpace_Serial;", "= NULL;", .nl3, fixed = TRUE)
-  .nf3_out <- file(.nf3, "wb")
-  writeLines(.nl3, .nf3_out, sep = "\n")
-  close(.nf3_out)
+  .writeLinesIfChanged(.nl3, .nf3)
 }
 
 ## sunlinsol_band: null out deprecated SUNLinSolSpace_Band function pointer
@@ -265,9 +267,7 @@ if (file.exists(.nf3)) {
 if (file.exists(.lbf)) {
   .lb <- .strip_deprecated_pragma(readLines(.lbf))
   .lb <- gsub("= SUNLinSolSpace_Band;", "= NULL;", .lb, fixed = TRUE)
-  .lbf_out <- file(.lbf, "wb")
-  writeLines(.lb, .lbf_out, sep = "\n")
-  close(.lbf_out)
+  .writeLinesIfChanged(.lb, .lbf)
 }
 
 ## sunlinsol_dense: null out deprecated SUNLinSolSpace_Dense function pointer
@@ -275,9 +275,7 @@ if (file.exists(.lbf)) {
 if (file.exists(.ldf)) {
   .ld <- .strip_deprecated_pragma(readLines(.ldf))
   .ld <- gsub("= SUNLinSolSpace_Dense;", "= NULL;", .ld, fixed = TRUE)
-  .ldf_out <- file(.ldf, "wb")
-  writeLines(.ld, .ldf_out, sep = "\n")
-  close(.ldf_out)
+  .writeLinesIfChanged(.ld, .ldf)
 }
 
 ## sunmatrix_band: null out deprecated SUNMatSpace_Band function pointer
@@ -285,9 +283,7 @@ if (file.exists(.ldf)) {
 if (file.exists(.mbf)) {
   .mb <- .strip_deprecated_pragma(readLines(.mbf))
   .mb <- gsub("= SUNMatSpace_Band;", "= NULL;", .mb, fixed = TRUE)
-  .mbf_out <- file(.mbf, "wb")
-  writeLines(.mb, .mbf_out, sep = "\n")
-  close(.mbf_out)
+  .writeLinesIfChanged(.mb, .mbf)
 }
 
 ## sunmatrix_dense: null out deprecated SUNMatSpace_Dense function pointer
@@ -295,9 +291,7 @@ if (file.exists(.mbf)) {
 if (file.exists(.mdf)) {
   .md <- .strip_deprecated_pragma(readLines(.mdf))
   .md <- gsub("= SUNMatSpace_Dense;", "= NULL;", .md, fixed = TRUE)
-  .mdf_out <- file(.mdf, "wb")
-  writeLines(.md, .mdf_out, sep = "\n")
-  close(.mdf_out)
+  .writeLinesIfChanged(.md, .mdf)
 }
 
 ## sunmatrix_sparse: null out deprecated SUNMatSpace_Sparse function pointer
@@ -305,9 +299,7 @@ if (file.exists(.mdf)) {
 if (file.exists(.msf)) {
   .ms <- .strip_deprecated_pragma(readLines(.msf))
   .ms <- gsub("= SUNMatSpace_Sparse;", "= NULL;", .ms, fixed = TRUE)
-  .msf_out <- file(.msf, "wb")
-  writeLines(.ms, .msf_out, sep = "\n")
-  close(.msf_out)
+  .writeLinesIfChanged(.ms, .msf)
 }
 
 ## sundials_cvode: replace deprecated N_VSpace call with zero assignments
@@ -315,9 +307,7 @@ if (file.exists(.msf)) {
 if (file.exists(.cvf3)) {
   .cv3 <- .strip_deprecated_pragma(readLines(.cvf3))
   .cv3 <- gsub("N_VSpace(y0, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .cv3, fixed = TRUE)
-  .cvf3_out <- file(.cvf3, "wb")
-  writeLines(.cv3, .cvf3_out, sep = "\n")
-  close(.cvf3_out)
+  .writeLinesIfChanged(.cv3, .cvf3)
 }
 
 ## sundials_cvode_ls: replace deprecated N_VSpace/SUNMatSpace/SUNLinSolSpace calls
@@ -330,9 +320,7 @@ if (file.exists(.clf)) {
               "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
   .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);",
               "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
-  .clf_out <- file(.clf, "wb")
-  writeLines(.cl, .clf_out, sep = "\n")
-  close(.clf_out)
+  .writeLinesIfChanged(.cl, .clf)
 }
 
 ## ---------------------------------------------------------------------------
@@ -399,9 +387,7 @@ for (.sp in file.path("src", .sp_files)) {
     .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);",
                 "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
     .sl <- .fix_monitoring_endif(.sl)
-    .sp_out <- file(.sp, "wb")
-    writeLines(.sl, .sp_out, sep = "\n")
-    close(.sp_out)
+    .writeLinesIfChanged(.sl, .sp)
   }
 }
 
@@ -425,9 +411,7 @@ if (!nzchar(.bh_ie)) {
   "if( res != 0 ) throw std::runtime_error(\"implicit Euler LU factorization singular\");",
   .ie_lines
 )
-.ie_out <- file("src/implicit_euler_rxode2.hpp", "wb")
-writeLines(.ie_lines, .ie_out, sep = "\n")
-close(.ie_out)
+.writeLinesIfChanged(.ie_lines, "src/implicit_euler_rxode2.hpp")
 
 
 .badStan <- ""
@@ -474,13 +458,9 @@ close(.makevars)
 ## before the digest::digest() call below, which needs the 'digest' package
 ## (Suggests, not Imports) and may be absent on --no-suggests CI runners.
 
-unlink("src/sbuf.c")
 l <- readLines("inst/include/sbuf.c")
-sbuf.c <- file("src/sbuf.c", "wb")
-writeLines(l, sbuf.c)
-close(sbuf.c)
+.writeLinesIfChanged(l, "src/sbuf.c")
 
-unlink("src/codegen2.h")
 l <- readLines("inst/include/rxode2_model_shared.c")
 
 l <- l[l != ""]
@@ -553,10 +533,7 @@ df$argMax <- df$argMin
 dfStr <- deparse(df)
 dfStr[1] <- paste(".parseEnv$.rxode2parseDf <- ", dfStr[1])
 
-dfIni.R <- file("R/dfIni.R", "wb")
-writeLines(dfStr,
-           dfIni.R)
-close(dfIni.R)
+.writeLinesIfChanged(dfStr, "R/dfIni.R")
 
 ## deparse1 came from R 4.0, use deparse2
 deparse2 <- function(expr, collapse = " ", width.cutoff = 500L, ...) {
@@ -587,10 +564,7 @@ final <- c("#include <time.h>",
            "}"
            )
 
-codegen2.h <- file("src/codegen2.h", "wb")
-writeLines(final,
-           codegen2.h)
-close(codegen2.h)
+.writeLinesIfChanged(final, "src/codegen2.h")
 
 ## --- Optional: model-cache MD5 (needs 'digest', which is in Suggests) ---
 ## Skipped gracefully when digest is not installed (e.g. --no-suggests CI).
@@ -599,25 +573,26 @@ if (requireNamespace("digest", quietly = TRUE)) {
   cpp <- list.files("src", pattern = "\\.(c|h|cpp|f)$")
   cpp <- cpp[!dir.exists(file.path("src", cpp))]
   include <- list.files("inst/include", recursive = TRUE)
+  ## rxode2parseVer.h holds the md5 written just below, so digesting it
+  ## would fold the previous build's fingerprint into this one and the md5
+  ## would differ on every build even when no source did -- which both
+  ## defeats the model cache it exists to key and rewrites the header (and
+  ## so rebuilds everything including it) every time.
+  include <- include[include != "rxode2parseVer.h"]
 
   md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
                                    paste0("inst/include/", include)
                                    ), digest::digest, file = TRUE),
                           ""))
-  unlink("R/rxode2_md5.R")
-  md5file <- file("R/rxode2_md5.R", "wb")
-  writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
-  close(md5file)
+  .writeLinesIfChanged(sprintf("rxode2.md5 <- \"%s\"\n", md5), "R/rxode2_md5.R")
 
   l <- readLines("DESCRIPTION")
   w <- which(regexpr("Version[:] *(.*)$", l) != -1)
   v <- gsub("Version[:] *(.*)$", "\\1", l[w])
 
-  unlink("inst/include/rxode2parseVer.h")
-  ode.h <- file("inst/include/rxode2parseVer.h", "wb")
-  writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
-               "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
-               sprintf("#define __VER_ver__ \"%s\"", v)),
-             ode.h)
-  close(ode.h)
+  .writeLinesIfChanged(
+    c(sprintf("#define __VER_md5__ \"%s\"", md5),
+      "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
+      sprintf("#define __VER_ver__ \"%s\"", v)),
+    "inst/include/rxode2parseVer.h")
 }

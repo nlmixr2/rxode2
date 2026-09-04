@@ -11,6 +11,15 @@
   -- a corrupt binary rather than a compile error.  `src/Makevars*` now
   compiles with `-MMD -MP` and reads back the generated `.d` files.
 
+- `inst/tools/workaround.R` now writes a generated source only when its
+  content actually changed.  It had rewritten the vendored SUNDIALS sources,
+  `RcppExports.cpp`, `sbuf.c`, `codegen2.h` and the rest on every install,
+  refreshing their mtimes and so recompiling 22 files each time.  Relatedly,
+  `inst/include/rxode2parseVer.h` was digested into the very md5 it carries,
+  so that fingerprint -- and the header -- changed on every build regardless
+  of the sources; it is now excluded from its own digest, which also lets the
+  model cache the md5 keys actually hit.
+
 ## Bug fixes
 
 - A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
