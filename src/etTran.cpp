@@ -2287,7 +2287,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         Rf_warningcall(R_NilValue, "%s", _("'ss' is ignored with classic rxode2 'EVID's"));
         flg=1;
       }
-      classicEvid = true;
+      // Only a user-supplied evid column can carry a hand-encoded classic
+      // internal evid.  Without one, cevid was DERIVED from the amt/rate/dur
+      // columns above and has to be translated like any other dose -- the
+      // rateI/flg resets just above are themselves gated on hasEvid.
+      classicEvid = hasEvid;
     }
     if (cevid != -1){
       if (rateI == 9){

@@ -239,6 +239,16 @@
       .out <- .add(.out, .id, .evid4, .mn, .argSets[[.an]])
     }
   }
+  ## Data with NO evid column: etTrans() derives the evid from amt/rate/dur
+  ## instead, a genuinely different path through the row loop.
+  .noEvid <- .evid4
+  .noEvid <- .noEvid[, names(.noEvid) != "evid", drop = FALSE]
+  for (.mn in c("plain", "alag")) {
+    for (.an in names(.argSets)) {
+      .id <- paste("noevid", .mn, .an, sep = "/")
+      .out <- .add(.out, .id, .noEvid, .mn, .argSets[[.an]])
+    }
+  }
   .sets <- list(theo_sd = "one", theo_md = "one", warfarin = "one",
                 pheno_sd = "one", mavoglurant = "one", nimoData = "one",
                 Bolus_1CPT = "one", Oral_1CPT = "one",
@@ -252,6 +262,11 @@
         .id <- paste("data", .sn, .mn, .an, sep = "/")
         .out <- .add(.out, .id, .d, .mn, .argSets[[.an]])
       }
+    }
+    if ("evid" %in% tolower(names(.d))) {
+      .dn <- .d[, tolower(names(.d)) != "evid", drop = FALSE]
+      .id <- paste("noevid", .sn, "plain", sep = "/")
+      .out <- .add(.out, .id, .dn, "plain", list())
     }
   }
   .out
