@@ -149,7 +149,7 @@ static inline int _rxAddlOccurrence(int rep, int flg, double ii_val, int addl,
   int ssLike = (flg == EVID0_SS0 || flg == EVID0_SS20 || flg == EVID0_SS ||
                 flg == EVID0_SS2 || flg == EVID0_SSINF);
   if (rep == 0) {
-    *iiOut = (ii_val > 0.0 && addl > 0 && !ssLike) ? 0.0 : ii_val;
+    *iiOut = ii_val;
     return flg;
   }
   if (dropSs && ssLike && flg != EVID0_SSINF) {
@@ -158,6 +158,19 @@ static inline int _rxAddlOccurrence(int rep, int flg, double ii_val, int addl,
   }
   *iiOut = ssLike ? ii_val : 0.0;
   return flg;
+}
+
+/* Whether the LAST record of occurrence 'rep' carries ii 0 rather than the
+ * occurrence's own ii.  Only the first occurrence of a repeating, non
+ * steady-state series does, which is where a repeated dose's ii stops meaning
+ * anything: the repeats are already written out.  Its effect depends on the
+ * dose shape -- a bolus is one record, so the bolus itself is zeroed, while an
+ * infusion's last record is its off record, which carries ii 0 anyway and
+ * leaves the on record's ii intact.  Shared so both engines reproduce it. */
+static inline int _rxAddlZeroLastIi(int rep, int flg, double ii_val, int addl) {
+  int ssLike = (flg == EVID0_SS0 || flg == EVID0_SS20 || flg == EVID0_SS ||
+                flg == EVID0_SS2 || flg == EVID0_SSINF);
+  return (rep == 0 && ii_val > 0.0 && addl > 0 && !ssLike);
 }
 
 /* Translate one NONMEM-style (evid 0-7) or classic rxode2 internal (evid>=100) event
