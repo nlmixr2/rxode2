@@ -455,20 +455,52 @@ Evidence:
 - `tests/testthat/nmtest-evid4.rds` (`test-nmtest.R` test `"evid4"`) is data
   derived from real NONMEM output: its `addl`-equivalent rows after the
   initial `evid=4` are plain `evid=1`, never another `evid=4`.
-- Architecturally this falls out of `src/etTran.cpp` `case 4:` (search
-  `// NONMEM-matching, intentional`): an `evid=4` record pushes exactly one
-  `EVID=3` reset, then rewrites `cevid` to a plain-dose code before the `addl`
-  expansion loop ever runs, so the loop has no reset left to repeat.
-- Regression test:
-  `test-etTrans.R` `"evid=4 expanded through addl only resets on the first
-  dose (matches NONMEM, issue #1351)"`.
+- Architecturally this falls out of `_rxAddlOccurrence()` (see the next
+  section): a repeat of an `evid=4` record is a plain dose, because the reset
+  is emitted once, before the series.
+- Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
+  resets on the first dose (matches NONMEM, issue #1351)"` and
+  `test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+  only once"`.
 
-**Genuine bug found in the runtime PUSH path (`evid_()`/`bolus()`/`infuse()`),
-now FIXED**: `_rxPushDose()` (`src/par_solve.cpp`) built its `addl` loop by
-passing the original `_evid` unmodified to `_rxTranslateOneEvent()` on every
-repeat, so a pushed `evid_(time, 4, amt, cmt, rate, ii, addl, ss)` reset on
-every repetition -- unlike the data-table path above. Fixed by rewriting the
-evid passed in for `_rep > 0` from 4 to 1 (search `_doseEvid` in
-`_rxPushDose()`), mirroring `etTran.cpp`'s `case 4:`. Regression test:
-`test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
-only once (rxode2#1351/#1352)"`.
+### There is ONE event translator -- keep it that way
+
+`inst/include/rxode2EventTranslate.h` is the single implementation of "what
+internal records does this event produce". BOTH engines call it:
+
+- the event table, `src/etTran.cpp` (`etTrans()`), whose per-row loop derives
+  `cmt100/cmt99`, `rateI` and `flg` and then calls `_rxTranslateDoseInto()`
+  once per occurrence of the `addl` series; and
+- the runtime push, `_rxPushDose()` (`src/par_solve.cpp`), behind `evid_()`,
+  `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()` and `reset()`.
+
+`_rxDeriveFlg()`, `_rxAddlApplies()`, `_rxAddlCount()`, `_rxAddlOccurrence()`
+and `_rxAddlZeroLastIi()` in that header are the shared rules for the
+steady-state flag and for what each occurrence of an `addl` series carries.
+**Do not re-implement any of this on one side.** Every historical
+event-table-vs-dosing-time bug (#1349, #1350, #1351) came from the two
+engines having separate copies.
+
+What legitimately stays in `etTran.cpp` is everything that is not "what
+records does this event produce": reading the columns, validating against the
+model variables (`cmtSupportsInfusion`/`cmtSupportsOff`, DVID), the
+first-record `evid` 3/4 guards, `idxInput`/covariate bookkeeping, and the
+post-passes (splitBolus, the reset time shift, sorting, modeled rate/dur
+re-pairing). A hand-encoded classic internal evid (>= 100) is emitted
+verbatim rather than translated.
+
+Two verification gates, both cheap, both required after ANY change here:
+
+- `tests/testthat/test-etTrans-golden.R` -- ~14300 cases whose exact
+  `etTrans()` output (records, the class-attribute info list, warning and
+  error text) is snapshotted under `tests/testthat/etTrans-golden/`.
+  Comparison is `expect_identical`. If it fails, that is a bug in the new
+  code unless a human decides the old output was wrong; only then regenerate
+  with `RXODE2_ETTRANS_GOLDEN=write` (confirm first that the failing case ids
+  are exactly the ones decided on) and say so in `NEWS.md`.
+  `RXODE2_ETTRANS_GOLDEN=full` also checks the base-order sort backend.
+- `tests/testthat/test-etTrans-translator.R` -- drives both engines over the
+  same events through the `rxTranslateOneEvent_()` `.Call` hook and requires
+  them to agree record for record. There are no known divergences; the
+  list may only shrink.
