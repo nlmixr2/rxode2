@@ -222,6 +222,79 @@ rxTest({
     }
   })
 
+  test_that("the densities differentiate, so a second derivative stays exact", {
+    ## d(eta)/d(latent) is 1/density(quantile), so FOCEi's Laplace inner
+    ## Hessian needs the DENSITY differentiated in turn.  Without a rule
+    ## rxode2 does not error -- it substitutes a one sided finite
+    ## difference, and here that difference would be taken OF a function
+    ## that is itself a finite difference.
+    for (.e in c("Derivative(gammapDer(a, z), a)",
+                 "Derivative(gammapDer(a, z), z)",
+                 "Derivative(ibetaDer(a, b, x), a)",
+                 "Derivative(ibetaDer(a, b, x), b)",
+                 "Derivative(ibetaDer(a, b, x), x)",
+                 "Derivative(studentTDen(x, nu), x)",
+                 "Derivative(studentTDen(x, nu), nu)")) {
+      expect_true(nzchar(do.call(rxFromSE, list(.e, unknownDerivatives="error"))),
+                  info=.e)
+    }
+    ## and they are the right derivatives
+    .nd <- function(f, x, h=1e-6) (f(x + h) - f(x - h))/(2*h)
+    for (.a in c(0.5, 2, 11.1)) {
+      for (.z in c(0.3, 2, 10)) {
+        expect_equal(gammapDer(.a, .z)*((.a - 1)/.z - 1),
+                     .nd(function(zz) gammapDer(.a, zz), .z), tolerance=1e-6)
+        expect_equal(gammapDer(.a, .z)*(log(.z) - digamma(.a)),
+                     .nd(function(aa) gammapDer(aa, .z), .a), tolerance=1e-6)
+      }
+    }
+    expect_equal(ibetaDer(2.3, 4.1, 0.4)*((2.3 - 1)/0.4 - (4.1 - 1)/(1 - 0.4)),
+                 .nd(function(xx) ibetaDer(2.3, 4.1, xx), 0.4), tolerance=1e-6)
+    expect_equal(ibetaDer(2.3, 4.1, 0.4)*(log(0.4) - digamma(2.3) + digamma(2.3 + 4.1)),
+                 .nd(function(aa) ibetaDer(aa, 4.1, 0.4), 2.3), tolerance=1e-6)
+    expect_equal(ibetaDer(2.3, 4.1, 0.4)*(log(1 - 0.4) - digamma(4.1) + digamma(2.3 + 4.1)),
+                 .nd(function(bb) ibetaDer(2.3, bb, 0.4), 4.1), tolerance=1e-6)
+    expect_equal(-studentTDen(1.3, 6)*7*1.3/(6 + 1.3^2),
+                 .nd(function(xx) studentTDen(xx, 6), 1.3), tolerance=1e-6)
+  })
+
+  test_that("the eta transform's SECOND derivative is exact too", {
+    ## `unknownDerivatives="error"` is the whole point: differentiating the
+    ## first derivative again must not fall back to a finite difference
+    .d1 <- function(model, var) {
+      .s <- rxS(model, doConst=FALSE)
+      .dd <- as.character(symengine::D(get(sub("=.*", "", model), envir=.s),
+                                       symengine::S(var)))
+      do.call(rxFromSE, list(.dd, unknownDerivatives="error"))
+    }
+    .env <- new.env(parent=environment(phiU))
+    assign("M_1_SQRT_2PI", 1/sqrt(2*pi), .env)
+    assign("M_SQRT_PI", sqrt(pi), .env)
+    assign("M_SQRT2", sqrt(2), .env)
+    assign("M_PI", pi, .env)
+    assign("Rx_pow_di", function(x, n) x^n, .env)
+    assign("Rx_pow", function(x, y) x^y, .env)
+    assign("erfinv", function(x) stats::qnorm((x + 1)/2)/sqrt(2), .env)
+    assign("a", 11.1, .env); assign("b", 2.22, .env); assign("nu", 6, .env)
+    assign("s1", 2.3, .env); assign("s2", 4.1, .env)
+    .chk <- function(model, f) {
+      .e2 <- .d1(paste0("g=", .d1(model, "z")), "z")
+      for (.z in c(-2.5, -0.4, 0.9, 2.1)) {
+        assign("z", .z, envir=.env)
+        .h <- 1e-4
+        expect_equal(eval(parse(text=.e2), envir=.env),
+                     (f(.z + .h) - 2*f(.z) + f(.z - .h))/.h^2,
+                     tolerance=1e-4, info=paste0(model, " at z=", .z))
+      }
+    }
+    .chk("cl=gammapInv(a, phiU(z))/b",
+         function(z) gammapInv(11.1, phiU(z))/2.22)
+    .chk("v=studentTInv(phiU(z), nu)",
+         function(z) studentTInv(phiU(z), 6))
+    .chk("w=ibetaInv(s1, s2, phiU(z))",
+         function(z) ibetaInv(2.3, 4.1, phiU(z)))
+  })
+
   test_that("the new functions are in the syntax vignette's table", {
     ## `rxSyntaxFunctions` is what the "Supported functions" table of
     ## vignette("rxode2-syntax") renders, so a function missing from it is

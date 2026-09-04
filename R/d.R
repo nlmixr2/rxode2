@@ -689,6 +689,56 @@
   }
 )
 
+## Densities.
+##
+## These are the SECOND derivative of the inverse-CDF chain, and they have
+## to be here.  `d(eta)/d(latent)` is `1/density(quantile)`, so FOCEi's
+## Laplace inner Hessian -- and any analytic outer gradient -- needs the
+## density differentiated in turn.  Without a rule rxode2's symbolic
+## differentiation does not error: it substitutes a one sided finite
+## difference, and here that difference would be taken OF a function that
+## is itself a finite difference, which is how a noisy objective and a
+## worse optimum get in.  All three have elementary closed forms.
+
+## gammapDer(a, z) = z^(a-1) exp(-z)/gamma(a)
+.rxD$gammapDer <- list(
+  function(a, z) {
+    paste0("gammapDer(", a, ",", z, ")*(log(", z, ")-digamma(", a, "))")
+  },
+  function(a, z) {
+    paste0("gammapDer(", a, ",", z, ")*((", a, "-1)/(", z, ")-1)")
+  }
+)
+
+## ibetaDer(a, b, x) = x^(a-1) (1-x)^(b-1)/beta(a, b)
+.rxD$ibetaDer <- list(
+  function(a, b, x) {
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(", x, ")-digamma(", a,
+           ")+digamma((", a, ")+(", b, ")))")
+  },
+  function(a, b, x) {
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(1-(", x, "))-digamma(", b,
+           ")+digamma((", a, ")+(", b, ")))")
+  },
+  function(a, b, x) {
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*((", a, "-1)/(", x, ")-(",
+           b, "-1)/(1-(", x, ")))")
+  }
+)
+
+.rxD$studentTDen <- list(
+  function(x, nu) {
+    paste0("-studentTDen(", x, ",", nu, ")*((", nu, ")+1)*(", x, ")/((",
+           nu, ")+(", x, ")*(", x, "))")
+  },
+  function(x, nu) {
+    paste0("studentTDen(", x, ",", nu, ")*0.5*(digamma(((", nu,
+           ")+1)/2)-digamma((", nu, ")/2)-1/(", nu, ")-log1p((", x, ")*(",
+           x, ")/(", nu, "))+((", nu, ")+1)*(", x, ")*(", x, ")/((", nu,
+           ")*((", nu, ")+(", x, ")*(", x, "))))")
+  }
+)
+
 ## The clamp `phiU()` puts on `phi()` is deliberately absent here: it only
 ## binds beyond |q| ~ 7.9, where dnorm(q) is already below 1e-14, so the
 ## two agree to within their own accuracy -- and reporting a hard zero

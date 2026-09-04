@@ -53,6 +53,16 @@ model({
   `gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
   supply the shape derivatives that have no elementary closed form.
 
+- The DENSITIES now differentiate too: `gammapDer()`, `ibetaDer()` and
+  `studentTDen()` have derivative rules, in closed form.  This is the
+  second derivative of an inverse-CDF chain -- `d(q)/d(p)` is one over the
+  density at the quantile, so anything needing a second derivative of that
+  (a Laplace inner Hessian, an analytic outer gradient) has to
+  differentiate the density in turn.  Without a rule that silently became
+  a one sided finite difference taken *of* a function that is itself a
+  finite difference.  Any model using `gammapDer()` was affected, not only
+  a declared random effect distribution.
+
 ### Event translation
 
 - A steady-state dose into a compartment with a modeled `alag()` pushed
