@@ -1,9 +1,26 @@
 #ifndef __RX2API_H__
 #define __RX2API_H__
+#include <stddef.h>
 #if defined(__cplusplus)
 extern "C" {
 #endif
   // rx2api.h
+
+  // Stride, in bytes, of one entry of the subject array (`rx->subjects`).
+  // Written by rxOptionsIniEnsure() (par_solve.cpp) from the same
+  // `sizeof(rx_solving_options_ind)` it allocates the array with, and read
+  // back by getSolvingOptionsInd() below rather than that function's own
+  // `sizeof`.  This file is the package's ABI surface and is a separate
+  // translation unit from the one that owns the array, so taking the stride
+  // from its own view of the struct made a correct subject pointer depend on
+  // the two views agreeing.  They do not have to: R's default make rules
+  // track no header dependencies, so an object file whose own source did not
+  // change is linked in unchanged after a change to the struct, and the two
+  // views then differ by exactly the appended bytes.  The array is laid out
+  // at the allocator's stride, so that is the one to walk it with
+  // (nlmixr2/nlmixr2est#1039).  A plain global, not a field of `rx_solve`:
+  // reading a field would put the layout back in the loop.
+  extern size_t rxIndSize;
 
   // This function gets the global rx solving options
   rx_solving_options* getSolvingOptions(rx_solve* rx);

@@ -13,6 +13,7 @@
 #include "strncmp.h"
 #include "timsort.h"
 #include "../inst/include/rxode2.h"
+#include "rx2api.h"
 #include "../inst/include/rxode2dataErr.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
@@ -647,9 +648,19 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
 
 t_set_solve set_solve = NULL;
 
+// Stride of one `inds_global` entry, published for getSolvingOptionsInd()
+// (src/rx2api.c) so the ABI surface walks the subject array at the stride it
+// was allocated with instead of its own `sizeof` -- see rx2api.h.  Seeded with
+// this translation unit's value so it is right even if read before the first
+// allocation.
+extern "C" { size_t rxIndSize = sizeof(rx_solving_options_ind); }
+
 extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_global);
   R_Free(inds_thread);
+  // Set from the same expression the allocation immediately below uses, so
+  // the published stride cannot drift from the real one.
+  rxIndSize = sizeof(rx_solving_options_ind);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
   inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
   R_Free(inds_threadCur);
