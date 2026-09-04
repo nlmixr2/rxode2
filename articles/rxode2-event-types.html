@@ -980,6 +980,44 @@ then applies a dose.</p>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-25-1.png" class="r-plt" alt="" width="700"></p>
+<div class="section level3">
+<h3 id="addl-only-resets-the-first-evid4">
+<code>addl</code> only resets the first <code>evid=4</code><a class="anchor" aria-label="anchor" href="#addl-only-resets-the-first-evid4"></a>
+</h3>
+<p>This is a common surprise, so it is worth calling out on its own:
+when an <code>evid=4</code> (reset+dose) record is repeated with
+<code>addl</code>, only the <em>first</em> occurrence resets the
+compartments. The <code>addl</code>-repeated doses are ordinary doses,
+not further resets.</p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">addlEv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, time<span class="op">=</span><span class="fl">2</span>, evid<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">40</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">explicitEv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, time<span class="op">=</span><span class="fl">2</span>,  evid<span class="op">=</span><span class="fl">4</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, time<span class="op">=</span><span class="fl">14</span>, evid<span class="op">=</span><span class="fl">4</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, time<span class="op">=</span><span class="fl">26</span>, evid<span class="op">=</span><span class="fl">4</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">40</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">addl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">addlEv</span><span class="op">)</span></span>
+<span><span class="va">explicit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">explicitEv</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">addl</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"addl=2 (resets once)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">explicit</span>, <span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"three explicit evid=4 (resets every time)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-26-1.png" class="r-plt" alt="" width="700"></p>
+<p>The two regimens are <em>not</em> the same, and this is deliberate:
+it matches NONMEM, which also resets an <code>evid=4</code> record’s
+<code>addl</code> repeats as plain doses rather than repeated resets.
+Write the regimen out as separate <code>evid=4</code> records (as in
+<code>explicitEv</code> above) if a reset is wanted at every
+repetition.</p>
+<p>The same asymmetry applies to <code>ss</code> combined with
+<code>addl</code>: NONMEM does not carry the steady-state flag into the
+<code>addl</code>-repeated doses either, it just keeps dosing normally
+after the first, steady-state dose – see <a href="https://blog.nlmixr2.org/blog/2024-04-04-steady-state/" class="external-link">this blog
+post</a> for a worked discussion. <code>rxode2</code> follows the same
+convention (see the Steady State section above).</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="turning-off-compartments">Turning off compartments<a class="anchor" aria-label="anchor" href="#turning-off-compartments"></a>
@@ -988,7 +1026,7 @@ then applies a dose.</p>
 a compartment: its value is set to the initial value, but other
 compartments are unchanged. A subsequent dose to that compartment turns
 it back on.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-depot"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -1014,23 +1052,23 @@ it back on.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 1.45  <span style="color: #BB0000;">NA</span>           <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1.70  <span style="color: #BB0000;">NA</span>           <span style="color: #BB0000;">NA</span>  <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #0000BB; font-weight: bold;">0</span>:<span style="color: #BBBBBB;">Observation</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 92 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-27-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" alt="" width="700"></p>
 <p>Note that a dose turns back on only the compartment that was dosed.
 Turning off the effect compartment keeps it off even after a new depot
 dose:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>, cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-28-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
 <p>To re-enable it, send a zero dose or an <code>evid=2</code> event to
 the compartment:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>timeUnits<span class="op">=</span><span class="st">"hr"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, ii<span class="op">=</span><span class="fl">12</span>, addl<span class="op">=</span><span class="fl">3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">6</span>,  cmt<span class="op">=</span><span class="st">"-eff"</span>, evid<span class="op">=</span><span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -1038,7 +1076,7 @@ the compartment:</p>
 <span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">ev</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">depot</span>, <span class="va">C2</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-29-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="rxode2-event-types_files/figure-html/unnamed-chunk-30-1.png" class="r-plt" alt="" width="700"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
