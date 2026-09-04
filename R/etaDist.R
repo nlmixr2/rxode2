@@ -302,7 +302,13 @@ rxEtaDistExpand <- function(ui) {
     .add$upper <- Inf
     .add$fix <- FALSE
     .add$label <- NA_character_
-    .add$backTransform <- NA_character_
+    ## tanh() of one of these is the partial correlation between its two
+    ## random effects given the ones before them (the canonical partial
+    ## correlation parameterization), and for a 2x2 block -- the usual
+    ## case, and Bauer's -- it is plainly the correlation.  So the
+    ## back-transformed column reads as a correlation without any special
+    ## casing; `fit$etaDistCor` carries the whole matrix.
+    .add$backTransform <- "tanh"
     if (any(names(.add) == "prior")) .add$prior <- NA_character_
     if (any(names(.add) == "err")) .add$err <- NA_character_
     .add$condition <- NA_character_

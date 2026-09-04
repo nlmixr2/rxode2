@@ -133,6 +133,95 @@ rxTest({
     }
   })
 
+  test_that("every declarable family's quantile template is right", {
+    ## The single most load-bearing test of the catalog: for EVERY family
+    ## `lotriEtaDists()` offers, the template has to (1) be valid rxode2,
+    ## (2) evaluate to that family's actual quantile function, and (3)
+    ## differentiate exactly through rxode2's symbolic machinery -- which
+    ## is what the FOCEi inner problem needs of it.
+    ##
+    ## Constants and helpers the generated C uses, so a derivative string
+    ## can be evaluated in plain R here.
+    .env0 <- new.env(parent=environment(phiU))
+    assign("M_SQRT_PI", sqrt(pi), .env0)
+    assign("M_SQRT2", sqrt(2), .env0)
+    assign("M_1_SQRT_2PI", 1/sqrt(2*pi), .env0)
+    assign("M_PI", pi, .env0)
+    assign("M_LN2", log(2), .env0)
+    assign("M_2PI", 2*pi, .env0)
+    assign("Rx_pow_di", function(x, n) x^n, .env0)
+    assign("Rx_pow", function(x, y) x^y, .env0)
+    assign("R_pow_di", function(x, n) x^n, .env0)
+    assign("R_pow", function(x, y) x^y, .env0)
+    assign("fabs", abs, .env0)
+    assign("erfinv", function(x) stats::qnorm((x + 1)/2)/sqrt(2), .env0)
+    .v <- c(mean=0, sd=1.2, nu=6, mu=0.3, sigma=1.1, location=0.2, scale=1.3,
+            beta=1.4, meanlog=0.5, sdlog=0.6, df=5, rate=1.7, shape=2.2,
+            alpha=2.5, y_min=0.9, lambda=1.5, shape1=2.3, shape2=4.1,
+            kappa=8, min=0.5, max=3.5)
+    ## R's own quantile function for each family, in the catalog's
+    ## parameterization
+    .ref <- list(
+      dnorm             = function(u) stats::qnorm(u, 0, 1.2),
+      stdNormal         = function(u) stats::qnorm(u),
+      studentT          = function(u) 0.3 + 1.1*stats::qt(u, 6),
+      dcauchy           = function(u) stats::qcauchy(u, 0.2, 1.3),
+      doubleExponential = function(u) 0.3 + 1.1*ifelse(u < 0.5, log(2*u),
+                                                       -log(2*(1 - u))),
+      dlogis            = function(u) stats::qlogis(u, 0.2, 1.3),
+      gumbel            = function(u) 0.3 - 1.4*log(-log(u)),
+      dlnorm            = function(u) stats::qlnorm(u, 0.5, 0.6),
+      dchisq            = function(u) stats::qchisq(u, 5),
+      invChiSquare      = function(u) 1/stats::qchisq(1 - u, 6),
+      scaledInvChiSquare= function(u) 6*1.1^2/stats::qchisq(1 - u, 6),
+      dexp              = function(u) stats::qexp(u, 1.7),
+      dgamma            = function(u) stats::qgamma(u, shape=2.2, rate=1.7),
+      invGamma          = function(u) 1.4/stats::qgamma(1 - u, shape=2.5, rate=1),
+      dweibull          = function(u) stats::qweibull(u, 2.2, 1.3),
+      frechet           = function(u) 1.1*(-log(u))^(-1/2.5),
+      rayleigh          = function(u) 1.1*sqrt(-2*log(1 - u)),
+      pareto            = function(u) 0.9*(1 - u)^(-1/2.5),
+      paretoType2       = function(u) 0.3 + 1.5*((1 - u)^(-1/2.5) - 1),
+      dbeta             = function(u) stats::qbeta(u, 2.3, 4.1),
+      betaProportion    = function(u) stats::qbeta(u, 0.3*8, 0.7*8),
+      dunif             = function(u) stats::qunif(u, 0.5, 3.5))
+    .tab <- lotri::lotriEtaDists()
+    ## every family in the catalog is covered; a new one has to add a row
+    ## here or this fails
+    expect_setequal(.tab$name, names(.ref))
+    for (.i in seq_len(nrow(.tab))) {
+      .nm <- .tab$name[.i]
+      .q <- .tab$quantile[.i]
+      .e <- new.env(parent=.env0)
+      .pn <- if (nzchar(.tab$parNames[.i])) {
+        strsplit(.tab$parNames[.i], ",", fixed=TRUE)[[1]]
+      } else character(0)
+      ## `df` is a grammar token in rxode2 (`df(state)/dy(var)`), so the
+      ## stand-in values are prefixed rather than named after the parameters
+      for (.p in .pn) {
+        .q <- gsub(paste0("{", .p, "}"), paste0("(pv.", .p, ")"), .q, fixed=TRUE)
+        assign(paste0("pv.", .p), unname(.v[.p]), envir=.e)
+      }
+      .q <- gsub("{u}", "phiU(z)", .q, fixed=TRUE)
+      .f <- function(zz) {
+        assign("z", zz, envir=.e)
+        eval(parse(text=.q), envir=.e)
+      }
+      ## (2) the template IS that family's quantile function
+      for (.z in c(-2.5, -0.7, 0.2, 1.6)) {
+        expect_equal(.f(.z), .ref[[.nm]](phiU(.z)), tolerance=1e-8, info=.nm)
+      }
+      ## (1)+(3) valid rxode2, and exactly differentiable
+      .s <- rxS(paste0("y=", .q), doConst=FALSE)
+      .dd <- as.character(symengine::D(get("y", envir=.s), symengine::S("z")))
+      .d <- do.call(rxFromSE, list(.dd, unknownDerivatives="error"))
+      assign("z", 0.6, envir=.e)
+      .an <- eval(parse(text=.d), envir=.e)
+      expect_equal(.an, (.f(0.6 + 1e-6) - .f(0.6 - 1e-6))/2e-6,
+                   tolerance=1e-5, info=.nm)
+    }
+  })
+
   test_that("a declaration survives into the ui", {
     .u <- .gammaMod()
     .d <- rxUiEtaDists(.u)
