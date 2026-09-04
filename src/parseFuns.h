@@ -670,8 +670,18 @@ static inline void assertAdaptiveDosingArgsDeclared(void) {
 
 static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
   while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
+  // A leading '-' names the compartment to turn off (the negative CMT the
+  // event table takes from its column).  Resolve the compartment normally and
+  // negate the result, so the shared translator sees the same signal either
+  // way.
+  int off = 0;
+  if (*vCmt == '-') {
+    off = 1;
+    vCmt++;
+    while (*vCmt == ' ' || *vCmt == '\t') vCmt++;
+  }
   if (isStrInteger(vCmt)) {
-    sPrint(&_gbuf, "(int)(%s)", vCmt);
+    sPrint(&_gbuf, off ? "(int)(-(%s))" : "(int)(%s)", vCmt);
     return _gbuf.s;
   }
   if (*vCmt == '\'' || *vCmt == '"') {
@@ -694,7 +704,7 @@ static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt)
   }
   // while DDT# is 0-indexed, the _rxPushDose() is 1-indexed, so add 1
   // to the DDT# for the _rxPushDose() call
-  sPrint(&_gbuf, "(__DDT%d__ + 1)", tb.id);
+  sPrint(&_gbuf, off ? "(-(__DDT%d__ + 1))" : "(__DDT%d__ + 1)", tb.id);
   return _gbuf.s;
 }
 

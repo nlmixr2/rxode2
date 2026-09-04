@@ -490,6 +490,12 @@ post-passes (splitBolus, the reset time shift, sorting, modeled rate/dur
 re-pairing). A hand-encoded classic internal evid (>= 100) is emitted
 verbatim rather than translated.
 
+`cmt_evid` in `inst/tran.g` accepts a leading `-` so `evid_()` can name the
+compartment to turn off, the way a negative `CMT` column does. Changing that
+grammar means regenerating `src/tran.g.d_parser.h` with `devtools::document()`
+-- and re-checking that parse time is still linear in model length, since a
+newly ambiguous rule makes dparser superlinear.
+
 Two verification gates, both cheap, both required after ANY change here:
 
 - `tests/testthat/test-etTrans-golden.R` -- ~14300 cases whose exact

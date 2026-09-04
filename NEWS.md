@@ -31,6 +31,10 @@
   compartment turns that compartment back on -- both matching what the same
   row does in the event table.
 
+- `evid_()` now accepts a negative compartment, by name or number
+  (`evid_(t, 2, 0, -depot, 0, 0, 0, 0)`), to turn that compartment off --
+  the same signal the event table takes from a negative `CMT` column.
+
 - A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) written as a
   hand-encoded classic internal `evid` (>= 100) carrying a duration now
   errors in the event table too.  The runtime push path already refused it

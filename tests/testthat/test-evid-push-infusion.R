@@ -219,13 +219,39 @@ rxTest({
     expect_equal(got$central[-1], want$central[-1], tolerance = 1e-5)
   })
 
-  ## A negative compartment (turn that compartment off) is understood by the
-  ## shared translator, so the two engines agree on it, but evid_() cannot
-  ## SPELL it yet: cmt_evid in inst/tran.g accepts only a positive compartment,
-  ## and it is shared with bolus()/infuse(), where a negative compartment would
-  ## be meaningless.  Reaching it from the model language needs a grammar
-  ## change; the translator-level agreement is covered by
-  ## test-etTrans-translator.R's negcmt cells.
+  test_that("a pushed negative compartment turns that compartment off", {
+    # a negative compartment is the turn-off signal the event table takes from
+    # a negative CMT column; evid_() spells it the same way, by name or number
+    pars <- c(ka = 0.5, cl = 1, v = 10)
+    mkMod <- function(cmtExpr) {
+      eval(bquote(rxode2({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+        if (t < 1e-8) {
+          evid_(6, 2, 0, .(cmtExpr), 0, 0, 0, 0)
+        }
+      })))
+    }
+    ref <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+    want <- rxSolve(ref, pars,
+                    et(amt = 100, time = 0) |>
+                      et(time = 6, cmt = "-depot", evid = 2) |> et(.obs))
+    for (cmtExpr in list(quote(-depot), -1)) {
+      got <- rxSolve(mkMod(cmtExpr), pars, et(amt = 100, time = 0) |> et(.obs))
+      expect_equal(got$depot, want$depot, tolerance = 1e-5)
+      expect_equal(got$cp, want$cp, tolerance = 1e-5)
+    }
+    # and it really turned the compartment off
+    got <- rxSolve(mkMod(quote(-depot)), pars,
+                   et(amt = 100, time = 0) |> et(.obs))
+    expect_gt(got$depot[got$time == 5.5], 0)
+    expect_equal(got$depot[got$time == 6.5], 0)
+  })
 
   test_that("a pushed evid=4 infusion turns off (#1322 follow-up)", {
     # evid=4 is reset + dose, and the translated event only had room for those
