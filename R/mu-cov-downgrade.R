@@ -111,7 +111,7 @@
   ## does the latent eta `rxEtaDistExpand()` leaves behind.  Warning about
   ## either would report the feature working as a parsing error.
   .extra <- setdiff(.extra, .rxEtaDistVars(ui$iniDf))
-  .extra <- .extra[!grepl("^rxz[.]", .extra)]
+  .extra <- .extra[!grepl("^z[.]", .extra)]
   if (length(.extra) > 0) {
     warning("some etas defaulted to non-mu referenced, possible parsing error: ",
             paste(.extra, collapse=", "),
