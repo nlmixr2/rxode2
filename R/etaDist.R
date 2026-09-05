@@ -550,10 +550,16 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
   }
   checkmate::assertNumeric(variance, lower=0, len=1, any.missing=FALSE,
                            .var.name="variance")
-  if (variance <= 1e-6) {
-    stop("'variance' must be meaningfully above zero: nlmixr2's mu-theta M-step is weighted by 'omega^-1', so a ~0 helper variance pins the parameter at its starting value instead of estimating it (0.01-0.1 is the useful range)",
-         call.=FALSE)
-  }
+  ## `variance = 0` is NONMEM's own spelling of this idiom -- Bauer's control
+  ## streams mu-reference every distribution parameter and give each helper
+  ## `$OMEGA (0.0 FIXED)` -- and nlmixr2 now recognizes it: a mu-referenced
+  ## random effect declared fix(0) is routed to
+  ## `nlmixr2est:::.preProcessZeroOmegaMuRef()`, which substitutes
+  ## `saemControl(zeroOmegaTune=)` as a sampling width and, with
+  ## `saemControl(zeroOmegaDirect=TRUE)`, updates the theta by directly
+  ## maximizing the observation likelihood instead of by the omega^-1-weighted
+  ## regression that cannot move it.  A nonzero `variance` writes the width
+  ## into the model itself instead, bypassing that machinery.
   .declared <- .ui$iniDf$name[!is.na(.ui$iniDf$etaDist)]
   .exp <- rxEtaDistExpand(.ui)
   .ini <- .exp$iniDf
