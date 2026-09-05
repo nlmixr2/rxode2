@@ -309,6 +309,9 @@ rxEtaDistExpand <- function(ui) {
                        .iniDf$neta1 %in% .idx & .iniDf$neta2 %in% .idx))
   }
   if (length(.drop) > 0L) .iniDf <- .iniDf[-.drop, , drop=FALSE]
+  ## record the natural scale for the declaration's own parameters before the
+  ## column that says what they are is dropped
+  .iniDf <- .rxEtaDistThetaBackTransform(.iniDf)
   .iniDf$etaDist <- NULL
   if (nrow(.newTheta) > 0L) {
     .nTheta <- suppressWarnings(max(c(0L, .iniDf$ntheta), na.rm=TRUE))
@@ -605,4 +608,90 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
          call.=FALSE)
   }
   rxUiDecompress(rxode2(.fun))
+}
+
+#' Is every occurrence of `nm` in `x` directly inside `fn(...)`?
+#'
+#' @param x parsed expression
+#' @param nm variable name
+#' @param fn function name to look for
+#' @return list(total=, wrapped=) occurrence counts
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistWrapCount <- function(x, nm, fn) {
+  .tot <- 0L
+  .wrap <- 0L
+  .walk <- function(e, inFn) {
+    if (is.name(e)) {
+      if (as.character(e) == nm) {
+        .tot <<- .tot + 1L
+        if (inFn) .wrap <<- .wrap + 1L
+      }
+      return(invisible())
+    }
+    if (!is.call(e)) return(invisible())
+    .isFn <- length(e) == 2L && is.name(e[[1]]) && as.character(e[[1]]) == fn
+    for (.i in seq_along(e)[-1]) .walk(e[[.i]], .isFn)
+    invisible()
+  }
+  .walk(x, FALSE)
+  list(total=.tot, wrapped=.wrap)
+}
+
+#' Give a declared distribution's parameters a back-transformation
+#'
+#' A theta that only ever reaches the model inside a `dist()` declaration has
+#' no mu reference, so nothing records what scale it is on and `parFixed`
+#' prints it raw.  For Bauer's gamma that means the clearance shows as 1.722
+#' when the clearance is `exp(1.722) = 5.60` -- not wrong, but it is the
+#' number of a parameter the user did not write, sitting in a column that
+#' elsewhere holds natural-scale values.
+#'
+#' Where the declaration is unambiguous the transform is recorded.  The rule
+#' is deliberately narrow: EVERY occurrence of the parameter in the
+#' declaration must sit directly inside the same one-argument call.  So
+#' `dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))` gives both
+#' `lclrv` and `lclm` a back-transformation of `exp`, while a parameter that
+#' appears bare somewhere, or under two different functions, gets none --
+#' there is no single natural scale to report it on, and a guess would be
+#' worse than the raw number.
+#'
+#' A back-transformation the user set explicitly is never overwritten.
+#'
+#' @param iniDf ini data frame carrying the `etaDist` column
+#' @return `iniDf`, possibly with `backTransform` filled in
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistThetaBackTransform <- function(iniDf) {
+  if (is.null(iniDf) || !any(names(iniDf) == "etaDist")) return(iniDf)
+  if (!any(names(iniDf) == "backTransform")) return(iniDf)
+  .w <- which(!is.na(iniDf$etaDist))
+  if (length(.w) == 0L) return(iniDf)
+  .thetas <- iniDf$name[!is.na(iniDf$ntheta)]
+  if (length(.thetas) == 0L) return(iniDf)
+  ## one-argument monotone transforms rxode2 already reports on
+  .cand <- c("exp", "expit", "probitInv", "log")
+  for (.nm in .thetas) {
+    .wt <- which(iniDf$name == .nm)
+    if (length(.wt) != 1L) next
+    if (!is.na(iniDf$backTransform[.wt])) next   # user said so; leave it
+    .hit <- NULL
+    for (.fn in .cand) {
+      .tot <- 0L
+      .wrap <- 0L
+      for (.d in iniDf$etaDist[.w]) {
+        .e <- try(str2lang(.d), silent=TRUE)
+        if (inherits(.e, "try-error")) next   # nocov
+        .c <- .rxEtaDistWrapCount(.e, .nm, .fn)
+        .tot <- .tot + .c$total
+        .wrap <- .wrap + .c$wrapped
+      }
+      if (.tot > 0L && .tot == .wrap) {
+        if (!is.null(.hit)) { .hit <- NULL; break }  # ambiguous; report raw
+        .hit <- .fn
+      }
+    }
+    if (!is.null(.hit)) iniDf$backTransform[.wt] <- .hit
+  }
+  iniDf
 }
