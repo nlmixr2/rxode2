@@ -2,17 +2,6 @@
 
 ## New features
 
-- The latent random effects `rxEtaDistExpand()` writes for a declared
-  non-normal distribution are now named `z.<eta>` rather than `rxz.<eta>`.
-  The `rx` prefix put them in rxode2's reserved space, where the
-  mu-reference scan skips them -- so they reached neither `muRefDataFrame`
-  nor `nonMuEtas`, and `saem` had no parameter for them: it fitted the
-  model with the declared random effect *absent* and then died indexing an
-  omega that had no column for it (nlmixr2est#1047).  `z.` is visible to
-  that scan and names the latent for what it is, a standard normal.  Since
-  the name is no longer in reserved space, the expansion checks that the
-  model does not already use it rather than assuming.
-
 - `rxEtaDistMuRef()` mu-references the parameters of a declared random-effect
   distribution.  `rxEtaDistExpand()` writes them as bare thetas inside an
   inverse-CDF call, so none of them is in `theta + eta` form and none of them

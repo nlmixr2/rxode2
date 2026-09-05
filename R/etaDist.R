@@ -172,7 +172,7 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistCorLines <- function(nms, i) {
-  .z <- paste0("z.", nms)
+  .z <- paste0("rxz.", nms)
   if (i == 1L) return(paste0("rxN.", nms[1], " <- ", .z[1]))
   .ret <- character(0)
   .terms <- character(0)
@@ -298,28 +298,9 @@ rxEtaDistExpand <- function(ui) {
     }
     ## the latent random effects: renamed, unit variance, fixed, and no
     ## covariance -- the correlation is in the `rxCor.*` thetas now
-    ##
-    ## The latent prefix is deliberately NOT `rx`-something.  rxode2's
-    ## mu-reference scan skips `rx`-prefixed identifiers as reserved internals,
-    ## and a latent named that way lands in neither `muRefDataFrame` nor
-    ## `nonMuEtas` -- which left `saem` with no parameter for it, so it fitted
-    ## the model with the declared random effect ABSENT and then died indexing
-    ## a Gamma2_phi1 that had no column for it (nlmixr2est#1047).  `z.` is
-    ## visible to that scan, and names the latent for what it is.
-    ##
-    ## The cost of not being in reserved space is that a user could have
-    ## written the same name, so that is checked rather than assumed.
-    .clash <- intersect(paste0("z.", .nms), c(.iniDf$name, all.vars(as.call(c(list(quote(`{`)), .ui$lstExpr)))))
-    if (length(.clash) > 0L) {
-      stop("declared random effect expansion needs the name(s) '",
-           paste(.clash, collapse="', '"),
-           "', which this model already uses; rename them to expand a 'dist()' ",
-           "declaration on '", paste(.nms, collapse="', '"), "'",
-           call.=FALSE)
-    }
     for (.nm in .nms) {
       .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
-      .iniDf$name[.w] <- paste0("z.", .nm)
+      .iniDf$name[.w] <- paste0("rxz.", .nm)
       .iniDf$est[.w] <- 1
       .iniDf$fix[.w] <- TRUE
     }

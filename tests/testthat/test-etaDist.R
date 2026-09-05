@@ -356,7 +356,7 @@ rxTest({
     ## it expands like any other declaration
     .txt <- paste(vapply(rxEtaDistExpand(.u)$lstExpr, deparse1, character(1)),
                   collapse="\n")
-    expect_true(grepl("z.eta.cl", .txt, fixed=TRUE))
+    expect_true(grepl("rxz.eta.cl", .txt, fixed=TRUE))
     ## piping a different family onto it keeps working
     .v <- suppressMessages(.u |> ini(dist(eta.cl) ~ dweibull(exp(lcls), exp(lclm))))
     expect_equal(rxUiEtaDists(.v)$etaDist, "dweibull(exp(lcls), exp(lclm))")
@@ -370,14 +370,14 @@ rxTest({
     .g <- rxEtaDistExpand(.gammaMod())
     .n <- .g$iniDf$name
     ## the latent random effects: renamed, unit variance, fixed
-    expect_true(all(c("z.eta.cl", "z.eta.v1") %in% .n))
-    expect_true(all(.g$iniDf$fix[.n %in% c("z.eta.cl", "z.eta.v1")]))
-    expect_equal(unique(.g$iniDf$est[.n %in% c("z.eta.cl", "z.eta.v1")]), 1)
+    expect_true(all(c("rxz.eta.cl", "rxz.eta.v1") %in% .n))
+    expect_true(all(.g$iniDf$fix[.n %in% c("rxz.eta.cl", "rxz.eta.v1")]))
+    expect_equal(unique(.g$iniDf$est[.n %in% c("rxz.eta.cl", "rxz.eta.v1")]), 1)
     ## the correlation moved into an unconstrained theta, at atanh(rho)
     expect_true("rxCor.eta.v1.eta.cl" %in% .n)
     expect_equal(.g$iniDf$est[.n == "rxCor.eta.v1.eta.cl"], atanh(0.5))
     ## omega is a plain fixed identity for the declared block
-    expect_equal(unname(.g$omega["z.eta.cl", "z.eta.v1"]), 0)
+    expect_equal(unname(.g$omega["rxz.eta.cl", "rxz.eta.v1"]), 0)
     ## and the model gained the transform
     .txt <- paste(vapply(.g$lstExpr, deparse1, character(1)), collapse="\n")
     expect_true(grepl("phiU(rxN.eta.cl)", .txt, fixed=TRUE))
@@ -498,44 +498,5 @@ rxTest({
       })
     }
     expect_error(rxEtaDistExpand(.u()), "subject level")
-  })
-
-  test_that("the latent name is outside rxode2's reserved space, and checked", {
-    # The latent prefix must not be `rx`-something: rxode2's mu-reference scan
-    # skips `rx`-prefixed identifiers as reserved internals, and a latent named
-    # that way lands in neither muRefDataFrame nor nonMuEtas -- which left saem
-    # with no parameter for it, fitting the model with the declared random
-    # effect absent (nlmixr2est#1047).
-    .u <- rxUiDecompress(rxEtaDistExpand(.gammaMod()))
-    .e <- .u$iniDf[!is.na(.u$iniDf$neta1), ]
-    .lat <- .e$name[.e$neta1 == .e$neta2]
-    expect_true(all(grepl("^z[.]", .lat)))
-    expect_false(any(grepl("^rx", .lat)))
-    # NB the assertion that saem actually SAMPLES it lives in nlmixr2est's
-    # suite, not here: `nonMuEtas` on a manually expanded model is not a
-    # reliable proxy (it reads empty on a model saem does sample), because the
-    # classification is settled on the estimation path rather than by
-    # rxEtaDistExpand() alone.  What is stable, and what this change is, is the
-    # name.
-
-    # Being outside reserved space means a user could have written the name,
-    # so the expansion checks rather than assuming.
-    .clash <- function() {
-      ini({
-        lclm <- log(1.5)
-        lclrv <- log(0.1)
-        tv <- 3.45
-        dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
-                              rate = 1 / (exp(lclrv) * exp(lclm)))
-        add.sd <- 0.7
-      })
-      model({
-        z.eta.cl <- 1
-        cl <- eta.cl * z.eta.cl
-        v <- exp(tv)
-        linCmt() ~ add(add.sd)
-      })
-    }
-    expect_error(rxEtaDistExpand(.clash()), "already uses")
   })
 })
