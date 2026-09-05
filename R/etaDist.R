@@ -502,9 +502,18 @@ rxEtaDistExpand <- function(ui) {
 #' had it.
 #'
 #' @param ui rxode2 model with at least one `dist()` declaration
-#' @param variance variance to fix each helper random effect at.  Small enough
-#'   not to distort the model much, large enough that the M-step is not
-#'   degenerate; 0.01-0.1 is the useful range and 0.1 is what was measured.
+#' @param variance variance to fix each helper random effect at.  Large enough
+#'   that the M-step is not degenerate -- 0.1 is what was measured on Bauer's
+#'   gamma model (a parameter pinned at 6.686 against a truth of 5.03 moved to
+#'   5.553) -- and it is a SAMPLING WIDTH rather than a variance the model
+#'   claims, so it costs efficiency rather than correctness to widen.
+#'
+#'   Values above 1 are legitimate and may be needed here in particular: a
+#'   declared parameter reaches the model through an inverse CDF, so a step on
+#'   the latent scale is not a step of the same size on the parameter.  The
+#'   mapping can be steep or flat depending on the family and where on the
+#'   distribution a subject sits, and a width that explores a log-scale mean
+#'   adequately can be far too small once it is pushed through `Q(phiU(.))`.
 #' @return an rxode2 model, already expanded, whose declared-distribution
 #'   parameters are mu-referenced
 #' @export
