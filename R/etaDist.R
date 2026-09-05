@@ -436,3 +436,159 @@ rxEtaDistExpand <- function(ui) {
              all.vars(.e)
            }), use.names=FALSE)))
 }
+
+#' Substitute a variable inside a model expression
+#'
+#' The left-hand side of an assignment is left alone; a target is only ever a
+#' theta, and a theta is never assigned to in a model block, but skipping it
+#' keeps the substitution honest about what it is allowed to touch.
+#'
+#' @param e expression to walk
+#' @param map named list of replacements, keyed by variable name
+#' @return `e` with every mapped name replaced
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistSubVar <- function(e, map) {
+  if (is.name(e)) {
+    .n <- as.character(e)
+    if (!is.null(map[[.n]])) return(map[[.n]])
+    return(e)
+  }
+  if (!is.call(e)) return(e)
+  .start <- 2L
+  if (length(e) > 2L && identical(e[[1]], quote(`<-`))) .start <- 3L
+  if (length(e) >= .start) {
+    for (.i in seq.int(.start, length(e))) {
+      e[[.i]] <- .rxEtaDistSubVar(e[[.i]], map)
+    }
+  }
+  e
+}
+
+#' Mu-reference the parameters of a declared eta distribution
+#'
+#' `rxEtaDistExpand()` writes the declared distribution's parameters into the
+#' model as bare thetas inside an inverse-CDF call.  Nothing about that shape is
+#' `theta + eta`, so every one of them comes out **non**-mu-referenced -- which
+#' is the case both `saem` and the FOCEi family handle worst, and it is why a
+#' cold-started fit of a declared-distribution model tends to settle a long way
+#' from the answer.
+#'
+#' This carries each of those parameters on its own random effect with a small
+#' FIXED variance, which is what puts them back into a `theta + eta` form and so
+#' back onto the mu-referenced path.  It is the same structure NONMEM control
+#' streams get from `MU_5 = THETA(5)` with `$OMEGA (0.0 FIXED)`, with one
+#' important difference: the helper variance must **not** be ~0 here.
+#' nlmixr2's mu-theta M-step is weighted by `omega^-1`, so a ~0 variance pins
+#' the parameter at its starting value instead of freeing it (NONMEM updates
+#' such a parameter by direct maximization, so the idiom works there).
+#'
+#' The result is a **different model** -- the helper variance is real
+#' between-subject variability on the distribution's parameters -- so this is a
+#' way to travel, not a way to finish.  Use it as the first stage of a chain and
+#' refit the model you actually mean from its estimates:
+#'
+#' ```
+#' stage1 <- nlmixr2(rxEtaDistMuRef(mod), data, est = "saem")
+#' final  <- nlmixr2(mod |> ini(stage1), data, est = "focei",
+#'                   control = foceiControl(mceta = 100))
+#' ```
+#'
+#' Measured on Bauer's gamma-distributed CL/V1 data (300 subjects), that chain
+#' recovers the structural parameters essentially exactly (CL 5.04 against a
+#' simulation truth of 5.03, Q 2.15 against 2.13) where a cold start of either
+#' method alone does not.  Stage two has to be a gradient method: `saem` as the
+#' second stage moved the residual error further from the truth than stage one
+#' had it.
+#'
+#' @param ui rxode2 model with at least one `dist()` declaration
+#' @param variance variance to fix each helper random effect at.  Small enough
+#'   not to distort the model much, large enough that the M-step is not
+#'   degenerate; 0.01-0.1 is the useful range and 0.1 is what was measured.
+#' @return an rxode2 model, already expanded, whose declared-distribution
+#'   parameters are mu-referenced
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                           rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#' rxEtaDistMuRef(mod)
+#' }
+rxEtaDistMuRef <- function(ui, variance = 0.1) {
+  .ui <- rxUiDecompress(assertRxUi(ui))
+  if (nrow(rxUiEtaDists(.ui)) == 0L) {
+    stop("'rxEtaDistMuRef()' needs a model with at least one 'dist()' declaration in 'ini({})'",
+         call.=FALSE)
+  }
+  checkmate::assertNumeric(variance, lower=0, len=1, any.missing=FALSE,
+                           .var.name="variance")
+  if (variance <= 1e-6) {
+    stop("'variance' must be meaningfully above zero: nlmixr2's mu-theta M-step is weighted by 'omega^-1', so a ~0 helper variance pins the parameter at its starting value instead of estimating it (0.01-0.1 is the useful range)",
+         call.=FALSE)
+  }
+  .declared <- .ui$iniDf$name[!is.na(.ui$iniDf$etaDist)]
+  .exp <- rxEtaDistExpand(.ui)
+  .ini <- .exp$iniDf
+  ## Thetas the expansion put inside an inverse-CDF/copula line -- that is,
+  ## exactly the ones that came out non-mu-referenced.  Read off the generated
+  ## lines rather than re-deriving them, so this cannot drift from what
+  ## rxEtaDistExpand() actually wrote.
+  .lst <- .exp$lstExpr
+  .lhs <- vapply(.lst, function(.l) {
+    if (is.call(.l) && length(.l) > 2L && identical(.l[[1]], quote(`<-`)) &&
+          is.name(.l[[2]])) as.character(.l[[2]]) else ""
+  }, character(1), USE.NAMES=FALSE)
+  ## Every line rxEtaDistExpand() generates: the copula intermediates
+  ## (rxT./rxL./rxS./rxN.), the uniform (rxu./rxU.), and the assignment to the
+  ## declared eta itself.  The copula correlation theta only ever appears on an
+  ## rxT. line, so missing that prefix silently leaves it non-mu-referenced --
+  ## which is exactly the parameter NONMEM mu-references as MU_9.
+  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs)
+  .vars <- unique(unlist(lapply(.lst[.isDistLine], all.vars), use.names=FALSE))
+  .thetas <- .ini$name[!is.na(.ini$ntheta) & is.na(.ini$err) & !.ini$fix]
+  .target <- intersect(.vars, .thetas)
+  ## The copula correlation thetas are created BY the expansion and only ever
+  ## appear in a generated line, so they are picked up above; keep them in a
+  ## stable order alongside the declaration parameters.
+  if (length(.target) == 0L) return(.exp)
+  .helper <- paste0("eta.mu.", .target)
+  .map <- stats::setNames(
+    lapply(seq_along(.target),
+           function(.i) str2lang(paste0("(", .target[.i], " + ", .helper[.i], ")"))),
+    .target)
+  .newLst <- lapply(.lst, .rxEtaDistSubVar, map=.map)
+  ## Rebuild rather than pipe: the helper etas do not exist in ini() until the
+  ## model block mentions them, and the model block cannot mention them until
+  ## they exist, so the two have to be written at the same time.
+  .iniTxt <- deparse(.exp$iniFun)
+  .iniTxt <- .iniTxt[-length(.iniTxt)]           # drop the closing "})"
+  .iniTxt <- c(.iniTxt,
+               paste0("  ", .helper, " ~ fix(", variance, ")"),
+               "})")
+  .modTxt <- vapply(.newLst, function(.l) paste0("  ", deparse1(.l)),
+                    character(1), USE.NAMES=FALSE)
+  .txt <- paste0("function() {\n",
+                 paste(.iniTxt, collapse="\n"), "\n",
+                 "model({\n", paste(.modTxt, collapse="\n"), "\n})\n}")
+  .fun <- try(eval(parse(text=.txt)), silent=TRUE)
+  if (inherits(.fun, "try-error")) {
+    message(.txt)
+    stop("could not mu-reference the declared distribution parameters; the model this tried to build is echoed above",
+         call.=FALSE)
+  }
+  rxUiDecompress(rxode2(.fun))
+}
