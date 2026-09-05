@@ -508,12 +508,17 @@ rxEtaDistExpand <- function(ui) {
 #'   5.553) -- and it is a SAMPLING WIDTH rather than a variance the model
 #'   claims, so it costs efficiency rather than correctness to widen.
 #'
-#'   Values above 1 are legitimate and may be needed here in particular: a
-#'   declared parameter reaches the model through an inverse CDF, so a step on
-#'   the latent scale is not a step of the same size on the parameter.  The
-#'   mapping can be steep or flat depending on the family and where on the
-#'   distribution a subject sits, and a width that explores a log-scale mean
-#'   adequately can be far too small once it is pushed through `Q(phiU(.))`.
+#'   There is no upper bound: a value above 1 is legitimate, and can matter
+#'   because a declared parameter reaches the model through an inverse CDF --
+#'   a step on the latent scale is not a step of the same size on the
+#'   parameter, and how big it is depends on the family and on where in the
+#'   distribution a subject sits.
+#'
+#'   Wider is not generally better.  Measured on Bauer's gamma model (300
+#'   subjects, cold start) widening degraded every parameter monotonically:
+#'   at 0.1 / 1 / 4 the residual SD came out 0.150 / 0.162 / 0.170 against a
+#'   truth of 0.141, and Q came out 2.29 / 2.48 / 2.60 against 2.13.  0.1
+#'   recovered CL 5.60 and V1 4.77 against truths of 5.03 and 4.66.
 #' @return an rxode2 model, already expanded, whose declared-distribution
 #'   parameters are mu-referenced
 #' @export
