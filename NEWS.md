@@ -11,6 +11,21 @@
 
 ## Bug fixes
 
+### Compilation
+
+- `getSolvingOptionsInd()` now walks the subject array at the stride it was
+  allocated with rather than at its own translation unit's
+  `sizeof(rx_solving_options_ind)`.  `src/rx2api.c` is the package's ABI
+  surface and is compiled separately from the code that owns the array, and R's
+  default make rules track no header dependencies, so an object file whose own
+  source did not change is linked in unchanged after a change to the struct.
+  The two views then differed by exactly the appended bytes and every subject
+  but the first was read from the wrong address -- silent heap corruption for
+  any caller that walks subjects, reported downstream as an absurd allocation
+  size or a segfault (nlmixr2/nlmixr2est#1039).  Fields keep their offsets by
+  the append-only convention the struct already documents, so the stride was
+  the whole of the disagreement.
+
 ### Event translation
 
 - A steady-state dose into a compartment with a modeled `alag()` pushed

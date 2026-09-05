@@ -4,8 +4,12 @@
 #endif
 // [[Rcpp::interfaces(r,cpp)]]
 #include <RcppArmadillo.h>
+#include <cstring>
 #include "../inst/include/rxode2.h"       /* rxLlikSaveSize; pulls in rxode2parseStruct.h */
 #include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
+#include "rx2api.h"                       /* getSolvingOptionsInd(), getIndNallTimes()    */
+
+extern "C" rx_solve *getRxSolve_(void);
 
 using namespace Rcpp;
 
@@ -249,5 +253,80 @@ NumericVector rxMemoryComponents_(
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
     Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
 
+  return out;
+}
+
+// Per-subject record counts read through the ABI, plus the two strides.
+//
+// getSolvingOptionsInd() lives in src/rx2api.c, a separate translation unit
+// from the one that allocates the subject array, so a build where the two
+// disagree on the layout of rx_solving_options_ind walks the array at the
+// wrong stride and every subject but the first is read from the wrong address
+// (nlmixr2/nlmixr2est#1039).  A test compares `nAllTimes` -- read entirely
+// through the accessors downstream packages resolve -- against the dataset,
+// and `abiStride` against `localStride`, this translation unit's own view.
+//
+// Deliberately does NOT also read rx->subjects[i] directly: under the
+// staleness this exists to catch, one of the two views is walking at the
+// wrong stride, and the direct read is the one that would run off the end of
+// the allocation.  A test should fail, not read unallocated memory.
+//
+// Test-only; not exported to users.
+// [[Rcpp::export]]
+List rxTestAbiSubjectCounts_() {
+  rx_solve *rx = getRxSolve_();
+  int nsub = 0;
+  if (rx != NULL && rx->subjects != NULL) {
+    nsub = (int)((uint64_t)rx->nsub*(uint64_t)rx->nsim);
+  }
+  IntegerVector nAllTimes(nsub);
+  for (int i = 0; i < nsub; ++i) {
+    nAllTimes[i] = getIndNallTimes(getSolvingOptionsInd(rx, i));
+  }
+  return List::create(_["nAllTimes"] = nAllTimes,
+                      _["abiStride"] = (double)rxIndSize,
+                      _["localStride"] = (double)sizeof(rx_solving_options_ind));
+}
+
+// Does getSolvingOptionsInd() honour the PUBLISHED stride, or its own sizeof?
+//
+// The canary above only compares two views that a clean build makes equal.
+// This one builds the disagreement on purpose: a private array whose entries
+// are `pad` bytes further apart than sizeof(rx_solving_options_ind), with each
+// entry's n_all_times marked, and rxIndSize temporarily set to that stride.
+// An accessor that walks with its own sizeof reads the wrong entries for any
+// pad > 0; one that walks with rxIndSize reads the markers back.  Nothing is
+// solved and the array is this function's own, so the override cannot reach a
+// real solve -- but it IS a process global, so restore it before anything else
+// can run.
+//
+// Test-only; not exported to users.
+// [[Rcpp::export]]
+IntegerVector rxTestAbiStrideProbe_(int pad, int n) {
+  if (n <= 0 || pad < 0) return IntegerVector(0);
+  size_t stride = sizeof(rx_solving_options_ind) + (size_t)pad;
+  std::vector<char> buf(stride*(size_t)n, 0);
+  for (int i = 0; i < n; ++i) {
+    rx_solving_options_ind *ind =
+      (rx_solving_options_ind*)(&buf[0] + stride*(size_t)i);
+    ind->n_all_times = 1000 + i;
+  }
+  rx_solve fake;
+  rx_solving_options fakeOp;
+  std::memset(&fake, 0, sizeof(fake));
+  std::memset(&fakeOp, 0, sizeof(fakeOp));
+  fake.op = &fakeOp;
+  fake.subjects = (rx_solving_options_ind*)(&buf[0]);
+  fake.nsub = (unsigned int)n;
+  fake.nsim = 1;
+  std::vector<int> got((size_t)n, NA_INTEGER);
+  size_t saved = rxIndSize;
+  rxIndSize = stride;
+  for (int i = 0; i < n; ++i) {
+    got[(size_t)i] = getIndNallTimes(getSolvingOptionsInd(&fake, i));
+  }
+  rxIndSize = saved;
+  IntegerVector out(n);
+  for (int i = 0; i < n; ++i) out[i] = got[(size_t)i];
   return out;
 }
