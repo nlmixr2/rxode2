@@ -2,6 +2,24 @@
 
 ## New features
 
+- `rxEtaDistMuRef()` mu-references the parameters of a declared random-effect
+  distribution.  `rxEtaDistExpand()` writes them as bare thetas inside an
+  inverse-CDF call, so none of them is in `theta + eta` form and none of them
+  is mu-referenced -- the case `saem` and the FOCEi family handle worst.  This
+  carries each of them (and the copula correlation) on its own random effect
+  with a small FIXED variance, which is the structure NONMEM gets from
+  `MU_5 = THETA(5)` with `$OMEGA (0.0 FIXED)`.
+
+  The helper variance must not be ~0, which is where the NONMEM idiom stops
+  porting: nlmixr2's mu-theta M-step is weighted by `omega^-1`, so a ~0
+  variance pins the parameter at its `ini()` value while still reporting it as
+  estimated.  Values below 1e-6 are refused with that explanation.
+
+  The result is a *different* model -- the helper variance is real
+  between-subject variability -- so it is a way to travel, not a way to
+  finish; use it as stage one and refit the intended model from its
+  estimates.
+
 - Random effects can now be declared non-Gaussian.  `lotri`'s `dist()`
   line says what a random effect's distribution is, and
   `rxEtaDistExpand()` turns it into an ordinary model:
