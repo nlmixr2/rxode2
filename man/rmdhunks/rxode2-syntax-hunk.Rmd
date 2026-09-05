@@ -233,10 +233,15 @@ You rarely write any of this by hand.  Declaring the distribution in an
 ini({
   lclm  <- log(5)
   lclrv <- log(0.09)
-  eta.cl ~ 1
   dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
 })
 ```
+
+The declaration fixes the random effect's marginal, and the latent scale
+it is built on is standard normal, so no variance is written for it -- a
+`dist()` implies `~ 1`.  A block is written out only when there is a
+correlation between two declared random effects, since that has nowhere
+else to go.
 
 See `lotri::lotriEtaDists()` for the families that can be declared this
 way, and `rxEtaDistExpand()` for the model such a declaration becomes.

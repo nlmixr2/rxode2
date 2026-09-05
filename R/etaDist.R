@@ -220,7 +220,6 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #'     lclrv <- log(0.09)
 #'     tv <- 3.45
 #'     eta.v ~ 0.1
-#'     eta.cl ~ 1
 #'     dist(eta.cl) ~ dgamma(shape=1/exp(lclrv),
 #'                           rate=1/(exp(lclrv)*exp(lclm)))
 #'     add.sd <- 0.7

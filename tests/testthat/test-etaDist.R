@@ -323,6 +323,49 @@ rxTest({
     expect_true(all(c("lclm", "lclrv") %in% .u$iniDf$name))
   })
 
+  test_that("a declared distribution implies its unit variance", {
+    ## the declaration fixes the marginal and the latent scale is standard
+    ## normal by construction, so `eta.cl ~ 1` beside it is a repetition
+    .f <- function() {
+      ini({
+        tka <- 0.45
+        lclm <- log(5)
+        lcls <- log(0.3)
+        tv <- 3.45
+        eta.ka ~ 0.6
+        add.sd <- 0.7
+        dist(eta.cl) ~ dlnorm(lclm, exp(lcls))
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- eta.cl
+        v <- exp(tv)
+        d/dt(depot) <- -ka*depot
+        d/dt(center) <- ka*depot - cl/v*center
+        cp <- center/v
+        cp ~ add(add.sd)
+      })
+    }
+    .u <- .f()
+    .ini <- .u$iniDf
+    expect_true("eta.cl" %in% .ini$name)
+    expect_equal(.ini$est[.ini$name == "eta.cl"], 1)
+    expect_equal(rxUiEtaDists(.u)$name, "eta.cl")
+    ## and the two random effects stay uncorrelated
+    expect_equal(unname(.u$omega["eta.ka", "eta.cl"]), 0)
+    ## it expands like any other declaration
+    .txt <- paste(vapply(rxEtaDistExpand(.u)$lstExpr, deparse1, character(1)),
+                  collapse="\n")
+    expect_true(grepl("rxz.eta.cl", .txt, fixed=TRUE))
+    ## piping a different family onto it keeps working
+    .v <- suppressMessages(.u |> ini(dist(eta.cl) ~ dweibull(exp(lcls), exp(lclm))))
+    expect_equal(rxUiEtaDists(.v)$etaDist, "dweibull(exp(lcls), exp(lclm))")
+    ## and removing the declaration leaves an ordinary unit-variance eta
+    .w <- suppressMessages(.v |> ini(dist(eta.cl) ~ NULL))
+    expect_equal(nrow(rxUiEtaDists(.w)), 0L)
+    expect_equal(.w$iniDf$est[.w$iniDf$name == "eta.cl"], 1)
+  })
+
   test_that("expansion reproduces the latent normal + inverse CDF model", {
     .g <- rxEtaDistExpand(.gammaMod())
     .n <- .g$iniDf$name

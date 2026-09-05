@@ -10,8 +10,6 @@
 ini({
   lclm  <- log(5)
   lclrv <- log(0.09)
-  eta.cl + eta.v1 ~ c(1,
-                      0.5, 1)
   dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
 })
 model({
@@ -19,6 +17,11 @@ model({
   ...
 })
 ```
+
+  No variance is written for a declared random effect -- the declaration
+  fixes its marginal and the latent scale is standard normal, so `dist()`
+  implies `~ 1`.  A block is written out only for a correlation between
+  two declared random effects.
 
   The technique is Bauer's (NONMEM 7.5.1): keep the latent random effect
   standard normal and change the CDF -- `z ~ N(0, 1)`, `u = phiU(z)`,
