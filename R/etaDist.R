@@ -502,23 +502,29 @@ rxEtaDistExpand <- function(ui) {
 #' had it.
 #'
 #' @param ui rxode2 model with at least one `dist()` declaration
-#' @param variance variance to fix each helper random effect at.  Large enough
-#'   that the M-step is not degenerate -- 0.1 is what was measured on Bauer's
-#'   gamma model (a parameter pinned at 6.686 against a truth of 5.03 moved to
-#'   5.553) -- and it is a SAMPLING WIDTH rather than a variance the model
-#'   claims, so it costs efficiency rather than correctness to widen.
+#' @param variance variance to fix each helper random effect at.
 #'
-#'   There is no upper bound: a value above 1 is legitimate, and can matter
-#'   because a declared parameter reaches the model through an inverse CDF --
-#'   a step on the latent scale is not a step of the same size on the
-#'   parameter, and how big it is depends on the family and on where in the
-#'   distribution a subject sits.
+#'   **`variance = 0` is the preferred spelling**, and it is NONMEM's own:
+#'   Bauer's control streams mu-reference every distribution parameter and put
+#'   each helper on `$OMEGA (0.0 FIXED)`.  It declares what is true -- the
+#'   helper carries no between-subject variability -- and hands the question of
+#'   what to do about that to the estimation method, where
+#'   `nlmixr2est::saemControl(zeroOmegaTune=, zeroOmegaAnneal=,
+#'   zeroOmegaDirect=)` can act on it.
+#'
+#'   A NONZERO value writes a sampling width into the model itself and bypasses
+#'   that machinery entirely.  It is what this function did before saem had a
+#'   direct-maximization M-step for these thetas, and it is kept because it
+#'   still works: the helper has to MOVE, or the conditional mean saem shifts
+#'   its theta by is identically zero and the theta never budges.
 #'
 #'   Wider is not generally better.  Measured on Bauer's gamma model (300
 #'   subjects, cold start) widening degraded every parameter monotonically:
 #'   at 0.1 / 1 / 4 the residual SD came out 0.150 / 0.162 / 0.170 against a
 #'   truth of 0.141, and Q came out 2.29 / 2.48 / 2.60 against 2.13.  0.1
-#'   recovered CL 5.60 and V1 4.77 against truths of 5.03 and 4.66.
+#'   recovered CL 5.60 and V1 4.77 against truths of 5.03 and 4.66.  That a
+#'   constant cannot be right twice -- wide enough early to explore, tight
+#'   enough late to settle -- is what `zeroOmegaAnneal=` addresses.
 #' @return an rxode2 model, already expanded, whose declared-distribution
 #'   parameters are mu-referenced
 #' @export
