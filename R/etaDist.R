@@ -317,8 +317,27 @@ rxEtaDistExpand <- function(ui) {
     .add$ntheta <- .nTheta + seq_len(nrow(.newTheta))
     .add$name <- .newTheta$name
     .add$est <- .newTheta$est
-    .add$lower <- -Inf
-    .add$upper <- Inf
+    ## Bounded, not unbounded.  tanh() maps this to a partial correlation, so
+    ## the parameterization is unconstrained in the sense that ANY finite value
+    ## gives a valid correlation matrix -- but that is not the same as being
+    ## safe to optimize over.  As |y| grows tanh(y) -> 1, the block approaches
+    ## singularity, and a copula member's latent
+    ##
+    ##   w_k = tanh(y)*z_j + sqrt(1 - tanh(y)^2)*z_k
+    ##
+    ## collapses onto its partner's: two declared random effects become one.
+    ## Any optimizer maximizing a likelihood CONDITIONAL on sampled etas -- with
+    ## no prior term to penalize that degeneracy -- can walk straight to it.
+    ## Measured in nlmixr2est's saem (refinePhi0Lik): rho pinned at 1.000 in 3
+    ## of 7 fits across seeds and refinement start points on Bauer's gamma data,
+    ## and a pinned rho alone contributed 128% of one of the eight relative
+    ## errors.
+    ##
+    ## +/-5 keeps |rho| <= 0.9999 -- far wider than any correlation worth
+    ## estimating, and enough that sqrt(1 - rho^2) never underflows the partner
+    ## latent out of the model entirely.
+    .add$lower <- -5
+    .add$upper <- 5
     .add$fix <- FALSE
     .add$label <- NA_character_
     ## tanh() of one of these is the partial correlation between its two
