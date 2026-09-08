@@ -708,9 +708,32 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   }
   .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) &
                 .iniDf$neta1 == .iniDf$neta2)
-  if (length(.w) != 1L) {
-    stop("'dist(", .eta, ")' does not name a random effect declared in ini({}); ",
-         "add '", .eta, " ~ 1' there", call.=FALSE)
+  if (length(.w) == 0L) {
+    ## Not declared in ini({}) -- add it.  A declared distribution supplies its
+    ## own spread, so the only variance this random effect could have been given
+    ## is 1; making the user write `eta.cl ~ 1` alongside `dist(eta.cl)` asks
+    ## them to repeat the one value the declaration already implies.  Added
+    ## silently for the same reason: there is nothing for them to decide.
+    ##
+    ## `eta.cl + eta.v1 ~ c(1, 0.5, 1)` in ini({}) is still how a COPULA is
+    ## written, because a correlation between two random effects is a real
+    ## choice and cannot be inferred from either declaration alone.
+    .iniDf <- .rxEtaDistAddEta(.iniDf, .eta)
+    .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) &
+                  .iniDf$neta1 == .iniDf$neta2)
+  } else {
+    ## Declared, so it must have been declared with a unit variance -- the
+    ## latent IS a standard normal, and any other value is a spread the
+    ## transformation has no way to honour: the family's own parameters set the
+    ## spread, and phiU() assumes N(0,1) going in.
+    .est <- .iniDf$est[.w]
+    if (!isTRUE(is.finite(.est)) || abs(.est - 1) > 1e-8) {
+      stop("'dist(", .eta, ")' needs '", .eta, "' to have a variance of 1, but ",
+           "ini({}) declares ", format(.est), ".  A declared distribution ",
+           "supplies its own spread through its parameters, so the underlying ",
+           "random effect is a standard normal -- write '", .eta, " ~ 1' ",
+           "(or leave it out entirely and it will be added)", call.=FALSE)
+    }
   }
   if (!is.call(rhs) || !is.name(rhs[[1]])) {
     stop("'dist(", .eta, ")' must be given a distribution, as in ",
@@ -745,4 +768,42 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
                                            paste0("phiU(rxN.", .eta, ")"),
                                            .eta,
                                            latent = paste0("rxN.", .eta))))
+}
+
+#' Add a latent random effect the model block declared a distribution for
+#'
+#' Built from a row the `iniDf` already has rather than from a template, so the
+#' columns match whatever this `iniDf` actually carries -- an `etaDist` column
+#' is present on some and not others, and a column-count mismatch is how
+#' `rbind()` fails here.
+#'
+#' @param iniDf initial estimates
+#' @param name random effect to add
+#' @return `iniDf` with the random effect appended, unit variance and fixed
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAddEta <- function(iniDf, name) {
+  .we <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
+  .row <- if (length(.we) > 0L) iniDf[.we[1L], , drop=FALSE] else iniDf[1L, , drop=FALSE]
+  .n <- suppressWarnings(max(c(0, iniDf$neta1, iniDf$neta2), na.rm=TRUE))
+  if (!is.finite(.n)) .n <- 0
+  .row$ntheta <- NA_integer_
+  .row$neta1 <- .n + 1
+  .row$neta2 <- .n + 1
+  .row$name <- name
+  .row$lower <- -Inf
+  .row$upper <- Inf
+  .row$est <- 1
+  .row$fix <- TRUE
+  .row$label <- NA_character_
+  .row$backTransform <- NA_character_
+  ## the subject level, which is where a declared distribution is supported
+  .row$condition <- "id"
+  for (.c in c("prior", "err", "etaDist")) {
+    if (any(names(.row) == .c)) .row[[.c]] <- NA_character_
+  }
+  rownames(.row) <- NULL
+  .out <- rbind(iniDf, .row)
+  rownames(.out) <- NULL
+  .out
 }
