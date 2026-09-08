@@ -267,6 +267,24 @@ rxEtaDistExpand <- function(ui) {
     }
     .i <- max(.idx) + 1L
   }
+  ## Which declared random effects the MODEL BLOCK already assigns.
+  ##
+  ## `dist()` written in model({}) emits its own inverse-CDF line in place --
+  ## that is the whole point of the model-block form, since a distribution
+  ## parameter may be an expression the model computes from covariates, and
+  ## that expression is only in scope at the declaration.  Prepending a second
+  ## copy here would both duplicate the assignment and put it ABOVE the
+  ## covariate it reads.  So: if the model already assigns this random effect,
+  ## its transform is placed and this function only owes it the latent and the
+  ## copula.
+  .assigned <- character(0)
+  for (.e in .ui$lstExpr) {
+    if (is.call(.e) && length(.e) >= 3L &&
+          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
+          is.name(.e[[2]])) {
+      .assigned <- c(.assigned, as.character(.e[[2]]))
+    }
+  }
   .pre <- character(0)
   .newTheta <- data.frame(name=character(0), est=numeric(0),
                           stringsAsFactors=FALSE)
@@ -285,6 +303,7 @@ rxEtaDistExpand <- function(ui) {
     }
     for (.nm in .nms) {
       .w <- which(.d$name == .nm)
+      if (.nm %in% .assigned) next   # model-block dist() placed it already
       if (length(.w) == 1L) {
         .u <- paste0("phiU(rxN.", .nm, ")")
         .pre <- c(.pre, paste0(.nm, " <- ",
@@ -636,4 +655,94 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
          call.=FALSE)
   }
   rxUiDecompress(rxode2(.fun))
+}
+
+#' Declare a non-Gaussian random effect distribution in the model block
+#'
+#' The `model({})` form of `ini({})`'s `dist()` line:
+#'
+#'     dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))
+#'
+#' Reached through [rxUdfUiLhs()], a user-function dispatch on the LEFT of a
+#' model line -- `dist(eta.cl)` is not rxode2 grammar and `~` is already
+#' overloaded, so the UI claims the whole line before rxode2 ever sees it.
+#'
+#' The point of the model-block form is that a distribution parameter can be
+#' any expression the model has already computed, including one built from
+#' covariates:
+#'
+#'     aCl <- exp(lclm + bWT*(WT - 70))
+#'     dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))
+#'
+#' The `ini({})` form cannot express that -- it is parsed before the model
+#' block exists, so its arguments can only name population parameters.  This
+#' one emits the inverse-CDF line IN PLACE, at the declaration, so everything
+#' above it is in scope.
+#'
+#' What it leaves for [rxEtaDistExpand()] is the part that needs the whole
+#' picture rather than one line: the latent normals, the Gaussian copula that
+#' correlates them, and the `rxCor.*` thetas.  Those are prepended, so the
+#' `rxN.*` this line reads are defined above it.
+#'
+#' @param fun the `dist(<eta>)` call
+#' @param rhs the declared distribution, eg `dgamma(shape=a, rate=b)`
+#' @return `rxUdfUiLhs()` list: the modified `iniDf` and the inverse-CDF line
+#'   that replaces the declaration
+#' @export
+#' @author Matthew L. Fidler
+rxUdfUiLhs.dist <- function(fun, rhs) {
+  if (length(fun) != 2L) {
+    stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'",
+         call.=FALSE)
+  }
+  .eta <- fun[[2]]
+  if (!is.name(.eta)) {
+    stop("'dist()' takes a random effect name, as in 'dist(eta.cl)'",
+         call.=FALSE)
+  }
+  .eta <- as.character(.eta)
+  .iniDf <- rxUdfUiIniDf()
+  if (is.null(.iniDf)) {
+    stop("'dist(", .eta, ")' needs the initial estimates to be available",
+         call.=FALSE)
+  }
+  .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) &
+                .iniDf$neta1 == .iniDf$neta2)
+  if (length(.w) != 1L) {
+    stop("'dist(", .eta, ")' does not name a random effect declared in ini({}); ",
+         "add '", .eta, " ~ 1' there", call.=FALSE)
+  }
+  if (!is.call(rhs) || !is.name(rhs[[1]])) {
+    stop("'dist(", .eta, ")' must be given a distribution, as in ",
+         "'dist(", .eta, ") ~ dgamma(shape=a, rate=b)'", call.=FALSE)
+  }
+  .fam <- as.character(rhs[[1]])
+  .tab <- lotri::lotriEtaDists()
+  .fw <- which(.tab$name == .fam)
+  if (length(.fw) != 1L) {
+    stop("'dist(", .eta, ")' declares '", .fam,
+         "', which is not a distribution the installed 'lotri' knows",
+         call.=FALSE)
+  }
+  .nArg <- length(as.list(rhs)) - 1L
+  if (.nArg != .tab$nReq[.fw]) {
+    stop("'dist(", .eta, ") ~ ", .fam, "()' needs ", .tab$nReq[.fw],
+         " argument(s), not ", .nArg, call.=FALSE)
+  }
+  ## The declaration itself, recorded exactly as ini({})'s dist() records it,
+  ## so rxUiEtaDists(), $etaDist and the babelmixr2 "native" path all read one
+  ## representation regardless of which block it was written in.
+  if (!any(names(.iniDf) == "etaDist")) .iniDf$etaDist <- NA_character_
+  .iniDf$etaDist[.w] <- deparse1(rhs)
+  ## A declared distribution supplies its own spread, so the latent is a
+  ## standard normal with a FIXED unit variance -- the same rule the ini({})
+  ## form applies, and what makes the correlation a Gaussian copula.
+  .iniDf$est[.w] <- 1
+  .iniDf$fix[.w] <- TRUE
+  list(iniDf = .iniDf,
+       replace = paste0(.eta, " <- ",
+                        .rxEtaDistQuantile(deparse1(rhs),
+                                           paste0("phiU(rxN.", .eta, ")"),
+                                           .eta,
+                                           latent = paste0("rxN.", .eta))))
 }

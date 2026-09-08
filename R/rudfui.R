@@ -373,6 +373,115 @@ rxUdfUiParsing <- function() {
   }
 }
 
+#' Is this model line's LHS a registered user function?
+#'
+#' `.handleUdfUi()` only ever walks the RIGHT-hand side of a line, and a `~`
+#' line never reaches it at all (`.errHandleTilde()` claims those first).  So a
+#' construct like
+#'
+#'     dist(eta.cl) ~ dgamma(shape = a, rate = b)
+#'
+#' has nowhere to be handled: `dist(eta.cl)` is not rxode2 grammar, and `~` is
+#' already overloaded for endpoints and for hidden variables.  This is the hook
+#' for it -- a user-function dispatch on the LHS, which is an R-level rule that
+#' applies only to functions someone has registered an `rxUdfUiLhs` method for,
+#' and never changes how rxode2 itself parses anything.
+#'
+#' @param expr one model line
+#' @return the method name when the line's LHS is a call to a function with an
+#'   `rxUdfUiLhs` method, otherwise NULL
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUdfUiLhsName <- function(expr) {
+  if (!is.call(expr) || length(expr) != 3L) return(NULL)
+  .op <- expr[[1]]
+  if (!(identical(.op, quote(`~`)) || identical(.op, quote(`<-`)) ||
+          identical(.op, quote(`=`)))) return(NULL)
+  .lhs <- expr[[2]]
+  if (!is.call(.lhs) || length(.lhs) < 1L) return(NULL)
+  .nm <- .lhs[[1]]
+  if (!is.name(.nm)) return(NULL)
+  .c <- as.character(.nm)
+  .fun <- try(utils::getS3method("rxUdfUiLhs", .c), silent=TRUE)
+  if (inherits(.fun, "try-error")) return(NULL)
+  .c
+}
+
+#' Handle a user function on the LEFT-hand side of a model line
+#'
+#' The LHS analogue of [rxUdfUi()].  Dispatched by `.rxUdfUiLhsName()` on the
+#' function called on the left of `~`, `<-` or `=`, and handed both sides.
+#'
+#' @param fun the LHS call, as a language object -- eg `dist(eta.cl)`
+#' @param rhs the right-hand side, as a language object
+#'
+#' @return a list with the same fields [rxUdfUi()] returns (`iniDf`, `before`,
+#'   `after`, `replace`), with one addition: `replace = NULL` DROPS the line,
+#'   which is what a declaration that only modifies `iniDf` wants.
+#'
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+rxUdfUiLhs <- function(fun, rhs) {
+  UseMethod("rxUdfUiLhs")
+}
+
+#' Run one LHS user function and fold its result into the parse environment
+#'
+#' @param expr the model line
+#' @param env parse environment
+#' @param what the method name from `.rxUdfUiLhsName()`
+#' @return the replacement expression, or NULL to drop the line
+#' @noRd
+#' @author Matthew L. Fidler
+.handleUdfUiLhs <- function(expr, env, what) {
+  .fun <- utils::getS3method("rxUdfUiLhs", what)
+  .udfUiEnv$iniDf <- env$df
+  .udfUiEnv$lhs <- expr[[2]]
+  ## Route the method's own error through the parser's error collection rather
+  ## than letting it propagate.  A raw stop() here is swallowed by as.rxUi()'s
+  ## handler and the user is told only "cannot convert to rxUi object", which
+  ## says nothing about which declaration was wrong or why.  errGlobal is
+  ## raised verbatim after the walk finishes.
+  .e <- tryCatch(.fun(expr[[2]], expr[[3]]),
+                 error=function(e) {
+                   ## ALSO emitted as a message, because as.rxUi() replaces any
+                   ## error raised in here -- the parser's own included -- with
+                   ## a bare "cannot convert to rxUi object", and a declaration
+                   ## rejected without saying which one or why is not a usable
+                   ## diagnostic.
+                   message(conditionMessage(e))
+                   assign("errGlobal", c(env$errGlobal, conditionMessage(e)),
+                          envir=env)
+                   NULL
+                 })
+  if (is.null(.e)) return(NULL)
+  if (!is.list(.e)) {
+    assign("errGlobal",
+           c(env$errGlobal,
+             paste0("rxode2 ui lhs function '", what, "' must return a list")),
+           envir=env)
+    return(NULL)
+  }
+  .handleUdifUiBeforeOrAfter("before", .e, env, what)
+  .handleUdifUiBeforeOrAfter("after", .e, env, what)
+  if (inherits(.e$iniDf, "data.frame")) env$df <- .e$iniDf
+  .r <- .e$replace
+  if (is.null(.r)) return(NULL)
+  if (is.language(.r)) return(.r)
+  if (length(.r) == 1L && inherits(.r, "character")) {
+    .t <- try(str2lang(.r), silent=TRUE)
+    if (inherits(.t, "try-error")) {
+      stop("rxode2 ui lhs function '", what,
+           "' failed to produce code that could be parsed '", .r, "'",
+           call.=FALSE)
+    }
+    return(.t)
+  }
+  stop("rxode2 ui lhs function '", what,
+       "' failed to produce code that could be parsed", call.=FALSE)
+}
+
 #' This function is called when processing rxode2 user functions from
 #' the models
 #'

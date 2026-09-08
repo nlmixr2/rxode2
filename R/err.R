@@ -1557,6 +1557,38 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .env$err <- c(.env$err,
                         paste0("the symbol '", deparse1(.y[[.i]]), "' cannot be by itself"))
           .env$earlyErr <- TRUE
+        } else if (!is.null(.lhsFun <- .rxUdfUiLhsName(.y[[.i]]))) {
+          # A user function on the LEFT of the line (see .rxUdfUiLhsName).
+          # Claimed BEFORE the `~` branch, because a declaration like
+          # `dist(eta.cl) ~ dgamma(...)` is a `~` line that .errHandleTilde
+          # would otherwise try to read as an endpoint.
+          .env$redo <- FALSE
+          .cur <- .handleUdfUiLhs(.y[[.i]], .env, .lhsFun)
+          .len <- length(.y)
+          .y <- c(lapply(seq_len(.i - 1), function(i) .y[[i]]),
+                  .env$before,
+                  if (is.null(.cur)) list() else list(.cur),
+                  .env$after,
+                  lapply(seq_len(.len - .i), function(i) .y[[i + .i]]))
+          .env$before <- list()
+          .env$after <- list()
+          .diff <- length(.y) - .len
+          if (.diff != 0L) {
+            # the line count changed (a dropped declaration, or emitted
+            # before/after lines); resize the parallel bookkeeping and re-read
+            # this position rather than advancing past it
+            if (.diff > 0L) {
+              .env$lstChr <- c(.env$lstChr, character(.diff))
+              .env$lstErr <- c(.env$lstErr, vector(.diff, mode="list"))
+              .env$lstExpr <- c(.env$lstExpr, vector(.diff, mode="list"))
+            } else {
+              .k <- length(.env$lstChr) + .diff
+              .env$lstChr <- .env$lstChr[seq_len(.k)]
+              .env$lstErr <- .env$lstErr[seq_len(.k)]
+              .env$lstExpr <- .env$lstExpr[seq_len(.k)]
+            }
+            next
+          }
         } else if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         } else {
