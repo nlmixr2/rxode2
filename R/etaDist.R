@@ -755,8 +755,21 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   ## The declaration itself, recorded exactly as ini({})'s dist() records it,
   ## so rxUiEtaDists(), $etaDist and the babelmixr2 "native" path all read one
   ## representation regardless of which block it was written in.
+  ##
+  ## NORMALIZED, not deparsed as written.  Every consumer of `$etaDist`
+  ## substitutes the arguments POSITIONALLY -- .rxEtaDistQuantile() below,
+  ## nlmixr2est's .etaDistMstepCore(), its C++ RPN parser, the warm start --
+  ## while ini({}) stores lotri's canonical order.  Storing the user's order
+  ## instead meant `dgamma(rate = r, shape = s)` written in model({}) fitted a
+  ## DIFFERENT DISTRIBUTION than written, silently, everywhere at once:
+  ##
+  ##   as written  cl <- gammapInv((1/exp(lclrv)), ...)/((1/(exp(lclrv)*exp(lclm))))
+  ##   swapped     cl <- gammapInv((1/(exp(lclrv)*exp(lclm))), ...)/((1/exp(lclrv)))
+  ##
+  ## Normalizing at the STORAGE point fixes every consumer from one place.
   if (!any(names(.iniDf) == "etaDist")) .iniDf$etaDist <- NA_character_
-  .iniDf$etaDist[.w] <- deparse1(rhs)
+  .rhsTxt <- .rxEtaDistNormalizeTxt(rhs, .eta)
+  .iniDf$etaDist[.w] <- .rhsTxt
   ## A declared distribution supplies its own spread, so the latent is a
   ## standard normal with a FIXED unit variance -- the same rule the ini({})
   ## form applies, and what makes the correlation a Gaussian copula.
@@ -764,10 +777,47 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   .iniDf$fix[.w] <- TRUE
   list(iniDf = .iniDf,
        replace = paste0(.eta, " <- ",
-                        .rxEtaDistQuantile(deparse1(rhs),
+                        .rxEtaDistQuantile(.rhsTxt,
                                            paste0("phiU(rxN.", .eta, ")"),
                                            .eta,
                                            latent = paste0("rxN.", .eta))))
+}
+
+#' Canonical text for a declared distribution call
+#'
+#' `lotri::lotriEtaDistNormalize()` matches the arguments by NAME to the
+#' family's canonical order and returns canonical positional text -- the same
+#' normalization an `ini({})` declaration receives.  Falls back to the deparsed
+#' call when the installed lotri is older than that export, but WARNS first if
+#' any argument is named, since that is exactly the case the fallback gets
+#' wrong.
+#'
+#' @param rhs the declared distribution call
+#' @param eta the random effect being declared, for the message
+#' @return canonical positional text
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistNormalizeTxt <- function(rhs, eta) {
+  if (!is.null(getFromNamespace0("lotriEtaDistNormalize", "lotri"))) {
+    .n <- try(lotri::lotriEtaDistNormalize(rhs), silent=TRUE)
+    if (!inherits(.n, "try-error") && is.character(.n$text) &&
+          length(.n$text) == 1L) {
+      return(.n$text)
+    }
+  }
+  .nm <- names(as.list(rhs)[-1])
+  if (!is.null(.nm) && any(nzchar(.nm))) {
+    warning("'dist(", eta, ")' has named arguments but the installed 'lotri' ",
+            "cannot normalize them; they are matched POSITIONALLY, so write ",
+            "them in the family's own order to be safe", call.=FALSE)
+  }
+  deparse1(rhs)
+}
+
+#' `getFromNamespace()` that returns NULL instead of erroring
+#' @noRd
+getFromNamespace0 <- function(x, ns) {
+  tryCatch(utils::getFromNamespace(x, ns), error=function(e) NULL)
 }
 
 #' Add a latent random effect the model block declared a distribution for
