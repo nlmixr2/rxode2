@@ -91,7 +91,10 @@
 #define RX_INV_GAMMA_Q_INVA  4
 #define RX_INV_IBETA_INV     5
 #define RX_INV_STUDENTT_INV  6
-#define RX_INVMEMO_DEFAULT  64
+// Default 8, not 64: the parser sizes this exactly from the model
+// (handleInvCdfFunctions), so the default only has to carry a direct call from R
+// or a model parsed by an older path.
+#define RX_INVMEMO_DEFAULT   8
 
 typedef struct {
   int fn;
@@ -153,11 +156,31 @@ static inline void rxInvMemoPut(int fn, double a, double b, double c, double v) 
 //
 // NOT wired to the parser yet -- that is the remaining step; nothing calls this
 // so far, and the default carries the models measured to date.
+// Bytes the inverse-CDF memo costs, for the memory report.
+//
+// Sized per THREAD, like the llik save buffer, so the cost is
+// slots * sizeof(entry) * cores.  Exact rather than nominal: the parser sets the
+// slot count from what the model actually calls, so a model with no inverse CDF
+// pays only the default.
+extern "C" double rxInvCdfMemoBytes(int cores) {
+  int want = _rxInvMemoWant.load(std::memory_order_relaxed);
+  if (cores < 1) cores = 1;
+  return (double)want * (double)sizeof(rxInvMemo_t) * (double)cores;
+}
+
 extern "C" void rxSetInvCdfMemoSize(int n) {
   int sz = 8;
   if (n > 4096) n = 4096;
   while (sz < n) sz <<= 1;
-  _rxInvMemoWant.store(sz, std::memory_order_relaxed);
+  // MONOTONIC.  The parser calls this per model, and several models are live at
+  // once in a normal session (a fit's inner model, its sensitivity peers, any
+  // model the user still holds).  Taking the max means each one raises the floor
+  // to cover itself and none can shrink the table under another; the cost of
+  // over-sizing is a few KB per thread, the cost of under-sizing is silent
+  // thrashing back to recomputation.
+  int cur = _rxInvMemoWant.load(std::memory_order_relaxed);
+  while (sz > cur &&
+         !_rxInvMemoWant.compare_exchange_weak(cur, sz, std::memory_order_relaxed)) {}
 }
 
 extern "C" double gamma_p(double a, double z) {

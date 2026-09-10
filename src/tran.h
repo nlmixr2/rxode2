@@ -116,6 +116,7 @@ lhs symbols?
   int nwhile;
   int nInd;
   int simflg;
+  int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
   int lastDdt;
   int nLlik;
