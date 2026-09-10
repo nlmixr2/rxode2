@@ -411,24 +411,15 @@ static inline void handleInvCdfFunctions(transFunctions *tf) {
   if (!strcmp("gammapInv",   tf->v) || !strcmp("gammaqInv",   tf->v) ||
       !strcmp("gammapInva",  tf->v) || !strcmp("gammaqInva",  tf->v) ||
       !strcmp("ibetaInv",    tf->v) || !strcmp("studentTInv", tf->v)) {
-    // DETECTOR, not a count.  This handler fires an unreliable number of times
-    // per occurrence -- measured 32 firings for a model with ONE gammapInv, and
-    // the same 32 for one with two -- so `tb.nInvCdf++` does NOT count call
-    // sites.  The codebase's own nLlik pattern sidesteps this the same way: it
-    // takes max2() over an EXPLICIT index rather than counting firings, because
-    // the handler repeats.
+    // EXACT, from the parsed model: four slots per call site.
     //
-    // So this sizes on presence, bounded, rather than on a number it cannot
-    // trust: a model that calls none of these keeps the small default and pays
-    // nothing, and one that calls any gets a table big enough that several
-    // declarations cannot evict each other (measured: 4 slots already recovered
-    // essentially all of the win on two declared etas, 64 was 1% better).
-    //
-    // Sizing EXACTLY would need a hook that fires once per occurrence -- the
-    // count is genuinely a parse-time property, it is just not this hook's to
-    // give.
-    tb.nInvCdf = 1;
-    rxSetInvCdfMemoSize(64);
+    // Measured on two declared etas -- 1 slot 1.85x, 4 slots 3.0x, 64 slots
+    // 3.1x -- so two per site already recovers essentially all of it, and four
+    // leaves room for the perturbed argument sets a finite-difference pass
+    // evaluates beside the nominal one.  No floor beyond the setter's minimum: a
+    // model calling none of these allocates none.
+    tb.nInvCdf++;
+    rxSetInvCdfMemoSize(4 * tb.nInvCdf);
   }
 }
 

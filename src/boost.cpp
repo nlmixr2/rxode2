@@ -69,10 +69,9 @@
 // SIZE.  One slot is not enough: a model declaring several non-normal random
 // effects evaluates their decoders one after another WITHIN each record, so a
 // single slot is evicted by the next declaration and never hits.  Measured on
-// two declared etas: 1 slot gave 1.85x, 4 slots gave 3.0x.  The number of
-// declared inverses is a property of the model, so the table is SIZABLE --
-// `rxSetInvCdfMemoSize()` -- and the default is generous enough that a model
-// never silently degrades to thrashing.
+// two declared etas: 1 slot gave 1.85x, 4 slots gave 3.0x.  The count is a
+// property of the MODEL, so the parser supplies it exactly
+// (`handleInvCdfFunctions` -> `rxSetInvCdfMemoSize`, four slots per call site).
 //
 // Chi-squared needs no entry of its own: the catalog expands dchisq,
 // invChiSquare and scaledInvChiSquare through gammapInv, and studentT through
@@ -91,9 +90,10 @@
 #define RX_INV_GAMMA_Q_INVA  4
 #define RX_INV_IBETA_INV     5
 #define RX_INV_STUDENTT_INV  6
-// Default 8, not 64: the parser sizes this exactly from the model
-// (handleInvCdfFunctions), so the default only has to carry a direct call from R
-// or a model parsed by an older path.
+// Default 8: the parser sizes this EXACTLY from the model
+// (handleInvCdfFunctions counts one per call site), so the default only has to
+// carry a direct call from R -- gammapInv() and friends are exported and
+// documented standalone -- or a model parsed by an older path.
 #define RX_INVMEMO_DEFAULT   8
 
 typedef struct {
