@@ -275,6 +275,23 @@ rxEtaDistExpand <- function(ui) {
          list(blocks=lapply(.blocks, function(.idx) .dn[.idx]),
               etaDist=.d, iniDf=.ui$iniDf),
          envir=.new)
+  ## STICKY, or a later model rewrite silently throws it away.
+  ##
+  ## .getDropEnv() drops everything that is neither blessed nor sticky whenever
+  ## the model changes significantly, and nlmixr2est's mu2 covariate rewrite is
+  ## such a change -- a declaration carrying a covariate reports "removed from
+  ## model: '$etaDistInfo'" and the fit then has no record of what the expansion
+  ## did.  The parameter table is built from this, so it comes back MISALIGNED:
+  ## measured on a covariate model with deliberately distinct starting values,
+  ## lclrv reported lv1m's 2.22 and the rxCor theta reported lv1rv's -4.44.
+  ##
+  ## Same mechanism rxForcedPars() uses (R/rxsolve.R) for the same reason.
+  .stk <- if (exists("sticky", envir = .new, inherits = FALSE)) {
+    get("sticky", envir = .new, inherits = FALSE)
+  } else {
+    character(0)
+  }
+  assign("sticky", unique(c(.stk, "etaDistInfo")), envir = .new)
   .new
 }
 
