@@ -5,7 +5,7 @@
 // [[Rcpp::interfaces(r,cpp)]]
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"       /* rxLlikSaveSize; pulls in rxode2parseStruct.h */
-extern "C" double rxInvCdfMemoBytes(int cores);
+#include "invCdfMemo.h"
 #include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
 
 using namespace Rcpp;

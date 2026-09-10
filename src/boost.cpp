@@ -44,6 +44,8 @@
 #include <R.h>
 #define _(String) (String)
 
+#include "invCdfMemo.h"
+
 #include <atomic>
 #include <vector>
 #include <cstdint>

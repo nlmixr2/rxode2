@@ -387,7 +387,7 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
-extern void rxSetInvCdfMemoSize(int n);
+#include "invCdfMemo.h"
 
 // Count the ROOT-FINDING inverse CDFs this model calls, and size their memo.
 //
