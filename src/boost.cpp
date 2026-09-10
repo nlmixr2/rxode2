@@ -44,6 +44,122 @@
 #include <R.h>
 #define _(String) (String)
 
+#include <atomic>
+#include <vector>
+#include <cstdint>
+#include <cstring>
+
+////////////////////////////////////////////////////////////////////////////
+// Memo for the ROOT-FINDING inverse special functions.
+//
+// These are the expensive ones: each is a Newton/Halley iteration whose every
+// step evaluates the full forward CDF.  Profiled on an est="imp" fit of a
+// declared gamma model, 45% of the whole fit sat in gamma_incomplete_imp_final
+// reached from gamma_p_inv's root finder -- against 1.9% in the ODE solve.
+//
+// They are also asked the SAME question over and over.  `rxEtaDistExpand()`
+// emits a declared distribution's decoder as a MODEL LINE, e.g.
+//
+//   eta.cl <- gammapInv(1/exp(lclrv), phiU(rxN.eta.cl))/(...)
+//
+// so it is evaluated once per RECORD, while its arguments depend only on the
+// thetas and the SUBJECT's latent -- constant across that subject's records.
+// With 15 observations per subject, 14 of every 15 calls repeat exactly.
+//
+// SIZE.  One slot is not enough: a model declaring several non-normal random
+// effects evaluates their decoders one after another WITHIN each record, so a
+// single slot is evicted by the next declaration and never hits.  Measured on
+// two declared etas: 1 slot gave 1.85x, 4 slots gave 3.0x.  The number of
+// declared inverses is a property of the model, so the table is SIZABLE --
+// `rxSetInvCdfMemoSize()` -- and the default is generous enough that a model
+// never silently degrades to thrashing.
+//
+// Chi-squared needs no entry of its own: the catalog expands dchisq,
+// invChiSquare and scaledInvChiSquare through gammapInv, and studentT through
+// ibeta_inv, so both are covered by the entries below.
+//
+// Keyed on the function id AND every argument, so any change misses and
+// recomputes.  A hit returns the value that same call produced, so it is
+// BIT-EXACT and cannot alter a result.
+//
+// thread_local: subjects are solved on an OpenMP team, and a shared table would
+// hand one thread another thread's answer.
+////////////////////////////////////////////////////////////////////////////
+#define RX_INV_GAMMA_P_INV   1
+#define RX_INV_GAMMA_Q_INV   2
+#define RX_INV_GAMMA_P_INVA  3
+#define RX_INV_GAMMA_Q_INVA  4
+#define RX_INV_IBETA_INV     5
+#define RX_INV_STUDENTT_INV  6
+#define RX_INVMEMO_DEFAULT  64
+
+typedef struct {
+  int fn;
+  double k0, k1, k2, v;
+} rxInvMemo_t;
+
+static std::atomic<int> _rxInvMemoWant(RX_INVMEMO_DEFAULT);
+static thread_local std::vector<rxInvMemo_t> _rxInvMemo;
+static thread_local int _rxInvHave = 0;
+static thread_local uint32_t _rxInvMask = 0;
+
+static inline void rxInvMemoEnsure(void) {
+  int want = _rxInvMemoWant.load(std::memory_order_relaxed);
+  if (want == _rxInvHave) return;
+  rxInvMemo_t e; e.fn = 0; e.k0 = e.k1 = e.k2 = e.v = 0.0;
+  _rxInvMemo.assign((size_t)want, e);
+  _rxInvHave = want;
+  _rxInvMask = (uint32_t)(want - 1);
+}
+
+static inline uint32_t rxInvHash(int fn, double a, double b, double c) {
+  uint64_t h = 1469598103934665603ULL;   // FNV offset basis
+  uint64_t w[3];
+  memcpy(&w[0], &a, sizeof(double));
+  memcpy(&w[1], &b, sizeof(double));
+  memcpy(&w[2], &c, sizeof(double));
+  h = (h ^ (uint64_t)fn) * 1099511628211ULL;
+  for (int i = 0; i < 3; ++i) h = (h ^ w[i]) * 1099511628211ULL;
+  h ^= h >> 29;
+  return (uint32_t)h & _rxInvMask;
+}
+
+static inline bool rxInvMemoGet(int fn, double a, double b, double c, double *out) {
+  rxInvMemoEnsure();
+  if (_rxInvHave <= 0) return false;
+  const rxInvMemo_t &e = _rxInvMemo[rxInvHash(fn, a, b, c)];
+  if (e.fn == fn && e.k0 == a && e.k1 == b && e.k2 == c) { *out = e.v; return true; }
+  return false;
+}
+
+static inline void rxInvMemoPut(int fn, double a, double b, double c, double v) {
+  if (_rxInvHave <= 0) return;
+  rxInvMemo_t &e = _rxInvMemo[rxInvHash(fn, a, b, c)];
+  e.fn = fn; e.k0 = a; e.k1 = b; e.k2 = c; e.v = v;
+}
+
+// Size the inverse-CDF memo from the model.
+//
+// C-callable, for the model setup to call once it knows how many root-finding
+// inverses the parsed model contains -- one per declared non-normal random
+// effect plus any the user writes directly.  Sizing the table to that keeps
+// every one of them resident rather than evicting each other; the default of 64
+// is generous enough that a realistic model never thrashes, so this is a
+// right-sizing knob and not a correctness requirement.
+//
+// Rounded up to a power of two (the index is a mask) and clamped to [8, 4096].
+// Each thread picks the new size up LAZILY on its next call, which is what makes
+// it safe to call between solves without coordinating with the OpenMP team.
+//
+// NOT wired to the parser yet -- that is the remaining step; nothing calls this
+// so far, and the default carries the models measured to date.
+extern "C" void rxSetInvCdfMemoSize(int n) {
+  int sz = 8;
+  if (n > 4096) n = 4096;
+  while (sz < n) sz <<= 1;
+  _rxInvMemoWant.store(sz, std::memory_order_relaxed);
+}
+
 extern "C" double gamma_p(double a, double z) {
   return boost::math::gamma_p<double, double>(a, z);
 }
@@ -65,19 +181,57 @@ extern "C" double gamma_p_derivative(double a, double x) {
 }
 
 extern "C" double gamma_q_inv(double a, double q) {
-  return boost::math::gamma_q_inv<double, double>(a, q);
+  double v;
+  if (rxInvMemoGet(RX_INV_GAMMA_Q_INV, a, q, 0.0, &v)) return v;
+  v = boost::math::gamma_q_inv<double, double>(a, q);
+  rxInvMemoPut(RX_INV_GAMMA_Q_INV, a, q, 0.0, v);
+  return v;
 }
 
 extern "C" double gamma_q_inva(double x, double q) {
-  return boost::math::gamma_q_inva<double, double>(x, q);
+  double v;
+  if (rxInvMemoGet(RX_INV_GAMMA_Q_INVA, x, q, 0.0, &v)) return v;
+  v = boost::math::gamma_q_inva<double, double>(x, q);
+  rxInvMemoPut(RX_INV_GAMMA_Q_INVA, x, q, 0.0, v);
+  return v;
 }
 
+// LAST-CALL MEMO for the inverse incomplete gamma.
+//
+// `gamma_p_inv` is a Halley iteration whose every step evaluates the full
+// forward CDF, so it is intrinsically expensive -- 45% of a declared-gamma imp
+// fit sits in `gamma_incomplete_imp_final` reached from here.  It is also asked
+// the SAME question repeatedly: `rxEtaDistExpand()` emits the decoder
+//
+//   eta.cl <- gammapInv(1/exp(lclrv), phiU(rxN.eta.cl))/(...)
+//
+// as a model line, so it is evaluated once per RECORD -- while its arguments
+// depend only on the thetas and the SUBJECT's latent, which are constant across
+// that subject's records.  On Bauer's arms (15 observations per subject) 14 of
+// every 15 calls repeat the previous one exactly.
+//
+// A one-entry memo is enough because the repeats are consecutive: records of a
+// subject are solved in order.  Same shape as linCmt's row memo
+// (src/linCmt.cpp), and keyed on EVERY argument, so a changed theta or latent
+// misses and recomputes.
+//
+// thread_local: rxode2 solves subjects on an OpenMP team, and a shared memo
+// would hand one thread another's answer.  Bit-exact on a hit -- it returns the
+// value this same call computed -- so it cannot change any result.
 extern "C" double gamma_p_inv(double a, double p) {
-  return boost::math::gamma_p_inv<double, double>(a, p);
+  double v;
+  if (rxInvMemoGet(RX_INV_GAMMA_P_INV, a, p, 0.0, &v)) return v;
+  v = boost::math::gamma_p_inv<double, double>(a, p);
+  rxInvMemoPut(RX_INV_GAMMA_P_INV, a, p, 0.0, v);
+  return v;
 }
 
 extern "C" double gamma_p_inva(double x, double p) {
-  return boost::math::gamma_p_inva<double, double>(x, p);
+  double v;
+  if (rxInvMemoGet(RX_INV_GAMMA_P_INVA, x, p, 0.0, &v)) return v;
+  v = boost::math::gamma_p_inva<double, double>(x, p);
+  rxInvMemoPut(RX_INV_GAMMA_P_INVA, x, p, 0.0, v);
+  return v;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -97,8 +251,13 @@ extern "C" double ibetaDer(double a, double b, double x) {
   return boost::math::ibeta_derivative<double, double, double>(a, b, x);
 }
 
+// Same memo, same reasoning, for the dbeta/betaProportion decoders.
 extern "C" double ibetaInv(double a, double b, double p) {
-  return boost::math::ibeta_inv<double, double, double>(a, b, p);
+  double v;
+  if (rxInvMemoGet(RX_INV_IBETA_INV, a, b, p, &v)) return v;
+  v = boost::math::ibeta_inv<double, double, double>(a, b, p);
+  rxInvMemoPut(RX_INV_IBETA_INV, a, b, p, v);
+  return v;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -187,6 +346,13 @@ extern "C" double studentTCdfDnu(double x, double nu) {
 
 extern "C" double studentTInv(double p, double nu) {
   if (ISNAN(p) || ISNAN(nu)) return NA_REAL;
+  {
+    // memoized at THIS level, not through ibetaInv(): it calls
+    // boost::math::ibeta_inv directly, and caching here also saves the tail
+    // reflection and the sqrt.
+    double _v;
+    if (rxInvMemoGet(RX_INV_STUDENTT_INV, p, nu, 0.0, &_v)) return _v;
+  }
   if (p <= 0.0) return R_NegInf;
   if (p >= 1.0) return R_PosInf;
   if (p == 0.5) return 0.0;
@@ -196,5 +362,7 @@ extern "C" double studentTInv(double p, double nu) {
   // guard the p -> 0/1 limit, where x underflows to zero
   if (!(x > 0.0)) return lower ? R_NegInf : R_PosInf;
   double t = sqrt(nu * (1.0 - x) / x);
-  return lower ? -t : t;
+  double res = lower ? -t : t;
+  rxInvMemoPut(RX_INV_STUDENTT_INV, p, nu, 0.0, res);
+  return res;
 }
