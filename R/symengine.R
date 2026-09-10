@@ -150,6 +150,13 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "ceiling" = 1,
   "trunc" = 1,
   ## Special R functions
+  ## digamma/trigamma reach the FROM-symengine converter whenever a registered
+  ## derivative emits them -- `.rxD$gammapDer` and `.rxD$ibetaDer` both do.
+  ## Absent from this arity table they fell through to the user-function path
+  ## and were rejected as "requires 0 arguments (supplied 1)", blocking every
+  ## SECOND derivative through the incomplete gamma/beta shape parameter.
+  "digamma" = 1,
+  "trigamma" = 1,
   "bessel_i" = 3,
   "bessel_j" = 2,
   "bessel_k" = 3,
@@ -2425,7 +2432,13 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 .rxUnXi <- function(x) {
-  gsub("_xi_([[:digit:]]*)", "rx_xi_\\1", x)
+  ## IDEMPOTENT.  The bare pattern also matches INSIDE an already-renamed
+  ## `rx_xi_1`, turning it into `rxrx_xi_1` -- which then leaks into the
+  ## generated model as a free parameter ("the following parameter(s) are
+  ## required for solving: rxrx_xi_1").  Text reaches here twice whenever a
+  ## converted expression is handed back to symengine and re-converted, which is
+  ## exactly what a SECOND derivative of a registered function does.
+  gsub("(?<!rx)_xi_([[:digit:]]*)", "rx_xi_\\1", x, perl = TRUE)
 }
 
 
@@ -2460,8 +2473,88 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 #' @return character vector of rxode2 expressions
 #' @author Matthew L. Fidler
 #' @noRd
+#' Rewrite symengine's TUPLE-form `Subs` into nested single substitutions
+#'
+#' A MIXED second partial of a multi-argument registered function makes symengine
+#' emit simultaneous substitution:
+#'
+#'   Subs(Derivative(gammapInv(rx_xi_1, rx_xi_2), rx_xi_1, rx_xi_2),
+#'        (rx_xi_1, rx_xi_2), (1.0*exp(-THETA_4_), phiU(ETA_1_)))
+#'
+#' `(a, b)` is not a parsable R expression, so this text never even reached the
+#' converter -- `parse()` failed with "unexpected ','" and the whole sensitivity
+#' build was abandoned.  Semantically the substitutions are independent (the
+#' replacements are expressed in the OUTER variables, not in each other), so
+#' applying them one at a time is equivalent:
+#'
+#'   Subs(Subs(Derivative(...), rx_xi_1, 1.0*exp(-THETA_4_)), rx_xi_2, phiU(ETA_1_))
+#'
+#' which the existing single-variable `Subs` branch already handles.
+#'
+#' Paren-aware, and a no-op when there is no tuple.
+#' @param txt one symengine expression string
+#' @return the same string with every tuple `Subs` expanded
+#' @noRd
+.rxSubsTupleExpand <- function(txt) {
+  if (length(txt) != 1L || is.na(txt) || !grepl("Subs(", txt, fixed = TRUE)) return(txt)
+  ## top-level comma split of the text INSIDE one balanced paren group
+  .split <- function(.s) {
+    .d <- 0L; .out <- character(0); .cur <- ""
+    for (.ch in strsplit(.s, "", fixed = TRUE)[[1]]) {
+      if (.ch == "(") .d <- .d + 1L
+      else if (.ch == ")") .d <- .d - 1L
+      if (.ch == "," && .d == 0L) { .out <- c(.out, .cur); .cur <- "" } else .cur <- paste0(.cur, .ch)
+    }
+    c(.out, .cur)
+  }
+  ## index of the ")" matching the "(" at position .open
+  .close <- function(.s, .open) {
+    .chs <- strsplit(.s, "", fixed = TRUE)[[1]]
+    .d <- 0L
+    for (.i in seq(.open, length(.chs))) {
+      if (.chs[.i] == "(") .d <- .d + 1L
+      else if (.chs[.i] == ")") { .d <- .d - 1L; if (.d == 0L) return(.i) }
+    }
+    NA_integer_
+  }
+  .strip <- function(.s) {
+    .s <- trimws(.s)
+    if (nchar(.s) > 1L && substr(.s, 1, 1) == "(" &&
+          identical(.close(.s, 1L), nchar(.s))) return(trimws(substr(.s, 2, nchar(.s) - 1L)))
+    .s
+  }
+  repeat {
+    .at <- NA_integer_
+    ## innermost-first: the LAST occurrence whose own args carry no further Subs tuple
+    .locs <- gregexpr("Subs(", txt, fixed = TRUE)[[1]]
+    if (length(.locs) == 1L && .locs[1] == -1L) break
+    .done <- TRUE
+    for (.p in rev(.locs)) {
+      .o <- .p + 4L                      # the "(" of Subs(
+      .c <- .close(txt, .o)
+      if (is.na(.c)) next
+      .args <- .split(substr(txt, .o + 1L, .c - 1L))
+      if (length(.args) != 3L) next
+      .v <- .strip(.args[2]); .r <- .strip(.args[3])
+      .vs <- .split(.v); .rs <- .split(.r)
+      if (length(.vs) < 2L || length(.vs) != length(.rs)) next
+      .inner <- trimws(.args[1])
+      for (.k in seq_along(.vs)) {
+        .inner <- paste0("Subs(", .inner, ",(", trimws(.vs[.k]), "),(", trimws(.rs[.k]), "))")
+      }
+      txt <- paste0(substr(txt, 1L, .p - 1L), .inner,
+                    substr(txt, .c + 1L, nchar(txt)))
+      .done <- FALSE
+      break
+    }
+    if (.done) break
+  }
+  txt
+}
+
 .rxFromSEvec <- function(x) {
   .x <- .rxUnXi(as.character(x))
+  .x <- vapply(.x, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
   if (.rxFromSEuseC()) {
     .ret <- .rxFromSEC(.x)
     .na <- which(is.na(.ret))
@@ -2495,6 +2588,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
   .rxSEstate$fromNumDer <- .unknown[match.arg(unknownDerivatives)]
   if (is(substitute(x), "character")) {
     .x <- .rxUnXi(x)
+    .x <- vapply(.x, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
     if (length(.x) == 1L && .rxFromSEuseC()) {
       .c <- .rxFromSEC(.x)
       if (!is.na(.c)) {
@@ -2532,6 +2626,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
             if (!is.null(attr(class(.val2), "package"))) {
               if (attr(class(.val2), "package") == "symengine") {
                 .txt <- .rxUnXi(as.character(.val2))
+                ## Before the C fast path AND before parse(): a tuple-form Subs is
+                ## not parsable R at all (see .rxSubsTupleExpand).
+                .txt <- vapply(.txt, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
                 if (length(.txt) == 1L && .rxFromSEuseC()) {
                   .c <- .rxFromSEC(.txt)
                   if (!is.na(.c)) {
@@ -3281,26 +3378,92 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           .vars <- lapply(x[-(1:2)], .rxFromSE)
           .ok <- TRUE
           .res <- NULL
+          ## Differentiate an EXPRESSION (in rxode2 syntax) once more, by handing it
+          ## back to symengine.  Any registered function INSIDE it comes back as a
+          ## single-variable `Derivative(...)`, which this same converter resolves
+          ## from `.rxD` -- so the recursion terminates one variable at a time.
+          ##
+          ## This is what makes SECOND derivatives of a registered function work at
+          ## all.  The chaining below only advances while each derivative is itself
+          ## a BARE registered call (rxTBS -> rxTBSd -> rxTBSd2, ReLU -> dReLU).
+          ## The moment a derivative is a general expression it cannot: `phiU`'s is
+          ## a product, `0.3989...*exp(-0.5*q*q)`, so `which(.vars[[2]] ==
+          ## unlist(.args))` searched the operands of `*` for the variable, found
+          ## nothing, and the whole conversion threw.  That took out every second
+          ## derivative built on `phiU`/`gammapDer` -- i.e. the entire declared
+          ## non-normal random effect family (`dist(cl) ~ dgamma(...)`), whose
+          ## quantile chain is `Q(phiU(z))`, and with it the analytic outer
+          ## gradient for any such model (`ui$foceiOuter` returned NULL, and
+          ## est="vae" nonMuTheta="grad" silently fell back).
+          .derivMore <- function(.txt, .var) {
+            .se <- try(rxToSE(.txt), silent = TRUE)
+            if (inherits(.se, "try-error")) return(NULL)
+            ## The VARIABLE has to be converted too.  `.vars` came back through
+            ## `.rxFromSE`, so it is in rxode2 syntax -- an eta reads `ETA[1]`,
+            ## which is not a symengine symbol at all (`S("ETA[1]")` throws).
+            ## Converting only the expression and not the variable is what made
+            ## `Derivative(phiU(ETA_1_), ETA_1_, ETA_1_)` still fail.
+            .sv <- try(rxToSE(.var), silent = TRUE)
+            if (inherits(.sv, "try-error")) return(NULL)
+            .sy <- try(symengine::S(.se), silent = TRUE)
+            if (inherits(.sy, "try-error")) return(NULL)
+            .sd <- try(symengine::S(.sv), silent = TRUE)
+            if (inherits(.sd, "try-error")) return(NULL)
+            .d <- try(symengine::D(.sy, .sd), silent = TRUE)
+            if (inherits(.d, "try-error")) return(NULL)
+            .out <- try(rxFromSE(.d), silent = TRUE)
+            if (inherits(.out, "try-error")) return(NULL)
+            .out
+          }
           for (.k in seq_along(.vars)) {
             .with <- which(.vars[[.k]] == unlist(.args))
-            if (length(.with) != 1 || !exists(.fun, envir = .rxD)) {
-              .ok <- FALSE
-              break
+            .step <- NULL
+            if (length(.with) == 1 && exists(.fun, envir = .rxD)) {
+              .funLst <- get(.fun, envir = .rxD)
+              if (length(.funLst) >= .with && !is.null(.funLst[[.with]])) {
+                .step <- try(do.call(.funLst[[.with]], as.list(.args)), silent = TRUE)
+                if (inherits(.step, "try-error")) .step <- NULL
+              }
             }
-            .funLst <- get(.fun, envir = .rxD)
-            if (length(.funLst) < .with || is.null(.funLst[[.with]])) {
-              .ok <- FALSE
-              break
+            if (is.null(.step)) {
+              ## Not a bare registered call in this variable.  Differentiate what
+              ## we have symbolically instead -- the ORIGINAL function on the first
+              ## step, the running expression after that.  Either way the inner
+              ## single-variable `Derivative(...)` this produces goes back through
+              ## the branch above, which owns the numeric-difference fallback
+              ## (`.errD`) for a function with no registered derivative.  That is
+              ## what lets a SECOND derivative exist at all for something like
+              ## `gammapDera` (d/da of the incomplete gamma), whose own derivative
+              ## has no closed form: the multi-variable branch used to just stop,
+              ## so the whole conversion failed rather than degrading to a
+              ## difference the way one derivative does.
+              .src <- if (.k == 1L) {
+                try(.rxFromSE(x[[2]]), silent = TRUE)
+              } else {
+                .res
+              }
+              if (inherits(.src, "try-error") || is.null(.src)) {
+                .ok <- FALSE
+                break
+              }
+              .step <- .derivMore(.src, .vars[[.k]])
+              if (is.null(.step)) {
+                .ok <- FALSE
+                break
+              }
             }
-            .res <- try(do.call(.funLst[[.with]], as.list(.args)), silent = TRUE)
-            if (inherits(.res, "try-error")) {
-              .ok <- FALSE
-              break
+            .res <- .step
+            .call <- try(str2lang(.res), silent = TRUE)
+            if (inherits(.call, "try-error") || !is.call(.call)) {
+              ## a bare symbol or number: no further chaining is possible, but the
+              ## expression route still is
+              .fun <- ""
+              .args <- list()
+            } else {
+              .fun <- as.character(.call[[1L]])
+              .args <- lapply(as.list(.call)[-1],
+                              function(.z) if (is.character(.z)) .z else paste(deparse(.z), collapse = ""))
             }
-            .call <- str2lang(.res)
-            .fun <- as.character(.call[[1L]])
-            .args <- lapply(as.list(.call)[-1],
-                            function(.z) if (is.character(.z)) .z else paste(deparse(.z), collapse = ""))
           }
           if (.ok && !is.null(.res)) {
             return(.res)
