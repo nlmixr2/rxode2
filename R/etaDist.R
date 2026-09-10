@@ -241,144 +241,31 @@ rxEtaDistExpand <- function(ui) {
   .ui <- rxUiDecompress(ui)
   .d <- rxUiEtaDists(.ui)
   if (nrow(.d) == 0L) return(ui)
+  .rxEtaDistCheckLevel(.d)
   .iniDf <- .ui$iniDf
-  ## IOV and other levels put the random effect in a different condition,
-  ## where the latent/copula bookkeeping is not the same problem; refuse
-  ## rather than quietly building the wrong model
-  .cnd <- unique(lotri::lotriBaseCondition(.d$condition))
-  .bad <- .cnd[!(.cnd %in% c("id", "ID", NA_character_))]
-  if (length(.bad) > 0L) {
-    stop("a declared non-normal random effect distribution is only ",
-         "supported at the subject level, but '",
-         paste(.d$name[lotri::lotriBaseCondition(.d$condition) %in% .bad],
-               collapse="', '"),
-         "' is at level '", paste(.bad, collapse="', '"), "'", call.=FALSE)
-  }
   .omega <- .ui$omega
   if (!is.matrix(.omega)) .omega <- .omega[[1]]
   .dn <- dimnames(.omega)[[1]]
-  ## every block that contains at least one declaration, in block order
-  .blocks <- list()
-  .i <- 1L
-  while (.i <= length(.dn)) {
-    .idx <- .rxEtaDistBlock(.omega, .i)
-    if (any(.dn[.idx] %in% .d$name)) {
-      .blocks[[length(.blocks) + 1L]] <- .idx
-    }
-    .i <- max(.idx) + 1L
-  }
-  ## Which declared random effects the MODEL BLOCK already assigns.
-  ##
-  ## `dist()` written in model({}) emits its own inverse-CDF line in place --
-  ## that is the whole point of the model-block form, since a distribution
-  ## parameter may be an expression the model computes from covariates, and
-  ## that expression is only in scope at the declaration.  Prepending a second
-  ## copy here would both duplicate the assignment and put it ABOVE the
-  ## covariate it reads.  So: if the model already assigns this random effect,
-  ## its transform is placed and this function only owes it the latent and the
-  ## copula.
-  .assigned <- character(0)
-  for (.e in .ui$lstExpr) {
-    if (is.call(.e) && length(.e) >= 3L &&
-          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
-          is.name(.e[[2]])) {
-      .assigned <- c(.assigned, as.character(.e[[2]]))
-    }
-  }
+  .blocks <- .rxEtaDistDeclBlocks(.omega, .d)
+  .assigned <- .rxEtaDistModelAssigned(.ui)
   .pre <- character(0)
   .newTheta <- data.frame(name=character(0), est=numeric(0),
                           stringsAsFactors=FALSE)
   .drop <- integer(0)
   for (.idx in .blocks) {
     .nms <- .dn[.idx]
-    .R <- .omega[.idx, .idx, drop=FALSE]
-    .y <- .rxEtaDistCorToY(.R)
-    for (.i in seq_along(.nms)) {
-      .pre <- c(.pre, .rxEtaDistCorLines(.nms, .i))
-      for (.j in seq_len(.i - 1L)) {
-        .newTheta <- rbind(.newTheta,
-                           data.frame(name=paste0("rxCor.", .nms[.i], ".", .nms[.j]),
-                                      est=.y[.i, .j], stringsAsFactors=FALSE))
-      }
-    }
-    for (.nm in .nms) {
-      .w <- which(.d$name == .nm)
-      if (.nm %in% .assigned) next   # model-block dist() placed it already
-      if (length(.w) == 1L) {
-        .u <- paste0("phiU(rxN.", .nm, ")")
-        .pre <- c(.pre, paste0(.nm, " <- ",
-                               .rxEtaDistQuantile(.d$etaDist[.w], .u, .nm,
-                                                  latent=paste0("rxN.", .nm))))
-      } else {
-        ## an undeclared member of a declared block: its variance is one
-        ## by the same rule, so it IS the correlated latent normal
-        .pre <- c(.pre, paste0(.nm, " <- rxN.", .nm))
-      }
-    }
-    ## the latent random effects: renamed, unit variance, fixed, and no
-    ## covariance -- the correlation is in the `rxCor.*` thetas now
-    for (.nm in .nms) {
-      .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
-      .iniDf$name[.w] <- paste0("rxz.", .nm)
-      .iniDf$est[.w] <- 1
-      .iniDf$fix[.w] <- TRUE
-    }
-    .drop <- c(.drop,
-               which(!is.na(.iniDf$neta1) & .iniDf$neta1 != .iniDf$neta2 &
-                       .iniDf$neta1 %in% .idx & .iniDf$neta2 %in% .idx))
+    .y <- .rxEtaDistCorToY(.omega[.idx, .idx, drop=FALSE])
+    .pre <- c(.pre,
+              .rxEtaDistCopulaLines(.nms),
+              .rxEtaDistDecoderLines(.nms, .d, .assigned))
+    .newTheta <- rbind(.newTheta, .rxEtaDistCorTheta(.nms, .y))
+    .iniDf <- .rxEtaDistFixLatents(.iniDf, .nms)
+    .drop <- c(.drop, .rxEtaDistCovRowsToDrop(.iniDf, .idx))
   }
   if (length(.drop) > 0L) .iniDf <- .iniDf[-.drop, , drop=FALSE]
   .iniDf$etaDist <- NULL
-  if (nrow(.newTheta) > 0L) {
-    .nTheta <- suppressWarnings(max(c(0L, .iniDf$ntheta), na.rm=TRUE))
-    .add <- .iniDf[rep(which(!is.na(.iniDf$ntheta))[1], nrow(.newTheta)), ,
-                   drop=FALSE]
-    .add$ntheta <- .nTheta + seq_len(nrow(.newTheta))
-    .add$name <- .newTheta$name
-    .add$est <- .newTheta$est
-    ## Bounded, not unbounded.  tanh() maps this to a partial correlation, so
-    ## the parameterization is unconstrained in the sense that ANY finite value
-    ## gives a valid correlation matrix -- but that is not the same as being
-    ## safe to optimize over.  As |y| grows tanh(y) -> 1, the block approaches
-    ## singularity, and a copula member's latent
-    ##
-    ##   w_k = tanh(y)*z_j + sqrt(1 - tanh(y)^2)*z_k
-    ##
-    ## collapses onto its partner's: two declared random effects become one.
-    ## Any optimizer maximizing a likelihood CONDITIONAL on sampled etas -- with
-    ## no prior term to penalize that degeneracy -- can walk straight to it.
-    ## Measured in nlmixr2est's saem (refinePhi0Lik): rho pinned at 1.000 in 3
-    ## of 7 fits across seeds and refinement start points on Bauer's gamma data,
-    ## and a pinned rho alone contributed 128% of one of the eight relative
-    ## errors.
-    ##
-    ## +/-5 keeps |rho| <= 0.9999 -- far wider than any correlation worth
-    ## estimating, and enough that sqrt(1 - rho^2) never underflows the partner
-    ## latent out of the model entirely.
-    .add$lower <- -5
-    .add$upper <- 5
-    .add$fix <- FALSE
-    .add$label <- NA_character_
-    ## tanh() of one of these is the partial correlation between its two
-    ## random effects given the ones before them (the canonical partial
-    ## correlation parameterization), and for a 2x2 block -- the usual
-    ## case, and Bauer's -- it is plainly the correlation.  So the
-    ## back-transformed column reads as a correlation without any special
-    ## casing; `fit$etaDistCor` carries the whole matrix.
-    .add$backTransform <- "tanh"
-    if (any(names(.add) == "prior")) .add$prior <- NA_character_
-    if (any(names(.add) == "err")) .add$err <- NA_character_
-    .add$condition <- NA_character_
-    rownames(.add) <- NULL
-    .iniDf <- rbind(.iniDf, .add)
-  }
-  ## renumber the etas: dropping the covariance rows leaves gaps
-  .we <- which(is.na(.iniDf$ntheta))
-  if (length(.we) > 0L) {
-    .lvl <- sort(unique(.iniDf$neta1[.we]))
-    .iniDf$neta1[.we] <- match(.iniDf$neta1[.we], .lvl)
-    .iniDf$neta2[.we] <- match(.iniDf$neta2[.we], .lvl)
-  }
+  .iniDf <- .rxEtaDistAddCorThetas(.iniDf, .newTheta)
+  .iniDf <- .rxEtaDistRenumberEtas(.iniDf)
   rownames(.iniDf) <- NULL
   .new <- .rxEtaDistNewUi(.ui, .iniDf, c(lapply(.pre, str2lang), .ui$lstExpr))
   ## what the expansion did, so a fit can be reported on the scale the
@@ -389,6 +276,230 @@ rxEtaDistExpand <- function(ui) {
               etaDist=.d, iniDf=.ui$iniDf),
          envir=.new)
   .new
+}
+
+#' Refuse a declaration that is not at the subject level
+#'
+#' IOV and other levels put the random effect in a different condition, where
+#' the latent/copula bookkeeping is not the same problem; refuse rather than
+#' quietly building the wrong model.
+#'
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return nothing, called for the error
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCheckLevel <- function(d) {
+  .cnd <- unique(lotri::lotriBaseCondition(d$condition))
+  .bad <- .cnd[!(.cnd %in% c("id", "ID", NA_character_))]
+  if (length(.bad) == 0L) return(invisible())
+  stop("a declared non-normal random effect distribution is only ",
+       "supported at the subject level, but '",
+       paste(d$name[lotri::lotriBaseCondition(d$condition) %in% .bad],
+             collapse="', '"),
+       "' is at level '", paste(.bad, collapse="', '"), "'", call.=FALSE)
+}
+
+#' The omega blocks that contain at least one declaration, in block order
+#'
+#' @param omega omega matrix
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return list of integer index vectors
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDeclBlocks <- function(omega, d) {
+  .dn <- dimnames(omega)[[1]]
+  .blocks <- list()
+  .i <- 1L
+  while (.i <= length(.dn)) {
+    .idx <- .rxEtaDistBlock(omega, .i)
+    if (any(.dn[.idx] %in% d$name)) {
+      .blocks[[length(.blocks) + 1L]] <- .idx
+    }
+    .i <- max(.idx) + 1L
+  }
+  .blocks
+}
+
+#' Which declared random effects the model block already assigns
+#'
+#' `dist()` written in model({}) emits its own inverse-CDF line in place --
+#' that is the whole point of the model-block form, since a distribution
+#' parameter may be an expression the model computes from covariates, and that
+#' expression is only in scope at the declaration.  Prepending a second copy
+#' would both duplicate the assignment and put it ABOVE the covariate it reads.
+#' So if the model already assigns this random effect, its transform is placed
+#' and the expansion only owes it the latent and the copula.
+#'
+#' @param ui decompressed ui
+#' @return character vector of assigned names
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistModelAssigned <- function(ui) {
+  .assigned <- character(0)
+  for (.e in ui$lstExpr) {
+    if (is.call(.e) && length(.e) >= 3L &&
+          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
+          is.name(.e[[2]])) {
+      .assigned <- c(.assigned, as.character(.e[[2]]))
+    }
+  }
+  .assigned
+}
+
+#' The Gaussian copula lines for one block
+#'
+#' @param nms names in the block, in block order
+#' @return character vector of model lines
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCopulaLines <- function(nms) {
+  unlist(lapply(seq_along(nms), function(.i) .rxEtaDistCorLines(nms, .i)),
+         use.names=FALSE)
+}
+
+#' The `rxCor.*` thetas for one block, on the atanh scale
+#'
+#' @param nms names in the block, in block order
+#' @param y the atanh-scale partial correlations for the block
+#' @return data.frame of name/est
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCorTheta <- function(nms, y) {
+  .out <- data.frame(name=character(0), est=numeric(0), stringsAsFactors=FALSE)
+  for (.i in seq_along(nms)) {
+    for (.j in seq_len(.i - 1L)) {
+      .out <- rbind(.out,
+                    data.frame(name=paste0("rxCor.", nms[.i], ".", nms[.j]),
+                               est=y[.i, .j], stringsAsFactors=FALSE))
+    }
+  }
+  .out
+}
+
+#' The decoder lines that map each latent back to its declared scale
+#'
+#' @param nms names in the block, in block order
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @param assigned names the model block already assigns
+#' @return character vector of model lines
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDecoderLines <- function(nms, d, assigned) {
+  .pre <- character(0)
+  for (.nm in nms) {
+    if (.nm %in% assigned) next   # model-block dist() placed it already
+    .w <- which(d$name == .nm)
+    if (length(.w) == 1L) {
+      .u <- paste0("phiU(rxN.", .nm, ")")
+      .pre <- c(.pre, paste0(.nm, " <- ",
+                             .rxEtaDistQuantile(d$etaDist[.w], .u, .nm,
+                                                latent=paste0("rxN.", .nm))))
+    } else {
+      ## an undeclared member of a declared block: its variance is one
+      ## by the same rule, so it IS the correlated latent normal
+      .pre <- c(.pre, paste0(.nm, " <- rxN.", .nm))
+    }
+  }
+  .pre
+}
+
+#' Rename a block's random effects to the latents: unit variance and fixed
+#'
+#' The covariance is not carried here -- the correlation is in the `rxCor.*`
+#' thetas now.
+#'
+#' @param iniDf ini data.frame
+#' @param nms names in the block
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistFixLatents <- function(iniDf, nms) {
+  for (.nm in nms) {
+    .w <- which(iniDf$name == .nm & iniDf$neta1 == iniDf$neta2)
+    iniDf$name[.w] <- paste0("rxz.", .nm)
+    iniDf$est[.w] <- 1
+    iniDf$fix[.w] <- TRUE
+  }
+  iniDf
+}
+
+#' The off-diagonal rows of a block, which the copula replaces
+#'
+#' @param iniDf ini data.frame
+#' @param idx the block's indexes
+#' @return integer vector of row numbers
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCovRowsToDrop <- function(iniDf, idx) {
+  which(!is.na(iniDf$neta1) & iniDf$neta1 != iniDf$neta2 &
+          iniDf$neta1 %in% idx & iniDf$neta2 %in% idx)
+}
+
+#' Append the `rxCor.*` theta rows to the ini data.frame
+#'
+#' @param iniDf ini data.frame
+#' @param newTheta data.frame of name/est from `.rxEtaDistCorTheta()`
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAddCorThetas <- function(iniDf, newTheta) {
+  if (nrow(newTheta) == 0L) return(iniDf)
+  .nTheta <- suppressWarnings(max(c(0L, iniDf$ntheta), na.rm=TRUE))
+  .add <- iniDf[rep(which(!is.na(iniDf$ntheta))[1], nrow(newTheta)), ,
+                drop=FALSE]
+  .add$ntheta <- .nTheta + seq_len(nrow(newTheta))
+  .add$name <- newTheta$name
+  .add$est <- newTheta$est
+  ## Bounded, not unbounded.  tanh() maps this to a partial correlation, so
+  ## the parameterization is unconstrained in the sense that ANY finite value
+  ## gives a valid correlation matrix -- but that is not the same as being
+  ## safe to optimize over.  As |y| grows tanh(y) -> 1, the block approaches
+  ## singularity, and a copula member's latent
+  ##
+  ##   w_k = tanh(y)*z_j + sqrt(1 - tanh(y)^2)*z_k
+  ##
+  ## collapses onto its partner's: two declared random effects become one.
+  ## Any optimizer maximizing a likelihood CONDITIONAL on sampled etas -- with
+  ## no prior term to penalize that degeneracy -- can walk straight to it.
+  ## Measured in nlmixr2est's saem (refinePhi0Lik): rho pinned at 1.000 in 3
+  ## of 7 fits across seeds and refinement start points on Bauer's gamma data,
+  ## and a pinned rho alone contributed 128% of one of the eight relative
+  ## errors.
+  ##
+  ## +/-5 keeps |rho| <= 0.9999 -- far wider than any correlation worth
+  ## estimating, and enough that sqrt(1 - rho^2) never underflows the partner
+  ## latent out of the model entirely.
+  .add$lower <- -5
+  .add$upper <- 5
+  .add$fix <- FALSE
+  .add$label <- NA_character_
+  ## tanh() of one of these is the partial correlation between its two
+  ## random effects given the ones before them (the canonical partial
+  ## correlation parameterization), and for a 2x2 block -- the usual
+  ## case, and Bauer's -- it is plainly the correlation.  So the
+  ## back-transformed column reads as a correlation without any special
+  ## casing; `fit$etaDistCor` carries the whole matrix.
+  .add$backTransform <- "tanh"
+  if (any(names(.add) == "prior")) .add$prior <- NA_character_
+  if (any(names(.add) == "err")) .add$err <- NA_character_
+  .add$condition <- NA_character_
+  rownames(.add) <- NULL
+  rbind(iniDf, .add)
+}
+
+#' Renumber the etas: dropping the covariance rows leaves gaps
+#'
+#' @param iniDf ini data.frame
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistRenumberEtas <- function(iniDf) {
+  .we <- which(is.na(iniDf$ntheta))
+  if (length(.we) == 0L) return(iniDf)
+  .lvl <- sort(unique(iniDf$neta1[.we]))
+  iniDf$neta1[.we] <- match(iniDf$neta1[.we], .lvl)
+  iniDf$neta2[.we] <- match(iniDf$neta2[.we], .lvl)
+  iniDf
 }
 
 #' The indexes of the covariance block an element belongs to
