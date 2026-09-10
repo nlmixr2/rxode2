@@ -180,7 +180,7 @@ rxTest({
       a + b
     }
 
-    expect_true(grepl("R_pow_di[(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("R_pow_di[(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       a <- x + y
@@ -188,7 +188,7 @@ rxTest({
       a + b
     }
 
-    expect_true(grepl("R_pow[(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("R_pow[(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       a <- x + y
@@ -196,7 +196,7 @@ rxTest({
       a + b
     }
 
-    expect_true(grepl("cos[(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("cos[(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       if (a < b) {
@@ -205,7 +205,7 @@ rxTest({
       a + b
     }
 
-    expect_true(grepl("if [(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("if [(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
 
     udf <- function(x, y) {
@@ -218,7 +218,7 @@ rxTest({
       }
     }
 
-    expect_true(grepl("else [{]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("else [{]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       a <- x
@@ -231,7 +231,7 @@ rxTest({
       a ^ 2 + b ^ 2
     }
 
-    expect_true(grepl("else if [(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("else if [(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       a <- x
@@ -248,7 +248,7 @@ rxTest({
       a ^ 2 + b ^ 2
     }
 
-    expect_true(grepl("else if [(]", rxFun2c(udf)[[1]]$cCode))
+    expect_true(grepl("else if [(]", rxode2:::rxFun2c(udf)[[1]]$cCode))
 
     udf <- function(x, y) {
       a <- x + y
@@ -256,7 +256,7 @@ rxTest({
       x
     }
 
-    expect_error(rxFun2c(udf)[[1]]$cCode)
+    expect_error(rxode2:::rxFun2c(udf)[[1]]$cCode)
 
 
     udf <- function(x, y) {
