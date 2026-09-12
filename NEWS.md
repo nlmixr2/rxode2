@@ -1,6 +1,36 @@
 # rxode2 5.1.7
 
 ## New features
+- The declared-distribution expansion now hoists each family argument onto its
+  own named line, `rxEdA.<eta>.<role>`, and the decoder refers to that name:
+
+  ```
+  rxEdA.eta.cl.shape <- 1/exp(lclrv)
+  rxEdA.eta.cl.rate  <- 1/(exp(lclrv) * exp(lclm))
+  eta.cl <- gammapInv(rxEdA.eta.cl.shape, phiU(rxN.eta.cl))/(rxEdA.eta.cl.rate)
+  ```
+
+  The line is keyed by lotri's ROLE rather than the family's argument name, so
+  `scale` means the same thing across families and is a usable group key.  The
+  point is that a covariate on a declaration's rate becomes a term added to one
+  named line -- an ordinary edit every downstream consumer already handles --
+  instead of a substitution buried inside a quantile call.
+
+  Both spellings of `dist()` emit the same anchors (the `model({})` form carries
+  them through the user-function `before` hook), so the two remain
+  byte-identical, and only arguments the family's quantile template actually
+  uses get an anchor -- a normal-based family collapses to its latent and never
+  references some of its arguments.
+
+  Fits are unchanged: this is a refactor of the generated model text.  Measured
+  on a declared-gamma covariate model, the estimates and objective function
+  value match the pre-anchor run to every printed digit.
+
+  `rxEtaDistMuRef()` knows about the new prefix.  Its scan for generated lines
+  was `^rx[NTLSUuc][.]`, so without this a declaration parameter that had moved
+  onto an anchor came out silently non-mu-referenced -- the same failure its own
+  comment warns about for `rxT.`.
+
 
 - `rxEtaDistMuRef()` mu-references the parameters of a declared random-effect
   distribution.  `rxEtaDistExpand()` writes them as bare thetas inside an

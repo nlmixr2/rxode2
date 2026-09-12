@@ -92,7 +92,7 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @return character, an rxode2 expression
 #' @noRd
 #' @author Matthew L. Fidler
-.rxEtaDistQuantile <- function(txt, u, what, latent=NULL) {
+.rxEtaDistQuantile <- function(txt, u, what, latent=NULL, anchors=NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
   .tab <- lotri::lotriEtaDists()
@@ -119,8 +119,17 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
   ## lotri stores the arguments in canonical positional order, so the
   ## template's `{name}` placeholders line up by position
   for (.i in seq_along(.args)) {
-    .q <- gsub(paste0("{", .parNames[.i], "}"),
-               paste0("(", deparse1(.args[[.i]]), ")"), .q, fixed=TRUE)
+    ## With `anchors`, the argument EXPRESSION has been hoisted to its own
+    ## model line (`rxEdA.<eta>.<role>`) and the decoder refers to that name
+    ## instead.  The covariate problem then becomes an ordinary one: adding a
+    ## term to a role group is an edit to one named line.
+    .sub <- if (!is.null(anchors) && !is.na(anchors[.parNames[.i]]) &&
+                  nzchar(anchors[.parNames[.i]])) {
+      unname(anchors[.parNames[.i]])
+    } else {
+      paste0("(", deparse1(.args[[.i]]), ")")
+    }
+    .q <- gsub(paste0("{", .parNames[.i], "}"), .sub, .q, fixed=TRUE)
   }
   .q <- gsub("{u}", u, .q, fixed=TRUE)
   if (grepl("{", .q, fixed=TRUE)) {
@@ -128,6 +137,61 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
          call.=FALSE) # nocov
   }
   .q
+}
+
+#' Role anchors for a declared distribution's arguments
+#'
+#' Hoists each family argument onto its own named model line,
+#' `rxEdA.<eta>.<role>`, where `role` is lotri's role for that argument
+#' (`shape`/`rate` for a gamma, `location`/`scale` for a normal).  The role
+#' rather than the argument name, so the same group key means the same thing
+#' across families.
+#'
+#' The point is that the covariate problem becomes an ordinary one: a covariate
+#' on a declaration's rate is a term added to one named line, which every
+#' downstream consumer already handles, instead of a substitution inside a
+#' quantile call.
+#'
+#' Only arguments the family's quantile template actually uses get an anchor --
+#' a normal-based family collapses to the latent and never references some of
+#' its arguments, and an unused model line is dead weight.
+#'
+#' @param txt canonical `etaDist` text for one declaration
+#' @param eta the declared random effect's name
+#' @param latent the latent name, so the collapse above is detected the same
+#'   way `.rxEtaDistQuantile()` detects it
+#' @return named character: names are the family's `parNames`, values the
+#'   anchor variable names; plus attribute `"lines"` with the assignments
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAnchors <- function(txt, eta, latent=NULL) {
+  .call <- str2lang(txt)
+  .nm <- as.character(.call[[1]])
+  .tab <- lotri::lotriEtaDists()
+  .w <- which(.tab$name == .nm)
+  if (length(.w) != 1L) return(NULL)
+  if (!any(names(.tab) == "roles") || !nzchar(.tab$roles[.w])) return(NULL)
+  .q <- .tab$quantile[.w]
+  if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
+    .q <- sub("qnorm({u})", latent, .q, fixed=TRUE)
+  }
+  .parNames <- strsplit(.tab$parNames[.w], ",", fixed=TRUE)[[1]]
+  .roles <- strsplit(.tab$roles[.w], ",", fixed=TRUE)[[1]]
+  if (length(.roles) != length(.parNames)) return(NULL)
+  .args <- as.list(.call)[-1]
+  .map <- setNames(rep(NA_character_, length(.parNames)), .parNames)
+  .lines <- character(0)
+  for (.i in seq_along(.args)) {
+    if (.i > length(.parNames)) break
+    ## an argument the template never references needs no anchor
+    if (!grepl(paste0("{", .parNames[.i], "}"), .q, fixed=TRUE)) next
+    .v <- paste0("rxEdA.", eta, ".", .roles[.i])
+    .map[.parNames[.i]] <- .v
+    .lines <- c(.lines, paste0(.v, " <- ", deparse1(.args[[.i]])))
+  }
+  if (length(.lines) == 0L) return(NULL)
+  attr(.map, "lines") <- .lines
+  .map
 }
 
 #' Unconstrained Cholesky parameters of a correlation matrix
@@ -408,9 +472,12 @@ rxEtaDistExpand <- function(ui) {
     .w <- which(d$name == .nm)
     if (length(.w) == 1L) {
       .u <- paste0("phiU(rxN.", .nm, ")")
-      .pre <- c(.pre, paste0(.nm, " <- ",
-                             .rxEtaDistQuantile(d$etaDist[.w], .u, .nm,
-                                                latent=paste0("rxN.", .nm))))
+      .lat <- paste0("rxN.", .nm)
+      .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent=.lat)
+      .pre <- c(.pre, attr(.anc, "lines"),
+                paste0(.nm, " <- ",
+                       .rxEtaDistQuantile(d$etaDist[.w], .u, .nm,
+                                          latent=.lat, anchors=.anc)))
     } else {
       ## an undeclared member of a declared block: its variance is one
       ## by the same rule, so it IS the correlated latent normal
@@ -749,7 +816,13 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
   ## declared eta itself.  The copula correlation theta only ever appears on an
   ## rxT. line, so missing that prefix silently leaves it non-mu-referenced --
   ## which is exactly the parameter NONMEM mu-references as MU_9.
-  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs)
+  ## `rxEdA.` is the role anchor: the expansion hoists each family argument
+  ## onto its own line, so a declaration parameter now appears THERE rather
+  ## than inside the inverse-CDF call.  Missing this prefix leaves exactly
+  ## those thetas non-mu-referenced, which is the same silent failure the
+  ## comment above describes for rxT.
+  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs) |
+    grepl("^rxEdA[.]", .lhs)
   .vars <- unique(unlist(lapply(.lst[.isDistLine], all.vars), use.names=FALSE))
   .thetas <- .ini$name[!is.na(.ini$ntheta) & is.na(.ini$err) & !.ini$fix]
   .target <- intersect(.vars, .thetas)
@@ -903,12 +976,18 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   ## form applies, and what makes the correlation a Gaussian copula.
   .iniDf$est[.w] <- 1
   .iniDf$fix[.w] <- TRUE
+  ## The anchors go through `before` so this spelling emits exactly what the
+  ## ini({}) spelling emits -- the two must stay byte-identical, which is the
+  ## invariant the argument-order normalization above exists to protect.
+  .anc <- .rxEtaDistAnchors(.rhsTxt, .eta, latent = paste0("rxN.", .eta))
   list(iniDf = .iniDf,
+       before = attr(.anc, "lines"),
        replace = paste0(.eta, " <- ",
                         .rxEtaDistQuantile(.rhsTxt,
                                            paste0("phiU(rxN.", .eta, ")"),
                                            .eta,
-                                           latent = paste0("rxN.", .eta))))
+                                           latent = paste0("rxN.", .eta),
+                                           anchors = .anc)))
 }
 
 #' Canonical text for a declared distribution call
