@@ -19,6 +19,35 @@
   .Call(`_rxode2_isLinCmt`)
 }
 
+#' Are these names reserved rxode2 variables?
+#'
+#' Wraps the parser's own `isReservedName()` so there is one list of reserved
+#' names; a reserved name is never a model parameter or covariate.
+#'
+#' @param x character vector of names to test
+#' @return logical vector the same length as `x`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxIsReservedName <- function(x) {
+  # nolint next: object_usage_linter. registered in src/init.c
+  .Call(`_rxode2_rxIsReservedName`, as.character(x))
+}
+
+#' Is this a name model piping must never turn into an estimated parameter?
+#'
+#' The parser's reserved names, plus `E` -- not reserved by the parser, but kept
+#' out of the ini block since before `.rxSEreserved` stopped shadowing a model
+#' variable of that name (#1359).  The rest of `.rxSEreserved` (`e`, `I`, ...)
+#' are ordinary parameter names.
+#'
+#' @param x character vector of names to test
+#' @return logical vector the same length as `x`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxIsReservedPipeName <- function(x) {
+  .rxIsReservedName(x) | x == "E"
+}
+
 .trans <- function(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn) {
   .Call(`_rxode2_trans`,
         parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn)

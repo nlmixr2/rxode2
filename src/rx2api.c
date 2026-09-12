@@ -63,7 +63,10 @@ rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   if (id < 0 || (uint64_t)id >= nall) {
     Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %llu); nsub: %u nsim: %u", id, (unsigned long long)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
   }
-  return &(rx->subjects[id]);
+  // Walk the array at the stride it was ALLOCATED with, not at this
+  // translation unit's `sizeof` -- see rxIndSize in rx2api.h.  It is
+  // statically initialized, so it is never zero here.
+  return (rx_solving_options_ind*)((char*)rx->subjects + (size_t)id*rxIndSize);
 }
 
 ////////////////////////////////////////////////////////////////////////

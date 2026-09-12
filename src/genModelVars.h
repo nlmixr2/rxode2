@@ -35,7 +35,10 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
   INTEGER(sLinCmt)[12] = tb.ndiff;
-  INTEGER(sLinCmt)[13] = tb.hasMix;
+  // An expanded mix() has no mix() call left; its rx_mixsel_<k>_ selectors
+  // carry the component count so the model still reads as a mixture (mixest
+  // supplied per individual, mixnum reporting the count).
+  INTEGER(sLinCmt)[13] = tb.hasMix ? tb.hasMix : tb.mixSel;
   INTEGER(sLinCmt)[14] = tb.evid_;
   INTEGER(sLinCmt)[15] = tb.hasDelay;
   INTEGER(sLinCmt)[16] = tb.linCmtBraw;

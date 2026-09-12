@@ -166,14 +166,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
       if (is.null(.rSE)) next
       .valStr <- rxode2::rxFromSE(.rSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.rSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
       .kind <- "rate"
     } else {
       .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.dSE)) next
       .valStr <- rxode2::rxFromSE(.dSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.dSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
       .kind <- "dur"
     }
     .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
@@ -185,12 +185,12 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
     .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
-      .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .d <- symengine::D(.fSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
     .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.lSE)) {
       .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
       .dLagStr[[.c]] <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.lSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
     }
   }
   .evR <- .ev[!is.na(.ev$evid) & .ev$evid %in% c(5L, 6L), , drop = FALSE]
@@ -428,9 +428,9 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   ## directly; with() would ignore enclos and mis-resolve `pred`).
   .ph <- eval(parse(text = pred), envir = .model)
   .predC <- rxode2::rxFromSE(.ph)
-  .dhdy <- lapply(.st, function(i) { .d <- symengine::D(.ph, i); rxode2::rxFromSE(.d) })
+  .dhdy <- lapply(.st, function(i) { .d <- symengine::D(.ph, .rxSEres(i)); rxode2::rxFromSE(.d) })
   names(.dhdy) <- .st
-  .dhdp <- lapply(calcSens, function(p) { .d <- symengine::D(.ph, p); rxode2::rxFromSE(.d) })
+  .dhdp <- lapply(calcSens, function(p) { .d <- symengine::D(.ph, .rxSEres(p)); rxode2::rxFromSE(.d) })
   names(.dhdp) <- calcSens
 
   ## event detection (needed before the backward model is built)
@@ -450,14 +450,14 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
       if (is.null(.rSE)) next
       .valStr <- rxode2::rxFromSE(.rSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.rSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.rSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
       .kind <- "rate"
     } else {
       .dSE <- get0(paste0("rx_dur_", .c, "_"), envir = .model, inherits = FALSE)
       if (is.null(.dSE)) next
       .valStr <- rxode2::rxFromSE(.dSE)
       .dStr <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.dSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.dSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
       .kind <- "dur"
     }
     .infusSym[[length(.infusSym) + 1L]] <- list(cmt = .c, t1 = .t1, amt = .amt,
@@ -495,12 +495,12 @@ rxSolveAdjoint <- function(object, params, events, calcSens, adjStates = NULL,
   for (.c in unique(.doses$cmt[.doses$cmt %in% .st])) {
     .fSE <- get0(paste0("rx_f_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.fSE)) .dFexpr[[.c]] <- vapply(calcSens, function(p) {
-      .d <- symengine::D(.fSE, p); rxode2::rxFromSE(.d) }, character(1))
+      .d <- symengine::D(.fSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
     .lSE <- get0(paste0("rx_lag_", .c, "_"), envir = .model, inherits = FALSE)
     if (!is.null(.lSE)) {
       .lagStr[[.c]] <- rxode2::rxFromSE(.lSE)
       .dLagStr[[.c]] <- vapply(calcSens, function(p) {
-        .d <- symengine::D(.lSE, p); rxode2::rxFromSE(.d) }, character(1))
+        .d <- symengine::D(.lSE, .rxSEres(p)); rxode2::rxFromSE(.d) }, character(1))
     }
   }
   ## replace(evid5)/multiply(evid6) costate jumps (replace -> 0; multiply -> *alpha)

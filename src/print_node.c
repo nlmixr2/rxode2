@@ -19,7 +19,8 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
     nodeInf(value) ||
     nodeMixnum(value) ||
     nodeMixest(value) ||
-    nodeMixunif(value);
+    nodeMixunif(value) ||
+    nodeMixSel(value);
   if (!tmp && nodeHas(identifier)) {
     tmp = nodeFunGamma(value) ||
       nodeFunLfactorial(value) ||

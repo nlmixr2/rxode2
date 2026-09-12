@@ -3890,6 +3890,40 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   _rxModels[".lastEv1"] = ev1;
 }
 
+// A homogeneous event table stores ONE representative subject per group and the
+// real ids in `rxHomGroups`, so the raw record counts are one group's worth.
+// Expand `rx->nall`/`nobs`/`nobs2`/`nevid9` the way the setup pass does -- the
+// residual (`sigma`) draw is sized from these, and an unexpanded count simulates
+// the residual for the first subject only.  Returns the expanded subject count,
+// or 0 for a table that is not homogeneous, which is left untouched.
+static inline unsigned int rxExpandHomGroupCounts(rx_solve *rx,
+                                                  const RObject &ev1,
+                                                  const IntegerVector &id,
+                                                  const IntegerVector &evid) {
+  RObject hgs = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+  if (Rf_isNull(hgs)) return 0;
+  List hgl = as<List>(hgs);
+  int nHg = hgl.size();
+  unsigned int nSub0 = 0;
+  for (int _hg = 0; _hg < nHg; ++_hg) {
+    nSub0 += Rf_length(hgl[_hg]);
+  }
+  int nall = 0, nobs = 0, nobs2 = 0, evid9 = 0;
+  for (int _j = 0; _j < evid.size(); ++_j) {
+    int _gi = id[_j] - 1;
+    int _mult = (_gi >= 0 && _gi < nHg) ? Rf_length(hgl[_gi]) : 1;
+    nall += _mult;
+    if (isObs(evid[_j])) nobs += _mult;
+    if (evid[_j] == 0) nobs2 += _mult;
+    if (evid[_j] == 9) evid9 += _mult;
+  }
+  rx->nall = nall;
+  rx->nobs = nobs;
+  rx->nobs2 = nobs2;
+  rx->nevid9 = evid9;
+  return nSub0;
+}
+
 // This function simulates individual parameter values and residual
 // parameter values and then converts them to a data.frame.  This
 // allows rxSolve_ to solve as if the user specified these parameters
@@ -4010,14 +4044,8 @@ static inline void rxSolve_simulate(const RObject &obj,
         }
         rx->nevid9 = evid9;
         // Get true number of subjects if this is a homogenous event table.
-        RObject hgs = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
-        if (!Rf_isNull(hgs)) {
-          List hgl = as<List>(hgs);
-          nSub0 = 0;
-          for (R_xlen_t _hg = 0; _hg < hgl.size(); ++_hg) {
-            nSub0 += (R_xlen_t)Rf_length(hgl[_hg]);
-          }
-        }
+        unsigned int hgSub = rxExpandHomGroupCounts(rx, ev1, id, evid);
+        if (hgSub > 0) nSub0 = hgSub;
       } else {
         nSub0 =1;
         DataFrame dataf = as<DataFrame>(ev1);
@@ -4228,6 +4256,21 @@ static inline NumericVector getMixUnif(const RObject &ev1)  {
   } else {
   }
   return mixUnif;
+}
+
+// A mixest supplied per individual (from the data or from iCov) arrives in
+// mixunif carrying the >= 1.0 sentinel.  _mix() decodes that sentinel, but a
+// model whose mix() call was expanded to rx_mixsel_<k>_ selectors never calls
+// _mix() -- it reads ind->mixest directly -- so decode it here as well.
+static inline void rxSetIndMix(rx_solving_options_ind* ind, unsigned int nsub,
+                               const NumericVector& mixUnif) {
+  ind->mixest = 0;
+  if (nsub >= (unsigned int)mixUnif.size()) {
+    ind->mixunif = rxunifmix(ind);
+  } else {
+    ind->mixunif = mixUnif[nsub];
+    if (ind->mixunif >= 1.0) ind->mixest = (int) trunc(ind->mixunif);
+  }
 }
 
 // This loops through the data to put each individual into the
@@ -4516,14 +4559,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->ndoses           = ndoses;
           ind->nevid2           = groupNevid2;
           ind->HMAX             = curHmax;
-          if (rx->mixnum) {
-            ind->mixest = 0;
-            if (nsub >= mixUnif.size()) {
-              ind->mixunif = rxunifmix(ind);
-            } else {
-              ind->mixunif = mixUnif[nsub];
-            }
-          }
+          // A homogeneous group is ONE translated subject, so the per-id
+          // mixest vector is indexed by the group, not by the expanded
+          // subject counter.
+          if (rx->mixnum) rxSetIndMix(ind, (unsigned int)groupIndex, mixUnif);
           nsub++;
         }
         if (groupNevid2 > 0) rx->hasEvid2 = 1;
@@ -4622,14 +4661,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
             // Finalize last solve.
             ind->n_all_times    = ndoses+nobs;
             ind->n_all_times_orig = ind->n_all_times;
-            if (rx->mixnum) {
-              ind->mixest = 0;
-              if (nsub >= mixUnif.size()) {
-                ind->mixunif = rxunifmix(ind);
-              } else {
-                ind->mixunif = mixUnif[nsub];
-              }
-            }
+            if (rx->mixnum) rxSetIndMix(ind, nsub, mixUnif);
             if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
             ind->cov_ptr = &(_globals.gcov[curcovi]);
             for (ii = 0; ii < ncov; ii++){
@@ -4729,14 +4761,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       // Finalize the prior individual
       ind->n_all_times    = ndoses+nobs;
       ind->n_all_times_orig = ind->n_all_times;
-      if (rx->mixnum) {
-        ind->mixest = 0;
-        if (nsub >= mixUnif.size()) {
-          ind->mixunif = rxunifmix(ind);
-        } else {
-          ind->mixunif = mixUnif[nsub];
-        }
-      }
+      if (rx->mixnum) rxSetIndMix(ind, nsub, mixUnif);
       if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
       ind->cov_ptr = &(_globals.gcov[curcovi]);
       for (ii = 0; ii < ncov; ii++){

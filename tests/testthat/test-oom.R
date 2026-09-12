@@ -845,6 +845,160 @@ rxTest({
     expect_null(.none$thetaMat)
   })
 
+  test_that("a chunked solve reproduces the unchunked solve with a sigma", {
+    skip_on_cran()
+
+    ## `rxSimThetaOmega()` draws study by study, and inside one study it draws
+    ## that study's etas and THEN that study's residuals.  The pre-draw left
+    ## the sigma out, so its stream was a study short from study 2 onward and
+    ## every eta after that was a different (still valid) draw; the residuals
+    ## were redrawn per chunk on top of that (nlmixr2/rxode2#1339).
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+      cp2 <- cp * (1 + prop.err) + add.err
+    })
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .sg <- lotri::lotri(prop.err + add.err ~ c(0.1, 0, 0.5))
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    ## nStud = 1 has no sim.id column
+    .key <- function(d) {
+      d <- as.data.frame(d)
+      .k <- intersect(c("sim.id", "id", "time"), names(d))
+      d <- d[do.call(order, unname(as.list(d[.k]))), ]
+      rownames(d) <- NULL
+      d
+    }
+
+    ## `.sigma` is shared mutable state: the chunked solve hands each chunk its
+    ## slice through `.rxModels`, so a leak there would be read by whichever
+    ## solve ran next -- including the one being compared against.  Solve
+    ## unchunked FIRST, and check nothing is left behind.
+    .cmp <- function(.ev, ...) {
+      .solve <- function(...) {
+        withr::with_seed(42, {
+          rxSetSeed(1234)
+          rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, ...)
+        })
+      }
+      .full  <- .key(.solve(...))
+      .chunk <- .key(.solve(file=tempfile(fileext=".parquet"), chunkSize=2, ...))
+      expect_equal(.chunk, .full)
+      expect_false(exists(".sigma", envir=rxModels_(), inherits=FALSE))
+    }
+
+    ## a homogeneous event table -- one representative record set expanded to
+    ## every subject
+    .cmp(et(et(amt=100, id=1:6), seq(0, 24, by=8)), nStud=3, dfSub=10)
+    ## one study, so nothing is drawn per study at all
+    .cmp(et(et(amt=100, id=1:6), seq(0, 24, by=8)))
+
+    ## subjects with different numbers of observations, so the residual slice
+    ## is not a constant stride
+    .uneven <- do.call(rbind, lapply(1:6, function(.i) {
+      .d <- as.data.frame(et(et(amt=100), seq(0, 8 * .i, by=8)))
+      .d <- .d[, c("time", "evid", "amt")]
+      .d$id <- .i
+      .d
+    }))
+    .cmp(.uneven, nStud=3, dfSub=10)
+
+    ## `addl` expands doses in the translated table, and `addDosing` changes
+    ## which records read a residual at all
+    .addl <- as.data.frame(et(et(amt=100, ii=12, addl=3, id=1:5),
+                              seq(0, 48, by=6)))
+    .cmp(.addl, nStud=3, dfSub=10)
+    .cmp(.addl, nStud=3, dfSub=10, addDosing=TRUE)
+    .cmp(.addl, nStud=3, dfSub=10, addDosing=NA)
+    .cmp(.addl, nStud=3, dfSub=10, addDosing=NULL)
+    .cmp(.addl, nStud=3, dfSub=10, addDosing=FALSE)
+  })
+
+  test_that("a chunked solve says so when it cannot share the residual draw", {
+    skip_on_cran()
+
+    ## an event table with no observations is one rxSolve() adds its own
+    ## sampling times to, so the record count the residual draw needs is not
+    ## something the event table itself answers -- the chunks draw their own,
+    ## which is valid but is not the unchunked draw
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+      cp2 <- cp * (1 + prop.err)
+    })
+    .ev <- as.data.frame(et(amt=100, id=1:4))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .sg <- lotri::lotri(prop.err ~ 0.1)
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+
+    expect_warning(
+      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
+              file=tempfile(fileext=".parquet"), chunkSize=2),
+      "no sampling times of its own")
+  })
+
+  test_that("the chunked residual count expands a homogeneous event table", {
+    skip_on_cran()
+
+    ## the count that sizes the residual draw has to be one entry per SOLVED
+    ## subject, not per translated record set -- a homogeneous event table
+    ## keeps one representative per group of identical subjects, and a count
+    ## taken from that would be zero for every subject but the first of each
+    ## group, which slices an empty residual matrix for their chunks
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+      cp2 <- cp * (1 + prop.err)
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+
+    expect_equal(.rxOomObsPerSubject(.m, as.data.frame(.ev), rxControl(), 1:6),
+                 rep(4L, 6))
+    ## and the same when the event table itself is handed over
+    expect_equal(.rxOomObsPerSubject(.m, .ev, rxControl(), 1:6), rep(4L, 6))
+  })
+
+  test_that("a parallel chunked solve reproduces the unchunked solve with a sigma", {
+    skip_on_cran()
+    skip_if_not_installed("mirai")
+
+    ## the residual slice has to reach the daemons too -- they are separate R
+    ## processes with their own `.rxModels`
+    .m <- rxode2({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv)
+      cp <- linCmt()
+      cp2 <- cp * (1 + prop.err)
+    })
+    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
+    .sg <- lotri::lotri(prop.err ~ 0.1)
+    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .key <- function(d) {
+      d <- as.data.frame(d)
+      d <- d[order(d$sim.id, d$id, d$time), ]
+      rownames(d) <- NULL
+      d
+    }
+    .solve <- function(...) {
+      withr::with_seed(42, {
+        rxSetSeed(1234)
+        rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
+                ...)
+      })
+    }
+    expect_equal(.key(.solve(file=tempfile(fileext=".parquet"), chunkSize=2,
+                             parallel=2)),
+                 .key(.solve()))
+  })
+
   test_that("a chunked solve refuses sigma uncertainty it cannot share", {
     skip_on_cran()
 

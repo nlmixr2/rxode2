@@ -5,6 +5,7 @@
 
 #include <Rcpp.h>
 #include <algorithm>
+#include <unordered_set>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "timsort.h"
@@ -1471,14 +1472,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> id;
   id.reserve(resSize);
   std::vector<int> idIcov;
+  // These four hold one entry per subject.  Membership in them is tested once
+  // per input row, so a std::find() linear scan makes the row loop below cost
+  // O(rows * subjects) -- at a fixed 120000 rows, going from 100 to 12000
+  // subjects cost 12.6x.  The vectors stay (their size, and the order they are
+  // iterated in for the warnings, are both used); the sets alongside them make
+  // the membership test O(1) and are kept in step at every push_back.
   std::vector<int> allId;
   allId.reserve(resSize);
+  std::unordered_set<int> allIdSet;
   std::vector<int> obsId;
   obsId.reserve(resSize);
+  std::unordered_set<int> obsIdSet;
   std::vector<int> zeroId;
-  obsId.reserve(resSize);
+  zeroId.reserve(resSize);
+  std::unordered_set<int> zeroIdSet;
   std::vector<int> doseId;
   doseId.reserve(resSize);
+  std::unordered_set<int> doseIdSet;
   std::vector<int> evid;
   evid.reserve(resSize);
   std::vector<double> time;
@@ -1783,8 +1794,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else cii = inIi[i];
     if (ISNA(cii)) cii=0.0;
 
-    if (std::find(allId.begin(), allId.end(), cid) == allId.end()) {
+    if (allIdSet.find(cid) == allIdSet.end()) {
       allId.push_back(cid);
+      allIdSet.insert(cid);
       // New ID
       // Add mtime records
       for (j = nMtime; j--;) {
@@ -1968,8 +1980,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cevid=2;
         }
         if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-            std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
+            obsIdSet.find(cid) == obsIdSet.end()) {
           obsId.push_back(cid);
+          obsIdSet.insert(cid);
         }
       } else {
         if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))) {
@@ -2021,8 +2034,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
-          std::find(obsId.begin(), obsId.end(), cid) == obsId.end()) {
+          obsIdSet.find(cid) == obsIdSet.end()) {
         obsId.push_back(cid);
+        obsIdSet.insert(cid);
       }
       if (caddl > 0) {
         Rf_warningcall(R_NilValue, "%s", _("'addl' is ignored with observations"));
@@ -2087,8 +2101,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cmtF.push_back(cmt);
         time.push_back(ctime);
         if (ctime == 0){
-          if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
             zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
         amt.push_back(NA_REAL);
@@ -2134,8 +2149,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       break;
     case 2:
       cevid = 2;
-      if ((cevid == 0 || (cevid == 2 && evid2isObs)) && std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+      if ((cevid == 0 || (cevid == 2 && evid2isObs)) && obsIdSet.find(cid) == obsIdSet.end()){
         obsId.push_back(cid);
+        obsIdSet.insert(cid);
       }
       if (flg == 30){
         rateI = 0;
@@ -2156,8 +2172,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cmtF.push_back(cmt);
         time.push_back(ctime);
         if (ctime == 0){
-          if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
             zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
         amt.push_back(NA_REAL);
@@ -2202,8 +2219,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       time.push_back(ctime);
       hasReset = true;
       if (ctime == 0){
-        if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+        if (zeroIdSet.find(cid) == zeroIdSet.end()){
           zeroId.push_back(cid);
+          zeroIdSet.insert(cid);
         }
       }
       amt.push_back(NA_REAL);
@@ -2243,8 +2261,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       time.push_back(ctime);
       hasReset = true;
       if (ctime == 0){
-        if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+        if (zeroIdSet.find(cid) == zeroIdSet.end()){
           zeroId.push_back(cid);
+          zeroIdSet.insert(cid);
         }
       }
       amt.push_back(NA_REAL);
@@ -2387,8 +2406,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           ii[ii.size() - 1] = 0.0;
         }
         if (rep == 0 && ctime == 0){
-          if (std::find(zeroId.begin(), zeroId.end(), cid) == zeroId.end()){
+          if (zeroIdSet.find(cid) == zeroIdSet.end()){
             zeroId.push_back(cid);
+            zeroIdSet.insert(cid);
           }
         }
       }
@@ -2496,9 +2516,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (obsId.size() != allId.size()){
       std::string idWarn = "IDs without observations dropped:";
       for (j = allId.size(); j--;){
-        if (std::find(obsId.begin(), obsId.end(), allId[j]) == obsId.end()){
+        if (obsIdSet.find(allId[j]) == obsIdSet.end()){
           idWarn = idWarn + " " +as<std::string>(idLvl[allId[j]-1]);
           doseId.push_back(allId[j]);
+          doseIdSet.insert(allId[j]);
         }
       }
       Rf_warningcall(R_NilValue, "%s", idWarn.c_str());
@@ -2512,11 +2533,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (zeroId.size() != allId.size()) {
     std::string idWarn = "IDs without zero-time start at the first observed time:";
     for (j = allId.size(); j--;){
-      if (std::find(zeroId.begin(), zeroId.end(), allId[j]) == zeroId.end()){
+      if (zeroIdSet.find(allId[j]) == zeroIdSet.end()){
         bool skipIt=false;
         if (!keepDosingOnly){
           // Excluded from list
-          if (std::find(obsId.begin(), obsId.end(), allId[j]) == obsId.end()){
+          if (obsIdSet.find(allId[j]) == obsIdSet.end()){
             skipIt=true;
           }
         }
@@ -2560,7 +2581,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       ivEvid[j] = -ivEvid[j];                   \
     }
     for (int j = ivId.size(); j--; ){
-      if (!(std::find(doseId.begin(), doseId.end(), ivId[j]) == doseId.end())){
+      if (!(doseIdSet.find(ivId[j]) == doseIdSet.end())){
         ivId[j] = NA_INTEGER; // Drop
       }
       // Duplicated below for speed.

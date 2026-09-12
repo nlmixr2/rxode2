@@ -949,6 +949,15 @@
   }
 }
 
+# Alias kept for the released nlmixr2est, whose `ini.nlmixr2FitCore()` calls
+# `rxode2::.iniHandleFixOrUnfix()` (R/ini.R).  A released reverse dependency
+# cannot be patched retroactively, so this name stays exported even though
+# nlmixr2est's development version calls `.iniHandleLine()` directly
+# (nlmixr2/rxode2#1250, nlmixr2/nlmixr2est#925).
+#' @rdname dot-iniHandleLine
+#' @export
+.iniHandleFixOrUnfix <- .iniHandleLine
+
 #' Simplify variants of fix and unfix to just those two
 #'
 #' @param expr An R call or similar object

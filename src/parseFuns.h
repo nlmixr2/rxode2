@@ -333,6 +333,12 @@ static inline int handleFunctionSum(transFunctions *tf) {
         /* Free(v2); */
         trans_syntax_error_report_fn(_gbuf.s);
       }
+      if (tb.mixSel != 0 && tb.mixSel != (ii + 1)/2) {
+        sPrint(&_gbuf,
+               _("'mix' cannot change the number of arguments (%d) in a model (ie mixnum from %d to %d)"),
+               ii, tb.mixSel, (ii + 1)/2);
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
       if (tb.hasMix == 0) {
         tb.hasMix = (ii + 1)/2; // number of mixtures
       } else if (tb.hasMix != (ii + 1)/2) {

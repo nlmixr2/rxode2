@@ -39,6 +39,29 @@ static inline int nodeMixest(char *value) {
   return 0;
 }
 
+// rx_mixsel_<k>_<n>_ is the per-component selector an expanded mix() leaves
+// behind; it reads as (mixest == k) and, unlike a bare mixest == k, keeps the
+// component count visible to the parser (tb.mixSel).
+static inline int nodeMixSel(char *value) {
+  int n = 0;
+  int k = mixSelNum(value, &n);
+  if (k == 0) return 0;
+  // both the selector form and a literal mix() must agree on the count; the
+  // combined value genModelVars() reports takes mix() first, so a silent
+  // disagreement would report the wrong number of components
+  if ((tb.mixSel != 0 && tb.mixSel != n) ||
+      (tb.hasMix != 0 && tb.hasMix != n)) {
+    updateSyntaxCol();
+    trans_syntax_error_report_fn((char*)_("a mixture model cannot change its number of components"));
+    return 1;
+  }
+  tb.mixSel = n;
+  sAppend(&sb,   "(_solveData->subjects[_cSub].mixest == %d)", k);
+  sAppend(&sbDt, "(_solveData->subjects[_cSub].mixest == %d)", k);
+  sAppend(&sbt,  "rx_mixsel_%d_%d_", k, n);
+  return 1;
+}
+
 static inline int nodeMixunif(char *value) {
   if (!rxstrcmpi("mixunif",value)){
     aAppendN("_solveData->subjects[_cSub].mixunif", 35);

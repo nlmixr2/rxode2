@@ -999,12 +999,11 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
 #' @author Matthew L. Fidler
 #' @noRd
 .addVariableToIniDf <- function(var, rxui, toEta=NA, value=1, promote=FALSE) {
-  if (var %in% c("pi", "M_E", "M_E", "E", "M_PI", "M_PI_2",
-                 "M_PI_4", "M_1_PI", "M_2_PI", "M_2PI", "M_SQRT_PI",
-                 "M_2_SQRTPI", "M_1_SQRT_2PI", "M_SQRT2", "M_SQRT_3",
-                 "M_SQRT_32", "M_SQRT_2dPI", "M_LN_SQRT_PI",
-                 "M_LN_SQRT_2PI", "M_LN_SQRT_PId2", "M_LOG10_2",
-                 "M_LOG2E", "M_LOG10E", "M_LN2", "M_LN10")) {
+  # A reserved rxode2 name (`t`, `time`, `tlast`, `newind`, the `M_`
+  # constants, ...) can be neither an estimated parameter nor a covariate, so
+  # it is retained as-is.  `E` is not reserved by the parser -- it can still be
+  # a covariate -- but is kept out of the ini block, see .rxIsReservedPipeName.
+  if (.rxIsReservedPipeName(var)) {
     return(invisible())
   }
   if (!is.null(.varSelect$cov)) {

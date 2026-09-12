@@ -493,6 +493,7 @@ void reset(void) {
   tb.nLlik      = 0;
   tb.nInvCdf    = 0;
   tb.hasMix     = 0;
+  tb.mixSel     = 0;
   tb.evid_      = 0;
   tb.isMexp     = 0;
   tb.hasDdt     = 0;
@@ -842,6 +843,26 @@ SEXP _rxode2_isLinCmt(void) {
   rxProtectGuard;
   SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(ret)[0]=tb.linCmt;
+  rxUP(1);
+  return ret;
+}
+
+// Vectorized R interface to isReservedName(); see .rxIsReservedName()
+SEXP _rxode2_rxIsReservedName(SEXP inSEXP) {
+  rxProtectGuard;
+  if (TYPEOF(inSEXP) != STRSXP) {
+    (Rf_error)(_("'x' must be a character vector"));
+  }
+  int n = Rf_length(inSEXP);
+  SEXP ret = rxP(Rf_allocVector(LGLSXP, n));
+  for (int i = 0; i < n; ++i) {
+    SEXP cur = STRING_ELT(inSEXP, i);
+    if (cur == NA_STRING) {
+      LOGICAL(ret)[i] = NA_LOGICAL;
+    } else {
+      LOGICAL(ret)[i] = isReservedName(CHAR(cur)) ? 1 : 0;
+    }
+  }
   rxUP(1);
   return ret;
 }

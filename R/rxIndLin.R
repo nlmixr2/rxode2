@@ -95,10 +95,14 @@ rxIndLinState <- function(preferred = NULL) {
   ## If we have *1/x this becomes simply /x
   .multCollapse <- function(x) {
     .txt <- paste(x, collapse = "*")
-    # symengine cannot parse a dotted identifier (`eta.Cl`), which is an
-    # ordinary rxode2 name, and this call is only tidying the result
-    # cosmetically.  Fall back to the plain product rather than failing the
-    # whole conversion: `-1*x` instead of `-x` is uglier but identical.
+    # These are model-side names.  S() reads one that matches a symengine
+    # constant (`e`, `I`, `Catalan`, ...) as the constant and would silently
+    # fold the variable away (#1359); it also cannot parse a dotted identifier
+    # (`eta.Cl`), which is an ordinary rxode2 name.  This call is only tidying
+    # the result cosmetically, so fall back to the plain product rather than
+    # losing a variable or failing the whole conversion: `-1*x` instead of `-x`
+    # is uglier but identical.
+    if (any(x %in% names(.rxSEreserved))) return(.txt)
     tryCatch(as.character(symengine::S(.txt)),
              error = function(e) .txt)
   }

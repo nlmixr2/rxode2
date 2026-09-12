@@ -3567,7 +3567,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .mv <- rxModelVars(object)
     .groupedSolve <- .etGroupedSolveDataICov(.origEvents, .ctl$iCov,
                                              keep = .ctl$keep,
-                                             modelParams = .mv$params)
+                                             modelParams = .rxGroupSolveParams(.mv))
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
@@ -3578,7 +3578,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .mv <- rxModelVars(object)
     .groupedSolve <- .etGroupedSolveDataFrameICov(events, .ctl$iCov,
                                                   keep = .ctl$keep,
-                                                  modelParams = .mv$params)
+                                                  modelParams = .rxGroupSolveParams(.mv))
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov

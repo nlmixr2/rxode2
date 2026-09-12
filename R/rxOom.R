@@ -105,6 +105,56 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   invisible()
 }
 
+# Hand a chunk the residual draw the parent made for it.  `.sigma` is the
+# per observation residual matrix `rxSimThetaOmega()` writes into `.rxModels`;
+# `rxSolve()` reads it from there and consumes one row per output record, so
+# assigning the chunk's slice before the solve is what stops the chunk drawing
+# its own.  `rxSolve()` moves it into the solved object's environment when it
+# is done, so each chunk needs its own assignment.
+.rxOomSetDrawnSigma <- function(x) {
+  .e <- .rxModels
+  if (!is.environment(.e)) return(invisible())
+  assign(".sigma", x, envir=.e)
+  invisible()
+}
+
+# Records each subject contributes to the residual draw, in the order the solve
+# lays the subjects out.  The residual draw is sized by the same count
+# `rxSolve()` computes (`curObs` in `src/rxData.cpp`), which is taken from the
+# TRANSLATED event table -- `addl` expands doses and the internal evid encoding
+# is not the input one -- so this translates with the same translator rather
+# than counting the input rows.  The predicate follows `addDosing`, exactly as
+# the solve does: `NULL` counts observations only, `TRUE`/`NA` every record but
+# `evid=9`, and `FALSE` (the default) every `isObs()` record but `evid=9`.
+.rxOomObsPerSubject <- function(object, evDf, .ctl, .ids) {
+  .obj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
+  .hasCmt <- tryCatch(as.logical(rxModelVars(.obj)$flags[["hasCmt"]]),
+                      error=function(e) FALSE)
+  if (is.na(.hasCmt)) .hasCmt <- FALSE
+  .tr <- etTrans(evDf, .obj, addCmt=.hasCmt, dropUnits=FALSE, allTimeVar=FALSE,
+                 keepDosingOnly=TRUE, combineDvid=NULL, keep=character(0),
+                 addlKeepsCov=isTRUE(.ctl$addlKeepsCov),
+                 addlDropSs=if (is.null(.ctl$addlDropSs)) TRUE else isTRUE(.ctl$addlDropSs),
+                 ssAtDoseTime=if (is.null(.ctl$ssAtDoseTime)) TRUE else isTRUE(.ctl$ssAtDoseTime))
+  .lvl <- attr(class(.tr), ".rxode2.lst")$idLvl
+  .tr <- as.data.frame(.tr)
+  .id <- as.integer(.tr[["ID"]])
+  .evid <- as.integer(.tr[["EVID"]])
+  .addDosing <- .ctl$addDosing
+  .keep <- if (is.null(.addDosing)) {
+    .evid == 0L
+  } else if (is.na(.addDosing[1])) {
+    .evid != 9L
+  } else if (isTRUE(.addDosing[1])) {
+    .evid != 9L
+  } else {
+    (.evid == 0L | .evid == 2L | (.evid >= 9L & .evid <= 99L)) & .evid != 9L
+  }
+  .n <- tabulate(.id[.keep], nbins=length(.lvl))
+  .n <- .n[match(as.character(.ids), as.character(.lvl))]
+  if (anyNA(.n)) NULL else .n
+}
+
 # -- Main OOM solve loop -------------------------------------------------------
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
@@ -201,6 +251,10 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .preDrawnOmegaL <- NULL
   .preDrawnSigmaL <- NULL
   .preDrawnTheta  <- NULL
+  .preDrawnSigma  <- NULL
+  .obsPerSub      <- NULL
+  .obsStart       <- NULL
+  .nObs           <- 0L
 
   # The pre-draw is study major: all `nSub` subjects of study 1, then of study
   # 2, and so on -- the same layout `rxSimThetaOmega()` gives the unchunked
@@ -212,10 +266,24 @@ rxMemSummary.rxEtFile <- function(x, ...) {
                       function(.s) .s * .nSub + seq.int(.first, length.out=.n),
                       double(.n)))
   }
-  # `dfObs` is what turns the sigma uncertainty draw on.  The pre-draw does not
-  # cover the residual draw -- it is per observation, not per subject, so it is
-  # not something a chunk's slice of the parameter table can carry -- and
-  # `sigma` is therefore still forwarded, so each chunk would draw its OWN per
+  # The residual draw is per OBSERVATION, so its slice is cut by the records a
+  # chunk's subjects own rather than by the rows of the parameter table.
+  # `.sigmaSlice()` is that cut: the drawn matrix is study major over all the
+  # solve's observations, so one chunk is one contiguous run of observations
+  # per study.
+  .sigmaSlice <- function(.first, .n) {
+    .lo <- .obsStart[.first] + 1L
+    .hi <- .obsStart[.first + .n]
+    if (.hi < .lo) return(integer(0))
+    as.integer(vapply(as.double(seq_len(.nStud) - 1L),
+                      function(.s) .s * .nObs + seq.int(.lo, .hi),
+                      double(.hi - .lo + 1L)))
+  }
+
+  # `dfObs` is what turns the sigma uncertainty draw on.  Unlike the fixed
+  # sigma the pre-draw now carries, a per study sigma has to reach `simeta()`
+  # and `$sigmaList` as a matrix per study, which the one drawn residual matrix
+  # a chunk is handed cannot express -- so each chunk would draw its OWN per
   # study sigma and subjects in different chunks would end up with different
   # residual covariance inside the same study.  Refuse it rather than answer
   # wrongly, as a chunked solve already does for the draws it cannot share.
@@ -256,7 +324,56 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # chunk would be wrong even where it ran, since each chunk would get its own
   # thetas and subjects in different chunks would no longer share a study.
   # That is nlmixr2/rxode2#1263.
-  if (!is.null(.ctl$omega) || !is.null(.ctl$thetaMat)) {
+  #
+  # `sigma` is drawn here too (nlmixr2/rxode2#1339).  It is not just the
+  # residuals: `rxSimThetaOmega()` draws study by study, and inside one study
+  # it draws that study's etas and THEN that study's residuals, so a pre-draw
+  # that left the sigma out was a study short of the unchunked stream from
+  # study 2 onward and every eta after that was a different (still valid)
+  # draw.  Drawing it here keeps the stream identical AND gives each chunk its
+  # own slice of the one residual matrix, instead of a redraw.
+  .simSigma <- !is.null(.ctl$sigma) && length(.ctl$sigma) > 0L &&
+    !is.data.frame(params) && !is.matrix(params)
+  if (.simSigma) {
+    # The residual matrix is sized by the number of records the solve reads
+    # residuals for, so the pre-draw has to know that count exactly -- the same
+    # `curObs` `rxSolve()` computes -- or the stream diverges and nothing is
+    # gained.
+    .evDfAll <- if (inherits(events, "rxEtFile")) {
+      .rxEtFileReadFull(events)
+    } else {
+      as.data.frame(events)
+    }
+    # A count that cannot be worked out is not worth failing the solve over:
+    # the chunks then still draw their own residuals, which is what they did
+    # before and is a valid simulation, just not the same draw.
+    .obsPerSub <- tryCatch(
+      .rxOomObsPerSubject(object, .evDfAll, .ctl, .allIds),
+      error=function(e) NULL)
+    # An event table with no observations at all is one `rxSolve()` adds its
+    # own sampling times to (`from`/`to`/`by`/`length.out`), so the count here
+    # is not the count the solve uses; leave that case alone, as well as one
+    # too large for the drawn matrix to be indexed.  Say so rather than leave
+    # it to be discovered: not reproducing the unchunked draw is exactly what
+    # a user asking for a chunked solve would not expect.
+    .nObs <- if (is.null(.obsPerSub)) 0 else sum(as.double(.obsPerSub))
+    if (.nObs <= 0 || .nObs * .nStud > .Machine$integer.max) {
+      .why <- if (.nObs <= 0) {
+        "this event table has no sampling times of its own"
+      } else {
+        "this solve has more observations than one drawn matrix can index"
+      }
+      .nObs     <- 0L
+      .simSigma <- FALSE
+      warning("a chunked solve is drawing the residuals per chunk because ",
+              .why, ": the result is a valid simulation but not the same ",
+              "draw as the unchunked solve.",
+              call.=FALSE)
+    } else {
+      .obsStart <- cumsum(c(0, as.double(.obsPerSub)))
+    }
+  }
+  if (!is.null(.ctl$omega) || !is.null(.ctl$thetaMat) || .simSigma) {
     # The draw is made from a named parameter vector -- that is all
     # `rxSimThetaOmega()` takes, and it is what the chunks are sliced out of.
     # A per-subject parameter data frame reached it as an opaque coercion
@@ -274,7 +391,14 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     } else {
       getRxThreads()
     }
-    .rxOomClearDrawn(c(".omegaL", ".sigmaL", ".theta"))
+    .rxOomClearDrawn(c(".omegaL", ".sigmaL", ".theta", ".sigma"))
+    # From here on this call may leave a residual matrix in `.rxModels` -- the
+    # pre-draw writes one, and each chunk is handed its slice there -- and it
+    # is `rxSolve()` that takes it out again.  Anything that stops before the
+    # last chunk's solve would leave one behind, where a later solve of a model
+    # with the same eps would read it as its own residuals.  Clear it however
+    # this call ends.
+    on.exit(.rxOomClearDrawn(".sigma"), add=TRUE)
     rxSetSeed(.baseSeed)
     rxSeedEng(.ncores)
     .preDrawnParams <- rxSimThetaOmega(
@@ -297,6 +421,23 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       thetaUpper      = if (!is.null(.ctl$thetaUpper))  .ctl$thetaUpper  else  Inf,
       thetaDf         = .ctl$thetaDf,
       thetaIsChol     = if (!is.null(.ctl$thetaIsChol)) .ctl$thetaIsChol else FALSE,
+      # the residual draw happens inside the same per study loop as the eta
+      # draw, so it has to be made in this call whether or not its values are
+      # used -- leaving it out takes the RNG out of the order the unchunked
+      # solve draws in
+      sigma           = if (.simSigma) .ctl$sigma else NULL,
+      sigmaLower      = if (!is.null(.ctl$sigmaLower))  .ctl$sigmaLower  else -Inf,
+      sigmaUpper      = if (!is.null(.ctl$sigmaUpper))  .ctl$sigmaUpper  else  Inf,
+      sigmaDf         = .ctl$sigmaDf,
+      sigmaIsChol     = if (!is.null(.ctl$sigmaIsChol)) .ctl$sigmaIsChol else FALSE,
+      sigmaSeparation = if (!is.null(.ctl$sigmaSeparation)) .ctl$sigmaSeparation else "auto",
+      sigmaXform      = if (!is.null(.ctl$sigmaXform))  .ctl$sigmaXform  else 1L,
+      nObs            = if (.nObs > 0) as.integer(.nObs) else 1L,
+      dfObs           = if (!is.null(.ctl$dfObs)) .ctl$dfObs else 0,
+      # `simSubjects` is `TRUE` only where the event table holds a single
+      # subject that `nSub` replicates, which is the one shape a chunked solve
+      # can still ask for
+      simSubjects     = .nSub == 1L && !is.null(.ctl$omega),
       nCoresRV        = 1L,
       nStud           = .nStud,
       # `dfSub` is what turns the omega uncertainty draw on, so the pre-draw
@@ -313,6 +454,29 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .preDrawnOmegaL <- .rxOomDrawnList(".omegaL")
     .preDrawnSigmaL <- .rxOomDrawnList(".sigmaL")
     .preDrawnTheta  <- .rxOomDrawnList(".theta")
+    if (.simSigma) {
+      .preDrawnSigma <- .rxOomDrawnList(".sigma")
+      # The draw is only written out when it has more than one row, so a solve
+      # with a single residual record has nothing to hand on; leave `sigma`
+      # forwarded there and let the chunk draw it.
+      if (is.null(.preDrawnSigma) ||
+            nrow(.preDrawnSigma) != .nObs * .nStud) {
+        .preDrawnSigma <- NULL
+      } else {
+        # Strip sigma from forwarded args -- each chunk is handed its slice of
+        # the drawn residuals instead, and a forwarded sigma would have it draw
+        # its own on top of them.  The zero placeholder columns the residuals
+        # are read into are already in the pre-drawn parameter table.
+        .fwdCtlArgs$sigma           <- NULL
+        .fwdCtlArgs$sigmaDf         <- NULL
+        .fwdCtlArgs$sigmaLower      <- NULL
+        .fwdCtlArgs$sigmaUpper      <- NULL
+        .fwdCtlArgs$sigmaIsChol     <- NULL
+        .fwdCtlArgs$sigmaSeparation <- NULL
+        .fwdCtlArgs$sigmaXform      <- NULL
+        .fwdCtlArgs$dfObs           <- NULL
+      }
+    }
     if (!is.null(.ctl$omega)) {
       # Strip omega from forwarded args -- etas are now baked into per-chunk params
       .fwdCtlArgs$omega           <- NULL
@@ -397,6 +561,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     on.exit(mirai::daemons(0), add = TRUE)
     .chunkEvList   <- vector("list", .nChunks)
     .chunkParamsList <- vector("list", .nChunks)
+    .chunkSigmaList  <- vector("list", .nChunks)
     for (.i in seq_len(.nChunks)) {
       .chunkEvList[[.i]] <- .extractChunkEvents(.chunkList[[.i]])
       .nThis <- length(.chunkList[[.i]])
@@ -404,6 +569,10 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       } else {
         params
+      }
+      if (!is.null(.preDrawnSigma)) {
+        .chunkSigmaList[[.i]] <-
+          .preDrawnSigma[.sigmaSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       }
       .cumSub <- .cumSub + .nThis
     }
@@ -419,9 +588,25 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .daemonVer  <- character(0)
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
-      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .inits, .fwdCtlArgs, .mainTmp, .backendOpt, .useArrowWrite) {
+      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .chunkSigmaList, .inits, .fwdCtlArgs, .mainTmp, .backendOpt, .useArrowWrite) {
         library(rxode2)
         options(rxode2.oom.backend = .backendOpt)
+        # The parent drew the residuals for the whole solve; hand this daemon
+        # the slice its subjects own.  `rxModels_()` is the same environment
+        # `rxSolve()` reads `.sigma` out of, so assigning it here is what stops
+        # the daemon drawing its own.
+        if (!is.null(.chunkSigmaList[[.i]])) {
+          assign(".sigma", .chunkSigmaList[[.i]], envir = rxModels_())
+          # a daemon outlives one chunk, and `rxSolve()` is what removes this
+          # again -- so a chunk that errors would leave its residuals for the
+          # next chunk scheduled here
+          on.exit({
+            .me <- rxModels_()
+            if (exists(".sigma", envir = .me, inherits = FALSE)) {
+              rm(list = ".sigma", envir = .me)
+            }
+          }, add = TRUE)
+        }
         # A daemon is a separate R process that loads its OWN rxode2, which need
         # not be the build the parent is running: a source checkout under
         # pkgload::load_all(), a library updated underneath a long-lived pool, or
@@ -486,6 +671,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .args = list(.modelObj = .modelObj,
                    .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
                    .chunkParamsList = .chunkParamsList,
+                   .chunkSigmaList = .chunkSigmaList,
                    .inits = inits, .fwdCtlArgs = .fwdCtlArgs,
                    .mainTmp = tempdir(),
                    .backendOpt = .backendOpt, .useArrowWrite = .useArrowWrite)
@@ -530,6 +716,10 @@ rxMemSummary.rxEtFile <- function(x, ...) {
           (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
         ))
         params
+      }
+      if (!is.null(.preDrawnSigma)) {
+        .rxOomSetDrawnSigma(
+          .preDrawnSigma[.sigmaSlice(.cumSub + 1L, .nThis), , drop = FALSE])
       }
       .result <- do.call(rxSolve,
                          c(list(object = object, params = .chunkParams,

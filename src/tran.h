@@ -123,6 +123,7 @@ lhs symbols?
   int lvlStr;
   int dummyLhs;
   int hasMix; // Has mixture function
+  int mixSel; // Component count declared by rx_mixsel_<k>_<n>_ selectors
   int evid_; // pushing evid_() flag
   int *splitBolus; // source then target de indexes (+1)
   int splitBolusN;
@@ -483,6 +484,43 @@ extern sbuf sbt;
 #define aAppendN(str, len) sAppendN(&sb, str, len); sAppendN(&sbDt, str, len);
 #define aProp(prop) curLineProp(&sbPm, prop); curLineProp(&sbPmDt, prop); curLineProp(&sbNrmL, prop);
 #define aType(type) curLineType(&sbPm, type); curLineType(&sbPmDt, type); curLineType(&sbNrmL, type);
+
+// One unsigned index, no leading zero, terminated by '_'.  Advances *sp past
+// the terminator; returns 0 (and leaves *sp alone) when the text is anything
+// else.
+static inline int mixSelIdx(const char **sp) {
+  const char *p = *sp;
+  int k = 0;
+  if (*p < '1' || *p > '9') return 0; // no leading zero, no empty index
+  for (; *p >= '0' && *p <= '9'; p++) {
+    k = k*10 + (*p - '0');
+    if (k > 100000) return 0;         // implausible; not a selector
+  }
+  if (*p != '_') return 0;
+  *sp = p + 1;
+  return k;
+}
+
+// A mix() call that has been through symengine comes back with the call
+// expanded to one selector per component, named rx_mixsel_<k>_<n>_ -- "the
+// k-th of n components".  The TOTAL is spelled out rather than inferred from
+// the largest k present, because a component whose expression folds to zero
+// (any sensitivity of a mixture w.r.t. an eta that only one component uses)
+// drops its selector out of the expression entirely.
+//
+// Returns k (>= 1), or 0 when the name is an ordinary variable; when it is a
+// selector and nTot is non-NULL, *nTot is set to n.
+static inline int mixSelNum(const char *s, int *nTot) {
+  if (strncmp(s, "rx_mixsel_", 10)) return 0;
+  const char *p = s + 10;
+  int k = mixSelIdx(&p);
+  if (k == 0) return 0;
+  int n = mixSelIdx(&p);
+  if (n == 0 || *p != '\0') return 0; // rx_mixsel_<k>_<n>_ and nothing more
+  if (k > n) return 0;
+  if (nTot != NULL) *nTot = n;
+  return k;
+}
 
 static inline int toInt(char *v2){
   errno = 0;

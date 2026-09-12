@@ -1133,6 +1133,48 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline List rxTestAbiSubjectCounts_() {
+        typedef SEXP(*Ptr_rxTestAbiSubjectCounts_)();
+        static Ptr_rxTestAbiSubjectCounts_ p_rxTestAbiSubjectCounts_ = NULL;
+        if (p_rxTestAbiSubjectCounts_ == NULL) {
+            validateSignature("List(*rxTestAbiSubjectCounts_)()");
+            p_rxTestAbiSubjectCounts_ = (Ptr_rxTestAbiSubjectCounts_)R_GetCCallable("rxode2", "_rxode2_rxTestAbiSubjectCounts_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxTestAbiSubjectCounts_();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<List >(rcpp_result_gen);
+    }
+
+    inline IntegerVector rxTestAbiStrideProbe_(int pad, int n) {
+        typedef SEXP(*Ptr_rxTestAbiStrideProbe_)(SEXP,SEXP);
+        static Ptr_rxTestAbiStrideProbe_ p_rxTestAbiStrideProbe_ = NULL;
+        if (p_rxTestAbiStrideProbe_ == NULL) {
+            validateSignature("IntegerVector(*rxTestAbiStrideProbe_)(int,int)");
+            p_rxTestAbiStrideProbe_ = (Ptr_rxTestAbiStrideProbe_)R_GetCCallable("rxode2", "_rxode2_rxTestAbiStrideProbe_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxTestAbiStrideProbe_(Shield<SEXP>(Rcpp::wrap(pad)), Shield<SEXP>(Rcpp::wrap(n)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<IntegerVector >(rcpp_result_gen);
+    }
+
     inline SEXP rxSaveState_() {
         typedef SEXP(*Ptr_rxSaveState_)();
         static Ptr_rxSaveState_ p_rxSaveState_ = NULL;

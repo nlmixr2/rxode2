@@ -30,6 +30,14 @@
   } else {
     .var.name2 <- as.character(line[[3]])
   }
+  # A reserved name (`t`, `time`, `M_PI`, `E`, ...) reads back as that
+  # constant, so the renamed parameter would sit in the ini block doing
+  # nothing.
+  if (.rxIsReservedPipeName(.var.name)) {
+    stop("'", .var.name, "' is a reserved rxode2 variable; cannot rename '",
+         .var.name2, "' to '", .var.name, "'",
+         call.=FALSE)
+  }
   if (.var.name %in% vars) {
     stop("the new variable '", .var.name,
          "' is already present in the model; cannot replace '",

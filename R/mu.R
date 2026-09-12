@@ -329,7 +329,7 @@
         return(NULL)
       }
       if (length(.thetas) == 1L) {
-        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas), silent=TRUE)
+        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .rxSEres(.thetas)), silent=TRUE)
         .extra <- try(str2lang(rxFromSE(.d)), silent=TRUE)
         .thetaD <- try(.muRefExtractTheta(.extra, env), silent=TRUE)
         if (inherits(.thetaD, "try-error")) .thetaD <- NULL

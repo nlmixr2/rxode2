@@ -1135,7 +1135,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       if (isEnv && is.name(x)) {
         if (substr(x, 1, 1) != ".") {
           if (!exists(.ret, envir = envir)) {
-            assign(.ret, symengine::Symbol(.ret), envir = envir)
+            .rxSEassign(.ret, symengine::Symbol(.ret), envir)
           }
         }
       }
@@ -1330,7 +1330,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .isNum <- TRUE
     if (isEnv) {
       if (envir$..doConst) {
-        assign(.var, x[[3]], envir = envir)
+        .rxSEassign(.var, x[[3]], envir)
       }
     }
     .expr <- x[[3]]
@@ -1352,7 +1352,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       if (!inherits(.val, "try-error")) {
         .rx <- paste0(rxFromSE(.var), "=", rxFromSE(.val))
         assign("..lhs", c(envir$..lhs, .rx), envir = envir)
-        assign(.var, symengine::S(.var), envir = envir)
+        .rxSEassign(.var, symengine::S(.var), envir)
         return(invisible(NULL))
       }
     }
@@ -1395,7 +1395,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       assign("..jac0..", .lst, envir = envir)
     } else if (!identical(x[[1]], quote(`~`))) {
       if (is.call(x[[3]]) && identical(as.character(x[[3]][[1]]), "linCmt")) {
-        assign(.var, symengine::S(.var), envir = envir)
+        .rxSEassign(.var, symengine::S(.var), envir)
         .name <- rxFromSE(.var)
         .rx <- paste0(.name, "=", paste(deparse(x[[3]]), collapse = ""))
         if (regexpr("^(nlmixr|rx)_", .var) == -1) {
@@ -1416,7 +1416,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if ((.isNum && envir$..doConst) ||
             (!.isNum)) {
-        assign(.var, .expr, envir = envir)
+        .rxSEassign(.var, .expr, envir)
       }
       .name <- rxFromSE(.var)
       .rx <- paste0(
@@ -1446,7 +1446,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       # resolve -- even a literal constant (e.g. `rx_expr_3 ~ 0`) with
       # doConst=FALSE, which otherwise leaks as an undefined phantom parameter.
       .expr <- eval(parse(text = .expr))
-      assign(.var, .expr, envir = envir)
+      .rxSEassign(.var, .expr, envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
         rxFromSE(.expr)
@@ -1552,7 +1552,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   # (`with(envir, ...)`) would otherwise inline an lhs variable's definition and
   # break the call, so wrap the variable in symengine::S("var") to keep it a raw
   # symbol; it round-trips back to the bare name in rxFromSE().
-  .vref <- function(v) if (isEnv) paste0("symengine::S(\"", v, "\")") else v
+  .vref <- function(v) {
+    # .rxSEres(): a variable named like a symengine constant is bound under its
+    # rx_SymPy_Res_* name, and S() would read the plain name as the constant
+    if (isEnv) paste0("symengine::S(\"", .rxSEres(v), "\")") else v
+  }
   if (.len == 1L) {
     stop(.fun, "() takes 1-2 arguments")
   } else if (.len == 2L) {
@@ -1810,13 +1814,30 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 
+# The reserved name of the k-th of n component selectors of an expanded mix().
+# A bare `mixest == k` loses the component count once the mix() call is gone;
+# this name keeps it, so the parser still reports the model as a mixture and
+# rxode2 will take a per-individual mixest from the data or iCov.  It goes into
+# symengine as an ordinary symbol -- it is constant in every eta, so it rides
+# through differentiation and comes back out unchanged.
+.rxMixSelName <- function(k, n) {
+  paste0("rx_mixsel_", as.integer(k), "_", as.integer(n), "_")
+}
+
 # Convert the mix() expression to a if clause with mixest for symengine
 .rxToSEMix <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .expr <- vapply(seq_along(x), function(i) {
     if (i %% 2 == 0)  {
       # Noting that argument 1 is the function name,
       # The even arguments are the mixture values
-      paste0("rxEq(mixest, ", i/2, ")*(", .rxToSE(x[[i]], envir = envir, progress = progress), ")")
+      .nm <- .rxMixSelName(i/2, length(x) %/% 2)
+      # the selector is generated here rather than read out of the model text,
+      # so it has to be introduced to the symengine environment by hand
+      if (isEnv && is.environment(envir) &&
+            !exists(.nm, envir = envir, inherits = FALSE)) {
+        assign(.nm, symengine::Symbol(.nm), envir = envir)
+      }
+      paste0(.nm, "*(", .rxToSE(x[[i]], envir = envir, progress = progress), ")")
     } else {
       ""
     }
@@ -3581,6 +3602,100 @@ local({
   .f
 }
 
+#' The symengine name a model variable is bound under
+#'
+#' A model variable called `e`, `E`, `I`, `Catalan`, `GoldenRatio` or
+#' `EulerGamma` is bound under `rx_SymPy_Res_<name>` because symengine reads the
+#' plain name as the matching constant (`.rxSEreserved`); everything else keeps
+#' its name.  Mirrors `symengineRes()` (`src/expm.cpp`).
+#'
+#' Pass the result to `symengine::D()` rather than the model-side name: `D()`
+#' resolves a character to a `Symbol` (so a dotted name such as `eta.cl` is
+#' fine), while `symengine::S()` re-parses and reads a reserved name back as
+#' the constant -- "Input is not a SYMBOL" (#1359).  A character also keeps
+#' `D()`'s `stats::D` fallback working for the non-`Basic` expressions the
+#' environment stores for a constant (`f(depot) <- 0.8`).
+#'
+#' @param name character vector of model variable names
+#' @return character vector of symengine names
+#' @author Matthew L. Fidler
+#' @noRd
+.rxSEres <- function(name) {
+  .w <- name %in% names(.rxSEreserved)
+  if (any(.w)) name[.w] <- paste0("rx_SymPy_Res_", name[.w])
+  name
+}
+
+#' Rename every reserved name in a parsed model expression to its symengine name
+#'
+#' `rxFromSE()` renders an expression with model-side names, so re-parsing that
+#' text with `symengine::S()` -- or evaluating it in the model environment --
+#' reads a variable called `e`, `E`, `I`, ... as the matching constant (#1359).
+#' Walk the expression and swap each such symbol for its `rx_SymPy_Res_*` name
+#' first; `rxFromSE()` maps them back on the way out.  Function names are left
+#' alone (the call head is never one of these).
+#'
+#' @param e a parsed model expression (`language`)
+#' @return `e` with reserved symbols renamed
+#' @author Matthew L. Fidler
+#' @noRd
+.rxSEresLang <- function(e) {
+  if (is.name(e)) {
+    .n <- as.character(e)
+    # the empty symbol (an omitted argument) is a name that as.name() cannot
+    # rebuild, so leave it be
+    if (!nzchar(.n)) return(e)
+    .m <- .rxSEres(.n)
+    return(if (identical(.m, .n)) e else as.name(.m))
+  }
+  if (is.call(e) && length(e) > 1L) {
+    for (.i in seq_along(e)[-1L]) e[[.i]] <- .rxSEresLang(e[[.i]])
+  }
+  e
+}
+
+#' The one reserved name that cannot be unshadowed
+#'
+#' `E` is the symengine spelling of the model language's `M_E` (`.rxSEcnt`), so
+#' the environment's `E` has to keep meaning Euler's number: a model may use
+#' `M_E` and a variable called `E` in the same expression.  A model variable
+#' named `E` is still correct throughout -- it lives at `rx_SymPy_Res_E` and
+#' `rxFromSE()` maps it back -- but code differentiating by it must ask for
+#' `.rxSEres("E")` rather than reading the plain name.  No other `M_` constant
+#' translates to a reserved name, so no other name has this conflict.
+#'
+#' @noRd
+.rxSEnoUnshadow <- "E"
+
+#' Assign a symengine variable, unshadowing a constant of the same name
+#'
+#' [rxS()] binds symengine's constants (`e`, `E`, `I`, `Catalan`,
+#' `GoldenRatio`, `EulerGamma`; `.rxSEreserved`) into the model environment,
+#' while [rxToSE()] stores a model variable of one of those names under
+#' `rx_SymPy_Res_<name>`.  Reading the plain name back therefore gave the
+#' constant and `D(expr, name)` errored (#1359).  Every write of a mangled name
+#' goes through here so the plain name always points at the same value -- doing
+#' it once after the model loads instead would leave the plain name stale as
+#' soon as the environment was extended with another [rxToSE()] call.
+#' `.rxSEnoUnshadow` is left alone.
+#'
+#' @param var symengine-side variable name
+#' @param value value to store
+#' @param envir symengine environment
+#' @return `value`, invisibly (`envir` is modified by reference)
+#' @author Matthew L. Fidler
+#' @noRd
+.rxSEassign <- function(var, value, envir) {
+  assign(var, value, envir = envir)
+  if (substr(var, 1L, 13L) == "rx_SymPy_Res_") {
+    .plain <- substring(var, 14L)
+    if (any(.plain == names(.rxSEreserved)) && !any(.plain == .rxSEnoUnshadow)) {
+      assign(.plain, value, envir = envir)
+    }
+  }
+  invisible(value)
+}
+
 #' Load a model into a symengine environment
 #'
 #' @param x rxode2 object
@@ -3664,8 +3779,10 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   ## S("nan")
   sapply(.pars, function(x) {
     if (any(.cnst == x)) {
-      .tmp <- paste0("rx_SymPy_Res_", x)
-      assign(.tmp, symengine::Symbol(.tmp), envir = .env)
+      # .rxSEassign(): the model declares a variable of this name, so the
+      # constant bound above must not shadow it (#1359)
+      .rxSEassign(paste0("rx_SymPy_Res_", x), symengine::Symbol(paste0("rx_SymPy_Res_", x)),
+                  .env)
     } else {
       .tmp <- rxToSE(x, envir=.env)
       assign(.tmp, symengine::Symbol(.tmp), envir = .env)
@@ -5058,7 +5175,7 @@ rxFun2c <- function(fun, name, onlyF=FALSE) {
     .lastValue <- .s$rxLastValue
     return(c(list(.ret),
       lapply(.env$args, function(v) {
-      .v <- symengine::D(.lastValue, symengine::S(v))
+      .v <- symengine::D(.lastValue, .rxSEres(v))
       .v <- paste0("function(", paste(.env$args, collapse=", "), ") {\n", rxOptExpr(paste0("rxLastValue=", rxFromSE(.v)), msg=paste0("d(", .funName, ")/d(", v, ")")),
                    "\nrxLastValue}")
       .v <- eval(str2lang(.v))

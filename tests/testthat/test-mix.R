@@ -144,10 +144,10 @@ rxTest({
 
   test_that("test dsl to change mix()", {
     expect_equal(rxToSE("mix(a1, p1, b)"),
-                 "(rxEq(mixest, 1)*(a1)+rxEq(mixest, 2)*(b))")
+                 "(rx_mixsel_1_2_*(a1)+rx_mixsel_2_2_*(b))")
 
     expect_equal(rxToSE("mix(a1, p1, b, p2, c)"),
-                 "(rxEq(mixest, 1)*(a1)+rxEq(mixest, 2)*(b)+rxEq(mixest, 3)*(c))")
+                 "(rx_mixsel_1_3_*(a1)+rx_mixsel_2_3_*(b)+rx_mixsel_3_3_*(c))")
   })
 
   test_that("mix() simulation", {
@@ -302,6 +302,92 @@ rxTest({
 
     expect_error(rxSolve(one.cmt, s0, addDosing=TRUE))
 
+  })
+
+  test_that("an expanded mix() still reads as a mixture model", {
+    # symengine drops the mix() call; the rx_mixsel_<k>_<n>_ selectors it leaves
+    # behind carry the component count so the model still reports as a mixture
+    .m <- rxode2("Kel = kel1*rx_mixsel_1_2_ + kel2*rx_mixsel_2_2_\nd/dt(centr) = -Kel*centr\nme = mixest\nmn = mixnum\n")
+    .mv <- rxModelVars(.m)
+    expect_equal(unname(.mv$flags["mix"]), 2L)
+    # the selectors are reserved, not parameters
+    expect_false(any(c("rx_mixsel_1_2_", "rx_mixsel_2_2_") %in% .mv$params))
+    # and they survive the normalized-model round trip
+    expect_equal(unname(rxModelVars(rxNorm(.m))$flags["mix"]), 2L)
+
+    # a name that only looks like a selector stays an ordinary variable
+    .mv2 <- rxModelVars("a = rx_mixsel_ + rx_mixsel_0_2_ + rx_mixsel_1_ + rx_mixsel_1_2 + rx_mixsel_3_2_\n")
+    expect_equal(unname(.mv2$flags["mix"]), 0L)
+    expect_true(all(c("rx_mixsel_", "rx_mixsel_0_2_", "rx_mixsel_1_",
+                      "rx_mixsel_1_2", "rx_mixsel_3_2_") %in% .mv2$params))
+
+    # the count is spelled out, not inferred from the largest k present: a
+    # component that folds away must not shrink the mixture
+    .mv3 <- rxModelVars("a = b*rx_mixsel_1_3_\n")
+    expect_equal(unname(.mv3$flags["mix"]), 3L)
+    # and selectors that disagree about the total are a syntax error, whether
+    # they disagree with each other or with a literal mix() in the same model
+    expect_error(rxModelVars("a = rx_mixsel_1_2_ + rx_mixsel_2_3_\n"))
+    expect_error(rxModelVars("a = rx_mixsel_1_3_\nb = mix(c, p1, d)\n"))
+    expect_error(rxModelVars("b = mix(c, p1, d)\na = rx_mixsel_1_3_\n"))
+    # agreeing is fine
+    expect_error(rxModelVars("b = mix(c, p1, d)\na = rx_mixsel_1_2_\n"), NA)
+  })
+
+  test_that("an expanded mix() takes mixest per individual", {
+    .m <- rxode2("Kel = kel1*rx_mixsel_1_2_ + kel2*rx_mixsel_2_2_\nd/dt(centr) = -Kel*centr\ncp = centr/V\nme = mixest\nmn = mixnum\n")
+    .p <- c(kel1 = 0.5, kel2 = 1.5, V = 2)
+    .ev <- et(amt = 1, cmt = "centr") |> et(c(1, 4)) |> et(id = 1:6)
+    .want <- c(1L, 2L, 1L, 2L, 2L, 1L)
+
+    # supplied through iCov, on a homogeneous event table (every subject has
+    # the same times, so the subjects are solved as one group -- the group has
+    # to be split on mixest and indexed by group)
+    .s <- rxSolve(.m, .ev, params = .p,
+                  iCov = data.frame(id = 1:6, mixest = .want),
+                  returnType = "data.frame")
+    .s <- .s[!duplicated(.s$id), ]
+    .s <- .s[order(.s$id), ]
+    expect_equal(.s$me, as.double(.want))
+    expect_equal(.s$mn, rep(2.0, 6))
+    expect_equal(.s$Kel, ifelse(.want == 1L, 0.5, 1.5))
+
+    # a missing component is rejected, not silently dropped from the solve
+    expect_error(rxSolve(.m, .ev, params = .p,
+                         iCov = data.frame(id = 1:6, mixest = c(NA_integer_, .want[-1]))),
+                 "mixest")
+    # as are values outside 1..nMix, and non-integers
+    expect_error(rxSolve(.m, .ev, params = .p,
+                         iCov = data.frame(id = 1:6, mixest = c(0L, .want[-1]))),
+                 "mixest")
+    expect_error(rxSolve(.m, .ev, params = .p,
+                         iCov = data.frame(id = 1:6, mixest = c(3L, .want[-1]))),
+                 "mixest")
+
+    # and supplied as an ordinary data column
+    .d <- as.data.frame(.ev)
+    .d$mixest <- .want[.d$id]
+    .s2 <- rxSolve(.m, .d, params = .p, returnType = "data.frame")
+    .s2 <- .s2[!duplicated(.s2$id), ]
+    .s2 <- .s2[order(.s2$id), ]
+    expect_equal(.s2$Kel, ifelse(.want == 1L, 0.5, 1.5))
+  })
+
+  test_that("mix() round trips through symengine as rx_mixsel_<k>_<n>_", {
+    # rxFromSE() is NSE, so the symengine text has to reach it as a value
+    .se <- rxToSE("mix(cl1, p1, cl2)")
+    expect_equal(.se, "(rx_mixsel_1_2_*(cl1)+rx_mixsel_2_2_*(cl2))")
+    .r <- rxFromSE(.se)
+    expect_match(.r, "rx_mixsel_1_2_", fixed = TRUE)
+    expect_match(.r, "rx_mixsel_2_2_", fixed = TRUE)
+    expect_false(grepl("mixest", .r, fixed = TRUE))
+    # symengine reads the selector back as a plain symbol -- it is constant in
+    # every eta, so a derivative carries it through untouched
+    .s <- rxS("cl = cl1*rx_mixsel_1_2_ + cl2*rx_mixsel_2_2_\nrx_pred_ = cl/exp(tv + eta.v)\n")
+    .dSe <- symengine::D(get("rx_pred_", envir = .s), "eta.v")
+    .d <- rxFromSE(.dSe)
+    expect_match(.d, "rx_mixsel_1_2_", fixed = TRUE)
+    expect_match(.d, "rx_mixsel_2_2_", fixed = TRUE)
   })
 
   test_that("test mixture models load with rxS()", {

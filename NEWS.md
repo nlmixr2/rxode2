@@ -1,4 +1,4 @@
-# rxode2 5.1.7 (development version)
+# rxode2 5.1.7
 
 ## New features
 
@@ -533,7 +533,6 @@ model({
   about 1.0-1.1x on the sensitivity solve and 1.04x on a dense FOCEi
   fit, with the identical objective.
 
-
 - `rxPriorLogDensity(ui, theta, omega)` evaluates a model's `ini({})` priors
   as a Bayesian penalty at the current parameter values -- the value and
   gradient kernel an estimation method's objective function needs, as
@@ -891,312 +890,6 @@ model({
   `RXODE2_INDLIN_NO_BLOCK_EXP=1` forces the split off, and `rxIndLinSteps()`
   reports how many exponentials took it as `blockExp`.
 
-## Bug fixes
-
-- An infusion pushed from inside the model with `evid_()` now turns back off.
-  `evid=4` (reset + dose) used both slots of the translated event for the reset
-  and the infusion start, so the stop record was dropped and the infusion ran
-  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
-  without its companion "off" record at all, so the solve failed outright with
-  data error 997/886 instead of scheduling the infusion.  The translator emits
-  up to three records now, and a pushed infusion matches the same regimen
-  written into the event table for fixed rate, fixed duration, modeled rate,
-  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
-  steady-state dose pushed into a compartment that also carries a modeled
-  `alag()` is still not expanded the way the event table expands it, and a
-  steady-state constant infusion pushed with a duration rather than a rate is
-  still not rejected the way the event table rejects it; both remain known gaps.
-
-- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
-  one: `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
-  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
-  wrote) record `idx + 1`.  The only way to reach it was the lone modeled start
-  the push path used to emit, so with that fixed the guard is defensive rather
-  than a user-visible fix.  Separately, `_rxPushDose()`'s event-array growth
-  under-reserved when a bolus is split across compartments -- it counted the
-  translated events rather than the records they expand into, which the `idose`
-  growth beside it already did -- and now allocates the guard slot its own
-  comment promises for `ix` and `timeThread` too.
-
-- The "cannot find additive standard deviation" error tested a `$predDf`
-  column that does not exist, so its multiple-endpoint hint was appended even
-  for single-endpoint models.
-
-- A modeled `ar()` correlation on an endpoint written with a condition
-  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
-  matched against the left-hand side, which never carries the condition.
-
-- An endpoint's condition is no longer treated as a residual parameter, so
-  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
-  "the following parameter(s) were in the ini block but not in the model block:
-  assay1".
-
-- `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
-  modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
-  the trailing restore of the saved index, so the corrupted value stayed live
-  solver state until the error was picked up after the integration step.  The
-  restore now happens before the checks, as it already did in `updateDur()`.
-
-- `dose()` and `tad()` no longer read the wrong infusion when two infusions run
-  at the same rate into different compartments.  The internal `_getDur()` scan
-  that recovers an infusion's duration paired records by amount alone, so an
-  infusion of `+rate` matched the first `-rate` it found, which may belong to
-  another compartment's infusion (or, in the backward direction, be a bolus of
-  the same amount).  A fixed rate/duration infusion emits its stop record with
-  the same internal event id as its start, so the scans now compare that too --
-  the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
-  overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
-  `dose() = 60` for the first; it now reports 100.  A steady state infusion
-  with a modeled `alag()` reported `dose() = 0` for the same reason and now
-  reports the whole dose, and before the lagged dose lands `dose()`, `tad()`
-  and `tlast()` are `NA` -- what a plain lagged infusion has always reported.
-  Separately, an orphaned
-  infusion end sitting at dose index 0 reports the missing start instead of
-  falling through to the forward scan and returning a negated duration
-  (nlmixr2/rxode2#1322).
-
-- `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
-  `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
-  adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
-  it counted the single largest allocation of an ordinary solve twice and could
-  approach double the real figure.  `gsolve_n0` is still reported (and still
-  printed indented under `gsolve`), it is just no longer added to `total`.  The
-  out-of-memory guard in `rxSolve()` and the chunk sizing in
-  `.rxOomChunkSize()`/`rxSolveChunked()` both act on `total`, so a solve that
-  fits is no longer refused and chunks are no longer about half the size they
-  should be.
-
-- `rxMemoryEstimate()` now counts the per-individual event and solve arrays.
-  When `op$indOwnAlloc` is set -- which `rxSolve()` defaults to the model's
-  `evid_` parser flag, so any dose-pushing model (`bolus()`, `obs()`) gets it,
-  as does anyone passing `rxSolve(..., indOwnAlloc = TRUE)` -- `rxAllocInd()`
-  gives every individual its own `dose`/`ii`/`all_times`/`timeThread`/`evid`/
-  `ix`/`idose`/`solve` arrays, and `gsolve` is still allocated at its full size
-  regardless, so those arrays are memory on top of it.  The estimate ignored
-  them entirely, which understated `total` -- the direction that makes an
-  out-of-memory guard useless.  They are now reported as an `indOwnAlloc`
-  component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
-  alongside the rest of the layout.
-
-- `rxMemoryEstimate()` now scales the event-indexed buffers with `nSub`,
-  `nStud` and `nsim`.  The replicated subject count was applied to the subject
-  total but never to the event total, so `rxControl(nSub = 100)` on a
-  one-subject table reported the one-subject figure for `gsolve_n0`,
-  `gall_times`, `gevid` and `gpars` -- an undercount of the largest allocation
-  by the full replicate factor, and again in the direction that makes the
-  out-of-memory guard useless.  `nsub` and `nsim` now mean to the estimate what
-  they mean in `rxData.cpp`: `nsub` is the subjects of ONE simulation and
-  `nsim` is how many times that block is replicated, so `nStud` lands in `nsim`
-  (where it also correctly pays for the extra-simulation copies in
-  `gall_timesS`) and `nSub` grows the events of a single simulation.
-  `effectiveSubs` still reports the total individual count.
-
-- `rxMemoryEstimate()` sizes `ordId` by individuals rather than events.
-  `rx$ordId` is the solve ORDER over individuals -- `nsub * nsim` ints -- but
-  the estimate charged one int per event, overstating it by the number of
-  events per subject.
-
-- `rxMemoryEstimate()` now reports `gEtaPre`, the pre-generated eta draws.
-  `rxPreGenEta()` mallocs `nsim * nsub * neta` doubles before the parallel
-  solve loop whenever the model has etas and a nonzero omega, and none of it
-  was counted.
-
-- `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
-  `rxControl(resample=)` asks for covariate resampling, and counts the
-  per-thread pointer table that accompanies the `gInfusionRate` buffers.
-
-- `rxMemoryEstimate()` now charges the two per-individual history buffers:
-  the `delay()` dense history (`ind$delayHist`) and the `linCmtB()` output-time
-  rate history (`ind$linCmtRateHist`), neither of which was counted at all.
-  Both grow by doubling inside the solve rather than being sized up front, so
-  unlike every other component these are a documented BOUND rather than a
-  mirror of a `calloc`: the capacity the doubling reaches at roughly one stored
-  step per event, floored at the initial allocation.  They are zero for a model
-  that uses neither.
-
-- `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
-  per-subject event totals were summed in integer arithmetic, so a solve past
-  2^31 events -- exactly the size this estimate exists to judge -- overflowed
-  and then failed with "missing value where TRUE/FALSE needed".
-- An `integer` or `logical` covariate column no longer makes `rxSolve()`
-  quadratic in the number of rows.  While building the solving data set each
-  covariate column was coerced to double once per output row; for a column
-  that is already double that coercion is free, but for an integer or logical
-  column it allocated and converted a copy of the whole column on every row.
-  The result was correct but progressively slower -- roughly 14x a double
-  column at 20000 rows and 90x at 160000 -- and the only hint was the timing,
-  since a logical covariate arises naturally from ordinary R code such as
-  `flag = x == "value"`.  Each covariate column is now coerced once, so every
-  storage mode solves at the speed a double column always did.
-
-- A model that reads `CMT` as a covariate no longer slows down with the number
-  of subjects.  `CMT` is carried as an integer column, and the copy of each
-  covariate into the solving buffer -- done once per subject -- coerced the
-  whole column to double every time, costing about 3x an otherwise identical
-  double covariate at 20000 subjects.  The columns are now coerced once, as
-  above.
-
-- Translating an event table no longer re-wraps its own output columns once
-  per row.  The row loop in `etTrans()` took each output column as a fresh
-  `Rcpp` vector on every row -- a no-op cast, since the columns were
-  allocated as the right type, but one that still paid Rcpp's
-  preserve/release bookkeeping at every one of roughly nine sites per row.
-  The pointers are taken once instead, which is 2.7x on `etTrans()` alone and
-  2.8-3.8x on a solve at 160000-320000 rows.
-
-- `etTrans(allTimeVar = TRUE)` no longer errors when an `iCov` covariate is
-  supplied.  Under `allTimeVar` every covariate is emitted as a per-row
-  column, but the column for an `iCov` covariate was never allocated, so
-  taking it failed instead of returning the covariate.
-
-- `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
-  `df(A)/dy(ETA[1])` instead of leaking the internal name
-  `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from
-  their internal spellings for display, but the ETA translation was written
-  into the buffer and then unconditionally overwritten, so only `THETA[n]`
-  survived.
-
-- Building a model no longer hangs forever on a lock left behind by an
-  interrupted session, and two processes no longer build the same model at
-  once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
-  (a `testthat` parallel worker, for one) inherits ONE shared build directory
-  -- but the build lock was acquired as `file.exists()` followed by `sink()`,
-  a check-then-create pair that does not exclude, so two processes could both
-  see no lock and both compile the same artifact into that directory.  The
-  losing write surfaced as "error building model", "cannot open the
-  connection" or "cannot change working directory", depending on which step
-  it lost.  Separately, nothing ever removed a lock whose owner had been
-  killed, and the wait for it was unbounded, so a single interrupted compile
-  wedged that model for the life of the cache.  The lock is now taken with
-  `dir.create()` -- the portable atomic test-and-set -- and the wait for
-  another builder is bounded (`options(rxode2.buildLockTimeout=)`, 300s by
-  default) before the abandoned lock is reclaimed.
-
-- A model comparing a string covariate against a literal (e.g. `cl <- exp(tcl
-  + eta.cl + cllow * (LowID == "Yes"))`) no longer translates to an undefined
-  parameter.  A character literal reaches symengine as the symbol
-  `rxQ__<escaped>__rxQ`, and while the R translator decodes it back to a
-  quoted string, the C translator added in 5.1.7 emitted the symbol verbatim
-  -- so the generated model carried `LowID==rxQ__Yes__rxQ` and solving it
-  failed with "the following parameter(s) are required for solving:
-  rxQ__Yes__rxQ".  Only symengine's own underscore naming reached the C path
-  (the bracket form declines and falls back to R), which is why it surfaced in
-  the sensitivity models a `nlmixr2est` FOCEi fit builds rather than in a
-  plain `rxode2()` call.  The C translator now decodes the literal, and hands
-  the expression back to the R translator for any byte whose `deparse1()`
-  spelling it cannot reproduce exactly.
-
-- `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
-  infusion when the subject's dosing record starts with a bolus.  The dose
-  history asked for the infusion duration with the solver's running dose
-  counter (`ind->ixds`), which the output pass never advances, so the lookup
-  either failed -- the infusion was then dropped from the history entirely,
-  leaving `dosenum()` un-incremented and `tad()` counting from the earlier
-  dose -- or silently returned a different infusion's duration, which made
-  `dose()` report the wrong amount.  The duration is now looked up from the
-  record being handled.  Solving itself was never affected (#1316).
-
-- The dose history no longer measures an EXTRA dose's infusion against an
-  unrelated dose record.  The steady-state and modeled-lag infusion paths
-  append extra doses whose amount and time live in `ind->extraDose*` rather
-  than in `ind->idose`, so the duration lookup -- an index into `idose` -- had
-  no entry to find and fell back to the solver's running dose counter, reading
-  whichever regular record it happened to point at.  For a steady-state
-  infusion with a modeled `alag()` that produced a duration of 0, entering the
-  infusion into the history with an amount of 0; another arrangement could
-  find no matching off-record at all and drop the dose from the history.  An
-  extra dose's duration is now taken from the matching off-record in the
-  extra-dose arrays, paired from the end of the pool so that an infusion
-  longer than the inter-dose interval -- which overlaps itself, leaving more
-  off records than on records -- is measured against its own off rather than
-  against the one closing an earlier overlapping infusion (#1321).
-
-- Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
-  translation table and `_goodFuns` were claimed on the protect stack by one
-  function and released by another, with the whole parse in between; an
-  `Rf_error` raised in that window (a model syntax error, say) unwound the
-  stack while the outstanding count stayed set, so the *next* parse released
-  entries it no longer owned and popped the caller's own protections.  Callers
-  holding a protect index across the parse then failed -- on macOS this
-  surfaced as `R_Reprotect: only 137 protected items, can't reprotect index
-  143` thrown out of `vapply()`, which made `rxOptExpr()` silently abandon
-  chunking and fall back to optimizing the whole model.  Those objects now use
-  `R_PreserveObject()`, which an unwind does not undo.
-
-- `loggamma()` no longer fails to compile.  It is symengine's name for
-  `lgamma()` and the parser accepted it, but code generation emits the rxode2
-  name verbatim as the C name and there is no `loggamma()` in C, so a model
-  using that spelling parsed and then failed at the compiler.  (`gammafn()` and
-  `lgammafn()` in the same table work only because they happen to coincide with
-  `Rmath.h`.)  Its derivative was never affected: symengine differentiates
-  `loggamma` natively to `polygamma(0, x)`, so a model differentiating it
-  already got the exact `digamma()`.
-
-- `ceiling()` is now a supported function.  rxode2 knew C's `ceil()` but not
-  the name R users actually write, and because `ceiling` was absent from the
-  function table it fell through to the user-defined-R-function path, found
-  base R's *primitive* `ceiling`, and reported "user function 'ceiling'
-  requires 0 arguments (supplied 1)" -- `formals()` of a primitive is empty.
-  `floor()` had worked the whole time.  `ceiling()` now parses, compiles to
-  `ceil()`, takes one argument, and is locally constant like `ceil()`,
-  `floor()` and `round()`, so its derivative is 0 and it can be used in models
-  that take sensitivities.
-
-- Symbolic translation now simplifies constant arithmetic instead of emitting
-  it.  A fully constant expression folds to its value (`1/gamma(2)` is `1`, not
-  `1/1`), extending the fold that was already applied to the right-hand operand
-  of every binary operator, and the arithmetic identities are applied: `x/1`,
-  `x*1`, `1*x`, `x+0`, `0+x` and `x-0` all reduce to `x`, the same identity as
-  the `x^1` rule that was already there.  Only the right-hand operand is
-  folded, so `0-x` and `1/x` are correctly left alone.  The named constants
-  still win, so `pi*2` remains `M_2PI` rather than becoming `6.28...`.  This
-  shows up most in generated sensitivity code, where differentiating leaves a
-  great many `*1` and `+0` terms behind; the emitted values are unchanged.
-
-- `rxSensMatExp()` no longer emits an `indLin()` forcing that is
-  algebraically zero, which had been demoting every sensitivity model with two
-  or more compartments to the fixed-point iteration.  The generator splits the
-  system term wise as `dX/dt = A.X + F(X)` and keeps whatever `rhs - A.X`
-  leaves as the forcing; symengine holds `A_ij * X_j` as a product of a sum and
-  a symbol and does not distribute it, so from two compartments up the
-  subtraction left a residual that prints as non-zero and is zero.  A
-  structurally non-zero forcing is what classifies a model as state dependent,
-  so the whole solve took the inductive-linearization driver -- Picard/Newton
-  substepping with error control and several exponentials per substep --
-  instead of one cached matrix exponential per interval.  One compartment
-  emitted no forcing at all, which is why it was the only configuration where
-  `matExp()` was competitive.  The residual is now cancelled before it is
-  tested, and the same cancellation collapses the un-simplified `k_<cmt>_output`
-  constants the split produced (`-q/v-(-q/v-cl/v)` is now `cl/v`), which the
-  generated model re-evaluated on every `ME()` call.  An expansion that takes a
-  forcing from reading a compartment to reading none is kept however long it
-  gets, since that is the difference between the two drivers; everywhere else
-  it buys no reclassification and is kept only where it does not lengthen what
-  it replaced, so a genuinely nonlinear forcing is untouched.  Measured on an optimized build,
-  40 subjects over an irregular 200 point schedule with three sensitivity
-  parameters, single thread, the solve is 9.6x faster at two compartments and
-  12.5x at three, with
-  the solved values unchanged to 3e-14 -- the dropped terms contributed nothing
-  but cost.  `bench/indlin_zero_forcing_ab.R` is the harness.
-
-- `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
-  they were given.  All three guarded the count with `length(x == n)` instead
-  of `length(x) == n`; `x` is a call, so `x == n` compares its elements and
-  `length()` of that is always at least one, leaving the guard permanently true
-  and the error below it unreachable.  Too few arguments failed with
-  "subscript out of bounds" from the missing element, and extra arguments were
-  silently dropped -- `psigamma(a,b,c)` translated as `psigamma(a,b)` and
-  `polygamma(0,x,y)` as `polygamma(0,x)`.  Correct calls are unaffected.
-
-## Breaking changes
-
-- The exported `.iniHandleFixOrUnfix()` alias is removed (#1250).  It was an
-  alias for `.iniHandleLine()` -- the same function -- kept only while
-  nlmixr2est called the old name, which it no longer does
-  (nlmixr2/nlmixr2est#925).  Anything still calling it should call
-  `.iniHandleLine()`, which takes the same arguments and does the same thing.
-## New features
-
 - A prior distribution can now be set by piping, not only written in the
   `ini({})` block (#1254):
 
@@ -1216,33 +909,166 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
-- `confint()` on a solved object now says whether the `thetaMat` the solve was
-  given was actually drawn from.  A `thetaMat` is ignored unless the
-  variability is being simulated (`nStud > 1`, or `simVariability=TRUE`), so
-  the message makes it clear whether the reported interval carries parameter
-  uncertainty.  Nothing is said when the solve had no `thetaMat` (#1308).
+### Compilation
 
-- `confint()` on a solved object again uses the study dimension to build the
-  confidence bands around the simulated percentiles when `nStud > 1`.  When
-  the event table holds a single subject, rxode2 numbers the `nStud * nSub`
-  simulations in `sim.id` and emits no `id` column, and `confint()` read that
-  `sim.id` as the individual identifier; it therefore ignored `nStud`, said
-  "you need at least 2500 simulations", and returned plain pooled percentiles.
-  It now recovers the study/individual split, so a `nStud > 1` simulation run
-  from a one-subject event table gives the same answer as the same simulation
-  run from an event table that lists the subjects explicitly (#1308).
+- `getSolvingOptionsInd()` now walks the subject array at the stride it was
+  allocated with rather than at its own translation unit's
+  `sizeof(rx_solving_options_ind)`.  `src/rx2api.c` is the package's ABI
+  surface and is compiled separately from the code that owns the array, and R's
+  default make rules track no header dependencies, so an object file whose own
+  source did not change is linked in unchanged after a change to the struct.
+  The two views then differed by exactly the appended bytes and every subject
+  but the first was read from the wrong address -- silent heap corruption for
+  any caller that walks subjects, reported downstream as an absurd allocation
+  size or a segfault (nlmixr2/nlmixr2est#1039).  Fields keep their offsets by
+  the append-only convention the struct already documents, so the stride was
+  the whole of the disagreement.
 
-- `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
-  was read out of an undocumented `method` argument, so the documented
-  spelling was silently ignored and the interval always came back from
-  `binomProbs()`'s own default.  `method=` keeps working when it names a
-  `ciMethod`, and is left alone otherwise (#1308).
+- The per-thread `linCmtB()` object is a tagged struct rather than an anonymous
+  one named by its typedef, which is what recent clang warns about
+  (`-Wnon-c-typedef-for-linkage`) since its members are C++ (Eigen matrices, a
+  Stan object).  The warning was the macOS `R CMD check` failure.
 
-- `confint()` counts the individuals in the solved data rather than reading
-  `nSub` back off the solve arguments, so a data set that carries its own
-  subjects reaches the 2500 individual threshold that puts confidence bands
-  around the percentiles.  A solve of 2500 or more subjects supplied as data
-  now returns the banded summary instead of the pooled percentiles (#1308).
+- A model that fails to build now shows the compiler's own error lines (and
+  only those -- warnings and progress chatter are dropped, and the list is
+  capped by `options(rxode2.compileErrLines=)`), followed by how to get the
+  rest (`rxode2::rxLastCompile("stderr")` for the full compiler output,
+  `rxode2::rxLastCompile("c")` for the generated C code).  The
+  Rtools/C-compiler advice is only given when the failure actually looks like
+  a toolchain problem: a diagnostic naming a source file and line is about the
+  code that was compiled, so the message says the generated C code is at fault
+  and points at the issue tracker, while a driver, linker or loader that fails
+  without reaching the source still gets the setup advice.  Previously every
+  failure blamed the toolchain, which sent users off validating Rtools when
+  the compiler had already named the generated-code defect (#1197).
+
+- A model that compiles but will not load reports what the loader said rather
+  than the loader's error replacing the diagnosis, and a build failure found
+  without recompiling (the model's dll was already present) no longer errors
+  with `could not find function ".badBuild"` or reports a previous model's
+  compiler output.
+
+- Re-compiling a `linCmt()` model from its own `rxModelVars()` no longer
+  fails with `implicit declaration of function 'linCmt'`.  Whether to expand
+  `linCmt()` was read from a parser global that only an actual parse
+  refreshes, and `rxGetModel()` returns model variables it is handed without
+  re-parsing them, so the expansion was skipped -- or run on a model that had
+  no `linCmt()` -- depending on what happened to be parsed last.  The model
+  itself is asked now, so `rxode2(rxModelVars(ui))` builds and the result no
+  longer depends on build order (#1227).
+
+- `rxLastCompile()` now prints its section rules -- `cli::rule()` was called
+  but its result was never messaged -- and takes `what=` to choose which
+  sections are messaged (`rxLastCompile("stderr")` for the compiler error
+  alone).  The returned list is unchanged.
+
+- The statement form of `ifelse()` -- `ifelse(cond, stmt, stmt)`, where each
+  branch is a statement rather than a value -- now compiles anywhere in a model.
+  Its handler appended `if (` to the code buffers without first clearing the
+  preceding statement's text, so the generated C ran the two together
+  (`kin=3if (t<2) {`) and only a model whose *first* statement was an `ifelse()`
+  compiled.  The construct now emits and normalizes exactly like the equivalent
+  `if (...) {...} else {...}`, so it round-trips through `rxNorm()` and
+  translates for symengine derivatives (sensitivities, FOCEi) the same way
+  (#1211).
+
+- `rxCompile()` now re-parses the model it is handed whenever the parser's
+  current model is a different one.  Code generation reads the parser's global
+  model state, and the old guard only checked whether *some* model was loaded,
+  so a re-compile requested while an unrelated model was parsed wrote that other
+  model's C under this model's name and handed back its model variables.
+  Building a model with `rxode2()` never hit this (it parses, then compiles
+  immediately), but re-loading one whose `.so` is gone did -- as when a saved
+  fit is restored in a new session, since its DLL lived in the original
+  session's `tempdir()`.  Such a fit came back solving a different model, e.g. a
+  restored SAEM fit failing with "The following parameter(s) are required for
+  solving: eta.v, eta.cl".
+
+- Event ("jump") sensitivities now compile when a dosing modifier (`dur()`,
+  `f()`, `alag()`, ...) depends on more than one estimated parameter.  Each such
+  parameter contributes its own assignment line to the same generated buffer,
+  but the rewrite of nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
+  `_THETA_n_`/`_ETA_n_` only collected the indices used by the *first* line, so
+  an index appearing only in a later line survived as raw symengine array syntax
+  and the model failed with "'ETA' undeclared".  This hit any model with, say, a
+  food-effect duration built from two etas, whether or not the parameters were
+  mu-referenced (#1196).
+
+- Building a model no longer hangs forever on a lock left behind by an
+  interrupted session, and two processes no longer build the same model at
+  once.  `rxTempDir()` exports itself with `Sys.setenv()`, so every subprocess
+  (a `testthat` parallel worker, for one) inherits ONE shared build directory
+  -- but the build lock was acquired as `file.exists()` followed by `sink()`,
+  a check-then-create pair that does not exclude, so two processes could both
+  see no lock and both compile the same artifact into that directory.  The
+  losing write surfaced as "error building model", "cannot open the
+  connection" or "cannot change working directory", depending on which step
+  it lost.  Separately, nothing ever removed a lock whose owner had been
+  killed, and the wait for it was unbounded, so a single interrupted compile
+  wedged that model for the life of the cache.  The lock is now taken with
+  `dir.create()` -- the portable atomic test-and-set -- and the wait for
+  another builder is bounded (`options(rxode2.buildLockTimeout=)`, 300s by
+  default) before the abandoned lock is reclaimed.
+
+### Mixture models
+
+- A `mix()` model whose call has been expanded by symengine -- the form
+  every estimation method's prediction model is built from -- is now still
+  recognized as a mixture model.  The expansion emits one reserved
+  `rx_mixsel_<k>_<n>_` selector per component, spelling out the component
+  count the dropped `mix()` call carried, so `mixnum` reports it and a
+  per-individual `mixest` supplied in the data or in `iCov` reaches the
+  solve.  The total is spelled out rather than inferred from the largest
+  selector present, because a component whose expression folds to zero --
+  any sensitivity with respect to an eta only one component uses -- drops
+  its selector out of the expression entirely.  Previously such a model parsed with no mixture at all: the
+  `mixest` column was discarded, `ind->mixest` stayed 0, and every
+  `mix()`-derived variable solved as 0 -- which silently corrupted the
+  predictions in the fit table (nlmixr2/nlmixr2est#1041).
+
+- `ind->mixest` is now set when the value is read from the data, not only
+  inside `_mix()`.  A model that reads `mixest` without calling `mix()`
+  never ran `_mix()`, so the supplied assignment never reached it.
+
+- A `mixest` or `mixunif` column in `iCov` now splits a homogeneous event
+  group when the model is a mixture model.  Subjects that share an event
+  table are solved as one group, and the group was only split on iCov
+  columns that are model parameters; `mixest` is a reserved variable, so the
+  whole group took the first subject's component.
+
+- `rx_mixsel_<k>_<n>_` is now a reserved variable name, like `mixest`,
+  `mixnum` and `mixunif`.  A model cannot use it for anything else, and
+  selectors that disagree with each other, or with a literal `mix()` in the
+  same model, about the number of components are a syntax error.
+
+- Note that the expansion drops the mixture PROBABILITIES along with the
+  `mix()` call, so an expanded model can be told which component a subject
+  belongs to (`mixest`) but cannot sample one from a supplied `mixunif`.
+  Simulation from `mixunif` needs the `mix()` call itself, which every
+  hand-written model keeps.
+
+- An `iCov` column that a homogeneous solve group is split on no longer
+  drops the subject when its value is `NA`.  The split key came from
+  `interaction()`, which is `NA` for a row with any `NA`, and the `split()`
+  it feeds discarded that row -- so the subject vanished from the solve
+  output instead of being rejected.
+
+### Model piping
+
+- Model piping no longer promotes a reserved rxode2 variable to a population
+  parameter.  Appending or prepending a line that used `t`, `time`, `tlast`,
+  `newind`, `rxFlag`, one of the `M_` constants or `pi`/`NA`/`NaN`/`Inf`
+  added it to the `ini({})` block, and the resulting model then failed to
+  parse with "the following parameter(s) were in the ini block but not in the
+  model block".  Reserved names are now retained as-is, and the list comes
+  from the parser itself rather than a second copy in R.
+
+- `rxRename()` now refuses to rename a parameter to a reserved rxode2
+  variable.  `rxRename(t = tcl)`, `rxRename(lhs = tcl)` and
+  `rxRename(cmt = tcl)` produced the same unparseable model, and
+  `rxRename(pi = tcl)` or `rxRename(E = tcl)` produced a model that parsed but
+  silently ignored the renamed parameter, since the name reads back as the
+  constant.
 
 - Piping a model's `ini()` into another model no longer silently leaves shared
   random effects behind.  Three cases dropped an eta with no error and no
@@ -1271,6 +1097,332 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 - `ini()` piping no longer adds a covariance between two random effects that
   sit at different levels.  The resulting `$omega` could not be assembled at
   all, so the model stopped as soon as anything asked for it.
+
+### Estimation / symengine translation
+
+- A model variable named after one of symengine's constants (`e`, `I`,
+  `Catalan`, `GoldenRatio` or `EulerGamma`) is no longer shadowed by that
+  constant in the symbolic layer.  `rxS()` bound the constants into the model
+  environment, so reading the name back gave the constant rather than the
+  model variable and differentiating by it failed with "Input is not a
+  SYMBOL"; the remaining `symengine::D()` call sites in the Jacobian, adjoint,
+  delay-differential, event-sensitivity and mu-referencing code also passed
+  the model-side name straight to symengine, which for the event-sensitivity
+  code silently dropped the term instead of erroring.  A `matExp()`/`indLin()`
+  model likewise emitted `k_p_q=exp(1)` for a rate constant that was the
+  parameter `e`, `lag(e, 1)` lagged Euler's number, and a delay whose duration
+  depended on `e` lost its breaking-point correction terms and then computed
+  its jump amplitude from `M_E` (#1359).  `E` is the one exception: it is the
+  symengine spelling of the model language's `M_E`, so the environment's `E`
+  still means Euler's number and a model variable of that name is reached
+  through its internal name instead.
+
+- A model using the modulo operator `%%` can now be estimated.  `%%` was
+  missing from the infix operator tables of the `if`/`else` rewriter
+  (`rxPrune()`) and of `rxOptExpr()`, so both emitted it as the prefix call
+  `%%(a, b)`, which is not parsable rxode2.  Since every nlmixr2 estimation
+  method runs those two stages, a model that solved fine failed to fit with a
+  syntax error -- blocking `%%` as the way to write a square-wave or circadian
+  time-dependent parameter.  Operands that are not a plain name or number are
+  parenthesized, as the grammar requires (#1229).
+
+- `floor()`, `ceil()`, `round()`, `trunc()`, `sign()`, `fround()`, `fprec()` and
+  `fsign()` can now be used with the nlmixr2 estimation methods.  They parsed
+  and solved, but symengine's `Math` group generic has no method for them, so
+  loading such a model raised `non-numeric argument to binary operator` and no
+  estimation method could run it -- which ruled out `floor(time/24)`, the
+  natural way to write a circadian or square-wave switch.  They are now loaded
+  as opaque function symbols (like `rxMod()`) and are locally constant, so their
+  derivative is 0 at every order.  `fsign(x, y)` transfers the sign of `y` onto
+  `abs(x)`, so it gets a real derivative instead: `sign(x)*fsign(1, y)` in `x`
+  and 0 in `y` (#1230).
+
+- Every other parser-known function symengine has no method for now loads too,
+  rather than silently corrupting the model.  This covers the special functions
+  (`bessel_i()`, `bessel_j()`, `bessel_k()`, `bessel_y()`, `logspace_add()`,
+  `logspace_sub()`, `fmax2()`, `fmin2()`, `gammaq()`, `gammapDer()`,
+  `gammapInv()`, `gammapInva()`, `gammaqInv()`, `gammaqInva()`) and the
+  derivative helpers rxode2 itself emits (`llikNormDmean()`, `dSELU()`,
+  `d4GELU()`, `d2PReLU()`, `dSwish()`, ...).  The failed assignment used to be
+  stored as the variable's value and written into the model as `<var>=.expr`,
+  which failed later with no hint of where it came from -- or not at all, when
+  nothing read the variable.  The set is now a deny list of the functions
+  symengine differentiates itself, so a function added to the parser is loadable
+  by default, and an assignment that still cannot be loaded says which variable
+  and why instead of continuing.
+
+- `ftrunc(x)` builds.  Its arity was recorded as two arguments while C's
+  `Rf_ftrunc()` takes one, so `ftrunc(x)` was rejected by the parser and
+  `ftrunc(x, digits)` failed to compile -- the function could not be used at
+  all.
+
+- `dSwish()` can be used with the estimation methods.  Its symengine expansion
+  was missing a closing parenthesis, so the text could not be parsed back and
+  the model failed to load.
+
+- The parser no longer accepts a function it cannot generate compilable C for.
+  `abs0()` and `polygamma()` exist only between `rxToSE()` and `rxFromSE()`
+  (`abs0(x)` is written `abs(x)`/`fabs(x)`, and `polygamma(n, x)` is
+  `psigamma(x, n)`), and `d2PReLU()` had no implementation anywhere -- `PReLU()`
+  is piecewise linear, so its second `x` derivative is the literal 0
+  `rxode2parseD()` already returns.  Writing any of the three built C with an
+  undeclared function, which rxode2 reported as a code-generation bug and asked
+  the user to file; they now fail at the model text with the usual unsupported
+  function message.  Both symengine directions still convert them.
+
+- The description of `fsign()` in `rxSyntaxFunctions` said `abs(x)*sign(y)`,
+  which is wrong when `y` is 0: the function carries the sign of `y` onto
+  `abs(x)` and treats 0 as positive, so it returns `abs(x)` there rather than 0.
+
+- `rxDfdy()` (and `rxModelVars()$dfdy`) report an ETA derivative as
+  `df(A)/dy(ETA[1])` instead of leaking the internal name
+  `df(A)/dy(_ETA_1_)`.  Both `THETA[n]` and `ETA[n]` are translated back from
+  their internal spellings for display, but the ETA translation was written
+  into the buffer and then unconditionally overwritten, so only `THETA[n]`
+  survived.
+
+- A model comparing a string covariate against a literal (e.g. `cl <- exp(tcl
+  + eta.cl + cllow * (LowID == "Yes"))`) no longer translates to an undefined
+  parameter.  A character literal reaches symengine as the symbol
+  `rxQ__<escaped>__rxQ`, and while the R translator decodes it back to a
+  quoted string, the C translator added in 5.1.7 emitted the symbol verbatim
+  -- so the generated model carried `LowID==rxQ__Yes__rxQ` and solving it
+  failed with "the following parameter(s) are required for solving:
+  rxQ__Yes__rxQ".  Only symengine's own underscore naming reached the C path
+  (the bracket form declines and falls back to R), which is why it surfaced in
+  the sensitivity models a `nlmixr2est` FOCEi fit builds rather than in a
+  plain `rxode2()` call.  The C translator now decodes the literal, and hands
+  the expression back to the R translator for any byte whose `deparse1()`
+  spelling it cannot reproduce exactly.
+
+- Symbolic translation now simplifies constant arithmetic instead of emitting
+  it.  A fully constant expression folds to its value (`1/gamma(2)` is `1`, not
+  `1/1`), extending the fold that was already applied to the right-hand operand
+  of every binary operator, and the arithmetic identities are applied: `x/1`,
+  `x*1`, `1*x`, `x+0`, `0+x` and `x-0` all reduce to `x`, the same identity as
+  the `x^1` rule that was already there.  Only the right-hand operand is
+  folded, so `0-x` and `1/x` are correctly left alone.  The named constants
+  still win, so `pi*2` remains `M_2PI` rather than becoming `6.28...`.  This
+  shows up most in generated sensitivity code, where differentiating leaves a
+  great many `*1` and `+0` terms behind; the emitted values are unchanged.
+
+### Event translation
+
+- A steady-state dose into a compartment with a modeled `alag()` pushed
+  from inside a model now expands the way the event table expands it, so
+  the two spellings of the regimen agree.  A steady-state dose has to be
+  solved unlagged while the dose the subject receives is lagged, and only
+  the event table split the record into that pair; the pushed form solved
+  to something else (in the reported case the two differed by 9.05, and now
+  agree to 9e-07) (#1349).
+
+- `addl` no longer repeats a pushed observation, "other" (`evid=2`) or
+  reset (`evid=3`) record.  A pushed `evid_(t, 3, ..., addl = 2)` reset the
+  system three times; the event table warns and ignores `addl` for those
+  records, and the push path now does the same.
+
+- A pushed phantom dose (`evid=7`) keeps a modeled rate or duration instead
+  of silently becoming a bolus, and a pushed `evid=2` record naming a
+  compartment turns that compartment back on -- both matching what the same
+  row does in the event table.
+
+- `evid_()` now accepts a negative compartment, by name or number
+  (`evid_(t, 2, 0, -depot, 0, 0, 0, 0)`), to turn that compartment off --
+  the same signal the event table takes from a negative `CMT` column.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) written as a
+  hand-encoded classic internal `evid` (>= 100) carrying a duration now
+  errors in the event table too.  The runtime push path already refused it
+  (#1350); the event table accepted it and steady-stated the compartment to
+  zero.
+
+- A split bolus now splits every record a dose translates to rather than
+  only the first, which a lagged steady-state bolus needs.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
+  inside a model with a duration -- modeled (`rate=-2`, e.g. via `evid_()`),
+  fixed (`infuseDur()`), or a hand-encoded classic internal `evid` (>= 100)
+  -- now errors instead of silently steady-stating the compartment to zero.
+  That combination never had a usable rate (a constant infusion never turns
+  off, so there is nothing for the duration to measure), and the event-table
+  path already refused it; the runtime push path did not check for it
+  (#1350).
+
+- Piping an omega block into a model with ten or more etas no longer
+  permutes the etas that were not piped over.  They were renumbered with
+  `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before
+  "2" -- so the survivors came back in an arbitrary order.  That splits a
+  correlated block across the matrix, and it can renumber a repeated
+  (`same()`) block ahead of the block it repeats, which has no
+  representation at all since the linkage is a relative offset backwards
+  (`$omega` then errored with "must refer to an earlier parameter").
+
+- `rxRename()` now follows a repeated (`same()`) block's marker to the new
+  name.  The block a repetition mirrors is recorded BY NAME in the
+  `condition` column -- which is what lets the marker survive renumbering
+  -- so a rename has to be followed too; left alone it pointed at a name
+  that no longer existed and `$omega` refused to assemble ("refers to
+  '<old>', which is not in this block").
+
+- Nested (inter-occasion) simulation gave every random effect the wrong
+  variance whenever a level carried more than one parameter.  The omega
+  a level draws from is laid out occasion-major, with the parameters
+  inside each stamp, but the expansion indexed it parameter-major, so
+  the two were transposed: with `lotri(a ~ 0.01, b ~ 1, cc ~ 100) | occ`
+  every parameter in occasion 1 drew variance 0.01, every one in
+  occasion 2 drew 1, and every one in occasion 3 drew 100.  A single
+  parameter per level is unaffected, which is why this went unnoticed.
+  Any covariance specified within an occasion was likewise placed
+  between occasions of one parameter rather than between the parameters
+  of one occasion (#1345).
+
+- Translating an event table no longer slows down with the number of subjects
+  alone.  Whether an id had been seen was tested once per input row against
+  vectors holding one entry per subject, as `std::find()` linear scans, so the
+  cost was `O(rows * subjects)`: with the row count held fixed at 120000,
+  going from 100 to 12000 subjects cost 12.6x.  The membership tests now use
+  a set, which is flat -- 15x faster at 12000 subjects -- and the vectors are
+  kept for their size and for the order the "IDs without observations" warning
+  lists them in.  A dosing-only id was also matched with a linear scan once
+  per row when dropping those rows.
+
+- An infusion pushed from inside the model with `evid_()` now turns back off.
+  `evid=4` (reset + dose) used both slots of the translated event for the reset
+  and the infusion start, so the stop record was dropped and the infusion ran
+  for the rest of the solve; a modeled `rate=-1`/`rate=-2` dose was pushed
+  without its companion "off" record at all, so the solve failed outright with
+  data error 997/886 instead of scheduling the infusion.  The translator emits
+  up to three records now, and a pushed infusion matches the same regimen
+  written into the event table for fixed rate, fixed duration, modeled rate,
+  modeled duration, `evid=4`, `addl`, `ss=1`, `ss=2` and a split bolus.  A
+  steady-state dose pushed into a compartment that also carries a modeled
+  `alag()` is still not expanded the way the event table expands it, and a
+  steady-state constant infusion pushed with a duration rather than a rate is
+  still not rejected the way the event table rejects it; both remain known gaps.
+
+- The last-record guard for a modeled `rate()`/`dur()` infusion start was off by
+  one: `handleTurnOnModeledRate()`/`handleTurnOnModeledDuration()` rejected only
+  `idx >= n_all_times` and then read (and, through `updateRate()`/`updateDur()`,
+  wrote) record `idx + 1`.  The only way to reach it was the lone modeled start
+  the push path used to emit, so with that fixed the guard is defensive rather
+  than a user-visible fix.  Separately, `_rxPushDose()`'s event-array growth
+  under-reserved when a bolus is split across compartments -- it counted the
+  translated events rather than the records they expand into, which the `idose`
+  growth beside it already did -- and now allocates the guard slot its own
+  comment promises for `ix` and `timeThread` too.
+
+- `updateRate()` no longer leaves `ind->idx` pointing at the dose record when a
+  modeled `rate()` evaluates to zero or less.  Both of its error returns skipped
+  the trailing restore of the saved index, so the corrupted value stayed live
+  solver state until the error was picked up after the integration step.  The
+  restore now happens before the checks, as it already did in `updateDur()`.
+
+- `dose()` and `tad()` no longer read the wrong infusion when two infusions run
+  at the same rate into different compartments.  The internal `_getDur()` scan
+  that recovers an infusion's duration paired records by amount alone, so an
+  infusion of `+rate` matched the first `-rate` it found, which may belong to
+  another compartment's infusion (or, in the backward direction, be a bolus of
+  the same amount).  A fixed rate/duration infusion emits its stop record with
+  the same internal event id as its start, so the scans now compare that too --
+  the pairing `handleInfusionGetEndOfInfusionIndex()` already performed.  An
+  overlapping 100 mg and 50 mg infusion both run at 10 mg/hr reported
+  `dose() = 60` for the first; it now reports 100.  A steady state infusion
+  with a modeled `alag()` reported `dose() = 0` for the same reason and now
+  reports the whole dose, and before the lagged dose lands `dose()`, `tad()`
+  and `tlast()` are `NA` -- what a plain lagged infusion has always reported.
+  Separately, an orphaned
+  infusion end sitting at dose index 0 reports the missing start instead of
+  falling through to the forward scan and returning a negated duration
+  (nlmixr2/rxode2#1322).
+
+- Translating an event table no longer re-wraps its own output columns once
+  per row.  The row loop in `etTrans()` took each output column as a fresh
+  `Rcpp` vector on every row -- a no-op cast, since the columns were
+  allocated as the right type, but one that still paid Rcpp's
+  preserve/release bookkeeping at every one of roughly nine sites per row.
+  The pointers are taken once instead, which is 2.7x on `etTrans()` alone and
+  2.8-3.8x on a solve at 160000-320000 rows.
+
+- `etTrans(allTimeVar = TRUE)` no longer errors when an `iCov` covariate is
+  supplied.  Under `allTimeVar` every covariate is emitted as a per-row
+  column, but the column for an `iCov` covariate was never allocated, so
+  taking it failed instead of returning the covariate.
+
+- `tad()`, `tafd()`, `tlast()`, `dosenum()` and `dose()` no longer skip an
+  infusion when the subject's dosing record starts with a bolus.  The dose
+  history asked for the infusion duration with the solver's running dose
+  counter (`ind->ixds`), which the output pass never advances, so the lookup
+  either failed -- the infusion was then dropped from the history entirely,
+  leaving `dosenum()` un-incremented and `tad()` counting from the earlier
+  dose -- or silently returned a different infusion's duration, which made
+  `dose()` report the wrong amount.  The duration is now looked up from the
+  record being handled.  Solving itself was never affected (#1316).
+
+- The dose history no longer measures an EXTRA dose's infusion against an
+  unrelated dose record.  The steady-state and modeled-lag infusion paths
+  append extra doses whose amount and time live in `ind->extraDose*` rather
+  than in `ind->idose`, so the duration lookup -- an index into `idose` -- had
+  no entry to find and fell back to the solver's running dose counter, reading
+  whichever regular record it happened to point at.  For a steady-state
+  infusion with a modeled `alag()` that produced a duration of 0, entering the
+  infusion into the history with an amount of 0; another arrangement could
+  find no matching off-record at all and drop the dose from the history.  An
+  extra dose's duration is now taken from the matching off-record in the
+  extra-dose arrays, paired from the end of the pool so that an infusion
+  longer than the inter-dose interval -- which overlaps itself, leaving more
+  off records than on records -- is measured against its own off rather than
+  against the one closing an earlier overlapping infusion (#1321).
+
+### Simulation
+
+- Residual error (`sigma`) is now simulated for every subject when the
+  subjects come from the event table's `id` column (`et(id = )`) rather
+  than from `nSub=`.  Identical subjects are translated once and shared,
+  so the residual draw was sized from that one representative: subject 1
+  got the only draws and every other observation reused the last of them,
+  making the simulated residual nearly constant and any prediction
+  interval built from it far too narrow.  The counts that size the draw
+  are now expanded by the shared group the way the rest of the solve setup
+  expands them.  `omega` was never affected (#1341).
+
+- A chunked solve (`rxSolve(file=, chunkSize=)`) with a `sigma` now
+  reproduces the unchunked solve.  `rxSimThetaOmega()` draws study by study,
+  and inside one study it draws that study's etas and THEN that study's
+  residuals, so a pre-draw that left the sigma out was a study short of the
+  unchunked stream from study 2 onward -- every eta after study 1 was a
+  different (still valid) draw -- and the residuals themselves were redrawn
+  per chunk on top of that.  The parent now draws the residuals for the whole
+  solve and hands each chunk the slice its subjects own (#1339).  The parent
+  therefore holds one residual per observation, per study, for the whole
+  solve.
+
+- `confint()` on a solved object now says whether the `thetaMat` the solve was
+  given was actually drawn from.  A `thetaMat` is ignored unless the
+  variability is being simulated (`nStud > 1`, or `simVariability=TRUE`), so
+  the message makes it clear whether the reported interval carries parameter
+  uncertainty.  Nothing is said when the solve had no `thetaMat` (#1308).
+
+- `confint()` on a solved object again uses the study dimension to build the
+  confidence bands around the simulated percentiles when `nStud > 1`.  When
+  the event table holds a single subject, rxode2 numbers the `nStud * nSub`
+  simulations in `sim.id` and emits no `id` column, and `confint()` read that
+  `sim.id` as the individual identifier; it therefore ignored `nStud`, said
+  "you need at least 2500 simulations", and returned plain pooled percentiles.
+  It now recovers the study/individual split, so a `nStud > 1` simulation run
+  from a one-subject event table gives the same answer as the same simulation
+  run from an event table that lists the subjects explicitly (#1308).
+
+- `confint(mean="binom", ciMethod=)` now reaches `binomProbs()`.  The option
+  was read out of an undocumented `method` argument, so the documented
+  spelling was silently ignored and the interval always came back from
+  `binomProbs()`'s own default.  `method=` keeps working when it names a
+  `ciMethod`, and is left alone otherwise (#1308).
+
+- `confint()` counts the individuals in the solved data rather than reading
+  `nSub` back off the solve arguments, so a data set that carries its own
+  subjects reaches the 2500 individual threshold that puts confidence bands
+  around the percentiles.  A solve of 2500 or more subjects supplied as data
+  now returns the banded summary instead of the pooled percentiles (#1308).
 
 - A multi-subject `rxSolve()` with `nsim`/`nStud > 1` no longer sizes the
   per-individual solve pool as `nsub` times the number of individual solves
@@ -1359,7 +1511,6 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   tell a hang from a slow solve.  The attempts are now bounded and the
   error names the cause and points at `thetaLower = 0`.
 
-
 ### Initial conditions data frame
 
 - The `iniDf` now tolerates the `prior` column that `lotri` 1.0.5 adds for
@@ -1422,45 +1573,45 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `rxModelVars()$interp` held a garbage code for it and printing it could fail
   with `malformed factor`.
 
-### Compilation
+- Parsing a model no longer corrupts the caller's `PROTECT` stack.  The
+  translation table and `_goodFuns` were claimed on the protect stack by one
+  function and released by another, with the whole parse in between; an
+  `Rf_error` raised in that window (a model syntax error, say) unwound the
+  stack while the outstanding count stayed set, so the *next* parse released
+  entries it no longer owned and popped the caller's own protections.  Callers
+  holding a protect index across the parse then failed -- on macOS this
+  surfaced as `R_Reprotect: only 137 protected items, can't reprotect index
+  143` thrown out of `vapply()`, which made `rxOptExpr()` silently abandon
+  chunking and fall back to optimizing the whole model.  Those objects now use
+  `R_PreserveObject()`, which an unwind does not undo.
 
-- The per-thread `linCmtB()` object is a tagged struct rather than an anonymous
-  one named by its typedef, which is what recent clang warns about
-  (`-Wnon-c-typedef-for-linkage`) since its members are C++ (Eigen matrices, a
-  Stan object).  The warning was the macOS `R CMD check` failure.
+- `loggamma()` no longer fails to compile.  It is symengine's name for
+  `lgamma()` and the parser accepted it, but code generation emits the rxode2
+  name verbatim as the C name and there is no `loggamma()` in C, so a model
+  using that spelling parsed and then failed at the compiler.  (`gammafn()` and
+  `lgammafn()` in the same table work only because they happen to coincide with
+  `Rmath.h`.)  Its derivative was never affected: symengine differentiates
+  `loggamma` natively to `polygamma(0, x)`, so a model differentiating it
+  already got the exact `digamma()`.
 
-- A model that fails to build now shows the compiler's own error lines (and
-  only those -- warnings and progress chatter are dropped, and the list is
-  capped by `options(rxode2.compileErrLines=)`), followed by how to get the
-  rest (`rxode2::rxLastCompile("stderr")` for the full compiler output,
-  `rxode2::rxLastCompile("c")` for the generated C code).  The
-  Rtools/C-compiler advice is only given when the failure actually looks like
-  a toolchain problem: a diagnostic naming a source file and line is about the
-  code that was compiled, so the message says the generated C code is at fault
-  and points at the issue tracker, while a driver, linker or loader that fails
-  without reaching the source still gets the setup advice.  Previously every
-  failure blamed the toolchain, which sent users off validating Rtools when
-  the compiler had already named the generated-code defect (#1197).
+- `ceiling()` is now a supported function.  rxode2 knew C's `ceil()` but not
+  the name R users actually write, and because `ceiling` was absent from the
+  function table it fell through to the user-defined-R-function path, found
+  base R's *primitive* `ceiling`, and reported "user function 'ceiling'
+  requires 0 arguments (supplied 1)" -- `formals()` of a primitive is empty.
+  `floor()` had worked the whole time.  `ceiling()` now parses, compiles to
+  `ceil()`, takes one argument, and is locally constant like `ceil()`,
+  `floor()` and `round()`, so its derivative is 0 and it can be used in models
+  that take sensitivities.
 
-- A model that compiles but will not load reports what the loader said rather
-  than the loader's error replacing the diagnosis, and a build failure found
-  without recompiling (the model's dll was already present) no longer errors
-  with `could not find function ".badBuild"` or reports a previous model's
-  compiler output.
-
-- Re-compiling a `linCmt()` model from its own `rxModelVars()` no longer
-  fails with `implicit declaration of function 'linCmt'`.  Whether to expand
-  `linCmt()` was read from a parser global that only an actual parse
-  refreshes, and `rxGetModel()` returns model variables it is handed without
-  re-parsing them, so the expansion was skipped -- or run on a model that had
-  no `linCmt()` -- depending on what happened to be parsed last.  The model
-  itself is asked now, so `rxode2(rxModelVars(ui))` builds and the result no
-  longer depends on build order (#1227).
-
-- `rxLastCompile()` now prints its section rules -- `cli::rule()` was called
-  but its result was never messaged -- and takes `what=` to choose which
-  sections are messaged (`rxLastCompile("stderr")` for the compiler error
-  alone).  The returned list is unchanged.
+- `psigamma()`, `log1pmx()` and `polygamma()` now check how many arguments
+  they were given.  All three guarded the count with `length(x == n)` instead
+  of `length(x) == n`; `x` is a call, so `x == n` compares its elements and
+  `length()` of that is always at least one, leaving the guard permanently true
+  and the error below it unreachable.  Too few arguments failed with
+  "subscript out of bounds" from the missing element, and extra arguments were
+  silently dropped -- `psigamma(a,b,c)` translated as `psigamma(a,b)` and
+  `polygamma(0,x,y)` as `polygamma(0,x)`.  Correct calls are unaffected.
 
 ### Model interface
 
@@ -1518,64 +1669,18 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   produced parses -- a leading `;` is legal -- so there was no error and the
   comment silently became the label of the parameter above it (#1318).
 
-### Estimation / symengine translation
+- The "cannot find additive standard deviation" error tested a `$predDf`
+  column that does not exist, so its multiple-endpoint hint was appended even
+  for single-endpoint models.
 
-- A model using the modulo operator `%%` can now be estimated.  `%%` was
-  missing from the infix operator tables of the `if`/`else` rewriter
-  (`rxPrune()`) and of `rxOptExpr()`, so both emitted it as the prefix call
-  `%%(a, b)`, which is not parsable rxode2.  Since every nlmixr2 estimation
-  method runs those two stages, a model that solved fine failed to fit with a
-  syntax error -- blocking `%%` as the way to write a square-wave or circadian
-  time-dependent parameter.  Operands that are not a plain name or number are
-  parenthesized, as the grammar requires (#1229).
+- A modeled `ar()` correlation on an endpoint written with a condition
+  (`cp ~ add(add.sd) + ar(corv) | phase1`) is now found; the endpoint was
+  matched against the left-hand side, which never carries the condition.
 
-- `floor()`, `ceil()`, `round()`, `trunc()`, `sign()`, `fround()`, `fprec()` and
-  `fsign()` can now be used with the nlmixr2 estimation methods.  They parsed
-  and solved, but symengine's `Math` group generic has no method for them, so
-  loading such a model raised `non-numeric argument to binary operator` and no
-  estimation method could run it -- which ruled out `floor(time/24)`, the
-  natural way to write a circadian or square-wave switch.  They are now loaded
-  as opaque function symbols (like `rxMod()`) and are locally constant, so their
-  derivative is 0 at every order.  `fsign(x, y)` transfers the sign of `y` onto
-  `abs(x)`, so it gets a real derivative instead: `sign(x)*fsign(1, y)` in `x`
-  and 0 in `y` (#1230).
-
-- Every other parser-known function symengine has no method for now loads too,
-  rather than silently corrupting the model.  This covers the special functions
-  (`bessel_i()`, `bessel_j()`, `bessel_k()`, `bessel_y()`, `logspace_add()`,
-  `logspace_sub()`, `fmax2()`, `fmin2()`, `gammaq()`, `gammapDer()`,
-  `gammapInv()`, `gammapInva()`, `gammaqInv()`, `gammaqInva()`) and the
-  derivative helpers rxode2 itself emits (`llikNormDmean()`, `dSELU()`,
-  `d4GELU()`, `d2PReLU()`, `dSwish()`, ...).  The failed assignment used to be
-  stored as the variable's value and written into the model as `<var>=.expr`,
-  which failed later with no hint of where it came from -- or not at all, when
-  nothing read the variable.  The set is now a deny list of the functions
-  symengine differentiates itself, so a function added to the parser is loadable
-  by default, and an assignment that still cannot be loaded says which variable
-  and why instead of continuing.
-
-- `ftrunc(x)` builds.  Its arity was recorded as two arguments while C's
-  `Rf_ftrunc()` takes one, so `ftrunc(x)` was rejected by the parser and
-  `ftrunc(x, digits)` failed to compile -- the function could not be used at
-  all.
-
-- `dSwish()` can be used with the estimation methods.  Its symengine expansion
-  was missing a closing parenthesis, so the text could not be parsed back and
-  the model failed to load.
-
-- The parser no longer accepts a function it cannot generate compilable C for.
-  `abs0()` and `polygamma()` exist only between `rxToSE()` and `rxFromSE()`
-  (`abs0(x)` is written `abs(x)`/`fabs(x)`, and `polygamma(n, x)` is
-  `psigamma(x, n)`), and `d2PReLU()` had no implementation anywhere -- `PReLU()`
-  is piecewise linear, so its second `x` derivative is the literal 0
-  `rxode2parseD()` already returns.  Writing any of the three built C with an
-  undeclared function, which rxode2 reported as a code-generation bug and asked
-  the user to file; they now fail at the model text with the usual unsupported
-  function message.  Both symengine directions still convert them.
-
-- The description of `fsign()` in `rxSyntaxFunctions` said `abs(x)*sign(y)`,
-  which is wrong when `y` is 0: the function carries the sign of `y` onto
-  `abs(x)` and treats 0 as positive, so it returns `abs(x)` there rather than 0.
+- An endpoint's condition is no longer treated as a residual parameter, so
+  `model(cp ~ add(add.sd) | assay1)` names the endpoint instead of failing with
+  "the following parameter(s) were in the ini block but not in the model block:
+  assay1".
 
 ### Solving
 
@@ -1790,6 +1895,88 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `dop853` has been thread-safe and has honored `cores`.  Documentation only,
   no behavior change (#1305).
 
+- `rxMemoryEstimate()` no longer double-counts the ODE state output matrix.
+  `gsolve_n0` is a piece of `gsolve`, not a sibling of it -- `rxFillMemLayout()`
+  adds `n0` into `gsolve_total` -- but `total` summed every reported element, so
+  it counted the single largest allocation of an ordinary solve twice and could
+  approach double the real figure.  `gsolve_n0` is still reported (and still
+  printed indented under `gsolve`), it is just no longer added to `total`.  The
+  out-of-memory guard in `rxSolve()` and the chunk sizing in
+  `.rxOomChunkSize()`/`rxSolveChunked()` both act on `total`, so a solve that
+  fits is no longer refused and chunks are no longer about half the size they
+  should be.
+
+- `rxMemoryEstimate()` now counts the per-individual event and solve arrays.
+  When `op$indOwnAlloc` is set -- which `rxSolve()` defaults to the model's
+  `evid_` parser flag, so any dose-pushing model (`bolus()`, `obs()`) gets it,
+  as does anyone passing `rxSolve(..., indOwnAlloc = TRUE)` -- `rxAllocInd()`
+  gives every individual its own `dose`/`ii`/`all_times`/`timeThread`/`evid`/
+  `ix`/`idose`/`solve` arrays, and `gsolve` is still allocated at its full size
+  regardless, so those arrays are memory on top of it.  The estimate ignored
+  them entirely, which understated `total` -- the direction that makes an
+  out-of-memory guard useless.  They are now reported as an `indOwnAlloc`
+  component, computed by `rxFillIndAllocTotal()` in `inst/include/rxMemoryCalc.h`
+  alongside the rest of the layout.
+
+- `rxMemoryEstimate()` now scales the event-indexed buffers with `nSub`,
+  `nStud` and `nsim`.  The replicated subject count was applied to the subject
+  total but never to the event total, so `rxControl(nSub = 100)` on a
+  one-subject table reported the one-subject figure for `gsolve_n0`,
+  `gall_times`, `gevid` and `gpars` -- an undercount of the largest allocation
+  by the full replicate factor, and again in the direction that makes the
+  out-of-memory guard useless.  `nsub` and `nsim` now mean to the estimate what
+  they mean in `rxData.cpp`: `nsub` is the subjects of ONE simulation and
+  `nsim` is how many times that block is replicated, so `nStud` lands in `nsim`
+  (where it also correctly pays for the extra-simulation copies in
+  `gall_timesS`) and `nSub` grows the events of a single simulation.
+  `effectiveSubs` still reports the total individual count.
+
+- `rxMemoryEstimate()` sizes `ordId` by individuals rather than events.
+  `rx$ordId` is the solve ORDER over individuals -- `nsub * nsim` ints -- but
+  the estimate charged one int per event, overstating it by the number of
+  events per subject.
+
+- `rxMemoryEstimate()` now reports `gEtaPre`, the pre-generated eta draws.
+  `rxPreGenEta()` mallocs `nsim * nsub * neta` doubles before the parallel
+  solve loop whenever the model has etas and a nonzero omega, and none of it
+  was counted.
+
+- `rxMemoryEstimate()` now reports `gSampleCov`, allocated when
+  `rxControl(resample=)` asks for covariate resampling, and counts the
+  per-thread pointer table that accompanies the `gInfusionRate` buffers.
+
+- `rxMemoryEstimate()` now charges the two per-individual history buffers:
+  the `delay()` dense history (`ind$delayHist`) and the `linCmtB()` output-time
+  rate history (`ind$linCmtRateHist`), neither of which was counted at all.
+  Both grow by doubling inside the solve rather than being sized up front, so
+  unlike every other component these are a documented BOUND rather than a
+  mirror of a `calloc`: the capacity the doubling reaches at roughly one stored
+  step per event, floored at the initial allocation.  They are zero for a model
+  that uses neither.
+
+- `rxMemoryEstimate()` no longer returns `NA` for very large event counts.  The
+  per-subject event totals were summed in integer arithmetic, so a solve past
+  2^31 events -- exactly the size this estimate exists to judge -- overflowed
+  and then failed with "missing value where TRUE/FALSE needed".
+
+- An `integer` or `logical` covariate column no longer makes `rxSolve()`
+  quadratic in the number of rows.  While building the solving data set each
+  covariate column was coerced to double once per output row; for a column
+  that is already double that coercion is free, but for an integer or logical
+  column it allocated and converted a copy of the whole column on every row.
+  The result was correct but progressively slower -- roughly 14x a double
+  column at 20000 rows and 90x at 160000 -- and the only hint was the timing,
+  since a logical covariate arises naturally from ordinary R code such as
+  `flag = x == "value"`.  Each covariate column is now coerced once, so every
+  storage mode solves at the speed a double column always did.
+
+- A model that reads `CMT` as a covariate no longer slows down with the number
+  of subjects.  `CMT` is carried as an integer column, and the copy of each
+  covariate into the solving buffer -- done once per subject -- coerced the
+  whole column to double every time, costing about 3x an otherwise identical
+  double covariate at 20000 subjects.  The columns are now coerced once, as
+  above.
+
 ### Sensitivities
 
 - A model reading only some `linCmtB()` sensitivity directions (a FOCEi inner
@@ -1906,40 +2093,6 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   `nState + p*nState + k`; a model whose compartments do not lie that way falls
   back to finite differences instead of having jumps written into the wrong
   compartment (#1119).
-
-### Compilation
-
-- The statement form of `ifelse()` -- `ifelse(cond, stmt, stmt)`, where each
-  branch is a statement rather than a value -- now compiles anywhere in a model.
-  Its handler appended `if (` to the code buffers without first clearing the
-  preceding statement's text, so the generated C ran the two together
-  (`kin=3if (t<2) {`) and only a model whose *first* statement was an `ifelse()`
-  compiled.  The construct now emits and normalizes exactly like the equivalent
-  `if (...) {...} else {...}`, so it round-trips through `rxNorm()` and
-  translates for symengine derivatives (sensitivities, FOCEi) the same way
-  (#1211).
-
-- `rxCompile()` now re-parses the model it is handed whenever the parser's
-  current model is a different one.  Code generation reads the parser's global
-  model state, and the old guard only checked whether *some* model was loaded,
-  so a re-compile requested while an unrelated model was parsed wrote that other
-  model's C under this model's name and handed back its model variables.
-  Building a model with `rxode2()` never hit this (it parses, then compiles
-  immediately), but re-loading one whose `.so` is gone did -- as when a saved
-  fit is restored in a new session, since its DLL lived in the original
-  session's `tempdir()`.  Such a fit came back solving a different model, e.g. a
-  restored SAEM fit failing with "The following parameter(s) are required for
-  solving: eta.v, eta.cl".
-
-- Event ("jump") sensitivities now compile when a dosing modifier (`dur()`,
-  `f()`, `alag()`, ...) depends on more than one estimated parameter.  Each such
-  parameter contributes its own assignment line to the same generated buffer,
-  but the rewrite of nlmixr2's indexed `THETA[n]`/`ETA[n]` to the codegen locals
-  `_THETA_n_`/`_ETA_n_` only collected the indices used by the *first* line, so
-  an index appearing only in a later line survived as raw symengine array syntax
-  and the model failed with "'ETA' undeclared".  This hit any model with, say, a
-  food-effect duration built from two etas, whether or not the parameters were
-  mu-referenced (#1196).
 
 ### Delay differential equations
 
@@ -2332,6 +2485,32 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   leaves the explicit-time error, which silently dropped any forcing that reads
   `t` back to first order: on a Michaelis-Menten model with an `exp(-t)` input
   the error at `atol=rtol=1e-9` falls from 4.6e-03 to 1.1e-07.
+
+- `rxSensMatExp()` no longer emits an `indLin()` forcing that is
+  algebraically zero, which had been demoting every sensitivity model with two
+  or more compartments to the fixed-point iteration.  The generator splits the
+  system term wise as `dX/dt = A.X + F(X)` and keeps whatever `rhs - A.X`
+  leaves as the forcing; symengine holds `A_ij * X_j` as a product of a sum and
+  a symbol and does not distribute it, so from two compartments up the
+  subtraction left a residual that prints as non-zero and is zero.  A
+  structurally non-zero forcing is what classifies a model as state dependent,
+  so the whole solve took the inductive-linearization driver -- Picard/Newton
+  substepping with error control and several exponentials per substep --
+  instead of one cached matrix exponential per interval.  One compartment
+  emitted no forcing at all, which is why it was the only configuration where
+  `matExp()` was competitive.  The residual is now cancelled before it is
+  tested, and the same cancellation collapses the un-simplified `k_<cmt>_output`
+  constants the split produced (`-q/v-(-q/v-cl/v)` is now `cl/v`), which the
+  generated model re-evaluated on every `ME()` call.  An expansion that takes a
+  forcing from reading a compartment to reading none is kept however long it
+  gets, since that is the difference between the two drivers; everywhere else
+  it buys no reclassification and is kept only where it does not lengthen what
+  it replaced, so a genuinely nonlinear forcing is untouched.  Measured on an optimized build,
+  40 subjects over an irregular 200 point schedule with three sensitivity
+  parameters, single thread, the solve is 9.6x faster at two compartments and
+  12.5x at three, with
+  the solved values unchanged to 3e-14 -- the dropped terms contributed nothing
+  but cost.  `bench/indlin_zero_forcing_ab.R` is the harness.
 
 ### Serialization
 
