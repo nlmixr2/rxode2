@@ -5,9 +5,6 @@ rxTest({
   ## block, with its own degrees of freedom.  This is what NONMEM calls
   ## NWPRI.
 
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .mod <- function() {
     rxode2(function() {
@@ -51,7 +48,7 @@ rxTest({
   .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
 
   test_that("the population parameters are drawn from their prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
       .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=500)
@@ -72,7 +69,7 @@ rxTest({
   })
 
   test_that("each omega block is drawn with its own degrees of freedom", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
       .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=500)
@@ -99,7 +96,7 @@ rxTest({
   })
 
   test_that("the between subject variability uses the per study omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
       .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=200)
@@ -111,7 +108,7 @@ rxTest({
   })
 
   test_that("usePrior=FALSE reproduces the unpriored solve", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
       .off <- rxSolve(.mod(), .ev(), nSub=2, nStud=20, usePrior=FALSE)
@@ -127,7 +124,7 @@ rxTest({
   })
 
   test_that("a thetaMat given at the call site wins over the priors", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     .m <- matrix(1, 1, 1, dimnames=list("tka", "tka"))
     expect_warning({
@@ -142,7 +139,7 @@ rxTest({
   })
 
   test_that("usePrior=TRUE says why when it cannot be honored", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     expect_error(rxSolve(.plain(), .ev(), nSub=2, nStud=5, usePrior=TRUE),
                  "specifies no prior")
@@ -151,7 +148,7 @@ rxTest({
   })
 
   test_that("simVariability decides whether the priors apply, not nStud", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## the C++ side resolves `simVar` from `simVariability` first and only
     ## falls back to `nStud > 1`, so the R side has to agree or the priors

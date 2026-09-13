@@ -6,9 +6,6 @@ rxTest({
   ## prior distributions, so the real-syntax tests are gated on it.  The
   ## rest fabricate the column by hand, the way test-assert-priors.R does,
   ## so they still run against an older 'lotri'.
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .withPrior <- function(ui, name, prior) {
     ui <- rxUiDecompress(ui)
@@ -44,6 +41,7 @@ rxTest({
   })
 
   test_that("a normal prior becomes a one entry thetaMat", {
+    skipIfOldLotri()
     .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
     .s <- .rx$.rxPriorSimSpec(.u, list())
 
@@ -55,6 +53,7 @@ rxTest({
   })
 
   test_that("a multivariate normal prior becomes a block of the thetaMat", {
+    skipIfOldLotri()
     .u <- .withPrior(.base(), c("tcl", "tv"),
                      "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
     .s <- .rx$.rxPriorSimSpec(.u, list())
@@ -65,6 +64,7 @@ rxTest({
   })
 
   test_that("independent priors give a block diagonal thetaMat", {
+    skipIfOldLotri()
     .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
     .u <- .withPrior(.u, c("tcl", "tv"),
                      "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
@@ -78,6 +78,7 @@ rxTest({
   })
 
   test_that("the prior mean has to be the initial estimate", {
+    skipIfOldLotri()
     ## prior simulation samples around what the model says the parameter
     ## is, so a prior centered anywhere else is an error rather than a
     ## silently different simulation
@@ -90,6 +91,7 @@ rxTest({
   })
 
   test_that("each omega block keeps its own degrees of freedom", {
+    skipIfOldLotri()
     .u <- .withPrior(.base(), "eta.cl", "invWishart(20)")
     .u <- .withPrior(.u, "eta.ka", "invWishart(4)")
     .s <- .rx$.rxPriorSimSpec(.u, list())
@@ -102,6 +104,7 @@ rxTest({
   })
 
   test_that("an improper inverse Wishart on a block is an error", {
+    skipIfOldLotri()
     ## a 2x2 block needs more than 1 degree of freedom; 'lotri' checks
     ## this when the prior is written, but a piped model can dodge it
     .u <- .withPrior(.base(), "eta.cl", "invWishart(1)")
@@ -109,6 +112,7 @@ rxTest({
   })
 
   test_that("a distribution that cannot be simulated from is an error", {
+    skipIfOldLotri()
     ## a prior must never be silently ignored
     .u <- .withPrior(.base(), "tka", "dgamma(2, 1)")
     expect_error(.rx$.rxPriorSimSpec(.u, list()),
@@ -116,6 +120,7 @@ rxTest({
   })
 
   test_that("a normal prior on the omega values reaches the spec", {
+    skipIfOldLotri()
     ## a NONMEM TNPRI, which lands on the omega row.  `eta.ka` is 0.6, and
     ## an omega element prior is centered on the omega value the same way
     ## a theta one is centered on its estimate
@@ -136,12 +141,14 @@ rxTest({
   })
 
   test_that("an omega element prior is centered on the omega value", {
+    skipIfOldLotri()
     ## the value the draw is added to is the omega, not zero
     .u <- .withPrior(.base(), "eta.ka", "dnorm(0, 0.1)")
     expect_error(.rx$.rxPriorSimSpec(.u, list()), "is not the initial estimate")
   })
 
   test_that("a joint block spans the thetas and the omega elements", {
+    skipIfOldLotri()
     ## a TNPRI variance matrix covers both, with covariances between them
     .u <- .withPrior(.base(), "tcl",
                      "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
@@ -156,6 +163,7 @@ rxTest({
   })
 
   test_that("a chunked solve with an omega prior is an error", {
+    skipIfOldLotri()
     ## the chunked path pre-draws its parameters through
     ## `rxSimThetaOmega()`, which has no argument for the omega half of a
     ## prior, so that half would never be drawn from
@@ -166,6 +174,7 @@ rxTest({
   })
 
   test_that("a chunked solve with a population parameter prior is not", {
+    skipIfOldLotri()
     ## that half of a prior is a `thetaMat`, which the pre-draw does cover
     .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
     .s <- .rx$.rxPriorSimSpec(.u, list(chunkSize=1e5))
@@ -175,7 +184,7 @@ rxTest({
   })
 
   test_that("a nested model puts each prior's degrees of freedom on its level", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     .u <- rxode2(function() {
       ini({
@@ -207,7 +216,7 @@ rxTest({
   })
 
   test_that("a prior covering only part of a nesting level is an error", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## `cvPost()` draws a nesting level as one inverse-Wishart, so a
     ## prior on part of a level would redraw the rest of it and correlate
@@ -235,7 +244,7 @@ rxTest({
   })
 
   test_that("the ini({}) syntax reaches the spec end to end", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     .u <- rxode2(function() {
       ini({

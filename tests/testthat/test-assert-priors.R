@@ -4,10 +4,6 @@ rxTest({
   ## than silently ignored, otherwise the fit quietly does something other
   ## than what the model says.
 
-  .hasPriorSupport <- function() {
-    "prior" %in% names(rxode2::.rxBlankIni("empty")) ||
-      exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .modNoPriors <- function() {
     f <- function() {
@@ -58,7 +54,7 @@ rxTest({
   })
 
   test_that("assertRxUiNormalPriors() accepts normal priors", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
@@ -72,7 +68,7 @@ rxTest({
   })
 
   test_that("assertRxUiNormalPriors() rejects a non-normal prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
@@ -87,7 +83,7 @@ rxTest({
   })
 
   test_that("the Stan spelling of a normal prior is accepted too", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
@@ -97,7 +93,7 @@ rxTest({
   })
 
   test_that("a multivariate normal counts as a normal prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## the lotri shorthand `tcl + tv ~ c(1, 0.01, 1)` makes one of these
     ## whenever the parameters are correlated
     u <- .modNoPriors()
@@ -112,7 +108,7 @@ rxTest({
   })
 
   test_that("a block prior is not a normal prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
@@ -122,7 +118,7 @@ rxTest({
   })
 
   test_that("assertRxUiNoOmegaDf() rejects omega degrees of freedom", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## `invWishart(4)` on an omega block is the NWPRI $OMEGAPD
     u <- .modNoPriors()
     .ini <- u$iniDf
@@ -139,7 +135,7 @@ rxTest({
   })
 
   test_that("assertRxUiNoOmegaDf() passes when there is no omega df", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     expect_error(assertRxUiNoOmegaDf(u), NA)
 
@@ -159,7 +155,7 @@ rxTest({
   })
 
   test_that("assertRxUiNoOmegaNormalPriors() rejects a normal prior on omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## `om.eta.ka ~ 0.01` is what a NONMEM TNPRI model needs, and it lands
     ## on the omega row for eta.ka
     u <- .modNoPriors()
@@ -185,7 +181,7 @@ rxTest({
   })
 
   test_that("the test* predicates report what an estimation method needs", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## no priors at all
     u <- .modNoPriors()
@@ -227,7 +223,7 @@ rxTest({
   })
 
   test_that("rxUiPriors() gives what is needed to build the prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NA_character_
@@ -251,7 +247,7 @@ rxTest({
   })
 
   test_that("priors print in the ini block and can be re-parsed", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## printing a ui and re-estimating from it both go through the ini
     ## block, so the priors have to render there in the right language

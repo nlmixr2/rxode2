@@ -2479,10 +2479,13 @@ test_that(".rxIniDfTemplate matches the iniDf it is rbind()ed onto (#1249)", {
     })
   }
   ui <- one()
-  expect_equal(names(rxode2:::.rxIniDfTemplate), names(ui$iniDf))
 
-  ## and the path itself: adding a variable that is not yet in the model must
+  ## the path itself: adding a variable that is not yet in the model must
   ## extend iniDf rather than error
   ui2 <- rxode2::rxRename(ui, ka2 = ka)
   expect_true(is.data.frame(ui2$iniDf))
+
+  ## the `prior` column is only in iniDf with lotri >= 1.0.5
+  skipIfOldLotri()
+  expect_equal(names(rxode2:::.rxIniDfTemplate), names(ui$iniDf))
 })

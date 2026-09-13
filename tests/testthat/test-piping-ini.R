@@ -1245,6 +1245,7 @@ rxTest({
   })
 
   test_that("a piped correlated block keeps its covariance at its own level", {
+    skipIfOldLotri()
     # the covariance row was written with a hard-coded condition of "id", which
     # put a `| occ` block's covariance in the wrong omega
     .from <- function() {
@@ -1516,6 +1517,7 @@ rxTest({
   })
 
   test_that("piping keeps a same() copy after the block it repeats", {
+    skipIfOldLotri()
     # A repetition is stored as a RELATIVE OFFSET BACKWARDS, so a copy that
     # is renumbered ahead of its master has no representation at all --
     # `$omega` errored with "must refer to an earlier parameter".

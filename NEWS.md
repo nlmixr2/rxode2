@@ -468,7 +468,7 @@
 - `rxSolve()` simulates parameter uncertainty from the prior distributions
   the model's `ini({})` block specifies, which is what NONMEM does with
   `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`
-  block needs `lotri` 1.0.7 or newer; with an older `lotri` the block
+  block needs `lotri` 1.0.5 or newer; with an older `lotri` the block
   cannot express one and prior simulation simply does not engage.
   `omegaSeparation="tnpri"` below works with any `lotri`.  A model that carries priors uses them
   whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
@@ -2397,6 +2397,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   asking for it to be re-saved.
 
 ### Installation / linking
+
+- `rxode2` again installs and works with `lotri` 1.0.4 (the requirement was
+  relaxed from 1.0.5).  Priors (`prior(x) ~ ...`) and repeated blocks
+  (`same()`) still need `lotri` >= 1.0.5, and their tests are skipped with an
+  older `lotri`.
 
 - On Windows, `STAN_THREADS` and the TBB link are kept when building against
   `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the

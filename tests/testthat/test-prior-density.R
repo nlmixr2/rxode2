@@ -6,9 +6,6 @@ rxTest({
   ## than hand-verified algebra, so a sign or factor error in the analytic
   ## derivative fails loudly.
 
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .withPrior <- function(ui, name, prior) {
     ui <- rxUiDecompress(ui)
@@ -75,7 +72,7 @@ rxTest({
   }
 
   test_that("a model without priors gives a zero density and empty gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .base()
     r <- rxPriorLogDensity(u)
     expect_equal(r$value, 0)
@@ -84,7 +81,7 @@ rxTest({
   })
 
   test_that("a model without priors is a thin no-op through the C API, for every method", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## a caller (nlmixr2est) should be able to call rxPriorBuildSpec() on
     ## every fit unconditionally, whether or not the model carries a prior
     ## or which method it asks for, and get a valid, cheap, zero-effect
@@ -116,7 +113,7 @@ rxTest({
   })
 
   test_that("a normal prior matches dnorm() and its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     r <- rxPriorLogDensity(u, theta=c(tka=0.73))
     expect_equal(r$value, dnorm(0.73, 0, 10, log=TRUE))
@@ -125,14 +122,14 @@ rxTest({
   })
 
   test_that("std_normal() is a unit normal with no arguments", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "stdNormal()")
     r <- rxPriorLogDensity(u, theta=c(tka=0.5))
     expect_equal(r$value, dnorm(0.5, 0, 1, log=TRUE))
   })
 
   test_that("a truncated normal (half-normal) includes the normalizing constant", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## add.sd's own lower bound is 0 -- dnorm(0, 1) truncated to [0, Inf)
     u <- .withPrior(.base(), "add.sd", "dnorm(0, 1)")
     r <- rxPriorLogDensity(u, theta=c(add.sd=0.4))
@@ -142,7 +139,7 @@ rxTest({
   })
 
   test_that("a half-Cauchy prior truncates and matches its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
     r <- rxPriorLogDensity(u, theta=c(add.sd=0.6))
     expect_equal(r$value, dcauchy(0.6, 0, 5, log=TRUE) - log(1 - pcauchy(0, 0, 5)))
@@ -151,7 +148,7 @@ rxTest({
   })
 
   test_that("a joint multiNormal block spans thetas and its gradient checks out", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("tcl", "tv"),
                     "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
     x <- c(tcl=1.3, tv=3.1)
@@ -166,7 +163,7 @@ rxTest({
   })
 
   test_that("independent priors on different parameters add", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
     u <- .withPrior(u, "tcl", "dnorm(1, 0.5)")
     r <- rxPriorLogDensity(u, theta=c(tka=0.45, tcl=1))
@@ -175,7 +172,7 @@ rxTest({
   })
 
   test_that("a joint block spans a theta and an omega diagonal element", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka",
                     "multiNormal(c(1, 0.6), lotri(tka + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
     om <- u$omega
@@ -195,7 +192,7 @@ rxTest({
   })
 
   test_that("a standalone (non-joint) normal prior on an omega diagonal element works", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## a NONMEM TNPRI written directly on the omega row, not via multiNormal()
     u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
     om <- u$omega
@@ -211,7 +208,7 @@ rxTest({
   })
 
   test_that("invWishart on a 2x2 block matches its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     om["eta.cl", "eta.cl"] <- 0.35
@@ -239,7 +236,7 @@ rxTest({
   })
 
   test_that("a 1x1 invWishart block reduces to an inverse gamma on the variance", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.8
@@ -251,7 +248,7 @@ rxTest({
   })
 
   test_that("independent priors combine: theta + omega diag + invWishart block", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     u <- .withPrior(u, c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
@@ -264,7 +261,7 @@ rxTest({
   })
 
   test_that("invWishart on a 3x3 block matches its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base3(), c("eta.ka", "eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
@@ -290,7 +287,7 @@ rxTest({
   })
 
   test_that("two independent invWishart blocks do not bleed into each other", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     u <- .withPrior(u, c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
@@ -313,7 +310,7 @@ rxTest({
   })
 
   test_that("a permuted omega dimname order still routes gradients correctly", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     om["eta.cl", "eta.cl"] <- 0.35
@@ -333,7 +330,7 @@ rxTest({
   })
 
   test_that("dnorm(0,1) truncated deep into the tail stays finite (no cancellation)", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
     .ini <- u$iniDf
     .ini$lower[.ini$name == "tka"] <- 10
@@ -347,7 +344,7 @@ rxTest({
   })
 
   test_that("two finite bounds deep in either tail agree by symmetry (log-space branches)", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## dnorm(0, 1) truncated to [10, 20] and its mirror [-20, -10]: the plain
     ## pnorm(upper)-pnorm(lower) underflows to exactly 0 on BOTH windows (so
     ## neither can serve as an independent "expected" value), but by the
@@ -381,7 +378,7 @@ rxTest({
   })
 
   test_that("a two-finite-bound window straddling the mean matches the direct formula", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
     .ini <- u$iniDf
     .ini$lower[.ini$name == "tka"] <- -1
@@ -394,7 +391,7 @@ rxTest({
   })
 
   test_that("a Cauchy prior with two finite bounds exercises both tail branches", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## dcauchy(0, 1) truncated to [10, 20] and its mirror [-20, -10]: same
     ## symmetry argument as the normal-distribution version above, this
     ## time exercising logCauchyCdfDiff()'s zu<=0/zl>=0 branches (the
@@ -426,7 +423,7 @@ rxTest({
   })
 
   test_that("a non-positive-definite live omega contributes -Inf, not an error or NaN", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     ## a live covariance that has gone indefinite mid-optimization: valid
@@ -441,7 +438,7 @@ rxTest({
   })
 
   test_that("gapped omega diagonal indices are refused, not silently overrun", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## the C kernel sizes omega positionally from the eta count; a gapped
     ## neta1 (only reachable via a hand-edited iniDf) would read/write past
     ## the end of that array if this were not caught first. Grab a valid
@@ -458,7 +455,7 @@ rxTest({
   })
 
   test_that("an invWishart with too few degrees of freedom is refused", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## a 2x2 block needs nu > 1
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(1)")
     om <- u$omega
@@ -466,7 +463,7 @@ rxTest({
   })
 
   test_that("a population parameter literally named 'om.<x>' is refused, not confused with omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .ini$name[.ini$name == "tka"] <- "om.tka"
@@ -477,7 +474,7 @@ rxTest({
   })
 
   test_that("two different priors on the same key is refused rather than silently resolved", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
     ## hand-corrupt as if a second, different prior were stored under the same
     ## key -- not reachable through real 'ini()' syntax (lotri itself refuses
@@ -494,7 +491,7 @@ rxTest({
     ## a whole-block distribution (invWishart()/multiNormal()) still applies
     ## to the block's own DIAGONAL lookup, not an off-diagonal row -- only a
     ## marginal normal/Cauchy on the one covariance cell is supported here
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
@@ -507,7 +504,7 @@ rxTest({
   })
 
   test_that("real ini()/prior() syntax reaches an off-diagonal covariance element", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxode2(function() {
       ini({
         tka <- 0.45; tcl <- 1; tv <- 3.45
@@ -530,7 +527,7 @@ rxTest({
     ## ONLY the one cell termValue() read (not both symmetric cells -- an
     ## earlier version of this wrote both and was measured exactly 2x the
     ## correct total against this same check)
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
@@ -549,7 +546,7 @@ rxTest({
   })
 
   test_that("a whole-block invWishart() prior is unaffected by the off-diagonal relaxation", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(20)")
     r <- rxPriorLogDensity(u, omega=u$omega)
     expect_true(is.finite(r$value))
@@ -562,7 +559,7 @@ rxTest({
     # regression test for that guard. Only reachable via a hand-edited or
     # piped iniDf, same as the "off-diagonal ... refused" test elsewhere in
     # this file.
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
@@ -573,7 +570,7 @@ rxTest({
   })
 
   test_that("prior simulation (usePrior=TRUE) refuses an off-diagonal covariance prior with a clear message", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxode2(function() {
       ini({
         tka <- 0.45; tcl <- 1; tv <- 3.45
@@ -592,31 +589,31 @@ rxTest({
   })
 
   test_that("an unsupported distribution is a clear error, not a silent wrong value", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dgamma(2, 1)")
     expect_error(rxPriorLogDensity(u), "not yet evaluated")
   })
 
   test_that("an explicit invWishart scale-matrix argument is refused for now", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "eta.ka", "invWishart(4, lotri(eta.ka ~ 0.6))")
     expect_error(rxPriorLogDensity(u), "scale matrix")
   })
 
   test_that("a missing theta value for a prior-carrying parameter is an error", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     expect_error(rxPriorLogDensity(u), "tka")
   })
 
   test_that("a missing omega for an omega-carrying prior is an error", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     expect_error(rxPriorLogDensity(u), "omega")
   })
 
   test_that("a partial omega covering only the referenced block is refused, not truncated", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## the C kernel addresses omega positionally, by the model's own eta
     ## numbering -- a submatrix missing the other etas cannot be reindexed
     ## into that numbering, so this has to be a clear (loud) error rather
@@ -634,7 +631,7 @@ rxTest({
   ## the two are genuinely different densities (see rxode2prior.h).
 
   test_that("nwpri 1x1 omega block matches NONMEM's closed form and its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.8
@@ -654,7 +651,7 @@ rxTest({
   })
 
   test_that("nwpri 2x2 omega block matches its numeric gradient", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     om["eta.cl", "eta.cl"] <- 0.35
@@ -678,7 +675,7 @@ rxTest({
   })
 
   test_that("nwpri and general give genuinely different omega values", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     ## a real cross-check, not just "the code ran": if these ever matched
     ## exactly, the nwpri path would silently be computing the textbook
     ## formula instead of NONMEM's
@@ -693,7 +690,7 @@ rxTest({
   })
 
   test_that("a Cauchy prior is refused under method=\"nwpri\"", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
     expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="nwpri"), "NWPRI")
     ## the same model still works under the default "general" method
@@ -701,7 +698,7 @@ rxTest({
   })
 
   test_that("nwpri theta prior reuses the same multivariate-normal math as general", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
     rNwpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="nwpri")
@@ -733,7 +730,7 @@ rxTest({
   })
 
   test_that("tnpri on a single omega diagonal is identical to general (raw omega scale)", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
@@ -747,7 +744,7 @@ rxTest({
   })
 
   test_that("tnpri on a joint theta+omega block is identical to general", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(rxode2(function() {
       ini({
         tka <- 0.45; tcl <- 1; tv <- 3.45
@@ -770,7 +767,7 @@ rxTest({
   })
 
   test_that("tnpri on a joint multi-om.<eta> block (no theta anchor) is identical to general", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- rxUiDecompress(rxode2(function() {
       ini({
         tka <- 0.45; tcl <- 1; tv <- 3.45
@@ -795,7 +792,7 @@ rxTest({
   })
 
   test_that("tnpri theta-only prior reuses the same multivariate-normal math as general", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
     rTnpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="tnpri")
@@ -804,13 +801,13 @@ rxTest({
   })
 
   test_that("a Cauchy prior is refused under method=\"tnpri\"", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
     expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="tnpri"), "TNPRI")
   })
 
   test_that("invWishart() is refused under method=\"tnpri\"", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     expect_error(rxPriorLogDensity(u, omega=om, method="tnpri"), "TNPRI method")
@@ -818,7 +815,7 @@ rxTest({
 
 
   test_that("rxPriorBuildSpec() returns a reusable external pointer", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
     spec <- rxPriorBuildSpec(u)
     expect_true(inherits(spec, "externalptr"))

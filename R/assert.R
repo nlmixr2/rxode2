@@ -189,7 +189,7 @@ assertRxUiIovNoCor <- function(ui, extra="", .var.name=.vname(ui)) {
   ## a `:same:<master>` suffix, which is not a different level of
   ## variability and must not be read as one
   .w <- which(!is.na(.iniDf$condition) &
-                lotri::lotriBaseCondition(.iniDf$condition) != "id" &
+                .lotriBaseCondition(.iniDf$condition) != "id" &
                  is.na(.iniDf$err) &
                  .iniDf$neta1 != .iniDf$neta2)
   if (length(.w) > 0) {
@@ -323,11 +323,9 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorStanName <- function(name) {
-  .ns <- asNamespace("lotri")
-  if (!exists("lotriPriorDists", envir=.ns, inherits=FALSE)) {
-    return(NA_character_)
-  }
-  .d <- get("lotriPriorDists", envir=.ns)()
+  .f <- .lotriFun("lotriPriorDists")
+  if (is.null(.f)) return(NA_character_)
+  .d <- .f()
   .w <- which(.d$name == name | .d$stanName == name)
   if (length(.w) != 1L) return(NA_character_)
   .d$stanName[.w]
@@ -621,7 +619,7 @@ assertRxUiRandomOnIdOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
   ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
   .iniDf <- ui$iniDf
-  .eta <- lotri::lotriBaseCondition(.iniDf[!is.na(.iniDf$neta1), "condition"])
+  .eta <- .lotriBaseCondition(.iniDf[!is.na(.iniDf$neta1), "condition"])
   if (!all(.eta == "id")) {
     stop("'", .var.name, "' can only have random effects on ID", extra, call.=FALSE)
   }
