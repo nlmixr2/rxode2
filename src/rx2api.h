@@ -189,6 +189,13 @@ extern "C" {
 
   void atolRtolFactor_(double factor);
 
+  // An out-of-range index handed to one of the accessors above cannot raise
+  // from inside an OpenMP region -- Rf_error() longjmps past the runtime's own
+  // state on a worker thread.  It is recorded instead; these report it.
+  // rxApiErrRaise() must be called on the main thread, outside any region.
+  int rxApiErrPending(void);
+  void rxApiErrRaise(void);
+
 #if defined(__cplusplus)
 }
 #endif

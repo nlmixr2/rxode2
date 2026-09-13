@@ -75,6 +75,12 @@ extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
+// Raises an index error an accessor recorded from inside a parallel region,
+// where Rf_error() could not run (rx2api.c).  Declared here rather than by
+// including rx2api.h: that header declares rxSetSilentErr() void while this
+// file defines it bool, so pulling it in breaks on an unrelated pre-existing
+// mismatch.
+extern "C" void rxApiErrRaise(void);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
@@ -5513,6 +5519,10 @@ List rxSolve_df(const RObject &obj,
     rxSolveFree();
     stop(_("aborted solve"));
   }
+  // An accessor handed a bad index from inside a parallel region could not
+  // raise there (see rxApiError in rx2api.c); this is the serial boundary that
+  // reports it, so the bug surfaces rather than being swallowed.
+  rxApiErrRaise();
   int doDose = 0;
   if (rxSolveDat->addDosing.isNull()){
     // only evid=0
