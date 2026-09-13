@@ -142,6 +142,81 @@
   TRUE
 }
 
+## Evaluate an expression to one finite number under `vals`; NA on failure.
+.odeToLinNum <- function(expr, vals) {
+  .v <- tryCatch(eval(expr, vals, baseenv()), error = function(e) NA_real_)
+  if (!is.numeric(.v) || length(.v) != 1L || !is.finite(.v)) return(NA_real_)
+  as.numeric(.v)
+}
+
+## Relative-tolerance equality for the rate comparisons.
+.odeToLinNear <- function(a, b) {
+  !is.na(a) && !is.na(b) && abs(a - b) <= 1e-8 * max(1, abs(a), abs(b))
+}
+
+## The rate constants and central volume linCmt() will use for `params` taking
+## `vals`.  rxDerived() runs the same `_linCmtParse` parameterization inference
+## that linCmt() does, so this cannot drift from it.  NULL when the names are
+## not a parameterization linCmt() recognizes.
+.odeToLinDerivedRates <- function(params, vals) {
+  .d <- tryCatch(do.call(rxDerived, vals[params]), error = function(e) NULL) # nolint
+  if (!is.data.frame(.d) || nrow(.d) != 1L) return(NULL)
+  .get <- function(.n) {
+    if (is.null(.d[[.n]])) return(0)
+    .v <- as.numeric(.d[[.n]][1L])
+    if (!is.finite(.v)) return(NA_real_)
+    .v
+  }
+  list(kel = .get("kel"), k12 = .get("k12"), k21 = .get("k21"),
+       k13 = .get("k13"), k31 = .get("k31"), vc = .get("vc"))
+}
+
+## TRUE when linCmt(<params>) reproduces this system's own rate constants and
+## reported volume.  The emitted call passes parameter NAMES only, so the
+## structure of a rate coefficient is otherwise discarded: `- 2 * kel * central`
+## would solve as if it eliminated at `kel`, and `cp <- central / (2 * v)` would
+## report `central / vc`.  Compared at two parameter assignments.
+.odeToLinRatesMatch <- function(odes, topo, params, vExpr) {
+  if (length(params) == 0L) return(FALSE)
+  .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
+  .matches <- function(.offset) {
+    .vals <- as.list(setNames(as.numeric(seq_along(params)) + .offset, params))
+    .r <- .odeToLinDerivedRates(params, .vals)
+    if (is.null(.r)) return(FALSE)
+    .net <- function(.cmt, .state) {
+      .e <- .odeToLinNetCoef(.byCmt[[.cmt]]$terms, .state)
+      if (is.null(.e)) return(NA_real_)
+      .odeToLinNum(.e, .vals)
+    }
+    ## linCmt() reports central / vc.
+    if (!.odeToLinNear(.odeToLinNum(vExpr, .vals), .r$vc)) return(FALSE)
+    ## linCmt() absorbs at the value of the parameter named ka, so the depot
+    ## rate must be that parameter itself, unscaled.
+    if (!is.null(topo$depot)) {
+      .e <- .odeToLinNetCoef(.byCmt[[topo$depot]]$terms, topo$depot)
+      if (is.null(.e)) return(FALSE)
+      .sym <- .freeSymbolsInExpr(.e)
+      if (length(.sym) != 1L || is.null(.vals[[.sym]])) return(FALSE)
+      if (!.odeToLinNear(-.odeToLinNum(.e, .vals), .vals[[.sym]])) return(FALSE)
+    }
+    ## Central loses kel plus every peripheral transfer.
+    .peri <- list(list(topo$peripheral1, .r$k12, .r$k21),
+                  list(topo$peripheral2, .r$k13, .r$k31))
+    .out <- .r$kel +
+      (if (is.null(topo$peripheral1)) 0 else .r$k12) +
+      (if (is.null(topo$peripheral2)) 0 else .r$k13)
+    if (!.odeToLinNear(-.net(topo$central, topo$central), .out)) return(FALSE)
+    for (.p in .peri) {
+      if (is.null(.p[[1L]])) next
+      if (!.odeToLinNear(.net(.p[[1L]], topo$central), .p[[2L]])) return(FALSE)
+      if (!.odeToLinNear(-.net(.p[[1L]], .p[[1L]]), .p[[3L]])) return(FALSE)
+      if (!.odeToLinNear(.net(topo$central, .p[[1L]]), .p[[3L]])) return(FALSE)
+    }
+    TRUE
+  }
+  .matches(1.5) && .matches(3.7)
+}
+
 ## Detect the topology of a linear ODE system and classify each compartment.
 ## odes: list of {cmt, terms}; outputCmt: the central compartment (from the
 ## output line).  Returns list(ncmt, oral0, central, depot, peripheral1,
@@ -482,6 +557,10 @@
   .params <- c(.params, .freeSymbolsInExpr(.out$vExpr))
   .params <- setdiff(unique(.params),
                      c(.states, .out$var, "t", "time", "pi"))
+
+  ## linCmt() rebuilds the rate constants from those names alone, so refuse
+  ## unless they reproduce the system that was written.
+  if (!.odeToLinRatesMatch(.odes, .topo, .params, .out$vExpr)) return(NULL)
 
   c(.topo, list(
     outputVar = .out$var,

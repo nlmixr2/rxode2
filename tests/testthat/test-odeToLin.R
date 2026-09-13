@@ -362,6 +362,131 @@ rxTest({
     expect_false(.odeToLinIsZeroExpr(quote(podo())))
   })
 
+
+  ## -----------------------------------------------------------------------
+  ## Rate reproduction: linCmt(<params>) passes parameter NAMES only, so a
+  ## coefficient that is not exactly the rate those names imply was silently
+  ## replaced by the rate linCmt() rebuilds from them.
+  ## -----------------------------------------------------------------------
+
+  .scaledKel <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tkel <- -1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); kel <- exp(tkel); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - 2 * kel * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+  }
+
+  test_that("odeToLin returns NULL for a scaled elimination coefficient", {
+    expect_null(.odeToLinDetect(.scaledKel()))
+  })
+
+  test_that("default rxSolve matches the ODE for a scaled elimination rate", {
+    # `2 * kel * central` emitted linCmt(ka, kel, v), which eliminates at kel:
+    # the model solved eliminated half as fast as the one written.
+    .m  <- .scaledKel()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 4))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-8)
+    expect_equal(max(.rDef$cp), 0.3039024, tolerance = 1e-5)
+  })
+
+  test_that("odeToLin returns NULL for a scaled absorption coefficient", {
+    # mass balance cannot see this one: both sides carry the same 2 * ka
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -2 * ka * depot
+        d/dt(central) <- 2 * ka * depot - cl/v * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))))
+  })
+
+  test_that("odeToLin returns NULL for an inverted elimination coefficient", {
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - v/cl * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))))
+  })
+
+  test_that("odeToLin returns NULL when the output volume is scaled", {
+    # `central / (vc * 1000)` (a unit conversion) converted to linCmt(), which
+    # reports central / vc -- a thousandfold error.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); vc <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/vc * central
+        cp <- central / (vc * 1000)
+        cp ~ add(add.sd)
+      })
+    }))
+    expect_null(.odeToLinDetect(.m))
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 4))
+    expect_equal(suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))$cp,
+                 suppressMessages(rxSolve(.m, .ev, addDosing = FALSE,
+                                          useLinCmt = FALSE))$cp,
+                 tolerance = 1e-8)
+  })
+
+  test_that("odeToLin returns NULL when a covariate scales a rate in the ODE", {
+    # `(cl/vc) * cms * central` passes only `cl` and `vc` to linCmt(), so the
+    # cms effect was dropped.  Folding cms into cl converts again.
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); vc <- exp(tv); cms <- 1 - COV / (COV + 1)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - (cl/vc) * cms * central
+        cp <- central / vc
+        cp ~ add(add.sd)
+      })
+    }))))
+    .fold <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); vc <- exp(tv); cms <- 1 - COV / (COV + 1)
+        cl <- exp(tcl) * cms
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - (cl/vc) * central
+        cp <- central / vc
+        cp ~ add(add.sd)
+      })
+    }))
+    expect_equal(.odeToLinDetect(.fold)$ncmt, 1L)
+  })
+
+  test_that("micro-constant parameterizations still convert", {
+    .info <- .odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tkel <- -1; tk12 <- -2; tk21 <- -3; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        kel <- exp(tkel); k12 <- exp(tk12); k21 <- exp(tk21); v <- exp(tv)
+        d/dt(central) <- -(kel + k12) * central + k21 * periph
+        d/dt(periph)  <- k12 * central - k21 * periph
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    })))
+    expect_equal(.info$ncmt,  2L)
+    expect_equal(.info$oral0, 0L)
+  })
+
   ## -----------------------------------------------------------------------
   ## Correctness: converted model matches ODE (tight tolerances)
   ## -----------------------------------------------------------------------

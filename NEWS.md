@@ -1564,6 +1564,18 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   that can carry such a term, so a model containing one now keeps its explicit
   ODEs, and `odeToLin()` names the term it declined to convert.
 
+- The same conversion no longer substitutes a different rate constant for the
+  one that was written.  The emitted `linCmt()` call passes parameter NAMES
+  only, so anything else in a rate coefficient or in the concentration line was
+  discarded: `- 2 * kel * central` solved as if it eliminated at `kel`,
+  `cp <- central / (vc * 1000)` reported `central / vc` (a thousandfold error),
+  and a covariate factor written into the ODE (`(cl / vc) * cms * central`) was
+  dropped.  Detection now compares the system's own rate constants and reported
+  volume against `rxDerived()` -- the same parameterization inference
+  `linCmt()` itself uses, so the two cannot drift apart -- and keeps the
+  explicit ODEs unless they agree.  Folding such a factor into the parameter
+  (`cl <- exp(lcl) * cms`) converts as before.
+
 - Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
   composite is much faster, because the analytic Jacobian model is no longer
   regenerated on every `rxSolve()`.  The augmented model's *text* was cached but
