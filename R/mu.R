@@ -568,7 +568,11 @@
 #' @author Matthew Fidler
 #' @noRd
 .muRefSetNonMuEta <- function(.curEta, env) {
-  if (!is.null(env$levels) && any(env$levels == .curEta)) return(invisible())
+  # An occasion-level (IOV) random effect is mu-referenced at its own level and
+  # is never recorded in `muRefDataFrame`, so it must never be demoted here.
+  # The level names live in `env$info$level`; `env$levels`, which this guard
+  # used to read, is assigned nowhere in the package, so the guard never fired.
+  if (any(env$info$level == .curEta)) return(invisible())
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
@@ -576,6 +580,38 @@
       env$muRefDataFrame <- env$muRefDataFrame[-.wEtaInDf,, drop = FALSE]
     }
   }
+}
+#' Message for 2+ between-subject random effects in one mu-referenced expression
+#'
+#' Random effects at *different* levels of variability (a between-subject eta
+#' plus an inter-occasion `| OCC` eta) are mu-referenced fine; they are tracked
+#' in `env$info$level` and never reach `.we`.  So reaching this message means
+#' every one of these random effects is declared at the subject level.
+#'
+#' @param .we Indices in `.names` of the id-level etas in the expression
+#' @param .wt Index in `.names` of the single population parameter
+#' @param .names Single variable names found in the additive expression
+#' @param env Mu referencing environment; `curLhs` names the parameter defined
+#' @return character message naming the parameters and the two ways to fix it
+#' @noRd
+.muRefMultiEtaMsg <- function(.we, .wt, .names, env) {
+  # `.names` is filled in by peeling the additive expression from its rightmost
+  # term inwards, so reversing puts the random effects back in the order the
+  # user wrote them.  That matters for the advice below: the last one written is
+  # the one a reader means as the occasion-level effect.
+  .etas <- rev(.names[.we])
+  .last <- .etas[length(.etas)]
+  .lhs <- deparse1(env$curLhs)
+  paste0("cannot mu-reference '", .names[.wt], "' against ", length(.etas),
+         " subject-level random effects in one expression: '",
+         paste(.etas, collapse="', '"), "'",
+         "\nmu-referencing pairs a population parameter with one random effect per level of variability",
+         "\n- if '", .last, "' is inter-occasion variability, declare its level in `ini({})`, ie `",
+         .last, " ~ 0.1 | OCC`",
+         "\n- otherwise keep one random effect on the mu-referenced line and combine the",
+         " other in on a following line; for a log-normal '", .lhs, "' that is `",
+         .lhs, "Base <- exp(", .names[.wt], " + ", .etas[1], ")` then `",
+         .lhs, " <- ", .lhs, "Base * exp(", .last, ")`")
 }
 # This function handles the extra information in a theta based mu referenced
 
@@ -645,8 +681,10 @@
       }
     }
   } else if (length(.we) != 0) {
-    # Mu reference can only occur on id-referenced items currently
-    stop("currently do not theta + eta1 + eta2")
+    # A population parameter mu-references one random effect per level of
+    # variability, so 2+ subject-level etas in one expression is ambiguous.
+    # Etas at other levels are held in `env$info$level` and never reach `.we`.
+    stop(.muRefMultiEtaMsg(.we, .wt, .names, env), call.=FALSE)
   }
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }

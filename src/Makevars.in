@@ -16,3 +16,10 @@ PKG_CPPFLAGS = @SUNDIALS_INC@
 # Release options -- -O3 gives meaningful speedup on the ODE hot paths
 PKG_CFLAGS  =  -D_isrxode2_ @O2@
 PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -include rxode2_sundials_stan_compat.h -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -DARMA_DONT_USE_OPENMP -DEIGEN_DONT_PARALLELIZE
+
+# Filled in by configure only when the Fortran compiler is flang and flang
+# reports it cannot act on a C-only flag that this platform's FFLAGS carries;
+# removed for every other toolchain, leaving R's own ALL_FFLAGS in force.
+# Kept commented so this file stays a parseable makefile.  See
+# inst/tools/fflags.R.
+#@FFLAGS_FILTER@
