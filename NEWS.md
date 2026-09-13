@@ -1378,35 +1378,10 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 ### Parsing
 
 - Two or more subject-level random effects in one mu-referenced expression now
-  report which parameters clash and how to resolve it.  This is the error a
-  model hits when it reads like inter-occasion variability but declares no
-  level for it (`etaVcOcc ~ 0.1` rather than `etaVcOcc ~ 0.1 | OCC`); the
-  message was `currently do not theta + eta1 + eta2`, which named nothing, and
-  the only advice reaching the user was the generic "try putting the
-  mu-referenced expression on a simple line".  It now names the population
-  parameter and both random effects in the order they were written, and gives
-  both fixes -- declaring the level, or splitting the line:
-
-  ```
-  cannot mu-reference 'lvc' against 2 subject-level random effects in one
-  expression: 'etaVc', 'etaVcOcc'
-  - if 'etaVcOcc' is inter-occasion variability, declare its level in
-    `ini({})`, ie `etaVcOcc ~ 0.1 | OCC`
-  - otherwise keep one random effect on the mu-referenced line and combine the
-    other in on a following line; for a log-normal 'vc' that is
-    `vcBase <- exp(lvc + etaVc)` then `vc <- vcBase * exp(etaVcOcc)`
-  ```
-
-  A between-subject eta, an inter-occasion eta and a covariate effect in one
-  exponential -- `vc <- exp(lvc + etaVc + etaVcOcc + eSiteVc * SITEFLAG)` --
-  is mu-referenced, and is now covered by tests over the term orders, a second
-  covariate, and a parameter whose occasion-level effect carries no covariate.
-
-- `.muRefSetNonMuEta()` reads the occasion-level random effects from
-  `env$info$level`.  The guard keeping them out of `$nonMuEtas` tested
-  `env$levels`, which is assigned nowhere in the package, so it never fired;
-  any caller reaching it with an inter-occasion eta would have demoted an
-  effect that is mu-referenced at its own level.
+  name the clashing parameters and both fixes -- declaring one at its own level
+  (`etaVcOcc ~ 0.1 | OCC`) or splitting the line -- rather than reporting
+  `currently do not theta + eta1 + eta2`.  The guard keeping occasion-level etas
+  out of `$nonMuEtas` now reads `env$info$level`, where the level names live.
 
 - A variable that is used *only* as an argument to an adaptive dosing call
   (`evid_()`, `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,

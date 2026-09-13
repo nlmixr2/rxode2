@@ -593,7 +593,6 @@
 #' @param .names Single variable names found in the additive expression
 #' @param env Mu referencing environment; `curLhs` names the parameter defined
 #' @return character message naming the parameters and the two ways to fix it
-#' @author Matthew L. Fidler
 #' @noRd
 .muRefMultiEtaMsg <- function(.we, .wt, .names, env) {
   # `.names` is filled in by peeling the additive expression from its rightmost
