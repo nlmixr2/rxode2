@@ -2665,19 +2665,20 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
         }
         assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
       }
-      # Only adopt the converted linCmt() model when the solve data does not
-      # address a compartment by a name the conversion renames away (otherwise
-      # those records would be routed nowhere, giving all-zero predictions).
-      # The renamed-away compartment set is derived once per model and cached.
-      .lost <- .odeToLinLostStates(.cacheKey, object, .converted) # nolint
-      if (length(.lost) == 0L) {
+      # Only adopt the converted linCmt() model when the solve data addresses
+      # every compartment the same way in both models -- by a name the
+      # conversion keeps, and by an index it does not renumber.  How the two
+      # models' compartments line up is derived once per model and cached.
+      .cmtInfo <- .odeToLinCmtInfo(.cacheKey, object, .converted, # nolint
+                                   .odeToLinCmtMap(.linInfo)) # nolint
+      if (.odeToLinCmtAlwaysOk(.cmtInfo)) { # nolint
         object <- .converted
       } else {
         .solveData <- .rxSolveUiEventData(events) # nolint
         if (is.null(.solveData)) {
           .solveData <- .rxSolveUiEventData(params) # nolint
         }
-        if (.odeToLinCmtCompatible(.lost, .solveData)) { # nolint
+        if (.odeToLinCmtCompatible(.cmtInfo, .solveData)) { # nolint
           object <- .converted
         }
       }

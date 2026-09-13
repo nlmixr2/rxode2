@@ -137,10 +137,16 @@
                      error = function(e) NA_real_)
       length(.v) == 1L && is.finite(.v) && abs(.v) < 1e-8
     }
-    if (!.balanced(1.5) || !.balanced(3.7)) return(FALSE)
+    if (!.balanced(.odeToLinProbe[1L]) || !.balanced(.odeToLinProbe[2L])) return(FALSE)
   }
   TRUE
 }
+
+## Offsets for the two parameter assignments the numeric guards probe at.
+## Irrational, so no expression with rational coefficients can cancel at both
+## by coincidence -- a guard that only samples round numbers can be satisfied
+## by a quadratic whose roots are exactly those numbers.
+.odeToLinProbe <- c(sqrt(2), exp(1))
 
 ## Evaluate an expression to one finite number under `vals`; NA on failure.
 .odeToLinNum <- function(expr, vals) {
@@ -214,7 +220,7 @@
     }
     TRUE
   }
-  .matches(1.5) && .matches(3.7)
+  .matches(.odeToLinProbe[1L]) && .matches(.odeToLinProbe[2L])
 }
 
 ## Detect the topology of a linear ODE system and classify each compartment.
@@ -713,61 +719,108 @@
 }
 
 ## Package-scope cache: maps the same model-text key used by `.odeToLinCache`
-## to the character vector of compartment names the conversion renamed away.
-## Deriving these requires `rxModelVars()` on both the original and converted
-## models, which is constant per converted model, so it is computed once here
-## rather than on every solve.
-.odeToLinLostCache <- new.env(parent = emptyenv(), hash = TRUE)
+## to how the converted model's compartments line up with the original's.
+## Deriving that requires `rxModelVars()` on both models, which is constant per
+## converted model, so it is computed once here rather than on every solve.
+.odeToLinCmtInfoCache <- new.env(parent = emptyenv(), hash = TRUE)
 
-## The compartment names the ODE->linCmt conversion renamed away (i.e. present
-## in the original model but not the converted one).  Cached by model key.
-.odeToLinLostStates <- function(cacheKey, original, converted) {
-  if (exists(cacheKey, envir = .odeToLinLostCache, inherits = FALSE)) {
-    return(get(cacheKey, envir = .odeToLinLostCache, inherits = FALSE))
+## How many leading compartment INDICES address the same compartment in both
+## models.  A numeric `cmt`, and an event table with no `cmt` column at all
+## (which doses compartment 1), are only safe up to this many: the conversion
+## renumbers whenever the ODE declares its compartments in a different order
+## from linCmt()'s canonical `depot`, `central`, and it drops any peripheral
+## the ODE declared as a state.
+.odeToLinSafeCmtN <- function(original, converted, cmtMap) {
+  .o <- rxModelVars(original)$state
+  .c <- rxModelVars(converted)$state
+  .n <- min(length(.o), length(.c))
+  if (.n == 0L) return(0L)
+  .head <- .o[seq_len(.n)]
+  .m <- cmtMap[.head]
+  .m[is.na(.m)] <- .head[is.na(.m)]
+  .k <- which(.m != .c[seq_len(.n)])
+  if (length(.k) == 0L) return(as.integer(.n))
+  as.integer(.k[1L] - 1L)
+}
+
+## How the converted model's compartments line up with the original's: the
+## names the conversion renamed away, the original's own state names, and how
+## far numeric compartment indices stay valid.  Cached by model key.
+.odeToLinCmtInfo <- function(cacheKey, original, converted, cmtMap) {
+  if (exists(cacheKey, envir = .odeToLinCmtInfoCache, inherits = FALSE)) {
+    return(get(cacheKey, envir = .odeToLinCmtInfoCache, inherits = FALSE))
   }
-  .lost <- setdiff(rxModelVars(original)$state, rxModelVars(converted)$state)
-  assign(cacheKey, .lost, envir = .odeToLinLostCache)
-  .lost
+  .o <- rxModelVars(original)$state
+  .c <- rxModelVars(converted)$state
+  .ret <- list(
+    lost   = setdiff(.o, .c),
+    states = .o,
+    nSafe  = .odeToLinSafeCmtN(original, converted, cmtMap),
+    nMax   = max(length(.o), length(.c))
+  )
+  assign(cacheKey, .ret, envir = .odeToLinCmtInfoCache)
+  .ret
+}
+
+## TRUE when no event data can tell the two models apart: every compartment
+## index lines up and no name was renamed away.  Materializing an event table
+## is not free, so the caller checks this first and skips it -- which is the
+## common case, every model whose compartments convert one for one.
+.odeToLinCmtAlwaysOk <- function(info) {
+  info$nSafe >= info$nMax && length(info$lost) == 0L
 }
 
 ## Is a converted linCmt() model safe to use for the given solve data?
 ##
-## The ODE->linCmt conversion renames compartments (e.g. an ODE `centre`
-## compartment becomes linCmt's `central`).  If the event data addresses a
-## compartment (in a dose or an observation record) by the *name* of an original
-## ODE compartment that the converted model no longer has, that record would
-## silently be routed nowhere -- producing all-zero predictions.  In that case
-## fall back to the original ODE model so behaviour matches solving without the
-## linCmt optimization.  `lost` is the (pre-computed) set of renamed-away
-## compartment names.  Numeric compartment indices are preserved by the
-## conversion, and names that are not compartments in the original model (e.g.
-## the special "(default)" placeholder in an event table) are handled
-## identically by both models, so both are left untouched here.
-.odeToLinCmtCompatible <- function(lost, data) {
-  if (length(lost) == 0L) {
-    return(TRUE)
-  }
+## The conversion renames compartments (an ODE `centre` becomes linCmt's
+## `central`) and renumbers them: linCmt() always orders its compartments
+## `depot`, `central`, and it keeps no state for a peripheral the ODE declared.
+## A record addressing a compartment by a *name* the converted model no longer
+## has would be routed nowhere (all-zero predictions); one addressing it by an
+## *index* past `info$nSafe` would be routed to a different compartment (a model
+## declaring `d/dt(central)` before `d/dt(depot)` numbers them the other way
+## round from linCmt(), so `cmt = 1` doses central before conversion and depot
+## after).  Either way, fall back to the original ODE model.  An event table
+## with no `cmt` column, and a name that is not a compartment of the original
+## model such as the "(default)" placeholder, both address compartment 1.
+.odeToLinCmtCompatible <- function(info, data) {
+  .defaultOk <- info$nSafe >= 1L
   if (is.null(data) || !is.data.frame(data)) {
-    return(TRUE)
+    return(.defaultOk)
   }
   .nm <- names(data)
   .col <- .nm[tolower(.nm) == "cmt"]
   if (length(.col) == 0L) {
-    return(TRUE)
+    return(.defaultOk)
   }
   .cmt <- data[[.col[1L]]]
   if (is.factor(.cmt)) {
     .cmt <- as.character(.cmt)
   }
   if (!is.character(.cmt)) {
-    ## numeric indices are preserved by the conversion
-    return(TRUE)
+    .cmt <- suppressWarnings(as.numeric(.cmt))
+    .cmt <- .cmt[!is.na(.cmt)]
+    if (length(.cmt) == 0L) {
+      return(.defaultOk)
+    }
+    ## A negative index turns a compartment off; it still names one.  An index
+    ## past every compartment of both models is an observation slot the two
+    ## handle alike -- NONMEM-style data observing a one compartment model in
+    ## `cmt = 2` must keep converting.
+    .k <- abs(.cmt)
+    return(all(.k >= 1 & (.k <= info$nSafe | .k > info$nMax)))
   }
   .cmt <- unique(.cmt[!is.na(.cmt)])
   if (length(.cmt) == 0L) {
-    return(TRUE)
+    return(.defaultOk)
   }
-  !any(.cmt %in% lost)
+  if (any(.cmt %in% info$lost)) {
+    return(FALSE)
+  }
+  if (!all(.cmt %in% info$states)) {
+    return(.defaultOk)
+  }
+  TRUE
 }
 
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).

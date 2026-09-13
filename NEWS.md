@@ -1576,6 +1576,16 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   explicit ODEs unless they agree.  Folding such a factor into the parameter
   (`cl <- exp(lcl) * cms`) converts as before.
 
+- The same conversion no longer renumbers a model's compartments out from
+  under its event data.  `linCmt()` orders its compartments `depot`, `central`
+  and keeps no state for a peripheral, so a model that declares
+  `d/dt(central)` before `d/dt(depot)` numbers them the other way round: a
+  record addressing compartment 1 by index (which includes an event table with
+  no `cmt` column at all) dosed central before conversion and depot after,
+  turning an IV profile into a plausible oral one.  Such a solve now keeps the
+  explicit ODEs.  Addressing a compartment by name, and NONMEM-style data
+  observing a one compartment model in `cmt = 2`, both still convert.
+
 - Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
   composite is much faster, because the analytic Jacobian model is no longer
   regenerated on every `rxSolve()`.  The augmented model's *text* was cached but

@@ -487,6 +487,113 @@ rxTest({
     expect_equal(.info$oral0, 0L)
   })
 
+
+  ## -----------------------------------------------------------------------
+  ## Compartment numbering: linCmt() orders its compartments depot, central
+  ## and keeps no state for a peripheral, so a numeric cmt does not always
+  ## address the same compartment after conversion.
+  ## -----------------------------------------------------------------------
+
+  ## `d/dt(central)` declared before `d/dt(depot)`, so the ODE numbers them the
+  ## other way round from linCmt().
+  .reordered <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- ka * depot - cl/v * central
+        d/dt(depot)   <- -ka * depot
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+  }
+
+  .reorderedEv <- function(cmt) {
+    data.frame(ID = 1L, TIME = c(0, 2, 4, 8, 12, 24),
+               AMT = c(100, 0, 0, 0, 0, 0),
+               EVID = c(1L, 0L, 0L, 0L, 0L, 0L),
+               CMT = cmt, stringsAsFactors = FALSE)
+  }
+
+  ## Whether the two solves used the same compiled model, i.e. whether the
+  ## linCmt() conversion was adopted.
+  .sameDll <- function(a, b) {
+    .d <- function(r) {
+      normalizePath(
+        get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
+        winslash = "/", mustWork = FALSE)
+    }
+    identical(.d(a), .d(b))
+  }
+
+  test_that("a reordered declaration keeps numeric cmt records on the ODEs", {
+    # cmt = 1 is central in the ODE model and depot after conversion, so the
+    # default solved a plausible oral profile in place of the IV one.
+    .m  <- .reordered()
+    .ev <- .reorderedEv(1L)
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-8)
+    expect_true(.sameDll(.rDef, .rOde))
+  })
+
+  test_that("a reordered declaration still converts when records name the compartment", {
+    # A name is unambiguous in both models, so the optimization is kept.
+    .m  <- .reordered()
+    .ev <- .reorderedEv("central")
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_false(.sameDll(.rDef, .rOde))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
+  test_that("NONMEM-style observations past every compartment still convert", {
+    # cmt = 2 on a one compartment model is an observation slot, not the
+    # peripheral: both models treat it alike, so this must keep converting.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl/v * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+    .ev <- data.frame(ID = 1L, TIME = c(0, 2, 4, 8), AMT = c(100, 0, 0, 0),
+                      EVID = c(1L, 0L, 0L, 0L), CMT = c(1L, 2L, 2L, 2L))
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_false(.sameDll(.rDef, .rOde))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
+  test_that(".odeToLinCmtCompatible gates numeric and named compartments", {
+    .info <- list(lost = "periph", states = c("central", "periph"),
+                  nSafe = 1L, nMax = 2L)
+    expect_true(.odeToLinCmtCompatible(.info, NULL))                         # default cmt 1
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = 1L)))
+    expect_false(.odeToLinCmtCompatible(.info, data.frame(cmt = 2L)))        # periph, dropped
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = 3L)))         # observation slot
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = -1L)))        # turned off
+    expect_false(.odeToLinCmtCompatible(.info, data.frame(cmt = "periph")))  # renamed away
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = "central")))
+    ## Renumbered: nothing addressable by index is safe.
+    .re <- list(lost = character(0), states = c("central", "depot"),
+                nSafe = 0L, nMax = 2L)
+    expect_false(.odeToLinCmtCompatible(.re, NULL))
+    expect_false(.odeToLinCmtCompatible(.re, data.frame(cmt = 1L)))
+    expect_true(.odeToLinCmtCompatible(.re, data.frame(cmt = 3L)))
+    expect_true(.odeToLinCmtCompatible(.re, data.frame(cmt = "central")))
+  })
+
+  test_that(".odeToLinCmtAlwaysOk skips the data only when nothing can differ", {
+    # the common case: every compartment converts one for one
+    expect_true(.odeToLinCmtAlwaysOk(list(lost = character(0), nSafe = 2L, nMax = 2L)))
+    expect_false(.odeToLinCmtAlwaysOk(list(lost = "periph", nSafe = 1L, nMax = 2L)))
+    expect_false(.odeToLinCmtAlwaysOk(list(lost = character(0), nSafe = 0L, nMax = 2L)))
+  })
+
   ## -----------------------------------------------------------------------
   ## Correctness: converted model matches ODE (tight tolerances)
   ## -----------------------------------------------------------------------
