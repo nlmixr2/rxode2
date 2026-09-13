@@ -311,7 +311,8 @@
 </ul></div>
 <div class="section level4">
 <h4 id="parsing-5-1-7">Parsing<a class="anchor" aria-label="anchor" href="#parsing-5-1-7"></a></h4>
-<ul><li>
+<ul><li><p>Two or more subject-level random effects in one mu-referenced expression now name the clashing parameters and both fixes – declaring one at its own level (<code>etaVcOcc ~ 0.1 | OCC</code>) or splitting the line – rather than reporting <code>currently do not theta + eta1 + eta2</code>. The guard keeping occasion-level etas out of <code>$nonMuEtas</code> now reads <code>env$info$level</code>, where the level names live.</p></li>
+<li>
 <p>A variable that is used <em>only</em> as an argument to an adaptive dosing call (<code><a href="../reference/evid_.html">evid_()</a></code>, <code><a href="../reference/bolus.html">bolus()</a></code>, <code><a href="../reference/infuse.html">infuse()</a></code>, <code><a href="../reference/infuseDur.html">infuseDur()</a></code>, <code><a href="../reference/replace.html">replace()</a></code>, <code><a href="../reference/multiply.html">multiply()</a></code>, <code><a href="../reference/phantom.html">phantom()</a></code>, <code><a href="../reference/obs.html">obs()</a></code>) is now a parse-time error instead of an uncompilable model. These statements consume their arguments as text, so such a variable was never registered and the generated C referenced an undeclared identifier; the failure only showed up as a compiler error that looked like a broken toolchain. The message now names the variable, the argument and the function, and points at the fix (assign it to a model variable first):</p>
 <pre><code>undeclared 'DOSE' in 'amt' of 'infuseDur()'; assign first: 'amtVal &lt;- DOSE'</code></pre>
 <p>The check runs once the whole model is parsed, so a variable assigned below the dosing statement still counts as declared (<a href="https://github.com/nlmixr2/rxode2/issues/1231" class="external-link">#1231</a>).</p>
