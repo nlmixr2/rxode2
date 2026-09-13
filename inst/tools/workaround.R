@@ -452,6 +452,8 @@ if (.rxDisableTbb) {
 
 
 
+if (file.exists("inst/tools/fflags.R")) source("inst/tools/fflags.R")
+
 if (.Platform$OS.type == "windows") {
   .makevars <- file("src/Makevars.win", "wb")
   .i <- "I"

@@ -764,6 +764,15 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Compilation
 
+- The Fortran sources are no longer compiled with a C-only diagnostic flag on
+  check configurations whose `FFLAGS` carries one.  `flang` accepts `-Wall` but
+  reports it unusable once per Fortran file, which `R CMD check` collects as a
+  significant installation warning.  The flag comes from the configuration
+  rather than from rxode2, which sets no `PKG_FFLAGS`, so `configure` drops it
+  from the Fortran compile line only when the Fortran compiler is `flang` and
+  `flang` itself reports it unusable.  Every other toolchain, `gfortran`
+  included, compiles exactly as before.
+
 - `getSolvingOptionsInd()` now walks the subject array at the stride it was
   allocated with rather than at its own translation unit's
   `sizeof(rx_solving_options_ind)`.  `src/rx2api.c` is the package's ABI
