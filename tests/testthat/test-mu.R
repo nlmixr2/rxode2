@@ -710,4 +710,329 @@ rxTest({
     expect_true("eta.v" %in% ui$muRefDataFrame$eta)
 
   })
+  # A between-subject eta, an inter-occasion eta and a covariate effect in one
+  # exponential is the natural way to add a covariate to an IOV model.  All
+  # three together must mu-reference exactly as the two-line split does: the
+  # subject-level eta paired with its population parameter in
+  # `$muRefDataFrame`, the occasion-level eta tracked in `$level` (it is
+  # mu-referenced at its own level and is never a `$muRefDataFrame` row), the
+  # covariate in `$muRefCovariateDataFrame`, and nothing in `$nonMuEtas`.
+
+  muIovCovTriple <- function() {
+    ini({
+      lcl <- 1.16
+      lvc <- 1.25
+      eSiteVc <- 0
+      CcAddSd <- c(0, 5)
+      CcPropSd <- c(0, 0.37)
+      etaCl ~ 0.1
+      etaVc ~ 0.1
+      etaVcOcc ~ 0.1 | OCC
+    })
+    model({
+      cl <- exp(lcl + etaCl)
+      vc <- exp(lvc + etaVc + etaVcOcc + eSiteVc * SITEFLAG)
+      kel <- cl / vc
+      d/dt(central) <- -kel * central
+      Cc <- 1000 * central / vc
+      Cc ~ add(CcAddSd) + prop(CcPropSd)
+    })
+  }
+
+  # algebraically identical to muIovCovTriple(), written as the documented
+  # two-line split
+  muIovCovSplit <- function() {
+    ini({
+      lcl <- 1.16
+      lvc <- 1.25
+      eSiteVc <- 0
+      CcAddSd <- c(0, 5)
+      CcPropSd <- c(0, 0.37)
+      etaCl ~ 0.1
+      etaVc ~ 0.1
+      etaVcOcc ~ 0.1 | OCC
+    })
+    model({
+      cl <- exp(lcl + etaCl)
+      vcBase <- exp(lvc + etaVc + eSiteVc * SITEFLAG)
+      vc <- vcBase * exp(etaVcOcc)
+      kel <- cl / vc
+      d/dt(central) <- -kel * central
+      Cc <- 1000 * central / vc
+      Cc ~ add(CcAddSd) + prop(CcPropSd)
+    })
+  }
+
+  test_that("bsv eta + iov eta + covariate in one exponential is mu-referenced", {
+
+    ui <- rxode(muIovCovTriple)
+
+    expect_length(ui$nonMuEtas, 0)
+
+    # the subject-level etas are mu-referenced against their population
+    # parameters; the occasion-level eta is not a `$muRefDataFrame` row
+    expect_equal(ui$muRefDataFrame$eta, c("etaCl", "etaVc"))
+    expect_equal(ui$muRefDataFrame$theta, c("lcl", "lvc"))
+    expect_equal(ui$muRefDataFrame$level, c("id", "id"))
+
+    expect_equal(ui$eta, c("etaCl", "etaVc"))
+    expect_equal(ui$level, "etaVcOcc")
+
+    # the covariate effect is mu-referenced onto the same population parameter
+    expect_equal(ui$muRefCovariateDataFrame$theta, "lvc")
+    expect_equal(ui$muRefCovariateDataFrame$covariate, "SITEFLAG")
+    expect_equal(ui$muRefCovariateDataFrame$covariateParameter, "eSiteVc")
+
+    # every parameter in the exponential is back-transformed with exp(), the
+    # occasion-level eta included
+    curEval <- ui$muRefCurEval
+    expect_equal(curEval$curEval[curEval$parameter == "lvc"], "exp")
+    expect_equal(curEval$curEval[curEval$parameter == "etaVc"], "exp")
+    expect_equal(curEval$curEval[curEval$parameter == "etaVcOcc"], "exp")
+  })
+
+  test_that("the one-line form mu-references like the two-line split", {
+
+    triple <- rxode(muIovCovTriple)
+    split <- rxode(muIovCovSplit)
+
+    expect_equal(triple$nonMuEtas, split$nonMuEtas)
+    expect_equal(triple$muRefDataFrame, split$muRefDataFrame)
+    expect_equal(triple$muRefCovariateDataFrame, split$muRefCovariateDataFrame)
+  })
+
+  test_that("an occasion-level eta is never demoted to a non-mu eta", {
+    # `.muRefSetNonMuEta()` must skip anything declared at a level other than
+    # `id`; the level names come from `env$info$level`
+    env <- new.env(parent = emptyenv())
+    env$info <- list(level = "etaVcOcc")
+    env$nonMuEtas <- NULL
+    env$muRefDataFrame <- data.frame(eta = character(0), theta = character(0),
+                                     level = character(0))
+
+    .muRefSetNonMuEta("etaVcOcc", env)
+    expect_length(env$nonMuEtas, 0)
+
+    # a subject-level eta is still demoted
+    .muRefSetNonMuEta("etaVc", env)
+    expect_equal(env$nonMuEtas, "etaVc")
+  })
+
+  test_that("mu-referencing survives the term order and a second covariate", {
+
+    # the covariate ahead of both etas
+    covFirst <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + eSiteVc * SITEFLAG + etaVc + etaVcOcc)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    # the covariate between the two etas
+    covMiddle <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + etaVc + eSiteVc * SITEFLAG + etaVcOcc)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    # the covariate multiplied on the other side
+    covOtherSide <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + etaVc + etaVcOcc + SITEFLAG * eSiteVc)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    # the occasion-level eta ahead of the subject-level one
+    iovFirst <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + etaVcOcc + etaVc + eSiteVc * SITEFLAG)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    for (model in list(covFirst, covMiddle, covOtherSide, iovFirst)) {
+      ui <- rxode(model)
+      expect_length(ui$nonMuEtas, 0)
+      expect_equal(ui$muRefDataFrame$eta, "etaVc")
+      expect_equal(ui$muRefDataFrame$theta, "lvc")
+      expect_equal(ui$muRefDataFrame$level, "id")
+      expect_equal(ui$level, "etaVcOcc")
+      expect_equal(ui$muRefCovariateDataFrame$theta, "lvc")
+      expect_equal(ui$muRefCovariateDataFrame$covariate, "SITEFLAG")
+      expect_equal(ui$muRefCovariateDataFrame$covariateParameter, "eSiteVc")
+    }
+
+    # two covariates alongside both etas
+    twoCov <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        eWtVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + etaVc + etaVcOcc + eSiteVc * SITEFLAG + eWtVc * WT)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    ui <- rxode(twoCov)
+    expect_length(ui$nonMuEtas, 0)
+    expect_equal(ui$muRefDataFrame$eta, "etaVc")
+    expect_equal(ui$level, "etaVcOcc")
+    expect_equal(ui$muRefCovariateDataFrame$theta, c("lvc", "lvc"))
+    expect_equal(sort(ui$muRefCovariateDataFrame$covariate), c("SITEFLAG", "WT"))
+  })
+
+  test_that("an iov eta mu-references on a parameter whose bsv eta has no covariate", {
+
+    iovOnCovariateFreeEta <- function() {
+      ini({
+        lcl <- 1.16
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaCl ~ 0.1
+        etaVc ~ 0.1
+        etaClOcc ~ 0.1 | OCC
+      })
+      model({
+        # the covariate is on vc, the occasion-level eta is on cl
+        cl <- exp(lcl + etaCl + etaClOcc)
+        vc <- exp(lvc + etaVc + eSiteVc * SITEFLAG)
+        d/dt(central) <- -cl / vc * central
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    ui <- rxode(iovOnCovariateFreeEta)
+    expect_length(ui$nonMuEtas, 0)
+    expect_equal(ui$muRefDataFrame$eta, c("etaCl", "etaVc"))
+    expect_equal(ui$muRefDataFrame$theta, c("lcl", "lvc"))
+    expect_equal(ui$level, "etaClOcc")
+    expect_equal(ui$muRefCovariateDataFrame$theta, "lvc")
+
+    # an occasion-level eta with a covariate but no subject-level eta on the
+    # same parameter still keeps the covariate mu-referenced
+    iovNoBsv <- function() {
+      ini({
+        lvc <- 1.25
+        eSiteVc <- 0
+        CcAddSd <- c(0, 5)
+        etaVcOcc ~ 0.1 | OCC
+      })
+      model({
+        vc <- exp(lvc + etaVcOcc + eSiteVc * SITEFLAG)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    ui <- rxode(iovNoBsv)
+    expect_length(ui$nonMuEtas, 0)
+    expect_length(ui$muRefDataFrame$eta, 0)
+    expect_equal(ui$level, "etaVcOcc")
+    expect_equal(ui$muRefCovariateDataFrame$theta, "lvc")
+    expect_equal(ui$muRefCovariateDataFrame$covariate, "SITEFLAG")
+  })
+
+  test_that("two subject-level etas in one expression name both etas and the fix", {
+
+    twoBsvEtas <- function() {
+      ini({
+        lvc <- 1.25
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+        etaVcOcc ~ 0.1
+      })
+      model({
+        vc <- exp(lvc + etaVc + etaVcOcc)
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    # this is the shape that looks like an IOV model but declares no level; the
+    # message has to name the parameters and say how to resolve it rather than
+    # only advising a "simple line"
+    expect_error(suppressWarnings(suppressMessages(rxode(twoBsvEtas))))
+
+    # `.names` arrives in the order the additive walk collects it, which is the
+    # reverse of the order written in `exp(lvc + etaVc + etaVcOcc)`
+    msg <- .muRefMultiEtaMsg(c(1L, 3L), 2L, c("etaVcOcc", "lvc", "etaVc"),
+                             list(curLhs = quote(vc)))
+    expect_match(msg, "lvc", fixed = TRUE)
+    expect_match(msg, "etaVc", fixed = TRUE)
+    expect_match(msg, "etaVcOcc", fixed = TRUE)
+    expect_match(msg, "etaVcOcc ~ 0.1 | OCC", fixed = TRUE)
+    expect_match(msg, "vcBase <- exp(lvc + etaVc)", fixed = TRUE)
+    expect_match(msg, "vc <- vcBase * exp(etaVcOcc)", fixed = TRUE)
+  })
+
+  test_that("a random effect inside a nonlinear function is still non-mu referenced", {
+
+    nonlinearEta <- function() {
+      ini({
+        lvc <- 1.25
+        CcAddSd <- c(0, 5)
+        etaVc ~ 0.1
+      })
+      model({
+        vc <- exp(lvc + etaVc * log(WT))
+        d/dt(central) <- -central / vc
+        Cc <- 1000 * central / vc
+        Cc ~ add(CcAddSd)
+      })
+    }
+
+    expect_warning(ui <- rxode(nonlinearEta),
+                   "some etas defaulted to non-mu referenced")
+    expect_equal(ui$nonMuEtas, "etaVc")
+    expect_length(ui$muRefDataFrame$eta, 0)
+  })
 })
