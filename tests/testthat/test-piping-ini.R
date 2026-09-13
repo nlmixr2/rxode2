@@ -1245,7 +1245,6 @@ rxTest({
   })
 
   test_that("a piped correlated block keeps its covariance at its own level", {
-    skipIfOldLotri()
     # the covariance row was written with a hard-coded condition of "id", which
     # put a `| occ` block's covariance in the wrong omega
     .from <- function() {
@@ -1280,6 +1279,8 @@ rxTest({
     .piped <- .toUi |> ini(.fromUi)
     .iniDf <- as.data.frame(.piped$iniDf)
     expect_equal(.iniDf$condition[.iniDf$name == "(eta.a,eta.b)"], "occ")
+    # a single non-id level only comes back as a named omega with lotri >= 1.0.5
+    skipIfOldLotri()
     # every eta here is at the `occ` level, so the omega comes back keyed by
     # that level rather than as a bare matrix -- a bare one would read as an
     # ID level (between subject) omega, which is not what was written

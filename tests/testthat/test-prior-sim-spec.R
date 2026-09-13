@@ -2,10 +2,9 @@ rxTest({
 
   .rx <- loadNamespace("rxode2")
 
-  ## The `prior` column only exists when the installed 'lotri' supports
-  ## prior distributions, so the real-syntax tests are gated on it.  The
-  ## rest fabricate the column by hand, the way test-assert-priors.R does,
-  ## so they still run against an older 'lotri'.
+  ## Priors need 'lotri' >= 1.0.5 (the `prior` column and
+  ## `lotriPriorDists()`), so every prior test here is gated on it, even the
+  ## ones that fabricate the column by hand.
 
   .withPrior <- function(ui, name, prior) {
     ui <- rxUiDecompress(ui)
