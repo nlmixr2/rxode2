@@ -39,6 +39,7 @@ rxTest({
   .diag <- function(r) vapply(r$omegaList, function(m) diag(as.matrix(m)), double(3))
 
   test_that("a prior on the occasion level is drawn, the id level is not", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(3)
     .r <- rxSolve(.mod("prior(eta.v) ~ invWishart(5)"), .ev(), nStud=3, nSub=4)
@@ -54,6 +55,7 @@ rxTest({
   })
 
   test_that("a prior on the id level is drawn, the occasion level is not", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(5)
     .r <- rxSolve(.mod("prior(eta.cl) ~ invWishart(6)"), .ev(), nStud=3, nSub=4)
@@ -64,6 +66,7 @@ rxTest({
   })
 
   test_that("both levels can carry their own degrees of freedom", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(5)
     .r <- rxSolve(ini(.mod("prior(eta.cl) ~ invWishart(6)"),

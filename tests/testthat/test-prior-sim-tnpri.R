@@ -4,9 +4,6 @@ rxTest({
   ## values, which is what NONMEM calls TNPRI.  Drawn that way an omega is
   ## not guaranteed positive definite, so the draw retries.
 
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
 
@@ -34,7 +31,7 @@ rxTest({
   }
 
   test_that("a joint prior draws the thetas and the omega values together", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(11, {
       .s <- rxSolve(.joint(), .ev(), nSub=2, nStud=400)
@@ -61,7 +58,7 @@ rxTest({
   })
 
   test_that("every drawn omega is positive definite", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(11, {
       .s <- rxSolve(.joint(), .ev(), nSub=2, nStud=200)
@@ -72,7 +69,7 @@ rxTest({
   })
 
   test_that("the retry falls back to the nearest positive definite omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## A strongly correlated block whose variance carries a wide prior:
     ## the drawn variance stays positive but the block stops being
@@ -111,7 +108,7 @@ rxTest({
   })
 
   test_that("a prior that can never be made positive definite is an error", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## a 1x1 omega drawn negative cannot be projected back onto the cone --
     ## its nearest positive definite matrix is the boundary, which is not
@@ -139,7 +136,7 @@ rxTest({
   })
 
   test_that("priorPdRetry=1 does not retry", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## with a single try every non positive definite draw goes straight to
     ## the fallback, so the warning is the same but it fires more often
@@ -151,7 +148,7 @@ rxTest({
   })
 
   test_that("a joint prior and a block degrees of freedom cannot be mixed", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## 'lotri' rejects the combination when the model is written, since the
     ## two are alternative ways of saying the same thing

@@ -166,7 +166,7 @@ rxUiGet.props <- function(x, ...) {
   .w <- !is.na(.ini$neta1)
   ## group on the BASE condition, so a repeated (`same()`) block does not
   ## look like one extra level of variability per mirrored element
-  .base <- lotri::lotriBaseCondition(.ini$condition)
+  .base <- .lotriBaseCondition(.ini$condition)
   .cnds <- unique(.base[.w])
   .var <- lapply(.cnds,
                  function(cnd) {
@@ -269,7 +269,7 @@ rxUiGet.omegaSameMap <- function(x, ...) {
   ## independently estimated parameters.
   .iniDf <- x[[1]]$iniDf
   if (is.null(.iniDf)) return(NULL)
-  .map <- lotri::lotriSameMap(.iniDf)
+  .map <- .lotriSameMap(.iniDf)
   if (length(.map) == 0L || all(.map == 0L)) return(NULL)
   .map
 }

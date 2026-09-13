@@ -4,9 +4,6 @@ rxTest({
   ## by piping onto an existing model too, the way a label or an
   ## estimate is.
 
-  .hasPriors <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .mod <- function() {
     f <- function() {
@@ -29,7 +26,7 @@ rxTest({
   }
 
   test_that("a prior can be piped onto a population parameter", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- ini(.mod(), prior(tka) ~ dnorm(0, 10))
     expect_equal(.u$iniDf$prior[.u$iniDf$name == "tka"], "dnorm(0, 10)")
     ## and nothing else gained one
@@ -37,7 +34,7 @@ rxTest({
   })
 
   test_that("a prior can be piped onto a covariance block", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- ini(.mod(), prior(eta.cl, eta.v) ~ invWishart(4))
     ## stored on the first diagonal of the block
     expect_equal(.u$iniDf$prior[.u$iniDf$name == "eta.cl"], "invWishart(4)")
@@ -47,7 +44,7 @@ rxTest({
   })
 
   test_that("piping a prior replaces the one that was there", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- ini(.mod(), prior(tka) ~ dnorm(0, 10))
     .u2 <- ini(.u, prior(tka) ~ dnorm(0, 5))
     expect_equal(.u2$iniDf$prior[.u2$iniDf$name == "tka"], "dnorm(0, 5)")
@@ -60,13 +57,13 @@ rxTest({
   })
 
   test_that("the om. spelling pipes onto the omega element", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- ini(.mod(), prior(om.eta.cl) ~ dnorm(0, 0.1))
     expect_equal(.u$iniDf$prior[.u$iniDf$name == "eta.cl"], "dnorm(0, 0.1)")
   })
 
   test_that("a piped prior is validated the same as one in the block", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- .mod()
     ## a parameter that is not in the model
     expect_error(ini(.u, prior(nope) ~ dnorm(0, 1)))
@@ -81,7 +78,7 @@ rxTest({
   })
 
   test_that("a piped prior survives printing and re-parsing", {
-    skip_if_not(.hasPriors())
+    skipIfOldLotri()
     .u <- ini(.mod(), prior(tka) ~ dnorm(0, 10))
     .u <- ini(.u, prior(eta.cl, eta.v) ~ invWishart(4))
 

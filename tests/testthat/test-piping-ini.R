@@ -1279,6 +1279,8 @@ rxTest({
     .piped <- .toUi |> ini(.fromUi)
     .iniDf <- as.data.frame(.piped$iniDf)
     expect_equal(.iniDf$condition[.iniDf$name == "(eta.a,eta.b)"], "occ")
+    # a single non-id level only comes back as a named omega with lotri >= 1.0.5
+    skipIfOldLotri()
     # every eta here is at the `occ` level, so the omega comes back keyed by
     # that level rather than as a bare matrix -- a bare one would read as an
     # ID level (between subject) omega, which is not what was written
@@ -1516,6 +1518,7 @@ rxTest({
   })
 
   test_that("piping keeps a same() copy after the block it repeats", {
+    skipIfOldLotri()
     # A repetition is stored as a RELATIVE OFFSET BACKWARDS, so a copy that
     # is renumbered ahead of its master has no representation at all --
     # `$omega` errored with "must refer to an earlier parameter".

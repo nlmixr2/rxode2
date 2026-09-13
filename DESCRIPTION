@@ -114,7 +114,7 @@ Imports:
     compiler,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 1.0.5),
+    lotri (>= 1.0.4),
     memoise,
     methods,
     mirai,
@@ -150,7 +150,7 @@ URL: https://nlmixr2.github.io/rxode2/,
 Biarch: true
 LinkingTo:
     sitmo,
-    lotri (>= 1.0.5),
+    lotri (>= 1.0.4),
     PreciseSums (>= 0.7),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),

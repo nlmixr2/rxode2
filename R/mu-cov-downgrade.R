@@ -103,7 +103,7 @@
     data.frame(parameter=x, curEval="", low=NA_real_, hi=NA_real_)
   }))), envir=ui)
   .etaNames <- ui$iniDf$name[which(ui$iniDf$neta1 == ui$iniDf$neta2 &
-                                     lotri::lotriBaseCondition(ui$iniDf$condition) == "id")]
+                                     .lotriBaseCondition(ui$iniDf$condition) == "id")]
   .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
   .extra <- setdiff(.extra, ui$nonMuEtas)
   if (length(.extra) > 0) {

@@ -582,7 +582,10 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
 #'  })
 #' }
 #'
-#' rxPriorLogDensity(one.cmt, theta=c(tka=0.1, add.sd=0.5))
+#' # priors need 'lotri' >= 1.0.5
+#' if (utils::packageVersion("lotri") >= "1.0.5") {
+#'   rxPriorLogDensity(one.cmt, theta=c(tka=0.1, add.sd=0.5))
+#' }
 #' }
 rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
