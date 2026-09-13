@@ -132,3 +132,33 @@ test_that("a block of MORE THAN TWO is still refused", {
 test_that("an unknown route is refused rather than silently taken as cdf", {
   expect_error(rxEtaDistExpand(.edDirectModel(), param = "quantile"))
 })
+
+test_that("a declared eta the model already ASSIGNS is refused by name", {
+  ## Two ways a declared eta arrives already assigned, and neither can take the
+  ## direct route, which needs the eta to BE the random effect rather than a
+  ## quantity the model computes.
+  ##
+  ## This is NOT caught by the double-expansion guard: that keys on
+  ## `etaDistInfo`, and `as.rxUi()` on a model FUNCTION pre-emits the decoder
+  ## line WITHOUT leaving that record -- the declaration is still in the iniDf,
+  ## so `eta.cl` ends up both an eta and an assigned lhs.  Before this guard the
+  ## failure was "the following parameter(s) were in the ini block but not in
+  ## the model block: eta.cl", which names the symptom and not the cause.
+  .fn <- function() {
+    ini({
+      lclm <- 1.63; lclrv <- 0.693; lv <- 1.55
+      eta.cl ~ 1
+      dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv),
+                            rate = 1/(exp(lclrv) * exp(lclm)))
+      prop.sd <- 0.316
+    })
+    model({ cl <- eta.cl; v <- exp(lv); linCmt() ~ prop(prop.sd) })
+  }
+  ## the FUNCTION is refused, naming the eta and the remedy
+  expect_error(rxEtaDistExpand(.fn, param = "direct"), "already assigns it")
+  expect_error(rxEtaDistExpand(.fn, param = "direct"), "eta.cl")
+  ## and the same model, passed as the ini/model RESULT, works
+  expect_s3_class(rxEtaDistExpand(.fn(), param = "direct"), "rxUi")
+  ## the cdf route takes either form, as it always did
+  expect_s3_class(rxEtaDistExpand(.fn, param = "cdf"), "rxUi")
+})

@@ -453,6 +453,31 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## it becomes an `rxCor.*` theta because the expansion needs it to BUILD the
   ## latent; here nothing in the model text uses it, so it stays in the omega
   ## where it was written and `etaDistInfo$blocks` says which etas pair up.
+  ## Refuse a declared eta the model ALREADY ASSIGNS.
+  ##
+  ## Two ways that happens, and neither can take this route.  `dist()` written
+  ## in model({}) emits its own inverse-CDF line in place, which is the whole
+  ## point of that form.  And `as.rxUi()` on a model FUNCTION pre-emits the same
+  ## line while leaving the declaration in the iniDf -- so `eta.cl` is at once
+  ## an eta and an assigned lhs, and rebuilding without a decoder reports it as
+  ## "in the ini block but not in the model block", which names the symptom and
+  ## not the cause.
+  ##
+  ## This is NOT the same as the double-expansion guard above: that one keys on
+  ## `etaDistInfo`, which `as.rxUi()` does not leave behind, so it does not fire
+  ## here.  (An earlier commit claimed it covered this case; it did not.)
+  .assignedAll <- .rxEtaDistModelAssigned(ui)
+  .clash <- intersect(d$name, .assignedAll)
+  if (length(.clash) > 0L) {
+    stop("rxEtaDistExpand(param=\"direct\") cannot use '",
+         paste(.clash, collapse="', '"),
+         "': the model already assigns it\n",
+         "  the direct route needs the declared random effect to BE the random ",
+         "effect, not a quantity the model computes\n",
+         "  pass the ini/model result (`f()`) rather than the function (`f`), ",
+         "and declare the distribution in ini({}) rather than model({})",
+         call.=FALSE)
+  }
   .iniDf <- ui$iniDf
   ## The omega entry becomes a FIXED placeholder.  It is not the eta's
   ## dispersion -- that is the family's business now -- and fixing it is what
