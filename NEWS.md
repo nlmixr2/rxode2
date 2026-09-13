@@ -1552,6 +1552,40 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Solving
 
+- The automatic ODE-to-`linCmt()` conversion (`rxSolve(..., useLinCmt=TRUE)`,
+  the default) no longer drops a right-hand side term that is not proportional
+  to a compartment.  `transit()` absorption, a zero-order or endogenous
+  production rate and a dose carried in a covariate column were all parsed and
+  then discarded by both the topology detector and the emitted `linCmt()` call,
+  so the model solved was not the model written -- either identically zero, or
+  non-zero and plausible but wrong (a transit chain silently became plain
+  first-order absorption, reported here as `nlmixr2/rxode2#1370`).  `linCmt()`
+  is driven entirely by the event table's dosing records and has no parameter
+  that can carry such a term, so a model containing one now keeps its explicit
+  ODEs, and `odeToLin()` names the term it declined to convert.
+
+- The same conversion no longer substitutes a different rate constant for the
+  one that was written.  The emitted `linCmt()` call passes parameter NAMES
+  only, so anything else in a rate coefficient or in the concentration line was
+  discarded: `- 2 * kel * central` solved as if it eliminated at `kel`,
+  `cp <- central / (vc * 1000)` reported `central / vc` (a thousandfold error),
+  and a covariate factor written into the ODE (`(cl / vc) * cms * central`) was
+  dropped.  Detection now compares the system's own rate constants and reported
+  volume against `rxDerived()` -- the same parameterization inference
+  `linCmt()` itself uses, so the two cannot drift apart -- and keeps the
+  explicit ODEs unless they agree.  Folding such a factor into the parameter
+  (`cl <- exp(lcl) * cms`) converts as before.
+
+- The same conversion no longer renumbers a model's compartments out from
+  under its event data.  `linCmt()` orders its compartments `depot`, `central`
+  and keeps no state for a peripheral, so a model that declares
+  `d/dt(central)` before `d/dt(depot)` numbers them the other way round: a
+  record addressing compartment 1 by index (which includes an event table with
+  no `cmt` column at all) dosed central before conversion and depot after,
+  turning an IV profile into a plausible oral one.  Such a solve now keeps the
+  explicit ODEs.  Addressing a compartment by name, and NONMEM-style data
+  observing a one compartment model in `cmt = 2`, both still convert.
+
 - Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
   composite is much faster, because the analytic Jacobian model is no longer
   regenerated on every `rxSolve()`.  The augmented model's *text* was cached but

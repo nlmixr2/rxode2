@@ -1147,8 +1147,14 @@
 #'   linear-compartment ODEs that can be solved analytically,
 #'   automatically convert them to a `linCmt()` call before solving.
 #'   The detection and conversion use [odeToLin()]; the converted
-#'   model is cached so the compilation cost is paid only once.  Set
-#'   to `FALSE` to keep the original ODE solver.  This flag is also
+#'   model is cached so the compilation cost is paid only once.  A
+#'   model whose ODEs carry a term `linCmt()` cannot represent (an
+#'   exogenous input such as `transit()` absorption, a zero-order or
+#'   endogenous production rate, or a dose carried in a covariate
+#'   column), or whose rates `linCmt()` would not rebuild exactly from
+#'   the parameter names, or whose compartments it would renumber
+#'   under event data addressing them by index, is solved with its
+#'   original ODEs.  Set to `FALSE` to keep the original ODE solver.  This flag is also
 #'   stored in the returned [rxControl()] object so that downstream
 #'   hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 #'   use the value of `rxode2.useLinCmt` option (which when specified
@@ -2661,19 +2667,20 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
         }
         assign(.cacheKey, .converted, envir = .odeToLinCache) # nolint
       }
-      # Only adopt the converted linCmt() model when the solve data does not
-      # address a compartment by a name the conversion renames away (otherwise
-      # those records would be routed nowhere, giving all-zero predictions).
-      # The renamed-away compartment set is derived once per model and cached.
-      .lost <- .odeToLinLostStates(.cacheKey, object, .converted) # nolint
-      if (length(.lost) == 0L) {
+      # Only adopt the converted linCmt() model when the solve data addresses
+      # every compartment the same way in both models -- by a name the
+      # conversion keeps, and by an index it does not renumber.  How the two
+      # models' compartments line up is derived once per model and cached.
+      .cmtInfo <- .odeToLinCmtInfo(.cacheKey, object, .converted, # nolint
+                                   .odeToLinCmtMap(.linInfo)) # nolint
+      if (.odeToLinCmtAlwaysOk(.cmtInfo)) { # nolint
         object <- .converted
       } else {
         .solveData <- .rxSolveUiEventData(events) # nolint
         if (is.null(.solveData)) {
           .solveData <- .rxSolveUiEventData(params) # nolint
         }
-        if (.odeToLinCmtCompatible(.lost, .solveData)) { # nolint
+        if (.odeToLinCmtCompatible(.cmtInfo, .solveData)) { # nolint
           object <- .converted
         }
       }

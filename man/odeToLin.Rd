@@ -22,7 +22,13 @@ preserving all other model lines.  Detection requires linear ODE
 right-hand sides, 1-4 compartments in a standard depot/central/peripheral
 topology, and one output line of the form \code{var <- central_cmt / v_expr}.
 Named parameter assignments are retained so \code{linCmt()} can infer the
-parameterization.
+parameterization.  Every right-hand side term must be proportional to a
+compartment; an exogenous input (\code{transit()} absorption, a zero-order or
+endogenous production rate, a dose carried in a covariate column) has no
+\code{linCmt()} representation and declines the conversion.  So does a rate
+coefficient, or a concentration line, that is not what its named parameters
+imply -- a scale factor, an inverted ratio or a covariate factor written into
+the ODE -- since \code{linCmt()} rebuilds the rates from those names alone.
 }
 \examples{
 oneCmtOde <- function() {

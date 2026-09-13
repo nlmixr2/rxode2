@@ -63,13 +63,30 @@
   NULL
 }
 
-## Parse one additive term: returns {sign, coef, state} where state=NA means
-## a non-state (input/forcing) term. Returns NULL if the term is nonlinear
-## (references multiple states or uses a state nonlinearly).
+## TRUE when an expression is a constant that evaluates to exactly zero.  A
+## zero term adds nothing to a rate, so dropping it is lossless.
+.odeToLinIsZeroExpr <- function(expr) {
+  if (length(all.vars(expr)) > 0L) return(FALSE)
+  .v <- tryCatch(eval(expr, baseenv()), error = function(e) NA_real_)
+  is.numeric(.v) && length(.v) == 1L && !is.na(.v) && .v == 0
+}
+
+## Parse one additive term: returns {sign, coef, state}, `NA` for a constant
+## zero term (the caller drops it), or NULL when the term cannot be carried
+## into linCmt().
+##
+## A term referencing no state is an exogenous input -- transit() absorption, a
+## zero-order or endogenous production rate, a dose supplied through a
+## covariate column.  linCmt() is driven entirely by the event table dosing
+## records and has no parameter able to carry such a term, so a non-zero one is
+## rejected exactly like a nonlinear term.  (It used to be parsed as
+## `state = NA` and then dropped by both the topology detector and the
+## reconstruction, silently solving a different model than the one written.)
 .parseOneLinTerm <- function(sign, termExpr, states) {
   .refs <- .statesInExpr(termExpr, states)
   if (length(.refs) == 0L) {
-    return(list(sign = sign, coef = termExpr, state = NA_character_))
+    if (.odeToLinIsZeroExpr(termExpr)) return(NA)
+    return(NULL)
   }
   if (length(.refs) > 1L) return(NULL)
   .state <- .refs[1L]
@@ -78,13 +95,14 @@
   list(sign = sign, coef = .coef, state = .state)
 }
 
-## Parse an ODE RHS into a flat list of {sign, coef, state} terms.
-## Returns NULL if the RHS is not linear in all state variables.
+## Parse an ODE RHS into a flat list of {sign, coef, state} terms, every one
+## proportional to exactly one state.  Returns NULL if the RHS is not linear in
+## all state variables or carries a non-zero exogenous input term.
 .parseLinearRhs <- function(rhs, states) {
   .raw    <- .collectAddTerms(rhs)
   .parsed <- lapply(.raw, function(.t) .parseOneLinTerm(.t$sign, .t$expr, states))
   if (any(vapply(.parsed, is.null, logical(1)))) return(NULL)
-  .parsed
+  Filter(is.list, .parsed) # drop the constant-zero terms
 }
 
 ## Net signed coefficient (sum of sign*coef) of state `s`, as a single
@@ -119,9 +137,90 @@
                      error = function(e) NA_real_)
       length(.v) == 1L && is.finite(.v) && abs(.v) < 1e-8
     }
-    if (!.balanced(1.5) || !.balanced(3.7)) return(FALSE)
+    if (!.balanced(.odeToLinProbe[1L]) || !.balanced(.odeToLinProbe[2L])) return(FALSE)
   }
   TRUE
+}
+
+## Offsets for the two parameter assignments the numeric guards probe at.
+## Irrational, so no expression with rational coefficients can cancel at both
+## by coincidence -- a guard that only samples round numbers can be satisfied
+## by a quadratic whose roots are exactly those numbers.
+.odeToLinProbe <- c(sqrt(2), exp(1))
+
+## Evaluate an expression to one finite number under `vals`; NA on failure.
+.odeToLinNum <- function(expr, vals) {
+  .v <- tryCatch(eval(expr, vals, baseenv()), error = function(e) NA_real_)
+  if (!is.numeric(.v) || length(.v) != 1L || !is.finite(.v)) return(NA_real_)
+  as.numeric(.v)
+}
+
+## Relative-tolerance equality for the rate comparisons.
+.odeToLinNear <- function(a, b) {
+  !is.na(a) && !is.na(b) && abs(a - b) <= 1e-8 * max(1, abs(a), abs(b))
+}
+
+## The rate constants and central volume linCmt() will use for `params` taking
+## `vals`.  rxDerived() runs the same `_linCmtParse` parameterization inference
+## that linCmt() does, so this cannot drift from it.  NULL when the names are
+## not a parameterization linCmt() recognizes.
+.odeToLinDerivedRates <- function(params, vals) {
+  .d <- tryCatch(do.call(rxDerived, vals[params]), error = function(e) NULL) # nolint
+  if (!is.data.frame(.d) || nrow(.d) != 1L) return(NULL)
+  .get <- function(.n) {
+    if (is.null(.d[[.n]])) return(0)
+    .v <- as.numeric(.d[[.n]][1L])
+    if (!is.finite(.v)) return(NA_real_)
+    .v
+  }
+  list(kel = .get("kel"), k12 = .get("k12"), k21 = .get("k21"),
+       k13 = .get("k13"), k31 = .get("k31"), vc = .get("vc"))
+}
+
+## TRUE when linCmt(<params>) reproduces this system's own rate constants and
+## reported volume.  The emitted call passes parameter NAMES only, so the
+## structure of a rate coefficient is otherwise discarded: `- 2 * kel * central`
+## would solve as if it eliminated at `kel`, and `cp <- central / (2 * v)` would
+## report `central / vc`.  Compared at two parameter assignments.
+.odeToLinRatesMatch <- function(odes, topo, params, vExpr) {
+  if (length(params) == 0L) return(FALSE)
+  .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
+  .matches <- function(.offset) {
+    .vals <- as.list(setNames(as.numeric(seq_along(params)) + .offset, params))
+    .r <- .odeToLinDerivedRates(params, .vals)
+    if (is.null(.r)) return(FALSE)
+    .net <- function(.cmt, .state) {
+      .e <- .odeToLinNetCoef(.byCmt[[.cmt]]$terms, .state)
+      if (is.null(.e)) return(NA_real_)
+      .odeToLinNum(.e, .vals)
+    }
+    ## linCmt() reports central / vc.
+    if (!.odeToLinNear(.odeToLinNum(vExpr, .vals), .r$vc)) return(FALSE)
+    ## linCmt() absorbs at the value of the parameter named ka, so the depot
+    ## rate must be that parameter itself, unscaled.
+    if (!is.null(topo$depot)) {
+      .e <- .odeToLinNetCoef(.byCmt[[topo$depot]]$terms, topo$depot)
+      if (is.null(.e)) return(FALSE)
+      .sym <- .freeSymbolsInExpr(.e)
+      if (length(.sym) != 1L || is.null(.vals[[.sym]])) return(FALSE)
+      if (!.odeToLinNear(-.odeToLinNum(.e, .vals), .vals[[.sym]])) return(FALSE)
+    }
+    ## Central loses kel plus every peripheral transfer.
+    .peri <- list(list(topo$peripheral1, .r$k12, .r$k21),
+                  list(topo$peripheral2, .r$k13, .r$k31))
+    .out <- .r$kel +
+      (if (is.null(topo$peripheral1)) 0 else .r$k12) +
+      (if (is.null(topo$peripheral2)) 0 else .r$k13)
+    if (!.odeToLinNear(-.net(topo$central, topo$central), .out)) return(FALSE)
+    for (.p in .peri) {
+      if (is.null(.p[[1L]])) next
+      if (!.odeToLinNear(.net(.p[[1L]], topo$central), .p[[2L]])) return(FALSE)
+      if (!.odeToLinNear(-.net(.p[[1L]], .p[[1L]]), .p[[3L]])) return(FALSE)
+      if (!.odeToLinNear(.net(topo$central, .p[[1L]]), .p[[3L]])) return(FALSE)
+    }
+    TRUE
+  }
+  .matches(.odeToLinProbe[1L]) && .matches(.odeToLinProbe[2L])
 }
 
 ## Detect the topology of a linear ODE system and classify each compartment.
@@ -360,6 +459,40 @@
   unique(.tainted)
 }
 
+## Index and compartment name of every `d/dt(<cmt>) <- ...` line, in order.
+.odeToLinOdeLines <- function(lstExpr) {
+  .odeIdx   <- integer(0)
+  .cmtNames <- character(0)
+  for (.i in seq_along(lstExpr)) {
+    .e <- lstExpr[[.i]]
+    if (!is.call(.e)) next
+    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
+    if (length(.e) < 3L || !is.call(.e[[2]])) next
+    if (!.isDtExpr(.e[[2]])) next
+    .odeIdx   <- c(.odeIdx, .i)
+    .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
+  }
+  list(odeIdx = .odeIdx, cmtNames = .cmtNames)
+}
+
+## Compartments whose ODE carries a non-zero exogenous input term, with the
+## offending term deparsed.  Diagnostic only: it explains a declined conversion
+## in `odeToLin()` and is never called on the solve path.
+.odeToLinExogenousInputs <- function(lstExpr, states) {
+  .lines <- .odeToLinOdeLines(lstExpr)
+  .ret <- character(0)
+  for (.j in seq_along(.lines$odeIdx)) {
+    .rhs <- lstExpr[[.lines$odeIdx[.j]]][[3]]
+    for (.t in .collectAddTerms(.rhs)) {
+      if (length(.statesInExpr(.t$expr, states)) > 0L) next
+      if (.odeToLinIsZeroExpr(.t$expr)) next
+      .ret[.lines$cmtNames[.j]] <- deparse1(.t$expr)
+      break
+    }
+  }
+  .ret
+}
+
 ## Attempt to detect whether ui is a linear compartment ODE model.
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
@@ -369,17 +502,9 @@
   if (length(.states) == 0L) return(NULL)
 
   ## Gather ODE lines and their compartment names.
-  .odeIdx  <- integer(0)
-  .cmtNames <- character(0)
-  for (.i in seq_along(.lstExpr)) {
-    .e <- .lstExpr[[.i]]
-    if (!is.call(.e)) next
-    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
-    if (length(.e) < 3L || !is.call(.e[[2]])) next
-    if (!.isDtExpr(.e[[2]])) next
-    .odeIdx   <- c(.odeIdx, .i)
-    .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
-  }
+  .lines    <- .odeToLinOdeLines(.lstExpr)
+  .odeIdx   <- .lines$odeIdx
+  .cmtNames <- .lines$cmtNames
 
   if (length(.odeIdx) == 0L || length(.odeIdx) > 4L) return(NULL)
   if (!all(.cmtNames %in% .states)) return(NULL)
@@ -438,6 +563,10 @@
   .params <- c(.params, .freeSymbolsInExpr(.out$vExpr))
   .params <- setdiff(unique(.params),
                      c(.states, .out$var, "t", "time", "pi"))
+
+  ## linCmt() rebuilds the rate constants from those names alone, so refuse
+  ## unless they reproduce the system that was written.
+  if (!.odeToLinRatesMatch(.odes, .topo, .params, .out$vExpr)) return(NULL)
 
   c(.topo, list(
     outputVar = .out$var,
@@ -590,61 +719,111 @@
 }
 
 ## Package-scope cache: maps the same model-text key used by `.odeToLinCache`
-## to the character vector of compartment names the conversion renamed away.
-## Deriving these requires `rxModelVars()` on both the original and converted
-## models, which is constant per converted model, so it is computed once here
-## rather than on every solve.
-.odeToLinLostCache <- new.env(parent = emptyenv(), hash = TRUE)
+## to how the converted model's compartments line up with the original's.
+## Deriving that requires `rxModelVars()` on both models, which is constant per
+## converted model, so it is computed once here rather than on every solve.
+.odeToLinCmtInfoCache <- new.env(parent = emptyenv(), hash = TRUE)
 
-## The compartment names the ODE->linCmt conversion renamed away (i.e. present
-## in the original model but not the converted one).  Cached by model key.
-.odeToLinLostStates <- function(cacheKey, original, converted) {
-  if (exists(cacheKey, envir = .odeToLinLostCache, inherits = FALSE)) {
-    return(get(cacheKey, envir = .odeToLinLostCache, inherits = FALSE))
+## How many leading compartment INDICES address the same compartment in both
+## models.  A numeric `cmt`, and an event table with no `cmt` column at all
+## (which doses compartment 1), are only safe up to this many: the conversion
+## renumbers whenever the ODE declares its compartments in a different order
+## from linCmt()'s canonical `depot`, `central`, and it drops any peripheral
+## the ODE declared as a state.
+.odeToLinSafeCmtN <- function(original, converted, cmtMap) {
+  .o <- rxModelVars(original)$state
+  .c <- rxModelVars(converted)$state
+  .n <- min(length(.o), length(.c))
+  if (.n == 0L) return(0L)
+  .head <- .o[seq_len(.n)]
+  .m <- cmtMap[.head]
+  .m[is.na(.m)] <- .head[is.na(.m)]
+  ## A position is safe when the converted model holds that compartment under
+  ## either its new name or its original one -- the latter covers the case
+  ## where the rebuild failed and the caller is comparing a model with itself.
+  .k <- which(.m != .c[seq_len(.n)] & .head != .c[seq_len(.n)])
+  if (length(.k) == 0L) return(as.integer(.n))
+  as.integer(.k[1L] - 1L)
+}
+
+## How the converted model's compartments line up with the original's: the
+## names the conversion renamed away, the original's own state names, and how
+## far numeric compartment indices stay valid.  Cached by model key.
+.odeToLinCmtInfo <- function(cacheKey, original, converted, cmtMap) {
+  if (exists(cacheKey, envir = .odeToLinCmtInfoCache, inherits = FALSE)) {
+    return(get(cacheKey, envir = .odeToLinCmtInfoCache, inherits = FALSE))
   }
-  .lost <- setdiff(rxModelVars(original)$state, rxModelVars(converted)$state)
-  assign(cacheKey, .lost, envir = .odeToLinLostCache)
-  .lost
+  .o <- rxModelVars(original)$state
+  .c <- rxModelVars(converted)$state
+  .ret <- list(
+    lost   = setdiff(.o, .c),
+    states = .o,
+    nSafe  = .odeToLinSafeCmtN(original, converted, cmtMap),
+    nMax   = max(length(.o), length(.c))
+  )
+  assign(cacheKey, .ret, envir = .odeToLinCmtInfoCache)
+  .ret
+}
+
+## TRUE when no event data can tell the two models apart: every compartment
+## index lines up and no name was renamed away.  Materializing an event table
+## is not free, so the caller checks this first and skips it -- which is the
+## common case, every model whose compartments convert one for one.
+.odeToLinCmtAlwaysOk <- function(info) {
+  info$nSafe >= info$nMax && length(info$lost) == 0L
 }
 
 ## Is a converted linCmt() model safe to use for the given solve data?
 ##
-## The ODE->linCmt conversion renames compartments (e.g. an ODE `centre`
-## compartment becomes linCmt's `central`).  If the event data addresses a
-## compartment (in a dose or an observation record) by the *name* of an original
-## ODE compartment that the converted model no longer has, that record would
-## silently be routed nowhere -- producing all-zero predictions.  In that case
-## fall back to the original ODE model so behaviour matches solving without the
-## linCmt optimization.  `lost` is the (pre-computed) set of renamed-away
-## compartment names.  Numeric compartment indices are preserved by the
-## conversion, and names that are not compartments in the original model (e.g.
-## the special "(default)" placeholder in an event table) are handled
-## identically by both models, so both are left untouched here.
-.odeToLinCmtCompatible <- function(lost, data) {
-  if (length(lost) == 0L) {
-    return(TRUE)
-  }
+## The conversion renames compartments (an ODE `centre` becomes linCmt's
+## `central`) and renumbers them: linCmt() always orders its compartments
+## `depot`, `central`, and it keeps no state for a peripheral the ODE declared.
+## A record addressing a compartment by a *name* the converted model no longer
+## has would be routed nowhere (all-zero predictions); one addressing it by an
+## *index* past `info$nSafe` would be routed to a different compartment (a model
+## declaring `d/dt(central)` before `d/dt(depot)` numbers them the other way
+## round from linCmt(), so `cmt = 1` doses central before conversion and depot
+## after).  Either way, fall back to the original ODE model.  An event table
+## with no `cmt` column, and a name that is not a compartment of the original
+## model such as the "(default)" placeholder, both address compartment 1.
+.odeToLinCmtCompatible <- function(info, data) {
+  .defaultOk <- info$nSafe >= 1L
   if (is.null(data) || !is.data.frame(data)) {
-    return(TRUE)
+    return(.defaultOk)
   }
   .nm <- names(data)
   .col <- .nm[tolower(.nm) == "cmt"]
   if (length(.col) == 0L) {
-    return(TRUE)
+    return(.defaultOk)
   }
   .cmt <- data[[.col[1L]]]
   if (is.factor(.cmt)) {
     .cmt <- as.character(.cmt)
   }
   if (!is.character(.cmt)) {
-    ## numeric indices are preserved by the conversion
-    return(TRUE)
+    .cmt <- suppressWarnings(as.numeric(.cmt))
+    .cmt <- .cmt[!is.na(.cmt)]
+    if (length(.cmt) == 0L) {
+      return(.defaultOk)
+    }
+    ## A negative index turns a compartment off; it still names one.  An index
+    ## past every compartment of both models is an observation slot the two
+    ## handle alike -- NONMEM-style data observing a one compartment model in
+    ## `cmt = 2` must keep converting.
+    .k <- abs(.cmt)
+    return(all(.k >= 1 & (.k <= info$nSafe | .k > info$nMax)))
   }
   .cmt <- unique(.cmt[!is.na(.cmt)])
   if (length(.cmt) == 0L) {
-    return(TRUE)
+    return(.defaultOk)
   }
-  !any(.cmt %in% lost)
+  if (any(.cmt %in% info$lost)) {
+    return(FALSE)
+  }
+  if (!all(.cmt %in% info$states)) {
+    return(.defaultOk)
+  }
+  TRUE
 }
 
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).
@@ -678,7 +857,13 @@
 #' right-hand sides, 1-4 compartments in a standard depot/central/peripheral
 #' topology, and one output line of the form \code{var <- central_cmt / v_expr}.
 #' Named parameter assignments are retained so \code{linCmt()} can infer the
-#' parameterization.
+#' parameterization.  Every right-hand side term must be proportional to a
+#' compartment; an exogenous input (\code{transit()} absorption, a zero-order or
+#' endogenous production rate, a dose carried in a covariate column) has no
+#' \code{linCmt()} representation and declines the conversion.  So does a rate
+#' coefficient, or a concentration line, that is not what its named parameters
+#' imply -- a scale factor, an inverted ratio or a covariate factor written into
+#' the ODE -- since \code{linCmt()} rebuilds the rates from those names alone.
 #'
 #' @param ui rxUi-like model object (function, rxUi, or anything accepted by
 #'   \code{as.rxUi}).
@@ -713,7 +898,15 @@ odeToLin <- function(ui) {
 
   .info <- .odeToLinDetect(.ui)
   if (is.null(.info)) {
-    message("model does not appear to be a linear compartment ODE; returning unchanged")
+    .exo <- .odeToLinExogenousInputs(.ui$lstExpr, rxModelVars(.ui)$state) # nolint
+    if (length(.exo) > 0L) {
+      message("linCmt() cannot carry the input term",
+              if (length(.exo) > 1L) "s" else "", " ",
+              paste0("`", .exo, "` in d/dt(", names(.exo), ")", collapse = ", "),
+              "; returning unchanged")
+    } else {
+      message("model does not appear to be a linear compartment ODE; returning unchanged")
+    }
     return(rxUiCompress(.ui)) # nolint
   }
 
