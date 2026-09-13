@@ -65,17 +65,68 @@ test_that("the route is recorded so an estimator can tell which it was given", {
     rxUiDecompress(rxEtaDistExpand(.edDirectModel()))$etaDistInfo$param)
 })
 
-test_that("a CORRELATED declared block is refused by name on the direct route", {
-  ## Not a limitation to work around later: for non-normal marginals a Gaussian
-  ## copula IS eta = Q(phi(z)), so there is nothing "direct" could do with a
-  ## correlated block that would not be the CDF construction.  Dropping the
-  ## correlation quietly would fit a different model than the one written.
-  expect_error(rxEtaDistExpand(.edDirectCorModel(), param = "direct"),
-               "correlated declared block")
-  expect_error(rxEtaDistExpand(.edDirectCorModel(), param = "direct"),
-               "eta.cl")
-  ## and the same model still expands on the cdf route
-  expect_s3_class(rxEtaDistExpand(.edDirectCorModel(), param = "cdf"), "rxUi")
+test_that("a correlated declared PAIR is carried, not refused", {
+  ## This used to be a refusal, and with only a quantile function and a density
+  ## that was right: a Gaussian copula over non-normal marginals IS
+  ## eta = Q(phi(z)), so there was nothing the direct route could do with a
+  ## correlated block that would not be the CDF construction.  A per-family CDF
+  ## makes the correlation an ordinary prior term on the eta scale, which the
+  ## estimator evaluates (nlmixr2est's rxEtaDistPairLogD).
+  .u <- rxUiDecompress(rxEtaDistExpand(.edDirectCorModel(), param = "direct"))
+  .l <- vapply(.u$lstExpr, deparse1, "")
+  ## still no latent and no decoder, for either member
+  expect_false(any(grepl("rxN[.]|rxz[.]|phiU|gammapInv", .l)))
+  ## both models lines survive
+  expect_true(any(grepl("^cl <- eta[.]cl$", .l)))
+  expect_true(any(grepl("^v <- eta[.]v1$", .l)))
+})
+
+test_that("the correlation stays in the omega, as the copula's rho", {
+  ## The encoding matters.  With both diagonals FIXED at 1 the omega IS a
+  ## correlation matrix, so its off-diagonal is exactly the copula's rho -- and
+  ## unlike the placeholder diagonals it is a real parameter, so it is left
+  ## free.  On the cdf route the correlation has to become an `rxCor.*` theta
+  ## because the expansion needs it to BUILD the latent; here nothing in the
+  ## model text uses it, so it stays where it was written.
+  .i <- rxUiDecompress(rxEtaDistExpand(.edDirectCorModel(), param = "direct"))$iniDf
+  .e <- .i[!is.na(.i$neta1), ]
+  .d <- .e[.e$neta1 == .e$neta2, ]
+  .o <- .e[.e$neta1 != .e$neta2, ]
+  expect_true(all(.d$fix))
+  expect_equal(unique(.d$est), 1)
+  expect_equal(nrow(.o), 1L)
+  expect_false(.o$fix)
+  expect_equal(.o$est, 0.5)
+  expect_false(any(grepl("^rxCor", .i$name)))
+  ## and the pairing is recorded for the estimator
+  expect_setequal(unlist(rxUiDecompress(
+    rxEtaDistExpand(.edDirectCorModel(), param = "direct"))$etaDistInfo$blocks),
+    c("eta.cl", "eta.v1"))
+})
+
+test_that("a block of MORE THAN TWO is still refused", {
+  ## The copula term is written for a pair.  Refusing by name beats dropping
+  ## the third correlation silently.
+  .m <- (function() {
+    ini({
+      l1 <- 1.6; l2 <- 1.5; l3 <- 1.4; r1 <- -2.4; r2 <- -2.4; r3 <- -2.4
+      eta.a + eta.b + eta.c ~ c(1, 0.3, 1, 0.3, 0.3, 1)
+      dist(eta.a) ~ dgamma(shape = 1/exp(r1), rate = 1/(exp(r1) * exp(l1)))
+      dist(eta.b) ~ dgamma(shape = 1/exp(r2), rate = 1/(exp(r2) * exp(l2)))
+      dist(eta.c) ~ dgamma(shape = 1/exp(r3), rate = 1/(exp(r3) * exp(l3)))
+      prop.sd <- 0.1
+    })
+    ## an explicit ODE, not linCmt(): the test is about the BLOCK SIZE, and
+    ## linCmt() would refuse this parameter set for its own structural reasons
+    model({
+      cl <- eta.a; v <- eta.b; ka <- eta.c
+      d/dt(depot) <- -ka*depot
+      d/dt(cen) <- ka*depot - (cl/v)*cen
+      cp <- cen/v
+      cp ~ prop(prop.sd)
+    })
+  })()
+  expect_error(rxEtaDistExpand(.m, param = "direct"), "block of 3")
 })
 
 test_that("an unknown route is refused rather than silently taken as cdf", {

@@ -426,19 +426,33 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   if (!is.matrix(.omega)) .omega <- .omega[[1]]
   .dn <- dimnames(.omega)[[1]]
   .blocks <- .rxEtaDistDeclBlocks(.omega, d)
+  ## A correlated declared block is CARRIED, not refused.
+  ##
+  ## It used to be refused, and with only a quantile function and a density that
+  ## was right: a Gaussian copula over non-normal marginals IS eta = Q(phi(z)),
+  ## so there was nothing this route could do with a correlated block that would
+  ## not be the CDF construction.  With a per-family CDF the correlation becomes
+  ## an ordinary prior term on the eta scale --
+  ##
+  ##   log p(eta1,eta2) = log f1 + log f2 + log c_rho(F1(eta1), F2(eta2))
+  ##
+  ## -- and the estimator evaluates it there (nlmixr2est's rxEtaDistPairLogD).
+  ## Only a block of more than two is still out of reach: the copula term is
+  ## written for a pair.
   for (.idx in .blocks) {
-    if (length(.idx) > 1L) {
-      .decl <- intersect(.dn[.idx], d$name)
-      stop("rxEtaDistExpand(param=\"direct\") cannot represent the correlated ",
-           "declared block '", paste(.dn[.idx], collapse="', '"), "'\n",
-           "  a Gaussian copula over non-normal marginals IS the inverse-CDF ",
-           "construction, so there is nothing for the direct route to do with ",
-           "it that would not be that construction\n",
-           "  use param=\"cdf\" for this model, or declare ",
-           paste0("'", .decl, "'", collapse=" and "), " independently",
+    if (length(.idx) > 2L) {
+      stop("rxEtaDistExpand(param=\"direct\") carries a correlated PAIR, but '",
+           paste(.dn[.idx], collapse="', '"), "' is a block of ",
+           length(.idx), "\n",
+           "  the copula term is written for two marginals; use param=\"cdf\" ",
+           "for this model",
            call.=FALSE)
     }
   }
+  ## The correlation itself still has to reach the estimator.  On the cdf route
+  ## it becomes an `rxCor.*` theta because the expansion needs it to BUILD the
+  ## latent; here nothing in the model text uses it, so it stays in the omega
+  ## where it was written and `etaDistInfo$blocks` says which etas pair up.
   .iniDf <- ui$iniDf
   ## The omega entry becomes a FIXED placeholder.  It is not the eta's
   ## dispersion -- that is the family's business now -- and fixing it is what
