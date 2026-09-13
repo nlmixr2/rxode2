@@ -1240,6 +1240,10 @@ rxgamma_ <- function(shape, rate, n, ncores) {
     .Call(`_rxode2_rxgamma_`, shape, rate, n, ncores)
 }
 
+rxlnorm_ <- function(meanlog, sdlog, n, ncores) {
+    .Call(`_rxode2_rxlnorm_`, meanlog, sdlog, n, ncores)
+}
+
 rxbeta_ <- function(shape1, shape2, n, ncores) {
     .Call(`_rxode2_rxbeta_`, shape1, shape2, n, ncores)
 }

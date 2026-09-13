@@ -275,6 +275,7 @@ SEXP _rxode2_rxpois_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxt__(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxunif_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxweibull_(SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxlnorm_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxgeom_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxbeta_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxgamma_(SEXP, SEXP, SEXP, SEXP);
@@ -1072,6 +1073,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxt__", (DL_FUNC) &_rxode2_rxt__, 3},
     {"_rxode2_rxunif_", (DL_FUNC) &_rxode2_rxunif_, 4},
     {"_rxode2_rxweibull_", (DL_FUNC) &_rxode2_rxweibull_, 4},
+    {"_rxode2_rxlnorm_", (DL_FUNC) &_rxode2_rxlnorm_, 4},
     {"_rxode2_rxgeom_", (DL_FUNC) &_rxode2_rxgeom_, 3},
     {"_rxode2_rxbeta_", (DL_FUNC) &_rxode2_rxbeta_, 4},
     {"_rxode2_rxgamma_", (DL_FUNC) &_rxode2_rxgamma_, 4},
@@ -1277,6 +1279,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxt_", (DL_FUNC) &rxt_);
   R_RegisterCCallable("rxode2", "rxunif", (DL_FUNC) &rxunif);
   R_RegisterCCallable("rxode2", "rxweibull", (DL_FUNC) &rxweibull);
+  R_RegisterCCallable("rxode2", "rxlnorm", (DL_FUNC) &rxlnorm);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   R_RegisterCCallable("rxode2", "getIndTolFactor", (DL_FUNC) &getIndTolFactor);

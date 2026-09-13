@@ -174,6 +174,7 @@ typedef struct transFunctions {
   int isT;
   int isUnif;
   int isWeibull;
+  int isLnorm;
   int isNormV;
   int isCauchy;
   int isLead;
@@ -225,6 +226,7 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isT=0;
   tf->isUnif=0;
   tf->isWeibull=0;
+  tf->isLnorm=0;
   tf->isNormV=0;
   tf->isCauchy=0;
   tf->isLead=0;

@@ -26,6 +26,7 @@ using namespace arma;
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/random/fisher_f_distribution.hpp>
 #include <boost/random/gamma_distribution.hpp>
+#include <boost/random/lognormal_distribution.hpp>
 #include <boost/random/geometric_distribution.hpp>
 #include <boost/random/poisson_distribution.hpp>
 #include <boost/random/student_t_distribution.hpp>
@@ -1270,6 +1271,61 @@ NumericVector rxgamma_(double shape, double rate, int n, int ncores){
   return ret;
 }
 
+
+// Lognormal.  Same shape as rxgamma above in every respect that matters:
+// boost distribution, drawn from the SAME threefry engine indexed by thread, so
+// it inherits the per-thread reproducibility rather than opening a second
+// stream.  A distribution that is declarable with dist() has to be simulable
+// too -- a model is written once and then both fitted and simulated from.
+double rxlnorm(rx_solving_options_ind* ind, double meanlog, double sdlog){
+  if (ISNA(meanlog) || ISNA(sdlog)) return NA_REAL;
+  if (!ind->inLhs) return 0;
+  boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
+extern "C" double rxlnorm(double meanlog, double sdlog){
+  return rxlnorm(&inds_thread[rx_get_thread(op_global.cores)], meanlog, sdlog);
+}
+
+extern "C" double rilnorm(int id, double meanlog, double sdlog) {
+  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  if (ind->isIni) {
+    if (ISNA(meanlog) || ISNA(sdlog)) {
+      ind->simIni[id] = NA_REAL;
+    } else {
+      boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+      ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    }
+  }
+  return ind->simIni[id];
+}
+
+//[[Rcpp::export]]
+NumericVector rxlnorm_(double meanlog, double sdlog, int n, int ncores){
+  NumericVector ret(n);
+  int n2 = ret.size();
+  boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+  double *retD = ret.begin();
+
+#ifdef _OPENMP
+#pragma omp parallel num_threads(ncores) if(ncores > 1)
+  {
+#endif
+
+#ifdef _OPENMP
+#pragma omp for schedule(static)
+#endif
+    for (int thread = 0; thread < ncores; ++thread) {
+      for (int i = thread; i < n2; i += ncores){
+        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+      }
+    }
+#ifdef _OPENMP
+  }
+#endif
+  return ret;
+}
 
 extern "C" void _setThreadInd(int cid) {
   inds_thread[rx_get_thread(op_global.cores)] = rx_global.subjects[cid];

@@ -18,6 +18,7 @@ extern "C" {
   double rxt_(double df);
   double rxunif(double low, double hi);
   double rxweibull(double shape, double scale);
+  double rxlnorm(double meanlog, double sdlog);
   double rxgamma(double shape, double rate);
   double rxbeta(double shape1, double shape2);
   double rxnormV(double mean, double sd);

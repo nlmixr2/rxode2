@@ -170,6 +170,8 @@ static inline double loggamma(double a) {
 #define riunif1(id, x) riunif(id, x,1.0)
 #undef rweibull
 #define rweibull(x,y) rxweibull(x,y)
+#define rlnorm(x,y) rxlnorm(x,y)
+#define rxlnorm1(x) rxlnorm( x, 1.0)
 #define rxweibull1(x) rxweibull( x, 1.0)
 #define riweibull1(id, x) riweibull( id, x, 1.0)
 #define rweibull1(x) rxweibull( x, 1.0)

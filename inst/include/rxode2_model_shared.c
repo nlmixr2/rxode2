@@ -100,6 +100,7 @@ rxode2_ifn rxpois;
 rxode2_fn rxt_;
 rxode2_fn2 rxunif;
 rxode2_fn2 rxweibull;
+rxode2_fn2 rxlnorm;
 
 rxode2i2_fn2 rinorm;
 rxode2i2_ribinom ribinom;
@@ -636,6 +637,7 @@ void _assignFuns0(void) {
   rxt_ = (rxode2_fn)R_GetCCallable("rxode2","rxt_");
   rxunif = (rxode2_fn2)R_GetCCallable("rxode2","rxunif");
   rxweibull = (rxode2_fn2)R_GetCCallable("rxode2","rxweibull");
+  rxlnorm = (rxode2_fn2)R_GetCCallable("rxode2","rxlnorm");
   rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
   ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
   rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");

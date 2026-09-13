@@ -82,7 +82,9 @@ static inline int isRxnormOrRelatedNode(transFunctions *tf) {
     (tf->isUnif = !strcmp("rxunif", tf->v) ||
      !strcmp("runif", tf->v) || (tf->isInd = !strcmp("riunif", tf->v))) ||
     (tf->isWeibull = !strcmp("rxweibull", tf->v) ||
-     !strcmp("rweibull", tf->v) || (tf->isInd = !strcmp("riweibull", tf->v)));
+     !strcmp("rweibull", tf->v) || (tf->isInd = !strcmp("riweibull", tf->v))) ||
+    (tf->isLnorm = !strcmp("rxlnorm", tf->v) ||
+     !strcmp("rlnorm", tf->v) || (tf->isInd = !strcmp("rilnorm", tf->v)));
 }
 
 static inline int assertCorrectRxnormArgs2(transFunctions *tf, int nargs) {
@@ -111,6 +113,11 @@ static inline int assertCorrectRxnormArgs12(transFunctions *tf, int nargs) {
     if (tf->isWeibull){
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("'riweibull'/'rxweibull'/'rweibull' takes 1-2 arguments 'rxweibull(shape, scale)'"));
+      return 1;
+    }
+    if (tf->isLnorm){
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'rilnorm'/'rxlnorm'/'rlnorm' takes 1-2 arguments 'rxlnorm(meanlog, sdlog)'"));
       return 1;
     }
   }
