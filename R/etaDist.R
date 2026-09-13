@@ -298,8 +298,30 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #'
 #' rxEtaDistExpand(one.cmt())
 #' }
+#' @param param How a declared random effect is represented for estimation.
+#'
+#'   `"cdf"` (default) is the construction described above: a standard normal
+#'   latent, `phiU()`, the family's inverse CDF, and `rxCor.*` carrying a
+#'   Gaussian copula.  The estimator then sees an ordinary model with a fixed
+#'   identity omega, and the non-normality lives in a decoder line.
+#'
+#'   `"direct"` leaves the declared random effect ALONE: no latent, no decoder,
+#'   no `phiU()`.  The eta itself is what the estimator samples or optimizes,
+#'   and it carries the declared family as its prior rather than a variance.
+#'   Its omega entry is a FIXED placeholder that an estimator on this route must
+#'   ignore -- an estimator that reads it as a Gaussian variance will silently
+#'   fit the wrong model, so the route is opt-in per estimator.
+#'
+#'   The two are not interchangeable everywhere.  For a CORRELATED block of
+#'   declared random effects the CDF construction is not an alternative, it is
+#'   the definition: a Gaussian copula with non-normal marginals IS
+#'   `eta = Q(phi(z))`.  Expressing that directly needs an explicit joint
+#'   distribution (NoLimits.jl reaches for `Copulas.SklarDist`), which this does
+#'   not have, so `"direct"` refuses a correlated declared block by name rather
+#'   than dropping the correlation silently.
 #' @author Matthew L. Fidler
-rxEtaDistExpand <- function(ui) {
+rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
+  param <- match.arg(param)
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
     ui <- suppressMessages(as.rxUi(ui))
   }
@@ -307,6 +329,23 @@ rxEtaDistExpand <- function(ui) {
   .d <- rxUiEtaDists(.ui)
   if (nrow(.d) == 0L) return(ui)
   .rxEtaDistCheckLevel(.d)
+  ## Refuse a SECOND expansion.  `as.rxUi()` on a raw function already runs the
+  ## cdf expansion as part of building the ui, so `rxEtaDistExpand(fn,
+  ## param="direct")` was handed a model that already had `rxN.*`, `phiU()` and
+  ## the inverse CDF in it, and re-expanding produced a hybrid of the two routes
+  ## -- a model nobody wrote, arrived at silently.  Cheap to detect: the first
+  ## expansion leaves its own record.
+  if (!is.null(.ui$etaDistInfo)) {
+    .was <- .ui$etaDistInfo$param
+    if (is.null(.was)) .was <- "cdf"
+    if (identical(.was, param)) return(ui)
+    stop("this model has already been expanded with param=\"", .was,
+         "\" and cannot be re-expanded as \"", param, "\"\n",
+         "  `as.rxUi()` on a model FUNCTION expands it, so pass the ini/model ",
+         "result (`f()`) rather than the function (`f`) when choosing a route",
+         call.=FALSE)
+  }
+  if (param == "direct") return(.rxEtaDistExpandDirect(.ui, .d))
   .iniDf <- .ui$iniDf
   .omega <- .ui$omega
   if (!is.matrix(.omega)) .omega <- .omega[[1]]
@@ -357,6 +396,100 @@ rxEtaDistExpand <- function(ui) {
     character(0)
   }
   assign("sticky", unique(c(.stk, "etaDistInfo")), envir = .new)
+  .new
+}
+
+#' Expand a declared model on the DIRECT route: leave the random effect alone
+#'
+#' The counterpart to the CDF construction.  There is no latent, no `phiU()`,
+#' no inverse CDF and no decoder line -- the declared random effect IS what the
+#' estimator handles, carrying its family as a prior instead of a variance.
+#'
+#' What this has to do is therefore mostly what it must NOT do.  It keeps the
+#' eta, keeps the model text, fixes the omega entry to a placeholder so nothing
+#' downstream tries to estimate a variance that does not exist, and records the
+#' declarations where an estimator can read them.
+#'
+#' A CORRELATED declared block is refused by name.  For non-normal marginals a
+#' Gaussian copula IS `eta = Q(phi(z))` -- the CDF construction is not an
+#' alternative to it, it is what it means -- so "direct" cannot express one
+#' without an explicit joint distribution, and dropping the correlation quietly
+#' would fit a different model than the user wrote.
+#'
+#' @param ui decompressed ui
+#' @param d the declarations, from `rxUiEtaDists()`
+#' @return the rewritten ui
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistExpandDirect <- function(ui, d) {
+  .omega <- ui$omega
+  if (!is.matrix(.omega)) .omega <- .omega[[1]]
+  .dn <- dimnames(.omega)[[1]]
+  .blocks <- .rxEtaDistDeclBlocks(.omega, d)
+  for (.idx in .blocks) {
+    if (length(.idx) > 1L) {
+      .decl <- intersect(.dn[.idx], d$name)
+      stop("rxEtaDistExpand(param=\"direct\") cannot represent the correlated ",
+           "declared block '", paste(.dn[.idx], collapse="', '"), "'\n",
+           "  a Gaussian copula over non-normal marginals IS the inverse-CDF ",
+           "construction, so there is nothing for the direct route to do with ",
+           "it that would not be that construction\n",
+           "  use param=\"cdf\" for this model, or declare ",
+           paste0("'", .decl, "'", collapse=" and "), " independently",
+           call.=FALSE)
+    }
+  }
+  .iniDf <- ui$iniDf
+  ## The omega entry becomes a FIXED placeholder.  It is not the eta's
+  ## dispersion -- that is the family's business now -- and fixing it is what
+  ## stops an estimator wandering off estimating a variance the model does not
+  ## have.  An estimator that READS it as a Gaussian variance is fitting the
+  ## wrong model, which is why the direct route is opt-in per estimator rather
+  ## than something the expansion can turn on for everyone.
+  for (.nm in d$name) {
+    .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
+    if (length(.w) == 1L) {
+      .iniDf$est[.w] <- 1.0
+      .iniDf$fix[.w] <- TRUE
+    }
+  }
+  .iniDf$etaDist <- NULL
+  rownames(.iniDf) <- NULL
+  ## The ARGUMENT ANCHORS are still emitted, and they are the whole interface.
+  ##
+  ## Dropping the decoder leaves the family's thetas unused by the model text,
+  ## which rxode2 refuses ("in the ini block but not in the model block") -- and
+  ## it is right to: the estimator has to get the current arguments from
+  ## somewhere.  On this route it reads them off `rxEdA.<eta>.<role>`, computed
+  ## per record like any other model quantity, so a covariate on a distribution
+  ## parameter needs no special handling here either.
+  ##
+  ## `latent = NULL`: there is no latent on this route, and passing one is what
+  ## would drag the inverse CDF back in.
+  .pre <- character(0)
+  .assigned <- .rxEtaDistModelAssigned(ui)
+  for (.nm in d$name) {
+    if (.nm %in% .assigned) next
+    .w <- which(d$name == .nm)
+    .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent=NULL)
+    if (is.null(.anc)) {
+      stop("rxEtaDistExpand(param=\"direct\") needs the argument roles for '",
+           .nm, "', which the installed 'lotri' does not provide",
+           call.=FALSE)
+    }
+    .pre <- c(.pre, attr(.anc, "lines"))
+  }
+  .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), ui$lstExpr))
+  assign("etaDistInfo",
+         list(blocks=lapply(.blocks, function(.idx) .dn[.idx]),
+              etaDist=d, iniDf=ui$iniDf, param="direct"),
+         envir=.new)
+  .stk <- if (exists("sticky", envir = .new, inherits = FALSE)) {
+    get("sticky", envir = .new, inherits = FALSE)
+  } else {
+    character(0)
+  }
+  assign("sticky", unique(c(.stk, "etaDistInfo")), envir=.new)
   .new
 }
 
