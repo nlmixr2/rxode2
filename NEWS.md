@@ -762,6 +762,27 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `sortIds()`'s run-time solve ordering is reachable again.  The throttle is
+  documented (and was originally written) to SUPPRESS the sort when
+  `nsubject * throttle <= nthreads`; a refactor flattened the
+  suppress-branch into the sort-branch without negating the comparison, so
+  the sort was taken only when threads outnumbered subjects -- the one
+  regime the throttle exists to exclude.  At the default throttle of 2 a
+  131-subject fit needed 262 cores before it would reorder anything, so
+  `rx->ordId` stayed the identity on any ordinary machine and the ordering
+  was dead code.  The comparison is now `nall * throttle > cores`,
+  evaluated in 64 bits because `throttle` is user-settable and the product
+  overflows 32.  `.rxSortIdsWanted()` exposes the gate so the direction is
+  asserted by a test rather than by a comment.
+
+- `sortIds()` now sorts in C++ instead of calling back into R's
+  `.order1()`.  The sort runs once per solve pass of an estimation, where
+  the `data.table` round trip cost more (~300us for a few hundred
+  subjects) than the ordering it computes saves.  It also removes a
+  latent truncation: with `forderForceBase(TRUE)`, or with `data.table`
+  absent, `.order1()` drops `NA`s and returned fewer than `nall`
+  positions, which left the tail of `rx->ordId` holding stale entries.
+
 ### Compilation
 
 - `getSolvingOptionsInd()` now walks the subject array at the stride it was

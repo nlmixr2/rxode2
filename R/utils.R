@@ -676,11 +676,10 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #'   more time are solved first, this wait is less likely to have an
 #'   impact on the overall solving time.
 #'
-#'   In rxode2 the ids are sorted by the individual number of solving
-#'   points (largest first). It also has a C interface that allows
-#'   these ids to be resorted by total time spent solving the
-#'   equation.  This allows packages like nlmixr to sort by solving
-#'   time if needed.
+#'   rxode2 itself solves the ids in data order; the sort is reached
+#'   through a C interface that resorts them by the total time each id has
+#'   spent solving so far (largest first).  This allows packages like
+#'   nlmixr2 to sort by solving time between iterations of a fit.
 #'
 #'   Overall the the number of threads is throttled (restricted) for
 #'   small tasks and sorting for ids are suppressed.
