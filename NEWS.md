@@ -1386,6 +1386,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Parsing
 
+- Two or more subject-level random effects in one mu-referenced expression now
+  name the clashing parameters and both fixes -- declaring one at its own level
+  (`etaVcOcc ~ 0.1 | OCC`) or splitting the line -- rather than reporting
+  `currently do not theta + eta1 + eta2`.  The guard keeping occasion-level etas
+  out of `$nonMuEtas` now reads `env$info$level`, where the level names live.
+
 - A variable that is used *only* as an argument to an adaptive dosing call
   (`evid_()`, `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
   `phantom()`, `obs()`) is now a parse-time error instead of an uncompilable
