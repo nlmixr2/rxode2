@@ -25,7 +25,10 @@ Named parameter assignments are retained so \code{linCmt()} can infer the
 parameterization.  Every right-hand side term must be proportional to a
 compartment; an exogenous input (\code{transit()} absorption, a zero-order or
 endogenous production rate, a dose carried in a covariate column) has no
-\code{linCmt()} representation and declines the conversion.
+\code{linCmt()} representation and declines the conversion.  So does a rate
+coefficient, or a concentration line, that is not what its named parameters
+imply -- a scale factor, an inverted ratio or a covariate factor written into
+the ODE -- since \code{linCmt()} rebuilds the rates from those names alone.
 }
 \examples{
 oneCmtOde <- function() {

@@ -738,7 +738,10 @@
   .head <- .o[seq_len(.n)]
   .m <- cmtMap[.head]
   .m[is.na(.m)] <- .head[is.na(.m)]
-  .k <- which(.m != .c[seq_len(.n)])
+  ## A position is safe when the converted model holds that compartment under
+  ## either its new name or its original one -- the latter covers the case
+  ## where the rebuild failed and the caller is comparing a model with itself.
+  .k <- which(.m != .c[seq_len(.n)] & .head != .c[seq_len(.n)])
   if (length(.k) == 0L) return(as.integer(.n))
   as.integer(.k[1L] - 1L)
 }
@@ -857,7 +860,10 @@
 #' parameterization.  Every right-hand side term must be proportional to a
 #' compartment; an exogenous input (\code{transit()} absorption, a zero-order or
 #' endogenous production rate, a dose carried in a covariate column) has no
-#' \code{linCmt()} representation and declines the conversion.
+#' \code{linCmt()} representation and declines the conversion.  So does a rate
+#' coefficient, or a concentration line, that is not what its named parameters
+#' imply -- a scale factor, an inverted ratio or a covariate factor written into
+#' the ODE -- since \code{linCmt()} rebuilds the rates from those names alone.
 #'
 #' @param ui rxUi-like model object (function, rxUi, or anything accepted by
 #'   \code{as.rxUi}).

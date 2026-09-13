@@ -1644,8 +1644,10 @@ model is cached so the compilation cost is paid only once.  A
 model whose ODEs carry a term \code{linCmt()} cannot represent (an
 exogenous input such as \code{transit()} absorption, a zero-order or
 endogenous production rate, or a dose carried in a covariate
-column) is solved with its original ODEs.  Set to \code{FALSE} to
-keep the original ODE solver.  This flag is also
+column), or whose rates \code{linCmt()} would not rebuild exactly from
+the parameter names, or whose compartments it would renumber
+under event data addressing them by index, is solved with its
+original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
 hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 use the value of \code{rxode2.useLinCmt} option (which when specified
