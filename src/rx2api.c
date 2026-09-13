@@ -386,6 +386,13 @@ int getRxNpars(rx_solve *rx) {
 
 int getOrdId(rx_solve *rx, int solveid) {
   rx = rxSolveOrError(rx, __func__);
+  // NULL is the identity, the same reading par_solve.c's own rxDriveTeamId()
+  // gives it: rx->ordId holds the solve order only once something has built
+  // one, and "no order yet" means the data order.  Callers run inside OpenMP
+  // regions, where an Rf_error() would longjmp across threads, so this cannot
+  // raise -- returning the identity keeps each subject mapped to itself
+  // rather than dereferencing NULL.
+  if (rx->ordId == NULL) return solveid + 1;
   return rx->ordId[solveid];
 }
 ////////////////////////////////////////////////////////////////////////
