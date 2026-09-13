@@ -448,6 +448,26 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
            "for this model",
            call.=FALSE)
     }
+    ## A declared eta correlated with an ORDINARY one is refused too, and for a
+    ## different reason than the block-of-three above.
+    ##
+    ## On this route the prior splits: the declared columns are scored by their
+    ## family, the rest by the Gaussian quadratic.  That split is exact only when
+    ## omega is block diagonal between the two sets -- a sub-block of an INVERSE
+    ## is not the inverse of the sub-block, so a cross term makes the Gaussian
+    ## half wrong by an amount nothing reports.  A Gaussian copula between a
+    ## declared and an undeclared marginal is a well-defined model; it is just
+    ## not one this parameterization can write down, and the cdf route can.
+    .undecl <- setdiff(.dn[.idx], d$name)
+    if (length(.idx) > 1L && length(.undecl) > 0L) {
+      stop("rxEtaDistExpand(param=\"direct\") cannot correlate the declared '",
+           paste(intersect(.dn[.idx], d$name), collapse="', '"),
+           "' with the ordinary '", paste(.undecl, collapse="', '"), "'\n",
+           "  the direct prior splits into a family part and a Gaussian part, ",
+           "which is exact only when they do not share an omega block\n",
+           "  use param=\"cdf\" for this model, where both are normal latents",
+           call.=FALSE)
+    }
   }
   ## The correlation itself still has to reach the estimator.  On the cdf route
   ## it becomes an `rxCor.*` theta because the expansion needs it to BUILD the
@@ -466,7 +486,10 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## This is NOT the same as the double-expansion guard above: that one keys on
   ## `etaDistInfo`, which `as.rxUi()` does not leave behind, so it does not fire
   ## here.  (An earlier commit claimed it covered this case; it did not.)
-  .assignedAll <- .rxEtaDistModelAssigned(ui)
+  ## Take out the cdf construction `as.rxUi()` may already have emitted, so the
+  ## refusal below tests a USER assignment and not the feature's own output.
+  .body <- .rxEtaDistDropPreEmitted(ui, d)
+  .assignedAll <- .rxEtaDistModelAssigned(list(lstExpr = .body))
   .clash <- intersect(d$name, .assignedAll)
   if (length(.clash) > 0L) {
     stop("rxEtaDistExpand(param=\"direct\") cannot use '",
@@ -485,9 +508,24 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## have.  An estimator that READS it as a Gaussian variance is fitting the
   ## wrong model, which is why the direct route is opt-in per estimator rather
   ## than something the expansion can turn on for everyone.
+  ##
+  ## The eta is also RENAMED to `rxd.<eta>` and bound back on its own line
+  ## below.  Leaving it named `eta.cl` and used inline (`cl <- exp(lcl)*eta.cl`)
+  ## is what a reader would expect the direct route to mean, and it parses --
+  ## but the mu-reference scan then reports "some etas defaulted to non-mu
+  ## referenced, possible parsing error: eta.cl" and the eta reaches saem by a
+  ## DIFFERENT door than the cdf route's latent does.  The cdf route does not
+  ## trip it only because `rxN.eta.cl <- rxz.eta.cl` puts its eta alone on a
+  ## simple line, which the scan reads as a mu reference with no theta.
+  ##
+  ## Since the whole point of having two routes is to compare them, they must
+  ## not differ in how the random effect is CLASSIFIED -- otherwise a measured
+  ## difference is between two mu-referencing decisions, not between two
+  ## parameterizations.  So mirror the cdf shape exactly.
   for (.nm in d$name) {
     .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
     if (length(.w) == 1L) {
+      .iniDf$name[.w] <- paste0("rxd.", .nm)
       .iniDf$est[.w] <- 1.0
       .iniDf$fix[.w] <- TRUE
     }
@@ -506,7 +544,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## `latent = NULL`: there is no latent on this route, and passing one is what
   ## would drag the inverse CDF back in.
   .pre <- character(0)
-  .assigned <- .rxEtaDistModelAssigned(ui)
+  .assigned <- .assignedAll
   for (.nm in d$name) {
     if (.nm %in% .assigned) next
     .w <- which(d$name == .nm)
@@ -516,9 +554,10 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
            .nm, "', which the installed 'lotri' does not provide",
            call.=FALSE)
     }
-    .pre <- c(.pre, attr(.anc, "lines"))
+    ## the anchors, then the bind that gives the renamed eta back its name
+    .pre <- c(.pre, attr(.anc, "lines"), paste0(.nm, " <- rxd.", .nm))
   }
-  .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), ui$lstExpr))
+  .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), .body))
   assign("etaDistInfo",
          list(blocks=lapply(.blocks, function(.idx) .dn[.idx]),
               etaDist=d, iniDf=ui$iniDf, param="direct"),
@@ -598,6 +637,48 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
     }
   }
   .assigned
+}
+
+#' Drop the CDF construction `as.rxUi()` already emitted for a declaration
+#'
+#' `dist()` is a ui-lhs udf, so building a ui from a model FUNCTION runs it and
+#' leaves the cdf construction in the model text -- the `rxEdA.*` argument
+#' anchors and the `eta.cl <- gammapInv(..., phiU(rxN.eta.cl))/...` decoder --
+#' while the declaration is still in the iniDf.  Building from `f()` does not.
+#'
+#' That is invisible on the cdf route, which is about to emit exactly those
+#' lines anyway (and skips the ones already there).  The direct route emits a
+#' DIFFERENT construction, so it has to take them out first -- otherwise
+#' `nlmixr2(f, ...)`, which is the ordinary call form, refuses every declared
+#' model as "the model already assigns it".
+#'
+#' Only lines with this exact shape are removed, so a user assignment to the
+#' same name still reaches the refusal it should.
+#'
+#' @param ui rxode2 ui
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return the model expression list, with those lines dropped
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDropPreEmitted <- function(ui, d) {
+  .keep <- vapply(ui$lstExpr, function(.e) {
+    if (!(is.call(.e) && length(.e) >= 3L && is.name(.e[[2]]) &&
+            (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))))) {
+      return(TRUE)
+    }
+    .lhs <- as.character(.e[[2]])
+    ## an argument anchor for one of THESE declarations
+    if (any(vapply(d$name, function(.nm) {
+      grepl(paste0("^rxEdA[.]", .nm, "[.]"), .lhs)
+    }, logical(1)))) return(FALSE)
+    ## the decoder itself: assigns the declared name, and reads its latent
+    if (.lhs %in% d$name) {
+      .v <- all.vars(.e[[3]])
+      if (paste0("rxN.", .lhs) %in% .v) return(FALSE)
+    }
+    TRUE
+  }, logical(1))
+  ui$lstExpr[.keep]
 }
 
 #' The Gaussian copula lines for one block

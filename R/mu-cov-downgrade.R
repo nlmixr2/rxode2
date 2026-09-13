@@ -126,8 +126,11 @@
     ## `Q(phiU(eta))` -- and neither does the latent `rxEtaDistExpand()`
     ## leaves behind, so warning about those would report the feature working
     ## as a parsing error.
+    ## `rxz.` is the cdf route's latent; `rxd.` the direct route's own eta,
+    ## which is non-mu for exactly the same reason -- there is no theta to add
+    ## it to, the family carries the location.  Both are the feature working.
     .expected <- c(.rxEtaDistVars(ui$iniDf),
-                   .extra[grepl("^rxz[.]", .extra)])
+                   .extra[grepl("^rx[zd][.]", .extra)])
     .warn <- setdiff(.extra, .expected)
     if (length(.warn) > 0) {
       warning("some etas defaulted to non-mu referenced, possible parsing error: ",
