@@ -67,3 +67,21 @@ forderForceBase <- function(forceBase = FALSE){
 .chin <- function(x, table) {
   x %in% table
 }
+
+#' Would `sortIds()` reorder the solve for this problem size?
+#'
+#' Mirrors the C-level gate exactly so that the throttle's documented
+#' direction -- suppress the sort when `nall * throttle <= cores` -- is
+#' asserted by a test rather than only by prose.
+#'
+#' @param cores Number of threads the solve will use.
+#' @param nall Number of subject-solves (subjects times simulations).
+#' @param throttle Throttle from [setRxThreads()]; there is no R-level
+#'   getter for it, so callers pass the value they set.
+#' @return `TRUE` when the run-time sort is taken, `FALSE` when the throttle
+#'   suppresses it.
+#' @noRd
+.rxSortIdsWanted <- function(cores, nall, throttle) {
+  .Call(`_rxode2_sortIdsWanted_`, as.integer(cores), as.double(nall),
+        as.integer(throttle))
+}

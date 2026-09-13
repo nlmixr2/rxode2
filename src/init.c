@@ -357,6 +357,7 @@ int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_
 t_update_inis getUpdateInis(void);
 
 void sortIds(rx_solve* rx, int ini);
+SEXP _rxode2_sortIdsWanted_(SEXP coresS, SEXP nallS, SEXP throttleS);
 
 void handleTlast(double *time, rx_solving_options_ind *ind);
 
@@ -1102,6 +1103,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
     {"_rxode2_setCvodeLinearSolver", (DL_FUNC) &_rxode2_setCvodeLinearSolver, 1},
     {"_rxode2_rxApiErrTest_", (DL_FUNC) &_rxode2_rxApiErrTest_, 1},
+    {"_rxode2_sortIdsWanted_", (DL_FUNC) &_rxode2_sortIdsWanted_, 3},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
