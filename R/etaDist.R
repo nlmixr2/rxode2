@@ -95,7 +95,7 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 .rxEtaDistQuantile <- function(txt, u, what, latent=NULL, anchors=NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
-  .tab <- lotri::lotriEtaDists()
+  .tab <- .rxEtaDistTable(what)
   .w <- which(.tab$name == .nm)
   if (length(.w) != 1L) {
     stop("'", what, "' declares '", .nm, # nocov
@@ -167,6 +167,7 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 .rxEtaDistAnchors <- function(txt, eta, latent=NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
+  if (!.rxEtaDistLotriOk()) return(NULL)
   .tab <- lotri::lotriEtaDists()
   .w <- which(.tab$name == .nm)
   if (length(.w) != 1L) return(NULL)
@@ -941,7 +942,7 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
          "'dist(", .eta, ") ~ dgamma(shape=a, rate=b)'", call.=FALSE)
   }
   .fam <- as.character(rhs[[1]])
-  .tab <- lotri::lotriEtaDists()
+  .tab <- .rxEtaDistTable(paste0("dist(", .eta, ")"))
   .fw <- which(.tab$name == .fam)
   if (length(.fw) != 1L) {
     stop("'dist(", .eta, ")' declares '", .fam,
@@ -1025,6 +1026,40 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
 #' @noRd
 getFromNamespace0 <- function(x, ns) {
   tryCatch(utils::getFromNamespace(x, ns), error=function(e) NULL)
+}
+
+#' Is the installed lotri new enough to describe declared distributions?
+#'
+#' `dist()` needs lotri's family catalogue (`lotriEtaDists()`), which the
+#' version on CRAN does not export.  Detected by FEATURE, never by version:
+#' the lotri carrying it reports the same 1.0.5 as the one that does not, so a
+#' `DESCRIPTION` requirement cannot express this and a version test would pass
+#' while the call still failed.
+#' @noRd
+.rxEtaDistLotriOk <- function() {
+  !is.null(getFromNamespace0("lotriEtaDists", "lotri"))
+}
+
+#' lotri's declared-distribution catalogue, or a refusal that says what to do
+#'
+#' Without this, a `dist()` model died on lotri's own namespace error --
+#' "'lotriEtaDists' is not an exported object from 'namespace:lotri'" -- which
+#' names neither the feature the user asked for nor what to install.  Every
+#' other part of rxode2 works against the CRAN lotri; only `dist()` needs the
+#' newer one, so this is the one place that has to say so.
+#'
+#' @param what what the caller was doing, for the message
+#' @return the catalogue data.frame; never returns when lotri is too old
+#' @noRd
+.rxEtaDistTable <- function(what = "dist()") {
+  if (!.rxEtaDistLotriOk()) {
+    stop("'", what, "' needs a 'lotri' that describes declared distributions, ",
+         "and the installed one does not provide 'lotriEtaDists()'\n",
+         "  install the development 'lotri':\n",
+         "    remotes::install_github(\"nlmixr2/lotri\")",
+         call.=FALSE)
+  }
+  lotri::lotriEtaDists()
 }
 
 #' Add a latent random effect the model block declared a distribution for
