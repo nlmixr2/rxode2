@@ -762,6 +762,42 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `sortIds()`'s run-time solve ordering is reachable again.  The throttle is
+  documented (and was originally written) to SUPPRESS the sort when
+  `nsubject * throttle <= nthreads`; a refactor flattened the
+  suppress-branch into the sort-branch without negating the comparison, so
+  the sort was taken only when threads outnumbered subjects -- the one
+  regime the throttle exists to exclude.  At the default throttle of 2 a
+  131-subject fit needed 262 cores before it would reorder anything, so
+  `rx->ordId` stayed the identity on any ordinary machine and the ordering
+  was dead code.  The comparison is now `nall * throttle > cores`,
+  evaluated in 64 bits because `throttle` is user-settable and the product
+  overflows 32.  `.rxSortIdsWanted()` exposes the gate so the direction is
+  asserted by a test rather than by a comment.
+
+- `sortIds()` now sorts in C++ instead of calling back into R's
+  `.order1()`.  The sort runs once per solve pass of an estimation, so
+  with the gate reachable again the `data.table` round trip (~300us for a
+  few hundred subjects, ~1s per fit) cost more than the ordering it
+  computes saves: correcting the gate alone measured ~8% SLOWER on a
+  131-subject SAEM fit on 4 threads, and correcting it with the C++ sort
+  measured ~4% faster.  Sorting in C++ also removes a latent truncation:
+  with `forderForceBase(TRUE)`, or with `data.table` absent, `.order1()`
+  drops `NA`s and returned fewer than `nall` positions, which left the
+  tail of `rx->ordId` holding stale entries.
+
+  On that fit the ~4% is not the load balancing the sort is named for.
+  Sorting by ascending cost, and a permutation carrying no cost
+  information at all, are just as fast; a rotation, which reorders
+  without scattering, is not.  What pays is that the subjects a thread
+  team works on concurrently stop being neighbours in `rx->subjects`.
+  Scheduling the same identity order in coarser chunks does not
+  reproduce it, so it is not simple adjacent-subject false sharing --
+  the per-subject slices of the `gsolve` slab are worth a look on their
+  own.  The cost ordering itself is worth at most ~0.5% here, which is
+  the whole makespan `schedule(dynamic,1)` leaves on the table at ~98
+  subjects per thread.
+
 ### Compilation
 
 - The Fortran sources are no longer compiled with a C-only diagnostic flag on

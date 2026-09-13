@@ -22,6 +22,8 @@
 #include <thread>
 #include <string>
 #include <vector>
+#include <algorithm>  // std::stable_sort in sortIds()
+#include <numeric>    // std::iota in sortIds()
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -3375,6 +3377,32 @@ extern "C" SEXP get_fkeepn() {
   return names;
 }
 
+// Should sortIds() re-order the solve by accumulated run time?
+//
+// The throttle SUPPRESSES the sort for problems too small to gain from it: with
+// `nall` subject-solves, `cores` threads and the `throttle` from
+// ?setRxThreads, the sort is skipped when nall*throttle <= cores, and taken
+// otherwise.  A single thread never reorders because there is no other thread
+// to wait on.
+//
+// 64-bit because `throttle` is user-settable to any positive int
+// (setRxThreads(throttle=) / rxode2_THROTTLE) and `nall` reaches INT_MAX, so
+// the product overflows 32 bits; `cores` is widened rather than cast to
+// unsigned so a non-positive value compares as itself.
+static inline bool sortIdsWanted(int cores, uint32_t nall, int throttle) {
+  return cores > 1 && (int64_t)nall * (int64_t)throttle > (int64_t)cores;
+}
+
+extern "C" SEXP _rxode2_sortIdsWanted_(SEXP coresS, SEXP nallS, SEXP throttleS) {
+  int cores = Rf_asInteger(coresS), throttle = Rf_asInteger(throttleS);
+  double nall = Rf_asReal(nallS);
+  if (cores == NA_INTEGER || throttle == NA_INTEGER || ISNA(nall) ||
+      nall < 0 || nall > (double)UINT32_MAX) {
+    Rf_error("%s", _("'cores', 'nall' and 'throttle' must be non-NA, with 0 <= 'nall' <= 2^32-1"));
+  }
+  return Rf_ScalarLogical(sortIdsWanted(cores, (uint32_t)nall, throttle));
+}
+
 extern "C" void sortIds(rx_solve* rx, int ini) {
   rx_solving_options_ind* ind;
   uint64_t nSizeLong = (uint64_t)rx->nsim * (uint64_t)rx->nsub;
@@ -3395,19 +3423,30 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       stop(_("memory for solve order could not be allocated"));
     }
     std::iota(rx->ordId,rx->ordId+nall,1);
-  } else if (rx->op->cores > 1 && (uint32_t)rx->op->cores >= nall*(uint32_t)getThrottle()) {
-    // Here we order based on run times.  This way this iteratively
-    // changes the order based on run-time.
-    NumericVector solveTime(nall);
-    IntegerVector ord;
+  } else if (sortIdsWanted(rx->op->cores, nall, getThrottle())) {
+    // Order the solve by each subject's accumulated run time, most expensive
+    // first, so that a long solve is not what a thread picks up last.  Because
+    // `solveTime` keeps accumulating, each pass re-ranks on everything solved
+    // so far.
+    //
+    // Sorted here rather than through rxode2's .order1(): a caller invokes this
+    // once per solve pass of an estimation, where .order1()'s data.table round
+    // trip (~300us for a few hundred subjects) costs more than the ordering it
+    // computes saves.  stable_sort on a descending comparator is
+    // order(decreasing=TRUE): ties keep their original, ascending, position.
+    //
+    // rx->ordId is allocated by the ini branch above, which every caller of
+    // this branch has already run (directly, or as sortIds(rx, 2)).
+    std::vector<double> solveTime(nall);
     for (uint32_t i = 0; i < nall; i++) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
-    Function order1 = getRxFn(".order1"); // decreasing
-    ord = order1(solveTime, _["decreasing"] = LogicalVector::create(true));
-    // This assumes that this has already been created
-    std::copy(ord.begin(), ord.end(), rx->ordId);
+    std::vector<int> ord(nall);
+    std::iota(ord.begin(), ord.end(), 0);
+    std::stable_sort(ord.begin(), ord.end(),
+                     [&solveTime](int a, int b) { return solveTime[a] > solveTime[b]; });
+    for (uint32_t i = 0; i < nall; i++) rx->ordId[i] = ord[i] + 1;
   }
 }
 
