@@ -1552,6 +1552,18 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Solving
 
+- The automatic ODE-to-`linCmt()` conversion (`rxSolve(..., useLinCmt=TRUE)`,
+  the default) no longer drops a right-hand side term that is not proportional
+  to a compartment.  `transit()` absorption, a zero-order or endogenous
+  production rate and a dose carried in a covariate column were all parsed and
+  then discarded by both the topology detector and the emitted `linCmt()` call,
+  so the model solved was not the model written -- either identically zero, or
+  non-zero and plausible but wrong (a transit chain silently became plain
+  first-order absorption, reported here as `nlmixr2/rxode2#1370`).  `linCmt()`
+  is driven entirely by the event table's dosing records and has no parameter
+  that can carry such a term, so a model containing one now keeps its explicit
+  ODEs, and `odeToLin()` names the term it declined to convert.
+
 - Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
   composite is much faster, because the analytic Jacobian model is no longer
   regenerated on every `rxSolve()`.  The augmented model's *text* was cached but

@@ -63,13 +63,30 @@
   NULL
 }
 
-## Parse one additive term: returns {sign, coef, state} where state=NA means
-## a non-state (input/forcing) term. Returns NULL if the term is nonlinear
-## (references multiple states or uses a state nonlinearly).
+## TRUE when an expression is a constant that evaluates to exactly zero.  A
+## zero term adds nothing to a rate, so dropping it is lossless.
+.odeToLinIsZeroExpr <- function(expr) {
+  if (length(all.vars(expr)) > 0L) return(FALSE)
+  .v <- tryCatch(eval(expr, baseenv()), error = function(e) NA_real_)
+  is.numeric(.v) && length(.v) == 1L && !is.na(.v) && .v == 0
+}
+
+## Parse one additive term: returns {sign, coef, state}, `NA` for a constant
+## zero term (the caller drops it), or NULL when the term cannot be carried
+## into linCmt().
+##
+## A term referencing no state is an exogenous input -- transit() absorption, a
+## zero-order or endogenous production rate, a dose supplied through a
+## covariate column.  linCmt() is driven entirely by the event table dosing
+## records and has no parameter able to carry such a term, so a non-zero one is
+## rejected exactly like a nonlinear term.  (It used to be parsed as
+## `state = NA` and then dropped by both the topology detector and the
+## reconstruction, silently solving a different model than the one written.)
 .parseOneLinTerm <- function(sign, termExpr, states) {
   .refs <- .statesInExpr(termExpr, states)
   if (length(.refs) == 0L) {
-    return(list(sign = sign, coef = termExpr, state = NA_character_))
+    if (.odeToLinIsZeroExpr(termExpr)) return(NA)
+    return(NULL)
   }
   if (length(.refs) > 1L) return(NULL)
   .state <- .refs[1L]
@@ -78,13 +95,14 @@
   list(sign = sign, coef = .coef, state = .state)
 }
 
-## Parse an ODE RHS into a flat list of {sign, coef, state} terms.
-## Returns NULL if the RHS is not linear in all state variables.
+## Parse an ODE RHS into a flat list of {sign, coef, state} terms, every one
+## proportional to exactly one state.  Returns NULL if the RHS is not linear in
+## all state variables or carries a non-zero exogenous input term.
 .parseLinearRhs <- function(rhs, states) {
   .raw    <- .collectAddTerms(rhs)
   .parsed <- lapply(.raw, function(.t) .parseOneLinTerm(.t$sign, .t$expr, states))
   if (any(vapply(.parsed, is.null, logical(1)))) return(NULL)
-  .parsed
+  Filter(is.list, .parsed) # drop the constant-zero terms
 }
 
 ## Net signed coefficient (sum of sign*coef) of state `s`, as a single
@@ -360,6 +378,40 @@
   unique(.tainted)
 }
 
+## Index and compartment name of every `d/dt(<cmt>) <- ...` line, in order.
+.odeToLinOdeLines <- function(lstExpr) {
+  .odeIdx   <- integer(0)
+  .cmtNames <- character(0)
+  for (.i in seq_along(lstExpr)) {
+    .e <- lstExpr[[.i]]
+    if (!is.call(.e)) next
+    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
+    if (length(.e) < 3L || !is.call(.e[[2]])) next
+    if (!.isDtExpr(.e[[2]])) next
+    .odeIdx   <- c(.odeIdx, .i)
+    .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
+  }
+  list(odeIdx = .odeIdx, cmtNames = .cmtNames)
+}
+
+## Compartments whose ODE carries a non-zero exogenous input term, with the
+## offending term deparsed.  Diagnostic only: it explains a declined conversion
+## in `odeToLin()` and is never called on the solve path.
+.odeToLinExogenousInputs <- function(lstExpr, states) {
+  .lines <- .odeToLinOdeLines(lstExpr)
+  .ret <- character(0)
+  for (.j in seq_along(.lines$odeIdx)) {
+    .rhs <- lstExpr[[.lines$odeIdx[.j]]][[3]]
+    for (.t in .collectAddTerms(.rhs)) {
+      if (length(.statesInExpr(.t$expr, states)) > 0L) next
+      if (.odeToLinIsZeroExpr(.t$expr)) next
+      .ret[.lines$cmtNames[.j]] <- deparse1(.t$expr)
+      break
+    }
+  }
+  .ret
+}
+
 ## Attempt to detect whether ui is a linear compartment ODE model.
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
@@ -369,17 +421,9 @@
   if (length(.states) == 0L) return(NULL)
 
   ## Gather ODE lines and their compartment names.
-  .odeIdx  <- integer(0)
-  .cmtNames <- character(0)
-  for (.i in seq_along(.lstExpr)) {
-    .e <- .lstExpr[[.i]]
-    if (!is.call(.e)) next
-    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
-    if (length(.e) < 3L || !is.call(.e[[2]])) next
-    if (!.isDtExpr(.e[[2]])) next
-    .odeIdx   <- c(.odeIdx, .i)
-    .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
-  }
+  .lines    <- .odeToLinOdeLines(.lstExpr)
+  .odeIdx   <- .lines$odeIdx
+  .cmtNames <- .lines$cmtNames
 
   if (length(.odeIdx) == 0L || length(.odeIdx) > 4L) return(NULL)
   if (!all(.cmtNames %in% .states)) return(NULL)
@@ -678,7 +722,10 @@
 #' right-hand sides, 1-4 compartments in a standard depot/central/peripheral
 #' topology, and one output line of the form \code{var <- central_cmt / v_expr}.
 #' Named parameter assignments are retained so \code{linCmt()} can infer the
-#' parameterization.
+#' parameterization.  Every right-hand side term must be proportional to a
+#' compartment; an exogenous input (\code{transit()} absorption, a zero-order or
+#' endogenous production rate, a dose carried in a covariate column) has no
+#' \code{linCmt()} representation and declines the conversion.
 #'
 #' @param ui rxUi-like model object (function, rxUi, or anything accepted by
 #'   \code{as.rxUi}).
@@ -713,7 +760,15 @@ odeToLin <- function(ui) {
 
   .info <- .odeToLinDetect(.ui)
   if (is.null(.info)) {
-    message("model does not appear to be a linear compartment ODE; returning unchanged")
+    .exo <- .odeToLinExogenousInputs(.ui$lstExpr, rxModelVars(.ui)$state) # nolint
+    if (length(.exo) > 0L) {
+      message("linCmt() cannot carry the input term",
+              if (length(.exo) > 1L) "s" else "", " ",
+              paste0("`", .exo, "` in d/dt(", names(.exo), ")", collapse = ", "),
+              "; returning unchanged")
+    } else {
+      message("model does not appear to be a linear compartment ODE; returning unchanged")
+    }
     return(rxUiCompress(.ui)) # nolint
   }
 

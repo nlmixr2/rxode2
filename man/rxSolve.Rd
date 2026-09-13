@@ -1640,8 +1640,12 @@ stiff secondary that does support it.}
 linear-compartment ODEs that can be solved analytically,
 automatically convert them to a \code{linCmt()} call before solving.
 The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
-model is cached so the compilation cost is paid only once.  Set
-to \code{FALSE} to keep the original ODE solver.  This flag is also
+model is cached so the compilation cost is paid only once.  A
+model whose ODEs carry a term \code{linCmt()} cannot represent (an
+exogenous input such as \code{transit()} absorption, a zero-order or
+endogenous production rate, or a dose carried in a covariate
+column) is solved with its original ODEs.  Set to \code{FALSE} to
+keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
 hooks (e.g. in nlmixr2) can read and apply it.  The default is to
 use the value of \code{rxode2.useLinCmt} option (which when specified

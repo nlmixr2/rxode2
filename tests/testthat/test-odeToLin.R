@@ -200,6 +200,168 @@ rxTest({
     expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-6)
   })
 
+
+  ## -----------------------------------------------------------------------
+  ## Exogenous input terms (nlmixr2/rxode2#1370): a right-hand side term that
+  ## is not proportional to a state used to be parsed as `state = NA` and then
+  ## dropped, so the solved model was not the model written.  It must now
+  ## decline the conversion.
+  ## -----------------------------------------------------------------------
+
+  ## 1-cmt oral with transit() absorption; `f(depot) <- 0` (NONMEM F1 = 0)
+  ## makes transit() the only drug input.
+  .transitF0 <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lcl <- log(10); lvc <- log(50); lka <- log(1.5)
+            lmtt <- log(2); lnn <- log(5); addSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); ka <- exp(lka)
+        mtt <- exp(lmtt); nn <- exp(lnn); kel <- cl / vc
+        d/dt(depot)   <- transit(nn, mtt) - ka * depot
+        d/dt(central) <- ka * depot - kel * central
+        f(depot) <- 0
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## The same model without f(depot) <- 0: both paths solve and both look
+  ## plausible, but dropping transit() leaves plain first-order absorption.
+  .transit <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lcl <- log(10); lvc <- log(50); lka <- log(1.5)
+            lmtt <- log(2); lnn <- log(5); addSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); ka <- exp(lka)
+        mtt <- exp(lmtt); nn <- exp(lnn); kel <- cl / vc
+        d/dt(depot)   <- transit(nn, mtt) - ka * depot
+        d/dt(central) <- ka * depot - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## Endogenous production: no transit(), no f(), no dose at all.
+  .endogenous <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lkel <- log(0.1); lvc <- log(10); lksyn <- log(5); addSd <- 0.1 })
+      model({
+        kel <- exp(lkel); vc <- exp(lvc); ksyn <- exp(lksyn)
+        d/dt(central) <- ksyn - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## Input rate supplied by a covariate column.
+  .covRate <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lkel <- log(0.1); lvc <- log(10); addSd <- 0.1 })
+      model({
+        kel <- exp(lkel); vc <- exp(lvc)
+        d/dt(central) <- rateIn - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  test_that("odeToLin returns NULL for transit() absorption", {
+    expect_null(.odeToLinDetect(.transitF0()))
+    expect_null(.odeToLinDetect(.transit()))
+  })
+
+  test_that("odeToLin returns NULL for an endogenous production term", {
+    expect_null(.odeToLinDetect(.endogenous()))
+  })
+
+  test_that("odeToLin returns NULL for an input rate carried by a covariate", {
+    expect_null(.odeToLinDetect(.covRate()))
+  })
+
+  test_that("default rxSolve matches the ODE for transit() with f(depot) <- 0", {
+    .m  <- .transitF0()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 12, 4))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    # the dropped transit() left the bolus as the only input, and f(depot) <- 0
+    # zeroed that, so every prediction was exactly 0
+    expect_false(all(.rDef$Cc == 0))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 1.313507, tolerance = 1e-5)
+  })
+
+  test_that("default rxSolve matches the ODE for endogenous production", {
+    .m  <- .endogenous()
+    .ev <- et(seq(0, 48, 8))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_false(all(.rDef$Cc == 0))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 4.958852, tolerance = 1e-5)
+  })
+
+  test_that("default rxSolve matches the ODE for transit() without f(depot)", {
+    # The dangerous case: the dropped transit() left plain first-order
+    # absorption, so both paths solved and both looked plausible -- Cmax 1.432
+    # at 2 h instead of 2.345 at 4 h.
+    .m  <- .transit()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 2))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 2.344700, tolerance = 1e-5)
+    expect_equal(.rDef$time[which.max(.rDef$Cc)], 4)
+  })
+
+  test_that("odeToLin names the input term it cannot carry", {
+    expect_message(odeToLin(.endogenous()), "cannot carry the input term")
+    expect_message(odeToLin(.endogenous()), "ksyn")
+    expect_message(odeToLin(.transit()),    "d/dt\\(depot\\)")
+    expect_equal(.odeToLinExogenousInputs(.transit()$lstExpr,
+                                          rxModelVars(.transit())$state),
+                 c(depot = "transit(nn, mtt)"))
+    expect_equal(.odeToLinExogenousInputs(.endogenous()$lstExpr,
+                                          rxModelVars(.endogenous())$state),
+                 c(central = "ksyn"))
+  })
+
+  test_that("a constant zero term does not block conversion", {
+    # `0` adds nothing to the rate, so it is dropped rather than refused.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- 0 - ka * depot
+        d/dt(central) <- ka * depot - cl/v * central + 0
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+    .info <- .odeToLinDetect(.m)
+    expect_equal(.info$ncmt,  1L)
+    expect_equal(.info$oral0, 1L)
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 2))
+    expect_equal(suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))$cp,
+                 suppressMessages(rxSolve(.m, .ev, addDosing = FALSE,
+                                          useLinCmt = FALSE))$cp,
+                 tolerance = 1e-5)
+  })
+
+  test_that(".odeToLinIsZeroExpr only accepts constant zero", {
+    expect_true(.odeToLinIsZeroExpr(quote(0)))
+    expect_true(.odeToLinIsZeroExpr(quote(0.0)))
+    expect_true(.odeToLinIsZeroExpr(quote(0 * 1)))
+    expect_false(.odeToLinIsZeroExpr(quote(1)))
+    expect_false(.odeToLinIsZeroExpr(quote(ksyn)))
+    expect_false(.odeToLinIsZeroExpr(quote(0 * ksyn)))
+    expect_false(.odeToLinIsZeroExpr(quote(transit(nn, mtt))))
+    expect_false(.odeToLinIsZeroExpr(quote(podo())))
+  })
+
   ## -----------------------------------------------------------------------
   ## Correctness: converted model matches ODE (tight tolerances)
   ## -----------------------------------------------------------------------
