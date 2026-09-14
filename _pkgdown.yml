@@ -35,6 +35,8 @@ reference:
   - eventTable
   - rxEventTableFile
   - splitBolus
+  - splitInfusion
+  - split-directive
   - toTrialDuration
 - title: Model based addition of events
   desc: Construct adaptive dosing/sampling inside rxode2 model
