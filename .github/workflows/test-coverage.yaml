@@ -30,7 +30,7 @@ jobs:
             any::xml2
             nlmixr2/dparser-R
             nlmixr2/lotri
-            nlmixr2/rxode2ll
+            nlmixr2/rxode2ll#22
             nlmixr2/rxode2lincmt
             nlmixr2/PreciseSums
           needs: coverage
