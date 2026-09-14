@@ -430,6 +430,13 @@ SEXP _rxode2_iniDparserPtr(SEXP ptr);
 SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p);
 SEXP _rxode2_rxode2lincmtHost(void);
 SEXP _rxode2_rxode2lincmtLinked(void);
+double rxode2LinCmtAFwd(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
+                        int oral0, int which, int trans, double p1, double v1,
+                        double p2, double p3, double p4, double p5, double ka);
+double rxode2LinCmtBFwd(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
+                        int oral0, int which1, int which2, int trans, double p1,
+                        double v1, double p2, double p3, double p4, double p5,
+                        double ka);
 
 
 
@@ -1114,8 +1121,9 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
-  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
-  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
+  // compiled models bind these names; the forwarders call rxode2lincmt
+  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &rxode2LinCmtAFwd);
+  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &rxode2LinCmtBFwd);
   R_RegisterCCallable("rxode2", "rxode2EventSensLoad", (DL_FUNC) &rxode2EventSensLoad);
   R_RegisterCCallable("rxode2", "rxode2EventSensSetActive", (DL_FUNC) &rxode2EventSensSetActive);
   R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP",
