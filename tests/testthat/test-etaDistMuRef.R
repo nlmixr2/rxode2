@@ -72,13 +72,34 @@ rxTest({
     expect_false(any(grepl("eta\\.mu\\.tq", .u$iniDf$name)))
   })
 
-  test_that("rxEtaDistMuRef() refuses a degenerate helper variance", {
-    # nlmixr2's mu-theta M-step is weighted by omega^-1, so a ~0 helper
-    # variance pins the parameter at its ini() value instead of freeing it.
-    # NONMEM's EM updates such a parameter by direct maximization, which is why
-    # its "$OMEGA (0.0 FIXED)" idiom works there and must not be copied here.
-    expect_error(rxEtaDistMuRef(.muMod(), variance=1e-9),
-                 "meaningfully above zero")
+  test_that("rxEtaDistMuRef() accepts a degenerate helper variance", {
+    # This asserted the OPPOSITE -- a refusal carrying "meaningfully above
+    # zero" -- and went on asserting it after 66c813140 removed that refusal so
+    # `variance = 0` could be written at all.  The refusal was in R/etaDist.R,
+    # the assertion in this file, and only the first was changed; the test has
+    # been failing on this branch ever since.  Restated as what the function
+    # does now.
+    #
+    # The reasoning behind the original refusal still holds and is why this is
+    # only a spelling: nlmixr2's mu-theta M-step is weighted by omega^-1, so a
+    # ~0 helper variance pins the parameter at its ini() value instead of
+    # freeing it.  What changed is WHERE that is answered.  `variance = 0` is
+    # NONMEM's "$OMEGA (0.0 FIXED)" spelling and states the true thing -- the
+    # helper carries no between-subject variability -- leaving the estimation
+    # method to decide what to do about it.  Writing a nonzero width into the
+    # model is a different answer to the same question, not a safer one.
+    .u <- rxEtaDistMuRef(.muMod(), variance = 1e-9)
+    .h <- .u$iniDf[grepl("^eta\\.mu\\.", .u$iniDf$name), ]
+    expect_true(nrow(.h) > 0L)
+    expect_true(all(.h$est == 1e-9))
+    expect_true(all(.h$fix))
+    # and the zero spelling itself, which is the reason the refusal went
+    # (it reports what it rewrote, so this is not expect_silent())
+    .z <- suppressMessages(rxEtaDistMuRef(.muMod(), variance = 0))
+    .hz <- .z$iniDf[grepl("^eta\\.mu\\.", .z$iniDf$name), ]
+    expect_true(all(.hz$est == 0))
+    # a NEGATIVE variance is still refused -- checkmate's lower bound
+    expect_error(rxEtaDistMuRef(.muMod(), variance = -1))
   })
 
   test_that("rxEtaDistMuRef() needs something declared to work on", {
