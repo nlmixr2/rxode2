@@ -30,6 +30,32 @@
 ## inherits it unchanged: `rxSolve()` simulation, and (through nlmixr2est's
 ## pre-processing hook) every estimation method.
 
+#' Build a ui from a function/solved object for a declaration lookup, quietly
+#'
+#' `rxUiEtaDists()` and `rxEtaDistExpand()` both accept a model FUNCTION or a
+#' solve-ready object, and both have to build a ui to read `iniDf$etaDist` --
+#' an `rxode2tos` has no `iniDf` of its own to ask.  That build re-parses a
+#' model the caller already parsed once, so any parse-time diagnostic it
+#' produces has already been delivered; re-emitting it makes an internal lookup
+#' look like a new problem with the model.
+#'
+#' Measured: `.rxSolveFromUi()` calls `rxEtaDistExpand()` on every solve, so a
+#' model with no declaration at all -- `test-interp.R:292`'s occasion-varying
+#' `iov.cl1`/`iov.cl2` model -- started warning "some etas defaulted to non-mu
+#' referenced" from inside `rxSolve()`, where the same warning had already been
+#' given (and suppressed) when the model was built.  Four assertions in
+#' `test-interp.R` assert that solving that model is warning-free.
+#'
+#' Messages were already suppressed here for the same reason; warnings belong
+#' with them.  This suppresses only the RE-parse, never a first build.
+#'
+#' @param ui model function, `rxode2`, or `rxode2tos` object
+#' @return an `rxUi`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEtaDistAsUiQuietly <- function(ui) {
+  suppressWarnings(suppressMessages(as.rxUi(ui)))
+}
 #' The random effects that declare a distribution
 #'
 #' The `etaDist` column only exists when the installed 'lotri' supports
@@ -46,7 +72,7 @@ rxUiEtaDists <- function(ui) {
   ## accepts a model function as well as a built ui, the way the rest of
   ## the rxUi accessors do
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
-    ui <- suppressMessages(as.rxUi(ui))
+    ui <- .rxEtaDistAsUiQuietly(ui)
   }
   .iniDf <- ui$iniDf
   .empty <- data.frame(name=character(0), etaDist=character(0),
@@ -323,7 +349,7 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   param <- match.arg(param)
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
-    ui <- suppressMessages(as.rxUi(ui))
+    ui <- .rxEtaDistAsUiQuietly(ui)
   }
   .ui <- rxUiDecompress(ui)
   .d <- rxUiEtaDists(.ui)

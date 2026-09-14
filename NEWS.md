@@ -104,6 +104,12 @@ model({
   them record for record, so the two can no longer drift apart.
 
 ## Bug fixes
+- Solving a model no longer re-emits the warnings its parse already gave.
+  `rxSolve()` asks `rxEtaDistExpand()` whether the model declares a
+  distribution, and on a solve-ready object that lookup had to rebuild the ui,
+  re-parsing the model and repeating every parse-time diagnostic.  A model with
+  no declaration at all could warn from inside `rxSolve()`.
+
 - `gammap()`'s derivative with respect to its shape argument, and every
   derivative of `gammapInv()`/`gammaqInv()`, are now in the derivative
   table.  They were absent, and a missing rule does not error: rxode2's
