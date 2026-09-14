@@ -1,5 +1,13 @@
 # rxode2 5.1.8
 
+## New features
+
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
 ## Bug fixes
 
 - Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
