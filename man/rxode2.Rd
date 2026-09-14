@@ -709,7 +709,56 @@ The declaration fixes the random effect’s marginal, and the latent scale
 it is built on is standard normal, so no variance is written for it – a
 \code{dist()} implies \code{~ 1}. A block is written out only when there is a
 correlation between two declared random effects, since that has nowhere
-else to go.
+else to go:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{ini(\{
+  lclm  <- log(5);  lclrv <- log(0.09)
+  lvm   <- log(50); lvrv  <- log(0.09)
+  eta.cl + eta.v ~ c(1,
+                     0.5, 1)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+  dist(eta.v)  ~ dgamma(shape=1/exp(lvrv),  rate=1/(exp(lvrv)*exp(lvm)))
+\})
+}\if{html}{\out{</div>}}
+}
+
+\subsection{That correlation is on the LATENT scale}{
+
+The \code{0.5} above is \strong{not} the correlation you will measure between
+\code{eta.cl} and \code{eta.v}. Two declared random effects are joined by a
+Gaussian copula: each is built as \code{Q(Phi(z))} from its own quantile
+function, and the number you write is the correlation of the \emph{latent}
+normals \code{z}, not of the random effects themselves.
+
+Those two agree only when both marginals are normal. For anything else
+the correlation you observe is smaller in magnitude, by an amount that
+depends on the two families \strong{and on their parameters} – a heavier tail
+loses more of it. Simulating 200,000 pairs from a latent correlation of
+\code{0.50}:\tabular{lr}{
+   marginals \tab observed \cr
+   \code{dnorm} with \code{dnorm} \tab 0.500 \cr
+   \verb{dgamma(shape 2)} with \verb{dgamma(shape 2)} \tab 0.474 \cr
+   \verb{dgamma(shape 2)} with \verb{dlnorm(sdlog 0.7)} \tab 0.454 \cr
+   \verb{dlnorm(sdlog 0.7)} with \verb{dlnorm(sdlog 0.7)} \tab 0.441 \cr
+   \verb{dgamma(shape 2)} with \verb{dgamma(shape 0.5)} \tab 0.437 \cr
+}
+
+
+Read those as illustrations, not as constants for the families: change a
+shape or an \code{sdlog} and the number moves. The one row that holds
+generally is the first – normal with normal is the only case where the
+latent correlation and the observed one coincide.
+
+So writing \code{0.5} and then measuring \code{0.44} on the fitted random effects
+is the construction working, not a bug. A fit reports the same latent
+quantity it was given – in \verb{$etaDistCor}, and as a \code{cor()} row in
+\verb{$parFixed} – so the value you read back is comparable with the value
+you wrote.
+
+If you need a target correlation \emph{between the random effects}, simulate
+from the declaration and adjust: there is no closed form for the mapping
+except in the all-normal case, because it depends on both quantile
+functions.
 
 See \code{lotri::lotriEtaDists()} for the families that can be declared this
 way, and \code{rxEtaDistExpand()} for the model such a declaration becomes.

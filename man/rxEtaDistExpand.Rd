@@ -4,10 +4,32 @@
 \alias{rxEtaDistExpand}
 \title{Expand declared non-normal random effect distributions into a model}
 \usage{
-rxEtaDistExpand(ui)
+rxEtaDistExpand(ui, param = c("cdf", "direct"))
 }
 \arguments{
 \item{ui}{rxode2 ui}
+
+\item{param}{How a declared random effect is represented for estimation.
+
+\code{"cdf"} (default) is the construction described above: a standard normal
+latent, \code{phiU()}, the family's inverse CDF, and \verb{rxCor.*} carrying a
+Gaussian copula.  The estimator then sees an ordinary model with a fixed
+identity omega, and the non-normality lives in a decoder line.
+
+\code{"direct"} leaves the declared random effect ALONE: no latent, no decoder,
+no \code{phiU()}.  The eta itself is what the estimator samples or optimizes,
+and it carries the declared family as its prior rather than a variance.
+Its omega entry is a FIXED placeholder that an estimator on this route must
+ignore -- an estimator that reads it as a Gaussian variance will silently
+fit the wrong model, so the route is opt-in per estimator.
+
+The two are not interchangeable everywhere.  For a CORRELATED block of
+declared random effects the CDF construction is not an alternative, it is
+the definition: a Gaussian copula with non-normal marginals IS
+\code{eta = Q(phi(z))}.  Expressing that directly needs an explicit joint
+distribution (NoLimits.jl reaches for \code{Copulas.SklarDist}), which this does
+not have, so \code{"direct"} refuses a correlated declared block by name rather
+than dropping the correlation silently.}
 }
 \value{
 the rewritten rxode2 ui, or \code{ui} itself when there is nothing

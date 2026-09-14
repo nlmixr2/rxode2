@@ -241,7 +241,56 @@ The declaration fixes the random effect's marginal, and the latent scale
 it is built on is standard normal, so no variance is written for it -- a
 `dist()` implies `~ 1`.  A block is written out only when there is a
 correlation between two declared random effects, since that has nowhere
-else to go.
+else to go:
+
+```
+ini({
+  lclm  <- log(5);  lclrv <- log(0.09)
+  lvm   <- log(50); lvrv  <- log(0.09)
+  eta.cl + eta.v ~ c(1,
+                     0.5, 1)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+  dist(eta.v)  ~ dgamma(shape=1/exp(lvrv),  rate=1/(exp(lvrv)*exp(lvm)))
+})
+```
+
+### That correlation is on the LATENT scale
+
+The `0.5` above is **not** the correlation you will measure between
+`eta.cl` and `eta.v`.  Two declared random effects are joined by a
+Gaussian copula: each is built as `Q(Phi(z))` from its own quantile
+function, and the number you write is the correlation of the *latent*
+normals `z`, not of the random effects themselves.
+
+Those two agree only when both marginals are normal.  For anything else
+the correlation you observe is smaller in magnitude, by an amount that
+depends on the two families **and on their parameters** -- a heavier tail
+loses more of it.  Simulating 200,000 pairs from a latent correlation of
+`0.50`:
+
+| marginals                                          | observed |
+|----------------------------------------------------|---------:|
+| `dnorm` with `dnorm`                               |    0.500 |
+| `dgamma(shape 2)` with `dgamma(shape 2)`           |    0.474 |
+| `dgamma(shape 2)` with `dlnorm(sdlog 0.7)`         |    0.454 |
+| `dlnorm(sdlog 0.7)` with `dlnorm(sdlog 0.7)`       |    0.441 |
+| `dgamma(shape 2)` with `dgamma(shape 0.5)`         |    0.437 |
+
+Read those as illustrations, not as constants for the families: change a
+shape or an `sdlog` and the number moves.  The one row that holds
+generally is the first -- normal with normal is the only case where the
+latent correlation and the observed one coincide.
+
+So writing `0.5` and then measuring `0.44` on the fitted random effects
+is the construction working, not a bug.  A fit reports the same latent
+quantity it was given -- in `$etaDistCor`, and as a `cor()` row in
+`$parFixed` -- so the value you read back is comparable with the value
+you wrote.
+
+If you need a target correlation *between the random effects*, simulate
+from the declaration and adjust: there is no closed form for the mapping
+except in the all-normal case, because it depends on both quantile
+functions.
 
 See `lotri::lotriEtaDists()` for the families that can be declared this
 way, and `rxEtaDistExpand()` for the model such a declaration becomes.
