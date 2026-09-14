@@ -104,6 +104,19 @@ model({
   them record for record, so the two can no longer drift apart.
 
 ## Bug fixes
+- A model's declared-distribution expansion is now derived once rather than on
+  every solve.  `rxSolve()` asks `rxEtaDistExpand()` whether the model declares
+  a distribution, and for a solve-ready object answering that meant rebuilding
+  the ui -- re-parsing a model that had already been parsed -- and, for a model
+  that does declare one, building a NEW expanded model each time.  Models live
+  in the ODE model pool, so that re-set up the problem on every call instead of
+  reusing the one already set up.  The expansion is a pure function of the
+  model, so the result is now cached on the object under the model md5
+  `rxModelVars()` already carries; a changed model is re-derived rather than
+  answered from a stale memo.  Measured on a three-eta `linCmt()` model that
+  declares nothing: repeat calls 0.0331 s to 0.00010 s, and `rxSolve()` of
+  twenty subjects 0.0781 s to 0.0398 s.
+
 - Solving a model no longer re-emits the warnings its parse already gave.
   `rxSolve()` asks `rxEtaDistExpand()` whether the model declares a
   distribution, and on a solve-ready object that lookup had to rebuild the ui,
