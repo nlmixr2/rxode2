@@ -125,6 +125,7 @@ Imports:
     dparser (>= 1.3.1-12),
     qs2,
     rxode2ll,
+    rxode2lincmt (>= 0.1.0),
     data.table (>= 1.12.4),
     vctrs,
     stats
@@ -150,6 +151,7 @@ URL: https://nlmixr2.github.io/rxode2/,
 Biarch: true
 LinkingTo:
     sitmo,
+    rxode2lincmt (>= 0.1.0),
     lotri (>= 1.0.4),
     PreciseSums (>= 0.7),
     Rcpp,

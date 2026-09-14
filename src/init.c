@@ -426,6 +426,10 @@ SEXP iniLotriPtr(SEXP ptr);
 SEXP iniPreciseSumsPtr(SEXP ptr);
 
 SEXP _rxode2_iniDparserPtr(SEXP ptr);
+// src/rxode2lincmtLink.cpp: tables shared with rxode2lincmt
+SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p);
+SEXP _rxode2_rxode2lincmtHost(void);
+SEXP _rxode2_rxode2lincmtLinked(void);
 
 
 
@@ -921,6 +925,9 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},
+    {"_rxode2_iniRxode2lincmtPtrs", (DL_FUNC) &_rxode2_iniRxode2lincmtPtrs, 1},
+    {"_rxode2_rxode2lincmtHost", (DL_FUNC) &_rxode2_rxode2lincmtHost, 0},
+    {"_rxode2_rxode2lincmtLinked", (DL_FUNC) &_rxode2_rxode2lincmtLinked, 0},
     {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
     {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},

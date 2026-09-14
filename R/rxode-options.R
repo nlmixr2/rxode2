@@ -123,6 +123,9 @@
   }
   .ggplot2Fix()
   .linkAll()
+  # re-link whenever rxode2lincmt's namespace is loaded again (reinstall,
+  # load_all), so rxode2 never keeps addresses into an old DLL
+  setHook(packageEvent("rxode2lincmt", "onLoad"), .rxode2lincmtRelink)
   forderForceBase(FALSE)
 } ## nocov end
 
@@ -138,10 +141,22 @@
   .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
 }
 
+# Host table (struct offsets + host functions) first, then the linCmt
+# entry points; neither side validates anything (see CLAUDE.md)
+.iniRxode2lincmt <- function() {
+  rxode2lincmt::.rxode2lincmtIniHost(.Call(`_rxode2_rxode2lincmtHost`))
+  .Call(`_rxode2_iniRxode2lincmtPtrs`, rxode2lincmt::.rxode2lincmtPtr())
+}
+
+.rxode2lincmtRelink <- function(...) {
+  if (isNamespaceLoaded("rxode2")) .linkAll()
+}
+
 .linkAll <- function() {
   .iniLotriPtrs()
   .iniPreciseSumsPtr()
   .iniDparserPtr()
+  .iniRxode2lincmt()
 }
 
 
