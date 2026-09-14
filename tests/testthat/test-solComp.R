@@ -1060,7 +1060,7 @@ rxTest({
         dur(central) <- popDurCentral * exp(bsvDurCentral)
         cp <- linCmt()
         d/dt(ce) = keo*(cp-ce)
-        effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+        effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       })
     }
 
@@ -1096,7 +1096,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1145,7 +1145,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1210,7 +1210,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1257,7 +1257,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1324,7 +1324,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1377,7 +1377,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1464,7 +1464,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1523,7 +1523,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       a=depot
       b=central
       c=peripheral1
@@ -1624,7 +1624,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1681,7 +1681,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1793,7 +1793,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     etTrans(et(amt=3,cmt=1) |> et(1:10), rx)
@@ -1862,7 +1862,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")

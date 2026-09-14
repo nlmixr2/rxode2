@@ -1525,7 +1525,7 @@ rxMd5 <- function(model, # Model File
     if (.nKeep <= 0L) {
       .rxLastModels <- NULL
     } else if (length(.rxLastModels) < .nKeep) {
-      .rxLastModels <- .rxLastModels[seq(1, .nKeep)]
+      .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
     }
     assignInMyNamespace(".rxLastModels", .rxLastModels)
   }

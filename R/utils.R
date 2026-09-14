@@ -752,7 +752,7 @@ rxUnloadAll <- function(set=TRUE) {
     .rxLastModels <- NULL
   } else if (length(.rxLastModels) < .nKeep) {
     .rxLastModels <- .rxLastModels[!is.na(.rxLastModels)]
-    .rxLastModels <- .rxLastModels[seq(1, .nKeep)]
+    .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
     assignInMyNamespace(".rxLastModels", .rxLastModels)
   }
   .ret <- try(rxUnloadAll_(), silent = TRUE)
