@@ -2373,7 +2373,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         }
       } else {
         if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
-                        "midpoint", "linear", "splitBolus", "matExp", "indLin")) return(NULL)
+                        "midpoint", "linear", "splitBolus", "splitInfusion",
+                        "split", "matExp", "indLin")) return(NULL)
         if (.fun %in% c("printf", "Rprintf", "print")) {
           return(paste(deparse(x), collapse=""))
         }

@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   rxProtectGuard;
-  SEXP lst   = rxP(Rf_allocVector(VECSXP, 31));
-  SEXP names = rxP(Rf_allocVector(STRSXP, 31));
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 35));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 35));
 
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -172,16 +172,28 @@ SEXP generateModelVars(void) {
 
   SEXP alagVarSexp = rxP(Rf_allocVector(INTSXP, tb.alagn));
   SEXP splitBolusSexp = rxP(Rf_allocVector(INTSXP, tb.splitBolusN));
+  SEXP splitInfusionSexp = rxP(Rf_allocVector(INTSXP, tb.splitInfusionN));
+  SEXP splitSexp = rxP(Rf_allocVector(INTSXP, tb.splitN));
   SEXP strCmpParams = rxP(Rf_allocVector(VECSXP, tb.strCmp.n));
   SEXP strCmpParamsN = rxP(Rf_allocVector(STRSXP, tb.strCmp.n));
   SEXP factorCls = rxP(Rf_allocVector(STRSXP, 1));
   int *alagVar = INTEGER(alagVarSexp);
   int *splitBolus = INTEGER(splitBolusSexp);
+  int *splitInfusion = INTEGER(splitInfusionSexp);
+  int *split = INTEGER(splitSexp);
   int *ordFI = INTEGER(ordF);
   SET_STRING_ELT(factorCls, 0, Rf_mkChar("factor"));
 
   for (int i = 0; i < tb.splitBolusN; ++i) {
     splitBolus[i] = ordFI[tb.splitBolus[i]-1];
+  }
+
+  for (int i = 0; i < tb.splitInfusionN; ++i) {
+    splitInfusion[i] = ordFI[tb.splitInfusion[i]-1];
+  }
+
+  for (int i = 0; i < tb.splitN; ++i) {
+    split[i] = ordFI[tb.split[i]-1];
   }
 
   for (int i = 0; i < tb.strCmp.n; ++i) {
@@ -380,6 +392,21 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 30, Rf_mkChar("strCmpParams"));
   SET_VECTOR_ELT(lst,   30, strCmpParams);
+
+  /* timeId (31) and md5 (32) are filled in on the R side (rxode2.R/tran.R);
+     the named NULL placeholders keep those indexes stable so the new
+     elements can be appended without shifting RxMv_timeId/RxMv_md5. */
+  SET_STRING_ELT(names, 31, Rf_mkChar("timeId"));
+  SET_VECTOR_ELT(lst,   31, R_NilValue);
+
+  SET_STRING_ELT(names, 32, Rf_mkChar("md5"));
+  SET_VECTOR_ELT(lst,   32, R_NilValue);
+
+  SET_STRING_ELT(names, 33, Rf_mkChar("splitInfusion"));
+  SET_VECTOR_ELT(lst,   33, splitInfusionSexp);
+
+  SET_STRING_ELT(names, 34, Rf_mkChar("split"));
+  SET_VECTOR_ELT(lst,   34, splitSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

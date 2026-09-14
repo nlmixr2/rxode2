@@ -405,6 +405,56 @@ rxUiGet.splitDoseLines <- rxUiGet.splitDose
 attr(rxUiGet.splitDoseLines, "desc") <- attr(rxUiGet.splitDose, "desc")
 attr(rxUiGet.splitDoseLines, "rstudio") <- attr(rxUiGet.splitDose, "rstudio")
 
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusion <- function(x, ...) {
+  .ui <- x[[1]]
+  .splitInfusion <- rxModelVars(.ui)$splitInfusion
+  if (length(.splitInfusion) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (length(.state) == 0L ||
+        any(.splitInfusion < 1L | .splitInfusion > length(.state))) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitInfusion`)),
+                 lapply(.state[.splitInfusion], as.name))))
+}
+attr(rxUiGet.splitInfusion, "desc") <- "split infusion declaration line(s) for model"
+attr(rxUiGet.splitInfusion, "rstudio") <- quote(splitInfusion(central, central, peripheral))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusionLines <- rxUiGet.splitInfusion
+attr(rxUiGet.splitInfusionLines, "desc") <- attr(rxUiGet.splitInfusion, "desc")
+attr(rxUiGet.splitInfusionLines, "rstudio") <- attr(rxUiGet.splitInfusion, "rstudio")
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.split <- function(x, ...) {
+  .ui <- x[[1]]
+  .split <- rxModelVars(.ui)$split
+  if (length(.split) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (length(.state) == 0L ||
+        any(.split < 1L | .split > length(.state))) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`split`)),
+                 lapply(.state[.split], as.name))))
+}
+attr(rxUiGet.split, "desc") <- "split dose declaration line(s) for model (bolus and infusion)"
+attr(rxUiGet.split, "rstudio") <- quote(split(depot, central, depot2))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitLines <- rxUiGet.split
+attr(rxUiGet.splitLines, "desc") <- attr(rxUiGet.split, "desc")
+attr(rxUiGet.splitLines, "rstudio") <- attr(rxUiGet.split, "rstudio")
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.simulationSigma <- function(x, ...) {
@@ -572,7 +622,9 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
         identical(.e[[1]], quote(`locf`)) ||
         identical(.e[[1]], quote(`nocb`)) ||
         identical(.e[[1]], quote(`midpoint`)) ||
-        identical(.e[[1]], quote(`splitBolus`))
+        identical(.e[[1]], quote(`splitBolus`)) ||
+        identical(.e[[1]], quote(`splitInfusion`)) ||
+        identical(.e[[1]], quote(`split`))
     } else {
       FALSE
     }
