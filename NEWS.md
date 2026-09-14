@@ -1,5 +1,11 @@
 # rxode2 5.1.8
 
+## Bug fixes
+
+- Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
+  R's `match` macro is now hidden while `omp.h` is included, so it no longer
+  breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
+  guard covers compiled model code.
 
 # rxode2 5.1.7
 

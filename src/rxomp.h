@@ -3,7 +3,12 @@
 #endif
 #ifdef _OPENMP
 #include <pthread.h>
+// R_NO_REMAP above is too late when R headers came first; R's `match` macro
+// then breaks the `declare variant match(...)` pragma in LLVM's omp.h.
+#pragma push_macro("match")
+#undef match
 #include <omp.h>
+#pragma pop_macro("match")
 
 #ifdef __cplusplus
 extern "C" {
