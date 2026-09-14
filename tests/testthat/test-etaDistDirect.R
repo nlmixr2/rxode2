@@ -36,7 +36,17 @@ test_that("the direct route emits no latent, no phiU and no decoder", {
 test_that("the direct route keeps the declared eta, with a FIXED placeholder", {
   .i <- rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))$iniDf
   .e <- .i[!is.na(.i$neta1), ]
-  expect_identical(.e$name, "eta.cl")
+  ## RENAMED `rxd.eta.cl`, and bound back to its own name on a model line.
+  ##
+  ## Used inline the mu-reference scan reported "some etas defaulted to non-mu
+  ## referenced, possible parsing error: eta.cl", while the cdf route's latent
+  ## did not trip it -- only because `rxN.eta.cl <- rxz.eta.cl` puts its eta
+  ## alone on a simple line, which the scan reads as a mu reference with no
+  ## theta.  Both routes produce a non-mu eta for the same reason (the family
+  ## carries the location, there is no theta to add it to), so they must not
+  ## differ in how the random effect is CLASSIFIED -- otherwise a measured
+  ## difference between the routes is between two mu-referencing decisions.
+  expect_identical(.e$name, "rxd.eta.cl")
   ## the placeholder is not the eta's dispersion -- the family owns that now --
   ## and it is FIXED so nothing downstream estimates a variance the model does
   ## not have
@@ -95,7 +105,22 @@ test_that("the correlation stays in the omega, as the copula's rho", {
   expect_true(all(.d$fix))
   expect_equal(unique(.d$est), 1)
   expect_equal(nrow(.o), 1L)
-  expect_false(.o$fix)
+  ## FIXED, and it was not before.
+  ##
+  ## Between two declared etas this entry is the Gaussian copula's correlation:
+  ## the estimator reads it as a starting value and then estimates it against
+  ## the copula density, reporting it in `$etaDistCor` and as a `cor()` row in
+  ## `parFixed`.  It is not a covariance and saem must not fit it as one.
+  ##
+  ## Left free it did fit it as one, from the eta sample -- and these etas are
+  ## the declared variates themselves, not centered unit-scale deviates, so the
+  ## estimate was their raw CROSS-MOMENT.  Measured on a gamma pair with means
+  ## 5.5 and 54.6, saem reported [[1, 362.068], [362.068, 1]], eigenvalues
+  ## 363.068 and -361.068 -- impossible as a covariance.  The post-fit nearPD
+  ## repair then clamps the negative eigenvalue to zero and a rank-1 projection
+  ## puts lambda_max/2 in every cell: the fit printed 180.6704 four times, with
+  ## a correlation of exactly 1.000 and an SD of 13.44.
+  expect_true(.o$fix)
   expect_equal(.o$est, 0.5)
   expect_false(any(grepl("^rxCor", .i$name)))
   ## and the pairing is recorded for the estimator
@@ -154,11 +179,39 @@ test_that("a declared eta the model already ASSIGNS is refused by name", {
     })
     model({ cl <- eta.cl; v <- exp(lv); linCmt() ~ prop(prop.sd) })
   }
-  ## the FUNCTION is refused, naming the eta and the remedy
-  expect_error(rxEtaDistExpand(.fn, param = "direct"), "already assigns it")
-  expect_error(rxEtaDistExpand(.fn, param = "direct"), "eta.cl")
-  ## and the same model, passed as the ini/model RESULT, works
+  ## The FUNCTION form is now ACCEPTED, and that is the point of the change.
+  ##
+  ## Refusing it made `nlmixr2(f, ...)` -- the ordinary call form -- reject every
+  ## declared model on this route, because `as.rxUi()` on a model function runs
+  ## the `dist()` udf and leaves the CDF construction in the model text while
+  ## the declaration is still in the iniDf.  That construction is the feature's
+  ## own output, not a user assignment, so `.rxEtaDistDropPreEmitted()` removes
+  ## it (matching only that exact shape) and the direct route emits its own.
+  expect_s3_class(rxEtaDistExpand(.fn, param = "direct"), "rxUi")
+  ## both call forms now give the same thing
   expect_s3_class(rxEtaDistExpand(.fn(), param = "direct"), "rxUi")
+  expect_identical(
+    vapply(rxUiDecompress(rxEtaDistExpand(.fn, param = "direct"))$lstExpr,
+           function(.x) paste(deparse(.x), collapse = ""), character(1)),
+    vapply(rxUiDecompress(rxEtaDistExpand(.fn(), param = "direct"))$lstExpr,
+           function(.x) paste(deparse(.x), collapse = ""), character(1)))
+  ## a GENUINE user assignment to a declared eta is still refused -- the guard
+  ## narrowed, it did not go away
+  .bad <- function() {
+    ini({
+      lclm <- 1.63; lclrv <- 0.693; lv <- 1.55
+      dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv),
+                            rate = 1/(exp(lclrv) * exp(lclm)))
+      prop.sd <- 0.316
+    })
+    model({
+      eta.cl <- exp(lclm)
+      cl <- eta.cl
+      v <- exp(lv)
+      linCmt() ~ prop(prop.sd)
+    })
+  }
+  expect_error(rxEtaDistExpand(.bad(), param = "direct"), "already assigns it")
   ## the cdf route takes either form, as it always did
   expect_s3_class(rxEtaDistExpand(.fn, param = "cdf"), "rxUi")
 })

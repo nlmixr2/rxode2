@@ -522,13 +522,44 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## not differ in how the random effect is CLASSIFIED -- otherwise a measured
   ## difference is between two mu-referencing decisions, not between two
   ## parameterizations.  So mirror the cdf shape exactly.
+  .declNeta <- integer(0)
   for (.nm in d$name) {
     .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
     if (length(.w) == 1L) {
+      .declNeta <- c(.declNeta, .iniDf$neta1[.w])
       .iniDf$name[.w] <- paste0("rxd.", .nm)
       .iniDf$est[.w] <- 1.0
       .iniDf$fix[.w] <- TRUE
     }
+  }
+  ## The OFF-DIAGONAL between two declared etas is fixed too, and leaving it
+  ## free produced a matrix that cannot exist.
+  ##
+  ## On this route that entry is the Gaussian copula's correlation -- the
+  ## estimator reads it as a starting value and then estimates it against the
+  ## copula density, reporting it in `$etaDistCor` and as a `cor()` row in
+  ## `parFixed`.  It is NOT a covariance, and saem must not fit it as one.
+  ##
+  ## Left free, saem estimated it from the eta sample -- and these etas are the
+  ## declared variates themselves, not centered unit-scale deviates, so what
+  ## came back was their raw cross-moment.  Measured on a gamma pair with means
+  ## 5.5 and 54.6, the reported omega was
+  ##
+  ##     [ 1.0000  362.0680 ]      eigenvalues 363.068 and -361.068
+  ##     [ 362.0680  1.0000 ]
+  ##
+  ## -- diagonals correctly pinned at the placeholder, off-diagonal a
+  ## cross-moment, and the pair jointly impossible as a covariance.  The
+  ## post-fit nearPD repair then clamps the negative eigenvalue to zero, and a
+  ## rank-1 projection of [[1,c],[c,1]] puts lambda_max/2 in EVERY cell: the fit
+  ## printed 180.6704 four times, with a correlation of exactly 1.000 and an SD
+  ## of 13.44.  Verified by feeding that matrix to .foceiRepairOmega() directly:
+  ## 181.534 in every cell.
+  if (length(.declNeta) > 1L) {
+    .off <- which(!is.na(.iniDf$neta1) & !is.na(.iniDf$neta2) &
+                    .iniDf$neta1 != .iniDf$neta2 &
+                    .iniDf$neta1 %in% .declNeta & .iniDf$neta2 %in% .declNeta)
+    if (length(.off) > 0L) .iniDf$fix[.off] <- TRUE
   }
   .iniDf$etaDist <- NULL
   rownames(.iniDf) <- NULL
