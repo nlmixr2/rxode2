@@ -3,7 +3,6 @@
 
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"
-#include <RcppEigen.h>
 #include <Rcpp.h>
 #include <string>
 #include <set>
