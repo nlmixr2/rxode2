@@ -159,7 +159,7 @@ invisible(.solve(.m2s, .sensPars, .sensEv, linCmtSensType = "AD", cores = 1L))
   .x <- utils::capture.output(summary(rxC(m)))
   .x <- grep("[0-9a-f]{32}", .x, value = TRUE, invert = TRUE)
   .x <- grep("RAWSXP", .x, value = TRUE, invert = TRUE, fixed = TRUE)
-  grep("^\\s*(0x[0-9a-f]{2},\\s*)+(0x[0-9a-f]{2})?\\s*$", .x, value = TRUE, invert = TRUE)
+  grep("^\\s*(0x[0-9a-f]{2},?\\s*)+$", .x, value = TRUE, invert = TRUE)
 }
 .keep("cText_sens2", .cText(.m2s))
 .keep("cText_origin", .cText(.mOrigin))
