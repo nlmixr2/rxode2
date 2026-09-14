@@ -11,6 +11,7 @@
 #define __DOINIT__
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2.h"
+#include "rxode2lincmtLink.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #include "rxthreefry.h"
 #include "rx2api.h"
@@ -426,17 +427,10 @@ SEXP iniLotriPtr(SEXP ptr);
 SEXP iniPreciseSumsPtr(SEXP ptr);
 
 SEXP _rxode2_iniDparserPtr(SEXP ptr);
-// src/rxode2lincmtLink.cpp: tables shared with rxode2lincmt
+// src/rxode2lincmtLink.cpp: tables shared with rxode2lincmt (forwarders declared in the header)
 SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p);
 SEXP _rxode2_rxode2lincmtHost(void);
 SEXP _rxode2_rxode2lincmtLinked(void);
-double rxode2LinCmtAFwd(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
-                        int oral0, int which, int trans, double p1, double v1,
-                        double p2, double p3, double p4, double p5, double ka);
-double rxode2LinCmtBFwd(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
-                        int oral0, int which1, int which2, int trans, double p1,
-                        double v1, double p2, double p3, double p4, double p5,
-                        double ka);
 
 
 
@@ -852,14 +846,6 @@ SEXP _rxode2_solComp2(SEXP k10S, SEXP k12S, SEXP k21S);
 SEXP _rxode2_solComp3(SEXP k10S, SEXP k12S, SEXP k21S,
                       SEXP k13S, SEXP k31S);
 
-double linCmtA(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
-               int oral0, int which, int trans, double p1, double v1,
-               double p2, double p3, double p4, double p5, double ka);
-
-double linCmtB(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
-               int oral0, int which1, int which2, int trans,  double p1,
-               double v1, double p2, double p3, double p4, double p5,
-               double ka);
 
 SEXP _rxode2_getLinInfo_(SEXP);
 SEXP _rxode2_getCmtNum_(SEXP, SEXP, SEXP);
