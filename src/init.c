@@ -72,7 +72,6 @@ SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_setRstudio(SEXP);
 SEXP _rxode2_rxSolveFree(void);
-SEXP _rxode2_linCmtEnv(SEXP rho);
 SEXP _rxode2_rxInv(SEXP matrix);
 SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn);
 SEXP _rxode2_rxSymInvCholEnvCalculate(SEXP, SEXP, SEXP);
@@ -314,8 +313,6 @@ const char *rxGetId(int id);
 
 double phi(double q);
 SEXP _rxode2_phi(SEXP q);
-SEXP _rxode2_calcDerived(SEXP ncmtSXP, SEXP oralSXP, SEXP w2SXP, SEXP transSXP,
-                         SEXP inp, SEXP sigdigSXP);
 
 double gamma_p(double, double z);
 double gamma_q(double, double z);
@@ -435,31 +432,17 @@ SEXP _rxode2_rxode2lincmtLinked(void);
 
 
 
-SEXP _rxode2_linCmtBThreadsSeen(SEXP);
-SEXP _rxode2_linCmtSeqStats(SEXP);
-SEXP _rxode2_linCmtDeltaMemo(SEXP);
-SEXP _rxode2_linCmtBSensTypesSeen(SEXP);
 
 
 
 
 
 
-SEXP _rxode2_linCmtCarryLiveTest(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                 SEXP, SEXP, SEXP, SEXP, SEXP);
 
 // test-only driver for _getDur() (see src/handle_evid.cpp)
 SEXP _rxode2_getDurTest(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
-SEXP _rxode2_linCmtCarrySetFast(SEXP);
-SEXP _rxode2_linCmtCarrySentinelMax(void);
-SEXP _rxode2_linCmtCarryFastStats(SEXP);
 
-SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP);
 
 SEXP _rxode2_atolRtolFactor_(SEXP);
 void allocExtraDosingC(void);
@@ -837,14 +820,7 @@ SEXP _rxode2_powerLDL(SEXP, SEXP, SEXP, SEXP, SEXP,
                       SEXP);
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
 SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS);
-SEXP _rxode2_macros2micros(SEXP p1, SEXP v1,
-                           SEXP p2, SEXP p3,
-                           SEXP p4, SEXP p5,
-                           SEXP trans, SEXP ncmtS);
 
-SEXP _rxode2_solComp2(SEXP k10S, SEXP k12S, SEXP k21S);
-SEXP _rxode2_solComp3(SEXP k10S, SEXP k12S, SEXP k21S,
-                      SEXP k13S, SEXP k31S);
 
 
 SEXP _rxode2_getLinInfo_(SEXP);
@@ -895,19 +871,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_cmtSupportsInfusion_", (DL_FUNC) &_rxode2_cmtSupportsInfusion_, 2},
     {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 3},
     {"_rxode2_getLinInfo_", (DL_FUNC) &_rxode2_getLinInfo_, 1},
-    {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 22},
-    {"_rxode2_linCmtBThreadsSeen", (DL_FUNC) &_rxode2_linCmtBThreadsSeen, 1},
-    {"_rxode2_linCmtSeqStats", (DL_FUNC) &_rxode2_linCmtSeqStats, 1},
-    {"_rxode2_linCmtDeltaMemo", (DL_FUNC) &_rxode2_linCmtDeltaMemo, 1},
-    {"_rxode2_linCmtBSensTypesSeen", (DL_FUNC) &_rxode2_linCmtBSensTypesSeen, 1},
-    {"_rxode2_linCmtCarryLiveTest", (DL_FUNC) &_rxode2_linCmtCarryLiveTest, 10},
     {"_rxode2_getDurTest", (DL_FUNC) &_rxode2_getDurTest, 6},
-    {"_rxode2_linCmtCarrySetFast", (DL_FUNC) &_rxode2_linCmtCarrySetFast, 1},
-    {"_rxode2_linCmtCarrySentinelMax", (DL_FUNC) &_rxode2_linCmtCarrySentinelMax, 0},
-    {"_rxode2_linCmtCarryFastStats", (DL_FUNC) &_rxode2_linCmtCarryFastStats, 1},
-    {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
-    {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
-    {"_rxode2_macros2micros", (DL_FUNC) &_rxode2_macros2micros, 8},
     {"_rxode2_activationF2", (DL_FUNC) &_rxode2_activationF2, 3},
     {"_rxode2_activationF", (DL_FUNC) &_rxode2_activationF, 2},
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},
@@ -1078,7 +1042,6 @@ void R_init_rxode2(DllInfo *info){
     {"_gammaqInv", (DL_FUNC) _gammaqInv, 2},
     {"_gammapInva", (DL_FUNC) _gammapInv, 2},
     {"_gammaqInva", (DL_FUNC) _gammaqInv, 2},
-    {"_rxode2_calcDerived", (DL_FUNC) _rxode2_calcDerived, 6},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},

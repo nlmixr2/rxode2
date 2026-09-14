@@ -173,7 +173,7 @@ rxTest({
       nAlast <- nstate + ncmt * npars + oral0
       alast <- c(100, numeric(nAlast - 1L))
       call1 <- function(sensType) {
-        .Call(`_rxode2_linCmtModelDouble`, 1.0,
+        linCmtModelDouble(1.0,
               1.0, 20, 2.0, 40, 0.5, 60, 1.1,
               as.double(alast), numeric(nstate),
               ncmt, oral0, 1L, TRUE, 0L, 0, 0, 0, 0L, 0L,
