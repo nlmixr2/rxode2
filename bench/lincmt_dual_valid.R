@@ -15,6 +15,7 @@
 # are served by the full dual evaluator rather than the window path.
 #
 # Usage: Rscript bench/lincmt_dual_valid.R
+.linCmtModelDouble <- utils::getFromNamespace("linCmtModelDouble", "rxode2")
 suppressMessages(devtools::load_all(".", compile = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 
@@ -27,7 +28,7 @@ diffP3 <- 16L; diffP4 <- 32L; diffP5 <- 64L
 }
 
 .call1 <- function(dt, cfg, alast, sensType, ndiff) {
-  .Call(`_rxode2_linCmtModelDouble`,
+  .linCmtModelDouble(
         dt, cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
         as.double(alast), as.double(cfg$rate),
         cfg$ncmt, cfg$oral0, cfg$trans, TRUE,

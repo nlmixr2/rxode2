@@ -26,6 +26,16 @@ rxTest({
     expect_identical(.off[2:3], c(8L, 4L))
   })
 
+  test_that("the rxode2lincmt re-link hook is installed once and relinks", {
+    .event <- packageEvent("rxode2lincmt", "onLoad")
+    .rxode2lincmtRelinkHook()
+    .rxode2lincmtRelinkHook()
+    .tagged <- Filter(function(h) isTRUE(attr(h, "rxode2Relink")), getHook(.event))
+    expect_length(.tagged, 1L)
+    .tagged[[1]]()
+    expect_true(all(.Call(`_rxode2_rxode2lincmtLinked`)))
+  })
+
   test_that("re-linking is idempotent", {
     .linkAll()
     expect_true(all(.Call(`_rxode2_rxode2lincmtLinked`)))
