@@ -1,6 +1,17 @@
 # rxode2 5.1.7
 
 ## New features
+- The mu-reference scan now tells the two declared-distribution routes apart
+  when a covariate appears in a `dist()` argument.  A covariate written into a
+  `rxEdA.<eta>.<role>` anchor reads locally like `theta + coefficient*covariate`
+  and was claimed as a mu2 covariate on both routes.  That is right on the cdf
+  route, where the decoder reads the anchor and it is genuinely in the
+  observation path, and wrong on the direct route, where the anchor feeds the
+  prior alone.  Measured on a subject-constant covariate arm with a true
+  coefficient of 0.75 from a start of 0.35: the cdf route needs the claim
+  (0.5526 with it, 0.1841 without), and the direct route needs it skipped
+  (0.7441).
+
 - The declared-distribution expansion now hoists each family argument onto its
   own named line, `rxEdA.<eta>.<role>`, and the decoder refers to that name:
 
@@ -93,7 +104,6 @@ model({
   them record for record, so the two can no longer drift apart.
 
 ## Bug fixes
-
 - `gammap()`'s derivative with respect to its shape argument, and every
   derivative of `gammapInv()`/`gammaqInv()`, are now in the derivative
   table.  They were absent, and a missing rule does not error: rxode2's

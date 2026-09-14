@@ -254,6 +254,32 @@
     return(NULL)
   })))
 }
+#' Is a `rxEdA.*` anchor from a DIRECT declared distribution?
+#'
+#' The cdf (Bauer) route decodes `eta = Q(phiU(rxz.<name>); args)`, so its
+#' anchors are read by the observation path and a covariate in one of them is a
+#' genuine mu2 covariate.  The direct route makes the declared eta itself the
+#' random effect -- it renames it `rxd.<name>` -- so its anchors feed the prior
+#' alone and nothing in the observation path reads them.
+#'
+#' @param lhs deparsed left-hand side, e.g. `"rxEdA.eta.cl.rate"`
+#' @param env mu-reference scan environment; `iniDf` supplies the eta names
+#' @return `TRUE` when the anchor belongs to a direct declaration
+#' @author Matthew L. Fidler
+#' @noRd
+.muRefAnchorIsDirect <- function(lhs, env) {
+  .ini <- env$iniDf
+  if (!is.data.frame(.ini) || !("name" %in% names(.ini))) return(FALSE)
+  .etas <- .ini$name[!is.na(.ini$neta1) & .ini$neta1 == .ini$neta2]
+  .etas <- .etas[grepl("^rxd[.]", .etas)]
+  if (length(.etas) == 0L) return(FALSE)
+  .rest <- sub("^rxEdA[.]", "", lhs)
+  # `rxEdA.<eta>.<role>`: the eta name may itself contain dots, so match by
+  # prefix rather than by splitting on them.
+  any(vapply(sub("^rxd[.]", "", .etas),
+             function(.e) startsWith(.rest, paste0(.e, ".")),
+             logical(1)))
+}
 #' Extract mu-style covariates that is theta + eta + cov*theta.cov
 #'
 #' @param x expression to evaluate
@@ -334,7 +360,45 @@
         .thetaD <- try(.muRefExtractTheta(.extra, env), silent=TRUE)
         if (inherits(.thetaD, "try-error")) .thetaD <- NULL
         if (is.null(.thetaD)) {
-          # mu2 expression
+          # mu2 expression -- unless this line is a DIRECT declared
+          # distribution's argument anchor, which is not a mu reference at all.
+          #
+          # `rxEtaDistExpand()` emits `rxEdA.<eta>.<role> <- <argument>` for a
+          # `dist()` declaration.  A covariate written into such an argument --
+          # `rate = 1/(exp(lclrv)*exp(lclm + bWT*log(WT/70)))` -- looks locally
+          # like `theta + coefficient*covariate`, so the mu2 scan claims it and
+          # registers bWT as a covariate coefficient of lclm.  There is no
+          # `theta + eta` anywhere on that line: lclm is not mu-referenced, and
+          # the anchor is a distribution parameter rather than a typical value.
+          #
+          # The claim has a cost, but ONLY on the direct route, and the two
+          # routes must be told apart here -- a blanket skip is a regression.
+          # Measured on the subject-constant covariate arm (truth 0.75, start
+          # 0.35), same data and settings, this skip the only difference:
+          #
+          #   route    skipped     not skipped
+          #   cdf      bWT 0.1841  bWT 0.5526   <- cdf NEEDS the mu2 claim
+          #   direct   bWT 0.7441  refused      <- direct needs it skipped
+          #
+          # On the cdf route the anchor is read by the decoder, so it IS in the
+          # observation path and the claim is the machinery that estimates the
+          # coefficient.  On the direct route the anchor is prior-only:
+          # nlmixr2est's mu2 hook rewrites the line to `nlmixrMuDerCov1 * bWT`
+          # and moves bWT into the COV/MCOV design machinery, which takes away
+          # its phi column -- the saem parameter list goes from
+          # `lclm, lv, lclrv, bWT, rxd.eta.cl` to `lclm, bWT, lv, lclrv,
+          # rxd.eta.cl`, with bWT interleaved where a phi parameter is not.
+          # The prior-only (Q2) M-step then has nowhere to write the
+          # coefficient back to and stands down.
+          #
+          # The route is read off the eta's NAME: the direct route renames the
+          # declared eta `rxd.<name>`, and the anchor carries that name.
+          .curL <- try(deparse1(env$curLhs), silent=TRUE)
+          if (!inherits(.curL, "try-error") && length(.curL) == 1L &&
+                grepl("^rxEdA[.]", .curL) &&
+                .muRefAnchorIsDirect(.curL, env)) {
+            return(NULL)
+          }
           env$.found <- TRUE
           env$mu2RefCovariateReplaceDataFrame <-
             rbind(env$mu2RefCovariateReplaceDataFrame,
