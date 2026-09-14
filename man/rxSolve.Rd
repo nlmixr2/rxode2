@@ -188,7 +188,7 @@ rxSolve(
   autoSwitchStiffFirst = FALSE,
   autoSwitchSwitchMax = 5L,
   stiff2 = 0L,
-  useLinCmt = getOption("rxode2.useLinCmt", TRUE),
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   file = NULL,
   chunkSize = NULL,
   parallel = 0L,
