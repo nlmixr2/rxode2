@@ -38,6 +38,8 @@ rxTest({
                           returnType = "data.frame")$sim,
             ode = rxSolve(.mOde, .ev, cores = cores,
                           returnType = "data.frame")[, c("sim", "r", "ka")],
+            odeStud = rxSolve(.mOde, .ev, nStud = 2, cores = cores,
+                              returnType = "data.frame")[, c("sim", "r", "ka")],
             next1 = rxRmvn(3, c(0, 0, 0), .omega)
           )
         })
