@@ -752,7 +752,7 @@ rxUnloadAll <- function(set=TRUE) {
     .rxLastModels <- NULL
   } else if (length(.rxLastModels) < .nKeep) {
     .rxLastModels <- .rxLastModels[!is.na(.rxLastModels)]
-    .rxLastModels <- .rxLastModels[seq(1, .nKeep)]
+    .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
     assignInMyNamespace(".rxLastModels", .rxLastModels)
   }
   .ret <- try(rxUnloadAll_(), silent = TRUE)
@@ -1516,7 +1516,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     .linCmt <- .Call(
       `_linCmtParse`, names(.lst)[.w],
       c(
-        "with(.lst,.Call(`_rxode2_calcDerived`, ", "list(", "0, 0, 0, 0, ",
+        "with(.lst,.rxDerivedCalc(", "list(", "0, 0, 0, 0, ",
         ", 0, 0, 0, 0),digits))"
       ),
       verbose
@@ -1526,6 +1526,12 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   } else {
     stop("cannot figure out PK parameters to convert", call. = FALSE)
   }
+}
+
+# rxDerived() evaluates a generated call to this; the conversion engine lives
+# in rxode2lincmt
+.rxDerivedCalc <- function(...) {
+  rxode2lincmt::.calcDerived(...)
 }
 
 #' Get the information about the rxode2 derived parameter transformation

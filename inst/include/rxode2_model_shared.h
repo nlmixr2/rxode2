@@ -10,7 +10,11 @@
  * safely even when subjects are solved in parallel. */
 #include <stdarg.h>
 #ifdef _OPENMP
+/* R's `match` macro breaks the `declare variant match(...)` pragma in LLVM's omp.h */
+#pragma push_macro("match")
+#undef match
 #include <omp.h>
+#pragma pop_macro("match")
 static inline void _rxPrintf(const char *fmt, ...) {
   if (omp_get_thread_num() == 0) {
     va_list args;

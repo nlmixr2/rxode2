@@ -14,9 +14,10 @@
 #   writeLinCmtOracle()                 # capture reverse-AD reference -> JSON
 #   compareLinCmtSens(30L)              # diff a candidate sensType vs the oracle
 
+.linCmtModelDouble <- utils::getFromNamespace("linCmtModelDouble", "rxode2")
 .linCmtCall <- function(dt, cfg, alast, sensType = 3L, type = 0L,
                         tau = 0, tinf = 0, amt = 0, bolusCmt = 0L) {
-  .Call(`_rxode2_linCmtModelDouble`,
+  .linCmtModelDouble(
         dt,
         cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
         as.double(alast), as.double(cfg$rate),

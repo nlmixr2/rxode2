@@ -2,6 +2,12 @@
 
 ## New features
 
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
 - Add `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()`
   model directives to split or relocate doses at `etTrans()`
   translation time, mirroring `splitBolus()`. `splitInfusion()` splits
@@ -19,6 +25,19 @@
   pushed while solving. Only one splitting directive (`splitBolus()`,
   `splitInfusion()`, `splitInfusionBolus()` or
   `splitBolusInfusion()`) is allowed per model.
+
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
+## Bug fixes
+
+- Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
+  R's `match` macro is now hidden while `omp.h` is included, so it no longer
+  breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
+  guard covers compiled model code.
 
 # rxode2 5.1.7
 

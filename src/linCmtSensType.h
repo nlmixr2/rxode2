@@ -24,7 +24,7 @@ static inline int linCmtSensIsAD(int sensType) {
 
 // True for the AD Jacobian methods that can run across threads: 3/30
 // (forward-mode fvar, stack-local), 32 (multi-direction forward-mode dualN,
-// stack-local for the same reason), 31 (reverse mode -- rxode2 builds with
+// stack-local for the same reason), 31 (reverse mode -- rxode2lincmt builds with
 // -DSTAN_THREADS, so the Stan tape is thread_local and linCmtB() creates a
 // worker's tape before its first var, see linCmtRevTapeInit()) and 100 (auto,
 // which linCmtSensResolveAuto() turns into one of those).  The

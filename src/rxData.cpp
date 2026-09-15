@@ -34,6 +34,7 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
@@ -48,9 +49,6 @@ using namespace Rcpp;
 using namespace arma;
 
 extern "C" void seedEng(int ncores);
-extern "C" void ensureLinCmtA(int nCores);
-extern "C" void ensureLinCmtB(int nCores);
-extern "C" void linCmtBindFree(rx_solving_options_ind *ind);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
@@ -1963,21 +1961,11 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->delayHistNeq = 0;
   ind->delayHistN = 0;
   ind->delayHistOn = 0;
-  // linCmtB(which1 = -3)'s output-time rate history (nlmixr2/rxode2#1236);
-  // kept after the solve for the same reason as delayHist above.
-  free(ind->linCmtRateHist);
-  ind->linCmtRateHist = NULL;
-  ind->linCmtRateHistCap = 0;
-  ind->linCmtRateHistW = 0;
-  // linCmtB(which1 = -9/-10)'s per-origin amount history; same lifecycle.
-  free(ind->linCmtOriginHist);
-  ind->linCmtOriginHist = NULL;
-  ind->linCmtOriginHistCap = 0;
-  ind->linCmtOriginHistW = 0;
-  // linCmtB()'s per-individual carried state (window + value memo), allocated
-  // on first touch inside the solve; same lifecycle as the two above.  It
-  // holds C++ members, so linCmt.cpp owns the delete.
-  linCmtBindFree(ind);
+  // linCmtB()'s rate / per-origin histories (kept after the solve like
+  // delayHist above) and its per-individual carried state are allocated in
+  // rxode2lincmt, so they are freed there too.
+  _p_linCmtFreeInd(ind);
+  _p_linCmtBindFree(ind);
 }
 
 extern "C" void gFree(){
@@ -6328,8 +6316,8 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       rxLoadAlagCmt(mvRaw, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
     }
     seedEng((int)(op->cores));
-    ensureLinCmtA((int)op->cores);
-    ensureLinCmtB((int)op->cores);
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
@@ -6878,8 +6866,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores = 1;
     }
     seedEng((int)(op->cores));
-    ensureLinCmtA((int)op->cores);
-    ensureLinCmtB((int)op->cores);
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);

@@ -461,13 +461,13 @@ struct rx_solving_options_ind_s {
   long int autoStiffNonsti; /* clean verdicts since the last stiff one */
   long int autoStiffNaccpt; /* accepted steps across the subject's intervals */
   int      autoBackoff;     /* re-probe wait multiplier while on the secondary */
-  // linCmtB()'s per-INDIVIDUAL carried state (src/linCmt.cpp): the theta-keyed
+  // linCmtB()'s per-INDIVIDUAL carried state (rxode2lincmt's linCmt.cpp): the theta-keyed
   // window of hoisted closed-form constants and the last-row value memo.  Both
   // are state whose value ACROSS calls is the whole point, so they belong to
   // the individual rather than to whichever thread happens to be running it --
   // owned by a thread they had to be keyed on the subject id and were thrown
   // away whenever another individual landed on the same slot.  Pure scratch
-  // (the Eigen work matrices and the kernel object) stays per thread; only the
+  // (the kernel work matrices and object, in rxode2lincmt) stays per thread; only the
   // carried state is here.
   //
   // Opaque on purpose: this is a C header and the state holds C++ members.

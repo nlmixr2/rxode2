@@ -4,6 +4,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
+#include "rxode2lincmtLink.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7040,7 +7041,6 @@ static inline double phiB(double f, double fn, double h){
   return (f-fn)/h;
 }
 
-extern "C" double linCmtScaleInitPar(int which);
 
 //' @param *hf is the forward difference final estimate
 //' @param *hphif is central difference final estimate (when switching from forward to central differences)
@@ -7080,7 +7080,7 @@ int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
     lastht=NA_REAL, lastfpt=NA_REAL, phict=NA_REAL;
   f = gillF;
   int k = 0;
-  double x = linCmtScaleInitPar(cpar);
+  double x = _p_linCmtScaleInitPar(cpar);
   // Relative error should be given by the tolerances, I believe.
   double epsA=std::fabs(f)*epsR;
   // FD1: // Initialization
@@ -7275,19 +7275,17 @@ int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
   return 5;
 }
 
-extern "C" double linCmtScaleInitN();
-extern "C" int linCmtZeroJac(int i);
 
 void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
  t_dydt c_dydt, t_update_inis u_inis) {
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
   double hf=0, hphif=0, df=0, df2=0, ef=0;
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
 
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }
@@ -7398,11 +7396,11 @@ void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                    t_dydt c_dydt, t_update_inis u_inis) {
   double h = 0.0;
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }
@@ -7543,11 +7541,11 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                    t_dydt c_dydt, t_update_inis u_inis) {
   double h = 0.0;
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }

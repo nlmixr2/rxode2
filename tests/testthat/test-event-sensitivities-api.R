@@ -81,6 +81,11 @@ rxTest({
                    "getSolvingOptionsInd", "rxode2getUpdateInis"))
   })
 
+  test_that("linCmt entry points never occupy a slot in this table", {
+    # they live in rxode2lincmt's own table (src/rxode2lincmtLink.cpp)
+    expect_false(any(grepl("linCmt", names(.rxode2ptrs()), fixed = TRUE)))
+  })
+
   test_that("event-sensitivity dims round trip and deactivate to zero", {
     on.exit(rxEventSensDeactivate(), add = TRUE)
     .Call(`_rxode2_eventSensSetDims`, 1L, 3L, 4L, 5L, 6L, 1L)
