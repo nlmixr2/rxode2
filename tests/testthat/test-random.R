@@ -381,9 +381,10 @@ rxTest({
         sqrt(k / (theta^2))
       }
 
-      expect_equal(sd(f$x1), sgamma(9, 0.5), tolerance = 0.01)
+      # The sample sd of 30000 draws has a relative standard error near 0.5%
+      expect_equal(sd(f$x1), sgamma(9, 0.5), tolerance = 0.02)
 
-      expect_equal(sd(f$x2), sgamma(7.5), tolerance = 0.01)
+      expect_equal(sd(f$x2), sgamma(7.5), tolerance = 0.02)
 
       ## Seed tests
 
