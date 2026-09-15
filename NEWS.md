@@ -10,6 +10,12 @@
 
 ## Bug fixes
 
+- Simulations no longer depend on the number of threads.  With `rxSetSeed()`
+  in force the seed sequence advanced by the thread count, and the eta draws
+  made before an ODE solve and `rxRmvn(ncores=)` split their normal draws by
+  thread; both now give the single-threaded result at any `cores`/`ncores`
+  (#1376).
+
 - Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
   R's `match` macro is now hidden while `omp.h` is included, so it no longer
   breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
