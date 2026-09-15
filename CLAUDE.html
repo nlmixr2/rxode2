@@ -121,6 +121,7 @@
 <h2 id="build-and-development-commands">Build and Development Commands<a class="anchor" aria-label="anchor" href="#build-and-development-commands"></a></h2>
 <div class="section level3">
 <h3 id="installbuild">Install/Build<a class="anchor" aria-label="anchor" href="#installbuild"></a></h3>
+<p>rxode2 Imports and LinkingTo rxode2lincmt (the Stan-based linCmt kernels), so rxode2lincmt must be installed in a library rxode2’s build and <code>load_all</code> see. After reinstalling or <code>load_all()</code>-ing rxode2lincmt in a live session, rxode2 re-links through a <code>packageEvent</code> hook; if in doubt restart R.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># Install development version (from within R)</span></span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install</span>()</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
@@ -210,14 +211,14 @@
 <ul><li><p><code><a href="reference/et.html">et()</a></code> constructs dosing/sampling event tables</p></li>
 <li><p><code>etTran()</code> transforms event tables for the internal solver format</p></li>
 <li><p>Supports NONMEM-compatible event IDs (evid 0-4) as well as rxode2 specific evids like 5 (replace event), 6 (multiply event) and 7 (phantom/transit). Internally the EVIDs are translated to rxode2 specific evids documented <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html" class="uri">https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</a></p></li>
-</ul><p><strong>Linear Compartment Models</strong> (<code>src/linCmt.cpp</code>, <code>R/linCmt.R</code>): - Analytical solutions for 1-3 compartment PK models - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2) - Can be mixed with ODEs in the same model</p>
+</ul><p><strong>Linear Compartment Models</strong> (rxode2lincmt, <code>src/rxode2lincmtLink.cpp</code>, <code>R/linCmt.R</code>): - Analytical solutions for 1-3 compartment PK models - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2) - Can be mixed with ODEs in the same model - The kernels (<code>linCmt.cpp</code>, <code>solComp</code>, <code>macros2micros</code>, <code>rxDerived</code>) live in the separate package rxode2lincmt so rxode2 does not compile Stan. rxode2 keeps parsing/codegen (<code>parseLinCmt.c</code>), the per-individual state in <code>rxode2parseStruct.h</code>, and <code>linCmtSensType.h</code> / <code>linCmtDiffConstant.h</code>, which are duplicated verbatim in rxode2lincmt and must stay identical.</p>
 <p><strong>Sensitivity Analysis</strong> (<code>R/rxJacobian.R</code>, <code>R/adjoint.R</code>, <code>src/expandGrid.cpp</code>, <code>src/adjoint.cpp</code>): - Forward sensitivities: <code><a href="reference/dot-rxJacobian.html">.rxJacobian()</a></code> builds the analytic Jacobian (<code>symengine::D</code>), <code><a href="reference/dot-rxSens.html">.rxSens()</a></code> splices <code>d/dt(rx__sens_&lt;state&gt;_BY_&lt;param&gt;__)</code> variational-equation lines into the model (solved as ordinary extra compartments). This is symbolic, not autodiff. - Adjoint (backward) sensitivities mirror the same <code>rx__sens_*</code> output but via a backward pass. <code><a href="reference/dot-rxAdjoint.html">.rxAdjoint()</a></code> symbolically generates the costate (<code>-J^T lambda</code>) and quadrature (<code>-lambda^T df/dp</code>) equations reusing the <code>rx__df_*</code> derivatives. <code><a href="reference/dot-rxAdjointSolve.html">.rxAdjointSolve()</a></code> = full per-timepoint <code>dy(t)/dp</code>; <code><a href="reference/dot-rxAdjointGrad.html">.rxAdjointGrad()</a></code> = single-sweep <code>dG/dtheta</code> objective gradient (incl. a FOCEi <code>-2LL</code> <code>errModel=</code>), where adjoint beats forward sensitivity. - <code>.rxAdjointGrad</code> is split into a symbolic <strong>build</strong> (<code>.rxAdjointGradBuild</code>, runs symengine once) and a numeric <strong>eval</strong> (<code>.rxAdjointGradEval</code> / the C++ <code>.rxAdjointGradEvalC</code> via the <code>rxode2AdjointSweep</code> sweep) so an optimizer builds once and evaluates the gradient many times. Build the gradient object BEFORE any <code>rxSolve</code> (a <code>load_all</code>-only symengine dispatch quirk affects the one-time symbolic build, never the numeric eval).</p>
 <p><strong>Output Data Frame</strong> (<code>src/rxode2_df.cpp</code>, <code>src/rxData.cpp</code>): - The solved result is returned as a modified data frame with special classes - Factor levels and units are preserved from the event table</p>
 <p><strong>Testing</strong> (<code>tests/testthat/</code>): - Tests use testthat edition 3 - Most test files wrap tests in <code>rxTest({...})</code> which skips on CRAN (requires <code>NOT_CRAN=true</code>) - Test files follow <code>test-*.R</code> naming convention</p>
 </div>
 <div class="section level3">
 <h3 id="important-files">Important Files<a class="anchor" aria-label="anchor" href="#important-files"></a></h3>
-<table class="table"><thead><tr><th>File</th>
+<table class="table"><colgroup><col width="40%"><col width="60%"></colgroup><thead><tr><th>File</th>
 <th>Purpose</th>
 </tr></thead><tbody><tr><td><code>inst/tran.g</code></td>
 <td>dparser grammar for the rxode2 mini-language</td>
@@ -229,8 +230,8 @@
 <td>Main parallel ODE solver (OpenMP)</td>
 </tr><tr><td><code>src/rxData.cpp</code></td>
 <td>rx_solve data structure management</td>
-</tr><tr><td><code>src/linCmt.cpp</code></td>
-<td>Analytical PK compartment solutions</td>
+</tr><tr><td><code>src/rxode2lincmtLink.cpp</code></td>
+<td>Tables shared with rxode2lincmt; linCmtA/linCmtB forwarders</td>
 </tr><tr><td><code>src/et.cpp</code></td>
 <td>Event table construction</td>
 </tr><tr><td><code>R/rxode2.R</code></td>
@@ -321,6 +322,15 @@
 <li>
 <strong>Never add a check to <code>_rxode2_rxode2Ptr()</code> or to a downstream package’s load path.</strong> Every reverse dependency calls it at load, so a check that fails takes them all down at once, and a released reverse dependency cannot be patched retroactively. Assert invariants in rxode2’s own test suite instead (<code>tests/testthat/test-event-sensitivities-api.R</code>), never at load time.</li>
 </ol><p>The same reasoning applies to the <strong>semantics</strong> of an already-released entry point: changing what <code>getIndCmt()</code> returns for a given input is a breaking change to code you cannot patch. Add a new entry point instead of changing an existing one, and do not do either as an incidental “fix” – ask first.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="rxode2lincmt-tables-separate-from-_rxode2_rxode2ptr">rxode2lincmt tables (separate from <code>_rxode2_rxode2Ptr</code>)<a class="anchor" aria-label="anchor" href="#rxode2lincmt-tables-separate-from-_rxode2_rxode2ptr"></a></h4>
+<p><code>src/rxode2lincmtLink.cpp</code> holds rxode2’s side of two tables, both defined in rxode2lincmt’s <code>inst/include/</code> headers and registered from <code>.linkAll()</code>:</p>
+<ul><li>the <strong>lincmt table</strong> (<code>rxode2lincmtPtrs.h</code>): <code>linCmtA</code>, <code>linCmtB</code>, <code>ensureLinCmtA/B</code>, <code>linCmtBindFree</code>, <code>linCmtScaleInitPar/N</code>, <code>linCmtZeroJac</code>, <code>linCmtFreeInd</code>, called through <code>_p_*</code> pointers that start at harmless stubs;</li>
+<li>the <strong>host table</strong> (<code>rxode2lincmtHost.h</code>): <code>offsetof()</code> of every solver-struct field linCmt reads (the <code>RXLC_HOST_FIELDS</code> X-macro) plus <code>getTime</code>, rxode2’s thread-slot function and <code>getRxSolve_</code>. rxode2lincmt never includes rxode2’s struct headers.</li>
+</ul><blockquote>
+<p>[!IMPORTANT] - Never put linCmt entries in <code>_rxode2_rxode2Ptr</code>. - Both tables and the X-macro field list are APPEND-ONLY and never validated at load (not in <code>.linkAll</code>, <code>_rxode2_iniRxode2lincmtPtrs</code>, or the host setter). - A field linCmt newly reads is a new <code>RXLC_HOST_FIELDS</code> row plus a bump of <code>rxode2lincmt (&gt;=)</code>; never rename or retype a field the list names (<code>RXLC_HOST_STATIC_CHECKS</code> fails rxode2’s compile if you do). - Memory rxode2lincmt allocates is freed only through <code>_p_linCmtFreeInd</code> / <code>_p_linCmtBindFree</code>; thread slots come only from <code>rxode2LinCmtThread</code> (C++, so <code>rx_get_thread()</code> sees OpenMP – rxode2’s <code>.c</code> files are compiled without it). - Compiled models keep binding <code>linCmtA</code>/<code>linCmtB</code> by name; the forwarders read the table pointer on every call. - Invariants are asserted in <code>tests/testthat/test-lincmt-link.R</code>.</p>
 </blockquote>
 </div>
 <div class="section level4">

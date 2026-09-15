@@ -112,6 +112,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.8" id="rxode2-518">rxode2 5.1.8<a class="anchor" aria-label="anchor" href="#rxode2-518"></a></h2>
+<div class="section level3">
+<h3 id="new-features-5-1-8">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-8"></a></h3>
+<ul><li>The Stan-based <code>linCmt()</code> kernels and their gradients, <code><a href="../reference/dot-solComp2.html">.solComp2()</a></code>, <code><a href="../reference/dot-solComp3.html">.solComp3()</a></code> and the <code><a href="../reference/rxDerived.html">rxDerived()</a></code> conversions moved to the new ‘rxode2lincmt’ package, which rxode2 now imports. rxode2 no longer builds against ‘StanHeaders’, ‘RcppEigen’ or ‘RcppParallel’, which shortens its installation; exported functions and compiled model code are unchanged.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-5-1-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-8"></a></h3>
+<ul><li>Fixed installation with clang/LLVM OpenMP (CRAN <code>r-devel-linux-x86_64-fedora-clang</code>): R’s <code>match</code> macro is now hidden while <code>omp.h</code> is included, so it no longer breaks the <code>declare variant match(...)</code> pragma in LLVM’s <code>omp.h</code>. The same guard covers compiled model code.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.7" id="rxode2-517">rxode2 5.1.7<a class="anchor" aria-label="anchor" href="#rxode2-517"></a></h2><p class="text-muted">CRAN release: 2026-09-14</p>
