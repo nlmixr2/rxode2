@@ -789,9 +789,9 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(sum(got$EVID %/% 10000 %% 10 == 6), 2)
   })
 
-  test_that("split() handles bolus and infusion sources", {
+  test_that("splitInfusionBolus() handles bolus and infusion sources", {
     modSplit <- rxode2parse("
-      split(depot, depot, central)
+      splitInfusionBolus(depot, depot, central)
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     ")
@@ -822,9 +822,9 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(got, wantI)
   })
 
-  test_that("split() promotes plain boluses to modeled infusions for dur()/rate() targets", {
+  test_that("splitInfusionBolus() promotes plain boluses to modeled infusions for dur()/rate() targets", {
     modSplit <- rxode2parse("
-      split(depot, central, depot2)
+      splitInfusionBolus(depot, central, depot2)
       dur(central) <- tk0
       ka2 <- 1.2
       d/dt(depot) <- -ka * depot
@@ -860,9 +860,9 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(sum(got$CMT == which(modSplit$state == "depot")), 0)
   })
 
-  test_that("split() solves a mixed zero/first-order double absorption identically to explicit dosing", {
+  test_that("splitInfusionBolus() solves a mixed zero/first-order double absorption identically to explicit dosing", {
     modSplit <- rxode2({
-      split(depot, central, depot2)
+      splitInfusionBolus(depot, central, depot2)
       tk0 <- 4
       dur(central) <- tk0
       f(central) <- 0.7
@@ -906,7 +906,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(dSplit$central, dBase$central, tolerance = 1e-6)
   })
 
-  test_that("splitInfusion/split directives parse and reject misuse", {
+  test_that("splitInfusion/splitInfusionBolus/splitBolusInfusion directives parse and reject misuse", {
     expect_no_error(rxode2parse("
       splitInfusion(depot, depot, central)
       d/dt(depot) <- -ka * depot
@@ -914,14 +914,14 @@ d/dt(blood)     = a*intestine - b*blood
     "))
 
     expect_no_error(rxode2parse("
-      split(depot, central)
+      splitInfusionBolus(depot, central)
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     "))
 
     # duplicate targets are rejected
     expect_true(inherits(try(rxode2parse("
-      split(depot, central, central)
+      splitInfusionBolus(depot, central, central)
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     "), silent = TRUE), "try-error"))
@@ -935,30 +935,31 @@ d/dt(blood)     = a*intestine - b*blood
     # only one splitting directive per model
     expect_true(inherits(try(rxode2parse("
       splitBolus(depot, central)
-      split(depot, central)
+      splitInfusionBolus(depot, central)
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     "), silent = TRUE), "try-error"))
 
     expect_true(inherits(try(rxode2parse("
       splitInfusion(depot, central)
-      split(depot, central)
+      splitInfusionBolus(depot, central)
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     "), silent = TRUE), "try-error"))
   })
 
-  test_that("model vars expose empty splitInfusion/split when unused", {
+  test_that("model vars expose empty splitInfusion/splitInfusionBolus/splitBolusInfusion when unused", {
     mod <- rxode2parse("
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * depot - cl / v * central
     ")
 
     expect_equal(length(rxModelVars(mod)$splitInfusion), 0)
-    expect_equal(length(rxModelVars(mod)$split), 0)
+    expect_equal(length(rxModelVars(mod)$splitInfusionBolus), 0)
+    expect_equal(length(rxModelVars(mod)$splitBolusInfusion), 0)
   })
 
-  test_that("splitInfusion()/split() mv and normalized model round-trip", {
+  test_that("splitInfusion()/splitInfusionBolus()/splitBolusInfusion() mv and normalized model round-trip", {
     f <- function() {
       model({
         splitInfusion(depot, depot, central, peripheral)
@@ -968,20 +969,67 @@ d/dt(blood)     = a*intestine - b*blood
     mv <- rxModelVars(f())
     expect_equal(unname(mv$splitInfusion), c(1L, 1L, 2L, 3L))
     expect_equal(unname(mv$splitBolus), integer(0))
-    expect_equal(unname(mv$split), integer(0))
+    expect_equal(unname(mv$splitInfusionBolus), integer(0))
+    expect_equal(unname(mv$splitBolusInfusion), integer(0))
     expect_equal(setNames(mv$model["normModel"], NULL),
                  "splitInfusion(depot,depot,central,peripheral);\n")
 
     g <- function() {
       model({
-        split(depot, central)
+        splitInfusionBolus(depot, central)
       })
     }
 
     mv2 <- rxModelVars(g())
-    expect_equal(unname(mv2$split), c(1L, 2L))
+    expect_equal(unname(mv2$splitInfusionBolus), c(1L, 2L))
     expect_equal(setNames(mv2$model["normModel"], NULL),
-                 "split(depot,central);\n")
+                 "splitInfusionBolus(depot,central);\n")
+
+    h <- function() {
+      model({
+        splitBolusInfusion(depot, depot2, central)
+      })
+    }
+
+    mv3 <- rxModelVars(h())
+    expect_equal(unname(mv3$splitBolusInfusion), c(1L, 2L, 3L))
+    expect_equal(setNames(mv3$model["normModel"], NULL),
+                 "splitBolusInfusion(depot,depot2,central);\n")
+  })
+
+  test_that("splitBolusInfusion() splits a bolus into bolus and infusion paths", {
+    modSplit <- rxode2parse("
+      splitBolusInfusion(depot, depot2, central)
+      dur(central) <- tk0
+      ka2 <- 1.2
+      d/dt(depot) <- -ka * depot
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    ")
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot")
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    cmtCentral <- which(modSplit$state == "central")
+    cmtDepot2 <- which(modSplit$state == "depot2")
+
+    # depot2 first target gets the plain bolus, central second gets the pair
+    wStart <- which(got$EVID %/% 10000 %% 10 == 8)
+    wStop <- which(got$EVID %/% 10000 %% 10 == 6)
+    expect_length(wStart, 1)
+    expect_length(wStop, 1)
+    expect_equal(got$CMT[wStart], cmtCentral)
+    expect_equal(got$CMT[wStop], cmtCentral)
+    expect_true(wStart < wStop)
+    expect_equal(got$AMT[wStart], 100)
+    expect_equal(got$AMT[wStop], 100)
+
+    wBolus <- which(got$EVID %/% 10000 %% 10 == 0 & got$EVID >= 100)
+    expect_length(wBolus, 1)
+    expect_equal(got$CMT[wBolus], cmtDepot2)
+    expect_equal(got$AMT[wBolus], 100)
+
+    expect_equal(sum(got$CMT == which(modSplit$state == "depot")), 0)
   })
 
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)

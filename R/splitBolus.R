@@ -59,14 +59,14 @@ splitInfusion <- function(cmt, ...) {
   stop("'splitInfusion()' can only be used inside an rxode2 model block", call. = FALSE)
 }
 
-#' Split doses across compartments, bolus or infusion (model directive)
+#' Split infusion doses into infusion and bolus paths (model directive)
 #'
 #' @description
-#' `split()` is a model-only directive that rewrites doses aimed at
-#' `cmt` into parallel doses to the target compartments, regardless of
-#' whether the dose record is a bolus or an infusion. Each target
-#' compartment receives the full original amount; use `f()` to scale
-#' the split.
+#' `splitInfusionBolus()` is a model-only directive that rewrites doses
+#' aimed at `cmt` into parallel doses to the target compartments,
+#' regardless of whether the dose record is a bolus or an infusion.
+#' Each target compartment receives the full original amount; use `f()`
+#' to scale the split.
 #'
 #' A plain bolus record targeting a compartment that declares a modeled
 #' `dur()` or `rate()` property is promoted to a modeled infusion
@@ -81,17 +81,18 @@ splitInfusion <- function(cmt, ...) {
 #'
 #' This rewrite applies at [etTrans()] translation time only; doses
 #' pushed while solving with [evid_()] are not split. Only one
-#' splitting directive (`splitBolus()`, `splitInfusion()` or `split()`)
-#' is allowed per model.
+#' splitting directive (`splitBolus()`, `splitInfusion()`,
+#' `splitInfusionBolus()` or `splitBolusInfusion()`) is allowed per
+#' model.
 #'
-#' There is no R function named `split()` exported by rxode2 (it would
-#' mask [base::split()]); the directive is parsed from the model text
-#' directly, as shown below.
+#' There is no R function named `splitInfusionBolus()` exported by
+#' rxode2; the directive is parsed from the model text directly, as
+#' shown in `?splitBolusInfusion-directive`.
 #'
 #' @section Usage inside a model:
 #' ```
 #' model({
-#'   split(depot, central, depot2)
+#'   splitInfusionBolus(depot, central, depot2)
 #'   dur(central) <- tk0
 #'   f(central) <- f1
 #'   f(depot2) <- 1 - f1
@@ -105,6 +106,57 @@ splitInfusion <- function(cmt, ...) {
 #' `f1`) and `depot2` receives the bolus (first-order input scaled by
 #' `1 - f1`).
 #'
-#' @name split-directive
-#' @aliases split split()
+#' @name splitInfusionBolus-directive
+#' @aliases splitInfusionBolus splitInfusionBolus()
+NULL
+
+#' Split bolus doses into bolus and infusion paths (model directive)
+#'
+#' @description
+#' `splitBolusInfusion()` is a model-only directive that rewrites doses
+#' aimed at `cmt` into parallel doses to the target compartments,
+#' regardless of whether the dose record is a bolus or an infusion.
+#' Each target compartment receives the full original amount; use `f()`
+#' to scale the split.
+#'
+#' A plain bolus record targeting a compartment that declares a modeled
+#' `dur()` or `rate()` property is promoted to a modeled infusion
+#' start/stop pair for that compartment, so a single bolus dose record
+#' can feed both a bolus path and an infusion path (Monolix-style
+#' double absorption with mixed first- and zero-order routes).
+#' Steady-state bolus records are not promoted; they are copied as
+#' boluses with a warning when a target declares `dur()`/`rate()`.
+#'
+#' Infusion records (data `RATE`/`DUR` or modeled `rate()`/`dur()`) are
+#' split preserving their type, exactly like [splitInfusion()].
+#'
+#' This rewrite applies at [etTrans()] translation time only; doses
+#' pushed while solving with [evid_()] are not split. Only one
+#' splitting directive (`splitBolus()`, `splitInfusion()`,
+#' `splitInfusionBolus()` or `splitBolusInfusion()`) is allowed per
+#' model.
+#'
+#' There is no R function named `splitBolusInfusion()` exported by
+#' rxode2; the directive is parsed from the model text directly, as
+#' shown below.
+#'
+#' @section Usage inside a model:
+#' ```
+#' model({
+#'   splitBolusInfusion(depot, depot2, central)
+#'   dur(central) <- tk0
+#'   f(depot2) <- 1 - f1
+#'   f(central) <- f1
+#'   d/dt(depot2) <- -ka2 * depot2
+#'   d/dt(central) <- ka2 * depot2 - cl / v * central
+#'   ...
+#' })
+#' ```
+#' A bolus dose recorded against `depot` is split so `depot2` receives
+#' the bolus (first-order input scaled by `1 - f1`) and `central`
+#' receives a modeled-duration infusion (zero-order input over `tk0`,
+#' scaled by `f1`).
+#'
+#' @name splitBolusInfusion-directive
+#' @aliases splitBolusInfusion splitBolusInfusion()
 NULL

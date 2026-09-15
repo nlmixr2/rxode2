@@ -1088,9 +1088,9 @@ rxTest({
     }
 
     f <- f()
-    expect_equal(tail(names(rxModelVars(f)), 7),
+    expect_equal(tail(names(rxModelVars(f)), 8),
                  c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5",
-                   "splitInfusion", "split"))
+                   "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"))
     expect_equal(unname(rxModelVars(f)$splitBolus), c(1L, 1L, 2L, 3L))
     expect_equal(setNames(rxModelVars(f)$model["normModel"], NULL),
                  "splitBolus(depot,depot,central,peripheral);\n")

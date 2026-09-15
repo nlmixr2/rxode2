@@ -112,16 +112,17 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
 
 /* Shared implementation of the dose-splitting directives.  splitKind
  * selects which declaration table receives the source-then-target de
- * indexes: 0 splitBolus(), 1 splitInfusion(), 2 split().  Only one
- * splitting directive of any kind is supported per model: they all
- * rewrite the same translated dose records, so combining them would
- * make the result depend on the pass order. */
+ * indexes: 0 splitBolus(), 1 splitInfusion(), 2 splitInfusionBolus(),
+ * 3 splitBolusInfusion().  Only one splitting directive of any kind is
+ * supported per model: they all rewrite the same translated dose
+ * records, so combining them would make the result depend on the pass
+ * order. */
 static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int nch,
                                            D_ParseNode *pn, int splitKind) {
-  const char *fname = splitKind == 0 ? "splitBolus" : (splitKind == 1 ? "splitInfusion" : "split");
-  if (tb.splitBolusN != 0 || tb.splitInfusionN != 0 || tb.splitN != 0) {
+  const char *fname = splitKind == 0 ? "splitBolus" : (splitKind == 1 ? "splitInfusion" : (splitKind == 2 ? "splitInfusionBolus" : "splitBolusInfusion"));
+  if (tb.splitBolusN != 0 || tb.splitInfusionN != 0 || tb.splitInfusionBolusN != 0 || tb.splitBolusInfusionN != 0) {
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("only one 'splitBolus()', 'splitInfusion()' or 'split()' statement is supported per model"));
+    trans_syntax_error_report_fn(_("only one 'splitBolus()', 'splitInfusion()', 'splitInfusionBolus()' or 'splitBolusInfusion()' statement is supported per model"));
   }
   *i = nch;
   sb.o = 0; sbDt.o = 0; sbt.o = 0;
@@ -142,7 +143,8 @@ static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int 
   const char *dupMsg =
     splitKind == 0 ? _("'splitBolus()' target compartments must all be different") :
     (splitKind == 1 ? _("'splitInfusion()' target compartments must all be different") :
-                      _("'split()' target compartments must all be different"));
+    (splitKind == 2 ? _("'splitInfusionBolus()' target compartments must all be different") :
+                      _("'splitBolusInfusion()' target compartments must all be different")));
   for (int j = 1; j < nCmts; ++j) {
     for (int k = j + 1; k < nCmts; ++k) {
       if (!strcmp(vals[j], vals[k])) {
@@ -151,7 +153,7 @@ static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int 
       }
     }
   }
-  int *dst = splitKind == 0 ? tb.splitBolus : (splitKind == 1 ? tb.splitInfusion : tb.split);
+  int *dst = splitKind == 0 ? tb.splitBolus : (splitKind == 1 ? tb.splitInfusion : (splitKind == 2 ? tb.splitInfusionBolus : tb.splitBolusInfusion));
   for (int j = 0; j < nCmts; ++j) {
     int hasLhs = isCmtLhsStatement(ni, name, vals[j]);
     if (new_de(vals[j], fromCMTprop)) {
@@ -165,8 +167,10 @@ static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int 
     tb.splitBolusN = nCmts;
   } else if (splitKind == 1) {
     tb.splitInfusionN = nCmts;
+  } else if (splitKind == 2) {
+    tb.splitInfusionBolusN = nCmts;
   } else {
-    tb.splitN = nCmts;
+    tb.splitBolusInfusionN = nCmts;
   }
   sAppend(&sbt, "%s(%s", fname, vals[0]);
   for (int j = 1; j < nCmts; ++j) {
@@ -195,10 +199,18 @@ static inline int handleSplitInfusionStatement(nodeInfo ni, char *name, int *i, 
   return 0;
 }
 
-static inline int handleSplitStatement(nodeInfo ni, char *name, int *i, int nch,
-                                       D_ParseNode *pn) {
-  if (nodeHas(split_statement) && *i == 0) {
+static inline int handleSplitInfusionBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitInfusionBolus_statement) && *i == 0) {
     return handleSplitStatementKind(ni, name, i, nch, pn, 2);
+  }
+  return 0;
+}
+
+static inline int handleSplitBolusInfusionStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitBolusInfusion_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 3);
   }
   return 0;
 }

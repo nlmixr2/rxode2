@@ -177,7 +177,8 @@
 #define RxMv_timeId 31
 #define RxMv_md5 32
 #define RxMv_splitInfusion 33
-#define RxMv_split 34
+#define RxMv_splitInfusionBolus 34
+#define RxMv_splitBolusInfusion 35
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

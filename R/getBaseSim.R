@@ -99,9 +99,10 @@ getBaseIniSimModel.default <- function(obj) {
   .interp <- rxUiGet.interpLines(list(.ui))
   .splitDose <- rxUiGet.splitDoseLines(list(.ui))
   .splitInfusion <- rxUiGet.splitInfusionLines(list(.ui))
-  .split <- rxUiGet.splitLines(list(.ui))
+  .splitInfBol <- rxUiGet.splitInfusionBolusLines(list(.ui))
+  .splitBolInf <- rxUiGet.splitBolusInfusionLines(list(.ui))
   as.call(c(list(quote(`rxode2`)),
             as.call(c(list(quote(`{`)), .params, .interp, .splitDose,
-                      .splitInfusion, .split,
+                      .splitInfusion, .splitInfBol, .splitBolInf,
                       .sigma, .ini, .mod))))
 }

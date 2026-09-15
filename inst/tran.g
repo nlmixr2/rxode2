@@ -27,7 +27,8 @@ statement
   | cmt_statement end_statement
   | splitBolus_statement end_statement
   | splitInfusion_statement end_statement
-  | split_statement end_statement
+  | splitInfusionBolus_statement end_statement
+  | splitBolusInfusion_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
@@ -154,8 +155,15 @@ splitInfusion_statement
       (',' identifier_r_no_output)*
       ')';
 
-split_statement
-    : 'split' '('
+splitInfusionBolus_statement
+    : 'splitInfusionBolus' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitBolusInfusion_statement
+    : 'splitBolusInfusion' '('
       identifier_r_no_output ','
       identifier_r_no_output
       (',' identifier_r_no_output)*
@@ -297,7 +305,7 @@ identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | id
 
 identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
   'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'splitInfusion' |
-  'split' | 'replace' | 'reset';
+  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';

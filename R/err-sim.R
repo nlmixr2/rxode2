@@ -432,9 +432,9 @@ attr(rxUiGet.splitInfusionLines, "rstudio") <- attr(rxUiGet.splitInfusion, "rstu
 
 #' @rdname rxUiGet
 #' @export
-rxUiGet.split <- function(x, ...) {
+rxUiGet.splitInfusionBolus <- function(x, ...) {
   .ui <- x[[1]]
-  .split <- rxModelVars(.ui)$split
+  .split <- rxModelVars(.ui)$splitInfusionBolus
   if (length(.split) < 2L) {
     return(NULL)
   }
@@ -443,17 +443,42 @@ rxUiGet.split <- function(x, ...) {
         any(.split < 1L | .split > length(.state))) {
     return(NULL)
   }
-  list(as.call(c(list(quote(`split`)),
+  list(as.call(c(list(quote(`splitInfusionBolus`)),
                  lapply(.state[.split], as.name))))
 }
-attr(rxUiGet.split, "desc") <- "split dose declaration line(s) for model (bolus and infusion)"
-attr(rxUiGet.split, "rstudio") <- quote(split(depot, central, depot2))
+attr(rxUiGet.splitInfusionBolus, "desc") <- "splitInfusionBolus dose declaration line(s) for model (infusion doses split into infusion and bolus)"
+attr(rxUiGet.splitInfusionBolus, "rstudio") <- quote(splitInfusionBolus(depot, central, depot2))
 
 #' @rdname rxUiGet
 #' @export
-rxUiGet.splitLines <- rxUiGet.split
-attr(rxUiGet.splitLines, "desc") <- attr(rxUiGet.split, "desc")
-attr(rxUiGet.splitLines, "rstudio") <- attr(rxUiGet.split, "rstudio")
+rxUiGet.splitInfusionBolusLines <- rxUiGet.splitInfusionBolus
+attr(rxUiGet.splitInfusionBolusLines, "desc") <- attr(rxUiGet.splitInfusionBolus, "desc")
+attr(rxUiGet.splitInfusionBolusLines, "rstudio") <- attr(rxUiGet.splitInfusionBolus, "rstudio")
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitBolusInfusion <- function(x, ...) {
+  .ui <- x[[1]]
+  .split <- rxModelVars(.ui)$splitBolusInfusion
+  if (length(.split) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (length(.state) == 0L ||
+        any(.split < 1L | .split > length(.state))) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitBolusInfusion`)),
+                 lapply(.state[.split], as.name))))
+}
+attr(rxUiGet.splitBolusInfusion, "desc") <- "splitBolusInfusion dose declaration line(s) for model (bolus doses split into bolus and infusion)"
+attr(rxUiGet.splitBolusInfusion, "rstudio") <- quote(splitBolusInfusion(depot, depot2, central))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitBolusInfusionLines <- rxUiGet.splitBolusInfusion
+attr(rxUiGet.splitBolusInfusionLines, "desc") <- attr(rxUiGet.splitBolusInfusion, "desc")
+attr(rxUiGet.splitBolusInfusionLines, "rstudio") <- attr(rxUiGet.splitBolusInfusion, "rstudio")
 
 #' @export
 #' @rdname rxUiGet
@@ -624,7 +649,8 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
         identical(.e[[1]], quote(`midpoint`)) ||
         identical(.e[[1]], quote(`splitBolus`)) ||
         identical(.e[[1]], quote(`splitInfusion`)) ||
-        identical(.e[[1]], quote(`split`))
+        identical(.e[[1]], quote(`splitInfusionBolus`)) ||
+        identical(.e[[1]], quote(`splitBolusInfusion`))
     } else {
       FALSE
     }

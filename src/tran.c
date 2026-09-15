@@ -175,7 +175,8 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleObsStatement(ni, name, i, nch, pn) ||
       handleSplitBolusStatement(ni, name, i, nch, pn) ||
       handleSplitInfusionStatement(ni, name, i, nch, pn) ||
-      handleSplitStatement(ni, name, i, nch, pn) ||
+      handleSplitInfusionBolusStatement(ni, name, i, nch, pn) ||
+      handleSplitBolusInfusionStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
       handleBolusStatement(ni, name, i, nch, pn) ||
@@ -323,7 +324,8 @@ void parseFree(int last) {
   R_Free(tb.alag);
   R_Free(tb.splitBolus);
   R_Free(tb.splitInfusion);
-  R_Free(tb.split);
+  R_Free(tb.splitInfusionBolus);
+  R_Free(tb.splitBolusInfusion);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -442,8 +444,10 @@ void reset(void) {
   tb.splitBolusN = 0;
   tb.splitInfusion = R_Calloc(MXSYM, int);
   tb.splitInfusionN = 0;
-  tb.split = R_Calloc(MXSYM, int);
-  tb.splitN = 0;
+  tb.splitInfusionBolus = R_Calloc(MXSYM, int);
+  tb.splitInfusionBolusN = 0;
+  tb.splitBolusInfusion = R_Calloc(MXSYM, int);
+  tb.splitBolusInfusionN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;

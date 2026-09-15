@@ -623,10 +623,10 @@ typedef struct rx_solve_s {
   int ssInfDurAbort;
   int *splitBolus;
   int splitBolusN;
-  int *splitInfusion;
-  int splitInfusionN;
-  int *split;
-  int splitN;
+  int *splitInfusionBolus;
+  int splitInfusionBolusN;
+  int *splitBolusInfusion;
+  int splitBolusInfusionN;
   rx_fn_pointers fns;
 } rx_solve;
 
