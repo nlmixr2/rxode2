@@ -164,8 +164,9 @@ rxTest({
 
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(round(mu), round(mean(f$x1)))
-      expect_equal(round(mu), round(mean(f$x2)))
+      # 10000 draws: the standard error of each mean is about 0.09
+      expect_equal(mean(f$x1), 10 * (1 - 0.3) / 0.3, tolerance = 0.02)
+      expect_equal(mean(f$x2), mu, tolerance = 0.02)
 
     })
   })

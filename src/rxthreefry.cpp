@@ -800,15 +800,17 @@ static inline uint32_t simEngKey(uint32_t seed) {
   return (uint32_t)(k() & 0xffffffffU);
 }
 
-// Key of thread engine `thread`: `seed` itself for the first, later threefry
-// outputs of `seed` for the rest, so seedEng() reserves the same number of
-// seeds at any thread count (#1376).
-static inline uint32_t threadEngKey(uint32_t seed, int thread) {
-  if (thread == 0) return seed;
-  sitmo::threefry k;
-  k.seed(seed);
-  for (int j = 0; j < thread; ++j) k();
-  return (uint32_t)(k() & 0xffffffffU);
+// Disjoint regions of one key's threefry stream: thread engine t of seedEng()
+// starts at t << 48, so every thread shares one seed and seedEng() reserves the
+// same number of seeds at any thread count; in-model draws start at 1 << 63
+// (setSeedEngLhs()), clear of the solve's stream from the same key (#1376).
+#define RX_THREAD_STREAM_SHIFT 48
+#define RX_LHS_STREAM_OFFSET (1ULL << 63)
+
+static inline void seedEngAt(sitmo::threefry& eng, uint32_t key,
+                             unsigned long long offset) {
+  eng.seed(key);
+  if (offset != 0) eng.discard(offset);
 }
 
 extern "C" void seedEng(int ncores) {
@@ -816,12 +818,12 @@ extern "C" void seedEng(int ncores) {
   _eng.clear();
   _engSim.clear();
   for (int i= 0; i < ncores; i++) {
-    uint32_t key = threadEngKey(seed, i);
+    unsigned long long offset = (unsigned long long)i << RX_THREAD_STREAM_SHIFT;
     sitmo::threefry eng0;
-    eng0.seed(key);
+    seedEngAt(eng0, seed, offset);
     _eng.push_back(eng0);
     sitmo::threefry engSim0;
-    engSim0.seed(simEngKey(key));
+    seedEngAt(engSim0, simEngKey(seed), offset);
     _engSim.push_back(engSim0);
   }
   getRxSeed1(1);
@@ -835,11 +837,16 @@ extern "C" void setSeedEng1(uint32_t seed) {
   }
 }
 
-// Seeds the in-model (calc_lhs) draws of `solveid` from the block the solve
-// used (seed0 + id), under a derived key so they neither replay the solve's
-// stream nor advance the seed sequence (#1376).
+// Seeds the in-model (calc_lhs) draws of `solveid` with the key the solve gave
+// that subject (seed0 + id), at RX_LHS_STREAM_OFFSET so they neither replay the
+// solve's stream nor advance the seed sequence (#1376).
 extern "C" void setSeedEngLhs(uint32_t seed0, int solveid) {
-  setSeedEng1(threadEngKey(seed0 + (uint32_t)solveid, 1));
+  uint32_t key = seed0 + (uint32_t)solveid;
+  int thread = rx_get_thread(op_global.cores);
+  seedEngAt(_eng[thread], key, RX_LHS_STREAM_OFFSET);
+  if (thread < (int)_engSim.size()) {
+    seedEngAt(_engSim[thread], simEngKey(key), RX_LHS_STREAM_OFFSET);
+  }
 }
 
 //' This seeds the engine based on the number of cores used in random number generation
