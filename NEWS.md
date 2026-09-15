@@ -8,15 +8,17 @@
   infusion records (both data `RATE`/`DUR` and modeled `rate()`/`dur()`
   infusions, including their stop records). `splitInfusionBolus()` and
   `splitBolusInfusion()` split bolus *and* infusion records; a plain
-  bolus dose targeting a compartment with a modeled `dur()` or `rate()`
-  property is promoted to a modeled infusion start/stop pair for that
-  compartment, so one dose record can feed both an infusion and a bolus
-  path (Monolix-style double absorption with mixed zero-/first-order
-  routes). Unlike `splitBolus()`, these directives apply at translation
-  time only, not to `evid_()` doses pushed while solving. Only one
-  splitting directive (`splitBolus()`, `splitInfusion()`,
-  `splitInfusionBolus()` or `splitBolusInfusion()`) is allowed per
-  model.
+  bolus dose is split so the FIRST target (`splitInfusionBolus()`) or
+  the LAST target (`splitBolusInfusion()`) receives a modeled infusion
+  start/stop pair (it must declare a modeled `dur()` or `rate()`
+  property, otherwise its copies stay boluses) while every other
+  target receives a bolus copy — so one dose record can feed both an
+  infusion and a bolus path (Monolix-style double absorption with
+  mixed zero-/first-order routes). Unlike `splitBolus()`, these
+  directives apply at translation time only, not to `evid_()` doses
+  pushed while solving. Only one splitting directive (`splitBolus()`,
+  `splitInfusion()`, `splitInfusionBolus()` or
+  `splitBolusInfusion()`) is allowed per model.
 
 # rxode2 5.1.7
 

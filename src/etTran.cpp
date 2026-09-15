@@ -2435,11 +2435,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   // Dose-splitting directives: splitBolus() (bolus records), splitInfusion()
   // (infusion records), splitInfusionBolus() and splitBolusInfusion() (either).
-  // Under the two mixed directives, a plain bolus record targeting a
-  // compartment with a modeled dur()/rate() property is promoted to a modeled
-  // infusion start/stop pair for that target; splitInfusionBolus() prefers
-  // the infusion promotion while splitBolusInfusion() prefers the bolus copy
-  // when a target could take both.  The parser allows at most one splitting
+  // Under the two mixed directives, a plain bolus record is split so the
+  // designated infusion target receives a modeled infusion start/stop pair
+  // and every other target receives a bolus copy: the FIRST target for
+  // splitInfusionBolus(), the LAST target for splitBolusInfusion().  The
+  // designated target must declare a modeled dur()/rate() property, otherwise
+  // its copies stay boluses.  The parser allows at most one splitting
   // directive per model.  Translation time only: unlike splitBolus(),
   // splitInfusion()/splitInfusionBolus()/splitBolusInfusion() do not rewrite
   // doses pushed at solve time with evid_().
@@ -2461,19 +2462,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (splitKind >= 0) {
     const int splitSrc = splitCmts[0];
     const int splitN = splitCmts.size();
-    // per-target promotion flag for the mixed directives: modeled dur (16)
-    // or rate (8)
+    // per-target promotion flag for the mixed directives: the designated
+    // infusion target (FIRST for splitInfusionBolus, LAST for
+    // splitBolusInfusion) gets modeled dur (16) or rate (8); any other
+    // target keeps its bolus copy even when it declares dur()/rate()
     std::vector<int> promote(splitN, 0);
     if (splitKind == 2 || splitKind == 3) {
-      for (int k = 1; k < splitN; ++k) {
-        int curCmt = splitCmts[k];
-        if (statePropSplit.size() >= curCmt) {
-          int prop = statePropSplit[curCmt - 1];
-          if (prop & 16) {
-            promote[k] = EVIDF_MODEL_DUR_ON;
-          } else if (prop & 8) {
-            promote[k] = EVIDF_MODEL_RATE_ON;
-          }
+      int pick = (splitKind == 2) ? 1 : splitN - 1;
+      int curCmt = splitCmts[pick];
+      if (statePropSplit.size() >= curCmt) {
+        int prop = statePropSplit[curCmt - 1];
+        if (prop & 16) {
+          promote[pick] = EVIDF_MODEL_DUR_ON;
+        } else if (prop & 8) {
+          promote[pick] = EVIDF_MODEL_RATE_ON;
         }
       }
     }
@@ -2536,16 +2538,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         continue;
       }
       if (splitThis && splitBolusRec && (splitKind == 2 || splitKind == 3) && wh0J != EVID0_REGULAR) {
-        // steady-state boluses are copied as-is; warn once if a target
-        // declares a modeled infusion it will not receive
+        // steady-state boluses are copied as-is; warn once if the
+        // designated infusion target declares a modeled infusion it
+        // will not receive
         if (!ssPromoteWarned) {
-          for (int k = 1; k < splitN; ++k) {
-            if (promote[k]) {
-              Rf_warningcall(R_NilValue, "%s",
-                             _("splitInfusionBolus()/splitBolusInfusion(): steady-state bolus records are not converted to modeled infusions; targets with dur()/rate() receive bolus doses"));
-              ssPromoteWarned = true;
-              break;
-            }
+          int pick = (splitKind == 2) ? 1 : splitN - 1;
+          if (pick >= 1 && pick < splitN && promote[pick]) {
+            Rf_warningcall(R_NilValue, "%s",
+                           _("splitInfusionBolus()/splitBolusInfusion(): steady-state bolus records are not converted to modeled infusions; targets with dur()/rate() receive bolus doses"));
+            ssPromoteWarned = true;
           }
         }
       }

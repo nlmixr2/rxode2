@@ -997,6 +997,57 @@ d/dt(blood)     = a*intestine - b*blood
                  "splitBolusInfusion(depot,depot2,central);\n")
   })
 
+  test_that("splitInfusionBolus() and splitBolusInfusion() differ by which target gets the infusion", {
+    mkMod <- function(directive) {
+      rxode2parse(sprintf("
+      %s(depot, central, depot2)
+      dur(central) <- tk0
+      dur(depot2) <- tk0
+      ka2 <- 1.2
+      d/dt(depot) <- -ka * depot
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    ", directive))
+    }
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot")
+    trans <- function(mod) {
+      got <- as.data.frame(etTrans(eSplit, mod, addCmt = TRUE, keepDosingOnly = TRUE))
+      got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT")]
+    }
+
+    # both targets declare dur(); only the designated one is promoted
+    modIB <- mkMod("splitInfusionBolus")
+    modBI <- mkMod("splitBolusInfusion")
+    cmtCentral <- which(modIB$state == "central")
+    cmtDepot2 <- which(modIB$state == "depot2")
+
+    gotIB <- trans(modIB)
+    gotBI <- trans(modBI)
+    isStart <- function(d) d$EVID %/% 10000 %% 10 == 8
+    isStop <- function(d) d$EVID %/% 10000 %% 10 == 6
+    isBolusDose <- function(d) d$EVID %/% 10000 %% 10 == 0 & d$EVID >= 100
+
+    # splitInfusionBolus: FIRST target (central) gets the pair
+    expect_equal(sum(isStart(gotIB)), 1)
+    expect_equal(sum(isStop(gotIB)), 1)
+    expect_equal(gotIB$CMT[isStart(gotIB)], cmtCentral)
+    expect_equal(gotIB$CMT[isStop(gotIB)], cmtCentral)
+    expect_equal(sum(isBolusDose(gotIB)), 1)
+    expect_equal(gotIB$CMT[isBolusDose(gotIB)], cmtDepot2)
+
+    # splitBolusInfusion: LAST target (depot2) gets the pair
+    expect_equal(sum(isStart(gotBI)), 1)
+    expect_equal(sum(isStop(gotBI)), 1)
+    expect_equal(gotBI$CMT[isStart(gotBI)], cmtDepot2)
+    expect_equal(gotBI$CMT[isStop(gotBI)], cmtDepot2)
+    expect_equal(sum(isBolusDose(gotBI)), 1)
+    expect_equal(gotBI$CMT[isBolusDose(gotBI)], cmtCentral)
+
+    # the two directives produce different translations on this model
+    expect_false(isTRUE(all.equal(gotIB, gotBI)))
+  })
+
   test_that("splitBolusInfusion() splits a bolus into bolus and infusion paths", {
     modSplit <- rxode2parse("
       splitBolusInfusion(depot, depot2, central)

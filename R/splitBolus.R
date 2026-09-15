@@ -68,13 +68,16 @@ splitInfusion <- function(cmt, ...) {
 #' Each target compartment receives the full original amount; use `f()`
 #' to scale the split.
 #'
-#' A plain bolus record targeting a compartment that declares a modeled
-#' `dur()` or `rate()` property is promoted to a modeled infusion
-#' start/stop pair for that compartment, so a single bolus dose record
-#' can feed both an infusion path and a bolus path (Monolix-style
-#' double absorption with mixed zero- and first-order routes).
-#' Steady-state bolus records are not promoted; they are copied as
-#' boluses with a warning when a target declares `dur()`/`rate()`.
+#' A plain bolus record is split so the FIRST target compartment
+#' receives a modeled infusion start/stop pair (it must declare a
+#' modeled `dur()` or `rate()` property, otherwise its copies stay
+#' boluses) while every other target receives a bolus copy. Use
+#' [splitBolusInfusion()] to give the LAST target the infusion instead.
+#' This feeds one bolus dose record into both an infusion path and a
+#' bolus path (Monolix-style double absorption with mixed zero- and
+#' first-order routes). Steady-state bolus records are not promoted;
+#' they are copied as boluses with a warning when the designated
+#' infusion target declares `dur()`/`rate()`.
 #'
 #' Infusion records (data `RATE`/`DUR` or modeled `rate()`/`dur()`) are
 #' split preserving their type, exactly like [splitInfusion()].
@@ -101,10 +104,10 @@ splitInfusion <- function(cmt, ...) {
 #'   ...
 #' })
 #' ```
-#' A bolus dose recorded against `depot` is split so `central` receives
-#' a modeled-duration infusion (zero-order input over `tk0`, scaled by
-#' `f1`) and `depot2` receives the bolus (first-order input scaled by
-#' `1 - f1`).
+#' A bolus dose recorded against `depot` is split so `central` (first
+#' target) receives a modeled-duration infusion (zero-order input over
+#' `tk0`, scaled by `f1`) and `depot2` receives the bolus (first-order
+#' input scaled by `1 - f1`).
 #'
 #' @name splitInfusionBolus-directive
 #' @aliases splitInfusionBolus splitInfusionBolus()
@@ -119,13 +122,16 @@ NULL
 #' Each target compartment receives the full original amount; use `f()`
 #' to scale the split.
 #'
-#' A plain bolus record targeting a compartment that declares a modeled
-#' `dur()` or `rate()` property is promoted to a modeled infusion
-#' start/stop pair for that compartment, so a single bolus dose record
-#' can feed both a bolus path and an infusion path (Monolix-style
-#' double absorption with mixed first- and zero-order routes).
-#' Steady-state bolus records are not promoted; they are copied as
-#' boluses with a warning when a target declares `dur()`/`rate()`.
+#' A plain bolus record is split so the LAST target compartment
+#' receives a modeled infusion start/stop pair (it must declare a
+#' modeled `dur()` or `rate()` property, otherwise its copies stay
+#' boluses) while every other target receives a bolus copy. Use
+#' [splitInfusionBolus()] to give the FIRST target the infusion
+#' instead. This feeds one bolus dose record into both a bolus path
+#' and an infusion path (Monolix-style double absorption with mixed
+#' first- and zero-order routes). Steady-state bolus records are not
+#' promoted; they are copied as boluses with a warning when the
+#' designated infusion target declares `dur()`/`rate()`.
 #'
 #' Infusion records (data `RATE`/`DUR` or modeled `rate()`/`dur()`) are
 #' split preserving their type, exactly like [splitInfusion()].
@@ -154,8 +160,8 @@ NULL
 #' ```
 #' A bolus dose recorded against `depot` is split so `depot2` receives
 #' the bolus (first-order input scaled by `1 - f1`) and `central`
-#' receives a modeled-duration infusion (zero-order input over `tk0`,
-#' scaled by `f1`).
+#' (last target) receives a modeled-duration infusion (zero-order
+#' input over `tk0`, scaled by `f1`).
 #'
 #' @name splitBolusInfusion-directive
 #' @aliases splitBolusInfusion splitBolusInfusion()
