@@ -15,6 +15,10 @@
   breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
   guard covers compiled model code.
 
+- `rxProgress()`, `rxProgressStop()` and `rxProgressAbort()` now validate
+  their arguments, so a zero-length count such as `rxProgress(NULL)` gives an
+  error instead of crashing R (#1377).
+
 # rxode2 5.1.7
 
 ## New features
