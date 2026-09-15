@@ -36,8 +36,6 @@
 #'
 #' @export
 rxProgress <- function(num, core = 0L) {
-  checkmate::assertIntegerish(num, lower = 0, len = 1, any.missing = FALSE)
-  checkmate::assertIntegerish(core, len = 1, any.missing = FALSE)
   invisible(.Call(`_rxProgress`, as.integer(num), as.integer(core)))
 }
 
@@ -50,13 +48,11 @@ rxTick <- function() {
 #' @rdname rxProgress
 #' @export
 rxProgressStop <- function(clear = TRUE) {
-  checkmate::assertLogical(clear, len = 1, any.missing = FALSE)
   invisible(.Call(`_rxProgressStop`, as.integer(clear)))
 }
 
 #' @rdname rxProgress
 #' @export
 rxProgressAbort <- function(error = "Aborted calculation") {
-  checkmate::assertString(error)
   invisible(.Call(`_rxProgressAbort`, error))
 }

@@ -607,9 +607,9 @@ extern "C" SEXP _rxTick(){
 }
 
 extern "C" SEXP _rxProgress(SEXP num, SEXP core){
-  if (TYPEOF(num) != INTSXP || Rf_length(num) != 1 ||
-      TYPEOF(core) != INTSXP || Rf_length(core) != 1) {
-    (Rf_errorcall)(R_NilValue, "'num' and 'core' must be length 1 integers");
+  if (TYPEOF(num) != INTSXP || Rf_length(num) < 1 ||
+      TYPEOF(core) != INTSXP || Rf_length(core) < 1) {
+    (Rf_errorcall)(R_NilValue, "'num' and 'core' must be non-empty integers");
   }
   par_progress_1=0;
   rxt.t0 = clock();
@@ -621,8 +621,8 @@ extern "C" SEXP _rxProgress(SEXP num, SEXP core){
 }
 
 extern "C" SEXP _rxProgressStop(SEXP clear){
-  if (TYPEOF(clear) != INTSXP || Rf_length(clear) != 1) {
-    (Rf_errorcall)(R_NilValue, "'clear' must be a length 1 integer");
+  if (TYPEOF(clear) != INTSXP || Rf_length(clear) < 1) {
+    (Rf_errorcall)(R_NilValue, "'clear' must be a non-empty integer");
   }
   int clearB = INTEGER(clear)[0];
   par_progress(rxt.n, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
@@ -647,8 +647,8 @@ extern "C" SEXP _rxProgressStop(SEXP clear){
 }
 
 extern "C" SEXP _rxProgressAbort(SEXP str){
-  if (TYPEOF(str) != STRSXP || Rf_length(str) != 1) {
-    (Rf_errorcall)(R_NilValue, "'error' must be a length 1 character");
+  if (TYPEOF(str) != STRSXP || Rf_length(str) < 1) {
+    (Rf_errorcall)(R_NilValue, "'error' must be a non-empty character");
   }
   par_progress(rxt.n, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   par_progress_0=0;
