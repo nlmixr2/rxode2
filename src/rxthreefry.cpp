@@ -85,31 +85,24 @@ SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma,
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A_.ncol()) stop("length(mu) != ncol(A)");
 
-  uint32_t seed = getRxSeed1(ncores);
+  // Draw serially from one stream so the result does not depend on ncores
+  // (#1376); only the transform below runs in parallel.
+  {
+    arma::mat A(A_.begin(), A_.nrow(), A_.ncol(), false, true);
+    sitmo::threefry eng;
+    eng.seed(getRxSeed1(1));
+    boost::random::normal_distribution<> snorm(0.0, 1.0);
+    for (int i = 0; i < n*d; ++i) {
+      A[i] = snorm(eng);
+    }
+  }
 #ifdef _OPENMP
 #pragma omp parallel num_threads(ncores) if(ncores > 1)
   {
 #endif
     arma::mat A(A_.begin(), A_.nrow(), A_.ncol(), false, true);
-    sitmo::threefry eng;
-#ifdef _OPENMP
-    eng.seed(seed+rx_get_thread(op_global.cores));
-#else
-    eng.seed(seed);
-#endif
-
-    boost::random::normal_distribution<> snorm(0.0, 1.0);
-
     double acc;
     arma::rowvec work(d);
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-    for (int thread = 0; thread < ncores; ++thread) {
-      for (int i = thread; i < n*d; i += ncores) {
-        A[i] = snorm(eng);
-      }
-    }
     if (d == 1){
       double sd = ch(0, 0);
 #ifdef _OPENMP
@@ -165,32 +158,21 @@ void rxRmvn2_(arma::mat& A, arma::rowvec mu, arma::mat sigma,
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A.n_cols) stop("length(mu) != ncol(A)");
 
-  uint32_t seed = getRxSeed1(ncores);
+  // Serial draw, as in rxRmvn_(), so the result does not depend on ncores
+  {
+    sitmo::threefry eng;
+    eng.seed(getRxSeed1(1));
+    boost::random::normal_distribution<> snorm(0.0, 1.0);
+    for (int i = 0; i < n*d; ++i) {
+      A[i] = snorm(eng);
+    }
+  }
 #ifdef _OPENMP
 #pragma omp parallel num_threads(ncores) if(ncores > 1)
   {
 #endif
-
-    sitmo::threefry eng;
-
-#ifdef _OPENMP
-    eng.seed(seed+rx_get_thread(op_global.cores));
-#else
-    eng.seed(seed);
-#endif
-
-    boost::random::normal_distribution<> snorm(0.0, 1.0);
-
     double acc;
     arma::rowvec work(d);
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-    for (int thread = 0; thread < ncores; ++thread) {
-      for (int i = thread; i < n*d; i += ncores){
-        A[i] = snorm(eng);
-      }
-    }
     if (d == 1){
       double sd = ch(0, 0);
 #ifdef _OPENMP
@@ -761,62 +743,35 @@ arma::mat mvrandn(arma::vec lin, arma::vec uin, arma::mat Sig, int n,
   return ret;
 }
 
+static void rxMvrandnEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                         const arma::vec& lower, const arma::vec& upper,
+                         sitmo::threefry& eng, double a, double tol,
+                         double nlTol, int nlMaxiter);
+
 void rxMvrandn__(arma::mat& A,
                  arma::rowvec mu, arma::mat sigma, arma::vec lower,
                  arma::vec upper, int ncores=1,
                  double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
   int n = A.n_rows;
   int d = mu.n_elem;
-  arma::mat ch;
   if (n < 1) stop(_("n should be a positive integer"));
   if (ncores < 1) stop(_("'ncores' has to be greater than one"));
   if (d != (int)sigma.n_cols) stop("length(mu) != ncol(sigma)");
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A.n_cols) stop("length(mu) != ncol(A)");
-
-  if (sigma.is_zero()){
-    if (d == 1){
-      for (int i = 0; i < n; ++i) {
-        A[i] = mu(0);
-      }
+  if (sigma.is_zero()) {
+    if (d == 1) {
+      for (int i = 0; i < n; ++i) A[i] = mu(0);
     } else {
       A.zeros();
       A.each_row() += mu;
     }
-  } else {
-    uint32_t seed = getRxSeed1(ncores);
-
-#ifdef _OPENMP
-#pragma omp parallel num_threads(ncores) if(ncores > 1)
-    {
-#endif
-
-      sitmo::threefry eng;
-      eng.seed(seed+rx_get_thread(op_global.cores));
-
-      arma::vec low = lower-trans(mu);
-      arma::vec up = upper-trans(mu);
-
-      if (d == 1){
-        double sd = sqrt(sigma(0,0));
-        double l=low(0)/sd;
-        double u=up(0)/sd;
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-        for (int i = 0; i < n; ++i) {
-          A[i] = sd*trandn(l, u, eng, a, tol)+mu(0);
-        }
-      } else {
-        arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol,
-                                nlTol, nlMaxiter, ncores);
-        ret.each_row() += mu;
-        std::copy(ret.begin(), ret.end(), A.begin());
-      }
-    }
-#ifdef _OPENMP
+    return;
   }
-#endif
+  // One serial stream, so the draws do not depend on ncores (#1376)
+  sitmo::threefry eng;
+  eng.seed(getRxSeed1(1));
+  rxMvrandnEng(A, mu, sigma, lower, upper, eng, a, tol, nlTol, nlMaxiter);
 }
 
 //[[Rcpp::export]]
@@ -845,19 +800,33 @@ static inline uint32_t simEngKey(uint32_t seed) {
   return (uint32_t)(k() & 0xffffffffU);
 }
 
+// Disjoint regions of one key's threefry stream: thread engine t of seedEng()
+// starts at t << 48, so every thread shares one seed and seedEng() reserves the
+// same number of seeds at any thread count; in-model draws start at 1 << 63
+// (setSeedEngLhs()), clear of the solve's stream from the same key (#1376).
+#define RX_THREAD_STREAM_SHIFT 48
+#define RX_LHS_STREAM_OFFSET (1ULL << 63)
+
+static inline void seedEngAt(sitmo::threefry& eng, uint32_t key,
+                             unsigned long long offset) {
+  eng.seed(key);
+  if (offset != 0) eng.discard(offset);
+}
+
 extern "C" void seedEng(int ncores) {
-  uint32_t seed = getRxSeed1(ncores);
+  uint32_t seed = getRxSeed1(1);
   _eng.clear();
   _engSim.clear();
   for (int i= 0; i < ncores; i++) {
+    unsigned long long offset = (unsigned long long)i << RX_THREAD_STREAM_SHIFT;
     sitmo::threefry eng0;
-    eng0.seed(seed + i);
+    seedEngAt(eng0, seed, offset);
     _eng.push_back(eng0);
     sitmo::threefry engSim0;
-    engSim0.seed(simEngKey(seed + i));
+    seedEngAt(engSim0, simEngKey(seed), offset);
     _engSim.push_back(engSim0);
   }
-  seed = getRxSeed1(ncores);
+  getRxSeed1(1);
 }
 
 extern "C" void setSeedEng1(uint32_t seed) {
@@ -865,6 +834,18 @@ extern "C" void setSeedEng1(uint32_t seed) {
   (_eng[thread]).seed(seed);
   if (thread < (int)_engSim.size()) {
     (_engSim[thread]).seed(simEngKey(seed));
+  }
+}
+
+// Seeds the in-model (calc_lhs) draws of `solveid` with the key the solve gave
+// that subject (seed0 + id), at RX_LHS_STREAM_OFFSET so they neither replay the
+// solve's stream nor advance the seed sequence (#1376).
+extern "C" void setSeedEngLhs(uint32_t seed0, int solveid) {
+  uint32_t key = seed0 + (uint32_t)solveid;
+  int thread = rx_get_thread(op_global.cores);
+  seedEngAt(_eng[thread], key, RX_LHS_STREAM_OFFSET);
+  if (thread < (int)_engSim.size()) {
+    seedEngAt(_engSim[thread], simEngKey(key), RX_LHS_STREAM_OFFSET);
   }
 }
 
