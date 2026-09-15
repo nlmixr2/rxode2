@@ -1100,7 +1100,7 @@ rxTest({
       })
 
       n <- 100000
-      ev <- et(seq(1, n))
+      ev <- et(seq_len(n))
 
       f <- rxSolve(rx, ev)
 
@@ -1108,14 +1108,14 @@ rxTest({
       expect_equal(round(as.numeric(table(f$tmp3))/n, 3), c(0.33, 0.33, 0.33), tolerance=1e-1)
       expect_equal(round(as.numeric(table(f$tmp4))/n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance=1e-2)
 
-      tmp2 <- vapply(seq(1, n), function(i){ rxord(0.5) }, numeric(1), USE.NAMES=TRUE)
+      tmp2 <- vapply(seq_len(n), function(i){ rxord(0.5) }, numeric(1), USE.NAMES=TRUE)
 
       expect_equal(round(as.numeric(table(tmp2))/ n, 3), c(0.5, 0.5), tolerance=1e-2)
 
-      tmp3 <- vapply(seq(1, n), function(i){ rxord(0.33, 0.33) }, numeric(1), USE.NAMES=TRUE)
+      tmp3 <- vapply(seq_len(n), function(i){ rxord(0.33, 0.33) }, numeric(1), USE.NAMES=TRUE)
       expect_equal(round(as.numeric(table(tmp3))/ n, 3), c(0.33, 0.33, 0.33), tolerance=1e-1)
 
-      tmp4 <- vapply(seq(1, n), function(i){ rxord(0.25, 0.25, 0.25) }, numeric(1), USE.NAMES=TRUE)
+      tmp4 <- vapply(seq_len(n), function(i){ rxord(0.25, 0.25, 0.25) }, numeric(1), USE.NAMES=TRUE)
       expect_equal(round(as.numeric(table(tmp4))/ n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance=1e-2)
 
     })
