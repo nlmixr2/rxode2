@@ -35,6 +35,13 @@ static R_altrep_class_t rx_rep_lgl_class;
 static R_altrep_class_t rx_rep_real_class;
 static R_altrep_class_t rx_rep_str_class;
 
+/* col-view: zero-copy wrapper around an existing R column */
+static R_altrep_class_t rx_col_view_int_class;
+static R_altrep_class_t rx_col_view_real_class;
+
+/* cmt-trans: lazy CMT name/number → solver compartment integer */
+static R_altrep_class_t rx_cmt_trans_class;
+
 /* ---- length ------------------------------------------------------------ */
 static R_xlen_t rx_seqrep_Length(SEXP x) {
   return (R_xlen_t)INTEGER(R_altrep_data1(x))[2];
@@ -384,6 +391,115 @@ static R_xlen_t rx_rep_real_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, double
   return size;
 }
 
+/* ======================================================================
+ * rx_col_view_int — zero-copy passthrough for an INTSXP column
+ * data1 = original column SEXP (holds GC reference)
+ * data2 = unused
+ * ====================================================================== */
+static R_xlen_t rx_col_view_int_Length(SEXP x) {
+  return XLENGTH(R_altrep_data1(x));
+}
+static int rx_col_view_int_Elt(SEXP x, R_xlen_t i) {
+  return INTEGER_ELT(R_altrep_data1(x), i);
+}
+static void *rx_col_view_int_Dataptr(SEXP x, Rboolean writeable) {
+  return DATAPTR_RW(R_altrep_data1(x));
+}
+static const void *rx_col_view_int_Dataptr_or_null(SEXP x) {
+  return DATAPTR_OR_NULL(R_altrep_data1(x));
+}
+static R_xlen_t rx_col_view_int_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, int *buf) {
+  return INTEGER_GET_REGION(R_altrep_data1(x), i, size, buf);
+}
+
+/* ======================================================================
+ * rx_col_view_real — zero-copy passthrough for a REALSXP column
+ * ====================================================================== */
+static R_xlen_t rx_col_view_real_Length(SEXP x) {
+  return XLENGTH(R_altrep_data1(x));
+}
+static double rx_col_view_real_Elt(SEXP x, R_xlen_t i) {
+  return REAL_ELT(R_altrep_data1(x), i);
+}
+static void *rx_col_view_real_Dataptr(SEXP x, Rboolean writeable) {
+  return DATAPTR_RW(R_altrep_data1(x));
+}
+static const void *rx_col_view_real_Dataptr_or_null(SEXP x) {
+  return DATAPTR_OR_NULL(R_altrep_data1(x));
+}
+static R_xlen_t rx_col_view_real_Get_region(SEXP x, R_xlen_t i, R_xlen_t size, double *buf) {
+  return REAL_GET_REGION(R_altrep_data1(x), i, size, buf);
+}
+
+/* ======================================================================
+ * rx_cmt_trans — lazy CMT translation (name/number → solver cmt int)
+ *
+ * data1 = VECSXP[3]:
+ *   [0] original CMT column (STRSXP or INTSXP from input data frame)
+ *   [1] INTSXP of solver compartment numbers (parallel to [2])
+ *   [2] STRSXP of compartment names (parallel to [1])
+ *       For integer input: [2] may be R_NilValue, look up by 1-based index
+ * data2 = R_NilValue until materialised, then cached INTSXP of full length
+ * ====================================================================== */
+static R_xlen_t rx_cmt_trans_Length(SEXP x) {
+  return XLENGTH(VECTOR_ELT(R_altrep_data1(x), 0));
+}
+
+static int rx_cmt_trans_lookup(SEXP data1, R_xlen_t i) {
+  SEXP orig    = VECTOR_ELT(data1, 0);
+  SEXP nums    = VECTOR_ELT(data1, 1);
+  SEXP names   = VECTOR_ELT(data1, 2);
+  int  n_table = LENGTH(nums);
+
+  if (TYPEOF(orig) == STRSXP) {
+    /* character CMT: linear scan of compartment name table */
+    const char *name = CHAR(STRING_ELT(orig, i));
+    for (int j = 0; j < n_table; j++) {
+      if (names != R_NilValue &&
+          strcmp(name, CHAR(STRING_ELT(names, j))) == 0) {
+        return INTEGER(nums)[j];
+      }
+    }
+    return NA_INTEGER;
+  } else {
+    /* integer CMT: 1-based direct lookup */
+    int cmt_val = INTEGER_ELT(orig, i);
+    if (cmt_val >= 1 && cmt_val <= n_table) {
+      return INTEGER(nums)[cmt_val - 1];
+    }
+    return cmt_val; /* out-of-range: pass through */
+  }
+}
+
+static int rx_cmt_trans_Elt(SEXP x, R_xlen_t i) {
+  /* use cached materialisation if available */
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == INTSXP) return INTEGER_ELT(d2, i);
+  return rx_cmt_trans_lookup(R_altrep_data1(x), i);
+}
+
+static SEXP rx_cmt_trans_materialize(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == INTSXP) return d2;
+  R_xlen_t n = rx_cmt_trans_Length(x);
+  SEXP mat = PROTECT(Rf_allocVector(INTSXP, n));
+  SEXP d1  = R_altrep_data1(x);
+  for (R_xlen_t i = 0; i < n; i++) INTEGER(mat)[i] = rx_cmt_trans_lookup(d1, i);
+  R_set_altrep_data2(x, mat);
+  UNPROTECT(1);
+  return mat;
+}
+
+static void *rx_cmt_trans_Dataptr(SEXP x, Rboolean writeable) {
+  return DATAPTR_RW(rx_cmt_trans_materialize(x));
+}
+
+static const void *rx_cmt_trans_Dataptr_or_null(SEXP x) {
+  SEXP d2 = R_altrep_data2(x);
+  if (TYPEOF(d2) == INTSXP) return DATAPTR_RO(d2);
+  return NULL; /* not yet materialised */
+}
+
 /* ---- Registration ------------------------------------------------------ */
 void rxode2_init_altrep_class(DllInfo *info) {
   rx_seqrep_class = R_make_altinteger_class("rx_seqrep", "rxode2", info);
@@ -422,6 +538,26 @@ void rxode2_init_altrep_class(DllInfo *info) {
   R_set_altstring_Elt_method(rx_rep_str_class, rx_rep_str_Elt);
   R_set_altvec_Dataptr_method(rx_rep_str_class, rx_rep_str_Dataptr);
   R_set_altvec_Dataptr_or_null_method(rx_rep_str_class, rx_rep_str_Dataptr_or_null);
+
+  rx_col_view_int_class = R_make_altinteger_class("rx_col_view_int", "rxode2", info);
+  R_set_altrep_Length_method(rx_col_view_int_class, rx_col_view_int_Length);
+  R_set_altinteger_Elt_method(rx_col_view_int_class, rx_col_view_int_Elt);
+  R_set_altvec_Dataptr_method(rx_col_view_int_class, rx_col_view_int_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_col_view_int_class, rx_col_view_int_Dataptr_or_null);
+  R_set_altinteger_Get_region_method(rx_col_view_int_class, rx_col_view_int_Get_region);
+
+  rx_col_view_real_class = R_make_altreal_class("rx_col_view_real", "rxode2", info);
+  R_set_altrep_Length_method(rx_col_view_real_class, rx_col_view_real_Length);
+  R_set_altreal_Elt_method(rx_col_view_real_class, rx_col_view_real_Elt);
+  R_set_altvec_Dataptr_method(rx_col_view_real_class, rx_col_view_real_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_col_view_real_class, rx_col_view_real_Dataptr_or_null);
+  R_set_altreal_Get_region_method(rx_col_view_real_class, rx_col_view_real_Get_region);
+
+  rx_cmt_trans_class = R_make_altinteger_class("rx_cmt_trans", "rxode2", info);
+  R_set_altrep_Length_method(rx_cmt_trans_class, rx_cmt_trans_Length);
+  R_set_altinteger_Elt_method(rx_cmt_trans_class, rx_cmt_trans_Elt);
+  R_set_altvec_Dataptr_method(rx_cmt_trans_class, rx_cmt_trans_Dataptr);
+  R_set_altvec_Dataptr_or_null_method(rx_cmt_trans_class, rx_cmt_trans_Dataptr_or_null);
 }
 
 /* ---- Factory ----------------------------------------------------------- */
@@ -518,4 +654,34 @@ extern double rxReal(SEXP x, R_xlen_t i) {
     return REAL(x)[i];
   }
   return NA_REAL; // nocov
+}
+
+/* ---- Factory functions for new ALTREP classes -------------------------- */
+
+/* Create a zero-copy integer column view */
+SEXP make_rx_col_view_int(SEXP col) {
+  return R_new_altrep(rx_col_view_int_class, col, R_NilValue);
+}
+
+/* Create a zero-copy real column view */
+SEXP make_rx_col_view_real(SEXP col) {
+  return R_new_altrep(rx_col_view_real_class, col, R_NilValue);
+}
+
+/*
+ * Create a lazy CMT translation ALTREP.
+ *
+ * orig_col : original CMT column from input data (STRSXP or INTSXP)
+ * cmt_nums : INTSXP of solver compartment numbers (1-indexed parallel to cmt_names)
+ * cmt_names: STRSXP of compartment names (parallel to cmt_nums); may be R_NilValue
+ *            for integer-only input where direct indexing is used
+ */
+SEXP make_rx_cmt_trans(SEXP orig_col, SEXP cmt_nums, SEXP cmt_names) {
+  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 3));
+  SET_VECTOR_ELT(d1, 0, orig_col);
+  SET_VECTOR_ELT(d1, 1, cmt_nums);
+  SET_VECTOR_ELT(d1, 2, cmt_names);
+  SEXP out = R_new_altrep(rx_cmt_trans_class, d1, R_NilValue);
+  UNPROTECT(1);
+  return out;
 }

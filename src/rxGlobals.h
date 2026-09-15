@@ -97,4 +97,11 @@ struct rx_globals {
   int geta_pre_n = 0;            // capacity of geta_pre_alloc
   bool alloc=false;
   int64_t gall_times_n = 0; // actual allocation count of gall_times (representative, not expanded)
+  // single=TRUE: the solve reads the caller's data frame in place instead of
+  // copying it, so the columns it borrows have to be kept alive and the two
+  // buffers it still owns tracked separately from the borrowed ones.
+  bool singleMode=false;
+  SEXP singleDataFrame=R_NilValue;
+  int *gidose_own=NULL;
+  double *gdbl_own=NULL;
 };
