@@ -835,6 +835,13 @@ extern "C" void setSeedEng1(uint32_t seed) {
   }
 }
 
+// Seeds the in-model (calc_lhs) draws of `solveid` from the block the solve
+// used (seed0 + id), under a derived key so they neither replay the solve's
+// stream nor advance the seed sequence (#1376).
+extern "C" void setSeedEngLhs(uint32_t seed0, int solveid) {
+  setSeedEng1(threadEngKey(seed0 + (uint32_t)solveid, 1));
+}
+
 //' This seeds the engine based on the number of cores used in random number generation
 //'
 //' @param ncores is the number of cores to use.

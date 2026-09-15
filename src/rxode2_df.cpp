@@ -54,6 +54,8 @@ using namespace arma;
 
 extern t_update_inis update_inis;
 extern t_calc_lhs calc_lhs;
+extern "C" uint32_t getRxLastSeed(void);
+extern "C" void setSeedEngLhs(uint32_t seed0, int solveid);
 
 static inline bool rxEqIntBlockVal(int a, int b) {
   if (a == NA_INTEGER && b == NA_INTEGER) return true;
@@ -712,10 +714,14 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   // Unified data-frame fill.  SET_STRING_ELT is called directly inside the
   // OpenMP region; it is safe because each thread writes to disjoint row indices.
   if (nkeep) setupFkeepCache();
+  // In-model random draws (rxnorm() etc.) happen here, in calc_lhs(); seed each
+  // subject by its position so they do not depend on the thread count (#1376).
+  uint32_t seedDf = getRxLastSeed();
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(op->cores) schedule(dynamic,1)
 #endif
     for (int solveid = 0; solveid < nsolve_df; solveid++) {
+      setSeedEngLhs(seedDf, solveid);
       int csim     = solveid / nsub;
       int csub_par = solveid % nsub;
       int ii       = subRowStart[solveid];
