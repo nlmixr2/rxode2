@@ -647,14 +647,14 @@ extern "C" SEXP _rxProgressStop(SEXP clear){
 }
 
 extern "C" SEXP _rxProgressAbort(SEXP str){
-  if (TYPEOF(str) != STRSXP || Rf_length(str) < 1) {
-    (Rf_errorcall)(R_NilValue, "'error' must be a non-empty character");
-  }
   par_progress(rxt.n, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    (Rf_errorcall)(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
+    // Often called from on.exit(); an unusable message falls back to the default
+    const char *msg = (TYPEOF(str) == STRSXP && Rf_length(str) > 0) ?
+      CHAR(STRING_ELT(str, 0)) : "Aborted calculation";
+    (Rf_errorcall)(R_NilValue, "%s", msg);
   }
   return R_NilValue;
 }
