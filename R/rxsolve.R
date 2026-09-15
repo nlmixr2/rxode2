@@ -1329,6 +1329,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     tolFactor=NULL,
                     serializeFile=NULL,
                     dense=FALSE,
+                    single=FALSE,
                     cvodeLinSolver=c("dense", "band", "gmres", "bicgstab", "tfqmr"),
                     autoSwitchNonstifftol=9/10,
                     autoSwitchStifftol=9/10,
@@ -1762,6 +1763,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                 any.missing=FALSE)
     priorPdRetry <- as.integer(priorPdRetry)
     checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    checkmate::assertLogical(single, len=1, any.missing=FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
               call.=FALSE)
@@ -1898,6 +1900,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       } else if (checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)) {
       } else {
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
+      }
+      if (isTRUE(single)) {
+        stop("'single=TRUE' is incompatible with 'serializeFile'", call. = FALSE)
       }
     }
     if (!is.null(file))
@@ -2105,7 +2110,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       priorOmega=priorOmega,
       priorOmegaEl=priorOmegaEl,
       priorSigmaEl=priorSigmaEl,
-      linCmtSensPhi=.linCmtSensPhi
+      linCmtSensPhi=.linCmtSensPhi,
+      single=single
     )
     class(.ret) <- "rxControl"
     return(.ret)
