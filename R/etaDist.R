@@ -30,6 +30,125 @@
 ## inherits it unchanged: `rxSolve()` simulation, and (through nlmixr2est's
 ## pre-processing hook) every estimation method.
 
+#' The `rxEdA.*` anchor names a model actually assigns
+#'
+#' Read off the model text rather than re-derived, so it cannot drift from what
+#' the expansion emitted.
+#'
+#' @param ui expanded rxode2 ui
+#' @return character vector of anchor left-hand sides
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAnchorLhs <- function(ui) {
+  .lst <- ui$lstExpr
+  if (!is.list(.lst)) return(character(0))
+  .lhs <- vapply(.lst, function(.l) {
+    if (is.call(.l) && length(.l) >= 3L && is.name(.l[[2]]) &&
+          (identical(.l[[1]], quote(`<-`)) || identical(.l[[1]], quote(`=`)))) {
+      as.character(.l[[2]])
+    } else ""
+  }, character(1), USE.NAMES=FALSE)
+  .lhs[grepl("^rxEdA[.]", .lhs)]
+}
+
+#' Where each declared distribution's arguments are computed in the model
+#'
+#' `rxEtaDistExpand()` hoists every family argument onto its own model line,
+#' `rxEdA.<eta>.<role>`, so a declaration's arguments are computed per
+#' observation by the compiled model like any other model quantity -- covariates
+#' included, through the ordinary covariate machinery, inside the ODE model
+#' pool.  This says which model variable holds each argument, so an estimator
+#' can READ them from the solve instead of evaluating the argument expressions a
+#' second time in its own code.
+#'
+#' The order is the declaration's ARGUMENT order, which
+#' [rxEtaDistExpand()] normalizes at the storage point, so element `t` lines up
+#' with argument `t` of the family.
+#'
+#' `NA` means that argument has no anchor: a family whose quantile template
+#' never references it gets no model line for it (a normal-based family
+#' collapses to the latent).  An estimator must fall back to its own value
+#' there, and a covariate in such an argument is invisible to the model -- so
+#' `NA` alongside a covariate is a gap, not a value to work around.
+#'
+#' @param ui rxode2 ui, model function, or solve-ready object -- the EXPANDED
+#'   model, since that is what carries the anchor lines
+#' @param d the declarations, as [rxUiEtaDists()] returns them (`name` and
+#'   `etaDist` columns).  Defaults to reading them off `ui`, which works before
+#'   the expansion but NOT after: `rxEtaDistExpand()` removes `etaDist` from the
+#'   `iniDf`, so an expanded ui reports no declarations and this would return an
+#'   empty list.  An estimator holds the declarations it stashed before
+#'   expanding and should pass them.
+#' @return named list, one character vector per declared random effect, in
+#'   argument order; empty list when nothing is declared
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                           rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#' .d <- rxUiEtaDists(mod)
+#' rxUiEtaDistAnchors(rxEtaDistExpand(mod(), param = "direct"), .d)
+#' }
+rxUiEtaDistAnchors <- function(ui, d = NULL) {
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ui <- .rxEtaDistAsUiQuietly(ui)
+  }
+  .ui <- rxUiDecompress(ui)
+  ## Either shape: `rxUiEtaDists()` hands back a data.frame, while an
+  ## estimator's stash is a plain list of the same columns.  `nrow()` is NULL on
+  ## the list, and `if (NULL == 0L)` is an error, so length the column instead of
+  ## the container.
+  .d <- if (is.null(d)) rxUiEtaDists(.ui) else d
+  .n <- length(.d$name)
+  if (.n == 0L || length(.d$etaDist) != .n) return(list())
+  ## Only what the model assigns.  Deriving the names from lotri alone would
+  ## report an anchor for an argument the expansion decided not to emit.
+  .have <- .rxEtaDistAnchorLhs(.ui)
+  ## The cdf route collapses a normal-based quantile onto its latent, and the
+  ## direct route has no latent at all; the collapse decides which arguments
+  ## get a line, so the route has to be known to ask.
+  .ini <- .ui$iniDf
+  .direct <- any(!is.na(.ini$neta1) & grepl("^rxd[.]", .ini$name))
+  stats::setNames(lapply(seq_len(.n), function(.i) {
+    .lat <- if (.direct) NULL else paste0("rxN.", .d$name[.i])
+    .a <- .rxEtaDistAnchors(.d$etaDist[.i], .d$name[.i], latent=.lat)
+    if (is.null(.a)) return(NA_character_)
+    ## The caller lines element t up with ARGUMENT t of the declaration, so the
+    ## two orderings have to be the same length to be the same ordering.  They
+    ## are: rxode2 normalizes a declaration's argument order at the storage
+    ## point, and `.rxEtaDistAnchors()` walks the call in that order against the
+    ## family's parNames.  If that ever stops being true the failure is a silent
+    ## swap of one argument for another -- a gamma fitted with its rate read as
+    ## its shape -- so it is checked rather than assumed.
+    .nArg <- length(as.list(str2lang(.d$etaDist[.i]))) - 1L
+    if (length(.a) != .nArg) {
+      stop("the declared distribution 'dist(", .d$name[.i], ")' has ", .nArg,
+           " argument", if (.nArg == 1L) "" else "s", " but ", length(.a),
+           " argument role", if (length(.a) == 1L) "" else "s",
+           "\n  these index the same arguments, so they cannot differ; ",
+           "the installed 'lotri' disagrees with the declaration",
+           call.=FALSE)
+    }
+    .a <- as.character(.a)
+    .a[!(.a %in% .have)] <- NA_character_
+    .a
+  }), .d$name)
+}
+
 #' The expansion for a solve-ready object, derived once per model
 #'
 #' `.rxSolveFromUi()` calls `rxEtaDistExpand()` on EVERY solve.  For an

@@ -1,6 +1,15 @@
 # rxode2 5.1.7
 
 ## New features
+- `rxUiEtaDistAnchors()` reports which model variable holds each argument of a
+  declared distribution.  `rxEtaDistExpand()` hoists every family argument onto
+  its own line, `rxEdA.<eta>.<role>`, so the compiled model computes them per
+  observation; this says where those values land, so an estimator can read them
+  from the solve instead of evaluating the same argument expressions again in
+  its own code.  `NA` marks an argument the family emits no line for.  Pass the
+  declarations for an EXPANDED model: `rxEtaDistExpand()` removes `etaDist` from
+  the `iniDf`, so they cannot be read back off the expanded ui.
+
 - The mu-reference scan now tells the two declared-distribution routes apart
   when a covariate appears in a `dist()` argument.  A covariate written into a
   `rxEdA.<eta>.<role>` anchor reads locally like `theta + coefficient*covariate`
