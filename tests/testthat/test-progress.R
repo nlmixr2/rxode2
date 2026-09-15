@@ -20,6 +20,8 @@ test_that("rxProgressAbort() falls back to the default message instead of crashi
   expect_error(.Call(`_rxProgressAbort`, 1L), "Aborted calculation")
   rxProgress(2)
   expect_error(rxProgressAbort("custom abort"), "custom abort")
+  rxProgress(2)
+  expect_error(rxProgressAbort(c("first abort", "details")), "first abort")
 })
 
 test_that("valid progress bar calls still work (#1377)", {
