@@ -96,7 +96,8 @@ if (covB == \"same\" ||
     expect_equal(length(rxModelVars(blank)), length(full))
     expect_length(blank$strCmpParams, 0)
     expect_equal(names(blank$strCmpParams), character(0))
-    expect_equal(tail(names(full), 5),
-                 c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5"))
+    expect_equal(tail(names(full), 8),
+                 c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5",
+                   "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"))
   })
 })

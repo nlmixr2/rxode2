@@ -1056,6 +1056,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
   IntegerVector splitBolus = clone(as<IntegerVector>(mv[RxMv_splitBolus]));
   int splitBolusN = splitBolus.size();
+  /* splitInfusion()/splitInfusionBolus()/splitBolusInfusion() mv entries
+   * are newer than some cached rxModelVars objects; guard the reads by
+   * size and type */
+  IntegerVector splitInfusion = IntegerVector::create(0);
+  if (mv.size() > RxMv_splitInfusion && TYPEOF(mv[RxMv_splitInfusion]) == INTSXP) {
+    splitInfusion = clone(as<IntegerVector>(mv[RxMv_splitInfusion]));
+  }
+  IntegerVector splitInfBol = IntegerVector::create(0);
+  if (mv.size() > RxMv_splitInfusionBolus && TYPEOF(mv[RxMv_splitInfusionBolus]) == INTSXP) {
+    splitInfBol = clone(as<IntegerVector>(mv[RxMv_splitInfusionBolus]));
+  }
+  IntegerVector splitBolInf = IntegerVector::create(0);
+  if (mv.size() > RxMv_splitBolusInfusion && TYPEOF(mv[RxMv_splitBolusInfusion]) == INTSXP) {
+    splitBolInf = clone(as<IntegerVector>(mv[RxMv_splitBolusInfusion]));
+  }
+  IntegerVector statePropSplit = IntegerVector::create();
+  if (TYPEOF(mv[RxMv_stateProp]) == INTSXP) {
+    statePropSplit = clone(as<IntegerVector>(mv[RxMv_stateProp]));
+  }
   CharacterVector trans = mv[RxMv_trans];
   if (Rf_inherits(inData,"rxEtTran")){
     CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
@@ -2414,7 +2433,52 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
   }
+  // Dose-splitting directives: splitBolus() (bolus records), splitInfusion()
+  // (infusion records), splitInfusionBolus() and splitBolusInfusion() (either).
+  // Under the two mixed directives, a plain bolus record is split so the
+  // designated infusion target receives a modeled infusion start/stop pair
+  // and every other target receives a bolus copy: the FIRST target for
+  // splitInfusionBolus(), the LAST target for splitBolusInfusion().  The
+  // designated target must declare a modeled dur()/rate() property, otherwise
+  // its copies stay boluses.  The parser allows at most one splitting
+  // directive per model.  Translation time only: unlike splitBolus(),
+  // splitInfusion()/splitInfusionBolus()/splitBolusInfusion() do not rewrite
+  // doses pushed at solve time with evid_().
+  IntegerVector splitCmts;
+  int splitKind = -1; // 0 bolus, 1 infusion, 2 infusion-then-bolus, 3 bolus-then-infusion
   if (splitBolusN >= 2) {
+    splitKind = 0;
+    splitCmts = splitBolus;
+  } else if (splitInfusion.size() >= 2) {
+    splitKind = 1;
+    splitCmts = splitInfusion;
+  } else if (splitInfBol.size() >= 2) {
+    splitKind = 2;
+    splitCmts = splitInfBol;
+  } else if (splitBolInf.size() >= 2) {
+    splitKind = 3;
+    splitCmts = splitBolInf;
+  }
+  if (splitKind >= 0) {
+    const int splitSrc = splitCmts[0];
+    const int splitN = splitCmts.size();
+    // per-target promotion flag for the mixed directives: the designated
+    // infusion target (FIRST for splitInfusionBolus, LAST for
+    // splitBolusInfusion) gets modeled dur (16) or rate (8); any other
+    // target keeps its bolus copy even when it declares dur()/rate()
+    std::vector<int> promote(splitN, 0);
+    if (splitKind == 2 || splitKind == 3) {
+      int pick = (splitKind == 2) ? 1 : splitN - 1;
+      int curCmt = splitCmts[pick];
+      if (statePropSplit.size() >= curCmt) {
+        int prop = statePropSplit[curCmt - 1];
+        if (prop & 16) {
+          promote[pick] = EVIDF_MODEL_DUR_ON;
+        } else if (prop & 8) {
+          promote[pick] = EVIDF_MODEL_RATE_ON;
+        }
+      }
+    }
     std::vector<int> id2;
     std::vector<int> evid2;
     std::vector<int> cmtF2;
@@ -2438,11 +2502,28 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     ndose = 0;
     nobs = 0;
     mxCmt = 0;
+    bool ssPromoteWarned = false;
     for (int j = 0; j < (int)evid.size(); ++j) {
-      bool splitDose = _rxShouldSplitTranslatedBolus(evid[j], cmtF[j], amt[j], splitBolus[0]);
-      if (isDose(evid[j])) ndose += splitDose ? splitBolusN - 1 : 1;
-      else if (isObs(evid[j])) nobs++;
-      if (!splitDose) {
+      bool splitBolusRec = _rxShouldSplitTranslatedBolus(evid[j], cmtF[j], amt[j], splitSrc);
+      bool splitInfRec = splitBolusRec ? false :
+        _rxShouldSplitTranslatedInfusion(evid[j], cmtF[j], amt[j], splitSrc);
+      bool splitThis = (splitKind == 0 && splitBolusRec) ||
+        (splitKind == 1 && splitInfRec) ||
+        ((splitKind == 2 || splitKind == 3) && (splitBolusRec || splitInfRec));
+      int whJ, eventCmtJ, wh100J, whIJ, wh0J;
+      getWh(evid[j], &whJ, &eventCmtJ, &wh100J, &whIJ, &wh0J);
+      // does this record get promoted to modeled infusion pairs, and to how many targets
+      bool canPromote = splitThis && splitBolusRec && (splitKind == 2 || splitKind == 3) && wh0J == EVID0_REGULAR;
+      if (isDose(evid[j])) {
+        if (!splitThis) {
+          ndose += 1;
+        } else if (canPromote) {
+          for (int k = 1; k < splitN; ++k) ndose += promote[k] ? 2 : 1;
+        } else {
+          ndose += splitN - 1;
+        }
+      } else if (isObs(evid[j])) nobs++;
+      if (!splitThis) {
         id2.push_back(id[j]);
         evid2.push_back(evid[j]);
         cmtF2.push_back(cmtF[j]);
@@ -2456,19 +2537,45 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         mxCmt = max2(mxCmt, cmtF[j]);
         continue;
       }
-      for (int k = 1; k < splitBolusN; ++k) {
-        int curCmt = splitBolus[k];
-        id2.push_back(id[j]);
-        evid2.push_back(_rxEncodeEventCmt(evid[j], curCmt));
-        cmtF2.push_back(curCmt);
-        time2.push_back(time[j]);
-        amt2.push_back(amt[j]);
-        ii2.push_back(ii[j]);
-        dv2.push_back(dv[j]);
-        limit2.push_back(limit[j]);
-        cens2.push_back(cens[j]);
-        idxInput2.push_back(idxInput[j]);
-        mxCmt = max2(mxCmt, curCmt);
+      if (splitThis && splitBolusRec && (splitKind == 2 || splitKind == 3) && wh0J != EVID0_REGULAR) {
+        // steady-state boluses are copied as-is; warn once if the
+        // designated infusion target declares a modeled infusion it
+        // will not receive
+        if (!ssPromoteWarned) {
+          int pick = (splitKind == 2) ? 1 : splitN - 1;
+          if (pick >= 1 && pick < splitN && promote[pick]) {
+            Rf_warningcall(R_NilValue, "%s",
+                           _("splitInfusionBolus()/splitBolusInfusion(): steady-state bolus records are not converted to modeled infusions; targets with dur()/rate() receive bolus doses"));
+            ssPromoteWarned = true;
+          }
+        }
+      }
+      for (int k = 1; k < splitN; ++k) {
+        int curCmt = splitCmts[k];
+        auto pushRow = [&](int ev) {
+          id2.push_back(id[j]);
+          evid2.push_back(ev);
+          cmtF2.push_back(curCmt);
+          time2.push_back(time[j]);
+          amt2.push_back(amt[j]);
+          ii2.push_back(ii[j]);
+          dv2.push_back(dv[j]);
+          limit2.push_back(limit[j]);
+          cens2.push_back(cens[j]);
+          idxInput2.push_back(idxInput[j]);
+          mxCmt = max2(mxCmt, curCmt);
+        };
+        int promotion = canPromote ? promote[k] : 0;
+        if (promotion) {
+          // modeled infusion start immediately followed by its stop,
+          // mirroring the translator's own RATE=-1/-2 record pairs
+          int stopFlag = promotion == EVIDF_MODEL_DUR_ON ? EVIDF_MODEL_DUR_OFF : EVIDF_MODEL_RATE_OFF;
+          pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, promotion));
+          pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, stopFlag));
+          hasModeledRateDur = true;
+        } else {
+          pushRow(_rxEncodeEventCmt(evid[j], curCmt));
+        }
       }
     }
     id.swap(id2);

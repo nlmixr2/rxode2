@@ -8,6 +8,30 @@
   against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
   installation; exported functions and compiled model code are unchanged.
 
+- Add `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()`
+  model directives to split or relocate doses at `etTrans()`
+  translation time, mirroring `splitBolus()`. `splitInfusion()` splits
+  infusion records (both data `RATE`/`DUR` and modeled `rate()`/`dur()`
+  infusions, including their stop records). `splitInfusionBolus()` and
+  `splitBolusInfusion()` split bolus *and* infusion records; a plain
+  bolus dose is split so the FIRST target (`splitInfusionBolus()`) or
+  the LAST target (`splitBolusInfusion()`) receives a modeled infusion
+  start/stop pair (it must declare a modeled `dur()` or `rate()`
+  property, otherwise its copies stay boluses) while every other
+  target receives a bolus copy — so one dose record can feed both an
+  infusion and a bolus path (Monolix-style double absorption with
+  mixed zero-/first-order routes). Unlike `splitBolus()`, these
+  directives apply at translation time only, not to `evid_()` doses
+  pushed while solving. Only one splitting directive (`splitBolus()`,
+  `splitInfusion()`, `splitInfusionBolus()` or
+  `splitBolusInfusion()`) is allowed per model.
+
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
 ## Bug fixes
 
 - Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):

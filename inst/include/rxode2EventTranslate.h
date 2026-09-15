@@ -111,6 +111,33 @@ static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, i
   return whI == 0 && (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
 }
 
+/* Re-encode a translated event to a different compartment AND infusion
+ * flag; used when split() promotes a plain bolus record to a modeled
+ * dur()/rate() infusion start or stop for a target compartment. */
+static inline int _rxEncodeEventCmtInf(int evid, int cmt, int whInew) {
+  int wh, oldCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
+  int cmt0 = cmt - 1;
+  int cmt100 = cmt0 / 100;
+  int cmt01 = cmt0 % 100 + 1;
+  return cmt100 * 100000 + whInew * 10000 + cmt01 * 100 + wh0;
+}
+
+/* Can this translated record be split as an infusion?  Data-driven
+ * infusions (RATE/DUR flags 1/2) and modeled rate()/dur() records
+ * (flags 8/9) qualify, as do their stop records (flags 6/7 for modeled
+ * stops; data-infusion stops carry the same flag with a negative amt),
+ * so both members of a start/stop pair are re-targeted together. */
+static inline int _rxShouldSplitTranslatedInfusion(int evid, int cmt, double amt, int splitCmt) {
+  int wh, eventCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
+  if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt == 0.0) return 0;
+  if (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR &&
+      whI != EVIDF_MODEL_DUR_ON && whI != EVIDF_MODEL_DUR_OFF &&
+      whI != EVIDF_MODEL_RATE_ON && whI != EVIDF_MODEL_RATE_OFF) return 0;
+  return (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
+}
+
 /* The steady-state flag carried by a dose, from its ss/ii/amt.  Shared so the
  * event table (src/etTran.cpp) and the runtime evid_() push
  * (_rxPushDose(), src/par_solve.cpp) cannot derive it differently. */

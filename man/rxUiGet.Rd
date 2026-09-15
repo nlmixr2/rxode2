@@ -7,6 +7,12 @@
 \alias{rxUiGet.interpLines}
 \alias{rxUiGet.splitDose}
 \alias{rxUiGet.splitDoseLines}
+\alias{rxUiGet.splitInfusion}
+\alias{rxUiGet.splitInfusionLines}
+\alias{rxUiGet.splitInfusionBolus}
+\alias{rxUiGet.splitInfusionBolusLines}
+\alias{rxUiGet.splitBolusInfusion}
+\alias{rxUiGet.splitBolusInfusionLines}
 \alias{rxUiGet.simulationSigma}
 \alias{rxUiGet.simulationModel}
 \alias{rxUiGet.symengineModelNoPrune}
@@ -62,6 +68,18 @@
 \method{rxUiGet}{splitDose}(x, ...)
 
 \method{rxUiGet}{splitDoseLines}(x, ...)
+
+\method{rxUiGet}{splitInfusion}(x, ...)
+
+\method{rxUiGet}{splitInfusionLines}(x, ...)
+
+\method{rxUiGet}{splitInfusionBolus}(x, ...)
+
+\method{rxUiGet}{splitInfusionBolusLines}(x, ...)
+
+\method{rxUiGet}{splitBolusInfusion}(x, ...)
+
+\method{rxUiGet}{splitBolusInfusionLines}(x, ...)
 
 \method{rxUiGet}{simulationSigma}(x, ...)
 

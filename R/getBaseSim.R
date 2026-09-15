@@ -98,7 +98,11 @@ getBaseIniSimModel.default <- function(obj) {
   .mod <- .rxFilterOutPropsAndAdjustPredDf(.ui, predDf=NULL, lstExpr=.mod)
   .interp <- rxUiGet.interpLines(list(.ui))
   .splitDose <- rxUiGet.splitDoseLines(list(.ui))
+  .splitInfusion <- rxUiGet.splitInfusionLines(list(.ui))
+  .splitInfBol <- rxUiGet.splitInfusionBolusLines(list(.ui))
+  .splitBolInf <- rxUiGet.splitBolusInfusionLines(list(.ui))
   as.call(c(list(quote(`rxode2`)),
             as.call(c(list(quote(`{`)), .params, .interp, .splitDose,
+                      .splitInfusion, .splitInfBol, .splitBolInf,
                       .sigma, .ini, .mod))))
 }
