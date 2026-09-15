@@ -873,7 +873,6 @@ importFrom(Rcpp,
   evalCpp,
   sourceCpp
 )
-importFrom(RcppParallel,RcppParallelLibs)
 importFrom(checkmate,qassert)
 importFrom(compiler,cmpfun)
 importFrom(dparser,dparse)

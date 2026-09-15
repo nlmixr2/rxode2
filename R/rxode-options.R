@@ -123,6 +123,9 @@
   }
   .ggplot2Fix()
   .linkAll()
+  # re-link whenever rxode2lincmt's namespace is loaded again (reinstall,
+  # load_all), so rxode2 never keeps addresses into an old DLL
+  .rxode2lincmtRelinkHook()
   forderForceBase(FALSE)
 } ## nocov end
 
@@ -138,10 +141,33 @@
   .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
 }
 
+# Host table (struct offsets + host functions) first, then the linCmt
+# entry points; neither side validates anything (see CLAUDE.md)
+.iniRxode2lincmt <- function() {
+  rxode2lincmt::.rxode2lincmtIniHost(.Call(`_rxode2_rxode2lincmtHost`))
+  .Call(`_rxode2_iniRxode2lincmtPtrs`, rxode2lincmt::.rxode2lincmtPtr())
+}
+
+# Installs the rxode2lincmt onLoad re-link hook exactly once: a previous
+# rxode2 load's hook is replaced rather than piled up, and the hook looks up
+# .linkAll() in the live rxode2 namespace so it never calls an unloaded one.
+.rxode2lincmtRelinkHook <- function() {
+  .event <- packageEvent("rxode2lincmt", "onLoad")
+  .keep <- Filter(function(h) !isTRUE(attr(h, "rxode2Relink")), getHook(.event))
+  .relink <- function(...) {
+    if (isNamespaceLoaded("rxode2")) {
+      get(".linkAll", envir = asNamespace("rxode2"))()
+    }
+  }
+  attr(.relink, "rxode2Relink") <- TRUE
+  setHook(.event, c(.keep, list(.relink)), action = "replace")
+}
+
 .linkAll <- function() {
   .iniLotriPtrs()
   .iniPreciseSumsPtr()
   .iniDparserPtr()
+  .iniRxode2lincmt()
 }
 
 

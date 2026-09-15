@@ -107,7 +107,6 @@ Suggests:
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),
-    RcppParallel,
     backports,
     cli (>= 2.0.0),
     checkmate,
@@ -124,7 +123,8 @@ Imports:
     utils,
     dparser (>= 1.3.1-12),
     qs2,
-    rxode2ll,
+    rxode2ll (>= 2.0.18),
+    rxode2lincmt (>= 0.1.0),
     data.table (>= 1.12.4),
     vctrs,
     stats
@@ -150,15 +150,13 @@ URL: https://nlmixr2.github.io/rxode2/,
 Biarch: true
 LinkingTo:
     sitmo,
+    rxode2lincmt (>= 0.1.0),
     lotri (>= 1.0.4),
     PreciseSums (>= 0.7),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
     BH,
-    RcppParallel,
-    RcppEigen (>= 0.3.3.9.2),
-    dparser (>= 1.3.1-12),
-    StanHeaders (>= 2.21.0.7)
+    dparser (>= 1.3.1-12)
 Encoding: UTF-8
 LazyData: true
 Language: en-US

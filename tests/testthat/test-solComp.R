@@ -46,7 +46,7 @@ rxTest({
       trans <- 1
       ncmt <- 1
       deriv <- FALSE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l)
     }
 
@@ -74,7 +74,7 @@ rxTest({
       trans <- 1
       ncmt <- 1
       deriv <- FALSE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_1cmt_linear_oral_1(CL=CL, V=V, ka=KA, t=dt, dose=DOSE),
         l=l)
     }
@@ -110,7 +110,7 @@ rxTest({
       oral0 <- 0
       trans <- 1
       ncmt <- 1
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
       l <- l$val
       c(s=pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t, dose=DOSE, tinf=tinf),
         l=l)
@@ -139,7 +139,7 @@ rxTest({
       trans <- 1
       ncmt <- 2
       deriv <- FALSE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_2cmt_linear_bolus(CL=CL, V=V, V2=V2, Q=Q,
                                               t=dt, dose=DOSE), l=l)
     }
@@ -170,13 +170,13 @@ rxTest({
       deriv <- FALSE
       if (dt <= tinf) {
       } else {
-        l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+        l <- linCmtModelDouble(tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
         dt <- dt - tinf
         extra <- tinf
         rateNV <- 0
         alastNV <- l$Alast
       }
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_2cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q,
                                                  t=dt+extra, dose=DOSE, tinf=tinf),
         l=l)
@@ -208,7 +208,7 @@ rxTest({
       trans <- 1
       ncmt <- 3
       deriv <- FALSE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_3cmt_linear_bolus(CL=CL, V=V, V2=V2, Q=Q,
                                               V3=V3, Q3=Q2,
                                               t=dt, dose=DOSE), l=l)
@@ -241,7 +241,7 @@ rxTest({
       trans <- 1
       ncmt <- 3
       deriv <- FALSE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_3cmt_linear_oral_1(CL=CL, V=V, V2=V2, Q=Q,
                                                V3=V3, Q3=Q2,
                                                ka=ka,
@@ -276,13 +276,13 @@ rxTest({
       deriv <- FALSE
       if (dt <= tinf) {
       } else {
-        l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+        l <- linCmtModelDouble(tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
         dt <- dt - tinf
         extra <- tinf
         rateNV <- 0
         alastNV <- l$Alast
       }
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)$val
       c(s=pmxTools::calc_sd_3cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q, V3=V3, Q3=Q2,
                                                  t=dt+extra, dose=DOSE, tinf=tinf),
         l=l)
@@ -316,7 +316,7 @@ rxTest({
       trans <- 1
       ncmt <- 1
       deriv <- TRUE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      l <- linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
       l
       #c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l$val)
     }
@@ -366,7 +366,7 @@ rxTest({
       trans <- 1
       ncmt <- 1
       deriv <- TRUE
-      l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1,
+      l <- linCmtModelDouble(dt, p1, v1,
                  p2, p3,
                  p4, p5,
                  ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
@@ -426,14 +426,14 @@ rxTest({
         dt <- t
       } else {
         #Infusion completes during the time
-        v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+        v <- linCmtModelDouble(tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
         if (t == tinf) return(v)
         # Infusion is now complete
         alastNV <- v$Alast
         rateNV <- 0
         dt <- t - tinf
       }
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, CL=25, V=20, DOSE=100, tinf=1) {
@@ -526,7 +526,7 @@ rxTest({
       trans <- 1
       ncmt <- 2
       deriv <- TRUE
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, DOSE=100) {
@@ -581,7 +581,7 @@ rxTest({
       trans <- 1
       ncmt <- 2
       deriv <- TRUE
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, ka=2, DOSE=100) {
@@ -645,14 +645,14 @@ rxTest({
         dt <- t
       } else {
         #Infusion completes during the time
-        v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+        v <- linCmtModelDouble(tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
         if (t == tinf) return(v)
         # Infusion is now complete
         alastNV <- v$Alast
         rateNV <- 0
         dt <- t - tinf
       }
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, CL=25, V=20, V2 = 297, Q = 10, DOSE=100, tinf=1) {
@@ -764,7 +764,7 @@ rxTest({
       trans <- 1
       ncmt <- 3
       deriv <- TRUE
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, DOSE=100) {
@@ -825,7 +825,7 @@ rxTest({
       trans <- 1
       ncmt <- 3
       deriv <- TRUE
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
@@ -894,14 +894,14 @@ rxTest({
         dt <- t
       } else {
         #Infusion completes during the time
-        v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+        v <- linCmtModelDouble(tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
         if (t == tinf) return(v)
         # Infusion is now complete
         alastNV <- v$Alast
         rateNV <- 0
         dt <- t - tinf
       }
-      .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
+      linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127, 3L, 0.001)
     }
 
     f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
@@ -1060,7 +1060,7 @@ rxTest({
         dur(central) <- popDurCentral * exp(bsvDurCentral)
         cp <- linCmt()
         d/dt(ce) = keo*(cp-ce)
-        effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+        effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       })
     }
 
@@ -1096,7 +1096,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1145,7 +1145,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1210,7 +1210,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1257,7 +1257,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1324,7 +1324,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1377,7 +1377,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1464,7 +1464,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1523,7 +1523,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       a=depot
       b=central
       c=peripheral1
@@ -1624,7 +1624,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     expect_equal(getLinInfo_(rxModelVars(rx)),
@@ -1681,7 +1681,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1793,7 +1793,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
     })
 
     etTrans(et(amt=3,cmt=1) |> et(1:10), rx)
@@ -1862,7 +1862,7 @@ rxTest({
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
       b=central
       c=peripheral1
     }, linCmtSens="linCmtB")
@@ -1983,7 +1983,7 @@ rxTest({
         tinf <- 1
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
       }
@@ -2023,7 +2023,7 @@ rxTest({
         amt <- DOSE
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2066,7 +2066,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tinf <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2123,7 +2123,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2180,7 +2180,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2262,7 +2262,7 @@ rxTest({
         type <- 2L # ss infusion
         amt <- DOSE
         dt <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2359,7 +2359,7 @@ rxTest({
         tinf <- 1
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
       }
@@ -2406,7 +2406,7 @@ rxTest({
         amt <- DOSE
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2452,7 +2452,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tinf <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2516,7 +2516,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2582,7 +2582,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2668,7 +2668,7 @@ rxTest({
         type <- 2L # ss infusion
         amt <- DOSE
         dt <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2771,7 +2771,7 @@ rxTest({
         tinf <- 1
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
       }
@@ -2814,7 +2814,7 @@ rxTest({
         amt <- DOSE
         dt <- 0
         cmt <- 0L
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -2860,7 +2860,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tinf <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, ndiff, 3L, 0.001)
@@ -2940,7 +2940,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -3015,7 +3015,7 @@ rxTest({
         dt <- 0
         cmt <- 0L
         tau <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
@@ -3101,7 +3101,7 @@ rxTest({
         type <- 2L # ss infusion
         amt <- DOSE
         dt <- 0
-        .Call(`_rxode2_linCmtModelDouble`, 0.1,
+        linCmtModelDouble(0.1,
               p1, v1, p2, p3, p4, p5, ka,
               alastNV, rateNV, ncmt, oral0, trans,
               deriv, type, tau, tinf, amt, cmt, 127, 3L, 0.001)
