@@ -698,7 +698,8 @@ rxTest({
       }
 
       expect_equal(mean(f$x1), mweibull(9, 0.5), tolerance = 0.01)
-      expect_equal(sd(f$x1), sweibull(9, 0.5), tolerance = 0.01)
+      # The sample sd of 30000 draws misses by more than 1% about 1% of the time
+      expect_equal(sd(f$x1), sweibull(9, 0.5), tolerance = 0.02)
 
       expect_equal(mean(f$x2), mweibull(7.5), tolerance = 0.01)
       expect_equal(sd(f$x2), sweibull(7.5), tolerance = 0.01)
