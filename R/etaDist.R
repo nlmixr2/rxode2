@@ -370,7 +370,8 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #'   way `.rxEtaDistQuantile()` detects it
 #' @return named character: names are the family's `parNames`, values the
 #'   anchor variable names; plus attribute `"lines"` with the assignments
-#' @noRd
+#' @export
+#' @keywords internal
 #' @author Matthew L. Fidler
 .rxEtaDistAnchors <- function(txt, eta, latent=NULL) {
   .call <- str2lang(txt)
@@ -463,7 +464,8 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #'   holds the `rxEdA.<eta>.<role> <- <expr>` assignments
 #' @param thetas character vector of declared theta names
 #' @return character vector of assignments, possibly empty
-#' @noRd
+#' @export
+#' @keywords internal
 #' @author Matthew L. Fidler
 .rxEtaDistDerivLines <- function(anc, thetas) {
   if (is.null(anc) || length(thetas) == 0L) return(character(0))
