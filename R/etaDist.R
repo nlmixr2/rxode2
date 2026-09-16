@@ -403,6 +403,93 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
   .map
 }
 
+#' Symbolic derivative of one expression with respect to one symbol
+#'
+#' rxode2's own pattern, lifted from `.derivMore()` in `R/symengine.R`:
+#' `symengine::D()` differentiates and `rxFromSE()` only converts back.
+#'
+#' EVERY argument here must be a bare local variable.  `rxToSE()` and
+#' `rxFromSE()` `substitute()` their argument rather than taking its value, so
+#' `rxFromSE(paste0(...))` parses `paste0` as a user function and
+#' `rxFromSE(symengine::D(a, b))` parses `::` as one -- both fail with a
+#' "user function" error that says nothing about differentiation.
+#'
+#' `rxFromSE("Derivative(f, x)")` is NOT this: that is the hook for functions
+#' whose derivatives live in the `rxD` tables, and it cannot differentiate so
+#' much as `/`.
+#'
+#' @param txt expression text, in rxode2 syntax
+#' @param var symbol to differentiate with respect to
+#' @return derivative text in rxode2 syntax, or NULL when it cannot be taken
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistD <- function(txt, var) {
+  if (!requireNamespace("symengine", quietly=TRUE)) return(NULL)
+  .se <- try(rxToSE(txt), silent=TRUE)
+  if (inherits(.se, "try-error")) return(NULL)
+  .sv <- try(rxToSE(var), silent=TRUE)
+  if (inherits(.sv, "try-error")) return(NULL)
+  .sy <- try(symengine::S(.se), silent=TRUE)
+  if (inherits(.sy, "try-error")) return(NULL)
+  .sd <- try(symengine::S(.sv), silent=TRUE)
+  if (inherits(.sd, "try-error")) return(NULL)
+  .dd <- try(symengine::D(.sy, .sd), silent=TRUE)
+  if (inherits(.dd, "try-error")) return(NULL)
+  .out <- try(rxFromSE(.dd), silent=TRUE)
+  if (inherits(.out, "try-error")) return(NULL)
+  .out
+}
+
+#' Derivative anchors for a declaration's arguments
+#'
+#' For each argument anchor `rxEdA.<eta>.<role>` and each declared theta the
+#' expression mentions, emit
+#'
+#'     rxEdD.<eta>.<role>.<theta> <- d(<arg expression>)/d(<theta>)
+#'
+#' so the gradient reads an exact derivative off the solve instead of central
+#' differencing the argument expression per record per theta.  The arguments
+#' are already model lines (see `.rxEtaDistAnchors()`); their derivatives are
+#' the same trick one step further, and they inherit the same covariate
+#' handling -- a covariate in the expression is a covariate in its derivative.
+#'
+#' STRUCTURAL ZEROS ARE DROPPED.  A gamma's shape does not involve the mean's
+#' theta, so `d(shape)/d(lclm)` is exactly 0; emitting a line for it would have
+#' the model compute a constant zero per observation.  `rxJacobian` drops them
+#' the same way (`if (paste(.d) != "0")`).  The consumer must therefore treat a
+#' MISSING derivative anchor as a true zero rather than as a failure.
+#'
+#' @param anc the result of `.rxEtaDistAnchors()`, whose `"lines"` attribute
+#'   holds the `rxEdA.<eta>.<role> <- <expr>` assignments
+#' @param thetas character vector of declared theta names
+#' @return character vector of assignments, possibly empty
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDerivLines <- function(anc, thetas) {
+  if (is.null(anc) || length(thetas) == 0L) return(character(0))
+  .lines <- attr(anc, "lines")
+  if (is.null(.lines) || length(.lines) == 0L) return(character(0))
+  .out <- character(0)
+  for (.ln in .lines) {
+    .eq <- str2lang(.ln)
+    if (!is.call(.eq) || length(.eq) != 3L) next
+    .lhsName <- deparse1(.eq[[2]])
+    .rhs <- deparse1(.eq[[3]])
+    ## only the thetas this expression actually mentions; the rest are zero by
+    ## inspection and need neither symengine nor a line
+    .have <- intersect(thetas, all.vars(.eq[[3]]))
+    for (.th in .have) {
+      .d <- .rxEtaDistD(.rhs, .th)
+      if (is.null(.d)) next
+      .dt <- gsub("[[:space:]]+", "", .d)
+      if (.dt == "0" || .dt == "0.0" || .dt == "-0") next
+      .out <- c(.out, paste0(sub("^rxEdA[.]", "rxEdD.", .lhsName), ".", .th,
+                             " <- ", .d))
+    }
+  }
+  .out
+}
+
 #' Unconstrained Cholesky parameters of a correlation matrix
 #'
 #' `L <- t(chol(R))` has unit-norm rows when `diag(R) == 1`, so each row
@@ -815,6 +902,9 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## `latent = NULL`: there is no latent on this route, and passing one is what
   ## would drag the inverse CDF back in.
   .pre <- character(0)
+  ## declared thetas, for the derivative anchors below.  From the ORIGINAL ini,
+  ## because .iniDf here has already been rewritten for this route.
+  .thNamesD <- ui$iniDf$name[!is.na(ui$iniDf$ntheta)]
   .assigned <- .assignedAll
   for (.nm in d$name) {
     if (.nm %in% .assigned) next
@@ -825,8 +915,21 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
            .nm, "', which the installed 'lotri' does not provide",
            call.=FALSE)
     }
-    ## the anchors, then the bind that gives the renamed eta back its name
-    .pre <- c(.pre, attr(.anc, "lines"), paste0(.nm, " <- rxd.", .nm))
+    ## the anchors, their DERIVATIVES, then the bind that gives the renamed eta
+    ## back its name.
+    ##
+    ## The derivative anchors exist so the declared prior's gradient can read an
+    ## exact d(arg)/d(theta) off the solve instead of central differencing the
+    ## argument expression once per record per theta.  They are emitted only on
+    ## THIS route: on the cdf route every declared theta is Q1, estimated
+    ## through the observation likelihood, and this gradient never runs -- the
+    ## lines would be computed at every observation and read by nothing.
+    ##
+    ## A theta the expression does not mention gets NO line, because its
+    ## derivative is exactly zero; the consumer reads a missing anchor as zero.
+    .pre <- c(.pre, attr(.anc, "lines"),
+              .rxEtaDistDerivLines(.anc, .thNamesD),
+              paste0(.nm, " <- rxd.", .nm))
   }
   .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), .body))
   assign("etaDistInfo",
