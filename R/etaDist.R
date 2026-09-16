@@ -902,9 +902,6 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## `latent = NULL`: there is no latent on this route, and passing one is what
   ## would drag the inverse CDF back in.
   .pre <- character(0)
-  ## declared thetas, for the derivative anchors below.  From the ORIGINAL ini,
-  ## because .iniDf here has already been rewritten for this route.
-  .thNamesD <- ui$iniDf$name[!is.na(ui$iniDf$ntheta)]
   .assigned <- .assignedAll
   for (.nm in d$name) {
     if (.nm %in% .assigned) next
@@ -915,21 +912,21 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
            .nm, "', which the installed 'lotri' does not provide",
            call.=FALSE)
     }
-    ## the anchors, their DERIVATIVES, then the bind that gives the renamed eta
-    ## back its name.
+    ## the anchors, then the bind that gives the renamed eta back its name.
     ##
-    ## The derivative anchors exist so the declared prior's gradient can read an
-    ## exact d(arg)/d(theta) off the solve instead of central differencing the
-    ## argument expression once per record per theta.  They are emitted only on
-    ## THIS route: on the cdf route every declared theta is Q1, estimated
-    ## through the observation likelihood, and this gradient never runs -- the
-    ## lines would be computed at every observation and read by nothing.
+    ## NOT the derivative anchors, though `.rxEtaDistDerivLines()` builds them
+    ## and is tested.  Emitting them here REGRESSES the direct route outright:
+    ## measured on Bauer's gamma4, lclm went 1.898 -> 5.261 with the copula back
+    ## at its ini(), and a subject-constant covariate arm went bWT 1.0028 ->
+    ## -0.2307, with seven nlmixr2est etaDist failures alongside.  Reverting
+    ## this one splice restores every one of those numbers exactly, so the extra
+    ## lhs lines are the whole cause and nothing downstream reads them yet.
     ##
-    ## A theta the expression does not mention gets NO line, because its
-    ## derivative is exactly zero; the consumer reads a missing anchor as zero.
-    .pre <- c(.pre, attr(.anc, "lines"),
-              .rxEtaDistDerivLines(.anc, .thNamesD),
-              paste0(.nm, " <- rxd.", .nm))
+    ## Whatever the mechanism -- lhs count, ordering, or an index the estimator
+    ## resolves against a different model -- it has to be understood before
+    ## these are emitted by default, because every direct-route fit compiles
+    ## this model.
+    .pre <- c(.pre, attr(.anc, "lines"), paste0(.nm, " <- rxd.", .nm))
   }
   .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), .body))
   assign("etaDistInfo",
