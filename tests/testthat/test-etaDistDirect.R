@@ -129,9 +129,7 @@ test_that("the correlation stays in the omega, as the copula's rho", {
     c("eta.cl", "eta.v1"))
 })
 
-test_that("a block of MORE THAN TWO is still refused", {
-  ## The copula term is written for a pair.  Refusing by name beats dropping
-  ## the third correlation silently.
+test_that("a declared block of MORE THAN TWO is carried; declared+ordinary is refused", {
   .m <- (function() {
     ini({
       l1 <- 1.6; l2 <- 1.5; l3 <- 1.4; r1 <- -2.4; r2 <- -2.4; r3 <- -2.4
@@ -151,7 +149,35 @@ test_that("a block of MORE THAN TWO is still refused", {
       cp ~ prop(prop.sd)
     })
   })()
-  expect_error(rxEtaDistExpand(.m, param = "direct"), "block of 3")
+  ## A declared-only block of three is CARRIED now: the correlation stays in the
+  ## omega where it was written, and whether an estimator can fit it is the
+  ## estimator's to say (nlmixr2est's rxEtaDistBlockLogD).
+  .x <- rxEtaDistExpand(.m, param = "direct")
+  expect_equal(.x$omega[c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c"),
+                        c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")],
+               matrix(c(1, 0.3, 0.3, 0.3, 1, 0.3, 0.3, 0.3, 1), 3,
+                      dimnames = rep(list(c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")), 2)))
+  ## ...while a block that mixes a declared eta with an ORDINARY one is still
+  ## refused: that one is not a missing feature
+  .mix <- (function() {
+    ini({
+      l1 <- 1.6; l2 <- 1.5; l3 <- 1.4; r1 <- -2.4; r2 <- -2.4
+      ## lotri already requires unit variances on every member of a block that
+      ## holds a declared eta, ordinary members included
+      eta.a + eta.b + eta.c ~ c(1, 0.3, 1, 0.3, 0.3, 1)
+      dist(eta.a) ~ dgamma(shape = 1/exp(r1), rate = 1/(exp(r1) * exp(l1)))
+      dist(eta.b) ~ dgamma(shape = 1/exp(r2), rate = 1/(exp(r2) * exp(l2)))
+      prop.sd <- 0.1
+    })
+    model({
+      cl <- eta.a; v <- eta.b; ka <- exp(l3 + eta.c)
+      d/dt(depot) <- -ka*depot
+      d/dt(cen) <- ka*depot - (cl/v)*cen
+      cp <- cen/v
+      cp ~ prop(prop.sd)
+    })
+  })()
+  expect_error(rxEtaDistExpand(.mix, param = "direct"), "cannot correlate the declared")
 })
 
 test_that("an unknown route is refused rather than silently taken as cdf", {

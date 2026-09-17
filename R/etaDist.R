@@ -739,11 +739,10 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' downstream tries to estimate a variance that does not exist, and records the
 #' declarations where an estimator can read them.
 #'
-#' A CORRELATED declared block is refused by name.  For non-normal marginals a
-#' Gaussian copula IS `eta = Q(phi(z))` -- the CDF construction is not an
-#' alternative to it, it is what it means -- so "direct" cannot express one
-#' without an explicit joint distribution, and dropping the correlation quietly
-#' would fit a different model than the user wrote.
+#' A CORRELATED declared block is carried as a Gaussian copula prior on the eta
+#' scale (a pair or a larger block alike).  A declared eta correlated with an
+#' ORDINARY eta is refused: the direct prior splits into a family part and a
+#' Gaussian part, which is exact only when they share no omega block.
 #'
 #' @param ui decompressed ui
 #' @param d the declarations, from `rxUiEtaDists()`
@@ -766,19 +765,15 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ##   log p(eta1,eta2) = log f1 + log f2 + log c_rho(F1(eta1), F2(eta2))
   ##
   ## -- and the estimator evaluates it there (nlmixr2est's rxEtaDistPairLogD).
-  ## Only a block of more than two is still out of reach: the copula term is
-  ## written for a pair.
+  ## A block of MORE than two is carried the same way, under one m-dimensional
+  ## Gaussian copula (rxEtaDistBlockLogD): log c_R(z) = -1/2 log|R|
+  ## - 1/2 z'(R^-1 - I)z, of which the pair is the m = 2 case.  Nothing in this
+  ## expansion depends on the block size -- the correlation stays in the omega
+  ## where the user wrote it -- so whether an ESTIMATOR can fit a block is that
+  ## estimator's to say, not this function's.
   for (.idx in .blocks) {
-    if (length(.idx) > 2L) {
-      stop("rxEtaDistExpand(param=\"direct\") carries a correlated PAIR, but '",
-           paste(.dn[.idx], collapse="', '"), "' is a block of ",
-           length(.idx), "\n",
-           "  the copula term is written for two marginals; use param=\"cdf\" ",
-           "for this model",
-           call.=FALSE)
-    }
-    ## A declared eta correlated with an ORDINARY one is refused too, and for a
-    ## different reason than the block-of-three above.
+    ## A declared eta correlated with an ORDINARY one is refused, and that one
+    ## is not a missing feature.
     ##
     ## On this route the prior splits: the declared columns are scored by their
     ## family, the rest by the Gaussian quadratic.  That split is exact only when
