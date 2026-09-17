@@ -471,6 +471,9 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/setCvodeLinearSolver.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/softplus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/splitBolus.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/splitBolusInfusion-directive.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/splitInfusion.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/splitInfusionBolus-directive.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_amt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_cens.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/summary.rxDll.html</loc></url>

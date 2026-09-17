@@ -841,9 +841,9 @@ type=1L is Jacobian expand grid (adds symbols)</p></dd>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">rxExpandGrid</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span>, <span class="fu">expand.grid.jc</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Unit: microseconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min      lq     mean median     uq    max</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 20.721 21.1165 21.99463 21.352 21.607 52.518</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.323 15.8940 16.86104 16.254 16.700 45.177</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr   min      lq     mean  median      uq    max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 21.49 22.1615 24.26429 22.3865 25.7680 52.989</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.64 15.9800 17.73859 16.4060 19.1655 40.495</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  neval</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    100</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    100</span>
