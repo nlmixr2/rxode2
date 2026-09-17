@@ -234,7 +234,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # reproduce the same etas as a single full rxSolve(seed=baseSeed) call.
   #
   # rxSolve_ calls seedEng(op->cores) BEFORE rxSimThetaOmega, advancing rxSeed
-  # by 2*ncores.  We replicate that here with rxSeedEng() so our standalone
+  # by 2.  We replicate that here with rxSeedEng() so our standalone
   # rxSimThetaOmega sees the same effective seed as the internal call in rxSolve_.
   # The pre-draw covers every study as well as every subject, so `nStud > 1`
   # draws its omega uncertainty here once rather than in each chunk -- which
