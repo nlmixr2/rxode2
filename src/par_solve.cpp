@@ -607,6 +607,10 @@ extern "C" SEXP _rxTick(){
 }
 
 extern "C" SEXP _rxProgress(SEXP num, SEXP core){
+  if (TYPEOF(num) != INTSXP || Rf_length(num) < 1 ||
+      TYPEOF(core) != INTSXP || Rf_length(core) < 1) {
+    (Rf_errorcall)(R_NilValue, "'num' and 'core' must be non-empty integers");
+  }
   par_progress_1=0;
   rxt.t0 = clock();
   rxt.cores = INTEGER(core)[0];
@@ -617,6 +621,9 @@ extern "C" SEXP _rxProgress(SEXP num, SEXP core){
 }
 
 extern "C" SEXP _rxProgressStop(SEXP clear){
+  if (TYPEOF(clear) != INTSXP || Rf_length(clear) < 1) {
+    (Rf_errorcall)(R_NilValue, "'clear' must be a non-empty integer");
+  }
   int clearB = INTEGER(clear)[0];
   par_progress(rxt.n, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   par_progress_0=0;
@@ -644,7 +651,10 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    (Rf_errorcall)(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
+    // Often called from on.exit(); an unusable message falls back to the default
+    const char *msg = (TYPEOF(str) == STRSXP && Rf_length(str) > 0) ?
+      CHAR(STRING_ELT(str, 0)) : "Aborted calculation";
+    (Rf_errorcall)(R_NilValue, "%s", msg);
   }
   return R_NilValue;
 }
