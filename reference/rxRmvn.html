@@ -263,10 +263,10 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># r.v. generated on the second core are different</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 4.126891 7.202489 10.394167 6.039331</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  3.9399708 1.264702 9.056881 13.129429 3.179926</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.2853599 1.814848 3.180260  3.905836 4.450371</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.6434878 3.806686 2.875937  3.125868 4.601180</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">###### Here we create the matrix that will hold the simulated</span></span></span>
 <span class="r-in"><span><span class="co">#  random variables upfront.</span></span></span>
@@ -277,10 +277,10 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="va">A</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># This returns NULL ...</span></span></span>
 <span class="r-in"><span><span class="va">A</span> <span class="co"># ... but the result is here</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 4.126891 7.202489 10.394167 6.039331</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  3.9399708 1.264702 9.056881 13.129429 3.179926</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] -0.2853599 1.814848 3.180260  3.905836 4.450371</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  0.6434878 3.806686 2.875937  3.125868 4.601180</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## You can also simulate from a truncated normal:</span></span></span>
 <span class="r-in"><span></span></span>

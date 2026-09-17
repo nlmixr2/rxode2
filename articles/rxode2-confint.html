@@ -274,9 +274,9 @@ wanted.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0.025<span style="text-decoration: underline;">0</span>   0   cp    0     0      0    2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.5      0   cp    0     0      0    50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.975    0   cp    0     0      0    97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.025<span style="text-decoration: underline;">0</span>   0.5 cp    0.261 0.564  1.22 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 0.5      0.5 cp    1.02  1.66   2.63 50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 0.975    0.5 cp    2.23  3.65   5.71 97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.025<span style="text-decoration: underline;">0</span>   0.5 cp    0.266 0.569  1.14 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 0.5      0.5 cp    0.944 1.63   2.63 50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 0.975    0.5 cp    2.18  3.57   5.90 97.5%</span></span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ciStud</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: `aes_string()` was deprecated in ggplot2 3.0.0.</span></span>
@@ -325,9 +325,9 @@ percentiles to mean something.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0.025<span style="text-decoration: underline;">0</span>   0   cp    0     0     0     2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.5      0   cp    0     0     0     50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.975    0   cp    0     0     0     97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.025<span style="text-decoration: underline;">0</span>   0.5 cp    0.303 0.526 0.790 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 0.5      0.5 cp    1.36  1.66  1.99  50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 0.975    0.5 cp    3.12  3.90  4.60  97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.025<span style="text-decoration: underline;">0</span>   0.5 cp    0.290 0.517 0.730 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 0.5      0.5 cp    1.37  1.68  1.90  50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 0.975    0.5 cp    2.85  3.80  4.57  97.5%</span></span></code></pre></div>
 <p>Below 2500 individuals there is nothing to build a band from, so
 <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> says so and returns the percentiles alone:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
@@ -349,9 +349,9 @@ percentiles to mean something.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>   0   cp    0.025<span style="text-decoration: underline;">0</span> 0     2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>   0   cp    0.5    0     50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>   0   cp    0.975  0     97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span> 0.451 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5    1.64  50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975  4.34  97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span> 0.464 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5    1.69  50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975  3.92  97.5%</span></span></code></pre></div>
 <p>This is the one surprising part of the interface: <strong>the same
 <code><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint()</a></code> call returns different columns for
 <code>nSub = 2400</code> and <code>nSub = 2500</code></strong>. The
@@ -376,9 +376,9 @@ column names – pass <code>ci = FALSE</code>:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>   0   cp    0.025<span style="text-decoration: underline;">0</span> 0     2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>   0   cp    0.5    0     50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>   0   cp    0.975  0     97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span> 0.459 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5    1.66  50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975  4.11  97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span> 0.453 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5    1.67  50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975  4.06  97.5%</span></span></code></pre></div>
 <p><code>ci = FALSE</code> also pools across studies when there are
 several, so it gives the percentiles of all <code>nStud * nSub</code>
 simulated individuals together.</p>
@@ -444,10 +444,10 @@ uncertainty.</p>
 <span><span class="co">## width of the band on the median at 4 h</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ciPop</span><span class="op">)</span>, <span class="va">time</span> <span class="op">==</span> <span class="fl">4</span> <span class="op">&amp;</span> <span class="va">p1</span> <span class="op">==</span> <span class="fl">0.5</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"p2.5"</span>, <span class="st">"p50"</span>, <span class="st">"p97.5"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;        p2.5      p50    p97.5</span></span>
-<span><span class="co">#&gt; 26 2.153695 2.283792 2.418434</span></span>
+<span><span class="co">#&gt; 26 2.143228 2.280352 2.447365</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ciUnc</span><span class="op">)</span>, <span class="va">time</span> <span class="op">==</span> <span class="fl">4</span> <span class="op">&amp;</span> <span class="va">p1</span> <span class="op">==</span> <span class="fl">0.5</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"p2.5"</span>, <span class="st">"p50"</span>, <span class="st">"p97.5"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        p2.5      p50    p97.5</span></span>
-<span><span class="co">#&gt; 26 1.737957 2.263534 2.903909</span></span></code></pre></div>
+<span><span class="co">#&gt;        p2.5     p50    p97.5</span></span>
+<span><span class="co">#&gt; 26 1.678652 2.24511 2.890131</span></span></code></pre></div>
 <p>The sub-sampled band is much narrower: with the parameters held
 fixed, 10000 individuals pin the population median down tightly. The
 band from the replicate studies is wider because the thetas themselves
@@ -482,9 +482,9 @@ to split the summary:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     0 cp      100 0.025<span style="text-decoration: underline;">0</span>  0    2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     0 cp      100 0.5     0    50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     0 cp      100 0.975   0    97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     2 cp      100 0.025<span style="text-decoration: underline;">0</span>  1.23 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     2 cp      100 0.5     2.49 50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     2 cp      100 0.975   4.23 97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     2 cp      100 0.025<span style="text-decoration: underline;">0</span>  1.36 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     2 cp      100 0.5     2.61 50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     2 cp      100 0.975   4.51 97.5%</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="means-instead-of-percentiles">Means instead of percentiles<a class="anchor" aria-label="anchor" href="#means-instead-of-percentiles"></a>
@@ -501,9 +501,9 @@ variable such as a target-attainment indicator:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>   0   cp    0.025<span style="text-decoration: underline;">0</span>  0    2.5%      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>   0   cp    0.5     0    50%       </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>   0   cp    0.975   0    97.5%     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span>  1.78 2.5%      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5     1.82 50%       </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975   1.86 97.5%</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   0.5 cp    0.025<span style="text-decoration: underline;">0</span>  1.77 2.5%      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   0.5 cp    0.5     1.81 50%       </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   0.5 cp    0.975   1.85 97.5%</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
