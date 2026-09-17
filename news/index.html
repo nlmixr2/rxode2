@@ -120,7 +120,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-5-1-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-8"></a></h3>
-<ul><li>Fixed installation with clang/LLVM OpenMP (CRAN <code>r-devel-linux-x86_64-fedora-clang</code>): R’s <code>match</code> macro is now hidden while <code>omp.h</code> is included, so it no longer breaks the <code>declare variant match(...)</code> pragma in LLVM’s <code>omp.h</code>. The same guard covers compiled model code.</li>
+<ul><li><p>Fixed installation with clang/LLVM OpenMP (CRAN <code>r-devel-linux-x86_64-fedora-clang</code>): R’s <code>match</code> macro is now hidden while <code>omp.h</code> is included, so it no longer breaks the <code>declare variant match(...)</code> pragma in LLVM’s <code>omp.h</code>. The same guard covers compiled model code.</p></li>
+<li><p><code><a href="../reference/rxProgress.html">rxProgress()</a></code> and <code><a href="../reference/rxProgress.html">rxProgressStop()</a></code> now give an error for a zero-length argument such as <code>rxProgress(NULL)</code> instead of crashing R, and <code><a href="../reference/rxProgress.html">rxProgressAbort()</a></code> falls back to its default message when <code>error</code> is empty (<a href="https://github.com/nlmixr2/rxode2/issues/1377" class="external-link">#1377</a>).</p></li>
 </ul></div>
 </div>
     <div class="section level2">
