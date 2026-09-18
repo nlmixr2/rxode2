@@ -53,6 +53,7 @@ rxTest({
       expect_error(rxSolve(mod, stateFile, serializeFile = tempfile(fileext = ".rxbin")))
     })
 
+    # fmt: skip
     modFn <- function() {
       d/dt(depot) = -ka * depot
       d/dt(centr) = ka * depot - cl / v * centr

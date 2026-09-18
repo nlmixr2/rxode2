@@ -2,6 +2,7 @@ rxTest({
 
   test_that("sync covariates", {
 
+    # fmt: skip
     dat <- structure(list(ID = c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
                                  1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
                                  1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
@@ -653,6 +654,7 @@ rxTest({
 
   test_that("time varying covariates lhs", {
 
+    # fmt: skip
     dfadvan <- data.frame(
       ID = c(
         1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,

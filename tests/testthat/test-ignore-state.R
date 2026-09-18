@@ -160,6 +160,7 @@ rxTest({
   })
 
   test_that("ignore state corruption issue #857", {
+    # fmt: skip
     d_clean <-
       structure(list(
         amt = c(0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),

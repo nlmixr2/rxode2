@@ -1074,6 +1074,7 @@ rxTest({
 
     e <- et()
 
+    # fmt: skip
     expect_warning(e$importEventTable(data.frame(ID = c("A131", "A131", "A131", "A131", "A131",
                                                         "A131", "A131", "A131", "A131", "A131", "A131", "A131", "A131",
                                                         "A131", "A131", "A131", "A131", "A131", "A131", "A131", "A131",

@@ -103,6 +103,7 @@ rxTest({
 
   attr(tmp, ".env") <- NULL
   test_that("arrange works", {
+    # fmt: skip
     expect_equal(
       round(o1.first |> dplyr::arrange(C2), 4),
       structure(

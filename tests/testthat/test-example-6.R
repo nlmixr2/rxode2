@@ -1,6 +1,7 @@
 rxTest({
   skip_if_not_installed("units")
 
+  # fmt: skip
   inf.dat <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -98,6 +99,7 @@ rxTest({
       0.125, 0.1221, 0.1192, 0.1163, 0.1135)
   )
 
+  # fmt: skip
   inf.dat2 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -187,6 +189,7 @@ rxTest({
     )
   )
 
+  # fmt: skip
   dat3 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -257,6 +260,7 @@ rxTest({
     )
   )
 
+  # fmt: skip
   dat4 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
