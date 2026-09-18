@@ -18,8 +18,7 @@
 # Usage: REPS=3 taskset -c <idle core> Rscript bench/lincmt_regularity_memo_ab.R
 message("== lincmt_regularity_memo_ab ==")
 suppressMessages(devtools::load_all(".", compile = FALSE, quiet = TRUE))
-suppressMessages(devtools::load_all("~/src/nlmixr2est",
-                                    helpers = FALSE, quiet = TRUE))
+suppressMessages(devtools::load_all("~/src/nlmixr2est", helpers = FALSE, quiet = TRUE))
 rxode2::setRxThreads(1L)
 REPS <- as.integer(Sys.getenv("REPS", "3"))
 MAXIT <- as.integer(Sys.getenv("MAXITER", "20"))
@@ -49,13 +48,17 @@ mod <- function() {
 # looks uniform and is not, and would be silently measured as irregular.
 nSub <- 40L
 set.seed(20260828)
-schedules <- list(uniform = seq_len(100) * 1,
-                  irregular = cumsum(round(runif(100, 0.2, 1.8), 6)))
+schedules <- list(uniform = seq_len(100) * 1, irregular = cumsum(round(runif(100, 0.2, 1.8), 6)))
 mkDat <- function(tim) {
-  ev <- do.call(rbind, lapply(seq_len(nSub), function(i)
-    rbind(data.frame(ID = i, TIME = 0, AMT = 100, EVID = 1L, DV = NA_real_),
-          data.frame(ID = i, TIME = tim, AMT = NA_real_, EVID = 0L,
-                     DV = NA_real_))))
+  ev <- do.call(
+    rbind,
+    lapply(seq_len(nSub), function(i) {
+      rbind(
+        data.frame(ID = i, TIME = 0, AMT = 100, EVID = 1L, DV = NA_real_),
+        data.frame(ID = i, TIME = tim, AMT = NA_real_, EVID = 0L, DV = NA_real_)
+      )
+    })
+  )
   sim <- rxode2::rxSolve(mod(), ev, cores = 1L, addDosing = FALSE)
   ev$DV[ev$EVID == 0L] <- sim$cp * (1 + rnorm(sum(ev$EVID == 0L), 0, 0.2))
   ev
@@ -66,19 +69,21 @@ fitOnce <- function(d, phi, memo) {
   rxode2::linCmtDeltaMemo(if (memo) -1L else 0L)
   on.exit(rxode2::linCmtDeltaMemo(-1L))
   ctl <- nlmixr2est::foceiControl(
-    print = 0, calcTables = FALSE, covMethod = "",
+    print = 0,
+    calcTables = FALSE,
+    covMethod = "",
     maxOuterIterations = MAXIT,
-    rxControl = rxode2::rxControl(linCmtSensType = "AD", cores = 1L,
-                                  linCmtSensPhi = phi))
+    rxControl = rxode2::rxControl(linCmtSensType = "AD", cores = 1L, linCmtSensPhi = phi)
+  )
   rxode2::linCmtSeqStats(TRUE)
   f <- suppressWarnings(suppressMessages(
-    nlmixr2est::nlmixr2(mod(), d, est = "focei", control = ctl)))
+    nlmixr2est::nlmixr2(mod(), d, est = "focei", control = ctl)
+  ))
   st <- rxode2::linCmtSeqStats(TRUE)
-  list(t = as.numeric(f$time$optimize), objf = f$objf,
-       nEval = f$env$optReturn$feval, st = st)
+  list(t = as.numeric(f$time$optimize), objf = f$objf, nEval = f$env$optReturn$feval, st = st)
 }
 
-invisible(fitOnce(dat$uniform, 2L, TRUE))   # warm-up (compiles), not timed
+invisible(fitOnce(dat$uniform, 2L, TRUE)) # warm-up (compiles), not timed
 res <- list()
 for (phi in 0:2) {
   for (memo in c(TRUE, FALSE)) {
@@ -86,11 +91,17 @@ for (phi in 0:2) {
       z <- lapply(seq_len(REPS), function(r) fitOnce(dat[[dn]], phi, memo))
       st <- z[[REPS]]$st
       res[[length(res) + 1L]] <- data.frame(
-        phi = phi, memo = memo, design = dn,
+        phi = phi,
+        memo = memo,
+        design = dn,
         sec = median(vapply(z, function(x) x$t, 0)),
-        objf = z[[1]]$objf, nEval = z[[1]]$nEval,
-        expBuild = st[["expBuild"]], expSolo = st[["expSolo"]],
-        expHit = st[["expHit"]], load = loadAvg())
+        objf = z[[1]]$objf,
+        nEval = z[[1]]$nEval,
+        expBuild = st[["expBuild"]],
+        expSolo = st[["expSolo"]],
+        expHit = st[["expHit"]],
+        load = loadAvg()
+      )
     }
   }
 }
@@ -102,16 +113,24 @@ cat("\nirregular / uniform, per route:\n")
 for (phi in 0:2) {
   for (memo in c(TRUE, FALSE)) {
     d <- res[res$phi == phi & res$memo == memo, ]
-    cat(sprintf("  linCmtSensPhi = %d, memo %-3s  %.3fx\n", phi,
-                if (memo) "on" else "off",
-                d$secPerEval[d$design == "irregular"] /
-                  d$secPerEval[d$design == "uniform"]))
+    cat(sprintf(
+      "  linCmtSensPhi = %d, memo %-3s  %.3fx\n",
+      phi,
+      if (memo) "on" else "off",
+      d$secPerEval[d$design == "irregular"] /
+        d$secPerEval[d$design == "uniform"]
+    ))
   }
 }
 attr(res, "provenance") <- list(
-  when = format(Sys.time(), tz = "UTC"), reps = REPS, maxOuterIterations = MAXIT,
+  when = format(Sys.time(), tz = "UTC"),
+  reps = REPS,
+  maxOuterIterations = MAXIT,
   commit = system("git rev-parse --short HEAD", intern = TRUE),
-  note = paste("FOCEi 40x100, 2-cmt oral, 3 fixed-omega etas; uniform vs",
-               "irregular schedule x linCmtSensPhi 0/1/2 x delta memo on/off"))
+  note = paste(
+    "FOCEi 40x100, 2-cmt oral, 3 fixed-omega etas; uniform vs",
+    "irregular schedule x linCmtSensPhi 0/1/2 x delta memo on/off"
+  )
+)
 saveRDS(res, "bench/results/lincmt_regularity_memo_ab.rds")
 message("saved bench/results/lincmt_regularity_memo_ab.rds")

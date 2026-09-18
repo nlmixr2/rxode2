@@ -17,10 +17,13 @@ rxTest({
       d/dt(depot) <- -ka2 * depot
     }))
 
-    expect_error(rxode2({
+    expect_error(
+      rxode2({
       C2 <- linCmt(V, CL)
       d/dt(depot) <- -ka2 * depot
-    }), NA)
+    }),
+      NA
+    )
   })
 
   tran1 <- expand.grid(
@@ -39,16 +42,19 @@ rxTest({
     x <- setNames(x, names(tran1))
     .v1 <- as.character(na.omit(c(x["Vc"], x["Vp"], x["Vp2"])))
     .v2 <- as.character(na.omit(c(x["Cl"], x["Q"], x["Q2"])))
-    .rx <- paste(c(
-      ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
-      ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
-      ifelse(is.na(x["Cl"]), "", paste0(x["Cl"], "=tCl*exp(eta.cl)")),
-      ifelse(is.na(x["Q"]), "", paste0(x["Q"], "=tQ*exp(eta.q)")),
-      ifelse(is.na(x["Vp"]), "", paste0(x["Vp"], "=tVp*exp(eta.vp)")),
-      ifelse(is.na(x["Q2"]), "", paste0(x["Q2"], "=tq2*exp(eta.q)")),
-      ifelse(is.na(x["Vp2"]), "", paste0(x["Vp2"], "=tvp2*exp(eta.tvp2)")),
-      "cp=linCmt()"
-    ), collapse = "\n")
+    .rx <- paste(
+      c(
+        ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
+        ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
+        ifelse(is.na(x["Cl"]), "", paste0(x["Cl"], "=tCl*exp(eta.cl)")),
+        ifelse(is.na(x["Q"]), "", paste0(x["Q"], "=tQ*exp(eta.q)")),
+        ifelse(is.na(x["Vp"]), "", paste0(x["Vp"], "=tVp*exp(eta.vp)")),
+        ifelse(is.na(x["Q2"]), "", paste0(x["Q2"], "=tq2*exp(eta.q)")),
+        ifelse(is.na(x["Vp2"]), "", paste0(x["Vp2"], "=tvp2*exp(eta.tvp2)")),
+        "cp=linCmt()"
+      ),
+      collapse = "\n"
+    )
     .good <- FALSE
     if (length(.v1) == length(.v2)) {
       .good <- TRUE
@@ -102,19 +108,20 @@ rxTest({
         if (.hasVss && (.hasVp || .hasVt || sum(regexpr("^V[PT]?[1-9]+$", .varsUp) != -1) >= 1)) {
           .good <- FALSE
         }
-        if ((any(.varsUp == "V1") && !any(.varsUp == "V2") && any(.varsUp == "V3")) ||
-              (!any(.varsUp == "V1")) && !any(.varsUp == "V2") && any(.varsUp == "V3")) {
+        if (
+          (any(.varsUp == "V1") && !any(.varsUp == "V2") && any(.varsUp == "V3")) ||
+            (!any(.varsUp == "V1")) && !any(.varsUp == "V2") && any(.varsUp == "V3")
+        ) {
           if (!any(.varsUp == "V") && !any(.varsUp == "VC")) {
             .good <- FALSE
           }
         }
       }
     }
-    if (is.na(.good)) {
-    } else if (.good) {
+    if (is.na(.good)) {} else if (.good) {
       test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(x), collapse = ", ")), {
         assign(".rx", .rx, globalenv())
-        .rx <- rxode2parse(.rx, linear=TRUE)
+        .rx <- rxode2parse(.rx, linear = TRUE)
         expect_s3_class(.rx, "rxModelVars")
         .tmp <- na.omit(c(x["Ka"], sort(c(.v1, .v2))))
         .tmp <- c(.tmp, rep("", 7 - length(.tmp)))
@@ -126,7 +133,7 @@ rxTest({
     } else {
       test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
         assign(".rx", .rx, globalenv())
-        expect_error(rxode2parse(.rx, linear=TRUE))
+        expect_error(rxode2parse(.rx, linear = TRUE))
       })
     }
   }
@@ -145,31 +152,36 @@ rxTest({
     k31 = c("k31", NA)
   )
 
-
-
   .fun <- function(x) {
     x <- setNames(x, names(tran2))
     assign(".x", x, globalenv())
-    .rx <- paste(c(
-      ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
-      ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
-      ifelse(is.na(x["k"]), "", paste0(x["k"], "=tK*exp(eta.ka)")),
-      ifelse(is.na(x["k12"]), "", paste0(x["k12"], "=tK12*exp(eta.k12)")),
-      ifelse(is.na(x["k21"]), "", paste0(x["k21"], "=tK21*exp(eta.k21)")),
-      ifelse(is.na(x["k13"]), "", paste0(x["k13"], "=tK13*exp(eta.k13)")),
-      ifelse(is.na(x["k31"]), "", paste0(x["k31"], "=tK31*exp(eta.k31)")),
-      "cp=linCmt()"
-    ), collapse = "\n")
+    .rx <- paste(
+      c(
+        ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
+        ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
+        ifelse(is.na(x["k"]), "", paste0(x["k"], "=tK*exp(eta.ka)")),
+        ifelse(is.na(x["k12"]), "", paste0(x["k12"], "=tK12*exp(eta.k12)")),
+        ifelse(is.na(x["k21"]), "", paste0(x["k21"], "=tK21*exp(eta.k21)")),
+        ifelse(is.na(x["k13"]), "", paste0(x["k13"], "=tK13*exp(eta.k13)")),
+        ifelse(is.na(x["k31"]), "", paste0(x["k31"], "=tK31*exp(eta.k31)")),
+        "cp=linCmt()"
+      ),
+      collapse = "\n"
+    )
     assign(".rx", .rx, globalenv())
     .good <- TRUE
     .v1 <- as.character(na.omit(c(
-      x["Ka"], x["Vc"], x["k"],
-      x["k12"], x["k21"], x["k13"], x["k31"]
+      x["Ka"],
+      x["Vc"],
+      x["k"],
+      x["k12"],
+      x["k21"],
+      x["k13"],
+      x["k31"]
     )))
     .up <- toupper(.v1)
     .ncmt <- 1
-    if (length(.up) == 0) {
-    } else {
+    if (length(.up) == 0) {} else {
       if (is.na(x["k"])) {
         .good <- FALSE
       }
@@ -194,7 +206,9 @@ rxTest({
       }
       if (any(.up == "K13")) {
         if (any(.up == "K31")) {
-          if (.ncmt != 2) .good <- FALSE
+          if (.ncmt != 2) {
+            .good <- FALSE
+          }
           .ncmt <- 3
         } else {
           .good <- FALSE
@@ -204,7 +218,7 @@ rxTest({
       }
       if (.good) {
         test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-          .rx <- rxode2parse(.rx, linear=TRUE)
+          .rx <- rxode2parse(.rx, linear = TRUE)
           expect_s3_class(.rx, "rxModelVars")
           .tmp <- c(.v1, rep("", 7 - length(.v1)))
           names(.tmp) <- paste0("par", seq_along(.tmp))
@@ -215,7 +229,7 @@ rxTest({
       } else {
         test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
           assign(".rx", .rx, globalenv())
-          expect_error(rxode2parse(.rx, linear=TRUE))
+          expect_error(rxode2parse(.rx, linear = TRUE))
         })
       }
     }
@@ -227,7 +241,6 @@ rxTest({
 
   .kDf <- do.call(rbind, .kDf)
 
-
   tran3 <- expand.grid(
     Ka = c("ka", NA),
     Vc = c("v", "vc", "v1", NA),
@@ -236,25 +249,29 @@ rxTest({
     aob = c("aob", "k21", NA)
   )
 
-
   .fun <- function(x) {
     x <- setNames(x, names(tran3))
-    .rx <- paste(c(
-      ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
-      ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
-      ifelse(is.na(x["alpha"]), "", paste0(x["alpha"], "=tAlpha*exp(eta.alpha)")),
-      ifelse(is.na(x["beta"]), "", paste0(x["beta"], "=tBeta*exp(eta.beta)")),
-      ifelse(is.na(x["aob"]), "", paste0(x["aob"], "=tAob*exp(eta.aob)")),
-      "cp=linCmt()"
-    ), collapse = "\n")
+    .rx <- paste(
+      c(
+        ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
+        ifelse(is.na(x["Vc"]), "", paste0(x["Vc"], "=tVc*exp(eta.vc)")),
+        ifelse(is.na(x["alpha"]), "", paste0(x["alpha"], "=tAlpha*exp(eta.alpha)")),
+        ifelse(is.na(x["beta"]), "", paste0(x["beta"], "=tBeta*exp(eta.beta)")),
+        ifelse(is.na(x["aob"]), "", paste0(x["aob"], "=tAob*exp(eta.aob)")),
+        "cp=linCmt()"
+      ),
+      collapse = "\n"
+    )
     .good <- TRUE
     .v1 <- as.character(na.omit(c(
-      x["Ka"], x["Vc"], x["alpha"],
-      x["beta"], x["aob"]
+      x["Ka"],
+      x["Vc"],
+      x["alpha"],
+      x["beta"],
+      x["aob"]
     )))
     .ncmt <- 1
-    if (length(.v1) == 0) {
-    } else {
+    if (length(.v1) == 0) {} else {
       .ncmt <- 1
       if (is.na(x["Vc"])) {
         .good <- FALSE
@@ -270,7 +287,7 @@ rxTest({
       }
       if (.good) {
         test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-          .rx <- rxode2parse(.rx, linear=TRUE)
+          .rx <- rxode2parse(.rx, linear = TRUE)
           expect_s3_class(.rx, "rxModelVars")
           .tmp <- c(.v1, rep("", 7 - length(.v1)))
           names(.tmp) <- paste0("par", seq_along(.tmp))
@@ -281,7 +298,7 @@ rxTest({
       } else {
         test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
           assign(".rx", .rx, globalenv())
-          expect_error(rxode2parse(.rx, linear=TRUE))
+          expect_error(rxode2parse(.rx, linear = TRUE))
         })
       }
     }
@@ -303,24 +320,31 @@ rxTest({
 
   .fun <- function(x) {
     x <- setNames(x, names(tran4))
-    .rx <- paste(c(
-      ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
-      ifelse(is.na(x["a"]), "", paste0(x["a"], "=tA*exp(eta.a)")),
-      ifelse(is.na(x["alpha"]), "", paste0(x["alpha"], "=tAlpha*exp(eta.alpha)")),
-      ifelse(is.na(x["b"]), "", paste0(x["b"], "=tB*exp(eta.b)")),
-      ifelse(is.na(x["beta"]), "", paste0(x["beta"], "=tBeta*exp(eta.beta)")),
-      ifelse(is.na(x["c"]), "", paste0(x["c"], "=tC*exp(eta.c)")),
-      ifelse(is.na(x["gamma"]), "", paste0(x["gamma"], "=tGamma*exp(eta.gamma)")),
-      "cp=linCmt()"
-    ), collapse = "\n")
+    .rx <- paste(
+      c(
+        ifelse(is.na(x["Ka"]), "", paste0(x["Ka"], "=tKa*exp(eta.ka)")),
+        ifelse(is.na(x["a"]), "", paste0(x["a"], "=tA*exp(eta.a)")),
+        ifelse(is.na(x["alpha"]), "", paste0(x["alpha"], "=tAlpha*exp(eta.alpha)")),
+        ifelse(is.na(x["b"]), "", paste0(x["b"], "=tB*exp(eta.b)")),
+        ifelse(is.na(x["beta"]), "", paste0(x["beta"], "=tBeta*exp(eta.beta)")),
+        ifelse(is.na(x["c"]), "", paste0(x["c"], "=tC*exp(eta.c)")),
+        ifelse(is.na(x["gamma"]), "", paste0(x["gamma"], "=tGamma*exp(eta.gamma)")),
+        "cp=linCmt()"
+      ),
+      collapse = "\n"
+    )
     .good <- TRUE
     .v1 <- as.character(na.omit(c(
-      x["Ka"], x["a"], x["alpha"],
-      x["b"], x["beta"], x["c"], x["gamma"]
+      x["Ka"],
+      x["a"],
+      x["alpha"],
+      x["b"],
+      x["beta"],
+      x["c"],
+      x["gamma"]
     )))
     .ncmt <- 1
-    if (length(.v1) == 0) {
-    } else {
+    if (length(.v1) == 0) {} else {
       .good <- TRUE
       .ncmt <- 0
       .s <- sum(!is.na(c(x["a"], x["alpha"])))
@@ -331,21 +355,25 @@ rxTest({
       }
       .s <- sum(!is.na(c(x["b"], x["beta"])))
       if (.s == 2) {
-        if (.ncmt != 1) .good <- FALSE
+        if (.ncmt != 1) {
+          .good <- FALSE
+        }
         .ncmt <- 2
       } else if (.s == 1) {
         .good <- FALSE
       }
       .s <- sum(!is.na(c(x["c"], x["gamma"])))
       if (.s == 2) {
-        if (.ncmt != 2) .good <- FALSE
+        if (.ncmt != 2) {
+          .good <- FALSE
+        }
         .ncmt <- 3
       } else if (.s == 1) {
         .good <- FALSE
       }
       if (.good) {
         test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-          .rx <- rxode2parse(.rx, linear=TRUE)
+          .rx <- rxode2parse(.rx, linear = TRUE)
           expect_s3_class(.rx, "rxModelVars")
           .tmp <- c(.v1, rep("", 7 - length(.v1)))
           names(.tmp) <- paste0("par", seq_along(.tmp))
@@ -356,7 +384,7 @@ rxTest({
       } else {
         test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
           assign(".rx", .rx, globalenv())
-          expect_error(rxode2parse(.rx, linear=TRUE))
+          expect_error(rxode2parse(.rx, linear = TRUE))
         })
       }
     }
@@ -364,17 +392,26 @@ rxTest({
 
   # context("alpha/A style translations")
   apply(tran4, 1, .fun)
-
 })
 
 
 test_that("depot is captured", {
-  expect_equal(rxModelVars("rx_pred_=linCmtA(rx__PTR__, t, 2, 1, 1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
-               c("depot", "central"))
+  expect_equal(
+    rxModelVars("rx_pred_=linCmtA(rx__PTR__, t, 2, 1, 1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+    c("depot", "central")
+  )
 
-  expect_equal(rxModelVars("rx_pred_=linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
-               c("depot", "central", "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
-                 "rx__sens_central_BY_ka", "rx__sens_depot_BY_ka"))
+  expect_equal(
+    rxModelVars("rx_pred_=linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+    c(
+      "depot",
+      "central",
+      "rx__sens_central_BY_p1",
+      "rx__sens_central_BY_v1",
+      "rx__sens_central_BY_ka",
+      "rx__sens_depot_BY_ka"
+    )
+  )
 })
 
 test_that("wrong-arity linCmtA()/linCmtB() reports a syntax error instead of crashing (#1266)", {
@@ -388,7 +425,6 @@ test_that("wrong-arity linCmtA()/linCmtB() reports a syntax error instead of cra
 })
 
 test_that("linCmt() should not error for nlmixr2 models with endpoints", {
-
   run1 <- function() {
     ini({
       tvcl <- log(7)
@@ -415,6 +451,4 @@ test_that("linCmt() should not error for nlmixr2 models with endpoints", {
   run1 <- run1()
 
   expect_error(run1$simulationModel, NA)
-
-
 })

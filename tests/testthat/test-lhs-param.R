@@ -10,9 +10,11 @@ rxTest({
     expect_equal(mod1$lhs, c("k", "km"))
     expect_equal(mod1$params, c("k", "km"))
 
-    expect_equal(as.vector(rxSolve(mod1, et(0), params = c(k = 3, km = 4), returnType = "matrix")), as.double(c(0, 6, 8)))
+    expect_equal(
+      as.vector(rxSolve(mod1, et(0), params = c(k = 3, km = 4), returnType = "matrix")),
+      as.double(c(0, 6, 8))
+    )
   })
-
 
   test_that("Two defined variables with ini", {
     mod1 <- rxode2({
@@ -51,7 +53,6 @@ rxTest({
     })
     expect_false(any(tmp$params == "Sc"))
   })
-
 
   test_that("Last item of last line still counts", {
     mod4 <- rxode2({
@@ -135,7 +136,6 @@ rxTest({
   })
 
   test_that("dual order lhs mixed with non dual-order gives right order", {
-
     skip_if_not_installed("nlmixr2data")
     m <- rxode2({
       param(THETA[1], THETA[2], THETA[3], THETA[4], Nominal)
@@ -163,18 +163,27 @@ rxTest({
       dvid(3)
     })
 
-    expect_equal(m$lhs,
-                 c("rx_pred_", "rx_r_", "tka", "tcl", "tv", "add.sd", "ka", "cl", "v", "Nominal", "tad", "dosenum"))
+    expect_equal(
+      m$lhs,
+      c("rx_pred_", "rx_r_", "tka", "tcl", "tv", "add.sd", "ka", "cl", "v", "Nominal", "tad", "dosenum")
+    )
 
     theo_sd2 <- nlmixr2data::theo_sd
     theo_sd2$Nominal <- 300
 
-    s <- rxSolve(m, theo_sd2, c(`THETA[1]` = 0.440455057067531, `THETA[2]` = 0.962169566880609,
-                                `THETA[3]` = 3.49144561224211, `THETA[4]` = 1.39422305101919),
-                 addCov=FALSE)
+    s <- rxSolve(
+      m,
+      theo_sd2,
+      c(
+        `THETA[1]` = 0.440455057067531,
+        `THETA[2]` = 0.962169566880609,
+        `THETA[3]` = 3.49144561224211,
+        `THETA[4]` = 1.39422305101919
+      ),
+      addCov = FALSE
+    )
 
     expect_true(all(s$Nominal == 300))
     expect_false(any(s$rx_pred_ == 300))
-
   })
 })

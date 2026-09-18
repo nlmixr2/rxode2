@@ -1,6 +1,5 @@
 rxTest({
   test_that("proper errors from event tables with single id", {
-
     m <- function() {
       ini({
         tCL20 <-  c(10)
@@ -41,25 +40,29 @@ rxTest({
       })
     }
 
-
     ev <- eventTable() |>
-      add.dosing(dose=900630, nbr.doses=1, rate=900630/2) |>
-      et(0, 600, length.out=10)
+      add.dosing(dose = 900630, nbr.doses = 1, rate = 900630 / 2) |>
+      et(0, 600, length.out = 10)
 
-    expect_error(rxSolve(m, ev,
+    expect_error(
+      rxSolve(
+        m,
+        ev,
 
-                 # Create individual covariate data-frame
-                 iCov=data.frame(ID=1:10,
-                                 WTBL=runif(n = 1000, min = 50, max = 150),
-                                 SEXN=rbinom(n = 1000, size = 1, prob = 0.5)),
-                 # in this case it would be useful to keep the WT in the output dataset
-                 keep=c("WTBL","SEXN")),
-                 "the 'id' in the iCov must have 1 unique match to the event table")
+        # Create individual covariate data-frame
+        iCov = data.frame(
+          ID = 1:10,
+          WTBL = runif(n = 1000, min = 50, max = 150),
+          SEXN = rbinom(n = 1000, size = 1, prob = 0.5)
+        ),
+        # in this case it would be useful to keep the WT in the output dataset
+        keep = c("WTBL", "SEXN")
+      ),
+      "the 'id' in the iCov must have 1 unique match to the event table"
+    )
   })
 
-
   test_that("iCov", {
-
     nsub <- 10 # 100 sub-problems
 
     mod1 <- rxode2({
@@ -72,65 +75,69 @@ rxTest({
       eff(0) = 1
     })
 
-
     ev <- et() |>
-      et(amt=10000, addl=9,ii=12) |>
-      et(time=120, amt=20000, addl=4, ii=24) |>
+      et(amt = 10000, addl = 9, ii = 12) |>
+      et(time = 120, amt = 20000, addl = 4, ii = 24) |>
       et(0:240) |> ## Add Sampling
-      et(id=1:nsub) ## Add id
+      et(id = 1:nsub) ## Add id
 
-    sigma <- matrix(c(0.09,0.08,0.08,0.25),2,2) # IIV covariance matrix
-    mv <- rxRmvn(n=nsub, rep(0,2), sigma) # Sample from covariance matrix
-    CL <- 7*exp(mv[,1])
-    V2 <- 40*exp(mv[,2])
-    params.all <- cbind(KA=0.3, CL=CL, V2=V2, Q=10, V3=300,
-                        Kin=0.2, Kout=0.2, EC50=8)
+    sigma <- matrix(c(0.09, 0.08, 0.08, 0.25), 2, 2) # IIV covariance matrix
+    mv <- rxRmvn(n = nsub, rep(0, 2), sigma) # Sample from covariance matrix
+    CL <- 7 * exp(mv[, 1])
+    V2 <- 40 * exp(mv[, 2])
+    params.all <- cbind(KA = 0.3, CL = CL, V2 = V2, Q = 10, V3 = 300, Kin = 0.2, Kout = 0.2, EC50 = 8)
     paramsDf <- as.data.frame(params.all)
-    paramsDf$ptS=paste(1:nsub, "pt")
+    paramsDf$ptS <- paste(1:nsub, "pt")
     paramsDf$ptF <- factor(paramsDf$ptS)
     paramsDf$ptI <- 1:nsub
-    paramsDf$ptL <- paramsDf$ptI <=50
+    paramsDf$ptL <- paramsDf$ptI <= 50
 
-    expect_error(etTrans(ev, mod1, iCov=paramsDf, keep=c("CL", "V2")),
-                 "'iCov' must have an 'id' column")
+    expect_error(etTrans(ev, mod1, iCov = paramsDf, keep = c("CL", "V2")), "'iCov' must have an 'id' column")
 
-    paramsDf$id <- 1:nsub+1
-    expect_error(etTrans(ev, mod1, iCov=paramsDf, keep=c("CL", "V2")),
-                 "some of the 'id' values do not match the input event table")
-
+    paramsDf$id <- 1:nsub + 1
+    expect_error(
+      etTrans(ev, mod1, iCov = paramsDf, keep = c("CL", "V2")),
+      "some of the 'id' values do not match the input event table"
+    )
 
     paramsDf$id <- 1:nsub
 
     paramsDf2 <- paramsDf
 
-    paramsDf2$id <- paste("pt ",paramsDf2$id)
+    paramsDf2$id <- paste("pt ", paramsDf2$id)
 
-    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
-                 "data 'id' column is an integer; 'iCov' 'id' also needs to be an integer")
+    expect_error(
+      etTrans(ev, mod1, iCov = paramsDf2),
+      "data 'id' column is an integer; 'iCov' 'id' also needs to be an integer"
+    )
 
-    paramsDf2 <- paramsDf[-1,]
+    paramsDf2 <- paramsDf[-1, ]
 
-    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
-                 "the 'id' in the iCov must have 1 unique match to the event table")
+    expect_error(
+      etTrans(ev, mod1, iCov = paramsDf2),
+      "the 'id' in the iCov must have 1 unique match to the event table"
+    )
 
-    paramsDf2 <- rbind(paramsDf[1,], paramsDf)
+    paramsDf2 <- rbind(paramsDf[1, ], paramsDf)
 
-    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
-                 "the 'id' in the iCov must have 1 unique match to the event table")
+    expect_error(
+      etTrans(ev, mod1, iCov = paramsDf2),
+      "the 'id' in the iCov must have 1 unique match to the event table"
+    )
 
     # Now check for proper behavior
 
-    tmp <- etTrans(ev, mod1, iCov=paramsDf)
+    tmp <- etTrans(ev, mod1, iCov = paramsDf)
     tmp2 <- attr(class(tmp), ".rxode2.lst")
     class(tmp2) <- NULL
 
     for (v in c("EC50", "Kout", "Kin", "V3", "Q", "V2", "CL", "KA")) {
       expect_equal(tmp2$cov1[[v]], paramsDf[[v]])
-      expect_equal(tmp2$pars[v,], paramsDf[[v]])
+      expect_equal(tmp2$pars[v, ], paramsDf[[v]])
     }
 
     # Check keep of various sorts in iCov
-    tmp <- rxSolve(mod1, ev, iCov=paramsDf, keep=c("CL", "V2", "ptS", "ptF", "ptI", "ptL"))
+    tmp <- rxSolve(mod1, ev, iCov = paramsDf, keep = c("CL", "V2", "ptS", "ptF", "ptI", "ptL"))
     expect_true(is.character(tmp$ptS))
     expect_true(all(paste(1:nsub, "pt") %in% unique(tmp$ptS)))
     expect_true(is.factor(tmp$ptF))
@@ -139,14 +146,28 @@ rxTest({
     expect_true(is.logical(tmp$ptL))
     expect_true(all((tmp$ptI <= 50) == tmp$ptL))
 
-    for (v in
-         c("evid",  "time", "amt", "value", "cmt", "ytype", "state", "var", "dv",
-           "rate","dur", "addl", "ii", "mdv", "cens", "limit", "method")) {
+    for (v in c(
+      "evid",
+      "time",
+      "amt",
+      "value",
+      "cmt",
+      "ytype",
+      "state",
+      "var",
+      "dv",
+      "rate",
+      "dur",
+      "addl",
+      "ii",
+      "mdv",
+      "cens",
+      "limit",
+      "method"
+    )) {
       names(paramsDf)[9] <- v
-      expect_error(etTrans(ev, mod1, iCov=paramsDf),
-                   paste0("cannot specify '", v,"' in 'iCov'"))
+      expect_error(etTrans(ev, mod1, iCov = paramsDf), paste0("cannot specify '", v, "' in 'iCov'"))
     }
-
   })
 
   test_that("iCov string comparison covariates use model ordering", {
@@ -159,8 +180,7 @@ rxTest({
 
     ic <- data.frame(
       id = 1:3,
-      cov = factor(c("beta", "gamma", "alpha"),
-                   levels = c("gamma", "beta", "alpha"))
+      cov = factor(c("beta", "gamma", "alpha"), levels = c("gamma", "beta", "alpha"))
     )
 
     tmp <- etTrans(ev, mod, iCov = ic, keep = "cov")
@@ -183,10 +203,10 @@ rxTest({
     ic <- data.frame(id = 1:3, wt = c(70, 80, 90))
 
     tmp <- as.data.frame(etTrans(ev, mod, allTimeVar = TRUE, iCov = ic))
-    expect_equal(vapply(split(tmp$wt, tmp$ID),
-                        function(x) unique(x[!is.na(x)]), double(1),
-                        USE.NAMES = FALSE),
-                 c(70, 80, 90))
+    expect_equal(
+      vapply(split(tmp$wt, tmp$ID), function(x) unique(x[!is.na(x)]), double(1), USE.NAMES = FALSE),
+      c(70, 80, 90)
+    )
 
     # 'allTimeVar=FALSE' keeps the covariate on the per-id table only
     tmp2 <- etTrans(ev, mod, allTimeVar = FALSE, iCov = ic)

@@ -19,9 +19,14 @@ rxTest({
         p1 <- mod |>
           rxParams(
             params = c(
-              KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-              Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-              Kin = 1, Kout = 1, EC50 = 200
+              KA = 2.94E-01,
+              TCl = 1.86E+01,
+              V2 = 4.02E+01, # central
+              Q = 1.05E+01,
+              V3 = 2.97E+02, # peripheral
+              Kin = 1,
+              Kout = 1,
+              EC50 = 200
             ),
             inits = c(eff = 1),
             omega = lotri(eta.Cl ~ 0.4^2)
@@ -54,9 +59,14 @@ rxTest({
           et(seq(0, 48, length.out = 100)) |>
           rxParams(
             params = c(
-              KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-              Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-              Kin = 1, Kout = 1, EC50 = 200
+              KA = 2.94E-01,
+              TCl = 1.86E+01,
+              V2 = 4.02E+01, # central
+              Q = 1.05E+01,
+              V3 = 2.97E+02, # peripheral
+              Kin = 1,
+              Kout = 1,
+              EC50 = 200
             ),
             inits = c(eff = 1),
             omega = lotri(eta.Cl ~ 0.4^2)
@@ -76,12 +86,16 @@ rxTest({
         }
       }
     )
-    test_that(sprintf(
-      "mod > et > rxParams > %s == mod > rxParams > et > %s",
-      type, type
-    ), {
-      expect_equal(as.data.frame(p1), as.data.frame(p2))
-    })
+    test_that(
+      sprintf(
+        "mod > et > rxParams > %s == mod > rxParams > et > %s",
+        type,
+        type
+      ),
+      {
+        expect_equal(as.data.frame(p1), as.data.frame(p2))
+      }
+    )
   }
 
   fun("rxSolve")
@@ -92,9 +106,14 @@ rxTest({
   p1 <- mod |>
     rxParams(
       params = c(
-        KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-        Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-        Kin = 1, Kout = 1, EC50 = 200
+        KA = 2.94E-01,
+        TCl = 1.86E+01,
+        V2 = 4.02E+01, # central
+        Q = 1.05E+01,
+        V3 = 2.97E+02, # peripheral
+        Kin = 1,
+        Kout = 1,
+        EC50 = 200
       ),
       inits = c(eff = 1),
       omega = lotri(eta.Cl ~ 0.4^2)

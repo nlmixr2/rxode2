@@ -7,18 +7,22 @@
 #' @noRd
 .dropMuCovs <- function(x, muRefCovariateDataFrame) {
   if (is.call(x)) {
-    if (identical(x[[1]], quote(`*`)) &&
-          length(x) == 3) {
+    if (
+      identical(x[[1]], quote(`*`)) &&
+        length(x) == 3
+    ) {
       if (is.name(x[[2]]) && is.name(x[[3]])) {
         .v1 <- as.character(x[[2]])
         .v2 <- as.character(x[[3]])
         .w <- which(muRefCovariateDataFrame$covariate == .v1 & muRefCovariateDataFrame$covariateParameter == .v2)
-        if (length(.w) == 1) return(0)
+        if (length(.w) == 1) {
+          return(0)
+        }
         .w <- which(muRefCovariateDataFrame$covariate == .v2 & muRefCovariateDataFrame$covariateParameter == .v1)
         if (length(.w) == 1) return(0)
       }
     }
-    as.call(lapply(x, .dropMuCovs, muRefCovariateDataFrame=muRefCovariateDataFrame))
+    as.call(lapply(x, .dropMuCovs, muRefCovariateDataFrame = muRefCovariateDataFrame))
   } else {
     x
   }
@@ -39,7 +43,7 @@
   } else if (is.name(x)) {
     .n <- as.character(x)
     if (.n %in% covariates) {
-      assign("covs", c(.n, env$covs), envir=env)
+      assign("covs", c(.n, env$covs), envir = env)
     }
     return(x)
   }
@@ -70,7 +74,7 @@
       .curEval[.w, "hi"] <- NA_real_
     }
   }
-  assign("muRefCurEval", .curEval, envir=ui)
+  assign("muRefCurEval", .curEval, envir = ui)
   invisible()
 }
 
@@ -85,9 +89,9 @@
 .muRefDowngradeForCovariate <- function(cov, ui) {
   .covDf <- ui$muRefCovariateDataFrame
   .covDf <- .covDf[.covDf$covariate == cov, ]
-  lapply(.covDf$theta, .muRefDowngradeThetaAndEta, ui=ui)
-  .covDf <- .covDf[.covDf$covariate != cov,, drop = FALSE]
-  assign("muRefCovariateDataFrame", .covDf, envir=ui)
+  lapply(.covDf$theta, .muRefDowngradeThetaAndEta, ui = ui)
+  .covDf <- .covDf[.covDf$covariate != cov, , drop = FALSE]
+  assign("muRefCovariateDataFrame", .covDf, envir = ui)
   invisible()
 }
 #' Cleanup after the mu reference downgrade
@@ -99,19 +103,33 @@
 .muRefDowngradeCleanup <- function(ui) {
   .names <- ui$iniDf$name[is.na(ui$iniDf$err)]
   .namesCurEval <- ui$muRefCurEval$parameter
-  assign("muRefCurEval", do.call("rbind", c(list(ui$muRefCurEval), lapply(setdiff(.names, .namesCurEval), function(x) {
-    data.frame(parameter=x, curEval="", low=NA_real_, hi=NA_real_)
-  }))), envir=ui)
-  .etaNames <- ui$iniDf$name[which(ui$iniDf$neta1 == ui$iniDf$neta2 &
-                                     .lotriBaseCondition(ui$iniDf$condition) == "id")]
+  assign(
+    "muRefCurEval",
+    do.call(
+      "rbind",
+      c(
+        list(ui$muRefCurEval),
+        lapply(setdiff(.names, .namesCurEval), function(x) {
+          data.frame(parameter = x, curEval = "", low = NA_real_, hi = NA_real_)
+        })
+      )
+    ),
+    envir = ui
+  )
+  .etaNames <- ui$iniDf$name[which(
+    ui$iniDf$neta1 == ui$iniDf$neta2 &
+      .lotriBaseCondition(ui$iniDf$condition) == "id"
+  )]
   .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
   .extra <- setdiff(.extra, ui$nonMuEtas)
   if (length(.extra) > 0) {
-    warning("some etas defaulted to non-mu referenced, possible parsing error: ",
-            paste(.extra, collapse=", "),
-            "\nas a work-around try putting the mu-referenced expression on a simple line",
-            call.=FALSE)
-    assign("nonMuEtas", c(ui$nonMuEtas, .extra), envir=ui)
+    warning(
+      "some etas defaulted to non-mu referenced, possible parsing error: ",
+      paste(.extra, collapse = ", "),
+      "\nas a work-around try putting the mu-referenced expression on a simple line",
+      call. = FALSE
+    )
+    assign("nonMuEtas", c(ui$nonMuEtas, .extra), envir = ui)
   }
   invisible()
 }
@@ -138,15 +156,19 @@
 #' @noRd
 .muRefDowngrade <- function(ui) {
   .covData <- ui$muRefCovariateDataFrame
-  if (length(.covData$covariate) == 0) return(.muRefDowngradeCleanup(ui))
+  if (length(.covData$covariate) == 0) {
+    return(.muRefDowngradeCleanup(ui))
+  }
   # First drop any mu referenced covariates
-  .lst2 <- lapply(ui$lstExpr, .dropMuCovs, muRefCovariateDataFrame=.covData)
+  .lst2 <- lapply(ui$lstExpr, .dropMuCovs, muRefCovariateDataFrame = .covData)
   # now see if any of the covariates are still in the model
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$covs <- NULL
-  lapply(.lst2, .hasACovariateToDowngrade, unique(.covData$covariate), env=.env)
+  lapply(.lst2, .hasACovariateToDowngrade, unique(.covData$covariate), env = .env)
   .down <- unique(.env$covs)
-  if (length(.down) == 0) return(.muRefDowngradeCleanup(ui))
-  lapply(.down, .muRefDowngradeForCovariate, ui=ui)
+  if (length(.down) == 0) {
+    return(.muRefDowngradeCleanup(ui))
+  }
+  lapply(.down, .muRefDowngradeForCovariate, ui = ui)
   .muRefDowngradeCleanup(ui)
 }

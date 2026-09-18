@@ -71,14 +71,13 @@ NULL
     if (requireNamespace("units", quietly = TRUE)) {
       .canConvert <- try(units::ud_are_convertible(x, y), silent = TRUE)
       if (inherits(.canConvert, "try-error") || !.canConvert) {
-        stop(sprintf("cannot combine rxEt objects with incompatible %s units ('%s' vs '%s')",
-                     what, x, y),
-             call. = FALSE)
+        stop(
+          sprintf("cannot combine rxEt objects with incompatible %s units ('%s' vs '%s')", what, x, y),
+          call. = FALSE
+        )
       }
     } else {
-      stop(sprintf("cannot combine rxEt objects with different %s units ('%s' vs '%s')",
-                   what, x, y),
-           call. = FALSE)
+      stop(sprintf("cannot combine rxEt objects with different %s units ('%s' vs '%s')", what, x, y), call. = FALSE)
     }
   }
   x
@@ -134,15 +133,27 @@ NULL
     canResize = TRUE,
     extraCols = character(0)
   )
-  if (is.null(meta)) return(.ret)
-  if (!is.null(meta$units)) .ret$units[names(meta$units)] <- meta$units
+  if (is.null(meta)) {
+    return(.ret)
+  }
+  if (!is.null(meta$units)) {
+    .ret$units[names(meta$units)] <- meta$units
+  }
   if (!is.null(meta$show)) {
     .ret$show[names(meta$show)] <- as.logical(meta$show)
   }
-  if (!is.null(meta$randomType)) .ret$randomType <- as.integer(meta$randomType)
-  if (!is.null(meta$canResize)) .ret$canResize <- isTRUE(meta$canResize)
-  if (!is.null(meta$extraCols)) .ret$extraCols <- as.character(meta$extraCols)
-  if (is.infinite(.ret$randomType)) .ret$randomType <- NA_integer_
+  if (!is.null(meta$randomType)) {
+    .ret$randomType <- as.integer(meta$randomType)
+  }
+  if (!is.null(meta$canResize)) {
+    .ret$canResize <- isTRUE(meta$canResize)
+  }
+  if (!is.null(meta$extraCols)) {
+    .ret$extraCols <- as.character(meta$extraCols)
+  }
+  if (is.infinite(.ret$randomType)) {
+    .ret$randomType <- NA_integer_
+  }
   .ret
 }
 #' Convert the `rxEt` object to a full data frame with all expected columns.
@@ -155,7 +166,8 @@ NULL
 #'
 #' @author Matthew L. Fidler
 .rxEtAsFullDataFrame <- function(x) {
-  if (is.rxEt(x)) { # nolint
+  if (is.rxEt(x)) {
+    # nolint
     return(as.data.frame(x, all = TRUE))
   }
   as.data.frame(x, stringsAsFactors = FALSE)

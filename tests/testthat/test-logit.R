@@ -1,15 +1,12 @@
 rxTest({
-
   test_that("logit ui test", {
-
     f <- function() {
       model({
         a <- logit(x, high=10)
       })
     }
 
-    expect_equal((f() |> modelExtract()),
-                 "a <- logit(x, 0, 10)")
+    expect_equal((f() |> modelExtract()), "a <- logit(x, 0, 10)")
 
     f <- function() {
       model({
@@ -17,8 +14,7 @@ rxTest({
       })
     }
 
-    expect_equal((f() |> modelExtract()),
-                 "a <- expit(x, 0, 11)")
+    expect_equal((f() |> modelExtract()), "a <- expit(x, 0, 11)")
 
     f <- function() {
       model({
@@ -26,10 +22,7 @@ rxTest({
       })
     }
 
-    expect_equal((f() |> modelExtract()),
-                 "a <- expit(x, a, 11)")
-
-
+    expect_equal((f() |> modelExtract()), "a <- expit(x, a, 11)")
   })
 
   test_that("logit tests", {
@@ -84,9 +77,7 @@ rxTest({
 
     expect_equal(logit(1:10, 0L, 11L), logit(as.double(1:10), 0.0, 11.0))
 
-    expect_equal(logit(7, c(1, 2), c(10, 114)),
-                 c(logit(7, 1, 10),
-                   logit(7, 2, 114)))
+    expect_equal(logit(7, c(1, 2), c(10, 114)), c(logit(7, 1, 10), logit(7, 2, 114)))
 
     expect_error(.Call(`_rxode2_powerD`, 0.5, c(1, 2), 3, 4, 4L, TRUE))
     expect_error(.Call(`_rxode2_powerD`, 0.5, 1, c(3, 4), 4, 4L, TRUE))

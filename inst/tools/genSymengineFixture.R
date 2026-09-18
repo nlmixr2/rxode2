@@ -26,13 +26,12 @@ source("inst/tools/symengineFixtureCorpus.R", local = TRUE)
 .rxSens <- getFromNamespace(".rxSens", "rxode2")
 
 ## ---------------------------------------------------------------- harvest ---
-.se <- character(0)   # symengine-syntax strings -> rxFromSE fixture
-.rx <- character(0)   # rxode2-syntax strings    -> rxToSE  fixture
+.se <- character(0) # symengine-syntax strings -> rxFromSE fixture
+.rx <- character(0) # rxode2-syntax strings    -> rxToSE  fixture
 
 .tryAdd <- function(what, f) {
   r <- try(f(), silent = TRUE)
-  if (inherits(r, "try-error") || !is.character(r) || length(r) != 1L ||
-        is.na(r) || !nzchar(r)) {
+  if (inherits(r, "try-error") || !is.character(r) || length(r) != 1L || is.na(r) || !nzchar(r)) {
     return(character(0))
   }
   r
@@ -44,12 +43,18 @@ source("inst/tools/symengineFixtureCorpus.R", local = TRUE)
 for (e in .exprs) {
   .rx <- c(.rx, e)
   s <- .tryAdd(e, function() rxode2::rxToSE(e))
-  if (!length(s)) next
+  if (!length(s)) {
+    next
+  }
   .se <- c(.se, s)
   b <- try(symengine::S(s), silent = TRUE)
-  if (inherits(b, "try-error")) next
+  if (inherits(b, "try-error")) {
+    next
+  }
   fs <- try(as.character(symengine::free_symbols(b)), silent = TRUE)
-  if (inherits(fs, "try-error")) next
+  if (inherits(fs, "try-error")) {
+    next
+  }
   for (v in fs) {
     d <- try(as.character(symengine::D(b, symengine::S(v))), silent = TRUE)
     if (!inherits(d, "try-error")) .se <- c(.se, d)
@@ -60,28 +65,42 @@ for (e in .exprs) {
 ## the first/second derivatives w.r.t. every parameter and state.
 for (nm in names(.models)) {
   ui <- try(.models[[nm]](), silent = TRUE)
-  if (inherits(ui, "try-error")) { message("skip model ", nm); next }
+  if (inherits(ui, "try-error")) {
+    message("skip model ", nm)
+    next
+  }
   mv <- try(rxode2::rxModelVars(ui), silent = TRUE)
-  if (inherits(mv, "try-error")) next
+  if (inherits(mv, "try-error")) {
+    next
+  }
   vars <- c(mv$params, mv$state, mv$lhs)
   lines <- strsplit(rxode2::rxNorm(mv), "\n")[[1]]
   lines <- lines[nzchar(lines)]
   for (ln in lines) {
     rhs <- sub("^[^=]*=", "", ln)
     rhs <- sub(";$", "", rhs)
-    if (!nzchar(rhs) || grepl("^[[:space:]]*$", rhs)) next
+    if (!nzchar(rhs) || grepl("^[[:space:]]*$", rhs)) {
+      next
+    }
     .rx <- c(.rx, rhs)
     s <- .tryAdd(rhs, function() rxode2::rxToSE(rhs))
-    if (!length(s)) next
+    if (!length(s)) {
+      next
+    }
     .se <- c(.se, s)
     b <- try(symengine::S(s), silent = TRUE)
-    if (inherits(b, "try-error")) next
-    fs <- try(intersect(as.character(symengine::free_symbols(b)),
-                        c(vars, rxode2::rxToSE(vars))), silent = TRUE)
-    if (inherits(fs, "try-error")) next
+    if (inherits(b, "try-error")) {
+      next
+    }
+    fs <- try(intersect(as.character(symengine::free_symbols(b)), c(vars, rxode2::rxToSE(vars))), silent = TRUE)
+    if (inherits(fs, "try-error")) {
+      next
+    }
     for (v in fs) {
       d <- try(symengine::D(b, symengine::S(v)), silent = TRUE)
-      if (inherits(d, "try-error")) next
+      if (inherits(d, "try-error")) {
+        next
+      }
       .se <- c(.se, as.character(d))
       ## second order: this is what .rxSens(order 2) emits
       for (v2 in head(fs, 3L)) {
@@ -98,14 +117,22 @@ for (nm in names(.models)) {
 ## the long sensitivity sums), which stages (1) and (2) do not reproduce.
 for (nm in names(.models)) {
   ui <- try(.models[[nm]](), silent = TRUE)
-  if (inherits(ui, "try-error")) next
-  env <- try({
-    e <- rxode2::rxS(rxode2::rxNorm(rxode2::rxModelVars(ui)))
-    .rxJacobian(e)
-    .rxSens(e)
-    e
-  }, silent = TRUE)
-  if (inherits(env, "try-error")) { message("skip jac/sens ", nm); next }
+  if (inherits(ui, "try-error")) {
+    next
+  }
+  env <- try(
+    {
+      e <- rxode2::rxS(rxode2::rxNorm(rxode2::rxModelVars(ui)))
+      .rxJacobian(e)
+      .rxSens(e)
+      e
+    },
+    silent = TRUE
+  )
+  if (inherits(env, "try-error")) {
+    message("skip jac/sens ", nm)
+    next
+  }
   gen <- grep("^rx__(df|sens|d_dt)", ls(env), value = TRUE)
   for (g in gen) {
     r <- tryCatch(as.character(env[[g]]), error = function(e) NULL)
@@ -118,27 +145,42 @@ for (nm in names(.models)) {
 ## This is where the lnorm/logitNorm/boxCox/t transforms actually get exercised.
 for (nm in names(.models)) {
   ui <- try(.models[[nm]](), silent = TRUE)
-  if (inherits(ui, "try-error")) next
+  if (inherits(ui, "try-error")) {
+    next
+  }
   pm <- try(ui$symengineModelPrune, silent = TRUE)
-  if (inherits(pm, "try-error")) { message("skip prune ", nm); next }
+  if (inherits(pm, "try-error")) {
+    message("skip prune ", nm)
+    next
+  }
   mv <- try(rxode2::rxModelVars(pm), silent = TRUE)
-  if (inherits(mv, "try-error")) next
+  if (inherits(mv, "try-error")) {
+    next
+  }
   lines <- strsplit(rxode2::rxNorm(mv), "\n")[[1]]
   lines <- lines[nzchar(lines)]
   for (ln in lines) {
     rhs <- sub(";$", "", sub("^[^=~]*[=~]", "", ln))
-    if (!nzchar(rhs)) next
+    if (!nzchar(rhs)) {
+      next
+    }
     .rx <- c(.rx, rhs)
     r <- .tryAdd(rhs, function() rxode2::rxToSE(rhs))
     if (length(r)) .se <- c(.se, r)
   }
-  env <- try({
-    e <- rxode2::rxS(pm)
-    .rxJacobian(e)
-    .rxSens(e)
-    e
-  }, silent = TRUE)
-  if (inherits(env, "try-error")) { message("skip prune jac/sens ", nm); next }
+  env <- try(
+    {
+      e <- rxode2::rxS(pm)
+      .rxJacobian(e)
+      .rxSens(e)
+      e
+    },
+    silent = TRUE
+  )
+  if (inherits(env, "try-error")) {
+    message("skip prune jac/sens ", nm)
+    next
+  }
   gen <- grep("^rx_", ls(env), value = TRUE)
   for (g in gen) {
     r <- tryCatch(as.character(env[[g]]), error = function(e) NULL)
@@ -174,23 +216,23 @@ message("capturing under pkgload::load_all() ...")
   stopifnot(identical(a$input, b$input))
   diff <- b$output != a$output | b$isError != a$isError
   if (any(diff)) {
-    message(sprintf("  %s: %d row(s) differ from the installed build:",
-                    what, sum(diff)))
+    message(sprintf("  %s: %d row(s) differ from the installed build:", what, sum(diff)))
     for (.i in utils::head(which(diff), 12L)) {
-      message(sprintf("    %s\n      installed: %s\n      worktree : %s",
-                      a$input[.i], a$output[.i], b$output[.i]))
+      message(sprintf("    %s\n      installed: %s\n      worktree : %s", a$input[.i], a$output[.i], b$output[.i]))
     }
   }
   b
 }
 
-fromSE    <- .reconcile(.a$fromSE,        .b$fromSE,        "fromSE")
+fromSE <- .reconcile(.a$fromSE, .b$fromSE, "fromSE")
 fromSEfwd <- .reconcile(.a$fromSEforward, .b$fromSEforward, "fromSEforward")
 fromSEcen <- .reconcile(.a$fromSEcentral, .b$fromSEcentral, "fromSEcentral")
-toSE      <- .reconcile(.a$toSE,          .b$toSE,          "toSE")
+toSE <- .reconcile(.a$toSE, .b$toSE, "toSE")
 
 fixture <- list(
-  fromSE = fromSE, fromSEforward = fromSEfwd, fromSEcentral = fromSEcen,
+  fromSE = fromSE,
+  fromSEforward = fromSEfwd,
+  fromSEcentral = fromSEcen,
   toSE = toSE,
   generatedBy = utils::packageVersion("rxode2"),
   symengineVersion = utils::packageVersion("symengine")
@@ -200,5 +242,5 @@ dir.create("tests/testthat", showWarnings = FALSE, recursive = TRUE)
 saveRDS(fixture, "tests/testthat/symengine-translate-fixture.rds", version = 2)
 
 cat("fromSE  pairs:", nrow(fromSE), " (", sum(fromSE$isError), "errors )\n")
-cat("toSE    pairs:", nrow(toSE),   " (", sum(toSE$isError),   "errors )\n")
+cat("toSE    pairs:", nrow(toSE), " (", sum(toSE$isError), "errors )\n")
 cat("written: tests/testthat/symengine-translate-fixture.rds\n")

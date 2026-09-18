@@ -2,7 +2,6 @@
 skipIfOldLotri()
 
 test_that("a repeated omega block is one level of variability, not several", {
-
   ## `lotri`'s `same()` records a repeated block in the `condition`
   ## column as `<level>:same:<master>`.  That suffix names the element a
   ## row mirrors; it is NOT a different level of variability, and code
@@ -34,26 +33,26 @@ test_that("a repeated omega block is one level of variability, not several", {
   .ui <- rxode2::rxUiDecompress(.f())
 
   ## every eta is at the id level, so nothing may be read as IOV
-  expect_equal(unique(lotri::lotriBaseCondition(
-    .ui$iniDf$condition[!is.na(.ui$iniDf$neta1)])), "id")
+  expect_equal(
+    unique(lotri::lotriBaseCondition(
+      .ui$iniDf$condition[!is.na(.ui$iniDf$neta1)]
+    )),
+    "id"
+  )
   expect_error(assertRxUiIovNoCor(.ui), NA)
   expect_error(assertRxUiRandomOnIdOnly(.ui), NA)
 
   ## and the model has ONE level, not one per mirrored element
-  expect_equal(.ui$props$group,
-               list(id = c("eta.ka", "iov.cl1", "iov.v1",
-                           "iov.cl2", "iov.v2")))
+  expect_equal(.ui$props$group, list(id = c("eta.ka", "iov.cl1", "iov.v1", "iov.cl2", "iov.v2")))
 
   ## the omega comes back whole, with the repetition intact
   .om <- .ui$omega
   expect_equal(dim(.om), c(5L, 5L))
   expect_equal(attr(.om, "lotriSame"), c(0L, 0L, 0L, 2L, 2L))
-  expect_equal(unclass(.om)[4:5, 4:5], unclass(.om)[2:3, 2:3],
-               ignore_attr = TRUE)
+  expect_equal(unclass(.om)[4:5, 4:5], unclass(.om)[2:3, 2:3], ignore_attr = TRUE)
 })
 
 test_that("omegaSameMap reports which etas repeat an earlier block", {
-
   .f <- function() {
     ini({
       tka <- 0.45
@@ -102,7 +101,6 @@ test_that("omegaSameMap reports which etas repeat an earlier block", {
 })
 
 test_that("rxSymInvCholCreate shares a repeated block's parameters", {
-
   ## For a block diagonal omega whose blocks are identical, inv(omega)
   ## and chol(inv(omega)) are block diagonal with identical factors, so
   ## a repeated block can reuse its master's slice of the parameter
@@ -116,8 +114,7 @@ test_that("rxSymInvCholCreate shares a repeated block's parameters", {
   }))
 
   .u <- rxSymInvCholCreate(.m, diag.xform = "sqrt", create.env = FALSE)
-  .s <- rxSymInvCholCreate(.m, diag.xform = "sqrt", create.env = FALSE,
-                           same = c(0L, 0L, 1L, 2L))
+  .s <- rxSymInvCholCreate(.m, diag.xform = "sqrt", create.env = FALSE, same = c(0L, 0L, 1L, 2L))
 
   ## the repeated block costs no parameters of its own
   expect_equal(.u$fn(NULL, -2L), 6)
@@ -134,9 +131,11 @@ test_that("rxSymInvCholCreate shares a repeated block's parameters", {
 
   ## and the derivative sums both blocks
   for (.k in 1:3) {
-    expect_equal(.s$fn(.t3, as.integer(.k)),
-                 .u$fn(.t6, as.integer(.k)) +
-                   .u$fn(.t6, as.integer(.k + 3L)))
+    expect_equal(
+      .s$fn(.t3, as.integer(.k)),
+      .u$fn(.t6, as.integer(.k)) +
+        .u$fn(.t6, as.integer(.k + 3L))
+    )
   }
 
   ## which-thetas-are-diagonal is positional over the parameter vector,
@@ -146,7 +145,6 @@ test_that("rxSymInvCholCreate shares a repeated block's parameters", {
 })
 
 rxTest({
-
   test_that("rxRename() follows a same() marker to the new name", {
     # The linkage is recorded BY NAME in the `condition` column, which is
     # what makes it survive renumbering -- but it means a rename has to be
@@ -170,7 +168,8 @@ rxTest({
     }
     .ui <- suppressWarnings(rxode2(.f))
     .r <- suppressWarnings(suppressMessages(
-      rxRename(.ui, IIV_CL = a1, IIV_V = a2)))
+      rxRename(.ui, IIV_CL = a1, IIV_V = a2)
+    ))
     .i <- .r$iniDf
     .cnd <- function(x) .i$condition[.i$name == x]
     expect_equal(.cnd("b1"), "id:same:IIV_CL")
@@ -187,5 +186,4 @@ rxTest({
     expect_equal(.i2$condition[.i2$name == "IOV_CL"], "id:same:a1")
     expect_false(inherits(try(.r2$omega, silent = TRUE), "try-error"))
   })
-
 })

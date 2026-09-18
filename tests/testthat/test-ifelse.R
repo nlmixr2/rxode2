@@ -12,13 +12,22 @@ rxTest({
   })
 
   test_that("Simple if/else expansion works on model", {
-    expect_equal(rxExpandIfElse(rx1, TRUE, FALSE), c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");", "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");"))
+    expect_equal(
+      rxExpandIfElse(rx1, TRUE, FALSE),
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");",
+        "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");"
+      )
+    )
   })
 
   test_that("Keep initializations if needed.", {
     expect_equal(
       rxExpandIfElse(rx1, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");", "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"f\");",
+        "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"matt\");"
+      )
     )
   })
 
@@ -33,13 +42,22 @@ rxTest({
   })
 
   test_that("Simple if expansion works on model", {
-    expect_equal(rxExpandIfElse(rx2, TRUE, FALSE), c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");"))
+    expect_equal(
+      rxExpandIfElse(rx2, TRUE, FALSE),
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");"
+      )
+    )
   })
 
   test_that("Keep initializations if needed.", {
     expect_equal(
       rxExpandIfElse(rx2, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"me\");"
+      )
     )
   })
 
@@ -62,14 +80,22 @@ rxTest({
   test_that("nested if/then", {
     expect_equal(
       rxExpandIfElse(rx3, TRUE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");", "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");",
+        "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");"
+      )
     )
   })
 
   test_that("Keep initializations", {
     expect_equal(
       rxExpandIfElse(rx3, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");", "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");",
+        "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");"
+      )
     )
   })
 
@@ -89,14 +115,22 @@ rxTest({
   test_that("nested if/then #2", {
     expect_equal(
       rxExpandIfElse(rx4, TRUE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");", "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");",
+        "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");"
+      )
     )
   })
 
   test_that("nested if/then #2 w/ini", {
     expect_equal(
       rxExpandIfElse(rx4, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");", "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");",
+        "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");"
+      )
     )
   })
 
@@ -124,14 +158,24 @@ rxTest({
   test_that("nested if/then #3", {
     expect_equal(
       rxExpandIfElse(rx5, TRUE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");", "(t<0.02||t>99.98) && (!(t>100)) && (!(t<0.01))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Between 0.01 and 0.02.\\n\");", "(t<0.02||t>99.98) && (!(t>100)) && (t<0.01)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Less than <0.001\\n\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (t>100)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");",
+        "(t<0.02||t>99.98) && (!(t>100)) && (!(t<0.01))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Between 0.01 and 0.02.\\n\");",
+        "(t<0.02||t>99.98) && (!(t>100)) && (t<0.01)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Less than <0.001\\n\");"
+      )
     )
   })
 
   test_that("nested if/then #3 w/ini", {
     expect_equal(
       rxExpandIfElse(rx5, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");", "(t<0.02||t>99.98) && (!(t>100)) && (!(t<0.01))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Between 0.01 and 0.02.\\n\");", "(t<0.02||t>99.98) && (!(t>100)) && (t<0.01)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Less than <0.001\\n\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (t>100)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");",
+        "(t<0.02||t>99.98) && (!(t>100)) && (!(t<0.01))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Between 0.01 and 0.02.\\n\");",
+        "(t<0.02||t>99.98) && (!(t>100)) && (t<0.01)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");\nprintf(\"Less than <0.001\\n\");"
+      )
     )
   })
 
@@ -158,14 +202,24 @@ rxTest({
   test_that("nested if/then #4", {
     expect_equal(
       rxExpandIfElse(rx6, TRUE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");", "(t<0.02||t>99.98) && (t>100) && (!(t<150))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\">= 150\\n\");", "(t<0.02||t>99.98) && (t>100) && (t<150)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\"Less than 150\\n\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");",
+        "(t<0.02||t>99.98) && (t>100) && (!(t<150))" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\">= 150\\n\");",
+        "(t<0.02||t>99.98) && (t>100) && (t<150)" = "d/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\"Less than 150\\n\");"
+      )
     )
   })
 
   test_that("nested if/then #4 w/ini", {
     expect_equal(
       rxExpandIfElse(rx6, FALSE, FALSE),
-      c("(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;", "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");", "(t<0.02||t>99.98) && (t>100) && (!(t<150))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\">= 150\\n\");", "(t<0.02||t>99.98) && (t>100) && (t<150)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\"Less than 150\\n\");")
+      c(
+        "(!(t<0.02||t>99.98))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;",
+        "(t<0.02||t>99.98) && (!(t>100))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"3\");",
+        "(t<0.02||t>99.98) && (t>100) && (!(t<150))" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\">= 150\\n\");",
+        "(t<0.02||t>99.98) && (t>100) && (t<150)" = "b=-1;\nd/dt(X)=a*X+Y*Z;\nd/dt(Y)=b*(Y-Z);\nd/dt(Z)=-X*Y+c*Y-Z;\nprintf(\"1\");\nprintf(\"2\");\nprintf(\"Less than 150\\n\");"
+      )
     )
   })
 

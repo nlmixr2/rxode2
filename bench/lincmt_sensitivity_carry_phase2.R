@@ -55,8 +55,11 @@
 # code -- that automatic composition is model-build-time detection +
 # codegen wiring, Phase 3's task.
 
-if (requireNamespace("devtools", quietly = TRUE) &&
-      file.exists("DESCRIPTION") && file.exists("src/linCmt.cpp")) {
+if (
+  requireNamespace("devtools", quietly = TRUE) &&
+    file.exists("DESCRIPTION") &&
+    file.exists("src/linCmt.cpp")
+) {
   devtools::load_all(".", quiet = TRUE)
 } else {
   library(rxode2)
@@ -73,17 +76,15 @@ mod <- rxode2({
 })
 
 tclVal <- 2.0
-tvVal  <- 20.0
+tvVal <- 20.0
 etaVal <- 0.3
 
 doseTimes <- c(0, 12, 24, 36)
-obsTimes  <- c(6, 18, 30, 42)
+obsTimes <- c(6, 18, 30, 42)
 
 buildEv <- function() {
-  doseDf <- data.frame(time = doseTimes, amt = 100, evid = 1, cmt = 1,
-                       wt = ifelse(doseTimes < 24, 70, 90))
-  obsDf  <- data.frame(time = obsTimes, amt = 0, evid = 0, cmt = 1,
-                       wt = ifelse(obsTimes < 24, 70, 90))
+  doseDf <- data.frame(time = doseTimes, amt = 100, evid = 1, cmt = 1, wt = ifelse(doseTimes < 24, 70, 90))
+  obsDf <- data.frame(time = obsTimes, amt = 0, evid = 0, cmt = 1, wt = ifelse(obsTimes < 24, 70, 90))
   ev <- rbind(doseDf, obsDf)
   ev <- ev[order(ev$time), ]
   ev$id <- 1
@@ -92,8 +93,13 @@ buildEv <- function() {
 ev <- buildEv()
 
 solveIt <- function(etaVal) {
-  rxSolve(mod, params = c(tcl = tclVal, tv = tvVal, eta.cl = etaVal),
-          events = ev, returnType = "data.frame", addDosing = TRUE)
+  rxSolve(
+    mod,
+    params = c(tcl = tclVal, tv = tvVal, eta.cl = etaVal),
+    events = ev,
+    returnType = "data.frame",
+    addDosing = TRUE
+  )
 }
 
 real0 <- solveIt(etaVal)
@@ -104,7 +110,7 @@ clAt <- function(wt_i) tclVal * (wt_i / 70)^0.75 * exp(etaVal)
 
 ## dTheta_i/dEta via real symbolic differentiation (symengine), same as
 ## Phase 1.
-clSym      <- S(sprintf("%.15g*(wt/70)^0.75*exp(etacl)", tclVal))
+clSym <- S(sprintf("%.15g*(wt/70)^0.75*exp(etacl)", tclVal))
 dClDEtaSym <- D(clSym, "etacl")
 dClDEta <- function(wt_i) {
   eval(parse(text = as.character(dClDEtaSym)), envir = list(wt = wt_i, etacl = etaVal))
@@ -130,14 +136,31 @@ for (i in seq_len(nRows)) {
 
     ## J_i via real production forward-mode Jacobian (sensType=30), entering
     ## from a CLEAN (non-cumulative) raw Alast -- same convention as Phase 1.
-    nAlast <- 1 + 1 * 2  # ncmt + oral0 + ncmt*npars, npars=2 for 1cmt-iv
+    nAlast <- 1 + 1 * 2 # ncmt + oral0 + ncmt*npars, npars=2 for 1cmt-iv
     alast0 <- c(rawAlast, numeric(nAlast - 1))
-    res <- linCmtModelDouble(dt = dtPrev,
-                             p1 = cl_i, v1 = tvVal, p2 = 0, p3 = 0, p4 = 0, p5 = 0, ka = 0,
-                             alastNV = alast0, rateNV = 0,
-                             ncmt = 1L, oral0 = 0L, trans = 1L,
-                             deriv = TRUE, type = 0L, tau = 0, tinf = 0, amt = 0,
-                             bolusCmt = 0L, ndiff = 0L, sensType = 30L)
+    res <- linCmtModelDouble(
+      dt = dtPrev,
+      p1 = cl_i,
+      v1 = tvVal,
+      p2 = 0,
+      p3 = 0,
+      p4 = 0,
+      p5 = 0,
+      ka = 0,
+      alastNV = alast0,
+      rateNV = 0,
+      ncmt = 1L,
+      oral0 = 0L,
+      trans = 1L,
+      deriv = TRUE,
+      type = 0L,
+      tau = 0,
+      tinf = 0,
+      amt = 0,
+      bolusCmt = 0L,
+      ndiff = 0L,
+      sensType = 30L
+    )
     Ji <- res$J[1, 1]
     valBeforeDose <- as.numeric(res$Alast)[1]
     localContrib <- Ji * dClDEta(wt_i)
@@ -148,23 +171,37 @@ for (i in seq_len(nRows)) {
     ## multi-pair extension made every linCmt() parameter per-row capable.
     thetaRow <- matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1)
     liveOut <- linCmtCarryLiveTest(
-      id = 0L, t = c(grid$time[i], grid$time[i]),
+      id = 0L,
+      t = c(grid$time[i], grid$time[i]),
       tPrior = c(grid$time[i - 1], grid$time[i - 1]),
       theta = thetaRow[c(1, 1), , drop = FALSE],
-      ncmt = 1L, oral0 = 0L, trans = 1L,
-      which1 = c(-5L, -7L), which2 = c(0L, 0L),
-      addVal = c(0, localContrib))
+      ncmt = 1L,
+      oral0 = 0L,
+      trans = 1L,
+      which1 = c(-5L, -7L),
+      which2 = c(0L, 0L),
+      addVal = c(0, localContrib)
+    )
 
     rawAlast <- valBeforeDose
   }
 
-  if (amt_i != 0 && i > 1) rawAlast <- rawAlast + amt_i
+  if (amt_i != 0 && i > 1) {
+    rawAlast <- rawAlast + amt_i
+  }
 
   if (grid$evid[i] == 0) {
-    sNow <- linCmtCarryLiveTest(id = 0L, t = grid$time[i], tPrior = grid$time[i],
-                                theta = matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1),
-                                ncmt = 1L, oral0 = 0L, trans = 1L,
-                                which1 = -6L, which2 = 0L)
+    sNow <- linCmtCarryLiveTest(
+      id = 0L,
+      t = grid$time[i],
+      tPrior = grid$time[i],
+      theta = matrix(c(cl_i, tvVal, 0, 0, 0, 0, 0), nrow = 1),
+      ncmt = 1L,
+      oral0 = 0L,
+      trans = 1L,
+      which1 = -6L,
+      which2 = 0L
+    )
     predSensLive[i] <- sNow / tvVal
   }
 }
@@ -179,12 +216,19 @@ realM <- solveIt(etaVal - h)
 fdSens <- (realP$cp[realP$evid == 0] - realM$cp[realM$evid == 0]) / (2 * h)
 
 liveAtObs <- predSensLive[grid$evid == 0]
-cmp <- data.frame(time = grid$time[grid$evid == 0], live = liveAtObs, fd = fdSens,
-                  absDiff = abs(liveAtObs - fdSens),
-                  relDiff = abs(liveAtObs - fdSens) / (abs(fdSens) + 1e-8))
+cmp <- data.frame(
+  time = grid$time[grid$evid == 0],
+  live = liveAtObs,
+  fd = fdSens,
+  absDiff = abs(liveAtObs - fdSens),
+  relDiff = abs(liveAtObs - fdSens) / (abs(fdSens) + 1e-8)
+)
 cat("\n=== Comparison: REAL which1=-5/-6/-7 carried recurrence vs FD-on-eta ===\n")
 print(cmp)
 
 worst <- max(cmp$relDiff)
-cat(sprintf("\nWorst relative difference: %.3e -- %s\n", worst,
-            if (worst < 1e-3) "PASS (live production carry path matches FD-on-eta)" else "FAIL"))
+cat(sprintf(
+  "\nWorst relative difference: %.3e -- %s\n",
+  worst,
+  if (worst < 1e-3) "PASS (live production carry path matches FD-on-eta)" else "FAIL"
+))

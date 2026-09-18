@@ -21,7 +21,8 @@ rxTest({
     expect_equal(p$strAssign, list(a = "oh no"))
     expect_equal(p$lhsStr, c(a = TRUE, b = FALSE))
 
-    p <- rxode2parse('
+    p <- rxode2parse(
+      '
 if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
     tAPGAR <- "High"
   } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
@@ -31,18 +32,23 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
   } else {
     tAPGAR<- "Med"
   }
-')
+'
+    )
 
     expect_equal(p$strAssign, list(tAPGAR = c("High", "Low", "Med")))
     expect_equal(p$lhsStr, c(tAPGAR = TRUE))
     expect_equal(p$lhs, "tAPGAR")
     expect_equal(p$slhs, character(0))
-    expect_equal(p$params , "APGAR")
-    expect_equal(p$model["normModel"],
-                 c(normModel = "if (APGAR==10||APGAR==8||APGAR==9){\ntAPGAR <-\"High\";\n}\nelse {\nif (APGAR==1||APGAR==2||APGAR==3){\ntAPGAR <-\"Low\";\n}\nelse {\nif (APGAR==4||APGAR==5||APGAR==6||APGAR==7){\ntAPGAR <-\"Med\";\n}\nelse {\ntAPGAR <-\"Med\";\n}\n}\n}\n"))
+    expect_equal(p$params, "APGAR")
+    expect_equal(
+      p$model["normModel"],
+      c(
+        normModel = "if (APGAR==10||APGAR==8||APGAR==9){\ntAPGAR <-\"High\";\n}\nelse {\nif (APGAR==1||APGAR==2||APGAR==3){\ntAPGAR <-\"Low\";\n}\nelse {\nif (APGAR==4||APGAR==5||APGAR==6||APGAR==7){\ntAPGAR <-\"Med\";\n}\nelse {\ntAPGAR <-\"Med\";\n}\n}\n}\n"
+      )
+    )
 
-
-    p <- rxode2parse('
+    p <- rxode2parse(
+      '
 if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
     tAPGAR <- "High"
   } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
@@ -53,7 +59,8 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
     tAPGAR<- "Med"
   }
    tAPGAR <- 1
-')
+'
+    )
 
     p <- rxode2parse('levels(tAPGAR) <- c("High", "Med", "Low")\ntAPGAR <- "Low"')
 
@@ -61,11 +68,11 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
     expect_equal(p$lhsStr, c(tAPGAR = TRUE))
     expect_equal(p$lhs, "tAPGAR")
     expect_equal(p$slhs, character(0))
-    expect_equal(p$model["normModel"],
-                 c(normModel = "levels(tAPGAR) <- c(\"High\", \"Med\", \"Low\");\ntAPGAR <-\"Low\";\n"))
-
+    expect_equal(
+      p$model["normModel"],
+      c(normModel = "levels(tAPGAR) <- c(\"High\", \"Med\", \"Low\");\ntAPGAR <-\"Low\";\n")
+    )
   })
-
 
   f <- function() {
     expect_error(rxode2parse('a <- "matt"; a<- 2'))
@@ -94,21 +101,18 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
   }
 
   test_that("test lhs string assign rxode2.syntax.allow.ini=TRUE", {
-    withr::with_options(list(rxode2.syntax.allow.ini=TRUE,
-                             rxode2.syntax.require.ode.first = FALSE), {
-                               f()
-                             })
+    withr::with_options(list(rxode2.syntax.allow.ini = TRUE, rxode2.syntax.require.ode.first = FALSE), {
+      f()
+    })
   })
 
   test_that("test lhs string assign rxode2.syntax.allow.ini=FALSE", {
-    withr::with_options(list(rxode2.syntax.allow.ini=FALSE,
-                             rxode2.syntax.require.ode.first = FALSE), {
-                               f()
-                             })
+    withr::with_options(list(rxode2.syntax.allow.ini = FALSE, rxode2.syntax.require.ode.first = FALSE), {
+      f()
+    })
   })
 
   test_that("lhs solve; tests lhs assign & str equals with lhs", {
-
     rx <- rxode2({
       if (t < 10) {
         a <- "<10"
@@ -123,7 +127,7 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     e <- et(1:20)
 
-    s <-rxSolve(rx, e, returnType = "data.frame")
+    s <- rxSolve(rx, e, returnType = "data.frame")
 
     expect_true(all(s$a[s$time < 10] == "<10"))
     expect_true(all(s$a[s$time >= 10] == ">=10"))
@@ -132,7 +136,6 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
   })
 
   test_that("out of bounds solve gives NA for factors", {
-
     rx <- rxode2({
       if (t < 10) {
         a <- "<10"
@@ -148,7 +151,7 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     e <- et(1:20)
 
-    s <-rxSolve(rx, e, returnType = "data.frame")
+    s <- rxSolve(rx, e, returnType = "data.frame")
 
     expect_true(all(is.na(s$a)))
 
@@ -165,16 +168,12 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
       }
     })
 
-    s <-rxSolve(rx, e, returnType = "data.frame")
+    s <- rxSolve(rx, e, returnType = "data.frame")
 
     expect_true(all(is.na(s$a)))
-
-
   })
 
-
   test_that("lhs solve; tests lhs levels & str equals with lhs", {
-
     rx <- rxode2({
       levels(a) <- c("<10", ">=10")
       if (t < 10) {
@@ -190,18 +189,15 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     e <- et(1:20)
 
-    s <-rxSolve(rx, e, returnType = "data.frame")
+    s <- rxSolve(rx, e, returnType = "data.frame")
 
     expect_true(all(s$a[s$time < 10] == "<10"))
     expect_true(all(s$a[s$time >= 10] == ">=10"))
     expect_true(all(s$b[s$time < 10] == 0))
     expect_true(all(s$b[s$time >= 10] == 1))
-
   })
 
-
   test_that("levels1 statement solve", {
-
     rx <- rxode2({
       levels(a) <- "<10"
       if (t < 10) {
@@ -217,17 +213,15 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     e <- et(1:20)
 
-    s <-rxSolve(rx, e, returnType = "data.frame")
+    s <- rxSolve(rx, e, returnType = "data.frame")
 
     expect_true(all(s$a[s$time < 10] == "<10"))
     expect_true(all(s$a[s$time >= 10] == ">=10"))
     expect_true(all(s$b[s$time < 10] == 0))
     expect_true(all(s$b[s$time >= 10] == 1))
-
   })
 
   test_that("levels extraction", {
-
     rx <- function() {
       model({
         levels(a) <- c("<10", ">=10")
@@ -245,8 +239,7 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     rx <- rx()
 
-    expect_equal(rx$levels,
-                 list(str2lang("levels(a) <- c(\"<10\", \">=10\")")))
+    expect_equal(rx$levels, list(str2lang("levels(a) <- c(\"<10\", \">=10\")")))
 
     rx <- function() {
       model({
@@ -266,10 +259,10 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     rx <- rx()
 
-    expect_equal(rx$levels,
-                 list(str2lang("levels(a) <- c(\"<10\", \">=10\")"),
-                      str2lang("levels(b) <- c(\"low\", \"high\")")))
-
+    expect_equal(
+      rx$levels,
+      list(str2lang("levels(a) <- c(\"<10\", \">=10\")"), str2lang("levels(b) <- c(\"low\", \"high\")"))
+    )
 
     rx <- function() {
       model({
@@ -291,93 +284,63 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
 
     rx <- rx()
 
-    expect_equal(rx$levels,
-                 list(str2lang("levels(a) <- c(\"<10\", \">=10\")"),
-                      str2lang("levels(b) <- c(\"low\", \"high\")"),
-                      str2lang("levels(c) <- \"funny\"")))
-
+    expect_equal(
+      rx$levels,
+      list(
+        str2lang("levels(a) <- c(\"<10\", \">=10\")"),
+        str2lang("levels(b) <- c(\"low\", \"high\")"),
+        str2lang("levels(c) <- \"funny\"")
+      )
+    )
   })
 
   test_that("test symengine translation to integers", {
-
-    v <-rxModelVars("
+    v <- rxModelVars(
+      "
 levels(a) <- c(\"<10\", \">=10\")
 b <- (a == \"<10\")*1 + (a == \">=10\")*2
-")
+"
+    )
 
     s <- rxS(v)
     v <- as.character(s$b)
     expect_error(rxFromSE(v), NA)
 
-    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
-                          strAssign=list(a = "a")),
-                 "a<-1\nb<-1")
+    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"), strAssign = list(a = "a")), "a<-1\nb<-1")
 
-    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
-                          strAssign=list(a = c("b", "a"))),
-                 "a<-2\nb<-1")
+    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"), strAssign = list(a = c("b", "a"))), "a<-2\nb<-1")
 
-    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
-                          strAssign=list(c = c("b", "a"))),
-                 "a<-\"a\"\nb<-1")
+    expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"), strAssign = list(c = c("b", "a"))), "a<-\"a\"\nb<-1")
 
-    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
-                          strAssign=list(c = c("b", "a"))),
-                 "b<-(a==\"a\")")
+    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"), strAssign = list(c = c("b", "a"))), "b<-(a==\"a\")")
 
-    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
-                          strAssign=list(a = c("b", "a"))),
-                 "b<-(a==2)")
+    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"), strAssign = list(a = c("b", "a"))), "b<-(a==2)")
 
-    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
-                          strAssign=list(a = c("a"))),
-                 "b<-(a==1)")
+    expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"), strAssign = list(a = c("a"))), "b<-(a==1)")
 
     ## No test the other direction
-    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
-                          strAssign=list(c = c("b", "a"))),
-                 "b<-(\"a\"==a)")
+    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"), strAssign = list(c = c("b", "a"))), "b<-(\"a\"==a)")
 
-    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
-                          strAssign=list(a = c("b", "a"))),
-                 "b<-(2==a)")
+    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"), strAssign = list(a = c("b", "a"))), "b<-(2==a)")
 
-    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
-                          strAssign=list(a = c("a"))),
-                 "b<-(1==a)")
-
+    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"), strAssign = list(a = c("a"))), "b<-(1==a)")
 
     ## neq
-    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
-                          strAssign=list(c = c("b", "a"))),
-                 "b<-(a!=\"a\")")
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"), strAssign = list(c = c("b", "a"))), "b<-(a!=\"a\")")
 
-    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
-                          strAssign=list(a = c("b", "a"))),
-                 "b<-(a!=2)")
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"), strAssign = list(a = c("b", "a"))), "b<-(a!=2)")
 
-    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
-                          strAssign=list(a = c("a"))),
-                 "b<-(a!=1)")
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"), strAssign = list(a = c("a"))), "b<-(a!=1)")
 
     ## No test the other direction
-    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
-                          strAssign=list(c = c("b", "a"))),
-                 "b<-(\"a\"!=a)")
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"), strAssign = list(c = c("b", "a"))), "b<-(\"a\"!=a)")
 
-    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
-                          strAssign=list(a = c("b", "a"))),
-                 "b<-(2!=a)")
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"), strAssign = list(a = c("b", "a"))), "b<-(2!=a)")
 
-    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
-                          strAssign=list(a = c("a"))),
-                 "b<-(1!=a)")
-
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"), strAssign = list(a = c("a"))), "b<-(1!=a)")
   })
 
-
   test_that("simulation model will include string information", {
-
     f <- function() {
       ini({
         tka <- 0.45
@@ -409,16 +372,13 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
 
     mod <- ui$simulationModel
 
-    expect_equal(rxModelVars(mod)$strAssign,
-                 list(timeText = c("time > 10", "time <= 10")))
+    expect_equal(rxModelVars(mod)$strAssign, list(timeText = c("time > 10", "time <= 10")))
 
     expect_error(ui$simulationIniModel, NA)
 
     mod <- ui$simulationIniModel
 
-    expect_equal(rxModelVars(mod)$strAssign,
-                 list(timeText = c("time > 10", "time <= 10")))
-
+    expect_equal(rxModelVars(mod)$strAssign, list(timeText = c("time > 10", "time <= 10")))
   })
 
   test_that("CENS column does not produce malformed factor LHS columns", {
@@ -434,22 +394,20 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
     # glhs_str starts at gcens[2*7=14]; events 14-17 have CENS=1, which corrupts
     # glhs_str[0..3] = lhs_str for ka, cl, v, cp.
     dat <- data.frame(
-      ID   = rep(1:3, each = 6),
+      ID = rep(1:3, each = 6),
       TIME = rep(c(0, 0.5, 1.0, 1.5, 2.0, 2.5), 3),
       EVID = rep(c(1L, 0L, 0L, 0L, 0L, 0L), 3),
-      AMT  = rep(c(10, NA, NA, NA, NA, NA), 3),
-      DV   = rep(c(NA, 3.0, 2.0, 1.5, 1.0, 0.5), 3),
-      CMT  = rep(c(1L, 2L, 2L, 2L, 2L, 2L), 3),
+      AMT = rep(c(10, NA, NA, NA, NA, NA), 3),
+      DV = rep(c(NA, 3.0, 2.0, 1.5, 1.0, 0.5), 3),
+      CMT = rep(c(1L, 2L, 2L, 2L, 2L, 2L), 3),
       CENS = c(rep(0L, 14), rep(1L, 4))
     )
     params <- c(tka = log(0.5), tcl = log(0.3), tv = log(8))
     ret <- rxSolve(rx, params, dat)
-    df  <- as.data.frame(ret)
+    df <- as.data.frame(ret)
     for (col in c("ka", "cl", "v", "cp")) {
-      expect_true(is.numeric(df[[col]]),
-                  label = paste0(col, " must be numeric, not a factor"))
-      expect_true(any(!is.na(df[[col]])),
-                  label = paste0(col, " must not be all NA"))
+      expect_true(is.numeric(df[[col]]), label = paste0(col, " must be numeric, not a factor"))
+      expect_true(any(!is.na(df[[col]])), label = paste0(col, " must not be all NA"))
     }
   })
 })

@@ -1,5 +1,5 @@
 .vname <- function(x) {
-  .v <- paste0(deparse1(eval.parent(substitute(substitute(x)))),collapse = "\n")
+  .v <- paste0(deparse1(eval.parent(substitute(substitute(x)))), collapse = "\n")
   if (regexpr("[ >]+", .v) != -1) {
     return("model")
   }
@@ -105,11 +105,11 @@
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
 #' }
-assertRxUi <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUi <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
   ui <- try(as.rxUi(ui), silent = TRUE)
   if (inherits(ui, "try-error")) {
-    stop("'", .var.name, "' needs to be a rxUi model", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a rxUi model", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -146,8 +146,8 @@ assertRxUi <- function(ui, extra="", .var.name=.vname(ui)) {
 #'
 #' testRxLinCmt(one.cmt)
 #'
-testRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
-  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+testRxLinCmt <- function(ui, extra = "", .var.name = .vname(ui)) {
+  .ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (!is.null(.ui$.linCmtM)) {
     return(TRUE)
   }
@@ -160,51 +160,57 @@ testRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
 
 #' @describeIn testRxLinCmt Assert that the rxode2 uses linear solved systems
 #' @export
-assertRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
-  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+assertRxLinCmt <- function(ui, extra = "", .var.name = .vname(ui)) {
+  .ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (testRxLinCmt(.ui)) {
     return(invisible(.ui))
   }
-  stop("'", .var.name, "' needs to have 'linCmt()'", extra, call.=FALSE)
+  stop("'", .var.name, "' needs to have 'linCmt()'", extra, call. = FALSE)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiPrediction <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiPrediction <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .predDf <- ui$predDf
   if (is.null(.predDf)) {
-    stop("there must be at least one prediction in the model({}) block", extra, ".  Use `~` for predictions",
-         call.=FALSE)
+    stop(
+      "there must be at least one prediction in the model({}) block",
+      extra,
+      ".  Use `~` for predictions",
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
 #' @export
 #' @rdname assertRxUi
-assertRxUiIovNoCor <- function(ui, extra="", .var.name=.vname(ui)) {
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+assertRxUiIovNoCor <- function(ui, extra = "", .var.name = .vname(ui)) {
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .iniDf <- ui$iniDf
   ## the level is the BASE condition: a repeated (`same()`) block carries
   ## a `:same:<master>` suffix, which is not a different level of
   ## variability and must not be read as one
-  .w <- which(!is.na(.iniDf$condition) &
-                .lotriBaseCondition(.iniDf$condition) != "id" &
-                 is.na(.iniDf$err) &
-                 .iniDf$neta1 != .iniDf$neta2)
+  .w <- which(
+    !is.na(.iniDf$condition) &
+      .lotriBaseCondition(.iniDf$condition) != "id" &
+      is.na(.iniDf$err) &
+      .iniDf$neta1 != .iniDf$neta2
+  )
   if (length(.w) > 0) {
-    stop("'", .var.name, "' cannot have covariance/correlation for IOV related components", extra, call.=FALSE)
+    stop("'", .var.name, "' cannot have covariance/correlation for IOV related components", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNoMix <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNoMix <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (!is.null(ui$mixProbs)) {
-    stop("'", .var.name, "' cannot have a mixture model (ie `mix()`)", extra, call.=FALSE)
+    stop("'", .var.name, "' cannot have a mixture model (ie `mix()`)", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -221,70 +227,80 @@ rxHasAr <- function(ui) {
   .iniDf <- ui$iniDf
   # literal (auto-fixed) and estimated ar() correlations live in the $iniDf with
   # err == "ar"
-  if (!is.null(.iniDf) && any(.iniDf$err == "ar", na.rm=TRUE)) return(TRUE)
+  if (!is.null(.iniDf) && any(.iniDf$err == "ar", na.rm = TRUE)) {
+    return(TRUE)
+  }
   # a modeled correlation (e.g. corv <- expit(tcor); ar(corv)) is not a
   # parameter, so scan the endpoint error expressions for an ar() term
-  .lst <- tryCatch(ui$lstExpr, error=function(e) NULL)
-  if (is.null(.lst)) return(FALSE)
+  .lst <- tryCatch(ui$lstExpr, error = function(e) NULL)
+  if (is.null(.lst)) {
+    return(FALSE)
+  }
   .hasAr <- function(e) {
     if (is.call(e)) {
-      if (identical(e[[1]], quote(ar))) return(TRUE)
+      if (identical(e[[1]], quote(ar))) {
+        return(TRUE)
+      }
       return(any(vapply(as.list(e), .hasAr, logical(1))))
     }
     FALSE
   }
-  any(vapply(.lst, function(e) {
-    is.call(e) && identical(e[[1]], quote(`~`)) && .hasAr(e)
-  }, logical(1)))
+  any(vapply(
+    .lst,
+    function(e) {
+      is.call(e) && identical(e[[1]], quote(`~`)) && .hasAr(e)
+    },
+    logical(1)
+  ))
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNoAutoregressive <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNoAutoregressive <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (rxHasAr(ui)) {
-    stop("'", .var.name, "' cannot have an autoregressive residual (ie `ar()`)", extra, call.=FALSE)
+    stop("'", .var.name, "' cannot have an autoregressive residual (ie `ar()`)", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiSingleEndpoint <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiSingleEndpoint <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
   .err <- FALSE
   if (length(.predDf$cond) > 1L) {
-    stop("'", .var.name, "' needs to be a single endpoint model", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a single endpoint model", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiTransformNormal <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiTransformNormal <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
   if (!all(.predDf$distribution == "norm")) {
-    stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNormal <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
   if (!all(.predDf$distribution == "norm" & .predDf$transform == "untransformed")) {
-    stop("'", .var.name, "' needs to be a normal model", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a normal model", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -304,12 +320,10 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 .rxUiPriors <- function(ui) {
   .iniDf <- ui$iniDf
   if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
-    return(data.frame(name=character(0), prior=character(0),
-                      stringsAsFactors=FALSE))
+    return(data.frame(name = character(0), prior = character(0), stringsAsFactors = FALSE))
   }
   .w <- which(!is.na(.iniDf$prior))
-  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
-             stringsAsFactors=FALSE)
+  data.frame(name = .iniDf$name[.w], prior = .iniDf$prior[.w], stringsAsFactors = FALSE)
 }
 
 #' The 'Stan' name of a prior distribution, or NA
@@ -324,10 +338,14 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @author Matthew L. Fidler
 .rxPriorStanName <- function(name) {
   .f <- .lotriFun("lotriPriorDists")
-  if (is.null(.f)) return(NA_character_)
+  if (is.null(.f)) {
+    return(NA_character_)
+  }
   .d <- .f()
   .w <- which(.d$name == name | .d$stanName == name)
-  if (length(.w) != 1L) return(NA_character_)
+  if (length(.w) != 1L) {
+    return(NA_character_)
+  }
   .d$stanName[.w]
 }
 
@@ -338,8 +356,7 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #' whenever the parameters are correlated; that is still a normal prior.
 #'
 #' @noRd
-.rxNormalPriorStanNames <- c("normal", "std_normal", "multi_normal",
-                             "multi_normal_cholesky", "multi_normal_prec")
+.rxNormalPriorStanNames <- c("normal", "std_normal", "multi_normal", "multi_normal_cholesky", "multi_normal_prec")
 
 #' Is each prior a normal prior?
 #'
@@ -348,14 +365,23 @@ assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorIsNormal <- function(prior) {
-  vapply(prior, function(p) {
-    .fn <- try(str2lang(p)[[1]], silent=TRUE)
-    if (inherits(.fn, "try-error")) return(FALSE)
-    .fn <- as.character(.fn)
-    if (length(.fn) != 1L) return(FALSE)
-    .stan <- .rxPriorStanName(.fn)
-    !is.na(.stan) && .stan %in% .rxNormalPriorStanNames
-  }, logical(1), USE.NAMES=FALSE)
+  vapply(
+    prior,
+    function(p) {
+      .fn <- try(str2lang(p)[[1]], silent = TRUE)
+      if (inherits(.fn, "try-error")) {
+        return(FALSE)
+      }
+      .fn <- as.character(.fn)
+      if (length(.fn) != 1L) {
+        return(FALSE)
+      }
+      .stan <- .rxPriorStanName(.fn)
+      !is.na(.stan) && .stan %in% .rxNormalPriorStanNames
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Priors specified in a model
@@ -406,82 +432,110 @@ rxUiPriors <- function(ui) {
   ui <- assertRxUi(ui)
   .iniDf <- ui$iniDf
   if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
-    return(data.frame(name=character(0), prior=character(0),
-                      neta1=integer(0), neta2=integer(0),
-                      lower=numeric(0), upper=numeric(0),
-                      stringsAsFactors=FALSE))
+    return(data.frame(
+      name = character(0),
+      prior = character(0),
+      neta1 = integer(0),
+      neta2 = integer(0),
+      lower = numeric(0),
+      upper = numeric(0),
+      stringsAsFactors = FALSE
+    ))
   }
   .w <- which(!is.na(.iniDf$prior))
-  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
-             neta1=.iniDf$neta1[.w], neta2=.iniDf$neta2[.w],
-             lower=.iniDf$lower[.w], upper=.iniDf$upper[.w],
-             stringsAsFactors=FALSE)
+  data.frame(
+    name = .iniDf$name[.w],
+    prior = .iniDf$prior[.w],
+    neta1 = .iniDf$neta1[.w],
+    neta2 = .iniDf$neta2[.w],
+    lower = .iniDf$lower[.w],
+    upper = .iniDf$upper[.w],
+    stringsAsFactors = FALSE
+  )
 }
 
 #' @export
 #' @rdname assertRxUi
-testRxUiPriors <- function(ui, extra="", .var.name=.vname(ui)) {
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+testRxUiPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   length(.rxUiPriors(ui)$name) > 0L
 }
 
 #' @export
 #' @rdname assertRxUi
-testRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+testRxUiNormalPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiPriors(ui)
   ## vacuously true when there is nothing to reject, which mirrors
   ## `assertRxUiNormalPriors()` passing on a model with no priors
-  if (length(.p$name) == 0L) return(TRUE)
+  if (length(.p$name) == 0L) {
+    return(TRUE)
+  }
   all(.rxPriorIsNormal(.p$prior))
 }
 
 #' @export
 #' @rdname assertRxUi
-testRxUiOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+testRxUiOmegaDf <- function(ui, extra = "", .var.name = .vname(ui)) {
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiPriors(ui)
-  if (length(.p$name) == 0L) return(FALSE)
+  if (length(.p$name) == 0L) {
+    return(FALSE)
+  }
   any(.rxPriorIsOmegaDf(.p$prior))
 }
 
 #' @export
 #' @rdname assertRxUi
-testRxUiOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+testRxUiOmegaNormalPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiOmegaPriors(ui)
-  if (length(.p$name) == 0L) return(FALSE)
+  if (length(.p$name) == 0L) {
+    return(FALSE)
+  }
   any(.rxPriorIsNormal(.p$prior))
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNoPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNoPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiPriors(ui)
   if (length(.p$name) > 0L) {
-    stop("'", .var.name, "' specifies prior distribution(s) on ",
-         paste0("'", .p$name, "'", collapse=", "),
-         ", which this estimation method cannot use", extra,
-         call.=FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' specifies prior distribution(s) on ",
+      paste0("'", .p$name, "'", collapse = ", "),
+      ", which this estimation method cannot use",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNormalPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiPriors(ui)
-  if (length(.p$name) == 0L) return(invisible(ui))
+  if (length(.p$name) == 0L) {
+    return(invisible(ui))
+  }
   .bad <- which(!.rxPriorIsNormal(.p$prior))
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' specifies non-normal prior distribution(s): ",
-         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
-         "; this estimation method only supports normal priors", extra,
-         call.=FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' specifies non-normal prior distribution(s): ",
+      paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse = ", "),
+      "; this estimation method only supports normal priors",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -493,8 +547,7 @@ assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
 #' are 4 and that the block itself is the scale matrix.
 #'
 #' @noRd
-.rxOmegaDfStanNames <- c("wishart", "inv_wishart",
-                         "wishart_cholesky", "inv_wishart_cholesky")
+.rxOmegaDfStanNames <- c("wishart", "inv_wishart", "wishart_cholesky", "inv_wishart_cholesky")
 
 #' Are these priors degrees of freedom on an omega block?
 #'
@@ -503,30 +556,46 @@ assertRxUiNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorIsOmegaDf <- function(prior) {
-  vapply(prior, function(p) {
-    .fn <- try(str2lang(p)[[1]], silent=TRUE)
-    if (inherits(.fn, "try-error")) return(FALSE)
-    .fn <- as.character(.fn)
-    if (length(.fn) != 1L) return(FALSE)
-    .stan <- .rxPriorStanName(.fn)
-    !is.na(.stan) && .stan %in% .rxOmegaDfStanNames
-  }, logical(1), USE.NAMES=FALSE)
+  vapply(
+    prior,
+    function(p) {
+      .fn <- try(str2lang(p)[[1]], silent = TRUE)
+      if (inherits(.fn, "try-error")) {
+        return(FALSE)
+      }
+      .fn <- as.character(.fn)
+      if (length(.fn) != 1L) {
+        return(FALSE)
+      }
+      .stan <- .rxPriorStanName(.fn)
+      !is.na(.stan) && .stan %in% .rxOmegaDfStanNames
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNoOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNoOmegaDf <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiPriors(ui)
-  if (length(.p$name) == 0L) return(invisible(ui))
+  if (length(.p$name) == 0L) {
+    return(invisible(ui))
+  }
   .bad <- which(.rxPriorIsOmegaDf(.p$prior))
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' gives prior degrees of freedom for the omega ",
-         "block(s) ",
-         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
-         ", which this estimation method cannot use", extra,
-         call.=FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' gives prior degrees of freedom for the omega ",
+      "block(s) ",
+      paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse = ", "),
+      ", which this estimation method cannot use",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -541,87 +610,92 @@ assertRxUiNoOmegaDf <- function(ui, extra="", .var.name=.vname(ui)) {
 .rxUiOmegaPriors <- function(ui) {
   .iniDf <- ui$iniDf
   if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
-    return(data.frame(name=character(0), prior=character(0),
-                      stringsAsFactors=FALSE))
+    return(data.frame(name = character(0), prior = character(0), stringsAsFactors = FALSE))
   }
   .w <- which(!is.na(.iniDf$prior) & !is.na(.iniDf$neta1))
-  data.frame(name=.iniDf$name[.w], prior=.iniDf$prior[.w],
-             stringsAsFactors=FALSE)
+  data.frame(name = .iniDf$name[.w], prior = .iniDf$prior[.w], stringsAsFactors = FALSE)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNoOmegaNormalPriors <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiNoOmegaNormalPriors <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .p <- .rxUiOmegaPriors(ui)
-  if (length(.p$name) == 0L) return(invisible(ui))
+  if (length(.p$name) == 0L) {
+    return(invisible(ui))
+  }
   .bad <- which(.rxPriorIsNormal(.p$prior))
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' puts a normal prior on the omega parameter(s) ",
-         paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse=", "),
-         ", which this estimation method cannot use", extra,
-         call.=FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' puts a normal prior on the omega parameter(s) ",
+      paste0("'", .p$name[.bad], "' (", .p$prior[.bad], ")", collapse = ", "),
+      ", which this estimation method cannot use",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiMuRefOnly <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiMuRefOnly <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (length(ui$nonMuEtas) != 0) {
-    stop("'", .var.name, "' needs to be a completely mu-referenced model (ie tcl+eta.cl)", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a completely mu-referenced model (ie tcl+eta.cl)", extra, call. = FALSE)
   }
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiEstimatedResiduals <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiEstimatedResiduals <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   .predDf <- ui$predDf
-  if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
-    stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
+  if (!all(is.na(unlist(.predDf[, c("a", "b", "c", "d", "e", "f", "lambda")], use.names = FALSE)))) {
+    stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiPopulationOnly <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiPopulationOnly <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .iniDf <- ui$iniDf
   if (any(!is.na(.iniDf$neta1))) {
-    stop("'", .var.name, "' can only have population estimates", extra, call.=FALSE)
+    stop("'", .var.name, "' can only have population estimates", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiMixedOnly <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiMixedOnly <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .iniDf <- ui$iniDf
   if (all(is.na(.iniDf$neta1))) {
-    stop("'", .var.name, "' needs to be a mixed effect model", extra, call.=FALSE)
+    stop("'", .var.name, "' needs to be a mixed effect model", extra, call. = FALSE)
   }
   invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiRandomOnIdOnly <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUiRandomOnIdOnly <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
-  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .iniDf <- ui$iniDf
   .eta <- .lotriBaseCondition(.iniDf[!is.na(.iniDf$neta1), "condition"])
   if (!all(.eta == "id")) {
-    stop("'", .var.name, "' can only have random effects on ID", extra, call.=FALSE)
+    stop("'", .var.name, "' can only have random effects on ID", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -655,7 +729,7 @@ assertCompartmentName <- function(x) {
 #' @export
 assertCompartmentNew <- function(ui, x) {
   .vn <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .vn <- x
@@ -670,10 +744,9 @@ assertCompartmentNew <- function(ui, x) {
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
 
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   if (.vn %in% c(rxode2::rxModelVars(.ui)$state)) {
-    stop("compartment '", .vn, "' already exists in the model",
-         call.=FALSE)
+    stop("compartment '", .vn, "' already exists in the model", call. = FALSE)
   }
   return(invisible())
 }
@@ -689,13 +762,13 @@ assertCompartmentNew <- function(ui, x) {
 #' @export
 assertCompartmentExists <- function(ui, x) {
   .all <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .all <- x
     }
   }
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   .state <- rxode2::rxModelVars(.ui)$state
   for (.vn in .all) {
     checkmate::assertCharacter(
@@ -709,15 +782,14 @@ assertCompartmentExists <- function(ui, x) {
 
     if (.vn %in% .state) return(invisible(.vn))
   }
-  stop("'", paste(.all, collapse="', '"), "' compartment is not in the model",
-       call.=FALSE)
+  stop("'", paste(.all, collapse = "', '"), "' compartment is not in the model", call. = FALSE)
 }
 
 #' @describeIn assertCompartmentExists Test if compartment exists
 #' @export
 testCompartmentExists <- function(ui, x) {
   .vn <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .vn <- x
@@ -732,7 +804,7 @@ testCompartmentExists <- function(ui, x) {
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
 
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   (.vn %in% c(rxode2::rxModelVars(.ui)$state))
 }
 #' @describeIn assertCompartmentName Verify that a value is a valid
@@ -753,13 +825,13 @@ assertVariableName <- assertCompartmentName
 #' @author Matthew L. Fidler
 assertVariableExists <- function(ui, x) {
   .all <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .all <- x
     }
   }
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
 
   for (.vn in .all) {
@@ -775,21 +847,20 @@ assertVariableExists <- function(ui, x) {
       return(invisible(.vn))
     }
   }
-  stop("variable '", paste(.all, collapse="', '"), "' not in the model",
-       call.=FALSE)
+  stop("variable '", paste(.all, collapse = "', '"), "' not in the model", call. = FALSE)
 }
 
 #' @describeIn assertVariableExists Test if variable exists
 #' @export
 testVariableExists <- function(ui, x) {
   .all <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .all <- x
     }
   }
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
   for (.vn in .all) {
     checkmate::assertCharacter(
@@ -815,7 +886,7 @@ testVariableExists <- function(ui, x) {
 #' @author Matthew L. Fidler
 assertVariableNew <- function(ui, x) {
   .vn <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .vn <- x
@@ -830,11 +901,10 @@ assertVariableNew <- function(ui, x) {
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
 
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
-  if (.vn %in% c(.mv$lhs, .mv$params))  {
-    stop("variable '", .vn, "' is already in the model",
-         call.=FALSE)
+  if (.vn %in% c(.mv$lhs, .mv$params)) {
+    stop("variable '", .vn, "' is already in the model", call. = FALSE)
   }
   invisible()
 }
@@ -845,8 +915,8 @@ assertVariableNew <- function(ui, x) {
 assertParameterValue <- function(x) {
   checkmate::assertNumeric(
     x,
-    len=1,
-    any.missing=FALSE,
+    len = 1,
+    any.missing = FALSE,
     finite = TRUE,
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
@@ -856,7 +926,7 @@ assertParameterValue <- function(x) {
 #' @export
 assertExists <- function(ui, x) {
   .all <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .all <- x
@@ -872,19 +942,18 @@ assertExists <- function(ui, x) {
       .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
     )
 
-    .ui <-rxode2::assertRxUi(ui)
+    .ui <- rxode2::assertRxUi(ui)
     .mv <- rxode2::rxModelVars(.ui)
     if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(invisible(.vn))
   }
-  stop("'", paste(.all, collapse="', '"), "' not in the model",
-       call.=FALSE)
+  stop("'", paste(.all, collapse = "', '"), "' not in the model", call. = FALSE)
 }
 
 #' @describeIn assertCompartmentName Test compartment/variable exists
 #' @export
 testExists <- function(ui, x) {
   .vn <- as.character(substitute(x))
-  .tmp <- try(force(x), silent=TRUE)
+  .tmp <- try(force(x), silent = TRUE)
   if (!inherits(.tmp, "try-error")) {
     if (is.character(x)) {
       .vn <- x
@@ -899,9 +968,11 @@ testExists <- function(ui, x) {
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
 
-  .ui <-rxode2::assertRxUi(ui)
+  .ui <- rxode2::assertRxUi(ui)
   .mv <- rxode2::rxModelVars(.ui)
-  if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(TRUE)
+  if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) {
+    return(TRUE)
+  }
   FALSE
 }
 
@@ -913,20 +984,29 @@ testExists <- function(ui, x) {
 #' @return a named logical vector indicating whether each parameter is bounded
 #' @noRd
 #' @author Matthew L. Fidler
-.getRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
-  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+.getRxBounded <- function(ui, extra = "", .var.name = .vname(ui)) {
+  .ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   .iniDf <- .ui$iniDf
-  .theta <- .iniDf[which(!is.na(.iniDf$ntheta)),]
-  setNames(vapply(seq_along(.theta$name),
-               function(i) {
-                 .t <- .theta[i,]
-                 if (is.na(.t$err)) {
-                   return(is.finite(.t$upper) || is.finite(.t$lower))
-                 }
-                 .err <- .errDistArgRanges[[.t$err]]
-                 return (!identical(.t$lower, .err[1]) ||
-                           !identical(.t$upper, .err[2]))
-               }, logical(1), USE.NAMES=FALSE), .theta$name)
+  .theta <- .iniDf[which(!is.na(.iniDf$ntheta)), ]
+  setNames(
+    vapply(
+      seq_along(.theta$name),
+      function(i) {
+        .t <- .theta[i, ]
+        if (is.na(.t$err)) {
+          return(is.finite(.t$upper) || is.finite(.t$lower))
+        }
+        .err <- .errDistArgRanges[[.t$err]]
+        return(
+          !identical(.t$lower, .err[1]) ||
+            !identical(.t$upper, .err[2])
+        )
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    ),
+    .theta$name
+  )
 }
 #' Test if the rxode2 model has any parameters with user defined boundaries
 #'
@@ -968,22 +1048,27 @@ testRxUnbounded <- function(ui) {
 
 #' @describeIn testRxUnbounded Assert that the rxode2 model has any parameters with user defined boundaries
 #' @export
-assertRxUnbounded <- function(ui, extra="", .var.name=.vname(ui)) {
+assertRxUnbounded <- function(ui, extra = "", .var.name = .vname(ui)) {
   if (testRxUnbounded(ui)) {
     return(invisible(ui))
   }
-  stop("'", .var.name, "' can not have user defined boundaries", extra, call.=FALSE)
+  stop("'", .var.name, "' can not have user defined boundaries", extra, call. = FALSE)
 }
 
 #' @describeIn testRxUnbounded Warn that the rxode2 model has any parameters with user defined boundaries
 #' @export
-warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
-  .bound <- .getRxBounded(ui, extra=extra, .var.name=.var.name)
+warnRxBounded <- function(ui, extra = "", .var.name = .vname(ui)) {
+  .bound <- .getRxBounded(ui, extra = extra, .var.name = .var.name)
   .w <- which(.bound)
   if (length(.w) > 0) {
-    warning("'", .var.name, "' has the following user-defined boundaries: ",
-         paste(names(.bound)[.w], collapse=", "),
-         extra, call.=FALSE)
+    warning(
+      "'",
+      .var.name,
+      "' has the following user-defined boundaries: ",
+      paste(names(.bound)[.w], collapse = ", "),
+      extra,
+      call. = FALSE
+    )
   }
   invisible()
 }
@@ -1005,21 +1090,36 @@ testIniDf <- function(iniDf) {
     ## `prior` comes from 'lotri' and is only present with newer
     ## versions of it; since this is a subset check the same list works
     ## whether or not the column is there
-    checkmate::testSubset(names(iniDf),
-                          c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
-                            "fix", "label", "backTransform", "condition", "prior", "err"))
+    checkmate::testSubset(
+      names(iniDf),
+      c(
+        "ntheta",
+        "neta1",
+        "neta2",
+        "name",
+        "lower",
+        "est",
+        "upper",
+        "fix",
+        "label",
+        "backTransform",
+        "condition",
+        "prior",
+        "err"
+      )
+    )
   } else {
     FALSE
   }
 }
 #' @describeIn testIniDf Assert that the object is a valid rxode2 ui initialization data frame
 #' @export
-assertIniDf <- function(iniDf, extra="", .var.name=.vname(iniDf), null.ok = FALSE) {
+assertIniDf <- function(iniDf, extra = "", .var.name = .vname(iniDf), null.ok = FALSE) {
   if (testIniDf(iniDf)) {
     return(invisible(iniDf))
   }
   if (null.ok && is.null(iniDf)) {
     return(invisible(NULL))
   }
-  stop("'", .var.name, "' is not a rxode2 ui initial conditions data.frame", extra, call.=FALSE)
+  stop("'", .var.name, "' is not a rxode2 ui initial conditions data.frame", extra, call. = FALSE)
 }

@@ -1,5 +1,4 @@
 test_that("statePropDf test", {
-
   m1 <- function() {
     ini({
       KA   <- 2.94E-01
@@ -32,10 +31,12 @@ test_that("statePropDf test", {
 
   m1 <- m1()
 
-  e1 <- data.frame(Compartment = c("depot", "depot", "depot", "depot", "eff"),
-                   Property=c("ini", "f", "rate", "dur", "ini"))
+  e1 <- data.frame(
+    Compartment = c("depot", "depot", "depot", "depot", "eff"),
+    Property = c("ini", "f", "rate", "dur", "ini")
+  )
 
-  expect_equal(m1$statePropDf,e1)
+  expect_equal(m1$statePropDf, e1)
 
   m2 <- m1 |> model(-depot(0))
 
@@ -44,25 +45,19 @@ test_that("statePropDf test", {
     d
   }
 
-  expect_equal(m2$statePropDf,
-               .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "ini"), ]))
+  expect_equal(m2$statePropDf, .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "ini"), ]))
 
   m2 <- m1 |> model(-f(depot))
 
-  expect_equal(m2$statePropDf,
-               .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "f"), ]))
+  expect_equal(m2$statePropDf, .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "f"), ]))
 
   m2 <- m1 |> model(-dur(depot))
 
-  expect_equal(m2$statePropDf,
-               .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "dur"), ]))
+  expect_equal(m2$statePropDf, .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "dur"), ]))
 
   m2 <- m1 |> model(-rate(depot))
 
-  expect_equal(m2$statePropDf,
-               .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "rate"), ]))
-
-
+  expect_equal(m2$statePropDf, .noRow(e1[-which(e1$Compartment == "depot" & e1$Property == "rate"), ]))
 
   m1 <- function() {
     ini({
@@ -82,7 +77,5 @@ test_that("statePropDf test", {
   }
 
   m2 <- m1()
-  expect_equal(m2$statePropDf,
-               NULL)
-
+  expect_equal(m2$statePropDf, NULL)
 })

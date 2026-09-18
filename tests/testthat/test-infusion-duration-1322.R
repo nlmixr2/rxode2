@@ -1,5 +1,4 @@
 rxTest({
-
   # The solver-level consequences of the _getDur() infusion pairing and the
   # updateRate() index restore fixed in nlmixr2/rxode2#1322.  The pairing rules
   # themselves are tested against the C driver in test-getdur-1322.R.
@@ -48,8 +47,7 @@ rxTest({
     expect_true(is.na(s2$tl[s2$time == 0]))
     expect_equal(unique(s2$dd[s2$time > 0]), 100)
 
-    ref <- rxSolve(mod, et(amt = 100, rate = 100 / 8) |> et(seq(0, 24, by = 2)),
-                   c(lg = 2))
+    ref <- rxSolve(mod, et(amt = 100, rate = 100 / 8) |> et(seq(0, 24, by = 2)), c(lg = 2))
     expect_true(is.na(ref$dd[ref$time == 0]))
 
     # a steady state infusion with no modeled lag was already right
@@ -83,8 +81,7 @@ rxTest({
     expect_error(rxSolve(mod, ev, c(ri = -1)))
 
     # the failed solves must not leave anything behind
-    expect_equal(as.data.frame(rxSolve(mod, ev, c(ri = 2))),
-                 as.data.frame(good))
+    expect_equal(as.data.frame(rxSolve(mod, ev, c(ri = 2))), as.data.frame(good))
 
     # the other error return: the data asks for a modeled rate but the model
     # only supplies a modeled duration
@@ -99,5 +96,4 @@ rxTest({
 
     expect_error(rxSolve(modDur, ev, c(di = 3)))
   })
-
 })

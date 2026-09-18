@@ -3,7 +3,6 @@ rxTest({
   warfarin <- nlmixr2data::warfarin
 
   test_that("cmt() syntax makes sense", {
-
     mod <- rxode2({
       a <- 6
       b <- 0.6
@@ -23,7 +22,6 @@ rxTest({
 
     expect_equal(c("intestine", "blood"), rxState(mod))
 
-
     expect_error(suppressMessages(rxode2({
       a <- 6
       b <- 0.6
@@ -31,7 +29,6 @@ rxTest({
       d/dt(intestine) <- -a * intestine
       d/dt(blood) <- a * intestine - b * blood
     })))
-
 
     tmp <- rxode2({
       a <- 6
@@ -43,11 +40,9 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
     expect_equal(tmp$stateExtra, "matt")
-
   })
 
   test_that("Compartment melding with dvid", {
-
     w <- rxode2({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
@@ -83,8 +78,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 4L, 5L, 4L, 5L, 4L, 5L,
-        4L, 4L, 4L, 4L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -122,8 +134,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 4L, 5L, 4L, 5L, 4L, 5L,
-        4L, 4L, 4L, 4L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -132,8 +161,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 4L, 5L, 4L, 5L, 4L, 5L,
-        4L, 4L, 4L, 4L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -143,8 +189,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 4L, 5L, 4L, 5L, 4L, 5L,
-        4L, 4L, 4L, 4L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -154,8 +217,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 4L, 5L, 4L, 5L, 4L, 5L,
-        4L, 4L, 4L, 4L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -192,8 +272,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 1L, 5L, 1L, 5L, 1L, 5L,
-        1L, 1L, 1L, 1L
+        1L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        5L,
+        1L,
+        5L,
+        1L,
+        5L,
+        1L,
+        5L,
+        1L,
+        1L,
+        1L,
+        1L
       )
     )
 
@@ -230,8 +327,25 @@ rxTest({
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
-        1L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 5L, 4L, 5L, 4L, 5L, 4L,
-        5L, 5L, 5L, 5L
+        1L,
+        4L,
+        4L,
+        4L,
+        4L,
+        4L,
+        4L,
+        4L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        4L,
+        5L,
+        5L,
+        5L,
+        5L
       )
     )
 
@@ -400,8 +514,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L, 4L, 3L, 4L, 3L,
-        4L, 4L, 4L, 4L
+        1L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -413,8 +544,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 38L, 37L, 38L, 37L, 38L, 37L,
-        38L, 38L, 38L, 38L
+        1L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        38L,
+        38L,
+        38L
       )
     )
 
@@ -425,8 +573,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 38L, 37L, 38L, 37L, 38L, 37L,
-        38L, 38L, 38L, 38L
+        1L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        38L,
+        38L,
+        38L
       )
     )
 
@@ -442,8 +607,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 38L, 37L, 38L, 37L, 38L, 37L,
-        38L, 38L, 38L, 38L
+        1L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        38L,
+        38L,
+        38L
       )
     )
 
@@ -456,8 +638,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L, 4L, 3L, 4L, 3L,
-        4L, 4L, 4L, 4L
+        1L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -466,8 +665,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L, 4L, 3L, 4L, 3L,
-        4L, 4L, 4L, 4L
+        1L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        3L,
+        4L,
+        4L,
+        4L,
+        4L
       )
     )
 
@@ -481,8 +697,25 @@ rxTest({
     expect_equal(
       t2$CMT[t2$ID == 1],
       c(
-        1L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 37L, 38L, 37L, 38L, 37L, 38L, 37L,
-        38L, 38L, 38L, 38L
+        1L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        37L,
+        38L,
+        38L,
+        38L,
+        38L
       )
     )
 
@@ -560,9 +793,7 @@ rxTest({
     expect_equal(tmp$stateExtra, "cp")
   })
 
-  test_that("compartment ordering does not affect c-code generation #785",
-  {
-
+  test_that("compartment ordering does not affect c-code generation #785", {
     f1 <- function() {
       ini({
         TVCL <- c(0, 0.0308628127403366)
@@ -665,23 +896,19 @@ rxTest({
 
     f2 <- f2 |> zeroRe("omega")
 
-    ev     <- eventTable()
-    mybw   <- 70
-    mymw   <- 150000
+    ev <- eventTable()
+    mybw <- 70
+    mymw <- 150000
     mydgrp <- 50
-    ev$add.dosing(dose=mydgrp*mybw*1000000/mymw ,nbr.doses= 13, dosing.interval= 7)
-    ev$add.sampling(seq(0,13*7,length.out=7))
+    ev$add.dosing(dose = mydgrp * mybw * 1000000 / mymw, nbr.doses = 13, dosing.interval = 7)
+    ev$add.sampling(seq(0, 13 * 7, length.out = 7))
 
-    ev2 <- ev |> as.data.frame() |>
-      dplyr::mutate(BW=mybw, DGRP=mydgrp, SPEC=4)
+    ev2 <- ev |> as.data.frame() |> dplyr::mutate(BW = mybw, DGRP = mydgrp, SPEC = 4)
 
-    s2 <- rxSolve(f2, ev2, returnType="data.frame")
+    s2 <- rxSolve(f2, ev2, returnType = "data.frame")
 
-    s1 <- rxSolve(f1, ev2, returnType="data.frame")
+    s1 <- rxSolve(f1, ev2, returnType = "data.frame")
 
-    expect_equal(s1[,c("A1", "A2", "A3", "A4")],
-                 s2[,c("A1", "A2", "A3", "A4")])
-
+    expect_equal(s1[, c("A1", "A2", "A3", "A4")], s2[, c("A1", "A2", "A3", "A4")])
   })
-
 })

@@ -11,7 +11,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   if (!is.null(calcSens)) {
     return(rxSensMatExp(model = model, calcSens = calcSens, doConst = doConst))
   }
-  
+
   # 1. Parse model to get model variables and load symengine environment
   .mv <- rxModelVars(model)
   # promoteLinSens=FALSE: a linCmt() the conversion inlines into a rate constant
@@ -31,24 +31,24 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 
   # 2. Call the C/C++ registered function to get inductive linearization matrices
   .ret <- eval(parse(text = rxIndLin_((.states))))
-  
+
   # 3. Extract the coefficient matrix (rows/cols = states) and forcing function vector
   .ret0 <- .ret[.states, .states, drop = FALSE]
   .ret1 <- .ret[, "_rxF", drop = FALSE]
-  
+
   # 4. Construct the new model code
   .code <- c("matExp()")
-  
+
   # Add compartment declarations to ensure ordering
   for (.s in .states) {
     .code <- c(.code, paste0("cmt(", .s, ")"))
   }
-  
+
   # Extract off-diagonal transfer rates and diagonal output/elimination rates
   for (j in seq_along(.states)) {
     .cmt1 <- .states[j]
     .offTerms <- list()
-    
+
     # Off-diagonals: rate of transfer from cmt1 to cmt2
     for (i in seq_along(.states)) {
       .cmt2 <- .states[i]
@@ -71,7 +71,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
         }
       }
     }
-    
+
     # Diagonal column sum: elimination/output rate from cmt1
     .diag <- .ret0[j, j]
     if (.diag != "0" || length(.offTerms) > 0) {
@@ -95,7 +95,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       }
     }
   }
-  
+
   # Forcing functions: indLin property
   for (i in seq_along(.states)) {
     .cmt2 <- .states[i]
@@ -104,7 +104,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       .code <- c(.code, paste0("indLin(", .cmt2, ") <- ", .fVal))
     }
   }
-  
+
   # 4b. Explicit Jacobian (df/dy) lines.
   #
   # `calc_jac` is already declared and compiled for a matExp() model; it is
@@ -147,19 +147,22 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     names(.stateSym) <- .states
     for (.ii in seq_along(.states)) {
       .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")
-      if (!exists(.ddtName, envir = .env, inherits = FALSE)) next
+      if (!exists(.ddtName, envir = .env, inherits = FALSE)) {
+        next
+      }
       .rhsI <- base::get(.ddtName, envir = .env, inherits = FALSE)
       # A constant derivative -- `d/dt(depot) <- 0`, a common way to declare a
       # dosing-only compartment -- is stored as a plain numeric rather than a
       # symengine Basic, and symengine::D() rejects it outright.  Its row is
       # zero anyway, so there is nothing to emit.
-      if (!inherits(.rhsI, "Basic")) next
+      if (!inherits(.rhsI, "Basic")) {
+        next
+      }
       for (.jj in seq_along(.states)) {
         .d <- symengine::D(.rhsI, .stateSym[[.jj]])
         .dTxt <- rxFromSE(.d)
         if (!.rxIndLinIsZeroTxt(.dTxt)) {
-          .code <- c(.code, paste0("df(", .states[.ii], ")/dy(", .states[.jj],
-                                   ") = ", .dTxt))
+          .code <- c(.code, paste0("df(", .states[.ii], ")/dy(", .states[.jj], ") = ", .dTxt))
         }
       }
     }
@@ -177,12 +180,12 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
       }
     }
   }
-  
+
   # If there are no assignments in the code, append a dummy assignment to avoid "nothing in output queue to write" compiler error
   if (!any(grepl("=", .code) | grepl("<-", .code))) {
     .code <- c(.code, "dummy = 1")
   }
-  
+
   return(paste(.code, collapse = "\n"))
 }
 
@@ -234,9 +237,10 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 .rxIndLinReadsState <- function(e, statesSe) {
   # An expression whose symbols cannot be read is assumed to read one, which
   # leaves the caller on the length rule rather than on a claim it cannot back.
-  .v <- tryCatch(vapply(symengine::free_symbols(e), as.character, character(1)),
-                 error = function(.e) NULL)
-  if (is.null(.v)) return(TRUE)
+  .v <- tryCatch(vapply(symengine::free_symbols(e), as.character, character(1)), error = function(.e) NULL)
+  if (is.null(.v)) {
+    return(TRUE)
+  }
   any(.v %in% statesSe) || any(startsWith(.v, "rx__sens_"))
 }
 
@@ -268,14 +272,19 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxIndLinExpand <- function(e, statesSe = NULL) {
-  if (!inherits(e, "Basic")) return(e)
+  if (!inherits(e, "Basic")) {
+    return(e)
+  }
   .x <- tryCatch(symengine::expand(e), error = function(.e) NULL)
-  if (is.null(.x)) return(e)
-  if (!is.null(statesSe) && .rxIndLinReadsState(e, statesSe) &&
-      !.rxIndLinReadsState(.x, statesSe)) {
+  if (is.null(.x)) {
+    return(e)
+  }
+  if (!is.null(statesSe) && .rxIndLinReadsState(e, statesSe) && !.rxIndLinReadsState(.x, statesSe)) {
     return(.x)
   }
-  if (nchar(as.character(.x)) > nchar(as.character(e))) return(e)
+  if (nchar(as.character(.x)) > nchar(as.character(e))) {
+    return(e)
+  }
   .x
 }
 
@@ -319,16 +328,22 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     .add(symengine::D(expr, symengine::Symbol(byVarSe)))
   }
   for (.i in seq_along(states)) {
-    if (!(statesSe[[.i]] %in% .vars)) next
+    if (!(statesSe[[.i]] %in% .vars)) {
+      next
+    }
     .dl <- symengine::D(expr, symengine::Symbol(statesSe[[.i]]))
     if (!.rxIndLinIsZero(.dl)) {
       .add(.dl * symengine::Symbol(paste0("rx__sens_", states[[.i]], "_BY_", byVar, "__")))
     }
   }
   for (.s in .vars) {
-    if (!startsWith(.s, "rx__sens_") || !endsWith(.s, "__")) next
+    if (!startsWith(.s, "rx__sens_") || !endsWith(.s, "__")) {
+      next
+    }
     .ds <- symengine::D(expr, symengine::Symbol(.s))
-    if (.rxIndLinIsZero(.ds)) next
+    if (.rxIndLinIsZero(.ds)) {
+      next
+    }
     .target <- paste0(substring(.s, 1L, nchar(.s) - 2L), "_BY_", byVar, "__")
     .add(.ds * symengine::Symbol(.target))
   }
@@ -366,7 +381,9 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   .env <- new.env(parent = emptyenv())
   .order <- character(0)
   .add <- function(from, to, val) {
-    if (.rxIndLinIsZero(val)) return(invisible())
+    if (.rxIndLinIsZero(val)) {
+      return(invisible())
+    }
     .key <- paste0(from, "\r", to)
     if (!exists(.key, envir = .env, inherits = FALSE)) {
       .order <<- c(.order, .key)
@@ -382,7 +399,9 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     .lines <- character(0)
     for (.key in .order) {
       .val <- base::get(.key, envir = .env, inherits = FALSE)
-      if (.rxIndLinIsZero(.val)) next
+      if (.rxIndLinIsZero(.val)) {
+        next
+      }
       .parts <- strsplit(.key, "\r", fixed = TRUE)[[1L]]
       .lines <- c(.lines, paste0("k_", .parts[1L], "_", .parts[2L], "_nd = ", rxFromSE(.val)))
     }
@@ -424,7 +443,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       stop("'calcSens2' must be a character vector of parameter names.", call. = FALSE)
     }
     if (!all(calcSens2 %in% calcSens)) {
-      stop("'calcSens2' must be a subset of 'calcSens' (every second-order parameter needs its own first-order sensitivity).", call. = FALSE)
+      stop(
+        "'calcSens2' must be a subset of 'calcSens' (every second-order parameter needs its own first-order sensitivity).",
+        call. = FALSE
+      )
     }
   }
   if (!is.null(calcSens3)) {
@@ -435,7 +457,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
       stop("'calcSens3' must be a character vector of parameter names.", call. = FALSE)
     }
     if (!all(calcSens3 %in% calcSens2)) {
-      stop("'calcSens3' must be a subset of 'calcSens2' (every third-order parameter needs its own second-order sensitivity).", call. = FALSE)
+      stop(
+        "'calcSens3' must be a subset of 'calcSens2' (every third-order parameter needs its own second-order sensitivity).",
+        call. = FALSE
+      )
     }
   }
 
@@ -474,8 +499,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # classifies a forcing on -- `.states` drops the linCmt() pseudo-compartments
   # (they have no matExp dynamics of their own), but a forcing that reads one
   # still moves within the step and still has to take the iterating driver.
-  .cmtSe <- c(.statesSe,
-              vapply(.rxLinCmt(.mv), .toSe, character(1), USE.NAMES = FALSE))
+  .cmtSe <- c(.statesSe, vapply(.rxLinCmt(.mv), .toSe, character(1), USE.NAMES = FALSE))
   .parSe <- vapply(unique(c(calcSens, calcSens2, calcSens3)), .toSe, character(1))
 
   # 2. Split the system the way indLin() does: dX/dt = A.X + F(X), with A
@@ -598,9 +622,13 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   #    symengine entry must be bound to a plain local first.
   for (.j in .states) {
     for (.i in .states) {
-      if (.i == .j) next
+      if (.i == .j) {
+        next
+      }
       .aij <- .A[[.i]][[.j]]
-      if (.rxIndLinIsZero(.aij)) next
+      if (.rxIndLinIsZero(.aij)) {
+        next
+      }
       .kname <- paste0("k_", .j, "_", .i)
       .val <- rxFromSE(.aij)
       # A matExp()-form input can carry the rate as a model parameter, in which
@@ -661,7 +689,9 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     #     originals (reuse the original micro-constants).
     for (.j in .states) {
       for (.i in .states) {
-        if (.i == .j) next
+        if (.i == .j) {
+          next
+        }
         if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
           .code <- c(.code, paste0("k_", .S(.j), "_", .S(.i), " = k_", .j, "_", .i))
         }
@@ -686,9 +716,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     #     which is exactly .rxIndLinTotalD() (rxode2#1187).
     for (.i in .states) {
       .fi <- .force[[.i]]
-      if (.rxIndLinIsZero(.fi)) next
-      .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe),
-                            .cmtSe)
+      if (.rxIndLinIsZero(.fi)) {
+        next
+      }
+      .g <- .rxIndLinExpand(.rxIndLinTotalD(.fi, .p, .states, .statesSe, .pSe), .cmtSe)
       if (!.rxIndLinIsZero(.g)) {
         .code <- c(.code, paste0("indLin(", .S(.i), ") <- ", rxFromSE(.g)))
       }
@@ -717,7 +748,9 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         # homogeneous block: S^{pq} obeys the same dynamics as X / S^p (reuse).
         for (.j in .states) {
           for (.i in .states) {
-            if (.i == .j) next
+            if (.i == .j) {
+              next
+            }
             if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
               .code <- c(.code, paste0("k_", .S2(.j), "_", .S2(.i), " = k_", .j, "_", .i))
             }
@@ -751,9 +784,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
         # is keyed by one target compartment, so p == q still gives one line.
         for (.i in .states) {
           .fi <- .force[[.i]]
-          if (.rxIndLinIsZero(.fi)) next
-          .g2 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe,
-                                                 c(.pSe, .qSe)), .cmtSe)
+          if (.rxIndLinIsZero(.fi)) {
+            next
+          }
+          .g2 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q), .states, .statesSe, c(.pSe, .qSe)), .cmtSe)
           if (!.rxIndLinIsZero(.g2)) {
             .code <- c(.code, paste0("indLin(", .S2(.i), ") <- ", rxFromSE(.g2)))
           }
@@ -793,7 +827,9 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           # homogeneous block: S^{pqr} obeys the same dynamics (reuse).
           for (.j in .states) {
             for (.i in .states) {
-              if (.i == .j) next
+              if (.i == .j) {
+                next
+              }
               if (!.rxIndLinIsZero(.A[[.i]][[.j]])) {
                 .code <- c(.code, paste0("k_", .S3(.j), "_", .S3(.i), " = k_", .j, "_", .i))
               }
@@ -832,9 +868,10 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
           # as second order -- a forcing is keyed by one target compartment.
           for (.i in .states) {
             .fi <- .force[[.i]]
-            if (.rxIndLinIsZero(.fi)) next
-            .g3 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe,
-                                                   c(.pSe, .qSe, .rSe)), .cmtSe)
+            if (.rxIndLinIsZero(.fi)) {
+              next
+            }
+            .g3 <- .rxIndLinExpand(.rxIndLinChainD(.fi, c(.p, .q, .r), .states, .statesSe, c(.pSe, .qSe, .rSe)), .cmtSe)
             if (!.rxIndLinIsZero(.g3)) {
               .code <- c(.code, paste0("indLin(", .S3(.i), ") <- ", rxFromSE(.g3)))
             }
@@ -849,9 +886,14 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   .normModel <- .mv$model["normModel"]
   .lines <- trimws(unlist(strsplit(.normModel, "[\n;]")))
   for (.l in .lines) {
-    if (nzchar(.l) && !grepl("^d/dt\\(", .l) && !grepl("^cmt\\(", .l) &&
-        !grepl("^matExp\\(", .l) && !grepl("^indLin\\(", .l) &&
-        !grepl("^k[_.][^=]*<?=", .l)) {
+    if (
+      nzchar(.l) &&
+        !grepl("^d/dt\\(", .l) &&
+        !grepl("^cmt\\(", .l) &&
+        !grepl("^matExp\\(", .l) &&
+        !grepl("^indLin\\(", .l) &&
+        !grepl("^k[_.][^=]*<?=", .l)
+    ) {
       .code <- c(.code, .l)
     }
   }

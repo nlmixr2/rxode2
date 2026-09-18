@@ -12,8 +12,7 @@ rxTest({
 
     expect_s3_class(got, "data.frame")
     expect_false(inherits(got, "rxEt"))
-    expect_equal(names(got), c("id", "low", "time", "high", "cmt", "amt",
-                               "rate", "ii", "addl", "evid", "ss", "dur"))
+    expect_equal(names(got), c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur"))
     expect_equal(sum(got$evid == 3L, na.rm = TRUE), 1L)
   })
 
@@ -54,22 +53,22 @@ test_that("rxEt objects with compatible units can be combined", {
   library(units)
 
   # Create two event tables with different but compatible dosing units
-  et1 <- et(amount.units="mg", time.units="hr") %>% et(amt=1, time=1)
-  et2 <- et(amount.units="g", time.units="hr") %>% et(amt=1, time=2)
+  et1 <- et(amount.units = "mg", time.units = "hr") %>% et(amt = 1, time = 1)
+  et2 <- et(amount.units = "g", time.units = "hr") %>% et(amt = 1, time = 2)
 
   # Combine them using vctrs::vec_c (which is used by dplyr::bind_rows)
   # Based on existing design, this returns a data.frame
   res <- vctrs::vec_c(et1, et2)
 
   expect_s3_class(res, "data.frame")
-  
+
   # The second dose (1g) should be converted to 1000mg in the units-aware column
   expect_equal(as.numeric(res$amt), c(1, 1000))
-  
+
   # Now check time units
-  et3 <- et(amount.units="mg", time.units="hr") %>% et(amt=1, time=1)
-  et4 <- et(amount.units="mg", time.units="min") %>% et(amt=1, time=60)
-  
+  et3 <- et(amount.units = "mg", time.units = "hr") %>% et(amt = 1, time = 1)
+  et4 <- et(amount.units = "mg", time.units = "min") %>% et(amt = 1, time = 60)
+
   res2 <- vctrs::vec_c(et3, et4)
   # The second time (60 min) should be converted to 1 hr
   expect_equal(as.numeric(res2$time), c(1, 1))
@@ -77,8 +76,8 @@ test_that("rxEt objects with compatible units can be combined", {
 
 test_that("rxEt objects with incompatible units throw error", {
   skip_if_not_installed("units")
-  et1 <- et(amount.units="mg", time.units="hr") %>% et(amt=1, time=1)
-  et2 <- et(amount.units="m", time.units="hr") %>% et(amt=1, time=1)
-  
+  et1 <- et(amount.units = "mg", time.units = "hr") %>% et(amt = 1, time = 1)
+  et2 <- et(amount.units = "m", time.units = "hr") %>% et(amt = 1, time = 1)
+
   expect_error(vctrs::vec_c(et1, et2), "incompatible dose units")
 })

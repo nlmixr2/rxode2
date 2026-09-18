@@ -4,15 +4,25 @@
     assignInMyNamespace("guide_none", .ggplot2$guide_none)
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.3.6.9000") < 0) {
-    assignInMyNamespace("GeomAmt",
-                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
-                                         required_aes = c("x", "y", "xend", "yend"),
-                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")))
+    assignInMyNamespace(
+      "GeomAmt",
+      ggplot2::ggproto(
+        "GeomAmt",
+        ggplot2::GeomSegment,
+        required_aes = c("x", "y", "xend", "yend"),
+        default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")
+      )
+    )
   } else {
-    assignInMyNamespace("GeomAmt",
-                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
-                                         required_aes = c("x", "y", "xend", "yend"),
-                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", linewidth = 0.5, alpha = 1, fill = "black")))
+    assignInMyNamespace(
+      "GeomAmt",
+      ggplot2::ggproto(
+        "GeomAmt",
+        ggplot2::GeomSegment,
+        required_aes = c("x", "y", "xend", "yend"),
+        default_aes = ggplot2::aes(colour = "black", linetype = "dotted", linewidth = 0.5, alpha = 1, fill = "black")
+      )
+    )
   }
 }
 .hasUnits <- FALSE
@@ -47,15 +57,16 @@
 #' captures the leaked values; loading rxode2 before compiling Stan
 #' models -- the usual order -- captures the clean state.)
 #' @noRd
-.rxCompileEnvVars <- c("PKG_CPPFLAGS", "PKG_CXXFLAGS", "PKG_CFLAGS",
-                       "PKG_LIBS", "PKG_FFLAGS", "USE_CXX17", "USE_CXX14")
+.rxCompileEnvVars <- c("PKG_CPPFLAGS", "PKG_CXXFLAGS", "PKG_CFLAGS", "PKG_LIBS", "PKG_FFLAGS", "USE_CXX17", "USE_CXX14")
 .rxCompileEnvClean <- new.env(parent = emptyenv())
 
 #' Evaluate `expr` with the load-time (clean) compiler environment
 #' @noRd
 .rxWithCleanCompileEnv <- function(expr) {
   .clean <- get0("snapshot", envir = .rxCompileEnvClean)
-  if (is.null(.clean)) return(force(expr))
+  if (is.null(.clean)) {
+    return(force(expr))
+  }
   .cur <- Sys.getenv(.rxCompileEnvVars, unset = NA_character_)
   .set <- function(vals) {
     for (.v in .rxCompileEnvVars) {
@@ -75,13 +86,12 @@
 .onLoad <- function(libname, pkgname) {
   # snapshot the build environment BEFORE anything can leak into it (see
   # .rxWithCleanCompileEnv)
-  assign("snapshot", Sys.getenv(.rxCompileEnvVars, unset = NA_character_),
-         envir = .rxCompileEnvClean)
+  assign("snapshot", Sys.getenv(.rxCompileEnvVars, unset = NA_character_), envir = .rxCompileEnvClean)
   .ver <- .rxVersion
   .ver["version"] <- as.character(utils::packageVersion("rxode2"))
   assignInMyNamespace(".rxVersion", .ver)
   ## data.table is an Imports and is used unconditionally, so keep it eager
-  requireNamespace("data.table", quietly=TRUE)
+  requireNamespace("data.table", quietly = TRUE)
   ## `.s3register()` registers immediately when the other namespace is
   ## already loaded and otherwise installs an onLoad hook, so the suggested
   ## packages must not be loaded here -- doing so made `library(rxode2)`
@@ -186,7 +196,10 @@
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
   packageStartupMessage(
-    "rxode2 ", v, " using ", getRxThreads(verbose = FALSE),
+    "rxode2 ",
+    v,
+    " using ",
+    getRxThreads(verbose = FALSE),
     " threads (see ?getRxThreads)",
     ifelse(.cacheIsTemp, "\n  no cache: create with `rxCreateCache()`", "")
   )
@@ -217,7 +230,9 @@
   if (!file.exists(.tmp)) {
     dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
   } else if (!file.exists(file.path(.tmp, paste0(rxode2.md5, ".md5")))) {
-    if (!.cacheIsTemp) packageStartupMessage("detected new version of rxode2, cleaning cache")
+    if (!.cacheIsTemp) {
+      packageStartupMessage("detected new version of rxode2, cleaning cache")
+    }
     unlink(.tmp, recursive = TRUE, force = TRUE)
     dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
     writeLines("rxode2", file.path(.tmp, paste0(rxode2.md5, ".md5")))
@@ -280,7 +295,7 @@ rxCreateCache <- function() {
   .tmp <- .normalizePath(.tmp)
   Sys.setenv(rxTempDir = .tmp)
   utils::assignInMyNamespace(".rxTempDir0", .tmp)
-  options(rxode2.cache.directory=.tmp)
+  options(rxode2.cache.directory = .tmp)
   invisible()
 }
 
@@ -303,10 +318,10 @@ rxForget <- function() {
     .ns <- getNamespace("rxode2")
     .fns <- Filter(
       function(fn) {
-        .v <- get(fn, envir=.ns, inherits=FALSE)
+        .v <- get(fn, envir = .ns, inherits = FALSE)
         is.function(.v) && memoise::is.memoised(.v)
       },
-      ls(envir=.ns)
+      ls(envir = .ns)
     )
     assignInMyNamespace(".rxMemoisedFns", .fns)
   }
@@ -376,8 +391,8 @@ rxSuppressMsg <- function() {
 rxSyncOptions <- function(setDefaults = c("none", "permissive", "strict")) {
   setDefaults <- match.arg(setDefaults)
   if (setDefaults == "permissive") {
-    options(rxode2.syntax.allow.ini=TRUE)
+    options(rxode2.syntax.allow.ini = TRUE)
   } else if (setDefaults == "strict") {
-    options(rxode2.syntax.allow.ini=FALSE)
+    options(rxode2.syntax.allow.ini = FALSE)
   }
 }

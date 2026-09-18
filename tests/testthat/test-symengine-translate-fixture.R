@@ -20,10 +20,14 @@ rxTest({
   # non-numeric skeleton exactly and the numbers numerically.
   .sameButForRounding <- function(a, b) {
     .num <- "[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?"
-    if (!identical(gsub(.num, "<n>", a), gsub(.num, "<n>", b))) return(FALSE)
+    if (!identical(gsub(.num, "<n>", a), gsub(.num, "<n>", b))) {
+      return(FALSE)
+    }
     .a <- as.numeric(regmatches(a, gregexpr(.num, a))[[1]])
     .b <- as.numeric(regmatches(b, gregexpr(.num, b))[[1]])
-    if (length(.a) != length(.b) || length(.a) == 0L) return(FALSE)
+    if (length(.a) != length(.b) || length(.a) == 0L) {
+      return(FALSE)
+    }
     isTRUE(all.equal(.a, .b, tolerance = 1e-14))
   }
 
@@ -33,24 +37,43 @@ rxTest({
     .got <- character(nrow(df))
     .gotErr <- logical(nrow(df))
     for (.i in seq_len(nrow(df))) {
-      .r <- tryCatch(fn(df$input[.i]),
-                     error = function(e) {
-                       .gotErr[.i] <<- TRUE
-                       conditionMessage(e)
-                     })
+      .r <- tryCatch(fn(df$input[.i]), error = function(e) {
+        .gotErr[.i] <<- TRUE
+        conditionMessage(e)
+      })
       .got[.i] <- if (is.character(.r) && length(.r) == 1L) .r else "<non-character>"
     }
     .bad <- which(.got != df$output | .gotErr != df$isError)
-    .bad <- .bad[!vapply(.bad, function(.i)
-      .sameButForRounding(.got[.i], df$output[.i]), logical(1))]
+    .bad <- .bad[
+      !vapply(
+        .bad,
+        function(.i) {
+          .sameButForRounding(.got[.i], df$output[.i])
+        },
+        logical(1)
+      )
+    ]
     if (length(.bad) > 0L) {
       .n <- min(length(.bad), 10L)
       .msg <- paste0(
-        what, ": ", length(.bad), " of ", nrow(df), " translations changed\n",
-        paste0("  input:    ", df$input[.bad[seq_len(.n)]], "\n",
-               "  expected: ", df$output[.bad[seq_len(.n)]], "\n",
-               "  got:      ", .got[.bad[seq_len(.n)]],
-               collapse = "\n"))
+        what,
+        ": ",
+        length(.bad),
+        " of ",
+        nrow(df),
+        " translations changed\n",
+        paste0(
+          "  input:    ",
+          df$input[.bad[seq_len(.n)]],
+          "\n",
+          "  expected: ",
+          df$output[.bad[seq_len(.n)]],
+          "\n",
+          "  got:      ",
+          .got[.bad[seq_len(.n)]],
+          collapse = "\n"
+        )
+      )
     } else {
       .msg <- ""
     }
@@ -60,8 +83,10 @@ rxTest({
   test_that("the symengine translation fixture is present and non-trivial", {
     expect_true(file.exists(.fixtureFile))
     .f <- readRDS(.fixtureFile)
-    expect_true(all(c("fromSE", "fromSEforward", "fromSEcentral", "toSE") %in%
-                      names(.f)))
+    expect_true(all(
+      c("fromSE", "fromSEforward", "fromSEcentral", "toSE") %in%
+        names(.f)
+    ))
     # guard against a truncated/empty regeneration silently passing everything
     expect_gt(nrow(.f$fromSE), 400L)
     expect_gt(nrow(.f$toSE), 100L)
@@ -75,11 +100,9 @@ rxTest({
 
   test_that("rxFromSE() unknownDerivatives= modes are unchanged", {
     .f <- readRDS(.fixtureFile)
-    .rf <- .cmp(.f$fromSEforward,
-                function(x) rxode2::rxFromSE(x, "forward"), "rxFromSE(forward)")
+    .rf <- .cmp(.f$fromSEforward, function(x) rxode2::rxFromSE(x, "forward"), "rxFromSE(forward)")
     expect_equal(.rf$nbad, 0L, info = .rf$msg)
-    .rc <- .cmp(.f$fromSEcentral,
-                function(x) rxode2::rxFromSE(x, "central"), "rxFromSE(central)")
+    .rc <- .cmp(.f$fromSEcentral, function(x) rxode2::rxFromSE(x, "central"), "rxFromSE(central)")
     expect_equal(.rc$nbad, 0L, info = .rc$msg)
   })
 
@@ -98,17 +121,36 @@ rxTest({
     expect_gt(length(.h), 100L) # it must actually be doing something
 
     .bad <- .h[.got[.h] != .df$output[.h] | .df$isError[.h]]
-    .bad <- .bad[!vapply(.bad, function(.i)
-      .sameButForRounding(.got[.i], .df$output[.i]), logical(1))]
+    .bad <- .bad[
+      !vapply(
+        .bad,
+        function(.i) {
+          .sameButForRounding(.got[.i], .df$output[.i])
+        },
+        logical(1)
+      )
+    ]
     .msg <- ""
     if (length(.bad) > 0L) {
       .n <- min(length(.bad), 10L)
       .msg <- paste0(
-        "C emitter disagrees on ", length(.bad), " of ", length(.h),
+        "C emitter disagrees on ",
+        length(.bad),
+        " of ",
+        length(.h),
         " accepted expressions\n",
-        paste0("  input:    ", .df$input[.bad[seq_len(.n)]], "\n",
-               "  expected: ", .df$output[.bad[seq_len(.n)]], "\n",
-               "  got:      ", .got[.bad[seq_len(.n)]], collapse = "\n"))
+        paste0(
+          "  input:    ",
+          .df$input[.bad[seq_len(.n)]],
+          "\n",
+          "  expected: ",
+          .df$output[.bad[seq_len(.n)]],
+          "\n",
+          "  got:      ",
+          .got[.bad[seq_len(.n)]],
+          collapse = "\n"
+        )
+      )
     }
     expect_equal(length(.bad), 0L, info = .msg)
   })
@@ -118,10 +160,12 @@ rxTest({
     .in <- .f$fromSE$input[!.f$fromSE$isError]
     .withC <- withr::with_options(
       list(rxode2.symengineC = TRUE),
-      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE)
+    )
     .withR <- withr::with_options(
       list(rxode2.symengineC = FALSE),
-      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE)
+    )
     expect_equal(.withC, .withR)
   })
 
@@ -133,20 +177,39 @@ rxTest({
     .df <- .f$toSE
     .got <- .rxToSEC(.df$input)
     .h <- which(!is.na(.got))
-    expect_gt(length(.h), 80L)   # it must actually be doing something
+    expect_gt(length(.h), 80L) # it must actually be doing something
 
     .bad <- .h[.got[.h] != .df$output[.h] | .df$isError[.h]]
-    .bad <- .bad[!vapply(.bad, function(.i)
-      .sameButForRounding(.got[.i], .df$output[.i]), logical(1))]
+    .bad <- .bad[
+      !vapply(
+        .bad,
+        function(.i) {
+          .sameButForRounding(.got[.i], .df$output[.i])
+        },
+        logical(1)
+      )
+    ]
     .msg <- ""
     if (length(.bad) > 0L) {
       .n <- min(length(.bad), 10L)
       .msg <- paste0(
-        "rxToSE C emitter disagrees on ", length(.bad), " of ", length(.h),
+        "rxToSE C emitter disagrees on ",
+        length(.bad),
+        " of ",
+        length(.h),
         " accepted expressions\n",
-        paste0("  input:    ", .df$input[.bad[seq_len(.n)]], "\n",
-               "  expected: ", .df$output[.bad[seq_len(.n)]], "\n",
-               "  got:      ", .got[.bad[seq_len(.n)]], collapse = "\n"))
+        paste0(
+          "  input:    ",
+          .df$input[.bad[seq_len(.n)]],
+          "\n",
+          "  expected: ",
+          .df$output[.bad[seq_len(.n)]],
+          "\n",
+          "  got:      ",
+          .got[.bad[seq_len(.n)]],
+          collapse = "\n"
+        )
+      )
     }
     expect_equal(length(.bad), 0L, info = .msg)
   })
@@ -156,10 +219,12 @@ rxTest({
     .in <- .f$toSE$input[!.f$toSE$isError]
     .withC <- withr::with_options(
       list(rxode2.symengineC = TRUE),
-      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE)
+    )
     .withR <- withr::with_options(
       list(rxode2.symengineC = FALSE),
-      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxToSE(x), character(1), USE.NAMES = FALSE)
+    )
     expect_equal(.withC, .withR)
   })
 

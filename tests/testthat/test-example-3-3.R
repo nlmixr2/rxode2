@@ -19,7 +19,6 @@ d/dt(y3) = a3*y1*y2;
 
     out <- solve(rigid, et, inits = c(y1 = 1, y2 = 0, y3 = 0.9))
 
-
     test_that("Test rigid body example", {
       # fmt: skip
       expect_equal(

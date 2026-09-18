@@ -39,33 +39,57 @@
 #'
 #' @return the resolved id value after checking for aliases and conflicts
 #' @noRd
-.etAssertArgsAndReturnId <- function(dotArgs, id, ii, amt, cmt, timeUnits, time, dur,
-                                     idMissing, iiMissing, amtMissing, cmtMissing,
-                                     timeUnitsMissing, timeMissing, durMissing) {
+.etAssertArgsAndReturnId <- function(
+  dotArgs,
+  id,
+  ii,
+  amt,
+  cmt,
+  timeUnits,
+  time,
+  dur,
+  idMissing,
+  iiMissing,
+  amtMissing,
+  cmtMissing,
+  timeUnitsMissing,
+  timeMissing,
+  durMissing
+) {
   # Uppercase ID alias -> id
   if (!is.null(dotArgs[["ID"]]) && idMissing) {
     id <- dotArgs[["ID"]]
   }
-  if (!is.null(dotArgs[["dosing.interval"]]) && !iiMissing)
+  if (!is.null(dotArgs[["dosing.interval"]]) && !iiMissing) {
     stop("cannot specify both 'ii' and 'dosing.interval'", call. = FALSE)
-  if (!is.null(dotArgs[["dose"]]) && !amtMissing)
+  }
+  if (!is.null(dotArgs[["dose"]]) && !amtMissing) {
     stop("cannot specify both 'amt' and 'dose'", call. = FALSE)
-  if (!is.null(dotArgs[["dosing.to"]]) && !cmtMissing)
+  }
+  if (!is.null(dotArgs[["dosing.to"]]) && !cmtMissing) {
     stop("cannot specify both 'cmt' and 'dosing.to'", call. = FALSE)
-  if (!is.null(dotArgs[["dose.to"]]) && !cmtMissing)
+  }
+  if (!is.null(dotArgs[["dose.to"]]) && !cmtMissing) {
     stop("cannot specify both 'cmt' and 'dose.to'", call. = FALSE)
-  if (!is.null(dotArgs[["state"]]) && !cmtMissing)
+  }
+  if (!is.null(dotArgs[["state"]]) && !cmtMissing) {
     stop("cannot specify both 'cmt' and 'state'", call. = FALSE)
-  if (!is.null(dotArgs[["amt.units"]]) && !is.null(dotArgs[["dose.units"]]))
+  }
+  if (!is.null(dotArgs[["amt.units"]]) && !is.null(dotArgs[["dose.units"]])) {
     stop("cannot specify both 'amt.units' and 'dose.units'", call. = FALSE)
-  if (!is.null(dotArgs[["time.units"]]) && !timeUnitsMissing)
+  }
+  if (!is.null(dotArgs[["time.units"]]) && !timeUnitsMissing) {
     stop("cannot specify both 'time.units' and 'timeUnits'", call. = FALSE)
-  if (!is.null(dotArgs[["start.time"]]) && !timeMissing)
+  }
+  if (!is.null(dotArgs[["start.time"]]) && !timeMissing) {
     stop("cannot specify both 'time' and 'start.time'", call. = FALSE)
-  if (!is.null(dotArgs[["nbr.doses"]]) && !is.null(dotArgs[["nbrDoses"]]))
+  }
+  if (!is.null(dotArgs[["nbr.doses"]]) && !is.null(dotArgs[["nbrDoses"]])) {
     stop("cannot specify both 'nbr.doses' and 'nbrDoses'", call. = FALSE)
-  if (!is.null(dotArgs[["duration"]]) && !durMissing)
+  }
+  if (!is.null(dotArgs[["duration"]]) && !durMissing) {
     stop("cannot specify both 'dur' and 'duration'", call. = FALSE)
+  }
   id
 }
 #' This function handles the sequence type of arguments
@@ -119,10 +143,10 @@
 #'
 #' @author Matthew L. Fidler
 #'
-.etHandleSeq <- function(by, length.out, xIsRxEt, envRef, x, ..., envir,
-                         time, et, xMissing, timeMissing) {
-  if (!is.null(by) && !is.null(length.out))
+.etHandleSeq <- function(by, length.out, xIsRxEt, envRef, x, ..., envir, time, et, xMissing, timeMissing) {
+  if (!is.null(by) && !is.null(length.out)) {
     stop("cannot specify both 'by' and 'length.out'", call. = FALSE)
+  }
   if (!is.null(by) || !is.null(length.out)) {
     if (xIsRxEt && length(envRef$ids) > 0L) {
       .seqTargetIds <- envRef$ids
@@ -138,9 +162,12 @@
     } else {
       .xVal <- NULL
     }
-    .dotsNum <- Filter(function(.v) {
-      is.numeric(.v) || is.integer(.v)
-    }, .seqDots)
+    .dotsNum <- Filter(
+      function(.v) {
+        is.numeric(.v) || is.integer(.v)
+      },
+      .seqDots
+    )
 
     # Also check named from/to in ...
     if (!is.null(.seqDots[["from"]])) {
@@ -159,8 +186,10 @@
       .toVal <- .dotsNum[[2L]]
     }
 
-    if (!is.null(.fromVal) &&
-          (is.numeric(.fromVal) || is.integer(.fromVal))) {
+    if (
+      !is.null(.fromVal) &&
+        (is.numeric(.fromVal) || is.integer(.fromVal))
+    ) {
       .from <- as.numeric(.fromVal)
       if (length(.from) != 1L) {
         stop("'from' must be scalar", call. = FALSE)
@@ -209,11 +238,13 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etHandlePositionalRange <- function(xVal, dots, envRef, et) {
-  if (length(dots) == 1 &&
-        !is.null(xVal) &&
-        length(xVal) == 1 &&
-        (is.numeric(xVal) || is.integer(xVal)) &&
-        (is.numeric(dots[[1]]) || is.integer(dots[[1]]))) {
+  if (
+    length(dots) == 1 &&
+      !is.null(xVal) &&
+      length(xVal) == 1 &&
+      (is.numeric(xVal) || is.integer(xVal)) &&
+      (is.numeric(dots[[1]]) || is.integer(dots[[1]]))
+  ) {
     #et(1, 20) add obs seq(1, 20)
     .resolvedTime <- seq(from = as.numeric(xVal), to = as.numeric(dots[[1]]))
     .df <- .etObsChunk(.resolvedTime) # nolint
@@ -244,17 +275,18 @@
   .df <- as.data.frame(xVal)
   # as.data.frame() may drop it; re-tag first so the rename below tracks it
   .extra <- .etExtraColsAttr(xVal) # nolint
-  if (length(.extra) > 0L) attr(.df, "rxEtExtraCols") <- .extra
+  if (length(.extra) > 0L) {
+    attr(.df, "rxEtExtraCols") <- .extra
+  }
   .df <- .etImportNormalizeNames(.df)
   # Convert deSolve-style (var/value/method) to canonical rxEt format
   if (!is.null(.df$var) && !is.null(.df$value) && is.null(.df$amt) && is.null(.df$evid)) {
-    .df$cmt   <- .df$var
-    .df$var   <- NULL
-    .df$amt   <- .df$value
+    .df$cmt <- .df$var
+    .df$var <- NULL
+    .df$amt <- .df$value
     .df$value <- NULL
     if (!is.null(.df$method)) {
-      .df$evid <- ifelse(.df$method == "rep", 5L,
-                         ifelse(.df$method == "mult", 6L, 1L))
+      .df$evid <- ifelse(.df$method == "rep", 5L, ifelse(.df$method == "mult", 6L, 1L))
       .df$method <- NULL
     } else {
       .df$evid <- 1L
@@ -279,24 +311,26 @@
       .df$rate[.obsIdx] <- NA_real_
     }
     if (!is.null(.df$amt)) {
-      .df$amt[.obsIdx]  <- NA_real_
+      .df$amt[.obsIdx] <- NA_real_
     }
   }
-  envRef$ids    <- sort(unique(.df$id))
-  envRef$nobs   <- envRef$nobs  + sum(.obsIdx)
-  envRef$ndose  <- envRef$ndose + sum(!.obsIdx)
+  envRef$ids <- sort(unique(.df$id))
+  envRef$nobs <- envRef$nobs + sum(.obsIdx)
+  envRef$ndose <- envRef$ndose + sum(!.obsIdx)
   if (length(envRef$ids) > 1L || .hadId) {
     envRef$show["id"] <- TRUE
   }
   if (sum(!.obsIdx) > 0L) {
     envRef$show["amt"] <- TRUE
   }
-  if (!is.null(.df$rate) &&
-        any(.df$rate[!.obsIdx] != 0, na.rm = TRUE)) {
+  if (
+    !is.null(.df$rate) &&
+      any(.df$rate[!.obsIdx] != 0, na.rm = TRUE)
+  ) {
     envRef$show["rate"] <- TRUE
   }
   if (!is.null(.df$ii) && any(.df$ii != 0, na.rm = TRUE)) {
-    envRef$show["ii"]   <- TRUE
+    envRef$show["ii"] <- TRUE
     envRef$show["addl"] <- TRUE
   }
   envRef$chunks <- .addRowsToChunks(envRef$chunks, .df) # nolint
@@ -344,8 +378,7 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etHandlePositional <- function(x, ..., time, xIsRxEt, envir, envRef, et,
-                                xMissing, timeMissing) {
+.etHandlePositional <- function(x, ..., time, xIsRxEt, envir, envRef, et, xMissing, timeMissing) {
   .posCmt <- NULL
   .listObs <- NULL
   if (is.null(time) && !xMissing && !xIsRxEt) {
@@ -353,8 +386,10 @@
     .dots <- list(...)
     if (length(.dots) >= 2L) {
       # possibly sequence of event tables or waiting times
-      if (any(vapply(.dots, is.rxEt, logical(1))) || # nolint
-            any(vapply(.dots, is.numeric, logical(1)))) {
+      if (
+        any(vapply(.dots, is.rxEt, logical(1))) || # nolint
+          any(vapply(.dots, is.numeric, logical(1)))
+      ) {
         # defer to etSeq handled in HandlePiping
         return(list(done = FALSE, posCmt = NULL, listObs = NULL, time = NULL))
       }
@@ -364,8 +399,12 @@
       # Has named dots, let standard handler take it
     } else {
       .res <- .etHandlePositionalRange(.xVal, .dots, envRef, et)
-      if (!is.null(.res)) return(.res)
-      if (is.data.frame(.xVal)) return(.etHandlePositionalDataFrame(.xVal, envRef, et))
+      if (!is.null(.res)) {
+        return(.res)
+      }
+      if (is.data.frame(.xVal)) {
+        return(.etHandlePositionalDataFrame(.xVal, envRef, et))
+      }
       if (is.list(.xVal)) {
         .listObs <- .xVal
       } else if (!is.null(.xVal)) {
@@ -403,25 +442,40 @@
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.etHandleUnits <- function(envRef, amountUnits, timeUnits, dotArgs,
-                           amountUnitsMissing, timeUnitsMissing) {
-  if (!is.null(amountUnits)) envRef$units["dosing"] <- amountUnits
-  if (!is.null(timeUnits))   envRef$units["time"]   <- timeUnits
+.etHandleUnits <- function(envRef, amountUnits, timeUnits, dotArgs, amountUnitsMissing, timeUnitsMissing) {
+  if (!is.null(amountUnits)) {
+    envRef$units["dosing"] <- amountUnits
+  }
+  if (!is.null(timeUnits)) {
+    envRef$units["time"] <- timeUnits
+  }
   # Handle dot-style and underscore aliases from ...
-  if (!is.null(dotArgs[["amount.units"]]) &&
-        is.null(amountUnits))
+  if (
+    !is.null(dotArgs[["amount.units"]]) &&
+      is.null(amountUnits)
+  ) {
     envRef$units["dosing"] <- dotArgs[["amount.units"]]
-  if (!is.null(dotArgs[["time.units"]]) &&
-        is.null(timeUnits))
+  }
+  if (
+    !is.null(dotArgs[["time.units"]]) &&
+      is.null(timeUnits)
+  ) {
     envRef$units["time"] <- dotArgs[["time.units"]]
-  if (!is.null(dotArgs[["time_units"]]) &&
-        is.null(timeUnits) &&
-        is.null(dotArgs[["time.units"]]))
+  }
+  if (
+    !is.null(dotArgs[["time_units"]]) &&
+      is.null(timeUnits) &&
+      is.null(dotArgs[["time.units"]])
+  ) {
     envRef$units["time"] <- dotArgs[["time_units"]]
-  if (!is.null(dotArgs[["amount_units"]]) &&
-        is.null(amountUnits) &&
-        is.null(dotArgs[["amount.units"]]))
+  }
+  if (
+    !is.null(dotArgs[["amount_units"]]) &&
+      is.null(amountUnits) &&
+      is.null(dotArgs[["amount.units"]])
+  ) {
     envRef$units["dosing"] <- dotArgs[["amount_units"]]
+  }
 }
 #' `et(id=)` handling
 #'
@@ -440,45 +494,51 @@
 #' @author Matthew L. Fidler
 #'
 .etHandleId <- function(id, envRef, xIsRxEt, envir, addingEvents = FALSE) {
-  .resolvedId  <- NULL
-  .addedIds    <- integer(0)
-  .removedIds  <- integer(0)
+  .resolvedId <- NULL
+  .addedIds <- integer(0)
+  .removedIds <- integer(0)
   .existingIds <- integer(0)
-  .doResize    <- FALSE
+  .doResize <- FALSE
   if (!is.null(id)) {
     .idInput <- if (is.factor(id)) as.character(id) else id
     .idVal <- suppressWarnings(as.integer(.idInput))
     if (anyNA(.idVal)) {
       stop("'id' must contain integer-like values", call. = FALSE)
     }
-    .posIds      <- .idVal[.idVal > 0L]
-    .negIds      <- abs(.idVal[.idVal < 0L])
+    .posIds <- .idVal[.idVal > 0L]
+    .negIds <- abs(.idVal[.idVal < 0L])
     .existingIds <- envRef$ids
-    if (length(.posIds) > 0L &&
+    if (
+      length(.posIds) > 0L &&
         !xIsRxEt &&
         identical(sort(as.integer(envRef$ids)), 1L) &&
         envRef$nobs == 0L &&
         envRef$ndose == 0L &&
         length(.etGroups(envRef)) == 0L &&
-        length(envRef$chunks) == 0L) {
-      .addedIds   <- setdiff(.posIds, .existingIds)
+        length(envRef$chunks) == 0L
+    ) {
+      .addedIds <- setdiff(.posIds, .existingIds)
       .removedIds <- setdiff(.existingIds, .posIds)
-      envRef$ids  <- sort(unique(.posIds))
+      envRef$ids <- sort(unique(.posIds))
     } else if (xIsRxEt && envRef$canResize && length(.idVal) == 0L) {
       .removedIds <- .existingIds
       .addedIds <- integer(0)
       envRef$ids <- integer(0)
       .doResize <- length(.removedIds) > 0L
-    } else if (length(.posIds) > 0L && xIsRxEt && envRef$canResize &&
-               (!addingEvents || (envRef$nobs == 0L && envRef$ndose == 0L &&
-                                  length(envRef$chunks) == 0L && length(.etGroups(envRef)) == 0L))) {
+    } else if (
+      length(.posIds) > 0L &&
+        xIsRxEt &&
+        envRef$canResize &&
+        (!addingEvents ||
+          (envRef$nobs == 0L && envRef$ndose == 0L && length(envRef$chunks) == 0L && length(.etGroups(envRef)) == 0L))
+    ) {
       # canResize mode: positive ids define the exact target set, replacing existing
       .removedIds <- setdiff(.existingIds, .posIds)
-      .addedIds   <- setdiff(.posIds, .existingIds)
+      .addedIds <- setdiff(.posIds, .existingIds)
       envRef$ids <- sort(unique(.posIds))
-      .doResize   <- length(.addedIds) > 0L || length(.removedIds) > 0L
+      .doResize <- length(.addedIds) > 0L || length(.removedIds) > 0L
     } else {
-      .addedIds   <- setdiff(.posIds, .existingIds)
+      .addedIds <- setdiff(.posIds, .existingIds)
       .removedIds <- intersect(.negIds, .existingIds)
       if (length(.posIds) > 0L) {
         envRef$ids <- sort(unique(c(envRef$ids, .posIds)))
@@ -486,7 +546,7 @@
       if (length(.negIds) > 0L) {
         envRef$ids <- setdiff(envRef$ids, .negIds)
       }
-      .doResize   <- xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
+      .doResize <- xIsRxEt && (length(.addedIds) > 0L || length(.removedIds) > 0L)
     }
     envRef$show["id"] <- TRUE
     .resolvedId <- .posIds
@@ -495,8 +555,14 @@
   if (is.null(.targetIds) && xIsRxEt && length(envRef$ids) > 0L) {
     .targetIds <- envRef$ids
   }
-  list(resolvedId = .resolvedId, targetIds = .targetIds, doResize = .doResize,
-       addedIds = .addedIds, removedIds = .removedIds, existingIds = .existingIds)
+  list(
+    resolvedId = .resolvedId,
+    targetIds = .targetIds,
+    doResize = .doResize,
+    addedIds = .addedIds,
+    removedIds = .removedIds,
+    existingIds = .existingIds
+  )
 }
 
 #' Handle the EVID expression
@@ -515,20 +581,20 @@
 .etHandleEvid <- function(evidExpr, evidSym, envir, evidMissing) {
   .evidVal <- NULL
   if (!evidMissing) {
-    .evidVal <- switch(evidSym,
-      obs       = 0L,
-      `0`       = 0L,
-      dose      = 1L,
-      `1`       = 1L,
-      other     = 2L,
-      `2`       = 2L,
-      reset     = 3L,
-      `3`       = 3L,
+    .evidVal <- switch(
+      evidSym,
+      obs = 0L,
+      `0` = 0L,
+      dose = 1L,
+      `1` = 1L,
+      other = 2L,
+      `2` = 2L,
+      reset = 3L,
+      `3` = 3L,
       doseReset = 4L,
       resetDose = 4L,
-      `4`       = 4L,
-      as.integer(tryCatch(eval(evidExpr, envir = envir),
-                          error = function(e) as.integer(evidSym)))
+      `4` = 4L,
+      as.integer(tryCatch(eval(evidExpr, envir = envir), error = function(e) as.integer(evidSym)))
     )
   }
   .evidVal
@@ -607,7 +673,9 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etHandleDoseValue <- function(expr, missing, envRef, envir, unitType = "time") {
-  if (missing) return(0.0)
+  if (missing) {
+    return(0.0)
+  }
   .val <- eval(expr, envir = envir)
   if (unitType == "rate") {
     if (inherits(.val, "units") && requireNamespace("units", quietly = TRUE)) {
@@ -693,13 +761,37 @@
 #'
 #' @author Matthew L. Fidler
 #'
-.etHandleDose <- function(amt, amtExpr, dotArgs, envRef, envir, time,
-                          timeExpr, iiExpr, addlExpr, ssExpr, rateExpr,
-                          durExpr, untilExpr, evidVal, cmtVal, resolvedId,
-                          targetIds, addSampling, et, rateSym, amtMissing,
-                          timeMissing, iiMissing, addlMissing, ssMissing,
-                          rateMissing, durMissing, untilMissing,
-                          addSamplingMissing) {
+.etHandleDose <- function(
+  amt,
+  amtExpr,
+  dotArgs,
+  envRef,
+  envir,
+  time,
+  timeExpr,
+  iiExpr,
+  addlExpr,
+  ssExpr,
+  rateExpr,
+  durExpr,
+  untilExpr,
+  evidVal,
+  cmtVal,
+  resolvedId,
+  targetIds,
+  addSampling,
+  et,
+  rateSym,
+  amtMissing,
+  timeMissing,
+  iiMissing,
+  addlMissing,
+  ssMissing,
+  rateMissing,
+  durMissing,
+  untilMissing,
+  addSamplingMissing
+) {
   if (!is.null(amt) || !is.null(dotArgs[["dose"]])) {
     if (!is.null(amt)) {
       .amtVal <- amt
@@ -713,9 +805,9 @@
     } else {
       .timeVal <- 0
     }
-    .iiVal   <- .etHandleDoseValue(iiExpr, iiMissing, envRef, envir, "time")
+    .iiVal <- .etHandleDoseValue(iiExpr, iiMissing, envRef, envir, "time")
     .addlVal <- if (!addlMissing) as.integer(eval(addlExpr, envir = envir)) else 0L
-    .ssVal   <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
+    .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
 
     if (!rateMissing) {
       if (rateSym == "model") {
@@ -729,7 +821,7 @@
       .rateVal <- 0.0
     }
     if (!durMissing) {
-      .durVal   <-  as.numeric(eval(durExpr, envir = envir))
+      .durVal <- as.numeric(eval(durExpr, envir = envir))
     } else {
       .durVal <- 0.0
     }
@@ -739,13 +831,18 @@
       .untilVal <- NULL
     }
 
-    .df <- .etDoseChunk(time = .timeVal, # nolint
-                        amt = .amtVal,
-                        evid = ifelse((!is.null(evidVal)), evidVal, 1L),
-                        cmt  = ifelse((!is.null(cmtVal)), cmtVal, "(default)"),
-                        ii   = .iiVal, addl = .addlVal, ss = .ssVal,
-                        rate = .rateVal, dur = .durVal,
-                        until = .untilVal)
+    .df <- .etDoseChunk(
+      time = .timeVal, # nolint
+      amt = .amtVal,
+      evid = ifelse((!is.null(evidVal)), evidVal, 1L),
+      cmt = ifelse((!is.null(cmtVal)), cmtVal, "(default)"),
+      ii = .iiVal,
+      addl = .addlVal,
+      ss = .ssVal,
+      rate = .rateVal,
+      dur = .durVal,
+      until = .untilVal
+    )
 
     if (!durMissing && rateMissing && any(.durVal > 0, na.rm = TRUE)) {
       .df$rate <- rep_len(0.0, nrow(.df))
@@ -761,7 +858,7 @@
       .etAddChunk(envRef, .df, targetIds) # nolint
     }
     .pairIdsN <- if (.pairDoseIds) 1L else max(1L, length(targetIds))
-    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * .pairIdsN
+    envRef$ndose <- envRef$ndose + max(1L, nrow(.df)) * .pairIdsN
     envRef$show["amt"] <- TRUE
     if (!is.null(.df$ii) && any(.df$ii > 0, na.rm = TRUE)) {
       envRef$show["ii"] <- TRUE
@@ -784,7 +881,7 @@
     if (!addSamplingMissing && isTRUE(addSampling)) {
       .obsChunk <- .etObsChunk(.timeVal) # nolint
       .etAddChunk(envRef, .obsChunk, targetIds) # nolint
-      envRef$nobs   <- envRef$nobs + length(.obsChunk$time) * max(1L, length(targetIds))
+      envRef$nobs <- envRef$nobs + length(.obsChunk$time) * max(1L, length(targetIds))
     }
     return(list(done = TRUE, et = et))
   }
@@ -854,21 +951,35 @@
 #'
 #' @noRd
 #' @author Matthew L. Fidler
-.etHandleInfusionNoAmt <- function(amt, amtExpr, rateExpr, ssExpr, envRef, envir,
-                                   time, timeExpr, iiExpr, durExpr, evidVal,
-                                   cmtVal, targetIds, et, rateSym,
-                                   amtMissing, rateMissing, ssMissing,
-                                   timeMissing, iiMissing, durMissing) {
+.etHandleInfusionNoAmt <- function(
+  amt,
+  amtExpr,
+  rateExpr,
+  ssExpr,
+  envRef,
+  envir,
+  time,
+  timeExpr,
+  iiExpr,
+  durExpr,
+  evidVal,
+  cmtVal,
+  targetIds,
+  et,
+  rateSym,
+  amtMissing,
+  rateMissing,
+  ssMissing,
+  timeMissing,
+  iiMissing,
+  durMissing
+) {
   if (is.null(amt) && (!rateMissing || !ssMissing)) {
     .timeVal <- if (!is.null(time)) time else 0.0
-    .iiVal   <- if (!iiMissing)   as.numeric(eval(iiExpr, envir = envir))   else 0.0
-    .ssVal   <- if (!ssMissing)   as.integer(eval(ssExpr, envir = envir))   else 0L
+    .iiVal <- if (!iiMissing) as.numeric(eval(iiExpr, envir = envir)) else 0.0
+    .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
     if (!rateMissing) {
-      .rateVal <- switch(rateSym,
-        model = -1.0,
-        dur   = -2.0,
-        as.numeric(eval(rateExpr, envir = envir))
-      )
+      .rateVal <- switch(rateSym, model = -1.0, dur = -2.0, as.numeric(eval(rateExpr, envir = envir)))
     } else {
       .rateVal <- 0.0
     }
@@ -887,18 +998,27 @@
     } else {
       .cmtVal <- "(default)"
     }
-    .df <- .etDoseChunk( # nolint
-      time = .timeVal, amt = 0.0,
+    .df <- .etDoseChunk(
+      # nolint
+      time = .timeVal,
+      amt = 0.0,
       evid = .evid2,
-      cmt  = .cmtVal,
-      ii = .iiVal, addl = 0L, ss = .ssVal,
-      rate = .rateVal, dur = .durVal
+      cmt = .cmtVal,
+      ii = .iiVal,
+      addl = 0L,
+      ss = .ssVal,
+      rate = .rateVal,
+      dur = .durVal
     )
     .etAddChunk(envRef, .df, targetIds) # nolint
-    envRef$ndose  <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(targetIds))
-    envRef$show["amt"]  <- TRUE
-    if (!is.null(.ssVal) && .ssVal > 0L)   envRef$show["ss"]   <- TRUE
-    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) envRef$show["rate"] <- TRUE
+    envRef$ndose <- envRef$ndose + max(1L, nrow(.df)) * max(1L, length(targetIds))
+    envRef$show["amt"] <- TRUE
+    if (!is.null(.ssVal) && .ssVal > 0L) {
+      envRef$show["ss"] <- TRUE
+    }
+    if (!is.null(.df$rate) && any(.df$rate != 0, na.rm = TRUE)) {
+      envRef$show["rate"] <- TRUE
+    }
     return(list(done = TRUE, et = et))
   }
   list(done = FALSE)
@@ -937,18 +1057,19 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etHandleObs <- function(time, timeExpr, envir, envRef, evidVal, cmtVal,
-                         targetIds, et, timeMissing) {
+.etHandleObs <- function(time, timeExpr, envir, envRef, evidVal, cmtVal, targetIds, et, timeMissing) {
   if (!is.null(time) || !timeMissing) {
     if (!is.null(time)) {
-      .timeVal <-  time
+      .timeVal <- time
     } else {
       .timeVal <- eval(timeExpr, envir = envir)
     }
 
-    if (!is.list(.timeVal) &&
-          inherits(.timeVal, "units") &&
-          requireNamespace("units", quietly = TRUE)) {
+    if (
+      !is.list(.timeVal) &&
+        inherits(.timeVal, "units") &&
+        requireNamespace("units", quietly = TRUE)
+    ) {
       .tu2 <- envRef$units["time"]
       if (!is.na(.tu2) && nchar(.tu2) > 0) {
         .timeVal <- as.numeric(units::set_units(.timeVal, .tu2, mode = "standard"))
@@ -1018,16 +1139,36 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etHandlePiping <- function(xIsRxEt, x, time, timeExpr, amt, amtExpr, # nolint
-                            dotArgs, cmtVal, targetIds, evidVal,
-                            envRef, et, timeMissing, amtMissing, envir) {
-  if (xIsRxEt &&
-        is.null(time) &&
-        is.null(amt) && timeMissing && amtMissing) {
+.etHandlePiping <- function(
+  xIsRxEt,
+  x,
+  time,
+  timeExpr,
+  amt,
+  amtExpr, # nolint
+  dotArgs,
+  cmtVal,
+  targetIds,
+  evidVal,
+  envRef,
+  et,
+  timeMissing,
+  amtMissing,
+  envir
+) {
+  if (
+    xIsRxEt &&
+      is.null(time) &&
+      is.null(amt) &&
+      timeMissing &&
+      amtMissing
+  ) {
     if (length(dotArgs) >= 1) {
       .firstDot <- dotArgs[[1]]
-      if (is.rxEt(.firstDot) || # nolint
-            any(vapply(dotArgs, is.rxEt, logical(1)))) {
+      if (
+        is.rxEt(.firstDot) || # nolint
+          any(vapply(dotArgs, is.rxEt, logical(1)))
+      ) {
         # Sequence of event tables
         .ret <- do.call(etSeq, c(list(x), dotArgs)) # nolint
         return(list(done = TRUE, et = .ret))
@@ -1044,14 +1185,18 @@
         }
         return(list(done = TRUE, et = et))
       } else if (is.numeric(.firstDot) || is.integer(.firstDot)) {
-        if (length(dotArgs) >= 2L &&
-              length(.firstDot) == 1L &&
-              (is.numeric(dotArgs[[2]]) || is.integer(dotArgs[[2]])) &&
-              length(dotArgs[[2]]) == 1L) {
+        if (
+          length(dotArgs) >= 2L &&
+            length(.firstDot) == 1L &&
+            (is.numeric(dotArgs[[2]]) || is.integer(dotArgs[[2]])) &&
+            length(dotArgs[[2]]) == 1L
+        ) {
           # et(0, 10) add obs at times 0, 1, ..., 10
           .timeVec <- seq(from = as.numeric(.firstDot), to = as.numeric(dotArgs[[2]]))
-        } else if (inherits(.firstDot, "units") &&
-                     requireNamespace("units", quietly = TRUE)) {
+        } else if (
+          inherits(.firstDot, "units") &&
+            requireNamespace("units", quietly = TRUE)
+        ) {
           .tu2 <- envRef$units["time"]
           if (!is.na(.tu2) && nchar(.tu2) > 0) {
             .timeVec <- as.numeric(units::set_units(.firstDot, .tu2, mode = "standard"))
@@ -1111,12 +1256,11 @@
 #' @noRd
 #'
 #' @author Matthew L. Fidler
-.etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, groups,
-                             nobs, ndose, explicitIi, ii) {
+.etSeqHandleRxEt <- function(item, units, show, ids, timeDelta, samples, chunks, groups, nobs, ndose, explicitIi, ii) {
   env <- .rxEtEnv(item) # nolint
   if (is.null(units)) {
     units <- env$units
-    show  <- env$show
+    show <- env$show
   } else {
     show <- show | env$show
   }
@@ -1124,7 +1268,7 @@
   .keepGrouped <- length(chunks) == 0L &&
     length(.itemGroups) == 1L &&
     (length(groups) == 0L ||
-       (length(groups) == 1L && .etGroupIdsEqual(groups[[1]]$ids, .itemGroups[[1]]$ids))) # nolint
+      (length(groups) == 1L && .etGroupIdsEqual(groups[[1]]$ids, .itemGroups[[1]]$ids))) # nolint
 
   if (!.keepGrouped && length(groups) > 0L) {
     for (.g in groups) {
@@ -1156,7 +1300,7 @@
     mat <- .etShiftChunk(.etMaterialize(item), timeDelta) # nolint
     if (samples == "use") {
       chunks <- .addRowsToChunks(chunks, mat) # nolint
-      nobs   <- nobs + env$nobs
+      nobs <- nobs + env$nobs
     } else {
       doseOnly <- mat[mat$evid != 0L, , drop = FALSE]
       chunks <- .addRowsToChunks(chunks, doseOnly) # nolint
@@ -1189,9 +1333,18 @@
     }
     timeDelta <- max(maxTime, lastDose + effectiveIi)
   }
-  list(units = units, show = show, ids = ids, chunks = chunks, groups = groups,
-       nobs = nobs, ndose = ndose, timeDelta = timeDelta,
-       lastIi = lastIi, lastDose = lastDose)
+  list(
+    units = units,
+    show = show,
+    ids = ids,
+    chunks = chunks,
+    groups = groups,
+    nobs = nobs,
+    ndose = ndose,
+    timeDelta = timeDelta,
+    lastIi = lastIi,
+    lastDose = lastDose
+  )
 }
 #' Handle wait
 #'
@@ -1220,11 +1373,12 @@
 #'
 #' @author Matthew L. Fidler
 .etSeqHandleWait <- function(item, waitType, lastDose, lastIi, ii, timeDelta) {
-  wait        <- as.numeric(item)
+  wait <- as.numeric(item)
   effectiveIi <- if (lastIi > 0) lastIi else ii
   if (waitType == "+ii") {
     timeDelta <- lastDose + effectiveIi + wait
-  } else {  # smart
+  } else {
+    # smart
     if (wait < effectiveIi) {
       timeDelta <- lastDose + effectiveIi
     } else {

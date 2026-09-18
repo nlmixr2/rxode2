@@ -19,8 +19,8 @@ rxTest({
         cp = center / v
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_warning(rxode2(one.compartment))
@@ -248,7 +248,8 @@ rxTest({
         IPRED <- F
         IRES <- DV - IPRED
         IWRES <- IRES / W
-      })}
+      })
+    }
     expect_error(fun(), NA)
   })
 })

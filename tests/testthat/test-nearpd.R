@@ -1,6 +1,5 @@
 rxTest({
   test_that("Test a matrix that needs nearPD", {
-
     rx1 <- RxODE({
       cl <- tcl*(1+crcl.cl*(CLCR-65)) * exp(eta.v)
       v <- tv * WT * exp(eta.v)
@@ -9,10 +8,19 @@ rxTest({
       obs <- ipred * (1 + prop.sd) + add.sd
     })
 
-    theta <- c(tcl=2.63E+01, tv=1.35E+00, tka=4.20E+00, tlag=2.08E-01,
-               prop.sd=2.05E-01, add.sd=1.06E-02, crcl.cl=7.17E-03,
-               ## Note that since we are using the separation strategy the ETA variances are here too
-               eta.cl=7.30E-02,  eta.v=3.80E-02, eta.ka=1.91E+00)
+    theta <- c(
+      tcl = 2.63E+01,
+      tv = 1.35E+00,
+      tka = 4.20E+00,
+      tlag = 2.08E-01,
+      prop.sd = 2.05E-01,
+      add.sd = 1.06E-02,
+      crcl.cl = 7.17E-03,
+      ## Note that since we are using the separation strategy the ETA variances are here too
+      eta.cl = 7.30E-02,
+      eta.v = 3.80E-02,
+      eta.ka = 1.91E+00
+    )
 
     thetaMat <- lotri(
       tcl + tv + tka + tlag + prop.sd + add.sd + crcl.cl + eta.cl + eta.v + eta.ka ~
@@ -35,28 +43,33 @@ rxTest({
     # so that there is "very small" uncertainty around tv
     thetaMat1[2, 2] <- 1e-06
 
-    evw <- et(amount.units="mg", time.units="hours") |>
-      et(amt=100) |>
+    evw <- et(amount.units = "mg", time.units = "hours") |>
+      et(amt = 100) |>
       ## For this problem we will simulate with sampling windows
-      et(list(c(0, 0.5),
-              c(0.5, 1),
-              c(1, 3),
-              c(3, 6),
-              c(6, 12))) |>
-      et(id=1:1000)
+      et(list(c(0, 0.5), c(0.5, 1), c(1, 3), c(3, 6), c(6, 12))) |>
+      et(id = 1:1000)
 
     skip_on_os("windows")
 
-    expect_error(rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
-                    thetaMat=thetaMat1,
-                    ## Match boundaries of problem
-                    thetaLower=0,
-                    sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
-                    sigmaXform="identity", # default sigma xform="identity"
-                    omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
-                    omegaXform="variance", # default omega xform="variance"
-                    iCov=data.frame(WT=rnorm(1000, 70, 15), CLCR=rnorm(1000, 65, 25)),
-                    dfSub=74, dfObs=476),
-                 NA)
+    expect_error(
+      rxSolve(
+        rx1,
+        theta,
+        evw,
+        nSub = 100,
+        nStud = 10,
+        thetaMat = thetaMat1,
+        ## Match boundaries of problem
+        thetaLower = 0,
+        sigma = c("prop.sd", "add.sd"), ## Sigmas are standard deviations
+        sigmaXform = "identity", # default sigma xform="identity"
+        omega = c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
+        omegaXform = "variance", # default omega xform="variance"
+        iCov = data.frame(WT = rnorm(1000, 70, 15), CLCR = rnorm(1000, 65, 25)),
+        dfSub = 74,
+        dfObs = 476
+      ),
+      NA
+    )
   })
 })

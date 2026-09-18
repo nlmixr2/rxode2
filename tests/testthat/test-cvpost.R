@@ -45,10 +45,13 @@ rxTest({
       lkj <-
         cvPost(
           3,
-          vapply(1:3, function(...) {
-            rnorm(10)
-          },
-          numeric(10)),
+          vapply(
+            1:3,
+            function(...) {
+              rnorm(10)
+            },
+            numeric(10)
+          ),
           type = "lkj",
           returnChol = TRUE
         )
@@ -58,11 +61,16 @@ rxTest({
       lkjTn <-
         cvPost(
           3,
-          vapply(1:3, function(...) {
-            rnorm(10)
-          }, numeric(10)),
+          vapply(
+            1:3,
+            function(...) {
+              rnorm(10)
+            },
+            numeric(10)
+          ),
           type = 2,
-          returnChol = TRUE, diagXformType = 5
+          returnChol = TRUE,
+          diagXformType = 5
         )
     )
     expect_equal(lkj, lkjTn)

@@ -14,8 +14,10 @@ rxTest({
 
   et$add.sampling(seq(0, 10, by = 1 / 24))
   et$add.dosing(
-    dose = 2 / 24, start.time = 0,
-    nbr.doses = 10, dosing.interval = 1
+    dose = 2 / 24,
+    start.time = 0,
+    nbr.doses = 10,
+    dosing.interval = 1
   )
 
   et$add.dosing(start.time = 7.5, evid = 3, dose = 0)
@@ -25,7 +27,6 @@ rxTest({
   m <- ms[1]
 
   for (m in ms) {
-
     x2 <- solve(mod, et, method = m)
 
     #x2 |> plot(blood)
@@ -61,8 +62,11 @@ rxTest({
   x2 <- solve(sol.1c, et1)
 
   test_that("Solved Linear EVID=3", {
-    expect_true(all((x2 |>
-                       dplyr::filter(time > units::set_units(9, h)) |>
-                       dplyr::filter(time < units::set_units(12, h)))$blood == 0))
+    expect_true(all(
+      (x2 |>
+        dplyr::filter(time > units::set_units(9, h)) |>
+        dplyr::filter(time < units::set_units(12, h)))$blood ==
+        0
+    ))
   })
 })

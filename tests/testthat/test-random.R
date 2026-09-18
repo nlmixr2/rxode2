@@ -1,5 +1,4 @@
 rxTest({
-
   warn1 <- function(code) {
     if (rxCores() == 1L) {
       x <- force(code)
@@ -10,9 +9,7 @@ rxTest({
   }
 
   test_that("rnorm", {
-
     rxWithSeed(1024, {
-
       rx <- rxode2({
         x1 <- rnorm()
         x2 <- rxnorm(a)
@@ -68,12 +65,10 @@ rxTest({
       expect_equal(mean(x), 0, tolerance = 0.01)
 
       expect_equal(sd(x), 1, tolerance = 0.01)
-
     })
   })
 
   test_that("rbinom", {
-
     rx <- rxode2({
       x1 <- rbinom(4, 0.5)
       x2 <- rxbinom(10, 0.75)
@@ -82,7 +77,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(max(f$x1), 4)
@@ -125,20 +119,16 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rbinom(a, b, c)
       })))
-
     })
-
   })
 
   test_that("rxnbinom()", {
-
     rxWithSeed(1024, {
-
       n <- 1e5
       size <- 10
       prob <- 0.3
       # Call the function to generate negative binomial random deviates
-      r <- rxnbinom(size=size, prob=prob, n=n)
+      r <- rxnbinom(size = size, prob = prob, n = n)
 
       # Theoretical mean of the negative binomial distribution:
       mn <- round(size * (1 - prob) / prob, 1)
@@ -148,7 +138,7 @@ rxTest({
 
       mu <- 23.3
 
-      r <- rxnbinomMu(size=size, mu=mu, n=n)
+      r <- rxnbinomMu(size = size, mu = mu, n = n)
 
       # Theoretical mean of the negative binomial distribution:
       mnr <- round(mean(r), 1)
@@ -167,14 +157,11 @@ rxTest({
       # 10000 draws: the standard error of each mean is about 0.09
       expect_equal(mean(f$x1), 10 * (1 - 0.3) / 0.3, tolerance = 0.02)
       expect_equal(mean(f$x2), mu, tolerance = 0.02)
-
     })
   })
 
   test_that("rcauchy", {
-
     rxWithSeed(1024, {
-
       rx <- rxode2({
         x1 <- rcauchy()
         x2 <- rxcauchy(a)
@@ -206,13 +193,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x4 <- rcauchy(a, b, c, d)
       })))
-
     })
-
   })
 
   test_that("rchisq", {
-
     rx <- rxode2({
       x1 <- rchisq(15)
       x2 <- rxchisq(20)
@@ -221,7 +205,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 15, tolerance = 0.1)
@@ -255,12 +238,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rchisq(a, b)
       })))
-
     })
   })
 
   test_that("rexp tests", {
-
     rx <- rxode2({
       x1 <- rexp(0.5)
       x2 <- rxexp()
@@ -269,7 +250,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 2, tolerance = 0.1)
@@ -299,13 +279,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rexp(a, b)
       })))
-
     })
-
   })
 
   test_that("rf tests", {
-
     rx <- rxode2({
       x1 <- rf(10, 20)
       x2 <- rxf(30, 40)
@@ -314,7 +291,6 @@ rxTest({
     ev <- et(1, id = 1:40000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       sf <- function(d1, d2) {
@@ -360,12 +336,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rf()
       })))
-
     })
   })
 
   test_that("rgamma tests", {
-
     rx <- rxode2({
       x1 <- rgamma(9, 0.5)
       x2 <- rxgamma(7.5)
@@ -374,7 +348,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       sgamma <- function(k, theta = 1) {
@@ -411,12 +384,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rgamma()
       })))
-
     })
   })
 
   test_that("rbeta tests", {
-
     rx <- rxode2({
       x1 <- rbeta(2, 5)
       x2 <- rxbeta(2, 2)
@@ -425,7 +396,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       mbeta <- function(a, b) {
@@ -471,13 +441,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rbeta()
       })))
-
     })
-
   })
 
   test_that("rgeom tests", {
-
     rx <- rxode2({
       # x1 <- rgeom(0.5)
       x2 <- rxgeom(0.1)
@@ -486,7 +453,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       # expect_equal(median(f$x1), -ceiling(1 / log2(1 - 0.5)))
@@ -514,12 +480,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rgeom(a, b)
       })))
-
     })
   })
 
   test_that("rpois", {
-
     rx <- rxode2({
       x1 <- rpois(1)
       x2 <- rxpois(2)
@@ -528,7 +492,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 1, tolerance = 0.02)
@@ -561,12 +524,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rxpois(a, b)
       })))
-
     })
   })
 
   test_that("rt", {
-
     rx <- rxode2({
       x1 <- rt(15)
       x2 <- rxt(20)
@@ -575,7 +536,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       expect_equal(mean(f$x1), 0, tolerance = 0.1)
@@ -602,7 +562,6 @@ rxTest({
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-
       suppressMessages(expect_error(rxode2({
         x1 <- rt()
       })))
@@ -610,14 +569,11 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rt(a, b)
       })))
-
     })
   })
 
   test_that("runif", {
-
     rxWithSeed(1024, {
-
       rx <- rxode2({
         x1 <- runif()
         x2 <- rxunif(a)
@@ -668,13 +624,10 @@ rxTest({
       f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
-
     })
   })
 
-
   test_that("rweibull tests", {
-
     rx <- rxode2({
       x1 <- rweibull(9, 0.5)
       x2 <- rxweibull(7.5)
@@ -683,7 +636,6 @@ rxTest({
     ev <- et(1, id = 1:30000)
 
     rxWithSeed(1024, {
-
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
 
       mweibull <- function(shape, scale = 1) {
@@ -695,8 +647,7 @@ rxTest({
       sweibull <- function(shape, scale = 1) {
         lambda <- scale
         k <- shape
-        sqrt(lambda^2 * (gamma(1 + 2 / k)
-          - (gamma(1 + 1 / k))^2))
+        sqrt(lambda^2 * (gamma(1 + 2 / k) - (gamma(1 + 1 / k))^2))
       }
 
       expect_equal(mean(f$x1), mweibull(9, 0.5), tolerance = 0.01)
@@ -731,12 +682,10 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rweibull()
       })))
-
     })
   })
 
   test_that("individual random variable tests", {
-
     rx <- rxode2({
       x0 <- rxnorm()
       x1 <- rinorm(a)
@@ -766,7 +715,6 @@ rxTest({
     })
 
     rxWithSeed(10, {
-
       ev <- et(c(1, 2), id = 1:5)
 
       f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
@@ -819,13 +767,10 @@ rxTest({
         .s <- sum(duplicated(f[[paste0("x", i)]]))
         expect_true(.s < 10)
       }
-
     })
-
   })
 
   test_that("simeps", {
-
     rx1 <- rxode2({
       c <- 0 + err
       i <- 0
@@ -834,7 +779,6 @@ rxTest({
     e <- et(0, 10)
 
     rxWithSeed(10, {
-
       f1 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1)))
 
       expect_true(f1$c[1] != 0)
@@ -892,7 +836,6 @@ rxTest({
       expect_true(all(f1$c > 0))
 
       expect_true(f1$c[1] != 0)
-
 
       set.seed(10)
       f2 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1), nStud = 3, dfObs = 100))
@@ -989,13 +932,11 @@ rxTest({
       expect_true(all(f$wt < 80))
 
       expect_equal(length(unique(f$wt)), 4 * 3)
-
     })
   })
 
   test_that("random variables work in R alone", {
     rxWithSeed(1024, {
-
       expect_true(is.numeric(rxcauchy()))
 
       p <- rxpois(2, n = 30000)
@@ -1079,19 +1020,15 @@ rxTest({
       sweibull <- function(shape, scale = 1) {
         lambda <- scale
         k <- shape
-        sqrt(lambda^2 * (gamma(1 + 2 / k)
-          - (gamma(1 + 1 / k))^2))
+        sqrt(lambda^2 * (gamma(1 + 2 / k) - (gamma(1 + 1 / k))^2))
       }
 
       expect_equal(mean(x2), mweibull(7.5), tolerance = 0.01)
       expect_equal(sd(x2), sweibull(7.5), tolerance = 0.01)
     })
-
   })
 
-
   test_that("rxord", {
-
     rxWithSeed(1024, {
       rx <- rxode2({
         tmp2 <- rxord(0.5)
@@ -1104,23 +1041,41 @@ rxTest({
 
       f <- rxSolve(rx, ev)
 
-      expect_equal(round(as.numeric(table(f$tmp2))/ n, 3), c(0.5, 0.5), tolerance=1e-2)
-      expect_equal(round(as.numeric(table(f$tmp3))/n, 3), c(0.33, 0.33, 0.33), tolerance=1e-1)
-      expect_equal(round(as.numeric(table(f$tmp4))/n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance=1e-2)
+      expect_equal(round(as.numeric(table(f$tmp2)) / n, 3), c(0.5, 0.5), tolerance = 1e-2)
+      expect_equal(round(as.numeric(table(f$tmp3)) / n, 3), c(0.33, 0.33, 0.33), tolerance = 1e-1)
+      expect_equal(round(as.numeric(table(f$tmp4)) / n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance = 1e-2)
 
-      tmp2 <- vapply(seq_len(n), function(i){ rxord(0.5) }, numeric(1), USE.NAMES=TRUE)
+      tmp2 <- vapply(
+        seq_len(n),
+        function(i) {
+          rxord(0.5)
+        },
+        numeric(1),
+        USE.NAMES = TRUE
+      )
 
-      expect_equal(round(as.numeric(table(tmp2))/ n, 3), c(0.5, 0.5), tolerance=1e-2)
+      expect_equal(round(as.numeric(table(tmp2)) / n, 3), c(0.5, 0.5), tolerance = 1e-2)
 
-      tmp3 <- vapply(seq_len(n), function(i){ rxord(0.33, 0.33) }, numeric(1), USE.NAMES=TRUE)
-      expect_equal(round(as.numeric(table(tmp3))/ n, 3), c(0.33, 0.33, 0.33), tolerance=1e-1)
+      tmp3 <- vapply(
+        seq_len(n),
+        function(i) {
+          rxord(0.33, 0.33)
+        },
+        numeric(1),
+        USE.NAMES = TRUE
+      )
+      expect_equal(round(as.numeric(table(tmp3)) / n, 3), c(0.33, 0.33, 0.33), tolerance = 1e-1)
 
-      tmp4 <- vapply(seq_len(n), function(i){ rxord(0.25, 0.25, 0.25) }, numeric(1), USE.NAMES=TRUE)
-      expect_equal(round(as.numeric(table(tmp4))/ n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance=1e-2)
-
+      tmp4 <- vapply(
+        seq_len(n),
+        function(i) {
+          rxord(0.25, 0.25, 0.25)
+        },
+        numeric(1),
+        USE.NAMES = TRUE
+      )
+      expect_equal(round(as.numeric(table(tmp4)) / n, 3), c(0.25, 0.25, 0.25, 0.25), tolerance = 1e-2)
     })
-
-
   })
 
   test_that("rnorm", {
@@ -1216,18 +1171,15 @@ rxTest({
       sweibull <- function(shape, scale = 1) {
         lambda <- scale
         k <- shape
-        sqrt(lambda^2 * (gamma(1 + 2 / k)
-          - (gamma(1 + 1 / k))^2))
+        sqrt(lambda^2 * (gamma(1 + 2 / k) - (gamma(1 + 1 / k))^2))
       }
 
       expect_equal(mean(x2), mweibull(7.5), tolerance = 0.01)
       expect_equal(sd(x2), sweibull(7.5), tolerance = 0.01)
     })
-
   })
 
   test_that("udf handling of rxbinomMu", {
-
     f <- function() {
       model({
         x <- rxnbinom(size=10, mu=0.5)
@@ -1236,8 +1188,7 @@ rxTest({
 
     f <- f()
 
-    expect_equal(modelExtract(f, "x"),
-                 "x <- rxnbinomMu(10, 0.5)")
+    expect_equal(modelExtract(f, "x"), "x <- rxnbinomMu(10, 0.5)")
 
     f <- function() {
       model({
@@ -1247,8 +1198,7 @@ rxTest({
 
     f <- f()
 
-    expect_equal(modelExtract(f, "x"),
-                 "x <- rxnbinomMu(10, 0.5)")
+    expect_equal(modelExtract(f, "x"), "x <- rxnbinomMu(10, 0.5)")
 
     f <- function() {
       model({
@@ -1258,8 +1208,7 @@ rxTest({
 
     f <- f()
 
-    expect_equal(modelExtract(f, "x"),
-                 "x <- rxnbinom(10, 0.5)")
+    expect_equal(modelExtract(f, "x"), "x <- rxnbinom(10, 0.5)")
 
     f <- function() {
       model({
@@ -1269,15 +1218,10 @@ rxTest({
 
     f <- f()
 
-    expect_equal(modelExtract(f, "x"),
-                 "x <- rxnbinom(10, 0.5)")
+    expect_equal(modelExtract(f, "x"), "x <- rxnbinom(10, 0.5)")
 
-    expect_error(rxnbinom(size=10, prob=.05, mu=30))
+    expect_error(rxnbinom(size = 10, prob = .05, mu = 30))
 
-    expect_equal(rxWithSeed(1024, rxnbinom(size=10, mu=30)),
-                 rxWithSeed(1024, rxnbinomMu(size=10, mu=30)))
-
-
+    expect_equal(rxWithSeed(1024, rxnbinom(size = 10, mu = 30)), rxWithSeed(1024, rxnbinomMu(size = 10, mu = 30)))
   })
-
 })

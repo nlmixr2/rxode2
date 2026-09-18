@@ -35,7 +35,8 @@ rxTest({
     # both keys differently for identical code and opens the collapse above
     expect_identical(
       rxode2:::.rxEventSensKey(c("dLag[0] = 1.0;", rep("", 12L))),
-      rxode2:::.rxEventSensKey(c("dLag[0] = 1.0;", rep(NA_character_, 12L))))
+      rxode2:::.rxEventSensKey(c("dLag[0] = 1.0;", rep(NA_character_, 12L)))
+    )
   })
 
   test_that(".rxEventSensKey is empty only when there is no code", {

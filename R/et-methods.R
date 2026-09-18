@@ -38,13 +38,24 @@
 #' @return nothing, called for side effect of modifying env by reference
 #' @noRd
 #' @author Matthew L. Fidler
-.etMethodAddDosing <- function(env, dose, nbr.doses = 1L, dosing.interval = 24,
-                               dosing.to = 1L, rate = NULL,
-                               amount.units = NA_character_,
-                               start.time = 0.0, do.sampling = FALSE,
-                               time.units = NA_character_,
-                               evid = NULL, strt.time = NULL, ...) {
-  if (!is.null(strt.time)) start.time <- strt.time
+.etMethodAddDosing <- function(
+  env,
+  dose,
+  nbr.doses = 1L,
+  dosing.interval = 24,
+  dosing.to = 1L,
+  rate = NULL,
+  amount.units = NA_character_,
+  start.time = 0.0,
+  do.sampling = FALSE,
+  time.units = NA_character_,
+  evid = NULL,
+  strt.time = NULL,
+  ...
+) {
+  if (!is.null(strt.time)) {
+    start.time <- strt.time
+  }
   .et <- structure(list(env = env), class = "rxEt")
   .args <- list(
     x = .et,
@@ -54,13 +65,20 @@
     addl = as.integer(nbr.doses) - 1L,
     addSampling = do.sampling
   )
-  if (!is.null(rate)) .args$rate <- rate
-  if (!is.na(amount.units)) .args$amountUnits <- amount.units
-  if (!is.na(time.units)) .args$timeUnits <- time.units
-  if (!is.null(evid)) .args$evid <- evid
+  if (!is.null(rate)) {
+    .args$rate <- rate
+  }
+  if (!is.na(amount.units)) {
+    .args$amountUnits <- amount.units
+  }
+  if (!is.na(time.units)) {
+    .args$timeUnits <- time.units
+  }
+  if (!is.null(evid)) {
+    .args$evid <- evid
+  }
   .extra <- list(...)
-  if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
-        !identical(dosing.to, 1L)) {
+  if (is.null(.extra$cmt) && is.null(.extra$dosing.to) && !identical(dosing.to, 1L)) {
     .args$cmt <- dosing.to
   }
   .ret <- do.call(et, c(.args, .extra)) # nolint
@@ -85,12 +103,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
-  if (.rxGetHomogenous()) { # nolint
+  if (.rxGetHomogenous()) {
+    # nolint
     .mat <- .etPreviewData(env, "all")
   } else {
     .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
   }
-  if (is.null(.mat) || nrow(.mat) == 0L) return(NULL)
+  if (is.null(.mat) || nrow(.mat) == 0L) {
+    return(NULL)
+  }
   .cols <- .etDisplayCols(names(.mat), env$show, .etExtraCols(env)) # nolint
   .ret <- .mat[, .cols, drop = FALSE]
   rownames(.ret) <- seq_len(nrow(.ret))
@@ -104,14 +125,19 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
-  if (.rxGetHomogenous()) { # nolint
+  if (.rxGetHomogenous()) {
+    # nolint
     .d <- .etPreviewData(env, "dosing")
   } else {
     .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
-    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    if (is.null(.full) || nrow(.full) == 0L) {
+      return(NULL)
+    }
     .d <- .full[.full$evid != 0L, , drop = FALSE]
   }
-  if (is.null(.d)) return(NULL)
+  if (is.null(.d)) {
+    return(NULL)
+  }
   if (nrow(.d) == 0L) {
     NULL
   } else {
@@ -131,11 +157,16 @@
 .etMethodClearSampling <- function(env) {
   .groups <- .etGetGroups(env) # nolint
   if (length(.groups) > 0L) {
-    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
-      .df <- .g$data[.g$data$evid != 0L, , drop = FALSE]
-      if (nrow(.df) == 0L) return(NULL)
-      list(ids = .g$ids, data = .df)
-    }))
+    .groups <- Filter(
+      Negate(is.null),
+      lapply(.groups, function(.g) {
+        .df <- .g$data[.g$data$evid != 0L, , drop = FALSE]
+        if (nrow(.df) == 0L) {
+          return(NULL)
+        }
+        list(ids = .g$ids, data = .df)
+      })
+    )
     .etSetGroups(env, .groups) # nolint
     .etResetCountsFromGroups(env) # nolint
     return(invisible(NULL))
@@ -223,7 +254,9 @@
 .etImportConvertUnits <- function(df, tu, du, hasTimeU, hasDoseU) {
   .cols <- lapply(names(df), function(.nm) {
     .col <- df[[.nm]]
-    if (!inherits(.col, "units")) return(.col)
+    if (!inherits(.col, "units")) {
+      return(.col)
+    }
     if (requireNamespace("units", quietly = TRUE)) {
       # Only convert when et had prior units; auto-detected units just strip label
       if (.nm %in% c("time", "ii") && hasTimeU) {
@@ -254,7 +287,9 @@
     df$evid <- if (!is.null(df$amt)) ifelse(!is.na(df$amt) & as.numeric(df$amt) != 0, 1L, 0L) else 0L
   }
   df$evid <- as.integer(df$evid)
-  if (is.null(df$id)) df$id <- 1L
+  if (is.null(df$id)) {
+    df$id <- 1L
+  }
   df$id <- as.integer(df$id)
   df
 }
@@ -272,12 +307,18 @@
 #' @author Matthew L. Fidler
 #'
 .etImportUpdateShow <- function(env, df) {
-  if (length(env$ids) > 1L) env$show["id"] <- TRUE
-  if (sum(df$evid != 0L, na.rm = TRUE) > 0L) env$show["amt"] <- TRUE
-  if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE))
+  if (length(env$ids) > 1L) {
+    env$show["id"] <- TRUE
+  }
+  if (sum(df$evid != 0L, na.rm = TRUE) > 0L) {
+    env$show["amt"] <- TRUE
+  }
+  if (!is.null(df$rate) && any(df$rate[df$evid != 0L] != 0, na.rm = TRUE)) {
     env$show["rate"] <- TRUE
-  if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE))
+  }
+  if (!is.null(df$dur) && any(df$dur[df$evid != 0L] != 0, na.rm = TRUE)) {
     env$show["dur"] <- TRUE
+  }
   if (!is.null(df$ii) && any(df$ii != 0, na.rm = TRUE)) {
     env$show["ii"] <- TRUE
     env$show["addl"] <- TRUE
@@ -294,8 +335,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etImportUpdateEnv <- function(env, df) {
-  env$ids  <- sort(unique(df$id))
-  env$nobs  <- env$nobs  + sum(df$evid == 0L, na.rm = TRUE)
+  env$ids <- sort(unique(df$id))
+  env$nobs <- env$nobs + sum(df$evid == 0L, na.rm = TRUE)
   env$ndose <- env$ndose + sum(df$evid != 0L, na.rm = TRUE)
   env$groups <- list()
   env$chunks <- .addRowsToChunks(env$chunks, df)
@@ -311,9 +352,20 @@
 #' @author Matthew L. Fidler
 .etImportNormalizeNames <- function(df) {
   # Normalize UPPERCASE/mixed-case NONMEM-style column names to lowercase
-  .colMap <- c(ID="id", TIME="time", CMT="cmt", AMT="amt", EVID="evid",
-               RATE="rate", II="ii", ADDL="addl", SS="ss", DUR="dur",
-               LOW="low", HIGH="high")
+  .colMap <- c(
+    ID = "id",
+    TIME = "time",
+    CMT = "cmt",
+    AMT = "amt",
+    EVID = "evid",
+    RATE = "rate",
+    II = "ii",
+    ADDL = "addl",
+    SS = "ss",
+    DUR = "dur",
+    LOW = "low",
+    HIGH = "high"
+  )
   .nms <- names(df)
   .upper <- toupper(.nms)
   for (.i in seq_along(.nms)) {
@@ -406,11 +458,15 @@
 #'
 #' @author Matthew L. Fidler
 .etMethodImportEventTable2 <- function(env, df, ...) {
-  if (!is.data.frame(df)) stop("'df' must be a data.frame", call. = FALSE)
+  if (!is.data.frame(df)) {
+    stop("'df' must be a data.frame", call. = FALSE)
+  }
   .extra <- .etExtraColsAttr(df) # nolint
   df <- as.data.frame(df)
   # as.data.frame() may drop it; re-tag first so the rename below tracks it
-  if (length(.extra) > 0L) attr(df, "rxEtExtraCols") <- .extra
+  if (length(.extra) > 0L) {
+    attr(df, "rxEtExtraCols") <- .extra
+  }
   df <- .etImportNormalizeNames(df)
   df <- .etImportIdToInteger(df)
   df <- .etImportDropNaTime(df)
@@ -455,15 +511,21 @@
     }
   }
   .etResetCountsFromGroups(env) # nolint
-  if (length(.etGroups(env)) == 0L) { # nolint
+  if (length(.etGroups(env)) == 0L) {
+    # nolint
     env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
     env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
   }
   env$show["id"] <- length(env$ids) > 1L
-  if (length(.etGroups(env)) > 0L) { # nolint
-    env$show["addl"] <- any(vapply(env$groups, function(.g) {
-      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
-    }, logical(1)))
+  if (length(.etGroups(env)) > 0L) {
+    # nolint
+    env$show["addl"] <- any(vapply(
+      env$groups,
+      function(.g) {
+        !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+      },
+      logical(1)
+    ))
   } else {
     env$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
   }
@@ -494,22 +556,22 @@
 #' @author Matthew L. Fidler
 .etMethodCopy <- function(env) {
   .newEnv <- new.env(parent = emptyenv())
-  .newEnv$chunks     <- env$chunks
-  .newEnv$groups     <- env$groups
-  .newEnv$units      <- env$units
-  .newEnv$show       <- env$show
-  .newEnv$ids        <- env$ids
-  .newEnv$nobs       <- env$nobs
-  .newEnv$ndose      <- env$ndose
+  .newEnv$chunks <- env$chunks
+  .newEnv$groups <- env$groups
+  .newEnv$units <- env$units
+  .newEnv$show <- env$show
+  .newEnv$ids <- env$ids
+  .newEnv$nobs <- env$nobs
+  .newEnv$ndose <- env$ndose
   .newEnv$randomType <- env$randomType
-  .newEnv$canResize  <- env$canResize
-  .newEnv$extraCols  <- .etExtraCols(env) # nolint
+  .newEnv$canResize <- env$canResize
+  .newEnv$extraCols <- .etExtraCols(env) # nolint
   .newEnv$methods <- .etBuildMethods(.newEnv)
   .cp <- list()
-  attr(.cp, "names")     <- character(0)
-  attr(.cp, "class")     <- c("rxEt", "data.frame")
+  attr(.cp, "names") <- character(0)
+  attr(.cp, "class") <- c("rxEt", "data.frame")
   attr(.cp, "row.names") <- integer(0)
-  attr(.cp, ".rxEtEnv")  <- .newEnv
+  attr(.cp, ".rxEtEnv") <- .newEnv
   .cp
 }
 
@@ -530,7 +592,9 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etMethodSimulate <- function(env, seed = NULL, ...) {
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
   .sim <- .etSimulateRepresentation(env) # nolint
   if (!isTRUE(.sim$hasWin)) {
     env$groups <- .sim$groups
@@ -550,11 +614,16 @@
 .etMethodClearDosing <- function(env) {
   .groups <- .etGetGroups(env) # nolint
   if (length(.groups) > 0L) {
-    .groups <- Filter(Negate(is.null), lapply(.groups, function(.g) {
-      .df <- .g$data[.g$data$evid == 0L, , drop = FALSE]
-      if (nrow(.df) == 0L) return(NULL)
-      list(ids = .g$ids, data = .df)
-    }))
+    .groups <- Filter(
+      Negate(is.null),
+      lapply(.groups, function(.g) {
+        .df <- .g$data[.g$data$evid == 0L, , drop = FALSE]
+        if (nrow(.df) == 0L) {
+          return(NULL)
+        }
+        list(ids = .g$ids, data = .df)
+      })
+    )
     .etSetGroups(env, .groups) # nolint
     .etResetCountsFromGroups(env) # nolint
     if (env$ndose == 0L) {
@@ -575,14 +644,19 @@
 }
 
 .etMethodGetSampling <- function(env) {
-  if (.rxGetHomogenous()) { # nolint
+  if (.rxGetHomogenous()) {
+    # nolint
     .s <- .etPreviewData(env, "sampling")
   } else {
     .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
-    if (is.null(.full) || nrow(.full) == 0L) return(NULL)
+    if (is.null(.full) || nrow(.full) == 0L) {
+      return(NULL)
+    }
     .s <- .full[.full$evid == 0L, , drop = FALSE]
   }
-  if (is.null(.s)) return(NULL)
+  if (is.null(.s)) {
+    return(NULL)
+  }
   if (nrow(.s) == 0L) {
     NULL
   } else {
@@ -614,8 +688,10 @@
   }
   .df <- .etObsChunk(.time)
   .etAddChunk(env, .df, env$ids)
-  env$nobs   <- env$nobs + length(.df$time) * length(env$ids)
-  if (!is.na(time.units)) env$units["time"] <- time.units
+  env$nobs <- env$nobs + length(.df$time) * length(env$ids)
+  if (!is.na(time.units)) {
+    env$units["time"] <- time.units
+  }
   invisible(NULL)
 }
 
@@ -632,15 +708,35 @@
 #' @noRd
 .etBuildMethods <- function(env) {
   .lst <- list(
-    add.dosing = function(dose, nbr.doses = 1L, dosing.interval = 24,
-                          dosing.to = 1L, rate = NULL,
-                          amount.units = NA_character_,
-                          start.time = 0.0, do.sampling = FALSE,
-                          time.units = NA_character_,
-                          evid = NULL, strt.time = NULL, ...) {
-      .etMethodAddDosing(env, dose, nbr.doses, dosing.interval, dosing.to, rate,
-                         amount.units, start.time, do.sampling, time.units,
-                         evid, strt.time, ...)
+    add.dosing = function(
+      dose,
+      nbr.doses = 1L,
+      dosing.interval = 24,
+      dosing.to = 1L,
+      rate = NULL,
+      amount.units = NA_character_,
+      start.time = 0.0,
+      do.sampling = FALSE,
+      time.units = NA_character_,
+      evid = NULL,
+      strt.time = NULL,
+      ...
+    ) {
+      .etMethodAddDosing(
+        env,
+        dose,
+        nbr.doses,
+        dosing.interval,
+        dosing.to,
+        rate,
+        amount.units,
+        start.time,
+        do.sampling,
+        time.units,
+        evid,
+        strt.time,
+        ...
+      )
     },
 
     add.sampling = function(time, time.units = NA_character_) {
@@ -648,9 +744,9 @@
     },
 
     get.units = function() env$units,
-    getUnits  = function() env$units,
+    getUnits = function() env$units,
 
-    get.nobs  = function() env$nobs,
+    get.nobs = function() env$nobs,
     get.EventTable = function() {
       .etMethodGetEventTable(env)
     },
@@ -687,17 +783,17 @@
       .etMethodSimulate(env, seed, ...)
     }
   )
-  .lst$addDosing      <- .lst[["add.dosing"]]
-  .lst$add_dosing     <- .lst[["add.dosing"]]
-  .lst$addSampling    <- .lst[["add.sampling"]]
-  .lst$add_sampling   <- .lst[["add.sampling"]]
-  .lst$getDosing      <- .lst[["get.dosing"]]
-  .lst$getSampling    <- .lst[["get.sampling"]]
-  .lst$getEventTable  <- .lst[["get.EventTable"]]
-  .lst$clearDosing    <- .lst[["clear.dosing"]]
-  .lst$clear_dosing   <- .lst[["clear.dosing"]]
-  .lst$clearSampling  <- .lst[["clear.sampling"]]
+  .lst$addDosing <- .lst[["add.dosing"]]
+  .lst$add_dosing <- .lst[["add.dosing"]]
+  .lst$addSampling <- .lst[["add.sampling"]]
+  .lst$add_sampling <- .lst[["add.sampling"]]
+  .lst$getDosing <- .lst[["get.dosing"]]
+  .lst$getSampling <- .lst[["get.sampling"]]
+  .lst$getEventTable <- .lst[["get.EventTable"]]
+  .lst$clearDosing <- .lst[["clear.dosing"]]
+  .lst$clear_dosing <- .lst[["clear.dosing"]]
+  .lst$clearSampling <- .lst[["clear.sampling"]]
   .lst$clear_sampling <- .lst[["clear.sampling"]]
-  .lst$get_units      <- .lst[["get.units"]]
+  .lst$get_units <- .lst[["get.units"]]
   .lst
 }

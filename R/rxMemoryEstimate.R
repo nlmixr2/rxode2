@@ -7,8 +7,8 @@
 .isRxMemSummary <- function(dat) {
   inherits(dat, "rxMemSummary") ||
     (is.data.frame(dat) &&
-       all(c("nobs", "ndoses") %in% names(dat)) &&
-       !("evid" %in% names(dat)))
+      all(c("nobs", "ndoses") %in% names(dat)) &&
+      !("evid" %in% names(dat)))
 }
 
 #' Create a per-ID event summary for memory estimation
@@ -40,7 +40,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemSummarizeDat <- function(dat) {
-  evid <- .  <- NULL  # nolint
+  evid <- . <- NULL # nolint
   .groups <- attr(dat, "rxHomGroups", exact = TRUE)
   if (is.data.frame(dat) && !is.null(.groups) && "evid" %in% names(dat)) {
     .idCol <- grep("^id$", names(dat), ignore.case = TRUE, value = TRUE)[1]
@@ -52,7 +52,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
         .ndoses <- vector("list", 0L)
         for (.i in seq_along(.groups)) {
           .groupIds <- .groups[[.i]]
-          if (length(.groupIds) == 0L) next
+          if (length(.groupIds) == 0L) {
+            next
+          }
           .rows <- .repIds == .i
           .nobsGroup <- sum(dat$evid[.rows] == 0L, na.rm = TRUE)
           .ndosesGroup <- sum(dat$evid[.rows] != 0L, na.rm = TRUE)
@@ -90,18 +92,16 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
       ndoses = unlist(.ndoses, use.names = FALSE)
     ))
   }
-  .dt    <- data.table::as.data.table(dat)
+  .dt <- data.table::as.data.table(dat)
   .idCol <- grep("^id$", names(.dt), ignore.case = TRUE, value = TRUE)[1]
 
   if (is.na(.idCol)) {
     .ret <- rxMemSummary(
-      nobs   = sum(.dt[["evid"]] == 0L, na.rm = TRUE),
+      nobs = sum(.dt[["evid"]] == 0L, na.rm = TRUE),
       ndoses = sum(.dt[["evid"]] != 0L, na.rm = TRUE)
     )
   } else {
-    .agg <- .dt[, list(nobs = sum(evid == 0L, na.rm = TRUE),
-                       ndoses = sum(evid != 0L, na.rm = TRUE)),
-                by = .idCol]
+    .agg <- .dt[, list(nobs = sum(evid == 0L, na.rm = TRUE), ndoses = sum(evid != 0L, na.rm = TRUE)), by = .idCol]
     .ret <- rxMemSummary(id = .agg[[.idCol]], nobs = .agg$nobs, ndoses = .agg$ndoses)
   }
   .ret
@@ -115,11 +115,8 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   }
   if (is.rxEt(dat)) {
     .solveInput <- dat
-    if (!is.null(control) && !is.null(control$iCov) &&
-        length(.etGroups(.rxEtEnv(dat))) > 0L) {
-      .groupedSolve <- .etGroupedSolveDataICov(dat, control$iCov,
-                                               keep = control$keep,
-                                               modelParams = .modelParams)
+    if (!is.null(control) && !is.null(control$iCov) && length(.etGroups(.rxEtEnv(dat))) > 0L) {
+      .groupedSolve <- .etGroupedSolveDataICov(dat, control$iCov, keep = control$keep, modelParams = .modelParams)
       if (!is.null(.groupedSolve)) {
         .solveInput <- .groupedSolve$events
       }
@@ -127,9 +124,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     .solveDat <- .etPrepareSolveEvents(.solveInput, control)
   } else if (is.data.frame(dat) && !is.null(attr(dat, "rxHomGroups", exact = TRUE))) {
     if (!is.null(control) && !is.null(control$iCov)) {
-      .groupedSolve <- .etGroupedSolveDataFrameICov(dat, control$iCov,
-                                                    keep = control$keep,
-                                                    modelParams = .modelParams)
+      .groupedSolve <- .etGroupedSolveDataFrameICov(dat, control$iCov, keep = control$keep, modelParams = .modelParams)
       if (!is.null(.groupedSolve)) {
         dat <- .groupedSolve$events
       }
@@ -137,10 +132,12 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     .solveDat <- .etPrepareGroupedSolveData(dat, control)
   } else if (is.data.frame(dat) && "evid" %in% names(dat)) {
     .solveDat <- .etFixCmtForSolve(dat)
-    if (nrow(.solveDat) > 0L &&
+    if (
+      nrow(.solveDat) > 0L &&
         all(.solveDat$evid != 0L, na.rm = TRUE) &&
         !is.null(control) &&
-        any(vapply(control[c("from", "to", "by", "length.out")], Negate(is.null), logical(1)))) {
+        any(vapply(control[c("from", "to", "by", "length.out")], Negate(is.null), logical(1)))
+    ) {
       .solveDat <- .etAddSolveObsRows(.solveDat, .etSolveObsTimes(.solveDat, control))
     }
   }
@@ -176,8 +173,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   if (is.character(dat) && length(dat) == 1L && .rxIsSerializedSolvePath(dat)) {
     .bundle <- .rxReadStateBundle(dat)
     if (is.null(.bundle$events)) {
-      stop(sprintf("Serialized solve '%s' does not contain event data for memory estimation", dat),
-           call. = FALSE)
+      stop(sprintf("Serialized solve '%s' does not contain event data for memory estimation", dat), call. = FALSE)
     }
     return(list(dat = .bundle$events, control = control))
   }
@@ -198,20 +194,20 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemExtractModel <- function(model) {
-  .mv    <- rxModelVars(model)
+  .mv <- rxModelVars(model)
   .flags <- .mv[["flags"]]
 
   list(
-    neq       = length(.mv[["state"]]),
+    neq = length(.mv[["state"]]),
     stateSize = length(.mv[["state"]]),
-    nlhs      = length(.mv[["lhs"]]),
-    npars     = length(.mv[["params"]]),
-    extraCmt  = as.integer(.mv[["extraCmt"]]),
-    linB      = as.integer(.flags["linB"]),
-    nMtime    = as.integer(.mv[["nMtime"]]),
-    nLlik     = as.integer(.flags["nLlik"]),
-    nIndSim   = as.integer(.flags["nIndSim"]),
-    doIndLin  = .rxMemDoIndLin(.mv),
+    nlhs = length(.mv[["lhs"]]),
+    npars = length(.mv[["params"]]),
+    extraCmt = as.integer(.mv[["extraCmt"]]),
+    linB = as.integer(.flags["linB"]),
+    nMtime = as.integer(.mv[["nMtime"]]),
+    nLlik = as.integer(.flags["nLlik"]),
+    nIndSim = as.integer(.flags["nIndSim"]),
+    doIndLin = .rxMemDoIndLin(.mv),
     nDelayState = .rxMemNDelayState(.mv),
     # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
     # MODEL decides it unless the control says otherwise
@@ -229,10 +225,14 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxMemNDelayState <- function(mv) {
-  if (!isTRUE(as.integer(mv[["flags"]]["hasDelay"]) > 0L)) return(0L)
+  if (!isTRUE(as.integer(mv[["flags"]]["hasDelay"]) > 0L)) {
+    return(0L)
+  }
   .sp <- mv[["stateProp"]]
-  if (length(.sp) == 0L) return(0L)
-  .n <- sum(bitwAnd(as.integer(.sp), 262144L) != 0L)  # propDelay, src/tran.h
+  if (length(.sp) == 0L) {
+    return(0L)
+  }
+  .n <- sum(bitwAnd(as.integer(.sp), 262144L) != 0L) # propDelay, src/tran.h
   if (.n == 0L) length(.sp) else as.integer(.n)
 }
 #' Which matrix-exponential driver a model will run under
@@ -250,7 +250,9 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @author Matthew L. Fidler
 .rxMemDoIndLin <- function(mv) {
   .il <- mv[["indLin"]]
-  if (length(.il) != 4L) return(0L)
+  if (length(.il) != 4L) {
+    return(0L)
+  }
   .hasF <- !is.null(.il[[2L]])
   if (isTRUE(as.logical(.il[[3L]]))) {
     if (.hasF) 4L else 3L
@@ -268,27 +270,31 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @author Matthew L. Fidler
 .rxMemExtractControl <- function(ctrl) {
   .cores <- as.integer(ctrl$cores)
-  if (.cores <= 0L) .cores <- getRxThreads()
-  .nsim  <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
-  .neta  <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
-  .neps  <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
-  .nSub  <- if (is.null(ctrl$nSub))  1L else as.integer(ctrl$nSub)
+  if (.cores <= 0L) {
+    .cores <- getRxThreads()
+  }
+  .nsim <- if (is.null(ctrl$nsim)) 1L else as.integer(ctrl$nsim)
+  .neta <- if (is.matrix(ctrl$omega)) nrow(ctrl$omega) else 0L
+  .neps <- if (is.matrix(ctrl$sigma)) nrow(ctrl$sigma) else 0L
+  .nSub <- if (is.null(ctrl$nSub)) 1L else as.integer(ctrl$nSub)
   .nStud <- if (is.null(ctrl$nStud)) 1L else as.integer(ctrl$nStud)
   .stiff <- if (is.null(ctrl$method)) NA_integer_ else as.integer(ctrl$method)
   # rxControl() stores -1 for "not set"; rxSolve() then takes the model's flag
   .indOwn <- if (is.null(ctrl[["indOwnAlloc"]])) NA_integer_ else as.integer(ctrl[["indOwnAlloc"]])
-  if (!is.na(.indOwn) && .indOwn < 0L) .indOwn <- NA_integer_
+  if (!is.na(.indOwn) && .indOwn < 0L) {
+    .indOwn <- NA_integer_
+  }
   list(
-    cores      = .cores,
+    cores = .cores,
     indOwnAlloc = .indOwn,
-    sample     = as.integer(!is.null(ctrl[["resample"]])),
-    nsim       = .nsim,
-    neta       = as.integer(.neta),
-    neps       = as.integer(.neps),
+    sample = as.integer(!is.null(ctrl[["resample"]])),
+    nsim = .nsim,
+    neta = as.integer(.neta),
+    neps = as.integer(.neps),
     nLlikAlloc = ctrl$nLlikAlloc,
-    nSub       = .nSub,
-    nStud      = .nStud,
-    stiff      = .stiff
+    nSub = .nSub,
+    nStud = .nStud,
+    stiff = .stiff
   )
 }
 #' Detect total physical RAM in bytes
@@ -297,9 +303,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getRamBytes <- function() {
-  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["total"]],
-                   error = function(e) NA_real_)
-  if (!is.na(.ram) && .ram > 0) return(.ram)
+  .ram <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["total"]], error = function(e) NA_real_)
+  if (!is.na(.ram) && .ram > 0) {
+    return(.ram)
+  }
   NA_real_
 }
 
@@ -316,16 +323,15 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @author Matthew L. Fidler
 .rxMemSubItems <- c(gsolve_n0 = "gsolve")
 
-.rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov,
-                                     nsim, nsub, nobsTotal, nallTotal) {
-  .addCov       <- TRUE
-  .addDosing    <- FALSE
+.rxMemEstimateOutputData <- function(dat, summary, control, neq, nlhs, ncov, nsim, nsub, nobsTotal, nallTotal) {
+  .addCov <- TRUE
+  .addDosing <- FALSE
   .subsetNonmem <- TRUE
-  .returnType   <- "rxSolve"
-  .nkeep        <- 0L
-  .ncov0        <- 0L
-  .hasEvid2     <- FALSE
-  .ptrBytes     <- .Machine$sizeof.pointer
+  .returnType <- "rxSolve"
+  .nkeep <- 0L
+  .ncov0 <- 0L
+  .hasEvid2 <- FALSE
+  .ptrBytes <- .Machine$sizeof.pointer
 
   if (!is.null(control)) {
     if (!is.null(control$addCov)) {
@@ -363,7 +369,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 
   .doDose <- as.integer(.doDose0 > 0L)
   .nmevid <- as.integer(.doDose0 %in% c(2L, 3L))
-  .doTBS  <- as.integer(identical(.returnType, "data.frame.TBS"))
+  .doTBS <- as.integer(identical(.returnType, "data.frame.TBS"))
   .nidCols <- as.integer(nsub > 1L) + as.integer(nsim > 1L)
   .nevid2col <- as.integer(.doDose0 == 0L && .hasEvid2)
 
@@ -374,26 +380,34 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   }
 
   .nIntCols <- .nidCols + .nevid2col + .doDose + 2L * .nmevid
-  .nDblCols <- 1L + as.integer(neq) + as.integer(nlhs) +
-    .doDose + 3L * .nmevid + .doTBS * 4L +
+  .nDblCols <- 1L +
+    as.integer(neq) +
+    as.integer(nlhs) +
+    .doDose +
+    3L * .nmevid +
+    .doTBS * 4L +
     as.integer(.addCov) * (as.integer(ncov) + .ncov0)
 
   .keepBytes <- 0
   if (.nkeep > 0L) {
     .keepNames <- control$keep
-    .keepBytes <- sum(vapply(.keepNames, function(.nm) {
-      if (!is.data.frame(dat) || !(.nm %in% names(dat))) {
-        return(.nr * 8)
-      }
-      .col <- dat[[.nm]]
-      if (is.character(.col)) {
-        .nr * .ptrBytes
-      } else if (is.logical(.col) || is.factor(.col) || is.integer(.col)) {
-        .nr * 4
-      } else {
-        .nr * 8
-      }
-    }, numeric(1)))
+    .keepBytes <- sum(vapply(
+      .keepNames,
+      function(.nm) {
+        if (!is.data.frame(dat) || !(.nm %in% names(dat))) {
+          return(.nr * 8)
+        }
+        .col <- dat[[.nm]]
+        if (is.character(.col)) {
+          .nr * .ptrBytes
+        } else if (is.logical(.col) || is.factor(.col) || is.integer(.col)) {
+          .nr * 4
+        } else {
+          .nr * 8
+        }
+      },
+      numeric(1)
+    ))
   }
 
   .dataBytes <- .nr * (.nIntCols * 4 + .nDblCols * 8) + .keepBytes
@@ -412,9 +426,10 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getFreeRamBytes <- function() {
-  .free <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["free"]],
-                    error = function(e) NA_real_)
-  if (!is.na(.free) && .free > 0) return(.free)
+  .free <- tryCatch(.Call(`_rxode2_rxRamBytes_`)[["free"]], error = function(e) NA_real_)
+  if (!is.na(.free) && .free > 0) {
+    return(.free)
+  }
   NA_real_
 }
 
@@ -520,28 +535,29 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' }
 rxMemoryEstimate <- function(
   dat,
-  model     = NULL,
-  control   = NULL,
-  neq       = 1L,
+  model = NULL,
+  control = NULL,
+  neq = 1L,
   stateSize = neq,
-  nlhs      = 0L,
-  npars     = neq,
-  neta      = 0L,
-  neps      = 0L,
-  ncov      = 0L,
-  nsim      = 1L,
-  cores     = 1L,
-  nMtime    = 0L,
-  extraCmt  = 0L,
-  linB      = FALSE,
-  nLlik     = 0L,
-  nIndSim   = NULL,
+  nlhs = 0L,
+  npars = neq,
+  neta = 0L,
+  neps = 0L,
+  ncov = 0L,
+  nsim = 1L,
+  cores = 1L,
+  nMtime = 0L,
+  extraCmt = 0L,
+  linB = FALSE,
+  nLlik = 0L,
+  nIndSim = NULL,
   numLinSens = 0L,
-  numLin    = 0L,
-  stiff     = NA_integer_,
-  doIndLin  = 0L,
+  numLin = 0L,
+  stiff = NA_integer_,
+  doIndLin = 0L,
   indOwnAlloc = 0L,
-  nDelayState = 0L) {
+  nDelayState = 0L
+) {
   .resolved <- .rxMemResolveInput(dat, control)
   dat <- .resolved$dat
   control <- .resolved$control
@@ -553,21 +569,23 @@ rxMemoryEstimate <- function(
   } else if (is.data.frame(dat) && "evid" %in% names(dat)) {
     .summary <- .rxMemSummarizeDat(dat)
   } else {
-    stop("'dat' must be an rxMemSummary, a data.frame with 'nobs'/'ndoses' ",
-         "columns, or a data.frame with an 'evid' column")
+    stop(
+      "'dat' must be an rxMemSummary, a data.frame with 'nobs'/'ndoses' ",
+      "columns, or a data.frame with an 'evid' column"
+    )
   }
 
   if (!is.null(model)) {
-    .mi       <- .rxMemExtractModel(model)
-    neq       <- .mi$neq
+    .mi <- .rxMemExtractModel(model)
+    neq <- .mi$neq
     stateSize <- .mi$stateSize
-    nlhs      <- .mi$nlhs
-    npars     <- .mi$npars
-    extraCmt  <- .mi$extraCmt
-    linB      <- .mi$linB
-    nMtime    <- .mi$nMtime
-    nLlik     <- .mi$nLlik
-    doIndLin  <- .mi$doIndLin
+    nlhs <- .mi$nlhs
+    npars <- .mi$npars
+    extraCmt <- .mi$extraCmt
+    linB <- .mi$linB
+    nMtime <- .mi$nMtime
+    nLlik <- .mi$nLlik
+    doIndLin <- .mi$doIndLin
     indOwnAlloc <- .mi$indOwnAlloc
     nDelayState <- .mi$nDelayState
     if (is.null(nIndSim)) nIndSim <- .mi$nIndSim
@@ -576,14 +594,24 @@ rxMemoryEstimate <- function(
   .ci <- NULL
   .sample <- 0L
   if (!is.null(control)) {
-    .ci   <- .rxMemExtractControl(control)
+    .ci <- .rxMemExtractControl(control)
     cores <- .ci$cores
-    nsim  <- .ci$nsim
-    if (.ci$neta > 0L) neta <- .ci$neta
-    if (.ci$neps > 0L) neps <- .ci$neps
-    if (!is.null(.ci$nLlikAlloc)) nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
-    if (!is.na(.ci$stiff)) stiff <- .ci$stiff
-    if (!is.na(.ci$indOwnAlloc)) indOwnAlloc <- .ci$indOwnAlloc
+    nsim <- .ci$nsim
+    if (.ci$neta > 0L) {
+      neta <- .ci$neta
+    }
+    if (.ci$neps > 0L) {
+      neps <- .ci$neps
+    }
+    if (!is.null(.ci$nLlikAlloc)) {
+      nLlik <- max(nLlik, as.integer(.ci$nLlikAlloc))
+    }
+    if (!is.na(.ci$stiff)) {
+      stiff <- .ci$stiff
+    }
+    if (!is.na(.ci$indOwnAlloc)) {
+      indOwnAlloc <- .ci$indOwnAlloc
+    }
     .sample <- .ci$sample
   }
   indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
@@ -604,20 +632,24 @@ rxMemoryEstimate <- function(
   # directly on the unconverted model.  Cost it as the iterating driver -- that
   # is what a converted nonlinear model runs, and guessing low is the failure
   # mode this estimate exists to avoid.
-  if (stiff == 3L && doIndLin == 0L) doIndLin <- 3L
-  if (is.null(nIndSim)) nIndSim <- neta + neps
+  if (stiff == 3L && doIndLin == 0L) {
+    doIndLin <- 3L
+  }
+  if (is.null(nIndSim)) {
+    nIndSim <- neta + neps
+  }
 
   # doubles throughout: integer `sum()` returns NA past 2^31, and a solve big
   # enough to overflow it is exactly the one this estimate exists to size
-  .nallVec     <- as.numeric(.summary$nobs) + as.numeric(.summary$ndoses)
-  .nsub        <- nrow(.summary)
-  .nobsTotal   <- sum(as.numeric(.summary$nobs))
-  .nallTotal   <- sum(.nallVec)
+  .nallVec <- as.numeric(.summary$nobs) + as.numeric(.summary$ndoses)
+  .nsub <- nrow(.summary)
+  .nobsTotal <- sum(as.numeric(.summary$nobs))
+  .nallTotal <- sum(.nallVec)
   # dose share of the events, so the dose count follows whatever rescaling the
   # solve-layout / nSub / nStud branches below do to the event count
-  .doseFrac    <- if (.nallTotal > 0) sum(as.numeric(.summary$ndoses)) / .nallTotal else 0
+  .doseFrac <- if (.nallTotal > 0) sum(as.numeric(.summary$ndoses)) / .nallTotal else 0
   .maxAllTimes <- max(.nallVec)
-  .solveStats  <- .rxMemSolveLayoutStats(dat, control, model)
+  .solveStats <- .rxMemSolveLayoutStats(dat, control, model)
   .solveNallTotal <- .nallTotal
   .solveMaxAllTimes <- .maxAllTimes
 
@@ -634,8 +666,8 @@ rxMemoryEstimate <- function(
     .meanObsTimes <- .nobsTotal / .nsub
     .meanAllTimes <- .nallTotal / .nsub
     .nsubPerSim <- .subPerStudy
-    nsim       <- .ci$nStud
-    .nsub      <- .subPerStudy * .ci$nStud
+    nsim <- .ci$nStud
+    .nsub <- .subPerStudy * .ci$nStud
     # per-simulation totals: the components multiply these back up by `nsim`
     .nobsTotal <- .meanObsTimes * .nsubPerSim
     .nallTotal <- .meanAllTimes * .nsubPerSim
@@ -647,61 +679,66 @@ rxMemoryEstimate <- function(
   }
 
   .raw <- rxMemoryComponents_(
-    neq        = as.integer(neq),
-    stateSize  = as.integer(stateSize),
-    nlhs       = as.integer(nlhs),
-    npars      = as.integer(npars),
-    neta       = as.integer(neta),
-    neps       = as.integer(neps),
-    ncov       = as.integer(ncov),
-    nsim       = as.integer(nsim),
-    cores      = as.integer(cores),
-    nMtime     = as.integer(nMtime),
-    extraCmt   = as.integer(extraCmt),
-    linB       = as.integer(linB),
-    nLlik      = as.integer(nLlik),
-    nIndSim    = as.integer(nIndSim),
+    neq = as.integer(neq),
+    stateSize = as.integer(stateSize),
+    nlhs = as.integer(nlhs),
+    npars = as.integer(npars),
+    neta = as.integer(neta),
+    neps = as.integer(neps),
+    ncov = as.integer(ncov),
+    nsim = as.integer(nsim),
+    cores = as.integer(cores),
+    nMtime = as.integer(nMtime),
+    extraCmt = as.integer(extraCmt),
+    linB = as.integer(linB),
+    nLlik = as.integer(nLlik),
+    nIndSim = as.integer(nIndSim),
     numLinSens = as.integer(numLinSens),
-    numLin     = as.integer(numLin),
-    nsub       = as.integer(.nsubPerSim),
-    nallTotal  = as.double(.solveNallTotal),
+    numLin = as.integer(numLin),
+    nsub = as.integer(.nsubPerSim),
+    nallTotal = as.double(.solveNallTotal),
     ndosesTotal = as.double(.doseFrac * .solveNallTotal),
     maxAllTimes = as.double(.solveMaxAllTimes),
-    stiff      = as.integer(stiff),
-    doIndLin   = as.integer(doIndLin),
+    stiff = as.integer(stiff),
+    doIndLin = as.integer(doIndLin),
     indOwnAlloc = as.integer(indOwnAlloc),
-    sample     = as.integer(.sample),
+    sample = as.integer(.sample),
     nDelayState = as.integer(nDelayState)
   )
 
-  .meta    <- c("sizeofInd", "rxLlikSaveSize")
-  .sizes   <- .raw[!names(.raw) %in% .meta]
+  .meta <- c("sizeofInd", "rxLlikSaveSize")
+  .sizes <- .raw[!names(.raw) %in% .meta]
   .outputData <- .rxMemEstimateOutputData(
-    dat       = dat,
-    summary   = .summary,
-    control   = control,
-    neq       = neq,
-    nlhs      = nlhs,
-    ncov      = ncov,
-    nsim      = nsim,
-    nsub      = .nsub,
+    dat = dat,
+    summary = .summary,
+    control = control,
+    neq = neq,
+    nlhs = nlhs,
+    ncov = ncov,
+    nsim = nsim,
+    nsub = .nsub,
     nobsTotal = .nobsTotal,
     nallTotal = .nallTotal
   )
-  .sizes   <- c(.sizes, outputData = .outputData)
+  .sizes <- c(.sizes, outputData = .outputData)
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
   # Sub-items (see `.rxMemSubItems`) are still reported, but they are pieces of
   # a component that is already in the sum, so they are left out of it.
-  .total   <- Reduce(`+`, .wrapped[!names(.wrapped) %in% names(.rxMemSubItems)])
+  .total <- Reduce(`+`, .wrapped[!names(.wrapped) %in% names(.rxMemSubItems)])
 
-  .ret <- c(list(total = .total), .wrapped,
-            list(sizeofInd      = .raw[["sizeofInd"]],
-                 rxLlikSaveSize = .raw[["rxLlikSaveSize"]],
-                 ramBytes       = .getRamBytes(),
-                 freeRamBytes   = .getFreeRamBytes(),
-                 effectiveSubs  = .nsub))
+  .ret <- c(
+    list(total = .total),
+    .wrapped,
+    list(
+      sizeofInd = .raw[["sizeofInd"]],
+      rxLlikSaveSize = .raw[["rxLlikSaveSize"]],
+      ramBytes = .getRamBytes(),
+      freeRamBytes = .getFreeRamBytes(),
+      effectiveSubs = .nsub
+    )
+  )
   class(.ret) <- "rxMemoryEstimate"
   attr(.ret, "summary") <- .summary
   .ret
@@ -717,25 +754,31 @@ rxMemoryEstimate <- function(
   # Dividing them by the subject count would understate the chunk, and would
   # keep understating it however small the chunks got.  Take them off the top.
   .fixedNames <- c("indLinExpCache", "indLinWork")
-  .fixed <- sum(vapply(.est[intersect(names(.est), .fixedNames)],
-                       as.numeric, numeric(1)))
+  .fixed <- sum(vapply(.est[intersect(names(.est), .fixedNames)], as.numeric, numeric(1)))
   .memPerSub <- (as.numeric(.est$total) - .fixed) / max(1L, .est$effectiveSubs)
   .avail <- .est$freeRamBytes * safetyFactor - .fixed
-  if (.memPerSub <= 0 || .avail <= 0) return(1L)
+  if (.memPerSub <= 0 || .avail <= 0) {
+    return(1L)
+  }
   max(1L, as.integer(floor(.avail / .memPerSub)))
 }
 
 #' @export
 print.rxMemoryEstimate <- function(x, ...) {
-  .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
+  .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
   .comps <- x[!names(x) %in% .meta]
 
   .fmtSize <- function(v) {
     .b <- if (is.numeric(v)) v else unclass(v)
-    if (.b >= 1e9)       sprintf("%.2f GB", .b / 1e9)
-    else if (.b >= 1e6)  sprintf("%.2f MB", .b / 1e6)
-    else if (.b >= 1e3)  sprintf("%.2f KB", .b / 1e3)
-    else                 sprintf("%.0f B",  .b)
+    if (.b >= 1e9) {
+      sprintf("%.2f GB", .b / 1e9)
+    } else if (.b >= 1e6) {
+      sprintf("%.2f MB", .b / 1e6)
+    } else if (.b >= 1e3) {
+      sprintf("%.2f KB", .b / 1e3)
+    } else {
+      sprintf("%.0f B", .b)
+    }
   }
 
   cat("rxSolve() memory estimate\n")
@@ -746,8 +789,8 @@ print.rxMemoryEstimate <- function(x, ...) {
   # Sub-items are not ranked by size; they are printed indented directly under
   # the component they are part of, and left out of the percentage base (they
   # are already counted inside their parent).
-  .nm  <- names(.comps)[order(.bytes, decreasing = TRUE)]
-  .nm  <- .nm[!.nm %in% names(.rxMemSubItems)]
+  .nm <- names(.comps)[order(.bytes, decreasing = TRUE)]
+  .nm <- .nm[!.nm %in% names(.rxMemSubItems)]
   .tot <- sum(.bytes[.nm])
   for (.p in unique(unname(.rxMemSubItems))) {
     # insert a parent's sub-items as one block so several of them keep the
@@ -755,55 +798,58 @@ print.rxMemoryEstimate <- function(x, ...) {
     # rather than dropping it, should its parent ever stop being reported
     .kids <- names(.rxMemSubItems)[.rxMemSubItems == .p]
     .kids <- .kids[.kids %in% names(.comps)]
-    if (length(.kids) == 0L) next
+    if (length(.kids) == 0L) {
+      next
+    }
     .nm <- append(.nm, .kids, after = match(.p, .nm, nomatch = length(.nm)))
   }
-  .sz  <- .bytes[.nm]
+  .sz <- .bytes[.nm]
 
   .labels <- c(
-    gsolve        = "gsolve (double buffer total)",
-    gsolve_n0     = "  |_ n0: ODE state output matrix",
-    gon           = "gon (int buffer)",
-    gall_times    = "gall_times (event time/dv/amt/ii/limit)",
-    gevid         = "gevid (event IDs)",
-    gcov          = "gcov (covariates)",
-    gpars         = "gpars (parameters)",
-    gomega        = "gomega (omega matrix)",
-    gsigma        = "gsigma (sigma matrix)",
-    gall_timesS   = "gall_timesS (extra sim times)",
-    ordId         = "ordId (subject ordering)",
+    gsolve = "gsolve (double buffer total)",
+    gsolve_n0 = "  |_ n0: ODE state output matrix",
+    gon = "gon (int buffer)",
+    gall_times = "gall_times (event time/dv/amt/ii/limit)",
+    gevid = "gevid (event IDs)",
+    gcov = "gcov (covariates)",
+    gpars = "gpars (parameters)",
+    gomega = "gomega (omega matrix)",
+    gsigma = "gsigma (sigma matrix)",
+    gall_timesS = "gall_timesS (extra sim times)",
+    ordId = "ordId (subject ordering)",
     gInfusionRate = "gInfusionRate (per-thread infusion)",
-    inds_global   = "inds_global (per-subject structs)",
+    inds_global = "inds_global (per-subject structs)",
     indLinExpCache = "indLinExpCache (per-thread exponential cache)",
-    indLinWork    = "indLinWork (per-thread indLin scratch)",
-    indOwnAlloc   = "indOwnAlloc (per-individual event/solve arrays)",
-    gSampleCov    = "gSampleCov (resampled covariate index)",
-    gEtaPre       = "gEtaPre (pre-generated eta draws)",
-    delayHist     = "delayHist (per-individual delay() history, bound)",
+    indLinWork = "indLinWork (per-thread indLin scratch)",
+    indOwnAlloc = "indOwnAlloc (per-individual event/solve arrays)",
+    gSampleCov = "gSampleCov (resampled covariate index)",
+    gEtaPre = "gEtaPre (pre-generated eta draws)",
+    delayHist = "delayHist (per-individual delay() history, bound)",
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
-    outputData    = "outputData (estimated returned data)"
+    outputData = "outputData (estimated returned data)"
   )
 
   for (.i in seq_along(.nm)) {
-    .n   <- .nm[.i]
+    .n <- .nm[.i]
     .lab <- if (!is.na(.labels[.n])) .labels[.n] else .n
     .pct <- if (.tot > 0) sprintf(" (%4.1f%%)", 100 * .sz[.i] / .tot) else ""
     cat(sprintf("  %-42s %s%s\n", .lab, .fmtSize(.comps[[.n]]), .pct))
   }
 
   .nsub <- if (!is.null(x$effectiveSubs)) as.integer(x$effectiveSubs) else nrow(attr(x, "summary"))
-  cat(sprintf("\n  Subjects: %d  |  sizeof(rx_solving_options_ind): %d B",
-              .nsub, as.integer(x$sizeofInd)))
+  cat(sprintf("\n  Subjects: %d  |  sizeof(rx_solving_options_ind): %d B", .nsub, as.integer(x$sizeofInd)))
 
   .ramBytes <- x$ramBytes
   .freeRamBytes <- x$freeRamBytes
   if (!is.null(.ramBytes) && !is.na(.ramBytes) && .ramBytes > 0) {
     .totalBytes <- as.numeric(x$total)
-    cat(sprintf("  |  %.1f%% of RAM (%s)",
-                100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
+    cat(sprintf("  |  %.1f%% of RAM (%s)", 100 * .totalBytes / .ramBytes, .fmtSize(.ramBytes)))
     if (!is.null(.freeRamBytes) && !is.na(.freeRamBytes) && .freeRamBytes > 0) {
-      cat(sprintf("  |  %.1f%% of available memory (%s available)",
-                  100 * .totalBytes / .freeRamBytes, .fmtSize(.freeRamBytes)))
+      cat(sprintf(
+        "  |  %.1f%% of available memory (%s available)",
+        100 * .totalBytes / .freeRamBytes,
+        .fmtSize(.freeRamBytes)
+      ))
     }
     cat("\n")
   } else {

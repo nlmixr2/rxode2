@@ -27,7 +27,8 @@
 ## register a name that a later pass then sees.
 
 .captureScript <- function(loader, inFile) {
-  sprintf('
+  sprintf(
+    '
     %s
     .in <- readRDS("%s")
     .capture <- function(inputs, fn) {
@@ -47,7 +48,10 @@
       fromSEcentral = .capture(.in$se, function(x) rxode2::rxFromSE(x, "central")),
       toSE          = .capture(.in$rx, function(x) rxode2::rxToSE(x)))
     saveRDS(res, "%%s", version = 2)
-  ', loader, inFile)
+  ',
+    loader,
+    inFile
+  )
 }
 
 .runCapture <- function(loader, label, inFile) {
@@ -55,12 +59,9 @@
   scr <- sprintf(.captureScript(loader, inFile), outFile)
   f <- tempfile(fileext = ".R")
   writeLines(scr, f)
-  st <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", shQuote(f)),
-                stdout = FALSE, stderr = FALSE)
+  st <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", shQuote(f)), stdout = FALSE, stderr = FALSE)
   if (!file.exists(outFile)) {
     stop("capture subprocess failed (", label, "), status ", st)
   }
   readRDS(outFile)
 }
-
-

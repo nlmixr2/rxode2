@@ -31,24 +31,19 @@
   .censSet <- .hasCens || .hasLimit
   .lowerSet <- .hasLower || .hasUpper
   if (.censSet && .lowerSet) {
-    stop("stat_cens cannot mix the (cens, limit) and (lower, upper) aesthetic pairs; supply only one pair",
+    stop(
+      "stat_cens cannot mix the (cens, limit) and (lower, upper) aesthetic pairs; supply only one pair",
       call. = FALSE
     )
   }
   if (!.censSet && !.lowerSet) {
-    stop("stat_cens requires either the (lower, upper) or (cens, limit) aesthetic pair",
-      call. = FALSE
-    )
+    stop("stat_cens requires either the (lower, upper) or (cens, limit) aesthetic pair", call. = FALSE)
   }
   if (.hasLimit && !.hasCens) {
-    stop("stat_cens requires `cens` when the `limit` aesthetic is supplied",
-      call. = FALSE
-    )
+    stop("stat_cens requires `cens` when the `limit` aesthetic is supplied", call. = FALSE)
   }
   if (.lowerSet && !(.hasLower && .hasUpper)) {
-    stop("stat_cens requires both `lower` and `upper` aesthetics when using the (lower, upper) pair",
-      call. = FALSE
-    )
+    stop("stat_cens requires both `lower` and `upper` aesthetics when using the (lower, upper) pair", call. = FALSE)
   }
   .dat <- data
   if (.hasCens) {
@@ -86,14 +81,21 @@
   params
 }
 
-GeomPolygonCens <- ggplot2::ggproto("GeomPolygonCens", ggplot2::GeomPolygon,
+GeomPolygonCens <- ggplot2::ggproto(
+  "GeomPolygonCens",
+  ggplot2::GeomPolygon,
   default_aes = aes(
-    colour = NA, fill = "red", size = 0.5, linetype = 1,
+    colour = NA,
+    fill = "red",
+    size = 0.5,
+    linetype = 1,
     alpha = 0.5
   )
 )
 
-StatCens <- ggplot2::ggproto("StatCens", ggplot2::Stat,
+StatCens <- ggplot2::ggproto(
+  "StatCens",
+  ggplot2::Stat,
   setup_params = function(data, params) {
     .setupCensParams(data, params)
   },
@@ -136,12 +138,23 @@ StatCens <- ggplot2::ggproto("StatCens", ggplot2::Stat,
 #' @inheritParams ggplot2::stat_identity
 #' @return This returns a ggplot2 stat
 #' @export
-stat_cens <- function(mapping = NULL, data = NULL,
-                      position = "identity", show.legend = NA,
-                      inherit.aes = TRUE, width = 0.01, ...) {
+stat_cens <- function(
+  mapping = NULL,
+  data = NULL,
+  position = "identity",
+  show.legend = NA,
+  inherit.aes = TRUE,
+  width = 0.01,
+  ...
+) {
   ggplot2::layer(
-    stat = StatCens, data = data, mapping = mapping, geom = GeomPolygonCens,
-    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    stat = StatCens,
+    data = data,
+    mapping = mapping,
+    geom = GeomPolygonCens,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
     params = list(na.rm = TRUE, width = width, ...)
   )
 }

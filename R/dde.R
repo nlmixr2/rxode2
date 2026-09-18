@@ -22,9 +22,11 @@
 #' @return logical.
 #' @noRd
 .rxIsPastAssign <- function(x) {
-  is.call(x) && (identical(x[[1L]], quote(`=`)) ||
-                   identical(x[[1L]], quote(`<-`))) &&
-    is.call(x[[2L]]) && identical(x[[2L]][[1L]], quote(past)) &&
+  is.call(x) &&
+    (identical(x[[1L]], quote(`=`)) ||
+      identical(x[[1L]], quote(`<-`))) &&
+    is.call(x[[2L]]) &&
+    identical(x[[2L]][[1L]], quote(past)) &&
     length(x[[2L]]) == 3L
 }
 
@@ -51,16 +53,23 @@
           tau = deparse1(x[[3]])
         )
       }
-      for (.i in seq_along(x)) .walk(x[[.i]])
+      for (.i in seq_along(x)) {
+        .walk(x[[.i]])
+      }
     }
   }
-  for (.i in seq_along(.e)) .walk(.e[[.i]])
+  for (.i in seq_along(.e)) {
+    .walk(.e[[.i]])
+  }
   if (length(.found) == 0L) {
     return(NULL)
   }
-  .df <- do.call(rbind, lapply(.found, function(z) {
-    data.frame(state = z$state, tau = z$tau, stringsAsFactors = FALSE)
-  }))
+  .df <- do.call(
+    rbind,
+    lapply(.found, function(z) {
+      data.frame(state = z$state, tau = z$tau, stringsAsFactors = FALSE)
+    })
+  )
   .df <- unique(.df)
   rownames(.df) <- NULL
   .df$surrogate <- paste0("rx__dly_", .df$state, "_", seq_len(nrow(.df)), "__")
@@ -82,11 +91,14 @@
 #' @noRd
 .rxSeEvalTxt <- function(model, txt) {
   .e <- tryCatch(parse(text = txt)[[1L]], error = function(e) NULL)
-  if (is.null(.e)) return(NULL)
+  if (is.null(.e)) {
+    return(NULL)
+  }
   .se <- tryCatch(.rxToSE(.e, envir = model), error = function(e) NULL)
-  if (is.null(.se)) return(NULL)
-  .b <- tryCatch(eval(parse(text = paste0("with(model,", .se, ")"))),
-                 error = function(e) NULL)
+  if (is.null(.se)) {
+    return(NULL)
+  }
+  .b <- tryCatch(eval(parse(text = paste0("with(model,", .se, ")"))), error = function(e) NULL)
   if (inherits(.b, "Basic")) .b else NULL
 }
 
@@ -109,14 +121,18 @@
 #' @return duration text to emit.
 #' @noRd
 .rxTauFromEnv <- function(model, state, tauTxt) {
-  if (is.null(tauTxt)) return(tauTxt)
+  if (is.null(tauTxt)) {
+    return(tauTxt)
+  }
   .b <- .rxSeEvalTxt(model, paste0("delay(", state, ",", tauTxt, ")"))
   if (!is.null(.b)) {
     .c <- tryCatch(parse(text = rxFromSE(.b))[[1L]], error = function(e) NULL)
     if (is.call(.c) && length(.c) == 3L) return(deparse1(.c[[3L]]))
   }
   .t <- .rxSeEvalTxt(model, tauTxt)
-  if (!is.null(.t)) return(rxFromSE(.t))
+  if (!is.null(.t)) {
+    return(rxFromSE(.t))
+  }
   tauTxt
 }
 
@@ -141,19 +157,17 @@
 #'   `Basic` `rhsB` (`NULL` when it did not resolve) for differentiation.
 #' @noRd
 .rxPastFromEnv <- function(model, state) {
-  .rhsTxt <- base::mget(paste0("rx__pastRhs_", state, "__"), envir = model,
-                        ifnotfound = list(NULL))[[1L]]
-  if (is.null(.rhsTxt)) return(NULL)
-  .tauTxt <- base::mget(paste0("rx__pastTau_", state, "__"), envir = model,
-                        ifnotfound = list(NULL))[[1L]]
+  .rhsTxt <- base::mget(paste0("rx__pastRhs_", state, "__"), envir = model, ifnotfound = list(NULL))[[1L]]
+  if (is.null(.rhsTxt)) {
+    return(NULL)
+  }
+  .tauTxt <- base::mget(paste0("rx__pastTau_", state, "__"), envir = model, ifnotfound = list(NULL))[[1L]]
   ## resolve the duration first: rxFromSE() of a Basic holding lag0()/llik*()
   ## poisons the next `[[`/get read from the env, and the history RHS is the one
   ## that may carry such a call
   .tau <- .rxTauFromEnv(model, state, .tauTxt)
   .rhsB <- .rxSeEvalTxt(model, .rhsTxt)
-  list(tau = .tau,
-       rhs = if (is.null(.rhsB)) .rhsTxt else rxFromSE(.rhsB),
-       rhsB = .rhsB)
+  list(tau = .tau, rhs = if (is.null(.rhsB)) .rhsTxt else rxFromSE(.rhsB), rhsB = .rhsB)
 }
 
 #' Base past(state, tau) <- expr history lines from a symengine env
@@ -174,7 +188,9 @@
   for (.si in .states) {
     ## resolve through the env so the injected line references root parameters
     .p <- .rxPastFromEnv(model, .si)
-    if (is.null(.p)) next
+    if (is.null(.p)) {
+      next
+    }
     .lines <- c(.lines, sprintf("past(%s,%s)=%s", .si, .p$tau, .p$rhs))
   }
   if (length(.lines)) .lines else NULL
@@ -193,12 +209,16 @@
     ## past(state, tau) = expr  parses as `=`(past(state, tau), expr)
     if (.rxIsPastAssign(.st)) {
       .lhs <- .st[[2L]]
-      .found[[length(.found) + 1L]] <- list(state = deparse1(.lhs[[2L]]),
-                                            tau = deparse1(.lhs[[3L]]),
-                                            expr = deparse1(.st[[3L]]))
+      .found[[length(.found) + 1L]] <- list(
+        state = deparse1(.lhs[[2L]]),
+        tau = deparse1(.lhs[[3L]]),
+        expr = deparse1(.st[[3L]])
+      )
     }
   }
-  if (length(.found) == 0L) return(NULL)
+  if (length(.found) == 0L) {
+    return(NULL)
+  }
   .found
 }
 
@@ -218,42 +238,80 @@
   .assertNoNestedPast <- function(x) {
     if (is.call(x)) {
       if (.rxIsPastAssign(x)) {
-        stop(sprintf("past(%s, %s) must be at the top level of the model (not inside if/else)",
-                     deparse1(x[[2L]][[2L]]), deparse1(x[[2L]][[3L]])),
-             call. = FALSE)
+        stop(
+          sprintf(
+            "past(%s, %s) must be at the top level of the model (not inside if/else)",
+            deparse1(x[[2L]][[2L]]),
+            deparse1(x[[2L]][[3L]])
+          ),
+          call. = FALSE
+        )
       }
-      for (.i in seq_along(x)) .assertNoNestedPast(x[[.i]])
+      for (.i in seq_along(x)) {
+        .assertNoNestedPast(x[[.i]])
+      }
     }
   }
   for (.st in .rxNormStatements(model)) {
-    if (.rxIsPastAssign(.st)) next
+    if (.rxIsPastAssign(.st)) {
+      next
+    }
     .assertNoNestedPast(.st)
   }
   .past <- .rxPastTerms(model)
-  if (is.null(.past)) return(invisible(NULL))
+  if (is.null(.past)) {
+    return(invisible(NULL))
+  }
   .states <- rxode2::rxStateOde(model)
   .delays <- .rxDelayTerms(model)
   for (.p in .past) {
-    if (grepl("^rx__sens_", .p$state)) next          # machine-generated, trusted
+    if (grepl("^rx__sens_", .p$state)) {
+      next
+    } # machine-generated, trusted
     if (!(.p$state %in% .states)) {
-      stop(sprintf("past(%s, %s): '%s' is not an ODE state (define d/dt(%s))",
-                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+      stop(
+        sprintf("past(%s, %s): '%s' is not an ODE state (define d/dt(%s))", .p$state, .p$tau, .p$state, .p$state),
+        call. = FALSE
+      )
     }
     .sd <- if (is.null(.delays)) NULL else .delays[.delays$state == .p$state, , drop = FALSE]
     if (is.null(.sd) || nrow(.sd) == 0L) {
-      stop(sprintf("past(%s, %s): '%s' has no delay(%s, ...) term (a past history is only used by delay())",
-                   .p$state, .p$tau, .p$state, .p$state), call. = FALSE)
+      stop(
+        sprintf(
+          "past(%s, %s): '%s' has no delay(%s, ...) term (a past history is only used by delay())",
+          .p$state,
+          .p$tau,
+          .p$state,
+          .p$state
+        ),
+        call. = FALSE
+      )
     }
     if (!(.p$tau %in% .sd$tau)) {
-      stop(sprintf("past(%s, %s): duration '%s' does not match any delay(%s, ...) (found: %s)",
-                   .p$state, .p$tau, .p$tau, .p$state, paste(unique(.sd$tau), collapse = ", ")),
-           call. = FALSE)
+      stop(
+        sprintf(
+          "past(%s, %s): duration '%s' does not match any delay(%s, ...) (found: %s)",
+          .p$state,
+          .p$tau,
+          .p$tau,
+          .p$state,
+          paste(unique(.sd$tau), collapse = ", ")
+        ),
+        call. = FALSE
+      )
     }
     .refs <- tryCatch(all.vars(parse(text = .p$expr)[[1L]]), error = function(e) character(0))
     .bad <- intersect(.refs, .states)
     if (length(.bad) > 0L) {
-      stop(sprintf("past(%s, %s): history may not reference ODE state(s) '%s' (it is a function of t and parameters only)",
-                   .p$state, .p$tau, paste(.bad, collapse = "', '")), call. = FALSE)
+      stop(
+        sprintf(
+          "past(%s, %s): history may not reference ODE state(s) '%s' (it is a function of t and parameters only)",
+          .p$state,
+          .p$tau,
+          paste(.bad, collapse = "', '")
+        ),
+        call. = FALSE
+      )
     }
   }
   invisible(NULL)
@@ -273,7 +331,9 @@
 .rxModelDefs <- function(model) {
   .defs <- character(0)
   .collect <- function(x) {
-    if (!is.call(x)) return(invisible(NULL))
+    if (!is.call(x)) {
+      return(invisible(NULL))
+    }
     if (identical(x[[1L]], quote(`=`)) || identical(x[[1L]], quote(`<-`))) {
       .lhs <- x[[2L]]
       ## only simple `name = rhs` assignments (skip d/dt(x), f(x), etc.)
@@ -287,11 +347,15 @@
         }
       }
     } else if (identical(x[[1L]], quote(`if`)) || identical(x[[1L]], quote(`{`))) {
-      for (.i in seq_along(x)[-1L]) .collect(x[[.i]])
+      for (.i in seq_along(x)[-1L]) {
+        .collect(x[[.i]])
+      }
     }
     invisible(NULL)
   }
-  for (.st in .rxNormStatements(model)) .collect(.st)
+  for (.st in .rxNormStatements(model)) {
+    .collect(.st)
+  }
   .defs
 }
 
@@ -312,7 +376,9 @@
   while (length(.stack) > 0L) {
     .v <- .stack[[1L]]
     .stack <- .stack[-1L]
-    if (.v %in% .seen) next
+    if (.v %in% .seen) {
+      next
+    }
     .seen <- c(.seen, .v)
     if (.v %in% names(defs)) {
       .stack <- c(.stack, all.vars(parse(text = defs[[.v]])))
@@ -339,7 +405,9 @@
   while (length(.stack) > 0L) {
     .v <- .stack[[1L]]
     .stack <- .stack[-1L]
-    if (.v %in% .seen) next
+    if (.v %in% .seen) {
+      next
+    }
     .seen <- c(.seen, .v)
     .def <- get0(.v, envir = model, inherits = FALSE)
     if (is.null(.def)) {
@@ -372,7 +440,9 @@
   ## walk each RHS as rxFromSE text (symengine intercepts VecBasic `[[`)
   for (.si in .states) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
-    if (is.null(.f)) next
+    if (is.null(.f)) {
+      next
+    }
     .e <- parse(text = rxFromSE(.f))
     .walk <- function(x) {
       if (is.call(x)) {
@@ -381,16 +451,26 @@
           .tau <- deparse1(x[[3L]])
           .bad <- intersect(.rxResolveRootVarsSE(.tau, model), .states)
           if (length(.bad) > 0L) {
-            stop("delay duration 'delay(", .stateJ, ", ", .tau,
-                 ")' depends on the state(s) ", paste(.bad, collapse = ", "),
-                 "; state-dependent delays are not supported for sensitivities",
-                 call. = FALSE)
+            stop(
+              "delay duration 'delay(",
+              .stateJ,
+              ", ",
+              .tau,
+              ")' depends on the state(s) ",
+              paste(.bad, collapse = ", "),
+              "; state-dependent delays are not supported for sensitivities",
+              call. = FALSE
+            )
           }
         }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+        for (.i in seq_along(x)) {
+          .walk(x[[.i]])
+        }
       }
     }
-    for (.i in seq_along(.e)) .walk(.e[[.i]])
+    for (.i in seq_along(.e)) {
+      .walk(.e[[.i]])
+    }
   }
   invisible(TRUE)
 }
@@ -410,7 +490,9 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxDelaySensAugment <- function(model, sensVec, params) {
-  if (length(sensVec) == 0L) return(sensVec)
+  if (length(sensVec) == 0L) {
+    return(sensVec)
+  }
   .states <- rxStateOde(model)
   ## Per original state, the delay terms in its RHS and their delayed Jacobians.
   .delayJac <- lapply(.states, function(.si) {
@@ -425,7 +507,9 @@
       ## identify delay() symbols via rxFromSE text (as.character()/get_args()
       ## are intercepted here)
       .fnTxt <- rxFromSE(.fn)
-      if (!grepl("^delay\\(", .fnTxt)) next
+      if (!grepl("^delay\\(", .fnTxt)) {
+        next
+      }
       .call <- parse(text = .fnTxt)[[1L]]
       .stateJ <- deparse1(.call[[2L]])
       .tau <- deparse1(.call[[3L]])
@@ -434,15 +518,13 @@
       .dj <- symengine::D(symengine::subs(.f, .fn, .g), .g)
       .djTxt <- rxFromSE(.dj)
       ## restore the substituted symbol back to the delay() subexpression
-      .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"),
-                     .djTxt, fixed = TRUE)
+      .djTxt <- gsub(.gName, paste0("delay(", .stateJ, ",", .tau, ")"), .djTxt, fixed = TRUE)
       ## param-dependent delay: precompute d tau/d p here (symengine work stays
       ## in this lapply; the splice below is pure string assembly)
       .dtauByP <- stats::setNames(rep("0", length(params)), params)
       ## eval the duration text in the env to resolve intermediates (S() on a
       ## function expression is intercepted here)
-      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .tau)[[1L]]), envir = model),
-                          error = function(e) NULL)
+      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .tau)[[1L]]), envir = model), error = function(e) NULL)
       if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
         for (.pp in params) {
           ## assign before rxFromSE, which captures its argument (NSE)
@@ -451,8 +533,7 @@
           if (!is.null(.dD)) .dtauByP[.pp] <- rxFromSE(.dD)
         }
       }
-      .out[[length(.out) + 1L]] <- list(stateJ = .stateJ, tau = .tau,
-                                        djac = .djTxt, dtauByP = .dtauByP)
+      .out[[length(.out) + 1L]] <- list(stateJ = .stateJ, tau = .tau, djac = .djTxt, dtauByP = .dtauByP)
     }
     .out
   })
@@ -460,27 +541,33 @@
   ## Non-constant pre-history: re-add the base past() line and emit the
   ## per-sensitivity-compartment history
   ## past(rx__sens_<state>_BY_<p>__, tau) = d(expr)/d(p).
-  .baseLines <- character(0)   # base state history (also needed by gradient-free SAEM)
-  .pastLines <- character(0)   # base + per-sensitivity-compartment histories
+  .baseLines <- character(0) # base state history (also needed by gradient-free SAEM)
+  .pastLines <- character(0) # base + per-sensitivity-compartment histories
   for (.si in .states) {
     ## resolve through the env so the line references root parameters
     ## (past()-only intermediates are dead-code eliminated from the model)
     .pe <- .rxPastFromEnv(model, .si)
-    if (is.null(.pe)) next
+    if (is.null(.pe)) {
+      next
+    }
     .rhsB <- .pe$rhsB
     .base <- sprintf("past(%s,%s)=%s", .si, .pe$tau, .pe$rhs)
     .baseLines <- c(.baseLines, .base)
     .pastLines <- c(.pastLines, .base)
     ## sens-compartment pre-history: d(history)/d(param)
-    if (is.null(.rhsB)) next
+    if (is.null(.rhsB)) {
+      next
+    }
     for (.p in params) {
       .dp <- tryCatch(symengine::D(.rhsB, .rxSEres(.p)), error = function(e) NULL)
-      if (is.null(.dp)) next
+      if (is.null(.dp)) {
+        next
+      }
       .dpTxt <- rxFromSE(.dp)
-      if (identical(.dpTxt, "0")) next
-      .pastLines <- c(.pastLines,
-                      sprintf("past(rx__sens_%s_BY_%s__,%s)=%s",
-                              .si, .p, .pe$tau, .dpTxt))
+      if (identical(.dpTxt, "0")) {
+        next
+      }
+      .pastLines <- c(.pastLines, sprintf("past(rx__sens_%s_BY_%s__,%s)=%s", .si, .p, .pe$tau, .dpTxt))
     }
   }
   ## append; unique dedups the base past() line shared by the 1st/2nd-order augments
@@ -498,54 +585,73 @@
   ## [S_i]=-(djac)*[y_j]*dtau/dp with a modeled bolus on the sensitivity
   ## compartment (alag=tau, f=-(djac)*dtau/dp); a no-op unless rxSolve() adds
   ## the mirroring doses.
-  .alagf <- character(0); .seenCmt <- character(0)
+  .alagf <- character(0)
+  .seenCmt <- character(0)
   for (.si in .states) {
     .dj <- .delayJac[[.si]]
-    if (is.null(.dj) || length(.dj) == 0L) next
-    for (.p in params) for (z in .dj) {
-      .dtau <- z$dtauByP[[.p]]
-      if (is.null(.dtau) || identical(.dtau, "0")) next
-      .sensCmt <- paste0("rx__sens_", .si, "_BY_", .p, "__")
-      if (.sensCmt %in% .seenCmt) next   # one delay term per state/param (per-cmt alag/f)
-      .seenCmt <- c(.seenCmt, .sensCmt)
-      .alagf <- c(.alagf, sprintf("alag(%s)=%s", .sensCmt, z$tau),
-                          sprintf("f(%s)=-(%s)*(%s)", .sensCmt, z$djac, .dtau))
+    if (is.null(.dj) || length(.dj) == 0L) {
+      next
+    }
+    for (.p in params) {
+      for (z in .dj) {
+        .dtau <- z$dtauByP[[.p]]
+        if (is.null(.dtau) || identical(.dtau, "0")) {
+          next
+        }
+        .sensCmt <- paste0("rx__sens_", .si, "_BY_", .p, "__")
+        if (.sensCmt %in% .seenCmt) {
+          next
+        } # one delay term per state/param (per-cmt alag/f)
+        .seenCmt <- c(.seenCmt, .sensCmt)
+        .alagf <- c(
+          .alagf,
+          sprintf("alag(%s)=%s", .sensCmt, z$tau),
+          sprintf("f(%s)=-(%s)*(%s)", .sensCmt, z$djac, .dtau)
+        )
+      }
     }
   }
   assign("..sensDelayAlagF", if (length(.alagf)) .alagf else NULL, envir = model)
-  vapply(sensVec, function(.entry) {
-    .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
-    if (length(.m) != 3L) {
-      return(.entry)
-    }
-    .si <- .m[2L]
-    .p <- .m[3L]
-    .dj <- .delayJac[[.si]]
-    if (is.null(.dj) || length(.dj) == 0L) {
-      return(.entry)
-    }
-    .add <- vapply(.dj, function(z) {
-      ## delay(S_j, tau): the value-sensitivity of the delayed state.
-      .term <- paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p,
-                      "__,", z$tau, ")")
-      ## param-dependent delay adds -ydot_j(t-tau)*dtau/dp, with
-      ## ydot_j(t-tau) = rxDelayD(y_j, tau)
-      .dtau <- z$dtauByP[[.p]]
-      if (!is.null(.dtau) && !identical(.dtau, "0")) {
-        .term <- paste0(.term, "-(", z$djac, ")*rxDelayD(", z$stateJ, ",", z$tau,
-                        ")*(", .dtau, ")")
+  vapply(
+    sensVec,
+    function(.entry) {
+      .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
+      if (length(.m) != 3L) {
+        return(.entry)
       }
-      .term
-    }, character(1L))
-    .add <- paste(.add, collapse = "")
-    ## insert before the initial-condition line (if any), otherwise append
-    .nl <- regexpr("\n", .entry, fixed = TRUE)
-    if (.nl > 0L) {
-      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
-    } else {
-      paste0(.entry, .add)
-    }
-  }, character(1L), USE.NAMES = FALSE)
+      .si <- .m[2L]
+      .p <- .m[3L]
+      .dj <- .delayJac[[.si]]
+      if (is.null(.dj) || length(.dj) == 0L) {
+        return(.entry)
+      }
+      .add <- vapply(
+        .dj,
+        function(z) {
+          ## delay(S_j, tau): the value-sensitivity of the delayed state.
+          .term <- paste0("+(", z$djac, ")*delay(rx__sens_", z$stateJ, "_BY_", .p, "__,", z$tau, ")")
+          ## param-dependent delay adds -ydot_j(t-tau)*dtau/dp, with
+          ## ydot_j(t-tau) = rxDelayD(y_j, tau)
+          .dtau <- z$dtauByP[[.p]]
+          if (!is.null(.dtau) && !identical(.dtau, "0")) {
+            .term <- paste0(.term, "-(", z$djac, ")*rxDelayD(", z$stateJ, ",", z$tau, ")*(", .dtau, ")")
+          }
+          .term
+        },
+        character(1L)
+      )
+      .add <- paste(.add, collapse = "")
+      ## insert before the initial-condition line (if any), otherwise append
+      .nl <- regexpr("\n", .entry, fixed = TRUE)
+      if (.nl > 0L) {
+        paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+      } else {
+        paste0(.entry, .add)
+      }
+    },
+    character(1L),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Dose-induced breaking-point jump for forward delay sensitivities
@@ -573,61 +679,93 @@
 #' @keywords internal
 .rxDelaySensJumpMap <- function(model, calcSens) {
   .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
-  .st <- rxode2::rxStateOde(.m); .ns <- length(.st)
+  .st <- rxode2::rxStateOde(.m)
+  .ns <- length(.st)
   .findDelays <- function(e, acc = list()) {
     if (is.call(e)) {
-      if (identical(e[[1L]], as.name("delay")) && length(e) == 3L) acc[[length(acc) + 1L]] <- e
-      for (.a in as.list(e)[-1L]) acc <- .findDelays(.a, acc)
+      if (identical(e[[1L]], as.name("delay")) && length(e) == 3L) {
+        acc[[length(acc) + 1L]] <- e
+      }
+      for (.a in as.list(e)[-1L]) {
+        acc <- .findDelays(.a, acc)
+      }
     }
     acc
   }
   .substDelay <- function(e, target, repl) {
-    if (identical(e, target)) return(repl)
-    if (is.call(e)) for (.i in seq_along(e)) e[[.i]] <- .substDelay(e[[.i]], target, repl)
+    if (identical(e, target)) {
+      return(repl)
+    }
+    if (is.call(e)) {
+      for (.i in seq_along(e)) {
+        e[[.i]] <- .substDelay(e[[.i]], target, repl)
+      }
+    }
     e
   }
-  .alagf <- character(0); .jumpMap <- list(); .seenCmt <- character(0)
+  .alagf <- character(0)
+  .jumpMap <- list()
+  .seenCmt <- character(0)
   for (i in seq_len(.ns)) {
     # skip sensitivity compartments when applied to an already-augmented model
     # (their d/dt carries delay(rx__sens_*, tau) which must not spawn its own jump)
-    if (grepl("^rx__sens_", .st[i])) next
+    if (grepl("^rx__sens_", .st[i])) {
+      next
+    }
     .fi <- get0(paste0("rx__d_dt_", .st[i], "__"), envir = .m, inherits = FALSE)
-    if (is.null(.fi)) next
-    .fiTxt <- rxode2::rxFromSE(.fi); .full <- parse(text = .fiTxt)[[1L]]
+    if (is.null(.fi)) {
+      next
+    }
+    .fiTxt <- rxode2::rxFromSE(.fi)
+    .full <- parse(text = .fiTxt)[[1L]]
     .seen <- character(0)
     for (.dc in .findDelays(.full)) {
-      .dcTxt <- deparse1(.dc); if (.dcTxt %in% .seen) next; .seen <- c(.seen, .dcTxt)
-      .stateJ <- deparse1(.dc[[2L]]); .tau <- deparse1(.dc[[3L]])
-      if (is.na(match(.stateJ, .st))) next
+      .dcTxt <- deparse1(.dc)
+      if (.dcTxt %in% .seen) {
+        next
+      }
+      .seen <- c(.seen, .dcTxt)
+      .stateJ <- deparse1(.dc[[2L]])
+      .tau <- deparse1(.dc[[3L]])
+      if (is.na(match(.stateJ, .st))) {
+        next
+      }
       .g <- "rx__gdlyJTMP__"
       .dj <- symengine::D(
         symengine::S(deparse1(.rxSEresLang(.substDelay(.full, .dc, as.name(.g))))),
-        symengine::S(.g))
+        symengine::S(.g)
+      )
       .djTxt <- gsub(.g, paste0("delay(", .stateJ, ",", .tau, ")"), rxode2::rxFromSE(.dj), fixed = TRUE)
-      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .tau)[[1L]]), envir = .m),
-                          error = function(e) NULL)
+      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .tau)[[1L]]), envir = .m), error = function(e) NULL)
       for (.p in calcSens) {
         .dt <- "0"
         if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
           .dD <- tryCatch(symengine::D(.tauRes, .rxSEres(.p)), error = function(e) NULL)
           if (!is.null(.dD)) .dt <- rxode2::rxFromSE(.dD)
         }
-        if (identical(.dt, "0")) next
+        if (identical(.dt, "0")) {
+          next
+        }
         .sensCmt <- paste0("rx__sens_", .st[i], "_BY_", .p, "__")
-        if (.sensCmt %in% .seenCmt)
-          stop("forward-sens dose-jump supports one delay term per state/param; '",
-               .sensCmt, "' has more than one", call. = FALSE)
+        if (.sensCmt %in% .seenCmt) {
+          stop(
+            "forward-sens dose-jump supports one delay term per state/param; '",
+            .sensCmt,
+            "' has more than one",
+            call. = FALSE
+          )
+        }
         .seenCmt <- c(.seenCmt, .sensCmt)
         # jump [S_i] = -(F_Xd_ij) * [y_j] * dtau/dp  ==  bolus [y_j] with lag tau,
         # bioavailability -(F_Xd_ij)*dtau/dp, on the sensitivity compartment.
-        .alagf <- c(.alagf,
-                    sprintf("alag(%s)=%s", .sensCmt, .tau),
-                    sprintf("f(%s)=-(%s)*(%s)", .sensCmt, .djTxt, .dt))
+        .alagf <- c(.alagf, sprintf("alag(%s)=%s", .sensCmt, .tau), sprintf("f(%s)=-(%s)*(%s)", .sensCmt, .djTxt, .dt))
         .jumpMap[[length(.jumpMap) + 1L]] <- list(sensCmt = .sensCmt, stateJ = .stateJ)
       }
     }
   }
-  if (length(.jumpMap) == 0L) return(NULL)
+  if (length(.jumpMap) == 0L) {
+    return(NULL)
+  }
   list(alagf = .alagf, jumpMap = .jumpMap, st = .st)
 }
 
@@ -635,7 +773,9 @@
 #' @export
 #' @keywords internal
 .rxDelaySensJumpEvents <- function(jumpMap, st, events) {
-  if (is.null(jumpMap) || length(jumpMap) == 0L) return(events)
+  if (is.null(jumpMap) || length(jumpMap) == 0L) {
+    return(events)
+  }
   # mirror each state-j dose onto its sensitivity compartment(s); no symengine
   .ev <- as.data.frame(events)
   .isDose <- if (!is.null(.ev$evid)) .ev$evid != 0 else rep(FALSE, nrow(.ev))
@@ -643,8 +783,11 @@
   .add <- .ev[0, , drop = FALSE]
   for (.jm in jumpMap) {
     for (.r in which(.isDose)) {
-      if (!identical(.cmtName(.ev$cmt[.r]), .jm$stateJ)) next
-      .row <- .ev[.r, , drop = FALSE]; .row$cmt <- .jm$sensCmt
+      if (!identical(.cmtName(.ev$cmt[.r]), .jm$stateJ)) {
+        next
+      }
+      .row <- .ev[.r, , drop = FALSE]
+      .row$cmt <- .jm$sensCmt
       .add <- rbind(.add, .row)
     }
   }
@@ -656,7 +799,9 @@
 #' @keywords internal
 .rxDelaySensJump <- function(model, calcSens, events) {
   .map <- .rxDelaySensJumpMap(model, calcSens)
-  if (is.null(.map)) return(NULL)
+  if (is.null(.map)) {
+    return(NULL)
+  }
   list(alagf = .map$alagf, events = .rxDelaySensJumpEvents(.map$jumpMap, .map$st, events))
 }
 
@@ -683,7 +828,9 @@
 .rxDelaySensJump2Cmts <- function(norm) {
   .lines <- strsplit(norm, "\n", fixed = TRUE)[[1L]]
   .hit <- regmatches(.lines, regexpr("alag\\(rx__sens_[^)]+__\\)", .lines))
-  if (length(.hit) == 0L) return(character(0))
+  if (length(.hit) == 0L) {
+    return(character(0))
+  }
   .cmt <- sub("^alag\\((rx__sens_[^)]+__)\\)$", "\\1", .hit)
   ## keep only 2nd-order compartments (exactly two _BY_ groups)
   .cmt <- .cmt[lengths(gregexpr("_BY_", .cmt, fixed = TRUE)) == 2L]
@@ -692,9 +839,13 @@
 
 ## text -> numeric (via symengine simplification, so e.g. "-ke*0+0" -> 0)
 .rxToNum <- function(txt) {
-  if (is.null(txt)) return(NA_real_)
+  if (is.null(txt)) {
+    return(NA_real_)
+  }
   .v <- suppressWarnings(as.numeric(txt))
-  if (!is.na(.v)) return(.v)
+  if (!is.na(.v)) {
+    return(.v)
+  }
   .s <- tryCatch(as.character(symengine::S(txt)), error = function(e) NA_character_)
   suppressWarnings(as.numeric(.s))
 }
@@ -703,7 +854,9 @@
 ## conditions; numeric for constant history, NA when parameter-dependent.
 .rxDelayFjICval <- function(m, j) {
   .f <- get0(paste0("rx__d_dt_", j, "__"), envir = m, inherits = FALSE)
-  if (is.null(.f)) return(NA_real_)
+  if (is.null(.f)) {
+    return(NA_real_)
+  }
   .st <- rxode2::rxStateOde(m)
   .icOf <- function(s) {
     .v <- get0(paste0("rx_", s, "_ini_0__"), envir = m, inherits = FALSE)
@@ -714,9 +867,14 @@
       if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
         return(str2lang(.icOf(deparse1(x[[2L]]))))
       }
-      for (.i in seq_along(x)) x[[.i]] <- .subIC(x[[.i]]); return(x)
+      for (.i in seq_along(x)) {
+        x[[.i]] <- .subIC(x[[.i]])
+      }
+      return(x)
     }
-    if (is.name(x) && as.character(x) %in% .st) return(str2lang(.icOf(as.character(x))))
+    if (is.name(x) && as.character(x) %in% .st) {
+      return(str2lang(.icOf(as.character(x))))
+    }
     x
   }
   .rxToNum(deparse1(.subIC(parse(text = rxode2::rxFromSE(.f))[[1L]])))
@@ -725,7 +883,9 @@
 .rxDelaySensJump2Map <- function(model) {
   .norm <- rxNorm(model)
   .cmts <- .rxDelaySensJump2Cmts(.norm)
-  if (length(.cmts) == 0L) return(NULL)
+  if (length(.cmts) == 0L) {
+    return(NULL)
+  }
   .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.m)
   .fjTxt <- function(s) {
@@ -736,11 +896,15 @@
   ## couplings df_j/dy_k (delay differentiates to 0 -> instantaneous coupling)
   .coupl <- function(j) {
     .f <- get0(paste0("rx__d_dt_", j, "__"), envir = .m, inherits = FALSE)
-    if (is.null(.f)) return(list())
+    if (is.null(.f)) {
+      return(list())
+    }
     .out <- list()
     for (.k in .st) {
       .d <- tryCatch(symengine::D(.f, .rxSEres(.k)), error = function(e) NULL)
-      if (is.null(.d)) next
+      if (is.null(.d)) {
+        next
+      }
       .t <- rxode2::rxFromSE(.d)
       if (!identical(.t, "0")) .out[[.k]] <- .t
     }
@@ -749,32 +913,54 @@
   .entries <- list()
   for (.cmt in .cmts) {
     .mm <- regmatches(.cmt, regexec("^rx__sens_(.+?)_BY_(.+?)_BY_(.+)__$", .cmt))[[1L]]
-    if (length(.mm) != 4L) next
-    .fi <- .fjTxt(.mm[2L]); if (is.null(.fi)) next
+    if (length(.mm) != 4L) {
+      next
+    }
+    .fi <- .fjTxt(.mm[2L])
+    if (is.null(.fi)) {
+      next
+    }
     .dd <- NULL
     .walk <- function(x) {
       if (is.call(x)) {
-        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) .dd <<- x
-        for (.i in seq_along(x)) .walk(x[[.i]])
+        if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
+          .dd <<- x
+        }
+        for (.i in seq_along(x)) {
+          .walk(x[[.i]])
+        }
       }
     }
     .walk(parse(text = .fi)[[1L]])
-    if (is.null(.dd)) next
+    if (is.null(.dd)) {
+      next
+    }
     .j <- deparse1(.dd[[2L]])
-    .entries[[.cmt]] <- list(cmt = .cmt, stateJ = .j, histAmt = .fjIC(.j),
-                             couplings = .coupl(.j))
+    .entries[[.cmt]] <- list(cmt = .cmt, stateJ = .j, histAmt = .fjIC(.j), couplings = .coupl(.j))
   }
-  if (length(.entries) == 0L) return(NULL)
+  if (length(.entries) == 0L) {
+    return(NULL)
+  }
   list(st = .st, entries = .entries)
 }
 
 .rxDelaySensJump2Events <- function(map, events) {
-  if (is.null(map) || length(map$entries) == 0L) return(events)
+  if (is.null(map) || length(map$entries) == 0L) {
+    return(events)
+  }
   .ev <- as.data.frame(events)
-  if (nrow(.ev) == 0L) return(.ev)
-  if (is.null(.ev$evid)) .ev$evid <- 0L
-  if (is.null(.ev$amt)) .ev$amt <- NA_real_
-  if (is.null(.ev$cmt)) .ev$cmt <- 1L
+  if (nrow(.ev) == 0L) {
+    return(.ev)
+  }
+  if (is.null(.ev$evid)) {
+    .ev$evid <- 0L
+  }
+  if (is.null(.ev$amt)) {
+    .ev$amt <- NA_real_
+  }
+  if (is.null(.ev$cmt)) {
+    .ev$cmt <- 1L
+  }
   .ev$cmt <- as.character(.ev$cmt)
   .idCol <- intersect(c("id", "ID"), names(.ev))
   .idCol <- if (length(.idCol)) .idCol[1L] else NULL
@@ -786,8 +972,15 @@
   .mkRow <- function(.template, .t, .amt, .cmt) {
     .row <- .template[1L, , drop = FALSE]
     .set <- function(col, val) if (!is.null(.row[[col]])) .row[[col]] <<- val
-    .row$time <- .t; .row$evid <- 1L; .row$amt <- .amt; .row$cmt <- .cmt
-    .set("ss", 0L); .set("ii", 0); .set("addl", 0L); .set("rate", 0); .set("dur", 0)
+    .row$time <- .t
+    .row$evid <- 1L
+    .row$amt <- .amt
+    .row$cmt <- .cmt
+    .set("ss", 0L)
+    .set("ii", 0)
+    .set("addl", 0L)
+    .set("rate", 0)
+    .set("dur", 0)
     .set("dv", NA_real_)
     .row
   }
@@ -803,15 +996,23 @@
         .add <- rbind(.add, .mkRow(.sub, .t0, .ha, .e$cmt))
       }
       ## dose-induced breaking points: mirror each user dose on a coupled state k
-      if (nrow(.dose)) for (.r in seq_len(nrow(.dose))) {
-        .k <- .cmtName(.dose$cmt[.r])
-        .cp <- .e$couplings[[.k]]
-        if (is.null(.cp)) next
-        .cpn <- .rxToNum(.cp)
-        if (is.na(.cpn)) next            # nonlinear/param coupling: skip (gradient stays exact)
-        .A <- .dose$amt[.r]
-        if (is.na(.A) || .A == 0) next
-        .add <- rbind(.add, .mkRow(.dose[.r, , drop = FALSE], .dose$time[.r], .A * .cpn, .e$cmt))
+      if (nrow(.dose)) {
+        for (.r in seq_len(nrow(.dose))) {
+          .k <- .cmtName(.dose$cmt[.r])
+          .cp <- .e$couplings[[.k]]
+          if (is.null(.cp)) {
+            next
+          }
+          .cpn <- .rxToNum(.cp)
+          if (is.na(.cpn)) {
+            next
+          } # nonlinear/param coupling: skip (gradient stays exact)
+          .A <- .dose$amt[.r]
+          if (is.na(.A) || .A == 0) {
+            next
+          }
+          .add <- rbind(.add, .mkRow(.dose[.r, , drop = FALSE], .dose$time[.r], .A * .cpn, .e$cmt))
+        }
       }
     }
   }
@@ -828,10 +1029,14 @@
 #' @export
 #' @keywords internal
 .rxDelaySensJumpMapCached <- function(model, calcSens, keyTxt = NULL) {
-  if (is.null(keyTxt)) keyTxt <- rxode2::rxNorm(model)
+  if (is.null(keyTxt)) {
+    keyTxt <- rxode2::rxNorm(model)
+  }
   .key <- paste0(keyTxt, "\n##cs##", paste(calcSens, collapse = ","))
   .hit <- get0(.key, envir = .rxDelaySensJumpCache, inherits = FALSE)
-  if (!is.null(.hit)) return(.hit$map)
+  if (!is.null(.hit)) {
+    return(.hit$map)
+  }
   .map <- .rxDelaySensJumpMap(model, calcSens)
   assign(.key, list(map = .map), envir = .rxDelaySensJumpCache)
   .map
@@ -851,7 +1056,9 @@
 .rxDelayValidateHigherOrderSE <- function(model, params, thirdOrder = TRUE) {
   for (.si in rxStateOde(model)) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
-    if (is.null(.f)) next
+    if (is.null(.f)) {
+      next
+    }
     .e <- parse(text = rxFromSE(.f))
     ## collect the parameter-dependent delay terms in this state's RHS
     .pdep <- list()
@@ -860,44 +1067,72 @@
         if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
           .bad <- intersect(.rxResolveRootVarsSE(deparse1(x[[3L]]), model), params)
           if (length(.bad) > 0L) {
-            .pdep[[length(.pdep) + 1L]] <<- list(state = deparse1(x[[2L]]),
-                                                 tau = deparse1(x[[3L]]), bad = .bad)
+            .pdep[[length(.pdep) + 1L]] <<- list(state = deparse1(x[[2L]]), tau = deparse1(x[[3L]]), bad = .bad)
           }
         }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+        for (.i in seq_along(x)) {
+          .walk(x[[.i]])
+        }
       }
     }
-    for (.i in seq_along(.e)) .walk(.e[[.i]])
-    if (length(.pdep) == 0L) next
+    for (.i in seq_along(.e)) {
+      .walk(.e[[.i]])
+    }
+    if (length(.pdep) == 0L) {
+      next
+    }
     ## 3rd order: param-dependent delays unsupported.  2nd order: a single
     ## param-dependent delay per state is handled; multiple are rejected.
     if (thirdOrder || length(.pdep) > 1L) {
       .d <- .pdep[[1L]]
       .ord <- if (thirdOrder) "third-order" else "second-order"
-      .why <- if (!thirdOrder && length(.pdep) > 1L)
-        paste0("multiple parameter-dependent delays on state '", .si,
-               "' are not yet supported for ", .ord, " sensitivities")
-      else
-        paste0("parameter-dependent delay 'delay(", .d$state, ", ", .d$tau,
-               ")' is not yet supported for analytic ", .ord, " sensitivities")
-      stop(.why, ": the delay duration depends on ",
-           paste(unique(unlist(lapply(.pdep, `[[`, "bad"))), collapse = ", "),
-           ", which moves the DDE breaking points and introduces jump ",
-           "discontinuities in the ", .ord, " sensitivities.  The first-order ",
-           "sensitivities (the gradient) are exact, so fit these models with a ",
-           "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
-           call. = FALSE)
+      .why <- if (!thirdOrder && length(.pdep) > 1L) {
+        paste0(
+          "multiple parameter-dependent delays on state '",
+          .si,
+          "' are not yet supported for ",
+          .ord,
+          " sensitivities"
+        )
+      } else {
+        paste0(
+          "parameter-dependent delay 'delay(",
+          .d$state,
+          ", ",
+          .d$tau,
+          ")' is not yet supported for analytic ",
+          .ord,
+          " sensitivities"
+        )
+      }
+      stop(
+        .why,
+        ": the delay duration depends on ",
+        paste(unique(unlist(lapply(.pdep, `[[`, "bad"))), collapse = ", "),
+        ", which moves the DDE breaking points and introduces jump ",
+        "discontinuities in the ",
+        .ord,
+        " sensitivities.  The first-order ",
+        "sensitivities (the gradient) are exact, so fit these models with a ",
+        "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
+        call. = FALSE
+      )
     }
     ## 2nd order: the initial-history jump amount f_j(IC) is injected as a
     ## numeric dose amount, so it must be constant.
     if (!thirdOrder && is.na(.rxDelayFjICval(model, .pdep[[1L]]$state))) {
-      stop("parameter-dependent delay 'delay(", .pdep[[1L]]$state, ", ",
-           .pdep[[1L]]$tau, ")' is not yet supported for analytic second-order ",
-           "sensitivities: the delayed state's initial rate depends on ",
-           "parameters (a non-constant breaking-point jump).  The first-order ",
-           "sensitivities (the gradient) are exact, so fit these models with a ",
-           "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
-           call. = FALSE)
+      stop(
+        "parameter-dependent delay 'delay(",
+        .pdep[[1L]]$state,
+        ", ",
+        .pdep[[1L]]$tau,
+        ")' is not yet supported for analytic second-order ",
+        "sensitivities: the delayed state's initial rate depends on ",
+        "parameters (a non-constant breaking-point jump).  The first-order ",
+        "sensitivities (the gradient) are exact, so fit these models with a ",
+        "numeric or Gauss-Newton Hessian (the default in nlmixr2 FOCEi).",
+        call. = FALSE
+      )
     }
   }
   invisible(TRUE)
@@ -921,30 +1156,42 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxDelaySensAugment2 <- function(model, sensVec, params) {
-  if (length(sensVec) == 0L) return(sensVec)
+  if (length(sensVec) == 0L) {
+    return(sensVec)
+  }
   .states <- rxStateOde(model)
   ## 2nd-order pre-history: past(rx__sens_s_BY_p_BY_q__, tau) = d^2 expr/dp dq
   .pastLines2 <- character(0)
   for (.si in .states) {
     .pe <- .rxPastFromEnv(model, .si)
-    if (is.null(.pe)) next
+    if (is.null(.pe)) {
+      next
+    }
     .rhsB <- .pe$rhsB
-    if (is.null(.rhsB)) next
-    .cmts <- regmatches(sensVec,
-                        regexpr(paste0("rx__sens_", .si, "_BY_[^,)]+_BY_[^,)]+__"),
-                                sensVec))
+    if (is.null(.rhsB)) {
+      next
+    }
+    .cmts <- regmatches(sensVec, regexpr(paste0("rx__sens_", .si, "_BY_[^,)]+_BY_[^,)]+__"), sensVec))
     for (.cmt in unique(.cmts[nzchar(.cmts)])) {
-      .mm <- regmatches(.cmt, regexec(
-        paste0("^rx__sens_", .si, "_BY_(.+)_BY_(.+)__$"), .cmt))[[1L]]
-      if (length(.mm) != 3L) next
-      .d2 <- tryCatch(symengine::D(symengine::D(.rhsB, .rxSEres(.mm[2L])),
-                                   .rxSEres(.mm[3L])),
-                      error = function(e) NULL)
-      if (is.null(.d2)) next
+      .mm <- regmatches(
+        .cmt,
+        regexec(
+          paste0("^rx__sens_", .si, "_BY_(.+)_BY_(.+)__$"),
+          .cmt
+        )
+      )[[1L]]
+      if (length(.mm) != 3L) {
+        next
+      }
+      .d2 <- tryCatch(symengine::D(symengine::D(.rhsB, .rxSEres(.mm[2L])), .rxSEres(.mm[3L])), error = function(e) NULL)
+      if (is.null(.d2)) {
+        next
+      }
       .d2Txt <- rxFromSE(.d2)
-      if (identical(.d2Txt, "0")) next
-      .pastLines2 <- c(.pastLines2,
-                       sprintf("past(%s,%s)=%s", .cmt, .pe$tau, .d2Txt))
+      if (identical(.d2Txt, "0")) {
+        next
+      }
+      .pastLines2 <- c(.pastLines2, sprintf("past(%s,%s)=%s", .cmt, .pe$tau, .d2Txt))
     }
   }
   if (length(.pastLines2)) {
@@ -953,7 +1200,9 @@
   }
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
-    if (is.null(.f)) return(NULL)
+    if (is.null(.f)) {
+      return(NULL)
+    }
     ## Find delay() terms as Basic function symbols directly on .f -- re-eval'ing
     ## the rxFromSE text in envir=model fails (ETA[n]/THETA[n] are not bound there).
     .fns <- tryCatch(symengine::function_symbols(.f), error = function(e) NULL)
@@ -962,23 +1211,31 @@
       for (.k in seq_along(.fns)) {
         .fn <- .fns[[.k]]
         .fnTxt <- rxFromSE(.fn)
-        if (!grepl("^delay\\(", .fnTxt)) next
+        if (!grepl("^delay\\(", .fnTxt)) {
+          next
+        }
         .call <- parse(text = .fnTxt)[[1L]]
         .terms[[length(.terms) + 1L]] <- list(
-          fn = .fn, stateJ = deparse1(.call[[2L]]), tau = deparse1(.call[[3L]]),
-          gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+          fn = .fn,
+          stateJ = deparse1(.call[[2L]]),
+          tau = deparse1(.call[[3L]]),
+          gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__")
+        )
       }
     }
-    if (length(.terms) == 0L) return(NULL)
+    if (length(.terms) == 0L) {
+      return(NULL)
+    }
     ## Substitute every delay() Basic with its own surrogate symbol, all into
     ## the SAME .fsub so cross derivatives between two delay() terms (hgg) see
     ## both surrogates.
     .fsub <- .f
-    for (.t in .terms) .fsub <- symengine::subs(.fsub, .t$fn, symengine::S(.t$gName))
+    for (.t in .terms) {
+      .fsub <- symengine::subs(.fsub, .t$fn, symengine::S(.t$gName))
+    }
     .restore <- function(txt) {
       for (.t in .terms) {
-        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
-                    txt, fixed = TRUE)
+        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"), txt, fixed = TRUE)
       }
       txt
     }
@@ -988,19 +1245,22 @@
     }
     .out <- lapply(.terms, function(.t) {
       .g <- symengine::S(.t$gName)
-      .jdE <- symengine::D(.fsub, .g)                       # JD = df/dg
+      .jdE <- symengine::D(.fsub, .g) # JD = df/dg
       .hgy <- list()
-      for (.mState in .states) {                            # H_gy = d^2 f/dg dy
+      for (.mState in .states) {
+        # H_gy = d^2 f/dg dy
         .ym <- .rxSEres(.mState)
         .v <- .nz(symengine::D(.jdE, .ym))
         if (!is.null(.v)) .hgy[[.mState]] <- .v
       }
-      .hgg <- lapply(.terms, function(.tp) {                # H_gg = d^2 f/dg dg'
+      .hgg <- lapply(.terms, function(.tp) {
+        # H_gg = d^2 f/dg dg'
         .gp <- symengine::S(.tp$gName)
         .nz(symengine::D(.jdE, .gp))
       })
       .hgp <- list()
-      for (.pp in params) {                                 # H_gp = d^2 f/dg dp
+      for (.pp in params) {
+        # H_gp = d^2 f/dg dp
         .v <- .nz(symengine::D(.jdE, .rxSEres(.pp)))
         if (!is.null(.v)) .hgp[[.pp]] <- .v
       }
@@ -1008,8 +1268,7 @@
       ## rxDelayD/rxDelayD2 corrections below ("0" for a constant delay)
       .dtau <- stats::setNames(rep("0", length(params)), params)
       .d2tau <- list()
-      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .t$tau)[[1L]]), envir = model),
-                          error = function(e) NULL)
+      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .t$tau)[[1L]]), envir = model), error = function(e) NULL)
       if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
         .dE <- list()
         for (.pp in params) {
@@ -1021,10 +1280,11 @@
           }
         }
         for (.p1 in params) {
-          if (is.null(.dE[[.p1]]) || identical(.dtau[[.p1]], "0")) next
+          if (is.null(.dE[[.p1]]) || identical(.dtau[[.p1]], "0")) {
+            next
+          }
           for (.p2 in params) {
-            .d2 <- tryCatch(symengine::D(.dE[[.p1]], .rxSEres(.p2)),
-                            error = function(e) NULL)
+            .d2 <- tryCatch(symengine::D(.dE[[.p1]], .rxSEres(.p2)), error = function(e) NULL)
             if (!is.null(.d2)) {
               .txt <- rxFromSE(.d2)
               if (!identical(.txt, "0")) .d2tau[[paste0(.p1, "|", .p2)]] <- .txt
@@ -1032,8 +1292,16 @@
           }
         }
       }
-      list(stateJ = .t$stateJ, tau = .t$tau, jd = .restore(rxFromSE(.jdE)),
-           hgy = .hgy, hgg = .hgg, hgp = .hgp, dtau = .dtau, d2tau = .d2tau)
+      list(
+        stateJ = .t$stateJ,
+        tau = .t$tau,
+        jd = .restore(rxFromSE(.jdE)),
+        hgy = .hgy,
+        hgg = .hgg,
+        hgp = .hgp,
+        dtau = .dtau,
+        d2tau = .d2tau
+      )
     })
     .out
   })
@@ -1048,94 +1316,125 @@
   ## the smooth rxDelayD/rxDelayD2 terms miss; reproduce it with a modeled bolus
   ## on the 2nd-order sens compartment (unit dose at t0 from rxSolve, alag=T,
   ## F=jump magnitude).  Constant delay: dT/dp=0, no jump emitted.
-  .alagf2 <- character(0); .jump2Cmts <- character(0); .seen2 <- character(0)
+  .alagf2 <- character(0)
+  .jump2Cmts <- character(0)
+  .seen2 <- character(0)
   .nzt0 <- function(x) !is.null(x) && !identical(x, "0")
-  vapply(sensVec, function(.entry) {
-    .m <- regmatches(.entry,
-                     regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
-    if (length(.m) != 4L) return(.entry)
-    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]
-    .dj <- .delayJac[[.si]]
-    if (is.null(.dj)) return(.entry)
-    .sensCmt2 <- paste0("rx__sens_", .si, "_BY_", .a, "_BY_", .b, "__")
-    for (z in .dj) {
-      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
-      if (!.nzt0(.ta) || !.nzt0(.tb)) next          # constant in a or b -> no jump
-      if (.sensCmt2 %in% .seen2) next                # one delay term per 2nd-order cmt
-      .seen2 <- c(.seen2, .sensCmt2)
-      ## common modeled F = JD_ij * dTa * dTb; the [ydot_j](t_break) magnitude
-      ## factor is carried by the injected dose amounts (.rxDelaySensJump2Events)
-      .alagf2 <<- c(.alagf2,
-                    sprintf("alag(%s)=%s", .sensCmt2, z$tau),
-                    sprintf("f(%s)=(%s)*(%s)*(%s)", .sensCmt2, z$jd, .ta, .tb))
-      .jump2Cmts <<- c(.jump2Cmts, .sensCmt2)
-    }
-    .Sx <- function(st, ord) paste0("rx__sens_", st, "_BY_", ord, "__")
-    .nzt <- function(x) !is.null(x) && !identical(x, "0")
-    ## first-order surrogate sensitivity SG_k^p = delay(S_j^p, tau)
-    ##   - rxDelayD(y_j, tau) * dtau/dp     (the second term only when tau(p))
-    .sg1 <- function(z, p) {
-      .s <- paste0("delay(", .Sx(z$stateJ, p), ",", z$tau, ")")
-      .dt <- z$dtau[[p]]
-      if (.nzt(.dt)) {
-        .s <- paste0("(", .s, "-rxDelayD(", z$stateJ, ",", z$tau, ")*(", .dt, "))")
+  vapply(
+    sensVec,
+    function(.entry) {
+      .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
+      if (length(.m) != 4L) {
+        return(.entry)
       }
-      .s
-    }
-    ## second-order surrogate sensitivity SG_k^{ab} (the variational delayed
-    ## second derivative; reduces to delay(S_j^{ab}, tau) for constant tau).
-    .sg2 <- function(z) {
-      .s <- paste0("delay(", .Sx(z$stateJ, paste0(.a, "_BY_", .b)), ",", z$tau, ")")
-      .ta <- z$dtau[[.a]]; .tb <- z$dtau[[.b]]
-      .d2 <- z$d2tau[[paste0(.a, "|", .b)]]
-      if (is.null(.d2)) .d2 <- z$d2tau[[paste0(.b, "|", .a)]]
-      .corr <- character(0)
-      if (.nzt(.tb)) .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .a), ",",
-                                              z$tau, ")*(", .tb, ")"))
-      if (.nzt(.ta)) .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .b), ",",
-                                              z$tau, ")*(", .ta, ")"))
-      if (.nzt(.ta) && .nzt(.tb)) {
-        .corr <- c(.corr, paste0("+rxDelayD2(", z$stateJ, ",", z$tau, ")*(", .ta,
-                                 ")*(", .tb, ")"))
+      .si <- .m[2L]
+      .a <- .m[3L]
+      .b <- .m[4L]
+      .dj <- .delayJac[[.si]]
+      if (is.null(.dj)) {
+        return(.entry)
       }
-      if (.nzt(.d2)) .corr <- c(.corr, paste0("-rxDelayD(", z$stateJ, ",", z$tau,
-                                              ")*(", .d2, ")"))
-      if (length(.corr) > 0L) .s <- paste0("(", .s, paste(.corr, collapse = ""), ")")
-      .s
-    }
-    .parts <- character(0)
-    for (.ki in seq_along(.dj)) {
-      z <- .dj[[.ki]]
-      .SGa <- .sg1(z, .a); .SGb <- .sg1(z, .b)
-      ## pure second-order term: JD * SG_k^{ab}
-      .parts <- c(.parts, paste0("+(", z$jd, ")*", .sg2(z)))
-      ## H_gy: SG_k^a*S_m^b + S_m^a*SG_k^b
-      for (.mState in names(z$hgy)) {
-        .parts <- c(.parts,
-                    paste0("+(", z$hgy[[.mState]], ")*(", .SGa, "*", .Sx(.mState, .b),
-                           "+", .Sx(.mState, .a), "*", .SGb, ")"))
+      .sensCmt2 <- paste0("rx__sens_", .si, "_BY_", .a, "_BY_", .b, "__")
+      for (z in .dj) {
+        .ta <- z$dtau[[.a]]
+        .tb <- z$dtau[[.b]]
+        if (!.nzt0(.ta) || !.nzt0(.tb)) {
+          next
+        } # constant in a or b -> no jump
+        if (.sensCmt2 %in% .seen2) {
+          next
+        } # one delay term per 2nd-order cmt
+        .seen2 <- c(.seen2, .sensCmt2)
+        ## common modeled F = JD_ij * dTa * dTb; the [ydot_j](t_break) magnitude
+        ## factor is carried by the injected dose amounts (.rxDelaySensJump2Events)
+        .alagf2 <<- c(
+          .alagf2,
+          sprintf("alag(%s)=%s", .sensCmt2, z$tau),
+          sprintf("f(%s)=(%s)*(%s)*(%s)", .sensCmt2, z$jd, .ta, .tb)
+        )
+        .jump2Cmts <<- c(.jump2Cmts, .sensCmt2)
       }
-      ## H_gg: SG_k^a * SG_{k'}^b
-      for (.kp in seq_along(z$hgg)) {
-        .h <- z$hgg[[.kp]]
-        if (is.null(.h)) next
-        .parts <- c(.parts, paste0("+(", .h, ")*", .SGa, "*", .sg1(.dj[[.kp]], .b)))
+      .Sx <- function(st, ord) paste0("rx__sens_", st, "_BY_", ord, "__")
+      .nzt <- function(x) !is.null(x) && !identical(x, "0")
+      ## first-order surrogate sensitivity SG_k^p = delay(S_j^p, tau)
+      ##   - rxDelayD(y_j, tau) * dtau/dp     (the second term only when tau(p))
+      .sg1 <- function(z, p) {
+        .s <- paste0("delay(", .Sx(z$stateJ, p), ",", z$tau, ")")
+        .dt <- z$dtau[[p]]
+        if (.nzt(.dt)) {
+          .s <- paste0("(", .s, "-rxDelayD(", z$stateJ, ",", z$tau, ")*(", .dt, "))")
+        }
+        .s
       }
-      ## H_gp: H_gp[b]*SG_k^a + H_gp[a]*SG_k^b
-      if (!is.null(z$hgp[[.b]])) .parts <- c(.parts, paste0("+(", z$hgp[[.b]], ")*", .SGa))
-      if (!is.null(z$hgp[[.a]])) .parts <- c(.parts, paste0("+(", z$hgp[[.a]], ")*", .SGb))
-    }
-    .add <- paste(.parts, collapse = "")
-    .nl <- regexpr("\n", .entry, fixed = TRUE)
-    if (.nl > 0L) {
-      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
-    } else {
-      paste0(.entry, .add)
-    }
-  }, character(1L), USE.NAMES = FALSE) -> .res
+      ## second-order surrogate sensitivity SG_k^{ab} (the variational delayed
+      ## second derivative; reduces to delay(S_j^{ab}, tau) for constant tau).
+      .sg2 <- function(z) {
+        .s <- paste0("delay(", .Sx(z$stateJ, paste0(.a, "_BY_", .b)), ",", z$tau, ")")
+        .ta <- z$dtau[[.a]]
+        .tb <- z$dtau[[.b]]
+        .d2 <- z$d2tau[[paste0(.a, "|", .b)]]
+        if (is.null(.d2)) {
+          .d2 <- z$d2tau[[paste0(.b, "|", .a)]]
+        }
+        .corr <- character(0)
+        if (.nzt(.tb)) {
+          .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .a), ",", z$tau, ")*(", .tb, ")"))
+        }
+        if (.nzt(.ta)) {
+          .corr <- c(.corr, paste0("-rxDelayD(", .Sx(z$stateJ, .b), ",", z$tau, ")*(", .ta, ")"))
+        }
+        if (.nzt(.ta) && .nzt(.tb)) {
+          .corr <- c(.corr, paste0("+rxDelayD2(", z$stateJ, ",", z$tau, ")*(", .ta, ")*(", .tb, ")"))
+        }
+        if (.nzt(.d2)) {
+          .corr <- c(.corr, paste0("-rxDelayD(", z$stateJ, ",", z$tau, ")*(", .d2, ")"))
+        }
+        if (length(.corr) > 0L) {
+          .s <- paste0("(", .s, paste(.corr, collapse = ""), ")")
+        }
+        .s
+      }
+      .parts <- character(0)
+      for (.ki in seq_along(.dj)) {
+        z <- .dj[[.ki]]
+        .SGa <- .sg1(z, .a)
+        .SGb <- .sg1(z, .b)
+        ## pure second-order term: JD * SG_k^{ab}
+        .parts <- c(.parts, paste0("+(", z$jd, ")*", .sg2(z)))
+        ## H_gy: SG_k^a*S_m^b + S_m^a*SG_k^b
+        for (.mState in names(z$hgy)) {
+          .parts <- c(
+            .parts,
+            paste0("+(", z$hgy[[.mState]], ")*(", .SGa, "*", .Sx(.mState, .b), "+", .Sx(.mState, .a), "*", .SGb, ")")
+          )
+        }
+        ## H_gg: SG_k^a * SG_{k'}^b
+        for (.kp in seq_along(z$hgg)) {
+          .h <- z$hgg[[.kp]]
+          if (is.null(.h)) {
+            next
+          }
+          .parts <- c(.parts, paste0("+(", .h, ")*", .SGa, "*", .sg1(.dj[[.kp]], .b)))
+        }
+        ## H_gp: H_gp[b]*SG_k^a + H_gp[a]*SG_k^b
+        if (!is.null(z$hgp[[.b]])) {
+          .parts <- c(.parts, paste0("+(", z$hgp[[.b]], ")*", .SGa))
+        }
+        if (!is.null(z$hgp[[.a]])) .parts <- c(.parts, paste0("+(", z$hgp[[.a]], ")*", .SGb))
+      }
+      .add <- paste(.parts, collapse = "")
+      .nl <- regexpr("\n", .entry, fixed = TRUE)
+      if (.nl > 0L) {
+        paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+      } else {
+        paste0(.entry, .add)
+      }
+    },
+    character(1L),
+    USE.NAMES = FALSE
+  ) -> .res
   assign("..sens2DelayAlagF", if (length(.alagf2)) .alagf2 else NULL, envir = model)
-  assign("..sens2JumpCmts", if (length(.jump2Cmts)) unique(.jump2Cmts) else NULL,
-         envir = model)
+  assign("..sens2JumpCmts", if (length(.jump2Cmts)) unique(.jump2Cmts) else NULL, envir = model)
   .res
 }
 
@@ -1151,7 +1450,9 @@
   .states <- rxStateOde(model)
   for (.si in .states) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
-    if (is.null(.f)) next
+    if (is.null(.f)) {
+      next
+    }
     .e <- parse(text = rxFromSE(.f))[[1L]]
     .terms <- list()
     .walk <- function(x) {
@@ -1160,27 +1461,40 @@
           .key <- deparse1(x)
           if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
             .terms[[length(.terms) + 1L]] <<- list(
-              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
-              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+              key = .key,
+              stateJ = deparse1(x[[2L]]),
+              tau = deparse1(x[[3L]]),
+              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__")
+            )
           }
         }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+        for (.i in seq_along(x)) {
+          .walk(x[[.i]])
+        }
       }
     }
     .walk(.e)
-    if (length(.terms) == 0L) next
+    if (length(.terms) == 0L) {
+      next
+    }
     .subst <- function(x) {
       if (is.call(x)) {
         if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
           .key <- deparse1(x)
-          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
+          for (.t in .terms) {
+            if (identical(.t$key, .key)) return(as.name(.t$gName))
+          }
         }
-        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
+        for (.i in seq_along(x)) {
+          x[[.i]] <- .subst(x[[.i]])
+        }
       }
       x
     }
     .fsubTxt <- deparse1(.subst(.e))
-    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
+    for (.t in .terms) {
+      assign(.t$gName, symengine::S(.t$gName), envir = model)
+    }
     .fsub <- eval(parse(text = .fsubTxt), envir = model)
     for (.t in .terms) {
       .g <- symengine::S(.t$gName)
@@ -1189,10 +1503,15 @@
         .zsym <- .rxSEres(.zName)
         .d <- symengine::D(.jdE, .zsym)
         if (!identical(rxFromSE(.d), "0")) {
-          stop("nonlinear delay 'delay(", .t$stateJ, ", ", .t$tau,
-               ")' (the delayed value multiplies a state or another delayed ",
-               "value) is not yet supported for third-order sensitivities",
-               call. = FALSE)
+          stop(
+            "nonlinear delay 'delay(",
+            .t$stateJ,
+            ", ",
+            .t$tau,
+            ")' (the delayed value multiplies a state or another delayed ",
+            "value) is not yet supported for third-order sensitivities",
+            call. = FALSE
+          )
         }
       }
     }
@@ -1215,11 +1534,15 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxDelaySensAugment3 <- function(model, sensVec, params) {
-  if (length(sensVec) == 0L) return(sensVec)
+  if (length(sensVec) == 0L) {
+    return(sensVec)
+  }
   .states <- rxStateOde(model)
   .delayJac <- lapply(.states, function(.si) {
     .f <- get0(paste0("rx__d_dt_", .si, "__"), envir = model, inherits = FALSE)
-    if (is.null(.f)) return(NULL)
+    if (is.null(.f)) {
+      return(NULL)
+    }
     .e <- parse(text = rxFromSE(.f))[[1L]]
     .terms <- list()
     .walk <- function(x) {
@@ -1228,32 +1551,44 @@
           .key <- deparse1(x)
           if (!any(vapply(.terms, function(z) z$key == .key, logical(1L)))) {
             .terms[[length(.terms) + 1L]] <<- list(
-              key = .key, stateJ = deparse1(x[[2L]]), tau = deparse1(x[[3L]]),
-              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__"))
+              key = .key,
+              stateJ = deparse1(x[[2L]]),
+              tau = deparse1(x[[3L]]),
+              gName = paste0("rx__gdly", length(.terms) + 1L, "TMP__")
+            )
           }
         }
-        for (.i in seq_along(x)) .walk(x[[.i]])
+        for (.i in seq_along(x)) {
+          .walk(x[[.i]])
+        }
       }
     }
     .walk(.e)
-    if (length(.terms) == 0L) return(NULL)
+    if (length(.terms) == 0L) {
+      return(NULL)
+    }
     .subst <- function(x) {
       if (is.call(x)) {
         if (identical(x[[1L]], quote(delay)) && length(x) == 3L) {
           .key <- deparse1(x)
-          for (.t in .terms) if (identical(.t$key, .key)) return(as.name(.t$gName))
+          for (.t in .terms) {
+            if (identical(.t$key, .key)) return(as.name(.t$gName))
+          }
         }
-        for (.i in seq_along(x)) x[[.i]] <- .subst(x[[.i]])
+        for (.i in seq_along(x)) {
+          x[[.i]] <- .subst(x[[.i]])
+        }
       }
       x
     }
     .fsubTxt <- deparse1(.subst(.e))
-    for (.t in .terms) assign(.t$gName, symengine::S(.t$gName), envir = model)
+    for (.t in .terms) {
+      assign(.t$gName, symengine::S(.t$gName), envir = model)
+    }
     .fsub <- eval(parse(text = .fsubTxt), envir = model)
     .restore <- function(txt) {
       for (.t in .terms) {
-        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"),
-                    txt, fixed = TRUE)
+        txt <- gsub(.t$gName, paste0("delay(", .t$stateJ, ",", .t$tau, ")"), txt, fixed = TRUE)
       }
       txt
     }
@@ -1266,17 +1601,22 @@
         .msym <- .rxSEres(.mState)
         .dm <- symengine::D(.jdE, .msym)
         if (!identical(rxFromSE(.dm), "0")) {
-          stop("nonlinear delay 'delay(", .t$stateJ, ", ", .t$tau,
-               ")' (the delayed value multiplies a state) is not yet supported ",
-               "for third-order sensitivities", call. = FALSE)
+          stop(
+            "nonlinear delay 'delay(",
+            .t$stateJ,
+            ", ",
+            .t$tau,
+            ")' (the delayed value multiplies a state) is not yet supported ",
+            "for third-order sensitivities",
+            call. = FALSE
+          )
         }
       }
       for (.tp in .terms) {
         .gsym <- symengine::S(.tp$gName)
         .dg <- symengine::D(.jdE, .gsym)
         if (!identical(rxFromSE(.dg), "0")) {
-          stop("product of delayed values is not yet supported for third-order ",
-               "sensitivities", call. = FALSE)
+          stop("product of delayed values is not yet supported for third-order ", "sensitivities", call. = FALSE)
         }
       }
       .hgp <- list()
@@ -1284,7 +1624,10 @@
       for (.pp in params) {
         .d <- symengine::D(.jdE, .rxSEres(.pp))
         .txt <- rxFromSE(.d)
-        if (!identical(.txt, "0")) { .hgp[[.pp]] <- .restore(.txt); .dE[[.pp]] <- .d }
+        if (!identical(.txt, "0")) {
+          .hgp[[.pp]] <- .restore(.txt)
+          .dE[[.pp]] <- .d
+        }
       }
       .hgpp <- list()
       for (.p1 in names(.dE)) {
@@ -1294,52 +1637,68 @@
           if (!identical(.txt, "0")) .hgpp[[paste0(.p1, "|", .p2)]] <- .restore(.txt)
         }
       }
-      list(stateJ = .t$stateJ, tau = .t$tau, jd = .restore(rxFromSE(.jdE)),
-           hgp = .hgp, hgpp = .hgpp)
+      list(stateJ = .t$stateJ, tau = .t$tau, jd = .restore(rxFromSE(.jdE)), hgp = .hgp, hgpp = .hgpp)
     })
   })
   names(.delayJac) <- .states
-  if (all(vapply(.delayJac, is.null, logical(1L)))) return(sensVec)
-  vapply(sensVec, function(.entry) {
-    .m <- regmatches(.entry, regexec(
-      "^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
-    if (length(.m) != 5L) return(.entry)
-    .si <- .m[2L]; .a <- .m[3L]; .b <- .m[4L]; .c <- .m[5L]
-    .dj <- .delayJac[[.si]]
-    if (is.null(.dj)) return(.entry)
-    .dS <- function(st, tau, ord) paste0("delay(rx__sens_", st, "_BY_", ord, "__,", tau, ")")
-    .gpp <- function(z, p, q) {
-      .v <- z$hgpp[[paste0(p, "|", q)]]
-      if (is.null(.v)) z$hgpp[[paste0(q, "|", p)]] else .v
-    }
-    .parts <- character(0)
-    for (z in .dj) {
-      .parts <- c(.parts, paste0("+(", z$jd, ")*",
-                                 .dS(z$stateJ, z$tau, paste0(.a, "_BY_", .b, "_BY_", .c))))
-      ## H_gp paired with a second-order delayed sensitivity
-      for (.pr in list(c(.c, .a, .b), c(.b, .a, .c), c(.a, .b, .c))) {
-        .h <- z$hgp[[.pr[1L]]]
-        if (!is.null(.h)) {
-          .parts <- c(.parts, paste0("+(", .h, ")*",
-                                     .dS(z$stateJ, z$tau, paste0(.pr[2L], "_BY_", .pr[3L]))))
+  if (all(vapply(.delayJac, is.null, logical(1L)))) {
+    return(sensVec)
+  }
+  vapply(
+    sensVec,
+    function(.entry) {
+      .m <- regmatches(
+        .entry,
+        regexec(
+          "^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+?)_BY_(.+)__\\)=",
+          .entry
+        )
+      )[[1L]]
+      if (length(.m) != 5L) {
+        return(.entry)
+      }
+      .si <- .m[2L]
+      .a <- .m[3L]
+      .b <- .m[4L]
+      .c <- .m[5L]
+      .dj <- .delayJac[[.si]]
+      if (is.null(.dj)) {
+        return(.entry)
+      }
+      .dS <- function(st, tau, ord) paste0("delay(rx__sens_", st, "_BY_", ord, "__,", tau, ")")
+      .gpp <- function(z, p, q) {
+        .v <- z$hgpp[[paste0(p, "|", q)]]
+        if (is.null(.v)) z$hgpp[[paste0(q, "|", p)]] else .v
+      }
+      .parts <- character(0)
+      for (z in .dj) {
+        .parts <- c(.parts, paste0("+(", z$jd, ")*", .dS(z$stateJ, z$tau, paste0(.a, "_BY_", .b, "_BY_", .c))))
+        ## H_gp paired with a second-order delayed sensitivity
+        for (.pr in list(c(.c, .a, .b), c(.b, .a, .c), c(.a, .b, .c))) {
+          .h <- z$hgp[[.pr[1L]]]
+          if (!is.null(.h)) {
+            .parts <- c(.parts, paste0("+(", .h, ")*", .dS(z$stateJ, z$tau, paste0(.pr[2L], "_BY_", .pr[3L]))))
+          }
+        }
+        ## H_gpp paired with a first-order delayed sensitivity
+        for (.pr in list(c(.b, .c, .a), c(.a, .c, .b), c(.a, .b, .c))) {
+          .h <- .gpp(z, .pr[1L], .pr[2L])
+          if (!is.null(.h)) {
+            .parts <- c(.parts, paste0("+(", .h, ")*", .dS(z$stateJ, z$tau, .pr[3L])))
+          }
         }
       }
-      ## H_gpp paired with a first-order delayed sensitivity
-      for (.pr in list(c(.b, .c, .a), c(.a, .c, .b), c(.a, .b, .c))) {
-        .h <- .gpp(z, .pr[1L], .pr[2L])
-        if (!is.null(.h)) {
-          .parts <- c(.parts, paste0("+(", .h, ")*", .dS(z$stateJ, z$tau, .pr[3L])))
-        }
+      .add <- paste(.parts, collapse = "")
+      .nl <- regexpr("\n", .entry, fixed = TRUE)
+      if (.nl > 0L) {
+        paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
+      } else {
+        paste0(.entry, .add)
       }
-    }
-    .add <- paste(.parts, collapse = "")
-    .nl <- regexpr("\n", .entry, fixed = TRUE)
-    if (.nl > 0L) {
-      paste0(substr(.entry, 1L, .nl - 1L), .add, substr(.entry, .nl, nchar(.entry)))
-    } else {
-      paste0(.entry, .add)
-    }
-  }, character(1L), USE.NAMES = FALSE)
+    },
+    character(1L),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Validate that delay durations do not depend on the sensitivity parameters
@@ -1353,7 +1712,9 @@
 #' @return invisibly `TRUE` when valid; otherwise stops.
 #' @noRd
 .rxDelayValidateTau <- function(model, params, terms = NULL) {
-  if (is.null(terms)) terms <- .rxDelayTerms(model)
+  if (is.null(terms)) {
+    terms <- .rxDelayTerms(model)
+  }
   if (is.null(terms)) {
     return(invisible(TRUE))
   }
@@ -1362,11 +1723,16 @@
     .roots <- .rxResolveRootVars(terms$tau[.i], .defs)
     .bad <- intersect(.roots, params)
     if (length(.bad) > 0L) {
-      stop("delay duration 'delay(", terms$state[.i], ", ", terms$tau[.i],
-           ")' depends on the sensitivity parameter(s) ",
-           paste(.bad, collapse = ", "),
-           "; parameter-dependent delays are not yet supported for sensitivities",
-           call. = FALSE)
+      stop(
+        "delay duration 'delay(",
+        terms$state[.i],
+        ", ",
+        terms$tau[.i],
+        ")' depends on the sensitivity parameter(s) ",
+        paste(.bad, collapse = ", "),
+        "; parameter-dependent delays are not yet supported for sensitivities",
+        call. = FALSE
+      )
     }
   }
   invisible(TRUE)

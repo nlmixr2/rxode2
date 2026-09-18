@@ -34,7 +34,9 @@ rxTest({
     ev <- .newRxEt()
     df <- .etMaterialize(ev)
     expect_equal(nrow(df), 0L)
-    expect_true(all(c("id","low","time","high","cmt","amt","rate","ii","addl","evid","ss","dur") %in% names(df)))
+    expect_true(all(
+      c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur") %in% names(df)
+    ))
   })
 
   test_that(".etMaterialize single obs chunk", {
@@ -162,27 +164,27 @@ rxTest({
 
   test_that("etSeq keeps same-id homogeneous groups compressed", {
     withr::with_options(list(rxode2.homogenous = TRUE), {
-    e1 <- et(amt = 100, ii = 24, addl = 1, id = 1:3)
-    e2 <- et(amt = 50, id = 1:3)
-    e3 <- etSeq(e1, e2)
-    .e <- .rxEtEnv(e3)
+      e1 <- et(amt = 100, ii = 24, addl = 1, id = 1:3)
+      e2 <- et(amt = 50, id = 1:3)
+      e3 <- etSeq(e1, e2)
+      .e <- .rxEtEnv(e3)
 
-    expect_equal(length(.e$groups), 1L)
-    expect_equal(length(.e$chunks), 0L)
-    expect_equal(.e$groups[[1]]$ids, 1:3)
+      expect_equal(length(.e$groups), 1L)
+      expect_equal(length(.e$chunks), 0L)
+      expect_equal(.e$groups[[1]]$ids, 1:3)
 
-    dosing <- e3$get.dosing()
-    expect_s3_class(dosing, "rxEtPreview")
-    expect_equal(nrow(dosing), 2L)
-    expect_false("id" %in% names(dosing))
-    expect_equal(dosing$time, c(0, 48))
-    expect_equal(dosing$amt, c(100, 50))
+      dosing <- e3$get.dosing()
+      expect_s3_class(dosing, "rxEtPreview")
+      expect_equal(nrow(dosing), 2L)
+      expect_false("id" %in% names(dosing))
+      expect_equal(dosing$time, c(0, 48))
+      expect_equal(dosing$amt, c(100, 50))
 
-    df <- as.data.frame(e3, all = TRUE)
-    expect_equal(nrow(df), 6L)
-    expect_equal(sort(unique(df$id)), 1:3)
-    expect_equal(df$time[df$id == 1], c(0, 48))
-    expect_equal(df$amt[df$id == 1], c(100, 50))
+      df <- as.data.frame(e3, all = TRUE)
+      expect_equal(nrow(df), 6L)
+      expect_equal(sort(unique(df$id)), 1:3)
+      expect_equal(df$time[df$id == 1], c(0, 48))
+      expect_equal(df$amt[df$id == 1], c(100, 50))
     })
   })
 
@@ -346,7 +348,7 @@ rxTest({
       list(time = 0, evid = 3L)
     )
     .e$ndose <- 1L
-    .e$nobs  <- 1L
+    .e$nobs <- 1L
     df <- .etMaterialize(ev)
     expect_equal(df$evid[1], 3L)
   })
@@ -360,15 +362,15 @@ rxTest({
       list(time = 0, evid = 1L, amt = 100, cmt = "(default)")
       # dose chunk missing rate/ii/addl/ss/dur
     )
-    .envRef$nobs  <- 2L
+    .envRef$nobs <- 2L
     .envRef$ndose <- 1L
     df <- .etMaterialize(.ev)
     .doseRow <- df[df$evid == 1L, ]
     expect_equal(.doseRow$rate, 0.0)
-    expect_equal(.doseRow$ii,   0.0)
+    expect_equal(.doseRow$ii, 0.0)
     expect_equal(.doseRow$addl, 0L)
-    expect_equal(.doseRow$ss,   0L)
-    expect_equal(.doseRow$dur,  0.0)
+    expect_equal(.doseRow$ss, 0L)
+    expect_equal(.doseRow$dur, 0.0)
     # Obs rows should still be NA for dose cols
     .obsRows <- df[df$evid == 0L, ]
     expect_true(all(is.na(.obsRows$rate)))
@@ -378,7 +380,7 @@ rxTest({
     chunk <- .etObsChunk(c(0, 1, 2, 4, 8))
     expect_equal(chunk$time, c(0, 1, 2, 4, 8))
     expect_equal(chunk$evid, 0L)
-    expect_null(chunk$amt)   # obs chunks are sparse
+    expect_null(chunk$amt) # obs chunks are sparse
     expect_null(chunk$rate)
   })
 
@@ -395,7 +397,7 @@ rxTest({
   test_that(".etObsChunk window list c(low,high) returns window chunk", {
     rxWithSeed(42, {
       chunk <- .etObsChunk(list(c(0, 2), c(4, 8)))
-      expect_equal(chunk$low,  c(0, 4))
+      expect_equal(chunk$low, c(0, 4))
       expect_equal(chunk$high, c(2, 8))
       expect_equal(chunk$evid, 0L)
     })
@@ -404,34 +406,33 @@ rxTest({
   test_that(".etObsChunk window list c(low,mid,high) uses mid as time", {
     chunk <- .etObsChunk(list(c(0, 1, 2), c(4, 6, 8)))
     expect_equal(chunk$time, c(1, 6))
-    expect_equal(chunk$low,  c(0, 4))
+    expect_equal(chunk$low, c(0, 4))
     expect_equal(chunk$high, c(2, 8))
   })
 
   test_that(".etDoseChunk basic dose", {
     chunk <- .etDoseChunk(time = 0, amt = 100)
     expect_equal(chunk$time, 0)
-    expect_equal(chunk$amt,  100)
+    expect_equal(chunk$amt, 100)
     expect_equal(chunk$evid, 1L)
-    expect_equal(chunk$ii,   0.0)
+    expect_equal(chunk$ii, 0.0)
     expect_equal(chunk$addl, 0L)
-    expect_equal(chunk$ss,   0L)
+    expect_equal(chunk$ss, 0L)
     expect_equal(chunk$rate, 0.0)
-    expect_equal(chunk$dur,  0.0)
-    expect_equal(chunk$cmt,  "(default)")
+    expect_equal(chunk$dur, 0.0)
+    expect_equal(chunk$cmt, "(default)")
   })
 
   test_that(".etDoseChunk with addl", {
     chunk <- .etDoseChunk(time = 0, amt = 100, ii = 24, addl = 4L)
-    expect_equal(chunk$ii,   24)
+    expect_equal(chunk$ii, 24)
     expect_equal(chunk$addl, 4L)
   })
 
   test_that(".etDoseChunk nbr.doses interface", {
-    chunk <- .etDoseChunk(time = 0, amt = 100,
-                           nbr.doses = 5L, dosing.interval = 24)
+    chunk <- .etDoseChunk(time = 0, amt = 100, nbr.doses = 5L, dosing.interval = 24)
     expect_equal(chunk$addl, 4L)
-    expect_equal(chunk$ii,   24)
+    expect_equal(chunk$ii, 24)
   })
 
   test_that(".etDoseChunk with until", {
@@ -456,7 +457,7 @@ rxTest({
   test_that(".etDoseChunk dur converts to rate", {
     chunk <- .etDoseChunk(time = 0, amt = 100, dur = 2)
     expect_equal(chunk$rate, 50)
-    expect_equal(chunk$dur,  0.0)
+    expect_equal(chunk$dur, 0.0)
   })
 
   test_that(".etDoseChunk rate=-1 modeled rate", {
@@ -543,7 +544,7 @@ rxTest({
     ev <- et(amountUnits = "mg", timeUnits = "hours")
     .envRef <- .rxEtEnv(ev)
     expect_equal(.envRef$units["dosing"], c(dosing = "mg"))
-    expect_equal(.envRef$units["time"],   c(time   = "hours"))
+    expect_equal(.envRef$units["time"], c(time = "hours"))
   })
 
   test_that("et evid=obs alias", {
@@ -561,13 +562,13 @@ rxTest({
   test_that("as.data.frame shows only visible columns", {
     ev <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 1, 2))
     df <- as.data.frame(ev)
-    expect_true("time"  %in% names(df))
-    expect_true("evid"  %in% names(df))
-    expect_true("amt"   %in% names(df))
-    expect_true("ii"    %in% names(df))
-    expect_true("addl"  %in% names(df))
-    expect_false("id"   %in% names(df))   # single ID, hidden
-    expect_false("low"  %in% names(df))
+    expect_true("time" %in% names(df))
+    expect_true("evid" %in% names(df))
+    expect_true("amt" %in% names(df))
+    expect_true("ii" %in% names(df))
+    expect_true("addl" %in% names(df))
+    expect_false("id" %in% names(df)) # single ID, hidden
+    expect_false("low" %in% names(df))
   })
 
   test_that("print.rxEt matches main branch summary output", {
@@ -691,7 +692,7 @@ rxTest({
 
   test_that("$.rxEt nobs and ndose", {
     ev <- et(amt = 100) |> et(time = c(0, 1))
-    expect_equal(ev$nobs,  2L)
+    expect_equal(ev$nobs, 2L)
     expect_equal(ev$ndose, 1L)
   })
 
@@ -709,17 +710,17 @@ rxTest({
 
   test_that("etRbind two tables merges rows", {
     ev1 <- et(amt = 100) |> et(time = c(0, 1, 2))
-    ev2 <- et(amt = 50)  |> et(time = c(3, 4, 5))
-    ev  <- etRbind(ev1, ev2)
-    df  <- as.data.frame(ev)
-    expect_equal(nrow(df), 8L)   # 2 doses + 6 obs
+    ev2 <- et(amt = 50) |> et(time = c(3, 4, 5))
+    ev <- etRbind(ev1, ev2)
+    df <- as.data.frame(ev)
+    expect_equal(nrow(df), 8L) # 2 doses + 6 obs
   })
 
   test_that("etRbind id=unique renumbers IDs", {
     ev1 <- et(amt = 100, id = 1L) |> et(time = c(0, 1))
-    ev2 <- et(amt =  50, id = 1L) |> et(time = c(0, 1))
-    ev  <- etRbind(ev1, ev2, id = "unique")
-    df  <- as.data.frame(ev)
+    ev2 <- et(amt = 50, id = 1L) |> et(time = c(0, 1))
+    ev <- etRbind(ev1, ev2, id = "unique")
+    df <- as.data.frame(ev)
     expect_equal(sort(unique(df$id)), c(1L, 2L))
   })
 
@@ -735,14 +736,14 @@ rxTest({
       add.dosing(dose = 50, nbr.doses = 5, dosing.interval = 1) |>
       add.sampling(seq(from = 0, to = 5, by = 0.5))
     df <- as.data.frame(qd)
-    expect_equal(sum(df$evid == 1L), 1L)  # lazy: 1 dose row with addl=4
+    expect_equal(sum(df$evid == 1L), 1L) # lazy: 1 dose row with addl=4
     expect_true(sum(df$evid == 0L) > 0L)
   })
 
   test_that("etExpand expands addl doses", {
-    ev  <- et(amt = 100, ii = 24, addl = 4)
+    ev <- et(amt = 100, ii = 24, addl = 4)
     ev2 <- etExpand(ev)
-    df  <- as.data.frame(ev2)
+    df <- as.data.frame(ev2)
     expect_equal(sum(df$evid == 1L), 5L)
     expect_true(all(df$addl[df$evid == 1L] == 0L))
   })
@@ -777,7 +778,11 @@ rxTest({
     expect_equal(ev$ndose, 5L)
     expect_false(ev$show["addl"])
     expect_equal(names(as.data.frame(ev)), c("time", "amt", "ii", "evid"))
-    expect_false(grepl("multiple doses in `addl` columns", paste(capture.output(print(ev)), collapse = "\n"), fixed = TRUE))
+    expect_false(grepl(
+      "multiple doses in `addl` columns",
+      paste(capture.output(print(ev)), collapse = "\n"),
+      fixed = TRUE
+    ))
   })
 
   test_that("in-place expand keeps homogeneous groups compressed", {
@@ -844,33 +849,32 @@ rxTest({
   })
 
   test_that("etRep repeats event table", {
-    ev  <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
+    ev <- et(amt = 100, ii = 24, addl = 4) |> et(time = c(0, 24))
     ev3 <- etRep(ev, times = 3, samples = "use")
-    df  <- as.data.frame(ev3)
+    df <- as.data.frame(ev3)
     expect_equal(sum(df$evid == 1L), 3L)
     expect_equal(sum(df$evid == 0L), 6L)
   })
 
   test_that("etRep with wait", {
-    ev  <- et(amt = 100) |> et(time = c(0, 24))
+    ev <- et(amt = 100) |> et(time = c(0, 24))
     ev3 <- etRep(ev, times = 3, wait = 24, samples = "use")
-    df  <- as.data.frame(ev3)
+    df <- as.data.frame(ev3)
     expect_true(max(df$time) >= 48)
   })
 
   test_that("etSeq offsets times of second table", {
     ev1 <- et(amt = 100) |> et(time = c(0, 24))
     ev2 <- et(amt = 100) |> et(time = c(0, 24))
-    ev  <- etSeq(ev1, ev2, samples = "use")
-    df  <- as.data.frame(ev)
+    ev <- etSeq(ev1, ev2, samples = "use")
+    df <- as.data.frame(ev)
     # second table should start after first table's last event (at 24),
     # so the second table's obs at time 24 becomes 24+24=48
     expect_true(max(df$time) > 24)
   })
 
   test_that("et() handles NONMEM-style uppercase column names", {
-    df <- data.frame(ID = c(1L, 2L), TIME = c(0, 0), EVID = c(1L, 1L),
-                     CMT = c(1L, 1L), AMT = c(10, 50))
+    df <- data.frame(ID = c(1L, 2L), TIME = c(0, 0), EVID = c(1L, 1L), CMT = c(1L, 1L), AMT = c(10, 50))
     ev <- et(df)
     out <- as.data.frame(ev)
     expect_true("id" %in% names(out))

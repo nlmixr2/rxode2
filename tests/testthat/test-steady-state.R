@@ -1,7 +1,6 @@
 rxTest({
   ms <- .methods0
   for (m in ms) {
-
     et <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) |>
       add.sampling(seq(0, 48, length.out = 200))
@@ -50,7 +49,7 @@ rxTest({
 
     # context(sprintf("Steady state IV Bolus (%s)", m))
 
-    test_that(paste0("Non steady state dose makes sense; meth=",m), {
+    test_that(paste0("Non steady state dose makes sense; meth=", m), {
       expect_equal(x2$C2[1], c0)
     })
 
@@ -63,7 +62,7 @@ rxTest({
         et(amt = d, time = ii) |>
         et(seq(0, 48, length.out = 200))
       x2 <- solve(ode.1c, et3, method = m)
-      test_that(paste("Steady State dose makes sense for ii=", ii,"; meth=", m), {
+      test_that(paste("Steady State dose makes sense for ii=", ii, "; meth=", m), {
         expect_equal(x2$C2[1], c0 / (1 - exp(-ke * ii)), tolerance = tol)
       })
     }
@@ -115,19 +114,25 @@ rxTest({
           et(amt = d, ss = 1, ii = ii, rate = -1) |>
           et(c(dur, seq(0, 24, length.out = 19)))
         x2 <- rxSolve(ode.1cR, et3, c(rateIn = d / dur), method = m, maxsteps = 10000)
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate modeled); meth=", m), {
-          expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
-          expect_equal(x2$C2[1], inf0, tolerance = tol)
-        })
+        test_that(
+          paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate modeled); meth=", m),
+          {
+            expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
+            expect_equal(x2$C2[1], inf0, tolerance = tol)
+          }
+        )
         ## duration modeled
         et3 <- et() |>
           et(amt = d, ss = 1, ii = ii, rate = -2) |>
           et(c(dur, seq(0, 24, length.out = 19)))
         x2 <- rxSolve(ode.1cD, et3, c(durIn = dur), method = m, maxsteps = 10000)
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur modeled); meth=", m), {
-          expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
-          expect_equal(x2$C2[1], inf0, tolerance = tol)
-        })
+        test_that(
+          paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur modeled); meth=", m),
+          {
+            expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
+            expect_equal(x2$C2[1], inf0, tolerance = tol)
+          }
+        )
         for (f in c(0.5, 1)) {
           if (dur * f < ii) {
             ## Now add modeled bioavailability change
@@ -145,19 +150,34 @@ rxTest({
               et(time = ii, amt = d, ii = ii, addl = floor(24 / ii), rate = d / dur) |>
               et(c(dur * f, seq(0, 24, length.out = 400)))
             x2 <- solve(ode.1c, et3, c(fc = f), method = m, maxsteps = 10000)
-            test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(rate); meth=", m), {
-              expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
-              expect_equal(x2$C2[1], inf0, tolerance = tol)
-            })
+            test_that(
+              paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(rate); meth=", m),
+              {
+                expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
+                expect_equal(x2$C2[1], inf0, tolerance = tol)
+              }
+            )
             ## rate modeled
             et3 <- et() |>
               et(amt = d, ss = 1, ii = ii, rate = -1) |>
               et(c(dur * f, seq(0, 24, length.out = 19)))
             x2 <- rxSolve(ode.1cR, et3, c(fc = f, rateIn = d / dur), method = m, maxsteps = 10000)
-            test_that(paste("Infusion Steady State dose makes sense for f= ", f, " ii=", ii, " dur=", dur, "(rate modeled); meth=", m), {
-              expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
-              expect_equal(x2$C2[1], inf0, tolerance = tol)
-            })
+            test_that(
+              paste(
+                "Infusion Steady State dose makes sense for f= ",
+                f,
+                " ii=",
+                ii,
+                " dur=",
+                dur,
+                "(rate modeled); meth=",
+                m
+              ),
+              {
+                expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
+                expect_equal(x2$C2[1], inf0, tolerance = tol)
+              }
+            )
           }
           ## Add modeled bioavailability change
           ## That changes rate
@@ -174,18 +194,33 @@ rxTest({
             et(time = ii, amt = d, ii = ii, addl = floor(24 / ii), dur = dur) |>
             et(unique(c(dur, seq(0, 24, length.out = 200))))
           x2 <- solve(ode.1c, et3, c(fc = f), method = m, maxsteps = 10000)
-          test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(dur); meth=", m), {
-            expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
-            expect_equal(x2$C2[1], inf0, tolerance = tol)
-          })
+          test_that(
+            paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(dur); meth=", m),
+            {
+              expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
+              expect_equal(x2$C2[1], inf0, tolerance = tol)
+            }
+          )
           et3 <- et() |>
             et(amt = d, ss = 1, ii = ii, rate = -2) |>
             et(c(dur, seq(0, 24, length.out = 19)))
           x2 <- rxSolve(ode.1cD, et3, c(fc = f, durIn = dur), method = m, maxsteps = 10000)
-          test_that(paste("Infusion Steady State dose makes sense for f=", f, "ii=", ii, " dur=", dur, "(dur modeled); meth=", m), {
-            expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
-            expect_equal(x2$C2[1], inf0, tolerance = tol)
-          })
+          test_that(
+            paste(
+              "Infusion Steady State dose makes sense for f=",
+              f,
+              "ii=",
+              ii,
+              " dur=",
+              dur,
+              "(dur modeled); meth=",
+              m
+            ),
+            {
+              expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
+              expect_equal(x2$C2[1], inf0, tolerance = tol)
+            }
+          )
         }
       }
     }

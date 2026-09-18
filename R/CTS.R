@@ -19,19 +19,22 @@
 #' @export
 toTrialDuration <- function(ev, trialEnd, interval, writeDir = NULL) {
   checkmate::assertClass(ev, "rxEt")
-  reg <- as.data.frame(ev[,c("id", "time")])
-  reg <- reg[reg$time == ave(reg$time, reg$id, FUN=min), ]
+  reg <- as.data.frame(ev[, c("id", "time")])
+  reg <- reg[reg$time == ave(reg$time, reg$id, FUN = min), ]
 
-  reg <- Map(function(id, time) {
-    data.frame(id = id, time = seq(time, time+trialEnd, interval))
-  }, id = reg$id, time = reg$time
+  reg <- Map(
+    function(id, time) {
+      data.frame(id = id, time = seq(time, time + trialEnd, interval))
+    },
+    id = reg$id,
+    time = reg$time
   )
   reg <- do.call(rbind, reg) |>
     merge(unique(ev[, names(ev) != "time", drop = FALSE]), by = "id", all.x = T)
   reg <- et(reg)
-  if(is.character(writeDir)) {
+  if (is.character(writeDir)) {
     write.csv(reg, writeDir, row.names = F)
-    }
+  }
 
   reg
 }

@@ -1,4 +1,3 @@
-
 #devtools::install("~/src/rxode2")
 
 library(nlmixr2)
@@ -35,7 +34,6 @@ library(nlmixr2)
 
 ## fit.c5 <- nlmixr(one.cmt, theo_sd, est="focei",
 ##   control=foceiControl(rxControl=rxControl(linCmtSensType="endpoint5")))
-
 
 ## f <- function(){
 ##   ini({ # Where initial conditions/variables are specified
@@ -81,7 +79,6 @@ library(nlmixr2)
 ##   fit1.c3=sum(fit1.c3$time),
 ##   fit1.c5=sum(fit1.c5$time),
 ##   fit1.ad=sum(fit1.ad$time))
-
 
 f <- function() {
   ini({ # Where initial conditions/variables are specified
@@ -133,28 +130,45 @@ dat <- dat[, names(dat) != "SS"]
 ## fit2.ch <- nlmixr2(f, dat, est="focei",
 ##                   control=foceiControl(rxControl=rxControl(linCmtSensType="centralH")))
 
-fit2.f <- nlmixr2(f, dat, est="focei",
-                  control=foceiControl(rxControl=rxControl(linCmtSensType="forward"),
-                                       outerOpt="lbfgsb3c"))
+fit2.f <- nlmixr2(
+  f,
+  dat,
+  est = "focei",
+  control = foceiControl(rxControl = rxControl(linCmtSensType = "forward"), outerOpt = "lbfgsb3c")
+)
 
-fit2.f3 <- nlmixr2(f, dat, est="focei",
-                   control=foceiControl(rxControl=rxControl(linCmtSensType="forward3"),
-                                        outerOpt="nlminb"))
+fit2.f3 <- nlmixr2(
+  f,
+  dat,
+  est = "focei",
+  control = foceiControl(rxControl = rxControl(linCmtSensType = "forward3"), outerOpt = "nlminb")
+)
 
 
-fit2.fg <- nlmixr2(f, dat, est="focei",                  control=foceiControl(rxControl=rxControl(linCmtSensType="forwardG"), outerOpt="lbfgsb3c"))
+fit2.fg <- nlmixr2(
+  f,
+  dat,
+  est = "focei",
+  control = foceiControl(rxControl = rxControl(linCmtSensType = "forwardG"), outerOpt = "lbfgsb3c")
+)
 
-fit2n.f <- nlmixr2(f, dat, est="focei",
-                  control=foceiControl(rxControl=rxControl(linCmtSensType="forward"),
-                                       outerOpt="nlminb"))
+fit2n.f <- nlmixr2(
+  f,
+  dat,
+  est = "focei",
+  control = foceiControl(rxControl = rxControl(linCmtSensType = "forward"), outerOpt = "nlminb")
+)
 
-fit2n.fg <- nlmixr2(f, dat, est="focei",                  control=foceiControl(rxControl=rxControl(linCmtSensType="forwardG"), outerOpt="nlminb"))
+fit2n.fg <- nlmixr2(
+  f,
+  dat,
+  est = "focei",
+  control = foceiControl(rxControl = rxControl(linCmtSensType = "forwardG"), outerOpt = "nlminb")
+)
 
 ## fit2.c <- nlmixr2(f, dat, est="focei",                  control=foceiControl(rxControl=rxControl(linCmtSensType="central")))
 
-
 #fit2 <- nlmixr2(f, dat, est="focei")
-
 
 ## fit2.c5 <- nlmixr2(f, dat, est="focei",
 ##  control=foceiControl(rxControl=rxControl(linCmtSensType="endpoint5")))
@@ -165,7 +179,6 @@ fit2n.fg <- nlmixr2(f, dat, est="focei",                  control=foceiControl(r
 ##   fit2.ad=sum(fit2.ad$time))
 
 ## ## fit <- nlmixr2(f, dat, est="focei")
-
 
 ## f <- function() {
 ##   ini({ # Where initial conditions/variables are specified
@@ -201,7 +214,6 @@ fit2n.fg <- nlmixr2(f, dat, est="focei",                  control=foceiControl(r
 ##   })
 ## }
 
-
 ## fit3 <- nlmixr2(f, dat, est="focei")
 
 ## fit3.ad <- nlmixr2(f, dat, est="focei",
@@ -212,7 +224,6 @@ fit2n.fg <- nlmixr2(f, dat, est="focei",                  control=foceiControl(r
 
 ## fit3.c5 <- nlmixr2(f, dat, est="focei",
 ##  control=foceiControl(rxControl=rxControl(linCmtSensType="endpoint5")))
-
 
 ## c(fit1=sum(fit1$time),
 ##   fit1.c3=sum(fit1.c3$time),

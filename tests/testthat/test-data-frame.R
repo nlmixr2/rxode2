@@ -31,8 +31,14 @@ rxTest({
     suppressWarnings(rxSolve(
       m1,
       params = c(
-        KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-        Kin = 1.0, Kout = 1.0, EC50 = 200.0
+        KA = .291,
+        CL = 18.6,
+        V2 = 40.2,
+        Q = 10.5,
+        V3 = 297.0,
+        Kin = 1.0,
+        Kout = 1.0,
+        EC50 = 200.0
       ),
       events = et1,
       inits = c(0, 0, 0, 1)

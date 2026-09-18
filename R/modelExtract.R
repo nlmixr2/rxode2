@@ -66,10 +66,10 @@
 #'
 #'  modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
 #'
-modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  checkmate::assertLogical(expression, any.missing=FALSE, len=1)
-  checkmate::assertLogical(lines, any.missing=FALSE, len=1)
-  checkmate::assertLogical(endpoint, any.missing=TRUE, len=1)
+modelExtract <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
+  checkmate::assertLogical(expression, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(lines, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(endpoint, any.missing = TRUE, len = 1)
   UseMethod("modelExtract")
 }
 #' Common extract model lines
@@ -80,25 +80,27 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @param endpoint Should this be an endpoint (yes: TRUE, no: FALSE, both: TRUE)
 #' @noRd
 #' @author Matthew L. Fidler
-.modelExtractCommon <- function(modelLines, rxui, expression=FALSE, endpoint=FALSE, lines=FALSE) {
+.modelExtractCommon <- function(modelLines, rxui, expression = FALSE, endpoint = FALSE, lines = FALSE) {
   .lstExpr <- rxui$lstExpr
   .isNull <- length(modelLines) == 0L ||
-    all(vapply(seq_along(modelLines),
-               function(i) {
-                 is.null(modelLines[[i]])
-               }, logical(1)))
+    all(vapply(
+      seq_along(modelLines),
+      function(i) {
+        is.null(modelLines[[i]])
+      },
+      logical(1)
+    ))
   if (.isNull) {
     .ret <- seq_along(.lstExpr)
   } else {
-    .ret <- do.call(`c`, lapply(seq_along(modelLines),
-                                function(i) {
-                                  .w <- .getModelLineFromExpression(modelLines[[i]],
-                                                                    rxui, errorLine=FALSE,
-                                                                    returnAllLines=TRUE)
-                                  .w <- .w[.w>0]
-                                  .w
-                                }))
-
+    .ret <- do.call(
+      `c`,
+      lapply(seq_along(modelLines), function(i) {
+        .w <- .getModelLineFromExpression(modelLines[[i]], rxui, errorLine = FALSE, returnAllLines = TRUE)
+        .w <- .w[.w > 0]
+        .w
+      })
+    )
   }
   .ret <- sort(unique(.ret))
   .endPointLines <- rxui$predDf
@@ -113,15 +115,17 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
     }
   }
   .lines <- .ret
-  .ret <- lapply(.ret,
-                 function(i) {
-                   .lstExpr[[i]]
-                 })
+  .ret <- lapply(.ret, function(i) {
+    .lstExpr[[i]]
+  })
   if (!expression) {
-    .ret <- vapply(seq_along(.ret),
-                   function(i) {
-                     deparse1(.ret[[i]])
-                   }, character(1))
+    .ret <- vapply(
+      seq_along(.ret),
+      function(i) {
+        deparse1(.ret[[i]])
+      },
+      character(1)
+    )
   }
   if (lines) {
     attr(.ret, "lines") <- .lines
@@ -134,87 +138,94 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @return list of expressions
 #' @noRd
 #' @author Matthew L. Fidler
-.quoteCallVars <- function(callInfo, ..., envir=parent.frame()) {
-  if (length(callInfo) == 0L) return(NULL)
-  .env <- new.env(parent=emptyenv())
+.quoteCallVars <- function(callInfo, ..., envir = parent.frame()) {
+  if (length(callInfo) == 0L) {
+    return(NULL)
+  }
+  .env <- new.env(parent = emptyenv())
   .env$alag <- list()
   .env$lag <- list()
-  c(lapply(seq_along(callInfo),
-         function(i) {
-           .name <- names(callInfo)[i]
-           .cur <- callInfo[[i]]
-           if (is.name(.cur)) {
-             .curChar <- as.character(.cur)
-             if (exists(.curChar, envir=envir)) {
-               .cur <- get(.curChar, envir=envir)
-             }
-           }
-           if (is.list(.cur)) {
-             .tmp <- eval(.cur)
-             .tmp <- as.vector(.cur)
-             .tmp <- setNames(unlist(.tmp), NULL)
-             .cur <- .tmp
-           }
-           if (is.call(.cur) &&
-                 identical(.cur[[1]], quote(`$`))) {
-             .list <- list(...)
-             .tmp <- .list[[i]]
-             .cur <- .tmp
-           }
-           if (inherits(.cur, "character")) {
-             .cur <- str2lang(.cur)
-           }
-           if (is.null(.name)) {
-           } else if (.name %in% c("expression",  "endpoint", "envir", "lines")) {
-             return(NULL)
-           }
-           if (is.name(.cur)) {
-             return(str2lang(paste0("-",deparse1(.cur))))
-           } else if (is.call(.cur) &&
-                        (.matchesLangTemplate(.cur, str2lang("d/dt(.name)")) ||
-                           .matchesLangTemplate(.cur, str2lang("f(.name)")) ||
-                           .matchesLangTemplate(.cur, str2lang(".name(0)")) ||
-                           .matchesLangTemplate(.cur, str2lang("rate(.name)")) ||
-                           .matchesLangTemplate(.cur, str2lang("dur(.name)")))) {
-             return(str2lang(paste0("-", deparse1(.cur))))
-           } else if (is.call(.cur) &&
-                        .matchesLangTemplate(.cur, str2lang("alag(.name)"))) {
-             .env$lag <- c(.env$lag,
-                           list(str2lang(paste0("-", sub("alag", "lag", deparse1(.cur))))))
-              return(str2lang(paste0("-", deparse1(.cur))))
-           } else if (is.call(.cur) &&
-                        .matchesLangTemplate(.cur, str2lang("lag(.name)"))) {
-             .env$alag <- c(.env$alag,
-                            list(str2lang(paste0("-", sub("lag", "alag", deparse1(.cur))))))
-             return(str2lang(paste0("-", deparse1(.cur))))
-           }
-           stop("unknown variable expression: ", deparse1(.cur),
-                call.=FALSE)
-         }),
+  c(
+    lapply(seq_along(callInfo), function(i) {
+      .name <- names(callInfo)[i]
+      .cur <- callInfo[[i]]
+      if (is.name(.cur)) {
+        .curChar <- as.character(.cur)
+        if (exists(.curChar, envir = envir)) {
+          .cur <- get(.curChar, envir = envir)
+        }
+      }
+      if (is.list(.cur)) {
+        .tmp <- eval(.cur)
+        .tmp <- as.vector(.cur)
+        .tmp <- setNames(unlist(.tmp), NULL)
+        .cur <- .tmp
+      }
+      if (
+        is.call(.cur) &&
+          identical(.cur[[1]], quote(`$`))
+      ) {
+        .list <- list(...)
+        .tmp <- .list[[i]]
+        .cur <- .tmp
+      }
+      if (inherits(.cur, "character")) {
+        .cur <- str2lang(.cur)
+      }
+      if (is.null(.name)) {} else if (.name %in% c("expression", "endpoint", "envir", "lines")) {
+        return(NULL)
+      }
+      if (is.name(.cur)) {
+        return(str2lang(paste0("-", deparse1(.cur))))
+      } else if (
+        is.call(.cur) &&
+          (.matchesLangTemplate(.cur, str2lang("d/dt(.name)")) ||
+            .matchesLangTemplate(.cur, str2lang("f(.name)")) ||
+            .matchesLangTemplate(.cur, str2lang(".name(0)")) ||
+            .matchesLangTemplate(.cur, str2lang("rate(.name)")) ||
+            .matchesLangTemplate(.cur, str2lang("dur(.name)")))
+      ) {
+        return(str2lang(paste0("-", deparse1(.cur))))
+      } else if (
+        is.call(.cur) &&
+          .matchesLangTemplate(.cur, str2lang("alag(.name)"))
+      ) {
+        .env$lag <- c(.env$lag, list(str2lang(paste0("-", sub("alag", "lag", deparse1(.cur))))))
+        return(str2lang(paste0("-", deparse1(.cur))))
+      } else if (
+        is.call(.cur) &&
+          .matchesLangTemplate(.cur, str2lang("lag(.name)"))
+      ) {
+        .env$alag <- c(.env$alag, list(str2lang(paste0("-", sub("lag", "alag", deparse1(.cur))))))
+        return(str2lang(paste0("-", deparse1(.cur))))
+      }
+      stop("unknown variable expression: ", deparse1(.cur), call. = FALSE)
+    }),
     .env$alag,
-    .env$lag)
+    .env$lag
+  )
 }
 
 #' @export
 #' @rdname modelExtract
-modelExtract.function <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir=envir)
+modelExtract.function <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir = envir)
   .ret <- rxode2(x)
-  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
+  .modelExtractCommon(.modelLines, .ret, expression = expression, endpoint = endpoint, lines = lines)
 }
 #' @export
 #' @rdname modelExtract
-modelExtract.rxUi <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir=envir)
-  .modelExtractCommon(.modelLines, x, expression=expression, endpoint=endpoint, lines=lines)
+modelExtract.rxUi <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir = envir)
+  .modelExtractCommon(.modelLines, x, expression = expression, endpoint = endpoint, lines = lines)
 }
 #' @export
 #' @rdname modelExtract
-modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir=envir)
+modelExtract.rxode2 <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ..., envir = envir)
   x <- as.function(x)
   .ret <- rxode2(x)
-  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
+  .modelExtractCommon(.modelLines, .ret, expression = expression, endpoint = endpoint, lines = lines)
 }
 #' @export
 #' @rdname modelExtract
@@ -222,7 +233,6 @@ modelExtract.rxModelVars <- modelExtract.rxode2
 
 #' @export
 #' @rdname modelExtract
-modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  stop("rxode2 does not know how to handle this modelExtract object",
-       call.=FALSE)
+modelExtract.default <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
+  stop("rxode2 does not know how to handle this modelExtract object", call. = FALSE)
 }

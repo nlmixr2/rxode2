@@ -60,7 +60,7 @@ attr(rxUdfUi.linModM0, "nargs") <- 2L
 
 #' @export
 rxUdfUi.default <- function(fun) {
-  stop("rxode2 user defined function '", fun, "' not supported", call.=FALSE) # nocov
+  stop("rxode2 user defined function '", fun, "' not supported", call. = FALSE) # nocov
 }
 
 #' Linear model to replace in rxode2 ui model
@@ -100,25 +100,33 @@ rxUdfUi.default <- function(fun) {
 #' @examples
 #'
 #' linMod(x, 3)
-linMod <- function(variable, power, dv="dv",
-                   intercept=TRUE,type=c("replace", "before", "after"),
-                   num=NULL, iniDf=NULL, data=FALSE, mv=FALSE) {
+linMod <- function(
+  variable,
+  power,
+  dv = "dv",
+  intercept = TRUE,
+  type = c("replace", "before", "after"),
+  num = NULL,
+  iniDf = NULL,
+  data = FALSE,
+  mv = FALSE
+) {
   .dv <- as.character(substitute(dv))
-  .tmp <- suppressWarnings(try(force(dv), silent=TRUE))
+  .tmp <- suppressWarnings(try(force(dv), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
     if (is.character(.tmp)) {
       .dv <- dv
     }
   }
   .var <- as.character(substitute(variable))
-  .tmp <- try(force(variable), silent=TRUE)
+  .tmp <- try(force(variable), silent = TRUE)
   .doExp3 <- FALSE
   if (!inherits(.tmp, "try-error")) {
     if (is.character(.tmp)) {
       .var <- variable
     } else if (!inherits(.tmp, "formula")) {
       .dv <- as.character(substitute(dv))
-      .tmp <- suppressWarnings(try(force(dv), silent=TRUE))
+      .tmp <- suppressWarnings(try(force(dv), silent = TRUE))
       if (!inherits(.tmp, "try-error")) {
         if (is.character(.tmp)) {
           .dv <- dv
@@ -126,19 +134,16 @@ linMod <- function(variable, power, dv="dv",
       }
     } else if (length(variable) == 2) {
       if (!identical(variable[[1]], quote(`~`))) {
-        stop("unexpected formula, needs to be the form ~x^3",
-             call.=FALSE)
+        stop("unexpected formula, needs to be the form ~x^3", call. = FALSE)
       }
       .doExp3 <- TRUE
       .exp3 <- variable[[2]]
     } else {
       if (length(variable) != 3) {
-        stop("unexpected formula, needs to be the form dv~x^3",
-             call.=FALSE)
+        stop("unexpected formula, needs to be the form dv~x^3", call. = FALSE)
       }
       if (!identical(variable[[1]], quote(`~`))) {
-        stop("unexpected formula, needs to be the form dv~x^3",
-             call.=FALSE)
+        stop("unexpected formula, needs to be the form dv~x^3", call. = FALSE)
       }
       .dv <- as.character(variable[[2]])
       data <- TRUE
@@ -151,74 +156,84 @@ linMod <- function(variable, power, dv="dv",
         power <- 1
       } else if (length(.exp3) == 3) {
         if (!identical(.exp3[[1]], quote(`^`))) {
-          stop("unexpected formula, needs to be the form dv~x^3",
-               call.=FALSE)
+          stop("unexpected formula, needs to be the form dv~x^3", call. = FALSE)
         }
         if (!is.numeric(.exp3[[3]])) {
-          stop("unexpected formula, needs to be the form dv~x^3",
-               call.=FALSE)
+          stop("unexpected formula, needs to be the form dv~x^3", call. = FALSE)
         }
         .var <- variable <- as.character(.exp3[[2]])
         power <- .exp3[[3]]
       } else {
-        stop("unexpected formula, needs to be the form dv~x^3",
-             call.=FALSE)
+        stop("unexpected formula, needs to be the form dv~x^3", call. = FALSE)
       }
     }
   }
-  checkmate::assertCharacter(.var, len=1L, any.missing=FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars=1L,
-                             .var.name="variable")
-  checkmate::assertCharacter(.dv, len=1L, any.missing=FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars=1L,
-                             .var.name="dv")
-  checkmate::assertLogical(intercept, len=1L, any.missing=FALSE)
-  checkmate::assertIntegerish(power, lower=ifelse(intercept, 0L, 1L), len=1L)
+  checkmate::assertCharacter(
+    .var,
+    len = 1L,
+    any.missing = FALSE,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    min.chars = 1L,
+    .var.name = "variable"
+  )
+  checkmate::assertCharacter(
+    .dv,
+    len = 1L,
+    any.missing = FALSE,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    min.chars = 1L,
+    .var.name = "dv"
+  )
+  checkmate::assertLogical(intercept, len = 1L, any.missing = FALSE)
+  checkmate::assertIntegerish(power, lower = ifelse(intercept, 0L, 1L), len = 1L)
   if (is.null(num)) {
     num <- rxUdfUiNum()
   }
-  checkmate::assertIntegerish(num, lower=1, any.missing=FALSE, len=1)
+  checkmate::assertIntegerish(num, lower = 1, any.missing = FALSE, len = 1)
   if (mv && is.null(rxUdfUiMv())) {
     if (intercept) {
-      return(list(replace=paste0("linModM(", .var, ", ", power, ")"),
-                  uiUseMv=TRUE))
+      return(list(replace = paste0("linModM(", .var, ", ", power, ")"), uiUseMv = TRUE))
     } else {
-      return(list(replace=paste0("linModM0(", .var, ", ", power, ")"),
-                  uiUseMv=TRUE))
+      return(list(replace = paste0("linModM0(", .var, ", ", power, ")"), uiUseMv = TRUE))
     }
   }
   if (data && is.null(rxUdfUiData())) {
     if (intercept) {
-      return(list(replace=paste0("linModD(", .var, ", ", power, ", ", .dv, ")"),
-                  uiUseData=TRUE))
+      return(list(replace = paste0("linModD(", .var, ", ", power, ", ", .dv, ")"), uiUseData = TRUE))
     } else {
-      return(list(replace=paste0("linModD0(", .var, ", ", power, ",", .dv, ")"),
-                  uiUseData=TRUE))
+      return(list(replace = paste0("linModD0(", .var, ", ", power, ",", .dv, ")"), uiUseData = TRUE))
     }
   }
   if (is.null(iniDf)) {
     iniDf <- rxUdfUiIniDf()
   }
-  assertIniDf(iniDf, null.ok=TRUE)
+  assertIniDf(iniDf, null.ok = TRUE)
   type <- match.arg(type)
   .mv <- rxUdfUiMv()
   if (!is.null(.mv)) {
     .varsMv <- c(.mv$lhs, .mv$params, .mv$state)
-    .pre <- paste0(.var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
-    .pre <- vapply(.pre, function(v) {
-      if (v %in% .varsMv) {
-        paste0("rx.linMod.", v)
-      } else {
-        v
-      }
-    }, character(1), USE.NAMES=FALSE)
+    .pre <- paste0(.var, num, rxIntToLetter(seq_len(power + ifelse(intercept, 1L, 0L)) - 1L))
+    .pre <- vapply(
+      .pre,
+      function(v) {
+        if (v %in% .varsMv) {
+          paste0("rx.linMod.", v)
+        } else {
+          v
+        }
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
   } else {
-    .pre <- paste0("rx.linMod.", .var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
+    .pre <- paste0("rx.linMod.", .var, num, rxIntToLetter(seq_len(power + ifelse(intercept, 1L, 0L)) - 1L))
   }
 
   if (!is.null(iniDf)) {
-    .theta <- iniDf[!is.na(iniDf$ntheta),,drop=FALSE]
+    .theta <- iniDf[!is.na(iniDf$ntheta), , drop = FALSE]
     if (length(.theta$ntheta) > 0L) {
       .maxTheta <- max(.theta$ntheta)
-      .theta1 <- .theta[1,]
+      .theta1 <- .theta[1, ]
     } else {
       .maxTheta <- 0L
       .theta1 <- .rxBlankIni("theta")
@@ -245,100 +260,109 @@ linMod <- function(variable, power, dv="dv",
         .model <-
           stats::lm(
             stats::as.formula(
-              paste0(.dv, " ~ stats::poly(", .var, ",", power, ")",
-                     ifelse(intercept, "", "+0"))),
-            data=rxUdfUiData()
+              paste0(.dv, " ~ stats::poly(", .var, ",", power, ")", ifelse(intercept, "", "+0"))
+            ),
+            data = rxUdfUiData()
           )
         .est <- coef(.model)
       }
     }
-    .cur <- c(list(.theta),
-              lapply(seq_along(.pre), function(i) {
-                .cur <- .theta1
-                .cur$name <- .pre[i]
-                .cur$est <- .est[i]
-                .cur$ntheta <- .maxTheta+i
-                .cur
-              }))
+    .cur <- c(
+      list(.theta),
+      lapply(seq_along(.pre), function(i) {
+        .cur <- .theta1
+        .cur$name <- .pre[i]
+        .cur$est <- .est[i]
+        .cur$ntheta <- .maxTheta + i
+        .cur
+      })
+    )
     .theta <- do.call(`rbind`, .cur)
-    .eta <- iniDf[is.na(iniDf$neta),,drop=FALSE]
+    .eta <- iniDf[is.na(iniDf$neta), , drop = FALSE]
     .iniDf <- rbind(.theta, .eta)
   } else {
     .iniDf <- NULL
   }
-  .linMod <- paste(vapply(seq_along(.pre),
-                          function(i) {
-                            if (intercept) {
-                              if (i == 1) return(.pre[i])
-                              if (i == 2) return(paste0(.pre[i], "*", .var))
-                              paste0(.pre[i], "*", paste0(.var,"^", i-1L))
-                            } else {
-                              if (i == 1) return(paste0(.pre[i], "*", .var))
-                              paste0(.pre[i], "*", paste0(.var,"^", i))
-                            }
-                          }, character(1)), collapse="+")
+  .linMod <- paste(
+    vapply(
+      seq_along(.pre),
+      function(i) {
+        if (intercept) {
+          if (i == 1) {
+            return(.pre[i])
+          }
+          if (i == 2) {
+            return(paste0(.pre[i], "*", .var))
+          }
+          paste0(.pre[i], "*", paste0(.var, "^", i - 1L))
+        } else {
+          if (i == 1) {
+            return(paste0(.pre[i], "*", .var))
+          }
+          paste0(.pre[i], "*", paste0(.var, "^", i))
+        }
+      },
+      character(1)
+    ),
+    collapse = "+"
+  )
   if (type == "replace") {
-    list(replace=.linMod,
-         iniDf=.iniDf )
+    list(replace = .linMod, iniDf = .iniDf)
   } else if (type == "before") {
     .replace <- paste0("rx.linMod.", .var, ".f", num)
-    list(before=paste0(.replace, " <- ", .linMod),
-         replace=.replace,
-         iniDf=.iniDf)
+    list(before = paste0(.replace, " <- ", .linMod), replace = .replace, iniDf = .iniDf)
   } else if (type == "after") {
     .replace <- paste0("rx.linMod.", .var, ".f", num)
-    list(after=paste0(.replace, " <- ", .linMod),
-         replace="0",
-         iniDf=.iniDf)
+    list(after = paste0(.replace, " <- ", .linMod), replace = "0", iniDf = .iniDf)
   }
 }
 #' @describeIn linMod linear model without intercept
 #' @export
-linMod0 <- function(...,intercept=FALSE) {
-  linMod(..., intercept=intercept)
+linMod0 <- function(..., intercept = FALSE) {
+  linMod(..., intercept = intercept)
 }
 
 #' @describeIn linMod linear model before where it occurs
 #' @export
-linModB <- function(..., type="before") {
-  linMod(..., type=type)
+linModB <- function(..., type = "before") {
+  linMod(..., type = type)
 }
 
 #' @describeIn linMod linear model before where the user function occurs
 #' @export
-linModB0 <- function(..., intercept=FALSE, type="before") {
-  linMod(..., intercept=intercept, type=type)
+linModB0 <- function(..., intercept = FALSE, type = "before") {
+  linMod(..., intercept = intercept, type = type)
 }
 #' @describeIn linMod linear model after where the user function occurs
-linModA <- function(..., type="after") {
-  linMod(..., type=type)
+linModA <- function(..., type = "after") {
+  linMod(..., type = type)
 }
 
 #' @describeIn linMod liner model without an intercept placed after where the user function occurs
 #' @export
-linModA0 <- function(..., intercept=FALSE, type="after") {
-  linMod(..., intercept=intercept, type=type)
+linModA0 <- function(..., intercept = FALSE, type = "after") {
+  linMod(..., intercept = intercept, type = type)
 }
 
 #' @describeIn linMod linear model where initial estimates are generated from the data
 #' @export
-linModD <- function(..., intercept=TRUE, data=TRUE) {
-  linMod(..., intercept=intercept, data=data)
+linModD <- function(..., intercept = TRUE, data = TRUE) {
+  linMod(..., intercept = intercept, data = data)
 }
 
 #' @describeIn linMod linear model where initial estimates are generated from the data (no intercept)
 #' @export
-linModD0 <- function(..., intercept=FALSE, data=TRUE) {
-  linMod(..., intercept=intercept, data=data)
+linModD0 <- function(..., intercept = FALSE, data = TRUE) {
+  linMod(..., intercept = intercept, data = data)
 }
 
 #' @describeIn linMod linear model where the model variables are used to generate the model variables
 #' @export
-linModM <- function(..., intercept=TRUE, mv=TRUE) {
-  linMod(..., intercept=intercept, mv=mv)
+linModM <- function(..., intercept = TRUE, mv = TRUE) {
+  linMod(..., intercept = intercept, mv = mv)
 }
 #' @describeIn linMod linear model where the model variables are used to generate the model variables (no intercept)
 #' @export
-linModM0 <- function(..., intercept=FALSE, mv=TRUE) {
-  linMod(..., intercept=intercept, mv=mv)
+linModM0 <- function(..., intercept = FALSE, mv = TRUE) {
+  linMod(..., intercept = intercept, mv = mv)
 }

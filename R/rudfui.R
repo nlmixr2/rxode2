@@ -1,4 +1,4 @@
-.udfUiEnv <- new.env(parent=emptyenv())
+.udfUiEnv <- new.env(parent = emptyenv())
 
 #' Reset the rxode2 ui environment variables
 #'
@@ -39,7 +39,7 @@ rxUdfUiReset()
 #'
 #' rxUdfUiNum()
 rxUdfUiNum <- function() {
-  if (checkmate::testIntegerish(.udfUiEnv$num, lower=1L, len=1L, any.missing=FALSE))  {
+  if (checkmate::testIntegerish(.udfUiEnv$num, lower = 1L, len = 1L, any.missing = FALSE)) {
     as.integer(.udfUiEnv$num)
   } else {
     1L
@@ -70,17 +70,19 @@ rxUdfUiNum <- function() {
 #'
 #' @author Matthew L. Fidler
 #'
-rxUdfUiFlag <- function(expr, arg="arg", funName="fun", env = baseenv()) {
-  checkmate::assertCharacter(arg, len=1L, any.missing=FALSE)
-  checkmate::assertCharacter(funName, len=1L, any.missing=FALSE)
+rxUdfUiFlag <- function(expr, arg = "arg", funName = "fun", env = baseenv()) {
+  checkmate::assertCharacter(arg, len = 1L, any.missing = FALSE)
+  checkmate::assertCharacter(funName, len = 1L, any.missing = FALSE)
   .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
-  if (inherits(.val, "try-error") ||
-        !(checkmate::testLogical(.val, len=1L, any.missing=FALSE) ||
-            checkmate::testIntegerish(.val, len=1L, any.missing=FALSE, min=0, max=1))) {
-    stop(sprintf("'%s' requires '%s' to be a scalar TRUE/FALSE value in rxode2 model syntax",
-                 funName,
-                 arg),
-         call. = FALSE)
+  if (
+    inherits(.val, "try-error") ||
+      !(checkmate::testLogical(.val, len = 1L, any.missing = FALSE) ||
+        checkmate::testIntegerish(.val, len = 1L, any.missing = FALSE, min = 0, max = 1))
+  ) {
+    stop(
+      sprintf("'%s' requires '%s' to be a scalar TRUE/FALSE value in rxode2 model syntax", funName, arg),
+      call. = FALSE
+    )
   }
   as.logical(.val)
 }
@@ -138,10 +140,12 @@ rxUdfUiIniLhs <- function() {
 #' @author Matthew L. Fidler
 rxUdfUiIsValue <- function(expr, value, env = baseenv()) {
   .val <- try(eval(expr, envir = env), silent = TRUE)
-  if (inherits(.val, "try-error") ||
-        length(.val) != 1L ||
-        (!is.numeric(.val) && !is.logical(.val)) ||
-        is.na(.val)) {
+  if (
+    inherits(.val, "try-error") ||
+      length(.val) != 1L ||
+      (!is.numeric(.val) && !is.logical(.val)) ||
+      is.na(.val)
+  ) {
     return(FALSE)
   }
   identical(as.numeric(.val), as.numeric(value))
@@ -170,8 +174,7 @@ rxUdfUiMv <- function(value) {
   } else if (is.null(value)) {
     .udfUiEnv$mv <- value
   } else {
-    stop("rxUdfUiMt must be called with model variables, NULL, or without any arguments",
-         call.=FALSE)
+    stop("rxUdfUiMt must be called with model variables, NULL, or without any arguments", call. = FALSE)
   }
 }
 #' Return the data.frame that is being processed or setup data.frame for processing
@@ -196,8 +199,7 @@ rxUdfUiData <- function(value) {
   } else if (is.null(value)) {
     .udfUiEnv$data <- value
   } else {
-    stop("rxUdfUiData must be called with a data.frame, NULL, or without any arguments",
-         call.=FALSE)
+    stop("rxUdfUiData must be called with a data.frame, NULL, or without any arguments", call. = FALSE)
   }
 }
 
@@ -218,9 +220,11 @@ rxUdfUiData <- function(value) {
 #'
 rxUdfUiExpr <- function(expr, env = parent.frame()) {
   .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
-  if (!inherits(.val, "try-error") &&
-        length(.val) == 1L &&
-         (is.numeric(.val) || is.character(.val))) {
+  if (
+    !inherits(.val, "try-error") &&
+      length(.val) == 1L &&
+      (is.numeric(.val) || is.character(.val))
+  ) {
     return(str2lang(as.character(.val)))
   }
   expr
@@ -248,11 +252,9 @@ rxUdfUiControl <- function(value) {
   } else if (is.null(value)) {
     .udfUiEnv$control <- value
   } else {
-    stop("rxUdfUiControl must be called with a list, NULL, or without any arguments",
-         call.=FALSE)
+    stop("rxUdfUiControl must be called with a list, NULL, or without any arguments", call. = FALSE)
   }
   invisible(.udfUiEnv$control)
-
 }
 #' Return the current estimation method for the UI processing
 #'
@@ -269,13 +271,12 @@ rxUdfUiControl <- function(value) {
 rxUdfUiEst <- function(value) {
   if (missing(value)) {
     .udfUiEnv$est
-  } else if (checkmate::testCharacter(value, min.chars=1L, any.missing=FALSE, len=1L)) {
+  } else if (checkmate::testCharacter(value, min.chars = 1L, any.missing = FALSE, len = 1L)) {
     .udfUiEnv$est <- value
   } else if (is.null(value)) {
     .udfUiEnv$est <- value
   } else {
-    stop("rxUdfUiEst must be called with a character, NULL, or without any arguments",
-         call.=FALSE)
+    stop("rxUdfUiEst must be called with a character, NULL, or without any arguments", call. = FALSE)
   }
 }
 #' Returns if the current ui function is being parsed
@@ -309,15 +310,15 @@ rxUdfUiParsing <- function() {
       return(expr)
     }
     .c <- as.character(expr[[1]])
-    .fun <- try(utils::getS3method("rxUdfUi", .c), silent=TRUE)
+    .fun <- try(utils::getS3method("rxUdfUi", .c), silent = TRUE)
     if (inherits(.fun, "try-error")) {
-      as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))
+      as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env = env)))
     } else {
-      if (!exists(.c, envir=env$rxUdfUiCount)) {
-        assign(.c, 0L, envir=env$rxUdfUiCount)
+      if (!exists(.c, envir = env$rxUdfUiCount)) {
+        assign(.c, 0L, envir = env$rxUdfUiCount)
       }
-      .num <- get(.c, envir=env$rxUdfUiCount) + 1L
-      assign(.c, .num, envir=env$rxUdfUiCount)
+      .num <- get(.c, envir = env$rxUdfUiCount) + 1L
+      assign(.c, .num, envir = env$rxUdfUiCount)
       .udfUiEnv$num <- .num
       .udfUiEnv$iniDf <- env$df
       .udfUiEnv$lhs <- env$lhs
@@ -327,43 +328,58 @@ rxUdfUiParsing <- function() {
           env$redo <- TRUE
         }
         expr <- .e$replace
-      } else if (length(.e$replace) == 1 &&
-                   inherits(.e$replace, "character")) {
-        .t <- try(str2lang(.e$replace), silent=TRUE)
+      } else if (
+        length(.e$replace) == 1 &&
+          inherits(.e$replace, "character")
+      ) {
+        .t <- try(str2lang(.e$replace), silent = TRUE)
         if (inherits(.t, "try-error")) {
-          stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed '", .e$replace, "'",
-               call.=FALSE)
+          stop(
+            "rxode2 ui user function '",
+            .c,
+            "' failed to produce code that could be parsed '",
+            .e$replace,
+            "'",
+            call. = FALSE
+          )
         }
         if (!identical(expr, .t)) {
           env$redo <- TRUE
         }
         expr <- .t
       } else {
-
-        stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed",
-             call.=FALSE)
+        stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed", call. = FALSE)
       }
       .handleUdifUiBeforeOrAfter("before", .e, env, .c)
       .handleUdifUiBeforeOrAfter("after", .e, env, .c)
       if (inherits(.e$iniDf, "data.frame")) {
         env$df <- .e$iniDf
       }
-      if (is.null(.udfUiEnv$data) &&
-            checkmate::testLogical(.e$uiUseData, len=1L, any.missing=FALSE)) {
+      if (
+        is.null(.udfUiEnv$data) &&
+          checkmate::testLogical(.e$uiUseData, len = 1L, any.missing = FALSE)
+      ) {
         env$uiUseData <- .e$uiUseData
       }
-      if (is.null(.udfUiEnv$mv) &&
-            checkmate::testLogical(.e$uiUseMv, len=1L, any.missing=FALSE)) {
+      if (
+        is.null(.udfUiEnv$mv) &&
+          checkmate::testLogical(.e$uiUseMv, len = 1L, any.missing = FALSE)
+      ) {
         env$uiUseMv <- .e$uiUseMv
       }
-      if (!is.call(expr)) return(expr)
-      expr <- as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))
-      if (is.call(expr) && length(expr) >= 2L &&
-            (identical(expr[[1]], quote(`+`)) ||
-               identical(expr[[1]], quote(`-`)) ||
-               identical(expr[[1]], quote(`^`)) ||
-               identical(expr[[1]], quote(`/`)) ||
-               identical(expr[[1]], quote(`*`)))) {
+      if (!is.call(expr)) {
+        return(expr)
+      }
+      expr <- as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env = env)))
+      if (
+        is.call(expr) &&
+          length(expr) >= 2L &&
+          (identical(expr[[1]], quote(`+`)) ||
+            identical(expr[[1]], quote(`-`)) ||
+            identical(expr[[1]], quote(`^`)) ||
+            identical(expr[[1]], quote(`/`)) ||
+            identical(expr[[1]], quote(`*`)))
+      ) {
         expr <- str2lang(paste0("(", deparse1(expr), ")"))
       }
       expr
@@ -405,7 +421,7 @@ rxUdfUi <- function(fun) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxUdfUiNarg <- function(fun) {
-  .cls <- try(utils::getS3method("rxUdfUi", fun), silent=TRUE)
+  .cls <- try(utils::getS3method("rxUdfUi", fun), silent = TRUE)
   if (inherits(.cls, "try-error")) {
     return(NA_integer_)
   }
@@ -427,10 +443,10 @@ rxUdfUi <- function(fun) {
 #'
 #' rxIntToLetter(1:100)
 #'
-rxIntToLetter <- function(x, base=26L) {
-  checkmate::testIntegerish(x, lower=0L, any.missing=FALSE)
-  checkmate::testIntegerish(base, lower=2L, upper=26L, any.missing=FALSE, len=1L)
-  .Call(`_rxode2_itoletter`, as.integer(x), as.integer(base), PACKAGE="rxode2")
+rxIntToLetter <- function(x, base = 26L) {
+  checkmate::testIntegerish(x, lower = 0L, any.missing = FALSE)
+  checkmate::testIntegerish(base, lower = 2L, upper = 26L, any.missing = FALSE, len = 1L)
+  .Call(`_rxode2_itoletter`, as.integer(x), as.integer(base), PACKAGE = "rxode2")
 }
 
 #' Convert a positive  base
@@ -444,53 +460,69 @@ rxIntToLetter <- function(x, base=26L) {
 #'
 #' rxIntToBase(1:100)
 #'
-rxIntToBase <- function(x, base=36L) {
-  checkmate::testIntegerish(x, lower=0L, any.missing=FALSE)
-  checkmate::testIntegerish(base, lower=2L, upper=36L, any.missing=FALSE, len=1L)
-  .Call(`_rxode2_itostr`, as.integer(x), as.integer(base), PACKAGE="rxode2")
+rxIntToBase <- function(x, base = 36L) {
+  checkmate::testIntegerish(x, lower = 0L, any.missing = FALSE)
+  checkmate::testIntegerish(base, lower = 2L, upper = 36L, any.missing = FALSE, len = 1L)
+  .Call(`_rxode2_itostr`, as.integer(x), as.integer(base), PACKAGE = "rxode2")
 }
 
-.handleUdifUiBeforeOrAfter <- function(type="before", e, env, fun) {
+.handleUdifUiBeforeOrAfter <- function(type = "before", e, env, fun) {
   .cur <- e[[type]]
-  if (is.null(.cur)) return(invisible())
+  if (is.null(.cur)) {
+    return(invisible())
+  }
   if (is.list(.cur)) {
-    .ret <- lapply(seq_along(.cur),
-                   function(i) {
-                     if (is.language(.cur[[i]])) {
-                       .cur[[i]]
-                     } else if (length(.cur[[i]]) == 1L &&
-                                  inherits(.cur[[i]], "character")) {
-                       .ret <- try(str2lang(.cur[[i]]), silent=TRUE)
-                       if (inherits(.ret, "try-error")) {
-                         stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed '", .cur[[i]],
-                              "' in $",
-                              type,
-                              call.=FALSE)
-                       }
-                       .ret
-                     } else {
-                       stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed in $", type,
-                            call.=FALSE)
-                     }
-                   })
-    assign(type, c(get(type, env), .ret), envir=env)
+    .ret <- lapply(seq_along(.cur), function(i) {
+      if (is.language(.cur[[i]])) {
+        .cur[[i]]
+      } else if (
+        length(.cur[[i]]) == 1L &&
+          inherits(.cur[[i]], "character")
+      ) {
+        .ret <- try(str2lang(.cur[[i]]), silent = TRUE)
+        if (inherits(.ret, "try-error")) {
+          stop(
+            "rxode2 ui user function '",
+            fun,
+            "' failed to produce code that could be parsed '",
+            .cur[[i]],
+            "' in $",
+            type,
+            call. = FALSE
+          )
+        }
+        .ret
+      } else {
+        stop(
+          "rxode2 ui user function '",
+          fun,
+          "' failed to produce code that could be parsed in $",
+          type,
+          call. = FALSE
+        )
+      }
+    })
+    assign(type, c(get(type, env), .ret), envir = env)
   } else if (is.language(.cur)) {
-    assign(type, c(get(type, env), list(.cur)), envir=env)
+    assign(type, c(get(type, env), list(.cur)), envir = env)
   } else if (inherits(.cur, "character")) {
-    .ret <- lapply(seq_along(.cur),
-                   function(i) {
-                     .ret <- try(str2lang(.cur[[i]]), silent=TRUE)
-                     if (inherits(.ret, "try-error")) {
-                       stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed '", .cur[[i]],
-                            "' in $",
-                            type,
-                            call.=FALSE)
-                     }
-                     .ret
-                   })
-    assign(type, c(get(type, env), .ret), envir=env)
+    .ret <- lapply(seq_along(.cur), function(i) {
+      .ret <- try(str2lang(.cur[[i]]), silent = TRUE)
+      if (inherits(.ret, "try-error")) {
+        stop(
+          "rxode2 ui user function '",
+          fun,
+          "' failed to produce code that could be parsed '",
+          .cur[[i]],
+          "' in $",
+          type,
+          call. = FALSE
+        )
+      }
+      .ret
+    })
+    assign(type, c(get(type, env), .ret), envir = env)
   } else {
-    stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed in $", type,
-         call.=FALSE)
+    stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed in $", type, call. = FALSE)
   }
 }

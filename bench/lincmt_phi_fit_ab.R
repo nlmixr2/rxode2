@@ -112,17 +112,17 @@ suppressMessages({
 })
 rxode2::setRxThreads(1L)
 
-cell   <- Sys.getenv("CELL", "2cmt-uniform")
+cell <- Sys.getenv("CELL", "2cmt-uniform")
 nRound <- as.integer(Sys.getenv("ROUNDS", "3"))
-core   <- Sys.getenv("CORE", "unpinned")
+core <- Sys.getenv("CORE", "unpinned")
 outDir <- "~/src/rxode2-lincmt-analytic/bench/results"
 
 loadAvg <- function() as.numeric(strsplit(readLines("/proc/loadavg"), " ")[[1]][1])
 
-parts   <- strsplit(cell, "-")[[1]]
-cfg     <- parts[1]                      # 2cmt / 3cmt
-spacing <- parts[2]                      # uniform / nonuniform
-withOde <- identical(cell, "2cmt-uniform")   # the canonical vs-ODE cell
+parts <- strsplit(cell, "-")[[1]]
+cfg <- parts[1] # 2cmt / 3cmt
+spacing <- parts[2] # uniform / nonuniform
+withOde <- identical(cell, "2cmt-uniform") # the canonical vs-ODE cell
 
 nSub <- 40L
 nObs <- 100L
@@ -136,22 +136,27 @@ simTimes <- if (spacing == "uniform") {
 
 trueTheta <- list(
   `2cmt` = c(ka = 1.2, cl = 4, v = 30, q = 8, vp = 60),
-  `3cmt` = c(ka = 1.2, cl = 4, v = 30, q = 8, vp = 60, q2 = 3, vp2 = 200))[[cfg]]
+  `3cmt` = c(ka = 1.2, cl = 4, v = 30, q = 8, vp = 60, q2 = 3, vp2 = 200)
+)[[cfg]]
 
 odeLines <- list(
-  `2cmt` = paste0("d/dt(depot) = -ka*depot;",
-                  "d/dt(central) = ka*depot - cl/v*central - q/v*central + q/vp*periph;",
-                  "d/dt(periph) = q/v*central - q/vp*periph"),
-  `3cmt` = paste0("d/dt(depot) = -ka*depot;",
-                  "d/dt(central) = ka*depot - cl/v*central - q/v*central + q/vp*periph - q2/v*central + q2/vp2*periph2;",
-                  "d/dt(periph) = q/v*central - q/vp*periph;",
-                  "d/dt(periph2) = q2/v*central - q2/vp2*periph2"))[[cfg]]
+  `2cmt` = paste0(
+    "d/dt(depot) = -ka*depot;",
+    "d/dt(central) = ka*depot - cl/v*central - q/v*central + q/vp*periph;",
+    "d/dt(periph) = q/v*central - q/vp*periph"
+  ),
+  `3cmt` = paste0(
+    "d/dt(depot) = -ka*depot;",
+    "d/dt(central) = ka*depot - cl/v*central - q/v*central + q/vp*periph - q2/v*central + q2/vp2*periph2;",
+    "d/dt(periph) = q/v*central - q/vp*periph;",
+    "d/dt(periph2) = q2/v*central - q2/vp2*periph2"
+  )
+)[[cfg]]
 
 ## ---- simulate one dataset (shared by every arm) --------------------------
 set.seed(1002003)
 etaSd <- 0.3
-eta <- matrix(rnorm(nSub * 3L, 0, etaSd), nSub, 3L,
-              dimnames = list(NULL, c("ka", "cl", "v")))
+eta <- matrix(rnorm(nSub * 3L, 0, etaSd), nSub, 3L, dimnames = list(NULL, c("ka", "cl", "v")))
 simMod <- rxode2::rxode2(paste0("cp = central/v;", odeLines))
 pars <- data.frame(row.names = seq_len(nSub))
 for (p in names(trueTheta)) {
@@ -161,57 +166,98 @@ ev <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(simTimes)
 sim <- rxode2::rxSolve(simMod, pars, ev, cores = 1L, addDosing = FALSE)
 stopifnot(nrow(sim) == nSub * nObs)
 set.seed(2003004)
-simDat <- data.frame(ID = rep(seq_len(nSub), each = nObs), TIME = sim$time,
-                     DV = sim$cp * (1 + rnorm(nrow(sim), 0, 0.15)),
-                     AMT = 0, EVID = 0, CMT = "central")
-doseRows <- data.frame(ID = seq_len(nSub), TIME = 0, DV = NA_real_,
-                       AMT = 100, EVID = 1, CMT = "depot")
+simDat <- data.frame(
+  ID = rep(seq_len(nSub), each = nObs),
+  TIME = sim$time,
+  DV = sim$cp * (1 + rnorm(nrow(sim), 0, 0.15)),
+  AMT = 0,
+  EVID = 0,
+  CMT = "central"
+)
+doseRows <- data.frame(ID = seq_len(nSub), TIME = 0, DV = NA_real_, AMT = 100, EVID = 1, CMT = "depot")
 dat <- rbind(doseRows, simDat)
 dat <- dat[order(dat$ID, dat$TIME, -dat$EVID), ]
 
 ## ---- model pair ----------------------------------------------------------
-iniBlock <- paste(c(sprintf("l%s <- log(%.6g)", names(trueTheta),
-                            unname(trueTheta) * 1.2),
-                    "eta.ka ~ 0.1", "eta.cl ~ 0.1", "eta.v ~ 0.1",
-                    "prop.sd <- 0.2"), collapse = "\n")
-parBlock <- paste(vapply(names(trueTheta), function(p) {
-  e <- if (p %in% c("ka", "cl", "v")) sprintf("*exp(eta.%s)", p) else ""
-  sprintf("%s <- exp(l%s)%s", p, p, e)
-}, ""), collapse = "\n")
+iniBlock <- paste(
+  c(
+    sprintf("l%s <- log(%.6g)", names(trueTheta), unname(trueTheta) * 1.2),
+    "eta.ka ~ 0.1",
+    "eta.cl ~ 0.1",
+    "eta.v ~ 0.1",
+    "prop.sd <- 0.2"
+  ),
+  collapse = "\n"
+)
+parBlock <- paste(
+  vapply(
+    names(trueTheta),
+    function(p) {
+      e <- if (p %in% c("ka", "cl", "v")) sprintf("*exp(eta.%s)", p) else ""
+      sprintf("%s <- exp(l%s)%s", p, p, e)
+    },
+    ""
+  ),
+  collapse = "\n"
+)
 
-uiLin <- eval(parse(text = sprintf(
-  "function() {\n ini({\n%s\n })\n model({\n%s\n cp <- linCmt()\n cp ~ prop(prop.sd)\n })\n}",
-  iniBlock, parBlock)))
-uiOde <- eval(parse(text = sprintf(
-  "function() {\n ini({\n%s\n })\n model({\n%s\n%s\n cp <- central/v\n cp ~ prop(prop.sd)\n })\n}",
-  iniBlock, parBlock, gsub(";", "\n", odeLines))))
+uiLin <- eval(parse(
+  text = sprintf(
+    "function() {\n ini({\n%s\n })\n model({\n%s\n cp <- linCmt()\n cp ~ prop(prop.sd)\n })\n}",
+    iniBlock,
+    parBlock
+  )
+))
+uiOde <- eval(parse(
+  text = sprintf(
+    "function() {\n ini({\n%s\n })\n model({\n%s\n%s\n cp <- central/v\n cp ~ prop(prop.sd)\n })\n}",
+    iniBlock,
+    parBlock,
+    gsub(";", "\n", odeLines)
+  )
+))
 
-ctlFor <- function(phi) nlmixr2est::foceiControl(
-  calcTables = FALSE, print = 0L, covMethod = "",
-  rxControl = rxode2::rxControl(cores = 1L, linCmtSensType = "AD",
-                                linCmtSensPhi = phi))
+ctlFor <- function(phi) {
+  nlmixr2est::foceiControl(
+    calcTables = FALSE,
+    print = 0L,
+    covMethod = "",
+    rxControl = rxode2::rxControl(cores = 1L, linCmtSensType = "AD", linCmtSensPhi = phi)
+  )
+}
 ## the ODE arm never touches linCmt; its control just mirrors the rest
 ctlOde <- nlmixr2est::foceiControl(
-  calcTables = FALSE, print = 0L, covMethod = "",
-  rxControl = rxode2::rxControl(cores = 1L))
+  calcTables = FALSE,
+  print = 0L,
+  covMethod = "",
+  rxControl = rxode2::rxControl(cores = 1L)
+)
 
 fitOne <- function(ui, control) {
   rxode2::linCmtSeqStats(TRUE)
   t0 <- proc.time()[["elapsed"]]
   fit <- suppressWarnings(suppressMessages(
-    nlmixr2est::nlmixr2(ui, dat, est = "focei", control = control)))
+    nlmixr2est::nlmixr2(ui, dat, est = "focei", control = control)
+  ))
   sec <- proc.time()[["elapsed"]] - t0
   st <- rxode2::linCmtSeqStats(TRUE)
-  list(sec = sec, objf = fit$objective, st = st,
-       nIter = tryCatch(nrow(fit$parHistData), error = function(e) NA_integer_))
+  list(
+    sec = sec,
+    objf = fit$objective,
+    st = st,
+    nIter = tryCatch(nrow(fit$parHistData), error = function(e) NA_integer_)
+  )
 }
 
-arms <- list(list(nm = "phiOn",  ui = uiLin, ctl = ctlFor(TRUE)),
-             list(nm = "phiOff", ui = uiLin, ctl = ctlFor(FALSE)))
-if (withOde) arms <- c(arms, list(list(nm = "ode", ui = uiOde, ctl = ctlOde)))
+arms <- list(list(nm = "phiOn", ui = uiLin, ctl = ctlFor(TRUE)), list(nm = "phiOff", ui = uiLin, ctl = ctlFor(FALSE)))
+if (withOde) {
+  arms <- c(arms, list(list(nm = "ode", ui = uiOde, ctl = ctlOde)))
+}
 
 ## warm-up per arm (compiles models; untimed)
-for (a in arms) invisible(fitOne(a$ui, a$ctl))
+for (a in arms) {
+  invisible(fitOne(a$ui, a$ctl))
+}
 
 rows <- list()
 for (r in seq_len(nRound)) {
@@ -220,31 +266,48 @@ for (r in seq_len(nRound)) {
     a <- arms[[i]]
     z <- fitOne(a$ui, a$ctl)
     rows[[length(rows) + 1L]] <- data.frame(
-      cell = cell, arm = a$nm, round = r, sec = z$sec,
-      objf = z$objf, nIter = z$nIter,
-      phiBuild = unname(z$st[["phiBuild"]]), phiRows = unname(z$st[["phiRows"]]),
-      tailRows = unname(z$st[["seqTailRows"]]), load = loadAvg(),
-      stringsAsFactors = FALSE)
+      cell = cell,
+      arm = a$nm,
+      round = r,
+      sec = z$sec,
+      objf = z$objf,
+      nIter = z$nIter,
+      phiBuild = unname(z$st[["phiBuild"]]),
+      phiRows = unname(z$st[["phiRows"]]),
+      tailRows = unname(z$st[["seqTailRows"]]),
+      load = loadAvg(),
+      stringsAsFactors = FALSE
+    )
   }
 }
 res <- do.call(rbind, rows)
 
-prod <- system(paste("readelf --debug-dump=info",
-                     "~/src/rxode2-lincmt-analytic/src/linCmt.o",
-                     "2>/dev/null | grep -m1 -o 'DW_AT_producer.*'"), intern = TRUE)
+prod <- system(
+  paste(
+    "readelf --debug-dump=info",
+    "~/src/rxode2-lincmt-analytic/src/linCmt.o",
+    "2>/dev/null | grep -m1 -o 'DW_AT_producer.*'"
+  ),
+  intern = TRUE
+)
 attr(res, "provenance") <- list(
-  date = format(Sys.time()), cell = cell, rounds = nRound, core = core,
-  nSub = nSub, nObs = nObs, spacing = spacing,
+  date = format(Sys.time()),
+  cell = cell,
+  rounds = nRound,
+  core = core,
+  nSub = nSub,
+  nObs = nObs,
+  spacing = spacing,
   producer = substr(paste(prod, collapse = " "), 1, 300),
   flags = "pkgbuild::compile_dll(debug=FALSE) with R_MAKEVARS_USER forcing -O3 last",
   sensType = "AD (forward) forced; Phi serves only the forward tail path",
   rxode2 = system("git -C ~/src/rxode2-lincmt-analytic rev-parse --short HEAD", intern = TRUE),
-  nlmixr2est = system("git -C ~/src/nlmixr2est rev-parse --short HEAD", intern = TRUE))
+  nlmixr2est = system("git -C ~/src/nlmixr2est rev-parse --short HEAD", intern = TRUE)
+)
 dir.create(outDir, showWarnings = FALSE)
 saveRDS(res, file.path(outDir, sprintf("lincmt_phi_fit_ab_%s.rds", cell)))
 
 cat("\n== ", cell, " ==\n", sep = "")
-print(aggregate(cbind(sec, phiBuild, phiRows, load) ~ arm, res, median),
-      row.names = FALSE)
+print(aggregate(cbind(sec, phiBuild, phiRows, load) ~ arm, res, median), row.names = FALSE)
 cat("\nobjectives (all reps):\n")
 print(unique(res[, c("arm", "objf", "nIter")]), row.names = FALSE)

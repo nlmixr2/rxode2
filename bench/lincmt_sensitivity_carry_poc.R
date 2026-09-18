@@ -38,8 +38,11 @@
 # raw state trajectory (m values only) is propagated separately in R, and s_i
 # (the sensitivity carry) is accumulated OUTSIDE via the recurrence above.
 
-if (requireNamespace("devtools", quietly = TRUE) &&
-      file.exists("DESCRIPTION") && file.exists("src/linCmt.cpp")) {
+if (
+  requireNamespace("devtools", quietly = TRUE) &&
+    file.exists("DESCRIPTION") &&
+    file.exists("src/linCmt.cpp")
+) {
   devtools::load_all(".", quiet = TRUE)
 } else {
   library(rxode2)
@@ -56,20 +59,18 @@ mod <- rxode2({
 })
 
 tclVal <- 2.0
-tvVal  <- 20.0
+tvVal <- 20.0
 etaVal <- 0.3
 
 ## Dose/observation grid: bolus q12h into the central compartment, wt steps
 ## 70 -> 90 at t=24 (locf -- every row carries its OWN current wt, so locf is
 ## automatic/exact here, no interpolation ambiguity).
 doseTimes <- c(0, 12, 24, 36)
-obsTimes  <- c(6, 18, 30, 42)
+obsTimes <- c(6, 18, 30, 42)
 
 buildEv <- function(etaVal) {
-  doseDf <- data.frame(time = doseTimes, amt = 100, evid = 1, cmt = 1,
-                       wt = ifelse(doseTimes < 24, 70, 90))
-  obsDf  <- data.frame(time = obsTimes, amt = 0, evid = 0, cmt = 1,
-                       wt = ifelse(obsTimes < 24, 70, 90))
+  doseDf <- data.frame(time = doseTimes, amt = 100, evid = 1, cmt = 1, wt = ifelse(doseTimes < 24, 70, 90))
+  obsDf <- data.frame(time = obsTimes, amt = 0, evid = 0, cmt = 1, wt = ifelse(obsTimes < 24, 70, 90))
   ev <- rbind(doseDf, obsDf)
   ev <- ev[order(ev$time), ]
   ev$id <- 1
@@ -79,8 +80,13 @@ buildEv <- function(etaVal) {
 ev <- buildEv()
 
 solveIt <- function(etaVal) {
-  rxSolve(mod, params = c(tcl = tclVal, tv = tvVal, eta.cl = etaVal),
-          events = ev, returnType = "data.frame", addDosing = TRUE)
+  rxSolve(
+    mod,
+    params = c(tcl = tclVal, tv = tvVal, eta.cl = etaVal),
+    events = ev,
+    returnType = "data.frame",
+    addDosing = TRUE
+  )
 }
 
 real0 <- solveIt(etaVal)
@@ -95,21 +101,20 @@ grid <- real0[, c("time", "evid", "amt", "wt")]
 grid <- grid[order(grid$time), ]
 nRows <- nrow(grid)
 
-rawAlast <- 0.0        # raw physical central-compartment amount, scalar (1-cmt)
-s <- 0.0               # carried sensitivity d(Alast_raw)/d(eta)
+rawAlast <- 0.0 # raw physical central-compartment amount, scalar (1-cmt)
+s <- 0.0 # carried sensitivity d(Alast_raw)/d(eta)
 predSens <- rep(NA_real_, nRows)
 
 for (i in seq_len(nRows)) {
   wt_i <- grid$wt[i]
-  clExpr <- tclVal * (wt_i / 70)^0.75 * exp(etaVal)  # theta_i, real covariate value
+  clExpr <- tclVal * (wt_i / 70)^0.75 * exp(etaVal) # theta_i, real covariate value
   dtPrev <- if (i == 1) 0 else grid$time[i] - grid$time[i - 1]
 
   ## dTheta_i/dEta via REAL symbolic differentiation (symengine), evaluated
   ## at this row's real wt and eta.
   clSym <- S(sprintf("%.15g*(wt/70)^0.75*exp(etacl)", tclVal))
   dClDEtaSym <- D(clSym, "etacl")
-  dClDEta_i <- eval(parse(text = as.character(dClDEtaSym)),
-                    envir = list(wt = wt_i, etacl = etaVal))
+  dClDEta_i <- eval(parse(text = as.character(dClDEtaSym)), envir = list(wt = wt_i, etacl = etaVal))
 
   amt_i <- if (grid$evid[i] != 0) grid$amt[i] else 0
 
@@ -120,21 +125,49 @@ for (i in seq_len(nRows)) {
   } else {
     ## T_i: production which1=-4 equivalent, using THIS interval's own theta.
     Ti <- linCmtAlastTransitionMatrixProto(
-      p1 = clExpr, v1 = tvVal, p2 = 0, p3 = 0, p4 = 0, p5 = 0, ka = 0,
-      rateNV = 0, dt = dtPrev, ncmt = 1L, oral0 = 0L, trans = 1L)
+      p1 = clExpr,
+      v1 = tvVal,
+      p2 = 0,
+      p3 = 0,
+      p4 = 0,
+      p5 = 0,
+      ka = 0,
+      rateNV = 0,
+      dt = dtPrev,
+      ncmt = 1L,
+      oral0 = 0L,
+      trans = 1L
+    )
 
     ## J_i: production which1=-2 equivalent (real forward-mode Jacobian),
     ## entering from a CLEAN (non-cumulative) raw Alast -- alast0 has only
     ## the raw state, all reconstruction slots zeroed.
-    nAlast <- 1 + 1 * 2  # ncmt + oral0 + ncmt*npars + oral0, npars=2 for 1cmt-iv
+    nAlast <- 1 + 1 * 2 # ncmt + oral0 + ncmt*npars + oral0, npars=2 for 1cmt-iv
     alast0 <- c(rawAlast, numeric(nAlast - 1))
-    res <- linCmtModelDouble(dt = dtPrev,
-                             p1 = clExpr, v1 = tvVal, p2 = 0, p3 = 0, p4 = 0, p5 = 0, ka = 0,
-                             alastNV = alast0, rateNV = 0,
-                             ncmt = 1L, oral0 = 0L, trans = 1L,
-                             deriv = TRUE, type = 0L, tau = 0, tinf = 0, amt = 0,
-                             bolusCmt = 0L, ndiff = 0L, sensType = 30L)
-    Ji <- res$J[1, 1]  # d(Alast_i)/d(p1=CL), holding entering state fixed
+    res <- linCmtModelDouble(
+      dt = dtPrev,
+      p1 = clExpr,
+      v1 = tvVal,
+      p2 = 0,
+      p3 = 0,
+      p4 = 0,
+      p5 = 0,
+      ka = 0,
+      alastNV = alast0,
+      rateNV = 0,
+      ncmt = 1L,
+      oral0 = 0L,
+      trans = 1L,
+      deriv = TRUE,
+      type = 0L,
+      tau = 0,
+      tinf = 0,
+      amt = 0,
+      bolusCmt = 0L,
+      ndiff = 0L,
+      sensType = 30L
+    )
+    Ji <- res$J[1, 1] # d(Alast_i)/d(p1=CL), holding entering state fixed
     ## Raw physical state (compartment amount), NOT res$val (which is
     ## adjustF()'d to a concentration) -- Alast is the field the existing
     ## oracle (.linCmtCall()/lincmt_oracle.R) itself feeds forward.
@@ -147,7 +180,9 @@ for (i in seq_len(nRows)) {
     rawAlast <- valBeforeDose
   }
 
-  if (amt_i != 0 && i > 1) rawAlast <- rawAlast + amt_i
+  if (amt_i != 0 && i > 1) {
+    rawAlast <- rawAlast + amt_i
+  }
 
   ## s is d(raw central amount)/d(eta); cp = central/v with v fixed (not a
   ## function of eta.cl here), so d(cp)/d(eta) = s / v.
@@ -169,11 +204,18 @@ print(data.frame(time = obsRows$time, fdSens = fdSens))
 
 carriedAtObs <- carryResult$predSens[carryResult$evid == 0]
 cat("\n=== Comparison: carried recurrence vs FD-on-eta ===\n")
-cmp <- data.frame(time = obsRows$time, carried = carriedAtObs, fd = fdSens,
-                  absDiff = abs(carriedAtObs - fdSens),
-                  relDiff = abs(carriedAtObs - fdSens) / (abs(fdSens) + 1e-8))
+cmp <- data.frame(
+  time = obsRows$time,
+  carried = carriedAtObs,
+  fd = fdSens,
+  absDiff = abs(carriedAtObs - fdSens),
+  relDiff = abs(carriedAtObs - fdSens) / (abs(fdSens) + 1e-8)
+)
 print(cmp)
 
 worst <- max(cmp$relDiff)
-cat(sprintf("\nWorst relative difference: %.3e  -- %s\n", worst,
-            if (worst < 1e-3) "PASS (carry recurrence matches FD-on-eta)" else "FAIL"))
+cat(sprintf(
+  "\nWorst relative difference: %.3e  -- %s\n",
+  worst,
+  if (worst < 1e-3) "PASS (carry recurrence matches FD-on-eta)" else "FAIL"
+))

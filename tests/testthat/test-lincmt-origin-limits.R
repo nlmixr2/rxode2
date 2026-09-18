@@ -49,18 +49,15 @@ rxTest({
     # ss = 2 ADDS a steady state to whatever was already there, so the result
     # is neither a fresh SS solution to attribute to the SS compartment nor a
     # dose the amounts reveal.  Attributing it wholesale read ~8% off.
-    .eSs2 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 2, time = 10) |>
-      et(seq(0.1, 40, 0.5))
+    .eSs2 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 2, time = 10) |> et(seq(0.1, 40, 0.5))
     expect_true(all(is.na(rxSolve(.m, .eSs2, params = .p)$d9)))
     # ss = 1 replaces, which the decomposition does follow
-    .eSs1 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 1, time = 10) |>
-      et(seq(0.1, 40, 0.5))
+    .eSs1 <- .base |> et(amt = 50, cmt = "depot", ii = 8, ss = 1, time = 10) |> et(seq(0.1, 40, 0.5))
     .s1 <- rxSolve(.m, .eSs1, params = .p)
     expect_false(anyNA(.s1$d9))
     expect_true(.rel(.s1$d9, .fd(.m, .eSs1, "eta_lag")) < 1e-6)
     for (.evid in c(5, 6)) {
-      .e <- .base |> et(amt = 0.5, cmt = "central", evid = .evid, time = 10) |>
-        et(seq(0.1, 24, 0.5))
+      .e <- .base |> et(amt = 0.5, cmt = "central", evid = .evid, time = 10) |> et(seq(0.1, 24, 0.5))
       .s <- rxSolve(.m, .e, params = .p)
       expect_true(all(is.na(.s$d9)), label = paste("evid", .evid))
     }
@@ -74,7 +71,8 @@ rxTest({
       d9 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -9, 7, 1, cl, v, 0, 0, 0, 0, ka)
     })
     .eOde <- et(amt = 100, cmt = "depot") |>
-      et(amt = 1, cmt = "eff", evid = 5, time = 10) |> et(seq(0.1, 24, 0.5))
+      et(amt = 1, cmt = "eff", evid = 5, time = 10) |>
+      et(seq(0.1, 24, 0.5))
     .s <- rxSolve(.mOde, .eOde, params = .p, inits = c(eff = 5))
     expect_false(anyNA(.s$d9))
   })

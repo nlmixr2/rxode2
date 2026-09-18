@@ -20,14 +20,15 @@ rxTest({
     for (.f in .files) {
       .l <- readLines(.f, warn = FALSE)
       .hit <- grep("rx->ordId[solveid]", .l, fixed = TRUE)
-      if (length(.hit) == 0L) next
+      if (length(.hit) == 0L) {
+        next
+      }
       .txt <- .l[.hit]
       # the one sanctioned form, in a par_*() loop that walks positions
       .ok <- grepl("int _id = rx->ordId[solveid] - 1;", .txt, fixed = TRUE) |
         grepl("^\\s*(//|\\*|/\\*)", .txt)
       if (any(!.ok)) {
-        .bad <- c(.bad, sprintf("%s:%d: %s", basename(.f), .hit[!.ok],
-                                trimws(.txt[!.ok])))
+        .bad <- c(.bad, sprintf("%s:%d: %s", basename(.f), .hit[!.ok], trimws(.txt[!.ok])))
       }
     }
     expect_equal(.bad, character(0))
@@ -50,10 +51,11 @@ rxTest({
       .l <- readLines(.f, warn = FALSE)
       .hit <- grep("setSeedEng1(seed0", .l, fixed = TRUE)
       for (.i in .hit) {
-        if (grepl("^\\s*(//|\\*|/\\*)", .l[.i])) next
+        if (grepl("^\\s*(//|\\*|/\\*)", .l[.i])) {
+          next
+        }
         if (!grepl("setSeedEng1(seed0 + _id)", .l[.i], fixed = TRUE)) {
-          .badSeed <- c(.badSeed, sprintf("%s:%d: %s", basename(.f), .i,
-                                          trimws(.l[.i])))
+          .badSeed <- c(.badSeed, sprintf("%s:%d: %s", basename(.f), .i, trimws(.l[.i])))
         }
       }
       # every claimed block must be closed in the same function
@@ -82,21 +84,40 @@ rxTest({
     })
     # a different dose per subject, so a solve landing on the wrong individual
     # shifts cp by a factor of two or more -- far outside solver-order noise
-    .ev <- do.call(rbind, lapply(1:4, function(i) {
-      as.data.frame(et(amt = 100 * i, ii = 12, until = 48) |>
-                      et(seq(0, 48, by = 2)) |>
-                      et(id = i))
-    }))
+    .ev <- do.call(
+      rbind,
+      lapply(1:4, function(i) {
+        as.data.frame(
+          et(amt = 100 * i, ii = 12, until = 48) |>
+            et(seq(0, 48, by = 2)) |>
+            et(id = i)
+        )
+      })
+    )
     .p <- c(ka = 1.5, cl = 2.7, v = 31)
-    .ref <- rxSolve(.m, .ev, .p, method = "liblsoda",
-                    returnType = "data.frame", addDosing = FALSE)
+    .ref <- rxSolve(.m, .ev, .p, method = "liblsoda", returnType = "data.frame", addDosing = FALSE)
     # the tolerance only has to exclude a subject permutation, not to pin down
     # each method's truncation error -- backwardEuler is first order
-    for (.meth in c("lsoda", "dop853", "rk4", "f78", "dop5", "ck54", "ros4",
-                    "vern65", "vern76", "vern98", "dop87", "cvode", "abm",
-                    "backwardEuler", "gauss6", "radauiia5", "sdirk43")) {
-      .r <- rxSolve(.m, .ev, .p, method = .meth,
-                    returnType = "data.frame", addDosing = FALSE)
+    for (.meth in c(
+      "lsoda",
+      "dop853",
+      "rk4",
+      "f78",
+      "dop5",
+      "ck54",
+      "ros4",
+      "vern65",
+      "vern76",
+      "vern98",
+      "dop87",
+      "cvode",
+      "abm",
+      "backwardEuler",
+      "gauss6",
+      "radauiia5",
+      "sdirk43"
+    )) {
+      .r <- rxSolve(.m, .ev, .p, method = .meth, returnType = "data.frame", addDosing = FALSE)
       expect_equal(.r$id, .ref$id, info = .meth)
       expect_equal(.r$cp, .ref$cp, tolerance = 1e-2, info = .meth)
     }
@@ -113,11 +134,9 @@ rxTest({
       z <- rxnorm()
     })
     .ev <- et(amt = 1) |> et(0:3) |> et(id = 1:3)
-    .ref <- rxSolve(.m, .ev, c(k = 1), method = "liblsoda", seed = 42,
-                    returnType = "data.frame", addDosing = FALSE)
+    .ref <- rxSolve(.m, .ev, c(k = 1), method = "liblsoda", seed = 42, returnType = "data.frame", addDosing = FALSE)
     for (.meth in c("dop853", "rk4", "lsoda", "lsode", "bdf")) {
-      .r <- rxSolve(.m, .ev, c(k = 1), method = .meth, seed = 42,
-                    returnType = "data.frame", addDosing = FALSE)
+      .r <- rxSolve(.m, .ev, c(k = 1), method = .meth, seed = 42, returnType = "data.frame", addDosing = FALSE)
       expect_equal(.r$z, .ref$z, info = .meth)
     }
   })
@@ -137,15 +156,37 @@ rxTest({
     .ev <- et(amt = 1) |> et(0:1) |> et(id = 1:8)
     .advance <- function(meth) {
       rxSetSeed(42)
-      invisible(suppressWarnings(rxSolve(.m, .ev, c(k = 1), method = meth,
-                                         returnType = "data.frame")))
+      invisible(suppressWarnings(rxSolve(.m, .ev, c(k = 1), method = meth, returnType = "data.frame")))
       rxGetSeed() - 42
     }
     .ref <- .advance("liblsoda")
-    for (.meth in c("lsoda", "lsode", "bdf", "dop853", "rk4", "f78", "dop5",
-                    "ck54", "ros4", "vern65", "vern98", "cvode", "abm", "em",
-                    "backwardEuler", "gauss6", "radauiia5", "sdirk43", "trapz",
-                    "ssp3", "euler", "heun", "midpoint", "rk3", "mm")) {
+    for (.meth in c(
+      "lsoda",
+      "lsode",
+      "bdf",
+      "dop853",
+      "rk4",
+      "f78",
+      "dop5",
+      "ck54",
+      "ros4",
+      "vern65",
+      "vern98",
+      "cvode",
+      "abm",
+      "em",
+      "backwardEuler",
+      "gauss6",
+      "radauiia5",
+      "sdirk43",
+      "trapz",
+      "ssp3",
+      "euler",
+      "heun",
+      "midpoint",
+      "rk3",
+      "mm"
+    )) {
       expect_equal(.advance(.meth), .ref, info = .meth)
     }
   })
@@ -155,17 +196,13 @@ rxTest({
     # inherited whatever stream was current; it also never claimed or closed a
     # seed block.  These solvers need an adjoint-expanded model.
     skip_on_cran()
-    .txt <- paste("ka <- 1.2",
-                  "d/dt(depot) <- -ka * depot",
-                  "d/dt(center) <- ka * depot - cl / v * center",
-                  sep = "\n")
+    .txt <- paste("ka <- 1.2", "d/dt(depot) <- -ka * depot", "d/dt(center) <- ka * depot - cl / v * center", sep = "\n")
     .adj <- rxode2(.rxAdjointExpand(.txt, c("cl", "v"))$text)
     .ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 6, 8, 12)) |> et(id = 1:6)
     .p <- c(cl = 3.5, v = 25)
     .advance <- function(meth) {
       rxSetSeed(42)
-      invisible(suppressWarnings(rxSolve(.adj, .ev, params = .p, method = meth,
-                                         cores = 1)))
+      invisible(suppressWarnings(rxSolve(.adj, .ev, params = .p, method = meth, cores = 1)))
       rxGetSeed() - 42
     }
     .ref <- .advance("liblsoda")

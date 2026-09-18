@@ -21,7 +21,7 @@ d/dt(cen) = ka*depot-k*cen
 
   et <- eventTable()
   et$add.sampling(seq(0, 10, length.out = 200))
-  et$add.dosing(20, start.time = 0, evid=7)
+  et$add.dosing(20, start.time = 0, evid = 7)
 
   expect_error(rxSolve(mod, et, transitAbs = TRUE))
 
@@ -138,7 +138,7 @@ d/dt(cen) = ka*depot-k*cen
   # test dosing to central compartment
   etC <- eventTable()
   etC$add.sampling(seq(0, 10, length.out = 200))
-  etC$add.dosing(20, start.time = 0, evid=1, cmt="cen")
+  etC$add.dosing(20, start.time = 0, evid = 1, cmt = "cen")
 
   tmp <- rxSolve(mod, etC)
   expect_false(any(is.na(etC$cen)))
@@ -207,7 +207,6 @@ transit = matt + fun
   })
 
   test_that("transit compartment works well with dual absorption (#804, #819)", {
-
     mod <- function() {
       ini({
         ## Table 3 from Savic 2007
@@ -228,13 +227,12 @@ transit = matt + fun
       })
     }
 
-    ev1 <- et(0, 7, length.out=200) |>
-      et(amt=20, cmt='depot1', evid=7) |>
-      et(amt=20, cmt='depot2', evid=1)
+    ev1 <- et(0, 7, length.out = 200) |>
+      et(amt = 20, cmt = 'depot1', evid = 7) |>
+      et(amt = 20, cmt = 'depot2', evid = 1)
 
     case1 <- rxSolve(mod, ev1)
 
     expect_true(max(case1$depot1) > 7.7)
-
   })
 })

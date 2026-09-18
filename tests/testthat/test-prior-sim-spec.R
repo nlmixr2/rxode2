@@ -1,5 +1,4 @@
 rxTest({
-
   .rx <- loadNamespace("rxode2")
 
   ## Priors need 'lotri' >= 1.0.5 (the `prior` column and
@@ -9,9 +8,11 @@ rxTest({
   .withPrior <- function(ui, name, prior) {
     ui <- rxUiDecompress(ui)
     .ini <- ui$iniDf
-    if (!any(names(.ini) == "prior")) .ini$prior <- NA_character_
+    if (!any(names(.ini) == "prior")) {
+      .ini$prior <- NA_character_
+    }
     .ini$prior[match(name, .ini$name)] <- prior
-    assign("iniDf", .ini, envir=ui)
+    assign("iniDf", .ini, envir = ui)
     ui
   }
 
@@ -53,20 +54,17 @@ rxTest({
 
   test_that("a multivariate normal prior becomes a block of the thetaMat", {
     skipIfOldLotri()
-    .u <- .withPrior(.base(), c("tcl", "tv"),
-                     "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
+    .u <- .withPrior(.base(), c("tcl", "tv"), "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
     .s <- .rx$.rxPriorSimSpec(.u, list())
 
     expect_equal(dimnames(.s$thetaMat), list(c("tcl", "tv"), c("tcl", "tv")))
-    expect_equal(unname(.s$thetaMat),
-                 matrix(c(0.02, 0.001, 0.001, 0.03), 2, 2))
+    expect_equal(unname(.s$thetaMat), matrix(c(0.02, 0.001, 0.001, 0.03), 2, 2))
   })
 
   test_that("independent priors give a block diagonal thetaMat", {
     skipIfOldLotri()
     .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
-    .u <- .withPrior(.u, c("tcl", "tv"),
-                     "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
+    .u <- .withPrior(.u, c("tcl", "tv"), "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
     .s <- .rx$.rxPriorSimSpec(.u, list())
 
     expect_equal(dimnames(.s$thetaMat)[[1]], c("tka", "tcl", "tv"))
@@ -84,8 +82,7 @@ rxTest({
     .u <- .withPrior(.base(), "tka", "dnorm(0, 2)")
     expect_error(.rx$.rxPriorSimSpec(.u, list()), "is not the initial estimate")
 
-    .u <- .withPrior(.base(), c("tcl", "tv"),
-                     "multiNormal(c(9, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
+    .u <- .withPrior(.base(), c("tcl", "tv"), "multiNormal(c(9, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
     expect_error(.rx$.rxPriorSimSpec(.u, list()), "is not the initial estimate")
   })
 
@@ -114,8 +111,7 @@ rxTest({
     skipIfOldLotri()
     ## a prior must never be silently ignored
     .u <- .withPrior(.base(), "tka", "dgamma(2, 1)")
-    expect_error(.rx$.rxPriorSimSpec(.u, list()),
-                 "only normal and multivariate normal")
+    expect_error(.rx$.rxPriorSimSpec(.u, list()), "only normal and multivariate normal")
   })
 
   test_that("a normal prior on the omega values reaches the spec", {
@@ -131,8 +127,7 @@ rxTest({
     expect_equal(.s$omegaEl$name, "om.eta.ka")
 
     ## and the joint form, which lands wherever the block starts
-    .u <- .withPrior(.base(), "tcl",
-                     "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
+    .u <- .withPrior(.base(), "tcl", "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
     .s <- .rx$.rxPriorSimSpec(.u, list())
 
     expect_equal(dimnames(.s$thetaMat)[[1]], c("tcl", "om.eta.ka"))
@@ -149,8 +144,7 @@ rxTest({
   test_that("a joint block spans the thetas and the omega elements", {
     skipIfOldLotri()
     ## a TNPRI variance matrix covers both, with covariances between them
-    .u <- .withPrior(.base(), "tcl",
-                     "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
+    .u <- .withPrior(.base(), "tcl", "multiNormal(c(1, 0.6), lotri(tcl + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
     .th <- .rx$.rxPriorThetaMat(.u)
 
     expect_equal(dimnames(.th$thetaMat)[[1]], c("tcl", "om.eta.ka"))
@@ -167,16 +161,15 @@ rxTest({
     ## `rxSimThetaOmega()`, which has no argument for the omega half of a
     ## prior, so that half would never be drawn from
     .u <- .withPrior(.base(), "eta.cl", "invWishart(20)")
-    expect_error(.rx$.rxPriorSimSpec(.u, list(chunkSize=1e5)), "chunked solve")
-    expect_error(.rx$.rxPriorSimSpec(.u, list(file="out.parquet")),
-                 "chunked solve")
+    expect_error(.rx$.rxPriorSimSpec(.u, list(chunkSize = 1e5)), "chunked solve")
+    expect_error(.rx$.rxPriorSimSpec(.u, list(file = "out.parquet")), "chunked solve")
   })
 
   test_that("a chunked solve with a population parameter prior is not", {
     skipIfOldLotri()
     ## that half of a prior is a `thetaMat`, which the pre-draw does cover
     .u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
-    .s <- .rx$.rxPriorSimSpec(.u, list(chunkSize=1e5))
+    .s <- .rx$.rxPriorSimSpec(.u, list(chunkSize = 1e5))
     expect_false(is.null(.s$thetaMat))
     expect_equal(length(.s$omegaNu), 0L)
     expect_null(.s$omegaEl)
@@ -238,8 +231,7 @@ rxTest({
       })
     })
 
-    expect_error(.rx$.rxPriorOmegaLotri(.u, .rx$.rxPriorOmegaNu(.u)),
-                 "covers only part")
+    expect_error(.rx$.rxPriorOmegaLotri(.u, .rx$.rxPriorOmegaNu(.u)), "covers only part")
   })
 
   test_that("the ini({}) syntax reaches the spec end to end", {
@@ -278,23 +270,17 @@ rxTest({
   test_that("thetaMat columns are matched to omega entries by every spelling", {
     ## A thetaMat from a real covariance step carries the omega entries
     ## next to the thetas, and every producer spells them differently.
-    .om <- matrix(0, 3, 3,
-                  dimnames=list(c("eta.cl", "eta.v", "eta.ka"),
-                                c("eta.cl", "eta.v", "eta.ka")))
+    .om <- matrix(0, 3, 3, dimnames = list(c("eta.cl", "eta.v", "eta.ka"), c("eta.cl", "eta.v", "eta.ka")))
 
     ## nlmixr2est: `om.<eta>` and `cov.<eta1>.<eta2>` (.foceiOmegaCovNames)
-    .e <- .rx$.rxJointElFromNames(.om, c("tka", "om.eta.cl",
-                                         "cov.eta.cl.eta.v", "om.eta.v"))
-    expect_equal(rownames(.e),
-                 c("om.eta.cl", "cov.eta.cl.eta.v", "om.eta.v"))
+    .e <- .rx$.rxJointElFromNames(.om, c("tka", "om.eta.cl", "cov.eta.cl.eta.v", "om.eta.v"))
+    expect_equal(rownames(.e), c("om.eta.cl", "cov.eta.cl.eta.v", "om.eta.v"))
     expect_equal(unname(.e[, "neta1"]), c(1L, 2L, 2L))
     expect_equal(unname(.e[, "neta2"]), c(1L, 1L, 2L))
 
     ## nonmem2rx: the bare eta name, and `omega<i>.<j>`/`omega.<i>.<j>`
-    .e <- .rx$.rxJointElFromNames(.om, c("t.CL", "eta.cl", "omega1.2",
-                                         "eta.v", "omega.3.1"))
-    expect_equal(rownames(.e),
-                 c("eta.cl", "omega1.2", "eta.v", "omega.3.1"))
+    .e <- .rx$.rxJointElFromNames(.om, c("t.CL", "eta.cl", "omega1.2", "eta.v", "omega.3.1"))
+    expect_equal(rownames(.e), c("eta.cl", "omega1.2", "eta.v", "omega.3.1"))
     ## either order addresses the same entry, since the matrix is symmetric
     expect_equal(unname(.e["omega.3.1", ]), c(3L, 1L))
 
@@ -303,20 +289,16 @@ rxTest({
 
     ## the bare eta name already means an SD under the separation
     ## strategy, so it can be excluded
-    .e <- .rx$.rxJointElFromNames(.om, c("eta.cl", "om.eta.v"),
-                                  bareName=FALSE)
+    .e <- .rx$.rxJointElFromNames(.om, c("eta.cl", "om.eta.v"), bareName = FALSE)
     expect_equal(rownames(.e), "om.eta.v")
 
     ## two spellings of one entry is ambiguous rather than first-wins
-    expect_error(.rx$.rxJointElFromNames(.om, c("om.eta.cl", "eta.cl")),
-                 "more than one")
+    expect_error(.rx$.rxJointElFromNames(.om, c("om.eta.cl", "eta.cl")), "more than one")
   })
 
   test_that("sigma entries are matched the same way", {
-    .sg <- matrix(0, 2, 2, dimnames=list(c("eps1", "eps2"),
-                                         c("eps1", "eps2")))
-    .e <- .rx$.rxJointElFromNames(.sg, c("eps1", "sigma1.2", "eps2"),
-                                  what="sigma")
+    .sg <- matrix(0, 2, 2, dimnames = list(c("eps1", "eps2"), c("eps1", "eps2")))
+    .e <- .rx$.rxJointElFromNames(.sg, c("eps1", "sigma1.2", "eps2"), what = "sigma")
     expect_equal(rownames(.e), c("eps1", "sigma1.2", "eps2"))
     expect_equal(unname(.e["sigma1.2", ]), c(2L, 1L))
   })

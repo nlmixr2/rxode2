@@ -1,5 +1,4 @@
 rxTest({
-
   test_that(".setupGroupCensBox accepts lower/upper pair and produces polygon-ready data", {
     d <- data.frame(
       x = c(1, 2, 3),
@@ -24,7 +23,7 @@ rxTest({
       x = c(1, 2, 3),
       y = c(1, 2, 3),
       lower = c(NA_real_, 0.5, 3),
-      upper = c(NA_real_, 2,   5)
+      upper = c(NA_real_, 2, 5)
     )
     out_cl <- .setupGroupCensBox(d_cl, list(width = 0.01))
     out_lu <- .setupGroupCensBox(d_lu, list(width = 0.01))
@@ -81,7 +80,7 @@ rxTest({
       x = 1:5,
       y = c(1, 2, 1, 2, 3),
       lower = c(NA_real_, -Inf, NA_real_, 3, NA_real_),
-      upper = c(NA_real_, 0.5,  NA_real_, Inf, NA_real_)
+      upper = c(NA_real_, 0.5, NA_real_, Inf, NA_real_)
     )
     p <- ggplot2::ggplot(d, ggplot2::aes(x = x, y = y)) +
       ggplot2::geom_point() +
@@ -99,5 +98,4 @@ rxTest({
       geom_cens(ggplot2::aes(cens = cens, limit = limit))
     expect_no_warning(suppressMessages(ggplot2::ggplot_build(p2)))
   })
-
 })

@@ -48,13 +48,11 @@ if ("package:rxode2" %in% search()) {
   .where <- c(.where, list(as.environment("package:rxode2")))
 }
 for (.w in .where) {
-  try(suppressMessages(trace("etTrans", tracer = .recorder, print = FALSE,
-                             where = .w)), silent = TRUE)
+  try(suppressMessages(trace("etTrans", tracer = .recorder, print = FALSE, where = .w)), silent = TRUE)
 }
 
 message("running test-etTrans.R under the tracer ...")
-try(testthat::test_file("tests/testthat/test-etTrans.R",
-                        reporter = "silent"), silent = TRUE)
+try(testthat::test_file("tests/testthat/test-etTrans.R", reporter = "silent"), silent = TRUE)
 
 for (.w in .where) {
   try(suppressMessages(untrace("etTrans", where = .w)), silent = TRUE)
@@ -83,26 +81,28 @@ message("recorded ", length(.cases), " distinct etTrans() inputs")
     .rxSetIni0(TRUE)
     .Call(`_rxode2_etTransEvidIsObs`, TRUE)
   })
-  tryCatch(.canon(do.call(.etTrans, c(list(case$data, case$mv), case$args))),
-           error = function(e) conditionMessage(e))
+  tryCatch(.canon(do.call(.etTrans, c(list(case$data, case$mv), case$args))), error = function(e) conditionMessage(e))
 }
 
 .out <- list()
 for (.i in seq_along(.cases)) {
   .c <- .cases[[.i]]
-  .r <- lapply(list(c(TRUE, TRUE), c(TRUE, FALSE), c(FALSE, TRUE),
-                    c(FALSE, FALSE)),
-               function(s) .runOne(.c, s[1], s[2]))
+  .r <- lapply(list(c(TRUE, TRUE), c(TRUE, FALSE), c(FALSE, TRUE), c(FALSE, FALSE)), function(s) {
+    .runOne(.c, s[1], s[2])
+  })
   .same <- vapply(.r[-1], function(z) identical(z, .r[[1]]), TRUE)
   .state <- if (all(.same)) list() else list(ini0 = TRUE, evidIsObs = TRUE)
   .id <- paste0("harvest/", sprintf("%03d", .i))
-  .out[[.i]] <- list(id = .id, data = .c$data, model = .id, args = .c$args,
-                     state = .state, mv = .c$mv)
+  .out[[.i]] <- list(id = .id, data = .c$data, model = .id, args = .c$args, state = .state, mv = .c$mv)
 }
 
 dir.create("tests/testthat/etTrans-golden", showWarnings = FALSE)
-saveRDS(.out, "tests/testthat/etTrans-golden/harvest-cases.rds",
-        compress = "xz")
-message("wrote tests/testthat/etTrans-golden/harvest-cases.rds (",
-        round(file.size("tests/testthat/etTrans-golden/harvest-cases.rds") /
-                1024), " KB)")
+saveRDS(.out, "tests/testthat/etTrans-golden/harvest-cases.rds", compress = "xz")
+message(
+  "wrote tests/testthat/etTrans-golden/harvest-cases.rds (",
+  round(
+    file.size("tests/testthat/etTrans-golden/harvest-cases.rds") /
+      1024
+  ),
+  " KB)"
+)

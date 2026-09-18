@@ -53,19 +53,31 @@ rxTest({
   mod <- rxode2(model = ode)
 
   theta <- c(
-    tVg = 9.33, Vp = 8.56, tQ = 0.442,
-    tClg = 0.0287, tClgi = 0.0059,
-    Iss = 9.3, Gss = 150,
-    tCli = 1.22, tVi = 6.09,
+    tVg = 9.33,
+    Vp = 8.56,
+    tQ = 0.442,
+    tClg = 0.0287,
+    tClgi = 0.0059,
+    Iss = 9.3,
+    Gss = 150,
+    tCli = 1.22,
+    tVi = 6.09,
     IPRG = 1.42,
-    keog = 0.0289, keoi = 0.0213,
-    mtt = 34.9, n = 1.27,
-    Emax = 1.47, ka = 0.02865, CA50 = 14.8
+    keog = 0.0289,
+    keoi = 0.0213,
+    mtt = 34.9,
+    n = 1.27,
+    Emax = 1.47,
+    ka = 0.02865,
+    CA50 = 14.8
   )
 
-  omega1 <- matrix(c(0.0887, -0.192, 0.0855, 0.0, 0.73, -0.12, 0.0, 0.0, 0.165), 3, 3,
-                   dimnames = list(NULL, c("eta.Vg", "eta.Q", "eta.Vi"))
-                   )
+  omega1 <- matrix(
+    c(0.0887, -0.192, 0.0855, 0.0, 0.73, -0.12, 0.0, 0.0, 0.165),
+    3,
+    3,
+    dimnames = list(NULL, c("eta.Vg", "eta.Q", "eta.Vi"))
+  )
   omega2 <- matrix(0.352, dimnames = list(NULL, "eta.Clg"))
   omega3 <- matrix(0.207, dimnames = list(NULL, "eta.Clgi"))
   omega4 <- matrix(0.0852, dimnames = list(NULL, "eta.Cli"))
@@ -88,17 +100,12 @@ rxTest({
 
       test_that("non-symmetric sigmas throw errors", {
         expect_warning(
-          rxSolve(mod, theta, et,
-                  omega = lotri(eta.Cli ~ 0.0854),
-                  sigma = list(omega1, omega2, omega3)
-                  ),
+          rxSolve(mod, theta, et, omega = lotri(eta.Cli ~ 0.0854), sigma = list(omega1, omega2, omega3)),
           "sigma.*symmetric"
         )
         expect_warning(
-          expect_warning(rxSolve(mod, theta, et,
-                                 sigma = list(omega1, omega2, omega3, omega4)
-                                 ),
-          "sigma.*symmetric"))
+          expect_warning(rxSolve(mod, theta, et, sigma = list(omega1, omega2, omega3, omega4)), "sigma.*symmetric")
+        )
       })
 
       tMat <- mod$params

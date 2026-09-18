@@ -103,17 +103,23 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .SD <- . <- NULL # nolint
   `:=` <- NULL # nolint
   rxode2::rxReq("data.table")
-  checkmate::assertNumeric(level, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(level, lower = 0, upper = 1, finite = TRUE, any.missing = FALSE)
   .opt <- .confintOptions(list(...), object, level)
   .by <- .opt$by
   .ci <- .opt$ci
-  .stk <- rxStack(object, parm, doSim=.opt$doSim) # nolint
+  .stk <- rxStack(object, parm, doSim = .opt$doSim) # nolint
   .nStud <- object$env$.args$nStud
-  if (!checkmate::testIntegerish(.nStud, len=1L, any.missing=FALSE)) .nStud <- 1L
+  if (!checkmate::testIntegerish(.nStud, len = 1L, any.missing = FALSE)) {
+    .nStud <- 1L
+  }
   .nSub <- object$env$.args$nSub
-  if (!checkmate::testIntegerish(.nSub, len=1L, any.missing=FALSE)) .nSub <- 1L
-  if (!any(names(.stk) == "id") &&
-        any(names(.stk) == "sim.id")) {
+  if (!checkmate::testIntegerish(.nSub, len = 1L, any.missing = FALSE)) {
+    .nSub <- 1L
+  }
+  if (
+    !any(names(.stk) == "id") &&
+      any(names(.stk) == "sim.id")
+  ) {
     if (.nStud > 1L && .nSub > 1L) {
       # With a single-subject event table rxode2 solves nStud*nSub simulations
       # numbered study-major in `sim.id` and emits no `id` column; split it back
@@ -131,7 +137,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   setDT(.stk) # nolint
   .a <- (1 - level) / 2
   .p <- c(.a, 0.5, 1 - .a)
-  .c <- (1-.ci) / 2
+  .c <- (1 - .ci) / 2
   .p2 <- c(.c, 0.5, 1 - .c)
   .lst <- list(
     lvl = paste0("p", .p * 100),
@@ -151,15 +157,19 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   if (isTRUE(.thetaMatUsed)) {
     .minfo("this simulation drew from 'thetaMat', so the simulated values include parameter uncertainty") # nolint
   } else if (isFALSE(.thetaMatUsed)) {
-    .mwarn("this simulation did not draw from 'thetaMat' ('nStud' <= 1), so the simulated values do not include parameter uncertainty; use 'nStud' > 1 or 'simVariability=TRUE'") # nolint
+    .mwarn(
+      "this simulation did not draw from 'thetaMat' ('nStud' <= 1), so the simulated values do not include parameter uncertainty; use 'nStud' > 1 or 'simVariability=TRUE'"
+    ) # nolint
   }
   message("summarizing data...", appendLF = FALSE)
   if (is.na(.n)) {
-    .stk <- .stk[, list(
-      p1 = .p, eff = .confintProbs(.SD$value, .p, .opt),
-      Percentile = sprintf("%s%%", .p * 100)
-    ),
-    by = c("time", "trt", .by)
+    .stk <- .stk[,
+      list(
+        p1 = .p,
+        eff = .confintProbs(.SD$value, .p, .opt),
+        Percentile = sprintf("%s%%", .p * 100)
+      ),
+      by = c("time", "trt", .by)
     ]
     if (requireNamespace("tibble", quietly = TRUE)) {
       .stk <- tibble::as_tibble(.stk)
@@ -171,11 +181,11 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     return(.stk)
   }
   .ret <- .stk[, id := sim.id %% .n]
-  .ret <- .ret[, list(p1 = .p, eff = .confintProbs(.SD$value, .p, .opt)),
-               by = c("id", "time", "trt", .by)]
-  .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
-                          sprintf("p%s", .p2 * 100)),
-               by = c("p1", "time", "trt", .by)]
+  .ret <- .ret[, list(p1 = .p, eff = .confintProbs(.SD$value, .p, .opt)), by = c("id", "time", "trt", .by)]
+  .ret <- .ret[,
+    setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)), sprintf("p%s", .p2 * 100)),
+    by = c("p1", "time", "trt", .by)
+  ]
   .ret$Percentile <- factor(sprintf("%s%%", .ret$p1 * 100))
   if (requireNamespace("tibble", quietly = TRUE)) {
     .ret <- tibble::as_tibble(.ret)

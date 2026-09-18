@@ -349,8 +349,11 @@ d/dt(blood)     = a*intestine - b*blood
   et <- eventTable(time.units = "days")
   et$add.sampling(seq(0, 10, by = 1 / 24))
   et$add.dosing(
-    dose = 2 / 24, rate = 2, start.time = 0,
-    nbr.doses = 10, dosing.interval = 1
+    dose = 2 / 24,
+    rate = 2,
+    start.time = 0,
+    nbr.doses = 10,
+    dosing.interval = 1
   )
 
   pk <- solve(mod, et)
@@ -358,7 +361,6 @@ d/dt(blood)     = a*intestine - b*blood
   test_that("params are captured correctly", {
     expect_equal(pk$.params.single, c(a = 6, b = 0.6))
   })
-
 
   ## plot(pk$time,pk$intestine,type="l")
   ## plot(pk$time,pk$blood,type="l")
@@ -375,8 +377,11 @@ d/dt(blood)     = a*intestine - b*blood
   et2 <- eventTable(time.units = "days")
   et2$add.sampling(seq(0, 10, by = 1 / 24))
   et2$add.dosing(
-    dose = 2 / 24, rate = 2, strt.time = 0,
-    nbr.doses = 10, dosing.interval = 0.5
+    dose = 2 / 24,
+    rate = 2,
+    strt.time = 0,
+    nbr.doses = 10,
+    dosing.interval = 0.5
   )
 
   pk2 <- solve(pk, et2)
@@ -390,7 +395,6 @@ d/dt(blood)     = a*intestine - b*blood
       inf.dat2
     )
   })
-
 
   ## Bolus 6.2
   mod <- rxode2("

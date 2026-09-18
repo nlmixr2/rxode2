@@ -25,7 +25,8 @@ rxTest({
   })
 
   test_that("large params()", {
-    expect_error(tmp <- rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
+    expect_error(
+      tmp <- rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
 cmt(depot)
 cmt(gut)
 cmt(center)
@@ -43,12 +44,24 @@ rx_expr_0~CMT==6
 rx_pred_=effect*(rx_expr_0)+rx_expr_4*(CMT==5)*(1-(rx_expr_0))
 cmt(cp)
 cmt(pca)
-dvid(5, 6)"), NA)
+dvid(5, 6)"),
+      NA
+    )
 
-    expect_equal(rxModelVars(tmp)$param, c(
-      "tktr", "tka", "tcl", "tv", "poplogit", "tec50", "tkout", "te0",
-      "CMT"
-    ))
+    expect_equal(
+      rxModelVars(tmp)$param,
+      c(
+        "tktr",
+        "tka",
+        "tcl",
+        "tv",
+        "poplogit",
+        "tec50",
+        "tkout",
+        "te0",
+        "CMT"
+      )
+    )
   })
   # nlmixr2/rxode2#1279
   test_that("param()/interp statements do not splice in the prior line", {
@@ -67,13 +80,17 @@ dvid(5, 6)"), NA)
   })
 
   test_that("repeated param() statements merge into one", {
-    .two <- rxModelVars(paste0("param(THETA[1],THETA[2],ETA[1]);\ncmt(centr);\n",
-                               "param(THETA[1],THETA[2],ETA[1],DV);\n",
-                               "d/dt(centr)=-exp(THETA[1]+ETA[1])*centr;\n",
-                               "rx_pred_=llikNorm(DV,centr,exp(THETA[2]));\nrx_r_=0;\n"))
-    .one <- rxModelVars(paste0("param(THETA[1],THETA[2],ETA[1],DV);\ncmt(centr);\n",
-                               "d/dt(centr)=-exp(THETA[1]+ETA[1])*centr;\n",
-                               "rx_pred_=llikNorm(DV,centr,exp(THETA[2]));\nrx_r_=0;\n"))
+    .two <- rxModelVars(paste0(
+      "param(THETA[1],THETA[2],ETA[1]);\ncmt(centr);\n",
+      "param(THETA[1],THETA[2],ETA[1],DV);\n",
+      "d/dt(centr)=-exp(THETA[1]+ETA[1])*centr;\n",
+      "rx_pred_=llikNorm(DV,centr,exp(THETA[2]));\nrx_r_=0;\n"
+    ))
+    .one <- rxModelVars(paste0(
+      "param(THETA[1],THETA[2],ETA[1],DV);\ncmt(centr);\n",
+      "d/dt(centr)=-exp(THETA[1]+ETA[1])*centr;\n",
+      "rx_pred_=llikNorm(DV,centr,exp(THETA[2]));\nrx_r_=0;\n"
+    ))
     expect_equal(.two$params, c("THETA[1]", "THETA[2]", "ETA[1]", "DV"))
     expect_equal(.two$params, .one$params)
     # a single param() statement in the normalized model, matching $params
@@ -107,8 +124,7 @@ dvid(5, 6)"), NA)
     expect_equal(rxModelVars(rxNorm(.dropAll))$params, .dropAll$params)
 
     # every declared name became a state, so nothing is left to declare
-    expect_equal(rxNorm(rxModelVars("param(a);\nparam(a);\nd/dt(a)=-a;\n")),
-                 "d/dt(a)=-a;\n")
+    expect_equal(rxNorm(rxModelVars("param(a);\nparam(a);\nd/dt(a)=-a;\n")), "d/dt(a)=-a;\n")
 
     # an interpolation set on a parameter pulled into the merged statement stays
     .int <- rxModelVars("param(a);\nlocf(z);\ny=z*a;\nparam(a,c);\nw=c;\n")
@@ -118,8 +134,10 @@ dvid(5, 6)"), NA)
     expect_equal(as.character(.int$interp[["z"]]), "locf")
 
     # a string covariate pulled into the merged statement keeps its levels
-    .lvl <- rxModelVars(paste0("param(a);\nif (SEX == \"male\") {\n b <- 1\n} else {\n b <- 2\n}\n",
-                               "param(a,c);\ny=a*b*c;\n"))
+    .lvl <- rxModelVars(paste0(
+      "param(a);\nif (SEX == \"male\") {\n b <- 1\n} else {\n b <- 2\n}\n",
+      "param(a,c);\ny=a*b*c;\n"
+    ))
     expect_true("SEX" %in% .lvl$params)
     expect_equal(rxModelVars(rxNorm(.lvl))$params, .lvl$params)
     expect_equal(rxModelVars(rxNorm(.lvl))$strCmpParams, .lvl$strCmpParams)
@@ -158,8 +176,7 @@ dvid(5, 6)"), NA)
 
     # a single param() statement is left alone, even when every name it
     # declares became a state and it declares no parameter at all
-    expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")),
-                 "param(a,b);\nd/dt(x)=-a*x*b;\n")
+    expect_equal(rxNorm(rxModelVars("param(a,b);\nd/dt(x)=-a*x*b;\n")), "param(a,b);\nd/dt(x)=-a*x*b;\n")
     .lone <- rxModelVars("param(a);\nd/dt(a)=-a;\n")
     expect_length(.lone$params, 0)
     expect_equal(rxNorm(.lone), "param(a);\nd/dt(a)=-a;\n")

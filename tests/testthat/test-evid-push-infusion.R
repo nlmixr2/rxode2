@@ -1,5 +1,4 @@
 rxTest({
-
   # Infusions pushed from inside the model with evid_().  _rxTranslateOneEvent()
   # has to emit the record that turns the infusion back off: a fixed rate/
   # duration dose needs a -rate record at time + dur, and a modeled rate/duration
@@ -31,8 +30,7 @@ rxTest({
     alag(central) <- 3
     cp <- central / v
   })
-  .expectSameAsEventTableLag <- function(mod, ev, ref = .refLag,
-                                         tolerance = 1e-5) {
+  .expectSameAsEventTableLag <- function(mod, ev, ref = .refLag, tolerance = 1e-5) {
     got <- rxSolve(mod, .pars, et(.obsLag))
     want <- rxSolve(ref, .pars, ev |> et(.obsLag))
     expect_equal(got$time, want$time)
@@ -51,7 +49,9 @@ rxTest({
       }
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = 10, ii = 12, ss = 1))
+      mod,
+      et(amt = 100, time = 2, rate = 10, ii = 12, ss = 1)
+    )
   })
 
   test_that("a pushed ss=2 dose into an alag() compartment matches the event table", {
@@ -64,7 +64,9 @@ rxTest({
       }
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = 10, ii = 12, ss = 2))
+      mod,
+      et(amt = 100, time = 2, rate = 10, ii = 12, ss = 2)
+    )
   })
 
   test_that("a pushed steady-state bolus into an alag() compartment matches the event table", {
@@ -96,7 +98,10 @@ rxTest({
       cp <- central / v
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = -1, ii = 12, ss = 1), ref = ref)
+      mod,
+      et(amt = 100, time = 2, rate = -1, ii = 12, ss = 1),
+      ref = ref
+    )
   })
 
   test_that("a pushed steady-state modeled-duration dose into an alag() compartment matches the event table", {
@@ -116,7 +121,10 @@ rxTest({
       cp <- central / v
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = -2, ii = 12, ss = 1), ref = ref)
+      mod,
+      et(amt = 100, time = 2, rate = -2, ii = 12, ss = 1),
+      ref = ref
+    )
   })
 
   test_that("only the first occurrence of a pushed ss+addl series into an alag() compartment expands", {
@@ -129,7 +137,9 @@ rxTest({
       }
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2, ss = 1))
+      mod,
+      et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2, ss = 1)
+    )
   })
 
   test_that("a pushed evid=4 steady-state dose into an alag() compartment matches the event table", {
@@ -143,7 +153,9 @@ rxTest({
       }
     })
     .expectSameAsEventTableLag(
-      mod, et(amt = 100, time = 2, rate = 10, evid = 4, ii = 12, ss = 1))
+      mod,
+      et(amt = 100, time = 2, rate = 10, evid = 4, ii = 12, ss = 1)
+    )
   })
 
   test_that("ssAtDoseTime=FALSE turns the pushed lagged expansion off too", {
@@ -156,9 +168,13 @@ rxTest({
       }
     })
     got <- rxSolve(mod, .pars, et(.obsLag), ssAtDoseTime = FALSE)
-    want <- rxSolve(.refLag, .pars,
-                    et(amt = 100, time = 2, rate = 10, ii = 12, ss = 1) |>
-                      et(.obsLag), ssAtDoseTime = FALSE)
+    want <- rxSolve(
+      .refLag,
+      .pars,
+      et(amt = 100, time = 2, rate = 10, ii = 12, ss = 1) |>
+        et(.obsLag),
+      ssAtDoseTime = FALSE
+    )
     expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
   })
 
@@ -180,8 +196,7 @@ rxTest({
     })
     pars <- c(ka = 0.5, cl = 1, v = 10)
     got <- rxSolve(mod, pars, et(.obs))
-    want <- rxSolve(ref, pars,
-                    et(amt = 100, time = 2, rate = -1, evid = 7) |> et(.obs))
+    want <- rxSolve(ref, pars, et(amt = 100, time = 2, rate = -1, evid = 7) |> et(.obs))
     expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
   })
 
@@ -212,8 +227,7 @@ rxTest({
     })
     p <- c(ka = 0.5, cl = 1, v = 10)
     got <- rxSolve(mSplit, p, et(obs))
-    want <- rxSolve(mBase, p,
-                    et(amt = 100, time = 2, ii = 12, ss = 1, cmt = 1) |> et(obs))
+    want <- rxSolve(mBase, p, et(amt = 100, time = 2, ii = 12, ss = 1, cmt = 1) |> et(obs))
     expect_true(all(is.finite(got$cp)))
     expect_equal(got$depot[-1], want$depot[-1], tolerance = 1e-5)
     expect_equal(got$central[-1], want$central[-1], tolerance = 1e-5)
@@ -238,17 +252,20 @@ rxTest({
       d/dt(central) <- ka * depot - cl / v * central
       cp <- central / v
     })
-    want <- rxSolve(ref, pars,
-                    et(amt = 100, time = 0) |>
-                      et(time = 6, cmt = "-depot", evid = 2) |> et(.obs))
+    want <- rxSolve(
+      ref,
+      pars,
+      et(amt = 100, time = 0) |>
+        et(time = 6, cmt = "-depot", evid = 2) |>
+        et(.obs)
+    )
     for (cmtExpr in list(quote(-depot), -1)) {
       got <- rxSolve(mkMod(cmtExpr), pars, et(amt = 100, time = 0) |> et(.obs))
       expect_equal(got$depot, want$depot, tolerance = 1e-5)
       expect_equal(got$cp, want$cp, tolerance = 1e-5)
     }
     # and it really turned the compartment off
-    got <- rxSolve(mkMod(quote(-depot)), pars,
-                   et(amt = 100, time = 0) |> et(.obs))
+    got <- rxSolve(mkMod(quote(-depot)), pars, et(amt = 100, time = 0) |> et(.obs))
     expect_gt(got$depot[got$time == 5.5], 0)
     expect_equal(got$depot[got$time == 6.5], 0)
   })
@@ -334,8 +351,7 @@ rxTest({
         evid_(2, 1, 100, 1, -2, 12, 2, 0)
       }
     })
-    want <- rxSolve(.ref, .pars,
-                    et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2) |> et(obs))
+    want <- rxSolve(.ref, .pars, et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2) |> et(obs))
     expect_equal(rxSolve(modRate, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
     expect_equal(rxSolve(modDur, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
   })
@@ -416,8 +432,11 @@ rxTest({
                            "if (t < 1e-8) { evid_(2, 1, 100, 110, -1, 0, 0, 0) }"))
     refHi <- rxode2(.mod)
     gotHi <- rxSolve(modHi, et(seq(0, 24, by = 1)))
-    wantHi <- rxSolve(refHi, et(amt = 100, time = 2, rate = 10, cmt = "a110") |>
-                        et(seq(0, 24, by = 1)))
+    wantHi <- rxSolve(
+      refHi,
+      et(amt = 100, time = 2, rate = 10, cmt = "a110") |>
+        et(seq(0, 24, by = 1))
+    )
     expect_equal(gotHi$a110, wantHi$a110, tolerance = 1e-5)
   })
 
@@ -453,8 +472,7 @@ rxTest({
         evid_(2, 1, 100, 1, 10, 12, 2, 0)
       }
     })
-    want <- rxSolve(.ref, .pars,
-                    et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2) |> et(obs))
+    want <- rxSolve(.ref, .pars, et(amt = 100, time = 2, rate = 10, ii = 12, addl = 2) |> et(obs))
     expect_equal(rxSolve(mod, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
   })
 
@@ -485,9 +503,12 @@ rxTest({
         evid_(2, 4, 100, 1, 10, 12, 2, 0)
       }
     })
-    want <- rxSolve(.ref, .pars,
-                    et(amt = 100, time = 2, rate = 10, evid = 4, ii = 12, addl = 2) |>
-                      et(obs))
+    want <- rxSolve(
+      .ref,
+      .pars,
+      et(amt = 100, time = 2, rate = 10, evid = 4, ii = 12, addl = 2) |>
+        et(obs)
+    )
     expect_equal(rxSolve(mod, .pars, et(obs))$cp, want$cp, tolerance = 1e-5)
   })
 
@@ -508,21 +529,31 @@ rxTest({
       }
     })
     got <- rxSolve(mod, .pars, et(obs))
-    oneReset <- rxSolve(.ref, .pars,
-                        et(amt = 100, time = 0) |> et(amt = 100, time = 15) |>
-                          et(amt = 100, time = 30) |>
-                          et(time = 10, evid = 3) |> et(obs))
-    threeResets <- rxSolve(.ref, .pars,
-                           et(amt = 100, time = 0) |> et(amt = 100, time = 15) |>
-                             et(amt = 100, time = 30) |>
-                             et(time = 10, evid = 3) |> et(time = 22, evid = 3) |>
-                             et(time = 34, evid = 3) |> et(obs))
+    oneReset <- rxSolve(
+      .ref,
+      .pars,
+      et(amt = 100, time = 0) |>
+        et(amt = 100, time = 15) |>
+        et(amt = 100, time = 30) |>
+        et(time = 10, evid = 3) |>
+        et(obs)
+    )
+    threeResets <- rxSolve(
+      .ref,
+      .pars,
+      et(amt = 100, time = 0) |>
+        et(amt = 100, time = 15) |>
+        et(amt = 100, time = 30) |>
+        et(time = 10, evid = 3) |>
+        et(time = 22, evid = 3) |>
+        et(time = 34, evid = 3) |>
+        et(obs)
+    )
     # the t=0 row differs by construction: a dose pushed at the current time
     # lands after that record's own observation
     .i <- got$time > 0
     expect_equal(got$cp[.i], oneReset$cp[.i], tolerance = 1e-5)
-    expect_false(isTRUE(all.equal(got$cp[.i], threeResets$cp[.i],
-                                  tolerance = 1e-5)))
+    expect_false(isTRUE(all.equal(got$cp[.i], threeResets$cp[.i], tolerance = 1e-5)))
   })
 
   test_that("a pushed dose carries the same ii as the identical data record", {
@@ -538,10 +569,10 @@ rxTest({
         evid_(2, 1, 100, 1, 0, 12, 0, 0)
       }
     })
-    raw <- rbind(data.frame(id = 1, time = obs, amt = NA_real_, evid = 0,
-                            ii = 0, addl = 0, ss = 0),
-                 data.frame(id = 1, time = 2, amt = 100, evid = 1,
-                            ii = 12, addl = 0, ss = 0))
+    raw <- rbind(
+      data.frame(id = 1, time = obs, amt = NA_real_, evid = 0, ii = 0, addl = 0, ss = 0),
+      data.frame(id = 1, time = 2, amt = 100, evid = 1, ii = 12, addl = 0, ss = 0)
+    )
     raw <- raw[order(raw$time), ]
     got <- rxSolve(mod, .pars, et(obs), addDosing = TRUE)
     want <- rxSolve(.ref, .pars, raw, addDosing = TRUE)
@@ -579,7 +610,9 @@ rxTest({
     # evid=4 resets only on the FIRST addl repetition (t=6, matching NONMEM --
     # see rxode2#1351); write the reference the same way, evid=4 once then
     # plain doses, rather than evid=4 at every repeat.
-    eBase <- e |> et(amt = 100, time = 0, cmt = 2) |> et(amt = 100, time = 0, cmt = 3) |>
+    eBase <- e |>
+      et(amt = 100, time = 0, cmt = 2) |>
+      et(amt = 100, time = 0, cmt = 3) |>
       et(amt = 50, time = 6, cmt = 1, evid = 4) |>
       et(amt = 50, time = 6, cmt = 2) |>
       et(amt = 50, time = 6, cmt = 3)
@@ -688,8 +721,7 @@ rxTest({
         evid_(0, 1, 0, 1, -2, 0, 0, 1)
       }
     })
-    expect_error(rxSolve(modModeledDur, .pars, et(.obs)),
-                 "makes no sense")
+    expect_error(rxSolve(modModeledDur, .pars, et(.obs)), "makes no sense")
 
     modFixedDur <- rxode2({
       d/dt(central) <- -cl / v * central
@@ -698,8 +730,7 @@ rxTest({
         infuseDur(0, 10, 1, 0, 0, 1)
       }
     })
-    expect_error(rxSolve(modFixedDur, .pars, et(.obs)),
-                 "makes no sense")
+    expect_error(rxSolve(modFixedDur, .pars, et(.obs)), "makes no sense")
 
     modModeledDurReset <- rxode2({
       d/dt(central) <- -cl / v * central
@@ -709,8 +740,7 @@ rxTest({
         evid_(0, 4, 0, 1, -2, 0, 0, 1)
       }
     })
-    expect_error(rxSolve(modModeledDurReset, .pars, et(.obs)),
-                 "makes no sense")
+    expect_error(rxSolve(modModeledDurReset, .pars, et(.obs)), "makes no sense")
   })
 
   test_that("a hand-encoded classic internal evid cannot bypass the flg-40 duration guard (#1350)", {
@@ -805,5 +835,4 @@ rxTest({
     # place from the next output row onward rather than at time 0 itself
     expect_equal(got$cp[-1], want$cp[-1], tolerance = 1e-5)
   })
-
 })

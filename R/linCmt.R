@@ -11,9 +11,9 @@
 #' @examples
 #' .solComp2(k10=0.1, k12=3, k21=1)
 .solComp2 <- function(k10, k12, k21) {
-  checkmate::assertNumeric(k10, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k12, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k21, lower=0, len=1, any.missing=FALSE)
+  checkmate::assertNumeric(k10, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k12, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k21, lower = 0, len = 1, any.missing = FALSE)
   rxode2lincmt::solComp2(k10, k12, k21)
 }
 #' Calculate the lambdas and coefficients of the three compartment model
@@ -28,11 +28,11 @@
 #' @examples
 #' .solComp3(k10=0.1, k12=3, k21=1, k13=2, k31=0.5)
 .solComp3 <- function(k10, k12, k21, k13, k31) {
-  checkmate::assertNumeric(k10, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k12, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k21, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k13, lower=0, len=1, any.missing=FALSE)
-  checkmate::assertNumeric(k31, lower=0, len=1, any.missing=FALSE)
+  checkmate::assertNumeric(k10, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k12, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k21, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k13, lower = 0, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(k31, lower = 0, len = 1, any.missing = FALSE)
   rxode2lincmt::solComp3(k10, k12, k21, k13, k31)
 }
 
@@ -106,18 +106,58 @@ linCmtCarryFastStats <- function(reset = FALSE) {
 }
 
 # Internal test/benchmark hooks into rxode2lincmt's per-row kernel
-linCmtModelDouble <- function(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0,
-                              trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff,
-                              sensType = 3L, sensH = 0.001) {
-  rxode2lincmt::linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0,
-                                  trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff,
-                                  sensType, sensH)
+linCmtModelDouble <- function(
+  dt,
+  p1,
+  v1,
+  p2,
+  p3,
+  p4,
+  p5,
+  ka,
+  alastNV,
+  rateNV,
+  ncmt,
+  oral0,
+  trans,
+  deriv,
+  type,
+  tau,
+  tinf,
+  amt,
+  bolusCmt,
+  ndiff,
+  sensType = 3L,
+  sensH = 0.001
+) {
+  rxode2lincmt::linCmtModelDouble(
+    dt,
+    p1,
+    v1,
+    p2,
+    p3,
+    p4,
+    p5,
+    ka,
+    alastNV,
+    rateNV,
+    ncmt,
+    oral0,
+    trans,
+    deriv,
+    type,
+    tau,
+    tinf,
+    amt,
+    bolusCmt,
+    ndiff,
+    sensType,
+    sensH
+  )
 }
 
-linCmtCarryLiveTest <- function(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2,
-                                addVal = NULL) {
-  rxode2lincmt::.linCmtCarryLiveTest(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2,
-                                     addVal)
+linCmtCarryLiveTest <- function(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal = NULL) {
+  rxode2lincmt::.linCmtCarryLiveTest(id, t, tPrior, theta, ncmt, oral0, trans, which1, which2, addVal)
 }
 
 linCmtBSensTypesSeen <- function(reset) {

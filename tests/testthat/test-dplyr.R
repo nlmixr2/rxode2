@@ -23,31 +23,35 @@ rxTest({
   et1$add.sampling(24)
   et1$add.sampling(seq(from = 24 + 8, to = 5 * 24, by = 8))
 
-
   test_that("rxode2 event table 1 was created", {
     expect_true(inherits(et1, "rxEt"))
     expect_equal(et1$get.nobs(), 38)
     expect_equal(length(et1$get.dosing()[, 1]), 1)
   })
 
-  o1.first <- suppressWarnings(rxSolve(m1,
-                                       params = c(
-                                         KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-                                         Kin = 1.0, Kout = 1.0, EC50 = 200.0
-                                       ),
-                                       events = et1,
-                                       inits = c(0, 0, 0, 1)
-                                       ))
+  o1.first <- suppressWarnings(rxSolve(
+    m1,
+    params = c(
+      KA = .291,
+      CL = 18.6,
+      V2 = 40.2,
+      Q = 10.5,
+      V3 = 297.0,
+      Kin = 1.0,
+      Kout = 1.0,
+      EC50 = 200.0
+    ),
+    events = et1,
+    inits = c(0, 0, 0, 1)
+  ))
 
   test_that("filter works", {
     expect_equal((o1.first |> dplyr::filter(time <= 5))$time, 0:5)
   })
 
-
   test_that("distinct works", {
     expect_equal(sum((o1.first |> dplyr::distinct())$time == 24), 1)
   })
-
 
   test_that("slice works", {
     expect_equal((o1.first |> dplyr::slice(2:4))$time, 1:3)
@@ -71,7 +75,19 @@ rxTest({
   test_that("top n works", {
     expect_equal(
       round(as.data.frame(dplyr::top_n(o1.first, 3, depot)), 4),
-      structure(list(time = c(48, 72, 96), C2 = c(4.762, 5.7649, 6.3537), C3 = c(12.3885, 15.0829, 16.6647), depot = c(10009.2745, 10009.2745, 10009.2745), centr = c(191.4312, 231.7507, 255.4203), peri = c(3679.3816, 4479.633, 4949.4198), eff = c(1.0247, 1.0298, 1.0328)), row.names = c(NA, -3L), class = "data.frame")
+      structure(
+        list(
+          time = c(48, 72, 96),
+          C2 = c(4.762, 5.7649, 6.3537),
+          C3 = c(12.3885, 15.0829, 16.6647),
+          depot = c(10009.2745, 10009.2745, 10009.2745),
+          centr = c(191.4312, 231.7507, 255.4203),
+          peri = c(3679.3816, 4479.633, 4949.4198),
+          eff = c(1.0247, 1.0298, 1.0328)
+        ),
+        row.names = c(NA, -3L),
+        class = "data.frame"
+      )
     )
   })
 
@@ -96,7 +112,10 @@ rxTest({
   })
 
   test_that("rename works", {
-    expect_equal(names(o1.first |> dplyr::rename(Cdepot = C2)), c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff"))
+    expect_equal(
+      names(o1.first |> dplyr::rename(Cdepot = C2)),
+      c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff")
+    )
   })
 
   tmp <- round(o1.first |> dplyr::arrange(C2), 4)

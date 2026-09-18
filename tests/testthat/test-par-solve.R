@@ -1,5 +1,4 @@
 rxTest({
-
   expectSimWithout <- function(x) {
     expect_null(x$thetaMat)
     expect_null(x$omegaList)
@@ -7,14 +6,14 @@ rxTest({
   }
 
   expectSimTheta <- function(x) {
-    expect_type(x$thetaMat,"double")
+    expect_type(x$thetaMat, "double")
     expect_true(inherits(x$thetaMat, "matrix"))
     expect_null(x$omegaList)
     expect_null(x$sigmaList)
   }
 
   expectSimAll <- function(x) {
-    expect_type(x$thetaMat,"double")
+    expect_type(x$thetaMat, "double")
     expect_true(inherits(x$thetaMat, "matrix"))
     expect_true(inherits(x$omegaList, "list"))
     expect_type(x$omegaList[[1]], "double")
@@ -35,8 +34,11 @@ rxTest({
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, length.out = 50))
     et$add.dosing(
-      dose = 2 / 24, rate = 2, strt.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      rate = 2,
+      strt.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
@@ -66,7 +68,6 @@ rxTest({
       pk <- C2 * exp(err2)
     })
 
-
     ev <- eventTable(amount.units = "mg", time.units = "hours") |>
       add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
       add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
@@ -81,8 +82,12 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 2, method = meth,
-        ))
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 2,
+        method = meth,
+      ))
 
     expectSimWithout(pk3)
 
@@ -91,7 +96,12 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 2, method = meth, addDosing = TRUE
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 2,
+        method = meth,
+        addDosing = TRUE
       ))
 
     expectSimWithout(pk3a)
@@ -101,7 +111,11 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 1,
+        method = meth
       ))
 
     expectSimWithout(pk4)
@@ -134,7 +148,11 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 2, method = meth
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 2,
+        method = meth
       ))
 
     expectSimWithout(pk3)
@@ -144,7 +162,11 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 1,
+        method = meth
       ))
 
     expectSimWithout(pk4)
@@ -176,7 +198,11 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 2, method = meth
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 2,
+        method = meth
       ))
 
     expectSimWithout(pk3)
@@ -186,7 +212,11 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+        nSub = 4,
+        ev,
+        sigma = sigma,
+        cores = 1,
+        method = meth
       ))
 
     expectSimWithout(pk4)
@@ -201,9 +231,23 @@ rxTest({
     pk2 <-
       suppressWarnings(rxSolve(
         mod2,
-        c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0),
+        c(
+          KA = 2.94E-01,
+          TCL = 1.86E+01,
+          V2 = 4.02E+01,
+          Q = 1.05E+01,
+          V3 = 2.97E+02,
+          Kin = 1,
+          Kout = 1,
+          EC50 = 200,
+          err1 = 0,
+          err2 = 0
+        ),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, cores = 1, method = meth
+        nSub = 4,
+        ev,
+        cores = 1,
+        method = meth
       ))
 
     expectSimWithout(pk2)
@@ -211,13 +255,26 @@ rxTest({
     pk3 <-
       suppressWarnings(rxSolve(
         mod2,
-        c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0),
+        c(
+          KA = 2.94E-01,
+          TCL = 1.86E+01,
+          V2 = 4.02E+01,
+          Q = 1.05E+01,
+          V3 = 2.97E+02,
+          Kin = 1,
+          Kout = 1,
+          EC50 = 200,
+          err1 = 0,
+          err2 = 0
+        ),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, ev, cores = 2, method = meth
+        nSub = 4,
+        ev,
+        cores = 2,
+        method = meth
       ))
 
     expectSimWithout(pk3)
-
 
     ## "Study" Differences
     thetaMat <- diag(3) * 0.01
@@ -228,7 +285,13 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, method = meth
+        nSub = 4,
+        nStud = 4,
+        thetaMat = thetaMat,
+        sigma = sigma,
+        ev,
+        cores = 1,
+        method = meth
       ))
 
     expectSimTheta(pk4)
@@ -238,7 +301,13 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, method = meth
+        nSub = 4,
+        nStud = 4,
+        thetaMat = thetaMat,
+        sigma = sigma,
+        ev,
+        cores = 2,
+        method = meth
       ))
 
     expectSimTheta(pk5)
@@ -248,7 +317,14 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, dfSub = 4, dfObs = 4,
+        nSub = 4,
+        nStud = 4,
+        thetaMat = thetaMat,
+        sigma = sigma,
+        ev,
+        cores = 1,
+        dfSub = 4,
+        dfObs = 4,
         method = meth
       ))
 
@@ -259,7 +335,14 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, dfSub = 4, dfObs = 4,
+        nSub = 4,
+        nStud = 4,
+        thetaMat = thetaMat,
+        sigma = sigma,
+        ev,
+        cores = 2,
+        dfSub = 4,
+        dfObs = 4,
         method = meth
       ))
 
@@ -294,7 +377,6 @@ rxTest({
   }
 
   test_that("Can solve the system.", {
-
     ## Now Try multi-subject data.
     skip_if_not(file.exists(test_path("test-data-setup.rds")))
     dat <- readRDS(test_path("test-data-setup.rds"))
@@ -304,7 +386,10 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        sigma = sigma, dat, cores = 1, method = meth
+        sigma = sigma,
+        dat,
+        cores = 1,
+        method = meth
       ))
 
     expectSimWithout(pk7a)
@@ -314,7 +399,12 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 4,
+        cores = 1,
+        method = meth
       ))
 
     expectSimTheta(pk8)
@@ -324,7 +414,12 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 4,
+        cores = 2,
+        method = meth
       ))
 
     expectSimTheta(pk9)
@@ -334,7 +429,13 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth, simVariability = FALSE
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 4,
+        cores = 2,
+        method = meth,
+        simVariability = FALSE
       ))
 
     expectSimWithout(pk10)
@@ -344,7 +445,13 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth, simVariability = FALSE
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 4,
+        cores = 1,
+        method = meth,
+        simVariability = FALSE
       ))
 
     expectSimWithout(pk11)
@@ -354,7 +461,14 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 1, cores = 1, method = meth, dfSub = 4, dfObs = 4
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 1,
+        cores = 1,
+        method = meth,
+        dfSub = 4,
+        dfObs = 4
       ))
 
     expectSimWithout(pk12)
@@ -364,7 +478,15 @@ rxTest({
         mod2,
         c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-        thetaMat = thetaMat, sigma = sigma, dat, nStud = 1, cores = 1, method = meth, dfSub = 4, dfObs = 4, simVariability=TRUE
+        thetaMat = thetaMat,
+        sigma = sigma,
+        dat,
+        nStud = 1,
+        cores = 1,
+        method = meth,
+        dfSub = 4,
+        dfObs = 4,
+        simVariability = TRUE
       ))
 
     expectSimAll(pk13)
@@ -373,6 +495,5 @@ rxTest({
     expect_true(rxIs(pk9, "data.frame"))
     expect_true(rxIs(pk10, "data.frame"))
     expect_true(rxIs(pk11, "data.frame"))
-
   })
 })
