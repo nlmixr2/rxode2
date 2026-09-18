@@ -2795,14 +2795,26 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 #' @return the same string with every tuple `Subs` expanded
 #' @noRd
 .rxSubsTupleExpand <- function(txt) {
-  if (length(txt) != 1L || is.na(txt) || !grepl("Subs(", txt, fixed = TRUE)) return(txt)
+  if (length(txt) != 1L || is.na(txt) || !grepl("Subs(", txt, fixed = TRUE)) {
+    return(txt)
+  }
   ## top-level comma split of the text INSIDE one balanced paren group
   .split <- function(.s) {
-    .d <- 0L; .out <- character(0); .cur <- ""
+    .d <- 0L
+    .out <- character(0)
+    .cur <- ""
     for (.ch in strsplit(.s, "", fixed = TRUE)[[1]]) {
-      if (.ch == "(") .d <- .d + 1L
-      else if (.ch == ")") .d <- .d - 1L
-      if (.ch == "," && .d == 0L) { .out <- c(.out, .cur); .cur <- "" } else .cur <- paste0(.cur, .ch)
+      if (.ch == "(") {
+        .d <- .d + 1L
+      } else if (.ch == ")") {
+        .d <- .d - 1L
+      }
+      if (.ch == "," && .d == 0L) {
+        .out <- c(.out, .cur)
+        .cur <- ""
+      } else {
+        .cur <- paste0(.cur, .ch)
+      }
     }
     c(.out, .cur)
   }
@@ -2811,38 +2823,52 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     .chs <- strsplit(.s, "", fixed = TRUE)[[1]]
     .d <- 0L
     for (.i in seq(.open, length(.chs))) {
-      if (.chs[.i] == "(") .d <- .d + 1L
-      else if (.chs[.i] == ")") { .d <- .d - 1L; if (.d == 0L) return(.i) }
+      if (.chs[.i] == "(") {
+        .d <- .d + 1L
+      } else if (.chs[.i] == ")") {
+        .d <- .d - 1L
+        if (.d == 0L) return(.i)
+      }
     }
     NA_integer_
   }
   .strip <- function(.s) {
     .s <- trimws(.s)
-    if (nchar(.s) > 1L && substr(.s, 1, 1) == "(" &&
-          identical(.close(.s, 1L), nchar(.s))) return(trimws(substr(.s, 2, nchar(.s) - 1L)))
+    if (nchar(.s) > 1L && substr(.s, 1, 1) == "(" && identical(.close(.s, 1L), nchar(.s))) {
+      return(trimws(substr(.s, 2, nchar(.s) - 1L)))
+    }
     .s
   }
   repeat {
     .at <- NA_integer_
     ## innermost-first: the LAST occurrence whose own args carry no further Subs tuple
     .locs <- gregexpr("Subs(", txt, fixed = TRUE)[[1]]
-    if (length(.locs) == 1L && .locs[1] == -1L) break
+    if (length(.locs) == 1L && .locs[1] == -1L) {
+      break
+    }
     .done <- TRUE
     for (.p in rev(.locs)) {
-      .o <- .p + 4L                      # the "(" of Subs(
+      .o <- .p + 4L # the "(" of Subs(
       .c <- .close(txt, .o)
-      if (is.na(.c)) next
+      if (is.na(.c)) {
+        next
+      }
       .args <- .split(substr(txt, .o + 1L, .c - 1L))
-      if (length(.args) != 3L) next
-      .v <- .strip(.args[2]); .r <- .strip(.args[3])
-      .vs <- .split(.v); .rs <- .split(.r)
-      if (length(.vs) < 2L || length(.vs) != length(.rs)) next
+      if (length(.args) != 3L) {
+        next
+      }
+      .v <- .strip(.args[2])
+      .r <- .strip(.args[3])
+      .vs <- .split(.v)
+      .rs <- .split(.r)
+      if (length(.vs) < 2L || length(.vs) != length(.rs)) {
+        next
+      }
       .inner <- trimws(.args[1])
       for (.k in seq_along(.vs)) {
         .inner <- paste0("Subs(", .inner, ",(", trimws(.vs[.k]), "),(", trimws(.rs[.k]), "))")
       }
-      txt <- paste0(substr(txt, 1L, .p - 1L), .inner,
-                    substr(txt, .c + 1L, nchar(txt)))
+      txt <- paste0(substr(txt, 1L, .p - 1L), .inner, substr(txt, .c + 1L, nchar(txt)))
       .done <- FALSE
       break
     }
@@ -3771,22 +3797,34 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
           ## est="vae" nonMuTheta="grad" silently fell back).
           .derivMore <- function(.txt, .var) {
             .se <- try(rxToSE(.txt), silent = TRUE)
-            if (inherits(.se, "try-error")) return(NULL)
+            if (inherits(.se, "try-error")) {
+              return(NULL)
+            }
             ## The VARIABLE has to be converted too.  `.vars` came back through
             ## `.rxFromSE`, so it is in rxode2 syntax -- an eta reads `ETA[1]`,
             ## which is not a symengine symbol at all (`S("ETA[1]")` throws).
             ## Converting only the expression and not the variable is what made
             ## `Derivative(phiU(ETA_1_), ETA_1_, ETA_1_)` still fail.
             .sv <- try(rxToSE(.var), silent = TRUE)
-            if (inherits(.sv, "try-error")) return(NULL)
+            if (inherits(.sv, "try-error")) {
+              return(NULL)
+            }
             .sy <- try(symengine::S(.se), silent = TRUE)
-            if (inherits(.sy, "try-error")) return(NULL)
+            if (inherits(.sy, "try-error")) {
+              return(NULL)
+            }
             .sd <- try(symengine::S(.sv), silent = TRUE)
-            if (inherits(.sd, "try-error")) return(NULL)
+            if (inherits(.sd, "try-error")) {
+              return(NULL)
+            }
             .d <- try(symengine::D(.sy, .sd), silent = TRUE)
-            if (inherits(.d, "try-error")) return(NULL)
+            if (inherits(.d, "try-error")) {
+              return(NULL)
+            }
             .out <- try(rxFromSE(.d), silent = TRUE)
-            if (inherits(.out, "try-error")) return(NULL)
+            if (inherits(.out, "try-error")) {
+              return(NULL)
+            }
             .out
           }
           for (.k in seq_along(.vars)) {
@@ -3835,8 +3873,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
               .args <- list()
             } else {
               .fun <- as.character(.call[[1L]])
-              .args <- lapply(as.list(.call)[-1],
-                              function(.z) if (is.character(.z)) .z else paste(deparse(.z), collapse = ""))
+              .args <- lapply(as.list(.call)[-1], function(.z) {
+                if (is.character(.z)) .z else paste(deparse(.z), collapse = "")
+              })
             }
           }
           if (.ok && !is.null(.res)) {

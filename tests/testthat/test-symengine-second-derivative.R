@@ -15,8 +15,7 @@
 test_that("a second derivative of a registered function converts", {
   # gammapInv/gammapDer are registered here and their derivatives are NOT bare
   # registered calls, which is exactly the case that used to throw
-  for (.e in c("Derivative(gammapInv(a, x), x, x)",
-               "Derivative(gammapDer(a, x), x, x)")) {
+  for (.e in c("Derivative(gammapInv(a, x), x, x)", "Derivative(gammapDer(a, x), x, x)")) {
     .r <- rxode2::rxFromSE(.e)
     expect_true(is.character(.r) && nzchar(.r), info = .e)
     # it must be parsable R, not a fragment
