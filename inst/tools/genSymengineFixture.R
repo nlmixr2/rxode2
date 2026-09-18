@@ -4,7 +4,7 @@
 ## versions must reproduce the current R output BYTE FOR BYTE.  This script
 ## captures (input, output) pairs for both directions into
 ## tests/testthat/symengine-translate-fixture.rds, which
-## test-symengine-translate-fixture.R replays.
+## test-symengine-translate-fixture*.R replay.
 ##
 ## Run from the package root with the CURRENT (reference) implementation loaded:
 ##   Rscript inst/tools/genSymengineFixture.R

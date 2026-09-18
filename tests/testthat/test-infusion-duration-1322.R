@@ -1,7 +1,7 @@
 rxTest({
   # The solver-level consequences of the _getDur() infusion pairing and the
   # updateRate() index restore fixed in nlmixr2/rxode2#1322.  The pairing rules
-  # themselves are tested against the C driver in test-getdur-1322.R.
+  # themselves are tested against the C driver in test-getdur-1322*.R.
 
   test_that("dose() reports the whole infusion amount when a same-rate infusion overlaps (#1322)", {
     # _getDur() recovers the amount from the rate for tad()/dose(), so pairing

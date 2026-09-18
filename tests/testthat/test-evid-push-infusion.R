@@ -56,31 +56,6 @@ rxTest({
     expect_equal(got$depot[got$time == 6.5], 0)
   })
 
-  test_that("a pushed evid=4 infusion turns off (#1322 follow-up)", {
-    # evid=4 is reset + dose, and the translated event only had room for those
-    # two records, so the infusion stop was dropped and the infusion ran for the
-    # rest of the solve.
-    mod <- rxode2({
-      d/dt(central) <- -cl / v * central
-      cp <- central / v
-      if (t < 1e-8) {
-        evid_(2, 4, 100, 1, 10, 0, 0, 0)
-      }
-    })
-    .expectSameAsEventTable(mod, et(amt = 100, time = 2, rate = 10, evid = 4))
-  })
-
-  test_that("a pushed evid=4 bolus is unchanged", {
-    mod <- rxode2({
-      d/dt(central) <- -cl / v * central
-      cp <- central / v
-      if (t < 1e-8) {
-        evid_(2, 4, 100, 1, 0, 0, 0, 0)
-      }
-    })
-    .expectSameAsEventTable(mod, et(amt = 100, time = 2, evid = 4))
-  })
-
   test_that("a pushed modeled rate (rate=-1) dose solves (#1322 follow-up)", {
     # the modeled on record was pushed without its off record, so
     # handleTurnOnModeledRate() reported data error 997 and the solve failed
@@ -105,18 +80,6 @@ rxTest({
       }
     })
     .expectSameAsEventTable(mod, et(amt = 100, time = 2, dur = 10))
-  })
-
-  test_that("a pushed evid=4 modeled rate dose resets and solves", {
-    mod <- rxode2({
-      d/dt(central) <- -cl / v * central
-      rate(central) <- 10
-      cp <- central / v
-      if (t < 1e-8) {
-        evid_(2, 4, 100, 1, -1, 0, 0, 0)
-      }
-    })
-    .expectSameAsEventTable(mod, et(amt = 100, time = 2, rate = 10, evid = 4))
   })
 
   test_that("pushed modeled rate/duration doses repeat with addl", {
@@ -224,18 +187,6 @@ rxTest({
         et(seq(0, 24, by = 1))
     )
     expect_equal(gotHi$a110, wantHi$a110, tolerance = 1e-5)
-  })
-
-  test_that("a pushed evid=4 modeled duration dose resets and solves", {
-    mod <- rxode2({
-      d/dt(central) <- -cl / v * central
-      dur(central) <- 10
-      cp <- central / v
-      if (t < 1e-8) {
-        evid_(2, 4, 100, 1, -2, 0, 0, 0)
-      }
-    })
-    .expectSameAsEventTable(mod, et(amt = 100, time = 2, dur = 10, evid = 4))
   })
 
   test_that("a pushed steady state (ss=2) infusion matches the event table", {

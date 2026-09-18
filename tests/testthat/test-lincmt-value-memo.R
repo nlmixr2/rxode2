@@ -27,19 +27,6 @@ rxTest({
     )
     suppressWarnings(rxode2(paste(lines, collapse = "\n")))
   }
-  .parsFor <- function(ncmt, oral0) {
-    p <- c(cl = 2.1, v = 21, q = 3.3, vp = 43, q2 = 0.9, vp2 = 61, ka = 1.3)
-    if (ncmt < 2) {
-      p[c("q", "vp")] <- 0
-    }
-    if (ncmt < 3) {
-      p[c("q2", "vp2")] <- 0
-    }
-    if (oral0 == 0) {
-      p["ka"] <- 0
-    }
-    p
-  }
   .evObs <- function(nSub = 3L, nObs = 12L) {
     do.call(
       rbind,
@@ -72,14 +59,13 @@ rxTest({
       ss = c(1, 0, 0, 0, 0)
     )
   }
-  .stats <- function() rxode2::linCmtSeqStats(TRUE)
 
   test_that("value memo hits on repeated value calls and preserves results", {
     m <- .gradModel(2, 1, 0:4, nVal = 3L)
     ev <- .evObs()
-    invisible(.stats())
-    sF <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
-    st <- .stats()
+    invisible(.linCmtTestStats())
+    sF <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    st <- .linCmtTestStats()
     # 3 value lines per row: the 2nd/3rd executions must be memo hits
     expect_gt(st[["memoHit"]], 0L)
     expect_true(st[["memoHit"]] >= st[["valueCompute"]])
@@ -87,7 +73,7 @@ rxTest({
     expect_identical(sF$cp1, sF$cp2)
     expect_identical(sF$cp1, sF$cp3)
     # anchored against reverse mode, an independent evaluator
-    sR <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
+    sR <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
     for (cc in grep("^(cp1|d[0-9]+)$", names(sF), value = TRUE)) {
       expect_true(
         max(
@@ -102,9 +88,9 @@ rxTest({
   test_that("memo keys on the row: single value line still solves every row", {
     m <- .gradModel(1, 0, 0:1, nVal = 1L)
     ev <- .evObs(nSub = 2L, nObs = 6L)
-    invisible(.stats())
-    s1 <- rxSolve(m, .parsFor(1, 0), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
-    st <- .stats()
+    invisible(.linCmtTestStats())
+    s1 <- rxSolve(m, .linCmtTestPars(1, 0), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    st <- .linCmtTestStats()
     # one compute per row; restores/hits may occur on the lhs pass but a
     # fresh row can never be served from the previous row's memo
     expect_true(st[["valueCompute"]] >= nrow(ev[ev$evid == 0, ]))
@@ -114,9 +100,9 @@ rxTest({
   test_that("steady-state rows keep exact results with the memo present", {
     m <- .gradModel(2, 1, 0:4, nVal = 2L)
     ev <- .evSs()
-    invisible(.stats())
-    sF <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
-    sR <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
+    invisible(.linCmtTestStats())
+    sF <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    sR <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
     expect_identical(sF$cp1, sF$cp2)
     for (cc in grep("^(cp1|d[0-9]+)$", names(sF), value = TRUE)) {
       expect_true(
@@ -132,9 +118,9 @@ rxTest({
   test_that("solves are identical across repeated runs and thread counts", {
     m <- .gradModel(2, 1, 0:4, nVal = 3L)
     ev <- .evObs(nSub = 8L, nObs = 24L)
-    ref <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    ref <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
     for (i in 1:5) {
-      sN <- rxSolve(m, .parsFor(2, 1), ev, returnType = "data.frame", cores = 2L, linCmtSensType = "AD")
+      sN <- rxSolve(m, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 2L, linCmtSensType = "AD")
       expect_identical(ref[, -1], sN[, -1])
     }
   })
@@ -145,19 +131,19 @@ rxTest({
     mS <- rxode2("cp = linCmtB(rx__PTR__, t, 0, 2, 1, -1, -1, 1, cl, v, q, vp, 0, 0, ka)
 g1 = rx__sens_central_BY_p1/v")
     ev <- .evObs(nSub = 2L, nObs = 10L)
-    invisible(.stats())
-    sS <- rxSolve(mS, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
-    st <- .stats()
+    invisible(.linCmtTestStats())
+    sS <- rxSolve(mS, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    st <- .linCmtTestStats()
     expect_gt(st[["valueLite"]], 0L)
     # Call-form reads after a thin value execution must see this row's
     # J/Jg (the lazy restore), not the previous row's -- anchored against
     # reverse mode, an independent evaluator
     mC <- .gradModel(2, 1, 0:4, nVal = 1L)
-    invisible(.stats())
-    sF <- rxSolve(mC, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
-    st2 <- .stats()
+    invisible(.linCmtTestStats())
+    sF <- rxSolve(mC, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "AD")
+    st2 <- .linCmtTestStats()
     expect_gt(st2[["valueLite"]], 0L)
-    sR <- rxSolve(mC, .parsFor(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
+    sR <- rxSolve(mC, .linCmtTestPars(2, 1), ev, returnType = "data.frame", cores = 1L, linCmtSensType = "ADr")
     for (cc in grep("^(cp1|d[0-9]+)$", names(sF), value = TRUE)) {
       expect_true(
         max(
