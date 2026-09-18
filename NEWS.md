@@ -2,6 +2,17 @@
 
 ## New features
 
+- `rxSolve(single=TRUE)` solves the event table in place instead of
+  copying it.  The columns the solve only reads (time, amt, evid, dv, ii,
+  cens, limit, the covariates) are borrowed from the caller's data frame
+  through the ALTREP col-view and CMT-translation classes rather than
+  copied into `_globals`, so a solve no longer needs a second copy of the
+  event table resident.  Only the buffers it genuinely owns -- a
+  translated `idose`, and stand-ins for any of dv/ii/limit the data does
+  not carry -- are allocated.  Defaults to `FALSE`; incompatible with
+  `serializeFile`, which needs a snapshot the borrowed columns cannot
+  give it.
+
 - The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
   `.solComp3()` and the `rxDerived()` conversions moved to the new
   'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
