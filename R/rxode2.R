@@ -297,7 +297,8 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
-#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion removeSource
+#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
+#' removeSource
 #' @importFrom stats setNames update dnorm integrate
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
@@ -306,21 +307,32 @@ NA_LOGICAL <- NA # nolint
 #' @import data.table
 #' @export
 rxode2 <- # nolint
-  function(model, modName = basename(wd),
-           wd = getwd(),
-           filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
-           calcSens2 = NULL,
-           calcSens3 = NULL,
-           collapseModel = FALSE, package = NULL, ...,
-           linCmtSens = c("linCmtA", "linCmtB"),
-           indLin = FALSE,
-           eventSens = NULL,
-           verbose = FALSE,
-           fullPrint=getOption("rxode2.fullPrint", FALSE),
-           envir=parent.frame()) {
+  function(
+    model,
+    modName = basename(wd),
+    wd = getwd(),
+    filename = NULL,
+    extraC = NULL,
+    debug = FALSE,
+    calcJac = NULL,
+    calcSens = NULL,
+    calcSens2 = NULL,
+    calcSens3 = NULL,
+    collapseModel = FALSE,
+    package = NULL,
+    ...,
+    linCmtSens = c("linCmtA", "linCmtB"),
+    indLin = FALSE,
+    eventSens = NULL,
+    verbose = FALSE,
+    fullPrint = getOption("rxode2.fullPrint", FALSE),
+    envir = parent.frame()
+  ) {
     if (!missing(wd) && missing(modName)) {
-      stop("working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`",
-              call.=FALSE)
+      stop(
+        "working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`", # nolint: line_length_linter.
+        call. = FALSE
+      )
     }
     .udfEnvSet(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
@@ -351,21 +363,15 @@ rxode2 <- # nolint
     rxTempDir()
     if (!is.null(package)) {
       if (!checkmate::checkCharacter(package, max.len = 1, any.missing = FALSE)) {
-        stop("'package' needs to a single character for the package name",
-             call. = FALSE
-             )
+        stop("'package' needs to a single character for the package name", call. = FALSE)
       }
       if (missing(modName)) {
-        stop("with packages 'modName' is required",
-             call. = FALSE
-             )
+        stop("with packages 'modName' is required", call. = FALSE)
       }
       modName <- paste0(package, "_", modName)
     }
     if (!missing(model) && !missing(filename)) {
-      stop("must specify exactly one of 'model' or 'filename'",
-           call. = FALSE
-           )
+      stop("must specify exactly one of 'model' or 'filename'", call. = FALSE)
     }
     if (missing(model) && !missing(filename)) {
       model <- filename
@@ -383,13 +389,12 @@ rxode2 <- # nolint
       } else if (inherits(model, "function")) {
         .args <- as.list(match.call())[-1]
         if (length(.args) != 1L) {
-          stop("model functions can only be called with one argument", call.=FALSE)
+          stop("model functions can only be called with one argument", call. = FALSE)
         }
         .tmp <- rxUiDecompress(.rxFunction2ui(model))
         # unconditional: `model()` named this after the function
         # `.rxFunction2ui()` rebuilt, so an unnamed model has to clear that
-        assign("modelName", .rxModelNameFromExpr(.modelNameExpr, envir=envir),
-               envir=.tmp)
+        assign("modelName", .rxModelNameFromExpr(.modelNameExpr, envir = envir), envir = .tmp)
         return(rxUiCompress(.tmp))
       } else if (is(model, "rxode2")) {
         package <- get("package", model)
@@ -413,8 +418,7 @@ rxode2 <- # nolint
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
-    assignInMyNamespace(".rxEventSensCacheKey",
-                        if (.eventSensActiveReq) .eventSensMode else "")
+    assignInMyNamespace(".rxEventSensCacheKey", if (.eventSensActiveReq) .eventSensMode else "")
     on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
     ## Set BEFORE the parse: `.linCmtSens` is folded into the parsed md5, so
     ## assigning it afterwards hashed this build with the previous call's value.
@@ -456,10 +460,12 @@ rxode2 <- # nolint
         .vars,
         setNames(
           c(
-            "linCmtA" = 1L, "linCmtB" = 2L
+            "linCmtA" = 1L,
+            "linCmtB" = 2L
           )[match.arg(linCmtSens)],
           NULL
-        ), verbose
+        ),
+        verbose
       )
     }
     ## The linCmt()-resolved but NOT yet sensitivity-expanded text.  Every
@@ -477,9 +483,13 @@ rxode2 <- # nolint
     if (!is.null(calcSens)) {
       .linCollide <- .rxLinCmtNameCollision(.env$.mv)
       if (length(.linCollide) > 0L) {
-        warning("ODE compartment(s) '", paste(.linCollide, collapse = "', '"),
-                "' share a name with linCmt() reserved compartments; ",
-                "sensitivities will be incorrect -- rename them", call. = FALSE)
+        warning(
+          "ODE compartment(s) '",
+          paste(.linCollide, collapse = "', '"),
+          "' share a name with linCmt() reserved compartments; ",
+          "sensitivities will be incorrect -- rename them",
+          call. = FALSE
+        )
       }
     }
     ## linCmtB(which1 = -3) (the dose-time sensitivity, nlmixr2/rxode2#1119)
@@ -497,17 +507,20 @@ rxode2 <- # nolint
     }
     .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
       .indLinSens
-    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) &&
-      length(.rxEventSensOdeStates(.env$.mv)) > 0L
+    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) && length(.rxEventSensOdeStates(.env$.mv)) > 0L
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
     assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
     ## Re-parse only when the decision above changed an input to the parse: the
     ## jump injection needs the full state Jacobian, and the mode is folded into
     ## the parsed md5/cache key.  Always from `.modelBase`, never from the
     ## already-expanded text.
-    if ((.eventSensNeedsJac && !isTRUE(calcJac)) ||
-          !identical(.eventSensCacheKey, .eventSensKeyAtParse)) {
-      if (.eventSensNeedsJac) calcJac <- TRUE
+    if (
+      (.eventSensNeedsJac && !isTRUE(calcJac)) ||
+        !identical(.eventSensCacheKey, .eventSensKeyAtParse)
+    ) {
+      if (.eventSensNeedsJac) {
+        calcJac <- TRUE
+      }
       .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
                              collapseModel = collapseModel, indLin = indLin,
                              calcSens2 = calcSens2, calcSens3 = calcSens3)
@@ -563,22 +576,18 @@ rxode2 <- # nolint
           ## codegen (empty for mode "fd" or models without sensitivities).
           .esCode <- .rx$.rxEventSensCodeStrings(eventSensInfo)
           if (missing.modName) {
-            .rxDll <- .rx$rxCompile(.mv,
-                                    debug = debug,
-                                    package = .(.env$package),
-                                    eventSensCode = .esCode
-                                    )
+            .rxDll <- .rx$rxCompile(.mv, debug = debug, package = .(.env$package), eventSensCode = .esCode)
           } else {
-            .rxDll <- .rx$rxCompile(.mv,
-                                    dir = mdir,
-                                    debug = debug, modName = modName,
-                                    package = .(.env$package),
-                                    eventSensCode = .esCode
-                                    )
+            .rxDll <- .rx$rxCompile(
+              .mv,
+              dir = mdir,
+              debug = debug,
+              modName = modName,
+              package = .(.env$package),
+              eventSensCode = .esCode
+            )
           }
-          .rxDll$linCmtM <- .(ifelse(exists(".linCmtM", .env),
-                                     get(".linCmtM", .env), NA
-                                     ))
+          .rxDll$linCmtM <- .(ifelse(exists(".linCmtM", .env), get(".linCmtM", .env), NA))
           assign("rxDll", .rxDll, envir = .(.env))
           assign(".mv", .rxDll$modVars, envir = .(.env))
         })
@@ -592,7 +601,7 @@ rxode2 <- # nolint
         .p <- .ret["params"]
         .ini <- names(.mv$.ini)
         .init <- rxode2::rxInit(rxDll)
-        .ret$params <- .ret$params[!(.ret$params %in%  names(.init))]
+        .ret$params <- .ret$params[!(.ret$params %in% names(.init))]
         class(.ret) <- "list"
         return(.ret)
       })
@@ -609,7 +618,7 @@ rxode2 <- # nolint
     .env$lhs <- .env$.mv$lhs
     .env$params <- .env$.mv$params
     .env$version <- .rxVersion["version"]
-    .env$solve <- eval(bquote(function(..., returnType= "matrix", object = NULL) {
+    .env$solve <- eval(bquote(function(..., returnType = "matrix", object = NULL) {
       rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., returnType = "matrix")
     }))
     .env$dll <- new.env(parent = baseenv())
@@ -636,8 +645,10 @@ rxode2 <- # nolint
         .pkgStuff <- TRUE
         .env$isValid <- eval(bquote(function() {
           if (!all(is.null(getLoadedDLLs()[[.(.env$package)]]))) {
-            if (loadNamespace("rxode2")$.pkgModelCurrent &&
-                                        utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))) {
+            if (
+              loadNamespace("rxode2")$.pkgModelCurrent &&
+                utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))
+            ) {
               return(TRUE)
             } else {
               return(FALSE)
@@ -647,9 +658,11 @@ rxode2 <- # nolint
           }
         }))
         .env$isLoaded <- eval(bquote(function() {
-          if ((!all(is.null(getLoadedDLLs()[[.(.env$package)]]))) &&
-                loadNamespace("rxode2")$.pkgModelCurrent &&
-                                      utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))) {
+          if (
+            (!all(is.null(getLoadedDLLs()[[.(.env$package)]]))) &&
+              loadNamespace("rxode2")$.pkgModelCurrent &&
+              utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))
+          ) {
             return(TRUE)
           } else {
             rx <- .(.env)
@@ -657,9 +670,11 @@ rxode2 <- # nolint
           }
         }))
         .env$delete <- eval(bquote(function() {
-          if ((!all(is.null(getLoadedDLLs()[[.(.env$package)]]))) &&
-                loadNamespace("rxode2")$.pkgModelCurrent &&
-                                      utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))) {
+          if (
+            (!all(is.null(getLoadedDLLs()[[.(.env$package)]]))) &&
+              loadNamespace("rxode2")$.pkgModelCurrent &&
+              utils::packageVersion("rxode2") == .(utils::packageVersion("rxode2"))
+          ) {
             stop("cannot delete Dll in package", call. = FALSE)
           } else {
             rx <- .(.env)
@@ -801,8 +816,12 @@ rxode <- rxode2
 #' @author Matthew L. Fidler
 .rxSensStrippable <- function(mv) {
   .sens <- mv$sens
-  if (length(.sens) == 0) return(.sens)
-  if (!isTRUE(mv$flags[["hasDelay"]] == 1L)) return(.sens)
+  if (length(.sens) == 0) {
+    return(.sens)
+  }
+  if (!isTRUE(mv$flags[["hasDelay"]] == 1L)) {
+    return(.sens)
+  }
   .delayed <- tryCatch(.rxDelayTerms(mv)$state, error = function(e) NULL)
   setdiff(.sens, .delayed)
 }
@@ -851,8 +870,15 @@ rxode <- rxode2
 #'
 #' @export
 #' @keywords internal
-rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = NULL, indLin = FALSE,
-                       calcSens2 = NULL, calcSens3 = NULL) {
+rxGetModel <- function(
+  model,
+  calcSens = NULL,
+  calcJac = NULL,
+  collapseModel = NULL,
+  indLin = FALSE,
+  calcSens2 = NULL,
+  calcSens3 = NULL
+) {
   if (is(substitute(model), "call")) {
     model <- model
   }
@@ -877,8 +903,7 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
   } else if (inherits(model, "rxode2")) {
     model <- rxModelVars(model)
     ## class(model) <- NULL;
-  } else if (inherits(model, "rxModelVars")) {
-  } else if (inherits(model, "rxDll")) {
+  } else if (inherits(model, "rxModelVars")) {} else if (inherits(model, "rxDll")) {
     model <- model$args$model
   } else {
     model <- rxModelVars(model)
@@ -930,7 +955,9 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       if (!is(calcJac, "logical")) {
         calcJac <- FALSE
       }
-      if (is.null(calcJac)) calcJac <- FALSE
+      if (is.null(calcJac)) {
+        calcJac <- FALSE
+      }
       if (rxIs(calcSens, "logical")) {
         if (calcSens) {
           calcSens <- .rxParams(model, TRUE)
@@ -962,7 +989,9 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         .sens3 <- .s$..sens3
       }
       .tmp2 <- .s$..lhs
-      if (collapseModel) .tmp2 <- ""
+      if (collapseModel) {
+        .tmp2 <- ""
+      }
       ## Jacobian for stiff (Rosenbrock/implicit) solvers.  `.rxJacobian(.s)`
       ## above ran over the ORIGINAL states only (it feeds the variational
       ## equations), so `.s$..jacobian` is the base-system Jacobian -- INCOMPLETE
@@ -980,30 +1009,35 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       ## references -- the full-system Jacobian references the rx__sens_* sens
       ## compartments, so it is spliced in after .sens/.sens2/.sens3 (a base-only
       ## Jacobian could sit above them, the full one cannot).
-      .assembleSens <- function(.jacBlock) paste(c(
-        .s$..stateInfo["state"],
-        .s$..lhs0,
-        .s$..ddt,
-        .s$..sens,
-        .sens2,
-        .sens3,
-        .jacBlock,
-        ## DDE non-constant pre-history: base past(state,tau)<-expr (dropped from
-        ## ..ddt by the symengine interception) + per-sens-compartment histories
-        ## past(rx__sens_state_BY_p__,tau)=d expr/d p.  Placed after every d/dt so
-        ## the referenced (sensitivity) compartments are already defined.
-        .s$..pastLines,
-        ## DDE param-dependent-delay dose-jump: alag()/f() on the sens compartments
-        ## (no-op unless rxSolve adds the mirroring sens-compartment doses).
-        .s$..sensDelayAlagF,
-        ## DDE param-dependent-delay 2nd-order breaking-point jump: alag()/f() on
-        ## the 2nd-order sens compartments (no-op unless rxSolve adds the t0 doses).
-        .s$..sens2DelayAlagF,
-        .tmp2,
-        .s$..stateInfo["statef"],
-        .s$..stateInfo["dvid"],
-        ""
-      ), collapse = "\n")
+      .assembleSens <- function(.jacBlock) {
+        paste(
+          c(
+            .s$..stateInfo["state"],
+            .s$..lhs0,
+            .s$..ddt,
+            .s$..sens,
+            .sens2,
+            .sens3,
+            .jacBlock,
+            ## DDE non-constant pre-history: base past(state,tau)<-expr (dropped from
+            ## ..ddt by the symengine interception) + per-sens-compartment histories
+            ## past(rx__sens_state_BY_p__,tau)=d expr/d p.  Placed after every d/dt so
+            ## the referenced (sensitivity) compartments are already defined.
+            .s$..pastLines,
+            ## DDE param-dependent-delay dose-jump: alag()/f() on the sens compartments
+            ## (no-op unless rxSolve adds the mirroring sens-compartment doses).
+            .s$..sensDelayAlagF,
+            ## DDE param-dependent-delay 2nd-order breaking-point jump: alag()/f() on
+            ## the 2nd-order sens compartments (no-op unless rxSolve adds the t0 doses).
+            .s$..sens2DelayAlagF,
+            .tmp2,
+            .s$..stateInfo["statef"],
+            .s$..stateInfo["dvid"],
+            ""
+          ),
+          collapse = "\n"
+        )
+      }
       .jacBlock <- ""
       if (calcJac) {
         ## Ordinary ODE forward sensitivities: build the full-system Jacobian by
@@ -1017,8 +1051,7 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         ## matrix-exponential method, out of scope for stiff ODE stepping.)
         .jacLines <- NULL
         if (is.null(calcSens2) && is.null(calcSens3)) {
-          .jacLines <- tryCatch(.rxFwdSensJacBlock(.s, .baseState, calcSens),
-                                 error = function(e) NULL)
+          .jacLines <- tryCatch(.rxFwdSensJacBlock(.s, .baseState, calcSens), error = function(e) NULL)
         }
         if (is.null(.jacLines)) {
           .sj <- .rxLoadPrune(rxModelVars(.assembleSens("")), FALSE)
@@ -1035,10 +1068,14 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .s$..stateInfo <- .stateInfo
       .sensStrip <- .rxSensStrippable(.ret)
       if (length(.sensStrip) != 0) {
-        .new <- setNames(gsub(
-          rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"), "",
-          .ret$model["normModel"]
-        ), NULL)
+        .new <- setNames(
+          gsub(
+            rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"),
+            "",
+            .ret$model["normModel"]
+          ),
+          NULL
+        )
         .ret <- rxModelVars(.new)
       }
       .calcJac <- FALSE
@@ -1054,28 +1091,39 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
         ## calcJac=TRUE, calcSens=FALSE
       }
       .tmp1 <- .s$..jacobian
-      if (!.calcJac) .tmp1 <- ""
+      if (!.calcJac) {
+        .tmp1 <- ""
+      }
       .tmp2 <- .s$..lhs
-      if (collapseModel) .tmp2 <- ""
-      .new <- paste(c(
-        .s$..stateInfo["state"],
-        .s$..lhs0,
-        .s$..ddt,
-        .tmp1,
-        .tmp2,
-        .s$..stateInfo["statef"],
-        .s$..stateInfo["dvid"],
-        ""
-      ), collapse = "\n")
+      if (collapseModel) {
+        .tmp2 <- ""
+      }
+      .new <- paste(
+        c(
+          .s$..stateInfo["state"],
+          .s$..lhs0,
+          .s$..ddt,
+          .tmp1,
+          .tmp2,
+          .s$..stateInfo["statef"],
+          .s$..stateInfo["dvid"],
+          ""
+        ),
+        collapse = "\n"
+      )
       .ret <- rxModelVars(.new)
     }
   } else if (!is.null(calcJac)) {
     .sensStrip <- .rxSensStrippable(.ret)
     if (length(.sensStrip) != 0) {
-      .new <- setNames(gsub(
-        rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"), "",
-        .ret$model["normModel"]
-      ), NULL)
+      .new <- setNames(
+        gsub(
+          rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"),
+          "",
+          .ret$model["normModel"]
+        ),
+        NULL
+      )
       .ret <- rxModelVars(.new)
     }
     .calcJac <- TRUE
@@ -1095,20 +1143,27 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .s$..stateInfo <- .stateInfo
       .rxJacobian(.s)
       .tmp1 <- .s$..jacobian
-      if (!.calcJac) .tmp1 <- ""
+      if (!.calcJac) {
+        .tmp1 <- ""
+      }
       .tmp2 <- .s$..lhs
-      if (collapseModel) .tmp2 <- ""
-      .new <- paste(c(
-        .s$..stateInfo["state"],
-        .s$..lhs0,
-        .s$..ddt,
-        .rxPastBaseLinesFromEnv(.s),
-        .tmp1,
-        .tmp2,
-        .s$..stateInfo["statef"],
-        .s$..stateInfo["dvid"],
-        ""
-      ), collapse = "\n")
+      if (collapseModel) {
+        .tmp2 <- ""
+      }
+      .new <- paste(
+        c(
+          .s$..stateInfo["state"],
+          .s$..lhs0,
+          .s$..ddt,
+          .rxPastBaseLinesFromEnv(.s),
+          .tmp1,
+          .tmp2,
+          .s$..stateInfo["statef"],
+          .s$..stateInfo["dvid"],
+          ""
+        ),
+        collapse = "\n"
+      )
       .new <- .rxRestoreLiteralThetaEta(.new, .litParams)
       .ret <- rxModelVars(.new)
     } else {
@@ -1117,17 +1172,22 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       .s <- .rxLoadPrune(.ret, FALSE)
       .s$..stateInfo <- .stateInfo
       .tmp2 <- .s$..lhs
-      if (collapseModel) .tmp2 <- ""
-      .new <- paste(c(
-        .s$..stateInfo["state"],
-        .s$..lhs0,
-        .s$..ddt,
-        .rxPastBaseLinesFromEnv(.s),
-        .tmp2,
-        .s$..stateInfo["statef"],
-        .s$..stateInfo["dvid"],
-        ""
-      ), collapse = "\n")
+      if (collapseModel) {
+        .tmp2 <- ""
+      }
+      .new <- paste(
+        c(
+          .s$..stateInfo["state"],
+          .s$..lhs0,
+          .s$..ddt,
+          .rxPastBaseLinesFromEnv(.s),
+          .tmp2,
+          .s$..stateInfo["statef"],
+          .s$..stateInfo["dvid"],
+          ""
+        ),
+        collapse = "\n"
+      )
       .new <- .rxRestoreLiteralThetaEta(.new, .litParams)
       .ret <- rxModelVars(.new)
     }
@@ -1215,11 +1275,13 @@ rxChain2 <- function(obj, solvedObject) {
 #' @export
 rxChain2.default <- function(obj, solvedObject) {
   .args <- as.list(match.call())
-  stop(sprintf(
-    gettext("Do not know how to add %s to rxode2 solved object %s"),
-    toString(.args[[2]]), toString(.args[[3]])
-  ),
-  call. = FALSE
+  stop(
+    sprintf(
+      gettext("Do not know how to add %s to rxode2 solved object %s"),
+      toString(.args[[2]]),
+      toString(.args[[3]])
+    ),
+    call. = FALSE
   )
 }
 
@@ -1259,29 +1321,43 @@ rxChain2.EventTable <- function(obj, solvedObject) {
 .getBoundRemember <- NULL
 .getBound <- function(x, parent = parent.frame(2)) {
   ## nocov start
-  if (!is.null(.getBoundRemember)) return(.getBoundRemember)
+  if (!is.null(.getBoundRemember)) {
+    return(.getBoundRemember)
+  }
   .isRx <- try(rxIs(x, "rxode2"), silent = TRUE)
-  if (inherits(.isRx, "try-error")) .isRx <- FALSE
+  if (inherits(.isRx, "try-error")) {
+    .isRx <- FALSE
+  }
   if (.isRx) {
     if (!is.null(x$package)) {
       return(substr(x$modName, nchar(x$package) + 2, nchar(x$modName)))
     }
   }
-  bound <- do.call("c", lapply(ls(globalenv()), function(cur) {
-    if (identical(parent[[cur]], x)) {
-      return(cur)
-    }
-    return(NULL)
-  }))
-  if (length(bound) > 1) bound <- bound[1]
-  if (length(bound) == 0) {
-    bound <- do.call("c", lapply(ls(parent), function(cur) {
+  bound <- do.call(
+    "c",
+    lapply(ls(globalenv()), function(cur) {
       if (identical(parent[[cur]], x)) {
         return(cur)
       }
       return(NULL)
-    }))
-    if (length(bound) > 1) bound <- bound[1]
+    })
+  )
+  if (length(bound) > 1) {
+    bound <- bound[1]
+  }
+  if (length(bound) == 0) {
+    bound <- do.call(
+      "c",
+      lapply(ls(parent), function(cur) {
+        if (identical(parent[[cur]], x)) {
+          return(cur)
+        }
+        return(NULL)
+      })
+    )
+    if (length(bound) > 1) {
+      bound <- bound[1]
+    }
     if (length(bound) == 0) {
       bound <- ""
     }
@@ -1325,17 +1401,14 @@ rxChain2.EventTable <- function(obj, solvedObject) {
 #' @importFrom stats coef
 #'
 #' @export
-coef.rxode2 <- function(object,
-                       ...) {
+coef.rxode2 <- function(object, ...) {
   .ret <- rxode2::rxModelVars(object)[c("params", "state", "ini", "sens", "fn.ini")]
   .ret$rxode2 <- object
   class(.ret) <- "rxCoef"
   return(.ret)
 }
 
-.rxPre <- function(model,
-                   modName = NULL,
-                   eventSensCode = NULL) {
+.rxPre <- function(model, modName = NULL, eventSensCode = NULL) {
   if (!is.null(modName)) {
     if (is.null(.pkg)) {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_", .Platform$r_arch, "_")
@@ -1344,7 +1417,9 @@ coef.rxode2 <- function(object,
     }
   } else {
     .mv <- rxModelVars(model)
-    if (.Call(`_rxode2_codeLoaded`) == 0L) .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
+    if (.Call(`_rxode2_codeLoaded`) == 0L) {
+      .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
+    }
     .cache <- .rxModelVarsCCache
     .modelPrefix <- paste0("rx_", .mv$md5["parsed_md5"], "_", .Platform$r_arch, "_")
   }
@@ -1388,9 +1463,13 @@ coef.rxode2 <- function(object,
 #' @export
 #' @keywords internal
 rxStripModelSrc <- function(mod) {
-  if (!is.environment(mod)) return(mod)
+  if (!is.environment(mod)) {
+    return(mod)
+  }
   .strip <- function(env, nm) {
-    if (!is.environment(env)) return(invisible(NULL))
+    if (!is.environment(env)) {
+      return(invisible(NULL))
+    }
     .f <- tryCatch(get(nm, envir = env, inherits = FALSE), error = function(e) NULL)
     if (is.function(.f)) {
       tryCatch(assign(nm, removeSource(.f), envir = env), error = function(e) NULL)
@@ -1398,9 +1477,13 @@ rxStripModelSrc <- function(mod) {
     invisible(NULL)
   }
   .ap <- tryCatch(get("assignPtr", envir = mod, inherits = FALSE), error = function(e) NULL)
-  if (is.function(.ap)) .strip(environment(.ap), ".f")
+  if (is.function(.ap)) {
+    .strip(environment(.ap), ".f")
+  }
   .dll <- tryCatch(get(".rxDll", envir = mod, inherits = FALSE), error = function(e) NULL)
-  if (is.list(.dll) && is.function(.dll$.call)) .strip(environment(.dll$.call), ".badBuild")
+  if (is.list(.dll) && is.function(.dll$.call)) {
+    .strip(environment(.dll$.call), ".badBuild")
+  }
   mod
 }
 
@@ -1412,13 +1495,17 @@ rxStripModelSrc <- function(mod) {
 #' @return a short hex string, or "" when there is no event-sensitivity code
 #' @noRd
 .rxEventSensKey <- function(eventSensCode) {
-  if (is.null(eventSensCode)) return("")
+  if (is.null(eventSensCode)) {
+    return("")
+  }
   .code <- as.character(eventSensCode)
   # NA is normalized to "" IN PLACE rather than dropped: dropping changes the vector's
   # LENGTH, which both makes c("a", NA) and c("a") key differently (a needless
   # recompile) and -- worse -- lets two different slot layouts collapse onto one key.
   .code[is.na(.code)] <- ""
-  if (length(.code) == 0L || !any(nzchar(.code))) return("")
+  if (length(.code) == 0L || !any(nzchar(.code))) {
+    return("")
+  }
   # digest the VECTOR, not a pasted string: a slot's body may itself contain newlines,
   # so any in-band separator is ambiguous -- c("a\nb", "") and c("a", "b") would have to
   # be told apart by trailing-separator count alone.  Serializing the vector keeps the
@@ -1451,8 +1538,10 @@ rxStripModelSrc <- function(mod) {
 #' @keywords internal
 #' @author Matthew L.Fidler
 #' @export rxMd5
-rxMd5 <- function(model, # Model File
-                  ...) {
+rxMd5 <- function(
+  model, # Model File
+  ...
+) {
   ## rxMd5 returns MD5 of model file.
   ## digest(file = TRUE) includes file times, so it doesn't work for this needs.
   if (missing(model)) {
@@ -1469,10 +1558,14 @@ rxMd5 <- function(model, # Model File
         .ret <- setNames(model["normModel"], NULL)
         if (any(names(model) == "indLin")) {
           if (model["indLin"] != "") {
-            .ret <- setNames(paste0(
-              .ret, "\n",
-              model["indLin"]
-            ), NULL)
+            .ret <- setNames(
+              paste0(
+                .ret,
+                "\n",
+                model["indLin"]
+              ),
+              NULL
+            )
           }
         }
       } else {
@@ -1483,10 +1576,16 @@ rxMd5 <- function(model, # Model File
     .tmp <- c(
       getOption("rxode2.syntax.allow.ini", TRUE),
       getOption("rxode2.calculate.jacobian", FALSE),
-      getOption("rxode2.calculate.sensitivity", FALSE))
+      getOption("rxode2.calculate.sensitivity", FALSE)
+    )
     .ret <- c(
-      .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, .udfMd5Info(), .rxFullPrint
+      .ret,
+      .tmp,
+      .rxIndLinStrategy,
+      .rxIndLinState,
+      .linCmtSens,
+      .udfMd5Info(),
+      .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1509,7 +1608,9 @@ rxMd5 <- function(model, # Model File
 .rxLastModels <- NULL
 
 .rxShouldUnload <- function(parseMd5) {
-  if (is.null(.rxLastModels)) return(TRUE)
+  if (is.null(.rxLastModels)) {
+    return(TRUE)
+  }
   return(!(parseMd5 %in% .rxLastModels))
 }
 
@@ -1573,24 +1674,28 @@ rxMd5 <- function(model, # Model File
 #' @seealso [rxode2()], [rxCompile()].
 #' @author Matthew L.Fidler
 #' @export
-rxTrans <- function(model,
-                    modelPrefix = "", # Model Prefix
-                    md5 = "", # Md5 of model
-                    modName = NULL, # Model name for DLL
-                    modVars = FALSE, # Return modVars
-                    ...) {
+rxTrans <- function(
+  model,
+  modelPrefix = "", # Model Prefix
+  md5 = "", # Md5 of model
+  modName = NULL, # Model name for DLL
+  modVars = FALSE, # Return modVars
+  ...
+) {
   UseMethod("rxTrans")
 } # end function rxTrans
 
 
 #' @rdname rxTrans
 #' @export
-rxTrans.default <- function(model,
-                            modelPrefix = "", # Model Prefix
-                            md5 = "", # Md5 of model
-                            modName = NULL, # Model name for DLL
-                            modVars = FALSE, # Return modVars
-                            ...) {
+rxTrans.default <- function(
+  model,
+  modelPrefix = "", # Model Prefix
+  md5 = "", # Md5 of model
+  modName = NULL, # Model name for DLL
+  modVars = FALSE, # Return modVars
+  ...
+) {
   .mv <- rxode2::rxModelVars(model)
   if (modVars) {
     return(.mv)
@@ -1619,13 +1724,15 @@ rxTrans.default <- function(model,
 #' @return a named vector of translated model properties, or the model
 #'   variables when `modVars` is `TRUE`
 #' @noRd
-.rxTransCharacter <- function(model,
-                                               modelPrefix = "", # Model Prefix
-                                               md5 = "", # Md5 of model
-                                               modName = NULL, # Model name for DLL
-                                               modVars = FALSE, # Return modVars
-                                               eventSensKey = .rxEventSensCacheKey, # nolint
-                                               ...) {
+.rxTransCharacter <- function(
+  model,
+  modelPrefix = "", # Model Prefix
+  md5 = "", # Md5 of model
+  modName = NULL, # Model name for DLL
+  modVars = FALSE, # Return modVars
+  eventSensKey = .rxEventSensCacheKey, # nolint
+  ...
+) {
   ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
   ## than read from `.rxEventSensCacheKey` inside the body: memoise keys on the
   ## arguments (including default-valued ones), so a body-read global would make
@@ -1643,9 +1750,14 @@ rxTrans.default <- function(model,
     md5 <- rxMd5(model)$digest
   }
   .ret <- .Call(
-    `_rxode2_trans`, model, modelPrefix, md5, .isStr,
+    `_rxode2_trans`,
+    model,
+    modelPrefix,
+    md5,
+    .isStr,
     as.integer(crayon::has_color()),
-    .rxMECode, .rxSupportedFuns(),
+    .rxMECode,
+    .rxSupportedFuns(),
     .rxFullPrint
   )
   if (inherits(.ret, "try-error")) {
@@ -1676,8 +1788,7 @@ rxTrans.default <- function(model,
   ## input is a no-op.  "" (the "fd" default) leaves the md5 unchanged, preserving
   ## existing fd caches.
   if (nzchar(eventSensKey)) {
-    .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)),
-                                 serialize = TRUE, algo = "md5")
+    .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)), serialize = TRUE, algo = "md5")
   }
   md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
   .ret$timeId <- .rxTimeId(md5["parsed_md5"])
@@ -1759,9 +1870,7 @@ rxDllLoaded <- rxIsLoaded
 #' @author Matthew L.Fidler
 #' @importFrom sys exec_internal
 #' @export
-rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
-                      package = NULL,
-                      ...) {
+rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL, package = NULL, ...) {
   UseMethod("rxCompile")
 }
 
@@ -1788,16 +1897,30 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .cflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)
       .cflags <- gsub("\n", "", .cflags)
       .cflags <- paste0(.cflags, " -O", getOption("rxode2.compile.O", "3"))
-      .shlibCflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "SHLIB_CFLAGS"))$stdout)
+      .shlibCflags <- rawToChar(
+        sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "SHLIB_CFLAGS"))$stdout
+      )
       .shlibCflags <- gsub("\n", "", .shlibCflags)
       .cpicflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CPICFLAGS"))$stdout)
       .cpicflags <- gsub("\n", "", .cpicflags)
 
       .malert("precompiling headers")
       .args <- paste0(
-        .cc, " -I", gsub("[\\]", "/", .normalizePath(R.home("include"))), " ",
-        " -I\"", .normalizePath(.parseInclude), "\" ",
-        .cflags, " ", .shlibCflags, " ", .cpicflags, " -I", gsub("[\\]", "/", .normalizePath(.include)), " ",
+        .cc,
+        " -I",
+        gsub("[\\]", "/", .normalizePath(R.home("include"))),
+        " ",
+        " -I\"",
+        .normalizePath(.parseInclude),
+        "\" ",
+        .cflags,
+        " ",
+        .shlibCflags,
+        " ",
+        .cpicflags,
+        " -I",
+        gsub("[\\]", "/", .normalizePath(.include)),
+        " ",
         paste(gsub("[\\]", "/", .normalizePath(.include)), "rxode2_model_shared.h", sep = "/"),
         ""
       )
@@ -1866,41 +1989,51 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 .rxCompileErrLines <- function(stderr, max = getOption("rxode2.compileErrLines", 10L)) {
   # this runs while reporting a build failure, so a bad option must not throw
   max <- suppressWarnings(try(as.integer(max), silent = TRUE))
-  if (inherits(max, "try-error") || length(max) != 1L ||
-        is.na(max) || max < 1L) {
+  if (inherits(max, "try-error") || length(max) != 1L || is.na(max) || max < 1L) {
     max <- 10L
   }
-  if (length(stderr) == 0L) return(structure(character(0), n = 0L))
+  if (length(stderr) == 0L) {
+    return(structure(character(0), n = 0L))
+  }
   # a localized toolchain emits bytes that need not be valid in this locale,
   # and strsplit() and every regex below would choke on them
   .txt <- iconv(paste(stderr, collapse = "\n"), "", "UTF-8", sub = "?")
-  if (length(.txt) != 1L || is.na(.txt)) return(structure(character(0), n = 0L))
+  if (length(.txt) != 1L || is.na(.txt)) {
+    return(structure(character(0), n = 0L))
+  }
   .lines <- unlist(strsplit(.txt, "\n", fixed = TRUE))
   .lines <- sub("\r$", "", .lines)
   .lines <- .lines[nzchar(trimws(.lines))]
   # "error:", "fatal error:" and the MSVC-style "error C2065:"
-  .reErr <- paste0("(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:",
-                   "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z]+[0-9]+[[:space:]]*:")
+  .reErr <- paste0(
+    "(^|[^[:alnum:]_])(fatal error|error)[[:space:]]*:",
+    "|(^|[^[:alnum:]_])error[[:space:]]+[A-Z]+[0-9]+[[:space:]]*:"
+  )
   # a compiler, linker or loader diagnostic, not a warning or a progress line
-  .re <- paste0(.reErr,
-                "|undefined reference to",
-                "|undefined symbol",
-                "|unable to load shared object",
-                "|cannot open output file",
-                "|cannot find -l",
-                "|cannot execute",
-                # the tool may be named by its full path
-                "|(^|[[:space:]])([^[:space:]]*[/\\\\])?(ld|collect2|cc1|cc1plus)(\\.exe)?:",
-                "|ld returned [0-9]+ exit status")
+  .re <- paste0(
+    .reErr,
+    "|undefined reference to",
+    "|undefined symbol",
+    "|unable to load shared object",
+    "|cannot open output file",
+    "|cannot find -l",
+    "|cannot execute",
+    # the tool may be named by its full path
+    "|(^|[[:space:]])([^[:space:]]*[/\\\\])?(ld|collect2|cc1|cc1plus)(\\.exe)?:",
+    "|ld returned [0-9]+ exit status"
+  )
   .err <- unique(.lines[grepl(.re, .lines, perl = TRUE, ignore.case = TRUE)])
   # R CMD SHLIB's own wrapper line says nothing the diagnostics do not
   .err <- .err[!grepl("^ERROR: compilation failed", .err)]
   # a line the tool names may have dragged in that is only a warning
-  .err <- .err[!grepl("(^|[^[:alnum:]_])warning[[:space:]]*:", .err,
-                      perl = TRUE, ignore.case = TRUE) |
-                 grepl(.reErr, .err, perl = TRUE, ignore.case = TRUE)]
+  .err <- .err[
+    !grepl("(^|[^[:alnum:]_])warning[[:space:]]*:", .err, perl = TRUE, ignore.case = TRUE) |
+      grepl(.reErr, .err, perl = TRUE, ignore.case = TRUE)
+  ]
   .n <- length(.err)
-  if (.n > max) .err <- .err[seq_len(max)]
+  if (.n > max) {
+    .err <- .err[seq_len(max)]
+  }
   structure(.err, n = .n)
 }
 #' Does a failed compilation look like a broken toolchain?
@@ -1921,7 +2054,9 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #' @keywords internal
 #' @noRd
 .rxCompileToolchainProblem <- function(stderr, errLines = .rxCompileErrLines(stderr)) {
-  if (length(errLines) == 0L) return(TRUE)
+  if (length(errLines) == 0L) {
+    return(TRUE)
+  }
   # eg "rx_abc.c:214:23: error: 'ETA' undeclared", or the MSVC-style
   # "rx_abc.c(214): error C2065: 'ETA': undeclared identifier"
   .located <- paste0(
@@ -1929,10 +2064,11 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
     "(:[0-9]+(:[0-9]+)?:|\\([0-9]+(,[0-9]+)?\\)[[:space:]]*:)",
     "[[:space:]]*(fatal[[:space:]]+)?error([[:space:]]+[A-Z]+[0-9]+)?[[:space:]]*:"
   )
-  if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) return(FALSE)
+  if (any(grepl(.located, errLines, perl = TRUE, ignore.case = TRUE))) {
+    return(FALSE)
+  }
   # a symbol rxode2 asked for and did not supply is also rxode2's to fix
-  !any(grepl("undefined reference to|undefined symbol", errLines,
-             perl = TRUE, ignore.case = TRUE))
+  !any(grepl("undefined reference to|undefined symbol", errLines, perl = TRUE, ignore.case = TRUE))
 }
 #' Message a failed model build
 #'
@@ -2045,22 +2181,41 @@ rxNumLoaded <- function() {
 #' @noRd
 .rxCompileOMakevars <- function() {
   .o <- getOption("rxode2.compile.O", "3")
-  if (length(.o) != 1L) return(NULL)
+  if (length(.o) != 1L) {
+    return(NULL)
+  }
   .o <- as.character(.o)
-  if (is.na(.o) || .o == "") return(NULL)
+  if (is.na(.o) || .o == "") {
+    return(NULL)
+  }
   .cflags <- tryCatch(
-    gsub("\n", "", rawToChar(sys::exec_internal(
-      file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)),
-    error = function(e) "")
-  if (.cflags == "") return(NULL)
+    gsub(
+      "\n",
+      "",
+      rawToChar(
+        sys::exec_internal(
+          file.path(R.home("bin"), "R"),
+          c("CMD", "config", "CFLAGS")
+        )$stdout
+      )
+    ),
+    error = function(e) ""
+  )
+  if (.cflags == "") {
+    return(NULL)
+  }
   # already what was asked for, so leave the environment alone
-  if (grepl(paste0("(^| )-O", .o, "( |$)"), .cflags)) return(NULL)
+  if (grepl(paste0("(^| )-O", .o, "( |$)"), .cflags)) {
+    return(NULL)
+  }
   .new <- paste0(gsub("(^| )-O[0-9a-zA-Z]+", " ", .cflags), " -O", .o)
   .user <- Sys.getenv("R_MAKEVARS_USER")
   if (.user == "") {
     .user <- path.expand(file.path(
-      "~", ".R",
-      if (.Platform$OS.type == "windows") "Makevars.win" else "Makevars"))
+      "~",
+      ".R",
+      if (.Platform$OS.type == "windows") "Makevars.win" else "Makevars"
+    ))
   }
   .lines <- paste0("CFLAGS = ", .new)
   if (file.exists(.user)) {
@@ -2080,14 +2235,16 @@ rxNumLoaded <- function() {
 .pkg <- NULL
 #' @rdname rxCompile
 #' @export
-rxCompile.rxModelVars <- function(model, # Model
-                                  dir = NULL, # Directory
-                                  prefix = NULL, # Prefix
-                                  force = FALSE, # Force compile
-                                  modName = NULL, # Model Name
-                                  package = NULL,
-                                  eventSensCode = rep("", 13L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ body lines
-                                  ...) {
+rxCompile.rxModelVars <- function(
+  model, # Model
+  dir = NULL, # Directory
+  prefix = NULL, # Prefix
+  force = FALSE, # Force compile
+  modName = NULL, # Model Name
+  package = NULL,
+  eventSensCode = rep("", 13L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ body lines
+  ...
+) {
   assignInMyNamespace(".pkg", package)
   ## rxCompile returns the DLL name that was created.
   model <- rxGetModel(model)
@@ -2149,19 +2306,22 @@ rxCompile.rxModelVars <- function(model, # Model
   }
   if (file.exists(.cDllFile)) {
     .modVars <- sprintf("%smodel_vars", prefix)
-    if (!missing(prefix) && !missing(dir) &&
-      regexpr(
-        rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")),
-        prefix
-      ) == -1 &&
-        is.loaded(.modVars)) {
-      try(dyn.unload(.cDllFile), silent=TRUE)
+    if (
+      !missing(prefix) &&
+        !missing(dir) &&
+        regexpr(
+          rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")),
+          prefix
+        ) ==
+          -1 &&
+        is.loaded(.modVars)
+    ) {
+      try(dyn.unload(.cDllFile), silent = TRUE)
       unlink(.cFile)
-      .tmp <- try(unlink(.cDllFile), silent=TRUE)
+      .tmp <- try(unlink(.cDllFile), silent = TRUE)
       if (inherits(.tmp, "try-error")) {
         if (file.exists(.cDllFile)) {
-          stop("cannot seem to remove '", .cDllFile, "'",
-               call.=FALSE)
+          stop("cannot seem to remove '", .cDllFile, "'", call. = FALSE)
         }
       }
     } else {
@@ -2194,7 +2354,7 @@ rxCompile.rxModelVars <- function(model, # Model
     ## atomic test-and-set: it creates the directory or returns FALSE, never
     ## both.
     if (file.exists(.lock) && !dir.exists(.lock)) {
-      unlink(.lock)              # stale file lock from an older rxode2
+      unlink(.lock) # stale file lock from an older rxode2
     }
     .haveLock <- dir.create(.lock, showWarnings = FALSE)
     if (!.haveLock) {
@@ -2211,7 +2371,7 @@ rxCompile.rxModelVars <- function(model, # Model
       }
       message("")
       if (dir.exists(.lock)) {
-        unlink(.lock, recursive = TRUE)   # abandoned; take it over
+        unlink(.lock, recursive = TRUE) # abandoned; take it over
         .haveLock <- dir.create(.lock, showWarnings = FALSE)
       }
     }
@@ -2278,10 +2438,12 @@ rxCompile.rxModelVars <- function(model, # Model
         ## generated matrix-exponential C, and it is restored from `.indLinInfo`
         ## / `.rxMECode` a few lines below anyway.
         .lastMd5 <- .rxModelVarsLast$md5["parsed_md5"]
-        if (.Call(`_rxode2_codeLoaded`) == 0L ||
-              length(.lastMd5) != 1L || anyNA(.lastMd5) ||
-              !identical(as.character(.lastMd5),
-                         as.character(.mv$md5["parsed_md5"]))) {
+        if (
+          .Call(`_rxode2_codeLoaded`) == 0L ||
+            length(.lastMd5) != 1L ||
+            anyNA(.lastMd5) ||
+            !identical(as.character(.lastMd5), as.character(.mv$md5["parsed_md5"]))
+        ) {
           .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
         }
         .prefix2 <- .rxModelVarsCCache[[3]]
@@ -2297,31 +2459,59 @@ rxCompile.rxModelVars <- function(model, # Model
         if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(
-            `_rxode2_codegen`, .cFile, prefix, .libname,
-            .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast, .rxSupportedFuns(),
-            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-            eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
-            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12],
+            `_rxode2_codegen`,
+            .cFile,
+            prefix,
+            .libname,
+            .trans["parsed_md5"],
+            paste(.rxTimeId(.trans["parsed_md5"])),
+            .rxModelVarsLast,
+            .rxSupportedFuns(),
+            eventSensCode[1],
+            eventSensCode[2],
+            eventSensCode[3],
+            eventSensCode[4],
+            eventSensCode[5],
+            eventSensCode[6],
+            eventSensCode[7],
+            eventSensCode[8],
+            eventSensCode[9],
+            eventSensCode[10],
+            eventSensCode[11],
+            eventSensCode[12],
             eventSensCode[13]
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
           .libname <- c(.libname, .libname)
           .Call(
-            `_rxode2_codegen`, .cFile, prefix, .libname,
-            .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast, .rxSupportedFuns(),
-            eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-            eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
-            eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12],
+            `_rxode2_codegen`,
+            .cFile,
+            prefix,
+            .libname,
+            .trans["parsed_md5"],
+            paste(.rxTimeId(.trans["parsed_md5"])),
+            .rxModelVarsLast,
+            .rxSupportedFuns(),
+            eventSensCode[1],
+            eventSensCode[2],
+            eventSensCode[3],
+            eventSensCode[4],
+            eventSensCode[5],
+            eventSensCode[6],
+            eventSensCode[7],
+            eventSensCode[8],
+            eventSensCode[9],
+            eventSensCode[10],
+            eventSensCode[11],
+            eventSensCode[12],
             eventSensCode[13]
           )
         }
         .defs <- ""
 
         if (is.na(.rxCompileEnv$cc)) {
-          .compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
+          .compilerPath <- tools::Rcmd("config CC", stdout = TRUE)
           .versionInfo <- try(system(paste(.compilerPath, "--version"), intern = TRUE))
           if (inherits(.versionInfo, "try-error")) {
             .rxCompileEnv$cc <- "unknown"
@@ -2344,7 +2534,8 @@ rxCompile.rxModelVars <- function(model, # Model
           "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "3"),
           .extra,
-          .defs, .getIncludeDir(),
+          .defs,
+          .getIncludeDir(),
           system.file("include", package = "rxode2")
         )
         ## .ret <- paste(.ret, "-g")
@@ -2371,14 +2562,17 @@ rxCompile.rxModelVars <- function(model, # Model
         if (!is.null(.mkO)) {
           .oldMkO <- Sys.getenv("R_MAKEVARS_USER", unset = NA_character_)
           Sys.setenv("R_MAKEVARS_USER" = .mkO)
-          on.exit({
-            if (is.na(.oldMkO)) {
-              Sys.unsetenv("R_MAKEVARS_USER")
-            } else {
-              Sys.setenv("R_MAKEVARS_USER" = .oldMkO)
-            }
-            unlink(.mkO)
-          }, add = TRUE)
+          on.exit(
+            {
+              if (is.na(.oldMkO)) {
+                Sys.unsetenv("R_MAKEVARS_USER")
+              } else {
+                Sys.setenv("R_MAKEVARS_USER" = .oldMkO)
+              }
+              unlink(.mkO)
+            },
+            add = TRUE
+          )
         }
         # swap in the load-time (clean) compiler environment for the build:
         # another package may have leaked PKG_CPPFLAGS/PKG_LIBS/USE_CXX17
@@ -2405,9 +2599,12 @@ rxCompile.rxModelVars <- function(model, # Model
       rxUnloadAll()
       .tmp <- try(dynLoad(.cDllFile), silent = TRUE)
       if (inherits(.tmp, "try-error")) {
-        .badBuild("Error loading model (though dll exists)", cSrc = FALSE,
-                  kind = "load",
-                  detail = conditionMessage(attr(.tmp, "condition")))
+        .badBuild(
+          "Error loading model (though dll exists)",
+          cSrc = FALSE,
+          kind = "load",
+          detail = conditionMessage(attr(.tmp, "condition"))
+        )
       } else {
         warning("unloaded all rxode2 dlls before loading the current DLL", call. = FALSE)
       }
@@ -2427,8 +2624,11 @@ rxCompile.rxModelVars <- function(model, # Model
     return(.Call(...))
   })
   .args <- list(
-    model = model, dir = .dir, prefix = prefix,
-    force = force, modName = modName,
+    model = model,
+    dir = .dir,
+    prefix = prefix,
+    force = force,
+    modName = modName,
     ...
   )
   if (is.null(.allModVars)) {
@@ -2618,7 +2818,6 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 }
 
 
-
 .rxModelVarsCCache <- NULL
 .rxModelVarsLast <- NULL
 #' Model variables of a model given as text, and the parser state that goes with it
@@ -2663,9 +2862,13 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     ## `.udfMd5Info()`, which carries `Sys.time()` once a user defined function
     ## is in use, so the prefix would vary from call to call again -- exactly
     ## what this avoids -- in the sessions the leak matters most in.
-    .prefix <- paste0("parseModel4",
-                      digest::digest(.parseModel, serialize = TRUE, algo = "md5"),
-                      "_", .Platform$r_arch, "_")
+    .prefix <- paste0(
+      "parseModel4",
+      digest::digest(.parseModel, serialize = TRUE, algo = "md5"),
+      "_",
+      .Platform$r_arch,
+      "_"
+    )
     .ret <- .rxTransCharacter(.parseModel, modelPrefix = .prefix, modVars = TRUE)
     .cFile <- list(.exists, ifelse(.exists, obj, ""), .prefix)
     assignInMyNamespace(".rxModelVarsCCache", .cFile)
@@ -2699,7 +2902,8 @@ rxReload <- function() {
 
 .rxModels <- new.env(parent = emptyenv())
 #' Get the rxModels  information
-#' @param env boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2 model variables (FALSE).
+#' @param env boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2
+#' model variables (FALSE).
 #' @keywords internal
 #' @return internal rxModels information environment
 #' @export
@@ -2751,9 +2955,11 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
-  if ((is.list(obj) &&
-         inherits(obj, "rxUi")) ||
-        inherits(obj, "raw")) {
+  if (
+    (is.list(obj) &&
+      inherits(obj, "rxUi")) ||
+      inherits(obj, "raw")
+  ) {
     obj <- rxUiDecompress(obj)
   }
   if (is(obj, "rxModelVars")) {
@@ -2783,12 +2989,10 @@ rxModelVarsS3.rxUi <- function(obj) {
 #' @rdname rxModelVars
 #' @export
 rxModelVarsS3.default <- function(obj) {
-  stop("need an rxode2-type object to extract model variables",
-       call.=FALSE)
+  stop("need an rxode2-type object to extract model variables", call. = FALSE)
 }
 
-.rxGetParseModel <- function(type = c("normal", "dt"),
-                             collapse = TRUE) {
+.rxGetParseModel <- function(type = c("normal", "dt"), collapse = TRUE) {
   .type.idx <- c("normal" = 0L, "dt" = 1L)
   if (is(type, "character")) {
     type <- .type.idx[match.arg(type)]

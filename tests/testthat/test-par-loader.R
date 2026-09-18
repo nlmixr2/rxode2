@@ -5,9 +5,7 @@
 ## sentinels 111 and 222 to parameters 0 and 1).
 
 rxTest({
-
   test_that("multiple par-loaders are applied in series", {
-
     .m <- rxode2({
       param(a, b)
       oa <- a
@@ -31,14 +29,14 @@ rxTest({
     on.exit(.Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2"), add = TRUE)
 
     .s <- rxSolve(.m, .ev, params = c(a = 1, b = 2), returnType = "data.frame")
-    expect_equal(.s$oa[1], 111)   # loader A wrote parameter 0
-    expect_equal(.s$ob[1], 222)   # loader B wrote parameter 1 (second in series)
+    expect_equal(.s$oa[1], 111) # loader A wrote parameter 0
+    expect_equal(.s$ob[1], 222) # loader B wrote parameter 1 (second in series)
 
     ## a single loader overwrites only its slot
     .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
     .Call("_rxode2_rxRegisterTestParLoaders", 1L, PACKAGE = "rxode2")
     .s1 <- rxSolve(.m, .ev, params = c(a = 1, b = 2), returnType = "data.frame")
-    expect_equal(.s1$oa[1], 111)  # loader A only
+    expect_equal(.s1$oa[1], 111) # loader A only
     expect_equal(.s1$ob[1], 2)
 
     ## removing the loaders restores pass-through behavior
@@ -49,7 +47,6 @@ rxTest({
   })
 
   test_that("injected parameters are saved on the object and restored on re-solve", {
-
     .m <- rxode2({
       param(a, b)
       oa <- a
@@ -84,7 +81,6 @@ rxTest({
   })
 
   test_that("a named par-loader fires only for a model that flags it", {
-
     .mk <- function() {
       .u <- function() {
         model({
@@ -124,7 +120,6 @@ rxTest({
   })
 
   test_that("a leaked active par-loader name does not reach an unflagged model", {
-
     .u <- function() {
       model({
         a <- 1
@@ -135,10 +130,13 @@ rxTest({
     .ev <- et(amt = 0) |> et(0, 1, by = 1)
 
     .Call("_rxode2_rxRegisterTestParLoaderNamed", "rxode2:test", PACKAGE = "rxode2")
-    on.exit({
-      .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
-      .rxClearActiveParLoaderC()
-    }, add = TRUE)
+    on.exit(
+      {
+        .Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2")
+        .rxClearActiveParLoaderC()
+      },
+      add = TRUE
+    )
 
     ## simulate a package that set the flag directly and never cleared it
     .rxSetActiveParLoaderC("rxode2:test")
@@ -147,7 +145,6 @@ rxTest({
   })
 
   test_that("a registered dydt-force callback is integrated into the solve", {
-
     .m <- rxode2({
       d/dt(x) <- 0
     })
@@ -160,8 +157,7 @@ rxTest({
     on.exit(.Call("_rxode2_rxRemoveTestDydtForce", PACKAGE = "rxode2"), add = TRUE)
 
     ## the callback adds 1 to dx/dt -> x(t) = t
-    expect_equal(rxSolve(.m, .ev, returnType = "data.frame")$x, c(0, 1, 2),
-                 tolerance = 1e-5)
+    expect_equal(rxSolve(.m, .ev, returnType = "data.frame")$x, c(0, 1, 2), tolerance = 1e-5)
 
     ## removing it restores the unforced solve
     .Call("_rxode2_rxRemoveTestDydtForce", PACKAGE = "rxode2")
@@ -169,7 +165,6 @@ rxTest({
   })
 
   test_that("ui prep hooks run on every ui solve and a bad one only warns", {
-
     .u <- function() {
       model({
         a <- 1
@@ -203,5 +198,4 @@ rxTest({
     rxSolve(rxode2(.u), .ev, returnType = "data.frame")
     expect_equal(.seen$n, 3L)
   })
-
 })

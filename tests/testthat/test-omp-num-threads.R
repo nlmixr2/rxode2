@@ -20,45 +20,52 @@ rxTest({
     .cores <- as.integer(rxode2::rxCores())
     .script <- tempfile(fileext = ".R")
     on.exit(unlink(.script), add = TRUE)
-    writeLines(c(
-      sprintf(".libPaths(%s)", paste(deparse(.libPaths()), collapse = "")),
-      "suppressMessages(library(rxode2))",
-      "m <- rxode2({",
-      "  ka <- exp(lka + eta.ka)",
-      "  cl <- exp(lcl + eta.cl)",
-      "  v <- exp(lv)",
-      "  d/dt(depot) <- -ka*depot",
-      "  d/dt(cent) <- ka*depot - cl/v*cent",
-      "  Cc <- cent/v",
-      "})",
-      "ev <- et(et(amt=100, ii=24, addl=6), seq(0, 168, by=2))",
-      "om <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.09)",
-      "th <- c(lka=0.5, lcl=1, lv=3)",
-      "tm <- diag(3)*0.01",
-      "dimnames(tm) <- list(names(th), names(th))",
-      "set.seed(1)",
-      "for (i in 1:40) {",
-      "  s <- rxSolve(m, ev, params=th, omega=om, thetaMat=tm, nStud=4,",
-      sprintf("               nSub=25, simVariability=TRUE, cores=%dL)", .cores),
-      "  d <- as.data.frame(s)",
-      # allocate hard right after each solve -- a corrupted heap dies here
-      "  for (k in 1:20) invisible(sum(rnorm(nrow(d)))) ",
-      "}",
-      "cat('RXODE2-OK\\n')"
-    ), .script)
+    writeLines(
+      c(
+        sprintf(".libPaths(%s)", paste(deparse(.libPaths()), collapse = "")),
+        "suppressMessages(library(rxode2))",
+        "m <- rxode2({",
+        "  ka <- exp(lka + eta.ka)",
+        "  cl <- exp(lcl + eta.cl)",
+        "  v <- exp(lv)",
+        "  d/dt(depot) <- -ka*depot",
+        "  d/dt(cent) <- ka*depot - cl/v*cent",
+        "  Cc <- cent/v",
+        "})",
+        "ev <- et(et(amt=100, ii=24, addl=6), seq(0, 168, by=2))",
+        "om <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.09)",
+        "th <- c(lka=0.5, lcl=1, lv=3)",
+        "tm <- diag(3)*0.01",
+        "dimnames(tm) <- list(names(th), names(th))",
+        "set.seed(1)",
+        "for (i in 1:40) {",
+        "  s <- rxSolve(m, ev, params=th, omega=om, thetaMat=tm, nStud=4,",
+        sprintf("               nSub=25, simVariability=TRUE, cores=%dL)", .cores),
+        "  d <- as.data.frame(s)",
+        # allocate hard right after each solve -- a corrupted heap dies here
+        "  for (k in 1:20) invisible(sum(rnorm(nrow(d)))) ",
+        "}",
+        "cat('RXODE2-OK\\n')"
+      ),
+      .script
+    )
     .out <- suppressWarnings(
-      system2(file.path(R.home("bin"), "Rscript"),
-              args = c("--vanilla", shQuote(.script)),
-              env = c("OMP_NUM_THREADS=2", "MKL_NUM_THREADS=2",
-                      "NOT_CRAN=true"),
-              stdout = TRUE, stderr = TRUE))
+      system2(
+        file.path(R.home("bin"), "Rscript"),
+        args = c("--vanilla", shQuote(.script)),
+        env = c("OMP_NUM_THREADS=2", "MKL_NUM_THREADS=2", "NOT_CRAN=true"),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+    )
     .status <- attr(.out, "status")
     # a corrupted heap shows up as a non-zero exit plus glibc's own complaint
     # ("free(): invalid pointer" / "malloc(): ...") or an outright segfault
-    expect_true(any(grepl("RXODE2-OK", .out, fixed = TRUE)),
-                info = paste(utils::tail(.out, 15), collapse = "\n"))
-    expect_false(any(grepl("free\\(\\)|malloc\\(\\)|corrupt|segfault", .out)),
-                 info = paste(utils::tail(.out, 15), collapse = "\n"))
+    expect_true(any(grepl("RXODE2-OK", .out, fixed = TRUE)), info = paste(utils::tail(.out, 15), collapse = "\n"))
+    expect_false(
+      any(grepl("free\\(\\)|malloc\\(\\)|corrupt|segfault", .out)),
+      info = paste(utils::tail(.out, 15), collapse = "\n")
+    )
     expect_true(is.null(.status) || identical(as.integer(.status), 0L))
   })
 })

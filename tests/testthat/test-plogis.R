@@ -1,5 +1,4 @@
 rxTest({
-
   test_that("plogis ui translation normalizes to expit expressions", {
     f <- function() {
       model({
@@ -31,5 +30,4 @@ rxTest({
     expect_equal(s$a, stats::plogis(s$time, location = 1, scale = 2, lower.tail = FALSE, log.p = FALSE))
     expect_equal(s$b, stats::plogis(s$time, location = 1, scale = 2, lower.tail = TRUE, log.p = TRUE))
   })
-
 })

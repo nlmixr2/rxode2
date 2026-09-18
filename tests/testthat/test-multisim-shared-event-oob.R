@@ -39,10 +39,9 @@ rxTest({
     ev <- et() |>
       et(amt = 10000, ii = 12, until = 24) |>
       et(seq(0, 24, length.out = 100)) |>
-      et(id = 1:4)                # shared event table across 4 subjects
+      et(id = 1:4) # shared event table across 4 subjects
 
-    pp <- rxWithSeed(42, data.frame(KA = 0.294 * exp(rnorm(8)),
-                                    CL = 18.6 * exp(rnorm(8))))
+    pp <- rxWithSeed(42, data.frame(KA = 0.294 * exp(rnorm(8)), CL = 18.6 * exp(rnorm(8))))
 
     # 8 parameter sets over 4 subjects -> nsim = 2 (the over-read path)
     s8 <- suppressWarnings(rxSolve(m1, ev, params = pp, returnType = "data.frame"))

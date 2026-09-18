@@ -8,9 +8,30 @@ rxTest({
     ncmt + oral0 + ncmt * npars + oral0
   }
   call3 <- function(alast, sensType, ka = 1.1) {
-    linCmtModelDouble(0.7, 1.0, 20, 2.0, 40, 0.5, 60, ka,
-                               alast, rep(0, 4), 3L, 1L, 1L, TRUE,
-                               0L, 0, 0, 0, 0L, 0L, as.integer(sensType), 0.001)
+    linCmtModelDouble(
+      0.7,
+      1.0,
+      20,
+      2.0,
+      40,
+      0.5,
+      60,
+      ka,
+      alast,
+      rep(0, 4),
+      3L,
+      1L,
+      1L,
+      TRUE,
+      0L,
+      0,
+      0,
+      0,
+      0L,
+      0L,
+      as.integer(sensType),
+      0.001
+    )
   }
   depot <- function(v) {
     a <- numeric(nAlast(3L, 1L))
@@ -28,7 +49,8 @@ rxTest({
       # d(val)/d(ka) at the negative depot vs a central difference
       h <- 1e-6
       fd <- (call3(depot(-1e-6), st, ka = 1.1 + h)$val -
-               call3(depot(-1e-6), st, ka = 1.1 - h)$val) / (2 * h)
+        call3(depot(-1e-6), st, ka = 1.1 - h)$val) /
+        (2 * h)
       expect_equal(neg$Jg[7], fd, tolerance = 1e-6)
     })
   }
@@ -44,8 +66,7 @@ rxTest({
     ev <- et(amt = 100, cmt = "depot") |>
       et(amt = -100, time = 0.5, cmt = "depot") |>
       et(seq(0, 6, by = 0.5))
-    ode <- rxSolve(linToOde(rxode2(m)), ev, returnType = "data.frame",
-                   useLinCmt = FALSE, atol = 1e-10, rtol = 1e-10)$cp
+    ode <- rxSolve(linToOde(rxode2(m)), ev, returnType = "data.frame", useLinCmt = FALSE, atol = 1e-10, rtol = 1e-10)$cp
     expect_true(min(ode) < 0) # the depot really goes negative
     for (st in c("AD", "ADr")) {
       lin <- rxSolve(m, ev, linCmtSensType = st, returnType = "data.frame")$cp
@@ -53,14 +74,19 @@ rxTest({
     }
 
     args <- "rx__PTR__, t, 1, 3, 1, %d, %d, 1, cl, v, q, vp, q2, vp2, ka"
-    lines <- c(sprintf("cp=linCmtB(%s)", sprintf(args, -1L, -1L)),
-               vapply(0:6, function(k) {
-                 sprintf("d%d=linCmtB(%s)", k, sprintf(args, -2L, k))
-               }, ""))
+    lines <- c(
+      sprintf("cp=linCmtB(%s)", sprintf(args, -1L, -1L)),
+      vapply(
+        0:6,
+        function(k) {
+          sprintf("d%d=linCmtB(%s)", k, sprintf(args, -2L, k))
+        },
+        ""
+      )
+    )
     mg <- suppressWarnings(rxode2(paste(lines, collapse = "\n")))
     pars <- c(cl = 1, v = 20, q = 2, vp = 40, q2 = 0.5, vp2 = 60, ka = 1.1)
-    evg <- et(amt = 100, cmt = 1) |> et(amt = -100, time = 0.5, cmt = 1) |>
-      et(seq(0.25, 6, by = 0.5))
+    evg <- et(amt = 100, cmt = 1) |> et(amt = -100, time = 0.5, cmt = 1) |> et(seq(0.25, 6, by = 0.5))
     solve <- function(p, st) {
       rxSolve(mg, p, evg, linCmtSensType = st, returnType = "data.frame")
     }
@@ -71,8 +97,10 @@ rxTest({
     h <- 1e-4
     for (k in 0:6) {
       nm <- names(pars)[k + 1]
-      p1 <- pars; p1[nm] <- p1[nm] * (1 + h)
-      p2 <- pars; p2[nm] <- p2[nm] * (1 - h)
+      p1 <- pars
+      p1[nm] <- p1[nm] * (1 + h)
+      p2 <- pars
+      p2[nm] <- p2[nm] * (1 - h)
       fd <- (solve(p1, "ADr")$cp - solve(p2, "ADr")$cp) / (2 * h * pars[[nm]])
       expect_equal(rev[[paste0("d", k)]], fd, tolerance = 1e-5)
     }

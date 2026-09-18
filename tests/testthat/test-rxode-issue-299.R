@@ -36,20 +36,20 @@ rxTest({
       tad <- tad()
       dosenum <- dosenum()
     })
-    
+
     parm <- setNames(
       c(-3.54456675092961, -2.30258509299405, 1.09861228866811, 0.3, 0.2, 10),
       paste0("THETA[", 1:6, "]")
     )
-    
+
     d_mod <- readRDS(test_path("test-issue-299.rds"))
-    
+
     s <- suppressWarnings(rxSolve(model, parm, d_mod))
-    
+
     expect_true(all(diff(order(s$id, s$time)) == 1))
-    
+
     d2 <- d_mod[d_mod$ID == 43, ]
-    
+
     s <- suppressWarnings(rxSolve(model, parm, d2, addDosing = NA))
   })
 })

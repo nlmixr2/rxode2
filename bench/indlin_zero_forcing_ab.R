@@ -24,8 +24,7 @@ stopifnot(nzchar(.lib))
 .libPaths(c(.lib, .libPaths()))
 suppressMessages(library(rxode2))
 # Guard against measuring a DIFFERENT rxode2 than the one just built.
-stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))),
-                    normalizePath(.lib)))
+stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))), normalizePath(.lib)))
 
 # Which of the four matrix-exponential drivers a model lands on is the whole
 # point of the measurement, and it is not exported; bind it once the way the
@@ -33,52 +32,64 @@ stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))),
 .doIndLin <- utils::getFromNamespace(".rxMemDoIndLin", "rxode2")
 
 .reps <- as.integer(Sys.getenv("BENCH_REPS", "7"))
-cat("reps:", .reps, " load:",
-    strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")
+cat("reps:", .reps, " load:", strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")
 
 .mexp <- function(n) {
   .ln <- c("matExp()", "k_depot_central <- ka", "k_central_output <- cl/v")
-  if (n >= 2) .ln <- c(.ln, "k_central_periph <- q/v", "k_periph_central <- q/vp")
-  if (n >= 3) .ln <- c(.ln, "k_central_periph2 <- q2/v", "k_periph2_central <- q2/vp2")
+  if (n >= 2) {
+    .ln <- c(.ln, "k_central_periph <- q/v", "k_periph_central <- q/vp")
+  }
+  if (n >= 3) {
+    .ln <- c(.ln, "k_central_periph2 <- q2/v", "k_periph2_central <- q2/vp2")
+  }
   paste(c(.ln, "cp <- central/v"), collapse = "\n")
 }
 .th <- c(ka = 1.1, cl = 4, v = 30, q = 8, vp = 40, q2 = 2, vp2 = 100)
 # Log spaced on purpose: a uniform grid repeats one `dt`, and the
 # content-addressed exponential cache then answers almost every interval.
 .obs <- exp(seq(log(0.05), log(24), length.out = 200))
-.ev <- as.data.frame(et(amt = 100, cmt = "depot", ii = 8, addl = 2) |>
-                       et(.obs) |> et(id = 1:40))
+.ev <- as.data.frame(
+  et(amt = 100, cmt = "depot", ii = 8, addl = 2) |>
+    et(.obs) |>
+    et(id = 1:40)
+)
 
 .res <- NULL
 for (.n in 2:3) {
   .new <- rxSensMatExp(model = .mexp(.n), calcSens = c("ka", "cl", "v"))
-  .old <- sub("k_central_output = cl/v", "k_central_output = -q/v-(-q/v-cl/v)",
-              .new, fixed = TRUE)
+  .old <- sub("k_central_output = cl/v", "k_central_output = -q/v-(-q/v-cl/v)", .new, fixed = TRUE)
   .old <- paste0(
     .old,
     "\nindLin(central) <- -(-q/v-cl/v)*central-q*central/v-cl*central/v",
     "\nindLin(rx__sens_central_BY_v__) <- ",
     "-(q/Rx_pow_di(v,2)+cl/Rx_pow_di(v,2))*central",
-    "+q*central/Rx_pow_di(v,2)+cl*central/Rx_pow_di(v,2)")
+    "+q*central/Rx_pow_di(v,2)+cl*central/Rx_pow_di(v,2)"
+  )
   .mn <- suppressMessages(rxode2(.new))
   .mo <- suppressMessages(rxode2(.old))
   .run <- function(m) {
-    suppressMessages(rxSolve(m, .th, .ev, method = "indLin",
-                             atol = 1e-10, rtol = 1e-10, cores = 1L))
+    suppressMessages(rxSolve(m, .th, .ev, method = "indLin", atol = 1e-10, rtol = 1e-10, cores = 1L))
   }
   .a <- as.data.frame(.run(.mn))
   .b <- as.data.frame(.run(.mo))
   .tn <- .to <- numeric(0)
-  for (.i in seq_len(.reps)) {           # interleaved, so drift hits both arms
+  for (.i in seq_len(.reps)) {
+    # interleaved, so drift hits both arms
     .tn <- c(.tn, system.time(.run(.mn))[["elapsed"]])
     .to <- c(.to, system.time(.run(.mo))[["elapsed"]])
   }
-  .res <- rbind(.res, data.frame(
-    cmt = .n,
-    fixed = min(.tn), spurious = min(.to), ratio = min(.to) / min(.tn),
-    doIndLinFixed = .doIndLin(rxModelVars(.mn)),
-    doIndLinSpurious = .doIndLin(rxModelVars(.mo)),
-    maxCpDiff = max(abs(.a$cp - .b$cp))))
+  .res <- rbind(
+    .res,
+    data.frame(
+      cmt = .n,
+      fixed = min(.tn),
+      spurious = min(.to),
+      ratio = min(.to) / min(.tn),
+      doIndLinFixed = .doIndLin(rxModelVars(.mn)),
+      doIndLinSpurious = .doIndLin(rxModelVars(.mo)),
+      maxCpDiff = max(abs(.a$cp - .b$cp))
+    )
+  )
 }
 print(.res, digits = 4)
 cat("load:", strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")

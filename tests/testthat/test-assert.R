@@ -1,8 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
-
     test_that("no warnings/errors without boundaries", {
-
       one.cmt <- function() {
         ini({
           tka <- 0.45; label("Ka")
@@ -26,7 +24,6 @@ rxTest({
       expect_warning(warnRxBounded(one.cmt), NA)
     })
     test_that("assert or testRxLinCmt and boundaries", {
-
       one.cmt <- function() {
         ini({
           tka <- 0.45; label("Ka")
@@ -70,7 +67,6 @@ rxTest({
 
       expect_error(assertRxLinCmt(mod))
       expect_false(testRxLinCmt(mod))
-
     })
     test_that("assertRxUiRandomOnIdOnly", {
       one.cmt <- function() {
@@ -97,7 +93,6 @@ rxTest({
     })
 
     test_that("assert/test Compartment/Var", {
-
       mod <- function() {
         ini({
           cl <- 1.1
@@ -120,8 +115,7 @@ rxTest({
 
       expect_equal(assertVariableExists(mod, c("cl", "ka")), "cl")
 
-      expect_error(assertVariableExists(mod, c("depot", "central")),
-                   "variable 'depot', 'central' not in the model")
+      expect_error(assertVariableExists(mod, c("depot", "central")), "variable 'depot', 'central' not in the model")
 
       expect_equal(assertCompartmentExists(mod, c("depot", "central")), "depot")
       expect_equal(assertCompartmentExists(mod, c("central", "depot")), "central")
@@ -132,20 +126,16 @@ rxTest({
       expect_equal(assertExists(mod, c("ka", "depot")), "ka")
 
       expect_error(assertCompartmentExists(mod, "central"), NA)
-      expect_error(assertCompartmentNew(mod, "central"),
-                   "compartment 'central' already exists in the model")
+      expect_error(assertCompartmentNew(mod, "central"), "compartment 'central' already exists in the model")
       expect_true(testCompartmentExists(mod, "central"))
-      expect_error(assertCompartmentExists(mod, "funny"),
-                   "'funny' compartment is not in the model")
+      expect_error(assertCompartmentExists(mod, "funny"), "'funny' compartment is not in the model")
       expect_error(assertCompartmentNew(mod, "funny"), NA)
       expect_false(testCompartmentExists(mod, "funny"))
-      expect_error(assertCompartmentExists(mod, funny),
-                   "'funny' compartment is not in the model")
+      expect_error(assertCompartmentExists(mod, funny), "'funny' compartment is not in the model")
       expect_error(assertCompartmentNew(mod, funny), NA)
       expect_false(testCompartmentExists(mod, funny))
       expect_error(assertCompartmentExists(mod, central), NA)
-      expect_error(assertCompartmentNew(mod, central),
-                   "compartment 'central' already exists in the model")
+      expect_error(assertCompartmentNew(mod, central), "compartment 'central' already exists in the model")
       expect_true(testCompartmentExists(mod, central))
 
       # now variables
@@ -153,23 +143,19 @@ rxTest({
       expect_error(assertExists(mod, "cp"), NA)
       expect_true(testVariableExists(mod, "cp"))
       expect_true(testExists(mod, "cp"))
-      expect_error(assertVariableNew(mod, "cp"),
-                   "variable 'cp' is already in the model")
+      expect_error(assertVariableNew(mod, "cp"), "variable 'cp' is already in the model")
 
       expect_error(assertVariableExists(mod, cp), NA)
       expect_true(testVariableExists(mod, cp))
-      expect_error(assertVariableNew(mod, cp),
-                   "variable 'cp' is already in the model")
+      expect_error(assertVariableNew(mod, cp), "variable 'cp' is already in the model")
 
-      expect_error(assertVariableExists(mod,"funny"),
-                   "variable 'funny' not in the model")
+      expect_error(assertVariableExists(mod, "funny"), "variable 'funny' not in the model")
       expect_false(testVariableExists(mod, "funny"))
-      expect_error(assertVariableNew(mod, "funny"),NA)
+      expect_error(assertVariableNew(mod, "funny"), NA)
 
-      expect_error(assertVariableExists(mod,funny),
-                   "variable 'funny' not in the model")
+      expect_error(assertVariableExists(mod, funny), "variable 'funny' not in the model")
       expect_false(testVariableExists(mod, funny))
-      expect_error(assertVariableNew(mod, funny),NA)
+      expect_error(assertVariableNew(mod, funny), NA)
     })
 
     test_that("assertCompartmentName", {
@@ -219,7 +205,6 @@ rxTest({
   }
 
   test_that("no warnings/errors without boundaries", {
-
     one.cmt <- function() {
       ini({
         tka <- 0.45; label("Ka")
@@ -283,7 +268,5 @@ rxTest({
       })
     }
     expect_error(suppressWarnings(assertRxUiIovNoCor(one.cmt)))
-
   })
-
 })

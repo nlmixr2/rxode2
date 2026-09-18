@@ -18,11 +18,15 @@ test_that("the ABI subject accessor walks the array at the allocated stride", {
   # unequal per-subject record counts, so a wrong stride cannot pass by landing
   # on a neighbouring subject that happens to hold the same count
   nObsI <- c(3, 5, 2, 7, 4, 6)
-  d <- do.call(rbind, lapply(seq_along(nObsI), function(id) {
-    rbind(data.frame(id = id, time = 0, amt = 320, evid = 1, cmt = 1),
-          data.frame(id = id, time = seq(0.5, 12, length.out = nObsI[id]),
-                     amt = 0, evid = 0, cmt = 1))
-  }))
+  d <- do.call(
+    rbind,
+    lapply(seq_along(nObsI), function(id) {
+      rbind(
+        data.frame(id = id, time = 0, amt = 320, evid = 1, cmt = 1),
+        data.frame(id = id, time = seq(0.5, 12, length.out = nObsI[id]), amt = 0, evid = 0, cmt = 1)
+      )
+    })
+  )
   suppressMessages(rxSolve(m, d))
 
   cnt <- rxTestAbiSubjectCounts_()
@@ -40,8 +44,7 @@ test_that("the ABI accessor follows the published stride, not its own sizeof", {
   # to match.  An accessor walking with its own sizeof reads the wrong entries
   # for any pad > 0.
   for (pad in c(0L, 8L, 688L)) {
-    expect_equal(rxTestAbiStrideProbe_(pad, 6L), 1000L + 0:5,
-                 info = paste("pad =", pad))
+    expect_equal(rxTestAbiStrideProbe_(pad, 6L), 1000L + 0:5, info = paste("pad =", pad))
   }
   # nothing to walk
   expect_equal(length(rxTestAbiStrideProbe_(0L, 0L)), 0L)

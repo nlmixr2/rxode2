@@ -4,16 +4,18 @@
   .cls <- class(v)
   .env1 <- attr(class(v), ".rxode2.env")
   .env2 <- attr(class(v2), ".rxode2.env")
-  if (length(.env1$.check.names) != length(.env2$.check.names) &&
-        !all(.env1$.check.names == .env2$.check.names)) {
-    stop("cannot rbind these 2 rxSolve objects", call.=FALSE)
+  if (
+    length(.env1$.check.names) != length(.env2$.check.names) &&
+      !all(.env1$.check.names == .env2$.check.names)
+  ) {
+    stop("cannot rbind these 2 rxSolve objects", call. = FALSE)
   }
   ## if (is.null(.env1$.params.single) || is.null(.env2$.params.single)) {
   ##   stop("cannot rbind single solve environments", call.=FALSE)
   ## }
-  .cloneEnv <- new.env(parent=emptyenv())
-  for (.v in ls(.env1, all.names=TRUE)) {
-    assign(.v, get(.v, envir=.env1), envir=.cloneEnv)
+  .cloneEnv <- new.env(parent = emptyenv())
+  for (.v in ls(.env1, all.names = TRUE)) {
+    assign(.v, get(.v, envir = .env1), envir = .cloneEnv)
   }
   .nStud1 <- .cloneEnv$.args$nStud
   .nStud2 <- .env2$.args$nStud
@@ -39,8 +41,7 @@
     .cloneEnv$.nsim <- .cloneEnv$.nsim + .env2$.nsim
     .cloneEnv$.nsub <- NULL
     .cloneEnv$.dadt.counter <- 0L
-    .cloneEnv$.init.dat <- setNames(rep(NA_real_, length(.cloneEnv$.init.dat)),
-                                    names(.cloneEnv$.init.dat))
+    .cloneEnv$.init.dat <- setNames(rep(NA_real_, length(.cloneEnv$.init.dat)), names(.cloneEnv$.init.dat))
     .cloneEnv$.jac.counter <- 0L
     .cloneEnv$.nsub <- NA_integer_
     .cloneEnv$.par.pos <- NULL
@@ -61,7 +62,7 @@
     .cloneEnv$.real.update <- FALSE
     .cloneEnv$.sigma <- NULL
     .fun <- function(...) {
-      stop("functions don't work on rbound rxSolve", call.=FALSE)
+      stop("functions don't work on rbound rxSolve", call. = FALSE)
     }
     .cloneEnv$.replace.sampling <- .fun
     .cloneEnv$add.dosing <- .fun
@@ -77,7 +78,7 @@
     .cloneEnv$import <- .fun
     .cloneEnv$counts.EventTable <- NULL
     .cloneEnv$get.units <- NULL
-    .cloneEnv$units <- c(dosing="NA", time="NA")
+    .cloneEnv$units <- c(dosing = "NA", time = "NA")
     .cloneEnv$dll <- NULL
     attr(.cls, ".rxode2.env") <- .cloneEnv
     class(.v) <- .cls
@@ -89,22 +90,25 @@
 rbind.rxSolve <- function(..., deparse.level = 1) {
   .lst <- list(...)
   if (length(.lst) >= 2) {
-    .ret <- try(.rbind2rxSove(.lst[[1]], .lst[[2]]),
-                silent=TRUE)
+    .ret <- try(.rbind2rxSove(.lst[[1]], .lst[[2]]), silent = TRUE)
     if (inherits(.ret, "try-error")) {
       return(do.call(rbind.data.frame, .lst))
     }
     if (length(.lst) == 2) {
       return(.ret)
     }
-    return(do.call(rbind.rxSolve,
-                   c(list(.ret),
-                     lapply(seq_along(.lst)[-(1:2)],
-                            function(i){
-                              .lst[[i]]
-                            }))))
+    return(do.call(
+      rbind.rxSolve,
+      c(
+        list(.ret),
+        lapply(seq_along(.lst)[-(1:2)], function(i) {
+          .lst[[i]]
+        })
+      )
+    ))
   }
-  if (length(.lst) == 1) return(.lst[[1]])
-  stop("called rbind.rxSolve() with no arguments",
-       call.=FALSE)
+  if (length(.lst) == 1) {
+    return(.lst[[1]])
+  }
+  stop("called rbind.rxSolve() with no arguments", call. = FALSE)
 }

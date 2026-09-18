@@ -228,6 +228,6 @@ rxTest({
     )
 
     expect_false(is.null(f3$predDf))
-    expect_equal(f3$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd=1))
+    expect_equal(f3$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 1))
   })
 })

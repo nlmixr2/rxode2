@@ -3,7 +3,8 @@ rxTest({
   .rx <- loadNamespace("rxode2")
 
   lnNpr <-
-    function(a, b) { ## computes ln(P(a<Z<b))
+    function(a, b) {
+      ## computes ln(P(a<Z<b))
       ## where Z~N(0,1) very accurately for any 'a', 'b'
       p <- rep(0, length(a))
       ## case b>a>0
@@ -106,7 +107,8 @@ rxTest({
     }
 
   gradpsi <-
-    function(y, L, l, u) { # implements grad_psi(x) to find optimal exponential twisting;
+    function(y, L, l, u) {
+      # implements grad_psi(x) to find optimal exponential twisting;
       # assume scaled 'L' with zero diagonal;
       d <- length(u)
       c <- rep(0, d)
@@ -167,7 +169,6 @@ rxTest({
     }
 
   test_that("cholperm", {
-
     rxWithSeed(12, {
       d <- 5
 
@@ -204,11 +205,9 @@ rxTest({
       ## microbenchmark::microbenchmark(cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
       ## microbenchmark::microbenchmark(microbenchmark::cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
     })
-
   })
 
   test_that("gradpsi", {
-
     rxWithSeed(12, {
       d <- 5
 
@@ -260,19 +259,15 @@ rxTest({
       u <- r2$u
       L <- r2$L
 
-
       r1 <- gradpsi(rep(-1, 2 * d - 2), L, l, u)
       r2 <- .rx$rxGradpsi(rep(-1, 2 * d - 2), L, l, u)
 
       expect_equal(r1$Jac, r2$Jac)
       expect_equal(r1$grad, r2$grad)
     })
-
   })
 
-
   test_that("nleq", {
-
     rxWithSeed(12, {
       d <- 5
 
@@ -297,11 +292,9 @@ rxTest({
 
       expect_equal(.rx$rxNleq(r2$l, r2$u, r2$L), nleq(r2$l, r2$u, r2$L))
     })
-
   })
 
   test_that("rxMvnrnd", {
-
     rxWithSeed(12, {
       d <- 5
 
@@ -341,6 +334,5 @@ rxTest({
       fun(5)
       fun(10)
     })
-
   })
 })

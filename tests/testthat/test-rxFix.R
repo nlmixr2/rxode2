@@ -1,6 +1,5 @@
 rxTest({
   test_that("rxFix", {
-
     One.comp.transit.allo <- function() {
       ini({
         # Where initial conditions/variables are specified
@@ -33,15 +32,17 @@ rxTest({
 
     tmp <- rxFixPop(One.comp.transit.allo)
 
-    expect_equal(tmp$theta,
-                 c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531,
-                   prop.err = 0.15, add.err = 0.6))
+    expect_equal(
+      tmp$theta,
+      c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531, prop.err = 0.15, add.err = 0.6)
+    )
 
     tmp2 <- rxFixPop(tmp)
 
-    expect_equal(tmp2$theta,
-                 c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531,
-                   prop.err = 0.15, add.err = 0.6))
+    expect_equal(
+      tmp2$theta,
+      c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531, prop.err = 0.15, add.err = 0.6)
+    )
 
     tmp3 <- rxFixPop(tmp2, returnNull = TRUE)
 
@@ -153,16 +154,30 @@ rxTest({
 
     tmp <- rxFixPop(nlmixr_threecmt_mm_no_add_wtcl_pdtg_kout_delay2)
 
-    expect_equal(tmp$theta,
-                 c(tf_sc = 6.90675477864855, tf_infilt = 6.90675477864855, tka_sc = 6.90675477864855,
-                   tka_infilt = 6.90675477864855, tcl_low = 6.90675477864855, tcl_high = 6.90675477864855,
-                   tcl_c50 = 8.00636756765025, tv = 6.90675477864855, tq1 = 6.90675477864855,
-                   tvp1 = 2.30258509299405, tq2 = 6.90675477864855, tvp2 = 2.99573227355399,
-                   prop_err = 999, tg_bl = 6.90675477864855, tg_kel = 6.90675477864855,
-                   tg_ec50 = 8.51719319141624, tg_emax_kel = 0.693147180559945,
-                   ktr_tg = 6.90675477864855, prop_err_tg = 999))
-
-
+    expect_equal(
+      tmp$theta,
+      c(
+        tf_sc = 6.90675477864855,
+        tf_infilt = 6.90675477864855,
+        tka_sc = 6.90675477864855,
+        tka_infilt = 6.90675477864855,
+        tcl_low = 6.90675477864855,
+        tcl_high = 6.90675477864855,
+        tcl_c50 = 8.00636756765025,
+        tv = 6.90675477864855,
+        tq1 = 6.90675477864855,
+        tvp1 = 2.30258509299405,
+        tq2 = 6.90675477864855,
+        tvp2 = 2.99573227355399,
+        prop_err = 999,
+        tg_bl = 6.90675477864855,
+        tg_kel = 6.90675477864855,
+        tg_ec50 = 8.51719319141624,
+        tg_emax_kel = 0.693147180559945,
+        ktr_tg = 6.90675477864855,
+        prop_err_tg = 999
+      )
+    )
   })
 
   test_that("rxFixPop excludes a fixed mixture proportion (mix() needs it named)", {
@@ -195,5 +210,4 @@ rxTest({
     # p1 is still a named parameter in the model
     expect_true("p1" %in% .ui$iniDf$name)
   })
-
 })

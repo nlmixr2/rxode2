@@ -499,7 +499,7 @@ Evidence:
   is emitted once, before the series.
 - Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
   resets on the first dose (matches NONMEM, issue #1351)"` and
-  `test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+  `test-evid-push-addl.R` `"a pushed evid=4 dose repeated with addl resets
   only once"`.
 
 ### There is ONE event translator -- keep it that way

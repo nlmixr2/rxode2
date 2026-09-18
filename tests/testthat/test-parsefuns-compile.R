@@ -26,8 +26,12 @@ rxTest({
       .k <- .num[[f]]
       if (!is.na(.k)) return(as.integer(.k))
     }
-    if (f %in% .sng) return(1L)
-    if (f %in% .dbl) return(2L)
+    if (f %in% .sng) {
+      return(1L)
+    }
+    if (f %in% .dbl) {
+      return(2L)
+    }
     NA_integer_
   }
 
@@ -37,44 +41,67 @@ rxTest({
   # `%%` is an infix operator, not a callable name
   .notCallable <- "%%"
 
-  .testable <- Filter(function(f) {
-    !(f %in% .notCallable) && !is.na(.arity(f)) &&
-      .arity(f) >= 1L && .arity(f) <= 4L
-  }, .fns)
+  .testable <- Filter(
+    function(f) {
+      !(f %in% .notCallable) && !is.na(.arity(f)) && .arity(f) >= 1L && .arity(f) <= 4L
+    },
+    .fns
+  )
 
   .mkTxt <- function(fs) {
     .decl <- "a1 = t + 1.1\na2 = t + 2.2\na3 = t + 3.3\na4 = t + 4.4\n"
-    .body <- vapply(seq_along(fs), function(.i) {
-      .k <- .arity(fs[.i])
-      .a <- if (fs[.i] %in% .covArg) "cov" else paste0("a", seq_len(.k), collapse = ", ")
-      sprintf("y%d = %s(%s)", .i, fs[.i], .a)
-    }, character(1))
+    .body <- vapply(
+      seq_along(fs),
+      function(.i) {
+        .k <- .arity(fs[.i])
+        .a <- if (fs[.i] %in% .covArg) "cov" else paste0("a", seq_len(.k), collapse = ", ")
+        sprintf("y%d = %s(%s)", .i, fs[.i], .a)
+      },
+      character(1)
+    )
     paste0(.decl, paste(.body, collapse = "\n"), "\nd/dt(x) = -x")
   }
 
   .parses <- function(f) {
-    tryCatch({ rxode2::rxModelVars(.mkTxt(f)); TRUE }, error = function(e) FALSE)
+    tryCatch(
+      {
+        rxode2::rxModelVars(.mkTxt(f))
+        TRUE
+      },
+      error = function(e) FALSE
+    )
   }
   .compiles <- function(fs) {
-    if (length(fs) == 0L) return(TRUE)
-    tryCatch({ rxode2::rxode2(.mkTxt(fs)); TRUE }, error = function(e) FALSE)
+    if (length(fs) == 0L) {
+      return(TRUE)
+    }
+    tryCatch(
+      {
+        rxode2::rxode2(.mkTxt(fs))
+        TRUE
+      },
+      error = function(e) FALSE
+    )
   }
   .bisect <- function(fs) {
-    if (length(fs) == 1L) return(if (.compiles(fs)) character(0) else fs)
+    if (length(fs) == 1L) {
+      return(if (.compiles(fs)) character(0) else fs)
+    }
     .m <- length(fs) %/% 2L
     .l <- fs[seq_len(.m)]
     .r <- fs[(.m + 1L):length(fs)]
-    c(if (.compiles(.l)) character(0) else .bisect(.l),
-      if (.compiles(.r)) character(0) else .bisect(.r))
+    c(if (.compiles(.l)) character(0) else .bisect(.l), if (.compiles(.r)) character(0) else .bisect(.r))
   }
 
   test_that("every .parseFuns entry the parser accepts also parses", {
     skip_on_cran()
-    expect_gt(length(.testable), 150L)   # it must actually be testing something
+    expect_gt(length(.testable), 150L) # it must actually be testing something
     .bad <- .testable[!vapply(.testable, .parses, logical(1))]
-    expect_equal(length(.bad), 0L,
-                 info = paste0("these are in .parseFuns but do not parse: ",
-                               paste(.bad, collapse = ", ")))
+    expect_equal(
+      length(.bad),
+      0L,
+      info = paste0("these are in .parseFuns but do not parse: ", paste(.bad, collapse = ", "))
+    )
   })
 
   test_that("every .parseFuns entry compiles to C", {
@@ -91,7 +118,8 @@ rxTest({
         ".  Code generation emits the rxode2 name verbatim as the C name, so ",
         "each needs a C function of that name -- add a wrapper to ",
         "inst/include/rxode2_model_shared.h the way ceiling() and loggamma() ",
-        "have one."))
+        "have one."
+      ))
     }
   })
 })

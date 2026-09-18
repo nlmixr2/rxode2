@@ -26,7 +26,7 @@
 #' }
 #'
 ReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 2L)
 }
 #' Derivative of the Rectified Linear Unit (ReLU) Activation Function
@@ -56,6 +56,6 @@ ReLU <- function(x) {
 #' rxSolve(x, e)
 #' }
 dReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 7L)
 }

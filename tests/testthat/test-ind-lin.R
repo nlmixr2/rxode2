@@ -81,12 +81,14 @@ d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
 ", indLin = TRUE))
 
-
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24, rate = 2, start.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      rate = 2,
+      start.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     pk <- rxSolve(mod, et, method = "indLin")
@@ -98,8 +100,10 @@ d/dt(blood)     = a*intestine - b*blood
     et2 <- eventTable(time.units = "days")
     et2$add.sampling(seq(0, 10, by = 1 / 24))
     et2$add.dosing(
-      dose = 2, start.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2,
+      start.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     pk <- rxSolve(mod, et2, method = "indLin")
@@ -197,8 +201,10 @@ d/dt(blood)     = a*intestine - b*blood
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2, start.time = 0,
-      nbr.doses = 10, dosing.interval = 6
+      dose = 2,
+      start.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 6
     )
 
     pk <- rxSolve(mmModel, et, method = "indLin")
@@ -290,8 +296,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(rxNorm(van1), rxNorm(van2))
     expect_equal(rxNorm(van1), rxNorm(van3))
 
-    s1 <- rxSolve(vanOde, et, c(mu = 1000), method = "lsoda",
-                  atol = 1e-12, rtol = 1e-12)
+    s1 <- rxSolve(vanOde, et, c(mu = 1000), method = "lsoda", atol = 1e-12, rtol = 1e-12)
     s2 <- rxSolve(van1, et, c(mu = 1000), method = "indLin")
     ## s3 <- rxSolve(van, et, c(mu=1000), method="dop853")
 
@@ -322,8 +327,7 @@ d/dt(blood)     = a*intestine - b*blood
     # buried the nonlinearity in a rate constant; with it in the forcing, and
     # the solver cutting its step until the iteration contracts, the non-stiff
     # case matches too.
-    s1 <- rxSolve(vanOde, et, c(mu = 1), method = "lsoda",
-                  atol = 1e-12, rtol = 1e-12)
+    s1 <- rxSolve(vanOde, et, c(mu = 1), method = "lsoda", atol = 1e-12, rtol = 1e-12)
     s2 <- rxSolve(van, et, c(mu = 1), method = "indLin")
     expect_equal(s1$y, s2$y, tolerance = 1e-3)
     ## s3 <- rxSolve(van, et, c(mu=1), method="dop853")
@@ -333,7 +337,6 @@ d/dt(blood)     = a*intestine - b*blood
     ##     ggplot(aes(time, y.diff)) + geom_line()
 
     ## gridExtra::grid.arrange(plot(s1), plot(s2))
-
 
     ## f <- function(mu=5){
     ##     s1 <- rxSolve(van, et, c(mu=mu), method="lsoda")
@@ -387,8 +390,7 @@ d/dt(blood)     = a*intestine - b*blood
     pars <- c(vmax = 10, km = 5, v = 20)
     et_f <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
     mod_ode <- rxode2(ode_code)
-    res_ode <- rxSolve(mod_ode, et_f, pars, method = "liblsoda",
-                       atol = 1e-12, rtol = 1e-12)
+    res_ode <- rxSolve(mod_ode, et_f, pars, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
 
     mod_mexp <- suppressMessages(rxode2(rxToIndLin(ode_code)))
     # the conversion is legal: no state inside a rate constant
@@ -396,8 +398,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true(rxModelVars(mod_mexp)$indLin$fullIndLin)
 
     .errTol <- function(tol) {
-      max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin",
-                      atol = tol, rtol = tol)$central - res_ode$central))
+      max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin", atol = tol, rtol = tol)$central - res_ode$central))
     }
     .e <- vapply(c(1e-4, 1e-6, 1e-8), .errTol, double(1))
     expect_true(all(diff(.e) < 0))
@@ -408,9 +409,14 @@ d/dt(blood)     = a*intestine - b*blood
     # 100; local extrapolation buys several thousand.
     expect_lt(.e[3], .e[1] / 1000)
     # and the default solve is accurate now, which is the #1186 headline
-    expect_lt(max(abs(rxSolve(mod_mexp, et_f, pars, method = "indLin")$central -
-                        res_ode$central)) / max(abs(res_ode$central)),
-              1e-3)
+    expect_lt(
+      max(abs(
+        rxSolve(mod_mexp, et_f, pars, method = "indLin")$central -
+          res_ode$central
+      )) /
+        max(abs(res_ode$central)),
+      1e-3
+    )
 
     # hmax is a cap, not the accuracy knob: an answer taken at the loosest hmax
     # is still accurate, where under the old uniform substep grid it tracked
@@ -481,25 +487,35 @@ d/dt(blood)     = a*intestine - b*blood
     # used to), so it is the wrong thing to read an order off: its 1e-4 point is
     # already 317x more accurate than the base method's and the ratio across the
     # sweep collapses even though every individual answer improved.
-    .err <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
-      max(abs(rxSolve(.mm, .e, method = "indLin", atol = tol, rtol = tol,
-                      indLinRichardson = "never")$central - .ref$central))
-    }, double(1))
+    .err <- vapply(
+      c(1e-4, 1e-6, 1e-8),
+      function(tol) {
+        max(abs(
+          rxSolve(.mm, .e, method = "indLin", atol = tol, rtol = tol, indLinRichardson = "never")$central - .ref$central
+        ))
+      },
+      double(1)
+    )
     expect_true(all(diff(.err) < 0))
     expect_lt(.err[3], .err[1] / 1000)
 
     # And the stronger statement that replaces it: the default is at least as
     # accurate as that base method at every tolerance, never worse.
-    .errAuto <- vapply(c(1e-4, 1e-6, 1e-8), function(tol) {
-      max(abs(rxSolve(.mm, .e, method = "indLin",
-                      atol = tol, rtol = tol)$central - .ref$central))
-    }, double(1))
+    .errAuto <- vapply(
+      c(1e-4, 1e-6, 1e-8),
+      function(tol) {
+        max(abs(rxSolve(.mm, .e, method = "indLin", atol = tol, rtol = tol)$central - .ref$central))
+      },
+      double(1)
+    )
     expect_true(all(diff(.errAuto) < 0))
     expect_true(all(.errAuto <= .err))
 
     # A repeated solve is deterministic -- the iteration reads no stale state.
-    expect_identical(rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central,
-                     rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central)
+    expect_identical(
+      rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central,
+      rxSolve(.mm, .e, method = "indLin", hmax = 0.01)$central
+    )
   })
 
   test_that("linear and state-free indLin models keep the non-iterating dispatch", {
@@ -526,14 +542,17 @@ d/dt(blood)     = a*intestine - b*blood
       d/dt(depot) <- -0.5 * depot
       d/dt(central) <- 0.5 * depot - 0.02 * central
     }))
-    expect_equal(rxSolve(.lin, .e, method = "indLin")$central,
-                 rxSolve(.odeLin, .e, method = "liblsoda",
-                         atol = 1e-12, rtol = 1e-12)$central,
-                 tolerance = 1e-8)
+    expect_equal(
+      rxSolve(.lin, .e, method = "indLin")$central,
+      rxSolve(.odeLin, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)$central,
+      tolerance = 1e-8
+    )
     # hmax only changes how many (equivalent) matrix exponentials are taken
-    expect_equal(rxSolve(.lin, .e, method = "indLin", hmax = 0.5)$central,
-                 rxSolve(.lin, .e, method = "indLin", hmax = 0.01)$central,
-                 tolerance = 1e-8)
+    expect_equal(
+      rxSolve(.lin, .e, method = "indLin", hmax = 0.5)$central,
+      rxSolve(.lin, .e, method = "indLin", hmax = 0.01)$central,
+      tolerance = 1e-8
+    )
   })
 
   test_that("indLinStepSearch and indLinMaxIter do not move the answer", {
@@ -548,8 +567,7 @@ d/dt(blood)     = a*intestine - b*blood
     .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
 
     .sol <- lapply(c("none", "secant", "exact"), function(m) {
-      rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
-              indLinStepSearch = m)$central
+      rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8, indLinStepSearch = m)$central
     })
     expect_equal(.sol[[1]], .sol[[2]], tolerance = 1e-10)
     expect_equal(.sol[[1]], .sol[[3]], tolerance = 1e-10)
@@ -558,9 +576,11 @@ d/dt(blood)     = a*intestine - b*blood
     # A cap low enough to bite is absorbed by the step controller rather than
     # reported.  It shifts the step schedule slightly, so the answers agree to
     # the solve tolerance rather than exactly.
-    expect_equal(rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 3L)$central,
-                 rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 100L)$central,
-                 tolerance = 1e-6)
+    expect_equal(
+      rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 3L)$central,
+      rxSolve(.mm, .e, method = "indLin", indLinMaxIter = 100L)$central,
+      tolerance = 1e-6
+    )
 
     # the character values map onto the integers the solver reads
     expect_equal(rxControl(indLinStepSearch = "secant")$indLinStepSearch, 1L)
@@ -578,18 +598,20 @@ d/dt(blood)     = a*intestine - b*blood
     # too cancels the state error but leaves the explicit-time error behind,
     # which silently drops the step back to first order.  The forward pass
     # therefore evaluates at the step start in time as well as in state.
-    .code <- paste0("vmax <- 10\nkm <- 5\n",
-                    "d/dt(central) = -vmax*central/(km+central) + 5*exp(-0.5*t)\n")
+    .code <- paste0("vmax <- 10\nkm <- 5\n", "d/dt(central) = -vmax*central/(km+central) + 5*exp(-0.5*t)\n")
     .ode <- rxode2(.code)
     .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
     expect_true(rxModelVars(.mm)$indLin$fullIndLin)
     .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
     .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
     .tol <- 10^-(4:9)
-    .err <- vapply(.tol, function(tt) {
-      max(abs(rxSolve(.mm, .e, method = "indLin",
-                      atol = tt, rtol = tt)$central - .ref$central))
-    }, double(1))
+    .err <- vapply(
+      .tol,
+      function(tt) {
+        max(abs(rxSolve(.mm, .e, method = "indLin", atol = tt, rtol = tt)$central - .ref$central))
+      },
+      double(1)
+    )
     # error falls roughly in proportion to the tolerance (second order); a
     # first-order step would only manage its square root, a slope near 0.5.
     expect_gt(unname(coef(lm(log(.err) ~ log(.tol)))[2]), 0.8)
@@ -603,7 +625,7 @@ d/dt(blood)     = a*intestine - b*blood
     # them exactly, through the phi2 term.  Both are second order and both have
     # to land on the same solution -- what differs is the error constant and,
     # because the ramp map is symmetric, what the extrapolation can do with it.
-    expect_equal(rxControl()$indLinForcing, 1L)              # ramp
+    expect_equal(rxControl()$indLinForcing, 1L) # ramp
     expect_equal(rxControl(indLinForcing = "ramp")$indLinForcing, 1L)
     expect_equal(rxControl(indLinForcing = "constant")$indLinForcing, 0L)
     expect_equal(rxControl(indLinForcing = 0L)$indLinForcing, 0L)
@@ -620,11 +642,16 @@ d/dt(blood)     = a*intestine - b*blood
     # fixed point Picard reaches.
     for (.fo in c("constant", "ramp")) {
       for (.it in c("picard", "newton")) {
-        .r <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
-                                       atol = 1e-8, rtol = 1e-8,
-                                       indLinForcing = .fo, indLinIteration = .it))
-        expect_equal(.r$central, .ref, tolerance = 1e-6,
-                     info = paste(.fo, .it))
+        .r <- suppressMessages(rxSolve(
+          .mm,
+          .e,
+          method = "indLin",
+          atol = 1e-8,
+          rtol = 1e-8,
+          indLinForcing = .fo,
+          indLinIteration = .it
+        ))
+        expect_equal(.r$central, .ref, tolerance = 1e-6, info = paste(.fo, .it))
       }
     }
 
@@ -633,13 +660,26 @@ d/dt(blood)     = a*intestine - b*blood
     # act on there -- bit for bit, not just close.
     for (.it in c("exprb", "exprb32")) {
       expect_identical(
-        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
-                                 indLinIteration = .it,
-                                 indLinForcing = "constant"))$central,
-        suppressMessages(rxSolve(.mm, .e, method = "indLin", atol = 1e-8, rtol = 1e-8,
-                                 indLinIteration = .it,
-                                 indLinForcing = "ramp"))$central,
-        info = .it)
+        suppressMessages(rxSolve(
+          .mm,
+          .e,
+          method = "indLin",
+          atol = 1e-8,
+          rtol = 1e-8,
+          indLinIteration = .it,
+          indLinForcing = "constant"
+        ))$central,
+        suppressMessages(rxSolve(
+          .mm,
+          .e,
+          method = "indLin",
+          atol = 1e-8,
+          rtol = 1e-8,
+          indLinIteration = .it,
+          indLinForcing = "ramp"
+        ))$central,
+        info = .it
+      )
     }
 
     # A forcing with nothing to ramp is untouched, bit for bit: with no state
@@ -650,10 +690,9 @@ d/dt(blood)     = a*intestine - b*blood
                                          sep = "\n")))
     .eSf <- et(amt = 10, cmt = "Gc") |> et(seq(0, 20, by = 0.5))
     expect_identical(
-      suppressMessages(rxSolve(.sf, .eSf, method = "indLin",
-                               indLinForcing = "constant"))$Gc,
-      suppressMessages(rxSolve(.sf, .eSf, method = "indLin",
-                               indLinForcing = "ramp"))$Gc)
+      suppressMessages(rxSolve(.sf, .eSf, method = "indLin", indLinForcing = "constant"))$Gc,
+      suppressMessages(rxSolve(.sf, .eSf, method = "indLin", indLinForcing = "ramp"))$Gc
+    )
 
     # The rate matrix goes with the forcing: the constant path gets its second
     # order in a time-varying `A` by averaging a start-linearized and an
@@ -672,13 +711,17 @@ d/dt(blood)     = a*intestine - b*blood
       km <- 5
       d/dt(central) <- -kel * central - vmax * central / (km + central)
     }))
-    .tvRef <- rxSolve(.tvOde, .e, method = "liblsoda",
-                      atol = 1e-13, rtol = 1e-13)$central
-    .tvErr <- vapply(c("constant", "ramp"), function(fo) {
-      max(abs(suppressMessages(rxSolve(.tv, .e, method = "indLin",
-                                       atol = 1e-8, rtol = 1e-8,
-                                       indLinForcing = fo))$central - .tvRef))
-    }, double(1))
+    .tvRef <- rxSolve(.tvOde, .e, method = "liblsoda", atol = 1e-13, rtol = 1e-13)$central
+    .tvErr <- vapply(
+      c("constant", "ramp"),
+      function(fo) {
+        max(abs(
+          suppressMessages(rxSolve(.tv, .e, method = "indLin", atol = 1e-8, rtol = 1e-8, indLinForcing = fo))$central -
+            .tvRef
+        ))
+      },
+      double(1)
+    )
     expect_lt(.tvErr[["ramp"]], .tvErr[["constant"]])
 
     # h*phi2(Ah) comes from a Horner series that is only trusted below
@@ -686,17 +729,23 @@ d/dt(blood)     = a*intestine - b*blood
     # augmented exponential.  A rate constant large against the output spacing
     # takes that fallback on the first attempt of every interval (here
     # ||A*h|| = 2.5), which nothing else here reaches.
-    .stiffTxt <- paste0("kel <- 50\nvmax <- 20\nkm <- 5\n",
-                        "d/dt(central) = -kel*central - vmax*central/(km+central)\n")
+    .stiffTxt <- paste0(
+      "kel <- 50\nvmax <- 20\nkm <- 5\n",
+      "d/dt(central) = -kel*central - vmax*central/(km+central)\n"
+    )
     .stiffOde <- suppressMessages(rxode2(.stiffTxt))
     .stiff <- suppressMessages(rxode2(rxToIndLin(.stiffTxt)))
     .eStiff <- et(amt = 100, cmt = "central") |> et(seq(0, 2, by = 0.05))
-    .stiffRef <- suppressMessages(rxSolve(.stiffOde, .eStiff, method = "liblsoda",
-                                          atol = 1e-13, rtol = 1e-13))$central
+    .stiffRef <- suppressMessages(rxSolve(.stiffOde, .eStiff, method = "liblsoda", atol = 1e-13, rtol = 1e-13))$central
     for (.it in c("picard", "newton")) {
-      .rs <- suppressMessages(rxSolve(.stiff, .eStiff, method = "indLin",
-                                      atol = 1e-8, rtol = 1e-8,
-                                      indLinIteration = .it))
+      .rs <- suppressMessages(rxSolve(
+        .stiff,
+        .eStiff,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = .it
+      ))
       expect_equal(.rs$central, .stiffRef, tolerance = 1e-6, info = .it)
     }
   })
@@ -707,7 +756,7 @@ d/dt(blood)     = a*intestine - b*blood
     # costs three fixed-point solves per step rather than one, so it is off by
     # default and only wins once the tolerance is tight enough that taking far
     # fewer steps outweighs the per-step cost.
-    expect_equal(rxControl()$indLinRichardson, 2L)          # auto
+    expect_equal(rxControl()$indLinRichardson, 2L) # auto
     expect_equal(rxControl(indLinRichardson = "always")$indLinRichardson, 1L)
     expect_equal(rxControl(indLinRichardson = "never")$indLinRichardson, 0L)
     expect_equal(rxControl(indLinRichardson = TRUE)$indLinRichardson, 1L)
@@ -717,8 +766,7 @@ d/dt(blood)     = a*intestine - b*blood
     .code <- "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n"
     .mm <- suppressMessages(rxode2(rxToIndLin(.code)))
     .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
-    .ref <- rxSolve(rxode2(.code), .e, method = "liblsoda",
-                    atol = 1e-12, rtol = 1e-12)
+    .ref <- rxSolve(rxode2(.code), .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)
     .relErr <- function(...) {
       .s <- rxSolve(.mm, .e, method = "indLin", ...)
       max(abs(.s$central - .ref$central)) / max(abs(.ref$central))
@@ -731,24 +779,28 @@ d/dt(blood)     = a*intestine - b*blood
     # third order: at a fixed tolerance it needs far fewer steps than second
     # order does, because its error falls faster than the tolerance it is held
     # to.  An order-2 scheme could not show this gap.
-    expect_lt(.steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "always"),
-              .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
+    expect_lt(
+      .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "always"),
+      .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10
+    )
 
     # "auto" pays the extra cost only when it buys something -- but measurement
     # says extrapolation buys something at a loose tolerance too, so this is no
     # longer the equality it once was.  The thresholds were recalibrated against
     # 200-subject work-precision curves and auto now costs FEWER steps than the
     # second-order step at 1e-3, not the same number.
-    expect_lte(.steps(atol = 1e-3, rtol = 1e-3),
-               .steps(atol = 1e-3, rtol = 1e-3, indLinRichardson = "never"))
-    expect_lt(.steps(atol = 1e-8, rtol = 1e-8),
-              .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
+    expect_lte(.steps(atol = 1e-3, rtol = 1e-3), .steps(atol = 1e-3, rtol = 1e-3, indLinRichardson = "never"))
+    expect_lt(.steps(atol = 1e-8, rtol = 1e-8), .steps(atol = 1e-8, rtol = 1e-8, indLinRichardson = "never") / 10)
 
     # and it really is a higher order: over two decades of tolerance the error
     # falls by more than the second-order scheme manages over the same range
-    .rich <- vapply(c(1e-4, 1e-6), function(tol) {
-      .relErr(atol = tol, rtol = tol, indLinRichardson = "always")
-    }, double(1))
+    .rich <- vapply(
+      c(1e-4, 1e-6),
+      function(tol) {
+        .relErr(atol = tol, rtol = tol, indLinRichardson = "always")
+      },
+      double(1)
+    )
     expect_true(.rich[2] < .rich[1])
   })
 
@@ -765,24 +817,34 @@ d/dt(blood)     = a*intestine - b*blood
     .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
     .ref <- rxSolve(.ode, .e, method = "liblsoda", atol = 1e-13, rtol = 1e-13)$central
     .run <- function(rich) {
-      .r <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
-                                     atol = 1e-8, rtol = 1e-8,
-                                     indLinIteration = "exprb32",
-                                     indLinRichardson = rich))
+      .r <- suppressMessages(rxSolve(
+        .mm,
+        .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = "exprb32",
+        indLinRichardson = rich
+      ))
       list(err = max(abs(.r$central - .ref)), steps = sum(.r$counts$slvr))
     }
     .no <- .run("never")
     .r4 <- .run("always4")
-    expect_lt(.r4$err, .no$err)              # more accurate ...
-    expect_lt(.r4$steps, .no$steps/3)        # ... for far fewer steps
+    expect_lt(.r4$err, .no$err) # more accurate ...
+    expect_lt(.r4$steps, .no$steps / 3) # ... for far fewer steps
 
     # The other schemes keep the factors they had: only exprb32 starts at a
     # different order, so a second-order base must be untouched by the fix.
     for (.it in c("picard", "newton", "exprb")) {
-      .a <- suppressMessages(rxSolve(.mm, .e, method = "indLin",
-                                     atol = 1e-8, rtol = 1e-8,
-                                     indLinIteration = .it,
-                                     indLinRichardson = "always4"))$central
+      .a <- suppressMessages(rxSolve(
+        .mm,
+        .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = .it,
+        indLinRichardson = "always4"
+      ))$central
       expect_equal(.a, .ref, tolerance = 1e-5, info = .it)
     }
   })
@@ -792,17 +854,17 @@ d/dt(blood)     = a*intestine - b*blood
     # 3, 7 and 15 fixed-point solves per step against the base step's 1.  A
     # level has to buy its cost back in steps, so the claim is about work at
     # matched DELIVERED accuracy, not about error at a matched tolerance.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .o <- suppressMessages(rxode2(.txt))
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
-    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
-                                    atol = 1e-13, rtol = 1e-13))$central
+    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda", atol = 1e-13, rtol = 1e-13))$central
     .run <- function(rich, tol) {
-      .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
-                                     indLinRichardson = rich))
+      .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol, indLinRichardson = rich))
       list(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
     }
     .a3 <- .run("always", 1e-8)
@@ -814,11 +876,12 @@ d/dt(blood)     = a*intestine - b*blood
 
     # every level is reachable by name and by integer code
     for (.lv in list(c("always", 1L), c("always4", 3L), c("always5", 4L))) {
-      expect_equal(suppressMessages(rxSolve(.m, .e, method = "indLin",
-                                            indLinRichardson = .lv[1]))$central,
-                   suppressMessages(rxSolve(.m, .e, method = "indLin",
-                                            indLinRichardson = as.integer(.lv[2])))$central,
-                   tolerance = 0, info = .lv[1])
+      expect_equal(
+        suppressMessages(rxSolve(.m, .e, method = "indLin", indLinRichardson = .lv[1]))$central,
+        suppressMessages(rxSolve(.m, .e, method = "indLin", indLinRichardson = as.integer(.lv[2])))$central,
+        tolerance = 0,
+        info = .lv[1]
+      )
     }
   })
 
@@ -829,26 +892,33 @@ d/dt(blood)     = a*intestine - b*blood
     # gets one.  Read as the observed order of the SAME level-1 column under
     # each -- error against work, which is what an order claim means, and which
     # no choice of error constant could fake.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .o <- suppressMessages(rxode2(.txt))
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
-    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
-                                    atol = 1e-13, rtol = 1e-13))$central
+    .rf <- suppressMessages(rxSolve(.o, .e, method = "lsoda", atol = 1e-13, rtol = 1e-13))$central
     .obs <- function(fo) {
       .v <- lapply(c(1e-8, 1e-10), function(tol) {
-        .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
-                                       indLinRichardson = "always",
-                                       indLinForcing = fo))
+        .r <- suppressMessages(rxSolve(
+          .m,
+          .e,
+          method = "indLin",
+          atol = tol,
+          rtol = tol,
+          indLinRichardson = "always",
+          indLinForcing = fo
+        ))
         c(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
       })
-      log(.v[[1]][["err"]]/.v[[2]][["err"]]) /
-        log(.v[[2]][["steps"]]/.v[[1]][["steps"]])
+      log(.v[[1]][["err"]] / .v[[2]][["err"]]) /
+        log(.v[[2]][["steps"]] / .v[[1]][["steps"]])
     }
-    expect_gt(.obs("ramp"), 3.5)          # fourth order; measured 3.9
-    expect_lt(.obs("constant"), 3.4)      # third order;  measured 2.9
+    expect_gt(.obs("ramp"), 3.5) # fourth order; measured 3.9
+    expect_lt(.obs("constant"), 3.4) # third order;  measured 2.9
 
     # The symmetry is a property of the step that ran, not of the setting that
     # asked for it.  Picard's first pass is the constant-column left-endpoint
@@ -858,9 +928,18 @@ d/dt(blood)     = a*intestine - b*blood
     # factors.
     .m1 <- function(fo, rich) {
       suppressWarnings(suppressMessages(
-        rxSolve(.m, .e, method = "indLin", atol = 1e-3, rtol = 1e-3,
-                indLinMaxIter = 1L, indLinIteration = "picard",
-                indLinRichardson = rich, indLinForcing = fo)))$central
+        rxSolve(
+          .m,
+          .e,
+          method = "indLin",
+          atol = 1e-3,
+          rtol = 1e-3,
+          indLinMaxIter = 1L,
+          indLinIteration = "picard",
+          indLinRichardson = rich,
+          indLinForcing = fo
+        )
+      ))$central
     }
     for (.rich in c("never", "always", "always4")) {
       expect_identical(.m1("constant", .rich), .m1("ramp", .rich), info = .rich)
@@ -869,25 +948,42 @@ d/dt(blood)     = a*intestine - b*blood
     # Which cashes out as the thing a user sees: at a tight tolerance the same
     # column is more accurate for no more work.
     .run <- function(fo) {
-      .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", atol = 1e-9, rtol = 1e-9,
-                                     indLinRichardson = "always", indLinForcing = fo))
+      .r <- suppressMessages(rxSolve(
+        .m,
+        .e,
+        method = "indLin",
+        atol = 1e-9,
+        rtol = 1e-9,
+        indLinRichardson = "always",
+        indLinForcing = fo
+      ))
       list(err = max(abs(.r$central - .rf)), steps = sum(.r$counts$slvr))
     }
     .rr <- .run("ramp")
     .cc <- .run("constant")
-    expect_lt(.rr$err, .cc$err/10)
+    expect_lt(.rr$err, .cc$err / 10)
     expect_lte(.rr$steps, .cc$steps)
   })
 
   test_that("auto reaches the higher columns when they pay", {
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .e <- et(amt = 3) |> et(c(0.1, 0.25, 0.5, 0.75, 1, 2, 4, 6, 8, 12, 16, 24, 30))
     .steps <- function(rich, tol) {
-      sum(suppressMessages(rxSolve(.m, .e, method = "indLin", atol = tol, rtol = tol,
-                                   indLinRichardson = rich))$counts$slvr)
+      sum(
+        suppressMessages(rxSolve(
+          .m,
+          .e,
+          method = "indLin",
+          atol = tol,
+          rtol = tol,
+          indLinRichardson = rich
+        ))$counts$slvr
+      )
     }
     # At a tight tolerance auto must be far below the third-order step count,
     # which is only possible if it has raised the level.
@@ -907,39 +1003,46 @@ d/dt(blood)     = a*intestine - b*blood
     .bad <- function(code) {
       suppressMessages(rxode2(paste(code, collapse = "\n")))
     }
-    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
-                        "k_central_output = vmax/(km+central)")),
-                 "syntax error")
+    expect_error(
+      .bad(c("matExp()", "cmt(central)", "vmax=10", "km=5", "k_central_output = vmax/(km+central)")),
+      "syntax error"
+    )
     # reached through an intermediate rather than written directly
-    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
-                        "cp = central/20",
-                        "k_central_output = vmax/(km+cp)")),
-                 "syntax error")
+    expect_error(
+      .bad(c("matExp()", "cmt(central)", "vmax=10", "km=5", "cp = central/20", "k_central_output = vmax/(km+cp)")),
+      "syntax error"
+    )
     # the dot spelling of a micro constant is caught the same way
-    expect_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
-                        "k.central.output = vmax/(km+central)")),
-                 "syntax error")
+    expect_error(
+      .bad(c("matExp()", "cmt(central)", "vmax=10", "km=5", "k.central.output = vmax/(km+central)")),
+      "syntax error"
+    )
     # van der Pol written by hand the way the old converter emitted it
-    expect_error(.bad(c("matExp()", "cmt(y)", "cmt(dy)", "k_y_dy = -1",
-                        "k_dy_output = -(1 + mu - y^2*mu)")),
-                 "syntax error")
+    expect_error(
+      .bad(c("matExp()", "cmt(y)", "cmt(dy)", "k_y_dy = -1", "k_dy_output = -(1 + mu - y^2*mu)")),
+      "syntax error"
+    )
 
     # ... and everything legal still parses: a state-free rate matrix, a
     # state-free forcing, a state-dependent forcing, and an ordinary lhs that
     # reads a state without being a rate constant.
-    expect_no_error(.bad(c("matExp()", "cmt(depot)", "cmt(central)",
-                           "k_depot_central = 1", "k_central_output = 0.1")))
-    expect_no_error(.bad(c("matExp()", "cmt(Gc)", "k_Gc_output = 0.1",
-                           "Gprod = 3", "indLin(Gc) <- Gprod")))
-    expect_no_error(.bad(c("matExp()", "cmt(central)", "vmax=10", "km=5",
-                           "indLin(central) <- -vmax*central/(km+central)")))
-    expect_no_error(.bad(c("matExp()", "cmt(central)",
-                           "k_central_output = 0.1", "cp = central/20")))
+    expect_no_error(.bad(c("matExp()", "cmt(depot)", "cmt(central)", "k_depot_central = 1", "k_central_output = 0.1")))
+    expect_no_error(.bad(c("matExp()", "cmt(Gc)", "k_Gc_output = 0.1", "Gprod = 3", "indLin(Gc) <- Gprod")))
+    expect_no_error(.bad(c(
+      "matExp()",
+      "cmt(central)",
+      "vmax=10",
+      "km=5",
+      "indLin(central) <- -vmax*central/(km+central)"
+    )))
+    expect_no_error(.bad(c("matExp()", "cmt(central)", "k_central_output = 0.1", "cp = central/20")))
 
     # the converter never emits an illegal model any more
-    for (.code in c("vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n",
-                    "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n",
-                    "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n")) {
+    for (.code in c(
+      "vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n",
+      "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n",
+      "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    )) {
       expect_no_error(suppressMessages(rxode2(rxToIndLin(.code))))
     }
 
@@ -952,8 +1055,7 @@ d/dt(blood)     = a*intestine - b*blood
       .mm, calcSens = c("ka", "vmax"), calcSens2 = "vmax"))))
     # third order carries the forcing too, and its rate constants stay state
     # free (rxode2#1188)
-    expect_no_warning(.s3 <- rxSensMatExp(.mm, calcSens = c("ka", "vmax"),
-                                          calcSens2 = "vmax", calcSens3 = "vmax"))
+    expect_no_warning(.s3 <- rxSensMatExp(.mm, calcSens = c("ka", "vmax"), calcSens2 = "vmax", calcSens3 = "vmax"))
     expect_no_error(suppressMessages(rxode2(.s3)))
 
     # and the exemption really is gone: a hand-written sensitivity model with a
@@ -964,7 +1066,8 @@ d/dt(blood)     = a*intestine - b*blood
         "k_central_output = 0.1",
         "k_rx__sens_central_BY_ka___output = 1/(1 + rx__sens_central_BY_ka__)",
         sep = "\n"))),
-      "syntax error")
+      "syntax error"
+    )
   })
 
   test_that("a non-converging inductive linearization is reported", {
@@ -977,8 +1080,7 @@ d/dt(blood)     = a*intestine - b*blood
                                            "indLin(central) <- exp(central)",
                                            sep = "\n")))
     .e <- et(amt = 100, cmt = "central") |> et(seq(0, 20, by = 0.5))
-    expect_error(rxSolve(.blow, .e, method = "indLin"),
-                 "inductive linearization did not converge")
+    expect_error(rxSolve(.blow, .e, method = "indLin"), "inductive linearization did not converge")
 
     # A stiff but well-posed forcing is relaxed into convergence rather than
     # reported -- the report means "no fixed point here", not "nonlinear".
@@ -988,10 +1090,11 @@ d/dt(blood)     = a*intestine - b*blood
                                             "indLin(central) <- -1000*central",
                                             sep = "\n")))
     .odeStiff <- suppressMessages(rxode2("d/dt(central) = -0.1*central - 1000*central"))
-    expect_equal(rxSolve(.stiff, .e, method = "indLin")$central,
-                 rxSolve(.odeStiff, .e, method = "liblsoda",
-                         atol = 1e-12, rtol = 1e-12)$central,
-                 tolerance = 1e-2)
+    expect_equal(
+      rxSolve(.stiff, .e, method = "indLin")$central,
+      rxSolve(.odeStiff, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12)$central,
+      tolerance = 1e-2
+    )
   })
 
   test_that("method='indLin' solves a function/rxUi model", {
@@ -1023,14 +1126,14 @@ d/dt(blood)     = a*intestine - b*blood
     # The reference must be liblsoda actually integrating: this model is one
     # useLinCmt=TRUE converts, so without the opt-out the "liblsoda" arm is the
     # analytic linCmt() solution and no ODE solver runs at all.
-    expect_equal(rxSolve(.u, .e, method = "indLin")$cp,
-                 rxSolve(.u, .e, method = "liblsoda", useLinCmt = FALSE,
-                         atol = 1e-12, rtol = 1e-12)$cp,
-                 tolerance = 1e-8)
+    expect_equal(
+      rxSolve(.u, .e, method = "indLin")$cp,
+      rxSolve(.u, .e, method = "liblsoda", useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12)$cp,
+      tolerance = 1e-8
+    )
 
     # the same model given as an rxUi object rather than a function
-    expect_equal(rxSolve(rxode2(.u), .e, method = "indLin")$cp,
-                 rxSolve(.u, .e, method = "indLin")$cp)
+    expect_equal(rxSolve(rxode2(.u), .e, method = "indLin")$cp, rxSolve(.u, .e, method = "indLin")$cp)
 
     # a nonlinear model has no linCmt() form to be diverted into, but must
     # still reach the iterating path through the UI
@@ -1051,10 +1154,11 @@ d/dt(blood)     = a*intestine - b*blood
       })
     }
     .ug <- suppressMessages(rxode2(.g))
-    expect_equal(rxSolve(.ug, .e, method = "indLin", atol = 1e-10, rtol = 1e-10)$cp,
-                 rxSolve(.ug, .e, method = "liblsoda", useLinCmt = FALSE,
-                         atol = 1e-12, rtol = 1e-12)$cp,
-                 tolerance = 1e-5)
+    expect_equal(
+      rxSolve(.ug, .e, method = "indLin", atol = 1e-10, rtol = 1e-10)$cp,
+      rxSolve(.ug, .e, method = "liblsoda", useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12)$cp,
+      tolerance = 1e-5
+    )
 
     # The gate itself: method="indLin" must be recognized in every form it can
     # arrive in, or the linCmt() rewrite runs and there is no d/dt() left to
@@ -1087,8 +1191,7 @@ d/dt(blood)     = a*intestine - b*blood
     .uh <- suppressMessages(rxode2(.h))
     .e <- et(amt = 10) |> et(seq(0, 24, length.out = 5))
     expect_error(rxSolve(.uh, .e, method = "indLin"), NA)
-    expect_equal(rxSolve(.uh, .e, method = "indLin")$cp,
-                 rxSolve(.uh, .e)$cp)
+    expect_equal(rxSolve(.uh, .e, method = "indLin")$cp, rxSolve(.uh, .e)$cp)
   })
 
   test_that("a steady-state infusion turns off on the main timeline", {
@@ -1098,9 +1201,11 @@ d/dt(blood)     = a*intestine - b*blood
     # ran with the infusion still on, growing without bound -- ~16 absolute
     # against liblsoda, and ~8 on a purely linear model, so it was the driver
     # rather than the inductive iteration.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .me <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .ode <- suppressMessages(rxode2(.txt))
     .linTxt <- "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
@@ -1109,27 +1214,47 @@ d/dt(blood)     = a*intestine - b*blood
     .o <- seq(0, 20, by = 2.5)
     .e <- et(amt = 1, rate = 1, ii = 7, ss = 1, cmt = "depot") |> et(.o)
     expect_equal(
-      suppressMessages(rxSolve(.me, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
-                               events = .e, method = "indLin",
-                               atol = 1e-8, rtol = 1e-8))$central,
-      suppressMessages(rxSolve(.ode, events = .e, method = "liblsoda",
-                               atol = 1e-12, rtol = 1e-12))$central,
-      tolerance = 1e-6)
+      suppressMessages(rxSolve(
+        .me,
+        params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+        events = .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8
+      ))$central,
+      suppressMessages(rxSolve(.ode, events = .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))$central,
+      tolerance = 1e-6
+    )
     expect_equal(
-      suppressMessages(rxSolve(.lme, params = c(ka = 1, cl = 1, v = 10),
-                               events = .e, method = "indLin",
-                               atol = 1e-8, rtol = 1e-8))$central,
-      suppressMessages(rxSolve(.lode, params = c(ka = 1, cl = 1, v = 10),
-                               events = .e, method = "liblsoda",
-                               atol = 1e-12, rtol = 1e-12))$central,
-      tolerance = 1e-5)
+      suppressMessages(rxSolve(
+        .lme,
+        params = c(ka = 1, cl = 1, v = 10),
+        events = .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8
+      ))$central,
+      suppressMessages(rxSolve(
+        .lode,
+        params = c(ka = 1, cl = 1, v = 10),
+        events = .e,
+        method = "liblsoda",
+        atol = 1e-12,
+        rtol = 1e-12
+      ))$central,
+      tolerance = 1e-5
+    )
     # ss=1 with no addl is one dose at steady state and then washout, so the
     # concentration must FALL after the last interval.  Under the bug it grew
     # without bound instead, which is what this catches directly.
-    .r <- suppressMessages(rxSolve(.me, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
-                                   events = et(amt = 1, rate = 1, ii = 7, ss = 1,
-                                               cmt = "depot") |> et(c(0, 7, 14, 21)),
-                                   method = "indLin", atol = 1e-8, rtol = 1e-8))
+    .r <- suppressMessages(rxSolve(
+      .me,
+      params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+      events = et(amt = 1, rate = 1, ii = 7, ss = 1, cmt = "depot") |> et(c(0, 7, 14, 21)),
+      method = "indLin",
+      atol = 1e-8,
+      rtol = 1e-8
+    ))
     expect_lt(.r$central[3], .r$central[1])
     expect_lt(.r$central[4], .r$central[3])
   })
@@ -1138,9 +1263,11 @@ d/dt(blood)     = a*intestine - b*blood
     # calc_jac is declared and compiled for every matExp() model but was empty,
     # because nothing emitted df()/dy() -- and an empty one is a SILENT zero
     # Jacobian, not an error.  Assert positively that it is populated.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     expect_equal(rxModelVars(.m)$trans[["jac"]], "fulluser")
     expect_gt(length(rxModelVars(.m)$dfdy), 0)
@@ -1162,36 +1289,49 @@ d/dt(blood)     = a*intestine - b*blood
       .J <- matrix(0, .n, .n, dimnames = list(.st, .st))
       for (.l in .dl) {
         .g <- regmatches(.l, regexec("^df\\((.*)\\)/dy\\((.*)\\) = (.*)$", .l))[[1]]
-        if (length(.g) != 4L) next
-        if (!(.g[2] %in% .st) || !(.g[3] %in% .st)) next
-        .e <- c(as.list(.pars), as.list(.y0),
-                list(Rx_pow_di = function(a, b) a^b, Rx_pow = function(a, b) a^b))
+        if (length(.g) != 4L) {
+          next
+        }
+        if (!(.g[2] %in% .st) || !(.g[3] %in% .st)) {
+          next
+        }
+        .e <- c(as.list(.pars), as.list(.y0), list(Rx_pow_di = function(a, b) a^b, Rx_pow = function(a, b) a^b))
         .J[.g[2], .g[3]] <- eval(parse(text = .g[4]), envir = .e)
       }
       .ode <- suppressMessages(rxode2(.txt))
       .f <- function(.yy) {
         .h <- 1e-6
-        .s <- suppressMessages(rxSolve(.ode, params = .pars, events = et(c(0, .h)),
-                                       inits = .yy, returnType = "data.frame"))
+        .s <- suppressMessages(rxSolve(
+          .ode,
+          params = .pars,
+          events = et(c(0, .h)),
+          inits = .yy,
+          returnType = "data.frame"
+        ))
         (as.numeric(.s[2, .st]) - as.numeric(.s[1, .st])) / .h
       }
       .Jn <- matrix(0, .n, .n, dimnames = list(.st, .st))
       for (.j in seq_len(.n)) {
         .d <- 1e-5 * max(abs(.y0[.j]), 1)
-        .yp <- .y0; .yp[.j] <- .yp[.j] + .d
-        .ym <- .y0; .ym[.j] <- .ym[.j] - .d
+        .yp <- .y0
+        .yp[.j] <- .yp[.j] + .d
+        .ym <- .y0
+        .ym[.j] <- .ym[.j] - .d
         .Jn[, .j] <- (.f(.yp) - .f(.ym)) / (2 * .d)
       }
       expect_lt(max(abs(.J - .Jn)) / max(1, max(abs(.Jn))), .tol)
     }
-    .chk(paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                "d/dt(depot) = -ka*depot\n",
-                "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"),
-         c(ka = 1, km = 0.5, vmax = 0.2, v = 1), c(depot = 3, central = 1))
-    .chk("vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n",
-         c(vmax = 10, km = 5), c(central = 7))
-    .chk("d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n",
-         c(mu = 10), c(y = 2, dy = 0.5))
+    .chk(
+      paste0(
+        "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+        "d/dt(depot) = -ka*depot\n",
+        "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+      ),
+      c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+      c(depot = 3, central = 1)
+    )
+    .chk("vmax <- 10\nkm <- 5\nd/dt(central) = -vmax*central/(km+central)\n", c(vmax = 10, km = 5), c(central = 7))
+    .chk("d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\n", c(mu = 10), c(y = 2, dy = 0.5))
   })
 
   test_that("a compartment named after a symengine constant still differentiates", {
@@ -1210,7 +1350,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   test_that("indLinIteration round-trips through rxControl", {
-    expect_equal(rxControl()$indLinIteration, 3L)          # auto
+    expect_equal(rxControl()$indLinIteration, 3L) # auto
     expect_equal(rxControl(indLinIteration = "picard")$indLinIteration, 0L)
     expect_equal(rxControl(indLinIteration = "newton")$indLinIteration, 1L)
     expect_equal(rxControl(indLinIteration = "exprb")$indLinIteration, 2L)
@@ -1222,37 +1362,56 @@ d/dt(blood)     = a*intestine - b*blood
   test_that("every indLinIteration scheme solves the same problem", {
     # Newton and exprb change HOW the substep is solved, not what it solves, so
     # all three have to agree with an ODE integration of the same model.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .o <- suppressMessages(rxode2(.txt))
     .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
-    .ref <- suppressMessages(rxSolve(.o, .e, method = "lsoda",
-                                     atol = 1e-12, rtol = 1e-12))$central
+    .ref <- suppressMessages(rxSolve(.o, .e, method = "lsoda", atol = 1e-12, rtol = 1e-12))$central
     for (.it in c("picard", "newton", "exprb", "auto")) {
-      .r <- suppressMessages(rxSolve(.m, params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
-                                     events = .e, method = "indLin",
-                                     atol = 1e-8, rtol = 1e-8, indLinIteration = .it))
+      .r <- suppressMessages(rxSolve(
+        .m,
+        params = c(ka = 1, km = 0.5, vmax = 0.2, v = 1),
+        events = .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = .it
+      ))
       expect_equal(.r$central, .ref, tolerance = 1e-5, info = .it)
     }
   })
 
   test_that("auto gates on stiffness and stays switched within a subject", {
-    .mmTxt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                     "d/dt(depot) = -ka*depot\n",
-                     "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .mmTxt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .mm <- suppressMessages(rxode2(rxToIndLin(.mmTxt)))
     .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
     .steps <- function(mod, pars, ev, it, ...) {
-      sum(suppressMessages(rxSolve(mod, params = pars, events = ev, method = "indLin",
-                                   indLinIteration = it, ...))$counts$slvr)
+      sum(
+        suppressMessages(rxSolve(
+          mod,
+          params = pars,
+          events = ev,
+          method = "indLin",
+          indLinIteration = it,
+          ...
+        ))$counts$slvr
+      )
     }
     # Michaelis-Menten never cuts a step for non-convergence, so auto must stay
     # on Picard -- identically, not just close.
     .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
-    expect_equal(.steps(.mm, .p, .e, "auto",   atol = 1e-8, rtol = 1e-8),
-                 .steps(.mm, .p, .e, "picard", atol = 1e-8, rtol = 1e-8))
+    expect_equal(
+      .steps(.mm, .p, .e, "auto", atol = 1e-8, rtol = 1e-8),
+      .steps(.mm, .p, .e, "picard", atol = 1e-8, rtol = 1e-8)
+    )
 
     # A stiff van der Pol over a full period is the opposite: the iteration is
     # what limits the step, so auto must switch and then stay switched.  It
@@ -1260,13 +1419,13 @@ d/dt(blood)     = a*intestine - b*blood
     # it would pay them at every one and land far closer to Picard.
     .van <- suppressMessages(rxode2(rxToIndLin(
       "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
-    .tmax <- (3 - 2*log(2))*100
+    .tmax <- (3 - 2 * log(2)) * 100
     .ev <- et(seq(0, .tmax, length.out = 200))
     .sPic <- .steps(.van, c(mu = 100), .ev, "picard", atol = 1e-6, rtol = 1e-6)
-    .sExp <- .steps(.van, c(mu = 100), .ev, "exprb",  atol = 1e-6, rtol = 1e-6)
-    .sAut <- .steps(.van, c(mu = 100), .ev, "auto",   atol = 1e-6, rtol = 1e-6)
-    expect_lt(.sAut, .sPic/5)      # switched
-    expect_lt(.sAut, 2*.sExp)      # and stayed switched
+    .sExp <- .steps(.van, c(mu = 100), .ev, "exprb", atol = 1e-6, rtol = 1e-6)
+    .sAut <- .steps(.van, c(mu = 100), .ev, "auto", atol = 1e-6, rtol = 1e-6)
+    expect_lt(.sAut, .sPic / 5) # switched
+    expect_lt(.sAut, 2 * .sExp) # and stayed switched
   })
 
   # --- matrix-exponential cache -----------------------------------------------
@@ -1300,23 +1459,39 @@ d/dt(blood)     = a*intestine - b*blood
     .eB$id <- 1L
     .eI$id <- 2L
     .both <- .indLinCacheBoth(function() {
-      suppressMessages(rxSolve(.mmMe, params = .mmPar, events = rbind(.eB, .eI),
-                               method = "indLin", atol = 1e-10, rtol = 1e-10,
-                               cores = 1))
+      suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = rbind(.eB, .eI),
+        method = "indLin",
+        atol = 1e-10,
+        rtol = 1e-10,
+        cores = 1
+      ))
     })
-    .s1 <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .eB,
-                                    method = "indLin", atol = 1e-10, rtol = 1e-10))
-    .s2 <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .eI,
-                                    method = "indLin", atol = 1e-10, rtol = 1e-10))
+    .s1 <- suppressMessages(rxSolve(
+      .mmMe,
+      params = .mmPar,
+      events = .eB,
+      method = "indLin",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    .s2 <- suppressMessages(rxSolve(
+      .mmMe,
+      params = .mmPar,
+      events = .eI,
+      method = "indLin",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
     expect_equal(.both$central[.both$id == 1], .s1$central, tolerance = 0)
     expect_equal(.both$central[.both$id == 2], .s2$central, tolerance = 0)
     # the two subjects must actually differ, or the test proves nothing
     expect_gt(max(abs(.s1$central - .s2$central)), 0.1)
     # and both against a real ODE integration
-    .r1 <- suppressMessages(rxSolve(.mmOde, events = .eB, method = "liblsoda",
-                                    atol = 1e-12, rtol = 1e-12))
-    .r2 <- suppressMessages(rxSolve(.mmOde, events = .eI, method = "liblsoda",
-                                    atol = 1e-12, rtol = 1e-12))
+    .r1 <- suppressMessages(rxSolve(.mmOde, events = .eB, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
+    .r2 <- suppressMessages(rxSolve(.mmOde, events = .eI, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
     expect_equal(.s1$central, .r1$central, tolerance = 1e-6)
     expect_equal(.s2$central, .r2$central, tolerance = 1e-6)
   })
@@ -1338,17 +1513,21 @@ d/dt(blood)     = a*intestine - b*blood
       # Cache identity is the point of this test, and it must hold for every
       # interpolation mode.
       .a <- .indLinCacheBoth(function() {
-        suppressMessages(rxSolve(.cov, events = .ev, method = "indLin",
-                                 hmax = 0.1, covsInterpolation = .ci))
+        suppressMessages(rxSolve(.cov, events = .ev, method = "indLin", hmax = 0.1, covsInterpolation = .ci))
       })
       if (.ci %in% c("locf", "nocb")) {
         # Piecewise-constant covariate: the frozen rate matrix is exact over the
         # substep, so this must match an ODE integration outright.  The
         # interpolating modes are only first order here -- see the test below --
         # so they are checked for cache identity but not for accuracy.
-        .b <- suppressMessages(rxSolve(.covOde, events = .ev, method = "liblsoda",
-                                       atol = 1e-12, rtol = 1e-12,
-                                       covsInterpolation = .ci))
+        .b <- suppressMessages(rxSolve(
+          .covOde,
+          events = .ev,
+          method = "liblsoda",
+          atol = 1e-12,
+          rtol = 1e-12,
+          covsInterpolation = .ci
+        ))
         expect_equal(.a$central, .b$central, tolerance = 1e-5)
       }
     }
@@ -1367,13 +1546,30 @@ d/dt(blood)     = a*intestine - b*blood
     .ev$kel <- 0.05 + 0.04 * sin(.ev$time / 3)
     .hs <- c(0.4, 0.2, 0.1, 0.05)
     .ord <- function(.ci) {
-      .b <- suppressMessages(rxSolve(.covOde, events = .ev, method = "liblsoda",
-                                     atol = 1e-12, rtol = 1e-12, covsInterpolation = .ci))
-      .e <- vapply(.hs, function(.h) {
-        max(abs(suppressMessages(rxSolve(.cov, events = .ev, method = "indLin",
-                                         hmax = .h, covsInterpolation = .ci))$central -
-                .b$central))
-      }, 1)
+      .b <- suppressMessages(rxSolve(
+        .covOde,
+        events = .ev,
+        method = "liblsoda",
+        atol = 1e-12,
+        rtol = 1e-12,
+        covsInterpolation = .ci
+      ))
+      .e <- vapply(
+        .hs,
+        function(.h) {
+          max(abs(
+            suppressMessages(rxSolve(
+              .cov,
+              events = .ev,
+              method = "indLin",
+              hmax = .h,
+              covsInterpolation = .ci
+            ))$central -
+              .b$central
+          ))
+        },
+        1
+      )
       list(err = .e, order = unname(coef(stats::lm(log(.e) ~ log(.hs)))[2]))
     }
     .lin <- .ord("linear")
@@ -1393,16 +1589,25 @@ d/dt(blood)     = a*intestine - b*blood
     # per output interval that happens inside an interval, and any cache key
     # that ignores n would return an exponential of the wrong matrix.
     .a <- .indLinCacheBoth(function() {
-      suppressMessages(rxSolve(.mmMe, params = .mmPar,
-                               events = et(amt = 3, rate = 2, cmt = "depot") |>
-                                 et(seq(0, 12, by = 1)),
-                               method = "indLin", hmax = 0.3,
-                               atol = 1e-10, rtol = 1e-10))
+      suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = et(amt = 3, rate = 2, cmt = "depot") |>
+          et(seq(0, 12, by = 1)),
+        method = "indLin",
+        hmax = 0.3,
+        atol = 1e-10,
+        rtol = 1e-10
+      ))
     })
-    .b <- suppressMessages(rxSolve(.mmOde,
-                                   events = et(amt = 3, rate = 2, cmt = "depot") |>
-                                     et(seq(0, 12, by = 1)),
-                                   method = "liblsoda", atol = 1e-12, rtol = 1e-12))
+    .b <- suppressMessages(rxSolve(
+      .mmOde,
+      events = et(amt = 3, rate = 2, cmt = "depot") |>
+        et(seq(0, 12, by = 1)),
+      method = "liblsoda",
+      atol = 1e-12,
+      rtol = 1e-12
+    ))
     expect_equal(.a$central, .b$central, tolerance = 1e-6)
   })
 
@@ -1410,19 +1615,19 @@ d/dt(blood)     = a*intestine - b*blood
     # amt must be inside what Vmax can clear over ii (0.2 mg/h * 7 h = 1.4 mg),
     # or the model accumulates without bound and has no steady state to find --
     # liblsoda errors on that too.
-    for (.ss in list(list(amt = 1, ii = 7, ss = 1),
-                     list(amt = 1, ii = 7, ss = 1, rate = 1),
-                     list(amt = 1, ii = 7, ss = 2, rate = 1))) {
+    for (.ss in list(
+      list(amt = 1, ii = 7, ss = 1),
+      list(amt = 1, ii = 7, ss = 1, rate = 1),
+      list(amt = 1, ii = 7, ss = 2, rate = 1)
+    )) {
       # 1e-8, not 1e-10: the steady-state loop re-solves the tau interval and
       # does not reach a fixed point at 1e-10 on this model, with or without the
       # cache.  A separate limitation, noted rather than worked around here.
       .e <- do.call(et, c(.ss, list(cmt = "depot"))) |> et(seq(0, 20, by = 2.5))
       .a <- .indLinCacheBoth(function() {
-        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                 method = "indLin", atol = 1e-8, rtol = 1e-8))
+        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e, method = "indLin", atol = 1e-8, rtol = 1e-8))
       })
-      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
-                                     atol = 1e-12, rtol = 1e-12))
+      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
       expect_equal(.a$central, .b$central, tolerance = 1e-5)
     }
   })
@@ -1438,16 +1643,19 @@ d/dt(blood)     = a*intestine - b*blood
       calcSens = c("ka", "Vm"))))
     .e <- et(amt = 100) |> et(seq(0, 10, by = 1))
     .a <- .indLinCacheBoth(function() {
-      suppressMessages(rxSolve(.sens, .e, method = "indLin",
-                               params = c(ka = 0.5, Vm = 10, Km = 5)))
+      suppressMessages(rxSolve(.sens, .e, method = "indLin", params = c(ka = 0.5, Vm = 10, Km = 5)))
     })
     expect_gt(sum(.a$counts$dadt), 0)
     .sensReuse <- sum(.a$counts$jac) / (sum(.a$counts$jac) + sum(.a$counts$dadt))
     .lin <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
                                           "k_central_output = 0.1", sep = "\n")))
-    .l <- suppressMessages(rxSolve(.lin, et(amt = 100, cmt = "central") |>
-                                     et(seq(0, 10, by = 1)),
-                                   method = "indLin", hmax = 0.25))
+    .l <- suppressMessages(rxSolve(
+      .lin,
+      et(amt = 100, cmt = "central") |>
+        et(seq(0, 10, by = 1)),
+      method = "indLin",
+      hmax = 0.25
+    ))
     .linReuse <- sum(.l$counts$jac) / (sum(.l$counts$jac) + sum(.l$counts$dadt))
     expect_gt(.sensReuse, 0.9)
     expect_gt(.linReuse, 0.9)
@@ -1455,31 +1663,60 @@ d/dt(blood)     = a*intestine - b*blood
 
   test_that("the cache is per thread and does not change the answer", {
     .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |> et(id = 1:40))
-    .one <- suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                     method = "indLin", atol = 1e-10, rtol = 1e-10,
-                                     cores = 1))
+    .one <- suppressMessages(rxSolve(
+      .mmMe,
+      params = .mmPar,
+      events = .e,
+      method = "indLin",
+      atol = 1e-10,
+      rtol = 1e-10,
+      cores = 1
+    ))
     for (.nc in c(2L, 4L)) {
-      expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                            method = "indLin", atol = 1e-10,
-                                            rtol = 1e-10, cores = .nc))$central,
-                   .one$central, tolerance = 0)
+      expect_equal(
+        suppressMessages(rxSolve(
+          .mmMe,
+          params = .mmPar,
+          events = .e,
+          method = "indLin",
+          atol = 1e-10,
+          rtol = 1e-10,
+          cores = .nc
+        ))$central,
+        .one$central,
+        tolerance = 0
+      )
     }
     # repeated solves must not accumulate anything across calls either
-    expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                          method = "indLin", atol = 1e-10,
-                                          rtol = 1e-10, cores = 1))$central,
-                 .one$central, tolerance = 0)
+    expect_equal(
+      suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = .e,
+        method = "indLin",
+        atol = 1e-10,
+        rtol = 1e-10,
+        cores = 1
+      ))$central,
+      .one$central,
+      tolerance = 0
+    )
   })
 
   test_that("every matrix-exponential backend agrees with the cache on", {
     .e <- et(amt = 3, rate = 1) |> et(c(0.5, 1, 2, 4, 8, 16, 30))
-    .ref <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
-                                     atol = 1e-12, rtol = 1e-12))
+    .ref <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
     for (.ty in 1:3) {
       .a <- .indLinCacheBoth(function() {
-        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                 method = "indLin", atol = 1e-10, rtol = 1e-10,
-                                 indLinMatExpType = .ty))
+        suppressMessages(rxSolve(
+          .mmMe,
+          params = .mmPar,
+          events = .e,
+          method = "indLin",
+          atol = 1e-10,
+          rtol = 1e-10,
+          indLinMatExpType = .ty
+        ))
       })
       expect_equal(.a$central, .ref$central, tolerance = 1e-5)
     }
@@ -1502,13 +1739,25 @@ d/dt(blood)     = a*intestine - b*blood
     .linOde <- suppressMessages(rxode2(.linTxt))
     .lp <- c(ka = 1, cl = 1, v = 10)
     .le <- et(amt = 3) |> et(seq(0, 30, by = 1))
-    .lref <- suppressMessages(rxSolve(.linOde, .le, .lp, method = "lsoda",
-                                      atol = 1e-12, rtol = 1e-12))$central
-    .err <- vapply(1:4, function(.ty) {
-      max(abs(suppressMessages(rxSolve(.lin, .le, .lp, method = "indLin",
-                                       atol = 1e-8, rtol = 1e-8,
-                                       indLinMatExpType = .ty))$central - .lref))
-    }, double(1))
+    .lref <- suppressMessages(rxSolve(.linOde, .le, .lp, method = "lsoda", atol = 1e-12, rtol = 1e-12))$central
+    .err <- vapply(
+      1:4,
+      function(.ty) {
+        max(abs(
+          suppressMessages(rxSolve(
+            .lin,
+            .le,
+            .lp,
+            method = "indLin",
+            atol = 1e-8,
+            rtol = 1e-8,
+            indLinMatExpType = .ty
+          ))$central -
+            .lref
+        ))
+      },
+      double(1)
+    )
     # every backend, Al-Mohy (3) included, must be far inside the old failure
     expect_true(all(.err < 1e-9))
 
@@ -1519,11 +1768,18 @@ d/dt(blood)     = a*intestine - b*blood
     # finish" and an equality check alone would simply hang.
     .van <- suppressMessages(rxode2(rxToIndLin(
       "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
-    .ev <- et(seq(0, (3 - 2*log(2))*100, length.out = 200))
+    .ev <- et(seq(0, (3 - 2 * log(2)) * 100, length.out = 200))
     .solve <- function(.ty) {
-      suppressMessages(rxSolve(.van, .ev, c(mu = 95.7866), method = "indLin",
-                               atol = 1e-6, rtol = 1e-6,
-                               indLinIteration = "exprb", indLinMatExpType = .ty))
+      suppressMessages(rxSolve(
+        .van,
+        .ev,
+        c(mu = 95.7866),
+        method = "indLin",
+        atol = 1e-6,
+        rtol = 1e-6,
+        indLinIteration = "exprb",
+        indLinMatExpType = .ty
+      ))
     }
     .t0 <- proc.time()[["elapsed"]]
     .aAl <- .solve(3)
@@ -1546,9 +1802,11 @@ d/dt(blood)     = a*intestine - b*blood
     # right and only moves the off-diagonal rate terms.  Newton absorbs that
     # entirely, since it converges to the same fixed point under any Jacobian;
     # only exprb, whose order conditions assume an exact J, shows it.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     # the conversion must actually have emitted a Jacobian, or "symbolic" would
     # silently be finite differences and the comparison would be vacuous
@@ -1556,12 +1814,26 @@ d/dt(blood)     = a*intestine - b*blood
     .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
     .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
     for (.sc in c("newton", "exprb", "exprb32")) {
-      .a <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
-                                     atol = 1e-8, rtol = 1e-8,
-                                     indLinIteration = .sc, indLinJac = "symbolic"))
-      .b <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
-                                     atol = 1e-8, rtol = 1e-8,
-                                     indLinIteration = .sc, indLinJac = "fd"))
+      .a <- suppressMessages(rxSolve(
+        .m,
+        .e,
+        .p,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = .sc,
+        indLinJac = "symbolic"
+      ))
+      .b <- suppressMessages(rxSolve(
+        .m,
+        .e,
+        .p,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        indLinIteration = .sc,
+        indLinJac = "fd"
+      ))
       # An off-by-a-transpose changes the step count as well as the answer, so
       # both are checked; on this model the two sources agree to the digit.
       expect_equal(.a$central, .b$central, tolerance = 1e-9, info = .sc)
@@ -1580,9 +1852,16 @@ d/dt(blood)     = a*intestine - b*blood
       .noJac <- suppressMessages(rxode2(rxToIndLin(.txt)))
       expect_equal(unname(rxModelVars(.noJac)$trans[["jac"]]), "fullint")
       for (.jj in c("auto", "symbolic", "fd")) {
-        .r <- suppressMessages(rxSolve(.noJac, .e, .p, method = "indLin",
-                                       atol = 1e-8, rtol = 1e-8,
-                                       indLinIteration = "exprb", indLinJac = .jj))
+        .r <- suppressMessages(rxSolve(
+          .noJac,
+          .e,
+          .p,
+          method = "indLin",
+          atol = 1e-8,
+          rtol = 1e-8,
+          indLinIteration = "exprb",
+          indLinJac = .jj
+        ))
         expect_equal(.r$central, .a$central, tolerance = 1e-5, info = .jj)
       }
     })
@@ -1594,18 +1873,25 @@ d/dt(blood)     = a*intestine - b*blood
     # to size a step.  It is NOT the default -- measured, it wins only on stiff
     # problems at loose tolerance and loses badly elsewhere -- but it must still
     # be correct, and correctness here means agreeing with an ODE integration.
-    .txt <- paste0("ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
-                   "d/dt(depot) = -ka*depot\n",
-                   "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n")
+    .txt <- paste0(
+      "ka <- 1\nkm <- 0.5\nvmax <- 0.2\nv <- 1\n",
+      "d/dt(depot) = -ka*depot\n",
+      "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"
+    )
     .m <- suppressMessages(rxode2(rxToIndLin(.txt)))
     .o <- suppressMessages(rxode2(.txt))
     .p <- c(ka = 1, km = 0.5, vmax = 0.2, v = 1)
     .e <- et(amt = 3) |> et(c(0.1, 0.5, 1, 2, 4, 8, 12, 24, 30))
-    .ref <- suppressMessages(rxSolve(.o, .e, .p, method = "lsoda",
-                                     atol = 1e-13, rtol = 1e-13))$central
-    .r <- suppressMessages(rxSolve(.m, .e, .p, method = "indLin",
-                                   atol = 1e-8, rtol = 1e-8,
-                                   indLinIteration = "exprb32"))
+    .ref <- suppressMessages(rxSolve(.o, .e, .p, method = "lsoda", atol = 1e-13, rtol = 1e-13))$central
+    .r <- suppressMessages(rxSolve(
+      .m,
+      .e,
+      .p,
+      method = "indLin",
+      atol = 1e-8,
+      rtol = 1e-8,
+      indLinIteration = "exprb32"
+    ))
     expect_equal(.r$central, .ref, tolerance = 1e-5)
 
     # It is a higher order than exprb2, which is the whole reason it exists:
@@ -1615,14 +1901,26 @@ d/dt(blood)     = a*intestine - b*blood
       "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n")))
     .vo <- suppressMessages(rxode2(
       "d/dt(y) = dy\nd/dt(dy) = mu*(1-y^2)*dy - y\ny(0)=2\ndy(0)=0\n"))
-    .ev <- et(seq(0, (3 - 2*log(2))*10, length.out = 100))
-    .vref <- suppressMessages(rxSolve(.vo, .ev, c(mu = 10), method = "lsoda",
-                                      atol = 1e-13, rtol = 1e-13))$y
-    .err <- vapply(c(1e-4, 1e-6), function(.tol) {
-      max(abs(suppressMessages(rxSolve(.van, .ev, c(mu = 10), method = "indLin",
-                                       atol = .tol, rtol = .tol,
-                                       indLinIteration = "exprb32"))$y - .vref))
-    }, double(1))
+    .ev <- et(seq(0, (3 - 2 * log(2)) * 10, length.out = 100))
+    .vref <- suppressMessages(rxSolve(.vo, .ev, c(mu = 10), method = "lsoda", atol = 1e-13, rtol = 1e-13))$y
+    .err <- vapply(
+      c(1e-4, 1e-6),
+      function(.tol) {
+        max(abs(
+          suppressMessages(rxSolve(
+            .van,
+            .ev,
+            c(mu = 10),
+            method = "indLin",
+            atol = .tol,
+            rtol = .tol,
+            indLinIteration = "exprb32"
+          ))$y -
+            .vref
+        ))
+      },
+      double(1)
+    )
     expect_lt(.err[2], .err[1])
 
     # Round-trips through the control by name and by code.
@@ -1638,14 +1936,13 @@ d/dt(blood)     = a*intestine - b*blood
     # two-compartment linear system has one, and because a linear model takes
     # one step per interval the interval length selects the degree band.
     .m <- suppressMessages(rxode2("matExp()\ncmt(a)\ncmt(b)\nk_a_b = 1\nk_b_output = 2\n"))
-    .exact <- function(t) 1/(2-1)*(exp(-1*t) - exp(-2*t))
+    .exact <- function(t) 1 / (2 - 1) * (exp(-1 * t) - exp(-2 * t))
     # norms 0.01, 0.2, 0.8, 2.0, 5.0, 20 -> degrees 3, 5, 7, 9, 13, 13+scaling
     for (.t in c(0.005, 0.1, 0.4, 1.0, 2.5, 10)) {
       .e <- et(amt = 1, cmt = "a") |> et(c(0, .t))
       for (.ty in 1:4) {
         .r <- suppressMessages(rxSolve(.m, .e, method = "indLin", indLinMatExpType = .ty))
-        expect_lt(abs(.r$b[length(.r$b)] - .exact(.t)), 1e-14,
-                  label = paste0("type ", .ty, " at t = ", .t))
+        expect_lt(abs(.r$b[length(.r$b)] - .exact(.t)), 1e-14, label = paste0("type ", .ty, " at t = ", .t))
       }
     }
   })
@@ -1669,8 +1966,7 @@ d/dt(blood)     = a*intestine - b*blood
         .v <- .r$c1[length(.r$c1)]
         # exp(-k) underflows to zero for every k here; anything finite and
         # nonzero is the failure being guarded against.
-        expect_true(is.finite(.v) && abs(.v) < 1e-30,
-                    label = paste0("type ", .ty, " at k = ", .k, " gave ", .v))
+        expect_true(is.finite(.v) && abs(.v) < 1e-30, label = paste0("type ", .ty, " at k = ", .k, " gave ", .v))
       }
     }
   })
@@ -1681,9 +1977,15 @@ d/dt(blood)     = a*intestine - b*blood
     # thread-safe and is reached from inside indLin()'s parallel region.  A
     # 14-compartment chain exercises the heap branch.
     .n <- 14L
-    .code <- paste(c("matExp()", paste0("cmt(c", seq_len(.n), ")"),
-                     paste0("k_c", seq_len(.n - 1L), "_c", 2:.n, " = 0.3"),
-                     paste0("k_c", .n, "_output = 0.2")), collapse = "\n")
+    .code <- paste(
+      c(
+        "matExp()",
+        paste0("cmt(c", seq_len(.n), ")"),
+        paste0("k_c", seq_len(.n - 1L), "_c", 2:.n, " = 0.3"),
+        paste0("k_c", .n, "_output = 0.2")
+      ),
+      collapse = "\n"
+    )
     .big <- suppressMessages(rxode2(.code))
     .e <- et(amt = 100, cmt = "c1") |> et(seq(0, 10, by = 1))
     .a <- suppressMessages(rxSolve(.big, .e, method = "indLin", indLinMatExpType = 3))
@@ -1692,37 +1994,45 @@ d/dt(blood)     = a*intestine - b*blood
     expect_gt(max(abs(.a$c14)), 0)
     expect_equal(.a$c14, .b$c14, tolerance = 1e-8)
     # and the small-n stack branch still agrees with it
-    expect_equal(suppressMessages(rxSolve(.mmMe, params = .mmPar,
-                                          events = et(amt = 3) |> et(c(1, 4, 8, 24)),
-                                          method = "indLin", indLinMatExpType = 3))$central,
-                 suppressMessages(rxSolve(.mmMe, params = .mmPar,
-                                          events = et(amt = 3) |> et(c(1, 4, 8, 24)),
-                                          method = "indLin", indLinMatExpType = 2))$central,
-                 tolerance = 1e-6)
+    expect_equal(
+      suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = et(amt = 3) |> et(c(1, 4, 8, 24)),
+        method = "indLin",
+        indLinMatExpType = 3
+      ))$central,
+      suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = et(amt = 3) |> et(c(1, 4, 8, 24)),
+        method = "indLin",
+        indLinMatExpType = 2
+      ))$central,
+      tolerance = 1e-6
+    )
   })
 
   test_that("the cache holds across the event types", {
     .cases <- list(
-      bolus       = et(amt = 3, cmt = "depot"),
-      fixedRate   = et(amt = 3, rate = 1.5, cmt = "depot"),
-      addlII      = et(amt = 3, addl = 3, ii = 6, cmt = "depot"),
-      lag         = et(amt = 3, cmt = "depot"),
+      bolus = et(amt = 3, cmt = "depot"),
+      fixedRate = et(amt = 3, rate = 1.5, cmt = "depot"),
+      addlII = et(amt = 3, addl = 3, ii = 6, cmt = "depot"),
+      lag = et(amt = 3, cmt = "depot"),
       # steady-state doses stay inside what Vmax can clear over ii
-      ssBolus     = et(amt = 1, ii = 8, ss = 1, cmt = "depot"),
-      ssInfusion  = et(amt = 1, rate = 1, ii = 8, ss = 1, cmt = "depot"),
-      evid4       = et(amt = 3, evid = 4, cmt = "depot"))
+      ssBolus = et(amt = 1, ii = 8, ss = 1, cmt = "depot"),
+      ssInfusion = et(amt = 1, rate = 1, ii = 8, ss = 1, cmt = "depot"),
+      evid4 = et(amt = 3, evid = 4, cmt = "depot")
+    )
     for (.nm in names(.cases)) {
       .e <- .cases[[.nm]] |> et(seq(0, 24, by = 3))
       # the steady-state cases do not converge at 1e-10 either way; see above
       .tol <- if (startsWith(.nm, "ss")) 1e-8 else 1e-10
       .a <- .indLinCacheBoth(function() {
-        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                 method = "indLin", atol = .tol, rtol = .tol))
+        suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e, method = "indLin", atol = .tol, rtol = .tol))
       })
-      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda",
-                                     atol = 1e-12, rtol = 1e-12))
-      expect_equal(.a$central, .b$central, tolerance = 1e-5,
-                   info = paste("event type:", .nm))
+      .b <- suppressMessages(rxSolve(.mmOde, events = .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
+      expect_equal(.a$central, .b$central, tolerance = 1e-5, info = paste("event type:", .nm))
     }
   })
 
@@ -1740,8 +2050,7 @@ d/dt(blood)     = a*intestine - b*blood
     # get cmt()/indLin() lines of their own, the forcing being the literal R
     # variable name `.tmp`.
     for (.cmt in c("depot", "central", "peripheral1")) {
-      expect_false(any(grepl(paste0("^(cmt|indLin)[(]", .cmt, "[)]"), .lines)),
-                   info = .cmt)
+      expect_false(any(grepl(paste0("^(cmt|indLin)[(]", .cmt, "[)]"), .lines)), info = .cmt)
     }
     expect_false(any(grepl(".tmp", .lines, fixed = TRUE)))
     # An inlined linCmt() must stay linCmtA(): promoting it to linCmtB() would
@@ -1752,16 +2061,23 @@ d/dt(blood)     = a*intestine - b*blood
     expect_false(any(grepl("^k_[^ ]*=.*linCmt", gsub(" ", "", .lines))))
 
     .me <- suppressMessages(rxode2(.txt))
-    expect_equal(rxode2::rxState(.me),
-                 c("eff", "output", "depot", "central", "peripheral1"))
+    expect_equal(rxode2::rxState(.me), c("eff", "output", "depot", "central", "peripheral1"))
     # The forcing carries a linCmt(), so the solve must take the iterating path.
     expect_true(rxModelVars(.me)$indLin$fullIndLin)
 
-    .p <- c(KA = 2.94e-01, TCL = 1.86e+01, V2 = 4.02e+01, Q = 1.05e+01,
-            V3 = 2.97e+02, Kin = 1, Kout = 1, EC50 = 200, eta.Cl = 0)
+    .p <- c(
+      KA = 2.94e-01,
+      TCL = 1.86e+01,
+      V2 = 4.02e+01,
+      Q = 1.05e+01,
+      V3 = 2.97e+02,
+      Kin = 1,
+      Kout = 1,
+      EC50 = 200,
+      eta.Cl = 0
+    )
     .e <- et(amt = 10000, addl = 4, ii = 12, cmt = 2) |> et(0:120)
-    .ref <- suppressMessages(rxSolve(.mixed, .p, .e, method = "liblsoda",
-                                     atol = 1e-12, rtol = 1e-12))
+    .ref <- suppressMessages(rxSolve(.mixed, .p, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))
     .r <- suppressMessages(rxSolve(.mixed, .p, .e, method = "indLin"))
     expect_equal(.r$resp, .ref$resp, tolerance = 1e-5)
     # the analytic compartments still come from linCmt(), not from the ME step
@@ -1780,14 +2096,13 @@ d/dt(blood)     = a*intestine - b*blood
     }))
     .me <- suppressMessages(rxode2(rxToIndLin(.add)))
     expect_true(rxModelVars(.me)$indLin$fullIndLin)
-    .p <- c(KA = 2.94e-01, CL = 1.86e+01, V2 = 4.02e+01, Q = 1.05e+01,
-            V3 = 2.97e+02, Kin = 1, Kout = 1)
+    .p <- c(KA = 2.94e-01, CL = 1.86e+01, V2 = 4.02e+01, Q = 1.05e+01, V3 = 2.97e+02, Kin = 1, Kout = 1)
     .e <- et(amt = 10000, addl = 4, ii = 12, cmt = 2) |> et(0:120)
     expect_equal(
       suppressMessages(rxSolve(.add, .p, .e, method = "indLin"))$eff,
-      suppressMessages(rxSolve(.add, .p, .e, method = "liblsoda",
-                               atol = 1e-12, rtol = 1e-12))$eff,
-      tolerance = 1e-5)
+      suppressMessages(rxSolve(.add, .p, .e, method = "liblsoda", atol = 1e-12, rtol = 1e-12))$eff,
+      tolerance = 1e-5
+    )
   })
 
   test_that("a df()/dy() entry may read a linCmt() (rxode2#1215)", {
@@ -1805,8 +2120,11 @@ d/dt(blood)     = a*intestine - b*blood
     expect_true(any(rxModelVars(.m)$lhs == "C2"))
     .e <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
     .p <- c(KA = 0.5, CL = 3, V2 = 20, Kin = 1, Kout = 0.2)
-    expect_false(any(is.na(suppressMessages(
-      rxSolve(.m, .p, .e, method = "indLin"))$eff)))
+    expect_false(any(is.na(
+      suppressMessages(
+        rxSolve(.m, .p, .e, method = "indLin")
+      )$eff
+    )))
   })
 
   test_that("evid_() fires once in a mixed linCmt() indLin solve (rxode2#1215)", {
@@ -1826,10 +2144,8 @@ d/dt(blood)     = a*intestine - b*blood
     }))
     .p <- c(ka = 0.5, cl = 1, v = 10, ke0 = 0.3)
     .e <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .e1 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
-      et(seq(0, 48, by = 1))
-    .e2 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |>
-      et(amt = 50, time = 24) |> et(seq(0, 48, by = 1))
+    .e1 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |> et(seq(0, 48, by = 1))
+    .e2 <- et(amt = 100, time = 0) |> et(amt = 50, time = 24) |> et(amt = 50, time = 24) |> et(seq(0, 48, by = 1))
     .r <- suppressMessages(rxSolve(.m, .p, .e, method = "indLin"))
     .one <- suppressMessages(rxSolve(.noPush, .p, .e1, method = "indLin"))
     .two <- suppressMessages(rxSolve(.noPush, .p, .e2, method = "indLin"))
@@ -1838,10 +2154,12 @@ d/dt(blood)     = a*intestine - b*blood
     expect_false(isTRUE(all.equal(.one$cp, .two$cp)))
     # and the dose shows up exactly once in the returned event rows
     expect_equal(
-      nrow(suppressMessages(rxSolve(.m, .p, .e, method = "indLin",
-                                    addDosing = TRUE)) |>
-             subset(evid == 1L & time == 24)),
-      1L)
+      nrow(
+        suppressMessages(rxSolve(.m, .p, .e, method = "indLin", addDosing = TRUE)) |>
+          subset(evid == 1L & time == 24)
+      ),
+      1L
+    )
   })
 
   # --- parallel population solving (rxode2#1216) -------------------------------
@@ -1856,13 +2174,15 @@ d/dt(blood)     = a*intestine - b*blood
   # Adding `omega`/`nSub` here would be comparing different draws.
 
   .indLinCoresEq <- function(model, params, events, ..., cores = c(2L, 4L)) {
-    .one <- suppressMessages(rxSolve(model, params = params, events = events,
-                                     method = "indLin", cores = 1L, ...))
+    .one <- suppressMessages(rxSolve(model, params = params, events = events, method = "indLin", cores = 1L, ...))
     for (.nc in cores) {
-      expect_equal(as.data.frame(suppressMessages(
-        rxSolve(model, params = params, events = events, method = "indLin",
-                cores = .nc, ...))),
-        as.data.frame(.one), tolerance = 0)
+      expect_equal(
+        as.data.frame(suppressMessages(
+          rxSolve(model, params = params, events = events, method = "indLin", cores = .nc, ...)
+        )),
+        as.data.frame(.one),
+        tolerance = 0
+      )
     }
     invisible(.one)
   }
@@ -1875,79 +2195,101 @@ d/dt(blood)     = a*intestine - b*blood
   .parMeF <- suppressMessages(rxode2(paste("matExp()", "cmt(central)",
                                            "k_central_output = ke",
                                            "indLin(central) <- kin", sep = "\n")))
-  .parEv <- as.data.frame(et(amt = 100, cmt = "depot") |>
-                            et(seq(0, 24, by = 1)) |> et(id = 1:40))
+  .parEv <- as.data.frame(
+    et(amt = 100, cmt = "depot") |>
+      et(seq(0, 24, by = 1)) |>
+      et(id = 1:40)
+  )
 
   test_that("a pure matExp() population is unchanged by the core count", {
     .indLinCoresEq(.parMe, c(ka = 1, ke = 0.2), .parEv, hmax = 0.5)
   })
 
   test_that("a state-free indLin() forcing is unchanged by the core count", {
-    .indLinCoresEq(.parMeF, c(ke = 0.2, kin = 1),
-                   as.data.frame(et(amt = 10, cmt = "central") |>
-                                   et(seq(0, 24, by = 1)) |> et(id = 1:40)),
-                   hmax = 0.5)
+    .indLinCoresEq(
+      .parMeF,
+      c(ke = 0.2, kin = 1),
+      as.data.frame(
+        et(amt = 10, cmt = "central") |>
+          et(seq(0, 24, by = 1)) |>
+          et(id = 1:40)
+      ),
+      hmax = 0.5
+    )
   })
 
   test_that("each indLin iteration scheme is unchanged by the core count", {
-    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
-                          et(id = 1:40))
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |> et(id = 1:40))
     for (.it in c("picard", "newton", "exprb", "exprb32", "auto")) {
-      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
-                     indLinIteration = .it)
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10, indLinIteration = .it)
     }
     # "auto" for both is the case that carries per-thread state ACROSS substeps
     # of a subject -- __indLinAutoState's earned scheme and Richardson level --
     # so it is the one a shared auto-state would show up in.
-    .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
-                   indLinIteration = "auto", indLinRichardson = "auto")
+    .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10, indLinIteration = "auto", indLinRichardson = "auto")
     # Both forcing-Jacobian sources: symbolic goes through the generated
     # calc_jac (which does _setThreadInd), fd calls IndF 2n times per step.
     for (.j in c("symbolic", "fd")) {
-      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10,
-                     indLinIteration = "newton", indLinJac = .j)
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-10, rtol = 1e-10, indLinIteration = "newton", indLinJac = .j)
     }
   })
 
   test_that("each matrix-exponential backend is unchanged by the core count", {
     # Includes the Fortran expokit backend (2): it uses automatic arrays with
     # no SAVE/COMMON, which is what makes it safe to run threaded.
-    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
-                          et(id = 1:40))
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |> et(id = 1:40))
     for (.ty in 1:4) {
-      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-8, rtol = 1e-8,
-                     indLinMatExpType = .ty)
+      .indLinCoresEq(.mmMe, .mmPar, .e, atol = 1e-8, rtol = 1e-8, indLinMatExpType = .ty)
     }
   })
 
   test_that("infusions, addl dosing and steady state survive threading", {
     .obs <- seq(0, 48, by = 2)
-    .indLinCoresEq(.mmMe, .mmPar,
-                   as.data.frame(et(amt = 3, rate = 1) |> et(.obs) |> et(id = 1:40)),
-                   atol = 1e-10, rtol = 1e-10)
-    .indLinCoresEq(.mmMe, .mmPar,
-                   as.data.frame(et(amt = 3, ii = 12, addl = 3) |> et(.obs) |>
-                                   et(id = 1:40)),
-                   atol = 1e-10, rtol = 1e-10)
+    .indLinCoresEq(
+      .mmMe,
+      .mmPar,
+      as.data.frame(et(amt = 3, rate = 1) |> et(.obs) |> et(id = 1:40)),
+      atol = 1e-10,
+      rtol = 1e-10
+    )
+    .indLinCoresEq(
+      .mmMe,
+      .mmPar,
+      as.data.frame(et(amt = 3, ii = 12, addl = 3) |> et(.obs) |> et(id = 1:40)),
+      atol = 1e-10,
+      rtol = 1e-10
+    )
     # Steady state on the linear model: the Michaelis-Menten one does not
     # converge under ss=1 at any tolerance, which is a property of inductive
     # linearization on that model and has nothing to do with threading.
-    .indLinCoresEq(.parMe, c(ka = 1, ke = 0.2),
-                   as.data.frame(et(amt = 100, cmt = "depot", ii = 12, ss = 1) |>
-                                   et(.obs) |> et(id = 1:40)),
-                   atol = 1e-10, rtol = 1e-10)
+    .indLinCoresEq(
+      .parMe,
+      c(ka = 1, ke = 0.2),
+      as.data.frame(
+        et(amt = 100, cmt = "depot", ii = 12, ss = 1) |>
+          et(.obs) |>
+          et(id = 1:40)
+      ),
+      atol = 1e-10,
+      rtol = 1e-10
+    )
   })
 
   test_that("the step-disposition counters sum across threads", {
     # Five plain `long`s would tear here; per-thread slots summed at read give
     # the same totals whatever produced them.
-    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |>
-                          et(id = 1:40))
+    .e <- as.data.frame(et(amt = 3) |> et(c(0.5, 1, 2, 4, 8, 16, 30)) |> et(id = 1:40))
     .steps <- function(nc) {
-      invisible(.Call("_rxode2_rxIndLinSteps", PACKAGE = "rxode2"))  # read to reset
-      invisible(suppressMessages(rxSolve(.mmMe, params = .mmPar, events = .e,
-                                         method = "indLin", atol = 1e-8,
-                                         rtol = 1e-8, cores = nc)))
+      invisible(.Call("_rxode2_rxIndLinSteps", PACKAGE = "rxode2")) # read to reset
+      invisible(suppressMessages(rxSolve(
+        .mmMe,
+        params = .mmPar,
+        events = .e,
+        method = "indLin",
+        atol = 1e-8,
+        rtol = 1e-8,
+        cores = nc
+      )))
       .Call("_rxode2_rxIndLinSteps", PACKAGE = "rxode2")
     }
     .one <- .steps(1L)
@@ -1964,12 +2306,18 @@ d/dt(blood)     = a*intestine - b*blood
     # that more than one thread ran, and is why this needs enough subjects that
     # the dynamic schedule cannot hand them all to one thread.
     skip_if(rxCores() < 4L)
-    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |>
-                           et(id = 1:200))
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |> et(id = 1:200))
     .nSlot <- function(nc) {
-      sum(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                   events = .ev, method = "indLin",
-                                   hmax = 0.5, cores = nc))$counts$dadt)
+      sum(
+        suppressMessages(rxSolve(
+          .parMe,
+          params = c(ka = 1, ke = 0.2),
+          events = .ev,
+          method = "indLin",
+          hmax = 0.5,
+          cores = nc
+        ))$counts$dadt
+      )
     }
     expect_equal(.nSlot(1L), 1)
     expect_lte(.nSlot(4L), 4)
@@ -1987,11 +2335,20 @@ d/dt(blood)     = a*intestine - b*blood
                                         "indLin(central) <- udfKin(t)",
                                         sep = "\n")))
     expect_equal(rxModelVars(.m)$flags[["thread"]], 0L)
-    expect_warning(rxSolve(.m, params = c(ke = 0.2),
-                           events = as.data.frame(et(amt = 10, cmt = "central") |>
-                                                    et(0:5) |> et(id = 1:8)),
-                           method = "indLin", cores = 4L),
-                   "not thread safe")
+    expect_warning(
+      rxSolve(
+        .m,
+        params = c(ke = 0.2),
+        events = as.data.frame(
+          et(amt = 10, cmt = "central") |>
+            et(0:5) |>
+            et(id = 1:8)
+        ),
+        method = "indLin",
+        cores = 4L
+      ),
+      "not thread safe"
+    )
   })
 
   # --- the cache seen from where a fit sees it (#1302) -------------------------
@@ -2006,12 +2363,10 @@ d/dt(blood)     = a*intestine - b*blood
 
   .expStats <- function(reset = TRUE) rxIndLinExpStats(reset)
   .driveTeam <- function(nt, clearCache = FALSE) {
-    .Call("_rxode2_rxIndLinDriveTeam", as.integer(nt), clearCache,
-          PACKAGE = "rxode2")
+    .Call("_rxode2_rxIndLinDriveTeam", as.integer(nt), clearCache, PACKAGE = "rxode2")
   }
   .solveParMe <- function(cores = 2L) {
-    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                       events = .parEv, cores = cores)))
+    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv, cores = cores)))
   }
 
   test_that("rxIndLinExpStats() reports the cache an rxSolve() actually used", {
@@ -2027,8 +2382,7 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(unname(.st[["noSlot"]]), 0)
     expect_gt(.st[["slots"]], 0)
     # Reading reset, so the counters are the last measurement and not a total.
-    expect_equal(unname(.expStats()[c("computed", "reused", "noSlot")]),
-                 c(0, 0, 0))
+    expect_equal(unname(.expStats()[c("computed", "reused", "noSlot")]), c(0, 0, 0))
   })
 
   test_that("reading without reset leaves the counters alone", {
@@ -2046,9 +2400,14 @@ d/dt(blood)     = a*intestine - b*blood
     invisible(.expStats())
     .solveParMe()
     .a <- rxIndLinExpStats(FALSE)
-    invisible(suppressMessages(rxSolve(.mmOde, params = .mmPar,
-                                       events = as.data.frame(et(amt = 3) |>
-                                                                et(0:4)))))
+    invisible(suppressMessages(rxSolve(
+      .mmOde,
+      params = .mmPar,
+      events = as.data.frame(
+        et(amt = 3) |>
+          et(0:4)
+      )
+    )))
     .b <- .expStats()
     expect_equal(unname(.b[["reused"]]), unname(.a[["reused"]]))
     expect_equal(unname(.b[["computed"]]), unname(.a[["computed"]]))
@@ -2136,15 +2495,13 @@ d/dt(blood)     = a*intestine - b*blood
     # a bisect -- and with the counters it is now a question with an answer.
     invisible(.expStats())
     withr::with_envvar(c(RXODE2_INDLIN_NO_EXP_CACHE = "1"), {
-      invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                         events = .parEv, cores = 2L)))
+      invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv, cores = 2L)))
     })
     .off <- .expStats()
     expect_equal(unname(.off[["reused"]]), 0)
     expect_gt(.off[["computed"]], 0)
     expect_equal(unname(.off[["noSlot"]]), 0)
-    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                       events = .parEv, cores = 2L)))
+    invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .parEv, cores = 2L)))
     expect_gt(.expStats()[["reused"]], 0)
   })
 })

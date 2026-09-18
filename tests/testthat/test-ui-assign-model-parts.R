@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("rxode2<- and other rxUi methods", {
-
       one.compartment <- function() {
         ini({
           tka <- log(1.57)
@@ -101,15 +100,14 @@ rxTest({
       expect_equal(model(uiOne), model(one.compartment2))
       expect_equal(ini(uiOne), ini(one.compartment))
 
-
       uiOne <- rxode2(one.compartment)
 
-      model(uiOne) <-  model(one.compartment2)
+      model(uiOne) <- model(one.compartment2)
       expect_equal(model(uiOne), model(one.compartment2))
       expect_equal(ini(uiOne), ini(one.compartment))
 
       uiOne <- rxode2(one.compartment)
-      ini(uiOne) <-  ini(one.compartment2)
+      ini(uiOne) <- ini(one.compartment2)
       expect_equal(model(uiOne), model(one.compartment))
       expect_equal(ini(uiOne), ini(one.compartment2))
 
@@ -132,7 +130,7 @@ rxTest({
         eta.v ~ 0.1
       }))
 
-      ini(uiOne) <-  iniNew
+      ini(uiOne) <- iniNew
       expect_equal(ini(uiOne), iniNew)
       expect_equal(uiOne$matt, "f")
       expect_equal(uiOne$f, "matt")
@@ -150,7 +148,7 @@ rxTest({
         eta.cl ~ 0.3
       }))
 
-      ini(uiOne) <-  iniNew
+      ini(uiOne) <- iniNew
 
       expect_equal(ini(uiOne), iniNew)
       expect_equal(uiOne$matt, "f")
@@ -169,7 +167,7 @@ rxTest({
         eta.v ~ 1
       }))
 
-      ini(uiOne) <-  iniNew
+      ini(uiOne) <- iniNew
 
       expect_equal(ini(uiOne), iniNew)
       expect_equal(uiOne$matt, "f")
@@ -183,7 +181,7 @@ rxTest({
       uiOne$f <- "matt"
       class(uiOne) <- c("uiOne", class(uiOne))
 
-      model(uiOne) <-  model(one.compartment2)
+      model(uiOne) <- model(one.compartment2)
 
       expect_equal(model(uiOne), model(one.compartment2))
       expect_equal(uiOne$matt, "f")
@@ -232,7 +230,6 @@ rxTest({
       expect_equal(uiTwo$f, "matt")
       expect_true(inherits(uiTwo, "uiOne"))
 
-
       # rename something in the ini block is also an insignificant change
       uiTwo <- uiOne |>
         rxRename(isKa=tka)
@@ -240,9 +237,6 @@ rxTest({
       expect_equal(uiTwo$matt, "f")
       expect_equal(uiTwo$f, "matt")
       expect_true(inherits(uiTwo, "uiOne"))
-
-
-
     })
 
     test_that("ini(model) <- NULL drops", {
@@ -278,7 +272,6 @@ rxTest({
     })
 
     test_that("assign model changes meta information", {
-
       one.compartment <- function() {
         ini({
           tka <- log(1.57)
@@ -305,7 +298,6 @@ rxTest({
       expect_equal(uiOne$meta$matt, "matt")
 
       expect_equal(uiOne$matt, "matt")
-
     })
   }
 })

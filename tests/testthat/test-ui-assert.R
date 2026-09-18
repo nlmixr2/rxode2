@@ -184,7 +184,7 @@ rxTest({
 
     expect_error(
       assertRxUiPrediction(tmp),
-      regexp="there must be at least one prediction"
+      regexp = "there must be at least one prediction"
     )
   })
 
@@ -277,6 +277,5 @@ rxTest({
       assertRxUiRandomOnIdOnly(one.cmt),
       regexp = "can only have random effects on ID"
     )
-
   })
 })

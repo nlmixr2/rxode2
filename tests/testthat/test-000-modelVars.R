@@ -5,8 +5,7 @@ rxTest({
     for (.nm in names(expected)) {
       expect_s3_class(obj$strCmpParams[[.nm]], "factor")
       expect_equal(levels(obj$strCmpParams[[.nm]]), levels(expected[[.nm]]))
-      expect_equal(as.character(obj$strCmpParams[[.nm]]),
-                   as.character(expected[[.nm]]))
+      expect_equal(as.character(obj$strCmpParams[[.nm]]), as.character(expected[[.nm]]))
     }
   }
 
@@ -30,7 +29,6 @@ d/dt(y3) = a3*y1*y2
 
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))
-
 
     out <- solve(rigid, et)
 
@@ -70,12 +68,9 @@ if (covB == \"same\" ||
 "
 
     expected <- list(
-      covB = factor(c("same", "gamma", "alpha"),
-                    levels = c("same", "gamma", "alpha")),
-      covA = factor(c("alpha", "beta", "shared"),
-                    levels = c("alpha", "beta", "shared")),
-      covC = factor(c("shared", "omega"),
-                    levels = c("shared", "omega"))
+      covB = factor(c("same", "gamma", "alpha"), levels = c("same", "gamma", "alpha")),
+      covA = factor(c("alpha", "beta", "shared"), levels = c("alpha", "beta", "shared")),
+      covC = factor(c("shared", "omega"), levels = c("shared", "omega"))
     )
 
     parsed <- rxGetModel(modTxt)
@@ -92,12 +87,22 @@ if (covB == \"same\" ||
 
   test_that("blank modelvars has same size", {
     blank <- rxModelVars("")
-    full <-  rxModelVars("y = 1")
+    full <- rxModelVars("y = 1")
     expect_equal(length(rxModelVars(blank)), length(full))
     expect_length(blank$strCmpParams, 0)
     expect_equal(names(blank$strCmpParams), character(0))
-    expect_equal(tail(names(full), 8),
-                 c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5",
-                   "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"))
+    expect_equal(
+      tail(names(full), 8),
+      c(
+        "lhsOrd",
+        "splitBolus",
+        "strCmpParams",
+        "timeId",
+        "md5",
+        "splitInfusion",
+        "splitInfusionBolus",
+        "splitBolusInfusion"
+      )
+    )
   })
 })

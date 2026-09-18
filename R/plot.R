@@ -8,36 +8,48 @@
 #' @return ggplot2 theme used in rxode2
 #' @family rxode2 plotting
 #' @export
-rxTheme <- function(base_size = 11, base_family = "",
-                    base_line_size = base_size / 22,
-                    base_rect_size = base_size / 22,
-                    grid = TRUE) {
+rxTheme <- function(
+  base_size = 11,
+  base_family = "",
+  base_line_size = base_size / 22,
+  base_rect_size = base_size / 22,
+  grid = TRUE
+) {
   half_line <- base_size / 2
   .greyTextAxisX <- ggplot2::element_text(
     color = "#808078",
-    margin = ggplot2::margin(t = 0.8 * half_line / 2), vjust = 1
+    margin = ggplot2::margin(t = 0.8 * half_line / 2),
+    vjust = 1
   )
   .greyTextAxisY <- ggplot2::element_text(
     color = "#808078",
-    margin = ggplot2::margin(r = 0.8 * half_line / 2), hjust = 1
+    margin = ggplot2::margin(r = 0.8 * half_line / 2),
+    hjust = 1
   )
   .greyLabTextX <- ggplot2::element_text(
-    color = "#808078", face = "bold",
+    color = "#808078",
+    face = "bold",
     margin = ggplot2::margin(t = half_line / 2),
     size = ggplot2::rel(1.1)
   )
   .greyLabTextY <- ggplot2::element_text(
-    color = "#808078", face = "bold", angle = 90,
+    color = "#808078",
+    face = "bold",
+    angle = 90,
     margin = ggplot2::margin(r = half_line / 2),
     size = ggplot2::rel(1.1)
   )
   .title <- ggplot2::element_text(
-    colour = "#808078", face = "bold", hjust = 0,
+    colour = "#808078",
+    face = "bold",
+    hjust = 0,
     size = ggplot2::rel(1.2),
     margin = ggplot2::margin(b = half_line)
   )
   .subTitle <- ggplot2::element_text(
-    colour = "#808078", face = "bold", hjust = 0,
+    colour = "#808078",
+    face = "bold",
+    hjust = 0,
     margin = ggplot2::margin(b = half_line)
   )
 
@@ -55,9 +67,15 @@ rxTheme <- function(base_size = 11, base_family = "",
     .greyMajorY <- .greyMajor
     .greyMinorY <- .greyMinor
     if (inherits(grid, "character")) {
-      if (regexpr("X", grid)[1] < 0) .greyMajorX <- ggplot2::element_blank()
-      if (regexpr("Y", grid)[1] < 0) .greyMajorY <- ggplot2::element_blank()
-      if (regexpr("x", grid)[1] < 0) .greyMinorX <- ggplot2::element_blank()
+      if (regexpr("X", grid)[1] < 0) {
+        .greyMajorX <- ggplot2::element_blank()
+      }
+      if (regexpr("Y", grid)[1] < 0) {
+        .greyMajorY <- ggplot2::element_blank()
+      }
+      if (regexpr("x", grid)[1] < 0) {
+        .greyMinorX <- ggplot2::element_blank()
+      }
       if (regexpr("y", grid)[1] < 0) .greyMinorY <- ggplot2::element_blank()
     }
   } else {
@@ -70,7 +88,8 @@ rxTheme <- function(base_size = 11, base_family = "",
     .greyMinorY <- .greyMinor
   }
   .theme <- ggplot2::theme_bw(
-    base_size = base_size, base_family = base_family,
+    base_size = base_size,
+    base_family = base_family,
     base_line_size = base_line_size,
     base_rect_size = base_rect_size
   ) %+replace%
@@ -93,7 +112,8 @@ rxTheme <- function(base_size = 11, base_family = "",
       axis.ticks.x = .greyTick,
       axis.ticks.y = .greyTick,
       strip.text = ggplot2::element_text(
-        color = "#FFFFF7", face = "bold",
+        color = "#FFFFF7",
+        face = "bold",
         size = ggplot2::rel(1.2),
         margin = ggplot2::margin(0.5 * half_line, 0.5 * half_line, 0.5 * half_line, 0.5 * half_line)
       ),
@@ -137,24 +157,26 @@ rxTheme <- function(base_size = 11, base_family = "",
   }
   if (inherits(.dat$time, "units")) {
     .unit <- as.character(units(.dat$time))
-    .unitNames <- c(s="second",
-                    sec="second",
-                    second="second",
-                    min="minute",
-                    minute="minute",
-                    h="hour",
-                    hr="hour",
-                    hour="hour",
-                    d="day",
-                    day="day",
-                    days="day",
-                    week="week",
-                    weeks="week",
-                    month="month",
-                    months="month",
-                    year="year",
-                    years="year",
-                    yr="year")
+    .unitNames <- c(
+      s = "second",
+      sec = "second",
+      second = "second",
+      min = "minute",
+      minute = "minute",
+      h = "hour",
+      hr = "hour",
+      hour = "hour",
+      d = "day",
+      day = "day",
+      days = "day",
+      week = "week",
+      weeks = "week",
+      month = "month",
+      months = "month",
+      year = "year",
+      years = "year",
+      yr = "year"
+    )
     .unit <- setNames(.unitNames[.unit], NULL)
     if (is.na(.unit)) {
       .timex <- .xgxrT(NULL)
@@ -167,7 +189,7 @@ rxTheme <- function(base_size = 11, base_family = "",
     .timex <- .xgxrT(NULL)
     .xlab <- xlab(xlab)
   }
-  list(timex=.timex, xlab=.xlab, dat=.dat)
+  list(timex = .timex, xlab = .xlab, dat = .dat)
 }
 
 .plotLog <- function(.dat, .timex, log = "") {
@@ -184,7 +206,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   .logx <- NULL
   .logy <- NULL
   if (useLogX) {
-    stopifnot(".dat requires 'time' column"="time" %in% names(.dat))
+    stopifnot(".dat requires 'time' column" = "time" %in% names(.dat))
     .dat <- .dat[.dat$time > 0, ]
     if (useXgxr) {
       .logx <- xgxr::xgx_scale_x_log10()
@@ -200,7 +222,7 @@ rxTheme <- function(base_size = 11, base_family = "",
       .logy <- ggplot2::scale_y_log10()
     }
   }
-  list(timex=.timex, logx=.logx, logy=.logy, dat=.dat)
+  list(timex = .timex, logx = .logx, logy = .logy, dat = .dat)
 }
 
 #' Plot rxode2 objects
@@ -229,7 +251,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   }
   .cmts <- c(
     as.character(substitute(y)),
-    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES = FALSE)),
     as.character(unlist(.call))
   )
   .cmts <- .cmts[.cmts != ""]
@@ -237,24 +259,40 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   if (length(.cmts) == 0L) {
     .cmts <- NULL
   } else {
-    .doSim <- all(vapply(.cmts, function(x) {
-      if (substr(x, 0, 4) == "sim.") return(TRUE)
-      FALSE
-    }, logical(1), USE.NAMES=FALSE))
+    .doSim <- all(vapply(
+      .cmts,
+      function(x) {
+        if (substr(x, 0, 4) == "sim.") {
+          return(TRUE)
+        }
+        FALSE
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    ))
     if (.doSim) {
-      .vars <- vapply(.cmts, function(x) {
-        substr(x, 5, nchar(x))
-      }, character(1), USE.NAMES=FALSE)
+      .vars <- vapply(
+        .cmts,
+        function(x) {
+          substr(x, 5, nchar(x))
+        },
+        character(1),
+        USE.NAMES = FALSE
+      )
       .mv <- rxModelVars(x)
       .good <- c(.mv$state, .mv$stateExtra)
       .cmts0 <- intersect(.vars, .good)
       if (length(.cmts0) == 0) {
-        stop("the `sim` endpoints requested in the plot do not exist in the solved object: ",
-             paste(.cmts, collapse=", "))
+        stop(
+          "the `sim` endpoints requested in the plot do not exist in the solved object: ",
+          paste(.cmts, collapse = ", ")
+        )
       } else if (length(.cmts0) != length(.cmts)) {
         .ignored <- .vars[!(.vars %in% .good)]
-        warning("some `sim` requested items do not exist in the solved object and were ignored: ",
-                paste(paste0("sim.", .ignored), collapse=", "))
+        warning(
+          "some `sim` requested items do not exist in the solved object and were ignored: ",
+          paste(paste0("sim.", .ignored), collapse = ", ")
+        )
       }
       .cmts <- paste0("sim.", .cmts0)
     } else {
@@ -262,12 +300,13 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
       .both <- c(rxState(x), rxLhs(x))
       .cmts0 <- intersect(.cmts, .both)
       if (length(.cmts0) == 0) {
-        stop("the items requested in the plot do not exist in the solved object: ",
-             paste(.cmts, collapse=", "))
+        stop("the items requested in the plot do not exist in the solved object: ", paste(.cmts, collapse = ", "))
       } else if (length(.cmts0) != length(.cmts)) {
         .ignored <- .cmts[!(.cmts %in% .both)]
-        warning("some requested items do not exist in the solved object and were ignored: ",
-                paste(.ignored, collapse=", "))
+        warning(
+          "some requested items do not exist in the solved object and were ignored: ",
+          paste(.ignored, collapse = ", ")
+        )
       }
       .cmts <- .cmts0
     }
@@ -328,10 +367,14 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     .aes <- aes(.data$time, .data$value)
   }
   .facet <- facet_wrap(~trt, scales = "free_y")
-  if (length(.cmts) == 1) .facet <- NULL
+  if (length(.cmts) == 1) {
+    .facet <- NULL
+  }
   .ylab <- ylab(ylab)
   .theme <- rxTheme()
-  if (!getOption("rxode2.theme", TRUE)) .theme <- NULL
+  if (!getOption("rxode2.theme", TRUE)) {
+    .theme <- NULL
+  }
   .repel <- NULL
   .legend <- NULL
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.3.6.9000") < 0) {
@@ -343,10 +386,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .ggrepel <- getOption("rxode2.ggrepel", TRUE) &&
     requireNamespace("ggrepel", quietly = TRUE)
   if (.nlvl > 1 && .nlvl < .rxSpaghetti && .ggrepel && is.null(.facet)) {
-    .repel <- ggrepel::geom_label_repel(.aesLab,
-      data = .dat2, nudge_x = 1,
-      fontface = "bold", size = 5
-    )
+    .repel <- ggrepel::geom_label_repel(.aesLab, data = .dat2, nudge_x = 1, fontface = "bold", size = 5)
     .legend <- ggplot2::guides(color = "none")
   } else {
     if (.nlvl < .rxSpaghetti) {
@@ -374,9 +414,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     .lst[["logy"]] +
     .ylab +
     .xlab +
-    .legend ->
-  .gg
-  .gg
+    .legend
 }
 
 #' @rdname plot.rxSolve
@@ -385,10 +423,10 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
   .y <- as.character(substitute(y))
-  if (length(.y) != 1){
+  if (length(.y) != 1) {
     stop("Only a single response variable is allowed with no transformations")
   }
-  
+
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
   .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
@@ -397,7 +435,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   }
   .cmts <- c(
     .y,
-    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES = FALSE)),
     as.character(unlist(.call))
   )
   .cmts <- .cmts[.cmts != ""]
@@ -406,7 +444,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x <- x[x$trt %in% .parm, ]
   }
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
@@ -421,14 +459,12 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
     if (length(.by) > 0) {
-      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
-                                     ", scales = \"free_y\")")))
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse = "+"), ", scales = \"free_y\")")))
     } else {
       .facet <- facet_wrap(~trt, scales = "free_y")
     }
   } else if (length(.by) > 0) {
-    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
-                                   ", scales = \"free_y\")")))
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse = "+"), ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
@@ -459,9 +495,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .logy +
     .xlab +
     .ylab +
-    .theme ->
-  .ret
-  .ret
+    .theme
 }
 
 #' @rdname plot.rxSolve
@@ -481,7 +515,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   }
   .cmts <- c(
     .y,
-    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES = FALSE)),
     as.character(unlist(.call))
   )
   .cmts <- .cmts[.cmts != ""]
@@ -489,16 +523,12 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .parm <- attr(class(x), ".rx")$parm
   if (length(.cmts) > 0) {
     .parm <- intersect(.parm, .cmts)
-    x  <- x[x$trt %in% .parm,]
+    x <- x[x$trt %in% .parm, ]
   }
   .lvl <- attr(class(x), ".rx")$lvl
-  .ci  <- attr(class(x), ".rx")$ci
+  .ci <- attr(class(x), ".rx")$ci
   .by <- attr(class(x), ".rx")$by
-  .aes <- aes(.data$time, .data$p50,
-    color = .data$Percentile,
-    fill = .data$Percentile,
-    group = .data$p
-  )
+  .aes <- aes(.data$time, .data$p50, color = .data$Percentile, fill = .data$Percentile, group = .data$p)
   .aesR <- ggplot2::aes_string(ymin = .ci[1], ymax = .ci[3])
   .facet <- NULL
   .dat <- x
@@ -511,14 +541,12 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
     if (length(.by) > 0) {
-      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
-                                     ", scales = \"free_y\")")))
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse = "+"), ", scales = \"free_y\")")))
     } else {
       .facet <- facet_wrap(~trt, scales = "free_y")
     }
   } else if (length(.by) > 0) {
-    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
-                                   ", scales = \"free_y\")")))
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse = "+"), ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.1, show.legend = FALSE)
@@ -540,7 +568,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .ribbon <- ggplot2::geom_ribbon(.aesR, alpha = 0.5, col = NA, show.legend = FALSE)
   .leg1 <- ggplot2::scale_color_manual(values = c("black", "gray"))
   .leg2 <- ggplot2::scale_fill_manual(values = c("black", "gray"))
-  ggplot2::ggplot(.dat, .aes) +
+  .ret <- ggplot2::ggplot(.dat, .aes) +
     .ribbon +
     .line +
     .facet +
@@ -551,8 +579,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .ylab +
     .leg1 +
     .leg2 +
-    .theme ->
-  .ret
+    .theme
   ## p1 <- time <- eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- NULL
   ## .lvl <- attr(class(x), ".rx")$lvl
   ## .parm <- attr(class(x), ".rx")$parm

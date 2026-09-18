@@ -353,7 +353,11 @@
 #'   negative and your base is zero, this will return the `machine
 #'   epsilon^(negative power)`.  By default this is turned on.
 #'
-#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
+#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is
+#' negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With
+#' `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns
+#' `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid
+#' value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -1228,133 +1232,351 @@
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
-rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s", "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s", "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s", "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs", "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s", "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", "s1110as", "o129s"),
+rxSolve <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  scale = NULL,
+  method = c(
+    "liblsoda",
+    "lsoda",
+    "dop853",
+    "indLin",
+    "f78",
+    "rk4",
+    "ck54",
+    "ab",
+    "abm",
+    "dop5",
+    "bs",
+    "ros4",
+    "iem",
+    "sem",
+    "sb3a",
+    "sb3am4",
+    "vv",
+    "mm",
+    "em",
+    "cvode",
+    "trapz",
+    "ssp3",
+    "f32",
+    "rk43",
+    "dop54",
+    "vern65",
+    "vern76",
+    "dop87",
+    "vern98",
+    "ros43",
+    "ros6",
+    "backwardEuler",
+    "gauss6",
+    "iiic6",
+    "radauiia5",
+    "geng5",
+    "sdirk43",
+    "euler",
+    "midpoint",
+    "heun",
+    "ssp22",
+    "rk3",
+    "ssp53",
+    "s4",
+    "r4",
+    "ls44",
+    "ls54",
+    "ssp54",
+    "s5",
+    "rk5",
+    "c5",
+    "l5",
+    "lk5a",
+    "lk5b",
+    "b6",
+    "s7",
+    "s8_10",
+    "cv8",
+    "s8_12",
+    "s10",
+    "z10",
+    "o10",
+    "h10",
+    "dp54",
+    "v65e",
+    "v76e",
+    "dp87",
+    "v98e",
+    "ssp33",
+    "bs32",
+    "ssp43",
+    "f45",
+    "t54",
+    "s54",
+    "pp54",
+    "pp54b",
+    "bs54",
+    "ss54",
+    "dp65",
+    "c65",
+    "tp64",
+    "v65r",
+    "v65",
+    "dverk65",
+    "tf65",
+    "tp75",
+    "tmy7",
+    "tmy7s",
+    "v76r",
+    "ss76",
+    "v78",
+    "dverk78",
+    "dp85",
+    "tp86",
+    "v87e",
+    "v87r",
+    "ev87",
+    "k87",
+    "f89",
+    "v89",
+    "t98a",
+    "v98r",
+    "s98",
+    "f108",
+    "c108",
+    "b109",
+    "s1110a",
+    "f1210",
+    "o129",
+    "f1412",
+    "lsode",
+    "bdf",
+    "rk4s",
+    "eulers",
+    "midpoints",
+    "heuns",
+    "dop5s",
+    "dop853s",
+    "ck54s",
+    "bs32s",
+    "vern65s",
+    "vern76s",
+    "dop87s",
+    "f78s",
+    "ros4s",
+    "radauiia5s",
+    "backwardEulers",
+    "gauss6s",
+    "sdirk43s",
+    "iiic6s",
+    "ros43s",
+    "ros6s",
+    "geng5s",
+    "rk3s",
+    "rk43s",
+    "cvodesadj",
+    "liblsodaadj",
+    "abs",
+    "dop54s",
+    "dp54s",
+    "vern98s",
+    "f45s",
+    "t54s",
+    "pp54s",
+    "pp54bs",
+    "bs54s",
+    "ss54s",
+    "dp65s",
+    "c65s",
+    "tp64s",
+    "v65rs",
+    "dverk65s",
+    "tf65s",
+    "tp75s",
+    "tmy7sadj",
+    "tmy7adj",
+    "v76rs",
+    "ss76s",
+    "v78s",
+    "dverk78s",
+    "dp85s",
+    "tp86s",
+    "v87es",
+    "v87rs",
+    "ev87s",
+    "k87s",
+    "v89s",
+    "t98as",
+    "v98rs",
+    "s98s",
+    "c108s",
+    "b109s",
+    "s1110as",
+    "o129s"
+  ),
 
-                    sigdig=NULL,
-                    atol = 1.0e-8, rtol = 1.0e-6,
-                    maxsteps = 70000L, hmin = 0, hmax = NA_real_,
-                    hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, order = 5L, ...,
-                    cores,
-                    covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
-                    naInterpolation = c("locf", "nocb"),
-                    keepInterpolation=c("na", "locf", "nocb"),
-                    addCov = TRUE, sigma = NULL, sigmaDf = NULL,
-                    sigmaLower = -Inf, sigmaUpper = Inf,
-                    nCoresRV = 1L, sigmaIsChol = FALSE,
-                    sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
-                    sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
-                    nDisplayProgress = 10000L,
-                    amountUnits = NA_character_, timeUnits = "hours",
-                    theta = NULL,
-                    thetaLower = -Inf, thetaUpper = Inf,
-                    eta = NULL, addDosing = FALSE,
-                    stateTrim = Inf, updateObject = FALSE,
-                    omega = NULL, omegaDf = NULL, omegaIsChol = FALSE,
-                    omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
-                    omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
-                    omegaLower = -Inf, omegaUpper = Inf,
-                    nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
-                    nStud = 1L, dfSub = 0.0, dfObs = 0.0,
-                    returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
-                    seed = NULL, nsim = NULL,
-                    minSS = 10L, maxSS = 10000L,
-                    infSSstep = 12,
-                    strictSS = TRUE,
-                    istateReset = TRUE,
-                    subsetNonmem = TRUE,
-                    maxAtolRtolFactor = 0.1,
-                    from = NULL,
-                    to = NULL,
-                    by = NULL,
-                    length.out = NULL,
-                    iCov = NULL,
-                    keep = NULL,
-                    indLinPhiTol = 1e-7,
-                    indLinPhiM = 0L,
-                    indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
-                    indLinMatExpOrder = 6L,
-                    drop = NULL,
-                    idFactor = TRUE,
-                    mxhnil = 0,
-                    hmxi = 0.0,
-                    warnIdSort = TRUE,
-                    warnDrop = TRUE,
-                    ssAtol = 1.0e-8,
-                    ssRtol = 1.0e-6,
-                    safeZero = TRUE,
-                    safeLog = TRUE,
-                    safePow = TRUE,
-                    sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
-                    prodType = c("long double", "double", "logify"),
-                    resample = NULL,
-                    resampleID = TRUE,
-                    maxwhile = 100000,
-                    atolSens = 1.0e-8,
-                    rtolSens = 1.0e-6,
-                    ssAtolSens=1.0e-8,
-                    ssRtolSens=1.0e-6,
-                    simVariability=NA,
-                    nLlikAlloc=NULL,
-                    useStdPow=FALSE,
-                    naTimeHandle=c("ignore", "warn", "error"),
-                    addlKeepsCov=FALSE,
-                    addlDropSs=TRUE,
-                    ssAtDoseTime=TRUE,
-                    ss2cancelAllPending=FALSE,
-                    ssSolved=TRUE,
-                    linCmtSensType=c("auto",
-                                     "endpoint5", "endpoint5G",
-                                     "forward3", "forward3G",
-                                     "AD", "ADm", "ADr", "central",
-                                     "forward", "forwardG",
-                                     "forwardH", "centralH", "forward3H",
-                                     "endpointH5", "forwardG"),
-                    linCmtSensH=0.0001,
-                    linCmtSensPhi=TRUE,
-                    linCmtGillFtol=0,
-                    linCmtGillK=20L,
-                    linCmtGillStep=4,
-                    linCmtGillRtol=sqrt(.Machine$double.eps),
-                    linCmtShiErr=sqrt(.Machine$double.eps),
-                    linCmtShiMax=20L,
-                    linCmtScale=FALSE,
-                    linCmtHcmt=NULL,
-                    linCmtHmeanI=c("geometric", "arithmetic", "harmonic"),
-                    linCmtHmeanO=c("geometric", "arithmetic", "harmonic"),
-                    linCmtSuspect=1e-6,
-                    linCmtForwardMax=2L,
-                    indOwnAlloc=NA,
-                    maxExtra=1000L,
-                    tolFactor=NULL,
-                    serializeFile=NULL,
-                    dense=FALSE,
-                    cvodeLinSolver=c("dense", "band", "gmres", "bicgstab", "tfqmr"),
-                    autoSwitchNonstifftol=9/10,
-                    autoSwitchStifftol=9/10,
-                    autoSwitchDtfac=2.0,
-                    autoSwitchMaxStiff=10L,
-                    autoSwitchMaxNonstiff=3L,
-                    autoSwitchStiffFirst=FALSE,
-                    autoSwitchSwitchMax=5L,
-                    stiff2=0L,
-                    useLinCmt=getOption("rxode2.useLinCmt", FALSE),
-                    file=NULL,
-                    chunkSize=NULL,
-                    parallel=0L,
-                    zeroVarParamHandle=c("warn", "ignore", "keep"),
-                    indLinStepSearch = c("secant", "exact", "none"),
-                    indLinMaxIter = 20L,
-                    indLinRichardson = c("auto", "always", "never", "always4", "always5"),
-                    indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
-                    indLinJac = c("auto", "symbolic", "fd"),
-                    indLinForcing = c("ramp", "constant"),
-                    usePrior=NA,
-                    priorPdRetry=10L,
-                    priorOmega=NULL,
-                    priorOmegaEl=NULL,
-                    priorSigmaEl=NULL,
-                    envir=parent.frame()) {
+  sigdig = NULL,
+  atol = 1.0e-8,
+  rtol = 1.0e-6,
+  maxsteps = 70000L,
+  hmin = 0,
+  hmax = NA_real_,
+  hmaxSd = 0,
+  hini = 0,
+  maxordn = 12L,
+  maxords = 5L,
+  order = 5L,
+  ...,
+  cores,
+  covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+  naInterpolation = c("locf", "nocb"),
+  keepInterpolation = c("na", "locf", "nocb"),
+  addCov = TRUE,
+  sigma = NULL,
+  sigmaDf = NULL,
+  sigmaLower = -Inf,
+  sigmaUpper = Inf,
+  nCoresRV = 1L,
+  sigmaIsChol = FALSE,
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
+  nDisplayProgress = 10000L,
+  amountUnits = NA_character_,
+  timeUnits = "hours",
+  theta = NULL,
+  thetaLower = -Inf,
+  thetaUpper = Inf,
+  eta = NULL,
+  addDosing = FALSE,
+  stateTrim = Inf,
+  updateObject = FALSE,
+  omega = NULL,
+  omegaDf = NULL,
+  omegaIsChol = FALSE,
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
+  omegaLower = -Inf,
+  omegaUpper = Inf,
+  nSub = 1L,
+  thetaMat = NULL,
+  thetaDf = NULL,
+  thetaIsChol = FALSE,
+  nStud = 1L,
+  dfSub = 0.0,
+  dfObs = 0.0,
+  returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
+  seed = NULL,
+  nsim = NULL,
+  minSS = 10L,
+  maxSS = 10000L,
+  infSSstep = 12,
+  strictSS = TRUE,
+  istateReset = TRUE,
+  subsetNonmem = TRUE,
+  maxAtolRtolFactor = 0.1,
+  from = NULL,
+  to = NULL,
+  by = NULL,
+  length.out = NULL,
+  iCov = NULL,
+  keep = NULL,
+  indLinPhiTol = 1e-7,
+  indLinPhiM = 0L,
+  indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
+  indLinMatExpOrder = 6L,
+  drop = NULL,
+  idFactor = TRUE,
+  mxhnil = 0,
+  hmxi = 0.0,
+  warnIdSort = TRUE,
+  warnDrop = TRUE,
+  ssAtol = 1.0e-8,
+  ssRtol = 1.0e-6,
+  safeZero = TRUE,
+  safeLog = TRUE,
+  safePow = TRUE,
+  sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
+  prodType = c("long double", "double", "logify"),
+  resample = NULL,
+  resampleID = TRUE,
+  maxwhile = 100000,
+  atolSens = 1.0e-8,
+  rtolSens = 1.0e-6,
+  ssAtolSens = 1.0e-8,
+  ssRtolSens = 1.0e-6,
+  simVariability = NA,
+  nLlikAlloc = NULL,
+  useStdPow = FALSE,
+  naTimeHandle = c("ignore", "warn", "error"),
+  addlKeepsCov = FALSE,
+  addlDropSs = TRUE,
+  ssAtDoseTime = TRUE,
+  ss2cancelAllPending = FALSE,
+  ssSolved = TRUE,
+  linCmtSensType = c(
+    "auto",
+    "endpoint5",
+    "endpoint5G",
+    "forward3",
+    "forward3G",
+    "AD",
+    "ADm",
+    "ADr",
+    "central",
+    "forward",
+    "forwardG",
+    "forwardH",
+    "centralH",
+    "forward3H",
+    "endpointH5",
+    "forwardG"
+  ),
+  linCmtSensH = 0.0001,
+  linCmtSensPhi = TRUE,
+  linCmtGillFtol = 0,
+  linCmtGillK = 20L,
+  linCmtGillStep = 4,
+  linCmtGillRtol = sqrt(.Machine$double.eps),
+  linCmtShiErr = sqrt(.Machine$double.eps),
+  linCmtShiMax = 20L,
+  linCmtScale = FALSE,
+  linCmtHcmt = NULL,
+  linCmtHmeanI = c("geometric", "arithmetic", "harmonic"),
+  linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
+  linCmtSuspect = 1e-6,
+  linCmtForwardMax = 2L,
+  indOwnAlloc = NA,
+  maxExtra = 1000L,
+  tolFactor = NULL,
+  serializeFile = NULL,
+  dense = FALSE,
+  cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
+  autoSwitchNonstifftol = 9 / 10,
+  autoSwitchStifftol = 9 / 10,
+  autoSwitchDtfac = 2.0,
+  autoSwitchMaxStiff = 10L,
+  autoSwitchMaxNonstiff = 3L,
+  autoSwitchStiffFirst = FALSE,
+  autoSwitchSwitchMax = 5L,
+  stiff2 = 0L,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
+  file = NULL,
+  chunkSize = NULL,
+  parallel = 0L,
+  zeroVarParamHandle = c("warn", "ignore", "keep"),
+  indLinStepSearch = c("secant", "exact", "none"),
+  indLinMaxIter = 20L,
+  indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+  indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+  indLinJac = c("auto", "symbolic", "fd"),
+  indLinForcing = c("ramp", "constant"),
+  usePrior = NA,
+  priorPdRetry = 10L,
+  priorOmega = NULL,
+  priorOmegaEl = NULL,
+  priorSigmaEl = NULL,
+  envir = parent.frame()
+) {
   .udfEnvSet(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
     .xtra <- list(...)
@@ -1362,8 +1584,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     .w <- which(regexpr("^[Ss][0-9]+$", .nxtra) != -1)
     if (length(.w) > 0) {
       for (.arg in .w) {
-        checkmate::assertNumeric(.xtra[[.arg]], lower=0,
-                                 finite=TRUE, len=1, .var.name=.nxtra[.arg])
+        checkmate::assertNumeric(.xtra[[.arg]], lower = 0, finite = TRUE, len = 1, .var.name = .nxtra[.arg])
       }
       .bad <- .nxtra[-.w]
     } else {
@@ -1372,78 +1593,80 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
     if (length(.bad) > 0) {
       if ("transitAbs" %in% .bad) {
-        stop("'transitAbs' is no longer supported, use 'evid=7' instead",
-             call.=FALSE)
+        stop("'transitAbs' is no longer supported, use 'evid=7' instead", call. = FALSE)
       }
-      stop("unused argument: ",
-           paste(paste0("'", .bad, "'", sep=""), collapse=", "),
-           call.=FALSE)
+      stop("unused argument: ", paste(paste0("'", .bad, "'", sep = ""), collapse = ", "), call. = FALSE)
     }
-    if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L,
-                                  upper=6L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(sigmaXform, len = 1L, lower = 1L, upper = 6L, any.missing = FALSE)) {
       .sigmaXform <- as.integer(sigmaXform)
     } else {
       .sigmaXform <- c(
-        "variance" = 6L, "log" = 5L, "identity" = 4L,
-        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
+        "variance" = 6L,
+        "log" = 5L,
+        "identity" = 4L,
+        "nlmixrSqrt" = 1L,
+        "nlmixrLog" = 2L,
         "nlmixrIdentity" = 3L
       )[match.arg(sigmaXform)]
     }
 
-    if (checkmate::testIntegerish(linCmtHmeanI, len=1L, lower=1L,
-                                  upper=3L, any.missing=FALSE)) {
-    } else if (checkmate::testCharacter(linCmtHmeanI, any.missing=FALSE)) {
-      linCmtHmeanI <- c("arithmetic"=1L,
-                        "geometric"=2L,
-                        "harmonic"=3L)[match.arg(linCmtHmeanI)]
+    if (checkmate::testIntegerish(linCmtHmeanI, len = 1L, lower = 1L, upper = 3L, any.missing = FALSE)) {} else if (
+      checkmate::testCharacter(linCmtHmeanI, any.missing = FALSE)
+    ) {
+      linCmtHmeanI <- c("arithmetic" = 1L, "geometric" = 2L, "harmonic" = 3L)[match.arg(linCmtHmeanI)]
     } else {
-      stop("linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
-           call.=FALSE)
+      stop(
+        "linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3", # nolint: line_length_linter.
+        call. = FALSE
+      )
     }
 
-    if (checkmate::testIntegerish(linCmtHmeanO, len=1L, lower=1L,
-                                  upper=3L, any.missing=FALSE)) {
-    } else if (checkmate::testCharacter(linCmtHmeanO, any.missing=FALSE)) {
-      linCmtHmeanO <- c("arithmetic"=1L,
-                        "geometric"=2L,
-                        "harmonic"=3L)[match.arg(linCmtHmeanO)]
+    if (checkmate::testIntegerish(linCmtHmeanO, len = 1L, lower = 1L, upper = 3L, any.missing = FALSE)) {} else if (
+      checkmate::testCharacter(linCmtHmeanO, any.missing = FALSE)
+    ) {
+      linCmtHmeanO <- c("arithmetic" = 1L, "geometric" = 2L, "harmonic" = 3L)[match.arg(linCmtHmeanO)]
     } else {
-      stop("linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
-           call.=FALSE)
+      stop(
+        "linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3", # nolint: line_length_linter.
+        call. = FALSE
+      )
     }
 
-    checkmate::assertNumeric(linCmtSuspect, lower=0, finite=TRUE, len=1)
-    checkmate::assertIntegerish(linCmtForwardMax, lower=1, upper=3, any.missing=FALSE)
+    checkmate::assertNumeric(linCmtSuspect, lower = 0, finite = TRUE, len = 1)
+    checkmate::assertIntegerish(linCmtForwardMax, lower = 1, upper = 3, any.missing = FALSE)
 
     if (is.null(linCmtHcmt)) {
       linCmtHcmt <- 1L
-    } else if (checkmate::testIntegerish(linCmtHcmt, len=1L, lower=1L,
-                                         upper=31L, any.missing=FALSE)) {
+    } else if (checkmate::testIntegerish(linCmtHcmt, len = 1L, lower = 1L, upper = 31L, any.missing = FALSE)) {
       # ok value
-    } else if (checkmate::testCharacter(linCmtHcmt, any.missing=FALSE)) {
-      .vars <- match.arg(linCmtHcmt,
-                         c("depot", "central", "peripheral1", "peripheral2",
-                           "concentration"), several.ok = TRUE)
-      linCmtHcmt <- sum(vapply(.vars, function(x) {
-        switch(x,
-               depot         = 8L,
-               central       = 1L,
-               peripheral1   = 2L,
-               peripheral2   = 4L,
-               concentration = 16L)
-      }, integer(1)))
+    } else if (checkmate::testCharacter(linCmtHcmt, any.missing = FALSE)) {
+      .vars <- match.arg(
+        linCmtHcmt,
+        c("depot", "central", "peripheral1", "peripheral2", "concentration"),
+        several.ok = TRUE
+      )
+      linCmtHcmt <- sum(vapply(
+        .vars,
+        function(x) {
+          switch(x, depot = 8L, central = 1L, peripheral1 = 2L, peripheral2 = 4L, concentration = 16L)
+        },
+        integer(1)
+      ))
     } else {
-      stop("linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31",
-           call.=FALSE)
+      stop(
+        "linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31", # nolint: line_length_linter.
+        call. = FALSE
+      )
     }
 
-    if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L,
-                                  upper=6L, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(omegaXform, len = 1L, lower = 1L, upper = 6L, any.missing = FALSE)) {
       .omegaXform <- as.integer(omegaXform)
     } else {
       .omegaXform <- c(
-        "variance" = 6L, "log" = 5L,
-        "identity" = 4L, "nlmixrSqrt" = 1L,
+        "variance" = 6L,
+        "log" = 5L,
+        "identity" = 4L,
+        "nlmixrSqrt" = 1L,
         "nlmixrLog" = 2L,
         "nlmixrIdentity" = 3L
       )[match.arg(omegaXform)]
@@ -1451,12 +1674,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (!is.null(seed)) {
       # Depending on the kind of seed, seed may be a vector of
       # integers, though that use-case is likely not common
-      checkmate::testIntegerish(seed, any.missing=FALSE, min.len=1)
+      checkmate::testIntegerish(seed, any.missing = FALSE, min.len = 1)
       set.seed(seed)
     }
-    if (checkmate::testIntegerish(nsim, len=1, lower=1, any.missing=FALSE)) {
-      if (nSub == 1L && (rxIs(params, "rxEt") || rxIs(events, "rxEt") ||
-                         rxIs(params, "eventTable") || rxIs(events, "eventTable"))) {
+    if (checkmate::testIntegerish(nsim, len = 1, lower = 1, any.missing = FALSE)) {
+      if (
+        nSub == 1L &&
+          (rxIs(params, "rxEt") || rxIs(events, "rxEt") || rxIs(params, "eventTable") || rxIs(events, "eventTable"))
+      ) {
         nSub <- as.integer(nsim)
       } else if (nStud == 1L) {
         nStud <- as.integer(nsim)
@@ -1469,62 +1694,65 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       stiff2 <- as.integer(stiff2)
     }
-    checkmate::assertNumeric(as.numeric(autoSwitchNonstifftol), lower=0, upper=1, len=1, any.missing=FALSE)
-    checkmate::assertNumeric(as.numeric(autoSwitchStifftol), lower=0, upper=1, len=1, any.missing=FALSE)
-    checkmate::assertNumeric(as.numeric(autoSwitchDtfac), lower=1, len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(autoSwitchMaxStiff, lower=1L, len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(autoSwitchMaxNonstiff, lower=1L, len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(autoSwitchSwitchMax, lower=0L, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchNonstifftol), lower = 0, upper = 1, len = 1, any.missing = FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchStifftol), lower = 0, upper = 1, len = 1, any.missing = FALSE)
+    checkmate::assertNumeric(as.numeric(autoSwitchDtfac), lower = 1, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxStiff, lower = 1L, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(autoSwitchMaxNonstiff, lower = 1L, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(autoSwitchSwitchMax, lower = 0L, len = 1, any.missing = FALSE)
     if (is.logical(autoSwitchStiffFirst)) {
-      checkmate::assertLogical(autoSwitchStiffFirst, len=1, any.missing=FALSE)
+      checkmate::assertLogical(autoSwitchStiffFirst, len = 1, any.missing = FALSE)
     } else {
-      checkmate::assertIntegerish(autoSwitchStiffFirst, lower=0L, upper=1L, len=1, any.missing=FALSE)
+      checkmate::assertIntegerish(autoSwitchStiffFirst, lower = 0L, upper = 1L, len = 1, any.missing = FALSE)
     }
-    if (checkmate::testIntegerish(cvodeLinSolver, len=1, lower=1L, upper=5L,
-                                  any.missing=FALSE)) {
+    if (checkmate::testIntegerish(cvodeLinSolver, len = 1, lower = 1L, upper = 5L, any.missing = FALSE)) {
       cvodeLinSolver <- as.integer(cvodeLinSolver)
     } else {
-      cvodeLinSolver <- c("dense"=1L, "band"=2L, "gmres"=3L,
-                          "bicgstab"=4L, "tfqmr"=5L)[match.arg(cvodeLinSolver)]
+      cvodeLinSolver <- c("dense" = 1L, "band" = 2L, "gmres" = 3L, "bicgstab" = 4L, "tfqmr" = 5L)[match.arg(
+        cvodeLinSolver
+      )]
     }
-    if (checkmate::testIntegerish(returnType, len=1, lower=0,
-                                  upper=5, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(returnType, len = 1, lower = 0, upper = 5, any.missing = FALSE)) {
       returnType <- as.integer(returnType)
     } else {
-      .matrixIdx <- c("rxSolve" = 0L, "matrix" = 1L,
-                      "data.frame" = 2L, "data.frame.TBS" = 3L,
-                      "data.table" = 4L, "tbl" = 5L, "tibble" = 5L)
+      .matrixIdx <- c(
+        "rxSolve" = 0L,
+        "matrix" = 1L,
+        "data.frame" = 2L,
+        "data.frame.TBS" = 3L,
+        "data.table" = 4L,
+        "tbl" = 5L,
+        "tibble" = 5L
+      )
       returnType <- .matrixIdx[match.arg(returnType)]
     }
-    if (checkmate::testIntegerish(covsInterpolation, len=1, lower=0,
-                                  upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(covsInterpolation, len = 1, lower = 0, upper = 3, any.missing = FALSE)) {
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
-      covsInterpolation <- c("linear"=0L, "locf"=1L,
-                             "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
+      covsInterpolation <- c("linear" = 0L, "locf" = 1L, "nocb" = 2L, "midpoint" = 3L)[match.arg(covsInterpolation)]
     }
-    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0,
-                                  upper=1, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(naInterpolation, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       naInterpolation <- as.integer(naInterpolation)
     } else {
-      naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
+      naInterpolation <- c("locf" = 1L, "nocb" = 0L)[match.arg(naInterpolation)]
     }
-    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0,
-                                  upper=2, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(keepInterpolation, len = 1, lower = 0, upper = 2, any.missing = FALSE)) {
       keepInterpolation <- as.integer(keepInterpolation)
     } else {
-      keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)[match.arg(keepInterpolation)]
+      keepInterpolation <- c("locf" = 1L, "nocb" = 0L, "na" = 2L)[match.arg(keepInterpolation)]
     }
     if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
       naTimeHandle <- getOption("rxode2.naTimeHandle")
     }
-    if (checkmate::testIntegerish(naTimeHandle, len=1, lower=1, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(naTimeHandle, len = 1, lower = 1, upper = 3, any.missing = FALSE)) {
       naTimeHandle <- as.integer(naTimeHandle)
     } else {
-      naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
+      naTimeHandle <- c("ignore" = 1L, "warn" = 2L, "error" = 3L)[match.arg(naTimeHandle)]
     }
-    if (missing(zeroVarParamHandle) &&
-          !is.null(getOption("rxode2.zeroVarParamHandle", NULL))) {
+    if (
+      missing(zeroVarParamHandle) &&
+        !is.null(getOption("rxode2.zeroVarParamHandle", NULL))
+    ) {
       zeroVarParamHandle <- getOption("rxode2.zeroVarParamHandle")
     }
     zeroVarParamHandle <- match.arg(zeroVarParamHandle)
@@ -1541,57 +1769,56 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .sigma <- sigma
     } else if (inherits(sigma, "character")) {
       .sigma <- sigma
-      checkmate::assertNumeric(dfObs, lower=length(sigma), finite=TRUE,
-                               any.missing=FALSE, len=1)
+      checkmate::assertNumeric(dfObs, lower = length(sigma), finite = TRUE, any.missing = FALSE, len = 1)
     } else {
       .sigma <- lotri(sigma)
     }
     if (inherits(omega, "logical")) {
       .omega <- omega
-    }  else if (inherits(omega, "character")) {
+    } else if (inherits(omega, "character")) {
       .omega <- omega
-      checkmate::testNumeric(dfSub, lower=length(omega), finite=TRUE,
-                             any.missing=FALSE, len=1)
+      checkmate::testNumeric(dfSub, lower = length(omega), finite = TRUE, any.missing = FALSE, len = 1)
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
     } else {
       .omega <- lotri(omega)
     }
-    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=4, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinMatExpType, len = 1, lower = 1, upper = 4, any.missing = FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
     } else {
       .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L, "taylor" = 4L)
       .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
-    if (checkmate::testIntegerish(sumType, len=1, lower=1,
-                                  upper=5, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(sumType, len = 1, lower = 1, upper = 5, any.missing = FALSE)) {
       .sum <- as.integer(sumType)
     } else {
-      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
+      .sum <- c("pairwise" = 1L, "fsum" = 2L, "kahan" = 3L, "neumaier" = 4L, "c" = 5L)[match.arg(sumType)]
     }
     if (checkmate::testIntegerish(linCmtSensType)) {
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
-      .linCmtSensType <- c("AD"=3L,        # forward-mode AD (fvar), one pass per direction
-                           "ADm"=32L,      # forward-mode AD, all directions in one pass
-                           "ADr"=31L,      # reverse-mode AD (what "auto" resolves to)
-                           "forward"=1L,
-                           "central"=2L,
-                           "forward3"=4L,
-                           "endpoint5"=5L,
-                           # Gill differences
-                           "forwardG"=6L,
-                           "forward3G"=7L,
-                           "endpoint5G"=8L,
-                           # Fixed step sizes
-                           "forward3H"=40L,
-                           "endpoint5H"=50L,
-                           "forwardH"=10L,
-                           "centralH"=20L,
-                           "auto"=100L)[match.arg(linCmtSensType)]
+      .linCmtSensType <- c(
+        "AD" = 3L, # forward-mode AD (fvar), one pass per direction
+        "ADm" = 32L, # forward-mode AD, all directions in one pass
+        "ADr" = 31L, # reverse-mode AD (what "auto" resolves to)
+        "forward" = 1L,
+        "central" = 2L,
+        "forward3" = 4L,
+        "endpoint5" = 5L,
+        # Gill differences
+        "forwardG" = 6L,
+        "forward3G" = 7L,
+        "endpoint5G" = 8L,
+        # Fixed step sizes
+        "forward3H" = 40L,
+        "endpoint5H" = 50L,
+        "forwardH" = 10L,
+        "centralH" = 20L,
+        "auto" = 100L
+      )[match.arg(linCmtSensType)]
     }
     if (is.logical(linCmtScale)) {
-      checkmate::assertLogical(linCmtScale, len=1, any.missing=FALSE)
+      checkmate::assertLogical(linCmtScale, len = 1, any.missing = FALSE)
       if (linCmtScale) {
         linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
       } else {
@@ -1601,68 +1828,59 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (is.null(linCmtScale)) {
       linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
     }
-    if (checkmate::testNumeric(linCmtScale, lower=0, finite=TRUE,
-                               any.missing=FALSE, len=1)) {
+    if (checkmate::testNumeric(linCmtScale, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)) {
       linCmtScale <- rep(linCmtScale, 7L)
     }
-    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7)
-    checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtScale, lower = 0, finite = TRUE, any.missing = FALSE, len = 7)
+    checkmate::assertNumeric(linCmtSensH, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     # a control list built by an earlier rxControl() hands this back as the
     # integer it stores, so coerce before asserting rather than demanding
     # the user-facing logical here.  An integer selects WHICH transition
     # matrix: 0 off, 1 probe-built, 2 closed form; TRUE is the default one.
     if (is.logical(linCmtSensPhi)) {
-      checkmate::assertLogical(linCmtSensPhi, any.missing=FALSE, len=1)
+      checkmate::assertLogical(linCmtSensPhi, any.missing = FALSE, len = 1)
       # TRUE selects the closed-form matrix (2); the probe-built one (1) is
       # kept but has to be named
       .linCmtSensPhi <- if (linCmtSensPhi) 2L else 0L
     } else {
-      checkmate::assertIntegerish(linCmtSensPhi, lower=0, upper=2,
-                                  any.missing=FALSE, len=1)
+      checkmate::assertIntegerish(linCmtSensPhi, lower = 0, upper = 2, any.missing = FALSE, len = 1)
       .linCmtSensPhi <- as.integer(linCmtSensPhi)
     }
-    checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE,
-                             any.missing=FALSE, len=1)
-    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE,
-                             any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(linCmtGillRtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
 
-    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE,
-                             any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(linCmtShiMax, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtShiErr, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(linCmtShiMax, lower = 0, any.missing = FALSE, len = 1)
 
-    if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(prodType, len = 1, lower = 1, upper = 3, any.missing = FALSE)) {
       .prod <- as.integer(prodType)
     } else {
-      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)[match.arg(prodType)]
+      .prod <- c("long double" = 1L, "double" = 1L, "logify" = 1L)[match.arg(prodType)]
     }
 
-    if (checkmate::testIntegerish(strictSS, len=1, lower=0, upper=1, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(strictSS, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       strictSS <- as.integer(strictSS)
     } else {
-      checkmate::assertLogical(strictSS, any.missing=FALSE, len=1)
+      checkmate::assertLogical(strictSS, any.missing = FALSE, len = 1)
       strictSS <- as.integer(strictSS)
     }
-    checkmate::assertIntegerish(indLinMatExpOrder, len=1, lower=1, any.missing=FALSE)
+    checkmate::assertIntegerish(indLinMatExpOrder, len = 1, lower = 1, any.missing = FALSE)
     indLinMatExpOrder <- as.integer(indLinMatExpOrder)
-    if (!checkmate::testIntegerish(safeZero, lower=0, upper=1,
-                                   len=1, any.missing=FALSE)) {
-      checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
+    if (!checkmate::testIntegerish(safeZero, lower = 0, upper = 1, len = 1, any.missing = FALSE)) {
+      checkmate::assertLogical(safeZero, len = 1, any.missing = FALSE)
     }
     safeZero <- as.integer(safeZero)
-    if (!checkmate::testIntegerish(safeLog, lower=0, upper=2,
-                                   len=1, any.missing=FALSE)) {
-      checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
+    if (!checkmate::testIntegerish(safeLog, lower = 0, upper = 2, len = 1, any.missing = FALSE)) {
+      checkmate::assertLogical(safeLog, len = 1, any.missing = FALSE)
     }
     safeLog <- as.integer(safeLog)
-    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1,
-                                   any.missing=FALSE)) {
-      checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
+    if (!checkmate::testIntegerish(safePow, lower = 0, upper = 1, len = 1, any.missing = FALSE)) {
+      checkmate::assertLogical(safePow, len = 1, any.missing = FALSE)
     }
-    if (!checkmate::testIntegerish(indOwnAlloc, lower=-1, upper=1,
-                                   len=1, any.missing=FALSE)) {
-      checkmate::assertLogical(indOwnAlloc, len=1, any.missing=TRUE)
+    if (!checkmate::testIntegerish(indOwnAlloc, lower = -1, upper = 1, len = 1, any.missing = FALSE)) {
+      checkmate::assertLogical(indOwnAlloc, len = 1, any.missing = TRUE)
       if (is.na(indOwnAlloc)) {
         indOwnAlloc <- -1L
       } else {
@@ -1670,18 +1888,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       }
     }
     safePow <- as.integer(safePow)
-    if (is.null(scale)) {
-    } else if (is.list(scale)) {
-      checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
+    if (is.null(scale)) {} else if (is.list(scale)) {
+      checkmate::assertList(scale, types = "double", any.missing = FALSE, names = "strict")
       lapply(names(scale), function(n) {
-        checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE,
-                                 any.missing=FALSE, len=1, .var.name=n)
+        checkmate::assertNumeric(scale[[n]], lower = 0, finite = TRUE, any.missing = FALSE, len = 1, .var.name = n)
       })
     } else {
-      checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
+      checkmate::assertNumeric(scale, lower = 0, finite = TRUE, any.missing = FALSE, names = "strict")
     }
     if (!is.null(sigdig)) {
-      checkmate::assertNumeric(sigdig, lower=2, finite=TRUE, any.missing=FALSE, len=1)
+      checkmate::assertNumeric(sigdig, lower = 2, finite = TRUE, any.missing = FALSE, len = 1)
       # `sigdig` sets the ODE solver tolerances with ONE simple, solver-independent
       # formula: the `rtol` exponent IS `sigdig`, and `atol` sits three orders below.
       # Keeping it uniform (same for stiff, non-stiff and auto-switch solvers) makes
@@ -1717,214 +1933,227 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         ssRtolSens <- 10 * .sigRtol
       }
     }
-    checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
-    checkmate::assertNumeric(rtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
-    checkmate::assertNumeric(atolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(rtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(ssAtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
-    checkmate::assertNumeric(ssRtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
-    checkmate::assertNumeric(ssAtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(ssRtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(maxsteps, lower=1, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(atol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    checkmate::assertNumeric(rtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    checkmate::assertNumeric(atolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(rtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(ssAtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    checkmate::assertNumeric(ssRtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    checkmate::assertNumeric(ssAtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(ssRtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(maxsteps, lower = 1, any.missing = FALSE, len = 1)
     maxsteps <- as.integer(maxsteps)
-    checkmate::assertNumeric(hmin, lower=0, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(hmax, lower=0, any.missing=TRUE, null.ok=TRUE,
-                             finite=TRUE, len=1)
-    checkmate::assertNumeric(hmaxSd, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
-    checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
-    checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(hmin, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(hmax, lower = 0, any.missing = TRUE, null.ok = TRUE, finite = TRUE, len = 1)
+    checkmate::assertNumeric(hmaxSd, lower = 0, any.missing = FALSE, null.ok = FALSE, finite = TRUE, len = 1)
+    checkmate::assertNumeric(hini, lower = 0, any.missing = FALSE, null.ok = FALSE, finite = TRUE, len = 1)
+    checkmate::assertIntegerish(maxordn, lower = 1, upper = 12, any.missing = FALSE, len = 1)
     maxordn <- as.integer(maxordn)
     if (method == 8L || method == 9L || method == 19L) {
       if (method == 19L) {
-        checkmate::assertIntegerish(order, lower=1, any.missing=FALSE, len=1)
+        checkmate::assertIntegerish(order, lower = 1, any.missing = FALSE, len = 1)
       } else {
-        checkmate::assertIntegerish(order, lower=1, upper=8, any.missing=FALSE, len=1)
+        checkmate::assertIntegerish(order, lower = 1, upper = 8, any.missing = FALSE, len = 1)
       }
       maxordn <- as.integer(order)
     }
-    checkmate::assertIntegerish(maxords, lower=1, upper=5, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(maxords, lower = 1, upper = 5, any.missing = FALSE, len = 1)
     maxods <- as.integer(maxords)
-    checkmate::assertIntegerish(mxhnil, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(mxhnil, lower = 0, any.missing = FALSE, len = 1)
     mxhnil <- as.integer(mxhnil)
-    checkmate::assertIntegerish(hmxi, lower=0, any.missing=FALSE, len=1)
-    checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
-    checkmate::assertLogical(simVariability, len=1)
+    checkmate::assertIntegerish(hmxi, lower = 0, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(istateReset, any.missing = TRUE, len = 1)
+    checkmate::assertLogical(simVariability, len = 1)
     ## `usePrior=NA` is "auto" (use the priors when the model has them and
     ## variability is being simulated); the string spelling is accepted so
     ## `usePrior="auto"` reads the way the documentation does
     .usePrior <- usePrior
     if (is.character(.usePrior)) {
-      .usePrior <- switch(match.arg(.usePrior, c("auto", "true", "false")),
-                          auto=NA, true=TRUE, false=FALSE)
+      .usePrior <- switch(match.arg(.usePrior, c("auto", "true", "false")), auto = NA, true = TRUE, false = FALSE)
     }
-    checkmate::assertLogical(.usePrior, len=1)
-    checkmate::assertIntegerish(priorPdRetry, len=1, lower=1,
-                                any.missing=FALSE)
+    checkmate::assertLogical(.usePrior, len = 1)
+    checkmate::assertIntegerish(priorPdRetry, len = 1, lower = 1, any.missing = FALSE)
     priorPdRetry <- as.integer(priorPdRetry)
-    checkmate::assertLogical(dense, len=1, any.missing=FALSE)
+    checkmate::assertLogical(dense, len = 1, any.missing = FALSE)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
-      warning("dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
-              call.=FALSE)
+      warning(
+        "dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
+        call. = FALSE
+      )
       dense <- FALSE
     }
-    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) &&
-        (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) && (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
     if (isTRUE(dense) && method == 7L) {
-      warning("dense output is not supported for ck54. Ignoring dense=TRUE", call.=FALSE)
+      warning("dense output is not supported for ck54. Ignoring dense=TRUE", call. = FALSE)
       dense <- FALSE
     }
-    if (checkmate::testIntegerish(indLinStepSearch, len=1, lower=0, upper=2, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinStepSearch, len = 1, lower = 0, upper = 2, any.missing = FALSE)) {
       .indLinStepSearch <- as.integer(indLinStepSearch)
     } else {
-      .indLinStepSearch <- unname(c("none" = 0L, "secant" = 1L,
-                                    "exact" = 2L)[match.arg(indLinStepSearch)])
+      .indLinStepSearch <- unname(c("none" = 0L, "secant" = 1L, "exact" = 2L)[match.arg(indLinStepSearch)])
     }
-    checkmate::assertIntegerish(indLinMaxIter, len=1, lower=1, any.missing=FALSE)
+    checkmate::assertIntegerish(indLinMaxIter, len = 1, lower = 1, any.missing = FALSE)
     indLinMaxIter <- as.integer(indLinMaxIter)
-    if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L &&
-          !is.na(indLinRichardson)) {
+    if (is.logical(indLinRichardson) && length(indLinRichardson) == 1L && !is.na(indLinRichardson)) {
       .indLinRichardson <- as.integer(indLinRichardson)
-    } else if (checkmate::testIntegerish(indLinRichardson, len=1, lower=0, upper=4,
-                                         any.missing=FALSE)) {
+    } else if (checkmate::testIntegerish(indLinRichardson, len = 1, lower = 0, upper = 4, any.missing = FALSE)) {
       .indLinRichardson <- as.integer(indLinRichardson)
     } else {
-      .indLinRichardson <- unname(c("never" = 0L, "always" = 1L,
-                                    "auto" = 2L,
-                                    "always4" = 3L,
-                                    "always5" = 4L)[match.arg(indLinRichardson)])
+      .indLinRichardson <- unname(c("never" = 0L, "always" = 1L, "auto" = 2L, "always4" = 3L, "always5" = 4L)[match.arg(
+        indLinRichardson
+      )])
     }
-    if (checkmate::testIntegerish(indLinIteration, len=1, lower=0, upper=4,
-                                  any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinIteration, len = 1, lower = 0, upper = 4, any.missing = FALSE)) {
       .indLinIteration <- as.integer(indLinIteration)
     } else {
-      .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L,
-                                   "auto" = 3L,
-                                   "exprb32" = 4L)[match.arg(indLinIteration)])
+      .indLinIteration <- unname(c("picard" = 0L, "newton" = 1L, "exprb" = 2L, "auto" = 3L, "exprb32" = 4L)[match.arg(
+        indLinIteration
+      )])
     }
-    if (checkmate::testIntegerish(indLinJac, len=1, lower=0, upper=2,
-                                  any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinJac, len = 1, lower = 0, upper = 2, any.missing = FALSE)) {
       .indLinJac <- as.integer(indLinJac)
     } else {
-      .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L,
-                             "fd" = 2L)[match.arg(indLinJac)])
+      .indLinJac <- unname(c("auto" = 0L, "symbolic" = 1L, "fd" = 2L)[match.arg(indLinJac)])
     }
-    if (checkmate::testIntegerish(indLinForcing, len=1, lower=0, upper=1,
-                                  any.missing=FALSE)) {
+    if (checkmate::testIntegerish(indLinForcing, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .indLinForcing <- as.integer(indLinForcing)
     } else {
-      .indLinForcing <- unname(c("constant" = 0L,
-                                 "ramp" = 1L)[match.arg(indLinForcing)])
+      .indLinForcing <- unname(c("constant" = 0L, "ramp" = 1L)[match.arg(indLinForcing)])
     }
-    checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(indLinPhiTol, lower = 0, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(indLinPhiM, lower = 0L, any.missing = FALSE, len = 1)
     indLinPhiM <- as.integer(indLinPhiM)
-    checkmate::assertIntegerish(minSS, lower=5L, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(maxSS, lower=7L, any.missing=FALSE, len=1)
-    if (maxSS <= minSS) stop("'maxSS' must be larger than 'minSS'", call.=FALSE)
-    checkmate::assertNumeric(infSSstep, lower=6, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE,
-                             finite=TRUE, null.ok=FALSE, len=1)
-    if (!is.null(tolFactor))
-      checkmate::assertNumeric(tolFactor, lower=1.0, finite=TRUE, any.missing=FALSE, .var.name="tolFactor")
-    checkmate::assertNumeric(from, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(to, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(length.out, lower=0, any.missing=FALSE,
-                                null.ok=TRUE, len=1)
-    checkmate::assertLogical(addCov, len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(nCoresRV, len=1, lower=1)
-    checkmate::assertLogical(sigmaIsChol,len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(nDisplayProgress, len=1, lower=100, any.missing=FALSE)
-    checkmate::assertCharacter(amountUnits, any.missing=TRUE, len=1)
-    checkmate::assertCharacter(timeUnits, any.missing=TRUE, len=1)
-    checkmate::assertLogical(addDosing, any.missing=TRUE, null.ok=TRUE, len=1)
-    checkmate::assertLogical(subsetNonmem, any.missing=FALSE, null.ok=FALSE, len=1)
-    checkmate::assertNumeric(sigmaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
-    checkmate::assertNumeric(stateTrim, min.len=1, max.len=2)
-    checkmate::assertLogical(updateObject, len=1, any.missing=FALSE)
-    checkmate::assertNumeric(omegaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
-    checkmate::assertLogical(omegaIsChol,len=1, any.missing=FALSE)
-    checkmate::assertIntegerish(nSub, len=1, lower=1)
+    checkmate::assertIntegerish(minSS, lower = 5L, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(maxSS, lower = 7L, any.missing = FALSE, len = 1)
+    if (maxSS <= minSS) {
+      stop("'maxSS' must be larger than 'minSS'", call. = FALSE)
+    }
+    checkmate::assertNumeric(infSSstep, lower = 6, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(
+      maxAtolRtolFactor,
+      lower = 0.01,
+      any.missing = FALSE,
+      finite = TRUE,
+      null.ok = FALSE,
+      len = 1
+    )
+    if (!is.null(tolFactor)) {
+      checkmate::assertNumeric(tolFactor, lower = 1.0, finite = TRUE, any.missing = FALSE, .var.name = "tolFactor")
+    }
+    checkmate::assertNumeric(from, null.ok = TRUE, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(to, null.ok = TRUE, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertNumeric(by, null.ok = TRUE, finite = TRUE, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(length.out, lower = 0, any.missing = FALSE, null.ok = TRUE, len = 1)
+    checkmate::assertLogical(addCov, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(nCoresRV, len = 1, lower = 1)
+    checkmate::assertLogical(sigmaIsChol, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(nDisplayProgress, len = 1, lower = 100, any.missing = FALSE)
+    checkmate::assertCharacter(amountUnits, any.missing = TRUE, len = 1)
+    checkmate::assertCharacter(timeUnits, any.missing = TRUE, len = 1)
+    checkmate::assertLogical(addDosing, any.missing = TRUE, null.ok = TRUE, len = 1)
+    checkmate::assertLogical(subsetNonmem, any.missing = FALSE, null.ok = FALSE, len = 1)
+    checkmate::assertNumeric(sigmaDf, any.missing = FALSE, lower = 0, len = 1, null.ok = TRUE)
+    checkmate::assertNumeric(stateTrim, min.len = 1, max.len = 2)
+    checkmate::assertLogical(updateObject, len = 1, any.missing = FALSE)
+    checkmate::assertNumeric(omegaDf, any.missing = FALSE, lower = 0, len = 1, null.ok = TRUE)
+    checkmate::assertLogical(omegaIsChol, len = 1, any.missing = FALSE)
+    checkmate::assertIntegerish(nSub, len = 1, lower = 1)
     nSub <- as.integer(nSub)
-    checkmate::assertMatrix(thetaMat, col.names="strict", null.ok=TRUE, mode="numeric")
-    checkmate::assertNumeric(thetaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
-    checkmate::assertLogical(thetaIsChol,len=1, any.missing=FALSE,  null.ok=TRUE)
-    checkmate::assertIntegerish(nStud, len=1, any.missing=FALSE, lower=1)
-    checkmate::assertNumeric(dfSub, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
-    checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
+    checkmate::assertMatrix(thetaMat, col.names = "strict", null.ok = TRUE, mode = "numeric")
+    checkmate::assertNumeric(thetaDf, any.missing = FALSE, lower = 0, len = 1, null.ok = TRUE)
+    checkmate::assertLogical(thetaIsChol, len = 1, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertIntegerish(nStud, len = 1, any.missing = FALSE, lower = 1)
+    checkmate::assertNumeric(dfSub, len = 1, any.missing = FALSE, finite = TRUE, lower = 0.0)
+    checkmate::assertNumeric(dfObs, len = 1, any.missing = FALSE, finite = TRUE, lower = 0.0)
     # iCov = data.frame
-    checkmate::assertDataFrame(iCov, null.ok=TRUE)
+    checkmate::assertDataFrame(iCov, null.ok = TRUE)
     .invalidKeep <- c("id", "sim.id", "resetno", "time")
     .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
     if (length(.invalidKeep) > 0) {
       .w <- which(tolower(keep) %in% .invalidKeep)
       keep <- keep[-.w]
-      warning("'keep' contains ", paste(.invalidKeep, collapse=", "), "\nwhich are output when needed, ignoring these items", call.=FALSE)
+      warning(
+        "'keep' contains ",
+        paste(.invalidKeep, collapse = ", "),
+        "\nwhich are output when needed, ignoring these items",
+        call. = FALSE
+      )
     }
-    .invalidKeep <- c("evid",  "ss", "amt", "rate", "dur", "ii")
+    .invalidKeep <- c("evid", "ss", "amt", "rate", "dur", "ii")
     .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
     if (length(.invalidKeep) > 0) {
-      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using addDosing=TRUE or merging to original dataset", call.=FALSE)
+      stop(
+        "'keep' cannot contain ",
+        paste(.invalidKeep, collapse = ", "),
+        "\nconsider using addDosing=TRUE or merging to original dataset",
+        call. = FALSE
+      )
     }
-    .invalidKeep <- c ("rxLambda", "rxYj", "rxLow", "rxHi")
+    .invalidKeep <- c("rxLambda", "rxYj", "rxLow", "rxHi")
     .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
     if (length(.invalidKeep) > 0) {
-      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using returnType=\"data.frame.TBS\"", call.=FALSE)
+      stop(
+        "'keep' cannot contain ",
+        paste(.invalidKeep, collapse = ", "),
+        "\nconsider using returnType=\"data.frame.TBS\"",
+        call. = FALSE
+      )
     }
-    checkmate::assertCharacter(drop, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertLogical(warnDrop, len=1, any.missing=FALSE)
-    checkmate::assertNumeric(omegaLower, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertNumeric(omegaUpper, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertNumeric(sigmaLower, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertNumeric(sigmaUpper, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertNumeric(thetaLower, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertNumeric(thetaUpper, any.missing=FALSE, null.ok=TRUE)
-    checkmate::assertLogical(idFactor, any.missing=FALSE)
-    checkmate::assertLogical(warnIdSort, any.missing=FALSE)
-    if (is.null(resample)) {
-    } else if (checkmate::testLogical(resample)) {
-      checkmate::assertLogical(resample, any.missing=FALSE, len=1)
+    checkmate::assertCharacter(drop, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertLogical(warnDrop, len = 1, any.missing = FALSE)
+    checkmate::assertNumeric(omegaLower, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertNumeric(omegaUpper, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertNumeric(sigmaLower, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertNumeric(sigmaUpper, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertNumeric(thetaLower, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertNumeric(thetaUpper, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertLogical(idFactor, any.missing = FALSE)
+    checkmate::assertLogical(warnIdSort, any.missing = FALSE)
+    if (is.null(resample)) {} else if (checkmate::testLogical(resample)) {
+      checkmate::assertLogical(resample, any.missing = FALSE, len = 1)
     } else {
-      checkmate::assertCharacter(resample, min.len=1, any.missing=FALSE, unique=TRUE)
+      checkmate::assertCharacter(resample, min.len = 1, any.missing = FALSE, unique = TRUE)
     }
-    checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
-    checkmate::assertIntegerish(maxwhile, lower=20, len=1)
-    checkmate::assertIntegerish(maxExtra, lower=0, len=1)
+    checkmate::assertLogical(resampleID, null.ok = FALSE, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(maxwhile, lower = 20, len = 1)
+    checkmate::assertIntegerish(maxExtra, lower = 0, len = 1)
     if (!is.null(serializeFile)) {
-      if (isTRUE(serializeFile)) {
-      } else if (checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)) {
-      } else {
+      if (isTRUE(serializeFile)) {} else if (
+        checkmate::testCharacter(serializeFile, len = 1, any.missing = FALSE)
+      ) {} else {
         stop("'serializeFile' must be TRUE or a single file path", call. = FALSE)
       }
     }
-    if (!is.null(file))
+    if (!is.null(file)) {
       checkmate::assertCharacter(file, len = 1, any.missing = FALSE)
-    if (!is.null(chunkSize))
+    }
+    if (!is.null(chunkSize)) {
       checkmate::assertIntegerish(chunkSize, lower = 1, len = 1)
+    }
     checkmate::assertIntegerish(parallel, lower = 0, len = 1)
     parallel <- as.integer(parallel)
     if (!is.null(nLlikAlloc)) {
-      checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
+      checkmate::assertIntegerish(nLlikAlloc, lower = 1, len = 1, any.missing = FALSE)
     }
     if (checkmate::testLogical(useStdPow)) {
-      checkmate::assertLogical(useStdPow, len=1, any.missing=FALSE)
+      checkmate::assertLogical(useStdPow, len = 1, any.missing = FALSE)
     } else {
-      checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
+      checkmate::assertIntegerish(useStdPow, lower = 0, upper = 1, len = 1, any.missing = FALSE)
     }
-    checkmate::assertLogical(addlKeepsCov, any.missing=FALSE, null.ok=FALSE, len=1)
-    checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
-    checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
-    checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
-    checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(addlKeepsCov, any.missing = FALSE, null.ok = FALSE, len = 1)
+    checkmate::assertLogical(addlDropSs, any.missing = FALSE, null.ok = FALSE, len = 1)
+    checkmate::assertLogical(ssAtDoseTime, any.missing = FALSE, null.ok = FALSE, len = 1)
+    checkmate::assertLogical(ss2cancelAllPending, any.missing = FALSE, null.ok = FALSE, len = 1)
+    checkmate::assertLogical(ssSolved, any.missing = FALSE, null.ok = FALSE, len = 1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     maxExtra <- as.integer(maxExtra)
     .zeros <- .xtra$.zeros
     if (inherits(.omega, "matrix")) {
-      .w <-which(diag(.omega) == 0.0)
+      .w <- which(diag(.omega) == 0.0)
       if (length(.w) > 0) {
         # name boundaries if they are not named
         .dimnames <- dimnames(.omega)[[2]]
@@ -1938,12 +2167,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         if (length(.w) == length(.dimnames)) {
           .omega <- NULL
         } else {
-          .omega <- .omega[-.w, -.w, drop=FALSE]
+          .omega <- .omega[-.w, -.w, drop = FALSE]
         }
       }
     }
     if (inherits(.sigma, "matrix")) {
-      .w <-which(diag(.sigma) == 0.0)
+      .w <- which(diag(.sigma) == 0.0)
       if (length(.w) > 0) {
         # name boundaries if they are not named
         .dimnames <- dimnames(.sigma)[[2]]
@@ -1957,7 +2186,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         if (length(.w) == length(.dimnames)) {
           .sigma <- NULL
         } else {
-          .sigma <- .sigma[-.w, -.w, drop=FALSE]
+          .sigma <- .sigma[-.w, -.w, drop = FALSE]
         }
       }
     }
@@ -1966,14 +2195,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       method = method, #
       atol = atol, #
       rtol = rtol, #
-      maxsteps = maxsteps,#
+      maxsteps = maxsteps, #
       hmin = hmin, #
       hmax = hmax, #
       hini = hini, #
       maxordn = maxordn, #
       maxords = maxords, #
-      covsInterpolation = covsInterpolation,#
-      addCov = addCov,#
+      covsInterpolation = covsInterpolation, #
+      addCov = addCov, #
       returnType = returnType, #
       sigma = .sigma, #
       sigmaDf = sigmaDf, #
@@ -1984,7 +2213,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       nDisplayProgress = nDisplayProgress, #
       amountUnits = amountUnits, #
       timeUnits = timeUnits, #
-      addDosing = addDosing,#
+      addDosing = addDosing, #
       stateTrim = stateTrim, #
       updateObject = updateObject, #
       omega = .omega, #
@@ -1996,12 +2225,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       thetaMat = thetaMat, #
       thetaDf = thetaDf, #
       thetaIsChol = thetaIsChol, #
-      nStud = nStud,#
-      dfSub = dfSub,#
-      dfObs = dfObs,#
-      seed = seed,#
+      nStud = nStud, #
+      dfSub = dfSub, #
+      dfObs = dfObs, #
+      seed = seed, #
       nsim = nsim, #
-      minSS = minSS, maxSS = maxSS, #
+      minSS = minSS,
+      maxSS = maxSS, #
       strictSS = strictSS, #
       infSSstep = as.double(infSSstep), #
       istateReset = istateReset, #
@@ -2020,7 +2250,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       omegaLower = omegaLower, #
       omegaUpper = omegaUpper, #
       sigmaLower = sigmaLower, #
-      sigmaUpper = sigmaUpper,#
+      sigmaUpper = sigmaUpper, #
       thetaLower = thetaLower, #
       thetaUpper = thetaUpper, #
       indLinPhiM = indLinPhiM, #
@@ -2037,75 +2267,75 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       sumType = .sum,
       prodType = .prod,
       resample = resample, #
-      resampleID = resampleID,#
+      resampleID = resampleID, #
       maxwhile = maxwhile,
       cores = cores,
       atolSens = atolSens,
       rtolSens = rtolSens,
-      ssAtolSens=ssAtolSens,
-      ssRtolSens=ssRtolSens,
-      simVariability=simVariability,
-      nLlikAlloc=nLlikAlloc,
-      useStdPow=useStdPow,
-      naTimeHandle=naTimeHandle,
-      addlKeepsCov=addlKeepsCov,
-      addlDropSs=addlDropSs,
-      ssAtDoseTime=ssAtDoseTime,
-      ss2cancelAllPending=ss2cancelAllPending,
-      naInterpolation=naInterpolation,
-      keepInterpolation=keepInterpolation,
-      safeLog=safeLog,
-      safePow=safePow,
-      ssSolved=ssSolved,
-      linCmtSensType=.linCmtSensType,
-      linCmtSensH=linCmtSensH,
-      linCmtGillFtol=linCmtGillFtol,
-      linCmtGillK=linCmtGillK,
-      linCmtGillStep=linCmtGillStep,
-      linCmtGillRtol=linCmtGillRtol,
-      linCmtShiErr=linCmtShiErr,
-      linCmtShiMax=linCmtShiMax,
-      linCmtScale=linCmtScale,
+      ssAtolSens = ssAtolSens,
+      ssRtolSens = ssRtolSens,
+      simVariability = simVariability,
+      nLlikAlloc = nLlikAlloc,
+      useStdPow = useStdPow,
+      naTimeHandle = naTimeHandle,
+      addlKeepsCov = addlKeepsCov,
+      addlDropSs = addlDropSs,
+      ssAtDoseTime = ssAtDoseTime,
+      ss2cancelAllPending = ss2cancelAllPending,
+      naInterpolation = naInterpolation,
+      keepInterpolation = keepInterpolation,
+      safeLog = safeLog,
+      safePow = safePow,
+      ssSolved = ssSolved,
+      linCmtSensType = .linCmtSensType,
+      linCmtSensH = linCmtSensH,
+      linCmtGillFtol = linCmtGillFtol,
+      linCmtGillK = linCmtGillK,
+      linCmtGillStep = linCmtGillStep,
+      linCmtGillRtol = linCmtGillRtol,
+      linCmtShiErr = linCmtShiErr,
+      linCmtShiMax = linCmtShiMax,
+      linCmtScale = linCmtScale,
       linCmtHcmt = linCmtHcmt,
-      linCmtHmeanI=linCmtHmeanI,
-      linCmtHmeanO=linCmtHmeanO,
-      linCmtSuspect=linCmtSuspect,
-      linCmtForwardMax=linCmtForwardMax,
-      indOwnAlloc=as.integer(indOwnAlloc),
-      maxExtra=maxExtra,
-      tolFactor=tolFactor,
-      serializeFile=serializeFile,
-      dense=dense,
-      cvodeLinSolver=cvodeLinSolver,
-      stiff2=stiff2,
-      autoSwitchMaxStiff=as.integer(autoSwitchMaxStiff),
-      autoSwitchMaxNonstiff=as.integer(autoSwitchMaxNonstiff),
-      autoSwitchStiffFirst=as.integer(autoSwitchStiffFirst),
-      autoSwitchNonstifftol=as.double(autoSwitchNonstifftol),
-      autoSwitchStifftol=as.double(autoSwitchStifftol),
-      autoSwitchDtfac=as.double(autoSwitchDtfac),
-      autoSwitchSwitchMax=as.integer(autoSwitchSwitchMax),
-      useLinCmt=isTRUE(useLinCmt),
-      file=file,
-      chunkSize=chunkSize,
-      parallel=parallel,
-      .zeros=unique(.zeros),
-      zeroVarParamHandle=zeroVarParamHandle,
-      indLinStepSearch=.indLinStepSearch,
-      indLinMaxIter=indLinMaxIter,
-      indLinRichardson=.indLinRichardson,
-      indLinIteration=.indLinIteration,
-      indLinJac=.indLinJac,
-      indLinForcing=.indLinForcing,
+      linCmtHmeanI = linCmtHmeanI,
+      linCmtHmeanO = linCmtHmeanO,
+      linCmtSuspect = linCmtSuspect,
+      linCmtForwardMax = linCmtForwardMax,
+      indOwnAlloc = as.integer(indOwnAlloc),
+      maxExtra = maxExtra,
+      tolFactor = tolFactor,
+      serializeFile = serializeFile,
+      dense = dense,
+      cvodeLinSolver = cvodeLinSolver,
+      stiff2 = stiff2,
+      autoSwitchMaxStiff = as.integer(autoSwitchMaxStiff),
+      autoSwitchMaxNonstiff = as.integer(autoSwitchMaxNonstiff),
+      autoSwitchStiffFirst = as.integer(autoSwitchStiffFirst),
+      autoSwitchNonstifftol = as.double(autoSwitchNonstifftol),
+      autoSwitchStifftol = as.double(autoSwitchStifftol),
+      autoSwitchDtfac = as.double(autoSwitchDtfac),
+      autoSwitchSwitchMax = as.integer(autoSwitchSwitchMax),
+      useLinCmt = isTRUE(useLinCmt),
+      file = file,
+      chunkSize = chunkSize,
+      parallel = parallel,
+      .zeros = unique(.zeros),
+      zeroVarParamHandle = zeroVarParamHandle,
+      indLinStepSearch = .indLinStepSearch,
+      indLinMaxIter = indLinMaxIter,
+      indLinRichardson = .indLinRichardson,
+      indLinIteration = .indLinIteration,
+      indLinJac = .indLinJac,
+      indLinForcing = .indLinForcing,
       ## appended at the end: the C++ side reads `rxControl` positionally
       ## through the generated `Rxc_*` defines, so a new field may only be
       ## added here, never inserted
-      usePrior=.usePrior,
-      priorPdRetry=priorPdRetry,
-      priorOmega=priorOmega,
-      priorOmegaEl=priorOmegaEl,
-      priorSigmaEl=priorSigmaEl,
-      linCmtSensPhi=.linCmtSensPhi
+      usePrior = .usePrior,
+      priorPdRetry = priorPdRetry,
+      priorOmega = priorOmega,
+      priorOmegaEl = priorOmegaEl,
+      priorSigmaEl = priorSigmaEl,
+      linCmtSensPhi = .linCmtSensPhi
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2115,16 +2345,28 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 
 #' @rdname rxSolve
 #' @export
-rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                             theta = NULL, eta = NULL, envir=parent.frame()) {
+rxSolve.function <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
-    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
-                                 initsMissing = missing(inits), inits = inits,
-                                 dots = .xtra,
-                                 thetaMissing = missing(theta),
-                                 etaMissing = missing(eta),
-                                 file = params)
+    .rxAssertSerializedSolveArgs(
+      eventsMissing = missing(events),
+      events = events,
+      initsMissing = missing(inits),
+      inits = inits,
+      dots = .xtra,
+      thetaMissing = missing(theta),
+      etaMissing = missing(eta),
+      file = params
+    )
     .object <- rxode2(object) # nolint
     return(rxSolve.default(.object, params = params, envir = envir))
   }
@@ -2136,8 +2378,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else if (is.data.frame(.paramsChk)) {
     rxUdfUiData(.paramsChk) # nolint
   } else {
-    stop("Cannot detect an event data frame to use while re-parsing the model",
-         call.=FALSE)
+    stop("Cannot detect an event data frame to use while re-parsing the model", call. = FALSE)
   }
   rxUdfUiEst("rxSolve") # nolint
   on.exit({
@@ -2157,10 +2398,14 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxFunctionUiCache[[.fkey]] <- .object
     }
   }
-  do.call("rxSolve", c(list(object=.object, params = params, events = events,
-                            inits = inits),
-                       list(...),
-                       list(theta = theta, eta = eta, envir=envir)))
+  do.call(
+    "rxSolve",
+    c(
+      list(object = .object, params = params, events = events, inits = inits),
+      list(...),
+      list(theta = theta, eta = eta, envir = envir)
+    )
+  )
 }
 
 .rxSolveUiEventData <- function(x) {
@@ -2206,14 +2451,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @noRd
 .rxCtlUnnameMeta <- function(ctl, ui) {
   .meta <- try(ui$meta, silent = TRUE)
-  if (!is.environment(.meta)) return(ctl)
+  if (!is.environment(.meta)) {
+    return(ctl)
+  }
   .nms <- intersect(names(ctl), ls(.meta, all.names = TRUE))
-  if (length(.nms) == 0L) return(ctl)
+  if (length(.nms) == 0L) {
+    return(ctl)
+  }
   .d <- if (is.null(.rxControlDefault)) rxControl() else .rxControlDefault
-  .keep <- vapply(.nms, function(x) !identical(ctl[[x]], .d[[x]]),
-                  logical(1), USE.NAMES = FALSE)
+  .keep <- vapply(.nms, function(x) !identical(ctl[[x]], .d[[x]]), logical(1), USE.NAMES = FALSE)
   .drop <- .nms[!.keep]
-  if (length(.drop) == 0L) return(ctl)
+  if (length(.drop) == 0L) {
+    return(ctl)
+  }
   ctl[!(names(ctl) %in% .drop)]
 }
 
@@ -2221,12 +2471,13 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 ## call.  Only used by .uiRxControl to probe field names and as a fast-path
 ## return when no overrides exist.
 .rxControlDefault <- NULL
-.rxControlNames   <- NULL
+.rxControlNames <- NULL
 
-.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
-                         theta = NULL, eta = NULL) {
-  if (is.null(.rxControlDefault) ||
-        !is.null(getOption("rxode2.naTimeHandle", NULL))) {
+.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ..., theta = NULL, eta = NULL) {
+  if (
+    is.null(.rxControlDefault) ||
+      !is.null(getOption("rxode2.naTimeHandle", NULL))
+  ) {
     .d <- rxControl()
     if (is.null(getOption("rxode2.naTimeHandle", NULL))) {
       assignInMyNamespace(".rxControlDefault", .d)
@@ -2235,51 +2486,64 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       assignInMyNamespace(".rxControlNames", names(.d))
     }
   }
-  .meta <- try(ui$meta, silent=TRUE)
-  if (!is.environment(.meta))  {
-    .meta <- new.env(parent=emptyenv())
+  .meta <- try(ui$meta, silent = TRUE)
+  if (!is.environment(.meta)) {
+    .meta <- new.env(parent = emptyenv())
   }
   .lst <- list(...)
   .nlst <- names(.lst)
-  .w <- which(vapply(.rxControlNames, function(x) {
-    !(x %in% .nlst) && exists(x, envir=.meta)
-  }, logical(1), USE.NAMES=FALSE))
+  .w <- which(vapply(
+    .rxControlNames,
+    function(x) {
+      !(x %in% .nlst) && exists(x, envir = .meta)
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  ))
   .extra <- NULL
   if (length(.w) > 0) {
     .v <- .rxControlNames[.w]
-    .minfo(paste0("rxControl items read from fun: '",
-                  paste(.v, collapse="', '"), "'"))
-    .extra <- setNames(lapply(.v, function(x) {
-      get(x, envir=.meta)
-    }), .v)
+    .minfo(paste0("rxControl items read from fun: '", paste(.v, collapse = "', '"), "'"))
+    .extra <- setNames(
+      lapply(.v, function(x) {
+        get(x, envir = .meta)
+      }),
+      .v
+    )
   }
   ## Fast path: no per-model overrides and no caller-supplied options -- return
   ## the cached default control directly without a second rxSolve(NULL) round.
-  if (!is.null(.rxControlDefault) &&
-        is.null(.extra) && length(.lst) == 0 &&
-        is.null(theta) && is.null(eta)) {
+  if (
+    !is.null(.rxControlDefault) &&
+      is.null(.extra) &&
+      length(.lst) == 0 &&
+      is.null(theta) &&
+      is.null(eta)
+  ) {
     return(.rxControlDefault)
   }
-  do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
-                     .lst, .extra,
-                     list(theta=theta, eta=eta)))
+  do.call(
+    rxSolve,
+    c(list(NULL, params = NULL, events = NULL, inits = NULL), .lst, .extra, list(theta = theta, eta = eta))
+  )
 }
 
 .rxIsSerializedSolvePath <- function(params) {
-  is.character(params) && length(params) == 1L &&
-    file.exists(params) && .rxIsSerializeFile(params)
+  is.character(params) && length(params) == 1L && file.exists(params) && .rxIsSerializeFile(params)
 }
 
-.rxSerializedSolveArgNames <- function(eventsMissing = TRUE,
-                                       events = NULL,
-                                       initsMissing = TRUE,
-                                       inits = NULL,
-                                       dots = list(),
-                                       allowedDots = character(0),
-                                       thetaMissing = TRUE,
-                                       etaMissing = TRUE,
-                                       indOwnAllocMissing = TRUE,
-                                       extras = NULL) {
+.rxSerializedSolveArgNames <- function(
+  eventsMissing = TRUE,
+  events = NULL,
+  initsMissing = TRUE,
+  inits = NULL,
+  dots = list(),
+  allowedDots = character(0),
+  thetaMissing = TRUE,
+  etaMissing = TRUE,
+  indOwnAllocMissing = TRUE,
+  extras = NULL
+) {
   .bad <- character(0)
   if (!eventsMissing && !is.null(events)) {
     .bad <- c(.bad, "events")
@@ -2316,20 +2580,27 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 .rxAssertSerializedSolveArgs <- function(..., file) {
   .bad <- .rxSerializedSolveArgNames(...)
   if (length(.bad) > 0) {
-    stop(sprintf(
-      "Serialized solve '%s' only accepts the model and serialization file; disallowed inputs: %s",
-      file, paste(sprintf("'%s'", .bad), collapse = ", ")
-    ), call. = FALSE)
+    stop(
+      sprintf(
+        "Serialized solve '%s' only accepts the model and serialization file; disallowed inputs: %s",
+        file,
+        paste(sprintf("'%s'", .bad), collapse = ", ")
+      ),
+      call. = FALSE
+    )
   }
   invisible(TRUE)
 }
 
 .rxAssertSerializeFileWritable <- function(file) {
   if (file.exists(file)) {
-    stop(sprintf(
-      "Serialization file '%s' already exists; either delete the serialization file or solve without the file specified",
-      file
-    ), call. = FALSE)
+    stop(
+      sprintf(
+        "Serialization file '%s' already exists; either delete the serialization file or solve without the file specified", # nolint: line_length_linter.
+        file
+      ),
+      call. = FALSE
+    )
   }
   invisible(TRUE)
 }
@@ -2378,16 +2649,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @return the subset of `zeros` to set to zero in `params`
 #' @noRd
 .rxZeroVarParams <- function(zeros, params, handle) {
-  if (is.null(handle)) handle <- "warn"
+  if (is.null(handle)) {
+    handle <- "warn"
+  }
   .have <- intersect(zeros, .rxParamsNms(params))
-  if (length(.have) == 0L) return(zeros)
-  if (handle == "keep") return(setdiff(zeros, .have))
+  if (length(.have) == 0L) {
+    return(zeros)
+  }
+  if (handle == "keep") {
+    return(setdiff(zeros, .have))
+  }
   if (handle == "warn") {
-    warning("'params' value(s) replaced by zero for the zero variance omega/sigma item(s): '",
-            paste(.have, collapse = "', '"),
-            "'\nuse zeroVarParamHandle=\"keep\" to use the supplied value(s), ",
-            "or \"ignore\" to silence this",
-            call. = FALSE)
+    warning(
+      "'params' value(s) replaced by zero for the zero variance omega/sigma item(s): '",
+      paste(.have, collapse = "', '"),
+      "'\nuse zeroVarParamHandle=\"keep\" to use the supplied value(s), ",
+      "or \"ignore\" to silence this",
+      call. = FALSE
+    )
   }
   zeros
 }
@@ -2411,16 +2690,22 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @return `params` with each parameter named by `mat` set to zero
 #' @noRd
 .rxParamsZero <- function(params, mat) {
-  if (is.null(mat)) return(params)
+  if (is.null(mat)) {
+    return(params)
+  }
   .nms <- if (is.character(mat)) {
     mat
   } else {
     # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
     .matNms <- dimnames(mat)[[2]]
-    if (length(.matNms) == 0L) .matNms <- dimnames(mat)[[1]]
+    if (length(.matNms) == 0L) {
+      .matNms <- dimnames(mat)[[1]]
+    }
     .matNms
   }
-  if (length(.nms) == 0L) return(params)
+  if (length(.nms) == 0L) {
+    return(params)
+  }
   if (inherits(params, "data.frame")) {
     for (.n in .nms) {
       # rep() rather than a scalar so a zero row params stays a zero row frame
@@ -2429,12 +2714,12 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     params
   } else if (is.matrix(params)) {
     .have <- intersect(.nms, colnames(params))
-    if (length(.have) > 0L) params[, .have] <- 0.0
+    if (length(.have) > 0L) {
+      params[, .have] <- 0.0
+    }
     .add <- setdiff(.nms, .have)
     if (length(.add) > 0L) {
-      params <- cbind(params,
-                      matrix(0.0, nrow(params), length(.add),
-                             dimnames = list(NULL, .add)))
+      params <- cbind(params, matrix(0.0, nrow(params), length(.add), dimnames = list(NULL, .add)))
     }
     params
   } else {
@@ -2442,10 +2727,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
 }
 
-.rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                           theta = NULL, eta = NULL) {
-  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
-                             theta = theta, eta=eta)
+.rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ..., theta = NULL, eta = NULL) {
+  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   if (rxIs(params, "rx.event") || inherits(params, "rxEtFile")) {
     if (!is.null(events)) {
       .tmp <- events
@@ -2491,10 +2774,14 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (inherits(.rxControl$omega, "matrix")) {
     .omega <- .rxControl$omega
-    .v <- vapply(dimnames(.omega)[[1]],
-                 function(v) {
-                   !(v %in% .rxParamsNms(params))
-                 }, logical(1), USE.NAMES = FALSE)
+    .v <- vapply(
+      dimnames(.omega)[[1]],
+      function(v) {
+        !(v %in% .rxParamsNms(params))
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    )
     if (length(.v) == 1L) {
       if (!.v) .rxControl$omega <- NULL
     } else {
@@ -2508,10 +2795,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         .rxControl$omega <- .omega
       }
     }
-
   }
-  if (inherits(.rxControl$omega, "matrix") &&
-        all(dim(.rxControl$omega) == c(0,0))) {
+  if (
+    inherits(.rxControl$omega, "matrix") &&
+      all(dim(.rxControl$omega) == c(0, 0))
+  ) {
     .rxControl$omega <- NULL
   }
   if (is.null(.rxControl$sigma)) {
@@ -2527,10 +2815,14 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (inherits(.rxControl$sigma, "matrix")) {
     .sigma <- .rxControl$sigma
-    .v <- vapply(dimnames(.sigma)[[1]],
-                 function(v) {
-                   !(v %in% .rxParamsNms(params))
-                 }, logical(1), USE.NAMES = FALSE)
+    .v <- vapply(
+      dimnames(.sigma)[[1]],
+      function(v) {
+        !(v %in% .rxParamsNms(params))
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    )
     if (length(.v) == 1L) {
       if (!.v) .rxControl$sigma <- NULL
     } else {
@@ -2541,10 +2833,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         .rxControl$sigma <- .sigma
       }
     }
-
   }
-  if (inherits(.rxControl$sigma, "matrix") &&
-        all(dim(.rxControl$sigma) == c(0,0))) {
+  if (
+    inherits(.rxControl$sigma, "matrix") &&
+      all(dim(.rxControl$sigma) == c(0, 0))
+  ) {
     .rxControl$sigma <- NULL
   }
   ## the prior distributions the model's `ini({})` block specifies drive
@@ -2555,9 +2848,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else {
     .rx <- object$simulationModel
   }
-  list(list(object=.rx, params = params, events = events, inits = inits),
-                       .rxControl,
-                       list(theta = theta, eta = eta))
+  list(list(object = .rx, params = params, events = events, inits = inits), .rxControl, list(theta = theta, eta = eta))
 }
 
 #' Does this model actually carry `d/dt()` equations?
@@ -2603,17 +2894,29 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 
 #' @rdname rxSolve
 #' @export
-rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                         useLinCmt = TRUE,
-                         theta = NULL, eta = NULL, envir=parent.frame()) {
+rxSolve.rxUi <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  useLinCmt = TRUE,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
-    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
-                                 initsMissing = missing(inits), inits = inits,
-                                 dots = .xtra,
-                                 thetaMissing = missing(theta),
-                                 etaMissing = missing(eta),
-                                 file = params)
+    .rxAssertSerializedSolveArgs(
+      eventsMissing = missing(events),
+      events = events,
+      initsMissing = missing(inits),
+      inits = inits,
+      dots = .xtra,
+      thetaMissing = missing(theta),
+      etaMissing = missing(eta),
+      file = params
+    )
     if (inherits(object, "rxUi")) {
       object <- rxUiDecompress(object)
     }
@@ -2631,8 +2934,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       rxUdfUiData(.paramsChk2)
       rxUdfUiMv(rxModelVars(object))
     } else {
-      stop("Cannot detect an event data frame to use while re-parsing the model",
-           call.=FALSE)
+      stop("Cannot detect an event data frame to use while re-parsing the model", call. = FALSE)
     }
     rxUdfUiEst("rxSolve")
     on.exit({
@@ -2654,14 +2956,15 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     .linInfo <- .odeToLinDetect(object) # nolint
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
-      if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) { # nolint
+      if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) {
         .converted <- .odeToLinCache[[.cacheKey]] # nolint
       } else {
-        .linExpr   <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
+        .linExpr <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
         # fall back to the original ODE model
         .converted <- tryCatch(
           rxUiDecompress(suppressMessages(.rebuildRxUiFromExpr(object, .linExpr))), # nolint
-          error = function(e) NULL)
+          error = function(e) NULL
+        )
         if (is.null(.converted)) {
           .converted <- object
         }
@@ -2671,22 +2974,35 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       # every compartment the same way in both models -- by a name the
       # conversion keeps, and by an index it does not renumber.  How the two
       # models' compartments line up is derived once per model and cached.
-      .cmtInfo <- .odeToLinCmtInfo(.cacheKey, object, .converted, # nolint
-                                   .odeToLinCmtMap(.linInfo)) # nolint
-      if (.odeToLinCmtAlwaysOk(.cmtInfo)) { # nolint
+      .cmtInfo <- .odeToLinCmtInfo(
+        .cacheKey,
+        object,
+        .converted, # nolint
+        .odeToLinCmtMap(.linInfo)
+      ) # nolint
+      if (.odeToLinCmtAlwaysOk(.cmtInfo)) {
         object <- .converted
       } else {
         .solveData <- .rxSolveUiEventData(events) # nolint
         if (is.null(.solveData)) {
           .solveData <- .rxSolveUiEventData(params) # nolint
         }
-        if (.odeToLinCmtCompatible(.cmtInfo, .solveData)) { # nolint
+        if (.odeToLinCmtCompatible(.cmtInfo, .solveData)) {
           object <- .converted
         }
       }
     }
   }
-  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., useLinCmt = useLinCmt, theta = theta, eta = eta)
+  .lst <- .rxSolveFromUi(
+    object,
+    params = params,
+    events = events,
+    inits = inits,
+    ...,
+    useLinCmt = useLinCmt,
+    theta = theta,
+    eta = eta
+  )
   .lst <- do.call("c", .lst)
   .pred <- FALSE
   .mv <- rxModelVars(object)
@@ -2748,16 +3064,28 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #nlmixr2.nlmixr2FitData <- nlmixr2.nlmixr2FitCore
 #' @rdname rxSolve
 #' @export
-rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                                   theta = NULL, eta = NULL, envir=parent.frame()) {
+rxSolve.nlmixr2FitData <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
-    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
-                                 initsMissing = missing(inits), inits = inits,
-                                 dots = .xtra,
-                                 thetaMissing = missing(theta),
-                                 etaMissing = missing(eta),
-                                 file = params)
+    .rxAssertSerializedSolveArgs(
+      eventsMissing = missing(events),
+      events = events,
+      initsMissing = missing(inits),
+      inits = inits,
+      dots = .xtra,
+      thetaMissing = missing(theta),
+      etaMissing = missing(eta),
+      file = params
+    )
     return(rxSolve.default(object$simulationModel, params = params, envir = envir))
   }
   rxUdfUiReset()
@@ -2766,18 +3094,18 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
   .rxControl <- .lst[[2]]
   .env <- object$env
   # assign current control to object for expanded thetaMat
-  if (exists("control", envir=.env)) {
-    .oldControl <- get("control", envir=.env)
-    assign("control", .rxControl, envir=.env)
+  if (exists("control", envir = .env)) {
+    .oldControl <- get("control", envir = .env)
+    assign("control", .rxControl, envir = .env)
     on.exit({
       rxUdfUiReset()
-      assign("control", .oldControl, envir=.env)
+      assign("control", .oldControl, envir = .env)
     })
   } else {
-    assign("control", .rxControl, envir=.env)
+    assign("control", .rxControl, envir = .env)
     on.exit({
       rxUdfUiReset()
-      rm(list="control", envir=.env)
+      rm(list = "control", envir = .env)
     })
   }
   .rxControl <- object$rxControlWithVar
@@ -2794,7 +3122,7 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
-rxSolveCacheEnv <- new.env(parent=emptyenv())
+rxSolveCacheEnv <- new.env(parent = emptyenv())
 rxSolveCacheLimit <- 64L
 rxSolveCacheEnv$.order <- character()
 
@@ -2804,7 +3132,9 @@ rxSolveCacheEnv$.order <- character()
 }
 
 .rxSolveCacheGet <- function(key) {
-  if (!exists(key, envir = rxSolveCacheEnv, inherits = FALSE)) return(NULL)
+  if (!exists(key, envir = rxSolveCacheEnv, inherits = FALSE)) {
+    return(NULL)
+  }
   .rxSolveCacheTouch(key)
   get(key, envir = rxSolveCacheEnv, inherits = FALSE)
 }
@@ -2826,16 +3156,28 @@ rxSolveCacheEnv$.order <- character()
 ## retried); anything else must be an entry whose compiled model is still
 ## loaded, since the cache outlives an rxUnload().
 .rxJacCacheOk <- function(cached) {
-  if (identical(cached, NA_character_)) return(TRUE)
-  if (!is.list(cached) || is.null(cached$obj)) return(FALSE)
+  if (identical(cached, NA_character_)) {
+    return(TRUE)
+  }
+  if (!is.list(cached) || is.null(cached$obj)) {
+    return(FALSE)
+  }
   isTRUE(tryCatch(rxIsLoaded(cached$obj), error = function(e) FALSE))
 }
 
 #' @rdname rxSolve
 #' @export
-rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            indOwnAlloc = TRUE,
-                            theta = NULL, eta = NULL, envir=parent.frame()) {
+rxSolve.default <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  indOwnAlloc = TRUE,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+) {
   rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
@@ -2847,14 +3189,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .rxParams <- NULL
   if (is.rxEt(object)) {
     if (!is.null(events)) {
-      stop("events can be pipeline or solving arguments not both",
-        call. = FALSE
-      )
+      stop("events can be pipeline or solving arguments not both", call. = FALSE)
     }
     if (is.null(rxode2::.pipeRx(NA))) {
-      stop("need an rxode2 compiled model as the start of the pipeline",
-        call. = FALSE
-      )
+      stop("need an rxode2 compiled model as the start of the pipeline", call. = FALSE)
     } else {
       events <- object
       object <- rxode2::.pipeRx(NA)
@@ -2865,17 +3203,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       params <- object$params
     }
     if (is.null(rxode2::.pipeRx(NA))) {
-      stop("need an rxode2 compiled model as the start of the pipeline",
-        call. = FALSE
-      )
+      stop("need an rxode2 compiled model as the start of the pipeline", call. = FALSE)
     } else {
       .rxParams <- object
       object <- rxode2::.pipeRx(NA)
     }
     if (is.null(rxode2::.pipeEvents(NA))) {
-      stop("need an rxode2 events as a part of the pipeline",
-        call. = FALSE
-      )
+      stop("need an rxode2 events as a part of the pipeline", call. = FALSE)
     } else {
       events <- rxode2::.pipeEvents(NA)
       rxode2::.pipeEvents(NULL)
@@ -2884,30 +3218,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (!is.null(rxode2::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
     events <- rxode2::.pipeEvents(NA)
   } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(events)) {
-    stop("'events' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
-  } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(params) &&
-    rxIs(params, "event.data.frame")) {
-    stop("'events' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+    stop("'events' in pipeline AND in solving arguments, please provide just one", call. = FALSE)
+  } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(params) && rxIs(params, "event.data.frame")) {
+    stop("'events' in pipeline AND in solving arguments, please provide just one", call. = FALSE)
   }
 
   if (!is.null(rxode2::.pipeParams(NA)) && is.null(params)) {
     params <- rxode2::.pipeParams(NA)
   } else if (!is.null(rxode2::.pipeParams(NA)) && !is.null(params)) {
-    stop("'params' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+    stop("'params' in pipeline AND in solving arguments, please provide just one", call. = FALSE)
   }
 
   if (!is.null(rxode2::.pipeInits(NA)) && is.null(inits)) {
     inits <- rxode2::.pipeInits(NA)
   } else if (!is.null(rxode2::.pipeInits(NA)) && !is.null(inits)) {
-    stop("'inits' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+    stop("'inits' in pipeline AND in solving arguments, please provide just one", call. = FALSE)
   }
 
   if (.applyParams) {
@@ -2919,22 +3244,25 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .serializeInput <- .rxIsSerializedSolvePath(params)
   .preloadedSerializedBundle <- NULL
   if (.serializeInput) {
-    .rxAssertSerializedSolveArgs(eventsMissing = missing(events), events = events,
-                                 initsMissing = missing(inits), inits = inits,
-                                 dots = .xtra,
-                                 allowedDots = c("iCov", "keep"),
-                                 thetaMissing = missing(theta),
-                                 etaMissing = missing(eta),
-                                 indOwnAllocMissing = missing(indOwnAlloc),
-                                 file = params)
-  }
-  if (any(duplicated(names(.xtra)))) {
-    stop("duplicate arguments do not make sense",
-      call. = FALSE
+    .rxAssertSerializedSolveArgs(
+      eventsMissing = missing(events),
+      events = events,
+      initsMissing = missing(inits),
+      inits = inits,
+      dots = .xtra,
+      allowedDots = c("iCov", "keep"),
+      thetaMissing = missing(theta),
+      etaMissing = missing(eta),
+      indOwnAllocMissing = missing(indOwnAlloc),
+      file = params
     )
   }
+  if (any(duplicated(names(.xtra)))) {
+    stop("duplicate arguments do not make sense", call. = FALSE)
+  }
   if (any(names(.xtra) == "covs")) {
-    stop("covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model",
+    stop(
+      "covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model", # nolint: line_length_linter.
       call. = FALSE
     )
   }
@@ -2950,8 +3278,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     params <- .tmp
   }
   if (inherits(inits, "rxControl")) {
-    stop("'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')",
-         call. = FALSE)
+    stop(
+      "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
+      call. = FALSE
+    )
   }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (length(rxModelVars(object)$indLin) > 0L) {
@@ -2971,8 +3301,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # equations, so the theta values would never be supplied and the solve
     # would fail asking for them; convert the simulation model on re-entry
     # instead.
-    if (!inherits(object, "function") && !inherits(object, "rxUi") &&
-          length(rxModelVars(object)$state) > 0L && .rxHasOde(object)) {
+    if (
+      !inherits(object, "function") &&
+        !inherits(object, "rxUi") &&
+        length(rxModelVars(object)$state) > 0L &&
+        .rxHasOde(object)
+    ) {
       .calcSens <- NULL
       .modelEnv <- NULL
       if (rxIs(object, "rxode2")) {
@@ -2983,7 +3317,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # An rxode2 object is itself an environment; the attribute above is a
         # legacy handle that no longer matches one built from text or a file.
         # Cache against whichever is actually there.
-        .modelEnv <- if (is.environment(.e)) .e else if (is.environment(object)) object else NULL
+        .modelEnv <- if (is.environment(.e)) {
+          .e
+        } else if (is.environment(object)) {
+          object
+        } else {
+          NULL
+        }
       }
       # Converting an ODE model to matExp() form runs symengine and then builds
       # the generated model, which together cost several times more than the
@@ -3016,13 +3356,78 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # is base + 200 (rk4->rk4s, dop853->dop853s, cvode->cvodesadj, ...).  Upgrade
   # the requested base method to its adjoint variant; methods without a direct
   # variant fall back to the general-purpose adaptive adjoint (dop853s).
-  if (.ctl$method < 200L && (is.null(.ctl$stiff2) || .ctl$stiff2 == 0L) &&
-        any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
-    .adjCodes <- c(200L, 202L, 205L, 226L, 230L, 208L, 282L, 300L, 301L, 302L, 304L, 267L, 268L, 270L, 271L, 272L, 273L, 274L, 275L, 276L, 277L, 279L, 280L, 281L, 283L, 284L, 285L, 286L, 287L, 288L, 289L, 290L, 291L, 292L, 293L, 295L, 296L, 297L, 298L, 206L, 207L, 210L, 213L, 221L, 225L, 227L, 228L,
-                   229L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L, 239L,
-                   240L, 241L, 243L, 265L)
+  if (
+    .ctl$method < 200L &&
+      (is.null(.ctl$stiff2) || .ctl$stiff2 == 0L) &&
+      any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")
+  ) {
+    .adjCodes <- c(
+      200L,
+      202L,
+      205L,
+      226L,
+      230L,
+      208L,
+      282L,
+      300L,
+      301L,
+      302L,
+      304L,
+      267L,
+      268L,
+      270L,
+      271L,
+      272L,
+      273L,
+      274L,
+      275L,
+      276L,
+      277L,
+      279L,
+      280L,
+      281L,
+      283L,
+      284L,
+      285L,
+      286L,
+      287L,
+      288L,
+      289L,
+      290L,
+      291L,
+      292L,
+      293L,
+      295L,
+      296L,
+      297L,
+      298L,
+      206L,
+      207L,
+      210L,
+      213L,
+      221L,
+      225L,
+      227L,
+      228L,
+      229L,
+      231L,
+      232L,
+      233L,
+      234L,
+      235L,
+      236L,
+      237L,
+      238L,
+      239L,
+      240L,
+      241L,
+      243L,
+      265L
+    )
     .up <- .ctl$method + 200L
-    if (!(.up %in% .adjCodes)) .up <- 200L      # no direct variant -> dop853s
+    if (!(.up %in% .adjCodes)) {
+      .up <- 200L
+    } # no direct variant -> dop853s
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
@@ -3035,8 +3440,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # columns.  Guard it rather than return silently-wrong sensitivities.  Plain
   # (forward-only) adjoint solves -- no rx__adjFX_* -- are unaffected: their ss
   # primal is exact and they carry no sensitivity columns.
-  if (.ctl$method >= 200L &&
-        any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
+  if (
+    .ctl$method >= 200L &&
+      any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")
+  ) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
       # Which ss cases carry the steady-state initial-condition sensitivity
@@ -3050,11 +3457,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       # infusion ss (dR/dp != 0, a moving period boundary); the liblsodaadj
       # multistep driver for anything but continuous infusion; and the abs /
       # cvodesadj / pure Rosenbrock-implicit drivers (no ss IC term at all).
-      .r   <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
-      .iiv <- if (is.null(.evDf$ii))   rep(0, nrow(.evDf)) else .evDf$ii
-      .amv <- if (is.null(.evDf$amt))  rep(0, nrow(.evDf)) else .evDf$amt
+      .r <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
+      .iiv <- if (is.null(.evDf$ii)) rep(0, nrow(.evDf)) else .evDf$ii
+      .amv <- if (is.null(.evDf$amt)) rep(0, nrow(.evDf)) else .evDf$amt
       .durv <- ifelse(.r > 0, .amv / .r, Inf)
-      .cont <- .evDf$ss == 1 & .r > 0 & .amv == 0                  # continuous SSINF
+      .cont <- .evDf$ss == 1 & .r > 0 & .amv == 0 # continuous SSINF
       .stiffCodes <- c(213L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L)
       .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, .stiffCodes))
       .rk4sStiff <- .ctl$method %in% .stiffCodes
@@ -3078,17 +3485,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # state with a moving period boundary; the non-composite explicit fill
         # carries the extra dR/dp forcing + transversality B terms (composite/
         # liblsodaadj modeled ss stay guarded).
-        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) |
-                                        (.r < 0 & .iiv > 0 & .noComposite))) |
+        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) | (.r < 0 & .iiv > 0 & .noComposite))) |
           (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
-      } else if (.ctl$method == 202L) {          # liblsodaadj: single ss==1 (all durations)
+      } else if (.ctl$method == 202L) {
+        # liblsodaadj: single ss==1 (all durations)
         # bolus and any fixed-rate infusion with an interval reach a periodic/
         # constant steady state; the multistep driver re-records ONE ss period
         # (recording-paused pre-solve) for the monodromy IC, or a -J^{-1} df/dp
         # linear solve for the continuous/full-interval (kind-2) case.  ss==2 and
         # interior/multiple ss==1 resets on liblsodaadj stay guarded (below).
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
-      } else if (.rk4sStiff) {                    # pure stiff (Rosenbrock / implicit RK)
+      } else if (.rk4sStiff) {
+        # pure stiff (Rosenbrock / implicit RK)
         # The stiff backward fills (radau/ros) carry the same ss IC terms as the
         # composite via the shared rk4sSsIc (ss period recorded with a fixed
         # explicit tableau, dop853): bolus, any fixed-rate infusion with an
@@ -3097,7 +3505,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         # r<0 term is omitted, so modeled ss stays guarded on the stiff family.
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
           (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
-      } else {                                    # abs / cvodesadj: none
+      } else {
+        # abs / cvodesadj: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
       # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
@@ -3107,9 +3516,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) ||
         any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
-        stop("adjoint sensitivities do not yet support this steady-state (ss) ",
-             "case; use sensMethod=\"forward\" for models with steady-state doses",
-             call. = FALSE)
+        stop(
+          "adjoint sensitivities do not yet support this steady-state (ss) ",
+          "case; use sensMethod=\"forward\" for models with steady-state doses",
+          call. = FALSE
+        )
       }
     }
   }
@@ -3133,12 +3544,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     # (rxode2#1214).  Refuse rather than silently return one of the two wrong
     # answers.
     if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
-      stop("a model cannot combine delay() with evid_() event pushing ",
-           "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
+      stop(
+        "a model cannot combine delay() with evid_() event pushing ",
+        "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
 ",
-           "  delay() requires dense output, which cannot apply an event pushed ",
-           "at an observation",
-           call. = FALSE)
+        "  delay() requires dense output, which cannot apply an event pushed ",
+        "at an observation",
+        call. = FALSE
+      )
     }
     # Validate any non-constant past(state, tau) <- expr history lines (state is
     # a delayed ODE state, tau matches a delay(), history references no states).
@@ -3160,19 +3573,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
           # the (symengine) jump map depends only on the model -> cached by the
           # normalized text; only the cheap event rbind runs per solve.
           .map <- tryCatch(.rxDelaySensJumpMapCached(object, .cs, .norm), error = function(e) NULL)
-          if (!is.null(.map))
+          if (!is.null(.map)) {
             events <- tryCatch(.rxDelaySensJumpEvents(.map$jumpMap, .map$st, events), error = function(e) events)
+          }
         }
         # Second-order breaking-point jump (parameter-dependent delay): inject the
         # history bolus (amount f_j(IC)) at t0 and mirror each user dose on a
         # coupled state onto the 2nd-order sens compartment; the modeled
         # alag(=T)/f(=JD*dTa*dTb) lines land each at xi = t_break + T.  Gated on the
         # alag() lines existing on a two-`_BY_` sens compartment.
-        if (!exists(".norm", inherits = FALSE)) .norm <- rxNorm(object)
+        if (!exists(".norm", inherits = FALSE)) {
+          .norm <- rxNorm(object)
+        }
         if (length(.rxDelaySensJump2Cmts(.norm)) > 0L) {
           .map2 <- tryCatch(.rxDelaySensJump2Map(object), error = function(e) NULL)
-          if (!is.null(.map2))
+          if (!is.null(.map2)) {
             events <- tryCatch(.rxDelaySensJump2Events(.map2, events), error = function(e) events)
+          }
         }
       }
     }
@@ -3191,16 +3608,20 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .ctl$stiff2 <- 13L
       .ctl$dense <- TRUE
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
-    } else if ((.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
-                 (.ctl$method == 13L && .stiff2 == 0L)) {
+    } else if (
+      (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
+        (.ctl$method == 13L && .stiff2 == 0L)
+    ) {
       # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
       if (!isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
     } else {
-      stop("delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)",
-           call. = FALSE)
+      stop(
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)", # nolint: line_length_linter.
+        call. = FALSE
+      )
     }
   }
   # Generate the analytical Jacobian whenever the solve uses an implicit method
@@ -3210,11 +3631,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   # ros4(13), iem(14), and ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/
   # geng5/sdirk43 (31-38).  Solvers that build their own Jacobian internally
   # (lsoda, liblsoda, cvode, bdf) are not flagged and need no generation here.
-  .ddeNoJac <- .hasDelay && .ctl$method == 0L &&
-    (is.null(.ctl$stiff2) || isTRUE(.ctl$stiff2 == 0L))
-  if (!.ddeNoJac &&
+  .ddeNoJac <- .hasDelay && .ctl$method == 0L && (is.null(.ctl$stiff2) || isTRUE(.ctl$stiff2 == 0L))
+  if (
+    !.ddeNoJac &&
       (rxIsImplicit(.ctl$method) ||
-       (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))) {
+        (!is.null(.ctl$stiff2) && isTRUE(.ctl$stiff2 > 0L) && rxIsImplicit(.ctl$stiff2)))
+  ) {
     # A pure dop853 delay model (method 0, no stiff secondary) does not use a
     # Jacobian, so generation is skipped there.  The ros4 stiff path and the
     # dop853+ros4 dense composite (which switches to ros4 mid-solve) both need
@@ -3230,43 +3652,45 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       # augmented model carries a df()/dy() line per Jacobian entry -- and every
       # implicit method and every AutoSwitch composite went through here on
       # every call (nlmixr2/rxode2#1307).
-      .jacCache <- tryCatch({
-        .cached <- .rxSolveCacheGet(.key)
-        if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
-          .cached
-        } else {
-          .mv <- suppressMessages({
-            rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
-          })
-          .states <- .mvCur$state
-          .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-          .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
-          .fc <- .origCode
+      .jacCache <- tryCatch(
+        {
+          .cached <- .rxSolveCacheGet(.key)
+          if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
+            .cached
+          } else {
+            .mv <- suppressMessages({
+              rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
+            })
+            .states <- .mvCur$state
+            .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+            .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+            .fc <- .origCode
 
-          for (.line in .normCode) {
-            if (grepl("^df\\(", .line)) {
-              .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
-              if (length(.parts) == 3) {
-                if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                  if (!(.line %in% .origCode) && !(.line %in% .fc)) {
-                    .fc <- c(.fc, .line)
+            for (.line in .normCode) {
+              if (grepl("^df\\(", .line)) {
+                .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+                if (length(.parts) == 3) {
+                  if (.parts[2] %in% .states && .parts[3] %in% .states) {
+                    if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+                      .fc <- c(.fc, .line)
+                    }
                   }
                 }
               }
             }
+            .fc <- paste(.fc, collapse = "\n")
+            .jacObject <- rxode2(.fc)
+            .entry <- list(code = .fc, obj = .jacObject, md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
+            .rxSolveCacheSet(.key, .entry)
+            .entry
           }
-          .fc <- paste(.fc, collapse="\n")
-          .jacObject <- rxode2(.fc)
-          .entry <- list(code = .fc, obj = .jacObject,
-                         md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
-          .rxSolveCacheSet(.key, .entry)
-          .entry
+        },
+        error = function(e) {
+          assign("errMsg", conditionMessage(e), envir = .jacEnv)
+          .rxSolveCacheSet(.key, NA_character_)
+          NA_character_
         }
-      }, error = function(e) {
-        assign("errMsg", conditionMessage(e), envir = .jacEnv)
-        .rxSolveCacheSet(.key, NA_character_)
-        NA_character_
-      })
+      )
       if (!identical(.jacCache, NA_character_)) {
         .jacObject <- .jacCache$obj
         .jacMd5 <- .jacCache$md5
@@ -3280,28 +3704,47 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
           force(theta)
           force(eta)
           force(envir)
-          return(rxSolve.default(object, params = params, events = events, inits = inits, ..., indOwnAlloc = indOwnAlloc, theta = theta, eta = eta, envir = envir))
+          return(rxSolve.default(
+            object,
+            params = params,
+            events = events,
+            inits = inits,
+            ...,
+            indOwnAlloc = indOwnAlloc,
+            theta = theta,
+            eta = eta,
+            envir = envir
+          ))
         }
         # Model md5 unchanged: Jacobian equations were already present; calc_jac is now
         # loaded with the real Jacobian function. Fall through to solve directly.
       } else {
-        .jacDetail <- if (!is.null(.jacEnv$errMsg)) .jacEnv$errMsg else
+        .jacDetail <- if (!is.null(.jacEnv$errMsg)) {
+          .jacEnv$errMsg
+        } else {
           "model previously failed Jacobian generation (cached)"
+        }
         if (.hasDelay) {
           # Delay models require a dense solver: liblsoda is non-dense and
           # records no delay() history, so it silently returns wrong lagged
           # values.  dop853 dense needs no Jacobian, so fall back to it.
-          warning("method requires an analytical Jacobian, but automatic ",
-                  "Jacobian generation failed for this model:\n  ", .jacDetail,
-                  "\n  Falling back to dop853 (dense, required for delays).",
-                  call. = FALSE)
+          warning(
+            "method requires an analytical Jacobian, but automatic ",
+            "Jacobian generation failed for this model:\n  ",
+            .jacDetail,
+            "\n  Falling back to dop853 (dense, required for delays).",
+            call. = FALSE
+          )
           .ctl$method <- 0L
           .ctl$stiff2 <- 0L
         } else {
-          warning("method requires an analytical Jacobian, but automatic ",
-                  "Jacobian generation failed for this model:\n  ", .jacDetail,
-                  "\n  Falling back to liblsoda.",
-                  call. = FALSE)
+          warning(
+            "method requires an analytical Jacobian, but automatic ",
+            "Jacobian generation failed for this model:\n  ",
+            .jacDetail,
+            "\n  Falling back to liblsoda.",
+            call. = FALSE
+          )
           .ctl$method <- 2L
           .ctl$stiff2 <- 0L
         }
@@ -3313,24 +3756,25 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .both <- intersect(.mv$params, .ctl$keep)
     if (length(.both) > 0) {
       .keep <- .ctl$keep[!(.ctl$keep %in% .both)]
-       if (length(.keep) == 0L) {
-          .keep <- NULL
-       }
+      if (length(.keep) == 0L) {
+        .keep <- NULL
+      }
       .w <- which(names(.ctl) == "keep")
       .ctl[[.w]] <- .keep
-      .ctl <- do.call(rxControl,
-                      c(.ctl, list(events = events, params = params)))
-
+      .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     }
   }
   .n1 <- setdiff(intersect(tolower(names(params)), tolower(names(.ctl$iCov))), "id")
   .n2 <- c(.n1, setdiff(intersect(tolower(names(events)), tolower(names(.ctl$iCov))), "id"))
   .n1 <- unique(c(.n1, .n2))
   if (length(.n1) > 0) {
-    stop(sprintf(
-      gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
-      paste(.n1, collapse = "', '")
-    ), call = FALSE)
+    stop(
+      sprintf(
+        gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
+        paste(.n1, collapse = "', '")
+      ),
+      call = FALSE
+    )
   }
   if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
     if (.serializeInput) {
@@ -3478,17 +3922,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     } else if (is.null(events)) {
       events <- c(.theta, .eta)
     } else {
-      stop("cannot specify 'params' and 'theta'/'eta' at the same time",
-        call. = FALSE
-      )
+      stop("cannot specify 'params' and 'theta'/'eta' at the same time", call. = FALSE)
     }
   }
   if (.serializeInput) {
-    .rxAssertSerializedSolveArgs(eventsMissing = is.null(events), events = events,
-                                 initsMissing = is.null(inits), inits = inits,
-                                 extras = c(.rxSerializedSolvePipeArgs(),
-                                            if (.applyParams) "rxParams"),
-                                 file = params)
+    .rxAssertSerializedSolveArgs(
+      eventsMissing = is.null(events),
+      events = events,
+      initsMissing = is.null(inits),
+      inits = inits,
+      extras = c(.rxSerializedSolvePipeArgs(), if (.applyParams) "rxParams"),
+      file = params
+    )
   }
   .origEvents <- events
   if (!is.null(.ctl$iCov)) {
@@ -3565,23 +4010,36 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       stop("'iCov' must be an input dataset")
     }
   }
-  if (is.rxEt(.origEvents) && !is.null(.ctl$iCov) && length(.etGroups(.rxEtEnv(.origEvents))) > 0L &&
-      .ctl$nSub == 1L && .ctl$nStud == 1L) {
+  if (
+    is.rxEt(.origEvents) &&
+      !is.null(.ctl$iCov) &&
+      length(.etGroups(.rxEtEnv(.origEvents))) > 0L &&
+      .ctl$nSub == 1L &&
+      .ctl$nStud == 1L
+  ) {
     .mv <- rxModelVars(object)
-    .groupedSolve <- .etGroupedSolveDataICov(.origEvents, .ctl$iCov,
-                                             keep = .ctl$keep,
-                                             modelParams = .rxGroupSolveParams(.mv))
+    .groupedSolve <- .etGroupedSolveDataICov(
+      .origEvents,
+      .ctl$iCov,
+      keep = .ctl$keep,
+      modelParams = .rxGroupSolveParams(.mv)
+    )
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
     }
-  } else if (inherits(events, "data.frame") &&
-             !is.null(attr(events, "rxHomGroups", exact = TRUE)) &&
-             !is.null(.ctl$iCov)) {
+  } else if (
+    inherits(events, "data.frame") &&
+      !is.null(attr(events, "rxHomGroups", exact = TRUE)) &&
+      !is.null(.ctl$iCov)
+  ) {
     .mv <- rxModelVars(object)
-    .groupedSolve <- .etGroupedSolveDataFrameICov(events, .ctl$iCov,
-                                                  keep = .ctl$keep,
-                                                  modelParams = .rxGroupSolveParams(.mv))
+    .groupedSolve <- .etGroupedSolveDataFrameICov(
+      events,
+      .ctl$iCov,
+      keep = .ctl$keep,
+      modelParams = .rxGroupSolveParams(.mv)
+    )
     if (!is.null(.groupedSolve)) {
       events <- .groupedSolve$events
       .ctl$iCov <- .groupedSolve$iCov
@@ -3591,17 +4049,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .rx <- rxNorm(object)
     saveRDS(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.rds"))
   }
-  if (inherits(object, "function") ||
-        inherits(object, "rxUi")) {
-    .lst <- c(list(object, params = params, events = events, inits = inits),
-              .rxCtlUnnameMeta(.ctl, object))
+  if (
+    inherits(object, "function") ||
+      inherits(object, "rxUi")
+  ) {
+    .lst <- c(list(object, params = params, events = events, inits = inits), .rxCtlUnnameMeta(.ctl, object))
 
     return(do.call(rxSolve, .lst))
   }
   if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
     stop("Unsupported type of model trying to be solved")
   }
-  .envReset <- new.env(parent=emptyenv())
+  .envReset <- new.env(parent = emptyenv())
   .envReset$ret <- NULL
   .envReset$reset <- TRUE
   .envReset$cacheReset <- FALSE
@@ -3616,23 +4075,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .col <- colnames(.ctl$omega)
     .w <- .col %in% .mv$params
     .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    if (length(.ignore) > 0) {
+      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
     }
-    .ctl$omega <-.ctl$omega[.w, .w, drop=FALSE]
+    .ctl$omega <- .ctl$omega[.w, .w, drop = FALSE]
     if (dim(.ctl$omega)[1] == 0) {
       .ctl$omega <- NULL
       .ctl <- do.call(rxControl, .ctl)
     }
     .names <- c(.names, .col[.w])
-  } else if ( inherits(.ctl$omega, "character")) {
+  } else if (inherits(.ctl$omega, "character")) {
     .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
     .w <- .col %in% .mv$params
     .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    if (length(.ignore) > 0) {
+      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
     }
     .names <- c(.names, .col[.w])
   }
@@ -3641,23 +4100,23 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .col <- colnames(.ctl$sigma)
     .w <- .col %in% .mv$params
     .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    if (length(.ignore) > 0) {
+      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
     }
-    .ctl$sigma <-.ctl$sigma[.w, .w, drop=FALSE]
+    .ctl$sigma <- .ctl$sigma[.w, .w, drop = FALSE]
     if (dim(.ctl$sigma)[1] == 0) {
       .ctl$sigma <- NULL
       .ctl <- do.call(rxControl, .ctl)
     }
     .names <- c(.names, .col[.w])
-  } else if ( inherits(.ctl$sigma, "character")) {
+  } else if (inherits(.ctl$sigma, "character")) {
     .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma
     .w <- .col %in% .mv$params
     .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    if (length(.ignore) > 0) {
+      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
     }
     .names <- c(.names, .col[.w])
   }
@@ -3683,10 +4142,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    if (length(.ignore) > 0) {
+      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
     }
-    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
+    .ctl$thetaMat <- .ctl$thetaMat[.w, .w, drop = FALSE]
     if (dim(.ctl$thetaMat)[1] == 0) {
       .ctl$thetaMat <- NULL
       .ctl <- do.call(rxControl, .ctl)
@@ -3698,8 +4157,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .d <- diag(.ctl$thetaMat)
     .w <- which(.d == 0)
     if (length(.w) > 0) {
-      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
-      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
+      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse = "', '"), "'"))
+      .ctl$thetaMat <- .ctl$thetaMat[-.w, -.w, drop = FALSE]
       if (dim(.ctl$thetaMat)[1] == 0) {
         .ctl$thetaMat <- NULL
         .ctl <- do.call(rxControl, .ctl)
@@ -3717,11 +4176,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .zeros <- .rxZeroVarParams(.ctl$.zeros, params, .ctl$zeroVarParamHandle)
     if (inherits(params, "data.frame") || is.matrix(params)) {
       params <- .rxParamsZero(params, .zeros)
-    } else if (inherits(params, "numeric") ||
-                 inherits(params, "integer")) {
+    } else if (
+      inherits(params, "numeric") ||
+        inherits(params, "integer")
+    ) {
       params <- c(params, setNames(rep(0.0, length(.zeros)), .zeros))
     }
-    .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
+    .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse = "', '")))
   }
   .eventsForSolve <- if (is.rxEt(events) || inherits(events, "data.frame")) {
     .etPrepareSolveEvents(events, .ctl)
@@ -3730,13 +4191,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
 
   if (!is.null(.ctl$file)) {
-    return(.rxSolveOom(object, params = params, events = events,
-                       inits = inits, .ctl = .ctl, .envir = envir))
+    return(.rxSolveOom(object, params = params, events = events, inits = inits, .ctl = .ctl, .envir = envir))
   }
 
   if (is.null(.ctl$file) && !.serializeInput && .setupOnly == 0L) {
-    .nStud  <- if (is.null(.ctl$nStud)) 1 else as.numeric(.ctl$nStud)
-    .nSub   <- if (is.null(.ctl$nSub))  1 else as.numeric(.ctl$nSub)
+    .nStud <- if (is.null(.ctl$nStud)) 1 else as.numeric(.ctl$nStud)
+    .nSub <- if (is.null(.ctl$nSub)) 1 else as.numeric(.ctl$nSub)
     .nrowEv <- as.numeric(NROW(.eventsForSolve))
     # Out-of-memory chunking (file=) only makes sense for solves whose
     # dimensions are valid (within INT_MAX). When the subject*study or output
@@ -3752,11 +4212,15 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       )
       if (!is.null(.oomEst) && !is.na(.oomEst$freeRamBytes) && .oomEst$freeRamBytes > 0) {
         if (as.numeric(.oomEst$total) > .oomEst$freeRamBytes * 0.90) {
-          stop(sprintf(
-            "Solve requires %.1f GB but only %.1f GB appears free.\n",
-            as.numeric(.oomEst$total) / 1e9, .oomEst$freeRamBytes / 1e9),
+          stop(
+            sprintf(
+              "Solve requires %.1f GB but only %.1f GB appears free.\n",
+              as.numeric(.oomEst$total) / 1e9,
+              .oomEst$freeRamBytes / 1e9
+            ),
             "Re-run with rxSolve(..., file = 'path/prefix') to solve in chunks.",
-            call. = FALSE)
+            call. = FALSE
+          )
         }
       }
     }
@@ -3799,13 +4263,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .bundleParams <- if (!is.null(.bundle$params)) .bundle$params else .replayFallbackParams
       .bundleEvents <- if (!is.null(.bundle$events)) .bundle$events else .replayFallbackEvents
       .bundleInits <- if (!is.null(.bundle$inits)) .bundle$inits else .replayFallbackInits
-      if (inherits(.bundleEvents, "data.frame") &&
+      if (
+        inherits(.bundleEvents, "data.frame") &&
           !is.null(attr(.bundleEvents, "rxHomGroups", exact = TRUE)) &&
-          !is.null(.ctl$iCov)) {
+          !is.null(.ctl$iCov)
+      ) {
         .mv <- rxModelVars(object)
-        .groupedSolve <- .etGroupedSolveDataFrameICov(.bundleEvents, .ctl$iCov,
-                                                      keep = .ctl$keep,
-                                                      modelParams = .mv$params)
+        .groupedSolve <- .etGroupedSolveDataFrameICov(
+          .bundleEvents,
+          .ctl$iCov,
+          keep = .ctl$keep,
+          modelParams = .mv$params
+        )
         if (!is.null(.groupedSolve)) {
           .bundleEvents <- .groupedSolve$events
           .ctl$iCov <- .groupedSolve$iCov
@@ -3818,17 +4287,31 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       }
 
       if (!is.null(.bundle$params) || !is.null(.bundle$events) || !is.null(.bundle$inits)) {
-        rxSolveSEXP(object, .ctl, .nms, .xtra,
-                    .bundleParams, .bundleEventsForSolve, .bundleInits,
-                    setupOnlyS = .setupOnly)
+        rxSolveSEXP(
+          object,
+          .ctl,
+          .nms,
+          .xtra,
+          .bundleParams,
+          .bundleEventsForSolve,
+          .bundleInits,
+          setupOnlyS = .setupOnly
+        )
       } else {
-        rxSolveFromRaw_(object, .bundle$cState, .bundle$solveState, .ctl, .nms, .xtra,
-                        .bundleParams, .bundleEventsForSolve, .bundleInits)
+        rxSolveFromRaw_(
+          object,
+          .bundle$cState,
+          .bundle$solveState,
+          .ctl,
+          .nms,
+          .xtra,
+          .bundleParams,
+          .bundleEventsForSolve,
+          .bundleInits
+        )
       }
     } else {
-      rxSolveSEXP(object, .ctl, .nms, .xtra,
-                  params, .eventsForSolve, inits,
-                  setupOnlyS = .setupOnly)
+      rxSolveSEXP(object, .ctl, .nms, .xtra, params, .eventsForSolve, inits, setupOnlyS = .setupOnly)
     }
   }
 
@@ -3838,9 +4321,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .saveCtl$serializeFile <- file
     on.exit(rxUnlock(object), add = TRUE)
     .collectWarnings(
-      rxSolveSEXP(object, .saveCtl, .nms, .xtra,
-                  params, .eventsForSolve, inits,
-                  setupOnlyS = 1L)
+      rxSolveSEXP(object, .saveCtl, .nms, .xtra, params, .eventsForSolve, inits, setupOnlyS = 1L)
     )
     invisible(file)
   }
@@ -3862,66 +4343,74 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else {
     while (.envReset$reset) {
       .envReset$reset <- FALSE
-      tryCatch({
-        .envReset$ret <- .collectWarnings(.callSolve(), lst = TRUE)
-      },
-      error=function(e) {
-        if (regexpr("not provided by package", e$message) != -1) {
-          if (.envReset$cacheReset) {
-            .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
-            stop(e)
+      tryCatch(
+        {
+          .envReset$ret <- .collectWarnings(.callSolve(), lst = TRUE)
+        },
+        error = function(e) {
+          if (regexpr("not provided by package", e$message) != -1) {
+            if (.envReset$cacheReset) {
+              .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
+              stop(e)
+            } else {
+              # reset
+              gc()
+              .minfo("try resetting cache")
+              rxode2::rxClean()
+              .envReset$cacheReset <- TRUE
+              .envReset$reset <- TRUE
+              .msuccess("done")
+            }
+          } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
+            if (.envReset$unload) {
+              .malert("Could not unload rxode2 models, try restarting R")
+              stop(e)
+            } else {
+              # reset
+              gc()
+              .minfo("try resetting cache and unloading all rxode2 models")
+              try(rxode2::rxUnloadAll(), silent = TRUE)
+              rxode2::rxClean()
+              .envReset$unload <- TRUE
+              .envReset$reset <- TRUE
+              .msuccess("done")
+            }
           } else {
-            # reset
-            gc()
-            .minfo("try resetting cache")
-            rxode2::rxClean()
-            .envReset$cacheReset <- TRUE
-            .envReset$reset <- TRUE
-            .msuccess("done")
-          }
-        } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
-          if (.envReset$unload) {
-            .malert("Could not unload rxode2 models, try restarting R")
             stop(e)
-          } else {
-            # reset
-            gc()
-            .minfo("try resetting cache and unloading all rxode2 models")
-            try(rxode2::rxUnloadAll(), silent=TRUE)
-            rxode2::rxClean()
-            .envReset$unload <- TRUE
-            .envReset$reset <- TRUE
-            .msuccess("done")
           }
-        } else {
-          stop(e)
         }
-      })
+      )
     }
-
   }
   .ret <- .envReset$ret
   .ws <- .ret[[2]]
-  if (length(.ws) > 0L &&
+  if (
+    length(.ws) > 0L &&
       inherits(.ctl$iCov, "data.frame") &&
-      length(names(.ctl$iCov)) > 0L) {
+      length(names(.ctl$iCov)) > 0L
+  ) {
     .iCovNames <- tolower(names(.ctl$iCov))
-    .ws <- vapply(.ws, function(.w) {
-      if (!startsWith(.w, "Cannot keep missing columns:")) {
-        return(.w)
-      }
-      .miss <- sub("^Cannot keep missing columns:\\s*", "", .w)
-      .miss <- strsplit(.miss, "[[:space:],]+")[[1]]
-      .miss <- .miss[nzchar(.miss)]
-      if (length(.miss) == 0L) {
-        return(.w)
-      }
-      .missKeep <- .miss[!(tolower(.miss) %in% .iCovNames)]
-      if (length(.missKeep) == 0L) {
-        return(NA_character_)
-      }
-      paste("Cannot keep missing columns:", paste(.missKeep, collapse = " "))
-    }, character(1), USE.NAMES = FALSE)
+    .ws <- vapply(
+      .ws,
+      function(.w) {
+        if (!startsWith(.w, "Cannot keep missing columns:")) {
+          return(.w)
+        }
+        .miss <- sub("^Cannot keep missing columns:\\s*", "", .w)
+        .miss <- strsplit(.miss, "[[:space:],]+")[[1]]
+        .miss <- .miss[nzchar(.miss)]
+        if (length(.miss) == 0L) {
+          return(.w)
+        }
+        .missKeep <- .miss[!(tolower(.miss) %in% .iCovNames)]
+        if (length(.missKeep) == 0L) {
+          return(NA_character_)
+        }
+        paste("Cannot keep missing columns:", paste(.missKeep, collapse = " "))
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
     .ws <- unique(.ws[!is.na(.ws)])
   }
   .rxModels$.ws <- .ws
@@ -3943,38 +4432,77 @@ update.rxSolve <- function(object, ...) {
 
 #' @rdname rxSolve
 #' @export
-rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            theta = NULL, eta = NULL, envir = parent.frame()) {
+rxSolve.rxSolve <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+) {
   if (is.rxEt(params) && !is.rxEt(events)) {
     .tmp <- events
     events <- params
     params <- .tmp
   }
   if (is.null(events)) {
-    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
-                           theta = theta, eta = eta, envir = envir))
+    return(rxSolve.default(
+      object,
+      params = params,
+      events = events,
+      inits = inits,
+      ...,
+      theta = theta,
+      eta = eta,
+      envir = envir
+    ))
   }
   .model <- object$model
   if (is.null(.model)) {
-    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
-                           theta = theta, eta = eta, envir = envir))
+    return(rxSolve.default(
+      object,
+      params = params,
+      events = events,
+      inits = inits,
+      ...,
+      theta = theta,
+      eta = eta,
+      envir = envir
+    ))
   }
   .dots <- list(...)
   if (isTRUE(.dots$updateObject)) {
     # Pass the rxSolve object directly so C++ updates the correct object
     # rather than the global rxCurObj, which may point to a different rxSolve.
-    if (is.null(params)) params <- object$.params.single
+    if (is.null(params)) {
+      params <- object$.params.single
+    }
     params <- .rxApplyInjectedPars(params, object)
-    if (is.null(inits)) inits <- object$inits
-    return(rxSolve.default(object, params = params, events = events, inits = inits, ...,
-                           theta = theta, eta = eta, envir = envir))
+    if (is.null(inits)) {
+      inits <- object$inits
+    }
+    return(rxSolve.default(
+      object,
+      params = params,
+      events = events,
+      inits = inits,
+      ...,
+      theta = theta,
+      eta = eta,
+      envir = envir
+    ))
   }
   .model <- as.character(.model)
-  if (is.null(params)) params <- object$.params.single
+  if (is.null(params)) {
+    params <- object$.params.single
+  }
   params <- .rxApplyInjectedPars(params, object)
-  if (is.null(inits)) inits <- object$inits
-  rxSolve(.model, params = params, events = events, inits = inits, ...,
-          theta = theta, eta = eta, envir = envir)
+  if (is.null(inits)) {
+    inits <- object$inits
+  }
+  rxSolve(.model, params = params, events = events, inits = inits, ..., theta = theta, eta = eta, envir = envir)
 }
 
 ## Restore par-loader-injected parameters (e.g. trained NN weights) onto the
@@ -3986,11 +4514,19 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
 ## have no single named vector).
 .rxApplyInjectedPars <- function(params, object) {
   .inj <- rxInjectedPars(object)
-  if (is.null(.inj) || length(.inj) == 0L) return(params)
-  if (is.null(params)) params <- object$.params.dat
-  if (is.null(params)) return(params)
+  if (is.null(.inj) || length(.inj) == 0L) {
+    return(params)
+  }
+  if (is.null(params)) {
+    params <- object$.params.dat
+  }
+  if (is.null(params)) {
+    return(params)
+  }
   if (is.data.frame(params)) {
-    for (.n in names(.inj)) params[[.n]] <- .inj[[.n]]
+    for (.n in names(.inj)) {
+      params[[.n]] <- .inj[[.n]]
+    }
     return(params)
   }
   if (is.matrix(params)) {
@@ -3998,9 +4534,7 @@ rxSolve.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
       if (!is.null(colnames(params)) && .n %in% colnames(params)) {
         params[, .n] <- .inj[[.n]]
       } else {
-        params <- cbind(params,
-                        matrix(.inj[[.n]], nrow = nrow(params), ncol = 1L,
-                               dimnames = list(NULL, .n)))
+        params <- cbind(params, matrix(.inj[[.n]], nrow = nrow(params), ncol = 1L, dimnames = list(NULL, .n)))
       }
     }
     return(params)
@@ -4139,8 +4673,10 @@ solve.rxEt <- solve.rxSolve
   .ppos <- get(".par.pos", envir = .env, inherits = FALSE)
   .isIni <- isTRUE(get(".par.pos.ini", envir = .env, inherits = FALSE))
   .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
-  if (is.null(.parso) ||
-      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))) {
+  if (
+    is.null(.parso) ||
+      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
+  ) {
     .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
     .vals <- numeric(0)
     .nms <- character(0)
@@ -4188,11 +4724,15 @@ solve.rxEt <- solve.rxSolve
       assign(".params.single", NULL, envir = .env)
     }
   }
-  assign("counts", data.frame(
-    slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
-    dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
-    jac = get(".jac.counter", envir = .env, inherits = FALSE)
-  ), envir = .env)
+  assign(
+    "counts",
+    data.frame(
+      slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
+      dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
+      jac = get(".jac.counter", envir = .env, inherits = FALSE)
+    ),
+    envir = .env
+  )
   ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
   ## weights supplied through a loader hook rather than the params vector).  Saved
   ## on the object so re-solving restores them even in a session without the
@@ -4219,8 +4759,10 @@ solve.rxEt <- solve.rxSolve
 rxInjectedPars <- function(obj) {
   .cls <- attr(obj, "class")
   .env <- attr(.cls, ".rxode2.env")
-  if (is.null(.env)) return(NULL)
-  .rxSolveMaterializeParams(obj, .env)   # ensure materialized
+  if (is.null(.env)) {
+    return(NULL)
+  }
+  .rxSolveMaterializeParams(obj, .env) # ensure materialized
   if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
     get(".injectedPars", envir = .env, inherits = FALSE)
   } else {
@@ -4254,8 +4796,12 @@ rxInjectedPars <- function(obj) {
 #' @author Matthew L. Fidler
 rxForcedPars <- function(ui) {
   .ui <- rxUiDecompress(ui)
-  if (!inherits(.ui, "rxUi")) return(NULL)
-  if (!exists("forcedPars", envir = .ui, inherits = FALSE)) return(NULL)
+  if (!inherits(.ui, "rxUi")) {
+    return(NULL)
+  }
+  if (!exists("forcedPars", envir = .ui, inherits = FALSE)) {
+    return(NULL)
+  }
   get("forcedPars", envir = .ui, inherits = FALSE)
 }
 
@@ -4268,7 +4814,9 @@ rxForcedPars <- function(ui) {
   }
   .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
     get("sticky", envir = .ui, inherits = FALSE)
-  } else character(0)
+  } else {
+    character(0)
+  }
   if (is.null(value) || length(value) == 0L) {
     if (exists("forcedPars", envir = .ui, inherits = FALSE)) {
       rm("forcedPars", envir = .ui)
@@ -4286,8 +4834,7 @@ rxForcedPars <- function(ui) {
   }
   ## store on the ui env (hidden -- not the printed `meta` block) and mark sticky
   ## so it survives model piping.
-  assign("forcedPars", stats::setNames(as.numeric(value), names(value)),
-         envir = .ui)
+  assign("forcedPars", stats::setNames(as.numeric(value), names(value)), envir = .ui)
   assign("sticky", unique(c(.sticky, "forcedPars")), envir = .ui)
   invisible(.ui)
 }
@@ -4337,19 +4884,27 @@ rxForcedPars <- function(ui) {
 ## matching `.rxApplyForcedPars()`.
 .rxForcedParsAsSupplied <- function(forcedSrc, solveModel, params) {
   .fp <- tryCatch(rxForcedPars(forcedSrc), error = function(e) NULL)
-  if (is.null(.fp) || length(.fp) == 0L) return(params)
+  if (is.null(.fp) || length(.fp) == 0L) {
+    return(params)
+  }
   .fp <- .fp[!is.na(names(.fp)) & nzchar(names(.fp))]
   .fp <- .fp[names(.fp) %in% rxModelVars(solveModel)$params]
-  if (length(.fp) == 0L) return(params)
+  if (length(.fp) == 0L) {
+    return(params)
+  }
   if (is.null(params)) {
     return(.fp)
   } else if (is.data.frame(params)) {
     .add <- setdiff(names(.fp), names(params))
-    for (.n in .add) params[[.n]] <- unname(.fp[[.n]])
+    for (.n in .add) {
+      params[[.n]] <- unname(.fp[[.n]])
+    }
     return(params)
   } else if (is.numeric(params) && !is.null(names(params))) {
     .add <- setdiff(names(.fp), names(params))
-    if (length(.add) == 0L) return(params)
+    if (length(.add) == 0L) {
+      return(params)
+    }
     return(c(params, .fp[.add]))
   }
   ## anything else (unnamed numeric, matrix, ...) is a form this cannot safely
@@ -4374,8 +4929,12 @@ rxForcedPars <- function(ui) {
 #' @author Matthew L. Fidler
 rxParLoader <- function(ui) {
   .ui <- rxUiDecompress(ui)
-  if (!inherits(.ui, "rxUi")) return(NULL)
-  if (!exists("parLoader", envir = .ui, inherits = FALSE)) return(NULL)
+  if (!inherits(.ui, "rxUi")) {
+    return(NULL)
+  }
+  if (!exists("parLoader", envir = .ui, inherits = FALSE)) {
+    return(NULL)
+  }
   get("parLoader", envir = .ui, inherits = FALSE)
 }
 
@@ -4388,9 +4947,13 @@ rxParLoader <- function(ui) {
   }
   .sticky <- if (exists("sticky", envir = .ui, inherits = FALSE)) {
     get("sticky", envir = .ui, inherits = FALSE)
-  } else character(0)
+  } else {
+    character(0)
+  }
   if (is.null(value) || length(value) == 0L || !nzchar(value[1L])) {
-    if (exists("parLoader", envir = .ui, inherits = FALSE)) rm("parLoader", envir = .ui)
+    if (exists("parLoader", envir = .ui, inherits = FALSE)) {
+      rm("parLoader", envir = .ui)
+    }
     assign("sticky", setdiff(.sticky, "parLoader"), envir = .ui)
     return(invisible(.ui))
   }
@@ -4501,19 +5064,22 @@ rxRemoveUiPrep <- function(name) {
 
 .rxRunUiPrepHooks <- function(object, solveModel = NULL) {
   .nm <- ls(envir = .rxUiPrepHooks, all.names = TRUE)
-  if (length(.nm) == 0L) return(invisible())
+  if (length(.nm) == 0L) {
+    return(invisible())
+  }
   for (.n in .nm) {
     .fn <- get(.n, envir = .rxUiPrepHooks)
-    tryCatch({
-      ## a hook may take (ui) or (ui, solveModel); the second argument is the
-      ## model whose parameter order the gpars layout actually uses, which a
-      ## hook that resolves parameter positions by name needs.
-      if (length(formals(.fn)) >= 2L) .fn(object, solveModel) else .fn(object)
-    },
-    error = function(e) {
-      warning("rxode2 ui-prep hook '", .n, "' failed: ",
-              conditionMessage(e), call. = FALSE)
-    })
+    tryCatch(
+      {
+        ## a hook may take (ui) or (ui, solveModel); the second argument is the
+        ## model whose parameter order the gpars layout actually uses, which a
+        ## hook that resolves parameter positions by name needs.
+        if (length(formals(.fn)) >= 2L) .fn(object, solveModel) else .fn(object)
+      },
+      error = function(e) {
+        warning("rxode2 ui-prep hook '", .n, "' failed: ", conditionMessage(e), call. = FALSE)
+      }
+    )
   }
   invisible()
 }
@@ -4572,14 +5138,14 @@ rxRemoveUiAssembled <- function(name) {
 
 .rxRunUiAssembledHooks <- function(ui) {
   .nm <- ls(envir = .rxUiAssembledHooks, all.names = TRUE)
-  if (length(.nm) == 0L) return(invisible())
+  if (length(.nm) == 0L) {
+    return(invisible())
+  }
   for (.n in .nm) {
     .fn <- get(.n, envir = .rxUiAssembledHooks)
-    tryCatch(.fn(ui),
-             error = function(e) {
-               warning("rxode2 ui-assembled hook '", .n, "' failed: ",
-                       conditionMessage(e), call. = FALSE)
-             })
+    tryCatch(.fn(ui), error = function(e) {
+      warning("rxode2 ui-assembled hook '", .n, "' failed: ", conditionMessage(e), call. = FALSE)
+    })
   }
   invisible()
 }
@@ -4590,8 +5156,17 @@ rxRemoveUiAssembled <- function(name) {
     return(.ini)
   }
   for (.nm in names(.ini)) {
-    if (arg %in% c(paste0(.nm, "0"), paste0(.nm, ".0"), paste0(.nm, "_0"),
-                   paste0(.nm, "(0)"), paste0(.nm, "[0]"), paste0(.nm, "{0}"))) {
+    if (
+      arg %in%
+        c(
+          paste0(.nm, "0"),
+          paste0(.nm, ".0"),
+          paste0(.nm, "_0"),
+          paste0(.nm, "(0)"),
+          paste0(.nm, "[0]"),
+          paste0(.nm, "{0}")
+        )
+    ) {
       return(unname(.ini[[.nm]]))
     }
   }
@@ -4600,7 +5175,9 @@ rxRemoveUiAssembled <- function(name) {
 
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
-  if (arg == "rxModelVars") return(rxModelVars(obj))
+  if (arg == "rxModelVars") {
+    return(rxModelVars(obj))
+  }
   .cls <- attr(obj, "class")
   .env <- attr(.cls, ".rxode2.env")
   if (is.environment(.env) && exists(arg, envir = .env, inherits = FALSE)) {
@@ -4786,9 +5363,8 @@ drop_units.rxSolve <- function(x) {
 
 #' @rdname rxSolve
 #' @export
-rxControl <- function(..., params = NULL, events = NULL, inits = NULL, envir=parent.frame()) {
-  rxSolve(object = NULL, params = params, events = events, inits = inits, ...,
-          envir=envir)
+rxControl <- function(..., params = NULL, events = NULL, inits = NULL, envir = parent.frame()) {
+  rxSolve(object = NULL, params = params, events = events, inits = inits, ..., envir = envir)
 }
 
 #' @export
@@ -5261,29 +5837,360 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm", "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode", "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s", "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s", "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s", "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s", "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs", "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s", "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", "s1110as", "o129s")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L, "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L, "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L, "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-                  "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
-                  "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
-                  "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
-                  "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-                  "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
-                  "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
-                  "z10" = 62L, "o10" = 63L, "h10" = 64L,
-                  "dp54" = 26L, "v65e" = 27L,
-                  "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
-                  "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
-                  "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
-                  "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
-                  "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
-                  "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
-                  "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
-                  "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
-                  "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
-                  "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
-                  "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
-                  "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-                  "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L, "iiic6s" = 235L, "ros43s" = 231L, "ros6s" = 232L, "geng5s" = 237L, "rk3s" = 243L, "rk43s" = 225L, "cvodesadj" = 221L, "liblsodaadj" = 202L, "abs" = 208L, "dop54s" = 226L, "dp54s" = 226L, "vern98s" = 230L, "c108s" = 300L, "b109s" = 301L, "s1110as" = 302L, "o129s" = 304L, "f45s" = 267L, "t54s" = 268L, "pp54s" = 270L, "pp54bs" = 271L, "bs54s" = 272L, "ss54s" = 273L, "dp65s" = 274L, "c65s" = 275L, "tp64s" = 276L, "v65rs" = 277L, "dverk65s" = 279L, "tf65s" = 280L, "tp75s" = 281L, "tmy7sadj" = 283L, "tmy7adj" = 282L, "v76rs" = 284L, "ss76s" = 285L, "v78s" = 286L, "dverk78s" = 287L, "dp85s" = 288L, "tp86s" = 289L, "v87es" = 290L, "v87rs" = 291L, "ev87s" = 292L, "k87s" = 293L, "v89s" = 295L, "t98as" = 296L, "v98rs" = 297L, "s98s" = 298L)
+odeMethodToInt <- function(
+  method = c(
+    "liblsoda",
+    "lsoda",
+    "dop853",
+    "indLin",
+    "f78",
+    "rk4",
+    "ck54",
+    "ab",
+    "abm",
+    "dop5",
+    "bs",
+    "ros4",
+    "iem",
+    "sem",
+    "sb3a",
+    "sb3am4",
+    "vv",
+    "mm",
+    "em",
+    "cvode",
+    "trapz",
+    "ssp3",
+    "f32",
+    "rk43",
+    "dop54",
+    "vern65",
+    "vern76",
+    "dop87",
+    "vern98",
+    "ros43",
+    "ros6",
+    "backwardEuler",
+    "gauss6",
+    "iiic6",
+    "radauiia5",
+    "geng5",
+    "sdirk43",
+    "euler",
+    "midpoint",
+    "heun",
+    "ssp22",
+    "rk3",
+    "ssp53",
+    "s4",
+    "r4",
+    "ls44",
+    "ls54",
+    "ssp54",
+    "s5",
+    "rk5",
+    "c5",
+    "l5",
+    "lk5a",
+    "lk5b",
+    "b6",
+    "s7",
+    "s8_10",
+    "cv8",
+    "s8_12",
+    "s10",
+    "z10",
+    "o10",
+    "h10",
+    "dp54",
+    "v65e",
+    "v76e",
+    "dp87",
+    "v98e",
+    "ssp33",
+    "bs32",
+    "ssp43",
+    "f45",
+    "t54",
+    "s54",
+    "pp54",
+    "pp54b",
+    "bs54",
+    "ss54",
+    "dp65",
+    "c65",
+    "tp64",
+    "v65r",
+    "v65",
+    "dverk65",
+    "tf65",
+    "tp75",
+    "tmy7",
+    "tmy7s",
+    "v76r",
+    "ss76",
+    "v78",
+    "dverk78",
+    "dp85",
+    "tp86",
+    "v87e",
+    "v87r",
+    "ev87",
+    "k87",
+    "f89",
+    "v89",
+    "t98a",
+    "v98r",
+    "s98",
+    "f108",
+    "c108",
+    "b109",
+    "s1110a",
+    "f1210",
+    "o129",
+    "f1412",
+    "lsode",
+    "bdf",
+    "rk4s",
+    "eulers",
+    "midpoints",
+    "heuns",
+    "dop5s",
+    "dop853s",
+    "ck54s",
+    "bs32s",
+    "vern65s",
+    "vern76s",
+    "dop87s",
+    "f78s",
+    "ros4s",
+    "radauiia5s",
+    "backwardEulers",
+    "gauss6s",
+    "sdirk43s",
+    "iiic6s",
+    "ros43s",
+    "ros6s",
+    "geng5s",
+    "rk3s",
+    "rk43s",
+    "cvodesadj",
+    "liblsodaadj",
+    "abs",
+    "dop54s",
+    "dp54s",
+    "vern98s",
+    "f45s",
+    "t54s",
+    "pp54s",
+    "pp54bs",
+    "bs54s",
+    "ss54s",
+    "dp65s",
+    "c65s",
+    "tp64s",
+    "v65rs",
+    "dverk65s",
+    "tf65s",
+    "tp75s",
+    "tmy7sadj",
+    "tmy7adj",
+    "v76rs",
+    "ss76s",
+    "v78s",
+    "dverk78s",
+    "dp85s",
+    "tp86s",
+    "v87es",
+    "v87rs",
+    "ev87s",
+    "k87s",
+    "v89s",
+    "t98as",
+    "v98rs",
+    "s98s",
+    "c108s",
+    "b109s",
+    "s1110as",
+    "o129s"
+  )
+) {
+  .methodIdx <- c(
+    "lsoda" = 1L,
+    "dop853" = 0L,
+    "liblsoda" = 2L,
+    "indLin" = 3L,
+    "f78" = 5L,
+    "rk4" = 6L,
+    "ck54" = 7L,
+    "ab" = 8L,
+    "abm" = 9L,
+    "dop5" = 10L,
+    "bs" = 11L,
+    "ros4" = 13L,
+    "iem" = 14L,
+    "sem" = 15L,
+    "sb3a" = 16L,
+    "sb3am4" = 17L,
+    "vv" = 18L,
+    "mm" = 19L,
+    "em" = 20L,
+    "cvode" = 21L,
+    "trapz" = 22L,
+    "ssp3" = 23L,
+    "f32" = 24L,
+    "rk43" = 25L,
+    "dop54" = 26L,
+    "vern65" = 27L,
+    "vern76" = 28L,
+    "dop87" = 29L,
+    "vern98" = 30L,
+    "ros43" = 31L,
+    "ros6" = 32L,
+    "backwardEuler" = 33L,
+    "gauss6" = 34L,
+    "iiic6" = 35L,
+    "radauiia5" = 36L,
+    "geng5" = 37L,
+    "sdirk43" = 38L,
+    "euler" = 39L,
+    "midpoint" = 40L,
+    "heun" = 41L,
+    "ssp22" = 42L,
+    "rk3" = 43L,
+    "ssp53" = 44L,
+    "s4" = 45L,
+    "r4" = 46L,
+    "ls44" = 47L,
+    "ls54" = 48L,
+    "ssp54" = 49L,
+    "s5" = 50L,
+    "rk5" = 51L,
+    "c5" = 52L,
+    "l5" = 53L,
+    "lk5a" = 54L,
+    "lk5b" = 55L,
+    "b6" = 56L,
+    "s7" = 57L,
+    "s8_10" = 58L,
+    "cv8" = 59L,
+    "s8_12" = 60L,
+    "s10" = 61L,
+    "z10" = 62L,
+    "o10" = 63L,
+    "h10" = 64L,
+    "dp54" = 26L,
+    "v65e" = 27L,
+    "v76e" = 28L,
+    "dp87" = 29L,
+    "v98e" = 30L,
+    "ssp33" = 23L,
+    "bs32" = 65L,
+    "ssp43" = 66L,
+    "f45" = 67L,
+    "t54" = 68L,
+    "s54" = 69L,
+    "pp54" = 70L,
+    "pp54b" = 71L,
+    "bs54" = 72L,
+    "ss54" = 73L,
+    "dp65" = 74L,
+    "c65" = 75L,
+    "tp64" = 76L,
+    "v65r" = 77L,
+    "v65" = 78L,
+    "dverk65" = 79L,
+    "tf65" = 80L,
+    "tp75" = 81L,
+    "tmy7" = 82L,
+    "tmy7s" = 83L,
+    "v76r" = 84L,
+    "ss76" = 85L,
+    "v78" = 86L,
+    "dverk78" = 87L,
+    "dp85" = 88L,
+    "tp86" = 89L,
+    "v87e" = 90L,
+    "v87r" = 91L,
+    "ev87" = 92L,
+    "k87" = 93L,
+    "f89" = 94L,
+    "v89" = 95L,
+    "t98a" = 96L,
+    "v98r" = 97L,
+    "s98" = 98L,
+    "f108" = 99L,
+    "c108" = 100L,
+    "b109" = 101L,
+    "s1110a" = 102L,
+    "f1210" = 103L,
+    "o129" = 104L,
+    "f1412" = 105L,
+    "lsode" = 106L,
+    "bdf" = 107L,
+    "rk4s" = 206L,
+    "eulers" = 239L,
+    "midpoints" = 240L,
+    "heuns" = 241L,
+    "dop5s" = 210L,
+    "dop853s" = 200L,
+    "ck54s" = 207L,
+    "bs32s" = 265L,
+    "vern65s" = 227L,
+    "vern76s" = 228L,
+    "dop87s" = 229L,
+    "f78s" = 205L,
+    "ros4s" = 213L,
+    "radauiia5s" = 236L,
+    "backwardEulers" = 233L,
+    "gauss6s" = 234L,
+    "sdirk43s" = 238L,
+    "iiic6s" = 235L,
+    "ros43s" = 231L,
+    "ros6s" = 232L,
+    "geng5s" = 237L,
+    "rk3s" = 243L,
+    "rk43s" = 225L,
+    "cvodesadj" = 221L,
+    "liblsodaadj" = 202L,
+    "abs" = 208L,
+    "dop54s" = 226L,
+    "dp54s" = 226L,
+    "vern98s" = 230L,
+    "c108s" = 300L,
+    "b109s" = 301L,
+    "s1110as" = 302L,
+    "o129s" = 304L,
+    "f45s" = 267L,
+    "t54s" = 268L,
+    "pp54s" = 270L,
+    "pp54bs" = 271L,
+    "bs54s" = 272L,
+    "ss54s" = 273L,
+    "dp65s" = 274L,
+    "c65s" = 275L,
+    "tp64s" = 276L,
+    "v65rs" = 277L,
+    "dverk65s" = 279L,
+    "tf65s" = 280L,
+    "tp75s" = 281L,
+    "tmy7sadj" = 283L,
+    "tmy7adj" = 282L,
+    "v76rs" = 284L,
+    "ss76s" = 285L,
+    "v78s" = 286L,
+    "dverk78s" = 287L,
+    "dp85s" = 288L,
+    "tp86s" = 289L,
+    "v87es" = 290L,
+    "v87rs" = 291L,
+    "ev87s" = 292L,
+    "k87s" = 293L,
+    "v89s" = 295L,
+    "t98as" = 296L,
+    "v98rs" = 297L,
+    "s98s" = 298L
+  )
 
   if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
     method <- 1L
@@ -5338,45 +6245,187 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin", "
 rxIsImplicit <- function(method) {
   .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
   .methodIdx <- c(
-    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
-    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
-    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
-    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
-    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
-    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
-    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
-    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
-    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
-    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
-    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
-    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
-    "z10" = 62L, "o10" = 63L, "h10" = 64L,
-    "dp54" = 26L, "v65e" = 27L,
-    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
-    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
-    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
-    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
-    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
-    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
-    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
-    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
-    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
-    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
-    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
-    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L, "iiic6s" = 235L, "ros43s" = 231L, "ros6s" = 232L, "geng5s" = 237L, "rk3s" = 243L, "rk43s" = 225L, "cvodesadj" = 221L, "liblsodaadj" = 202L, "abs" = 208L, "dop54s" = 226L, "dp54s" = 226L, "vern98s" = 230L, "c108s" = 300L, "b109s" = 301L, "s1110as" = 302L, "o129s" = 304L, "f45s" = 267L, "t54s" = 268L, "pp54s" = 270L, "pp54bs" = 271L, "bs54s" = 272L, "ss54s" = 273L, "dp65s" = 274L, "c65s" = 275L, "tp64s" = 276L, "v65rs" = 277L, "dverk65s" = 279L, "tf65s" = 280L, "tp75s" = 281L, "tmy7sadj" = 283L, "tmy7adj" = 282L, "v76rs" = 284L, "ss76s" = 285L, "v78s" = 286L, "dverk78s" = 287L, "dp85s" = 288L, "tp86s" = 289L, "v87es" = 290L, "v87rs" = 291L, "ev87s" = 292L, "k87s" = 293L, "v89s" = 295L, "t98as" = 296L, "v98rs" = 297L, "s98s" = 298L
+    "lsoda" = 1L,
+    "dop853" = 0L,
+    "liblsoda" = 2L,
+    "indLin" = 3L,
+    "f78" = 5L,
+    "rk4" = 6L,
+    "ck54" = 7L,
+    "ab" = 8L,
+    "abm" = 9L,
+    "dop5" = 10L,
+    "bs" = 11L,
+    "ros4" = 13L,
+    "iem" = 14L,
+    "sem" = 15L,
+    "sb3a" = 16L,
+    "sb3am4" = 17L,
+    "vv" = 18L,
+    "mm" = 19L,
+    "em" = 20L,
+    "cvode" = 21L,
+    "trapz" = 22L,
+    "ssp3" = 23L,
+    "f32" = 24L,
+    "rk43" = 25L,
+    "dop54" = 26L,
+    "vern65" = 27L,
+    "vern76" = 28L,
+    "dop87" = 29L,
+    "vern98" = 30L,
+    "ros43" = 31L,
+    "ros6" = 32L,
+    "backwardEuler" = 33L,
+    "gauss6" = 34L,
+    "iiic6" = 35L,
+    "radauiia5" = 36L,
+    "geng5" = 37L,
+    "sdirk43" = 38L,
+    "euler" = 39L,
+    "midpoint" = 40L,
+    "heun" = 41L,
+    "ssp22" = 42L,
+    "rk3" = 43L,
+    "ssp53" = 44L,
+    "s4" = 45L,
+    "r4" = 46L,
+    "ls44" = 47L,
+    "ls54" = 48L,
+    "ssp54" = 49L,
+    "s5" = 50L,
+    "rk5" = 51L,
+    "c5" = 52L,
+    "l5" = 53L,
+    "lk5a" = 54L,
+    "lk5b" = 55L,
+    "b6" = 56L,
+    "s7" = 57L,
+    "s8_10" = 58L,
+    "cv8" = 59L,
+    "s8_12" = 60L,
+    "s10" = 61L,
+    "z10" = 62L,
+    "o10" = 63L,
+    "h10" = 64L,
+    "dp54" = 26L,
+    "v65e" = 27L,
+    "v76e" = 28L,
+    "dp87" = 29L,
+    "v98e" = 30L,
+    "ssp33" = 23L,
+    "bs32" = 65L,
+    "ssp43" = 66L,
+    "f45" = 67L,
+    "t54" = 68L,
+    "s54" = 69L,
+    "pp54" = 70L,
+    "pp54b" = 71L,
+    "bs54" = 72L,
+    "ss54" = 73L,
+    "dp65" = 74L,
+    "c65" = 75L,
+    "tp64" = 76L,
+    "v65r" = 77L,
+    "v65" = 78L,
+    "dverk65" = 79L,
+    "tf65" = 80L,
+    "tp75" = 81L,
+    "tmy7" = 82L,
+    "tmy7s" = 83L,
+    "v76r" = 84L,
+    "ss76" = 85L,
+    "v78" = 86L,
+    "dverk78" = 87L,
+    "dp85" = 88L,
+    "tp86" = 89L,
+    "v87e" = 90L,
+    "v87r" = 91L,
+    "ev87" = 92L,
+    "k87" = 93L,
+    "f89" = 94L,
+    "v89" = 95L,
+    "t98a" = 96L,
+    "v98r" = 97L,
+    "s98" = 98L,
+    "f108" = 99L,
+    "c108" = 100L,
+    "b109" = 101L,
+    "s1110a" = 102L,
+    "f1210" = 103L,
+    "o129" = 104L,
+    "f1412" = 105L,
+    "lsode" = 106L,
+    "bdf" = 107L,
+    "rk4s" = 206L,
+    "eulers" = 239L,
+    "midpoints" = 240L,
+    "heuns" = 241L,
+    "dop5s" = 210L,
+    "dop853s" = 200L,
+    "ck54s" = 207L,
+    "bs32s" = 265L,
+    "vern65s" = 227L,
+    "vern76s" = 228L,
+    "dop87s" = 229L,
+    "f78s" = 205L,
+    "ros4s" = 213L,
+    "radauiia5s" = 236L,
+    "backwardEulers" = 233L,
+    "gauss6s" = 234L,
+    "sdirk43s" = 238L,
+    "iiic6s" = 235L,
+    "ros43s" = 231L,
+    "ros6s" = 232L,
+    "geng5s" = 237L,
+    "rk3s" = 243L,
+    "rk43s" = 225L,
+    "cvodesadj" = 221L,
+    "liblsodaadj" = 202L,
+    "abs" = 208L,
+    "dop54s" = 226L,
+    "dp54s" = 226L,
+    "vern98s" = 230L,
+    "c108s" = 300L,
+    "b109s" = 301L,
+    "s1110as" = 302L,
+    "o129s" = 304L,
+    "f45s" = 267L,
+    "t54s" = 268L,
+    "pp54s" = 270L,
+    "pp54bs" = 271L,
+    "bs54s" = 272L,
+    "ss54s" = 273L,
+    "dp65s" = 274L,
+    "c65s" = 275L,
+    "tp64s" = 276L,
+    "v65rs" = 277L,
+    "dverk65s" = 279L,
+    "tf65s" = 280L,
+    "tp75s" = 281L,
+    "tmy7sadj" = 283L,
+    "tmy7adj" = 282L,
+    "v76rs" = 284L,
+    "ss76s" = 285L,
+    "v78s" = 286L,
+    "dverk78s" = 287L,
+    "dp85s" = 288L,
+    "tp86s" = 289L,
+    "v87es" = 290L,
+    "v87rs" = 291L,
+    "ev87s" = 292L,
+    "k87s" = 293L,
+    "v89s" = 295L,
+    "t98as" = 296L,
+    "v98rs" = 297L,
+    "s98s" = 298L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
     .codes <- ifelse(.composite, NA_integer_, .methodIdx[method])
     .unknown <- is.na(.codes) & !.composite
     if (any(.unknown)) {
-      stop("unknown method(s): ",
-           paste(method[.unknown], collapse = ", "),
-           call. = FALSE)
+      stop("unknown method(s): ", paste(method[.unknown], collapse = ", "), call. = FALSE)
     }
     return(ifelse(.composite, FALSE, .codes %in% .implicitCodes))
   } else {
@@ -5412,38 +6461,205 @@ rxIsImplicit <- function(method) {
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
 rxIsStiff <- function(method) {
-  .stiffCodes <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L, 221L)
+  .stiffCodes <- c(
+    13L,
+    14L,
+    21L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    107L,
+    213L,
+    236L,
+    233L,
+    234L,
+    238L,
+    235L,
+    231L,
+    232L,
+    237L,
+    221L
+  )
   .methodIdx <- c(
-    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
-    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
-    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
-    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
-    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
-    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
-    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
-    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
-    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
-    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
-    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
-    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
-    "z10" = 62L, "o10" = 63L, "h10" = 64L,
-    "dp54" = 26L, "v65e" = 27L,
-    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
-    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
-    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
-    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
-    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
-    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
-    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
-    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
-    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
-    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
-    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
-    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L, "iiic6s" = 235L, "ros43s" = 231L, "ros6s" = 232L, "geng5s" = 237L, "rk3s" = 243L, "rk43s" = 225L, "cvodesadj" = 221L, "liblsodaadj" = 202L, "abs" = 208L, "dop54s" = 226L, "dp54s" = 226L, "vern98s" = 230L, "c108s" = 300L, "b109s" = 301L, "s1110as" = 302L, "o129s" = 304L, "f45s" = 267L, "t54s" = 268L, "pp54s" = 270L, "pp54bs" = 271L, "bs54s" = 272L, "ss54s" = 273L, "dp65s" = 274L, "c65s" = 275L, "tp64s" = 276L, "v65rs" = 277L, "dverk65s" = 279L, "tf65s" = 280L, "tp75s" = 281L, "tmy7sadj" = 283L, "tmy7adj" = 282L, "v76rs" = 284L, "ss76s" = 285L, "v78s" = 286L, "dverk78s" = 287L, "dp85s" = 288L, "tp86s" = 289L, "v87es" = 290L, "v87rs" = 291L, "ev87s" = 292L, "k87s" = 293L, "v89s" = 295L, "t98as" = 296L, "v98rs" = 297L, "s98s" = 298L
+    "lsoda" = 1L,
+    "dop853" = 0L,
+    "liblsoda" = 2L,
+    "indLin" = 3L,
+    "f78" = 5L,
+    "rk4" = 6L,
+    "ck54" = 7L,
+    "ab" = 8L,
+    "abm" = 9L,
+    "dop5" = 10L,
+    "bs" = 11L,
+    "ros4" = 13L,
+    "iem" = 14L,
+    "sem" = 15L,
+    "sb3a" = 16L,
+    "sb3am4" = 17L,
+    "vv" = 18L,
+    "mm" = 19L,
+    "em" = 20L,
+    "cvode" = 21L,
+    "trapz" = 22L,
+    "ssp3" = 23L,
+    "f32" = 24L,
+    "rk43" = 25L,
+    "dop54" = 26L,
+    "vern65" = 27L,
+    "vern76" = 28L,
+    "dop87" = 29L,
+    "vern98" = 30L,
+    "ros43" = 31L,
+    "ros6" = 32L,
+    "backwardEuler" = 33L,
+    "gauss6" = 34L,
+    "iiic6" = 35L,
+    "radauiia5" = 36L,
+    "geng5" = 37L,
+    "sdirk43" = 38L,
+    "euler" = 39L,
+    "midpoint" = 40L,
+    "heun" = 41L,
+    "ssp22" = 42L,
+    "rk3" = 43L,
+    "ssp53" = 44L,
+    "s4" = 45L,
+    "r4" = 46L,
+    "ls44" = 47L,
+    "ls54" = 48L,
+    "ssp54" = 49L,
+    "s5" = 50L,
+    "rk5" = 51L,
+    "c5" = 52L,
+    "l5" = 53L,
+    "lk5a" = 54L,
+    "lk5b" = 55L,
+    "b6" = 56L,
+    "s7" = 57L,
+    "s8_10" = 58L,
+    "cv8" = 59L,
+    "s8_12" = 60L,
+    "s10" = 61L,
+    "z10" = 62L,
+    "o10" = 63L,
+    "h10" = 64L,
+    "dp54" = 26L,
+    "v65e" = 27L,
+    "v76e" = 28L,
+    "dp87" = 29L,
+    "v98e" = 30L,
+    "ssp33" = 23L,
+    "bs32" = 65L,
+    "ssp43" = 66L,
+    "f45" = 67L,
+    "t54" = 68L,
+    "s54" = 69L,
+    "pp54" = 70L,
+    "pp54b" = 71L,
+    "bs54" = 72L,
+    "ss54" = 73L,
+    "dp65" = 74L,
+    "c65" = 75L,
+    "tp64" = 76L,
+    "v65r" = 77L,
+    "v65" = 78L,
+    "dverk65" = 79L,
+    "tf65" = 80L,
+    "tp75" = 81L,
+    "tmy7" = 82L,
+    "tmy7s" = 83L,
+    "v76r" = 84L,
+    "ss76" = 85L,
+    "v78" = 86L,
+    "dverk78" = 87L,
+    "dp85" = 88L,
+    "tp86" = 89L,
+    "v87e" = 90L,
+    "v87r" = 91L,
+    "ev87" = 92L,
+    "k87" = 93L,
+    "f89" = 94L,
+    "v89" = 95L,
+    "t98a" = 96L,
+    "v98r" = 97L,
+    "s98" = 98L,
+    "f108" = 99L,
+    "c108" = 100L,
+    "b109" = 101L,
+    "s1110a" = 102L,
+    "f1210" = 103L,
+    "o129" = 104L,
+    "f1412" = 105L,
+    "lsode" = 106L,
+    "bdf" = 107L,
+    "rk4s" = 206L,
+    "eulers" = 239L,
+    "midpoints" = 240L,
+    "heuns" = 241L,
+    "dop5s" = 210L,
+    "dop853s" = 200L,
+    "ck54s" = 207L,
+    "bs32s" = 265L,
+    "vern65s" = 227L,
+    "vern76s" = 228L,
+    "dop87s" = 229L,
+    "f78s" = 205L,
+    "ros4s" = 213L,
+    "radauiia5s" = 236L,
+    "backwardEulers" = 233L,
+    "gauss6s" = 234L,
+    "sdirk43s" = 238L,
+    "iiic6s" = 235L,
+    "ros43s" = 231L,
+    "ros6s" = 232L,
+    "geng5s" = 237L,
+    "rk3s" = 243L,
+    "rk43s" = 225L,
+    "cvodesadj" = 221L,
+    "liblsodaadj" = 202L,
+    "abs" = 208L,
+    "dop54s" = 226L,
+    "dp54s" = 226L,
+    "vern98s" = 230L,
+    "c108s" = 300L,
+    "b109s" = 301L,
+    "s1110as" = 302L,
+    "o129s" = 304L,
+    "f45s" = 267L,
+    "t54s" = 268L,
+    "pp54s" = 270L,
+    "pp54bs" = 271L,
+    "bs54s" = 272L,
+    "ss54s" = 273L,
+    "dp65s" = 274L,
+    "c65s" = 275L,
+    "tp64s" = 276L,
+    "v65rs" = 277L,
+    "dverk65s" = 279L,
+    "tf65s" = 280L,
+    "tp75s" = 281L,
+    "tmy7sadj" = 283L,
+    "tmy7adj" = 282L,
+    "v76rs" = 284L,
+    "ss76s" = 285L,
+    "v78s" = 286L,
+    "dverk78s" = 287L,
+    "dp85s" = 288L,
+    "tp86s" = 289L,
+    "v87es" = 290L,
+    "v87rs" = 291L,
+    "ev87s" = 292L,
+    "k87s" = 293L,
+    "v89s" = 295L,
+    "t98as" = 296L,
+    "v98rs" = 297L,
+    "s98s" = 298L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -5486,38 +6702,205 @@ rxIsStiff <- function(method) {
 #' @export
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
-  .stiffCodes    <- c(13L, 14L, 21L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 107L, 213L, 236L, 233L, 234L, 238L, 235L, 231L, 232L, 237L, 221L)
+  .stiffCodes <- c(
+    13L,
+    14L,
+    21L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    107L,
+    213L,
+    236L,
+    233L,
+    234L,
+    238L,
+    235L,
+    231L,
+    232L,
+    237L,
+    221L
+  )
   .methodIdx <- c(
-    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
-    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
-    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
-    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
-    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
-    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
-    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
-    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
-    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
-    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
-    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
-    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
-    "z10" = 62L, "o10" = 63L, "h10" = 64L,
-    "dp54" = 26L, "v65e" = 27L,
-    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
-    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
-    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
-    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
-    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
-    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
-    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
-    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
-    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
-    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
-    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
-    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L, "iiic6s" = 235L, "ros43s" = 231L, "ros6s" = 232L, "geng5s" = 237L, "rk3s" = 243L, "rk43s" = 225L, "cvodesadj" = 221L, "liblsodaadj" = 202L, "abs" = 208L, "dop54s" = 226L, "dp54s" = 226L, "vern98s" = 230L, "c108s" = 300L, "b109s" = 301L, "s1110as" = 302L, "o129s" = 304L, "f45s" = 267L, "t54s" = 268L, "pp54s" = 270L, "pp54bs" = 271L, "bs54s" = 272L, "ss54s" = 273L, "dp65s" = 274L, "c65s" = 275L, "tp64s" = 276L, "v65rs" = 277L, "dverk65s" = 279L, "tf65s" = 280L, "tp75s" = 281L, "tmy7sadj" = 283L, "tmy7adj" = 282L, "v76rs" = 284L, "ss76s" = 285L, "v78s" = 286L, "dverk78s" = 287L, "dp85s" = 288L, "tp86s" = 289L, "v87es" = 290L, "v87rs" = 291L, "ev87s" = 292L, "k87s" = 293L, "v89s" = 295L, "t98as" = 296L, "v98rs" = 297L, "s98s" = 298L
+    "lsoda" = 1L,
+    "dop853" = 0L,
+    "liblsoda" = 2L,
+    "indLin" = 3L,
+    "f78" = 5L,
+    "rk4" = 6L,
+    "ck54" = 7L,
+    "ab" = 8L,
+    "abm" = 9L,
+    "dop5" = 10L,
+    "bs" = 11L,
+    "ros4" = 13L,
+    "iem" = 14L,
+    "sem" = 15L,
+    "sb3a" = 16L,
+    "sb3am4" = 17L,
+    "vv" = 18L,
+    "mm" = 19L,
+    "em" = 20L,
+    "cvode" = 21L,
+    "trapz" = 22L,
+    "ssp3" = 23L,
+    "f32" = 24L,
+    "rk43" = 25L,
+    "dop54" = 26L,
+    "vern65" = 27L,
+    "vern76" = 28L,
+    "dop87" = 29L,
+    "vern98" = 30L,
+    "ros43" = 31L,
+    "ros6" = 32L,
+    "backwardEuler" = 33L,
+    "gauss6" = 34L,
+    "iiic6" = 35L,
+    "radauiia5" = 36L,
+    "geng5" = 37L,
+    "sdirk43" = 38L,
+    "euler" = 39L,
+    "midpoint" = 40L,
+    "heun" = 41L,
+    "ssp22" = 42L,
+    "rk3" = 43L,
+    "ssp53" = 44L,
+    "s4" = 45L,
+    "r4" = 46L,
+    "ls44" = 47L,
+    "ls54" = 48L,
+    "ssp54" = 49L,
+    "s5" = 50L,
+    "rk5" = 51L,
+    "c5" = 52L,
+    "l5" = 53L,
+    "lk5a" = 54L,
+    "lk5b" = 55L,
+    "b6" = 56L,
+    "s7" = 57L,
+    "s8_10" = 58L,
+    "cv8" = 59L,
+    "s8_12" = 60L,
+    "s10" = 61L,
+    "z10" = 62L,
+    "o10" = 63L,
+    "h10" = 64L,
+    "dp54" = 26L,
+    "v65e" = 27L,
+    "v76e" = 28L,
+    "dp87" = 29L,
+    "v98e" = 30L,
+    "ssp33" = 23L,
+    "bs32" = 65L,
+    "ssp43" = 66L,
+    "f45" = 67L,
+    "t54" = 68L,
+    "s54" = 69L,
+    "pp54" = 70L,
+    "pp54b" = 71L,
+    "bs54" = 72L,
+    "ss54" = 73L,
+    "dp65" = 74L,
+    "c65" = 75L,
+    "tp64" = 76L,
+    "v65r" = 77L,
+    "v65" = 78L,
+    "dverk65" = 79L,
+    "tf65" = 80L,
+    "tp75" = 81L,
+    "tmy7" = 82L,
+    "tmy7s" = 83L,
+    "v76r" = 84L,
+    "ss76" = 85L,
+    "v78" = 86L,
+    "dverk78" = 87L,
+    "dp85" = 88L,
+    "tp86" = 89L,
+    "v87e" = 90L,
+    "v87r" = 91L,
+    "ev87" = 92L,
+    "k87" = 93L,
+    "f89" = 94L,
+    "v89" = 95L,
+    "t98a" = 96L,
+    "v98r" = 97L,
+    "s98" = 98L,
+    "f108" = 99L,
+    "c108" = 100L,
+    "b109" = 101L,
+    "s1110a" = 102L,
+    "f1210" = 103L,
+    "o129" = 104L,
+    "f1412" = 105L,
+    "lsode" = 106L,
+    "bdf" = 107L,
+    "rk4s" = 206L,
+    "eulers" = 239L,
+    "midpoints" = 240L,
+    "heuns" = 241L,
+    "dop5s" = 210L,
+    "dop853s" = 200L,
+    "ck54s" = 207L,
+    "bs32s" = 265L,
+    "vern65s" = 227L,
+    "vern76s" = 228L,
+    "dop87s" = 229L,
+    "f78s" = 205L,
+    "ros4s" = 213L,
+    "radauiia5s" = 236L,
+    "backwardEulers" = 233L,
+    "gauss6s" = 234L,
+    "sdirk43s" = 238L,
+    "iiic6s" = 235L,
+    "ros43s" = 231L,
+    "ros6s" = 232L,
+    "geng5s" = 237L,
+    "rk3s" = 243L,
+    "rk43s" = 225L,
+    "cvodesadj" = 221L,
+    "liblsodaadj" = 202L,
+    "abs" = 208L,
+    "dop54s" = 226L,
+    "dp54s" = 226L,
+    "vern98s" = 230L,
+    "c108s" = 300L,
+    "b109s" = 301L,
+    "s1110as" = 302L,
+    "o129s" = 304L,
+    "f45s" = 267L,
+    "t54s" = 268L,
+    "pp54s" = 270L,
+    "pp54bs" = 271L,
+    "bs54s" = 272L,
+    "ss54s" = 273L,
+    "dp65s" = 274L,
+    "c65s" = 275L,
+    "tp64s" = 276L,
+    "v65rs" = 277L,
+    "dverk65s" = 279L,
+    "tf65s" = 280L,
+    "tp75s" = 281L,
+    "tmy7sadj" = 283L,
+    "tmy7adj" = 282L,
+    "v76rs" = 284L,
+    "ss76s" = 285L,
+    "v78s" = 286L,
+    "dverk78s" = 287L,
+    "dp85s" = 288L,
+    "tp86s" = 289L,
+    "v87es" = 290L,
+    "v87rs" = 291L,
+    "ev87s" = 292L,
+    "k87s" = 293L,
+    "v89s" = 295L,
+    "t98as" = 296L,
+    "v98rs" = 297L,
+    "s98s" = 298L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -5568,36 +6951,180 @@ rxIsNonStiff <- function(method) {
 rxIsDense <- function(method) {
   .denseCodes <- c(0L, 10L, 11L, 13L)
   .methodIdx <- c(
-    "lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L,
-    "f78" = 5L, "rk4" = 6L, "ck54" = 7L, "ab" = 8L, "abm" = 9L,
-    "dop5" = 10L, "bs" = 11L, "ros4" = 13L, "iem" = 14L,
-    "sem" = 15L, "sb3a" = 16L, "sb3am4" = 17L, "vv" = 18L,
-    "mm" = 19L, "em" = 20L, "cvode" = 21L, "trapz" = 22L,
-    "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L,
-    "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L,
-    "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L,
-    "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L,
-    "euler" = 39L, "midpoint" = 40L, "heun" = 41L, "ssp22" = 42L,
-    "rk3" = 43L, "ssp53" = 44L, "s4" = 45L, "r4" = 46L,
-    "ls44" = 47L, "ls54" = 48L, "ssp54" = 49L,
-    "s5" = 50L, "rk5" = 51L, "c5" = 52L, "l5" = 53L,
-    "lk5a" = 54L, "lk5b" = 55L, "b6" = 56L, "s7" = 57L,
-    "s8_10" = 58L, "cv8" = 59L, "s8_12" = 60L, "s10" = 61L,
-    "z10" = 62L, "o10" = 63L, "h10" = 64L,
-    "dp54" = 26L, "v65e" = 27L,
-    "v76e" = 28L, "dp87" = 29L, "v98e" = 30L, "ssp33" = 23L,
-    "bs32" = 65L, "ssp43" = 66L, "f45" = 67L,
-    "t54" = 68L, "s54" = 69L, "pp54" = 70L, "pp54b" = 71L,
-    "bs54" = 72L, "ss54" = 73L, "dp65" = 74L, "c65" = 75L,
-    "tp64" = 76L, "v65r" = 77L, "v65" = 78L, "dverk65" = 79L,
-    "tf65" = 80L, "tp75" = 81L, "tmy7" = 82L, "tmy7s" = 83L,
-    "v76r" = 84L, "ss76" = 85L, "v78" = 86L, "dverk78" = 87L,
-    "dp85" = 88L, "tp86" = 89L, "v87e" = 90L, "v87r" = 91L,
-    "ev87" = 92L, "k87" = 93L, "f89" = 94L, "v89" = 95L,
-    "t98a" = 96L, "v98r" = 97L, "s98" = 98L, "f108" = 99L,
-    "c108" = 100L, "b109" = 101L, "s1110a" = 102L,
-    "f1210" = 103L, "o129" = 104L, "f1412" = 105L,
-    "lsode" = 106L, "bdf" = 107L, "rk4s" = 206L, "eulers" = 239L, "midpoints" = 240L, "heuns" = 241L, "dop5s" = 210L, "dop853s" = 200L, "ck54s" = 207L, "bs32s" = 265L, "vern65s" = 227L, "vern76s" = 228L, "dop87s" = 229L, "f78s" = 205L, "ros4s" = 213L, "radauiia5s" = 236L, "backwardEulers" = 233L, "gauss6s" = 234L, "sdirk43s" = 238L, "iiic6s" = 235L, "ros43s" = 231L, "ros6s" = 232L, "geng5s" = 237L, "rk3s" = 243L, "rk43s" = 225L, "cvodesadj" = 221L, "liblsodaadj" = 202L, "abs" = 208L, "dop54s" = 226L, "dp54s" = 226L, "vern98s" = 230L, "c108s" = 300L, "b109s" = 301L, "s1110as" = 302L, "o129s" = 304L, "f45s" = 267L, "t54s" = 268L, "pp54s" = 270L, "pp54bs" = 271L, "bs54s" = 272L, "ss54s" = 273L, "dp65s" = 274L, "c65s" = 275L, "tp64s" = 276L, "v65rs" = 277L, "dverk65s" = 279L, "tf65s" = 280L, "tp75s" = 281L, "tmy7sadj" = 283L, "tmy7adj" = 282L, "v76rs" = 284L, "ss76s" = 285L, "v78s" = 286L, "dverk78s" = 287L, "dp85s" = 288L, "tp86s" = 289L, "v87es" = 290L, "v87rs" = 291L, "ev87s" = 292L, "k87s" = 293L, "v89s" = 295L, "t98as" = 296L, "v98rs" = 297L, "s98s" = 298L
+    "lsoda" = 1L,
+    "dop853" = 0L,
+    "liblsoda" = 2L,
+    "indLin" = 3L,
+    "f78" = 5L,
+    "rk4" = 6L,
+    "ck54" = 7L,
+    "ab" = 8L,
+    "abm" = 9L,
+    "dop5" = 10L,
+    "bs" = 11L,
+    "ros4" = 13L,
+    "iem" = 14L,
+    "sem" = 15L,
+    "sb3a" = 16L,
+    "sb3am4" = 17L,
+    "vv" = 18L,
+    "mm" = 19L,
+    "em" = 20L,
+    "cvode" = 21L,
+    "trapz" = 22L,
+    "ssp3" = 23L,
+    "f32" = 24L,
+    "rk43" = 25L,
+    "dop54" = 26L,
+    "vern65" = 27L,
+    "vern76" = 28L,
+    "dop87" = 29L,
+    "vern98" = 30L,
+    "ros43" = 31L,
+    "ros6" = 32L,
+    "backwardEuler" = 33L,
+    "gauss6" = 34L,
+    "iiic6" = 35L,
+    "radauiia5" = 36L,
+    "geng5" = 37L,
+    "sdirk43" = 38L,
+    "euler" = 39L,
+    "midpoint" = 40L,
+    "heun" = 41L,
+    "ssp22" = 42L,
+    "rk3" = 43L,
+    "ssp53" = 44L,
+    "s4" = 45L,
+    "r4" = 46L,
+    "ls44" = 47L,
+    "ls54" = 48L,
+    "ssp54" = 49L,
+    "s5" = 50L,
+    "rk5" = 51L,
+    "c5" = 52L,
+    "l5" = 53L,
+    "lk5a" = 54L,
+    "lk5b" = 55L,
+    "b6" = 56L,
+    "s7" = 57L,
+    "s8_10" = 58L,
+    "cv8" = 59L,
+    "s8_12" = 60L,
+    "s10" = 61L,
+    "z10" = 62L,
+    "o10" = 63L,
+    "h10" = 64L,
+    "dp54" = 26L,
+    "v65e" = 27L,
+    "v76e" = 28L,
+    "dp87" = 29L,
+    "v98e" = 30L,
+    "ssp33" = 23L,
+    "bs32" = 65L,
+    "ssp43" = 66L,
+    "f45" = 67L,
+    "t54" = 68L,
+    "s54" = 69L,
+    "pp54" = 70L,
+    "pp54b" = 71L,
+    "bs54" = 72L,
+    "ss54" = 73L,
+    "dp65" = 74L,
+    "c65" = 75L,
+    "tp64" = 76L,
+    "v65r" = 77L,
+    "v65" = 78L,
+    "dverk65" = 79L,
+    "tf65" = 80L,
+    "tp75" = 81L,
+    "tmy7" = 82L,
+    "tmy7s" = 83L,
+    "v76r" = 84L,
+    "ss76" = 85L,
+    "v78" = 86L,
+    "dverk78" = 87L,
+    "dp85" = 88L,
+    "tp86" = 89L,
+    "v87e" = 90L,
+    "v87r" = 91L,
+    "ev87" = 92L,
+    "k87" = 93L,
+    "f89" = 94L,
+    "v89" = 95L,
+    "t98a" = 96L,
+    "v98r" = 97L,
+    "s98" = 98L,
+    "f108" = 99L,
+    "c108" = 100L,
+    "b109" = 101L,
+    "s1110a" = 102L,
+    "f1210" = 103L,
+    "o129" = 104L,
+    "f1412" = 105L,
+    "lsode" = 106L,
+    "bdf" = 107L,
+    "rk4s" = 206L,
+    "eulers" = 239L,
+    "midpoints" = 240L,
+    "heuns" = 241L,
+    "dop5s" = 210L,
+    "dop853s" = 200L,
+    "ck54s" = 207L,
+    "bs32s" = 265L,
+    "vern65s" = 227L,
+    "vern76s" = 228L,
+    "dop87s" = 229L,
+    "f78s" = 205L,
+    "ros4s" = 213L,
+    "radauiia5s" = 236L,
+    "backwardEulers" = 233L,
+    "gauss6s" = 234L,
+    "sdirk43s" = 238L,
+    "iiic6s" = 235L,
+    "ros43s" = 231L,
+    "ros6s" = 232L,
+    "geng5s" = 237L,
+    "rk3s" = 243L,
+    "rk43s" = 225L,
+    "cvodesadj" = 221L,
+    "liblsodaadj" = 202L,
+    "abs" = 208L,
+    "dop54s" = 226L,
+    "dp54s" = 226L,
+    "vern98s" = 230L,
+    "c108s" = 300L,
+    "b109s" = 301L,
+    "s1110as" = 302L,
+    "o129s" = 304L,
+    "f45s" = 267L,
+    "t54s" = 268L,
+    "pp54s" = 270L,
+    "pp54bs" = 271L,
+    "bs54s" = 272L,
+    "ss54s" = 273L,
+    "dp65s" = 274L,
+    "c65s" = 275L,
+    "tp64s" = 276L,
+    "v65rs" = 277L,
+    "dverk65s" = 279L,
+    "tf65s" = 280L,
+    "tp75s" = 281L,
+    "tmy7sadj" = 283L,
+    "tmy7adj" = 282L,
+    "v76rs" = 284L,
+    "ss76s" = 285L,
+    "v78s" = 286L,
+    "dverk78s" = 287L,
+    "dp85s" = 288L,
+    "tp86s" = 289L,
+    "v87es" = 290L,
+    "v87rs" = 291L,
+    "ev87s" = 292L,
+    "k87s" = 293L,
+    "v89s" = 295L,
+    "t98as" = 296L,
+    "v98rs" = 297L,
+    "s98s" = 298L
   )
   if (is.character(method)) {
     .composite <- rxIsAutoSwitch(method)
@@ -5608,12 +7135,16 @@ rxIsDense <- function(method) {
     }
     .isDense <- ifelse(.composite, FALSE, .codes %in% .denseCodes)
     if (any(.composite)) {
-      .isDense[.composite] <- vapply(method[.composite], function(.m) {
-        .parts <- .parseAutoSwitchMethod(.m)
-        !is.null(.parts) &&
-          as.integer(.parts["primary"]) %in% .denseCodes &&
-          as.integer(.parts["stiff"]) %in% .denseCodes
-      }, logical(1))
+      .isDense[.composite] <- vapply(
+        method[.composite],
+        function(.m) {
+          .parts <- .parseAutoSwitchMethod(.m)
+          !is.null(.parts) &&
+            as.integer(.parts["primary"]) %in% .denseCodes &&
+            as.integer(.parts["stiff"]) %in% .denseCodes
+        },
+        logical(1)
+      )
     }
     return(.isDense)
   } else {
@@ -5652,7 +7183,9 @@ rxIsDense <- function(method) {
 #' @return Named integer vector `c(primary=..., stiff=...)` or `NULL` if not composite.
 #' @noRd
 .parseAutoSwitchMethod <- function(method) {
-  if (!grepl("+", method, fixed = TRUE)) return(NULL)
+  if (!grepl("+", method, fixed = TRUE)) {
+    return(NULL)
+  }
   .parts <- trimws(strsplit(method, "+", fixed = TRUE)[[1]])
   if (length(.parts) != 2L) {
     stop("AutoSwitch method must be 'primary+stiff', got: '", method, "'", call. = FALSE)
@@ -5676,8 +7209,7 @@ rxIsDense <- function(method) {
     stop("AutoSwitch stiff secondary '", .parts[2], "' is not thread-safe", call. = FALSE)
   }
   if (.code2 == 21L) {
-    stop("AutoSwitch: CVODE ('cvode') as stiff secondary is not yet supported in composite methods",
-         call. = FALSE)
+    stop("AutoSwitch: CVODE ('cvode') as stiff secondary is not yet supported in composite methods", call. = FALSE)
   }
   c(primary = as.integer(.code1), stiff = as.integer(.code2))
 }
@@ -5697,7 +7229,9 @@ rxIsDense <- function(method) {
 #' @seealso [odeMethodToInt()], [rxIsNonStiff()], [rxIsStiff()]
 #' @export
 rxIsAutoSwitch <- function(method) {
-  if (is.character(method)) return(grepl("+", method, fixed = TRUE))
+  if (is.character(method)) {
+    return(grepl("+", method, fixed = TRUE))
+  }
   rep(FALSE, length(method))
 }
 
@@ -5726,19 +7260,17 @@ rxIsAutoSwitch <- function(method) {
 #' tmp2$rtol
 #' tmp2$ssAtol
 #' tmp2$ssRtol
-rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
-  checkmate::assertIntegerish(sensCmt, lower=1, len=1)
-  checkmate::assertIntegerish(ncmt, lower=2, len=1)
+rxControlUpdateSens <- function(rxControl, sensCmt = NULL, ncmt = NULL) {
+  checkmate::assertIntegerish(sensCmt, lower = 1, len = 1)
+  checkmate::assertIntegerish(ncmt, lower = 2, len = 1)
   if (sensCmt >= ncmt) {
-    stop("'sensCmt' must be lower than the number of compartments 'ncmt'",
-         call.=FALSE)
+    stop("'sensCmt' must be lower than the number of compartments 'ncmt'", call. = FALSE)
   }
   if (is.list(rxControl) && !inherits(rxControl, "rxControl")) {
     rxControl <- do.call(rxode2::rxControl, rxControl)
   }
   if (!inherits(rxControl, "rxControl")) {
-    stop("'rxControl' must be a rxode2 control options list",
-         call.=FALSE)
+    stop("'rxControl' must be a rxode2 control options list", call. = FALSE)
   }
   rxControl$atol <- c(rep(rxControl$atol[1], ncmt - sensCmt), rep(rxControl$atolSens, sensCmt))
   rxControl$rtol <- c(rep(rxControl$rtol[1], ncmt - sensCmt), rep(rxControl$rtolSens, sensCmt))
@@ -5758,52 +7290,97 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 rxUiDeparse.rxControl <- function(object, var) {
   .ret <- rxControl()
 
-  .w <- which(vapply(names(.ret), function(x) {
-    if (is.integer(.ret[[x]]) && is.integer(object[[x]])) {
-      .ret[[x]] != object[[x]]
-    } else {
-      !identical(.ret[[x]], object[[x]])
-    }
-  }, logical(1)))
+  .w <- which(vapply(
+    names(.ret),
+    function(x) {
+      if (is.integer(.ret[[x]]) && is.integer(object[[x]])) {
+        .ret[[x]] != object[[x]]
+      } else {
+        !identical(.ret[[x]], object[[x]])
+      }
+    },
+    logical(1)
+  ))
 
-  .retD <- vapply(names(.ret)[.w], function(x) {
-    if (x == "covsInterpolation") {
-      .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
-      paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
-    } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L, "f78" = 5L, "rk4" = 6L, "ros4" = 13L, "iem" = 14L, "trapz" = 22L, "ssp3" = 23L, "f32" = 24L, "rk43" = 25L, "dop54" = 26L, "vern65" = 27L, "vern76" = 28L, "dop87" = 29L, "vern98" = 30L, "ros43" = 31L, "ros6" = 32L, "backwardEuler" = 33L, "gauss6" = 34L, "iiic6" = 35L, "radauiia5" = 36L, "geng5" = 37L, "sdirk43" = 38L)
-      paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
-    } else if (x == "naInterpolation") {
-      .naInterpolation <- c("locf"=1L, "nocb"=0L)
-      paste0(x, " =", deparse1(names(.naInterpolation)[which(object[[x]] == .naInterpolation)]))
-    } else if (x == "keepInterpolation") {
-      .keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)
-      paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
-    } else if (x %in% c("sigmaXform", "omegaXform")) {
-      .sigmaXform <- c(
-        "variance" = 6L, "log" = 5L, "identity" = 4L,
-        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
-        "nlmixrIdentity" = 3L)
-      paste0(x, " =", deparse1(names(.sigmaXform)[which(object[[x]] == .sigmaXform)]))
-    } else if (x == "returnType") {
-      .matrixIdx <- c(
-        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
-        "tbl" = 5L, "tibble" = 5L)
-      paste0(x, " =", deparse1(names(.matrixIdx)[which(object[[x]] == .matrixIdx)]))
-    } else if (x == "sumType") {
-      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)
-      paste0(x, " = ", deparse1(names(.sum)[which(object[[x]] == .sum)]))
-    } else if (x == "prodType") {
-      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
-      paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
-    } else if (x == "naTimeHandle") {
-      .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
-      paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
-    }  else {
-      paste0(x, "=", deparse1(object[[x]]))
-    }
-  }, character(1), USE.NAMES=FALSE)
-  str2lang(paste(var, " <- rxControl(", paste(.retD, collapse=","),")"))
+  .retD <- vapply(
+    names(.ret)[.w],
+    function(x) {
+      if (x == "covsInterpolation") {
+        .covsInterpolation <- c("linear" = 0L, "locf" = 1L, "nocb" = 2L, "midpoint" = 3L)
+        paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
+      } else if (x == "method") {
+        .methodIdx <- c(
+          "lsoda" = 1L,
+          "dop853" = 0L,
+          "liblsoda" = 2L,
+          "indLin" = 3L,
+          "f78" = 5L,
+          "rk4" = 6L,
+          "ros4" = 13L,
+          "iem" = 14L,
+          "trapz" = 22L,
+          "ssp3" = 23L,
+          "f32" = 24L,
+          "rk43" = 25L,
+          "dop54" = 26L,
+          "vern65" = 27L,
+          "vern76" = 28L,
+          "dop87" = 29L,
+          "vern98" = 30L,
+          "ros43" = 31L,
+          "ros6" = 32L,
+          "backwardEuler" = 33L,
+          "gauss6" = 34L,
+          "iiic6" = 35L,
+          "radauiia5" = 36L,
+          "geng5" = 37L,
+          "sdirk43" = 38L
+        )
+        paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
+      } else if (x == "naInterpolation") {
+        .naInterpolation <- c("locf" = 1L, "nocb" = 0L)
+        paste0(x, " =", deparse1(names(.naInterpolation)[which(object[[x]] == .naInterpolation)]))
+      } else if (x == "keepInterpolation") {
+        .keepInterpolation <- c("locf" = 1L, "nocb" = 0L, "na" = 2L)
+        paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
+      } else if (x %in% c("sigmaXform", "omegaXform")) {
+        .sigmaXform <- c(
+          "variance" = 6L,
+          "log" = 5L,
+          "identity" = 4L,
+          "nlmixrSqrt" = 1L,
+          "nlmixrLog" = 2L,
+          "nlmixrIdentity" = 3L
+        )
+        paste0(x, " =", deparse1(names(.sigmaXform)[which(object[[x]] == .sigmaXform)]))
+      } else if (x == "returnType") {
+        .matrixIdx <- c(
+          "rxSolve" = 0L,
+          "matrix" = 1L,
+          "data.frame" = 2L,
+          "data.frame.TBS" = 3L,
+          "data.table" = 4L,
+          "tbl" = 5L,
+          "tibble" = 5L
+        )
+        paste0(x, " =", deparse1(names(.matrixIdx)[which(object[[x]] == .matrixIdx)]))
+      } else if (x == "sumType") {
+        .sum <- c("pairwise" = 1L, "fsum" = 2L, "kahan" = 3L, "neumaier" = 4L, "c" = 5L)
+        paste0(x, " = ", deparse1(names(.sum)[which(object[[x]] == .sum)]))
+      } else if (x == "prodType") {
+        .prod <- c("long double" = 1L, "double" = 1L, "logify" = 1L)
+        paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
+      } else if (x == "naTimeHandle") {
+        .naTimeHandle <- c("ignore" = 1L, "warn" = 2L, "error" = 3L)
+        paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
+      } else {
+        paste0(x, "=", deparse1(object[[x]]))
+      }
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  str2lang(paste(var, " <- rxControl(", paste(.retD, collapse = ","), ")"))
 }
 
 #' Test-only accessor for the linCmt() sensitivity control values

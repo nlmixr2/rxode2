@@ -6,7 +6,7 @@
 #' @return expression with variables replaced with constants
 #' @noRd
 #' @author Matthew L. Fidler
-.rxFixPopVar <- function(item, var, isLhs=FALSE) {
+.rxFixPopVar <- function(item, var, isLhs = FALSE) {
   if (is.atomic(item)) {
     return(item)
   }
@@ -22,39 +22,45 @@
       # handle d/dt() differently so that d doesn't get renamed
       .num <- item[[2]]
       .denom <- item[[3]]
-      if (is.call(.num)) .num <- as.call(lapply(.num, .rxFixPopVar, var=var, isLhs=TRUE))
-      if (is.call(.denom)) .denom <- as.call(lapply(.denom, .rxFixPopVar, var=var, isLhs=TRUE))
+      if (is.call(.num)) {
+        .num <- as.call(lapply(.num, .rxFixPopVar, var = var, isLhs = TRUE))
+      }
+      if (is.call(.denom)) {
+        .denom <- as.call(lapply(.denom, .rxFixPopVar, var = var, isLhs = TRUE))
+      }
       return(as.call(c(list(item[[1]]), .num, .denom)))
-    } else if (isLhs && length(item) == 2L &&
-                 is.numeric(item[[2]])) {
-      .env <- new.env(parent=emptyenv())
+    } else if (isLhs && length(item) == 2L && is.numeric(item[[2]])) {
+      .env <- new.env(parent = emptyenv())
       .env$new <- NULL
-      lapply(seq_along(var),
-             function(i) {
-               if (!is.null(.env$new)) return(NULL)
-               .curVal <- setNames(var[i], NULL)
-               .old <- str2lang(names(var[i]))
-               if (identical(item[[1]], .old)) {
-                 .env$new <- .curVal
-               }
-               return(NULL)
-             })
+      lapply(seq_along(var), function(i) {
+        if (!is.null(.env$new)) {
+          return(NULL)
+        }
+        .curVal <- setNames(var[i], NULL)
+        .old <- str2lang(names(var[i]))
+        if (identical(item[[1]], .old)) {
+          .env$new <- .curVal
+        }
+        return(NULL)
+      })
       if (!is.null(.env$new)) {
         # handle x(0) = items
-        return(as.call(c(.env$new, lapply(item[-1], .rxFixPopVar, var=var, isLhs=isLhs))))
+        return(as.call(c(.env$new, lapply(item[-1], .rxFixPopVar, var = var, isLhs = isLhs))))
       }
     }
-    if (identical(item[[1]], quote(`=`)) ||
-          identical(item[[1]], quote(`<-`)) ||
-          identical(item[[1]], quote(`~`))) {
-      .elhs <- lapply(item[c(-1, -3)], .rxFixPopVar, var=var, isLhs=TRUE)
-      .erhs <- lapply(item[c(-1, -2)], .rxFixPopVar, var=var, isLhs=FALSE)
+    if (
+      identical(item[[1]], quote(`=`)) ||
+        identical(item[[1]], quote(`<-`)) ||
+        identical(item[[1]], quote(`~`))
+    ) {
+      .elhs <- lapply(item[c(-1, -3)], .rxFixPopVar, var = var, isLhs = TRUE)
+      .erhs <- lapply(item[c(-1, -2)], .rxFixPopVar, var = var, isLhs = FALSE)
       return(as.call(c(item[[1]], .elhs, .erhs)))
     } else {
-      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxFixPopVar, var=var, isLhs=isLhs))))
+      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxFixPopVar, var = var, isLhs = isLhs))))
     }
   } else {
-    stop("unknown expression", call.=FALSE)
+    stop("unknown expression", call. = FALSE)
   }
 }
 
@@ -112,35 +118,35 @@
 #'
 #' rxFixPop(m, returnNull=TRUE)
 #'
-rxFixPop <- function(ui, returnNull=FALSE) {
-  checkmate::assertLogical(returnNull, any.missing = FALSE, len=1, null.ok=FALSE)
+rxFixPop <- function(ui, returnNull = FALSE) {
+  checkmate::assertLogical(returnNull, any.missing = FALSE, len = 1, null.ok = FALSE)
   .model <- rxUiDecompress(assertRxUi(ui))
   .model <- .copyUi(.model)
   .iniDf <- .model$iniDf
   # a mixture proportion (ui$mixProbs) is structural: mix() requires it as a named
   # model-block variable, so it cannot be literally substituted with its (fixed)
   # value -- doing so makes the re-parse below throw from mix().  Exclude it.
-  .mixProbs <- tryCatch(.model$mixProbs, error=function(e) NULL)
-  .w <- which(!is.na(.iniDf$ntheta) & is.na(.iniDf$err) & .iniDf$fix &
-                !(.iniDf$name %in% .mixProbs))
+  .mixProbs <- tryCatch(.model$mixProbs, error = function(e) NULL)
+  .w <- which(!is.na(.iniDf$ntheta) & is.na(.iniDf$err) & .iniDf$fix & !(.iniDf$name %in% .mixProbs))
   if (length(.w) == 0L) {
-    if (returnNull) return(NULL)
+    if (returnNull) {
+      return(NULL)
+    }
     return(.model)
   }
   .v <- setNames(.iniDf$est[.w], .iniDf$name[.w])
-  .lst <- lapply(.model$lstExpr,
-                 function(e) {
-                   .rxFixPopVar(e, .v)
-                 })
+  .lst <- lapply(.model$lstExpr, function(e) {
+    .rxFixPopVar(e, .v)
+  })
   .iniDf <- .iniDf[-.w, ]
   .iniDf$ntheta <- ifelse(is.na(.iniDf$ntheta), NA_integer_, seq_along(.iniDf$ntheta))
-  assign("iniDf", .iniDf, envir=.model)
+  assign("iniDf", .iniDf, envir = .model)
   suppressMessages({
     model(.model) <- .lst
     .model
   })
 }
-.lineHasFixedResEnv <- new.env(parent=emptyenv())
+.lineHasFixedResEnv <- new.env(parent = emptyenv())
 .lineHasFixedResEnv$err <- NULL
 #' Does this line have a fixed residual expression?
 #'
@@ -151,7 +157,7 @@ rxFixPop <- function(ui, returnNull=FALSE) {
 #' @author Matthew L. Fidler
 .lineHasFixedRes <- function(line, errs) {
   if (is.call(line)) {
-    return(any(sapply(line, .lineHasFixedRes, errs=errs)))
+    return(any(sapply(line, .lineHasFixedRes, errs = errs)))
   } else if (is.name(line)) {
     .cline <- as.character(line)
     if (.cline %in% errs) {
@@ -163,7 +169,7 @@ rxFixPop <- function(ui, returnNull=FALSE) {
   } else if (is.atomic(line)) {
     return(FALSE)
   } else {
-    stop("unknown expression", call.=FALSE)
+    stop("unknown expression", call. = FALSE)
   }
 }
 
@@ -206,40 +212,43 @@ rxFixPop <- function(ui, returnNull=FALSE) {
 #' }
 #'
 #' m <- rxFixRes(One.comp.transit.allo)
-rxFixRes <- function(ui, returnNull=FALSE) {
-  checkmate::assertLogical(returnNull, any.missing = FALSE, len=1, null.ok=FALSE)
+rxFixRes <- function(ui, returnNull = FALSE) {
+  checkmate::assertLogical(returnNull, any.missing = FALSE, len = 1, null.ok = FALSE)
   .model <- rxUiDecompress(assertRxUi(ui))
   .model <- .copyUi(.model)
   .iniDf <- .model$iniDf
   .w <- which(!is.na(.iniDf$ntheta) & !is.na(.iniDf$err) & .iniDf$fix)
   if (length(.w) == 0L) {
-    if (returnNull) return(NULL)
+    if (returnNull) {
+      return(NULL)
+    }
     return(.model)
   }
   .v <- setNames(.iniDf$est[.w], .iniDf$name[.w])
 
   .lstExpr0 <- .model$lstExpr
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$i <- 1
   .env$fix <- .iniDf$name[.w]
-  .lst <- lapply(seq_len(length(.lstExpr0)+length(.w)),
-                 function(i) {
-                   .item <- .lstExpr0[[.env$i]]
-                   if (is.call(.item) &&
-                         identical(.item[[1]], quote(`~`)) &&
-                         .lineHasFixedRes(.item, .env$fix)) {
-                     .cerr <- .lineHasFixedResEnv$err
-                     .env$fix <- .env$fix[.env$fix != .cerr]
-                     str2lang(paste0(.cerr, " <- ", .v[.cerr]))
-                   } else {
-                     .env$i <- .env$i + 1L
-                     .item
-                   }
-                 })
+  .lst <- lapply(seq_len(length(.lstExpr0) + length(.w)), function(i) {
+    .item <- .lstExpr0[[.env$i]]
+    if (
+      is.call(.item) &&
+        identical(.item[[1]], quote(`~`)) &&
+        .lineHasFixedRes(.item, .env$fix)
+    ) {
+      .cerr <- .lineHasFixedResEnv$err
+      .env$fix <- .env$fix[.env$fix != .cerr]
+      str2lang(paste0(.cerr, " <- ", .v[.cerr]))
+    } else {
+      .env$i <- .env$i + 1L
+      .item
+    }
+  })
 
   .iniDf <- .iniDf[-.w, ]
   .iniDf$ntheta <- ifelse(is.na(.iniDf$ntheta), NA_integer_, seq_along(.iniDf$ntheta))
-  assign("iniDf", .iniDf, envir=.model)
+  assign("iniDf", .iniDf, envir = .model)
   suppressMessages({
     model(.model) <- .lst
     .model

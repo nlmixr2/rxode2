@@ -10,11 +10,14 @@
 # Loads rxode2 only; the model compile happens before the hot region and
 # in child processes callgrind does not trace.
 suppressMessages(
-  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE))
+  devtools::load_all("~/src/rxode2-lincmt-analytic", compile = FALSE, quiet = TRUE)
+)
 rxode2::setRxThreads(1L)
 cfg <- Sys.getenv("CONFIG", "2cmt")
 prep <- readRDS(path.expand(sprintf(
-  "~/src/rxode2-lincmt-analytic/bench/results/phase0_prep_%s.rds", cfg)))
+  "~/src/rxode2-lincmt-analytic/bench/results/phase0_prep_%s.rds",
+  cfg
+)))
 im <- rxode2::rxode2(prep$modelText)
 obsT <- sort(unique(round(exp(seq(log(0.25), log(32), length.out = 1000L)), 4)))
 ev <- rxode2::et(amt = 100, time = 0, cmt = 1) |> rxode2::et(obsT)
@@ -33,18 +36,33 @@ if (mdl == "plain") {
   thn <- thn[seq_len(c(`1cmt` = 3L, `2cmt` = 5L, `3cmt` = 7L)[[prep$cfg]])]
   im <- rxode2::rxode2(paste0("param(", paste(thn, collapse = ", "),
                               ")\ncp = linCmt()"))
-  tt <- list(`1cmt` = c(1.2, 4, 30), `2cmt` = c(1.2, 4, 30, 8, 60),
-             `3cmt` = c(1.2, 4, 30, 8, 60, 3, 200))[[prep$cfg]]
+  tt <- list(`1cmt` = c(1.2, 4, 30), `2cmt` = c(1.2, 4, 30, 8, 60), `3cmt` = c(1.2, 4, 30, 8, 60, 3, 200))[[prep$cfg]]
   prep$pars <- setNames(as.data.frame(t(replicate(nrow(prep$pars), tt))), thn)
 }
-s <- rxode2::rxSolve(im, prep$pars, ev, cores = 1L, addDosing = FALSE,
-                     useLinCmt = FALSE, linCmtSensStrategy = strat,
-                     linCmtSensType = "AD")
+s <- rxode2::rxSolve(
+  im,
+  prep$pars,
+  ev,
+  cores = 1L,
+  addDosing = FALSE,
+  useLinCmt = FALSE,
+  linCmtSensStrategy = strat,
+  linCmtSensType = "AD"
+)
 stopifnot(nrow(s) > 0)
-if (nSolve > 0) for (r in seq_len(nSolve)) {
-  s <- rxode2::rxSolve(im, prep$pars, ev, cores = 1L, addDosing = FALSE,
-                       useLinCmt = FALSE, linCmtSensStrategy = strat,
-                       linCmtSensType = "AD")
-  stopifnot(nrow(s) > 0)
+if (nSolve > 0) {
+  for (r in seq_len(nSolve)) {
+    s <- rxode2::rxSolve(
+      im,
+      prep$pars,
+      ev,
+      cores = 1L,
+      addDosing = FALSE,
+      useLinCmt = FALSE,
+      linCmtSensStrategy = strat,
+      linCmtSensType = "AD"
+    )
+    stopifnot(nrow(s) > 0)
+  }
 }
 cat("callgrind target done\n")

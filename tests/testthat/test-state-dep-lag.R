@@ -8,10 +8,8 @@ rxTest({
       d/dt(central) <- ka * depot - kel * central
     })
     et <- et(amt = 100) |> et(seq(0, 24, by = 1))
-    s0 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
-                  inits = c(depot = 0, central = 0))
-    s5 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
-                  inits = c(depot = 0, central = 5))
+    s0 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2), inits = c(depot = 0, central = 0))
+    s5 <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2), inits = c(depot = 0, central = 5))
     # Previously produced NA due to ypNA placeholder; now should work
     expect_false(any(is.na(s0$central)))
     expect_false(any(is.na(s5$central)))
@@ -28,8 +26,7 @@ rxTest({
       d/dt(central) <- ka * depot - kel * central
     })
     et <- et(amt = 100, rate = -2) |> et(seq(0, 24, by = 1))
-    s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
-                 inits = c(depot = 0, central = 3))
+    s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2), inits = c(depot = 0, central = 3))
     expect_false(any(is.na(s$central)))
     expect_false(any(is.na(s$depot)))
   })
@@ -45,8 +42,7 @@ rxTest({
       et(amt = 100, time = 6) |>
       et(seq(0, 24, by = 1))
     # State changes between doses -> lag differs for second dose; no NA
-    s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2),
-                 inits = c(depot = 0, central = 5))
+    s <- rxSolve(mod, et, c(ka = 0.5, kel = 0.2), inits = c(depot = 0, central = 5))
     expect_false(any(is.na(s$central)))
   })
 
@@ -68,17 +64,19 @@ rxTest({
       et(seq(0, 10, by = 1))
 
     for (sv in c(0, 1, 2)) {
-      s <- rxSolve(mod, et2dose, params,
-                   inits = c(depot = 0, central = 0, state_val = sv))
-      t_fire1 <- sv          # dose1 fires at t=sv
-      t_fire2 <- 3 + sv      # dose2 fires at t=3+sv
+      s <- rxSolve(mod, et2dose, params, inits = c(depot = 0, central = 0, state_val = sv))
+      t_fire1 <- sv # dose1 fires at t=sv
+      t_fire2 <- 3 + sv # dose2 fires at t=3+sv
       for (tobs in seq(0, 10)) {
         expected <- 0
-        if (tobs >= t_fire1) expected <- expected + 100 * exp(-0.5 * (tobs - t_fire1))
-        if (tobs >= t_fire2) expected <- expected + 100 * exp(-0.5 * (tobs - t_fire2))
+        if (tobs >= t_fire1) {
+          expected <- expected + 100 * exp(-0.5 * (tobs - t_fire1))
+        }
+        if (tobs >= t_fire2) {
+          expected <- expected + 100 * exp(-0.5 * (tobs - t_fire2))
+        }
         got <- s$depot[s$time == tobs]
-        expect_equal(got, expected, tolerance = 1e-3,
-                     label = sprintf("state_val=%d, t=%d: depot", sv, tobs))
+        expect_equal(got, expected, tolerance = 1e-3, label = sprintf("state_val=%d, t=%d: depot", sv, tobs))
       }
     }
   })

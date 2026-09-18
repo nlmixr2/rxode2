@@ -1,6 +1,5 @@
 rxTest({
   withr::with_tempdir({
-
     mod <- rxode2({
       d/dt(depot) = -ka * depot
       d/dt(centr) = ka * depot - cl / v * centr
@@ -34,10 +33,9 @@ rxTest({
       expect_error(rxSolve(mod, theta, ev, serializeFile = stateFile))
     })
 
-
     test_that("rxIsSerializeFile detects magic bytes", {
       expect_true(.rxIsSerializeFile(stateFile))
-      expect_false(.rxIsSerializeFile(tempfile()))  # non-existent -> FALSE
+      expect_false(.rxIsSerializeFile(tempfile())) # non-existent -> FALSE
     })
 
     mod2 <- rxode2({
@@ -53,6 +51,7 @@ rxTest({
       expect_error(rxSolve(mod, stateFile, serializeFile = tempfile(fileext = ".rxbin")))
     })
 
+    # fmt: skip
     modFn <- function() {
       d/dt(depot) = -ka * depot
       d/dt(centr) = ka * depot - cl / v * centr
@@ -114,12 +113,10 @@ rxTest({
 
     doseOnlyRef <- rxSolve(mod, theta, doseOnlyEv, from = 0, to = 24, by = 12)
     doseOnlyStateFile <- tempfile(fileext = ".rxbin")
-    rxSolve(mod, theta, doseOnlyEv, from = 0, to = 24, by = 12,
-            serializeFile = doseOnlyStateFile)
+    rxSolve(mod, theta, doseOnlyEv, from = 0, to = 24, by = 12, serializeFile = doseOnlyStateFile)
     doseOnlyBundle <- .rxReadStateBundle(doseOnlyStateFile)
     doseOnlyFromFile <- rxSolve(mod, doseOnlyStateFile)
-    doseOnlyTempReplay <- rxSolve(mod, theta, doseOnlyEv, from = 0, to = 24, by = 12,
-                                  serializeFile = TRUE)
+    doseOnlyTempReplay <- rxSolve(mod, theta, doseOnlyEv, from = 0, to = 24, by = 12, serializeFile = TRUE)
 
     test_that("grouped dose-only serialize bundle keeps shared event attrs", {
       expect_s3_class(doseOnlyBundle$events, "data.frame")
@@ -173,10 +170,22 @@ rxTest({
     })
 
     groupedKeepFromBundle <- suppressWarnings(
-      rxSolve(modICov, thetaICov, groupedICovBundle$events, iCov = transform(iCov, grp = c("a", "a", "b", "b")), keep = "grp")
+      rxSolve(
+        modICov,
+        thetaICov,
+        groupedICovBundle$events,
+        iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
     groupedKeepExpanded <- suppressWarnings(
-      rxSolve(modICov, thetaICov, as.data.frame(groupedICovEv), iCov = transform(iCov, grp = c("a", "a", "b", "b")), keep = "grp")
+      rxSolve(
+        modICov,
+        thetaICov,
+        as.data.frame(groupedICovEv),
+        iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
 
     test_that("grouped serialized event data keeps iCov-only keep columns on replay", {
@@ -187,24 +196,38 @@ rxTest({
     })
 
     groupedKeepFromBundleNoId <- suppressWarnings(
-      rxSolve(modICov, thetaICov, groupedICovBundle$events,
-              iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
-              keep = "grp")
+      rxSolve(
+        modICov,
+        thetaICov,
+        groupedICovBundle$events,
+        iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
     groupedKeepFromBundleWithId <- suppressWarnings(
-      rxSolve(modICov, thetaICov, groupedICovBundle$events,
-              iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
-              keep = "grp")
+      rxSolve(
+        modICov,
+        thetaICov,
+        groupedICovBundle$events,
+        iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
     groupedKeepFromFileNoId <- suppressWarnings(
-      rxSolve(modICov, groupedICovFileForModel,
-              iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
-              keep = "grp")
+      rxSolve(
+        modICov,
+        groupedICovFileForModel,
+        iCov = data.frame(WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
     groupedKeepFromFileWithId <- suppressWarnings(
-      rxSolve(modICov, groupedICovFileForModel,
-              iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
-              keep = "grp")
+      rxSolve(
+        modICov,
+        groupedICovFileForModel,
+        iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b")),
+        keep = "grp"
+      )
     )
 
     test_that("grouped serialized bundle replay infers iCov ids when omitted", {
@@ -225,24 +248,45 @@ rxTest({
     groupedDoseOnlyICovEv$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
     groupedDoseOnlyICovEv <- et(groupedDoseOnlyICovEv, id = 1:4)
     groupedDoseOnlyICovFile <- tempfile(fileext = ".rxbin")
-    rxSolve(mod, theta, groupedDoseOnlyICovEv, from = 0, to = 24, by = 12,
-            serializeFile = groupedDoseOnlyICovFile)
+    rxSolve(mod, theta, groupedDoseOnlyICovEv, from = 0, to = 24, by = 12, serializeFile = groupedDoseOnlyICovFile)
     groupedDoseOnlyICovBundle <- .rxReadStateBundle(groupedDoseOnlyICovFile)
 
     groupedDoseOnlyKeepFromBundle <- suppressWarnings(
-      rxSolve(modICov, thetaICov, groupedDoseOnlyICovBundle$events,
-              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
-              keep = "grp", from = 0, to = 24, by = 12)
+      rxSolve(
+        modICov,
+        thetaICov,
+        groupedDoseOnlyICovBundle$events,
+        iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+        keep = "grp",
+        from = 0,
+        to = 24,
+        by = 12
+      )
     )
     groupedDoseOnlyKeepExpanded <- suppressWarnings(
-      rxSolve(modICov, thetaICov, as.data.frame(groupedDoseOnlyICovEv),
-              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
-              keep = "grp", from = 0, to = 24, by = 12)
+      rxSolve(
+        modICov,
+        thetaICov,
+        as.data.frame(groupedDoseOnlyICovEv),
+        iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+        keep = "grp",
+        from = 0,
+        to = 24,
+        by = 12
+      )
     )
     groupedDoseOnlyKeepTempReplay <- suppressWarnings(
-      rxSolve(modICov, thetaICov, groupedDoseOnlyICovEv,
-              iCov = transform(iCov, grp = c("a", "a", "b", "b")),
-              keep = "grp", from = 0, to = 24, by = 12, serializeFile = TRUE)
+      rxSolve(
+        modICov,
+        thetaICov,
+        groupedDoseOnlyICovEv,
+        iCov = transform(iCov, grp = c("a", "a", "b", "b")),
+        keep = "grp",
+        from = 0,
+        to = 24,
+        by = 12,
+        serializeFile = TRUE
+      )
     )
 
     test_that("grouped serialized dose-only events keep iCov-only keep columns on replay", {
@@ -262,11 +306,9 @@ rxTest({
     # The C-state restore path (rxLoadState()/rxSolveFromRaw_()) rebuilds the
     # solver from the binary alone, without the setup that normally fills
     # op->indLin and the gsolve layout (rxode2#1189).
-    cStateSolve <- function(object, bundle, control = rxControl(),
-                            params = NULL) {
+    cStateSolve <- function(object, bundle, control = rxControl(), params = NULL) {
       .rxRestoreStateBundle(bundle)
-      rxSolveFromRaw_(object, bundle$cState, bundle$solveState, control,
-                      NULL, NULL, params, NULL, NULL)
+      rxSolveFromRaw_(object, bundle$cState, bundle$solveState, control, NULL, NULL, params, NULL, NULL)
     }
 
     cStateFile <- tempfile(fileext = ".rxbin")
@@ -300,15 +342,14 @@ rxTest({
     rxSolve(indLinMod, indLinEv, method = "indLin", serializeFile = indLinFile)
 
     test_that("indLin() replay from a serialization file matches direct solve", {
-      expect_equal(as.data.frame(rxSolve(indLinMod, indLinFile)),
-                   as.data.frame(indLinRef))
+      expect_equal(as.data.frame(rxSolve(indLinMod, indLinFile)), as.data.frame(indLinRef))
     })
 
     test_that("indLin() C-state replay keeps the convergence set", {
       expect_equal(
-        as.data.frame(cStateSolve(indLinMod, .rxReadStateBundle(indLinFile),
-                                  rxControl(method = "indLin"))),
-        as.data.frame(indLinRef))
+        as.data.frame(cStateSolve(indLinMod, .rxReadStateBundle(indLinFile), rxControl(method = "indLin"))),
+        as.data.frame(indLinRef)
+      )
     })
 
     # op->linCmtLagMask (which linCmt() compartments carry a modeled alag()) is
@@ -325,17 +366,18 @@ rxTest({
     # doses BOTH the lagged depot and the unlagged central -- a mixed-delay
     # regimen, which must be refused (NA) on the replay just as on the solve
     lagEv <- et(amt = 100, cmt = "depot") |>
-      et(amt = 50, cmt = "central", time = 0) |> et(seq(0.1, 24, 0.5))
+      et(amt = 50, cmt = "central", time = 0) |>
+      et(seq(0.1, 24, 0.5))
     lagRef <- rxSolve(lagMod, lagTheta, lagEv)
     lagFile <- tempfile(fileext = ".rxbin")
     rxSolve(lagMod, lagTheta, lagEv, serializeFile = lagFile)
 
     test_that("C-state replay keeps the linCmt() modeled-alag mask", {
-      expect_true(all(is.na(lagRef$dcp)))   # the behavior being preserved
+      expect_true(all(is.na(lagRef$dcp))) # the behavior being preserved
       expect_equal(
-        as.data.frame(cStateSolve(lagMod, .rxReadStateBundle(lagFile),
-                                  params = lagTheta)),
-        as.data.frame(lagRef))
+        as.data.frame(cStateSolve(lagMod, .rxReadStateBundle(lagFile), params = lagTheta)),
+        as.data.frame(lagRef)
+      )
     })
   })
 })

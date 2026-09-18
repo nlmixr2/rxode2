@@ -14,12 +14,13 @@ rxTest({
       sim <- cp + eta.cl
     })
     .n <- 33000L
-    .d <- data.frame(ID=rep(seq_len(.n), each=2L),
-                     TIME=rep(c(0, 4), .n),
-                     AMT=rep(c(100, 0), .n),
-                     EVID=rep(c(1L, 0L), .n))
-    s <- rxSolve(m, .d, omega=lotri::lotri(eta.cl ~ 0.1), nsim=2,
-                 returnType="data.frame")
+    .d <- data.frame(
+      ID = rep(seq_len(.n), each = 2L),
+      TIME = rep(c(0, 4), .n),
+      AMT = rep(c(100, 0), .n),
+      EVID = rep(c(1L, 0L), .n)
+    )
+    s <- rxSolve(m, .d, omega = lotri::lotri(eta.cl ~ 0.1), nsim = 2, returnType = "data.frame")
     expect_equal(nrow(s), 2L * .n)
     expect_equal(sort(unique(s$sim.id)), 1:2)
     expect_true(all(is.finite(s$sim)))
@@ -34,22 +35,26 @@ rxTest({
       cp <- linCmt()
       sim <- cp
     })
-    .d <- data.frame(ID=rep(1:4, each=3L),
-                     TIME=rep(c(0, 1, 4), 4),
-                     AMT=rep(c(100, 0, 0), 4),
-                     EVID=rep(c(1L, 0L, 0L), 4))
-    .p1 <- data.frame(tka=seq(0.4, 0.7, length.out=4),
-                      tcl=1, tv=3.5)
-    .p3 <- do.call(rbind, lapply(1:3, function(.i) {
-      .p1$tcl <- 1 + 0.1 * .i
-      .p1
-    }))
-    s3 <- rxSolve(m, .p3, .d, returnType="data.frame")
+    .d <- data.frame(
+      ID = rep(1:4, each = 3L),
+      TIME = rep(c(0, 1, 4), 4),
+      AMT = rep(c(100, 0, 0), 4),
+      EVID = rep(c(1L, 0L, 0L), 4)
+    )
+    .p1 <- data.frame(tka = seq(0.4, 0.7, length.out = 4), tcl = 1, tv = 3.5)
+    .p3 <- do.call(
+      rbind,
+      lapply(1:3, function(.i) {
+        .p1$tcl <- 1 + 0.1 * .i
+        .p1
+      })
+    )
+    s3 <- rxSolve(m, .p3, .d, returnType = "data.frame")
     expect_equal(sort(unique(s3$sim.id)), 1:3)
     for (.i in 1:3) {
       .p <- .p1
       .p$tcl <- 1 + 0.1 * .i
-      s1 <- rxSolve(m, .p, .d, returnType="data.frame")
+      s1 <- rxSolve(m, .p, .d, returnType = "data.frame")
       expect_equal(s3$sim[s3$sim.id == .i], s1$sim)
     }
   })
@@ -63,13 +68,15 @@ rxTest({
       sim <- cp + eta.cl
     })
     .n <- 200L
-    .d <- data.frame(ID=rep(seq_len(.n), each=2L),
-                     TIME=rep(c(0, 4), .n),
-                     AMT=rep(c(100, 0), .n),
-                     EVID=rep(c(1L, 0L), .n))
+    .d <- data.frame(
+      ID = rep(seq_len(.n), each = 2L),
+      TIME = rep(c(0, 4), .n),
+      AMT = rep(c(100, 0), .n),
+      EVID = rep(c(1L, 0L), .n)
+    )
     .om <- lotri::lotri(eta.cl ~ 0.1)
-    sStud <- rxSolve(m, .d, omega=.om, nStud=3, returnType="data.frame")
-    sSim <- rxSolve(m, .d, omega=.om, nsim=3, returnType="data.frame")
+    sStud <- rxSolve(m, .d, omega = .om, nStud = 3, returnType = "data.frame")
+    sSim <- rxSolve(m, .d, omega = .om, nsim = 3, returnType = "data.frame")
     expect_equal(nrow(sStud), .n * 3L)
     expect_equal(nrow(sSim), nrow(sStud))
     expect_equal(sort(unique(sStud$sim.id)), 1:3)
@@ -83,8 +90,7 @@ rxTest({
       ka <- 1
       cp <- linCmt()
     })
-    .d <- data.frame(ID=integer(0), TIME=numeric(0), AMT=numeric(0),
-                     EVID=integer(0))
+    .d <- data.frame(ID = integer(0), TIME = numeric(0), AMT = numeric(0), EVID = integer(0))
     expect_error(rxSolve(m, .d))
   })
 })

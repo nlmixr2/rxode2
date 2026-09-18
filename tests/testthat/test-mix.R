@@ -1,5 +1,4 @@
 rxTest({
-
   test_that("mix() in normal rxode2 model", {
     expect_error(rxModelVars("a = mix(a)"))
     expect_error(rxModelVars("a = mix(a, b)"))
@@ -62,7 +61,6 @@ rxTest({
   })
 
   test_that("mix() requires require probabilities to sum to a number between 0 and 1", {
-
     f <- function() {
       ini({
         p1 <- -10
@@ -79,7 +77,6 @@ rxTest({
   })
 
   test_that("mix() requires the same probabilities in each proportion", {
-
     f <- function() {
       ini({
         p1 <- 0.1
@@ -139,20 +136,16 @@ rxTest({
     }
 
     expect_error(assertRxUiNoMix(one.cmt), NA)
-
   })
 
   test_that("test dsl to change mix()", {
-    expect_equal(rxToSE("mix(a1, p1, b)"),
-                 "(rx_mixsel_1_2_*(a1)+rx_mixsel_2_2_*(b))")
+    expect_equal(rxToSE("mix(a1, p1, b)"), "(rx_mixsel_1_2_*(a1)+rx_mixsel_2_2_*(b))")
 
-    expect_equal(rxToSE("mix(a1, p1, b, p2, c)"),
-                 "(rx_mixsel_1_3_*(a1)+rx_mixsel_2_3_*(b)+rx_mixsel_3_3_*(c))")
+    expect_equal(rxToSE("mix(a1, p1, b, p2, c)"), "(rx_mixsel_1_3_*(a1)+rx_mixsel_2_3_*(b)+rx_mixsel_3_3_*(c))")
   })
 
   test_that("mix() simulation", {
     rxWithSeed(42, {
-
       one.cmt <- function() {
         ini({
           ## You may label each parameter with a comment
@@ -180,9 +173,12 @@ rxTest({
         })
       }
 
-      s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
-                              et(seq(0, 72)) |>
-                              et(id=1:20))
+      s <- rxSolve(
+        one.cmt,
+        et(amt = 320, ii = 12, addl = 2, cmt = 1) |>
+          et(seq(0, 72)) |>
+          et(id = 1:20)
+      )
 
       expect_false(all(s$me == 1))
       expect_false(all(s$me == 2))
@@ -193,7 +189,6 @@ rxTest({
   })
 
   test_that("mix() simulation, and the re-estimate with same mixest", {
-
     one.cmt <- function() {
       ini({
         ## You may label each parameter with a comment
@@ -221,10 +216,14 @@ rxTest({
       })
     }
 
-    s0 <- s <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
-                                  et(seq(0, 72)) |>
-                                  et(id=1:20), addDosing=TRUE) |>
-      dplyr::rename(mixest=me, dv=sim) |>
+    s0 <- s <- rxSolve(
+      one.cmt,
+      et(amt = 320, ii = 12, addl = 2, cmt = 1) |>
+        et(seq(0, 72)) |>
+        et(id = 1:20),
+      addDosing = TRUE
+    ) |>
+      dplyr::rename(mixest = me, dv = sim) |>
       dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
 
     trn <- etTrans(s, one.cmt)
@@ -243,8 +242,10 @@ rxTest({
     class(lst2) <- NULL
 
     for (n in names(lst)) {
-      if (n %in% c("mixUnif", "lib_name")) next
-      expect_equal(lst[[n]], lst2[[n]], info=n)
+      if (n %in% c("mixUnif", "lib_name")) {
+        next
+      }
+      expect_equal(lst[[n]], lst2[[n]], info = n)
     }
 
     # Now error with mixtures above nmix in the model
@@ -264,10 +265,10 @@ rxTest({
 
     expect_error(etTrans(s, one.cmt))
 
-    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE, nStud=100))
+    expect_error(rxSolve(one.cmt, s0, addDosing = TRUE, nStud = 100))
 
-    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) |>
-      dplyr::rename(mixest=me, dv=sim) |>
+    s2 <- rxSolve(one.cmt, s0, addDosing = TRUE) |>
+      dplyr::rename(mixest = me, dv = sim) |>
       dplyr::select(id, mixest, evid, cmt, amt, time, dv, mu)
 
     # keeps all the mixest
@@ -276,15 +277,18 @@ rxTest({
     # mixunif is not simulated, so the values are not the same
     expect_false(all(s2$mu == s0$mu))
 
-
-    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
-                             et(seq(0, 72)) |>
-                             et(id=1:20), addDosing=TRUE) |>
-      dplyr::rename(mixunif=mu, dv=sim) |>
+    s0 <- rxSolve(
+      one.cmt,
+      et(amt = 320, ii = 12, addl = 2, cmt = 1) |>
+        et(seq(0, 72)) |>
+        et(id = 1:20),
+      addDosing = TRUE
+    ) |>
+      dplyr::rename(mixunif = mu, dv = sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
 
-    s2 <- rxSolve(one.cmt, s0, addDosing=TRUE) |>
-      dplyr::rename(mixunif=mu, dv=sim) |>
+    s2 <- rxSolve(one.cmt, s0, addDosing = TRUE) |>
+      dplyr::rename(mixunif = mu, dv = sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, me)
 
     # keeps all the mixest
@@ -293,15 +297,17 @@ rxTest({
     # mixunif is not simulated, so the values are not the same
     expect_true(all(s2$mixunif == s0$mixunif))
 
-
-    s0 <- rxSolve(one.cmt, et(amt=320, ii=12, addl=2, cmt=1) |>
-                             et(seq(0, 72)) |>
-                             et(id=1:20), addDosing=TRUE) |>
-      dplyr::rename(mixunif=mu, mixest=me, dv=sim) |>
+    s0 <- rxSolve(
+      one.cmt,
+      et(amt = 320, ii = 12, addl = 2, cmt = 1) |>
+        et(seq(0, 72)) |>
+        et(id = 1:20),
+      addDosing = TRUE
+    ) |>
+      dplyr::rename(mixunif = mu, mixest = me, dv = sim) |>
       dplyr::select(id, mixunif, evid, cmt, amt, time, dv, mixest)
 
-    expect_error(rxSolve(one.cmt, s0, addDosing=TRUE))
-
+    expect_error(rxSolve(one.cmt, s0, addDosing = TRUE))
   })
 
   test_that("an expanded mix() still reads as a mixture model", {
@@ -318,8 +324,9 @@ rxTest({
     # a name that only looks like a selector stays an ordinary variable
     .mv2 <- rxModelVars("a = rx_mixsel_ + rx_mixsel_0_2_ + rx_mixsel_1_ + rx_mixsel_1_2 + rx_mixsel_3_2_\n")
     expect_equal(unname(.mv2$flags["mix"]), 0L)
-    expect_true(all(c("rx_mixsel_", "rx_mixsel_0_2_", "rx_mixsel_1_",
-                      "rx_mixsel_1_2", "rx_mixsel_3_2_") %in% .mv2$params))
+    expect_true(all(
+      c("rx_mixsel_", "rx_mixsel_0_2_", "rx_mixsel_1_", "rx_mixsel_1_2", "rx_mixsel_3_2_") %in% .mv2$params
+    ))
 
     # the count is spelled out, not inferred from the largest k present: a
     # component that folds away must not shrink the mixture
@@ -343,9 +350,7 @@ rxTest({
     # supplied through iCov, on a homogeneous event table (every subject has
     # the same times, so the subjects are solved as one group -- the group has
     # to be split on mixest and indexed by group)
-    .s <- rxSolve(.m, .ev, params = .p,
-                  iCov = data.frame(id = 1:6, mixest = .want),
-                  returnType = "data.frame")
+    .s <- rxSolve(.m, .ev, params = .p, iCov = data.frame(id = 1:6, mixest = .want), returnType = "data.frame")
     .s <- .s[!duplicated(.s$id), ]
     .s <- .s[order(.s$id), ]
     expect_equal(.s$me, as.double(.want))
@@ -353,16 +358,13 @@ rxTest({
     expect_equal(.s$Kel, ifelse(.want == 1L, 0.5, 1.5))
 
     # a missing component is rejected, not silently dropped from the solve
-    expect_error(rxSolve(.m, .ev, params = .p,
-                         iCov = data.frame(id = 1:6, mixest = c(NA_integer_, .want[-1]))),
-                 "mixest")
+    expect_error(
+      rxSolve(.m, .ev, params = .p, iCov = data.frame(id = 1:6, mixest = c(NA_integer_, .want[-1]))),
+      "mixest"
+    )
     # as are values outside 1..nMix, and non-integers
-    expect_error(rxSolve(.m, .ev, params = .p,
-                         iCov = data.frame(id = 1:6, mixest = c(0L, .want[-1]))),
-                 "mixest")
-    expect_error(rxSolve(.m, .ev, params = .p,
-                         iCov = data.frame(id = 1:6, mixest = c(3L, .want[-1]))),
-                 "mixest")
+    expect_error(rxSolve(.m, .ev, params = .p, iCov = data.frame(id = 1:6, mixest = c(0L, .want[-1]))), "mixest")
+    expect_error(rxSolve(.m, .ev, params = .p, iCov = data.frame(id = 1:6, mixest = c(3L, .want[-1]))), "mixest")
 
     # and supplied as an ordinary data column
     .d <- as.data.frame(.ev)
@@ -391,14 +393,18 @@ rxTest({
   })
 
   test_that("test mixture models load with rxS()", {
-
- expect_error(rxS("tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.ka=ETA[1];\neta.cl=ETA[2];\neta.v=ETA[3];\nka=exp(tka+eta.ka);\ncl=mix(exp(tcl1+eta.cl),p1,exp(tcl2+eta.cl));\nv=exp(tv+eta.v);\nme=mixest;\nmn=mixnum;\nmu=mixunif;\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"),
-                 NA)
+    expect_error(
+      rxS(
+        "tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.ka=ETA[1];\neta.cl=ETA[2];\neta.v=ETA[3];\nka=exp(tka+eta.ka);\ncl=mix(exp(tcl1+eta.cl),p1,exp(tcl2+eta.cl));\nv=exp(tv+eta.v);\nme=mixest;\nmn=mixnum;\nmu=mixunif;\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"
+      ),
+      NA
+    )
 
     expect_error(
-      rxS("tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.cl=ETA[1];\nka=exp(tka);\ncl=mix(expit(tcl1+eta.cl,0.1,200),p1,expit(tcl2+eta.cl,0.1,200));\nv=exp(tv);\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"),
+      rxS(
+        "tka=THETA[1];\ntcl1=THETA[2];\ntcl2=THETA[3];\ntv=THETA[4];\np1=THETA[5];\nadd.sd=THETA[6];\neta.cl=ETA[1];\nka=exp(tka);\ncl=mix(expit(tcl1+eta.cl,0.1,200),p1,expit(tcl2+eta.cl,0.1,200));\nv=exp(tv);\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka);\nrx_pred_~rx_pred_f_;\nrx_r_~(add.sd)^2;\n"
+      ),
       NA
     )
   })
 })
-

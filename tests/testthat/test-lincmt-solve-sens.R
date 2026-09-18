@@ -1,5 +1,4 @@
 rxTest({
-
   ode <- rxode2({
     param(THETA[1], THETA[2], THETA[3], THETA[4], ETA[1], ETA[2],
           ETA[3])
@@ -96,25 +95,30 @@ rxTest({
     dvid(3)
   })
 
+  ev <- et(amt = 100) |> et(c(0.5, 1, 2, 4, 8, 12, 24))
+  params <- data.frame(
+    "THETA[1]" = log(4),
+    "THETA[2]" = log(70),
+    "THETA[3]" = log(1),
+    "THETA[4]" = 0.1,
+    "ETA[1]" = 0.1,
+    "ETA[2]" = -0.1,
+    "ETA[3]" = 0.05,
+    check.names = FALSE
+  )
 
-  ev     <- et(amt=100) |> et(c(0.5,1,2,4,8,12,24))
-  params <- data.frame("THETA[1]"=log(4),"THETA[2]"=log(70),"THETA[3]"=log(1),
-                     "THETA[4]"=0.1,"ETA[1]"=0.1,"ETA[2]"=-0.1,"ETA[3]"=0.05,
-                     check.names=FALSE)
-
-  outOde    <- rxSolve(ode, params=params, events=ev)
-  outLin    <- rxSolve(lin, params=params, events=ev)
-
+  outOde <- rxSolve(ode, params = params, events = ev)
+  outLin <- rxSolve(lin, params = params, events = ev)
 
   test_that("linCmtB and ode solve the same", {
-    expect_equal(outOde$rx_pred_, outLin$rx_pred_, tolerance=1e-5)
-    expect_equal(outOde$rx_r_, outLin$rx_r_, tolerance=1e-5)
+    expect_equal(outOde$rx_pred_, outLin$rx_pred_, tolerance = 1e-5)
+    expect_equal(outOde$rx_r_, outLin$rx_r_, tolerance = 1e-5)
   })
 
-  sensCols <- grep("sens_rx_pred.*ETA", names(outOde), value=TRUE)
+  sensCols <- grep("sens_rx_pred.*ETA", names(outOde), value = TRUE)
   for (col in sensCols) {
     test_that(paste0("linCmtB and ode solve the same for ", col), {
-      expect_equal(outOde[[col]], outLin[[col]], tolerance=1e-5)
+      expect_equal(outOde[[col]], outLin[[col]], tolerance = 1e-5)
     })
   }
 
@@ -130,19 +134,20 @@ rxTest({
     set.seed(1)
     .params <- data.frame(
       id = seq_len(.nsub),
-      "THETA[1]" = log(4), "THETA[2]" = log(70), "THETA[3]" = log(1),
+      "THETA[1]" = log(4),
+      "THETA[2]" = log(70),
+      "THETA[3]" = log(1),
       "THETA[4]" = 0.1,
       "ETA[1]" = rnorm(.nsub, 0, 0.3),
       "ETA[2]" = rnorm(.nsub, 0, 0.3),
       "ETA[3]" = rnorm(.nsub, 0, 0.3),
-      check.names = FALSE)
+      check.names = FALSE
+    )
     .ev <- et(amt = 100, ii = 12, until = 48) |>
       et(seq(0, 48, by = 1)) |>
       et(id = seq_len(.nsub))
-    .s1 <- rxSolve(lin, params = .params, events = .ev, cores = 1,
-                   returnType = "data.frame")
-    .s2 <- rxSolve(lin, params = .params, events = .ev, cores = 2,
-                   returnType = "data.frame")
+    .s1 <- rxSolve(lin, params = .params, events = .ev, cores = 1, returnType = "data.frame")
+    .s2 <- rxSolve(lin, params = .params, events = .ev, cores = 2, returnType = "data.frame")
     .cols <- grep("sens_rx_pred.*ETA|^rx_pred_$", names(.s1), value = TRUE)
     for (.col in .cols) {
       expect_identical(.s1[[.col]], .s2[[.col]])

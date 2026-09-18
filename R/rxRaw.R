@@ -9,9 +9,11 @@
 #' @author Matthew L. Fidler
 .validSerializationObject <- function(obj) {
   .cls <- class(obj)
-  if (length(.cls) == 1L &&
-        (inherits(obj, "rxModelVars") ||
-           inherits(obj, "data.frame"))) {
+  if (
+    length(.cls) == 1L &&
+      (inherits(obj, "rxModelVars") ||
+        inherits(obj, "data.frame"))
+  ) {
     return(TRUE)
   }
   FALSE
@@ -31,7 +33,7 @@
 rxGetDefaultSerialize <- function() {
   op <- getOption("rxode2.serialize.type", "bzip2")
   if (!op %in% c("base", "bzip2", "xz")) {
-    stop("option 'rxode2.serialize.type' must be one of 'base', 'bzip2' or 'xz'", call.=FALSE)
+    stop("option 'rxode2.serialize.type' must be one of 'base', 'bzip2' or 'xz'", call. = FALSE)
   }
   op
 }
@@ -53,29 +55,28 @@ rxGetDefaultSerialize <- function() {
 #'
 #' rxRawToC(mtcars)
 #'
-rxSerialize <- function(x, type=c("xz", "bzip2", "base")) {
+rxSerialize <- function(x, type = c("xz", "bzip2", "base")) {
   ## Suggested for security reasons to limit what can be deserialized
   if (missing(type)) {
     type <- rxGetDefaultSerialize()
   }
   if (!.validSerializationObject(x)) {
     .cls <- class(x)
-    stop("serialization object of class ",
-         paste(.cls, collapse=", "),
-         " is not supported")
+    stop("serialization object of class ", paste(.cls, collapse = ", "), " is not supported")
   }
-  switch(match.arg(type),
-         bzip2 = {
-           memCompress(serialize(x, NULL), type="bzip2")
-         },
-         xz = {
-           memCompress(serialize(x, NULL), type="xz")
-         },
-         base = {
-           serialize(x, NULL)
-         },
-         stop("unknown serialization type") # nocov
-         )
+  switch(
+    match.arg(type),
+    bzip2 = {
+      memCompress(serialize(x, NULL), type = "bzip2")
+    },
+    xz = {
+      memCompress(serialize(x, NULL), type = "xz")
+    },
+    base = {
+      serialize(x, NULL)
+    },
+    stop("unknown serialization type") # nocov
+  )
 }
 #' Deserialize a Raw Vector or String to an R Object
 #'
@@ -89,8 +90,8 @@ rxSerialize <- function(x, type=c("xz", "bzip2", "base")) {
 #' rxDeserialize(rxSerialize(mtcars))
 #'
 rxDeserialize <- function(x) {
-  if (checkmate::testCharacter(x, len=1L, any.missing=FALSE)) {
-    .x <- try(qs2::base91_decode(x), silent=TRUE)
+  if (checkmate::testCharacter(x, len = 1L, any.missing = FALSE)) {
+    .x <- try(qs2::base91_decode(x), silent = TRUE)
     if (inherits(.x, "try-error")) {
       stop("Input must be a raw vector or base91 encoded string")
     }
@@ -102,27 +103,32 @@ rxDeserialize <- function(x) {
   .type <- .Call(`_rxode2_rxGetSerialType_`, x)
   # 'qs2'/'qdata' are only ever read, never written; they come from objects
   # stored while 'qs2' was still an allowed 'rxode2.serialize.type'
-  .ret <- try(switch(.type,
-                     qs2 = {
-                       qs2::qs_deserialize(x)
-                     },
-                     qdata = {
-                       qs2::qd_deserialize(x)
-                     },
-                     qs = {
-                       rxReq("qs")
-                       .Call(`_rxode2_qsDes`, x)
-                     },
-                     bzip2 = {
-                        unserialize(memDecompress(x, type="bzip2"))
-                     },
-                     xz = {
-                       unserialize(memDecompress(x, type="xz"))
-                     },
-                     base = {
-                       unserialize(x)
-                     },
-                     stop("Unknown serialization type")), silent=TRUE)
+  .ret <- try(
+    switch(
+      .type,
+      qs2 = {
+        qs2::qs_deserialize(x)
+      },
+      qdata = {
+        qs2::qd_deserialize(x)
+      },
+      qs = {
+        rxReq("qs")
+        .Call(`_rxode2_qsDes`, x)
+      },
+      bzip2 = {
+        unserialize(memDecompress(x, type = "bzip2"))
+      },
+      xz = {
+        unserialize(memDecompress(x, type = "xz"))
+      },
+      base = {
+        unserialize(x)
+      },
+      stop("Unknown serialization type")
+    ),
+    silent = TRUE
+  )
   if (inherits(.ret, "try-error")) {
     stop("Deserialization failed")
   }
@@ -131,9 +137,7 @@ rxDeserialize <- function(x) {
   if (.validSerializationObject(.ret)) {
     return(.ret)
   }
-  stop("Deserialized object of class ",
-       paste(.cls, collapse=", "),
-       " is not supported")
+  stop("Deserialized object of class ", paste(.cls, collapse = ", "), " is not supported")
 }
 #' Convert a Raw Vector or R object to C Code
 #'
@@ -151,14 +155,14 @@ rxDeserialize <- function(x) {
 #'
 #' rxRawToC(mtcars)
 #'
-rxRawToC <- function(raw, type=c("xz", "base", "bzip2")) {
+rxRawToC <- function(raw, type = c("xz", "base", "bzip2")) {
   if (missing(type)) {
     type <- rxGetDefaultSerialize()
   }
   if (inherits(raw, "raw")) {
     raw
   } else {
-    rxRawToC(rxSerialize(raw, type=type))
+    rxRawToC(rxSerialize(raw, type = type))
   }
 }
 

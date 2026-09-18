@@ -21,26 +21,27 @@ rxTest({
       d/dt(state) <- 0         # constant state; initial value is the only value
     })
 
-    amt  <- 100
-    f0   <- 0.8
-    ka   <- 0.5
+    amt <- 100
+    f0 <- 0.8
+    ka <- 0.5
     times <- seq(0, 20, by = 0.5)
 
     et <- eventTable() |>
       add.dosing(dose = amt, nbr.doses = 1) |>
       add.sampling(times)
 
-    s <- solve(mod, et,
-               inits  = c(state = 0, depot = 0),
-               params = c(f0 = f0, ka = ka))
+    s <- solve(mod, et, inits = c(state = 0, depot = 0), params = c(f0 = f0, ka = ka))
 
     # Expected: depot(t) = amt * f0 * exp(-ka * t)
     expected <- amt * f0 * exp(-ka * times)
 
     # A mismatch would mean the bioavailable fraction was not f0.
-    expect_equal(s$depot[s$time %in% times], expected,
-                 tolerance = 1e-4,
-                 label = "depot matches amt*f0*exp(-ka*t) when state=0")
+    expect_equal(
+      s$depot[s$time %in% times],
+      expected,
+      tolerance = 1e-4,
+      label = "depot matches amt*f0*exp(-ka*t) when state=0"
+    )
   })
 
   # -- Test 2 -----------------------------------------------------------------
@@ -55,9 +56,9 @@ rxTest({
       d/dt(state) <- 0
     })
 
-    amt  <- 100
-    f0   <- 0.8
-    ka   <- 0.5
+    amt <- 100
+    f0 <- 0.8
+    ka <- 0.5
     times <- seq(0, 20, by = 0.5)
 
     for (S0 in c(0.1, 0.5, -0.2)) {
@@ -65,23 +66,26 @@ rxTest({
         add.dosing(dose = amt, nbr.doses = 1) |>
         add.sampling(times)
 
-      s <- solve(mod, et,
-                 inits  = c(state = S0, depot = 0),
-                 params = c(f0 = f0, ka = ka))
+      s <- solve(mod, et, inits = c(state = S0, depot = 0), params = c(f0 = f0, ka = ka))
 
-      F_eff    <- f0 + S0                          # effective bioavailability
-      expected <- amt * F_eff * exp(-ka * times)   # analytical trajectory
+      F_eff <- f0 + S0 # effective bioavailability
+      expected <- amt * F_eff * exp(-ka * times) # analytical trajectory
 
       # Full trajectory must match the analytical formula for f = f0 + S0.
-      expect_equal(s$depot[s$time %in% times], expected,
-                   tolerance = 1e-4,
-                   label = paste0("depot matches amt*(f0+S0)*exp(-ka*t) for S0=", S0))
+      expect_equal(
+        s$depot[s$time %in% times],
+        expected,
+        tolerance = 1e-4,
+        label = paste0("depot matches amt*(f0+S0)*exp(-ka*t) for S0=", S0)
+      )
 
       # Also confirm that this differs from the S0=0 baseline,
       # i.e., the state contribution is not silently ignored.
       expected_s0 <- amt * f0 * exp(-ka * times)
-      expect_false(isTRUE(all.equal(expected, expected_s0)),
-                   label = paste0("S0=", S0, " gives a different trajectory than state=0"))
+      expect_false(
+        isTRUE(all.equal(expected, expected_s0)),
+        label = paste0("S0=", S0, " gives a different trajectory than state=0")
+      )
     }
   })
 
@@ -97,13 +101,13 @@ rxTest({
       d/dt(state) <- -kstate * state   # state decays so each dose sees a different f
     })
 
-    f0     <- 0.8
-    ka     <- 0.5
+    f0 <- 0.8
+    ka <- 0.5
     kstate <- 0.3
-    amt    <- 100
+    amt <- 100
 
     dose_times <- c(0, 5)
-    times      <- seq(0, 15, by = 1)
+    times <- seq(0, 15, by = 1)
 
     et <- et() |>
       et(amt = amt, time = dose_times[1], cmt = "depot") |>
@@ -111,29 +115,34 @@ rxTest({
       et(times)
 
     for (S0 in c(0, 0.2)) {
-      s <- rxSolve(mod, et,
-                   params = c(f0 = f0, ka = ka, kstate = kstate),
-                   inits  = c(depot = 0, state = S0))
+      s <- rxSolve(mod, et, params = c(f0 = f0, ka = ka, kstate = kstate), inits = c(depot = 0, state = S0))
 
       # Analytical: state(t) = S0 * exp(-kstate * t)
       # f at each dose time:  f_d = f0 + S0*exp(-kstate*t_d)
       # contribution of dose d at observation time t:
       #   amt * f_d * exp(-ka*(t - t_d))  [if t >= t_d]
-      expected_depot <- vapply(times, function(t) {
-        contrib <- 0
-        for (td in dose_times) {
-          if (t >= td) {
-            f_at_td  <- f0 + S0 * exp(-kstate * td)
-            contrib  <- contrib + amt * f_at_td * exp(-ka * (t - td))
+      expected_depot <- vapply(
+        times,
+        function(t) {
+          contrib <- 0
+          for (td in dose_times) {
+            if (t >= td) {
+              f_at_td <- f0 + S0 * exp(-kstate * td)
+              contrib <- contrib + amt * f_at_td * exp(-ka * (t - td))
+            }
           }
-        }
-        contrib
-      }, numeric(1))
+          contrib
+        },
+        numeric(1)
+      )
 
       obs <- s$depot[s$time %in% times]
-      expect_equal(obs, expected_depot,
-                   tolerance = 1e-3,
-                   label = paste0("two-dose depot matches analytic f=f0+state(t_dose), S0=", S0))
+      expect_equal(
+        obs,
+        expected_depot,
+        tolerance = 1e-3,
+        label = paste0("two-dose depot matches analytic f=f0+state(t_dose), S0=", S0)
+      )
     }
   })
 
@@ -151,15 +160,12 @@ rxTest({
       add.dosing(dose = 100, nbr.doses = 1) |>
       add.sampling(seq(0, 10, by = 1))
 
-    s0 <- solve(mod, et, inits = c(state = 0,   depot = 0),
-                params = c(f0 = 0.8, ka = 0.5))
-    s1 <- solve(mod, et, inits = c(state = 0.3, depot = 0),
-                params = c(f0 = 0.8, ka = 0.5))
+    s0 <- solve(mod, et, inits = c(state = 0, depot = 0), params = c(f0 = 0.8, ka = 0.5))
+    s1 <- solve(mod, et, inits = c(state = 0.3, depot = 0), params = c(f0 = 0.8, ka = 0.5))
 
     expect_false(any(is.na(s0$depot)), label = "no NAs when state=0")
     expect_false(any(is.na(s1$depot)), label = "no NAs when state=0.3")
     # Different initial f -> different trajectories
-    expect_false(isTRUE(all.equal(s0$depot, s1$depot)),
-                 label = "different state gives different f and depot")
+    expect_false(isTRUE(all.equal(s0$depot, s1$depot)), label = "different state gives different f and depot")
   })
 })

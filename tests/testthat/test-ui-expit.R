@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("markov llik", {
-
       markov <- function() {
         ini({
           logitp02 <- logit(0.2)
@@ -27,7 +26,6 @@ rxTest({
 
       expect_true(all(f$muRefCurEval$low == 0))
       expect_true(all(f$muRefCurEval$hi == 1))
-
     })
   }
 })

@@ -1,12 +1,12 @@
-dfWishartCalcRse <- function(nu, omega, totN, rse, diag=TRUE) {
+dfWishartCalcRse <- function(nu, omega, totN, rse, diag = TRUE) {
   .cv <- cvPost(nu, omega, totN)
   #.cv <- ivdoctr:::rinvwish(totN, nu, omega)
   #print(.cv)
   #max(omegaListRse(.cv)$rse)-rse
   if (diag) {
-    mean(diag(omegaListRse(.cv)$rse))-rse
+    mean(diag(omegaListRse(.cv)$rse)) - rse
   } else {
-    mean(as.vector(omegaListRse(.cv)$rse))-rse
+    mean(as.vector(omegaListRse(.cv)$rse)) - rse
   }
 }
 
@@ -34,34 +34,33 @@ dfWishartCalcRse <- function(nu, omega, totN, rse, diag=TRUE) {
 #'
 #' dfWishart(lotri::lotri(a+b~c(1, 0.5, 1)), 100)
 #'
-dfWishart <- function(omega, n, rse, upper, totN=1000, diag=TRUE, seed=1234) {
-  checkmate::assertMatrix(omega, "numeric", min.rows=1, min.cols=1)
+dfWishart <- function(omega, n, rse, upper, totN = 1000, diag = TRUE, seed = 1234) {
+  checkmate::assertMatrix(omega, "numeric", min.rows = 1, min.cols = 1)
   if (!missing(rse) && !missing(n)) {
-    stop("can only specify `n` or `rse` not both", call.=FALSE)
+    stop("can only specify `n` or `rse` not both", call. = FALSE)
   }
   if (missing(rse) && !missing(n)) {
-    checkmate::assertIntegerish(n, len=1, lower=1)
-    rse <- sqrt(2)/sqrt(n)
+    checkmate::assertIntegerish(n, len = 1, lower = 1)
+    rse <- sqrt(2) / sqrt(n)
     if (missing(upper)) {
-      upper <- 200*n
+      upper <- 200 * n
     }
   } else if (missing(rse)) {
-    stop("need to match rse with some metric", call.=FALSE)
+    stop("need to match rse with some metric", call. = FALSE)
   } else if (missing(upper)) {
-    upper <- 200*(sqrt(2)/rse)^2
+    upper <- 200 * (sqrt(2) / rse)^2
   }
-  checkmate::assertNumeric(upper, len=1, lower=1)
-  checkmate::assertIntegerish(totN, len=1, lower=1)
-  .d <-  dim(omega)
+  checkmate::assertNumeric(upper, len = 1, lower = 1)
+  checkmate::assertIntegerish(totN, len = 1, lower = 1)
+  .d <- dim(omega)
   if (.d[1] != .d[2]) {
-    stop("omega must be a square matrix",
-         call.=FALSE)
+    stop("omega must be a square matrix", call. = FALSE)
   }
   # nu-p-3 > 0 so min for nu is
   .lower <- .d[1] + 3.1
-  .upper <-  upper
+  .upper <- upper
   rxWithSeed(seed, {
-    stats::uniroot(dfWishartCalcRse, lower=.lower, upper=.upper, omega=omega, totN=totN, rse=rse, diag=diag)
+    stats::uniroot(dfWishartCalcRse, lower = .lower, upper = .upper, omega = omega, totN = totN, rse = rse, diag = diag)
   })
 }
 #' Swaps the matrix list with a cube
@@ -88,11 +87,10 @@ swapMatListWithCube <- function(matrixListOrCube) {
   .dim <- dim(matrixListOrCube)
   if (length(.dim) == 3L) {
     return(.Call(`_rxode2_swapMatListWithCube_`, matrixListOrCube))
-  } else if (length(.dim) > 0L) {
-  } else if (inherits(matrixListOrCube, "list") && length(matrixListOrCube) > 0L) {
+  } else if (length(.dim) > 0L) {} else if (inherits(matrixListOrCube, "list") && length(matrixListOrCube) > 0L) {
     .m0 <- matrixListOrCube[[1]]
     .dim <- dim(.m0)
-    if (length(.dim) == 2L)     return(.Call(`_rxode2_swapMatListWithCube_`, matrixListOrCube))
+    if (length(.dim) == 2L) return(.Call(`_rxode2_swapMatListWithCube_`, matrixListOrCube))
   }
-  stop("The input must be a cube or a list of matrices", call.=FALSE)
+  stop("The input must be a cube or a list of matrices", call. = FALSE)
 }

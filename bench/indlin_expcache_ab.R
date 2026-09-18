@@ -22,27 +22,31 @@ stopifnot(nzchar(.lib))
 .libPaths(c(.lib, .libPaths()))
 suppressMessages(library(rxode2))
 # Guard against measuring a DIFFERENT rxode2 than the one just built.
-stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))),
-                    normalizePath(.lib)))
+stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))), normalizePath(.lib)))
 suppressMessages(library(nlmixr2est))
 
 .off <- nzchar(Sys.getenv("RXODE2_INDLIN_NO_EXP_CACHE"))
 .reps <- as.integer(Sys.getenv("BENCH_REPS", "7"))
 .out <- Sys.getenv("BENCH_OUT", tempdir())
-cat("cache:", if (.off) "OFF" else "ON", " reps:", .reps,
-    " load:", strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")
+cat(
+  "cache:",
+  if (.off) "OFF" else "ON",
+  " reps:",
+  .reps,
+  " load:",
+  strsplit(readLines("/proc/loadavg"), " ")[[1]][1],
+  "\n"
+)
 
 ## ---- 1. matExp() population solve -------------------------------------------
 .parMe <- suppressMessages(rxode2(paste("matExp()", "cmt(depot)", "cmt(central)",
                                         "k_depot_central = ka",
                                         "k_central_output = ke", sep = "\n")))
-.ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 0.5)) |>
-                       et(id = 1:200))
+.ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 0.5)) |> et(id = 1:200))
 .solveOnce <- function() {
-  invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2),
-                                     events = .ev, cores = 2L)))
+  invisible(suppressMessages(rxSolve(.parMe, params = c(ka = 1, ke = 0.2), events = .ev, cores = 2L)))
 }
-.solveOnce()                                   # warm: compile, allocate
+.solveOnce() # warm: compile, allocate
 invisible(rxIndLinExpStats(TRUE))
 .tSolve <- replicate(.reps, system.time(.solveOnce())[["elapsed"]])
 .stSolve <- rxIndLinExpStats(TRUE)
@@ -65,7 +69,9 @@ matLin <- function() {
     .s <- suppressWarnings(rxode2::rxSolve(model, .e, params = params))
     .d <- as.data.frame(.s)[, c("id", "time", "cp")]
     .d$cp <- .d$cp + stats::rnorm(nrow(.d), 0, sd)
-    names(.d) <- c("ID", "TIME", "DV"); .d$AMT <- 0; .d$EVID <- 0
+    names(.d) <- c("ID", "TIME", "DV")
+    .d$AMT <- 0
+    .d$EVID <- 0
     .dose <- data.frame(ID = seq_len(nid), TIME = 0, DV = NA, AMT = 320, EVID = 1)
     .d <- rbind(.dose, .d)
     .d[order(.d$ID, .d$TIME, -.d$EVID), ]
@@ -74,17 +80,18 @@ matLin <- function() {
 .dat <- .mkData(matLin, c(tka = 0.6, tcl = 1.1, tv = 3.6))
 .fitOnce <- function() {
   suppressMessages(suppressWarnings(
-    nlmixr2est::nlmixr2(matLin, .dat, est = "focei",
-                        control = nlmixr2est::foceiControl(print = 0))))
+    nlmixr2est::nlmixr2(matLin, .dat, est = "focei", control = nlmixr2est::foceiControl(print = 0))
+  ))
 }
-.f <- .fitOnce()                               # warm
+.f <- .fitOnce() # warm
 invisible(rxIndLinExpStats(TRUE))
 .tFit <- replicate(.reps, system.time(.fitOnce())[["elapsed"]])
 .stFit <- rxIndLinExpStats(TRUE)
 
-saveRDS(list(off = .off, solve = .tSolve, fit = .tFit, stSolve = .stSolve,
-             stFit = .stFit, objf = .f$objf),
-        file.path(.out, paste0("bench-", if (.off) "off" else "on", ".rds")))
-cat("solve median:", median(.tSolve), " fit median:", median(.tFit),
-    " objf:", .f$objf, "\n")
-print(.stSolve); print(.stFit)
+saveRDS(
+  list(off = .off, solve = .tSolve, fit = .tFit, stSolve = .stSolve, stFit = .stFit, objf = .f$objf),
+  file.path(.out, paste0("bench-", if (.off) "off" else "on", ".rds"))
+)
+cat("solve median:", median(.tSolve), " fit median:", median(.tFit), " objf:", .f$objf, "\n")
+print(.stSolve)
+print(.stFit)

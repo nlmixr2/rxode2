@@ -1,5 +1,4 @@
 rxTest({
-
   mod <- rxode2({
     d/dt(depot) <- -KA * depot
     d/dt(centr) <- KA * depot - CL / V * centr
@@ -10,8 +9,8 @@ rxTest({
   p <- data.frame(
     KA = 0.3,
     CL = seq(1, 8, length.out = 16),
-    V  = 40,
-    Q  = 10,
+    V = 40,
+    Q = 10,
     V2 = 300
   )
 
@@ -33,23 +32,18 @@ rxTest({
   })
 
   # Dense-path parity: cores=1 vs cores=2
-  s_d1 <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01,
-                                    dense = TRUE, cores = 1))
-  s_d2 <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01,
-                                    dense = TRUE, cores = 2))
+  s_d1 <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01, dense = TRUE, cores = 1))
+  s_d2 <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01, dense = TRUE, cores = 2))
 
   test_that("rk4 dense: cores=1 and cores=2 give identical results", {
     expect_equal(as.data.frame(s_d1), as.data.frame(s_d2))
   })
 
-  s_nd <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01,
-                                    dense = FALSE, cores = 1))
+  s_nd <- suppressWarnings(rxSolve(mod, p, et, method = "rk4", hmin = 0.01, dense = FALSE, cores = 1))
 
   test_that("rk4 dense=TRUE matches dense=FALSE (cores=1)", {
     expect_equal(as.data.frame(s_d1), as.data.frame(s_nd), tolerance = 1e-5)
   })
-
-
 
   # nmtest dataset: dense vs non-dense must give identical cp for ODE model
   skip_if_not_installed("nlmixr2data")
@@ -70,12 +64,9 @@ rxTest({
   lapply(unique(d$id), function(id) {
     di <- d[d$id == id, ]
     for (addlDropSs in c(TRUE, FALSE)) {
-      test_that(paste0("rk4 dense==nodense nmtest id:", id,
-                       " addlDropSs:", addlDropSs), {
-        s_nodense <- rxSolve(f, di, method = "rk4", hmin = 0.01, dense = FALSE,
-                             addlDropSs = addlDropSs)
-        s_dense   <- rxSolve(f, di, method = "rk4", hmin = 0.01,
-                             addlDropSs = addlDropSs)
+      test_that(paste0("rk4 dense==nodense nmtest id:", id, " addlDropSs:", addlDropSs), {
+        s_nodense <- rxSolve(f, di, method = "rk4", hmin = 0.01, dense = FALSE, addlDropSs = addlDropSs)
+        s_dense <- rxSolve(f, di, method = "rk4", hmin = 0.01, addlDropSs = addlDropSs)
         expect_equal(s_nodense$cp, s_dense$cp, tolerance = 1e-5)
       })
     }

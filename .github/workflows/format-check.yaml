@@ -1,0 +1,29 @@
+# Checks that R code is formatted with air (https://posit-dev.github.io/air/),
+# using the settings in air.toml. To fix a failure locally run `air format .`.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: format-check.yaml
+
+permissions: read-all
+
+# A new push to a pull request cancels the superseded run; nothing here deploys.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check R code is formatted with air
+        uses: rstudio/shiny-workflows/format-r-code@v1
+        with:
+          # Pinned so CI and local `air format` agree; bump deliberately and
+          # reformat in the same PR.
+          version: 0.11.0
+          check: "true"

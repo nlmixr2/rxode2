@@ -1,4 +1,3 @@
-
 library(rxode2)
 library(symengine)
 
@@ -177,7 +176,6 @@ m <- rxode2(rxOptExpr(paste0("A0=",rxFromSE(tmpp))))
 summary(rxC(m))
 
 
-
 rx <- rxode2({
   sum  = k10 + k12 + k21;
   disc = sqrt(sum*sum - 4*k10*k21);
@@ -221,8 +219,7 @@ t <- rxS(rx)
 tmp0 <- t$Xo0
 tmp1 <- t$Xo1
 
-message(rxOptExpr(paste0("A0=",rxFromSE(tmp0), "\n",
-                         "A1=",rxFromSE(tmp0), "\n")))
+message(rxOptExpr(paste0("A0=", rxFromSE(tmp0), "\n", "A1=", rxFromSE(tmp0), "\n")))
 
 
 rx <- rxode2({
@@ -277,9 +274,7 @@ tmpd <- t$Xod
 tmp0 <- t$Xo0
 tmp1 <- t$Xo1
 
-message(rxOptExpr(paste0("Ad=",rxFromSE(tmpd), "\n",
-                         "A0=",rxFromSE(tmp0), "\n",
-                         "A1=",rxFromSE(tmp0), "\n")))
+message(rxOptExpr(paste0("Ad=", rxFromSE(tmpd), "\n", "A0=", rxFromSE(tmp0), "\n", "A1=", rxFromSE(tmp0), "\n")))
 
 
 rx <- rxode2({
@@ -329,9 +324,7 @@ tmpd <- t$Xod
 tmp0 <- t$Xo0
 tmp1 <- t$Xo1
 
-message(rxOptExpr(paste0("Ad=",rxFromSE(tmpd), "\n",
-                         "A0=",rxFromSE(tmp0), "\n",
-                         "A1=",rxFromSE(tmp0), "\n")))
+message(rxOptExpr(paste0("Ad=", rxFromSE(tmpd), "\n", "A0=", rxFromSE(tmp0), "\n", "A1=", rxFromSE(tmp0), "\n")))
 
 rx <- rxode2({
   sum  = k10 + k12 + k21;
@@ -386,9 +379,7 @@ tmp0 <- t$Xo0
 tmp1 <- t$Xo1
 
 
-message(rxOptExpr(paste0("Ad=",rxFromSE(tmpd), "\n",
-                         "A0=",rxFromSE(tmp0), "\n",
-                         "A1=",rxFromSE(tmp0), "\n")))
+message(rxOptExpr(paste0("Ad=", rxFromSE(tmpd), "\n", "A0=", rxFromSE(tmp0), "\n", "A1=", rxFromSE(tmp0), "\n")))
 
 
 rx <- rxode2({
@@ -405,7 +396,6 @@ s <- rxS(rx)
 
 tmp0 <- s$Xo0
 tmp1 <- s$Xo1
-
 
 
 rx <- rxode2({

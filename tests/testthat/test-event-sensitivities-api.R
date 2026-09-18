@@ -33,11 +33,20 @@ rxTest({
     expect_true(all(nzchar(names(p))))
     expect_false(anyDuplicated(names(p)) > 0L)
     # the entry points added for issues #1169 / #1172
-    expect_true(all(c("rxode2setIndCmt", "rxode2EventSensShapeSize",
-                      "rxode2EventSensShapeSave", "rxode2EventSensShapeRestore",
-                      "rxode2EventSensLoadFull", "rxode2EventSensGetDims",
-                      "rxode2EventSensSetDims", "rxode2EventSensSetActive",
-                      "rxode2EventSensDeactivate") %in% names(p)))
+    expect_true(all(
+      c(
+        "rxode2setIndCmt",
+        "rxode2EventSensShapeSize",
+        "rxode2EventSensShapeSave",
+        "rxode2EventSensShapeRestore",
+        "rxode2EventSensLoadFull",
+        "rxode2EventSensGetDims",
+        "rxode2EventSensSetDims",
+        "rxode2EventSensSetActive",
+        "rxode2EventSensDeactivate"
+      ) %in%
+        names(p)
+    ))
   })
 
   # Slots whose LABEL does not describe the function they hold.  The labels are
@@ -53,8 +62,7 @@ rxTest({
     # other test would catch.
     h <- system.file("include", "rxode2ptr.h", package = "rxode2")
     skip_if(!nzchar(h) || !file.exists(h))
-    lines <- grep("R_ExternalPtrAddrFn\\(VECTOR_ELT\\(p, [0-9]+\\)\\)",
-                  readLines(h), value = TRUE)
+    lines <- grep("R_ExternalPtrAddrFn\\(VECTOR_ELT\\(p, [0-9]+\\)\\)", readLines(h), value = TRUE)
     idx <- as.integer(sub(".*VECTOR_ELT\\(p, ([0-9]+)\\).*", "\\1", lines))
     var <- trimws(sub("^\\s*([A-Za-z0-9_]+)\\s*=.*", "\\1", lines))
     p <- .rxode2ptrs()
@@ -73,12 +81,22 @@ rxTest({
     # time against the live table and refuse to load on any difference, and it
     # cannot be patched retroactively.  So existing labels are frozen even when
     # wrong (see .rxFrozenMislabeled): append new slots, never rename or reorder.
-    expect_equal(names(.rxode2ptrs())[seq_len(10L)],
-                 c("rxode2rxRmvnSEXP", "rxode2rxParProgress", "rxode2getRxSolve_",
-                   "rxode2indSolve", "rxode2getTime", "rxode2isRstudio",
-                   "rxode2iniSubjectE", "rxode2sortIds",
-                   # slots 8 and 9: frozen, deliberately mislabeled
-                   "getSolvingOptionsInd", "rxode2getUpdateInis"))
+    expect_equal(
+      names(.rxode2ptrs())[seq_len(10L)],
+      c(
+        "rxode2rxRmvnSEXP",
+        "rxode2rxParProgress",
+        "rxode2getRxSolve_",
+        "rxode2indSolve",
+        "rxode2getTime",
+        "rxode2isRstudio",
+        "rxode2iniSubjectE",
+        "rxode2sortIds",
+        # slots 8 and 9: frozen, deliberately mislabeled
+        "getSolvingOptionsInd",
+        "rxode2getUpdateInis"
+      )
+    )
   })
 
   test_that("linCmt entry points never occupy a slot in this table", {
@@ -89,13 +107,15 @@ rxTest({
   test_that("event-sensitivity dims round trip and deactivate to zero", {
     on.exit(rxEventSensDeactivate(), add = TRUE)
     .Call(`_rxode2_eventSensSetDims`, 1L, 3L, 4L, 5L, 6L, 1L)
-    expect_equal(.rxGetEventSensDims(),
-                 c(active = 1L, nState = 3L, nParam = 4L, nParam2 = 5L,
-                   nParam3 = 6L, useCalcJac = 1L))
+    expect_equal(
+      .rxGetEventSensDims(),
+      c(active = 1L, nState = 3L, nParam = 4L, nParam2 = 5L, nParam3 = 6L, useCalcJac = 1L)
+    )
     rxEventSensDeactivate()
-    expect_equal(.rxGetEventSensDims(),
-                 c(active = 0L, nState = 0L, nParam = 0L, nParam2 = 0L,
-                   nParam3 = 0L, useCalcJac = 0L))
+    expect_equal(
+      .rxGetEventSensDims(),
+      c(active = 0L, nState = 0L, nParam = 0L, nParam2 = 0L, nParam3 = 0L, useCalcJac = 0L)
+    )
   })
 
   test_that("rxEventSensLoadModel installs all six dims", {
@@ -104,8 +124,8 @@ rxTest({
     expect_true(rxEventSensLoadModel(m))
     d <- .rxGetEventSensDims()
     expect_equal(unname(d[["active"]]), 1L)
-    expect_equal(unname(d[["nState"]]), 2L)   # depot + central
-    expect_equal(unname(d[["nParam"]]), 2L)   # eta_ka + eta_lag
+    expect_equal(unname(d[["nState"]]), 2L) # depot + central
+    expect_equal(unname(d[["nParam"]]), 2L) # eta_ka + eta_lag
     # an fd model must not activate the jumps
     mfd <- rxode2(.mod1, calcSens = c("eta_ka", "eta_lag"), eventSens = "fd")
     expect_false(rxEventSensLoadModel(mfd))
@@ -119,11 +139,18 @@ rxTest({
     rxEventSensLoadModel(m)
     before <- .rxGetEventSensDims()
     saved <- .rxEventSensShapeSave()
-    .Call(`_rxode2_eventSensSetDims`, 0L, before[["nState"]], before[["nParam"]],
-          before[["nParam2"]], before[["nParam3"]], before[["useCalcJac"]])
+    .Call(
+      `_rxode2_eventSensSetDims`,
+      0L,
+      before[["nState"]],
+      before[["nParam"]],
+      before[["nParam2"]],
+      before[["nParam3"]],
+      before[["useCalcJac"]]
+    )
     off <- .rxGetEventSensDims()
     expect_equal(unname(off[["active"]]), 0L)
-    expect_equal(off[-1L], before[-1L])   # only `active` moved
+    expect_equal(off[-1L], before[-1L]) # only `active` moved
     # and the pointers were untouched: restoring the saved shape is a no-op here
     .rxEventSensShapeRestore(saved)
     expect_equal(.rxGetEventSensDims(), before)
@@ -136,7 +163,7 @@ rxTest({
     expect_true(rxEventSensLoadModel(m))
     d <- .rxGetEventSensDims()
     expect_equal(unname(d[["nParam"]]), 2L)
-    expect_gt(d[["nParam2"]], 0L)   # would be 0 if the dim were dropped
+    expect_gt(d[["nParam2"]], 0L) # would be 0 if the dim were dropped
   })
 
   test_that("eventSensLoadFull carries nParam3 and useCalcJac", {
@@ -144,11 +171,11 @@ rxTest({
     # regression this guards is LoadFull silently dropping the two added ones.
     on.exit(rxEventSensDeactivate(), add = TRUE)
     m <- rxode2(.mod1, calcSens = c("eta_ka", "eta_lag"), eventSens = "jump")
-    .Call(`_rxode2_eventSensLoadFull`, rxModelVars(m)$trans,
-          1L, 2L, 3L, 4L, 5L, 1L)
-    expect_equal(.rxGetEventSensDims(),
-                 c(active = 1L, nState = 2L, nParam = 3L, nParam2 = 4L,
-                   nParam3 = 5L, useCalcJac = 1L))
+    .Call(`_rxode2_eventSensLoadFull`, rxModelVars(m)$trans, 1L, 2L, 3L, 4L, 5L, 1L)
+    expect_equal(
+      .rxGetEventSensDims(),
+      c(active = 1L, nState = 2L, nParam = 3L, nParam2 = 4L, nParam3 = 5L, useCalcJac = 1L)
+    )
   })
 
   test_that("shape save/restore round trips the whole shape, not just the dims", {
@@ -165,9 +192,10 @@ rxTest({
     expect_equal(unname(.rxGetEventSensDims()[["nState"]]), 99L)
 
     .rxEventSensShapeRestore(saved)
-    expect_equal(.rxGetEventSensDims(),
-                 c(active = 1L, nState = 2L, nParam = 2L, nParam2 = 0L,
-                   nParam3 = 0L, useCalcJac = 0L))
+    expect_equal(
+      .rxGetEventSensDims(),
+      c(active = 1L, nState = 2L, nParam = 2L, nParam2 = 0L, nParam3 = 0L, useCalcJac = 0L)
+    )
 
     # a wrong-sized buffer, and a same-sized one that rxode2 did not stamp, are
     # both rejected rather than installed as live function pointers
@@ -177,9 +205,10 @@ rxTest({
     corrupt[1:4] <- as.raw(c(0, 0, 0, 0))
     expect_error(.rxEventSensShapeRestore(corrupt))
     # the rejected restores left the installed shape alone
-    expect_equal(.rxGetEventSensDims(),
-                 c(active = 1L, nState = 2L, nParam = 2L, nParam2 = 0L,
-                   nParam3 = 0L, useCalcJac = 0L))
+    expect_equal(
+      .rxGetEventSensDims(),
+      c(active = 1L, nState = 2L, nParam = 2L, nParam2 = 0L, nParam3 = 0L, useCalcJac = 0L)
+    )
   })
 
   test_that("save/restore preserves modeled rate() and second-order pointers", {
@@ -208,8 +237,7 @@ rxTest({
     # a restored shape must reproduce the reference sensitivities exactly.
     on.exit(rxEventSensDeactivate(), add = TRUE)
     ev <- et(amt = 100, cmt = "depot") |> et(c(1, 4, 8, 12, 24))
-    p <- c(tka = 0.45, tcl = 1, tv = 3.45, tlag = -0.7, tf = 1,
-           eta_ka = 0, eta_lag = 0)
+    p <- c(tka = 0.45, tcl = 1, tv = 3.45, tlag = -0.7, tf = 1, eta_ka = 0, eta_lag = 0)
     m <- rxode2(.mod1, calcSens = c("eta_ka", "eta_lag"), eventSens = "jump")
     ref <- as.data.frame(rxSolve(m, ev, params = p, atol = 1e-10, rtol = 1e-10))
 

@@ -1,5 +1,4 @@
 rxTest({
-
   # A log scale is either a bare ggplot2 scale object or a length-one list
   # wrapping one (xgxr <= 1.1.2 and old ggplot2 return the list form).
   expect_scale <- function(o, cls) {
@@ -33,27 +32,36 @@ rxTest({
 
   test_that(".plotLog works without xgxr", {
     skip_on_os("mac")
-    d <- data.frame(time=-1:2, conc=0:3)
+    d <- data.frame(time = -1:2, conc = 0:3)
     expect_equal(
-      .plotLog(.dat=d, .timex="A", log=""),
+      .plotLog(.dat = d, .timex = "A", log = ""),
       list(
-        timex="A",
-        logx=NULL,
-        logy=NULL,
-        dat=d
+        timex = "A",
+        logx = NULL,
+        logy = NULL,
+        dat = d
       )
     )
     expect_plotlog(
-      .plotLog(.dat=d, .timex="A", log="x"),
-      timex=NULL, logx="ScaleContinuousPosition", logy=NULL, dat=d[-(1:2), ]
+      .plotLog(.dat = d, .timex = "A", log = "x"),
+      timex = NULL,
+      logx = "ScaleContinuousPosition",
+      logy = NULL,
+      dat = d[-(1:2), ]
     )
     expect_plotlog(
-      .plotLog(.dat=d, .timex="A", log="y"),
-      timex="A", logx=NULL, logy="ScaleContinuousPosition", dat=d
+      .plotLog(.dat = d, .timex = "A", log = "y"),
+      timex = "A",
+      logx = NULL,
+      logy = "ScaleContinuousPosition",
+      dat = d
     )
     expect_plotlog(
-      .plotLog(.dat=d, .timex="A", log="xy"),
-      timex=NULL, logx="ScaleContinuousPosition", logy="ScaleContinuousPosition", dat=d[-(1:2), ]
+      .plotLog(.dat = d, .timex = "A", log = "xy"),
+      timex = NULL,
+      logx = "ScaleContinuousPosition",
+      logy = "ScaleContinuousPosition",
+      dat = d[-(1:2), ]
     )
   })
 
@@ -63,8 +71,9 @@ rxTest({
     skip("See https://github.com/Novartis/xgxr/issues/50 for why xgxr is not uniquely tested as of 2022-03-15")
     current_xgxr_option <- getOption("rxode2.xgxr")
     withr::with_options(
-      list(rxode2.xgxr=TRUE), {
-        d <- data.frame(time=-1:2, conc=0:3)
+      list(rxode2.xgxr = TRUE),
+      {
+        d <- data.frame(time = -1:2, conc = 0:3)
         # Insert tests here
       }
     )
@@ -72,13 +81,13 @@ rxTest({
 
   test_that(".plotLog gives expected errors", {
     skip_on_os("mac")
-    expect_error(.plotLog(log=c("x", "y")))
-    expect_error(.plotLog(log=1))
-    expect_error(.plotLog(log="foo"))
-    expect_error(.plotLog(log=c("x", "y")))
-    expect_error(.plotLog(.dat=data.frame(A=1), log="x", .timex="A"))
+    expect_error(.plotLog(log = c("x", "y")))
+    expect_error(.plotLog(log = 1))
+    expect_error(.plotLog(log = "foo"))
+    expect_error(.plotLog(log = c("x", "y")))
+    expect_error(.plotLog(.dat = data.frame(A = 1), log = "x", .timex = "A"))
     # Time column is only required when log="x"
-    expect_silent(.plotLog(.dat=data.frame(A=1), log="y", .timex="A"))
+    expect_silent(.plotLog(.dat = data.frame(A = 1), log = "y", .timex = "A"))
   })
 
   test_that("plot() with invalid component throws an error", {
@@ -102,13 +111,12 @@ rxTest({
       })
     }
 
-    simdata <- data.frame(time=1:10, ID=factor(c("A", "B")))
+    simdata <- data.frame(time = 1:10, ID = factor(c("A", "B")))
 
-    sim <- rxSolve(pheno2, events=simdata)
+    sim <- rxSolve(pheno2, events = simdata)
 
     expect_error(plot(sim, "foo"))
     expect_warning(plot(sim, sim, "foo"))
     expect_error(plot(sim), NA)
   })
-
 })

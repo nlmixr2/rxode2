@@ -2,18 +2,39 @@
 
 #' @importFrom utils .DollarNames
 #' @export
-.DollarNames.rxEt <- function(x, pattern) { # nolint
-  if (is.rxEt(x)) { # nolint
+.DollarNames.rxEt <- function(x, pattern) {
+  if (is.rxEt(x)) {
     .envProps <- c("randomType", "canResize", "ids", "show", "ndose", "nobs")
     .methods <- c(
-      "expand", "getSampling", "get.sampling", "getDosing", "get.dosing",
-      "get.nobs", "get.obs.rec", "getEventTable", "get.EventTable",
-      "copy", "importEventTable", "import.EventTable", "simulate",
-      "clearDosing", "clear_dosing", "clear.dosing",
-      "clearSampling", "clear_sampling", "clear.sampling",
-      "addSampling", "add_sampling", "add.sampling",
-      "addDosing", "add_dosing", "add.dosing",
-      "get_units", "getUnits", "get.units", "units"
+      "expand",
+      "getSampling",
+      "get.sampling",
+      "getDosing",
+      "get.dosing",
+      "get.nobs",
+      "get.obs.rec",
+      "getEventTable",
+      "get.EventTable",
+      "copy",
+      "importEventTable",
+      "import.EventTable",
+      "simulate",
+      "clearDosing",
+      "clear_dosing",
+      "clear.dosing",
+      "clearSampling",
+      "clear_sampling",
+      "clear.sampling",
+      "addSampling",
+      "add_sampling",
+      "add.sampling",
+      "addDosing",
+      "add_dosing",
+      "add.dosing",
+      "get_units",
+      "getUnits",
+      "get.units",
+      "units"
     )
     .dataCols <- rev(c("id", "low", "time", "high", "cmt", "amt", "rate", "ii", "addl", "evid", "ss", "dur"))
     return(grep(pattern, c(.envProps, .methods, .dataCols, "env"), value = TRUE))
@@ -188,9 +209,11 @@ et <- function(x, ..., envir = parent.frame()) {
 .etInfo$lastIdLvl <- NULL
 
 .isNa1 <- function(x) {
-  if (inherits(x, "logical") ||
-        inherits(x, "numeric") ||
-        inherits(x, "integer")) {
+  if (
+    inherits(x, "logical") ||
+      inherits(x, "numeric") ||
+      inherits(x, "integer")
+  ) {
     if (length(x) == 1) {
       return(is.na(x))
     }
@@ -209,7 +232,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @export
 #' @keywords internal
 .pipeRx <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineRx))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineRx))
+  }
   .etInfo$pipelineRx <- obj
   invisible(obj)
 }
@@ -217,7 +242,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeInits <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineInits))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineInits))
+  }
   .etInfo$pipelineInits <- obj
   invisible(obj)
 }
@@ -225,7 +252,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeEvents <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineEvents))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineEvents))
+  }
   .etInfo$pipelineEvents <- obj
   invisible(obj)
 }
@@ -233,7 +262,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeParams <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineParams))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineParams))
+  }
   .etInfo$pipelineParams <- obj
   invisible(obj)
 }
@@ -241,7 +272,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeKeep <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineKeep))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineKeep))
+  }
   .etInfo$pipelineKeep <- obj
   invisible(obj)
 }
@@ -249,7 +282,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeThetaMat <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineThetaMat))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineThetaMat))
+  }
   .etInfo$pipelineThetaMat <- obj
   invisible(obj)
 }
@@ -257,7 +292,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeOmega <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineOmega))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineOmega))
+  }
   .etInfo$pipelineOmega <- obj
   invisible(obj)
 }
@@ -265,7 +302,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeSigma <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineSigma))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineSigma))
+  }
   .etInfo$pipelineSigma <- obj
   invisible(obj)
 }
@@ -273,7 +312,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeDfObs <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineDfObs))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineDfObs))
+  }
   .etInfo$pipelineDfObs <- obj
   invisible(obj)
 }
@@ -281,7 +322,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeDfSub <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineDfSub))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineDfSub))
+  }
   .etInfo$pipelineDfSub <- obj
   invisible(obj)
 }
@@ -289,7 +332,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeNSub <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineNSub))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineNSub))
+  }
   .etInfo$pipelineNSub <- obj
   invisible(obj)
 }
@@ -298,7 +343,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @rdname dot-pipeRx
 #' @export
 .pipeNStud <- function(obj) {
-  if (.isNa1(obj)) return(invisible(.etInfo$pipelineNStud))
+  if (.isNa1(obj)) {
+    return(invisible(.etInfo$pipelineNStud))
+  }
   .etInfo$pipelineNStud <- obj
   invisible(obj)
 }
@@ -309,13 +356,21 @@ et <- function(x, ..., envir = parent.frame()) {
 #' @keywords internal
 #' @return None, clears rxode2 pipeline
 #' @export
-.clearPipe <- function(rx = NULL, inits = NULL,
-                       events = NULL, params = NULL,
-                       iCov = NULL, keep = NULL,
-                       thetaMat = NULL, omega = NULL,
-                       sigma = NULL, dfObs = NULL,
-                       dfSub = NULL, nSub = NULL,
-                       nStud = NULL) {
+.clearPipe <- function(
+  rx = NULL,
+  inits = NULL,
+  events = NULL,
+  params = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  dfSub = NULL,
+  nSub = NULL,
+  nStud = NULL
+) {
   .etInfo$pipelineRx <- rx
   .etInfo$pipelineInits <- inits
   .etInfo$pipelineEvents <- events
@@ -380,36 +435,72 @@ et.rxParams <- function(x, ..., envir = parent.frame()) {
   ## Need to extract:
   ## 1. rxode2 model
   ## 2. rxode2 parameters
-  if (!is.null(x$params)) .etInfo$pipelineParams <- x$params
-  if (!is.null(x$iCov)) .etInfo$pipelineICov <- x$iCov
-  if (!is.null(x$keep)) .etInfo$pipelineKeep <- x$keep
+  if (!is.null(x$params)) {
+    .etInfo$pipelineParams <- x$params
+  }
+  if (!is.null(x$iCov)) {
+    .etInfo$pipelineICov <- x$iCov
+  }
+  if (!is.null(x$keep)) {
+    .etInfo$pipelineKeep <- x$keep
+  }
   ## 3. rxode2 inits
-  if (!is.null(x$inits)) .etInfo$pipelineInits <- x$inits
+  if (!is.null(x$inits)) {
+    .etInfo$pipelineInits <- x$inits
+  }
   ## 4. rxode2 thetaMat
-  if (!is.null(x$thetaMat)) .etInfo$pipelineThetaMat <- x$thetaMat
+  if (!is.null(x$thetaMat)) {
+    .etInfo$pipelineThetaMat <- x$thetaMat
+  }
   ## 5. rxode2 omega
-  if (!is.null(x$omega)) .etInfo$pipelineOmega <- x$omega
+  if (!is.null(x$omega)) {
+    .etInfo$pipelineOmega <- x$omega
+  }
   ## 6. rxode2 sigma
-  if (!is.null(x$sigma)) .etInfo$pipelineSigma <- x$sigma
+  if (!is.null(x$sigma)) {
+    .etInfo$pipelineSigma <- x$sigma
+  }
   ## 7. rxode2 dfObs
-  if (!is.null(x$dfObs)) .etInfo$pipelineDfObs <- x$dfObs
+  if (!is.null(x$dfObs)) {
+    .etInfo$pipelineDfObs <- x$dfObs
+  }
   ## 8. rxode2 dfSub
-  if (!is.null(x$dfSub)) .etInfo$pipelineDfSub <- x$dfSub
-  if (!is.null(x$nSub)) .etInfo$pipelineNSub <- x$nSub
-  if (!is.null(x$nStud)) .etInfo$pipelineNStud <- x$nStud
+  if (!is.null(x$dfSub)) {
+    .etInfo$pipelineDfSub <- x$dfSub
+  }
+  if (!is.null(x$nSub)) {
+    .etInfo$pipelineNSub <- x$nSub
+  }
+  if (!is.null(x$nStud)) {
+    .etInfo$pipelineNStud <- x$nStud
+  }
 
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
 }
 
 #' @rdname et
 #' @export
-et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
-                       ii = NULL, addl = NULL, ss = NULL, rate = NULL, dur = NULL,
-                       until = NULL, id = NULL,
-                       amountUnits = NULL, timeUnits = NULL, addSampling = NULL,
-                       envir = parent.frame(),
-                       by = NULL, length.out = NULL) {
-
+et.default <- function(
+  x,
+  ...,
+  time = NULL,
+  amt = NULL,
+  evid = NULL,
+  cmt = NULL,
+  ii = NULL,
+  addl = NULL,
+  ss = NULL,
+  rate = NULL,
+  dur = NULL,
+  until = NULL,
+  id = NULL,
+  amountUnits = NULL,
+  timeUnits = NULL,
+  addSampling = NULL,
+  envir = parent.frame(),
+  by = NULL,
+  length.out = NULL
+) {
   # ---- Capture missing status ----
   .xMissing <- missing(x)
   .timeMissing <- missing(time)
@@ -429,9 +520,11 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- Positional argument checks ----
   if (!.xMissing) {
-    if (!is.data.frame(x) &&
-          !is.rxEt(x) && # nolint
-          !is.character(x)) {
+    if (
+      !is.data.frame(x) &&
+        !is.rxEt(x) && # nolint
+        !is.character(x)
+    ) {
       # et(1, 2, 3) -> x=1, ...=list(2, 3) in et.default
       .dots <- list(...)
       if (length(.dots) >= 2) {
@@ -444,7 +537,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # ---- Determine base rxEt object ----
   .xIsRxEt <- !.xMissing && is.rxEt(x) # nolint
   if (.xIsRxEt) {
-    .et <- x$copy()  # always copy: et() returns a new object, never mutates x
+    .et <- x$copy() # always copy: et() returns a new object, never mutates x
   } else {
     .et <- .newRxEt() # nolint
   }
@@ -452,43 +545,91 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   # ---- Conflicting alias checks ----
   .dotArgs <- list(...)
-  id <- .etAssertArgsAndReturnId(.dotArgs, id, ii, amt, cmt, timeUnits, time, dur, # nolint
-                                 .idMissing, .iiMissing, .amtMissing, .cmtMissing,
-                                 .timeUnitsMissing, .timeMissing, .durMissing)
+  id <- .etAssertArgsAndReturnId(
+    .dotArgs,
+    id,
+    ii,
+    amt,
+    cmt,
+    timeUnits,
+    time,
+    dur, # nolint
+    .idMissing,
+    .iiMissing,
+    .amtMissing,
+    .cmtMissing,
+    .timeUnitsMissing,
+    .timeMissing,
+    .durMissing
+  )
 
   # ---- seq helpers: by / length.out ----
-  .ret <- .etHandleSeq(by, length.out, .xIsRxEt, .envRef, x, ..., envir = envir, # nolint
-                       time = time, et = .et,  xMissing = .xMissing, timeMissing = .timeMissing)
+  .ret <- .etHandleSeq(
+    by,
+    length.out,
+    .xIsRxEt,
+    .envRef,
+    x,
+    ...,
+    envir = envir, # nolint
+    time = time,
+    et = .et,
+    xMissing = .xMissing,
+    timeMissing = .timeMissing
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
 
   # ---- Positional args / data.frame import ----
-  .ret <- .etHandlePositional(x, ..., # nolint
-                              time = time, xIsRxEt = .xIsRxEt, envir = envir, envRef = .envRef, et = .et,
-                              xMissing = .xMissing, timeMissing = .timeMissing)
+  .ret <- .etHandlePositional(
+    x,
+    ..., # nolint
+    time = time,
+    xIsRxEt = .xIsRxEt,
+    envir = envir,
+    envRef = .envRef,
+    et = .et,
+    xMissing = .xMissing,
+    timeMissing = .timeMissing
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
-  .posCmt  <- .ret$posCmt
+  .posCmt <- .ret$posCmt
   .listObs <- .ret$listObs
-  time     <- .ret$time
+  time <- .ret$time
 
   # ---- Units ----
-  .etHandleUnits(.envRef, amountUnits, timeUnits, .dotArgs, # nolint
-                 .amountUnitsMissing, .timeUnitsMissing)
+  .etHandleUnits(
+    .envRef,
+    amountUnits,
+    timeUnits,
+    .dotArgs, # nolint
+    .amountUnitsMissing,
+    .timeUnitsMissing
+  )
 
   # ---- ID expansion ----
-  .addingEvents <- (!.amtMissing || !.timeMissing || !.evidMissing || !.cmtMissing ||
-                    !.iiMissing || !.addlMissing || !.ssMissing || !.rateMissing ||
-                    !.durMissing || !.untilMissing || !.addSamplingMissing ||
-                    !is.null(.dotArgs[["dose"]]) || !is.null(.listObs))
+  .addingEvents <- (!.amtMissing ||
+    !.timeMissing ||
+    !.evidMissing ||
+    !.cmtMissing ||
+    !.iiMissing ||
+    !.addlMissing ||
+    !.ssMissing ||
+    !.rateMissing ||
+    !.durMissing ||
+    !.untilMissing ||
+    !.addSamplingMissing ||
+    !is.null(.dotArgs[["dose"]]) ||
+    !is.null(.listObs))
   .ret <- .etHandleId(id, .envRef, .xIsRxEt, envir, addingEvents = .addingEvents) # nolint
-  .resolvedId  <- .ret$resolvedId
-  .targetIds   <- .ret$targetIds
-  .doResize    <- .ret$doResize
-  .addedIds    <- .ret$addedIds
-  .removedIds  <- .ret$removedIds
+  .resolvedId <- .ret$resolvedId
+  .targetIds <- .ret$targetIds
+  .doResize <- .ret$doResize
+  .addedIds <- .ret$addedIds
+  .removedIds <- .ret$removedIds
   .existingIds <- .ret$existingIds
 
   # ---- Resolve evid / cmt ----
@@ -498,7 +639,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
 
   .cmtExpr <- substitute(cmt)
   .cmtSym <- as.character(.cmtExpr)
-  .cmtVal  <- .etHandleCmt(.cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing) # nolint
+  .cmtVal <- .etHandleCmt(.cmtExpr, .cmtSym, .posCmt, envir, .cmtMissing) # nolint
 
   # ---- Deferred list obs ----
   if (!is.null(.listObs)) {
@@ -521,34 +662,103 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   .untilExpr <- substitute(until)
   .rateSym <- deparse(.rateExpr)
 
-  .ret <- .etHandleDose(amt, .amtExpr, .dotArgs, .envRef, envir, time, .timeExpr, # nolint
-                        .iiExpr, .addlExpr, .ssExpr, .rateExpr, .durExpr, .untilExpr,
-                        .evidVal, .cmtVal, .resolvedId, .targetIds, addSampling, .et, .rateSym,
-                        .amtMissing, .timeMissing, .iiMissing, .addlMissing,
-                        .ssMissing, .rateMissing, .durMissing, .untilMissing,
-                        .addSamplingMissing)
+  .ret <- .etHandleDose(
+    amt,
+    .amtExpr,
+    .dotArgs,
+    .envRef,
+    envir,
+    time,
+    .timeExpr, # nolint
+    .iiExpr,
+    .addlExpr,
+    .ssExpr,
+    .rateExpr,
+    .durExpr,
+    .untilExpr,
+    .evidVal,
+    .cmtVal,
+    .resolvedId,
+    .targetIds,
+    addSampling,
+    .et,
+    .rateSym,
+    .amtMissing,
+    .timeMissing,
+    .iiMissing,
+    .addlMissing,
+    .ssMissing,
+    .rateMissing,
+    .durMissing,
+    .untilMissing,
+    .addSamplingMissing
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
 
   # ---- Infusion/SS dose without explicit amt ----
-  .ret <- .etHandleInfusionNoAmt(amt, .amtExpr, .rateExpr, .ssExpr, .envRef, envir, time, .timeExpr, # nolint
-                                 .iiExpr, .durExpr, .evidVal, .cmtVal, .targetIds, .et, .rateSym,
-                                 .amtMissing, .rateMissing, .ssMissing, .timeMissing, .iiMissing, .durMissing)
+  .ret <- .etHandleInfusionNoAmt(
+    amt,
+    .amtExpr,
+    .rateExpr,
+    .ssExpr,
+    .envRef,
+    envir,
+    time,
+    .timeExpr, # nolint
+    .iiExpr,
+    .durExpr,
+    .evidVal,
+    .cmtVal,
+    .targetIds,
+    .et,
+    .rateSym,
+    .amtMissing,
+    .rateMissing,
+    .ssMissing,
+    .timeMissing,
+    .iiMissing,
+    .durMissing
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
 
   # ---- Observation record ----
-  .ret <- .etHandleObs(time, .timeExpr, envir, .envRef, .evidVal, # nolint
-                       .cmtVal, .targetIds, .et, .timeMissing)
+  .ret <- .etHandleObs(
+    time,
+    .timeExpr,
+    envir,
+    .envRef,
+    .evidVal, # nolint
+    .cmtVal,
+    .targetIds,
+    .et,
+    .timeMissing
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
 
   # ---- Piping pattern ----
-  .ret <- .etHandlePiping(.xIsRxEt, x, time, .timeExpr, amt, .amtExpr, .dotArgs, .cmtVal, # nolint
-                          .targetIds, .evidVal, .envRef, .et, .timeMissing, .amtMissing, envir)
+  .ret <- .etHandlePiping(
+    .xIsRxEt,
+    x,
+    time,
+    .timeExpr,
+    amt,
+    .amtExpr,
+    .dotArgs,
+    .cmtVal, # nolint
+    .targetIds,
+    .evidVal,
+    .envRef,
+    .et,
+    .timeMissing,
+    .amtMissing,
+    envir
+  )
   if (.ret$done) {
     return(.rxEtSyncData(.ret$et)) # nolint
   }
@@ -576,10 +786,12 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
             .templateGroup <- 1L
           }
           .groups[[.templateGroup]]$ids <- sort(unique(c(.groups[[.templateGroup]]$ids, as.integer(.addedIds))))
-        } else if (length(.addedIds) > 0L &&
-                   length(.groups) == 0L &&
-                   is.data.frame(.templateData) &&
-                   nrow(.templateData) > 0L) {
+        } else if (
+          length(.addedIds) > 0L &&
+            length(.groups) == 0L &&
+            is.data.frame(.templateData) &&
+            nrow(.templateData) > 0L
+        ) {
           .groups <- list(list(
             ids = sort(unique(as.integer(.addedIds))),
             data = .templateData
@@ -601,7 +813,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
             .newChunk <- .template
             .newChunk$id <- as.integer(.newId)
             .envRef$chunks[[.newId]] <- .newChunk
-            .envRef$nobs  <- .envRef$nobs  + sum(.template$evid == 0L, na.rm = TRUE)
+            .envRef$nobs <- .envRef$nobs + sum(.template$evid == 0L, na.rm = TRUE)
             .envRef$ndose <- .envRef$ndose + sum(.template$evid != 0L, na.rm = TRUE)
           }
         }
@@ -609,7 +821,7 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
       for (.rmId in .removedIds) {
         if (.rmId <= length(.envRef$chunks) && !is.null(.envRef$chunks[[.rmId]])) {
           .df <- .envRef$chunks[[.rmId]]
-          .envRef$nobs  <- .envRef$nobs  - sum(.df$evid == 0L, na.rm = TRUE)
+          .envRef$nobs <- .envRef$nobs - sum(.df$evid == 0L, na.rm = TRUE)
           .envRef$ndose <- .envRef$ndose - sum(.df$evid != 0L, na.rm = TRUE)
           .envRef$chunks[.rmId] <- list(NULL)
         }
@@ -620,10 +832,15 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
   # ---- Pure-evid ----
   if (!is.null(.evidVal)) {
     .df <- .etObsChunk(0.0, cmt = .cmtVal) # nolint
-    if (.evidVal != 0L) .df$evid <- as.integer(.evidVal)
+    if (.evidVal != 0L) {
+      .df$evid <- as.integer(.evidVal)
+    }
     .etAddChunk(.envRef, .df, .targetIds) # nolint
-    if (.evidVal == 0L) .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
-    else .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
+    if (.evidVal == 0L) {
+      .envRef$nobs <- .envRef$nobs + max(1L, length(.targetIds))
+    } else {
+      .envRef$ndose <- .envRef$ndose + max(1L, length(.targetIds))
+    }
     return(.rxEtSyncData(.et)) # nolint
   }
 
@@ -646,11 +863,12 @@ et.default <- function(x, ..., time = NULL, amt = NULL, evid = NULL, cmt = NULL,
     } else {
       .direct <- unclass(obj)[[arg]]
     }
-
   } else {
     .direct <- unclass(obj)[[arg]]
   }
-  if (!is.null(.direct)) return(.direct)
+  if (!is.null(.direct)) {
+    return(.direct)
+  }
 
   # 2. Check mutable env properties (nobs, ndose, units, show, ids, chunks)
   # "id" falls through to step 3 and returns the per-row id column
@@ -719,7 +937,9 @@ names.rxEt <- function(x) {
   for (.ch in .env$chunks) {
     if (!is.null(.ch)) {
       .extra <- setdiff(names(.ch), .n)
-      if (length(.extra) > 0L) .n <- c(.n, .extra)
+      if (length(.extra) > 0L) {
+        .n <- c(.n, .extra)
+      }
       break
     }
   }
@@ -731,34 +951,41 @@ names.rxEt <- function(x) {
 #' @export
 `[.rxEt` <- function(x, i, j, drop = FALSE) {
   .env0 <- .rxEtEnv(x) # nolint
-  if (missing(i) && missing(j)) return(x)
+  if (missing(i) && missing(j)) {
+    return(x)
+  }
   if (missing(j)) {
     # Row-only subset: return rxEt
     .full <- .etMaterialize(x) # nolint
-    if (!missing(i)) .etCheckLogicalRowIndex(i, nrow(.full)) # nolint
-    .sub  <- if (missing(i)) .full else .full[i, , drop = FALSE]
+    if (!missing(i)) {
+      .etCheckLogicalRowIndex(i, nrow(.full))
+    } # nolint
+    .sub <- if (missing(i)) .full else .full[i, , drop = FALSE]
     .newEnv <- new.env(parent = emptyenv())
-    .newEnv$units      <- .env0$units
-    .newEnv$show       <- .env0$show
+    .newEnv$units <- .env0$units
+    .newEnv$show <- .env0$show
     .newEnv$randomType <- .env0$randomType
-    .newEnv$canResize  <- FALSE
-    .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
-    .newEnv$chunks     <- list()
+    .newEnv$canResize <- FALSE
+    .newEnv$extraCols <- .etExtraCols(.env0) # nolint
+    .newEnv$chunks <- list()
     if (nrow(.sub) > 0L) {
-      .newEnv$ids  <- sort(unique(as.integer(.sub$id)))
-      .newEnv$nobs  <- sum(.sub$evid == 0L, na.rm = TRUE)
+      .newEnv$ids <- sort(unique(as.integer(.sub$id)))
+      .newEnv$nobs <- sum(.sub$evid == 0L, na.rm = TRUE)
       .newEnv$ndose <- sum(.sub$evid != 0L, na.rm = TRUE)
-      for (.ii in .newEnv$ids)
+      for (.ii in .newEnv$ids) {
         .newEnv$chunks[[.ii]] <- .sub[.sub$id == .ii, , drop = FALSE]
+      }
     } else {
-      .newEnv$ids   <- 1L
-      .newEnv$nobs  <- 0L
+      .newEnv$ids <- 1L
+      .newEnv$nobs <- 0L
       .newEnv$ndose <- 0L
     }
     return(structure(c(list(.env = .newEnv), .etBuildMethods(.newEnv)), class = "rxEt")) # nolint
   }
   .mat <- as.data.frame(x, all = TRUE)
-  if (missing(i)) return(.mat[, j, drop = drop])
+  if (missing(i)) {
+    return(.mat[, j, drop = drop])
+  }
   .etCheckLogicalRowIndex(i, nrow(.mat)) # nolint
   .mat[i, j, drop = drop]
 }
@@ -771,8 +998,10 @@ names.rxEt <- function(x) {
 #' @noRd
 .etCheckLogicalRowIndex <- function(i, nrow) {
   if (is.logical(i) && length(i) > 1L && length(i) != nrow) {
-    stop(sprintf("logical row index of length %d does not match the number of event table rows (%d)",
-                 length(i), nrow), call. = FALSE)
+    stop(
+      sprintf("logical row index of length %d does not match the number of event table rows (%d)", length(i), nrow),
+      call. = FALSE
+    )
   }
   invisible(NULL)
 }
@@ -787,9 +1016,13 @@ names.rxEt <- function(x) {
 #' @return character vector of column names, possibly empty
 #' @noRd
 .etExtraCols <- function(env) {
-  if (!is.environment(env)) return(character(0))
+  if (!is.environment(env)) {
+    return(character(0))
+  }
   .extra <- env$extraCols
-  if (is.null(.extra)) return(character(0))
+  if (is.null(.extra)) {
+    return(character(0))
+  }
   as.character(.extra)
 }
 
@@ -807,7 +1040,9 @@ names.rxEt <- function(x) {
 #' @noRd
 .etDisplayCols <- function(nms, show, extraCols = character(0), pre = character(0)) {
   .cols <- pre
-  if (!is.null(show)) .cols <- c(.cols, names(show)[show])
+  if (!is.null(show)) {
+    .cols <- c(.cols, names(show)[show])
+  }
   intersect(unique(c(.cols, extraCols)), nms)
 }
 
@@ -824,7 +1059,9 @@ names.rxEt <- function(x) {
 #' @noRd
 .etExtraColsAttr <- function(df) {
   .extra <- attr(df, "rxEtExtraCols", exact = TRUE)
-  if (is.null(.extra)) return(character(0))
+  if (is.null(.extra)) {
+    return(character(0))
+  }
   as.character(.extra)
 }
 
@@ -851,7 +1088,9 @@ names.rxEt <- function(x) {
 #' @return `x` with the `rxEtPreview` print class attached
 #' @noRd
 .etMarkDisplay <- function(x, env) {
-  if (is.null(x) || inherits(x, "rxEtPreview")) return(x)
+  if (is.null(x) || inherits(x, "rxEtPreview")) {
+    return(x)
+  }
   attr(x, "rxEtShow") <- env$show
   attr(x, "rxEtExtraCols") <- .etExtraCols(env) # nolint
   attr(x, "rxEtMarkedCols") <- names(x)
@@ -872,11 +1111,15 @@ names.rxEt <- function(x) {
 #' @return character vector of columns to keep, in `nms` order
 #' @noRd
 .etKeepCols <- function(nms, marked, show, extraCols = character(0)) {
-  if (is.null(marked)) marked <- nms
+  if (is.null(marked)) {
+    marked <- nms
+  }
   .hide <- setdiff(marked, .etDisplayCols(marked, show, extraCols, pre = "id"))
   # not setdiff(): that would drop duplicated column names as well
   .keep <- nms[!(nms %in% .hide)]
-  if (length(.keep) == 0L) return(nms)
+  if (length(.keep) == 0L) {
+    return(nms)
+  }
   .keep
 }
 
@@ -927,16 +1170,20 @@ names.rxEt <- function(x) {
   # `[.data.frame` keeps the marker attributes on the row form but drops them
   # on the column form, so `x[TRUE]` would otherwise keep the class with
   # nothing left to drive it and print every column anyway.
-  if (!is.data.frame(.ret) ||
-        is.null(attr(.ret, "rxEtShow", exact = TRUE)) ||
-        !identical(names(.ret), names(x))) {
+  if (
+    !is.data.frame(.ret) ||
+      is.null(attr(.ret, "rxEtShow", exact = TRUE)) ||
+      !identical(names(.ret), names(x))
+  ) {
     return(.etUnmarkDisplay(.ret)) # nolint
   }
   # A compressed preview is the exception: its groups count rows, and print()
   # both synthesizes the `id` column from them and heads the output with how
   # many individuals they cover, so dropping rows makes the marking a lie.
-  if (!is.null(attr(.ret, "rxEtPreviewGroups", exact = TRUE)) &&
-        !identical(nrow(.ret), nrow(x))) {
+  if (
+    !is.null(attr(.ret, "rxEtPreviewGroups", exact = TRUE)) &&
+      !identical(nrow(.ret), nrow(x))
+  ) {
     return(.etUnmarkDisplay(.ret)) # nolint
   }
   .ret
@@ -949,7 +1196,9 @@ names.rxEt <- function(x) {
 #' @return nothing, called for the side effect on `env`
 #' @noRd
 .etAddExtraCols <- function(env, cols) {
-  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  if (!is.environment(env) || length(cols) == 0L) {
+    return(invisible(NULL))
+  }
   env$extraCols <- unique(c(.etExtraCols(env), as.character(cols))) # nolint
   invisible(NULL)
 }
@@ -961,7 +1210,9 @@ names.rxEt <- function(x) {
 #' @return nothing, called for the side effect on `env`
 #' @noRd
 .etDropExtraCols <- function(env, cols) {
-  if (!is.environment(env) || length(cols) == 0L) return(invisible(NULL))
+  if (!is.environment(env) || length(cols) == 0L) {
+    return(invisible(NULL))
+  }
   env$extraCols <- setdiff(.etExtraCols(env), as.character(cols)) # nolint
   invisible(NULL)
 }
@@ -989,16 +1240,16 @@ drop_units.rxEt <- function(x) {
   if (!requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)
   }
-  if (is.rxEt(x)) { # nolint
+  if (is.rxEt(x)) {
     .env <- .rxEtEnv(x) # nolint
     .env$units["dosing"] <- NA_character_
-    .env$units["time"]   <- NA_character_
+    .env$units["time"] <- NA_character_
     return(x)
   }
   stop("invalid event table", call. = FALSE)
 }
 
-set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
+set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)
   }
@@ -1010,24 +1261,27 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
       stop("the only valid number defining a unit is '1', signifying a unitless unit", call. = FALSE)
     }
   }
-  if (identical(value, .unitless())) { # nolint
-    warning("clearing both amount and time units\n",
+  if (identical(value, .unitless())) {
+    warning(
+      "clearing both amount and time units\n",
       "for more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
       call. = FALSE
     )
-    if (is.rxEt(x)) { # nolint
+    if (is.rxEt(x)) {
       .env <- .rxEtEnv(x) # nolint
       .env$units["dosing"] <- NA_character_
-      .env$units["time"]   <- NA_character_
+      .env$units["time"] <- NA_character_
       return(x)
     }
     stop("invalid event table", call. = FALSE)
   } else {
-    if (!inherits(value, "character")) value <- deparse(value)
+    if (!inherits(value, "character")) {
+      value <- deparse(value)
+    }
     .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
     if (inherits(.isTime, "try-error")) {
       ## Amount
-      if (is.rxEt(x)) { # nolint
+      if (is.rxEt(x)) {
         .env <- .rxEtEnv(x) # nolint
         .env$units["dosing"] <- value
         return(x)
@@ -1035,7 +1289,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) { # nolint
       stop("invalid event table", call. = FALSE)
     } else {
       ##
-      if (is.rxEt(x)) { # nolint
+      if (is.rxEt(x)) {
         .env <- .rxEtEnv(x) # nolint
         .env$units["time"] <- value
         return(x)
@@ -1086,28 +1340,33 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
     }
   }
   if (is.null(.etInfo$pipelineRx) || !.isPipe) {
-    if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
-    if (!is.null(seed)) set.seed(seed)
-    if (is.rxEt(object)) { # nolint
+    if (!missing(nsim)) {
+      warning("'nsim' is ignored when simulating event tables", call. = FALSE)
+    }
+    if (!is.null(seed)) {
+      set.seed(seed)
+    }
+    if (is.rxEt(object)) {
       .env0 <- .rxEtEnv(object) # nolint
       .sim <- .etSimulateRepresentation(.env0) # nolint
       if (!isTRUE(.sim$hasWin)) {
         warning("simulating event table without windows returns identical event table", call. = FALSE)
       }
       .newEnv <- new.env(parent = emptyenv())
-      .newEnv$units      <- .env0$units
-      .newEnv$show       <- .env0$show
-      .newEnv$ids        <- .env0$ids
-      .newEnv$nobs       <- .env0$nobs
-      .newEnv$ndose      <- .env0$ndose
+      .newEnv$units <- .env0$units
+      .newEnv$show <- .env0$show
+      .newEnv$ids <- .env0$ids
+      .newEnv$nobs <- .env0$nobs
+      .newEnv$ndose <- .env0$ndose
       .newEnv$randomType <- NA_integer_
-      .newEnv$canResize  <- FALSE
-      .newEnv$extraCols  <- .etExtraCols(.env0) # nolint
-      .newEnv$groups     <- .sim$groups
-      .newEnv$chunks     <- .sim$chunks
-      return(structure(c(list(.env = .newEnv),
-                         .etBuildMethods(.newEnv)), # nolint
-                       class = "rxEt"))
+      .newEnv$canResize <- FALSE
+      .newEnv$extraCols <- .etExtraCols(.env0) # nolint
+      .newEnv$groups <- .sim$groups
+      .newEnv$chunks <- .sim$chunks
+      return(structure(
+        c(list(.env = .newEnv), .etBuildMethods(.newEnv)), # nolint
+        class = "rxEt"
+      ))
     }
     stop("invalid event table", call. = FALSE)
   } else {
@@ -1149,12 +1408,20 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
 #' @author Matthew L. Fidler
 #' @template etExamples
 #' @export
-add.dosing <- function(eventTable, dose, nbr.doses = 1L,
-                       dosing.interval = 24, dosing.to = 1L,
-                       rate = NULL, amount.units = NA_character_,
-                       start.time = 0.0, do.sampling = FALSE,
-                       time.units = NA_character_, ...) {
-  if (is.rxEt(eventTable)) { # nolint
+add.dosing <- function(
+  eventTable,
+  dose,
+  nbr.doses = 1L,
+  dosing.interval = 24,
+  dosing.to = 1L,
+  rate = NULL,
+  amount.units = NA_character_,
+  start.time = 0.0,
+  do.sampling = FALSE,
+  time.units = NA_character_,
+  ...
+) {
+  if (is.rxEt(eventTable)) {
     .lst <- list(
       x = eventTable,
       amt = dose,
@@ -1163,21 +1430,31 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
       addl = as.integer(nbr.doses) - 1L,
       addSampling = do.sampling
     )
-    if (!is.null(rate)) .lst$rate <- rate
-    if (!is.na(amount.units)) .lst$amountUnits <- amount.units
-    if (!is.na(time.units)) .lst$timeUnits <- time.units
+    if (!is.null(rate)) {
+      .lst$rate <- rate
+    }
+    if (!is.na(amount.units)) {
+      .lst$amountUnits <- amount.units
+    }
+    if (!is.na(time.units)) {
+      .lst$timeUnits <- time.units
+    }
     .extra <- list(...)
-    if (is.null(.extra$cmt) && is.null(.extra$dosing.to) &&
-          !identical(dosing.to, 1L)) {
+    if (is.null(.extra$cmt) && is.null(.extra$dosing.to) && !identical(dosing.to, 1L)) {
       .lst$cmt <- dosing.to
     }
     return(invisible(do.call(et, c(.lst, .extra))))
   } else if (inherits(eventTable, "rxSolve")) {
     .et <- eventTable$get.EventTable()
-    .newEt <- et(x = .et, amt = dose, time = start.time,
-                 ii = if (nbr.doses > 1L) dosing.interval else 0.0,
-                 addl = as.integer(nbr.doses) - 1L,
-                 addSampling = do.sampling, ...)
+    .newEt <- et(
+      x = .et,
+      amt = dose,
+      time = start.time,
+      ii = if (nbr.doses > 1L) dosing.interval else 0.0,
+      addl = as.integer(nbr.doses) - 1L,
+      addSampling = do.sampling,
+      ...
+    )
     return(rxSolve(eventTable, events = .newEt, updateObject = FALSE)) # nolint
   }
   # Fallback for rxSolve objects and old-style EventTable via C++
@@ -1200,7 +1477,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 #' @template etExamples
 #' @export
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
-  if (is.rxEt(eventTable)) { # nolint
+  if (is.rxEt(eventTable)) {
     eventTable$add.sampling(time, time.units = time.units)
     return(.rxEtSyncData(eventTable)) # nolint
   } else if (inherits(eventTable, "rxSolve")) {
@@ -1328,7 +1605,7 @@ add.sampling <- function(eventTable, time, time.units = NA_character_) {
 #' @export
 eventTable <- function(amount.units = NA, time.units = NA) {
   .amtU <- if (!missing(amount.units)) as.character(amount.units) else NA_character_
-  .timU <- if (!missing(time.units))   as.character(time.units)   else NA_character_
+  .timU <- if (!missing(time.units)) as.character(time.units) else NA_character_
   .newRxEt(amountUnits = .amtU, timeUnits = .timU) # nolint
 }
 # nolint end
@@ -1380,88 +1657,110 @@ eventTable <- function(amount.units = NA, time.units = NA) {
 #' @template etExamples
 #'
 #' @export
-etSeq <- function(..., samples = c("clear", "use"),
-                  waitII = c("smart", "+ii"), ii = 24) {
-  .samples    <- match.arg(samples)
-  .waitType   <- match.arg(waitII)
-  .args       <- list(...)
+etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), ii = 24) {
+  .samples <- match.arg(samples)
+  .waitType <- match.arg(waitII)
+  .args <- list(...)
   .explicitIi <- !missing(ii)
 
-  .chunks    <- list()
-  .groups    <- list()
-  .nobs      <- 0L
-  .ndose     <- 0L
-  .units     <- NULL
-  .show      <- NULL
-  .ids       <- integer(0)
+  .chunks <- list()
+  .groups <- list()
+  .nobs <- 0L
+  .ndose <- 0L
+  .units <- NULL
+  .show <- NULL
+  .ids <- integer(0)
   .timeDelta <- 0.0
-  .lastIi    <- 0.0
-  .lastDose  <- 0.0
+  .lastIi <- 0.0
+  .lastDose <- 0.0
 
   # Pre-scan: warn once if no event table has an inter-dose interval
   .etItems <- Filter(is.rxEt, .args) # nolint
   if (length(.etItems) > 1L) {
-    .hasAnyIi <- any(vapply(.etItems, function(.a) {
-      isTRUE(.rxEtEnv(.a)$show[["ii"]]) # nolint
-    }, logical(1)))
+    .hasAnyIi <- any(vapply(
+      .etItems,
+      function(.a) {
+        isTRUE(.rxEtEnv(.a)$show[["ii"]]) # nolint
+      },
+      logical(1)
+    ))
     if (!.hasAnyIi) {
       warning("No inter-dose interval found in event tables; using ii=", ii, call. = FALSE)
     }
   }
 
   for (.item in .args) {
-    if (is.rxEt(.item)) { # nolint
-      .ret <- .etSeqHandleRxEt(.item, .units, .show, .ids, .timeDelta, .samples, # nolint
-                               .chunks, .groups, .nobs, .ndose, .explicitIi, ii)
-      .units     <- .ret$units
-      .show      <- .ret$show
-      .ids       <- .ret$ids
-      .chunks    <- .ret$chunks
-      .groups    <- .ret$groups
-      .nobs      <- .ret$nobs
-      .ndose     <- .ret$ndose
+    if (is.rxEt(.item)) {
+      .ret <- .etSeqHandleRxEt(
+        .item,
+        .units,
+        .show,
+        .ids,
+        .timeDelta,
+        .samples, # nolint
+        .chunks,
+        .groups,
+        .nobs,
+        .ndose,
+        .explicitIi,
+        ii
+      )
+      .units <- .ret$units
+      .show <- .ret$show
+      .ids <- .ret$ids
+      .chunks <- .ret$chunks
+      .groups <- .ret$groups
+      .nobs <- .ret$nobs
+      .ndose <- .ret$ndose
       .timeDelta <- .ret$timeDelta
-      .lastIi    <- .ret$lastIi
-      .lastDose  <- .ret$lastDose
+      .lastIi <- .ret$lastIi
+      .lastDose <- .ret$lastDose
     } else if (is.numeric(.item) || is.integer(.item)) {
       .timeDelta <- .etSeqHandleWait(.item, .waitType, .lastDose, .lastIi, ii, .timeDelta) # nolint
     }
   }
 
   .newEnv <- new.env(parent = emptyenv())
-  .newEnv$chunks     <- .chunks
-  .newEnv$groups     <- .groups
-  .newEnv$units      <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
+  .newEnv$chunks <- .chunks
+  .newEnv$groups <- .groups
+  .newEnv$units <- if (!is.null(.units)) .units else c(dosing = NA_character_, time = NA_character_)
   if (!is.null(.show)) {
-    .newShow <-  .show
+    .newShow <- .show
   } else {
-    .newShow <-  .etDefaultShow() # nolint
+    .newShow <- .etDefaultShow() # nolint
   }
 
   if (.explicitIi || .ndose > 0L) {
-    .newShow["ii"]   <- TRUE
+    .newShow["ii"] <- TRUE
     .newShow["addl"] <- TRUE
   }
-  .newEnv$show       <- .newShow
+  .newEnv$show <- .newShow
   if (length(.ids) > 1L) {
-    .newEnv$ids        <- .ids
+    .newEnv$ids <- .ids
   } else {
-    .newEnv$ids        <- 1L
+    .newEnv$ids <- 1L
   }
 
-  .newEnv$nobs       <- .nobs
-  .newEnv$ndose      <- .ndose
+  .newEnv$nobs <- .nobs
+  .newEnv$ndose <- .ndose
   .newEnv$randomType <- NA_integer_
-  .newEnv$canResize  <- FALSE
-  .newEnv$extraCols  <- unique(unlist(lapply(.etItems, function(.a) {
-    .etExtraCols(.rxEtEnv(.a)) # nolint
-  }), use.names = FALSE))
+  .newEnv$canResize <- FALSE
+  .newEnv$extraCols <- unique(unlist(
+    lapply(.etItems, function(.a) {
+      .etExtraCols(.rxEtEnv(.a)) # nolint
+    }),
+    use.names = FALSE
+  ))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
-  structure(c(list(.env = .newEnv),
-              .etBuildMethods(.newEnv) # nolint
-             ), class = "rxEt")
+  structure(
+    c(
+      list(.env = .newEnv),
+      .etBuildMethods(.newEnv) # nolint
+    ),
+    class = "rxEt"
+  )
 }
 #' Combining event tables
 #'
@@ -1485,28 +1784,28 @@ etSeq <- function(..., samples = c("clear", "use"),
 #' @template etExamples
 #'
 #' @export
-etRbind <- function(..., samples = c("use", "clear"),
-                    waitII = c("smart", "+ii"),
-                    id = c("merge", "unique")) {
-  .samples  <- match.arg(samples)
+etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii"), id = c("merge", "unique")) {
+  .samples <- match.arg(samples)
   .uniqueId <- match.arg(id) == "unique"
   .ets <- list(...)
 
-  .chunks  <- list()
-  .nobs    <- 0L
-  .ndose   <- 0L
-  .units   <- NULL
-  .show    <- NULL
-  .ids     <- integer(0)
-  .groups  <- list()
-  .nextId  <- 0L
+  .chunks <- list()
+  .nobs <- 0L
+  .ndose <- 0L
+  .units <- NULL
+  .show <- NULL
+  .ids <- integer(0)
+  .groups <- list()
+  .nextId <- 0L
 
   for (.et in .ets) {
-    if (!is.rxEt(.et)) next # nolint
+    if (!is.rxEt(.et)) {
+      next
+    } # nolint
     .env <- .rxEtEnv(.et) # nolint
     if (is.null(.units)) {
       .units <- .env$units
-      .show  <- .env$show
+      .show <- .env$show
     } else {
       .show <- .show | .env$show
     }
@@ -1518,13 +1817,13 @@ etRbind <- function(..., samples = c("use", "clear"),
         }
         .groups <- list()
       }
-      .mat    <- .etMaterialize(.et) # nolint
+      .mat <- .etMaterialize(.et) # nolint
       if (.uniqueId) {
         .oldIds <- sort(unique(.mat$id))
-        .map    <- seq_along(.oldIds) + .nextId
+        .map <- seq_along(.oldIds) + .nextId
         .nextId <- .nextId + length(.oldIds)
         .mat$id <- .map[match(.mat$id, .oldIds)]
-        .ids    <- c(.ids, .map)
+        .ids <- c(.ids, .map)
       } else {
         .ids <- sort(unique(c(.ids, .env$ids)))
       }
@@ -1534,16 +1833,23 @@ etRbind <- function(..., samples = c("use", "clear"),
       .chunks <- .addRowsToChunks(.chunks, .mat) # nolint
     } else {
       .etGroupsIn <- .etGetGroups(.env) # nolint
-      if (length(.chunks) == 0L &&
+      if (
+        length(.chunks) == 0L &&
           length(.etGroupsIn) > 0L &&
-          length(intersect(.ids, .env$ids)) == 0L) {
-        .groups <- c(.groups, lapply(.etGroupsIn, function(.g) {
-          list(ids = as.integer(.g$ids), data = .g$data)
-        }))
-      } else if (length(.chunks) == 0L &&
-                 length(.groups) == 1L &&
-                 length(.etGroupsIn) == 1L &&
-                 .etGroupIdsEqual(.groups[[1]]$ids, .etGroupsIn[[1]]$ids)) {
+          length(intersect(.ids, .env$ids)) == 0L
+      ) {
+        .groups <- c(
+          .groups,
+          lapply(.etGroupsIn, function(.g) {
+            list(ids = as.integer(.g$ids), data = .g$data)
+          })
+        )
+      } else if (
+        length(.chunks) == 0L &&
+          length(.groups) == 1L &&
+          length(.etGroupsIn) == 1L &&
+          .etGroupIdsEqual(.groups[[1]]$ids, .etGroupsIn[[1]]$ids)
+      ) {
         .groups[[1]]$data <- as.data.frame(
           data.table::rbindlist(list(.groups[[1]]$data, .etGroupsIn[[1]]$data), fill = TRUE)
         )
@@ -1554,7 +1860,7 @@ etRbind <- function(..., samples = c("use", "clear"),
           }
           .groups <- list()
         }
-        if (length(.etGroups(.env)) > 0L) { # nolint
+        if (length(.etGroups(.env)) > 0L) {
           .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
         } else {
           # Merge indexed chunks directly
@@ -1568,51 +1874,57 @@ etRbind <- function(..., samples = c("use", "clear"),
           }
         }
       }
-      .ids    <- sort(unique(c(.ids, .env$ids)))
+      .ids <- sort(unique(c(.ids, .env$ids)))
     }
     if (.samples == "use") {
-      .nobs  <- .nobs + .env$nobs
+      .nobs <- .nobs + .env$nobs
     }
     .ndose <- .ndose + .env$ndose
   }
 
   .newEnv <- new.env(parent = emptyenv())
-  .newEnv$chunks     <- .chunks
-  .newEnv$groups     <- .groups
+  .newEnv$chunks <- .chunks
+  .newEnv$groups <- .groups
   if (!is.null(.units)) {
-    .newEnv$units      <-  .units
+    .newEnv$units <- .units
   } else {
-    .newEnv$units      <- c(dosing = NA_character_, time = NA_character_)
+    .newEnv$units <- c(dosing = NA_character_, time = NA_character_)
   }
-  if (!is.null(.show))  {
-    .newEnv$show       <- .show
+  if (!is.null(.show)) {
+    .newEnv$show <- .show
   } else {
-    .newEnv$show       <- .etDefaultShow() # nolint
+    .newEnv$show <- .etDefaultShow() # nolint
   }
   if (length(.ids) > 1L) {
-    .newEnv$ids        <- .ids
+    .newEnv$ids <- .ids
   } else {
-    .newEnv$ids        <- 1L
+    .newEnv$ids <- 1L
   }
-  .newEnv$nobs       <- .nobs
-  .newEnv$ndose      <- .ndose
+  .newEnv$nobs <- .nobs
+  .newEnv$ndose <- .ndose
   .newEnv$randomType <- NA_integer_
-  .newEnv$canResize  <- FALSE
-  .newEnv$extraCols  <- unique(unlist(lapply(Filter(is.rxEt, .ets), function(.a) { # nolint
-    .etExtraCols(.rxEtEnv(.a)) # nolint
-  }), use.names = FALSE))
+  .newEnv$canResize <- FALSE
+  .newEnv$extraCols <- unique(unlist(
+    lapply(Filter(is.rxEt, .ets), function(.a) {
+      .etExtraCols(.rxEtEnv(.a)) # nolint
+    }),
+    use.names = FALSE
+  ))
   if (length(.newEnv$ids) > 1L) {
     .newEnv$show["id"] <- TRUE
   }
-  structure(c(list(.env = .newEnv),
-              .etBuildMethods(.newEnv)), # nolint
-            class = "rxEt")
+  structure(
+    c(list(.env = .newEnv), .etBuildMethods(.newEnv)), # nolint
+    class = "rxEt"
+  )
 }
 
 #' @rdname etRbind
 #' @export
 rbind.rxEt <- function(..., deparse.level = 1) {
-  if (!missing(deparse.level)) warning("'deparse.level' not used with rxode2 event tables", call. = FALSE)
+  if (!missing(deparse.level)) {
+    warning("'deparse.level' not used with rxode2 event tables", call. = FALSE)
+  }
   do.call(etRbind, list(...))
 }
 
@@ -1644,13 +1956,28 @@ c.rxEt <- function(...) {
 #' @template etExamples
 #' @return An event table
 #' @export
-etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, id = integer(0),
-                  samples = c("clear", "use"),
-                  waitII = c("smart", "+ii"), ii = 24) {
-  if (!is.na(length.out)) stop("'length.out' makes no sense with event tables", call. = FALSE)
-  if (!is.na(each))       stop("'each' makes no sense with event tables", call. = FALSE)
-  if (!is.null(n)) times <- n
-  if (is.rxEt(x)) { # nolint
+etRep <- function(
+  x,
+  times = 1,
+  length.out = NA,
+  each = NA,
+  n = NULL,
+  wait = 0,
+  id = integer(0),
+  samples = c("clear", "use"),
+  waitII = c("smart", "+ii"),
+  ii = 24
+) {
+  if (!is.na(length.out)) {
+    stop("'length.out' makes no sense with event tables", call. = FALSE)
+  }
+  if (!is.na(each)) {
+    stop("'each' makes no sense with event tables", call. = FALSE)
+  }
+  if (!is.null(n)) {
+    times <- n
+  }
+  if (is.rxEt(x)) {
     .xEnv <- .rxEtEnv(x) # nolint
     if (is.environment(.xEnv) && isFALSE(.xEnv$canResize)) {
       warning("event table has been expanded; rep may produce unexpected results", call. = FALSE)
@@ -1675,7 +2002,7 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
   .lst <- vector("list", times * 2L)
   for (.i in seq_len(times)) {
     .lst[[.i * 2L - 1L]] <- x
-    .lst[[.i * 2L]]      <- wait
+    .lst[[.i * 2L]] <- wait
   }
   do.call(etSeq, c(.lst, list(samples = samples, waitII = waitII, ii = ii)))
 }
@@ -1730,7 +2057,9 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
     .ret <- .full[, c(.showCols, setdiff(.extraCols, .showCols)), drop = FALSE]
   }
   # tag which columns were assigned so et(as.data.frame(ev)) still shows them
-  if (length(.extraCols) > 0L) attr(.ret, "rxEtExtraCols") <- .extraCols
+  if (length(.extraCols) > 0L) {
+    attr(.ret, "rxEtExtraCols") <- .extraCols
+  }
   .ret
 }
 
@@ -1742,7 +2071,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @return data.table of event table
 #'
 #' @export
-as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) { # nolint
+as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table") # nolint
   data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames)
 }
@@ -1777,7 +2106,7 @@ as_tibble.rxEt <- function(x, ...) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .env      <- .rxEtEnv(et) # nolint
+  .env <- .rxEtEnv(et) # nolint
   .newEnv <- new.env(parent = emptyenv())
   .newEnv$chunks <- list()
   .groups <- .etGetGroups(.env) # nolint
@@ -1786,7 +2115,7 @@ etExpand <- function(et) {
       list(ids = as.integer(.g$ids), data = .etExpandGroupData(.g$data, .env)) # nolint
     })
   } else {
-    .mat      <- .etMaterialize(et) # nolint
+    .mat <- .etMaterialize(et) # nolint
     .expanded <- .etExpandAddl(.mat, .env) # nolint
     .newEnv$groups <- list()
     if (nrow(.expanded) > 0L) {
@@ -1796,27 +2125,32 @@ etExpand <- function(et) {
       }
     }
   }
-  .newEnv$units      <- .env$units
-  .newEnv$show       <- .env$show
-  .newEnv$ids        <- .env$ids
+  .newEnv$units <- .env$units
+  .newEnv$show <- .env$show
+  .newEnv$ids <- .env$ids
   .etResetCountsFromGroups(.newEnv) # nolint
   if (length(.newEnv$groups) == 0L) {
-    .newEnv$nobs       <- sum(.expanded$evid == 0L)
-    .newEnv$ndose      <- sum(.expanded$evid != 0L)
+    .newEnv$nobs <- sum(.expanded$evid == 0L)
+    .newEnv$ndose <- sum(.expanded$evid != 0L)
   }
   if (length(.newEnv$groups) > 0L) {
-    .newEnv$show["addl"] <- any(vapply(.newEnv$groups, function(.g) {
-      !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
-    }, logical(1)))
+    .newEnv$show["addl"] <- any(vapply(
+      .newEnv$groups,
+      function(.g) {
+        !is.null(.g$data$addl) && any(.g$data$addl != 0L, na.rm = TRUE)
+      },
+      logical(1)
+    ))
   } else {
     .newEnv$show["addl"] <- !is.null(.expanded$addl) && any(.expanded$addl != 0L, na.rm = TRUE)
   }
   .newEnv$randomType <- NA_integer_
-  .newEnv$canResize  <- FALSE
-  .newEnv$extraCols  <- .etExtraCols(.env) # nolint
-  structure(c(list(.env = .newEnv),
-              .etBuildMethods(.newEnv)), # nolint
-            class = "rxEt")
+  .newEnv$canResize <- FALSE
+  .newEnv$extraCols <- .etExtraCols(.env) # nolint
+  structure(
+    c(list(.env = .newEnv), .etBuildMethods(.newEnv)), # nolint
+    class = "rxEt"
+  )
 }
 
 # Event-table display helper classes -------------------------------------
@@ -1857,9 +2191,10 @@ c.rxEvid <- function(x, ...) {
   as.rxEvid(NextMethod()) # nolint
 }
 
-.colorFmt.rxEvid <- function(x, ...) { # nolint
+.colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
+    # fmt: skip
     .x <-
       data.table::fcase(
         .x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
@@ -1870,7 +2205,7 @@ c.rxEvid <- function(x, ...) {
         .x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
         .x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
         .x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
-        default=paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
+        default = paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
       )
   } else {
     .x <- paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
@@ -1883,6 +2218,7 @@ c.rxEvid <- function(x, ...) {
 as.character.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
+    # fmt: skip
     .x <-
       data.table::fcase(
         .x == 0, "0:Observation",
@@ -1900,7 +2236,6 @@ as.character.rxEvid <- function(x, ...) {
   }
   .x
 }
-
 
 
 #' @rdname rxEvid
@@ -1969,12 +2304,10 @@ c.rxRateDur <- function(x, ...) {
 as.character.rxRateDur <- function(x, ...) {
   .x <- unclass(x)
   .x <-
-    ifelse(.x == -1, "-1:rate",
-      ifelse(.x == -2, "-2:dur",
-        ifelse(.x < 0, paste0(as.character(.x), ":Invalid"),
-          sprintf(" %-8g", .x)
-        )
-      )
+    ifelse(
+      .x == -1,
+      "-1:rate",
+      ifelse(.x == -2, "-2:dur", ifelse(.x < 0, paste0(as.character(.x), ":Invalid"), sprintf(" %-8g", .x)))
     )
   .x
 }
@@ -1984,21 +2317,21 @@ as.character.rxRateDur <- function(x, ...) {
   .f <- sprintf(paste0(" %-", width - 1, "f"), unclass(x))
   .ncg <- nchar(.g)
   .ncf <- nchar(.f)
-  .ret <- ifelse(.ncg == width, .g,
-    ifelse(.ncf == width, .f, .g)
-  )
+  .ret <- ifelse(.ncg == width, .g, ifelse(.ncf == width, .f, .g))
   .ret
 }
 
 
-.colorFmt.rxRateDur <- function(x, ...) { # nolint
+.colorFmt.rxRateDur <- function(x, ...) {
   .x <- unclass(x)
   .x <-
-    ifelse(.x == -1, paste0(crayon::red("-1"), ":", crayon::yellow("rate")),
-      ifelse(.x == -2, paste0(crayon::red("-2"), ":", crayon::yellow("dur")),
-        ifelse(.x < 0, paste0(crayon::red(as.character(.x)), ":", crayon::red("Invalid")),
-          .fmt(.x)
-        )
+    ifelse(
+      .x == -1,
+      paste0(crayon::red("-1"), ":", crayon::yellow("rate")),
+      ifelse(
+        .x == -2,
+        paste0(crayon::red("-2"), ":", crayon::yellow("dur")),
+        ifelse(.x < 0, paste0(crayon::red(as.character(.x)), ":", crayon::red("Invalid")), .fmt(.x))
       )
     )
   .x
@@ -2036,9 +2369,12 @@ pillar_shaft.rxRateDur <- function(x, ...) {
 #' @export
 as.data.frame.rxRateDur <- base::as.data.frame.difftime
 
-set_units.rxRateDur <- function(x, value, ...,
-                                mode = .setUnitsMode() # nolint
-                                ) {
+set_units.rxRateDur <- function(
+  x,
+  value,
+  ...,
+  mode = .setUnitsMode() # nolint
+) {
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)
   }
@@ -2051,8 +2387,12 @@ set_units.rxRateDur <- function(x, value, ...,
     class(.ret0) <- "units"
     .lst[[1]] <- .ret0
     .ret <- do.call(units::set_units, .lst)
-    if (length(.w1) > 0) .ret[.w1] <- -1
-    if (length(.w2) > 0) .ret[.w2] <- -2
+    if (length(.w1) > 0) {
+      .ret[.w1] <- -1
+    }
+    if (length(.w2) > 0) {
+      .ret[.w2] <- -2
+    }
     class(.ret) <- c("rxRateDur", "units")
     .ret
   } else {
