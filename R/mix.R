@@ -82,87 +82,111 @@ rxUdfUi.mix <- function(fun) {
 #' }
 mix <- function(...) {
   .call <- match.call(expand.dots = TRUE)
-  .args <- lapply(seq_along(.call)[-1L],
-                  function(i) { .call[[i]] })
+  .args <- lapply(seq_along(.call)[-1L], function(i) {
+    .call[[i]]
+  })
   .df <- rxUdfUiIniDf()
   if (is.null(.df)) {
-    stop("mix() in a ui model must have an ini block",
-         call.= FALSE)
+    stop("mix() in a ui model must have an ini block", call. = FALSE)
   }
   if (all(is.na(.df$neta1))) {
-    stop("mix() in a ui model must have an ini block with eta variables",
-         call.= FALSE)
+    stop("mix() in a ui model must have an ini block with eta variables", call. = FALSE)
   }
-  .ret <- list(replace=.call)
+  .ret <- list(replace = .call)
   if (is.null(rxUdfUiMv())) {
     if (identical(rxUdfUiNum(), 1L)) {
       if (length(.args) < 3) {
         stop("mix() requires at least three arguments")
       }
       .udfUiEnv$probs <- NULL
-      .probs <- vapply(seq_along(.args),
-                       function(i) {
-                         if (i %% 2 == 0) {
-                           as.character(.args[[i]])
-                         } else {
-                           ""
-                         }
-                       }, character(1))
+      .probs <- vapply(
+        seq_along(.args),
+        function(i) {
+          if (i %% 2 == 0) {
+            as.character(.args[[i]])
+          } else {
+            ""
+          }
+        },
+        character(1)
+      )
       .udfUiEnv$probs <- .probs[nzchar(.probs)]
-      .mp <- vapply(.udfUiEnv$probs,
-                    function(p) {
-                      p %in% .df$name
-                    }, logical(1), USE.NAMES = TRUE)
+      .mp <- vapply(
+        .udfUiEnv$probs,
+        function(p) {
+          p %in% .df$name
+        },
+        logical(1),
+        USE.NAMES = TRUE
+      )
       .w <- which(!.mp)
       if (length(.w) >= 1) {
-        stop("the probabilities in a mixture must be in the model block, these variables were not: '",
-             paste(names(.mp)[.w], collapse="', '"), "'")
+        stop(
+          "the probabilities in a mixture must be in the model block, these variables were not: '",
+          paste(names(.mp)[.w], collapse = "', '"),
+          "'"
+        )
       }
-      .mp <- sum(vapply(.udfUiEnv$probs,
-                        function(p) {
-                          .w <- which(.df$name == p)
-                          .df$est[.w]
-                        }, numeric(1), USE.NAMES = FALSE))
-      if (.mp >= 1 || .mp <= 0)  {
-        stop("the probabilities in a mixture must sum to a number between 0 and 1, they sum to: ",
-             .mp)
+      .mp <- sum(vapply(
+        .udfUiEnv$probs,
+        function(p) {
+          .w <- which(.df$name == p)
+          .df$est[.w]
+        },
+        numeric(1),
+        USE.NAMES = FALSE
+      ))
+      if (.mp >= 1 || .mp <= 0) {
+        stop("the probabilities in a mixture must sum to a number between 0 and 1, they sum to: ", .mp)
       }
     }
   }
-  if (length(.args) == length(.udfUiEnv$probs)*2 + 1L) {
+  if (length(.args) == length(.udfUiEnv$probs) * 2 + 1L) {
     .udfUiEnv$np <- 1L
-    .matchProbs <- all(vapply(seq_along(.args),
-                              function(i) {
-                                if (i %% 2 == 0) {
-                                  .ret <- identical(.udfUiEnv$probs[.udfUiEnv$np], as.character(.args[[i]]))
-                                  .udfUiEnv$np <- .udfUiEnv$np + 1L
-                                  .ret
-                                } else {
-                                  TRUE
-                                }
-                              }, logical(1)))
+    .matchProbs <- all(vapply(
+      seq_along(.args),
+      function(i) {
+        if (i %% 2 == 0) {
+          .ret <- identical(.udfUiEnv$probs[.udfUiEnv$np], as.character(.args[[i]]))
+          .udfUiEnv$np <- .udfUiEnv$np + 1L
+          .ret
+        } else {
+          TRUE
+        }
+      },
+      logical(1)
+    ))
     if (!.matchProbs) {
-      stop("the probabilities in a mixture must match throughout the problem",
-           call.= FALSE)
+      stop("the probabilities in a mixture must match throughout the problem", call. = FALSE)
     }
   }
   if (length(.args) == length(.udfUiEnv$probs) + 1L) {
     .udfUiEnv$na <- 1L
     .udfUiEnv$np <- 1L
-    .ret <- list(replace=str2lang(paste0("mix(",
-              paste(vapply(seq_len(length(.args)+ length(.udfUiEnv$probs)),
-                           function(i) {
-                             if ((i %% 2) == 0) {
-                               .ret <- as.character(.udfUiEnv$probs[.udfUiEnv$np])
-                               .udfUiEnv$np <- .udfUiEnv$np + 1L
-                             } else {
-                               .ret <- deparse1(.args[[.udfUiEnv$na]])
-                               .udfUiEnv$na <- .udfUiEnv$na + 1L
-                             }
-                             .ret
-                           }, character(1), USE.NAMES = FALSE),
-                    collapse=", "),
-              ")")))
+    .ret <- list(
+      replace = str2lang(paste0(
+        "mix(",
+        paste(
+          vapply(
+            seq_len(length(.args) + length(.udfUiEnv$probs)),
+            function(i) {
+              if ((i %% 2) == 0) {
+                .ret <- as.character(.udfUiEnv$probs[.udfUiEnv$np])
+                .udfUiEnv$np <- .udfUiEnv$np + 1L
+              } else {
+                .ret <- deparse1(.args[[.udfUiEnv$na]])
+                .udfUiEnv$na <- .udfUiEnv$na + 1L
+              }
+              .ret
+            },
+            character(1),
+            USE.NAMES = FALSE
+          ),
+          collapse = ", "
+        ),
+        ")"
+      ))
+    )
   }
   .ret
 }

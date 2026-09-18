@@ -18,9 +18,9 @@ rxTest({
       })
     }
 
-    simdata <- data.frame(time=1:10, ID=factor(c("A", "B")))
+    simdata <- data.frame(time = 1:10, ID = factor(c("A", "B")))
 
-    sim <- rxSolve(pheno2, events=simdata)
+    sim <- rxSolve(pheno2, events = simdata)
 
     expect_equal(levels(sim$id), c("A", "B"))
   })

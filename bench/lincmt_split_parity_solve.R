@@ -53,8 +53,8 @@
   .e <- list(
     bolus = et(amt = 100, ii = 12, addl = 2, cmt = cmt) |> et(.obs),
     ss = et(amt = 100, ii = 12, ss = 1, cmt = cmt) |> et(seq(0.5, 12, by = 0.5)),
-    reset = et(amt = 100, cmt = cmt) |> et(amt = 50, time = 10, evid = 4, cmt = cmt) |>
-      et(seq(0.5, 24, by = 1)))
+    reset = et(amt = 100, cmt = cmt) |> et(amt = 50, time = 10, evid = 4, cmt = cmt) |> et(seq(0.5, 24, by = 1))
+  )
   if (iv) {
     .e$infusion <- et(amt = 100, rate = 25, ii = 12, addl = 2, cmt = cmt) |> et(.obs)
     .e$duration <- et(amt = 100, dur = 4, ii = 12, addl = 2, cmt = cmt) |> et(.obs)
@@ -66,47 +66,85 @@ for (.mn in names(.mods)) {
   .ev <- .events(if (.iv) "central" else "depot", .iv)
   for (.en in names(.ev)) {
     for (.cores in c(1L, 4L)) {
-      .keep(sprintf("linCmt_%s_%s_cores%d", .mn, .en, .cores),
-            .solve(.mods[[.mn]], .ev[[.en]], params = .params, cores = .cores))
+      .keep(
+        sprintf("linCmt_%s_%s_cores%d", .mn, .en, .cores),
+        .solve(.mods[[.mn]], .ev[[.en]], params = .params, cores = .cores)
+      )
     }
   }
 }
-.keep("linCmt_mixedOde", .solve(function() {
-  ini({ tcl <- log(2); tv <- log(20); tka <- log(1.1); kin <- 1; kout <- 0.1; ec50 <- 2 })
-  model({
+.keep(
+  "linCmt_mixedOde",
+  .solve(
+    function() {
+      ini({ tcl <- log(2); tv <- log(20); tka <- log(1.1); kin <- 1; kout <- 0.1; ec50 <- 2 })
+      model({
     cl <- exp(tcl); v <- exp(tv); ka <- exp(tka)
     cp <- linCmt()
     eff(0) <- 10
     d/dt(eff) <- kin - kout * (1 - cp / (ec50 + cp)) * eff
   })
-}, et(amt = 100, ii = 12, addl = 2, cmt = "depot") |> et(.obs)))
+    },
+    et(amt = 100, ii = 12, addl = 2, cmt = "depot") |> et(.obs)
+  )
+)
 
 # --- explicit linCmtB() sensitivities, every linCmtSensType -------------------
 .sensModel <- function(ncmt, nd) {
   .args <- sprintf("rx__PTR__, t, 1, %d, 1, %%d, %%d, 1, cl, v, q, vp, q2, vp2, ka", ncmt)
-  .lines <- c(sprintf("cp=linCmtB(%s)", sprintf(.args, -1L, -1L)),
-              vapply(0:nd, function(k) sprintf("d%d=linCmtB(%s)", k, sprintf(.args, -2L, k)), ""))
+  .lines <- c(
+    sprintf("cp=linCmtB(%s)", sprintf(.args, -1L, -1L)),
+    vapply(0:nd, function(k) sprintf("d%d=linCmtB(%s)", k, sprintf(.args, -2L, k)), "")
+  )
   suppressWarnings(rxode2(paste(.lines, collapse = "\n")))
 }
-.sensEv <- do.call(rbind, lapply(1:24, function(i) {
-  .dose <- data.frame(id = i, time = c(0, 5, 18.5, 26),
-                      amt = c(100, 60, 140, 70) * (1 + 0.05 * i), evid = 1,
-                      cmt = 1, rate = c(40, 0, 70, 0))
-  .o <- data.frame(id = i, time = c(0.6, 1.9, 2.4, 4.7, 7.1, 9.3, 14.6, 19.5,
-                                    21.1, 24.9, 28.8, 36.6, 49.9) + 0.1 * i,
-                   amt = 0, evid = 0, cmt = 1, rate = 0)
-  rbind(.dose, .o)
-}))
+.sensEv <- do.call(
+  rbind,
+  lapply(1:24, function(i) {
+    .dose <- data.frame(
+      id = i,
+      time = c(0, 5, 18.5, 26),
+      amt = c(100, 60, 140, 70) * (1 + 0.05 * i),
+      evid = 1,
+      cmt = 1,
+      rate = c(40, 0, 70, 0)
+    )
+    .o <- data.frame(
+      id = i,
+      time = c(0.6, 1.9, 2.4, 4.7, 7.1, 9.3, 14.6, 19.5, 21.1, 24.9, 28.8, 36.6, 49.9) + 0.1 * i,
+      amt = 0,
+      evid = 0,
+      cmt = 1,
+      rate = 0
+    )
+    rbind(.dose, .o)
+  })
+)
 .sensPars <- c(cl = 2.1, v = 21, q = 3.3, vp = 43, q2 = 0.7, vp2 = 60, ka = 1.3)
 .m2s <- .sensModel(2L, 4L)
 .m3s <- .sensModel(3L, 6L)
-.sensTypes <- c("AD", "ADm", "ADr", "auto", "forward", "central", "forward3",
-                "endpoint5", "forwardG", "forward3G", "endpoint5G", "forward3H",
-                "forwardH", "centralH")
+.sensTypes <- c(
+  "AD",
+  "ADm",
+  "ADr",
+  "auto",
+  "forward",
+  "central",
+  "forward3",
+  "endpoint5",
+  "forwardG",
+  "forward3G",
+  "endpoint5G",
+  "forward3H",
+  "forwardH",
+  "centralH"
+)
 for (.st in .sensTypes) {
   for (.cores in c(1L, 4L)) {
-    .keep(sprintf("sens2_%s_cores%d", .st, .cores),
-          .solve(.m2s, .sensPars, .sensEv, linCmtSensType = .st, cores = .cores))
+    .keep(
+      sprintf("sens2_%s_cores%d", .st, .cores),
+      .solve(.m2s, .sensPars, .sensEv, linCmtSensType = .st, cores = .cores)
+    )
   }
 }
 for (.st in c("AD", "ADm", "ADr")) {
@@ -123,8 +161,15 @@ for (.st in c("AD", "ADm", "ADr")) {
   d3 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
   d9 <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -9, 7, 1, cl, v, 0, 0, 0, 0, ka)
 })
-.keep("sentinel_m3_m9", .solve(.mOrigin, et(amt = 100, cmt = "depot", ii = 12, addl = 1) |>
-                                 et(seq(0.1, 30, 0.5)), params = .pOrigin))
+.keep(
+  "sentinel_m3_m9",
+  .solve(
+    .mOrigin,
+    et(amt = 100, cmt = "depot", ii = 12, addl = 1) |>
+      et(seq(0.1, 30, 0.5)),
+    params = .pOrigin
+  )
+)
 .mF <- rxode2({
   cl <- exp(tcl); v <- exp(tv); ka <- exp(tka)
   fdep <- exp(eta_f)
@@ -132,9 +177,16 @@ for (.st in c("AD", "ADm", "ADr")) {
   cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
   dF <- linCmtB(rx__PTR__, t, 2, 1, 1, -10, 7, 1, cl, v, 0, 0, 0, 0, ka)
 })
-.keep("sentinel_m10", .solve(.mF, et(amt = 100, cmt = "depot", ii = 12, addl = 1) |>
-                               et(amt = 40, cmt = "central", time = 1) |>
-                               et(seq(0.1, 30, 0.5)), params = .pOrigin))
+.keep(
+  "sentinel_m10",
+  .solve(
+    .mF,
+    et(amt = 100, cmt = "depot", ii = 12, addl = 1) |>
+      et(amt = 40, cmt = "central", time = 1) |>
+      et(seq(0.1, 30, 0.5)),
+    params = .pOrigin
+  )
+)
 .base <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, 1, 10, 0, 0, 0, 0, 0"
 .mCarry <- suppressWarnings(rxode2(paste0(
   "cp=linCmtB(", sprintf(.base, -1L, -1L), ")\n",

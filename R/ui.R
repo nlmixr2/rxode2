@@ -8,9 +8,8 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxIniLinesComplete <- function(lines) {
-  .txt <- paste0("{\n", paste(lines, collapse="\n"), "\n}")
-  !inherits(try(parse(text=.txt, keep.source=FALSE), silent=TRUE),
-            "try-error")
+  .txt <- paste0("{\n", paste(lines, collapse = "\n"), "\n}")
+  !inherits(try(parse(text = .txt, keep.source = FALSE), silent = TRUE), "try-error")
 }
 
 #' Replace comments with label()
@@ -20,7 +19,7 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxReplaceCommentWithLabel <- function(src) {
-  .env <- new.env(parent=emptyenv())#match.call(expand.dots = TRUE)[-(1:2)]
+  .env <- new.env(parent = emptyenv()) #match.call(expand.dots = TRUE)[-(1:2)]
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
   # lines of the `ini({})` statement being accumulated; a `; label()` may only be
@@ -41,41 +40,46 @@
   # Outside a string R code cannot contain `#`, and strings are already excluded
   # by the `"` in the same bracket.
   .regLabel <- "^( *[^\n\"#]+) *#+ *(.*) *$"
-  .ret <- vapply(src,
-                 function(line) {
-                   if (regexpr(.regIni, line, perl=TRUE) != -1) {
-                     assign("inIni", TRUE, envir=.env)
-                     assign("pending", character(0), envir=.env)
-                   } else if (regexpr(.regOther1, line, perl=TRUE) != -1) {
-                     assign("inIni", FALSE, envir=.env)
-                   } else if (regexpr(.regOther2, line, perl=TRUE) != -1) {
-                     assign("inIni", FALSE, envir=.env)
-                   } else if (.env$inIni) {
-                     assign("pending", c(.env$pending, line), envir=.env)
-                     .complete <- .rxIniLinesComplete(.env$pending)
-                     if (.complete) assign("pending", character(0), envir=.env)
-                     if (regexpr(.regCommentOnBlankLine, line) != -1) {
-                     } else if (!.complete) {
-                       # a comment inside an unfinished statement stays a comment; a
-                       # `;` here would split the statement and the re-parse below
-                       # would fail (rxode2 issue 1318)
-                     } else if (regexpr(.regLabel, line) != -1) {
-                       .env$convertLabel <- TRUE
-                       .label <- deparse1(sub(.regLabel, "\\2", line))
-                       # `.label` is already escaped by deparse1(); assemble the line with
-                       # paste0() rather than sub()'s replacement so it stays that way.
-                       # sub() parses backslashes in a replacement and strips one level,
-                       # which turned a `"` or `\` in the comment into an unparsable
-                       # label() (rxode2 issue 1195).
-                       return(paste0(sub(.regLabel, "\\1", line), "; label(", .label, ")"))
-                     }
-                   }
-                   line
-                 }, character(1), USE.NAMES = FALSE)
+  .ret <- vapply(
+    src,
+    function(line) {
+      if (regexpr(.regIni, line, perl = TRUE) != -1) {
+        assign("inIni", TRUE, envir = .env)
+        assign("pending", character(0), envir = .env)
+      } else if (regexpr(.regOther1, line, perl = TRUE) != -1) {
+        assign("inIni", FALSE, envir = .env)
+      } else if (regexpr(.regOther2, line, perl = TRUE) != -1) {
+        assign("inIni", FALSE, envir = .env)
+      } else if (.env$inIni) {
+        assign("pending", c(.env$pending, line), envir = .env)
+        .complete <- .rxIniLinesComplete(.env$pending)
+        if (.complete) {
+          assign("pending", character(0), envir = .env)
+        }
+        if (regexpr(.regCommentOnBlankLine, line) != -1) {} else if (!.complete) {
+          # a comment inside an unfinished statement stays a comment; a
+          # `;` here would split the statement and the re-parse below
+          # would fail (rxode2 issue 1318)
+        } else if (regexpr(.regLabel, line) != -1) {
+          .env$convertLabel <- TRUE
+          .label <- deparse1(sub(.regLabel, "\\2", line))
+          # `.label` is already escaped by deparse1(); assemble the line with
+          # paste0() rather than sub()'s replacement so it stays that way.
+          # sub() parses backslashes in a replacement and strips one level,
+          # which turned a `"` or `\` in the comment into an unparsable
+          # label() (rxode2 issue 1195).
+          return(paste0(sub(.regLabel, "\\1", line), "; label(", .label, ")"))
+        }
+      }
+      line
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   if (.env$convertLabel) {
     cli::cli_alert_info("parameter labels from comments will be replaced by 'label()'")
   }
-  .ret <- deparse(eval(parse(text=paste(.ret, collapse="\n"), keep.source=FALSE)))
+  .ret <- deparse(eval(parse(text = paste(.ret, collapse = "\n"), keep.source = FALSE)))
   .ret
 }
 
@@ -105,41 +109,51 @@
 .rxFunctionRearrange <- function(fun) {
   .lst <- as.list(body(fun)[-1])
   .idx <- seq_along(.lst)
-  .w <- which(vapply(.idx, function(x) {
-    identical(.lst[[x]][[1]], quote(`ini`))
-  }, logical(1), USE.NAMES=TRUE))
-  if (length(.w) == 0) {
-  } else if (length(.w) != 1) {
-    stop("rxode2 model function can only have one 'ini({})' block",
-         call.=FALSE)
+  .w <- which(vapply(
+    .idx,
+    function(x) {
+      identical(.lst[[x]][[1]], quote(`ini`))
+    },
+    logical(1),
+    USE.NAMES = TRUE
+  ))
+  if (length(.w) == 0) {} else if (length(.w) != 1) {
+    stop("rxode2 model function can only have one 'ini({})' block", call. = FALSE)
   }
   if (identical(.lst[[length(.lst)]][[1]], quote(`model`))) {
     return(fun)
   }
-  .w <- which(vapply(.idx, function(x) {
-    identical(.lst[[x]][[1]], quote(`model`))
-  }, logical(1), USE.NAMES=TRUE))
+  .w <- which(vapply(
+    .idx,
+    function(x) {
+      identical(.lst[[x]][[1]], quote(`model`))
+    },
+    logical(1),
+    USE.NAMES = TRUE
+  ))
   if (length(.w) != 1) {
-    stop("rxode2 model function requires one 'model({})' block",
-         call.=FALSE)
+    stop("rxode2 model function requires one 'model({})' block", call. = FALSE)
   }
-  warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
-          call.=FALSE)
-  .fun2 <- function() {
-  }
+  warning(
+    "'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object", # nolint: line_length_linter.
+    call. = FALSE
+  )
+  .fun2 <- function() {}
   body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
-    if (i == -1L) return(quote(`{`))
+    if (i == -1L) {
+      return(quote(`{`))
+    }
     .lst[[i]]
   }))
   .fun2
 }
 
 .rxFunction2ui <- function(fun) {
-  .fun <- .rxFunctionRearrange(eval(parse(text=paste(.rxFunction2string(fun), collapse="\n"))))
+  .fun <- .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
   .ret <- .fun()
   # Save $model like nlmixr UI used to...
   .ret <- rxUiDecompress(.ret)
-  assign("model", fun, envir=.ret)
+  assign("model", fun, envir = .ret)
   rxUiCompress(.ret)
 }
 
@@ -278,9 +292,10 @@
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
-    .ini <- eval(bquote(lotri::lotri(.(substitute(x)),
-                                     cov=TRUE, rcm=TRUE)),
-                 envir=envir)
+    .ini <- eval(
+      bquote(lotri::lotri(.(substitute(x)), cov = TRUE, rcm = TRUE)),
+      envir = envir
+    )
     assignInMyNamespace(".lastIni", .ini)
     assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
     return(invisible(.ini))
@@ -326,37 +341,49 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #' @author Matthew Fidler
 #'
 #' @export
-model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
-                  cov=NULL, envir=parent.frame()) {
+model <- function(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+) {
   if (is(substitute(x), "{")) {
-    .funExpr <- try(as.list(with(envir, match.call()))[[1]], silent=TRUE)
+    .funExpr <- try(as.list(with(envir, match.call()))[[1]], silent = TRUE)
     if (inherits(.funExpr, "try-error")) {
       .funName <- NULL
     } else {
-      .funName <- try(.rxModelNameFromExpr(.funExpr, envir=envir), silent=TRUE)
-      if (inherits(.funName, "try-error")) .funName <- NULL
+      .funName <- try(.rxModelNameFromExpr(.funExpr, envir = envir), silent = TRUE)
+      if (inherits(.funName, "try-error")) {
+        .funName <- NULL
+      }
       # the user function environment follows the model function itself, which
       # is only known when it was called by name
-      if (is.symbol(.funExpr) &&
-            exists(as.character(.funExpr), envir=parent.env(envir))) {
+      if (
+        is.symbol(.funExpr) &&
+          exists(as.character(.funExpr), envir = parent.env(envir))
+      ) {
         .udfEnvSet(parent.env(envir))
       }
     }
     .ini <- .lastIni
     .iniQ <- .lastIniQ
     if (is.null(.ini)) {
-      .ini <- data.frame(ntheta=integer(0),
-                         neta1=numeric(0),
-                         neta2=numeric(0),
-                         name=character(0),
-                         lower=numeric(0),
-                         est=numeric(0),
-                         upper=numeric(0),
-                         fix=logical(0),
-                         label=character(0),
-                         backTransform=character(0),
-                         condition=character(0),
-                         err=character(0))
+      .ini <- data.frame(
+        ntheta = integer(0),
+        neta1 = numeric(0),
+        neta2 = numeric(0),
+        name = character(0),
+        lower = numeric(0),
+        est = numeric(0),
+        upper = numeric(0),
+        fix = logical(0),
+        label = character(0),
+        backTransform = character(0),
+        condition = character(0),
+        err = character(0)
+      )
       .iniQ <- NULL
       ## stop("ini({}) block must be called before the model block",
       ##      call.=FALSE)
@@ -364,9 +391,9 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     assignInMyNamespace(".lastIni", NULL)
     assignInMyNamespace(".lastIniQ", NULL)
     .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
-    .meta <- new.env(parent=emptyenv())
+    .meta <- new.env(parent = emptyenv())
     if (!identical(envir, globalenv())) {
-      for (.i in ls(envir, all.names=TRUE)) {
+      for (.i in ls(envir, all.names = TRUE)) {
         if (.i != ".simModelBase") {
           assign(.i, get(.i, envir), .meta)
         }
@@ -376,10 +403,14 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     .mod$sticky <- character(0)
     .w <- which(!is.na(.mod$iniDf$err) & !is.na(.mod$iniDf$neta1))
     if (length(.w) > 0) {
-      stop("the parameter(s) '", paste(.mod$iniDf$name[.w], collapse="', '"), "' cannot be an error and between subject variability",
-           call.=FALSE)
+      stop(
+        "the parameter(s) '",
+        paste(.mod$iniDf$name[.w], collapse = "', '"),
+        "' cannot be an error and between subject variability",
+        call. = FALSE
+      )
     }
-    assign("modelName", .funName, envir=.mod)
+    assign("modelName", .funName, envir = .mod)
     class(.mod) <- "rxUi"
     ## let packages attach parse-time state to the freshly assembled ui.  This
     ## MUST run before rxUiCompress(): a compressed ui is a list, and
@@ -388,28 +419,36 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     .rxRunUiAssembledHooks(.mod)
     return(rxUiCompress(.mod))
   }
-  on.exit({.varSelect$cov <- NULL})
+  on.exit({
+    .varSelect$cov <- NULL
+  })
   UseMethod("model")
 }
 
 #' @export
 #' @rdname model
-model.default <- function(x, ..., append=FALSE, cov=NULL, envir=parent.frame()) {
+model.default <- function(x, ..., append = FALSE, cov = NULL, envir = parent.frame()) {
   stop("rxode2 does not know how to handle this model statement")
 }
 
 #' @export
-print.rxUi <-function(x, ...) {
+print.rxUi <- function(x, ...) {
   .md <- x$modelDesc
-  cat(cli::cli_format_method({
-    cli::cli_h1("{.md}")
-  }), "\n")
+  cat(
+    cli::cli_format_method({
+      cli::cli_h1("{.md}")
+    }),
+    "\n"
+  )
   .theta <- x$theta
   .omega <- x$omega
   if (length(x$iniDf$cond) > 0) {
-    cat(cli::cli_format_method({
-      cli::cli_h2("Initalization:")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("Initalization:")
+      }),
+      "\n"
+    )
   }
   if (length(.theta) > 0) {
     cat(paste0(crayon::bold("Fixed Effects"), " (", crayon::bold$blue("$theta"), "):"), "\n")
@@ -422,17 +461,23 @@ print.rxUi <-function(x, ...) {
     }
   }
   if (length(x$state) > 0) {
-    cat(paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"), "\n")
-    print(rxUiGet.stateDf(list(x,TRUE)))
+    cat(
+      paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"),
+      "\n"
+    )
+    print(rxUiGet.stateDf(list(x, TRUE)))
   }
   # Multiple Endpoint
   .me <- x$multipleEndpoint
   if (!is.null(.me)) {
     .met <- crayon::bold("Multiple Endpoint Model")
     .med <- crayon::bold$blue("$multipleEndpoint")
-    cat(cli::cli_format_method({
-      cli::cli_h2("{.met} ({.med}):")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("{.met} ({.med}):")
+      }),
+      "\n"
+    )
     print(.me)
     if (getOption("rxode2.combine.dvid", TRUE)) {
       cat("  * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc\n")
@@ -445,9 +490,12 @@ print.rxUi <-function(x, ...) {
   if (!is.null(.mu)) {
     .muU <- crayon::bold(paste0(ifelse(use.utf(), "\u03bc", "mu"), "-referencing"))
     .muR <- crayon::bold$blue("$muRefTable")
-    cat(cli::cli_format_method({
-      cli::cli_h2("{.muU} ({.muR}):")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("{.muU} ({.muR}):")
+      }),
+      "\n"
+    )
     print(.mu)
     cat("\n")
   }
@@ -502,15 +550,18 @@ print.rxUi <-function(x, ...) {
 #' print(is.environment(f))
 #'
 rxUiDecompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) return(ui)
-  if (is.environment(ui))  return(ui)
+  if (!inherits(ui, "rxUi")) {
+    return(ui)
+  }
+  if (is.environment(ui)) {
+    return(ui)
+  }
   if (inherits(ui, "raw")) {
     rxReq("qs")
-    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN",
-            call.=FALSE)
+    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN", call. = FALSE)
     .ret <- .Call(`_rxode2_qsDes`, ui)
   } else if (is.list(ui)) {
-    .ret <- list2env(ui, parent=emptyenv())
+    .ret <- list2env(ui, parent = emptyenv())
   }
   class(.ret) <- "rxUi"
   .ret
@@ -519,9 +570,11 @@ rxUiDecompress <- function(ui) {
 #' @rdname rxUiDecompress
 #' @export
 rxUiCompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) return(ui)
+  if (!inherits(ui, "rxUi")) {
+    return(ui)
+  }
   if (is.environment(ui)) {
-    .ls <- ls(ui, all.names=TRUE)
+    .ls <- ls(ui, all.names = TRUE)
     .ret <- lapply(.ls, function(nm) {
       get(nm, ui)
     })

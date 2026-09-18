@@ -20,8 +20,13 @@
 #
 # Usage: RXLIB=<libpath> taskset -c <idle core> Rscript bench/lincmt_focei_phi_ab.R
 RXLIB <- Sys.getenv("RXLIB", "")
-if (nzchar(RXLIB)) .libPaths(c(RXLIB, .libPaths()))
-suppressMessages({library(nlmixr2); library(nlmixr2data)})
+if (nzchar(RXLIB)) {
+  .libPaths(c(RXLIB, .libPaths()))
+}
+suppressMessages({
+  library(nlmixr2)
+  library(nlmixr2data)
+})
 rxode2::setRxThreads(1L)
 REPS <- as.integer(Sys.getenv("REPS", "3"))
 ITER <- as.integer(Sys.getenv("ITER", "20"))
@@ -30,15 +35,26 @@ cat("rxode2 from:", dirname(system.file(package = "rxode2")), "\n")
 
 set.seed(42)
 mkDat <- function(design, nSub = 40L, nObs = 100L) {
-  tim <- if (design == "uniform") seq(0.5, by = 0.5, length.out = nObs) else
+  tim <- if (design == "uniform") {
+    seq(0.5, by = 0.5, length.out = nObs)
+  } else {
     cumsum(runif(nObs, 0.15, 0.85))
+  }
   sim <- function() {
-    do.call(rbind, lapply(seq_len(nSub), function(i) {
-      d <- data.frame(ID = i, TIME = c(0, tim), DV = NA_real_,
-                      AMT = c(100, rep(NA_real_, length(tim))),
-                      EVID = c(1L, rep(0L, length(tim))), CMT = c(1L, rep(2L, length(tim))))
-      d
-    }))
+    do.call(
+      rbind,
+      lapply(seq_len(nSub), function(i) {
+        d <- data.frame(
+          ID = i,
+          TIME = c(0, tim),
+          DV = NA_real_,
+          AMT = c(100, rep(NA_real_, length(tim))),
+          EVID = c(1L, rep(0L, length(tim))),
+          CMT = c(1L, rep(2L, length(tim)))
+        )
+        d
+      })
+    )
   }
   d <- sim()
   m <- rxode2::rxode2({
@@ -46,11 +62,16 @@ mkDat <- function(design, nSub = 40L, nObs = 100L) {
     q <- exp(1.2); vp <- exp(3.9)
     cp <- linCmt()
   })
-  s <- rxode2::rxSolve(m, d[, c("ID", "TIME", "AMT", "EVID", "CMT")] |>
-                         setNames(c("id", "time", "amt", "evid", "cmt")),
-                       params = c(eta.ka = 0, eta.cl = 0, eta.v = 0),
-                       omega = lotri::lotri(eta.ka ~ 0.4, eta.cl ~ 0.3, eta.v ~ 0.2),
-                       addDosing = FALSE, returnType = "data.frame", cores = 1L)
+  s <- rxode2::rxSolve(
+    m,
+    d[, c("ID", "TIME", "AMT", "EVID", "CMT")] |>
+      setNames(c("id", "time", "amt", "evid", "cmt")),
+    params = c(eta.ka = 0, eta.cl = 0, eta.v = 0),
+    omega = lotri::lotri(eta.ka ~ 0.4, eta.cl ~ 0.3, eta.v ~ 0.2),
+    addDosing = FALSE,
+    returnType = "data.frame",
+    cores = 1L
+  )
   d$DV[d$EVID == 0L] <- s$cp * (1 + 0.15 * rnorm(sum(d$EVID == 0L)))
   names(d) <- c("id", "time", "dv", "amt", "evid", "cmt")
   d
@@ -76,20 +97,33 @@ for (design in c("uniform", "irregular")) {
     fitOnce <- function() {
       t0 <- proc.time()[["elapsed"]]
       f <- suppressWarnings(suppressMessages(
-        nlmixr2(mod, dat, "focei",
-                control = foceiControl(print = 0L, calcTables = FALSE,
-                                       maxOuterIterations = ITER,
-                                       rxControl = rxode2::rxControl(
-                                         linCmtSensType = "AD",
-                                         linCmtSensPhi = phi)))))
+        nlmixr2(
+          mod,
+          dat,
+          "focei",
+          control = foceiControl(
+            print = 0L,
+            calcTables = FALSE,
+            maxOuterIterations = ITER,
+            rxControl = rxode2::rxControl(
+              linCmtSensType = "AD",
+              linCmtSensPhi = phi
+            )
+          )
+        )
+      ))
       list(sec = proc.time()[["elapsed"]] - t0, objf = f$objDf$OBJF)
     }
     fitOnce()
     r <- lapply(seq_len(REPS), function(i) fitOnce())
     res[[length(res) + 1L]] <-
-      data.frame(design = design, phi = phi,
-                 sec = median(vapply(r, function(x) x$sec, 0)),
-                 objf = r[[1]]$objf, load = loadAvg())
+      data.frame(
+        design = design,
+        phi = phi,
+        sec = median(vapply(r, function(x) x$sec, 0)),
+        objf = r[[1]]$objf,
+        load = loadAvg()
+      )
   }
 }
 res <- do.call(rbind, res)

@@ -25,11 +25,17 @@
 #' @importFrom compiler cmpfun
 #' @examples
 #' rxode2parse("a=3")
-rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"), verbose=FALSE,
-                        code=NULL, envir=parent.frame()) {
+rxode2parse <- function(
+  model,
+  linear = FALSE,
+  linCmtSens = c("linCmtA", "linCmtB"),
+  verbose = FALSE,
+  code = NULL,
+  envir = parent.frame()
+) {
   rxParseSuppressMsg()
   .udfEnvSet(envir)
-  checkmate::assertCharacter(model, len=1, any.missing=FALSE)
+  checkmate::assertCharacter(model, len = 1, any.missing = FALSE)
   if (file.exists(model)) {
     .isStr <- 0L
   } else {
@@ -37,36 +43,57 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
   }
   modelPrefix <- ""
   fullPrint <- FALSE
-  md5 <-   digest::digest(model)
+  md5 <- digest::digest(model)
   .ret <- .Call(
-    `_rxode2_trans`, model, modelPrefix, md5, .isStr,
+    `_rxode2_trans`,
+    model,
+    modelPrefix,
+    md5,
+    .isStr,
     as.integer(crayon::has_color()),
-    "", .rxSupportedFuns(),
+    "",
+    .rxSupportedFuns(),
     fullPrint
   )
   if (linear && .isLinCmt()) {
     .vars <- c(.ret$params, .ret$lhs, .ret$slhs)
-    .ret <- .Call(`_rxode2_linCmtGen`,length(.ret$state), .vars,
-                  setNames(
-                    c(
-                      "linCmtA" = 1L, "linCmtB" = 2L
-                    )[match.arg(linCmtSens)],
-                    NULL
-                  ), verbose)
+    .ret <- .Call(
+      `_rxode2_linCmtGen`,
+      length(.ret$state),
+      .vars,
+      setNames(
+        c(
+          "linCmtA" = 1L,
+          "linCmtB" = 2L
+        )[match.arg(linCmtSens)],
+        NULL
+      ),
+      verbose
+    )
     md5 <- digest::digest(.ret)
-    .ret <- .Call(`_rxode2_trans`, .ret, modelPrefix, md5, .isStr,
-                  as.integer(crayon::has_color()),
-                  "", .rxSupportedFuns(),
-                  fullPrint)
+    .ret <- .Call(
+      `_rxode2_trans`,
+      .ret,
+      modelPrefix,
+      md5,
+      .isStr,
+      as.integer(crayon::has_color()),
+      "",
+      .rxSupportedFuns(),
+      fullPrint
+    )
   }
-  md5 <- c(file_md5 = md5, parsed_md5 = digest::digest(c(
-    .ret$model,
-    .ret$ini,
-    .ret$state,
-    .ret$params,
-    .ret$lhs,
-    .ret$alag
-  )))
+  md5 <- c(
+    file_md5 = md5,
+    parsed_md5 = digest::digest(c(
+      .ret$model,
+      .ret$ini,
+      .ret$state,
+      .ret$params,
+      .ret$lhs,
+      .ret$alag
+    ))
+  )
   .ret$timeId <- -1L
   .ret$md5 <- md5
   if (.isStr == 1L) {
@@ -82,116 +109,28 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     .libname <- c(.libname, .libname)
     .ret[[17]] <- list()
     .Call(
-      `_rxode2_codegen`, code, .prefix, .libname,
-            md5["parsed_md5"], "-1",
-      .ret, .rxSupportedFuns(), "", "", "", "", "", "", "", "", "", "", "", "", "")
+      `_rxode2_codegen`,
+      code,
+      .prefix,
+      .libname,
+      md5["parsed_md5"],
+      "-1",
+      .ret,
+      .rxSupportedFuns(),
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    )
   }
   .ret
-}
-
-rxode2parseFuns <- function() {
-  if (!requireNamespace("devtools", quietly = TRUE)) {
-    stop("this requires devtools", call.=FALSE)
-  }
-  message("rebuild parseFuns.R from rxode2")
-  try(source(devtools::package_file("build/refresh.R")), silent=TRUE)
-  message("done")
-  ""
-}
-
-#' This assigns the c level linkages for a roxde2 model
-#'
-#' @param df data frame containing the character column names rxFun,
-#'   fun, type, package, packageFun and the integer column names
-#'   argMin and argMax
-#' @return Nothing called for side effects
-#' @author Matthew L. Fidler
-#' @export
-#' @examples
-#'
-#' rxode2parseAssignTranslation(rxode2parseGetTranslation())
-#'
-rxode2parseAssignTranslation <- function(df) {
-  .char <- c("rxFun", "fun", "type", "package", "packageFun")
-  .int <- c("argMin", "argMax", "threadSafe")
-  .df <- df[,c(.char, .int)]
-  for (.c in .char) {
-    .df[[.c]] <- as.character(.df[[.c]])
-  }
-  for (.i in .int) {
-    .df[[.i]] <- as.integer(.df[[.i]])
-  }
-  assign(".rxode2parseDf", .df, envir=.parseEnv)
-  invisible(.df)
-}
-
-#' This function gets the currently assigned translations
-#'
-#' @return The currently assigned translations
-#' @author Matthew L. Fidler
-#' @export
-#' @examples
-#' rxode2parseGetTranslation()
-rxode2parseGetTranslation <- function() {
-  .parseEnv$.rxode2parseDf
-}
-
-rxode2parseGetTranslationBuiltin <- function() {
-  data.frame(n=names(.parseEnv$.parseNum), i=as.integer(setNames(.parseEnv$.parseNum, NULL)))
-}
-
-
-.parseEnv$.packagesToLoad <- c("rxode2ll", "lotri")
-
-#'@rdname rxode2parseAssignPackagesToLoad
-#'@export
-rxode2parseGetPackagesToLoad <- function() {
-  .parseEnv$.packagesToLoad
-}
-
-#' Control the packages that are loaded when a `rxode2` model dll is loaded
-#'
-#' @param pkgs The packages to make sure are loaded every time you load an rxode2 model.
-#' @return List of packages to load
-#' @author Matthew Fidler
-#' @examples
-#'
-#' rxode2parseGetPackagesToLoad()
-#'
-#' rxode2parseAssignPackagesToLoad(rxode2parseGetPackagesToLoad())
-#' @export
-rxode2parseAssignPackagesToLoad <- function(pkgs=rxode2parseGetPackagesToLoad()) {
-  assign(".packagesToLoad", pkgs, envir=.parseEnv)
-  pkgs
-}
-
-
-.parseEnv$.rxode2parsePointerAssignment <- "rxode2"
-
-#' This function gets the currently assigned function pointer assignments
-#'
-#' @return The currently assigned pointer assignments
-#' @author Matthew L. Fidler
-#' @export
-#' @examples
-#' rxode2parseGetTranslation()
-rxode2parseGetPointerAssignment <- function() {
-  .parseEnv$.rxode2parsePointerAssignment
-}
-
-
-#' This sets function gets the currently assigned function pointer assignments
-#'
-#' @param var List of packages where pointer assignment will be called.
-#'
-#' @return Nothing, called for side effects
-#' @author Matthew L. Fidler
-#' @keywords internal
-#' @export
-#' @examples
-#' rxode2parseAssignPointerTranslation("rxode2")
-rxode2parseAssignPointerTranslation <- function(var) {
-  checkmate::assertCharacter(var)
-  assign(".rxode2parsePointerAssignment", var, envir=.parseEnv)
-  invisible()
 }

@@ -50,9 +50,7 @@ summary.rxDll <- function(object, ...) {
   cat(sprintf("DLL: %s\n", getOption("rxode2.dll.print", rxode2::rxDll(object))))
   cat(sprintf(
     "Jacobian: %s\n",
-    ifelse(rxode2::rxModelVars(object)$jac == "fulluser", "Full User Specified",
-      "Full Internally Calculated"
-    )
+    ifelse(rxode2::rxModelVars(object)$jac == "fulluser", "Full User Specified", "Full Internally Calculated")
   ))
   print(coef(object))
   if (length(rxode2::rxLhs(object)) > 0) {
@@ -61,9 +59,12 @@ summary.rxDll <- function(object, ...) {
   }
   .mv <- rxModelVars(object)
   if (length(.mv$indLin) > 0) {
-    cat(cli::cli_format_method({
-      .h2("Inductive Linearization Matrix/Matrices:")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        .h2("Inductive Linearization Matrix/Matrices:")
+      }),
+      "\n"
+    )
     print(.mv$indLin)
   }
   if (!is.na(object$linCmtM)) {
@@ -80,9 +81,12 @@ summary.rxDll <- function(object, ...) {
 #' @export
 summary.rxSolve <- function(object, ...) {
   if (rxIs(object, "rxSolve")) {
-    cat(cli::cli_format_method({
-      .h2(crayon::bold("Summary of Solved rxode2 object"))
-    }), sep = "\n")
+    cat(
+      cli::cli_format_method({
+        .h2(crayon::bold("Summary of Solved rxode2 object"))
+      }),
+      sep = "\n"
+    )
     .model <- object$model
     print(.model, .summary = TRUE)
     print(object, .summary = TRUE, ...)

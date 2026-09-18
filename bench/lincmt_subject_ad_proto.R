@@ -89,8 +89,7 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 
 .report <- function(name, worst, tol = .protoTol) {
   pass <- is.finite(worst) && worst <= tol
-  message(sprintf("%-55s worst|diff| = %.3e -> %s", name, worst,
-                  if (pass) "PASS" else "FAIL"))
+  message(sprintf("%-55s worst|diff| = %.3e -> %s", name, worst, if (pass) "PASS" else "FAIL"))
   invisible(list(name = name, worst = worst, pass = pass))
 }
 
@@ -109,12 +108,27 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     oracleJ[[iv]] <- s$J
     alast <- s$Alast
   }
-  proto <- .Call(`_rxode2_linCmtSubjectReverseADProto`,
-                 rep(dt, nIv), amt,
-                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                 cfg$rate, cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  proto <- .Call(
+    `_rxode2_linCmtSubjectReverseADProto`,
+    rep(dt, nIv),
+    amt,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$rate,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (iv in seq_len(nIv)) worst <- max(worst, max(abs(oracleJ[[iv]] - proto[[iv]]$J)))
+  for (iv in seq_len(nIv)) {
+    worst <- max(worst, max(abs(oracleJ[[iv]] - proto[[iv]]$J)))
+  }
   .report(sprintf("reverseADProto[%s]", cfg$name), worst)
 }
 
@@ -134,12 +148,27 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     oracleJ[[iv]] <- s$J
     alast <- s$Alast
   }
-  proto <- .Call(`_rxode2_linCmtSubjectReverseADBatchProto`,
-                 rep(dt, nIv), amt,
-                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                 cfg$rate, cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  proto <- .Call(
+    `_rxode2_linCmtSubjectReverseADBatchProto`,
+    rep(dt, nIv),
+    amt,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$rate,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (iv in seq_len(nIv)) worst <- max(worst, max(abs(oracleJ[[iv]] - proto[[iv]]$J)))
+  for (iv in seq_len(nIv)) {
+    worst <- max(worst, max(abs(oracleJ[[iv]] - proto[[iv]]$J)))
+  }
   .report(sprintf("reverseADBatchProto[%s]", cfg$name), worst)
 }
 
@@ -161,18 +190,37 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   oracleJ <- vector("list", length(obsT))
   for (i in seq_along(obsT)) {
     doseIdx <- which(abs(doseT - tPrev) < 1e-9 & !given)
-    for (di in doseIdx) { alast[1] <- alast[1] + doseAmt[di]; given[di] <- TRUE }
+    for (di in doseIdx) {
+      alast[1] <- alast[1] + doseAmt[di]
+      given[di] <- TRUE
+    }
     s <- .linCmtCall(obsT[i] - tPrev, cfg, alast, sensType = 3L)
     oracleJ[[i]] <- s$J
     alast <- s$Alast
     tPrev <- obsT[i]
   }
-  proto <- .Call(`_rxode2_linCmtSubjectSuperpositionADProto`,
-                 obsT, doseT, doseAmt, doseDur,
-                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                 cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  proto <- .Call(
+    `_rxode2_linCmtSubjectSuperpositionADProto`,
+    obsT,
+    doseT,
+    doseAmt,
+    doseDur,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (i in seq_along(obsT)) worst <- max(worst, max(abs(oracleJ[[i]] - proto[[i]]$J)))
+  for (i in seq_along(obsT)) {
+    worst <- max(worst, max(abs(oracleJ[[i]] - proto[[i]]$J)))
+  }
   .report(sprintf("superposition(bolus)[%s]", cfg$name), worst)
 }
 
@@ -184,13 +232,25 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 # ---------------------------------------------------------------------------
 .checkSuperpositionMixed <- function(cfg, dt = 0.4) {
   nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
-  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
-              ka = cfg$ka, rate = rep(0, cfg$nstate),
-              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+  cfgR <- list(
+    p1 = cfg$p1,
+    v1 = cfg$v1,
+    p2 = cfg$p2,
+    p3 = cfg$p3,
+    p4 = cfg$p4,
+    p5 = cfg$p5,
+    ka = cfg$ka,
+    rate = rep(0, cfg$nstate),
+    ncmt = cfg$ncmt,
+    oral0 = cfg$oral0,
+    trans = cfg$trans
+  )
 
   obsT <- c(0.5, 2.5, 3.5, 5.0)
-  tinf <- 2.0; infAmt <- 100
-  boluT <- 3.0; boluAmt <- 50
+  tinf <- 2.0
+  infAmt <- 100
+  boluT <- 3.0
+  boluAmt <- 50
 
   alast <- numeric(nAlast)
   tPrev <- 0
@@ -203,22 +263,45 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     for (st in steps) {
       thisRate <- cfgR
       thisRate$rate <- if (tPrev < tinf - 1e-9) {
-        r <- rep(0, cfg$nstate); r[1] <- infAmt / tinf; r
-      } else rep(0, cfg$nstate)
+        r <- rep(0, cfg$nstate)
+        r[1] <- infAmt / tinf
+        r
+      } else {
+        rep(0, cfg$nstate)
+      }
       s <- .linCmtCall(st - tPrev, thisRate, alast, sensType = 3L)
       alast <- s$Alast
-      if (abs(st - boluT) < 1e-9 && !boluGiven) { alast[1] <- alast[1] + boluAmt; boluGiven <- TRUE }
+      if (abs(st - boluT) < 1e-9 && !boluGiven) {
+        alast[1] <- alast[1] + boluAmt
+        boluGiven <- TRUE
+      }
       tPrev <- st
     }
     oracleJ[[i]] <- s$J
   }
 
-  proto <- .Call(`_rxode2_linCmtSubjectSuperpositionADProto`,
-                 obsT, c(0, boluT), c(infAmt, boluAmt), c(tinf, 0),
-                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                 cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  proto <- .Call(
+    `_rxode2_linCmtSubjectSuperpositionADProto`,
+    obsT,
+    c(0, boluT),
+    c(infAmt, boluAmt),
+    c(tinf, 0),
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (i in seq_along(obsT)) worst <- max(worst, max(abs(oracleJ[[i]] - proto[[i]]$J)))
+  for (i in seq_along(obsT)) {
+    worst <- max(worst, max(abs(oracleJ[[i]] - proto[[i]]$J)))
+  }
   .report(sprintf("superposition(infusion+bolus)[%s]", cfg$name), worst)
 }
 
@@ -233,35 +316,62 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 #    silently breaks the isolation it does provide) shows up as a failure.
 # ---------------------------------------------------------------------------
 .checkTimeVaryingOwnThetaOnly <- function(cfg, dt1 = 1.0, dt2 = 1.5, scale = 1.6) {
-  base <- if (cfg$ncmt == 1 && cfg$oral0 == 0) c(cfg$p1, cfg$v1)
-          else if (cfg$ncmt == 1 && cfg$oral0 == 1) c(cfg$p1, cfg$v1, cfg$ka)
-          else if (cfg$ncmt == 2 && cfg$oral0 == 0) c(cfg$p1, cfg$v1, cfg$p2, cfg$p3)
-          else if (cfg$ncmt == 2 && cfg$oral0 == 1) c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$ka)
-          else if (cfg$ncmt == 3 && cfg$oral0 == 0) c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5)
-          else c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka)
+  base <- if (cfg$ncmt == 1 && cfg$oral0 == 0) {
+    c(cfg$p1, cfg$v1)
+  } else if (cfg$ncmt == 1 && cfg$oral0 == 1) {
+    c(cfg$p1, cfg$v1, cfg$ka)
+  } else if (cfg$ncmt == 2 && cfg$oral0 == 0) {
+    c(cfg$p1, cfg$v1, cfg$p2, cfg$p3)
+  } else if (cfg$ncmt == 2 && cfg$oral0 == 1) {
+    c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$ka)
+  } else if (cfg$ncmt == 3 && cfg$oral0 == 0) {
+    c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5)
+  } else {
+    c(cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka)
+  }
   npars <- length(base)
-  theta1 <- base; theta2 <- base; theta2[1] <- base[1] * scale
+  theta1 <- base
+  theta2 <- base
+  theta2[1] <- base[1] * scale
 
   mkCfg <- function(th) {
-    list(p1 = th[1], v1 = th[2],
-        p2 = if (cfg$ncmt >= 2) th[3] else 0, p3 = if (cfg$ncmt >= 2) th[4] else 0,
-        p4 = if (cfg$ncmt >= 3) th[5] else 0, p5 = if (cfg$ncmt >= 3) th[6] else 0,
-        ka = if (cfg$oral0) th[npars] else 0,
-        rate = cfg$rate, ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+    list(
+      p1 = th[1],
+      v1 = th[2],
+      p2 = if (cfg$ncmt >= 2) th[3] else 0,
+      p3 = if (cfg$ncmt >= 2) th[4] else 0,
+      p4 = if (cfg$ncmt >= 3) th[5] else 0,
+      p5 = if (cfg$ncmt >= 3) th[6] else 0,
+      ka = if (cfg$oral0) th[npars] else 0,
+      rate = cfg$rate,
+      ncmt = cfg$ncmt,
+      oral0 = cfg$oral0,
+      trans = cfg$trans
+    )
   }
   a <- .linCmtCall(dt1, mkCfg(theta1), cfg$alast0, sensType = 3L)
   fdStep <- function(t2) .linCmtCall(dt2, mkCfg(t2), a$Alast, sensType = 3L)$val
   h <- 1e-5
   fdGrad <- sapply(seq_len(npars), function(k) {
-    tp <- theta2; tp[k] <- tp[k] + h
-    tm <- theta2; tm[k] <- tm[k] - h
+    tp <- theta2
+    tp[k] <- tp[k] + h
+    tm <- theta2
+    tm[k] <- tm[k] - h
     (fdStep(tp) - fdStep(tm)) / (2 * h)
   })
 
   thetaMat <- matrix(c(theta1, theta2), nrow = 2, byrow = TRUE)
-  tv <- .Call(`_rxode2_linCmtSubjectReverseADTimeVaryingProto`,
-             c(dt1, dt2), c(100, 0), thetaMat, cfg$rate,
-             cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  tv <- .Call(
+    `_rxode2_linCmtSubjectReverseADTimeVaryingProto`,
+    c(dt1, dt2),
+    c(100, 0),
+    thetaMat,
+    cfg$rate,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   centralIdx <- cfg$oral0 + 1
   fxCentral <- tv[[2]]$val[centralIdx]
   protoGrad <- tv[[2]]$J[centralIdx, ] / cfg$v1
@@ -278,20 +388,55 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 #    sensitivity" a continuously-integrated ODE sensitivity state would also
 #    produce, unlike check #5 above.
 # ---------------------------------------------------------------------------
-.checkEtaCovariateFix <- function(dt1 = 1.0, dt2 = 1.5, tcl = 1.0, tv = 20,
-                                  refCov = 70, covExp = 0.75,
-                                  cov1 = 70, cov2 = 90, eta0 = 0.1) {
+.checkEtaCovariateFix <- function(
+  dt1 = 1.0,
+  dt2 = 1.5,
+  tcl = 1.0,
+  tv = 20,
+  refCov = 70,
+  covExp = 0.75,
+  cov1 = 70,
+  cov2 = 90,
+  eta0 = 0.1
+) {
   runSeqVal <- function(eta) {
-    .Call(`_rxode2_linCmtSubjectReverseADEtaCovariateProto`,
-         c(dt1, dt2), c(100, 0), c(cov1, cov2), tcl, tv, refCov, covExp, eta)[[2]]$val
+    .Call(
+      `_rxode2_linCmtSubjectReverseADEtaCovariateProto`,
+      c(dt1, dt2),
+      c(100, 0),
+      c(cov1, cov2),
+      tcl,
+      tv,
+      refCov,
+      covExp,
+      eta
+    )[[2]]$val
   }
   h <- 1e-6
   fdDeta <- (runSeqVal(eta0 + h) - runSeqVal(eta0 - h)) / (2 * h)
 
-  rev <- .Call(`_rxode2_linCmtSubjectReverseADEtaCovariateProto`,
-              c(dt1, dt2), c(100, 0), c(cov1, cov2), tcl, tv, refCov, covExp, eta0)
-  fwd <- .Call(`_rxode2_linCmtSubjectForwardADEtaCovariateProto`,
-              c(dt1, dt2), c(100, 0), c(cov1, cov2), tcl, tv, refCov, covExp, eta0)
+  rev <- .Call(
+    `_rxode2_linCmtSubjectReverseADEtaCovariateProto`,
+    c(dt1, dt2),
+    c(100, 0),
+    c(cov1, cov2),
+    tcl,
+    tv,
+    refCov,
+    covExp,
+    eta0
+  )
+  fwd <- .Call(
+    `_rxode2_linCmtSubjectForwardADEtaCovariateProto`,
+    c(dt1, dt2),
+    c(100, 0),
+    c(cov1, cov2),
+    tcl,
+    tv,
+    refCov,
+    covExp,
+    eta0
+  )
 
   r1 <- .report("etaCovariate(reverse) vs FD-on-eta", abs(rev[[2]]$dEta - fdDeta), tol = 1e-5)
   r2 <- .report("etaCovariate(forward) vs FD-on-eta", abs(fwd[[2]]$dEta - fdDeta), tol = 1e-5)
@@ -307,9 +452,19 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 # ---------------------------------------------------------------------------
 .checkHybridDoseObs <- function(cfg, nDosesP1 = 10, dtDose = 0.5, nObsP2 = 8, dtObs = 0.4) {
   nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
-  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
-              ka = cfg$ka, rate = rep(0, cfg$nstate),
-              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+  cfgR <- list(
+    p1 = cfg$p1,
+    v1 = cfg$v1,
+    p2 = cfg$p2,
+    p3 = cfg$p3,
+    p4 = cfg$p4,
+    p5 = cfg$p5,
+    ka = cfg$ka,
+    rate = rep(0, cfg$nstate),
+    ncmt = cfg$ncmt,
+    oral0 = cfg$oral0,
+    trans = cfg$trans
+  )
 
   phase1Dt <- rep(dtDose, nDosesP1)
   phase1Amt <- rep(100, nDosesP1)
@@ -322,7 +477,8 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   }
   obsT <- dtObs * seq_len(nObsP2)
   oracleJ <- vector("list", nObsP2)
-  aTmp <- alast; tPrev <- 0
+  aTmp <- alast
+  tPrev <- 0
   for (i in seq_len(nObsP2)) {
     s <- .linCmtCall(obsT[i] - tPrev, cfgR, aTmp, sensType = 3L)
     oracleJ[[i]] <- s$J
@@ -330,13 +486,31 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     tPrev <- obsT[i]
   }
 
-  hyb <- .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-              phase1Dt, phase1Amt, rep(0, nDosesP1),
-              obsT, numeric(0), numeric(0), numeric(0),
-              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  hyb <- .Call(
+    `_rxode2_linCmtSubjectHybridDoseObsADProto`,
+    phase1Dt,
+    phase1Amt,
+    rep(0, nDosesP1),
+    obsT,
+    numeric(0),
+    numeric(0),
+    numeric(0),
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (i in seq_len(nObsP2)) worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
+  for (i in seq_len(nObsP2)) {
+    worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
+  }
   .report(sprintf("hybridDoseObs[%s]", cfg$name), worst)
 }
 
@@ -347,13 +521,31 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
 #    dense observations plus one additional infusion dose (exercising the
 #    two-phase during/after decomposition alongside the phase-1 bridge term).
 # ---------------------------------------------------------------------------
-.checkHybridDoseObsInfusion <- function(cfg, nInfP1 = 6, dtInf = 1.0, infDur = 0.5,
-                                        nObsP2 = 8, dtObs = 0.3,
-                                        p2InfStart = 1.2, p2InfDur = 0.8, p2InfAmt = 80) {
+.checkHybridDoseObsInfusion <- function(
+  cfg,
+  nInfP1 = 6,
+  dtInf = 1.0,
+  infDur = 0.5,
+  nObsP2 = 8,
+  dtObs = 0.3,
+  p2InfStart = 1.2,
+  p2InfDur = 0.8,
+  p2InfAmt = 80
+) {
   nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
-  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
-              ka = cfg$ka, rate = rep(0, cfg$nstate),
-              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+  cfgR <- list(
+    p1 = cfg$p1,
+    v1 = cfg$v1,
+    p2 = cfg$p2,
+    p3 = cfg$p3,
+    p4 = cfg$p4,
+    p5 = cfg$p5,
+    ka = cfg$ka,
+    rate = rep(0, cfg$nstate),
+    ncmt = cfg$ncmt,
+    oral0 = cfg$oral0,
+    trans = cfg$trans
+  )
 
   # Phase 1: nInfP1 repeated infusions, each infDur long, dtInf apart (infusion
   # starts, not doses), via the oracle's own sequential rate-on/rate-off steps.
@@ -361,7 +553,12 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   tPrev <- 0
   for (rep_ in seq_len(nInfP1)) {
     infStart <- (rep_ - 1) * dtInf
-    rOn <- cfgR; rOn$rate <- { r <- rep(0, cfg$nstate); r[1] <- 100 / infDur; r }
+    rOn <- cfgR
+    rOn$rate <- {
+      r <- rep(0, cfg$nstate)
+      r[1] <- 100 / infDur
+      r
+    }
     s <- .linCmtCall(infDur, rOn, alast, sensType = 3L)
     alast <- s$Alast
     rOff <- cfgR # rate=0
@@ -374,7 +571,10 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   # p2InfStart (relative to phase-1 end), lasting p2InfDur.
   obsT <- dtObs * seq_len(nObsP2)
   oracleJ <- vector("list", nObsP2)
-  aTmp <- alast; tPrev <- 0; infGiven <- FALSE; infDone <- FALSE
+  aTmp <- alast
+  tPrev <- 0
+  infGiven <- FALSE
+  infDone <- FALSE
   for (i in seq_len(nObsP2)) {
     to <- obsT[i]
     steps <- sort(unique(c(p2InfStart, p2InfStart + p2InfDur, to)))
@@ -382,8 +582,12 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     for (st in steps) {
       thisRate <- cfgR
       thisRate$rate <- if (tPrev >= p2InfStart - 1e-9 && tPrev < p2InfStart + p2InfDur - 1e-9) {
-        r <- rep(0, cfg$nstate); r[1] <- p2InfAmt / p2InfDur; r
-      } else rep(0, cfg$nstate)
+        r <- rep(0, cfg$nstate)
+        r[1] <- p2InfAmt / p2InfDur
+        r
+      } else {
+        rep(0, cfg$nstate)
+      }
       s <- .linCmtCall(st - tPrev, thisRate, aTmp, sensType = 3L)
       aTmp <- s$Alast
       tPrev <- st
@@ -396,13 +600,31 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   phase1Amt <- rep(0, length(phase1Dt))
   phase1Rate <- as.vector(rbind(rep(100 / infDur, nInfP1), rep(0, nInfP1)))
 
-  hyb <- .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-              phase1Dt, phase1Amt, phase1Rate,
-              obsT, p2InfStart, p2InfAmt, p2InfDur,
-              cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-              cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  hyb <- .Call(
+    `_rxode2_linCmtSubjectHybridDoseObsADProto`,
+    phase1Dt,
+    phase1Amt,
+    phase1Rate,
+    obsT,
+    p2InfStart,
+    p2InfAmt,
+    p2InfDur,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
-  for (i in seq_len(nObsP2)) worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
+  for (i in seq_len(nObsP2)) {
+    worst <- max(worst, max(abs(oracleJ[[i]] - hyb[[i]]$J)))
+  }
   .report(sprintf("hybridDoseObs(infusion, both phases)[%s]", cfg$name), worst)
 }
 
@@ -436,17 +658,26 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
     modLines <- c(modLines, "ka<-exp(tka)")
   }
   iniLines <- c(iniLines, "add.sd<-0.1")
-  txt <- sprintf("function() { ini({ %s }); model({ %s; cp <- linCmt(); cp ~ add(add.sd) }) }",
-                paste(iniLines, collapse = "; "), paste(modLines, collapse = "; "))
+  txt <- sprintf(
+    "function() { ini({ %s }); model({ %s; cp <- linCmt(); cp ~ add(add.sd) }) }",
+    paste(iniLines, collapse = "; "),
+    paste(modLines, collapse = "; ")
+  )
   eval(parse(text = txt))
 }
 
 .stateNamesFor <- function(cfg) {
   nm <- character(0)
-  if (cfg$oral0) nm <- c(nm, "depot")
+  if (cfg$oral0) {
+    nm <- c(nm, "depot")
+  }
   nm <- c(nm, "central")
-  if (cfg$ncmt >= 2) nm <- c(nm, "peripheral1")
-  if (cfg$ncmt >= 3) nm <- c(nm, "peripheral2")
+  if (cfg$ncmt >= 2) {
+    nm <- c(nm, "peripheral1")
+  }
+  if (cfg$ncmt >= 3) {
+    nm <- c(nm, "peripheral2")
+  }
   nm
 }
 
@@ -456,14 +687,33 @@ suppressMessages(requireNamespace("rxode2", quietly = TRUE))
   f <- .buildLinCmtOdeUi(cfg)
   odeUi <- suppressMessages(rxode2::linToOde(f))
   odeMod <- suppressMessages(rxode2::rxode2(odeUi))
-  proto <- .Call(`_rxode2_linCmtAlastTransitionMatrixProto`,
-                 cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                 cfg$rate, dt, cfg$ncmt, cfg$oral0, cfg$trans)
+  proto <- .Call(
+    `_rxode2_linCmtAlastTransitionMatrixProto`,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$rate,
+    dt,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans
+  )
   worst <- 0
   for (j in seq_len(m)) {
-    ic <- stats::setNames(numeric(m), nm); ic[j] <- 1
-    s <- suppressMessages(rxode2::rxSolve(odeMod, events = rxode2::et(0, dt, length.out = 2), inits = ic,
-                                          useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12))
+    ic <- stats::setNames(numeric(m), nm)
+    ic[j] <- 1
+    s <- suppressMessages(rxode2::rxSolve(
+      odeMod,
+      events = rxode2::et(0, dt, length.out = 2),
+      inits = ic,
+      useLinCmt = FALSE,
+      atol = 1e-12,
+      rtol = 1e-12
+    ))
     if (j == 1 && any(grepl("linCmt", rxode2::rxModelVars(s)$model["normModel"]))) {
       stop("transition-matrix reference was routed back through linCmt(); not an independent check")
     }
@@ -481,17 +731,39 @@ runLinCmtSubjectADProtoTests <- function() {
   results <- list()
   add <- function(r) results[[length(results) + 1]] <<- r
 
-  for (cfg in configs) add(.checkReverseADProto(cfg))
-  for (cfg in configs) add(.checkReverseADBatchProto(cfg))
-  for (cfg in configs) add(.checkSuperpositionBolus(cfg))
-  for (cfg in configs) add(.checkSuperpositionMixed(cfg))
-  for (cfg in configs) add(.checkTimeVaryingOwnThetaOnly(cfg))
-  for (r in .checkEtaCovariateFix()) add(r)
-  for (cfg in configs) add(.checkHybridDoseObs(cfg))
-  for (cfg in configs) add(.checkHybridDoseObsInfusion(cfg))
-  for (cfg in configs) add(.checkTransitionMatrix(cfg))
-  for (cfg in configs) add(.checkSuperpositionFwdBolus(cfg))
-  for (cfg in configs) add(.checkSuperpositionFwdMixed(cfg))
+  for (cfg in configs) {
+    add(.checkReverseADProto(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkReverseADBatchProto(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkSuperpositionBolus(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkSuperpositionMixed(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkTimeVaryingOwnThetaOnly(cfg))
+  }
+  for (r in .checkEtaCovariateFix()) {
+    add(r)
+  }
+  for (cfg in configs) {
+    add(.checkHybridDoseObs(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkHybridDoseObsInfusion(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkTransitionMatrix(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkSuperpositionFwdBolus(cfg))
+  }
+  for (cfg in configs) {
+    add(.checkSuperpositionFwdMixed(cfg))
+  }
 
   pass <- vapply(results, function(r) isTRUE(r$pass), logical(1))
   message(sprintf("\n%d/%d checks passed", sum(pass), length(pass)))
@@ -505,19 +777,45 @@ runLinCmtSubjectADProtoTests <- function() {
 #     both bolus-only and mixed infusion+bolus regimens.
 # ---------------------------------------------------------------------------
 .checkSuperpositionFwd <- function(cfg, obsT, doseT, doseAmt, doseDur, label) {
-  rev <- .Call(`_rxode2_linCmtSubjectSuperpositionADProto`,
-               obsT, doseT, doseAmt, doseDur,
-               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
-  fwd <- .Call(`_rxode2_linCmtSubjectSuperpositionFwdADProto`,
-               obsT, doseT, doseAmt, doseDur,
-               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+  rev <- .Call(
+    `_rxode2_linCmtSubjectSuperpositionADProto`,
+    obsT,
+    doseT,
+    doseAmt,
+    doseDur,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
+  fwd <- .Call(
+    `_rxode2_linCmtSubjectSuperpositionFwdADProto`,
+    obsT,
+    doseT,
+    doseAmt,
+    doseDur,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    0L
+  )
   worst <- 0
   for (i in seq_along(obsT)) {
-    worst <- max(worst,
-                 max(abs(rev[[i]]$val - fwd[[i]]$val)),
-                 max(abs(rev[[i]]$J - fwd[[i]]$J)))
+    worst <- max(worst, max(abs(rev[[i]]$val - fwd[[i]]$val)), max(abs(rev[[i]]$J - fwd[[i]]$J)))
   }
   .report(sprintf("%s[%s]", label, cfg$name), worst)
 }
@@ -525,13 +823,18 @@ runLinCmtSubjectADProtoTests <- function() {
 .checkSuperpositionFwdBolus <- function(cfg, nDose = 6, nObsPerDose = 2, dt = 0.7) {
   doseT <- seq(0, by = dt * nObsPerDose, length.out = nDose)
   obsT <- sort(unique(c(doseT, as.vector(outer(doseT, dt * seq_len(nObsPerDose - 1), "+")))))
-  .checkSuperpositionFwd(cfg, obsT, doseT, rep(100, nDose), rep(0, nDose),
-                         "superpositionFwd(bolus)")
+  .checkSuperpositionFwd(cfg, obsT, doseT, rep(100, nDose), rep(0, nDose), "superpositionFwd(bolus)")
 }
 
 .checkSuperpositionFwdMixed <- function(cfg) {
-  .checkSuperpositionFwd(cfg, c(0.5, 2.5, 3.5, 5.0), c(0, 3.0), c(100, 50),
-                         c(2.0, 0), "superpositionFwd(infusion+bolus)")
+  .checkSuperpositionFwd(
+    cfg,
+    c(0.5, 2.5, 3.5, 5.0),
+    c(0, 3.0),
+    c(100, 50),
+    c(2.0, 0),
+    "superpositionFwd(infusion+bolus)"
+  )
 }
 
 # ---------------------------------------------------------------------------
@@ -544,7 +847,11 @@ benchLinCmtSubjectADProto <- function() {
   dt <- 0.3
 
   timeIt <- function(callExpr, reps = 10) {
-    t <- system.time(for (r in seq_len(reps)) eval(callExpr))["elapsed"]
+    t <- system.time(
+      for (r in seq_len(reps)) {
+        eval(callExpr)
+      }
+    )["elapsed"]
     t / reps
   }
 
@@ -567,13 +874,14 @@ benchLinCmtSubjectADProto <- function() {
             cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
             cfg$ncmt, cfg$oral0, cfg$trans, 0L)
     }))
-    cat(sprintf("  n=%4d  forward=%.5fs  reverse-seq(O(n^2))=%.5fs  superposition=%.5fs\n",
-                n, tf, ts, tsup))
+    cat(sprintf("  n=%4d  forward=%.5fs  reverse-seq(O(n^2))=%.5fs  superposition=%.5fs\n", n, tf, ts, tsup))
   }
 
   cat("\n=== superposition worst case: one new dose per observation (dense multi-dosing) ===\n")
   for (n in c(20, 50, 100)) {
-    obsT <- dt * seq_len(n); doseT <- obsT - dt; doseAmt <- rep(100, n)
+    obsT <- dt * seq_len(n)
+    doseT <- obsT - dt
+    doseAmt <- rep(100, n)
     tf <- timeIt(quote({
       alast <- cfg$alast0
       for (iv in seq_len(n)) { s <- .linCmtCall(dt, cfg, alast, sensType = 30L); alast <- s$Alast }
@@ -583,12 +891,18 @@ benchLinCmtSubjectADProto <- function() {
             cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
             cfg$ncmt, cfg$oral0, cfg$trans, 0L)
     }))
-    cat(sprintf("  n=%4d  forward=%.5fs  superposition(worst case)=%.5fs  %s\n",
-                n, tf, tsup, if (tsup > tf) "-- forward wins here, as expected" else ""))
+    cat(sprintf(
+      "  n=%4d  forward=%.5fs  superposition(worst case)=%.5fs  %s\n",
+      n,
+      tf,
+      tsup,
+      if (tsup > tf) "-- forward wins here, as expected" else ""
+    ))
   }
 
   cat("\n=== phase-aware hybrid: scaling doses and observations independently ===\n")
-  dtDose <- 0.5; dtObs <- 0.2
+  dtDose <- 0.5
+  dtObs <- 0.2
   cat("-- scaling doses (nObs fixed=20) --\n")
   for (nDoses in c(10, 50, 100, 200)) {
     th <- timeIt(quote({
@@ -625,7 +939,10 @@ benchLinCmtSubjectADProto <- function() {
   }
 
   cat("\n=== eta-covariate fix: forward vs reverse cost, time-varying covariate ===\n")
-  tcl <- 1.0; tv <- 20; refCov <- 70; covExp <- 0.75
+  tcl <- 1.0
+  tv <- 20
+  refCov <- 70
+  covExp <- 0.75
   for (n in c(20, 50, 100, 200, 400)) {
     obsT <- dt * seq_len(n)
     cov <- ifelse(obsT < obsT[length(obsT)] / 2, 70, 90)
@@ -634,8 +951,7 @@ benchLinCmtSubjectADProto <- function() {
                               rep(dt, n), amt, cov, tcl, tv, refCov, covExp, 0.1)))
     trev <- timeIt(quote(.Call(`_rxode2_linCmtSubjectReverseADEtaCovariateProto`,
                               rep(dt, n), amt, cov, tcl, tv, refCov, covExp, 0.1)))
-    cat(sprintf("  n=%4d  forward-eta=%.5fs  reverse-eta=%.5fs  ratio(rev/fwd)=%.1fx\n",
-                n, tfwd, trev, trev / tfwd))
+    cat(sprintf("  n=%4d  forward-eta=%.5fs  reverse-eta=%.5fs  ratio(rev/fwd)=%.1fx\n", n, tfwd, trev, trev / tfwd))
   }
   invisible(NULL)
 }
@@ -650,7 +966,11 @@ benchLinCmtSubjectADProto <- function() {
 # ---------------------------------------------------------------------------
 benchLinCmtSuperpositionFwdVsRev <- function(cfgIdx = c(1L, 6L)) {
   timeIt <- function(callExpr, reps = 10) {
-    t <- system.time(for (r in seq_len(reps)) eval(callExpr))["elapsed"]
+    t <- system.time(
+      for (r in seq_len(reps)) {
+        eval(callExpr)
+      }
+    )["elapsed"]
     t / reps
   }
   dt <- 0.3
@@ -674,14 +994,21 @@ benchLinCmtSuperpositionFwdVsRev <- function(cfgIdx = c(1L, 6L)) {
         alast <- cfg$alast0
         for (iv in seq_len(n)) { s <- .linCmtCall(dt, cfg, alast, sensType = 30L); alast <- s$Alast }
       }))
-      cat(sprintf("  n=%4d  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx  prodseq(R-loop)=%.5fs\n",
-                  n, trev, tfwd, tfwd / trev, tprod))
+      cat(sprintf(
+        "  n=%4d  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx  prodseq(R-loop)=%.5fs\n",
+        n,
+        trev,
+        tfwd,
+        tfwd / trev,
+        tprod
+      ))
     }
     cat("-- steady dosing: 8 active doses, dense observations --\n")
     for (n in c(50, 100, 200)) {
       doseT <- seq(0, by = dt * 4, length.out = 8)
       obsT <- max(doseT) + dt * seq_len(n)
-      doseAmt <- rep(100, 8); doseDur <- rep(0, 8)
+      doseAmt <- rep(100, 8)
+      doseDur <- rep(0, 8)
       trev <- timeIt(quote({
         .Call(`_rxode2_linCmtSubjectSuperpositionADProto`, obsT, doseT, doseAmt, doseDur,
               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
@@ -692,8 +1019,7 @@ benchLinCmtSuperpositionFwdVsRev <- function(cfgIdx = c(1L, 6L)) {
               cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
               cfg$ncmt, cfg$oral0, cfg$trans, 0L)
       }))
-      cat(sprintf("  n=%4d (8 doses)  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx\n",
-                  n, trev, tfwd, tfwd / trev))
+      cat(sprintf("  n=%4d (8 doses)  rev=%.5fs  fwd=%.5fs  fwd/rev=%.2fx\n", n, trev, tfwd, tfwd / trev))
     }
   }
   invisible(NULL)

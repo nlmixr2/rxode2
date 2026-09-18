@@ -1,18 +1,18 @@
 rxTest({
-
   ## rxPriorLogDensity(): the estimation-time prior kernel (as opposed to
   ## prior-sim.R's simulation-time use of the same priors). Every value is
   ## cross-checked against a central-difference numeric gradient rather
   ## than hand-verified algebra, so a sign or factor error in the analytic
   ## derivative fails loudly.
 
-
   .withPrior <- function(ui, name, prior) {
     ui <- rxUiDecompress(ui)
     .ini <- ui$iniDf
-    if (!any(names(.ini) == "prior")) .ini$prior <- NA_character_
+    if (!any(names(.ini) == "prior")) {
+      .ini$prior <- NA_character_
+    }
     .ini$prior[match(name, .ini$name)] <- prior
-    assign("iniDf", .ini, envir=ui)
+    assign("iniDf", .ini, envir = ui)
     ui
   }
 
@@ -36,12 +36,18 @@ rxTest({
     })
   }
 
-  .numGrad <- function(f, x, eps=1e-6) {
-    vapply(seq_along(x), function(i) {
-      xp <- x; xp[i] <- xp[i] + eps
-      xm <- x; xm[i] <- xm[i] - eps
-      (f(xp) - f(xm)) / (2 * eps)
-    }, double(1))
+  .numGrad <- function(f, x, eps = 1e-6) {
+    vapply(
+      seq_along(x),
+      function(i) {
+        xp <- x
+        xp[i] <- xp[i] + eps
+        xm <- x
+        xm[i] <- xm[i] - eps
+        (f(xp) - f(xm)) / (2 * eps)
+      },
+      double(1)
+    )
   }
 
   .base3 <- function() {
@@ -67,7 +73,10 @@ rxTest({
   .dmvnormLog <- function(x, mu, Sigma) {
     k <- length(x)
     d <- x - mu
-    -0.5 * k * log(2 * pi) - 0.5 * as.numeric(determinant(Sigma, logarithm=TRUE)$modulus) -
+    -0.5 *
+      k *
+      log(2 * pi) -
+      0.5 * as.numeric(determinant(Sigma, logarithm = TRUE)$modulus) -
       0.5 * as.numeric(t(d) %*% solve(Sigma) %*% d)
   }
 
@@ -88,10 +97,10 @@ rxTest({
     ## spec back rather than needing its own "does this model have a
     ## prior" branch first
     u <- .base()
-    theta <- c(tka=0.45, tcl=1, tv=3.45, add.sd=0.7)
+    theta <- c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7)
     omega <- u$omega
     for (.m in c("general", "nwpri")) {
-      spec <- rxPriorBuildSpec(u, method=.m)
+      spec <- rxPriorBuildSpec(u, method = .m)
       expect_true(inherits(spec, "externalptr"))
       r <- .Call(`_rxode2_rxPriorLogDensity`, spec, unname(theta), omega)
       expect_equal(r[[1]], 0)
@@ -105,7 +114,7 @@ rxTest({
     u <- rxUiDecompress(.base())
     .ini <- u$iniDf
     .ini$prior <- NULL
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_false("prior" %in% names(u$iniDf))
     spec <- rxPriorBuildSpec(u)
     r <- .Call(`_rxode2_rxPriorLogDensity`, spec, c(0.45, 1, 3.45, 0.7), u$omega)
@@ -115,80 +124,91 @@ rxTest({
   test_that("a normal prior matches dnorm() and its numeric gradient", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
-    r <- rxPriorLogDensity(u, theta=c(tka=0.73))
-    expect_equal(r$value, dnorm(0.73, 0, 10, log=TRUE))
-    g <- .numGrad(function(x) rxPriorLogDensity(u, theta=c(tka=x))$value, 0.73)
-    expect_equal(unname(r$gradTheta["tka"]), g, tolerance=1e-6)
+    r <- rxPriorLogDensity(u, theta = c(tka = 0.73))
+    expect_equal(r$value, dnorm(0.73, 0, 10, log = TRUE))
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(tka = x))$value, 0.73)
+    expect_equal(unname(r$gradTheta["tka"]), g, tolerance = 1e-6)
   })
 
   test_that("std_normal() is a unit normal with no arguments", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "stdNormal()")
-    r <- rxPriorLogDensity(u, theta=c(tka=0.5))
-    expect_equal(r$value, dnorm(0.5, 0, 1, log=TRUE))
+    r <- rxPriorLogDensity(u, theta = c(tka = 0.5))
+    expect_equal(r$value, dnorm(0.5, 0, 1, log = TRUE))
   })
 
   test_that("a truncated normal (half-normal) includes the normalizing constant", {
     skipIfOldLotri()
     ## add.sd's own lower bound is 0 -- dnorm(0, 1) truncated to [0, Inf)
     u <- .withPrior(.base(), "add.sd", "dnorm(0, 1)")
-    r <- rxPriorLogDensity(u, theta=c(add.sd=0.4))
-    expect_equal(r$value, dnorm(0.4, 0, 1, log=TRUE) - log(1 - pnorm(0, 0, 1)))
-    g <- .numGrad(function(x) rxPriorLogDensity(u, theta=c(add.sd=x))$value, 0.4)
-    expect_equal(unname(r$gradTheta["add.sd"]), g, tolerance=1e-6)
+    r <- rxPriorLogDensity(u, theta = c(add.sd = 0.4))
+    expect_equal(r$value, dnorm(0.4, 0, 1, log = TRUE) - log(1 - pnorm(0, 0, 1)))
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(add.sd = x))$value, 0.4)
+    expect_equal(unname(r$gradTheta["add.sd"]), g, tolerance = 1e-6)
   })
 
   test_that("a half-Cauchy prior truncates and matches its numeric gradient", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
-    r <- rxPriorLogDensity(u, theta=c(add.sd=0.6))
-    expect_equal(r$value, dcauchy(0.6, 0, 5, log=TRUE) - log(1 - pcauchy(0, 0, 5)))
-    g <- .numGrad(function(x) rxPriorLogDensity(u, theta=c(add.sd=x))$value, 0.6)
-    expect_equal(unname(r$gradTheta["add.sd"]), g, tolerance=1e-6)
+    r <- rxPriorLogDensity(u, theta = c(add.sd = 0.6))
+    expect_equal(r$value, dcauchy(0.6, 0, 5, log = TRUE) - log(1 - pcauchy(0, 0, 5)))
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(add.sd = x))$value, 0.6)
+    expect_equal(unname(r$gradTheta["add.sd"]), g, tolerance = 1e-6)
   })
 
   test_that("a joint multiNormal block spans thetas and its gradient checks out", {
     skipIfOldLotri()
-    u <- .withPrior(.base(), c("tcl", "tv"),
-                    "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
-    x <- c(tcl=1.3, tv=3.1)
-    r <- rxPriorLogDensity(u, theta=x)
+    u <- .withPrior(.base(), c("tcl", "tv"), "multiNormal(c(1, 3.45), lotri(tcl + tv ~ c(0.02, 0.001, 0.03)))")
+    x <- c(tcl = 1.3, tv = 3.1)
+    r <- rxPriorLogDensity(u, theta = x)
     Sigma <- matrix(c(0.02, 0.001, 0.001, 0.03), 2, 2)
     mu <- c(1, 3.45)
     expect_equal(r$value, .dmvnormLog(x, mu, Sigma))
-    g <- .numGrad(function(v) {
-      rxPriorLogDensity(u, theta=c(tcl=v[["tcl"]], tv=v[["tv"]]))$value
-    }, x)
-    expect_equal(unname(r$gradTheta[c("tcl", "tv")]), unname(g), tolerance=1e-6)
+    g <- .numGrad(
+      function(v) {
+        rxPriorLogDensity(u, theta = c(tcl = v[["tcl"]], tv = v[["tv"]]))$value
+      },
+      x
+    )
+    expect_equal(unname(r$gradTheta[c("tcl", "tv")]), unname(g), tolerance = 1e-6)
   })
 
   test_that("independent priors on different parameters add", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0.45, 0.1)")
     u <- .withPrior(u, "tcl", "dnorm(1, 0.5)")
-    r <- rxPriorLogDensity(u, theta=c(tka=0.45, tcl=1))
-    expect_equal(r$value,
-                 dnorm(0.45, 0.45, 0.1, log=TRUE) + dnorm(1, 1, 0.5, log=TRUE))
+    r <- rxPriorLogDensity(u, theta = c(tka = 0.45, tcl = 1))
+    expect_equal(r$value, dnorm(0.45, 0.45, 0.1, log = TRUE) + dnorm(1, 1, 0.5, log = TRUE))
   })
 
   test_that("a joint block spans a theta and an omega diagonal element", {
     skipIfOldLotri()
-    u <- .withPrior(.base(), "tka",
-                    "multiNormal(c(1, 0.6), lotri(tka + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
+    u <- .withPrior(.base(), "tka", "multiNormal(c(1, 0.6), lotri(tka + om.eta.ka ~ c(0.02, 0.001, 0.03)))")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
-    r <- rxPriorLogDensity(u, theta=c(tka=1.2), omega=om)
-    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]),
-                 .numGrad(function(v) {
-                   om2 <- om; om2["eta.ka", "eta.ka"] <- v
-                   rxPriorLogDensity(u, theta=c(tka=1.2), omega=om2)$value
-                 }, 0.55),
-                 tolerance=1e-6)
-    expect_equal(unname(r$gradTheta["tka"]),
-                 .numGrad(function(v) {
-                   rxPriorLogDensity(u, theta=c(tka=v), omega=om)$value
-                 }, 1.2),
-                 tolerance=1e-6)
+    r <- rxPriorLogDensity(u, theta = c(tka = 1.2), omega = om)
+    expect_equal(
+      unname(r$gradOmega["eta.ka", "eta.ka"]),
+      .numGrad(
+        function(v) {
+          om2 <- om
+          om2["eta.ka", "eta.ka"] <- v
+          rxPriorLogDensity(u, theta = c(tka = 1.2), omega = om2)$value
+        },
+        0.55
+      ),
+      tolerance = 1e-6
+    )
+    expect_equal(
+      unname(r$gradTheta["tka"]),
+      .numGrad(
+        function(v) {
+          rxPriorLogDensity(u, theta = c(tka = v), omega = om)$value
+        },
+        1.2
+      ),
+      tolerance = 1e-6
+    )
   })
 
   test_that("a standalone (non-joint) normal prior on an omega diagonal element works", {
@@ -197,14 +217,20 @@ rxTest({
     u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
-    r <- rxPriorLogDensity(u, omega=om)
-    expect_equal(r$value, dnorm(0.55, 0.6, 0.1, log=TRUE))
-    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]),
-                 .numGrad(function(v) {
-                   om2 <- om; om2["eta.ka", "eta.ka"] <- v
-                   rxPriorLogDensity(u, omega=om2)$value
-                 }, 0.55),
-                 tolerance=1e-6)
+    r <- rxPriorLogDensity(u, omega = om)
+    expect_equal(r$value, dnorm(0.55, 0.6, 0.1, log = TRUE))
+    expect_equal(
+      unname(r$gradOmega["eta.ka", "eta.ka"]),
+      .numGrad(
+        function(v) {
+          om2 <- om
+          om2["eta.ka", "eta.ka"] <- v
+          rxPriorLogDensity(u, omega = om2)$value
+        },
+        0.55
+      ),
+      tolerance = 1e-6
+    )
   })
 
   test_that("invWishart on a 2x2 block matches its numeric gradient", {
@@ -214,7 +240,7 @@ rxTest({
     om["eta.cl", "eta.cl"] <- 0.35
     om["eta.v", "eta.v"] <- 0.12
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
-    r <- rxPriorLogDensity(u, omega=om)
+    r <- rxPriorLogDensity(u, omega = om)
 
     ## symmetric perturbation: moving one *free* off-diagonal parameter
     ## changes both om[i,j] and om[j,i] together, so the numeric check
@@ -224,15 +250,15 @@ rxTest({
       om2["eta.cl", "eta.cl"] <- cl
       om2["eta.v", "eta.v"] <- v
       om2["eta.cl", "eta.v"] <- om2["eta.v", "eta.cl"] <- cv
-      rxPriorLogDensity(u, omega=om2)$value
+      rxPriorLogDensity(u, omega = om2)$value
     }
     eps <- 1e-6
     g_cl <- (f(0.35 + eps, 0.12, 0.02) - f(0.35 - eps, 0.12, 0.02)) / (2 * eps)
-    g_v  <- (f(0.35, 0.12 + eps, 0.02) - f(0.35, 0.12 - eps, 0.02)) / (2 * eps)
+    g_v <- (f(0.35, 0.12 + eps, 0.02) - f(0.35, 0.12 - eps, 0.02)) / (2 * eps)
     g_cv <- (f(0.35, 0.12, 0.02 + eps) - f(0.35, 0.12, 0.02 - eps)) / (2 * eps)
-    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance=1e-4)
-    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance=1e-4)
-    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance=1e-4)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance = 1e-4)
+    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance = 1e-4)
+    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance = 1e-4)
   })
 
   test_that("a 1x1 invWishart block reduces to an inverse gamma on the variance", {
@@ -240,11 +266,10 @@ rxTest({
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.8
-    r <- rxPriorLogDensity(u, omega=om)
+    r <- rxPriorLogDensity(u, omega = om)
     ## inv_wishart(nu, s) on a scalar is inv_gamma(nu/2, s/2)
-    expected <- (4 / 2) * log(0.6 / 2) - lgamma(4 / 2) -
-      (4 / 2 + 1) * log(0.8) - (0.6 / 2) / 0.8
-    expect_equal(r$value, expected, tolerance=1e-8)
+    expected <- (4 / 2) * log(0.6 / 2) - lgamma(4 / 2) - (4 / 2 + 1) * log(0.8) - (0.6 / 2) / 0.8
+    expect_equal(r$value, expected, tolerance = 1e-8)
   })
 
   test_that("independent priors combine: theta + omega diag + invWishart block", {
@@ -253,10 +278,9 @@ rxTest({
     u <- .withPrior(u, c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
     om["eta.cl", "eta.cl"] <- 0.35
-    r1 <- rxPriorLogDensity(u, theta=c(tka=0.5), omega=om)
-    r2a <- rxPriorLogDensity(.withPrior(.base(), "tka", "dnorm(0, 10)"), theta=c(tka=0.5))
-    r2b <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"),
-                              omega=om)
+    r1 <- rxPriorLogDensity(u, theta = c(tka = 0.5), omega = om)
+    r2a <- rxPriorLogDensity(.withPrior(.base(), "tka", "dnorm(0, 10)"), theta = c(tka = 0.5))
+    r2b <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"), omega = om)
     expect_equal(r1$value, r2a$value + r2b$value)
   })
 
@@ -270,19 +294,27 @@ rxTest({
     om["eta.ka", "eta.cl"] <- om["eta.cl", "eta.ka"] <- 0.015
     om["eta.ka", "eta.v"] <- om["eta.v", "eta.ka"] <- 0.008
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
-    r <- rxPriorLogDensity(u, omega=om)
+    r <- rxPriorLogDensity(u, omega = om)
 
     nm <- rownames(om)
     eps <- 1e-6
-    f <- function(m) rxPriorLogDensity(u, omega=m)$value
-    for (i in 1:3) for (j in 1:i) {
-      mp <- om; mm <- om
-      mp[i, j] <- mp[i, j] + eps; if (i != j) mp[j, i] <- mp[j, i] + eps
-      mm[i, j] <- mm[i, j] - eps; if (i != j) mm[j, i] <- mm[j, i] - eps
-      gnum <- (f(mp) - f(mm)) / (2 * eps)
-      gana <- if (i == j) r$gradOmega[nm[i], nm[j]] else 2 * r$gradOmega[nm[i], nm[j]]
-      expect_equal(unname(gana), gnum, tolerance=1e-4,
-                   info=paste0("(", nm[i], ", ", nm[j], ")"))
+    f <- function(m) rxPriorLogDensity(u, omega = m)$value
+    for (i in 1:3) {
+      for (j in 1:i) {
+        mp <- om
+        mm <- om
+        mp[i, j] <- mp[i, j] + eps
+        if (i != j) {
+          mp[j, i] <- mp[j, i] + eps
+        }
+        mm[i, j] <- mm[i, j] - eps
+        if (i != j) {
+          mm[j, i] <- mm[j, i] - eps
+        }
+        gnum <- (f(mp) - f(mm)) / (2 * eps)
+        gana <- if (i == j) r$gradOmega[nm[i], nm[j]] else 2 * r$gradOmega[nm[i], nm[j]]
+        expect_equal(unname(gana), gnum, tolerance = 1e-4, info = paste0("(", nm[i], ", ", nm[j], ")"))
+      }
     }
   })
 
@@ -294,19 +326,16 @@ rxTest({
     om["eta.ka", "eta.ka"] <- 0.7
     om["eta.cl", "eta.cl"] <- 0.35
     om["eta.v", "eta.v"] <- 0.12
-    r <- rxPriorLogDensity(u, omega=om)
+    r <- rxPriorLogDensity(u, omega = om)
 
     ## same as evaluating each block's own prior alone and summing
-    rKa <- rxPriorLogDensity(.withPrior(.base(), "eta.ka", "invWishart(4)"), omega=om)
-    rClV <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"),
-                              omega=om)
+    rKa <- rxPriorLogDensity(.withPrior(.base(), "eta.ka", "invWishart(4)"), omega = om)
+    rClV <- rxPriorLogDensity(.withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)"), omega = om)
     expect_equal(r$value, rKa$value + rClV$value)
     expect_equal(r$gradOmega, rKa$gradOmega + rClV$gradOmega)
     ## neither block's gradient touches the other's entries
-    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"]),
-                 unname(rClV$gradOmega["eta.cl", "eta.v"]))
-    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]),
-                 unname(rKa$gradOmega["eta.ka", "eta.ka"]))
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"]), unname(rClV$gradOmega["eta.cl", "eta.v"]))
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), unname(rKa$gradOmega["eta.ka", "eta.ka"]))
   })
 
   test_that("a permuted omega dimname order still routes gradients correctly", {
@@ -316,12 +345,12 @@ rxTest({
     om["eta.cl", "eta.cl"] <- 0.35
     om["eta.v", "eta.v"] <- 0.12
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
-    r1 <- rxPriorLogDensity(u, omega=om)
+    r1 <- rxPriorLogDensity(u, omega = om)
 
     ## same matrix, rows/cols reordered
     ord <- c("eta.v", "eta.ka", "eta.cl")
     omPerm <- om[ord, ord]
-    r2 <- rxPriorLogDensity(u, omega=omPerm)
+    r2 <- rxPriorLogDensity(u, omega = omPerm)
 
     expect_equal(r1$value, r2$value)
     expect_equal(r1$gradOmega["eta.cl", "eta.v"], r2$gradOmega["eta.cl", "eta.v"])
@@ -334,13 +363,13 @@ rxTest({
     u <- .withPrior(.base(), "tka", "dnorm(0, 1)")
     .ini <- u$iniDf
     .ini$lower[.ini$name == "tka"] <- 10
-    assign("iniDf", .ini, envir=u)
-    r <- rxPriorLogDensity(u, theta=c(tka=10.5))
+    assign("iniDf", .ini, envir = u)
+    r <- rxPriorLogDensity(u, theta = c(tka = 10.5))
     expect_true(is.finite(r$value))
-    expected <- dnorm(10.5, 0, 1, log=TRUE) - pnorm(10, 0, 1, lower.tail=FALSE, log.p=TRUE)
-    expect_equal(r$value, expected, tolerance=1e-8)
-    g <- .numGrad(function(x) rxPriorLogDensity(u, theta=c(tka=x))$value, 10.5)
-    expect_equal(unname(r$gradTheta["tka"]), g, tolerance=1e-6)
+    expected <- dnorm(10.5, 0, 1, log = TRUE) - pnorm(10, 0, 1, lower.tail = FALSE, log.p = TRUE)
+    expect_equal(r$value, expected, tolerance = 1e-8)
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(tka = x))$value, 10.5)
+    expect_equal(unname(r$gradTheta["tka"]), g, tolerance = 1e-6)
   })
 
   test_that("two finite bounds deep in either tail agree by symmetry (log-space branches)", {
@@ -355,26 +384,26 @@ rxTest({
     .iniHi <- uHi$iniDf
     .iniHi$lower[.iniHi$name == "tka"] <- 10
     .iniHi$upper[.iniHi$name == "tka"] <- 20
-    assign("iniDf", .iniHi, envir=uHi)
+    assign("iniDf", .iniHi, envir = uHi)
 
     uLo <- .withPrior(.base(), "tka", "dnorm(0, 1)")
     .iniLo <- uLo$iniDf
     .iniLo$lower[.iniLo$name == "tka"] <- -20
     .iniLo$upper[.iniLo$name == "tka"] <- -10
-    assign("iniDf", .iniLo, envir=uLo)
+    assign("iniDf", .iniLo, envir = uLo)
 
-    rHi <- rxPriorLogDensity(uHi, theta=c(tka=15))
-    rLo <- rxPriorLogDensity(uLo, theta=c(tka=-15))
+    rHi <- rxPriorLogDensity(uHi, theta = c(tka = 15))
+    rLo <- rxPriorLogDensity(uLo, theta = c(tka = -15))
     expect_true(is.finite(rHi$value))
     expect_true(is.finite(rLo$value))
-    expect_equal(rHi$value, rLo$value, tolerance=1e-10)
+    expect_equal(rHi$value, rLo$value, tolerance = 1e-10)
     ## the naive (unstable) formula underflows to 0 - Inf on both, confirming
     ## this really does exercise the catastrophic-cancellation branches
     expect_equal(pnorm(20, 0, 1) - pnorm(10, 0, 1), 0)
     expect_equal(pnorm(-10, 0, 1) - pnorm(-20, 0, 1), 0)
 
-    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta=c(tka=x))$value, 15)
-    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance=1e-6)
+    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta = c(tka = x))$value, 15)
+    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance = 1e-6)
   })
 
   test_that("a two-finite-bound window straddling the mean matches the direct formula", {
@@ -383,11 +412,9 @@ rxTest({
     .ini <- u$iniDf
     .ini$lower[.ini$name == "tka"] <- -1
     .ini$upper[.ini$name == "tka"] <- 1
-    assign("iniDf", .ini, envir=u)
-    r <- rxPriorLogDensity(u, theta=c(tka=0.2))
-    expect_equal(r$value,
-                 dnorm(0.2, 0, 1, log=TRUE) - log(pnorm(1, 0, 1) - pnorm(-1, 0, 1)),
-                 tolerance=1e-10)
+    assign("iniDf", .ini, envir = u)
+    r <- rxPriorLogDensity(u, theta = c(tka = 0.2))
+    expect_equal(r$value, dnorm(0.2, 0, 1, log = TRUE) - log(pnorm(1, 0, 1) - pnorm(-1, 0, 1)), tolerance = 1e-10)
   })
 
   test_that("a Cauchy prior with two finite bounds exercises both tail branches", {
@@ -400,26 +427,26 @@ rxTest({
     .iniHi <- uHi$iniDf
     .iniHi$lower[.iniHi$name == "tka"] <- 10
     .iniHi$upper[.iniHi$name == "tka"] <- 20
-    assign("iniDf", .iniHi, envir=uHi)
+    assign("iniDf", .iniHi, envir = uHi)
 
     uLo <- .withPrior(.base(), "tka", "dcauchy(0, 1)")
     .iniLo <- uLo$iniDf
     .iniLo$lower[.iniLo$name == "tka"] <- -20
     .iniLo$upper[.iniLo$name == "tka"] <- -10
-    assign("iniDf", .iniLo, envir=uLo)
+    assign("iniDf", .iniLo, envir = uLo)
 
-    rHi <- rxPriorLogDensity(uHi, theta=c(tka=15))
-    rLo <- rxPriorLogDensity(uLo, theta=c(tka=-15))
+    rHi <- rxPriorLogDensity(uHi, theta = c(tka = 15))
+    rLo <- rxPriorLogDensity(uLo, theta = c(tka = -15))
     expect_true(is.finite(rHi$value))
-    expect_equal(rHi$value, rLo$value, tolerance=1e-10)
+    expect_equal(rHi$value, rLo$value, tolerance = 1e-10)
     ## cross-check against the direct (non-log-space) formula, which is
     ## still numerically fine at these bounds for a Cauchy (no cancellation
     ## risk the way the normal case has -- Cauchy's tail decays polynomially)
-    expected <- dcauchy(15, 0, 1, log=TRUE) - log(pcauchy(20, 0, 1) - pcauchy(10, 0, 1))
-    expect_equal(rHi$value, expected, tolerance=1e-8)
+    expected <- dcauchy(15, 0, 1, log = TRUE) - log(pcauchy(20, 0, 1) - pcauchy(10, 0, 1))
+    expect_equal(rHi$value, expected, tolerance = 1e-8)
 
-    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta=c(tka=x))$value, 15)
-    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance=1e-6)
+    g <- .numGrad(function(x) rxPriorLogDensity(uHi, theta = c(tka = x))$value, 15)
+    expect_equal(unname(rHi$gradTheta["tka"]), g, tolerance = 1e-6)
   })
 
   test_that("a non-positive-definite live omega contributes -Inf, not an error or NaN", {
@@ -432,7 +459,7 @@ rxTest({
     om["eta.v", "eta.v"] <- 0.1
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 1.0
     for (.m in c("general", "nwpri")) {
-      r <- rxPriorLogDensity(u, omega=om, method=.m)
+      r <- rxPriorLogDensity(u, omega = om, method = .m)
       expect_identical(r$value, -Inf)
     }
   })
@@ -450,8 +477,8 @@ rxTest({
     .ini <- u$iniDf
     .w <- which(.ini$name == "eta.v" & .ini$neta1 == .ini$neta2)
     .ini$neta1[.w] <- .ini$neta2[.w] <- 5L
-    assign("iniDf", .ini, envir=u)
-    expect_error(rxPriorLogDensity(u, omega=om), "dense")
+    assign("iniDf", .ini, envir = u)
+    expect_error(rxPriorLogDensity(u, omega = om), "dense")
   })
 
   test_that("an invWishart with too few degrees of freedom is refused", {
@@ -459,7 +486,7 @@ rxTest({
     ## a 2x2 block needs nu > 1
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(1)")
     om <- u$omega
-    expect_error(rxPriorLogDensity(u, omega=om), "degrees of freedom")
+    expect_error(rxPriorLogDensity(u, omega = om), "degrees of freedom")
   })
 
   test_that("a population parameter literally named 'om.<x>' is refused, not confused with omega", {
@@ -469,8 +496,8 @@ rxTest({
     .ini$name[.ini$name == "tka"] <- "om.tka"
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "om.tka"] <- "dnorm(0, 1)"
-    assign("iniDf", .ini, envir=u)
-    expect_error(rxPriorLogDensity(u, theta=c(om.tka=0.1)), "collides")
+    assign("iniDf", .ini, envir = u)
+    expect_error(rxPriorLogDensity(u, theta = c(om.tka = 0.1)), "collides")
   })
 
   test_that("two different priors on the same key is refused rather than silently resolved", {
@@ -479,12 +506,11 @@ rxTest({
     ## hand-corrupt as if a second, different prior were stored under the same
     ## key -- not reachable through real 'ini()' syntax (lotri itself refuses
     ## two priors on one parameter), but a piped 'iniDf' could still do this
-    u2 <- .withPrior(.base(), c("tka", "tcl"),
-                     "multiNormal(c(0.45, 1), lotri(tka + tcl ~ c(0.02, 0.001, 0.03)))")
+    u2 <- .withPrior(.base(), c("tka", "tcl"), "multiNormal(c(0.45, 1), lotri(tka + tcl ~ c(0.02, 0.001, 0.03)))")
     .ini <- u2$iniDf
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 1)"
-    assign("iniDf", .ini, envir=u2)
-    expect_error(rxPriorLogDensity(u2, theta=c(tka=0.5, tcl=1)), "different priors")
+    assign("iniDf", .ini, envir = u2)
+    expect_error(rxPriorLogDensity(u2, theta = c(tka = 0.5, tcl = 1)), "different priors")
   })
 
   test_that("a marginal prior on an off-diagonal omega (covariance) element is evaluated, not refused", {
@@ -497,10 +523,10 @@ rxTest({
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
     expect_equal(.ini$name[.w], "(eta.cl,eta.v)")
     .ini$prior[.w] <- "dnorm(0, 1)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     ## the block's own covariance element is 0.01 (c(0.3, 0.01, 0.1))
-    r <- rxPriorLogDensity(u, omega=u$omega)
-    expect_equal(r$value, dnorm(0.01, 0, 1, log=TRUE))
+    r <- rxPriorLogDensity(u, omega = u$omega)
+    expect_equal(r$value, dnorm(0.01, 0, 1, log = TRUE))
   })
 
   test_that("real ini()/prior() syntax reaches an off-diagonal covariance element", {
@@ -518,8 +544,8 @@ rxTest({
       })
     })
     expect_true("(eta.cl,eta.v)" %in% rxUiPriors(u)$name)
-    r <- rxPriorLogDensity(u, omega=u$omega)
-    expect_equal(r$value, dnorm(0.05, 0, 0.1, log=TRUE))
+    r <- rxPriorLogDensity(u, omega = u$omega)
+    expect_equal(r$value, dnorm(0.05, 0, 0.1, log = TRUE))
   })
 
   test_that("the off-diagonal covariance gradient matches a central difference", {
@@ -532,23 +558,27 @@ rxTest({
     .ini <- u$iniDf
     .w <- which(.ini$neta1 == 2L & .ini$neta2 == 1L)
     .ini$prior[.w] <- "dnorm(0, 0.1)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     om <- u$omega
-    g <- .numGrad(function(v) {
-      om2 <- om; om2["eta.cl", "eta.v"] <- v; om2["eta.v", "eta.cl"] <- v
-      rxPriorLogDensity(u, omega=om2)$value
-    }, om["eta.cl", "eta.v"])
-    r <- rxPriorLogDensity(u, omega=om)
+    g <- .numGrad(
+      function(v) {
+        om2 <- om
+        om2["eta.cl", "eta.v"] <- v
+        om2["eta.v", "eta.cl"] <- v
+        rxPriorLogDensity(u, omega = om2)$value
+      },
+      om["eta.cl", "eta.v"]
+    )
+    r <- rxPriorLogDensity(u, omega = om)
     ## a caller that moves the symmetric pair TOGETHER sums both cells
     ## (R/priorDensity.R's own documented gradOmega convention)
-    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"] + r$gradOmega["eta.v", "eta.cl"]),
-                 unname(g), tolerance=1e-6)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.v"] + r$gradOmega["eta.v", "eta.cl"]), unname(g), tolerance = 1e-6)
   })
 
   test_that("a whole-block invWishart() prior is unaffected by the off-diagonal relaxation", {
     skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(20)")
-    r <- rxPriorLogDensity(u, omega=u$omega)
+    r <- rxPriorLogDensity(u, omega = u$omega)
     expect_true(is.finite(r$value))
   })
 
@@ -584,8 +614,9 @@ rxTest({
       })
     })
     expect_error(
-      rxSolve(u, events=data.frame(id=1, time=0, amt=0, dv=0), nSub=2, usePrior=TRUE),
-      "off-diagonal")
+      rxSolve(u, events = data.frame(id = 1, time = 0, amt = 0, dv = 0), nSub = 2, usePrior = TRUE),
+      "off-diagonal"
+    )
   })
 
   test_that("an unsupported distribution is a clear error, not a silent wrong value", {
@@ -621,7 +652,7 @@ rxTest({
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     .om <- u$omega
     .partial <- .om[c("eta.cl", "eta.v"), c("eta.cl", "eta.v")]
-    expect_error(rxPriorLogDensity(u, omega=.partial))
+    expect_error(rxPriorLogDensity(u, omega = .partial))
   })
 
   ## method="nwpri": NONMEM7 Technical Guide eq. 1.157/1.159/1.170 (its own
@@ -635,19 +666,25 @@ rxTest({
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.8
-    r <- rxPriorLogDensity(u, omega=om, method="nwpri")
+    r <- rxPriorLogDensity(u, omega = om, method = "nwpri")
 
-    rho <- 4; Psi <- 0.6; Omega <- 0.8; n <- 1
+    rho <- 4
+    Psi <- 0.6
+    Omega <- 0.8
+    n <- 1
     d_W <- rho + n + 1
-    expected <- -0.5 * (rho * (Psi / Omega) + rho * log(Omega) -
-                          d_W * log(Psi) - d_W * n * log(rho))
-    expect_equal(r$value, expected, tolerance=1e-10)
+    expected <- -0.5 * (rho * (Psi / Omega) + rho * log(Omega) - d_W * log(Psi) - d_W * n * log(rho))
+    expect_equal(r$value, expected, tolerance = 1e-10)
 
-    g <- .numGrad(function(v) {
-      om2 <- om; om2["eta.ka", "eta.ka"] <- v
-      rxPriorLogDensity(u, omega=om2, method="nwpri")$value
-    }, 0.8)
-    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), g, tolerance=1e-6)
+    g <- .numGrad(
+      function(v) {
+        om2 <- om
+        om2["eta.ka", "eta.ka"] <- v
+        rxPriorLogDensity(u, omega = om2, method = "nwpri")$value
+      },
+      0.8
+    )
+    expect_equal(unname(r$gradOmega["eta.ka", "eta.ka"]), g, tolerance = 1e-6)
   })
 
   test_that("nwpri 2x2 omega block matches its numeric gradient", {
@@ -657,21 +694,22 @@ rxTest({
     om["eta.cl", "eta.cl"] <- 0.35
     om["eta.v", "eta.v"] <- 0.12
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.02
-    r <- rxPriorLogDensity(u, omega=om, method="nwpri")
+    r <- rxPriorLogDensity(u, omega = om, method = "nwpri")
 
     f <- function(cl, v, cv) {
       m <- om
-      m["eta.cl", "eta.cl"] <- cl; m["eta.v", "eta.v"] <- v
+      m["eta.cl", "eta.cl"] <- cl
+      m["eta.v", "eta.v"] <- v
       m["eta.cl", "eta.v"] <- m["eta.v", "eta.cl"] <- cv
-      rxPriorLogDensity(u, omega=m, method="nwpri")$value
+      rxPriorLogDensity(u, omega = m, method = "nwpri")$value
     }
     eps <- 1e-6
     g_cl <- (f(0.35 + eps, 0.12, 0.02) - f(0.35 - eps, 0.12, 0.02)) / (2 * eps)
-    g_v  <- (f(0.35, 0.12 + eps, 0.02) - f(0.35, 0.12 - eps, 0.02)) / (2 * eps)
+    g_v <- (f(0.35, 0.12 + eps, 0.02) - f(0.35, 0.12 - eps, 0.02)) / (2 * eps)
     g_cv <- (f(0.35, 0.12, 0.02 + eps) - f(0.35, 0.12, 0.02 - eps)) / (2 * eps)
-    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance=1e-4)
-    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance=1e-4)
-    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance=1e-4)
+    expect_equal(unname(r$gradOmega["eta.cl", "eta.cl"]), g_cl, tolerance = 1e-4)
+    expect_equal(unname(r$gradOmega["eta.v", "eta.v"]), g_v, tolerance = 1e-4)
+    expect_equal(unname(2 * r$gradOmega["eta.cl", "eta.v"]), g_cv, tolerance = 1e-4)
   })
 
   test_that("nwpri and general give genuinely different omega values", {
@@ -682,26 +720,28 @@ rxTest({
     u <- .withPrior(.base(), "eta.ka", "invWishart(4)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.8
-    rGeneral <- rxPriorLogDensity(u, omega=om, method="general")
-    rNwpri <- rxPriorLogDensity(u, omega=om, method="nwpri")
+    rGeneral <- rxPriorLogDensity(u, omega = om, method = "general")
+    rNwpri <- rxPriorLogDensity(u, omega = om, method = "nwpri")
     expect_false(isTRUE(all.equal(rGeneral$value, rNwpri$value)))
-    expect_false(isTRUE(all.equal(unname(rGeneral$gradOmega["eta.ka", "eta.ka"]),
-                                  unname(rNwpri$gradOmega["eta.ka", "eta.ka"]))))
+    expect_false(isTRUE(all.equal(
+      unname(rGeneral$gradOmega["eta.ka", "eta.ka"]),
+      unname(rNwpri$gradOmega["eta.ka", "eta.ka"])
+    )))
   })
 
   test_that("a Cauchy prior is refused under method=\"nwpri\"", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
-    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="nwpri"), "NWPRI")
+    expect_error(rxPriorLogDensity(u, theta = c(add.sd = 0.5), method = "nwpri"), "NWPRI")
     ## the same model still works under the default "general" method
-    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5)), NA)
+    expect_error(rxPriorLogDensity(u, theta = c(add.sd = 0.5)), NA)
   })
 
   test_that("nwpri theta prior reuses the same multivariate-normal math as general", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
-    rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
-    rNwpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="nwpri")
+    rGeneral <- rxPriorLogDensity(u, theta = c(tka = 0.3), method = "general")
+    rNwpri <- rxPriorLogDensity(u, theta = c(tka = 0.3), method = "nwpri")
     expect_equal(rGeneral$value, rNwpri$value)
     expect_equal(rGeneral$gradTheta, rNwpri$gradTheta)
   })
@@ -724,7 +764,9 @@ rxTest({
     ## fallback used column-major, silently misassembling from n=3 on)
     .rx <- loadNamespace("rxode2")
     .got <- .rx$`.rxPriorCovMatFromNames`(
-      c("a", "b", "c"), "multiNormal(c(0,0,0), lotri(a + b + c ~ c(1, 2, 3, 4, 5, 6)))")
+      c("a", "b", "c"),
+      "multiNormal(c(0,0,0), lotri(a + b + c ~ c(1, 2, 3, 4, 5, 6)))"
+    )
     .truth <- unname(unclass(lotri::lotri(a + b + c ~ c(1, 2, 3, 4, 5, 6))))
     expect_equal(unname(.got), .truth)
   })
@@ -734,13 +776,13 @@ rxTest({
     u <- .withPrior(.base(), "eta.ka", "dnorm(0.6, 0.1)")
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
-    rGeneral <- rxPriorLogDensity(u, omega=om, method="general")
-    rTnpri <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    rGeneral <- rxPriorLogDensity(u, omega = om, method = "general")
+    rTnpri <- rxPriorLogDensity(u, omega = om, method = "tnpri")
     expect_identical(rGeneral$value, rTnpri$value)
     expect_identical(rGeneral$gradOmega, rTnpri$gradOmega)
     ## and matches dnorm() directly, on the raw omega value -- confirming
     ## it is NOT evaluated on any Cholesky-transformed quantity
-    expect_equal(rTnpri$value, dnorm(0.55, 0.6, 0.1, log=TRUE))
+    expect_equal(rTnpri$value, dnorm(0.55, 0.6, 0.1, log = TRUE))
   })
 
   test_that("tnpri on a joint theta+omega block is identical to general", {
@@ -759,8 +801,8 @@ rxTest({
     }))
     om <- u$omega
     om["eta.ka", "eta.ka"] <- 0.55
-    rGeneral <- rxPriorLogDensity(u, theta=c(tcl=1.2), omega=om, method="general")
-    rTnpri <- rxPriorLogDensity(u, theta=c(tcl=1.2), omega=om, method="tnpri")
+    rGeneral <- rxPriorLogDensity(u, theta = c(tcl = 1.2), omega = om, method = "general")
+    rTnpri <- rxPriorLogDensity(u, theta = c(tcl = 1.2), omega = om, method = "tnpri")
     expect_identical(rGeneral$value, rTnpri$value)
     expect_identical(rGeneral$gradTheta, rTnpri$gradTheta)
     expect_identical(rGeneral$gradOmega, rTnpri$gradOmega)
@@ -785,8 +827,8 @@ rxTest({
     om["eta.cl", "eta.cl"] <- 0.35
     om["eta.v", "eta.v"] <- 0.12
     om["eta.cl", "eta.v"] <- om["eta.v", "eta.cl"] <- 0.03
-    rGeneral <- rxPriorLogDensity(u, omega=om, method="general")
-    rTnpri <- rxPriorLogDensity(u, omega=om, method="tnpri")
+    rGeneral <- rxPriorLogDensity(u, omega = om, method = "general")
+    rTnpri <- rxPriorLogDensity(u, omega = om, method = "tnpri")
     expect_identical(rGeneral$value, rTnpri$value)
     expect_identical(rGeneral$gradOmega, rTnpri$gradOmega)
   })
@@ -794,8 +836,8 @@ rxTest({
   test_that("tnpri theta-only prior reuses the same multivariate-normal math as general", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "tka", "dnorm(0, 10)")
-    rGeneral <- rxPriorLogDensity(u, theta=c(tka=0.3), method="general")
-    rTnpri <- rxPriorLogDensity(u, theta=c(tka=0.3), method="tnpri")
+    rGeneral <- rxPriorLogDensity(u, theta = c(tka = 0.3), method = "general")
+    rTnpri <- rxPriorLogDensity(u, theta = c(tka = 0.3), method = "tnpri")
     expect_equal(rGeneral$value, rTnpri$value)
     expect_equal(rGeneral$gradTheta, rTnpri$gradTheta)
   })
@@ -803,16 +845,15 @@ rxTest({
   test_that("a Cauchy prior is refused under method=\"tnpri\"", {
     skipIfOldLotri()
     u <- .withPrior(.base(), "add.sd", "dcauchy(0, 5)")
-    expect_error(rxPriorLogDensity(u, theta=c(add.sd=0.5), method="tnpri"), "TNPRI")
+    expect_error(rxPriorLogDensity(u, theta = c(add.sd = 0.5), method = "tnpri"), "TNPRI")
   })
 
   test_that("invWishart() is refused under method=\"tnpri\"", {
     skipIfOldLotri()
     u <- .withPrior(.base(), c("eta.cl", "eta.v"), "invWishart(200)")
     om <- u$omega
-    expect_error(rxPriorLogDensity(u, omega=om, method="tnpri"), "TNPRI method")
+    expect_error(rxPriorLogDensity(u, omega = om, method = "tnpri"), "TNPRI method")
   })
-
 
   test_that("rxPriorBuildSpec() returns a reusable external pointer", {
     skipIfOldLotri()
@@ -833,15 +874,17 @@ rxTest({
   ## against a central-difference numeric gradient of the *whole*
   ## U -> Omega(U) -> loss pipeline, not hand-verified algebra.
 
-  .numGradCholOmegaInv <- function(omega, gradOmega, eps=1e-6) {
+  .numGradCholOmegaInv <- function(omega, gradOmega, eps = 1e-6) {
     p <- nrow(omega)
     U <- chol(solve(omega))
     lossFromU <- function(Uu) sum(gradOmega * solve(t(Uu) %*% Uu))
     ret <- matrix(0, p, p)
     for (i in seq_len(p)) {
       for (j in i:p) {
-        Up <- U; Up[i, j] <- Up[i, j] + eps
-        Um <- U; Um[i, j] <- Um[i, j] - eps
+        Up <- U
+        Up[i, j] <- Up[i, j] + eps
+        Um <- U
+        Um[i, j] <- Um[i, j] - eps
         ret[i, j] <- (lossFromU(Up) - lossFromU(Um)) / (2 * eps)
       }
     }
@@ -850,10 +893,10 @@ rxTest({
 
   test_that("rxPriorOmegaToCholOmegaInvGrad() matches its numeric gradient (2x2)", {
     omega <- lotri::lotri(eta.ka + eta.cl ~ c(0.15, 0.04, 0.2))
-    gradOmega <- matrix(c(1.3, 0.2, 0.2, -0.7), 2, 2, dimnames=dimnames(omega))
+    gradOmega <- matrix(c(1.3, 0.2, 0.2, -0.7), 2, 2, dimnames = dimnames(omega))
     ret <- rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
     num <- .numGradCholOmegaInv(unclass(omega), gradOmega)
-    expect_equal(unname(ret), num, tolerance=1e-5)
+    expect_equal(unname(ret), num, tolerance = 1e-5)
     expect_true(all(ret[lower.tri(ret)] == 0))
     expect_equal(dimnames(ret), dimnames(omega))
   })
@@ -867,7 +910,7 @@ rxTest({
     })
     ret <- rxPriorOmegaToCholOmegaInvGrad(omega, G)
     num <- .numGradCholOmegaInv(omega, G)
-    expect_equal(unname(ret), num, tolerance=1e-5)
+    expect_equal(unname(ret), num, tolerance = 1e-5)
     expect_true(all(ret[lower.tri(ret)] == 0))
   })
 
@@ -876,7 +919,7 @@ rxTest({
     gradOmega <- matrix(0.5)
     ret <- rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
     num <- .numGradCholOmegaInv(omega, gradOmega)
-    expect_equal(unname(ret), num, tolerance=1e-5)
+    expect_equal(unname(ret), num, tolerance = 1e-5)
   })
 
   test_that("rxPriorOmegaToCholOmegaInvGrad() symmetrizes an asymmetric gradOmega entrywise", {
@@ -889,7 +932,7 @@ rxTest({
     gradOmega <- matrix(c(1, 2, 0, 1), 2, 2)
     ret <- rxPriorOmegaToCholOmegaInvGrad(omega, gradOmega)
     num <- .numGradCholOmegaInv(omega, gradOmega)
-    expect_equal(unname(ret), num, tolerance=1e-5)
+    expect_equal(unname(ret), num, tolerance = 1e-5)
   })
 
   test_that("rxPriorOmegaToCholOmegaInvGrad() returns NULL for a non-positive-definite omega", {

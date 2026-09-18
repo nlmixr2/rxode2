@@ -42,16 +42,16 @@ writeLines(.cpp_l, .cpp_out)
 close(.cpp_out)
 
 l <- readLines("R/RcppExports.R")
-w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
+w <- which(regexpr("# Register entry points", l, fixed = TRUE) != -1)
 if (length(w) >= 1) {
   w <- w[1]
-  l <- l[seq(1, w-1)]
+  l <- l[seq(1, w - 1)]
   RcppExports.R <- file("R/RcppExports.R", "wb")
   writeLines(l, RcppExports.R)
   close(RcppExports.R)
 }
 
-compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
+compilerPath <- tools::Rcmd("config CC", stdout = TRUE)
 
 # To distinguish between them, check the version output
 versionInfo <- try(system(paste(compilerPath, "--version"), intern = TRUE))
@@ -66,11 +66,10 @@ if (inherits(versionInfo, "try-error")) {
 }
 
 .in <- suppressWarnings(readLines("src/Makevars.in"))
-.in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"),"include"), .in)
+.in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"), "include"), .in)
 .in <- gsub("@O2@", .o2, .in)
-.in <- gsub("@BH@", file.path(find.package("BH"),"include"), .in)
-.in <- gsub("@RCPP@", file.path(find.package("Rcpp"),"include"), .in)
-
+.in <- gsub("@BH@", file.path(find.package("BH"), "include"), .in)
+.in <- gsub("@RCPP@", file.path(find.package("Rcpp"), "include"), .in)
 
 
 ## SUNDIALS public headers are vendored in-tree (src/sundials_inc) so the
@@ -78,37 +77,67 @@ if (inherits(versionInfo, "try-error")) {
 ## (see https://github.com/nlmixr2/rxode2/issues/1155).
 .sundialsInc <- file.path("src", "sundials_inc")
 if (!file.exists(file.path(.sundialsInc, "sundials", "sundials_config.h"))) {
-  stop("Vendored SUNDIALS headers are missing from src/sundials_inc.\n",
-       "These files are committed to the repository and must be present.\n",
-       "Re-vendor them with 'Rscript build/vendor-sundials.R'.", call. = FALSE)
+  stop(
+    "Vendored SUNDIALS headers are missing from src/sundials_inc.\n",
+    "These files are committed to the repository and must be present.\n",
+    "Re-vendor them with 'Rscript build/vendor-sundials.R'.",
+    call. = FALSE
+  )
 }
 
 ## CVODE C source and private impl headers are committed to src/.
 ## All of these files must be present; they are part of the package source.
 .sundialsVendorFiles <- c(
-  "cvode_diag_impl.h", "cvode_impl.h", "cvode_ls_impl.h", "cvode_proj_impl.h",
-  "sundials_adiak_metadata.h", "sundials_cli.h", "sundials_cvode.c",
-  "sundials_cvode_diag.c", "sundials_cvode_io.c", "sundials_cvode_ls.c",
-  "sundials_cvode_nls.c", "sundials_cvode_proj.c",
-  "sundials_datanode.h", "sundials_hashmap_impl.h", "sundials_iterative_impl.h",
-  "sundials_logger_impl.h", "sundials_macros.h", "sundials_nvector_serial.c",
+  "cvode_diag_impl.h",
+  "cvode_impl.h",
+  "cvode_ls_impl.h",
+  "cvode_proj_impl.h",
+  "sundials_adiak_metadata.h",
+  "sundials_cli.h",
+  "sundials_cvode.c",
+  "sundials_cvode_diag.c",
+  "sundials_cvode_io.c",
+  "sundials_cvode_ls.c",
+  "sundials_cvode_nls.c",
+  "sundials_cvode_proj.c",
+  "sundials_datanode.h",
+  "sundials_hashmap_impl.h",
+  "sundials_iterative_impl.h",
+  "sundials_logger_impl.h",
+  "sundials_macros.h",
+  "sundials_nvector_serial.c",
   "sundials_profiler_impl.h",
-  "sundials_sundials_band.c", "sundials_sundials_cli.c",
-  "sundials_sundials_context.c", "sundials_sundials_dense.c",
-  "sundials_sundials_direct.c", "sundials_sundials_errors.c",
+  "sundials_sundials_band.c",
+  "sundials_sundials_cli.c",
+  "sundials_sundials_context.c",
+  "sundials_sundials_dense.c",
+  "sundials_sundials_direct.c",
+  "sundials_sundials_errors.c",
   "sundials_sundials_hashmap.c",
-  "sundials_sundials_iterative.c", "sundials_sundials_linearsolver.c",
-  "sundials_sundials_logger.c", "sundials_sundials_math.c",
-  "sundials_sundials_matrix.c", "sundials_sundials_memory.c",
-  "sundials_sundials_nonlinearsolver.c", "sundials_sundials_nvector.c",
+  "sundials_sundials_iterative.c",
+  "sundials_sundials_linearsolver.c",
+  "sundials_sundials_logger.c",
+  "sundials_sundials_math.c",
+  "sundials_sundials_matrix.c",
+  "sundials_sundials_memory.c",
+  "sundials_sundials_nonlinearsolver.c",
+  "sundials_sundials_nvector.c",
   "sundials_sundials_profiler.c",
   "sundials_sundials_version.c",
-  "sundials_sunlinsol_band.c", "sundials_sunlinsol_dense.c",
-  "sundials_sunmatrix_band.c", "sundials_sunmatrix_dense.c",
-  "sundials_sunmatrix_sparse.c", "sundials_sunnonlinsol_fixedpoint.c",
-  "sundials_sunnonlinsol_newton.c", "sundials_system_memory.c",
-  "sundials_utils.h", "sundials_debug.h", "sunlinsol_spgmr.c", "sunlinsol_spbcgs.c",
-  "sunlinsol_sptfqmr.c", file.path("stl", "sunstl_vector.h")
+  "sundials_sunlinsol_band.c",
+  "sundials_sunlinsol_dense.c",
+  "sundials_sunmatrix_band.c",
+  "sundials_sunmatrix_dense.c",
+  "sundials_sunmatrix_sparse.c",
+  "sundials_sunnonlinsol_fixedpoint.c",
+  "sundials_sunnonlinsol_newton.c",
+  "sundials_system_memory.c",
+  "sundials_utils.h",
+  "sundials_debug.h",
+  "sunlinsol_spgmr.c",
+  "sunlinsol_spbcgs.c",
+  "sunlinsol_sptfqmr.c",
+  file.path("stl", "sunstl_vector.h")
 )
 
 .missing <- .sundialsVendorFiles[!file.exists(file.path("src", .sundialsVendorFiles))]
@@ -166,8 +195,7 @@ if (file.exists(.lf)) {
 .nf <- "src/sundials_nvector_serial.c"
 if (file.exists(.nf)) {
   .nl <- readLines(.nf)
-  .nl <- gsub("N_VPrintFile_Serial(x, stdout);",
-               "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
+  .nl <- gsub("N_VPrintFile_Serial(x, stdout);", "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
   .nf_out <- file(.nf, "wb")
   writeLines(.nl, .nf_out, sep = "\n")
   close(.nf_out)
@@ -190,10 +218,12 @@ if (file.exists(.nvf)) {
 ##  replace direct N_VSpace/SUNMatSpace/SUNLinSolSpace calls with zero-assignment
 ##  equivalents.  Also strips any pragma block injected by a previous run.
 .strip_deprecated_pragma <- function(.lines) {
-  if (length(.lines) >= 3 &&
+  if (
+    length(.lines) >= 3 &&
       trimws(.lines[1]) == "#if defined(__GNUC__) || defined(__clang__)" &&
       grepl("Wdeprecated-declarations", .lines[2], fixed = TRUE) &&
-      trimws(.lines[3]) == "#endif") {
+      trimws(.lines[3]) == "#endif"
+  ) {
     .lines <- .lines[-c(1L, 2L, 3L)]
   }
   .lines
@@ -273,12 +303,9 @@ if (file.exists(.cvf3)) {
 .clf <- "src/sundials_cvode_ls.c"
 if (file.exists(.clf)) {
   .cl <- .strip_deprecated_pragma(readLines(.clf))
-  .cl <- gsub("N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);",
-              "lrw1 = 0; liw1 = 0;", .cl, fixed = TRUE)
-  .cl <- gsub("retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);",
-              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
-  .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);",
-              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);", "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);", "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
   .clf_out <- file(.clf, "wb")
   writeLines(.cl, .clf_out, sep = "\n")
   close(.clf_out)
@@ -304,15 +331,19 @@ if (file.exists(.clf)) {
         if (.tj == "#endif" || .tj == "#else") {
           break
         }
-        if (grepl("Check if Atimes function has been set", .lines[.j], fixed = TRUE) &&
-            any(grepl("SUNLINSOL_", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+        if (
+          grepl("Check if Atimes function has been set", .lines[.j], fixed = TRUE) &&
+            any(grepl("SUNLINSOL_", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))
+        ) {
           .lines <- append(.lines, "#endif", after = .j - 1L)
           .changed <- TRUE
           .inserted <- TRUE
           break
         }
-        if (grepl("if\\s*\\(.*<=\\s*delta\\)", .lines[.j]) &&
-            any(grepl("SUNLS_MSG_RESIDUAL", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+        if (
+          grepl("if\\s*\\(.*<=\\s*delta\\)", .lines[.j]) &&
+            any(grepl("SUNLS_MSG_RESIDUAL", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))
+        ) {
           .lines <- append(.lines, "#endif", after = .j - 1L)
           .changed <- TRUE
           .inserted <- TRUE
@@ -336,17 +367,13 @@ if (file.exists(.clf)) {
 for (.sp in file.path("src", .sp_files)) {
   if (file.exists(.sp)) {
     .sl <- .strip_deprecated_pragma(readLines(.sp))
-    .sl <- gsub("content->info_file\\s*=\\s*stdout;",
-                 "content->info_file = NULL;", .sl)
+    .sl <- gsub("content->info_file\\s*=\\s*stdout;", "content->info_file = NULL;", .sl)
     .sl <- gsub("= SUNLinSolSpace_SPBCGS;", "= NULL;", .sl, fixed = TRUE)
     .sl <- gsub("= SUNLinSolSpace_SPGMR;", "= NULL;", .sl, fixed = TRUE)
     .sl <- gsub("= SUNLinSolSpace_SPTFQMR;", "= NULL;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
     .sl <- .fix_monitoring_endif(.sl)
     .sp_out <- file(.sp, "wb")
     writeLines(.sl, .sp_out, sep = "\n")
@@ -358,8 +385,7 @@ for (.sp in file.path("src", .sp_files)) {
 # replacing the std::exit(0) call (CRAN-forbidden) with a C++ exception so
 # the error can be caught and handled via the rxode2 OpenMP-safe badSolveExit
 # pattern.  Generating from BH keeps us in sync with any future BH updates.
-.bh_ie <- system.file("include", "boost", "numeric", "odeint", "stepper",
-                       "implicit_euler.hpp", package = "BH")
+.bh_ie <- system.file("include", "boost", "numeric", "odeint", "stepper", "implicit_euler.hpp", package = "BH")
 if (!nzchar(.bh_ie)) {
   stop("BH package implicit_euler.hpp not found", call. = FALSE)
 }
@@ -379,27 +405,26 @@ writeLines(.ie_lines, .ie_out, sep = "\n")
 close(.ie_out)
 
 
-
-
-
-
-if (file.exists("inst/tools/fflags.R")) source("inst/tools/fflags.R")
+if (file.exists("inst/tools/fflags.R")) {
+  source("inst/tools/fflags.R")
+}
 
 if (.Platform$OS.type == "windows") {
   .makevars <- file("src/Makevars.win", "wb")
   .i <- "I"
 } else {
   .makevars <- file("src/Makevars", "wb")
-  if (any(grepl("Pop!_OS", utils::osVersion, fixed=TRUE)) ||
-          any(grepl("Ubuntu", utils::osVersion, fixed=TRUE))) {
+  if (
+    any(grepl("Pop!_OS", utils::osVersion, fixed = TRUE)) ||
+      any(grepl("Ubuntu", utils::osVersion, fixed = TRUE))
+  ) {
     .i <- "isystem"
   } else {
     .i <- "I"
   }
 }
 
-writeLines(gsub("@ISYSTEM@", .i, .in),
-             .makevars)
+writeLines(gsub("@ISYSTEM@", .i, .in), .makevars)
 close(.makevars)
 
 ## --- Compilation prerequisites: generate before anything that may fail ---
@@ -425,7 +450,30 @@ def <- def[1:w]
 def <- gsub("=NULL", "", def)
 def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
 
-def <- unique(c(def, c("_sum", "_udf", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_rxDelay", "_rxDelayD", "_rxDelayD2", "_rxDelayD3", "_rxPast", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord", "__assignFuns2")))
+def <- unique(c(
+  def,
+  c(
+    "_sum",
+    "_udf",
+    "_sign",
+    "_prod",
+    "_max",
+    "_min",
+    "_transit4P",
+    "_transit3P",
+    "_rxDelay",
+    "_rxDelayD",
+    "_rxDelayD2",
+    "_rxDelayD3",
+    "_rxPast",
+    "_assignFuns0",
+    "_assignFuns",
+    "_getRxSolve_",
+    "_solveData",
+    "_rxord",
+    "__assignFuns2"
+  )
+))
 
 w0 <- which(grepl("double +_prod", l))[1]
 r <- 1:(w0 - 1)
@@ -435,7 +483,6 @@ l <- l[-r]
 
 w1 <- which(regexpr("dynamic start", l) != -1)
 l1 <- l[1:w1]
-
 
 
 w2 <- which(regexpr("dynamic stop", l) != -1)
@@ -449,37 +496,49 @@ l2 <- l2[1:w3]
 w4 <- which(regexpr("assign stop", l3) != -1)
 l3 <- l3[seq(w4, length(l3))]
 
-dfP <- l[seq(w1+1, w2-1)]
+dfP <- l[seq(w1 + 1, w2 - 1)]
 
-dfP <- dfP[regexpr("^ *$", dfP)==-1]
-df <- setNames(do.call("rbind",lapply(seq_along(dfP),
-                                      function(i) {
-                                        .r <- sub("^ *", "", dfP[[i]])
-                                        .r <- sub("^([^ ]*) *= *[(]", "\\1,", .r)
-                                        .r <- sub("^([^ ]*) *[)] *R_GetCCallable *[(] *\"", "\\1,", .r, perl=TRUE)
-                                        .r <- sub("^([^ ]*) *\" *, *\"", "\\1,", .r, perl=TRUE)
-                                        .r <- sub("^([^ ]*)\" *[)] *; *", "\\1",.r, perl=TRUE)
-                                        data.frame(t(strsplit(.r, ",")[[1]]),stringsAsFactors = FALSE)
-                                      })), c("fun", "type", "package", "packageFun"))
+dfP <- dfP[regexpr("^ *$", dfP) == -1]
+df <- setNames(
+  do.call(
+    "rbind",
+    lapply(seq_along(dfP), function(i) {
+      .r <- sub("^ *", "", dfP[[i]])
+      .r <- sub("^([^ ]*) *= *[(]", "\\1,", .r)
+      .r <- sub("^([^ ]*) *[)] *R_GetCCallable *[(] *\"", "\\1,", .r, perl = TRUE)
+      .r <- sub("^([^ ]*) *\" *, *\"", "\\1,", .r, perl = TRUE)
+      .r <- sub("^([^ ]*)\" *[)] *; *", "\\1", .r, perl = TRUE)
+      data.frame(t(strsplit(.r, ",")[[1]]), stringsAsFactors = FALSE)
+    })
+  ),
+  c("fun", "type", "package", "packageFun")
+)
 
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
 df$threadSafe <- 1L
-df <- df[,c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
+df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
 def <- def[!(def %in% df$rxFun)]
 def <- def[!(def %in% df$fun)]
 
-.parseEnv <- new.env(parent=emptyenv())
+.parseEnv <- new.env(parent = emptyenv())
 source("R/parseFuns.R")
 
-df$argMin <- vapply(df$rxFun, function(f) {
-  .n <- .parseEnv$.parseNum[f]
-  if (is.na(.n)) return(NA_integer_)
-  .n <-setNames(.n, NULL)
-  as.integer(.n)
-}, integer(1), USE.NAMES=TRUE)
+df$argMin <- vapply(
+  df$rxFun,
+  function(f) {
+    .n <- .parseEnv$.parseNum[f]
+    if (is.na(.n)) {
+      return(NA_integer_)
+    }
+    .n <- setNames(.n, NULL)
+    as.integer(.n)
+  },
+  integer(1),
+  USE.NAMES = TRUE
+)
 
 df$argMax <- df$argMin
 
@@ -487,8 +546,7 @@ dfStr <- deparse(df)
 dfStr[1] <- paste(".parseEnv$.rxode2parseDf <- ", dfStr[1])
 
 dfIni.R <- file("R/dfIni.R", "wb")
-writeLines(dfStr,
-           dfIni.R)
+writeLines(dfStr, dfIni.R)
 close(dfIni.R)
 
 ## deparse1 came from R 4.0, use deparse2
@@ -496,33 +554,33 @@ deparse2 <- function(expr, collapse = " ", width.cutoff = 500L, ...) {
   paste(deparse(expr, width.cutoff, ...), collapse = collapse)
 }
 
-final <- c("#include <time.h>",
-           "#include <stdlib.h>",
-           "unsigned long int __timeId=0;",
-           "char *genRandomChar(void);",
-           "void writeHeader(const char *md5, const char *extra) {",
-           paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld_", def, "_%s\\n\", extra, md5, __timeId++, genRandomChar());"),
-           "}",
-           "void writeBody0(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l0, "\n"), deparse2, character(1)), ", ", nchar(l0) + 1, ");"),
-           "}",
-           "void writeBody1(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l1, "\n"), deparse2, character(1)), ", ", nchar(l1) + 1, ");"),
-           "}",
-           "void writeBody2(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l2, "\n"), deparse2, character(1)), ", ", nchar(l2) + 1, ");"),
-           "}",
-           "void writeBody3(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l3, "\n"), deparse2, character(1)), ", ", nchar(l3) + 1, ");"),
-           "}",
-           "void writeFooter(void) {",
-           paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
-           "}"
-           )
+final <- c(
+  "#include <time.h>",
+  "#include <stdlib.h>",
+  "unsigned long int __timeId=0;",
+  "char *genRandomChar(void);",
+  "void writeHeader(const char *md5, const char *extra) {",
+  paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld_", def, "_%s\\n\", extra, md5, __timeId++, genRandomChar());"),
+  "}",
+  "void writeBody0(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l0, "\n"), deparse2, character(1)), ", ", nchar(l0) + 1, ");"),
+  "}",
+  "void writeBody1(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l1, "\n"), deparse2, character(1)), ", ", nchar(l1) + 1, ");"),
+  "}",
+  "void writeBody2(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l2, "\n"), deparse2, character(1)), ", ", nchar(l2) + 1, ");"),
+  "}",
+  "void writeBody3(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l3, "\n"), deparse2, character(1)), ", ", nchar(l3) + 1, ");"),
+  "}",
+  "void writeFooter(void) {",
+  paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
+  "}"
+)
 
 codegen2.h <- file("src/codegen2.h", "wb")
-writeLines(final,
-           codegen2.h)
+writeLines(final, codegen2.h)
 close(codegen2.h)
 
 ## --- Optional: model-cache MD5 (needs 'digest', which is in Suggests) ---
@@ -533,10 +591,10 @@ if (requireNamespace("digest", quietly = TRUE)) {
   cpp <- cpp[!dir.exists(file.path("src", cpp))]
   include <- list.files("inst/include", recursive = TRUE)
 
-  md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
-                                   paste0("inst/include/", include)
-                                   ), digest::digest, file = TRUE),
-                          ""))
+  md5 <- digest::digest(c(
+    lapply(c(paste0("src/", cpp), paste0("inst/include/", include)), digest::digest, file = TRUE),
+    ""
+  ))
   unlink("R/rxode2_md5.R")
   md5file <- file("R/rxode2_md5.R", "wb")
   writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
@@ -548,9 +606,13 @@ if (requireNamespace("digest", quietly = TRUE)) {
 
   unlink("inst/include/rxode2parseVer.h")
   ode.h <- file("inst/include/rxode2parseVer.h", "wb")
-  writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
-               "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
-               sprintf("#define __VER_ver__ \"%s\"", v)),
-             ode.h)
+  writeLines(
+    c(
+      sprintf("#define __VER_md5__ \"%s\"", md5),
+      "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
+      sprintf("#define __VER_ver__ \"%s\"", v)
+    ),
+    ode.h
+  )
   close(ode.h)
 }

@@ -1,7 +1,9 @@
 .addExpr <- function(.ret) {
   .new <- .rxOptEnv$.rep[[.ret]]
   if (!is.null(.new)) {
-    if (length(.rxOptEnv$.exclude) != 1) .rxOptEnv$.exclude <- ""
+    if (length(.rxOptEnv$.exclude) != 1) {
+      .rxOptEnv$.exclude <- ""
+    }
     if (.new == .rxOptEnv$.exclude) {
       return(.ret)
     } else {
@@ -35,26 +37,20 @@
       } else {
         .ret <- paste0(gsub(" ", "", sep), e1)
       }
-      if (regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end),
-        .ret,
-        perl = TRUE
-      ) != -1) {
+      if (regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end), .ret, perl = TRUE) != -1) {
         .add <- FALSE
       }
     } else {
-      if (sep == "^" && isTRUE(checkmate::checkIntegerish(suppressWarnings(as.numeric(e2)),
-        lower = 2, any.missing = FALSE
-      ))) {
+      if (
+        sep == "^" &&
+          isTRUE(checkmate::checkIntegerish(suppressWarnings(as.numeric(e2)), lower = 2, any.missing = FALSE))
+      ) {
         .ret <- paste0("(", paste(rep(paste0("(", e1, ")"), as.numeric(e2)), collapse = "*"), ")")
       } else {
-        if ((regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end),
-          paste0(e1),
-          perl = TRUE
-        ) != -1) &&
-          (regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end),
-            paste0(e2),
-            perl = TRUE
-          ) != -1)) {
+        if (
+          (regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end), paste0(e1), perl = TRUE) != -1) &&
+            (regexpr(rex::rex(start, any_spaces, regNum, any_spaces, end), paste0(e2), perl = TRUE) != -1)
+        ) {
           .add <- FALSE
         }
         .ret <- paste0(e1, sep, e2)
@@ -71,8 +67,10 @@
 .rxOptMod <- function(e1, e2) {
   .ret <- paste0(.rxModOperand(e1), "%%", .rxModOperand(e2))
   .num <- rex::rex(start, any_spaces, regNum, any_spaces, end)
-  if (regexpr(.num, paste0(e1), perl = TRUE) != -1 &&
-        regexpr(.num, paste0(e2), perl = TRUE) != -1) {
+  if (
+    regexpr(.num, paste0(e1), perl = TRUE) != -1 &&
+      regexpr(.num, paste0(e2), perl = TRUE) != -1
+  ) {
     # constants are left inline, as the other binary operators do; unlike them
     # `%%` is not folded here, since rxode2 truncates toward zero and R floors
     return(.ret)
@@ -187,7 +185,9 @@
       ## pick up the SAME rx_expr_ temporary the matching delay(state, tau) calls
       ## do, which .rxValidatePast() requires (it matches the two by text).
       .tau <- .rxOptExpr(x[[3]])
-      if (!is.character(.tau) || length(.tau) != 1L) .tau <- deparse1(x[[3]])
+      if (!is.character(.tau) || length(.tau) != 1L) {
+        .tau <- deparse1(x[[3]])
+      }
       paste0("past(", ..rxOptLhs(x[[2]]), ",", .tau, ")")
     } else if (identical(x[[1]], quote(`dy`))) {
       return(paste0("dy(", ..rxOptLhs(x[[2]]), ")"))
@@ -240,28 +240,33 @@
       return(paste0("(", ..rxOpt(.x2), ")"))
     } else if (identical(x[[1]], quote(`%%`))) {
       return(paste0(
-        .rxModOperand(..rxOpt(x[[2]])), "%%",
+        .rxModOperand(..rxOpt(x[[2]])),
+        "%%",
         .rxModOperand(..rxOpt(x[[3]]))
       ))
-    } else if (identical(x[[1]], quote(`*`)) ||
-      identical(x[[1]], quote(`^`)) ||
-      identical(x[[1]], quote(`+`)) ||
-      identical(x[[1]], quote(`-`)) ||
-      identical(x[[1]], quote(`/`)) ||
-      identical(x[[1]], quote(`==`)) ||
-      identical(x[[1]], quote(`>=`)) ||
-      identical(x[[1]], quote(`<=`)) ||
-      identical(x[[1]], quote(`>`)) ||
-      identical(x[[1]], quote(`<`)) ||
-      identical(x[[1]], quote(`!=`)) ||
-      identical(x[[1]], quote(`&&`)) ||
-      identical(x[[1]], quote(`||`)) ||
-      identical(x[[1]], quote(`&`)) ||
-      identical(x[[1]], quote(`|`))) {
+    } else if (
+      identical(x[[1]], quote(`*`)) ||
+        identical(x[[1]], quote(`^`)) ||
+        identical(x[[1]], quote(`+`)) ||
+        identical(x[[1]], quote(`-`)) ||
+        identical(x[[1]], quote(`/`)) ||
+        identical(x[[1]], quote(`==`)) ||
+        identical(x[[1]], quote(`>=`)) ||
+        identical(x[[1]], quote(`<=`)) ||
+        identical(x[[1]], quote(`>`)) ||
+        identical(x[[1]], quote(`<`)) ||
+        identical(x[[1]], quote(`!=`)) ||
+        identical(x[[1]], quote(`&&`)) ||
+        identical(x[[1]], quote(`||`)) ||
+        identical(x[[1]], quote(`&`)) ||
+        identical(x[[1]], quote(`|`))
+    ) {
       if (length(x) == 3) {
         if (length(x[[2]]) == 2) {
-          if (identical(x[[2]][[1]], quote(`-`)) &&
-            is.atomic(x[[2]][[2]])) {
+          if (
+            identical(x[[2]][[1]], quote(`-`)) &&
+              is.atomic(x[[2]][[2]])
+          ) {
             if (is.atomic(x[[3]])) {
               if (identical(x[[1]], quote(`/`))) {
                 return(as.character(-x[[2]][[2]] / x[[3]]))
@@ -274,8 +279,10 @@
               }
             }
           }
-          if (x[[2]][[2]] == 1 &&
-            identical(x[[1]], quote(`*`))) {
+          if (
+            x[[2]][[2]] == 1 &&
+              identical(x[[1]], quote(`*`))
+          ) {
             return(paste0("-", ..rxOpt(x[[3]])))
           }
         }
@@ -327,7 +334,8 @@
           }
         }
         return(paste0(
-          ..rxOpt(x[[2]]), as.character(x[[1]]),
+          ..rxOpt(x[[2]]),
+          as.character(x[[1]]),
           ..rxOpt(x[[3]])
         ))
       } else {
@@ -337,9 +345,11 @@
           ..rxOpt(x[[2]])
         )
       }
-    } else if (identical(x[[1]], quote(`~`)) ||
-      identical(x[[1]], quote(`=`)) ||
-      identical(x[[1]], quote(`<-`))) {
+    } else if (
+      identical(x[[1]], quote(`~`)) ||
+        identical(x[[1]], quote(`=`)) ||
+        identical(x[[1]], quote(`<-`))
+    ) {
       .rxOptEnv$.new <- NULL
       .x3 <- .rxOptExpr(x[[3]])
       if (length(.x3) == 3) {
@@ -352,28 +362,35 @@
       }
       .ret <- paste0(
         ..rxOptLhs(x[[2]]),
-        ifelse(identical(x[[1]], quote(`<-`)),
-          "=", as.character(x[[1]])
-        ),
+        ifelse(identical(x[[1]], quote(`<-`)), "=", as.character(x[[1]])),
         .x3
       )
       .extra <- NULL
       if (length(.rxOptEnv$.new) > 0) {
         for (.i in seq_along(.rxOptEnv$.rep)) {
-          if (any(.rxOptEnv$.rep[[.i]] == .rxOptEnv$.new) &&
-            !any(.rxOptEnv$.rep[[.i]] == .rxOptEnv$.added)) {
+          if (
+            any(.rxOptEnv$.rep[[.i]] == .rxOptEnv$.new) &&
+              !any(.rxOptEnv$.rep[[.i]] == .rxOptEnv$.added)
+          ) {
             .cur <- .rxOptEnv$.rep[[.i]]
             if (.i != 1) {
               for (.j in seq(1, .i - 1)) {
-                while (!any(.rxOptEnv$.rep[[.j]] == .rxOptEnv$.added) &&
-                  regexpr(
-                    rex::rex(or(.cur)),
-                    names(.rxOptEnv$.rep)[.j]
-                  ) != -1) {
-                  .extra <- c(.extra, paste0(
-                    .rxOptEnv$.rep[[.j]],
-                    "~", names(.rxOptEnv$.rep)[.j]
-                  ))
+                while (
+                  !any(.rxOptEnv$.rep[[.j]] == .rxOptEnv$.added) &&
+                    regexpr(
+                      rex::rex(or(.cur)),
+                      names(.rxOptEnv$.rep)[.j]
+                    ) !=
+                      -1
+                ) {
+                  .extra <- c(
+                    .extra,
+                    paste0(
+                      .rxOptEnv$.rep[[.j]],
+                      "~",
+                      names(.rxOptEnv$.rep)[.j]
+                    )
+                  )
                   .rxOptEnv$.added <- c(
                     .rxOptEnv$.added,
                     .rxOptEnv$.rep[.j]
@@ -384,7 +401,8 @@
             .extra <- c(
               .extra,
               paste0(
-                .rxOptEnv$.rep[[.i]], "~",
+                .rxOptEnv$.rep[[.i]],
+                "~",
                 ..rxOpt(eval(parse(text = paste0("quote(", names(.rxOptEnv$.rep)[.i], ")"))))
               )
             )
@@ -401,7 +419,9 @@
     } else {
       .ret0 <- lapply(x, ..rxOpt)
       .ret <- paste0(.ret0[[1]], "(")
-      if (.ret == "((") .ret <- "("
+      if (.ret == "((") {
+        .ret <- "("
+      }
       .ret0 <- .ret0[-1]
       .ret <- paste0(.ret, paste(unlist(.ret0), collapse = ", "), ")")
       return(.ret)
@@ -418,7 +438,9 @@
 .rxBalancedChunks <- function(lines, targetChars) {
   .w <- pmax(1L, nchar(lines))
   .k <- max(1L, min(length(lines), as.integer(ceiling(sum(.w) / max(1, targetChars)))))
-  if (.k <= 1L) return(list(lines))
+  if (.k <= 1L) {
+    return(list(lines))
+  }
   unname(split(lines, findInterval(cumsum(.w), seq_len(.k - 1L) * sum(.w) / .k)))
 }
 
@@ -460,13 +482,16 @@
   .new <- .lhs
   .new[.icCan] <- paste0("rx__disg_ic__", sub("\\(0\\)$", "", .lhs[.icCan]), "__")
   .mm <- regmatches(.lhs[.modCan], regexec("^([a-zA-Z]+)\\((.*)\\)$", .lhs[.modCan]))
-  .new[.modCan] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"),
-                          character(1))
-  .new[.hex] <- vapply(.lhs[.hex], function(.l) {
-    paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
-  }, character(1), USE.NAMES = FALSE)
-  paste(ifelse(.isIc | .isMod | .isPast, paste0(.lead, .new, .trail, .rhs), .ln),
-        collapse = "\n")
+  .new[.modCan] <- vapply(.mm, function(.m) paste0("rx__disg_mod__", .m[2L], "__", .m[3L], "__"), character(1))
+  .new[.hex] <- vapply(
+    .lhs[.hex],
+    function(.l) {
+      paste0("rx__disg_lhs__", paste(as.character(charToRaw(.l)), collapse = ""), "__")
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  paste(ifelse(.isIc | .isMod | .isPast, paste0(.lead, .new, .trail, .rhs), .ln), collapse = "\n")
 }
 
 # Reverse .rxDisguiseCmt().  Only the left-hand side is rewritten (split at the first
@@ -485,11 +510,14 @@
     .tok <- sub("^rx__disg_ic__(.*)__$", "\\1(0)", .tok)
     .tok <- sub("^rx__disg_mod__([a-zA-Z]+)__(.*)__$", "\\1(\\2)", .tok)
     .isHex <- grepl("^rx__disg_lhs__([0-9a-f][0-9a-f])+__$", .tok)
-    .tok[.isHex] <- vapply(sub("^rx__disg_lhs__([0-9a-f]+)__$", "\\1", .tok[.isHex]),
-                           function(.h) {
-                             rawToChar(as.raw(strtoi(substring(.h, seq(1L, nchar(.h), 2L),
-                                                               seq(2L, nchar(.h), 2L)), 16L)))
-                           }, character(1), USE.NAMES = FALSE)
+    .tok[.isHex] <- vapply(
+      sub("^rx__disg_lhs__([0-9a-f]+)__$", "\\1", .tok[.isHex]),
+      function(.h) {
+        rawToChar(as.raw(strtoi(substring(.h, seq(1L, nchar(.h), 2L), seq(2L, nchar(.h), 2L)), 16L)))
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
     .ln[.disg] <- paste0(.lead, .tok, .trail, .rest)
   }
   paste(.ln, collapse = "\n")
@@ -521,19 +549,21 @@
     .pos <- 1L
     repeat {
       .m <- regexpr(.fnRe, substr(.l, .pos, nchar(.l)), perl = TRUE)
-      if (.m == -1L) break
+      if (.m == -1L) {
+        break
+      }
       .start <- .pos + as.integer(.m) - 1L
       .open <- .start + attr(.m, "match.length") - 1L
       .ch <- strsplit(substr(.l, .open, nchar(.l)), "", fixed = TRUE)[[1]]
       .rel <- which(cumsum((.ch == "(") - (.ch == ")")) == 0L)[1L]
-      if (is.na(.rel)) { # no matching ")" on this line: leave the call alone
+      if (is.na(.rel)) {
+        # no matching ")" on this line: leave the call alone
         .pos <- .open + 1L
         next
       }
       .end <- .open + .rel - 1L
       .inner <- substr(.l, .open + 1L, .end - 1L)
-      .st <- regmatches(.inner,
-                        regexec("^[ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*,", .inner))[[1]]
+      .st <- regmatches(.inner, regexec("^[ \t]*([a-zA-Z][a-zA-Z0-9_.]*)[ \t]*,", .inner))[[1]]
       # keep scanning inside the arguments (nested calls) when this call stays
       if (length(.st) != 2L || .st[2L] %in% .ddt || !(.st[2L] %in% .allDdt)) {
         .pos <- .open + 1L
@@ -586,9 +616,13 @@
   .ch <- strsplit(code, "", fixed = TRUE)[[1]]
   .depth <- cumsum((.ch == "(") - (.ch == ")"))
   .at <- which(.ch == "," & .depth == 0L)[1L]
-  if (is.na(.at)) return(NULL)
+  if (is.na(.at)) {
+    return(NULL)
+  }
   .st <- trimws(substr(inner, 1L, .at - 1L))
-  if (!grepl("^[a-zA-Z.][a-zA-Z0-9_.]*$", .st)) return(NULL)
+  if (!grepl("^[a-zA-Z.][a-zA-Z0-9_.]*$", .st)) {
+    return(NULL)
+  }
   list(state = .st, tau = trimws(substr(inner, .at + 1L, nchar(inner))))
 }
 
@@ -605,7 +639,9 @@
 # Blanking rather than removing keeps every column where it was, so what the scan does read
 # it reads from the right place.
 .rxCodeOnly <- function(line) {
-  if (!grepl("[#\"']", line)) return(line)
+  if (!grepl("[#\"']", line)) {
+    return(line)
+  }
   .ch <- strsplit(line, "", fixed = TRUE)[[1]]
   .q <- ""
   .i <- 1L
@@ -613,11 +649,12 @@
     .c <- .ch[.i]
     if (nzchar(.q)) {
       .ch[.i] <- " "
-      if (.c == "\\") {                    # escaped: whatever follows is not a delimiter
+      if (.c == "\\") {
+        # escaped: whatever follows is not a delimiter
         .i <- .i + 1L
         if (.i <= length(.ch)) .ch[.i] <- " "
       } else if (.c == .q) {
-        .ch[.i] <- .c                      # keep the quote that closes it
+        .ch[.i] <- .c # keep the quote that closes it
         .q <- ""
       }
     } else if (.c == "\"" || .c == "'") {
@@ -655,23 +692,25 @@
     .pos <- 1L
     repeat {
       .m <- regexpr(.re, substr(.l, .pos, nchar(.l)), perl = TRUE)
-      if (.m == -1L) break
+      if (.m == -1L) {
+        break
+      }
       .open <- .pos + as.integer(.m) + attr(.m, "match.length") - 2L
       .end <- .rxMatchParen(.l, .open)
-      if (is.na(.end)) { # no matching ")" on this line: skip it and keep scanning
+      if (is.na(.end)) {
+        # no matching ")" on this line: skip it and keep scanning
         .incomplete <- TRUE
         .pos <- .open + 1L
         next
       }
-      .a <- .rxSplitStateTau(substr(.raw, .open + 1L, .end - 1L),
-                             substr(.l, .open + 1L, .end - 1L))
+      .a <- .rxSplitStateTau(substr(.raw, .open + 1L, .end - 1L), substr(.l, .open + 1L, .end - 1L))
       if (!is.null(.a)) {
         .prev <- .out[[.a$state]]
         if (!(.rxTauKey(.a$tau) %in% vapply(.prev, .rxTauKey, character(1)))) {
           .out[[.a$state]] <- c(.prev, .a$tau)
         }
       }
-      .pos <- .open + 1L   # keep scanning, including nested delay() calls
+      .pos <- .open + 1L # keep scanning, including nested delay() calls
     }
   }
   attr(.out, "incomplete") <- .incomplete
@@ -685,16 +724,23 @@
 # does not close the call.  The duration text still comes from the line itself.
 .rxPastLineParts <- function(line) {
   .m <- regexpr("^[ \t]*past[ \t]*\\(", line)
-  if (.m == -1L) return(NULL)
+  if (.m == -1L) {
+    return(NULL)
+  }
   .code <- .rxCodeOnly(line)
   .open <- attr(.m, "match.length")
   .end <- .rxMatchParen(.code, .open)
-  if (is.na(.end)) return(NULL)
+  if (is.na(.end)) {
+    return(NULL)
+  }
   .rest <- substr(line, .end + 1L, nchar(line))
-  if (!grepl("^[ \t]*(=|<-|~)", .rest)) return(NULL)
-  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L),
-                         substr(.code, .open + 1L, .end - 1L))
-  if (is.null(.a)) return(NULL)
+  if (!grepl("^[ \t]*(=|<-|~)", .rest)) {
+    return(NULL)
+  }
+  .a <- .rxSplitStateTau(substr(line, .open + 1L, .end - 1L), substr(.code, .open + 1L, .end - 1L))
+  if (is.null(.a)) {
+    return(NULL)
+  }
   c(.a, list(lead = sub("^([ \t]*).*$", "\\1", line), rest = .rest))
 }
 
@@ -727,36 +773,54 @@
   .ln <- strsplit(txt, "\n", fixed = TRUE)[[1]]
   .parts <- lapply(.ln, .rxPastLineParts)
   .isPast <- which(!vapply(.parts, is.null, logical(1)))
-  if (length(.isPast) == 0L) return(txt)
+  if (length(.isPast) == 0L) {
+    return(txt)
+  }
   .opt <- .rxDelayDurs(txt)
   # a delay() the scan could not read -- one split over lines, say -- leaves an incomplete
   # picture, and nothing can be concluded from it: the durations it did read are not the
   # same calls, in the same order, as the ones optimizing produced, and a duration missing
   # from it may be there in the model.  Leave every line alone, which is what this pass did
   # before it existed: the validator still says whatever it would have said.
-  if (isTRUE(attr(.opt, "incomplete"))) return(txt)
+  if (isTRUE(attr(.opt, "incomplete"))) {
+    return(txt)
+  }
   .org <- .rxDelayDurs(orig)
-  if (isTRUE(attr(.org, "incomplete"))) return(txt)
+  if (isTRUE(attr(.org, "incomplete"))) {
+    return(txt)
+  }
   .did <- FALSE
   for (.i in .isPast) {
     .p <- .parts[[.i]]
     .o <- .opt[[.p$state]]
-    if (is.null(.o)) next
+    if (is.null(.o)) {
+      next
+    }
     .key <- .rxTauKey(.p$tau)
-    if (.key %in% vapply(.o, .rxTauKey, character(1))) next   # already matches
+    if (.key %in% vapply(.o, .rxTauKey, character(1))) {
+      next
+    } # already matches
     .g <- .org[[.p$state]]
     .gk <- if (is.null(.g)) character(0) else vapply(.g, .rxTauKey, character(1))
     # it did not match a delay() before optimizing either: not ours to rewrite
-    if (!(.key %in% .gk)) next
-    if (length(.g) != length(.o)) next   # a duration was dropped: nothing lines up
+    if (!(.key %in% .gk)) {
+      next
+    }
+    if (length(.g) != length(.o)) {
+      next
+    } # a duration was dropped: nothing lines up
     .j <- match(.key, .gk)
-    if (is.na(.j)) next
+    if (is.na(.j)) {
+      next
+    }
     .new <- .o[[.j]]
     # keep the caller's spacing: only the duration inside past(...) is rewritten
     .ln[.i] <- paste0(.p$lead, "past(", .p$state, ",", .new, ")", .p$rest)
     .did <- TRUE
   }
-  if (!.did) return(txt)
+  if (!.did) {
+    return(txt)
+  }
   paste(.ln, collapse = "\n")
 }
 
@@ -776,11 +840,9 @@
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
   .re <- "\\brx_expr_[0-9]+\\b"
-  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]),
-                  unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
   for (.v in .new) {
-    .o <- gsub(paste0("\\b", .v, "\\b"),
-               sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+    .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
   }
   .o
 }
@@ -801,9 +863,11 @@
   # Mirror how rxModelVars() reads a character, in its order: a length-1 string may be a
   # filename (the file holds the model text; read it) or a registered model name (it has no
   # "=", "<-" or "~"; only rxNorm() can resolve it); anything else is literal model text.
-  if (is.character(x) && length(x) == 1L &&
-        isTRUE(tryCatch(file.exists(x), error = function(e) FALSE,
-                        warning = function(w) FALSE))) {
+  if (
+    is.character(x) &&
+      length(x) == 1L &&
+      isTRUE(tryCatch(file.exists(x), error = function(e) FALSE, warning = function(w) FALSE))
+  ) {
     x <- readLines(x, warn = FALSE)
   } else if (is.character(x) && length(x) == 1L && !grepl("[=~]|<-", x)) {
     x <- rxNorm(x)
@@ -826,8 +890,10 @@
   # below it against 3-9x gained above, so the threshold sits below the knee.
   # A model with few but enormous lines is chunked; one with many short lines is
   # not, which is the opposite of what the line count would have decided.
-  if (nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
-        length(.ln) <= chunkLines) {
+  if (
+    nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
+      length(.ln) <= chunkLines
+  ) {
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
@@ -840,8 +906,10 @@
   }
 
   # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
-  .chunks <- .rxBalancedChunks(strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
-                               mean(pmax(1L, nchar(.ln))) * chunkLines)
+  .chunks <- .rxBalancedChunks(
+    strsplit(.rxDisguiseCmt(.txt), "\n", fixed = TRUE)[[1]],
+    mean(pmax(1L, nchar(.ln))) * chunkLines
+  )
   # Disguise delay() calls that a chunk boundary separated from their d/dt().
   .delay <- .rxDisguiseDelayChunks(.chunks)
   .chunks <- .delay$chunks
@@ -853,8 +921,12 @@
   # there are chunks, nor more than that thread setting; a single daemon has no
   # parallelism to offer, only dispatch overhead, so 1 runs serially.
   .nDaemons <- as.integer(parallel)
-  if (is.na(.nDaemons) || .nDaemons < 0L) .nDaemons <- 0L
-  if (.nDaemons == 0L) .nDaemons <- max(1L, as.integer(rxCores()))
+  if (is.na(.nDaemons) || .nDaemons < 0L) {
+    .nDaemons <- 0L
+  }
+  if (.nDaemons == 0L) {
+    .nDaemons <- max(1L, as.integer(rxCores()))
+  }
   .nDaemons <- min(.nDaemons, .nChunks, max(1L, as.integer(rxCores())))
   .useMirai <- .nDaemons > 1L
   # A caller's existing mirai pool is used as-is and never shut down; a pool of our own
@@ -868,8 +940,12 @@
       .useMirai <- .ownDaemons
     }
   }
-  .malert(sprintf("optimizing duplicate expressions in %s (%d chunks%s)...", msg, .nChunks,
-                  if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""))
+  .malert(sprintf(
+    "optimizing duplicate expressions in %s (%d chunks%s)...",
+    msg,
+    .nChunks,
+    if (.useMirai) sprintf(", %d daemons", .nDaemons) else ""
+  ))
 
   # Collect the chunks, then check them ONCE.  The two routes used to carry their own
   # acceptance rule -- the serial one vapply(character(1)), the parallel one merely
@@ -879,45 +955,63 @@
   # difference showed up only where that case arose (a Windows check, where the serial
   # route fell back to the whole model and the parallel route did not).  One rule now
   # decides for both, and it is applied after collection rather than inside it.
-  .optRes <- tryCatch({
-    .res <- if (.useMirai) {
-      if (.ownDaemons) {
-        mirai::daemons(.nDaemons)
-        on.exit(mirai::daemons(0), add = TRUE)
-      }
-      # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
-      # environment, so a chunk is optimized by the same code path serially and in parallel.
-      .tasks <- mirai::mirai_map(
-        seq_len(.nChunks),
-        function(.i, .chunks, .msg, .optOne) {
-          library(rxode2)
-          .optOne(.i, .chunks, .msg)
-        },
-        .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
-      )
-      # A chunk that failed in a daemon comes back as an error object rather than
-      # throwing, so it reaches the check below as a value like any other.
-      lapply(seq_len(.nChunks), function(.i) .tasks[[.i]][])
-    } else {
-      lapply(seq_len(.nChunks), function(.i) {
-        tryCatch(.rxOptExprChunk(.i, .chunks, msg), error = function(e) e)
-      })
-    }
-    vapply(seq_len(.nChunks), function(.i) {
-      .r <- .res[[.i]]
-      if (inherits(.r, "miraiError") || inherits(.r, "errorValue") ||
-            inherits(.r, "condition") || !is.character(.r) || length(.r) != 1L ||
-            is.na(.r)) {
-        .what <- tryCatch(conditionMessage(.r), error = function(e) {
-          paste0(class(.r)[1], "[", length(.r), "]")
+  .optRes <- tryCatch(
+    {
+      .res <- if (.useMirai) {
+        if (.ownDaemons) {
+          mirai::daemons(.nDaemons)
+          on.exit(mirai::daemons(0), add = TRUE)
+        }
+        # `.rxOptExprChunk` is passed as an argument, carrying the rxode2 namespace as its
+        # environment, so a chunk is optimized by the same code path serially and in parallel.
+        .tasks <- mirai::mirai_map(
+          seq_len(.nChunks),
+          function(.i, .chunks, .msg, .optOne) {
+            library(rxode2)
+            .optOne(.i, .chunks, .msg)
+          },
+          .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+        )
+        # A chunk that failed in a daemon comes back as an error object rather than
+        # throwing, so it reaches the check below as a value like any other.
+        lapply(seq_len(.nChunks), function(.i) .tasks[[.i]][])
+      } else {
+        lapply(seq_len(.nChunks), function(.i) {
+          tryCatch(.rxOptExprChunk(.i, .chunks, msg), error = function(e) e)
         })
-        stop(sprintf("chunk %d did not optimize to a single model string%s: %s", .i,
-                     if (.useMirai) " in a mirai daemon" else "", .what),
-             call. = FALSE)
       }
-      .r
-    }, character(1))
-  }, error = function(e) e)
+      vapply(
+        seq_len(.nChunks),
+        function(.i) {
+          .r <- .res[[.i]]
+          if (
+            inherits(.r, "miraiError") ||
+              inherits(.r, "errorValue") ||
+              inherits(.r, "condition") ||
+              !is.character(.r) ||
+              length(.r) != 1L ||
+              is.na(.r)
+          ) {
+            .what <- tryCatch(conditionMessage(.r), error = function(e) {
+              paste0(class(.r)[1], "[", length(.r), "]")
+            })
+            stop(
+              sprintf(
+                "chunk %d did not optimize to a single model string%s: %s",
+                .i,
+                if (.useMirai) " in a mirai daemon" else "",
+                .what
+              ),
+              call. = FALSE
+            )
+          }
+          .r
+        },
+        character(1)
+      )
+    },
+    error = function(e) e
+  )
   .failed <- inherits(.optRes, "condition")
   .opt <- if (.failed) NULL else .optRes
 
@@ -932,9 +1026,9 @@
     # Say why.  Falling back silently makes a chunked call that quietly stopped chunking
     # indistinguishable from one that never chunked, which is how the serial/parallel
     # divergence above went unnoticed until a platform surfaced it.
-    if (.failed)
-      .malert(sprintf("chunked optimization fell back to the whole %s: %s",
-                      msg, conditionMessage(.optRes)))
+    if (.failed) {
+      .malert(sprintf("chunked optimization fell back to the whole %s: %s", msg, conditionMessage(.optRes)))
+    }
     return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
   }
   .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
@@ -958,11 +1052,17 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxOptExprC <- function(norm) {
-  if (!isTRUE(getOption("rxode2.optExprC", TRUE))) return(NA_character_)
-  if (!is.character(norm) || length(norm) != 1L || is.na(norm)) return(NA_character_)
+  if (!isTRUE(getOption("rxode2.optExprC", TRUE))) {
+    return(NA_character_)
+  }
+  if (!is.character(norm) || length(norm) != 1L || is.na(norm)) {
+    return(NA_character_)
+  }
   .l <- strsplit(norm, "\n", fixed = TRUE)[[1]]
   .l <- .l[nzchar(trimws(.l))]
-  if (length(.l) == 0L) return(NA_character_)
+  if (length(.l) == 0L) {
+    return(NA_character_)
+  }
   .Call(`_rxode2_rxCse`, .l)
 }
 
@@ -1012,8 +1112,7 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
-rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
-                      parallel = 0L) {
+rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
@@ -1038,9 +1137,7 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L,
   .lines <- ..rxOpt(.p, progress = TRUE)
   .rxOptEnv$.list <- .rxOptEnv$.list[which(unlist(.rxOptEnv$.list) > 1L)]
   .exprs <- names(.rxOptEnv$.list)[order(nchar(names(.rxOptEnv$.list)))]
-  .exprs <- .exprs[regexpr(rex::rex(start, regNum, end), .exprs,
-    perl = TRUE
-  ) == -1]
+  .exprs <- .exprs[regexpr(rex::rex(start, regNum, end), .exprs, perl = TRUE) == -1]
   .thetaEtaR <- rex::rex(start, or("THETA[", "ETA["), any_numbers, "]", end)
   .exprs <- .exprs[regexpr(.thetaEtaR, .exprs, perl = TRUE) == -1]
   if (length(.exprs) > 0) {

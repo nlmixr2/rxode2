@@ -28,11 +28,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorParse <- function(prior) {
-  .e <- try(str2lang(prior), silent=TRUE)
-  if (inherits(.e, "try-error") || !is.call(.e)) return(NULL)
+  .e <- try(str2lang(prior), silent = TRUE)
+  if (inherits(.e, "try-error") || !is.call(.e)) {
+    return(NULL)
+  }
   .fn <- as.character(.e[[1]])
-  if (length(.fn) != 1L) return(NULL)
-  list(fn=.fn, stanName=.rxPriorStanName(.fn), args=as.list(.e)[-1])
+  if (length(.fn) != 1L) {
+    return(NULL)
+  }
+  list(fn = .fn, stanName = .rxPriorStanName(.fn), args = as.list(.e)[-1])
 }
 
 #' Names of the covariance a stored prior carries
@@ -48,12 +52,20 @@
 #' @author Matthew L. Fidler
 .rxPriorCovNames <- function(prior) {
   .p <- .rxPriorParse(prior)
-  if (is.null(.p)) return(NULL)
+  if (is.null(.p)) {
+    return(NULL)
+  }
   for (.a in .p$args) {
-    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) next
+    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) {
+      next
+    }
     .b <- .a[[2]]
-    if (is.call(.b) && identical(.b[[1]], quote(`{`))) .b <- .b[[2]]
-    if (!(is.call(.b) && identical(.b[[1]], quote(`~`)))) return(NULL)
+    if (is.call(.b) && identical(.b[[1]], quote(`{`))) {
+      .b <- .b[[2]]
+    }
+    if (!(is.call(.b) && identical(.b[[1]], quote(`~`)))) {
+      return(NULL)
+    }
     return(all.vars(.b[[2]]))
   }
   NULL
@@ -70,8 +82,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorEvalEnv <- function() {
-  .e <- new.env(parent=baseenv())
-  assign("lotri", lotri::lotri, envir=.e)
+  .e <- new.env(parent = baseenv())
+  assign("lotri", lotri::lotri, envir = .e)
   .e
 }
 
@@ -83,11 +95,17 @@
 #' @author Matthew L. Fidler
 .rxPriorCovMat <- function(prior) {
   .p <- .rxPriorParse(prior)
-  if (is.null(.p)) return(NULL)
+  if (is.null(.p)) {
+    return(NULL)
+  }
   for (.a in .p$args) {
-    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) next
-    .m <- try(as.matrix(eval(.a, envir=.rxPriorEvalEnv())), silent=TRUE)
-    if (inherits(.m, "try-error")) return(NULL)
+    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) {
+      next
+    }
+    .m <- try(as.matrix(eval(.a, envir = .rxPriorEvalEnv())), silent = TRUE)
+    if (inherits(.m, "try-error")) {
+      return(NULL)
+    }
     return(.m)
   }
   NULL
@@ -102,9 +120,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorStop <- function(name, prior, why) {
-  stop("cannot simulate from the prior on '", paste(name, collapse="', '"),
-       "' (", paste(prior, collapse=", "), "): ", why,
-       call.=FALSE)
+  stop(
+    "cannot simulate from the prior on '",
+    paste(name, collapse = "', '"),
+    "' (",
+    paste(prior, collapse = ", "),
+    "): ",
+    why,
+    call. = FALSE
+  )
 }
 
 #' What each name a prior can be written on is worth
@@ -144,10 +168,9 @@
   .idx <- setNames(.iniDf$neta1[.d], paste0("om.", .iniDf$name[.d]))
   .i <- unname(.idx[nm])
   if (anyNA(.i)) {
-    stop("prior given for unknown omega element(s): '",
-         paste(nm[is.na(.i)], collapse="', '"), "'", call.=FALSE)
+    stop("prior given for unknown omega element(s): '", paste(nm[is.na(.i)], collapse = "', '"), "'", call. = FALSE)
   }
-  data.frame(name=nm, neta1=.i, neta2=.i, stringsAsFactors=FALSE)
+  data.frame(name = nm, neta1 = .i, neta2 = .i, stringsAsFactors = FALSE)
 }
 
 #' The `thetaMat` the model's normal priors describe
@@ -171,13 +194,15 @@
 #' @author Matthew L. Fidler
 .rxPriorThetaMat <- function(ui) {
   .iniDf <- ui$iniDf
-  .w <- which(!is.na(.iniDf$prior) &
-                (is.na(.iniDf$neta1) | .rxPriorIsNormal(.iniDf$prior)))
+  .w <- which(
+    !is.na(.iniDf$prior) &
+      (is.na(.iniDf$neta1) | .rxPriorIsNormal(.iniDf$prior))
+  )
   ## an omega row carrying a Wishart is degrees of freedom, not a normal
   ## prior, and is handled by `.rxPriorOmegaNu()`
   .w <- .w[is.na(.iniDf$neta1[.w]) | .rxPriorIsNormal(.iniDf$prior[.w])]
   if (length(.w) == 0L) {
-    return(list(thetaMat=NULL, theta=NULL, omegaEl=NULL))
+    return(list(thetaMat = NULL, theta = NULL, omegaEl = NULL))
   }
   .est <- .rxPriorEstLookup(ui)
   .blocks <- list()
@@ -197,23 +222,32 @@
         ## mean assertion below (the covariance element has no lookup entry)
         ## and later fail with a confusing "unknown omega element" instead
         ## of this explicit, accurate one.
-        .rxPriorStop(.iniDf$name[.i], .iniDf$prior[.i],
-                     paste0("prior simulation does not yet support a marginal ",
-                            "prior on an off-diagonal omega covariance element ",
-                            "(estimation-time priors are unaffected)"))
+        .rxPriorStop(
+          .iniDf$name[.i],
+          .iniDf$prior[.i],
+          paste0(
+            "prior simulation does not yet support a marginal ",
+            "prior on an off-diagonal omega covariance element ",
+            "(estimation-time priors are unaffected)"
+          )
+        )
       }
       .name <- paste0("om.", .name)
     }
     .prior <- .iniDf$prior[.i]
-    if (.name %in% .seen) next
+    if (.name %in% .seen) {
+      next
+    }
     .p <- .rxPriorParse(.prior)
     if (is.null(.p) || is.na(.p$stanName)) {
       .rxPriorStop(.name, .prior, "the distribution is not known to 'lotri'")
     }
     if (!(.p$stanName %in% .rxNormalPriorStanNames)) {
-      .rxPriorStop(.name, .prior,
-                   paste0("only normal and multivariate normal priors can be ",
-                          "simulated on a population parameter"))
+      .rxPriorStop(
+        .name,
+        .prior,
+        paste0("only normal and multivariate normal priors can be ", "simulated on a population parameter")
+      )
     }
     ## a `std_normal()` has no arguments to read, so it is a unit normal
     ## on something whose value must therefore be zero
@@ -223,7 +257,7 @@
       if (is.null(.nm) || is.null(.cov)) {
         .rxPriorStop(.name, .prior, "the covariance could not be read back")
       }
-      .mu <- try(eval(.p$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
+      .mu <- try(eval(.p$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
       if (inherits(.mu, "try-error")) {
         .rxPriorStop(.nm, .prior, "the mean vector could not be read back")
       }
@@ -236,26 +270,27 @@
       .mu <- 0.0
       .sd <- 1.0
       if (.p$stanName == "normal") {
-        .mu <- try(eval(.p$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
-        .sd <- try(eval(.p$args[[2]], envir=.rxPriorEvalEnv()), silent=TRUE)
+        .mu <- try(eval(.p$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
+        .sd <- try(eval(.p$args[[2]], envir = .rxPriorEvalEnv()), silent = TRUE)
         if (inherits(.mu, "try-error") || inherits(.sd, "try-error")) {
           .rxPriorStop(.name, .prior, "the mean and sd could not be read back")
         }
       }
       .rxPriorAssertMean(.name, .prior, as.double(.mu), .est)
-      .m <- matrix(as.double(.sd)^2, 1L, 1L, dimnames=list(.name, .name))
+      .m <- matrix(as.double(.sd)^2, 1L, 1L, dimnames = list(.name, .name))
       .blocks[[length(.blocks) + 1L]] <- .m
       .seen <- c(.seen, .name)
     }
   }
   if (length(.blocks) == 0L) {
-    return(list(thetaMat=NULL, theta=NULL, omegaEl=NULL))
+    return(list(thetaMat = NULL, theta = NULL, omegaEl = NULL))
   }
   .om <- .seen[grepl("^om[.].", .seen)]
-  list(thetaMat=.rxPriorBlockDiag(.blocks),
-       theta=data.frame(name=.seen, est=unname(.est[.seen]),
-                        stringsAsFactors=FALSE),
-       omegaEl=if (length(.om) == 0L) NULL else .rxPriorOmegaElPos(ui, .om))
+  list(
+    thetaMat = .rxPriorBlockDiag(.blocks),
+    theta = data.frame(name = .seen, est = unname(.est[.seen]), stringsAsFactors = FALSE),
+    omegaEl = if (length(.om) == 0L) NULL else .rxPriorOmegaElPos(ui, .om)
+  )
 }
 
 #' The prior mean has to be the initial estimate
@@ -270,14 +305,21 @@
 .rxPriorAssertMean <- function(name, prior, mu, est) {
   .e <- unname(est[name])
   .bad <- which(!is.na(.e) & abs(mu - .e) > 1e-8)
-  if (length(.bad) == 0L) return(invisible())
-  .rxPriorStop(name[.bad], prior,
-               paste0("the prior mean (",
-                      paste(mu[.bad], collapse=", "),
-                      ") is not the initial estimate (",
-                      paste(.e[.bad], collapse=", "),
-                      "); prior simulation samples around the estimate, so ",
-                      "either move the estimate or drop the mean from the prior"))
+  if (length(.bad) == 0L) {
+    return(invisible())
+  }
+  .rxPriorStop(
+    name[.bad],
+    prior,
+    paste0(
+      "the prior mean (",
+      paste(mu[.bad], collapse = ", "),
+      ") is not the initial estimate (",
+      paste(.e[.bad], collapse = ", "),
+      "); prior simulation samples around the estimate, so ",
+      "either move the estimate or drop the mean from the prior"
+    )
+  )
 }
 
 #' Assemble named blocks into one block diagonal matrix
@@ -287,8 +329,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorBlockDiag <- function(blocks) {
-  .nm <- unlist(lapply(blocks, function(b) dimnames(b)[[1]]), use.names=FALSE)
-  .ret <- matrix(0.0, length(.nm), length(.nm), dimnames=list(.nm, .nm))
+  .nm <- unlist(lapply(blocks, function(b) dimnames(b)[[1]]), use.names = FALSE)
+  .ret <- matrix(0.0, length(.nm), length(.nm), dimnames = list(.nm, .nm))
   for (.b in blocks) {
     .i <- dimnames(.b)[[1]]
     .ret[.i, .i] <- .b
@@ -314,7 +356,7 @@
   ## levels; the blocks are one level down, but a prior still names its
   ## block the same way, so flatten to blocks and treat both alike
   if (inherits(.omega, "lotri")) {
-    .blks <- unlist(lapply(.omega, lotri::lotriMatInv), recursive=FALSE)
+    .blks <- unlist(lapply(.omega, lotri::lotriMatInv), recursive = FALSE)
   } else if (!is.matrix(.omega) || dim(.omega)[1] == 0L) {
     return(list())
   } else {
@@ -327,26 +369,38 @@
   for (.blk in .blks) {
     .nm <- dimnames(.blk)[[1]]
     .p <- .prior[.nm[1]]
-    if (is.na(.p)) next
-    .info <- .rxPriorParse(.p)
-    if (is.null(.info) || is.na(.info$stanName) ||
-          !(.info$stanName %in% .rxOmegaDfStanNames)) {
+    if (is.na(.p)) {
       next
     }
-    .nu <- try(eval(.info$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
+    .info <- .rxPriorParse(.p)
+    if (is.null(.info) || is.na(.info$stanName) || !(.info$stanName %in% .rxOmegaDfStanNames)) {
+      next
+    }
+    .nu <- try(eval(.info$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
     if (inherits(.nu, "try-error") || length(.nu) != 1L || !is.finite(.nu)) {
       .rxPriorStop(.nm, .p, "the degrees of freedom could not be read back")
     }
     ## 'lotri' checks this when the prior is written, but a piped model
     ## can reach here with a block that grew after the prior was set
     if (.nu <= length(.nm) - 1) {
-      .rxPriorStop(.nm, .p,
-                   paste0("an inverse Wishart on a ", length(.nm), "x",
-                          length(.nm), " block needs degrees of freedom ",
-                          "greater than ", length(.nm) - 1, ", but ", .nu,
-                          " was given"))
+      .rxPriorStop(
+        .nm,
+        .p,
+        paste0(
+          "an inverse Wishart on a ",
+          length(.nm),
+          "x",
+          length(.nm),
+          " block needs degrees of freedom ",
+          "greater than ",
+          length(.nm) - 1,
+          ", but ",
+          .nu,
+          " was given"
+        )
+      )
     }
-    .ret[[length(.ret) + 1L]] <- list(names=.nm, nu=as.double(.nu))
+    .ret[[length(.ret) + 1L]] <- list(names = .nm, nu = as.double(.nu))
   }
   .ret
 }
@@ -363,7 +417,7 @@
 #' @return nothing, called for the error
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorSimAssertSupported <- function(ui, ctl, omegaPrior=TRUE) {
+.rxPriorSimAssertSupported <- function(ui, ctl, omegaPrior = TRUE) {
   .iniDf <- ui$iniDf
   ## A conditioned block (`eta ~ 0.1 | id`, `| occ`) carries `$omega` as a
   ## 'lotri' of nesting levels rather than a plain matrix.  That is
@@ -378,11 +432,13 @@
   ## `priorOmega`/`priorOmegaEl`, which the exported `rxSimThetaOmega()` the
   ## pre-draw calls cannot take -- so that half would never be drawn from.
   if (omegaPrior && (!is.null(ctl$file) || !is.null(ctl$chunkSize))) {
-    stop("prior simulation does not yet support a prior on an omega block ",
-         "under a chunked solve ('file=' or 'chunkSize='): the one draw every ",
-         "chunk shares is made through 'rxSimThetaOmega()', which has no ",
-         "argument for it, so it would be dropped without warning",
-         call.=FALSE)
+    stop(
+      "prior simulation does not yet support a prior on an omega block ",
+      "under a chunked solve ('file=' or 'chunkSize='): the one draw every ",
+      "chunk shares is made through 'rxSimThetaOmega()', which has no ",
+      "argument for it, so it would be dropped without warning",
+      call. = FALSE
+    )
   }
   invisible()
 }
@@ -395,22 +451,25 @@
 #'   with `thetaMat`, `theta`, `omegaNu` and `omegaEl`
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorSimSpec <- function(ui, ctl=NULL) {
+.rxPriorSimSpec <- function(ui, ctl = NULL) {
   .iniDf <- ui$iniDf
-  if (is.null(.iniDf) || !any(names(.iniDf) == "prior") ||
-        !any(!is.na(.iniDf$prior))) {
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior") || !any(!is.na(.iniDf$prior))) {
     return(NULL)
   }
   .th <- .rxPriorThetaMat(ui)
   .nu <- .rxPriorOmegaNu(ui)
   ## asked after the pieces are built rather than before: only the omega
   ## half of a prior is what a chunked solve cannot carry
-  .rxPriorSimAssertSupported(ui, ctl,
-                             omegaPrior=length(.nu) > 0L ||
-                               !is.null(.th$omegaEl))
-  if (is.null(.th$thetaMat) && length(.nu) == 0L) return(NULL)
-  list(thetaMat=.th$thetaMat, theta=.th$theta, omegaNu=.nu,
-       omegaEl=.th$omegaEl)
+  .rxPriorSimAssertSupported(
+    ui,
+    ctl,
+    omegaPrior = length(.nu) > 0L ||
+      !is.null(.th$omegaEl)
+  )
+  if (is.null(.th$thetaMat) && length(.nu) == 0L) {
+    return(NULL)
+  }
+  list(thetaMat = .th$thetaMat, theta = .th$theta, omegaNu = .nu, omegaEl = .th$omegaEl)
 }
 
 #' Turn the per-block prior degrees of freedom into a 'lotri' omega
@@ -428,24 +487,32 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorOmegaLotri <- function(ui, omegaNu) {
-  if (length(omegaNu) == 0L) return(NULL)
+  if (length(omegaNu) == 0L) {
+    return(NULL)
+  }
   .omega <- ui$omega
-  if (inherits(.omega, "lotri")) return(.rxPriorOmegaNested(.omega, omegaNu))
-  if (!is.matrix(.omega) || dim(.omega)[1] == 0L) return(NULL)
+  if (inherits(.omega, "lotri")) {
+    return(.rxPriorOmegaNested(.omega, omegaNu))
+  }
+  if (!is.matrix(.omega) || dim(.omega)[1] == 0L) {
+    return(NULL)
+  }
   ## the prior attributes would otherwise travel with the matrix and be
   ## re-read downstream as if they were the block structure
   attributes(.omega) <- attributes(.omega)[c("dim", "dimnames")]
-  .nu <- setNames(vapply(omegaNu, function(x) x$nu, double(1)),
-                  vapply(omegaNu, function(x) x$names[1], character(1)))
+  .nu <- setNames(vapply(omegaNu, function(x) x$nu, double(1)), vapply(omegaNu, function(x) x$names[1], character(1)))
   .blk <- lotri::lotriMatInv(.omega)
   names(.blk) <- paste0("blk", seq_along(.blk))
   ## a block with no prior keeps `nu = 1`, which is how `cvPost()` spells
   ## "leave this one at its point estimate"
-  .lst <- setNames(lapply(.blk, function(b) {
-    list(nu=unname(.nu[dimnames(b)[[1]][1]]))
-  }), names(.blk))
+  .lst <- setNames(
+    lapply(.blk, function(b) {
+      list(nu = unname(.nu[dimnames(b)[[1]][1]]))
+    }),
+    names(.blk)
+  )
   .lst <- lapply(.lst, function(x) {
-    if (is.na(x$nu)) list(nu=1.0) else x
+    if (is.na(x$nu)) list(nu = 1.0) else x
   })
   .ret <- .blk
   attr(.ret, "lotri") <- .lst
@@ -479,14 +546,20 @@
 #' @author Matthew L. Fidler
 .rxPriorOmegaNested <- function(omega, omegaNu) {
   .cnd <- names(omega)
-  if (is.null(.cnd) || length(.cnd) == 0L) return(NULL)
+  if (is.null(.cnd) || length(.cnd) == 0L) {
+    return(NULL)
+  }
   .lst <- attr(omega, "lotri")
-  if (is.null(.lst)) .lst <- setNames(vector("list", length(.cnd)), .cnd)
+  if (is.null(.lst)) {
+    .lst <- setNames(vector("list", length(.cnd)), .cnd)
+  }
   .used <- rep(FALSE, length(omegaNu))
   for (.i in seq_along(.cnd)) {
     .nm <- dimnames(omega[[.cnd[.i]]])[[1]]
     .cur <- .lst[[.cnd[.i]]]
-    if (is.null(.cur)) .cur <- list()
+    if (is.null(.cur)) {
+      .cur <- list()
+    }
     .here <- vapply(omegaNu, function(x) any(x$names %in% .nm), logical(1))
     if (!any(.here)) {
       ## no prior at this level, so `nu = 1`: leave it at the estimate
@@ -497,38 +570,50 @@
     .w <- which(.here)
     for (.j in .w) {
       if (!all(omegaNu[[.j]]$names %in% .nm)) {
-        stop("the prior on '", paste(omegaNu[[.j]]$names, collapse=", "),
-             "' spans more than one nesting level, so it cannot be drawn ",
-             "as one block; give each level its own prior",
-             call.=FALSE)
+        stop(
+          "the prior on '",
+          paste(omegaNu[[.j]]$names, collapse = ", "),
+          "' spans more than one nesting level, so it cannot be drawn ",
+          "as one block; give each level its own prior",
+          call. = FALSE
+        )
       }
     }
     if (length(.w) > 1L) {
-      stop("the '", .cnd[.i], "' level has more than one prior ('",
-           paste(vapply(omegaNu[.w], function(x) paste(x$names, collapse=", "),
-                        character(1)), collapse="' and '"),
-           "'), but a nesting level is drawn as a whole and can carry only ",
-           "one degrees of freedom; use a single prior over the level",
-           call.=FALSE)
+      stop(
+        "the '",
+        .cnd[.i],
+        "' level has more than one prior ('",
+        paste(vapply(omegaNu[.w], function(x) paste(x$names, collapse = ", "), character(1)), collapse = "' and '"),
+        "'), but a nesting level is drawn as a whole and can carry only ",
+        "one degrees of freedom; use a single prior over the level",
+        call. = FALSE
+      )
     }
     if (!setequal(omegaNu[[.w]]$names, .nm)) {
-      stop("the prior on '", paste(omegaNu[[.w]]$names, collapse=", "),
-           "' covers only part of the '", .cnd[.i], "' level ('",
-           paste(.nm, collapse=", "),
-           "'); a nesting level is drawn as a whole, so the rest of the ",
-           "level would be redrawn too -- put the prior on the whole level",
-           call.=FALSE)
+      stop(
+        "the prior on '",
+        paste(omegaNu[[.w]]$names, collapse = ", "),
+        "' covers only part of the '",
+        .cnd[.i],
+        "' level ('",
+        paste(.nm, collapse = ", "),
+        "'); a nesting level is drawn as a whole, so the rest of the ",
+        "level would be redrawn too -- put the prior on the whole level",
+        call. = FALSE
+      )
     }
     .used[.w] <- TRUE
     .cur$nu <- omegaNu[[.w]]$nu
     .lst[[.cnd[.i]]] <- .cur
   }
   if (!all(.used)) {
-    stop("the prior on '",
-         paste(vapply(omegaNu[!.used], function(x) paste(x$names, collapse=", "),
-                      character(1)), collapse="' and '"),
-         "' does not match any nesting level of the omega",
-         call.=FALSE)
+    stop(
+      "the prior on '",
+      paste(vapply(omegaNu[!.used], function(x) paste(x$names, collapse = ", "), character(1)), collapse = "' and '"),
+      "' does not match any nesting level of the omega",
+      call. = FALSE
+    )
   }
   attr(omega, "lotri") <- .lst
   omega
@@ -570,11 +655,11 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorFromMeta <- function(ui, name, value) {
-  .meta <- try(ui$meta, silent=TRUE)
-  if (!is.environment(.meta) || !exists(name, envir=.meta, inherits=FALSE)) {
+  .meta <- try(ui$meta, silent = TRUE)
+  if (!is.environment(.meta) || !exists(name, envir = .meta, inherits = FALSE)) {
     return(FALSE)
   }
-  isTRUE(all.equal(get(name, envir=.meta), value))
+  isTRUE(all.equal(get(name, envir = .meta), value))
 }
 
 #' Put the model's priors into the solve control
@@ -586,36 +671,46 @@
 #' @author Matthew L. Fidler
 .rxPriorApplyControl <- function(ui, ctl) {
   .use <- ctl$usePrior
-  if (isFALSE(.use)) return(ctl)
+  if (isFALSE(.use)) {
+    return(ctl)
+  }
   .simVar <- .rxPriorEffSimVar(ctl)
-  if (!isTRUE(.use) && !.simVar) return(ctl)
+  if (!isTRUE(.use) && !.simVar) {
+    return(ctl)
+  }
   .spec <- .rxPriorSimSpec(ui, ctl)
   if (is.null(.spec)) {
     if (isTRUE(.use)) {
-      stop("'usePrior=TRUE' but the model specifies no prior distributions",
-           call.=FALSE)
+      stop("'usePrior=TRUE' but the model specifies no prior distributions", call. = FALSE)
     }
     return(ctl)
   }
   if (!.simVar) {
     ## `usePrior=TRUE` got here, so say why the priors would vanish rather
     ## than passing them to a solve that draws nothing
-    stop("'usePrior=TRUE' but no variability would be simulated; set ",
-         "'nStud' greater than 1 or 'simVariability=TRUE'",
-         call.=FALSE)
+    stop(
+      "'usePrior=TRUE' but no variability would be simulated; set ",
+      "'nStud' greater than 1 or 'simVariability=TRUE'",
+      call. = FALSE
+    )
   }
   if (!is.null(.spec$thetaMat)) {
     if (is.null(ctl$thetaMat)) {
       ctl$thetaMat <- .spec$thetaMat
     } else if (.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
-      warning("the prior distributions in 'ini({})' replace the 'thetaMat' ",
-              "the model's 'meta' block carries", call.=FALSE)
+      warning(
+        "the prior distributions in 'ini({})' replace the 'thetaMat' ",
+        "the model's 'meta' block carries",
+        call. = FALSE
+      )
       ctl$thetaMat <- .spec$thetaMat
     } else {
-      warning("'thetaMat' was given, so the prior distributions on the ",
-              "population parameters were not used; drop it or set ",
-              "'usePrior=FALSE' to keep it without this warning",
-              call.=FALSE)
+      warning(
+        "'thetaMat' was given, so the prior distributions on the ",
+        "population parameters were not used; drop it or set ",
+        "'usePrior=FALSE' to keep it without this warning",
+        call. = FALSE
+      )
     }
   }
   .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
@@ -633,30 +728,40 @@
     ## flat model down the nested branch
     .nested <- inherits(ui$omega, "lotri")
     .assign <- function(ctl) {
-      if (.nested) ctl$omega <- .omega else ctl$priorOmega <- .omega
+      if (.nested) {
+        ctl$omega <- .omega
+      } else {
+        ctl$priorOmega <- .omega
+      }
       ctl
     }
     if (is.null(ctl$dfSub) || ctl$dfSub == 0) {
       ctl <- .assign(ctl)
     } else if (.rxPriorFromMeta(ui, "dfSub", ctl$dfSub)) {
-      warning("the prior degrees of freedom in 'ini({})' replace the 'dfSub' ",
-              "the model's 'meta' block carries", call.=FALSE)
+      warning(
+        "the prior degrees of freedom in 'ini({})' replace the 'dfSub' ",
+        "the model's 'meta' block carries",
+        call. = FALSE
+      )
       ctl <- .assign(ctl)
     } else {
-      warning("'dfSub' was given, so the prior degrees of freedom on the ",
-              "omega block(s) were not used; drop it or set ",
-              "'usePrior=FALSE' to keep it without this warning",
-              call.=FALSE)
+      warning(
+        "'dfSub' was given, so the prior degrees of freedom on the ",
+        "omega block(s) were not used; drop it or set ",
+        "'usePrior=FALSE' to keep it without this warning",
+        call. = FALSE
+      )
     }
   }
   ## the C++ side matches by row name, so a thetaMat column that gets
   ## pruned before the draw cannot shift the mapping
   if (!is.null(.spec$omegaEl)) {
     ctl$priorOmegaEl <-
-      matrix(c(as.integer(.spec$omegaEl$neta1),
-               as.integer(.spec$omegaEl$neta2)),
-             ncol=2L,
-             dimnames=list(.spec$omegaEl$name, c("neta1", "neta2")))
+      matrix(
+        c(as.integer(.spec$omegaEl$neta1), as.integer(.spec$omegaEl$neta2)),
+        ncol = 2L,
+        dimnames = list(.spec$omegaEl$name, c("neta1", "neta2"))
+      )
   }
   ctl
 }
@@ -684,20 +789,21 @@
 #' @return character vector of names that address that element
 #' @noRd
 #' @author Matthew L. Fidler
-.rxJointElNames <- function(nm, i, j, what="omega") {
+.rxJointElNames <- function(nm, i, j, what = "omega") {
   .diagPre <- if (what == "omega") "om." else "sig."
   .idxPre <- if (what == "omega") c("omega", "omega.") else c("sigma", "sigma.")
   if (i == j) {
     ## the bare name is how a covariance step names a variance; the
     ## prefixed one is what nlmixr2est and the `ini({})` block write
-    return(c(nm[i], paste0(.diagPre, nm[i]),
-             paste0(.idxPre, i, ".", i)))
+    return(c(nm[i], paste0(.diagPre, nm[i]), paste0(.idxPre, i, ".", i)))
   }
   ## the matrix is symmetric, so either order addresses the same entry
-  c(paste0("cov.", nm[i], ".", nm[j]),
+  c(
+    paste0("cov.", nm[i], ".", nm[j]),
     paste0("cov.", nm[j], ".", nm[i]),
     paste0(.idxPre, i, ".", j),
-    paste0(.idxPre, j, ".", i))
+    paste0(.idxPre, j, ".", i)
+  )
 }
 
 #' Which `thetaMat` columns are entries of this matrix?
@@ -711,10 +817,14 @@
 #'   name as its row names, or `NULL` when nothing matched
 #' @noRd
 #' @author Matthew L. Fidler
-.rxJointElFromNames <- function(mat, cols, what="omega", bareName=TRUE) {
-  if (!is.matrix(mat) || dim(mat)[1] == 0L || length(cols) == 0L) return(NULL)
+.rxJointElFromNames <- function(mat, cols, what = "omega", bareName = TRUE) {
+  if (!is.matrix(mat) || dim(mat)[1] == 0L || length(cols) == 0L) {
+    return(NULL)
+  }
   .nm <- dimnames(mat)[[1]]
-  if (is.null(.nm)) return(NULL)
+  if (is.null(.nm)) {
+    return(NULL)
+  }
   .n <- length(.nm)
   .name <- character(0)
   .i1 <- integer(0)
@@ -722,22 +832,36 @@
   for (.i in seq_len(.n)) {
     for (.j in seq_len(.i)) {
       .cand <- .rxJointElNames(.nm, .i, .j, what)
-      if (!bareName && .i == .j) .cand <- .cand[-1]
+      if (!bareName && .i == .j) {
+        .cand <- .cand[-1]
+      }
       .w <- which(cols %in% .cand)
-      if (length(.w) == 0L) next
+      if (length(.w) == 0L) {
+        next
+      }
       if (length(.w) > 1L) {
-        stop("more than one 'thetaMat' column addresses the same ", what,
-             " entry (", .nm[.i], ", ", .nm[.j], "): '",
-             paste(cols[.w], collapse="', '"), "'", call.=FALSE)
+        stop(
+          "more than one 'thetaMat' column addresses the same ",
+          what,
+          " entry (",
+          .nm[.i],
+          ", ",
+          .nm[.j],
+          "): '",
+          paste(cols[.w], collapse = "', '"),
+          "'",
+          call. = FALSE
+        )
       }
       .name <- c(.name, cols[.w])
       .i1 <- c(.i1, .i)
       .i2 <- c(.i2, .j)
     }
   }
-  if (length(.name) == 0L) return(NULL)
-  matrix(c(.i1, .i2), ncol=2L,
-         dimnames=list(.name, c("neta1", "neta2")))
+  if (length(.name) == 0L) {
+    return(NULL)
+  }
+  matrix(c(.i1, .i2), ncol = 2L, dimnames = list(.name, c("neta1", "neta2")))
 }
 
 #' Resolve `omegaSeparation`/`sigmaSeparation` of `"tnpri"`
@@ -760,26 +884,47 @@
 .rxTnpriApplyControl <- function(ctl) {
   for (.w in c("omega", "sigma")) {
     .sep <- ctl[[paste0(.w, "Separation")]]
-    if (!identical(.sep, "tnpri")) next
+    if (!identical(.sep, "tnpri")) {
+      next
+    }
     .el <- paste0("prior", if (.w == "omega") "Omega" else "Sigma", "El")
     ## a prior in the model's `ini({})` block already said which entries
     ## these are, and it is the more specific statement
-    if (!is.null(ctl[[.el]])) next
+    if (!is.null(ctl[[.el]])) {
+      next
+    }
     if (!inherits(ctl$thetaMat, "matrix")) {
-      stop("'", .w, "Separation=\"tnpri\"' needs a 'thetaMat' carrying the ",
-           .w, " entries", call.=FALSE)
+      stop("'", .w, "Separation=\"tnpri\"' needs a 'thetaMat' carrying the ", .w, " entries", call. = FALSE)
     }
     .mat <- ctl[[.w]]
     if (!inherits(.mat, "matrix")) {
-      stop("'", .w, "Separation=\"tnpri\"' needs '", .w, "' to be a matrix, ",
-           "since the drawn entries are added to it", call.=FALSE)
+      stop(
+        "'",
+        .w,
+        "Separation=\"tnpri\"' needs '",
+        .w,
+        "' to be a matrix, ",
+        "since the drawn entries are added to it",
+        call. = FALSE
+      )
     }
-    .pos <- .rxJointElFromNames(.mat, colnames(ctl$thetaMat), what=.w)
+    .pos <- .rxJointElFromNames(.mat, colnames(ctl$thetaMat), what = .w)
     if (is.null(.pos)) {
-      stop("'", .w, "Separation=\"tnpri\"' was given but no 'thetaMat' column ",
-           "names a ", .w, " entry; expected one of '", dimnames(.mat)[[1]][1],
-           "', 'om.", dimnames(.mat)[[1]][1], "' or '", .w, "1.1'",
-           call.=FALSE)
+      stop(
+        "'",
+        .w,
+        "Separation=\"tnpri\"' was given but no 'thetaMat' column ",
+        "names a ",
+        .w,
+        " entry; expected one of '",
+        dimnames(.mat)[[1]][1],
+        "', 'om.",
+        dimnames(.mat)[[1]][1],
+        "' or '",
+        .w,
+        "1.1'",
+        call. = FALSE
+      )
     }
     ctl[[.el]] <- .pos
   }

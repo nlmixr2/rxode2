@@ -6,7 +6,7 @@
 #' @param fixedValue this is a boolean
 #' @noRd
 #' @author Matthew L. Fidler
-.msgFix<- function(ini, w, fixedValue) {
+.msgFix <- function(ini, w, fixedValue) {
   lapply(w, function(.w) {
     if (ini$fix[.w] != fixedValue) {
       if (fixedValue) {
@@ -68,13 +68,12 @@
 .iniModifyThetaOrSingleEtaDf <- function(ini, lhs, rhs, doFix, doUnfix, maxLen) {
   .w <- which(ini$name == lhs)
   if (length(.w) != 1) {
-    stop("cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call. = FALSE)
   }
   .curFix <- ini$fix[.w]
   if (doFix) {
     if (.curFix) {
-      warning("trying to fix '", lhs, "', but already fixed",
-              call.=FALSE)
+      warning("trying to fix '", lhs, "', but already fixed", call. = FALSE)
     } else {
       ini <- .iniModifyFixedForThetaOrEtablock(ini, .w, TRUE)
     }
@@ -82,13 +81,11 @@
     if (.curFix) {
       ini <- .iniModifyFixedForThetaOrEtablock(ini, .w, FALSE)
     } else {
-      warning("trying to unfix '", lhs, "', but already unfixed",
-              call.=FALSE)
+      warning("trying to unfix '", lhs, "', but already unfixed", call. = FALSE)
     }
   }
 
-  if (is.null(rhs)) {
-  } else if (length(rhs) == 1)  {
+  if (is.null(rhs)) {} else if (length(rhs) == 1) {
     ini$est[.w] <- rhs
     if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       .minfo(paste0("change initial estimate of {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
@@ -109,13 +106,20 @@
     }
   } else {
     if (maxLen == 1) {
-      stop("piping for '", lhs, "' failed, the estimate should only be 1 value",
-           call.=FALSE)
+      stop("piping for '", lhs, "' failed, the estimate should only be 1 value", call. = FALSE)
     } else if (length(rhs) == 2) {
       ini$lower[.w] <- rhs[1]
       ini$est[.w] <- rhs[2]
       if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
-        .minfo(paste0("change initial estimate (", ini$est[.w], ") and lower bound (", ini$lower[.w], ") of {.code ", ini$name[.w], "}"))
+        .minfo(paste0(
+          "change initial estimate (",
+          ini$est[.w],
+          ") and lower bound (",
+          ini$lower[.w],
+          ") of {.code ",
+          ini$name[.w],
+          "}"
+        ))
       }
       # now check/change upper if needed
       .upper <- ini$upper[.w]
@@ -130,7 +134,17 @@
       ini$est[.w] <- rhs[2]
       ini$upper[.w] <- rhs[3]
       if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
-        .minfo(paste0("change initial estimate (", ini$est[.w], ") and upper/lower bound (", ini$lower[.w], " to ", ini$upper[.w], ") of {.code ", ini$name[.w], "}"))
+        .minfo(paste0(
+          "change initial estimate (",
+          ini$est[.w],
+          ") and upper/lower bound (",
+          ini$lower[.w],
+          " to ",
+          ini$upper[.w],
+          ") of {.code ",
+          ini$name[.w],
+          "}"
+        ))
       }
     }
   }
@@ -148,17 +162,19 @@
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.iniHandleFixOrUnfixEqual <- function(expr, rxui, envir=parent.frame(), maxLen=3L) {
+.iniHandleFixOrUnfixEqual <- function(expr, rxui, envir = parent.frame(), maxLen = 3L) {
   .tilde <- .isLotriAssignment(expr)
   .covs <- rxui$allCovs
   .lhs <- as.character(expr[[2]])
   .rhs <- expr[[3]]
   .doFix <- .doUnfix <- FALSE
   if (is.name(.rhs)) {
-    if (identical(.rhs, quote(`fix`))) { # variations on fix are handled upstream
+    if (identical(.rhs, quote(`fix`))) {
+      # variations on fix are handled upstream
       .doFix <- TRUE
       .rhs <- NULL
-    } else if (identical(.rhs, quote(`unfix`))) { # variations on unfix are handled upstream
+    } else if (identical(.rhs, quote(`unfix`))) {
+      # variations on unfix are handled upstream
       .doUnfix <- TRUE
       .rhs <- NULL
     }
@@ -171,21 +187,21 @@
   }
 
   if (!is.null(.rhs)) {
-    .rhs <- eval(.rhs, envir=envir)
-    checkmate::assertNumeric(.rhs, any.missing=FALSE, min.len=1, max.len=3, .var.name=.lhs)
+    .rhs <- eval(.rhs, envir = envir)
+    checkmate::assertNumeric(.rhs, any.missing = FALSE, min.len = 1, max.len = 3, .var.name = .lhs)
     if (!all(sort(.rhs) == .rhs)) {
-      stop("the '", .lhs, "' piping lower, estimate, and/or upper estimate is in the wrong order",
-           call.=FALSE)
+      stop("the '", .lhs, "' piping lower, estimate, and/or upper estimate is in the wrong order", call. = FALSE)
     }
   }
   if (.lhs %in% .covs) {
-    .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
+    .addVariableToIniDf(.lhs, rxui, toEta = .tilde, value = .rhs, promote = TRUE)
     # assign is called again to handle the fixing of the variable
   }
   .ini <- rxui$ini
-  if (is.null(.ini)) .ini <- rxui$iniDf
-  assign("iniDf", .iniModifyThetaOrSingleEtaDf(.ini, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
-         envir=rxui)
+  if (is.null(.ini)) {
+    .ini <- rxui$iniDf
+  }
+  assign("iniDf", .iniModifyThetaOrSingleEtaDf(.ini, .lhs, .rhs, .doFix, .doUnfix, maxLen = maxLen), envir = rxui)
   invisible()
 }
 
@@ -206,9 +222,9 @@
 #' @noRd
 .iniDfMatchColumns <- function(row, iniDf) {
   for (.a in setdiff(names(iniDf), names(row))) {
-    row[[.a]] <- rep(iniDf[[.a]][NA_integer_], length.out=nrow(row))
+    row[[.a]] <- rep(iniDf[[.a]][NA_integer_], length.out = nrow(row))
   }
-  row[, names(iniDf), drop=FALSE]
+  row[, names(iniDf), drop = FALSE]
 }
 
 #'  Add a covariance term between two eta values
@@ -225,27 +241,38 @@
 .iniAddCovarianceBetweenTwoEtaValues <- function(ini, neta1, neta2, est, doFix, rxui) {
   .covs <- rxui$allCovs
   if (neta1 %in% .covs) {
-    .addVariableToIniDf(neta1, rxui, toEta=TRUE, value=NA, promote=TRUE)
+    .addVariableToIniDf(neta1, rxui, toEta = TRUE, value = NA, promote = TRUE)
     ini <- rxui$iniDf
     .covs <- rxui$allCovs
   }
   if (neta2 %in% .covs) {
-    .addVariableToIniDf(neta2, rxui, toEta=TRUE, value=NA, promote=TRUE)
+    .addVariableToIniDf(neta2, rxui, toEta = TRUE, value = NA, promote = TRUE)
     ini <- rxui$iniDf
     .covs <- rxui$allCovs
   }
   .w1 <- which(ini$name == neta1)
   .w2 <- which(ini$name == neta2)
-  if (length(.w1) != 1) stop("cannot find parameter '", neta1, "'", call.=FALSE)
-  if (length(.w2) != 1) stop("cannot find parameter '", neta2, "'", call.=FALSE)
-  if (!identical(.lotriBaseCondition(ini$condition[.w1]),
-                 .lotriBaseCondition(ini$condition[.w2]))) {
+  if (length(.w1) != 1) {
+    stop("cannot find parameter '", neta1, "'", call. = FALSE)
+  }
+  if (length(.w2) != 1) {
+    stop("cannot find parameter '", neta2, "'", call. = FALSE)
+  }
+  if (!identical(.lotriBaseCondition(ini$condition[.w1]), .lotriBaseCondition(ini$condition[.w2]))) {
     # a covariance only exists inside one level; adding it across two builds an
     # omega that cannot be assembled
     if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
-      .minfo(paste0("not adding a covariance between {.code ", neta1, "} and {.code ", neta2,
-                    "}; they are at different levels ({.code ", ini$condition[.w1], "} and {.code ",
-                    ini$condition[.w2], "})"))
+      .minfo(paste0(
+        "not adding a covariance between {.code ",
+        neta1,
+        "} and {.code ",
+        neta2,
+        "}; they are at different levels ({.code ",
+        ini$condition[.w1],
+        "} and {.code ",
+        ini$condition[.w2],
+        "})"
+      ))
     }
     return(ini)
   }
@@ -259,20 +286,42 @@
     neta2 <- .tmp
   }
   .fix <- FALSE
-  if (doFix) .fix <- TRUE
+  if (doFix) {
+    .fix <- TRUE
+  }
   # the covariance belongs at the level of the two etas it links; hard-coding
   # "id" puts a correlated `| occ` block's covariance in the wrong omega
   ## the BASE condition: the new covariance is a parameter of its own, it
   ## is not itself a mirror of anything, so it must not inherit a
   ## `:same:` suffix from the eta it links
   .condition <- .lotriBaseCondition(ini$condition[.w1])
-  if (is.na(.condition)) .condition <- "id"
-  .ini2 <- data.frame(ntheta= NA_integer_, neta1=ini$neta1[.w1], neta2=ini$neta1[.w2],
-                      name=paste0("(", neta2, ",", neta1, ")"), lower= -Inf, est=est, upper=Inf,
-                      fix=.fix, label=NA_character_, backTransform=NA_character_,
-                      condition=.condition, err=NA_character_)
+  if (is.na(.condition)) {
+    .condition <- "id"
+  }
+  .ini2 <- data.frame(
+    ntheta = NA_integer_,
+    neta1 = ini$neta1[.w1],
+    neta2 = ini$neta1[.w2],
+    name = paste0("(", neta2, ",", neta1, ")"),
+    lower = -Inf,
+    est = est,
+    upper = Inf,
+    fix = .fix,
+    label = NA_character_,
+    backTransform = NA_character_,
+    condition = .condition,
+    err = NA_character_
+  )
   if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
-    .minfo(paste0("add covariance between {.code ", ini$name[.w1], "} and {.code ", ini$name[.w2], "} with initial estimate {.code ", est, "}"))
+    .minfo(paste0(
+      "add covariance between {.code ",
+      ini$name[.w1],
+      "} and {.code ",
+      ini$name[.w2],
+      "} with initial estimate {.code ",
+      est,
+      "}"
+    ))
   }
   rbind(ini, .iniDfMatchColumns(.ini2, ini))
 }
@@ -299,7 +348,7 @@
     .maxEta <- 0
     .shift <- 0
   } else {
-    .maxEta <- max(rxui$iniDf$neta1, na.rm=TRUE)
+    .maxEta <- max(rxui$iniDf$neta1, na.rm = TRUE)
     .shift <- .maxEta - length(.common)
   }
   .ini2 <- NULL
@@ -320,12 +369,16 @@
     }
   }
   if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && .drop) {
-    .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
+    .minfo(paste0(
+      "some correlations may have been dropped for the variables: {.code ",
+      paste(.dn, collapse = "}, {.code "),
+      "}"
+    ))
     .minfo("the piping should specify the needed covariances directly")
   }
   .dfTheta <- .iniDf[is.na(.iniDf$neta1), ]
   .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
-  .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
+  .dfEta <- .dfEta[!(.dfEta$name %in% .dn), , drop = FALSE]
   if (length(.dfEta$neta1) > 0) {
     ## Renumber the etas that were NOT piped over, keeping their DECLARED
     ## order.  `factor(paste(n))` sorted them as TEXT, so with ten or more
@@ -335,18 +388,19 @@
     ## which has no representation at all, since the linkage is a relative
     ## offset backwards.
     .lvl <- sort(unique(.dfEta$neta1))
-    .dfEta$neta1 <- as.integer(factor(.dfEta$neta1, levels=.lvl))
-    .dfEta$neta2 <- as.integer(factor(.dfEta$neta2, levels=.lvl))
+    .dfEta$neta1 <- as.integer(factor(.dfEta$neta1, levels = .lvl))
+    .dfEta$neta2 <- as.integer(factor(.dfEta$neta2, levels = .lvl))
   }
   .iniDf <- do.call("rbind", c(list(.dfTheta), list(.dfEta), .ini2))
-  assign("iniDf", .iniDf, envir=rxui)
+  assign("iniDf", .iniDf, envir = rxui)
   .covs <- rxui$allCovs
   .fixMatrix <- attr(mat, "lotriFix")
   .unfixMatrix <- attr(mat, "lotriUnfix")
   .n <- dimnames(mat)[[1]]
   .mat <- mat
-  if (!inherits(.mat, "lotriFix"))
+  if (!inherits(.mat, "lotriFix")) {
     class(.mat) <- c("lotriFix", class(.mat))
+  }
   .df <- as.data.frame(.mat)
   .lastFix <- FALSE
   for (i in seq_along(.df$neta1)) {
@@ -362,17 +416,25 @@
       if (.df$neta1[i] == .df$neta2[i]) {
         .var <- as.character(.df$name[i])
         if (.var %in% .covs) {
-          .addVariableToIniDf(.var, rxui, toEta=TRUE, value=.df$est[i], promote=TRUE)
+          .addVariableToIniDf(.var, rxui, toEta = TRUE, value = .df$est[i], promote = TRUE)
           .covs <- rxui$allCovs
         }
-        assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .var, .df$est[i], .doFix, .doUnfix, 1L),
-               envir=rxui)
+        assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .var, .df$est[i], .doFix, .doUnfix, 1L), envir = rxui)
         .lastFix <- rxui$iniDf$fix[rxui$iniDf$name == .var]
       } else {
         .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
-        assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
-                                                             .lastFix, rxui),
-               envir=rxui)
+        assign(
+          "iniDf",
+          .iniAddCovarianceBetweenTwoEtaValues(
+            rxui$iniDf,
+            .n[.df$neta1[i]],
+            .n[.df$neta2[i]],
+            .df$est[i],
+            .lastFix,
+            rxui
+          ),
+          envir = rxui
+        )
         .covs <- rxui$allCovs
       }
     }
@@ -402,17 +464,32 @@
 #' @author Matthew L Fidler
 #' @noRd
 .iniInformDifferentEtaCondition <- function(etas, condition, rxui) {
-  if (length(condition) != 1L || is.na(condition)) return(invisible())
-  if (!isTRUE(getOption("rxode2.verbose.pipe", TRUE))) return(invisible())
+  if (length(condition) != 1L || is.na(condition)) {
+    return(invisible())
+  }
+  if (!isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
+    return(invisible())
+  }
   .ini <- rxui$iniDf
-  if (is.null(.ini)) return(invisible())
+  if (is.null(.ini)) {
+    return(invisible())
+  }
   for (.eta in etas) {
     .w <- which(.ini$name == .eta & !is.na(.ini$neta1) & .ini$neta1 == .ini$neta2)
-    if (length(.w) != 1L) next
+    if (length(.w) != 1L) {
+      next
+    }
     .cur <- .lotriBaseCondition(.ini$condition[.w])
     if (!is.na(.cur) && !identical(.cur, condition)) {
-      .minfo(paste0("keeping {.code ", .eta, "} at level {.code ", .cur,
-                    "}; piping an estimate does not move it to {.code ", condition, "}"))
+      .minfo(paste0(
+        "keeping {.code ",
+        .eta,
+        "} at level {.code ",
+        .cur,
+        "}; piping an estimate does not move it to {.code ",
+        condition,
+        "}"
+      ))
     }
   }
   invisible()
@@ -431,15 +508,14 @@
   .ini <- rxui$ini
   .w <- which(.ini$name == .lhs)
   if (length(.w) != 1) {
-    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", .lhs, "'", call. = FALSE)
   } else if (is.null(.newLabel)) {
     .newLabel <- NA_character_
   } else if (!is.character(.newLabel) || !(length(.newLabel) == 1)) {
-    stop("the new label for '", .lhs, "' must be a character string",
-         call.=FALSE)
+    stop("the new label for '", .lhs, "' must be a character string", call. = FALSE)
   }
   .ini$label[.w] <- .newLabel
-  assign("iniDf", .ini, envir=rxui)
+  assign("iniDf", .ini, envir = rxui)
   invisible()
 }
 #' Is this a `prior(name) ~ dist(...)` piping line?
@@ -449,9 +525,11 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .isIniPriorLine <- function(expr) {
-  is.call(expr) && length(expr) == 3L &&
+  is.call(expr) &&
+    length(expr) == 3L &&
     identical(expr[[1]], quote(`~`)) &&
-    is.call(expr[[2]]) && identical(expr[[2]][[1]], quote(`prior`))
+    is.call(expr[[2]]) &&
+    identical(expr[[2]][[1]], quote(`prior`))
 }
 
 #' This handles the prior() piping calls
@@ -475,28 +553,35 @@
   ## prior already on these parameters is cleared before the block is
   ## rebuilt; otherwise lotri would see two priors on one parameter
   if (any(names(.ini) == "prior")) {
-    .tgt <- vapply(as.list(expr[[2]])[-1],
-                   function(y) paste(deparse(y), collapse=""), character(1),
-                   USE.NAMES=FALSE)
+    .tgt <- vapply(
+      as.list(expr[[2]])[-1],
+      function(y) paste(deparse(y), collapse = ""),
+      character(1),
+      USE.NAMES = FALSE
+    )
     ## `om.eta.cl` names the omega element of `eta.cl`
     .tgt <- unique(c(.tgt, sub("^om[.]", "", .tgt)))
     .ini$prior[.ini$name %in% .tgt] <- NA_character_
   }
-  .lotriExpr <- lotri::lotriDataFrameToLotriExpression(.ini, useIni=FALSE)
+  .lotriExpr <- lotri::lotriDataFrameToLotriExpression(.ini, useIni = FALSE)
   .body <- .lotriExpr[[2]]
   .body[[length(.body) + 1L]] <- expr
   .lotriExpr[[2]] <- .body
-  .env <- new.env(parent=envir)
-  assign("lotri", lotri::lotri, envir=.env)
-  .new <- try(eval(.lotriExpr, envir=.env), silent=TRUE)
+  .env <- new.env(parent = envir)
+  assign("lotri", lotri::lotri, envir = .env)
+  .new <- try(eval(.lotriExpr, envir = .env), silent = TRUE)
   if (inherits(.new, "try-error")) {
-    stop("cannot set the prior '", paste(deparse(expr), collapse=" "), "': ",
-         trimws(attr(.new, "condition")$message), call.=FALSE)
+    stop(
+      "cannot set the prior '",
+      paste(deparse(expr), collapse = " "),
+      "': ",
+      trimws(attr(.new, "condition")$message),
+      call. = FALSE
+    )
   }
   .newDf <- as.data.frame(.new)
   if (!any(names(.newDf) == "prior")) {
-    stop("the installed 'lotri' does not support prior distributions",
-         call.=FALSE)
+    stop("the installed 'lotri' does not support prior distributions", call. = FALSE)
   }
   if (!any(names(.ini) == "prior")) {
     .ini$prior <- rep(NA_character_, nrow(.ini))
@@ -504,7 +589,7 @@
   ## only the prior column comes back; `err` and anything else rxode2
   ## keeps on the iniDf is not lotri's to know about
   .ini$prior <- .newDf$prior[match(.ini$name, .newDf$name)]
-  assign("iniDf", .ini, envir=rxui)
+  assign("iniDf", .ini, envir = rxui)
   invisible()
 }
 
@@ -523,32 +608,41 @@
   .w <- which(.ini$name == .lhs)
   .good <- TRUE
   if (length(.w) != 1) {
-    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", .lhs, "'", call. = FALSE)
   } else if (is.null(.newExpr)) {
     .newExpr <- NA_character_
-  } else if (checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
-                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
-                                      min.chars = 1)) {
-  } else {
+  } else if (
+    checkmate::testCharacter(
+      .newExpr,
+      len = 1,
+      any.missing = FALSE,
+      pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+      min.chars = 1
+    )
+  ) {} else {
     .newExpr <- deparse1(.newExpr)
-    if (!checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
-                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
-                                 min.chars = 1)) {
+    if (
+      !checkmate::testCharacter(
+        .newExpr,
+        len = 1,
+        any.missing = FALSE,
+        pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+        min.chars = 1
+      )
+    ) {
       .good <- FALSE
     }
   }
   if (!.good) {
-    stop("backTransform specification malformed",
-         call.=FALSE)
+    stop("backTransform specification malformed", call. = FALSE)
   }
   if (!is.na(.newExpr)) {
-    if (!exists(.newExpr, envir=envir, mode="function")) {
-      stop("tried use a backTransform(\"", .newExpr, "\") when the function does not exist",
-           call.=FALSE)
+    if (!exists(.newExpr, envir = envir, mode = "function")) {
+      stop("tried use a backTransform(\"", .newExpr, "\") when the function does not exist", call. = FALSE)
     }
   }
   .ini$backTransform[.w] <- .newExpr
-  assign("iniDf", .ini, envir=rxui)
+  assign("iniDf", .ini, envir = rxui)
   invisible()
 }
 
@@ -583,25 +677,22 @@
     checkmate::assertChoice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
-    stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
-         call. = FALSE)
+    stop("'append' must be NULL, logical, numeric, or character/expression of variable in model", call. = FALSE)
   }
 
   lhs <- as.character(expr[[2]])
   wLhs <- which(ini$name == lhs)
   if (length(wLhs) != 1) {
-    stop("cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call. = FALSE)
   } else if (length(appendClean) != 1) {
     # This likely cannot be reached because all scenarios should be handled
     # above in the input checking.  The line remains in the code defensively.
-    stop("Cannot find parameter '", append, "'", call.=FALSE) # nocov
+    stop("Cannot find parameter '", append, "'", call. = FALSE) # nocov
   } else if (appendClean == wLhs) {
-    warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
-            call. = FALSE)
+    warning("parameter '", lhs, "' set to be moved after itself, no change in order made", call. = FALSE)
     return()
   } else if (is.na(ini$ntheta[wLhs])) {
-    stop("only theta parameters can be moved.  '", lhs, "' is not a theta parameter",
-         call. = FALSE)
+    stop("only theta parameters can be moved.  '", lhs, "' is not a theta parameter", call. = FALSE)
   }
 
   # Do the movement
@@ -619,15 +710,15 @@
   }
   # Ensure that ntheta stays in order
   ini$ntheta[!is.na(ini$ntheta)] <- seq_len(sum(!is.na(ini$ntheta)))
-  assign("iniDf", ret, envir=rxui)
+  assign("iniDf", ret, envir = rxui)
   invisible()
 }
 
 .iniHandleRecalc <- function(rxui) {
   .fun <- rxUiDecompress(rxui$fun())
-  for (.i in ls(.fun, all.names=TRUE)) {
+  for (.i in ls(.fun, all.names = TRUE)) {
     if (.i != "meta") {
-      assign(.i, get(.i, envir=.fun), envir=rxui)
+      assign(.i, get(.i, envir = .fun), envir = rxui)
     }
   }
   invisible()
@@ -643,18 +734,20 @@
 #' @return Nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.iniHandleSwitchType <- function(expr, rxui, envir=parent.frame()) {
+.iniHandleSwitchType <- function(expr, rxui, envir = parent.frame()) {
   .var <- as.character(expr[[2]])
   .iniDf <- rxui$iniDf
   .w <- which(.iniDf$name == .var)
-  if (length(.w) != 1L) stop("cannot switch parameter type for '", .var, "'", call.=FALSE)
-  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
-  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (length(.w) != 1L) {
+    stop("cannot switch parameter type for '", .var, "'", call. = FALSE)
+  }
+  .theta <- .iniDf[!is.na(.iniDf$ntheta), , drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta), , drop = FALSE]
   if (is.na(.iniDf$ntheta[.w])) {
     # switch eta to theta
     .neta <- .iniDf$neta1[.w]
-    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
-    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta1 != .neta, , drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta, , drop = FALSE]
     .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
     .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
     .newTheta <- .iniDf[.w, ]
@@ -670,11 +763,10 @@
   } else {
     # switch theta to eta
     if (!is.na(.iniDf$err[.w])) {
-      stop("cannot switch error parameter '", .var,
-           "' to a different type", call. = FALSE)
+      stop("cannot switch error parameter '", .var, "' to a different type", call. = FALSE)
     }
     .ntheta <- .iniDf$ntheta[.w]
-    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta <- .theta[.theta$ntheta != .ntheta, , drop = FALSE]
     .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
     .newEta <- .iniDf[.w, ]
     .newEta$ntheta <- NA_integer_
@@ -697,7 +789,7 @@
     .eta <- rbind(.eta, .newEta)
   }
   .ini <- rbind(.theta, .eta)
-  assign("iniDf", .ini, envir=rxui)
+  assign("iniDf", .ini, envir = rxui)
   .iniHandleRecalc(rxui)
   invisible()
 }
@@ -712,32 +804,33 @@
 #' @return Nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.iniHandleDropType <- function(expr, rxui, envir=parent.frame()) {
+.iniHandleDropType <- function(expr, rxui, envir = parent.frame()) {
   .var <- as.character(expr[[2]])
   .iniDf <- rxui$iniDf
   .w <- which(.iniDf$name == .var)
-  if (length(.w) != 1L) stop("no initial estimates for '", .var, "', cannot change to covariate", call.=FALSE)
-  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
-  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (length(.w) != 1L) {
+    stop("no initial estimates for '", .var, "', cannot change to covariate", call. = FALSE)
+  }
+  .theta <- .iniDf[!is.na(.iniDf$ntheta), , drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta), , drop = FALSE]
   if (is.na(.iniDf$ntheta[.w])) {
     .minfo(paste0("changing between subject variability parameter '", .var, "' to covariate parameter"))
     .neta <- .iniDf$neta1[.w]
-    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
-    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta1 != .neta, , drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta, , drop = FALSE]
     .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
     .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
   } else {
     if (!is.na(.iniDf$err[.w])) {
-      stop("cannot switch error parameter '", .var,
-           "' to a covariate", call. = FALSE)
+      stop("cannot switch error parameter '", .var, "' to a covariate", call. = FALSE)
     }
     .minfo(paste0("changing population parameter '", .var, "' to covariate parameter"))
     .ntheta <- .iniDf$ntheta[.w]
-    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta <- .theta[.theta$ntheta != .ntheta, , drop = FALSE]
     .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
   }
   .ini <- rbind(.theta, .eta)
-  assign("iniDf", .ini, envir=rxui)
+  assign("iniDf", .ini, envir = rxui)
   # This will change covariates, recalculate everything
   .iniHandleRecalc(rxui)
   invisible()
@@ -753,16 +846,19 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-.iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+.iniHandleLine <- function(expr, rxui, envir = parent.frame(), append = NULL) {
   if (.matchesLangTemplate(expr, str2lang("~diag()"))) {
-    .iniHandleDiag(expr=NULL, rxui=rxui)
+    .iniHandleDiag(expr = NULL, rxui = rxui)
     return(invisible())
-  } else if (length(expr) == 2L &&
-               identical(expr[[1]], quote(`~`)) &&
-               is.call(expr[[2]]) && length(expr[[2]]) >= 2L &&
-               identical(expr[[2]][[1]], quote(`diag`))) {
+  } else if (
+    length(expr) == 2L &&
+      identical(expr[[1]], quote(`~`)) &&
+      is.call(expr[[2]]) &&
+      length(expr[[2]]) >= 2L &&
+      identical(expr[[2]][[1]], quote(`diag`))
+  ) {
     # .matchesLangTemplate(expr, str2lang("~diag(.)")) doesn't work
-    .iniHandleDiag(expr=expr, rxui=rxui)
+    .iniHandleDiag(expr = expr, rxui = rxui)
     return(invisible())
   }
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
@@ -772,19 +868,23 @@
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- NULL")) ||
-        .matchesLangTemplate(expr, str2lang(".name ~ NULL")) ||
-        .matchesLangTemplate(expr, str2lang("cov(.name, .name) <- NULL")) ||
-        .matchesLangTemplate(expr, str2lang("cor(.name, .name) <- NULL")) ||
-        .matchesLangTemplate(expr, str2lang("cov(.name, .name) ~ NULL")) ||
-        .matchesLangTemplate(expr, str2lang("cor(.name, .name) ~ NULL"))) {
+  if (
+    .matchesLangTemplate(expr, str2lang(".name <- NULL")) ||
+      .matchesLangTemplate(expr, str2lang(".name ~ NULL")) ||
+      .matchesLangTemplate(expr, str2lang("cov(.name, .name) <- NULL")) ||
+      .matchesLangTemplate(expr, str2lang("cor(.name, .name) <- NULL")) ||
+      .matchesLangTemplate(expr, str2lang("cov(.name, .name) ~ NULL")) ||
+      .matchesLangTemplate(expr, str2lang("cor(.name, .name) ~ NULL"))
+  ) {
     expr <- as.call(list(quote(`-`), expr[[2]]))
   }
 
   # now handle dropping covariances
-  if (.matchesLangTemplate(expr, str2lang("-cov(.name, .name)")) ||
-        .matchesLangTemplate(expr, str2lang("-cor(.name, .name)"))) {
-    .iniHandleRmCov(expr=expr, rxui=rxui)
+  if (
+    .matchesLangTemplate(expr, str2lang("-cov(.name, .name)")) ||
+      .matchesLangTemplate(expr, str2lang("-cor(.name, .name)"))
+  ) {
+    .iniHandleRmCov(expr = expr, rxui = rxui)
     return(invisible())
   }
 
@@ -797,23 +897,24 @@
   if (.isIniPriorLine(expr)) {
     ## checked before the `~` handling below, which would otherwise take
     ## `prior(tka) ~ dnorm(0, 10)` for a matrix or a type switch
-    .iniHandlePrior(expr=expr, rxui=rxui, envir=envir)
+    .iniHandlePrior(expr = expr, rxui = rxui, envir = envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
-    .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
+    .iniHandleLabel(expr = expr, rxui = rxui, envir = envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {
-    .iniHandleBackTransform(expr=expr, rxui=rxui, envir=envir)
+    .iniHandleBackTransform(expr = expr, rxui = rxui, envir = envir)
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(
         "to assign a new label, use '%s <- label(\"%s\")'",
-        as.character(expr[[2]]), expr[[3]]
-      ), call.=FALSE
+        as.character(expr[[2]]),
+        expr[[3]]
+      ),
+      call. = FALSE
     )
   } else if (.isAssignment(expr)) {
-    .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
+    .iniHandleFixOrUnfixEqual(expr = expr, rxui = rxui, envir = envir)
   } else if (.isLotriAssignment(expr)) {
-    .lotriVal <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
-                      envir=envir)
+    .lotriVal <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))), envir = envir)
     if (!is.matrix(.lotriVal)) {
       # a `~ v | condition` random effect comes back as a list of blocks keyed
       # by condition; a single piped line always has exactly one block
@@ -837,16 +938,16 @@
     } else if (!is.null(.unfixMat) && isTRUE(.unfixMat[1, 1])) {
       expr[[3]] <- as.call(list(quote(`unfix`), expr[[3]]))
     }
-    .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
+    .iniHandleFixOrUnfixEqual(expr = expr, rxui = rxui, envir = envir, maxLen = 1L)
   } else if (.isTildeExpr(expr)) {
-    .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
+    .iniHandleSwitchType(expr = expr, rxui = rxui, envir = envir)
   } else if (.isIniDropExpression(expr)) {
-    .iniHandleDropType(expr=expr, rxui=rxui, envir=envir)
+    .iniHandleDropType(expr = expr, rxui = rxui, envir = envir)
   } else {
     # Can this error be improved to clarify what is the expression causing the
     # issue?  It needs a single character string representation of something
     # that is not a character string.
-    stop("invalid expr for ini() modification", call.=FALSE)
+    stop("invalid expr for ini() modification", call. = FALSE)
   }
 
   # (Maybe) update parameter order; this must be at the end so that the
@@ -854,21 +955,21 @@
   .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
 
   # now take out ETAs that no longer exist
-  .iniDf <- get("iniDf", envir=rxui)
+  .iniDf <- get("iniDf", envir = rxui)
   .w <- which(is.na(.iniDf$neta1) & !is.na(.iniDf$neta2))
   .reassign <- FALSE
   if (length(.w) > 0) {
     .iniDf <- .iniDf[-.w, ]
     .reassign <- TRUE
   }
-  .iniDf <- get("iniDf", envir=rxui)
+  .iniDf <- get("iniDf", envir = rxui)
   .w <- which(!is.na(.iniDf$neta1) & is.na(.iniDf$neta2))
   if (length(.w) > 0) {
     .iniDf <- .iniDf[-.w, ]
     .reassign <- TRUE
   }
   if (.reassign) {
-    assign("iniDf", .iniDf, envir=rxui)
+    assign("iniDf", .iniDf, envir = rxui)
   }
 }
 
@@ -888,13 +989,17 @@
 #'   (unfixed, UNFIX, and UNFIXED) are converted to fix and unfix
 #' @noRd
 .iniSimplifyFixUnfix <- function(expr) {
-  if (identical(expr, as.name("fixed")) ||
+  if (
+    identical(expr, as.name("fixed")) ||
       identical(expr, as.name("FIX")) ||
-      identical(expr, as.name("FIXED"))) {
+      identical(expr, as.name("FIXED"))
+  ) {
     expr <- as.name("fix")
-  } else if (identical(expr, as.name("unfixed")) ||
-             identical(expr, as.name("UNFIX")) ||
-             identical(expr, as.name("UNFIXED"))) {
+  } else if (
+    identical(expr, as.name("unfixed")) ||
+      identical(expr, as.name("UNFIX")) ||
+      identical(expr, as.name("UNFIXED"))
+  ) {
     expr <- as.name("unfix")
   } else if (is.call(expr)) {
     for (idx in seq_along(expr)) {
@@ -938,46 +1043,55 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 .iniGetAppendArg <- function(f, s) {
-  if (inherits(f, "try-error") &&
-        checkmate::testCharacter(s, len=1, any.missing=FALSE,
-                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
-                                 min.chars = 1)) {
+  if (
+    inherits(f, "try-error") &&
+      checkmate::testCharacter(
+        s,
+        len = 1,
+        any.missing = FALSE,
+        pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+        min.chars = 1
+      )
+  ) {
     return(s)
   }
   if (is.null(f)) {
     return(NULL)
-  } else if (checkmate::testCharacter(f, len=1, any.missing=FALSE,
-                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
-                                      min.chars = 1)) {
+  } else if (
+    checkmate::testCharacter(f, len = 1, any.missing = FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars = 1)
+  ) {
     return(f)
   } else if (is.infinite(f)) {
     return(f)
-  } else if (checkmate::testIntegerish(f, len=1, any.missing=FALSE)) {
+  } else if (checkmate::testIntegerish(f, len = 1, any.missing = FALSE)) {
     if (f < 0) {
-      stop("'append' cannot be a negative integer", call.=FALSE)
+      stop("'append' cannot be a negative integer", call. = FALSE)
     }
     return(f)
-  } else if (checkmate::testLogical(f, len=1)) {
+  } else if (checkmate::testLogical(f, len = 1)) {
     # NA for model piping prepends
-    if (is.na(f)) return(FALSE)
+    if (is.na(f)) {
+      return(FALSE)
+    }
     return(f)
   }
-  stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
-       call.=FALSE)
+  stop("'append' must be NULL, logical, numeric, or character/expression of variable in model", call. = FALSE)
 }
 
 #' @export
 #' @rdname ini
-ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .s  <- as.character(substitute(append))
-  .f <- try(force(append), silent=TRUE)
+ini.rxUi <- function(x, ..., envir = parent.frame(), append = NULL) {
+  .s <- as.character(substitute(append))
+  .f <- try(force(append), silent = TRUE)
   append <- .iniGetAppendArg(.f, .s)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniDf <- .ret$iniDf
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf= .iniDf)
-  if (length(.iniLines) == 0L) return(.ret$iniFun)
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir = envir, iniDf = .iniDf)
+  if (length(.iniLines) == 0L) {
+    return(.ret$iniFun)
+  }
   lapply(.iniLines, function(line) {
-    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append=append)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   if (inherits(x, "rxUi")) {
     .x <- rxUiDecompress(x)
@@ -995,9 +1109,9 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
 
 #' @rdname ini
 #' @export
-ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .s  <- as.character(substitute(append))
-  .f <- try(force(append), silent=TRUE)
+ini.default <- function(x, ..., envir = parent.frame(), append = NULL) {
+  .s <- as.character(substitute(append))
+  .f <- try(force(append), silent = TRUE)
   append <- .iniGetAppendArg(.f, .s)
   .ret <- try(as.rxUi(x), silent = TRUE)
   .hasUi <- TRUE
@@ -1025,9 +1139,9 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
     .iniDf <- .ret$iniDf
   }
   if (.err) {
-    stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
+    stop("cannot figure out what to do with the ini({}) function", call. = FALSE)
   }
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir = envir, iniDf = .iniDf)
   if (length(.iniLines) == 0L) {
     if (.hasUi) {
       return(.ret$iniFun)
@@ -1036,19 +1150,20 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
     }
   }
   if (!.hasUi) {
-    .ret <- new.env(parent=emptyenv())
+    .ret <- new.env(parent = emptyenv())
     .ret$iniDf <- .iniDf
-
   }
   lapply(.iniLines, function(line) {
-    .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   if (.hasUi) {
     rxUiCompress(.ret)
   } else {
     .ret <- as.ini(.ret$iniDf)
-    if (inherits(x, "lotriFix") ||
-          inherits(x, "matrix")) {
+    if (
+      inherits(x, "lotriFix") ||
+        inherits(x, "matrix")
+    ) {
       .ret[[1]] <- quote(`lotri`)
       .ret <- try(eval(.ret), silent = TRUE)
     }
@@ -1077,7 +1192,9 @@ as.lotri.call <- function(x, ..., default = "") {
 #' @author Matthew L. Fidler
 #' @noRd
 .isQuotedLineRhsModifiesEstimates <- function(line, rxui) {
-  if (length(line) != 3) return(FALSE)
+  if (length(line) != 3) {
+    return(FALSE)
+  }
   .rhs <- line[[2]]
   if (length(.rhs) > 1) {
     if (identical(.rhs[[1]], quote(`+`))) {
@@ -1085,7 +1202,9 @@ as.lotri.call <- function(x, ..., default = "") {
     }
   }
   .c <- as.character(.rhs)
-  if (any(rxui$iniDf$name == .c)) return(TRUE)
+  if (any(rxui$iniDf$name == .c)) {
+    return(TRUE)
+  }
   FALSE
 }
 
@@ -1150,7 +1269,6 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
       if (fix) {
         iniDf$fix[maskSigma] <- TRUE
       }
-
     }
   }
   ini(.ret) <- iniDf
@@ -1166,14 +1284,14 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
 #' @return iniDf with modified diagonal
 #' @noRd
 #' @author Matthew L. Fidler
-.iniDfRmDiag <- function(iniDf, diag=character(0)) {
+.iniDfRmDiag <- function(iniDf, diag = character(0)) {
   .iniDf <- iniDf
-  .theta <- .iniDf[!is.na(.iniDf$ntheta),,drop=FALSE]
-  .eta <- .iniDf[is.na(.iniDf$ntheta),,drop=FALSE]
+  .theta <- .iniDf[!is.na(.iniDf$ntheta), , drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta), , drop = FALSE]
   if (length(diag) == 0) {
     .w <- which(.eta$neta1 == .eta$neta2)
     .rmNames <- .eta[-.w, "name"]
-    .eta <- .eta[.w,, drop=FALSE]
+    .eta <- .eta[.w, , drop = FALSE]
     .iniDf <- rbind(.theta, .eta)
   } else {
     .rmNames <- character(0)
@@ -1181,22 +1299,26 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
       .w <- which(.eta$name == .e)
       if (length(.w) == 1L) {
         .n <- .eta$neta1[.w]
-        .w <- vapply(seq_along(.eta$neta1),
-                     function(i) {
-                       if (.eta$neta1[i] == .eta$neta2[i]) {
-                         TRUE
-                       } else if (.eta$neta1[i] == .n && .eta$neta2[i] != .n) {
-                         FALSE
-                       } else if (.eta$neta2[i] == .n && .eta$neta1[i] != .n) {
-                         FALSE
-                       } else {
-                         TRUE
-                       }
-                     }, logical(1), USE.NAMES = TRUE)
+        .w <- vapply(
+          seq_along(.eta$neta1),
+          function(i) {
+            if (.eta$neta1[i] == .eta$neta2[i]) {
+              TRUE
+            } else if (.eta$neta1[i] == .n && .eta$neta2[i] != .n) {
+              FALSE
+            } else if (.eta$neta2[i] == .n && .eta$neta1[i] != .n) {
+              FALSE
+            } else {
+              TRUE
+            }
+          },
+          logical(1),
+          USE.NAMES = TRUE
+        )
         .rmNames <- c(.rmNames, .eta$name[!.w])
-        .eta <- .eta[.w,,drop=FALSE]
+        .eta <- .eta[.w, , drop = FALSE]
       } else {
-        stop("cannot find parameter '", .e, "' for covariance removal", call.=FALSE)
+        stop("cannot find parameter '", .e, "' for covariance removal", call. = FALSE)
       }
     }
     .mat <- lotri::as.lotri(.eta)
@@ -1216,18 +1338,18 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
 
 .iniHandleRmCov <- function(expr, rxui) {
   .iniDf <- rxui$iniDf
-  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
-  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  .theta <- .iniDf[!is.na(.iniDf$ntheta), , drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta), , drop = FALSE]
   .mat <- lotri::as.lotri(.eta)
   .n1 <- as.character(expr[[2]][[2]])
-  .v1 <- which(.n1==dimnames(.mat)[[1]])
+  .v1 <- which(.n1 == dimnames(.mat)[[1]])
   if (length(.v1) != 1) {
-    stop("cannot find parameter '", .n1, "' for covariance removal", call.=FALSE)
+    stop("cannot find parameter '", .n1, "' for covariance removal", call. = FALSE)
   }
   .n2 <- as.character(expr[[2]][[3]])
-  .v2 <- which(.n2==dimnames(.mat)[[1]])
+  .v2 <- which(.n2 == dimnames(.mat)[[1]])
   if (length(.v2) != 1) {
-    stop("cannot find parameter '", .n2, "' for covariance removal", call.=FALSE)
+    stop("cannot find parameter '", .n2, "' for covariance removal", call. = FALSE)
   }
   if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .minfo(paste0("remove covariance {.code (", .n1, ", ", .n2, ")}"))
@@ -1239,28 +1361,32 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   .eta <- as.data.frame(.mat)
   .eta$err <- NA_character_
   .iniDf <- rbind(.theta, .eta)
-  assign("iniDf", .iniDf, envir=rxui)
+  assign("iniDf", .iniDf, envir = rxui)
 }
 
-.iniHandleDiag <- function(expr, rxui){
+.iniHandleDiag <- function(expr, rxui) {
   if (is.null(expr)) {
-    assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir=rxui)
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir = rxui)
   } else {
     # now get the variables in the diag expression
-    .env <- new.env(parent=emptyenv())
+    .env <- new.env(parent = emptyenv())
     .env$names <- character(0)
     .f <- function(x) {
       if (is.name(x)) {
         .env$names <- c(.env$names, as.character(x))
       } else if (is.call(x)) {
-        lapply(lapply(seq_along(x)[-1], function(i) {x[[i]]}), .f)
+        lapply(
+          lapply(seq_along(x)[-1], function(i) {
+            x[[i]]
+          }),
+          .f
+        )
       }
     }
     expr <- expr[[2]]
-    lapply(seq_along(expr)[-1],
-           function(i) {
-              .f(expr[[i]])
-           })
-    assign("iniDf", .iniDfRmDiag(rxui$iniDf, .env$names), envir=rxui)
+    lapply(seq_along(expr)[-1], function(i) {
+      .f(expr[[i]])
+    })
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf, .env$names), envir = rxui)
   }
 }

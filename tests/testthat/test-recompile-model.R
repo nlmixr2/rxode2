@@ -15,7 +15,8 @@ rxTest({
 
     ## make an unrelated model the parser's current one
     rxode2:::.rxModelVarsCharacter(
-      "d/dt(recompileB) = -kRecompileB * recompileB - kRecompileB2 * recompileB")
+      "d/dt(recompileB) = -kRecompileB * recompileB - kRecompileB2 * recompileB"
+    )
 
     .dll <- rxCompile(.mv, force = TRUE)
 
@@ -34,7 +35,8 @@ rxTest({
 
     ## and leave an unrelated model as the parsed one
     rxode2:::.rxModelVarsCharacter(
-      "d/dt(reloadB) = -kReloadB * reloadB - kReloadB2 * reloadB")
+      "d/dt(reloadB) = -kReloadB * reloadB - kReloadB2 * reloadB"
+    )
 
     rxLoad(.mod)
     expect_equal(rxModelVars(.mod)$params, .params)

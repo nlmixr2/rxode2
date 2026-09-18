@@ -2,7 +2,6 @@ rxTest({
   # Make sure there are lower bounds for appropriate errors
 
   test_that("add/prop have appropriate errors", {
-
     run7.mod <- function() {
       ini({
         tcl <- log(0.008) ; label("typical value of clearance")
@@ -76,7 +75,6 @@ rxTest({
 
     expect_error(rxode2(run7.mod))
 
-
     run7.mod <- function() {
       ini({
         tcl <- log(0.008) ; label("typical value of clearance")
@@ -144,6 +142,5 @@ rxTest({
     }
 
     expect_warning(rxode2(run7.mod), NA)
-
   })
 })

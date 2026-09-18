@@ -12,15 +12,24 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
     .max <- max(sapply(.dn, nchar))
     cat(sprintf(
       "Classes 'rxSolve' and 'data.frame':\t%s rows of  %s variables:\n",
-      object$.check.nrow, object$.check.ncol
+      object$.check.nrow,
+      object$.check.ncol
     ))
     for (.n in c(
-      "sim.id", "id", "evid", "cmt", "ss", "amt", "rate", "dur",
+      "sim.id",
+      "id",
+      "evid",
+      "cmt",
+      "ss",
+      "amt",
+      "rate",
+      "dur",
       "ii"
     )) {
       if (any(names(object) == .n)) {
         cat(paste0(
-          " $ ", .n,
+          " $ ",
+          .n,
           paste(rep(" ", .max - nchar(.n)), collapse = ""),
           ":"
         ))
@@ -58,9 +67,7 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
           paste(rep(" ", .max - nchar(.l) - 1), collapse = ""),
           ":"
         ))
-        str(object[[paste0(.l, "0")]],
-          nchar.max = nchar.max - .max - nchar(.l) - 5
-        )
+        str(object[[paste0(.l, "0")]], nchar.max = nchar.max - .max - nchar(.l) - 5)
       }
     }
     if (length(.mv$params) > 0) {
@@ -75,8 +82,18 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
       }
     }
     .vars <- c(
-      "sim.id", "id", "evid", "cmt", "ss", "amt", "rate",
-      "dur", "ii", "time", .mv$lhs, .mv$state
+      "sim.id",
+      "id",
+      "evid",
+      "cmt",
+      "ss",
+      "amt",
+      "rate",
+      "dur",
+      "ii",
+      "time",
+      .mv$lhs,
+      .mv$state
     )
     .n2 <- names(object)[!(names(object) %in% .vars)]
     if (length(.n2) > 0) {
@@ -90,11 +107,17 @@ str.rxSolve <- function(object, ..., nchar.max = 128) {
         str(object[[.l]], nchar.max = nchar.max - .max - nchar(.l) - 4)
       }
     }
-    .dn <- .dn[!(.dn %in% c(
-      names(object), paste0(.mv$state, "0"),
-      "t", "params", "inits",
-      .mv$params
-    ))]
+    .dn <- .dn[
+      !(.dn %in%
+        c(
+          names(object),
+          paste0(.mv$state, "0"),
+          "t",
+          "params",
+          "inits",
+          .mv$params
+        ))
+    ]
     .fns <- sapply(.dn, function(x) {
       inherits(`$.rxSolve`(object, x), "function")
     })

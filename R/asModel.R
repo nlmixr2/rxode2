@@ -67,14 +67,16 @@ as.model <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.character <- function(x) {
-  .ret <- try(as.model(lapply(x, function(i) {
-    str2lang(i)
-  })), silent=TRUE)
+  .ret <- try(
+    as.model(lapply(x, function(i) {
+      str2lang(i)
+    })),
+    silent = TRUE
+  )
   if (inherits(.ret, "try-error")) {
-    .ret <- try(as.model(str2lang(paste(x, collapse="\n"))), silent=TRUE)
+    .ret <- try(as.model(str2lang(paste(x, collapse = "\n"))), silent = TRUE)
     if (inherits(.ret, "try-error")) {
-      stop("error converting character vector to model({}) expression",
-           call.=FALSE)
+      stop("error converting character vector to model({}) expression", call. = FALSE)
     }
   }
   .ret
@@ -84,8 +86,7 @@ as.model.character <- function(x) {
 #' @export
 as.model.call <- function(x) {
   if (!identical(x[[1]], quote(`model`))) {
-    stop("unsupported expression of model({}) block",
-         call.=FALSE)
+    stop("unsupported expression of model({}) block", call. = FALSE)
   }
   x
 }
@@ -97,10 +98,13 @@ as.model.list <- function(x) {
     return(x$model)
   }
   .lst <- lapply(seq_along(x), function(i) {
-    if (is.language(x[[i]])) return(x[[i]])
-    if (is.character(x[[i]])) return(str2lang(x[[i]]))
-    stop("unsupported expression of model({}) block",
-         call.=FALSE)
+    if (is.language(x[[i]])) {
+      return(x[[i]])
+    }
+    if (is.character(x[[i]])) {
+      return(str2lang(x[[i]]))
+    }
+    stop("unsupported expression of model({}) block", call. = FALSE)
   })
   as.call(c(quote(`model`), as.call(c(quote(`{`), .lst))))
 }
@@ -108,10 +112,9 @@ as.model.list <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.default <- function(x) {
-  .model <- try(as.rxUi(x), silent=TRUE)
+  .model <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.model, "try-error")) {
-    stop("do not know how to convert this to an `model` expression",
-         call.=FALSE)
+    stop("do not know how to convert this to an `model` expression", call. = FALSE)
   }
   model(.model)
 }

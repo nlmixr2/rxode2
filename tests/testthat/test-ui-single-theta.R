@@ -56,7 +56,6 @@ rxTest({
       f1 <- f()
 
       expect_equal(f1$singleTheta, c("tka", "tcl", "tv"))
-
     })
   }
 })

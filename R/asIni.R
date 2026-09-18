@@ -92,22 +92,23 @@ as.ini <- function(x) {
 #' @rdname as.ini
 #' @export
 as.ini.character <- function(x) {
-  as.ini(str2lang(paste(x, collapse="\n")))
+  as.ini(str2lang(paste(x, collapse = "\n")))
 }
 
 #' @rdname as.ini
 #' @export
 as.ini.data.frame <- function(x) {
- lotri::lotriDataFrameToLotriExpression(x, useIni = TRUE)
+  lotri::lotriDataFrameToLotriExpression(x, useIni = TRUE)
 }
 
 #' @rdname as.ini
 #' @export
 as.ini.call <- function(x) {
-  if (!identical(x[[1]], quote(`ini`)) &&
-        !identical(x[[1]], quote(`lotri`))) {
-    stop("unsupported expression for ini({}) block",
-         call.=FALSE)
+  if (
+    !identical(x[[1]], quote(`ini`)) &&
+      !identical(x[[1]], quote(`lotri`))
+  ) {
+    stop("unsupported expression for ini({}) block", call. = FALSE)
   }
   if (identical(x[[1]], quote(`ini`))) {
     .tmp <- x
@@ -118,8 +119,7 @@ as.ini.call <- function(x) {
     .tmp <- eval(x)
     return(as.ini(.tmp))
   }
-  stop("unsupported expression of ini({}) block",
-       call.=FALSE)
+  stop("unsupported expression of ini({}) block", call. = FALSE)
 }
 
 #' @rdname as.ini
@@ -144,10 +144,9 @@ as.ini.default <- function(x) {
   if (is.null(x)) {
     return(quote(ini({}))) # nolint
   }
-  .ini <- try(as.rxUi(x), silent=TRUE)
+  .ini <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.ini, "try-error")) {
-    stop("do not know how to convert this to an `ini` expression",
-         call.=FALSE)
+    stop("do not know how to convert this to an `ini` expression", call. = FALSE)
   }
   ini(.ini)
 }

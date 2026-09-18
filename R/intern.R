@@ -2,13 +2,30 @@
   .Call(`_rxode2_codeLoaded`)
 }
 
-.codegen <- function(c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
-                     eventSensCode = rep("", 13L)) {
-  .Call(`_rxode2_codegen`, c_file, prefix, libname, pMd5, timeId, lastMv, goodFun,
-        eventSensCode[1], eventSensCode[2], eventSensCode[3], eventSensCode[4],
-        eventSensCode[5], eventSensCode[6], eventSensCode[7], eventSensCode[8],
-        eventSensCode[9], eventSensCode[10], eventSensCode[11], eventSensCode[12],
-        eventSensCode[13])
+.codegen <- function(c_file, prefix, libname, pMd5, timeId, lastMv, goodFun, eventSensCode = rep("", 13L)) {
+  .Call(
+    `_rxode2_codegen`,
+    c_file,
+    prefix,
+    libname,
+    pMd5,
+    timeId,
+    lastMv,
+    goodFun,
+    eventSensCode[1],
+    eventSensCode[2],
+    eventSensCode[3],
+    eventSensCode[4],
+    eventSensCode[5],
+    eventSensCode[6],
+    eventSensCode[7],
+    eventSensCode[8],
+    eventSensCode[9],
+    eventSensCode[10],
+    eventSensCode[11],
+    eventSensCode[12],
+    eventSensCode[13]
+  )
 }
 
 .parseModel <- function(type) {
@@ -49,8 +66,7 @@
 }
 
 .trans <- function(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn) {
-  .Call(`_rxode2_trans`,
-        parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn)
+  .Call(`_rxode2_trans`, parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn)
 }
 
 .linCmtParse <- function(vars, inStr, verbose) {
@@ -61,7 +77,7 @@
   .Call(`_rxode2_linCmtGen`, linCmt, vars, linCmtSens, verbose)
 }
 
-.parseFreeSexp  <- function(last) {
+.parseFreeSexp <- function(last) {
   .Call(`_rxode2_parseFreeSexp`, last)
 }
 
@@ -88,7 +104,13 @@
 #' @keywords internal
 #' @noRd
 .getDurTest <- function(time, dose, evid, idose, l, backward) {
-  .Call(`_rxode2_getDurTest`, as.double(time), as.double(dose),
-        as.integer(evid), as.integer(idose), as.integer(l),
-        as.integer(backward))
+  .Call(
+    `_rxode2_getDurTest`,
+    as.double(time),
+    as.double(dose),
+    as.integer(evid),
+    as.integer(idose),
+    as.integer(l),
+    as.integer(backward)
+  )
 }

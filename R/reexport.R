@@ -1,4 +1,3 @@
-
 #' @return Inherited from parent routine
 #' @name reexports
 #' @keywords internal

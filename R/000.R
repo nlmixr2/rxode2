@@ -1,1 +1,1 @@
-.parseEnv <- new.env(parent=emptyenv())
+.parseEnv <- new.env(parent = emptyenv())

@@ -1,5 +1,3 @@
-
-
 ## devtools::load_all("~/src/rxode2")
 
 ## devtools::load_all("~/src/nlmixr2est")
@@ -52,7 +50,6 @@ library(nlmixr2)
 ##   })
 ## }
 
-
 ## datr <- nlmixr2data::Bolus_1CPT
 ## dat <- datr[datr$SD == 1, ]
 ## dat <- dat[, names(dat) != "SS"]
@@ -60,8 +57,6 @@ library(nlmixr2)
 ## fit <- nlmixr2(f, dat, est="focei")
 
 ## fitS <- nlmixr2(f, dat, est="saem")
-
-
 
 ## fit2 <- nlmixr2(f2, dat, est="focei")
 
@@ -142,7 +137,6 @@ library(nlmixr2)
 
 ## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
 
-
 f <- function() {
   ini({ # Where initial conditions/variables are specified
     # '<-' or '=' defines population parameters
@@ -216,7 +210,7 @@ datr <- nlmixr2data::Bolus_2CPT
 dat <- datr[datr$SD == 1, ]
 dat <- dat[, names(dat) != "SS"]
 
-fit <- nlmixr2(f, dat, est="focei")
+fit <- nlmixr2(f, dat, est = "focei")
 
 ## fitS <- nlmixr2(f, dat, est="saem")
 
@@ -224,29 +218,22 @@ fit <- nlmixr2(f, dat, est="focei")
 
 ## fit2S <- nlmixr2(f2, dat, est="saem")
 
-
 ## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
 
 ## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
-
 
 ## theta <- setNames(fit$theta,paste0("THETA[", seq_along(fit$theta), "]"))
 
 ## eta <- fit$eta[,-1]
 ## names(eta) <- paste0("ETA[", seq_along(eta), "]")
 
-
-
 ## ###################################################################
-
 
 ## devtools::load_all("~/src/rxode2")
 
 ## datr <- nlmixr2data::Bolus_1CPT
 ## dat <- datr[datr$SD == 1, ]
 ## dat <- dat[, names(dat) != "SS"]
-
-
 
 ## theta <- p[[1]]
 
@@ -286,6 +273,5 @@ fit <- nlmixr2(f, dat, est="focei")
 ##   cmt(cp)
 ##   dvid(2)
 ## })
-
 
 ## tmp <- rxSolve(rx, pars, dat)

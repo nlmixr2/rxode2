@@ -34,7 +34,7 @@ getBaseSymengineModel <- function(obj) {
 #'@export
 getBaseSymengineModel.default <- function(obj) {
   .ui <- assertRxUi(obj)
-  .x <- rxCombineErrorLines(.ui, cmtLines=FALSE, dvidLine=FALSE)
+  .x <- rxCombineErrorLines(.ui, cmtLines = FALSE, dvidLine = FALSE)
   if (identical(.x[[2]][[2]][[1]], quote(`params`))) {
     .x[[2]] <- .x[[2]][-2]
   }
@@ -60,7 +60,7 @@ getBaseIniSimModel.default <- function(obj) {
   .ret <- rxCombineErrorLines(.ui)
   .params <- .ret[[2]][[2]]
   .iniDf <- obj$iniDf
-  .iniDf <- .iniDf[(is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2),]
+  .iniDf <- .iniDf[(is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2), ]
   .ini <- lapply(seq_along(.iniDf$name), function(i) {
     if (!is.na(.iniDf$neta1[i])) {
       return(str2lang(paste0(.iniDf$name[i], "<- 0")))
@@ -73,36 +73,55 @@ getBaseIniSimModel.default <- function(obj) {
     .sigma <- NULL
   } else {
     .sigma <- lapply(seq_along(.predDf$var), function(i) {
-      if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
+      if (.predDf$distribution[i] %in% c("dnorm", "norm")) {
         str2lang(paste0("rxerr.", .predDf$var[i], "<- 1"))
       } else {
         NULL
       }
     })
-    .w <- which(vapply(seq_along(.sigma),
-                       function(i) {
-                         !is.null(.sigma[[i]])
-                       }, logical(1), USE.NAMES = FALSE))
+    .w <- which(vapply(
+      seq_along(.sigma),
+      function(i) {
+        !is.null(.sigma[[i]])
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    ))
     if (length(.w) == 0) {
       .sigma <- NULL
     } else {
-      .sigma <- lapply(.w, function(i) {.sigma[[i]]})
+      .sigma <- lapply(.w, function(i) {
+        .sigma[[i]]
+      })
     }
   }
-  .mod <- lapply(seq_along(.ret[[2]])[-(1:2)], function(i){.ret[[2]][[i]]})
+  .mod <- lapply(seq_along(.ret[[2]])[-(1:2)], function(i) {
+    .ret[[2]][[i]]
+  })
   if (identical(.params, str2lang("params()"))) {
     .params <- NULL
   }
   # now filter out directive lines; simulation model generation adds
   # back the normalized declarations explicitly.
-  .mod <- .rxFilterOutPropsAndAdjustPredDf(.ui, predDf=NULL, lstExpr=.mod)
+  .mod <- .rxFilterOutPropsAndAdjustPredDf(.ui, predDf = NULL, lstExpr = .mod)
   .interp <- rxUiGet.interpLines(list(.ui))
   .splitDose <- rxUiGet.splitDoseLines(list(.ui))
   .splitInfusion <- rxUiGet.splitInfusionLines(list(.ui))
   .splitInfBol <- rxUiGet.splitInfusionBolusLines(list(.ui))
   .splitBolInf <- rxUiGet.splitBolusInfusionLines(list(.ui))
-  as.call(c(list(quote(`rxode2`)),
-            as.call(c(list(quote(`{`)), .params, .interp, .splitDose,
-                      .splitInfusion, .splitInfBol, .splitBolInf,
-                      .sigma, .ini, .mod))))
+  as.call(c(
+    list(quote(`rxode2`)),
+    as.call(c(
+      list(quote(`{`)),
+      .params,
+      .interp,
+      .splitDose,
+      .splitInfusion,
+      .splitInfBol,
+      .splitBolInf,
+      .sigma,
+      .ini,
+      .mod
+    ))
+  ))
 }

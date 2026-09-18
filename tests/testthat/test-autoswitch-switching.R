@@ -25,8 +25,7 @@ rxTest({
     d/dt(R)     <-  ksyn - kdeg*R - kon*L*R + koff*RL
     d/dt(RL)    <-  kon*L*R - koff*RL - kint*RL
   })
-  .tmddP <- c(ka = 0.5, kel = 0.1, kon = 100, koff = 1,
-              ksyn = 1, kdeg = 0.5, kint = 0.2)
+  .tmddP <- c(ka = 0.5, kel = 0.1, kon = 100, koff = 1, ksyn = 1, kdeg = 0.5, kint = 0.2)
   .tmddEv <- et(amt = 50, cmt = "depot", ii = 24, addl = 6) |> et(seq(0, 168, by = 0.5))
 
   test_that("the non-dense dop853+ros4 composite switches to ros4 mid-solve", {
@@ -65,8 +64,7 @@ rxTest({
     ## carried across intervals this switched zero times -- its output was
     ## bit-identical to dop853 -- because a switch needed ~64 accepted steps
     ## inside one observation interval.
-    .ref <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda",
-                    atol = 1e-12, rtol = 1e-12)
+    .ref <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda", atol = 1e-12, rtol = 1e-12)
     .d <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853")
     .c <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4")
     expect_false(identical(.c$L, .d$L))
@@ -78,13 +76,13 @@ rxTest({
     ## stiff secondary they must.  Before, their drivers ignored op->stiff2 and
     ## the composite silently ran as the plain primary on the main timeline.
     for (.p in c("dop5", "bs")) {
-      expect_error(suppressWarnings(rxSolve(.rob, .evr, method = .p, atol = 1e-8, rtol = 1e-8)),
-                   info = paste("plain", .p, "was expected to fail on Robertson"))
-      .x <- suppressWarnings(rxSolve(.rob, .evr, method = paste0(.p, "+ros4"),
-                                     atol = 1e-8, rtol = 1e-8))
+      expect_error(
+        suppressWarnings(rxSolve(.rob, .evr, method = .p, atol = 1e-8, rtol = 1e-8)),
+        info = paste("plain", .p, "was expected to fail on Robertson")
+      )
+      .x <- suppressWarnings(rxSolve(.rob, .evr, method = paste0(.p, "+ros4"), atol = 1e-8, rtol = 1e-8))
       expect_false(any(is.na(.x$a)), info = paste0(.p, "+ros4 produced NA"))
-      expect_true(max(abs(.x$a - .refr$a)) < 1e-4,
-                  info = paste0(.p, "+ros4 did not match the reference solution"))
+      expect_true(max(abs(.x$a - .refr$a)) < 1e-4, info = paste0(.p, "+ros4 did not match the reference solution"))
     }
   })
 
@@ -101,12 +99,9 @@ rxTest({
     ## dose, so every interior point is filled by interpolation, not by
     ## stepping to it) and the model is stiff enough to force the hand-over.
     .dev <- et(amt = 50, cmt = "depot", ii = 24, addl = 2) |> et(seq(0, 72, by = 0.1))
-    .ref <- rxSolve(.tmdd, .dev, params = .tmddP, method = "lsoda",
-                    atol = 1e-12, rtol = 1e-12)
-    .dd <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853",
-                   dense = TRUE, atol = 1e-10, rtol = 1e-10)
-    .dn <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853+ros4",
-                   dense = TRUE, atol = 1e-10, rtol = 1e-10)
+    .ref <- rxSolve(.tmdd, .dev, params = .tmddP, method = "lsoda", atol = 1e-12, rtol = 1e-12)
+    .dd <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853", dense = TRUE, atol = 1e-10, rtol = 1e-10)
+    .dn <- rxSolve(.tmdd, .dev, params = .tmddP, method = "dop853+ros4", dense = TRUE, atol = 1e-10, rtol = 1e-10)
     expect_false(any(is.na(.dn$L)))
     ## a hand-over actually happened -- otherwise this asserts nothing
     expect_false(identical(.dn$L, .dd$L))
@@ -121,24 +116,22 @@ rxTest({
     ## nothing.  Each is checked the same way: it has to change which method
     ## runs where -- otherwise it is still dead -- without changing the answer.
     .go <- function(...) {
-      rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4",
-              atol = 1e-8, rtol = 1e-8, ...)
+      rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "dop853+ros4", atol = 1e-8, rtol = 1e-8, ...)
     }
-    .ref2 <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda",
-                     atol = 1e-12, rtol = 1e-12)
+    .ref2 <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda", atol = 1e-12, rtol = 1e-12)
     .base <- .go()
-    .live <- list(autoSwitchNonstifftol = 0.05,   # trip the detector sooner
-                  autoSwitchStifftol = 0.05,      # ... on the re-probe after a switch
-                  autoSwitchStiffFirst = TRUE,    # start on the secondary
-                  autoSwitchMaxStiff = 1L,        # stick to it after one stiff interval
-                  autoSwitchMaxNonstiff = 50L,    # stay on it far longer
-                  autoSwitchSwitchMax = 200L)     # ... and refuse to come back sooner
+    .live <- list(
+      autoSwitchNonstifftol = 0.05, # trip the detector sooner
+      autoSwitchStifftol = 0.05, # ... on the re-probe after a switch
+      autoSwitchStiffFirst = TRUE, # start on the secondary
+      autoSwitchMaxStiff = 1L, # stick to it after one stiff interval
+      autoSwitchMaxNonstiff = 50L, # stay on it far longer
+      autoSwitchSwitchMax = 200L
+    ) # ... and refuse to come back sooner
     for (.nm in names(.live)) {
       .x <- do.call(.go, stats::setNames(list(.live[[.nm]]), .nm))
-      expect_false(identical(.x$L, .base$L),
-                   info = paste(.nm, "had no effect on the solve"))
-      expect_true(max(abs(.x$L - .ref2$L)) < 1e-5,
-                  info = paste(.nm, "changed the answer, not just the method mix"))
+      expect_false(identical(.x$L, .base$L), info = paste(.nm, "had no effect on the solve"))
+      expect_true(max(abs(.x$L - .ref2$L)) < 1e-5, info = paste(.nm, "changed the answer, not just the method mix"))
     }
     ## autoSwitchDtfac is kept for compatibility and documented as inert
     expect_identical(.go(autoSwitchDtfac = 4)$L, .base$L)

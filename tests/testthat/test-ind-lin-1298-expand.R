@@ -25,8 +25,7 @@ rxTest({
     # a rule that only compared lengths would keep `central` in the forcing text
     # and land the model on the iterating driver (doIndLin 4) rather than the
     # state-free one (2).
-    .m <- paste("d/dt(central) = (p1+p2+p3+p4+p5)*(p6+p7+p8+p9+p10)",
-                "- (a+b)*central - a*central - b*central")
+    .m <- paste("d/dt(central) = (p1+p2+p3+p4+p5)*(p6+p7+p8+p9+p10)", "- (a+b)*central - a*central - b*central")
     .code <- rxSensMatExp(model = .m, calcSens = c("p1", "a"))
     expect_false(any(grepl("central", .rhsOf(.code))))
     expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 2L)
@@ -37,12 +36,16 @@ rxTest({
     # done to it, so the model iterates either way -- and expanding the compact
     # product into its 16 terms would only inflate what `ME()` re-evaluates on
     # every call.  The compact form is kept.
-    .m <- paste("d/dt(central) = (p1+p2+p3+p4)*(p5+p6+p7+p8)*central*central",
-                "- (a+b)*y + a*y + b*y", "d/dt(y) = 0", sep = "\n")
+    .m <- paste(
+      "d/dt(central) = (p1+p2+p3+p4)*(p5+p6+p7+p8)*central*central",
+      "- (a+b)*y + a*y + b*y",
+      "d/dt(y) = 0",
+      sep = "\n"
+    )
     .code <- rxSensMatExp(model = .m, calcSens = c("p1", "a"))
     .rhs <- .rhsOf(.code)
     expect_true(any(grepl("(p1+p2+p3+p4)", .rhs, fixed = TRUE)))
-    expect_false(any(grepl("p1*p5", .rhs, fixed = TRUE)))  # not distributed
+    expect_false(any(grepl("p1*p5", .rhs, fixed = TRUE))) # not distributed
     expect_equal(.rxMemDoIndLin(rxModelVars(suppressMessages(rxode2(.code)))), 4L)
   })
 
@@ -56,9 +59,9 @@ rxTest({
     .acc <- .rxIndLinNdAccumulator()
     .x <- symengine::S("a") / symengine::S("b")
     .acc$add("from", "to", .x)
-    .acc$add("from", "to", -.x)          # cancels
+    .acc$add("from", "to", -.x) # cancels
     .acc$add("f2", "t2", .x)
-    .acc$add("f2", "t2", .x)             # sums
+    .acc$add("f2", "t2", .x) # sums
     expect_equal(.acc$emit(), "k_f2_t2_nd = 2*a/b")
   })
 
@@ -67,30 +70,39 @@ rxTest({
     # Michaelis-Menten elimination cannot leave a state-free rate matrix, so
     # every one of its forcings has to survive, the model has to stay on the
     # iterative path, and its sensitivities have to stay right.
-    .mm <- paste("d/dt(depot) = -ka*depot",
-                 "d/dt(central) = ka*depot - vm*central/(km + central)",
-                 "cp = central/v", sep = "\n")
+    .mm <- paste(
+      "d/dt(depot) = -ka*depot",
+      "d/dt(central) = ka*depot - vm*central/(km + central)",
+      "cp = central/v",
+      sep = "\n"
+    )
     .code <- rxSensMatExp(model = .mm, calcSens = c("ka", "vm", "km"))
     expect_equal(length(.forcings(.code)), 4L) # central, plus one per parameter
     .m <- suppressMessages(rxode2(.code))
     expect_equal(.rxMemDoIndLin(rxModelVars(.m)), 4L)
     .th <- c(ka = 1.1, vm = 20, km = 5, v = 30)
     .ev <- as.data.frame(et(amt = 100, cmt = "depot") |> et(.obs))
-    invisible(.attempts())                     # read to reset
-    .s <- suppressMessages(rxSolve(.m, .th, .ev, method = "indLin",
-                                   atol = 1e-10, rtol = 1e-10, cores = 1L))
-    expect_gt(.attempts(), 0)                  # it really did iterate
+    invisible(.attempts()) # read to reset
+    .s <- suppressMessages(rxSolve(.m, .th, .ev, method = "indLin", atol = 1e-10, rtol = 1e-10, cores = 1L))
+    expect_gt(.attempts(), 0) # it really did iterate
     expect_true(all(is.finite(.s$cp)))
     .p <- suppressMessages(rxode2(.mm))
     .fd <- function(nm, h) {
-      .up <- .th; .up[[nm]] <- .th[[nm]] + h
-      .dn <- .th; .dn[[nm]] <- .th[[nm]] - h
+      .up <- .th
+      .up[[nm]] <- .th[[nm]] + h
+      .dn <- .th
+      .dn[[nm]] <- .th[[nm]] - h
       (suppressMessages(rxSolve(.p, .up, .ev, atol = 1e-12, rtol = 1e-12))$cp -
-         suppressMessages(rxSolve(.p, .dn, .ev, atol = 1e-12, rtol = 1e-12))$cp) / (2 * h)
+        suppressMessages(rxSolve(.p, .dn, .ev, atol = 1e-12, rtol = 1e-12))$cp) /
+        (2 * h)
     }
     for (.nm in c("ka", "vm", "km")) {
-      expect_equal(.s[[paste0("rx__sens_central_BY_", .nm, "__")]] / .th[["v"]],
-                   .fd(.nm, .th[[.nm]] * 1e-4), tolerance = 1e-4, info = .nm)
+      expect_equal(
+        .s[[paste0("rx__sens_central_BY_", .nm, "__")]] / .th[["v"]],
+        .fd(.nm, .th[[.nm]] * 1e-4),
+        tolerance = 1e-4,
+        info = .nm
+      )
     }
   })
 })

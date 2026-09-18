@@ -12,12 +12,9 @@ rxTest({
     et <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
       add.sampling(seq(0, 21, by = 3))
-    s <- solve(mod, et, inits = c(offset = 0, y = 0),
-               params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(abs(s$time - 5) < 1e-6),
-                label = "mtime fires at mt1 when state=0")
-    expect_false(any(abs(s$time - 7) < 1e-6),
-                 label = "mtime does not fire at mt1+2 when state=0")
+    s <- solve(mod, et, inits = c(offset = 0, y = 0), params = c(mt1 = 5, kel = 0.1))
+    expect_true(any(abs(s$time - 5) < 1e-6), label = "mtime fires at mt1 when state=0")
+    expect_false(any(abs(s$time - 7) < 1e-6), label = "mtime does not fire at mt1+2 when state=0")
   })
 
   test_that("state-dep mtime shifts by state value: mtime = mt1 + state_at_t1", {
@@ -34,20 +31,14 @@ rxTest({
       add.sampling(seq(0, 21, by = 3))
 
     # S0 = 2: fires at 5 + 2 = 7, not at 5
-    s2 <- solve(mod, et, inits = c(offset = 2, y = 0),
-                params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(abs(s2$time - 7) < 1e-6),
-                label = "mtime fires at mt1 + state (=7) when state=2")
-    expect_false(any(abs(s2$time - 5) < 1e-6),
-                 label = "mtime does not fire at bare mt1 when state=2")
+    s2 <- solve(mod, et, inits = c(offset = 2, y = 0), params = c(mt1 = 5, kel = 0.1))
+    expect_true(any(abs(s2$time - 7) < 1e-6), label = "mtime fires at mt1 + state (=7) when state=2")
+    expect_false(any(abs(s2$time - 5) < 1e-6), label = "mtime does not fire at bare mt1 when state=2")
 
     # S0 = -1.5: fires at 5 + (-1.5) = 3.5, not at 5
-    s3 <- solve(mod, et, inits = c(offset = -1.5, y = 0),
-                params = c(mt1 = 5, kel = 0.1))
-    expect_true(any(abs(s3$time - 3.5) < 1e-6),
-                label = "mtime fires at mt1 + state (=3.5) when state=-1.5")
-    expect_false(any(abs(s3$time - 5) < 1e-6),
-                 label = "mtime does not fire at bare mt1 when state=-1.5")
+    s3 <- solve(mod, et, inits = c(offset = -1.5, y = 0), params = c(mt1 = 5, kel = 0.1))
+    expect_true(any(abs(s3$time - 3.5) < 1e-6), label = "mtime fires at mt1 + state (=3.5) when state=-1.5")
+    expect_false(any(abs(s3$time - 5) < 1e-6), label = "mtime does not fire at bare mt1 when state=-1.5")
   })
 
   test_that("state-dep mtime: changing initial state shifts event time by same amount", {
@@ -65,12 +56,12 @@ rxTest({
       et <- eventTable() |>
         add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
         add.sampling(seq(0, 10, by = 0.7))
-      s <- solve(mod, et, inits = c(offset = S0, y = 0),
-                 params = c(mt1 = mt1_val, kel = kel_val))
+      s <- solve(mod, et, inits = c(offset = S0, y = 0), params = c(mt1 = mt1_val, kel = kel_val))
       expected_time <- mt1_val + S0
-      expect_true(any(abs(s$time - expected_time) < 1e-6),
-                  label = paste0("mtime fires at mt1+S0=", expected_time,
-                                 " when S0=", S0))
+      expect_true(
+        any(abs(s$time - expected_time) < 1e-6),
+        label = paste0("mtime fires at mt1+S0=", expected_time, " when S0=", S0)
+      )
     }
   })
 
@@ -89,28 +80,29 @@ rxTest({
       d/dt(y) <- -kel * y
     })
     mt1_val <- 5
-    ka_val  <- 0.3
+    ka_val <- 0.3
     kel_val <- 0.1
-    S0      <- 1.5
+    S0 <- 1.5
 
     # Correct: mt1 + state(mt1) = mt1 + S0*exp(-ka*mt1)
     T_actual <- mt1_val + S0 * exp(-ka_val * mt1_val)
     # Old wrong value: mt1 + state(0) = mt1 + S0
-    T_old    <- mt1_val + S0  # = 6.5
+    T_old <- mt1_val + S0 # = 6.5
 
     # Sparse sampling (by=2): T_actual and T_old are NOT in the grid.
     et <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 1, cmt = "y") |>
       add.sampling(seq(0, 15, by = 2))
-    s <- solve(mod, et, inits = c(state = S0, y = 0),
-               params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
+    s <- solve(mod, et, inits = c(state = S0, y = 0), params = c(mt1 = mt1_val, ka = ka_val, kel = kel_val))
 
-    expect_true(any(abs(s$time - T_actual) < 1e-4),
-                label = paste0("mtime fires at mt1 + state(mt1) = ",
-                               round(T_actual, 4)))
-    expect_false(any(abs(s$time - T_old) < 1e-4),
-                 label = paste0("mtime does NOT fire at old T0 = mt1 + state(0) = ",
-                                round(T_old, 4)))
+    expect_true(
+      any(abs(s$time - T_actual) < 1e-4),
+      label = paste0("mtime fires at mt1 + state(mt1) = ", round(T_actual, 4))
+    )
+    expect_false(
+      any(abs(s$time - T_old) < 1e-4),
+      label = paste0("mtime does NOT fire at old T0 = mt1 + state(0) = ", round(T_old, 4))
+    )
   })
 
   test_that("state-dependent mtime is parsed and solves without error", {
@@ -150,7 +142,6 @@ rxTest({
     et <- eventTable() |>
       add.dosing(dose = 3, nbr.doses = 1) |>
       add.sampling(0:48)
-
 
     test_that("Solved model contains the model times", {
       s <- solve(mod, et)

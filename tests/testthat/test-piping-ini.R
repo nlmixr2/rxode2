@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("back transformation piping", {
-
       mod1 <- function() {
         ini({
           # central
@@ -39,7 +38,7 @@ rxTest({
 
       expect_equal(p1$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
 
-      p2 <-ui |>
+      p2 <- ui |>
         ini(
           KA <- backTransform(log)
         )
@@ -51,9 +50,11 @@ rxTest({
 
       expect_equal(p3$iniDf$backTransform[ui$iniDf$name == "KA"], NA_character_)
 
-      expect_error(ui |>
-                     ini(KA <- backTransform(matt)), "matt")
-
+      expect_error(
+        ui |>
+          ini(KA <- backTransform(matt)),
+        "matt"
+      )
     })
 
     test_that("piping with ini can update labels (rxode2/issues#351)", {
@@ -75,7 +76,6 @@ rxTest({
     })
 
     test_that("piping with ini can remove labels (#627)", {
-
       mod <- function() {
         ini({
           a <- 1
@@ -151,7 +151,6 @@ rxTest({
       )
     })
 
-
     test_that(".iniSimplifyFixUnfix", {
       expect_equal(
         .iniSimplifyFixUnfix(str2lang("fix")),
@@ -222,7 +221,6 @@ rxTest({
     })
 
     test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
-
       mod <- function() {
         ini({
           a <- 1
@@ -265,14 +263,14 @@ rxTest({
 
       expect_error(
         ini(ui, b <- 1, append = d/dt(fun)),
-        "append")
+        "append"
+      )
 
       # Invalid parameter is correctly caught
       expect_error(
         ini(ui, b <- 1, append = "foo"),
         "append"
       )
-
     })
 
     test_that(".iniAddCovarianceBetweenTwoEtaValues", {
@@ -314,7 +312,8 @@ rxTest({
           ini(mod, {
             d ~ 1
             e ~ c(0.5, 3)})
-        ))
+        )
+      )
 
       # Non-existent correlated eta
       suppressMessages(
@@ -331,7 +330,6 @@ rxTest({
         )
       )
 
-
       # Update eta order
       suppressMessages(
         expect_equal(
@@ -346,7 +344,6 @@ rxTest({
           c("a", "b", "c", "addSd", "h", "d", "(h,d)")
         )
       )
-
     })
 
     test_that(".iniHandleLabel", {
@@ -413,7 +410,6 @@ rxTest({
     })
 
     test_that("ini tests for different types of expressions", {
-
       mod <- function() {
         ini({
           a <- 1
@@ -436,7 +432,6 @@ rxTest({
       expect_error(mod |> ini("h~3;4*"))
 
       expect_error(mod |> ini(factor("A")))
-
     })
 
     test_that("zeroRe", {
@@ -583,18 +578,22 @@ rxTest({
       expect_equal(newMod$iniDf$est, c(1, 0))
 
       suppressMessages(
-        expect_warning(expect_warning(
-          newMod <- zeroRe(modNone, which = c("omega", "sigma")),
-          regexp = "No omega parameters in the model"),
+        expect_warning(
+          expect_warning(
+            newMod <- zeroRe(modNone, which = c("omega", "sigma")),
+            regexp = "No omega parameters in the model"
+          ),
           regexp = "No sigma parameters in the model"
-          )
+        )
       )
       suppressMessages(
-        expect_warning(expect_warning(
-          newUi <- zeroRe(uiNone, which = c("omega", "sigma")),
-          regexp = "No omega parameters in the model"),
+        expect_warning(
+          expect_warning(
+            newUi <- zeroRe(uiNone, which = c("omega", "sigma")),
+            regexp = "No omega parameters in the model"
+          ),
           regexp = "No sigma parameters in the model"
-          )
+        )
       )
       expect_equal(newMod$iniDf, newUi$iniDf)
       # detect no change
@@ -624,13 +623,12 @@ rxTest({
         })
       }
       ui <- rxode2(mod)
-      expect_equal(ui$iniDf$est[!is.na(ui$iniDf$neta1)], (1:6)/10)
+      expect_equal(ui$iniDf$est[!is.na(ui$iniDf$neta1)], (1:6) / 10)
       suppressMessages(zeroUi <- zeroRe(mod))
       expect_equal(zeroUi$iniDf$est[!is.na(zeroUi$iniDf$neta1)], c(0, 0, 0))
     })
 
     test_that("Piping outside the boundaries", {
-
       m1 <- function() {
         ini({
           x2 <- c(0, 1)
@@ -643,15 +641,15 @@ rxTest({
 
       suppressMessages({
         f2 <- m1 |> ini(x2=-1)
-        expect_equal(f2$iniDf[f2$iniDf$name == "x2","lower"], -Inf)
+        expect_equal(f2$iniDf[f2$iniDf$name == "x2", "lower"], -Inf)
       })
       suppressMessages({
         f2 <- m1 |> ini(x3=4)
-        expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
+        expect_equal(f2$iniDf[f2$iniDf$name == "x3", "upper"], Inf)
       })
       suppressMessages({
         f2 <- m1 |> ini(x3=c(0,3))
-        expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
+        expect_equal(f2$iniDf[f2$iniDf$name == "x3", "upper"], Inf)
       })
     })
 
@@ -693,7 +691,6 @@ rxTest({
     })
 
     test_that("change ini type with ~", {
-
       mod <- function() {
         ini({
           lka <- 0.45
@@ -768,9 +765,11 @@ rxTest({
 
       mod2 <- mod |> ini( ~ lka)
 
-      expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1,
-                                                   -0.01, 3.45)))
-
+      expect_equal(
+        mod2$omega,
+        lotri(lcl + lvc ~ c(1,
+                                                   -0.01, 3.45))
+      )
 
       # negative and zero
 
@@ -806,13 +805,9 @@ rxTest({
       mod4 <- mod3 |> ini( ~ lvc)
 
       expect_equal(mod4$omega, lotri(lvc ~ 1))
-
     })
 
-
-
     test_that("change ini variable to covariate with -", {
-
       mod <- function() {
         ini({
           lka + lcl + lvc ~
@@ -856,8 +851,6 @@ rxTest({
       mod2 <- mod |> ini(-lka)
 
       expect_equal(mod2$allCovs, "lka")
-
-
     })
   }
 
@@ -911,7 +904,6 @@ rxTest({
   })
 
   test_that("ini(diag) and ini(-cov()) tests", {
-
     mod2 <- function() {
       ini({
         lka ~ 0.45
@@ -941,73 +933,86 @@ rxTest({
     )
 
     tmp <- mod2 |> ini(-cov(lcl, lvc))
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lvc ~ 3.45
                    lfun ~ c(0.01, 4)
                    lka ~ c(-0.01, -0.1, 0.45)
                    lcl ~ c(0, 0.1, 0.01, 1)
-                 }))
+                 })
+    )
 
     tmp <- mod2 |> ini(-cor(lcl, lvc))
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lvc ~ 3.45
                    lfun ~ c(0.01, 4)
                    lka ~ c(-0.01, -0.1, 0.45)
                    lcl ~ c(0, 0.1, 0.01, 1)
-                 }))
+                 })
+    )
 
     tmp <- mod2 |> ini(cor(lcl, lvc) <- NULL)
 
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lvc ~ 3.45
                    lfun ~ c(0.01, 4)
                    lka ~ c(-0.01, -0.1, 0.45)
                    lcl ~ c(0, 0.1, 0.01, 1)
-                 }))
+                 })
+    )
 
     tmp <- mod2 |> ini(cor(lcl, lvc) ~ NULL)
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lvc ~ 3.45
                    lfun ~ c(0.01, 4)
                    lka ~ c(-0.01, -0.1, 0.45)
                    lcl ~ c(0, 0.1, 0.01, 1)
-                 }))
+                 })
+    )
 
-    expect_error(mod2 |> ini(diag(matt)),
-                 "matt")
+    expect_error(mod2 |> ini(diag(matt)), "matt")
 
     # Will reorder
     tmp <- mod2 |> ini(diag(lcl, lvc))
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lfun ~ 4
                    lka ~ c(-0.1, 0.45)
                    lvc ~ 3.45
                    lcl ~ 1
-                 }))
+                 })
+    )
 
     tmp <- mod2 |> ini(diag)
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lka ~ 0.45
                    lcl ~ 1
                    lvc ~ 3.45
                    lfun ~ 4
-                 }))
+                 })
+    )
 
     tmp <- mod2 |> ini(diag(lvc))
 
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lfun ~ 4
                    lcl ~ c(0.1, 1)
                    lka ~ c(-0.1, 0.01, 0.45)
                    lvc ~ 3.45
-                 }))
+                 })
+    )
 
     mod <- function() {
       ini({
@@ -1026,25 +1031,27 @@ rxTest({
       })
     }
 
-
     tmp <- mod |> ini(diag)
 
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lka ~ 0.45
                    lcl ~ 1
                    lvc ~ 3.45
-                 }))
+                 })
+    )
 
     tmp <- mod |> ini(diag())
 
-    expect_equal(tmp$omega,
-                 lotri({
+    expect_equal(
+      tmp$omega,
+      lotri({
                    lka ~ 0.45
                    lcl ~ 1
                    lvc ~ 3.45
-                 }))
-
+                 })
+    )
   })
 
   test_that("piping a ui's ini() keeps an eta when only one is shared", {
@@ -1334,8 +1341,7 @@ rxTest({
       })
     }
     .toUi <- rxode2(.to)
-    expect_message(.moved <- .toUi |> ini(eta.ka ~ 0.5 | occ),
-                   "keeping .*eta.ka.* at level")
+    expect_message(.moved <- .toUi |> ini(eta.ka ~ 0.5 | occ), "keeping .*eta.ka.* at level")
     expect_equal(.moved$iniDf$est[.moved$iniDf$name == "eta.ka"], 0.5)
     expect_equal(.moved$iniDf$condition[.moved$iniDf$name == "eta.ka"], "id")
     # a matching condition says nothing
@@ -1424,7 +1430,7 @@ rxTest({
     }
     .fromUi <- rxode2(.from)
     .toUi <- rxode2(.to)
-    withr::with_options(list(rxode2.ignoreLabels=FALSE), {
+    withr::with_options(list(rxode2.ignoreLabels = FALSE), {
       .piped <- .toUi |> ini(.fromUi)
     })
     .iniDf <- as.data.frame(.piped$iniDf)
@@ -1450,32 +1456,38 @@ rxTest({
       })
     }
     .toUi <- rxode2(.to)
-    expect_message(.piped <- .toUi |> ini(eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ),
-                   "not adding a covariance")
+    expect_message(.piped <- .toUi |> ini(eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ), "not adding a covariance")
     expect_false("(eta.a,eta.b)" %in% .piped$iniDf$name)
     # the omega assembles, which it cannot do with a cross level covariance
     .omega <- .piped$omega
     expect_equal(.omega$id, lotri::lotri(eta.a ~ 0.1))
     expect_equal(.omega$occ, lotri::lotri(eta.b ~ 0.2))
   })
-
 })
 
 rxTest({
-
   .manyEtaMod <- function(extra, extraModel) {
     .ini <- paste0("      t", 1:8, " <- ", 1:8, "\n", collapse = "")
     .eta <- paste0("      e", 1:8, " ~ ", (1:8) / 100, "\n", collapse = "")
-    .mdl <- paste0("      p", 1:8, " <- exp(t", 1:8, " + e", 1:8, ")\n",
-                   collapse = "")
-    eval(parse(text = sprintf('function() {
+    .mdl <- paste0("      p", 1:8, " <- exp(t", 1:8, " + e", 1:8, ")\n", collapse = "")
+    eval(parse(
+      text = sprintf(
+        'function() {
   ini({
 %s%s%s  })
   model({
 %s%s    cp <- %s
     cp ~ add(0.1)
   })
-}', .ini, .eta, extra, .mdl, extraModel, paste0("p", 1:8, collapse = " + "))))
+}',
+        .ini,
+        .eta,
+        extra,
+        .mdl,
+        extraModel,
+        paste0("p", 1:8, collapse = " + ")
+      )
+    ))
   }
 
   test_that("piping keeps the surviving etas in their declared order", {
@@ -1493,8 +1505,7 @@ rxTest({
     .piped <- suppressMessages(ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8)))
     .om <- .piped$omega
     # the ten untouched etas keep their order; the piped block goes last
-    expect_equal(dimnames(.om)[[1]],
-                 c(paste0("e", 3:12), "e1", "e2"))
+    expect_equal(dimnames(.om)[[1]], c(paste0("e", 3:12), "e1", "e2"))
     # and every one of them keeps its own variance
     expect_equal(unname(diag(.om)[paste0("e", 3:12)]), (3:12) / 100)
   })
@@ -1531,7 +1542,8 @@ rxTest({
 ")))
     expect_equal(.ui$omegaSameMap, c(rep(0L, 10), 9L, 10L))
     .piped <- suppressWarnings(suppressMessages(
-      ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8))))
+      ini(.ui, e1 + e2 ~ c(0.9, 0.05, 0.8))
+    ))
     .i <- .piped$iniDf
     .n <- function(x) .i$neta1[.i$name == x]
     expect_true(.n("a1") < .n("b1"))
@@ -1544,5 +1556,4 @@ rxTest({
     expect_equal(unname(.om["b1", "b1"]), unname(.om["a1", "a1"]))
     expect_equal(unname(.om["b1", "b2"]), unname(.om["a1", "a2"]))
   })
-
 })

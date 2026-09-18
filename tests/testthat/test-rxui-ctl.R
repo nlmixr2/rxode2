@@ -1,6 +1,5 @@
 rxTest({
   test_that("get information from rxUi", {
-
     ## Test mixed solved and ODEs
     mod2 <- function() {
       sigma <- lotri({
@@ -40,9 +39,7 @@ rxTest({
 
     ev <- ev |> et(0.5, evid = 2)
 
-    pk4 <- rxSolve(f, events=ev, nSub=4, cores = 1, addDosing = TRUE)
+    pk4 <- rxSolve(f, events = ev, nSub = 4, cores = 1, addDosing = TRUE)
     expect_true(inherits(pk4, "rxSolve"))
-
   })
-
 })

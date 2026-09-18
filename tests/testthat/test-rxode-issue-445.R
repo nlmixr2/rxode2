@@ -1,6 +1,5 @@
 rxTest({
   test_that("rate and duration data mismatches; Issue RxODE#445", {
-
     TV_CLr <- 6.54 # L/h, (CLr/F)
     TV_CLnr <- 2.39 # L/h, (CLnr/F)
     TV_Vc <- 95.1 # L, (V/F)
@@ -27,7 +26,6 @@ rxTest({
 
     theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
     #expect_warning(sim2 <- rxSolve(mod, theta2, ev), "dur()")
-
 
     ev2 <- et(amt = 2, cmt = "central", ii = 24, addl = 4, rate = -2) |>
       et(seq(0, 120, 0.1))

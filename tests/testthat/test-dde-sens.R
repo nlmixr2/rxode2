@@ -1,5 +1,4 @@
 rxTest({
-
   # Forward-sensitivity support for delay() models (DDE).  Phase A: cataloging
   # delayed terms and validating that delay durations do not depend on the
   # sensitivity parameters.
@@ -81,13 +80,14 @@ rxTest({
                     "cen(0) <- 10\nk <- ", k, "; kin <- ", kin, "; tau <- 1"))
     }
     .ev <- et(seq(0, 8, by = 0.5))
-    .s <- rxSolve(.rxode2(.mk(0.2, 0.5), calcSens = c("k", "kin")), .ev,
-                  atol = 1e-12, rtol = 1e-12)
+    .s <- rxSolve(.rxode2(.mk(0.2, 0.5), calcSens = c("k", "kin")), .ev, atol = 1e-12, rtol = 1e-12)
     .h <- 1e-4
     .fdk <- (rxSolve(.mk(0.2 + .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen -
-             rxSolve(.mk(0.2 - .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+      rxSolve(.mk(0.2 - .h, 0.5), .ev, atol = 1e-12, rtol = 1e-12)$cen) /
+      (2 * .h)
     .fdkin <- (rxSolve(.mk(0.2, 0.5 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
-               rxSolve(.mk(0.2, 0.5 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+      rxSolve(.mk(0.2, 0.5 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) /
+      (2 * .h)
     ## non-trivial sensitivities (delay feedback amplifies them)
     expect_gt(diff(range(.s[["rx__sens_cen_BY_k__"]])), 1)
     expect_lt(max(abs(.s[["rx__sens_cen_BY_k__"]] - .fdk)), 1e-2)
@@ -110,7 +110,8 @@ rxTest({
     .s <- rxSolve(.ms, .ev, atol = 1e-12, rtol = 1e-12)
     .h <- 1e-4
     .fdke <- (rxSolve(.mk(1.0, 0.3 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
-              rxSolve(.mk(1.0, 0.3 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+      rxSolve(.mk(1.0, 0.3 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) /
+      (2 * .h)
     expect_lt(max(abs(.s[["rx__sens_cen_BY_ke__"]] - .fdke)), 1e-2)
   })
 
@@ -128,7 +129,8 @@ rxTest({
     expect_equal(.s[["rx__sens_cen_BY_base__"]][1], 1, tolerance = 1e-8)
     .h <- 1e-3
     .fd <- (rxSolve(.mk(10 + .h), .ev, atol = 1e-12, rtol = 1e-12)$cen -
-            rxSolve(.mk(10 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+      rxSolve(.mk(10 - .h), .ev, atol = 1e-12, rtol = 1e-12)$cen) /
+      (2 * .h)
     expect_lt(max(abs(.s[["rx__sens_cen_BY_base__"]] - .fd)), 1e-4)
   })
 
@@ -160,7 +162,8 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     .s <- rxSolve(.ms, .ev, params = c(ltau = .l0), atol = 1e-12, rtol = 1e-12)
     .h <- 1e-4
     .fd <- (rxSolve(.ms, .ev, params = c(ltau = .l0 + .h), atol = 1e-12, rtol = 1e-12)$cen -
-            rxSolve(.ms, .ev, params = c(ltau = .l0 - .h), atol = 1e-12, rtol = 1e-12)$cen) / (2 * .h)
+      rxSolve(.ms, .ev, params = c(ltau = .l0 - .h), atol = 1e-12, rtol = 1e-12)$cen) /
+      (2 * .h)
     .an <- .s[["rx__sens_cen_BY_ltau__"]]
     expect_gt(diff(range(.an)), 1) # non-trivial
     ## analytic delayed derivative: matches the FD reference to its own accuracy
@@ -230,20 +233,21 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## the default composite can stall on the larger 2nd-order DDE system; the
     ## pure dense dop853 path is exact to the method order.
     .sv <- function(k, kin) {
-      rxSolve(.m2, .ev, params = c(k = k, kin = kin), method = "dop853",
-              atol = 1e-10, rtol = 1e-10)
+      rxSolve(.m2, .ev, params = c(k = k, kin = kin), method = "dop853", atol = 1e-10, rtol = 1e-10)
     }
     .h <- 1e-4
     .s <- .sv(0.2, 0.5)
     ## S^{k,kin} = d(S^k)/dkin : central diff of the analytic first-order S^k
     .fd <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_k__"]] -
-            .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k__"]]) / (2 * .h)
+      .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k__"]]) /
+      (2 * .h)
     .an <- .s[["rx__sens_cen_BY_k_BY_kin__"]]
     expect_gt(diff(range(.an)), 1)
     expect_lt(max(abs(.an - .fd)), 0.05)
     ## pure second S^{kin,kin}
     .fd2 <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_kin__"]] -
-             .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_kin__"]]) / (2 * .h)
+      .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_kin__"]]) /
+      (2 * .h)
     expect_lt(max(abs(.s[["rx__sens_cen_BY_kin_BY_kin__"]] - .fd2)), 0.05)
   })
 
@@ -257,8 +261,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     .mod <- .rxLoadPrune(rxModelVars(.m), FALSE)
     invisible(.rxJacobian(.mod, c("cen", "k", "kin", "ltau")))
     invisible(.rxSens(.mod, c("k", "ltau")))
-    expect_error(.rxSens(.mod, c("k", "ltau"), c("k", "ltau")),
-                 "initial rate depends on")
+    expect_error(.rxSens(.mod, c("k", "ltau"), c("k", "ltau")), "initial rate depends on")
   })
 
   ## Third-order (constant-delay) sensitivities.  The general third-order
@@ -281,14 +284,14 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_match(rxNorm(.m3), "delay(rx__sens_cen_BY_k_BY_kin_BY_kin__,1)", fixed = TRUE)
     .ev <- et(seq(0, 6, by = 0.5))
     .sv <- function(k, kin) {
-      rxSolve(.m3, .ev, params = c(k = k, kin = kin), method = "dop853",
-              atol = 1e-10, rtol = 1e-10)
+      rxSolve(.m3, .ev, params = c(k = k, kin = kin), method = "dop853", atol = 1e-10, rtol = 1e-10)
     }
     .h <- 1e-4
     .s <- .sv(0.2, 0.5)
     ## S^{k,kin,kin} = d(S^{k,kin})/dkin : central diff of the analytic 2nd order
     .fd <- (.sv(0.2, 0.5 + .h)[["rx__sens_cen_BY_k_BY_kin__"]] -
-            .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k_BY_kin__"]]) / (2 * .h)
+      .sv(0.2, 0.5 - .h)[["rx__sens_cen_BY_k_BY_kin__"]]) /
+      (2 * .h)
     .an <- .s[["rx__sens_cen_BY_k_BY_kin_BY_kin__"]]
     expect_gt(diff(range(.an)), 1)
     expect_lt(max(abs(.an - .fd)), 0.05)
@@ -315,7 +318,9 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## previously rejected; the xi1 jump now covers a single param-dependent delay
     expect_s3_class(
       suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
-                               calcSens = "L", calcSens2 = "L")), "rxode2")
+                               calcSens = "L", calcSens2 = "L")),
+      "rxode2"
+    )
     ## the 2nd-order jump alag()/f() lines are emitted
     .m <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
                                    calcSens = "L", calcSens2 = "L"))
@@ -332,16 +337,16 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
   test_that("2nd-order jump sensitivity matches finite differences", {
     ## reference ydot=delay(y,tau), tau=exp(L): S^{LL} jumps by +T^2 at xi1=T.
     .tt <- seq(0, 3, by = 0.02)
-    .mk <- function(L) suppressMessages(.rxode2(paste0(
+    .mk <- function(L) {
+      suppressMessages(.rxode2(paste0(
       "tau<-exp(", L, ")\n d/dt(y) <- delay(y, tau)\n y(0) <- 1")))
+    }
     .h <- 1e-3
-    .g <- function(d) rxSolve(.mk(d), et(.tt), method = "dop853",
-                              atol = 1e-10, rtol = 1e-10)$y
+    .g <- function(d) rxSolve(.mk(d), et(.tt), method = "dop853", atol = 1e-10, rtol = 1e-10)$y
     .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
     .ms <- suppressMessages(.rxode2("tau<-exp(L)\n d/dt(y) <- delay(y, tau)\n y(0) <- 1",
                                     calcSens = "L", calcSens2 = "L"))
-    .s <- rxSolve(.ms, et(.tt), params = c(L = 0), method = "dop853",
-                  atol = 1e-10, rtol = 1e-10)
+    .s <- rxSolve(.ms, et(.tt), params = c(L = 0), method = "dop853", atol = 1e-10, rtol = 1e-10)
     .an <- .s[["rx__sens_y_BY_L_BY_L__"]]
     ## compare away from the breaking points (FD straddles the discontinuity there)
     .keep <- abs(.tt - 1) > 0.05 & abs(.tt - 2) > 0.05
@@ -354,25 +359,31 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     ## delay(cen,tau) driven by a DOSED upstream compartment: the depot dose makes
     ## ydot_cen jump at t0, so S^{LL}_cen jumps at xi1=t0+T by JD*(df_cen/ddepot)*A*(dT/dL)^2.
     ## The user dose is mirrored onto the 2nd-order sens compartment.
-    .txt <- paste0("tau<-exp(L)\n ke<-0.7\n d/dt(depot) <- -depot\n",
-                   " d/dt(cen) <- depot - ke*cen + 0.5*delay(cen, tau)\n cen(0)<-0")
+    .txt <- paste0(
+      "tau<-exp(L)\n ke<-0.7\n d/dt(depot) <- -depot\n",
+      " d/dt(cen) <- depot - ke*cen + 0.5*delay(cen, tau)\n cen(0)<-0"
+    )
     .tt <- seq(0, 4, by = 0.02)
     .ev <- et(et(.tt), amt = 10, cmt = "depot", time = 0)
-    .mk <- function(L) suppressMessages(.rxode2(gsub("exp(L)", paste0("exp(", L, ")"),
+    .mk <- function(L) {
+      suppressMessages(.rxode2(gsub("exp(L)", paste0("exp(", L, ")"),
                                                     .txt, fixed = TRUE)))
+    }
     .h <- 1e-3
     .g <- function(d) rxSolve(.mk(d), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)$cen
     .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
     .ms <- suppressMessages(.rxode2(.txt, calcSens = "L", calcSens2 = "L"))
     ## common F = JD*(dT/dL)^2 (magnitude comes from the mirrored dose amount)
-    expect_true(any(grepl("f(rx__sens_cen_BY_L_BY_L__)=(0.5)*(exp(L))*(exp(L))",
-                          rxNorm(.ms), fixed = TRUE)))
-    .an <- rxSolve(.ms, .ev, params = c(L = 0), method = "dop853",
-                   atol = 1e-10, rtol = 1e-10)[["rx__sens_cen_BY_L_BY_L__"]]
+    expect_true(any(grepl("f(rx__sens_cen_BY_L_BY_L__)=(0.5)*(exp(L))*(exp(L))", rxNorm(.ms), fixed = TRUE)))
+    .an <- rxSolve(.ms, .ev, params = c(L = 0), method = "dop853", atol = 1e-10, rtol = 1e-10)[[
+      "rx__sens_cen_BY_L_BY_L__"
+    ]]
     .keep <- rep(TRUE, length(.tt))
-    for (.b in 1:3) .keep <- .keep & abs(.tt - .b) > 0.08   # exclude FD spikes at xi_n
+    for (.b in 1:3) {
+      .keep <- .keep & abs(.tt - .b) > 0.08
+    } # exclude FD spikes at xi_n
     expect_lt(max(abs(.an - .fd2)[.keep], na.rm = TRUE), 0.03)
-    expect_gt(max(abs(.an), na.rm = TRUE), 1)               # the dose-induced jump is present
+    expect_gt(max(abs(.an), na.rm = TRUE), 1) # the dose-induced jump is present
   })
 
   test_that("2nd-order jump is rejected when the delayed state has a parameter baseline", {
@@ -380,6 +391,7 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     expect_error(
       suppressMessages(.rxode2("R0<-exp(lr0)\n tau<-exp(L)\n d/dt(R) <- k0 - delay(R, tau)\n R(0) <- R0",
                                calcSens = c("L", "lr0"), calcSens2 = c("L", "lr0"))),
-      "initial rate depends on")
+      "initial rate depends on"
+    )
   })
 })

@@ -41,8 +41,14 @@ if (!.Call(`_rxode2_isIntel`)) {
       expect_warning({
         o1.first <<- m1$solve(
           params = c(
-            KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-            Kin = 1.0, Kout = 1.0, EC50 = 200.0
+            KA = .291,
+            CL = 18.6,
+            V2 = 40.2,
+            Q = 10.5,
+            V3 = 297.0,
+            Kin = 1.0,
+            Kout = 1.0,
+            EC50 = 200.0
           ),
           events = et1,
           inits = c(0, 0, 0, 1)
@@ -122,8 +128,14 @@ if (!.Call(`_rxode2_isIntel`)) {
       expect_warning({
         o1.second <<- m1$solve(
           params = c(
-            KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-            Kin = 1.0, Kout = 1.0, EC50 = 200.0
+            KA = .291,
+            CL = 18.6,
+            V2 = 40.2,
+            Q = 10.5,
+            V3 = 297.0,
+            Kin = 1.0,
+            Kout = 1.0,
+            EC50 = 200.0
           ),
           events = et1,
           inits = c(0, 0, 0, 1)

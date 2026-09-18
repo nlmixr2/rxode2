@@ -10,7 +10,7 @@ rxTest({
   test_that("indOwnAlloc=TRUE gives same results as indOwnAlloc=FALSE (single subject)", {
     .r1 <- rxSolve(.m, .p, .e, indOwnAlloc = TRUE)
     .r2 <- rxSolve(.m, .p, .e, indOwnAlloc = FALSE)
-    expect_equal(.r1$cp,    .r2$cp,    tolerance = 1e-8)
+    expect_equal(.r1$cp, .r2$cp, tolerance = 1e-8)
     expect_equal(.r1$depot, .r2$depot, tolerance = 1e-8)
   })
 
@@ -32,7 +32,7 @@ rxTest({
       .r <- rxSolve(.m, .p, .e, indOwnAlloc = TRUE)
       gc()
     }
-    .r    <- rxSolve(.m, .p, .e, indOwnAlloc = TRUE)
+    .r <- rxSolve(.m, .p, .e, indOwnAlloc = TRUE)
     .rref <- rxSolve(.m, .p, .e, indOwnAlloc = FALSE)
     expect_equal(.r$cp, .rref$cp, tolerance = 1e-8)
   })

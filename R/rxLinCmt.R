@@ -10,10 +10,12 @@ findLhs <- function(x) {
   if (is.atomic(x) || is.name(x)) {
     character()
   } else if (is.call(x)) {
-    if ((identical(x[[1]], quote(`<-`)) ||
-           identical(x[[1]], quote(`=`)) ||
-           identical(x[[1]], quote(`~`))) &&
-          is.name(x[[2]])) {
+    if (
+      (identical(x[[1]], quote(`<-`)) ||
+        identical(x[[1]], quote(`=`)) ||
+        identical(x[[1]], quote(`~`))) &&
+        is.name(x[[2]])
+    ) {
       .lhs <- as.character(x[[2]])
     } else {
       .lhs <- character()
@@ -22,9 +24,7 @@ findLhs <- function(x) {
   } else if (is.pairlist(x)) {
     unique(unlist(lapply(x, rxode2::findLhs)))
   } else {
-    stop(sprintf("do not know how to handle type '%s'", typeof(x)),
-      call. = FALSE
-    )
+    stop(sprintf("do not know how to handle type '%s'", typeof(x)), call. = FALSE)
   }
 }
 
@@ -70,8 +70,7 @@ findLhs <- function(x) {
       return(FALSE)
     }
   }
-  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L &&
-    .flags[["linCmt"]] == -100L
+  .flags[["linCmtFlg"]] != 0L && .flags[["ncmt"]] == 0L && .flags[["linCmt"]] == -100L
 }
 
 #' Get the linear compartment model true function
@@ -80,8 +79,7 @@ findLhs <- function(x) {
 #' @return model with linCmt() replaced with linCmtA()
 #' @author Matthew Fidler
 #' @export
-rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
-                     verbose = FALSE) {
+rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALSE) {
   .mv <- rxGetModel(model) # nolint
   if (.rxHasUnexpandedLinCmt(.mv)) {
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
@@ -91,10 +89,13 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
       .vars,
       setNames(
         c(
-          "linCmtA" = 1L, "linCmtB" = 2L
+          "linCmtA" = 1L,
+          "linCmtB" = 2L
         )[match.arg(linCmtSens)],
         NULL
-      ), verbose)
+      ),
+      verbose
+    )
   } else {
     model
   }
@@ -112,9 +113,11 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   if (!is.call(expr)) {
     return(FALSE)
   }
-  if (!identical(expr[[1]], quote(`=`)) &&
-        !identical(expr[[1]], quote(`<-`)) &&
-        !identical(expr[[1]], quote(`~`))) {
+  if (
+    !identical(expr[[1]], quote(`=`)) &&
+      !identical(expr[[1]], quote(`<-`)) &&
+      !identical(expr[[1]], quote(`~`))
+  ) {
     return(FALSE)
   }
   .rhs <- expr[[3]]
@@ -132,12 +135,17 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     return(list())
   }
   # the mvL gives the linear compartment translation
-  .mvLExpr <- as.list(str2lang(paste0("{",
-                                      rxNorm(ui$mvL), # nolint
-                                      "}")))[-1]
-  .mvLExpr <- Filter(function(expr) {
-    is.call(expr)
-  }, .mvLExpr)
+  .mvLExpr <- as.list(str2lang(paste0(
+    "{",
+    rxNorm(ui$mvL), # nolint
+    "}"
+  )))[-1]
+  .mvLExpr <- Filter(
+    function(expr) {
+      is.call(expr)
+    },
+    .mvLExpr
+  )
   Filter(.isLinCmtCall, .mvLExpr)
 }
 #' This converts the linCmtA/linCmtB
@@ -150,16 +158,18 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
 .linToOdeArgs <- function(expr) {
   .rhs <- expr[[3]]
   .args <- as.list(.rhs)[-1]
-  list(ncmt = as.integer(eval(.args[[4]], envir = baseenv())),
-       oral0 = as.integer(eval(.args[[5]], envir = baseenv())),
-       trans = as.integer(eval(.args[[7]], envir = baseenv())),
-       p1 = .args[[8]],
-       v1 = .args[[9]],
-       p2 = .args[[10]],
-       p3 = .args[[11]],
-       p4 = .args[[12]],
-       p5 = .args[[13]],
-       ka = .args[[14]])
+  list(
+    ncmt = as.integer(eval(.args[[4]], envir = baseenv())),
+    oral0 = as.integer(eval(.args[[5]], envir = baseenv())),
+    trans = as.integer(eval(.args[[7]], envir = baseenv())),
+    p1 = .args[[8]],
+    v1 = .args[[9]],
+    p2 = .args[[10]],
+    p3 = .args[[11]],
+    p4 = .args[[12]],
+    p5 = .args[[13]],
+    ka = .args[[14]]
+  )
 }
 #' This builds the micro parameters for the one compartment model
 #'
@@ -283,22 +293,31 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     .beta <- args$p2
     .gamma <- args$p4
     .ret$v <- bquote(1 / (.(.A) + .(.B) + .(.C)))
-    .btemp <- bquote(-(.(.alpha) * .(.C) + .(.alpha) * .(.B) +
-                         .(.gamma) * .(.A) + .(.gamma) * .(.B) +
-                         .(.beta) * .(.A) + .(.beta) * .(.C)) * .(.ret$v))
-    .ctemp <- bquote((.(.alpha) * .(.beta) * .(.C) +
-                        .(.alpha) * .(.gamma) * .(.B) +
-                        .(.beta) * .(.gamma) * .(.A)) * .(.ret$v))
+    .btemp <- bquote(
+      -(.(.alpha) *
+        .(.C) +
+        .(.alpha) * .(.B) +
+        .(.gamma) * .(.A) +
+        .(.gamma) * .(.B) +
+        .(.beta) * .(.A) +
+        .(.beta) * .(.C)) *
+        .(.ret$v)
+    )
+    .ctemp <- bquote(
+      (.(.alpha) * .(.beta) * .(.C) + .(.alpha) * .(.gamma) * .(.B) + .(.beta) * .(.gamma) * .(.A)) * .(.ret$v)
+    )
     .dtemp <- bquote(sqrt((.(.btemp)) * (.(.btemp)) - 4 * (.(.ctemp))))
     .ret$k21 <- bquote(0.5 * (-(.(.btemp)) + .(.dtemp)))
     .ret$k31 <- bquote(0.5 * (-(.(.btemp)) - .(.dtemp)))
     .ret$k <- bquote((.(.alpha) * .(.beta) * .(.gamma)) / .(.ret$k21) / .(.ret$k31))
-    .ret$k12 <- bquote(((.(.beta) * .(.gamma) + .(.alpha) * .(.beta) + .(.alpha) * .(.gamma)) -
-                          .(.ret$k21) * (.(.alpha) + .(.beta) + .(.gamma)) -
-                          .(.ret$k) * .(.ret$k31) + .(.ret$k21) * .(.ret$k21)) /
-                         (.(.ret$k31) - .(.ret$k21)))
-    .ret$k13 <- bquote(.(.alpha) + .(.beta) + .(.gamma) -
-                         (.(.ret$k) + .(.ret$k12) + .(.ret$k21) + .(.ret$k31)))
+    .ret$k12 <- bquote(
+      ((.(.beta) * .(.gamma) + .(.alpha) * .(.beta) + .(.alpha) * .(.gamma)) -
+        .(.ret$k21) * (.(.alpha) + .(.beta) + .(.gamma)) -
+        .(.ret$k) * .(.ret$k31) +
+        .(.ret$k21) * .(.ret$k21)) /
+        (.(.ret$k31) - .(.ret$k21))
+    )
+    .ret$k13 <- bquote(.(.alpha) + .(.beta) + .(.gamma) - (.(.ret$k) + .(.ret$k12) + .(.ret$k21) + .(.ret$k31)))
   } else {
     stop("unsupported 3-cmt linCmt translation", call. = FALSE)
   }
@@ -357,29 +376,62 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
     .input <- paste0(.kaTxt, " * depot")
   }
   if (micro$ncmt == 1) {
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
-                                                 " - ", .kTxt, " * central"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input, " - ", .kTxt, " * central"))
   } else if (micro$ncmt == 2L) {
     .k12Txt <- paste0("(", deparse1(micro$k12), ")")
     .k21Txt <- paste0("(", deparse1(micro$k21), ")")
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
-                                                 " - ", .kTxt, " * central - ", .k12Txt,
-                                                 " * central + ", .k21Txt, " * peripheral1"))
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral1) <- ", .k12Txt,
-                                                 " * central - ", .k21Txt, " * peripheral1"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0(
+      "d/dt(central) <- ",
+      .input,
+      " - ",
+      .kTxt,
+      " * central - ",
+      .k12Txt,
+      " * central + ",
+      .k21Txt,
+      " * peripheral1"
+    ))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0(
+      "d/dt(peripheral1) <- ",
+      .k12Txt,
+      " * central - ",
+      .k21Txt,
+      " * peripheral1"
+    ))
   } else if (micro$ncmt == 3L) {
     .k12Txt <- paste0("(", deparse1(micro$k12), ")")
     .k21Txt <- paste0("(", deparse1(micro$k21), ")")
     .k13Txt <- paste0("(", deparse1(micro$k13), ")")
     .k31Txt <- paste0("(", deparse1(micro$k31), ")")
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(central) <- ", .input,
-                                                 " - ", .kTxt, " * central - ", .k12Txt,
-                                                 " * central + ", .k21Txt, " * peripheral1 - ",
-                                                 .k13Txt, " * central + ", .k31Txt, " * peripheral2"))
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral1) <- ", .k12Txt,
-                                                 " * central - ", .k21Txt, " * peripheral1"))
-    .ret[[length(.ret) + 1L]] <- str2lang(paste0("d/dt(peripheral2) <- ", .k13Txt,
-                                                 " * central - ", .k31Txt, " * peripheral2"))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0(
+      "d/dt(central) <- ",
+      .input,
+      " - ",
+      .kTxt,
+      " * central - ",
+      .k12Txt,
+      " * central + ",
+      .k21Txt,
+      " * peripheral1 - ",
+      .k13Txt,
+      " * central + ",
+      .k31Txt,
+      " * peripheral2"
+    ))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0(
+      "d/dt(peripheral1) <- ",
+      .k12Txt,
+      " * central - ",
+      .k21Txt,
+      " * peripheral1"
+    ))
+    .ret[[length(.ret) + 1L]] <- str2lang(paste0(
+      "d/dt(peripheral2) <- ",
+      .k13Txt,
+      " * central - ",
+      .k31Txt,
+      " * peripheral2"
+    ))
   }
   .ret
 }
@@ -401,8 +453,7 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"),
   .vExpr <- str2lang(paste0("(", deparse1(micro$v), ")"))
   .ret <- list(call("<-", .lhsExpr, call("/", str2lang("central"), .vExpr)))
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
-    .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)",
-                                              .lhs, deparse1(expr), perl = TRUE))
+    .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)", .lhs, deparse1(expr), perl = TRUE))
   }
   .ret
 }
@@ -497,7 +548,7 @@ linToOde <- function(ui) {
   if (identical(.expr, .ui$lstExpr)) {
     return(rxUiCompress(.ui)) # nolint
   }
-  .ls <- ls(.ui$meta, all.names=TRUE)
+  .ls <- ls(.ui$meta, all.names = TRUE)
   .ret <- vector("list", length(.ls) + ifelse(length(.ui$iniDf$cond) > 0, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
@@ -511,8 +562,7 @@ linToOde <- function(ui) {
   } else {
     .ret[[.len + 2]] <- bquote(model(.(as.call(c(quote(`{`), .expr)))))
   }
-  .fun <- function() {
-  }
+  .fun <- function() {}
   body(.fun) <- as.call(.ret)
   if (is.function(.ui$model)) {
     environment(.fun) <- environment(.ui$model)

@@ -18,8 +18,7 @@ rxTest({
     d/dt(central) <- ka * depot - (cl / v) * central
   })
 
-  .obs <- data.frame(ID = 1L, TIME = c(1, 4, 8, 12, 24), EVID = 0L,
-                     AMT = NA_real_, RATE = NA_real_, CMT = 2L)
+  .obs <- data.frame(ID = 1L, TIME = c(1, 4, 8, 12, 24), EVID = 0L, AMT = NA_real_, RATE = NA_real_, CMT = 2L)
   .dose <- function(t, amt, rate, cmt) {
     data.frame(ID = 1L, TIME = t, EVID = 1L, AMT = amt, RATE = rate, CMT = cmt)
   }
@@ -42,10 +41,8 @@ rxTest({
   })
 
   test_that("three modeled duration doses tied at one time solve", {
-    .tied <- rbind(.dose(0, 150, -2, 1), .dose(0, 150, -2, 2),
-                   .dose(0, 100, -2, 2), .obs)
-    .stag <- rbind(.dose(0, 150, -2, 1), .dose(1e-8, 150, -2, 2),
-                   .dose(2e-8, 100, -2, 2), .obs)
+    .tied <- rbind(.dose(0, 150, -2, 1), .dose(0, 150, -2, 2), .dose(0, 100, -2, 2), .obs)
+    .stag <- rbind(.dose(0, 150, -2, 1), .dose(1e-8, 150, -2, 2), .dose(2e-8, 100, -2, 2), .obs)
     expect_equal(.sim(.tied), .sim(.stag), tolerance = 1e-5)
   })
 
@@ -62,9 +59,11 @@ rxTest({
   })
 
   test_that("tied modeled duration doses with addl solve", {
-    .tied <- rbind(cbind(.dose(0, 150, -2, 1), II = 6, ADDL = 2L),
-                   cbind(.dose(0, 150, -2, 2), II = 6, ADDL = 2L),
-                   cbind(.obs, II = 0, ADDL = 0L))
+    .tied <- rbind(
+      cbind(.dose(0, 150, -2, 1), II = 6, ADDL = 2L),
+      cbind(.dose(0, 150, -2, 2), II = 6, ADDL = 2L),
+      cbind(.obs, II = 0, ADDL = 0L)
+    )
     .stag <- .tied
     .stag$TIME[2] <- 1e-8
     expect_equal(.sim(.tied), .sim(.stag), tolerance = 1e-5)
@@ -74,32 +73,36 @@ rxTest({
   # answer is order dependent; it only needs to solve without error and match
   # the ordering the sort produces (highest compartment last)
   test_that("tied modeled duration steady state doses solve", {
-    .tied <- rbind(cbind(.dose(0, 150, -2, 1), II = 6, SS = 1L),
-                   cbind(.dose(0, 150, -2, 2), II = 6, SS = 1L),
-                   cbind(.obs, II = 0, SS = 0L))
-    .stag <- rbind(cbind(.dose(0, 150, -2, 2), II = 6, SS = 1L),
-                   cbind(.dose(1e-8, 150, -2, 1), II = 6, SS = 1L),
-                   cbind(.obs, II = 0, SS = 0L))
+    .tied <- rbind(
+      cbind(.dose(0, 150, -2, 1), II = 6, SS = 1L),
+      cbind(.dose(0, 150, -2, 2), II = 6, SS = 1L),
+      cbind(.obs, II = 0, SS = 0L)
+    )
+    .stag <- rbind(
+      cbind(.dose(0, 150, -2, 2), II = 6, SS = 1L),
+      cbind(.dose(1e-8, 150, -2, 1), II = 6, SS = 1L),
+      cbind(.obs, II = 0, SS = 0L)
+    )
     expect_equal(.sim(.tied), .sim(.stag), tolerance = 1e-5)
   })
 
   # regressions: the re-pairing must not disturb tables it does not need to fix
   test_that("a single modeled duration dose is unchanged", {
-    expect_equal(.sim(rbind(.dose(0, 150, -2, 1), .obs)),
-                 .sim(rbind(.dose(0, 150, -2, 1), .obs)))
+    expect_equal(.sim(rbind(.dose(0, 150, -2, 1), .obs)), .sim(rbind(.dose(0, 150, -2, 1), .obs)))
   })
 
   test_that("a bolus tied with a modeled duration dose is order independent", {
-    expect_equal(.sim(rbind(.dose(0, 150, 0, 1), .dose(0, 150, -2, 2), .obs)),
-                 .sim(rbind(.dose(0, 150, -2, 2), .dose(0, 150, 0, 1), .obs)))
+    expect_equal(
+      .sim(rbind(.dose(0, 150, 0, 1), .dose(0, 150, -2, 2), .obs)),
+      .sim(rbind(.dose(0, 150, -2, 2), .dose(0, 150, 0, 1), .obs))
+    )
   })
 
   # the data error text is printed by the solver rather than raised, so the
   # condition message is only "could not solve the system"
   test_that("an unpaired infusion record says what is wrong", {
     .err <- function(evid) {
-      .ev <- data.frame(ID = 1, TIME = c(0, 1), EVID = c(evid, 0L),
-                        CMT = c(1, 2), AMT = c(150, NA))
+      .ev <- data.frame(ID = 1, TIME = c(0, 1), EVID = c(evid, 0L), CMT = c(1, 2), AMT = c(150, NA))
       paste(capture.output(try(rxSolve(mod, .ev), silent = TRUE)), collapse = " ")
     }
     expect_match(.err(60101L), "end of a modeled duration")

@@ -7,7 +7,8 @@
 #' \item{Transformation}{The type of transformation that is done on the DV and the prediction}
 #' \item{code}{Example code for the residual error type}
 #' \item{addProp}{The type of add+prop residual error default that would be equivalent}
-#' \item{lhs}{what the left handed side of the specification represents, either a response variable, or a compartment specification}
+#' \item{lhs}{what the left handed side of the specification represents, either a response variable, or a compartment
+#' specification}
 #' }
 #' @references
 #' The transformation-based and autocorrelated (`ar()`, AR(1)) residual

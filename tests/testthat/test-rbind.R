@@ -1,6 +1,5 @@
 rxTest({
   test_that("rbind", {
-
     mod2 <- function() {
       ini({
         KA <- 2.94E-01
@@ -32,7 +31,7 @@ rxTest({
       add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
       add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
       add.sampling(0:240) |>
-      et(id=1:2) |>
+      et(id = 1:2) |>
       as.data.frame()
 
     ev$dvid <- ifelse(ev$evid == 0, 1, NA_real_)

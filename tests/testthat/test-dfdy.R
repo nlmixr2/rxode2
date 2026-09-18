@@ -11,23 +11,28 @@ rxTest({
     ## every DDE fit (rxode2/nlmixr2#dde).
     expect_s3_class(
       suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ntad <- tad()",
-                              calcJac = TRUE)), "rxode2")
+                              calcJac = TRUE)),
+      "rxode2"
+    )
     expect_s3_class(
       suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ndosenum <- dosenum()",
-                              calcJac = TRUE)), "rxode2")
+                              calcJac = TRUE)),
+      "rxode2"
+    )
     ## the practical trigger: a delay() model with the FOCEi FD-model bookkeeping lines
     expect_s3_class(
       suppressMessages(rxode2(paste0(
         "d/dt(cen) <- -k*cen + kin*delay(cen, tau)\ncen(0) <- 10\n",
         "k <- 0.2\nkin <- 0.5\ntau <- 1\ntad <- tad()\ndosenum <- dosenum()"),
-        calcJac = TRUE)), "rxode2")
+        calcJac = TRUE)),
+      "rxode2"
+    )
     ## a bare dose-history name used as a value still expands (no regression)
     .m <- suppressMessages(rxode2("d/dt(cen) <- -k*cen\ncen(0) <- 10\nk <- 0.2\ny <- tad + 1"))
     expect_true(grepl("y=tad+1", rxNorm(.m), fixed = TRUE))
   })
 
   test_that("Specified jacobian is captured", {
-
     Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
@@ -165,7 +170,6 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
   })
 
   test_that("Conditional Sensitivities", {
-
     transit.if <- rxode2({
       ## Table 3 from Savic 2007
       cl <- 17.2 # (L/hr)
@@ -199,11 +203,9 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
     full <- suppressMessages(rxode2(transit.if, calcSens = TRUE, calcJac = TRUE))
     expect_true(full$calcJac)
     expect_true(full$calcSens)
-
   })
 
   test_that("Transit Sensitivities", {
-
     mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
@@ -223,7 +225,7 @@ d/dt(cen) = ka*depot-k*cen
 
     et <- eventTable()
     et$add.sampling(seq(0, 10, length.out = 200))
-    et$add.dosing(20, start.time = 0, evid=7)
+    et$add.dosing(20, start.time = 0, evid = 7)
 
     transit <- suppressWarnings({
       rxSolve(mod, et)
@@ -275,8 +277,7 @@ d/dt(cen) = ka*depot-k*cen
     # The operative property is simply "did not crash": rxModelVars() returns
     # normally, whether it parses the model or raises a clean R error.
     .safe <- function(m) {
-      .r <- tryCatch(suppressMessages(rxModelVars(m)),
-                     error = function(e) "clean-error")
+      .r <- tryCatch(suppressMessages(rxModelVars(m)), error = function(e) "clean-error")
       !is.null(.r)
     }
     expect_true(.safe("d/dt(x1)=-x1\nx1(0)=1\ny=x1\ndf(x1)/dy(THETA[1])=0\n"))
@@ -288,11 +289,11 @@ d/dt(cen) = ka*depot-k*cen
       "d/dt(x1)=-ka*x1\nd/dt(x2)=ka*x1-ke*x2\n",
       "d/dt(cen)=exp(THETA[1])*delay(x1, exp(THETA[2]))*delay(x2, exp(THETA[2]))\n",
       "cen(0)=0\ndf(cen)/dy(x1)=0\ndf(cen)/dy(THETA[1])=0\ndf(cen)/dy(THETA[2])=0\n",
-      "df(cen)/dy(THETA[3])=0\ny=cen\ntad=t-tlast()\n")))
+      "df(cen)/dy(THETA[3])=0\ny=cen\ntad=t-tlast()\n"
+    )))
   })
 
   test_that("dfdy names report ETA[n] and THETA[n], not the internal names", {
-
     # THETA and ETA both reach populateDfdy() under their internal spellings
     # (_THETA_1_, _ETA_1_) and are translated back for display.  The ETA half
     # of that translation used to be discarded, so an ETA derivative reported

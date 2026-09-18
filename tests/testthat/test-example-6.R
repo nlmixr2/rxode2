@@ -1,6 +1,7 @@
 rxTest({
   skip_if_not_installed("units")
 
+  # fmt: skip
   inf.dat <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -98,6 +99,7 @@ rxTest({
       0.125, 0.1221, 0.1192, 0.1163, 0.1135)
   )
 
+  # fmt: skip
   inf.dat2 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -187,6 +189,7 @@ rxTest({
     )
   )
 
+  # fmt: skip
   dat3 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -257,6 +260,7 @@ rxTest({
     )
   )
 
+  # fmt: skip
   dat4 <- data.frame(
     time = units::set_units(c(
       0, 0.0417, 0.0833, 0.125, 0.1667,
@@ -345,8 +349,11 @@ d/dt(blood)     = a*intestine - b*blood
   et <- eventTable(time.units = "days")
   et$add.sampling(seq(0, 10, by = 1 / 24))
   et$add.dosing(
-    dose = 2 / 24, rate = 2, start.time = 0,
-    nbr.doses = 10, dosing.interval = 1
+    dose = 2 / 24,
+    rate = 2,
+    start.time = 0,
+    nbr.doses = 10,
+    dosing.interval = 1
   )
 
   pk <- solve(mod, et)
@@ -354,7 +361,6 @@ d/dt(blood)     = a*intestine - b*blood
   test_that("params are captured correctly", {
     expect_equal(pk$.params.single, c(a = 6, b = 0.6))
   })
-
 
   ## plot(pk$time,pk$intestine,type="l")
   ## plot(pk$time,pk$blood,type="l")
@@ -371,8 +377,11 @@ d/dt(blood)     = a*intestine - b*blood
   et2 <- eventTable(time.units = "days")
   et2$add.sampling(seq(0, 10, by = 1 / 24))
   et2$add.dosing(
-    dose = 2 / 24, rate = 2, strt.time = 0,
-    nbr.doses = 10, dosing.interval = 0.5
+    dose = 2 / 24,
+    rate = 2,
+    strt.time = 0,
+    nbr.doses = 10,
+    dosing.interval = 0.5
   )
 
   pk2 <- solve(pk, et2)
@@ -386,7 +395,6 @@ d/dt(blood)     = a*intestine - b*blood
       inf.dat2
     )
   })
-
 
   ## Bolus 6.2
   mod <- rxode2("

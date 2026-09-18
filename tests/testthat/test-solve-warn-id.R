@@ -33,8 +33,7 @@ rxTest({
   test_that("an id past the end of the levels also falls back", {
     # nsub/nsim are whatever the last solve left; the levels here are not a
     # simulation's worth of subjects, so there is nothing to resolve.
-    expect_match(.warnLabels(c("101", "202"), c(1L, 7L)),
-                 "for subject\\(s\\): 202, internal #8")
+    expect_match(.warnLabels(c("101", "202"), c(1L, 7L)), "for subject\\(s\\): 202, internal #8")
   })
 
   test_that("a subject literally named Unknown is still printed as itself", {
@@ -60,13 +59,11 @@ rxTest({
   test_that("rxSetIdLvlFactors coerces a numeric idLvl and rejects the rest", {
     # An estimation host whose ID column is numeric can pass it as-is.
     .warnLabels(c(11, 22, 33), integer(0))
-    expect_equal(.Call("_rxTestGetIdLabels", c(0L, 2L), PACKAGE = "rxode2"),
-                 c("11", "33"))
+    expect_equal(.Call("_rxTestGetIdLabels", c(0L, 2L), PACKAGE = "rxode2"), c("11", "33"))
     .warnLabels(4:6, integer(0))
     expect_equal(.Call("_rxTestGetIdLabels", 1L, PACKAGE = "rxode2"), "5")
     .warnLabels(c(TRUE, FALSE), integer(0))
-    expect_equal(.Call("_rxTestGetIdLabels", c(0L, 1L), PACKAGE = "rxode2"),
-                 c("TRUE", "FALSE"))
+    expect_equal(.Call("_rxTestGetIdLabels", c(0L, 1L), PACKAGE = "rxode2"), c("TRUE", "FALSE"))
     # A type that cannot name subjects must clear the table rather than read
     # through a non-character SEXP; the flush then falls back.
     for (.bad in list(NULL, list("a", "b"), TRUE ~ FALSE)) {
@@ -98,18 +95,14 @@ rxTest({
     .e <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:3)
     withr::with_seed(42, rxSolve(.f, .e, nStud = 2, addDosing = FALSE))
     # rxGetId() alone cannot see past the levels ...
-    expect_equal(.Call("_rxTestGetIdLabels", 0:5, PACKAGE = "rxode2"),
-                 c("1", "2", "3", rep("Unknown", 3)))
+    expect_equal(.Call("_rxTestGetIdLabels", 0:5, PACKAGE = "rxode2"), c("1", "2", "3", rep("Unknown", 3)))
     # ... but the flush resolves them, and says which simulation they came from
-    expect_match(.warnLabels(NULL, c(1L, 4L), setLvl = FALSE),
-                 "for subject\\(s\\): 2, 2 \\(sim 2\\)")
+    expect_match(.warnLabels(NULL, c(1L, 4L), setLvl = FALSE), "for subject\\(s\\): 2, 2 \\(sim 2\\)")
     # past nsub*nsim there is still nothing to resolve
-    expect_match(.warnLabels(NULL, 20L, setLvl = FALSE),
-                 "for subject\\(s\\): internal #21")
+    expect_match(.warnLabels(NULL, 20L, setLvl = FALSE), "for subject\\(s\\): internal #21")
     # and once a host overwrites the levels itself, nsub/nsim no longer
     # describe them, so the expansion must not fire off the stale pair
-    expect_match(.warnLabels(c("1", "2", "3"), 4L),
-                 "for subject\\(s\\): internal #5")
+    expect_match(.warnLabels(c("1", "2", "3"), 4L), "for subject\\(s\\): internal #5")
   })
 
   test_that("nSub= replicated subjects are labelled by their sim.id", {
@@ -136,15 +129,12 @@ rxTest({
     }
     .e <- et(amt = 100) |> et(seq(0, 24, 4))
     withr::with_seed(1, rxSolve(.f, .e, nSub = 4, addDosing = FALSE))
-    expect_match(.warnLabels(NULL, c(0L, 2L), setLvl = FALSE),
-                 "for subject\\(s\\): 1, 1 \\(sim 3\\)")
+    expect_match(.warnLabels(NULL, c(0L, 2L), setLvl = FALSE), "for subject\\(s\\): 1, 1 \\(sim 3\\)")
     # nSub= and nStud= together just multiply out to nsim = 8
     withr::with_seed(1, rxSolve(.f, .e, nSub = 4, nStud = 2, addDosing = FALSE))
-    expect_match(.warnLabels(NULL, c(0L, 5L), setLvl = FALSE),
-                 "for subject\\(s\\): 1, 1 \\(sim 6\\)")
+    expect_match(.warnLabels(NULL, c(0L, 5L), setLvl = FALSE), "for subject\\(s\\): 1, 1 \\(sim 6\\)")
     # and past nsub*nsim there is nothing to resolve
-    expect_match(.warnLabels(NULL, 8L, setLvl = FALSE),
-                 "for subject\\(s\\): internal #9")
+    expect_match(.warnLabels(NULL, 8L, setLvl = FALSE), "for subject\\(s\\): internal #9")
   })
 
   test_that("the id levels are left cleared for the rest of the suite", {

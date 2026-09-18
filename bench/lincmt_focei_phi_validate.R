@@ -46,12 +46,21 @@ m2cmt <- function() {
 
 fit1 <- function(model, sens, phi) {
   suppressWarnings(suppressMessages(
-    nlmixr2(model, theo_sd, "focei",
-            control = foceiControl(print = 0L, calcTables = FALSE,
-                                   maxOuterIterations = 30L,
-                                   rxControl = rxode2::rxControl(
-                                     linCmtSensType = sens,
-                                     linCmtSensPhi = phi)))))
+    nlmixr2(
+      model,
+      theo_sd,
+      "focei",
+      control = foceiControl(
+        print = 0L,
+        calcTables = FALSE,
+        maxOuterIterations = 30L,
+        rxControl = rxode2::rxControl(
+          linCmtSensType = sens,
+          linCmtSensPhi = phi
+        )
+      )
+    )
+  ))
 }
 
 arms <- list(c("AD", "0"), c("AD", "1"), c("AD", "2"), c("ADm", "2"))
@@ -61,8 +70,9 @@ for (nm in c("1cmt", "2cmt")) {
   for (a in arms) {
     f <- fit1(mod, a[1], as.integer(a[2]))
     o <- f$objDf$OBJF
-    if (is.null(ref)) ref <- o
-    cat(sprintf("%-5s sens=%-3s phi=%s  OBJF = %.6f   delta = %.3e\n",
-                nm, a[1], a[2], o, abs(o - ref)))
+    if (is.null(ref)) {
+      ref <- o
+    }
+    cat(sprintf("%-5s sens=%-3s phi=%s  OBJF = %.6f   delta = %.3e\n", nm, a[1], a[2], o, abs(o - ref)))
   }
 }

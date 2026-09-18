@@ -317,7 +317,6 @@ rxTest({
     )
   })
 
-
   test_that("add+pow combined2", {
     # Combined2:  y=f + (a+b*f^c)*err
     # Var = (a + b*f^c)^2

@@ -1,5 +1,5 @@
 rxTest({
-
+  # fmt: skip
   evi <- structure(list(time = c(
     0,
     0, 0.5, 0.5, 0.969, 0.9833, 1, 1.5, 1.77253, 1.9333, 2, 2.5,
@@ -946,9 +946,11 @@ rxTest({
   row.names = c(NA, -2545L)
   )
 
-  theta <- structure(list(CL = 19.616, V1 = 105.67, Q = 6.903, V2 = 29.373),
-                     class = "data.frame", row.names = c(NA, -1L)
-                     )
+  theta <- structure(
+    list(CL = 19.616, V1 = 105.67, Q = 6.903, V2 = 29.373),
+    class = "data.frame",
+    row.names = c(NA, -1L)
+  )
 
   m1 <- rxode2({
     C2 <- centr / V1
@@ -959,7 +961,6 @@ rxTest({
   })
 
   test_that("Solving can make sense", {
-
     x <- rxSolve(m1, params = theta, events = evi)
     expect_false(all(x$centr == 0))
 
@@ -977,6 +978,5 @@ rxTest({
 
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda", hmax = 0)
     expect_false(all(x$centr == 0))
-
   })
 })

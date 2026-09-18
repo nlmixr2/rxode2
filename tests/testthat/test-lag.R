@@ -1,8 +1,7 @@
 rxTest({
-
   test_that("test lag-time information parsing", {
-
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -23,10 +22,12 @@ rxTest({
     d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
     d/dt(peri)  =                    Q*C2 - Q*C3;
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 1L)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -47,10 +48,12 @@ rxTest({
     alag(centr) = alagDepot
     d/dt(peri)  =                    Q*C2 - Q*C3;
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 2L)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -71,10 +74,12 @@ rxTest({
     d/dt(peri)  =                    Q*C2 - Q*C3;
     alag(peri) = alagDepot
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 3L)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -95,10 +100,12 @@ rxTest({
     d/dt(peri)  =                    Q*C2 - Q*C3;
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
     alag(eff) = alagDepot
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 4L)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -122,10 +129,12 @@ rxTest({
     alag(peri) = alagDepot
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
     alag(eff) = alagDepot
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 1:4)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -148,10 +157,12 @@ rxTest({
     alag(peri) = alagDepot
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
     alag(eff) = alagDepot
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, c(1L, 3:4))
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -174,10 +185,12 @@ rxTest({
     alag(peri) = alagDepot
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
     alag(eff) = alagDepot
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, 2:4)
 
-    m1 <- rxode2parse("KA=2.94E-01;
+    m1 <- rxode2parse(
+      "KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
     Q=1.05E+01;
@@ -197,17 +210,15 @@ rxTest({
     d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
     d/dt(peri)  =                    Q*C2 - Q*C3;
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-    eff(0) = 1")
+    eff(0) = 1"
+    )
     expect_equal(m1$alag, integer(0))
-
   })
-
 
   et <- et(1:10)
   et$b <- 1:10
 
   test_that("lag()", {
-
     suppressMessages(expect_error(rxode2({
       a <- lag()
     })))
@@ -453,7 +464,6 @@ rxTest({
 
     expect_true(all(x1$a == 10))
   })
-
 
   et <- et(1:10)
   et$b <- 2^(1:10)

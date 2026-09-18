@@ -9,21 +9,32 @@
 )
 .regIdentifier <- rex::rex(or(.regIdentifier1, .regIdentifier2))
 regSens <- rex::rex(
-  "rx__sens_", capture(.regIdentifier), "_BY_",
-  capture(.regIdentifier), "__"
+  "rx__sens_",
+  capture(.regIdentifier),
+  "_BY_",
+  capture(.regIdentifier),
+  "__"
 )
 regSensEtaTheta <- rex::rex(
-  "rx__sens_", capture(.regIdentifier),
-  "_BY_", capture(.regIdentifier),
-  "_BY_", capture(.regIdentifier), "__"
+  "rx__sens_",
+  capture(.regIdentifier),
+  "_BY_",
+  capture(.regIdentifier),
+  "_BY_",
+  capture(.regIdentifier),
+  "__"
 )
 regToSens1 <- rex::rex(
-  capture(.regIdentifier), or("_", ".", ":"),
+  capture(.regIdentifier),
+  or("_", ".", ":"),
   capture(.regIdentifier)
 )
 regToSens2 <- rex::rex(
-  "d/dt(d(", capture(.regIdentifier), ")/d(",
-  capture(.regIdentifier), "))"
+  "d/dt(d(",
+  capture(.regIdentifier),
+  ")/d(",
+  capture(.regIdentifier),
+  "))"
 )
 regFloat1 <- rex::rex(
   or(
@@ -37,47 +48,74 @@ regFloat1 <- rex::rex(
   ))
 )
 regFloat2 <- rex::rex(
-  some_of("0":"9"), one_of("E", "e"),
-  maybe(one_of("-", "+")), some_of("0":"9")
+  some_of("0":"9"),
+  one_of("E", "e"),
+  maybe(one_of("-", "+")),
+  some_of("0":"9")
 )
 regDecimalint <- rex::rex(or("0", group("1":"9", any_of("0":"9"))))
-regNum <- rex::rex(maybe("-"), or(
-  regDecimalint, regFloat1,
-  regFloat2
-))
+regNum <- rex::rex(
+  maybe("-"),
+  or(
+    regDecimalint,
+    regFloat1,
+    regFloat2
+  )
+)
 regDDt <- rex::rex(
-  start, "rx__d_dt_",
-  capture(anything), "__", end
+  start,
+  "rx__d_dt_",
+  capture(anything),
+  "__",
+  end
 )
 regDfDy <- rex::rex(
-  start, "rx__df_", capture(anything),
-  "_dy_", capture(anything), "__", end
+  start,
+  "rx__df_",
+  capture(anything),
+  "_dy_",
+  capture(anything),
+  "__",
+  end
 )
 regThEt <- rex::rex(
-  capture(or("TH", ""), "ETA"), "_",
-  capture("1":"9", any_of("0":"9")), "_"
+  capture(or("TH", ""), "ETA"),
+  "_",
+  capture("1":"9", any_of("0":"9")),
+  "_"
 )
 regDfDyTh <- rex::rex(
-  start, "rx__df_", capture(anything),
-  "_dy_", regThEt, "__", end
+  start,
+  "rx__df_",
+  capture(anything),
+  "_dy_",
+  regThEt,
+  "__",
+  end
 )
 regEta <- rex::rex(
-  start, "ETA[",
+  start,
+  "ETA[",
   capture("1":"9", any_of("0":"9")),
   "]"
 )
 regTheta <- rex::rex(
-  start, "THETA[",
+  start,
+  "THETA[",
   capture("1":"9", any_of("0":"9")),
   "]"
 )
 regJac <- rex::rex(
-  "df(", capture(.regIdentifier), ")/dy(",
+  "df(",
+  capture(.regIdentifier),
+  ")/dy(",
   capture(or(
     .regIdentifier,
     group(
-      or("THETA[", "ETA["), "1":"9",
-      any_of("0":"9"), "]"
+      or("THETA[", "ETA["),
+      "1":"9",
+      any_of("0":"9"),
+      "]"
     )
   )),
   ")"
@@ -87,21 +125,40 @@ regJac <- rex::rex(
 .regLag <- rex::rex(start, "rx_lag_", capture(anything), "_")
 .regF <- rex::rex(start, "rx_f_", capture(anything), "_")
 .knownPrint <- c(
-  "printf", "Rprintf", "print",
-  "jac_printf", "jac_Rprintf", "jac_print",
-  "ode_printf", "ode_Rprintf", "ode_print",
-  "jac0_printf", "jac0_Rprintf", "jac0_print",
-  "ode_printf", "ode_Rprintf", "ode_print",
-  "ode0_printf", "ode0_Rprintf", "ode0_print",
-  "lhs_printf", "lhs_Rprintf", "lhs_print"
+  "printf",
+  "Rprintf",
+  "print",
+  "jac_printf",
+  "jac_Rprintf",
+  "jac_print",
+  "ode_printf",
+  "ode_Rprintf",
+  "ode_print",
+  "jac0_printf",
+  "jac0_Rprintf",
+  "jac0_print",
+  "ode_printf",
+  "ode_Rprintf",
+  "ode_print",
+  "ode0_printf",
+  "ode0_Rprintf",
+  "ode0_print",
+  "lhs_printf",
+  "lhs_Rprintf",
+  "lhs_print"
 )
 
 regPrint <- rex::rex(
-  start, or(.knownPrint),
+  start,
+  or(.knownPrint),
   or(
     group(
-      "(", anything, ")",
-      any_spaces, at_most(";", 1), any_spaces
+      "(",
+      anything,
+      ")",
+      any_spaces,
+      at_most(";", 1),
+      any_spaces
     ),
     group(any_spaces, at_most(";", 1), any_spaces)
   ),
@@ -109,13 +166,22 @@ regPrint <- rex::rex(
 )
 
 regIni0 <- rex::rex(
-  start, "rx_", capture(anything),
-  "_ini_0__", end
+  start,
+  "rx_",
+  capture(anything),
+  "_ini_0__",
+  end
 )
-regIni <- rex::rex(or(
-  group(one_of("_."), "0"),
-  "0", "(0)", "[0]", "{0}"
-), end)
+regIni <- rex::rex(
+  or(
+    group(one_of("_."), "0"),
+    "0",
+    "(0)",
+    "[0]",
+    "{0}"
+  ),
+  end
+)
 #' Expand if/else clauses into multiple different types of lines.
 #'
 #' @param model Model can be a character, or a rxode2 model.  It needs
@@ -162,16 +228,12 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
         } else {
           currExpr[length(currExpr) + 1] <- gsub(regIf, "!(\\1)", model[i])
           known[[length(known) + 1]] <- c(
-            paste(paste0("(", currExpr[-1], ")"),
-              collapse = " && "
-            ),
+            paste(paste0("(", currExpr[-1], ")"), collapse = " && "),
             currExpr[-1]
           )
           currExpr[length(currExpr)] <- gsub(regIf, "\\1", model[i])
           known[[length(known) + 1]] <- c(
-            paste(paste0("(", currExpr[-1], ")"),
-              collapse = " && "
-            ),
+            paste(paste0("(", currExpr[-1], ")"), collapse = " && "),
             currExpr[-1]
           )
         }
@@ -227,16 +289,33 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
 #' @keywords internal
 #' @noRd
 .rxRmIni <- function(x) {
-  x <- x[regexpr(rex::rex(
-    start, any_spaces,
-    or(names(rxInits(x))), any_spaces,
-    or("=", "~")
-  ), x) == -1]
-  x <- x[regexpr(rex::rex(
-    start, any_spaces,
-    or(names(rxInits(x))), "(0)",
-    any_spaces, or("=", "~")
-  ), x) == -1]
+  x <- x[
+    regexpr(
+      rex::rex(
+        start,
+        any_spaces,
+        or(names(rxInits(x))),
+        any_spaces,
+        or("=", "~")
+      ),
+      x
+    ) ==
+      -1
+  ]
+  x <- x[
+    regexpr(
+      rex::rex(
+        start,
+        any_spaces,
+        or(names(rxInits(x))),
+        "(0)",
+        any_spaces,
+        or("=", "~")
+      ),
+      x
+    ) ==
+      -1
+  ]
   return(x)
 }
 
@@ -271,31 +350,44 @@ rxAddReturn <- function(fn, ret = TRUE) {
   }
   ## FIXME, naieve assumption about functions.
   if (ret) {
-    if (regexpr(rex::rex(
-      or(boundary, start),
-      "return(", anything, ")"
-    ),
-    txt[length(txt)],
-    perl = TRUE
-    ) == -1) {
+    if (
+      regexpr(
+        rex::rex(
+          or(boundary, start),
+          "return(",
+          anything,
+          ")"
+        ),
+        txt[length(txt)],
+        perl = TRUE
+      ) ==
+        -1
+    ) {
       ## Add return statement
-      if (regexpr(
-        rex::rex(or("=", "~", "<-", "}")),
-        txt[length(txt)]
-      ) == -1) {
+      if (
+        regexpr(
+          rex::rex(or("=", "~", "<-", "}")),
+          txt[length(txt)]
+        ) ==
+          -1
+      ) {
         txt[length(txt)] <- gsub(
           rex::rex(
-            start, any_spaces, capture(anything),
-            or(";", ""), any_spaces, end
+            start,
+            any_spaces,
+            capture(anything),
+            or(";", ""),
+            any_spaces,
+            end
           ),
-          "return(\\1);", txt[length(txt)]
+          "return(\\1);",
+          txt[length(txt)]
         )
       }
     }
   }
   return(paste(txt, collapse = "\n"))
 }
-
 
 
 ## Start DSL based on http://adv-r.had.co.nz/dsl.html
@@ -331,8 +423,10 @@ divOp <- function() {
   function(e1, e2) {
     if (e1 == "d" && grepl(rex::rex(start, "__dt__"), e2)) {
       paste0("rx__d_dt_", gsub(rex::rex(start, "__dt__"), "", e2))
-    } else if (grepl(rex::rex(start, "__df_", anything, "_", end), e1) &&
-      grepl(rex::rex(start, "_dy_", anything, "__", end), e2)) {
+    } else if (
+      grepl(rex::rex(start, "__df_", anything, "_", end), e1) &&
+        grepl(rex::rex(start, "_dy_", anything, "__", end), e2)
+    ) {
       paste0("rx", substring(e1, 0, nchar(e1) - 1), e2)
     } else if (is(e1, "numeric")) {
       paste0("S(", e1, ")/", e2)
@@ -404,10 +498,29 @@ symengineC[["S"]] <- function(x) {
 }
 
 for (f in c(
-  "acos", "acosh", "asin", "atan", "atan2", "atanh", "beta",
-  "cos", "cosh", "digamma", "erf", "erfc", "exp", "factorial",
-  "gamma", "sin", "sinh", "sqrt", "tan",
-  "tanh", "trigamma", "rxTBS", "rxTBSd"
+  "acos",
+  "acosh",
+  "asin",
+  "atan",
+  "atan2",
+  "atanh",
+  "beta",
+  "cos",
+  "cosh",
+  "digamma",
+  "erf",
+  "erfc",
+  "exp",
+  "factorial",
+  "gamma",
+  "sin",
+  "sinh",
+  "sqrt",
+  "tan",
+  "tanh",
+  "trigamma",
+  "rxTBS",
+  "rxTBSd"
 )) {
   symengineC[[f]] <- functionOp(f)
 }
@@ -428,9 +541,26 @@ sympyTransit4 <- function(t, n, mtt, bio, podo = "podo", tlast = "tlast") {
   lktr <- paste0("(log((", n, ") + 1) - log(", mtt, "))")
   tc <- paste0("((", t, ")-(", tlast, "))")
   paste0(
-    "exp(log((", bio, ") * (", podo, ")) + ", lktr, " + (",
-    n, ") * ", "(", lktr, " + log(", t, ")) - ",
-    ktr, " * (", t, ") - log(gamma(1 + (", n, "))))"
+    "exp(log((",
+    bio,
+    ") * (",
+    podo,
+    ")) + ",
+    lktr,
+    " + (",
+    n,
+    ") * ",
+    "(",
+    lktr,
+    " + log(",
+    t,
+    ")) - ",
+    ktr,
+    " * (",
+    t,
+    ") - log(gamma(1 + (",
+    n,
+    "))))"
   )
 }
 
@@ -446,15 +576,12 @@ allStrs <- function(x) {
     children <- lapply(x[-1], allStrs)
     unique(unlist(children))
   } else {
-    stop(sprintf(gettext("do not know how to handle type '%s'"), typeof(x)),
-      call. = FALSE
-    )
+    stop(sprintf(gettext("do not know how to handle type '%s'"), typeof(x)), call. = FALSE)
   }
 }
 
 ## Start error function DSL
 sumProdEnv <- new.env(parent = emptyenv())
-
 
 
 sumProdEnv[["^"]] <- binaryOp("^")
@@ -510,8 +637,10 @@ sumProdEnv[["-"]] <- function(a, b) {
         "sum(%s, -(%s))",
         sub(
           rex::rex(start, "sum(", capture(anything), ")", end),
-          "\\1", a
-        ), b
+          "\\1",
+          a
+        ),
+        b
       )
     } else {
       paste0("-", a)
@@ -605,12 +734,14 @@ rxSumProdModel <- function(model, expand = FALSE, sum = TRUE, prod = TRUE) {
     .rxSEstate$sumProdSum <- FALSE
     .rxSEstate$sumProdProd <- FALSE
   })
-  .lines <- str2lang(paste0("{",rxNorm(model), "}"))
+  .lines <- str2lang(paste0("{", rxNorm(model), "}"))
   .ret <- character(length(.lines) - 1)
   for (i in seq_along(.lines)[-1]) {
     .cur <- .lines[[i]]
-    if (identical(.cur[[1]], quote(`=`)) ||
-          identical(.cur[[1]], quote(`~`))) {
+    if (
+      identical(.cur[[1]], quote(`=`)) ||
+        identical(.cur[[1]], quote(`~`))
+    ) {
       if (expand) {
         .l2 <- deparse1(.cur[[3]])
         .l2 <- rxToSE(.l2)
@@ -625,7 +756,7 @@ rxSumProdModel <- function(model, expand = FALSE, sum = TRUE, prod = TRUE) {
         .cur[[3]] <- str2lang(.l3)
       }
     }
-    .ret[i-1] <- deparse1(.cur)
+    .ret[i - 1] <- deparse1(.cur)
   }
   paste(.ret, collapse = "\n")
 }

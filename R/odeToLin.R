@@ -1,7 +1,9 @@
 ## Collect additive terms from an expression tree, tracking sign.
 ## Returns list of {sign=+-1, expr}.
 .collectAddTerms <- function(expr, sign = 1L) {
-  if (!is.call(expr)) return(list(list(sign = sign, expr = expr)))
+  if (!is.call(expr)) {
+    return(list(list(sign = sign, expr = expr)))
+  }
   .fn <- expr[[1]]
   if (identical(.fn, quote(`(`)) && length(expr) == 2L) {
     return(.collectAddTerms(expr[[2]], sign))
@@ -24,7 +26,9 @@
     .nm <- as.character(expr)
     return(if (.nm %in% states) .nm else character(0))
   }
-  if (!is.call(expr)) return(character(0))
+  if (!is.call(expr)) {
+    return(character(0))
+  }
   if (identical(expr[[1]], quote(`(`)) && length(expr) == 2L) {
     return(.statesInExpr(expr[[2]], states))
   }
@@ -36,8 +40,12 @@
 ## names appearing in ODE rate coefficients so they can be passed explicitly
 ## to linCmt().
 .freeSymbolsInExpr <- function(expr) {
-  if (is.name(expr)) return(as.character(expr))
-  if (!is.call(expr)) return(character(0))
+  if (is.name(expr)) {
+    return(as.character(expr))
+  }
+  if (!is.call(expr)) {
+    return(character(0))
+  }
   unique(unlist(lapply(as.list(expr)[-1L], .freeSymbolsInExpr)))
 }
 
@@ -46,27 +54,40 @@
 ## Returns the coefficient expression, or NULL if the term is not that form.
 .extractMultCoef <- function(expr, stateNm, states) {
   if (is.name(expr)) {
-    if (as.character(expr) == stateNm) return(quote(1))
+    if (as.character(expr) == stateNm) {
+      return(quote(1))
+    }
     return(NULL)
   }
-  if (!is.call(expr)) return(NULL)
+  if (!is.call(expr)) {
+    return(NULL)
+  }
   .fn <- expr[[1]]
   if (identical(.fn, quote(`(`)) && length(expr) == 2L) {
     return(.extractMultCoef(expr[[2]], stateNm, states))
   }
-  if (!identical(.fn, quote(`*`))) return(NULL)
-  .lhs <- expr[[2]]; .rhs <- expr[[3]]
+  if (!identical(.fn, quote(`*`))) {
+    return(NULL)
+  }
+  .lhs <- expr[[2]]
+  .rhs <- expr[[3]]
   .lu <- length(.statesInExpr(.lhs, states)) > 0L
   .ru <- length(.statesInExpr(.rhs, states)) > 0L
-  if (.lu && !.ru && is.name(.lhs) && as.character(.lhs) == stateNm) return(.rhs)
-  if (!.lu && .ru && is.name(.rhs) && as.character(.rhs) == stateNm) return(.lhs)
+  if (.lu && !.ru && is.name(.lhs) && as.character(.lhs) == stateNm) {
+    return(.rhs)
+  }
+  if (!.lu && .ru && is.name(.rhs) && as.character(.rhs) == stateNm) {
+    return(.lhs)
+  }
   NULL
 }
 
 ## TRUE when an expression is a constant that evaluates to exactly zero.  A
 ## zero term adds nothing to a rate, so dropping it is lossless.
 .odeToLinIsZeroExpr <- function(expr) {
-  if (length(all.vars(expr)) > 0L) return(FALSE)
+  if (length(all.vars(expr)) > 0L) {
+    return(FALSE)
+  }
   .v <- tryCatch(eval(expr, baseenv()), error = function(e) NA_real_)
   is.numeric(.v) && length(.v) == 1L && !is.na(.v) && .v == 0
 }
@@ -85,13 +106,19 @@
 .parseOneLinTerm <- function(sign, termExpr, states) {
   .refs <- .statesInExpr(termExpr, states)
   if (length(.refs) == 0L) {
-    if (.odeToLinIsZeroExpr(termExpr)) return(NA)
+    if (.odeToLinIsZeroExpr(termExpr)) {
+      return(NA)
+    }
     return(NULL)
   }
-  if (length(.refs) > 1L) return(NULL)
+  if (length(.refs) > 1L) {
+    return(NULL)
+  }
   .state <- .refs[1L]
-  .coef  <- .extractMultCoef(termExpr, .state, states)
-  if (is.null(.coef)) return(NULL)
+  .coef <- .extractMultCoef(termExpr, .state, states)
+  if (is.null(.coef)) {
+    return(NULL)
+  }
   list(sign = sign, coef = .coef, state = .state)
 }
 
@@ -99,9 +126,11 @@
 ## proportional to exactly one state.  Returns NULL if the RHS is not linear in
 ## all state variables or carries a non-zero exogenous input term.
 .parseLinearRhs <- function(rhs, states) {
-  .raw    <- .collectAddTerms(rhs)
+  .raw <- .collectAddTerms(rhs)
   .parsed <- lapply(.raw, function(.t) .parseOneLinTerm(.t$sign, .t$expr, states))
-  if (any(vapply(.parsed, is.null, logical(1)))) return(NULL)
+  if (any(vapply(.parsed, is.null, logical(1)))) {
+    return(NULL)
+  }
   Filter(is.list, .parsed) # drop the constant-zero terms
 }
 
@@ -110,7 +139,9 @@
 ## coefficient (`-ka*depot` parses as a positive-sign term with coef `-ka`).
 .odeToLinNetCoef <- function(terms, s) {
   .rel <- Filter(function(.t) !is.na(.t$state) && .t$state == s, terms)
-  if (length(.rel) == 0L) return(NULL)
+  if (length(.rel) == 0L) {
+    return(NULL)
+  }
   .signed <- lapply(.rel, function(.t) if (.t$sign < 0L) bquote(-(.(.t$coef))) else .t$coef)
   Reduce(function(.a, .b) bquote(.(.a) + .(.b)), .signed)
 }
@@ -123,18 +154,23 @@
 .odeToLinMassBalanced <- function(odes, central, others) {
   .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
   .centralOde <- .byCmt[[central]]
-  if (is.null(.centralOde)) return(FALSE)
+  if (is.null(.centralOde)) {
+    return(FALSE)
+  }
   for (.c in others) {
     .ode <- .byCmt[[.c]]
-    if (is.null(.ode)) return(FALSE)
-    .selfNet <- .odeToLinNetCoef(.ode$terms, .c)        # what C loses (a net outflow)
+    if (is.null(.ode)) {
+      return(FALSE)
+    }
+    .selfNet <- .odeToLinNetCoef(.ode$terms, .c) # what C loses (a net outflow)
     .centNet <- .odeToLinNetCoef(.centralOde$terms, .c) # what central gains from C
-    if (is.null(.selfNet) || is.null(.centNet)) return(FALSE)
+    if (is.null(.selfNet) || is.null(.centNet)) {
+      return(FALSE)
+    }
     .syms <- unique(c(.freeSymbolsInExpr(.selfNet), .freeSymbolsInExpr(.centNet)))
     .balanced <- function(.offset) {
       .vals <- as.list(setNames(seq_along(.syms) + .offset, .syms))
-      .v <- tryCatch(eval(bquote(.(.selfNet) + .(.centNet)), .vals, baseenv()),
-                     error = function(e) NA_real_)
+      .v <- tryCatch(eval(bquote(.(.selfNet) + .(.centNet)), .vals, baseenv()), error = function(e) NA_real_)
       length(.v) == 1L && is.finite(.v) && abs(.v) < 1e-8
     }
     if (!.balanced(.odeToLinProbe[1L]) || !.balanced(.odeToLinProbe[2L])) return(FALSE)
@@ -151,7 +187,9 @@
 ## Evaluate an expression to one finite number under `vals`; NA on failure.
 .odeToLinNum <- function(expr, vals) {
   .v <- tryCatch(eval(expr, vals, baseenv()), error = function(e) NA_real_)
-  if (!is.numeric(.v) || length(.v) != 1L || !is.finite(.v)) return(NA_real_)
+  if (!is.numeric(.v) || length(.v) != 1L || !is.finite(.v)) {
+    return(NA_real_)
+  }
   as.numeric(.v)
 }
 
@@ -166,15 +204,20 @@
 ## not a parameterization linCmt() recognizes.
 .odeToLinDerivedRates <- function(params, vals) {
   .d <- tryCatch(do.call(rxDerived, vals[params]), error = function(e) NULL) # nolint
-  if (!is.data.frame(.d) || nrow(.d) != 1L) return(NULL)
+  if (!is.data.frame(.d) || nrow(.d) != 1L) {
+    return(NULL)
+  }
   .get <- function(.n) {
-    if (is.null(.d[[.n]])) return(0)
+    if (is.null(.d[[.n]])) {
+      return(0)
+    }
     .v <- as.numeric(.d[[.n]][1L])
-    if (!is.finite(.v)) return(NA_real_)
+    if (!is.finite(.v)) {
+      return(NA_real_)
+    }
     .v
   }
-  list(kel = .get("kel"), k12 = .get("k12"), k21 = .get("k21"),
-       k13 = .get("k13"), k31 = .get("k31"), vc = .get("vc"))
+  list(kel = .get("kel"), k12 = .get("k12"), k21 = .get("k21"), k13 = .get("k13"), k31 = .get("k31"), vc = .get("vc"))
 }
 
 ## TRUE when linCmt(<params>) reproduces this system's own rate constants and
@@ -183,39 +226,58 @@
 ## would solve as if it eliminated at `kel`, and `cp <- central / (2 * v)` would
 ## report `central / vc`.  Compared at two parameter assignments.
 .odeToLinRatesMatch <- function(odes, topo, params, vExpr) {
-  if (length(params) == 0L) return(FALSE)
+  if (length(params) == 0L) {
+    return(FALSE)
+  }
   .byCmt <- setNames(odes, vapply(odes, function(.o) .o$cmt, character(1)))
   .matches <- function(.offset) {
     .vals <- as.list(setNames(as.numeric(seq_along(params)) + .offset, params))
     .r <- .odeToLinDerivedRates(params, .vals)
-    if (is.null(.r)) return(FALSE)
+    if (is.null(.r)) {
+      return(FALSE)
+    }
     .net <- function(.cmt, .state) {
       .e <- .odeToLinNetCoef(.byCmt[[.cmt]]$terms, .state)
-      if (is.null(.e)) return(NA_real_)
+      if (is.null(.e)) {
+        return(NA_real_)
+      }
       .odeToLinNum(.e, .vals)
     }
     ## linCmt() reports central / vc.
-    if (!.odeToLinNear(.odeToLinNum(vExpr, .vals), .r$vc)) return(FALSE)
+    if (!.odeToLinNear(.odeToLinNum(vExpr, .vals), .r$vc)) {
+      return(FALSE)
+    }
     ## linCmt() absorbs at the value of the parameter named ka, so the depot
     ## rate must be that parameter itself, unscaled.
     if (!is.null(topo$depot)) {
       .e <- .odeToLinNetCoef(.byCmt[[topo$depot]]$terms, topo$depot)
-      if (is.null(.e)) return(FALSE)
+      if (is.null(.e)) {
+        return(FALSE)
+      }
       .sym <- .freeSymbolsInExpr(.e)
-      if (length(.sym) != 1L || is.null(.vals[[.sym]])) return(FALSE)
+      if (length(.sym) != 1L || is.null(.vals[[.sym]])) {
+        return(FALSE)
+      }
       if (!.odeToLinNear(-.odeToLinNum(.e, .vals), .vals[[.sym]])) return(FALSE)
     }
     ## Central loses kel plus every peripheral transfer.
-    .peri <- list(list(topo$peripheral1, .r$k12, .r$k21),
-                  list(topo$peripheral2, .r$k13, .r$k31))
+    .peri <- list(list(topo$peripheral1, .r$k12, .r$k21), list(topo$peripheral2, .r$k13, .r$k31))
     .out <- .r$kel +
       (if (is.null(topo$peripheral1)) 0 else .r$k12) +
       (if (is.null(topo$peripheral2)) 0 else .r$k13)
-    if (!.odeToLinNear(-.net(topo$central, topo$central), .out)) return(FALSE)
+    if (!.odeToLinNear(-.net(topo$central, topo$central), .out)) {
+      return(FALSE)
+    }
     for (.p in .peri) {
-      if (is.null(.p[[1L]])) next
-      if (!.odeToLinNear(.net(.p[[1L]], topo$central), .p[[2L]])) return(FALSE)
-      if (!.odeToLinNear(-.net(.p[[1L]], .p[[1L]]), .p[[3L]])) return(FALSE)
+      if (is.null(.p[[1L]])) {
+        next
+      }
+      if (!.odeToLinNear(.net(.p[[1L]], topo$central), .p[[2L]])) {
+        return(FALSE)
+      }
+      if (!.odeToLinNear(-.net(.p[[1L]], .p[[1L]]), .p[[3L]])) {
+        return(FALSE)
+      }
       if (!.odeToLinNear(.net(topo$central, .p[[1L]]), .p[[3L]])) return(FALSE)
     }
     TRUE
@@ -229,20 +291,23 @@
 ## peripheral2) or NULL.
 .odeToLinDetectTopology <- function(odes, outputCmt, cmtNames) {
   .n <- length(odes)
-  if (.n == 0L || .n > 4L) return(NULL)
+  if (.n == 0L || .n > 4L) {
+    return(NULL)
+  }
 
   ## Build inflow map: flowsIn[[cmt]] = list of {from, coef} for positive
   ## cross-compartment terms in cmt's ODE.
-  .flowsIn  <- setNames(vector("list", .n), cmtNames)
+  .flowsIn <- setNames(vector("list", .n), cmtNames)
   .flowsOut <- setNames(vector("list", .n), cmtNames)
 
   for (.ode in odes) {
     .cmt <- .ode$cmt
     for (.t in .ode$terms) {
-      if (is.na(.t$state) || .t$state == .cmt) next
+      if (is.na(.t$state) || .t$state == .cmt) {
+        next
+      }
       if (.t$sign > 0L) {
-        .flowsIn[[.cmt]] <- c(.flowsIn[[.cmt]],
-                              list(list(from = .t$state, coef = .t$coef)))
+        .flowsIn[[.cmt]] <- c(.flowsIn[[.cmt]], list(list(from = .t$state, coef = .t$coef)))
       }
     }
   }
@@ -254,24 +319,28 @@
   }
 
   .central <- outputCmt
-  if (!.central %in% cmtNames) return(NULL)
+  if (!.central %in% cmtNames) {
+    return(NULL)
+  }
 
-  .depot       <- NULL
+  .depot <- NULL
   .peripherals <- character(0)
 
   for (.cmt in cmtNames[cmtNames != .central]) {
-    .nIn  <- length(.flowsIn[[.cmt]])
-    .out  <- .flowsOut[[.cmt]]
+    .nIn <- length(.flowsIn[[.cmt]])
+    .out <- .flowsOut[[.cmt]]
     .nOut <- length(.out)
 
-    .allOutToCentral  <- .nOut > 0L &&
+    .allOutToCentral <- .nOut > 0L &&
       all(vapply(.out, function(.f) .f$to == .central, logical(1)))
     .allInFromCentral <- .nIn > 0L &&
       all(vapply(.flowsIn[[.cmt]], function(.f) .f$from == .central, logical(1)))
 
     if (.nIn == 0L && .nOut == 1L && .allOutToCentral) {
       ## Depot: no inflows, exactly one outflow to central
-      if (!is.null(.depot)) return(NULL)
+      if (!is.null(.depot)) {
+        return(NULL)
+      }
       .depot <- .cmt
     } else if (.nIn > 0L && .allInFromCentral && .allOutToCentral) {
       ## Peripheral: inflow from central, outflow to central
@@ -282,18 +351,22 @@
   }
 
   .ncmt <- 1L + length(.peripherals)
-  if (.ncmt > 3L) return(NULL)
+  if (.ncmt > 3L) {
+    return(NULL)
+  }
 
   ## Reject systems where a depot/peripheral has independent loss (e.g. a
   ## metabolite), which linCmt() cannot represent.
   .others <- c(.peripherals, if (is.null(.depot)) character(0) else .depot)
-  if (!.odeToLinMassBalanced(odes, .central, .others)) return(NULL)
+  if (!.odeToLinMassBalanced(odes, .central, .others)) {
+    return(NULL)
+  }
 
   list(
-    ncmt        = .ncmt,
-    oral0       = if (is.null(.depot)) 0L else 1L,
-    central     = .central,
-    depot       = .depot,
+    ncmt = .ncmt,
+    oral0 = if (is.null(.depot)) 0L else 1L,
+    central = .central,
+    depot = .depot,
     peripheral1 = if (length(.peripherals) >= 1L) .peripherals[1L] else NULL,
     peripheral2 = if (length(.peripherals) >= 2L) .peripherals[2L] else NULL
   )
@@ -304,20 +377,34 @@
 .odeToLinFindOutput <- function(lstExpr, states) {
   for (.i in seq_along(lstExpr)) {
     .e <- lstExpr[[.i]]
-    if (!is.call(.e)) next
-    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
-    if (length(.e) < 3L || !is.name(.e[[2]])) next
+    if (!is.call(.e)) {
+      next
+    }
+    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) {
+      next
+    }
+    if (length(.e) < 3L || !is.name(.e[[2]])) {
+      next
+    }
     .rhs <- .e[[3]]
-    if (!is.call(.rhs) || length(.rhs) != 3L) next
-    if (!identical(.rhs[[1]], quote(`/`))) next
+    if (!is.call(.rhs) || length(.rhs) != 3L) {
+      next
+    }
+    if (!identical(.rhs[[1]], quote(`/`))) {
+      next
+    }
     .num <- .rhs[[2]]
-    if (!is.name(.num)) next
+    if (!is.name(.num)) {
+      next
+    }
     .cmtNm <- as.character(.num)
-    if (!.cmtNm %in% states) next
+    if (!.cmtNm %in% states) {
+      next
+    }
     return(list(
-      var     = as.character(.e[[2]]),
-      cmt     = .cmtNm,
-      vExpr   = .rhs[[3]],
+      var = as.character(.e[[2]]),
+      cmt = .cmtNm,
+      vExpr = .rhs[[3]],
       lineIdx = .i
     ))
   }
@@ -327,11 +414,15 @@
 ## Check if an expression is d/dt(name).
 ## In R's AST, `d/dt(x)` parses as call("/", d, call(dt, x)), NOT call("d/dt", x).
 .isDtExpr <- function(expr) {
-  is.call(expr) && length(expr) == 3L &&
+  is.call(expr) &&
+    length(expr) == 3L &&
     identical(expr[[1]], quote(`/`)) &&
-    is.name(expr[[2]]) && identical(expr[[2]], quote(d)) &&
-    is.call(expr[[3]]) && length(expr[[3]]) == 2L &&
-    is.name(expr[[3]][[1]]) && as.character(expr[[3]][[1]]) == "dt" &&
+    is.name(expr[[2]]) &&
+    identical(expr[[2]], quote(d)) &&
+    is.call(expr[[3]]) &&
+    length(expr[[3]]) == 2L &&
+    is.name(expr[[3]][[1]]) &&
+    as.character(expr[[3]][[1]]) == "dt" &&
     is.name(expr[[3]][[2]])
 }
 
@@ -350,23 +441,35 @@
     .nm <- as.character(expr)
     return(if (.nm %in% states) .nm else character(0))
   }
-  if (!is.call(expr)) return(character(0))
+  if (!is.call(expr)) {
+    return(character(0))
+  }
   .fn <- if (is.name(expr[[1L]])) as.character(expr[[1L]]) else ""
   ## f/rate/dur/alag(<cmt>, ...): the first argument is a compartment position.
   if (.fn %in% c("f", "rate", "dur", "alag")) {
     .rest <- as.list(expr)[-1L]
-    if (length(.rest) >= 1L) .rest <- .rest[-1L]
+    if (length(.rest) >= 1L) {
+      .rest <- .rest[-1L]
+    }
     return(unique(unlist(lapply(.rest, .odeToLinValueStateRefs, states = states))))
   }
   ## Adaptive dosing calls: the compartment-position argument is rewritten too.
   ## Indices mirror .odeToLinRenameAdaptiveCall.
-  .cmtIdx <- switch(.fn,
-    bolus = 3L, replace = 3L, multiply = 3L, phantom = 3L,
-    infuse = 4L, infuseDur = 4L,
+  .cmtIdx <- switch(
+    .fn,
+    bolus = 3L,
+    replace = 3L,
+    multiply = 3L,
+    phantom = 3L,
+    infuse = 4L,
+    infuseDur = 4L,
     `evid_` = 5L,
-    NULL)
+    NULL
+  )
   .idx <- seq_along(expr)[-1L]
-  if (!is.null(.cmtIdx)) .idx <- setdiff(.idx, .cmtIdx)
+  if (!is.null(.cmtIdx)) {
+    .idx <- setdiff(.idx, .cmtIdx)
+  }
   unique(unlist(lapply(.idx, function(.k) .odeToLinValueStateRefs(expr[[.k]], states))))
 }
 
@@ -379,7 +482,9 @@
 ## ODEs.
 .odeToLinStateReferencedElsewhere <- function(lstExpr, cmtNames, odeIdx, outputIdx) {
   for (.i in seq_along(lstExpr)) {
-    if (.i %in% odeIdx || .i == outputIdx) next
+    if (.i %in% odeIdx || .i == outputIdx) {
+      next
+    }
     if (length(.odeToLinValueStateRefs(lstExpr[[.i]], cmtNames)) > 0L) {
       return(TRUE)
     }
@@ -395,7 +500,9 @@
 ## system converts only when the peripheral references are *output-only*.
 .odeToLinAllEndpointsCentral <- function(lstExpr, outputVar) {
   for (.e in lstExpr) {
-    if (!is.call(.e) || !identical(.e[[1]], quote(`~`)) || length(.e) < 3L) next
+    if (!is.call(.e) || !identical(.e[[1]], quote(`~`)) || length(.e) < 3L) {
+      next
+    }
     .lhs <- .e[[2]]
     if (!is.name(.lhs) || as.character(.lhs) != outputVar) return(FALSE)
   }
@@ -410,11 +517,17 @@
 .odeToLinRenameValueRefs <- function(e, cmtMap) {
   if (is.name(e)) {
     .new <- cmtMap[as.character(e)]
-    if (!is.na(.new)) return(as.name(.new))
+    if (!is.na(.new)) {
+      return(as.name(.new))
+    }
     return(e)
   }
-  if (!is.call(e)) return(e)
-  for (.i in seq_along(e)) e[[.i]] <- .odeToLinRenameValueRefs(e[[.i]], cmtMap)
+  if (!is.call(e)) {
+    return(e)
+  }
+  for (.i in seq_along(e)) {
+    e[[.i]] <- .odeToLinRenameValueRefs(e[[.i]], cmtMap)
+  }
   e
 }
 
@@ -426,7 +539,9 @@
 ## conditioned with `|`.
 .odeToLinAddCentralCond <- function(e) {
   .rhs <- e[[3]]
-  if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`))) return(e)
+  if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`))) {
+    return(e)
+  }
   e[[3]] <- call("|", .rhs, as.name("central"))
   e
 }
@@ -442,13 +557,23 @@
   repeat {
     .added <- FALSE
     for (.i in seq_along(lstExpr)) {
-      if (.i %in% odeIdx) next
+      if (.i %in% odeIdx) {
+        next
+      }
       .e <- lstExpr[[.i]]
-      if (!is.call(.e)) next
-      if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
-      if (length(.e) < 3L || !is.name(.e[[2]])) next
+      if (!is.call(.e)) {
+        next
+      }
+      if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) {
+        next
+      }
+      if (length(.e) < 3L || !is.name(.e[[2]])) {
+        next
+      }
       .lhs <- as.character(.e[[2]])
-      if (.lhs %in% .tainted) next
+      if (.lhs %in% .tainted) {
+        next
+      }
       if (any(all.vars(.e[[3]]) %in% c(states, .tainted))) {
         .tainted <- c(.tainted, .lhs)
         .added <- TRUE
@@ -461,15 +586,23 @@
 
 ## Index and compartment name of every `d/dt(<cmt>) <- ...` line, in order.
 .odeToLinOdeLines <- function(lstExpr) {
-  .odeIdx   <- integer(0)
+  .odeIdx <- integer(0)
   .cmtNames <- character(0)
   for (.i in seq_along(lstExpr)) {
     .e <- lstExpr[[.i]]
-    if (!is.call(.e)) next
-    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) next
-    if (length(.e) < 3L || !is.call(.e[[2]])) next
-    if (!.isDtExpr(.e[[2]])) next
-    .odeIdx   <- c(.odeIdx, .i)
+    if (!is.call(.e)) {
+      next
+    }
+    if (!identical(.e[[1]], quote(`<-`)) && !identical(.e[[1]], quote(`=`))) {
+      next
+    }
+    if (length(.e) < 3L || !is.call(.e[[2]])) {
+      next
+    }
+    if (!.isDtExpr(.e[[2]])) {
+      next
+    }
+    .odeIdx <- c(.odeIdx, .i)
     .cmtNames <- c(.cmtNames, .getDtCmt(.e[[2]]))
   }
   list(odeIdx = .odeIdx, cmtNames = .cmtNames)
@@ -484,8 +617,12 @@
   for (.j in seq_along(.lines$odeIdx)) {
     .rhs <- lstExpr[[.lines$odeIdx[.j]]][[3]]
     for (.t in .collectAddTerms(.rhs)) {
-      if (length(.statesInExpr(.t$expr, states)) > 0L) next
-      if (.odeToLinIsZeroExpr(.t$expr)) next
+      if (length(.statesInExpr(.t$expr, states)) > 0L) {
+        next
+      }
+      if (.odeToLinIsZeroExpr(.t$expr)) {
+        next
+      }
       .ret[.lines$cmtNames[.j]] <- deparse1(.t$expr)
       break
     }
@@ -497,47 +634,65 @@
 ## Returns a list with topology + output info, or NULL if not convertible.
 .odeToLinDetect <- function(ui) {
   .lstExpr <- ui$lstExpr
-  .states  <- rxModelVars(ui)$state # nolint
+  .states <- rxModelVars(ui)$state # nolint
 
-  if (length(.states) == 0L) return(NULL)
+  if (length(.states) == 0L) {
+    return(NULL)
+  }
 
   ## Gather ODE lines and their compartment names.
-  .lines    <- .odeToLinOdeLines(.lstExpr)
-  .odeIdx   <- .lines$odeIdx
+  .lines <- .odeToLinOdeLines(.lstExpr)
+  .odeIdx <- .lines$odeIdx
   .cmtNames <- .lines$cmtNames
 
-  if (length(.odeIdx) == 0L || length(.odeIdx) > 4L) return(NULL)
-  if (!all(.cmtNames %in% .states)) return(NULL)
+  if (length(.odeIdx) == 0L || length(.odeIdx) > 4L) {
+    return(NULL)
+  }
+  if (!all(.cmtNames %in% .states)) {
+    return(NULL)
+  }
 
   ## Parse each ODE RHS; bail if any is nonlinear in state variables.
   .odes <- lapply(seq_along(.odeIdx), function(.j) {
     .e <- .lstExpr[[.odeIdx[.j]]]
     .terms <- .parseLinearRhs(.e[[3]], .states)
-    if (is.null(.terms)) return(NULL)
+    if (is.null(.terms)) {
+      return(NULL)
+    }
     list(cmt = .cmtNames[.j], terms = .terms)
   })
-  if (any(vapply(.odes, is.null, logical(1)))) return(NULL)
+  if (any(vapply(.odes, is.null, logical(1)))) {
+    return(NULL)
+  }
 
   ## Bail when an ODE RHS depends on a state indirectly through a state-derived
   ## value (e.g. Michaelis-Menten via `Cc <- central/vc`), which the direct
   ## linearity check misses; keep the explicit ODE states.
   .stateDerived <- .odeToLinStateDerivedVars(.lstExpr, .states, .odeIdx)
-  if (length(.stateDerived) > 0L &&
-        any(vapply(.odes, function(.o) {
-          any(vapply(.o$terms,
-                     function(.t) any(all.vars(.t$coef) %in% .stateDerived),
-                     logical(1)))
-        }, logical(1)))) {
+  if (
+    length(.stateDerived) > 0L &&
+      any(vapply(
+        .odes,
+        function(.o) {
+          any(vapply(.o$terms, function(.t) any(all.vars(.t$coef) %in% .stateDerived), logical(1)))
+        },
+        logical(1)
+      ))
+  ) {
     return(NULL)
   }
 
   ## Find output line: var <- centralCmt / vExpr
   .out <- .odeToLinFindOutput(.lstExpr, .states)
-  if (is.null(.out)) return(NULL)
+  if (is.null(.out)) {
+    return(NULL)
+  }
 
   ## Classify topology.
   .topo <- .odeToLinDetectTopology(.odes, .out$cmt, .cmtNames)
-  if (is.null(.topo)) return(NULL)
+  if (is.null(.topo)) {
+    return(NULL)
+  }
 
   ## Compartment states referenced as a value outside the ODEs and the central
   ## output line (e.g. `Cp <- periph/vp`): keep the model analytic by renaming
@@ -545,7 +700,9 @@
   ## valid only when every endpoint predicts the central output.
   .coupled <- FALSE
   if (.odeToLinStateReferencedElsewhere(.lstExpr, .cmtNames, .odeIdx, .out$lineIdx)) {
-    if (!.odeToLinAllEndpointsCentral(.lstExpr, .out$var)) return(NULL)
+    if (!.odeToLinAllEndpointsCentral(.lstExpr, .out$var)) {
+      return(NULL)
+    }
     .coupled <- TRUE
   }
 
@@ -561,22 +718,26 @@
     }
   }
   .params <- c(.params, .freeSymbolsInExpr(.out$vExpr))
-  .params <- setdiff(unique(.params),
-                     c(.states, .out$var, "t", "time", "pi"))
+  .params <- setdiff(unique(.params), c(.states, .out$var, "t", "time", "pi"))
 
   ## linCmt() rebuilds the rate constants from those names alone, so refuse
   ## unless they reproduce the system that was written.
-  if (!.odeToLinRatesMatch(.odes, .topo, .params, .out$vExpr)) return(NULL)
+  if (!.odeToLinRatesMatch(.odes, .topo, .params, .out$vExpr)) {
+    return(NULL)
+  }
 
-  c(.topo, list(
-    outputVar = .out$var,
-    outputCmt = .out$cmt,
-    vExpr     = .out$vExpr,
-    outputIdx = .out$lineIdx,
-    odeIdx    = .odeIdx,
-    params    = .params,
-    coupled   = .coupled
-  ))
+  c(
+    .topo,
+    list(
+      outputVar = .out$var,
+      outputCmt = .out$cmt,
+      vExpr = .out$vExpr,
+      outputIdx = .out$lineIdx,
+      odeIdx = .odeIdx,
+      params = .params,
+      coupled = .coupled
+    )
+  )
 }
 
 ## Build a new lstExpr with ODE lines removed and the output line replaced by
@@ -595,7 +756,9 @@
   ## model lines (observables), so they too must map to their canonical linCmt
   ## names to resolve against the analytic solution's solved compartments.
   if (isTRUE(info$coupled)) {
-    if (!is.null(info$peripheral1)) .map[info$peripheral1] <- "peripheral1"
+    if (!is.null(info$peripheral1)) {
+      .map[info$peripheral1] <- "peripheral1"
+    }
     if (!is.null(info$peripheral2)) .map[info$peripheral2] <- "peripheral2"
   }
   .map
@@ -605,15 +768,27 @@
 ## Returns the line unchanged if it is not a modifier or its compartment is
 ## not in the mapping.
 .odeToLinRenameCmt <- function(e, cmtMap) {
-  if (!is.call(e)) return(e)
-  if (!identical(e[[1]], quote(`<-`)) && !identical(e[[1]], quote(`=`))) return(e)
-  if (length(e) < 3L || !is.call(e[[2]])) return(e)
+  if (!is.call(e)) {
+    return(e)
+  }
+  if (!identical(e[[1]], quote(`<-`)) && !identical(e[[1]], quote(`=`))) {
+    return(e)
+  }
+  if (length(e) < 3L || !is.call(e[[2]])) {
+    return(e)
+  }
   .fn <- as.character(e[[2]][[1]])
-  if (!(.fn %in% c("f", "rate", "dur", "alag"))) return(e)
-  if (length(e[[2]]) < 2L) return(e)
+  if (!(.fn %in% c("f", "rate", "dur", "alag"))) {
+    return(e)
+  }
+  if (length(e[[2]]) < 2L) {
+    return(e)
+  }
   .cmt <- as.character(e[[2]][[2]])
   .newCmt <- cmtMap[.cmt]
-  if (is.na(.newCmt)) return(e)
+  if (is.na(.newCmt)) {
+    return(e)
+  }
   e[[2]][[2]] <- as.name(.newCmt)
   e
 }
@@ -622,21 +797,36 @@
 ## bolus/replace/multiply/phantom -> e[[3]], infuse/infuseDur -> e[[4]],
 ## evid_ -> e[[5]]; obs()/reset() have no cmt and are left unchanged.
 .odeToLinRenameAdaptiveCall <- function(e, cmtMap) {
-  if (!is.call(e)) return(e)
+  if (!is.call(e)) {
+    return(e)
+  }
   .fn <- as.character(e[[1]])
-  .cmtIdx <- switch(.fn,
-    bolus = 3L, replace = 3L, multiply = 3L, phantom = 3L,
-    infuse = 4L, infuseDur = 4L,
+  .cmtIdx <- switch(
+    .fn,
+    bolus = 3L,
+    replace = 3L,
+    multiply = 3L,
+    phantom = 3L,
+    infuse = 4L,
+    infuseDur = 4L,
     `evid_` = 5L,
     NULL
   )
-  if (is.null(.cmtIdx)) return(e)
-  if (length(e) < .cmtIdx) return(e)
+  if (is.null(.cmtIdx)) {
+    return(e)
+  }
+  if (length(e) < .cmtIdx) {
+    return(e)
+  }
   .cmtArg <- e[[.cmtIdx]]
-  if (!is.name(.cmtArg)) return(e)
+  if (!is.name(.cmtArg)) {
+    return(e)
+  }
   .cmtNm <- as.character(.cmtArg)
   .newNm <- cmtMap[.cmtNm]
-  if (is.na(.newNm)) return(e)
+  if (is.na(.newNm)) {
+    return(e)
+  }
   e[[.cmtIdx]] <- as.name(.newNm)
   e
 }
@@ -645,7 +835,9 @@
 ## Handles f/rate/dur/alag assignments and adaptive dosing calls.
 ## Recurses into if/block/other constructs to find nested calls.
 .odeToLinRenameExpr <- function(e, cmtMap) {
-  if (!is.call(e)) return(e)
+  if (!is.call(e)) {
+    return(e)
+  }
   .fn <- as.character(e[[1]])
   if (.fn %in% c("<-", "=") && length(e) >= 3L && is.call(e[[2]])) {
     .innerFn <- as.character(e[[2]][[1]])
@@ -680,16 +872,21 @@
   .ret <- list()
   for (.i in seq_along(lstExpr)) {
     if (.i %in% info$odeIdx) {
-      next  # remove ODE lines
+      next # remove ODE lines
     } else if (.i == info$outputIdx) {
-      .ret[[length(.ret) + 1L]] <- .linCmtLine  # replace output with linCmt()
+      .ret[[length(.ret) + 1L]] <- .linCmtLine # replace output with linCmt()
     } else if (isTRUE(info$coupled)) {
       ## Coupled path: rename every compartment reference (values included) to
       ## its canonical linCmt name, and anchor the central endpoint to the
       ## central compartment so no observation compartment is injected.
       .e <- lstExpr[[.i]]
-      if (is.call(.e) && identical(.e[[1]], quote(`~`)) && length(.e) >= 3L &&
-          is.name(.e[[2]]) && as.character(.e[[2]]) == info$outputVar) {
+      if (
+        is.call(.e) &&
+          identical(.e[[1]], quote(`~`)) &&
+          length(.e) >= 3L &&
+          is.name(.e[[2]]) &&
+          as.character(.e[[2]]) == info$outputVar
+      ) {
         .e <- .odeToLinAddCentralCond(.e)
       }
       .ret[[length(.ret) + 1L]] <- .odeToLinRenameValueRefs(.e, .cmtMap)
@@ -734,7 +931,9 @@
   .o <- rxModelVars(original)$state
   .c <- rxModelVars(converted)$state
   .n <- min(length(.o), length(.c))
-  if (.n == 0L) return(0L)
+  if (.n == 0L) {
+    return(0L)
+  }
   .head <- .o[seq_len(.n)]
   .m <- cmtMap[.head]
   .m[is.na(.m)] <- .head[is.na(.m)]
@@ -742,7 +941,9 @@
   ## either its new name or its original one -- the latter covers the case
   ## where the rebuild failed and the caller is comparing a model with itself.
   .k <- which(.m != .c[seq_len(.n)] & .head != .c[seq_len(.n)])
-  if (length(.k) == 0L) return(as.integer(.n))
+  if (length(.k) == 0L) {
+    return(as.integer(.n))
+  }
   as.integer(.k[1L] - 1L)
 }
 
@@ -756,10 +957,10 @@
   .o <- rxModelVars(original)$state
   .c <- rxModelVars(converted)$state
   .ret <- list(
-    lost   = setdiff(.o, .c),
+    lost = setdiff(.o, .c),
     states = .o,
-    nSafe  = .odeToLinSafeCmtN(original, converted, cmtMap),
-    nMax   = max(length(.o), length(.c))
+    nSafe = .odeToLinSafeCmtN(original, converted, cmtMap),
+    nMax = max(length(.o), length(.c))
   )
   assign(cacheKey, .ret, envir = .odeToLinCmtInfoCache)
   .ret
@@ -828,7 +1029,7 @@
 
 ## Rebuild an rxUi from a modified lstExpr (following the linToOde pattern).
 .rebuildRxUiFromExpr <- function(ui, expr) {
-  .ls     <- ls(ui$meta, all.names = TRUE)
+  .ls <- ls(ui$meta, all.names = TRUE)
   .hasIni <- length(ui$iniDf$cond) > 0L
   .ret <- vector("list", length(.ls) + if (.hasIni) 3L else 2L)
   .ret[[1L]] <- quote(`{`)
@@ -844,7 +1045,9 @@
   }
   .fun <- function() {}
   body(.fun) <- as.call(.ret)
-  if (is.function(ui$model)) environment(.fun) <- environment(ui$model)
+  if (is.function(ui$model)) {
+    environment(.fun) <- environment(ui$model)
+  }
   suppressMessages(as.rxUi(.fun)) # nolint
 }
 
@@ -900,10 +1103,13 @@ odeToLin <- function(ui) {
   if (is.null(.info)) {
     .exo <- .odeToLinExogenousInputs(.ui$lstExpr, rxModelVars(.ui)$state) # nolint
     if (length(.exo) > 0L) {
-      message("linCmt() cannot carry the input term",
-              if (length(.exo) > 1L) "s" else "", " ",
-              paste0("`", .exo, "` in d/dt(", names(.exo), ")", collapse = ", "),
-              "; returning unchanged")
+      message(
+        "linCmt() cannot carry the input term",
+        if (length(.exo) > 1L) "s" else "",
+        " ",
+        paste0("`", .exo, "` in d/dt(", names(.exo), ")", collapse = ", "),
+        "; returning unchanged"
+      )
     } else {
       message("model does not appear to be a linear compartment ODE; returning unchanged")
     }

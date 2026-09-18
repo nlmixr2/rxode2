@@ -83,7 +83,7 @@ test_that("forcedPars SUPPLIES a parameter that has no other source", {
   ## only written after resolution had already rejected the solve.
   ui <- rxode2(.forcedMod)
   ev <- et(amt = 100)
-  ev <- et(ev, seq(1, 8, by = 1))     # NOTE: no WT column
+  ev <- et(ev, seq(1, 8, by = 1)) # NOTE: no WT column
   expect_error(rxSolve(ui, ev), "required for solving")
 
   rxForcedPars(ui) <- c(WT = 2)
