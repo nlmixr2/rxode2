@@ -34,6 +34,29 @@
 
 ## Bug fixes
 
+- Second derivatives of registered functions now convert.  A multi-variable
+  `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
+  sensitivity expansion -- aborted with "'Derivative' conversion only takes one
+  function and one argument" unless every intermediate derivative happened to
+  be a bare registered call, which most are not.  Four defects contributed: the
+  multi-variable loop searched the previous derivative's operands for the next
+  variable instead of differentiating the expression; `digamma` and `trigamma`
+  were missing from the arity table although registered derivatives emit them,
+  so they were rejected as "requires 0 arguments (supplied 1)"; symengine's
+  tuple-form simultaneous `Subs(..., (a, b), (e1, e2))` is not parsable R and
+  failed before the converter saw it; and the `xi` renaming was not idempotent,
+  producing `rxrx_xi_1` when text made a second pass, which leaked into the
+  generated model as a free parameter.
+
+  The failure was silent further up: a model needing these had no analytic
+  second-order sensitivities, so the FOCEi-family analytic outer gradient fell
+  back to finite differences without saying so.
+
+- The Boost special functions no longer promote `double` to `long double`
+  internally.  The promotion is Boost's default and costs several times the
+  runtime for accuracy the surrounding solve cannot use.
+
+
 - Simulations no longer depend on the number of threads.  With `rxSetSeed()`
   in force the seed sequence advanced by the thread count, the eta draws made
   before an ODE solve and `rxRmvn(ncores=)` split their normal draws by
