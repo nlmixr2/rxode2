@@ -1320,7 +1320,7 @@
   .jump2Cmts <- character(0)
   .seen2 <- character(0)
   .nzt0 <- function(x) !is.null(x) && !identical(x, "0")
-  vapply(
+  .res <- vapply(
     sensVec,
     function(.entry) {
       .m <- regmatches(.entry, regexec("^d/dt\\(rx__sens_(.+?)_BY_(.+?)_BY_(.+)__\\)=", .entry))[[1L]]
@@ -1432,7 +1432,7 @@
     },
     character(1L),
     USE.NAMES = FALSE
-  ) -> .res
+  )
   assign("..sens2DelayAlagF", if (length(.alagf2)) .alagf2 else NULL, envir = model)
   assign("..sens2JumpCmts", if (length(.jump2Cmts)) unique(.jump2Cmts) else NULL, envir = model)
   .res

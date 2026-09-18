@@ -353,7 +353,11 @@
 #'   negative and your base is zero, this will return the `machine
 #'   epsilon^(negative power)`.  By default this is turned on.
 #'
-#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
+#' @param safeLog Use safe log.  When enabled (`TRUE`, the default) if your value that you are taking log() of is
+#' negative or zero, this will return `log(machine epsilon)`.  With `FALSE` both return the usual `NaN`/`-Inf`.  With
+#' `2` only zero is floored to `log(machine epsilon)`; a *negative* argument is treated as a domain error and returns
+#' `NaN`.  Use `2` when a hand-written likelihood takes `log()` of a parameter that must stay positive, so an invalid
+#' value propagates as `NaN` instead of a large finite number the optimizer could mistake for a good fit.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -1612,7 +1616,7 @@ rxSolve <- function(
       linCmtHmeanI <- c("arithmetic" = 1L, "geometric" = 2L, "harmonic" = 3L)[match.arg(linCmtHmeanI)]
     } else {
       stop(
-        "linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+        "linCmtHmeanI must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -1623,7 +1627,7 @@ rxSolve <- function(
       linCmtHmeanO <- c("arithmetic" = 1L, "geometric" = 2L, "harmonic" = 3L)[match.arg(linCmtHmeanO)]
     } else {
       stop(
-        "linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3",
+        "linCmtHmeanO must be a character vector of 'arithmetic', 'geometric', or 'harmonic' or an integer between 1 and 3", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -1650,7 +1654,7 @@ rxSolve <- function(
       ))
     } else {
       stop(
-        "linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31",
+        "linCmtHcmt must be a character vector of 'depot', 'central', 'peripheral1', 'peripheral2', or 'concentration' or an integer between 1 and 31", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -2592,7 +2596,7 @@ rxSolve.function <- function(
   if (file.exists(file)) {
     stop(
       sprintf(
-        "Serialization file '%s' already exists; either delete the serialization file or solve without the file specified",
+        "Serialization file '%s' already exists; either delete the serialization file or solve without the file specified", # nolint: line_length_linter.
         file
       ),
       call. = FALSE
@@ -2953,7 +2957,6 @@ rxSolve.rxUi <- function(
     if (!is.null(.linInfo)) {
       .cacheKey <- .odeToLinCacheKey(object) # nolint
       if (exists(.cacheKey, envir = .odeToLinCache, inherits = FALSE)) {
-        # nolint
         .converted <- .odeToLinCache[[.cacheKey]] # nolint
       } else {
         .linExpr <- .odeToLinBuildExpr(object$lstExpr, .linInfo) # nolint
@@ -2978,7 +2981,6 @@ rxSolve.rxUi <- function(
         .odeToLinCmtMap(.linInfo)
       ) # nolint
       if (.odeToLinCmtAlwaysOk(.cmtInfo)) {
-        # nolint
         object <- .converted
       } else {
         .solveData <- .rxSolveUiEventData(events) # nolint
@@ -2986,7 +2988,6 @@ rxSolve.rxUi <- function(
           .solveData <- .rxSolveUiEventData(params) # nolint
         }
         if (.odeToLinCmtCompatible(.cmtInfo, .solveData)) {
-          # nolint
           object <- .converted
         }
       }
@@ -3261,7 +3262,7 @@ rxSolve.default <- function(
   }
   if (any(names(.xtra) == "covs")) {
     stop(
-      "covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model",
+      "covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model", # nolint: line_length_linter.
       call. = FALSE
     )
   }
@@ -3278,7 +3279,7 @@ rxSolve.default <- function(
   }
   if (inherits(inits, "rxControl")) {
     stop(
-      "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')",
+      "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
       call. = FALSE
     )
   }
@@ -3618,7 +3619,7 @@ rxSolve.default <- function(
       }
     } else {
       stop(
-        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)",
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -3658,7 +3659,7 @@ rxSolve.default <- function(
             .cached
           } else {
             .mv <- suppressMessages({
-              rxModelVars(rxode2::rxode2(object, calcJac=TRUE))
+              rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
             })
             .states <- .mvCur$state
             .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]

@@ -214,7 +214,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"), allow.ca
     ##
 
     mat2 <- sprintf(
-      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n",
+      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n", # nolint: line_length_linter.
       length(mat2),
       paste(
         paste(gsub(rex::rex("t", capture(any_numbers), "="), "    INTEGER(ret)[\\1]=", mat2), ";", sep = ""),
@@ -222,19 +222,19 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"), allow.ca
       )
     )
     matExpr <- sprintf(
-      "  if (theta_n >= -1){\n    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n",
+      "  if (theta_n >= -1){\n    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n", # nolint: line_length_linter.
       d,
       d,
       d * d
     )
     vecExpr <- sprintf(
-      "    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(Rf_allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }",
+      "    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(Rf_allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }", # nolint: line_length_linter.
       d,
       d,
       diag
     )
     src <- sprintf(
-      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    Rf_error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (Rf_length(theta) != %s){\n    Rf_error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s",
+      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    Rf_error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (Rf_length(theta) != %s){\n    Rf_error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s", # nolint: line_length_linter.
       mat2,
       length(vars),
       min(diags) - 1,
@@ -517,7 +517,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
             ## has the theta number relative to the whole
             ## matrix.
             if (ctn > 0L) {
-              if (ctn > max(w) | ctn < min(w)) {
+              if (ctn > max(w) || ctn < min(w)) {
                 mat <- mt$fn(as.double(new.theta), 0L)
                 d <- dim(mat)[1]
                 matrix(rep(0, d * d), d)
@@ -527,7 +527,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
               }
             } else {
               ctn <- as.integer(-ctn - 2)
-              if (ctn > max(w) | ctn < min(w)) {
+              if (ctn > max(w) || ctn < min(w)) {
                 vec <- mt$fn(as.double(new.theta), -3L)
                 d <- length(vec)
                 rep(0, d)

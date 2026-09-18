@@ -999,7 +999,6 @@
       .cmtVal <- "(default)"
     }
     .df <- .etDoseChunk(
-      # nolint
       time = .timeVal,
       amt = 0.0,
       evid = .evid2,

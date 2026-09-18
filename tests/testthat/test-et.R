@@ -1428,7 +1428,7 @@ rxTest({
       123,
       {
         # Setup the rxode2 event table
-        eventTable <- et(amt = 320, evid = 1, cmt = 1, time = 0) |> # nolint: object_name_linter.
+        eventTable <- et(amt = 320, evid = 1, cmt = 1, time = 0) |>
           et(amt = 320, evid = 1, cmt = 2, time = 0) |>
           et(list(
             c(0.1, 0.4), # sampling windows for first profile

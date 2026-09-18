@@ -245,7 +245,7 @@
     if (getOption("rxode2.ignoreLabels", TRUE)) {
       .ini <- .ini[-.env$labels]
       .minfo(
-        "the labels from the piped model do not overwrite old labels\nto change use 'options(rxode2.ignoreLabels=FALSE)'"
+        "the labels from the piped model do not overwrite old labels\nto change use 'options(rxode2.ignoreLabels=FALSE)'" # nolint: line_length_linter.
       )
     } else {
       .minfo("the labels from the piped model overwrite old labels\nto change use 'options(rxode2.ignoreLabels=TRUE)'")
@@ -460,7 +460,8 @@
   for (.i in seq_along(.env$ret)) {
     .cur <- .env$ret[[.i]]
     if (
-      is.call(.cur) && identical(.cur[[1]], quote(`~`)) && length(.cur) == 3L && length(.cur[[2]]) == 1L # excludes ll(cp) ~ 1
+      # excludes ll(cp) ~ 1
+      is.call(.cur) && identical(.cur[[1]], quote(`~`)) && length(.cur) == 3L && length(.cur[[2]]) == 1L
     ) {
       .isLotri <- TRUE
       # Check to see if this is an error call

@@ -2899,7 +2899,7 @@ d/dt(blood)     = a*intestine - b*blood
               scen_sex <- sample(c(0, 1), nsub, replace = TRUE)
               scen_subtype <- sample(c(0, 1), nsub, replace = TRUE)
               scen_wt <- exp(rnorm(nsub, 0, sd = .1)) * 70
-              for (tmp_sub_idx in 1:length(scen_subs)) {
+              for (tmp_sub_idx in seq_along(scen_subs)) {
                 tmp_ev <-
                   et(
                     id = scen_subs[tmp_sub_idx],

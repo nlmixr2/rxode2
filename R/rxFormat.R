@@ -21,7 +21,7 @@ rxHtml.rxSolve <- function(x, ...) {
     </style>"
   )
   cat(
-    "<table style=\"border-radius: 10px 10px 10px 10px; -moz-border-radius: 10px 10px 10px 10px; -webkit-border-radius: 10px 10px 10px 10px; border: 5px solid #7b3e3e;\"><tr><td style=\"text-align: center; padding: 5px;\"><strong>Solved rxode2 object</strong></td><tr><td><strong>Parameters</strong> (<span style=\"color: Orange;\">"
+    "<table style=\"border-radius: 10px 10px 10px 10px; -moz-border-radius: 10px 10px 10px 10px; -webkit-border-radius: 10px 10px 10px 10px; border: 5px solid #7b3e3e;\"><tr><td style=\"text-align: center; padding: 5px;\"><strong>Solved rxode2 object</strong></td><tr><td><strong>Parameters</strong> (<span style=\"color: Orange;\">" # nolint: line_length_linter.
   )
   cat(bound)
   cat("</span><strong \"color: Blue;\">&#36;params</strong>):</td></tr><tr><td>")

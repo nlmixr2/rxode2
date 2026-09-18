@@ -1502,5 +1502,6 @@ rxEventSensDeactivate <- function() {
   if (is.null(.map)) {
     return(NULL)
   }
-  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map), params = rxModelVars(obj)$params) # declared param names (plain vs indexed)
+  # declared param names (plain vs indexed)
+  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map), params = rxModelVars(obj)$params)
 }

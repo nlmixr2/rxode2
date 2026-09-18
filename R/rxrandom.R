@@ -1397,7 +1397,8 @@ rxWithPreserveSeed <- function(code) {
 #' rxRmvn(4, setNames(1:d, paste0("a", 1:d)), matL)
 #' @author Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo
 #'
-#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo <https://CRAN.R-project.org/package=mvnfast>
+#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo
+#' <https://CRAN.R-project.org/package=mvnfast>
 #'
 #' @references The concept of the truncated multivariate normal was
 #'   taken from Zdravko Botev Botev (2017) \doi{10.1111/rssb.12162}

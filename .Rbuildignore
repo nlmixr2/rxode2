@@ -167,3 +167,5 @@ tests/testthat/test-lincmt-parse.R
 ^LICENSE\.md$
 ^tools$
 ^tools/
+^air\.toml$
+^\.git-blame-ignore-revs$

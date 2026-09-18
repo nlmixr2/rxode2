@@ -30,7 +30,7 @@ rxTest({
       diag(Z) <- sqrt(rchisq(p, df:(df - p + 1)))
       if (p > 1) {
         pseq <- 1:(p - 1)
-        Z[rep(p * pseq, pseq) + unlist(lapply(pseq, seq))] <- rnorm(
+        Z[rep(p * pseq, pseq) + sequence(pseq)] <- rnorm(
           p *
             (p - 1) /
             2

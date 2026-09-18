@@ -414,8 +414,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     .lst[["logy"]] +
     .ylab +
     .xlab +
-    .legend -> .gg
-  .gg
+    .legend
 }
 
 #' @rdname plot.rxSolve
@@ -496,8 +495,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .logy +
     .xlab +
     .ylab +
-    .theme -> .ret
-  .ret
+    .theme
 }
 
 #' @rdname plot.rxSolve
@@ -570,7 +568,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .ribbon <- ggplot2::geom_ribbon(.aesR, alpha = 0.5, col = NA, show.legend = FALSE)
   .leg1 <- ggplot2::scale_color_manual(values = c("black", "gray"))
   .leg2 <- ggplot2::scale_fill_manual(values = c("black", "gray"))
-  ggplot2::ggplot(.dat, .aes) +
+  .ret <- ggplot2::ggplot(.dat, .aes) +
     .ribbon +
     .line +
     .facet +
@@ -581,7 +579,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     .ylab +
     .leg1 +
     .leg2 +
-    .theme -> .ret
+    .theme
   ## p1 <- time <- eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- NULL
   ## .lvl <- attr(class(x), ".rx")$lvl
   ## .parm <- attr(class(x), ".rx")$parm

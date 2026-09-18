@@ -1562,7 +1562,8 @@ binomProbs.default <- function(
 #'
 #' @references Shafer S. L. `CONVERT.XLS`
 #'
-#' @references Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th). Clipping Williams & Wilkins, Philadelphia, 2010.
+#' @references Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th).
+#' Clipping Williams & Wilkins, Philadelphia, 2010.
 #'
 #' @examples
 #'

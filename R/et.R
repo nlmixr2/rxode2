@@ -3,9 +3,7 @@
 #' @importFrom utils .DollarNames
 #' @export
 .DollarNames.rxEt <- function(x, pattern) {
-  # nolint
   if (is.rxEt(x)) {
-    # nolint
     .envProps <- c("randomType", "canResize", "ids", "show", "ndose", "nobs")
     .methods <- c(
       "expand",
@@ -1243,7 +1241,6 @@ drop_units.rxEt <- function(x) {
     stop("requires package 'units'", call. = FALSE)
   }
   if (is.rxEt(x)) {
-    # nolint
     .env <- .rxEtEnv(x) # nolint
     .env$units["dosing"] <- NA_character_
     .env$units["time"] <- NA_character_
@@ -1253,7 +1250,6 @@ drop_units.rxEt <- function(x) {
 }
 
 set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
-  # nolint
   if (is.null(mode)) {
     stop("requires package 'units'", call. = FALSE)
   }
@@ -1266,14 +1262,12 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     }
   }
   if (identical(value, .unitless())) {
-    # nolint
     warning(
       "clearing both amount and time units\n",
       "for more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'",
       call. = FALSE
     )
     if (is.rxEt(x)) {
-      # nolint
       .env <- .rxEtEnv(x) # nolint
       .env$units["dosing"] <- NA_character_
       .env$units["time"] <- NA_character_
@@ -1288,7 +1282,6 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     if (inherits(.isTime, "try-error")) {
       ## Amount
       if (is.rxEt(x)) {
-        # nolint
         .env <- .rxEtEnv(x) # nolint
         .env$units["dosing"] <- value
         return(x)
@@ -1297,7 +1290,6 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     } else {
       ##
       if (is.rxEt(x)) {
-        # nolint
         .env <- .rxEtEnv(x) # nolint
         .env$units["time"] <- value
         return(x)
@@ -1355,7 +1347,6 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
       set.seed(seed)
     }
     if (is.rxEt(object)) {
-      # nolint
       .env0 <- .rxEtEnv(object) # nolint
       .sim <- .etSimulateRepresentation(.env0) # nolint
       if (!isTRUE(.sim$hasWin)) {
@@ -1431,7 +1422,6 @@ add.dosing <- function(
   ...
 ) {
   if (is.rxEt(eventTable)) {
-    # nolint
     .lst <- list(
       x = eventTable,
       amt = dose,
@@ -1488,7 +1478,6 @@ add.dosing <- function(
 #' @export
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
   if (is.rxEt(eventTable)) {
-    # nolint
     eventTable$add.sampling(time, time.units = time.units)
     return(.rxEtSyncData(eventTable)) # nolint
   } else if (inherits(eventTable, "rxSolve")) {
@@ -1702,7 +1691,6 @@ etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), 
 
   for (.item in .args) {
     if (is.rxEt(.item)) {
-      # nolint
       .ret <- .etSeqHandleRxEt(
         .item,
         .units,
@@ -1873,7 +1861,6 @@ etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii")
           .groups <- list()
         }
         if (length(.etGroups(.env)) > 0L) {
-          # nolint
           .chunks <- .addRowsToChunks(.chunks, .etMaterialize(.et)) # nolint
         } else {
           # Merge indexed chunks directly
@@ -1919,7 +1906,6 @@ etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii")
   .newEnv$canResize <- FALSE
   .newEnv$extraCols <- unique(unlist(
     lapply(Filter(is.rxEt, .ets), function(.a) {
-      # nolint
       .etExtraCols(.rxEtEnv(.a)) # nolint
     }),
     use.names = FALSE
@@ -1992,7 +1978,6 @@ etRep <- function(
     times <- n
   }
   if (is.rxEt(x)) {
-    # nolint
     .xEnv <- .rxEtEnv(x) # nolint
     if (is.environment(.xEnv) && isFALSE(.xEnv$canResize)) {
       warning("event table has been expanded; rep may produce unexpected results", call. = FALSE)
@@ -2087,7 +2072,6 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #'
 #' @export
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
-  # nolint
   rxReq("data.table") # nolint
   data.table::as.data.table(as.data.frame.rxEt(x, ...), keep.rownames = keep.rownames)
 }
@@ -2208,19 +2192,19 @@ c.rxEvid <- function(x, ...) {
 }
 
 .colorFmt.rxEvid <- function(x, ...) {
-  # nolint
   .x <- unclass(x)
   if (is.numeric(.x)) {
+    # fmt: skip
     .x <-
       data.table::fcase(
-        .x == 0 , paste0(crayon::blue$bold("0"), ":", crayon::white("Observation"))                      ,
-        .x == 1 , paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)"))                      ,
-        .x == 2 , paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other"))                           ,
-        .x == 3 , paste0(crayon::blue$bold("3"), ":", crayon::red("Reset"))                              ,
-        .x == 4 , paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")) ,
-        .x == 5 , paste0(crayon::blue$bold("5"), ":", crayon::red("Replace"))                            ,
-        .x == 6 , paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply"))                        ,
-        .x == 7 , paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit"))                         ,
+        .x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
+        .x == 1, paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
+        .x == 2, paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
+        .x == 3, paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
+        .x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
+        .x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
+        .x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
+        .x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
         default = paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
       )
   } else {
@@ -2234,16 +2218,17 @@ c.rxEvid <- function(x, ...) {
 as.character.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
+    # fmt: skip
     .x <-
       data.table::fcase(
-        .x == 0 , "0:Observation" ,
-        .x == 1 , "1:Dose (Add)"  ,
-        .x == 2 , "2:Other"       ,
-        .x == 3 , "3:Reset"       ,
-        .x == 4 , "4:Reset&Dose"  ,
-        .x == 5 , "5:Replace"     ,
-        .x == 6 , "6:Multiply"    ,
-        .x == 7 , "7:Transit"     ,
+        .x == 0, "0:Observation",
+        .x == 1, "1:Dose (Add)",
+        .x == 2, "2:Other",
+        .x == 3, "3:Reset",
+        .x == 4, "4:Reset&Dose",
+        .x == 5, "5:Replace",
+        .x == 6, "6:Multiply",
+        .x == 7, "7:Transit",
         default = paste0(.x, ":Invalid")
       )
   } else {
@@ -2338,7 +2323,6 @@ as.character.rxRateDur <- function(x, ...) {
 
 
 .colorFmt.rxRateDur <- function(x, ...) {
-  # nolint
   .x <- unclass(x)
   .x <-
     ifelse(

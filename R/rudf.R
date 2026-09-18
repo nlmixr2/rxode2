@@ -447,7 +447,7 @@ rxRmFunParse <- function(name) {
         stop(
           "there is both C and R user functions '",
           n,
-          "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it"
+          "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it" # nolint: line_length_linter.
         )
       }
     }

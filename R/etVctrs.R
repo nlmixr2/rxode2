@@ -167,7 +167,6 @@ NULL
 #' @author Matthew L. Fidler
 .rxEtAsFullDataFrame <- function(x) {
   if (is.rxEt(x)) {
-    # nolint
     return(as.data.frame(x, all = TRUE))
   }
   as.data.frame(x, stringsAsFactors = FALSE)

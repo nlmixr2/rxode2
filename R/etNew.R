@@ -1428,7 +1428,7 @@ is.rxEt <- function(x) {
     }
     if (rate > 0 && ii > 0 && amt == 0) {
       stop(
-        "cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS",
+        "cannot combine constant infusion (rate>0) with dose interval (ii>0) for steady-state; use ii=0 for constant infusion SS", # nolint: line_length_linter.
         call. = FALSE
       )
     } # nolint

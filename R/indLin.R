@@ -181,7 +181,8 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     }
   }
 
-  # If there are no assignments in the code, append a dummy assignment to avoid "nothing in output queue to write" compiler error
+  # If there are no assignments in the code, append a dummy assignment to avoid "nothing in output queue to write"
+  # compiler error
   if (!any(grepl("=", .code) | grepl("<-", .code))) {
     .code <- c(.code, "dummy = 1")
   }
@@ -444,7 +445,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
     if (!all(calcSens2 %in% calcSens)) {
       stop(
-        "'calcSens2' must be a subset of 'calcSens' (every second-order parameter needs its own first-order sensitivity).",
+        "'calcSens2' must be a subset of 'calcSens' (every second-order parameter needs its own first-order sensitivity).", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -458,7 +459,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
     }
     if (!all(calcSens3 %in% calcSens2)) {
       stop(
-        "'calcSens3' must be a subset of 'calcSens2' (every third-order parameter needs its own second-order sensitivity).",
+        "'calcSens3' must be a subset of 'calcSens2' (every third-order parameter needs its own second-order sensitivity).", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -848,7 +849,8 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
               .Aik <- .A[[.i]][[.k]]
               .acc$add(.S2pq(.k), .S3(.i), .rxIndLinTotalD(.Aik, .r, .states, .statesSe, .rSe)) # from S^{pq}_k
               .acc$add(.S2pr(.k), .S3(.i), .rxIndLinTotalD(.Aik, .q, .states, .statesSe, .qSe)) # from S^{pr}_k
-              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states, .statesSe, c(.qSe, .rSe))) # from S^p_k
+              # from S^p_k
+              .acc$add(.S1p(.k), .S3(.i), .rxIndLinChainD(.Aik, c(.q, .r), .states, .statesSe, c(.qSe, .rSe)))
             }
             for (.j in .states) {
               .dAdp <- .rxIndLinExpand(symengine::D(.A[[.i]][[.j]], .pSym))

@@ -158,7 +158,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .minfo("this simulation drew from 'thetaMat', so the simulated values include parameter uncertainty") # nolint
   } else if (isFALSE(.thetaMatUsed)) {
     .mwarn(
-      "this simulation did not draw from 'thetaMat' ('nStud' <= 1), so the simulated values do not include parameter uncertainty; use 'nStud' > 1 or 'simVariability=TRUE'"
+      "this simulation did not draw from 'thetaMat' ('nStud' <= 1), so the simulated values do not include parameter uncertainty; use 'nStud' > 1 or 'simVariability=TRUE'" # nolint: line_length_linter.
     ) # nolint
   }
   message("summarizing data...", appendLF = FALSE)

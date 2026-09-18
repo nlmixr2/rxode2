@@ -104,7 +104,6 @@
 #' @author Matthew L. Fidler
 .etMethodGetEventTable <- function(env) {
   if (.rxGetHomogenous()) {
-    # nolint
     .mat <- .etPreviewData(env, "all")
   } else {
     .mat <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
@@ -126,7 +125,6 @@
 #' @author Matthew L. Fidler
 .etMethodGetDosing <- function(env) {
   if (.rxGetHomogenous()) {
-    # nolint
     .d <- .etPreviewData(env, "dosing")
   } else {
     .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint
@@ -512,13 +510,11 @@
   }
   .etResetCountsFromGroups(env) # nolint
   if (length(.etGroups(env)) == 0L) {
-    # nolint
     env$nobs <- sum(.expanded$evid == 0L, na.rm = TRUE)
     env$ndose <- sum(.expanded$evid != 0L, na.rm = TRUE)
   }
   env$show["id"] <- length(env$ids) > 1L
   if (length(.etGroups(env)) > 0L) {
-    # nolint
     env$show["addl"] <- any(vapply(
       env$groups,
       function(.g) {
@@ -645,7 +641,6 @@
 
 .etMethodGetSampling <- function(env) {
   if (.rxGetHomogenous()) {
-    # nolint
     .s <- .etPreviewData(env, "sampling")
   } else {
     .full <- .etMaterialize(structure(list(env = env), class = "rxEt")) # nolint

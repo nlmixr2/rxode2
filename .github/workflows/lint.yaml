@@ -1,0 +1,39 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: lint.yaml
+
+permissions: read-all
+
+# A new push to a pull request cancels the superseded run; nothing here deploys.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # Only lintr is needed: object_usage_linter is off in .lintr, so the
+      # package (and its Stan-based rxode2lincmt dependency) is not built.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: any::lintr, any::cyclocomp
+
+      - name: Lint
+        run: lintr::lint_package()
+        shell: Rscript {0}
+        env:
+          LINTR_ERROR_ON_LINT: true

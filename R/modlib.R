@@ -185,7 +185,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
           cat(paste(paste0("#' ", .code, "\n"), collapse = ""))
           cat("#'\n")
           cat(paste(paste0(
-            "#' @seealso \\code{\\link[rxode2]{eventTable}}, \\code{\\link[rxode2]{et}}, \\code{\\link[rxode2]{rxSolve}}, \\code{\\link[rxode2]{rxode2}}\n"
+            "#' @seealso \\code{\\link[rxode2]{eventTable}}, \\code{\\link[rxode2]{et}}, \\code{\\link[rxode2]{rxSolve}}, \\code{\\link[rxode2]{rxode2}}\n" # nolint: line_length_linter.
           )))
           cat("#' \n")
           cat("#' @examples\n")
@@ -237,11 +237,11 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
     sink(file.path(devtools::package_file("src"), paste0(.pkg, "_compiled.h")))
     if (.pkg == "rxode2") {
       cat(
-        "#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include \"../inst/include/rxode2.h\"\n#include \"../inst/include/rxode2_model_shared.h\"\n"
+        "#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include \"../inst/include/rxode2.h\"\n#include \"../inst/include/rxode2_model_shared.h\"\n" # nolint: line_length_linter.
       )
     } else {
       cat(
-        "#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include <rxode2.h>\n#include <rxode2_model_shared.h>\n"
+        "#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include <rxode2.h>\n#include <rxode2_model_shared.h>\n" # nolint: line_length_linter.
       )
     }
     cat(paste(.extraC, collapse = "\n"))
@@ -288,7 +288,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
         .modName <- .(as.character(substitute(obj)))
         .pkg <- .(basename(usethis::proj_get()))
         .env <- new.env(parent = baseenv())
-        assign(.modName, rxode2::rxode2(.(.norm2(obj)), package = .pkg, modName =.modName), .env)
+        assign(.modName, rxode2::rxode2(.(.norm2(obj)), package = .pkg, modName = .modName), .env)
         writeLines(dirname(rxode2::rxC(.env[[.modName]])), .(.tempfile))
         assign("internal", .(internal), .env)
         assign("overwrite", .(overwrite), .env)

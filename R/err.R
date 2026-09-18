@@ -622,7 +622,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @param expression quoted expression
 #' @param env Environment to store result in `env$.numeric`
-#' @return TRUE if this is an expression containing a positive or negative expression or FALSE if it is an expression that doesn't contain an expression.
+#' @return TRUE if this is an expression containing a positive or negative expression or FALSE if it is an expression
+#' that doesn't contain an expression.
 #' @author Matthew Fidler
 #' @noRd
 .is.numeric <- function(expression, env) {

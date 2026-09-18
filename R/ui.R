@@ -135,7 +135,7 @@
     stop("rxode2 model function requires one 'model({})' block", call. = FALSE)
   }
   warning(
-    "'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
+    "'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object", # nolint: line_length_linter.
     call. = FALSE
   )
   .fun2 <- function() {}
@@ -293,8 +293,7 @@
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
     .ini <- eval(
-      bquote(lotri::lotri(.(substitute(x)),
-                                     cov=TRUE, rcm=TRUE)),
+      bquote(lotri::lotri(.(substitute(x)), cov = TRUE, rcm = TRUE)),
       envir = envir
     )
     assignInMyNamespace(".lastIni", .ini)

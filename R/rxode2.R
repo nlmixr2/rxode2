@@ -297,7 +297,8 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
-#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion removeSource
+#' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
+#' removeSource
 #' @importFrom stats setNames update dnorm integrate
 #' @importFrom methods signature is
 #' @importFrom memoise memoise is.memoised
@@ -329,7 +330,7 @@ rxode2 <- # nolint
   ) {
     if (!missing(wd) && missing(modName)) {
       stop(
-        "working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`",
+        "working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -2901,7 +2902,8 @@ rxReload <- function() {
 
 .rxModels <- new.env(parent = emptyenv())
 #' Get the rxModels  information
-#' @param env boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2 model variables (FALSE).
+#' @param env boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2
+#' model variables (FALSE).
 #' @keywords internal
 #' @return internal rxModels information environment
 #' @export

@@ -225,7 +225,7 @@ rxTest({
         eta3 ~ 0.2
       })
       model({
-        IETA1 <- 0 
+        IETA1 <- 0
         IETA2 <- 0
         IETA3 <- 0
         ETCL <- eta1 + IETA1

@@ -115,10 +115,10 @@ rxTest({
   })
 
   test_that("rownames lookup & assignment makes sense", {
-    expect_equal(rownames(o1.first), paste(seq_len(length(o1.first[, 1]))))
-    rownames(o1.first) <- paste("row", seq_len(length(o1.first$depot)))
-    expect_equal(rownames(o1.first), paste("row", seq_len(length(o1.first$depot))))
+    expect_equal(rownames(o1.first), paste(seq_along(o1.first[, 1])))
+    rownames(o1.first) <- paste("row", seq_along(o1.first$depot))
+    expect_equal(rownames(o1.first), paste("row", seq_along(o1.first$depot)))
     rownames(o1.first) <- NULL
-    expect_equal(rownames(o1.first), paste(seq_len(length(o1.first[, 1]))))
+    expect_equal(rownames(o1.first), paste(seq_along(o1.first[, 1])))
   })
 })

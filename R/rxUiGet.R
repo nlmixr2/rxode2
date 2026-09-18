@@ -299,7 +299,7 @@ rxUiGet.omegaSameMap <- function(x, ...) {
   .map
 }
 attr(rxUiGet.omegaSameMap, "desc") <- "Map of omega blocks that repeat an earlier block"
-attr(rxUiGet.omega, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
+attr(rxUiGet.omega, "rstudio") <- lotri::lotri(a + b ~ c(1, .1, 1))
 
 #' @export
 #' @rdname rxUiGet
@@ -545,7 +545,7 @@ attr(rxUiGet.iniFun, "rstudio") <- quote(ini({}))
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
   .x <- x[[1]]
-  bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
+  bquote(model(.(as.call(c(quote(`{`), .x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
 attr(rxUiGet.modelFun, "rstudio") <- quote(model({}))
@@ -601,7 +601,7 @@ rxUiGet.thetaUpper <- function(x, ...) {
   .w <- !is.na(.ini$ntheta)
   setNames(.ini$upper[.w], .ini$name[.w])
 }
-attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
+attr(rxUiGet.thetaUpper, "desc") <- "thetaUpper"
 attr(rxUiGet.thetaUpper, "rstudio") <- c("thetaUpper" = 1.0) # named vector
 
 #' @export

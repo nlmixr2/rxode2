@@ -30,10 +30,10 @@ toTrialDuration <- function(ev, trialEnd, interval, writeDir = NULL) {
     time = reg$time
   )
   reg <- do.call(rbind, reg) |>
-    merge(unique(ev[, names(ev) != "time", drop = FALSE]), by = "id", all.x = T)
+    merge(unique(ev[, names(ev) != "time", drop = FALSE]), by = "id", all.x = TRUE)
   reg <- et(reg)
   if (is.character(writeDir)) {
-    write.csv(reg, writeDir, row.names = F)
+    write.csv(reg, writeDir, row.names = FALSE)
   }
 
   reg

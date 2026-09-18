@@ -12,7 +12,8 @@
 #' @param verbose logical specifying whether to write messages as the
 #'     shiny app is generated. Defaults to `TRUE`.
 #'
-#' @param statevars List of statevars passed to to the [write.template.ui()] function.  This usually isn't called directly.
+#' @param statevars List of statevars passed to to the [write.template.ui()] function.  This usually isn't called
+#' directly.
 #'
 #' A PK/PD model is defined using [rxode2()], and
 #' a set of parameters and initial values are defined.  Then
@@ -108,7 +109,8 @@ genShinyApp.template <-
     if (!file.exists(appDir)) {
       dir.create(appDir, recursive = TRUE, showWarnings = FALSE)
     }
-    # if(.Platform$OS.type=="windows") appDir <- gsub("\\\\", "/", utils::shortPathName(.normalizePath(appDir)))  # safe pathname
+    # if(.Platform$OS.type=="windows") appDir <- gsub("\\\\", "/", utils::shortPathName(.normalizePath(appDir)))  # safe
+    # pathname
 
     pkpd <- ODE.config$ode
 

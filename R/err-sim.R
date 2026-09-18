@@ -548,7 +548,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .sigma
 }
 attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
-attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
+attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a + b ~ c(1, .1, 1))
 
 .simulationModelAssignTOS <- function(ui, ret) {
   assign("theta", ui$theta, envir = ret)

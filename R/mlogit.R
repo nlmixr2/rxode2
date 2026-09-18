@@ -142,7 +142,8 @@ mlogit <- function(..., maxiter = 10000, rtol = 1e-10, atol = 1e-12, ctol = 1e-1
 #'
 #' \deqn{p_N = \frac{1}{1+\sum_{j=1}^{N-1} e^{x_j}}}
 #'
-#' For the function `dmexpit()`, the element-wise derivatives are calculated; that is, it returns the diagonal of the Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
+#' For the function `dmexpit()`, the element-wise derivatives are calculated; that is, it returns the diagonal of the
+#' Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
 #'
 #'
 #' @param ...  numeric log-scale numbers to convert to probabilities.
