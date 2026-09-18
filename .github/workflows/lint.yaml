@@ -30,7 +30,9 @@ jobs:
       # package (and its Stan-based rxode2lincmt dependency) is not built.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          packages: any::lintr, any::cyclocomp
+          # Pinned: a new lintr default linter would otherwise fail CI with no
+          # code change; bump deliberately and fix the new lints in the same PR.
+          packages: lintr@3.4.0, any::cyclocomp
 
       - name: Lint
         run: lintr::lint_package()

@@ -5,7 +5,8 @@ rxTest({
   # test-ind-solve-subject-id.R.
 
   test_that("every par_*() loop seeds per subject and closes its block", {
-    # The same copy-paste exposure as above, for the seeding: a loop must seed
+    # The same copy-paste exposure as the rx->ordId mapping in
+    # test-ind-solve-subject-id.R, for the seeding: a loop must seed
     # `seed0 + _id` (not `seed0 + solveid - 1`, which four solvers used, so a
     # subject's draws depended on which solver ran) and must close the block it
     # claimed with setRxSeedFinal(seed0 + nsolve) (98 never did).  indLin and

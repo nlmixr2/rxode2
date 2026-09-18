@@ -43,6 +43,8 @@ exclusions: c(
     # bioavailability, `if(x){`) in ini()/model()/rxode2() blocks that air
     # leaves as written, and carry long expected-output lines.  A directory
     # entry would drop every linter, so list the test files one by one.
+    # list.files() is relative to the working directory: lint from the package
+    # root (lintr::lint_package()), as CI does.
     sapply(
       list.files("tests", pattern = "[.]R$", recursive = TRUE, full.names = TRUE),
       function(f) {

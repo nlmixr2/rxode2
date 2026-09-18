@@ -121,7 +121,7 @@ rxTest({
     # the legitimate spelling -- a constant infusion by fixed RATE -- must keep
     # working; only pairing flg 40 with a duration is rejected.  (The modeled
     # rate sibling is already covered by "a pushed modeled rate constant
-    # infusion (ss=1, ii=0, amt=0) solves" above.)
+    # infusion (ss=1, ii=0, amt=0) solves" in test-evid-push-modeled.R.)
     modFixedRate <- rxode2({
       d/dt(central) <- -cl / v * central
       cp <- central / v
