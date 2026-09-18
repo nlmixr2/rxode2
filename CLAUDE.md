@@ -13,6 +13,12 @@ C++, and Fortran code.
 ## Build and Development Commands
 
 ### Install/Build
+
+rxode2 Imports and LinkingTo rxode2lincmt (the Stan-based linCmt kernels), so
+rxode2lincmt must be installed in a library rxode2's build and `load_all` see.
+After reinstalling or `load_all()`-ing rxode2lincmt in a live session, rxode2
+re-links through a `packageEvent` hook; if in doubt restart R.
+
 ```r
 # Install development version (from within R)
 devtools::install()
@@ -166,10 +172,15 @@ devtools::document()
   specific evids documented
   https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html
 
-**Linear Compartment Models** (`src/linCmt.cpp`, `R/linCmt.R`):
+**Linear Compartment Models** (rxode2lincmt, `src/rxode2lincmtLink.cpp`, `R/linCmt.R`):
 - Analytical solutions for 1-3 compartment PK models
 - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2)
 - Can be mixed with ODEs in the same model
+- The kernels (`linCmt.cpp`, `solComp`, `macros2micros`, `rxDerived`) live in the
+  separate package rxode2lincmt so rxode2 does not compile Stan.  rxode2 keeps
+  parsing/codegen (`parseLinCmt.c`), the per-individual state in
+  `rxode2parseStruct.h`, and `linCmtSensType.h` / `linCmtDiffConstant.h`, which are
+  duplicated verbatim in rxode2lincmt and must stay identical.
 
 **Sensitivity Analysis** (`R/rxJacobian.R`, `R/adjoint.R`, `src/expandGrid.cpp`, `src/adjoint.cpp`):
 - Forward sensitivities: `.rxJacobian()` builds the analytic Jacobian
@@ -207,7 +218,7 @@ devtools::document()
 | `src/codegen.c` | C code generation from parsed AST |
 | `src/par_solve.cpp` | Main parallel ODE solver (OpenMP) |
 | `src/rxData.cpp` | rx_solve data structure management |
-| `src/linCmt.cpp` | Analytical PK compartment solutions |
+| `src/rxode2lincmtLink.cpp` | Tables shared with rxode2lincmt; linCmtA/linCmtB forwarders |
 | `src/et.cpp` | Event table construction |
 | `R/rxode2.R` | `rxode2()` function entry point |
 | `R/rxsolve.R` | `rxSolve()` function |
@@ -341,6 +352,34 @@ a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
 > change to code you cannot patch. Add a new entry point instead of changing an
 > existing one, and do not do either as an incidental "fix" -- ask first.
 
+#### rxode2lincmt tables (separate from `_rxode2_rxode2Ptr`)
+
+`src/rxode2lincmtLink.cpp` holds rxode2's side of two tables, both defined in
+rxode2lincmt's `inst/include/` headers and registered from `.linkAll()`:
+
+- the **lincmt table** (`rxode2lincmtPtrs.h`): `linCmtA`, `linCmtB`,
+  `ensureLinCmtA/B`, `linCmtBindFree`, `linCmtScaleInitPar/N`, `linCmtZeroJac`,
+  `linCmtFreeInd`, called through `_p_*` pointers that start at harmless stubs;
+- the **host table** (`rxode2lincmtHost.h`): `offsetof()` of every solver-struct
+  field linCmt reads (the `RXLC_HOST_FIELDS` X-macro) plus `getTime`, rxode2's
+  thread-slot function and `getRxSolve_`.  rxode2lincmt never includes
+  rxode2's struct headers.
+
+> [!IMPORTANT]
+> - Never put linCmt entries in `_rxode2_rxode2Ptr`.
+> - Both tables and the X-macro field list are APPEND-ONLY and never validated
+>   at load (not in `.linkAll`, `_rxode2_iniRxode2lincmtPtrs`, or the host setter).
+> - A field linCmt newly reads is a new `RXLC_HOST_FIELDS` row plus a bump of
+>   `rxode2lincmt (>=)`; never rename or retype a field the list names
+>   (`RXLC_HOST_STATIC_CHECKS` fails rxode2's compile if you do).
+> - Memory rxode2lincmt allocates is freed only through `_p_linCmtFreeInd` /
+>   `_p_linCmtBindFree`; thread slots come only from `rxode2LinCmtThread`
+>   (C++, so `rx_get_thread()` sees OpenMP -- rxode2's `.c` files are compiled
+>   without it).
+> - Compiled models keep binding `linCmtA`/`linCmtB` by name; the forwarders read
+>   the table pointer on every call.
+> - Invariants are asserted in `tests/testthat/test-lincmt-link.R`.
+
 #### `src/init.c` is the MANUAL `.Call` registration table (hardcoded arities)
 
 `src/init.c` hand-maintains the `R_registerRoutines` `callMethods[]` table and owns
@@ -460,7 +499,7 @@ Evidence:
   is emitted once, before the series.
 - Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
   resets on the first dose (matches NONMEM, issue #1351)"` and
-  `test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+  `test-evid-push-addl.R` `"a pushed evid=4 dose repeated with addl resets
   only once"`.
 
 ### There is ONE event translator -- keep it that way

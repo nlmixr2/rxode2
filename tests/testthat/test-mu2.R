@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("mu2 referencing", {
-
       f <- function() {
         ini({
           tka <- 0.45644793862596
@@ -44,14 +43,11 @@ rxTest({
         })
       }
 
-
       m2 <- model.BASE |>
         model(cl <- exp(tcl + eta.cl + wt_cl*log(WT/70.5))) |>
         ini(wt_cl <- fix(0.75))
 
-      expect_equal(f$mu2RefCovariateReplaceDataFrame,
-                   m2$mu2RefCovariateReplaceDataFrame)
-
+      expect_equal(f$mu2RefCovariateReplaceDataFrame, m2$mu2RefCovariateReplaceDataFrame)
     })
   }
 })

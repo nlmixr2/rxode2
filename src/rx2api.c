@@ -32,6 +32,66 @@ rx_solve *getRxSolve_(void);
   "not set up. This usually means a solve accessor was called before "  \
   "rxSolve() populated the solving environment (%s)."
 
+// ---- reporting a bad index from inside a parallel region ------------------
+//
+// Rf_error() longjmps to R's top level.  On an OpenMP worker that unwinds past
+// the runtime's own state, so an out-of-range index -- a caller bug, but one
+// that should still report itself -- takes the session down instead of
+// printing.  These accessors ARE called from inside downstream per-subject
+// parallel regions (nlmixr2est's inner/saem/imp/nlm loops all read events and
+// solve slices through them), so that is a live path, not a theoretical one.
+//
+// Same philosophy as the NULL handling above: do not crash the host.  Inside a
+// region, record the first message and hand back something in range so the
+// region can finish; the result is wrong, but wrong in a way the caller
+// survives, and the message is raised at the next serial boundary (rxSolve_(),
+// beside the existing op->abort check).  Outside a region, raise immediately,
+// which is what every caller had before.
+//
+// One buffer, first writer wins, taken under a critical section: this runs only
+// on the error path, so the cost is irrelevant and an interleaved message would
+// not be.
+
+// This file is C, and Makevars.in puts $(SHLIB_OPENMP_CXXFLAGS) on
+// PKG_CXXFLAGS only -- so _OPENMP is NOT defined here and omp_in_parallel()
+// would compile out to the shim's 0, answering "serial" on every worker and
+// defeating the whole point.  Ask a C++ translation unit, which does have the
+// flag.  (libgomp is linked either way: PKG_LIBS carries it too.)
+extern int rxInParallel(void);
+
+// Recording is done under a critical section in the C++ helper for the same
+// reason -- no OpenMP pragmas are available here.
+extern void rxApiErrRecord(const char *msg);
+
+static void rxApiError(const char *fmt, ...) {
+  char buf[512];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  if (rxInParallel()) {
+    rxApiErrRecord(buf);
+    return;
+  }
+  Rf_error("%s", buf);
+}
+
+// Is an index error waiting to be reported?  For a caller that wants to check
+// without raising (a driver deciding whether to abort a fit early).
+extern int rxApiErrPendingImpl(void);
+int rxApiErrPending(void) {
+  return rxApiErrPendingImpl();
+}
+
+// Raise a recorded index error, if any.  Safe to call when none is pending.
+// Must be called from the main thread, outside any parallel region.
+extern const char *rxApiErrTakeImpl(void);
+void rxApiErrRaise(void) {
+  const char *msg = rxApiErrTakeImpl();   // clears; Rf_error() does not return
+  if (msg == NULL) return;
+  Rf_error("%s", msg);
+}
+
 static inline rx_solve *rxSolveOrError(rx_solve *rx, const char *what) {
   if (rx == NULL) {
     rx = getRxSolve_();
@@ -61,7 +121,8 @@ rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   // corrupt the bounds check for large subject/simulation counts.
   uint64_t nall = (uint64_t)rx->nsub*(uint64_t)rx->nsim;
   if (id < 0 || (uint64_t)id >= nall) {
-    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %llu); nsub: %u nsim: %u", id, (unsigned long long)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
+    rxApiError("[getSolvingOptionsInd]: id (%d) should be between [0, %llu); nsub: %u nsim: %u", id, (unsigned long long)nall, (unsigned int)rx->nsub, (unsigned int)rx->nsim);
+    id = 0;   // in range whenever the array exists; the message is raised later
   }
   // Walk the array at the stride it was ALLOCATED with, not at this
   // translation unit's `sizeof` -- see rxIndSize in rx2api.h.  It is
@@ -93,7 +154,8 @@ double getIndLogitHi(rx_solving_options_ind* ind) {
 void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
   rx_solve* rx = getRxSolve_();
   if (i < 0 || i >= rx->npars) {
-    Rf_error("[setIndParPtr]: i (%d) should be between [0, %d) when assigning  %f", i, rx->npars, val);
+    rxApiError("[setIndParPtr]: i (%d) should be between [0, %d) when assigning  %f", i, rx->npars, val);
+    return;
   }
   ind->par_ptr[i] = val;
 }
@@ -101,7 +163,8 @@ void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
 double getIndParPtr(rx_solving_options_ind* ind, int i) {
   rx_solve* rx = getRxSolve_();
   if (i < 0 || i >= rx->npars) {
-    Rf_error("[getIndParPtr]: i (%d) should be between [0, %d)", i, rx->npars);
+    rxApiError("[getIndParPtr]: i (%d) should be between [0, %d)", i, rx->npars);
+    return NA_REAL;
   }
   return ind->par_ptr[i];
 }
@@ -116,7 +179,8 @@ void setIndIdx(rx_solving_options_ind* ind, int j) {
 
 int getIndIx(rx_solving_options_ind* ind, int j) {
   if (j < 0 || j >= ind->n_all_times) {
-    Rf_error("[getIndIx]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+    rxApiError("[getIndIx]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+    return 0;
   }
   return ind->ix[j];
 }
@@ -127,7 +191,8 @@ int getIndMixest(rx_solving_options_ind* ind) {
 
 void setIndMixest(rx_solving_options_ind* ind, int mixest) {
   if (mixest < 0) {
-    Rf_error("[setIndMixest]: mixest (%d) should be >= 0", mixest);
+    rxApiError("[setIndMixest]: mixest (%d) should be >= 0", mixest);
+    return;
   }
   ind->mixest = mixest;
 }
@@ -140,7 +205,8 @@ int getRxMixnum(rx_solve *rx) {
 
 void setRxMixnum(rx_solve *rx, int mixnum) {
   if (mixnum < 0) {
-    Rf_error("[setRxMixnum]: mixnum (%d) should be >= 0", mixnum);
+    rxApiError("[setRxMixnum]: mixnum (%d) should be >= 0", mixnum);
+    return;
   }
   rx->mixnum = mixnum;
 }
@@ -163,7 +229,8 @@ void setIndNeqOverride(rx_solving_options_ind *ind, int neq) {
 
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
-    Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    rxApiError("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    return 0;
   }
   return ind->evid[kk];
 }
@@ -223,7 +290,8 @@ void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2) {
 
 double getIndDv(rx_solving_options_ind* ind, int j) {
   if (j < 0 || j >= ind->n_all_times) {
-    Rf_error("[getIndDv]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+    rxApiError("[getIndDv]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+    return NA_REAL;
   }
   if (j >= ind->n_all_times_orig) {
     // dv is NA for events added after the original event table (e.g. evid_() pushes)
@@ -238,7 +306,8 @@ int getIndYj(rx_solving_options_ind* ind) {
 
 double getIndLimit(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
-    Rf_error("[getIndLimit]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    rxApiError("[getIndLimit]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    return NA_REAL;
   }
   if (kk >= ind->n_all_times_orig) {
     // limit is -Inf for events added after the original event table (e.g. evid_() pushes)
@@ -249,7 +318,8 @@ double getIndLimit(rx_solving_options_ind* ind, int kk) {
 
 int getIndCens(rx_solving_options_ind* ind, int kk) {
   if (kk < 0 || kk >= ind->n_all_times) {
-    Rf_error("[getIndCens]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    rxApiError("[getIndCens]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    return 0;
   }
   if (kk >= ind->n_all_times_orig) {
     // cens is 0 for events added after the original event table (e.g. evid_() pushes)
@@ -278,7 +348,8 @@ int getIndIdx(rx_solving_options_ind* ind) {
 int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
   if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return 1;
   if (kk < 0 || kk >= ind->n_all_times) {
-    Rf_error("[getIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    rxApiError("[getIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    return 0;
   }
   double v = ind->cov_ptr[(size_t)ind->n_all_times * (size_t)op->cmtCov + (size_t)kk];
   if (ISNA(v) || ISNAN(v)) return NA_INTEGER;
@@ -294,7 +365,8 @@ int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk) {
 void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt) {
   if (op == NULL || op->cmtCov < 0 || ind == NULL || ind->cov_ptr == NULL) return;
   if (kk < 0 || kk >= ind->n_all_times) {
-    (Rf_error)("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    rxApiError("[setIndCmt]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+    return;
   }
   // NA_INTEGER is INT_MIN, so a plain (double) cast would store -2147483648.0 -- a
   // finite value that ISNA() does not recognize and that covariate interpolation would
@@ -386,6 +458,13 @@ int getRxNpars(rx_solve *rx) {
 
 int getOrdId(rx_solve *rx, int solveid) {
   rx = rxSolveOrError(rx, __func__);
+  // NULL is the identity, the same reading par_solve.c's own rxDriveTeamId()
+  // gives it: rx->ordId holds the solve order only once something has built
+  // one, and "no order yet" means the data order.  Callers run inside OpenMP
+  // regions, where an Rf_error() would longjmp across threads, so this cannot
+  // raise -- returning the identity keeps each subject mapped to itself
+  // rather than dereferencing NULL.
+  if (rx->ordId == NULL) return solveid + 1;
   return rx->ordId[solveid];
 }
 ////////////////////////////////////////////////////////////////////////
@@ -393,7 +472,9 @@ int getOrdId(rx_solve *rx, int solveid) {
 ////////////////////////////////////////////////////////////////////////
 double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx) {
   if (idx  < 0 || idx >= ind->n_all_times) {
-    Rf_error("[getOpIndSolve]: the individual should be between [0, %d); neq: %d", ind->n_all_times, op->neq);
+    rxApiError("[getOpIndSolve]: the individual should be between [0, %d); neq: %d", ind->n_all_times, op->neq);
+    idx = 0;   // the slice start is always mapped; the message is raised later
   }
   return ind->solve + (rxEffNeq(ind, op))*(idx);
 }
+

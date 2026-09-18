@@ -1,8 +1,7 @@
 rxTest({
   test_that("plot tests", {
-
     skip_if_not_installed("units")
-    skip_if_not_installed("ggplot2", minimum_version="3.3.5")
+    skip_if_not_installed("ggplot2", minimum_version = "3.3.5")
     skip_if_not_installed("vdiffr")
     rxUnloadAll()
 
@@ -120,7 +119,7 @@ rxTest({
 
     ev$extra <- c(rep(1, 50), rep(0, 51))
 
-    sim <- rxSolve(m2, ev, omega = omega, nSub = 100, keep="extra")
+    sim <- rxSolve(m2, ev, omega = omega, nSub = 100, keep = "extra")
 
     simR <- rxSolve(m2, evR, omega = omega, nSub = 100)
 
@@ -152,28 +151,27 @@ rxTest({
     })
 
     .rxWithOptions(list(rxode2.theme = TRUE), {
+      ci1.C2 <- confint(sim, "C2", ci = 0.99)
 
-      ci1.C2 <- confint(sim, "C2", ci=0.99)
+      ci1.C3 <- confint(sim, ci = 0.99)
 
-      ci1.C3 <- confint(sim,  ci=0.99)
-
-      ci1.C2.e <- confint(sim, "C2", by="extra")
+      ci1.C2.e <- confint(sim, "C2", by = "extra")
 
       ci1.C2.eff <- confint(sim, c("C2", "eff"))
 
-      ci1.C2.eff.e <- confint(sim, c("C2", "eff"), by="extra")
+      ci1.C2.eff.e <- confint(sim, c("C2", "eff"), by = "extra")
 
-      sim2 <- rxSolve(m2, ev, omega = omega, nSub = 2500, keep="extra")
+      sim2 <- rxSolve(m2, ev, omega = omega, nSub = 2500, keep = "extra")
 
       sim2R <- rxSolve(m2, evR, omega = omega, nSub = 2500)
 
       ci2.C2 <- confint(sim2, "C2")
 
-      ci2.C2.e <- confint(sim2, "C2", by="extra")
+      ci2.C2.e <- confint(sim2, "C2", by = "extra")
 
       ci2.C2.eff <- confint(sim2, c("C2", "eff"))
 
-      ci2.C2.eff.e <- confint(sim2, c("C2", "eff"), by="extra")
+      ci2.C2.eff.e <- confint(sim2, c("C2", "eff"), by = "extra")
 
       f <- function(xgxr = FALSE, repel = FALSE) {
         if (xgxr) {
@@ -215,7 +213,6 @@ rxTest({
           #vdiffr::expect_doppelganger(paste0("plot-", .xgxtxt, "all-log-yx"), suppressWarnings(s |> plot(log = "yx")))
           expect_error(suppressWarnings(s |> plot(log = "yx")), NA)
 
-
           #vdiffr::expect_doppelganger(paste0("plot-", .xgxtxt, "C2-r"), suppressWarnings(sR |> plot(C2)))
           expect_error(suppressWarnings(sR |> plot(C2)), NA)
 
@@ -245,7 +242,6 @@ rxTest({
 
           # vdiffr::expect_doppelganger(paste0("plot-", .xgxtxt, "all-log-yx-r"), suppressWarnings(sR |> plot(log = "yx")))
           expect_error(suppressWarnings(sR |> plot(log = "yx")), NA)
-
 
           # vdiffr::expect_doppelganger(paste0("plot-ci1c2", .xgxtxt), suppressWarnings(ci1.C2 |> plot()))
           expect_error(suppressWarnings(ci1.C2 |> plot()), NA)
@@ -283,7 +279,6 @@ rxTest({
           # vdiffr::expect_doppelganger(paste0("plot-ci1c2-e", .xgxtxt, "log-yx"), suppressWarnings(ci1.C2.e |> plot(log = "yx")))
           expect_error(suppressWarnings(ci1.C2.e |> plot(log = "yx")), NA)
 
-
           # vdiffr::expect_doppelganger(paste0("plot-ci1c2-eff", .xgxtxt), suppressWarnings(ci1.C2.eff |> plot()))
           expect_error(suppressWarnings(ci1.C2.eff |> plot()), NA)
 
@@ -316,7 +311,6 @@ rxTest({
           # vdiffr::expect_doppelganger(paste0("plot-ci1c2-eff-e", .xgxtxt, "log-yx"), suppressWarnings(ci1.C2.eff.e |> plot(log = "yx")))
           expect_error(suppressWarnings(ci1.C2.eff.e |> plot(log = "yx")), NA)
 
-
           # vdiffr::expect_doppelganger(paste0("plot-ci2c2", .xgxtxt), suppressWarnings(ci2.C2 |> plot()))
           expect_error(suppressWarnings(ci2.C2 |> plot()), NA)
 
@@ -338,10 +332,8 @@ rxTest({
           # vdiffr::expect_doppelganger(paste0("plot-ci2c2-e", .xgxtxt, "log-x"), suppressWarnings(ci2.C2.e |> plot(log = "x")))
           expect_error(suppressWarnings(ci2.C2.e |> plot(log = "x")), NA)
 
-
           ## vdiffr::expect_doppelganger(paste0("plot-ci2c2-e", .xgxtxt, "log-y"), suppressWarnings(ci2.C2.e |> plot(log = "y")))
           expect_error(suppressWarnings(ci2.C2.e |> plot(log = "y")), NA)
-
 
           # vdiffr::expect_doppelganger(paste0("plot-ci2c2-e", .xgxtxt, "log-xy"), suppressWarnings(ci2.C2.e |> plot(log = "xy")))
           expect_error(suppressWarnings(ci2.C2.e |> plot(log = "xy")), NA)
@@ -376,7 +368,6 @@ rxTest({
           # vdiffr::expect_doppelganger(paste0("plot-ci2c2-eff-e", .xgxtxt, "log-xy"), suppressWarnings(ci2.C2.eff.e |> plot(log = "xy")))
           expect_error(suppressWarnings(ci2.C2.eff.e |> plot(log = "xy")), NA)
 
-
           ## vdiffr::expect_doppelganger(paste0("plot-ci2c2-eff-e", .xgxtxt, "log-yx"), suppressWarnings(ci2.C2.eff.e |> plot(log = "yx")))
           expect_error(suppressWarnings(ci2.C2.eff.e |> plot(log = "yx")), NA)
 
@@ -385,7 +376,6 @@ rxTest({
           ## large
           # vdiffr::expect_doppelganger(paste0("plot-sp-", .xgxtxt, "C2"), suppressWarnings(s20 |> plot(C2)))
           expect_error(suppressWarnings(s20 |> plot(C2)), NA)
-
 
           #vdiffr::expect_doppelganger(paste0("plot-sp-", .xgxtxt, "C2-log-x"), suppressWarnings(s20 |> plot(C2, log = "x")))
           expect_error(suppressWarnings(s20 |> plot(C2, log = "x")), NA)
@@ -413,7 +403,6 @@ rxTest({
 
           # vdiffr::expect_doppelganger(paste0("plot-sp-", .xgxtxt, "all-log-yx"), suppressWarnings(s20 |> plot(log = "yx")))
           expect_error(suppressWarnings(s20 |> plot(log = "yx")), NA)
-
 
           # vdiffr::expect_doppelganger(paste0("plot-sp-", .xgxtxt, "C2-r"), suppressWarnings(s20R |> plot(C2)))
           expect_error(suppressWarnings(s20R |> plot(C2)), NA)
@@ -454,7 +443,6 @@ rxTest({
               .repelOp <- list(rxode2.ggrepel = FALSE)
             }
             .rxWithOptions(.repelOp, {
-
               #vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "C2"), suppressWarnings(s2 |> plot(C2)))
               expect_error(suppressWarnings(s2 |> plot(C2)), NA)
 
@@ -463,7 +451,6 @@ rxTest({
 
               # vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "C2-log-y"), suppressWarnings(s2 |> plot(C2, log = "y")))
               expect_error(suppressWarnings(s2 |> plot(C2, log = "y")), NA)
-
 
               # vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "C2-log-xy"), suppressWarnings(s2 |> plot(C2, log = "xy")))
               expect_error(suppressWarnings(s2 |> plot(C2, log = "xy")), NA)
@@ -513,7 +500,6 @@ rxTest({
               # vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "C2-log-yx-r"), suppressWarnings(s2R |> plot(C2, log = "yx")))
               expect_error(suppressWarnings(s2R |> plot(C2, log = "yx")), NA)
 
-
               # vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "all-r"), suppressWarnings(s2R |> plot()))
               expect_error(suppressWarnings(s2R |> plot()), NA)
 
@@ -539,7 +525,6 @@ rxTest({
 
               #vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "284-log-x-r"), suppressWarnings(s2R |> plot(C2, eff, log = "x")))
               expect_error(suppressWarnings(s2R |> plot(C2, eff, log = "x")), NA)
-
             })
           }
         })

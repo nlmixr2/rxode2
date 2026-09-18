@@ -11,4 +11,4 @@ rxTest({
     rxDelete(m1)
     unlink("/tmp/m1.d", recursive = TRUE)
   })
-}) 
+})

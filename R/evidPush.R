@@ -111,7 +111,7 @@
 #' }
 #'
 #' @export
-evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
+evid_ <- function(time, evid, amt, cmt = 1, rate = 0, ii = 0, addl = 0, ss = 0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
 
@@ -124,8 +124,12 @@ evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
 ## The string case matters because `deparse1("depot")` keeps the quotes,
 ## which the grammar then mis-parses (e.g. bolus(50, "depot, 0, 0, 0)).
 .rxUdfUiCmt <- function(cmt) {
-  if (is.null(cmt)) return("1")
-  if (is.character(cmt)) return(cmt)
+  if (is.null(cmt)) {
+    return("1")
+  }
+  if (is.character(cmt)) {
+    return(cmt)
+  }
   deparse1(cmt)
 }
 
@@ -135,34 +139,35 @@ evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
 rxUdfUi.evid_ <- function(fun) {
   .dummy <- function(time, evid, amt, cmt, rate, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .time    <- deparse1(.mc$time)
+  .time <- deparse1(.mc$time)
   .evid <- deparse1(.mc$evid)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .rate   <- deparse1(.mc$rate)
+  .rate <- deparse1(.mc$rate)
   if (.rate == "NULL") {
     .rate <- "0"
   }
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
 
-  list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
-                        ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
+  list(
+    replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt, ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")")
+  )
 }
 #' Administer a bolus dose inside a rxode2 model
 #'
@@ -200,21 +205,21 @@ bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
 rxUdfUi.bolus <- function(fun) {
   .dummy <- function(amt, cmt, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
@@ -261,11 +266,17 @@ rxUdfUi.infuse <- function(fun) {
   .rate <- deparse1(.mc$rate)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
   .ii <- deparse1(.mc$ii)
-  if (.ii == "NULL") .ii <- "0"
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
   .addl <- deparse1(.mc$addl)
-  if (.addl == "NULL") .addl <- "0"
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
   .ss <- deparse1(.mc$ss)
-  if (.ss == "NULL") .ss <- "0"
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
   list(replace = paste0("infuse(", .amt, ",", .rate, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
 
@@ -311,11 +322,17 @@ rxUdfUi.infuseDur <- function(fun) {
   .dur <- deparse1(.mc$dur)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
   .ii <- deparse1(.mc$ii)
-  if (.ii == "NULL") .ii <- "0"
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
   .addl <- deparse1(.mc$addl)
-  if (.addl == "NULL") .addl <- "0"
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
   .ss <- deparse1(.mc$ss)
-  if (.ss == "NULL") .ss <- "0"
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
   list(replace = paste0("infuseDur(", .amt, ",", .dur, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
 
@@ -378,7 +395,7 @@ replace <- function(amt, cmt = 1) {
 #' @keywords internal
 #' @rdname rxUdfUi
 rxUdfUi.replace <- function(fun) {
-  .dummy <- function(amt, cmt=1) {}
+  .dummy <- function(amt, cmt = 1) {}
   .mc <- match.call(.dummy, fun)
   .amt <- deparse1(.mc$amt)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
@@ -419,7 +436,7 @@ multiply <- function(amt, cmt = 1) {
 #' @keywords internal
 #' @rdname rxUdfUi
 rxUdfUi.multiply <- function(fun) {
-  .dummy <- function(amt, cmt=1) {}
+  .dummy <- function(amt, cmt = 1) {}
   .mc <- match.call(.dummy, fun)
   .amt <- deparse1(.mc$amt)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
@@ -462,21 +479,21 @@ phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
 rxUdfUi.phantom <- function(fun) {
   .dummy <- function(amt, cmt, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
@@ -529,18 +546,18 @@ obs <- function(...) {
 rxUdfUi.obs <- function(fun) {
   .mc1 <- fun
   .mc1[[1]] <- quote(`list`)
-  .mc1 <- try(eval(.mc1), silent=TRUE)
+  .mc1 <- try(eval(.mc1), silent = TRUE)
   if (inherits(.mc1, "try-error")) {
-    list(replace=deparse1(fun))
+    list(replace = deparse1(fun))
   } else {
-    .mc1 <- try(unlist(.mc1, recursive=TRUE, use.names=FALSE), silent=TRUE)
+    .mc1 <- try(unlist(.mc1, recursive = TRUE, use.names = FALSE), silent = TRUE)
     if (inherits(.mc1, "try-error")) {
-      list(replace=deparse1(fun))
+      list(replace = deparse1(fun))
     } else if (is.numeric(.mc1) || is.integer(.mc1)) {
       .obs <- as.character(.mc1)
-      list(replace = paste0("obs(", paste(.obs, collapse=", "), ")"))
+      list(replace = paste0("obs(", paste(.obs, collapse = ", "), ")"))
     } else {
-      list(replace=deparse1(fun))
+      list(replace = deparse1(fun))
     }
   }
 }

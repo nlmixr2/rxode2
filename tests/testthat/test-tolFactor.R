@@ -9,11 +9,14 @@ rxTest({
   .et$add.dosing(dose = 1, strt.time = 0)
 
   # Build a 4-subject event table (id column required for nsub > 1)
-  .ev <- do.call(rbind, lapply(1:4, function(i) {
-    d <- as.data.frame(.et)
-    d$id <- i
-    d
-  }))
+  .ev <- do.call(
+    rbind,
+    lapply(1:4, function(i) {
+      d <- as.data.frame(.et)
+      d$id <- i
+      d
+    })
+  )
 
   .p <- data.frame(id = 1:4, a = 6, b = seq(0.4, 0.9, length.out = 4))
 
@@ -60,18 +63,16 @@ rxTest({
     # solve's base tolerances every time.
     .cols <- c("intestine", "blood")
     .base <- as.data.frame(rxSolve(.mod, .p, .ev, tolFactor = NULL, cores = 1))
-    .loose <- as.data.frame(rxSolve(.mod, .p, .ev, tolFactor = c(1e8, 1, 1, 1),
-                                    cores = 1))
+    .loose <- as.data.frame(rxSolve(.mod, .p, .ev, tolFactor = c(1e8, 1, 1, 1), cores = 1))
     expect_equal(.base[.base$id != 1, .cols], .loose[.loose$id != 1, .cols])
     # ...and subject 1 itself really was solved at the looser tolerance, so the
     # comparison above is not vacuous
-    expect_false(isTRUE(all.equal(.base[.base$id == 1, .cols],
-                                  .loose[.loose$id == 1, .cols])))
+    expect_false(isTRUE(all.equal(.base[.base$id == 1, .cols], .loose[.loose$id == 1, .cols])))
   })
 
   test_that("tolFactor=1 for all subjects does not change results vs NULL", {
     .base <- rxSolve(.mod, .p, .ev, tolFactor = NULL)
-    .tf1  <- rxSolve(.mod, .p, .ev, tolFactor = rep(1, 4))
+    .tf1 <- rxSolve(.mod, .p, .ev, tolFactor = rep(1, 4))
     expect_equal(
       as.data.frame(.base)[, c("id", "time", "intestine", "blood")],
       as.data.frame(.tf1)[, c("id", "time", "intestine", "blood")]

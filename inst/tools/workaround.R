@@ -1,41 +1,9 @@
 ## This is only for rxode2
 ## inst/include/rxode2_RcppExports.h is the header consumed by generated model
-## code -- it should carry only <Rcpp.h>.  Strip RcppArmadillo and RcppEigen.
+## code -- it should carry only <Rcpp.h>.  Strip RcppArmadillo.
 ## src/RcppExports.cpp is the package's own implementation file -- it uses
-## arma:: types and needs RcppArmadillo.h, but it must come BEFORE RcppEigen.h /
-## Rcpp.h to satisfy newer RcppArmadillo's include-order requirement.
-
-## Write a generated file only when its CONTENT changes.
-##
-## These are compilation inputs, so rewriting them unconditionally gives every
-## one a fresh mtime on every configure run -- which, now that the objects
-## actually depend on the headers, would rebuild all 270 of them on every
-## install even when nothing changed.  Comparing first keeps incremental builds
-## incremental while still regenerating whenever the content really moves.
-.writeIfChanged <- function(path, lines) {
-  lines <- as.character(lines)
-  ## Normalize to one PHYSICAL line per element before comparing.  A generator
-  ## step can leave an embedded newline in a single element -- the implicit_euler
-  ## header's `sub()` inserts "...lu.hpp>\n#include <stdexcept>" as one string --
-  ## and writeLines then emits two lines where the vector had one.  readLines
-  ## comes back longer than what was written, the comparison never matches, and
-  ## the file is rewritten every run: the exact stale-timestamp churn this
-  ## function exists to stop.  Splitting only elements that contain a newline
-  ## keeps genuinely empty lines, which strsplit("") would drop.
-  if (any(grepl("\n", lines, fixed = TRUE))) {
-    lines <- unlist(lapply(lines, function(.z) {
-      if (grepl("\n", .z, fixed = TRUE)) strsplit(.z, "\n", fixed = TRUE)[[1]] else .z
-    }), use.names = FALSE)
-  }
-  if (file.exists(path)) {
-    .old <- tryCatch(readLines(path, warn = FALSE), error = function(e) NULL)
-    if (!is.null(.old) && identical(.old, lines)) return(invisible(FALSE))
-  }
-  .con <- file(path, "wb")
-  on.exit(close(.con), add = TRUE)
-  writeLines(lines, .con)
-  invisible(TRUE)
-}
+## arma:: types and needs RcppArmadillo.h, but it must come BEFORE Rcpp.h
+## to satisfy newer RcppArmadillo's include-order requirement.
 
 .strip_rcpp_guard <- function(l) {
   l <- l[regexpr("^[#]include <RcppArmadillo.h>", l) == -1]
@@ -49,11 +17,41 @@
   l
 }
 
-## Header: strip RcppArmadillo, RcppEigen, and any stale guards.
+## Header: strip RcppArmadillo and any stale guards.
 ## Generated model code needs only <Rcpp.h>.
 .hdr_f <- "inst/include/rxode2_RcppExports.h"
 .hdr_l <- .strip_rcpp_guard(readLines(.hdr_f))
-.hdr_l <- .hdr_l[regexpr("^[#]include <RcppEigen.h>", .hdr_l) == -1]
+## Write a generated file only when its contents actually change, so a build
+## does not restamp files it did not touch (and rebuild everything downstream).
+
+.writeIfChanged <- function(path, lines) {
+  lines <- as.character(lines)
+  ## Normalize to one PHYSICAL line per element before comparing.  A generator
+  ## step can leave an embedded newline in a single element -- the implicit_euler
+  ## header's `sub()` inserts "...lu.hpp>\n#include <stdexcept>" as one string --
+  ## and writeLines then emits two lines where the vector had one.  readLines
+  ## comes back longer than what was written, the comparison never matches, and
+  ## the file is rewritten every run: the exact stale-timestamp churn this
+  ## function exists to stop.  Splitting only elements that contain a newline
+  ## keeps genuinely empty lines, which strsplit("") would drop.
+  if (any(grepl("\n", lines, fixed = TRUE))) {
+    lines <- unlist(
+      lapply(lines, function(.z) {
+        if (grepl("\n", .z, fixed = TRUE)) strsplit(.z, "\n", fixed = TRUE)[[1]] else .z
+      }),
+      use.names = FALSE
+    )
+  }
+  if (file.exists(path)) {
+    .old <- tryCatch(readLines(path, warn = FALSE), error = function(e) NULL)
+    if (!is.null(.old) && identical(.old, lines)) return(invisible(FALSE))
+  }
+  .con <- file(path, "wb")
+  on.exit(close(.con), add = TRUE)
+  writeLines(lines, .con)
+  invisible(TRUE)
+}
+
 .writeIfChanged(.hdr_f, .hdr_l)
 
 ## Implementation: clean up stale guards, then ensure RcppArmadillo.h appears
@@ -71,14 +69,14 @@ if (!any(grepl("RcppArmadillo", .cpp_l, fixed = TRUE))) {
 .writeIfChanged(.cpp_f, .cpp_l)
 
 l <- readLines("R/RcppExports.R")
-w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
+w <- which(regexpr("# Register entry points", l, fixed = TRUE) != -1)
 if (length(w) >= 1) {
   w <- w[1]
-  l <- l[seq(1, w-1)]
+  l <- l[seq(1, w - 1)]
   .writeIfChanged("R/RcppExports.R", l)
 }
 
-compilerPath <- tools::Rcmd("config CC", stdout=TRUE)
+compilerPath <- tools::Rcmd("config CC", stdout = TRUE)
 
 # To distinguish between them, check the version output
 versionInfo <- try(system(paste(compilerPath, "--version"), intern = TRUE))
@@ -93,99 +91,78 @@ if (inherits(versionInfo, "try-error")) {
 }
 
 .in <- suppressWarnings(readLines("src/Makevars.in"))
-.in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"),"include"), .in)
+.in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"), "include"), .in)
 .in <- gsub("@O2@", .o2, .in)
-.in <- gsub("@BH@", file.path(find.package("BH"),"include"), .in)
-.in <- gsub("@RCPP@", file.path(find.package("Rcpp"),"include"), .in)
-.in <- gsub("@EG@", file.path(find.package("RcppEigen"),"include"), .in)
+.in <- gsub("@BH@", file.path(find.package("BH"), "include"), .in)
+.in <- gsub("@RCPP@", file.path(find.package("Rcpp"), "include"), .in)
 
-
-.sl <- paste(capture.output(StanHeaders:::LdFlags()), # nolint
-             capture.output(RcppParallel:::RcppParallelLibs())) # nolint
-# Set when the TBB link flags are stripped below; the compile-time
-# STAN_THREADS/TBB defines must then be stripped too (see @SH@ handling).
-.rxDisableTbb <- FALSE
-if (.Platform$OS.type == "windows") {
-  # rpath is not meaningful on Windows and can generate noisy linker flags.
-  # The path is shQuote()d by StanHeaders, so match quoted forms first;
-  # otherwise a path containing a space leaves an orphaned token behind.
-  .sl <- gsub("\\s+-Wl,-rpath,('[^']*'|\"[^\"]*\"|[^[:space:]]+)", "", .sl)
-  # RcppParallel 6.0.0--6.1.1 linked the static TBB provided by Rtools into
-  # RcppParallel.dll and shipped no TBB library on Windows, so the
-  # -L<RcppParallel/lib dir> -ltbb -ltbbmalloc emitted by StanHeaders'
-  # LdFlags() pointed at nothing; TBB symbols resolved through
-  # -lRcppParallel instead.  RcppParallel >= 6.2.0 builds the bundled oneTBB
-  # as a shared library and ships tbb.dll/tbbmalloc.dll there again, so the
-  # same flags are correct and linking them keeps STAN_THREADS on Windows.
-  # Distinguish the two states by looking for the TBB library on disk: strip
-  # the flags (and, via .rxDisableTbb, the STAN_THREADS/TBB defines) only
-  # when RcppParallel's lib directory has no TBB to link.  When
-  # TBB_LINK_LIB/TBB_LIB point at a user-supplied TBB, StanHeaders emits
-  # flags for that copy on purpose, so keep them too.
-  .rp_ver <- tryCatch(utils::packageVersion("RcppParallel"), error = function(e) package_version("0.0.0"))
-  .tbb_env <- Sys.getenv("TBB_LINK_LIB", Sys.getenv("TBB_LIB"))
-  .rp_lib <- system.file("lib", package = "RcppParallel")
-  .rp_has_tbb <- nzchar(.rp_lib) &&
-    length(list.files(.rp_lib, pattern = "^(lib)?tbb[0-9]*\\.(dll|dll\\.a|a)$",
-                      recursive = TRUE)) > 0L
-  if (.rp_ver >= "6.0.0" && !dir.exists(.tbb_env) && !.rp_has_tbb) {
-    # Match ".../RcppParallel/lib" plus any arch subdir (x64, arm64, ...) in
-    # shQuote()d (single-quoted), double-quoted, or unquoted form -- but not
-    # ".../RcppParallel/libs" (-lRcppParallel's dir, still needed).
-    .sl2 <- gsub("-L'[^']*RcppParallel[/\\\\]lib([/\\\\][^']*)?'", "", .sl)
-    .sl2 <- gsub("-L\"[^\"]*RcppParallel[/\\\\]lib([/\\\\][^\"]*)?\"", "", .sl2)
-    .sl2 <- gsub("-L[^-'\"[:space:]][^[:space:]]*RcppParallel[/\\\\]lib([/\\\\][^[:space:]]*)?(?=[[:space:]]|$)",
-                 "", .sl2, perl = TRUE)
-    if (!identical(.sl2, .sl)) {
-      # The -L pointing at RcppParallel's (TBB-less) lib dir was present, so
-      # the -ltbb/-ltbbmalloc flags next to it came from the same LdFlags()
-      # call; drop them with it.
-      .sl <- gsub("-ltbbmalloc_proxy\\b", "", .sl2)
-      .sl <- gsub("-ltbbmalloc\\b", "", .sl)
-      .sl <- gsub("-ltbb\\b", "", .sl)
-      .sl <- gsub("\\s+", " ", trimws(.sl))
-      .rxDisableTbb <- TRUE
-    }
-  }
-}
-.in <- gsub("@SL@", .sl, .in) #nolint
 
 ## SUNDIALS public headers are vendored in-tree (src/sundials_inc) so the
 ## vendored SUNDIALS .c sources always compile against the matching headers
 ## (see https://github.com/nlmixr2/rxode2/issues/1155).
 .sundialsInc <- file.path("src", "sundials_inc")
 if (!file.exists(file.path(.sundialsInc, "sundials", "sundials_config.h"))) {
-  stop("Vendored SUNDIALS headers are missing from src/sundials_inc.\n",
-       "These files are committed to the repository and must be present.\n",
-       "Re-vendor them with 'Rscript build/vendor-sundials.R'.", call. = FALSE)
+  stop(
+    "Vendored SUNDIALS headers are missing from src/sundials_inc.\n",
+    "These files are committed to the repository and must be present.\n",
+    "Re-vendor them with 'Rscript build/vendor-sundials.R'.",
+    call. = FALSE
+  )
 }
 
 ## CVODE C source and private impl headers are committed to src/.
 ## All of these files must be present; they are part of the package source.
 .sundialsVendorFiles <- c(
-  "cvode_diag_impl.h", "cvode_impl.h", "cvode_ls_impl.h", "cvode_proj_impl.h",
-  "sundials_adiak_metadata.h", "sundials_cli.h", "sundials_cvode.c",
-  "sundials_cvode_diag.c", "sundials_cvode_io.c", "sundials_cvode_ls.c",
-  "sundials_cvode_nls.c", "sundials_cvode_proj.c",
-  "sundials_datanode.h", "sundials_hashmap_impl.h", "sundials_iterative_impl.h",
-  "sundials_logger_impl.h", "sundials_macros.h", "sundials_nvector_serial.c",
+  "cvode_diag_impl.h",
+  "cvode_impl.h",
+  "cvode_ls_impl.h",
+  "cvode_proj_impl.h",
+  "sundials_adiak_metadata.h",
+  "sundials_cli.h",
+  "sundials_cvode.c",
+  "sundials_cvode_diag.c",
+  "sundials_cvode_io.c",
+  "sundials_cvode_ls.c",
+  "sundials_cvode_nls.c",
+  "sundials_cvode_proj.c",
+  "sundials_datanode.h",
+  "sundials_hashmap_impl.h",
+  "sundials_iterative_impl.h",
+  "sundials_logger_impl.h",
+  "sundials_macros.h",
+  "sundials_nvector_serial.c",
   "sundials_profiler_impl.h",
-  "sundials_sundials_band.c", "sundials_sundials_cli.c",
-  "sundials_sundials_context.c", "sundials_sundials_dense.c",
-  "sundials_sundials_direct.c", "sundials_sundials_errors.c",
+  "sundials_sundials_band.c",
+  "sundials_sundials_cli.c",
+  "sundials_sundials_context.c",
+  "sundials_sundials_dense.c",
+  "sundials_sundials_direct.c",
+  "sundials_sundials_errors.c",
   "sundials_sundials_hashmap.c",
-  "sundials_sundials_iterative.c", "sundials_sundials_linearsolver.c",
-  "sundials_sundials_logger.c", "sundials_sundials_math.c",
-  "sundials_sundials_matrix.c", "sundials_sundials_memory.c",
-  "sundials_sundials_nonlinearsolver.c", "sundials_sundials_nvector.c",
+  "sundials_sundials_iterative.c",
+  "sundials_sundials_linearsolver.c",
+  "sundials_sundials_logger.c",
+  "sundials_sundials_math.c",
+  "sundials_sundials_matrix.c",
+  "sundials_sundials_memory.c",
+  "sundials_sundials_nonlinearsolver.c",
+  "sundials_sundials_nvector.c",
   "sundials_sundials_profiler.c",
   "sundials_sundials_version.c",
-  "sundials_sunlinsol_band.c", "sundials_sunlinsol_dense.c",
-  "sundials_sunmatrix_band.c", "sundials_sunmatrix_dense.c",
-  "sundials_sunmatrix_sparse.c", "sundials_sunnonlinsol_fixedpoint.c",
-  "sundials_sunnonlinsol_newton.c", "sundials_system_memory.c",
-  "sundials_utils.h", "sundials_debug.h", "sunlinsol_spgmr.c", "sunlinsol_spbcgs.c",
-  "sunlinsol_sptfqmr.c", file.path("stl", "sunstl_vector.h")
+  "sundials_sunlinsol_band.c",
+  "sundials_sunlinsol_dense.c",
+  "sundials_sunmatrix_band.c",
+  "sundials_sunmatrix_dense.c",
+  "sundials_sunmatrix_sparse.c",
+  "sundials_sunnonlinsol_fixedpoint.c",
+  "sundials_sunnonlinsol_newton.c",
+  "sundials_system_memory.c",
+  "sundials_utils.h",
+  "sundials_debug.h",
+  "sunlinsol_spgmr.c",
+  "sunlinsol_spbcgs.c",
+  "sunlinsol_sptfqmr.c",
+  file.path("stl", "sunstl_vector.h")
 )
 
 .missing <- .sundialsVendorFiles[!file.exists(file.path("src", .sundialsVendorFiles))]
@@ -239,8 +216,7 @@ if (file.exists(.lf)) {
 .nf <- "src/sundials_nvector_serial.c"
 if (file.exists(.nf)) {
   .nl <- readLines(.nf)
-  .nl <- gsub("N_VPrintFile_Serial(x, stdout);",
-               "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
+  .nl <- gsub("N_VPrintFile_Serial(x, stdout);", "/* N_VPrintFile_Serial stdout removed for CRAN */", .nl, fixed = TRUE)
   .writeIfChanged(.nf, .nl)
 }
 
@@ -259,10 +235,12 @@ if (file.exists(.nvf)) {
 ##  replace direct N_VSpace/SUNMatSpace/SUNLinSolSpace calls with zero-assignment
 ##  equivalents.  Also strips any pragma block injected by a previous run.
 .strip_deprecated_pragma <- function(.lines) {
-  if (length(.lines) >= 3 &&
+  if (
+    length(.lines) >= 3 &&
       trimws(.lines[1]) == "#if defined(__GNUC__) || defined(__clang__)" &&
       grepl("Wdeprecated-declarations", .lines[2], fixed = TRUE) &&
-      trimws(.lines[3]) == "#endif") {
+      trimws(.lines[3]) == "#endif"
+  ) {
     .lines <- .lines[-c(1L, 2L, 3L)]
   }
   .lines
@@ -328,12 +306,9 @@ if (file.exists(.cvf3)) {
 .clf <- "src/sundials_cvode_ls.c"
 if (file.exists(.clf)) {
   .cl <- .strip_deprecated_pragma(readLines(.clf))
-  .cl <- gsub("N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);",
-              "lrw1 = 0; liw1 = 0;", .cl, fixed = TRUE)
-  .cl <- gsub("retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);",
-              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
-  .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);",
-              "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("N_VSpace(cv_mem->cv_tempv, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNMatSpace(cvls_mem->savedJ, &lrw, &liw);", "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
+  .cl <- gsub("retval = SUNLinSolSpace(cvls_mem->LS, &lrw, &liw);", "lrw = 0; liw = 0; retval = 0;", .cl, fixed = TRUE)
   .writeIfChanged(.clf, .cl)
 }
 
@@ -357,15 +332,19 @@ if (file.exists(.clf)) {
         if (.tj == "#endif" || .tj == "#else") {
           break
         }
-        if (grepl("Check if Atimes function has been set", .lines[.j], fixed = TRUE) &&
-            any(grepl("SUNLINSOL_", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+        if (
+          grepl("Check if Atimes function has been set", .lines[.j], fixed = TRUE) &&
+            any(grepl("SUNLINSOL_", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))
+        ) {
           .lines <- append(.lines, "#endif", after = .j - 1L)
           .changed <- TRUE
           .inserted <- TRUE
           break
         }
-        if (grepl("if\\s*\\(.*<=\\s*delta\\)", .lines[.j]) &&
-            any(grepl("SUNLS_MSG_RESIDUAL", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))) {
+        if (
+          grepl("if\\s*\\(.*<=\\s*delta\\)", .lines[.j]) &&
+            any(grepl("SUNLS_MSG_RESIDUAL", .lines[seq.int(.i + 1L, .j - 1L)], fixed = TRUE))
+        ) {
           .lines <- append(.lines, "#endif", after = .j - 1L)
           .changed <- TRUE
           .inserted <- TRUE
@@ -389,17 +368,13 @@ if (file.exists(.clf)) {
 for (.sp in file.path("src", .sp_files)) {
   if (file.exists(.sp)) {
     .sl <- .strip_deprecated_pragma(readLines(.sp))
-    .sl <- gsub("content->info_file\\s*=\\s*stdout;",
-                 "content->info_file = NULL;", .sl)
+    .sl <- gsub("content->info_file\\s*=\\s*stdout;", "content->info_file = NULL;", .sl)
     .sl <- gsub("= SUNLinSolSpace_SPBCGS;", "= NULL;", .sl, fixed = TRUE)
     .sl <- gsub("= SUNLinSolSpace_SPGMR;", "= NULL;", .sl, fixed = TRUE)
     .sl <- gsub("= SUNLinSolSpace_SPTFQMR;", "= NULL;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
-    .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);",
-                "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPBCGS_CONTENT(S)->vtemp, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPGMR_CONTENT(S)->vtemp, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
+    .sl <- gsub("N_VSpace(SPTFQMR_CONTENT(S)->vtemp1, &lrw1, &liw1);", "lrw1 = 0; liw1 = 0;", .sl, fixed = TRUE)
     .sl <- .fix_monitoring_endif(.sl)
     .writeIfChanged(.sp, .sl)
   }
@@ -409,8 +384,7 @@ for (.sp in file.path("src", .sp_files)) {
 # replacing the std::exit(0) call (CRAN-forbidden) with a C++ exception so
 # the error can be caught and handled via the rxode2 OpenMP-safe badSolveExit
 # pattern.  Generating from BH keeps us in sync with any future BH updates.
-.bh_ie <- system.file("include", "boost", "numeric", "odeint", "stepper",
-                       "implicit_euler.hpp", package = "BH")
+.bh_ie <- system.file("include", "boost", "numeric", "odeint", "stepper", "implicit_euler.hpp", package = "BH")
 if (!nzchar(.bh_ie)) {
   stop("BH package implicit_euler.hpp not found", call. = FALSE)
 }
@@ -428,92 +402,38 @@ if (!nzchar(.bh_ie)) {
 .writeIfChanged("src/implicit_euler_rxode2.hpp", .ie_lines)
 
 
-.badStan <- ""
-.sh <- paste(capture.output(StanHeaders:::CxxFlags()), # nolint
-             capture.output(RcppParallel:::CxxFlags()), # nolint
-             paste0("-@ISYSTEM@'", system.file('include', package = 'StanHeaders', mustWork = TRUE), "'"),
-             paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
-             .badStan)
-if (.rxDisableTbb) {
-  # The -ltbb/rxode2/-ltbbmalloc link flags were stripped above (RcppParallel >=
-  # 6.0.0 on Windows no longer provides libtbb).  Compiling with
-  # -DSTAN_THREADS / -DRCPP_PARALLEL_USE_TBB=1 would still pull stan::math's
-  # ad_tape_observer (a tbb::task_scheduler_observer) into the objects,
-  # leaving undefined references to tbb::detail::r1::observe at link time.
-  # Drop the defines so Stan math and RcppParallel compile without TBB.
-  .sh <- gsub("-DSTAN_THREADS\\b", "", .sh)
-  .sh <- gsub("-DRCPP_PARALLEL_USE_TBB=1", "-DRCPP_PARALLEL_USE_TBB=0", .sh)
-  .sh <- gsub("\\s+", " ", trimws(.sh))
+if (file.exists("inst/tools/fflags.R")) {
+  source("inst/tools/fflags.R")
 }
-.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@", .sh), .in)
-
-## ---------------------------------------------------------------------------
-## Header dependencies.
-##
-## R's shlib.mk gives the objects NO header prerequisites.  Editing a header
-## therefore leaves every object stale, and the build REPORTS SUCCESS while
-## linking code compiled against the previous definitions.  Both failure modes
-## have happened in this package:
-##
-##   * adding a field to the `tb` struct in tran.h left 270 objects on the old
-##     layout and the parser segfaulted at runtime, with no build error;
-##   * editing parseFuns.h silently kept the OLD function body in the binary,
-##     so a measurement reported the behavior of a formula that was no longer
-##     in the source -- which is worse, because nothing crashes.
-##
-## Appended here rather than to Makevars.in so it lands in both src/Makevars and
-## src/Makevars.win from the one place that writes them.
-.mkHeaderDeps <- c(
-  "",
-  "# ---- header dependencies (added by inst/tools/workaround.R) ----",
-  "#",
-  "# OBJECTS has to be defined HERE.  shlib.mk computes it AFTER Makevars is",
-  "# read, so $(OBJECTS) is empty at this point and the rule below would match",
-  "# nothing.  The wildcards expand when make RUNS, by which time configure has",
-  "# generated sbuf.c and the other emitted sources.",
-  "OBJECTS = $(patsubst %.cpp,%.o,$(wildcard *.cpp)) $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.f,%.o,$(wildcard *.f))",
-  "",
-  "# `all` MUST be declared before the dependency rule.  The first target in a",
-  "# makefile is the default goal, so without this the first OBJECT becomes the",
-  "# default and make builds one file and stops, producing no shared object at",
-  "# all.",
-  "all: $(SHLIB)",
-  "",
-  "# The package's own headers live in BOTH src/ and inst/include/ -- the latter",
-  "# is what LinkingTo exposes, and rxode2parseVer.h (included nearly everywhere)",
-  "# is generated there, so leaving it out would miss a version bump.",
-  "HEADERS = $(wildcard *.h) $(wildcard *.hpp) \\",
-  "          $(wildcard ../inst/include/*.h) $(wildcard ../inst/include/*.hpp)",
-  "$(OBJECTS): $(HEADERS)",
-  "")
-.in <- c(.in, .mkHeaderDeps)
-
-
-
 
 if (.Platform$OS.type == "windows") {
-  .makevarsFile <- "src/Makevars.win"
+  .makevars <- file("src/Makevars.win", "wb")
   .i <- "I"
 } else {
-  .makevarsFile <- "src/Makevars"
-  if (any(grepl("Pop!_OS", utils::osVersion, fixed=TRUE)) ||
-          any(grepl("Ubuntu", utils::osVersion, fixed=TRUE))) {
+  .makevars <- file("src/Makevars", "wb")
+  if (
+    any(grepl("Pop!_OS", utils::osVersion, fixed = TRUE)) ||
+      any(grepl("Ubuntu", utils::osVersion, fixed = TRUE))
+  ) {
     .i <- "isystem"
   } else {
     .i <- "I"
   }
 }
 
-.writeIfChanged(.makevarsFile, gsub("@ISYSTEM@", .i, .in))
+writeLines(gsub("@ISYSTEM@", .i, .in), .makevars)
+close(.makevars)
 
 ## --- Compilation prerequisites: generate before anything that may fail ---
 ## sbuf.c and codegen2.h are required for compilation.  They must be written
 ## before the digest::digest() call below, which needs the 'digest' package
 ## (Suggests, not Imports) and may be absent on --no-suggests CI runners.
 
+unlink("src/sbuf.c")
 l <- readLines("inst/include/sbuf.c")
 .writeIfChanged("src/sbuf.c", l)
 
+unlink("src/codegen2.h")
 l <- readLines("inst/include/rxode2_model_shared.c")
 
 l <- l[l != ""]
@@ -525,7 +445,30 @@ def <- def[1:w]
 def <- gsub("=NULL", "", def)
 def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
 
-def <- unique(c(def, c("_sum", "_udf", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_rxDelay", "_rxDelayD", "_rxDelayD2", "_rxDelayD3", "_rxPast", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord", "__assignFuns2")))
+def <- unique(c(
+  def,
+  c(
+    "_sum",
+    "_udf",
+    "_sign",
+    "_prod",
+    "_max",
+    "_min",
+    "_transit4P",
+    "_transit3P",
+    "_rxDelay",
+    "_rxDelayD",
+    "_rxDelayD2",
+    "_rxDelayD3",
+    "_rxPast",
+    "_assignFuns0",
+    "_assignFuns",
+    "_getRxSolve_",
+    "_solveData",
+    "_rxord",
+    "__assignFuns2"
+  )
+))
 
 w0 <- which(grepl("double +_prod", l))[1]
 r <- 1:(w0 - 1)
@@ -535,7 +478,6 @@ l <- l[-r]
 
 w1 <- which(regexpr("dynamic start", l) != -1)
 l1 <- l[1:w1]
-
 
 
 w2 <- which(regexpr("dynamic stop", l) != -1)
@@ -549,37 +491,49 @@ l2 <- l2[1:w3]
 w4 <- which(regexpr("assign stop", l3) != -1)
 l3 <- l3[seq(w4, length(l3))]
 
-dfP <- l[seq(w1+1, w2-1)]
+dfP <- l[seq(w1 + 1, w2 - 1)]
 
-dfP <- dfP[regexpr("^ *$", dfP)==-1]
-df <- setNames(do.call("rbind",lapply(seq_along(dfP),
-                                      function(i) {
-                                        .r <- sub("^ *", "", dfP[[i]])
-                                        .r <- sub("^([^ ]*) *= *[(]", "\\1,", .r)
-                                        .r <- sub("^([^ ]*) *[)] *R_GetCCallable *[(] *\"", "\\1,", .r, perl=TRUE)
-                                        .r <- sub("^([^ ]*) *\" *, *\"", "\\1,", .r, perl=TRUE)
-                                        .r <- sub("^([^ ]*)\" *[)] *; *", "\\1",.r, perl=TRUE)
-                                        data.frame(t(strsplit(.r, ",")[[1]]),stringsAsFactors = FALSE)
-                                      })), c("fun", "type", "package", "packageFun"))
+dfP <- dfP[regexpr("^ *$", dfP) == -1]
+df <- setNames(
+  do.call(
+    "rbind",
+    lapply(seq_along(dfP), function(i) {
+      .r <- sub("^ *", "", dfP[[i]])
+      .r <- sub("^([^ ]*) *= *[(]", "\\1,", .r)
+      .r <- sub("^([^ ]*) *[)] *R_GetCCallable *[(] *\"", "\\1,", .r, perl = TRUE)
+      .r <- sub("^([^ ]*) *\" *, *\"", "\\1,", .r, perl = TRUE)
+      .r <- sub("^([^ ]*)\" *[)] *; *", "\\1", .r, perl = TRUE)
+      data.frame(t(strsplit(.r, ",")[[1]]), stringsAsFactors = FALSE)
+    })
+  ),
+  c("fun", "type", "package", "packageFun")
+)
 
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
 df$threadSafe <- 1L
-df <- df[,c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
+df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
 def <- def[!(def %in% df$rxFun)]
 def <- def[!(def %in% df$fun)]
 
-.parseEnv <- new.env(parent=emptyenv())
+.parseEnv <- new.env(parent = emptyenv())
 source("R/parseFuns.R")
 
-df$argMin <- vapply(df$rxFun, function(f) {
-  .n <- .parseEnv$.parseNum[f]
-  if (is.na(.n)) return(NA_integer_)
-  .n <-setNames(.n, NULL)
-  as.integer(.n)
-}, integer(1), USE.NAMES=TRUE)
+df$argMin <- vapply(
+  df$rxFun,
+  function(f) {
+    .n <- .parseEnv$.parseNum[f]
+    if (is.na(.n)) {
+      return(NA_integer_)
+    }
+    .n <- setNames(.n, NULL)
+    as.integer(.n)
+  },
+  integer(1),
+  USE.NAMES = TRUE
+)
 
 df$argMax <- df$argMin
 
@@ -593,29 +547,30 @@ deparse2 <- function(expr, collapse = " ", width.cutoff = 500L, ...) {
   paste(deparse(expr, width.cutoff, ...), collapse = collapse)
 }
 
-final <- c("#include <time.h>",
-           "#include <stdlib.h>",
-           "unsigned long int __timeId=0;",
-           "char *genRandomChar(void);",
-           "void writeHeader(const char *md5, const char *extra) {",
-           paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld_", def, "_%s\\n\", extra, md5, __timeId++, genRandomChar());"),
-           "}",
-           "void writeBody0(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l0, "\n"), deparse2, character(1)), ", ", nchar(l0) + 1, ");"),
-           "}",
-           "void writeBody1(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l1, "\n"), deparse2, character(1)), ", ", nchar(l1) + 1, ");"),
-           "}",
-           "void writeBody2(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l2, "\n"), deparse2, character(1)), ", ", nchar(l2) + 1, ");"),
-           "}",
-           "void writeBody3(void) {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l3, "\n"), deparse2, character(1)), ", ", nchar(l3) + 1, ");"),
-           "}",
-           "void writeFooter(void) {",
-           paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
-           "}"
-           )
+final <- c(
+  "#include <time.h>",
+  "#include <stdlib.h>",
+  "unsigned long int __timeId=0;",
+  "char *genRandomChar(void);",
+  "void writeHeader(const char *md5, const char *extra) {",
+  paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld_", def, "_%s\\n\", extra, md5, __timeId++, genRandomChar());"),
+  "}",
+  "void writeBody0(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l0, "\n"), deparse2, character(1)), ", ", nchar(l0) + 1, ");"),
+  "}",
+  "void writeBody1(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l1, "\n"), deparse2, character(1)), ", ", nchar(l1) + 1, ");"),
+  "}",
+  "void writeBody2(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l2, "\n"), deparse2, character(1)), ", ", nchar(l2) + 1, ");"),
+  "}",
+  "void writeBody3(void) {",
+  paste0("sAppendN(&sbOut, ", vapply(paste0(l3, "\n"), deparse2, character(1)), ", ", nchar(l3) + 1, ");"),
+  "}",
+  "void writeFooter(void) {",
+  paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
+  "}"
+)
 
 .writeIfChanged("src/codegen2.h", final)
 
@@ -626,24 +581,27 @@ if (requireNamespace("digest", quietly = TRUE)) {
   cpp <- list.files("src", pattern = "\\.(c|h|cpp|f)$")
   cpp <- cpp[!dir.exists(file.path("src", cpp))]
   include <- list.files("inst/include", recursive = TRUE)
-  ## rxode2parseVer.h is where this md5 is WRITTEN, so hashing it makes the md5
-  ## depend on the previous run's md5 and it never reaches a fixed point: every
-  ## install produces a new value, rewrites the header, and (with the header
-  ## dependency rule below) rebuilds all of src/.  Hash the real sources only.
-  include <- include[include != "rxode2parseVer.h"]
 
-  md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
-                                   paste0("inst/include/", include)
-                                   ), digest::digest, file = TRUE),
-                          ""))
+  md5 <- digest::digest(c(
+    lapply(c(paste0("src/", cpp), paste0("inst/include/", include)), digest::digest, file = TRUE),
+    ""
+  ))
+  unlink("R/rxode2_md5.R")
   .writeIfChanged("R/rxode2_md5.R", sprintf("rxode2.md5 <- \"%s\"\n", md5))
 
   l <- readLines("DESCRIPTION")
   w <- which(regexpr("Version[:] *(.*)$", l) != -1)
   v <- gsub("Version[:] *(.*)$", "\\1", l[w])
 
-  .writeIfChanged("inst/include/rxode2parseVer.h",
-                  c(sprintf("#define __VER_md5__ \"%s\"", md5),
-                    "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
-                    sprintf("#define __VER_ver__ \"%s\"", v)))
+  unlink("inst/include/rxode2parseVer.h")
+  ode.h <- file("inst/include/rxode2parseVer.h", "wb")
+  writeLines(
+    c(
+      sprintf("#define __VER_md5__ \"%s\"", md5),
+      "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
+      sprintf("#define __VER_ver__ \"%s\"", v)
+    ),
+    ode.h
+  )
+  close(ode.h)
 }

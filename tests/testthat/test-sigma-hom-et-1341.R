@@ -20,13 +20,11 @@ rxTest({
     .r <- withr::with_seed(seed, {
       suppressWarnings(rxSolve(.m1341, ev, .p1341, sigma = .s1341, ...))
     })
-    list(df = as.data.frame(.r),
-         sigmaRows = nrow(attr(class(.r), ".rxode2.env")$.sigma))
+    list(df = as.data.frame(.r), sigmaRows = nrow(attr(class(.r), ".rxode2.env")$.sigma))
   }
 
   test_that("sigma is simulated for every subject that comes from et(id=) (#1341)", {
-    .b <- .solve1341(et(amt = 320) |> et(.t1341) |> et(id = 1:6),
-                     addDosing = FALSE)
+    .b <- .solve1341(et(amt = 320) |> et(.t1341) |> et(id = 1:6), addDosing = FALSE)
     expect_equal(nrow(.b$df), 6L * length(.t1341))
     # one draw per observation row, not one subject's worth recycled
     expect_equal(length(unique(.b$df$y - .b$df$cp)), nrow(.b$df))
@@ -46,8 +44,8 @@ rxTest({
     .shapes <- list(
       plain = et(amt = 320) |> et(.t1341),
       evid2 = et(amt = 320) |> et(.t1341) |> et(time = 2, evid = 2),
-      addl  = et(time = 0, amt = 320, addl = 2, ii = 12) |> et(.t1341),
-      ss    = et(time = 0, amt = 320, ii = 12, ss = 1) |> et(.t1341),
+      addl = et(time = 0, amt = 320, addl = 2, ii = 12) |> et(.t1341),
+      ss = et(time = 0, amt = 320, ii = 12, ss = 1) |> et(.t1341),
       # no record at time 0, so etTrans adds an evid=9 ini record per subject;
       # those take no residual draw
       evid9 = et(c(1, 2, 4, 8))
@@ -59,23 +57,20 @@ rxTest({
         .many <- .solve1341(.shapes[[.nm]] |> et(id = 1:4), addDosing = .ad)
         expect_equal(.many$sigmaRows, 4L * .one$sigmaRows, label = .lbl)
         expect_equal(nrow(.many$df), 4L * nrow(.one$df), label = .lbl)
-        expect_equal(length(unique(.many$df$y - .many$df$cp)), nrow(.many$df),
-                     label = .lbl)
+        expect_equal(length(unique(.many$df$y - .many$df$cp)), nrow(.many$df), label = .lbl)
       }
     }
   })
 
   test_that("sigma expands per group when the groups differ (#1341)", {
-    .ev <- rbind(et(amt = 320) |> et(.t1341) |> et(id = 1:3),
-                 et(amt = 100) |> et(.t1341) |> et(id = 4:5))
+    .ev <- rbind(et(amt = 320) |> et(.t1341) |> et(id = 1:3), et(amt = 100) |> et(.t1341) |> et(id = 4:5))
     .b <- .solve1341(.ev, seed = 4, addDosing = FALSE)
     expect_equal(length(unique(.b$df$y - .b$df$cp)), nrow(.b$df))
     expect_equal(.b$sigmaRows, nrow(.b$df))
   })
 
   test_that("the expansion holds across studies as well (#1341)", {
-    .b <- .solve1341(et(amt = 320) |> et(.t1341) |> et(id = 1:4),
-                     seed = 9, nStud = 3, addDosing = FALSE)
+    .b <- .solve1341(et(amt = 320) |> et(.t1341) |> et(id = 1:4), seed = 9, nStud = 3, addDosing = FALSE)
     expect_equal(nrow(.b$df), 3L * 4L * length(.t1341))
     expect_equal(.b$sigmaRows, nrow(.b$df))
     expect_equal(length(unique(.b$df$y - .b$df$cp)), nrow(.b$df))
@@ -92,9 +87,14 @@ rxTest({
       y  <- cp + err
     })
     .b <- withr::with_seed(8, {
-      suppressWarnings(rxSolve(.mo, et(amt = 320) |> et(.t1341) |> et(id = 1:6),
-                               .p1341, sigma = .s1341,
-                               omega = lotri(eta.cl ~ 0.3), addDosing = FALSE))
+      suppressWarnings(rxSolve(
+        .mo,
+        et(amt = 320) |> et(.t1341) |> et(id = 1:6),
+        .p1341,
+        sigma = .s1341,
+        omega = lotri(eta.cl ~ 0.3),
+        addDosing = FALSE
+      ))
     })
     .df <- as.data.frame(.b)
     # one cli per subject, six distinct subjects
@@ -105,10 +105,10 @@ rxTest({
   })
 
   test_that("a non-homogeneous multi-subject data set still draws one sigma per row (#1341)", {
-    .ev <- rbind(data.frame(id = 1, time = c(0, 1, 2, 3), amt = c(320, NA, NA, NA),
-                            evid = c(1, 0, 0, 0)),
-                 data.frame(id = 2, time = c(0, 1, 2, 3, 8), amt = c(100, NA, NA, NA, NA),
-                            evid = c(1, 0, 0, 0, 0)))
+    .ev <- rbind(
+      data.frame(id = 1, time = c(0, 1, 2, 3), amt = c(320, NA, NA, NA), evid = c(1, 0, 0, 0)),
+      data.frame(id = 2, time = c(0, 1, 2, 3, 8), amt = c(100, NA, NA, NA, NA), evid = c(1, 0, 0, 0, 0))
+    )
     .b <- .solve1341(.ev, seed = 3, addDosing = FALSE)
     expect_equal(length(unique(.b$df$y - .b$df$cp)), nrow(.b$df))
     expect_equal(.b$sigmaRows, nrow(.b$df))

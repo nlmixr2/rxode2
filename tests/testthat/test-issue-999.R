@@ -19,16 +19,19 @@ rxTest({
     obs_times <- c(0, 0.5, 1, 2, 3, 4, 8, 12, 16, 24, 36, 48)
 
     doses <- data.frame(
-      id   = seq_len(n_subjects),
+      id = seq_len(n_subjects),
       time = 0,
       evid = 1,
-      amt  = 1,
-      cmt  = "CENT",  # IV bolus
+      amt = 1,
+      cmt = "CENT", # IV bolus
       rate = 0
     )
 
     obs <- expand.grid(id = seq_len(n_subjects), time = obs_times)
-    obs$evid <- 0; obs$amt <- 0; obs$cmt <- "CENT"; obs$rate <- 0
+    obs$evid <- 0
+    obs$amt <- 0
+    obs$cmt <- "CENT"
+    obs$rate <- 0
 
     events <- rbind(doses, obs)
     events <- events[order(events$id, events$time, -events$evid), ]
@@ -40,16 +43,16 @@ rxTest({
     set.seed(42)
     cl_vals <- sample(c(0.25, 1, 4), n_subjects, replace = TRUE)
     params <- data.frame(
-      id       = seq_len(n_subjects),
-      Ka       = 0,
-      CL       = cl_vals,
-      CLTMDD   = cl_vals * sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
-      C50TMDD  = 1,
+      id = seq_len(n_subjects),
+      Ka = 0,
+      CL = cl_vals,
+      CLTMDD = cl_vals * sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
+      C50TMDD = 1,
       Vcentral = 1,
       Vperiph1 = sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
       Vperiph2 = sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
-      Qcp1     = sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
-      Qcp2     = sample(c(0.25, 1, 4), n_subjects, replace = TRUE)
+      Qcp1 = sample(c(0.25, 1, 4), n_subjects, replace = TRUE),
+      Qcp2 = sample(c(0.25, 1, 4), n_subjects, replace = TRUE)
     )
 
     list(events = events, params = params)
@@ -60,13 +63,19 @@ rxTest({
     skip_on_os("mac")
     for (n_sub in c(4000, 8000, 12000, 16000, 20000, 26208)) {
       dat <- make_dataset(n_sub)
-      tryCatch({
-        result <- expect_error(rxSolve(model, params = dat$params, events = dat$events,
-                             atol = 1e-50, rtol = 1e-8), NA)
-        rm(result); gc()
-      }, error = function(e) {
-        cat(n_sub, "subjects: ERROR -", conditionMessage(e), "\n")
-      })
+      tryCatch(
+        {
+          result <- expect_error(
+            rxSolve(model, params = dat$params, events = dat$events, atol = 1e-50, rtol = 1e-8),
+            NA
+          )
+          rm(result)
+          gc()
+        },
+        error = function(e) {
+          cat(n_sub, "subjects: ERROR -", conditionMessage(e), "\n")
+        }
+      )
     }
   })
 
@@ -76,7 +85,6 @@ rxTest({
   # scales allocation itself would fail, so the overflow check fires first and
   # rxSolve() throws an informative error rather than segfaulting.
   test_that("rxSolve nSize is correct for multi-simulation (VPC) path", {
-
     m2 <- rxode2({
       CL <- TVCL * exp(eta.CL)
       C2 <- centr / V2
@@ -87,12 +95,11 @@ rxTest({
 
     ev2 <- et(amt = 100, addl = 4, ii = 24) |>
       et(0:120) %>%
-      et(id=1:10)
+      et(id = 1:10)
 
     # nSub=10, nStud=5 => nSize = 5*10 = 50; verify no crash and correct dims
     result <- expect_error(
-      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2,
-              omega = omega, nStud = 5, cores = 1),
+      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2, omega = omega, nStud = 5, cores = 1),
       NA
     )
 
@@ -106,8 +113,7 @@ rxTest({
       et(0:120)
 
     result <- expect_error(
-      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2,
-              omega = omega, nSub=10, nStud = 5, cores = 1),
+      rxSolve(m2, params = c(TVCL = 1, V2 = 10), events = ev2, omega = omega, nSub = 10, nStud = 5, cores = 1),
       NA
     )
 
@@ -115,7 +121,8 @@ rxTest({
     # sim.id should range from 1 to nSub*nStud=50 (nSub=10 subjects x nStud=5 studies)
     expect_equal(sort(unique(result$sim.id)), 1:50)
 
-    rm(result); gc()
+    rm(result)
+    gc()
   })
 
   # Test that the rxSimThetaOmega overflow guard provides an informative error
@@ -134,8 +141,7 @@ rxTest({
     ev_nr <- et(0:46341)
     omega_nr <- matrix(0.04, 1, 1, dimnames = list("k", "k"))
     expect_error(
-      rxSolve(m_nr, params = c(k = 0.1), events = ev_nr,
-              omega = omega_nr, nStud = 46342L, cores = 1),
+      rxSolve(m_nr, params = c(k = 0.1), events = ev_nr, omega = omega_nr, nStud = 46342L, cores = 1),
       "too large"
     )
   })
@@ -149,8 +155,7 @@ rxTest({
     omega <- matrix(0.04, 1, 1, dimnames = list("eta.CL", "eta.CL"))
     ev3 <- et(amt = 100, addl = 0) |> et(0:10)
     expect_error(
-      rxSolve(m3, params = c(TVCL = 1, V2 = 10), events = ev3,
-              omega = omega, nSub = 46342L, nStud = 46342L, cores = 1),
+      rxSolve(m3, params = c(TVCL = 1, V2 = 10), events = ev3, omega = omega, nSub = 46342L, nStud = 46342L, cores = 1),
       "too large"
     )
   })

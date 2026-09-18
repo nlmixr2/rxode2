@@ -45,18 +45,14 @@
 #'
 #' mlogit(0.1, 0.2, 0.3, returnRoot = TRUE)
 #'
-mlogit <- function(..., maxiter = 10000, rtol = 1e-10, atol = 1e-12,
-                   ctol = 1e-12, returnRoot=FALSE) {
+mlogit <- function(..., maxiter = 10000, rtol = 1e-10, atol = 1e-12, ctol = 1e-12, returnRoot = FALSE) {
   rxReq("rootSolve")
-  checkmate::assertLogical(returnRoot, len = 1, any.missing = FALSE,
-                          null.ok = FALSE)
+  checkmate::assertLogical(returnRoot, len = 1, any.missing = FALSE, null.ok = FALSE)
   .n <- as.numeric(unlist(list(...)))
-  checkmate::assertNumeric(.n, any.missing = FALSE, min.len = 1,
-                          finite = TRUE, lower = 0, upper=1)
+  checkmate::assertNumeric(.n, any.missing = FALSE, min.len = 1, finite = TRUE, lower = 0, upper = 1)
   .s <- sum(.n)
   if (.s >= 1) {
-    stop("the sum of the probabilities must be less than 1",
-         call. = FALSE)
+    stop("the sum of the probabilities must be less than 1", call. = FALSE)
   }
   if (length(.n) == 1) {
     return(logit(.n))
@@ -68,31 +64,62 @@ mlogit <- function(..., maxiter = 10000, rtol = 1e-10, atol = 1e-12,
     .Call(`_rxode2_mlogit_j`, x)
   }
   .init <- rep(0, length(.n))
-  .ret <- try(suppressWarnings(rootSolve::multiroot(f = f, start = .init,
-                               jacfunc = j,
-                               maxiter = maxiter, rtol = rtol, atol = atol,
-                               ctol = ctol)), silent = TRUE)
+  .ret <- try(
+    suppressWarnings(rootSolve::multiroot(
+      f = f,
+      start = .init,
+      jacfunc = j,
+      maxiter = maxiter,
+      rtol = rtol,
+      atol = atol,
+      ctol = ctol
+    )),
+    silent = TRUE
+  )
   if (inherits(.ret, "try-error")) {
     .init <- logit(.init)
-    .ret <- try(suppressWarnings(rootSolve::multiroot(f = f, start = .init,
-                                                      jacfunc = j,
-                                                      maxiter = maxiter, rtol = rtol, atol = atol,
-                                                      ctol = ctol)), silent = TRUE)
+    .ret <- try(
+      suppressWarnings(rootSolve::multiroot(
+        f = f,
+        start = .init,
+        jacfunc = j,
+        maxiter = maxiter,
+        rtol = rtol,
+        atol = atol,
+        ctol = ctol
+      )),
+      silent = TRUE
+    )
     if (inherits(.ret, "try-error")) {
       .init <- rep(3, length(.n))
-      .ret <- try(suppressWarnings(rootSolve::multiroot(f = f, start = .init,
-                                                        jacfunc = j,
-                                                        maxiter = maxiter, rtol = rtol, atol = atol,
-                                                        ctol = ctol)), silent = TRUE)
+      .ret <- try(
+        suppressWarnings(rootSolve::multiroot(
+          f = f,
+          start = .init,
+          jacfunc = j,
+          maxiter = maxiter,
+          rtol = rtol,
+          atol = atol,
+          ctol = ctol
+        )),
+        silent = TRUE
+      )
       if (inherits(.ret, "try-error")) {
         .init <- rep(-3, length(.n))
-        .ret <- try(suppressWarnings(rootSolve::multiroot(f = f, start = .init,
-                                                          jacfunc = j,
-                                                          maxiter = maxiter, rtol = rtol, atol = atol,
-                                                          ctol = ctol)), silent = TRUE)
+        .ret <- try(
+          suppressWarnings(rootSolve::multiroot(
+            f = f,
+            start = .init,
+            jacfunc = j,
+            maxiter = maxiter,
+            rtol = rtol,
+            atol = atol,
+            ctol = ctol
+          )),
+          silent = TRUE
+        )
         if (inherits(.ret, "try-error")) {
-          stop("mlogit failed to find a solution.  Please check your input probabilities.",
-call. = FALSE)
+          stop("mlogit failed to find a solution.  Please check your input probabilities.", call. = FALSE)
         }
       }
     }
@@ -115,7 +142,8 @@ call. = FALSE)
 #'
 #' \deqn{p_N = \frac{1}{1+\sum_{j=1}^{N-1} e^{x_j}}}
 #'
-#' For the function `dmexpit()`, the element-wise derivatives are calculated; that is, it returns the diagonal of the Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
+#' For the function `dmexpit()`, the element-wise derivatives are calculated; that is, it returns the diagonal of the
+#' Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
 #'
 #'
 #' @param ...  numeric log-scale numbers to convert to probabilities.

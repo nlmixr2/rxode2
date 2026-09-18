@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("limCmt raises error", {
-
       M2 <- function() {
         ini({
           tD1 <- log(0.8)

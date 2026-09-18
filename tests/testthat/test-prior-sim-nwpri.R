@@ -1,13 +1,8 @@
 rxTest({
-
   ## Simulating from the `ini({})` block priors: a multivariate normal on
   ## the population parameters plus an inverse Wishart on each omega
   ## block, with its own degrees of freedom.  This is what NONMEM calls
   ## NWPRI.
-
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
 
   .mod <- function() {
     rxode2(function() {
@@ -48,13 +43,13 @@ rxTest({
     })
   }
 
-  .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
+  .ev <- function() et(amt = 100) |> et(seq(0, 24, by = 8))
 
   test_that("the population parameters are drawn from their prior", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
-      .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=500)
+      .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 500)
     })
 
     ## `$thetaMat` on a solve is the per study *deviation* that is added to
@@ -62,20 +57,20 @@ rxTest({
     ## the prior mean has to be the estimate for the two to agree
     expect_equal(dim(.s$thetaMat), c(500L, 1L))
     expect_equal(colnames(.s$thetaMat), "tka")
-    expect_equal(mean(.s$thetaMat[, "tka"]), 0, tolerance=0.02)
+    expect_equal(mean(.s$thetaMat[, "tka"]), 0, tolerance = 0.02)
 
     ## `tka ~ 0.01` is centered on the estimate with a variance of 0.01
     .tka <- unique(.s$params$tka)
     expect_equal(length(.tka), 500L)
-    expect_equal(mean(.tka), 0.45, tolerance=0.02)
-    expect_equal(sd(.tka), 0.1, tolerance=0.02)
+    expect_equal(mean(.tka), 0.45, tolerance = 0.02)
+    expect_equal(sd(.tka), 0.1, tolerance = 0.02)
   })
 
   test_that("each omega block is drawn with its own degrees of freedom", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
-      .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=500)
+      .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 500)
     })
 
     ## every gate that decides whether the drawn omega is used has to move
@@ -91,18 +86,17 @@ rxTest({
     expect_true(sd(.ka) / 0.6 > 4 * (sd(.cl) / 0.3))
 
     ## and they are centered on the omega the model gives
-    expect_equal(mean(.cl), 0.3, tolerance=0.1)
+    expect_equal(mean(.cl), 0.3, tolerance = 0.1)
 
     ## a draw from an inverse Wishart is positive definite
-    expect_true(all(vapply(.s$omegaList,
-                           function(m) all(eigen(m)$values > 0), logical(1))))
+    expect_true(all(vapply(.s$omegaList, function(m) all(eigen(m)$values > 0), logical(1))))
   })
 
   test_that("the between subject variability uses the per study omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
-      .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=200)
+      .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200)
     })
 
     ## the etas have to come from `omegaList[[i]]` rather than the point
@@ -111,13 +105,13 @@ rxTest({
   })
 
   test_that("usePrior=FALSE reproduces the unpriored solve", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(7, {
-      .off <- rxSolve(.mod(), .ev(), nSub=2, nStud=20, usePrior=FALSE)
+      .off <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 20, usePrior = FALSE)
     })
     withr::with_seed(7, {
-      .none <- rxSolve(.plain(), .ev(), nSub=2, nStud=20)
+      .none <- rxSolve(.plain(), .ev(), nSub = 2, nStud = 20)
     })
 
     ## no thetaMat and no per study omega, exactly as before priors existed
@@ -127,14 +121,17 @@ rxTest({
   })
 
   test_that("a thetaMat given at the call site wins over the priors", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
-    .m <- matrix(1, 1, 1, dimnames=list("tka", "tka"))
-    expect_warning({
-      withr::with_seed(1, {
-        .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=200, thetaMat=.m)
-      })
-    }, "were not used")
+    .m <- matrix(1, 1, 1, dimnames = list("tka", "tka"))
+    expect_warning(
+      {
+        withr::with_seed(1, {
+          .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m)
+        })
+      },
+      "were not used"
+    )
 
     ## an explicit argument is never silently discarded, so the spread is
     ## the one that was asked for and not the prior's 0.1
@@ -142,27 +139,25 @@ rxTest({
   })
 
   test_that("usePrior=TRUE says why when it cannot be honored", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
-    expect_error(rxSolve(.plain(), .ev(), nSub=2, nStud=5, usePrior=TRUE),
-                 "specifies no prior")
-    expect_error(rxSolve(.mod(), .ev(), nSub=2, nStud=1, usePrior=TRUE),
-                 "no variability would be simulated")
+    expect_error(rxSolve(.plain(), .ev(), nSub = 2, nStud = 5, usePrior = TRUE), "specifies no prior")
+    expect_error(rxSolve(.mod(), .ev(), nSub = 2, nStud = 1, usePrior = TRUE), "no variability would be simulated")
   })
 
   test_that("simVariability decides whether the priors apply, not nStud", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## the C++ side resolves `simVar` from `simVariability` first and only
     ## falls back to `nStud > 1`, so the R side has to agree or the priors
     ## are dropped in one direction and wasted in the other
     withr::with_seed(7, {
-      .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=1, simVariability=TRUE)
+      .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 1, simVariability = TRUE)
     })
     expect_equal(length(.s$omegaList), 1L)
 
     withr::with_seed(7, {
-      .s <- rxSolve(.mod(), .ev(), nSub=2, nStud=20, simVariability=FALSE)
+      .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 20, simVariability = FALSE)
     })
     expect_equal(length(.s$omegaList), 0L)
   })

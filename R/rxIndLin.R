@@ -49,10 +49,9 @@ rxIndLinState <- function(preferred = NULL) {
   }
   checkmate::assertList(preferred, names = "unique")
   lapply(seq_along(preferred), function(x) {
-    if (!checkmate::checkCharacter(preferred[[x]],
-      names = "unnamed"
-    )) {
-      stop(sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
+    if (!checkmate::checkCharacter(preferred[[x]], names = "unnamed")) {
+      stop(
+        sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
         call. = FALSE
       )
     }
@@ -68,8 +67,7 @@ rxIndLinState <- function(preferred = NULL) {
       ## cannot parse a dotted identifier (`eta.Cl`) and that is an ordinary
       ## rxode2 name.  Expansion is a simplification, not a requirement, so
       ## give up on it rather than on the conversion.
-      tryCatch(symengine::S(as.character(line)),
-               error = function(e2) line)
+      tryCatch(symengine::S(as.character(line)), error = function(e2) line)
     }
   )
   ## rxFromSE() needs a Basic; if the fallback above handed back the original
@@ -102,9 +100,10 @@ rxIndLinState <- function(preferred = NULL) {
     # the result cosmetically, so fall back to the plain product rather than
     # losing a variable or failing the whole conversion: `-1*x` instead of `-x`
     # is uglier but identical.
-    if (any(x %in% names(.rxSEreserved))) return(.txt)
-    tryCatch(as.character(symengine::S(.txt)),
-             error = function(e) .txt)
+    if (any(x %in% names(.rxSEreserved))) {
+      return(.txt)
+    }
+    tryCatch(as.character(symengine::S(.txt)), error = function(e) .txt)
   }
   sapply(.ret, function(x) {
     .mult <- eval(parse(text = paste0("rxSplitPlusQ(quote(", x, "),mult=TRUE)")))

@@ -59,9 +59,7 @@ test_that("the direct route still computes the family's arguments", {
   ## refuses outright -- and the estimator needs the current arguments anyway.
   ## The role anchors are that interface: computed per record, so a covariate on
   ## a distribution parameter needs no special handling either.
-  .l <- vapply(rxUiDecompress(rxEtaDistExpand(.edDirectModel(),
-                                              param = "direct"))$lstExpr,
-               deparse1, "")
+  .l <- vapply(rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))$lstExpr, deparse1, "")
   expect_true(any(grepl("^rxEdA[.]eta[.]cl[.]shape <- 1/exp\\(lclrv\\)$", .l)))
   expect_true(any(grepl("^rxEdA[.]eta[.]cl[.]rate <- ", .l)))
 })
@@ -69,10 +67,12 @@ test_that("the direct route still computes the family's arguments", {
 test_that("the route is recorded so an estimator can tell which it was given", {
   expect_identical(
     rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))$etaDistInfo$param,
-    "direct")
+    "direct"
+  )
   ## absent on the cdf route, which predates the argument
   expect_null(
-    rxUiDecompress(rxEtaDistExpand(.edDirectModel()))$etaDistInfo$param)
+    rxUiDecompress(rxEtaDistExpand(.edDirectModel()))$etaDistInfo$param
+  )
 })
 
 test_that("a correlated declared PAIR is carried, not refused", {
@@ -124,9 +124,14 @@ test_that("the correlation stays in the omega, as the copula's rho", {
   expect_equal(.o$est, 0.5)
   expect_false(any(grepl("^rxCor", .i$name)))
   ## and the pairing is recorded for the estimator
-  expect_setequal(unlist(rxUiDecompress(
-    rxEtaDistExpand(.edDirectCorModel(), param = "direct"))$etaDistInfo$blocks),
-    c("eta.cl", "eta.v1"))
+  expect_setequal(
+    unlist(
+      rxUiDecompress(
+        rxEtaDistExpand(.edDirectCorModel(), param = "direct")
+      )$etaDistInfo$blocks
+    ),
+    c("eta.cl", "eta.v1")
+  )
 })
 
 test_that("a declared block of MORE THAN TWO is carried; declared+ordinary is refused", {
@@ -153,10 +158,14 @@ test_that("a declared block of MORE THAN TWO is carried; declared+ordinary is re
   ## omega where it was written, and whether an estimator can fit it is the
   ## estimator's to say (nlmixr2est's rxEtaDistBlockLogD).
   .x <- rxEtaDistExpand(.m, param = "direct")
-  expect_equal(.x$omega[c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c"),
-                        c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")],
-               matrix(c(1, 0.3, 0.3, 0.3, 1, 0.3, 0.3, 0.3, 1), 3,
-                      dimnames = rep(list(c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")), 2)))
+  expect_equal(
+    .x$omega[c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c"), c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")],
+    matrix(
+      c(1, 0.3, 0.3, 0.3, 1, 0.3, 0.3, 0.3, 1),
+      3,
+      dimnames = rep(list(c("rxd.eta.a", "rxd.eta.b", "rxd.eta.c")), 2)
+    )
+  )
   ## ...while a block that mixes a declared eta with an ORDINARY one is still
   ## refused: that one is not a missing feature
   .mix <- (function() {
@@ -217,10 +226,17 @@ test_that("a declared eta the model already ASSIGNS is refused by name", {
   ## both call forms now give the same thing
   expect_s3_class(rxEtaDistExpand(.fn(), param = "direct"), "rxUi")
   expect_identical(
-    vapply(rxUiDecompress(rxEtaDistExpand(.fn, param = "direct"))$lstExpr,
-           function(.x) paste(deparse(.x), collapse = ""), character(1)),
-    vapply(rxUiDecompress(rxEtaDistExpand(.fn(), param = "direct"))$lstExpr,
-           function(.x) paste(deparse(.x), collapse = ""), character(1)))
+    vapply(
+      rxUiDecompress(rxEtaDistExpand(.fn, param = "direct"))$lstExpr,
+      function(.x) paste(deparse(.x), collapse = ""),
+      character(1)
+    ),
+    vapply(
+      rxUiDecompress(rxEtaDistExpand(.fn(), param = "direct"))$lstExpr,
+      function(.x) paste(deparse(.x), collapse = ""),
+      character(1)
+    )
+  )
   ## a GENUINE user assignment to a declared eta is still refused -- the guard
   ## narrowed, it did not go away
   .bad <- function() {

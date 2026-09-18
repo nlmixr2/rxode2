@@ -59,8 +59,7 @@ rxTest({
     expect_equal(sp$state, c("depot", "central"))
     expect_equal(sp$param, c("eta_ka", "eta_lag"))
     # second-order names are not first-order: state/param NA
-    sp2 <- .rxEventSensSplit("rx__sens_depot_BY_eta_ka_BY_eta_lag__",
-                             c("depot", "central"))
+    sp2 <- .rxEventSensSplit("rx__sens_depot_BY_eta_ka_BY_eta_lag__", c("depot", "central"))
     expect_true(is.na(sp2$state))
   })
 
@@ -71,9 +70,7 @@ rxTest({
     expect_equal(d$lag$param, "eta_lag")
     expect_false(any(grepl("rx__sens_", d$lag$expr)))
     # d(exp(eta_lag+tlag))/d(eta_lag) = exp(eta_lag+tlag)
-    expect_equal(eval(parse(text = d$lag$expr),
-                      list(eta_lag = 0.3, tlag = log(2))),
-                 exp(0.3 + log(2)))
+    expect_equal(eval(parse(text = d$lag$expr), list(eta_lag = 0.3, tlag = log(2))), exp(0.3 + log(2)))
   })
 
   test_that("F total-derivative picks up the state-coupling term", {
@@ -186,9 +183,7 @@ rxTest({
         add.dosing(dose = 100, cmt = "central") |>
         add.sampling(seq(0, 12, 0.5))
       s1 <- rxSolve(mLin, e1, c(th, eta_lag = ev$eta_lag[.id]))
-      expect_equal(sPop$central[sPop$id == .id], s1$central,
-        tolerance = 1e-8, info = paste0("id: ", .id)
-      )
+      expect_equal(sPop$central[sPop$id == .id], s1$central, tolerance = 1e-8, info = paste0("id: ", .id))
     }
   })
 
@@ -295,8 +290,10 @@ rxTest({
       add.sampling(seq(0, 12, 0.25))
     p <- c(tka = log(1.2), tcl = log(4), tv = log(20), eta_lag = 0.1)
     .fd <- function(m, st, h = 1e-5) {
-      .p1 <- p; .p1[["eta_lag"]] <- p[["eta_lag"]] + h
-      .p0 <- p; .p0[["eta_lag"]] <- p[["eta_lag"]] - h
+      .p1 <- p
+      .p1[["eta_lag"]] <- p[["eta_lag"]] + h
+      .p0 <- p
+      .p0[["eta_lag"]] <- p[["eta_lag"]] - h
       (rxSolve(m, e, params = .p1)[[st]] - rxSolve(m, e, params = .p0)[[st]]) / (2 * h)
     }
     mLin <- .mk(TRUE)
@@ -307,11 +304,10 @@ rxTest({
     for (.st in c("gut", "eff")) {
       .an <- sLin[[paste0("rx__sens_", .st, "_BY_eta_lag__")]]
       expect_false(is.null(.an))
-      expect_true(max(abs(.an)) > 1)                       # not silently zero
-      expect_equal(.an, .fd(mLin, .st), tolerance = 1e-4)  # matches FD
+      expect_true(max(abs(.an)) > 1) # not silently zero
+      expect_equal(.an, .fd(mLin, .st), tolerance = 1e-4) # matches FD
       # and matches the pure-ODE model it was derived from
-      expect_equal(.an, sOde[[paste0("rx__sens_", .st, "_BY_eta_lag__")]],
-                   tolerance = 1e-6)
+      expect_equal(.an, sOde[[paste0("rx__sens_", .st, "_BY_eta_lag__")]], tolerance = 1e-6)
     }
   })
 
@@ -350,18 +346,20 @@ rxTest({
     e <- eventTable() |>
       add.dosing(dose = 100, nbr.doses = 3, dosing.interval = 8, cmt = "gut") |>
       add.sampling(seq(0.1, 24, 0.25))
-    p <- c(tka = log(1.2), tcl = log(4), tv = log(20),
-           eta_lag = 0.1, eta_f = 0.05)
+    p <- c(tka = log(1.2), tcl = log(4), tv = log(20), eta_lag = 0.1, eta_f = 0.05)
     sLin <- rxSolve(mLin, e, params = p)
     sOde <- rxSolve(mOde, e, params = p)
     for (.st in c("gut", "eff")) {
       for (.pr in c("eta_lag", "eta_f")) {
         .nm <- paste0("rx__sens_", .st, "_BY_", .pr, "__")
         .h <- 1e-5
-        .p1 <- p; .p1[[.pr]] <- p[[.pr]] + .h
-        .p0 <- p; .p0[[.pr]] <- p[[.pr]] - .h
+        .p1 <- p
+        .p1[[.pr]] <- p[[.pr]] + .h
+        .p0 <- p
+        .p0[[.pr]] <- p[[.pr]] - .h
         .fd <- (rxSolve(mLin, e, params = .p1)[[.st]] -
-                  rxSolve(mLin, e, params = .p0)[[.st]]) / (2 * .h)
+          rxSolve(mLin, e, params = .p0)[[.st]]) /
+          (2 * .h)
         # the modeled-F rows carry the finite difference's own truncation error
         # across the dose discontinuity, hence the looser bound here; the
         # linCmt-vs-ODE identity below is the tight check
@@ -394,12 +392,17 @@ rxTest({
     p <- c(tka = log(1.2), tcl = log(4), tv = log(20), eta_lag = 0.1)
     s <- rxSolve(m, e, params = p)
     .h <- 1e-5
-    .p1 <- p; .p1[["eta_lag"]] <- p[["eta_lag"]] + .h
-    .p0 <- p; .p0[["eta_lag"]] <- p[["eta_lag"]] - .h
-    expect_equal(s[["rx__sens_peripheral1_BY_eta_lag__"]],
-                 (rxSolve(m, e, params = .p1)$peripheral1 -
-                    rxSolve(m, e, params = .p0)$peripheral1) / (2 * .h),
-                 tolerance = 1e-4)
+    .p1 <- p
+    .p1[["eta_lag"]] <- p[["eta_lag"]] + .h
+    .p0 <- p
+    .p0[["eta_lag"]] <- p[["eta_lag"]] - .h
+    expect_equal(
+      s[["rx__sens_peripheral1_BY_eta_lag__"]],
+      (rxSolve(m, e, params = .p1)$peripheral1 -
+        rxSolve(m, e, params = .p0)$peripheral1) /
+        (2 * .h),
+      tolerance = 1e-4
+    )
   })
 
   test_that(".rxEventSensLayoutOk accepts only the layout the runtime addresses", {
@@ -409,18 +412,24 @@ rxTest({
     .states <- c("a", "b")
     .params <- c("p", "q")
     .ok <- data.frame(
-      state = c("a", "b", "a", "b"), param = c("p", "p", "q", "q"),
-      stateCmt = c(1L, 2L, 1L, 2L), sensCmt = c(3L, 4L, 5L, 6L),
-      stringsAsFactors = FALSE)
+      state = c("a", "b", "a", "b"),
+      param = c("p", "p", "q", "q"),
+      stateCmt = c(1L, 2L, 1L, 2L),
+      sensCmt = c(3L, 4L, 5L, 6L),
+      stringsAsFactors = FALSE
+    )
     expect_true(.rxEventSensLayoutOk(.states, .params, .ok))
     # state-major instead of param-major
-    .swap <- .ok; .swap$sensCmt <- c(3L, 5L, 4L, 6L)
+    .swap <- .ok
+    .swap$sensCmt <- c(3L, 5L, 4L, 6L)
     expect_false(.rxEventSensLayoutOk(.states, .params, .swap))
     # sensitivity block does not start right after the states
-    .shift <- .ok; .shift$sensCmt <- .ok$sensCmt + 1L
+    .shift <- .ok
+    .shift$sensCmt <- .ok$sensCmt + 1L
     expect_false(.rxEventSensLayoutOk(.states, .params, .shift))
     # states are not compartments 1..nState
-    .moved <- .ok; .moved$stateCmt <- c(2L, 3L, 2L, 3L)
+    .moved <- .ok
+    .moved$stateCmt <- c(2L, 3L, 2L, 3L)
     expect_false(.rxEventSensLayoutOk(.states, .params, .moved))
     # a (state, param) pair is missing
     expect_false(.rxEventSensLayoutOk(.states, .params, .ok[-1, , drop = FALSE]))
@@ -471,23 +480,78 @@ rxTest({
     .lin <- function(...) rxModelVars(rxode2(...))
     .chk <- function(mv) {
       .n <- .rxLinNcmt(mv)
-      expect_equal(.rxLinCmt(mv),
-                   utils::tail(mv$state, .n[["numLin"]] + .n[["numLinSens"]]))
+      expect_equal(.rxLinCmt(mv), utils::tail(mv$state, .n[["numLin"]] + .n[["numLinSens"]]))
     }
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); C2 <- linCmt(cl, v)}, calcSens = "tcl"))
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); ka <- 1; C2 <- linCmt(cl, v, ka)},
-              calcSens = "tcl"))
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10
-      C2 <- linCmt(cl, v, q, v2)}, calcSens = "tcl"))
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; ka <- 1
-      C2 <- linCmt(cl, v, q, v2, ka)}, calcSens = "tcl"))
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; q2 <- 0.5; v3 <- 100
-      C2 <- linCmt(cl, v, q, v2, q2, v3)}, calcSens = "tcl"))
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); q <- 1; v2 <- 10; q2 <- 0.5; v3 <- 100
-      ka <- 1
-      C2 <- linCmt(cl, v, q, v2, q2, v3, ka)}, calcSens = "tcl"))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        C2 <- linCmt(cl, v)
+      },
+      calcSens = "tcl"
+    ))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        ka <- 1
+        C2 <- linCmt(cl, v, ka)
+      },
+      calcSens = "tcl"
+    ))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        q <- 1
+        v2 <- 10
+        C2 <- linCmt(cl, v, q, v2)
+      },
+      calcSens = "tcl"
+    ))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        q <- 1
+        v2 <- 10
+        ka <- 1
+        C2 <- linCmt(cl, v, q, v2, ka)
+      },
+      calcSens = "tcl"
+    ))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        q <- 1
+        v2 <- 10
+        q2 <- 0.5
+        v3 <- 100
+        C2 <- linCmt(cl, v, q, v2, q2, v3)
+      },
+      calcSens = "tcl"
+    ))
+    .chk(.lin(
+      {
+        cl <- exp(tcl)
+        v <- exp(tv)
+        q <- 1
+        v2 <- 10
+        q2 <- 0.5
+        v3 <- 100
+        ka <- 1
+        C2 <- linCmt(cl, v, q, v2, q2, v3, ka)
+      },
+      calcSens = "tcl"
+    ))
     # and without sensitivities at all (linCmtA): the physical compartments only
-    .chk(.lin({cl <- exp(tcl); v <- exp(tv); ka <- 1; C2 <- linCmt(cl, v, ka)}))
+    .chk(.lin({
+      cl <- exp(tcl)
+      v <- exp(tv)
+      ka <- 1
+      C2 <- linCmt(cl, v, ka)
+    }))
   })
 
   test_that("a linCmt() model expands its sensitivities exactly once", {
@@ -501,8 +565,7 @@ rxTest({
       C2 <- linCmt(cl, v)
     }, calcSens = "tcl")
     expect_false(any(grepl("rx__sens_rx__sens_", rxState(m), fixed = TRUE)))
-    expect_equal(rxStateOde(m),
-                 c("gut", "eff", "rx__sens_gut_BY_tcl__", "rx__sens_eff_BY_tcl__"))
+    expect_equal(rxStateOde(m), c("gut", "eff", "rx__sens_gut_BY_tcl__", "rx__sens_eff_BY_tcl__"))
   })
 
   test_that("ODE d/dt() colliding with a linCmt reserved compartment name warns", {
@@ -614,8 +677,7 @@ rxTest({
     # (and 2nd-order dose) derivatives must reference the plain name -- otherwise the
     # emitted _THETA_n_ is undeclared and the model fails to compile.
     expect_equal(.rxEventSensCExpr("exp(THETA[2])", plainParams = "THETA_2_"), "exp(THETA_2_)")
-    expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]", plainParams = c("THETA_1_", "ETA_3_")),
-                 "THETA_1_*ETA_3_")
+    expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]", plainParams = c("THETA_1_", "ETA_3_")), "THETA_1_*ETA_3_")
     # mixed: only the plainly-declared params drop the leading underscore
     expect_equal(.rxEventSensCExpr("THETA[1]*ETA[3]", plainParams = "THETA_1_"), "THETA_1_*_ETA_3_")
     # info$params carries the declared names so .rxEventSensCLines picks the right form
@@ -627,14 +689,15 @@ rxTest({
     # expr is one entry per emitted assignment line; indices appearing only in a
     # later line must be translated too, otherwise raw ETA[n]/THETA[n] leaks into
     # the generated C and the model does not compile.
-    expect_equal(.rxEventSensCExpr(c("exp(ETA[4]+THETA[4])*(FOOD!=0)",
-                                     "exp(ETA[5]+THETA[5])*(FOOD==0)")),
-                 c("exp(_ETA_4_+_THETA_4_)*(FOOD!=0)",
-                   "exp(_ETA_5_+_THETA_5_)*(FOOD==0)"))
+    expect_equal(
+      .rxEventSensCExpr(c("exp(ETA[4]+THETA[4])*(FOOD!=0)", "exp(ETA[5]+THETA[5])*(FOOD==0)")),
+      c("exp(_ETA_4_+_THETA_4_)*(FOOD!=0)", "exp(_ETA_5_+_THETA_5_)*(FOOD==0)")
+    )
     # plainParams still applies element-wise across the whole vector
-    expect_equal(.rxEventSensCExpr(c("THETA[1]", "ETA[3]"),
-                                   plainParams = c("THETA_1_", "ETA_3_")),
-                 c("THETA_1_", "ETA_3_"))
+    expect_equal(
+      .rxEventSensCExpr(c("THETA[1]", "ETA[3]"), plainParams = c("THETA_1_", "ETA_3_")),
+      c("THETA_1_", "ETA_3_")
+    )
     # zero-length and no-token inputs are unchanged
     expect_equal(.rxEventSensCExpr(character(0)), character(0))
     expect_equal(.rxEventSensCExpr(c("1", "cl/v")), c("1", "cl/v"))
@@ -651,8 +714,7 @@ rxTest({
     expect_s3_class(m, "rxode2")
     e <- et(amt = 100, cmt = "depot")
     e <- et(e, seq(0, 12, 4))
-    ini <- c(tka = 0, tcl = 1, tv = 2, tlag = 0, tf = 0,
-             eta_ka = 0, eta_lag = 0)
+    ini <- c(tka = 0, tcl = 1, tv = 2, tlag = 0, tf = 0, eta_ka = 0, eta_lag = 0)
     s <- rxSolve(m, e, ini)
     expect_true(nrow(s) > 0L)
     # jump-mode solve matches fd-mode for the physical states: the jump injection
@@ -689,8 +751,10 @@ rxTest({
     sj <- .central(pars, "jump")
     analytic <- sj[["rx__sens_central_BY_eta_f__"]]
     h <- 1e-4
-    pp <- pars; pp["eta_f"] <- pars["eta_f"] + h
-    pm <- pars; pm["eta_f"] <- pars["eta_f"] - h
+    pp <- pars
+    pp["eta_f"] <- pars["eta_f"] + h
+    pm <- pars
+    pm["eta_f"] <- pars["eta_f"] - h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     # analytic jump matches FD to FD precision
     expect_equal(analytic, fd, tolerance = 1e-4)
@@ -713,8 +777,7 @@ rxTest({
       d/dt(depot)   <- -ka * depot
       d/dt(central) <-  ka * depot - cl / v * central
     "
-    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.5, tlag = 0,
-              eta_ka = 0, eta_lag = 0)
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.5, tlag = 0, eta_ka = 0, eta_lag = 0)
     e <- et(amt = 100, cmt = "depot")
     e <- et(e, seq(0.5, 12, 1)) # off the dose time (alag = 1)
     .central <- function(p, mode) {
@@ -723,13 +786,17 @@ rxTest({
     }
     sj <- .central(pars, "jump")
     h <- 1e-4
-    pp <- pars; pp["eta_lag"] <- h
-    pm <- pars; pm["eta_lag"] <- -h
+    pp <- pars
+    pp["eta_lag"] <- h
+    pm <- pars
+    pm["eta_lag"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     expect_equal(sj[["rx__sens_central_BY_eta_lag__"]], fd, tolerance = 1e-4)
     # eta_ka has no lag/F dependence -> no jump; must still match FD
-    ppk <- pars; ppk["eta_ka"] <- h
-    pmk <- pars; pmk["eta_ka"] <- -h
+    ppk <- pars
+    ppk["eta_ka"] <- h
+    pmk <- pars
+    pmk["eta_ka"] <- -h
     fdK <- (.central(ppk, "fd")$central - .central(pmk, "fd")$central) / (2 * h)
     expect_equal(sj[["rx__sens_central_BY_eta_ka__"]], fdK, tolerance = 1e-4)
   })
@@ -758,18 +825,20 @@ rxTest({
     m <- rxode2(.mod, calcSens = "eta_lag", eventSens = "jump")
     sj <- rxSolve(m, e, pars)
     h <- 1e-5
-    pp <- pars; pp["eta_lag"] <-  h
-    pm <- pars; pm["eta_lag"] <- -h
+    pp <- pars
+    pp["eta_lag"] <- h
+    pm <- pars
+    pm["eta_lag"] <- -h
     s0 <- rxSolve(m, e, pars)
     sP <- rxSolve(m, e, pp)
     sM <- rxSolve(m, e, pm)
     .at <- function(s, tm, col) s[[col]][which(abs(s$time - tm) < 1e-8)[1]]
     # one-sided finite differences of the STATE at the coincident time t = 2
-    fwdCentral <- (.at(sP, 2, "central") - .at(s0, 2, "central")) / h   # right
-    bwdCentral <- (.at(s0, 2, "central") - .at(sM, 2, "central")) / h   # left
-    bwdDepot   <- (.at(s0, 2, "depot")   - .at(sM, 2, "depot"))   / h
+    fwdCentral <- (.at(sP, 2, "central") - .at(s0, 2, "central")) / h # right
+    bwdCentral <- (.at(s0, 2, "central") - .at(sM, 2, "central")) / h # left
+    bwdDepot <- (.at(s0, 2, "depot") - .at(sM, 2, "depot")) / h
     ajCentral <- .at(sj, 2, "rx__sens_central_BY_eta_lag__")
-    ajDepot   <- .at(sj, 2, "rx__sens_depot_BY_eta_lag__")
+    ajDepot <- .at(sj, 2, "rx__sens_depot_BY_eta_lag__")
     # central: analytic == pre-jump (forward/right) limit (~0 here), and clearly
     # NOT the old doubled (backward/left) value.
     expect_equal(ajCentral, fwdCentral, tolerance = 1e-3)
@@ -779,8 +848,7 @@ rxTest({
     # off-dose observations still match a two-sided central difference.
     for (tm in c(1.9, 2.1, 4)) {
       fd <- (.at(sP, tm, "central") - .at(sM, tm, "central")) / (2 * h)
-      expect_equal(.at(sj, tm, "rx__sens_central_BY_eta_lag__"), fd,
-                   tolerance = 1e-3)
+      expect_equal(.at(sj, tm, "rx__sens_central_BY_eta_lag__"), fd, tolerance = 1e-3)
     }
   })
 
@@ -797,8 +865,7 @@ rxTest({
       d/dt(depot)   <- -ka * depot
       d/dt(central) <-  ka * depot - cl / v * central
     "
-    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, tlag = 0,
-              eta_ka = 0, eta_lag = 0, eta_f = 0)
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, tlag = 0, eta_ka = 0, eta_lag = 0, eta_f = 0)
     e <- et(amt = 100, cmt = "depot", ii = 6, addl = 3) |>
       et(seq(0.5, 30, 1.5))
     .central <- function(p, mode) {
@@ -808,11 +875,12 @@ rxTest({
     sj <- .central(pars, "jump")
     h <- 1e-4
     for (.eta in c("eta_lag", "eta_f")) {
-      pp <- pars; pp[.eta] <- h
-      pm <- pars; pm[.eta] <- -h
+      pp <- pars
+      pp[.eta] <- h
+      pm <- pars
+      pm[.eta] <- -h
       fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
-      expect_equal(sj[[paste0("rx__sens_central_BY_", .eta, "__")]], fd,
-                   tolerance = 1e-3)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .eta, "__")]], fd, tolerance = 1e-3)
     }
   })
 
@@ -838,13 +906,14 @@ rxTest({
     }
     sj <- .central(pars, "jump")
     h <- 1e-4
-    pp <- pars; pp["eta_ka"] <- h
-    pm <- pars; pm["eta_ka"] <- -h
+    pp <- pars
+    pp["eta_ka"] <- h
+    pm <- pars
+    pm["eta_ka"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     # observations at/after the replace must match FD (analytic jump correct)
     .post <- sj$time >= 5
-    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
-                 tolerance = 1e-4)
+    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post], tolerance = 1e-4)
     # fd-mode sens ODE alone never zeroes the replaced state's sens -> differs
     sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
     expect_gt(max(abs(sfd[.post] - fd[.post])), 1)
@@ -870,12 +939,13 @@ rxTest({
     }
     sj <- .central(pars, "jump")
     h <- 1e-4
-    pp <- pars; pp["eta_ka"] <- h
-    pm <- pars; pm["eta_ka"] <- -h
+    pp <- pars
+    pp["eta_ka"] <- h
+    pm <- pars
+    pm["eta_ka"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     .post <- sj$time >= 5
-    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
-                 tolerance = 1e-4)
+    expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post], tolerance = 1e-4)
     sfd <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
     expect_gt(max(abs(sfd[.post] - fd[.post])), 0.1)
   })
@@ -899,14 +969,17 @@ rxTest({
     m1 <- rxode2(.mod, calcSens = "tka", eventSens = "jump")
     m2 <- rxode2(.mod, calcSens = "tka", calcSens2 = "tka", eventSens = "jump")
     h <- 1e-4
-    pp <- pars; pp["tka"] <- pars["tka"] + h
-    pm <- pars; pm["tka"] <- pars["tka"] - h
+    pp <- pars
+    pp["tka"] <- pars["tka"] + h
+    pm <- pars
+    pm["tka"] <- pars["tka"] - h
 
     e_replace <- et(amt = 100, cmt = "depot") |>
       et(time = 5, amt = 50, cmt = "central", evid = 5) |>
       et(seq(0.5, 12, 1))
     fd_replace <- (rxSolve(m1, e_replace, pp)$rx__sens_central_BY_tka__ -
-      rxSolve(m1, e_replace, pm)$rx__sens_central_BY_tka__) / (2 * h)
+      rxSolve(m1, e_replace, pm)$rx__sens_central_BY_tka__) /
+      (2 * h)
     s_replace <- rxSolve(m2, e_replace, pars)
     expect_equal(s_replace$rx__sens_central_BY_tka_BY_tka__, fd_replace, tolerance = 1e-3)
 
@@ -914,7 +987,8 @@ rxTest({
       et(time = 5, amt = 0.5, cmt = "central", evid = 6) |>
       et(seq(0.5, 12, 1))
     fd_mult <- (rxSolve(m1, e_mult, pp)$rx__sens_central_BY_tka__ -
-      rxSolve(m1, e_mult, pm)$rx__sens_central_BY_tka__) / (2 * h)
+      rxSolve(m1, e_mult, pm)$rx__sens_central_BY_tka__) /
+      (2 * h)
     s_mult <- rxSolve(m2, e_mult, pars)
     expect_equal(s_mult$rx__sens_central_BY_tka_BY_tka__, fd_mult, tolerance = 1e-3)
   })
@@ -941,15 +1015,18 @@ rxTest({
     mfd <- rxode2(.mod, calcSens = "eta_lag", eventSens = "fd")
     sj <- rxSolve(mj, e, pars)
     h <- 1e-4
-    pp <- pars; pp["eta_lag"] <- pars["eta_lag"] + h
-    pm <- pars; pm["eta_lag"] <- pars["eta_lag"] - h
+    pp <- pars
+    pp["eta_lag"] <- pars["eta_lag"] + h
+    pm <- pars
+    pm["eta_lag"] <- pars["eta_lag"] - h
     # tight atol/rtol on the FD reference solves: the default LSODA tolerance
     # is loose enough, relative to h, that its own step-to-step numerical
     # noise dominates a naive central difference here (~1% spurious offset
     # observed with default tolerances; confirmed to vanish under atol/rtol
     # 1e-12 -- same class of pitfall as too-small an h, not a real signal).
     fd <- (rxSolve(mfd, e, pp, atol = 1e-12, rtol = 1e-12)$central -
-             rxSolve(mfd, e, pm, atol = 1e-12, rtol = 1e-12)$central) / (2 * h)
+      rxSolve(mfd, e, pm, atol = 1e-12, rtol = 1e-12)$central) /
+      (2 * h)
     # skip the sample landing exactly on the lagged event time (t=6.1): a
     # central FD straddling a true discontinuity is a known artifact, not a
     # correctness signal (documented in the plan's infusion-jump validation
@@ -978,8 +1055,10 @@ rxTest({
     mfd <- rxode2(.mod, calcSens = "eta_lag", eventSens = "fd")
     sj <- rxSolve(mj, e, pars)
     h <- 1e-3
-    pp <- pars; pp["eta_lag"] <- pars["eta_lag"] + h
-    pm <- pars; pm["eta_lag"] <- pars["eta_lag"] - h
+    pp <- pars
+    pp["eta_lag"] <- pars["eta_lag"] + h
+    pm <- pars
+    pm["eta_lag"] <- pars["eta_lag"] - h
     sp <- rxSolve(mfd, e, pp, atol = 1e-11, rtol = 1e-11)
     sm <- rxSolve(mfd, e, pm, atol = 1e-11, rtol = 1e-11)
     fd <- (sp$central - sm$central) / (2 * h)
@@ -1009,11 +1088,13 @@ rxTest({
     sj <- .central(pars, "jump")[["rx__sens_central_BY_eta_ka__"]]
     sf <- .central(pars, "fd")[["rx__sens_central_BY_eta_ka__"]]
     h <- 1e-4
-    pp <- pars; pp["eta_ka"] <- h
-    pm <- pars; pm["eta_ka"] <- -h
+    pp <- pars
+    pp["eta_ka"] <- h
+    pm <- pars
+    pm["eta_ka"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
-    expect_equal(sj, sf)                    # jump adds nothing for constant rate
-    expect_equal(sj, fd, tolerance = 1e-3)  # and both match the finite difference
+    expect_equal(sj, sf) # jump adds nothing for constant rate
+    expect_equal(sj, fd, tolerance = 1e-3) # and both match the finite difference
   })
 
   test_that("modeled-rate infusion with NO eventSens/calcSens requested does not crash", {
@@ -1049,18 +1130,24 @@ rxTest({
     # sensitivities that match a central difference of the solution.  (Modeled
     # rate/dur -- where the infusion magnitude depends on a parameter -- is the
     # separate continuous-forcing case covered elsewhere.)
-    .skel <- function(dose) paste0("
+    .skel <- function(dose) {
+      paste0(
+        "
       ka <- exp(tka + eta_ka); cl <- exp(tcl); v <- exp(tv); rt <- 5
       d/dt(depot)   <- -ka * depot
       d/dt(central) <-  ka * depot - cl / v * central
-      if (t >= rt && t < rt + 0.4) { ", dose, " }")
+      if (t >= rt && t < rt + 0.4) { ",
+        dose,
+        " }"
+      )
+    }
     .doses <- c(
-      bolus      = "bolus(50, central, 0, 0, 0)",
-      infuse     = "infuse(100, 50, central, 0, 0, 0)",
-      infuseDur  = "infuseDur(100, 2, central, 0, 0, 0)",
-      replace    = "if (central > 0) replace(40, central)",
-      multiply   = "if (central > 0) multiply(0.5, central)",
-      reset      = "reset()"
+      bolus = "bolus(50, central, 0, 0, 0)",
+      infuse = "infuse(100, 50, central, 0, 0, 0)",
+      infuseDur = "infuseDur(100, 2, central, 0, 0, 0)",
+      replace = "if (central > 0) replace(40, central)",
+      multiply = "if (central > 0) multiply(0.5, central)",
+      reset = "reset()"
     )
     pars <- c(tka = 0.2, tcl = 1, tv = 2, eta_ka = 0)
     e <- et(amt = 100, cmt = "depot") |> et(seq(0.5, 14, 0.5))
@@ -1071,13 +1158,18 @@ rxTest({
         rxSolve(rxode2(.mod, calcSens = "eta_ka", eventSens = mode), e, p)
       }
       sj <- .central(pars, "jump")
-      pp <- pars; pp["eta_ka"] <- h
-      pm <- pars; pm["eta_ka"] <- -h
+      pp <- pars
+      pp["eta_ka"] <- h
+      pm <- pars
+      pm["eta_ka"] <- -h
       fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
       .post <- sj$time >= 5
-      expect_equal(sj[["rx__sens_central_BY_eta_ka__"]][.post], fd[.post],
-                   tolerance = 1e-3,
-                   info = paste0("plugin: ", .nm))
+      expect_equal(
+        sj[["rx__sens_central_BY_eta_ka__"]][.post],
+        fd[.post],
+        tolerance = 1e-3,
+        info = paste0("plugin: ", .nm)
+      )
     }
   })
 
@@ -1101,11 +1193,13 @@ rxTest({
     sj <- .central(pars, "jump")[["rx__sens_central_BY_eta_r__"]]
     sf <- .central(pars, "fd")[["rx__sens_central_BY_eta_r__"]]
     h <- 1e-4
-    pp <- pars; pp["eta_r"] <- h
-    pm <- pars; pm["eta_r"] <- -h
+    pp <- pars
+    pp["eta_r"] <- h
+    pm <- pars
+    pm["eta_r"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     expect_equal(sj, fd, tolerance = 1e-3)
-    expect_gt(max(abs(sf - fd)), 1)   # fd-mode misses the forcing sensitivity
+    expect_gt(max(abs(sf - fd)), 1) # fd-mode misses the forcing sensitivity
   })
 
   test_that("modeled-duration infusion (forcing + moving boundary) matches FD", {
@@ -1128,11 +1222,13 @@ rxTest({
     sj <- .central(pars, "jump")[["rx__sens_central_BY_eta_r__"]]
     sf <- .central(pars, "fd")[["rx__sens_central_BY_eta_r__"]]
     h <- 1e-4
-    pp <- pars; pp["eta_r"] <- h
-    pm <- pars; pm["eta_r"] <- -h
+    pp <- pars
+    pp["eta_r"] <- h
+    pm <- pars
+    pm["eta_r"] <- -h
     fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
     expect_equal(sj, fd, tolerance = 1e-2)
-    expect_gt(max(abs(sf - fd)), 1)   # fd-mode misses forcing + boundary
+    expect_gt(max(abs(sf - fd)), 1) # fd-mode misses forcing + boundary
   })
 
   test_that("modeled-dur infusion with estimated F and duration matches FD", {
@@ -1148,8 +1244,7 @@ rxTest({
       d/dt(depot)   <- -ka * depot
       d/dt(central) <-  ka * depot - cl / v * central
     "
-    pars <- c(tka = 0.2, tcl = 1, tv = 2, tr = 0.7, tf = 0.3,
-              eta_r = 0, eta_f = 0)
+    pars <- c(tka = 0.2, tcl = 1, tv = 2, tr = 0.7, tf = 0.3, eta_r = 0, eta_f = 0)
     e <- et(amt = 100, cmt = "central", rate = -2) |> et(seq(0.25, 14, 0.25))
     .central <- function(p, mode) {
       rxSolve(rxode2(.mod, calcSens = c("eta_r", "eta_f"), eventSens = mode), e, p)
@@ -1157,11 +1252,17 @@ rxTest({
     sj <- .central(pars, "jump")
     h <- 1e-4
     for (.eta in c("eta_r", "eta_f")) {
-      pp <- pars; pp[.eta] <- h
-      pm <- pars; pm[.eta] <- -h
+      pp <- pars
+      pp[.eta] <- h
+      pm <- pars
+      pm[.eta] <- -h
       fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
-      expect_equal(sj[[paste0("rx__sens_central_BY_", .eta, "__")]], fd,
-                   tolerance = 1e-2, info = paste0("param: ", .eta))
+      expect_equal(
+        sj[[paste0("rx__sens_central_BY_", .eta, "__")]],
+        fd,
+        tolerance = 1e-2,
+        info = paste0("param: ", .eta)
+      )
     }
   })
 
@@ -1175,27 +1276,35 @@ rxTest({
     .lagLine <- "alag(central) <- exp(tl + eta_l)"
     .ode <- "d/dt(depot) <- -ka * depot\n      d/dt(central) <- ka * depot - cl / v * central"
     .cases <- list(
-      fixed = list(extra = "", dose = et(amt = 100, rate = 30, cmt = "central"),
-                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), eta_l = 0)),
-      mrate = list(extra = "rate(central) <- exp(tr)",
-                   dose = et(amt = 100, rate = -1, cmt = "central"),
-                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), tr = log(30), eta_l = 0)),
-      mdur  = list(extra = "dur(central) <- exp(td)",
-                   dose = et(amt = 100, rate = -2, cmt = "central"),
-                   p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), td = log(3), eta_l = 0))
+      fixed = list(
+        extra = "",
+        dose = et(amt = 100, rate = 30, cmt = "central"),
+        p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), eta_l = 0)
+      ),
+      mrate = list(
+        extra = "rate(central) <- exp(tr)",
+        dose = et(amt = 100, rate = -1, cmt = "central"),
+        p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), tr = log(30), eta_l = 0)
+      ),
+      mdur = list(
+        extra = "dur(central) <- exp(td)",
+        dose = et(amt = 100, rate = -2, cmt = "central"),
+        p = c(tka = 0.2, tcl = 1, tv = 2, tl = log(1.1), td = log(3), eta_l = 0)
+      )
     )
     h <- 1e-4
     for (.nm in names(.cases)) {
       .cs <- .cases[[.nm]]
-      .mod <- paste("ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)",
-                    .lagLine, .cs$extra, .ode, sep = "\n      ")
+      .mod <- paste("ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)", .lagLine, .cs$extra, .ode, sep = "\n      ")
       e <- .cs$dose |> et(.obs)
       .central <- function(p, mode) {
         rxSolve(rxode2(.mod, calcSens = "eta_l", eventSens = mode), e, p)
       }
       sj <- .central(.cs$p, "jump")[["rx__sens_central_BY_eta_l__"]]
-      pp <- .cs$p; pp["eta_l"] <- .cs$p["eta_l"] + h
-      pm <- .cs$p; pm["eta_l"] <- .cs$p["eta_l"] - h
+      pp <- .cs$p
+      pp["eta_l"] <- .cs$p["eta_l"] + h
+      pm <- .cs$p
+      pm["eta_l"] <- .cs$p["eta_l"] - h
       fd <- (.central(pp, "fd")$central - .central(pm, "fd")$central) / (2 * h)
       expect_equal(sj, fd, tolerance = 1e-2, info = paste0("infusion: ", .nm))
     }
@@ -1214,21 +1323,21 @@ rxTest({
       d/dt(central) <-  ka * depot - cl / v * central
     "
     th <- c(tka = 0.2, tcl = 1, tv = 2, tf = 0.3, tlag = log(1.1))
-    ev <- data.frame(eta_ka = c(0, 0.3, -0.2),
-                     eta_lag = c(0, 0.1, -0.15),
-                     eta_f = c(0, -0.2, 0.25))
+    ev <- data.frame(eta_ka = c(0, 0.3, -0.2), eta_lag = c(0, 0.1, -0.15), eta_f = c(0, -0.2, 0.25))
     e <- et(amt = 100, cmt = "depot", id = 1:3) |> et(seq(0.13, 12, 0.41), id = 1:3)
     mj <- rxode2(.mod, calcSens = c("eta_lag", "eta_f"), eventSens = "jump")
     mfd <- rxode2(.mod, calcSens = c("eta_lag", "eta_f"), eventSens = "fd")
     sj <- rxSolve(mj, e, th, iCov = ev)
     h <- 1e-4
     for (.sp in c("eta_lag", "eta_f")) {
-      evp <- ev; evp[[.sp]] <- evp[[.sp]] + h
-      evm <- ev; evm[[.sp]] <- evm[[.sp]] - h
+      evp <- ev
+      evp[[.sp]] <- evp[[.sp]] + h
+      evm <- ev
+      evm[[.sp]] <- evm[[.sp]] - h
       fd <- (rxSolve(mfd, e, th, iCov = evp)$central -
-             rxSolve(mfd, e, th, iCov = evm)$central) / (2 * h)
-      expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd,
-                   tolerance = 1e-2, info = paste0("param: ", .sp))
+        rxSolve(mfd, e, th, iCov = evm)$central) /
+        (2 * h)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd, tolerance = 1e-2, info = paste0("param: ", .sp))
     }
   })
 
@@ -1288,12 +1397,12 @@ rxTest({
     m <- rxode2("ka<-exp(tka)\nf(depot)<-expit(tf+eta_f)\nd/dt(depot)<- -ka*depot\nd/dt(central)<-ka*depot-central",
                 calcSens = "eta_f", calcSens2 = "eta_f")
     mdl <- .rxLoadPrune(m)
-    e2 <- .rxEventSensD2Expr(get("rx_f_depot_", envir = mdl), "eta_f", "eta_f",
-                             .rxEventSensMap(m)$states)
+    e2 <- .rxEventSensD2Expr(get("rx_f_depot_", envir = mdl), "eta_f", "eta_f", .rxEventSensMap(m)$states)
     expect_true(nzchar(e2) && e2 != "0")
-    val <- eval(parse(text = e2),
-                list(eta_f = 0, tf = 0.3, Rx_pow_di = function(a, b) a^b,
-                     expit = function(x) 1 / (1 + exp(-x))))
+    val <- eval(
+      parse(text = e2),
+      list(eta_f = 0, tf = 0.3, Rx_pow_di = function(a, b) a^b, expit = function(x) 1 / (1 + exp(-x)))
+    )
     p <- 1 / (1 + exp(-0.3))
     expect_equal(val, p * (1 - p) * (1 - 2 * p), tolerance = 1e-8)
   })
@@ -1317,8 +1426,10 @@ rxTest({
     s2 <- rxSolve(m2, e, pars)[["rx__sens_central_BY_eta_ka_BY_eta_ka__"]]
     h <- 1e-5
     .s1 <- function(p) rxSolve(m1, e, p)[["rx__sens_central_BY_eta_ka__"]]
-    pp <- pars; pp["eta_ka"] <- h
-    pm <- pars; pm["eta_ka"] <- -h
+    pp <- pars
+    pp["eta_ka"] <- h
+    pm <- pars
+    pm["eta_ka"] <- -h
     fd <- (.s1(pp) - .s1(pm)) / (2 * h)
     expect_equal(s2, fd, tolerance = 1e-2)
   })
@@ -1347,8 +1458,10 @@ rxTest({
     s3 <- rxSolve(m3, e, pars)[["rx__sens_central_BY_tka_BY_tka_BY_tka__"]]
     h <- 1e-4
     .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tka_BY_tka__"]]
-    pp <- pars; pp["tka"] <- pars["tka"] + h
-    pm <- pars; pm["tka"] <- pars["tka"] - h
+    pp <- pars
+    pp["tka"] <- pars["tka"] + h
+    pm <- pars
+    pm["tka"] <- pars["tka"] - h
     fd <- (.s2(pp) - .s2(pm)) / (2 * h)
     expect_equal(s3, fd, tolerance = 1e-3)
 
@@ -1376,8 +1489,10 @@ rxTest({
     s2 <- rxSolve(m2, e, pars)[["rx__sens_central_BY_eta_f_BY_eta_f__"]]
     h <- 1e-5
     .s1 <- function(p) rxSolve(m1, e, p)[["rx__sens_central_BY_eta_f__"]]
-    pp <- pars; pp["eta_f"] <- h
-    pm <- pars; pm["eta_f"] <- -h
+    pp <- pars
+    pp["eta_f"] <- h
+    pm <- pars
+    pm["eta_f"] <- -h
     fd <- (.s1(pp) - .s1(pm)) / (2 * h)
     expect_equal(s2, fd, tolerance = 1e-2)
     # without the 2nd-order jump the contribution would be entirely missing
@@ -1404,8 +1519,10 @@ rxTest({
     expect_true("rx__sens_central_BY_tf_BY_tf_BY_tf__" %in% rxModelVars(m3)$state)
     s3 <- rxSolve(m3, e, pars_f)[["rx__sens_central_BY_tf_BY_tf_BY_tf__"]]
     eps <- 1e-4
-    p1 <- pars_f; p1["tf"] <- pars_f["tf"] + eps
-    p2 <- pars_f; p2["tf"] <- pars_f["tf"] - eps
+    p1 <- pars_f
+    p1["tf"] <- pars_f["tf"] + eps
+    p2 <- pars_f
+    p2["tf"] <- pars_f["tf"] - eps
     .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tf_BY_tf__"]]
     fd3 <- (.s2(p1) - .s2(p2)) / (2 * eps)
     expect_equal(s3, fd3, tolerance = 1e-4)
@@ -1436,8 +1553,10 @@ rxTest({
         et(seq(0.5, 12, 1))
       s3 <- rxSolve(m3, e, pars_f)[["rx__sens_central_BY_tf_BY_tf_BY_tf__"]]
       eps <- 1e-4
-      p1 <- pars_f; p1["tf"] <- pars_f["tf"] + eps
-      p2 <- pars_f; p2["tf"] <- pars_f["tf"] - eps
+      p1 <- pars_f
+      p1["tf"] <- pars_f["tf"] + eps
+      p2 <- pars_f
+      p2["tf"] <- pars_f["tf"] - eps
       .s2 <- function(p) rxSolve(m2, e, p)[["rx__sens_central_BY_tf_BY_tf__"]]
       fd3 <- (.s2(p1) - .s2(p2)) / (2 * eps)
       expect_equal(s3, fd3, tolerance = 1e-4, info = paste0("evid: ", .evid))
@@ -1466,8 +1585,10 @@ rxTest({
                  eventSens = "jump")
     s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tf__"]]
     eps <- 1e-5
-    p1 <- pars; p1["tf"] <- pars["tf"] + eps
-    p2 <- pars; p2["tf"] <- pars["tf"] - eps
+    p1 <- pars
+    p1["tf"] <- pars["tf"] + eps
+    p2 <- pars
+    p2["tf"] <- pars["tf"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1494,8 +1615,10 @@ rxTest({
     expect_true(nrow(info$derivs$lagJacQ) > 0L)
     s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tvm__"]]
     eps <- 1e-5
-    p1 <- pars; p1["tvm"] <- pars["tvm"] + eps
-    p2 <- pars; p2["tvm"] <- pars["tvm"] - eps
+    p1 <- pars
+    p1["tvm"] <- pars["tvm"] + eps
+    p2 <- pars
+    p2["tvm"] <- pars["tvm"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1524,8 +1647,10 @@ rxTest({
     m2d <- rxode2(ode_code_diag, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
     s2d <- rxSolve(m2d, e_diag, pars_diag, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
     eps <- 1e-5
-    p1 <- pars_diag; p1["tlag"] <- pars_diag["tlag"] + eps
-    p2 <- pars_diag; p2["tlag"] <- pars_diag["tlag"] - eps
+    p1 <- pars_diag
+    p1["tlag"] <- pars_diag["tlag"] + eps
+    p2 <- pars_diag
+    p2["tlag"] <- pars_diag["tlag"] - eps
     .s1d <- function(p) rxSolve(m1d, e_diag, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
     fdd <- (.s1d(p1) - .s1d(p2)) / (2 * eps)
     expect_equal(s2d, fdd, tolerance = 1e-6)
@@ -1542,8 +1667,10 @@ rxTest({
     m2p <- rxode2(ode_code_2p, calcSens = c("tlag1", "tlag2"), calcSens2 = c("tlag1", "tlag2"),
                   eventSens = "jump")
     s2p <- rxSolve(m2p, e_2p, pars_2p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag1_BY_tlag2__"]]
-    p1p <- pars_2p; p1p["tlag2"] <- pars_2p["tlag2"] + eps
-    p2p <- pars_2p; p2p["tlag2"] <- pars_2p["tlag2"] - eps
+    p1p <- pars_2p
+    p1p["tlag2"] <- pars_2p["tlag2"] + eps
+    p2p <- pars_2p
+    p2p["tlag2"] <- pars_2p["tlag2"] - eps
     .s1p <- function(p) rxSolve(m1p, e_2p, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag1__"]]
     fdp <- (.s1p(p1p) - .s1p(p2p)) / (2 * eps)
     expect_equal(s2p, fdp, tolerance = 1e-6)
@@ -1570,8 +1697,7 @@ rxTest({
     m2 <- rxode2(ode_code, calcSens = c("tlag", "tf"), calcSens2 = c("tlag", "tf"),
                  eventSens = "jump")
     s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)
-    expect_equal(s2$rx__sens_central_BY_tlag_BY_tf__, s2$rx__sens_central_BY_tf_BY_tlag__,
-                 tolerance = 1e-8)
+    expect_equal(s2$rx__sens_central_BY_tlag_BY_tf__, s2$rx__sens_central_BY_tf_BY_tlag__, tolerance = 1e-8)
     expect_gt(max(abs(s2$rx__sens_central_BY_tlag_BY_tf__)), 1)
   })
 
@@ -1596,8 +1722,10 @@ rxTest({
     m2 <- rxode2(ode_code, calcSens = "tlag", calcSens2 = "tlag", eventSens = "jump")
     s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tlag__"]]
     eps <- 1e-5
-    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
-    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    p1 <- pars
+    p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars
+    p2["tlag"] <- pars["tlag"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1635,8 +1763,10 @@ rxTest({
                  calcSens2 = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
     s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_tlag__"]]
     eps <- 1e-4
-    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
-    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    p1 <- pars
+    p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars
+    p2["tlag"] <- pars["tlag"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1659,23 +1789,22 @@ rxTest({
       "d/dt(central)=exp(ETA[1]+THETA[1])*depot-exp(THETA[2]-THETA[3])*central;",
       "d/dt(rx__sens_depot_BY_ETA_3___)=-exp(ETA[1]+THETA[1])*rx__sens_depot_BY_ETA_3___;",
       "d/dt(rx__sens_central_BY_ETA_3___)=exp(ETA[1]+THETA[1])*rx__sens_depot_BY_ETA_3___-exp(THETA[2]-THETA[3])*rx__sens_central_BY_ETA_3___;",
-      sep = "\n")
+      sep = "\n"
+    )
     mj <- rxode2(code, eventSens = "jump")
     # the F derivative wrt ETA[3] must be detected (non-empty derivs table)
     .df <- mj$eventSensInfo$derivs$f
     expect_true(nrow(.df) >= 1L)
     expect_true("ETA_3_" %in% .df$param)
 
-    p <- c("THETA[1]" = 0.45, "THETA[2]" = 1, "THETA[3]" = 3.45,
-           "THETA[4]" = 0.9, "ETA[1]" = 0, "ETA[3]" = 0.2)
+    p <- c("THETA[1]" = 0.45, "THETA[2]" = 1, "THETA[3]" = 3.45, "THETA[4]" = 0.9, "ETA[1]" = 0, "ETA[3]" = 0.2)
     # sample immediately after the dose to capture the jump peak before decay
     e <- et(amt = 100, cmt = "depot") |> et(c(1e-4, seq(0.13, 24, length.out = 30)))
     s <- rxSolve(mj, p, e, atol = 1e-10, rtol = 1e-10)
     # the additive-bolus F jump makes the depot sensitivity wrt ETA[3] non-zero;
     # analytic value at t=0+ is amt*F*(1-F) with F = expit(0.2 + 0.9).
     .F <- 1 / (1 + exp(-(0.2 + 0.9)))
-    expect_equal(max(s[["rx__sens_depot_BY_ETA_3___"]]), 100 * .F * (1 - .F),
-                 tolerance = 1e-2)
+    expect_equal(max(s[["rx__sens_depot_BY_ETA_3___"]]), 100 * .F * (1 - .F), tolerance = 1e-2)
   })
 
   test_that("multi-eta dosing modifier emits fully translated C (#1196)", {
@@ -1695,7 +1824,8 @@ rxTest({
         "d/dt(rx__sens_central_BY_ETA_4___)=rx__sens_depot_BY_ETA_4___-rx__sens_central_BY_ETA_4___;",
         "d/dt(rx__sens_depot_BY_ETA_5___)=-rx__sens_depot_BY_ETA_5___;",
         "d/dt(rx__sens_central_BY_ETA_5___)=rx__sens_depot_BY_ETA_5___-rx__sens_central_BY_ETA_5___;",
-        sep = "\n")
+        sep = "\n"
+      )
     }
     for (.mod in c("dur", "f", "alag")) {
       .m <- rxode2(.code(.mod), eventSens = "jump")
@@ -1710,8 +1840,7 @@ rxTest({
     # with FOOD=0 the duration is exp(ETA[5]+THETA[5]), so the jump sensitivity
     # wrt ETA[5] must match finite differences (and wrt ETA[4] must be zero).
     .m <- rxode2(.code("dur"), eventSens = "jump")
-    p <- c("THETA[4]" = 0.3, "THETA[5]" = 0.5, "ETA[4]" = 0.1, "ETA[5]" = 0.2,
-           FOOD = 0)
+    p <- c("THETA[4]" = 0.3, "THETA[5]" = 0.5, "ETA[4]" = 0.1, "ETA[5]" = 0.2, FOOD = 0)
     ev <- et(amt = 100, rate = -2, cmt = "depot") |> et(seq(0.25, 12, length.out = 20))
     .sl <- function(pp) rxSolve(.m, pp, ev, atol = 1e-12, rtol = 1e-12)
     s <- .sl(p)
@@ -1769,8 +1898,15 @@ rxTest({
       effect <- e0 * (1 - (central / v) * imax / (ic50 + (central / v)))
     "
     pars <- c(
-      lka = log(1), lcl = log(6), lv = log(60), limax = log(1), lic50 = log(1),
-      le0 = log(15), tlag = 10, doseAmt = 200, tinf = 10
+      lka = log(1),
+      lcl = log(6),
+      lv = log(60),
+      limax = log(1),
+      lic50 = log(1),
+      le0 = log(15),
+      tlag = 10,
+      doseAmt = 200,
+      tinf = 10
     )
     mj <- rxode2(.mod, calcSens = c("tlag", "doseAmt", "tinf"), eventSens = "jump")
     e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0, 60, by = 0.5))
@@ -1785,8 +1921,10 @@ rxTest({
     # (the plan's primary correctness gate, Section 5) for all three params.
     .h <- 1e-4
     .fd <- function(pname) {
-      .pp <- pars; .pp[pname] <- pars[pname] + .h
-      .pm <- pars; .pm[pname] <- pars[pname] - .h
+      .pp <- pars
+      .pp[pname] <- pars[pname] + .h
+      .pm <- pars
+      .pm[pname] <- pars[pname] - .h
       (rxSolve(mj, e, .pp)$effect - rxSolve(mj, e, .pm)$effect) / (2 * .h)
     }
     expect_equal(d_tlag, .fd("tlag"), tolerance = 1e-3)
@@ -1838,8 +1976,10 @@ rxTest({
     e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
     s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_tlag__"]]
     eps <- 1e-4
-    p1 <- pars; p1["tlag"] <- pars["tlag"] + eps
-    p2 <- pars; p2["tlag"] <- pars["tlag"] - eps
+    p1 <- pars
+    p1["tlag"] <- pars["tlag"] + eps
+    p2 <- pars
+    p2["tlag"] <- pars["tlag"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1869,8 +2009,10 @@ rxTest({
     e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
     r2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)
     eps <- 1e-4
-    p1 <- pars; p1["tinf"] <- pars["tinf"] + eps
-    p2 <- pars; p2["tinf"] <- pars["tinf"] - eps
+    p1 <- pars
+    p1["tinf"] <- pars["tinf"] + eps
+    p2 <- pars
+    p2["tinf"] <- pars["tinf"] - eps
     r1a <- rxSolve(m1, e, p1, atol = 1e-11, rtol = 1e-11)
     r1b <- rxSolve(m1, e, p2, atol = 1e-11, rtol = 1e-11)
     fd_central <- (r1a$rx__sens_central_BY_tlag__ - r1b$rx__sens_central_BY_tlag__) / (2 * eps)
@@ -1909,8 +2051,10 @@ rxTest({
     e <- et(amt = 1, cmt = "depot", rate = -2) |> et(seq(0.53, 60, by = 0.5))
     s2 <- rxSolve(m2, e, pars, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag_BY_doseAmt__"]]
     eps <- 1e-4
-    p1 <- pars; p1["doseAmt"] <- pars["doseAmt"] + eps
-    p2 <- pars; p2["doseAmt"] <- pars["doseAmt"] - eps
+    p1 <- pars
+    p1["doseAmt"] <- pars["doseAmt"] + eps
+    p2 <- pars
+    p2["doseAmt"] <- pars["doseAmt"] - eps
     .s1 <- function(p) rxSolve(m1, e, p, atol = 1e-11, rtol = 1e-11)[["rx__sens_central_BY_tlag__"]]
     fd <- (.s1(p1) - .s1(p2)) / (2 * eps)
     expect_equal(s2, fd, tolerance = 1e-6)
@@ -1923,13 +2067,19 @@ rxTest({
     # boundary jump, so post-boundary sensitivities were ~30% wrong.  handleSS now
     # arms a marker so handle_evid runs that logic at the re-expressed OFF.
     mt <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\ndur(central)=9*cl/3.5\ncp=central/(v/1000)"
-    cs <- c("ka", "cl"); p <- c(ka = 1.2, cl = 3.5, v = 25)
-    mb <- rxode2(mt); mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
+    cs <- c("ka", "cl")
+    p <- c(ka = 1.2, cl = 3.5, v = 25)
+    mb <- rxode2(mt)
+    mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
     ev <- et(amt = 100, rate = -2, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 9.5, 12, 16, 24, 30))
     f <- as.data.frame(suppressWarnings(rxSolve(mj, ev, params = p, atol = 1e-11, rtol = 1e-11)))
     mx <- 0
     for (pn in cs) {
-      hh <- abs(p[[pn]]) * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
+      hh <- abs(p[[pn]]) * 1e-6
+      pp <- p
+      pm <- p
+      pp[pn] <- pp[pn] + hh
+      pm[pn] <- pm[pn] - hh
       sp <- as.data.frame(suppressWarnings(rxSolve(mb, ev, params = pp, atol = 1e-11, rtol = 1e-11)))
       sm <- as.data.frame(suppressWarnings(rxSolve(mb, ev, params = pm, atol = 1e-11, rtol = 1e-11)))
       for (st in c("depot", "central")) {
@@ -1946,28 +2096,43 @@ rxTest({
     # parameters; that transversality jump [S] = amt*dF - (F*amt/rate)*d(rate)/dp
     # was previously DEFERRED (MODEL_RATE_OFF only removed the continuous forcing),
     # so both regular AND steady-state modeled-rate sensitivities were ~30% wrong.
-    cs <- c("ka", "cl"); p <- c(ka = 1.2, cl = 3.5, v = 25)
+    cs <- c("ka", "cl")
+    p <- c(ka = 1.2, cl = 3.5, v = 25)
     chk <- function(mt, ev, drop = NA) {
       st0 <- rxode2::.rxAdjointExpand(mt, cs)$st
-      mb <- rxode2(mt); mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
-      a0 <- list(mj, ev, params = p, atol = 1e-11, rtol = 1e-11); if (!is.na(drop)) a0$addlDropSs <- drop
+      mb <- rxode2(mt)
+      mj <- rxode2(mt, calcSens = cs, eventSens = "jump")
+      a0 <- list(mj, ev, params = p, atol = 1e-11, rtol = 1e-11)
+      if (!is.na(drop)) {
+        a0$addlDropSs <- drop
+      }
       f <- as.data.frame(suppressWarnings(do.call(rxSolve, a0)))
       mx <- 0
       for (pn in cs) {
-        hh <- abs(p[[pn]]) * 1e-6; pp <- p; pm <- p; pp[pn] <- pp[pn] + hh; pm[pn] <- pm[pn] - hh
-        a1 <- list(mb, ev, params = pp, atol = 1e-11, rtol = 1e-11); a2 <- list(mb, ev, params = pm, atol = 1e-11, rtol = 1e-11)
-        if (!is.na(drop)) { a1$addlDropSs <- drop; a2$addlDropSs <- drop }
+        hh <- abs(p[[pn]]) * 1e-6
+        pp <- p
+        pm <- p
+        pp[pn] <- pp[pn] + hh
+        pm[pn] <- pm[pn] - hh
+        a1 <- list(mb, ev, params = pp, atol = 1e-11, rtol = 1e-11)
+        a2 <- list(mb, ev, params = pm, atol = 1e-11, rtol = 1e-11)
+        if (!is.na(drop)) {
+          a1$addlDropSs <- drop
+          a2$addlDropSs <- drop
+        }
         sp <- as.data.frame(suppressWarnings(do.call(rxSolve, a1)))
         sm <- as.data.frame(suppressWarnings(do.call(rxSolve, a2)))
-        for (st in st0) { fd <- (sp[[st]] - sm[[st]]) / (2 * hh)
-          mx <- max(mx, max(abs(f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE)) }
+        for (st in st0) {
+          fd <- (sp[[st]] - sm[[st]]) / (2 * hh)
+          mx <- max(mx, max(abs(f[[sprintf("rx__sens_%s_BY_%s__", st, pn)]] - fd), na.rm = TRUE))
+        }
       }
-      expect_lt(mx, 5e-5)   # FD-truncation-safe; the deferred-boundary bug was ~1e1
+      expect_lt(mx, 5e-5) # FD-truncation-safe; the deferred-boundary bug was ~1e1
     }
-    mt  <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nrate(central)=11*cl/3.5\ncp=central/(v/1000)"
+    mt <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nrate(central)=11*cl/3.5\ncp=central/(v/1000)"
     mtF <- "d/dt(depot)=-ka*depot\nd/dt(central)=ka*depot-(cl/v)*central\nf(central)=0.61\nrate(central)=11*cl/3.5\ncp=central/(v/1000)"
-    chk(mt,  et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20)))                              # non-ss
-    chk(mtF, et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20)))                              # non-ss, F != 1
-    chk(mt,  et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 12, 16, 24, 30)), TRUE)      # ss
+    chk(mt, et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20))) # non-ss
+    chk(mtF, et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20))) # non-ss, F != 1
+    chk(mt, et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 12, 16, 24, 30)), TRUE) # ss
   })
 })

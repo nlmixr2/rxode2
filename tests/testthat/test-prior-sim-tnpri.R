@@ -1,14 +1,9 @@
 rxTest({
-
   ## One multivariate normal over the population parameters *and* the omega
   ## values, which is what NONMEM calls TNPRI.  Drawn that way an omega is
   ## not guaranteed positive definite, so the draw retries.
 
-  .hasPriorSupport <- function() {
-    exists("lotriPriorDists", envir=asNamespace("lotri"), inherits=FALSE)
-  }
-
-  .ev <- function() et(amt=100) |> et(seq(0, 24, by=8))
+  .ev <- function() et(amt = 100) |> et(seq(0, 24, by = 8))
 
   ## A joint block over `tcl` and the omega element of `eta.cl`, with a
   ## covariance between them -- the thing a block that is all one kind
@@ -34,10 +29,10 @@ rxTest({
   }
 
   test_that("a joint prior draws the thetas and the omega values together", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(11, {
-      .s <- rxSolve(.joint(), .ev(), nSub=2, nStud=400)
+      .s <- rxSolve(.joint(), .ev(), nSub = 2, nStud = 400)
     })
 
     expect_equal(length(.s$omegaList), 400L)
@@ -48,31 +43,30 @@ rxTest({
 
     ## the omega element carries the prior's spread, centered on the omega
     ## value the model gives
-    expect_equal(mean(.cl), 0.3, tolerance=0.02)
-    expect_equal(sd(.cl), sqrt(0.005), tolerance=0.02)
+    expect_equal(mean(.cl), 0.3, tolerance = 0.02)
+    expect_equal(sd(.cl), sqrt(0.005), tolerance = 0.02)
 
     ## the element that has no prior is left at its point estimate
     expect_equal(unique(.v), 0.1)
 
     ## and the theta is drawn with it, correlated as the block says:
     ## 0.004 / sqrt(0.02 * 0.005) = 0.4
-    expect_equal(sd(.tcl), sqrt(0.02), tolerance=0.02)
-    expect_equal(cor(.tcl, .cl), 0.4, tolerance=0.12)
+    expect_equal(sd(.tcl), sqrt(0.02), tolerance = 0.02)
+    expect_equal(cor(.tcl, .cl), 0.4, tolerance = 0.12)
   })
 
   test_that("every drawn omega is positive definite", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     withr::with_seed(11, {
-      .s <- rxSolve(.joint(), .ev(), nSub=2, nStud=200)
+      .s <- rxSolve(.joint(), .ev(), nSub = 2, nStud = 200)
     })
 
-    expect_true(all(vapply(.s$omegaList,
-                           function(m) all(eigen(m)$values > 0), logical(1))))
+    expect_true(all(vapply(.s$omegaList, function(m) all(eigen(m)$values > 0), logical(1))))
   })
 
   test_that("the retry falls back to the nearest positive definite omega", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## A strongly correlated block whose variance carries a wide prior:
     ## the drawn variance stays positive but the block stops being
@@ -99,19 +93,21 @@ rxTest({
       })
     })
 
-    expect_warning({
-      withr::with_seed(5, {
-        .s <- rxSolve(.wide, .ev(), nSub=2, nStud=100, priorPdRetry=1)
-      })
-    }, "nearest positive definite")
+    expect_warning(
+      {
+        withr::with_seed(5, {
+          .s <- rxSolve(.wide, .ev(), nSub = 2, nStud = 100, priorPdRetry = 1)
+        })
+      },
+      "nearest positive definite"
+    )
 
     ## whatever route it took, what comes back is usable
-    expect_true(all(vapply(.s$omegaList,
-                           function(m) all(eigen(m)$values > 0), logical(1))))
+    expect_true(all(vapply(.s$omegaList, function(m) all(eigen(m)$values > 0), logical(1))))
   })
 
   test_that("a prior that can never be made positive definite is an error", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## a 1x1 omega drawn negative cannot be projected back onto the cone --
     ## its nearest positive definite matrix is the boundary, which is not
@@ -131,31 +127,38 @@ rxTest({
       })
     })
 
-    expect_error({
-      withr::with_seed(5, {
-        rxSolve(.neg, .ev(), nSub=2, nStud=50, priorPdRetry=2)
-      })
-    }, "positive definite")
+    expect_error(
+      {
+        withr::with_seed(5, {
+          rxSolve(.neg, .ev(), nSub = 2, nStud = 50, priorPdRetry = 2)
+        })
+      },
+      "positive definite"
+    )
   })
 
   test_that("priorPdRetry=1 does not retry", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## with a single try every non positive definite draw goes straight to
     ## the fallback, so the warning is the same but it fires more often
-    expect_warning({
-      withr::with_seed(5, {
-        .s <- rxSolve(.joint(), .ev(), nSub=2, nStud=50, priorPdRetry=1)
-      })
-    }, NA)
+    expect_warning(
+      {
+        withr::with_seed(5, {
+          .s <- rxSolve(.joint(), .ev(), nSub = 2, nStud = 50, priorPdRetry = 1)
+        })
+      },
+      NA
+    )
   })
 
   test_that("a joint prior and a block degrees of freedom cannot be mixed", {
-    skip_if_not(.hasPriorSupport())
+    skipIfOldLotri()
 
     ## 'lotri' rejects the combination when the model is written, since the
     ## two are alternative ways of saying the same thing
-    expect_error(rxode2(function() {
+    expect_error(
+      rxode2(function() {
       ini({
         tka <- 0.45
         add.sd <- 0.7
@@ -170,10 +173,13 @@ rxTest({
         v <- exp(1 + eta.v)
         linCmt() ~ add(add.sd)
       })
-    }), "alternatives, not additions")
+    }),
+      "alternatives, not additions"
+    )
 
     ## and on the same omega it is a duplicate, which is rejected too
-    expect_error(rxode2(function() {
+    expect_error(
+      rxode2(function() {
       ini({
         tka <- 0.45
         add.sd <- 0.7
@@ -187,6 +193,8 @@ rxTest({
         v <- 1
         linCmt() ~ add(add.sd)
       })
-    }), "more than one prior")
+    }),
+      "more than one prior"
+    )
   })
 })

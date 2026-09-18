@@ -1,5 +1,4 @@
 rxTest({
-
   mv <- rxModelVars("a=b")
 
   test_that("rxSerialize and rxDeserialize work with model variables", {
@@ -11,7 +10,7 @@ rxTest({
     expect_equal(rxDeserialize(r.base), mv)
   })
 
-  df <- data.frame(a=1:10, b=11:20)
+  df <- data.frame(a = 1:10, b = 11:20)
 
   test_that("rxSerialize and rxDeserialize work with simple data", {
     r.base <- rxSerialize(df, "base")
@@ -23,7 +22,6 @@ rxTest({
   })
 
   test_that("rxSerialize and rxDeserialize fail with bad input", {
-
     badInput <- "not a good object"
 
     expect_error(rxSerialize(badInput))
@@ -33,7 +31,6 @@ rxTest({
     expect_error(rxDeserialize("av"))
 
     expect_error(rxSerialize(df, "qs2"))
-
   })
 
   test_that("serial type", {
@@ -69,5 +66,4 @@ rxTest({
     expect_equal(rxDeserialize(qs2::qd_serialize(df)), df)
     expect_error(rxDeserialize(qs2::qs_serialize("not a good object")))
   })
-
 })

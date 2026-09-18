@@ -5,8 +5,7 @@
 #' @param id name of the subject ID column
 #' @return An \code{rxEtFile} object
 #' @export
-rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "rds"),
-                              id = "id") {
+rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "rds"), id = "id") {
   format <- match.arg(format)
   if (format == "auto") {
     .ext <- tolower(tools::file_ext(path))
@@ -16,36 +15,42 @@ rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "
 }
 
 .rxEtFileReadFull <- function(x) {
-  switch(x$format,
+  switch(
+    x$format,
     parquet = {
-      if (!requireNamespace("arrow", quietly = TRUE))
+      if (!requireNamespace("arrow", quietly = TRUE)) {
         stop("package 'arrow' is required for parquet format")
+      }
       as.data.frame(arrow::read_parquet(x$path))
     },
-    csv     = data.table::fread(x$path, data.table = FALSE),
-    fst     = {
-      if (!requireNamespace("fst", quietly = TRUE))
+    csv = data.table::fread(x$path, data.table = FALSE),
+    fst = {
+      if (!requireNamespace("fst", quietly = TRUE)) {
         stop("package 'fst' is required for fst format")
+      }
       fst::read_fst(x$path)
     },
-    rds     = readRDS(x$path)
+    rds = readRDS(x$path)
   )
 }
 
 .rxEtFileReadCols <- function(x, cols) {
-  switch(x$format,
+  switch(
+    x$format,
     parquet = {
-      if (!requireNamespace("arrow", quietly = TRUE))
+      if (!requireNamespace("arrow", quietly = TRUE)) {
         stop("package 'arrow' is required for parquet format")
+      }
       as.data.frame(arrow::read_parquet(x$path, col_select = dplyr::all_of(cols)))
     },
-    csv     = data.table::fread(x$path, select = cols, data.table = FALSE),
-    fst     = {
-      if (!requireNamespace("fst", quietly = TRUE))
+    csv = data.table::fread(x$path, select = cols, data.table = FALSE),
+    fst = {
+      if (!requireNamespace("fst", quietly = TRUE)) {
         stop("package 'fst' is required for fst format")
+      }
       fst::read_fst(x$path, columns = cols)
     },
-    rds     = {
+    rds = {
       .d <- readRDS(x$path)
       .d[, intersect(cols, names(.d)), drop = FALSE]
     }
@@ -59,20 +64,23 @@ rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "
 
 # First n rows without materializing the whole file (rds has no lazy read).
 .rxEtFileReadHead <- function(x, n = 100L) {
-  switch(x$format,
+  switch(
+    x$format,
     parquet = {
-      if (!requireNamespace("arrow", quietly = TRUE))
+      if (!requireNamespace("arrow", quietly = TRUE)) {
         stop("package 'arrow' is required for parquet format")
+      }
       as.data.frame(utils::head(arrow::open_dataset(x$path), n))
     },
-    csv     = data.table::fread(x$path, nrows = n, data.table = FALSE),
-    fst     = {
-      if (!requireNamespace("fst", quietly = TRUE))
+    csv = data.table::fread(x$path, nrows = n, data.table = FALSE),
+    fst = {
+      if (!requireNamespace("fst", quietly = TRUE)) {
         stop("package 'fst' is required for fst format")
+      }
       .n <- min(as.integer(n), fst::metadata_fst(x$path)$nrOfRows)
       fst::read_fst(x$path, from = 1L, to = .n)
     },
-    rds     = utils::head(readRDS(x$path), n)
+    rds = utils::head(readRDS(x$path), n)
   )
 }
 
@@ -88,9 +96,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # (no draw was made), so this returns NULL rather than erroring.
 .rxOomDrawnList <- function(what) {
   .e <- .rxModels
-  if (!is.environment(.e) || !exists(what, envir=.e, inherits=FALSE)) return(NULL)
-  .l <- get(what, envir=.e, inherits=FALSE)
-  if (is.null(.l) || length(.l) == 0L) return(NULL)
+  if (!is.environment(.e) || !exists(what, envir = .e, inherits = FALSE)) {
+    return(NULL)
+  }
+  .l <- get(what, envir = .e, inherits = FALSE)
+  if (is.null(.l) || length(.l) == 0L) {
+    return(NULL)
+  }
   .l
 }
 
@@ -98,9 +110,11 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # pre-draw reads back is what the pre-draw itself made.
 .rxOomClearDrawn <- function(what) {
   .e <- .rxModels
-  if (!is.environment(.e)) return(invisible())
+  if (!is.environment(.e)) {
+    return(invisible())
+  }
   for (.w in what) {
-    if (exists(.w, envir=.e, inherits=FALSE)) rm(list=.w, envir=.e)
+    if (exists(.w, envir = .e, inherits = FALSE)) rm(list = .w, envir = .e)
   }
   invisible()
 }
@@ -113,8 +127,10 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # is done, so each chunk needs its own assignment.
 .rxOomSetDrawnSigma <- function(x) {
   .e <- .rxModels
-  if (!is.environment(.e)) return(invisible())
-  assign(".sigma", x, envir=.e)
+  if (!is.environment(.e)) {
+    return(invisible())
+  }
+  assign(".sigma", x, envir = .e)
   invisible()
 }
 
@@ -128,14 +144,23 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # `evid=9`, and `FALSE` (the default) every `isObs()` record but `evid=9`.
 .rxOomObsPerSubject <- function(object, evDf, .ctl, .ids) {
   .obj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
-  .hasCmt <- tryCatch(as.logical(rxModelVars(.obj)$flags[["hasCmt"]]),
-                      error=function(e) FALSE)
-  if (is.na(.hasCmt)) .hasCmt <- FALSE
-  .tr <- etTrans(evDf, .obj, addCmt=.hasCmt, dropUnits=FALSE, allTimeVar=FALSE,
-                 keepDosingOnly=TRUE, combineDvid=NULL, keep=character(0),
-                 addlKeepsCov=isTRUE(.ctl$addlKeepsCov),
-                 addlDropSs=if (is.null(.ctl$addlDropSs)) TRUE else isTRUE(.ctl$addlDropSs),
-                 ssAtDoseTime=if (is.null(.ctl$ssAtDoseTime)) TRUE else isTRUE(.ctl$ssAtDoseTime))
+  .hasCmt <- tryCatch(as.logical(rxModelVars(.obj)$flags[["hasCmt"]]), error = function(e) FALSE)
+  if (is.na(.hasCmt)) {
+    .hasCmt <- FALSE
+  }
+  .tr <- etTrans(
+    evDf,
+    .obj,
+    addCmt = .hasCmt,
+    dropUnits = FALSE,
+    allTimeVar = FALSE,
+    keepDosingOnly = TRUE,
+    combineDvid = NULL,
+    keep = character(0),
+    addlKeepsCov = isTRUE(.ctl$addlKeepsCov),
+    addlDropSs = if (is.null(.ctl$addlDropSs)) TRUE else isTRUE(.ctl$addlDropSs),
+    ssAtDoseTime = if (is.null(.ctl$ssAtDoseTime)) TRUE else isTRUE(.ctl$ssAtDoseTime)
+  )
   .lvl <- attr(class(.tr), ".rxode2.lst")$idLvl
   .tr <- as.data.frame(.tr)
   .id <- as.integer(.tr[["ID"]])
@@ -150,7 +175,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   } else {
     (.evid == 0L | .evid == 2L | (.evid >= 9L & .evid <= 99L)) & .evid != 9L
   }
-  .n <- tabulate(.id[.keep], nbins=length(.lvl))
+  .n <- tabulate(.id[.keep], nbins = length(.lvl))
   .n <- .n[match(as.character(.ids), as.character(.lvl))]
   if (anyNA(.n)) NULL else .n
 }
@@ -158,14 +183,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # -- Main OOM solve loop -------------------------------------------------------
 
 .rxSolveOom <- function(object, params, events, inits, .ctl, .envir = parent.frame()) {
-  .prefix   <- .ctl$file
+  .prefix <- .ctl$file
   .nDaemons <- if (is.null(.ctl$parallel)) 0L else as.integer(.ctl$parallel)
   .useMirai <- .nDaemons > 0L && requireNamespace("mirai", quietly = TRUE)
 
   # Normalize: if events is an rxEt but params is not, events is the params; swap
-  if ((is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
-        !is.rxEt(events)) {
-    .tmp  <- events
+  if (
+    (is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
+      !is.rxEt(events)
+  ) {
+    .tmp <- events
     events <- params
     params <- .tmp
   }
@@ -193,9 +220,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   }
 
   # Split IDs into chunks
-  .allIds    <- .summary$id
-  .nSub      <- length(.allIds)
-  .nChunks   <- ceiling(.nSub / .chunkSize)
+  .allIds <- .summary$id
+  .nSub <- length(.allIds)
+  .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
   # `nSub` replicates a single subject event table into that many subjects.
@@ -203,45 +230,52 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # actually has, and the pre-draw is sized the same way, so the solve came
   # back with one subject where `nSub` were asked for -- and with a `thetaMat`
   # or `omega`, that one subject's draw rather than `nSub` of them.
-  if (!is.null(.ctl$nSub) && length(.ctl$nSub) == 1L && !is.na(.ctl$nSub) &&
-        .ctl$nSub > 1L && .ctl$nSub != .nSub) {
-    stop("a chunked solve ('file='/'chunkSize=') cannot simulate 'nSub' (",
-         .ctl$nSub, ") subjects from an event table that has ", .nSub,
-         "; chunks are cut by subject, so give the event table one record ",
-         "set per subject ('et(id=1:", .ctl$nSub, ")'), or solve without ",
-         "chunking.",
-         call.=FALSE)
+  if (!is.null(.ctl$nSub) && length(.ctl$nSub) == 1L && !is.na(.ctl$nSub) && .ctl$nSub > 1L && .ctl$nSub != .nSub) {
+    stop(
+      "a chunked solve ('file='/'chunkSize=') cannot simulate 'nSub' (",
+      .ctl$nSub,
+      ") subjects from an event table that has ",
+      .nSub,
+      "; chunks are cut by subject, so give the event table one record ",
+      "set per subject ('et(id=1:",
+      .ctl$nSub,
+      ")'), or solve without ",
+      "chunking.",
+      call. = FALSE
+    )
   }
 
   .manifest <- list(
-    version = 1L, prefix = .prefix,
-    chunks  = character(.nChunks), nrows = integer(.nChunks),
-    paramChunks = character(.nChunks), inits = NULL,
-    seed    = .baseSeed
+    version = 1L,
+    prefix = .prefix,
+    chunks = character(.nChunks),
+    nrows = integer(.nChunks),
+    paramChunks = character(.nChunks),
+    inits = NULL,
+    seed = .baseSeed
   )
-  .outFiles    <- character(.nChunks)
-  .paramFiles  <- character(.nChunks)
-  .cumSub      <- 0L
+  .outFiles <- character(.nChunks)
+  .paramFiles <- character(.nChunks)
+  .cumSub <- 0L
 
   # Control args forwarded to each chunk rxSolve call (strip OOM-specific fields)
   .fwdCtlArgs <- as.list(.ctl)
-  .fwdCtlArgs$file      <- NULL
+  .fwdCtlArgs$file <- NULL
   .fwdCtlArgs$chunkSize <- NULL
-  .fwdCtlArgs$parallel  <- NULL
+  .fwdCtlArgs$parallel <- NULL
   .fwdCtlArgs$serializeFile <- NULL
 
   # Pre-draw ALL subjects' etas once using the base seed so that chunked solves
   # reproduce the same etas as a single full rxSolve(seed=baseSeed) call.
   #
   # rxSolve_ calls seedEng(op->cores) BEFORE rxSimThetaOmega, advancing rxSeed
-  # by 2*ncores.  We replicate that here with rxSeedEng() so our standalone
+  # by 2.  We replicate that here with rxSeedEng() so our standalone
   # rxSimThetaOmega sees the same effective seed as the internal call in rxSolve_.
   # The pre-draw covers every study as well as every subject, so `nStud > 1`
   # draws its omega uncertainty here once rather than in each chunk -- which
   # is what makes it right: a per-chunk draw would give each chunk its own
   # study omegas, so subjects in different chunks would not share a study.
-  .nStud <- if (!is.null(.ctl$nStud) && length(.ctl$nStud) == 1L &&
-                  !is.na(.ctl$nStud) && .ctl$nStud > 1L) {
+  .nStud <- if (!is.null(.ctl$nStud) && length(.ctl$nStud) == 1L && !is.na(.ctl$nStud) && .ctl$nStud > 1L) {
     as.integer(.ctl$nStud)
   } else {
     1L
@@ -250,11 +284,11 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .preDrawnParams <- NULL
   .preDrawnOmegaL <- NULL
   .preDrawnSigmaL <- NULL
-  .preDrawnTheta  <- NULL
-  .preDrawnSigma  <- NULL
-  .obsPerSub      <- NULL
-  .obsStart       <- NULL
-  .nObs           <- 0L
+  .preDrawnTheta <- NULL
+  .preDrawnSigma <- NULL
+  .obsPerSub <- NULL
+  .obsStart <- NULL
+  .nObs <- 0L
 
   # The pre-draw is study major: all `nSub` subjects of study 1, then of study
   # 2, and so on -- the same layout `rxSimThetaOmega()` gives the unchunked
@@ -262,9 +296,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # stride per study rather than one contiguous block.  Taking the contiguous
   # block instead would hand the later chunks another study's etas.
   .preDrawnSlice <- function(.first, .n) {
-    as.integer(vapply(seq_len(.nStud) - 1L,
-                      function(.s) .s * .nSub + seq.int(.first, length.out=.n),
-                      double(.n)))
+    as.integer(vapply(seq_len(.nStud) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n)))
   }
   # The residual draw is per OBSERVATION, so its slice is cut by the records a
   # chunk's subjects own rather than by the rows of the parameter table.
@@ -274,10 +306,14 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .sigmaSlice <- function(.first, .n) {
     .lo <- .obsStart[.first] + 1L
     .hi <- .obsStart[.first + .n]
-    if (.hi < .lo) return(integer(0))
-    as.integer(vapply(as.double(seq_len(.nStud) - 1L),
-                      function(.s) .s * .nObs + seq.int(.lo, .hi),
-                      double(.hi - .lo + 1L)))
+    if (.hi < .lo) {
+      return(integer(0))
+    }
+    as.integer(vapply(
+      as.double(seq_len(.nStud) - 1L),
+      function(.s) .s * .nObs + seq.int(.lo, .hi),
+      double(.hi - .lo + 1L)
+    ))
   }
 
   # `dfObs` is what turns the sigma uncertainty draw on.  Unlike the fixed
@@ -287,13 +323,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # study sigma and subjects in different chunks would end up with different
   # residual covariance inside the same study.  Refuse it rather than answer
   # wrongly, as a chunked solve already does for the draws it cannot share.
-  if (!is.null(.ctl$sigma) && !is.null(.ctl$dfObs) &&
-        length(.ctl$dfObs) == 1L && !is.na(.ctl$dfObs) && .ctl$dfObs > 0) {
-    stop("a chunked solve ('file='/'chunkSize=') cannot simulate sigma ",
-         "uncertainty ('dfObs' > 0): each chunk would draw its own per study ",
-         "sigma, so subjects in different chunks would not share a study.  ",
-         "Solve with 'dfObs=0', or without chunking.",
-         call.=FALSE)
+  if (
+    !is.null(.ctl$sigma) && !is.null(.ctl$dfObs) && length(.ctl$dfObs) == 1L && !is.na(.ctl$dfObs) && .ctl$dfObs > 0
+  ) {
+    stop(
+      "a chunked solve ('file='/'chunkSize=') cannot simulate sigma ",
+      "uncertainty ('dfObs' > 0): each chunk would draw its own per study ",
+      "sigma, so subjects in different chunks would not share a study.  ",
+      "Solve with 'dfObs=0', or without chunking.",
+      call. = FALSE
+    )
   }
 
   # A joint (TNPRI) draw carries the omega/sigma entries in the `thetaMat` and
@@ -305,16 +344,21 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # the `priorOmegaEl`/`priorSigmaEl` they resolve to: `rxSolveChunked()` builds
   # its control itself and never runs `.rxTnpriApplyControl()`, so the resolved
   # form is not there to test.
-  if (!is.null(.ctl$priorOmega) || !is.null(.ctl$priorOmegaEl) ||
-        !is.null(.ctl$priorSigmaEl) ||
-        identical(.ctl$omegaSeparation, "tnpri") ||
-        identical(.ctl$sigmaSeparation, "tnpri")) {
-    stop("a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
-         "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
-         "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
-         "one draw every chunk shares cannot express them, so they would be ",
-         "dropped without warning.  Solve without chunking.",
-         call.=FALSE)
+  if (
+    !is.null(.ctl$priorOmega) ||
+      !is.null(.ctl$priorOmegaEl) ||
+      !is.null(.ctl$priorSigmaEl) ||
+      identical(.ctl$omegaSeparation, "tnpri") ||
+      identical(.ctl$sigmaSeparation, "tnpri")
+  ) {
+    stop(
+      "a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
+      "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
+      "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
+      "one draw every chunk shares cannot express them, so they would be ",
+      "dropped without warning.  Solve without chunking.",
+      call. = FALSE
+    )
   }
 
   # `thetaMat` is drawn here for the same reason omega is, and more sharply:
@@ -332,8 +376,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # study 2 onward and every eta after that was a different (still valid)
   # draw.  Drawing it here keeps the stream identical AND gives each chunk its
   # own slice of the one residual matrix, instead of a redraw.
-  .simSigma <- !is.null(.ctl$sigma) && length(.ctl$sigma) > 0L &&
-    !is.data.frame(params) && !is.matrix(params)
+  .simSigma <- !is.null(.ctl$sigma) && length(.ctl$sigma) > 0L && !is.data.frame(params) && !is.matrix(params)
   if (.simSigma) {
     # The residual matrix is sized by the number of records the solve reads
     # residuals for, so the pre-draw has to know that count exactly -- the same
@@ -349,7 +392,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # before and is a valid simulation, just not the same draw.
     .obsPerSub <- tryCatch(
       .rxOomObsPerSubject(object, .evDfAll, .ctl, .allIds),
-      error=function(e) NULL)
+      error = function(e) NULL
+    )
     # An event table with no observations at all is one `rxSolve()` adds its
     # own sampling times to (`from`/`to`/`by`/`length.out`), so the count here
     # is not the count the solve uses; leave that case alone, as well as one
@@ -363,12 +407,15 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       } else {
         "this solve has more observations than one drawn matrix can index"
       }
-      .nObs     <- 0L
+      .nObs <- 0L
       .simSigma <- FALSE
-      warning("a chunked solve is drawing the residuals per chunk because ",
-              .why, ": the result is a valid simulation but not the same ",
-              "draw as the unchunked solve.",
-              call.=FALSE)
+      warning(
+        "a chunked solve is drawing the residuals per chunk because ",
+        .why,
+        ": the result is a valid simulation but not the same ",
+        "draw as the unchunked solve.",
+        call. = FALSE
+      )
     } else {
       .obsStart <- cumsum(c(0, as.double(.obsPerSub)))
     }
@@ -380,11 +427,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # error ("Not compatible with requested type"); say what happened instead.
     # `rxSolve()` refuses the `thetaMat` half of this unchunked as well.
     if (is.data.frame(params) || is.matrix(params)) {
-      stop("a chunked solve ('file='/'chunkSize=') cannot draw an 'omega'/",
-           "'thetaMat' when the parameters are a 'data.frame'/'matrix'; the ",
-           "one draw every chunk shares is made from a named parameter ",
-           "vector.  Solve without chunking.",
-           call.=FALSE)
+      stop(
+        "a chunked solve ('file='/'chunkSize=') cannot draw an 'omega'/",
+        "'thetaMat' when the parameters are a 'data.frame'/'matrix'; the ",
+        "one draw every chunk shares is made from a named parameter ",
+        "vector.  Solve without chunking.",
+        call. = FALSE
+      )
     }
     .ncores <- if (!is.null(.ctl$cores) && .ctl$cores > 0L) {
       as.integer(.ctl$cores)
@@ -398,53 +447,53 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # last chunk's solve would leave one behind, where a later solve of a model
     # with the same eps would read it as its own residuals.  Clear it however
     # this call ends.
-    on.exit(.rxOomClearDrawn(".sigma"), add=TRUE)
+    on.exit(.rxOomClearDrawn(".sigma"), add = TRUE)
     rxSetSeed(.baseSeed)
     rxSeedEng(.ncores)
     .preDrawnParams <- rxSimThetaOmega(
-      params          = params,
-      omega           = .ctl$omega,
-      omegaDf         = .ctl$omegaDf,
-      omegaLower      = if (!is.null(.ctl$omegaLower))  .ctl$omegaLower  else -Inf,
-      omegaUpper      = if (!is.null(.ctl$omegaUpper))  .ctl$omegaUpper  else  Inf,
-      omegaIsChol     = if (!is.null(.ctl$omegaIsChol)) .ctl$omegaIsChol else FALSE,
+      params = params,
+      omega = .ctl$omega,
+      omegaDf = .ctl$omegaDf,
+      omegaLower = if (!is.null(.ctl$omegaLower)) .ctl$omegaLower else -Inf,
+      omegaUpper = if (!is.null(.ctl$omegaUpper)) .ctl$omegaUpper else Inf,
+      omegaIsChol = if (!is.null(.ctl$omegaIsChol)) .ctl$omegaIsChol else FALSE,
       omegaSeparation = if (!is.null(.ctl$omegaSeparation)) .ctl$omegaSeparation else "auto",
-      omegaXform      = if (!is.null(.ctl$omegaXform))  .ctl$omegaXform  else 1L,
-      nSub            = .nSub,
+      omegaXform = if (!is.null(.ctl$omegaXform)) .ctl$omegaXform else 1L,
+      nSub = .nSub,
       # the theta draw is one row per study, added into the parameter columns
       # it names, so it has to happen in the same call as the omega draw: it
       # is the same `params` table the chunks are sliced out of, and running
       # it separately would also take the RNG out of the order the unchunked
       # solve draws in
-      thetaMat        = .ctl$thetaMat,
-      thetaLower      = if (!is.null(.ctl$thetaLower))  .ctl$thetaLower  else -Inf,
-      thetaUpper      = if (!is.null(.ctl$thetaUpper))  .ctl$thetaUpper  else  Inf,
-      thetaDf         = .ctl$thetaDf,
-      thetaIsChol     = if (!is.null(.ctl$thetaIsChol)) .ctl$thetaIsChol else FALSE,
+      thetaMat = .ctl$thetaMat,
+      thetaLower = if (!is.null(.ctl$thetaLower)) .ctl$thetaLower else -Inf,
+      thetaUpper = if (!is.null(.ctl$thetaUpper)) .ctl$thetaUpper else Inf,
+      thetaDf = .ctl$thetaDf,
+      thetaIsChol = if (!is.null(.ctl$thetaIsChol)) .ctl$thetaIsChol else FALSE,
       # the residual draw happens inside the same per study loop as the eta
       # draw, so it has to be made in this call whether or not its values are
       # used -- leaving it out takes the RNG out of the order the unchunked
       # solve draws in
-      sigma           = if (.simSigma) .ctl$sigma else NULL,
-      sigmaLower      = if (!is.null(.ctl$sigmaLower))  .ctl$sigmaLower  else -Inf,
-      sigmaUpper      = if (!is.null(.ctl$sigmaUpper))  .ctl$sigmaUpper  else  Inf,
-      sigmaDf         = .ctl$sigmaDf,
-      sigmaIsChol     = if (!is.null(.ctl$sigmaIsChol)) .ctl$sigmaIsChol else FALSE,
+      sigma = if (.simSigma) .ctl$sigma else NULL,
+      sigmaLower = if (!is.null(.ctl$sigmaLower)) .ctl$sigmaLower else -Inf,
+      sigmaUpper = if (!is.null(.ctl$sigmaUpper)) .ctl$sigmaUpper else Inf,
+      sigmaDf = .ctl$sigmaDf,
+      sigmaIsChol = if (!is.null(.ctl$sigmaIsChol)) .ctl$sigmaIsChol else FALSE,
       sigmaSeparation = if (!is.null(.ctl$sigmaSeparation)) .ctl$sigmaSeparation else "auto",
-      sigmaXform      = if (!is.null(.ctl$sigmaXform))  .ctl$sigmaXform  else 1L,
-      nObs            = if (.nObs > 0) as.integer(.nObs) else 1L,
-      dfObs           = if (!is.null(.ctl$dfObs)) .ctl$dfObs else 0,
+      sigmaXform = if (!is.null(.ctl$sigmaXform)) .ctl$sigmaXform else 1L,
+      nObs = if (.nObs > 0) as.integer(.nObs) else 1L,
+      dfObs = if (!is.null(.ctl$dfObs)) .ctl$dfObs else 0,
       # `simSubjects` is `TRUE` only where the event table holds a single
       # subject that `nSub` replicates, which is the one shape a chunked solve
       # can still ask for
-      simSubjects     = .nSub == 1L && !is.null(.ctl$omega),
-      nCoresRV        = 1L,
-      nStud           = .nStud,
+      simSubjects = .nSub == 1L && !is.null(.ctl$omega),
+      nCoresRV = 1L,
+      nStud = .nStud,
       # `dfSub` is what turns the omega uncertainty draw on, so the pre-draw
       # has to carry it or `nStud > 1` would still come back with every study
       # sharing the point estimate omega
-      dfSub           = if (!is.null(.ctl$dfSub)) .ctl$dfSub else 0,
-      simVariability  = if (!is.null(.ctl$simVariability)) .ctl$simVariability else NA
+      dfSub = if (!is.null(.ctl$dfSub)) .ctl$dfSub else 0,
+      simVariability = if (!is.null(.ctl$simVariability)) .ctl$simVariability else NA
     )
     # The drawn per study omegas live in the shared `.rxModels` environment that
     # the C++ side writes.  They are read here, in the parent, because that is
@@ -453,48 +502,50 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # chunked solve while a plain one reports them.
     .preDrawnOmegaL <- .rxOomDrawnList(".omegaL")
     .preDrawnSigmaL <- .rxOomDrawnList(".sigmaL")
-    .preDrawnTheta  <- .rxOomDrawnList(".theta")
+    .preDrawnTheta <- .rxOomDrawnList(".theta")
     if (.simSigma) {
       .preDrawnSigma <- .rxOomDrawnList(".sigma")
       # The draw is only written out when it has more than one row, so a solve
       # with a single residual record has nothing to hand on; leave `sigma`
       # forwarded there and let the chunk draw it.
-      if (is.null(.preDrawnSigma) ||
-            nrow(.preDrawnSigma) != .nObs * .nStud) {
+      if (
+        is.null(.preDrawnSigma) ||
+          nrow(.preDrawnSigma) != .nObs * .nStud
+      ) {
         .preDrawnSigma <- NULL
       } else {
         # Strip sigma from forwarded args -- each chunk is handed its slice of
         # the drawn residuals instead, and a forwarded sigma would have it draw
         # its own on top of them.  The zero placeholder columns the residuals
         # are read into are already in the pre-drawn parameter table.
-        .fwdCtlArgs$sigma           <- NULL
-        .fwdCtlArgs$sigmaDf         <- NULL
-        .fwdCtlArgs$sigmaLower      <- NULL
-        .fwdCtlArgs$sigmaUpper      <- NULL
-        .fwdCtlArgs$sigmaIsChol     <- NULL
+        .fwdCtlArgs$sigma <- NULL
+        .fwdCtlArgs$sigmaDf <- NULL
+        .fwdCtlArgs$sigmaLower <- NULL
+        .fwdCtlArgs$sigmaUpper <- NULL
+        .fwdCtlArgs$sigmaIsChol <- NULL
         .fwdCtlArgs$sigmaSeparation <- NULL
-        .fwdCtlArgs$sigmaXform      <- NULL
-        .fwdCtlArgs$dfObs           <- NULL
+        .fwdCtlArgs$sigmaXform <- NULL
+        .fwdCtlArgs$dfObs <- NULL
       }
     }
     if (!is.null(.ctl$omega)) {
       # Strip omega from forwarded args -- etas are now baked into per-chunk params
-      .fwdCtlArgs$omega           <- NULL
-      .fwdCtlArgs$omegaDf         <- NULL
-      .fwdCtlArgs$omegaLower      <- NULL
-      .fwdCtlArgs$omegaUpper      <- NULL
-      .fwdCtlArgs$omegaIsChol     <- NULL
+      .fwdCtlArgs$omega <- NULL
+      .fwdCtlArgs$omegaDf <- NULL
+      .fwdCtlArgs$omegaLower <- NULL
+      .fwdCtlArgs$omegaUpper <- NULL
+      .fwdCtlArgs$omegaIsChol <- NULL
       .fwdCtlArgs$omegaSeparation <- NULL
-      .fwdCtlArgs$omegaXform      <- NULL
+      .fwdCtlArgs$omegaXform <- NULL
     }
     if (!is.null(.ctl$thetaMat)) {
       # Likewise for thetaMat -- the drawn thetas are baked into the per-chunk
       # parameter table, and forwarding it would have each chunk draw its own
       # on top of them (where it did not simply error out)
-      .fwdCtlArgs$thetaMat    <- NULL
-      .fwdCtlArgs$thetaDf     <- NULL
-      .fwdCtlArgs$thetaLower  <- NULL
-      .fwdCtlArgs$thetaUpper  <- NULL
+      .fwdCtlArgs$thetaMat <- NULL
+      .fwdCtlArgs$thetaDf <- NULL
+      .fwdCtlArgs$thetaLower <- NULL
+      .fwdCtlArgs$thetaUpper <- NULL
       .fwdCtlArgs$thetaIsChol <- NULL
     }
   }
@@ -527,7 +578,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # cleanly (single-subject solves drop the id column).
   .writeParams <- function(.result, .chunkIds) {
     .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
-    if (is.null(.pars) || nrow(.pars) == 0L) return(NA_character_)
+    if (is.null(.pars) || nrow(.pars) == 0L) {
+      return(NA_character_)
+    }
     if (!("id" %in% names(.pars)) && nrow(.pars) == length(.chunkIds)) {
       .pars <- cbind(id = .chunkIds, .pars)
     }
@@ -545,7 +598,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (inherits(events, "rxEtFile")) {
       .rxEtFileReadChunk(events, .chunkIds)
     } else {
-      .evDf  <- if (is.rxEt(events)) as.data.frame(events) else as.data.frame(events)
+      .evDf <- if (is.rxEt(events)) as.data.frame(events) else as.data.frame(events)
       .idCol <- grep("^id$", names(.evDf), ignore.case = TRUE, value = TRUE)[1]
       if (is.na(.idCol)) {
         .evDf
@@ -559,9 +612,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     .modelObj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
     mirai::daemons(.nDaemons)
     on.exit(mirai::daemons(0), add = TRUE)
-    .chunkEvList   <- vector("list", .nChunks)
+    .chunkEvList <- vector("list", .nChunks)
     .chunkParamsList <- vector("list", .nChunks)
-    .chunkSigmaList  <- vector("list", .nChunks)
+    .chunkSigmaList <- vector("list", .nChunks)
     for (.i in seq_len(.nChunks)) {
       .chunkEvList[[.i]] <- .extractChunkEvents(.chunkList[[.i]])
       .nThis <- length(.chunkList[[.i]])
@@ -582,13 +635,25 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # lives) and forward it to the daemons: the option for faithful propagation,
     # and the already-resolved write decision because the daemon closure cannot
     # reach the unexported .rxOomHasArrow() helper.
-    .backendOpt    <- .rxOomBackendOpt()
+    .backendOpt <- .rxOomBackendOpt()
     .useArrowWrite <- .rxOomHasArrow()
     .droppedCtl <- character(0)
-    .daemonVer  <- character(0)
+    .daemonVer <- character(0)
     .tasks <- mirai::mirai_map(
       seq_len(.nChunks),
-      function(.i, .modelObj, .chunkEvList, .chunkIdsList, .chunkParamsList, .chunkSigmaList, .inits, .fwdCtlArgs, .mainTmp, .backendOpt, .useArrowWrite) {
+      function(
+        .i,
+        .modelObj,
+        .chunkEvList,
+        .chunkIdsList,
+        .chunkParamsList,
+        .chunkSigmaList,
+        .inits,
+        .fwdCtlArgs,
+        .mainTmp,
+        .backendOpt,
+        .useArrowWrite
+      ) {
         library(rxode2)
         options(rxode2.oom.backend = .backendOpt)
         # The parent drew the residuals for the whole solve; hand this daemon
@@ -600,12 +665,15 @@ rxMemSummary.rxEtFile <- function(x, ...) {
           # a daemon outlives one chunk, and `rxSolve()` is what removes this
           # again -- so a chunk that errors would leave its residuals for the
           # next chunk scheduled here
-          on.exit({
-            .me <- rxModels_()
-            if (exists(".sigma", envir = .me, inherits = FALSE)) {
-              rm(list = ".sigma", envir = .me)
-            }
-          }, add = TRUE)
+          on.exit(
+            {
+              .me <- rxModels_()
+              if (exists(".sigma", envir = .me, inherits = FALSE)) {
+                rm(list = ".sigma", envir = .me)
+              }
+            },
+            add = TRUE
+          )
         }
         # A daemon is a separate R process that loads its OWN rxode2, which need
         # not be the build the parent is running: a source checkout under
@@ -626,10 +694,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         if (length(.dropped) > 0L) {
           .fwdCtlArgs <- .fwdCtlArgs[!(names(.fwdCtlArgs) %in% .dropped)]
         }
-        .result <- do.call(rxSolve,
-                           c(list(object = .modelObj, params = .chunkParamsList[[.i]],
-                                  events = .chunkEvList[[.i]], inits = .inits),
-                             .fwdCtlArgs))
+        .result <- do.call(
+          rxSolve,
+          c(
+            list(object = .modelObj, params = .chunkParamsList[[.i]], events = .chunkEvList[[.i]], inits = .inits),
+            .fwdCtlArgs
+          )
+        )
         .df <- as.data.frame(.result)
         if (!("id" %in% names(.df))) {
           .ids <- .chunkIdsList[[.i]]
@@ -641,9 +712,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         # leave the manifest pointing at deleted chunk files.
         # Per-subject parameter table; stamp id so chunks concatenate cleanly.
         .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
-        .ids  <- .chunkIdsList[[.i]]
-        if (!is.null(.pars) && nrow(.pars) > 0L &&
-            !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
+        .ids <- .chunkIdsList[[.i]]
+        if (!is.null(.pars) && nrow(.pars) > 0L && !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
           .pars <- cbind(id = .ids, .pars)
         }
         if (.useArrowWrite) {
@@ -653,7 +723,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
             .p <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
             arrow::write_parquet(.pars, .p)
             .p
-          } else NA_character_
+          } else {
+            NA_character_
+          }
         } else {
           .f <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
           saveRDS(.df, .f)
@@ -661,34 +733,51 @@ rxMemSummary.rxEtFile <- function(x, ...) {
             .p <- tempfile(fileext = ".rds", tmpdir = .mainTmp)
             saveRDS(.pars, .p)
             .p
-          } else NA_character_
+          } else {
+            NA_character_
+          }
         }
-        list(file = .f, nrows = nrow(.df), paramFile = .pf,
-             dropped = .dropped,
-             rxVersion = as.character(utils::packageVersion("rxode2")),
-             inits = tryCatch(.result$inits, error = function(e) NULL))
+        list(
+          file = .f,
+          nrows = nrow(.df),
+          paramFile = .pf,
+          dropped = .dropped,
+          rxVersion = as.character(utils::packageVersion("rxode2")),
+          inits = tryCatch(.result$inits, error = function(e) NULL)
+        )
       },
-      .args = list(.modelObj = .modelObj,
-                   .chunkEvList = .chunkEvList, .chunkIdsList = .chunkIdsList,
-                   .chunkParamsList = .chunkParamsList,
-                   .chunkSigmaList = .chunkSigmaList,
-                   .inits = inits, .fwdCtlArgs = .fwdCtlArgs,
-                   .mainTmp = tempdir(),
-                   .backendOpt = .backendOpt, .useArrowWrite = .useArrowWrite)
+      .args = list(
+        .modelObj = .modelObj,
+        .chunkEvList = .chunkEvList,
+        .chunkIdsList = .chunkIdsList,
+        .chunkParamsList = .chunkParamsList,
+        .chunkSigmaList = .chunkSigmaList,
+        .inits = inits,
+        .fwdCtlArgs = .fwdCtlArgs,
+        .mainTmp = tempdir(),
+        .backendOpt = .backendOpt,
+        .useArrowWrite = .useArrowWrite
+      )
     )
     for (.i in seq_len(.nChunks)) {
       .r <- .tasks[[.i]][]
       if (inherits(.r, "miraiError") || inherits(.r, "errorValue") || is.null(.r$file)) {
-        stop(sprintf("parallel chunk %d failed in a mirai daemon: %s", .i,
-                     tryCatch(conditionMessage(.r),
-                              error = function(e) paste(utils::head(unclass(.r), 1L), collapse = ""))),
-             call. = FALSE)
+        stop(
+          sprintf(
+            "parallel chunk %d failed in a mirai daemon: %s",
+            .i,
+            tryCatch(conditionMessage(.r), error = function(e) paste(utils::head(unclass(.r), 1L), collapse = ""))
+          ),
+          call. = FALSE
+        )
       }
       .outFiles[.i] <- .r$file
       .paramFiles[.i] <- if (is.null(.r$paramFile)) NA_character_ else .r$paramFile
       .manifest$nrows[.i] <- .r$nrows
       .droppedCtl <- unique(c(.droppedCtl, .r$dropped))
-      if (!is.null(.r$rxVersion)) .daemonVer <- unique(c(.daemonVer, .r$rxVersion))
+      if (!is.null(.r$rxVersion)) {
+        .daemonVer <- unique(c(.daemonVer, .r$rxVersion))
+      }
       if (is.null(.manifest$inits) && !is.null(.r$inits)) {
         .manifest$inits <- .r$inits
       }
@@ -697,17 +786,20 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     # asked for, and which ones is not something a user could work out from the
     # result.
     if (length(.droppedCtl) > 0L) {
-      warning(sprintf(
-        "parallel chunks ignored %s: the rxode2 the mirai daemons loaded (%s) does not have %s",
-        paste0("'", .droppedCtl, "'", collapse = ", "),
-        paste(.daemonVer, collapse = ", "),
-        if (length(.droppedCtl) == 1L) "it" else "them"),
-        call. = FALSE)
+      warning(
+        sprintf(
+          "parallel chunks ignored %s: the rxode2 the mirai daemons loaded (%s) does not have %s",
+          paste0("'", .droppedCtl, "'", collapse = ", "),
+          paste(.daemonVer, collapse = ", "),
+          if (length(.droppedCtl) == 1L) "it" else "them"
+        ),
+        call. = FALSE
+      )
     }
   } else {
     for (.i in seq_len(.nChunks)) {
       .chunkIds <- .chunkList[[.i]]
-      .nThis    <- length(.chunkIds)
+      .nThis <- length(.chunkIds)
       .chunkEvents <- .extractChunkEvents(.chunkIds)
       .chunkParams <- if (!is.null(.preDrawnParams)) {
         .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
@@ -719,13 +811,17 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       }
       if (!is.null(.preDrawnSigma)) {
         .rxOomSetDrawnSigma(
-          .preDrawnSigma[.sigmaSlice(.cumSub + 1L, .nThis), , drop = FALSE])
+          .preDrawnSigma[.sigmaSlice(.cumSub + 1L, .nThis), , drop = FALSE]
+        )
       }
-      .result <- do.call(rxSolve,
-                         c(list(object = object, params = .chunkParams,
-                                events = .chunkEvents, inits = inits,
-                                envir = .envir), .fwdCtlArgs))
-      .outFiles[.i]   <- .writeResult(.result, .chunkIds)
+      .result <- do.call(
+        rxSolve,
+        c(
+          list(object = object, params = .chunkParams, events = .chunkEvents, inits = inits, envir = .envir),
+          .fwdCtlArgs
+        )
+      )
+      .outFiles[.i] <- .writeResult(.result, .chunkIds)
       .paramFiles[.i] <- .writeParams(.result, .chunkIds)
       .manifest$nrows[.i] <- nrow(.result)
       if (is.null(.manifest$inits)) {
@@ -748,7 +844,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .manifest$sigmaList <- .preDrawnSigmaL
   # `$thetaMat` is the drawn thetas, one row per study -- the same thing a
   # plain solve reports
-  .manifest$thetaMat  <- .preDrawnTheta
+  .manifest$thetaMat <- .preDrawnTheta
 
   saveRDS(.manifest, paste0(.prefix, "_manifest.rds"))
   .rxSolveOomFromManifest(.manifest)
@@ -781,12 +877,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # -> rds), so the option is a preference cap, never a hard requirement.
 
 .rxOomBackendOpt <- function() {
-  match.arg(getOption("rxode2.oom.backend", "auto"),
-            c("auto", "duckdb", "arrow", "rds"))
+  match.arg(getOption("rxode2.oom.backend", "auto"), c("auto", "duckdb", "arrow", "rds"))
 }
 
 .rxOomHasDuckdb <- function() {
-  if (!(.rxOomBackendOpt() %in% c("auto", "duckdb"))) return(FALSE)
+  if (!(.rxOomBackendOpt() %in% c("auto", "duckdb"))) {
+    return(FALSE)
+  }
   requireNamespace("duckdb", quietly = TRUE) &&
     requireNamespace("DBI", quietly = TRUE)
 }
@@ -795,7 +892,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # calling requireNamespace() inline) lets the `rxode2.oom.backend` option pin
 # the rds / arrow / duckdb code paths.
 .rxOomHasArrow <- function() {
-  if (.rxOomBackendOpt() == "rds") return(FALSE)
+  if (.rxOomBackendOpt() == "rds") {
+    return(FALSE)
+  }
   requireNamespace("arrow", quietly = TRUE)
 }
 
@@ -838,10 +937,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # reports the parameter table study major instead, so ordering here is what
 # keeps `$params` the same table either way -- the rows are already identical.
 .rxOomOrderParams <- function(pars) {
-  if (is.null(pars) || !is.data.frame(pars) || nrow(pars) == 0L) return(pars)
-  if (!all(c("sim.id", "id") %in% names(pars))) return(pars)
+  if (is.null(pars) || !is.data.frame(pars) || nrow(pars) == 0L) {
+    return(pars)
+  }
+  if (!all(c("sim.id", "id") %in% names(pars))) {
+    return(pars)
+  }
   .o <- order(pars[["sim.id"]], pars[["id"]])
-  if (identical(.o, seq_len(nrow(pars)))) return(pars)
+  if (identical(.o, seq_len(nrow(pars)))) {
+    return(pars)
+  }
   .ret <- pars[.o, , drop = FALSE]
   rownames(.ret) <- NULL
   .ret
@@ -852,7 +957,9 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # Backend label for the print footer.
 .rxOomBackend <- function(manifest) {
   if (.rxOomHasParquet(manifest)) {
-    if (.rxOomHasDuckdb()) return(" [DuckDB/Arrow-backed]")
+    if (.rxOomHasDuckdb()) {
+      return(" [DuckDB/Arrow-backed]")
+    }
     if (.rxOomHasArrow()) return(" [Arrow-backed]")
   }
   ""
@@ -865,9 +972,12 @@ print.rxSolveOom <- function(x, ...) {
   .n <- if (any(names(.args) == "n")) .args$n else 6L
   .bound <- .getBound(x, parent.frame(2))
 
-  cat(cli::cli_format_method({
-    .h2(crayon::bold("Solved rxode2 object"))
-  }), sep = "\n")
+  cat(
+    cli::cli_format_method({
+      .h2(crayon::bold("Solved rxode2 object"))
+    }),
+    sep = "\n"
+  )
 
   # Parameters (res$params)
   cat(format.boundParams(.bound), sep = "\n")
@@ -883,9 +993,12 @@ print.rxSolveOom <- function(x, ...) {
   print(.rxOomInits(.m))
 
   # First part of data (object)
-  cat(cli::cli_format_method({
-    .h2(crayon::bold("First part of data (object):"))
-  }), sep = "\n")
+  cat(
+    cli::cli_format_method({
+      .h2(crayon::bold("First part of data (object):"))
+    }),
+    sep = "\n"
+  )
   .isDplyr <- requireNamespace("tibble", quietly = TRUE) &&
     getOption("rxode2.display.tbl", TRUE)
   .head <- utils::head(x, n = .n)
@@ -896,9 +1009,13 @@ print.rxSolveOom <- function(x, ...) {
   }
 
   # Footer: chunk / backend note
-  cat(sprintf("<rxSolveOom: %d chunks, %d total rows, prefix='%s'%s>\n",
-              length(.m$chunks), sum(.m$nrows), .m$prefix,
-              .rxOomBackend(.m)))
+  cat(sprintf(
+    "<rxSolveOom: %d chunks, %d total rows, prefix='%s'%s>\n",
+    length(.m$chunks),
+    sum(.m$nrows),
+    .m$prefix,
+    .rxOomBackend(.m)
+  ))
   invisible(x)
 }
 
@@ -914,17 +1031,18 @@ print.rxSolveOom <- function(x, ...) {
 #' @keywords internal
 #' @noRd
 as_arrow_table.rxSolveOom <- function(x, ...) {
-  if (!requireNamespace("arrow", quietly = TRUE))
+  if (!requireNamespace("arrow", quietly = TRUE)) {
     stop("package 'arrow' is required for as_arrow_table()")
+  }
   .m <- attr(x, "manifest")
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
-  if (length(.pq) == 0L)
+  if (length(.pq) == 0L) {
     return(arrow::as_arrow_table(as.data.frame(x)))
+  }
   # read_parquet() returns a tibble by default; concat_tables() needs Arrow
   # Tables, so read with as_data_frame = FALSE. concat_tables() also takes the
   # tables as individual `...` arguments, not a list, hence do.call().
-  do.call(arrow::concat_tables,
-          lapply(.pq, function(.f) arrow::read_parquet(.f, as_data_frame = FALSE)))
+  do.call(arrow::concat_tables, lapply(.pq, function(.f) arrow::read_parquet(.f, as_data_frame = FALSE)))
 }
 
 #' Convert an rxSolveOom result to a lazy Arrow Dataset
@@ -946,12 +1064,14 @@ as.arrow <- function(x, ...) UseMethod("as.arrow")
 #' @rdname as.arrow
 #' @export
 as.arrow.rxSolveOom <- function(x, ...) {
-  if (!requireNamespace("arrow", quietly = TRUE))
+  if (!requireNamespace("arrow", quietly = TRUE)) {
     stop("package 'arrow' is required for as.arrow()")
+  }
   .m <- attr(x, "manifest")
   .pq <- .m$chunks[grepl("\\.parquet$", .m$chunks)]
-  if (length(.pq) == 0L)
+  if (length(.pq) == 0L) {
     stop("No parquet chunk files found. Re-run rxSolve() with the arrow package installed.")
+  }
   arrow::open_dataset(.pq)
 }
 
@@ -959,23 +1079,27 @@ as.arrow.rxSolveOom <- function(x, ...) {
 as.data.frame.rxSolveOom <- function(x, ...) {
   .m <- attr(x, "manifest")
   .total <- sum(.m$nrows)
-  if (.total > 1e6)
+  if (.total > 1e6) {
     message(sprintf("Materializing %.0f rows into memory", .total))
-  if (.rxOomHasArrow() && .rxOomHasParquet(.m))
+  }
+  if (.rxOomHasArrow() && .rxOomHasParquet(.m)) {
     return(as.data.frame(as_arrow_table.rxSolveOom(x)))
+  }
   do.call(rbind, lapply(.m$chunks, readRDS))
 }
 
 as_tibble.rxSolveOom <- function(x, ...) {
-  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
+  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest"))) {
     return(tibble::as_tibble(as_arrow_table.rxSolveOom(x)))
+  }
   tibble::as_tibble(as.data.frame(x))
 }
 
 #' @export
 as.data.table.rxSolveOom <- function(x, keep.rownames = FALSE, ...) {
-  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest")))
+  if (.rxOomHasArrow() && .rxOomHasParquet(attr(x, "manifest"))) {
     return(data.table::as.data.table(as.data.frame(as_arrow_table.rxSolveOom(x))))
+  }
   data.table::as.data.table(as.data.frame(x), keep.rownames = keep.rownames)
 }
 
@@ -1046,8 +1170,9 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
     return(.r[[1L]])
   }
   if (length(.pq) > 0L && .rxOomHasArrow()) {
-    .cols <- lapply(.pq, function(.f)
-      arrow::read_parquet(.f, col_select = name)[[1L]])
+    .cols <- lapply(.pq, function(.f) {
+      arrow::read_parquet(.f, col_select = name)[[1L]]
+    })
     return(unlist(.cols, use.names = FALSE))
   }
   unlist(lapply(.m$chunks, function(.f) readRDS(.f)[[name]]), use.names = FALSE)
@@ -1062,7 +1187,9 @@ head.rxSolveOom <- function(x, n = 6L, ...) {
   if (length(.pq) > 0L && .rxOomHasArrow()) {
     return(length(arrow::open_dataset(.pq[1L])$schema$names))
   }
-  if (length(manifest$chunks) > 0L) return(ncol(readRDS(manifest$chunks[1L])))
+  if (length(manifest$chunks) > 0L) {
+    return(ncol(readRDS(manifest$chunks[1L])))
+  }
   NA_integer_
 }
 
@@ -1105,12 +1232,22 @@ dim.rxSolveOom <- function(x) {
 #' @param parallel number of mirai daemons for parallel chunk solving (0 = serial)
 #' @return An \code{rxSolveOom} object
 #' @export
-rxSolveChunked <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            chunkSize, seed = NULL, parallel = 0L) {
+rxSolveChunked <- function(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  chunkSize,
+  seed = NULL,
+  parallel = 0L
+) {
   # Normalize params/events to match rxSolve convention
-  if ((is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
-        !is.rxEt(events)) {
-    .tmp   <- events
+  if (
+    (is.rxEt(params) || rxIs(params, "rx.event") || inherits(params, "rxEtFile")) &&
+      !is.rxEt(events)
+  ) {
+    .tmp <- events
     events <- params
     params <- .tmp
   }
@@ -1119,11 +1256,9 @@ rxSolveChunked <- function(object, params = NULL, events = NULL, inits = NULL, .
   } else {
     .chunkSize <- NULL
   }
-  if (!is.null(seed)) rxSetSeed(seed)
-  .ctl <- rxControl(...,
-    file      = tempfile("rxChunk"),
-    chunkSize = .chunkSize,
-    parallel  = as.integer(parallel))
-  .rxSolveOom(object, params = params, events = events, inits = inits,
-              .ctl = .ctl, .envir = parent.frame())
+  if (!is.null(seed)) {
+    rxSetSeed(seed)
+  }
+  .ctl <- rxControl(..., file = tempfile("rxChunk"), chunkSize = .chunkSize, parallel = as.integer(parallel))
+  .rxSolveOom(object, params = params, events = events, inits = inits, .ctl = .ctl, .envir = parent.frame())
 }

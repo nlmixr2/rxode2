@@ -4,6 +4,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
+#include "rxode2lincmtLink.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -606,6 +607,10 @@ extern "C" SEXP _rxTick(){
 }
 
 extern "C" SEXP _rxProgress(SEXP num, SEXP core){
+  if (TYPEOF(num) != INTSXP || Rf_length(num) < 1 ||
+      TYPEOF(core) != INTSXP || Rf_length(core) < 1) {
+    (Rf_errorcall)(R_NilValue, "'num' and 'core' must be non-empty integers");
+  }
   par_progress_1=0;
   rxt.t0 = clock();
   rxt.cores = INTEGER(core)[0];
@@ -616,6 +621,9 @@ extern "C" SEXP _rxProgress(SEXP num, SEXP core){
 }
 
 extern "C" SEXP _rxProgressStop(SEXP clear){
+  if (TYPEOF(clear) != INTSXP || Rf_length(clear) < 1) {
+    (Rf_errorcall)(R_NilValue, "'clear' must be a non-empty integer");
+  }
   int clearB = INTEGER(clear)[0];
   par_progress(rxt.n, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   par_progress_0=0;
@@ -643,7 +651,10 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    (Rf_errorcall)(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
+    // Often called from on.exit(); an unusable message falls back to the default
+    const char *msg = (TYPEOF(str) == STRSXP && Rf_length(str) > 0) ?
+      CHAR(STRING_ELT(str, 0)) : "Aborted calculation";
+    (Rf_errorcall)(R_NilValue, "%s", msg);
   }
   return R_NilValue;
 }
@@ -7040,7 +7051,6 @@ static inline double phiB(double f, double fn, double h){
   return (f-fn)/h;
 }
 
-extern "C" double linCmtScaleInitPar(int which);
 
 //' @param *hf is the forward difference final estimate
 //' @param *hphif is central difference final estimate (when switching from forward to central differences)
@@ -7080,7 +7090,7 @@ int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
     lastht=NA_REAL, lastfpt=NA_REAL, phict=NA_REAL;
   f = gillF;
   int k = 0;
-  double x = linCmtScaleInitPar(cpar);
+  double x = _p_linCmtScaleInitPar(cpar);
   // Relative error should be given by the tolerances, I believe.
   double epsA=std::fabs(f)*epsR;
   // FD1: // Initialization
@@ -7275,19 +7285,17 @@ int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
   return 5;
 }
 
-extern "C" double linCmtScaleInitN();
-extern "C" int linCmtZeroJac(int i);
 
 void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
  t_dydt c_dydt, t_update_inis u_inis) {
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
   double hf=0, hphif=0, df=0, df2=0, ef=0;
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
 
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }
@@ -7398,11 +7406,11 @@ void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                    t_dydt c_dydt, t_update_inis u_inis) {
   double h = 0.0;
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }
@@ -7543,11 +7551,11 @@ void shi21CentralH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                    t_dydt c_dydt, t_update_inis u_inis) {
   double h = 0.0;
   double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
-  int N = linCmtScaleInitN();
+  int N = _p_linCmtScaleInitN();
   rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
   double *hh = ind->linH;
   for (int i = 0; i < N; i++) {
-    if (linCmtZeroJac(i)) {
+    if (_p_linCmtZeroJac(i)) {
       hh[i] = 0.0;
       continue;
     }
@@ -8493,3 +8501,78 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "rkf1210.cpp"
 #include "rko129.cpp"
 #include "rkf1412.cpp"
+
+////////////////////////////////////////////////////////////////////////
+// Deferred index errors from inside a parallel region (see rx2api.c)
+////////////////////////////////////////////////////////////////////////
+// The recording lives here, not beside the accessors, because Makevars.in puts
+// $(SHLIB_OPENMP_CXXFLAGS) on PKG_CXXFLAGS only: rx2api.c is C, so _OPENMP is
+// not defined there and it can neither ask omp_in_parallel() nor open a
+// critical section.  It calls these.
+static char _rxApiErrMsg[512];
+static int _rxApiErrSet = 0;
+
+extern "C" int rxInParallel(void) {
+#ifdef _OPENMP
+  return omp_in_parallel();
+#else
+  return 0;
+#endif
+}
+
+// First writer wins.  Only ever reached on the error path, so the critical
+// section costs nothing that matters and an interleaved message would.
+extern "C" void rxApiErrRecord(const char *msg) {
+#ifdef _OPENMP
+#pragma omp critical(rxApiErr)
+#endif
+  {
+    if (!_rxApiErrSet) {
+      snprintf(_rxApiErrMsg, sizeof(_rxApiErrMsg), "%s", msg);
+      _rxApiErrSet = 1;
+    }
+  }
+}
+
+extern "C" int rxApiErrPendingImpl(void) {
+  return _rxApiErrSet;
+}
+
+// Hand back the recorded message and clear, so the caller can raise it.  NULL
+// when nothing is pending.
+extern "C" const char *rxApiErrTakeImpl(void) {
+  if (!_rxApiErrSet) return NULL;
+  _rxApiErrSet = 0;
+  return _rxApiErrMsg;
+}
+
+// Test hook: call an accessor with a deliberately out-of-range index, from
+// inside a parallel region when asked to.  That is the case the deferring
+// exists for and the one case that cannot be provoked from R any other way --
+// every ordinary path reaches these accessors with an index its own loop bound
+// already made valid.  Returns TRUE when an error is pending afterwards.
+extern "C" SEXP _rxode2_rxApiErrTest_(SEXP inParallelS) {
+  int inParallel = Rf_asLogical(inParallelS) == TRUE;
+  rx_solve *rx = getRxSolve_();
+  if (rx == NULL || rx->subjects == NULL) {
+    Rf_error("[rxApiErrTest]: needs a populated solve");
+  }
+  rx_solving_options_ind *ind = getSolvingOptionsInd(rx, 0);
+  const int bad = -1;   // never valid
+  if (inParallel) {
+#ifdef _OPENMP
+#pragma omp parallel num_threads(2)
+    {
+#pragma omp for
+      for (int i = 0; i < 2; ++i) {
+        (void)getIndIx(ind, bad);
+      }
+    }
+#else
+    (void)getIndIx(ind, bad);
+#endif
+  } else {
+    (void)getIndIx(ind, bad);
+  }
+  return Rf_ScalarLogical(rxApiErrPendingImpl());
+}

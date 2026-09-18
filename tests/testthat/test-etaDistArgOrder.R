@@ -14,35 +14,49 @@
 # pin the storage and the emitted line together.
 
 .adModel <- function(decl) {
-  eval(parse(text = paste0("function() {
+  eval(parse(
+    text = paste0(
+      "function() {
     ini({ lclm <- 1.5; lclrv <- 0.7; tv <- 3.45; add.sd <- 0.7; cl ~ 1 })
-    model({ ", decl, "
+    model({ ",
+      decl,
+      "
             v <- exp(tv)
             linCmt() ~ add(add.sd) })
-  }")))
+  }"
+    )
+  ))
 }
 
 .adIni <- function(decl) {
-  eval(parse(text = paste0("function() {
+  eval(parse(
+    text = paste0(
+      "function() {
     ini({ lclm <- 1.5; lclrv <- 0.7; tv <- 3.45; add.sd <- 0.7; cl ~ 1
-          ", decl, " })
+          ",
+      decl,
+      " })
     model({ v <- exp(tv)
             linCmt() ~ add(add.sd) })
-  }")))
+  }"
+    )
+  ))
 }
 
 .adShape <- function(ui) {
-  list(stored = rxUiEtaDists(ui)$etaDist,
-       emitted = grep("^cl <-",
-                      vapply(rxEtaDistExpand(ui)$lstExpr,
-                             function(z) paste(deparse(z), collapse = " "),
-                             character(1)),
-                      value = TRUE))
+  list(
+    stored = rxUiEtaDists(ui)$etaDist,
+    emitted = grep(
+      "^cl <-",
+      vapply(rxEtaDistExpand(ui)$lstExpr, function(z) paste(deparse(z), collapse = " "), character(1)),
+      value = TRUE
+    )
+  )
 }
 
 test_that("dist() argument ORDER does not change the model", {
   .canon <- "dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*exp(lclm)))"
-  .swap  <- "dist(cl) ~ dgamma(rate = 1/(exp(lclrv)*exp(lclm)), shape = 1/exp(lclrv))"
+  .swap <- "dist(cl) ~ dgamma(rate = 1/(exp(lclrv)*exp(lclm)), shape = 1/exp(lclrv))"
 
   .a <- .adShape(rxode2(.adModel(.canon)))
   .b <- .adShape(rxode2(.adModel(.swap)))
@@ -53,8 +67,7 @@ test_that("dist() argument ORDER does not change the model", {
   expect_identical(.b, .c)
 
   # the stored text is lotri's canonical positional form, not the user's
-  expect_identical(.a$stored,
-                   "dgamma(1/exp(lclrv), 1/(exp(lclrv) * exp(lclm)))")
+  expect_identical(.a$stored, "dgamma(1/exp(lclrv), 1/(exp(lclrv) * exp(lclm)))")
   # shape really is the first gammapInv argument -- now by way of its role
   # anchor, since the expansion hoists each family argument onto its own
   # `rxEdA.<eta>.<role>` line and the decoder refers to that name
@@ -64,8 +77,7 @@ test_that("dist() argument ORDER does not change the model", {
 test_that("positional arguments are unchanged by normalization", {
   .pos <- "dist(cl) ~ dgamma(1/exp(lclrv), 1/(exp(lclrv)*exp(lclm)))"
   .named <- "dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*exp(lclm)))"
-  expect_identical(.adShape(rxode2(.adModel(.pos))),
-                   .adShape(rxode2(.adModel(.named))))
+  expect_identical(.adShape(rxode2(.adModel(.pos))), .adShape(rxode2(.adModel(.named))))
 })
 
 
@@ -88,14 +100,15 @@ test_that("the expansion emits a role anchor per family argument", {
       linCmt() ~ prop(prop.sd)
     })
   }
-  .txt <- vapply(rxUiDecompress(rxEtaDistExpand(rxUiDecompress(.m())))$lstExpr,
-                 function(z) paste(deparse(z), collapse = " "), character(1))
+  .txt <- vapply(
+    rxUiDecompress(rxEtaDistExpand(rxUiDecompress(.m())))$lstExpr,
+    function(z) paste(deparse(z), collapse = " "),
+    character(1)
+  )
   # named by ROLE, and carrying the argument's expression.  fixed = TRUE: the
   # expressions are full of parentheses, which as a regexp would be groups.
-  expect_true(any(grepl("rxEdA.eta.cl.shape <- 1/exp(lclrv)", .txt,
-                        fixed = TRUE)))
-  expect_true(any(grepl("rxEdA.eta.cl.rate <- 1/(exp(lclrv) * exp(lclm))",
-                        .txt, fixed = TRUE)))
+  expect_true(any(grepl("rxEdA.eta.cl.shape <- 1/exp(lclrv)", .txt, fixed = TRUE)))
+  expect_true(any(grepl("rxEdA.eta.cl.rate <- 1/(exp(lclrv) * exp(lclm))", .txt, fixed = TRUE)))
   # and the decoder refers to the anchors rather than repeating the expressions
   .dec <- grep("^eta[.]cl <- gammapInv", .txt, value = TRUE)
   expect_length(.dec, 1L)
@@ -126,12 +139,14 @@ test_that("both dist() spellings emit the same anchors", {
     })
   }
   .anch <- function(.f, .eta) {
-    .t <- vapply(rxUiDecompress(rxEtaDistExpand(rxUiDecompress(.f())))$lstExpr,
-                 function(z) paste(deparse(z), collapse = " "), character(1))
+    .t <- vapply(
+      rxUiDecompress(rxEtaDistExpand(rxUiDecompress(.f())))$lstExpr,
+      function(z) paste(deparse(z), collapse = " "),
+      character(1)
+    )
     # strip the eta name explicitly: it can itself contain a dot ("eta.cl"),
     # so a "[^.]+" pattern would eat only part of it
-    sub(paste0("^rxEdA[.]", .eta, "[.]"), "",
-        grep("^rxEdA[.]", .t, value = TRUE))
+    sub(paste0("^rxEdA[.]", .eta, "[.]"), "", grep("^rxEdA[.]", .t, value = TRUE))
   }
   # same roles, same expressions, same order -- only the eta name differs
   expect_identical(.anch(.ini, "eta[.]cl"), .anch(.mod, "cl"))

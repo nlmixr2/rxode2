@@ -50,9 +50,11 @@
 }
 
 .normalizePath <- function(path, ...) {
-  ifelse(.Platform$OS.type == "windows",
+  ifelse(
+    .Platform$OS.type == "windows",
     suppressWarnings(utils::shortPathName(normalizePath(path, ...))),
-    ifelse(regexpr("^[/~]", path) != -1,
+    ifelse(
+      regexpr("^[/~]", path) != -1,
       suppressWarnings(normalizePath(path, ...)),
       suppressWarnings(normalizePath(file.path(getwd(), path), ...))
     )
@@ -92,7 +94,9 @@ rxCat <- function(a, ...) {
 #' @author Matthew L. Fidler
 #' @export
 rxClean <- function(wd) {
-  if (!missing(wd)) warning("'wd' is depreciated")
+  if (!missing(wd)) {
+    warning("'wd' is depreciated")
+  }
   rxUnloadAll()
   unlink(rxTempDir(), recursive = TRUE, force = TRUE)
   suppressMessages(.mkCache(rxTempDir()))
@@ -132,7 +136,6 @@ rxSetProd <- function(type = c("long double", "double", "logify")) {
 rxSetProgressBar <- function(seconds = 1.0) {
   invisible(.Call(`_rxParProgress`, as.double(seconds)))
 }
-
 
 
 #' Error function
@@ -409,13 +412,25 @@ gammapInva <- function(x, p) {
 #'
 #' .rxTransform(-1.09, transform="logit", inverse=TRUE)
 #'
-.rxTransform <- function(x, lambda=1.0,
-                         low = 0.0, high = 1.0,
-                         transform=c("boxCox", "yeoJohnson", "untransformed",
-                                     "lnorm", "logit", "logit + yeoJohnson",
-                                     "probit", "probit + yeoJohnson",
-                                     "logit + boxCox", "probit + boxCox"),
-                         inverse=FALSE) {
+.rxTransform <- function(
+  x,
+  lambda = 1.0,
+  low = 0.0,
+  high = 1.0,
+  transform = c(
+    "boxCox",
+    "yeoJohnson",
+    "untransformed",
+    "lnorm",
+    "logit",
+    "logit + yeoJohnson",
+    "probit",
+    "probit + yeoJohnson",
+    "logit + boxCox",
+    "probit + boxCox"
+  ),
+  inverse = FALSE
+) {
   .w <- which(is.na(x))
   if (length(.w) > 0L) {
     .ret <- numeric(length(x))
@@ -423,27 +438,40 @@ gammapInva <- function(x, p) {
     .ret[-.w] <- .rxTransform(x[-.w], lambda, low, high, transform, inverse)
     return(.ret)
   }
-  if (is.integer(transform)) {
-  } else {
-    transform <- factor(match.arg(transform),
-                        levels=c("boxCox", "yeoJohnson", "untransformed",
-                                 "lnorm", "logit", "logit + yeoJohnson",
-                                 "probit", "probit + yeoJohnson", "logit + boxCox",
-                                 "probit + boxCox"))
-    transform <- as.integer(transform)-1L
+  if (is.integer(transform)) {} else {
+    transform <- factor(
+      match.arg(transform),
+      levels = c(
+        "boxCox",
+        "yeoJohnson",
+        "untransformed",
+        "lnorm",
+        "logit",
+        "logit + yeoJohnson",
+        "probit",
+        "probit + yeoJohnson",
+        "logit + boxCox",
+        "probit + boxCox"
+      )
+    )
+    transform <- as.integer(transform) - 1L
   }
-  if (length(lambda) > 1 ||
-        length(low) > 1 ||
-        length(high) > 1 ||
-        length(transform) > 1 ||
-        length(inverse) > 1) {
-    .df <- data.frame(x = x, lambda = lambda, low = low, high = high,
-                      transform=transform, inverse=inverse)
-    vapply(seq_len(nrow(.df)),
-           function(i) {
-             .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
-                          .df$transform[i], .df$inverse[i])
-    }, numeric(1), USE.NAMES = FALSE)
+  if (
+    length(lambda) > 1 ||
+      length(low) > 1 ||
+      length(high) > 1 ||
+      length(transform) > 1 ||
+      length(inverse) > 1
+  ) {
+    .df <- data.frame(x = x, lambda = lambda, low = low, high = high, transform = transform, inverse = inverse)
+    vapply(
+      seq_len(nrow(.df)),
+      function(i) {
+        .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i], .df$transform[i], .df$inverse[i])
+      },
+      numeric(1),
+      USE.NAMES = FALSE
+    )
   } else {
     checkmate::assertNumeric(x, any.missing = FALSE)
     checkmate::assertNumeric(lambda, any.missing = FALSE)
@@ -470,10 +498,16 @@ gammapInva <- function(x, p) {
 #' @return numeric vector
 #' @author Matthew L. Fidler
 #' @noRd
-.rxTransformL <- function(x, lambda = 1.0, low = 0.0, high = 1.0,
-                          transform = 2L, dLambda = FALSE) {
-  .Call(`_rxode2_powerLDL`, as.double(x), as.double(low), as.double(high),
-        as.double(lambda), as.integer(transform), as.integer(dLambda))
+.rxTransformL <- function(x, lambda = 1.0, low = 0.0, high = 1.0, transform = 2L, dLambda = FALSE) {
+  .Call(
+    `_rxode2_powerLDL`,
+    as.double(x),
+    as.double(low),
+    as.double(high),
+    as.double(lambda),
+    as.integer(transform),
+    as.integer(dLambda)
+  )
 }
 
 #' logit and inverse logit (expit) functions
@@ -573,7 +607,7 @@ logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, .
     expit(x, low, high) * dnorm(x, mean = mean, sd = sd)
   }
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x){
+  .fV <- function(x) {
     (expit(x, low, high) - .m)^2 * dnorm(x, mean = mean, sd = sd)
   }
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value
@@ -632,23 +666,23 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #' yeoJohnsonInv(4.32, 0.5)
 #'
 boxCox <- function(x, lambda = 1.0) {
-  checkmate::assertNumeric(x, lower=0.0, any.missing=FALSE)
-  .rxTransform(x, lambda, low=0.0, high=1.0, 0L, FALSE)
+  checkmate::assertNumeric(x, lower = 0.0, any.missing = FALSE)
+  .rxTransform(x, lambda, low = 0.0, high = 1.0, 0L, FALSE)
 }
 #' @rdname boxCox
 #' @export
 boxCoxInv <- function(x, lambda = 1.0) {
-  .rxTransform(x, lambda, low=0.0, high=1.0, 0L, TRUE)
+  .rxTransform(x, lambda, low = 0.0, high = 1.0, 0L, TRUE)
 }
 #' @rdname boxCox
 #' @export
 yeoJohnson <- function(x, lambda = 1.0) {
-  .rxTransform(x, lambda, low=0.0, high=1.0, 1L, FALSE)
+  .rxTransform(x, lambda, low = 0.0, high = 1.0, 1L, FALSE)
 }
 #' @rdname boxCox
 #' @export
 yeoJohnsonInv <- function(x, lambda = 1.0) {
-  .rxTransform(x, lambda, low=0.0, high=1.0, 1L, TRUE)
+  .rxTransform(x, lambda, low = 0.0, high = 1.0, 1L, TRUE)
 }
 #' Get/Set the number of threads that rxode2 uses
 #'
@@ -676,11 +710,10 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #'   more time are solved first, this wait is less likely to have an
 #'   impact on the overall solving time.
 #'
-#'   In rxode2 the ids are sorted by the individual number of solving
-#'   points (largest first). It also has a C interface that allows
-#'   these ids to be resorted by total time spent solving the
-#'   equation.  This allows packages like nlmixr to sort by solving
-#'   time if needed.
+#'   rxode2 itself solves the ids in data order; the sort is reached
+#'   through a C interface that resorts them by the total time each id has
+#'   spent solving so far (largest first).  This allows packages like
+#'   nlmixr2 to sort by solving time between iterations of a fit.
 #'
 #'   Overall the the number of threads is throttled (restricted) for
 #'   small tasks and sorting for ids are suppressed.
@@ -696,10 +729,16 @@ getRxThreads <- function(verbose = FALSE) {
 #' @export
 setRxThreads <- function(threads = NULL, percent = NULL, throttle = NULL) {
   if (!missing(percent)) {
-    if (!missing(threads)) stop("provide either threads= or percent= but not both")
-    if (length(percent) != 1) stop("percent= is provided but is length ", length(percent))
+    if (!missing(threads)) {
+      stop("provide either threads= or percent= but not both")
+    }
+    if (length(percent) != 1) {
+      stop("percent= is provided but is length ", length(percent))
+    }
     percent <- as.integer(percent)
-    if (is.na(percent) || percent < 2L || percent > 100L) stop("percent==", percent, " but should be a number between 2 and 100")
+    if (is.na(percent) || percent < 2L || percent > 100L) {
+      stop("percent==", percent, " but should be a number between 2 and 100")
+    }
     invisible(.Call(`setRxthreads`, percent, TRUE, as.integer(throttle)))
   } else {
     invisible(.Call(`setRxthreads`, as.integer(threads), FALSE, as.integer(throttle)))
@@ -710,7 +749,7 @@ setRxThreads <- function(threads = NULL, percent = NULL, throttle = NULL) {
 #' @export
 rxCores <- getRxThreads
 
-.rxUnloadAllEnv <- new.env(parent=emptyenv())
+.rxUnloadAllEnv <- new.env(parent = emptyenv())
 .rxUnloadAllEnv$reallyUnload <- TRUE
 
 #' Unloads all rxode2 compiled DLLs
@@ -726,14 +765,14 @@ rxCores <- getRxThreads
 #' # print(rxUnloadAll())
 #' @export
 #'
-rxUnloadAll <- function(set=TRUE) {
+rxUnloadAll <- function(set = TRUE) {
   if (missing(set) && !.rxUnloadAllEnv$reallyUnload) {
     return(invisible(FALSE))
   }
   if (!missing(set) && isTRUE(set)) {
     .rxUnloadAllEnv$reallyUnload <- TRUE
   }
-  if (.rxUnloadAllEnv$reallyUnload  && isTRUE(set)) {
+  if (.rxUnloadAllEnv$reallyUnload && isTRUE(set)) {
     #try(rxUnloadAll_(), silent = TRUE)
   } else if (isTRUE(set)) {
     return(invisible(FALSE))
@@ -753,7 +792,7 @@ rxUnloadAll <- function(set=TRUE) {
     .rxLastModels <- NULL
   } else if (length(.rxLastModels) < .nKeep) {
     .rxLastModels <- .rxLastModels[!is.na(.rxLastModels)]
-    .rxLastModels <- .rxLastModels[seq(1, .nKeep)]
+    .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
     assignInMyNamespace(".rxLastModels", .rxLastModels)
   }
   .ret <- try(rxUnloadAll_(), silent = TRUE)
@@ -769,7 +808,7 @@ rxUnloadAll <- function(set=TRUE) {
       .path <- .dll[["path"]]
       .mv <- paste0(.name, "_model_vars")
 
-      .mv <- try(eval(str2lang(paste0(".", "Call(", deparse1(.mv), ")")), envir=globalenv()), silent=TRUE)
+      .mv <- try(eval(str2lang(paste0(".", "Call(", deparse1(.mv), ")")), envir = globalenv()), silent = TRUE)
       if (!inherits(.mv, "try-error")) {
         # This is a rxode2 DLL
         .md5 <- .mv$md5["parsed_md5"]
@@ -781,7 +820,7 @@ rxUnloadAll <- function(set=TRUE) {
           # and remove information
           .info <- .rxGetModelInfoFromDll(.path)
           for (i in .info) {
-            .t <- try(exists(i, envir = .rxModels), silent=TRUE)
+            .t <- try(exists(i, envir = .rxModels), silent = TRUE)
             if (isTRUE(.t)) {
               rm(list = i, envir = .rxModels)
             } else if (inherits(.t, "try-error")) {
@@ -806,7 +845,7 @@ rxUnloadAll <- function(set=TRUE) {
         # and remove information
         .info <- .rxGetModelInfoFromDll(.path)
         for (i in .info) {
-          .t <- try(exists(i, envir = .rxModels), silent=TRUE)
+          .t <- try(exists(i, envir = .rxModels), silent = TRUE)
           if (isTRUE(.t)) {
             rm(list = i, envir = .rxModels)
           } else if (inherits(.t, "try-error")) {
@@ -945,10 +984,13 @@ is.latex <- function() {
 
 
 .nsToLoad <- function() {
-  vapply(rxode2parseGetPackagesToLoad(),
-         function(pkg) {
-           requireNamespace(pkg, quietly = TRUE)
-         }, logical(1))
+  vapply(
+    rxode2parseGetPackagesToLoad(),
+    function(pkg) {
+      requireNamespace(pkg, quietly = TRUE)
+    },
+    logical(1)
+  )
 }
 
 #' Check if a language object matches a template language object
@@ -1012,15 +1054,15 @@ is.latex <- function() {
 #' @author Matthew L. Fidler
 #' @examples
 #' .rxDocTable(rxReservedKeywords)
-.rxDocTable <- function(table, caption="none") {
+.rxDocTable <- function(table, caption = "none") {
   rxReq("knitr")
   if (knitr::is_latex_output()) {
     rxReq("kableExtra")
-    kableExtra::kbl(table, longtable=TRUE, booktabs=TRUE, caption=caption) |>
-      kableExtra::kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
+    kableExtra::kbl(table, longtable = TRUE, booktabs = TRUE, caption = caption) |>
+      kableExtra::kable_styling(latex_options = c("repeat_header", "striped", "hold_position"))
   } else if (knitr::is_html_output(excludes = "gfm")) {
     rxReq("DT")
-    DT::datatable(table, rownames = FALSE, filter="top",  options=list(pageLength = 5, scrollX=TRUE))
+    DT::datatable(table, rownames = FALSE, filter = "top", options = list(pageLength = 5, scrollX = TRUE))
   } else {
     knitr::kable(table)
   }
@@ -1102,22 +1144,30 @@ meanProbs <- function(x, ...) {
 
 #' @rdname meanProbs
 #' @export
-meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
-                              names=TRUE, useT=TRUE, onlyProbs=TRUE, pred=FALSE,
-                              n=0L, ...) {
+meanProbs.default <- function(
+  x,
+  probs = seq(0, 1, 0.25),
+  na.rm = FALSE,
+  names = TRUE,
+  useT = TRUE,
+  onlyProbs = TRUE,
+  pred = FALSE,
+  n = 0L,
+  ...
+) {
   checkmate::assertNumeric(x)
-  checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
-  checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
-  checkmate::assertLogical(names, any.missing=FALSE, len=1)
-  checkmate::assertLogical(useT, any.missing=FALSE, len=1)
-  checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
-  checkmate::assertLogical(pred, any.missing=FALSE, len=1)
-  checkmate::assertIntegerish(n, min.len=1, max.len=1, any.missing=FALSE, lower=0)
+  checkmate::assertNumeric(probs, min.len = 1, any.missing = FALSE, lower = 0.0, upper = 1.0)
+  checkmate::assertLogical(na.rm, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(names, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(useT, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(onlyProbs, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(pred, any.missing = FALSE, len = 1)
+  checkmate::assertIntegerish(n, min.len = 1, max.len = 1, any.missing = FALSE, lower = 0)
   n <- as.integer(n)
   .ret <- .Call(`_rxode2_meanProbs_`, x, probs, na.rm, useT, pred, n)
   .names <- NULL
   if (names) {
-    .names <- paste0(probs*100, "%")
+    .names <- paste0(probs * 100, "%")
   }
   if (onlyProbs) {
     .ret <- .ret[-1L:-6L]
@@ -1125,7 +1175,7 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
       names(.ret) <- .names
     }
   } else if (names) {
-    names(.ret) <- c("mean","var", "sd", "min", "max", "n", .names)
+    names(.ret) <- c("mean", "var", "sd", "min", "max", "n", .names)
   }
   .ret
 }
@@ -1246,40 +1296,50 @@ binomProbs <- function(x, ...) {
 
 #' @rdname binomProbs
 #' @export
-binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
-                               names=TRUE, onlyProbs=TRUE, n=0L, m=0L,
-                               pred=FALSE,
-                               piMethod="lim", M=500000,
-                               tol=.Machine$double.eps^0.25,
-                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
-  checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
+binomProbs.default <- function(
+  x,
+  probs = c(0.025, 0.05, 0.5, 0.95, 0.975),
+  na.rm = FALSE,
+  names = TRUE,
+  onlyProbs = TRUE,
+  n = 0L,
+  m = 0L,
+  pred = FALSE,
+  piMethod = "lim",
+  M = 500000,
+  tol = .Machine$double.eps^0.25,
+  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"),
+  ...
+) {
+  checkmate::assertNumeric(x, min.len = 1, lower = 0.0, upper = 1.0)
   x <- as.double(x)
-  checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(n, min.len = 1, lower = 0, any.missing = FALSE)
   n <- as.integer(n)
-  checkmate::assertIntegerish(m, min.len=1, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(m, min.len = 1, lower = 0, any.missing = FALSE)
   m <- as.integer(m)
-  checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
-  checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
-  checkmate::assertLogical(names, any.missing=FALSE, len=1)
-  checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
+  checkmate::assertNumeric(probs, min.len = 1, any.missing = FALSE, lower = 0.0, upper = 1.0)
+  checkmate::assertLogical(na.rm, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(names, any.missing = FALSE, len = 1)
+  checkmate::assertLogical(onlyProbs, any.missing = FALSE, len = 1)
   if (pred) {
-    .m <- mean(x, na.rm=na.rm)
+    .m <- mean(x, na.rm = na.rm)
     if (is.na(.m)) {
-      .ret <- stats::quantile(NULL,probs=probs)
+      .ret <- stats::quantile(NULL, probs = probs)
       if (!onlyProbs) {
-        .ret <- c("mean"=NA_real_,"var"=NA_real_, "sd"=NA_real_, "n"=NA_real_,
-                  .ret)
+        .ret <- c("mean" = NA_real_, "var" = NA_real_, "sd" = NA_real_, "n" = NA_real_, .ret)
       }
     } else {
       .nC <- sum(!is.na(x))
-      if (n == 0L) n <- as.integer(.nC)
-      if (m == 0L) m <- as.integer(.nC)
+      if (n == 0L) {
+        n <- as.integer(.nC)
+      }
+      if (m == 0L) {
+        m <- as.integer(.nC)
+      }
       .Y <- round(.nC * .m) # number of successes
-      .ret <- stats::quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol),
-                       probs=probs)
+      .ret <- stats::quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol), probs = probs)
       if (!onlyProbs) {
-        .ret <- c("mean"=.m,"var"=.m * (1.0 - .m), "sd"=sqrt(.m * (1.0 - .m)), "n"=.nC,
-                  .ret)
+        .ret <- c("mean" = .m, "var" = .m * (1.0 - .m), "sd" = sqrt(.m * (1.0 - .m)), "n" = .nC, .ret)
       }
     }
     if (!names) {
@@ -1288,11 +1348,14 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
     .ret
   } else {
     ciMethod <- match.arg(ciMethod)
-    ciMethod <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3L, "wald"=2L, "ac"=3L, "wc"=0L)[ciMethod], NULL)
+    ciMethod <- setNames(
+      c("wilson" = 1L, "wilsonCorrect" = 0L, "agrestiCoull" = 3L, "wald" = 2L, "ac" = 3L, "wc" = 0L)[ciMethod],
+      NULL
+    )
     .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, n, ciMethod)
     .names <- NULL
     if (names) {
-      .names <- paste0(probs*100, "%")
+      .names <- paste0(probs * 100, "%")
     }
     if (onlyProbs) {
       .ret <- .ret[-1L:-4L]
@@ -1300,12 +1363,11 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
         names(.ret) <- .names
       }
     } else if (names) {
-      names(.ret) <- c("mean","var", "sd", "n", .names)
+      names(.ret) <- c("mean", "var", "sd", "n", .names)
     }
     .ret
   }
 }
-
 
 
 #' Convert a factor/char to an id
@@ -1334,7 +1396,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
 #' .getWh(10401)
 #'
 .getWh <- function(i) {
-  checkmate::assertIntegerish(i,len=1, any.missing=FALSE)
+  checkmate::assertIntegerish(i, len = 1, any.missing = FALSE)
   .Call(`_rxode2_getWh`, as.integer(i))
 }
 
@@ -1366,31 +1428,54 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
 #' .toClassicEvid(cmt=6, amt=3, evid=7)
 #' .toClassicEvid(evid=2)
 #' .toClassicEvid(evid=4)
-.toClassicEvid <- function(cmt=1L, amt=0.0, rate=0.0, dur=0.0, ii=0.0, evid=0L, ss=0.0) {
+.toClassicEvid <- function(cmt = 1L, amt = 0.0, rate = 0.0, dur = 0.0, ii = 0.0, evid = 0L, ss = 0.0) {
   .w <- which(is.na(cmt))
-  if (length(.w) > 0) cmt[.w] <- 1
+  if (length(.w) > 0) {
+    cmt[.w] <- 1
+  }
   checkmate::assertIntegerish(cmt)
-  checkmate::assertIntegerish(evid, any.missing=FALSE)
+  checkmate::assertIntegerish(evid, any.missing = FALSE)
   checkmate::assertNumeric(amt)
-  checkmate::assertNumeric(dur, any.missing=FALSE)
+  checkmate::assertNumeric(dur, any.missing = FALSE)
   checkmate::assertNumeric(ii)
   checkmate::assertNumeric(ss)
-  .df <- data.frame(cmt=as.integer(cmt), evid=as.integer(evid), amt=as.double(amt),
-                    rate=as.double(rate), dur=as.double(dur),
-                    ii=as.double(ii),
-                    ss=as.double(ss))
-  .Call(`_rxode2_getClassicEvid`,
-        .df$cmt, .df$amt, .df$rate, .df$dur,
-        .df$ii, .df$evid, .df$ss)
+  .df <- data.frame(
+    cmt = as.integer(cmt),
+    evid = as.integer(evid),
+    amt = as.double(amt),
+    rate = as.double(rate),
+    dur = as.double(dur),
+    ii = as.double(ii),
+    ss = as.double(ss)
+  )
+  .Call(`_rxode2_getClassicEvid`, .df$cmt, .df$amt, .df$rate, .df$dur, .df$ii, .df$evid, .df$ss)
 }
 
 .rxDerivedReg <- rex::rex(
   start,
   or(
     group(or("V", "Q", "VP", "VT", "CLD"), number),
-    "KA", "VP", "VT", "CLD", "V", "VC", "CL", "VSS", "K", "KE", "KEL",
-    "Q", "VT", group("K", number, number), "AOB", "ALPHA", "BETA", "GAMMA",
-    "A", "B", "C"
+    "KA",
+    "VP",
+    "VT",
+    "CLD",
+    "V",
+    "VC",
+    "CL",
+    "VSS",
+    "K",
+    "KE",
+    "KEL",
+    "Q",
+    "VT",
+    group("K", number, number),
+    "AOB",
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "A",
+    "B",
+    "C"
   ),
   end
 )
@@ -1477,7 +1562,8 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
 #'
 #' @references Shafer S. L. `CONVERT.XLS`
 #'
-#' @references Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th). Clipping Williams & Wilkins, Philadelphia, 2010.
+#' @references Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th).
+#' Clipping Williams & Wilkins, Philadelphia, 2010.
 #'
 #' @examples
 #'
@@ -1515,9 +1601,12 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     }
     .lst <- as.data.frame(.lst)
     .linCmt <- .Call(
-      `_linCmtParse`, names(.lst)[.w],
+      `_linCmtParse`,
+      names(.lst)[.w],
       c(
-        "with(.lst,.Call(`_rxode2_calcDerived`, ", "list(", "0, 0, 0, 0, ",
+        "with(.lst,.rxDerivedCalc(",
+        "list(",
+        "0, 0, 0, 0, ",
         ", 0, 0, 0, 0),digits))"
       ),
       verbose
@@ -1527,6 +1616,12 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   } else {
     stop("cannot figure out PK parameters to convert", call. = FALSE)
   }
+}
+
+# rxDerived() evaluates a generated call to this; the conversion engine lives
+# in rxode2lincmt
+.rxDerivedCalc <- function(...) {
+  rxode2lincmt::.calcDerived(...)
 }
 
 #' Get the information about the rxode2 derived parameter transformation
@@ -1565,9 +1660,12 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .w <- which(regexpr(.rxDerivedReg, .namesU) != -1)
   if (length(.w) > 1L) {
     .linCmt <- .Call(
-      `_linCmtParse`, .args[.w],
+      `_linCmtParse`,
+      .args[.w],
       c(
-        "", "", "tlag, F, rate1, dur1, ",
+        "",
+        "",
+        "tlag, F, rate1, dur1, ",
         ", tlag2, F2, rate2, dur2"
       ),
       FALSE
@@ -1576,12 +1674,19 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     .str <- strsplit(.str, ", +")[[1]]
     .str <- .str[-(1:2)]
     .str <- .str[c(1:6, 11)]
-    .str <- vapply(seq_along(.str), function(i) {
-      .num <- suppressWarnings(as.numeric(.str[i]))
-      if (is.na(.num)) return(.str[i])
-      NA_character_
-    }, character(1), USE.NAMES=FALSE)
-    names(.str) <- c("p1", "v1", "p2", "p3","p4", "p5", "ka")
+    .str <- vapply(
+      seq_along(.str),
+      function(i) {
+        .num <- suppressWarnings(as.numeric(.str[i]))
+        if (is.na(.num)) {
+          return(.str[i])
+        }
+        NA_character_
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
+    names(.str) <- c("p1", "v1", "p2", "p3", "p4", "p5", "ka")
     .linCmt$str <- .str
     .linCmt
   } else {
@@ -1593,10 +1698,9 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 .dummy <- function() {
   #dummy import to make check() and CRAN happy
   .r <- rex::rex(start, end)
-  .d <- data.table::data.table(a=1)
+  .d <- data.table::data.table(a = 1)
 }
 ## nocov end
-
 
 #' Get the number of linear compartments
 #'
@@ -1609,12 +1713,12 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .mv <- rxModelVars(obj)
   .flag <- setNames(.mv$flags["linCmtFlg"], NULL)
   if (.flag <= 0) {
-    c(numLin=0L, numLinSens=0L, depotLin=0L)
+    c(numLin = 0L, numLinSens = 0L, depotLin = 0L)
   } else {
-    .numLinSens <- floor(.flag/100)
-    .numLin <- floor((.flag - .numLinSens*100)/10)
-    .depotLin <- floor((.flag - .numLinSens*100- .numLin*10))
-    c(numLin=.numLin, numLinSens=.numLinSens, depotLin=.depotLin)
+    .numLinSens <- floor(.flag / 100)
+    .numLin <- floor((.flag - .numLinSens * 100) / 10)
+    .depotLin <- floor((.flag - .numLinSens * 100 - .numLin * 10))
+    c(numLin = .numLin, numLinSens = .numLinSens, depotLin = .depotLin)
   }
 }
 
@@ -1650,13 +1754,17 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   }
   .ret <- c(.ret, "central", .periph)
   if (.ncmt["numLinSens"] > 0L) {
-    .ret <- c(.ret,
-              unlist(lapply(c("central", .periph), function(.x) {
-                paste0("rx__sens_", .x, "_BY_", .vars)
-              }), use.names = FALSE))
+    .ret <- c(
+      .ret,
+      unlist(
+        lapply(c("central", .periph), function(.x) {
+          paste0("rx__sens_", .x, "_BY_", .vars)
+        }),
+        use.names = FALSE
+      )
+    )
     if (.ncmt["depotLin"] > 0) {
-      .ret <- c(.ret,
-                "rx__sens_depot_BY_ka")
+      .ret <- c(.ret, "rx__sens_depot_BY_ka")
     }
   }
   unname(.ret)

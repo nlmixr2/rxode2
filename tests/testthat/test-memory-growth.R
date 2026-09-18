@@ -25,13 +25,14 @@
 
 .rxSkipUnlessMemoryTest <- function() {
   testthat::skip_on_cran()
-  testthat::skip_if_not(identical(Sys.getenv("RXODE2_MEMORY_TEST"), "true"),
-                        "set RXODE2_MEMORY_TEST=true to run the memory-growth tests")
+  testthat::skip_if_not(
+    identical(Sys.getenv("RXODE2_MEMORY_TEST"), "true"),
+    "set RXODE2_MEMORY_TEST=true to run the memory-growth tests"
+  )
   testthat::skip_if_not_installed("ps")
 }
 
 rxTest({
-
   test_that("translating the same model twice does not grow the memoise cache", {
     .model <- "d/dt(memoTest) = -kMemoTest*memoTest;\n"
     .cache <- environment(rxTrans.character)$`_cache`
@@ -59,8 +60,7 @@ rxTest({
     # parser on the second model
     .mv <- .rxModelVarsCharacter(.m1)
     expect_equal(.mv$state, "stateOne")
-    expect_equal(rxNorm(getFromNamespace(".rxModelVarsLast", "rxode2")),
-                 rxNorm(.mv))
+    expect_equal(rxNorm(getFromNamespace(".rxModelVarsLast", "rxode2")), rxNorm(.mv))
   })
 
   test_that("the parse prefix is a function of the model, not of the call", {
@@ -89,7 +89,7 @@ rxTest({
     .model <- "d/dt(forceTest) = -kForceTest*forceTest;\n"
     .mod <- rxode2(.model)
     on.exit(try(rxDelete(.mod), silent = TRUE))
-    invisible(rxNorm(.model))   # a cache hit, after the model was built
+    invisible(rxNorm(.model)) # a cache hit, after the model was built
     rxDelete(.mod)
     expect_no_error(.mod$compile())
     expect_true(rxDllLoaded(.mod))
@@ -185,5 +185,4 @@ rxTest({
     # of which a full gc() could reclaim
     expect_lt(.cells() - .before, 5)
   })
-
 })

@@ -13,11 +13,9 @@
   .ws <- NULL
   .thisEnv <- environment()
   .ret <- suppressWarnings(
-    withCallingHandlers(expr,
-      warning = function(w) {
-        assign(".ws", unique(c(w$message, .ws)), .thisEnv)
-      }
-    )
+    withCallingHandlers(expr, warning = function(w) {
+      assign(".ws", unique(c(w$message, .ws)), .thisEnv)
+    })
   )
   if (lst) {
     return(list(.ret, .ws))
@@ -28,4 +26,3 @@
     return(.ret)
   }
 }
-

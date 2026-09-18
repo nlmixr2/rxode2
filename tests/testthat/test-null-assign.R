@@ -23,20 +23,25 @@ rxTest({
   d$fSEX <- factor(d$SEX)
 
   simOrig <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX"))
-  expect_error({
-    simOrig$eta.v <- NULL
-  }, NA)
+  expect_error(
+    {
+      simOrig$eta.v <- NULL
+    },
+    NA
+  )
 
   expect_true(inherits(simOrig, "data.frame"))
   expect_false(inherits(simOrig, "rxSolve"))
   expect_false(any(names(simOrig) == "eta.v"))
 
-  expect_error({
+  expect_error(
+    {
       simOrig[["eta.v"]] <- NULL
-  }, NA)
+    },
+    NA
+  )
 
   expect_true(inherits(simOrig, "data.frame"))
   expect_false(inherits(simOrig, "rxSolve"))
   expect_false(any(names(simOrig) == "eta.v"))
-
 })

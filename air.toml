@@ -1,0 +1,18 @@
+[format]
+line-width = 120
+indent-width = 2
+# rxode2 modelling DSL: formatting these calls would split the
+# `lcl <- 1; label("...")` ini() idiom onto two lines and rewrite
+# `d/dt(central)` as `d / dt(central)`, so leave them as written. `quote()`
+# holds model code passed to the parser and piping helpers.
+skip = ["ini", "model", "rxode2", "RxODE", "rxode", ".rxode2", "modelExtract", "quote", "rxGetModel", "rxRename", "lotri"]
+# Generated files (R/build.R, Rcpp, inst/tools/workaround.R); formatting
+# them would be undone on every regeneration.
+exclude = [
+  "R/RcppExports.R",
+  "R/rxrandomui.R",
+  "R/parseFuns.R",
+  "R/rxSyntaxFunctions.R",
+  "R/dfIni.R",
+  "R/rxode2_md5.R",
+]

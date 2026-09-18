@@ -73,10 +73,13 @@ test_that("rxRemoveUiAssembled unregisters, and removing an absent hook is a no-
 })
 
 test_that("a ui-prep hook may take (ui) or (ui, solveModel)", {
-  on.exit({
-    rxRemoveUiPrep("test:prep1")
-    rxRemoveUiPrep("test:prep2")
-  }, add = TRUE)
+  on.exit(
+    {
+      rxRemoveUiPrep("test:prep1")
+      rxRemoveUiPrep("test:prep2")
+    },
+    add = TRUE
+  )
   seen <- new.env(parent = emptyenv())
   ## one-argument hook: the long-standing signature, still supported
   rxRegisterUiPrep("test:prep1", function(ui) seen$one <- TRUE)

@@ -1,5 +1,4 @@
 rxTest({
-
   # The Yeo-Johnson transform is monotone increasing, so rxTBSd() must be
   # positive everywhere.  On the negative branch lambda == 2 is a special case
   # (yj(x) = -log(1 - x)); it used to return the derivative with the wrong sign,
@@ -147,13 +146,11 @@ rxTest({
     }
     # yeoJohnson log-Jacobian: (lambda-1)*log1p(x) for x >= 0,
     # (1-lambda)*log1p(-x) for x < 0
-    expect_equal(.pL(c(2, -0.5, -2), 0.5, 1),
-                 c(-0.5 * log1p(2), 0.5 * log1p(0.5), 0.5 * log1p(2)))
+    expect_equal(.pL(c(2, -0.5, -2), 0.5, 1), c(-0.5 * log1p(2), 0.5 * log1p(0.5), 0.5 * log1p(2)))
     # lambda gradient log1p(x) / -log1p(-x), including at exactly lambda == 1
     # (used to return 0 there) and x < -1 (used to be NaN)
     for (lam in c(0.25, 1, 1.75)) {
-      expect_equal(.pDL(c(2, -0.5, -2), lam, 1),
-                   c(log1p(2), -log1p(0.5), -log1p(2)))
+      expect_equal(.pDL(c(2, -0.5, -2), lam, 1), c(log1p(2), -log1p(0.5), -log1p(2)))
     }
     # boxCox gradient log(x), including at exactly lambda == 1
     expect_equal(.pDL(2, 1, 0), log(2))
@@ -174,8 +171,6 @@ rxTest({
     }
     # logit log-Jacobian is finite at the upper bound (clamped)
     expect_true(is.finite(.pL(1, 1, 4)))
-    expect_error(rxode2:::.rxTransformL(0.5, low = 1, high = 0, transform = 4L),
-                 "'high' must be greater than 'low'")
+    expect_error(rxode2:::.rxTransformL(0.5, low = 1, high = 0, transform = 4L), "'high' must be greater than 'low'")
   })
-
 })

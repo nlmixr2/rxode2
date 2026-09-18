@@ -14,8 +14,11 @@ format.rxRateDur <- function(x, ...) {
 
 .fmt3 <- function(name, bound, access) {
   paste0(
-    crayon::bold(name), " (", crayon::yellow(bound),
-    crayon::bold$blue(paste0("$", access)), "):"
+    crayon::bold(name),
+    " (",
+    crayon::yellow(bound),
+    crayon::bold$blue(paste0("$", access)),
+    "):"
   )
 }
 #' @export
@@ -43,7 +46,10 @@ format.rxSolveSimType <- function(x, ...) {
   }
   .uncert <- character(0)
   if (!isNullZero(x$thetaMat)) {
-    .uncert <- c(.uncert, paste0("parameters (", crayon::yellow(.bound), crayon::bold$blue("$thetaMat"), " for changes)"))
+    .uncert <- c(
+      .uncert,
+      paste0("parameters (", crayon::yellow(.bound), crayon::bold$blue("$thetaMat"), " for changes)")
+    )
   }
   if (!isNullZero(x$omegaList)) {
     .uncert <- c(.uncert, paste0("omega matrix (", crayon::yellow(.bound), crayon::bold$blue("$omegaList"), ")"))
@@ -52,7 +58,11 @@ format.rxSolveSimType <- function(x, ...) {
     .uncert <- c(.uncert, paste0("sigma matrix (", crayon::yellow(.bound), crayon::bold$blue("$sigmaList"), ")"))
   }
   if (length(.uncert) == 0L) {
-    .first <- paste0("\nSimulation ", crayon::bold("without uncertainty"), " in parameters, omega, or sigma matricies\n\n")
+    .first <- paste0(
+      "\nSimulation ",
+      crayon::bold("without uncertainty"),
+      " in parameters, omega, or sigma matricies\n\n"
+    )
   } else if (length(.uncert) == 1L) {
     .first <- paste0("\nSimulation ", crayon::bold("with uncertainty"), " in ", paste(.uncert, collapse = ", "), "\n")
   } else {

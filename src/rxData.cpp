@@ -22,6 +22,8 @@
 #include <thread>
 #include <string>
 #include <vector>
+#include <algorithm>  // std::stable_sort in sortIds()
+#include <numeric>    // std::iota in sortIds()
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -32,6 +34,7 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
@@ -46,9 +49,6 @@ using namespace Rcpp;
 using namespace arma;
 
 extern "C" void seedEng(int ncores);
-extern "C" void ensureLinCmtA(int nCores);
-extern "C" void ensureLinCmtB(int nCores);
-extern "C" void linCmtBindFree(rx_solving_options_ind *ind);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
@@ -75,6 +75,12 @@ extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
+// Raises an index error an accessor recorded from inside a parallel region,
+// where Rf_error() could not run (rx2api.c).  Declared here rather than by
+// including rx2api.h: that header declares rxSetSilentErr() void while this
+// file defines it bool, so pulling it in breaks on an unrelated pre-existing
+// mismatch.
+extern "C" void rxApiErrRaise(void);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
@@ -767,8 +773,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(33);
-  CharacterVector retN(33);
+  List ret(36);
+  CharacterVector retN(36);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -883,6 +889,15 @@ List rxModelVars_blank() {
 
   ret[32] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
   retN[32] = "md5";
+
+  ret[33] = IntegerVector::create(0); // splitInfusion
+  retN[33] = "splitInfusion";
+
+  ret[34] = IntegerVector::create(0); // splitInfusionBolus
+  retN[34] = "splitInfusionBolus";
+
+  ret[35] = IntegerVector::create(0); // splitBolusInfusion
+  retN[35] = "splitBolusInfusion";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
@@ -1946,21 +1961,11 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->delayHistNeq = 0;
   ind->delayHistN = 0;
   ind->delayHistOn = 0;
-  // linCmtB(which1 = -3)'s output-time rate history (nlmixr2/rxode2#1236);
-  // kept after the solve for the same reason as delayHist above.
-  free(ind->linCmtRateHist);
-  ind->linCmtRateHist = NULL;
-  ind->linCmtRateHistCap = 0;
-  ind->linCmtRateHistW = 0;
-  // linCmtB(which1 = -9/-10)'s per-origin amount history; same lifecycle.
-  free(ind->linCmtOriginHist);
-  ind->linCmtOriginHist = NULL;
-  ind->linCmtOriginHistCap = 0;
-  ind->linCmtOriginHistW = 0;
-  // linCmtB()'s per-individual carried state (window + value memo), allocated
-  // on first touch inside the solve; same lifecycle as the two above.  It
-  // holds C++ members, so linCmt.cpp owns the delete.
-  linCmtBindFree(ind);
+  // linCmtB()'s rate / per-origin histories (kept after the solve like
+  // delayHist above) and its per-individual carried state are allocated in
+  // rxode2lincmt, so they are freed there too.
+  _p_linCmtFreeInd(ind);
+  _p_linCmtBindFree(ind);
 }
 
 extern "C" void gFree(){
@@ -3375,6 +3380,32 @@ extern "C" SEXP get_fkeepn() {
   return names;
 }
 
+// Should sortIds() re-order the solve by accumulated run time?
+//
+// The throttle SUPPRESSES the sort for problems too small to gain from it: with
+// `nall` subject-solves, `cores` threads and the `throttle` from
+// ?setRxThreads, the sort is skipped when nall*throttle <= cores, and taken
+// otherwise.  A single thread never reorders because there is no other thread
+// to wait on.
+//
+// 64-bit because `throttle` is user-settable to any positive int
+// (setRxThreads(throttle=) / rxode2_THROTTLE) and `nall` reaches INT_MAX, so
+// the product overflows 32 bits; `cores` is widened rather than cast to
+// unsigned so a non-positive value compares as itself.
+static inline bool sortIdsWanted(int cores, uint32_t nall, int throttle) {
+  return cores > 1 && (int64_t)nall * (int64_t)throttle > (int64_t)cores;
+}
+
+extern "C" SEXP _rxode2_sortIdsWanted_(SEXP coresS, SEXP nallS, SEXP throttleS) {
+  int cores = Rf_asInteger(coresS), throttle = Rf_asInteger(throttleS);
+  double nall = Rf_asReal(nallS);
+  if (cores == NA_INTEGER || throttle == NA_INTEGER || ISNA(nall) ||
+      nall < 0 || nall > (double)UINT32_MAX) {
+    Rf_error("%s", _("'cores', 'nall' and 'throttle' must be non-NA, with 0 <= 'nall' <= 2^32-1"));
+  }
+  return Rf_ScalarLogical(sortIdsWanted(cores, (uint32_t)nall, throttle));
+}
+
 extern "C" void sortIds(rx_solve* rx, int ini) {
   rx_solving_options_ind* ind;
   uint64_t nSizeLong = (uint64_t)rx->nsim * (uint64_t)rx->nsub;
@@ -3395,19 +3426,30 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       stop(_("memory for solve order could not be allocated"));
     }
     std::iota(rx->ordId,rx->ordId+nall,1);
-  } else if (rx->op->cores > 1 && (uint32_t)rx->op->cores >= nall*(uint32_t)getThrottle()) {
-    // Here we order based on run times.  This way this iteratively
-    // changes the order based on run-time.
-    NumericVector solveTime(nall);
-    IntegerVector ord;
+  } else if (sortIdsWanted(rx->op->cores, nall, getThrottle())) {
+    // Order the solve by each subject's accumulated run time, most expensive
+    // first, so that a long solve is not what a thread picks up last.  Because
+    // `solveTime` keeps accumulating, each pass re-ranks on everything solved
+    // so far.
+    //
+    // Sorted here rather than through rxode2's .order1(): a caller invokes this
+    // once per solve pass of an estimation, where .order1()'s data.table round
+    // trip (~300us for a few hundred subjects) costs more than the ordering it
+    // computes saves.  stable_sort on a descending comparator is
+    // order(decreasing=TRUE): ties keep their original, ascending, position.
+    //
+    // rx->ordId is allocated by the ini branch above, which every caller of
+    // this branch has already run (directly, or as sortIds(rx, 2)).
+    std::vector<double> solveTime(nall);
     for (uint32_t i = 0; i < nall; i++) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
-    Function order1 = getRxFn(".order1"); // decreasing
-    ord = order1(solveTime, _["decreasing"] = LogicalVector::create(true));
-    // This assumes that this has already been created
-    std::copy(ord.begin(), ord.end(), rx->ordId);
+    std::vector<int> ord(nall);
+    std::iota(ord.begin(), ord.end(), 0);
+    std::stable_sort(ord.begin(), ord.end(),
+                     [&solveTime](int a, int b) { return solveTime[a] > solveTime[b]; });
+    for (uint32_t i = 0; i < nall; i++) rx->ordId[i] = ord[i] + 1;
   }
 }
 
@@ -5513,6 +5555,10 @@ List rxSolve_df(const RObject &obj,
     rxSolveFree();
     stop(_("aborted solve"));
   }
+  // An accessor handed a bad index from inside a parallel region could not
+  // raise there (see rxApiError in rx2api.c); this is the serial boundary that
+  // reports it, so the bug surfaces rather than being swallowed.
+  rxApiErrRaise();
   int doDose = 0;
   if (rxSolveDat->addDosing.isNull()){
     // only evid=0
@@ -6270,8 +6316,8 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       rxLoadAlagCmt(mvRaw, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
     }
     seedEng((int)(op->cores));
-    ensureLinCmtA((int)op->cores);
-    ensureLinCmtB((int)op->cores);
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);
@@ -6820,8 +6866,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores = 1;
     }
     seedEng((int)(op->cores));
-    ensureLinCmtA((int)op->cores);
-    ensureLinCmtB((int)op->cores);
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
     ensureLsodaCtxPool((int)op->cores);
     ensureIndLinExpCache((int)op->cores);
     ensureExtraDosing((int)op->cores);

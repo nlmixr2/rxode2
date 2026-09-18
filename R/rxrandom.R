@@ -39,7 +39,7 @@
 #'
 #' }
 #' @export
-rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
+rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
   checkmate::assertCount(n)
@@ -50,7 +50,6 @@ rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #' @rdname rxnormV
 #' @export
 rxnorm <- rxnormV
-
 
 
 #' Simulate random Poisson variable from threefry generator
@@ -125,7 +124,9 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
-  if (df == 0) stop("'df' must be greater than 0", call. = FALSE)
+  if (df == 0) {
+    stop("'df' must be greater than 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -302,9 +303,13 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #' @export
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape1, len = 1, lower = 0)
-  if (shape1 == 0) stop("'shape1' cannot be 0", call. = FALSE)
+  if (shape1 == 0) {
+    stop("'shape1' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(shape2, len = 1, lower = 0)
-  if (shape2 == 0) stop("'shape2' cannot be 0", call. = FALSE)
+  if (shape2 == 0) {
+    stop("'shape2' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -351,9 +356,13 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' @export
 rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1, lower = 0)
-  if (shape == 0) stop("'shape' cannot be 0", call. = FALSE)
+  if (shape == 0) {
+    stop("'shape' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(rate, len = 1, lower = 0)
-  if (rate == 0) stop("'rate' cannot be 0", call. = FALSE)
+  if (rate == 0) {
+    stop("'rate' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -397,9 +406,13 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #' @export
 rxf <- function(df1, df2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df1, len = 1, lower = 0)
-  if (df1 == 0) stop("'df1' cannot be 0", call. = FALSE)
+  if (df1 == 0) {
+    stop("'df1' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(df2, len = 1, lower = 0)
-  if (df2 == 0) stop("'df2' cannot be 0", call. = FALSE)
+  if (df2 == 0) {
+    stop("'df2' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -444,7 +457,9 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #' @export
 rxexp <- function(rate, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(rate, len = 1, lower = 0)
-  if (rate == 0) stop("'rate' cannot be 0", call. = FALSE)
+  if (rate == 0) {
+    stop("'rate' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -490,7 +505,9 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #' @export
 rxchisq <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
-  if (df == 0) stop("'df' cannot be 0", call. = FALSE)
+  if (df == 0) {
+    stop("'df' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -535,7 +552,9 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(location, len = 1)
   checkmate::assertNumeric(scale, len = 1, lower = 0)
-  if (scale == 0) stop("'scale' cannot be 0", call. = FALSE)
+  if (scale == 0) {
+    stop("'scale' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -572,10 +591,16 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
 #' @export
 rxord <- function(...) {
   .args <- c(...)
-  if (any(.args < 0)) return(NA_real_)
-  if (any(.args > 1)) return(NA_real_)
+  if (any(.args < 0)) {
+    return(NA_real_)
+  }
+  if (any(.args > 1)) {
+    return(NA_real_)
+  }
   .sum <- sum(.args)
-  if (.sum >= 1) return(NA_real_)
+  if (.sum >= 1) {
+    return(NA_real_)
+  }
   .v <- rxunif()
   .args <- cumsum(.args)
   .Call(`_rxode2_rxordSelect`, .v, .args)
@@ -673,13 +698,11 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' }
 #' @export
 rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
-
   if (!missing(mu)) {
     if (!missing(prob)) {
-      stop("only one of 'mu' or 'prob' can be specified",
-           call.=FALSE)
+      stop("only one of 'mu' or 'prob' can be specified", call. = FALSE)
     } else {
-      return(rxnbinomMu(size=size, mu=mu, n=n, ncores=ncores))
+      return(rxnbinomMu(size = size, mu = mu, n = n, ncores = ncores))
     }
   }
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
@@ -818,7 +841,6 @@ phi <- function(q) {
 .vecDf <- function(vec, n) {
   .Call(`_vecDF`, vec, as.integer(n)) # nolint
 }
-
 
 
 #' Expand parameters
@@ -990,9 +1012,15 @@ phi <- function(q) {
 #' returnChol = TRUE
 #' )
 #' @export
-cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
-                   type = c("invWishart", "lkj", "separation"),
-                   diagXformType = c("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")) {
+cvPost <- function(
+  nu,
+  omega,
+  n = 1L,
+  omegaIsChol = FALSE,
+  returnChol = FALSE,
+  type = c("invWishart", "lkj", "separation"),
+  diagXformType = c("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")
+) {
   if (is.null(nu) && n == 1L) {
     return(omega)
   }
@@ -1000,7 +1028,8 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
     .type <- as.integer(type)
   } else {
     .type <- as.vector(c(
-      "invWishart" = 1L, "lkj" = 2L,
+      "invWishart" = 1L,
+      "lkj" = 2L,
       "separation" = 3L
     )[match.arg(type)])
   }
@@ -1011,16 +1040,17 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
   } else {
     .xform <- setNames(
       c(
-        "variance" = 6L, "log" = 5L,
-        "identity" = 4L, "nlmixrSqrt" = 1L,
+        "variance" = 6L,
+        "log" = 5L,
+        "identity" = 4L,
+        "nlmixrSqrt" = 1L,
         "nlmixrLog" = 2L,
         "nlmixrIdentity" = 3L
       )[match.arg(diagXformType)],
       NULL
     )
   }
-  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n,
-                omegaIsChol, returnChol, .type, .xform)
+  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n, omegaIsChol, returnChol, .type, .xform)
   return(.ret)
 }
 
@@ -1170,10 +1200,13 @@ rxSetSeed <- function(seed) {
 #' @author Matthew L. Fidler
 .rxGetSeed <- function() {
   if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
-    return(list(seed=NULL, kind=NULL, rxseed=rxGetSeed()))
+    return(list(seed = NULL, kind = NULL, rxseed = rxGetSeed()))
   }
-  list(seed = get(".Random.seed", globalenv(), mode = "integer",
-                  inherits = FALSE), kind = RNGkind(), rxseed=rxGetSeed())
+  list(
+    seed = get(".Random.seed", globalenv(), mode = "integer", inherits = FALSE),
+    kind = RNGkind(),
+    rxseed = rxGetSeed()
+  )
 }
 #' Set the random seed for the session
 #'
@@ -1220,8 +1253,14 @@ rxSetSeed <- function(seed) {
 #' }, rxseed=3)
 #'
 #' @export
-rxWithSeed <- function(seed, code, rxseed=rxGetSeed(), kind = "default", normal.kind = "default",
-                       sample.kind = "default") {
+rxWithSeed <- function(
+  seed,
+  code,
+  rxseed = rxGetSeed(),
+  kind = "default",
+  normal.kind = "default",
+  sample.kind = "default"
+) {
   force(seed)
   force(rxseed)
   force(kind)
@@ -1358,7 +1397,8 @@ rxWithPreserveSeed <- function(code) {
 #' rxRmvn(4, setNames(1:d, paste0("a", 1:d)), matL)
 #' @author Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo
 #'
-#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo <https://CRAN.R-project.org/package=mvnfast>
+#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo
+#' <https://CRAN.R-project.org/package=mvnfast>
 #'
 #' @references The concept of the truncated multivariate normal was
 #'   taken from Zdravko Botev Botev (2017) \doi{10.1111/rssb.12162}
@@ -1366,11 +1406,34 @@ rxWithPreserveSeed <- function(code) {
 #'   converted to thread safe simulation;
 #'
 #' @export
-rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, isChol = FALSE,
-                   keepNames = TRUE, a = 0.4, tol = 2.05, nlTol = 1e-10, nlMaxiter = 100L) {
+rxRmvn <- function(
+  n,
+  mu = NULL,
+  sigma,
+  lower = -Inf,
+  upper = Inf,
+  ncores = 1,
+  isChol = FALSE,
+  keepNames = TRUE,
+  a = 0.4,
+  tol = 2.05,
+  nlTol = 1e-10,
+  nlMaxiter = 100L
+) {
   .ret <- .Call(
-    `_rxode2_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
-    isChol, keepNames, a, tol, nlTol, nlMaxiter
+    `_rxode2_rxRmvnSEXP`,
+    n,
+    mu,
+    sigma,
+    lower,
+    upper,
+    ncores,
+    isChol,
+    keepNames,
+    a,
+    tol,
+    nlTol,
+    nlMaxiter
   )
   if (is.matrix(n)) {
     return(invisible())
@@ -1404,26 +1467,27 @@ rxUdfUi.rxnbinom <- rxUdfUi.rxpois
 #'
 #' @noRd
 #' @author Matthew L. Fidler
-.rxnbinom <- function(size, prob, mu, pre="rx") {
+.rxnbinom <- function(size, prob, mu, pre = "rx") {
   .size <- as.character(substitute(size))
   .dp <- deparse1(substitute(size))
   .tmp <- suppressWarnings(try(force(size), silent = TRUE))
   .size <- .uiArg(.size, .tmp, .dp)
 
   if (!missing(mu)) {
-    if (!missing(prob))
+    if (!missing(prob)) {
       stop("'prob' and 'mu' both specified")
+    }
     .mu <- as.character(substitute(mu))
     .dp <- deparse1(substitute(mu))
     .tmp <- suppressWarnings(try(force(mu), silent = TRUE))
     .mu <- .uiArg(.mu, .tmp, .dp)
-    return(list(replace=paste0(pre, "nbinomMu(", .size, ", ", .mu, ")")))
+    return(list(replace = paste0(pre, "nbinomMu(", .size, ", ", .mu, ")")))
   }
   .prob <- as.character(substitute(prob))
   .dp <- deparse1(substitute(prob))
   .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
   .prob <- .uiArg(.prob, .tmp, .dp)
-  list(replace = paste0(pre, "nbinom(", .size, ", ",  .prob, ")"))
+  list(replace = paste0(pre, "nbinom(", .size, ", ", .prob, ")"))
 }
 
 #' @rdname rxUdfUi

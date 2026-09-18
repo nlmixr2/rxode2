@@ -53,10 +53,10 @@
 .rxD$llikNorm <- list(
   NULL,
   function(x, mean, sd) {
-    paste0("llikNormDmean(",paste(c(x, mean, sd), collapse=", "), ")")
+    paste0("llikNormDmean(", paste(c(x, mean, sd), collapse = ", "), ")")
   },
   function(x, mean, sd) {
-    paste0("llikNormDsd(",paste(c(x, mean, sd), collapse=", "), ")")
+    paste0("llikNormDsd(", paste(c(x, mean, sd), collapse = ", "), ")")
   }
 )
 
@@ -64,10 +64,10 @@
   NULL,
   NULL,
   function(i, x, mean, sd) {
-    paste0("llikXNormDmean(",paste(c(i, x, mean, sd), collapse=", "), ")")
+    paste0("llikXNormDmean(", paste(c(i, x, mean, sd), collapse = ", "), ")")
   },
   function(i, x, mean, sd) {
-    paste0("llikXNormDsd(",paste(c(i, x, mean, sd), collapse=", "), ")")
+    paste0("llikXNormDsd(", paste(c(i, x, mean, sd), collapse = ", "), ")")
   }
 )
 
@@ -76,7 +76,7 @@
     "0"
   },
   function(x, lambda) {
-    paste0("llikPoisDlambda(",paste(c(x, lambda), collapse=", "), ")")
+    paste0("llikPoisDlambda(", paste(c(x, lambda), collapse = ", "), ")")
   }
 )
 
@@ -86,7 +86,7 @@
     "0"
   },
   function(i, x, lambda) {
-    paste0("llikXPoisDlambda(",paste(c(i, x, lambda), collapse=", "), ")")
+    paste0("llikXPoisDlambda(", paste(c(i, x, lambda), collapse = ", "), ")")
   }
 )
 
@@ -98,7 +98,7 @@
     "0"
   },
   function(x, size, prob) {
-    paste0("llikBinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
+    paste0("llikBinomDprob(", paste(c(x, size, prob), collapse = ", "), ")")
   }
 )
 
@@ -111,7 +111,7 @@
     "0"
   },
   function(i, x, size, prob) {
-    paste0("llikXBinomDprob(",paste(c(i, x, size, prob), collapse=", "), ")")
+    paste0("llikXBinomDprob(", paste(c(i, x, size, prob), collapse = ", "), ")")
   }
 )
 
@@ -124,7 +124,7 @@
     "0"
   },
   function(x, size, prob) {
-    paste0("llikNbinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
+    paste0("llikNbinomDprob(", paste(c(x, size, prob), collapse = ", "), ")")
   }
 )
 
@@ -137,7 +137,7 @@
     "0"
   },
   function(i, x, size, prob) {
-    paste0("llikXNbinomDprob(",paste(c(i, x, size, prob), collapse=", "), ")")
+    paste0("llikXNbinomDprob(", paste(c(i, x, size, prob), collapse = ", "), ")")
   }
 )
 
@@ -149,7 +149,7 @@
     "0"
   },
   function(x, size, mu) {
-    paste0("llikNbinomMuDmu(",paste(c(x, size, mu), collapse=", "), ")")
+    paste0("llikNbinomMuDmu(", paste(c(x, size, mu), collapse = ", "), ")")
   }
 )
 
@@ -162,7 +162,7 @@
     "0"
   },
   function(i, x, size, mu) {
-    paste0("llikXNbinomMuDmu(",paste(c(i, x, size, mu), collapse=", "), ")")
+    paste0("llikXNbinomMuDmu(", paste(c(i, x, size, mu), collapse = ", "), ")")
   }
 )
 
@@ -171,33 +171,33 @@
   NULL,
   NULL,
   function(i, x, shape1, shape2) {
-    paste0("llikXBetaDshape1(",paste(c(i, x, shape1, shape2), collapse=", "), ")")
+    paste0("llikXBetaDshape1(", paste(c(i, x, shape1, shape2), collapse = ", "), ")")
   },
   function(i, x, shape1, shape2) {
-    paste0("llikXBetaDshape2(",paste(c(i, x, shape1, shape2), collapse=", "), ")")
+    paste0("llikXBetaDshape2(", paste(c(i, x, shape1, shape2), collapse = ", "), ")")
   }
 )
 
 .rxD$llikBeta <- list(
   NULL,
   function(x, shape1, shape2) {
-    paste0("llikBetaDshape1(",paste(c(x, shape1, shape2), collapse=", "), ")")
+    paste0("llikBetaDshape1(", paste(c(x, shape1, shape2), collapse = ", "), ")")
   },
   function(x, shape1, shape2) {
-    paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
+    paste0("llikBetaDshape2(", paste(c(x, shape1, shape2), collapse = ", "), ")")
   }
 )
 
 .rxD$llikT <- list(
   NULL,
   function(x, df, mean, sd) {
-    paste0("llikTDdf(",paste(c(x, df, mean, sd), collapse=", "), ")")
+    paste0("llikTDdf(", paste(c(x, df, mean, sd), collapse = ", "), ")")
   },
   function(x, df, mean, sd) {
-    paste0("llikTDmean(",paste(c(x, df, mean, sd), collapse=", "), ")")
+    paste0("llikTDmean(", paste(c(x, df, mean, sd), collapse = ", "), ")")
   },
   function(x, df, mean, sd) {
-    paste0("llikTDsd(",paste(c(x, df, mean, sd), collapse=", "), ")")
+    paste0("llikTDsd(", paste(c(x, df, mean, sd), collapse = ", "), ")")
   }
 )
 
@@ -205,20 +205,20 @@
   NULL,
   NULL,
   function(i, x, df, mean, sd) {
-    paste0("llikXTDdf(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
+    paste0("llikXTDdf(", paste(c(i, x, df, mean, sd), collapse = ", "), ")")
   },
   function(i, x, df, mean, sd) {
-    paste0("llikXTDmean(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
+    paste0("llikXTDmean(", paste(c(i, x, df, mean, sd), collapse = ", "), ")")
   },
   function(i, x, df, mean, sd) {
-    paste0("llikXTDsd(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
+    paste0("llikXTDsd(", paste(c(i, x, df, mean, sd), collapse = ", "), ")")
   }
 )
 
 .rxD$llikChisq <- list(
   NULL,
   function(x, nu) {
-    paste0("llikChisqDdf(",paste(c(x, nu), collapse=", "), ")")
+    paste0("llikChisqDdf(", paste(c(x, nu), collapse = ", "), ")")
   }
 )
 
@@ -226,14 +226,14 @@
   NULL,
   NULL,
   function(i, x, nu) {
-    paste0("llikXChisqDdf(",paste(c(i, x, nu), collapse=", "), ")")
+    paste0("llikXChisqDdf(", paste(c(i, x, nu), collapse = ", "), ")")
   }
 )
 
 .rxD$llikExp <- list(
   NULL,
   function(x, rate) {
-    paste0("llikExpDrate(",paste(c(x, rate), collapse=", "), ")")
+    paste0("llikExpDrate(", paste(c(x, rate), collapse = ", "), ")")
   }
 )
 
@@ -241,17 +241,17 @@
   NULL,
   NULL,
   function(i, x, rate) {
-    paste0("llikXExpDrate(",paste(c(i, x, rate), collapse=", "), ")")
+    paste0("llikXExpDrate(", paste(c(i, x, rate), collapse = ", "), ")")
   }
 )
 
 .rxD$llikF <- list(
   NULL,
   function(x, df1, df2) {
-    paste0("llikFDdf1(",paste(c(x, df1, df2), collapse=", "), ")")
+    paste0("llikFDdf1(", paste(c(x, df1, df2), collapse = ", "), ")")
   },
   function(x, df1, df2) {
-    paste0("llikFDdf2(",paste(c(x, df1, df2), collapse=", "), ")")
+    paste0("llikFDdf2(", paste(c(x, df1, df2), collapse = ", "), ")")
   }
 )
 
@@ -259,10 +259,10 @@
   NULL,
   NULL,
   function(i, x, df1, df2) {
-    paste0("llikXFDdf1(",paste(c(i, x, df1, df2), collapse=", "), ")")
+    paste0("llikXFDdf1(", paste(c(i, x, df1, df2), collapse = ", "), ")")
   },
   function(i, x, df1, df2) {
-    paste0("llikXFDdf2(",paste(c(i, x, df1, df2), collapse=", "), ")")
+    paste0("llikXFDdf2(", paste(c(i, x, df1, df2), collapse = ", "), ")")
   }
 )
 
@@ -270,7 +270,7 @@
 .rxD$llikGeom <- list(
   NULL,
   function(x, p) {
-    paste0("llikGeomDprob(",paste(c(x, p), collapse=", "), ")")
+    paste0("llikGeomDprob(", paste(c(x, p), collapse = ", "), ")")
   }
 )
 
@@ -278,17 +278,17 @@
   NULL,
   NULL,
   function(i, x, p) {
-    paste0("llikXGeomDprob(",paste(c(i, x, p), collapse=", "), ")")
+    paste0("llikXGeomDprob(", paste(c(i, x, p), collapse = ", "), ")")
   }
 )
 
 .rxD$llikUnif <- list(
   NULL,
   function(x, alpha, beta) {
-    paste0("llikUnifDalpha(",paste(c(x, alpha, beta), collapse=", "), ")")
+    paste0("llikUnifDalpha(", paste(c(x, alpha, beta), collapse = ", "), ")")
   },
   function(x, alpha, beta) {
-    paste0("llikUnifDbeta(",paste(c(x, alpha, beta), collapse=", "), ")")
+    paste0("llikUnifDbeta(", paste(c(x, alpha, beta), collapse = ", "), ")")
   }
 )
 
@@ -296,20 +296,20 @@
   NULL,
   NULL,
   function(i, x, alpha, beta) {
-    paste0("llikXUnifDalpha(",paste(c(i, x, alpha, beta), collapse=", "), ")")
+    paste0("llikXUnifDalpha(", paste(c(i, x, alpha, beta), collapse = ", "), ")")
   },
   function(i, x, alpha, beta) {
-    paste0("llikXUnifDbeta(",paste(c(i, x, alpha, beta), collapse=", "), ")")
+    paste0("llikXUnifDbeta(", paste(c(i, x, alpha, beta), collapse = ", "), ")")
   }
 )
 
 .rxD$llikWeibull <- list(
   NULL,
   function(x, shape, scale) {
-    paste0("llikWeibullDshape(",paste(c(x, shape, scale), collapse=", "), ")")
+    paste0("llikWeibullDshape(", paste(c(x, shape, scale), collapse = ", "), ")")
   },
   function(x, shape, scale) {
-    paste0("llikWeibullDscale(",paste(c(x, shape, scale), collapse=", "), ")")
+    paste0("llikWeibullDscale(", paste(c(x, shape, scale), collapse = ", "), ")")
   }
 )
 
@@ -317,20 +317,20 @@
   NULL,
   NULL,
   function(i, x, shape, scale) {
-    paste0("llikXWeibullDshape(",paste(c(i, x, shape, scale), collapse=", "), ")")
+    paste0("llikXWeibullDshape(", paste(c(i, x, shape, scale), collapse = ", "), ")")
   },
   function(i, x, shape, scale) {
-    paste0("llikXWeibullDscale(",paste(c(i, x, shape, scale), collapse=", "), ")")
+    paste0("llikXWeibullDscale(", paste(c(i, x, shape, scale), collapse = ", "), ")")
   }
 )
 
 .rxD$llikGamma <- list(
   NULL,
   function(x, shape, rate) {
-    paste0("llikGammaDshape(",paste(c(x, shape, rate), collapse=", "), ")")
+    paste0("llikGammaDshape(", paste(c(x, shape, rate), collapse = ", "), ")")
   },
   function(x, shape, rate) {
-    paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
+    paste0("llikGammaDrate(", paste(c(x, shape, rate), collapse = ", "), ")")
   }
 )
 
@@ -338,20 +338,20 @@
   NULL,
   NULL,
   function(i, x, shape, rate) {
-    paste0("llikXGammaDshape(",paste(c(i, x, shape, rate), collapse=", "), ")")
+    paste0("llikXGammaDshape(", paste(c(i, x, shape, rate), collapse = ", "), ")")
   },
   function(i, x, shape, rate) {
-    paste0("llikXGammaDrate(",paste(c(i, x, shape, rate), collapse=", "), ")")
+    paste0("llikXGammaDrate(", paste(c(i, x, shape, rate), collapse = ", "), ")")
   }
 )
 
 .rxD$llikCauchy <- list(
   NULL,
   function(x, location, scale) {
-    paste0("llikCauchyDlocation(",paste(c(x, location, scale), collapse=", "), ")")
+    paste0("llikCauchyDlocation(", paste(c(x, location, scale), collapse = ", "), ")")
   },
   function(x, location, scale) {
-    paste0("llikCauchyDscale(",paste(c(x, location, scale), collapse=", "), ")")
+    paste0("llikCauchyDscale(", paste(c(x, location, scale), collapse = ", "), ")")
   }
 )
 
@@ -359,10 +359,10 @@
   NULL,
   NULL,
   function(i, x, location, scale) {
-    paste0("llikXCauchyDlocation(",paste(c(i, x, location, scale), collapse=", "), ")")
+    paste0("llikXCauchyDlocation(", paste(c(i, x, location, scale), collapse = ", "), ")")
   },
   function(i, x, location, scale) {
-    paste0("llikXCauchyDscale(",paste(c(i, x, location, scale), collapse=", "), ")")
+    paste0("llikXCauchyDscale(", paste(c(i, x, location, scale), collapse = ", "), ")")
   }
 )
 
@@ -370,10 +370,10 @@
   NULL,
   NULL,
   function(i, x, shape, rate) {
-    paste0("llikXGammaDshape(",paste(c(i, x, shape, rate), collapse=", "), ")")
+    paste0("llikXGammaDshape(", paste(c(i, x, shape, rate), collapse = ", "), ")")
   },
   function(i, x, shape, rate) {
-    paste0("llikXGammaDrate(",paste(c(i, x, shape, rate), collapse=", "), ")")
+    paste0("llikXGammaDrate(", paste(c(i, x, shape, rate), collapse = ", "), ")")
   }
 )
 
@@ -405,23 +405,32 @@
 })
 
 
-.rxD$rxTBS <- list(function(a, lambda, yj, hi, low) {
-  paste0("rxTBSd(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-}, function(a, lambda, yj, hi, low) {
-  paste0("rxTBSdL(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-})
+.rxD$rxTBS <- list(
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSd(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  },
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSdL(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  }
+)
 
-.rxD$rxTBSd <- list(function(a, lambda, yj, hi, low) {
-  paste0("rxTBSd2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-}, function(a, lambda, yj, hi, low) {
-  paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-})
+.rxD$rxTBSd <- list(
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSd2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  },
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  }
+)
 
-.rxD$rxTBSdL <- list(function(a, lambda, yj, hi, low) {
-  paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-}, function(a, lambda, yj, hi, low) {
-  paste0("rxTBSdL2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
-})
+.rxD$rxTBSdL <- list(
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSdLx(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  },
+  function(a, lambda, yj, hi, low) {
+    paste0("rxTBSdL2(", a, ",", lambda, ",", yj, ",", hi, ",", low, ")")
+  }
+)
 
 .rxD$..k <- 10
 
@@ -442,14 +451,37 @@
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -2 * .rxD$..k, "*tanh(", .rxD$..k, "*", .ab, ")+",
-      2 * .rxD$..k, "*tanh(", .rxD$..k, "*", .ab, ")^3)"
+      "(",
+      -2 * .rxD$..k,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")+",
+      2 * .rxD$..k,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^3)"
     ))
-  }, function(a, b) {
+  },
+  function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", 2 * .rxD$..k, "*tanh(", .rxD$..k, "*", .ab, ")-",
-      2 * .rxD$..k, "*tanh(", .rxD$..k, "*", .ab, ")^3)"
+      "(",
+      2 * .rxD$..k,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")-",
+      2 * .rxD$..k,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^3)"
     ))
   }
 )
@@ -466,12 +498,29 @@
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      .rxD$..k / 2,
+      "-",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
-  }, function(a, b) {
+  },
+  function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      -.rxD$..k / 2,
+      "+",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   }
 )
@@ -480,12 +529,29 @@
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      -.rxD$..k / 2,
+      "+",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
-  }, function(a, b) {
+  },
+  function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      .rxD$..k / 2,
+      "-",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   }
 )
@@ -495,13 +561,29 @@
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      -.rxD$..k / 2,
+      "+",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   },
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      .rxD$..k / 2,
+      "-",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   }
 )
@@ -511,13 +593,29 @@
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", .rxD$..k / 2, "-", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      .rxD$..k / 2,
+      "-",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   },
   function(a, b) {
     .ab <- paste0("(", a, "-", b, ")")
     return(paste0(
-      "(", -.rxD$..k / 2, "+", .rxD$..k / 2, "*tanh(", .rxD$..k, "*", .ab, ")^2)"
+      "(",
+      -.rxD$..k / 2,
+      "+",
+      .rxD$..k / 2,
+      "*tanh(",
+      .rxD$..k,
+      "*",
+      .ab,
+      ")^2)"
     ))
   }
 )
@@ -526,7 +624,8 @@
   function(a, b) {
     ## a*b
     return(b)
-  }, function(a, b) {
+  },
+  function(a, b) {
     ## a*b
     return(a)
   }
@@ -537,7 +636,8 @@
     ## Using DeMorgan's Theorem
     ## a+b = 1-(1-a)*(1-b)
     return(paste0("(1-(", b, "))"))
-  }, function(a, b) {
+  },
+  function(a, b) {
     return(paste0("(1-(", a, "))"))
   }
 )
@@ -626,8 +726,7 @@
 
 .rxD$gammapInv <- list(
   function(a, p) {
-    paste0("-gammapDera(", a, ",gammapInv(", a, ",", p, "))/",
-           "gammapDer(", a, ",gammapInv(", a, ",", p, "))")
+    paste0("-gammapDera(", a, ",gammapInv(", a, ",", p, "))/", "gammapDer(", a, ",gammapInv(", a, ",", p, "))")
   },
   function(a, p) {
     paste0("1/gammapDer(", a, ",gammapInv(", a, ",", p, "))")
@@ -646,8 +745,7 @@
 
 .rxD$gammaqInv <- list(
   function(a, q) {
-    paste0("gammapDera(", a, ",gammaqInv(", a, ",", q, "))/",
-           "gammapDer(", a, ",gammaqInv(", a, ",", q, "))")
+    paste0("gammapDera(", a, ",gammaqInv(", a, ",", q, "))/", "gammapDer(", a, ",gammaqInv(", a, ",", q, "))")
   },
   function(a, q) {
     paste0("-1/gammapDer(", a, ",gammaqInv(", a, ",", q, "))")
@@ -662,12 +760,56 @@
 
 .rxD$ibetaInv <- list(
   function(a, b, p) {
-    paste0("-ibetaDera(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))/",
-           "ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
+    paste0(
+      "-ibetaDera(",
+      a,
+      ",",
+      b,
+      ",ibetaInv(",
+      a,
+      ",",
+      b,
+      ",",
+      p,
+      "))/",
+      "ibetaDer(",
+      a,
+      ",",
+      b,
+      ",ibetaInv(",
+      a,
+      ",",
+      b,
+      ",",
+      p,
+      "))"
+    )
   },
   function(a, b, p) {
-    paste0("-ibetaDerb(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))/",
-           "ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
+    paste0(
+      "-ibetaDerb(",
+      a,
+      ",",
+      b,
+      ",ibetaInv(",
+      a,
+      ",",
+      b,
+      ",",
+      p,
+      "))/",
+      "ibetaDer(",
+      a,
+      ",",
+      b,
+      ",ibetaInv(",
+      a,
+      ",",
+      b,
+      ",",
+      p,
+      "))"
+    )
   },
   function(a, b, p) {
     paste0("1/ibetaDer(", a, ",", b, ",ibetaInv(", a, ",", b, ",", p, "))")
@@ -684,8 +826,22 @@
     paste0("1/studentTDen(studentTInv(", p, ",", nu, "),", nu, ")")
   },
   function(p, nu) {
-    paste0("-studentTCdfDnu(studentTInv(", p, ",", nu, "),", nu, ")/",
-           "studentTDen(studentTInv(", p, ",", nu, "),", nu, ")")
+    paste0(
+      "-studentTCdfDnu(studentTInv(",
+      p,
+      ",",
+      nu,
+      "),",
+      nu,
+      ")/",
+      "studentTDen(studentTInv(",
+      p,
+      ",",
+      nu,
+      "),",
+      nu,
+      ")"
+    )
   }
 )
 
@@ -713,29 +869,54 @@
 ## ibetaDer(a, b, x) = x^(a-1) (1-x)^(b-1)/beta(a, b)
 .rxD$ibetaDer <- list(
   function(a, b, x) {
-    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(", x, ")-digamma(", a,
-           ")+digamma((", a, ")+(", b, ")))")
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(", x, ")-digamma(", a, ")+digamma((", a, ")+(", b, ")))")
   },
   function(a, b, x) {
-    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(1-(", x, "))-digamma(", b,
-           ")+digamma((", a, ")+(", b, ")))")
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*(log(1-(", x, "))-digamma(", b, ")+digamma((", a, ")+(", b, ")))")
   },
   function(a, b, x) {
-    paste0("ibetaDer(", a, ",", b, ",", x, ")*((", a, "-1)/(", x, ")-(",
-           b, "-1)/(1-(", x, ")))")
+    paste0("ibetaDer(", a, ",", b, ",", x, ")*((", a, "-1)/(", x, ")-(", b, "-1)/(1-(", x, ")))")
   }
 )
 
 .rxD$studentTDen <- list(
   function(x, nu) {
-    paste0("-studentTDen(", x, ",", nu, ")*((", nu, ")+1)*(", x, ")/((",
-           nu, ")+(", x, ")*(", x, "))")
+    paste0("-studentTDen(", x, ",", nu, ")*((", nu, ")+1)*(", x, ")/((", nu, ")+(", x, ")*(", x, "))")
   },
   function(x, nu) {
-    paste0("studentTDen(", x, ",", nu, ")*0.5*(digamma(((", nu,
-           ")+1)/2)-digamma((", nu, ")/2)-1/(", nu, ")-log1p((", x, ")*(",
-           x, ")/(", nu, "))+((", nu, ")+1)*(", x, ")*(", x, ")/((", nu,
-           ")*((", nu, ")+(", x, ")*(", x, "))))")
+    paste0(
+      "studentTDen(",
+      x,
+      ",",
+      nu,
+      ")*0.5*(digamma(((",
+      nu,
+      ")+1)/2)-digamma((",
+      nu,
+      ")/2)-1/(",
+      nu,
+      ")-log1p((",
+      x,
+      ")*(",
+      x,
+      ")/(",
+      nu,
+      "))+((",
+      nu,
+      ")+1)*(",
+      x,
+      ")*(",
+      x,
+      ")/((",
+      nu,
+      ")*((",
+      nu,
+      ")+(",
+      x,
+      ")*(",
+      x,
+      "))))"
+    )
   }
 )
 
@@ -791,7 +972,8 @@
   },
   function(x, alpha) {
     paste0("dELUa(", x, ", ", alpha, ")")
-  })
+  }
+)
 
 .rxD$dELU <- list(
   function(x, alpha) {
@@ -799,7 +981,8 @@
   },
   function(x, alpha) {
     paste0("d2aELU(", x, ", ", alpha, ")")
-  })
+  }
+)
 
 .rxD$dELUa <- list(
   function(x, alpha) {
@@ -824,7 +1007,8 @@
   },
   function(x, alpha) {
     paste0("d2aELU(", x, ", ", alpha, ")")
-  })
+  }
+)
 
 .rxD$d2aELU <- list(
   function(x, alpha) {
@@ -832,32 +1016,38 @@
   },
   function(x, alpha) {
     paste0("0")
-  })
+  }
+)
 
 .rxD$softplus <- list(
   function(x) {
     paste0("dsoftplus(", x, ")")
-  })
+  }
+)
 
 .rxD$dsoftplus <- list(
   function(x) {
     paste0("d2softplus(", x, ")")
-  })
+  }
+)
 
 .rxD$d2softplus <- list(
   function(x) {
     paste0("d3softplus(", x, ")")
-  })
+  }
+)
 
 .rxD$d3softplus <- list(
   function(x) {
     paste0("d4softplus(", x, ")")
-  })
+  }
+)
 
 .rxD$SELU <- list(
   function(x) {
     paste0("dSELU(", x, ")")
-  })
+  }
+)
 
 
 .rxD$lReLU <- list(
@@ -878,7 +1068,8 @@
   },
   function(x, alpha) {
     paste0("dPReLUa(", x, ",", alpha, ")")
-  })
+  }
+)
 
 .rxD$dPReLU <- list(
   function(x, alpha) {
@@ -886,7 +1077,8 @@
   },
   function(x, alpha) {
     paste0("dPReLUa1(", x, ",", alpha, ")")
-  })
+  }
+)
 
 .rxD$dPReLUa <- list(
   function(x, alpha) {
@@ -894,7 +1086,8 @@
   },
   function(x, alpha) {
     paste0("0")
-  })
+  }
+)
 
 .rxD$dPReLUa1 <- list(
   function(x, alpha) {
@@ -947,7 +1140,9 @@
       ## the slot from the symbol reference) when the trans scaling is
       ## covered; otherwise keep the call emission.
       .out <- .rxLinCmtBstateGrad(.slot, .nc, as.numeric(.args[8]), .args)
-      if (!is.null(.out)) return(.out)
+      if (!is.null(.out)) {
+        return(.out)
+      }
       .args[6] <- "-2"
       .args[7] <- .w
     } else if (.args7 == "-2") {
@@ -997,27 +1192,31 @@
     }
     return(paste0("(", .s, "/", .t1, ")"))
   }
-  if (.sw == 110) { # 1-cmt, v = 1/v1
+  if (.sw == 110) {
+    # 1-cmt, v = 1/v1
     if (slot == "v1") {
       return(paste0("((central)+", .s, "*", .t1, ")"))
     }
     return(paste0("(", .s, "*", .t1, ")"))
   }
-  if (.sw == 210) { # 2-cmt, v = 1/(v1 + p3)
+  if (.sw == 210) {
+    # 2-cmt, v = 1/(v1 + p3)
     .m <- paste0("(", .t1, "+", .t3, ")")
     if (slot %in% c("v1", "p3")) {
       return(paste0("((central)+", .s, "*", .m, ")"))
     }
     return(paste0("(", .s, "*", .m, ")"))
   }
-  if (.sw == 310) { # 3-cmt, v = 1/(v1 + p3 + p5)
+  if (.sw == 310) {
+    # 3-cmt, v = 1/(v1 + p3 + p5)
     .m <- paste0("(", .t1, "+", .t3, "+", .t5, ")")
     if (slot %in% c("v1", "p3", "p5")) {
       return(paste0("((central)+", .s, "*", .m, ")"))
     }
     return(paste0("(", .s, "*", .m, ")"))
   }
-  if (.sw == 211) { # 2-cmt, v = 1/(1/v1 + p3)
+  if (.sw == 211) {
+    # 2-cmt, v = 1/(1/v1 + p3)
     .m <- paste0("(1/", .t1, "+", .t3, ")")
     if (slot == "v1") {
       return(paste0("(-(central)/(", .t1, "*", .t1, ")+", .s, "*", .m, ")"))
@@ -1027,7 +1226,8 @@
     }
     return(paste0("(", .s, "*", .m, ")"))
   }
-  if (.sw == 311) { # 3-cmt, v = 1/(1/v1 + p3 + p5)
+  if (.sw == 311) {
+    # 3-cmt, v = 1/(1/v1 + p3 + p5)
     .m <- paste0("(1/", .t1, "+", .t3, "+", .t5, ")")
     if (slot == "v1") {
       return(paste0("(-(central)/(", .t1, "*", .t1, ")+", .s, "*", .m, ")"))
@@ -1041,43 +1241,54 @@
 }
 
 .rxD$linCmtB <- list(
-  function(...) { # rx__PTR__
+  function(...) {
+    # rx__PTR__
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # t
+  function(...) {
+    # t
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # linCmt
+  function(...) {
+    # linCmt
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # ncmt
+  function(...) {
+    # ncmt
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # oral0
+  function(...) {
+    # oral0
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # which1
+  function(...) {
+    # which1
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # which2
+  function(...) {
+    # which2
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  function(...) { # trans
+  function(...) {
+    # trans
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  .linCmtBgen(9),  # p1
+  .linCmtBgen(9), # p1
   .linCmtBgen(10), # v1
   .linCmtBgen(11), # p2
   .linCmtBgen(12), # p3
   .linCmtBgen(13), # p4
   .linCmtBgen(14), # p5
-  function(...) {  # ka
+  function(...) {
+    # ka
     .args <- unlist(list(...))
     .ncmt <- .args[4] # ncmt
     .nc <- as.numeric(.ncmt)
     .args5 <- .args[5] # oral0
     .oral0 <- as.numeric(.args5)
-    if (.args5 != "1") return("0")
+    if (.args5 != "1") {
+      return("0")
+    }
     .args6 <- .args[6]
     .args7 <- .args[7]
     .which <- "2"
@@ -1091,7 +1302,9 @@
       # Return the gradient with respect to ka via the state columns when
       # the trans scaling is covered; otherwise keep the call emission.
       .out <- .rxLinCmtBstateGrad("ka", .nc, as.numeric(.args[8]), .args)
-      if (!is.null(.out)) return(.out)
+      if (!is.null(.out)) {
+        return(.out)
+      }
       .args[6] <- "-2"
       .args[7] <- .which
     } else if (.args7 == "-2") {
@@ -1152,19 +1365,24 @@
     .lst <- get(.nm, envir = .rxD)
     for (.k in seq_along(.lst)) {
       .f <- .lst[[.k]]
-      if (!is.function(.f)) next
+      if (!is.function(.f)) {
+        next
+      }
       .na <- length(formals(.f))
       .a <- sprintf("@@%d@@", seq_len(.na))
       .b <- sprintf("##%d##", seq_len(.na))
       .t1 <- tryCatch(do.call(.f, as.list(.a)), error = function(e) NULL)
       .t2 <- tryCatch(do.call(.f, as.list(.b)), error = function(e) NULL)
-      if (!is.character(.t1) || length(.t1) != 1L ||
-            !is.character(.t2) || length(.t2) != 1L) {
+      if (!is.character(.t1) || length(.t1) != 1L || !is.character(.t2) || length(.t2) != 1L) {
         next
       }
       .conv <- .t1
-      for (.i in seq_len(.na)) .conv <- gsub(.a[.i], .b[.i], .conv, fixed = TRUE)
-      if (!identical(.conv, .t2)) next
+      for (.i in seq_len(.na)) {
+        .conv <- gsub(.a[.i], .b[.i], .conv, fixed = TRUE)
+      }
+      if (!identical(.conv, .t2)) {
+        next
+      }
       .name <- c(.name, .nm)
       .which <- c(.which, .k)
       .tmpl <- c(.tmpl, .t1)

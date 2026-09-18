@@ -1,4 +1,4 @@
-.udfEnv <- new.env(parent=emptyenv())
+.udfEnv <- new.env(parent = emptyenv())
 .udfEnv$fun <- list()
 .udfEnv$udf <- integer(0)
 .udfEnv$envir <- NULL
@@ -20,20 +20,28 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfMd5Info <- function() {
-  .tmp <- ls(.udfEnv$symengineFs, all.names=TRUE)
-  .env <- new.env(parent=emptyenv())
+  .tmp <- ls(.udfEnv$symengineFs, all.names = TRUE)
+  .env <- new.env(parent = emptyenv())
   .env$found <- FALSE
-  .ret <- vapply(.tmp, function(x) {
-    .cur <- .udfEnv$fun[[x]]
-    if (!is.null(.cur)) {
-      .env$found <- TRUE
-    }
-    x
-  }, character(1), USE.NAMES = FALSE)
+  .ret <- vapply(
+    .tmp,
+    function(x) {
+      .cur <- .udfEnv$fun[[x]]
+      if (!is.null(.cur)) {
+        .env$found <- TRUE
+      }
+      x
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   if (.env$found) {
-    .ret <- c(.ret, data.table::address(.udfEnv$envir),
-              # don't cache md5 changes every run:
-              as.character(Sys.time()))
+    .ret <- c(
+      .ret,
+      data.table::address(.udfEnv$envir),
+      # don't cache md5 changes every run:
+      as.character(Sys.time())
+    )
   }
   .ret
 }
@@ -90,11 +98,11 @@ rxFunParse <- function(name, args, cCode) {
   if (!is.character(name) || length(name) != 1L) {
     stop("name argument must be a length-one character vector", call. = FALSE)
   }
-  if (missing(cCode)) stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
+  if (missing(cCode)) {
+    stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
+  }
   if (any(name == names(.udfEnv$rxSEeqUsr))) {
-    stop("already defined user function '", name, "', remove it fist ('rxRmFun')",
-         call. = FALSE
-         )
+    stop("already defined user function '", name, "', remove it fist ('rxRmFun')", call. = FALSE)
   }
   suppressWarnings(rxRmFunParse(name))
   .udfEnv$rxSEeqUsr <- c(.udfEnv$rxSEeqUsr, setNames(length(args), name))
@@ -133,7 +141,9 @@ rxFunParse <- function(name, args, cCode) {
 #' @keywords internal
 .rxC <- function(fun) {
   .w <- which(names(.udfEnv$rxCcode) == fun)
-  if (length(.w) == 1) return(setNames(.udfEnv$rxCcode[fun], NULL))
+  if (length(.w) == 1) {
+    return(setNames(.udfEnv$rxCcode[fun], NULL))
+  }
   NULL
 }
 
@@ -141,8 +151,7 @@ rxFunParse <- function(name, args, cCode) {
 #' @export
 rxRmFunParse <- function(name) {
   if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector",
-         call. = FALSE)
+    stop("name argument must be a length-one character vector", call. = FALSE)
   }
   if (!any(name == names(.udfEnv$rxSEeqUsr))) {
     warning("no user function '", name, "' to remove", call. = FALSE)
@@ -158,7 +167,7 @@ rxRmFunParse <- function(name) {
   .rxD <- rxode2parseD()
   if (exists(name, envir = .rxD)) {
     if (!grepl("^rx_", name)) {
-      .d <- get(name, envir=.rxD)
+      .d <- get(name, envir = .rxD)
       lapply(names(formals(.d[[1]])), function(v) {
         suppressWarnings(rxRmFunParse(paste0("rx_", name, "_d_", v)))
       })
@@ -172,7 +181,6 @@ rxRmFunParse <- function(name) {
   }
   return(invisible())
 }
-
 
 
 #' Number of past environments kept for finding user defined functions
@@ -197,10 +205,9 @@ rxRmFunParse <- function(name) {
 
 .udfAddToSearch <- function(envir) {
   if (is.list(envir)) {
-    lapply(seq_along(envir),
-           function(i) {
-             .udfAddToSearch(envir[[i]])
-           })
+    lapply(seq_along(envir), function(i) {
+      .udfAddToSearch(envir[[i]])
+    })
     return(invisible())
   }
   .lst <- .udfEnv$searchList
@@ -253,7 +260,7 @@ rxRmFunParse <- function(name) {
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.udfEnvReset <- function(lock=TRUE) {
+.udfEnvReset <- function(lock = TRUE) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
 }
@@ -271,25 +278,38 @@ rxRmFunParse <- function(name) {
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.udfExists <- function(fun, nargs, envir, doList=TRUE) {
-  if (is.null(envir)) return(FALSE)
-  .e <- exists(fun, mode="function", envir=envir)
-  if (!.e) return(FALSE)
+.udfExists <- function(fun, nargs, envir, doList = TRUE) {
+  if (is.null(envir)) {
+    return(FALSE)
+  }
+  .e <- exists(fun, mode = "function", envir = envir)
+  if (!.e) {
+    return(FALSE)
+  }
   # ok now see if it makes sense
-  .fun <- get(fun, mode="function", envir=envir)
+  .fun <- get(fun, mode = "function", envir = envir)
   .f <- formals(.fun)
   .bestHasDots <- any(names(.f) == "...")
   .nargs <- length(.f)
   .bestEqArgs <- .nargs == nargs
-  if (.bestEqArgs) { # We want the function to match the declared number of arguments
-    if (!.bestHasDots) { # We don't want ... arguments
+  if (.bestEqArgs) {
+    # We want the function to match the declared number of arguments
+    if (!.bestHasDots) {
+      # We don't want ... arguments
       if (doList) {
         # In the case of multiple user functions, make sure the other
         # user functions also exist in this environment
-        if (!all(vapply(seq_along(.udfEnv$fun), function(i) {
-          .info <- .udfEnv$fun[[i]]
-          return(.udfExists(.info[[1]], .info[[2]], envir=envir, doList=FALSE))
-        }, logical(1), USE.NAMES = FALSE))) {
+        if (
+          !all(vapply(
+            seq_along(.udfEnv$fun),
+            function(i) {
+              .info <- .udfEnv$fun[[i]]
+              return(.udfExists(.info[[1]], .info[[2]], envir = envir, doList = FALSE))
+            },
+            logical(1),
+            USE.NAMES = FALSE
+          ))
+        ) {
           if (is.null(.udfEnv$bestFun)) {
             .udfEnv$bestFun <- .fun
           }
@@ -328,20 +348,24 @@ rxRmFunParse <- function(name) {
   .nargs <- .rxUdfUiNarg(fun)
   if (is.integer(.nargs) && !is.na(.nargs)) {
     if (.nargs > 0L && nargs != .nargs) {
-      return(list(nargs=NA_integer_,
-                  sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d",
-                          .nargs, nargs)))
+      return(list(
+        nargs = NA_integer_,
+        sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d", .nargs, nargs)
+      ))
     } else if (.nargs <= 0L) {
-      return(list(nargs=NA_integer_,
-                  "rxode2 ui user defined R needs to be setup with a positive number of arguments"))
+      return(list(
+        nargs = NA_integer_,
+        "rxode2 ui user defined R needs to be setup with a positive number of arguments"
+      ))
     } else {
-      return(list(nargs=-42L,
-                  ".rxUiUdfNone"))
+      return(list(nargs = -42L, ".rxUiUdfNone"))
     }
   }
   if (is.null(.udfEnv$envir)) {
-    return(list(nargs=NA_integer_,
-                "rxode2 cannot determine which environment the user defined functions are located"))
+    return(list(
+      nargs = NA_integer_,
+      "rxode2 cannot determine which environment the user defined functions are located"
+    ))
   }
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunHasDots <- FALSE
@@ -350,9 +374,16 @@ rxRmFunParse <- function(name) {
   if (!.udfExists(fun, nargs, .udfEnv$envir)) {
     # search prior environments with UDFs, assign the first one in the environments that match
     if (length(.udfEnv$searchList) > 0L) {
-      if (any(vapply(seq_along(.udfEnv$searchList), function(i) {
-        .udfExists(fun, nargs, .udfEnv$searchList[[i]])
-      },  logical(1), USE.NAMES = FALSE))) {
+      if (
+        any(vapply(
+          seq_along(.udfEnv$searchList),
+          function(i) {
+            .udfExists(fun, nargs, .udfEnv$searchList[[i]])
+          },
+          logical(1),
+          USE.NAMES = FALSE
+        ))
+      ) {
         .found <- TRUE
       }
     }
@@ -360,18 +391,17 @@ rxRmFunParse <- function(name) {
     .found <- TRUE
   }
   if (.udfEnv$bestFunHasDots) {
-    return(list(nargs=NA_integer_,
-                "rxode2 user defined R cannot have '...' arguments"))
+    return(list(nargs = NA_integer_, "rxode2 user defined R cannot have '...' arguments"))
   }
   if (!.udfEnv$bestEqArgs) {
-    return(list(nargs=NA_integer_,
-                sprintf("rxode2 user defined R function has %d arguments, but supplied %d",
-                        .udfEnv$bestNargs, nargs)))
+    return(list(
+      nargs = NA_integer_,
+      sprintf("rxode2 user defined R function has %d arguments, but supplied %d", .udfEnv$bestNargs, nargs)
+    ))
   }
   if (!.found) {
-    .msg <- sprintf("function '%s' is not supported; user function not found",
-                    fun)
-    return(list(nargs=NA_integer_, .msg))
+    .msg <- sprintf("function '%s' is not supported; user function not found", fun)
+    return(list(nargs = NA_integer_, .msg))
   }
 
   .fun <- .udfEnv$bestFun
@@ -381,8 +411,7 @@ rxRmFunParse <- function(name) {
   if (length(.w) == 0L) {
     .udfEnv$udf <- c(.udfEnv$udf, setNames(nargs, fun))
   }
-  return(list(nargs=nargs,
-              fun))
+  return(list(nargs = nargs, fun))
 }
 
 #' This function is run before starting a rxode2 solve to make sure
@@ -397,37 +426,47 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .setupUdf <- function(iv) {
-  if (!is.environment(.udfEnv$envir)) return(FALSE)
+  if (!is.environment(.udfEnv$envir)) {
+    return(FALSE)
+  }
   .w <- which(is.na(iv))
   iv <- iv[-.w]
   .n <- names(iv)
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$needRecompile <- FALSE
-  lapply(.n,
-         function(n) {
-           .oldArg <- iv[n]
-           .new <- .getUdfInfo(n, .oldArg)
-           if (any(names(.udfEnv$rxSEeqUsr) == n)) {
-             .c <- .udfEnv$rxSEeqUsr[n]
-             if (.c == .new[[1]]) {
-               message("compiled with R user function '", n, "'; now there is a clashing C user function")
-               .env$needRecompile <- TRUE
-               message("triggered a recompile to use the C user function (they are always preferred)")
-             } else {
-               stop("there is both C and R user functions '", n, "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it")
-
-             }
-           }
-           if (is.na(.new[[1]])) {
-             stop(.new[[2]], call.=FALSE)
-           } else if (.new[[1]] != .oldArg) {
-             stop("'", n,
-                  "' had ", .oldArg, " arguments when model was compiled, now it has ",
-                  .new[[1]], " arguments",
-                  call.=FALSE)
-           }
-           NULL
-         })
+  lapply(.n, function(n) {
+    .oldArg <- iv[n]
+    .new <- .getUdfInfo(n, .oldArg)
+    if (any(names(.udfEnv$rxSEeqUsr) == n)) {
+      .c <- .udfEnv$rxSEeqUsr[n]
+      if (.c == .new[[1]]) {
+        message("compiled with R user function '", n, "'; now there is a clashing C user function")
+        .env$needRecompile <- TRUE
+        message("triggered a recompile to use the C user function (they are always preferred)")
+      } else {
+        stop(
+          "there is both C and R user functions '",
+          n,
+          "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it" # nolint: line_length_linter.
+        )
+      }
+    }
+    if (is.na(.new[[1]])) {
+      stop(.new[[2]], call. = FALSE)
+    } else if (.new[[1]] != .oldArg) {
+      stop(
+        "'",
+        n,
+        "' had ",
+        .oldArg,
+        " arguments when model was compiled, now it has ",
+        .new[[1]],
+        " arguments",
+        call. = FALSE
+      )
+    }
+    NULL
+  })
   .env$needRecompile
 }
 #' Reset the tracking of user defined functions
@@ -449,8 +488,12 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @noRd
 .udfInfo <- function() {
-  if (length(.udfEnv$udf) == 0) return(integer(0))
-  if (!is.environment(.udfEnv$envir)) return(integer(0))
+  if (length(.udfEnv$udf) == 0) {
+    return(integer(0))
+  }
+  if (!is.environment(.udfEnv$envir)) {
+    return(integer(0))
+  }
   .addr <- data.table::address(.udfEnv$envir)
   .udfEnv$envList[[.addr]] <- .udfEnv$envir
   c(.udfEnv$udf, setNames(NA_integer_, .addr))
@@ -466,7 +509,9 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfEnvSetUdf <- function(udf) {
-  if (length(udf) == 0L) return(invisible())
+  if (length(udf) == 0L) {
+    return(invisible())
+  }
   .w <- which(is.na(udf))
   .addr <- names(udf)[.w]
   .env <- .udfEnv$envList[[.addr]]
@@ -487,12 +532,23 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfCallFunArg <- function(fun, args) {
-  paste0("'", fun, "(",
-         paste(vapply(seq_along(args),
-                function(i) {
-                  as.character(args[[i]])
-                }, character(1), USE.NAMES=FALSE), collapse=", "),
-         ")': ")
+  paste0(
+    "'",
+    fun,
+    "(",
+    paste(
+      vapply(
+        seq_along(args),
+        function(i) {
+          as.character(args[[i]])
+        },
+        character(1),
+        USE.NAMES = FALSE
+      ),
+      collapse = ", "
+    ),
+    ")': "
+  )
 }
 #' This is the function that is always called for every user function in rxode2
 #'
@@ -504,16 +560,17 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .udfCall <- function(fun, args) {
-  .ret <- try(do.call(fun, args, envir=.udfEnv$envir), silent=TRUE)
+  .ret <- try(do.call(fun, args, envir = .udfEnv$envir), silent = TRUE)
   if (inherits(.ret, "try-error")) {
-    .msg <- try(attr(.ret, "condition")$message, silent=TRUE)
-    if (inherits(.msg, "try-error")) .msg <- "Unknown Error"
+    .msg <- try(attr(.ret, "condition")$message, silent = TRUE)
+    if (inherits(.msg, "try-error")) {
+      .msg <- "Unknown Error"
+    }
     # This can error since it isn't threaded
-    stop(paste0(.udfCallFunArg(fun, args), .msg), call.=FALSE)
+    stop(paste0(.udfCallFunArg(fun, args), .msg), call. = FALSE)
   }
-  if (checkmate::testNumeric(.ret, len=1)) {
+  if (checkmate::testNumeric(.ret, len = 1)) {
     return(as.double(.ret))
   }
-  stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"),
-       call.=FALSE)
+  stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"), call. = FALSE)
 }

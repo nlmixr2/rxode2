@@ -38,8 +38,7 @@ rxTest({
   })
 
   test_that(".rxCompileErrLines() truncates and reports how many were dropped", {
-    .many <- paste(sprintf("rx.c:%d:1: error: bad %d", seq_len(25), seq_len(25)),
-                   collapse = "\n")
+    .many <- paste(sprintf("rx.c:%d:1: error: bad %d", seq_len(25), seq_len(25)), collapse = "\n")
     .err <- .rxCompileErrLines(.many)
     expect_length(.err, 10L)
     expect_equal(attr(.err, "n"), 25L)
@@ -54,8 +53,10 @@ rxTest({
     )
     # the line saying why the link failed, not just that it failed
     .ld <- paste(
-      c("c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
-        "collect2.exe: error: ld returned 1 exit status"),
+      c(
+        "c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
+        "collect2.exe: error: ld returned 1 exit status"
+      ),
       collapse = "\n"
     )
     expect_length(.rxCompileErrLines(.ld), 2L)
@@ -98,8 +99,10 @@ rxTest({
     ))
     expect_true(.rxCompileToolchainProblem("ld: cannot find -lRblas"))
     expect_true(.rxCompileToolchainProblem(paste(
-      c("c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
-        "collect2.exe: error: ld returned 1 exit status"),
+      c(
+        "c:/rtools40/mingw64/bin/ld.exe: cannot open output file rx.dll: Permission denied",
+        "collect2.exe: error: ld returned 1 exit status"
+      ),
       collapse = "\n"
     )))
     # a symbol rxode2 asked for and did not supply is rxode2's to fix
@@ -152,9 +155,11 @@ rxTest({
 
   test_that("a load failure says so", {
     .msg <- capture_messages(
-      .rxBadBuildMsg("Error loading model (though dll exists)",
-                     "unable to load shared object 'rx_abc.so': undefined symbol: rxFoo",
-                     kind = "load")
+      .rxBadBuildMsg(
+        "Error loading model (though dll exists)",
+        "unable to load shared object 'rx_abc.so': undefined symbol: rxFoo",
+        kind = "load"
+      )
     )
     .msg <- paste(.msg, collapse = "")
     expect_match(.msg, "compiled but could not be loaded", fixed = TRUE)
@@ -163,8 +168,7 @@ rxTest({
 
   test_that("missing model variables are reported as an rxode2 bug", {
     .msg <- capture_messages(
-      .rxBadBuildMsg("Error, model doesn't have correct model variables.",
-                     NULL, kind = "modelVars")
+      .rxBadBuildMsg("Error, model doesn't have correct model variables.", NULL, kind = "modelVars")
     )
     .msg <- paste(.msg, collapse = "")
     expect_match(.msg, "https://github.com/nlmixr2/rxode2/issues", fixed = TRUE)
@@ -182,9 +186,12 @@ rxTest({
     .msg <- withr::with_options(
       list(rxode2.compile.O = "3 -include /rxode2-1197-does-not-exist.h"),
       capture_messages(
-        .broken <- try(rxode2({
+        .broken <- try(
+          rxode2({
           d / dt(rx1197depot) <- -rx1197ka * rx1197depot
-        }), silent = TRUE)
+        }),
+          silent = TRUE
+        )
       )
     )
     if (!inherits(.broken, "try-error")) {
@@ -205,9 +212,11 @@ rxTest({
     skip_on_cran()
     # seed the state a failed build leaves behind, so this holds however the
     # file is run and whether or not the model below comes from the cache
-    .rxCompileEnv$lst <- list(msg = "error building model",
-                              stderr = "rx_prior.c:1:1: error: nope",
-                              c = "// prior model")
+    .rxCompileEnv$lst <- list(
+      msg = "error building model",
+      stderr = "rx_prior.c:1:1: error: nope",
+      c = "// prior model"
+    )
     .rxLastCompileSuccess(FALSE)
     # deliberately a model other tests build too, so this is the cached path
     .m <- rxode2({
@@ -223,10 +232,34 @@ rxTest({
 
   test_that("output that is not valid in this locale does not throw", {
     # a localized toolchain can put bytes in stderr that R cannot decode
-    .bad <- rawToChar(as.raw(c(0x72, 0x78, 0x2e, 0x63, 0x3a, 0x31, 0x3a, 0x31,
-                               0x3a, 0x20, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x3a,
-                               0x20, 0x91, 0x45, 0x54, 0x41, 0x92, 0x20, 0x62,
-                               0x61, 0x64)))
+    .bad <- rawToChar(as.raw(c(
+      0x72,
+      0x78,
+      0x2e,
+      0x63,
+      0x3a,
+      0x31,
+      0x3a,
+      0x31,
+      0x3a,
+      0x20,
+      0x65,
+      0x72,
+      0x72,
+      0x6f,
+      0x72,
+      0x3a,
+      0x20,
+      0x91,
+      0x45,
+      0x54,
+      0x41,
+      0x92,
+      0x20,
+      0x62,
+      0x61,
+      0x64
+    )))
     expect_length(.rxCompileErrLines(.bad), 1L)
     expect_false(.rxCompileToolchainProblem(.bad))
     expect_silent(invisible(capture_messages(.rxBadBuildMsg("error building model", .bad))))

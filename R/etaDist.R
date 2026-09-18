@@ -41,13 +41,26 @@
 #' @author Matthew L. Fidler
 .rxEtaDistAnchorLhs <- function(ui) {
   .lst <- ui$lstExpr
-  if (!is.list(.lst)) return(character(0))
-  .lhs <- vapply(.lst, function(.l) {
-    if (is.call(.l) && length(.l) >= 3L && is.name(.l[[2]]) &&
-          (identical(.l[[1]], quote(`<-`)) || identical(.l[[1]], quote(`=`)))) {
-      as.character(.l[[2]])
-    } else ""
-  }, character(1), USE.NAMES=FALSE)
+  if (!is.list(.lst)) {
+    return(character(0))
+  }
+  .lhs <- vapply(
+    .lst,
+    function(.l) {
+      if (
+        is.call(.l) &&
+          length(.l) >= 3L &&
+          is.name(.l[[2]]) &&
+          (identical(.l[[1]], quote(`<-`)) || identical(.l[[1]], quote(`=`)))
+      ) {
+        as.character(.l[[2]])
+      } else {
+        ""
+      }
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   .lhs[grepl("^rxEdA[.]", .lhs)]
 }
 
@@ -114,7 +127,9 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
   ## the container.
   .d <- if (is.null(d)) rxUiEtaDists(.ui) else d
   .n <- length(.d$name)
-  if (.n == 0L || length(.d$etaDist) != .n) return(list())
+  if (.n == 0L || length(.d$etaDist) != .n) {
+    return(list())
+  }
   ## Only what the model assigns.  Deriving the names from lotri alone would
   ## report an anchor for an argument the expansion decided not to emit.
   .have <- .rxEtaDistAnchorLhs(.ui)
@@ -123,30 +138,44 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
   ## get a line, so the route has to be known to ask.
   .ini <- .ui$iniDf
   .direct <- any(!is.na(.ini$neta1) & grepl("^rxd[.]", .ini$name))
-  stats::setNames(lapply(seq_len(.n), function(.i) {
-    .lat <- if (.direct) NULL else paste0("rxN.", .d$name[.i])
-    .a <- .rxEtaDistAnchors(.d$etaDist[.i], .d$name[.i], latent=.lat)
-    if (is.null(.a)) return(NA_character_)
-    ## The caller lines element t up with ARGUMENT t of the declaration, so the
-    ## two orderings have to be the same length to be the same ordering.  They
-    ## are: rxode2 normalizes a declaration's argument order at the storage
-    ## point, and `.rxEtaDistAnchors()` walks the call in that order against the
-    ## family's parNames.  If that ever stops being true the failure is a silent
-    ## swap of one argument for another -- a gamma fitted with its rate read as
-    ## its shape -- so it is checked rather than assumed.
-    .nArg <- length(as.list(str2lang(.d$etaDist[.i]))) - 1L
-    if (length(.a) != .nArg) {
-      stop("the declared distribution 'dist(", .d$name[.i], ")' has ", .nArg,
-           " argument", if (.nArg == 1L) "" else "s", " but ", length(.a),
-           " argument role", if (length(.a) == 1L) "" else "s",
-           "\n  these index the same arguments, so they cannot differ; ",
-           "the installed 'lotri' disagrees with the declaration",
-           call.=FALSE)
-    }
-    .a <- as.character(.a)
-    .a[!(.a %in% .have)] <- NA_character_
-    .a
-  }), .d$name)
+  stats::setNames(
+    lapply(seq_len(.n), function(.i) {
+      .lat <- if (.direct) NULL else paste0("rxN.", .d$name[.i])
+      .a <- .rxEtaDistAnchors(.d$etaDist[.i], .d$name[.i], latent = .lat)
+      if (is.null(.a)) {
+        return(NA_character_)
+      }
+      ## The caller lines element t up with ARGUMENT t of the declaration, so the
+      ## two orderings have to be the same length to be the same ordering.  They
+      ## are: rxode2 normalizes a declaration's argument order at the storage
+      ## point, and `.rxEtaDistAnchors()` walks the call in that order against the
+      ## family's parNames.  If that ever stops being true the failure is a silent
+      ## swap of one argument for another -- a gamma fitted with its rate read as
+      ## its shape -- so it is checked rather than assumed.
+      .nArg <- length(as.list(str2lang(.d$etaDist[.i]))) - 1L
+      if (length(.a) != .nArg) {
+        stop(
+          "the declared distribution 'dist(",
+          .d$name[.i],
+          ")' has ",
+          .nArg,
+          " argument",
+          if (.nArg == 1L) "" else "s",
+          " but ",
+          length(.a),
+          " argument role",
+          if (length(.a) == 1L) "" else "s",
+          "\n  these index the same arguments, so they cannot differ; ",
+          "the installed 'lotri' disagrees with the declaration",
+          call. = FALSE
+        )
+      }
+      .a <- as.character(.a)
+      .a[!(.a %in% .have)] <- NA_character_
+      .a
+    }),
+    .d$name
+  )
 }
 
 #' The expansion for a solve-ready object, derived once per model
@@ -180,10 +209,14 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
 #' @author Matthew L. Fidler
 #' @noRd
 .rxEtaDistExpandMemoGet <- function(ui, param) {
-  if (!is.environment(ui)) return(NULL)
-  .key <- try(rxModelVars(ui)$md5, silent=TRUE)
-  if (inherits(.key, "try-error") || is.null(.key)) return(NULL)
-  .m <- get0(".rxEtaDistExpandMemo", envir=ui, inherits=FALSE)
+  if (!is.environment(ui)) {
+    return(NULL)
+  }
+  .key <- try(rxModelVars(ui)$md5, silent = TRUE)
+  if (inherits(.key, "try-error") || is.null(.key)) {
+    return(NULL)
+  }
+  .m <- get0(".rxEtaDistExpandMemo", envir = ui, inherits = FALSE)
   if (is.null(.m) || !identical(.m$key, .key) || !identical(.m$param, param)) {
     return(NULL)
   }
@@ -202,11 +235,9 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
 #' @noRd
 .rxEtaDistExpandMemoSet <- function(ui, param, value) {
   if (is.environment(ui)) {
-    .key <- try(rxModelVars(ui)$md5, silent=TRUE)
+    .key <- try(rxModelVars(ui)$md5, silent = TRUE)
     if (!inherits(.key, "try-error") && !is.null(.key)) {
-      try(assign(".rxEtaDistExpandMemo",
-                 list(key=.key, param=param, value=value), envir=ui),
-          silent=TRUE)
+      try(assign(".rxEtaDistExpandMemo", list(key = .key, param = param, value = value), envir = ui), silent = TRUE)
     }
   }
   value
@@ -257,17 +288,27 @@ rxUiEtaDists <- function(ui) {
     ui <- .rxEtaDistAsUiQuietly(ui)
   }
   .iniDf <- ui$iniDf
-  .empty <- data.frame(name=character(0), etaDist=character(0),
-                       neta1=integer(0), condition=character(0),
-                       stringsAsFactors=FALSE)
-  if (is.null(.iniDf) || !any(names(.iniDf) == "etaDist")) return(.empty)
-  .w <- which(!is.na(.iniDf$etaDist) & !is.na(.iniDf$neta1) &
-                .iniDf$neta1 == .iniDf$neta2)
-  if (length(.w) == 0L) return(.empty)
-  data.frame(name=.iniDf$name[.w], etaDist=.iniDf$etaDist[.w],
-             neta1=.iniDf$neta1[.w],
-             condition=as.character(.iniDf$condition[.w]),
-             stringsAsFactors=FALSE)
+  .empty <- data.frame(
+    name = character(0),
+    etaDist = character(0),
+    neta1 = integer(0),
+    condition = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(.iniDf) || !any(names(.iniDf) == "etaDist")) {
+    return(.empty)
+  }
+  .w <- which(!is.na(.iniDf$etaDist) & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  if (length(.w) == 0L) {
+    return(.empty)
+  }
+  data.frame(
+    name = .iniDf$name[.w],
+    etaDist = .iniDf$etaDist[.w],
+    neta1 = .iniDf$neta1[.w],
+    condition = as.character(.iniDf$condition[.w]),
+    stringsAsFactors = FALSE
+  )
 }
 
 #' @rdname rxUiEtaDists
@@ -279,12 +320,16 @@ testRxUiEtaDist <- function(ui) {
 #' @rdname rxUiEtaDists
 #' @param extra text appended to the error, naming what cannot use them
 #' @export
-assertRxUiNoEtaDist <- function(ui, extra="") {
+assertRxUiNoEtaDist <- function(ui, extra = "") {
   .d <- rxUiEtaDists(ui)
   if (nrow(.d) > 0L) {
-    stop("declared non-normal random effect distribution(s) on '",
-         paste(.d$name, collapse="', '"), "' are not supported", extra,
-         call.=FALSE)
+    stop(
+      "declared non-normal random effect distribution(s) on '",
+      paste(.d$name, collapse = "', '"),
+      "' are not supported",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -300,15 +345,20 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @return character, an rxode2 expression
 #' @noRd
 #' @author Matthew L. Fidler
-.rxEtaDistQuantile <- function(txt, u, what, latent=NULL, anchors=NULL) {
+.rxEtaDistQuantile <- function(txt, u, what, latent = NULL, anchors = NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
   .tab <- .rxEtaDistTable(what)
   .w <- which(.tab$name == .nm)
   if (length(.w) != 1L) {
-    stop("'", what, "' declares '", .nm, # nocov
-         "', which the installed 'lotri' has no quantile function for", # nocov
-         call.=FALSE) # nocov
+    stop(
+      "'",
+      what,
+      "' declares '",
+      .nm, # nocov
+      "', which the installed 'lotri' has no quantile function for", # nocov
+      call. = FALSE
+    ) # nocov
   }
   .q <- .tab$quantile[.w]
   ## qnorm(phiU(z)) IS z.  A normal-based family therefore collapses to a
@@ -317,12 +367,12 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
   ## what lets these families translate to software (NONMEM, Monolix) that
   ## has a normal CDF but no inverse for it.
   if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
-    .q <- sub("qnorm({u})", latent, .q, fixed=TRUE)
+    .q <- sub("qnorm({u})", latent, .q, fixed = TRUE)
   }
   .args <- as.list(.call)[-1]
   .parNames <- character(0)
   if (nzchar(.tab$parNames[.w])) {
-    .parNames <- strsplit(.tab$parNames[.w], ",", fixed=TRUE)[[1]]
+    .parNames <- strsplit(.tab$parNames[.w], ",", fixed = TRUE)[[1]]
   }
   ## lotri stores the arguments in canonical positional order, so the
   ## template's `{name}` placeholders line up by position
@@ -331,18 +381,23 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
     ## model line (`rxEdA.<eta>.<role>`) and the decoder refers to that name
     ## instead.  The covariate problem then becomes an ordinary one: adding a
     ## term to a role group is an edit to one named line.
-    .sub <- if (!is.null(anchors) && !is.na(anchors[.parNames[.i]]) &&
-                  nzchar(anchors[.parNames[.i]])) {
+    .sub <- if (!is.null(anchors) && !is.na(anchors[.parNames[.i]]) && nzchar(anchors[.parNames[.i]])) {
       unname(anchors[.parNames[.i]])
     } else {
       paste0("(", deparse1(.args[[.i]]), ")")
     }
-    .q <- gsub(paste0("{", .parNames[.i], "}"), .sub, .q, fixed=TRUE)
+    .q <- gsub(paste0("{", .parNames[.i], "}"), .sub, .q, fixed = TRUE)
   }
-  .q <- gsub("{u}", u, .q, fixed=TRUE)
-  if (grepl("{", .q, fixed=TRUE)) {
-    stop("'", what, "' does not supply every argument of '", .nm, "'", # nocov
-         call.=FALSE) # nocov
+  .q <- gsub("{u}", u, .q, fixed = TRUE)
+  if (grepl("{", .q, fixed = TRUE)) {
+    stop(
+      "'",
+      what,
+      "' does not supply every argument of '",
+      .nm,
+      "'", # nocov
+      call. = FALSE
+    ) # nocov
   }
   .q
 }
@@ -373,33 +428,47 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @export
 #' @keywords internal
 #' @author Matthew L. Fidler
-.rxEtaDistAnchors <- function(txt, eta, latent=NULL) {
+.rxEtaDistAnchors <- function(txt, eta, latent = NULL) {
   .call <- str2lang(txt)
   .nm <- as.character(.call[[1]])
-  if (!.rxEtaDistLotriOk()) return(NULL)
+  if (!.rxEtaDistLotriOk()) {
+    return(NULL)
+  }
   .tab <- lotri::lotriEtaDists()
   .w <- which(.tab$name == .nm)
-  if (length(.w) != 1L) return(NULL)
-  if (!any(names(.tab) == "roles") || !nzchar(.tab$roles[.w])) return(NULL)
+  if (length(.w) != 1L) {
+    return(NULL)
+  }
+  if (!any(names(.tab) == "roles") || !nzchar(.tab$roles[.w])) {
+    return(NULL)
+  }
   .q <- .tab$quantile[.w]
   if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
-    .q <- sub("qnorm({u})", latent, .q, fixed=TRUE)
+    .q <- sub("qnorm({u})", latent, .q, fixed = TRUE)
   }
-  .parNames <- strsplit(.tab$parNames[.w], ",", fixed=TRUE)[[1]]
-  .roles <- strsplit(.tab$roles[.w], ",", fixed=TRUE)[[1]]
-  if (length(.roles) != length(.parNames)) return(NULL)
+  .parNames <- strsplit(.tab$parNames[.w], ",", fixed = TRUE)[[1]]
+  .roles <- strsplit(.tab$roles[.w], ",", fixed = TRUE)[[1]]
+  if (length(.roles) != length(.parNames)) {
+    return(NULL)
+  }
   .args <- as.list(.call)[-1]
   .map <- setNames(rep(NA_character_, length(.parNames)), .parNames)
   .lines <- character(0)
   for (.i in seq_along(.args)) {
-    if (.i > length(.parNames)) break
+    if (.i > length(.parNames)) {
+      break
+    }
     ## an argument the template never references needs no anchor
-    if (!grepl(paste0("{", .parNames[.i], "}"), .q, fixed=TRUE)) next
+    if (!grepl(paste0("{", .parNames[.i], "}"), .q, fixed = TRUE)) {
+      next
+    }
     .v <- paste0("rxEdA.", eta, ".", .roles[.i])
     .map[.parNames[.i]] <- .v
     .lines <- c(.lines, paste0(.v, " <- ", deparse1(.args[[.i]])))
   }
-  if (length(.lines) == 0L) return(NULL)
+  if (length(.lines) == 0L) {
+    return(NULL)
+  }
   attr(.map, "lines") <- .lines
   .map
 }
@@ -425,19 +494,33 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistD <- function(txt, var) {
-  if (!requireNamespace("symengine", quietly=TRUE)) return(NULL)
-  .se <- try(rxToSE(txt), silent=TRUE)
-  if (inherits(.se, "try-error")) return(NULL)
-  .sv <- try(rxToSE(var), silent=TRUE)
-  if (inherits(.sv, "try-error")) return(NULL)
-  .sy <- try(symengine::S(.se), silent=TRUE)
-  if (inherits(.sy, "try-error")) return(NULL)
-  .sd <- try(symengine::S(.sv), silent=TRUE)
-  if (inherits(.sd, "try-error")) return(NULL)
-  .dd <- try(symengine::D(.sy, .sd), silent=TRUE)
-  if (inherits(.dd, "try-error")) return(NULL)
-  .out <- try(rxFromSE(.dd), silent=TRUE)
-  if (inherits(.out, "try-error")) return(NULL)
+  if (!requireNamespace("symengine", quietly = TRUE)) {
+    return(NULL)
+  }
+  .se <- try(rxToSE(txt), silent = TRUE)
+  if (inherits(.se, "try-error")) {
+    return(NULL)
+  }
+  .sv <- try(rxToSE(var), silent = TRUE)
+  if (inherits(.sv, "try-error")) {
+    return(NULL)
+  }
+  .sy <- try(symengine::S(.se), silent = TRUE)
+  if (inherits(.sy, "try-error")) {
+    return(NULL)
+  }
+  .sd <- try(symengine::S(.sv), silent = TRUE)
+  if (inherits(.sd, "try-error")) {
+    return(NULL)
+  }
+  .dd <- try(symengine::D(.sy, .sd), silent = TRUE)
+  if (inherits(.dd, "try-error")) {
+    return(NULL)
+  }
+  .out <- try(rxFromSE(.dd), silent = TRUE)
+  if (inherits(.out, "try-error")) {
+    return(NULL)
+  }
   .out
 }
 
@@ -468,13 +551,19 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @keywords internal
 #' @author Matthew L. Fidler
 .rxEtaDistDerivLines <- function(anc, thetas) {
-  if (is.null(anc) || length(thetas) == 0L) return(character(0))
+  if (is.null(anc) || length(thetas) == 0L) {
+    return(character(0))
+  }
   .lines <- attr(anc, "lines")
-  if (is.null(.lines) || length(.lines) == 0L) return(character(0))
+  if (is.null(.lines) || length(.lines) == 0L) {
+    return(character(0))
+  }
   .out <- character(0)
   for (.ln in .lines) {
     .eq <- str2lang(.ln)
-    if (!is.call(.eq) || length(.eq) != 3L) next
+    if (!is.call(.eq) || length(.eq) != 3L) {
+      next
+    }
     .lhsName <- deparse1(.eq[[2]])
     .rhs <- deparse1(.eq[[3]])
     ## only the thetas this expression actually mentions; the rest are zero by
@@ -482,11 +571,14 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
     .have <- intersect(thetas, all.vars(.eq[[3]]))
     for (.th in .have) {
       .d <- .rxEtaDistD(.rhs, .th)
-      if (is.null(.d)) next
+      if (is.null(.d)) {
+        next
+      }
       .dt <- gsub("[[:space:]]+", "", .d)
-      if (.dt == "0" || .dt == "0.0" || .dt == "-0") next
-      .out <- c(.out, paste0(sub("^rxEdA[.]", "rxEdD.", .lhsName), ".", .th,
-                             " <- ", .d))
+      if (.dt == "0" || .dt == "0.0" || .dt == "-0") {
+        next
+      }
+      .out <- c(.out, paste0(sub("^rxEdA[.]", "rxEdD.", .lhsName), ".", .th, " <- ", .d))
     }
   }
   .out
@@ -512,7 +604,9 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 .rxEtaDistCorToY <- function(R) {
   .k <- dim(R)[1]
   .y <- matrix(0.0, .k, .k)
-  if (.k < 2L) return(.y)
+  if (.k < 2L) {
+    return(.y)
+  }
   .L <- t(chol(R))
   for (.i in seq(2L, .k)) {
     .s <- 1.0
@@ -535,7 +629,9 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
 #' @author Matthew L. Fidler
 .rxEtaDistCorLines <- function(nms, i) {
   .z <- paste0("rxz.", nms)
-  if (i == 1L) return(paste0("rxN.", nms[1], " <- ", .z[1]))
+  if (i == 1L) {
+    return(paste0("rxN.", nms[1], " <- ", .z[1]))
+  }
   .ret <- character(0)
   .terms <- character(0)
   .s <- NULL
@@ -544,17 +640,14 @@ assertRxUiNoEtaDist <- function(ui, extra="") {
     .t <- paste0("rxT.", nms[i], ".", nms[.j])
     .l <- paste0("rxL.", nms[i], ".", nms[.j])
     .ret <- c(.ret, paste0(.t, " <- tanh(", .y, ")"))
-    .ret <- c(.ret,
-              paste0(.l, " <- ", .t, if (is.null(.s)) "" else paste0("*", .s)))
+    .ret <- c(.ret, paste0(.l, " <- ", .t, if (is.null(.s)) "" else paste0("*", .s)))
     .sNew <- paste0("rxS.", nms[i], ".", .j)
-    .ret <- c(.ret,
-              paste0(.sNew, " <- ", if (is.null(.s)) "" else paste0(.s, "*"),
-                     "sqrt(1 - ", .t, "*", .t, ")"))
+    .ret <- c(.ret, paste0(.sNew, " <- ", if (is.null(.s)) "" else paste0(.s, "*"), "sqrt(1 - ", .t, "*", .t, ")"))
     .terms <- c(.terms, paste0(.l, "*", .z[.j]))
     .s <- .sNew
   }
   .terms <- c(.terms, paste0(.s, "*", .z[i]))
-  c(.ret, paste0("rxN.", nms[i], " <- ", paste(.terms, collapse=" + ")))
+  c(.ret, paste0("rxN.", nms[i], " <- ", paste(.terms, collapse = " + ")))
 }
 
 #' Expand declared non-normal random effect distributions into a model
@@ -634,10 +727,10 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
     ## twenty-subject solve -- 42% of the solve.  The memo read is 2e-6 s and
     ## its md5 key 1.8e-5 s.
     .memo <- .rxEtaDistExpandMemoGet(ui, param)
-    if (!is.null(.memo)) return(.memo)
-    return(.rxEtaDistExpandMemoSet(ui, param,
-                                   .rxEtaDistExpandUi(.rxEtaDistAsUiQuietly(ui),
-                                                      param)))
+    if (!is.null(.memo)) {
+      return(.memo)
+    }
+    return(.rxEtaDistExpandMemoSet(ui, param, .rxEtaDistExpandUi(.rxEtaDistAsUiQuietly(ui), param)))
   }
   .rxEtaDistExpandUi(ui, param)
 }
@@ -656,7 +749,9 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistExpandUi <- function(ui, param) {
   .ui <- rxUiDecompress(ui)
   .d <- rxUiEtaDists(.ui)
-  if (nrow(.d) == 0L) return(ui)
+  if (nrow(.d) == 0L) {
+    return(ui)
+  }
   .rxEtaDistCheckLevel(.d)
   ## Refuse a SECOND expansion.  `as.rxUi()` on a raw function already runs the
   ## cdf expansion as part of building the ui, so `rxEtaDistExpand(fn,
@@ -666,36 +761,48 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## expansion leaves its own record.
   if (!is.null(.ui$etaDistInfo)) {
     .was <- .ui$etaDistInfo$param
-    if (is.null(.was)) .was <- "cdf"
-    if (identical(.was, param)) return(ui)
-    stop("this model has already been expanded with param=\"", .was,
-         "\" and cannot be re-expanded as \"", param, "\"\n",
-         "  `as.rxUi()` on a model FUNCTION expands it, so pass the ini/model ",
-         "result (`f()`) rather than the function (`f`) when choosing a route",
-         call.=FALSE)
+    if (is.null(.was)) {
+      .was <- "cdf"
+    }
+    if (identical(.was, param)) {
+      return(ui)
+    }
+    stop(
+      "this model has already been expanded with param=\"",
+      .was,
+      "\" and cannot be re-expanded as \"",
+      param,
+      "\"\n",
+      "  `as.rxUi()` on a model FUNCTION expands it, so pass the ini/model ",
+      "result (`f()`) rather than the function (`f`) when choosing a route",
+      call. = FALSE
+    )
   }
-  if (param == "direct") return(.rxEtaDistExpandDirect(.ui, .d))
+  if (param == "direct") {
+    return(.rxEtaDistExpandDirect(.ui, .d))
+  }
   .iniDf <- .ui$iniDf
   .omega <- .ui$omega
-  if (!is.matrix(.omega)) .omega <- .omega[[1]]
+  if (!is.matrix(.omega)) {
+    .omega <- .omega[[1]]
+  }
   .dn <- dimnames(.omega)[[1]]
   .blocks <- .rxEtaDistDeclBlocks(.omega, .d)
   .assigned <- .rxEtaDistModelAssigned(.ui)
   .pre <- character(0)
-  .newTheta <- data.frame(name=character(0), est=numeric(0),
-                          stringsAsFactors=FALSE)
+  .newTheta <- data.frame(name = character(0), est = numeric(0), stringsAsFactors = FALSE)
   .drop <- integer(0)
   for (.idx in .blocks) {
     .nms <- .dn[.idx]
-    .y <- .rxEtaDistCorToY(.omega[.idx, .idx, drop=FALSE])
-    .pre <- c(.pre,
-              .rxEtaDistCopulaLines(.nms),
-              .rxEtaDistDecoderLines(.nms, .d, .assigned))
+    .y <- .rxEtaDistCorToY(.omega[.idx, .idx, drop = FALSE])
+    .pre <- c(.pre, .rxEtaDistCopulaLines(.nms), .rxEtaDistDecoderLines(.nms, .d, .assigned))
     .newTheta <- rbind(.newTheta, .rxEtaDistCorTheta(.nms, .y))
     .iniDf <- .rxEtaDistFixLatents(.iniDf, .nms)
     .drop <- c(.drop, .rxEtaDistCovRowsToDrop(.iniDf, .idx))
   }
-  if (length(.drop) > 0L) .iniDf <- .iniDf[-.drop, , drop=FALSE]
+  if (length(.drop) > 0L) {
+    .iniDf <- .iniDf[-.drop, , drop = FALSE]
+  }
   .iniDf$etaDist <- NULL
   .iniDf <- .rxEtaDistAddCorThetas(.iniDf, .newTheta)
   .iniDf <- .rxEtaDistRenumberEtas(.iniDf)
@@ -704,10 +811,11 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## what the expansion did, so a fit can be reported on the scale the
   ## model was written on: the correlation blocks to rebuild from the
   ## `rxCor.*` thetas, and the declarations themselves
-  assign("etaDistInfo",
-         list(blocks=lapply(.blocks, function(.idx) .dn[.idx]),
-              etaDist=.d, iniDf=.ui$iniDf),
-         envir=.new)
+  assign(
+    "etaDistInfo",
+    list(blocks = lapply(.blocks, function(.idx) .dn[.idx]), etaDist = .d, iniDf = .ui$iniDf),
+    envir = .new
+  )
   ## STICKY, or a later model rewrite silently throws it away.
   ##
   ## .getDropEnv() drops everything that is neither blessed nor sticky whenever
@@ -751,7 +859,9 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @author Matthew L. Fidler
 .rxEtaDistExpandDirect <- function(ui, d) {
   .omega <- ui$omega
-  if (!is.matrix(.omega)) .omega <- .omega[[1]]
+  if (!is.matrix(.omega)) {
+    .omega <- .omega[[1]]
+  }
   .dn <- dimnames(.omega)[[1]]
   .blocks <- .rxEtaDistDeclBlocks(.omega, d)
   ## A correlated declared block is CARRIED, not refused.
@@ -784,13 +894,17 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
     ## not one this parameterization can write down, and the cdf route can.
     .undecl <- setdiff(.dn[.idx], d$name)
     if (length(.idx) > 1L && length(.undecl) > 0L) {
-      stop("rxEtaDistExpand(param=\"direct\") cannot correlate the declared '",
-           paste(intersect(.dn[.idx], d$name), collapse="', '"),
-           "' with the ordinary '", paste(.undecl, collapse="', '"), "'\n",
-           "  the direct prior splits into a family part and a Gaussian part, ",
-           "which is exact only when they do not share an omega block\n",
-           "  use param=\"cdf\" for this model, where both are normal latents",
-           call.=FALSE)
+      stop(
+        "rxEtaDistExpand(param=\"direct\") cannot correlate the declared '",
+        paste(intersect(.dn[.idx], d$name), collapse = "', '"),
+        "' with the ordinary '",
+        paste(.undecl, collapse = "', '"),
+        "'\n",
+        "  the direct prior splits into a family part and a Gaussian part, ",
+        "which is exact only when they do not share an omega block\n",
+        "  use param=\"cdf\" for this model, where both are normal latents",
+        call. = FALSE
+      )
     }
   }
   ## The correlation itself still has to reach the estimator.  On the cdf route
@@ -816,14 +930,16 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   .assignedAll <- .rxEtaDistModelAssigned(list(lstExpr = .body))
   .clash <- intersect(d$name, .assignedAll)
   if (length(.clash) > 0L) {
-    stop("rxEtaDistExpand(param=\"direct\") cannot use '",
-         paste(.clash, collapse="', '"),
-         "': the model already assigns it\n",
-         "  the direct route needs the declared random effect to BE the random ",
-         "effect, not a quantity the model computes\n",
-         "  pass the ini/model result (`f()`) rather than the function (`f`), ",
-         "and declare the distribution in ini({}) rather than model({})",
-         call.=FALSE)
+    stop(
+      "rxEtaDistExpand(param=\"direct\") cannot use '",
+      paste(.clash, collapse = "', '"),
+      "': the model already assigns it\n",
+      "  the direct route needs the declared random effect to BE the random ",
+      "effect, not a quantity the model computes\n",
+      "  pass the ini/model result (`f()`) rather than the function (`f`), ",
+      "and declare the distribution in ini({}) rather than model({})",
+      call. = FALSE
+    )
   }
   .iniDf <- ui$iniDf
   ## The omega entry becomes a FIXED placeholder.  It is not the eta's
@@ -880,9 +996,13 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## of 13.44.  Verified by feeding that matrix to .foceiRepairOmega() directly:
   ## 181.534 in every cell.
   if (length(.declNeta) > 1L) {
-    .off <- which(!is.na(.iniDf$neta1) & !is.na(.iniDf$neta2) &
-                    .iniDf$neta1 != .iniDf$neta2 &
-                    .iniDf$neta1 %in% .declNeta & .iniDf$neta2 %in% .declNeta)
+    .off <- which(
+      !is.na(.iniDf$neta1) &
+        !is.na(.iniDf$neta2) &
+        .iniDf$neta1 != .iniDf$neta2 &
+        .iniDf$neta1 %in% .declNeta &
+        .iniDf$neta2 %in% .declNeta
+    )
     if (length(.off) > 0L) .iniDf$fix[.off] <- TRUE
   }
   .iniDf$etaDist <- NULL
@@ -901,13 +1021,18 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   .pre <- character(0)
   .assigned <- .assignedAll
   for (.nm in d$name) {
-    if (.nm %in% .assigned) next
+    if (.nm %in% .assigned) {
+      next
+    }
     .w <- which(d$name == .nm)
-    .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent=NULL)
+    .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent = NULL)
     if (is.null(.anc)) {
-      stop("rxEtaDistExpand(param=\"direct\") needs the argument roles for '",
-           .nm, "', which the installed 'lotri' does not provide",
-           call.=FALSE)
+      stop(
+        "rxEtaDistExpand(param=\"direct\") needs the argument roles for '",
+        .nm,
+        "', which the installed 'lotri' does not provide",
+        call. = FALSE
+      )
     }
     ## the anchors, then the bind that gives the renamed eta back its name.
     ##
@@ -926,16 +1051,17 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
     .pre <- c(.pre, attr(.anc, "lines"), paste0(.nm, " <- rxd.", .nm))
   }
   .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), .body))
-  assign("etaDistInfo",
-         list(blocks=lapply(.blocks, function(.idx) .dn[.idx]),
-              etaDist=d, iniDf=ui$iniDf, param="direct"),
-         envir=.new)
+  assign(
+    "etaDistInfo",
+    list(blocks = lapply(.blocks, function(.idx) .dn[.idx]), etaDist = d, iniDf = ui$iniDf, param = "direct"),
+    envir = .new
+  )
   .stk <- if (exists("sticky", envir = .new, inherits = FALSE)) {
     get("sticky", envir = .new, inherits = FALSE)
   } else {
     character(0)
   }
-  assign("sticky", unique(c(.stk, "etaDistInfo")), envir=.new)
+  assign("sticky", unique(c(.stk, "etaDistInfo")), envir = .new)
   .new
 }
 
@@ -952,12 +1078,18 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistCheckLevel <- function(d) {
   .cnd <- unique(lotri::lotriBaseCondition(d$condition))
   .bad <- .cnd[!(.cnd %in% c("id", "ID", NA_character_))]
-  if (length(.bad) == 0L) return(invisible())
-  stop("a declared non-normal random effect distribution is only ",
-       "supported at the subject level, but '",
-       paste(d$name[lotri::lotriBaseCondition(d$condition) %in% .bad],
-             collapse="', '"),
-       "' is at level '", paste(.bad, collapse="', '"), "'", call.=FALSE)
+  if (length(.bad) == 0L) {
+    return(invisible())
+  }
+  stop(
+    "a declared non-normal random effect distribution is only ",
+    "supported at the subject level, but '",
+    paste(d$name[lotri::lotriBaseCondition(d$condition) %in% .bad], collapse = "', '"),
+    "' is at level '",
+    paste(.bad, collapse = "', '"),
+    "'",
+    call. = FALSE
+  )
 }
 
 #' The omega blocks that contain at least one declaration, in block order
@@ -998,9 +1130,12 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistModelAssigned <- function(ui) {
   .assigned <- character(0)
   for (.e in ui$lstExpr) {
-    if (is.call(.e) && length(.e) >= 3L &&
-          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
-          is.name(.e[[2]])) {
+    if (
+      is.call(.e) &&
+        length(.e) >= 3L &&
+        (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
+        is.name(.e[[2]])
+    ) {
       .assigned <- c(.assigned, as.character(.e[[2]]))
     }
   }
@@ -1029,23 +1164,39 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistDropPreEmitted <- function(ui, d) {
-  .keep <- vapply(ui$lstExpr, function(.e) {
-    if (!(is.call(.e) && length(.e) >= 3L && is.name(.e[[2]]) &&
-            (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))))) {
-      return(TRUE)
-    }
-    .lhs <- as.character(.e[[2]])
-    ## an argument anchor for one of THESE declarations
-    if (any(vapply(d$name, function(.nm) {
-      grepl(paste0("^rxEdA[.]", .nm, "[.]"), .lhs)
-    }, logical(1)))) return(FALSE)
-    ## the decoder itself: assigns the declared name, and reads its latent
-    if (.lhs %in% d$name) {
-      .v <- all.vars(.e[[3]])
-      if (paste0("rxN.", .lhs) %in% .v) return(FALSE)
-    }
-    TRUE
-  }, logical(1))
+  .keep <- vapply(
+    ui$lstExpr,
+    function(.e) {
+      if (
+        !(is.call(.e) &&
+          length(.e) >= 3L &&
+          is.name(.e[[2]]) &&
+          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))))
+      ) {
+        return(TRUE)
+      }
+      .lhs <- as.character(.e[[2]])
+      ## an argument anchor for one of THESE declarations
+      if (
+        any(vapply(
+          d$name,
+          function(.nm) {
+            grepl(paste0("^rxEdA[.]", .nm, "[.]"), .lhs)
+          },
+          logical(1)
+        ))
+      ) {
+        return(FALSE)
+      }
+      ## the decoder itself: assigns the declared name, and reads its latent
+      if (.lhs %in% d$name) {
+        .v <- all.vars(.e[[3]])
+        if (paste0("rxN.", .lhs) %in% .v) return(FALSE)
+      }
+      TRUE
+    },
+    logical(1)
+  )
   ui$lstExpr[.keep]
 }
 
@@ -1056,8 +1207,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistCopulaLines <- function(nms) {
-  unlist(lapply(seq_along(nms), function(.i) .rxEtaDistCorLines(nms, .i)),
-         use.names=FALSE)
+  unlist(lapply(seq_along(nms), function(.i) .rxEtaDistCorLines(nms, .i)), use.names = FALSE)
 }
 
 #' The `rxCor.*` thetas for one block, on the atanh scale
@@ -1068,12 +1218,13 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistCorTheta <- function(nms, y) {
-  .out <- data.frame(name=character(0), est=numeric(0), stringsAsFactors=FALSE)
+  .out <- data.frame(name = character(0), est = numeric(0), stringsAsFactors = FALSE)
   for (.i in seq_along(nms)) {
     for (.j in seq_len(.i - 1L)) {
-      .out <- rbind(.out,
-                    data.frame(name=paste0("rxCor.", nms[.i], ".", nms[.j]),
-                               est=y[.i, .j], stringsAsFactors=FALSE))
+      .out <- rbind(
+        .out,
+        data.frame(name = paste0("rxCor.", nms[.i], ".", nms[.j]), est = y[.i, .j], stringsAsFactors = FALSE)
+      )
     }
   }
   .out
@@ -1090,16 +1241,19 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistDecoderLines <- function(nms, d, assigned) {
   .pre <- character(0)
   for (.nm in nms) {
-    if (.nm %in% assigned) next   # model-block dist() placed it already
+    if (.nm %in% assigned) {
+      next
+    } # model-block dist() placed it already
     .w <- which(d$name == .nm)
     if (length(.w) == 1L) {
       .u <- paste0("phiU(rxN.", .nm, ")")
       .lat <- paste0("rxN.", .nm)
-      .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent=.lat)
-      .pre <- c(.pre, attr(.anc, "lines"),
-                paste0(.nm, " <- ",
-                       .rxEtaDistQuantile(d$etaDist[.w], .u, .nm,
-                                          latent=.lat, anchors=.anc)))
+      .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent = .lat)
+      .pre <- c(
+        .pre,
+        attr(.anc, "lines"),
+        paste0(.nm, " <- ", .rxEtaDistQuantile(d$etaDist[.w], .u, .nm, latent = .lat, anchors = .anc))
+      )
     } else {
       ## an undeclared member of a declared block: its variance is one
       ## by the same rule, so it IS the correlated latent normal
@@ -1137,8 +1291,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistCovRowsToDrop <- function(iniDf, idx) {
-  which(!is.na(iniDf$neta1) & iniDf$neta1 != iniDf$neta2 &
-          iniDf$neta1 %in% idx & iniDf$neta2 %in% idx)
+  which(!is.na(iniDf$neta1) & iniDf$neta1 != iniDf$neta2 & iniDf$neta1 %in% idx & iniDf$neta2 %in% idx)
 }
 
 #' Append the `rxCor.*` theta rows to the ini data.frame
@@ -1149,10 +1302,11 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistAddCorThetas <- function(iniDf, newTheta) {
-  if (nrow(newTheta) == 0L) return(iniDf)
-  .nTheta <- suppressWarnings(max(c(0L, iniDf$ntheta), na.rm=TRUE))
-  .add <- iniDf[rep(which(!is.na(iniDf$ntheta))[1], nrow(newTheta)), ,
-                drop=FALSE]
+  if (nrow(newTheta) == 0L) {
+    return(iniDf)
+  }
+  .nTheta <- suppressWarnings(max(c(0L, iniDf$ntheta), na.rm = TRUE))
+  .add <- iniDf[rep(which(!is.na(iniDf$ntheta))[1], nrow(newTheta)), , drop = FALSE]
   .add$ntheta <- .nTheta + seq_len(nrow(newTheta))
   .add$name <- newTheta$name
   .add$est <- newTheta$est
@@ -1186,8 +1340,12 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   ## back-transformed column reads as a correlation without any special
   ## casing; `fit$etaDistCor` carries the whole matrix.
   .add$backTransform <- "tanh"
-  if (any(names(.add) == "prior")) .add$prior <- NA_character_
-  if (any(names(.add) == "err")) .add$err <- NA_character_
+  if (any(names(.add) == "prior")) {
+    .add$prior <- NA_character_
+  }
+  if (any(names(.add) == "err")) {
+    .add$err <- NA_character_
+  }
   .add$condition <- NA_character_
   rownames(.add) <- NULL
   rbind(iniDf, .add)
@@ -1201,7 +1359,9 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @author Matthew L. Fidler
 .rxEtaDistRenumberEtas <- function(iniDf) {
   .we <- which(is.na(iniDf$ntheta))
-  if (length(.we) == 0L) return(iniDf)
+  if (length(.we) == 0L) {
+    return(iniDf)
+  }
   .lvl <- sort(unique(iniDf$neta1[.we]))
   iniDf$neta1[.we] <- match(iniDf$neta1[.we], .lvl)
   iniDf$neta2[.we] <- match(iniDf$neta2[.we], .lvl)
@@ -1245,17 +1405,16 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistNewUi <- function(ui, iniDf, lstExpr) {
   .ini <- as.expression(lotri::as.lotri(iniDf))
   .ini[[1]] <- quote(`ini`)
-  .model <- str2lang(paste0("model({",
-                            paste(vapply(lstExpr, deparse1, character(1),
-                                         USE.NAMES=FALSE),
-                                  collapse="\n"),
-                            "})"))
-  .ls <- ls(ui$meta, all.names=TRUE)
+  .model <- str2lang(paste0(
+    "model({",
+    paste(vapply(lstExpr, deparse1, character(1), USE.NAMES = FALSE), collapse = "\n"),
+    "})"
+  ))
+  .ls <- ls(ui$meta, all.names = TRUE)
   .body <- vector("list", length(.ls) + 3L)
   .body[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    .body[[.i + 1L]] <- str2lang(paste0(.ls[.i], " <- ",
-                                        deparse1(ui$meta[[.ls[.i]]])))
+    .body[[.i + 1L]] <- str2lang(paste0(.ls[.i], " <- ", deparse1(ui$meta[[.ls[.i]]])))
   }
   .body[[length(.ls) + 2L]] <- .ini
   .body[[length(.ls) + 3L]] <- .model
@@ -1264,7 +1423,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   .new <- rxUiDecompress(.f())
   ## rebuilding through an anonymous function would otherwise report the
   ## model's name as `.f`
-  assign("modelName", ui$modelName, envir=.new)
+  assign("modelName", ui$modelName, envir = .new)
   .new
 }
 
@@ -1281,15 +1440,26 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxEtaDistVars <- function(iniDf) {
-  if (is.null(iniDf) || !any(names(iniDf) == "etaDist")) return(character(0))
+  if (is.null(iniDf) || !any(names(iniDf) == "etaDist")) {
+    return(character(0))
+  }
   .w <- which(!is.na(iniDf$etaDist))
-  if (length(.w) == 0L) return(character(0))
-  unique(c(iniDf$name[.w],
-           unlist(lapply(iniDf$etaDist[.w], function(.t) {
-             .e <- try(str2lang(.t), silent=TRUE)
-             if (inherits(.e, "try-error")) return(character(0)) # nocov
-             all.vars(.e)
-           }), use.names=FALSE)))
+  if (length(.w) == 0L) {
+    return(character(0))
+  }
+  unique(c(
+    iniDf$name[.w],
+    unlist(
+      lapply(iniDf$etaDist[.w], function(.t) {
+        .e <- try(str2lang(.t), silent = TRUE)
+        if (inherits(.e, "try-error")) {
+          return(character(0))
+        } # nocov
+        all.vars(.e)
+      }),
+      use.names = FALSE
+    )
+  ))
 }
 
 #' Substitute a variable inside a model expression
@@ -1306,12 +1476,18 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 .rxEtaDistSubVar <- function(e, map) {
   if (is.name(e)) {
     .n <- as.character(e)
-    if (!is.null(map[[.n]])) return(map[[.n]])
+    if (!is.null(map[[.n]])) {
+      return(map[[.n]])
+    }
     return(e)
   }
-  if (!is.call(e)) return(e)
+  if (!is.call(e)) {
+    return(e)
+  }
   .start <- 2L
-  if (length(e) > 2L && identical(e[[1]], quote(`<-`))) .start <- 3L
+  if (length(e) > 2L && identical(e[[1]], quote(`<-`))) {
+    .start <- 3L
+  }
   if (length(e) >= .start) {
     for (.i in seq.int(.start, length(e))) {
       e[[.i]] <- .rxEtaDistSubVar(e[[.i]], map)
@@ -1406,11 +1582,9 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 rxEtaDistMuRef <- function(ui, variance = 0.1) {
   .ui <- rxUiDecompress(assertRxUi(ui))
   if (nrow(rxUiEtaDists(.ui)) == 0L) {
-    stop("'rxEtaDistMuRef()' needs a model with at least one 'dist()' declaration in 'ini({})'",
-         call.=FALSE)
+    stop("'rxEtaDistMuRef()' needs a model with at least one 'dist()' declaration in 'ini({})'", call. = FALSE)
   }
-  checkmate::assertNumeric(variance, lower=0, len=1, any.missing=FALSE,
-                           .var.name="variance")
+  checkmate::assertNumeric(variance, lower = 0, len = 1, any.missing = FALSE, .var.name = "variance")
   ## `variance = 0` is NONMEM's own spelling of this idiom -- Bauer's control
   ## streams mu-reference every distribution parameter and give each helper
   ## `$OMEGA (0.0 FIXED)` -- and nlmixr2 now recognizes it: a mu-referenced
@@ -1429,10 +1603,18 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
   ## lines rather than re-deriving them, so this cannot drift from what
   ## rxEtaDistExpand() actually wrote.
   .lst <- .exp$lstExpr
-  .lhs <- vapply(.lst, function(.l) {
-    if (is.call(.l) && length(.l) > 2L && identical(.l[[1]], quote(`<-`)) &&
-          is.name(.l[[2]])) as.character(.l[[2]]) else ""
-  }, character(1), USE.NAMES=FALSE)
+  .lhs <- vapply(
+    .lst,
+    function(.l) {
+      if (is.call(.l) && length(.l) > 2L && identical(.l[[1]], quote(`<-`)) && is.name(.l[[2]])) {
+        as.character(.l[[2]])
+      } else {
+        ""
+      }
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   ## Every line rxEtaDistExpand() generates: the copula intermediates
   ## (rxT./rxL./rxS./rxN.), the uniform (rxu./rxU.), and the assignment to the
   ## declared eta itself.  The copula correlation theta only ever appears on an
@@ -1443,39 +1625,44 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
   ## than inside the inverse-CDF call.  Missing this prefix leaves exactly
   ## those thetas non-mu-referenced, which is the same silent failure the
   ## comment above describes for rxT.
-  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs) |
-    grepl("^rxEdA[.]", .lhs)
-  .vars <- unique(unlist(lapply(.lst[.isDistLine], all.vars), use.names=FALSE))
+  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs) | grepl("^rxEdA[.]", .lhs)
+  .vars <- unique(unlist(lapply(.lst[.isDistLine], all.vars), use.names = FALSE))
   .thetas <- .ini$name[!is.na(.ini$ntheta) & is.na(.ini$err) & !.ini$fix]
   .target <- intersect(.vars, .thetas)
   ## The copula correlation thetas are created BY the expansion and only ever
   ## appear in a generated line, so they are picked up above; keep them in a
   ## stable order alongside the declaration parameters.
-  if (length(.target) == 0L) return(.exp)
+  if (length(.target) == 0L) {
+    return(.exp)
+  }
   .helper <- paste0("eta.mu.", .target)
   .map <- stats::setNames(
-    lapply(seq_along(.target),
-           function(.i) str2lang(paste0("(", .target[.i], " + ", .helper[.i], ")"))),
-    .target)
-  .newLst <- lapply(.lst, .rxEtaDistSubVar, map=.map)
+    lapply(seq_along(.target), function(.i) str2lang(paste0("(", .target[.i], " + ", .helper[.i], ")"))),
+    .target
+  )
+  .newLst <- lapply(.lst, .rxEtaDistSubVar, map = .map)
   ## Rebuild rather than pipe: the helper etas do not exist in ini() until the
   ## model block mentions them, and the model block cannot mention them until
   ## they exist, so the two have to be written at the same time.
   .iniTxt <- deparse(.exp$iniFun)
-  .iniTxt <- .iniTxt[-length(.iniTxt)]           # drop the closing "})"
-  .iniTxt <- c(.iniTxt,
-               paste0("  ", .helper, " ~ fix(", variance, ")"),
-               "})")
-  .modTxt <- vapply(.newLst, function(.l) paste0("  ", deparse1(.l)),
-                    character(1), USE.NAMES=FALSE)
-  .txt <- paste0("function() {\n",
-                 paste(.iniTxt, collapse="\n"), "\n",
-                 "model({\n", paste(.modTxt, collapse="\n"), "\n})\n}")
-  .fun <- try(eval(parse(text=.txt)), silent=TRUE)
+  .iniTxt <- .iniTxt[-length(.iniTxt)] # drop the closing "})"
+  .iniTxt <- c(.iniTxt, paste0("  ", .helper, " ~ fix(", variance, ")"), "})")
+  .modTxt <- vapply(.newLst, function(.l) paste0("  ", deparse1(.l)), character(1), USE.NAMES = FALSE)
+  .txt <- paste0(
+    "function() {\n",
+    paste(.iniTxt, collapse = "\n"),
+    "\n",
+    "model({\n",
+    paste(.modTxt, collapse = "\n"),
+    "\n})\n}"
+  )
+  .fun <- try(eval(parse(text = .txt)), silent = TRUE)
   if (inherits(.fun, "try-error")) {
     message(.txt)
-    stop("could not mu-reference the declared distribution parameters; the model this tried to build is echoed above",
-         call.=FALSE)
+    stop(
+      "could not mu-reference the declared distribution parameters; the model this tried to build is echoed above",
+      call. = FALSE
+    )
   }
   rxUiDecompress(rxode2(.fun))
 }
@@ -1515,22 +1702,18 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
 #' @author Matthew L. Fidler
 rxUdfUiLhs.dist <- function(fun, rhs) {
   if (length(fun) != 2L) {
-    stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'",
-         call.=FALSE)
+    stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'", call. = FALSE)
   }
   .eta <- fun[[2]]
   if (!is.name(.eta)) {
-    stop("'dist()' takes a random effect name, as in 'dist(eta.cl)'",
-         call.=FALSE)
+    stop("'dist()' takes a random effect name, as in 'dist(eta.cl)'", call. = FALSE)
   }
   .eta <- as.character(.eta)
   .iniDf <- rxUdfUiIniDf()
   if (is.null(.iniDf)) {
-    stop("'dist(", .eta, ")' needs the initial estimates to be available",
-         call.=FALSE)
+    stop("'dist(", .eta, ")' needs the initial estimates to be available", call. = FALSE)
   }
-  .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) &
-                .iniDf$neta1 == .iniDf$neta2)
+  .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
   if (length(.w) == 0L) {
     ## Not declared in ini({}) -- add it.  A declared distribution supplies its
     ## own spread, so the only variance this random effect could have been given
@@ -1542,8 +1725,7 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
     ## written, because a correlation between two random effects is a real
     ## choice and cannot be inferred from either declaration alone.
     .iniDf <- .rxEtaDistAddEta(.iniDf, .eta)
-    .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) &
-                  .iniDf$neta1 == .iniDf$neta2)
+    .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
   } else {
     ## Declared, so it must have been declared with a unit variance -- the
     ## latent IS a standard normal, and any other value is a spread the
@@ -1551,29 +1733,51 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
     ## spread, and phiU() assumes N(0,1) going in.
     .est <- .iniDf$est[.w]
     if (!isTRUE(is.finite(.est)) || abs(.est - 1) > 1e-8) {
-      stop("'dist(", .eta, ")' needs '", .eta, "' to have a variance of 1, but ",
-           "ini({}) declares ", format(.est), ".  A declared distribution ",
-           "supplies its own spread through its parameters, so the underlying ",
-           "random effect is a standard normal -- write '", .eta, " ~ 1' ",
-           "(or leave it out entirely and it will be added)", call.=FALSE)
+      stop(
+        "'dist(",
+        .eta,
+        ")' needs '",
+        .eta,
+        "' to have a variance of 1, but ",
+        "ini({}) declares ",
+        format(.est),
+        ".  A declared distribution ",
+        "supplies its own spread through its parameters, so the underlying ",
+        "random effect is a standard normal -- write '",
+        .eta,
+        " ~ 1' ",
+        "(or leave it out entirely and it will be added)",
+        call. = FALSE
+      )
     }
   }
   if (!is.call(rhs) || !is.name(rhs[[1]])) {
-    stop("'dist(", .eta, ")' must be given a distribution, as in ",
-         "'dist(", .eta, ") ~ dgamma(shape=a, rate=b)'", call.=FALSE)
+    stop(
+      "'dist(",
+      .eta,
+      ")' must be given a distribution, as in ",
+      "'dist(",
+      .eta,
+      ") ~ dgamma(shape=a, rate=b)'",
+      call. = FALSE
+    )
   }
   .fam <- as.character(rhs[[1]])
   .tab <- .rxEtaDistTable(paste0("dist(", .eta, ")"))
   .fw <- which(.tab$name == .fam)
   if (length(.fw) != 1L) {
-    stop("'dist(", .eta, ")' declares '", .fam,
-         "', which is not a distribution the installed 'lotri' knows",
-         call.=FALSE)
+    stop(
+      "'dist(",
+      .eta,
+      ")' declares '",
+      .fam,
+      "', which is not a distribution the installed 'lotri' knows",
+      call. = FALSE
+    )
   }
   .nArg <- length(as.list(rhs)) - 1L
   if (.nArg != .tab$nReq[.fw]) {
-    stop("'dist(", .eta, ") ~ ", .fam, "()' needs ", .tab$nReq[.fw],
-         " argument(s), not ", .nArg, call.=FALSE)
+    stop("'dist(", .eta, ") ~ ", .fam, "()' needs ", .tab$nReq[.fw], " argument(s), not ", .nArg, call. = FALSE)
   }
   ## The declaration itself, recorded exactly as ini({})'s dist() records it,
   ## so rxUiEtaDists(), $etaDist and the babelmixr2 "native" path all read one
@@ -1590,7 +1794,9 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   ##   swapped     cl <- gammapInv((1/(exp(lclrv)*exp(lclm))), ...)/((1/exp(lclrv)))
   ##
   ## Normalizing at the STORAGE point fixes every consumer from one place.
-  if (!any(names(.iniDf) == "etaDist")) .iniDf$etaDist <- NA_character_
+  if (!any(names(.iniDf) == "etaDist")) {
+    .iniDf$etaDist <- NA_character_
+  }
   .rhsTxt <- .rxEtaDistNormalizeTxt(rhs, .eta)
   .iniDf$etaDist[.w] <- .rhsTxt
   ## A declared distribution supplies its own spread, so the latent is a
@@ -1602,14 +1808,15 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
   ## ini({}) spelling emits -- the two must stay byte-identical, which is the
   ## invariant the argument-order normalization above exists to protect.
   .anc <- .rxEtaDistAnchors(.rhsTxt, .eta, latent = paste0("rxN.", .eta))
-  list(iniDf = .iniDf,
-       before = attr(.anc, "lines"),
-       replace = paste0(.eta, " <- ",
-                        .rxEtaDistQuantile(.rhsTxt,
-                                           paste0("phiU(rxN.", .eta, ")"),
-                                           .eta,
-                                           latent = paste0("rxN.", .eta),
-                                           anchors = .anc)))
+  list(
+    iniDf = .iniDf,
+    before = attr(.anc, "lines"),
+    replace = paste0(
+      .eta,
+      " <- ",
+      .rxEtaDistQuantile(.rhsTxt, paste0("phiU(rxN.", .eta, ")"), .eta, latent = paste0("rxN.", .eta), anchors = .anc)
+    )
+  )
 }
 
 #' Canonical text for a declared distribution call
@@ -1628,17 +1835,21 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
 #' @author Matthew L. Fidler
 .rxEtaDistNormalizeTxt <- function(rhs, eta) {
   if (!is.null(getFromNamespace0("lotriEtaDistNormalize", "lotri"))) {
-    .n <- try(lotri::lotriEtaDistNormalize(rhs), silent=TRUE)
-    if (!inherits(.n, "try-error") && is.character(.n$text) &&
-          length(.n$text) == 1L) {
+    .n <- try(lotri::lotriEtaDistNormalize(rhs), silent = TRUE)
+    if (!inherits(.n, "try-error") && is.character(.n$text) && length(.n$text) == 1L) {
       return(.n$text)
     }
   }
   .nm <- names(as.list(rhs)[-1])
   if (!is.null(.nm) && any(nzchar(.nm))) {
-    warning("'dist(", eta, ")' has named arguments but the installed 'lotri' ",
-            "cannot normalize them; they are matched POSITIONALLY, so write ",
-            "them in the family's own order to be safe", call.=FALSE)
+    warning(
+      "'dist(",
+      eta,
+      ")' has named arguments but the installed 'lotri' ",
+      "cannot normalize them; they are matched POSITIONALLY, so write ",
+      "them in the family's own order to be safe",
+      call. = FALSE
+    )
   }
   deparse1(rhs)
 }
@@ -1646,7 +1857,7 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
 #' `getFromNamespace()` that returns NULL instead of erroring
 #' @noRd
 getFromNamespace0 <- function(x, ns) {
-  tryCatch(utils::getFromNamespace(x, ns), error=function(e) NULL)
+  tryCatch(utils::getFromNamespace(x, ns), error = function(e) NULL)
 }
 
 #' Is the installed lotri new enough to describe declared distributions?
@@ -1674,11 +1885,15 @@ getFromNamespace0 <- function(x, ns) {
 #' @noRd
 .rxEtaDistTable <- function(what = "dist()") {
   if (!.rxEtaDistLotriOk()) {
-    stop("'", what, "' needs a 'lotri' that describes declared distributions, ",
-         "and the installed one does not provide 'lotriEtaDists()'\n",
-         "  install the development 'lotri':\n",
-         "    remotes::install_github(\"nlmixr2/lotri\")",
-         call.=FALSE)
+    stop(
+      "'",
+      what,
+      "' needs a 'lotri' that describes declared distributions, ",
+      "and the installed one does not provide 'lotriEtaDists()'\n",
+      "  install the development 'lotri':\n",
+      "    remotes::install_github(\"nlmixr2/lotri\")",
+      call. = FALSE
+    )
   }
   lotri::lotriEtaDists()
 }
@@ -1697,9 +1912,11 @@ getFromNamespace0 <- function(x, ns) {
 #' @author Matthew L. Fidler
 .rxEtaDistAddEta <- function(iniDf, name) {
   .we <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
-  .row <- if (length(.we) > 0L) iniDf[.we[1L], , drop=FALSE] else iniDf[1L, , drop=FALSE]
-  .n <- suppressWarnings(max(c(0, iniDf$neta1, iniDf$neta2), na.rm=TRUE))
-  if (!is.finite(.n)) .n <- 0
+  .row <- if (length(.we) > 0L) iniDf[.we[1L], , drop = FALSE] else iniDf[1L, , drop = FALSE]
+  .n <- suppressWarnings(max(c(0, iniDf$neta1, iniDf$neta2), na.rm = TRUE))
+  if (!is.finite(.n)) {
+    .n <- 0
+  }
   .row$ntheta <- NA_integer_
   .row$neta1 <- .n + 1
   .row$neta2 <- .n + 1

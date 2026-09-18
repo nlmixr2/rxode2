@@ -12,12 +12,13 @@
 ## quietly optimizes the wrong gradient.
 
 rxTest({
-
   ## central difference of `txt` w.r.t. `th` at `p`
   .fd <- function(txt, th, p) {
     .h <- 1e-6 * max(abs(p[[th]]), 1)
-    .pu <- p; .pu[[th]] <- p[[th]] + .h
-    .pl <- p; .pl[[th]] <- p[[th]] - .h
+    .pu <- p
+    .pu[[th]] <- p[[th]] + .h
+    .pl <- p
+    .pl[[th]] <- p[[th]] - .h
     (eval(str2lang(txt), .pu) - eval(str2lang(txt), .pl)) / (2 * .h)
   }
 
@@ -45,15 +46,16 @@ rxTest({
     skip_if_not_installed("symengine")
     ## not merely small -- symengine returns the literal 0, which is what lets
     ## the emission drop the line instead of computing a constant per record
-    expect_equal(gsub("[[:space:]]+", "", .rxEtaDistD("1/exp(lclrv)", "lclm")),
-                 "0")
+    expect_equal(gsub("[[:space:]]+", "", .rxEtaDistD("1/exp(lclrv)", "lclm")), "0")
   })
 
   test_that("derivative anchors are named and emitted per theta", {
     skip_if_not_installed("symengine")
     .anc <- .rxEtaDistAnchors(
       "dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))",
-      "eta.cl", latent = NULL)
+      "eta.cl",
+      latent = NULL
+    )
     skip_if(is.null(.anc))
     .l <- .rxEtaDistDerivLines(.anc, c("lclrv", "lclm"))
     ## shape involves only lclrv; rate involves both -- so three lines, not four
@@ -70,20 +72,19 @@ rxTest({
     skip_if_not_installed("symengine")
     .anc <- .rxEtaDistAnchors(
       "dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm + bWT*log(WT/70))))",
-      "eta.cl", latent = NULL)
+      "eta.cl",
+      latent = NULL
+    )
     skip_if(is.null(.anc))
     .l <- .rxEtaDistDerivLines(.anc, c("lclrv", "lclm", "bWT"))
     .p <- list(lclrv = -2.4, lclm = 1.63, bWT = 0.35, WT = 55)
-    .args <- c(shape = "1/exp(lclrv)",
-               rate = "1/(exp(lclrv)*exp(lclm + bWT*log(WT/70)))")
+    .args <- c(shape = "1/exp(lclrv)", rate = "1/(exp(lclrv)*exp(lclm + bWT*log(WT/70)))")
     for (.ln in .l) {
       .eq <- str2lang(.ln)
       .nm <- deparse1(.eq[[2]])
       .role <- sub("^rxEdD[.]eta[.]cl[.]([^.]+)[.].*$", "\\1", .nm)
       .th <- sub("^.*[.]", "", .nm)
-      expect_equal(eval(.eq[[3]], .p), .fd(.args[[.role]], .th, .p),
-                   tolerance = 1e-5)
+      expect_equal(eval(.eq[[3]], .p), .fd(.args[[.role]], .th, .p), tolerance = 1e-5)
     }
   })
-
 })

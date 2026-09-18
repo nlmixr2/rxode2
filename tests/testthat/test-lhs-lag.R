@@ -1,5 +1,4 @@
 rxTest({
-
   test_that("lag()/diff() of an lhs variable return the previous record value", {
     f <- function() {
       ini({tcl <- 1})
@@ -123,5 +122,4 @@ rxTest({
     expect_equal(r$pw, c(NA, 70, 72, 75))
     expect_equal(r$dw, c(NA, 2, 3, 5))
   })
-
 })

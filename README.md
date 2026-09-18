@@ -67,7 +67,7 @@ development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
 ``` r
-install.packages(c("dparser", "rxode2ll", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2lincmt", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -76,6 +76,7 @@ If this doesn’t work you install the development version of rxode2 with
 
 ``` r
 devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2lincmt")
 devtools::install_github("nlmixr2/rxode2")
 ```
 
@@ -165,20 +166,13 @@ instructions:
 
 ## Development version
 
-Since the development version of rxode2 uses StanHeaders, you will need
-to make sure your compiler is setup to support C++14, as described in
-the [rstan setup
-page](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain).
-For R 4.0, I do not believe this requires modifying the windows
-toolchain any longer (so it is much easier to setup).
-
-Once the C++ toolchain is setup appropriately, you can install the
-development version from [GitHub](https://github.com/nlmixr2/rxode2)
-with:
+You can install the development version from
+[GitHub](https://github.com/nlmixr2/rxode2) with:
 
 ``` r
 # install.packages("devtools")
 devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2lincmt")
 devtools::install_github("nlmixr2/rxode2")
 ```
 

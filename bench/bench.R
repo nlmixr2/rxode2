@@ -15,17 +15,20 @@ args <- commandArgs(trailingOnly = TRUE)
 message("Loading package with devtools::load_all() ...")
 suppressMessages(devtools::load_all(quiet = TRUE))
 
-.sha <- tryCatch(system("git rev-parse --short HEAD", intern = TRUE),
-                 error = function(e) "unknown")
+.sha <- tryCatch(system("git rev-parse --short HEAD", intern = TRUE), error = function(e) "unknown")
 
 # median wall time of n evaluations of f(), in seconds
 .timeIt <- function(f, n = 5L) {
   f() # warm up
-  .times <- vapply(seq_len(n), function(i) {
-    .t0 <- Sys.time()
-    f()
-    as.numeric(Sys.time() - .t0, units = "secs")
-  }, numeric(1))
+  .times <- vapply(
+    seq_len(n),
+    function(i) {
+      .t0 <- Sys.time()
+      f()
+      as.numeric(Sys.time() - .t0, units = "secs")
+    },
+    numeric(1)
+  )
   stats::median(.times)
 }
 
@@ -93,7 +96,6 @@ message("Compiling benchmark models ...")
 # time-varying covariate event table (wt changes over time per subject)
 .evCov <- as.data.frame(et(.ev, id = 1:200))
 set.seed(101)
-.evCov$wt <- 70 * exp(0.1 * sin(.evCov$time / 24) +
-                        stats::rnorm(nrow(.evCov), 0, 0.01))
+.evCov$wt <- 70 * exp(0.1 * sin(.evCov$time / 24) + stats::rnorm(nrow(.evCov), 0, 0.01))
 
 set

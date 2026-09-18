@@ -52,7 +52,7 @@ rxTest({
   }
 
   test_that("rxEtaDistMuRef() mu-references every declared-distribution parameter", {
-    .u <- rxEtaDistMuRef(.muMod(), variance=0.1)
+    .u <- rxEtaDistMuRef(.muMod(), variance = 0.1)
     .want <- c("lclm", "lclrv", "lv1m", "lv1rv", "rxCor.eta.v1.eta.cl")
 
     # All five, including the copula correlation.  The correlation only ever

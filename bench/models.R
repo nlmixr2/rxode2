@@ -101,8 +101,7 @@
     })
   }
 
-  list(ode = odeModel, lin = linModel, cov = covModel,
-       meLin = meLinModel, meMm = meMmModel)
+  list(ode = odeModel, lin = linModel, cov = covModel, meLin = meLinModel, meMm = meMmModel)
 }
 
 .benchEvents <- function(withCov = FALSE) {

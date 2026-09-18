@@ -6,12 +6,8 @@ test_that("rxSolveChunked is reproducible with the same seed", {
     })
     et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:20)
 
-    chnk1 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
-                             omega = lotri::lotri(eta.k ~ 0.09),
-                             chunkSize = 5)
-    chnk2 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
-                             omega = lotri::lotri(eta.k ~ 0.09),
-                             chunkSize = 5)
+    chnk1 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42, omega = lotri::lotri(eta.k ~ 0.09), chunkSize = 5)
+    chnk2 <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42, omega = lotri::lotri(eta.k ~ 0.09), chunkSize = 5)
     expect_s3_class(chnk1, "rxSolveOom")
     expect_equal(nrow(chnk1), 20L * 25L)
 
@@ -30,11 +26,8 @@ test_that("rxSolveChunked matches rxSolve with same rxSetSeed", {
     et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:20)
 
     rxSetSeed(42)
-    full <- rxSolve(mod, c(lk = log(0.1)), et_pop,
-                    omega = lotri::lotri(eta.k ~ 0.09))
-    chnk <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42,
-                            omega = lotri::lotri(eta.k ~ 0.09),
-                            chunkSize = 5)
+    full <- rxSolve(mod, c(lk = log(0.1)), et_pop, omega = lotri::lotri(eta.k ~ 0.09))
+    chnk <- rxSolveChunked(mod, c(lk = log(0.1)), et_pop, seed = 42, omega = lotri::lotri(eta.k ~ 0.09), chunkSize = 5)
 
     full_df <- as.data.frame(full)
     chnk_df <- as.data.frame(chnk)
@@ -52,8 +45,7 @@ test_that("rxSolve with file returns rxSolveOom and manifest is written", {
     et_pop <- et(seq(0, 24, by = 1)) |> et(amt = 100) |> et(id = 1:10)
 
     .prefix <- tempfile("oomsim")
-    out <- rxSolve(mod, c(k = 0.1), et_pop,
-                   file = .prefix, chunkSize = 5L)
+    out <- rxSolve(mod, c(k = 0.1), et_pop, file = .prefix, chunkSize = 5L)
     expect_s3_class(out, "rxSolveOom")
     expect_true(file.exists(paste0(.prefix, "_manifest.rds")))
 
@@ -106,9 +98,9 @@ test_that("as.arrow.rxSolveOom returns a lazy Arrow Dataset", {
     expect_true(inherits(ds, "Dataset"))
 
     collected <- dplyr::collect(ds)
-    full_df   <- as.data.frame(chnk)
+    full_df <- as.data.frame(chnk)
     collected <- collected[order(collected$id, collected$time), ]
-    full_df   <- full_df[order(full_df$id, full_df$time), ]
+    full_df <- full_df[order(full_df$id, full_df$time), ]
     expect_equal(collected$A, full_df$A, tolerance = 1e-6)
   })
 })
@@ -200,8 +192,7 @@ test_that("rxEtFile is recognized as events when passed positionally", {
     .etf <- rxEventTableFile(.tf, format = "rds")
 
     # positional (params slot) must swap to events like rxEt/data.frame do
-    .res <- rxSolve(mod, .etf, params = c(k = 0.1),
-                    file = tempfile("rxPos"), chunkSize = 2)
+    .res <- rxSolve(mod, .etf, params = c(k = 0.1), file = tempfile("rxPos"), chunkSize = 2)
     expect_s3_class(.res, "rxSolveOom")
     .df <- as.data.frame(.res)
     expect_equal(sort(unique(.df$id)), 1:4)
@@ -233,15 +224,13 @@ test_that("rxSolve(parallel=) mirai path matches the serial chunked solve", {
       cp           <- center / v
     })
     et_pop <- et(amt = 100) |> et(seq(0, 24, by = 4)) |> et(id = 1:6)
-    pars   <- c(tka = log(0.5), tcl = log(4), tv = log(70))
-    omega  <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+    pars <- c(tka = log(0.5), tcl = log(4), tv = log(70))
+    omega <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
 
     rxSetSeed(42)
-    ser <- rxSolve(mod, pars, et_pop, omega = omega,
-                   file = tempfile("rxSer"), chunkSize = 2)
+    ser <- rxSolve(mod, pars, et_pop, omega = omega, file = tempfile("rxSer"), chunkSize = 2)
     rxSetSeed(42)
-    par <- rxSolve(mod, pars, et_pop, omega = omega,
-                   file = tempfile("rxPar"), chunkSize = 2, parallel = 2)
+    par <- rxSolve(mod, pars, et_pop, omega = omega, file = tempfile("rxPar"), chunkSize = 2, parallel = 2)
 
     expect_s3_class(par, "rxSolveOom")
     ser_df <- as.data.frame(ser)
@@ -276,9 +265,15 @@ test_that("a control the daemons accept still reaches them", {
     })
     e <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
     .rows <- function(...) {
-      nrow(as.data.frame(rxSolve(mod, c(lcl = 1, lv = 3.45), e,
-                                 file = tempfile("rxFwd"), chunkSize = 2,
-                                 parallel = 2, ...)))
+      nrow(as.data.frame(rxSolve(
+        mod,
+        c(lcl = 1, lv = 3.45),
+        e,
+        file = tempfile("rxFwd"),
+        chunkSize = 2,
+        parallel = 2,
+        ...
+      )))
     }
     expect_gt(.rows(addDosing = TRUE), .rows(addDosing = FALSE))
   })
@@ -296,9 +291,15 @@ test_that("rxode2.oom.backend option is forwarded to the mirai workers", {
     })
     et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
 
-    par <- rxSolve(mod, c(lcl = 1, lv = 3.45), et_pop,
-                   omega = lotri::lotri(eta.cl ~ 0.04),
-                   file = tempfile("rxParRds"), chunkSize = 2, parallel = 2)
+    par <- rxSolve(
+      mod,
+      c(lcl = 1, lv = 3.45),
+      et_pop,
+      omega = lotri::lotri(eta.cl ~ 0.04),
+      file = tempfile("rxParRds"),
+      chunkSize = 2,
+      parallel = 2
+    )
 
     expect_s3_class(par, "rxSolveOom")
     m <- attr(par, "manifest")
@@ -320,12 +321,11 @@ test_that("rxSolveOom persists params and inits like an rxSolve object", {
       d/dt(central) <-  ka * depot - cl / v * central
       cp <- central / v
     })
-    pars   <- c(lka = 0.45, lcl = 1, lv = 3.45)
+    pars <- c(lka = 0.45, lcl = 1, lv = 3.45)
     et_pop <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:6)
-    omega  <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
+    omega <- lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
 
-    chnk <- rxSolveChunked(mod, pars, et_pop, seed = 7,
-                            omega = omega, chunkSize = 2)
+    chnk <- rxSolveChunked(mod, pars, et_pop, seed = 7, omega = omega, chunkSize = 2)
 
     # res$params: one row per subject, NOT NULL
     .pars <- chnk$params
@@ -365,8 +365,14 @@ test_that("rxSolveOom print mirrors rxSolve output with a chunk footer", {
       cp <- central / v
     })
     et_pop <- et(amt = 100) |> et(seq(0, 24, 4)) |> et(id = 1:6)
-    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 3,
-                            omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+    chnk <- rxSolveChunked(
+      mod,
+      c(lcl = 1, lv = 3.45),
+      et_pop,
+      seed = 3,
+      omega = lotri::lotri(eta.cl ~ 0.04),
+      chunkSize = 2
+    )
 
     out <- capture.output(print(chnk))
     expect_true(any(grepl("Solved rxode2 object", out)))
@@ -385,7 +391,9 @@ for (.oomBackend in c("rds", "arrow", "duckdb")) {
     .backend <- .oomBackend
     test_that(sprintf("rxSolveOom round-trips through the '%s' backend", .backend), {
       rxTest({
-        if (.backend %in% c("arrow", "duckdb")) skip_if_not_installed("arrow")
+        if (.backend %in% c("arrow", "duckdb")) {
+          skip_if_not_installed("arrow")
+        }
         if (.backend == "duckdb") {
           skip_if_not_installed("duckdb")
           skip_if_not_installed("DBI")
@@ -399,8 +407,14 @@ for (.oomBackend in c("rds", "arrow", "duckdb")) {
           cp <- central / v
         })
         et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:4)
-        chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 5,
-                                omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+        chnk <- rxSolveChunked(
+          mod,
+          c(lcl = 1, lv = 3.45),
+          et_pop,
+          seed = 5,
+          omega = lotri::lotri(eta.cl ~ 0.04),
+          chunkSize = 2
+        )
 
         # chunks are written in the format the active backend dictates
         m <- attr(chnk, "manifest")
@@ -491,8 +505,14 @@ test_that("dplyr group_by/summarise on rxSolveOom is pushed to the arrow backend
       cp <- central / v
     })
     et_pop <- et(amt = 100) |> et(seq(0, 12, 4)) |> et(id = 1:6)
-    chnk <- rxSolveChunked(mod, c(lcl = 1, lv = 3.45), et_pop, seed = 11,
-                            omega = lotri::lotri(eta.cl ~ 0.04), chunkSize = 2)
+    chnk <- rxSolveChunked(
+      mod,
+      c(lcl = 1, lv = 3.45),
+      et_pop,
+      seed = 11,
+      omega = lotri::lotri(eta.cl ~ 0.04),
+      chunkSize = 2
+    )
 
     agg <- as.arrow(chnk) |>
       dplyr::group_by(id) |>
@@ -502,8 +522,8 @@ test_that("dplyr group_by/summarise on rxSolveOom is pushed to the arrow backend
 
     out <- dplyr::collect(agg)
     out <- out[order(out$id), ]
-    expect_equal(nrow(out), 6L)              # one row per subject, not per record
-    expect_true(all(out$n == 4L))            # 4 time points each
+    expect_equal(nrow(out), 6L) # one row per subject, not per record
+    expect_true(all(out$n == 4L)) # 4 time points each
 
     ref <- as.data.frame(chnk)
     ref <- tapply(ref$cp, ref$id, mean)
@@ -537,12 +557,11 @@ test_that("rxSolveOom supports lazy dplyr queries through a DuckDB connection", 
     got <- dplyr::collect(q)
     expect_lt(nrow(got), nrow(chnk))
     expect_true(all(got$time == 0))
-    expect_equal(nrow(got), 6L)              # one t=0 row per subject
+    expect_equal(nrow(got), 6L) # one t=0 row per subject
   })
 })
 
 rxTest({
-
   test_that("a chunked solve simulates omega uncertainty like an unchunked one", {
     skip_on_cran()
 
@@ -556,9 +575,9 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
     .solve <- function(...) {
       ## the omega draw runs on R's RNG while the etas run on rxode2's, so
@@ -566,17 +585,15 @@ rxTest({
       ## comparable at all
       set.seed(42)
       rxSetSeed(1234)
-      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10, ...)
+      rxSolve(.m, .ev, params = .p, omega = .om, nStud = 3, dfSub = 10, ...)
     }
     .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
-    .full  <- .solve()
-    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+    .full <- .solve()
+    .chunk <- .solve(file = tempfile(fileext = ".parquet"), chunkSize = 2)
 
     ## the whole point: the chunked solve is the unchunked solve
-    expect_equal(.key(as.data.frame(.chunk))$cp,
-                 .key(as.data.frame(.full))$cp,
-                 tolerance=1e-8)
+    expect_equal(.key(as.data.frame(.chunk))$cp, .key(as.data.frame(.full))$cp, tolerance = 1e-8)
 
     ## and the drawn omegas are reported, not just used
     expect_equal(length(.chunk$omegaList), 3L)
@@ -602,22 +619,23 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
     .solve <- function(...) {
       set.seed(42)
       rxSetSeed(1234)
-      rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10, ...)
+      rxSolve(.m, .ev, params = .p, omega = .om, nStud = 3, dfSub = 10, ...)
     }
     .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
     .ref <- .key(as.data.frame(.solve()))
     for (.cs in c(1L, 2L, 3L, 6L)) {
       .got <- .key(as.data.frame(
-        .solve(file=tempfile(fileext=".parquet"), chunkSize=.cs)))
-      expect_equal(.got$cp, .ref$cp, tolerance=1e-8)
+        .solve(file = tempfile(fileext = ".parquet"), chunkSize = .cs)
+      ))
+      expect_equal(.got$cp, .ref$cp, tolerance = 1e-8)
     }
   })
 
@@ -632,28 +650,35 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
-    set.seed(42); rxSetSeed(1234)
-    .full <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10)
-    set.seed(42); rxSetSeed(1234)
-    .chunk <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10,
-                      file=tempfile(fileext=".parquet"), chunkSize=2)
+    set.seed(42)
+    rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params = .p, omega = .om, nStud = 3, dfSub = 10)
+    set.seed(42)
+    rxSetSeed(1234)
+    .chunk <- rxSolve(
+      .m,
+      .ev,
+      params = .p,
+      omega = .om,
+      nStud = 3,
+      dfSub = 10,
+      file = tempfile(fileext = ".parquet"),
+      chunkSize = 2
+    )
 
     .cp <- .chunk$params
     expect_equal(nrow(.cp), nrow(.full$params))
     expect_equal(as.integer(.cp$sim.id), as.integer(.full$params$sim.id))
-    expect_equal(as.integer(as.character(.cp$id)),
-                 as.integer(as.character(.full$params$id)))
-    expect_equal(.cp$eta.ka, .full$params$eta.ka, tolerance=1e-8)
+    expect_equal(as.integer(as.character(.cp$id)), as.integer(as.character(.full$params$id)))
+    expect_equal(.cp$eta.ka, .full$params$eta.ka, tolerance = 1e-8)
   })
-
 })
 
 rxTest({
-
   test_that("a chunked solve simulates parameter uncertainty like an unchunked one", {
     skip_on_cran()
 
@@ -667,25 +692,23 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
 
     .solve <- function(...) {
       set.seed(42)
       rxSetSeed(1234)
-      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3, ...)
+      rxSolve(.m, .ev, params = .p, omega = .om, thetaMat = .tm, nStud = 3, ...)
     }
     .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
-    .full  <- .solve()
-    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+    .full <- .solve()
+    .chunk <- .solve(file = tempfile(fileext = ".parquet"), chunkSize = 2)
 
-    expect_equal(.key(as.data.frame(.chunk))$cp,
-                 .key(as.data.frame(.full))$cp,
-                 tolerance=1e-8)
+    expect_equal(.key(as.data.frame(.chunk))$cp, .key(as.data.frame(.full))$cp, tolerance = 1e-8)
 
     ## the drawn thetas are reported, not just used
     expect_equal(.chunk$thetaMat, .full$thetaMat)
@@ -698,9 +721,13 @@ rxTest({
     ## in different chunks in different studies, which shows up as the
     ## answer depending on the chunk size
     for (.cs in c(1L, 2L, 3L, 6L)) {
-      expect_equal(.key(as.data.frame(
-        .solve(file=tempfile(fileext=".parquet"), chunkSize=.cs)))$cp,
-        .key(as.data.frame(.full))$cp, tolerance=1e-8)
+      expect_equal(
+        .key(as.data.frame(
+          .solve(file = tempfile(fileext = ".parquet"), chunkSize = .cs)
+        ))$cp,
+        .key(as.data.frame(.full))$cp,
+        tolerance = 1e-8
+      )
     }
   })
 
@@ -716,9 +743,9 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.25, 0.01, 0.25, 0.01, 0.01, 0.25))
     .chol <- chol(.tm)
@@ -728,24 +755,22 @@ rxTest({
     .chunked <- function(...) {
       set.seed(42)
       rxSetSeed(1234)
-      rxSolve(.m, .ev, params=.p, omega=.om, nStud=4, ...,
-              file=tempfile(fileext=".parquet"), chunkSize=2)
+      rxSolve(.m, .ev, params = .p, omega = .om, nStud = 4, ..., file = tempfile(fileext = ".parquet"), chunkSize = 2)
     }
 
     ## unbounded the draw straddles zero, so all-positive below is the bound
     ## being honoured rather than a coincidence
-    expect_true(any(.chunked(thetaMat=.tm)$thetaMat < 0))
-    expect_true(all(.chunked(thetaMat=.tm, thetaLower=0)$thetaMat > 0))
+    expect_true(any(.chunked(thetaMat = .tm)$thetaMat < 0))
+    expect_true(all(.chunked(thetaMat = .tm, thetaLower = 0)$thetaMat > 0))
 
     ## a cholesky thetaMat is read as one -- read as a covariance it would
     ## draw a visibly different spread, and here it reproduces the
     ## unchunked solve exactly
-    set.seed(42); rxSetSeed(1234)
-    .full <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=4,
-                     thetaMat=.chol, thetaIsChol=TRUE)
-    .chunk <- .chunked(thetaMat=.chol, thetaIsChol=TRUE)
-    expect_equal(.key(as.data.frame(.chunk))$cp,
-                 .key(as.data.frame(.full))$cp, tolerance=1e-8)
+    set.seed(42)
+    rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params = .p, omega = .om, nStud = 4, thetaMat = .chol, thetaIsChol = TRUE)
+    .chunk <- .chunked(thetaMat = .chol, thetaIsChol = TRUE)
+    expect_equal(.key(as.data.frame(.chunk))$cp, .key(as.data.frame(.full))$cp, tolerance = 1e-8)
     expect_equal(.chunk$thetaMat, .full$thetaMat)
   })
 
@@ -760,8 +785,8 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
 
@@ -769,16 +794,15 @@ rxTest({
       set.seed(42)
       rxSetSeed(1234)
       suppressWarnings(
-        rxSolve(.m, .ev, params=.p, thetaMat=.tm, nStud=3, ...))
+        rxSolve(.m, .ev, params = .p, thetaMat = .tm, nStud = 3, ...)
+      )
     }
     .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
-    .full  <- .solve()
-    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=2)
+    .full <- .solve()
+    .chunk <- .solve(file = tempfile(fileext = ".parquet"), chunkSize = 2)
 
-    expect_equal(.key(as.data.frame(.chunk))$cp,
-                 .key(as.data.frame(.full))$cp,
-                 tolerance=1e-8)
+    expect_equal(.key(as.data.frame(.chunk))$cp, .key(as.data.frame(.full))$cp, tolerance = 1e-8)
     expect_equal(.chunk$thetaMat, .full$thetaMat)
   })
 
@@ -793,9 +817,9 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
 
@@ -803,16 +827,15 @@ rxTest({
       set.seed(42)
       rxSetSeed(1234)
       suppressWarnings(
-        rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=1, ...))
+        rxSolve(.m, .ev, params = .p, omega = .om, thetaMat = .tm, nStud = 1, ...)
+      )
     }
     .key <- function(d) d[order(d$id, d$time), ]
 
-    .full  <- .solve()
-    .chunk <- .solve(file=tempfile(fileext=".parquet"), chunkSize=3)
+    .full <- .solve()
+    .chunk <- .solve(file = tempfile(fileext = ".parquet"), chunkSize = 3)
 
-    expect_equal(.key(as.data.frame(.chunk))$cp,
-                 .key(as.data.frame(.full))$cp,
-                 tolerance=1e-8)
+    expect_equal(.key(as.data.frame(.chunk))$cp, .key(as.data.frame(.full))$cp, tolerance = 1e-8)
     ## nothing drawn, nothing reported
     expect_null(.chunk$thetaMat)
   })
@@ -828,20 +851,38 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
 
-    set.seed(42); rxSetSeed(1234)
-    .drew <- rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
-                     file=tempfile(fileext=".parquet"), chunkSize=2)
+    set.seed(42)
+    rxSetSeed(1234)
+    .drew <- rxSolve(
+      .m,
+      .ev,
+      params = .p,
+      omega = .om,
+      thetaMat = .tm,
+      nStud = 3,
+      file = tempfile(fileext = ".parquet"),
+      chunkSize = 2
+    )
     expect_false(is.null(.drew$thetaMat))
 
-    set.seed(42); rxSetSeed(1234)
-    .none <- rxSolve(.m, .ev, params=.p, omega=.om, nStud=3, dfSub=10,
-                     file=tempfile(fileext=".parquet"), chunkSize=2)
+    set.seed(42)
+    rxSetSeed(1234)
+    .none <- rxSolve(
+      .m,
+      .ev,
+      params = .p,
+      omega = .om,
+      nStud = 3,
+      dfSub = 10,
+      file = tempfile(fileext = ".parquet"),
+      chunkSize = 2
+    )
     expect_null(.none$thetaMat)
   })
 
@@ -862,7 +903,7 @@ rxTest({
     })
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
     .sg <- lotri::lotri(prop.err + add.err ~ c(0.1, 0, 0.5))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     ## nStud = 1 has no sim.id column
     .key <- function(d) {
       d <- as.data.frame(d)
@@ -880,40 +921,42 @@ rxTest({
       .solve <- function(...) {
         withr::with_seed(42, {
           rxSetSeed(1234)
-          rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, ...)
+          rxSolve(.m, .ev, params = .p, omega = .om, sigma = .sg, ...)
         })
       }
-      .full  <- .key(.solve(...))
-      .chunk <- .key(.solve(file=tempfile(fileext=".parquet"), chunkSize=2, ...))
+      .full <- .key(.solve(...))
+      .chunk <- .key(.solve(file = tempfile(fileext = ".parquet"), chunkSize = 2, ...))
       expect_equal(.chunk, .full)
-      expect_false(exists(".sigma", envir=rxModels_(), inherits=FALSE))
+      expect_false(exists(".sigma", envir = rxModels_(), inherits = FALSE))
     }
 
     ## a homogeneous event table -- one representative record set expanded to
     ## every subject
-    .cmp(et(et(amt=100, id=1:6), seq(0, 24, by=8)), nStud=3, dfSub=10)
+    .cmp(et(et(amt = 100, id = 1:6), seq(0, 24, by = 8)), nStud = 3, dfSub = 10)
     ## one study, so nothing is drawn per study at all
-    .cmp(et(et(amt=100, id=1:6), seq(0, 24, by=8)))
+    .cmp(et(et(amt = 100, id = 1:6), seq(0, 24, by = 8)))
 
     ## subjects with different numbers of observations, so the residual slice
     ## is not a constant stride
-    .uneven <- do.call(rbind, lapply(1:6, function(.i) {
-      .d <- as.data.frame(et(et(amt=100), seq(0, 8 * .i, by=8)))
-      .d <- .d[, c("time", "evid", "amt")]
-      .d$id <- .i
-      .d
-    }))
-    .cmp(.uneven, nStud=3, dfSub=10)
+    .uneven <- do.call(
+      rbind,
+      lapply(1:6, function(.i) {
+        .d <- as.data.frame(et(et(amt = 100), seq(0, 8 * .i, by = 8)))
+        .d <- .d[, c("time", "evid", "amt")]
+        .d$id <- .i
+        .d
+      })
+    )
+    .cmp(.uneven, nStud = 3, dfSub = 10)
 
     ## `addl` expands doses in the translated table, and `addDosing` changes
     ## which records read a residual at all
-    .addl <- as.data.frame(et(et(amt=100, ii=12, addl=3, id=1:5),
-                              seq(0, 48, by=6)))
-    .cmp(.addl, nStud=3, dfSub=10)
-    .cmp(.addl, nStud=3, dfSub=10, addDosing=TRUE)
-    .cmp(.addl, nStud=3, dfSub=10, addDosing=NA)
-    .cmp(.addl, nStud=3, dfSub=10, addDosing=NULL)
-    .cmp(.addl, nStud=3, dfSub=10, addDosing=FALSE)
+    .addl <- as.data.frame(et(et(amt = 100, ii = 12, addl = 3, id = 1:5), seq(0, 48, by = 6)))
+    .cmp(.addl, nStud = 3, dfSub = 10)
+    .cmp(.addl, nStud = 3, dfSub = 10, addDosing = TRUE)
+    .cmp(.addl, nStud = 3, dfSub = 10, addDosing = NA)
+    .cmp(.addl, nStud = 3, dfSub = 10, addDosing = NULL)
+    .cmp(.addl, nStud = 3, dfSub = 10, addDosing = FALSE)
   })
 
   test_that("a chunked solve says so when it cannot share the residual draw", {
@@ -930,15 +973,25 @@ rxTest({
       cp <- linCmt()
       cp2 <- cp * (1 + prop.err)
     })
-    .ev <- as.data.frame(et(amt=100, id=1:4))
+    .ev <- as.data.frame(et(amt = 100, id = 1:4))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
     .sg <- lotri::lotri(prop.err ~ 0.1)
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
     expect_warning(
-      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "no sampling times of its own")
+      rxSolve(
+        .m,
+        .ev,
+        params = .p,
+        omega = .om,
+        sigma = .sg,
+        nStud = 3,
+        dfSub = 10,
+        file = tempfile(fileext = ".parquet"),
+        chunkSize = 2
+      ),
+      "no sampling times of its own"
+    )
   })
 
   test_that("the chunked residual count expands a homogeneous event table", {
@@ -956,10 +1009,9 @@ rxTest({
       cp <- linCmt()
       cp2 <- cp * (1 + prop.err)
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
 
-    expect_equal(.rxOomObsPerSubject(.m, as.data.frame(.ev), rxControl(), 1:6),
-                 rep(4L, 6))
+    expect_equal(.rxOomObsPerSubject(.m, as.data.frame(.ev), rxControl(), 1:6), rep(4L, 6))
     ## and the same when the event table itself is handed over
     expect_equal(.rxOomObsPerSubject(.m, .ev, rxControl(), 1:6), rep(4L, 6))
   })
@@ -977,10 +1029,10 @@ rxTest({
       cp <- linCmt()
       cp2 <- cp * (1 + prop.err)
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
     .sg <- lotri::lotri(prop.err ~ 0.1)
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .key <- function(d) {
       d <- as.data.frame(d)
       d <- d[order(d$sim.id, d$id, d$time), ]
@@ -990,13 +1042,10 @@ rxTest({
     .solve <- function(...) {
       withr::with_seed(42, {
         rxSetSeed(1234)
-        rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
-                ...)
+        rxSolve(.m, .ev, params = .p, omega = .om, sigma = .sg, nStud = 3, dfSub = 10, ...)
       })
     }
-    expect_equal(.key(.solve(file=tempfile(fileext=".parquet"), chunkSize=2,
-                             parallel=2)),
-                 .key(.solve()))
+    expect_equal(.key(.solve(file = tempfile(fileext = ".parquet"), chunkSize = 2, parallel = 2)), .key(.solve()))
   })
 
   test_that("a chunked solve refuses sigma uncertainty it cannot share", {
@@ -1013,21 +1062,42 @@ rxTest({
       cp <- linCmt()
       cp2 <- cp * (1 + prop.err)
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
     .sg <- lotri::lotri(prop.err ~ 0.1)
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
     expect_error(
-      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
-              dfObs=20, file=tempfile(fileext=".parquet"), chunkSize=2),
-      "sigma uncertainty")
+      rxSolve(
+        .m,
+        .ev,
+        params = .p,
+        omega = .om,
+        sigma = .sg,
+        nStud = 3,
+        dfSub = 10,
+        dfObs = 20,
+        file = tempfile(fileext = ".parquet"),
+        chunkSize = 2
+      ),
+      "sigma uncertainty"
+    )
 
     ## a fixed sigma is not refused -- there is nothing per study to share
     expect_s3_class(
-      rxSolve(.m, .ev, params=.p, omega=.om, sigma=.sg, nStud=3, dfSub=10,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "rxSolveOom")
+      rxSolve(
+        .m,
+        .ev,
+        params = .p,
+        omega = .om,
+        sigma = .sg,
+        nStud = 3,
+        dfSub = 10,
+        file = tempfile(fileext = ".parquet"),
+        chunkSize = 2
+      ),
+      "rxSolveOom"
+    )
   })
 
   test_that("a chunked solve refuses an nSub it cannot replicate", {
@@ -1041,21 +1111,21 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
 
     expect_error(
-      rxSolve(.m, .ev, params=.p, omega=.om, nSub=6,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "'nSub'")
+      rxSolve(.m, .ev, params = .p, omega = .om, nSub = 6, file = tempfile(fileext = ".parquet"), chunkSize = 2),
+      "'nSub'"
+    )
 
     ## the same subjects spelled in the event table are fine
-    .ev6 <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev6 <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     expect_s3_class(
-      rxSolve(.m, .ev6, params=.p, omega=.om, nSub=6,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "rxSolveOom")
+      rxSolve(.m, .ev6, params = .p, omega = .om, nSub = 6, file = tempfile(fileext = ".parquet"), chunkSize = 2),
+      "rxSolveOom"
+    )
   })
 
   test_that("a chunked solve says why it cannot draw from a parameter table", {
@@ -1070,17 +1140,17 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka ~ 0.09)
-    .pdf <- data.frame(id=1:6, tka=0.45, tcl=1, tv=3.45)
+    .pdf <- data.frame(id = 1:6, tka = 0.45, tcl = 1, tv = 3.45)
 
     expect_error(
-      rxSolve(.m, .ev, params=.pdf, omega=.om,
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "named parameter vector")
+      rxSolve(.m, .ev, params = .pdf, omega = .om, file = tempfile(fileext = ".parquet"), chunkSize = 2),
+      "named parameter vector"
+    )
 
     ## unchunked it solves, so the message has to name the chunking
-    expect_s3_class(rxSolve(.m, .ev, params=.pdf, omega=.om), "rxSolve")
+    expect_s3_class(rxSolve(.m, .ev, params = .pdf, omega = .om), "rxSolve")
   })
 
   test_that("a chunked solve refuses a joint (tnpri) thetaMat draw", {
@@ -1095,9 +1165,9 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv + om.eta.ka + om.eta.cl ~
                           c(0.01,
                             0.001, 0.01,
@@ -1106,23 +1176,32 @@ rxTest({
                             0, 0, 0, 0, 0.001))
 
     expect_error(
-      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
-              omegaSeparation="tnpri",
-              file=tempfile(fileext=".parquet"), chunkSize=2),
-      "tnpri")
+      rxSolve(
+        .m,
+        .ev,
+        params = .p,
+        omega = .om,
+        thetaMat = .tm,
+        nStud = 3,
+        omegaSeparation = "tnpri",
+        file = tempfile(fileext = ".parquet"),
+        chunkSize = 2
+      ),
+      "tnpri"
+    )
 
     ## `rxSolveChunked()` builds its own control and never resolves the
     ## separation into 'priorOmegaEl', so the guard has to ask for it directly
     expect_error(
-      rxSolveChunked(.m, .p, .ev, omega=.om, thetaMat=.tm, nStud=3,
-                     omegaSeparation="tnpri", chunkSize=2),
-      "tnpri")
+      rxSolveChunked(.m, .p, .ev, omega = .om, thetaMat = .tm, nStud = 3, omegaSeparation = "tnpri", chunkSize = 2),
+      "tnpri"
+    )
 
     ## and it is refused, not merely unsupported: the unchunked solve does
     ## draw a different omega per study
-    set.seed(42); rxSetSeed(1234)
-    .full <- rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3,
-                     omegaSeparation="tnpri")
+    set.seed(42)
+    rxSetSeed(1234)
+    .full <- rxSolve(.m, .ev, params = .p, omega = .om, thetaMat = .tm, nStud = 3, omegaSeparation = "tnpri")
     expect_false(isTRUE(all.equal(.full$omegaList[[1]], .full$omegaList[[2]])))
   })
 
@@ -1138,26 +1217,23 @@ rxTest({
       v <- exp(tv)
       cp <- linCmt()
     })
-    .ev <- et(et(amt=100, id=1:6), seq(0, 24, by=8))
+    .ev <- et(et(amt = 100, id = 1:6), seq(0, 24, by = 8))
     .om <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.1))
-    .p <- c(tka=0.45, tcl=1, tv=3.45)
+    .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .tm <- lotri::lotri(tka + tcl + tv ~
                           c(0.01, 0.001, 0.01, 0.001, 0.001, 0.01))
 
     .solve <- function(...) {
       set.seed(42)
       rxSetSeed(1234)
-      rxSolve(.m, .ev, params=.p, omega=.om, thetaMat=.tm, nStud=3, ...)
+      rxSolve(.m, .ev, params = .p, omega = .om, thetaMat = .tm, nStud = 3, ...)
     }
     .key <- function(d) d[order(d$sim.id, d$id, d$time), ]
 
-    .ser <- .solve(file=tempfile("rxSer"), chunkSize=2)
-    .par <- .solve(file=tempfile("rxPar"), chunkSize=2, parallel=2)
+    .ser <- .solve(file = tempfile("rxSer"), chunkSize = 2)
+    .par <- .solve(file = tempfile("rxPar"), chunkSize = 2, parallel = 2)
 
-    expect_equal(.key(as.data.frame(.par))$cp,
-                 .key(as.data.frame(.ser))$cp,
-                 tolerance=1e-8)
+    expect_equal(.key(as.data.frame(.par))$cp, .key(as.data.frame(.ser))$cp, tolerance = 1e-8)
     expect_equal(.par$thetaMat, .ser$thetaMat)
   })
-
 })

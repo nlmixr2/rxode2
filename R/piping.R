@@ -12,12 +12,12 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .copyMetaForPiping <- function(env) {
-  .ret <- new.env(parent=parent.env(env))
-  lapply(ls(envir=env, all.names=TRUE), function(item) {
+  .ret <- new.env(parent = parent.env(env))
+  lapply(ls(envir = env, all.names = TRUE), function(item) {
     if (item == ".simModelBase") {
       return(NULL)
     }
-    assign(item, get(item, envir=env), envir=.ret)
+    assign(item, get(item, envir = env), envir = .ret)
   })
   .ret
 }
@@ -34,22 +34,24 @@
 #' @return Copied environment
 #' @author Matthew L. Fidler
 #' @noRd
-.copyEnv <- function(env, visited=new.env(hash=TRUE, parent=emptyenv())) {
+.copyEnv <- function(env, visited = new.env(hash = TRUE, parent = emptyenv())) {
   .addr <- environmentName(env)
-  if (identical(.addr, "") || is.na(.addr)) .addr <- format(env)
-  if (exists(.addr, envir=visited, inherits=FALSE)) {
-    return(get(.addr, envir=visited, inherits=FALSE))
+  if (identical(.addr, "") || is.na(.addr)) {
+    .addr <- format(env)
   }
-  .ret <- new.env(parent=emptyenv())
-  assign(.addr, .ret, envir=visited)
-  lapply(ls(envir=env, all.names=TRUE), function(item) {
+  if (exists(.addr, envir = visited, inherits = FALSE)) {
+    return(get(.addr, envir = visited, inherits = FALSE))
+  }
+  .ret <- new.env(parent = emptyenv())
+  assign(.addr, .ret, envir = visited)
+  lapply(ls(envir = env, all.names = TRUE), function(item) {
     if (item == ".simModelBase") {
       return(NULL)
     }
-    if (is.environment(get(item, envir=env))) {
-      assign(item, .copyEnv(get(item, envir=env), visited), envir=.ret)
+    if (is.environment(get(item, envir = env))) {
+      assign(item, .copyEnv(get(item, envir = env), visited), envir = .ret)
     } else {
-      assign(item, get(item, envir=env), envir=.ret)
+      assign(item, get(item, envir = env), envir = .ret)
     }
   })
   .ret
@@ -62,20 +64,22 @@
 #' @author Matthew L. Fidler
 #' @export
 .copyUi <- function(ui) {
-  if (is.list(ui) ||
-        inherits(ui, "raw")) {
+  if (
+    is.list(ui) ||
+      inherits(ui, "raw")
+  ) {
     return(rxUiDecompress(ui))
   }
-  .ret <- new.env(parent=emptyenv())
-  .visited <- new.env(hash=TRUE, parent=emptyenv())
-  lapply(ls(envir=ui, all.names=TRUE), function(item) {
+  .ret <- new.env(parent = emptyenv())
+  .visited <- new.env(hash = TRUE, parent = emptyenv())
+  lapply(ls(envir = ui, all.names = TRUE), function(item) {
     if (item == ".simModelBase") {
       return(NULL)
     }
-    if (is.environment(get(item, envir=ui))) {
-      assign(item, .copyEnv(get(item, envir=ui), .visited), envir=.ret)
+    if (is.environment(get(item, envir = ui))) {
+      assign(item, .copyEnv(get(item, envir = ui), .visited), envir = .ret)
     } else {
-      assign(item, get(item, envir=ui), envir=.ret)
+      assign(item, get(item, envir = ui), envir = .ret)
     }
   })
   class(.ret) <- class(ui)
@@ -95,23 +99,31 @@
 #' @noRd
 .quoteExpandRxUiOmegaBlock <- function(mat, iniDf) {
   .dn <- dimnames(mat)
-  if (is.null(.dn)) return(list(mat=NULL, drop=NULL))
+  if (is.null(.dn)) {
+    return(list(mat = NULL, drop = NULL))
+  }
   .dn <- .dn[[1]]
   .w <- which(.dn %in% iniDf$name)
-  if (length(.w) == 0L) return(list(mat=NULL, drop=.dn))
+  if (length(.w) == 0L) {
+    return(list(mat = NULL, drop = .dn))
+  }
   .fix <- attr(mat, "lotriFix")
   .labels <- attr(mat, "lotriLabels")
   # drop=FALSE keeps a single surviving eta a 1x1 matrix; as a bare scalar it
   # carries no dimnames, and as.data.frame() below then yields zero rows -- the
   # eta is silently left out of the piped ini()
-  .mat <- mat[.w, .w, drop=FALSE]
+  .mat <- mat[.w, .w, drop = FALSE]
   # `[` also strips the matrices carrying the fixed entries and the labels,
   # which would silently unfix a `fix()`ed eta and lose its label as it is
   # piped over
-  if (!is.null(.fix)) attr(.mat, "lotriFix") <- .fix[.w, .w, drop=FALSE]
-  if (length(.labels) == length(.dn)) attr(.mat, "lotriLabels") <- .labels[.w]
+  if (!is.null(.fix)) {
+    attr(.mat, "lotriFix") <- .fix[.w, .w, drop = FALSE]
+  }
+  if (length(.labels) == length(.dn)) {
+    attr(.mat, "lotriLabels") <- .labels[.w]
+  }
   class(.mat) <- c("lotriFix", "matrix", "array")
-  list(mat=.mat, drop=.dn[-.w])
+  list(mat = .mat, drop = .dn[-.w])
 }
 
 #' Expand the quoted lines to include relevant lines from UI
@@ -129,9 +141,13 @@
 #' @author Matthew L Fidler
 #' @noRd
 .quoteExpandRxUi <- function(cur, iniDf, charExpression) {
-  if (is.null(iniDf)) return(NULL)
-  .cur <- try(as.rxUi(cur), silent=TRUE)
-  if (!inherits(.cur, "rxUi")) return(NULL)
+  if (is.null(iniDf)) {
+    return(NULL)
+  }
+  .cur <- try(as.rxUi(cur), silent = TRUE)
+  if (!inherits(.cur, "rxUi")) {
+    return(NULL)
+  }
   .curLotri <- lotri::as.lotri(.cur$iniDf)
   .lotriEst <- lotri::lotriEst(.curLotri)
   attr(.curLotri, "lotriEst") <- NULL
@@ -140,7 +156,7 @@
   if (!is.null(.lotriEst)) {
     .w <- which(.lotriEst$name %in% iniDf$name)
     if (length(.w) == 0L) {
-     .drop <- .lotriEst$name
+      .drop <- .lotriEst$name
     } else {
       .drop <- .lotriEst$name[-.w]
       .lotriEst <- .lotriEst[.w, ]
@@ -154,10 +170,10 @@
   if (inherits(.curLotri, "list")) {
     # random effects at more than one level come back as a list of blocks, one
     # per condition, and the list itself has no dimnames
-    .blocks <- lapply(.curLotri, .quoteExpandRxUiOmegaBlock, iniDf=iniDf)
-    .drop <- c(.drop, unlist(lapply(.blocks, function(b) b$drop), use.names=FALSE))
+    .blocks <- lapply(.curLotri, .quoteExpandRxUiOmegaBlock, iniDf = iniDf)
+    .drop <- c(.drop, unlist(lapply(.blocks, function(b) b$drop), use.names = FALSE))
     .blocks <- lapply(.blocks, function(b) b$mat)
-    .blocks <- .blocks[!vapply(.blocks, is.null, logical(1), USE.NAMES=FALSE)]
+    .blocks <- .blocks[!vapply(.blocks, is.null, logical(1), USE.NAMES = FALSE)]
     if (length(.blocks) > 0L) {
       class(.blocks) <- c("lotriFix", "list")
       .ini2 <- as.data.frame(.blocks)
@@ -175,13 +191,17 @@
     return(list())
   }
   if (length(.drop) > 0) {
-    cli::cli_alert_info(paste0("ignoring following estimates in '", charExpression, "': ",
-                               paste(.drop, collapse=", ")))
+    cli::cli_alert_info(paste0(
+      "ignoring following estimates in '",
+      charExpression,
+      "': ",
+      paste(.drop, collapse = ", ")
+    ))
   }
   .ini <- lotri::lotriDataFrameToLotriExpression(.iniDf, useIni = TRUE)
   .ini <- .ini[[2]]
   .ini <- as.list(.ini)[-1]
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$labels <- NULL
   .env$lastlhs <- NULL
   .env$lhsvars <- NULL
@@ -189,18 +209,29 @@
     .cur <- .ini[[i]]
     if (is.call(.cur) && identical(.cur[[1]], quote(`label`))) {
       if (is.null(.env$lastlhs)) {
-        stop("do not know where to put label", call.=FALSE) # should not get here
+        stop("do not know where to put label", call. = FALSE) # should not get here
       }
       .env$labels <- c(.env$labels, i)
       return(as.call(list(quote(`<-`), str2lang(.env$lastlhs), .cur)))
     }
-    if (is.call(.cur) && (identical(.cur[[1]], quote(`<-`)) ||
-                            identical(.cur[[1]], quote(`~`)))) {
+    if (
+      is.call(.cur) &&
+        (identical(.cur[[1]], quote(`<-`)) ||
+          identical(.cur[[1]], quote(`~`)))
+    ) {
       if (is.call(.cur[[2]])) {
         if (identical(.cur[[2]], quote(`+`))) {
-          .env$lhsvars <- c(.env$lhsvars, vapply(as.list(.cur)[-1], function(x) {
-            as.character(x)
-          }, character(1), USE.NAMES=FALSE))
+          .env$lhsvars <- c(
+            .env$lhsvars,
+            vapply(
+              as.list(.cur)[-1],
+              function(x) {
+                as.character(x)
+              },
+              character(1),
+              USE.NAMES = FALSE
+            )
+          )
         }
       } else {
         .char <- as.character(.cur[[2]])
@@ -213,7 +244,9 @@
   if (!is.null(.env$labels)) {
     if (getOption("rxode2.ignoreLabels", TRUE)) {
       .ini <- .ini[-.env$labels]
-      .minfo("the labels from the piped model do not overwrite old labels\nto change use 'options(rxode2.ignoreLabels=FALSE)'")
+      .minfo(
+        "the labels from the piped model do not overwrite old labels\nto change use 'options(rxode2.ignoreLabels=FALSE)'" # nolint: line_length_linter.
+      )
     } else {
       .minfo("the labels from the piped model overwrite old labels\nto change use 'options(rxode2.ignoreLabels=TRUE)'")
     }
@@ -235,8 +268,10 @@
 #'
 #' @author Matthew L. Fidler
 #' @noRd
-.quoteExpandBracketsOrCs <- function(lines, bracketsOrCs, envir=envir, iniDf=NULL) {
-  if (length(bracketsOrCs) == 0) return(lines)
+.quoteExpandBracketsOrCs <- function(lines, bracketsOrCs, envir = envir, iniDf = NULL) {
+  if (length(bracketsOrCs) == 0) {
+    return(lines)
+  }
   .expandedForm <- NULL
   .currentLine <- 1
   for (.b in bracketsOrCs) {
@@ -245,9 +280,8 @@
     .curEta <- FALSE
     if (length(.bracketExpression) == 1) {
       # evaulate expression
-      .cur <- try(eval(.bracketExpression, envir=envir), silent=TRUE)
-      if (inherits(.cur, "try-error")) {
-      } else if (length(.cur) > 1) {
+      .cur <- try(eval(.bracketExpression, envir = envir), silent = TRUE)
+      if (inherits(.cur, "try-error")) {} else if (length(.cur) > 1) {
         if (inherits(.cur, "character")) {
           if (is.null(names(.cur))) {
             .cur <- lapply(.cur, function(x) {
@@ -258,19 +292,20 @@
               str2lang(paste0(x, "<-", .cur[[x]]))
             })
           }
-          .cur <- as.call(c(list(quote(`{`)),.cur))
+          .cur <- as.call(c(list(quote(`{`)), .cur))
           .bracketExpression <- .cur
         } else if (identical(.cur[[1]], quote(`{`))) {
           .bracketExpression <- .cur
         }
       }
-    } else if (length(.bracketExpression) == 2 &&
-                 identical(.bracketExpression[[1]], quote(`~`))) {
+    } else if (
+      length(.bracketExpression) == 2 &&
+        identical(.bracketExpression[[1]], quote(`~`))
+    ) {
       # evaulate expression
-      .cur <- try(eval(.bracketExpression[[2]], envir=envir), silent=TRUE)
+      .cur <- try(eval(.bracketExpression[[2]], envir = envir), silent = TRUE)
       .curEta <- TRUE
-      if (inherits(.cur, "try-error")) {
-      } else if (length(.cur) > 1) {
+      if (inherits(.cur, "try-error")) {} else if (length(.cur) > 1) {
         if (inherits(.cur, "character")) {
           if (is.null(names(.cur))) {
             .cur <- lapply(.cur, function(x) {
@@ -281,7 +316,7 @@
               str2lang(paste0(x, "~", .cur[[x]]))
             })
           }
-          .cur <- as.call(c(list(quote(`{`)),.cur))
+          .cur <- as.call(c(list(quote(`{`)), .cur))
           .bracketExpression <- .cur
         } else if (identical(.cur[[1]], quote(`{`))) {
           .bracketExpression <- .cur
@@ -291,26 +326,25 @@
     .unlistedBrackets <- NULL
     if (length(.bracketExpression) > 1) {
       if (identical(.bracketExpression[[1]], quote(`{`))) {
-        .unlistedBrackets <- lapply(seq_along(.bracketExpression)[-1],
-                                    function(i) {
-                                      .c <- .bracketExpression[[i]]
-                                      if (identical(.c[[1]], quote(`=`))) {
-                                        .c[[1]] <- quote(`<-`)
-                                      }
-                                      .c
-                                    })
+        .unlistedBrackets <- lapply(seq_along(.bracketExpression)[-1], function(i) {
+          .c <- .bracketExpression[[i]]
+          if (identical(.c[[1]], quote(`=`))) {
+            .c[[1]] <- quote(`<-`)
+          }
+          .c
+        })
       }
     }
     if (is.null(.unlistedBrackets)) {
       if (is.null(.cur)) {
         ## evaluate to vector and then put it in place
-        .cur <- eval(.bracketExpression, envir=envir)
+        .cur <- eval(.bracketExpression, envir = envir)
       }
       if (inherits(.cur, "<-") || inherits(.cur, "call")) {
         .unlistedBrackets <- .cur
       } else if (inherits(.cur, "numeric")) {
         if (is.null(names(.cur))) {
-          stop("cannot figure out what to do with the unnamed vector", call.=FALSE)
+          stop("cannot figure out what to do with the unnamed vector", call. = FALSE)
         }
         .unlistedBrackets <- lapply(names(.cur), function(.n) {
           if (.curEta) {
@@ -319,10 +353,12 @@
             bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
           }
         })
-      } else if (!inherits(.cur, "rxUi") &&
-                   inherits(.cur, "list")) {
+      } else if (
+        !inherits(.cur, "rxUi") &&
+          inherits(.cur, "list")
+      ) {
         if (is.null(names(.cur))) {
-          stop("cannot figure out what to do with the unnamed list", call.=FALSE)
+          stop("cannot figure out what to do with the unnamed list", call. = FALSE)
         }
         .unlistedBrackets <- lapply(names(.cur), function(.n) {
           .v <- .cur[[.n]]
@@ -333,35 +369,35 @@
               bquote(.(str2lang(.n)) <- .(setNames(.cur[[.n]], NULL)))
             }
           } else {
-            stop("one of the list items supplied to piping is non-numeric", call.=FALSE)
+            stop("one of the list items supplied to piping is non-numeric", call. = FALSE)
           }
         })
       } else if (inherits(.cur, "matrix")) {
         .cur2 <- .cur
-        .unlistedBrackets <- as.list(lotri::lotriAsExpression(.cur2, plusNames=TRUE)[[-1]])[-1]
+        .unlistedBrackets <- as.list(lotri::lotriAsExpression(.cur2, plusNames = TRUE)[[-1]])[-1]
       } else if (inherits(.cur, "character") && !is.null(names(.cur))) {
-        .unlistedBrackets <- lapply(paste(names(.cur),"=", setNames(.cur, NULL)),
-                                    str2lang)
+        .unlistedBrackets <- lapply(paste(names(.cur), "=", setNames(.cur, NULL)), str2lang)
       } else if (inherits(.cur, "character") && length(.cur) == 1) {
-        .unlistedBrackets <- try(str2lang(.cur), silent=TRUE)
+        .unlistedBrackets <- try(str2lang(.cur), silent = TRUE)
         if (inherits(.unlistedBrackets, "try-error")) {
-          stop("vectors and list need to be named numeric expression", call.=FALSE)
+          stop("vectors and list need to be named numeric expression", call. = FALSE)
         }
         if (identical(.unlistedBrackets[[1]], quote(`=`))) {
           .unlistedBrackets[[1]] <- quote(`<-`)
         }
         .unlistedBrackets <- list(.unlistedBrackets)
       } else {
-        .ini <- .quoteExpandRxUi(.cur, iniDf=iniDf, charExpression=deparse1(.bracketExpression))
-        if (is.null(.ini)) stop("vectors and list need to be named numeric expression", call.=FALSE)
+        .ini <- .quoteExpandRxUi(.cur, iniDf = iniDf, charExpression = deparse1(.bracketExpression))
+        if (is.null(.ini)) {
+          stop("vectors and list need to be named numeric expression", call. = FALSE)
+        }
         .expandedForm <- c(.expandedForm, .ini)
       }
     }
     if (.currentLine == .b) {
       .expandedForm <- c(.expandedForm, .unlistedBrackets)
     } else {
-      .expandedForm <- c(.expandedForm, lines[seq(.currentLine, .b - 1)],
-                         .unlistedBrackets)
+      .expandedForm <- c(.expandedForm, lines[seq(.currentLine, .b - 1)], .unlistedBrackets)
     }
     .currentLine <- .b + 1
   }
@@ -391,7 +427,7 @@
 #' .collapseLotriLineFormToPlusForm(tmp)
 #'
 .collapseLotriLineFormToPlusForm <- function(expressionList) {
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$ret <- expressionList
   .env$lst <- list()
   .env$last <- NA_integer_
@@ -400,21 +436,19 @@
     if (!is.na(.env$last)) {
       .val <- as.call(c(list(quote(`{`)), .env$lst))
       .val <- as.call(c(str2lang("lotri::lotri"), .val))
-      .val <- suppressMessages(try(eval(.val), silent=TRUE))
+      .val <- suppressMessages(try(eval(.val), silent = TRUE))
       if (inherits(.val, "try-error")) {
         for (.j in seq_along(.env$lst)) {
           .env$ret[[.env$last + .j - 1L]] <- .env$lst[[.j]]
         }
       } else {
-        .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
-        .val <- lapply(seq_along(.val)[-1],
-                       function(i){
-                         .val[[i]]
-                       })[[1]]
-        .val <- lapply(seq_along(.val)[-1],
-                       function(i){
-                         .val[[i]]
-                       })
+        .val <- lotri::lotriAsExpression(.val, plusNames = TRUE)
+        .val <- lapply(seq_along(.val)[-1], function(i) {
+          .val[[i]]
+        })[[1]]
+        .val <- lapply(seq_along(.val)[-1], function(i) {
+          .val[[i]]
+        })
         for (.j in seq_along(.val)) {
           .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
         }
@@ -425,23 +459,24 @@
   }
   for (.i in seq_along(.env$ret)) {
     .cur <- .env$ret[[.i]]
-    if (is.call(.cur) && identical(.cur[[1]], quote(`~`)) &&
-          length(.cur) == 3L &&
-          length(.cur[[2]]) == 1L # excludes ll(cp) ~ 1
-        ) {
+    if (
+      # excludes ll(cp) ~ 1
+      is.call(.cur) && identical(.cur[[1]], quote(`~`)) && length(.cur) == 3L && length(.cur[[2]]) == 1L
+    ) {
       .isLotri <- TRUE
       # Check to see if this is an error call
       if (is.call(.cur[[3]])) {
         .rhs <- .cur[[3]]
         # a `| condition` wraps the estimate, so look at what it wraps
-        if (identical(.rhs[[1]], quote(`|`)) && length(.rhs) == 3L &&
-              is.call(.rhs[[2]])) {
+        if (identical(.rhs[[1]], quote(`|`)) && length(.rhs) == 3L && is.call(.rhs[[2]])) {
           .rhs <- .rhs[[2]]
         }
         .call <- deparse1(.rhs[[1]])
-        if (.call == "+" &&
-              length(.rhs) >= 2 &&
-              is.call(.rhs[[2]])) {
+        if (
+          .call == "+" &&
+            length(.rhs) >= 2 &&
+            is.call(.rhs[[2]])
+        ) {
           .call <- deparse1(.rhs[[2]][[1]])
         }
         if (.call %in% names(.errDist)) {
@@ -464,13 +499,20 @@
     }
   }
   .f()
-  .w <- which(vapply(seq_along(.env$ret), function(i) {
-    !(length(.env$ret[[i]]) == 1L && is.na(.env$ret[[i]]))
-  }, logical(1), USE.NAMES=FALSE))
-  lapply(.w, function(i) { .env$ret[[i]]})
+  .w <- which(vapply(
+    seq_along(.env$ret),
+    function(i) {
+      !(length(.env$ret[[i]]) == 1L && is.na(.env$ret[[i]]))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  lapply(.w, function(i) {
+    .env$ret[[i]]
+  })
 }
 
-.nsEnv <- new.env(parent=emptyenv())
+.nsEnv <- new.env(parent = emptyenv())
 
 .nsEnv$.quoteCallInfoLinesAppend <- NULL
 #' Returns quoted call information
@@ -490,8 +532,8 @@
 #' @author Matthew L. Fidler
 #'
 #' @export
-.quoteCallInfoLines <- function(callInfo, envir=parent.frame(), iniDf=NULL) {
-  .bracket <- rep(FALSE, length.out=length(callInfo))
+.quoteCallInfoLines <- function(callInfo, envir = parent.frame(), iniDf = NULL) {
+  .bracket <- rep(FALSE, length.out = length(callInfo))
   .env <- environment()
   .nsEnv$.quoteCallInfoLinesAppend <- NULL
   .ret <- lapply(seq_along(callInfo), function(i) {
@@ -499,19 +541,19 @@
     if (!is.null(.name)) {
       if (.name == "append") {
         .append <- callInfo[[i]]
-        if (identical(.append, quote(TRUE)) ||
-              identical(.append, quote(FALSE)) ||
-              identical(.append, quote(NA))) {
-        } else {
+        if (
+          identical(.append, quote(TRUE)) ||
+            identical(.append, quote(FALSE)) ||
+            identical(.append, quote(NA))
+        ) {} else {
           .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
         }
         return(NULL)
-      } else if (.name %in% c("envir",  "auto", "iniDf", "cov")) {
+      } else if (.name %in% c("envir", "auto", "iniDf", "cov")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to
-        return(as.call(list(quote(`<-`), str2lang(.name),
-                            eval(call("quote", callInfo[[i]])))))
+        return(as.call(list(quote(`<-`), str2lang(.name), eval(call("quote", callInfo[[i]])))))
       }
     }
     .quoted <- eval(call("quote", callInfo[[i]]))
@@ -520,42 +562,50 @@
       warning("empty argument ignored")
       return(NULL)
     } else if (length(.quoted) == 1) {
-      if (identical(.quoted, quote(`diag`)) ||
-            (is.call(.quoted) && identical(.quoted[[1]], quote(`diag`)))) {
+      if (
+        identical(.quoted, quote(`diag`)) ||
+          (is.call(.quoted) && identical(.quoted[[1]], quote(`diag`)))
+      ) {
         .quoted <- str2lang("~diag()")
       } else {
         .bracket[i] <- TRUE
-        assign(".bracket", .bracket, envir=.env)
+        assign(".bracket", .bracket, envir = .env)
       }
-    } else if (length(.quoted) >= 1 &&
-                 identical(.quoted[[1]], quote(`diag`))) {
+    } else if (
+      length(.quoted) >= 1 &&
+        identical(.quoted[[1]], quote(`diag`))
+    ) {
       .quoted <- as.call(c(list(quote(`~`)), .quoted))
-    } else if (identical(.quoted[[1]], quote(`diag`))) {
-    } else if (identical(.quoted[[1]], quote(`{`)) ||
-          identical(.quoted[[1]], quote(`c`)) ||
-          identical(.quoted[[1]], quote(`list`))) {
+    } else if (identical(.quoted[[1]], quote(`diag`))) {} else if (
+      identical(.quoted[[1]], quote(`{`)) ||
+        identical(.quoted[[1]], quote(`c`)) ||
+        identical(.quoted[[1]], quote(`list`))
+    ) {
       .bracket[i] <- TRUE
-      assign(".bracket", .bracket, envir=.env)
+      assign(".bracket", .bracket, envir = .env)
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      if (length(.quoted) == 2 &&
-            exists(as.character(.quoted[[2]]), envir)) {
+      if (
+        length(.quoted) == 2 &&
+          exists(as.character(.quoted[[2]]), envir)
+      ) {
         # this is a "bracketed" assignment of etas
         .bracket[i] <- TRUE
-        assign(".bracket", .bracket, envir=.env)
+        assign(".bracket", .bracket, envir = .env)
       } else {
         if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
           .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
-          if (identical(.quoted[[3]], quote(`fix`)) ||
-                identical(.quoted[[3]], quote(`unfix`))) {
+          if (
+            identical(.quoted[[3]], quote(`fix`)) ||
+              identical(.quoted[[3]], quote(`unfix`))
+          ) {
             .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
           }
         }
-
       }
     } else if (identical(.quoted[[1]], quote(`$`))) {
-      .tmp <- try(eval(.quoted), silent=TRUE)
+      .tmp <- try(eval(.quoted), silent = TRUE)
       if (!inherits(.tmp, "try-error")) {
         .quoted <- .tmp
         if (inherits(.quoted, "character")) {
@@ -566,10 +616,10 @@
     .quoted
   })
   .w <- which(.bracket)
-  .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir=envir, iniDf=iniDf)
+  .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir = envir, iniDf = iniDf)
   .ret <- lapply(seq_along(.ret), function(i) {
     if (identical(.ret[[i]][[1]], quote(`$`))) {
-      .r <- eval(.ret[[i]], envir=envir)
+      .r <- eval(.ret[[i]], envir = envir)
       if (inherits(.r, "character")) {
         .r <- str2lang(.r)
       }
@@ -577,7 +627,12 @@
     }
     .ret[[i]]
   })
-  .collapseLotriLineFormToPlusForm(.ret[vapply(seq_along(.ret), function(i) {
-    !is.null(.ret[[i]])
-  }, logical(1), USE.NAMES=FALSE)])
+  .collapseLotriLineFormToPlusForm(.ret[vapply(
+    seq_along(.ret),
+    function(i) {
+      !is.null(.ret[[i]])
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )])
 }

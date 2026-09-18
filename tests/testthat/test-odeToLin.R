@@ -1,10 +1,11 @@
 rxTest({
-
   ## Helper: tight-tolerance ODE vs linCmt comparison
   .chkConv <- function(mOde, ev, tol = 1e-5, seed = 1L) {
     .conv <- suppressMessages(odeToLin(mOde))
-    set.seed(seed); .rOde <- suppressMessages(rxSolve(mOde,  ev, useLinCmt = FALSE))
-    set.seed(seed); .rLin <- suppressMessages(rxSolve(.conv, ev))
+    set.seed(seed)
+    .rOde <- suppressMessages(rxSolve(mOde, ev, useLinCmt = FALSE))
+    set.seed(seed)
+    .rLin <- suppressMessages(rxSolve(.conv, ev))
     list(conv = .conv, diff = max(abs(.rOde$cp - .rLin$cp), na.rm = TRUE), tol = tol)
   }
 
@@ -23,7 +24,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  1L)
+    expect_equal(.info$ncmt, 1L)
     expect_equal(.info$oral0, 0L)
   })
 
@@ -39,7 +40,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  1L)
+    expect_equal(.info$ncmt, 1L)
     expect_equal(.info$oral0, 1L)
   })
 
@@ -55,7 +56,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  2L)
+    expect_equal(.info$ncmt, 2L)
     expect_equal(.info$oral0, 0L)
   })
 
@@ -72,7 +73,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  2L)
+    expect_equal(.info$ncmt, 2L)
     expect_equal(.info$oral0, 1L)
   })
 
@@ -90,7 +91,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  3L)
+    expect_equal(.info$ncmt, 3L)
     expect_equal(.info$oral0, 0L)
   })
 
@@ -110,7 +111,7 @@ rxTest({
       })
     }))
     .info <- .odeToLinDetect(.m)
-    expect_equal(.info$ncmt,  3L)
+    expect_equal(.info$ncmt, 3L)
     expect_equal(.info$oral0, 1L)
   })
 
@@ -191,13 +192,414 @@ rxTest({
   })
 
   test_that("default rxSolve keeps the explicit ODE states for an MM-via-observable model", {
-    .m  <- .mmObs()
+    .m <- .mmObs()
     .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 4), cmt = "Cc")
-    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default useLinCmt=TRUE
+    .rDef <- suppressMessages(rxSolve(.m, .ev)) # default useLinCmt=TRUE
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     # the coupled peripheral state survives and the nonlinear (MM) solve agrees
     expect_true("peripheral1" %in% names(.rDef))
     expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-6)
+  })
+
+  ## -----------------------------------------------------------------------
+  ## Exogenous input terms (nlmixr2/rxode2#1370): a right-hand side term that
+  ## is not proportional to a state used to be parsed as `state = NA` and then
+  ## dropped, so the solved model was not the model written.  It must now
+  ## decline the conversion.
+  ## -----------------------------------------------------------------------
+
+  ## 1-cmt oral with transit() absorption; `f(depot) <- 0` (NONMEM F1 = 0)
+  ## makes transit() the only drug input.
+  .transitF0 <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lcl <- log(10); lvc <- log(50); lka <- log(1.5)
+            lmtt <- log(2); lnn <- log(5); addSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); ka <- exp(lka)
+        mtt <- exp(lmtt); nn <- exp(lnn); kel <- cl / vc
+        d/dt(depot)   <- transit(nn, mtt) - ka * depot
+        d/dt(central) <- ka * depot - kel * central
+        f(depot) <- 0
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## The same model without f(depot) <- 0: both paths solve and both look
+  ## plausible, but dropping transit() leaves plain first-order absorption.
+  .transit <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lcl <- log(10); lvc <- log(50); lka <- log(1.5)
+            lmtt <- log(2); lnn <- log(5); addSd <- 0.1 })
+      model({
+        cl <- exp(lcl); vc <- exp(lvc); ka <- exp(lka)
+        mtt <- exp(lmtt); nn <- exp(lnn); kel <- cl / vc
+        d/dt(depot)   <- transit(nn, mtt) - ka * depot
+        d/dt(central) <- ka * depot - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## Endogenous production: no transit(), no f(), no dose at all.
+  .endogenous <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lkel <- log(0.1); lvc <- log(10); lksyn <- log(5); addSd <- 0.1 })
+      model({
+        kel <- exp(lkel); vc <- exp(lvc); ksyn <- exp(lksyn)
+        d/dt(central) <- ksyn - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  ## Input rate supplied by a covariate column.
+  .covRate <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ lkel <- log(0.1); lvc <- log(10); addSd <- 0.1 })
+      model({
+        kel <- exp(lkel); vc <- exp(lvc)
+        d/dt(central) <- rateIn - kel * central
+        Cc <- central / vc
+        Cc ~ add(addSd)
+      })
+    }))
+  }
+
+  test_that("odeToLin returns NULL for transit() absorption", {
+    expect_null(.odeToLinDetect(.transitF0()))
+    expect_null(.odeToLinDetect(.transit()))
+  })
+
+  test_that("odeToLin returns NULL for an endogenous production term", {
+    expect_null(.odeToLinDetect(.endogenous()))
+  })
+
+  test_that("odeToLin returns NULL for an input rate carried by a covariate", {
+    expect_null(.odeToLinDetect(.covRate()))
+  })
+
+  test_that("default rxSolve matches the ODE for transit() with f(depot) <- 0", {
+    .m <- .transitF0()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 12, 4))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    # the dropped transit() left the bolus as the only input, and f(depot) <- 0
+    # zeroed that, so every prediction was exactly 0
+    expect_false(all(.rDef$Cc == 0))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 1.313507, tolerance = 1e-5)
+  })
+
+  test_that("default rxSolve matches the ODE for endogenous production", {
+    .m <- .endogenous()
+    .ev <- et(seq(0, 48, 8))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_false(all(.rDef$Cc == 0))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 4.958852, tolerance = 1e-5)
+  })
+
+  test_that("default rxSolve matches the ODE for transit() without f(depot)", {
+    # The dangerous case: the dropped transit() left plain first-order
+    # absorption, so both paths solved and both looked plausible -- Cmax 1.432
+    # at 2 h instead of 2.345 at 4 h.
+    .m <- .transit()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 2))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-8)
+    expect_equal(max(.rDef$Cc), 2.344700, tolerance = 1e-5)
+    expect_equal(.rDef$time[which.max(.rDef$Cc)], 4)
+  })
+
+  test_that("odeToLin names the input term it cannot carry", {
+    expect_message(odeToLin(.endogenous()), "cannot carry the input term")
+    expect_message(odeToLin(.endogenous()), "ksyn")
+    expect_message(odeToLin(.transit()), "d/dt\\(depot\\)")
+    expect_equal(
+      .odeToLinExogenousInputs(.transit()$lstExpr, rxModelVars(.transit())$state),
+      c(depot = "transit(nn, mtt)")
+    )
+    expect_equal(.odeToLinExogenousInputs(.endogenous()$lstExpr, rxModelVars(.endogenous())$state), c(central = "ksyn"))
+  })
+
+  test_that("a constant zero term does not block conversion", {
+    # `0` adds nothing to the rate, so it is dropped rather than refused.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- 0 - ka * depot
+        d/dt(central) <- ka * depot - cl/v * central + 0
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+    .info <- .odeToLinDetect(.m)
+    expect_equal(.info$ncmt, 1L)
+    expect_equal(.info$oral0, 1L)
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 2))
+    expect_equal(
+      suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))$cp,
+      suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))$cp,
+      tolerance = 1e-5
+    )
+  })
+
+  test_that(".odeToLinIsZeroExpr only accepts constant zero", {
+    expect_true(.odeToLinIsZeroExpr(quote(0)))
+    expect_true(.odeToLinIsZeroExpr(quote(0.0)))
+    expect_true(.odeToLinIsZeroExpr(quote(0 * 1)))
+    expect_false(.odeToLinIsZeroExpr(quote(1)))
+    expect_false(.odeToLinIsZeroExpr(quote(ksyn)))
+    expect_false(.odeToLinIsZeroExpr(quote(0 * ksyn)))
+    expect_false(.odeToLinIsZeroExpr(quote(transit(nn, mtt))))
+    expect_false(.odeToLinIsZeroExpr(quote(podo())))
+  })
+
+  ## -----------------------------------------------------------------------
+  ## Rate reproduction: linCmt(<params>) passes parameter NAMES only, so a
+  ## coefficient that is not exactly the rate those names imply was silently
+  ## replaced by the rate linCmt() rebuilds from them.
+  ## -----------------------------------------------------------------------
+
+  .scaledKel <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tkel <- -1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); kel <- exp(tkel); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - 2 * kel * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+  }
+
+  test_that("odeToLin returns NULL for a scaled elimination coefficient", {
+    expect_null(.odeToLinDetect(.scaledKel()))
+  })
+
+  test_that("default rxSolve matches the ODE for a scaled elimination rate", {
+    # `2 * kel * central` emitted linCmt(ka, kel, v), which eliminates at kel:
+    # the model solved eliminated half as fast as the one written.
+    .m <- .scaledKel()
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 4))
+    .rDef <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-8)
+    expect_equal(max(.rDef$cp), 0.3039024, tolerance = 1e-5)
+  })
+
+  test_that("odeToLin returns NULL for a scaled absorption coefficient", {
+    # mass balance cannot see this one: both sides carry the same 2 * ka
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -2 * ka * depot
+        d/dt(central) <- 2 * ka * depot - cl/v * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))))
+  })
+
+  test_that("odeToLin returns NULL for an inverted elimination coefficient", {
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - v/cl * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))))
+  })
+
+  test_that("odeToLin returns NULL when the output volume is scaled", {
+    # `central / (vc * 1000)` (a unit conversion) converted to linCmt(), which
+    # reports central / vc -- a thousandfold error.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); vc <- exp(tv)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - cl/vc * central
+        cp <- central / (vc * 1000)
+        cp ~ add(add.sd)
+      })
+    }))
+    expect_null(.odeToLinDetect(.m))
+    .ev <- et(et(amt = 100, cmt = "depot"), seq(0, 24, 4))
+    expect_equal(
+      suppressMessages(rxSolve(.m, .ev, addDosing = FALSE))$cp,
+      suppressMessages(rxSolve(.m, .ev, addDosing = FALSE, useLinCmt = FALSE))$cp,
+      tolerance = 1e-8
+    )
+  })
+
+  test_that("odeToLin returns NULL when a covariate scales a rate in the ODE", {
+    # `(cl/vc) * cms * central` passes only `cl` and `vc` to linCmt(), so the
+    # cms effect was dropped.  Folding cms into cl converts again.
+    expect_null(.odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); vc <- exp(tv); cms <- 1 - COV / (COV + 1)
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - (cl/vc) * cms * central
+        cp <- central / vc
+        cp ~ add(add.sd)
+      })
+    }))))
+    .fold <- suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); vc <- exp(tv); cms <- 1 - COV / (COV + 1)
+        cl <- exp(tcl) * cms
+        d/dt(depot)   <- -ka * depot
+        d/dt(central) <- ka * depot - (cl/vc) * central
+        cp <- central / vc
+        cp ~ add(add.sd)
+      })
+    }))
+    expect_equal(.odeToLinDetect(.fold)$ncmt, 1L)
+  })
+
+  test_that("micro-constant parameterizations still convert", {
+    .info <- .odeToLinDetect(suppressMessages(rxode2(function() {
+      ini({ tkel <- -1; tk12 <- -2; tk21 <- -3; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        kel <- exp(tkel); k12 <- exp(tk12); k21 <- exp(tk21); v <- exp(tv)
+        d/dt(central) <- -(kel + k12) * central + k21 * periph
+        d/dt(periph)  <- k12 * central - k21 * periph
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    })))
+    expect_equal(.info$ncmt, 2L)
+    expect_equal(.info$oral0, 0L)
+  })
+
+  ## -----------------------------------------------------------------------
+  ## Compartment numbering: linCmt() orders its compartments depot, central
+  ## and keeps no state for a peripheral, so a numeric cmt does not always
+  ## address the same compartment after conversion.
+  ## -----------------------------------------------------------------------
+
+  ## `d/dt(central)` declared before `d/dt(depot)`, so the ODE numbers them the
+  ## other way round from linCmt().
+  .reordered <- function() {
+    suppressMessages(rxode2(function() {
+      ini({ tka <- 0.45; tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- ka * depot - cl/v * central
+        d/dt(depot)   <- -ka * depot
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+  }
+
+  .reorderedEv <- function(cmt) {
+    data.frame(
+      ID = 1L,
+      TIME = c(0, 2, 4, 8, 12, 24),
+      AMT = c(100, 0, 0, 0, 0, 0),
+      EVID = c(1L, 0L, 0L, 0L, 0L, 0L),
+      CMT = cmt,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  ## Whether the two solves used the same compiled model, i.e. whether the
+  ## linCmt() conversion was adopted.
+  .sameDll <- function(a, b) {
+    .d <- function(r) {
+      normalizePath(
+        get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
+        winslash = "/",
+        mustWork = FALSE
+      )
+    }
+    identical(.d(a), .d(b))
+  }
+
+  test_that("a reordered declaration keeps numeric cmt records on the ODEs", {
+    # cmt = 1 is central in the ODE model and depot after conversion, so the
+    # default solved a plausible oral profile in place of the IV one.
+    .m <- .reordered()
+    .ev <- .reorderedEv(1L)
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-8)
+    expect_true(.sameDll(.rDef, .rOde))
+  })
+
+  test_that("a reordered declaration still converts when records name the compartment", {
+    # A name is unambiguous in both models, so the optimization is kept.
+    .m <- .reordered()
+    .ev <- .reorderedEv("central")
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_false(.sameDll(.rDef, .rOde))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
+  test_that("NONMEM-style observations past every compartment still convert", {
+    # cmt = 2 on a one compartment model is an observation slot, not the
+    # peripheral: both models treat it alike, so this must keep converting.
+    .m <- suppressMessages(rxode2(function() {
+      ini({ tcl <- 1; tv <- 3.45; add.sd <- 0.7 })
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl/v * central
+        cp <- central / v
+        cp ~ add(add.sd)
+      })
+    }))
+    .ev <- data.frame(
+      ID = 1L,
+      TIME = c(0, 2, 4, 8),
+      AMT = c(100, 0, 0, 0),
+      EVID = c(1L, 0L, 0L, 0L),
+      CMT = c(1L, 2L, 2L, 2L)
+    )
+    .rDef <- suppressMessages(suppressWarnings(rxSolve(.m, .ev)))
+    .rOde <- suppressMessages(suppressWarnings(rxSolve(.m, .ev, useLinCmt = FALSE)))
+    expect_false(.sameDll(.rDef, .rOde))
+    expect_equal(.rDef$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
+  test_that(".odeToLinCmtCompatible gates numeric and named compartments", {
+    .info <- list(lost = "periph", states = c("central", "periph"), nSafe = 1L, nMax = 2L)
+    expect_true(.odeToLinCmtCompatible(.info, NULL)) # default cmt 1
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = 1L)))
+    expect_false(.odeToLinCmtCompatible(.info, data.frame(cmt = 2L))) # periph, dropped
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = 3L))) # observation slot
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = -1L))) # turned off
+    expect_false(.odeToLinCmtCompatible(.info, data.frame(cmt = "periph"))) # renamed away
+    expect_true(.odeToLinCmtCompatible(.info, data.frame(cmt = "central")))
+    ## Renumbered: nothing addressable by index is safe.
+    .re <- list(lost = character(0), states = c("central", "depot"), nSafe = 0L, nMax = 2L)
+    expect_false(.odeToLinCmtCompatible(.re, NULL))
+    expect_false(.odeToLinCmtCompatible(.re, data.frame(cmt = 1L)))
+    expect_true(.odeToLinCmtCompatible(.re, data.frame(cmt = 3L)))
+    expect_true(.odeToLinCmtCompatible(.re, data.frame(cmt = "central")))
+  })
+
+  test_that(".odeToLinCmtAlwaysOk skips the data only when nothing can differ", {
+    # the common case: every compartment converts one for one
+    expect_true(.odeToLinCmtAlwaysOk(list(lost = character(0), nSafe = 2L, nMax = 2L)))
+    expect_false(.odeToLinCmtAlwaysOk(list(lost = "periph", nSafe = 1L, nMax = 2L)))
+    expect_false(.odeToLinCmtAlwaysOk(list(lost = character(0), nSafe = 0L, nMax = 2L)))
   })
 
   ## -----------------------------------------------------------------------
@@ -286,8 +688,10 @@ rxTest({
     expect_equal(rxModelVars(.conv)$state, c("depot", "central"))
 
     .ev <- et(amt = 100, ii = 24, addl = 2) |> et(seq(0, 72, by = 1))
-    set.seed(1); .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
-    set.seed(1); .rLin <- suppressMessages(rxSolve(.conv, .ev))
+    set.seed(1)
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    set.seed(1)
+    .rLin <- suppressMessages(rxSolve(.conv, .ev))
     expect_lt(max(abs(.rOde$cp - .rLin$cp), na.rm = TRUE), 1e-5)
   })
 
@@ -310,8 +714,7 @@ rxTest({
       })
     }))
     .conv <- tryCatch(suppressMessages(odeToLin(.m)), error = function(e) e)
-    expect_false(inherits(.conv, "error"),
-                 label = "odeToLin with f/rate on non-standard cmt name must not error")
+    expect_false(inherits(.conv, "error"), label = "odeToLin with f/rate on non-standard cmt name must not error")
     expect_equal(rxModelVars(.conv)$state, c("depot", "central"))
   })
 
@@ -340,8 +743,7 @@ rxTest({
       et(amt = 320, evid = 1, time = 72, cmt = 2) |>
       et(seq(0, 100, by = 1)) |>
       et(id = 1:4)
-    .d <- suppressMessages(rxSolve(.m, .ev, addDosing = TRUE, useLinCmt = TRUE,
-                                   seed = 123))
+    .d <- suppressMessages(rxSolve(.m, .ev, addDosing = TRUE, useLinCmt = TRUE, seed = 123))
     .times <- sort(unique(.d[.d$evid == 1L & .d$cmt == 2L, "time"]))
     expect_equal(.times, c(0, 72))
   })
@@ -372,19 +774,26 @@ rxTest({
       # (RX_...~1.RXD).  Both point to the same DLL; normalizing makes them equal.
       normalizePath(
         get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
-        winslash = "/", mustWork = FALSE)
+        winslash = "/",
+        mustWork = FALSE
+      )
     }
 
     # useLinCmt=TRUE must use the same DLL as explicit odeToLin conversion
     .rLinDirect <- suppressMessages(rxSolve(.mLin, .ev))
-    .rLinAuto   <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = TRUE))
-    expect_equal(.getDll(.rLinAuto), .getDll(.rLinDirect),
-                 label = "useLinCmt=TRUE must use same DLL as odeToLin conversion")
+    .rLinAuto <- suppressMessages(rxSolve(.m, .ev, useLinCmt = TRUE))
+    expect_equal(
+      .getDll(.rLinAuto),
+      .getDll(.rLinDirect),
+      label = "useLinCmt=TRUE must use same DLL as odeToLin conversion"
+    )
 
     # useLinCmt=FALSE must use a different DLL (the original ODE model)
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
-    expect_false(identical(.getDll(.rOde), .getDll(.rLinAuto)),
-                 label = "useLinCmt=FALSE must use original ODE DLL, not linCmt DLL")
+    expect_false(
+      identical(.getDll(.rOde), .getDll(.rLinAuto)),
+      label = "useLinCmt=FALSE must use original ODE DLL, not linCmt DLL"
+    )
   })
 
   ## -----------------------------------------------------------------------
@@ -413,7 +822,7 @@ rxTest({
     expect_true(grepl("linCmt(", deparse1(.linLine), fixed = TRUE))
 
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     .rLin <- suppressMessages(rxSolve(.conv, .ev))
     expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5)
   })
@@ -433,7 +842,7 @@ rxTest({
 
     .conv <- suppressMessages(odeToLin(.m))
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     .rLin <- suppressMessages(rxSolve(.conv, .ev))
     expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5)
   })
@@ -450,8 +859,8 @@ rxTest({
       })
     }))
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .rAuto <- suppressMessages(rxSolve(.m, .ev))                   # useLinCmt=TRUE default
-    .rOde  <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
+    .rAuto <- suppressMessages(rxSolve(.m, .ev)) # useLinCmt=TRUE default
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     expect_true(nrow(.rAuto) > 0)
     expect_false(any(is.na(.rAuto$cp)))
     expect_equal(.rAuto$cp, .rOde$cp, tolerance = 1e-5)
@@ -481,10 +890,9 @@ rxTest({
 
     # Solve both without adaptive dosing to confirm trajectories agree
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .rOde <- suppressMessages(rxSolve(.m,    .ev, useLinCmt = FALSE))
+    .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     .rLin <- suppressMessages(rxSolve(.mLin, .ev))
-    expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5,
-                 label = "odeToLin result matches ODE solution")
+    expect_equal(.rOde$cp, .rLin$cp, tolerance = 1e-5, label = "odeToLin result matches ODE solution")
   })
 
   test_that("odeToLin preserves standard depot/central compartment in bolus()", {
@@ -534,8 +942,10 @@ rxTest({
     # Confirm the converted model no longer references the old compartment names
     .mLinTxt <- paste(vapply(.mLin$lstExpr, deparse1, character(1)), collapse = "\n")
     expect_true(grepl("linCmt", .mLinTxt))
-    expect_false(grepl("\\babs\\b",    .mLinTxt),
-                 label = "non-standard cmt name 'abs' should be renamed in converted model")
+    expect_false(
+      grepl("\\babs\\b", .mLinTxt),
+      label = "non-standard cmt name 'abs' should be renamed in converted model"
+    )
 
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
     .rLin <- suppressMessages(rxSolve(.mLin, .ev))
@@ -607,19 +1017,19 @@ rxTest({
     }))
     .info <- .odeToLinDetect(.m)
     expect_true(isTRUE(.info$coupled))
-    .conv    <- suppressMessages(odeToLin(.m))
+    .conv <- suppressMessages(odeToLin(.m))
     .convTxt <- paste(vapply(.conv$lstExpr, deparse1, character(1)), collapse = "\n")
     expect_true(grepl("linCmt", .convTxt))
-    expect_true(grepl("peripheral1", .convTxt))   # periph renamed to canonical name
-    expect_true(grepl("[|] *central", .convTxt))  # central endpoint anchored
-    expect_false(grepl("d/dt", .convTxt))         # no ODE left
+    expect_true(grepl("peripheral1", .convTxt)) # periph renamed to canonical name
+    expect_true(grepl("[|] *central", .convTxt)) # central endpoint anchored
+    expect_false(grepl("d/dt", .convTxt)) # no ODE left
 
     .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
-    .rDef <- suppressMessages(rxSolve(.m, .ev))                  # default -> converts
+    .rDef <- suppressMessages(rxSolve(.m, .ev)) # default -> converts
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     expect_true("Cp" %in% names(.rDef))
     expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-4)
-    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-4)           # peripheral observable correct
+    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-4) # peripheral observable correct
   })
 
   test_that("odeToLin converts a 2-cmt oral coupled model (depot amount + peripheral)", {
@@ -642,8 +1052,8 @@ rxTest({
     .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
     .rDef <- suppressMessages(rxSolve(.m, .ev))
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
-    expect_equal(.rDef$Cc,     .rOde$Cc,     tolerance = 1e-4)
-    expect_equal(.rDef$Cp,     .rOde$Cp,     tolerance = 1e-4)
+    expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-4)
+    expect_equal(.rDef$Cp, .rOde$Cp, tolerance = 1e-4)
     expect_equal(.rDef$Adepot, .rOde$Adepot, tolerance = 1e-4)
   })
 
@@ -739,11 +1149,11 @@ rxTest({
         Cp <- periph / vp
       })
     }))
-    .ev   <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
-    .r    <- suppressMessages(rxSolve(.m,    .ev))
+    .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
+    .r <- suppressMessages(rxSolve(.m, .ev))
     .rOde <- suppressMessages(rxSolve(.mOde, .ev, useLinCmt = FALSE))
-    expect_false(all(.r$Cp == 0))                    # the bug produced an all-zero Cp
-    expect_equal(.r$Cp, .rOde$Cp, tolerance = 1e-4)  # peripheral amount now resolves
+    expect_false(all(.r$Cp == 0)) # the bug produced an all-zero Cp
+    expect_equal(.r$Cp, .rOde$Cp, tolerance = 1e-4) # peripheral amount now resolves
     expect_equal(.r$Cc, .rOde$Cc, tolerance = 1e-4)
   })
 
@@ -775,7 +1185,9 @@ rxTest({
     .getDll <- function(r) {
       normalizePath(
         get("dll", envir = attr(attr(r, "class"), ".rxode2.env"), inherits = FALSE),
-        winslash = "/", mustWork = FALSE)
+        winslash = "/",
+        mustWork = FALSE
+      )
     }
 
     # Solve u1 first (populates the cache), then u2 (previously collided)
@@ -787,10 +1199,9 @@ rxTest({
     # The linCmt conversion must actually be in play, otherwise the cache path
     # is never exercised: the default solve must use a different DLL than the
     # ODE solve.
-    expect_false(identical(.getDll(.s1), .getDll(.g1)),
-                 label = "useLinCmt default must adopt the converted linCmt DLL")
+    expect_false(identical(.getDll(.s1), .getDll(.g1)), label = "useLinCmt default must adopt the converted linCmt DLL")
 
-    expect_false(isTRUE(all.equal(.s1$cp, .s2$cp)))  # must differ by ini()
+    expect_false(isTRUE(all.equal(.s1$cp, .s2$cp))) # must differ by ini()
     # Each must match its own explicit-parameter / ODE solve
     expect_equal(.s1$cp, .g1$cp, tolerance = 1e-4)
     expect_equal(.s2$cp, .g2$cp, tolerance = 1e-4)
@@ -811,16 +1222,17 @@ rxTest({
         cp ~ add(add.err)
       })
     }))
-    .ev <- data.frame(ID = 1L,
-                      TIME = c(0, 2, 4, 8, 12, 24),
-                      AMT = c(100, 0, 0, 0, 0, 0),
-                      EVID = c(1L, 0L, 0L, 0L, 0L, 0L),
-                      CMT = "centre",
-                      stringsAsFactors = FALSE)
-    .rLin <- suppressWarnings(rxSolve(.mod, .ev))                     # default (useLinCmt=TRUE)
+    .ev <- data.frame(
+      ID = 1L,
+      TIME = c(0, 2, 4, 8, 12, 24),
+      AMT = c(100, 0, 0, 0, 0, 0),
+      EVID = c(1L, 0L, 0L, 0L, 0L, 0L),
+      CMT = "centre",
+      stringsAsFactors = FALSE
+    )
+    .rLin <- suppressWarnings(rxSolve(.mod, .ev)) # default (useLinCmt=TRUE)
     .rOde <- suppressWarnings(rxSolve(.mod, .ev, useLinCmt = FALSE))
-    expect_false(all(.rLin$cp == 0))            # the bug produced all-zero cp
+    expect_false(all(.rLin$cp == 0)) # the bug produced all-zero cp
     expect_equal(.rLin$cp, .rOde$cp, tolerance = 1e-4)
   })
-
 })

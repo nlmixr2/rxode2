@@ -1,5 +1,10 @@
 ## nocov start
-g.y.log10 <- function(breaks = g.log.breaks.major, minor_breaks = g.log.breaks.minor, labels = scales::math_format(format = log10), ...) {
+g.y.log10 <- function(
+  breaks = g.log.breaks.major,
+  minor_breaks = g.log.breaks.minor,
+  labels = scales::math_format(format = log10),
+  ...
+) {
   g.log.breaks.minor <- function(y) {
     r1 <- range(log10(y))
     r <- r1
@@ -63,8 +68,7 @@ rxShiny.rxSolve <- function(object, params = NULL, events = NULL, inits = NULL, 
 }
 #' @rdname rxShiny
 #' @export
-rxShiny.default <- function(object = NULL, params = NULL, events = NULL, inits = NULL, ...,
-                            data = data.frame()) {
+rxShiny.default <- function(object = NULL, params = NULL, events = NULL, inits = NULL, ..., data = data.frame()) {
   rxReq("shiny")
   rxReq("ggplot2")
   rxReq("scales")
@@ -79,9 +83,14 @@ d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff
 "
     inits <- c(eff = 1)
     params <- c(
-      KA = .291, CL = 18.6,
-      V2 = 40.2, Q = 10.5, V3 = 297.0,
-      Kin = 1.0, Kout = 1.0, EC50 = 200.0
+      KA = .291,
+      CL = 18.6,
+      V2 = 40.2,
+      Q = 10.5,
+      V3 = 297.0,
+      Kin = 1.0,
+      Kout = 1.0,
+      EC50 = 200.0
     )
   }
   lower.names <- tolower(names(data))
@@ -94,12 +103,14 @@ d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff
 
   ui <- eval(bquote(shiny::shinyUI(shiny::fluidPage(
     shiny::tags$style(shiny::HTML("input:invalid {background-color: #FFCCCC;}")),
-    shiny::tags$script('
+    shiny::tags$script(
+      '
 $(document).on("keyup", function(e) {
   if(e.keyCode == 13){
   shiny::Shiny.onInputChange("EnterPressed", Math.random());
   }});
-  '),
+  '
+    ),
     shiny::fluidRow(
       shiny::column(
         12,
@@ -124,13 +135,25 @@ $(document).on("keyup", function(e) {
             shiny::tags$div(style = "display: inline-block;", shiny::textInput("step", "step", width = 60, value = 1)),
             shiny::hr(),
             shiny::h4("Dosing"),
-            shiny::tags$div(style = "display: inline-block;", shiny::textInput("dose", "amount", width = 60, value = 1)),
+            shiny::tags$div(
+              style = "display: inline-block;",
+              shiny::textInput("dose", "amount", width = 60, value = 1)
+            ),
             shiny::tags$div(style = "display: inline-block;", shiny::textInput("rate", "rate", width = 60)),
             shiny::div(style = "display: inline-block;", shiny::uiOutput("dosing_cmt")),
             shiny::br(),
-            shiny::tags$div(style = "display: inline-block;", shiny::textInput("start", "start", width = 60, value = 0)),
-            shiny::tags$div(style = "display: inline-block;", shiny::textInput("ndoses", "repeat", width = 60, value = 1)),
-            shiny::tags$div(style = "display: inline-block;", shiny::textInput("interval", "interval", width = 60, value = 0))
+            shiny::tags$div(
+              style = "display: inline-block;",
+              shiny::textInput("start", "start", width = 60, value = 0)
+            ),
+            shiny::tags$div(
+              style = "display: inline-block;",
+              shiny::textInput("ndoses", "repeat", width = 60, value = 1)
+            ),
+            shiny::tags$div(
+              style = "display: inline-block;",
+              shiny::textInput("interval", "interval", width = 60, value = 0)
+            )
           ),
           shiny::column(
             width = 7,
@@ -261,7 +284,6 @@ $(document).on("keyup", function(e) {
       do.call(tabsetPanel, c(tabs, id = "plot.tabs", selected = sel.tab))
     })
 
-
     shiny::observeEvent(input$goLogy, {
       values$logy <- !(values$logy)
       values$msg <- capture.output(
@@ -307,7 +329,6 @@ $(document).on("keyup", function(e) {
       }
     )
 
-
     solveODE <- function() {
       values$res <- NULL
       if (is.null(values$m1)) {
@@ -336,14 +357,15 @@ $(document).on("keyup", function(e) {
       ev <- eventTable() |>
         add.sampling(seq(stime, etime, tstep)) |>
         add.dosing(
-          dose = dose, start.time = start,
-          nbr.doses = ndoses, rate = rate,
+          dose = dose,
+          start.time = start,
+          nbr.doses = ndoses,
+          rate = rate,
           dosing.interval = interval,
           dosing.to = into
         )
 
       params <- .(params)
-
 
       cmts <- values$cmts
 
@@ -367,7 +389,6 @@ $(document).on("keyup", function(e) {
 
     session$onSessionEnded(stopApp)
   }))
-
 
   shiny::shinyApp(ui = ui, server = server)
 }

@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 5.1.7
+Version: 5.1.8
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),
@@ -107,14 +107,13 @@ Suggests:
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),
-    RcppParallel,
     backports,
     cli (>= 2.0.0),
     checkmate,
     compiler,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 1.0.5),
+    lotri (>= 1.0.4),
     memoise,
     methods,
     mirai,
@@ -124,7 +123,8 @@ Imports:
     utils,
     dparser (>= 1.3.1-12),
     qs2,
-    rxode2ll,
+    rxode2ll (>= 2.0.18),
+    rxode2lincmt (>= 0.1.0),
     data.table (>= 1.12.4),
     vctrs,
     stats
@@ -150,15 +150,13 @@ URL: https://nlmixr2.github.io/rxode2/,
 Biarch: true
 LinkingTo:
     sitmo,
-    lotri (>= 1.0.5),
+    rxode2lincmt (>= 0.1.0),
+    lotri (>= 1.0.4),
     PreciseSums (>= 0.7),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
     BH,
-    RcppParallel,
-    RcppEigen (>= 0.3.3.9.2),
-    dparser (>= 1.3.1-12),
-    StanHeaders (>= 2.21.0.7)
+    dparser (>= 1.3.1-12)
 Encoding: UTF-8
 LazyData: true
 Language: en-US

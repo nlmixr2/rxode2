@@ -1,5 +1,4 @@
 rxTest({
-
   ## A conditioned model (`eta ~ 0.1 | occ`) carries its omega as a 'lotri'
   ## of nesting levels and solves through `expandPars_()`.  That path reads
   ## the degrees of freedom off the omega itself, so a prior has to reach it
@@ -7,13 +6,13 @@ rxTest({
   ## simply never draws.  See issue #1253.
 
   .ev <- function() {
-    .e <- et(et(amt=100), seq(0, 24, by=8))
-    .e <- et(.e, id=1:4)
-    .e$occ <- rep(1:2, length.out=nrow(.e))
+    .e <- et(et(amt = 100), seq(0, 24, by = 8))
+    .e <- et(.e, id = 1:4)
+    .e$occ <- rep(1:2, length.out = nrow(.e))
     .e
   }
 
-  .mod <- function(prior=NULL) {
+  .mod <- function(prior = NULL) {
     .f <- function() {
       ini({
         tka <- 0.45
@@ -32,16 +31,19 @@ rxTest({
       })
     }
     .u <- rxode2(.f)
-    if (is.null(prior)) return(.u)
-    eval(parse(text=paste0(".u %>% ini(", prior, ")")))
+    if (is.null(prior)) {
+      return(.u)
+    }
+    eval(parse(text = paste0(".u %>% ini(", prior, ")")))
   }
 
   .diag <- function(r) vapply(r$omegaList, function(m) diag(as.matrix(m)), double(3))
 
   test_that("a prior on the occasion level is drawn, the id level is not", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(3)
-    .r <- rxSolve(.mod("prior(eta.v) ~ invWishart(5)"), .ev(), nStud=3, nSub=4)
+    .r <- rxSolve(.mod("prior(eta.v) ~ invWishart(5)"), .ev(), nStud = 3, nSub = 4)
 
     expect_equal(length(.r$omegaList), 3L)
     .d <- .diag(.r)
@@ -54,9 +56,10 @@ rxTest({
   })
 
   test_that("a prior on the id level is drawn, the occasion level is not", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(5)
-    .r <- rxSolve(.mod("prior(eta.cl) ~ invWishart(6)"), .ev(), nStud=3, nSub=4)
+    .r <- rxSolve(.mod("prior(eta.cl) ~ invWishart(6)"), .ev(), nStud = 3, nSub = 4)
 
     .d <- .diag(.r)
     expect_equal(length(unique(.d[1, ])), 3L)
@@ -64,11 +67,16 @@ rxTest({
   })
 
   test_that("both levels can carry their own degrees of freedom", {
+    skipIfOldLotri()
     skip_on_cran()
     set.seed(5)
-    .r <- rxSolve(ini(.mod("prior(eta.cl) ~ invWishart(6)"),
+    .r <- rxSolve(
+      ini(.mod("prior(eta.cl) ~ invWishart(6)"),
                       prior(eta.v) ~ invWishart(5)),
-                  .ev(), nStud=3, nSub=4)
+      .ev(),
+      nStud = 3,
+      nSub = 4
+    )
 
     .d <- .diag(.r)
     expect_equal(length(unique(.d[1, ])), 3L)
@@ -78,9 +86,8 @@ rxTest({
   test_that("a nested model with no prior is unchanged", {
     skip_on_cran()
     set.seed(3)
-    .r <- rxSolve(.mod(), .ev(), nStud=3, nSub=4)
+    .r <- rxSolve(.mod(), .ev(), nStud = 3, nSub = 4)
     ## nothing to draw from, so nothing is drawn
     expect_equal(length(.r$omegaList), 0L)
   })
-
 })

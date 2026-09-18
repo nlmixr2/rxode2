@@ -18,13 +18,11 @@ rxTest({
       })
     }
 
-    expect_equal(nlme::fixef(one.cmt),
-                 c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
+    expect_equal(nlme::fixef(one.cmt), c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
 
     f <- one.cmt()
 
-    expect_equal(nlme::fixef(f),
-                 c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
+    expect_equal(nlme::fixef(f), c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
   })
 
   test_that("coef()", {

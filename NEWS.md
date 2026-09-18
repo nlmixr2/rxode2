@@ -1,3 +1,57 @@
+# rxode2 5.1.8
+
+## New features
+
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
+- Add `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()`
+  model directives to split or relocate doses at `etTrans()`
+  translation time, mirroring `splitBolus()`. `splitInfusion()` splits
+  infusion records (both data `RATE`/`DUR` and modeled `rate()`/`dur()`
+  infusions, including their stop records). `splitInfusionBolus()` and
+  `splitBolusInfusion()` split bolus *and* infusion records; a plain
+  bolus dose is split so the FIRST target (`splitInfusionBolus()`) or
+  the LAST target (`splitBolusInfusion()`) receives a modeled infusion
+  start/stop pair (it must declare a modeled `dur()` or `rate()`
+  property, otherwise its copies stay boluses) while every other
+  target receives a bolus copy — so one dose record can feed both an
+  infusion and a bolus path (Monolix-style double absorption with
+  mixed zero-/first-order routes). Unlike `splitBolus()`, these
+  directives apply at translation time only, not to `evid_()` doses
+  pushed while solving. Only one splitting directive (`splitBolus()`,
+  `splitInfusion()`, `splitInfusionBolus()` or
+  `splitBolusInfusion()`) is allowed per model.
+
+- The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
+  `.solComp3()` and the `rxDerived()` conversions moved to the new
+  'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
+  against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
+  installation; exported functions and compiled model code are unchanged.
+
+## Bug fixes
+
+- Simulations no longer depend on the number of threads.  With `rxSetSeed()`
+  in force the seed sequence advanced by the thread count, the eta draws made
+  before an ODE solve and `rxRmvn(ncores=)` split their normal draws by
+  thread, and in-model draws such as `rxnorm()` continued each thread's stream
+  across subjects.  Parameter draws now give the single-threaded result at any
+  `cores`/`ncores`; in-model draws are seeded per subject, so their values
+  change from earlier versions (#1376).
+
+- Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
+  R's `match` macro is now hidden while `omp.h` is included, so it no longer
+  breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
+  guard covers compiled model code.
+
+- `rxProgress()` and `rxProgressStop()` now give an error for a zero-length
+  argument such as `rxProgress(NULL)` instead of crashing R, and
+  `rxProgressAbort()` falls back to its default message when `error` is empty
+  (#1377).
+
 # rxode2 5.1.7
 
 ## New features
@@ -683,7 +737,7 @@ model({
 - `rxSolve()` simulates parameter uncertainty from the prior distributions
   the model's `ini({})` block specifies, which is what NONMEM does with
   `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Writing a prior in the `ini({})`
-  block needs `lotri` 1.0.7 or newer; with an older `lotri` the block
+  block needs `lotri` 1.0.5 or newer; with an older `lotri` the block
   cannot express one and prior simulation simply does not engage.
   `omegaSeparation="tnpri"` below works with any `lotri`.  A model that carries priors uses them
   whenever variability is simulated, so `rxSolve(model, ev, nStud=100)` is
@@ -977,7 +1031,52 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ## Bug fixes
 
+- `sortIds()`'s run-time solve ordering is reachable again.  The throttle is
+  documented (and was originally written) to SUPPRESS the sort when
+  `nsubject * throttle <= nthreads`; a refactor flattened the
+  suppress-branch into the sort-branch without negating the comparison, so
+  the sort was taken only when threads outnumbered subjects -- the one
+  regime the throttle exists to exclude.  At the default throttle of 2 a
+  131-subject fit needed 262 cores before it would reorder anything, so
+  `rx->ordId` stayed the identity on any ordinary machine and the ordering
+  was dead code.  The comparison is now `nall * throttle > cores`,
+  evaluated in 64 bits because `throttle` is user-settable and the product
+  overflows 32.  `.rxSortIdsWanted()` exposes the gate so the direction is
+  asserted by a test rather than by a comment.
+
+- `sortIds()` now sorts in C++ instead of calling back into R's
+  `.order1()`.  The sort runs once per solve pass of an estimation, so
+  with the gate reachable again the `data.table` round trip (~300us for a
+  few hundred subjects, ~1s per fit) cost more than the ordering it
+  computes saves: correcting the gate alone measured ~8% SLOWER on a
+  131-subject SAEM fit on 4 threads, and correcting it with the C++ sort
+  measured ~4% faster.  Sorting in C++ also removes a latent truncation:
+  with `forderForceBase(TRUE)`, or with `data.table` absent, `.order1()`
+  drops `NA`s and returned fewer than `nall` positions, which left the
+  tail of `rx->ordId` holding stale entries.
+
+  On that fit the ~4% is not the load balancing the sort is named for.
+  Sorting by ascending cost, and a permutation carrying no cost
+  information at all, are just as fast; a rotation, which reorders
+  without scattering, is not.  What pays is that the subjects a thread
+  team works on concurrently stop being neighbours in `rx->subjects`.
+  Scheduling the same identity order in coarser chunks does not
+  reproduce it, so it is not simple adjacent-subject false sharing --
+  the per-subject slices of the `gsolve` slab are worth a look on their
+  own.  The cost ordering itself is worth at most ~0.5% here, which is
+  the whole makespan `schedule(dynamic,1)` leaves on the table at ~98
+  subjects per thread.
+
 ### Compilation
+
+- The Fortran sources are no longer compiled with a C-only diagnostic flag on
+  check configurations whose `FFLAGS` carries one.  `flang` accepts `-Wall` but
+  reports it unusable once per Fortran file, which `R CMD check` collects as a
+  significant installation warning.  The flag comes from the configuration
+  rather than from rxode2, which sets no `PKG_FFLAGS`, so `configure` drops it
+  from the Fortran compile line only when the Fortran compiler is `flang` and
+  `flang` itself reports it unusable.  Every other toolchain, `gfortran`
+  included, compiles exactly as before.
 
 - `getSolvingOptionsInd()` now walks the subject array at the stride it was
   allocated with rather than at its own translation unit's
@@ -1592,6 +1691,12 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
 
 ### Parsing
 
+- Two or more subject-level random effects in one mu-referenced expression now
+  name the clashing parameters and both fixes -- declaring one at its own level
+  (`etaVcOcc ~ 0.1 | OCC`) or splitting the line -- rather than reporting
+  `currently do not theta + eta1 + eta2`.  The guard keeping occasion-level etas
+  out of `$nonMuEtas` now reads `env$info$level`, where the level names live.
+
 - A variable that is used *only* as an argument to an adaptive dosing call
   (`evid_()`, `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
   `phantom()`, `obs()`) is now a parse-time error instead of an uncompilable
@@ -1751,6 +1856,40 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   assay1".
 
 ### Solving
+
+- The automatic ODE-to-`linCmt()` conversion (`rxSolve(..., useLinCmt=TRUE)`,
+  the default) no longer drops a right-hand side term that is not proportional
+  to a compartment.  `transit()` absorption, a zero-order or endogenous
+  production rate and a dose carried in a covariate column were all parsed and
+  then discarded by both the topology detector and the emitted `linCmt()` call,
+  so the model solved was not the model written -- either identically zero, or
+  non-zero and plausible but wrong (a transit chain silently became plain
+  first-order absorption, reported here as `nlmixr2/rxode2#1370`).  `linCmt()`
+  is driven entirely by the event table's dosing records and has no parameter
+  that can carry such a term, so a model containing one now keeps its explicit
+  ODEs, and `odeToLin()` names the term it declined to convert.
+
+- The same conversion no longer substitutes a different rate constant for the
+  one that was written.  The emitted `linCmt()` call passes parameter NAMES
+  only, so anything else in a rate coefficient or in the concentration line was
+  discarded: `- 2 * kel * central` solved as if it eliminated at `kel`,
+  `cp <- central / (vc * 1000)` reported `central / vc` (a thousandfold error),
+  and a covariate factor written into the ODE (`(cl / vc) * cms * central`) was
+  dropped.  Detection now compares the system's own rate constants and reported
+  volume against `rxDerived()` -- the same parameterization inference
+  `linCmt()` itself uses, so the two cannot drift apart -- and keeps the
+  explicit ODEs unless they agree.  Folding such a factor into the parameter
+  (`cl <- exp(lcl) * cms`) converts as before.
+
+- The same conversion no longer renumbers a model's compartments out from
+  under its event data.  `linCmt()` orders its compartments `depot`, `central`
+  and keeps no state for a peripheral, so a model that declares
+  `d/dt(central)` before `d/dt(depot)` numbers them the other way round: a
+  record addressing compartment 1 by index (which includes an event table with
+  no `cmt` column at all) dosed central before conversion and depot after,
+  turning an IV profile into a plausible oral one.  Such a solve now keeps the
+  explicit ODEs.  Addressing a compartment by name, and NONMEM-style data
+  observing a one compartment model in `cmt = 2`, both still convert.
 
 - Every implicit method (`ros4`, `iem`, `ros43`, ...) and every AutoSwitch
   composite is much faster, because the analytic Jacobian model is no longer
@@ -2597,6 +2736,11 @@ mod |> ini(prior(eta.cl, eta.v) ~ invWishart(4))
   asking for it to be re-saved.
 
 ### Installation / linking
+
+- `rxode2` again installs and works with `lotri` 1.0.4 (the requirement was
+  relaxed from 1.0.5).  Priors (`prior(x) ~ ...`) and repeated blocks
+  (`same()`) still need `lotri` >= 1.0.5, and their tests are skipped with an
+  older `lotri`.
 
 - On Windows, `STAN_THREADS` and the TBB link are kept when building against
   `RcppParallel` >= 6.2.0, which ships `tbb.dll`/`tbbmalloc.dll` with the
