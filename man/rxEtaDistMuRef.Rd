@@ -73,6 +73,8 @@ had it.
 }
 \examples{
 \donttest{
+if (requireNamespace("lotri", quietly = TRUE) &&
+      "lotriEtaDists" \%in\% getNamespaceExports("lotri")) {
 mod <- function() {
   ini({
     lclm <- log(5)
@@ -89,6 +91,7 @@ mod <- function() {
   })
 }
 rxEtaDistMuRef(mod)
+}
 }
 }
 \author{

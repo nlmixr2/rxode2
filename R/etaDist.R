@@ -98,6 +98,8 @@
 #' @author Matthew L. Fidler
 #' @examples
 #' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
 #' mod <- function() {
 #'   ini({
 #'     lclm <- log(5)
@@ -115,6 +117,7 @@
 #' }
 #' .d <- rxUiEtaDists(mod)
 #' rxUiEtaDistAnchors(rxEtaDistExpand(mod(), param = "direct"), .d)
+#' }
 #' }
 rxUiEtaDistAnchors <- function(ui, d = NULL) {
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
@@ -434,7 +437,7 @@ assertRxUiNoEtaDist <- function(ui, extra = "") {
   if (!.rxEtaDistLotriOk()) {
     return(NULL)
   }
-  .tab <- lotri::lotriEtaDists()
+  .tab <- getFromNamespace0("lotriEtaDists", "lotri")()
   .w <- which(.tab$name == .nm)
   if (length(.w) != 1L) {
     return(NULL)
@@ -669,6 +672,8 @@ assertRxUiNoEtaDist <- function(ui, extra = "") {
 #' @examples
 #'
 #' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
 #' one.cmt <- function() {
 #'   ini({
 #'     lclm <- log(5)
@@ -687,6 +692,7 @@ assertRxUiNoEtaDist <- function(ui, extra = "") {
 #' }
 #'
 #' rxEtaDistExpand(one.cmt())
+#' }
 #' }
 #' @param param How a declared random effect is represented for estimation.
 #'
@@ -1562,6 +1568,8 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' @author Matthew L. Fidler
 #' @examples
 #' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
 #' mod <- function() {
 #'   ini({
 #'     lclm <- log(5)
@@ -1578,6 +1586,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #'   })
 #' }
 #' rxEtaDistMuRef(mod)
+#' }
 #' }
 rxEtaDistMuRef <- function(ui, variance = 0.1) {
   .ui <- rxUiDecompress(assertRxUi(ui))
@@ -1835,7 +1844,8 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
 #' @author Matthew L. Fidler
 .rxEtaDistNormalizeTxt <- function(rhs, eta) {
   if (!is.null(getFromNamespace0("lotriEtaDistNormalize", "lotri"))) {
-    .n <- try(lotri::lotriEtaDistNormalize(rhs), silent = TRUE)
+    .n <- try(getFromNamespace0("lotriEtaDistNormalize", "lotri")(rhs),
+              silent = TRUE)
     if (!inherits(.n, "try-error") && is.character(.n$text) && length(.n$text) == 1L) {
       return(.n$text)
     }
@@ -1895,7 +1905,7 @@ getFromNamespace0 <- function(x, ns) {
       call. = FALSE
     )
   }
-  lotri::lotriEtaDists()
+  getFromNamespace0("lotriEtaDists", "lotri")()
 }
 
 #' Add a latent random effect the model block declared a distribution for

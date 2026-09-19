@@ -50,6 +50,8 @@ A ui with no declaration is returned unchanged.
 \examples{
 
 \donttest{
+if (requireNamespace("lotri", quietly = TRUE) &&
+      "lotriEtaDists" \%in\% getNamespaceExports("lotri")) {
 one.cmt <- function() {
   ini({
     lclm <- log(5)
@@ -68,6 +70,7 @@ one.cmt <- function() {
 }
 
 rxEtaDistExpand(one.cmt())
+}
 }
 }
 \author{
