@@ -108,6 +108,9 @@ reference:
   desc: Simulate between-subject variability and parameter uncertainty.
   contents:
   - confint.rxSolve
+  - rxEtaDistExpand
+  - rxEtaDistMuRef
+  - rxUiEtaDists
   - rxRmvn
   - rxSimThetaOmega
   - cvPost
@@ -162,6 +165,7 @@ reference:
   - mexpit
   - mlogit
   - phi
+  - phiU
   - probit
   - uppergamma
 - title: Log-likelihood Functions
@@ -224,6 +228,7 @@ reference:
   - rxUdfUiIniDf
   - rxUdfUiIniLhs
   - rxUdfUiIsValue
+  - rxUdfUiLhs.dist
   - rxUdfUiMv
   - rxUdfUiNum
   - rxUdfUiParsing
