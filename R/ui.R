@@ -106,6 +106,86 @@
 #' @return A more normalized function
 #' @author Matthew L. Fidler
 #' @noRd
+#' Move `dist()` declarations from `ini({})` into `model({})`
+#'
+#' `dist()` is accepted in either block, and `model({})` is where it belongs: it
+#' is a distributional statement, like the residual error, and only there can a
+#' distribution parameter be an expression the model has already computed --
+#' `aCl <- exp(lclm + bWT*(WT - 70))` followed by
+#' `dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))`.
+#'
+#' Rather than carry two code paths, the `ini({})` form is rewritten into the
+#' `model({})` one here, before anything else looks at the function.  So there
+#' is exactly one representation downstream, and `ini({})` is sugar.
+#'
+#' Two shapes ARE otherwise produced, and they are not interchangeable: the
+#' model-block form emits its inverse-CDF line in place at the declaration,
+#' while the ini-block form left the model untouched and had
+#' `rxEtaDistExpand()` prepend that line later.  Anything reading the
+#' UNEXPANDED ui therefore saw a different model depending on where the user
+#' wrote the declaration -- which is how a warm start that rewrites the model
+#' block came to work for one form and silently do nothing for the other.
+#'
+#' Placed at the TOP of the model block: an `ini({})` declaration is parsed
+#' before the model exists, so its arguments can only name population
+#' parameters, and those are always in scope there.
+#'
+#' @param fun model function
+#' @return `fun`, with any `ini({})` `dist()` lines moved to the model block
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistIniToModel <- function(fun) {
+  .lst <- as.list(body(fun)[-1])
+  .isBlock <- function(nm) {
+    which(vapply(
+      seq_along(.lst),
+      function(x) {
+        .e <- .lst[[x]]
+        is.call(.e) && length(.e) >= 1L && identical(.e[[1]], as.name(nm))
+      },
+      logical(1)
+    ))
+  }
+  .wi <- .isBlock("ini")
+  .wm <- .isBlock("model")
+  if (length(.wi) != 1L || length(.wm) != 1L) {
+    return(fun)
+  }
+  if (length(.lst[[.wi]]) < 2L || length(.lst[[.wm]]) < 2L) {
+    return(fun)
+  }
+  .iniBody <- .lst[[.wi]][[2]]
+  .modBody <- .lst[[.wm]][[2]]
+  if (!is.call(.iniBody) || !identical(.iniBody[[1]], quote(`{`))) {
+    return(fun)
+  }
+  if (!is.call(.modBody) || !identical(.modBody[[1]], quote(`{`))) {
+    return(fun)
+  }
+  .iniExpr <- as.list(.iniBody)[-1]
+  .isDecl <- vapply(
+    .iniExpr,
+    function(.e) {
+      is.call(.e) &&
+        identical(.e[[1]], quote(`~`)) &&
+        length(.e) == 3L &&
+        is.call(.e[[2]]) &&
+        is.name(.e[[2]][[1]]) &&
+        as.character(.e[[2]][[1]]) %in% c("dist", "etaDist")
+    },
+    logical(1)
+  )
+  if (!any(.isDecl)) {
+    return(fun)
+  }
+  .lst[[.wi]][[2]] <- as.call(c(list(quote(`{`)), .iniExpr[!.isDecl]))
+  .lst[[.wm]][[2]] <- as.call(c(list(quote(`{`)), .iniExpr[.isDecl], as.list(.modBody)[-1]))
+  .fun2 <- function() {}
+  body(.fun2) <- as.call(c(list(quote(`{`)), .lst))
+  environment(.fun2) <- environment(fun)
+  .fun2
+}
+
 .rxFunctionRearrange <- function(fun) {
   .lst <- as.list(body(fun)[-1])
   .idx <- seq_along(.lst)
@@ -149,7 +229,9 @@
 }
 
 .rxFunction2ui <- function(fun) {
-  .fun <- .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
+  .fun <- .rxEtaDistIniToModel(
+    .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
+  )
   .ret <- .fun()
   # Save $model like nlmixr UI used to...
   .ret <- rxUiDecompress(.ret)

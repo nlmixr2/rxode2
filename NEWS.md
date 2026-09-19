@@ -78,6 +78,109 @@
 # rxode2 5.1.7
 
 ## New features
+- `rxUiEtaDistAnchors()` reports which model variable holds each argument of a
+  declared distribution.  `rxEtaDistExpand()` hoists every family argument onto
+  its own line, `rxEdA.<eta>.<role>`, so the compiled model computes them per
+  observation; this says where those values land, so an estimator can read them
+  from the solve instead of evaluating the same argument expressions again in
+  its own code.  `NA` marks an argument the family emits no line for.  Pass the
+  declarations for an EXPANDED model: `rxEtaDistExpand()` removes `etaDist` from
+  the `iniDf`, so they cannot be read back off the expanded ui.
+
+- The mu-reference scan now tells the two declared-distribution routes apart
+  when a covariate appears in a `dist()` argument.  A covariate written into a
+  `rxEdA.<eta>.<role>` anchor reads locally like `theta + coefficient*covariate`
+  and was claimed as a mu2 covariate on both routes.  That is right on the cdf
+  route, where the decoder reads the anchor and it is genuinely in the
+  observation path, and wrong on the direct route, where the anchor feeds the
+  prior alone.  Measured on a subject-constant covariate arm with a true
+  coefficient of 0.75 from a start of 0.35: the cdf route needs the claim
+  (0.5526 with it, 0.1841 without), and the direct route needs it skipped
+  (0.7441).
+
+- The declared-distribution expansion now hoists each family argument onto its
+  own named line, `rxEdA.<eta>.<role>`, and the decoder refers to that name:
+
+  ```
+  rxEdA.eta.cl.shape <- 1/exp(lclrv)
+  rxEdA.eta.cl.rate  <- 1/(exp(lclrv) * exp(lclm))
+  eta.cl <- gammapInv(rxEdA.eta.cl.shape, phiU(rxN.eta.cl))/(rxEdA.eta.cl.rate)
+  ```
+
+  The line is keyed by lotri's ROLE rather than the family's argument name, so
+  `scale` means the same thing across families and is a usable group key.  The
+  point is that a covariate on a declaration's rate becomes a term added to one
+  named line -- an ordinary edit every downstream consumer already handles --
+  instead of a substitution buried inside a quantile call.
+
+  Both spellings of `dist()` emit the same anchors (the `model({})` form carries
+  them through the user-function `before` hook), so the two remain
+  byte-identical, and only arguments the family's quantile template actually
+  uses get an anchor -- a normal-based family collapses to its latent and never
+  references some of its arguments.
+
+  Fits are unchanged: this is a refactor of the generated model text.  Measured
+  on a declared-gamma covariate model, the estimates and objective function
+  value match the pre-anchor run to every printed digit.
+
+  `rxEtaDistMuRef()` knows about the new prefix.  Its scan for generated lines
+  was `^rx[NTLSUuc][.]`, so without this a declaration parameter that had moved
+  onto an anchor came out silently non-mu-referenced -- the same failure its own
+  comment warns about for `rxT.`.
+
+
+- `rxEtaDistMuRef()` mu-references the parameters of a declared random-effect
+  distribution.  `rxEtaDistExpand()` writes them as bare thetas inside an
+  inverse-CDF call, so none of them is in `theta + eta` form and none of them
+  is mu-referenced -- the case `saem` and the FOCEi family handle worst.  This
+  carries each of them (and the copula correlation) on its own random effect
+  with a small FIXED variance, which is the structure NONMEM gets from
+  `MU_5 = THETA(5)` with `$OMEGA (0.0 FIXED)`.
+
+  The helper variance must not be ~0, which is where the NONMEM idiom stops
+  porting: nlmixr2's mu-theta M-step is weighted by `omega^-1`, so a ~0
+  variance pins the parameter at its `ini()` value while still reporting it as
+  estimated.  Values below 1e-6 are refused with that explanation.
+
+  The result is a *different* model -- the helper variance is real
+  between-subject variability -- so it is a way to travel, not a way to
+  finish; use it as stage one and refit the intended model from its
+  estimates.
+
+- Random effects can now be declared non-Gaussian.  `lotri`'s `dist()`
+  line says what a random effect's distribution is, and
+  `rxEtaDistExpand()` turns it into an ordinary model:
+
+```r
+ini({
+  lclm  <- log(5)
+  lclrv <- log(0.09)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+})
+model({
+  cl <- eta.cl   # a gamma distributed clearance
+  ...
+})
+```
+
+  No variance is written for a declared random effect -- the declaration
+  fixes its marginal and the latent scale is standard normal, so `dist()`
+  implies `~ 1`.  A block is written out only for a correlation between
+  two declared random effects.
+
+  The technique is Bauer's (NONMEM 7.5.1): keep the latent random effect
+  standard normal and change the CDF -- `z ~ N(0, 1)`, `u = phiU(z)`,
+  `eta = Q(u)` -- with correlation induced on the latent scale as a
+  Gaussian copula.  The expansion happens on the UI, so `rxSolve()`
+  simulates from the declared distribution with no special case of its
+  own, and it rewrites the declared correlation block into unconstrained
+  `rxCor.*` thetas plus a fixed identity omega, which is a form every
+  downstream estimation method already handles.
+
+- New model functions for the inverse CDFs this needs: `phiU()` (the
+  normal CDF bounded away from 0 and 1, so a quantile cannot return an
+  infinity), `ibeta()`/`ibetaDer()`/`ibetaInv()` (`pbeta`/`dbeta`/`qbeta`)
+  and `studentTCdf()`/`studentTDen()`/`studentTInv()`.
 
 - The event table and the runtime dose-pushing statements (`evid_()`,
   `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
@@ -85,6 +188,118 @@
   semantics, so the same regimen written either way produces the same
   internal records.  A test drives both over the same events and compares
   them record for record, so the two can no longer drift apart.
+
+## Bug fixes
+- A model's declared-distribution expansion is now derived once rather than on
+  every solve.  `rxSolve()` asks `rxEtaDistExpand()` whether the model declares
+  a distribution, and for a solve-ready object answering that meant rebuilding
+  the ui -- re-parsing a model that had already been parsed -- and, for a model
+  that does declare one, building a NEW expanded model each time.  Models live
+  in the ODE model pool, so that re-set up the problem on every call instead of
+  reusing the one already set up.  The expansion is a pure function of the
+  model, so the result is now cached on the object under the model md5
+  `rxModelVars()` already carries; a changed model is re-derived rather than
+  answered from a stale memo.  Measured on a three-eta `linCmt()` model that
+  declares nothing: repeat calls 0.0331 s to 0.00010 s, and `rxSolve()` of
+  twenty subjects 0.0781 s to 0.0398 s.
+
+- Solving a model no longer re-emits the warnings its parse already gave.
+  `rxSolve()` asks `rxEtaDistExpand()` whether the model declares a
+  distribution, and on a solve-ready object that lookup had to rebuild the ui,
+  re-parsing the model and repeating every parse-time diagnostic.  A model with
+  no declaration at all could warn from inside `rxSolve()`.
+
+- `gammap()`'s derivative with respect to its shape argument, and every
+  derivative of `gammapInv()`/`gammaqInv()`, are now in the derivative
+  table.  They were absent, and a missing rule does not error: rxode2's
+  symbolic differentiation silently substituted a one sided finite
+  difference instead.  Any model using an inverse incomplete gamma was
+  therefore differentiated numerically without saying so -- worst exactly
+  in the tails, where the inverse CDF is steepest.  The new
+  `gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
+  supply the shape derivatives that have no elementary closed form.
+
+- The DENSITIES now differentiate too: `gammapDer()`, `ibetaDer()` and
+  `studentTDen()` have derivative rules, in closed form.  This is the
+  second derivative of an inverse-CDF chain -- `d(q)/d(p)` is one over the
+  density at the quantile, so anything needing a second derivative of that
+  (a Laplace inner Hessian, an analytic outer gradient) has to
+  differentiate the density in turn.  Without a rule that silently became
+  a one sided finite difference taken *of* a function that is itself a
+  finite difference.  Any model using `gammapDer()` was affected, not only
+  a declared random effect distribution.
+
+### Event translation
+
+- A steady-state dose into a compartment with a modeled `alag()` pushed
+  from inside a model now expands the way the event table expands it, so
+  the two spellings of the regimen agree.  A steady-state dose has to be
+  solved unlagged while the dose the subject receives is lagged, and only
+  the event table split the record into that pair; the pushed form solved
+  to something else (in the reported case the two differed by 9.05, and now
+  agree to 9e-07) (#1349).
+
+- `addl` no longer repeats a pushed observation, "other" (`evid=2`) or
+  reset (`evid=3`) record.  A pushed `evid_(t, 3, ..., addl = 2)` reset the
+  system three times; the event table warns and ignores `addl` for those
+  records, and the push path now does the same.
+
+- A pushed phantom dose (`evid=7`) keeps a modeled rate or duration instead
+  of silently becoming a bolus, and a pushed `evid=2` record naming a
+  compartment turns that compartment back on -- both matching what the same
+  row does in the event table.
+
+- `evid_()` now accepts a negative compartment, by name or number
+  (`evid_(t, 2, 0, -depot, 0, 0, 0, 0)`), to turn that compartment off --
+  the same signal the event table takes from a negative `CMT` column.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) written as a
+  hand-encoded classic internal `evid` (>= 100) carrying a duration now
+  errors in the event table too.  The runtime push path already refused it
+  (#1350); the event table accepted it and steady-stated the compartment to
+  zero.
+
+- A split bolus now splits every record a dose translates to rather than
+  only the first, which a lagged steady-state bolus needs.
+
+- A steady-state constant infusion (`ss=1`, `ii=0`, `amt=0`) pushed from
+  inside a model with a duration -- modeled (`rate=-2`, e.g. via `evid_()`),
+  fixed (`infuseDur()`), or a hand-encoded classic internal `evid` (>= 100)
+  -- now errors instead of silently steady-stating the compartment to zero.
+  That combination never had a usable rate (a constant infusion never turns
+  off, so there is nothing for the duration to measure), and the event-table
+  path already refused it; the runtime push path did not check for it
+  (#1350).
+
+- Piping an omega block into a model with ten or more etas no longer
+  permutes the etas that were not piped over.  They were renumbered with
+  `factor(paste(neta1))`, which sorts the numbers as TEXT -- "10" before
+  "2" -- so the survivors came back in an arbitrary order.  That splits a
+  correlated block across the matrix, and it can renumber a repeated
+  (`same()`) block ahead of the block it repeats, which has no
+  representation at all since the linkage is a relative offset backwards
+  (`$omega` then errored with "must refer to an earlier parameter").
+
+- `rxRename()` now follows a repeated (`same()`) block's marker to the new
+  name.  The block a repetition mirrors is recorded BY NAME in the
+  `condition` column -- which is what lets the marker survive renumbering
+  -- so a rename has to be followed too; left alone it pointed at a name
+  that no longer existed and `$omega` refused to assemble ("refers to
+  '<old>', which is not in this block").
+
+- Nested (inter-occasion) simulation gave every random effect the wrong
+  variance whenever a level carried more than one parameter.  The omega
+  a level draws from is laid out occasion-major, with the parameters
+  inside each stamp, but the expansion indexed it parameter-major, so
+  the two were transposed: with `lotri(a ~ 0.01, b ~ 1, cc ~ 100) | occ`
+  every parameter in occasion 1 drew variance 0.01, every one in
+  occasion 2 drew 1, and every one in occasion 3 drew 100.  A single
+  parameter per level is unaffected, which is why this went unnoticed.
+  Any covariance specified within an occasion was likewise placed
+  between occasions of one parameter rather than between the parameters
+  of one occasion (#1345).
+
+## New features
 
 - Correlated inter-occasion variability is now supported.  A `| occ`
   block may carry off-diagonal elements, and they are simulated at the

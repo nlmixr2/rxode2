@@ -2713,6 +2713,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rxlnorm_
+NumericVector rxlnorm_(double meanlog, double sdlog, int n, int ncores);
+RcppExport SEXP _rxode2_rxlnorm_(SEXP meanlogSEXP, SEXP sdlogSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type meanlog(meanlogSEXP);
+    Rcpp::traits::input_parameter< double >::type sdlog(sdlogSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxlnorm_(meanlog, sdlog, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxbeta_
 NumericVector rxbeta_(double shape1, double shape2, int n, int ncores);
 RcppExport SEXP _rxode2_rxbeta_(SEXP shape1SEXP, SEXP shape2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {

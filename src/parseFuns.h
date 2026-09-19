@@ -225,6 +225,7 @@ typedef struct transFunctions {
   int isT;
   int isUnif;
   int isWeibull;
+  int isLnorm;
   int isNormV;
   int isCauchy;
   int isLead;
@@ -276,6 +277,7 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isT=0;
   tf->isUnif=0;
   tf->isWeibull=0;
+  tf->isLnorm=0;
   tf->isNormV=0;
   tf->isCauchy=0;
   tf->isLead=0;
@@ -444,6 +446,42 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
+#include "invCdfMemo.h"
+
+// Count the ROOT-FINDING inverse CDFs this model calls, and size their memo.
+//
+// These are the expensive special functions -- each is a Newton/Halley iteration
+// whose every step evaluates the full forward CDF -- and a declared non-normal
+// random effect puts one in a MODEL LINE, i.e. on the per-record path, with
+// arguments that only change per subject.  The memo turns that back into once
+// per subject, but only if it has a slot for every call site: with one slot per
+// table, several declarations evict each other on every record and none ever
+// hits (measured: 1 slot 1.85x, 4 slots 3.0x on two declared etas).
+//
+// The count is a property of the parsed model, which is why it is taken here.
+// Eight slots per call site gives room for the perturbed argument sets a
+// finite-difference or sensitivity pass evaluates alongside the nominal one, and
+// the floor keeps the default for models that call none.
+//
+// chi-squared, inverse-chi-squared, scaled-inverse-chi-squared and studentT all
+// reach one of these through the catalog's own expansions, so counting these
+// names covers them.
+static inline void handleInvCdfFunctions(transFunctions *tf) {
+  if (!strcmp("gammapInv",   tf->v) || !strcmp("gammaqInv",   tf->v) ||
+      !strcmp("gammapInva",  tf->v) || !strcmp("gammaqInva",  tf->v) ||
+      !strcmp("ibetaInv",    tf->v) || !strcmp("studentTInv", tf->v)) {
+    // EXACT, from the parsed model: four slots per call site.
+    //
+    // Measured on two declared etas -- 1 slot 1.85x, 4 slots 3.0x, 64 slots
+    // 3.1x -- so two per site already recovers essentially all of it, and four
+    // leaves room for the perturbed argument sets a finite-difference pass
+    // evaluates beside the nominal one.  No floor beyond the setter's minimum: a
+    // model calling none of these allocates none.
+    tb.nInvCdf++;
+    rxSetInvCdfMemoSize(4 * tb.nInvCdf);
+  }
+}
+
 static inline void handleLlFunctions(transFunctions *tf) {
   if (!strncmp("llikX", tf->v, 5)) {
     D_ParseNode *xpn = d_get_child(tf->pn,2);
@@ -522,6 +560,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
       }
       // Save log-likelihood information
       handleLlFunctions(tf);
+      // Size the inverse-CDF memo from what this model actually calls
+      handleInvCdfFunctions(tf);
       foundFun = 1;
       j=0;
       break;

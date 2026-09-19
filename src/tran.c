@@ -503,6 +503,7 @@ void reset(void) {
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;
+  tb.nInvCdf    = 0;
   tb.hasMix     = 0;
   tb.mixSel     = 0;
   tb.evid_      = 0;
