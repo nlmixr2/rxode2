@@ -110,6 +110,7 @@ reference:
   - confint.rxSolve
   - rxEtaDistExpand
   - rxEtaDistMuRef
+  - rxUiEtaDistAnchors
   - rxUiEtaDists
   - rxRmvn
   - rxSimThetaOmega
