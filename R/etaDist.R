@@ -1844,8 +1844,7 @@ rxUdfUiLhs.dist <- function(fun, rhs) {
 #' @author Matthew L. Fidler
 .rxEtaDistNormalizeTxt <- function(rhs, eta) {
   if (!is.null(getFromNamespace0("lotriEtaDistNormalize", "lotri"))) {
-    .n <- try(getFromNamespace0("lotriEtaDistNormalize", "lotri")(rhs),
-              silent = TRUE)
+    .n <- try(getFromNamespace0("lotriEtaDistNormalize", "lotri")(rhs), silent = TRUE)
     if (!inherits(.n, "try-error") && is.character(.n$text) && length(.n$text) == 1L) {
       return(.n$text)
     }
