@@ -378,7 +378,43 @@
               .thetaD <- NULL
             }
             if (is.null(.thetaD)) {
-              # mu2 expression
+              # mu2 expression -- unless this line is a declared distribution's
+              # ARGUMENT ANCHOR, which is not a mu reference on either route.
+              #
+              # `rxEtaDistExpand()` emits `rxEdA.<eta>.<role> <- <argument>` for a
+              # `dist()` declaration.  A covariate written into such an argument --
+              # `rate = 1/(exp(lclrv)*exp(lclm + bWT*log(WT/70)))` -- looks locally
+              # like `theta + coefficient*covariate`, so the mu2 scan claims it and
+              # registers bWT as a covariate coefficient of lclm.  There is no
+              # `theta + eta` anywhere on that line: lclm is not mu-referenced, and
+              # the anchor is a distribution parameter rather than a typical value.
+              #
+              # MCOV is never the right owner here, on EITHER route.  The
+              # mu-referenced covariate machinery may own a coefficient only when
+              # the covariate really is mu-referenced, which is the normal
+              # random-effect case; a non-normal declared distribution has no mu
+              # reference to be estimated through.
+              #
+              # This was gated to the direct route only, because the cdf route
+              # measured BETTER with the claim: on a subject-constant arm (truth
+              # 0.75, start 0.35) bWT came back 0.8072 with it against 0.4305
+              # without.  That is a symptom rather than a justification -- the
+              # better number came from a route the coefficient should never have
+              # been on, and it says the cdf route needs an owner that can actually
+              # move it, not that MCOV should keep it.  Correcting the ownership is
+              # a precondition for comparing the two routes at all: a route whose
+              # coefficient is estimated by the wrong machinery is not a fair
+              # comparator.
+              #
+              # NoLimits.jl has no mu-referencing concept at all.  A covariate
+              # coefficient in a random-effect distribution is an ordinary fixed
+              # effect, partitioned out by `setdiff(re_fe_syms, obs_fe)` and
+              # maximized by gradient ascent on the prior; there is no MCOV
+              # analogue to reach for.
+              .curL <- try(deparse1(env$curLhs), silent = TRUE)
+              if (!inherits(.curL, "try-error") && length(.curL) == 1L && grepl("^rxEdA[.]", .curL)) {
+                return(NULL)
+              }
               env$.found <- TRUE
               env$mu2RefCovariateReplaceDataFrame <-
                 rbind(
@@ -1189,7 +1225,12 @@
       (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
   ]
   .estName <- c(.estName, .errEsts)
-  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts))
+  ## a parameter used only inside a `dist()` declaration IS used by the
+  ## model: `rxEtaDistExpand()` writes it into the inverse CDF line.  The
+  ## declaration is expanded later (before simulation or estimation), so
+  ## at this point the name legitimately appears nowhere in the model
+  ## block.
+  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts, .rxEtaDistVars(.iniDf)))
   if (length(.missingPars) > 0) {
     ui$err <-
       c(

@@ -123,13 +123,38 @@
   .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
   .extra <- setdiff(.extra, ui$nonMuEtas)
   if (length(.extra) > 0) {
-    warning(
-      "some etas defaulted to non-mu referenced, possible parsing error: ",
-      paste(.extra, collapse = ", "),
-      "\nas a work-around try putting the mu-referenced expression on a simple line",
-      call. = FALSE
-    )
+    ## RECORD them first, and unconditionally.  These are non-mu random
+    ## effects -- that is what being in neither list means -- and the
+    ## estimation methods take `nonMuEtas` as the statement of that: saem
+    ## parameterizes a random effect by the theta it is added to and carries
+    ## anything else through this list, so an eta missing from it has no
+    ## parameter at all.  It is then not sampled, and the model is fitted
+    ## without that random effect in it.
+    ##
+    ## (This was got wrong once, in the other direction: a declared
+    ## distribution's latents were filtered out HERE to silence the warning
+    ## below, which also took them out of `nonMuEtas` and left saem fitting
+    ## the model without them.  The recording and the warning are separate
+    ## concerns and are kept separate.)
     assign("nonMuEtas", c(ui$nonMuEtas, .extra), envir = ui)
+    ## Warn only about the ones that are a surprise.  A declared non-normal
+    ## random effect has no `theta + eta` form BY DESIGN -- it enters as
+    ## `Q(phiU(eta))` -- and neither does the latent `rxEtaDistExpand()`
+    ## leaves behind, so warning about those would report the feature working
+    ## as a parsing error.
+    ## `rxz.` is the cdf route's latent; `rxd.` the direct route's own eta,
+    ## which is non-mu for exactly the same reason -- there is no theta to add
+    ## it to, the family carries the location.  Both are the feature working.
+    .expected <- c(.rxEtaDistVars(ui$iniDf), .extra[grepl("^rx[zd][.]", .extra)])
+    .warn <- setdiff(.extra, .expected)
+    if (length(.warn) > 0) {
+      warning(
+        "some etas defaulted to non-mu referenced, possible parsing error: ",
+        paste(.warn, collapse = ", "),
+        "\nas a work-around try putting the mu-referenced expression on a simple line",
+        call. = FALSE
+      )
+    }
   }
   invisible()
 }

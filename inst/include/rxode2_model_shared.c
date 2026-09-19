@@ -72,6 +72,19 @@ rxode2_fn2 gammapInva;
 rxode2_fn2 gammaqInv;
 rxode2_fn2 gammaqInva;
 
+/* inverse CDFs for declared non-normal random effects */
+rxode2_fn phiU;
+rxode2_fn2 gammapDera;
+rxode2_fn3 ibeta;
+rxode2_fn3 ibetaDer;
+rxode2_fn3 ibetaInv;
+rxode2_fn3 ibetaDera;
+rxode2_fn3 ibetaDerb;
+rxode2_fn2 studentTDen;
+rxode2_fn2 studentTCdf;
+rxode2_fn2 studentTCdfDnu;
+rxode2_fn2 studentTInv;
+
 rxode2_fn2 rxnorm;
 rxode2i_rxbinom rxbinom;
 rxode2i_rxbinom rxnbinom;
@@ -87,6 +100,7 @@ rxode2_ifn rxpois;
 rxode2_fn rxt_;
 rxode2_fn2 rxunif;
 rxode2_fn2 rxweibull;
+rxode2_fn2 rxlnorm;
 
 rxode2i2_fn2 rinorm;
 rxode2i2_ribinom ribinom;
@@ -623,6 +637,7 @@ void _assignFuns0(void) {
   rxt_ = (rxode2_fn)R_GetCCallable("rxode2","rxt_");
   rxunif = (rxode2_fn2)R_GetCCallable("rxode2","rxunif");
   rxweibull = (rxode2_fn2)R_GetCCallable("rxode2","rxweibull");
+  rxlnorm = (rxode2_fn2)R_GetCCallable("rxode2","rxlnorm");
   rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
   ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
   rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
@@ -677,6 +692,17 @@ void _assignFuns0(void) {
   uppergamma = (rxode2_fn2) R_GetCCallable("rxode2","uppergamma");
   lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma");
   gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
+  phiU = (rxode2_fn) R_GetCCallable("rxode2","phiU");
+  gammapDera = (rxode2_fn2) R_GetCCallable("rxode2","gammapDera");
+  ibeta = (rxode2_fn3) R_GetCCallable("rxode2","ibeta");
+  ibetaDer = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDer");
+  ibetaInv = (rxode2_fn3) R_GetCCallable("rxode2","ibetaInv");
+  ibetaDera = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDera");
+  ibetaDerb = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDerb");
+  studentTDen = (rxode2_fn2) R_GetCCallable("rxode2","studentTDen");
+  studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf");
+  studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu");
+  studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");

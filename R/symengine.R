@@ -180,6 +180,19 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "gammaqInva" = 2,
   "lowergamma" = 2,
   "uppergamma" = 2,
+  ## inverse CDFs (and their derivative helpers) for declared non-normal
+  ## random effects -- see `rxEtaDistExpand()`
+  "phiU" = 1,
+  "gammapDera" = 2,
+  "ibeta" = 3,
+  "ibetaDer" = 3,
+  "ibetaInv" = 3,
+  "ibetaDera" = 3,
+  "ibetaDerb" = 3,
+  "studentTDen" = 2,
+  "studentTCdf" = 2,
+  "studentTCdfDnu" = 2,
+  "studentTInv" = 2,
   "linCmtA" = 14,
   "linCmtB" = 15,
   "max" = NA,
@@ -5284,7 +5297,20 @@ rxSupportedFuns <- function() {
   "gammaqInv" = 2,
   "gammaqInva" = 2,
   "lowergamma" = 2,
-  "uppergamma" = 2
+  "uppergamma" = 2,
+  ## inverse CDFs (and their derivative helpers) for declared non-normal
+  ## random effects -- see `rxEtaDistExpand()`
+  "phiU" = 1,
+  "gammapDera" = 2,
+  "ibeta" = 3,
+  "ibetaDer" = 3,
+  "ibetaInv" = 3,
+  "ibetaDera" = 3,
+  "ibetaDerb" = 3,
+  "studentTDen" = 2,
+  "studentTCdf" = 2,
+  "studentTCdfDnu" = 2,
+  "studentTInv" = 2
 )
 
 .rxOnly <- c(

@@ -1,0 +1,1948 @@
+## Declared non-Gaussian random effect (eta) distributions.
+##
+## `lotri` parses and stores the declaration (`dist(eta.cl) ~ dgamma(...)`,
+## the `etaDist` column of `$iniDf`); this file turns it into a model.
+##
+## The technique is Bauer's (NONMEM 7.5.1, `gamma_indpar.pdf`): keep the
+## latent random effect standard normal and change the CDF.
+##
+##   z   ~ N(0, 1)              latent, unit variance, FIXED
+##   u   = phiU(z)              normal CDF   ->  U(0, 1)
+##   eta = Q(u; args)           inverse CDF of the declared family
+##
+## Correlation is induced on the LATENT scale through a Cholesky factor,
+## which makes it a Gaussian copula.  Bauer estimates that factor directly
+## (his `L21`, with `L22 = sqrt(1 - L21^2)`) and so does this: the declared
+## correlation block becomes unconstrained `rxCor.*` thetas plus a fixed
+## identity omega.
+##
+## That reparameterization is not cosmetic.  A declared random effect needs
+## its omega to be a CORRELATION matrix -- unit diagonal, free off
+## diagonals -- and nlmixr2 cannot fix single components of an omega block:
+## FOCEi and friends parameterize omega through `rxSymInvCholCreate()`,
+## whose Cholesky has no unit-diagonal mode, so a "fixed" diagonal would
+## drift as soon as a neighbouring off diagonal moved.  Moving the
+## correlation into thetas sidesteps that entirely -- what is left is a
+## fixed identity omega, which every estimation method already handles --
+## and the fit's correlation matrix is reconstructed afterwards.
+##
+## Because the rewrite happens here, on the UI, everything downstream
+## inherits it unchanged: `rxSolve()` simulation, and (through nlmixr2est's
+## pre-processing hook) every estimation method.
+
+#' The `rxEdA.*` anchor names a model actually assigns
+#'
+#' Read off the model text rather than re-derived, so it cannot drift from what
+#' the expansion emitted.
+#'
+#' @param ui expanded rxode2 ui
+#' @return character vector of anchor left-hand sides
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAnchorLhs <- function(ui) {
+  .lst <- ui$lstExpr
+  if (!is.list(.lst)) {
+    return(character(0))
+  }
+  .lhs <- vapply(
+    .lst,
+    function(.l) {
+      if (
+        is.call(.l) &&
+          length(.l) >= 3L &&
+          is.name(.l[[2]]) &&
+          (identical(.l[[1]], quote(`<-`)) || identical(.l[[1]], quote(`=`)))
+      ) {
+        as.character(.l[[2]])
+      } else {
+        ""
+      }
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  .lhs[grepl("^rxEdA[.]", .lhs)]
+}
+
+#' Where each declared distribution's arguments are computed in the model
+#'
+#' `rxEtaDistExpand()` hoists every family argument onto its own model line,
+#' `rxEdA.<eta>.<role>`, so a declaration's arguments are computed per
+#' observation by the compiled model like any other model quantity -- covariates
+#' included, through the ordinary covariate machinery, inside the ODE model
+#' pool.  This says which model variable holds each argument, so an estimator
+#' can READ them from the solve instead of evaluating the argument expressions a
+#' second time in its own code.
+#'
+#' The order is the declaration's ARGUMENT order, which
+#' [rxEtaDistExpand()] normalizes at the storage point, so element `t` lines up
+#' with argument `t` of the family.
+#'
+#' `NA` means that argument has no anchor: a family whose quantile template
+#' never references it gets no model line for it (a normal-based family
+#' collapses to the latent).  An estimator must fall back to its own value
+#' there, and a covariate in such an argument is invisible to the model -- so
+#' `NA` alongside a covariate is a gap, not a value to work around.
+#'
+#' @param ui rxode2 ui, model function, or solve-ready object -- the EXPANDED
+#'   model, since that is what carries the anchor lines
+#' @param d the declarations, as [rxUiEtaDists()] returns them (`name` and
+#'   `etaDist` columns).  Defaults to reading them off `ui`, which works before
+#'   the expansion but NOT after: `rxEtaDistExpand()` removes `etaDist` from the
+#'   `iniDf`, so an expanded ui reports no declarations and this would return an
+#'   empty list.  An estimator holds the declarations it stashed before
+#'   expanding and should pass them.
+#' @return named list, one character vector per declared random effect, in
+#'   argument order; empty list when nothing is declared
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
+#' mod <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                           rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#' .d <- rxUiEtaDists(mod)
+#' rxUiEtaDistAnchors(rxEtaDistExpand(mod(), param = "direct"), .d)
+#' }
+#' }
+rxUiEtaDistAnchors <- function(ui, d = NULL) {
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ui <- .rxEtaDistAsUiQuietly(ui)
+  }
+  .ui <- rxUiDecompress(ui)
+  ## Either shape: `rxUiEtaDists()` hands back a data.frame, while an
+  ## estimator's stash is a plain list of the same columns.  `nrow()` is NULL on
+  ## the list, and `if (NULL == 0L)` is an error, so length the column instead of
+  ## the container.
+  .d <- if (is.null(d)) rxUiEtaDists(.ui) else d
+  .n <- length(.d$name)
+  if (.n == 0L || length(.d$etaDist) != .n) {
+    return(list())
+  }
+  ## Only what the model assigns.  Deriving the names from lotri alone would
+  ## report an anchor for an argument the expansion decided not to emit.
+  .have <- .rxEtaDistAnchorLhs(.ui)
+  ## The cdf route collapses a normal-based quantile onto its latent, and the
+  ## direct route has no latent at all; the collapse decides which arguments
+  ## get a line, so the route has to be known to ask.
+  .ini <- .ui$iniDf
+  .direct <- any(!is.na(.ini$neta1) & grepl("^rxd[.]", .ini$name))
+  stats::setNames(
+    lapply(seq_len(.n), function(.i) {
+      .lat <- if (.direct) NULL else paste0("rxN.", .d$name[.i])
+      .a <- .rxEtaDistAnchors(.d$etaDist[.i], .d$name[.i], latent = .lat)
+      if (is.null(.a)) {
+        return(NA_character_)
+      }
+      ## The caller lines element t up with ARGUMENT t of the declaration, so the
+      ## two orderings have to be the same length to be the same ordering.  They
+      ## are: rxode2 normalizes a declaration's argument order at the storage
+      ## point, and `.rxEtaDistAnchors()` walks the call in that order against the
+      ## family's parNames.  If that ever stops being true the failure is a silent
+      ## swap of one argument for another -- a gamma fitted with its rate read as
+      ## its shape -- so it is checked rather than assumed.
+      .nArg <- length(as.list(str2lang(.d$etaDist[.i]))) - 1L
+      if (length(.a) != .nArg) {
+        stop(
+          "the declared distribution 'dist(",
+          .d$name[.i],
+          ")' has ",
+          .nArg,
+          " argument",
+          if (.nArg == 1L) "" else "s",
+          " but ",
+          length(.a),
+          " argument role",
+          if (length(.a) == 1L) "" else "s",
+          "\n  these index the same arguments, so they cannot differ; ",
+          "the installed 'lotri' disagrees with the declaration",
+          call. = FALSE
+        )
+      }
+      .a <- as.character(.a)
+      .a[!(.a %in% .have)] <- NA_character_
+      .a
+    }),
+    .d$name
+  )
+}
+
+#' The expansion for a solve-ready object, derived once per model
+#'
+#' `.rxSolveFromUi()` calls `rxEtaDistExpand()` on EVERY solve.  For an
+#' `rxode2`/`rxode2tos` object that meant rebuilding the ui -- re-parsing a
+#' model that had already been parsed -- and, for a model that actually
+#' declares a distribution, building a NEW expanded model each time.  Two costs,
+#' and the second is the serious one:
+#'
+#'   * measured on a three-eta linCmt model with no declaration at all, the
+#'     rebuild was 0.0331 s against a 0.0781 s twenty-subject solve -- 42% of
+#'     the solve spent re-deriving a constant answer;
+#'   * models live in the ODE model pool, so handing the solve a freshly built
+#'     model on every call re-sets up the problem rather than reusing the one
+#'     that is already set up.  Re-setup per solve is what this avoids.
+#'
+#' The expansion is a pure function of the model, so it is derived once and the
+#' RESULT is reused: the same expanded object goes to every subsequent solve,
+#' and the pool sees one model instead of one per call.
+#'
+#' The cache key is the model md5 `rxModelVars()` already carries plus the
+#' route, so a changed model or a different `param=` is re-derived rather than
+#' answered from a stale memo.  Objects that are not environments (a model
+#' function) cannot carry a memo and are derived every time, which is what they
+#' did before.
+#'
+#' @param ui `rxode2` or `rxode2tos` object
+#' @param param expansion route, `"cdf"` or `"direct"`
+#' @return the memoized expansion, or `NULL` when there is none to reuse
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEtaDistExpandMemoGet <- function(ui, param) {
+  if (!is.environment(ui)) {
+    return(NULL)
+  }
+  .key <- try(rxModelVars(ui)$md5, silent = TRUE)
+  if (inherits(.key, "try-error") || is.null(.key)) {
+    return(NULL)
+  }
+  .m <- get0(".rxEtaDistExpandMemo", envir = ui, inherits = FALSE)
+  if (is.null(.m) || !identical(.m$key, .key) || !identical(.m$param, param)) {
+    return(NULL)
+  }
+  .m$value
+}
+
+#' Record an expansion for reuse by later solves
+#'
+#' @param ui the object the expansion was derived FROM
+#' @param param expansion route
+#' @param value the expansion to hand back next time -- for a model that
+#'   declares nothing this is `ui` itself, which is what the caller returns
+#' @return `value`, invisibly to the caller's eye but returned so the call site
+#'   reads as one expression
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEtaDistExpandMemoSet <- function(ui, param, value) {
+  if (is.environment(ui)) {
+    .key <- try(rxModelVars(ui)$md5, silent = TRUE)
+    if (!inherits(.key, "try-error") && !is.null(.key)) {
+      try(assign(".rxEtaDistExpandMemo", list(key = .key, param = param, value = value), envir = ui), silent = TRUE)
+    }
+  }
+  value
+}
+
+#' Build a ui from a function/solved object for a declaration lookup, quietly
+#'
+#' `rxUiEtaDists()` and `rxEtaDistExpand()` both accept a model FUNCTION or a
+#' solve-ready object, and both have to build a ui to read `iniDf$etaDist` --
+#' an `rxode2tos` has no `iniDf` of its own to ask.  That build re-parses a
+#' model the caller already parsed once, so any parse-time diagnostic it
+#' produces has already been delivered; re-emitting it makes an internal lookup
+#' look like a new problem with the model.
+#'
+#' Measured: `.rxSolveFromUi()` calls `rxEtaDistExpand()` on every solve, so a
+#' model with no declaration at all -- `test-interp.R:292`'s occasion-varying
+#' `iov.cl1`/`iov.cl2` model -- started warning "some etas defaulted to non-mu
+#' referenced" from inside `rxSolve()`, where the same warning had already been
+#' given (and suppressed) when the model was built.  Four assertions in
+#' `test-interp.R` assert that solving that model is warning-free.
+#'
+#' Messages were already suppressed here for the same reason; warnings belong
+#' with them.  This suppresses only the RE-parse, never a first build.
+#'
+#' @param ui model function, `rxode2`, or `rxode2tos` object
+#' @return an `rxUi`
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEtaDistAsUiQuietly <- function(ui) {
+  suppressWarnings(suppressMessages(as.rxUi(ui)))
+}
+#' The random effects that declare a distribution
+#'
+#' The `etaDist` column only exists when the installed 'lotri' supports
+#' declared random effect distributions AND the model uses one, so its
+#' absence means "no declarations" rather than an error.
+#'
+#' @param ui rxode2 ui
+#' @return data frame of the declaring random effects, with `name`,
+#'   `etaDist`, `neta1` and `condition` columns; zero rows when there are
+#'   none
+#' @export
+#' @author Matthew L. Fidler
+rxUiEtaDists <- function(ui) {
+  ## accepts a model function as well as a built ui, the way the rest of
+  ## the rxUi accessors do
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ui <- .rxEtaDistAsUiQuietly(ui)
+  }
+  .iniDf <- ui$iniDf
+  .empty <- data.frame(
+    name = character(0),
+    etaDist = character(0),
+    neta1 = integer(0),
+    condition = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(.iniDf) || !any(names(.iniDf) == "etaDist")) {
+    return(.empty)
+  }
+  .w <- which(!is.na(.iniDf$etaDist) & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  if (length(.w) == 0L) {
+    return(.empty)
+  }
+  data.frame(
+    name = .iniDf$name[.w],
+    etaDist = .iniDf$etaDist[.w],
+    neta1 = .iniDf$neta1[.w],
+    condition = as.character(.iniDf$condition[.w]),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @rdname rxUiEtaDists
+#' @export
+testRxUiEtaDist <- function(ui) {
+  nrow(rxUiEtaDists(ui)) > 0L
+}
+
+#' @rdname rxUiEtaDists
+#' @param extra text appended to the error, naming what cannot use them
+#' @export
+assertRxUiNoEtaDist <- function(ui, extra = "") {
+  .d <- rxUiEtaDists(ui)
+  if (nrow(.d) > 0L) {
+    stop(
+      "declared non-normal random effect distribution(s) on '",
+      paste(.d$name, collapse = "', '"),
+      "' are not supported",
+      extra,
+      call. = FALSE
+    )
+  }
+  invisible(ui)
+}
+
+#' Build the inverse CDF expression for one declaration
+#'
+#' @param txt the declaration as stored, ie `"dgamma(aCl, bCl)"`
+#' @param u the expression, as text, that supplies the uniform value
+#' @param what the random effect name, for error messages
+#' @param latent the latent normal expression, as text; when given, a
+#'   normal-based family is collapsed onto it rather than going through
+#'   `phiU()` and back
+#' @return character, an rxode2 expression
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistQuantile <- function(txt, u, what, latent = NULL, anchors = NULL) {
+  .call <- str2lang(txt)
+  .nm <- as.character(.call[[1]])
+  .tab <- .rxEtaDistTable(what)
+  .w <- which(.tab$name == .nm)
+  if (length(.w) != 1L) {
+    stop(
+      "'",
+      what,
+      "' declares '",
+      .nm, # nocov
+      "', which the installed 'lotri' has no quantile function for", # nocov
+      call. = FALSE
+    ) # nocov
+  }
+  .q <- .tab$quantile[.w]
+  ## qnorm(phiU(z)) IS z.  A normal-based family therefore collapses to a
+  ## plain function of the latent random effect, which is both faster and
+  ## more accurate than the round trip through the two CDFs -- and it is
+  ## what lets these families translate to software (NONMEM, Monolix) that
+  ## has a normal CDF but no inverse for it.
+  if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
+    .q <- sub("qnorm({u})", latent, .q, fixed = TRUE)
+  }
+  .args <- as.list(.call)[-1]
+  .parNames <- character(0)
+  if (nzchar(.tab$parNames[.w])) {
+    .parNames <- strsplit(.tab$parNames[.w], ",", fixed = TRUE)[[1]]
+  }
+  ## lotri stores the arguments in canonical positional order, so the
+  ## template's `{name}` placeholders line up by position
+  for (.i in seq_along(.args)) {
+    ## With `anchors`, the argument EXPRESSION has been hoisted to its own
+    ## model line (`rxEdA.<eta>.<role>`) and the decoder refers to that name
+    ## instead.  The covariate problem then becomes an ordinary one: adding a
+    ## term to a role group is an edit to one named line.
+    .sub <- if (!is.null(anchors) && !is.na(anchors[.parNames[.i]]) && nzchar(anchors[.parNames[.i]])) {
+      unname(anchors[.parNames[.i]])
+    } else {
+      paste0("(", deparse1(.args[[.i]]), ")")
+    }
+    .q <- gsub(paste0("{", .parNames[.i], "}"), .sub, .q, fixed = TRUE)
+  }
+  .q <- gsub("{u}", u, .q, fixed = TRUE)
+  if (grepl("{", .q, fixed = TRUE)) {
+    stop(
+      "'",
+      what,
+      "' does not supply every argument of '",
+      .nm,
+      "'", # nocov
+      call. = FALSE
+    ) # nocov
+  }
+  .q
+}
+
+#' Role anchors for a declared distribution's arguments
+#'
+#' Hoists each family argument onto its own named model line,
+#' `rxEdA.<eta>.<role>`, where `role` is lotri's role for that argument
+#' (`shape`/`rate` for a gamma, `location`/`scale` for a normal).  The role
+#' rather than the argument name, so the same group key means the same thing
+#' across families.
+#'
+#' The point is that the covariate problem becomes an ordinary one: a covariate
+#' on a declaration's rate is a term added to one named line, which every
+#' downstream consumer already handles, instead of a substitution inside a
+#' quantile call.
+#'
+#' Only arguments the family's quantile template actually uses get an anchor --
+#' a normal-based family collapses to the latent and never references some of
+#' its arguments, and an unused model line is dead weight.
+#'
+#' @param txt canonical `etaDist` text for one declaration
+#' @param eta the declared random effect's name
+#' @param latent the latent name, so the collapse above is detected the same
+#'   way `.rxEtaDistQuantile()` detects it
+#' @return named character: names are the family's `parNames`, values the
+#'   anchor variable names; plus attribute `"lines"` with the assignments
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+.rxEtaDistAnchors <- function(txt, eta, latent = NULL) {
+  .call <- str2lang(txt)
+  .nm <- as.character(.call[[1]])
+  if (!.rxEtaDistLotriOk()) {
+    return(NULL)
+  }
+  .tab <- getFromNamespace0("lotriEtaDists", "lotri")()
+  .w <- which(.tab$name == .nm)
+  if (length(.w) != 1L) {
+    return(NULL)
+  }
+  if (!any(names(.tab) == "roles") || !nzchar(.tab$roles[.w])) {
+    return(NULL)
+  }
+  .q <- .tab$quantile[.w]
+  if (!is.null(latent) && .nm %in% c("dnorm", "stdNormal", "dlnorm")) {
+    .q <- sub("qnorm({u})", latent, .q, fixed = TRUE)
+  }
+  .parNames <- strsplit(.tab$parNames[.w], ",", fixed = TRUE)[[1]]
+  .roles <- strsplit(.tab$roles[.w], ",", fixed = TRUE)[[1]]
+  if (length(.roles) != length(.parNames)) {
+    return(NULL)
+  }
+  .args <- as.list(.call)[-1]
+  .map <- setNames(rep(NA_character_, length(.parNames)), .parNames)
+  .lines <- character(0)
+  for (.i in seq_along(.args)) {
+    if (.i > length(.parNames)) {
+      break
+    }
+    ## an argument the template never references needs no anchor
+    if (!grepl(paste0("{", .parNames[.i], "}"), .q, fixed = TRUE)) {
+      next
+    }
+    .v <- paste0("rxEdA.", eta, ".", .roles[.i])
+    .map[.parNames[.i]] <- .v
+    .lines <- c(.lines, paste0(.v, " <- ", deparse1(.args[[.i]])))
+  }
+  if (length(.lines) == 0L) {
+    return(NULL)
+  }
+  attr(.map, "lines") <- .lines
+  .map
+}
+
+#' Symbolic derivative of one expression with respect to one symbol
+#'
+#' rxode2's own pattern, lifted from `.derivMore()` in `R/symengine.R`:
+#' `symengine::D()` differentiates and `rxFromSE()` only converts back.
+#'
+#' EVERY argument here must be a bare local variable.  `rxToSE()` and
+#' `rxFromSE()` `substitute()` their argument rather than taking its value, so
+#' `rxFromSE(paste0(...))` parses `paste0` as a user function and
+#' `rxFromSE(symengine::D(a, b))` parses `::` as one -- both fail with a
+#' "user function" error that says nothing about differentiation.
+#'
+#' `rxFromSE("Derivative(f, x)")` is NOT this: that is the hook for functions
+#' whose derivatives live in the `rxD` tables, and it cannot differentiate so
+#' much as `/`.
+#'
+#' @param txt expression text, in rxode2 syntax
+#' @param var symbol to differentiate with respect to
+#' @return derivative text in rxode2 syntax, or NULL when it cannot be taken
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistD <- function(txt, var) {
+  if (!requireNamespace("symengine", quietly = TRUE)) {
+    return(NULL)
+  }
+  .se <- try(rxToSE(txt), silent = TRUE)
+  if (inherits(.se, "try-error")) {
+    return(NULL)
+  }
+  .sv <- try(rxToSE(var), silent = TRUE)
+  if (inherits(.sv, "try-error")) {
+    return(NULL)
+  }
+  .sy <- try(symengine::S(.se), silent = TRUE)
+  if (inherits(.sy, "try-error")) {
+    return(NULL)
+  }
+  .sd <- try(symengine::S(.sv), silent = TRUE)
+  if (inherits(.sd, "try-error")) {
+    return(NULL)
+  }
+  .dd <- try(symengine::D(.sy, .sd), silent = TRUE)
+  if (inherits(.dd, "try-error")) {
+    return(NULL)
+  }
+  .out <- try(rxFromSE(.dd), silent = TRUE)
+  if (inherits(.out, "try-error")) {
+    return(NULL)
+  }
+  .out
+}
+
+#' Derivative anchors for a declaration's arguments
+#'
+#' For each argument anchor `rxEdA.<eta>.<role>` and each declared theta the
+#' expression mentions, emit
+#'
+#'     rxEdD.<eta>.<role>.<theta> <- d(<arg expression>)/d(<theta>)
+#'
+#' so the gradient reads an exact derivative off the solve instead of central
+#' differencing the argument expression per record per theta.  The arguments
+#' are already model lines (see `.rxEtaDistAnchors()`); their derivatives are
+#' the same trick one step further, and they inherit the same covariate
+#' handling -- a covariate in the expression is a covariate in its derivative.
+#'
+#' STRUCTURAL ZEROS ARE DROPPED.  A gamma's shape does not involve the mean's
+#' theta, so `d(shape)/d(lclm)` is exactly 0; emitting a line for it would have
+#' the model compute a constant zero per observation.  `rxJacobian` drops them
+#' the same way (`if (paste(.d) != "0")`).  The consumer must therefore treat a
+#' MISSING derivative anchor as a true zero rather than as a failure.
+#'
+#' @param anc the result of `.rxEtaDistAnchors()`, whose `"lines"` attribute
+#'   holds the `rxEdA.<eta>.<role> <- <expr>` assignments
+#' @param thetas character vector of declared theta names
+#' @return character vector of assignments, possibly empty
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+.rxEtaDistDerivLines <- function(anc, thetas) {
+  if (is.null(anc) || length(thetas) == 0L) {
+    return(character(0))
+  }
+  .lines <- attr(anc, "lines")
+  if (is.null(.lines) || length(.lines) == 0L) {
+    return(character(0))
+  }
+  .out <- character(0)
+  for (.ln in .lines) {
+    .eq <- str2lang(.ln)
+    if (!is.call(.eq) || length(.eq) != 3L) {
+      next
+    }
+    .lhsName <- deparse1(.eq[[2]])
+    .rhs <- deparse1(.eq[[3]])
+    ## only the thetas this expression actually mentions; the rest are zero by
+    ## inspection and need neither symengine nor a line
+    .have <- intersect(thetas, all.vars(.eq[[3]]))
+    for (.th in .have) {
+      .d <- .rxEtaDistD(.rhs, .th)
+      if (is.null(.d)) {
+        next
+      }
+      .dt <- gsub("[[:space:]]+", "", .d)
+      if (.dt == "0" || .dt == "0.0" || .dt == "-0") {
+        next
+      }
+      .out <- c(.out, paste0(sub("^rxEdA[.]", "rxEdD.", .lhsName), ".", .th, " <- ", .d))
+    }
+  }
+  .out
+}
+
+#' Unconstrained Cholesky parameters of a correlation matrix
+#'
+#' `L <- t(chol(R))` has unit-norm rows when `diag(R) == 1`, so each row
+#' can be written with one unconstrained parameter per off diagonal:
+#'
+#'   L[i, j] = tanh(y[i, j]) * s[i, j - 1],  s[i, j] = s[i, j-1]*sqrt(1 - tanh(y[i,j])^2)
+#'
+#' with `s[i, 0] = 1` and `L[i, i] = s[i, i - 1]`.  The row norm is one by
+#' construction, so `R = L L'` is always an exact correlation matrix no
+#' matter what the optimizer does with `y`.  For a 2x2 this is exactly
+#' Bauer's `L21`/`L22 = sqrt(1 - L21^2)`, with the bound removed.
+#'
+#' @param R correlation matrix
+#' @return lower triangular matrix of `y` values (zero on and above the
+#'   diagonal)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCorToY <- function(R) {
+  .k <- dim(R)[1]
+  .y <- matrix(0.0, .k, .k)
+  if (.k < 2L) {
+    return(.y)
+  }
+  .L <- t(chol(R))
+  for (.i in seq(2L, .k)) {
+    .s <- 1.0
+    for (.j in seq_len(.i - 1L)) {
+      .c <- .L[.i, .j] / .s
+      .c <- max(-1 + 1e-10, min(1 - 1e-10, .c))
+      .y[.i, .j] <- atanh(.c)
+      .s <- .s * sqrt(1 - .c * .c)
+    }
+  }
+  .y
+}
+
+#' The lines that rebuild one correlated latent normal
+#'
+#' @param nms the block's random effect names, in block order
+#' @param i the row (1 based) to build
+#' @return character vector of rxode2 lines
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCorLines <- function(nms, i) {
+  .z <- paste0("rxz.", nms)
+  if (i == 1L) {
+    return(paste0("rxN.", nms[1], " <- ", .z[1]))
+  }
+  .ret <- character(0)
+  .terms <- character(0)
+  .s <- NULL
+  for (.j in seq_len(i - 1L)) {
+    .y <- paste0("rxCor.", nms[i], ".", nms[.j])
+    .t <- paste0("rxT.", nms[i], ".", nms[.j])
+    .l <- paste0("rxL.", nms[i], ".", nms[.j])
+    .ret <- c(.ret, paste0(.t, " <- tanh(", .y, ")"))
+    .ret <- c(.ret, paste0(.l, " <- ", .t, if (is.null(.s)) "" else paste0("*", .s)))
+    .sNew <- paste0("rxS.", nms[i], ".", .j)
+    .ret <- c(.ret, paste0(.sNew, " <- ", if (is.null(.s)) "" else paste0(.s, "*"), "sqrt(1 - ", .t, "*", .t, ")"))
+    .terms <- c(.terms, paste0(.l, "*", .z[.j]))
+    .s <- .sNew
+  }
+  .terms <- c(.terms, paste0(.s, "*", .z[i]))
+  c(.ret, paste0("rxN.", nms[i], " <- ", paste(.terms, collapse = " + ")))
+}
+
+#' Expand declared non-normal random effect distributions into a model
+#'
+#' Rewrites a ui that carries `dist()` declarations into an ordinary ui:
+#' the declared random effects become latent standard normals (a fixed
+#' identity omega) plus unconstrained correlation thetas, and the model
+#' block gains the `phiU()` + inverse CDF lines that recreate them under
+#' their original names.  Everything downstream -- `rxSolve()`, and every
+#' nlmixr2est estimation method -- then sees a model it already knows how
+#' to handle.
+#'
+#' A ui with no declaration is returned unchanged.
+#'
+#' @param ui rxode2 ui
+#' @return the rewritten rxode2 ui, or `ui` itself when there is nothing
+#'   to expand
+#' @export
+#' @examples
+#'
+#' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
+#' one.cmt <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     eta.v ~ 0.1
+#'     dist(eta.cl) ~ dgamma(shape=1/exp(lclrv),
+#'                           rate=1/(exp(lclrv)*exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv + eta.v)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#'
+#' rxEtaDistExpand(one.cmt())
+#' }
+#' }
+#' @param param How a declared random effect is represented for estimation.
+#'
+#'   `"cdf"` (default) is the construction described above: a standard normal
+#'   latent, `phiU()`, the family's inverse CDF, and `rxCor.*` carrying a
+#'   Gaussian copula.  The estimator then sees an ordinary model with a fixed
+#'   identity omega, and the non-normality lives in a decoder line.
+#'
+#'   `"direct"` leaves the declared random effect ALONE: no latent, no decoder,
+#'   no `phiU()`.  The eta itself is what the estimator samples or optimizes,
+#'   and it carries the declared family as its prior rather than a variance.
+#'   Its omega entry is a FIXED placeholder that an estimator on this route must
+#'   ignore -- an estimator that reads it as a Gaussian variance will silently
+#'   fit the wrong model, so the route is opt-in per estimator.
+#'
+#'   The two are not interchangeable everywhere.  For a CORRELATED block of
+#'   declared random effects the CDF construction is not an alternative, it is
+#'   the definition: a Gaussian copula with non-normal marginals IS
+#'   `eta = Q(phi(z))`.  Expressing that directly needs an explicit joint
+#'   distribution (NoLimits.jl reaches for `Copulas.SklarDist`), which this does
+#'   not have, so `"direct"` refuses a correlated declared block by name rather
+#'   than dropping the correlation silently.
+#' @author Matthew L. Fidler
+rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
+  param <- match.arg(param)
+  if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
+    ## `.rxSolveFromUi()` asks this on EVERY solve.  Answering it for a
+    ## solve-ready object meant rebuilding the ui -- re-parsing a model that
+    ## was already parsed -- and, when the model declares a distribution,
+    ## building a NEW expanded model each time.  Models live in the ODE model
+    ## pool, so that re-sets up the problem on every call instead of reusing
+    ## the one already set up.
+    ##
+    ## The expansion is a pure function of the model, so it is derived once
+    ## and the RESULT is handed to every later solve: one model in the pool
+    ## rather than one per call.  Measured on a three-eta linCmt model that
+    ## declares nothing, the rebuild was 0.0331 s against a 0.0781 s
+    ## twenty-subject solve -- 42% of the solve.  The memo read is 2e-6 s and
+    ## its md5 key 1.8e-5 s.
+    .memo <- .rxEtaDistExpandMemoGet(ui, param)
+    if (!is.null(.memo)) {
+      return(.memo)
+    }
+    return(.rxEtaDistExpandMemoSet(ui, param, .rxEtaDistExpandUi(.rxEtaDistAsUiQuietly(ui), param)))
+  }
+  .rxEtaDistExpandUi(ui, param)
+}
+
+#' The declared-distribution expansion itself, with no memo in front of it
+#'
+#' Split out so `rxEtaDistExpand()` can be a cache in front of one pure
+#' function of the model.  Takes a ui; the caller has already resolved a model
+#' function or solve-ready object into one.
+#'
+#' @param ui rxode2 ui
+#' @param param expansion route, `"cdf"` or `"direct"`
+#' @return the expanded model
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEtaDistExpandUi <- function(ui, param) {
+  .ui <- rxUiDecompress(ui)
+  .d <- rxUiEtaDists(.ui)
+  if (nrow(.d) == 0L) {
+    return(ui)
+  }
+  .rxEtaDistCheckLevel(.d)
+  ## Refuse a SECOND expansion.  `as.rxUi()` on a raw function already runs the
+  ## cdf expansion as part of building the ui, so `rxEtaDistExpand(fn,
+  ## param="direct")` was handed a model that already had `rxN.*`, `phiU()` and
+  ## the inverse CDF in it, and re-expanding produced a hybrid of the two routes
+  ## -- a model nobody wrote, arrived at silently.  Cheap to detect: the first
+  ## expansion leaves its own record.
+  if (!is.null(.ui$etaDistInfo)) {
+    .was <- .ui$etaDistInfo$param
+    if (is.null(.was)) {
+      .was <- "cdf"
+    }
+    if (identical(.was, param)) {
+      return(ui)
+    }
+    stop(
+      "this model has already been expanded with param=\"",
+      .was,
+      "\" and cannot be re-expanded as \"",
+      param,
+      "\"\n",
+      "  `as.rxUi()` on a model FUNCTION expands it, so pass the ini/model ",
+      "result (`f()`) rather than the function (`f`) when choosing a route",
+      call. = FALSE
+    )
+  }
+  if (param == "direct") {
+    return(.rxEtaDistExpandDirect(.ui, .d))
+  }
+  .iniDf <- .ui$iniDf
+  .omega <- .ui$omega
+  if (!is.matrix(.omega)) {
+    .omega <- .omega[[1]]
+  }
+  .dn <- dimnames(.omega)[[1]]
+  .blocks <- .rxEtaDistDeclBlocks(.omega, .d)
+  .assigned <- .rxEtaDistModelAssigned(.ui)
+  .pre <- character(0)
+  .newTheta <- data.frame(name = character(0), est = numeric(0), stringsAsFactors = FALSE)
+  .drop <- integer(0)
+  for (.idx in .blocks) {
+    .nms <- .dn[.idx]
+    .y <- .rxEtaDistCorToY(.omega[.idx, .idx, drop = FALSE])
+    .pre <- c(.pre, .rxEtaDistCopulaLines(.nms), .rxEtaDistDecoderLines(.nms, .d, .assigned))
+    .newTheta <- rbind(.newTheta, .rxEtaDistCorTheta(.nms, .y))
+    .iniDf <- .rxEtaDistFixLatents(.iniDf, .nms)
+    .drop <- c(.drop, .rxEtaDistCovRowsToDrop(.iniDf, .idx))
+  }
+  if (length(.drop) > 0L) {
+    .iniDf <- .iniDf[-.drop, , drop = FALSE]
+  }
+  .iniDf$etaDist <- NULL
+  .iniDf <- .rxEtaDistAddCorThetas(.iniDf, .newTheta)
+  .iniDf <- .rxEtaDistRenumberEtas(.iniDf)
+  rownames(.iniDf) <- NULL
+  .new <- .rxEtaDistNewUi(.ui, .iniDf, c(lapply(.pre, str2lang), .ui$lstExpr))
+  ## what the expansion did, so a fit can be reported on the scale the
+  ## model was written on: the correlation blocks to rebuild from the
+  ## `rxCor.*` thetas, and the declarations themselves
+  assign(
+    "etaDistInfo",
+    list(blocks = lapply(.blocks, function(.idx) .dn[.idx]), etaDist = .d, iniDf = .ui$iniDf),
+    envir = .new
+  )
+  ## STICKY, or a later model rewrite silently throws it away.
+  ##
+  ## .getDropEnv() drops everything that is neither blessed nor sticky whenever
+  ## the model changes significantly, and nlmixr2est's mu2 covariate rewrite is
+  ## such a change -- a declaration carrying a covariate reports "removed from
+  ## model: '$etaDistInfo'" and the fit then has no record of what the expansion
+  ## did.  The parameter table is built from this, so it comes back MISALIGNED:
+  ## measured on a covariate model with deliberately distinct starting values,
+  ## lclrv reported lv1m's 2.22 and the rxCor theta reported lv1rv's -4.44.
+  ##
+  ## Same mechanism rxForcedPars() uses (R/rxsolve.R) for the same reason.
+  .stk <- if (exists("sticky", envir = .new, inherits = FALSE)) {
+    get("sticky", envir = .new, inherits = FALSE)
+  } else {
+    character(0)
+  }
+  assign("sticky", unique(c(.stk, "etaDistInfo")), envir = .new)
+  .new
+}
+
+#' Expand a declared model on the DIRECT route: leave the random effect alone
+#'
+#' The counterpart to the CDF construction.  There is no latent, no `phiU()`,
+#' no inverse CDF and no decoder line -- the declared random effect IS what the
+#' estimator handles, carrying its family as a prior instead of a variance.
+#'
+#' What this has to do is therefore mostly what it must NOT do.  It keeps the
+#' eta, keeps the model text, fixes the omega entry to a placeholder so nothing
+#' downstream tries to estimate a variance that does not exist, and records the
+#' declarations where an estimator can read them.
+#'
+#' A CORRELATED declared block is carried as a Gaussian copula prior on the eta
+#' scale (a pair or a larger block alike).  A declared eta correlated with an
+#' ORDINARY eta is refused: the direct prior splits into a family part and a
+#' Gaussian part, which is exact only when they share no omega block.
+#'
+#' @param ui decompressed ui
+#' @param d the declarations, from `rxUiEtaDists()`
+#' @return the rewritten ui
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistExpandDirect <- function(ui, d) {
+  .omega <- ui$omega
+  if (!is.matrix(.omega)) {
+    .omega <- .omega[[1]]
+  }
+  .dn <- dimnames(.omega)[[1]]
+  .blocks <- .rxEtaDistDeclBlocks(.omega, d)
+  ## A correlated declared block is CARRIED, not refused.
+  ##
+  ## It used to be refused, and with only a quantile function and a density that
+  ## was right: a Gaussian copula over non-normal marginals IS eta = Q(phi(z)),
+  ## so there was nothing this route could do with a correlated block that would
+  ## not be the CDF construction.  With a per-family CDF the correlation becomes
+  ## an ordinary prior term on the eta scale --
+  ##
+  ##   log p(eta1,eta2) = log f1 + log f2 + log c_rho(F1(eta1), F2(eta2))
+  ##
+  ## -- and the estimator evaluates it there (nlmixr2est's rxEtaDistPairLogD).
+  ## A block of MORE than two is carried the same way, under one m-dimensional
+  ## Gaussian copula (rxEtaDistBlockLogD): log c_R(z) = -1/2 log|R|
+  ## - 1/2 z'(R^-1 - I)z, of which the pair is the m = 2 case.  Nothing in this
+  ## expansion depends on the block size -- the correlation stays in the omega
+  ## where the user wrote it -- so whether an ESTIMATOR can fit a block is that
+  ## estimator's to say, not this function's.
+  for (.idx in .blocks) {
+    ## A declared eta correlated with an ORDINARY one is refused, and that one
+    ## is not a missing feature.
+    ##
+    ## On this route the prior splits: the declared columns are scored by their
+    ## family, the rest by the Gaussian quadratic.  That split is exact only when
+    ## omega is block diagonal between the two sets -- a sub-block of an INVERSE
+    ## is not the inverse of the sub-block, so a cross term makes the Gaussian
+    ## half wrong by an amount nothing reports.  A Gaussian copula between a
+    ## declared and an undeclared marginal is a well-defined model; it is just
+    ## not one this parameterization can write down, and the cdf route can.
+    .undecl <- setdiff(.dn[.idx], d$name)
+    if (length(.idx) > 1L && length(.undecl) > 0L) {
+      stop(
+        "rxEtaDistExpand(param=\"direct\") cannot correlate the declared '",
+        paste(intersect(.dn[.idx], d$name), collapse = "', '"),
+        "' with the ordinary '",
+        paste(.undecl, collapse = "', '"),
+        "'\n",
+        "  the direct prior splits into a family part and a Gaussian part, ",
+        "which is exact only when they do not share an omega block\n",
+        "  use param=\"cdf\" for this model, where both are normal latents",
+        call. = FALSE
+      )
+    }
+  }
+  ## The correlation itself still has to reach the estimator.  On the cdf route
+  ## it becomes an `rxCor.*` theta because the expansion needs it to BUILD the
+  ## latent; here nothing in the model text uses it, so it stays in the omega
+  ## where it was written and `etaDistInfo$blocks` says which etas pair up.
+  ## Refuse a declared eta the model ALREADY ASSIGNS.
+  ##
+  ## Two ways that happens, and neither can take this route.  `dist()` written
+  ## in model({}) emits its own inverse-CDF line in place, which is the whole
+  ## point of that form.  And `as.rxUi()` on a model FUNCTION pre-emits the same
+  ## line while leaving the declaration in the iniDf -- so `eta.cl` is at once
+  ## an eta and an assigned lhs, and rebuilding without a decoder reports it as
+  ## "in the ini block but not in the model block", which names the symptom and
+  ## not the cause.
+  ##
+  ## This is NOT the same as the double-expansion guard above: that one keys on
+  ## `etaDistInfo`, which `as.rxUi()` does not leave behind, so it does not fire
+  ## here.  (An earlier commit claimed it covered this case; it did not.)
+  ## Take out the cdf construction `as.rxUi()` may already have emitted, so the
+  ## refusal below tests a USER assignment and not the feature's own output.
+  .body <- .rxEtaDistDropPreEmitted(ui, d)
+  .assignedAll <- .rxEtaDistModelAssigned(list(lstExpr = .body))
+  .clash <- intersect(d$name, .assignedAll)
+  if (length(.clash) > 0L) {
+    stop(
+      "rxEtaDistExpand(param=\"direct\") cannot use '",
+      paste(.clash, collapse = "', '"),
+      "': the model already assigns it\n",
+      "  the direct route needs the declared random effect to BE the random ",
+      "effect, not a quantity the model computes\n",
+      "  pass the ini/model result (`f()`) rather than the function (`f`), ",
+      "and declare the distribution in ini({}) rather than model({})",
+      call. = FALSE
+    )
+  }
+  .iniDf <- ui$iniDf
+  ## The omega entry becomes a FIXED placeholder.  It is not the eta's
+  ## dispersion -- that is the family's business now -- and fixing it is what
+  ## stops an estimator wandering off estimating a variance the model does not
+  ## have.  An estimator that READS it as a Gaussian variance is fitting the
+  ## wrong model, which is why the direct route is opt-in per estimator rather
+  ## than something the expansion can turn on for everyone.
+  ##
+  ## The eta is also RENAMED to `rxd.<eta>` and bound back on its own line
+  ## below.  Leaving it named `eta.cl` and used inline (`cl <- exp(lcl)*eta.cl`)
+  ## is what a reader would expect the direct route to mean, and it parses --
+  ## but the mu-reference scan then reports "some etas defaulted to non-mu
+  ## referenced, possible parsing error: eta.cl" and the eta reaches saem by a
+  ## DIFFERENT door than the cdf route's latent does.  The cdf route does not
+  ## trip it only because `rxN.eta.cl <- rxz.eta.cl` puts its eta alone on a
+  ## simple line, which the scan reads as a mu reference with no theta.
+  ##
+  ## Since the whole point of having two routes is to compare them, they must
+  ## not differ in how the random effect is CLASSIFIED -- otherwise a measured
+  ## difference is between two mu-referencing decisions, not between two
+  ## parameterizations.  So mirror the cdf shape exactly.
+  .declNeta <- integer(0)
+  for (.nm in d$name) {
+    .w <- which(.iniDf$name == .nm & .iniDf$neta1 == .iniDf$neta2)
+    if (length(.w) == 1L) {
+      .declNeta <- c(.declNeta, .iniDf$neta1[.w])
+      .iniDf$name[.w] <- paste0("rxd.", .nm)
+      .iniDf$est[.w] <- 1.0
+      .iniDf$fix[.w] <- TRUE
+    }
+  }
+  ## The OFF-DIAGONAL between two declared etas is fixed too, and leaving it
+  ## free produced a matrix that cannot exist.
+  ##
+  ## On this route that entry is the Gaussian copula's correlation -- the
+  ## estimator reads it as a starting value and then estimates it against the
+  ## copula density, reporting it in `$etaDistCor` and as a `cor()` row in
+  ## `parFixed`.  It is NOT a covariance, and saem must not fit it as one.
+  ##
+  ## Left free, saem estimated it from the eta sample -- and these etas are the
+  ## declared variates themselves, not centered unit-scale deviates, so what
+  ## came back was their raw cross-moment.  Measured on a gamma pair with means
+  ## 5.5 and 54.6, the reported omega was
+  ##
+  ##     [ 1.0000  362.0680 ]      eigenvalues 363.068 and -361.068
+  ##     [ 362.0680  1.0000 ]
+  ##
+  ## -- diagonals correctly pinned at the placeholder, off-diagonal a
+  ## cross-moment, and the pair jointly impossible as a covariance.  The
+  ## post-fit nearPD repair then clamps the negative eigenvalue to zero, and a
+  ## rank-1 projection of [[1,c],[c,1]] puts lambda_max/2 in EVERY cell: the fit
+  ## printed 180.6704 four times, with a correlation of exactly 1.000 and an SD
+  ## of 13.44.  Verified by feeding that matrix to .foceiRepairOmega() directly:
+  ## 181.534 in every cell.
+  if (length(.declNeta) > 1L) {
+    .off <- which(
+      !is.na(.iniDf$neta1) &
+        !is.na(.iniDf$neta2) &
+        .iniDf$neta1 != .iniDf$neta2 &
+        .iniDf$neta1 %in% .declNeta &
+        .iniDf$neta2 %in% .declNeta
+    )
+    if (length(.off) > 0L) .iniDf$fix[.off] <- TRUE
+  }
+  .iniDf$etaDist <- NULL
+  rownames(.iniDf) <- NULL
+  ## The ARGUMENT ANCHORS are still emitted, and they are the whole interface.
+  ##
+  ## Dropping the decoder leaves the family's thetas unused by the model text,
+  ## which rxode2 refuses ("in the ini block but not in the model block") -- and
+  ## it is right to: the estimator has to get the current arguments from
+  ## somewhere.  On this route it reads them off `rxEdA.<eta>.<role>`, computed
+  ## per record like any other model quantity, so a covariate on a distribution
+  ## parameter needs no special handling here either.
+  ##
+  ## `latent = NULL`: there is no latent on this route, and passing one is what
+  ## would drag the inverse CDF back in.
+  .pre <- character(0)
+  .assigned <- .assignedAll
+  for (.nm in d$name) {
+    if (.nm %in% .assigned) {
+      next
+    }
+    .w <- which(d$name == .nm)
+    .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent = NULL)
+    if (is.null(.anc)) {
+      stop(
+        "rxEtaDistExpand(param=\"direct\") needs the argument roles for '",
+        .nm,
+        "', which the installed 'lotri' does not provide",
+        call. = FALSE
+      )
+    }
+    ## the anchors, then the bind that gives the renamed eta back its name.
+    ##
+    ## NOT the derivative anchors, though `.rxEtaDistDerivLines()` builds them
+    ## and is tested.  Emitting them here REGRESSES the direct route outright:
+    ## measured on Bauer's gamma4, lclm went 1.898 -> 5.261 with the copula back
+    ## at its ini(), and a subject-constant covariate arm went bWT 1.0028 ->
+    ## -0.2307, with seven nlmixr2est etaDist failures alongside.  Reverting
+    ## this one splice restores every one of those numbers exactly, so the extra
+    ## lhs lines are the whole cause and nothing downstream reads them yet.
+    ##
+    ## Whatever the mechanism -- lhs count, ordering, or an index the estimator
+    ## resolves against a different model -- it has to be understood before
+    ## these are emitted by default, because every direct-route fit compiles
+    ## this model.
+    .pre <- c(.pre, attr(.anc, "lines"), paste0(.nm, " <- rxd.", .nm))
+  }
+  .new <- .rxEtaDistNewUi(ui, .iniDf, c(lapply(.pre, str2lang), .body))
+  assign(
+    "etaDistInfo",
+    list(blocks = lapply(.blocks, function(.idx) .dn[.idx]), etaDist = d, iniDf = ui$iniDf, param = "direct"),
+    envir = .new
+  )
+  .stk <- if (exists("sticky", envir = .new, inherits = FALSE)) {
+    get("sticky", envir = .new, inherits = FALSE)
+  } else {
+    character(0)
+  }
+  assign("sticky", unique(c(.stk, "etaDistInfo")), envir = .new)
+  .new
+}
+
+#' Refuse a declaration that is not at the subject level
+#'
+#' IOV and other levels put the random effect in a different condition, where
+#' the latent/copula bookkeeping is not the same problem; refuse rather than
+#' quietly building the wrong model.
+#'
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return nothing, called for the error
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCheckLevel <- function(d) {
+  .cnd <- unique(lotri::lotriBaseCondition(d$condition))
+  .bad <- .cnd[!(.cnd %in% c("id", "ID", NA_character_))]
+  if (length(.bad) == 0L) {
+    return(invisible())
+  }
+  stop(
+    "a declared non-normal random effect distribution is only ",
+    "supported at the subject level, but '",
+    paste(d$name[lotri::lotriBaseCondition(d$condition) %in% .bad], collapse = "', '"),
+    "' is at level '",
+    paste(.bad, collapse = "', '"),
+    "'",
+    call. = FALSE
+  )
+}
+
+#' The omega blocks that contain at least one declaration, in block order
+#'
+#' @param omega omega matrix
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return list of integer index vectors
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDeclBlocks <- function(omega, d) {
+  .dn <- dimnames(omega)[[1]]
+  .blocks <- list()
+  .i <- 1L
+  while (.i <= length(.dn)) {
+    .idx <- .rxEtaDistBlock(omega, .i)
+    if (any(.dn[.idx] %in% d$name)) {
+      .blocks[[length(.blocks) + 1L]] <- .idx
+    }
+    .i <- max(.idx) + 1L
+  }
+  .blocks
+}
+
+#' Which declared random effects the model block already assigns
+#'
+#' `dist()` written in model({}) emits its own inverse-CDF line in place --
+#' that is the whole point of the model-block form, since a distribution
+#' parameter may be an expression the model computes from covariates, and that
+#' expression is only in scope at the declaration.  Prepending a second copy
+#' would both duplicate the assignment and put it ABOVE the covariate it reads.
+#' So if the model already assigns this random effect, its transform is placed
+#' and the expansion only owes it the latent and the copula.
+#'
+#' @param ui decompressed ui
+#' @return character vector of assigned names
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistModelAssigned <- function(ui) {
+  .assigned <- character(0)
+  for (.e in ui$lstExpr) {
+    if (
+      is.call(.e) &&
+        length(.e) >= 3L &&
+        (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))) &&
+        is.name(.e[[2]])
+    ) {
+      .assigned <- c(.assigned, as.character(.e[[2]]))
+    }
+  }
+  .assigned
+}
+
+#' Drop the CDF construction `as.rxUi()` already emitted for a declaration
+#'
+#' `dist()` is a ui-lhs udf, so building a ui from a model FUNCTION runs it and
+#' leaves the cdf construction in the model text -- the `rxEdA.*` argument
+#' anchors and the `eta.cl <- gammapInv(..., phiU(rxN.eta.cl))/...` decoder --
+#' while the declaration is still in the iniDf.  Building from `f()` does not.
+#'
+#' That is invisible on the cdf route, which is about to emit exactly those
+#' lines anyway (and skips the ones already there).  The direct route emits a
+#' DIFFERENT construction, so it has to take them out first -- otherwise
+#' `nlmixr2(f, ...)`, which is the ordinary call form, refuses every declared
+#' model as "the model already assigns it".
+#'
+#' Only lines with this exact shape are removed, so a user assignment to the
+#' same name still reaches the refusal it should.
+#'
+#' @param ui rxode2 ui
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @return the model expression list, with those lines dropped
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDropPreEmitted <- function(ui, d) {
+  .keep <- vapply(
+    ui$lstExpr,
+    function(.e) {
+      if (
+        !(is.call(.e) &&
+          length(.e) >= 3L &&
+          is.name(.e[[2]]) &&
+          (identical(.e[[1]], quote(`<-`)) || identical(.e[[1]], quote(`=`))))
+      ) {
+        return(TRUE)
+      }
+      .lhs <- as.character(.e[[2]])
+      ## an argument anchor for one of THESE declarations
+      if (
+        any(vapply(
+          d$name,
+          function(.nm) {
+            grepl(paste0("^rxEdA[.]", .nm, "[.]"), .lhs)
+          },
+          logical(1)
+        ))
+      ) {
+        return(FALSE)
+      }
+      ## the decoder itself: assigns the declared name, and reads its latent
+      if (.lhs %in% d$name) {
+        .v <- all.vars(.e[[3]])
+        if (paste0("rxN.", .lhs) %in% .v) return(FALSE)
+      }
+      TRUE
+    },
+    logical(1)
+  )
+  ui$lstExpr[.keep]
+}
+
+#' The Gaussian copula lines for one block
+#'
+#' @param nms names in the block, in block order
+#' @return character vector of model lines
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCopulaLines <- function(nms) {
+  unlist(lapply(seq_along(nms), function(.i) .rxEtaDistCorLines(nms, .i)), use.names = FALSE)
+}
+
+#' The `rxCor.*` thetas for one block, on the atanh scale
+#'
+#' @param nms names in the block, in block order
+#' @param y the atanh-scale partial correlations for the block
+#' @return data.frame of name/est
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCorTheta <- function(nms, y) {
+  .out <- data.frame(name = character(0), est = numeric(0), stringsAsFactors = FALSE)
+  for (.i in seq_along(nms)) {
+    for (.j in seq_len(.i - 1L)) {
+      .out <- rbind(
+        .out,
+        data.frame(name = paste0("rxCor.", nms[.i], ".", nms[.j]), est = y[.i, .j], stringsAsFactors = FALSE)
+      )
+    }
+  }
+  .out
+}
+
+#' The decoder lines that map each latent back to its declared scale
+#'
+#' @param nms names in the block, in block order
+#' @param d declaration data.frame from `rxUiEtaDists()`
+#' @param assigned names the model block already assigns
+#' @return character vector of model lines
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistDecoderLines <- function(nms, d, assigned) {
+  .pre <- character(0)
+  for (.nm in nms) {
+    if (.nm %in% assigned) {
+      next
+    } # model-block dist() placed it already
+    .w <- which(d$name == .nm)
+    if (length(.w) == 1L) {
+      .u <- paste0("phiU(rxN.", .nm, ")")
+      .lat <- paste0("rxN.", .nm)
+      .anc <- .rxEtaDistAnchors(d$etaDist[.w], .nm, latent = .lat)
+      .pre <- c(
+        .pre,
+        attr(.anc, "lines"),
+        paste0(.nm, " <- ", .rxEtaDistQuantile(d$etaDist[.w], .u, .nm, latent = .lat, anchors = .anc))
+      )
+    } else {
+      ## an undeclared member of a declared block: its variance is one
+      ## by the same rule, so it IS the correlated latent normal
+      .pre <- c(.pre, paste0(.nm, " <- rxN.", .nm))
+    }
+  }
+  .pre
+}
+
+#' Rename a block's random effects to the latents: unit variance and fixed
+#'
+#' The covariance is not carried here -- the correlation is in the `rxCor.*`
+#' thetas now.
+#'
+#' @param iniDf ini data.frame
+#' @param nms names in the block
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistFixLatents <- function(iniDf, nms) {
+  for (.nm in nms) {
+    .w <- which(iniDf$name == .nm & iniDf$neta1 == iniDf$neta2)
+    iniDf$name[.w] <- paste0("rxz.", .nm)
+    iniDf$est[.w] <- 1
+    iniDf$fix[.w] <- TRUE
+  }
+  iniDf
+}
+
+#' The off-diagonal rows of a block, which the copula replaces
+#'
+#' @param iniDf ini data.frame
+#' @param idx the block's indexes
+#' @return integer vector of row numbers
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistCovRowsToDrop <- function(iniDf, idx) {
+  which(!is.na(iniDf$neta1) & iniDf$neta1 != iniDf$neta2 & iniDf$neta1 %in% idx & iniDf$neta2 %in% idx)
+}
+
+#' Append the `rxCor.*` theta rows to the ini data.frame
+#'
+#' @param iniDf ini data.frame
+#' @param newTheta data.frame of name/est from `.rxEtaDistCorTheta()`
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAddCorThetas <- function(iniDf, newTheta) {
+  if (nrow(newTheta) == 0L) {
+    return(iniDf)
+  }
+  .nTheta <- suppressWarnings(max(c(0L, iniDf$ntheta), na.rm = TRUE))
+  .add <- iniDf[rep(which(!is.na(iniDf$ntheta))[1], nrow(newTheta)), , drop = FALSE]
+  .add$ntheta <- .nTheta + seq_len(nrow(newTheta))
+  .add$name <- newTheta$name
+  .add$est <- newTheta$est
+  ## Bounded, not unbounded.  tanh() maps this to a partial correlation, so
+  ## the parameterization is unconstrained in the sense that ANY finite value
+  ## gives a valid correlation matrix -- but that is not the same as being
+  ## safe to optimize over.  As |y| grows tanh(y) -> 1, the block approaches
+  ## singularity, and a copula member's latent
+  ##
+  ##   w_k = tanh(y)*z_j + sqrt(1 - tanh(y)^2)*z_k
+  ##
+  ## collapses onto its partner's: two declared random effects become one.
+  ## Any optimizer maximizing a likelihood CONDITIONAL on sampled etas -- with
+  ## no prior term to penalize that degeneracy -- can walk straight to it.
+  ## Measured in nlmixr2est's saem (refinePhi0Lik): rho pinned at 1.000 in 3
+  ## of 7 fits across seeds and refinement start points on Bauer's gamma data,
+  ## and a pinned rho alone contributed 128% of one of the eight relative
+  ## errors.
+  ##
+  ## +/-5 keeps |rho| <= 0.9999 -- far wider than any correlation worth
+  ## estimating, and enough that sqrt(1 - rho^2) never underflows the partner
+  ## latent out of the model entirely.
+  .add$lower <- -5
+  .add$upper <- 5
+  .add$fix <- FALSE
+  .add$label <- NA_character_
+  ## tanh() of one of these is the partial correlation between its two
+  ## random effects given the ones before them (the canonical partial
+  ## correlation parameterization), and for a 2x2 block -- the usual
+  ## case, and Bauer's -- it is plainly the correlation.  So the
+  ## back-transformed column reads as a correlation without any special
+  ## casing; `fit$etaDistCor` carries the whole matrix.
+  .add$backTransform <- "tanh"
+  if (any(names(.add) == "prior")) {
+    .add$prior <- NA_character_
+  }
+  if (any(names(.add) == "err")) {
+    .add$err <- NA_character_
+  }
+  .add$condition <- NA_character_
+  rownames(.add) <- NULL
+  rbind(iniDf, .add)
+}
+
+#' Renumber the etas: dropping the covariance rows leaves gaps
+#'
+#' @param iniDf ini data.frame
+#' @return the modified ini data.frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistRenumberEtas <- function(iniDf) {
+  .we <- which(is.na(iniDf$ntheta))
+  if (length(.we) == 0L) {
+    return(iniDf)
+  }
+  .lvl <- sort(unique(iniDf$neta1[.we]))
+  iniDf$neta1[.we] <- match(iniDf$neta1[.we], .lvl)
+  iniDf$neta2[.we] <- match(iniDf$neta2[.we], .lvl)
+  iniDf
+}
+
+#' The indexes of the covariance block an element belongs to
+#'
+#' @param mat omega
+#' @param i index within the block
+#' @return integer vector of the block's indexes
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistBlock <- function(mat, i) {
+  .n <- dim(mat)[1]
+  .lo <- i
+  .hi <- i
+  repeat {
+    .changed <- FALSE
+    if (.lo > 1L && any(mat[seq(.lo, .hi), .lo - 1L] != 0)) {
+      .lo <- .lo - 1L
+      .changed <- TRUE
+    }
+    if (.hi < .n && any(mat[seq(.lo, .hi), .hi + 1L] != 0)) {
+      .hi <- .hi + 1L
+      .changed <- TRUE
+    }
+    if (!.changed) break
+  }
+  seq(.lo, .hi)
+}
+
+#' Rebuild a ui from a new iniDf and model body
+#'
+#' @param ui the ui being rewritten (supplies `$meta` and the model name)
+#' @param iniDf the new ini data frame
+#' @param lstExpr the new list of model expressions
+#' @return the new ui
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistNewUi <- function(ui, iniDf, lstExpr) {
+  .ini <- as.expression(lotri::as.lotri(iniDf))
+  .ini[[1]] <- quote(`ini`)
+  .model <- str2lang(paste0(
+    "model({",
+    paste(vapply(lstExpr, deparse1, character(1), USE.NAMES = FALSE), collapse = "\n"),
+    "})"
+  ))
+  .ls <- ls(ui$meta, all.names = TRUE)
+  .body <- vector("list", length(.ls) + 3L)
+  .body[[1]] <- quote(`{`)
+  for (.i in seq_along(.ls)) {
+    .body[[.i + 1L]] <- str2lang(paste0(.ls[.i], " <- ", deparse1(ui$meta[[.ls[.i]]])))
+  }
+  .body[[length(.ls) + 2L]] <- .ini
+  .body[[length(.ls) + 3L]] <- .model
+  .f <- function() {}
+  body(.f) <- as.call(.body)
+  .new <- rxUiDecompress(.f())
+  ## rebuilding through an anonymous function would otherwise report the
+  ## model's name as `.f`
+  assign("modelName", ui$modelName, envir = .new)
+  .new
+}
+
+#' Names used inside `dist()` declarations
+#'
+#' A declaration's arguments are ordinary `ini({})` parameters, and
+#' `rxEtaDistExpand()` writes them into the model's inverse CDF line -- so
+#' they are used by the model even though they appear nowhere in the model
+#' block until the declaration is expanded.
+#'
+#' @param iniDf ini data frame
+#' @return character vector of every name referenced by a declaration,
+#'   plus the declaring random effects themselves
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistVars <- function(iniDf) {
+  if (is.null(iniDf) || !any(names(iniDf) == "etaDist")) {
+    return(character(0))
+  }
+  .w <- which(!is.na(iniDf$etaDist))
+  if (length(.w) == 0L) {
+    return(character(0))
+  }
+  unique(c(
+    iniDf$name[.w],
+    unlist(
+      lapply(iniDf$etaDist[.w], function(.t) {
+        .e <- try(str2lang(.t), silent = TRUE)
+        if (inherits(.e, "try-error")) {
+          return(character(0))
+        } # nocov
+        all.vars(.e)
+      }),
+      use.names = FALSE
+    )
+  ))
+}
+
+#' Substitute a variable inside a model expression
+#'
+#' The left-hand side of an assignment is left alone; a target is only ever a
+#' theta, and a theta is never assigned to in a model block, but skipping it
+#' keeps the substitution honest about what it is allowed to touch.
+#'
+#' @param e expression to walk
+#' @param map named list of replacements, keyed by variable name
+#' @return `e` with every mapped name replaced
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistSubVar <- function(e, map) {
+  if (is.name(e)) {
+    .n <- as.character(e)
+    if (!is.null(map[[.n]])) {
+      return(map[[.n]])
+    }
+    return(e)
+  }
+  if (!is.call(e)) {
+    return(e)
+  }
+  .start <- 2L
+  if (length(e) > 2L && identical(e[[1]], quote(`<-`))) {
+    .start <- 3L
+  }
+  if (length(e) >= .start) {
+    for (.i in seq.int(.start, length(e))) {
+      e[[.i]] <- .rxEtaDistSubVar(e[[.i]], map)
+    }
+  }
+  e
+}
+
+#' Mu-reference the parameters of a declared eta distribution
+#'
+#' `rxEtaDistExpand()` writes the declared distribution's parameters into the
+#' model as bare thetas inside an inverse-CDF call.  Nothing about that shape is
+#' `theta + eta`, so every one of them comes out **non**-mu-referenced -- which
+#' is the case both `saem` and the FOCEi family handle worst, and it is why a
+#' cold-started fit of a declared-distribution model tends to settle a long way
+#' from the answer.
+#'
+#' This carries each of those parameters on its own random effect with a small
+#' FIXED variance, which is what puts them back into a `theta + eta` form and so
+#' back onto the mu-referenced path.  It is the same structure NONMEM control
+#' streams get from `MU_5 = THETA(5)` with `$OMEGA (0.0 FIXED)`, with one
+#' important difference: the helper variance must **not** be ~0 here.
+#' nlmixr2's mu-theta M-step is weighted by `omega^-1`, so a ~0 variance pins
+#' the parameter at its starting value instead of freeing it (NONMEM updates
+#' such a parameter by direct maximization, so the idiom works there).
+#'
+#' The result is a **different model** -- the helper variance is real
+#' between-subject variability on the distribution's parameters -- so this is a
+#' way to travel, not a way to finish.  Use it as the first stage of a chain and
+#' refit the model you actually mean from its estimates:
+#'
+#' ```
+#' stage1 <- nlmixr2(rxEtaDistMuRef(mod), data, est = "saem")
+#' final  <- nlmixr2(mod |> ini(stage1), data, est = "focei",
+#'                   control = foceiControl(mceta = 100))
+#' ```
+#'
+#' Measured on Bauer's gamma-distributed CL/V1 data (300 subjects), that chain
+#' recovers the structural parameters essentially exactly (CL 5.04 against a
+#' simulation truth of 5.03, Q 2.15 against 2.13) where a cold start of either
+#' method alone does not.  Stage two has to be a gradient method: `saem` as the
+#' second stage moved the residual error further from the truth than stage one
+#' had it.
+#'
+#' @param ui rxode2 model with at least one `dist()` declaration
+#' @param variance variance to fix each helper random effect at.
+#'
+#'   **`variance = 0` is the preferred spelling**, and it is NONMEM's own:
+#'   Bauer's control streams mu-reference every distribution parameter and put
+#'   each helper on `$OMEGA (0.0 FIXED)`.  It declares what is true -- the
+#'   helper carries no between-subject variability -- and hands the question of
+#'   what to do about that to the estimation method, where
+#'   `nlmixr2est::saemControl(zeroOmegaTune=, zeroOmegaAnneal=,
+#'   zeroOmegaDirect=)` can act on it.
+#'
+#'   A NONZERO value writes a sampling width into the model itself and bypasses
+#'   that machinery entirely.  It is what this function did before saem had a
+#'   direct-maximization M-step for these thetas, and it is kept because it
+#'   still works: the helper has to MOVE, or the conditional mean saem shifts
+#'   its theta by is identically zero and the theta never budges.
+#'
+#'   Wider is not generally better.  Measured on Bauer's gamma model (300
+#'   subjects, cold start) widening degraded every parameter monotonically:
+#'   at 0.1 / 1 / 4 the residual SD came out 0.150 / 0.162 / 0.170 against a
+#'   truth of 0.141, and Q came out 2.29 / 2.48 / 2.60 against 2.13.  0.1
+#'   recovered CL 5.60 and V1 4.77 against truths of 5.03 and 4.66.  That a
+#'   constant cannot be right twice -- wide enough early to explore, tight
+#'   enough late to settle -- is what `zeroOmegaAnneal=` addresses.
+#' @return an rxode2 model, already expanded, whose declared-distribution
+#'   parameters are mu-referenced
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
+#' mod <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                           rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#' rxEtaDistMuRef(mod)
+#' }
+#' }
+rxEtaDistMuRef <- function(ui, variance = 0.1) {
+  .ui <- rxUiDecompress(assertRxUi(ui))
+  if (nrow(rxUiEtaDists(.ui)) == 0L) {
+    stop("'rxEtaDistMuRef()' needs a model with at least one 'dist()' declaration in 'ini({})'", call. = FALSE)
+  }
+  checkmate::assertNumeric(variance, lower = 0, len = 1, any.missing = FALSE, .var.name = "variance")
+  ## `variance = 0` is NONMEM's own spelling of this idiom -- Bauer's control
+  ## streams mu-reference every distribution parameter and give each helper
+  ## `$OMEGA (0.0 FIXED)` -- and nlmixr2 now recognizes it: a mu-referenced
+  ## random effect declared fix(0) is routed to
+  ## `nlmixr2est:::.preProcessZeroOmegaMuRef()`, which substitutes
+  ## `saemControl(zeroOmegaTune=)` as a sampling width and, with
+  ## `saemControl(zeroOmegaDirect=TRUE)`, updates the theta by directly
+  ## maximizing the observation likelihood instead of by the omega^-1-weighted
+  ## regression that cannot move it.  A nonzero `variance` writes the width
+  ## into the model itself instead, bypassing that machinery.
+  .declared <- .ui$iniDf$name[!is.na(.ui$iniDf$etaDist)]
+  .exp <- rxEtaDistExpand(.ui)
+  .ini <- .exp$iniDf
+  ## Thetas the expansion put inside an inverse-CDF/copula line -- that is,
+  ## exactly the ones that came out non-mu-referenced.  Read off the generated
+  ## lines rather than re-deriving them, so this cannot drift from what
+  ## rxEtaDistExpand() actually wrote.
+  .lst <- .exp$lstExpr
+  .lhs <- vapply(
+    .lst,
+    function(.l) {
+      if (is.call(.l) && length(.l) > 2L && identical(.l[[1]], quote(`<-`)) && is.name(.l[[2]])) {
+        as.character(.l[[2]])
+      } else {
+        ""
+      }
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  ## Every line rxEtaDistExpand() generates: the copula intermediates
+  ## (rxT./rxL./rxS./rxN.), the uniform (rxu./rxU.), and the assignment to the
+  ## declared eta itself.  The copula correlation theta only ever appears on an
+  ## rxT. line, so missing that prefix silently leaves it non-mu-referenced --
+  ## which is exactly the parameter NONMEM mu-references as MU_9.
+  ## `rxEdA.` is the role anchor: the expansion hoists each family argument
+  ## onto its own line, so a declaration parameter now appears THERE rather
+  ## than inside the inverse-CDF call.  Missing this prefix leaves exactly
+  ## those thetas non-mu-referenced, which is the same silent failure the
+  ## comment above describes for rxT.
+  .isDistLine <- .lhs %in% .declared | grepl("^rx[NTLSUuc]\\.", .lhs) | grepl("^rxEdA[.]", .lhs)
+  .vars <- unique(unlist(lapply(.lst[.isDistLine], all.vars), use.names = FALSE))
+  .thetas <- .ini$name[!is.na(.ini$ntheta) & is.na(.ini$err) & !.ini$fix]
+  .target <- intersect(.vars, .thetas)
+  ## The copula correlation thetas are created BY the expansion and only ever
+  ## appear in a generated line, so they are picked up above; keep them in a
+  ## stable order alongside the declaration parameters.
+  if (length(.target) == 0L) {
+    return(.exp)
+  }
+  .helper <- paste0("eta.mu.", .target)
+  .map <- stats::setNames(
+    lapply(seq_along(.target), function(.i) str2lang(paste0("(", .target[.i], " + ", .helper[.i], ")"))),
+    .target
+  )
+  .newLst <- lapply(.lst, .rxEtaDistSubVar, map = .map)
+  ## Rebuild rather than pipe: the helper etas do not exist in ini() until the
+  ## model block mentions them, and the model block cannot mention them until
+  ## they exist, so the two have to be written at the same time.
+  .iniTxt <- deparse(.exp$iniFun)
+  .iniTxt <- .iniTxt[-length(.iniTxt)] # drop the closing "})"
+  .iniTxt <- c(.iniTxt, paste0("  ", .helper, " ~ fix(", variance, ")"), "})")
+  .modTxt <- vapply(.newLst, function(.l) paste0("  ", deparse1(.l)), character(1), USE.NAMES = FALSE)
+  .txt <- paste0(
+    "function() {\n",
+    paste(.iniTxt, collapse = "\n"),
+    "\n",
+    "model({\n",
+    paste(.modTxt, collapse = "\n"),
+    "\n})\n}"
+  )
+  .fun <- try(eval(parse(text = .txt)), silent = TRUE)
+  if (inherits(.fun, "try-error")) {
+    message(.txt)
+    stop(
+      "could not mu-reference the declared distribution parameters; the model this tried to build is echoed above",
+      call. = FALSE
+    )
+  }
+  rxUiDecompress(rxode2(.fun))
+}
+
+#' Declare a non-Gaussian random effect distribution in the model block
+#'
+#' The `model({})` form of `ini({})`'s `dist()` line:
+#'
+#'     dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))
+#'
+#' Reached through [rxUdfUiLhs()], a user-function dispatch on the LEFT of a
+#' model line -- `dist(eta.cl)` is not rxode2 grammar and `~` is already
+#' overloaded, so the UI claims the whole line before rxode2 ever sees it.
+#'
+#' The point of the model-block form is that a distribution parameter can be
+#' any expression the model has already computed, including one built from
+#' covariates:
+#'
+#'     aCl <- exp(lclm + bWT*(WT - 70))
+#'     dist(eta.cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))
+#'
+#' The `ini({})` form cannot express that -- it is parsed before the model
+#' block exists, so its arguments can only name population parameters.  This
+#' one emits the inverse-CDF line IN PLACE, at the declaration, so everything
+#' above it is in scope.
+#'
+#' What it leaves for [rxEtaDistExpand()] is the part that needs the whole
+#' picture rather than one line: the latent normals, the Gaussian copula that
+#' correlates them, and the `rxCor.*` thetas.  Those are prepended, so the
+#' `rxN.*` this line reads are defined above it.
+#'
+#' @param fun the `dist(<eta>)` call
+#' @param rhs the declared distribution, eg `dgamma(shape=a, rate=b)`
+#' @return `rxUdfUiLhs()` list: the modified `iniDf` and the inverse-CDF line
+#'   that replaces the declaration
+#' @export
+#' @author Matthew L. Fidler
+rxUdfUiLhs.dist <- function(fun, rhs) {
+  if (length(fun) != 2L) {
+    stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'", call. = FALSE)
+  }
+  .eta <- fun[[2]]
+  if (!is.name(.eta)) {
+    stop("'dist()' takes a random effect name, as in 'dist(eta.cl)'", call. = FALSE)
+  }
+  .eta <- as.character(.eta)
+  .iniDf <- rxUdfUiIniDf()
+  if (is.null(.iniDf)) {
+    stop("'dist(", .eta, ")' needs the initial estimates to be available", call. = FALSE)
+  }
+  .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  if (length(.w) == 0L) {
+    ## Not declared in ini({}) -- add it.  A declared distribution supplies its
+    ## own spread, so the only variance this random effect could have been given
+    ## is 1; making the user write `eta.cl ~ 1` alongside `dist(eta.cl)` asks
+    ## them to repeat the one value the declaration already implies.  Added
+    ## silently for the same reason: there is nothing for them to decide.
+    ##
+    ## `eta.cl + eta.v1 ~ c(1, 0.5, 1)` in ini({}) is still how a COPULA is
+    ## written, because a correlation between two random effects is a real
+    ## choice and cannot be inferred from either declaration alone.
+    .iniDf <- .rxEtaDistAddEta(.iniDf, .eta)
+    .w <- which(.iniDf$name == .eta & !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
+  } else {
+    ## Declared, so it must have been declared with a unit variance -- the
+    ## latent IS a standard normal, and any other value is a spread the
+    ## transformation has no way to honour: the family's own parameters set the
+    ## spread, and phiU() assumes N(0,1) going in.
+    .est <- .iniDf$est[.w]
+    if (!isTRUE(is.finite(.est)) || abs(.est - 1) > 1e-8) {
+      stop(
+        "'dist(",
+        .eta,
+        ")' needs '",
+        .eta,
+        "' to have a variance of 1, but ",
+        "ini({}) declares ",
+        format(.est),
+        ".  A declared distribution ",
+        "supplies its own spread through its parameters, so the underlying ",
+        "random effect is a standard normal -- write '",
+        .eta,
+        " ~ 1' ",
+        "(or leave it out entirely and it will be added)",
+        call. = FALSE
+      )
+    }
+  }
+  if (!is.call(rhs) || !is.name(rhs[[1]])) {
+    stop(
+      "'dist(",
+      .eta,
+      ")' must be given a distribution, as in ",
+      "'dist(",
+      .eta,
+      ") ~ dgamma(shape=a, rate=b)'",
+      call. = FALSE
+    )
+  }
+  .fam <- as.character(rhs[[1]])
+  .tab <- .rxEtaDistTable(paste0("dist(", .eta, ")"))
+  .fw <- which(.tab$name == .fam)
+  if (length(.fw) != 1L) {
+    stop(
+      "'dist(",
+      .eta,
+      ")' declares '",
+      .fam,
+      "', which is not a distribution the installed 'lotri' knows",
+      call. = FALSE
+    )
+  }
+  .nArg <- length(as.list(rhs)) - 1L
+  if (.nArg != .tab$nReq[.fw]) {
+    stop("'dist(", .eta, ") ~ ", .fam, "()' needs ", .tab$nReq[.fw], " argument(s), not ", .nArg, call. = FALSE)
+  }
+  ## The declaration itself, recorded exactly as ini({})'s dist() records it,
+  ## so rxUiEtaDists(), $etaDist and the babelmixr2 "native" path all read one
+  ## representation regardless of which block it was written in.
+  ##
+  ## NORMALIZED, not deparsed as written.  Every consumer of `$etaDist`
+  ## substitutes the arguments POSITIONALLY -- .rxEtaDistQuantile() below,
+  ## nlmixr2est's .etaDistMstepCore(), its C++ RPN parser, the warm start --
+  ## while ini({}) stores lotri's canonical order.  Storing the user's order
+  ## instead meant `dgamma(rate = r, shape = s)` written in model({}) fitted a
+  ## DIFFERENT DISTRIBUTION than written, silently, everywhere at once:
+  ##
+  ##   as written  cl <- gammapInv((1/exp(lclrv)), ...)/((1/(exp(lclrv)*exp(lclm))))
+  ##   swapped     cl <- gammapInv((1/(exp(lclrv)*exp(lclm))), ...)/((1/exp(lclrv)))
+  ##
+  ## Normalizing at the STORAGE point fixes every consumer from one place.
+  if (!any(names(.iniDf) == "etaDist")) {
+    .iniDf$etaDist <- NA_character_
+  }
+  .rhsTxt <- .rxEtaDistNormalizeTxt(rhs, .eta)
+  .iniDf$etaDist[.w] <- .rhsTxt
+  ## A declared distribution supplies its own spread, so the latent is a
+  ## standard normal with a FIXED unit variance -- the same rule the ini({})
+  ## form applies, and what makes the correlation a Gaussian copula.
+  .iniDf$est[.w] <- 1
+  .iniDf$fix[.w] <- TRUE
+  ## The anchors go through `before` so this spelling emits exactly what the
+  ## ini({}) spelling emits -- the two must stay byte-identical, which is the
+  ## invariant the argument-order normalization above exists to protect.
+  .anc <- .rxEtaDistAnchors(.rhsTxt, .eta, latent = paste0("rxN.", .eta))
+  list(
+    iniDf = .iniDf,
+    before = attr(.anc, "lines"),
+    replace = paste0(
+      .eta,
+      " <- ",
+      .rxEtaDistQuantile(.rhsTxt, paste0("phiU(rxN.", .eta, ")"), .eta, latent = paste0("rxN.", .eta), anchors = .anc)
+    )
+  )
+}
+
+#' Canonical text for a declared distribution call
+#'
+#' `lotri::lotriEtaDistNormalize()` matches the arguments by NAME to the
+#' family's canonical order and returns canonical positional text -- the same
+#' normalization an `ini({})` declaration receives.  Falls back to the deparsed
+#' call when the installed lotri is older than that export, but WARNS first if
+#' any argument is named, since that is exactly the case the fallback gets
+#' wrong.
+#'
+#' @param rhs the declared distribution call
+#' @param eta the random effect being declared, for the message
+#' @return canonical positional text
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistNormalizeTxt <- function(rhs, eta) {
+  if (!is.null(getFromNamespace0("lotriEtaDistNormalize", "lotri"))) {
+    .n <- try(getFromNamespace0("lotriEtaDistNormalize", "lotri")(rhs), silent = TRUE)
+    if (!inherits(.n, "try-error") && is.character(.n$text) && length(.n$text) == 1L) {
+      return(.n$text)
+    }
+  }
+  .nm <- names(as.list(rhs)[-1])
+  if (!is.null(.nm) && any(nzchar(.nm))) {
+    warning(
+      "'dist(",
+      eta,
+      ")' has named arguments but the installed 'lotri' ",
+      "cannot normalize them; they are matched POSITIONALLY, so write ",
+      "them in the family's own order to be safe",
+      call. = FALSE
+    )
+  }
+  deparse1(rhs)
+}
+
+#' `getFromNamespace()` that returns NULL instead of erroring
+#' @noRd
+getFromNamespace0 <- function(x, ns) {
+  tryCatch(utils::getFromNamespace(x, ns), error = function(e) NULL)
+}
+
+#' Is the installed lotri new enough to describe declared distributions?
+#'
+#' `dist()` needs lotri's family catalogue (`lotriEtaDists()`), which the
+#' version on CRAN does not export.  Detected by FEATURE, never by version:
+#' the lotri carrying it reports the same 1.0.5 as the one that does not, so a
+#' `DESCRIPTION` requirement cannot express this and a version test would pass
+#' while the call still failed.
+#' @noRd
+.rxEtaDistLotriOk <- function() {
+  !is.null(getFromNamespace0("lotriEtaDists", "lotri"))
+}
+
+#' lotri's declared-distribution catalogue, or a refusal that says what to do
+#'
+#' Without this, a `dist()` model died on lotri's own namespace error --
+#' "'lotriEtaDists' is not an exported object from 'namespace:lotri'" -- which
+#' names neither the feature the user asked for nor what to install.  Every
+#' other part of rxode2 works against the CRAN lotri; only `dist()` needs the
+#' newer one, so this is the one place that has to say so.
+#'
+#' @param what what the caller was doing, for the message
+#' @return the catalogue data.frame; never returns when lotri is too old
+#' @noRd
+.rxEtaDistTable <- function(what = "dist()") {
+  if (!.rxEtaDistLotriOk()) {
+    stop(
+      "'",
+      what,
+      "' needs a 'lotri' that describes declared distributions, ",
+      "and the installed one does not provide 'lotriEtaDists()'\n",
+      "  install the development 'lotri':\n",
+      "    remotes::install_github(\"nlmixr2/lotri\")",
+      call. = FALSE
+    )
+  }
+  getFromNamespace0("lotriEtaDists", "lotri")()
+}
+
+#' Add a latent random effect the model block declared a distribution for
+#'
+#' Built from a row the `iniDf` already has rather than from a template, so the
+#' columns match whatever this `iniDf` actually carries -- an `etaDist` column
+#' is present on some and not others, and a column-count mismatch is how
+#' `rbind()` fails here.
+#'
+#' @param iniDf initial estimates
+#' @param name random effect to add
+#' @return `iniDf` with the random effect appended, unit variance and fixed
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistAddEta <- function(iniDf, name) {
+  .we <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
+  .row <- if (length(.we) > 0L) iniDf[.we[1L], , drop = FALSE] else iniDf[1L, , drop = FALSE]
+  .n <- suppressWarnings(max(c(0, iniDf$neta1, iniDf$neta2), na.rm = TRUE))
+  if (!is.finite(.n)) {
+    .n <- 0
+  }
+  .row$ntheta <- NA_integer_
+  .row$neta1 <- .n + 1
+  .row$neta2 <- .n + 1
+  .row$name <- name
+  .row$lower <- -Inf
+  .row$upper <- Inf
+  .row$est <- 1
+  .row$fix <- TRUE
+  .row$label <- NA_character_
+  .row$backTransform <- NA_character_
+  ## the subject level, which is where a declared distribution is supported
+  .row$condition <- "id"
+  for (.c in c("prior", "err", "etaDist")) {
+    if (any(names(.row) == .c)) .row[[.c]] <- NA_character_
+  }
+  rownames(.row) <- NULL
+  .out <- rbind(iniDf, .row)
+  rownames(.out) <- NULL
+  .out
+}
