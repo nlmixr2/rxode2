@@ -20,3 +20,19 @@ PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERT
 # Kept commented so this file stays a parseable makefile.  See
 # inst/tools/fflags.R.
 #@FFLAGS_FILTER@
+
+# Rebuild every object when any header changes.  Without this the objects carry
+# no header dependencies at all, so editing a shared header leaves stale objects
+# linking against the previous signature -- which either fails at LOAD time with
+# an undefined symbol, or silently keeps running the OLD code, long after a
+# build that reported success.
+#
+# `all:` MUST come first.  R prepends this file to its own makefiles
+# (tools:::.shlib_internal does `makefiles <- c("Makevars", makefiles)`), so the
+# first target HERE is the default goal for the whole build -- without the line
+# below, `$(OBJECTS)` would become that goal and every build would compile
+# objects and stop, producing no shared object at all.
+all: $(SHLIB)
+
+@HEADERS@
+$(OBJECTS): $(HEADERS)
