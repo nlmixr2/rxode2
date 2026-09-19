@@ -52,6 +52,7 @@ rxTest({
   }
 
   test_that("rxEtaDistMuRef() mu-references every declared-distribution parameter", {
+    skipIfNoEtaDist()
     .u <- rxEtaDistMuRef(.muMod(), variance = 0.1)
     .want <- c("lclm", "lclrv", "lv1m", "lv1rv", "rxCor.eta.v1.eta.cl")
 
@@ -73,6 +74,7 @@ rxTest({
   })
 
   test_that("rxEtaDistMuRef() accepts a degenerate helper variance", {
+    skipIfNoEtaDist()
     # This asserted the OPPOSITE -- a refusal carrying "meaningfully above
     # zero" -- and went on asserting it after 66c813140 removed that refusal so
     # `variance = 0` could be written at all.  The refusal was in R/etaDist.R,
@@ -103,6 +105,7 @@ rxTest({
   })
 
   test_that("rxEtaDistMuRef() needs something declared to work on", {
+    skipIfNoEtaDist()
     expect_error(rxEtaDistMuRef(.noDist()), "dist\\(\\)")
   })
 })

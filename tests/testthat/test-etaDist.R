@@ -37,6 +37,7 @@ rxTest({
   }
 
   test_that("the new inverse CDFs agree with R's own", {
+    skipIfNoEtaDist()
     .p <- c(1e-12, 1e-6, 0.001, 0.1, 0.3, 0.7, 0.9, 0.999, 1 - 1e-6)
     expect_equal(ibetaInv(2.3, 4.1, .p), qbeta(.p, 2.3, 4.1))
     expect_equal(ibeta(2.3, 4.1, .p), pbeta(.p, 2.3, 4.1))
@@ -54,6 +55,7 @@ rxTest({
   })
 
   test_that("phiU() keeps the uniform strictly inside (0, 1)", {
+    skipIfNoEtaDist()
     ## phi() saturates around |q| = 8.3, which would make every inverse CDF
     ## return an infinity
     expect_true(phi(9) == 1)
@@ -66,6 +68,7 @@ rxTest({
   })
 
   test_that("the shape derivatives match a high accuracy numeric derivative", {
+    skipIfNoEtaDist()
     .nd <- function(f, x, h = 1e-5) (f(x + h) - f(x - h)) / (2 * h)
     for (.a in c(0.5, 2, 11.1)) {
       for (.z in c(0.3, 2, 10)) {
@@ -78,6 +81,7 @@ rxTest({
   })
 
   test_that("the derivative table is complete for the inverse CDFs", {
+    skipIfNoEtaDist()
     ## `unknownDerivatives="error"` is the point of this test: without a
     ## rule these silently become a one sided finite difference, which is
     ## exactly wrong in the tails where an eta transform lives
@@ -102,6 +106,7 @@ rxTest({
   })
 
   test_that("the eta transform differentiates exactly through symengine", {
+    skipIfNoEtaDist()
     .seD <- function(model, var) {
       .s <- rxS(model, doConst = FALSE)
       .dd <- as.character(symengine::D(get(sub("=.*", "", model), envir = .s), symengine::S(var)))
@@ -136,6 +141,7 @@ rxTest({
   })
 
   test_that("every declarable family's quantile template is right", {
+    skipIfNoEtaDist()
     ## The single most load-bearing test of the catalog: for EVERY family
     ## `lotriEtaDists()` offers, the template has to (1) be valid rxode2,
     ## (2) evaluate to that family's actual quantile function, and (3)
@@ -245,6 +251,7 @@ rxTest({
   })
 
   test_that("the densities differentiate, so a second derivative stays exact", {
+    skipIfNoEtaDist()
     ## d(eta)/d(latent) is 1/density(quantile), so FOCEi's Laplace inner
     ## Hessian needs the DENSITY differentiated in turn.  Without a rule
     ## rxode2 does not error -- it substitutes a one sided finite
@@ -296,6 +303,7 @@ rxTest({
   })
 
   test_that("the eta transform's SECOND derivative is exact too", {
+    skipIfNoEtaDist()
     ## `unknownDerivatives="error"` is the whole point: differentiating the
     ## first derivative again must not fall back to a finite difference
     .d1 <- function(model, var) {
@@ -335,6 +343,7 @@ rxTest({
   })
 
   test_that("the new functions are in the syntax vignette's table", {
+    skipIfNoEtaDist()
     ## `rxSyntaxFunctions` is what the "Supported functions" table of
     ## vignette("rxode2-syntax") renders, so a function missing from it is
     ## a function nobody can find
@@ -361,6 +370,7 @@ rxTest({
   })
 
   test_that("a declaration survives into the ui", {
+    skipIfNoEtaDist()
     .u <- .gammaMod()
     .d <- rxUiEtaDists(.u)
     expect_equal(.d$name, c("eta.cl", "eta.v1"))
@@ -372,6 +382,7 @@ rxTest({
   })
 
   test_that("a declared distribution implies its unit variance", {
+    skipIfNoEtaDist()
     ## the declaration fixes the marginal and the latent scale is standard
     ## normal by construction, so `eta.cl ~ 1` beside it is a repetition
     .f <- function() {
@@ -414,6 +425,7 @@ rxTest({
   })
 
   test_that("expansion reproduces the latent normal + inverse CDF model", {
+    skipIfNoEtaDist()
     .g <- rxEtaDistExpand(.gammaMod())
     .n <- .g$iniDf$name
     ## the latent random effects: renamed, unit variance, fixed
@@ -450,6 +462,7 @@ rxTest({
   })
 
   test_that("simulation recovers the declared marginals and the copula", {
+    skipIfNoEtaDist()
     skip_on_cran()
     .ev <- et(amt = 100) |> et(0:6)
     ## Bauer's four relative variances; 2.0 is the alpha = 0.5 case whose
@@ -480,6 +493,7 @@ rxTest({
   })
 
   test_that("a declared normal is exactly the model it replaces", {
+    skipIfNoEtaDist()
     skip_on_cran()
     ## the identity test: `dist(eta.v) ~ dnorm(0, sd)` has to reproduce the
     ## plain `eta.v ~ sd^2` model, which is what says the phiU/inverse-CDF
@@ -521,6 +535,7 @@ rxTest({
   })
 
   test_that("dist() pipes on and off a model", {
+    skipIfNoEtaDist()
     .u <- .gammaMod()
     .v <- .u |> ini(dist(eta.cl) ~ NULL)
     expect_equal(rxUiEtaDists(.v)$name, "eta.v1")
@@ -532,6 +547,7 @@ rxTest({
   })
 
   test_that("a declared random effect above the subject level is refused", {
+    skipIfNoEtaDist()
     .u <- function() {
       ini({
         tcl <- 1.6

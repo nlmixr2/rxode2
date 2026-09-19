@@ -55,6 +55,7 @@
 }
 
 test_that("dist() argument ORDER does not change the model", {
+  skipIfNoEtaDist()
   .canon <- "dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*exp(lclm)))"
   .swap <- "dist(cl) ~ dgamma(rate = 1/(exp(lclrv)*exp(lclm)), shape = 1/exp(lclrv))"
 
@@ -75,6 +76,7 @@ test_that("dist() argument ORDER does not change the model", {
 })
 
 test_that("positional arguments are unchanged by normalization", {
+  skipIfNoEtaDist()
   .pos <- "dist(cl) ~ dgamma(1/exp(lclrv), 1/(exp(lclrv)*exp(lclm)))"
   .named <- "dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*exp(lclm)))"
   expect_identical(.adShape(rxode2(.adModel(.pos))), .adShape(rxode2(.adModel(.named))))
@@ -88,6 +90,7 @@ test_that("positional arguments are unchanged by normalization", {
 # one named line, which every downstream consumer already handles, instead of a
 # substitution buried inside a quantile call.
 test_that("the expansion emits a role anchor per family argument", {
+  skipIfNoEtaDist()
   .m <- function() {
     ini({
       lclm <- 1.63; lclrv <- -2.4; prop.sd <- 0.1
@@ -117,6 +120,7 @@ test_that("the expansion emits a role anchor per family argument", {
 })
 
 test_that("both dist() spellings emit the same anchors", {
+  skipIfNoEtaDist()
   # the invariant this file exists for: the ini({}) and model({}) spellings must
   # produce the same model, and anchors must not open a gap between them
   .ini <- function() {

@@ -23,6 +23,7 @@ rxTest({
   }
 
   test_that(".rxEtaDistD matches central differences", {
+    skipIfNoEtaDist()
     skip_if_not_installed("symengine")
     .p <- list(lclrv = -2.4, lclm = 1.63, bWT = 0.35, WT = 55)
     .cases <- list(
@@ -43,6 +44,7 @@ rxTest({
   })
 
   test_that("a theta the expression does not mention gives an exact zero", {
+    skipIfNoEtaDist()
     skip_if_not_installed("symengine")
     ## not merely small -- symengine returns the literal 0, which is what lets
     ## the emission drop the line instead of computing a constant per record
@@ -50,6 +52,7 @@ rxTest({
   })
 
   test_that("derivative anchors are named and emitted per theta", {
+    skipIfNoEtaDist()
     skip_if_not_installed("symengine")
     .anc <- .rxEtaDistAnchors(
       "dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))",
@@ -69,6 +72,7 @@ rxTest({
   })
 
   test_that("the emitted lines parse and evaluate to the right numbers", {
+    skipIfNoEtaDist()
     skip_if_not_installed("symengine")
     .anc <- .rxEtaDistAnchors(
       "dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm + bWT*log(WT/70))))",

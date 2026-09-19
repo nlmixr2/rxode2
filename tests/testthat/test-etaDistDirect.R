@@ -9,6 +9,7 @@
 ## absence checks: no latent, no phiU(), no decoder.
 
 test_that("the cdf route is unchanged and is still the default", {
+  skipIfNoEtaDist()
   .m <- .edDirectModel()
   .a <- vapply(rxUiDecompress(rxEtaDistExpand(.m))$lstExpr, deparse1, "")
   .b <- vapply(rxUiDecompress(rxEtaDistExpand(.m, param = "cdf"))$lstExpr, deparse1, "")
@@ -23,6 +24,7 @@ test_that("the cdf route is unchanged and is still the default", {
 })
 
 test_that("the direct route emits no latent, no phiU and no decoder", {
+  skipIfNoEtaDist()
   .u <- rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))
   .l <- vapply(.u$lstExpr, deparse1, "")
   expect_false(any(grepl("rxN[.]", .l)))
@@ -34,6 +36,7 @@ test_that("the direct route emits no latent, no phiU and no decoder", {
 })
 
 test_that("the direct route keeps the declared eta, with a FIXED placeholder", {
+  skipIfNoEtaDist()
   .i <- rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))$iniDf
   .e <- .i[!is.na(.i$neta1), ]
   ## RENAMED `rxd.eta.cl`, and bound back to its own name on a model line.
@@ -55,6 +58,7 @@ test_that("the direct route keeps the declared eta, with a FIXED placeholder", {
 })
 
 test_that("the direct route still computes the family's arguments", {
+  skipIfNoEtaDist()
   ## Dropping the decoder leaves the family's thetas unused, which rxode2
   ## refuses outright -- and the estimator needs the current arguments anyway.
   ## The role anchors are that interface: computed per record, so a covariate on
@@ -65,6 +69,7 @@ test_that("the direct route still computes the family's arguments", {
 })
 
 test_that("the route is recorded so an estimator can tell which it was given", {
+  skipIfNoEtaDist()
   expect_identical(
     rxUiDecompress(rxEtaDistExpand(.edDirectModel(), param = "direct"))$etaDistInfo$param,
     "direct"
@@ -76,6 +81,7 @@ test_that("the route is recorded so an estimator can tell which it was given", {
 })
 
 test_that("a correlated declared PAIR is carried, not refused", {
+  skipIfNoEtaDist()
   ## This used to be a refusal, and with only a quantile function and a density
   ## that was right: a Gaussian copula over non-normal marginals IS
   ## eta = Q(phi(z)), so there was nothing the direct route could do with a
@@ -92,6 +98,7 @@ test_that("a correlated declared PAIR is carried, not refused", {
 })
 
 test_that("the correlation stays in the omega, as the copula's rho", {
+  skipIfNoEtaDist()
   ## The encoding matters.  With both diagonals FIXED at 1 the omega IS a
   ## correlation matrix, so its off-diagonal is exactly the copula's rho -- and
   ## unlike the placeholder diagonals it is a real parameter, so it is left
@@ -135,6 +142,7 @@ test_that("the correlation stays in the omega, as the copula's rho", {
 })
 
 test_that("a declared block of MORE THAN TWO is carried; declared+ordinary is refused", {
+  skipIfNoEtaDist()
   .m <- (function() {
     ini({
       l1 <- 1.6; l2 <- 1.5; l3 <- 1.4; r1 <- -2.4; r2 <- -2.4; r3 <- -2.4
@@ -190,10 +198,12 @@ test_that("a declared block of MORE THAN TWO is carried; declared+ordinary is re
 })
 
 test_that("an unknown route is refused rather than silently taken as cdf", {
+  skipIfNoEtaDist()
   expect_error(rxEtaDistExpand(.edDirectModel(), param = "quantile"))
 })
 
 test_that("a declared eta the model already ASSIGNS is refused by name", {
+  skipIfNoEtaDist()
   ## Two ways a declared eta arrives already assigned, and neither can take the
   ## direct route, which needs the eta to BE the random effect rather than a
   ## quantity the model computes.
