@@ -34,6 +34,5 @@ PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERT
 # objects and stop, producing no shared object at all.
 all: $(SHLIB)
 
-HEADERS = $(wildcard *.h) $(wildcard *.hpp) \
-          $(wildcard ../inst/include/*.h) $(wildcard ../inst/include/*.hpp)
+@HEADERS@
 $(OBJECTS): $(HEADERS)

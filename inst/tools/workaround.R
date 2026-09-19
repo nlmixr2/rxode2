@@ -71,6 +71,35 @@ if (inherits(versionInfo, "try-error")) {
 .in <- gsub("@BH@", file.path(find.package("BH"), "include"), .in)
 .in <- gsub("@RCPP@", file.path(find.package("Rcpp"), "include"), .in)
 
+## The header list for the `$(OBJECTS): $(HEADERS)` rule at the end of
+## Makevars.in.  Expanded HERE rather than written as `$(wildcard *.h)` because
+## `$(wildcard)` is a GNU make extension and `R CMD check` fails the package for
+## it ("Portable Makefiles do not use GNU extensions"), and rather than listed
+## by hand because there are ~200 of them and a hand list would rot.  Generating
+## it at configure time keeps the makefile portable AND always current.
+.hdrs <- c(
+  sort(list.files("src", pattern = "[.](h|hpp)$")),
+  file.path("../inst/include", sort(list.files("inst/include", pattern = "[.](h|hpp)$")))
+)
+## Built as whole LINES and spliced into `.in`, not substituted with gsub():
+## gsub() interprets backslashes in its replacement, so the trailing "\\" that
+## continues a makefile line does not survive it (measured -- the generated
+## Makevars lost every continuation and make stopped with "missing separator").
+.hdrLines <- character(0)
+.cur <- "HEADERS ="
+for (.h in .hdrs) {
+  if (nchar(.cur) + nchar(.h) + 1L > 74L) {
+    .hdrLines <- c(.hdrLines, paste0(.cur, " \\"))
+    .cur <- "         "
+  }
+  .cur <- paste(.cur, .h)
+}
+.hdrLines <- c(.hdrLines, .cur)
+.w <- grep("@HEADERS@", .in, fixed = TRUE)
+if (length(.w) == 1L) {
+  .in <- append(.in[-.w], .hdrLines, after = .w - 1L)
+}
+
 
 ## SUNDIALS public headers are vendored in-tree (src/sundials_inc) so the
 ## vendored SUNDIALS .c sources always compile against the matching headers
