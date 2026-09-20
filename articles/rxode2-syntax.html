@@ -459,8 +459,136 @@ function.</p>
 <p>A brief description of the built-in functions are in the following
 table:</p>
 <div class="datatables html-widget html-fill-item" id="htmlwidget-ac96cb3ee4656e2e9ec3" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["gamma(x)","lgamma(x)","digamma(x)","trigamma(x)","tetragamma(x)","pentagamma(x)","psigamma(x, deriv)","cospi(x)","sinpi(x)","tanpi(x)","beta(a, b)","lbeta(a, b)","bessel_i(x, nu, expo)","bessel_j(x, nu)","bessel_k(x, ku, expo)","bessel_y(x, nu)","R_pow(x, y)","R_pow_di(x, I)","log1pmx","log1pexp","expm1(x)","lgamma1p(x)","sign(x)","fsign(x, y)","fprec(x, digits)","fround(x, digits)","ftrunc(x)","abs(x)","sin(x)","cos(x)","tan(x)","factorial(x)","lfactorial(x)","log10(x)","log2(x)","pnorm(x)","qnorm(x)","probit(x, low=0, hi=1)","probitInv(q, low=0, hi=1)","acos(x)","asin(x)","atan(x)","atan2(a, b)","sinh(x)","cosh(x)","tanh(x)","floor(x)","ceil(x)","logit(x, low=0, hi=1)","expit(x, low=0, hi=1)","gammaq(a, z)","gammaqInv(a, q)","ifelse(cond, trueValue, falseValue)","gammap(a, z)","gammapInv(a, p)","gammapInva(x, p)","rxnorm(x)","rxnormV(x)","rxcauchy","rxchisq","rxexp","rxf","rxgamma","rxbeta","rxgeom","rxpois","rxt","tad() or tad(x)","tad0() or tad0(x)","tafd() or tafd(x)","tafd0() or tafd0(x)","dosenum()","tlast() or tlast(cmt)","tlast0() or tlast0(cmt)","tfirst() or tfirst(cmt)","tfirst0() or tfirst0(cmt)","prod(...)","sum(...)","max(...)","min(...)","lag(parameter, number=1)","lead(parameter, number=2)","diff(par, number=1)","lag0(parameter, number=1)","lead0(parameter, number=1)","diff0(par, number=1)","first(par)","last(par)","transit()","delay(state, T)","is.na()","is.nan()","is.infinite()","rinorm(x)","rinormV(x)","ricauchy","richisq","riexp","rif","rigamma","ribeta","rigeom","ropois","rit","simeps","simeta"],["The Gamma function","Natural logarithm of absolute value of gamma function","First derivative of lgamma","Second derivative of lgamma","Third derivative of lgamma","Fourth derivative of lgamma","n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. ","cos(pi*x)","sin(pi*x)","tan(pi*x)","Beta function","log Beta function","Bessel function type I with index nu","Bessel function type J with index nu","Bessel function type K with index nu","Bessel function type Y with index nu","x^y","x^y","log(1+x) - x ","log(1+exp(x))","exp(x)-1","log(gamma(x+1))","Compute the signum function where sign(x) is 1, 0 -1","abs(x) carrying the sign of y, where y equal to 0 counts as positive","x rounded to digits (after the decimal point, used by signif()","Round, used by R's round()","Truncated towards zero","absolute value of x","sine of x","cos of x","tan of x","factorial of x","log(factorial(x))","log base 10","log base 2","Normal CDF of x","Normal pdf of x","Probit (normal pdf) of x transforming into a range","Inverse probit of x transforming into a range","Inverse cosine","Inverse sine","Inverse tangent","Four quadrant inverse tangent","Hyperbolic sine","Hyperbolic cosine","Hyperbolic tangent","Downward rounding","Upward rounding","Logit transformation of x transforming into a range","expit transofmration in range","Normalized incomplete gamma from boost","Normalized incomplete gamma inverse from boost","if else function","Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Generate one deviate of from a normal distribution for each observation scale","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the cauchy distribution for each observation","Generate one deviate from the chisq distribution for each observation","Generate one deviate from the exponential distribution for each observation","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the gamma distribution for each observation","Generate one deviate from the beta distribution for each observation","Generate one deviate from the geometric distribution for each observation","Generate one deviate from the poission distribution for each observation","Generate one deviate from the t distribution for each observation","Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA","Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA","Dose Number","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment; no dose=NA","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment; no dose=0","Time since first dose or time since first dose of a compartment; no dose=NA","Time since first dose or time since first dose of a compartment; no dose=0","product of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","sum of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","maximum of a group of numbers","Min of a group of numbers","Get the lag of an input parameter; You can specify a number of lagged observations","Get the lead of an input parameter; You can specify a number of lead observation","Get the difference between the current parameter and the last parameter; Can change the parameter number","Like lag() but returns 0 instead of NA when there is no prior value (the first record)","Like lead() but returns 0 instead of NA when there is no following value (the last record)","Like diff() but returns the value itself (previous value treated as 0) when there is no prior value","Get the first value of an input parameter","Get the last value of an input parameter","The transit compartment pseudo function","Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver","Determine if a value is NA","Determine if a value is NaN","Check to see if the value is infinite","Generate one deviate of from a normal distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the cauchy distribution for each individual","Generate one deviate from the chisq distribution for each individual","Generate one deviate from the exponential distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the gamma distribution for each individual","Generate one deviate from the beta distribution for each individual","Generate one deviate from the geometric distribution for each individual","Generate one deviate from the poission distribution for each individual","Generate one deviate from the t distribution for each individual","Simulate EPS from possibly truncated sigma matrix.  Will take sigma matrix from the current study. Simulated at the very last moment.","Simulate ETA from possibly truncated omega matrix.  Will take the omega matrix from the current study. Simulated at the initialization of the ODE system or the intialization of lhs"],["gammafn","digamma","","","","","","","","","",""," expo==1 is unscaled expo==2 is scaled by exp(-x)",""," expo==1 is unscaled expo==2 is scaled by exp(x)","",""," y is an integer","","","","","","","","","","fabs","","","","","","","","normcdf, phi","norminv","","","","","","","","","","","","","invLogit, logitInv","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Function<\/th>\n      <th>Description<\/th>\n      <th>Aliases<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"name":"Function","targets":0},{"name":"Description","targets":1},{"name":"Aliases","targets":2}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>Note that <code>lag(cmt) =</code> is equivalent to
+<script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["gamma(x)","lgamma(x)","digamma(x)","trigamma(x)","tetragamma(x)","pentagamma(x)","psigamma(x, deriv)","cospi(x)","sinpi(x)","tanpi(x)","beta(a, b)","lbeta(a, b)","bessel_i(x, nu, expo)","bessel_j(x, nu)","bessel_k(x, ku, expo)","bessel_y(x, nu)","R_pow(x, y)","R_pow_di(x, I)","log1pmx","log1pexp","expm1(x)","lgamma1p(x)","sign(x)","fsign(x, y)","fprec(x, digits)","fround(x, digits)","ftrunc(x)","abs(x)","sin(x)","cos(x)","tan(x)","factorial(x)","lfactorial(x)","log10(x)","log2(x)","pnorm(x)","qnorm(x)","probit(x, low=0, hi=1)","probitInv(q, low=0, hi=1)","acos(x)","asin(x)","atan(x)","atan2(a, b)","sinh(x)","cosh(x)","tanh(x)","floor(x)","ceil(x)","logit(x, low=0, hi=1)","expit(x, low=0, hi=1)","gammaq(a, z)","gammaqInv(a, q)","ifelse(cond, trueValue, falseValue)","gammap(a, z)","gammapInv(a, p)","gammapInva(x, p)","gammapDer(a, z)","gammapDera(a, z)","phiU(q)","ibeta(a, b, x)","ibetaDer(a, b, x)","ibetaInv(a, b, p)","ibetaDera(a, b, x)","ibetaDerb(a, b, x)","studentTDen(x, nu)","studentTCdf(x, nu)","studentTCdfDnu(x, nu)","studentTInv(p, nu)","rxnorm(x)","rxnormV(x)","rxcauchy","rxchisq","rxexp","rxf","rxgamma","rxbeta","rxgeom","rxpois","rxt","tad() or tad(x)","tad0() or tad0(x)","tafd() or tafd(x)","tafd0() or tafd0(x)","dosenum()","tlast() or tlast(cmt)","tlast0() or tlast0(cmt)","tfirst() or tfirst(cmt)","tfirst0() or tfirst0(cmt)","prod(...)","sum(...)","max(...)","min(...)","lag(parameter, number=1)","lead(parameter, number=2)","diff(par, number=1)","lag0(parameter, number=1)","lead0(parameter, number=1)","diff0(par, number=1)","first(par)","last(par)","transit()","delay(state, T)","is.na()","is.nan()","is.infinite()","rinorm(x)","rinormV(x)","ricauchy","richisq","riexp","rif","rigamma","ribeta","rigeom","ropois","rit","simeps","simeta"],["The Gamma function","Natural logarithm of absolute value of gamma function","First derivative of lgamma","Second derivative of lgamma","Third derivative of lgamma","Fourth derivative of lgamma","n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. ","cos(pi*x)","sin(pi*x)","tan(pi*x)","Beta function","log Beta function","Bessel function type I with index nu","Bessel function type J with index nu","Bessel function type K with index nu","Bessel function type Y with index nu","x^y","x^y","log(1+x) - x ","log(1+exp(x))","exp(x)-1","log(gamma(x+1))","Compute the signum function where sign(x) is 1, 0 -1","abs(x) carrying the sign of y, where y equal to 0 counts as positive","x rounded to digits (after the decimal point, used by signif()","Round, used by R's round()","Truncated towards zero","absolute value of x","sine of x","cos of x","tan of x","factorial of x","log(factorial(x))","log base 10","log base 2","Normal CDF of x","Normal pdf of x","Probit (normal pdf) of x transforming into a range","Inverse probit of x transforming into a range","Inverse cosine","Inverse sine","Inverse tangent","Four quadrant inverse tangent","Hyperbolic sine","Hyperbolic cosine","Hyperbolic tangent","Downward rounding","Upward rounding","Logit transformation of x transforming into a range","expit transofmration in range","Normalized incomplete gamma from boost","Normalized incomplete gamma inverse from boost","if else function","Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Derivative of gammap(a, z) with respect to z; the gamma density with rate one","Derivative of gammap(a, z) with respect to the shape a.  No elementary closed form; a central difference with one Richardson extrapolation","Normal CDF of q bounded away from 0 and 1 by 1e-15, so an inverse CDF of it cannot return an infinity.  phi() saturates to exactly 0 or 1 around |q| = 8.3","Regularized incomplete beta function I_x(a, b), ie pbeta(x, a, b)","Derivative of ibeta with respect to x, ie dbeta(x, a, b)","Inverse of ibeta, ie qbeta(p, a, b)","Derivative of ibeta with respect to the shape a.  No elementary closed form; a central difference with one Richardson extrapolation","Derivative of ibeta with respect to the shape b.  No elementary closed form; a central difference with one Richardson extrapolation","Student t density with nu degrees of freedom, ie dt(x, nu)","Student t CDF, ie pt(x, nu)","Derivative of studentTCdf with respect to nu.  No elementary closed form; a central difference with one Richardson extrapolation","Student t quantile, ie qt(p, nu); exactly the inverse of studentTCdf","Generate one deviate of from a normal distribution for each observation scale","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the cauchy distribution for each observation","Generate one deviate from the chisq distribution for each observation","Generate one deviate from the exponential distribution for each observation","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the gamma distribution for each observation","Generate one deviate from the beta distribution for each observation","Generate one deviate from the geometric distribution for each observation","Generate one deviate from the poission distribution for each observation","Generate one deviate from the t distribution for each observation","Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA","Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA","Dose Number","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment; no dose=NA","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment; no dose=0","Time since first dose or time since first dose of a compartment; no dose=NA","Time since first dose or time since first dose of a compartment; no dose=0","product of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","sum of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","maximum of a group of numbers","Min of a group of numbers","Get the lag of an input parameter; You can specify a number of lagged observations","Get the lead of an input parameter; You can specify a number of lead observation","Get the difference between the current parameter and the last parameter; Can change the parameter number","Like lag() but returns 0 instead of NA when there is no prior value (the first record)","Like lead() but returns 0 instead of NA when there is no following value (the last record)","Like diff() but returns the value itself (previous value treated as 0) when there is no prior value","Get the first value of an input parameter","Get the last value of an input parameter","The transit compartment pseudo function","Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver","Determine if a value is NA","Determine if a value is NaN","Check to see if the value is infinite","Generate one deviate of from a normal distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the cauchy distribution for each individual","Generate one deviate from the chisq distribution for each individual","Generate one deviate from the exponential distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the gamma distribution for each individual","Generate one deviate from the beta distribution for each individual","Generate one deviate from the geometric distribution for each individual","Generate one deviate from the poission distribution for each individual","Generate one deviate from the t distribution for each individual","Simulate EPS from possibly truncated sigma matrix.  Will take sigma matrix from the current study. Simulated at the very last moment.","Simulate ETA from possibly truncated omega matrix.  Will take the omega matrix from the current study. Simulated at the initialization of the ODE system or the intialization of lhs"],["gammafn","digamma","","","","","","","","","",""," expo==1 is unscaled expo==2 is scaled by exp(-x)",""," expo==1 is unscaled expo==2 is scaled by exp(x)","",""," y is an integer","","","","","","","","","","fabs","","","","","","","","normcdf, phi","norminv","","","","","","","","","","","","","invLogit, logitInv","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Function<\/th>\n      <th>Description<\/th>\n      <th>Aliases<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"name":"Function","targets":0},{"name":"Description","targets":1},{"name":"Aliases","targets":2}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>Note that <code>lag(cmt) =</code> is equivalent to
 <code>alag(cmt) =</code> and not the same as <code>= lag(wt)</code></p>
+<div class="section level4">
+<h4 id="inverse-cdfs">Inverse CDFs<a class="anchor" aria-label="anchor" href="#inverse-cdfs"></a>
+</h4>
+<p>A group of these deserves a word, because they exist for one purpose:
+giving a random effect a distribution other than normal. The technique
+(Bauer, NONMEM 7.5.1) keeps the latent random effect standard normal and
+changes the CDF,</p>
+<pre><code>z   ~ N(0, 1)
+u   = phiU(z)
+eta = Q(u; args)</code></pre>
+<p>where <code>Q</code> is the inverse CDF of the family you want.
+<code><a href="../reference/phiU.html">phiU()</a></code> is the normal CDF bounded away from 0 and 1, since
+<code><a href="../reference/phi.html">phi()</a></code> saturates to exactly 0 or 1 around
+<code>|q| = 8.3</code> and an inverse CDF of that would return an
+infinity.</p>
+<p>Most families need nothing beyond ordinary arithmetic for
+<code>Q</code> – a Weibull random effect is
+<code>scale*(-log1p(-phiU(z)))^(1/shape)</code>, a lognormal one is just
+<code>exp(meanlog + sdlog*z)</code>. The three that are not elementary
+are served by <code><a href="../reference/gammapInv.html">gammapInv()</a></code> (gamma, chi-square, inverse
+gamma), <code><a href="../reference/phiU.html">ibetaInv()</a></code> (beta) and <code><a href="../reference/phiU.html">studentTInv()</a></code>
+(Student t).</p>
+<p>Every one of these is differentiable through rxode2’s symbolic
+machinery, which is what lets such a random effect be <em>estimated</em>
+and not merely simulated. The derivative with respect to the probability
+argument – the one an inner (eta) problem needs – is exact and
+elementary, one over the density at the quantile. The derivatives with
+respect to the shape parameters have no elementary closed form, so
+<code><a href="../reference/phiU.html">gammapDera()</a></code>, <code><a href="../reference/phiU.html">ibetaDera()</a></code>,
+<code><a href="../reference/phiU.html">ibetaDerb()</a></code> and <code><a href="../reference/phiU.html">studentTCdfDnu()</a></code> supply them
+as central differences with one Richardson extrapolation. They exist so
+the derivative table is <em>complete</em>: a missing rule does not
+error, it silently substitutes a one sided finite difference, which is
+precisely wrong in the tails where an inverse CDF is steepest.</p>
+<p>You rarely write any of this by hand. Declaring the distribution in
+an <code>ini({})</code> block writes it for you:</p>
+<pre><code><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">lclm</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></span>
+<span>  <span class="va">lclrv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.09</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">eta.cl</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">dgamma</a></span><span class="op">(</span>shape<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclrv</span><span class="op">)</span>, rate<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclrv</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclm</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre>
+<p>The declaration fixes the random effect’s marginal, and the latent
+scale it is built on is standard normal, so no variance is written for
+it – a <code><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist()</a></code> implies <code>~ 1</code>. A block is written
+out only when there is a correlation between two declared random
+effects, since that has nowhere else to go:</p>
+<pre><code><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">lclm</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>;  <span class="va">lclrv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.09</span><span class="op">)</span></span>
+<span>  <span class="va">lvm</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span>; <span class="va">lvrv</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.09</span><span class="op">)</span></span>
+<span>  <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,</span>
+<span>                     <span class="fl">0.5</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">eta.cl</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">dgamma</a></span><span class="op">(</span>shape<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclrv</span><span class="op">)</span>, rate<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclrv</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lclm</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">eta.v</span><span class="op">)</span>  <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">dgamma</a></span><span class="op">(</span>shape<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lvrv</span><span class="op">)</span>,  rate<span class="op">=</span><span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lvrv</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lvm</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre>
+</div>
+<div class="section level4">
+<h4 id="that-correlation-is-on-the-latent-scale">That correlation is on the LATENT scale<a class="anchor" aria-label="anchor" href="#that-correlation-is-on-the-latent-scale"></a>
+</h4>
+<p>The <code>0.5</code> above is <strong>not</strong> the correlation
+you will measure between <code>eta.cl</code> and <code>eta.v</code>. Two
+declared random effects are joined by a Gaussian copula: each is built
+as <code>Q(Phi(z))</code> from its own quantile function, and the number
+you write is the correlation of the <em>latent</em> normals
+<code>z</code>, not of the random effects themselves.</p>
+<p>Those two agree only when both marginals are normal. For anything
+else the correlation you observe is smaller in magnitude, by an amount
+that depends on the two families <strong>and on their
+parameters</strong> – a heavier tail loses more of it. Simulating
+200,000 pairs from a latent correlation of <code>0.50</code>:</p>
+<table class="table">
+<thead><tr class="header">
+<th>marginals</th>
+<th align="right">observed</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>dnorm</code> with <code>dnorm</code>
+</td>
+<td align="right">0.500</td>
+</tr>
+<tr class="even">
+<td>
+<code>dgamma(shape 2)</code> with <code>dgamma(shape 2)</code>
+</td>
+<td align="right">0.474</td>
+</tr>
+<tr class="odd">
+<td>
+<code>dgamma(shape 2)</code> with
+<code>dlnorm(sdlog 0.7)</code>
+</td>
+<td align="right">0.454</td>
+</tr>
+<tr class="even">
+<td>
+<code>dlnorm(sdlog 0.7)</code> with
+<code>dlnorm(sdlog 0.7)</code>
+</td>
+<td align="right">0.441</td>
+</tr>
+<tr class="odd">
+<td>
+<code>dgamma(shape 2)</code> with
+<code>dgamma(shape 0.5)</code>
+</td>
+<td align="right">0.437</td>
+</tr>
+</tbody>
+</table>
+<p>Read those as illustrations, not as constants for the families:
+change a shape or an <code>sdlog</code> and the number moves. The one
+row that holds generally is the first – normal with normal is the only
+case where the latent correlation and the observed one coincide.</p>
+<p>So writing <code>0.5</code> and then measuring <code>0.44</code> on
+the fitted random effects is the construction working, not a bug. A fit
+reports the same latent quantity it was given – in
+<code>$etaDistCor</code>, and as a <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> row in
+<code>$parFixed</code> – so the value you read back is comparable with
+the value you wrote.</p>
+<p>If you need a target correlation <em>between the random effects</em>,
+simulate from the declaration and adjust: there is no closed form for
+the mapping except in the all-normal case, because it depends on both
+quantile functions.</p>
+<p>See <code>lotri::lotriEtaDists()</code> for the families that can be
+declared this way, and <code><a href="../reference/rxEtaDistExpand.html">rxEtaDistExpand()</a></code> for the model such
+a declaration becomes.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="reserved-keywords">Reserved keywords<a class="anchor" aria-label="anchor" href="#reserved-keywords"></a>
@@ -481,14 +609,14 @@ output, it also is used to specify a residual output or endpoint when
 the input is an <code>rxode2</code> model function (that includes the
 residual in the <code>model({})</code> block).</p>
 <p>These specifications are of the form:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span></code></pre></div>
 <p>Indicating the variable <code>var</code> is the variable that
 represents the individual central tendencies of the model and it also
 represents the compartment specification in the data-set.</p>
 <p>You can also change the compartment name using the <code>|</code>
 syntax, that is:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">|</span> <span class="va">cmt</span></span></code></pre></div>
 <p>In the above case <code>var</code> represents the central tendency
 and <code>cmt</code> represents the compartment or <code>dvid</code>
@@ -558,7 +686,7 @@ can describe the data possibly even better than
 <p>Adding <code>ar(cor)</code> to a normal residual makes successive
 residuals of the same endpoint follow a continuous-time AR(1)
 process:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cp</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/ar.html" class="external-link">ar</a></span><span class="op">(</span><span class="va">ar1.cor</span><span class="op">)</span></span></code></pre></div>
 <p>Here <code>ar1.cor</code> is the lag-one correlation and must be in
 <code>[0, 1)</code>. The correlation between two residuals separated by
@@ -583,19 +711,19 @@ continuous-time AR(1) residual model.</p>
 </h4>
 <p>For residuals that are not related to normal, t-distribution or
 cauchy, often the residual specification is of the form:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmt</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Beta.html" class="external-link">dbeta</a></span><span class="op">(</span><span class="va">alpha</span>, <span class="va">beta</span><span class="op">)</span></span></code></pre></div>
 <p>Where the compartment specification is on the left handed side of the
 specification.</p>
 <p>For generalized likelihood you can specify:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="ordinal-likelihoods">Ordinal likelihoods<a class="anchor" aria-label="anchor" href="#ordinal-likelihoods"></a>
 </h4>
 <p>Finally, ordinal likelihoods/simulations can be specified in 2 ways.
 The first is:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p0</span>, <span class="va">p1</span>, <span class="va">p2</span><span class="op">)</span></span></code></pre></div>
 <p>Here <code>err</code> represents the compartment and <code>p0</code>
 is the probability of being in a specific category:</p>
@@ -629,7 +757,7 @@ arbitrary number of categories in the ordinal model described above.</p>
 <p>It seems a little off that <code>p0</code> is the probability for
 category <code>1</code> and sometimes scores are in non-whole numbers.
 This can be modeled as follows:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>p0<span class="op">=</span><span class="fl">0</span>, p1<span class="op">=</span><span class="fl">1</span>, p2<span class="op">=</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Here the numeric categories are specified explicitly, and the
 probabilities remain the same:</p>
@@ -672,12 +800,12 @@ probabilities remain the same:</p>
 </h3>
 <p>When an estimation method supports priors, the prior on a parameter
 is given in the <code>ini({})</code> block with:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">prior</span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
 <p>Because the statement names the parameter it applies to, prior lines
 are order independent; they can be put anywhere in the
 <code>ini({})</code> block.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">one.compartment</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -723,7 +851,7 @@ names given have to be exactly one block of the matrix.</li>
 shorthand that reuses the matrix syntax. Putting a <em>population
 parameter</em> on the left of a <code>~</code> gives it a normal prior
 with a <strong>zero mean</strong> and the given variance:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>  <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
@@ -743,12 +871,12 @@ parameter” error. A name that is not a population parameter still
 specifies an eta exactly as before.</p>
 <p>Every matrix spelling works here, including the per-row line form,
 which builds up the block just as it does for etas:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tcl</span> <span class="op">~</span> <span class="fl">1</span></span>
 <span><span class="va">tv</span>  <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>and the <code><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd()</a></code>, <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">var()</a></code>, <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code>,
 <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov()</a></code> and <code><a href="https://rdrr.io/r/base/chol.html" class="external-link">chol()</a></code> transformations:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tcl</span> <span class="op">+</span> <span class="va">tv</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="fl">2</span>,</span>
 <span>              <span class="fl">0.5</span>, <span class="fl">3</span><span class="op">)</span>   <span class="co"># variances of 4 and 9</span></span></code></pre></div>
 <p>The matrix means exactly what it means for an eta block: the
@@ -770,7 +898,7 @@ The scale matrix of the Wishart family is optional, because the block it
 is put on already <em>is</em> that matrix, so only the degrees of
 freedom are needed – this is the
 <code>$OMEGAP</code>/<code>$OMEGAPD</code> pair:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>,</span>
 <span>                     <span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
@@ -781,7 +909,7 @@ dimension one is an inverse gamma. An improper
 <code>nu &lt;= p - 1</code> is an error.</p>
 <p>When every block shares the same degrees of freedom, a one-sided
 <code>~</code> sets them all at once instead of naming each block:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>,</span>
 <span>                     <span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
@@ -794,7 +922,7 @@ is a duplicate rather than an override.</p>
 <em>elements</em>, jointly with the thetas. Prepending <code>om.</code>
 to a between subject variability names its omega element, so the normal
 prior shorthand can be used on it:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.3</span></span>
 <span>  <span class="va">eta.v</span> <span class="op">~</span> <span class="fl">0.1</span></span>
@@ -836,7 +964,7 @@ written the way the rest of the package is written –
 <code>iniDf</code> and printed back, is the R name where there is a
 faithful one and the camelCase name otherwise. The arguments may be
 given positionally or by name, so these are all the same prior:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span>sd<span class="op">=</span><span class="fl">10</span>, mean<span class="op">=</span><span class="fl">0</span><span class="op">)</span></span></code></pre></div>
@@ -856,7 +984,7 @@ for each, is returned by <code><a href="https://nlmixr2.github.io/lotri/referenc
 <p>The bounds are not repeated in the prior; they come from the
 parameter itself. A parameter that is already bounded below by zero
 therefore gets a half distribution:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add.sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.7</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Cauchy.html" class="external-link">dcauchy</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span>   <span class="co"># half-Cauchy, since add.sd has lower=0</span></span></code></pre></div>
 <p>The prior is checked against those bounds, so putting a distribution
@@ -1134,7 +1262,7 @@ open source tool , Plevyak (2015).</p>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h3>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span></span>
@@ -1169,7 +1297,7 @@ variables via the <code>d/dt(identifier)</code> operator as part of the
 model specification, and which are model parameters via the
 <code>params=</code> argument in <code>rxode2</code>
 <code><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve()</a></code> method:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span>, modName <span class="op">=</span> <span class="st">"m1"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># model parameters -- a named vector is required</span></span>

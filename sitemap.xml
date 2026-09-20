@@ -136,6 +136,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxDiscreteAdjointGrad.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxDiscreteForwardSens.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxDocTable.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxEtaDistAnchors.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxEtaDistDerivLines.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxFwdSensJacBlock.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetHiBoundaryPred1AndIni.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetLambdaFromPred1AndIni.html</loc></url>
@@ -252,6 +254,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/odeToLin.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/phantom.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/phi.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/phiU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/plot.rxSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/plus-.rxSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/print.rxCoef.html</loc></url>
@@ -291,6 +294,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxDynUnload.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxErrTypeCombine.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtDispatchSolve.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtaDistExpand.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtaDistMuRef.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventSensDeactivate.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventSensLoadModel.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventTableFile.html</loc></url>
@@ -430,6 +435,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIniDf.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIniLhs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiIsValue.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiLhs.dist.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiLhs.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiMv.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiNum.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUdfUiParsing.html</loc></url>
@@ -437,6 +444,8 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiDecompress.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiDeparse.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiDevelop.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiEtaDistAnchors.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiEtaDists.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiGet.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUiPriors.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxUnloadAll.html</loc></url>
