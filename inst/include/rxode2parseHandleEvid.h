@@ -54,10 +54,55 @@ static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, doub
   setDoseP1(ind, ind->idose[i] + j, value)
 }
 
+static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
+  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
+  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
+  while(l <= r){
+    m = FLOOR((l+r)/2);
+    idose= ind->idose[m];
+    if (idose < idx) l = m+1;
+    else if (idose > idx) r = m-1;
+    else return m;
+  }
+  return -1;
+}
+
+// Record that starts/stops the same fixed rate/duration infusion as record
+// `i`, or -1 when etTrans() recorded no pairing for it.  Two infusions into
+// one compartment at the same rate have records that differ only in time, so
+// the start/stop scans cannot tell which stop belongs to which start; etTrans()
+// records the pairing whenever those scans would get it wrong
+// (nlmixr2/rxode2#1348).  The mate is re-checked so a stale table is ignored.
+static inline int getInfusionMateRecord(rx_solving_options_ind *ind, int i) {
+  if (ind->infPair == NULL || i < 0 || i >= ind->n_all_times_orig) return -1;
+  int off = ind->infPair[i];
+  if (off == 0) return -1;
+  int m = i + off;
+  if (m < 0 || m >= ind->n_all_times_orig) return -1;
+  if (getEvid(ind, m) != getEvid(ind, i) || getDose(ind, m) != -getDose(ind, i)) return -1;
+  return m;
+}
+
+// Dose number (index into ind->idose) of the mate of dose number `l`, or -1.
+static inline int getInfusionMateDoseNumber(rx_solving_options_ind *ind, int l) {
+  if (ind->infPair == NULL || l < 0 || l >= ind->ndoses) return -1;
+  int m = getInfusionMateRecord(ind, ind->idose[l]);
+  if (m == -1) return -1;
+  int ml = getDoseNumberFromIndex(ind, m);
+  if (ml != -1) return ml;
+  // idose is not guaranteed ascending once doses are pushed at solve time
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == m) return j;
+  }
+  return -1;
+}
+
 static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 																											 rx_solve *rx,
                                                        rx_solving_options *op,
 																											 rx_solving_options_ind *ind) {
+	*infEixds = getInfusionMateDoseNumber(ind, idx);
+	if (*infEixds > idx) return;
 	int curEvid = getEvid(ind, ind->idose[idx]);
 	double curAmt = getDoseNumber(ind, idx);
 	int lastKnownOff = 0;
@@ -87,19 +132,6 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 		}
 		if (*infEixds != -1) break;
 	}
-}
-
-static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
-  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
-  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
-  while(l <= r){
-    m = FLOOR((l+r)/2);
-    idose= ind->idose[m];
-    if (idose < idx) l = m+1;
-    else if (idose > idx) r = m-1;
-    else return m;
-  }
-  return -1;
 }
 
 // Dose index (into ind->idose) of the record currently being handled.

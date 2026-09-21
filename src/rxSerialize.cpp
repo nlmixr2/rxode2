@@ -20,7 +20,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 7u;
+static const uint32_t rxSerializeFormatVer = 8u;
+// Format 8 appended each subject's ind->infPair (the fixed infusion pairing
+// etTrans() records, nlmixr2/rxode2#1348) after linH; empty when NULL.
 // Format 7 added op->linCmtOriginMask after linCmtLagMask (read only when
 // fmt >= 7).  Unlike format 6's field this one does grow
 // sizeof(rx_solving_options), so the size check below rejects an older
@@ -466,6 +468,11 @@ SEXP rxSaveState_() {
 
     // linH: 7 doubles per subject (if linB)
     sWriteDoubleBlob(f, ind->linH, (uint64_t)(rx->linB ? 7 : 0), "linH");
+
+    // infPair: n_all_times_orig ints, or none when NULL
+    sWriteIntBlob(f, ind->infPair,
+                  (uint64_t)(ind->infPair != NULL && ind->n_all_times_orig > 0 ?
+                             ind->n_all_times_orig : 0), "infPair");
   }
 
   // -- Section 9: op->indLin convergence set (format 3+) --------------------
@@ -1094,6 +1101,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   // Restore ordId that rxOptionsIniEnsure nulled out.
   rx->ordId = _globals.ordId = savedOrdId;
   rx_solving_options_ind *inds = rx->subjects; // == inds_global
+  // infPair blobs, gathered into one _globals.ginfPair slab after the loop
+  std::vector<int> infPairAll;
+  std::vector<int64_t> infPairOff(nsub, -1);
 
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &inds[si];
@@ -1204,6 +1214,16 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       ind->idoseOwnAllocN = nd;
     }
 
+    if (fmt >= 8u) {
+      uint64_t n;
+      int *buf = sReadIntBlob(f, &n, "infPair");
+      if (n > 0) {
+        infPairOff[si] = (int64_t)infPairAll.size();
+        infPairAll.insert(infPairAll.end(), buf, buf + n);
+      }
+      free(buf);
+    }
+
     // timeThread: not restored (recomputed from ix by solver)
     // Allocate a private timeThread buffer for this subject
     if (nat > 0) {
@@ -1229,6 +1249,16 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     ind->jac_counter  = _globals.jac_counter  + si;
     ind->BadDose      = _globals.gBadDose + (int64_t)neq * si;
     ind->rc           = _globals.grc + si;
+  }
+
+  if (!infPairAll.empty()) {
+    if (_globals.ginfPair != NULL) free(_globals.ginfPair);
+    _globals.ginfPair = (int *)malloc(infPairAll.size() * sizeof(int));
+    if (!_globals.ginfPair) (Rf_error)("rxRestoreState: out of memory for infPair");
+    std::copy(infPairAll.begin(), infPairAll.end(), _globals.ginfPair);
+    for (uint32_t si = 0; si < nsub; si++) {
+      if (infPairOff[si] >= 0) inds[si].infPair = _globals.ginfPair + infPairOff[si];
+    }
   }
 
   // -- Section 10: op->indLin convergence set --------------------------------

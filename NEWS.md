@@ -75,6 +75,16 @@
   `rxProgressAbort()` falls back to its default message when `error` is empty
   (#1377).
 
+- Two fixed-rate infusions into the same compartment at the same rate are now
+  paired with their own stop records when they overlap.  `dose()` reported the
+  wrong amount (60 instead of 100 for a 100 mg infusion with a 50 mg one nested
+  inside it), the dosing records of `addDosing = TRUE` output carried the same
+  wrong amount, and with `f()` each infusion's duration was scaled from the
+  other's stop time, so the solved amounts were wrong too.  `etTrans()` now
+  records the start/stop pairing (the `rxInfPair` attribute) for the subjects
+  where the solver could not recover it, so its output changed for those
+  subjects only (#1348).
+
 # rxode2 5.1.7
 
 ## New features

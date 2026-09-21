@@ -5,6 +5,7 @@
 
 #include <Rcpp.h>
 #include <algorithm>
+#include <tuple>
 #include <unordered_set>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
@@ -970,6 +971,140 @@ static void etTransPairModeledRateDur(std::vector<int>& idxOutput,
   }
 }
 
+// Fixed rate/duration infusion pairing (nlmixr2/rxode2#1348).  A fixed
+// infusion's records carry its RATE, so two infusions into one compartment at
+// the same rate emit start/stop records that differ only in time and the
+// solver's start/stop scans cannot tell which stop is whose.  The translator
+// knows, so it records each pair here as pre-sort record indices.
+static void etTransNoteInfPairs(const rx_translated_event& ev, int base,
+                                std::vector<std::pair<int,int>>& pairs) {
+  for (int k = 0; k < ev.n; ++k) {
+    if (ev.amt[k] <= 0) continue;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(ev.evid[k], &wh, &cmt, &wh100, &whI, &wh0);
+    if (!_rxIsFixedInf(whI)) continue;
+    for (int j = k + 1; j < ev.n; ++j) {
+      if (ev.evid[j] == ev.evid[k] && ev.amt[j] == -ev.amt[k]) {
+        pairs.emplace_back(base + k, base + j);
+        break;
+      }
+    }
+  }
+}
+
+// The pairs as 1-based output rows (start, stop, start, stop, ...), kept only
+// for the (subject, evid, rate) groups where one of those scans would
+// pick the wrong record: the first stop after a start (_getDur()), the last
+// start before a stop, or the k-th start with the k-th stop
+// (handleInfusionGetEndOfInfusionIndex()/handleInfusionStartDefault()).
+// Everywhere else the scans are right and the output is left untouched.
+// Would any start/stop scan mis-pair this group?  `rows` holds every output
+// row the scans see for it, in dose index order; mate[] the true pairing.
+static bool etTransInfGroupMispaired(const std::vector<int>& rows,
+                                     const std::vector<int>& mate,
+                                     const std::vector<int>& outPre,
+                                     const std::vector<double>& amt) {
+  // the k-th start pairs with the k-th stop after the first start
+  std::vector<int> stops;
+  bool seenStart = false;
+  for (int r : rows) {
+    if (amt[outPre[r]] > 0) seenStart = true;
+    else if (seenStart) stops.push_back(r);
+  }
+  int kStart = 0;
+  for (size_t a = 0; a < rows.size(); ++a) {
+    int r = rows[a];
+    if (amt[outPre[r]] > 0) {
+      int ord = kStart < (int)stops.size() ? stops[kStart] : -1;
+      kStart++;
+      if (mate[r] == -1) continue;
+      int fwd = -1; // first stop after the start
+      for (size_t b = a + 1; b < rows.size(); ++b) {
+        if (amt[outPre[rows[b]]] < 0) { fwd = rows[b]; break; }
+      }
+      if (fwd != mate[r] || ord != mate[r]) return true;
+    } else if (mate[r] != -1) {
+      int bwd = -1; // last start before the stop
+      for (size_t b = a; b-- > 0; ) {
+        if (amt[outPre[rows[b]]] > 0) { bwd = rows[b]; break; }
+      }
+      if (bwd != mate[r]) return true;
+    }
+  }
+  return false;
+}
+
+static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& pairs,
+                                        const std::vector<int>& idxOutput,
+                                        const std::vector<int>& id,
+                                        const std::vector<int>& evid,
+                                        const std::vector<double>& amt) {
+  std::vector<int> ret;
+  if (pairs.empty()) return IntegerVector(0);
+  std::vector<int> outRow(evid.size(), -1);
+  std::vector<int> outPre;
+  outPre.reserve(idxOutput.size());
+  for (size_t i = 0; i < idxOutput.size(); ++i) {
+    if (idxOutput[i] < 0) continue;
+    outRow[idxOutput[i]] = (int)outPre.size();
+    outPre.push_back(idxOutput[i]);
+  }
+  int nOut = (int)outPre.size();
+  // pairs that survived into the output, as output rows
+  std::vector<std::pair<int,int>> kept;
+  for (const auto& pr : pairs) {
+    int s = outRow[pr.first], e = outRow[pr.second];
+    if (s >= 0 && e >= 0) kept.emplace_back(s, e);
+  }
+  // group by subject, evid and rate; the output is sorted by subject
+  auto key = [&](int row) {
+    return std::make_tuple(id[outPre[row]], evid[outPre[row]], amt[outPre[row]]);
+  };
+  std::sort(kept.begin(), kept.end(), [&](const std::pair<int,int>& a,
+                                          const std::pair<int,int>& b) {
+    auto ka = key(a.first), kb = key(b.first);
+    if (ka != kb) return ka < kb;
+    return a.first < b.first;
+  });
+  std::vector<int> rows;
+  std::vector<int> mate(nOut, -1);
+  size_t g = 0;
+  while (g < kept.size()) {
+    size_t gEnd = g + 1;
+    while (gEnd < kept.size() && key(kept[gEnd].first) == key(kept[g].first)) gEnd++;
+    int curId = id[outPre[kept[g].first]];
+    int curEvid = evid[outPre[kept[g].first]];
+    double rate = amt[outPre[kept[g].first]];
+    // every record the scans see: this subject's records with this evid
+    // carrying +rate or -rate
+    int lo = kept[g].first;
+    while (lo > 0 && id[outPre[lo - 1]] == curId) lo--;
+    rows.clear();
+    for (int r = lo; r < nOut && id[outPre[r]] == curId; ++r) {
+      if (evid[outPre[r]] == curEvid &&
+          (amt[outPre[r]] == rate || amt[outPre[r]] == -rate)) {
+        rows.push_back(r);
+      }
+    }
+    for (size_t k = g; k < gEnd; ++k) {
+      mate[kept[k].first] = kept[k].second;
+      mate[kept[k].second] = kept[k].first;
+    }
+    if (etTransInfGroupMispaired(rows, mate, outPre, amt)) {
+      for (size_t k = g; k < gEnd; ++k) {
+        ret.push_back(kept[k].first + 1);
+        ret.push_back(kept[k].second + 1);
+      }
+    }
+    for (size_t k = g; k < gEnd; ++k) {
+      mate[kept[k].first] = -1;
+      mate[kept[k].second] = -1;
+    }
+    g = gEnd;
+  }
+  return wrap(ret);
+}
+
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -1521,6 +1656,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   limit.reserve(resSize);
   std::vector<int> idxInput;
   idxInput.reserve(resSize);
+  std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
   std::vector<int> cmtF; // Final compartment
   cmtF.reserve(resSize);
   std::vector<int> dvidF;
@@ -2421,6 +2557,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           }
           ndose++;
         }
+        if (!classicEvid) etTransNoteInfPairs(ev, (int)evid.size() - ev.n, infPairs);
         if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
           ii[ii.size() - 1] = 0.0;
         }
@@ -2499,6 +2636,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     limit2.reserve(limit.size());
     cens2.reserve(cens.size());
     idxInput2.reserve(idxInput.size());
+    // where each record's copies land, to carry infPairs across
+    std::vector<int> newFirst(evid.size(), 0), newCount(evid.size(), 0);
     ndose = 0;
     nobs = 0;
     mxCmt = 0;
@@ -2523,6 +2662,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           ndose += splitN - 1;
         }
       } else if (isObs(evid[j])) nobs++;
+      newFirst[j] = (int)id2.size();
       if (!splitThis) {
         id2.push_back(id[j]);
         evid2.push_back(evid[j]);
@@ -2535,6 +2675,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cens2.push_back(cens[j]);
         idxInput2.push_back(idxInput[j]);
         mxCmt = max2(mxCmt, cmtF[j]);
+        newCount[j] = 1;
         continue;
       }
       if (splitThis && splitBolusRec && (splitKind == 2 || splitKind == 3) && wh0J != EVID0_REGULAR) {
@@ -2577,7 +2718,18 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
         }
       }
+      newCount[j] = (int)id2.size() - newFirst[j];
     }
+    // a split infusion's start and stop are copied to the same targets in the
+    // same order, so the m-th copies pair up
+    std::vector<std::pair<int,int>> infPairs2;
+    for (const auto& pr : infPairs) {
+      if (newCount[pr.first] != newCount[pr.second]) continue;
+      for (int m = 0; m < newCount[pr.first]; ++m) {
+        infPairs2.emplace_back(newFirst[pr.first] + m, newFirst[pr.second] + m);
+      }
+    }
+    infPairs.swap(infPairs2);
     id.swap(id2);
     evid.swap(evid2);
     cmtF.swap(cmtF2);
@@ -2747,6 +2899,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   if (idxOutput.size()-rmAmt <= 0) stop(_("empty data"));
+  IntegerVector infPairAttr = etTransInfPairAttr(infPairs, idxOutput, id, evid, amt);
   if (!keepDosingOnly) {
     nid = obsId.size();
   } else {
@@ -3498,6 +3651,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   if (hasHomIdLevels) {
     Rf_setAttrib(lstF, Rf_install("rxHomIdLevels"), homIdLevelsS);
+  }
+  if (infPairAttr.size() > 0) {
+    Rf_setAttrib(lstF, Rf_install("rxInfPair"), infPairAttr);
   }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);

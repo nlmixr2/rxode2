@@ -2001,6 +2001,8 @@ extern "C" void gFree(){
   _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
+  if (_globals.ginfPair != NULL) free(_globals.ginfPair);
+  _globals.ginfPair=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
@@ -4389,6 +4391,26 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
     std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
+    // fixed infusion start/stop pairs etTrans() recorded as 1-based row pairs
+    // (nlmixr2/rxode2#1348), stored per record as the offset to the mate
+    if (_globals.ginfPair != NULL) free(_globals.ginfPair);
+    _globals.ginfPair = NULL;
+    SEXP infPairS = Rf_getAttrib(ev1, Rf_install("rxInfPair"));
+    if (TYPEOF(infPairS) == INTSXP && Rf_length(infPairS) > 1) {
+      int nr = evid.size();
+      _globals.ginfPair = (int*)calloc(nr, sizeof(int));
+      if (_globals.ginfPair == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load 'evid'"));
+      }
+      int *ip = INTEGER(infPairS);
+      for (int k = 0; k + 1 < Rf_length(infPairS); k += 2) {
+        int s0 = ip[k] - 1, e0 = ip[k+1] - 1;
+        if (s0 < 0 || e0 < 0 || s0 >= nr || e0 >= nr || s0 == e0) continue;
+        _globals.ginfPair[s0] = e0 - s0;
+        _globals.ginfPair[e0] = s0 - e0;
+      }
+    }
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -4595,6 +4617,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->idose            = &_globals.gidose[startRow];
           ind->dose             = &_globals.gamt[startRow];
           ind->ii               = &_globals.gii[startRow];
+          ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
           ind->cov_ptr          = groupCov;
           ind->n_all_times      = groupNAll;
           ind->n_all_times_orig = groupNAll;
@@ -4736,6 +4759,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->idose          = &_globals.gidose[i];
           ind->dose           = &_globals.gamt[i];
           ind->ii             = &_globals.gii[i];
+          ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
           lasti = i;
 
           hmax1m=0.0;
@@ -5477,6 +5501,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->ndoses = indS.ndoses;
             ind->nevid2 = indS.nevid2;
             ind->ii   = &(indS.ii[0]);
+            ind->infPair = indS.infPair;
             ind->evid =&(indS.evid[0]);
             ind->dv    = &(indS.dv[0]);
             ind->limit = &(indS.limit[0]);

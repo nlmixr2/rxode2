@@ -958,7 +958,13 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                   colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
                   double curDur = 0.0;
-                  for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
+                  int mateRec = getInfusionMateRecord(ind, ind->ix[i]);
+                  if (mateRec != -1) {
+#pragma omp atomic write
+                    dullRate = 0;
+                    curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
+                  }
+                  for (int jjj = di_p; mateRec == -1 && jjj < ind->ndoses; jjj++) {
                     if (getDoseNumber(ind, jjj) == -curAmt_r) {
                       int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
                       getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
@@ -983,7 +989,13 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                   colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
                   double curDur = 0.0;
-                  for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
+                  int mateRec = getInfusionMateRecord(ind, ind->ix[i]);
+                  if (mateRec != -1) {
+#pragma omp atomic write
+                    dullRate = 0;
+                    curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
+                  }
+                  for (int jjj = di_p; mateRec == -1 && jjj < ind->ndoses; jjj++) {
                     if (getDoseNumber(ind, jjj) == -curAmt_r) {
                       int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
                       getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);

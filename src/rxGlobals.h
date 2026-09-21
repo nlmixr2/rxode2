@@ -40,6 +40,7 @@ struct rx_globals {
   int *gBadDose;
   int *grc;
   int *gidose;
+  int *ginfPair = NULL; /* per-record infusion pairing offsets, see ind->infPair */
   int *gpar_cov;
   int *gpar_covInterp;
   int *glhs_str;

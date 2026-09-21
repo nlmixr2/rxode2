@@ -65,6 +65,15 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
   // evid rejects those pairings and keeps every real one.  This is the pairing
   // handleInfusionGetEndOfInfusionIndex() already performs.
   int curEvid = getEvid(ind, ind->idose[l]);
+  // the pairing etTrans() recorded, when the scans below would get it wrong
+  int mate = getInfusionMateDoseNumber(ind, l);
+  if (mate != -1 && (backward == 1 ? mate < l : mate > l)) {
+    p[0] = mate;
+    if (backward == 1) {
+      return getAllTimes(ind, ind->idose[l]) - getAllTimes(ind, ind->idose[mate]);
+    }
+    return getAllTimes(ind, ind->idose[mate]) - getAllTimes(ind, ind->idose[l]);
+  }
   if (backward==1){
     p[0] = 0;
     if (l != 0) {
