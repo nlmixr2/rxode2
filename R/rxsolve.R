@@ -2911,6 +2911,9 @@ rxSolve.rxUi <- function(
 ) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
+    if (!missing(useLinCmt)) {
+      .xtra$useLinCmt <- useLinCmt
+    }
     .rxAssertSerializedSolveArgs(
       eventsMissing = missing(events),
       events = events,

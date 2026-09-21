@@ -58,6 +58,22 @@ rxTest({
       cp = centr / v
     }
 
+    test_that("serialized ui replay rejects a useLinCmt override (#1389)", {
+      .ui <- suppressMessages(rxode2(function() {
+        ini({
+          ka <- 1.5
+          cl <- 10
+          v <- 50
+        })
+        model({
+          d/dt(depot) <- -ka * depot
+          d/dt(centr) <- ka * depot - cl / v * centr
+          cp <- centr / v
+        })
+      }))
+      expect_error(rxSolve(.ui, stateFile, useLinCmt = TRUE), "disallowed inputs")
+    })
+
     test_that("serialized function-dispatch replay rejects iCov/keep overrides", {
       expect_error(
         rxSolve(modFn, stateFile, iCov = data.frame(id = 1:4, WT = c(70, 70, 80, 80))),
