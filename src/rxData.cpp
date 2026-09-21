@@ -2399,7 +2399,9 @@ void rxSimOmega(bool &simOmega,
       } else {
         omegaList = List::create(ol);
       }
-    } else if (dfSub > 0 && simOmega) {
+    } else if (dfSub > 0 && simOmega && omegaSeparation != "tnpri") {
+      // "tnpri" draws every entry from the `thetaMat`; an entry it carries
+      // no variance for stays at its estimate, not an inverse Wishart draw
       if (omegaSep) {
         int defaultType = 2;
         if (omegaSeparation == "auto"){

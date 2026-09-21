@@ -109,6 +109,101 @@ rxTest({
     expect_equal(.a$omegaList, .b$omegaList)
   })
 
+  test_that("tnpri ignores dfSub (issue #1388)", {
+    ## an entry the thetaMat has no variance for stays at its estimate
+    ## rather than coming from the dfSub inverse Wishart draw
+    .tm <- .thetaMat(c("eta.ka", "omega2.1", "eta.cl"))[-3, -3]
+    .draw <- function(...) {
+      withr::with_seed(3, {
+        rxSolve(
+          .mod(),
+          .ev(),
+          params = .params,
+          omega = .omega(),
+          thetaMat = .tm,
+          nSub = 2,
+          nStud = 5,
+          omegaSeparation = "tnpri",
+          ...
+        )$omegaList
+      })
+    }
+    .a <- .draw(dfSub = 0)
+    .b <- .draw(dfSub = 120)
+    expect_equal(.a, .b)
+    expect_true(all(vapply(.b, function(m) m[2, 1] == 0.05, logical(1))))
+    expect_gt(length(unique(vapply(.b, function(m) m[1, 1], double(1)))), 1L)
+  })
+
+  test_that("tnpri ignores dfObs for sigma (issue #1388)", {
+    .m <- rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl)
+      v <- exp(tv)
+      cp <- linCmt() + add.eps + add2.eps
+    })
+    .sg <- lotri::lotri(add.eps + add2.eps ~ c(0.4,
+                                               0.05, 0.3))
+    .nm <- c("add.eps", "add2.eps")
+    .tm <- diag(c(0.01, 0.003, 0.003))
+    dimnames(.tm) <- list(c("tka", .nm), c("tka", .nm))
+    .draw <- function(...) {
+      withr::with_seed(9, {
+        suppressWarnings(rxSolve(
+          .m,
+          .ev(),
+          params = .params,
+          sigma = .sg,
+          thetaMat = .tm,
+          nSub = 2,
+          nStud = 5,
+          sigmaSeparation = "tnpri",
+          ...
+        ))$sigmaList
+      })
+    }
+    .a <- .draw(dfObs = 0)
+    .b <- .draw(dfObs = 120)
+    expect_equal(.a, .b)
+    expect_true(all(vapply(.b, function(m) m[2, 1] == 0.05, logical(1))))
+  })
+
+  test_that("an ignored thetaMat column tnpri could use says so", {
+    ## omega2.1 has a variance and names an omega entry, so tnpri could
+    ## draw it instead of ignoring it
+    .tm <- .thetaMat(c("eta.ka", "omega2.1", "eta.cl"))
+    .solve <- function(tm) {
+      withr::with_seed(3, {
+        rxSolve(
+          .mod(),
+          .ev(),
+          params = .params,
+          omega = .omega(),
+          thetaMat = tm,
+          nSub = 2,
+          nStud = 3,
+          dfSub = 10
+        )
+      })
+    }
+    expect_message(
+      .solve(.tm),
+      "'omega2.1' could be drawn with 'omegaSeparation=\"tnpri\"'"
+    )
+    ## a zero variance column has nothing to draw, so no hint
+    .tm["omega2.1", "omega2.1"] <- 0
+    .msg <- character(0)
+    withCallingHandlers(
+      .solve(.tm),
+      message = function(m) {
+        .msg <<- c(.msg, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    expect_true(any(grepl("too many items", .msg)))
+    expect_false(any(grepl("could be drawn", .msg)))
+  })
+
   test_that("tnpri keeps the theta and omega draws correlated", {
     ## the point of drawing them jointly: a covariance between a theta and
     ## an omega entry survives, which the separation strategy cannot carry
