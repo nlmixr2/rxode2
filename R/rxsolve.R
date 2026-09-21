@@ -1147,8 +1147,8 @@
 #'   that does not support dense output; `"ros4"` (code `13L`) is the only
 #'   stiff secondary that does support it.
 #'
-#' @param useLinCmt Logical; when `TRUE` and the model contains
-#'   linear-compartment ODEs that can be solved analytically,
+#' @param useLinCmt Logical; when `TRUE` and a function-style
+#'   (`ini()`/`model()`) model contains linear-compartment ODEs that can be solved analytically,
 #'   automatically convert them to a `linCmt()` call before solving.
 #'   The detection and conversion use [odeToLin()]; the converted
 #'   model is cached so the compilation cost is paid only once.  A
@@ -1161,8 +1161,7 @@
 #'   original ODEs.  Set to `FALSE` to keep the original ODE solver.  This flag is also
 #'   stored in the returned [rxControl()] object so that downstream
 #'   hooks (e.g. in nlmixr2) can read and apply it.  The default is
-#'   the `rxode2.useLinCmt` option, or `FALSE` when it is unset, for
-#'   every model type.
+#'   the `rxode2.useLinCmt` option, or `FALSE` when it is unset.
 #'
 #' @param file Character string giving a file path prefix for out-of-memory
 #'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
