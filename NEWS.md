@@ -34,6 +34,11 @@
 
 ## Bug fixes
 
+- `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
+  on a positive-definite Omega whose off-diagonal zeros do not split it into
+  contiguous blocks; such zeros are not zeros of the Cholesky factor, so they
+  are now free parameters (#1365).
+
 - Second derivatives of registered functions now convert.  A multi-variable
   `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
   sensitivity expansion -- aborted with "'Derivative' conversion only takes one
