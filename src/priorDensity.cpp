@@ -250,9 +250,9 @@ static inline double xdivy(double a, double x) {
 
 // log(erfc(u)) for any u, via the asymptotic series once erfc() underflows.
 static double logErfc(double u) {
-  if (u < 20.0) return std::log(std::erfc(u));
+  if (u < 26.0) return std::log(std::erfc(u));
   double u2 = u * u, iu2 = 1.0 / (2.0 * u2);
-  double series = 1.0 - iu2 * (1.0 - 3.0 * iu2 * (1.0 - 5.0 * iu2));
+  double series = 1.0 - iu2 * (1.0 - 3.0 * iu2 * (1.0 - 5.0 * iu2 * (1.0 - 7.0 * iu2)));
   return -u2 - std::log(u) - 0.5 * std::log(M_PI) + std::log(series);
 }
 
