@@ -34,6 +34,10 @@
 
 ## Bug fixes
 
+- A solve with exactly one observation now simulates its residual error;
+  previously the one-row draw was discarded and each `eps` came back as a fixed
+  element of the `sigma` covariance matrix, regardless of the seed (#1364).
+
 - Second derivatives of registered functions now convert.  A multi-variable
   `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
   sensitivity expansion -- aborted with "'Derivative' conversion only takes one
