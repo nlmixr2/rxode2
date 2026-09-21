@@ -24,9 +24,7 @@ rxTest({
       expect_equal(dim(.sig), c(1L, 2L))
       expect_equal(colnames(.sig), c("prop.err", "add.err"))
       # the output is built from the drawn row, not the covariance matrix
-      expect_equal(.x$cp2, .x$cp * (1 + .sig[1, "prop.err"]) + .sig[1, "add.err"],
-        ignore_attr = TRUE
-      )
+      expect_equal(.x$cp2, .x$cp * (1 + .sig[1, "prop.err"]) + .sig[1, "add.err"], ignore_attr = TRUE)
       expect_false(isTRUE(all.equal(.x$cp2, .x$cp * (1 + 0.1) + 0.02)))
     }
     # the draw depends on the seed
@@ -37,8 +35,6 @@ rxTest({
     .x <- .solve1364(et(1), 1)
     .sig <- attr(class(.x), ".rxode2.env")$.sigma
     expect_equal(dim(.sig), c(1L, 2L))
-    expect_equal(.x$cp2, .x$cp * (1 + .sig[1, "prop.err"]) + .sig[1, "add.err"],
-      ignore_attr = TRUE
-    )
+    expect_equal(.x$cp2, .x$cp * (1 + .sig[1, "prop.err"]) + .sig[1, "add.err"], ignore_attr = TRUE)
   })
 })
