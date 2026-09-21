@@ -155,7 +155,8 @@ rxTest({
   })
 
   test_that("a direct rxSimThetaOmega() tnpri call with dfSub still draws", {
-    ## no priorOmegaEl here, so the dfSub draw is what seeds the list
+    ## the exported API has no priorOmegaEl, so it never resolves "tnpri"
+    ## and keeps its dfSub draw; this only checks it still returns
     withr::with_seed(3, {
       .x <- rxSimThetaOmega(
         params = c(tka = 1),
