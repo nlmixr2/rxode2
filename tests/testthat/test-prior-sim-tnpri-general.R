@@ -135,6 +135,40 @@ rxTest({
     expect_gt(length(unique(vapply(.b, function(m) m[1, 1], double(1)))), 1L)
   })
 
+  test_that("tnpri with an all zero variance thetaMat keeps the estimates", {
+    .tm <- matrix(0, 2, 2, dimnames = list(c("tka", "om.eta.ka"), c("tka", "om.eta.ka")))
+    .s <- suppressMessages(rxSolve(
+      .mod(),
+      .ev(),
+      params = .params,
+      omega = .omega(),
+      thetaMat = .tm,
+      nSub = 2,
+      nStud = 3,
+      dfSub = 10,
+      omegaSeparation = "tnpri"
+    ))
+    expect_equal(length(.s$omegaList), 3L)
+    for (.m in .s$omegaList) {
+      expect_equal(unname(.m), unname(.omega()))
+    }
+  })
+
+  test_that("a direct rxSimThetaOmega() tnpri call with dfSub still draws", {
+    ## no priorOmegaEl here, so the dfSub draw is what seeds the list
+    withr::with_seed(3, {
+      .x <- rxSimThetaOmega(
+        params = c(tka = 1),
+        omega = .omega(),
+        dfSub = 10,
+        omegaSeparation = "tnpri",
+        nStud = 3,
+        nSub = 2
+      )
+    })
+    expect_equal(dim(.x), c(6L, 3L))
+  })
+
   test_that("tnpri ignores dfObs for sigma (issue #1388)", {
     .m <- rxode2({
       ka <- exp(tka)
