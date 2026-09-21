@@ -1649,8 +1649,9 @@ the parameter names, or whose compartments it would renumber
 under event data addressing them by index, is solved with its
 original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
-hooks (e.g. in nlmixr2) can read and apply it.  The default is
-the \code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset.}
+hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+\code{useLinCmt} set in the model's meta block, else the
+\code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset.}
 
 \item{file}{Character string giving a file path prefix for out-of-memory
 chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes

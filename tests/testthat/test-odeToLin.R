@@ -1267,5 +1267,19 @@ rxTest({
       expect_true(.isLin(suppressMessages(rxSolve(.u, .ev))))
       expect_false(.isLin(suppressMessages(rxSolve(.u, .ev, useLinCmt = FALSE))))
     })
+    # a meta-block useLinCmt beats the option; a named argument beats both
+    .fMeta <- function() {
+      useLinCmt <- TRUE
+      ini({ KA <- 0.3; CL <- 18; V <- 40 })
+      model({
+        C <- centr / V
+        d/dt(depot) <- -KA * depot
+        d/dt(centr) <- KA * depot - CL / V * centr
+      })
+    }
+    withr::with_options(list(rxode2.useLinCmt = FALSE), {
+      expect_true(.isLin(suppressMessages(rxSolve(.fMeta, .ev))))
+      expect_false(.isLin(suppressMessages(rxSolve(.fMeta, .ev, useLinCmt = FALSE))))
+    })
   })
 })
