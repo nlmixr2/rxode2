@@ -1257,6 +1257,7 @@ rxTest({
       expect_false(.isLin(suppressMessages(rxSolve(.f, .ev))))
       expect_false(.isLin(suppressMessages(rxSolve(.u, .ev))))
       expect_true(.isLin(suppressMessages(rxSolve(.u, .ev, useLinCmt = TRUE))))
+      expect_true(.isLin(suppressMessages(rxSolve(.f, .ev, useLinCmt = TRUE))))
     })
     withr::with_options(list(rxode2.useLinCmt = FALSE), {
       expect_false(.isLin(suppressMessages(rxSolve(.u, .ev))))
