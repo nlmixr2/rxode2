@@ -1197,6 +1197,7 @@ rxTest({
     e <- et(time = 0, amt = 100, cmt = "depot") |>
       et(seq(0, 8, by = 1))
     for (.d in list(
+      quote(splitBolus(depot, depot, depot2)),
       quote(splitInfusionBolus(depot, depot, depot2)),
       quote(splitBolusInfusion(depot, depot, depot2)),
       quote(splitInfusion(depot, depot, depot2))
@@ -1205,7 +1206,9 @@ rxTest({
       ui <- rxode2(.mk(.d))
       expect_equal(unname(rxModelVars(ui$simulationModel)[[.name]]), c(1L, 1L, 2L), label = .name)
       expect_equal(unname(rxModelVars(ui$simulationIniModel)[[.name]]), c(1L, 1L, 2L), label = .name)
-      expect_length(rxModelVars(ui$simulationModel)$splitBolus, 0L)
+      for (.o in setdiff(c("splitBolus", "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"), .name)) {
+        expect_length(rxModelVars(ui$simulationModel)[[.o]], 0L)
+      }
       withErr <- rxSolve(ui, e, addDosing = TRUE)
       noErr <- suppressMessages(rxSolve(ui |> model(-Cc ~ .), e, addDosing = TRUE))
       expect_equal(withErr$depot2, noErr$depot2, tolerance = 1e-5, label = .name)
