@@ -224,7 +224,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -236,7 +236,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -1649,9 +1649,9 @@ the parameter names, or whose compartments it would renumber
 under event data addressing them by index, is solved with its
 original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
-hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-use the value of \code{rxode2.useLinCmt} option (which when specified
-is \code{TRUE} by default).}
+hooks (e.g. in nlmixr2) can read and apply it.  The default is
+the \code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset, for
+every model type.}
 
 \item{file}{Character string giving a file path prefix for out-of-memory
 chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes

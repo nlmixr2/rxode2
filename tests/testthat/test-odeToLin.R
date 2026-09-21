@@ -1,4 +1,8 @@
 rxTest({
+  # These tests exercise the automatic ODE -> linCmt() conversion, which is off
+  # by default; a solve that must stay on the ODEs passes useLinCmt = FALSE.
+  withr::local_options(rxode2.useLinCmt = TRUE)
+
   ## Helper: tight-tolerance ODE vs linCmt comparison
   .chkConv <- function(mOde, ev, tol = 1e-5, seed = 1L) {
     .conv <- suppressMessages(odeToLin(mOde))
@@ -166,7 +170,7 @@ rxTest({
   ## `Cc <- central / vc` -- `... - vmax * Cc * vc / (km + Cc)` -- so the
   ## linearity scan (which looks only for *direct* state references) saw no
   ## state and treated the term as a constant forcing input.  useLinCmt=TRUE
-  ## (the default) then folded the 2-cmt system into linCmt(), dropped the MM
+  ## then folded the 2-cmt system into linCmt(), dropped the MM
   ## term, and demoted k12/k21 to required inputs, so rxSolve aborted with
   ## "parameter(s) are required for solving: k21, k12".
   .mmObs <- function() {
@@ -194,7 +198,7 @@ rxTest({
   test_that("default rxSolve keeps the explicit ODE states for an MM-via-observable model", {
     .m <- .mmObs()
     .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 4), cmt = "Cc")
-    .rDef <- suppressMessages(rxSolve(.m, .ev)) # default useLinCmt=TRUE
+    .rDef <- suppressMessages(rxSolve(.m, .ev)) # useLinCmt=TRUE via the option
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     # the coupled peripheral state survives and the nonlinear (MM) solve agrees
     expect_true("peripheral1" %in% names(.rDef))
@@ -859,7 +863,7 @@ rxTest({
       })
     }))
     .ev <- et(amt = 100, time = 0) |> et(seq(0, 48, by = 1))
-    .rAuto <- suppressMessages(rxSolve(.m, .ev)) # useLinCmt=TRUE default
+    .rAuto <- suppressMessages(rxSolve(.m, .ev)) # useLinCmt=TRUE via the option
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     expect_true(nrow(.rAuto) > 0)
     expect_false(any(is.na(.rAuto$cp)))
@@ -996,7 +1000,7 @@ rxTest({
   })
 
   test_that("odeToLin converts a coupled output-peripheral model and stays numerically correct", {
-    # Regression: useLinCmt=TRUE (the default) used to auto-linearize this model,
+    # Regression: useLinCmt=TRUE used to auto-linearize this model,
     # drop `periph`, and abort with "parameter(s) are required for solving:
     # periph".  It now CONVERTS analytically instead: `periph` is renamed to the
     # canonical `peripheral1`, the central endpoint is anchored to the `central`
@@ -1025,7 +1029,7 @@ rxTest({
     expect_false(grepl("d/dt", .convTxt)) # no ODE left
 
     .ev <- et(amt = 100, cmt = "central") |> et(seq(0, 24, by = 2))
-    .rDef <- suppressMessages(rxSolve(.m, .ev)) # default -> converts
+    .rDef <- suppressMessages(rxSolve(.m, .ev)) # option -> converts
     .rOde <- suppressMessages(rxSolve(.m, .ev, useLinCmt = FALSE))
     expect_true("Cp" %in% names(.rDef))
     expect_equal(.rDef$Cc, .rOde$Cc, tolerance = 1e-4)
@@ -1230,9 +1234,37 @@ rxTest({
       CMT = "centre",
       stringsAsFactors = FALSE
     )
-    .rLin <- suppressWarnings(rxSolve(.mod, .ev)) # default (useLinCmt=TRUE)
+    .rLin <- suppressWarnings(rxSolve(.mod, .ev)) # useLinCmt=TRUE via the option
     .rOde <- suppressWarnings(rxSolve(.mod, .ev, useLinCmt = FALSE))
     expect_false(all(.rLin$cp == 0)) # the bug produced all-zero cp
     expect_equal(.rLin$cp, .rOde$cp, tolerance = 1e-4)
+  })
+
+  test_that("rxSolve() of a ui model follows the rxode2.useLinCmt option (#1389)", {
+    .f <- function() {
+      ini({ KA <- 0.3; CL <- 18; V <- 40 })
+      model({
+        C <- centr / V
+        d/dt(depot) <- -KA * depot
+        d/dt(centr) <- KA * depot - CL / V * centr
+      })
+    }
+    .u <- suppressMessages(rxode2(.f))
+    .ev <- et(amt = 100, cmt = "depot") |> et(0:4)
+    # linCmt() renames `centr` to its canonical `central`
+    .isLin <- function(r) "central" %in% names(r)
+    withr::with_options(list(rxode2.useLinCmt = NULL), {
+      expect_false(.isLin(suppressMessages(rxSolve(.f, .ev))))
+      expect_false(.isLin(suppressMessages(rxSolve(.u, .ev))))
+      expect_true(.isLin(suppressMessages(rxSolve(.u, .ev, useLinCmt = TRUE))))
+    })
+    withr::with_options(list(rxode2.useLinCmt = FALSE), {
+      expect_false(.isLin(suppressMessages(rxSolve(.u, .ev))))
+    })
+    withr::with_options(list(rxode2.useLinCmt = TRUE), {
+      expect_true(.isLin(suppressMessages(rxSolve(.f, .ev))))
+      expect_true(.isLin(suppressMessages(rxSolve(.u, .ev))))
+      expect_false(.isLin(suppressMessages(rxSolve(.u, .ev, useLinCmt = FALSE))))
+    })
   })
 })

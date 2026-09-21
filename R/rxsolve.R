@@ -1160,9 +1160,9 @@
 #'   under event data addressing them by index, is solved with its
 #'   original ODEs.  Set to `FALSE` to keep the original ODE solver.  This flag is also
 #'   stored in the returned [rxControl()] object so that downstream
-#'   hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-#'   use the value of `rxode2.useLinCmt` option (which when specified
-#'   is `TRUE` by default).
+#'   hooks (e.g. in nlmixr2) can read and apply it.  The default is
+#'   the `rxode2.useLinCmt` option, or `FALSE` when it is unset, for
+#'   every model type.
 #'
 #' @param file Character string giving a file path prefix for out-of-memory
 #'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
@@ -2904,7 +2904,7 @@ rxSolve.rxUi <- function(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
