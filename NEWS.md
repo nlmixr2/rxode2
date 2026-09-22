@@ -34,6 +34,11 @@
 
 ## Bug fixes
 
+- `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()` are
+  now kept in the simulation model of a model with a residual-error
+  endpoint; before, only `splitBolus()` was carried over, so solving such a
+  model silently skipped the dose split (#1381).
+
 - Second derivatives of registered functions now convert.  A multi-variable
   `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
   sensitivity expansion -- aborted with "'Derivative' conversion only takes one
