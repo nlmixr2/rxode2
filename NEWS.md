@@ -34,6 +34,11 @@
 
 ## Bug fixes
 
+- A model subtracting a negated term (`a - -b`) or adding a positive one
+  (`a + +b`) now compiles; the generated C code read the two signs as the
+  `--`/`++` operator.  `a - Inf` also compiles now instead of generating
+  `aR_NegInf` (#1399).
+
 - `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
   on a positive-definite Omega whose off-diagonal zeros do not split it into
   contiguous blocks; such zeros are not zeros of the Cholesky factor, so they

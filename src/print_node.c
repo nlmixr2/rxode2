@@ -40,6 +40,11 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
         }
       }
     }
+    // Keep 'a - -b' / 'a + +b' from becoming the C '--' / '++' operators
+    if (value[0] == '-' || value[0] == '+') {
+      if (sb.o > 0 && sb.s[sb.o-1] == value[0]) sPut(&sb, ' ');
+      if (sbDt.o > 0 && sbDt.s[sbDt.o-1] == value[0]) sPut(&sbDt, ' ');
+    }
     // Apply fix for dot.syntax
     for (i = 0; i < (int)strlen(value); i++){
       if (value[i] == '.' && nodeHas(identifier_r)){
