@@ -37,6 +37,10 @@
 - A solve with exactly one observation now simulates its residual error;
   previously the one-row draw was discarded and each `eps` came back as a fixed
   element of the `sigma` covariance matrix, regardless of the seed (#1364).
+- `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()` are
+  now kept in the simulation model of a model with a residual-error
+  endpoint; before, only `splitBolus()` was carried over, so solving such a
+  model silently skipped the dose split (#1381).
 
 - Second derivatives of registered functions now convert.  A multi-variable
   `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
