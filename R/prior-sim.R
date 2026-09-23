@@ -864,6 +864,44 @@
   matrix(c(.i1, .i2), ncol = 2L, dimnames = list(.name, c("neta1", "neta2")))
 }
 
+#' Hint for `thetaMat` columns that `"tnpri"` could have used
+#'
+#' @param ctl `rxControl` list
+#' @param ignore the `thetaMat` column names about to be ignored
+#' @return a string to append to the "too many items" message, `""` when
+#'   no ignored column with a nonzero variance names an omega or sigma entry
+#' @noRd
+#' @author Matthew L. Fidler
+.rxTnpriIgnoredHint <- function(ctl, ignore) {
+  .ret <- ""
+  ## a zero variance column has nothing for "tnpri" to draw
+  .d <- diag(ctl$thetaMat)
+  ignore <- ignore[ignore %in% names(.d)[.d != 0]]
+  if (length(ignore) == 0L) {
+    return(.ret)
+  }
+  for (.w in c("omega", "sigma")) {
+    .sep <- paste0(.w, "Separation")
+    if (identical(ctl[[.sep]], "tnpri") || !inherits(ctl[[.w]], "matrix")) {
+      next
+    }
+    ## only a hint, so a name clash never turns into an error here
+    .pos <- tryCatch(.rxJointElFromNames(ctl[[.w]], ignore, what = .w), error = function(e) NULL)
+    if (is.null(.pos)) {
+      next
+    }
+    .ret <- paste0(
+      .ret,
+      "; '",
+      paste(rownames(.pos), collapse = "', '"),
+      "' could be drawn with '",
+      .sep,
+      "=\"tnpri\"'"
+    )
+  }
+  .ret
+}
+
 #' Resolve `omegaSeparation`/`sigmaSeparation` of `"tnpri"`
 #'
 #' `"tnpri"` says the omega (or sigma) entries are carried in the

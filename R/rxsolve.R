@@ -513,7 +513,8 @@
 #'     `thetaMat` columns are matched to entries by name -- `om.eta.cl` or
 #'     `eta.cl` for a diagonal, and `cov.eta.cl.eta.v` or `omega2.1` for an
 #'     off diagonal.  A drawn matrix that is not positive definite is
-#'     redrawn, see `priorPdRetry`.
+#'     redrawn, see `priorPdRetry`.  `dfSub` is not used: an entry the
+#'     `thetaMat` gives no variance stays at its estimate.
 #'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
@@ -628,7 +629,8 @@
 #'    than equal to 10.
 #'
 #' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
-#'    same way `omegaSeparation="tnpri"` does for the omega.
+#'    same way `omegaSeparation="tnpri"` does for the omega; `dfObs` is
+#'    not used.
 #'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
@@ -4158,7 +4160,12 @@ rxSolve.default <- function(
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]
     if (length(.ignore) > 0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
+      .minfo(paste0(
+        "thetaMat has too many items, ignored: '",
+        paste(.ignore, collapse = "', '"),
+        "'",
+        .rxTnpriIgnoredHint(.ctl, .ignore)
+      ))
     }
     .ctl$thetaMat <- .ctl$thetaMat[.w, .w, drop = FALSE]
     if (dim(.ctl$thetaMat)[1] == 0) {

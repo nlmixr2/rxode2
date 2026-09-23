@@ -94,6 +94,12 @@
   `rxProgressAbort()` falls back to its default message when `error` is empty
   (#1377).
 
+- `rxSolve(omegaSeparation="tnpri")` no longer draws the omega entries the
+  `thetaMat` gives no variance from the `dfSub` inverse Wishart; they stay at
+  their estimates, as documented.  `sigmaSeparation="tnpri"` likewise ignores
+  `dfObs`.  The "thetaMat has too many items" message now says when an
+  ignored column could be drawn with `"tnpri"` (#1388).
+
 # rxode2 5.1.7
 
 ## New features
