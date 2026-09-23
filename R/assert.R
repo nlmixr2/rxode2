@@ -718,8 +718,8 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual transformation ",
-         .assertRxUiQuote(.bad), " (only ", .assertRxUiQuote(transform),
-         " are supported)", extra, call. = FALSE)
+         .assertRxUiQuote(.bad), " (supported: ", .assertRxUiQuote(transform),
+         ")", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -735,8 +735,8 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual error ",
-         .assertRxUiQuote(.bad), " (only ", .assertRxUiQuote(errType),
-         " are supported)", extra, call. = FALSE)
+         .assertRxUiQuote(.bad), " (supported: ", .assertRxUiQuote(errType),
+         ")", extra, call. = FALSE)
   }
   invisible(ui)
 }
@@ -760,8 +760,8 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   .bad <- unique(.addProp[!(.addProp %in% addProp)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use ", .assertRxUiQuote(.bad),
-         " add() + prop() residual errors (only ", .assertRxUiQuote(addProp),
-         " are supported)", extra, call. = FALSE)
+         " add() + prop() residual errors (supported: ", .assertRxUiQuote(addProp),
+         ")", extra, call. = FALSE)
   }
   invisible(ui)
 }

@@ -316,7 +316,7 @@ rxTest({
     expect_error(assertRxUiTransform(lnorm, "untransformed"),
                  "cannot use the residual transformation 'lnorm'")
     expect_error(assertRxUiTransform(boxCox, c("untransformed", "lnorm"), extra = " for x"),
-                 "residual transformation 'boxCox' \\(only 'untransformed', 'lnorm' are supported\\) for x")
+                 "residual transformation 'boxCox' \\(supported: 'untransformed', 'lnorm'\\) for x")
 
     # error types
     expect_error(assertRxUiErrType(add, c("add", "prop")), NA)
