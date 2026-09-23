@@ -34,6 +34,11 @@
 
 ## Bug fixes
 
+- `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
+  on a positive-definite Omega whose off-diagonal zeros do not split it into
+  contiguous blocks; such zeros are not zeros of the Cholesky factor, so they
+  are now free parameters (#1365).
+
 - A solve with exactly one observation now simulates its residual error;
   previously the one-row draw was discarded and each `eps` came back as a fixed
   element of the `sigma` covariance matrix, regardless of the seed (#1364).

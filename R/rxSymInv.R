@@ -342,6 +342,9 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
     .blockRows[[length(.blockRows) + 1]] <- s
   }
   if (length(block) == 0) {
+    ## An off-diagonal zero in a non-decomposable block is not a zero of
+    ## chol(Omega^-1), so every lower-triangle cell is a parameter (#1365)
+    mat1[row(mat1) != col(mat1)] <- 1
     if (diag.xform == "sqrt" && dim(mat1)[1] <= .Call(`_rxCholInv`, 0L, NULL, NULL)) {
       fmat <- mat1
       num <- as.vector(mat1[upper.tri(mat1, TRUE)])
