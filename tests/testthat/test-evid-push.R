@@ -1165,6 +1165,62 @@ rxTest({
     expect_equal(unname(rxModelVars(mod)$splitBolus), c(1L, 1L, 2L, 3L))
   })
 
+  test_that("split directives survive a residual-error endpoint (#1381)", {
+    .mk <- function(directive) {
+      .f <- function() {
+        ini({
+          ltk0 <- log(4)
+          lcl <- log(0.1)
+          lvc <- log(10)
+          f1 <- 0.3
+          propSd <- 0.5
+        })
+        model({
+          tk0 <- exp(ltk0)
+          cl <- exp(lcl)
+          vc <- exp(lvc)
+          kel <- cl / vc
+          splitInfusionBolus(depot, depot, depot2)
+          d/dt(depot) <- -0.5 * depot
+          d/dt(depot2) <- -0.5 * depot2
+          f(depot) <- 1 - f1
+          f(depot2) <- f1
+          dur(depot2) <- tk0
+          d/dt(central) <- 0.5 * depot + 0.5 * depot2 - kel * central
+          Cc <- central / vc
+          Cc ~ prop(propSd)
+        })
+      }
+      body(.f)[[3]][[2]][[6]] <- directive
+      .f
+    }
+    e <- et(time = 0, amt = 100, cmt = "depot") |>
+      et(seq(0, 8, by = 1))
+    for (.d in list(
+      quote(splitBolus(depot, depot, depot2)),
+      quote(splitInfusionBolus(depot, depot, depot2)),
+      quote(splitBolusInfusion(depot, depot, depot2)),
+      quote(splitInfusion(depot, depot, depot2))
+    )) {
+      .name <- as.character(.d[[1]])
+      ui <- rxode2(.mk(.d))
+      expect_equal(unname(rxModelVars(ui$simulationModel)[[.name]]), c(1L, 1L, 2L), label = .name)
+      expect_equal(unname(rxModelVars(ui$simulationIniModel)[[.name]]), c(1L, 1L, 2L), label = .name)
+      for (.o in setdiff(c("splitBolus", "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"), .name)) {
+        expect_length(rxModelVars(ui$simulationModel)[[.o]], 0L)
+      }
+      withErr <- rxSolve(ui, e, addDosing = TRUE)
+      noErr <- suppressMessages(rxSolve(ui |> model(-Cc ~ .), e, addDosing = TRUE))
+      expect_equal(withErr$depot2, noErr$depot2, tolerance = 1e-5, label = .name)
+      expect_equal(withErr$central, noErr$central, tolerance = 1e-5, label = .name)
+      expect_equal(sum(withErr$evid != 0), sum(noErr$evid != 0), label = .name)
+    }
+    # the promoted infusion path fills depot2 with f1 * amt over tk0
+    ui <- rxode2(.mk(quote(splitBolusInfusion(depot, depot, depot2))))
+    s <- rxSolve(ui, e)
+    expect_equal(s$depot2[s$time == 4], 0.3 * 100 / 4 / 0.5 * (1 - exp(-0.5 * 4)), tolerance = 1e-5)
+  })
+
   for (meth in .methods0) {
     test_that(paste0("splitBolus applies to a one-target bolus pushed by evid_() [", meth, "]"), {
       mSplit <- rxode2({
