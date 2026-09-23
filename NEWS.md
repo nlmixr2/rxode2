@@ -41,6 +41,11 @@
 
 ## Bug fixes
 
+- A `mixest` or `mixunif` data column can now be combined with other
+  covariates; previously any other covariate made `etTrans()` fail with
+  "mixest is time-varying but must be constant within an individual" or an
+  out-of-bounds error, depending on the column order.
+
 - `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
   on a positive-definite Omega whose off-diagonal zeros do not split it into
   contiguous blocks; such zeros are not zeros of the Cholesky factor, so they
