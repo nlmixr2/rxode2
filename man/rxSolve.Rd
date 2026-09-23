@@ -224,7 +224,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -236,7 +236,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -1636,8 +1636,8 @@ causes the solver to run as a plain non-composite method.  Dense output
 that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
 stiff secondary that does support it.}
 
-\item{useLinCmt}{Logical; when \code{TRUE} and the model contains
-linear-compartment ODEs that can be solved analytically,
+\item{useLinCmt}{Logical; when \code{TRUE} and a function-style
+(\code{ini()}/\code{model()}) model contains linear-compartment ODEs that can be solved analytically,
 automatically convert them to a \code{linCmt()} call before solving.
 The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
 model is cached so the compilation cost is paid only once.  A
@@ -1649,9 +1649,9 @@ the parameter names, or whose compartments it would renumber
 under event data addressing them by index, is solved with its
 original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
-hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-use the value of \code{rxode2.useLinCmt} option (which when specified
-is \code{TRUE} by default).}
+hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+\code{useLinCmt} set in the model's meta block, else the
+\code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset.}
 
 \item{file}{Character string giving a file path prefix for out-of-memory
 chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes

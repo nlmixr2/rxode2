@@ -78,6 +78,12 @@
   breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
   guard covers compiled model code.
 
+- `rxSolve()` of a function-style (`ini()`/`model()`) model no longer
+  converts its ODEs to `linCmt()` unless asked.  `rxSolve.rxUi()` still
+  defaulted to `useLinCmt=TRUE` and ignored `options(rxode2.useLinCmt=)`; it
+  now uses a `useLinCmt` set in the model's meta block, else the option
+  (default `FALSE`), like every other model type (#1389).
+
 - `rxProgress()` and `rxProgressStop()` now give an error for a zero-length
   argument such as `rxProgress(NULL)` instead of crashing R, and
   `rxProgressAbort()` falls back to its default message when `error` is empty

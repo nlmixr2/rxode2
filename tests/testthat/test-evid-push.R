@@ -732,9 +732,8 @@ rxTest({
 
   test_that("mtime() at a time already in the event table pushes once (rxode2#1152)", {
     # The classic block form and the functional/ui form of the same model must
-    # push the same single dose.  They did not: rxSolve() defaults to
-    # useLinCmt=TRUE for a ui model, so this one is auto-converted to a
-    # linCmt() model and solved by the linCmt driver -- which used to fire
+    # push the same single dose.  They did not: with useLinCmt=TRUE a ui model
+    # is auto-converted to a linCmt() model and solved by the linCmt driver -- which used to fire
     # evid_() from BOTH its internal dydt(xout) and a calc_lhs() pass for the
     # same-time observation.  With mtime(visit1) <- 24 and 24 also in the
     # sampling grid, both fired and the bolus was pushed twice.  There is now a
@@ -771,7 +770,7 @@ rxTest({
 
     want <- c(nAt24 = 1, total = 600)
     expect_equal(cnt(rxSolve(classic, p, ev, addDosing = TRUE)), want)
-    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE))), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE, useLinCmt = TRUE))), want)
     # the ODE form of the same ui model (no linCmt conversion) must agree
     expect_equal(
       cnt(suppressMessages(
@@ -784,7 +783,7 @@ rxTest({
     # same answer as keeping it
     evNo24 <- et(amt = 300, cmt = "depot", time = 0) |>
       et(setdiff(seq(0, 72, by = 1), 24))
-    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE))), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE, useLinCmt = TRUE))), want)
 
     # two mtime()s in the grid scaled the doubling; 300 + 300 + 300, not 1500
     ui2 <- suppressMessages(function() {
@@ -802,7 +801,7 @@ rxTest({
         if (t == visit1 || t == visit2) bolus(300, depot, 0, 0, 0)
       })
     })
-    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE))), c(nAt24 = 1, total = 900))
+    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE, useLinCmt = TRUE))), c(nAt24 = 1, total = 900))
   })
 
   test_that("past-time evid_() produces a warning", {
