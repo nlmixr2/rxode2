@@ -375,6 +375,41 @@ rxTest({
     expect_equal(.s2$Kel, ifelse(.want == 1L, 0.5, 1.5))
   })
 
+  test_that("a mixest data column works alongside other covariates", {
+    .m <- rxode2("Kel = kel1*rx_mixsel_1_2_ + kel2*rx_mixsel_2_2_\nv = WT*V\nd/dt(centr) = -Kel*centr\ncp = centr/v\nme = mixest\n")
+    .p <- c(kel1 = 0.5, kel2 = 1.5, V = 2)
+    .ev <- et(amt = 1, cmt = "centr") |> et(c(1, 4)) |> et(id = 1:6)
+    .want <- c(1L, 2L, 1L, 2L, 2L, 1L)
+    .wt <- c(3, 4, 5, 6, 7, 8)
+    .d <- as.data.frame(.ev)
+    .d$WT <- .wt[.d$id]
+    .d$mixest <- .want[.d$id]
+    .check <- function(d, iCov = NULL) {
+      .s <- rxSolve(.m, d, params = .p, iCov = iCov, returnType = "data.frame")
+      .s <- .s[!duplicated(.s$id), ]
+      .s <- .s[order(.s$id), ]
+      expect_equal(.s$me, as.double(.want))
+      expect_equal(.s$Kel, ifelse(.want == 1L, 0.5, 1.5))
+      expect_equal(.s$v, 2 * .wt)
+    }
+    # mixest after, and before, the covariate column
+    .check(.d)
+    .check(.d[, c(setdiff(names(.d), c("WT", "mixest")), "mixest", "WT")])
+    # mixest from iCov with a data covariate (the nlmixr2 table step)
+    .check(.d[, names(.d) != "mixest"], iCov = data.frame(id = 1:6, mixest = .want))
+    # an allTimeVar translation solves the same
+    .check(etTrans(.d[, c(setdiff(names(.d), c("WT", "mixest")), "mixest", "WT")], .m, allTimeVar = TRUE))
+    # a time-varying covariate
+    .d2 <- .d
+    .d2$WT[.d2$time == 4] <- 100
+    .s <- rxSolve(.m, .d2, params = .p, returnType = "data.frame")
+    expect_equal(.s$Kel[.s$time == 4], ifelse(.want == 1L, 0.5, 1.5))
+    expect_equal(.s$v[.s$time == 4], rep(200, 6))
+    # a time-varying mixest is still rejected
+    .d$mixest[.d$time == 4] <- 3L - .d$mixest[.d$time == 4]
+    expect_error(rxSolve(.m, .d, params = .p), "mixest is time-varying")
+  })
+
   test_that("mix() round trips through symengine as rx_mixsel_<k>_<n>_", {
     # rxFromSE() is NSE, so the symengine text has to reach it as a value
     .se <- rxToSE("mix(cl1, p1, cl2)")
