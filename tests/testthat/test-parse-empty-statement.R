@@ -130,6 +130,13 @@ rxTest({
     expect_equal(rxNorm("if (a>1) ;;"), "if (a>1){\n}\n")
     expect_equal(rxNorm("if (a>1) ; else ;"), "if (a>1){\n}\nelse {\n}\n")
     expect_equal(rxNorm("a=1;;\n;\n{b=2;;};\n"), "a=1;\nb=2;\n")
+    ## a block's trailing ';' belongs to the block, so an 'else' may follow it,
+    ## as it may follow `b=1;`
+    expect_equal(
+      rxNorm("if (a>1) {b=1};\nelse b=2"),
+      "if (a>1){\nb=1;\n}\nelse {\nb=2;\n}\n"
+    )
+    expect_equal(rxNorm("if (a>1) b=1;;\nelse b=2"), rxNorm("if (a>1) b=1;\nelse b=2"))
   })
 
   test_that("parsing ';'-terminated statements does not grow quadratically (#1398)", {
