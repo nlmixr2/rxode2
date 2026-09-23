@@ -2734,7 +2734,9 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   ret0.attr("class") = "data.frame";
   ret0.attr("row.names") = IntegerVector::create(NA_INTEGER,-nSub*nStud);
   getRxModels();
-  if (ret1.nrow() > 1) {
+  // publish any draw, including a single row (#1364); otherwise rxSolve_ falls
+  // back to the sigma covariance matrix, which would be read as the residuals
+  if (ret1.nrow() > 0) {
     ret1.attr("dimnames") = List::create(R_NilValue, sigmaN);
     _rxModels[".sigma"] = ret1;
   }
