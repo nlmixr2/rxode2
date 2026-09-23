@@ -3262,19 +3262,29 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   j=0;
-  if (hasMixest && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixest") != 0 ||
-                    !sub1[lst1.size()-1])) {
+  // covCol is filled walking the data columns backwards, so the mixest/mixunif
+  // column can sit anywhere in lst1; find it by name.
+  int mixIdx = -1;
+  if (hasMixest || hasMixUnif) {
+    const char *mixNm = hasMixest ? "mixest" : "mixunif";
+    for (i = 1; i < lst1.size(); i++) {
+      if (!rxstrcmpi(CHAR(nme1[i]), mixNm)) {
+        mixIdx = i;
+        break;
+      }
+    }
+  }
+  if (hasMixest && (mixIdx == -1 || !sub1[mixIdx])) {
     stop(_("mixest is time-varying but must be constant within an individual"));
   }
-  if (hasMixUnif && (rxstrcmpi(CHAR(nme1[lst1.size()-1]), "mixunif") != 0 ||
-                    !sub1[lst1.size()-1])) {
+  if (hasMixUnif && (mixIdx == -1 || !sub1[mixIdx])) {
     stop(_("mixunif is time-varying but must be constant within an individual"));
   }
   int rmExtra = 0;
   RObject mixUnif = R_NilValue;
   if (hasMixest || hasMixUnif) {
     rmExtra = 1;
-    NumericVector mixEst = as<NumericVector>(lst1[lst1.size()-1]);
+    NumericVector mixEst = as<NumericVector>(lst1[mixIdx]);
     NumericVector mixUnifNV(nid);
     for (i = 0; i < nid; i++) {
       if (hasMixest) {
@@ -3371,8 +3381,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   List lst1F(1+covCol.size()-nTv-rmExtra);
   CharacterVector nme1F(1+covCol.size()-nTv-rmExtra);
-  for (i = 0; i < lst1.size()-rmExtra;i++){
-    if (sub1[i]) {
+  j = 0;
+  for (i = 0; i < lst1.size();i++){
+    if (sub1[i] && i != mixIdx) {
       lst1F[j]=lst1[i];
       nme1F[j]=nme1[i];
       j++;
