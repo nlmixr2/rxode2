@@ -112,6 +112,11 @@
   `dfObs`.  The "thetaMat has too many items" message now says when an
   ignored column could be drawn with `"tnpri"` (#1388).
 
+- Parsing a model (`rxModelVars()`, `rxode2()`, `rxNorm()`) no longer takes
+  time quadratic in the number of `;`-terminated statements; a 1600-state
+  chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
+  an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
+
 # rxode2 5.1.7
 
 ## New features
