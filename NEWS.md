@@ -17,6 +17,12 @@
   parameter (`add.sd <- fix(0.7)`) or a between-subject variability
   (`eta.ka ~ fix(0.6)`), for estimation methods that would otherwise
   estimate them anyway.
+- `rxPriorBuildSpec()` and `rxPriorLogDensity()` now evaluate lotri's
+  univariate continuous priors beyond normal and Cauchy (`dlnorm()`,
+  `dgamma()`, `dbeta()`, `studentT()`, `dexp()`, `dunif()`, `dweibull()`,
+  `dlogis()`, `dchisq()`, `invGamma()` and the rest of the catalog except
+  `wiener()`), with the log density and its gradient, truncated to the
+  parameter's own bounds (#1387).
 
 - The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
   `.solComp3()` and the `rxDerived()` conversions moved to the new
@@ -49,6 +55,11 @@
   installation; exported functions and compiled model code are unchanged.
 
 ## Bug fixes
+
+- A `mixest` or `mixunif` data column can now be combined with other
+  covariates; previously any other covariate made `etTrans()` fail with
+  "mixest is time-varying but must be constant within an individual" or an
+  out-of-bounds error, depending on the column order.
 
 - `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
   on a positive-definite Omega whose off-diagonal zeros do not split it into
