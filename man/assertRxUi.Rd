@@ -121,9 +121,11 @@ distribution is normal or transformably normal
 \item \code{assertRxUiEstimatedResiduals} -- Make sure that the residual error
 parameters are estimated (not modeled).
 \item \code{assertRxUiNoFixedResiduals} -- Make sure that none of the
-residual error parameters are fixed (ie \code{add.sd <- fix(0.7)}); used
-by estimation methods that always estimate them, so a fixed value
-is an error instead of being silently estimated
+residual error parameters are fixed (ie \code{add.sd <- fix(0.7)}, a
+literal \code{add(0.7)}, or a fixed distribution parameter like the
+\code{lambda} of \code{pois(lambda)}); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated
 \item \code{assertRxUiNoFixedOmega} -- Make sure that none of the
 between-subject variability parameters are fixed (ie
 \code{eta.ka ~ fix(0.6)}); used by estimation methods that always

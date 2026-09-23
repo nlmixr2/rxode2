@@ -347,6 +347,36 @@ rxTest({
                  "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors")
     expect_error(assertRxUiAddProp(pow, "combined2"), NA)
 
+    # the model's own control is used before the option
+    ctlUi <- rxode2::rxUiDecompress(addProp)
+    rxSetControl(ctlUi, list(addProp = "combined1"))
+    expect_error(assertRxUiAddProp(ctlUi, "combined2"), "cannot use 'combined1'")
+    rxSetControl(ctlUi, list(addProp = "combined2"))
+    expect_error(assertRxUiAddProp(ctlUi, "combined1"), "cannot use 'combined2'")
+    # a NULL control value falls back to the option
+    rxSetControl(ctlUi, list(addProp = NULL))
+    expect_error(assertRxUiAddProp(ctlUi, "combined1"), "cannot use 'combined2'")
+
+    # only the add() + prop() endpoints of a multiple endpoint model
+    addPropTwo <- function() {
+      ini({
+        tv <- 3.45
+        eta.v ~ 0.1
+        add.sd <- 0.7
+        add.pd <- 0.5
+        prop.pd <- 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        eff <- 2 * cp
+        cp ~ add(add.sd)
+        eff ~ add(add.pd) + prop(prop.pd) + combined1()
+      })
+    }
+    expect_error(assertRxUiAddProp(addPropTwo, "combined2"), "cannot use 'combined1'")
+    expect_error(assertRxUiAddProp(addPropTwo, "combined1"), NA)
+
     # non-normal endpoints have no residual transformation or error type
     pois <- function() {
       ini({
@@ -434,5 +464,20 @@ rxTest({
     }
     expect_error(assertRxUiNoFixedResiduals(literal),
                  "cannot fix residual error parameters \\('rx.cp.add'\\)")
+
+    # a fixed distribution parameter is also a fixed residual parameter
+    poisFix <- function() {
+      ini({
+        tv <- 1
+        eta.v ~ 0.1
+        lam <- fix(2)
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cnt ~ pois(lam)
+      })
+    }
+    expect_error(assertRxUiNoFixedResiduals(poisFix),
+                 "cannot fix residual error parameters \\('lam'\\)")
   })
 })

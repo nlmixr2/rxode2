@@ -31,9 +31,11 @@
 #'    parameters are estimated (not modeled).
 #'
 #' - `assertRxUiNoFixedResiduals` -- Make sure that none of the
-#'    residual error parameters are fixed (ie `add.sd <- fix(0.7)`); used
-#'    by estimation methods that always estimate them, so a fixed value
-#'    is an error instead of being silently estimated
+#'    residual error parameters are fixed (ie `add.sd <- fix(0.7)`, a
+#'    literal `add(0.7)`, or a fixed distribution parameter like the
+#'    `lambda` of `pois(lambda)`); used by estimation methods that always
+#'    estimate them, so a fixed value is an error instead of being
+#'    silently estimated
 #'
 #' - `assertRxUiNoFixedOmega` -- Make sure that none of the
 #'    between-subject variability parameters are fixed (ie
@@ -803,8 +805,10 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   .addProp <- as.character(.predDf$addProp[.w])
   .default <- .addProp == "default"
   if (any(.default)) {
-    .addProp[.default] <- rxGetControl(ui, "addProp",
-                                       getOption("rxode2.addProp", "combined2"))
+    .optAddProp <- getOption("rxode2.addProp", "combined2")
+    .ctlAddProp <- rxGetControl(ui, "addProp", .optAddProp)
+    if (length(.ctlAddProp) != 1L) .ctlAddProp <- .optAddProp
+    .addProp[.default] <- .ctlAddProp
   }
   .bad <- unique(.addProp[!(.addProp %in% addProp)])
   if (length(.bad) > 0L) {
