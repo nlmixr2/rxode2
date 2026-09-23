@@ -11,6 +11,12 @@
   residual error models stop with a clear error instead of fitting a
   different one.
 
+- New assertions `assertRxUiNoFixedResiduals()` and
+  `assertRxUiNoFixedOmega()` refuse a model that fixes a residual error
+  parameter (`add.sd <- fix(0.7)`) or a between-subject variability
+  (`eta.ka ~ fix(0.6)`), for estimation methods that would otherwise
+  estimate them anyway.
+
 - The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
   `.solComp3()` and the `rxDerived()` conversions moved to the new
   'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds

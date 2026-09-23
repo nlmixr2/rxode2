@@ -341,4 +341,35 @@ rxTest({
     })
     expect_error(assertRxUiAddProp(addProp, "default"))
   })
+
+  test_that("assert no fixed residual or between-subject variability parameters", {
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45
+        tv <- fix(3.45)
+        eta.ka ~ 0.6
+        add.sd <- 0.7
+        prop.sd <- 0.1
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- 1
+        v <- exp(tv)
+        linCmt() ~ add(add.sd) + prop(prop.sd)
+      })
+    }
+    # a fixed structural theta is fine for both
+    expect_error(assertRxUiNoFixedResiduals(one.cmt), NA)
+    expect_error(assertRxUiNoFixedOmega(one.cmt), NA)
+
+    fixAdd <- rxode2::ini(one.cmt, add.sd = fix(0.7))
+    expect_error(assertRxUiNoFixedResiduals(fixAdd, extra = " for x"),
+                 "cannot fix residual error parameters \\('add.sd'\\) for x")
+    expect_error(assertRxUiNoFixedOmega(fixAdd), NA)
+
+    fixEta <- rxode2::ini(one.cmt, eta.ka ~ fix(0.6))
+    expect_error(assertRxUiNoFixedOmega(fixEta, extra = " for x"),
+                 "cannot fix between-subject variability \\('eta.ka'\\) for x")
+    expect_error(assertRxUiNoFixedResiduals(fixEta), NA)
+  })
 })

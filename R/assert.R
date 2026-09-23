@@ -30,6 +30,17 @@
 #' - `assertRxUiEstimatedResiduals` -- Make sure that the residual error
 #'    parameters are estimated (not modeled).
 #'
+#' - `assertRxUiNoFixedResiduals` -- Make sure that none of the
+#'    residual error parameters are fixed (ie `add.sd <- fix(0.7)`); used
+#'    by estimation methods that always estimate them, so a fixed value
+#'    is an error instead of being silently estimated
+#'
+#' - `assertRxUiNoFixedOmega` -- Make sure that none of the
+#'    between-subject variability parameters are fixed (ie
+#'    `eta.ka ~ fix(0.6)`); used by estimation methods that always
+#'    estimate them, so a fixed value is an error instead of being
+#'    silently estimated
+#'
 #' - `assertRxUiTransform` -- Make sure that every endpoint uses one of
 #'    the `transform` residual transformations (like `"untransformed"`
 #'    or `"lnorm"`); used by estimation methods that support only some
@@ -132,6 +143,10 @@
 #' # assertRxUi(rnorm) # will fail
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
+#'
+#' assertRxUiNoFixedResiduals(one.cmt)
+#'
+#' assertRxUiNoFixedOmega(one.cmt)
 #'
 #' assertRxUiTransform(one.cmt, c("untransformed", "lnorm"))
 #'
@@ -705,6 +720,34 @@ assertRxUiEstimatedResiduals <- function(ui, extra = "", .var.name = .vname(ui))
 #' @author Matthew L. Fidler
 .assertRxUiQuote <- function(x) {
   paste(paste0("'", x, "'"), collapse = ", ")
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoFixedResiduals <- function(ui, extra = "", .var.name = .vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
+  .iniDf <- ui$iniDf
+  .fixed <- .iniDf$name[!is.na(.iniDf$err) & .iniDf$fix]
+  if (length(.fixed) > 0L) {
+    stop("'", .var.name, "' cannot fix residual error parameters (",
+         .assertRxUiQuote(.fixed), ")", extra, call. = FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNoFixedOmega <- function(ui, extra = "", .var.name = .vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
+  .iniDf <- ui$iniDf
+  .fixed <- .iniDf$name[!is.na(.iniDf$neta1) & .iniDf$fix]
+  if (length(.fixed) > 0L) {
+    stop("'", .var.name, "' cannot fix between-subject variability (",
+         .assertRxUiQuote(.fixed), ")", extra, call. = FALSE)
+  }
+  invisible(ui)
 }
 
 #' @export

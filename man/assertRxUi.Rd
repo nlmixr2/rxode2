@@ -19,6 +19,8 @@
 \alias{assertRxUiNoOmegaNormalPriors}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
+\alias{assertRxUiNoFixedResiduals}
+\alias{assertRxUiNoFixedOmega}
 \alias{assertRxUiTransform}
 \alias{assertRxUiErrType}
 \alias{assertRxUiAddProp}
@@ -62,6 +64,10 @@ assertRxUiNoOmegaNormalPriors(ui, extra = "", .var.name = .vname(ui))
 assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiEstimatedResiduals(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoFixedResiduals(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoFixedOmega(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiTransform(ui, transform, extra = "", .var.name = .vname(ui))
 
@@ -113,6 +119,15 @@ distribution is normal or transformably normal
 \item \code{assertRxUiNormal} -- Make sure that the model residual distribution is normal
 \item \code{assertRxUiEstimatedResiduals} -- Make sure that the residual error
 parameters are estimated (not modeled).
+\item \code{assertRxUiNoFixedResiduals} -- Make sure that none of the
+residual error parameters are fixed (ie \code{add.sd <- fix(0.7)}); used
+by estimation methods that always estimate them, so a fixed value
+is an error instead of being silently estimated
+\item \code{assertRxUiNoFixedOmega} -- Make sure that none of the
+between-subject variability parameters are fixed (ie
+\code{eta.ka ~ fix(0.6)}); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated
 \item \code{assertRxUiTransform} -- Make sure that every endpoint uses one of
 the \code{transform} residual transformations (like \code{"untransformed"}
 or \code{"lnorm"}); used by estimation methods that support only some
@@ -182,6 +197,10 @@ assertRxUi(one.cmt)
 # assertRxUi(rnorm) # will fail
 
 assertRxUiSingleEndpoint(one.cmt)
+
+assertRxUiNoFixedResiduals(one.cmt)
+
+assertRxUiNoFixedOmega(one.cmt)
 
 assertRxUiTransform(one.cmt, c("untransformed", "lnorm"))
 
