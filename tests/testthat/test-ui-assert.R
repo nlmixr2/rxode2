@@ -278,4 +278,67 @@ rxTest({
       regexp = "can only have random effects on ID"
     )
   })
+
+  test_that("assert residual transformations, error types and add+prop", {
+    mod <- function(err) {
+      # only the residual parameters this error model uses go in ini()
+      .errPar <- list(add.sd = 0.7, prop.sd = 0.1, pow.exp = 0.5, lambda = 0.5)
+      .errPar <- .errPar[names(.errPar) %in% all.vars(err)]
+      .ini <- c(list(quote(`{`), quote(tv <- 3.45), quote(eta.v ~ 0.1)),
+                lapply(names(.errPar), function(n) {
+                  bquote(.(as.name(n)) <- .(.errPar[[n]]))
+                }))
+      f <- function() {
+        ini(INI)
+        model({
+          v <- exp(tv + eta.v)
+          cp <- 100 / v
+          ERR
+        })
+      }
+      body(f) <- do.call(substitute, list(body(f), list(INI = as.call(.ini), ERR = err)))
+      f()
+    }
+
+    add <- mod(quote(cp ~ add(add.sd)))
+    prop <- mod(quote(cp ~ prop(prop.sd)))
+    lnorm <- mod(quote(cp ~ lnorm(add.sd)))
+    lnormProp <- mod(quote(cp ~ lnorm(add.sd) + prop(prop.sd)))
+    boxCox <- mod(quote(cp ~ add(add.sd) + boxCox(lambda)))
+    pow <- mod(quote(cp ~ add(add.sd) + pow(prop.sd, pow.exp)))
+    addProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd)))
+    addProp1 <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1()))
+    addProp2 <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined2()))
+
+    # transformations
+    expect_error(assertRxUiTransform(add, "untransformed"), NA)
+    expect_error(assertRxUiTransform(lnorm, c("untransformed", "lnorm")), NA)
+    expect_error(assertRxUiTransform(lnorm, "untransformed"),
+                 "cannot use the residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(boxCox, c("untransformed", "lnorm"), extra = " for x"),
+                 "residual transformation 'boxCox' \\(only 'untransformed', 'lnorm' are supported\\) for x")
+
+    # error types
+    expect_error(assertRxUiErrType(add, c("add", "prop")), NA)
+    expect_error(assertRxUiErrType(prop, c("add", "prop")), NA)
+    expect_error(assertRxUiErrType(lnorm, "add"), NA)
+    expect_error(assertRxUiErrType(lnormProp, "add"),
+                 "cannot use the residual error 'add \\+ prop'")
+    expect_error(assertRxUiErrType(pow, c("add", "prop", "add + prop")),
+                 "cannot use the residual error 'add \\+ pow'")
+
+    # add + prop combinations
+    expect_error(assertRxUiAddProp(add, "combined2"), NA)
+    expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
+    expect_error(assertRxUiAddProp(addProp1, "combined2"),
+                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\) residual errors")
+    expect_error(assertRxUiAddProp(addProp1, c("combined1", "combined2")), NA)
+    expect_error(assertRxUiAddProp(addProp, "combined2"), NA)
+    withr::with_options(list(rxode2.addProp = "combined1"), {
+      expect_error(assertRxUiAddProp(addProp, "combined2"),
+                   "cannot use 'combined1'")
+      expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
+    })
+    expect_error(assertRxUiAddProp(addProp, "default"))
+  })
 })

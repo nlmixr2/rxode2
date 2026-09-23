@@ -30,6 +30,23 @@
 #' - `assertRxUiEstimatedResiduals` -- Make sure that the residual error
 #'    parameters are estimated (not modeled).
 #'
+#' - `assertRxUiTransform` -- Make sure that every endpoint uses one of
+#'    the `transform` residual transformations (like `"untransformed"`
+#'    or `"lnorm"`); used by estimation methods that support only some
+#'    transformations
+#'
+#' - `assertRxUiErrType` -- Make sure that every endpoint uses one of
+#'    the `errType` residual error types (`"add"`, `"prop"`, `"pow"`,
+#'    `"add + prop"`, `"add + pow"`); used by estimation methods that
+#'    support only some residual error types
+#'
+#' - `assertRxUiAddProp` -- Make sure that every `add() + prop()`
+#'    endpoint uses one of the `addProp` combinations (`"combined1"`,
+#'    where the standard deviations add, or `"combined2"`, where the
+#'    variances add); an endpoint declared without `combined1()` or
+#'    `combined2()` uses `rxControl(addProp=)` or, when that is not set,
+#'    `getOption("rxode2.addProp", "combined2")`
+#'
 #' - `assertRxUiPopulationOnly` -- Make sure the model is the population only
 #'    model (no mixed effects)
 #'
@@ -70,6 +87,17 @@
 #'    NONMEM TNPRI model needs); used by estimation methods that can put a
 #'    prior on an omega but only a Wishart one
 #'
+#' @param transform character vector of the residual transformations
+#'   that are allowed (the levels of `ui$predDf$transform`, like
+#'   `"untransformed"`, `"lnorm"` or `"boxCox"`)
+#'
+#' @param errType character vector of the residual error types that are
+#'   allowed (`"add"`, `"prop"`, `"pow"`, `"add + prop"` or
+#'   `"add + pow"`)
+#'
+#' @param addProp character vector of the `add() + prop()`
+#'   combinations that are allowed (`"combined1"` or `"combined2"`)
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -104,6 +132,12 @@
 #' # assertRxUi(rnorm) # will fail
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
+#'
+#' assertRxUiTransform(one.cmt, c("untransformed", "lnorm"))
+#'
+#' assertRxUiErrType(one.cmt, c("add", "prop", "add + prop"))
+#'
+#' assertRxUiAddProp(one.cmt, "combined2")
 #' }
 assertRxUi <- function(ui, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
@@ -659,6 +693,75 @@ assertRxUiEstimatedResiduals <- function(ui, extra = "", .var.name = .vname(ui))
   .predDf <- ui$predDf
   if (!all(is.na(unlist(.predDf[, c("a", "b", "c", "d", "e", "f", "lambda")], use.names = FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call. = FALSE)
+  }
+  invisible(ui)
+}
+
+#' Quote and collapse values for an assertion message
+#'
+#' @param x character vector
+#' @return string like "'a', 'b'"
+#' @noRd
+#' @author Matthew L. Fidler
+.assertRxUiQuote <- function(x) {
+  paste(paste0("'", x, "'"), collapse = ", ")
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
+  assertRxUiPrediction(ui)
+  checkmate::assertCharacter(transform, any.missing = FALSE, min.len = 1)
+  .transform <- as.character(ui$predDf$transform)
+  .bad <- unique(.transform[!(.transform %in% transform)])
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' cannot use the residual transformation ",
+         .assertRxUiQuote(.bad), " (only ", .assertRxUiQuote(transform),
+         " are supported)", extra, call. = FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
+  assertRxUiPrediction(ui)
+  checkmate::assertCharacter(errType, any.missing = FALSE, min.len = 1)
+  .errType <- as.character(ui$predDf$errType)
+  .bad <- unique(.errType[!(.errType %in% errType)])
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' cannot use the residual error ",
+         .assertRxUiQuote(.bad), " (only ", .assertRxUiQuote(errType),
+         " are supported)", extra, call. = FALSE)
+  }
+  invisible(ui)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
+  force(.var.name)
+  ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
+  assertRxUiPrediction(ui)
+  checkmate::assertSubset(addProp, c("combined1", "combined2"), empty.ok = FALSE)
+  .predDf <- ui$predDf
+  .w <- which(as.character(.predDf$errType) == "add + prop")
+  if (length(.w) == 0L) return(invisible(ui))
+  .addProp <- as.character(.predDf$addProp[.w])
+  .default <- .addProp == "default"
+  if (any(.default)) {
+    .addProp[.default] <- rxGetControl(ui, "addProp",
+                                       getOption("rxode2.addProp", "combined2"))
+  }
+  .bad <- unique(.addProp[!(.addProp %in% addProp)])
+  if (length(.bad) > 0L) {
+    stop("'", .var.name, "' cannot use ", .assertRxUiQuote(.bad),
+         " add() + prop() residual errors (only ", .assertRxUiQuote(addProp),
+         " are supported)", extra, call. = FALSE)
   }
   invisible(ui)
 }
