@@ -41,6 +41,11 @@
 
 ## Bug fixes
 
+- A model subtracting a negated term (`a - -b`) or adding a positive one
+  (`a + +b`) now compiles; the generated C code read the two signs as the
+  `--`/`++` operator.  `a - Inf` also compiles now instead of generating
+  `aR_NegInf` (#1399).
+
 - A `mixest` or `mixunif` data column can now be combined with other
   covariates; previously any other covariate made `etTrans()` fail with
   "mixest is time-varying but must be constant within an individual" or an
