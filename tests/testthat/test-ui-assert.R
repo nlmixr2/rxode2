@@ -460,6 +460,27 @@ rxTest({
     expect_error(assertRxUiTransform(cauchyMod, "untransformed"),
                  "residual transformation 'boxCox'")
 
+    # the residual endpoint of a model that also has a pois() endpoint
+    # is still checked
+    poisMixed <- function() {
+      ini({
+        tv <- 1
+        eta.v ~ 0.1
+        lsd <- 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        lambda <- v
+        cp ~ lnorm(lsd)
+        cnt ~ pois(lambda)
+      })
+    }
+    expect_error(assertRxUiTransform(poisMixed, "untransformed"),
+                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(poisMixed, "lnorm"), NA)
+    expect_error(assertRxUiErrType(poisMixed, "add"), NA)
+
     llMod <- function() {
       ini({
         tv <- 1
