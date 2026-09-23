@@ -340,6 +340,33 @@ rxTest({
       expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
     })
     expect_error(assertRxUiAddProp(addProp, "default"))
+
+    # a misspelled allowed value is an error, not a refusal of every model
+    expect_error(assertRxUiTransform(lnorm, "lognormal"), "lognormal")
+    expect_error(assertRxUiErrType(addProp2, "add+prop"), "add\\+prop")
+
+    # every endpoint is checked, not only the first
+    twoEndpoints <- function() {
+      ini({
+        tv <- 3.45
+        eta.v ~ 0.1
+        add.sd <- 0.7
+        lsd <- 0.1
+        pow.sd <- 0.1
+        pow.exp <- 0.5
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        eff <- 2 * cp
+        cp ~ add(add.sd)
+        eff ~ lnorm(lsd) + pow(pow.sd, pow.exp)
+      })
+    }
+    expect_error(assertRxUiTransform(twoEndpoints, "untransformed"),
+                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiErrType(twoEndpoints, "add"),
+                 "residual error 'add \\+ pow'")
   })
 
   test_that("assert no fixed residual or between-subject variability parameters", {
@@ -371,5 +398,20 @@ rxTest({
     expect_error(assertRxUiNoFixedOmega(fixEta, extra = " for x"),
                  "cannot fix between-subject variability \\('eta.ka'\\) for x")
     expect_error(assertRxUiNoFixedResiduals(fixEta), NA)
+
+    # a literal residual error is a fixed residual error parameter
+    literal <- function() {
+      ini({
+        tv <- 3.45
+        eta.v ~ 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        cp ~ add(0.7)
+      })
+    }
+    expect_error(assertRxUiNoFixedResiduals(literal),
+                 "cannot fix residual error parameters \\('rx.cp.add'\\)")
   })
 })

@@ -756,7 +756,7 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   force(.var.name)
   ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
-  checkmate::assertCharacter(transform, any.missing = FALSE, min.len = 1)
+  checkmate::assertSubset(transform, .rxTransformCombineLevels, empty.ok = FALSE)
   .transform <- as.character(ui$predDf$transform)
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
@@ -773,7 +773,7 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   force(.var.name)
   ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
-  checkmate::assertCharacter(errType, any.missing = FALSE, min.len = 1)
+  checkmate::assertSubset(errType, .rxErrType, empty.ok = FALSE)
   .errType <- as.character(ui$predDf$errType)
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
