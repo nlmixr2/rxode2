@@ -379,6 +379,28 @@ rxTest({
     expect_error(assertRxUiAddProp(addPropTwo, "combined2"), "cannot use 'combined1'")
     expect_error(assertRxUiAddProp(addPropTwo, "combined1"), NA)
 
+    # every add() + prop() endpoint is checked
+    addPropMixed <- function() {
+      ini({
+        tv <- 3.45
+        eta.v ~ 0.1
+        add.sd <- 0.7
+        prop.sd <- 0.1
+        add.pd <- 0.5
+        prop.pd <- 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        eff <- 2 * cp
+        cp ~ add(add.sd) + prop(prop.sd) + combined2()
+        eff ~ add(add.pd) + prop(prop.pd) + combined1()
+      })
+    }
+    expect_error(assertRxUiAddProp(addPropMixed, "combined2"), "cannot use 'combined1'")
+    expect_error(assertRxUiAddProp(addPropMixed, "combined1"), "cannot use 'combined2'")
+    expect_error(assertRxUiAddProp(addPropMixed, c("combined1", "combined2")), NA)
+
     # non-normal endpoints have no residual transformation or error type
     pois <- function() {
       ini({
