@@ -892,8 +892,11 @@
     }
     .ret <- paste0(
       .ret,
-      "; '", paste(rownames(.pos), collapse = "', '"),
-      "' could be drawn with '", .sep, "=\"tnpri\"'"
+      "; '",
+      paste(rownames(.pos), collapse = "', '"),
+      "' could be drawn with '",
+      .sep,
+      "=\"tnpri\"'"
     )
   }
   .ret
