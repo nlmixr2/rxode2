@@ -553,6 +553,37 @@ rxTest({
                  "cannot fix between-subject variability \\('eta.ka'\\) for x")
     expect_error(assertRxUiNoFixedResiduals(fixEta), NA)
 
+    # a fixed covariance block is fixed between-subject variability
+    fixBlock <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        eta.ka + eta.cl ~ fix(0.6, 0.1, 0.3)
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- 1
+        linCmt() ~ add(add.sd)
+      })
+    }
+    expect_error(assertRxUiNoFixedOmega(fixBlock), "cannot fix between-subject variability")
+
+    # an ll() endpoint has no residual parameters to fix
+    llFix <- function() {
+      ini({
+        tv <- 1
+        eta.v ~ 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        ll(cp) ~ -v
+      })
+    }
+    expect_error(assertRxUiNoFixedResiduals(llFix), NA)
+    expect_error(assertRxUiNoFixedOmega(llFix), NA)
+
     # a literal residual error is a fixed residual error parameter
     literal <- function() {
       ini({
