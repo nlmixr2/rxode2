@@ -331,7 +331,7 @@ rxTest({
     expect_error(assertRxUiAddProp(add, "combined2"), NA)
     expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
     expect_error(assertRxUiAddProp(addProp1, "combined2"),
-                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\) residual errors")
+                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors")
     expect_error(assertRxUiAddProp(addProp1, c("combined1", "combined2")), NA)
     expect_error(assertRxUiAddProp(addProp, "combined2"), NA)
     withr::with_options(list(rxode2.addProp = "combined1"), {
@@ -340,6 +340,27 @@ rxTest({
       expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
     })
     expect_error(assertRxUiAddProp(addProp, "default"))
+
+    # add() + pow() uses the same combinations
+    powC1 <- mod(quote(cp ~ add(add.sd) + pow(prop.sd, pow.exp) + combined1()))
+    expect_error(assertRxUiAddProp(powC1, "combined2"),
+                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors")
+    expect_error(assertRxUiAddProp(pow, "combined2"), NA)
+
+    # non-normal endpoints have no residual transformation or error type
+    pois <- function() {
+      ini({
+        tv <- 1
+        eta.v ~ 0.1
+      })
+      model({
+        lambda <- exp(tv + eta.v)
+        cnt ~ pois(lambda)
+      })
+    }
+    expect_error(assertRxUiTransform(pois, "lnorm"), NA)
+    expect_error(assertRxUiErrType(pois, "add"), NA)
+    expect_error(assertRxUiAddProp(pois, "combined2"), NA)
 
     # a misspelled allowed value is an error, not a refusal of every model
     expect_error(assertRxUiTransform(lnorm, "lognormal"), "lognormal")

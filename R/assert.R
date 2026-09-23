@@ -41,22 +41,24 @@
 #'    estimate them, so a fixed value is an error instead of being
 #'    silently estimated
 #'
-#' - `assertRxUiTransform` -- Make sure that every endpoint uses one of
-#'    the `transform` residual transformations (like `"untransformed"`
-#'    or `"lnorm"`); used by estimation methods that support only some
-#'    transformations
+#' - `assertRxUiTransform` -- Make sure that every normal endpoint uses
+#'    one of the `transform` residual transformations (like
+#'    `"untransformed"` or `"lnorm"`); used by estimation methods that
+#'    support only some transformations.  Non-normal endpoints (like
+#'    `pois()` or `ll()`) are not checked; see `assertRxUiTransformNormal`
 #'
-#' - `assertRxUiErrType` -- Make sure that every endpoint uses one of
-#'    the `errType` residual error types (`"add"`, `"prop"`, `"pow"`,
-#'    `"add + prop"`, `"add + pow"`); used by estimation methods that
-#'    support only some residual error types
+#' - `assertRxUiErrType` -- Make sure that every normal endpoint uses
+#'    one of the `errType` residual error types (`"add"`, `"prop"`,
+#'    `"pow"`, `"add + prop"`, `"add + pow"`); used by estimation methods
+#'    that support only some residual error types.  Non-normal endpoints
+#'    are not checked
 #'
-#' - `assertRxUiAddProp` -- Make sure that every `add() + prop()`
-#'    endpoint uses one of the `addProp` combinations (`"combined1"`,
-#'    where the standard deviations add, or `"combined2"`, where the
-#'    variances add); an endpoint declared without `combined1()` or
-#'    `combined2()` uses `rxControl(addProp=)` or, when that is not set,
-#'    `getOption("rxode2.addProp", "combined2")`
+#' - `assertRxUiAddProp` -- Make sure that every normal `add() + prop()`
+#'    or `add() + pow()` endpoint uses one of the `addProp` combinations
+#'    (`"combined1"`, where the standard deviations add, or
+#'    `"combined2"`, where the variances add); an endpoint declared
+#'    without `combined1()` or `combined2()` uses `rxControl(addProp=)`
+#'    or, when that is not set, `getOption("rxode2.addProp", "combined2")`
 #'
 #' - `assertRxUiPopulationOnly` -- Make sure the model is the population only
 #'    model (no mixed effects)
@@ -106,8 +108,9 @@
 #'   allowed (`"add"`, `"prop"`, `"pow"`, `"add + prop"` or
 #'   `"add + pow"`)
 #'
-#' @param addProp character vector of the `add() + prop()`
-#'   combinations that are allowed (`"combined1"` or `"combined2"`)
+#' @param addProp character vector of the `add() + prop()` and
+#'   `add() + pow()` combinations that are allowed (`"combined1"` or
+#'   `"combined2"`)
 #'
 #' @return the rxUi model
 #'
@@ -757,7 +760,8 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   checkmate::assertSubset(transform, .rxTransformCombineLevels, empty.ok = FALSE)
-  .transform <- as.character(ui$predDf$transform)
+  .predDf <- ui$predDf
+  .transform <- as.character(.predDf$transform[.predDf$distribution == "norm"])
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual transformation ",
@@ -774,7 +778,8 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   assertRxUiPrediction(ui)
   checkmate::assertSubset(errType, .rxErrType, empty.ok = FALSE)
-  .errType <- as.character(ui$predDf$errType)
+  .predDf <- ui$predDf
+  .errType <- as.character(.predDf$errType[.predDf$distribution == "norm"])
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual error ",
@@ -792,7 +797,8 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(addProp, c("combined1", "combined2"), empty.ok = FALSE)
   .predDf <- ui$predDf
-  .w <- which(as.character(.predDf$errType) == "add + prop")
+  .w <- which(.predDf$distribution == "norm" &
+                as.character(.predDf$errType) %in% c("add + prop", "add + pow"))
   if (length(.w) == 0L) return(invisible(ui))
   .addProp <- as.character(.predDf$addProp[.w])
   .default <- .addProp == "default"
@@ -803,7 +809,7 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   .bad <- unique(.addProp[!(.addProp %in% addProp)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use ", .assertRxUiQuote(.bad),
-         " add() + prop() residual errors (supported: ", .assertRxUiQuote(addProp),
+         " add() + prop()/pow() residual errors (supported: ", .assertRxUiQuote(addProp),
          ")", extra, call. = FALSE)
   }
   invisible(ui)

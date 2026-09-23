@@ -5,9 +5,9 @@
 - New assertions `assertRxUiTransform()`, `assertRxUiErrType()` and
   `assertRxUiAddProp()` refuse a model whose residual transformation
   (like `boxCox()` or `lnorm()`), residual error type (like
-  `add() + pow()`) or `add() + prop()` combination (`combined1` or
-  `combined2`, including the `rxode2.addProp` default) is not in the
-  allowed set.  They let an estimation method that supports only some
+  `add() + pow()`) or `add() + prop()`/`add() + pow()` combination
+  (`combined1` or `combined2`, including the `rxode2.addProp` default) is
+  not in the allowed set; non-normal endpoints are not checked.  They let an estimation method that supports only some
   residual error models stop with a clear error instead of fitting a
   different one.
 

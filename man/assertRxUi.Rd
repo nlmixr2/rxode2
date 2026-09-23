@@ -99,8 +99,9 @@ that are allowed (the levels of \code{ui$predDf$transform}, like
 allowed (\code{"add"}, \code{"prop"}, \code{"pow"}, \code{"add + prop"} or
 \code{"add + pow"})}
 
-\item{addProp}{character vector of the \code{add() + prop()}
-combinations that are allowed (\code{"combined1"} or \code{"combined2"})}
+\item{addProp}{character vector of the \code{add() + prop()} and
+\code{add() + pow()} combinations that are allowed (\code{"combined1"} or
+\code{"combined2"})}
 }
 \value{
 the rxUi model
@@ -128,20 +129,22 @@ between-subject variability parameters are fixed (ie
 \code{eta.ka ~ fix(0.6)}); used by estimation methods that always
 estimate them, so a fixed value is an error instead of being
 silently estimated
-\item \code{assertRxUiTransform} -- Make sure that every endpoint uses one of
-the \code{transform} residual transformations (like \code{"untransformed"}
-or \code{"lnorm"}); used by estimation methods that support only some
-transformations
-\item \code{assertRxUiErrType} -- Make sure that every endpoint uses one of
-the \code{errType} residual error types (\code{"add"}, \code{"prop"}, \code{"pow"},
-\code{"add + prop"}, \code{"add + pow"}); used by estimation methods that
-support only some residual error types
-\item \code{assertRxUiAddProp} -- Make sure that every \code{add() + prop()}
-endpoint uses one of the \code{addProp} combinations (\code{"combined1"},
-where the standard deviations add, or \code{"combined2"}, where the
-variances add); an endpoint declared without \code{combined1()} or
-\code{combined2()} uses \code{rxControl(addProp=)} or, when that is not set,
-\code{getOption("rxode2.addProp", "combined2")}
+\item \code{assertRxUiTransform} -- Make sure that every normal endpoint uses
+one of the \code{transform} residual transformations (like
+\code{"untransformed"} or \code{"lnorm"}); used by estimation methods that
+support only some transformations.  Non-normal endpoints (like
+\code{pois()} or \code{ll()}) are not checked; see \code{assertRxUiTransformNormal}
+\item \code{assertRxUiErrType} -- Make sure that every normal endpoint uses
+one of the \code{errType} residual error types (\code{"add"}, \code{"prop"},
+\code{"pow"}, \code{"add + prop"}, \code{"add + pow"}); used by estimation methods
+that support only some residual error types.  Non-normal endpoints
+are not checked
+\item \code{assertRxUiAddProp} -- Make sure that every normal \code{add() + prop()}
+or \code{add() + pow()} endpoint uses one of the \code{addProp} combinations
+(\code{"combined1"}, where the standard deviations add, or
+\code{"combined2"}, where the variances add); an endpoint declared
+without \code{combined1()} or \code{combined2()} uses \code{rxControl(addProp=)}
+or, when that is not set, \code{getOption("rxode2.addProp", "combined2")}
 \item \code{assertRxUiPopulationOnly} -- Make sure the model is the population only
 model (no mixed effects)
 \item \code{assertRxUiMixedOnly} -- Make sure the model is a mixed effect model (not a
