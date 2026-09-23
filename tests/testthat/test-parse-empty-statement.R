@@ -118,4 +118,48 @@ rxTest({
     ## less.  4 is far enough above the noise to mean the ambiguity is back.
     expect_lt(.big / .small, 4)
   })
+
+  test_that("semicolons after blocks and runs of semicolons parse (#1398)", {
+    expect_equal(rxNorm("if (a>1) {b=1};c=2"), "if (a>1){\nb=1;\n}\nc=2;\n")
+    expect_equal(rxNorm("{a=1};;b=2"), "a=1;\nb=2;\n")
+    expect_equal(
+      rxNorm("if (a>1) {b=1} else {b=2};;c=3"),
+      "if (a>1){\nb=1;\n}\nelse {\nb=2;\n}\nc=3;\n"
+    )
+    expect_equal(rxNorm("while (a>1) {a=a-1};"), "while (a>1){\na=a-1;\n}\n")
+    expect_equal(rxNorm("if (a>1) ;;"), "if (a>1){\n}\n")
+    expect_equal(rxNorm("if (a>1) ; else ;"), "if (a>1){\n}\nelse {\n}\n")
+    expect_equal(rxNorm("a=1;;\n;\n{b=2;;};\n"), "a=1;\nb=2;\n")
+  })
+
+  test_that("parsing ';'-terminated statements does not grow quadratically (#1398)", {
+    ## A bare ';' statement made every `a;` ambiguous, resolved over the whole
+    ## preceding statement list, so a ';'-terminated model parsed in quadratic
+    ## time.  Same shape check as above, on the chain model from the issue.
+    skip_on_cran()
+    .chain <- function(n) {
+      paste(
+        c(
+          "d/dt(x1) = -k*x1;",
+          sprintf("d/dt(x%d) = k*x%d - k*x%d;", 2:n, 1:(n - 1), 2:n)
+        ),
+        collapse = "\n"
+      )
+    }
+    .per <- function(n) {
+      .m <- .chain(n)
+      rxNorm(.m)
+      system.time(
+        for (i in 1:3) {
+          rxNorm(.m)
+        }
+      )[["elapsed"]] /
+        3 /
+        n
+    }
+    .small <- .per(100L)
+    .big <- .per(800L)
+    ## Quadratic parsing gave a ratio near 8 here; linear parsing about 1.
+    expect_lt(.big / .small, 4)
+  })
 })
