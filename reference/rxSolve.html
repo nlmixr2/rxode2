@@ -324,7 +324,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  useLinCmt <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  useLinCmt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.useLinCmt"</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -337,7 +337,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  useLinCmt <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  useLinCmt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.useLinCmt"</span>, <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">parent.frame</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -1951,8 +1951,8 @@ stiff secondary that does support it.</p></dd>
 
 
 <dt id="arg-uselincmt">useLinCmt<a class="anchor" aria-label="anchor" href="#arg-uselincmt"></a></dt>
-<dd><p>Logical; when <code>TRUE</code> and the model contains
-linear-compartment ODEs that can be solved analytically,
+<dd><p>Logical; when <code>TRUE</code> and a function-style
+(<code><a href="ini.html">ini()</a></code>/<code><a href="model.html">model()</a></code>) model contains linear-compartment ODEs that can be solved analytically,
 automatically convert them to a <code>linCmt()</code> call before solving.
 The detection and conversion use <code><a href="odeToLin.html">odeToLin()</a></code>; the converted
 model is cached so the compilation cost is paid only once.  A
@@ -1964,9 +1964,9 @@ the parameter names, or whose compartments it would renumber
 under event data addressing them by index, is solved with its
 original ODEs.  Set to <code>FALSE</code> to keep the original ODE solver.  This flag is also
 stored in the returned <code>rxControl()</code> object so that downstream
-hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-use the value of <code>rxode2.useLinCmt</code> option (which when specified
-is <code>TRUE</code> by default).</p></dd>
+hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+<code>useLinCmt</code> set in the model's meta block, else the
+<code>rxode2.useLinCmt</code> option, or <code>FALSE</code> when it is unset.</p></dd>
 
 
 <dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>

@@ -432,13 +432,13 @@ uncertainty.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="va">simPop</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">pkModel</span>, <span class="va">ev</span>, nSub <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====</span></span>
+<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
 <span><span class="va">ciPop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">simPop</span>, <span class="st">"cp"</span>, level <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="va">simUnc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">pkModel</span>, <span class="va">ev</span>, thetaMat <span class="op">=</span> <span class="va">thetaVcov</span>,</span>
 <span>                  nStud <span class="op">=</span> <span class="fl">500</span>, nSub <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====</span></span>
+<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
 <span><span class="va">ciUnc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">simUnc</span>, <span class="st">"cp"</span>, level <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">## width of the band on the median at 4 h</span></span>
@@ -447,7 +447,7 @@ uncertainty.</p>
 <span><span class="co">#&gt; 26 2.143228 2.280352 2.447365</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">ciUnc</span><span class="op">)</span>, <span class="va">time</span> <span class="op">==</span> <span class="fl">4</span> <span class="op">&amp;</span> <span class="va">p1</span> <span class="op">==</span> <span class="fl">0.5</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"p2.5"</span>, <span class="st">"p50"</span>, <span class="st">"p97.5"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;        p2.5     p50    p97.5</span></span>
-<span><span class="co">#&gt; 26 1.678652 2.24511 2.890131</span></span></code></pre></div>
+<span><span class="co">#&gt; 26 1.678652 2.24511 2.890132</span></span></code></pre></div>
 <p>The sub-sampled band is much narrower: with the parameters held
 fixed, 10000 individuals pin the population median down tightly. The
 band from the replicate studies is wider because the thetas themselves

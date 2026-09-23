@@ -307,8 +307,9 @@ solution for linear compartmental models with no transit compartments
 otherwise, but it does not expose auto-differentiated gradients through
 this path. rxode2 can also detect a 1-3 compartment linear PK ODE system
 and transparently solve it through this analytical path
-(<code>rxSolve(..., useLinCmt = TRUE)</code>, the default), falling back
-to the ODE solver if the converted model cannot be compiled.</p>
+(<code>rxSolve(..., useLinCmt = TRUE)</code> or
+<code>options(rxode2.useLinCmt = TRUE)</code>), falling back to the ODE
+solver if the converted model cannot be compiled.</p>
 </div>
 <div class="section level3">
 <h3 id="multiple-ode-solver-backends">Multiple ODE solver backends<a class="anchor" aria-label="anchor" href="#multiple-ode-solver-backends"></a>
