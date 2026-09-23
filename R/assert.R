@@ -805,9 +805,12 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   .addProp <- as.character(.predDf$addProp[.w])
   .default <- .addProp == "default"
   if (any(.default)) {
-    .optAddProp <- getOption("rxode2.addProp", "combined2")
-    .ctlAddProp <- rxGetControl(ui, "addProp", .optAddProp)
-    if (length(.ctlAddProp) != 1L) .ctlAddProp <- .optAddProp
+    .ctlAddProp <- rxGetControl(ui, "addProp",
+                                getOption("rxode2.addProp", "combined2"))
+    if (!checkmate::testChoice(.ctlAddProp, c("combined1", "combined2"))) {
+      stop("'", .var.name, "' has an invalid default 'addProp' ",
+           "(needs to be 'combined1' or 'combined2')", extra, call. = FALSE)
+    }
     .addProp[.default] <- .ctlAddProp
   }
   .bad <- unique(.addProp[!(.addProp %in% addProp)])

@@ -353,9 +353,11 @@ rxTest({
     expect_error(assertRxUiAddProp(ctlUi, "combined2"), "cannot use 'combined1'")
     rxSetControl(ctlUi, list(addProp = "combined2"))
     expect_error(assertRxUiAddProp(ctlUi, "combined1"), "cannot use 'combined2'")
-    # a NULL control value falls back to the option
+    # an invalid default is an error, not a pass
     rxSetControl(ctlUi, list(addProp = NULL))
-    expect_error(assertRxUiAddProp(ctlUi, "combined1"), "cannot use 'combined2'")
+    expect_error(assertRxUiAddProp(ctlUi, "combined2"), "invalid default 'addProp'")
+    rxSetControl(ctlUi, list(addProp = 1))
+    expect_error(assertRxUiAddProp(ctlUi, "combined2"), "invalid default 'addProp'")
 
     # only the add() + prop() endpoints of a multiple endpoint model
     addPropTwo <- function() {
@@ -391,6 +393,20 @@ rxTest({
     expect_error(assertRxUiTransform(pois, "lnorm"), NA)
     expect_error(assertRxUiErrType(pois, "add"), NA)
     expect_error(assertRxUiAddProp(pois, "combined2"), NA)
+
+    llMod <- function() {
+      ini({
+        tv <- 1
+        eta.v ~ 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        ll(cp) ~ -v
+      })
+    }
+    expect_error(assertRxUiTransform(llMod, "lnorm"), NA)
+    expect_error(assertRxUiErrType(llMod, "add"), NA)
+    expect_error(assertRxUiAddProp(llMod, "combined2"), NA)
 
     # a misspelled allowed value is an error, not a refusal of every model
     expect_error(assertRxUiTransform(lnorm, "lognormal"), "lognormal")
