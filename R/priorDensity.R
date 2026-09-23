@@ -26,8 +26,10 @@
 ##   reports -- `dnorm()`/`stdNormal()`, `dcauchy()` (including the
 ##   half-Cauchy case, `prior(add.sd) ~ dcauchy(0, 5)` with `add.sd`'s own
 ##   `lower = 0`), the joint theta+omega `multiNormal()` block (an `om.<eta>`
-##   member addresses the raw omega value), and a textbook inverse-Wishart
-##   on an omega block.
+##   member addresses the raw omega value), a textbook inverse-Wishart
+##   on an omega block, and lotri's other univariate continuous families
+##   (`prior-density-families.R`), each truncated to the parameter's own
+##   bounds.
 ## - `"nwpri"`: NONMEM's own `$PRIOR NWPRI` parameterization (NONMEM7
 ##   Technical Guide, "Three Stage EM Analysis", eq. 1.154-1.171). Theta
 ##   reuses the same multivariate-normal math (eq. 1.156 is the textbook MVN
@@ -54,21 +56,51 @@
 ##   conversion. A method that estimates Omega directly (SAEM) uses the
 ##   returned gradient as-is.
 ##
-## Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so both refuse
-## one; `"tnpri"` also refuses `invWishart()` (that is `"nwpri"`'s own
-## mechanism, not `"tnpri"`'s).
+## Neither `"nwpri"` nor `"tnpri"` has a Cauchy (or any other non-normal
+## univariate) analogue, so both refuse one; `"tnpri"` also refuses
+## `invWishart()` (that is `"nwpri"`'s own mechanism, not `"tnpri"`'s).
 
 #' Distributions `rxPriorLogDensity()` can evaluate
 #'
 #' @noRd
-.rxPriorDensityStanNames <- c("normal", "std_normal", "cauchy", "multi_normal", "inv_wishart")
+.rxPriorDensityStanNames <- c(
+  "normal",
+  "std_normal",
+  "cauchy",
+  "multi_normal",
+  "inv_wishart",
+  names(.rxPriorUniFamilies)
+)
 
 #' Prior-term type codes shared with `src/priorDensity.cpp`
 #'
 #' Must match `rx_prior_term_t.type` in `inst/include/rxode2prior.h`.
 #'
 #' @noRd
-.rxPriorTermTypeCode <- c(normal = 0L, cauchy = 1L, multiNormal = 2L, invWishart = 3L, invWishartNwpri = 4L)
+.rxPriorTermTypeCode <- c(
+  normal = 0L,
+  cauchy = 1L,
+  multiNormal = 2L,
+  invWishart = 3L,
+  invWishartNwpri = 4L,
+  lognormal = 5L,
+  gamma = 6L,
+  invGamma = 7L,
+  weibull = 8L,
+  frechet = 9L,
+  pareto = 10L,
+  paretoType2 = 11L,
+  beta = 12L,
+  uniform = 13L,
+  studentT = 14L,
+  doubleExponential = 15L,
+  logistic = 16L,
+  gumbel = 17L,
+  skewDoubleExponential = 18L,
+  expModNormal = 19L,
+  skewNormal = 20L,
+  vonMises = 21L
+)
 
 #' The covariance matrix a `multiNormal()` prior carries, without going
 #' through `lotri::lotri()`'s own validation
@@ -417,6 +449,25 @@
       .seen <- c(.seen, .key)
       next
     }
+    if (.p$stanName %in% names(.rxPriorUniFamilies)) {
+      if (method %in% c("nwpri", "tnpri")) {
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0(
+            "'",
+            .p$fn,
+            "()' is not part of NONMEM's ",
+            toupper(method),
+            " prior machinery; use ",
+            "method=\"general\""
+          )
+        )
+      }
+      .terms[[length(.terms) + 1L]] <- .rxPriorUniTerm(.key, .prior, .p, .iniDf$lower[.i], .iniDf$upper[.i])
+      .seen <- c(.seen, .key)
+      next
+    }
     .rxPriorDensityStop(
       .key,
       .prior,
@@ -530,7 +581,7 @@
 #' @param ui rxode2 ui model
 #' @param terms list from `.rxPriorDensityTerms()`
 #' @return list of parallel `type`/`n`/`thetaIdx`/`etaIdx`/`mu`/`scale`/
-#'   `lower`/`upper`/`nu` vectors (see `src/priorDensity.cpp`)
+#'   `lower`/`upper`/`nu`/`etaIdx2`/`muLen` vectors (see `src/priorDensity.cpp`)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorFlattenSpec <- function(ui, terms) {
@@ -540,6 +591,7 @@
   .etaIdx <- integer(0)
   .etaIdx2 <- integer(0)
   .mu <- numeric(0)
+  .muLen <- integer(0)
   .scale <- numeric(0)
   .lower <- numeric(0)
   .upper <- numeric(0)
@@ -557,7 +609,17 @@
     .thetaIdx <- c(.thetaIdx, vapply(.idx, `[[`, integer(1), "thetaIdx"))
     .etaIdx <- c(.etaIdx, vapply(.idx, `[[`, integer(1), "etaIdx"))
     .etaIdx2 <- c(.etaIdx2, vapply(.idx, `[[`, integer(1), "etaIdx2"))
-    if (.t$type %in% c("normal", "cauchy")) {
+    .muLen <- c(.muLen, length(.t$names))
+    if (!is.null(.t$par)) {
+      ## a univariate family: mu carries its hyperparameters and scale its
+      ## precomputed log normalizing constant (see rxode2prior.h)
+      .mu <- c(.mu, .t$par)
+      .muLen[length(.muLen)] <- length(.t$par)
+      .scale <- c(.scale, .t$logConst)
+      .lower <- c(.lower, .t$lower)
+      .upper <- c(.upper, .t$upper)
+      .nu <- c(.nu, 0)
+    } else if (.t$type %in% c("normal", "cauchy")) {
       .mu <- c(.mu, .t$mu)
       .scale <- c(.scale, .t$sd)
       .lower <- c(.lower, .t$lower)
@@ -589,7 +651,8 @@
     lower = .lower,
     upper = .upper,
     nu = .nu,
-    etaIdx2 = .etaIdx2
+    etaIdx2 = .etaIdx2,
+    muLen = .muLen
   )
 }
 
@@ -653,8 +716,10 @@ rxPriorBuildSpec <- function(ui, method = c("general", "nwpri", "tnpri")) {
 #'   raw-omega `om.<eta>` treatment as `"general"` (Monolix's
 #'   Bayesian-estimation assumption is on the natural parameter, same as
 #'   here -- `chol(Omega^-1)` is FOCEI's own internal affair, not this
-#'   kernel's). Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so
-#'   both refuse one.
+#'   kernel's). Neither `"nwpri"` nor `"tnpri"` has a Cauchy (or any
+#'   other non-normal univariate) analogue, so both refuse one. Under
+#'   `"general"`, every univariate continuous 'lotri' family except
+#'   `wiener()` is evaluated, truncated to the parameter's own bounds.
 #' @return list with `value` (scalar log density, summed over every prior
 #'   term), `gradTheta` (named numeric, d/dtheta) and `gradOmega` (a matrix
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was

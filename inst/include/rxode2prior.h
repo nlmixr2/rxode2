@@ -67,18 +67,25 @@ extern "C" {
 // is always the nonzero, primary index for an off-diagonal member too.
 typedef struct rx_prior_term_t {
   int type;      // 0=normal, 1=cauchy, 2=multiNormal, 3=invWishart (general),
-                 // 4=invWishart (NONMEM NWPRI)
+                 // 4=invWishart (NONMEM NWPRI), 5-21=a univariate family
+                 // (5 lognormal, 6 gamma, 7 inv_gamma, 8 weibull,
+                 // 9 frechet, 10 pareto, 11 pareto_type_2, 12 beta,
+                 // 13 uniform, 14 student_t, 15 double_exponential,
+                 // 16 logistic, 17 gumbel, 18 skew_double_exponential,
+                 // 19 exp_mod_normal, 20 skew_normal, 21 von_mises)
   int n;         // number of members (1 for normal/cauchy)
   int *thetaIdx; // length n; 0 when member k is an omega element
   int *etaIdx;   // length n; 0 when member k is a population parameter
   int *etaIdx2;  // length n; 0 unless member k is an off-diagonal omega
                  // covariance cell, in which case it is that cell's SECOND
                  // (1-based) eta index -- see the field-level comment above
-  double *mu;    // length n; unused (NULL) for invWishart
-  double *scale; // normal/cauchy: length-1 sd/scale. multiNormal: n*n
+  double *mu;    // length n; unused (NULL) for invWishart. Types 5-21:
+                 // the family's hyperparameters (Stan order), n is still 1
+  double *scale; // normal/cauchy: length-1 sd/scale. Types 5-21: length-1
+                 // log normalizing constant, truncation included. multiNormal: n*n
                  // row-major covariance Sigma. invWishart (3 or 4): n*n
                  // row-major scale matrix Psi (the block's own ini() values).
-  double lower;  // truncation bounds (normal/cauchy only; +-Inf otherwise)
+  double lower;  // truncation bounds (normal/cauchy/types 5-21; +-Inf otherwise)
   double upper;
   double nu;     // invWishart (3): classical degrees of freedom. invWishart
                  // (4): NONMEM's "rho" -- the invWishart(rho) argument as

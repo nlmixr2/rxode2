@@ -2,6 +2,13 @@
 
 ## New features
 
+- `rxPriorBuildSpec()` and `rxPriorLogDensity()` now evaluate lotri's
+  univariate continuous priors beyond normal and Cauchy (`dlnorm()`,
+  `dgamma()`, `dbeta()`, `studentT()`, `dexp()`, `dunif()`, `dweibull()`,
+  `dlogis()`, `dchisq()`, `invGamma()` and the rest of the catalog except
+  `wiener()`), with the log density and its gradient, truncated to the
+  parameter's own bounds (#1387).
+
 - The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
   `.solComp3()` and the `rxDerived()` conversions moved to the new
   'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
