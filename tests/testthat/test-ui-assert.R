@@ -401,6 +401,30 @@ rxTest({
     expect_error(assertRxUiAddProp(addPropMixed, "combined1"), "cannot use 'combined2'")
     expect_error(assertRxUiAddProp(addPropMixed, c("combined1", "combined2")), NA)
 
+    # a default endpoint next to an explicit one
+    addPropDefault <- function() {
+      ini({
+        tv <- 3.45
+        eta.v ~ 0.1
+        add.sd <- 0.7
+        prop.sd <- 0.1
+        add.pd <- 0.5
+        prop.pd <- 0.1
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cp <- 100 / v
+        eff <- 2 * cp
+        cp ~ add(add.sd) + prop(prop.sd)
+        eff ~ add(add.pd) + prop(prop.pd) + combined1()
+      })
+    }
+    expect_error(assertRxUiAddProp(addPropDefault, "combined2"), "cannot use 'combined1'")
+    expect_error(assertRxUiAddProp(addPropDefault, "combined1"), "cannot use 'combined2'")
+    withr::with_options(list(rxode2.addProp = "combined1"), {
+      expect_error(assertRxUiAddProp(addPropDefault, "combined1"), NA)
+    })
+
     # non-normal endpoints have no residual transformation or error type
     pois <- function() {
       ini({
@@ -415,6 +439,15 @@ rxTest({
     expect_error(assertRxUiTransform(pois, "lnorm"), NA)
     expect_error(assertRxUiErrType(pois, "add"), NA)
     expect_error(assertRxUiAddProp(pois, "combined2"), NA)
+
+    # dnorm() is a normal endpoint, so it is checked
+    dnormMod <- mod(quote(cp ~ lnorm(add.sd) + dnorm()))
+    expect_error(assertRxUiTransform(dnormMod, "untransformed"),
+                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(dnormMod, "lnorm"), NA)
+    expect_error(assertRxUiErrType(dnormMod, "prop"), "residual error 'add'")
+    dnormAddProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1() + dnorm()))
+    expect_error(assertRxUiAddProp(dnormAddProp, "combined2"), "cannot use 'combined1'")
 
     llMod <- function() {
       ini({

@@ -131,7 +131,8 @@ between-subject variability parameters are fixed (ie
 \code{eta.ka ~ fix(0.6)}); used by estimation methods that always
 estimate them, so a fixed value is an error instead of being
 silently estimated
-\item \code{assertRxUiTransform} -- Make sure that every normal endpoint uses
+\item \code{assertRxUiTransform} -- Make sure that every normal endpoint (a
+residual error, alone or with \code{dnorm()}) uses
 one of the \code{transform} residual transformations (like
 \code{"untransformed"} or \code{"lnorm"}); used by estimation methods that
 support only some transformations.  Non-normal endpoints (like

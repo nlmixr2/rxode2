@@ -43,7 +43,8 @@
 #'    estimate them, so a fixed value is an error instead of being
 #'    silently estimated
 #'
-#' - `assertRxUiTransform` -- Make sure that every normal endpoint uses
+#' - `assertRxUiTransform` -- Make sure that every normal endpoint (a
+#'    residual error, alone or with `dnorm()`) uses
 #'    one of the `transform` residual transformations (like
 #'    `"untransformed"` or `"lnorm"`); used by estimation methods that
 #'    support only some transformations.  Non-normal endpoints (like
@@ -763,7 +764,7 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   assertRxUiPrediction(ui)
   checkmate::assertSubset(transform, .rxTransformCombineLevels, empty.ok = FALSE)
   .predDf <- ui$predDf
-  .transform <- as.character(.predDf$transform[.predDf$distribution == "norm"])
+  .transform <- as.character(.predDf$transform[.predDf$distribution %in% c("norm", "dnorm")])
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual transformation ",
@@ -781,7 +782,7 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(errType, .rxErrType, empty.ok = FALSE)
   .predDf <- ui$predDf
-  .errType <- as.character(.predDf$errType[.predDf$distribution == "norm"])
+  .errType <- as.character(.predDf$errType[.predDf$distribution %in% c("norm", "dnorm")])
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual error ",
@@ -799,7 +800,7 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(addProp, c("combined1", "combined2"), empty.ok = FALSE)
   .predDf <- ui$predDf
-  .w <- which(.predDf$distribution == "norm" &
+  .w <- which(.predDf$distribution %in% c("norm", "dnorm") &
                 as.character(.predDf$errType) %in% c("add + prop", "add + pow"))
   if (length(.w) == 0L) return(invisible(ui))
   .addProp <- as.character(.predDf$addProp[.w])
