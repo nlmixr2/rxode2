@@ -741,8 +741,15 @@ assertRxUiNoFixedResiduals <- function(ui, extra = "", .var.name = .vname(ui)) {
   .iniDf <- ui$iniDf
   .fixed <- .iniDf$name[!is.na(.iniDf$err) & .iniDf$fix]
   if (length(.fixed) > 0L) {
-    stop("'", .var.name, "' cannot fix residual error parameters (",
-         .assertRxUiQuote(.fixed), ")", extra, call. = FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' cannot fix residual error parameters (",
+      .assertRxUiQuote(.fixed),
+      ")",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -755,8 +762,15 @@ assertRxUiNoFixedOmega <- function(ui, extra = "", .var.name = .vname(ui)) {
   .iniDf <- ui$iniDf
   .fixed <- .iniDf$name[!is.na(.iniDf$neta1) & .iniDf$fix]
   if (length(.fixed) > 0L) {
-    stop("'", .var.name, "' cannot fix between-subject variability (",
-         .assertRxUiQuote(.fixed), ")", extra, call. = FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' cannot fix between-subject variability (",
+      .assertRxUiQuote(.fixed),
+      ")",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -772,9 +786,17 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   .transform <- as.character(.predDf$transform[.predDf$distribution %in% .assertRxUiResidualDist])
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' cannot use the residual transformation ",
-         .assertRxUiQuote(.bad), " (supported: ", .assertRxUiQuote(transform),
-         ")", extra, call. = FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' cannot use the residual transformation ",
+      .assertRxUiQuote(.bad),
+      " (supported: ",
+      .assertRxUiQuote(transform),
+      ")",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -790,9 +812,17 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   .errType <- as.character(.predDf$errType[.predDf$distribution %in% .assertRxUiResidualDist])
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' cannot use the residual error ",
-         .assertRxUiQuote(.bad), " (supported: ", .assertRxUiQuote(errType),
-         ")", extra, call. = FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' cannot use the residual error ",
+      .assertRxUiQuote(.bad),
+      " (supported: ",
+      .assertRxUiQuote(errType),
+      ")",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }
@@ -805,25 +835,41 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(addProp, c("combined1", "combined2"), empty.ok = FALSE)
   .predDf <- ui$predDf
-  .w <- which(.predDf$distribution %in% .assertRxUiResidualDist &
-                as.character(.predDf$errType) %in% c("add + prop", "add + pow"))
-  if (length(.w) == 0L) return(invisible(ui))
+  .w <- which(
+    .predDf$distribution %in% .assertRxUiResidualDist & as.character(.predDf$errType) %in% c("add + prop", "add + pow")
+  )
+  if (length(.w) == 0L) {
+    return(invisible(ui))
+  }
   .addProp <- as.character(.predDf$addProp[.w])
   .default <- .addProp == "default"
   if (any(.default)) {
-    .ctlAddProp <- rxGetControl(ui, "addProp",
-                                getOption("rxode2.addProp", "combined2"))
+    .ctlAddProp <- rxGetControl(ui, "addProp", getOption("rxode2.addProp", "combined2"))
     if (!checkmate::testChoice(.ctlAddProp, c("combined1", "combined2"))) {
-      stop("'", .var.name, "' has an invalid default 'addProp' ",
-           "(needs to be 'combined1' or 'combined2')", extra, call. = FALSE)
+      stop(
+        "'",
+        .var.name,
+        "' has an invalid default 'addProp' ",
+        "(needs to be 'combined1' or 'combined2')",
+        extra,
+        call. = FALSE
+      )
     }
     .addProp[.default] <- .ctlAddProp
   }
   .bad <- unique(.addProp[!(.addProp %in% addProp)])
   if (length(.bad) > 0L) {
-    stop("'", .var.name, "' cannot use ", .assertRxUiQuote(.bad),
-         " add() + prop()/pow() residual errors (supported: ", .assertRxUiQuote(addProp),
-         ")", extra, call. = FALSE)
+    stop(
+      "'",
+      .var.name,
+      "' cannot use ",
+      .assertRxUiQuote(.bad),
+      " add() + prop()/pow() residual errors (supported: ",
+      .assertRxUiQuote(addProp),
+      ")",
+      extra,
+      call. = FALSE
+    )
   }
   invisible(ui)
 }

@@ -284,10 +284,12 @@ rxTest({
       # only the residual parameters this error model uses go in ini()
       .errPar <- list(add.sd = 0.7, prop.sd = 0.1, pow.exp = 0.5, lambda = 0.5)
       .errPar <- .errPar[names(.errPar) %in% all.vars(err)]
-      .ini <- c(list(quote(`{`), quote(tv <- 3.45), quote(eta.v ~ 0.1)),
-                lapply(names(.errPar), function(n) {
-                  bquote(.(as.name(n)) <- .(.errPar[[n]]))
-                }))
+      .ini <- c(
+        list(quote(`{`), quote(tv <- 3.45), quote(eta.v ~ 0.1)),
+        lapply(names(.errPar), function(n) {
+          bquote(.(as.name(n)) <- .(.errPar[[n]]))
+        })
+      )
       f <- function() {
         ini(INI)
         model({
@@ -313,38 +315,40 @@ rxTest({
     # transformations
     expect_error(assertRxUiTransform(add, "untransformed"), NA)
     expect_error(assertRxUiTransform(lnorm, c("untransformed", "lnorm")), NA)
-    expect_error(assertRxUiTransform(lnorm, "untransformed"),
-                 "cannot use the residual transformation 'lnorm'")
-    expect_error(assertRxUiTransform(boxCox, c("untransformed", "lnorm"), extra = " for x"),
-                 "residual transformation 'boxCox' \\(supported: 'untransformed', 'lnorm'\\) for x")
+    expect_error(assertRxUiTransform(lnorm, "untransformed"), "cannot use the residual transformation 'lnorm'")
+    expect_error(
+      assertRxUiTransform(boxCox, c("untransformed", "lnorm"), extra = " for x"),
+      "residual transformation 'boxCox' \\(supported: 'untransformed', 'lnorm'\\) for x"
+    )
 
     # error types
     expect_error(assertRxUiErrType(add, c("add", "prop")), NA)
     expect_error(assertRxUiErrType(prop, c("add", "prop")), NA)
     expect_error(assertRxUiErrType(lnorm, "add"), NA)
-    expect_error(assertRxUiErrType(lnormProp, "add"),
-                 "cannot use the residual error 'add \\+ prop'")
-    expect_error(assertRxUiErrType(pow, c("add", "prop", "add + prop")),
-                 "cannot use the residual error 'add \\+ pow'")
+    expect_error(assertRxUiErrType(lnormProp, "add"), "cannot use the residual error 'add \\+ prop'")
+    expect_error(assertRxUiErrType(pow, c("add", "prop", "add + prop")), "cannot use the residual error 'add \\+ pow'")
 
     # add + prop combinations
     expect_error(assertRxUiAddProp(add, "combined2"), NA)
     expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
-    expect_error(assertRxUiAddProp(addProp1, "combined2"),
-                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors")
+    expect_error(
+      assertRxUiAddProp(addProp1, "combined2"),
+      "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors"
+    )
     expect_error(assertRxUiAddProp(addProp1, c("combined1", "combined2")), NA)
     expect_error(assertRxUiAddProp(addProp, "combined2"), NA)
     withr::with_options(list(rxode2.addProp = "combined1"), {
-      expect_error(assertRxUiAddProp(addProp, "combined2"),
-                   "cannot use 'combined1'")
+      expect_error(assertRxUiAddProp(addProp, "combined2"), "cannot use 'combined1'")
       expect_error(assertRxUiAddProp(addProp2, "combined2"), NA)
     })
     expect_error(assertRxUiAddProp(addProp, "default"))
 
     # add() + pow() uses the same combinations
     powC1 <- mod(quote(cp ~ add(add.sd) + pow(prop.sd, pow.exp) + combined1()))
-    expect_error(assertRxUiAddProp(powC1, "combined2"),
-                 "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors")
+    expect_error(
+      assertRxUiAddProp(powC1, "combined2"),
+      "cannot use 'combined1' add\\(\\) \\+ prop\\(\\)/pow\\(\\) residual errors"
+    )
     expect_error(assertRxUiAddProp(pow, "combined2"), NA)
 
     # the model's own control is used before the option
@@ -442,8 +446,7 @@ rxTest({
 
     # dnorm() is a normal endpoint, so it is checked
     dnormMod <- mod(quote(cp ~ lnorm(add.sd) + dnorm()))
-    expect_error(assertRxUiTransform(dnormMod, "untransformed"),
-                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(dnormMod, "untransformed"), "residual transformation 'lnorm'")
     expect_error(assertRxUiTransform(dnormMod, "lnorm"), NA)
     expect_error(assertRxUiErrType(dnormMod, "prop"), "residual error 'add'")
     dnormAddProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1() + dnorm()))
@@ -451,14 +454,12 @@ rxTest({
 
     # so are t and Cauchy endpoints
     tMod <- mod(quote(cp ~ lnorm(add.sd) + dt(pow.exp)))
-    expect_error(assertRxUiTransform(tMod, "untransformed"),
-                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(tMod, "untransformed"), "residual transformation 'lnorm'")
     tAddProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1() + dt(pow.exp)))
     expect_error(assertRxUiAddProp(tAddProp, "combined2"), "cannot use 'combined1'")
     expect_error(assertRxUiErrType(tAddProp, "add"), "residual error 'add \\+ prop'")
     cauchyMod <- mod(quote(cp ~ add(add.sd) + boxCox(lambda) + dcauchy()))
-    expect_error(assertRxUiTransform(cauchyMod, "untransformed"),
-                 "residual transformation 'boxCox'")
+    expect_error(assertRxUiTransform(cauchyMod, "untransformed"), "residual transformation 'boxCox'")
 
     # the residual endpoint of a model that also has a pois() endpoint
     # is still checked
@@ -476,8 +477,7 @@ rxTest({
         cnt ~ pois(lambda)
       })
     }
-    expect_error(assertRxUiTransform(poisMixed, "untransformed"),
-                 "residual transformation 'lnorm'")
+    expect_error(assertRxUiTransform(poisMixed, "untransformed"), "residual transformation 'lnorm'")
     expect_error(assertRxUiTransform(poisMixed, "lnorm"), NA)
     expect_error(assertRxUiErrType(poisMixed, "add"), NA)
 
@@ -517,10 +517,8 @@ rxTest({
         eff ~ lnorm(lsd) + pow(pow.sd, pow.exp)
       })
     }
-    expect_error(assertRxUiTransform(twoEndpoints, "untransformed"),
-                 "residual transformation 'lnorm'")
-    expect_error(assertRxUiErrType(twoEndpoints, "add"),
-                 "residual error 'add \\+ pow'")
+    expect_error(assertRxUiTransform(twoEndpoints, "untransformed"), "residual transformation 'lnorm'")
+    expect_error(assertRxUiErrType(twoEndpoints, "add"), "residual error 'add \\+ pow'")
   })
 
   test_that("assert no fixed residual or between-subject variability parameters", {
@@ -544,13 +542,17 @@ rxTest({
     expect_error(assertRxUiNoFixedOmega(one.cmt), NA)
 
     fixAdd <- rxode2::ini(one.cmt, add.sd = fix(0.7))
-    expect_error(assertRxUiNoFixedResiduals(fixAdd, extra = " for x"),
-                 "cannot fix residual error parameters \\('add.sd'\\) for x")
+    expect_error(
+      assertRxUiNoFixedResiduals(fixAdd, extra = " for x"),
+      "cannot fix residual error parameters \\('add.sd'\\) for x"
+    )
     expect_error(assertRxUiNoFixedOmega(fixAdd), NA)
 
     fixEta <- rxode2::ini(one.cmt, eta.ka ~ fix(0.6))
-    expect_error(assertRxUiNoFixedOmega(fixEta, extra = " for x"),
-                 "cannot fix between-subject variability \\('eta.ka'\\) for x")
+    expect_error(
+      assertRxUiNoFixedOmega(fixEta, extra = " for x"),
+      "cannot fix between-subject variability \\('eta.ka'\\) for x"
+    )
     expect_error(assertRxUiNoFixedResiduals(fixEta), NA)
 
     # a fixed covariance block is fixed between-subject variability
@@ -596,8 +598,7 @@ rxTest({
         cp ~ add(0.7)
       })
     }
-    expect_error(assertRxUiNoFixedResiduals(literal),
-                 "cannot fix residual error parameters \\('rx.cp.add'\\)")
+    expect_error(assertRxUiNoFixedResiduals(literal), "cannot fix residual error parameters \\('rx.cp.add'\\)")
 
     # a fixed distribution parameter is also a fixed residual parameter
     poisFix <- function() {
@@ -611,7 +612,6 @@ rxTest({
         cnt ~ pois(lam)
       })
     }
-    expect_error(assertRxUiNoFixedResiduals(poisFix),
-                 "cannot fix residual error parameters \\('lam'\\)")
+    expect_error(assertRxUiNoFixedResiduals(poisFix), "cannot fix residual error parameters \\('lam'\\)")
   })
 })
