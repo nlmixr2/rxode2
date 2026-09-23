@@ -43,21 +43,21 @@
 #'    estimate them, so a fixed value is an error instead of being
 #'    silently estimated
 #'
-#' - `assertRxUiTransform` -- Make sure that every normal endpoint (a
-#'    residual error, alone or with `dnorm()`) uses
-#'    one of the `transform` residual transformations (like
+#' - `assertRxUiTransform` -- Make sure that every endpoint with a
+#'    residual error (normal, or with `dnorm()`, `dt()` or `dcauchy()`)
+#'    uses one of the `transform` residual transformations (like
 #'    `"untransformed"` or `"lnorm"`); used by estimation methods that
-#'    support only some transformations.  Non-normal endpoints (like
-#'    `pois()` or `ll()`) are not checked; see `assertRxUiTransformNormal`
+#'    support only some transformations.  Endpoints without a residual
+#'    error (like `pois()` or `ll()`) are not checked; see
+#'    `assertRxUiTransformNormal`
 #'
-#' - `assertRxUiErrType` -- Make sure that every normal endpoint uses
-#'    one of the `errType` residual error types (`"add"`, `"prop"`,
-#'    `"pow"`, `"add + prop"`, `"add + pow"`); used by estimation methods
-#'    that support only some residual error types.  Non-normal endpoints
-#'    are not checked
+#' - `assertRxUiErrType` -- Make sure that every endpoint with a
+#'    residual error uses one of the `errType` residual error types
+#'    (`"add"`, `"prop"`, `"pow"`, `"add + prop"`, `"add + pow"`); used by
+#'    estimation methods that support only some residual error types
 #'
-#' - `assertRxUiAddProp` -- Make sure that every normal `add() + prop()`
-#'    or `add() + pow()` endpoint uses one of the `addProp` combinations
+#' - `assertRxUiAddProp` -- Make sure that every `add() + prop()` or
+#'    `add() + pow()` residual error uses one of the `addProp` combinations
 #'    (`"combined1"`, where the standard deviations add, or
 #'    `"combined2"`, where the variances add); an endpoint declared
 #'    without `combined1()` or `combined2()` uses `rxControl(addProp=)`
@@ -718,6 +718,11 @@ assertRxUiEstimatedResiduals <- function(ui, extra = "", .var.name = .vname(ui))
   invisible(ui)
 }
 
+# Endpoint distributions that have a residual error (transformation,
+# error type and add + prop/pow combination), like
+# .handleSingleErrTypeNormOrTFoceiBase() in err-foceiBase.R
+.assertRxUiResidualDist <- c("norm", "t", "cauchy", "dnorm")
+
 #' Quote and collapse values for an assertion message
 #'
 #' @param x character vector
@@ -764,7 +769,7 @@ assertRxUiTransform <- function(ui, transform, extra = "", .var.name = .vname(ui
   assertRxUiPrediction(ui)
   checkmate::assertSubset(transform, .rxTransformCombineLevels, empty.ok = FALSE)
   .predDf <- ui$predDf
-  .transform <- as.character(.predDf$transform[.predDf$distribution %in% c("norm", "dnorm")])
+  .transform <- as.character(.predDf$transform[.predDf$distribution %in% .assertRxUiResidualDist])
   .bad <- unique(.transform[!(.transform %in% transform)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual transformation ",
@@ -782,7 +787,7 @@ assertRxUiErrType <- function(ui, errType, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(errType, .rxErrType, empty.ok = FALSE)
   .predDf <- ui$predDf
-  .errType <- as.character(.predDf$errType[.predDf$distribution %in% c("norm", "dnorm")])
+  .errType <- as.character(.predDf$errType[.predDf$distribution %in% .assertRxUiResidualDist])
   .bad <- unique(.errType[!(.errType %in% errType)])
   if (length(.bad) > 0L) {
     stop("'", .var.name, "' cannot use the residual error ",
@@ -800,7 +805,7 @@ assertRxUiAddProp <- function(ui, addProp, extra = "", .var.name = .vname(ui)) {
   assertRxUiPrediction(ui)
   checkmate::assertSubset(addProp, c("combined1", "combined2"), empty.ok = FALSE)
   .predDf <- ui$predDf
-  .w <- which(.predDf$distribution %in% c("norm", "dnorm") &
+  .w <- which(.predDf$distribution %in% .assertRxUiResidualDist &
                 as.character(.predDf$errType) %in% c("add + prop", "add + pow"))
   if (length(.w) == 0L) return(invisible(ui))
   .addProp <- as.character(.predDf$addProp[.w])

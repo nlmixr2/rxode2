@@ -131,19 +131,19 @@ between-subject variability parameters are fixed (ie
 \code{eta.ka ~ fix(0.6)}); used by estimation methods that always
 estimate them, so a fixed value is an error instead of being
 silently estimated
-\item \code{assertRxUiTransform} -- Make sure that every normal endpoint (a
-residual error, alone or with \code{dnorm()}) uses
-one of the \code{transform} residual transformations (like
+\item \code{assertRxUiTransform} -- Make sure that every endpoint with a
+residual error (normal, or with \code{dnorm()}, \code{dt()} or \code{dcauchy()})
+uses one of the \code{transform} residual transformations (like
 \code{"untransformed"} or \code{"lnorm"}); used by estimation methods that
-support only some transformations.  Non-normal endpoints (like
-\code{pois()} or \code{ll()}) are not checked; see \code{assertRxUiTransformNormal}
-\item \code{assertRxUiErrType} -- Make sure that every normal endpoint uses
-one of the \code{errType} residual error types (\code{"add"}, \code{"prop"},
-\code{"pow"}, \code{"add + prop"}, \code{"add + pow"}); used by estimation methods
-that support only some residual error types.  Non-normal endpoints
-are not checked
-\item \code{assertRxUiAddProp} -- Make sure that every normal \code{add() + prop()}
-or \code{add() + pow()} endpoint uses one of the \code{addProp} combinations
+support only some transformations.  Endpoints without a residual
+error (like \code{pois()} or \code{ll()}) are not checked; see
+\code{assertRxUiTransformNormal}
+\item \code{assertRxUiErrType} -- Make sure that every endpoint with a
+residual error uses one of the \code{errType} residual error types
+(\code{"add"}, \code{"prop"}, \code{"pow"}, \code{"add + prop"}, \code{"add + pow"}); used by
+estimation methods that support only some residual error types
+\item \code{assertRxUiAddProp} -- Make sure that every \code{add() + prop()} or
+\code{add() + pow()} residual error uses one of the \code{addProp} combinations
 (\code{"combined1"}, where the standard deviations add, or
 \code{"combined2"}, where the variances add); an endpoint declared
 without \code{combined1()} or \code{combined2()} uses \code{rxControl(addProp=)}

@@ -449,6 +449,17 @@ rxTest({
     dnormAddProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1() + dnorm()))
     expect_error(assertRxUiAddProp(dnormAddProp, "combined2"), "cannot use 'combined1'")
 
+    # so are t and Cauchy endpoints
+    tMod <- mod(quote(cp ~ lnorm(add.sd) + dt(pow.exp)))
+    expect_error(assertRxUiTransform(tMod, "untransformed"),
+                 "residual transformation 'lnorm'")
+    tAddProp <- mod(quote(cp ~ add(add.sd) + prop(prop.sd) + combined1() + dt(pow.exp)))
+    expect_error(assertRxUiAddProp(tAddProp, "combined2"), "cannot use 'combined1'")
+    expect_error(assertRxUiErrType(tAddProp, "add"), "residual error 'add \\+ prop'")
+    cauchyMod <- mod(quote(cp ~ add(add.sd) + boxCox(lambda) + dcauchy()))
+    expect_error(assertRxUiTransform(cauchyMod, "untransformed"),
+                 "residual transformation 'boxCox'")
+
     llMod <- function() {
       ini({
         tv <- 1
