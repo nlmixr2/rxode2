@@ -261,124 +261,181 @@ static inline double dLogErfc(double u) {
   return -2.0 / std::sqrt(M_PI) * std::exp(-u * u - logErfc(u));
 }
 
+// One univariate family, as the parameter-dependent part of its log
+// density (the constant part is term.scale[0], added by the caller) plus
+// its derivative in *g.  -INFINITY (with *g left at 0) outside the
+// family's own support.  The hyperparameters p[] are in Stan's order for
+// that family, as R/prior-density-families.R writes them; every family
+// they share a shape with is reparameterized into one of these there (eg
+// chi_square(nu) becomes gamma(nu/2, 1/2)).
+
+// lognormal(mu, sigma)
+static double uniLognormal(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  double lx = std::log(x), d = lx - p[0], s2 = p[1] * p[1];
+  *g = -1.0 / x - d / (s2 * x);
+  return -lx - 0.5 * d * d / s2;
+}
+
+// gamma(shape, rate)
+static double uniGamma(double x, const double *p, double *g) {
+  if (x < 0) return -INFINITY;
+  *g = xdivy(p[0] - 1.0, x) - p[1];
+  return xlogy(p[0] - 1.0, x) - p[1] * x;
+}
+
+// inv_gamma(alpha, beta)
+static double uniInvGamma(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  *g = -(p[0] + 1.0) / x + p[1] / (x * x);
+  return -(p[0] + 1.0) * std::log(x) - p[1] / x;
+}
+
+// weibull(shape, scale)
+static double uniWeibull(double x, const double *p, double *g) {
+  if (x < 0) return -INFINITY;
+  double r = x / p[1];
+  *g = xdivy(p[0] - 1.0, x) - p[0] / p[1] * std::pow(r, p[0] - 1.0);
+  return xlogy(p[0] - 1.0, x) - std::pow(r, p[0]);
+}
+
+// frechet(alpha, sigma)
+static double uniFrechet(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  double e = std::pow(x / p[1], -p[0]);
+  *g = (-(1.0 + p[0]) + p[0] * e) / x;
+  return -(1.0 + p[0]) * std::log(x) - e;
+}
+
+// pareto(y_min, alpha)
+static double uniPareto(double x, const double *p, double *g) {
+  if (x < p[0]) return -INFINITY;
+  *g = -(p[1] + 1.0) / x;
+  return -(p[1] + 1.0) * std::log(x);
+}
+
+// pareto_type_2(mu, lambda, alpha)
+static double uniParetoType2(double x, const double *p, double *g) {
+  if (x < p[0]) return -INFINITY;
+  *g = -(p[2] + 1.0) / (p[1] + x - p[0]);
+  return -(p[2] + 1.0) * std::log1p((x - p[0]) / p[1]);
+}
+
+// beta(shape1, shape2)
+static double uniBeta(double x, const double *p, double *g) {
+  if (x < 0 || x > 1) return -INFINITY;
+  *g = xdivy(p[0] - 1.0, x) - xdivy(p[1] - 1.0, 1.0 - x);
+  return xlogy(p[0] - 1.0, x) + ((p[1] == 1.0) ? 0.0 : (p[1] - 1.0) * std::log1p(-x));
+}
+
+// uniform(min, max) -- flat, so the whole density is the constant part.
+static double uniUniform(double x, const double *p, double *g) {
+  (void)g;
+  if (x < p[0] || x > p[1]) return -INFINITY;
+  return 0.0;
+}
+
+// student_t(nu, mu, sigma) -- Stan's location-scale t, NOT R's dt()
+static double uniStudentT(double x, const double *p, double *g) {
+  double d = x - p[1], nus2 = p[0] * p[2] * p[2];
+  *g = -(p[0] + 1.0) * d / (nus2 + d * d);
+  return -0.5 * (p[0] + 1.0) * std::log1p(d * d / nus2);
+}
+
+// double_exponential(mu, sigma)
+static double uniDoubleExponential(double x, const double *p, double *g) {
+  double d = x - p[0];
+  *g = (d > 0) ? -1.0 / p[1] : ((d < 0) ? 1.0 / p[1] : 0.0);
+  return -std::fabs(d) / p[1];
+}
+
+// logistic(mu, sigma)
+static double uniLogistic(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1], az = std::fabs(z);
+  *g = -std::tanh(0.5 * z) / p[1];
+  return -az - 2.0 * std::log1p(std::exp(-az));
+}
+
+// gumbel(mu, beta)
+static double uniGumbel(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1], ez = std::exp(-z);
+  *g = (ez - 1.0) / p[1];
+  return -z - ez;
+}
+
+// skew_double_exponential(mu, sigma, tau)
+static double uniSkewDoubleExponential(double x, const double *p, double *g) {
+  double d = x - p[0];
+  if (d < 0) {
+    *g = 2.0 * (1.0 - p[2]) / p[1];
+    return 2.0 * (1.0 - p[2]) * d / p[1];
+  }
+  *g = (d > 0) ? -2.0 * p[2] / p[1] : 0.0;
+  return -2.0 * p[2] * d / p[1];
+}
+
+// exp_mod_normal(mu, sigma, lambda)
+static double uniExpModNormal(double x, const double *p, double *g) {
+  double s2 = p[1] * p[1];
+  double u = (p[0] + p[2] * s2 - x) / (p[1] * M_SQRT2);
+  *g = -p[2] - dLogErfc(u) / (p[1] * M_SQRT2);
+  return p[2] * (p[0] + 0.5 * p[2] * s2 - x) + logErfc(u);
+}
+
+// skew_normal(xi, omega, alpha)
+static double uniSkewNormal(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1];
+  double u = -p[2] * z * M_SQRT1_2;
+  *g = -z / p[1] - dLogErfc(u) * p[2] * M_SQRT1_2 / p[1];
+  return -0.5 * z * z + logErfc(u);
+}
+
+// von_mises(mu, kappa)
+static double uniVonMises(double x, const double *p, double *g) {
+  *g = -p[1] * std::sin(x - p[0]);
+  return p[1] * std::cos(x - p[0]);
+}
+
+typedef double (*rx_prior_uni_fn)(double x, const double *p, double *g);
+
+// Indexed by term.type - RX_PRIOR_UNI_FIRST, so the order here IS the type
+// numbering documented in inst/include/rxode2prior.h -- append only, and
+// never reorder (a released spec carries the type code, not the name).
+static const rx_prior_uni_fn rxPriorUniFns[] = {
+  uniLognormal,            // 5
+  uniGamma,                // 6
+  uniInvGamma,             // 7
+  uniWeibull,              // 8
+  uniFrechet,              // 9
+  uniPareto,               // 10
+  uniParetoType2,          // 11
+  uniBeta,                 // 12
+  uniUniform,              // 13
+  uniStudentT,             // 14
+  uniDoubleExponential,    // 15
+  uniLogistic,             // 16
+  uniGumbel,               // 17
+  uniSkewDoubleExponential,// 18
+  uniExpModNormal,         // 19
+  uniSkewNormal,           // 20
+  uniVonMises              // 21
+};
+
+#define RX_PRIOR_UNI_FIRST 5
+#define RX_PRIOR_UNI_LAST (RX_PRIOR_UNI_FIRST + (int)(sizeof(rxPriorUniFns) / sizeof(rxPriorUniFns[0])) - 1)
+
 // types 5-21: a lotri univariate family. mu[] holds its hyperparameters and
 // scale[0] its log normalizing constant, truncation included (both built by
-// R/prior-density-families.R). -INFINITY with no gradient outside the
-// support.
+// R/prior-density-families.R).
 static double evalUnivariateTerm(const rx_prior_term_t &term, const double *theta,
                                  const double *omega, int omegaDim,
                                  double *gradTheta, double *gradOmega) {
   double x = termValue(term, 0, theta, omega, omegaDim);
-  const double *p = term.mu;
-  double v = term.scale[0], g = 0.0;
-  switch (term.type) {
-  case 5: { // lognormal(mu, sigma)
-    if (x <= 0) return -INFINITY;
-    double lx = std::log(x), d = lx - p[0], s2 = p[1] * p[1];
-    v += -lx - 0.5 * d * d / s2;
-    g = -1.0 / x - d / (s2 * x);
-    break;
-  }
-  case 6: // gamma(shape, rate)
-    if (x < 0) return -INFINITY;
-    v += xlogy(p[0] - 1.0, x) - p[1] * x;
-    g = xdivy(p[0] - 1.0, x) - p[1];
-    break;
-  case 7: // inv_gamma(alpha, beta)
-    if (x <= 0) return -INFINITY;
-    v += -(p[0] + 1.0) * std::log(x) - p[1] / x;
-    g = -(p[0] + 1.0) / x + p[1] / (x * x);
-    break;
-  case 8: { // weibull(shape, scale)
-    if (x < 0) return -INFINITY;
-    double r = x / p[1];
-    v += xlogy(p[0] - 1.0, x) - std::pow(r, p[0]);
-    g = xdivy(p[0] - 1.0, x) - p[0] / p[1] * std::pow(r, p[0] - 1.0);
-    break;
-  }
-  case 9: { // frechet(alpha, sigma)
-    if (x <= 0) return -INFINITY;
-    double e = std::pow(x / p[1], -p[0]);
-    v += -(1.0 + p[0]) * std::log(x) - e;
-    g = (-(1.0 + p[0]) + p[0] * e) / x;
-    break;
-  }
-  case 10: // pareto(y_min, alpha)
-    if (x < p[0]) return -INFINITY;
-    v += -(p[1] + 1.0) * std::log(x);
-    g = -(p[1] + 1.0) / x;
-    break;
-  case 11: // pareto_type_2(mu, lambda, alpha)
-    if (x < p[0]) return -INFINITY;
-    v += -(p[2] + 1.0) * std::log1p((x - p[0]) / p[1]);
-    g = -(p[2] + 1.0) / (p[1] + x - p[0]);
-    break;
-  case 12: // beta(shape1, shape2)
-    if (x < 0 || x > 1) return -INFINITY;
-    v += xlogy(p[0] - 1.0, x) + ((p[1] == 1.0) ? 0.0 : (p[1] - 1.0) * std::log1p(-x));
-    g = xdivy(p[0] - 1.0, x) - xdivy(p[1] - 1.0, 1.0 - x);
-    break;
-  case 13: // uniform(min, max)
-    if (x < p[0] || x > p[1]) return -INFINITY;
-    break;
-  case 14: { // student_t(nu, mu, sigma)
-    double d = x - p[1], nus2 = p[0] * p[2] * p[2];
-    v += -0.5 * (p[0] + 1.0) * std::log1p(d * d / nus2);
-    g = -(p[0] + 1.0) * d / (nus2 + d * d);
-    break;
-  }
-  case 15: { // double_exponential(mu, sigma)
-    double d = x - p[0];
-    v += -std::fabs(d) / p[1];
-    g = (d > 0) ? -1.0 / p[1] : ((d < 0) ? 1.0 / p[1] : 0.0);
-    break;
-  }
-  case 16: { // logistic(mu, sigma)
-    double z = (x - p[0]) / p[1], az = std::fabs(z);
-    v += -az - 2.0 * std::log1p(std::exp(-az));
-    g = -std::tanh(0.5 * z) / p[1];
-    break;
-  }
-  case 17: { // gumbel(mu, beta)
-    double z = (x - p[0]) / p[1], ez = std::exp(-z);
-    v += -z - ez;
-    g = (ez - 1.0) / p[1];
-    break;
-  }
-  case 18: { // skew_double_exponential(mu, sigma, tau)
-    double d = x - p[0];
-    if (d < 0) {
-      v += 2.0 * (1.0 - p[2]) * d / p[1];
-      g = 2.0 * (1.0 - p[2]) / p[1];
-    } else {
-      v += -2.0 * p[2] * d / p[1];
-      g = (d > 0) ? -2.0 * p[2] / p[1] : 0.0;
-    }
-    break;
-  }
-  case 19: { // exp_mod_normal(mu, sigma, lambda)
-    double s2 = p[1] * p[1];
-    double u = (p[0] + p[2] * s2 - x) / (p[1] * M_SQRT2);
-    v += p[2] * (p[0] + 0.5 * p[2] * s2 - x) + logErfc(u);
-    g = -p[2] - dLogErfc(u) / (p[1] * M_SQRT2);
-    break;
-  }
-  case 20: { // skew_normal(xi, omega, alpha)
-    double z = (x - p[0]) / p[1];
-    double u = -p[2] * z * M_SQRT1_2;
-    v += -0.5 * z * z + logErfc(u);
-    g = -z / p[1] - dLogErfc(u) * p[2] * M_SQRT1_2 / p[1];
-    break;
-  }
-  case 21: // von_mises(mu, kappa)
-    v += p[1] * std::cos(x - p[0]);
-    g = -p[1] * std::sin(x - p[0]);
-    break;
-  default:
-    return 0.0;
-  }
+  double g = 0.0;
+  double v = rxPriorUniFns[term.type - RX_PRIOR_UNI_FIRST](x, term.mu, &g);
+  if (v == -INFINITY) return -INFINITY; // outside the support: no gradient
   addGrad(term, 0, g, gradTheta, gradOmega, omegaDim);
-  return v;
+  return term.scale[0] + v;
 }
 
 // type 2: a joint multivariate-normal block (theta and/or omega diagonal
@@ -520,7 +577,7 @@ extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
       val += evalMultiNormalTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     } else if (term.type == 3 || term.type == 4) {
       val += evalInvWishartTerm(term, omega, omegaDim, gradOmega);
-    } else if (term.type >= 5 && term.type <= 21) {
+    } else if (term.type >= RX_PRIOR_UNI_FIRST && term.type <= RX_PRIOR_UNI_LAST) {
       val += evalUnivariateTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
     }
   }
