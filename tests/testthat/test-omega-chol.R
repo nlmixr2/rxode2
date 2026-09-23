@@ -4,7 +4,7 @@ rxTest({
     {
       dgs <- c("sqrt", "log", "identity")
       for (dg in dgs) {
-        for (d in seq(1, rxSymInvCholN())) {
+        for (d in seq_len(rxSymInvCholN())) {
           test_that(sprintf("Omega Cholesky %sx%s, %s", d, d, dg), {
             ## Creating covariance matrix
             tmp <- matrix(rnorm(d^2), d, d)
@@ -45,7 +45,9 @@ rxTest({
       .n <- sum(lower.tri(m, TRUE))
       expect_equal(v$ntheta, .n)
       expect_length(v$theta, .n)
-      if (dg == "sqrt") expect_length(v$theta.diag, .n)
+      if (dg == "sqrt") {
+        expect_length(v$theta.diag, .n)
+      }
       expect_equal(v$omega, m, ignore_attr = TRUE, tolerance = 1e-8)
       expect_equal(v$omegaInv, solve(m), ignore_attr = TRUE, tolerance = 1e-8)
       expect_length(v$d.omegaInv, .n)
@@ -59,10 +61,12 @@ rxTest({
     ## a permuted block pattern is not contiguous either
     .chk(matrix(c(1, 0, 0.1, 0, 1, 0, 0.1, 0, 1), 3, 3), "sqrt")
     ## near-singular SAEM Omega with one exact zero
-    m <- matrix(c(2.6563e-02, 2.3205e-02, 7.5781e-15, 7.5791e-15,
-                  2.3205e-02, 3.2003e-02, -3.0305e-14, -4.5475e-14,
-                  7.5781e-15, -3.0305e-14, 5.2647e-10, 0,
-                  7.5791e-15, -4.5475e-14, 0, 5.2647e-10), 4, 4)
+    m <- unname(rbind(
+      c(2.6563e-02, 2.3205e-02, 7.5781e-15, 7.5791e-15),
+      c(2.3205e-02, 3.2003e-02, -3.0305e-14, -4.5475e-14),
+      c(7.5781e-15, -3.0305e-14, 5.2647e-10, 0),
+      c(7.5791e-15, -4.5475e-14, 0, 5.2647e-10)
+    ))
     v <- suppressMessages(rxSymInvCholCreate(mat = m, diag.xform = "sqrt"))
     expect_equal(v$ntheta, 10L)
     expect_equal(v$omega, m, ignore_attr = TRUE, tolerance = 1e-6)
@@ -81,9 +85,7 @@ rxTest({
         .p[k] <- .p[k] + .h
         .q <- th
         .q[k] <- .q[k] - .h
-        expect_equal(r$fn(th, as.integer(k)),
-                     (r$fn(.p, -1L) - r$fn(.q, -1L)) / (2 * .h),
-                     tolerance = 1e-6)
+        expect_equal(r$fn(th, as.integer(k)), (r$fn(.p, -1L) - r$fn(.q, -1L)) / (2 * .h), tolerance = 1e-6)
       }
     }
     m <- matrix(c(1, 0.1, 0.1, 0.1, 1, 0, 0.1, 0, 1), 3, 3)
@@ -91,12 +93,10 @@ rxTest({
     .fd(r, as.double(r$ini))
     ## a repeated block with an internal zero shares its master's thetas
     m2 <- as.matrix(Matrix::bdiag(m, m))
-    r <- rxSymInvCholCreate(m2, diag.xform = "sqrt", create.env = FALSE,
-                            same = c(0L, 0L, 0L, 1L, 2L, 3L))
+    r <- rxSymInvCholCreate(m2, diag.xform = "sqrt", create.env = FALSE, same = c(0L, 0L, 0L, 1L, 2L, 3L))
     expect_equal(r$fn(NULL, -2L), 6)
     th <- as.double(r$ini)
-    expect_equal(r$fn(th, -1L), solve(m2), ignore_attr = TRUE,
-                 tolerance = 1e-8)
+    expect_equal(r$fn(th, -1L), solve(m2), ignore_attr = TRUE, tolerance = 1e-8)
     .fd(r, th)
   })
 })
