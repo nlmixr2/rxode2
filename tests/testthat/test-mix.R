@@ -384,8 +384,8 @@ rxTest({
     .d <- as.data.frame(.ev)
     .d$WT <- .wt[.d$id]
     .d$mixest <- .want[.d$id]
-    .check <- function(d) {
-      .s <- rxSolve(.m, d, params = .p, returnType = "data.frame")
+    .check <- function(d, iCov = NULL) {
+      .s <- rxSolve(.m, d, params = .p, iCov = iCov, returnType = "data.frame")
       .s <- .s[!duplicated(.s$id), ]
       .s <- .s[order(.s$id), ]
       expect_equal(.s$me, as.double(.want))
@@ -395,6 +395,10 @@ rxTest({
     # mixest after, and before, the covariate column
     .check(.d)
     .check(.d[, c(setdiff(names(.d), c("WT", "mixest")), "mixest", "WT")])
+    # mixest from iCov with a data covariate (the nlmixr2 table step)
+    .check(.d[, names(.d) != "mixest"], iCov = data.frame(id = 1:6, mixest = .want))
+    # an allTimeVar translation solves the same
+    .check(etTrans(.d[, c(setdiff(names(.d), c("WT", "mixest")), "mixest", "WT")], .m, allTimeVar = TRUE))
     # a time-varying covariate
     .d2 <- .d
     .d2$WT[.d2$time == 4] <- 100
