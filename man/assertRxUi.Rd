@@ -19,6 +19,11 @@
 \alias{assertRxUiNoOmegaNormalPriors}
 \alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
+\alias{assertRxUiNoFixedResiduals}
+\alias{assertRxUiNoFixedOmega}
+\alias{assertRxUiTransform}
+\alias{assertRxUiErrType}
+\alias{assertRxUiAddProp}
 \alias{assertRxUiPopulationOnly}
 \alias{assertRxUiMixedOnly}
 \alias{assertRxUiRandomOnIdOnly}
@@ -60,6 +65,16 @@ assertRxUiMuRefOnly(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiEstimatedResiduals(ui, extra = "", .var.name = .vname(ui))
 
+assertRxUiNoFixedResiduals(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiNoFixedOmega(ui, extra = "", .var.name = .vname(ui))
+
+assertRxUiTransform(ui, transform, extra = "", .var.name = .vname(ui))
+
+assertRxUiErrType(ui, errType, extra = "", .var.name = .vname(ui))
+
+assertRxUiAddProp(ui, addProp, extra = "", .var.name = .vname(ui))
+
 assertRxUiPopulationOnly(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiMixedOnly(ui, extra = "", .var.name = .vname(ui))
@@ -75,6 +90,18 @@ assertRxUiRandomOnIdOnly(ui, extra = "", .var.name = .vname(ui))
 \item{.var.name}{[\code{character(1)}]\cr
 Name of the checked object to print in assertions. Defaults to
 the heuristic implemented in \code{\link[checkmate]{vname}}.}
+
+\item{transform}{character vector of the residual transformations
+that are allowed (the levels of \code{ui$predDf$transform}, like
+\code{"untransformed"}, \code{"lnorm"} or \code{"boxCox"})}
+
+\item{errType}{character vector of the residual error types that are
+allowed (\code{"add"}, \code{"prop"}, \code{"pow"}, \code{"add + prop"} or
+\code{"add + pow"})}
+
+\item{addProp}{character vector of the \code{add() + prop()} and
+\code{add() + pow()} combinations that are allowed (\code{"combined1"} or
+\code{"combined2"})}
 }
 \value{
 the rxUi model
@@ -93,6 +120,34 @@ distribution is normal or transformably normal
 \item \code{assertRxUiNormal} -- Make sure that the model residual distribution is normal
 \item \code{assertRxUiEstimatedResiduals} -- Make sure that the residual error
 parameters are estimated (not modeled).
+\item \code{assertRxUiNoFixedResiduals} -- Make sure that none of the
+residual error parameters are fixed (ie \code{add.sd <- fix(0.7)}, a
+literal \code{add(0.7)}, or a fixed distribution parameter like the
+\code{lambda} of \code{pois(lambda)}); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated
+\item \code{assertRxUiNoFixedOmega} -- Make sure that none of the
+between-subject variability parameters are fixed (ie
+\code{eta.ka ~ fix(0.6)}); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated
+\item \code{assertRxUiTransform} -- Make sure that every endpoint with a
+residual error (normal, or with \code{dnorm()}, \code{dt()} or \code{dcauchy()})
+uses one of the \code{transform} residual transformations (like
+\code{"untransformed"} or \code{"lnorm"}); used by estimation methods that
+support only some transformations.  Endpoints without a residual
+error (like \code{pois()} or \code{ll()}) are not checked; see
+\code{assertRxUiTransformNormal}
+\item \code{assertRxUiErrType} -- Make sure that every endpoint with a
+residual error uses one of the \code{errType} residual error types
+(\code{"add"}, \code{"prop"}, \code{"pow"}, \code{"add + prop"}, \code{"add + pow"}); used by
+estimation methods that support only some residual error types
+\item \code{assertRxUiAddProp} -- Make sure that every \code{add() + prop()} or
+\code{add() + pow()} residual error uses one of the \code{addProp} combinations
+(\code{"combined1"}, where the standard deviations add, or
+\code{"combined2"}, where the variances add); an endpoint declared
+without \code{combined1()} or \code{combined2()} uses \code{rxControl(addProp=)}
+or, when that is not set, \code{getOption("rxode2.addProp", "combined2")}
 \item \code{assertRxUiPopulationOnly} -- Make sure the model is the population only
 model (no mixed effects)
 \item \code{assertRxUiMixedOnly} -- Make sure the model is a mixed effect model (not a
@@ -148,6 +203,16 @@ assertRxUi(one.cmt)
 # assertRxUi(rnorm) # will fail
 
 assertRxUiSingleEndpoint(one.cmt)
+
+assertRxUiNoFixedResiduals(one.cmt)
+
+assertRxUiNoFixedOmega(one.cmt)
+
+assertRxUiTransform(one.cmt, c("untransformed", "lnorm"))
+
+assertRxUiErrType(one.cmt, c("add", "prop", "add + prop"))
+
+assertRxUiAddProp(one.cmt, "combined2")
 }
 }
 \seealso{

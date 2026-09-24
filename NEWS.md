@@ -2,6 +2,21 @@
 
 ## New features
 
+- New assertions `assertRxUiTransform()`, `assertRxUiErrType()` and
+  `assertRxUiAddProp()` refuse a model whose residual transformation
+  (like `boxCox()` or `lnorm()`), residual error type (like
+  `add() + pow()`) or `add() + prop()`/`add() + pow()` combination
+  (`combined1` or `combined2`, including the `rxode2.addProp` default) is
+  not in the allowed set; endpoints without a residual error (like
+  `pois()` or `ll()`) are not checked.  They let an estimation method that supports only some
+  residual error models stop with a clear error instead of fitting a
+  different one.
+
+- New assertions `assertRxUiNoFixedResiduals()` and
+  `assertRxUiNoFixedOmega()` refuse a model that fixes a residual error
+  parameter (`add.sd <- fix(0.7)`) or a between-subject variability
+  (`eta.ka ~ fix(0.6)`), for estimation methods that would otherwise
+  estimate them anyway.
 - `rxPriorBuildSpec()` and `rxPriorLogDensity()` now evaluate lotri's
   univariate continuous priors beyond normal and Cauchy (`dlnorm()`,
   `dgamma()`, `dbeta()`, `studentT()`, `dexp()`, `dunif()`, `dweibull()`,
