@@ -153,6 +153,16 @@
 <span></span>
 <span><span class="fu">assertRxUiEstimatedResiduals</span><span class="op">(</span><span class="va">ui</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">assertRxUiNoFixedResiduals</span><span class="op">(</span><span class="va">ui</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">assertRxUiNoFixedOmega</span><span class="op">(</span><span class="va">ui</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">assertRxUiTransform</span><span class="op">(</span><span class="va">ui</span>, <span class="va">transform</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">assertRxUiErrType</span><span class="op">(</span><span class="va">ui</span>, <span class="va">errType</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">assertRxUiAddProp</span><span class="op">(</span><span class="va">ui</span>, <span class="va">addProp</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">assertRxUiPopulationOnly</span><span class="op">(</span><span class="va">ui</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">assertRxUiMixedOnly</span><span class="op">(</span><span class="va">ui</span>, extra <span class="op">=</span> <span class="st">""</span>, .var.name <span class="op">=</span> <span class="fu">.vname</span><span class="op">(</span><span class="va">ui</span><span class="op">)</span><span class="op">)</span></span>
@@ -178,6 +188,24 @@
 Name of the checked object to print in assertions. Defaults to
 the heuristic implemented in <code><a href="https://mllg.github.io/checkmate/reference/vname.html" class="external-link">vname</a></code>.</p></dd>
 
+
+<dt id="arg-transform">transform<a class="anchor" aria-label="anchor" href="#arg-transform"></a></dt>
+<dd><p>character vector of the residual transformations
+that are allowed (the levels of <code>ui$predDf$transform</code>, like
+<code>"untransformed"</code>, <code>"lnorm"</code> or <code>"boxCox"</code>)</p></dd>
+
+
+<dt id="arg-errtype">errType<a class="anchor" aria-label="anchor" href="#arg-errtype"></a></dt>
+<dd><p>character vector of the residual error types that are
+allowed (<code>"add"</code>, <code>"prop"</code>, <code>"pow"</code>, <code>"add + prop"</code> or
+<code>"add + pow"</code>)</p></dd>
+
+
+<dt id="arg-addprop">addProp<a class="anchor" aria-label="anchor" href="#arg-addprop"></a></dt>
+<dd><p>character vector of the <code>add() + prop()</code> and
+<code>add() + pow()</code> combinations that are allowed (<code>"combined1"</code> or
+<code>"combined2"</code>)</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -193,6 +221,34 @@ distribution is normal or transformably normal</p></li>
 <li><p><code>assertRxUiNormal</code> – Make sure that the model residual distribution is normal</p></li>
 <li><p><code>assertRxUiEstimatedResiduals</code> – Make sure that the residual error
 parameters are estimated (not modeled).</p></li>
+<li><p><code>assertRxUiNoFixedResiduals</code> – Make sure that none of the
+residual error parameters are fixed (ie <code>add.sd &lt;- fix(0.7)</code>, a
+literal <code>add(0.7)</code>, or a fixed distribution parameter like the
+<code>lambda</code> of <code>pois(lambda)</code>); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated</p></li>
+<li><p><code>assertRxUiNoFixedOmega</code> – Make sure that none of the
+between-subject variability parameters are fixed (ie
+<code>eta.ka ~ fix(0.6)</code>); used by estimation methods that always
+estimate them, so a fixed value is an error instead of being
+silently estimated</p></li>
+<li><p><code>assertRxUiTransform</code> – Make sure that every endpoint with a
+residual error (normal, or with <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code>, <code><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt()</a></code> or <code><a href="https://rdrr.io/r/stats/Cauchy.html" class="external-link">dcauchy()</a></code>)
+uses one of the <code>transform</code> residual transformations (like
+<code>"untransformed"</code> or <code>"lnorm"</code>); used by estimation methods that
+support only some transformations.  Endpoints without a residual
+error (like <code>pois()</code> or <code>ll()</code>) are not checked; see
+<code>assertRxUiTransformNormal</code></p></li>
+<li><p><code>assertRxUiErrType</code> – Make sure that every endpoint with a
+residual error uses one of the <code>errType</code> residual error types
+(<code>"add"</code>, <code>"prop"</code>, <code>"pow"</code>, <code>"add + prop"</code>, <code>"add + pow"</code>); used by
+estimation methods that support only some residual error types</p></li>
+<li><p><code>assertRxUiAddProp</code> – Make sure that every <code>add() + prop()</code> or
+<code>add() + pow()</code> residual error uses one of the <code>addProp</code> combinations
+(<code>"combined1"</code>, where the standard deviations add, or
+<code>"combined2"</code>, where the variances add); an endpoint declared
+without <code>combined1()</code> or <code>combined2()</code> uses <code>rxControl(addProp=)</code>
+or, when that is not set, <code>getOption("rxode2.addProp", "combined2")</code></p></li>
 <li><p><code>assertRxUiPopulationOnly</code> – Make sure the model is the population only
 model (no mixed effects)</p></li>
 <li><p><code>assertRxUiMixedOnly</code> – Make sure the model is a mixed effect model (not a
@@ -272,6 +328,36 @@ prior on an omega but only a Wishart one</p></li>
 <span class="r-in"><span><span class="co"># assertRxUi(rnorm) # will fail</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">assertRxUiSingleEndpoint</span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">assertRxUiNoFixedResiduals</span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">assertRxUiNoFixedOmega</span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">assertRxUiTransform</span><span class="op">(</span><span class="va">one.cmt</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"untransformed"</span>, <span class="st">"lnorm"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">assertRxUiErrType</span><span class="op">(</span><span class="va">one.cmt</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="st">"prop"</span>, <span class="st">"add + prop"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">assertRxUiAddProp</span><span class="op">(</span><span class="va">one.cmt</span>, <span class="st">"combined2"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span>
