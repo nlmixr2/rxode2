@@ -1466,7 +1466,9 @@
     .ret <- .ret[!is.na(.ret)]
     .ini <- .mv$ini
     .ini <- .ini[!is.na(.ini)]
-    .names <- c(.mv$lhs, names(.ini))
+    # a hidden (`~`) assignment is modeled too, e.g. the generated
+    # `rx.cp.add ~ cp.sd * exp(eta.cp.sd)` for `cp ~ add(cp.sd * exp(eta.cp.sd))`
+    .names <- c(.mv$lhs, .mv$slhs, names(.ini))
     .ret <- setdiff(.ret, .names)
     if (length(.ret) > 0L) {
       ui$err <- c(

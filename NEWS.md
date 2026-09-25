@@ -54,6 +54,21 @@
   against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
   installation; exported functions and compiled model code are unchanged.
 
+- An error-model argument can now be an expression, like
+  `cp ~ add(cp.sd * exp(eta.cp.sd))`.  It becomes a hidden modeled
+  variable assigned before the endpoint (`rx.cp.add ~ cp.sd * exp(eta.cp.sd)`,
+  then `cp ~ add(rx.cp.add)`), the same way a number like `add(3)` becomes a
+  fixed parameter.  `logitNorm()` and `probitNorm()` now take a modeled
+  variable or expression for their standard deviation; their bounds stay
+  numbers.
+
+- The adaptive dosing functions (`bolus()`, `infuse()`, `infuseDur()`,
+  `replace()`, `multiply()`, `phantom()`, `evid_()`) now take any expression,
+  including one whose variables appear nowhere else in the model, like
+  `infuseDur(100 * bsa, 1, central)` or `bolus(DOSE * 30)`; those variables
+  become model parameters or covariates instead of an "undeclared ... assign
+  first" error.
+
 - Building a model ui, and therefore `model()` piping (which rebuilds it),
   is faster: 3-5x on large models.  User ui functions are looked up once per
   function name instead of once per call, the per-line model rebuild is no
@@ -62,6 +77,10 @@
   unchanged.
 
 ## Bug fixes
+
+- A model with a numeric residual error like `cp ~ add(3)` can now be piped
+  and rebuilt from its own function; the generated fixed parameter was
+  added a second time and the model then failed to parse.
 
 - `linMod()` no longer drops the model's between subject variability: the
   `iniDf` it returned kept the thetas twice and no etas, so an eta like

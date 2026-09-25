@@ -653,6 +653,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 .namedArgumentsToPredDf <- list(
   add = "a",
   lnorm = "a",
+  # the additive sd on the logit/probit scale (the bounds stay numeric)
+  logitNorm = "a",
+  probitNorm = "a",
   boxCox = "lambda",
   yeoJohnson = "lambda",
   pow = c("b", "c"),
@@ -715,6 +718,21 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   # rx.cp.pow2) rather than colliding on the bare function name
   .errName <- if (argumentNumber == 1L) funName else paste0(funName, argumentNumber)
   .base <- paste0("rx.", env$curCondition, ".", .errName)
+  # a ui rebuilt from its own function (as model piping does) already carries
+  # this FIX row from the first parse, with its err/condition not yet claimed;
+  # reuse it instead of adding a duplicate
+  .reuse <- which(
+    .df$name %in% c(.base, paste0(.base, ".", seq_len(nrow(.df)))) & !is.na(.df$fix) & .df$fix & is.na(.df$err)
+  )
+  if (length(.reuse) > 0L) {
+    .w <- .reuse[1]
+    .df$est[.w] <- value
+    .df$condition[.w] <- env$curCondition
+    .df$err[.w] <- .errName
+    env$df <- .df
+    assign("lastDistAssign", .df$name[.w], envir = env)
+    return(invisible(NULL))
+  }
   .name <- .base
   .i <- 0L
   while (.name %in% .df$name) {
@@ -753,6 +771,90 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   env$df <- rbind(.df, .row)
   assign("lastDistAssign", .name, envir = env)
   invisible(NULL)
+}
+
+#' Convert an expression error-model argument into a modeled residual variable
+#'
+#' `cp ~ add(cp.sd * exp(eta.cp.sd))` becomes `rx.cp.add ~ cp.sd *
+#' exp(eta.cp.sd)` followed by `cp ~ add(rx.cp.add)`, as if the user had
+#' written the (hidden) assignment themselves.  Only argument slots that accept
+#' a modeled variable take an expression.  The new line and the rewritten
+#' distribution call are collected in `env$errExprBefore`/`env$errExprRew` and
+#' spliced into the model by `.errProcessExpression()`.
+#'
+#' @inheritParams .errHandleSingleDistributionArgument
+#' @param value the expression argument
+#' @return the generated variable name, or NULL when the slot does not accept
+#'   an expression (an error is recorded)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxErrExpressionToModeledVar <- function(argumentNumber, funName, expression, value, env) {
+  if (funName %in% c("logitNorm", "probitNorm") && argumentNumber > 1L) {
+    env$err <- c(env$err, paste0("the bounds of '", funName, "()' must be numbers, not an expression"))
+    return(NULL)
+  }
+  .w <- which(names(.namedArgumentsToPredDf) == funName)
+  if (funName != "ar" && (length(.w) != 1L || argumentNumber > length(.namedArgumentsToPredDf[[.w]]))) {
+    env$err <- c(
+      env$err,
+      paste0(
+        "argument ",
+        argumentNumber,
+        " of '",
+        funName,
+        "()' must be a parameter or a number, not an expression"
+      )
+    )
+    return(NULL)
+  }
+  .errName <- if (argumentNumber == 1L) funName else paste0(funName, argumentNumber)
+  .base <- paste0("rx.", env$curCondition, ".", .errName)
+  .taken <- c(env$df$name, env$errExprTaken)
+  .name <- .base
+  .i <- 0L
+  while (.name %in% .taken) {
+    .i <- .i + 1L
+    .name <- paste0(.base, ".", .i)
+  }
+  env$errExprTaken <- c(env$errExprTaken, .name)
+  env$errExprBefore <- c(env$errExprBefore, list(call("~", as.name(.name), value)))
+  # every argument of one distribution call is handled against the same
+  # original call, so accumulate its replacements in one entry
+  .rew <- env$errExprRew
+  .k <- which(vapply(.rew, function(r) identical(r$orig, expression), logical(1)))
+  if (length(.k) == 0L) {
+    .rew[[length(.rew) + 1L]] <- list(orig = expression, new = expression)
+    .k <- length(.rew)
+  }
+  .rew[[.k[1]]]$new[[argumentNumber + 1L]] <- as.name(.name)
+  env$errExprRew <- .rew
+  .name
+}
+
+#' Rewrite an endpoint line with its expression arguments replaced by names
+#'
+#' @param line the endpoint (`~`) line
+#' @param rew list of `orig`/`new` distribution calls from
+#'   `.rxErrExpressionToModeledVar()`
+#' @return the rewritten line
+#' @noRd
+#' @author Matthew L. Fidler
+.rxErrExpressionRewriteLine <- function(line, rew) {
+  .used <- rep(FALSE, length(rew))
+  .walk <- function(e) {
+    if (!is.call(e)) {
+      return(e)
+    }
+    for (.k in seq_along(rew)) {
+      if (!.used[.k] && identical(e, rew[[.k]]$orig)) {
+        .used[.k] <<- TRUE
+        return(rew[[.k]]$new)
+      }
+    }
+    as.call(lapply(as.list(e), .walk))
+  }
+  line[[3]] <- .walk(line[[3]])
+  line
 }
 
 #' This handles the error distribution for a single argument.
@@ -827,6 +929,16 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       # routes them through the same machinery as an estimated residual
       # parameter.
       .rxErrLiteralToFixParam(argumentNumber, funName, env$.numeric, env)
+    }
+  } else if (is.call(.cur)) {
+    # An expression (e.g. add(cp.sd * exp(eta.cp.sd))) becomes a hidden modeled
+    # variable assigned on a line before the endpoint; the argument is then
+    # handled exactly like that variable's name.
+    .name <- .rxErrExpressionToModeledVar(argumentNumber, funName, expression, .cur, env)
+    if (!is.null(.name)) {
+      .expr <- expression
+      .expr[[argumentNumber + 1L]] <- as.name(.name)
+      .errHandleSingleDistributionArgument(argumentNumber, funName, .expr, env)
     }
   } else if (is.na(.cur)) {
     if (argumentNumber == 1 && funName %in% .allowDemoteAddDistributions) {
@@ -1663,6 +1775,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$predDf <- NULL
   .env$earlyErr <- FALSE
   .env$lastDistAssign <- ""
+  # names a generated residual variable must not reuse (see
+  # .rxErrExpressionToModeledVar)
+  .env$errExprTaken <- all.vars(x)
   if (is.call(x)) {
     if (.env$top && identical(x[[1]], quote(`{`))) {
       .env$top <- FALSE
@@ -1718,7 +1833,34 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
             next
           }
         } else if (identical(.y[[.i]][[1]], quote(`~`))) {
+          .env$errExprBefore <- list()
+          .env$errExprRew <- list()
           .errHandleTilde(.y[[.i]], .env)
+          .k <- length(.env$errExprBefore)
+          if (.k > 0L) {
+            # expression arguments became hidden variables: put their
+            # assignments before this endpoint, which now refers to them by name
+            .len <- length(.y)
+            .y <- c(
+              .y[seq_len(.i - 1L)],
+              .env$errExprBefore,
+              list(.rxErrExpressionRewriteLine(.y[[.i]], .env$errExprRew)),
+              .y[seq_len(.len - .i) + .i]
+            )
+            .env$lstChr <- c(.env$lstChr, character(.k))
+            .env$lstErr <- c(.env$lstErr, vector(.k, mode = "list"))
+            .env$lstExpr <- c(.env$lstExpr, vector(.k, mode = "list"))
+            if (!is.null(.env$predDf)) {
+              .w <- which(.env$predDf$line == .i)
+              .env$predDf$line[.w] <- .env$predDf$line[.w] + .k
+            }
+            for (.j in seq_len(.k)) {
+              .env$lstChr[[.i]] <- deparse1(.y[[.i]])
+              .env$lstExpr[[.i]] <- .y[[.i]]
+              .i <- .i + 1L
+            }
+            .env$line <- .i
+          }
         } else {
           .env$redo <- FALSE
           .cur <- .y[[.i]]
@@ -1771,6 +1913,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         .i <- .i + 1L
       }
       .env$iniDf <- .env$df
+      # expression-residual bookkeeping (see .rxErrExpressionToModeledVar) is
+      # only needed while walking the lines
+      rm(
+        list = intersect(c("errExprBefore", "errExprRew", "errExprTaken"), ls(.env, all.names = TRUE)),
+        envir = .env
+      )
       # A UDF modification function (rxUdfUi) can append etas to the iniDf during
       # parsing (e.g. individual neural-network weight etas).  .env$eta was set from
       # the ini({}) omega before those UDFs ran, so refresh it from the now-final
