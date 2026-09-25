@@ -120,8 +120,28 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
   ) {
     return(FALSE)
   }
-  .rhs <- expr[[3]]
-  is.call(.rhs) && (as.character(.rhs[[1]]) %in% c("linCmtA", "linCmtB"))
+  !is.null(.linToOdeFindLinCmt(expr[[3]]))
+}
+#' Find the linCmtA/linCmtB call in an expression
+#'
+#' @param expr expression (like `1e6 * linCmtA(...)`)
+#' @return the first `linCmtA()`/`linCmtB()` call, or `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeFindLinCmt <- function(expr) {
+  if (!is.call(expr)) {
+    return(NULL)
+  }
+  if (is.name(expr[[1]]) && as.character(expr[[1]]) %in% c("linCmtA", "linCmtB")) {
+    return(expr)
+  }
+  for (.e in as.list(expr)[-1]) {
+    .ret <- .linToOdeFindLinCmt(.e)
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
+  }
+  NULL
 }
 #' Linear compartment model to ODE model expression conversion
 #'
@@ -146,7 +166,13 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
     },
     .mvLExpr
   )
-  Filter(.isLinCmtCall, .mvLExpr)
+  .mvLExpr <- Filter(.isLinCmtCall, .mvLExpr)
+  # linCmt() can be part of an expression (like `cp <- 1e6 * linCmt()`);
+  # keep only the linCmtA()/linCmtB() call as the right hand side
+  lapply(.mvLExpr, function(e) {
+    e[[3]] <- .linToOdeFindLinCmt(e[[3]])
+    e
+  })
 }
 #' This converts the linCmtA/linCmtB
 #'
@@ -440,34 +466,86 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #' @param expr linCmt expression
 #' @param predLine the pred line for the linCmt() model
 #' @param micro list of micro constants
+#' @param name name for the prediction of a `linCmt() ~ ...` endpoint
 #' @return a list of lhs expressions for ode conversion
 #' @noRd
 #' @author Matthew L. Fidler
-.linToOdeLhsLines <- function(expr, predLine, micro) {
-  if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
-    .lhs <- predLine$var
-  } else {
-    .lhs <- as.character(expr[[2]])
-  }
-  .lhsExpr <- str2lang(.lhs)
+.linToOdeLhsLines <- function(expr, predLine, micro, name = "rxLinCmtOde") {
   .vExpr <- str2lang(paste0("(", deparse1(micro$v), ")"))
-  .ret <- list(call("<-", .lhsExpr, call("/", str2lang("central"), .vExpr)))
+  .conc <- call("/", str2lang("central"), .vExpr)
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
-    .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)", .lhs, deparse1(expr), perl = TRUE))
+    # a `linCmt() ~ ...` endpoint: define the prediction and use it as
+    # the endpoint (with the same residual error and condition)
+    .lhs <- predLine$var
+    if (.lhs == "rxLinCmt") {
+      # rxLinCmt is read back as a linCmt() model, so it gets a name the
+      # model does not use
+      .lhs <- name
+    }
+    .lhsExpr <- str2lang(.lhs)
+    return(list(call("<-", .lhsExpr, .conc), .linToOdeReplaceLinCmt(expr, .lhsExpr)))
   }
-  .ret
+  .rhs <- expr[[3]]
+  if (is.name(expr[[2]]) && is.call(.rhs) && identical(.rhs[[1]], quote(linCmt))) {
+    return(list(call("<-", expr[[2]], .conc)))
+  }
+  # linCmt() is part of an expression (like 1e6 * linCmt()) or an ODE
+  list(.linToOdeReplaceLinCmt(expr, call("(", .conc)))
+}
+#' Replace linCmt() calls in an expression
+#'
+#' @param expr expression
+#' @param by replacement expression
+#' @return expression with every `linCmt(...)` call replaced by `by`
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeReplaceLinCmt <- function(expr, by) {
+  if (!is.call(expr)) {
+    return(expr)
+  }
+  if (identical(expr[[1]], quote(linCmt))) {
+    return(by)
+  }
+  as.call(lapply(as.list(expr), .linToOdeReplaceLinCmt, by = by))
 }
 #' Render the linCmt() system as an ode system
 #'
 #' @param expr  linCmt expression
 #' @param predLine predicion line data frame
 #' @param mvExpr linCmtA/linCmtB expression
+#' @param odes write the ODEs of the linear compartment system (only
+#'   the first line that uses the system writes them)
+#' @param name name for the prediction of a `linCmt() ~ ...` endpoint
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.linToOdeRender <- function(expr, predLine, mvExpr) {
+.linToOdeRender <- function(expr, predLine, mvExpr, odes = TRUE, name = "rxLinCmtOde") {
   .micro <- .linToOdeBuildMicro(mvExpr)
-  c(.linToOdeOdeLines(.micro), .linToOdeLhsLines(expr, predLine, .micro))
+  c(
+    if (odes) .linToOdeOdeLines(.micro),
+    .linToOdeLhsLines(expr, predLine, .micro, name = name)
+  )
+}
+#' A variable name the model does not use
+#'
+#' @param ui rxode2 ui model
+#' @param name preferred name
+#' @return `name`, or `name` with a number added when the model already
+#'   uses it
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeFreeName <- function(ui, name = "rxLinCmtOde") {
+  .used <- unique(c(
+    unlist(lapply(ui$lstExpr, all.vars)),
+    ui$iniDf$name
+  ))
+  .ret <- name
+  .i <- 0L
+  while (.ret %in% .used) {
+    .i <- .i + 1L
+    .ret <- paste0(name, .i)
+  }
+  .ret
 }
 #' Convert the linear compartment models to ode expressions.
 #'
@@ -480,19 +558,51 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
   if (length(.linExpr) == 0L) {
     return(ui$lstExpr)
   }
+  # a model has one linear compartment system; several lines (or
+  # endpoints) can use it, but its ODEs are written only once
   .linCur <- 1L
+  .odes <- TRUE
+  .name <- .linToOdeFreeName(ui)
   .ret <- list()
   for (i in seq_along(ui$lstExpr)) {
     .expr <- ui$lstExpr[[i]]
     .predLine <- .linToOdePredLine(ui, i)
     if (regexpr("linCmt\\s*\\(", deparse1(.expr), perl = TRUE) != -1) {
-      .ret <- c(.ret, .linToOdeRender(.expr, .predLine, .linExpr[[.linCur]]))
-      .linCur <- .linCur + 1L
+      .ret <- c(.ret, .linToOdeRender(.expr, .predLine, .linExpr[[.linCur]], odes = .odes, name = .name))
+      .odes <- FALSE
+      .linCur <- min(.linCur + 1L, length(.linExpr))
     } else {
       .ret[[length(.ret) + 1L]] <- .expr
     }
   }
-  .ret
+  c(.linToOdeCmtOrder(ui), .ret)
+}
+#' Keep the compartment numbers of a linCmt() model with other ODEs
+#'
+#' A `linCmt()` model numbers its depot and central compartments first
+#' and the other ODE states after them, whatever order the model lines
+#' are in.  The ODE translation numbers the states in the order they are
+#' defined, so `cmt()` statements are added to keep the numbers of the
+#' original model (the peripheral compartments, which have no number in
+#' the `linCmt()` model, come last).
+#'
+#' @param ui rxode2 ui model
+#' @return list of `cmt()` expressions (empty for a model without other
+#'   ODE states)
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeCmtOrder <- function(ui) {
+  .state <- ui$stateDf
+  if (is.null(.state) || nrow(.state) == 0L) {
+    return(list())
+  }
+  .names <- .state[["Compartment Name"]][order(.state[["Compartment Number"]])]
+  if (all(.names %in% c("depot", "central"))) {
+    return(list())
+  }
+  lapply(.names, function(n) {
+    str2lang(paste0("cmt(", n, ")"))
+  })
 }
 
 #' Convert linCmt rxUi models to ODE rxUi models
@@ -568,4 +678,52 @@ linToOde <- function(ui) {
     environment(.fun) <- environment(.ui$model)
   }
   suppressMessages(as.rxUi(.fun)) # nolint
+}
+
+#' Get the micro-constant parameterization of a linCmt() model
+#'
+#' This extracts the solved linear compartment model(s) from a model
+#' and returns them as micro-constants (`k`, `k12`, `k21`, `k13`,
+#' `k31`), the central volume `v` and the absorption rate `ka`, each
+#' as an R expression in terms of the model variables. This is useful
+#' for translating a `linCmt()` model to software that has its own
+#' closed-form linear compartment solutions (like NONMEM's `ADVAN1-4`,
+#' `ADVAN11-12` or Monolix's `pkmodel()`).
+#'
+#' @param ui rxUi-like model object
+#'
+#' @return A list with one element per linear compartment system
+#'   (endpoints that share the same `linCmt()`, like conditional
+#'   `linCmt() ~ ... | cond` endpoints, share one element).
+#'   Each element is a list with `ncmt` (number of compartments),
+#'   `oral0` (1 when there is a depot compartment, 0 otherwise), and
+#'   the expressions `ka`, `v`, `k`, `k12`, `k21`, `k13` and `k31`.
+#'   `ka` is 0 for a model without a depot, and the transfer rates a
+#'   model does not have (like `k13` and `k31` for 2 compartments) are
+#'   `NULL`. A model without `linCmt()` returns an empty list.
+#' @examples
+#'
+#' oneCmt <- function() {
+#'   ini({
+#'     tka <- 0.45
+#'     tcl <- log(2.7)
+#'     tv <- 3.45
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     cp <- linCmt()
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#'
+#' linCmtMicro(oneCmt)
+#'
+#' @author Matthew L. Fidler
+#' @export
+linCmtMicro <- function(ui) {
+  .ui <- rxUiDecompress(as.rxUi(ui)) # nolint
+  lapply(.linToOdeLinExpr(.ui), .linToOdeBuildMicro)
 }

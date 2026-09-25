@@ -2,6 +2,12 @@
 
 ## New features
 
+- New `linCmtMicro()` returns the micro-constant parameterization
+  (`k`, `k12`, `k21`, `k13`, `k31`, `v` and `ka`) of each `linCmt()`
+  call in a model, as R expressions of the model variables.  It lets
+  translators (like babelmixr2) write a `linCmt()` model with another
+  program's closed-form linear compartment solutions.
+
 - New assertions `assertRxUiTransform()`, `assertRxUiErrType()` and
   `assertRxUiAddProp()` refuse a model whose residual transformation
   (like `boxCox()` or `lnorm()`), residual error type (like
@@ -77,6 +83,27 @@
   unchanged.
 
 ## Bug fixes
+
+- `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
+  prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
+  so the ODE model failed with "'depot', 'central' are required for
+  linCmt() but defined in ODE too".  The prediction is now named
+  `rxLinCmtOde`.
+
+- `linToOde()` of a model with `linCmt()` and other ODEs now keeps the
+  compartment numbers of the `linCmt()` model (depot and central first),
+  so data using compartment numbers dose the same compartments.
+
+- `linToOde()` now translates `linCmt()` that is part of an expression
+  (like `cp <- 1e6 * linCmt()`, or inside an ODE); before, the model was
+  returned with `linCmt()` unchanged.
+
+- `linToOde()` now translates a `linCmt(ka, cl, v) ~ ...` endpoint with
+  arguments, and writes the ODEs once when several endpoints use the
+  same `linCmt()` (like `linCmt() ~ add(a) | phase1` and
+  `linCmt() ~ add(b) | phase2`), which before ran past the translated
+  linear compartment calls.  The prediction of a `linCmt() ~` endpoint
+  gets a name the model does not already use.
 
 - A model with a numeric residual error like `cp ~ add(3)` can now be piped
   and rebuilt from its own function; the generated fixed parameter was
