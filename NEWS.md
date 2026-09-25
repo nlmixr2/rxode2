@@ -2,6 +2,12 @@
 
 ## New features
 
+- New `linCmtMicro()` returns the micro-constant parameterization
+  (`k`, `k12`, `k21`, `k13`, `k31`, `v` and `ka`) of each `linCmt()`
+  call in a model, as R expressions of the model variables.  It lets
+  translators (like babelmixr2) write a `linCmt()` model with another
+  program's closed-form linear compartment solutions.
+
 - New assertions `assertRxUiTransform()`, `assertRxUiErrType()` and
   `assertRxUiAddProp()` refuse a model whose residual transformation
   (like `boxCox()` or `lnorm()`), residual error type (like

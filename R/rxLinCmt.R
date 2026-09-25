@@ -569,3 +569,48 @@ linToOde <- function(ui) {
   }
   suppressMessages(as.rxUi(.fun)) # nolint
 }
+
+#' Get the micro-constant parameterization of a linCmt() model
+#'
+#' This extracts the solved linear compartment model(s) from a model
+#' and returns them as micro-constants (`k`, `k12`, `k21`, `k13`,
+#' `k31`), the central volume `v` and the absorption rate `ka`, each
+#' as an R expression in terms of the model variables. This is useful
+#' for translating a `linCmt()` model to software that has its own
+#' closed-form linear compartment solutions (like NONMEM's `ADVAN1-4`,
+#' `ADVAN11-12` or Monolix's `pkmodel()`).
+#'
+#' @param ui rxUi-like model object
+#'
+#' @return A list with one element per `linCmt()` call in the model.
+#'   Each element is a list with `ncmt` (number of compartments),
+#'   `oral0` (1 when there is a depot compartment, 0 otherwise), and
+#'   the expressions `ka`, `v`, `k`, `k12`, `k21`, `k13` and `k31`
+#'   (`NULL` when they do not apply). A model without `linCmt()`
+#'   returns an empty list.
+#' @examples
+#'
+#' oneCmt <- function() {
+#'   ini({
+#'     tka <- 0.45
+#'     tcl <- log(2.7)
+#'     tv <- 3.45
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     cp <- linCmt()
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#'
+#' linCmtMicro(oneCmt)
+#'
+#' @author Matthew L. Fidler
+#' @export
+linCmtMicro <- function(ui) {
+  .ui <- rxUiDecompress(as.rxUi(ui)) # nolint
+  lapply(.linToOdeLinExpr(.ui), .linToOdeBuildMicro)
+}
