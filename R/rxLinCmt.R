@@ -120,8 +120,28 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
   ) {
     return(FALSE)
   }
-  .rhs <- expr[[3]]
-  is.call(.rhs) && (as.character(.rhs[[1]]) %in% c("linCmtA", "linCmtB"))
+  !is.null(.linToOdeFindLinCmt(expr[[3]]))
+}
+#' Find the linCmtA/linCmtB call in an expression
+#'
+#' @param expr expression (like `1e6 * linCmtA(...)`)
+#' @return the first `linCmtA()`/`linCmtB()` call, or `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeFindLinCmt <- function(expr) {
+  if (!is.call(expr)) {
+    return(NULL)
+  }
+  if (is.name(expr[[1]]) && as.character(expr[[1]]) %in% c("linCmtA", "linCmtB")) {
+    return(expr)
+  }
+  for (.e in as.list(expr)[-1]) {
+    .ret <- .linToOdeFindLinCmt(.e)
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
+  }
+  NULL
 }
 #' Linear compartment model to ODE model expression conversion
 #'
@@ -146,7 +166,13 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
     },
     .mvLExpr
   )
-  Filter(.isLinCmtCall, .mvLExpr)
+  .mvLExpr <- Filter(.isLinCmtCall, .mvLExpr)
+  # linCmt() can be part of an expression (like `cp <- 1e6 * linCmt()`);
+  # keep only the linCmtA()/linCmtB() call as the right hand side
+  lapply(.mvLExpr, function(e) {
+    e[[3]] <- .linToOdeFindLinCmt(e[[3]])
+    e
+  })
 }
 #' This converts the linCmtA/linCmtB
 #'
@@ -456,11 +482,35 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
   }
   .lhsExpr <- str2lang(.lhs)
   .vExpr <- str2lang(paste0("(", deparse1(micro$v), ")"))
-  .ret <- list(call("<-", .lhsExpr, call("/", str2lang("central"), .vExpr)))
+  .conc <- call("/", str2lang("central"), .vExpr)
+  if (is.null(predLine) || !isTRUE(predLine$linCmt)) {
+    .rhs <- expr[[3]]
+    if (!(is.call(.rhs) && identical(.rhs[[1]], quote(linCmt)))) {
+      # linCmt() is part of an expression, like 1e6 * linCmt()
+      return(list(.linToOdeReplaceLinCmt(expr, call("(", .conc))))
+    }
+  }
+  .ret <- list(call("<-", .lhsExpr, .conc))
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
     .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)", .lhs, deparse1(expr), perl = TRUE))
   }
   .ret
+}
+#' Replace linCmt() calls in an expression
+#'
+#' @param expr expression
+#' @param by replacement expression
+#' @return expression with every `linCmt(...)` call replaced by `by`
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeReplaceLinCmt <- function(expr, by) {
+  if (!is.call(expr)) {
+    return(expr)
+  }
+  if (identical(expr[[1]], quote(linCmt))) {
+    return(by)
+  }
+  as.call(lapply(as.list(expr), .linToOdeReplaceLinCmt, by = by))
 }
 #' Render the linCmt() system as an ode system
 #'

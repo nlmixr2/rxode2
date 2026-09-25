@@ -117,4 +117,32 @@ rxTest({
     expect_equal(s1$cp, s2$cp, tolerance = 1e-4)
     expect_equal(s1$ce, s2$ce, tolerance = 1e-4)
   })
+
+  test_that("linToOde()/linCmtMicro() with linCmt() inside an expression", {
+    scaled <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        prop.sd <- 0.1
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        cp <- 1000 * linCmt()
+        cp ~ prop(prop.sd)
+      })
+    }
+    ui <- suppressMessages(scaled())
+    m <- linCmtMicro(ui)
+    expect_length(m, 1L)
+    expect_equal(m[[1]]$k, quote(cl / v))
+    ode <- suppressMessages(linToOde(ui))
+    expect_false(any(grepl("linCmt", vapply(ode$lstExpr, deparse1, character(1)))))
+    et <- et(amt = 100) |> et(seq(0.5, 24, by = 0.5))
+    s1 <- rxSolve(ui, et, returnType = "data.frame")
+    s2 <- rxSolve(ode, et, returnType = "data.frame")
+    expect_equal(s1$cp, s2$cp, tolerance = 1e-4)
+  })
 })
