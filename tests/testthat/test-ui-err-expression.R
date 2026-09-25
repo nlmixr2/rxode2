@@ -124,4 +124,32 @@ rxTest({
     ))
     expect_equal(.env$err, "the bounds of 'logitNorm()' must be numbers, not an expression")
   })
+
+  test_that("a ui function inside a residual expression is expanded", {
+    .u <- suppressMessages(rxode2(.mk("cp ~ add(plogis(cp.sd) * exp(eta.cp.sd))")))
+    expect_equal(
+      tail(.u$lstChr, 2),
+      c("rx.cp.add ~ expit(cp.sd, 0, 1) * exp(eta.cp.sd)", "cp ~ add(rx.cp.add)")
+    )
+    .expectRebuilds(.u)
+  })
+
+  test_that("a user parameter named like a generated literal is not taken over", {
+    f <- function() {
+      ini({
+        tv <- 3.45
+        rx.cp.add <- fix(10)
+      })
+      model({
+        v <- exp(tv)
+        cp <- rx.cp.add / v
+        cp ~ add(3)
+      })
+    }
+    .u <- suppressMessages(rxode2(f))
+    expect_equal(.u$iniDf$est[.u$iniDf$name == "rx.cp.add"], 10)
+    expect_true(is.na(.u$iniDf$err[.u$iniDf$name == "rx.cp.add"]))
+    expect_equal(.u$iniDf$est[.u$iniDf$name == "rx.cp.add.1"], 3)
+    expect_equal(.u$iniDf$err[.u$iniDf$name == "rx.cp.add.1"], "add")
+  })
 })

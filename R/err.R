@@ -721,8 +721,15 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   # a ui rebuilt from its own function (as model piping does) already carries
   # this FIX row from the first parse, with its err/condition not yet claimed;
   # reuse it instead of adding a duplicate
+  # (a generated row is never referenced in the model text; a user parameter
+  # that happens to have this name is, and must not be taken over)
   .reuse <- which(
-    .df$name %in% c(.base, paste0(.base, ".", seq_len(nrow(.df)))) & !is.na(.df$fix) & .df$fix & is.na(.df$err)
+    .df$name %in%
+      c(.base, paste0(.base, ".", seq_len(nrow(.df)))) &
+      !(.df$name %in% env$errExprTaken) &
+      !is.na(.df$fix) &
+      .df$fix &
+      is.na(.df$err)
   )
   if (length(.reuse) > 0L) {
     .w <- .reuse[1]
@@ -1843,7 +1850,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
             .len <- length(.y)
             .y <- c(
               .y[seq_len(.i - 1L)],
-              .env$errExprBefore,
+              # a ui function in the expression (eg plogis()) is expanded the
+              # way it would be on any other line
+              .rxUdfUiExpandPure(.env$errExprBefore, .env$df),
               list(.rxErrExpressionRewriteLine(.y[[.i]], .env$errExprRew)),
               .y[seq_len(.len - .i) + .i]
             )
