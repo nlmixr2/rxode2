@@ -80,6 +80,10 @@
   `ini(etav ~ 0.1)`) now re-runs the mu-reference analysis, so the new eta is
   in `$eta` and mu-referenced as in a model written with it from the start.
 
+- A model echoed after a syntax error that is only found once the whole
+  model is parsed (like an undeclared `bolus()` argument) no longer drops
+  its first character (`/dt(depot)` instead of `d/dt(depot)`).
+
 - A model whose ui user function requests the model variables (like
   `linModM()`) now restores the ui parsing state after it is built.
 

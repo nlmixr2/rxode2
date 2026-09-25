@@ -464,6 +464,7 @@ extern sbuf _gbuf, _mv;
 extern char *gBuf;
 extern int gBufFree;
 extern int gBufLast;
+extern int gBufLastPrinted;
 
 extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur,
   foundPast, good_jac, extraCmt, badMd5, maxUdf;

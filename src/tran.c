@@ -117,6 +117,8 @@ void updateSyntaxCol(void);
 char *gBuf;
 int gBufFree=0;
 int gBufLast = 0;
+// set once a model line has been echoed, so gBufLast ends that line
+int gBufLastPrinted = 0;
 D_Parser *curP=NULL;
 D_ParseNode *_pn = 0;
 
@@ -548,6 +550,7 @@ void reset(void) {
   foundRate=0;
   foundPast=0;
   gBufLast=0;
+  gBufLastPrinted=0;
   lastStrLoc=0;
   lastSyntaxErrorLine=0;
   needSort=0;
@@ -764,7 +767,9 @@ static inline void finalizeSyntaxError(void) {
   if (rx_syntax_error){
     if(!rx_suppress_syntax_info){
       if (gBuf[gBufLast] != '\0'){
-	gBufLast++;
+	// skip the newline ending the last echoed line; when only a post-parse
+	// error (no line echoed yet) was reported, start at the first character
+	if (gBufLastPrinted) gBufLast++;
 	RSprintf("\n:%03d: ", lastSyntaxErrorLine);
 	for (; gBuf[gBufLast] != '\0'; gBufLast++){
 	  if (gBuf[gBufLast] == '\n'){

@@ -144,4 +144,19 @@ rxTest({
     expect_match(msg, "'amt'")
     expect_match(msg, "'bolus\\(\\)'")
   })
+
+  test_that("the model echoed after a post-parse error keeps its first character", {
+    .out <- capture.output(try(
+      rxModelVars("d/dt(depot) <- -ka * depot\ncp <- depot\nif (t <= 0) bolus(DOSE, 1, 0, 0, 0)"),
+      silent = TRUE
+    ))
+    expect_true(any(grepl("^:001: d/dt\\(depot\\) <- -ka \\* depot$", .out)))
+    expect_true(any(grepl("^:003: if \\(t <= 0\\) bolus\\(DOSE", .out)))
+    # a leading blank line keeps the numbering
+    .out <- capture.output(try(
+      rxModelVars("\nd/dt(depot) <- -ka * depot\nif (t <= 0) bolus(DOSE, 1, 0, 0, 0)"),
+      silent = TRUE
+    ))
+    expect_true(any(grepl("^:002: d/dt\\(depot\\)", .out)))
+  })
 })
