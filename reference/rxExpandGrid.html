@@ -841,12 +841,12 @@ type=1L is Jacobian expand grid (adds symbols)</p></dd>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">rxExpandGrid</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span>, <span class="fu">expand.grid.jc</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Unit: microseconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min     lq     mean  median      uq    max</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 19.987 20.333 21.71235 20.5635 21.1545 47.740</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 14.948 15.529 16.32855 15.7040 16.3060 40.416</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  neval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    100</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min     lq     mean  median      uq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 19.977 20.298 21.54375 20.5335 21.2145</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.119 15.514 19.65795 15.6590 15.9500</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      max neval</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   46.377   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  389.677   100</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

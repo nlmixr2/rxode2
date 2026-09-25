@@ -253,8 +253,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr       min        lq      mean    median        uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 15.461787 15.904454 16.966648 16.068695 16.688372 30.36291   100</span></span>
-<span><span class="co">#&gt;     withC  8.678242  8.779671  9.152088  8.857757  8.997504 13.82705   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 15.148039 15.431028 16.421289 15.586482 16.017939 29.72117   100</span></span>
+<span><span class="co">#&gt;     withC  8.683131  8.770464  9.159192  8.841457  9.031217 14.60787   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -802,8 +802,9 @@ ability to use:</p>
 <span><span class="co">#&gt;             .cur</span></span>
 <span><span class="co">#&gt;         }))</span></span>
 <span><span class="co">#&gt;         .theta &lt;- do.call(rbind, .cur)</span></span>
-<span><span class="co">#&gt;         .eta &lt;- iniDf[is.na(iniDf$neta), , drop = FALSE]</span></span>
+<span><span class="co">#&gt;         .eta &lt;- iniDf[!is.na(iniDf$neta1), , drop = FALSE]</span></span>
 <span><span class="co">#&gt;         .iniDf &lt;- rbind(.theta, .eta)</span></span>
+<span><span class="co">#&gt;         rownames(.iniDf) &lt;- NULL</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     else {</span></span>
 <span><span class="co">#&gt;         .iniDf &lt;- NULL</span></span>
@@ -839,7 +840,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x558df8c4e2f0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55b82e173a60&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -849,7 +850,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x558df93b4d10&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55b82e8da100&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
