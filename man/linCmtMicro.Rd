@@ -13,9 +13,10 @@ linCmtMicro(ui)
 A list with one element per \code{linCmt()} call in the model.
 Each element is a list with \code{ncmt} (number of compartments),
 \code{oral0} (1 when there is a depot compartment, 0 otherwise), and
-the expressions \code{ka}, \code{v}, \code{k}, \code{k12}, \code{k21}, \code{k13} and \code{k31}
-(\code{NULL} when they do not apply). A model without \code{linCmt()}
-returns an empty list.
+the expressions \code{ka}, \code{v}, \code{k}, \code{k12}, \code{k21}, \code{k13} and \code{k31}.
+\code{ka} is 0 for a model without a depot, and the transfer rates a
+model does not have (like \code{k13} and \code{k31} for 2 compartments) are
+\code{NULL}. A model without \code{linCmt()} returns an empty list.
 }
 \description{
 This extracts the solved linear compartment model(s) from a model

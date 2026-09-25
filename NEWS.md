@@ -95,8 +95,15 @@
   so data using compartment numbers dose the same compartments.
 
 - `linToOde()` now translates `linCmt()` that is part of an expression
-  (like `cp <- 1e6 * linCmt()`); before, the model was returned with
-  `linCmt()` unchanged.
+  (like `cp <- 1e6 * linCmt()`, or inside an ODE); before, the model was
+  returned with `linCmt()` unchanged.
+
+- `linToOde()` now translates a `linCmt(ka, cl, v) ~ ...` endpoint with
+  arguments, and writes the ODEs once when several endpoints use the
+  same `linCmt()` (like `linCmt() ~ add(a) | phase1` and
+  `linCmt() ~ add(b) | phase2`), which before ran past the translated
+  linear compartment calls.  The prediction of a `linCmt() ~` endpoint
+  gets a name the model does not already use.
 
 - A model with a numeric residual error like `cp ~ add(3)` can now be piped
   and rebuilt from its own function; the generated fixed parameter was

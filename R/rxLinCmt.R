@@ -466,35 +466,31 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #' @param expr linCmt expression
 #' @param predLine the pred line for the linCmt() model
 #' @param micro list of micro constants
+#' @param name name for the prediction of a `linCmt() ~ ...` endpoint
 #' @return a list of lhs expressions for ode conversion
 #' @noRd
 #' @author Matthew L. Fidler
-.linToOdeLhsLines <- function(expr, predLine, micro) {
-  if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
-    .lhs <- predLine$var
-    if (.lhs == "rxLinCmt") {
-      # `linCmt() ~ ...` endpoints are named rxLinCmt, but a model that
-      # defines rxLinCmt itself is read back as a linCmt() model
-      .lhs <- "rxLinCmtOde"
-    }
-  } else {
-    .lhs <- as.character(expr[[2]])
-  }
-  .lhsExpr <- str2lang(.lhs)
+.linToOdeLhsLines <- function(expr, predLine, micro, name = "rxLinCmtOde") {
   .vExpr <- str2lang(paste0("(", deparse1(micro$v), ")"))
   .conc <- call("/", str2lang("central"), .vExpr)
-  if (is.null(predLine) || !isTRUE(predLine$linCmt)) {
-    .rhs <- expr[[3]]
-    if (!(is.call(.rhs) && identical(.rhs[[1]], quote(linCmt)))) {
-      # linCmt() is part of an expression, like 1e6 * linCmt()
-      return(list(.linToOdeReplaceLinCmt(expr, call("(", .conc))))
-    }
-  }
-  .ret <- list(call("<-", .lhsExpr, .conc))
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
-    .ret[[length(.ret) + 1L]] <- str2lang(sub("linCmt\\s*\\(\\s*\\)", .lhs, deparse1(expr), perl = TRUE))
+    # a `linCmt() ~ ...` endpoint: define the prediction and use it as
+    # the endpoint (with the same residual error and condition)
+    .lhs <- predLine$var
+    if (.lhs == "rxLinCmt") {
+      # rxLinCmt is read back as a linCmt() model, so it gets a name the
+      # model does not use
+      .lhs <- name
+    }
+    .lhsExpr <- str2lang(.lhs)
+    return(list(call("<-", .lhsExpr, .conc), .linToOdeReplaceLinCmt(expr, .lhsExpr)))
   }
-  .ret
+  .rhs <- expr[[3]]
+  if (is.name(expr[[2]]) && is.call(.rhs) && identical(.rhs[[1]], quote(linCmt))) {
+    return(list(call("<-", expr[[2]], .conc)))
+  }
+  # linCmt() is part of an expression (like 1e6 * linCmt()) or an ODE
+  list(.linToOdeReplaceLinCmt(expr, call("(", .conc)))
 }
 #' Replace linCmt() calls in an expression
 #'
@@ -517,12 +513,39 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #' @param expr  linCmt expression
 #' @param predLine predicion line data frame
 #' @param mvExpr linCmtA/linCmtB expression
+#' @param odes write the ODEs of the linear compartment system (only
+#'   the first line that uses the system writes them)
+#' @param name name for the prediction of a `linCmt() ~ ...` endpoint
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.linToOdeRender <- function(expr, predLine, mvExpr) {
+.linToOdeRender <- function(expr, predLine, mvExpr, odes = TRUE, name = "rxLinCmtOde") {
   .micro <- .linToOdeBuildMicro(mvExpr)
-  c(.linToOdeOdeLines(.micro), .linToOdeLhsLines(expr, predLine, .micro))
+  c(
+    if (odes) .linToOdeOdeLines(.micro),
+    .linToOdeLhsLines(expr, predLine, .micro, name = name)
+  )
+}
+#' A variable name the model does not use
+#'
+#' @param ui rxode2 ui model
+#' @param name preferred name
+#' @return `name`, or `name` with a number added when the model already
+#'   uses it
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeFreeName <- function(ui, name = "rxLinCmtOde") {
+  .used <- unique(c(
+    unlist(lapply(ui$lstExpr, all.vars)),
+    ui$iniDf$name
+  ))
+  .ret <- name
+  .i <- 0L
+  while (.ret %in% .used) {
+    .i <- .i + 1L
+    .ret <- paste0(name, .i)
+  }
+  .ret
 }
 #' Convert the linear compartment models to ode expressions.
 #'
@@ -535,14 +558,19 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
   if (length(.linExpr) == 0L) {
     return(ui$lstExpr)
   }
+  # a model has one linear compartment system; several lines (or
+  # endpoints) can use it, but its ODEs are written only once
   .linCur <- 1L
+  .odes <- TRUE
+  .name <- .linToOdeFreeName(ui)
   .ret <- list()
   for (i in seq_along(ui$lstExpr)) {
     .expr <- ui$lstExpr[[i]]
     .predLine <- .linToOdePredLine(ui, i)
     if (regexpr("linCmt\\s*\\(", deparse1(.expr), perl = TRUE) != -1) {
-      .ret <- c(.ret, .linToOdeRender(.expr, .predLine, .linExpr[[.linCur]]))
-      .linCur <- .linCur + 1L
+      .ret <- c(.ret, .linToOdeRender(.expr, .predLine, .linExpr[[.linCur]], odes = .odes, name = .name))
+      .odes <- FALSE
+      .linCur <- min(.linCur + 1L, length(.linExpr))
     } else {
       .ret[[length(.ret) + 1L]] <- .expr
     }
@@ -667,9 +695,10 @@ linToOde <- function(ui) {
 #' @return A list with one element per `linCmt()` call in the model.
 #'   Each element is a list with `ncmt` (number of compartments),
 #'   `oral0` (1 when there is a depot compartment, 0 otherwise), and
-#'   the expressions `ka`, `v`, `k`, `k12`, `k21`, `k13` and `k31`
-#'   (`NULL` when they do not apply). A model without `linCmt()`
-#'   returns an empty list.
+#'   the expressions `ka`, `v`, `k`, `k12`, `k21`, `k13` and `k31`.
+#'   `ka` is 0 for a model without a depot, and the transfer rates a
+#'   model does not have (like `k13` and `k31` for 2 compartments) are
+#'   `NULL`. A model without `linCmt()` returns an empty list.
 #' @examples
 #'
 #' oneCmt <- function() {
