@@ -10,7 +10,9 @@ linCmtMicro(ui)
 \item{ui}{rxUi-like model object}
 }
 \value{
-A list with one element per \code{linCmt()} call in the model.
+A list with one element per linear compartment system
+(endpoints that share the same \code{linCmt()}, like conditional
+\code{linCmt() ~ ... | cond} endpoints, share one element).
 Each element is a list with \code{ncmt} (number of compartments),
 \code{oral0} (1 when there is a depot compartment, 0 otherwise), and
 the expressions \code{ka}, \code{v}, \code{k}, \code{k12}, \code{k21}, \code{k13} and \code{k31}.

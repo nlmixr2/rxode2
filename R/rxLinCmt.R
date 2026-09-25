@@ -692,7 +692,9 @@ linToOde <- function(ui) {
 #'
 #' @param ui rxUi-like model object
 #'
-#' @return A list with one element per `linCmt()` call in the model.
+#' @return A list with one element per linear compartment system
+#'   (endpoints that share the same `linCmt()`, like conditional
+#'   `linCmt() ~ ... | cond` endpoints, share one element).
 #'   Each element is a list with `ncmt` (number of compartments),
 #'   `oral0` (1 when there is a depot compartment, 0 otherwise), and
 #'   the expressions `ka`, `v`, `k`, `k12`, `k21`, `k13` and `k31`.
