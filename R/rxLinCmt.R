@@ -446,6 +446,11 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 .linToOdeLhsLines <- function(expr, predLine, micro) {
   if (!is.null(predLine) && isTRUE(predLine$linCmt)) {
     .lhs <- predLine$var
+    if (.lhs == "rxLinCmt") {
+      # `linCmt() ~ ...` endpoints are named rxLinCmt, but a model that
+      # defines rxLinCmt itself is read back as a linCmt() model
+      .lhs <- "rxLinCmtOde"
+    }
   } else {
     .lhs <- as.character(expr[[2]])
   }

@@ -58,4 +58,26 @@ rxTest({
     }
     expect_equal(linCmtMicro(ode), list())
   })
+
+  test_that("linToOde() of linCmt() ~ gives a model that is not linCmt()", {
+    one <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl)
+        v <- exp(tv)
+        linCmt() ~ add(add.sd)
+      })
+    }
+    ode <- suppressMessages(linToOde(one))
+    expect_equal(ode$predDf$var, "rxLinCmtOde")
+    expect_false(ode$predDf$linCmt)
+    # the translated model must parse without a linCmt()/ODE collision
+    expect_error(rxode2(ode$simulationModel), NA)
+  })
 })

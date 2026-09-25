@@ -84,6 +84,12 @@
 
 ## Bug fixes
 
+- `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
+  prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
+  so the ODE model failed with "'depot', 'central' are required for
+  linCmt() but defined in ODE too".  The prediction is now named
+  `rxLinCmtOde`.
+
 - A model with a numeric residual error like `cp ~ add(3)` can now be piped
   and rebuilt from its own function; the generated fixed parameter was
   added a second time and the model then failed to parse.
