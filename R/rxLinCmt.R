@@ -497,7 +497,34 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
       .ret[[length(.ret) + 1L]] <- .expr
     }
   }
-  .ret
+  c(.linToOdeCmtOrder(ui), .ret)
+}
+#' Keep the compartment numbers of a linCmt() model with other ODEs
+#'
+#' A `linCmt()` model numbers its depot and central compartments first
+#' and the other ODE states after them, whatever order the model lines
+#' are in.  The ODE translation numbers the states in the order they are
+#' defined, so `cmt()` statements are added to keep the numbers of the
+#' original model (the peripheral compartments, which have no number in
+#' the `linCmt()` model, come last).
+#'
+#' @param ui rxode2 ui model
+#' @return list of `cmt()` expressions (empty for a model without other
+#'   ODE states)
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeCmtOrder <- function(ui) {
+  .state <- ui$stateDf
+  if (is.null(.state) || nrow(.state) == 0L) {
+    return(list())
+  }
+  .names <- .state[["Compartment Name"]][order(.state[["Compartment Number"]])]
+  if (all(.names %in% c("depot", "central"))) {
+    return(list())
+  }
+  lapply(.names, function(n) {
+    str2lang(paste0("cmt(", n, ")"))
+  })
 }
 
 #' Convert linCmt rxUi models to ODE rxUi models

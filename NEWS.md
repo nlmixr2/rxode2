@@ -90,6 +90,10 @@
   linCmt() but defined in ODE too".  The prediction is now named
   `rxLinCmtOde`.
 
+- `linToOde()` of a model with `linCmt()` and other ODEs now keeps the
+  compartment numbers of the `linCmt()` model (depot and central first),
+  so data using compartment numbers dose the same compartments.
+
 - A model with a numeric residual error like `cp ~ add(3)` can now be piped
   and rebuilt from its own function; the generated fixed parameter was
   added a second time and the model then failed to parse.
