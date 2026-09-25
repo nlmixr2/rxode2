@@ -57,42 +57,17 @@
 .rxMuRefHasThetaEtaOrCov <- function(x, env) {
   if (is.name(x)) {
     .n <- as.character(x)
-    .lhs <- deparse1(env$curLhs)
     if (any(.n == env$info$eta)) {
-      .w <- which(
-        env$etaLhsDf$lhs == .lhs &
-          env$etaLhsDf$eta == .n
-      )
-      if (length(.w) == 0) {
-        env$etaLhsDf <- rbind(env$etaLhsDf, data.frame(lhs = .lhs, eta = .n))
-      }
+      .muRefLhsAdd(env, "eta", .n)
       return(TRUE)
     } else if (any(.n == env$info$theta)) {
-      .w <- which(
-        env$thetaLhsDf$lhs == .lhs &
-          env$thetaLhsDf$theta == .n
-      )
-      if (length(.w) == 0) {
-        env$thetaLhsDf <- rbind(env$thetaLhsDf, data.frame(lhs = .lhs, theta = .n))
-      }
+      .muRefLhsAdd(env, "theta", .n)
       return(TRUE)
     } else if (any(.n == env$info$cov)) {
-      .w <- which(
-        env$covLhsDf$lhs == .lhs &
-          env$covLhsDf$cov == .n
-      )
-      if (length(.w) == 0) {
-        env$covLhsDf <- rbind(env$covLhsDf, data.frame(lhs = .lhs, cov = .n))
-      }
+      .muRefLhsAdd(env, "cov", .n)
       return(TRUE)
     } else if (any(.n == env$info$level)) {
-      .w <- which(
-        env$levelLhsDf$lhs == .lhs &
-          env$levelLhsDf$level == .n
-      )
-      if (length(.w) == 0) {
-        env$levelLhsDf <- rbind(env$levelLhsDf, data.frame(lhs = .lhs, level = .n))
-      }
+      .muRefLhsAdd(env, "level", .n)
       return(TRUE)
     }
     return(FALSE)
@@ -101,6 +76,77 @@
   } else {
     return(FALSE)
   }
+}
+
+#' Record that the current lhs depends on an eta/theta/cov/level
+#'
+#' Rows go to `env$<what>LhsDf` (columns `lhs` and `<what>`), once per pair.
+#' During `.rxMuRef()` they are collected in `env$.lhsAcc` and bound once by
+#' `.muRefLhsFinalize()`; otherwise they are bound immediately.
+#'
+#' @param env mu-reference environment
+#' @param what "eta", "theta", "cov" or "level"
+#' @param n parameter name
+#' @return nothing
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefLhsAdd <- function(env, what, n) {
+  .lhs <- deparse1(env$curLhs)
+  .acc <- env$.lhsAcc
+  .dfName <- paste0(what, "LhsDf")
+  if (is.null(.acc)) {
+    .df <- env[[.dfName]]
+    if (!any(.df$lhs == .lhs & .df[[what]] == n)) {
+      .new <- data.frame(lhs = .lhs, n)
+      names(.new)[2] <- what
+      env[[.dfName]] <- rbind(.df, .new)
+    }
+    return(invisible())
+  }
+  .key <- paste0(what, "\n", .lhs, "\n", n)
+  if (is.null(.acc$seen[[.key]])) {
+    assign(.key, TRUE, envir = .acc$seen)
+    .acc[[paste0(what, ".lhs")]] <- c(.acc[[paste0(what, ".lhs")]], .lhs)
+    .acc[[what]] <- c(.acc[[what]], n)
+  }
+  invisible()
+}
+
+#' Start collecting lhs dependency rows (see `.muRefLhsAdd()`)
+#'
+#' @param env mu-reference environment
+#' @return nothing
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefLhsStart <- function(env) {
+  .acc <- new.env(parent = emptyenv())
+  .acc$seen <- new.env(parent = emptyenv())
+  env$.lhsAcc <- .acc
+  invisible()
+}
+
+#' Bind the collected lhs dependency rows into the `*LhsDf` tables
+#'
+#' @param env mu-reference environment
+#' @return nothing
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefLhsFinalize <- function(env) {
+  .acc <- env$.lhsAcc
+  if (is.null(.acc)) {
+    return(invisible())
+  }
+  rm(".lhsAcc", envir = env)
+  for (.what in c("eta", "theta", "cov", "level")) {
+    .n <- .acc[[.what]]
+    if (length(.n) > 0L) {
+      .new <- data.frame(lhs = .acc[[paste0(.what, ".lhs")]], .n)
+      names(.new)[2] <- .what
+      .dfName <- paste0(.what, "LhsDf")
+      env[[.dfName]] <- rbind(env[[.dfName]], .new)
+    }
+  }
+  invisible()
 }
 
 #' This determines if a whole line is "clean"
@@ -273,6 +319,151 @@
 #' @author Matthew Fidler
 #'
 #' @noRd
+.muRefDerivCache <- new.env(parent = emptyenv())
+.muRefDerivCacheFuns <- c(
+  "*",
+  "/",
+  "+",
+  "-",
+  "^",
+  "(",
+  ">",
+  "<",
+  ">=",
+  "<=",
+  "==",
+  "!=",
+  "&",
+  "&&",
+  "|",
+  "||",
+  "!",
+  "exp",
+  "log",
+  "sqrt",
+  "log10",
+  "log2",
+  "log1p",
+  "expm1",
+  "abs"
+)
+
+#' Can the derivative of a term be cached across parses?
+#'
+#' Only terms built from base arithmetic and elementary functions are, so a
+#' user function redefined between parses cannot return a stale derivative.
+#'
+#' @param x term
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefDerivCacheable <- function(x) {
+  if (is.call(x)) {
+    if (!is.name(x[[1]]) || !(as.character(x[[1]]) %in% .muRefDerivCacheFuns)) {
+      return(FALSE)
+    }
+    for (.i in seq_along(x)[-1]) {
+      if (!.muRefDerivCacheable(x[[.i]])) {
+        return(FALSE)
+      }
+    }
+  }
+  TRUE
+}
+
+#' Symbolic derivative of a mu-referenced product term by its theta
+#'
+#' Memoised on the term text (see `.muRefDerivCacheable()`) since model piping
+#' rebuilds the ui and would otherwise re-derive every term each time.
+#'
+#' @param y term
+#' @param theta theta name
+#' @return the derivative as a language object, or a try-error
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefThetaDerivative <- function(y, theta) {
+  .term <- deparse1(y)
+  .cache <- .muRefDerivCacheable(y)
+  if (.cache) {
+    .key <- paste0(theta, "\n", .term)
+    .ret <- .muRefDerivCache[[.key]]
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
+  }
+  .d <- try(
+    symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", .term))), .rxSEres(theta)),
+    silent = TRUE
+  )
+  .ret <- try(str2lang(rxFromSE(.d)), silent = TRUE)
+  if (.cache && !inherits(.ret, "try-error")) {
+    if (length(ls(.muRefDerivCache, all.names = TRUE)) > 10000L) {
+      rm(list = ls(.muRefDerivCache, all.names = TRUE), envir = .muRefDerivCache)
+    }
+    assign(.key, .ret, envir = .muRefDerivCache)
+  }
+  .ret
+}
+
+#' Fill the derivative cache for a whole model in one symengine environment
+#'
+#' Collects every product term with a single theta and derives them all from
+#' one `rxS()`, instead of one `rxS()` per term during the mu-reference walk.
+#' Terms it misses (or a failed batch) fall back to `.muRefThetaDerivative()`.
+#'
+#' @param expr model expression
+#' @param env mu-reference environment (uses `env$info$theta`)
+#' @return nothing, called for the cache side effect
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefPrefillDerivCache <- function(expr, env) {
+  .terms <- character(0)
+  .thetas <- character(0)
+  .collect <- function(x, chain = FALSE) {
+    if (!is.call(x)) {
+      return(invisible())
+    }
+    .isMult <- identical(x[[1]], quote(`*`))
+    if (.isMult && !chain && length(x) == 3L && .muRefDerivCacheable(x)) {
+      .th <- try(.muRefExtractTheta(x, env), silent = TRUE)
+      if (!inherits(.th, "try-error") && length(.th) == 1L) {
+        .t <- deparse1(x)
+        if (is.null(.muRefDerivCache[[paste0(.th, "\n", .t)]])) {
+          .terms[length(.terms) + 1L] <<- .t
+          .thetas[length(.thetas) + 1L] <<- .th
+        }
+      }
+    }
+    for (.i in seq_along(x)[-1]) {
+      .collect(x[[.i]], chain = .isMult && .i == 2L)
+    }
+    invisible()
+  }
+  .collect(expr)
+  .w <- !duplicated(paste0(.thetas, "\n", .terms))
+  .terms <- .terms[.w]
+  .thetas <- .thetas[.w]
+  if (length(.terms) < 2L) {
+    return(invisible())
+  }
+  .dummy <- paste0("rxdummyLhs", seq_along(.terms))
+  .s <- try(rxS(paste(paste0(.dummy, "=", .terms), collapse = "\n")), silent = TRUE)
+  if (inherits(.s, "try-error")) {
+    return(invisible())
+  }
+  if (length(ls(.muRefDerivCache, all.names = TRUE)) + length(.terms) > 10000L) {
+    rm(list = ls(.muRefDerivCache, all.names = TRUE), envir = .muRefDerivCache)
+  }
+  for (.i in seq_along(.terms)) {
+    .d <- try(symengine::D(get(.dummy[.i], .s), .rxSEres(.thetas[.i])), silent = TRUE)
+    .ret <- try(str2lang(rxFromSE(.d)), silent = TRUE)
+    if (!inherits(.ret, "try-error")) {
+      assign(paste0(.thetas[.i], "\n", .terms[.i]), .ret, envir = .muRefDerivCache)
+    }
+  }
+  invisible()
+}
+
 .muRefExtractMultiplyMuCovariates <- function(x, doubleNames, env) {
   c(
     doubleNames,
@@ -368,11 +559,7 @@
             return(NULL)
           }
           if (length(.thetas) == 1L) {
-            .d <- try(
-              symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .rxSEres(.thetas)),
-              silent = TRUE
-            )
-            .extra <- try(str2lang(rxFromSE(.d)), silent = TRUE)
+            .extra <- .muRefThetaDerivative(y, .thetas)
             .thetaD <- try(.muRefExtractTheta(.extra, env), silent = TRUE)
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
@@ -1279,7 +1466,9 @@
     .ret <- .ret[!is.na(.ret)]
     .ini <- .mv$ini
     .ini <- .ini[!is.na(.ini)]
-    .names <- c(.mv$lhs, names(.ini))
+    # a hidden (`~`) assignment is modeled too, e.g. the generated
+    # `rx.cp.add ~ cp.sd * exp(eta.cp.sd)` for `cp ~ add(cp.sd * exp(eta.cp.sd))`
+    .names <- c(.mv$lhs, .mv$slhs, names(.ini))
     .ret <- setdiff(.ret, .names)
     if (length(.ret) > 0L) {
       ui$err <- c(
@@ -1373,7 +1562,10 @@
 #' @noRd
 .rxMuRef <- function(mod, ini = NULL) {
   .env <- .rxMuRefSetupInitialEnvironment(mod, ini)
+  .muRefPrefillDerivCache(.env$.expr, .env)
+  .muRefLhsStart(.env)
   .rxMuRef0(.env$.expr, env = .env)
+  .muRefLhsFinalize(.env)
   .checkAndAdjustErrInformation(.env)
   .checkForIniParametersMissingFromModelBlock(.env)
   .checkForInfiniteOrNaParameters(.env)

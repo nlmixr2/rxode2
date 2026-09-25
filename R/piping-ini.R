@@ -913,17 +913,13 @@
   invisible()
 }
 
-#' Update the iniDf of a model
+#' Update the iniDf of a model for one line (see `.iniHandleLine()`)
 #'
-#' @param expr Expression for parsing
-#' @param rxui User interface function
-#' @param envir Environment for parsing
-#' @inheritParams .iniHandleAppend
+#' @inheritParams .iniHandleLine
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
-#' @keywords internal
-#' @export
-.iniHandleLine <- function(expr, rxui, envir = parent.frame(), append = NULL) {
+#' @noRd
+.iniHandleLine0 <- function(expr, rxui, envir = parent.frame(), append = NULL) {
   if (.matchesLangTemplate(expr, str2lang("~diag()"))) {
     .iniHandleDiag(expr = NULL, rxui = rxui)
     return(invisible())
@@ -1051,6 +1047,27 @@
   if (.reassign) {
     assign("iniDf", .iniDf, envir = rxui)
   }
+}
+
+#' Update the iniDf of a model
+#'
+#' @param expr Expression for parsing
+#' @param rxui User interface function
+#' @param envir Environment for parsing
+#' @inheritParams .iniHandleAppend
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
+.iniHandleLine <- function(expr, rxui, envir = parent.frame(), append = NULL) {
+  .iniHandleLine0(expr = expr, rxui = rxui, envir = envir, append = append)
+  # a covariate promoted to an eta during this line is rebuilt once the line
+  # (eg a whole covariance block) is complete
+  if (is.environment(rxui) && exists(".promoteRebuild", envir = rxui, inherits = FALSE)) {
+    rm(".promoteRebuild", envir = rxui)
+    .rebuildPromotedUi(rxui, fallback = TRUE)
+  }
+  invisible()
 }
 
 # Alias kept for the released nlmixr2est, whose `ini.nlmixr2FitCore()` calls
