@@ -1,5 +1,43 @@
 .udfUiEnv <- new.env(parent = emptyenv())
 
+#' Look up a ui user-function S3 method, memoised for one model parse
+#'
+#' `.errProcessExpression()` asks this once per call node of every line, so
+#' within a parse the answer is cached per function name in
+#' `.udfUiEnv$methodCache` (NULL outside a parse, which disables the cache).
+#'
+#' @param generic "rxUdfUi" or "rxUdfUiLhs"
+#' @param fun function name (character)
+#' @return the method, or NULL when there is none
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUdfUiMethod <- function(generic, fun) {
+  if (length(fun) != 1L) {
+    .ret <- try(utils::getS3method(generic, fun), silent = TRUE)
+    if (inherits(.ret, "try-error")) {
+      return(NULL)
+    }
+    return(.ret)
+  }
+  .cache <- .udfUiEnv$methodCache
+  if (is.null(.cache)) {
+    return(utils::getS3method(generic, fun, optional = TRUE))
+  }
+  .key <- paste0(generic, ".", fun)
+  .ret <- .cache[[.key]]
+  if (is.null(.ret)) {
+    .ret <- utils::getS3method(generic, fun, optional = TRUE)
+    if (is.null(.ret)) {
+      .ret <- FALSE
+    }
+    assign(.key, .ret, envir = .cache)
+  }
+  if (isFALSE(.ret)) {
+    return(NULL)
+  }
+  .ret
+}
+
 #' Reset the rxode2 ui environment variables
 #'
 #' @return NULL silently
@@ -310,8 +348,8 @@ rxUdfUiParsing <- function() {
       return(expr)
     }
     .c <- as.character(expr[[1]])
-    .fun <- try(utils::getS3method("rxUdfUi", .c), silent = TRUE)
-    if (inherits(.fun, "try-error")) {
+    .fun <- .rxUdfUiMethod("rxUdfUi", .c)
+    if (is.null(.fun)) {
       as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env = env)))
     } else {
       if (!exists(.c, envir = env$rxUdfUiCount)) {
@@ -389,6 +427,70 @@ rxUdfUiParsing <- function() {
   }
 }
 
+#' Expand the ui user functions in model lines that are pure rewrites
+#'
+#' A call whose `rxUdfUi` method returns only `replace` (like `plogis()` ->
+#' `expit()`) is replaced; one that also changes `iniDf` or adds lines (like
+#' `linMod()`) is left as written.  Used so stored model lines that were piped
+#' in unexpanded can be read by the C parser.
+#'
+#' @param lines list of model lines
+#' @param iniDf the ui's initialization data frame
+#' @return lines with pure-rewrite user functions expanded
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUdfUiExpandPure <- function(lines, iniDf) {
+  .fields <- c("num", "iniDf", "lhs", "parsing", "probs", "np", "na")
+  .had <- vapply(.fields, exists, logical(1), envir = .udfUiEnv, inherits = FALSE)
+  .old <- mget(.fields[.had], envir = .udfUiEnv)
+  on.exit({
+    .new <- setdiff(.fields[!.had], names(.old))
+    rm(list = intersect(.new, ls(.udfUiEnv, all.names = TRUE)), envir = .udfUiEnv)
+    list2env(.old, envir = .udfUiEnv)
+  })
+  .args <- function(expr, depth) {
+    as.call(c(expr[[1]], lapply(as.list(expr[-1]), .expand, depth = depth)))
+  }
+  .expand <- function(expr, depth = 0L) {
+    if (!is.call(expr) || length(expr) == 1L) {
+      return(expr)
+    }
+    if (
+      length(expr) == 3L &&
+        (identical(expr[[1]], quote(`<-`)) || identical(expr[[1]], quote(`=`)))
+    ) {
+      .udfUiEnv$lhs <- expr[[2]]
+      expr[[3]] <- .expand(expr[[3]], depth)
+      return(expr)
+    }
+    .fun <- if (is.name(expr[[1]])) .rxUdfUiMethod("rxUdfUi", as.character(expr[[1]])) else NULL
+    if (is.null(.fun) || depth > 20L) {
+      return(.args(expr, depth))
+    }
+    .udfUiEnv$num <- 1L
+    .udfUiEnv$iniDf <- iniDf
+    .udfUiEnv$parsing <- TRUE
+    .e <- try(suppressWarnings(suppressMessages(.fun(expr))), silent = TRUE)
+    if (
+      is.list(.e) &&
+        setequal(names(.e), "replace") &&
+        (is.language(.e$replace) || is.character(.e$replace) && length(.e$replace) == 1L)
+    ) {
+      .r <- .e$replace
+      if (is.character(.r)) {
+        .r <- try(str2lang(.r), silent = TRUE)
+      }
+      if (is.language(.r) && !is.expression(.r) && !identical(.r, expr)) {
+        return(.expand(.r, depth + 1L))
+      }
+    }
+    # not a pure rewrite (or already in parser form): keep the call, but its
+    # arguments may still hold one
+    .args(expr, depth)
+  }
+  lapply(lines, .expand)
+}
+
 #' Is this model line's LHS a registered user function?
 #'
 #' `.handleUdfUi()` only ever walks the RIGHT-hand side of a line, and a `~`
@@ -425,8 +527,7 @@ rxUdfUiParsing <- function() {
     return(NULL)
   }
   .c <- as.character(.nm)
-  .fun <- try(utils::getS3method("rxUdfUiLhs", .c), silent = TRUE)
-  if (inherits(.fun, "try-error")) {
+  if (is.null(.rxUdfUiMethod("rxUdfUiLhs", .c))) {
     return(NULL)
   }
   .c

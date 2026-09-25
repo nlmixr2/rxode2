@@ -54,7 +54,34 @@
   against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
   installation; exported functions and compiled model code are unchanged.
 
+- Building a model ui, and therefore `model()` piping (which rebuilds it),
+  is faster: 3-5x on large models.  User ui functions are looked up once per
+  function name instead of once per call, the per-line model rebuild is no
+  longer quadratic, and mu-referenced covariate derivatives are computed in
+  one symengine environment and cached between builds.  The resulting ui is
+  unchanged.
+
 ## Bug fixes
+
+- `linMod()` no longer drops the model's between subject variability: the
+  `iniDf` it returned kept the thetas twice and no etas, so an eta like
+  `eta.cl` became a covariate and lost its mu-reference.
+
+- Piping a line that calls a ui user function whose parser form differs
+  from what is written (like `model(p <- plogis(tp + eta.p))`) no longer
+  fails with a syntax error.
+
+- With `options(rxode2.verbose.pipe = FALSE)`, promoting a covariate to a
+  parameter with `ini()` (like `ini(covwt = 0.5)`) now removes it from
+  `$covariates` and re-runs the mu-reference analysis, so the model is the
+  same as with the default verbose setting; only the messages depended on it.
+
+- Promoting a covariate to a between subject variability with `ini()` (like
+  `ini(etav ~ 0.1)`) now re-runs the mu-reference analysis, so the new eta is
+  in `$eta` and mu-referenced as in a model written with it from the start.
+
+- A model whose ui user function requests the model variables (like
+  `linModM()`) now restores the ui parsing state after it is built.
 
 - A model subtracting a negated term (`a - -b`) or adding a positive one
   (`a + +b`) now compiles; the generated C code read the two signs as the

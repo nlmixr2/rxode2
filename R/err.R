@@ -1609,11 +1609,14 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   checkMissing = TRUE,
   mv = rxUdfUiMv()
 ) {
+  .oldMethodCache <- .udfUiEnv$methodCache
+  .udfUiEnv$methodCache <- new.env(parent = emptyenv())
   on.exit({
     .udfUiEnv$num <- 1L
     .udfUiEnv$iniDf <- NULL
     .udfUiEnv$lhs <- NULL
     .udfUiEnv$parsing <- FALSE
+    .udfUiEnv$methodCache <- .oldMethodCache
   })
   .udfUiEnv$probs <- NULL
   .udfUiEnv$parsing <- TRUE
@@ -1728,17 +1731,22 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           }
           .cur <- .handleUdfUi(.cur, .env)
           .len <- length(.y)
-          .y <- c(
-            lapply(seq_len(.i - 1), function(i) {
-              .y[[i]]
-            }),
-            .env$before,
-            .cur,
-            .env$after,
-            lapply(seq_len(.len - .i), function(i) {
-              .y[[i + .i]]
-            })
-          )
+          if (length(.env$before) == 0L && length(.env$after) == 0L && (is.call(.cur) || is.name(.cur))) {
+            # the common case: one line in, one line out (no O(n) list rebuild)
+            .y[[.i]] <- .cur
+          } else {
+            .y <- c(
+              lapply(seq_len(.i - 1), function(i) {
+                .y[[i]]
+              }),
+              .env$before,
+              .cur,
+              .env$after,
+              lapply(seq_len(.len - .i), function(i) {
+                .y[[i + .i]]
+              })
+            )
+          }
           if (length(.y) != .len) {
             # Update the lengths of lstChr, lstErr, lstExpr
             .len <- length(.env$before) + length(.env$after)
@@ -1846,9 +1854,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
       if (isTRUE(.env$uiUseMv) && is.null(mv)) {
         # ui function requests model variables, so re-process
-        on.exit({
-          rxUdfUiMv(NULL)
-        })
+        on.exit(
+          {
+            rxUdfUiMv(NULL)
+          },
+          add = TRUE
+        )
         return(.errProcessExpression(
           x = x,
           ini = ini,

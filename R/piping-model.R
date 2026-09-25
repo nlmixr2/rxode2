@@ -574,11 +574,14 @@ model.rxModelVars <- model.rxode2
 rxUiGet.mvFromExpression <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  if (is.null(.x$predDf)) {
-    eval(call("rxModelVars", as.call(c(list(quote(`{`)), .x$lstExpr))))
-  } else {
-    eval(call("rxModelVars", as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
+  .lines <- .x$lstExpr
+  if (!is.null(.x$predDf)) {
+    .lines <- .lines[-.x$predDf$line]
   }
+  # a piped line may still hold a ui user function (eg plogis()) the parser
+  # does not accept as written
+  .lines <- .rxUdfUiExpandPure(.lines, .x$iniDf)
+  eval(call("rxModelVars", as.call(c(list(quote(`{`)), .lines))))
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
 
@@ -744,7 +747,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   lapply(lines, function(line) {
     line <- .changeDropNullLine(line)
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
-      .iniHandleLine(line, rxui, envir = envir)
+      # not .iniHandleLine(): a promoted eta is rebuilt with the whole model
+      # at the end of the pipe, not mid-pipe (that would refresh mv0 early)
+      .iniHandleLine0(line, rxui, envir = envir)
     } else {
       .isErr <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
@@ -1052,6 +1057,35 @@ rxSetPipingAuto()
     err = NA_character_
   )
 
+#' Rebuild a ui in place after a covariate is promoted to a parameter
+#'
+#' The promoted name is now a theta or eta, so the mu-reference analysis
+#' (and everything else derived from the model) has to be redone.
+#'
+#' @param rxui ui environment, modified in place
+#' @param fallback when `TRUE`, a model that cannot be rebuilt (eg one that is
+#'   only valid before the promotion) leaves `rxui` as it was instead of
+#'   erroring
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.rebuildPromotedUi <- function(rxui, fallback = FALSE) {
+  rxui2 <- rxui
+  if (fallback) {
+    .ok <- try(suppressWarnings(suppressMessages(model(rxui2) <- rxui$lstExpr)), silent = TRUE)
+    if (inherits(.ok, "try-error")) {
+      return(invisible())
+    }
+  } else {
+    model(rxui2) <- rxui$lstExpr
+  }
+  rxui2 <- rxUiDecompress(rxui2)
+  for (i in ls(envir = rxui2, all.names = TRUE)) {
+    assign(i, get(i, envir = rxui2), envir = rxui)
+  }
+  invisible()
+}
+
 #' Assign covariates for piping
 #'
 #' @param covariates NULL (for no covariates), or the list of
@@ -1194,6 +1228,11 @@ rxSetCovariateNamesForPiping <- function(covariates = NULL) {
     .extra$neta2 <- .eta
     .extra$name <- var
     .extra$condition <- "id"
+    if (!is.na(promote) && promote) {
+      .cov <- get("covariates", envir = rxui)
+      .cov <- .cov[.cov != var]
+      assign("covariates", .cov, envir = rxui)
+    }
     if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       if (is.na(promote)) {} else if (promote) {
         if (is.na(value)) {
@@ -1208,14 +1247,16 @@ rxSetCovariateNamesForPiping <- function(covariates = NULL) {
             "}"
           ))
         }
-        .cov <- get("covariates", envir = rxui)
-        .cov <- .cov[.cov != var]
-        assign("covariates", .cov, envir = rxui)
       } else {
         .minfo(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
     }
     assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir = rxui)
+    if (!is.na(promote) && promote) {
+      # the eta may still be mid-construction (eg a covariance block), so the
+      # rebuild runs once the whole ini() pipe is done
+      assign(".promoteRebuild", TRUE, envir = rxui)
+    }
   } else {
     if (is.na(promote)) {} else if (!promote) {
       if (
@@ -1250,20 +1291,14 @@ rxSetCovariateNamesForPiping <- function(covariates = NULL) {
         .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       } else if (promote) {
         .minfo(paste0("promote {.code ", var, "} to population parameter with initial estimate {.number ", value, "}"))
-        # need to reassess model for mu2 enhancement
-        assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir = rxui)
-        rxui2 <- rxui
-        model(rxui2) <- rxui$lstExpr
-        rxui2 <- rxUiDecompress(rxui2)
-        for (i in ls(envir = rxui2, all.names = TRUE)) {
-          assign(i, get(i, envir = rxui2), envir = rxui)
-        }
-        return(invisible())
       } else {
         .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
     }
     assign("iniDf", rbind(.iniDf, .iniDfMatchColumns(.extra, .iniDf)), envir = rxui)
+    if (!is.na(promote) && promote) {
+      .rebuildPromotedUi(rxui)
+    }
   }
   invisible()
 }
