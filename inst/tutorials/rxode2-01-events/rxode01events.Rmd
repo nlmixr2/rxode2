@@ -44,6 +44,29 @@ m1 <-rxode2({
 From Rstudio 1.3+ tutorial pane you can use the expand button
 (![](images/expandTutorial.png)) to navigate tutorial sections.
 
+## Review: rxode2 Syntax
+
+Before we dive into events, let's quickly review what we learned about `rxode2` syntax.
+
+### Quick Quiz
+
+```{r syntaxReviewQuiz, echo=FALSE}
+quiz(
+  question("Which of the following is the correct way to define an ODE for a compartment named 'depot' in rxode2?",
+    answer("`depot = -ka * depot`"),
+    answer("`d/dt(depot) = -ka * depot`", correct = TRUE),
+    answer("`ddt(depot) = -ka * depot`"),
+    answer("`dot(depot) = -ka * depot`")
+  ),
+  question("If you want to define a variable but suppress it from the output, which operator should you use?",
+    answer("`=`"),
+    answer("`<-`"),
+    answer("`~`", correct = TRUE),
+    answer("`==`")
+  )
+)
+```
+
 ## Creating events
 
 ### Model for Event discussion
@@ -1300,3 +1323,7 @@ print(et)
 ## In this case we have to add the dosing records
 rxSolve(rx, et, times=seq(0, 10, by=0.1)) |> plot()
 ```
+
+## What's Next?
+
+Great job! You've learned how to create and manage event tables in `rxode2`. Now, let's look at a more modern and modular way to define your models. In the next tutorial, **[rxode2 model functions](rxode2-model-functions.Rmd)**, you will learn how to use the UI syntax to package your parameters and equations together.

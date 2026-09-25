@@ -1,0 +1,176 @@
+---
+title: "rxode2 advanced features"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Explore advanced rxode2 features like solved compartment models (linCmt),
+  transit compartments, and mixing solved systems with ODEs.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Review: Putting it all Together
+
+We've come a long way! From basic syntax to complex population simulations with covariates. Let's do one final review exercise that combines several concepts.
+
+### Exercise: A Complete Workflow
+
+1.  Define a one-compartment model function `finalMod` with:
+    *   `tka = 0.5`, `tcl = 1`, `tv = 10`.
+    *   `eta.cl ~ 0.1`.
+    *   Additive error `add.sd = 0.1`.
+    *   Include a weight effect on `cl`: `cl <- exp(tcl + eta.cl) * (WT/70)^0.75`.
+2.  Create an event table for 100 mg dose at time 0, sampling 0-24h.
+3.  Simulate 10 subjects with weights ranging from 50 to 100 kg.
+
+```{r finalReview, exercise=TRUE}
+# 1. Define finalMod
+finalMod <- function() {
+  ini({
+    tka <- 0.5; tcl <- 1; tv <- 10
+    eta.cl ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl) * (WT/70)^0.75
+    v  <- exp(tv)
+    d/dt(center) <- - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+# 2. Create event table
+ev <- et(amt = 100) |> et(0:24)
+
+# 3. Define iCov and solve
+myCovs <- data.frame(id = 1:10, WT = seq(50, 100, length.out = 10))
+res <- rxSolve(finalMod, ev, iCov = myCovs)
+
+plot(res, cp)
+```
+
+## Introduction
+
+While `rxode2` is primarily an ODE solver, it also supports:
+- **Prediction only models**: Models without differential equations.
+- **Solved compartment models**: 1, 2, or 3 compartment models that use analytical solutions instead of numerical integration.
+- **Mixed models**: Combining solved systems with ODEs.
+
+## Solved Compartment Models (`linCmt()`)
+
+Instead of writing out the differential equations for standard PK models, you can use the `linCmt()` function. `rxode2` will automatically determine the model (1, 2, or 3 compartments) based on the parameters you provide.
+
+### Parameterization
+
+`linCmt()` recognizes many common parameterizations:
+- **Clearance/Volume**: `CL`, `V`, `Q`, `V2`, etc.
+- **Micro-constants**: `ke`, `k12`, `k21`, etc.
+
+```r
+mod <- function() {
+  ini({
+    cl <- 1; v <- 10
+  })
+  model({
+    cp <- linCmt()
+  })
+}
+```
+
+### Exercise: Use `linCmt()`
+
+Define a 2-compartment model using `linCmt()` with parameters `cl`, `v`, `q`, and `v2`.
+
+```{r linCmtEx, exercise=TRUE}
+mod <- function() {
+  ini({
+    tcl <- log(1); tv <- log(10)
+    tq <- log(0.5); tv2 <- log(20)
+  })
+  model({
+    cl <- exp(tcl); v <- exp(tv)
+    q <- exp(tq); v2 <- exp(tv2)
+    
+    # Use linCmt() here
+    cp <- linCmt()
+  })
+}
+
+ev <- et(amt = 100) |> et(0:24)
+res <- rxSolve(mod, ev)
+plot(res, cp)
+```
+
+## Mixing Solved Systems and ODEs
+
+You can use `linCmt()` to handle the PK part of a model and use ODEs for the PD part.
+
+```r
+mod_mixed <- function() {
+  ini({
+    cl <- 1; v <- 10; kin <- 1; kout <- 1; ec50 <- 10
+  })
+  model({
+    cp <- linCmt(cl, v)
+    d/dt(effect) <- kin - kout * (1 - cp/(ec50 + cp)) * effect
+  })
+}
+```
+
+**Note**: When mixing, the `linCmt()` compartments are usually numbered after the ODE compartments.
+
+## Transit Compartments
+
+`rxode2` has built-in support for transit compartment models, which are often used to describe delayed absorption.
+
+### Exercise: Transit Compartment
+
+Use the `transit()` function to define a model with a transit delay.
+
+```{r transitEx, exercise=TRUE}
+modTransit <- function() {
+  ini({
+    tka <- log(0.5); tcl <- log(1); tv <- log(10)
+    ktr <- log(1); n <- log(3)
+  })
+  model({
+    ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
+    ktr <- exp(ktr); n <- exp(n)
+    
+    # transit(n, ktr, ka) returns the amount entering the depot
+    d/dt(depot) <- transit(n, ktr, ka) - ka * depot
+    d/dt(center) <- ka * depot - cl/v * center
+    cp <- center/v
+  })
+}
+
+ev <- et(amt = 100) |> et(0:24)
+res <- rxSolve(modTransit, ev)
+plot(res, cp)
+```
+
+## Summary
+
+- `linCmt()` provides fast, analytical solutions for standard PK models.
+- You can mix analytical PK with numerical PD ODEs.
+- `transit()` simplifies the implementation of transit compartment models.
+
+## Congratulations!
+
+You have completed the `rxode2` tutorial series! You now have the skills to:
+- Write and modify `rxode2` models.
+- Create complex dosing schedules and sampling plans with event tables.
+- Perform individual and population simulations.
+- Incorporate covariates and handle parameter uncertainty.
+- Use advanced features like `linCmt()` and transit compartments.
+
+For more information and advanced topics, visit the [rxode2 documentation](https://nlmixr2.github.io/rxode2/).
