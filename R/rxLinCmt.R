@@ -575,7 +575,26 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
       .ret[[length(.ret) + 1L]] <- .expr
     }
   }
-  c(.linToOdeCmtOrder(ui), .ret)
+  c(.linToOdeCmtOrder(ui, .ret), .ret)
+}
+#' State names in the order a set of model expressions defines them
+#'
+#' @param exprs list of model expressions
+#' @return character vector of compartment names, first definition first
+#' @noRd
+#' @author Matthew L. Fidler
+.linToOdeStateOrder <- function(exprs) {
+  .ret <- character(0)
+  for (.e in exprs) {
+    .txt <- deparse1(.e)
+    .m <- regmatches(
+      .txt,
+      regexpr("^\\s*(?:d\\s*/\\s*dt|cmt)\\s*\\(\\s*[A-Za-z_.][A-Za-z0-9_.]*\\s*\\)", .txt, perl = TRUE)
+    )
+    if (length(.m) == 0L) next
+    .ret <- c(.ret, gsub("^.*\\(\\s*|\\s*\\)$", "", .m))
+  }
+  unique(.ret)
 }
 #' Keep the compartment numbers of a linCmt() model with other ODEs
 #'
@@ -586,18 +605,34 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #' original model (the peripheral compartments, which have no number in
 #' the `linCmt()` model, come last).
 #'
+#' They are added ONLY when the translation would otherwise number the
+#' states differently, i.e. when the model defines an ODE before the line
+#' that uses `linCmt()`.  When the `linCmt()` line comes first the
+#' translated ODEs are already emitted in the right place and the
+#' declarations are redundant -- and not harmless: an estimation method
+#' that appends sensitivity states (`nlm`/`trust` with
+#' `solveType="hessian"`) mis-numbered the compartments of a model
+#' carrying them, so a mixed `linCmt()`/ODE fit gave an objective
+#' function several thousand times the all-ODE model's.
+#'
 #' @param ui rxode2 ui model
-#' @return list of `cmt()` expressions (empty for a model without other
-#'   ODE states)
+#' @param exprs translated model expressions
+#' @return list of `cmt()` expressions (empty when the translation
+#'   already numbers the states the same way)
 #' @noRd
 #' @author Matthew L. Fidler
-.linToOdeCmtOrder <- function(ui) {
+.linToOdeCmtOrder <- function(ui, exprs) {
   .state <- ui$stateDf
   if (is.null(.state) || nrow(.state) == 0L) {
     return(list())
   }
   .names <- .state[["Compartment Name"]][order(.state[["Compartment Number"]])]
   if (all(.names %in% c("depot", "central"))) {
+    return(list())
+  }
+  .natural <- .linToOdeStateOrder(exprs)
+  if (length(.natural) >= length(.names) &&
+        identical(.natural[seq_along(.names)], .names)) {
     return(list())
   }
   lapply(.names, function(n) {
