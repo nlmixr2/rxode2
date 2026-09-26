@@ -4,13 +4,16 @@ aimed at cmt into parallel doses to the target compartments,
 regardless of whether the dose record is a bolus or an infusion.
 Each target compartment receives the full original amount; use f()
 to scale the split.
-A plain bolus record targeting a compartment that declares a modeled
-dur() or rate() property is promoted to a modeled infusion
-start/stop pair for that compartment, so a single bolus dose record
-can feed both an infusion path and a bolus path (Monolix-style
-double absorption with mixed zero- and first-order routes).
-Steady-state bolus records are not promoted; they are copied as
-boluses with a warning when a target declares dur()/rate().
+A plain bolus record is split so the FIRST target compartment
+receives a modeled infusion start/stop pair (it must declare a
+modeled dur() or rate() property, otherwise its copies stay
+boluses) while every other target receives a bolus copy. Use
+splitBolusInfusion() to give the LAST target the infusion instead.
+This feeds one bolus dose record into both an infusion path and a
+bolus path (Monolix-style double absorption with mixed zero- and
+first-order routes). Steady-state bolus records are not promoted;
+they are copied as boluses with a warning when the designated
+infusion target declares dur()/rate().
 Infusion records (data RATE/DUR or modeled rate()/dur()) are
 split preserving their type, exactly like splitInfusion().
 This rewrite applies at etTrans() translation time only; doses
@@ -25,13 +28,16 @@ aimed at cmt into parallel doses to the target compartments,
 regardless of whether the dose record is a bolus or an infusion.
 Each target compartment receives the full original amount; use f()
 to scale the split.
-A plain bolus record targeting a compartment that declares a modeled
-dur() or rate() property is promoted to a modeled infusion
-start/stop pair for that compartment, so a single bolus dose record
-can feed both an infusion path and a bolus path (Monolix-style
-double absorption with mixed zero- and first-order routes).
-Steady-state bolus records are not promoted; they are copied as
-boluses with a warning when a target declares dur()/rate().
+A plain bolus record is split so the FIRST target compartment
+receives a modeled infusion start/stop pair (it must declare a
+modeled dur() or rate() property, otherwise its copies stay
+boluses) while every other target receives a bolus copy. Use
+splitBolusInfusion() to give the LAST target the infusion instead.
+This feeds one bolus dose record into both an infusion path and a
+bolus path (Monolix-style double absorption with mixed zero- and
+first-order routes). Steady-state bolus records are not promoted;
+they are copied as boluses with a warning when the designated
+infusion target declares dur()/rate().
 Infusion records (data RATE/DUR or modeled rate()/dur()) are
 split preserving their type, exactly like splitInfusion().
 This rewrite applies at etTrans() translation time only; doses
@@ -159,13 +165,16 @@ aimed at <code>cmt</code> into parallel doses to the target compartments,
 regardless of whether the dose record is a bolus or an infusion.
 Each target compartment receives the full original amount; use <code>f()</code>
 to scale the split.</p>
-<p>A plain bolus record targeting a compartment that declares a modeled
-<code>dur()</code> or <code>rate()</code> property is promoted to a modeled infusion
-start/stop pair for that compartment, so a single bolus dose record
-can feed both an infusion path and a bolus path (Monolix-style
-double absorption with mixed zero- and first-order routes).
-Steady-state bolus records are not promoted; they are copied as
-boluses with a warning when a target declares <code>dur()</code>/<code>rate()</code>.</p>
+<p>A plain bolus record is split so the FIRST target compartment
+receives a modeled infusion start/stop pair (it must declare a
+modeled <code>dur()</code> or <code>rate()</code> property, otherwise its copies stay
+boluses) while every other target receives a bolus copy. Use
+<code><a href="splitBolusInfusion-directive.html">splitBolusInfusion()</a></code> to give the LAST target the infusion instead.
+This feeds one bolus dose record into both an infusion path and a
+bolus path (Monolix-style double absorption with mixed zero- and
+first-order routes). Steady-state bolus records are not promoted;
+they are copied as boluses with a warning when the designated
+infusion target declares <code>dur()</code>/<code>rate()</code>.</p>
 <p>Infusion records (data <code>RATE</code>/<code>DUR</code> or modeled <code>rate()</code>/<code>dur()</code>) are
 split preserving their type, exactly like <code><a href="splitInfusion.html">splitInfusion()</a></code>.</p>
 <p>This rewrite applies at <code><a href="etTrans.html">etTrans()</a></code> translation time only; doses
@@ -193,10 +202,10 @@ shown in <code>?splitBolusInfusion-directive</code>.</p>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  d<span class="sc">/</span><span class="fu">dt</span>(central) <span class="ot">&lt;-</span> ka2 <span class="sc">*</span> depot2 <span class="sc">-</span> cl <span class="sc">/</span> v <span class="sc">*</span> central</span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  ...</span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>})</span></code></pre><p></p></div>
-<p>A bolus dose recorded against <code>depot</code> is split so <code>central</code> receives
-a modeled-duration infusion (zero-order input over <code>tk0</code>, scaled by
-<code>f1</code>) and <code>depot2</code> receives the bolus (first-order input scaled by
-<code>1 - f1</code>).</p>
+<p>A bolus dose recorded against <code>depot</code> is split so <code>central</code> (first
+target) receives a modeled-duration infusion (zero-order input over
+<code>tk0</code>, scaled by <code>f1</code>) and <code>depot2</code> receives the bolus (first-order
+input scaled by <code>1 - f1</code>).</p>
     </div>
 
   </main></div>

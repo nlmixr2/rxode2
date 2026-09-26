@@ -212,7 +212,8 @@ the omega entries, which the strategies above redraw or discard.
 <code>thetaMat</code> columns are matched to entries by name – <code>om.eta.cl</code> or
 <code>eta.cl</code> for a diagonal, and <code>cov.eta.cl.eta.v</code> or <code>omega2.1</code> for an
 off diagonal.  A drawn matrix that is not positive definite is
-redrawn, see <code>priorPdRetry</code>.</p></li>
+redrawn, see <code>priorPdRetry</code>.  <code>dfSub</code> is not used: an entry the
+<code>thetaMat</code> gives no variance stays at its estimate.</p></li>
 </ul></dd>
 
 
@@ -322,7 +323,8 @@ size is greater or equal to 10</p></li>
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
 <li><p><code>"tnpri"</code> draws the sigma entries jointly from the <code>thetaMat</code>, the
-same way <code>omegaSeparation="tnpri"</code> does for the omega.</p></li>
+same way <code>omegaSeparation="tnpri"</code> does for the omega; <code>dfObs</code> is
+not used.</p></li>
 </ul></dd>
 
 

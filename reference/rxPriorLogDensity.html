@@ -181,8 +181,10 @@ own <code>$PRIOR NWPRI</code> omega parameterization; <code>"tnpri"</code> is th
 raw-omega <code>om.&lt;eta&gt;</code> treatment as <code>"general"</code> (Monolix's
 Bayesian-estimation assumption is on the natural parameter, same as
 here – <code>chol(Omega^-1)</code> is FOCEI's own internal affair, not this
-kernel's). Neither <code>"nwpri"</code> nor <code>"tnpri"</code> has a Cauchy analogue, so
-both refuse one.</p></dd>
+kernel's). Neither <code>"nwpri"</code> nor <code>"tnpri"</code> has a Cauchy (or any
+other non-normal univariate) analogue, so both refuse one. Under
+<code>"general"</code>, every univariate continuous 'lotri' family except
+<code>wiener()</code> is evaluated, truncated to the parameter's own bounds.</p></dd>
 
 </dl></div>
     <div class="section level2">
