@@ -1,3 +1,38 @@
+.rxSymInvEnv <- new.env(parent = emptyenv())
+.rxSymInvEnv$blockZeroFree <- NULL
+
+#' Register how a non-block Omega zero is parameterized
+#'
+#' An off-diagonal zero that does not split Omega into contiguous blocks is
+#' not a zero of `chol(Omega^-1)`, so it can be a free parameter (#1365).
+#' `rxSymInvCholCreate()` only does that when a registered callback says so;
+#' with no callback it errors as it always has.  This is a compatibility hook
+#' for nlmixr2est, not a user setting: the released nlmixr2est infers its own
+#' omega parameter positions from the zero pattern of the matrix it passes in,
+#' and accepting that matrix rather than its filled replacement makes
+#' `est="vae"` stop with a position-count mismatch.
+#'
+#' @param callback function of no arguments returning a single logical, or
+#'   `NULL` to unregister.
+#'
+#' @return The previously registered callback, invisibly.
+#'
+#' @keywords internal
+#' @export
+.rxSymInvBlockZeroFreeCallback <- function(callback = NULL) {
+  .old <- .rxSymInvEnv$blockZeroFree
+  .rxSymInvEnv$blockZeroFree <- callback
+  invisible(.old)
+}
+
+.rxSymInvBlockZeroFree <- function() {
+  .cb <- .rxSymInvEnv$blockZeroFree
+  if (is.null(.cb)) {
+    return(FALSE)
+  }
+  isTRUE(.cb())
+}
+
 #' Creates a logical matrix for block matrixes.
 #'
 #' @param mat Matrix
@@ -343,8 +378,22 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
   }
   if (length(block) == 0) {
     ## An off-diagonal zero in a non-decomposable block is not a zero of
-    ## chol(Omega^-1), so every lower-triangle cell is a parameter (#1365)
-    mat1[row(mat1) != col(mat1)] <- 1
+    ## chol(Omega^-1), so every lower-triangle cell is a parameter (#1365).
+    ##
+    ## OFF unless nlmixr2est registers the callback.  The released nlmixr2est
+    ## derives its own parameter positions from the zero pattern of the omega
+    ## it hands us (`.foceiSymInvCholCreate()` walks a ladder of candidate
+    ## matrices and keeps the first this function accepts).  With the fill on
+    ## we accept the ladder's FIRST rung, so nlmixr2est keeps the unfilled
+    ## matrix while we return one more theta than it has non-zero cells, and
+    ## est="vae" then aborts with
+    ##   vaeInnerSetup_: omega position list (5) != omegan (6)
+    ## With the fill off we error as before, nlmixr2est falls to its filled
+    ## rung, and the counts agree again.  See
+    ## `.rxSymInvBlockZeroFreeCallback()`.
+    if (.rxSymInvBlockZeroFree()) {
+      mat1[row(mat1) != col(mat1)] <- 1
+    }
     if (diag.xform == "sqrt" && dim(mat1)[1] <= .Call(`_rxCholInv`, 0L, NULL, NULL)) {
       fmat <- mat1
       num <- as.vector(mat1[upper.tri(mat1, TRUE)])

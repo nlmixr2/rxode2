@@ -40,6 +40,10 @@ rxTest({
     }
   )
   test_that("an off-diagonal zero outside a block structure is a free parameter (#1365)", {
+    ## opt-in while the released nlmixr2est still infers omega parameter
+    ## positions from the zero pattern (see rxSymInvCreateC_)
+    .rxSymInvBlockZeroFreeCallback(function() TRUE)
+    on.exit(.rxSymInvBlockZeroFreeCallback(NULL), add = TRUE)
     .chk <- function(m, dg) {
       v <- suppressMessages(rxSymInvCholCreate(mat = m, diag.xform = dg))
       .n <- sum(lower.tri(m, TRUE))
@@ -78,6 +82,8 @@ rxTest({
   })
 
   test_that("derivatives of a non-block Omega with a zero match finite differences (#1365)", {
+    .rxSymInvBlockZeroFreeCallback(function() TRUE)
+    on.exit(.rxSymInvBlockZeroFreeCallback(NULL), add = TRUE)
     .fd <- function(r, th) {
       for (k in seq_along(th)) {
         .h <- 1e-6
