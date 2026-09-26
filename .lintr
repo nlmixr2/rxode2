@@ -31,6 +31,7 @@ exclusions: c(
       "R/rxSyntaxFunctions.R",
       "R/dfIni.R",
       "R/rxode2_md5.R",
+      "R/rxUiBlessed.R",
       "inst",
       "vignettes",
       "bench",
