@@ -1157,6 +1157,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     keepNameLc[j] = keepS;
   }
   bool needCmt = false;
+  bool hasAmtCol = false;
+  for (i = lName.size(); i--;) {
+    std::string nm = as<std::string>(lName[i]);
+    std::transform(nm.begin(), nm.end(), nm.begin(), ::tolower);
+    if (nm == "amt") hasAmtCol = true;
+  }
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
@@ -1171,7 +1177,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       amtCol=i;
       amtExplicit = true;
     }
-    else if (tmpS == "value" || tmpS == "dose"){
+    else if ((tmpS == "value" || tmpS == "dose") && !hasAmtCol){
+      // without an 'amt' column, 'value'/'dose' is the dose alias (#1386)
       for (j = pars.size(); j--;) {
         std::string par = as<std::string>(pars[j]);
         std::transform(par.begin(), par.end(), par.begin(), ::tolower);
@@ -1179,7 +1186,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           stop(_("data column '%s' is read as the 'amt' alias, so it cannot be a covariate; rename it"), tmpS0);
         }
       }
-      if (amtExplicit) continue;
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
     }

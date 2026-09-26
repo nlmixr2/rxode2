@@ -6,5 +6,7 @@ rxTest({
       model({ y <- a * value })
     }
     expect_error(rxSolve(m, d), "'value' is read as the 'amt' alias")
+    s <- rxSolve(m, transform(d, AMT = 0), returnType = "data.frame")
+    expect_equal(s$y, d$value)
   })
 })
