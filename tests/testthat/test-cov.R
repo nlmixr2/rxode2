@@ -873,7 +873,8 @@ rxTest({
     # The threshold is deliberately loose (timing on a shared CI runner is
     # noisy) but the defect it guards against is an order of magnitude past
     # it; taking the minimum of a few repeats keeps a stray GC pause from
-    # failing the check.
+    # failing the check.  Each repeat times a batch of solves, since a single
+    # double solve can read 0 elapsed on the Windows timer.
     .covFlagData <- function(nRow, type) {
       flag <- rep(c(0, 1), length.out = nRow)
       data.frame(
@@ -894,8 +895,18 @@ rxTest({
     .solve <- function(d) {
       rxSolve(mod, params = .pars, events = d, returnType = "data.frame")
     }
-    .minElapsed <- function(d, reps = 3L) {
-      min(vapply(seq_len(reps), function(i) system.time(.solve(d))[["elapsed"]], numeric(1)))
+    .minElapsed <- function(d, batches = 3L, reps = 10L) {
+      min(vapply(
+        seq_len(batches),
+        function(i) {
+          system.time(
+            for (r in seq_len(reps)) {
+              .solve(d)
+            }
+          )[["elapsed"]]
+        },
+        numeric(1)
+      ))
     }
 
     invisible(.solve(.covFlagData(1000, "double"))) # compile the model first
@@ -933,8 +944,18 @@ rxTest({
     .solve <- function(m, d) {
       rxSolve(m, params = c(slopeA = -0.9), events = d, returnType = "data.frame")
     }
-    .minElapsed <- function(m, d, reps = 3L) {
-      min(vapply(seq_len(reps), function(i) system.time(.solve(m, d))[["elapsed"]], numeric(1)))
+    .minElapsed <- function(m, d, batches = 3L, reps = 5L) {
+      min(vapply(
+        seq_len(batches),
+        function(i) {
+          system.time(
+            for (r in seq_len(reps)) {
+              .solve(m, d)
+            }
+          )[["elapsed"]]
+        },
+        numeric(1)
+      ))
     }
 
     # CMT reaches the model as the compartment number it holds
