@@ -85,7 +85,8 @@ the omega entries, which the strategies above redraw or discard.
 \code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
 \code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
 off diagonal.  A drawn matrix that is not positive definite is
-redrawn, see \code{priorPdRetry}.
+redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
+\code{thetaMat} gives no variance stays at its estimate.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -172,7 +173,8 @@ size is greater or equal to 10
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
-same way \code{omegaSeparation="tnpri"} does for the omega.
+same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
+not used.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}

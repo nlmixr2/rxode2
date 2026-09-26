@@ -37,7 +37,7 @@ As rxode2 ui
 
 mod1 <- function() {
  ini({
-   # central 
+   # central
    KA=2.94E-01
    CL=1.86E+01
    V2=4.02E+01
@@ -47,7 +47,7 @@ mod1 <- function() {
    # effects
    Kin=1
    Kout=1
-   EC50=200 
+   EC50=200
  })
  model({
    C2 <- centr/V2

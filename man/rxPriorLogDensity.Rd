@@ -30,8 +30,10 @@ own \verb{$PRIOR NWPRI} omega parameterization; \code{"tnpri"} is the same
 raw-omega \verb{om.<eta>} treatment as \code{"general"} (Monolix's
 Bayesian-estimation assumption is on the natural parameter, same as
 here -- \code{chol(Omega^-1)} is FOCEI's own internal affair, not this
-kernel's). Neither \code{"nwpri"} nor \code{"tnpri"} has a Cauchy analogue, so
-both refuse one.}
+kernel's). Neither \code{"nwpri"} nor \code{"tnpri"} has a Cauchy (or any
+other non-normal univariate) analogue, so both refuse one. Under
+\code{"general"}, every univariate continuous 'lotri' family except
+\code{wiener()} is evaluated, truncated to the parameter's own bounds.}
 }
 \value{
 list with \code{value} (scalar log density, summed over every prior

@@ -89,7 +89,8 @@ params <- rxDerived(CL = 29.4, V = 1:3, digits = 2)
 \references{
 Shafer S. L. \code{CONVERT.XLS}
 
-Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th). Clipping Williams & Wilkins, Philadelphia, 2010.
+Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th).
+Clipping Williams & Wilkins, Philadelphia, 2010.
 }
 \author{
 Matthew Fidler and documentation from Justin Wilkins, \email{justin.wilkins@occams.com}

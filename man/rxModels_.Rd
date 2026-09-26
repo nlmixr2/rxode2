@@ -7,7 +7,8 @@
 rxModels_(env = TRUE)
 }
 \arguments{
-\item{env}{boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2 model variables (FALSE).}
+\item{env}{boolean that returns the environment where models are stored (TRUE), or the currently assigned rxode2
+model variables (FALSE).}
 }
 \value{
 internal rxModels information environment

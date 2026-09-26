@@ -143,10 +143,17 @@
   "mixest is time-varying but must be constant within an individual" or an
   out-of-bounds error, depending on the column order.
 
-- `rxSymInvCholCreate()` no longer errors with "theta has to have N elements"
-  on a positive-definite Omega whose off-diagonal zeros do not split it into
-  contiguous blocks; such zeros are not zeros of the Cholesky factor, so they
-  are now free parameters (#1365).
+- `rxSymInvCholCreate()` can treat a positive-definite Omega whose
+  off-diagonal zeros do not split it into contiguous blocks as fully
+  parameterized instead of erroring with "theta has to have N elements"; such
+  zeros are not zeros of the Cholesky factor, so they become free parameters
+  (#1365).  It is off unless a callback registered with
+  `.rxSymInvBlockZeroFreeCallback()` asks for it: the released nlmixr2est
+  infers its own omega parameter positions from the zero pattern of the matrix
+  it passes in, so accepting that matrix rather than its filled replacement
+  makes `est="vae"` stop with a position-count mismatch.  It becomes
+  unconditional once a nlmixr2est that does not infer positions that way is
+  released.
 
 - A solve with exactly one observation now simulates its residual error;
   previously the one-row draw was discarded and each `eps` came back as a fixed
@@ -169,6 +176,17 @@
   failed before the converter saw it; and the `xi` renaming was not idempotent,
   producing `rxrx_xi_1` when text made a second pass, which leaked into the
   generated model as a free parameter.
+
+- A second derivative through `linCmtB()` is refused again rather than
+  falling through to a numeric difference.  `linCmtB()` is itself the
+  first-order parameter sensitivity of the solved form, which carries no
+  second-order state sensitivity, so the difference is not the second
+  derivative of the prediction.  Returning one made nlmixr2est's
+  `.foceiAddHdEta2()` succeed where it is meant to fail, so a `fast=TRUE`
+  FOCEi fit of a `linCmt()` model built an inner Hessian with a fabricated
+  curvature term instead of falling back to finite differences; an
+  `ll()` + `linCmt()` fit converged to -22.4 rather than 118.5.  Second
+  derivatives that do not involve `linCmtB()` still convert.
 
   The failure was silent further up: a model needing these had no analytic
   second-order sensitivities, so the FOCEi-family analytic outer gradient fell
