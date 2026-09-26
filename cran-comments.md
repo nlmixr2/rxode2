@@ -1,80 +1,144 @@
-# rxode2 5.1.7
+# rxode2 5.1.8
 
-This is a feature and bug-fix release.
+This release exists mainly to fix the installation failure that makes 5.1.7
+uninstallable on the two r-devel clang flavors.  The remaining changes are
+features and bug fixes collected since 5.1.7; the full list is in NEWS.md.
 
-The headline changes are correlated inter-occasion variability (a `| occ`
-block may now carry off-diagonal elements, and NONMEM's `$OMEGA BLOCK(n)
-SAME` is written `same()`), several endpoints sharing one model variable,
-per-compartment dose-time sensitivities for `linCmt()` models, and one
-shared implementation of the NONMEM event semantics behind both the event
-table and the in-model dose-pushing statements.  The rest is bug fixes; the
-full list is in NEWS.md.
+## Incoming check failures fixed in this version
 
-## Dependency
+* `Installation failed` on `r-devel-linux-x86_64-debian-clang` and
+  `r-devel-linux-x86_64-fedora-clang`.
 
-This version requires `lotri` (>= 1.0.5), which carries the `same()` block
-and the prior column it is built on.  `lotri` 1.0.5 is being submitted
-alongside this and should be installed first; rxode2 5.1.7 will not install
-against `lotri` 1.0.4.
+      omp.h:546:39: error: expected 'match', 'adjust_args', or 'append_args'
+                    clause on 'omp declare variant' directive
+        #pragma omp begin declare variant match(device={kind(host)})
+      Rinternals.h:996:17: note: expanded from macro 'match'
+        #define match                   Rf_match
 
-## Update frequency
+  `Rinternals.h` defines `match` as a macro for `Rf_match` unless
+  `R_NO_REMAP` is set, and LLVM's `omp.h` spells a clause of its
+  `declare variant` pragma `match(...)`.  Where R's headers were included
+  first, the macro expanded inside the pragma and the compile failed.  Both
+  places that include `omp.h` -- `src/rxomp.h` for the package and
+  `inst/include/rxode2_model_shared.h` for the C code rxode2 generates and
+  compiles on the user's machine -- now hide the macro across the include
+  with `#pragma push_macro("match")` / `#undef match` /
+  `#pragma pop_macro("match")`.  Nothing else is affected: the guard is
+  confined to the `#include` line, and on a compiler whose `omp.h` has no
+  such pragma it is a no-op.
 
-The incoming check notes seven updates in the past six months.  Most of
-those were the 5.1.5/5.1.6 sequence, which was driven by upstream changes
-outside our control (the RcppParallel 6.2.0 TBB reversal) and by the
-reverse-dependency failure that followed.  This release collects the work
-since then in one upload rather than several, and we expect to return to a
-slower cadence.
+  We do not have a clang 23 image to check against, so we reproduced the
+  failure locally with clang 18, whose `omp.h` carries the same
+  `declare variant match(...)` lines: without the guard clang gives exactly
+  the diagnostic above, and with it the package and the generated model code
+  both compile.  Neither side of the collision is version specific.
 
-## Incoming checks
+## Additional issues
 
-Both items raised on the previous submission appear to be properties of the
-check configuration rather than of the package.
-
-* `flang-23: warning: argument unused during compilation: '-Wall'`
-  (r-devel-linux-x86_64-debian-gcc).  `-Wall` is a C warning flag.  It reaches
-  the Fortran compiler from that configuration's own `FFLAGS`, which R appends
-  to every Fortran compile as
-
-      ALL_FFLAGS = $(PKG_FFLAGS) $(FPICFLAGS) $(SHLIB_FFLAGS) $(FFLAGS)
-
-  rxode2 sets no `PKG_FFLAGS`, so it contributes nothing to that command line,
-  and `flang` is right to report that it cannot act on a C warning flag.  The
-  same line should appear for any package with Fortran sources built with that
-  `FFLAGS` and a clang-derived Fortran driver, so the configuration looks like
-  the right place to fix it.
-
-  We have nonetheless added a workaround so this submission is clean, kept as
-  narrow as we could make it: `configure` drops the flag from the Fortran
-  compile line only when the Fortran compiler identifies itself as `flang` and
-  `flang` itself reports the flag unusable.  Nothing is suppressed and no
-  diagnostic is disabled -- the flag is simply not passed to a compiler that
-  has said it cannot use it.  On every other toolchain, `gfortran` included,
-  no such line is generated and the Fortran compile line is byte for byte what
-  it was.  The generated line is target specific, since R reads `src/Makevars`
-  before `Makeconf` and a plain assignment there would be overridden; it is
-  emitted only on the platforms described above, which use GNU make, and the
-  shipped sources contain no GNU make construct, so `SystemRequirements` is
-  unchanged.  We are happy to drop the workaround if you would rather the
-  configuration carried the fix.
-
-* `lazy-load database '.../codetools/R/codetools.rdb' is corrupt` /
-  `internal error 1 in R_decompress1 with libdeflate`, under "R code for
-  possible problems".  This is the check machine's own `codetools`
-  installation failing to decompress; no package code is involved and we could
-  not reproduce it.
-
-## Test environments
-
-* local: Ubuntu 24.04, R 4.6.1, `R CMD check --as-cran`
+* `gcc-UBSAN` reported `Status: OK` for 5.1.7.  The `runtime error` lines in
+  that run's `00install.out` are all in the TBB sources bundled with
+  RcppParallel, not in rxode2.  As of this version rxode2 no longer links to
+  RcppParallel, StanHeaders or RcppEigen at all -- the Stan-based `linCmt()`
+  kernels moved to the new package 'rxode2lincmt', which is already on CRAN --
+  so those sources are no longer part of this package's build.
 
 ## R CMD check results
 
-Status: OK, with the following local-only NOTEs.
+Status: OK under `NOT_CRAN=true` (the full test suite).
 
-* `Compilation used the following non-portable flag(s): -mno-omit-leaf-frame-pointer`
-  -- this flag comes from the Ubuntu distribution build of R itself
-  (`R CMD config CFLAGS`), not from the package.
+Status: 2 NOTEs under `--as-cran`, both described below.
 
-* `Skipping checking HTML validation: no command 'tidy' found` -- HTML Tidy is
-  not installed on the check machine.
+* `Number of updates in past 6 months: 7`.  This upload is required for the
+  package to remain on CRAN: 5.1.7 does not install on
+  `r-devel-linux-x86_64-debian-clang` or `r-devel-linux-x86_64-fedora-clang`,
+  and that has to be corrected rather than left to the next scheduled
+  release.  The update frequency is a consequence of the fix being mandatory,
+  not of a faster release cadence.
+
+* `Compilation used the following non-portable flag(s):
+  -mno-omit-leaf-frame-pointer`.  This flag comes from the Ubuntu
+  distribution build of R itself (`R CMD config CFLAGS`), not from the
+  package.  It is local to our check machine and has not appeared on CRAN's.
+
+## Known NOTE on r-oldrel (not fixed, deliberately)
+
+`Found non-API call to R: 'DATAPTR'`, on r-oldrel-macos-arm64,
+r-oldrel-macos-x86_64 and r-oldrel-windows-x86_64.
+
+This is the backport published in "Writing R Extensions", section "Some
+backports":
+
+    #if R_VERSION < R_Version(4, 6, 0)
+    # define DATAPTR_RW(x) DATAPTR(x)
+
+and the same manual's "Some API replacements for non-API entry points" names
+this exact case as the exception: "One exception is that a writable pointer
+may need to be returned by an ALTREP Dataptr method.  The function
+`DATAPTR_RW` can use for this purpose."
+
+rxode2 returns solved output columns as compact ALTREP vectors so large `id`
+and `sim.id` columns are never materialized, which requires a `Dataptr`
+method.  On R >= 4.6.0 it calls `DATAPTR_RW` directly; the `DATAPTR` fallback
+is compiled only on older R, which is why the NOTE appears on r-oldrel and
+nowhere else.  Replacing it would mean giving up the compact representation,
+so we have kept the documented backport.
+
+## Retained from the previous submission
+
+The `configure` workaround that drops `-Wall` from the Fortran compile line
+when the Fortran compiler identifies itself as `flang` and reports the flag
+unusable is unchanged, and `r-devel-linux-x86_64-debian-gcc` is now OK.  We
+remain happy to drop it if you would rather the configuration carried the fix.
+
+## Test environments
+
+* local: Ubuntu 24.04, R 4.6.1; `R CMD check --as-cran` and a full run with
+  `NOT_CRAN=true`.
+
+## revdepcheck results
+
+We checked all 30 reverse dependencies against both the CRAN and the dev
+version of this package, with `NOT_CRAN=true` so that each one ran its
+complete test suite rather than the smaller CRAN-visible subset.
+
+ * We saw 0 new problems
+ * We failed to check 0 packages
+
+Five packages report an ERROR against this version.  Each reports the same
+ERROR against the CRAN version, so none of them is a new problem, and all
+five come from tests or vignettes that CRAN's own checks do not run.  For
+completeness:
+
+* babelmixr2 -- one PopED assertion (`test-poped.R:302`), where
+  `evaluate_design()` returns an OFV, FIM and RSE about 0.1 to 1 per cent away
+  from the values the test expects (`[ FAIL 1 | PASS 382 ]`).  The numbers are
+  identical under both versions of rxode2.  Reported upstream as
+  nlmixr2/babelmixr2#223.
+
+* monolix2rx -- four `vdiffr` plot-snapshot comparisons.  These compare
+  rendered SVG against stored snapshots and so depend on the local graphics
+  and font stack.
+
+* nlmixr2scm -- its `workers="auto"` sizing asks for more threads than this
+  machine has ("Requested 21 workers x 11 rxode2 threads = 231 threads, but
+  only 22 cores are available") and stops.  This depends on the core count of
+  the check machine.
+
+* PKbioanalysis -- it keeps a duckdb database at a fixed per-user path outside
+  the check directory, so checking both versions at once on one machine makes
+  them contend for the same file ("Could not set lock on file
+  .../PKbioanalysis/samples.db").  The check aborts in the package's own test
+  helper before any test runs, so it reports nothing about the package's
+  behavior with rxode2; checked on its own it passes.
+
+* shinyMixR -- its vignette resolves an image through a relative path
+  (`knitr::include_graphics("../man/figures/screen1.png")`) that this setup
+  does not find.  CRAN's own checks of shinyMixR are OK on every flavor that
+  can install rxode2, so this looks specific to our check setup rather than to
+  the package.
+
+nlmixr2est is the only package whose result differs between the two versions,
+and it differs in this version's favour.  It exercises rxode2 the hardest and
+skips most of its suite on CRAN; run in full it passes against this version
+(`Status: OK`, `[ FAIL 0 | WARN 32 | SKIP 10 | PASS 16566 ]`), while against
+the CRAN version one saem assertion fails.
