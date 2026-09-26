@@ -591,7 +591,9 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
       .txt,
       regexpr("^\\s*(?:d\\s*/\\s*dt|cmt)\\s*\\(\\s*[A-Za-z_.][A-Za-z0-9_.]*\\s*\\)", .txt, perl = TRUE)
     )
-    if (length(.m) == 0L) next
+    if (length(.m) == 0L) {
+      next
+    }
     .ret <- c(.ret, gsub("^.*\\(\\s*|\\s*\\)$", "", .m))
   }
   unique(.ret)
@@ -631,8 +633,10 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
     return(list())
   }
   .natural <- .linToOdeStateOrder(exprs)
-  if (length(.natural) >= length(.names) &&
-        identical(.natural[seq_along(.names)], .names)) {
+  if (
+    length(.natural) >= length(.names) &&
+      identical(.natural[seq_along(.names)], .names)
+  ) {
     return(list())
   }
   lapply(.names, function(n) {
