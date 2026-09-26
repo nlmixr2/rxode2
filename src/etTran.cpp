@@ -1178,11 +1178,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       amtExplicit = true;
     }
     else if ((tmpS == "value" || tmpS == "dose") && !hasAmtCol){
-      // without an 'amt' column, 'value'/'dose' is the dose alias (#1386)
+      // without an 'amt' column, 'value'/'dose' is the dose alias (#1386);
+      // match pars the way the covariate search below does
+      std::string tmpSU = tmpS;
+      std::transform(tmpSU.begin(), tmpSU.end(), tmpSU.begin(), ::toupper);
       for (j = pars.size(); j--;) {
         std::string par = as<std::string>(pars[j]);
-        std::transform(par.begin(), par.end(), par.begin(), ::tolower);
-        if (tmpS == par) {
+        if (par == tmpS || par == tmpS0 || par == tmpSU) {
           stop(_("data column '%s' is read as the 'amt' alias, so it cannot be a covariate; rename it"), tmpS0);
         }
       }
