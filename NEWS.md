@@ -84,6 +84,10 @@
 
 ## Bug fixes
 
+- A covariate column named `value` or `dose` is now passed through
+  when the data has an `amt` column, and gives an informative error
+  when it would be read as the `amt` alias (#1386).
+
 - `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
   prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
   so the ODE model failed with "'depot', 'central' are required for
