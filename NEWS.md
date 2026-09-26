@@ -84,6 +84,10 @@
 
 ## Bug fixes
 
+- A data column named `value` or `dose` that the model uses as a
+  covariate now gives an informative error instead of being read as
+  the `amt` alias (#1386).
+
 - `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
   prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
   so the ODE model failed with "'depot', 'central' are required for
