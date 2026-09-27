@@ -83,7 +83,9 @@
   other's stop time, so the solved amounts were wrong too.  `etTrans()` now
   records the start/stop pairing (the `rxInfPair` attribute) for the subjects
   where the solver could not recover it, so its output changed for those
-  subjects only (#1348).
+  subjects only; the `etTrans()` golden snapshots were updated for the 48
+  `nmtest` cases that gain the attribute, which are otherwise unchanged
+  (#1348).
 
 # rxode2 5.1.7
 
