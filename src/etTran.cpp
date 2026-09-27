@@ -1157,6 +1157,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     keepNameLc[j] = keepS;
   }
   bool needCmt = false;
+  bool hasAmtCol = false;
+  for (i = lName.size(); i--;) {
+    std::string nm = as<std::string>(lName[i]);
+    std::transform(nm.begin(), nm.end(), nm.begin(), ::tolower);
+    if (nm == "amt") hasAmtCol = true;
+  }
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
@@ -1171,8 +1177,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       amtCol=i;
       amtExplicit = true;
     }
-    else if (tmpS == "value" || tmpS == "dose"){
-      if (amtExplicit) continue;
+    else if ((tmpS == "value" || tmpS == "dose") && !hasAmtCol){
+      // without an 'amt' column, 'value'/'dose' is the dose alias (#1386)
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
     }
@@ -1245,6 +1251,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         break;
       }
     }
+  }
+  // A 'value'/'dose' amt alias that is also a covariate turns every
+  // record into a dose unless an evid/mdv/method column says otherwise
+  if (amtCol != -1 && !amtExplicit && evidCol == -1 && mdvCol == -1 &&
+      methodCol == -1 &&
+      std::find(covCol.begin(), covCol.end(), amtCol) != covCol.end()) {
+    stop(_("data column '%s' is read as the 'amt' alias, so it cannot be a covariate; rename it or add an 'amt' or 'evid' column"),
+         as<std::string>(dName[amtCol]).c_str());
   }
   if (hasIcov) {
     for (i = liName.size(); i--;) {
