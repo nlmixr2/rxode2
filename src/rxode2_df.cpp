@@ -134,17 +134,18 @@ static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
 }
 
 // Record that stops the fixed rate/duration infusion the output row `i` starts,
-// or -1 when none is found.  First the pairing etTrans() recorded
-// (nlmixr2/rxode2#1348); then the first stop carrying the same internal evid,
-// which is the one the translator emitted for this start, so it is preferred
-// over the historical scan below -- that matches the rate type and compartment
-// alone and took the stop of a differently flagged infusion at the same rate.
-// A steady-state dose into a compartment with a modeled alag() is the one start
-// whose partner has a DIFFERENT evid (the INFRM record, see
-// _rxTranslateSsLagDoseInto()), so there the historical scan still leads.
+// or -1 when none is found.  In order of preference: the pairing etTrans()
+// recorded (nlmixr2/rxode2#1348); the INFRM record, which is the stop of a
+// steady-state dose into a compartment with a modeled alag() (see
+// _rxTranslateSsLagDoseInto(), the one start whose stop carries a different
+// evid); the first stop carrying the same evid, which is what the translator
+// emits for every other start; and last the historical scan, which matches the
+// rate type and compartment alone and so took the stop of a differently
+// flagged infusion at the same rate into the same compartment.
 static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
                                    double curAmt, int *dullRate) {
   int cur = ind->ix[i];
+  if (isInfusionUnpaired(ind, cur)) return -1;
   int mate = getInfusionMateRecord(ind, cur);
   if (mate != -1) {
 #pragma omp atomic write
@@ -154,8 +155,8 @@ static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
   int curEvid = getEvid(ind, cur);
   int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
   getWh(curEvid, &wh, &cmt, &wh100, &whI, &wh0);
-  int sameEvidFirst = (wh0 != EVID0_SS0 && wh0 != EVID0_SS20);
-  int loose = -1;
+  int ssLagged = (wh0 == EVID0_SS0 || wh0 == EVID0_SS20);
+  int sameEvid = -1, loose = -1;
   for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
     if (getDoseNumber(ind, jjj) != -curAmt) continue;
     int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
@@ -163,13 +164,16 @@ static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
     getWh(getEvid(ind, recJ), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
 #pragma omp atomic write
     *dullRate = 0;
-    if (sameEvidFirst && getEvid(ind, recJ) == curEvid) return recJ;
-    if (nWhI == ind->whI && nCmt == ind->cmt) {
-      if (!sameEvidFirst) return recJ;
-      if (loose == -1) loose = recJ;
+    if (nWhI != ind->whI || nCmt != ind->cmt) continue;
+    if (ssLagged) {
+      if (nWh0 == EVID0_INFRM) return recJ;
+    } else if (getEvid(ind, recJ) == curEvid) {
+      return recJ;
     }
+    if (sameEvid == -1 && getEvid(ind, recJ) == curEvid) sameEvid = recJ;
+    if (loose == -1) loose = recJ;
   }
-  return loose;
+  return sameEvid != -1 ? sameEvid : loose;
 }
 
 extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {

@@ -998,6 +998,21 @@ static void etTransNoteInfPairs(const rx_translated_event& ev, int base,
 // start before a stop, or the k-th start with the k-th stop
 // (handleInfusionGetEndOfInfusionIndex()/handleInfusionStartDefault()).
 // Everywhere else the scans are right and the output is left untouched.
+// A classic internal evid (>= 100) in the input data is emitted verbatim, so its
+// start and stop records are whatever the user wrote: they may pair up, and a
+// start may have no stop at all.  Note every such record; they are paired
+// first-in-first-out below, after the pairs the translator itself emitted, and a
+// start left over is recorded as having no stop so the scans do not hand it
+// another infusion's stop (nlmixr2/rxode2#1348).
+static void etTransNoteInfClassic(int evidK, double amtK, int base,
+                                  std::vector<int>& classic) {
+  if (amtK == 0 || evidK < 100) return;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evidK, &wh, &cmt, &wh100, &whI, &wh0);
+  if (!_rxIsFixedInf(whI)) return;
+  classic.push_back(base);
+}
+
 // Would any start/stop scan mis-pair this group?  `rows` holds every output
 // row the scans see for it, in dose index order; mate[] the true pairing.
 // Infusions that start at the same time with the same rate are flagged even
@@ -1005,6 +1020,7 @@ static void etTransNoteInfPairs(const rx_translated_event& ev, int base,
 // same duration; recording the pairing there is harmless.
 static bool etTransInfGroupMispaired(const std::vector<int>& rows,
                                      const std::vector<int>& mate,
+                                     const std::vector<int>& known,
                                      const std::vector<int>& outPre,
                                      const std::vector<double>& amt) {
   // the k-th start pairs with the k-th stop after the first start
@@ -1020,10 +1036,15 @@ static bool etTransInfGroupMispaired(const std::vector<int>& rows,
     if (amt[outPre[r]] > 0) {
       int ord = kStart < (int)stops.size() ? stops[kStart] : -1;
       kStart++;
-      if (mate[r] == -1) continue;
+      if (mate[r] == -1 && !known[r]) continue;
       int fwd = -1; // first stop after the start
       for (size_t b = a + 1; b < rows.size(); ++b) {
         if (amt[outPre[rows[b]]] < 0) { fwd = rows[b]; break; }
+      }
+      // a start known to have no stop must not be handed one
+      if (mate[r] == -1) {
+        if (fwd != -1 || ord != -1) return true;
+        continue;
       }
       if (fwd != mate[r] || ord != mate[r]) return true;
     } else if (mate[r] != -1) {
@@ -1038,12 +1059,13 @@ static bool etTransInfGroupMispaired(const std::vector<int>& rows,
 }
 
 static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& pairs,
+                                        const std::vector<int>& classic,
                                         const std::vector<int>& idxOutput,
                                         const std::vector<int>& id,
                                         const std::vector<int>& evid,
                                         const std::vector<double>& amt) {
   std::vector<int> ret;
-  if (pairs.empty()) return IntegerVector(0);
+  if (pairs.empty() && classic.empty()) return IntegerVector(0);
   std::vector<int> outRow(evid.size(), -1);
   std::vector<int> outPre;
   outPre.reserve(idxOutput.size());
@@ -1053,34 +1075,44 @@ static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& p
     outPre.push_back(idxOutput[i]);
   }
   int nOut = (int)outPre.size();
-  // pairs that survived into the output, as output rows
-  std::vector<std::pair<int,int>> kept;
+  // what the translator emitted, and the classic records it passed through, as
+  // output rows.  `seed` names every group that has to be looked at.
+  std::vector<int> mate(nOut, -1), known(nOut, 0), isClassic(nOut, 0);
+  std::vector<int> seed;
   for (const auto& pr : pairs) {
     int s = outRow[pr.first], e = outRow[pr.second];
-    if (s >= 0 && e >= 0) kept.emplace_back(s, e);
+    if (s < 0 || e < 0) continue;
+    mate[s] = e; mate[e] = s;
+    known[s] = known[e] = 1;
+    seed.push_back(s);
   }
+  for (int c : classic) {
+    int r = outRow[c];
+    if (r < 0) continue;
+    isClassic[r] = 1;
+    if (amt[outPre[r]] > 0) seed.push_back(r);
+  }
+  if (seed.empty()) return IntegerVector(0);
   // group by subject, evid and rate; the output is sorted by subject
   auto key = [&](int row) {
     return std::make_tuple(id[outPre[row]], evid[outPre[row]], amt[outPre[row]]);
   };
-  std::sort(kept.begin(), kept.end(), [&](const std::pair<int,int>& a,
-                                          const std::pair<int,int>& b) {
-    auto ka = key(a.first), kb = key(b.first);
+  std::sort(seed.begin(), seed.end(), [&](int a, int b) {
+    auto ka = key(a), kb = key(b);
     if (ka != kb) return ka < kb;
-    return a.first < b.first;
+    return a < b;
   });
-  std::vector<int> rows;
-  std::vector<int> mate(nOut, -1);
+  std::vector<int> rows, pending;
   size_t g = 0;
-  while (g < kept.size()) {
+  while (g < seed.size()) {
     size_t gEnd = g + 1;
-    while (gEnd < kept.size() && key(kept[gEnd].first) == key(kept[g].first)) gEnd++;
-    int curId = id[outPre[kept[g].first]];
-    int curEvid = evid[outPre[kept[g].first]];
-    double rate = amt[outPre[kept[g].first]];
+    while (gEnd < seed.size() && key(seed[gEnd]) == key(seed[g])) gEnd++;
+    int curId = id[outPre[seed[g]]];
+    int curEvid = evid[outPre[seed[g]]];
+    double rate = amt[outPre[seed[g]]];
     // every record the scans see: this subject's records with this evid
     // carrying +rate or -rate
-    int lo = kept[g].first;
+    int lo = seed[g];
     while (lo > 0 && id[outPre[lo - 1]] == curId) lo--;
     rows.clear();
     for (int r = lo; r < nOut && id[outPre[r]] == curId; ++r) {
@@ -1089,20 +1121,29 @@ static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& p
         rows.push_back(r);
       }
     }
-    for (size_t k = g; k < gEnd; ++k) {
-      mate[kept[k].first] = kept[k].second;
-      mate[kept[k].second] = kept[k].first;
-    }
-    if (etTransInfGroupMispaired(rows, mate, outPre, amt)) {
-      for (size_t k = g; k < gEnd; ++k) {
-        ret.push_back(kept[k].first + 1);
-        ret.push_back(kept[k].second + 1);
+    // classic records the translator did not pair are paired first-in-first-out;
+    // a start with no stop left is known to have none
+    pending.clear();
+    for (int r : rows) {
+      if (!isClassic[r] || known[r]) continue;
+      if (amt[outPre[r]] > 0) {
+        pending.push_back(r);
+      } else if (!pending.empty()) {
+        int st = pending.front();
+        pending.erase(pending.begin());
+        mate[st] = r; mate[r] = st;
+        known[st] = known[r] = 1;
       }
     }
-    for (size_t k = g; k < gEnd; ++k) {
-      mate[kept[k].first] = -1;
-      mate[kept[k].second] = -1;
+    for (int r : pending) known[r] = 1; // no stop record of its own
+    if (etTransInfGroupMispaired(rows, mate, known, outPre, amt)) {
+      for (int r : rows) {
+        if (!known[r] || amt[outPre[r]] < 0) continue;
+        ret.push_back(r + 1);
+        ret.push_back(mate[r] + 1); // 0 = this start has no stop record
+      }
     }
+    for (int r : rows) { mate[r] = -1; known[r] = 0; }
     g = gEnd;
   }
   return wrap(ret);
@@ -1674,6 +1715,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> idxInput;
   idxInput.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
+  std::vector<int> infClassic;               // see etTransNoteInfClassic()
   std::vector<int> cmtF; // Final compartment
   cmtF.reserve(resSize);
   std::vector<int> dvidF;
@@ -2574,7 +2616,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           }
           ndose++;
         }
-        if (!classicEvid) etTransNoteInfPairs(ev, (int)evid.size() - ev.n, infPairs);
+        if (classicEvid) {
+          etTransNoteInfClassic(ev.evid[0], ev.amt[0],
+                                (int)evid.size() - ev.n, infClassic);
+        } else {
+          etTransNoteInfPairs(ev, (int)evid.size() - ev.n, infPairs);
+        }
         if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
           ii[ii.size() - 1] = 0.0;
         }
@@ -2747,6 +2794,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     infPairs.swap(infPairs2);
+    std::vector<int> infClassic2;
+    for (int c : infClassic) {
+      for (int m = 0; m < newCount[c]; ++m) infClassic2.push_back(newFirst[c] + m);
+    }
+    infClassic.swap(infClassic2);
     id.swap(id2);
     evid.swap(evid2);
     cmtF.swap(cmtF2);
@@ -2916,7 +2968,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   if (idxOutput.size()-rmAmt <= 0) stop(_("empty data"));
-  IntegerVector infPairAttr = etTransInfPairAttr(infPairs, idxOutput, id, evid, amt);
+  IntegerVector infPairAttr = etTransInfPairAttr(infPairs, infClassic, idxOutput,
+                                                 id, evid, amt);
   if (!keepDosingOnly) {
     nid = obsId.size();
   } else {

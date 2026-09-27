@@ -1218,6 +1218,12 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       uint64_t n;
       int *buf = sReadIntBlob(f, &n, "infPair");
       if (n > 0) {
+        // the array covers exactly the records getInfusionMateRecord() reads
+        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
+          free(buf);
+          (Rf_error)("rxRestoreState: infPair size mismatch (file: %llu, expected: %d)",
+                     (unsigned long long)n, ind->n_all_times_orig);
+        }
         infPairOff[si] = (int64_t)infPairAll.size();
         infPairAll.insert(infPairAll.end(), buf, buf + n);
       }

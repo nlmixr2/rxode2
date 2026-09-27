@@ -4418,7 +4418,13 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       int *ip = INTEGER(infPairS);
       for (int k = 0; k + 1 < Rf_length(infPairS); k += 2) {
         int s0 = ip[k] - 1, e0 = ip[k+1] - 1;
-        if (s0 < 0 || e0 < 0 || s0 >= nr || e0 >= nr || s0 == e0) continue;
+        if (s0 < 0 || s0 >= nr) continue;
+        if (ip[k+1] == 0) {
+          // a fixed-infusion start with no stop record of its own
+          _globals.ginfPair[s0] = RX_INF_UNPAIRED;
+          continue;
+        }
+        if (e0 < 0 || e0 >= nr || s0 == e0) continue;
         _globals.ginfPair[s0] = e0 - s0;
         _globals.ginfPair[e0] = s0 - e0;
       }

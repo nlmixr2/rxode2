@@ -65,8 +65,13 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
   // evid rejects those pairings and keeps every real one.  This is the pairing
   // handleInfusionGetEndOfInfusionIndex() already performs.
   int curEvid = getEvid(ind, ind->idose[l]);
-  // the pairing etTrans() recorded, when the scans below would get it wrong
-  int mate = getInfusionMateDoseNumber(ind, l);
+  // the pairing etTrans() recorded, when the scans below would get it wrong.
+  // A start it knows has no stop record reports no duration rather than taking
+  // another infusion's stop; the solver's steady-state and bioavailability
+  // paths keep their own scans, where a missing stop is already an error.
+  int unpaired = (l >= 0 && l < ind->ndoses) ?
+    isInfusionUnpaired(ind, ind->idose[l]) : 0;
+  int mate = unpaired ? -1 : getInfusionMateDoseNumber(ind, l);
   if (mate != -1 && (backward == 1 ? mate < l : mate > l)) {
     p[0] = mate;
     if (backward == 1) {
@@ -100,11 +105,12 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
     return getAllTimes(ind, ind->idose[l]) - getAllTimes(ind, ind->idose[p[0]]);
   } else {
     p[0] = l+1;
-    while (p[0] < ind->ndoses &&
+    while (!unpaired && p[0] < ind->ndoses &&
            (getDoseNumber(ind, p[0]) != -dose ||
             getEvid(ind, ind->idose[p[0]]) != curEvid)){
       p[0]++;
     }
+    if (unpaired) p[0] = ind->ndoses;
     // A scan that ran off the end must not be re-read: idose only holds ndoses
     // entries for this subject, so idose[ndoses] belongs to the next subject
     // (or is past gidose entirely for the last one) and can spuriously match.

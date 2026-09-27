@@ -246,8 +246,10 @@
   records the start/stop pairing (the `rxInfPair` attribute) for the subjects
   where the solver could not recover it, so its output changed for those
   subjects only; the `etTrans()` golden snapshots were updated for the 48
-  `nmtest` cases that gain the attribute, which are otherwise unchanged
-  (#1348).
+  `nmtest` cases that gain the attribute, which are otherwise unchanged.  An
+  infusion start written with a classic internal `evid` and no stop record of
+  its own is now reported as having no duration instead of borrowing the stop of
+  another infusion at the same rate (#1348).
 
 # rxode2 5.1.7
 

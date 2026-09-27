@@ -2,6 +2,7 @@
 #ifndef __RXODE2PARSEHANDLEVID_H___
 #define __RXODE2PARSEHANDLEVID_H___
 
+#include <limits.h>
 #include "rxode2parse.h"
 #include "rxode2EventTranslate.h"
 //#include "rxThreadData.h"
@@ -67,6 +68,17 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
   return -1;
 }
 
+// ind->infPair entry for a fixed-infusion start etTrans() knows has no stop
+// record -- a classic internal evid written straight into the data.  The scans
+// would otherwise hand it the stop of another infusion at the same rate.
+#define RX_INF_UNPAIRED INT_MIN
+
+// Is record `i` a fixed-infusion start known to have no stop record?
+static inline int isInfusionUnpaired(rx_solving_options_ind *ind, int i) {
+  if (ind->infPair == NULL || i < 0 || i >= ind->n_all_times_orig) return 0;
+  return ind->infPair[i] == RX_INF_UNPAIRED;
+}
+
 // Record that starts/stops the same fixed rate/duration infusion as record
 // `i`, or -1 when etTrans() recorded no pairing for it.  Two infusions into
 // one compartment at the same rate have records that differ only in time, so
@@ -76,7 +88,7 @@ static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
 static inline int getInfusionMateRecord(rx_solving_options_ind *ind, int i) {
   if (ind->infPair == NULL || i < 0 || i >= ind->n_all_times_orig) return -1;
   int off = ind->infPair[i];
-  if (off == 0) return -1;
+  if (off == 0 || off == RX_INF_UNPAIRED) return -1;
   int m = i + off;
   if (m < 0 || m >= ind->n_all_times_orig) return -1;
   if (getEvid(ind, m) != getEvid(ind, i) || getDose(ind, m) != -getDose(ind, i)) return -1;
