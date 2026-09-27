@@ -1065,11 +1065,8 @@ rxTest({
     expect_false(isTRUE(all.equal(r1[[1]], r2[[1]])))
   })
 
-  ## A spec must not need rxode2's DLL to be freed: it can outlive
-  ## unloadNamespace("rxode2"), which unloads the DLL (nlmixr2est fits keep
-  ## theirs).  This only catches a regression where the DLL is really
-  ## unmapped (Windows, macOS, or a Linux build with -fno-gnu-unique); GCC
-  ## builds otherwise keep it mapped through GNU-unique symbols.
+  ## A spec outliving unloadNamespace("rxode2") must be freeable without the
+  ## DLL; only detectable where the DLL really unmaps (not Linux GCC builds).
   test_that("a prior spec can be freed after rxode2 is unloaded", {
     skip_on_cran()
     skipIfOldLotri()
