@@ -42,6 +42,93 @@ rxTest({
     z = gg(x, y)
   })
 
+  test_that("user functions in calling frames resolve for models built in rxode2", {
+    .solveModel <- function(data) {
+      udfFrameFun <- function(x, y) {
+        x + 2 * y
+      }
+      .m <- rxode2({
+        z <- udfFrameFun(x, y)
+      })
+      suppressWarnings(rxSolve(.m, data))
+    }
+    .d <- .solveModel(e)
+    expect_equal(.d$z, .d$x + 2 * .d$y)
+    udfFrameFun2 <- function(x, y) {
+      x + 3 * y
+    }
+    .uiFun <- function() {
+      ini({
+        t1 <- 1
+      })
+      model({
+        z <- udfFrameFun2(x, y) * t1
+      })
+    }
+    .solveUi <- function(data) {
+      suppressWarnings(rxSolve(rxode2(.uiFun), data))
+    }
+    .d <- .solveUi(e)
+    expect_equal(.d$z, .d$x + 3 * .d$y)
+  })
+
+  test_that(".udfIsRxFrame() tells rxode2's own frames from user frames", {
+    .frames <- list(new.env(), new.env(), new.env())
+    .userFun <- function() NULL # defined here, so topenv() is rxode2's namespace
+    # (a) the frame of a function of the rxode2 namespace
+    expect_true(.udfIsRxFrame(1L, .frames, 0L, list(rxSolve)))
+    # (b) the frame of a closure made in such a frame
+    .lambda <- function() NULL
+    environment(.lambda) <- .frames[[1]]
+    expect_true(.udfIsRxFrame(2L, .frames, c(0L, 1L), list(rxSolve, .lambda)))
+    # (c) base helpers called from rxode2 code, but not from user code
+    for (.b in list(lapply, vapply, do.call)) {
+      expect_true(.udfIsRxFrame(2L, .frames, c(0L, 1L), list(rxSolve, .b)))
+      expect_false(.udfIsRxFrame(2L, .frames, c(0L, 1L), list(.userFun, .b)))
+    }
+    # a function defined in a test file
+    expect_false(.udfIsRxFrame(1L, .frames, 0L, list(.userFun)))
+    # a user function that rxode2 calls back into
+    expect_false(.udfIsRxFrame(3L, .frames, c(0L, 1L, 2L), list(rxSolve, lapply, .userFun)))
+    # a frame that sys.parents() gives as its own parent (rlang::eval_tidy())
+    expect_false(.udfIsRxFrame(2L, .frames, c(0L, 2L), list(rxSolve, lapply)))
+  })
+
+  test_that("`$` from rxode2 code under rlang::eval_tidy() returns", {
+    skip_if_not_installed("rlang")
+    .ui <- rxode2(function() {
+      ini({
+        t1 <- 1
+      })
+      model({
+        z <- t1
+      })
+    })
+    # the walk up the stack used to loop on eval_tidy()'s self-parented frame
+    setTimeLimit(elapsed = 60, transient = TRUE)
+    on.exit(setTimeLimit(elapsed = Inf), add = TRUE)
+    .ret <- rlang::eval_tidy(rlang::quo(suppressMessages(ini(.ui, t1 = 2))))
+    expect_equal(.ret$theta[["t1"]], 2)
+  })
+
+  test_that("`$` keeps the frame of a function defined in a test file", {
+    .ui <- rxode2(function() {
+      ini({
+        t1 <- 1
+      })
+      model({
+        z <- t1
+      })
+    })
+    .acc <- new.env()
+    .read <- function(ui) {
+      .acc$frame <- environment()
+      invisible(ui$iniDf)
+    }
+    .read(.ui)
+    expect_true(any(vapply(.udfEnv$searchList, identical, logical(1), .acc$frame)))
+  })
+
   test_that("udf1 works well", {
     expect_warning(rxSolve(f, e))
 

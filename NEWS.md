@@ -242,6 +242,11 @@
   while rxode2 is still loaded; before, it stayed in memory after
   `unloadNamespace("rxode2")`.
 
+- `$` on a rxUi no longer keeps rxode2's own call frames (like
+  `rxPriorLogDensity()`'s) alive for finding user defined functions; it
+  records the nearest frames outside rxode2 instead, so what those internal
+  frames held is freed once they return.
+
 # rxode2 5.1.7
 
 ## New features

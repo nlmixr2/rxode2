@@ -184,6 +184,37 @@ rxTest({
     )
   })
 
+  test_that("rxode2's own frames are not kept for finding user functions", {
+    skipIfOldLotri()
+    .ui <- rxUiDecompress(rxode2(function() {
+      ini({
+        tka <- 0.45
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka)
+        cp <- ka
+        cp ~ add(add.sd)
+      })
+    }))
+    .ini <- .ui$iniDf
+    .ini$prior <- NA_character_
+    .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
+    assign("iniDf", .ini, envir = .ui)
+    # theta is held only by rxPriorLogDensity()'s own frame, which reads ui$iniDf
+    .acc <- new.env()
+    .acc$freed <- FALSE
+    .onFree <- function(e) .acc$freed <- TRUE
+    .marked <- function() {
+      .e <- new.env()
+      reg.finalizer(.e, .onFree)
+      structure(c(tka = 0.1, add.sd = 0.5), marker = .e)
+    }
+    invisible(rxPriorLogDensity(.ui, theta = .marked()))
+    invisible(gc())
+    expect_true(.acc$freed)
+  })
+
   test_that("repeated translation does not grow process memory", {
     .rxSkipUnlessMemoryTest()
     .model <- "d/dt(rssTest) = -kRssTest*rssTest;\n"

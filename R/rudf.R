@@ -232,6 +232,79 @@ rxRmFunParse <- function(name) {
   invisible()
 }
 
+#' Whether a stack frame is rxode2's own (never where user functions live)
+#'
+#' (a) A frame of a function of the rxode2 namespace, (b) of a closure made in
+#' such a frame, or (c) of a base function (like `lapply()`) called from one.
+#' Not `topenv()`, which is rxode2's namespace for test code too.
+#'
+#' @param i frame number to classify
+#' @param frames,parents `sys.frames()` and `sys.parents()` for the stack
+#' @param fns list of the stack's functions (`sys.function()`), or `NULL` to
+#'   look them up as needed
+#' @return logical
+#' @noRd
+.udfIsRxFrame <- function(i, frames, parents, fns = NULL) {
+  .env <- environment(if (is.null(fns)) sys.function(i) else fns[[i]])
+  if (is.null(.env)) {
+    return(FALSE)
+  }
+  if (identical(.env, parent.env(environment()))) {
+    return(TRUE)
+  }
+  if (identical(.env, .BaseNamespaceEnv)) {
+    return(parents[i] > 0L && parents[i] < i &&
+      .udfIsRxFrame(parents[i], frames, parents, fns))
+  }
+  if (isNamespace(.env) || identical(.env, globalenv())) {
+    return(FALSE)
+  }
+  for (.j in seq_len(i - 1L)) {
+    if (identical(frames[[.j]], .env)) {
+      return(.udfIsRxFrame(.j, frames, parents, fns))
+    }
+  }
+  FALSE
+}
+
+#' Frames `$.rxUi` records for finding user functions
+#'
+#' Its caller and the caller's caller, each moved up past rxode2's own frames
+#' (`.udfIsRxFrame()`); `f1` and `f2` where `sys.parents()` stops decreasing
+#' (as under `rlang::eval_tidy()`).
+#'
+#' @param n frame number of the `$.rxUi` call
+#' @param f1,f2 `parent.frame(1)` and `parent.frame(2)` of that call
+#' @return list of two environments
+#' @noRd
+.udfUserFrames <- function(n, f1, f2) {
+  .frames <- sys.frames()
+  .parents <- sys.parents()
+  .p <- c(.parents[n], 0L)
+  if (.p[1] >= n) {
+    return(list(f1, f2))
+  }
+  while (.p[1] > 0L && .udfIsRxFrame(.p[1], .frames, .parents)) {
+    if (.parents[.p[1]] >= .p[1]) {
+      return(list(f1, f2))
+    }
+    .p[1] <- .parents[.p[1]]
+  }
+  if (.p[1] > 0L) {
+    .p[2] <- .parents[.p[1]]
+  }
+  while (.p[2] > 0L && .udfIsRxFrame(.p[2], .frames, .parents)) {
+    if (.parents[.p[2]] >= .p[2]) {
+      return(list(f1, f2))
+    }
+    .p[2] <- .parents[.p[2]]
+  }
+  list(
+    if (.p[1] > 0L) .frames[[.p[1]]] else globalenv(),
+    if (.p[2] > 0L) .frames[[.p[2]]] else globalenv()
+  )
+}
+
 #' Setup the UDF environment (for querying user defined functions)
 #'
 #' @param env environment where user defined functions are queried. If NULL return current environment
