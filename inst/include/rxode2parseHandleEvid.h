@@ -113,6 +113,13 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 																											 rx_solve *rx,
                                                        rx_solving_options *op,
 																											 rx_solving_options_ind *ind) {
+	// the pairing etTrans() recorded, else the ordinal scan below.  A start
+	// etTrans() marked as having no stop record (RX_INF_UNPAIRED) still falls
+	// through to that scan: here -1 means the steady-state solve fails
+	// (wrongSSDur, src/par_solve.cpp), so a classic steady-state infusion record
+	// written without a stop keeps the duration the scan gives it rather than
+	// turning data that solves today into a bad solve.  Only the reporting paths
+	// (_getDur(), rxDfInfusionStop()) honour the marker.
 	*infEixds = getInfusionMateDoseNumber(ind, idx);
 	if (*infEixds > idx) return;
 	int curEvid = getEvid(ind, ind->idose[idx]);
