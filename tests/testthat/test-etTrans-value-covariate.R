@@ -63,4 +63,18 @@ rxTest({
     expect_equal(sValue$central, sAmt$central)
     expect_true(all(sAmt$central[-1] > 0))
   })
+
+  test_that("a value covariate with an EVID column still solves (#1386)", {
+    d <- data.frame(ID = 1L, TIME = 1:4, EVID = 0L, value = c(1, 2, 3, 4))
+    m <- function() {
+      ini({
+        a <- 1
+      })
+      model({
+        y <- a * value
+      })
+    }
+    s <- rxSolve(m, d, returnType = "data.frame")
+    expect_equal(s$y, d$value)
+  })
 })
