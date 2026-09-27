@@ -264,6 +264,21 @@ rxRmFunParse <- function(name) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
 }
+
+#' Release every environment kept for finding user defined functions
+#'
+#' Run by `.onUnload()` before its `gc()`, so the call frames these pin
+#' can be collected while rxode2 is still loaded.
+#'
+#' @return Nothing, called for side effects
+#' @noRd
+.udfEnvRelease <- function() {
+  .udfEnvReset()
+  .udfEnv$envir <- NULL
+  .udfEnv$envList <- list()
+  .udfEnv$bestFun <- NULL
+  .udfEnv$bestFunEnv <- NULL
+}
 #' See if the UI function exists in given environment.
 #'
 #' If other functions have been declared, make sure they exist too.

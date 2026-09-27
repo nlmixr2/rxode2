@@ -237,6 +237,11 @@
   chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
   an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
+- Unloading rxode2 now releases the call frames it keeps for finding user
+  defined functions before its final `gc()`, so what they hold is freed
+  while rxode2 is still loaded; before, it stayed in memory after
+  `unloadNamespace("rxode2")`.
+
 # rxode2 5.1.7
 
 ## New features

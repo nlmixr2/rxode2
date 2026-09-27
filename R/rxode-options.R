@@ -221,6 +221,7 @@
 .onUnload <- function(libpath) {
   ## nocov start
   rxUnloadAll()
+  .udfEnvRelease()
   gc() # Force garbage collection finalization
   library.dynam.unload("rxode2", libpath)
   ## nocov end
