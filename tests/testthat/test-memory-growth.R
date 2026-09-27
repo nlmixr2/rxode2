@@ -128,9 +128,8 @@ rxTest({
     })
   })
 
-  ## Unloading must release the frames kept for finding user functions before
-  ## .onUnload()'s gc(), so what they hold is collected while rxode2 is still
-  ## loaded.  Runs in a child process, since it unloads rxode2.
+  ## .onUnload() must release the frames kept for finding user functions
+  ## before its gc(); runs in a child process, since it unloads rxode2.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
