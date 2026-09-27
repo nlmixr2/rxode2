@@ -1000,6 +1000,9 @@ static void etTransNoteInfPairs(const rx_translated_event& ev, int base,
 // Everywhere else the scans are right and the output is left untouched.
 // Would any start/stop scan mis-pair this group?  `rows` holds every output
 // row the scans see for it, in dose index order; mate[] the true pairing.
+// Infusions that start at the same time with the same rate are flagged even
+// though their records are indistinguishable and any pairing of them gives the
+// same duration; recording the pairing there is harmless.
 static bool etTransInfGroupMispaired(const std::vector<int>& rows,
                                      const std::vector<int>& mate,
                                      const std::vector<int>& outPre,

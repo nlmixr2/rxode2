@@ -64,6 +64,19 @@ rxTest({
     expect_equal(.d$rate, c(10, 10))
   })
 
+  test_that("a steady-state infusion's dosing record keeps its own amount", {
+    # the stop record of the 50 mg infusion carries the same rate and
+    # compartment as the steady-state start, and only the internal evid tells
+    # them apart
+    .ev <- et(amt = 100, rate = 10, cmt = "a", time = 0, ss = 1, ii = 12) |>
+      et(amt = 50, rate = 10, cmt = "a", time = 1) |>
+      et(seq(0, 12, by = 2))
+    .s <- as.data.frame(rxSolve(.m, .ev, addDosing = TRUE))
+    .d <- .s[!is.na(.s$amt) & .s$amt > 0, ]
+    expect_equal(.d$amt, c(100, 50))
+    expect_equal(.d$dd, c(100, 50))
+  })
+
   test_that("the pairing is recorded only where the scans would get it wrong", {
     .t <- etTrans(.nested, .m)
     .p <- attr(.t, "rxInfPair")

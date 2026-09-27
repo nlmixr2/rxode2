@@ -133,6 +133,36 @@ static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
   return R_NilValue;
 }
 
+// Record that stops the fixed rate/duration infusion the output row `i` starts,
+// or -1 when none is found.  Prefers the pairing etTrans() recorded
+// (nlmixr2/rxode2#1348), then the first stop record carrying the same internal
+// evid -- which is the one the translator emitted for this start -- and only
+// then the historical scan, which matches the rate type and compartment alone
+// and so can land on a steady-state or otherwise differently flagged record.
+static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
+                                   double curAmt, int *dullRate) {
+  int cur = ind->ix[i];
+  int mate = getInfusionMateRecord(ind, cur);
+  if (mate != -1) {
+#pragma omp atomic write
+    *dullRate = 0;
+    return mate;
+  }
+  int curEvid = getEvid(ind, cur);
+  int loose = -1;
+  for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
+    if (getDoseNumber(ind, jjj) != -curAmt) continue;
+    int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
+    int recJ = ind->idose[jjj];
+    getWh(getEvid(ind, recJ), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+#pragma omp atomic write
+    *dullRate = 0;
+    if (getEvid(ind, recJ) == curEvid) return recJ;
+    if (loose == -1 && nWhI == ind->whI && nCmt == ind->cmt) loose = recJ;
+  }
+  return loose;
+}
+
 extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
   int totN = rx->factorNames.n;
   int base = 0, curLen= rx->factorNs[0], curG=0;
@@ -958,23 +988,9 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                   colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
                   double curDur = 0.0;
-                  int mateRec = getInfusionMateRecord(ind, ind->ix[i]);
+                  int mateRec = rxDfInfusionStop(ind, i, di_p, curAmt_r, &dullRate);
                   if (mateRec != -1) {
-#pragma omp atomic write
-                    dullRate = 0;
                     curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
-                  }
-                  for (int jjj = di_p; mateRec == -1 && jjj < ind->ndoses; jjj++) {
-                    if (getDoseNumber(ind, jjj) == -curAmt_r) {
-                      int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
-                      getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-#pragma omp atomic write
-                      dullRate = 0;
-                      if (nWhI == ind->whI && nCmt == ind->cmt) {
-                        curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
-                        break;
-                      }
-                    }
                   }
                   colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
                   colR[jj_p][ii] = NA_REAL;            jj_p++;
@@ -989,23 +1005,9 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                   colR[jj_p][ii] = NA_REAL; jj_p++;
                 } else {
                   double curDur = 0.0;
-                  int mateRec = getInfusionMateRecord(ind, ind->ix[i]);
+                  int mateRec = rxDfInfusionStop(ind, i, di_p, curAmt_r, &dullRate);
                   if (mateRec != -1) {
-#pragma omp atomic write
-                    dullRate = 0;
                     curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
-                  }
-                  for (int jjj = di_p; mateRec == -1 && jjj < ind->ndoses; jjj++) {
-                    if (getDoseNumber(ind, jjj) == -curAmt_r) {
-                      int nWh=0, nCmt=0, nWh100=0, nWhI=0, nWh0=0;
-                      getWh(getEvid(ind, ind->idose[jjj]), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-#pragma omp atomic write
-                      dullRate = 0;
-                      if (nWhI == ind->whI && nCmt == ind->cmt) {
-                        curDur = getTime_(ind->idose[jjj], ind) - getTime_(ind->ix[i], ind);
-                        break;
-                      }
-                    }
                   }
                   colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
                   colR[jj_p][ii] = curAmt_r;           jj_p++;
