@@ -237,6 +237,11 @@
   chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
   an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
+- A prior spec from `rxPriorBuildSpec()` (which nlmixr2est fits with priors
+  keep) is now freed by R with its external pointer instead of by a finalizer
+  in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer
+  crashes R where the DLL is actually unloaded, as on Windows.
+
 # rxode2 5.1.7
 
 ## New features
