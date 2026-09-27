@@ -4413,7 +4413,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       _globals.ginfPair = (int*)calloc(nr, sizeof(int));
       if (_globals.ginfPair == NULL){
         rxSolveFree();
-        stop(_("can not allocate enough memory to load 'evid'"));
+        stop(_("can not allocate enough memory to load infusion pairing"));
       }
       int *ip = INTEGER(infPairS);
       for (int k = 0; k + 1 < Rf_length(infPairS); k += 2) {
