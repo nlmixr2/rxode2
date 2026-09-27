@@ -237,6 +237,11 @@
   chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
   an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
+- A model whose R user functions are in a different environment from those
+  of the model built before it no longer fails with "user function not
+  found": the user functions a model must find in one environment are now
+  reset at the start of each parse.
+
 # rxode2 5.1.7
 
 ## New features

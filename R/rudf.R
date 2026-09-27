@@ -471,13 +471,16 @@ rxRmFunParse <- function(name) {
 }
 #' Reset the tracking of user defined functions
 #'
-#' This is called during parsing reset
+#' This is called during parsing reset, so the user functions a model needs
+#' in one environment (`.udfEnv$fun`) are those of the model being parsed,
+#' not of the models parsed before it.
 #'
 #' @return Nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
 .udfReset <- function() {
   .udfEnv$udf <- integer(0)
+  .udfEnv$fun <- list()
 }
 
 #' This gets the user defined functions information for incorporation
