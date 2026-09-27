@@ -250,6 +250,10 @@
   infusion start written with a classic internal `evid` and no stop record of
   its own is now reported as having no duration instead of borrowing the stop of
   another infusion at the same rate (#1348).
+- A prior spec from `rxPriorBuildSpec()` (which nlmixr2est fits with priors
+  keep) is now freed by R with its external pointer instead of by a finalizer
+  in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer
+  crashes R where the DLL is actually unloaded, as on Windows (#1406).
 
 # rxode2 5.1.7
 

@@ -1065,6 +1065,64 @@ rxTest({
     expect_false(isTRUE(all.equal(r1[[1]], r2[[1]])))
   })
 
+  ## A spec outliving unloadNamespace("rxode2") must be freeable without the
+  ## DLL; only detectable where the DLL really unmaps (not Linux GCC builds).
+  test_that("a prior spec can be freed after rxode2 is unloaded", {
+    skip_on_cran()
+    skipIfOldLotri()
+    if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
+      skip("the child process loads the installed rxode2")
+    }
+    .script <- tempfile(fileext = ".R")
+    on.exit(unlink(.script), add = TRUE)
+    writeLines(
+      c(
+        sprintf(".libPaths(%s)", paste(deparse(.libPaths()), collapse = "")),
+        "suppressMessages(library(rxode2))",
+        "u <- rxUiDecompress(rxode2(function() {",
+        "  ini({",
+        "    tka <- 0.45",
+        "    tcl <- 1",
+        "    tv <- 3.45",
+        "    eta.cl + eta.v ~ c(0.3, 0.01, 0.1)",
+        "    eta.ka ~ 0.6",
+        "    add.sd <- 0.7",
+        "  })",
+        "  model({",
+        "    ka <- exp(tka + eta.ka)",
+        "    cl <- exp(tcl + eta.cl)",
+        "    v <- exp(tv + eta.v)",
+        "    linCmt() ~ add(add.sd)",
+        "  })",
+        "}))",
+        ".ini <- u$iniDf",
+        ".ini$prior <- NA_character_",
+        ".ini$prior[.ini$name == 'tka'] <- 'dnorm(0, 10)'",
+        "assign('iniDf', .ini, envir = u)",
+        "spec <- rxPriorBuildSpec(u)",
+        "invisible(rxPriorLogDensity(u, theta = c(tka = 0.1, add.sd = 0.5)))",
+        "unloadNamespace('rxode2')",
+        "rm(spec)",
+        "invisible(gc())",
+        "cat('RXODE2-OK\\n')"
+      ),
+      .script
+    )
+    .out <- suppressWarnings(
+      system2(
+        file.path(R.home("bin"), "Rscript"),
+        args = c("--vanilla", shQuote(.script)),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+    )
+    .status <- attr(.out, "status")
+    .info <- paste(utils::tail(.out, 15), collapse = "\n")
+    # a finalizer left in the unloaded DLL crashes at gc() or at exit
+    expect_true(any(grepl("RXODE2-OK", .out, fixed = TRUE)), info = .info)
+    expect_true(is.null(.status) || identical(as.integer(.status), 0L), info = .info)
+  })
+
   ## rxPriorOmegaToCholOmegaInvGrad(): chain-rules a raw-omega-scale
   ## gradient into FOCEI's chol(Omega^-1) parameterization. Cross-checked
   ## against a central-difference numeric gradient of the *whole*
