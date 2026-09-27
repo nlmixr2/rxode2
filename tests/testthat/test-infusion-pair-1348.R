@@ -110,8 +110,13 @@ rxTest({
       d/dt(a) <- -k * a
       dd <- dose()
     })
-    .s <- as.data.frame(rxSolve(.mp, c(k = 0.1), .nested, nStud = 3,
-                                thetaMat = matrix(0.001, dimnames = list("k", "k"))))
+    .s <- as.data.frame(rxSolve(
+      .mp,
+      c(k = 0.1),
+      .nested,
+      nStud = 3,
+      thetaMat = matrix(0.001, dimnames = list("k", "k"))
+    ))
     expect_equal(.s$dd[.s$time == 0], rep(100, 3))
     expect_equal(.s$dd[.s$time == 1], rep(50, 3))
   })

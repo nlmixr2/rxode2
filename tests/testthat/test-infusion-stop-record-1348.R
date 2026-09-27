@@ -78,10 +78,12 @@ rxTest({
     # data infusion, exactly as when each is given on its own
     .both <- .s2$a[.s2$time %in% c(3, 6) & .s2$evid == 0]
     .a1 <- as.data.frame(rxSolve(.m, .lone))
-    .a2 <- as.data.frame(rxSolve(.m, et(amt = 50, rate = 10, cmt = "a", time = 1) |>
-                                   et(seq(0, 6, by = 3))))
-    expect_equal(.both, .a1$a[.a1$time %in% c(3, 6)] + .a2$a[.a2$time %in% c(3, 6)],
-                 tolerance = 1e-5)
+    .a2 <- as.data.frame(rxSolve(
+      .m,
+      et(amt = 50, rate = 10, cmt = "a", time = 1) |>
+        et(seq(0, 6, by = 3))
+    ))
+    expect_equal(.both, .a1$a[.a1$time %in% c(3, 6)] + .a2$a[.a2$time %in% c(3, 6)], tolerance = 1e-5)
   })
 
   test_that("classic-evid infusion records that pair up are left alone", {
