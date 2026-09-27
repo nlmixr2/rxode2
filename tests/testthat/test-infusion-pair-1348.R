@@ -77,6 +77,31 @@ rxTest({
     expect_equal(.d$dd, c(100, 50))
   })
 
+  test_that("a steady-state dose into a lagged compartment keeps its INFRM stop", {
+    # this is the one start whose stop record carries a DIFFERENT internal evid
+    # (the INFRM record of the steady-state expansion), so it must not be paired
+    # with a same-evid record further down the event table
+    .ml <- rxode2({
+      alag(a) <- 0.5
+      d/dt(a) <- -0.1 * a
+      dd <- dose()
+    })
+    .ev <- et(amt = 100, rate = 10, cmt = "a", time = 0, ss = 1, ii = 12) |>
+      et(seq(0, 12, by = 4))
+    .d <- as.data.frame(rxSolve(.ml, .ev, addDosing = TRUE))
+    .d <- .d[!is.na(.d$amt) & .d$amt > 0, ]
+    expect_equal(.d$amt, c(5, 100))
+    # a hand-encoded record sharing the steady-state record's evid must not
+    # displace that INFRM stop
+    .ev <- et(amt = 100, rate = 10, cmt = "a", time = 0, ss = 1, ii = 12) |>
+      et(time = 1, evid = 10109, amt = 10) |>
+      et(time = 2, evid = 10109, amt = -10) |>
+      et(seq(0, 12, by = 4))
+    .d <- as.data.frame(rxSolve(.ml, .ev, addDosing = TRUE))
+    .d <- .d[!is.na(.d$amt) & .d$amt > 0, ]
+    expect_equal(.d$amt, c(5, 100, 10))
+  })
+
   test_that("the pairing is recorded only where the scans would get it wrong", {
     .t <- etTrans(.nested, .m)
     .p <- attr(.t, "rxInfPair")

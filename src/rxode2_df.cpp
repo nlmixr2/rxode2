@@ -134,11 +134,14 @@ static SEXP rxRepFromFirstSim(SEXP col, int rowsPerSim, int nsim) {
 }
 
 // Record that stops the fixed rate/duration infusion the output row `i` starts,
-// or -1 when none is found.  Prefers the pairing etTrans() recorded
-// (nlmixr2/rxode2#1348), then the first stop record carrying the same internal
-// evid -- which is the one the translator emitted for this start -- and only
-// then the historical scan, which matches the rate type and compartment alone
-// and so can land on a steady-state or otherwise differently flagged record.
+// or -1 when none is found.  First the pairing etTrans() recorded
+// (nlmixr2/rxode2#1348); then the first stop carrying the same internal evid,
+// which is the one the translator emitted for this start, so it is preferred
+// over the historical scan below -- that matches the rate type and compartment
+// alone and took the stop of a differently flagged infusion at the same rate.
+// A steady-state dose into a compartment with a modeled alag() is the one start
+// whose partner has a DIFFERENT evid (the INFRM record, see
+// _rxTranslateSsLagDoseInto()), so there the historical scan still leads.
 static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
                                    double curAmt, int *dullRate) {
   int cur = ind->ix[i];
@@ -149,6 +152,9 @@ static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
     return mate;
   }
   int curEvid = getEvid(ind, cur);
+  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
+  getWh(curEvid, &wh, &cmt, &wh100, &whI, &wh0);
+  int sameEvidFirst = (wh0 != EVID0_SS0 && wh0 != EVID0_SS20);
   int loose = -1;
   for (int jjj = di_p; jjj < ind->ndoses; jjj++) {
     if (getDoseNumber(ind, jjj) != -curAmt) continue;
@@ -157,8 +163,11 @@ static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
     getWh(getEvid(ind, recJ), &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
 #pragma omp atomic write
     *dullRate = 0;
-    if (getEvid(ind, recJ) == curEvid) return recJ;
-    if (loose == -1 && nWhI == ind->whI && nCmt == ind->cmt) loose = recJ;
+    if (sameEvidFirst && getEvid(ind, recJ) == curEvid) return recJ;
+    if (nWhI == ind->whI && nCmt == ind->cmt) {
+      if (!sameEvidFirst) return recJ;
+      if (loose == -1) loose = recJ;
+    }
   }
   return loose;
 }
