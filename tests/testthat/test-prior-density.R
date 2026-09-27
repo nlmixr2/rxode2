@@ -621,8 +621,204 @@ rxTest({
 
   test_that("an unsupported distribution is a clear error, not a silent wrong value", {
     skipIfOldLotri()
-    u <- .withPrior(.base(), "tka", "dgamma(2, 1)")
+    u <- .withPrior(.base(), "tka", "wiener(1, 0.1, 0.5, 0.2)")
     expect_error(rxPriorLogDensity(u), "not yet evaluated")
+  })
+
+  ## lotri's univariate continuous families (nlmixr2/rxode2#1387): each is
+  ## checked against an independent R density and a central difference
+  .uniCases <- list(
+    list("dbeta(2, 3)", 0.3, function(x) dbeta(x, 2, 3, log = TRUE)),
+    list("dgamma(2, 1.5)", 0.7, function(x) dgamma(x, 2, 1.5, log = TRUE)),
+    list("dlnorm(0.2, 0.8)", 1.3, function(x) dlnorm(x, 0.2, 0.8, log = TRUE)),
+    list("dexp(2)", 0.4, function(x) dexp(x, 2, log = TRUE)),
+    list("dunif(0, 2)", 0.4, function(x) dunif(x, 0, 2, log = TRUE)),
+    list("dweibull(2, 1.3)", 0.9, function(x) dweibull(x, 2, 1.3, log = TRUE)),
+    list("dlogis(0.2, 1.1)", 0.9, function(x) dlogis(x, 0.2, 1.1, log = TRUE)),
+    list("studentT(3, 0.5, 2)", 1.7, function(x) dt((x - 0.5) / 2, 3, log = TRUE) - log(2)),
+    list("dchisq(3)", 1.7, function(x) dchisq(x, 3, log = TRUE)),
+    list("invChiSquare(3)", 1.7, function(x) dgamma(1 / x, 1.5, 0.5, log = TRUE) - 2 * log(x)),
+    list("scaledInvChiSquare(3, 0.7)", 1.7, function(x) dgamma(1 / x, 1.5, 3 * 0.49 / 2, log = TRUE) - 2 * log(x)),
+    list("invGamma(2, 1.2)", 1.7, function(x) dgamma(1 / x, 2, 1.2, log = TRUE) - 2 * log(x)),
+    list("frechet(2, 1.2)", 1.7, function(x) log(2 / 1.2) - 3 * log(x / 1.2) - (x / 1.2)^-2),
+    list("rayleigh(1.2)", 1.7, function(x) log(x / 1.44) - x^2 / (2 * 1.44)),
+    list("pareto(0.5, 2)", 1.7, function(x) log(2 * 0.5^2) - 3 * log(x)),
+    list("paretoType2(0.1, 1.5, 2)", 1.7, function(x) log(2 / 1.5) - 3 * log1p((x - 0.1) / 1.5)),
+    list("betaProportion(0.3, 5)", 0.4, function(x) dbeta(x, 1.5, 3.5, log = TRUE)),
+    list("doubleExponential(0.2, 1.1)", 0.9, function(x) -log(2.2) - abs(x - 0.2) / 1.1),
+    list("gumbel(0.2, 1.1)", 0.9, function(x) {
+      z <- (x - 0.2) / 1.1
+      -log(1.1) - z - exp(-z)
+    }),
+    list("skewDoubleExponential(0.2, 1.1, 0.3)", 0.9, function(x) log(2 * 0.3 * 0.7 / 1.1) - 2 * 0.3 * (x - 0.2) / 1.1),
+    list("skewDoubleExponential(0.2, 1.1, 0.3)", -0.9, function(x) {
+      log(2 * 0.3 * 0.7 / 1.1) - 2 * 0.7 * (0.2 - x) / 1.1
+    }),
+    list("expModNormal(0.2, 1.1, 0.8)", 0.9, function(x) {
+      log(0.8) +
+        0.8 * (0.2 + 0.5 * 0.8 * 1.21 - x) +
+        pnorm((0.2 + 0.8 * 1.21 - x) / 1.1, lower.tail = FALSE, log.p = TRUE)
+    }),
+    ## deep in the tail, where erfc() itself underflows
+    list("expModNormal(0.2, 1.1, 0.8)", -60, function(x) {
+      log(0.8) +
+        0.8 * (0.2 + 0.5 * 0.8 * 1.21 - x) +
+        pnorm((0.2 + 0.8 * 1.21 - x) / 1.1, lower.tail = FALSE, log.p = TRUE)
+    }),
+    list("skewNormal(0.2, 1.1, 2)", 0.9, function(x) {
+      z <- (x - 0.2) / 1.1
+      log(2) + dnorm(z, log = TRUE) - log(1.1) + pnorm(2 * z, log.p = TRUE)
+    }),
+    list("skewNormal(0.2, 1.1, 2)", -8, function(x) {
+      z <- (x - 0.2) / 1.1
+      log(2) + dnorm(z, log = TRUE) - log(1.1) + pnorm(2 * z, log.p = TRUE)
+    }),
+    list("vonMises(0.2, 1.1)", 0.9, function(x) 1.1 * cos(x - 0.2) - log(2 * pi * besselI(1.1, 0)))
+  )
+
+  for (.case in .uniCases) {
+    local({
+      .prior <- .case[[1]]
+      .x <- .case[[2]]
+      .ref <- .case[[3]]
+      test_that(paste0(.prior, " at ", .x, " matches its R density and numeric gradient"), {
+        skipIfOldLotri()
+        u <- .withPrior(.base(), "tka", .prior)
+        r <- rxPriorLogDensity(u, theta = c(tka = .x))
+        expect_equal(r$value, .ref(.x), tolerance = 1e-10)
+        g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(tka = x))$value, .x)
+        expect_equal(unname(r$gradTheta["tka"]), g, tolerance = 1e-6)
+      })
+    })
+  }
+
+  test_that("every univariate family in the issue builds a spec through real ini() syntax", {
+    skipIfOldLotri()
+    for (.prior in c(
+      "dbeta(2, 2)",
+      "dgamma(2, 1)",
+      "dlnorm(0, 1)",
+      "dexp(1)",
+      "dunif(0, 1)",
+      "dweibull(2, 1)",
+      "dlogis(0, 1)",
+      "studentT(3, 0, 1)"
+    )) {
+      f <- eval(str2lang(sprintf(
+        "function() { ini({ p1 <- 0.5; prior(p1) ~ %s }); model({ a <- p1 }) }",
+        .prior
+      )))
+      u <- suppressMessages(rxode2(f))
+      expect_true(inherits(rxPriorBuildSpec(u), "externalptr"), info = .prior)
+      expect_true(is.finite(rxPriorLogDensity(u, theta = c(p1 = 0.5))$value), info = .prior)
+    }
+  })
+
+  test_that("a univariate family is truncated to the parameter's own bounds", {
+    skipIfOldLotri()
+    ## add.sd's lower bound 0 is gamma's own support edge: no correction
+    u <- .withPrior(.base(), "add.sd", "dgamma(2, 1.5)")
+    expect_equal(rxPriorLogDensity(u, theta = c(add.sd = 0.7))$value, dgamma(0.7, 2, 1.5, log = TRUE))
+    ## a half-logistic / half-t on a positive parameter
+    u <- .withPrior(.base(), "add.sd", "dlogis(0.2, 1.1)")
+    expect_equal(
+      rxPriorLogDensity(u, theta = c(add.sd = 0.9))$value,
+      dlogis(0.9, 0.2, 1.1, log = TRUE) - log(plogis(0, 0.2, 1.1, lower.tail = FALSE))
+    )
+    u <- .withPrior(.base(), "add.sd", "studentT(3, 0, 2)")
+    expect_equal(
+      rxPriorLogDensity(u, theta = c(add.sd = 0.9))$value,
+      dt(0.45, 3, log = TRUE) - log(2) - log(0.5)
+    )
+    ## a skew normal has no closed-form CDF; its truncation mass is integrated
+    u <- .withPrior(.base(), "add.sd", "skewNormal(0.2, 1.1, 2)")
+    .d <- function(x) 2 * dnorm((x - 0.2) / 1.1) / 1.1 * pnorm(2 * (x - 0.2) / 1.1)
+    expect_equal(
+      rxPriorLogDensity(u, theta = c(add.sd = 0.9))$value,
+      log(.d(0.9)) - log(integrate(.d, 0, Inf)$value),
+      tolerance = 1e-7
+    )
+    ## two finite bounds cutting a gamma on both sides
+    u <- .withPrior(.base(), "add.sd", "dgamma(2, 1.5)")
+    .ini <- u$iniDf
+    .ini$lower[.ini$name == "add.sd"] <- 0.2
+    .ini$upper[.ini$name == "add.sd"] <- 3
+    assign("iniDf", .ini, envir = u)
+    r <- rxPriorLogDensity(u, theta = c(add.sd = 0.7))
+    expect_equal(r$value, dgamma(0.7, 2, 1.5, log = TRUE) - log(pgamma(3, 2, 1.5) - pgamma(0.2, 2, 1.5)))
+    g <- .numGrad(function(x) rxPriorLogDensity(u, theta = c(add.sd = x))$value, 0.7)
+    expect_equal(unname(r$gradTheta["add.sd"]), g, tolerance = 1e-6)
+  })
+
+  test_that("bounds that leave no mass under a univariate prior are refused", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "add.sd", "dunif(-2, -1)")
+    expect_error(rxPriorLogDensity(u, theta = c(add.sd = 0.5)), "no probability mass")
+  })
+
+  test_that("outside its support a univariate prior is -Inf with no gradient", {
+    skipIfOldLotri()
+    for (.prior in c("dgamma(2, 1)", "dlnorm(0, 1)", "dbeta(2, 2)", "dunif(0, 1)", "pareto(0.5, 2)")) {
+      u <- .withPrior(.base(), "tka", .prior)
+      r <- rxPriorLogDensity(u, theta = c(tka = -0.5))
+      expect_equal(r$value, -Inf, info = .prior)
+      expect_equal(unname(r$gradTheta["tka"]), 0, info = .prior)
+    }
+  })
+
+  test_that("a univariate family on an omega diagonal element uses the raw variance", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "eta.ka", "invGamma(2, 1.2)")
+    om <- u$omega
+    om["eta.ka", "eta.ka"] <- 0.8
+    r <- rxPriorLogDensity(u, omega = om)
+    expect_equal(r$value, dgamma(1 / 0.8, 2, 1.2, log = TRUE) - 2 * log(0.8))
+    g <- .numGrad(
+      function(x) {
+        om2 <- om
+        om2["eta.ka", "eta.ka"] <- x
+        rxPriorLogDensity(u, omega = om2)$value
+      },
+      0.8
+    )
+    expect_equal(r$gradOmega["eta.ka", "eta.ka"], g, tolerance = 1e-6)
+    expect_equal(sum(abs(r$gradOmega)) - abs(r$gradOmega["eta.ka", "eta.ka"]), 0)
+  })
+
+  test_that("univariate families combine with normal priors in one spec", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "tka", "dgamma(2, 1.5)")
+    u <- .withPrior(u, "tcl", "dnorm(0, 10)")
+    u <- .withPrior(u, "tv", "studentT(3, 3, 1)")
+    r <- rxPriorLogDensity(u, theta = c(tka = 0.7, tcl = 1.1, tv = 3.2))
+    expect_equal(
+      r$value,
+      dgamma(0.7, 2, 1.5, log = TRUE) + dnorm(1.1, 0, 10, log = TRUE) + dt(0.2, 3, log = TRUE)
+    )
+    expect_equal(names(r$gradTheta), c("tka", "tcl", "tv"))
+  })
+
+  test_that("invalid univariate hyperparameters are refused when the spec is built", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "tka", "dgamma(-1, 1)")
+    expect_error(rxPriorBuildSpec(u), "'shape' must be positive")
+    u <- .withPrior(.base(), "tka", "dunif(2, 1)")
+    expect_error(rxPriorBuildSpec(u), "'min' must be less than 'max'")
+    u <- .withPrior(.base(), "tka", "betaProportion(1.5, 2)")
+    expect_error(rxPriorBuildSpec(u), "'mu' must be in")
+  })
+
+  test_that("a von Mises prior with one finite bound is refused", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "add.sd", "vonMises(0, 1)")
+    expect_error(rxPriorBuildSpec(u), "von Mises")
+  })
+
+  test_that("non-normal univariate families are refused under nwpri and tnpri", {
+    skipIfOldLotri()
+    u <- .withPrior(.base(), "tka", "dgamma(2, 1)")
+    expect_error(rxPriorBuildSpec(u, method = "nwpri"), "NWPRI")
+    expect_error(rxPriorBuildSpec(u, method = "tnpri"), "TNPRI")
   })
 
   test_that("an explicit invWishart scale-matrix argument is refused for now", {

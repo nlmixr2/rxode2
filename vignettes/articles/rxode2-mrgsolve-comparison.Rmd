@@ -345,8 +345,8 @@ mod_dde <- rxode2({
 When a model's ODE system is a 1-3 compartment linear PK system,
 rxode2 can detect this and transparently solve it with the fast
 analytical `linCmt()` path instead of the numerical ODE solver.  This
-happens automatically at solve time (`rxSolve(..., useLinCmt = TRUE)`,
-the default), with the detected PK parameters passed explicitly to
+happens at solve time when requested (`rxSolve(..., useLinCmt = TRUE)`
+or `options(rxode2.useLinCmt = TRUE)`), with the detected PK parameters passed explicitly to
 `linCmt()` so the parameterization is inferred even when parameters are
 declared only in `ini()`.  If a converted model cannot be compiled the
 original ODE model is used instead, so the conversion never breaks an

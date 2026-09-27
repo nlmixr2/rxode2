@@ -39,7 +39,7 @@ llikGamma(1, 1, 10)
 et  <- et(seq(0.001, 1, length.out=10))
 et$shape <- 1
 et$rate <- 10
- 
+
 model <- function() {
   model({
     fx <- llikGamma(time, shape, rate)

@@ -278,8 +278,9 @@ linMod <- function(
       })
     )
     .theta <- do.call(`rbind`, .cur)
-    .eta <- iniDf[is.na(iniDf$neta), , drop = FALSE]
+    .eta <- iniDf[!is.na(iniDf$neta1), , drop = FALSE]
     .iniDf <- rbind(.theta, .eta)
+    rownames(.iniDf) <- NULL
   } else {
     .iniDf <- NULL
   }

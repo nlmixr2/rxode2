@@ -2,6 +2,34 @@
 
 ## New features
 
+- New `linCmtMicro()` returns the micro-constant parameterization
+  (`k`, `k12`, `k21`, `k13`, `k31`, `v` and `ka`) of each `linCmt()`
+  call in a model, as R expressions of the model variables.  It lets
+  translators (like babelmixr2) write a `linCmt()` model with another
+  program's closed-form linear compartment solutions.
+
+- New assertions `assertRxUiTransform()`, `assertRxUiErrType()` and
+  `assertRxUiAddProp()` refuse a model whose residual transformation
+  (like `boxCox()` or `lnorm()`), residual error type (like
+  `add() + pow()`) or `add() + prop()`/`add() + pow()` combination
+  (`combined1` or `combined2`, including the `rxode2.addProp` default) is
+  not in the allowed set; endpoints without a residual error (like
+  `pois()` or `ll()`) are not checked.  They let an estimation method that supports only some
+  residual error models stop with a clear error instead of fitting a
+  different one.
+
+- New assertions `assertRxUiNoFixedResiduals()` and
+  `assertRxUiNoFixedOmega()` refuse a model that fixes a residual error
+  parameter (`add.sd <- fix(0.7)`) or a between-subject variability
+  (`eta.ka ~ fix(0.6)`), for estimation methods that would otherwise
+  estimate them anyway.
+- `rxPriorBuildSpec()` and `rxPriorLogDensity()` now evaluate lotri's
+  univariate continuous priors beyond normal and Cauchy (`dlnorm()`,
+  `dgamma()`, `dbeta()`, `studentT()`, `dexp()`, `dunif()`, `dweibull()`,
+  `dlogis()`, `dchisq()`, `invGamma()` and the rest of the catalog except
+  `wiener()`), with the log density and its gradient, truncated to the
+  parameter's own bounds (#1387).
+
 - The Stan-based `linCmt()` kernels and their gradients, `.solComp2()`,
   `.solComp3()` and the `rxDerived()` conversions moved to the new
   'rxode2lincmt' package, which rxode2 now imports.  rxode2 no longer builds
@@ -18,7 +46,7 @@
   the LAST target (`splitBolusInfusion()`) receives a modeled infusion
   start/stop pair (it must declare a modeled `dur()` or `rate()`
   property, otherwise its copies stay boluses) while every other
-  target receives a bolus copy — so one dose record can feed both an
+  target receives a bolus copy -- so one dose record can feed both an
   infusion and a bolus path (Monolix-style double absorption with
   mixed zero-/first-order routes). Unlike `splitBolus()`, these
   directives apply at translation time only, not to `evid_()` doses
@@ -32,7 +60,113 @@
   against 'StanHeaders', 'RcppEigen' or 'RcppParallel', which shortens its
   installation; exported functions and compiled model code are unchanged.
 
+- An error-model argument can now be an expression, like
+  `cp ~ add(cp.sd * exp(eta.cp.sd))`.  It becomes a hidden modeled
+  variable assigned before the endpoint (`rx.cp.add ~ cp.sd * exp(eta.cp.sd)`,
+  then `cp ~ add(rx.cp.add)`), the same way a number like `add(3)` becomes a
+  fixed parameter.  `logitNorm()` and `probitNorm()` now take a modeled
+  variable or expression for their standard deviation; their bounds stay
+  numbers.
+
+- The adaptive dosing functions (`bolus()`, `infuse()`, `infuseDur()`,
+  `replace()`, `multiply()`, `phantom()`, `evid_()`) now take any expression,
+  including one whose variables appear nowhere else in the model, like
+  `infuseDur(100 * bsa, 1, central)` or `bolus(DOSE * 30)`; those variables
+  become model parameters or covariates instead of an "undeclared ... assign
+  first" error.
+
+- Building a model ui, and therefore `model()` piping (which rebuilds it),
+  is faster: 3-5x on large models.  User ui functions are looked up once per
+  function name instead of once per call, the per-line model rebuild is no
+  longer quadratic, and mu-referenced covariate derivatives are computed in
+  one symengine environment and cached between builds.  The resulting ui is
+  unchanged.
+
 ## Bug fixes
+
+- A covariate column named `value` or `dose` is now passed through
+  when the data has an `amt` column.  Without `amt`, `evid`, `mdv` or
+  `method` columns it is read as the `amt` alias and now stops with an
+  informative error instead of turning every record into a dose (#1386).
+
+- `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
+  prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
+  so the ODE model failed with "'depot', 'central' are required for
+  linCmt() but defined in ODE too".  The prediction is now named
+  `rxLinCmtOde`.
+
+- `linToOde()` of a model with `linCmt()` and other ODEs now keeps the
+  compartment numbers of the `linCmt()` model (depot and central first),
+  so data using compartment numbers dose the same compartments.
+
+- `linToOde()` now translates `linCmt()` that is part of an expression
+  (like `cp <- 1e6 * linCmt()`, or inside an ODE); before, the model was
+  returned with `linCmt()` unchanged.
+
+- `linToOde()` now translates a `linCmt(ka, cl, v) ~ ...` endpoint with
+  arguments, and writes the ODEs once when several endpoints use the
+  same `linCmt()` (like `linCmt() ~ add(a) | phase1` and
+  `linCmt() ~ add(b) | phase2`), which before ran past the translated
+  linear compartment calls.  The prediction of a `linCmt() ~` endpoint
+  gets a name the model does not already use.
+
+- A model with a numeric residual error like `cp ~ add(3)` can now be piped
+  and rebuilt from its own function; the generated fixed parameter was
+  added a second time and the model then failed to parse.
+
+- `linMod()` no longer drops the model's between subject variability: the
+  `iniDf` it returned kept the thetas twice and no etas, so an eta like
+  `eta.cl` became a covariate and lost its mu-reference.
+
+- Piping a line that calls a ui user function whose parser form differs
+  from what is written (like `model(p <- plogis(tp + eta.p))`) no longer
+  fails with a syntax error.
+
+- With `options(rxode2.verbose.pipe = FALSE)`, promoting a covariate to a
+  parameter with `ini()` (like `ini(covwt = 0.5)`) now removes it from
+  `$covariates` and re-runs the mu-reference analysis, so the model is the
+  same as with the default verbose setting; only the messages depended on it.
+
+- Promoting a covariate to a between subject variability with `ini()` (like
+  `ini(etav ~ 0.1)`) now re-runs the mu-reference analysis, so the new eta is
+  in `$eta` and mu-referenced as in a model written with it from the start.
+
+- A model echoed after a syntax error that is only found once the whole
+  model is parsed (like an undeclared `bolus()` argument) no longer drops
+  its first character (`/dt(depot)` instead of `d/dt(depot)`).
+
+- A model whose ui user function requests the model variables (like
+  `linModM()`) now restores the ui parsing state after it is built.
+
+- A model subtracting a negated term (`a - -b`) or adding a positive one
+  (`a + +b`) now compiles; the generated C code read the two signs as the
+  `--`/`++` operator.  `a - Inf` also compiles now instead of generating
+  `aR_NegInf` (#1399).
+
+- A `mixest` or `mixunif` data column can now be combined with other
+  covariates; previously any other covariate made `etTrans()` fail with
+  "mixest is time-varying but must be constant within an individual" or an
+  out-of-bounds error, depending on the column order.
+
+- `rxSymInvCholCreate()` can treat a positive-definite Omega whose
+  off-diagonal zeros do not split it into contiguous blocks as fully
+  parameterized instead of erroring with "theta has to have N elements"; such
+  zeros are not zeros of the Cholesky factor, so they become free parameters
+  (#1365).  It is off unless a callback registered with
+  `.rxSymInvBlockZeroFreeCallback()` asks for it: the released nlmixr2est
+  infers its own omega parameter positions from the zero pattern of the matrix
+  it passes in, so accepting that matrix rather than its filled replacement
+  makes `est="vae"` stop with a position-count mismatch.  It becomes
+  unconditional once a nlmixr2est that does not infer positions that way is
+  released.
+
+- A solve with exactly one observation now simulates its residual error;
+  previously the one-row draw was discarded and each `eps` came back as a fixed
+  element of the `sigma` covariance matrix, regardless of the seed (#1364).
+- `splitInfusion()`, `splitInfusionBolus()` and `splitBolusInfusion()` are
+  now kept in the simulation model of a model with a residual-error
+  endpoint; before, only `splitBolus()` was carried over, so solving such a
+  model silently skipped the dose split (#1381).
 
 - Second derivatives of registered functions now convert.  A multi-variable
   `Derivative(f(...), v1, v2)` -- what symengine emits during a second-order
@@ -47,6 +181,17 @@
   failed before the converter saw it; and the `xi` renaming was not idempotent,
   producing `rxrx_xi_1` when text made a second pass, which leaked into the
   generated model as a free parameter.
+
+- A second derivative through `linCmtB()` is refused again rather than
+  falling through to a numeric difference.  `linCmtB()` is itself the
+  first-order parameter sensitivity of the solved form, which carries no
+  second-order state sensitivity, so the difference is not the second
+  derivative of the prediction.  Returning one made nlmixr2est's
+  `.foceiAddHdEta2()` succeed where it is meant to fail, so a `fast=TRUE`
+  FOCEi fit of a `linCmt()` model built an inner Hessian with a fabricated
+  curvature term instead of falling back to finite differences; an
+  `ll()` + `linCmt()` fit converged to -22.4 rather than 118.5.  Second
+  derivatives that do not involve `linCmtB()` still convert.
 
   The failure was silent further up: a model needing these had no analytic
   second-order sensitivities, so the FOCEi-family analytic outer gradient fell
@@ -70,10 +215,27 @@
   breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
   guard covers compiled model code.
 
+- `rxSolve()` of a function-style (`ini()`/`model()`) model no longer
+  converts its ODEs to `linCmt()` unless asked.  `rxSolve.rxUi()` still
+  defaulted to `useLinCmt=TRUE` and ignored `options(rxode2.useLinCmt=)`; it
+  now uses a `useLinCmt` set in the model's meta block, else the option
+  (default `FALSE`), like every other model type (#1389).
+
 - `rxProgress()` and `rxProgressStop()` now give an error for a zero-length
   argument such as `rxProgress(NULL)` instead of crashing R, and
   `rxProgressAbort()` falls back to its default message when `error` is empty
   (#1377).
+
+- `rxSolve(omegaSeparation="tnpri")` no longer draws the omega entries the
+  `thetaMat` gives no variance from the `dfSub` inverse Wishart; they stay at
+  their estimates, as documented.  `sigmaSeparation="tnpri"` likewise ignores
+  `dfObs`.  The "thetaMat has too many items" message now says when an
+  ignored column could be drawn with `"tnpri"` (#1388).
+
+- Parsing a model (`rxModelVars()`, `rxode2()`, `rxNorm()`) no longer takes
+  time quadratic in the number of `;`-terminated statements; a 1600-state
+  chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
+  an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
 - Two fixed-rate infusions into the same compartment at the same rate are now
   paired with their own stop records when they overlap.  `dose()` reported the

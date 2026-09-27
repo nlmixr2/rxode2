@@ -747,13 +747,38 @@ static inline int rxPushDoseArgIsDeclared(const char *v) {
     rxDoseArgInLines(&tb.str, tb.str.n, v);
 }
 
-// Report the identifiers collected by rxPushDoseNoteArg() that the model never
+// Register an identifier used only in a dosing argument (eg a data column in
+// bolus(DOSE * 30)) as a model input, as if it appeared on a right-hand side.
+// Returns 0 when it cannot be a model variable (a reserved or forbidden name).
+static inline int rxPushDoseArgRegister(const char *v) {
+  int oldFn = tb.fn;
+  tb.fn = 0;
+  int isNew = new_or_ith(v);
+  tb.fn = oldFn;
+  if (!isNew) return 0;
+  addSymbolStr((char*)v);
+  tb.lh[NV-1] = notLHS;
+  tb.lho[NV-1] = 0;
+  tb.interp[NV-1] = 0;
+  tb.lag[NV-1] = 0;
+  tb.alag[NV-1] = 0;
+  tb.ini[NV-1] = 0;
+  tb.mtime[NV-1] = 0;
+  tb.iniv[NV-1] = 0.0;
+  tb.ini0[NV-1] = 0;
+  return 1;
+}
+
+// Resolve the identifiers collected by rxPushDoseNoteArg() that the model never
 // declares.  Run after the whole model has been parsed, so a variable assigned
-// below the dosing statement still counts as declared.  See #1231.
+// below the dosing statement still counts as declared.  Anything else becomes a
+// model input (parameter or covariate); only a name that cannot be one is an
+// error.  See #1231.
 static inline void assertAdaptiveDosingArgsDeclared(void) {
   for (int j = 0; j < sbDoseArgVar.n; j++) {
     const char *v = sbDoseArgVar.line[j];
     if (rxPushDoseArgIsDeclared(v)) continue;
+    if (rxPushDoseArgRegister(v)) continue;
     int dup = 0; // only complain once per name
     for (int k = 0; k < j; k++) {
       if (!strcmp(sbDoseArgVar.line[k], v)) { dup = 1; break; }

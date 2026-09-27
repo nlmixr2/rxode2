@@ -12,13 +12,16 @@ regardless of whether the dose record is a bolus or an infusion.
 Each target compartment receives the full original amount; use \code{f()}
 to scale the split.
 
-A plain bolus record targeting a compartment that declares a modeled
-\code{dur()} or \code{rate()} property is promoted to a modeled infusion
-start/stop pair for that compartment, so a single bolus dose record
-can feed both an infusion path and a bolus path (Monolix-style
-double absorption with mixed zero- and first-order routes).
-Steady-state bolus records are not promoted; they are copied as
-boluses with a warning when a target declares \code{dur()}/\code{rate()}.
+A plain bolus record is split so the FIRST target compartment
+receives a modeled infusion start/stop pair (it must declare a
+modeled \code{dur()} or \code{rate()} property, otherwise its copies stay
+boluses) while every other target receives a bolus copy. Use
+\code{\link[=splitBolusInfusion]{splitBolusInfusion()}} to give the LAST target the infusion instead.
+This feeds one bolus dose record into both an infusion path and a
+bolus path (Monolix-style double absorption with mixed zero- and
+first-order routes). Steady-state bolus records are not promoted;
+they are copied as boluses with a warning when the designated
+infusion target declares \code{dur()}/\code{rate()}.
 
 Infusion records (data \code{RATE}/\code{DUR} or modeled \code{rate()}/\code{dur()}) are
 split preserving their type, exactly like \code{\link[=splitInfusion]{splitInfusion()}}.
@@ -47,9 +50,9 @@ shown in \code{?splitBolusInfusion-directive}.
 \})
 }\if{html}{\out{</div>}}
 
-A bolus dose recorded against \code{depot} is split so \code{central} receives
-a modeled-duration infusion (zero-order input over \code{tk0}, scaled by
-\code{f1}) and \code{depot2} receives the bolus (first-order input scaled by
-\code{1 - f1}).
+A bolus dose recorded against \code{depot} is split so \code{central} (first
+target) receives a modeled-duration infusion (zero-order input over
+\code{tk0}, scaled by \code{f1}) and \code{depot2} receives the bolus (first-order
+input scaled by \code{1 - f1}).
 }
 

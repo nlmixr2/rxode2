@@ -136,12 +136,8 @@ static inline int nodeNA(char *value) {
 
 static inline int nodeInf(char *value) {
   if (!strcmp("Inf",value)){
-    if (sbt.o > 0 && sbt.s[sbt.o-1] == '-'){
-      sb.o--; sbDt.o--;
-      aAppendN("R_NegInf", 8);
-    } else {
-      aAppendN("R_PosInf", 8);
-    }
+    // Any preceding '-' stays in the C code, so '1 - Inf' is not '1R_NegInf'
+    aAppendN("R_PosInf", 8);
     sAppendN(&sbt,"Inf", 3);
     return 1;
   }

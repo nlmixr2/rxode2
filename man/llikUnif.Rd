@@ -38,7 +38,7 @@ llikUnif(1, -2, 2)
 et  <- et(seq(1,1, length.out=4))
 et$alpha <- -2
 et$beta <- 2
- 
+
 model <- function() {
   model({
     fx <- llikUnif(time, alpha, beta)

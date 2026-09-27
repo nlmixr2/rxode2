@@ -628,4 +628,33 @@ rxTest({
       rxUdfUiData(NULL)
     })
   })
+
+  test_that("linMod() keeps the between subject variability in iniDf", {
+    f <- function() {
+      ini({
+        tcl <- log(2.7)
+        tv <- 3.45
+        tp <- 0.1
+        eta.cl ~ 0.3
+        add.sd <- 0.7
+      })
+      model({
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv)
+        p <- tp * linMod(time, 1)
+        d / dt(center) <- -cl / v * center
+        cp <- center / v + p
+        cp ~ add(add.sd)
+      })
+    }
+    .u <- f()
+    expect_equal(
+      .u$iniDf$name,
+      c("tcl", "tv", "tp", "add.sd", "rx.linMod.time1a", "rx.linMod.time1b", "eta.cl")
+    )
+    expect_equal(.u$iniDf$neta1[.u$iniDf$name == "eta.cl"], 1)
+    expect_false("eta.cl" %in% .u$covariates)
+    expect_equal(.u$muRefDataFrame$eta, "eta.cl")
+    expect_identical(rownames(.u$iniDf), as.character(seq_len(nrow(.u$iniDf))))
+  })
 })

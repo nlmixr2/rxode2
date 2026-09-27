@@ -513,7 +513,8 @@
 #'     `thetaMat` columns are matched to entries by name -- `om.eta.cl` or
 #'     `eta.cl` for a diagonal, and `cov.eta.cl.eta.v` or `omega2.1` for an
 #'     off diagonal.  A drawn matrix that is not positive definite is
-#'     redrawn, see `priorPdRetry`.
+#'     redrawn, see `priorPdRetry`.  `dfSub` is not used: an entry the
+#'     `thetaMat` gives no variance stays at its estimate.
 #'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
@@ -628,7 +629,8 @@
 #'    than equal to 10.
 #'
 #' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
-#'    same way `omegaSeparation="tnpri"` does for the omega.
+#'    same way `omegaSeparation="tnpri"` does for the omega; `dfObs` is
+#'    not used.
 #'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
@@ -1147,8 +1149,8 @@
 #'   that does not support dense output; `"ros4"` (code `13L`) is the only
 #'   stiff secondary that does support it.
 #'
-#' @param useLinCmt Logical; when `TRUE` and the model contains
-#'   linear-compartment ODEs that can be solved analytically,
+#' @param useLinCmt Logical; when `TRUE` and a function-style
+#'   (`ini()`/`model()`) model contains linear-compartment ODEs that can be solved analytically,
 #'   automatically convert them to a `linCmt()` call before solving.
 #'   The detection and conversion use [odeToLin()]; the converted
 #'   model is cached so the compilation cost is paid only once.  A
@@ -1160,9 +1162,9 @@
 #'   under event data addressing them by index, is solved with its
 #'   original ODEs.  Set to `FALSE` to keep the original ODE solver.  This flag is also
 #'   stored in the returned [rxControl()] object so that downstream
-#'   hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-#'   use the value of `rxode2.useLinCmt` option (which when specified
-#'   is `TRUE` by default).
+#'   hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+#'   `useLinCmt` set in the model's meta block, else the
+#'   `rxode2.useLinCmt` option, or `FALSE` when it is unset.
 #'
 #' @param file Character string giving a file path prefix for out-of-memory
 #'   chunk solving. When set, `rxSolve()` splits subjects into chunks, writes
@@ -2904,13 +2906,16 @@ rxSolve.rxUi <- function(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
 ) {
   if (.rxIsSerializedSolvePath(params)) {
     .xtra <- list(...)
+    if (!missing(useLinCmt)) {
+      .xtra$useLinCmt <- useLinCmt
+    }
     .rxAssertSerializedSolveArgs(
       eventsMissing = missing(events),
       events = events,
@@ -2951,6 +2956,14 @@ rxSolve.rxUi <- function(
   .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
+  }
+  # an unnamed useLinCmt is taken from the model's meta block, as other
+  # control options are, before falling back to the option
+  if (missing(useLinCmt)) {
+    .meta <- try(object$meta, silent = TRUE)
+    if (is.environment(.meta) && exists("useLinCmt", envir = .meta, inherits = FALSE)) {
+      useLinCmt <- get("useLinCmt", envir = .meta)
+    }
   }
   # `method="indLin"` asks for the matrix exponential of this model's own rate
   # matrix, so the ODE-to-linCmt() auto-conversion must not fire: it leaves a
@@ -4147,7 +4160,12 @@ rxSolve.default <- function(
     .w <- .col %in% c(.mv$params, .extraNames)
     .ignore <- .col[!.w]
     if (length(.ignore) > 0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse = "', '"), "'"))
+      .minfo(paste0(
+        "thetaMat has too many items, ignored: '",
+        paste(.ignore, collapse = "', '"),
+        "'",
+        .rxTnpriIgnoredHint(.ctl, .ignore)
+      ))
     }
     .ctl$thetaMat <- .ctl$thetaMat[.w, .w, drop = FALSE]
     if (dim(.ctl$thetaMat)[1] == 0) {

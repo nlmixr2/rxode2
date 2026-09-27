@@ -817,8 +817,8 @@ rxTest({
     expect_false(grepl("linCmt\\s*\\(", pure.fun))
     expect_true(grepl("d/dt\\(depot\\)", pure.fun))
     expect_true(grepl("d/dt\\(central\\)", pure.fun))
-    expect_true(grepl("rxLinCmt <- central/", pure.fun, fixed = TRUE))
-    expect_true(grepl("rxLinCmt ~ add\\(add\\.sd\\) \\| tmp", pure.fun))
+    expect_true(grepl("rxLinCmtOde <- central/", pure.fun, fixed = TRUE))
+    expect_true(grepl("rxLinCmtOde ~ add\\(add\\.sd\\) \\| tmp", pure.fun))
 
     pure.ui2 <- suppressMessages(as.function(pure.ode)())
     expect_false(any(pure.ui2$predDf$linCmt))

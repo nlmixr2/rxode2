@@ -27,7 +27,8 @@ shiny app is generated. Defaults to \code{TRUE}.}
 
 \item{ODE.config}{model name compiled and list of parameters sent to \code{\link[=rxSolve]{rxSolve()}}.}
 
-\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called directly.
+\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called
+directly.
 
 A PK/PD model is defined using \code{\link[=rxode2]{rxode2()}}, and
 a set of parameters and initial values are defined.  Then

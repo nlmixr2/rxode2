@@ -38,7 +38,7 @@ llikNorm(0)
 llikNorm(seq(-2,2,length.out=10), full=TRUE)
 
 # With rxode2 you can use:
- 
+
 et <- et(-3, 3, length.out=10)
 et$mu <- 0
 et$sigma <- 1

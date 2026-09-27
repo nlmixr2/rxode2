@@ -732,9 +732,8 @@ rxTest({
 
   test_that("mtime() at a time already in the event table pushes once (rxode2#1152)", {
     # The classic block form and the functional/ui form of the same model must
-    # push the same single dose.  They did not: rxSolve() defaults to
-    # useLinCmt=TRUE for a ui model, so this one is auto-converted to a
-    # linCmt() model and solved by the linCmt driver -- which used to fire
+    # push the same single dose.  They did not: with useLinCmt=TRUE a ui model
+    # is auto-converted to a linCmt() model and solved by the linCmt driver -- which used to fire
     # evid_() from BOTH its internal dydt(xout) and a calc_lhs() pass for the
     # same-time observation.  With mtime(visit1) <- 24 and 24 also in the
     # sampling grid, both fired and the bolus was pushed twice.  There is now a
@@ -771,7 +770,7 @@ rxTest({
 
     want <- c(nAt24 = 1, total = 600)
     expect_equal(cnt(rxSolve(classic, p, ev, addDosing = TRUE)), want)
-    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE))), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, ev, addDosing = TRUE, useLinCmt = TRUE))), want)
     # the ODE form of the same ui model (no linCmt conversion) must agree
     expect_equal(
       cnt(suppressMessages(
@@ -784,7 +783,7 @@ rxTest({
     # same answer as keeping it
     evNo24 <- et(amt = 300, cmt = "depot", time = 0) |>
       et(setdiff(seq(0, 72, by = 1), 24))
-    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE))), want)
+    expect_equal(cnt(suppressMessages(rxSolve(ui, evNo24, addDosing = TRUE, useLinCmt = TRUE))), want)
 
     # two mtime()s in the grid scaled the doubling; 300 + 300 + 300, not 1500
     ui2 <- suppressMessages(function() {
@@ -802,7 +801,7 @@ rxTest({
         if (t == visit1 || t == visit2) bolus(300, depot, 0, 0, 0)
       })
     })
-    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE))), c(nAt24 = 1, total = 900))
+    expect_equal(cnt(suppressMessages(rxSolve(ui2, ev, addDosing = TRUE, useLinCmt = TRUE))), c(nAt24 = 1, total = 900))
   })
 
   test_that("past-time evid_() produces a warning", {
@@ -1163,6 +1162,62 @@ rxTest({
     expect_error(ui$simulationIniModel, NA)
     mod <- ui$simulationIniModel
     expect_equal(unname(rxModelVars(mod)$splitBolus), c(1L, 1L, 2L, 3L))
+  })
+
+  test_that("split directives survive a residual-error endpoint (#1381)", {
+    .mk <- function(directive) {
+      .f <- function() {
+        ini({
+          ltk0 <- log(4)
+          lcl <- log(0.1)
+          lvc <- log(10)
+          f1 <- 0.3
+          propSd <- 0.5
+        })
+        model({
+          tk0 <- exp(ltk0)
+          cl <- exp(lcl)
+          vc <- exp(lvc)
+          kel <- cl / vc
+          splitInfusionBolus(depot, depot, depot2)
+          d/dt(depot) <- -0.5 * depot
+          d/dt(depot2) <- -0.5 * depot2
+          f(depot) <- 1 - f1
+          f(depot2) <- f1
+          dur(depot2) <- tk0
+          d/dt(central) <- 0.5 * depot + 0.5 * depot2 - kel * central
+          Cc <- central / vc
+          Cc ~ prop(propSd)
+        })
+      }
+      body(.f)[[3]][[2]][[6]] <- directive
+      .f
+    }
+    e <- et(time = 0, amt = 100, cmt = "depot") |>
+      et(seq(0, 8, by = 1))
+    for (.d in list(
+      quote(splitBolus(depot, depot, depot2)),
+      quote(splitInfusionBolus(depot, depot, depot2)),
+      quote(splitBolusInfusion(depot, depot, depot2)),
+      quote(splitInfusion(depot, depot, depot2))
+    )) {
+      .name <- as.character(.d[[1]])
+      ui <- rxode2(.mk(.d))
+      expect_equal(unname(rxModelVars(ui$simulationModel)[[.name]]), c(1L, 1L, 2L), label = .name)
+      expect_equal(unname(rxModelVars(ui$simulationIniModel)[[.name]]), c(1L, 1L, 2L), label = .name)
+      for (.o in setdiff(c("splitBolus", "splitInfusion", "splitInfusionBolus", "splitBolusInfusion"), .name)) {
+        expect_length(rxModelVars(ui$simulationModel)[[.o]], 0L)
+      }
+      withErr <- rxSolve(ui, e, addDosing = TRUE)
+      noErr <- suppressMessages(rxSolve(ui |> model(-Cc ~ .), e, addDosing = TRUE))
+      expect_equal(withErr$depot2, noErr$depot2, tolerance = 1e-5, label = .name)
+      expect_equal(withErr$central, noErr$central, tolerance = 1e-5, label = .name)
+      expect_equal(sum(withErr$evid != 0), sum(noErr$evid != 0), label = .name)
+    }
+    # the promoted infusion path fills depot2 with f1 * amt over tk0
+    ui <- rxode2(.mk(quote(splitBolusInfusion(depot, depot, depot2))))
+    s <- rxSolve(ui, e)
+    expect_equal(s$depot2[s$time == 4], 0.3 * 100 / 4 / 0.5 * (1 - exp(-0.5 * 4)), tolerance = 1e-5)
   })
 
   for (meth in .methods0) {

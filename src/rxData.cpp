@@ -2249,6 +2249,9 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
   int dim = omegaN.size();
   arma::mat base = as<arma::mat>(omegaM);
   rxPriorSeedList(omegaList, base, omegaN, nStud);
+  // every `thetaMat` entry had zero variance and was pruned, so there is
+  // nothing to draw: the entries stay at their estimates
+  if (thetaM.nrow() < nStud) return;
   int nFallback = 0;
   for (int i = 0; i < nStud; ++i) {
     arma::mat cur = as<arma::mat>(as<NumericMatrix>(omegaList[i]));
@@ -2567,10 +2570,16 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
     // rxSolveFree();
     warning(_("multi-subject simulation without without 'omega'"));
   }
+  // "tnpri" draws every entry from the `thetaMat`, so an entry it carries
+  // no variance for stays at its estimate rather than coming from the
+  // `dfSub` inverse Wishart (#1388).  Only when the joint draw will run:
+  // without `priorOmegaEl` (a direct `rxSimThetaOmega()` call) it would
+  // leave nothing to seed the per-study list.
+  double dfSubSim = (omegaSeparation == "tnpri" && !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
              omegaList, thetaN, thetaM, "omega", omega, omegaDf,
              omegaLower, omegaUpper, omegaIsChol,
-             omegaSeparation, omegaXform, dfSub, nStud, nSub, simVariability,
+             omegaSeparation, omegaXform, dfSubSim, nStud, nSub, simVariability,
              priorOmega);
   // Whether the omega varies by study at all.  `dfSub` is the only source
   // today; a prior draw leaves it at 0, so every gate that decides whether
@@ -2597,10 +2606,11 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   CharacterVector sigmaN;
   NumericMatrix sigmaMC;
   List sigmaList;
+  double dfObsSim = (sigmaSeparation == "tnpri" && !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
   rxSimOmega(simSigma, sigmaSep, sigmaM, sigmaN, sigmaMC,
              sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
              sigmaLower, sigmaUpper, sigmaIsChol,
-             sigmaSeparation, sigmaXform, dfObs, nStud, nObs, simVariability);
+             sigmaSeparation, sigmaXform, dfObsSim, nStud, nObs, simVariability);
   // the sigma equivalent of `omegaByStudy`: a joint draw leaves `dfObs` at
   // zero, so every gate that decides whether the drawn sigma is used has to
   // ask this instead
@@ -2726,7 +2736,9 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   ret0.attr("class") = "data.frame";
   ret0.attr("row.names") = IntegerVector::create(NA_INTEGER,-nSub*nStud);
   getRxModels();
-  if (ret1.nrow() > 1) {
+  // publish any draw, including a single row (#1364); otherwise rxSolve_ falls
+  // back to the sigma covariance matrix, which would be read as the residuals
+  if (ret1.nrow() > 0) {
     ret1.attr("dimnames") = List::create(R_NilValue, sigmaN);
     _rxModels[".sigma"] = ret1;
   }

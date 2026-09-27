@@ -3809,6 +3809,21 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
           ## gradient for any such model (`ui$foceiOuter` returned NULL, and
           ## est="vae" nonMuTheta="grad" silently fell back).
           .derivMore <- function(.txt, .var) {
+            ## `rx__sens_<state>_BY_<param>` is the solved form's first-order
+            ## sensitivity placeholder (`.rxLinCmtBstateGrad()`): an opaque
+            ## symbol carrying no declared dependence on anything.  When the
+            ## whole derivative of such an expression comes back as exactly 0
+            ## that is not a derivative, it is the dependence never having been
+            ## expressed -- the second-order term is fabricated away.  Refuse
+            ## only THAT case (checked after the fact, below), so a caller with
+            ## an error fallback takes it: nlmixr2est's `.foceiAddHdEta2()` is
+            ## wrapped in `tryCatch(..., error =)` for exactly this, and a `0`
+            ## gave it an inner Hessian with a literal `*0*` where the linCmt
+            ## curvature belongs -- an `ll()` + `linCmt()` FOCEi fit converged
+            ## to -22.4 instead of 118.5.  A genuinely non-zero derivative still
+            ## converts, which is what keeps the analytic outer gradient and the
+            ## mixed linCmt()/ODE models working.
+            .hasSolvedSens <- any(grepl("rx__sens_[^ ()*/+-]*_BY_(?!ETA)", .txt, perl = TRUE))
             .se <- try(rxToSE(.txt), silent = TRUE)
             if (inherits(.se, "try-error")) {
               return(NULL)
@@ -3836,6 +3851,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
             }
             .out <- try(rxFromSE(.d), silent = TRUE)
             if (inherits(.out, "try-error")) {
+              return(NULL)
+            }
+            if (.hasSolvedSens && identical(gsub("[ ()]", "", .out), "0")) {
               return(NULL)
             }
             .out

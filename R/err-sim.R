@@ -435,6 +435,24 @@ rxUiGet.splitDose <- function(x, ...) {
 attr(rxUiGet.splitDose, "desc") <- "split dose declaration line(s) for model"
 attr(rxUiGet.splitDose, "rstudio") <- quote(splitBolus(depot, central))
 
+#' All dose-splitting directive lines of a model
+#'
+#' @param ui rxode2 ui model
+#' @return list of the `splitBolus()`, `splitInfusion()`,
+#'   `splitInfusionBolus()` and `splitBolusInfusion()` lines (at most one
+#'   is present)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiSplitDirectiveLines <- function(ui) {
+  .x <- list(ui)
+  c(
+    rxUiGet.splitDoseLines(.x),
+    rxUiGet.splitInfusionLines(.x),
+    rxUiGet.splitInfusionBolusLines(.x),
+    rxUiGet.splitBolusInfusionLines(.x)
+  )
+}
+
 #' @rdname rxUiGet
 #' @export
 rxUiGet.splitDoseLines <- rxUiGet.splitDose
@@ -751,7 +769,9 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #'   `uiModel$lstExpr`.
 #' @param useIf Use an `if (CMT == X)` for endpoints
 #' @param interpLines Interpolation lines, if not present
-#' @param splitDoseLines Split dose lines, if not present
+#' @param splitDoseLines Dose-splitting directive lines (`splitBolus()`,
+#'   `splitInfusion()`, `splitInfusionBolus()` or `splitBolusInfusion()`);
+#'   if not present, use the directive from the current model
 #' @param levelLines Levels lines for assigned strings.  If not
 #'   present, use the interpolation lines from the current model.
 #' @return quoted expression that can be evaluated to compiled rxode2
@@ -951,7 +971,7 @@ rxCombineErrorLines <- function(
     .k <- .k + length(.interpLines)
   }
   if (is.null(splitDoseLines)) {
-    .splitDoseLines <- rxUiGet.splitDoseLines(list(uiModel))
+    .splitDoseLines <- .rxUiSplitDirectiveLines(uiModel)
     .lenLines <- .lenLines - length(.splitDoseLines)
     .k <- .k + length(.splitDoseLines)
   } else if (is.na(splitDoseLines)) {

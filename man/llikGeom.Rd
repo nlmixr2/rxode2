@@ -35,7 +35,7 @@ llikGeom(1:10, 0.2)
 
 et  <- et(1:10)
 et$prob <- 0.2
- 
+
 model <- function() {
   model({
     fx <- llikGeom(time, prob)
