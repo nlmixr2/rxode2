@@ -65,6 +65,24 @@ extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsi
   // evid rejects those pairings and keeps every real one.  This is the pairing
   // handleInfusionGetEndOfInfusionIndex() already performs.
   int curEvid = getEvid(ind, ind->idose[l]);
+  // A start etTrans() knows has no stop record -- a classic internal evid
+  // written straight into the data -- reports no duration rather than erroring
+  // or taking the stop of another infusion at the same rate.  The solver's
+  // steady-state and bioavailability paths keep their own scans, where a
+  // missing stop is already an error.
+  if (backward != 1 && isInfusionUnpaired(ind, ind->idose[l])) {
+    p[0] = ind->ndoses;
+    return NA_REAL;
+  }
+  // and the pairing it recorded, when the scans below would get it wrong
+  int mate = getInfusionMateDoseNumber(ind, l);
+  if (mate != -1 && (backward == 1 ? mate < l : mate > l)) {
+    p[0] = mate;
+    if (backward == 1) {
+      return getAllTimes(ind, ind->idose[l]) - getAllTimes(ind, ind->idose[mate]);
+    }
+    return getAllTimes(ind, ind->idose[mate]) - getAllTimes(ind, ind->idose[l]);
+  }
   if (backward==1){
     p[0] = 0;
     if (l != 0) {
