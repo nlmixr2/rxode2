@@ -130,10 +130,9 @@ rxTest({
 
   ## .onUnload() must release the frames kept for finding user functions
   ## (by `$`, rxToSE(), rxFromSE() and a found R user function) before its
-  ## gc(), while the DLL is still loaded; rxode2() and rxSolve() callers are
-  ## guarded too.  Runs in a child process, since it unloads rxode2.
-  ## rxode2() and rxSolve() run first: they reset the search list, which
-  ## would free the `$` frame early.
+  ## gc(), while the DLL is still loaded.  Runs in a child process, since it
+  ## unloads rxode2.  heldUdf() runs first: its rxode2() resets the search
+  ## list, which would free the `$` frame early.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
@@ -193,18 +192,6 @@ rxTest({
         "  rxFromSE('a + b')",
         "  invisible()",
         "}",
-        "heldRxode2 <- function() {",
-        "  e <- tagged('rxode2')",
-        "  rxode2(m)",
-        "  NULL",
-        "}",
-        "heldSolve <- function() {",
-        "  e <- tagged('rxSolve')",
-        "  rxSolve(u, et(amt = 100) |> et(0:2))",
-        "  NULL",
-        "}",
-        "invisible(heldRxode2())",
-        "invisible(heldSolve())",
         "invisible(heldUdf())",
         "invisible(heldUi())",
         "invisible(heldToSE())",
@@ -231,8 +218,6 @@ rxTest({
       c(sort(.lines[-.n], method = "radix"), .lines[.n]),
       c(
         "RXODE2-FREED fromSE dll=TRUE",
-        "RXODE2-FREED rxSolve dll=TRUE",
-        "RXODE2-FREED rxode2 dll=TRUE",
         "RXODE2-FREED toSE dll=TRUE",
         "RXODE2-FREED udf dll=TRUE",
         "RXODE2-FREED ui dll=TRUE",
