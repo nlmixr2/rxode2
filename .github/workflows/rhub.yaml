@@ -103,10 +103,31 @@ jobs:
             any::rcmdcheck
             any::testthat
             any::nlmixr2data
+            any::tibble
+            any::units
+            any::dplyr
+            any::tidyr
+            any::digest
+            any::withr
+            any::symengine
+            any::nlme
+            any::rlang
+            any::pillar
+            any::crayon
+            any::lifecycle
+            any::Matrix
+            any::ps
+            any::rootSolve
+            any::DT
+            any::scales
+            any::ggrepel
+            any::gridExtra
+            any::htmltools
+            any::stringi
             any::knitr
             any::rmarkdown
-            any::withr
-            any::digest
+            any::patchwork
+            any::microbenchmark
       - uses: r-hub/actions/run-check@v1
         env:
           # The vignettes pull in suggested packages (DT, xgxr, ...) that are
