@@ -129,10 +129,11 @@ rxTest({
   })
 
   ## .onUnload() must release the frames kept for finding user functions
-  ## (by `$`, rxToSE() and rxFromSE(); rxode2() and rxSolve() callers are
-  ## guarded too) before its gc(), while the DLL is still loaded; runs in a
-  ## child process, since it unloads rxode2.  rxode2() and rxSolve() run
-  ## first: they reset the search list, which would free the `$` frame early.
+  ## (by `$`, rxToSE(), rxFromSE() and a found R user function) before its
+  ## gc(), while the DLL is still loaded; rxode2() and rxSolve() callers are
+  ## guarded too.  Runs in a child process, since it unloads rxode2.
+  ## rxode2() and rxSolve() run first: they reset the search list, which
+  ## would free the `$` frame early.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
@@ -169,6 +170,14 @@ rxTest({
         "  reg.finalizer(e, onFree)",
         "  e",
         "}",
+        "heldUdf <- function() {",
+        "  e <- tagged('udf')",
+        "  udfPlusOne <- function(x) x + 1",
+        "  suppressMessages(suppressWarnings(rxode2({",
+        "    y <- udfPlusOne(t)",
+        "  })))",
+        "  NULL",
+        "}",
         "heldUi <- function() {",
         "  e <- tagged('ui')",
         "  u$iniDf",
@@ -196,6 +205,7 @@ rxTest({
         "}",
         "invisible(heldRxode2())",
         "invisible(heldSolve())",
+        "invisible(heldUdf())",
         "invisible(heldUi())",
         "invisible(heldToSE())",
         "invisible(heldFromSE())",
@@ -224,6 +234,7 @@ rxTest({
         "RXODE2-FREED rxSolve dll=TRUE",
         "RXODE2-FREED rxode2 dll=TRUE",
         "RXODE2-FREED toSE dll=TRUE",
+        "RXODE2-FREED udf dll=TRUE",
         "RXODE2-FREED ui dll=TRUE",
         "RXODE2-UNLOADED"
       ),
