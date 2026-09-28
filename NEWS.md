@@ -240,7 +240,8 @@
 - Unloading rxode2 now releases the call frames it keeps for finding user
   defined functions before its final `gc()`, so what they hold is freed
   while rxode2 is still loaded; before, it stayed in memory after
-  `unloadNamespace("rxode2")`.
+  `unloadNamespace("rxode2")` (#1408).
+
 - A prior spec from `rxPriorBuildSpec()` (which nlmixr2est fits with priors
   keep) is now freed by R with its external pointer instead of by a finalizer
   in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer

@@ -279,6 +279,7 @@ rxRmFunParse <- function(name) {
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunEnv <- NULL
 }
+
 #' See if the UI function exists in given environment.
 #'
 #' If other functions have been declared, make sure they exist too.
