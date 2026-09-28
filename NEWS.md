@@ -260,6 +260,13 @@
   in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer
   crashes R where the DLL is actually unloaded, as on Windows (#1406).
 
+- The environment used to look up R user functions is now set only for the
+  length of the rxode2 call that sets it (`rxode2()`, `rxSolve()`, `$` on a
+  ui, `rxToSE()`, ...).  It used to be the first caller of the session, whose
+  frame was then never freed and whose same-named function a later model
+  could use instead of its own.  A model now also finds its user function
+  when an earlier model used a different one (#1409).
+
 # rxode2 5.1.7
 
 ## New features

@@ -446,7 +446,7 @@ model <- function(
         is.symbol(.funExpr) &&
           exists(as.character(.funExpr), envir = parent.env(envir))
       ) {
-        .udfEnvSet(parent.env(envir))
+        .udfEnvLocal(parent.env(envir))
       }
     }
     .ini <- .lastIni
@@ -501,9 +501,12 @@ model <- function(
     .rxRunUiAssembledHooks(.mod)
     return(rxUiCompress(.mod))
   }
-  on.exit({
-    .varSelect$cov <- NULL
-  })
+  on.exit(
+    {
+      .varSelect$cov <- NULL
+    },
+    add = TRUE
+  )
   UseMethod("model")
 }
 
