@@ -237,6 +237,11 @@
   chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
   an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
+- Unloading rxode2 now releases the call frames it keeps for finding user
+  defined functions before its final `gc()`, so what they hold is freed
+  while rxode2 is still loaded; before, it stayed in memory after
+  `unloadNamespace("rxode2")` (#1408).
+
 - Two fixed-rate infusions into the same compartment at the same rate are now
   paired with their own stop records when they overlap.  `dose()` reported the
   wrong amount (60 instead of 100 for a 100 mg infusion with a 50 mg one nested
