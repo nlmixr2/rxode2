@@ -131,7 +131,8 @@ rxTest({
   ## .onUnload() must release the frames kept for finding user functions
   ## (by `$`, rxToSE() and rxFromSE(); rxode2() and rxSolve() callers are
   ## guarded too) before its gc(), while the DLL is still loaded; runs in a
-  ## child process, since it unloads rxode2.
+  ## child process, since it unloads rxode2.  rxode2() and rxSolve() run
+  ## first: they reset the search list, which would free the `$` frame early.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
@@ -193,11 +194,11 @@ rxTest({
         "  rxSolve(u, et(amt = 100) |> et(0:2))",
         "  NULL",
         "}",
+        "invisible(heldRxode2())",
+        "invisible(heldSolve())",
         "invisible(heldUi())",
         "invisible(heldToSE())",
         "invisible(heldFromSE())",
-        "invisible(heldRxode2())",
-        "invisible(heldSolve())",
         "invisible(gc())",
         "unloadNamespace('rxode2')",
         "cat('RXODE2-UNLOADED\\n')"
