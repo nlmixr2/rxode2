@@ -51,6 +51,17 @@ rxTest({
     )
   })
 
+  test_that("keep= names the 'cmt' and 'CMT' columns separately (#1410)", {
+    .d2 <- .d
+    .d2$CMT <- c(9, 8, 7, 6)
+    expect_warning(.s <- rxSolve(.m, .d2, keep = "CMT"), NA)
+    expect_equal(.s$CMT, c(8, 7, 6))
+    expect_false("cmt" %in% names(.s))
+    .s <- rxSolve(.m, .d2, keep = "cmt")
+    expect_equal(as.character(.s$cmt), rep("central", 3))
+    expect_false("CMT" %in% names(.s))
+  })
+
   test_that(".etTransCmtCol() picks the column etTrans() reads (#1410)", {
     expect_equal(.etTransCmtCol(c("id", "CMT", "cmt")), 3L)
     expect_equal(.etTransCmtCol(c("id", "YTYPE", "cmt")), 3L)

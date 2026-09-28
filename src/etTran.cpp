@@ -1491,8 +1491,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     }
+    // with an exact 'cmt' column, keep="cmt" and keep="CMT" name different columns
+    bool keepExactCase = exactCmtCol != -1 && as<std::string>(lName[i]) == "cmt";
     for (j = keep.size(); j--;) {
-      if (as<std::string>(lName[i]) == as<std::string>(keepNameLc[j])){
+      if (keepExactCase ? tmpS0 == as<std::string>(keep[j]) :
+          as<std::string>(lName[i]) == as<std::string>(keepNameLc[j])){
         if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing=TRUE'"));
         keepCol.push_back(i);
         keepI[j] = 1;
