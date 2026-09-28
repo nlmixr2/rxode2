@@ -2349,18 +2349,23 @@ rxSolve <- function(
 #' Refuse to start a solve while another one is running
 #'
 #' A solve keeps its state in rxode2's globals, and a user function it calls
-#' (`.udfCall()`) could start another solve that frees them, crashing R.
+#' (through `.udfCall()`) could start another solve that frees them, crashing
+#' R.  A `.udfCall()` frame on the call stack marks the running solve; R
+#' unwinds it on an error or interrupt, so unlike a flag it is never left set,
+#' and a user function call pays nothing for it.
 #'
 #' @return nothing, called for its error
 #' @noRd
 .rxSolveAssertNotNested <- function() {
-  if (.udfEnv$callDepth > 0L) {
-    stop(
-      "rxSolve() cannot be called while another rxSolve() is running ",
-      "(for example, from a user function); solve the inner model before or ",
-      "after the outer solve",
-      call. = FALSE
-    )
+  for (.i in seq_len(sys.nframe())) {
+    if (identical(sys.function(.i), .udfCall)) {
+      stop(
+        "rxSolve() cannot be called while another rxSolve() is running ",
+        "(for example, from a user function); solve the inner model before or ",
+        "after the outer solve",
+        call. = FALSE
+      )
+    }
   }
   invisible()
 }

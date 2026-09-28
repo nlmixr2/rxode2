@@ -177,26 +177,39 @@ rxTest({
     }
     .s <- rxSolve(rxode2({ y <- udfCol(t) }), et(1:3))
     expect_equal(.s$y, c(1, 2, 3))
-    expect_identical(.udfEnv$callDepth, 0L)
   })
 
-  test_that("a nested user function call restores the depth it found", {
-    udfSeen <- function(x) .udfEnv$callDepth
-    udfFail <- function(x) stop("inner failure")
-    udfNest <- function(x) {
-      .inner <- .udfCall("udfSeen", list(x))
-      .caught <- try(.udfCall("udfFail", list(x)), silent = TRUE)
-      100 * .inner + 10 * inherits(.caught, "try-error") + .udfEnv$callDepth
+  test_that("the refusal holds after a nested user function call returns", {
+    skip_on_cran()
+    if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
+      skip("the child process loads the installed rxode2")
     }
-    .s <- rxSolve(rxode2({ y <- udfNest(t) }), et(1:2))
-    expect_equal(.s$y, c(211, 211))
-    expect_identical(.udfEnv$callDepth, 0L)
+    .out <- .nestedSolveChild(c(
+      "udfCall <- utils::getFromNamespace('.udfCall', 'rxode2')",
+      "inner <- rxode2({ w <- p * 2 })",
+      "udfInner <- function(x) x + 1",
+      "udfFail <- function(x) stop('inner failure')",
+      ## a user function calls two others the way a solve does (one returns,
+      ## one fails), then tries to solve; the refusal is caught, so the outer
+      ## solve goes on and must still be right
+      "udfOuter <- function(x) {",
+      "  a <- udfCall('udfInner', list(x))",
+      "  try(udfCall('udfFail', list(x)), silent = TRUE)",
+      "  r <- msgOf(rxSolve(inner, et(0), params = c(p = x)))",
+      "  if (grepl('cannot be called while another rxSolve() is running', r, fixed = TRUE)) 10 * a else -1",
+      "}",
+      "s <- rxSolve(rxode2({ z <- udfOuter(x) }), data.frame(time = 1:3, x = 1:3))",
+      "cat('CAUGHT', s$z, '\\n')"
+    ))
+    .info <- paste(utils::tail(.out, 20), collapse = "\n")
+    expect_null(attr(.out, "status"), info = .info)
+    expect_true("CHILD-DONE" %in% .out, info = .info)
+    expect_identical(.nestedSolveLine(.out, "CAUGHT"), "20 30 40 ")
   })
 
-  test_that("an error or interrupt in a user function resets the depth", {
+  test_that("an error or interrupt in a user function leaves later solves working", {
     udfBoom <- function(x) stop("boom")
     expect_error(rxSolve(rxode2({ y <- udfBoom(t) }), et(1:2)), "boom")
-    expect_identical(.udfEnv$callDepth, 0L)
     udfIntr <- function(x) {
       stop(structure(
         class = c("interrupt", "condition"),
@@ -208,7 +221,6 @@ rxTest({
       interrupt = function(i) "interrupted"
     )
     expect_identical(.r, "interrupted")
-    expect_identical(.udfEnv$callDepth, 0L)
     ## and the next solve runs
     udfTwice <- function(x) 2 * x
     .s <- rxSolve(rxode2({ y <- udfTwice(t) }), et(1:3))
