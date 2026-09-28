@@ -89,6 +89,11 @@
   `method` columns it is read as the `amt` alias and now stops with an
   informative error instead of turning every record into a dose (#1386).
 
+- A column named exactly `cmt` is now used as the compartment even when
+  the data also carries another compartment spelling (like an unused
+  `CMT`, `YTYPE`, `state` or `var` column); those used to stop with
+  "can only specify either 'cmt', 'ytype', 'state' or 'var'" (#1410).
+
 - `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
   prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
   so the ODE model failed with "'depot', 'central' are required for
@@ -240,7 +245,32 @@
 - Unloading rxode2 now releases the call frames it keeps for finding user
   defined functions before its final `gc()`, so what they hold is freed
   while rxode2 is still loaded; before, it stayed in memory after
-  `unloadNamespace("rxode2")`.
+  `unloadNamespace("rxode2")` (#1408).
+
+- Two fixed-rate infusions into the same compartment at the same rate are now
+  paired with their own stop records when they overlap.  `dose()` reported the
+  wrong amount (60 instead of 100 for a 100 mg infusion with a 50 mg one nested
+  inside it), the dosing records of `addDosing = TRUE` output carried the same
+  wrong amount, and with `f()` each infusion's duration was scaled from the
+  other's stop time, so the solved amounts were wrong too.  `etTrans()` now
+  records the start/stop pairing (the `rxInfPair` attribute) for the subjects
+  where the solver could not recover it, so its output changed for those
+  subjects only; the `etTrans()` golden snapshots were updated for the 48
+  `nmtest` cases that gain the attribute, which are otherwise unchanged.  An
+  infusion start written with a classic internal `evid` and no stop record of
+  its own is now reported as having no duration instead of borrowing the stop of
+  another infusion at the same rate (#1348).
+- A prior spec from `rxPriorBuildSpec()` (which nlmixr2est fits with priors
+  keep) is now freed by R with its external pointer instead of by a finalizer
+  in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer
+  crashes R where the DLL is actually unloaded, as on Windows (#1406).
+
+- The environment used to look up R user functions is now set only for the
+  length of the rxode2 call that sets it (`rxode2()`, `rxSolve()`, `$` on a
+  ui, `rxToSE()`, ...).  It used to be the first caller of the session, whose
+  frame was then never freed and whose same-named function a later model
+  could use instead of its own.  A model now also finds its user function
+  when an earlier model used a different one (#1409).
 
 - `$` on a rxUi no longer keeps rxode2's own call frames (like
   `rxPriorLogDensity()`'s) alive for finding user defined functions; it

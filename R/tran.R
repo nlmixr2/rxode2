@@ -34,7 +34,7 @@ rxode2parse <- function(
   envir = parent.frame()
 ) {
   rxParseSuppressMsg()
-  .udfEnvSet(envir)
+  .udfEnvLocal(envir)
   checkmate::assertCharacter(model, len = 1, any.missing = FALSE)
   if (file.exists(model)) {
     .isStr <- 0L

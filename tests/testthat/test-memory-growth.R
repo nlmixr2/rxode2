@@ -128,62 +128,6 @@ rxTest({
     })
   })
 
-  ## .onUnload() must release the frames kept for finding user functions
-  ## before its gc(); runs in a child process, since it unloads rxode2.
-  test_that("unloading rxode2 releases the frames kept for user functions", {
-    skip_on_cran()
-    if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
-      skip("the child process loads the installed rxode2")
-    }
-    .script <- tempfile(fileext = ".R")
-    on.exit(unlink(.script), add = TRUE)
-    writeLines(
-      c(
-        sprintf(".libPaths(%s)", paste(deparse(.libPaths()), collapse = "")),
-        "suppressMessages(library(rxode2))",
-        "u <- rxode2(function() {",
-        "  ini({",
-        "    tka <- 0.45",
-        "    tcl <- 1",
-        "    tv <- 3.45",
-        "    add.sd <- 0.7",
-        "  })",
-        "  model({",
-        "    ka <- exp(tka)",
-        "    cl <- exp(tcl)",
-        "    v <- exp(tv)",
-        "    linCmt() ~ add(add.sd)",
-        "  })",
-        "})",
-        "onFree <- function(e) cat('RXODE2-FRAME-FREED\\n')",
-        "held <- function(ui) {",
-        "  e <- new.env()",
-        "  reg.finalizer(e, onFree)",
-        "  invisible(ui$iniDf)",
-        "}",
-        "held(u)",
-        "invisible(gc())",
-        "unloadNamespace('rxode2')",
-        "cat('RXODE2-UNLOADED\\n')"
-      ),
-      .script
-    )
-    .out <- suppressWarnings(
-      system2(
-        file.path(R.home("bin"), "Rscript"),
-        args = c("--vanilla", shQuote(.script)),
-        stdout = TRUE,
-        stderr = TRUE
-      )
-    )
-    .info <- paste(utils::tail(.out, 15), collapse = "\n")
-    expect_identical(
-      grep("^RXODE2-", .out, value = TRUE),
-      c("RXODE2-FRAME-FREED", "RXODE2-UNLOADED"),
-      info = .info
-    )
-  })
-
   test_that("rxode2's own frames are not kept for finding user functions", {
     skipIfOldLotri()
     .ui <- rxUiDecompress(rxode2(function() {

@@ -974,6 +974,21 @@
   info$nSafe >= info$nMax && length(info$lost) == 0L
 }
 
+## The compartment column etTrans() reads: a column named exactly `cmt` wins
+## over the other spellings (`CMT`, `ytype`, `state`, `var`; #1410), otherwise
+## the only spelling present; `NA` when there is none or it is ambiguous (an
+## error in etTrans()).
+.etTransCmtCol <- function(nm) {
+  if (sum(nm == "cmt") == 1L) {
+    return(which(nm == "cmt"))
+  }
+  .w <- which(tolower(nm) %in% c("cmt", "ytype", "state", "var"))
+  if (length(.w) != 1L) {
+    return(NA_integer_)
+  }
+  .w
+}
+
 ## Is a converted linCmt() model safe to use for the given solve data?
 ##
 ## The conversion renames compartments (an ODE `centre` becomes linCmt's
@@ -992,12 +1007,11 @@
   if (is.null(data) || !is.data.frame(data)) {
     return(.defaultOk)
   }
-  .nm <- names(data)
-  .col <- .nm[tolower(.nm) == "cmt"]
-  if (length(.col) == 0L) {
+  .col <- .etTransCmtCol(names(data))
+  if (is.na(.col)) {
     return(.defaultOk)
   }
-  .cmt <- data[[.col[1L]]]
+  .cmt <- data[[.col]]
   if (is.factor(.cmt)) {
     .cmt <- as.character(.cmt)
   }

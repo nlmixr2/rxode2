@@ -89,7 +89,52 @@ jobs:
         with:
           job-config: ${{ matrix.config.job-config }}
           token: ${{ secrets.RHUB_TOKEN }}
+          # The sanitizer images build every dependency from source against
+          # R-devel.  Installing the full Suggests pulls Hmisc (via xgxr),
+          # whose Fortran uses the intrinsic module iso_fortran_env, and the
+          # m1-san image's flang cannot find iso_fortran_env.mod -- so
+          # setup-deps failed before rxode2 was ever compiled.  rxode2's own
+          # Fortran does not use that module.  Install the hard dependencies
+          # plus only what the test suite and the vignettes need; tests that
+          # want another Suggests use skip_if_not_installed() and skip.
+          # single quotes: the action embeds this in `inp <- "<value>"`
+          dependencies: "'hard'"
+          extra-packages: |
+            any::rcmdcheck
+            any::testthat
+            any::nlmixr2data
+            any::tibble
+            any::units
+            any::dplyr
+            any::tidyr
+            any::digest
+            any::withr
+            any::symengine
+            any::nlme
+            any::rlang
+            any::pillar
+            any::crayon
+            any::lifecycle
+            any::Matrix
+            any::ps
+            any::rootSolve
+            any::DT
+            any::scales
+            any::ggrepel
+            any::gridExtra
+            any::htmltools
+            any::stringi
+            any::knitr
+            any::rmarkdown
+            any::patchwork
+            any::microbenchmark
       - uses: r-hub/actions/run-check@v1
+        env:
+          # The vignettes pull in suggested packages (DT, xgxr, ...) that are
+          # not installed above; the point of these runs is to exercise the
+          # compiled code under the sanitizers, so skip them.
+          BUILD_ARGS: --no-build-vignettes
+          CHECK_ARGS: --ignore-vignettes
         with:
           job-config: ${{ matrix.config.job-config }}
           token: ${{ secrets.RHUB_TOKEN }}

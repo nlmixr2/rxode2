@@ -1579,7 +1579,7 @@ rxSolve <- function(
   priorSigmaEl = NULL,
   envir = parent.frame()
 ) {
-  .udfEnvSet(list(envir, parent.frame(1))) # nolint
+  .udfEnvLocal(list(envir, parent.frame(1))) # nolint
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -2386,7 +2386,7 @@ rxSolve.function <- function(
   on.exit({
     rxUdfUiReset()
   })
-  .udfEnvSet(list(envir, parent.frame(1))) # nolint
+  .udfEnvLocal(list(envir, parent.frame(1))) # nolint
   ## Cache the rxUi (function -> rxUi conversion) to avoid re-parsing on every
   ## call.  Key is digest of the whole function object (body + closure), so
   ## factory-pattern closures with different captured values get separate
@@ -2953,7 +2953,7 @@ rxSolve.rxUi <- function(
     object <- as.function(object)
     object <- suppressMessages(rxode2(object))
   }
-  .udfEnvSet(list(object$meta, envir, parent.frame(1)))
+  .udfEnvLocal(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -3106,7 +3106,7 @@ rxSolve.nlmixr2FitData <- function(
     return(rxSolve.default(object$simulationModel, params = params, envir = envir))
   }
   rxUdfUiReset()
-  .udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvLocal(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
@@ -3114,16 +3114,22 @@ rxSolve.nlmixr2FitData <- function(
   if (exists("control", envir = .env)) {
     .oldControl <- get("control", envir = .env)
     assign("control", .rxControl, envir = .env)
-    on.exit({
-      rxUdfUiReset()
-      assign("control", .oldControl, envir = .env)
-    })
+    on.exit(
+      {
+        rxUdfUiReset()
+        assign("control", .oldControl, envir = .env)
+      },
+      add = TRUE
+    )
   } else {
     assign("control", .rxControl, envir = .env)
-    on.exit({
-      rxUdfUiReset()
-      rm(list = "control", envir = .env)
-    })
+    on.exit(
+      {
+        rxUdfUiReset()
+        rm(list = "control", envir = .env)
+      },
+      add = TRUE
+    )
   }
   .rxControl <- object$rxControlWithVar
   .lst[[2]] <- .rxControl
@@ -3196,12 +3202,15 @@ rxSolve.default <- function(
   envir = parent.frame()
 ) {
   rxUdfUiReset()
-  .udfEnvSet(list(envir, parent.frame(1)))
-  on.exit({
-    rxUdfUiReset()
-    .clearPipe()
-    .asFunctionEnv$rx <- NULL
-  })
+  .udfEnvLocal(list(envir, parent.frame(1)))
+  on.exit(
+    {
+      rxUdfUiReset()
+      .clearPipe()
+      .asFunctionEnv$rx <- NULL
+    },
+    add = TRUE
+  )
   .applyParams <- FALSE
   .rxParams <- NULL
   if (is.rxEt(object)) {
@@ -4582,7 +4591,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
-  .udfEnvSet(list(object$meta, parent.frame(1)))
+  .udfEnvLocal(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 

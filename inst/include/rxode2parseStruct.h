@@ -518,6 +518,12 @@ struct rx_solving_options_ind_s {
   double *linCmtOriginHist;   /* flat idx-indexed origin history, or NULL when unused */
   int     linCmtOriginHistCap; /* capacity in idx slots */
   int     linCmtOriginHistW;   /* doubles per idx slot (m*RX_LINCMT_ORIGIN_MAX) */
+  // Fixed rate/duration infusion pairing recorded by etTrans(): infPair[i] is
+  // the offset from record i to the record that starts/stops the same
+  // infusion, 0 when none is recorded.  NULL unless the start/stop scans would
+  // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
+  // first n_all_times_orig records; pushed doses are never recorded here.
+  int    *infPair;
 };
 
 typedef struct rx_solve_s {

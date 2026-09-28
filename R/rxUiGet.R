@@ -35,9 +35,9 @@
   # unlock on exit
   .f1 <- parent.frame(1)
   if (identical(topenv(.f1, NULL), globalenv())) {
-    .udfEnvSet(list(.f1, parent.frame(2))) # user code, the common case
+    .udfEnvLocal(list(.f1, parent.frame(2))) # user code, the common case
   } else {
-    .udfEnvSet(.udfUserFrames(sys.nframe(), .f1, parent.frame(2)))
+    .udfEnvLocal(.udfUserFrames(sys.nframe(), .f1, parent.frame(2)))
   }
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
