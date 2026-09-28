@@ -97,7 +97,8 @@ jobs:
           # Fortran does not use that module.  Install the hard dependencies
           # plus only what the test suite and the vignettes need; tests that
           # want another Suggests use skip_if_not_installed() and skip.
-          dependencies: '"hard"'
+          # single quotes: the action embeds this in `inp <- "<value>"`
+          dependencies: "'hard'"
           extra-packages: |
             any::rcmdcheck
             any::testthat
