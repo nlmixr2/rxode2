@@ -109,16 +109,17 @@ rxTest({
       })
     }
     .ui <- rxode2(.mod)
-    # every one of these records the (fresh, and immediately dead) frame it was
-    # called from; the list used to keep all of them
+    # every call records the (fresh, and immediately dead) frame of `.theta()`;
+    # the list used to keep all of them
+    .theta <- function(ui) invisible(ui$theta)
     for (.i in seq_len(50)) {
-      invisible(.ui$theta)
+      .theta(.ui)
     }
     expect_lte(length(.udfEnv$searchList), .udfSearchListMax())
 
     withr::with_options(list(rxode2.udfSearchLimit = 5), {
       for (.i in seq_len(20)) {
-        invisible(.ui$theta)
+        .theta(.ui)
       }
       expect_lte(length(.udfEnv$searchList), 5L)
     })
