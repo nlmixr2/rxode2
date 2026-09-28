@@ -89,6 +89,11 @@
   `method` columns it is read as the `amt` alias and now stops with an
   informative error instead of turning every record into a dose (#1386).
 
+- A column named exactly `cmt` is now used as the compartment even when
+  the data also carries another compartment spelling (like an unused
+  `CMT`, `YTYPE`, `state` or `var` column); those used to stop with
+  "can only specify either 'cmt', 'ytype', 'state' or 'var'" (#1410).
+
 - `linToOde()` of a `linCmt() ~ ...` endpoint named the translated
   prediction `rxLinCmt`, which rxode2 reads back as a `linCmt()` model,
   so the ODE model failed with "'depot', 'central' are required for
