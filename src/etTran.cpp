@@ -1393,11 +1393,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   bool needCmt = false;
   bool hasAmtCol = false;
+  // a column named exactly 'cmt' is authoritative over the other
+  // compartment spellings ('CMT', 'ytype', 'state', 'var'; #1410)
+  int exactCmtCol = -1, nExactCmt = 0;
   for (i = lName.size(); i--;) {
     std::string nm = as<std::string>(lName[i]);
+    if (nm == "cmt") {
+      exactCmtCol = i;
+      nExactCmt++;
+    }
     std::transform(nm.begin(), nm.end(), nm.begin(), ::tolower);
     if (nm == "amt") hasAmtCol = true;
   }
+  // two exact 'cmt' columns are still ambiguous
+  if (nExactCmt > 1) exactCmtCol = -1;
   // Here we are looking for the items needed
   for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
@@ -1416,6 +1425,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // without an 'amt' column, 'value'/'dose' is the dose alias (#1386)
       if (amtCol != -1) stop(_("can only specify either 'amt' or 'value'"));
       amtCol=i;
+    }
+    else if (exactCmtCol != -1 && (tmpS == "cmt" || tmpS == "ytype" || tmpS == "state" || tmpS == "var")) {
+      // the exact 'cmt' column wins; the other spellings stay ordinary columns
+      if (i == exactCmtCol) cmtCol=i;
     }
     else if (tmpS == "cmt" || tmpS == "ytype" || tmpS == "state" || tmpS == "var"){
       if (cmtCol != -1) stop(_("can only specify either 'cmt', 'ytype', 'state' or 'var'"));
