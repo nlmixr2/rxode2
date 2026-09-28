@@ -7693,6 +7693,20 @@ RObject rxSolveGet(RObject obj, RObject arg, LogicalVector exact = true){
   return R_NilValue;
 }
 
+// rxSolve_() for a `$<-` update that re-solves; refused, like rxSolve(), from
+// a user function a running solve calls (R's .rxSolveAssertNotNested()).
+// Checked here, not in `$<-.rxSolve`, since most names there do not re-solve.
+static SEXP rxSolveUpdateSolve_(const RObject &obj, const List &rxControl,
+                                const Nullable<CharacterVector> &specParams,
+                                const Nullable<List> &extraArgs,
+                                const RObject &params, const RObject &events,
+                                const RObject &inits, const int setupOnly) {
+  Function assertNotNested = getRxFn(".rxSolveAssertNotNested");
+  assertNotNested();
+  return rxSolve_(obj, rxControl, specParams, extraArgs, params, events,
+                  inits, setupOnly);
+}
+
 //[[Rcpp::export]]
 RObject rxSolveUpdate(RObject obj,
                       RObject arg = R_NilValue,
@@ -7710,21 +7724,21 @@ RObject rxSolveUpdate(RObject obj,
         // Now check to see if this is something that can be updated...
         if (sarg == "params"){
           // rxControl[Rxc_params] = value;
-          return rxSolve_(obj,rxControl,
+          return rxSolveUpdateSolve_(obj,rxControl,
                           CharacterVector::create("params"),
                           R_NilValue,
                           value, //defrx_params,
                           List(e[".args.events"]),
                           defrx_inits, 0);
         } else if (sarg == "events"){
-          return rxSolve_(obj,rxControl,
+          return rxSolveUpdateSolve_(obj,rxControl,
                           CharacterVector::create("events"),
                           R_NilValue,
                           List(e[".params.dat"]),
                           value, // defrx_events,
                           defrx_inits, 0);
         } else if (sarg == "inits"){
-          return rxSolve_(obj, rxControl,
+          return rxSolveUpdateSolve_(obj, rxControl,
                           CharacterVector::create("inits"),
                           R_NilValue,
                           List(e[".params.dat"]),
@@ -7763,7 +7777,7 @@ RObject rxSolveUpdate(RObject obj,
               if (val.size() == np){
                 // Update Parameter
                 pars[i] = val;
-                return rxSolve_(obj,rxControl,
+                return rxSolveUpdateSolve_(obj,rxControl,
                                 CharacterVector::create("params"),
                                 R_NilValue,
                                 pars, //defrx_params,
@@ -7800,7 +7814,7 @@ RObject rxSolveUpdate(RObject obj,
                 SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
                 if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
                 if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
-                return rxSolve_(obj, rxControl,
+                return rxSolveUpdateSolve_(obj, rxControl,
                                 CharacterVector::create("params","events"),
                                 R_NilValue,
                                 newPars, //defrx_params,
@@ -7820,7 +7834,7 @@ RObject rxSolveUpdate(RObject obj,
               if (val.size() == nc){
                 // Update Covariate
                 events[i]=val;
-                return rxSolve_(obj, rxControl,
+                return rxSolveUpdateSolve_(obj, rxControl,
                                 CharacterVector::create("events"),
                                 R_NilValue,
                                 defrx_params,
@@ -7857,7 +7871,7 @@ RObject rxSolveUpdate(RObject obj,
                 SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
                 if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
                 if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
-                return rxSolve_(obj,rxControl,
+                return rxSolveUpdateSolve_(obj,rxControl,
                                 CharacterVector::create("events", "params"),
                                 R_NilValue,
                                 newPars,//defrx_params,
@@ -7907,7 +7921,7 @@ RObject rxSolveUpdate(RObject obj,
                   ini[j] = v;
                 }
               }
-              return rxSolve_(obj, rxControl,
+              return rxSolveUpdateSolve_(obj, rxControl,
                               CharacterVector::create("inits"),
                               R_NilValue,
                               List(e[".params.dat"]),

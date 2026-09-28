@@ -7,6 +7,9 @@
 .udfEnv$depth <- 0L
 .udfEnv$envirOuter <- NULL
 .udfEnv$scopeFrame <- NULL
+## depth of the user functions a running solve is calling (.udfCall()); no
+## solve may start while it is above zero (.rxSolveAssertNotNested())
+.udfEnv$callDepth <- 0L
 ## the R function each user function name resolved to, used at solve time
 .udfEnv$funObj <- list()
 .udfEnv$envList <- list()
@@ -675,6 +678,10 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .udfCall <- function(fun, args) {
+  ## restored rather than reset on exit, so a nested call keeps the outer depth
+  .depth <- .udfEnv$callDepth
+  on.exit(.udfEnv$callDepth <- .depth)
+  .udfEnv$callDepth <- .depth + 1L
   ## the function resolved when the solve was set up; the lookup environment
   ## may already have been restored when a compiled solve calls back
   .fun <- .udfEnv$funObj[[fun]]

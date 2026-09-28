@@ -2342,7 +2342,27 @@ rxSolve <- function(
     class(.ret) <- "rxControl"
     return(.ret)
   }
+  .rxSolveAssertNotNested()
   UseMethod("rxSolve")
+}
+
+#' Refuse to start a solve while another one is running
+#'
+#' A solve keeps its state in rxode2's globals, and a user function it calls
+#' (`.udfCall()`) could start another solve that frees them, crashing R.
+#'
+#' @return nothing, called for its error
+#' @noRd
+.rxSolveAssertNotNested <- function() {
+  if (.udfEnv$callDepth > 0L) {
+    stop(
+      "rxSolve() cannot be called while another rxSolve() is running ",
+      "(for example, from a user function); solve the inner model before or ",
+      "after the outer solve",
+      call. = FALSE
+    )
+  }
+  invisible()
 }
 
 #' @rdname rxSolve

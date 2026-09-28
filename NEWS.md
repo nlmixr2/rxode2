@@ -272,6 +272,10 @@
   could use instead of its own.  A model now also finds its user function
   when an earlier model used a different one (#1409).
 
+- Calling `rxSolve()` from an R user function while another solve is running,
+  or re-solving a solved object with `$<-` there, now stops with an error
+  instead of freeing the running solve's memory and crashing R.
+
 # rxode2 5.1.7
 
 ## New features
