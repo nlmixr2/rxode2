@@ -711,6 +711,27 @@ rxTest({
     expect_equal(.udfEnv$depth, 0L)
   })
 
+  test_that("parsing another model does not change the function a solve calls", {
+    .a <- function() {
+      same1409 <- function(x) x + 1
+      .m <- rxode2({
+        y <- same1409(t)
+      })
+      suppressWarnings(rxSolve(.m, et(0:1)))
+      NULL
+    }
+    invisible(.a())
+    .b <- function() {
+      same1409 <- function(x) x + 100
+      rxode2({
+        y <- same1409(t)
+      })
+    }
+    invisible(.b())
+    # what a compiled solve calls back into
+    expect_equal(.udfCall("same1409", list(1)), 2)
+  })
+
   test_that("the udf scope ends on error and when its restore is dropped", {
     expect_error(rxode2({
       y <- notAFunction1409(t)

@@ -490,7 +490,6 @@ rxRmFunParse <- function(name) {
 
   .fun <- .udfEnv$bestFun
   .udfEnv$envir <- .udfEnv$bestFunEnv
-  .udfEnv$funObj[[fun]] <- .fun
   .udfEnv$fun[[fun]] <- list(fun, nargs)
   .w <- which(names(.udfEnv$udf) == fun)
   if (length(.w) == 0L) {
@@ -547,6 +546,9 @@ rxRmFunParse <- function(name) {
         call. = FALSE
       )
     }
+    ## the function this solve calls; parsing another model with a
+    ## same-named function must not change it
+    .udfEnv$funObj[[n]] <- .udfEnv$bestFun
     NULL
   })
   .env$needRecompile
