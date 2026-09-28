@@ -129,8 +129,9 @@ rxTest({
   })
 
   ## .onUnload() must release the frames kept for finding user functions
-  ## (by `$`, rxToSE() and rxFromSE()) before its gc(), while the DLL is still
-  ## loaded; runs in a child process, since it unloads rxode2.
+  ## (by `$`, rxToSE() and rxFromSE(); rxode2() and rxSolve() callers are
+  ## guarded too) before its gc(), while the DLL is still loaded; runs in a
+  ## child process, since it unloads rxode2.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
@@ -142,7 +143,7 @@ rxTest({
       c(
         sprintf(".libPaths(%s)", paste(deparse(.libPaths()), collapse = "")),
         "suppressMessages(library(rxode2))",
-        "u <- rxode2(function() {",
+        "m <- function() {",
         "  ini({",
         "    tka <- 0.45",
         "    tcl <- 1",
@@ -155,7 +156,8 @@ rxTest({
         "    v <- exp(tv)",
         "    linCmt() ~ add(add.sd)",
         "  })",
-        "})",
+        "}",
+        "u <- rxode2(m)",
         "onFree <- function(e) {",
         "  dll <- 'rxode2' %in% names(getLoadedDLLs())",
         "  cat(sprintf('RXODE2-FREED %s dll=%s\\n', e$tag, dll))",
@@ -181,9 +183,21 @@ rxTest({
         "  rxFromSE('a + b')",
         "  invisible()",
         "}",
+        "heldRxode2 <- function() {",
+        "  e <- tagged('rxode2')",
+        "  rxode2(m)",
+        "  NULL",
+        "}",
+        "heldSolve <- function() {",
+        "  e <- tagged('rxSolve')",
+        "  rxSolve(u, et(amt = 100) |> et(0:2))",
+        "  NULL",
+        "}",
         "invisible(heldUi())",
         "invisible(heldToSE())",
         "invisible(heldFromSE())",
+        "invisible(heldRxode2())",
+        "invisible(heldSolve())",
         "invisible(gc())",
         "unloadNamespace('rxode2')",
         "cat('RXODE2-UNLOADED\\n')"
@@ -199,13 +213,15 @@ rxTest({
       )
     )
     .info <- paste(utils::tail(.out, 15), collapse = "\n")
-    ## finalizers run in no set order, so the freed lines are sorted
+    ## finalizers run in no set order, so the freed lines are sorted (C order)
     .lines <- grep("^RXODE2-", .out, value = TRUE)
     .n <- length(.lines)
     expect_identical(
-      c(sort(.lines[-.n]), .lines[.n]),
+      c(sort(.lines[-.n], method = "radix"), .lines[.n]),
       c(
         "RXODE2-FREED fromSE dll=TRUE",
+        "RXODE2-FREED rxSolve dll=TRUE",
+        "RXODE2-FREED rxode2 dll=TRUE",
         "RXODE2-FREED toSE dll=TRUE",
         "RXODE2-FREED ui dll=TRUE",
         "RXODE2-UNLOADED"
