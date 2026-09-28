@@ -1,3 +1,13 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `$` on a rxUi no longer adds rxode2's own call frames (like
+  `rxPriorLogDensity()`'s) to the environments searched for user defined
+  functions; it records the nearest frames outside rxode2 instead.  What those
+  frames held (like a large `theta`) is now freed when they return, instead of
+  staying in memory until later calls pushed them out of the search list.
+
 # rxode2 5.1.8
 
 ## New features
@@ -271,11 +281,6 @@
   frame was then never freed and whose same-named function a later model
   could use instead of its own.  A model now also finds its user function
   when an earlier model used a different one (#1409).
-
-- `$` on a rxUi no longer keeps rxode2's own call frames (like
-  `rxPriorLogDensity()`'s) alive for finding user defined functions; it
-  records the nearest frames outside rxode2 instead, so what those internal
-  frames held is freed once they return.
 
 # rxode2 5.1.7
 
