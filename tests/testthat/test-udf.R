@@ -732,6 +732,18 @@ rxTest({
     expect_equal(.udfCall("same1409", list(1)), 2)
   })
 
+  test_that("rxSolve() keeps an environment set with .udfEnvSet() outside of it", {
+    .freshUdfEnv()
+    .m <- rxode2({
+      y <- t
+    })
+    .e <- new.env()
+    .udfEnvSet(.e)
+    suppressWarnings(rxSolve(.m, et(0:1)))
+    expect_identical(.udfEnv$envir, .e)
+    expect_equal(.udfEnv$depth, 0L)
+  })
+
   test_that("the udf scope ends on error and when its restore is dropped", {
     .freshUdfEnv()
     expect_error(rxode2({
