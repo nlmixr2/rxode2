@@ -89,6 +89,23 @@ jobs:
         with:
           job-config: ${{ matrix.config.job-config }}
           token: ${{ secrets.RHUB_TOKEN }}
+          # The sanitizer images build every dependency from source against
+          # R-devel.  Installing the full Suggests pulls Hmisc (via xgxr),
+          # whose Fortran uses the intrinsic module iso_fortran_env, and the
+          # m1-san image's flang cannot find iso_fortran_env.mod -- so
+          # setup-deps failed before rxode2 was ever compiled.  rxode2's own
+          # Fortran does not use that module.  Install the hard dependencies
+          # plus only what the test suite and the vignettes need; tests that
+          # want another Suggests use skip_if_not_installed() and skip.
+          dependencies: '"hard"'
+          extra-packages: |
+            any::rcmdcheck
+            any::testthat
+            any::nlmixr2data
+            any::knitr
+            any::rmarkdown
+            any::withr
+            any::digest
       - uses: r-hub/actions/run-check@v1
         with:
           job-config: ${{ matrix.config.job-config }}
