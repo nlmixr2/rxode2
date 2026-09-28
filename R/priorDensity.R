@@ -659,9 +659,9 @@
 #' Build the C spec `rxPriorLogDensityEval()` (and the C API) evaluates
 #'
 #' The one-time, R-only (main-thread) half of the kernel: parses the
-#' `prior` column and hands the result to `src/priorDensity.cpp` as a
-#' heap-allocated `rx_prior_spec_t`, wrapped in an R external pointer with a
-#' finalizer. `rxPriorLogDensityEval()` (`inst/include/rxode2prior.h`) --
+#' `prior` column and hands the result to `src/priorDensity.cpp` as an
+#' `rx_prior_spec_t` in R vectors owned by the returned R external pointer,
+#' which R frees with it. `rxPriorLogDensityEval()` (`inst/include/rxode2prior.h`) --
 #' reachable through rxode2's C function-pointer table -- then evaluates it
 #' with no R/Rcpp call of any kind, safe to call from inside an
 #' OpenMP-parallel objective/gradient evaluation.
