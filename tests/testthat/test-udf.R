@@ -756,3 +756,112 @@ rxTest({
     expect_identical(rownames(.u$iniDf), as.character(seq_len(nrow(.u$iniDf))))
   })
 })
+
+rxTest({
+  # issue #1409; each test starts as a fresh session does, with no udf
+  # environment set
+  .freshUdfEnv <- function() {
+    .old <- .udfEnv$envir
+    .udfEnv$envir <- NULL
+    withr::defer(.udfEnv$envir <- .old, envir = parent.frame())
+  }
+
+  test_that("a later model uses its own user function, not an earlier caller's", {
+    .freshUdfEnv()
+    .f1 <- function() {
+      myfun1409 <- function(x) x + 1
+      rxToSE("a + b")
+      NULL
+    }
+    invisible(.f1())
+    .f2 <- function() {
+      myfun1409 <- function(x) x + 2
+      .m <- rxode2({
+        y <- myfun1409(t)
+      })
+      suppressWarnings(rxSolve(.m, et(0:1)))$y
+    }
+    expect_equal(.f2(), c(2, 3))
+  })
+
+  test_that("the caller's frame is not kept as the primary udf environment", {
+    .freshUdfEnv()
+    .frame <- NULL
+    .f <- function() {
+      .frame <<- environment()
+      rxToSE("a + b")
+      NULL
+    }
+    invisible(.f())
+    expect_false(identical(.udfEnv$envir, .frame))
+    expect_equal(.udfEnv$depth, 0L)
+  })
+
+  test_that("a model built inside a function solves after the function returns", {
+    .g <- function() {
+      h1409 <- function(x) x * 10
+      rxode2({
+        y <- h1409(t)
+      })
+    }
+    .m <- .g()
+    expect_equal(suppressWarnings(rxSolve(.m, et(0:2)))$y, c(0, 10, 20))
+    expect_equal(.udfEnv$depth, 0L)
+  })
+
+  test_that("parsing another model does not change the function a solve calls", {
+    .a <- function() {
+      same1409 <- function(x) x + 1
+      .m <- rxode2({
+        y <- same1409(t)
+      })
+      suppressWarnings(rxSolve(.m, et(0:1)))
+      NULL
+    }
+    invisible(.a())
+    .b <- function() {
+      same1409 <- function(x) x + 100
+      rxode2({
+        y <- same1409(t)
+      })
+    }
+    invisible(.b())
+    # what a compiled solve calls back into
+    expect_equal(.udfCall("same1409", list(1)), 2)
+  })
+
+  test_that("rxSolve() keeps an environment set with .udfEnvSet() outside of it", {
+    .freshUdfEnv()
+    .m <- rxode2({
+      y <- t
+    })
+    .e <- new.env()
+    .udfEnvSet(.e)
+    suppressWarnings(rxSolve(.m, et(0:1)))
+    expect_identical(.udfEnv$envir, .e)
+    expect_equal(.udfEnv$depth, 0L)
+  })
+
+  test_that("the udf scope ends on error and when its restore is dropped", {
+    .freshUdfEnv()
+    expect_error(rxode2({
+      y <- notAFunction1409(t)
+    }))
+    expect_equal(.udfEnv$depth, 0L)
+    .dropped <- function() {
+      .udfEnvLocal(environment())
+      on.exit(NULL)
+      NULL
+    }
+    .dropped()
+    expect_equal(.udfEnv$depth, 1L)
+    invisible(rxToSE("a + b"))
+    expect_equal(.udfEnv$depth, 0L)
+    # an unscoped .udfEnvSet() (as nlmixr2est calls it) is not ignored either
+    .dropped()
+    .e <- new.env()
+    .udfEnvSet(.e)
+    expect_equal(.udfEnv$depth, 0L)
+    expect_identical(.udfEnv$envir, .e)
+  })
+})

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <vector>
 #include "../inst/include/rxode2prior.h"
+#include "rxProtect.h"
 
 #ifndef M_SQRT1_2
 #define M_SQRT1_2 0.70710678118654752440
@@ -627,28 +628,6 @@ extern "C" bool rxPriorOmegaToCholOmegaInvGrad(const double *omegaBlock, int p,
   return true;
 }
 
-// Frees a spec built by _rxode2_rxPriorBuildSpec(). Internal linkage only
-// (called exclusively by the R external-pointer finalizer below, in this
-// same translation unit) -- deliberately NOT part of the downstream C API:
-// the finalizer is the ONLY thing that may free a spec, since a raw
-// pointer obtained by a downstream caller and freed independently would
-// race the finalizer into a double free once R's GC runs. A caller that
-// wants the spec to outlive one R call must instead keep the R external
-// pointer object itself alive (referenced from its own fit state).
-static void rxPriorFreeSpec(void *specPtr) {
-  if (specPtr == NULL) return;
-  rx_prior_spec_t *spec = (rx_prior_spec_t *)specPtr;
-  for (int t = 0; t < spec->nTerms; ++t) {
-    delete[] spec->terms[t].thetaIdx;
-    delete[] spec->terms[t].etaIdx;
-    delete[] spec->terms[t].etaIdx2;
-    delete[] spec->terms[t].mu;
-    delete[] spec->terms[t].scale;
-  }
-  delete[] spec->terms;
-  delete spec;
-}
-
 // ---------------------------------------------------------------------------
 // R-facing glue below this line: builds a spec from the flat R
 // representation R/priorDensity.R assembles (one-time, at fit setup, on the
@@ -656,11 +635,6 @@ static void rxPriorFreeSpec(void *specPtr) {
 // functions above are for) and wraps rxPriorLogDensityEval() for direct
 // use from R (rxPriorLogDensity()'s R-level convenience shim).
 // ---------------------------------------------------------------------------
-
-static void _rxode2_rxPriorFreeSpecFinalizer(SEXP specSEXP) {
-  rxPriorFreeSpec(R_ExternalPtrAddr(specSEXP));
-  R_ClearExternalPtr(specSEXP);
-}
 
 // specList: type, n (integer, one per term), thetaIdx, etaIdx (integer,
 // concatenated across terms, length sum(n)), mu, scale (numeric,
@@ -677,19 +651,29 @@ extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
     nuS = VECTOR_ELT(specList, 8), etaIdx2S = VECTOR_ELT(specList, 9),
     muLenS = VECTOR_ELT(specList, 10);
   int nTerms = LENGTH(typeS);
-  rx_prior_spec_t *spec = new rx_prior_spec_t;
+  // The spec lives in R vectors held by the external pointer, so R frees it
+  // with the pointer; no finalizer in this DLL, which may be unloaded first.
+  rxProtect rx_protect;
+  SEXP mem = rx_protect.protect(Rf_allocVector(VECSXP, 2 + 5 * nTerms));
+  SET_VECTOR_ELT(mem, 0, Rf_allocVector(RAWSXP, sizeof(rx_prior_spec_t)));
+  SET_VECTOR_ELT(mem, 1, Rf_allocVector(RAWSXP, sizeof(rx_prior_term_t) * nTerms));
+  rx_prior_spec_t *spec = (rx_prior_spec_t *)RAW(VECTOR_ELT(mem, 0));
   spec->nTerms = nTerms;
-  spec->terms = new rx_prior_term_t[nTerms];
+  spec->terms = (rx_prior_term_t *)RAW(VECTOR_ELT(mem, 1));
   int memberOff = 0, scaleOff = 0, muOff = 0;
   for (int t = 0; t < nTerms; ++t) {
     rx_prior_term_t &term = spec->terms[t];
     term.type = INTEGER(typeS)[t];
     term.n = INTEGER(nS)[t];
-    term.thetaIdx = new int[term.n];
-    term.etaIdx = new int[term.n];
-    term.etaIdx2 = new int[term.n];
+    SET_VECTOR_ELT(mem, 2 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    SET_VECTOR_ELT(mem, 3 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    SET_VECTOR_ELT(mem, 4 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    term.thetaIdx = INTEGER(VECTOR_ELT(mem, 2 + 5 * t));
+    term.etaIdx = INTEGER(VECTOR_ELT(mem, 3 + 5 * t));
+    term.etaIdx2 = INTEGER(VECTOR_ELT(mem, 4 + 5 * t));
     int muLen = INTEGER(muLenS)[t];
-    term.mu = new double[muLen];
+    SET_VECTOR_ELT(mem, 5 + 5 * t, Rf_allocVector(REALSXP, muLen));
+    term.mu = REAL(VECTOR_ELT(mem, 5 + 5 * t));
     for (int k = 0; k < term.n; ++k) {
       term.thetaIdx[k] = INTEGER(thetaIdxS)[memberOff + k];
       term.etaIdx[k] = INTEGER(etaIdxS)[memberOff + k];
@@ -697,7 +681,8 @@ extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
     }
     for (int k = 0; k < muLen; ++k) term.mu[k] = REAL(muS)[muOff + k];
     int nScale = term.n * term.n;
-    term.scale = new double[nScale];
+    SET_VECTOR_ELT(mem, 6 + 5 * t, Rf_allocVector(REALSXP, nScale));
+    term.scale = REAL(VECTOR_ELT(mem, 6 + 5 * t));
     for (int k = 0; k < nScale; ++k) term.scale[k] = REAL(scaleS)[scaleOff + k];
     term.lower = REAL(lowerS)[t];
     term.upper = REAL(upperS)[t];
@@ -706,10 +691,7 @@ extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
     muOff += muLen;
     scaleOff += nScale;
   }
-  SEXP ret = PROTECT(R_MakeExternalPtr(spec, R_NilValue, R_NilValue));
-  R_RegisterCFinalizerEx(ret, _rxode2_rxPriorFreeSpecFinalizer, TRUE);
-  UNPROTECT(1);
-  return ret;
+  return R_MakeExternalPtr(spec, R_NilValue, mem);
 }
 
 // specSEXP: external pointer from _rxode2_rxPriorBuildSpec(). thetaS: full

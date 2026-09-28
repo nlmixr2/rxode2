@@ -121,14 +121,13 @@ extern "C" {
 // contribution is left at 0 for that term.
 //
 // `spec` comes from R/priorDensity.R's rxPriorBuildSpec(), an R external
-// pointer whose finalizer is the ONLY thing that frees it -- there is
-// deliberately no exported "free this spec now" entry point. A raw void*
-// obtained via R_ExternalPtrAddr() and a same-process finalizer both firing
-// on the same allocation is a double free; the caller must instead keep
-// the R external pointer object itself alive (referenced from wherever it
-// stores its own fit state) for as long as it calls this function, and let
-// R's garbage collector reclaim it in the ordinary way once that reference
-// is dropped.
+// pointer that owns the spec's memory (R vectors in its protected slot), so
+// R frees the spec with the pointer -- there is deliberately no exported
+// "free this spec now" entry point, and no finalizer in rxode2's DLL, which
+// may be unloaded first. The caller must keep the R external pointer object
+// itself alive (referenced from wherever it stores its own fit state) for as
+// long as it calls this function, and let R's garbage collector reclaim it
+// in the ordinary way once that reference is dropped.
 double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
                               const double *theta, int thetaLen,
                               const double *omega, int omegaDim,

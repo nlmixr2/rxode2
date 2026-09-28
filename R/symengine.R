@@ -778,7 +778,7 @@ rxD <- function(name, derivatives) {
 #' @author Matthew L. Fidler
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, parent = parent.frame()) {
-  .udfEnvSet(parent)
+  .udfEnvLocal(parent)
   .rxToSE.envir$parent <- parent
   .rxToSElinCmt$linCmt <- NULL # no linCmt() found
   if (exists("t", envir = .rxToSElinCmt, inherits = FALSE)) {
@@ -2918,7 +2918,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 #' @export
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), parent = parent.frame()) {
   rxReq("symengine")
-  .udfEnvSet(parent)
+  .udfEnvLocal(parent)
   .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   .rxSEstate$fromNumDer <- .unknown[match.arg(unknownDerivatives)]
@@ -4148,7 +4148,7 @@ local({
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame()) {
-  .udfEnvSet(envir)
+  .udfEnvLocal(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
