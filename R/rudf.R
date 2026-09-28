@@ -278,6 +278,8 @@ rxRmFunParse <- function(name) {
   .udfEnv$envList <- list()
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunEnv <- NULL
+  .rxToSE.envir$parent <- NULL
+  .rxFromSE.envir$parent <- NULL
 }
 
 #' See if the UI function exists in given environment.

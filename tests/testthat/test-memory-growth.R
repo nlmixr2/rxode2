@@ -129,7 +129,8 @@ rxTest({
   })
 
   ## .onUnload() must release the frames kept for finding user functions
-  ## before its gc(); runs in a child process, since it unloads rxode2.
+  ## (by `$`, rxToSE() and rxFromSE()) before its gc(), while the DLL is still
+  ## loaded; runs in a child process, since it unloads rxode2.
   test_that("unloading rxode2 releases the frames kept for user functions", {
     skip_on_cran()
     if (!is.null(asNamespace("rxode2")$.__DEVTOOLS__)) {
@@ -155,13 +156,34 @@ rxTest({
         "    linCmt() ~ add(add.sd)",
         "  })",
         "})",
-        "onFree <- function(e) cat('RXODE2-FRAME-FREED\\n')",
-        "held <- function(ui) {",
-        "  e <- new.env()",
-        "  reg.finalizer(e, onFree)",
-        "  invisible(ui$iniDf)",
+        "onFree <- function(e) {",
+        "  dll <- 'rxode2' %in% names(getLoadedDLLs())",
+        "  cat(sprintf('RXODE2-FREED %s dll=%s\\n', e$tag, dll))",
         "}",
-        "held(u)",
+        "tagged <- function(tag) {",
+        "  e <- new.env()",
+        "  e$tag <- tag",
+        "  reg.finalizer(e, onFree)",
+        "  e",
+        "}",
+        "heldUi <- function() {",
+        "  e <- tagged('ui')",
+        "  u$iniDf",
+        "  invisible()",
+        "}",
+        "heldToSE <- function() {",
+        "  e <- tagged('toSE')",
+        "  rxToSE('a + b')",
+        "  invisible()",
+        "}",
+        "heldFromSE <- function() {",
+        "  e <- tagged('fromSE')",
+        "  rxFromSE('a + b')",
+        "  invisible()",
+        "}",
+        "invisible(heldUi())",
+        "invisible(heldToSE())",
+        "invisible(heldFromSE())",
         "invisible(gc())",
         "unloadNamespace('rxode2')",
         "cat('RXODE2-UNLOADED\\n')"
@@ -177,9 +199,17 @@ rxTest({
       )
     )
     .info <- paste(utils::tail(.out, 15), collapse = "\n")
+    ## finalizers run in no set order, so the freed lines are sorted
+    .lines <- grep("^RXODE2-", .out, value = TRUE)
+    .n <- length(.lines)
     expect_identical(
-      grep("^RXODE2-", .out, value = TRUE),
-      c("RXODE2-FRAME-FREED", "RXODE2-UNLOADED"),
+      c(sort(.lines[-.n]), .lines[.n]),
+      c(
+        "RXODE2-FREED fromSE dll=TRUE",
+        "RXODE2-FREED toSE dll=TRUE",
+        "RXODE2-FREED ui dll=TRUE",
+        "RXODE2-UNLOADED"
+      ),
       info = .info
     )
   })
