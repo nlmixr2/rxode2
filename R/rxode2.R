@@ -334,7 +334,7 @@ rxode2 <- # nolint
         call. = FALSE
       )
     }
-    .udfEnvSet(envir)
+    .udfEnvLocal(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     rxParseSuppressMsg()

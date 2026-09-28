@@ -2,6 +2,13 @@
 .udfEnv$fun <- list()
 .udfEnv$udf <- integer(0)
 .udfEnv$envir <- NULL
+## depth of nested .udfEnvLocal() scopes and the envir to restore when the
+## outermost one exits
+.udfEnv$depth <- 0L
+.udfEnv$envirOuter <- NULL
+.udfEnv$scopeFrame <- NULL
+## the R function each user function name resolved to, used at solve time
+.udfEnv$funObj <- list()
 .udfEnv$envList <- list()
 .udfEnv$searchList <- list()
 .udfEnv$rxSEeqUsr <- NULL
@@ -204,6 +211,9 @@ rxRmFunParse <- function(name) {
 }
 
 .udfAddToSearch <- function(envir) {
+  if (!is.environment(envir) && !is.list(envir)) {
+    return(invisible())
+  }
   if (is.list(envir)) {
     lapply(seq_along(envir), function(i) {
       .udfAddToSearch(envir[[i]])
@@ -234,21 +244,93 @@ rxRmFunParse <- function(name) {
 
 #' Setup the UDF environment (for querying user defined functions)
 #'
+#' Outside of an rxode2 call the most recent environment becomes the primary
+#' one; inside an rxode2 call (see `.udfEnvLocal()`) the call's environment is
+#' kept and `env` is only added to the search list.
+#'
 #' @param env environment where user defined functions are queried. If NULL return current environment
 #' @return environment
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfEnvSet <- function(env) {
-  if (is.null(.udfEnv$envir)) {
-    if (is.list(env)) {
-      .udfEnv$envir <- env[[1]]
-    } else {
-      .udfEnv$envir <- env
-    }
+  if (is.null(env)) {
+    return(invisible(.udfEnv$envir))
+  }
+  .env <- .udfFirstEnv(env)
+  if (is.environment(.env) && (.udfEnv$depth == 0L || is.null(.udfEnv$envir))) {
+    .udfEnv$envir <- .env
   }
   .udfAddToSearch(env)
   return(invisible(.udfEnv$envir))
+}
+
+#' First environment in an environment or list of environments
+#'
+#' @param env environment or list of environments (may contain NULL)
+#' @return environment or NULL
+#' @noRd
+.udfFirstEnv <- function(env) {
+  if (is.environment(env)) {
+    return(env)
+  }
+  if (is.list(env)) {
+    for (.e in env) {
+      if (is.environment(.e)) {
+        return(.e)
+      }
+    }
+  }
+  NULL
+}
+
+#' Set the UDF environment for the duration of the calling function
+#'
+#' The outermost call makes `env` the primary environment for user function
+#' lookup and restores the previous one when it exits, so a caller's frame is
+#' neither kept for the session nor preferred by later, unrelated calls.
+#' Nested calls only add `env` to the search list.
+#'
+#' @param env environment or list of environments
+#' @param frame frame whose exit ends the scope
+#' @return primary environment, invisibly
+#' @noRd
+.udfEnvLocal <- function(env, frame = parent.frame()) {
+  ## a scope whose restore was dropped (a later on.exit() without add = TRUE)
+  ## ends once its frame is gone
+  if (
+    .udfEnv$depth > 0L &&
+      !any(vapply(sys.frames(), identical, logical(1), .udfEnv$scopeFrame))
+  ) {
+    .udfEnv$depth <- 1L
+    .udfEnvUnlocal()
+  }
+  .udfAddToSearch(env)
+  if (.udfEnv$depth == 0L) {
+    .env <- .udfFirstEnv(env)
+    .udfEnv$envirOuter <- .udfEnv$envir
+    .udfEnv$scopeFrame <- frame
+    if (is.environment(.env)) {
+      .udfEnv$envir <- .env
+    }
+  }
+  .udfEnv$depth <- .udfEnv$depth + 1L
+  do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
+  invisible(.udfEnv$envir)
+}
+
+#' End a `.udfEnvLocal()` scope
+#'
+#' @return nothing, called for side effects
+#' @noRd
+.udfEnvUnlocal <- function() {
+  .udfEnv$depth <- max(.udfEnv$depth - 1L, 0L)
+  if (.udfEnv$depth == 0L) {
+    .udfEnv$envir <- .udfEnv$envirOuter
+    .udfEnv$envirOuter <- NULL
+    .udfEnv$scopeFrame <- NULL
+  }
+  invisible()
 }
 #' Lock/Unlock environment for getting R user functions
 #'
@@ -361,17 +443,19 @@ rxRmFunParse <- function(name) {
       return(list(nargs = -42L, ".rxUiUdfNone"))
     }
   }
-  if (is.null(.udfEnv$envir)) {
-    return(list(
-      nargs = NA_integer_,
-      "rxode2 cannot determine which environment the user defined functions are located"
-    ))
+  ## outside of any rxode2 call nothing may be set; look from the global env
+  .envir <- .udfEnv$envir
+  if (!is.environment(.envir)) {
+    .envir <- globalenv()
   }
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunHasDots <- FALSE
   .udfEnv$bestEqArgs <- TRUE
   .found <- FALSE
-  if (!.udfExists(fun, nargs, .udfEnv$envir)) {
+  if (
+    !.udfExists(fun, nargs, .envir) &&
+      !(is.environment(.udfEnv$envirOuter) && .udfExists(fun, nargs, .udfEnv$envirOuter))
+  ) {
     # search prior environments with UDFs, assign the first one in the environments that match
     if (length(.udfEnv$searchList) > 0L) {
       if (
@@ -406,6 +490,7 @@ rxRmFunParse <- function(name) {
 
   .fun <- .udfEnv$bestFun
   .udfEnv$envir <- .udfEnv$bestFunEnv
+  .udfEnv$funObj[[fun]] <- .fun
   .udfEnv$fun[[fun]] <- list(fun, nargs)
   .w <- which(names(.udfEnv$udf) == fun)
   if (length(.w) == 0L) {
@@ -426,9 +511,6 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .setupUdf <- function(iv) {
-  if (!is.environment(.udfEnv$envir)) {
-    return(FALSE)
-  }
   .w <- which(is.na(iv))
   iv <- iv[-.w]
   .n <- names(iv)
@@ -478,6 +560,8 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 .udfReset <- function() {
   .udfEnv$udf <- integer(0)
+  ## functions that must share an environment are per model
+  .udfEnv$fun <- list()
 }
 
 #' This gets the user defined functions information for incorporation
@@ -560,7 +644,17 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .udfCall <- function(fun, args) {
-  .ret <- try(do.call(fun, args, envir = .udfEnv$envir), silent = TRUE)
+  ## the function resolved when the solve was set up; the lookup environment
+  ## may already have been restored when a compiled solve calls back
+  .fun <- .udfEnv$funObj[[fun]]
+  if (is.null(.fun)) {
+    .fun <- fun
+  }
+  .envir <- .udfEnv$envir
+  if (!is.environment(.envir)) {
+    .envir <- globalenv()
+  }
+  .ret <- try(do.call(.fun, args, envir = .envir), silent = TRUE)
   if (inherits(.ret, "try-error")) {
     .msg <- try(attr(.ret, "condition")$message, silent = TRUE)
     if (inherits(.msg, "try-error")) {
