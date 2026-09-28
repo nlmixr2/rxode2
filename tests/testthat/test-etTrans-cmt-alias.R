@@ -60,6 +60,10 @@ rxTest({
     .s <- rxSolve(.m, .d2, keep = "cmt")
     expect_equal(as.character(.s$cmt), rep("central", 3))
     expect_false("CMT" %in% names(.s))
+    .d2$CMT <- NULL
+    .d2$YTYPE <- c(9, 8, 7, 6)
+    .s <- rxSolve(.m, .d2, keep = "ytype")
+    expect_equal(.s$YTYPE, c(8, 7, 6))
   })
 
   test_that(".etTransCmtCol() picks the column etTrans() reads (#1410)", {
@@ -67,5 +71,7 @@ rxTest({
     expect_equal(.etTransCmtCol(c("id", "YTYPE", "cmt")), 3L)
     expect_equal(.etTransCmtCol(c("id", "YTYPE")), 2L)
     expect_equal(.etTransCmtCol(c("id", "time")), NA_integer_)
+    expect_equal(.etTransCmtCol(c("CMT", "ytype")), NA_integer_)
+    expect_equal(.etTransCmtCol(c("cmt", "cmt")), NA_integer_)
   })
 })

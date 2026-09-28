@@ -976,16 +976,17 @@
 
 ## The compartment column etTrans() reads: a column named exactly `cmt` wins
 ## over the other spellings (`CMT`, `ytype`, `state`, `var`; #1410), otherwise
-## the first spelling found; `NA` when there is none.
+## the only spelling present; `NA` when there is none or it is ambiguous (an
+## error in etTrans()).
 .etTransCmtCol <- function(nm) {
   if (sum(nm == "cmt") == 1L) {
     return(which(nm == "cmt"))
   }
   .w <- which(tolower(nm) %in% c("cmt", "ytype", "state", "var"))
-  if (length(.w) == 0L) {
+  if (length(.w) != 1L) {
     return(NA_integer_)
   }
-  .w[1L]
+  .w
 }
 
 ## Is a converted linCmt() model safe to use for the given solve data?
