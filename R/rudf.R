@@ -257,6 +257,7 @@ rxRmFunParse <- function(name) {
   if (is.null(env)) {
     return(invisible(.udfEnv$envir))
   }
+  .udfEnvEndDeadScope()
   .env <- .udfFirstEnv(env)
   if (is.environment(.env) && (.udfEnv$depth == 0L || is.null(.udfEnv$envir))) {
     .udfEnv$envir <- .env
@@ -296,15 +297,7 @@ rxRmFunParse <- function(name) {
 #' @return primary environment, invisibly
 #' @noRd
 .udfEnvLocal <- function(env, frame = parent.frame()) {
-  ## a scope whose restore was dropped (a later on.exit() without add = TRUE)
-  ## ends once its frame is gone
-  if (
-    .udfEnv$depth > 0L &&
-      !any(vapply(sys.frames(), identical, logical(1), .udfEnv$scopeFrame))
-  ) {
-    .udfEnv$depth <- 1L
-    .udfEnvUnlocal()
-  }
+  .udfEnvEndDeadScope()
   .udfAddToSearch(env)
   if (.udfEnv$depth == 0L) {
     .env <- .udfFirstEnv(env)
@@ -317,6 +310,24 @@ rxRmFunParse <- function(name) {
   .udfEnv$depth <- .udfEnv$depth + 1L
   do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
   invisible(.udfEnv$envir)
+}
+
+#' End a `.udfEnvLocal()` scope whose frame is gone
+#'
+#' This happens when its restore was dropped by a later `on.exit()` without
+#' `add = TRUE`.
+#'
+#' @return nothing, called for side effects
+#' @noRd
+.udfEnvEndDeadScope <- function() {
+  if (
+    .udfEnv$depth > 0L &&
+      !any(vapply(sys.frames(), identical, logical(1), .udfEnv$scopeFrame))
+  ) {
+    .udfEnv$depth <- 1L
+    .udfEnvUnlocal()
+  }
+  invisible()
 }
 
 #' End a `.udfEnvLocal()` scope

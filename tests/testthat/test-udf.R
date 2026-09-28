@@ -733,6 +733,7 @@ rxTest({
   })
 
   test_that("the udf scope ends on error and when its restore is dropped", {
+    .freshUdfEnv()
     expect_error(rxode2({
       y <- notAFunction1409(t)
     }))
@@ -746,5 +747,11 @@ rxTest({
     expect_equal(.udfEnv$depth, 1L)
     invisible(rxToSE("a + b"))
     expect_equal(.udfEnv$depth, 0L)
+    # an unscoped .udfEnvSet() (as nlmixr2est calls it) is not ignored either
+    .dropped()
+    .e <- new.env()
+    .udfEnvSet(.e)
+    expect_equal(.udfEnv$depth, 0L)
+    expect_identical(.udfEnv$envir, .e)
   })
 })
