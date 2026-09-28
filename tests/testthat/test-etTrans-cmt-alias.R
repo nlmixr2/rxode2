@@ -12,8 +12,11 @@ rxTest({
     })
   }
   .d <- data.frame(
-    id = 1, time = c(0, 1, 2, 4), amt = c(100, 0, 0, 0),
-    evid = c(1, 0, 0, 0), cmt = c("depot", "central", "central", "central")
+    id = 1,
+    time = c(0, 1, 2, 4),
+    amt = c(100, 0, 0, 0),
+    evid = c(1, 0, 0, 0),
+    cmt = c("depot", "central", "central", "central")
   )
 
   test_that("an exact 'cmt' column wins over an upper-case 'CMT' column (#1410)", {
