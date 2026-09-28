@@ -3114,16 +3114,22 @@ rxSolve.nlmixr2FitData <- function(
   if (exists("control", envir = .env)) {
     .oldControl <- get("control", envir = .env)
     assign("control", .rxControl, envir = .env)
-    on.exit({
-      rxUdfUiReset()
-      assign("control", .oldControl, envir = .env)
-    }, add = TRUE)
+    on.exit(
+      {
+        rxUdfUiReset()
+        assign("control", .oldControl, envir = .env)
+      },
+      add = TRUE
+    )
   } else {
     assign("control", .rxControl, envir = .env)
-    on.exit({
-      rxUdfUiReset()
-      rm(list = "control", envir = .env)
-    }, add = TRUE)
+    on.exit(
+      {
+        rxUdfUiReset()
+        rm(list = "control", envir = .env)
+      },
+      add = TRUE
+    )
   }
   .rxControl <- object$rxControlWithVar
   .lst[[2]] <- .rxControl
@@ -3197,11 +3203,14 @@ rxSolve.default <- function(
 ) {
   rxUdfUiReset()
   .udfEnvLocal(list(envir, parent.frame(1)))
-  on.exit({
-    rxUdfUiReset()
-    .clearPipe()
-    .asFunctionEnv$rx <- NULL
-  }, add = TRUE)
+  on.exit(
+    {
+      rxUdfUiReset()
+      .clearPipe()
+      .asFunctionEnv$rx <- NULL
+    },
+    add = TRUE
+  )
   .applyParams <- FALSE
   .rxParams <- NULL
   if (is.rxEt(object)) {
