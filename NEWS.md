@@ -237,6 +237,19 @@
   chain went from about 19 s to 0.2 s.  A lone `;` is now a statement only as
   an empty `if`/`while` body; semicolons elsewhere parse as before (#1398).
 
+- Two fixed-rate infusions into the same compartment at the same rate are now
+  paired with their own stop records when they overlap.  `dose()` reported the
+  wrong amount (60 instead of 100 for a 100 mg infusion with a 50 mg one nested
+  inside it), the dosing records of `addDosing = TRUE` output carried the same
+  wrong amount, and with `f()` each infusion's duration was scaled from the
+  other's stop time, so the solved amounts were wrong too.  `etTrans()` now
+  records the start/stop pairing (the `rxInfPair` attribute) for the subjects
+  where the solver could not recover it, so its output changed for those
+  subjects only; the `etTrans()` golden snapshots were updated for the 48
+  `nmtest` cases that gain the attribute, which are otherwise unchanged.  An
+  infusion start written with a classic internal `evid` and no stop record of
+  its own is now reported as having no duration instead of borrowing the stop of
+  another infusion at the same rate (#1348).
 - A prior spec from `rxPriorBuildSpec()` (which nlmixr2est fits with priors
   keep) is now freed by R with its external pointer instead of by a finalizer
   in rxode2's DLL, so freeing it after `unloadNamespace("rxode2")` no longer
