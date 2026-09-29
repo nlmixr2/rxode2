@@ -25,6 +25,8 @@ rxTest({
     })
     f2 <- suppressMessages(f |> ini(t1 = 3))
     expect_equal(suppressMessages(rxSolve(f2, e))$y, rep(4, 4))
+    # the simulation model a solve caches in meta is not part of the function
+    local(expect_false(any(deparse(f2$fun) == "    NULL")))
   })
 
   test_that("a user function defined in the model function body is found", {

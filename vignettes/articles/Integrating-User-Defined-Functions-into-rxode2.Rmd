@@ -22,6 +22,10 @@ discusses 4 ways to do this:
 - A R-based user function which can be loaded as a simple function or
   in certain circumstances translated to C to run more efficiently
 
+- A R-based user function defined inside the model function itself,
+  so it travels with the model and is translated to C for that model
+  only
+
 - A C function that you define and integrate into code
 
 - A user defined function that changes `rxode2` ui code by replacing
@@ -172,6 +176,93 @@ rxode2. Additional requirements for conversion to C include:
 -   As mentioned, if the `return()` statement is present, the
     derivative C functions and `rxode2`'s derivative table is not
     updated.
+
+## User functions inside the model function
+
+You can also define a user function inside the model function itself,
+before `ini({})`:
+
+```{r modelUdf}
+mod <- function() {
+  # the model's own function
+  hill <- function(emax, conc, ec50) {
+    emax * conc / (ec50 + conc)
+  }
+  ini({
+    temax <- 10
+    tec50 <- 5
+  })
+  model({
+    eff <- hill(temax, time, tec50)
+  })
+}
+
+ui <- mod()
+```
+
+The function now lives in the model.  It is kept in the model's `meta`
+information and printed as part of the model function:
+
+```{r modelUdfFun}
+ui$fun
+```
+
+When possible, the function is translated to C along with its
+derivatives, just like `rxFun()`, but only for this model:
+
+```{r modelUdfSolve}
+s <- rxSolve(ui, et(0:10))
+plot(s, eff)
+
+# nothing was registered globally
+"hill" %in% rxSupportedFuns()
+```
+
+This makes the model self-contained and portable:
+
+- Everything the model needs is in the model.  You can save it, pass
+  it to a colleague, pipe it (`ui |> ini(temax = 20)`) or estimate it
+  with `nlmixr2` without first running a separate script that defines
+  `hill()` or calls `rxFun()`.
+
+- Nothing leaks into the session.  Another model does not see
+  `hill()`, and a function of the same name defined elsewhere (or
+  registered with `rxFun()`) is left alone, so two models can each use
+  their own `hill()`.
+
+- The C translation and its derivatives are made once per function
+  definition in a session and are only active while this model is
+  built, used or solved.  The compiled model keeps its own copy of the
+  C code.
+
+The same applies to a function the model function encloses, for
+example when a function returns the model function:
+
+```{r modelUdfClosure}
+makeModel <- function(power) {
+  shape <- function(x) {
+    x^power
+  }
+  function() {
+    ini({
+      tk <- 0.5
+    })
+    model({
+      y <- shape(tk * time)
+    })
+  }
+}
+
+s2 <- rxSolve(makeModel(2), et(0:5))
+s2$y
+```
+
+Here `shape()` reads `power` from its enclosing function, so it cannot
+be translated to C and is called from R instead; it still lives in the
+model, and gives the correct result.  The requirements for translating
+a function to C are the same as for `rxFun()` (see the list above),
+plus the function may only use its own arguments and the variables it
+assigns.
 
 ## C based functions
 

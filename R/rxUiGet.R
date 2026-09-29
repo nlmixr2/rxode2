@@ -450,14 +450,11 @@ rxUiDeparse.default <- function(object, var) {
 #' @export
 rxUiGet.funPrint <- function(x, ...) {
   .x <- x[[1]]
-  .ls <- ls(.x$meta, all.names = TRUE)
+  .ls <- setdiff(ls(.x$meta, all.names = TRUE), ".simModelBase")
   .hasIni <- length(.x$iniDf$cond) > 0
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    if (.i == ".simModelBase") {
-      next
-    }
     .var <- .ls[.i]
     .val <- .x$meta[[.ls[.i]]]
     .ret[[.i + 1]] <- rxUiDeparse(.val, .var)

@@ -2,6 +2,9 @@
 
 ## Bug fixes
 
+- `ui$fun` of a model that had been solved printed a stray `NULL` line in
+  place of the cached simulation model.
+
 - `$` on an rxUi no longer adds rxode2's own call frames (like
   `rxPriorLogDensity()`'s) to the environments searched for user-defined
   functions; it records the nearest frames outside rxode2 instead.  What those
