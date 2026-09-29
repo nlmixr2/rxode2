@@ -9,6 +9,12 @@ name: test-coverage.yaml
 
 permissions: read-all
 
+# a new commit on a pull request cancels that pull request's earlier run; runs
+# on main always finish, since they report coverage
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
