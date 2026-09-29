@@ -171,6 +171,9 @@ article discusses 4 ways to do this:</p>
 <li><p>A R-based user function which can be loaded as a simple function
 or in certain circumstances translated to C to run more
 efficiently</p></li>
+<li><p>A R-based user function defined inside the model function itself,
+so it travels with the model and is translated to C for that model
+only</p></li>
 <li><p>A C function that you define and integrate into code</p></li>
 <li><p>A user defined function that changes <code>rxode2</code> ui code
 by replacing the function with <code>rxode2</code> code. This can be in
@@ -252,9 +255,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr       min        lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 15.940927 16.639060 17.82739 16.91687 17.42150 33.12959   100</span></span>
-<span><span class="co">#&gt;     withC  9.294325  9.868472 10.43741 10.16037 10.49046 16.35798   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr       min       lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  withoutC 16.138919 17.28734 18.96229 18.17092 19.17943 34.74652   100</span></span>
+<span><span class="co">#&gt;     withC  9.305634 10.09216 10.84207 10.61702 11.02851 17.89535   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -331,11 +334,113 @@ not updated.</p></li>
 </ul>
 </div>
 <div class="section level2">
+<h2 id="user-functions-inside-the-model-function">User functions inside the model function<a class="anchor" aria-label="anchor" href="#user-functions-inside-the-model-function"></a>
+</h2>
+<p>You can also define a user function inside the model function itself,
+before <code>ini({})</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># the model's own function</span></span>
+<span>  <span class="va">hill</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">emax</span>, <span class="va">conc</span>, <span class="va">ec50</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">emax</span> <span class="op">*</span> <span class="va">conc</span> <span class="op">/</span> <span class="op">(</span><span class="va">ec50</span> <span class="op">+</span> <span class="va">conc</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">temax</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span>    <span class="va">tec50</span> <span class="op">&lt;-</span> <span class="fl">5</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">eff</span> <span class="op">&lt;-</span> <span class="fu">hill</span><span class="op">(</span><span class="va">temax</span>, <span class="va">time</span>, <span class="va">tec50</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">mod</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
+<span><span class="co">#&gt; converted model user function 'hill' to C</span></span></code></pre></div>
+<p>The function now lives in the model. It is kept in the model’s
+<code>meta</code> information and printed as part of the model
+function:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ui</span><span class="op">$</span><span class="va">fun</span></span>
+<span><span class="co">#&gt; function () </span></span>
+<span><span class="co">#&gt; {</span></span>
+<span><span class="co">#&gt;     hill &lt;- function(emax, conc, ec50) {</span></span>
+<span><span class="co">#&gt;         emax * conc/(ec50 + conc)</span></span>
+<span><span class="co">#&gt;     }</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         temax &lt;- 10</span></span>
+<span><span class="co">#&gt;         tec50 &lt;- 5</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         eff &lt;- hill(temax, time, tec50)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x5654a3aa9170&gt;</span></span></code></pre></div>
+<p>When possible, the function is translated to C along with its
+derivatives, just like <code><a href="../reference/rxFun.html">rxFun()</a></code>, but only for this
+model:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">ui</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span>, <span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/modelUdfSolve-1.png" class="r-plt" alt="" width="700"></p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># nothing was registered globally</span></span>
+<span><span class="st">"hill"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="../reference/rxSupportedFuns.html">rxSupportedFuns</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<p>This makes the model self-contained and portable:</p>
+<ul>
+<li><p>Everything the model needs is in the model. You can save it, pass
+it to a colleague, pipe it (<code>ui |&gt; ini(temax = 20)</code>) or
+estimate it with <code>nlmixr2</code> without first running a separate
+script that defines <code>hill()</code> or calls
+<code><a href="../reference/rxFun.html">rxFun()</a></code>.</p></li>
+<li><p>Nothing leaks into the session. Another model does not see
+<code>hill()</code>, and a function of the same name defined elsewhere
+(or registered with <code><a href="../reference/rxFun.html">rxFun()</a></code>) is left alone, so two models
+can each use their own <code>hill()</code>.</p></li>
+<li><p>The C translation and its derivatives are made once per function
+definition in a session and are only active while this model is built,
+used or solved. The compiled model keeps its own copy of the C
+code.</p></li>
+</ul>
+<p>The same applies to a function the model function encloses, for
+example when a function returns the model function:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">makeModel</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">power</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">shape</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">x</span><span class="op">^</span><span class="va">power</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>      <span class="va">tk</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">shape</span><span class="op">(</span><span class="va">tk</span> <span class="op">*</span> <span class="va">time</span><span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="fu">makeModel</span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; Warning: not thread safe method, using 1 core</span></span>
+<span><span class="va">s2</span><span class="op">$</span><span class="va">y</span></span>
+<span><span class="co">#&gt; [1] 0.00 0.25 1.00 2.25 4.00 6.25</span></span></code></pre></div>
+<p>Here <code>shape()</code> reads <code>power</code> from its enclosing
+function, so it cannot be translated to C and is called from R instead;
+it still lives in the model, and gives the correct result. The
+requirements for translating a function to C are the same as for
+<code><a href="../reference/rxFun.html">rxFun()</a></code> (see the list above), plus the function may only
+use its own arguments and the variables it assigns.</p>
+</div>
+<div class="section level2">
 <h2 id="c-based-functions">C based functions<a class="anchor" aria-label="anchor" href="#c-based-functions"></a>
 </h2>
 <p>You can add your own C functions directly into rxode2 as well using
 <code><a href="../reference/rxFun.html">rxFun()</a></code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fun</span> <span class="op">&lt;-</span> <span class="st">"</span></span>
 <span><span class="st"> double fun(double a, double b, double c) {</span></span>
 <span><span class="st">   return a*a+b*a+c;</span></span>
@@ -345,7 +450,7 @@ not updated.</p></li>
 <span><span class="fu"><a href="../reference/rxFun.html">rxFun</a></span><span class="op">(</span><span class="st">"fun"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span><span class="op">)</span>, <span class="va">fun</span><span class="op">)</span></span></code></pre></div>
 <p>If you wanted you could also use C functions or expressions for the
 derivatives by using the <code><a href="../reference/rxD.html">rxD()</a></code> function:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxD.html">rxD</a></span><span class="op">(</span><span class="st">"fun"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>   <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span><span class="op">)</span> <span class="op">{</span> <span class="co"># derivative of arg1: a</span></span>
 <span>     <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"2*"</span>, <span class="va">a</span>, <span class="st">"+"</span>, <span class="va">b</span><span class="op">)</span></span>
@@ -359,7 +464,7 @@ derivatives by using the <code><a href="../reference/rxD.html">rxD()</a></code> 
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Removing the function with <code><a href="../reference/rxFun.html">rxRmFun()</a></code> will also remove
 the derivative table:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxFun.html">rxRmFun</a></span><span class="op">(</span><span class="st">"fun"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -372,7 +477,7 @@ models, as well as adding approximating functions like polynomials,
 splines and neural networks.</p>
 <p>An example that allows more <code>R</code>-like functions is
 below:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxpois.html">rxpois</a></span><span class="op">(</span>lambda<span class="op">=</span><span class="va">lam</span><span class="op">)</span></span>
@@ -390,7 +495,7 @@ below:</p>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>This is accomplished by a combination of two functions, which are
 highly commented:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rxUdfUi.rxpois</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fun</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Fun is the language object (ie quoted R object) to be evaluated or</span></span>
 <span>  <span class="co"># changed in the code</span></span>
@@ -499,7 +604,7 @@ to method. For example, the built in <code>testMod1()</code> ui
 modification function uses only one argument when parsed</p></li>
 </ul>
 <p>Below is a commented example of the model variables example:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="va">testMod1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">val</span><span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># This converts the val to a character if it is somthing like testMod1(b)</span></span>
@@ -628,7 +733,7 @@ ability to use:</p>
 <li>add initial conditions</li>
 <li>And use data in the initial estimates</li>
 </ul>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># You can print the code:</span></span>
 <span><span class="va">linMod</span></span>
@@ -840,7 +945,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55cdff913bf0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5654a9121ae0&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -850,7 +955,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x55ce0007d468&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5654a988c360&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
