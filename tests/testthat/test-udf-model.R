@@ -356,6 +356,41 @@ rxTest({
     expect_equal(length(.udfEnv$modelStack), .n)
   })
 
+  test_that("a model user function reading a variable before assigning it stays in R", {
+    expect_equal(
+      .udfModelFreeVars(function(x) {
+        a <- a + x
+        a
+      }),
+      "a"
+    )
+    expect_equal(
+      .udfModelFreeVars(function(x) {
+        a <- x + 1
+        b <- a * x
+        b
+      }),
+      character(0)
+    )
+    mk <- function() {
+      a <- 5
+      udfFree1416 <- function(x) {
+        a <- a + x
+        a
+      }
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfFree1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    expect_equal(suppressWarnings(suppressMessages(rxSolve(f, e)))$y, rep(6, 4))
+  })
+
   test_that("rxFun() translates a function whose body has no braces", {
     withr::defer(.rmFun("udfNoBrace1416"))
     udfNoBrace1416 <- function(x) x + 1

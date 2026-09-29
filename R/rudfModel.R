@@ -92,7 +92,10 @@
   .ret
 }
 
-#' Names a function body reads but neither receives nor assigns
+#' Names a function body reads before assigning them itself
+#'
+#' The body is walked in evaluation order (the value of an assignment before
+#' its target), so `a <- a + x` reads `a` from outside the function.
 #'
 #' @param fun function
 #' @return character vector of free variable names
@@ -100,27 +103,35 @@
 #' @author Matthew L. Fidler
 .udfModelFreeVars <- function(fun) {
   .env <- new.env(parent = emptyenv())
-  .env$used <- character(0)
-  .env$assigned <- character(0)
+  .env$free <- character(0)
+  .env$assigned <- names(formals(fun))
   .walk <- function(x) {
     if (is.name(x)) {
-      .env$used <- c(.env$used, as.character(x))
+      .n <- as.character(x)
+      if (nzchar(.n) && !(.n %in% .env$assigned)) {
+        .env$free <- c(.env$free, .n)
+      }
     } else if (is.call(x)) {
-      .isAssign <- identical(x[[1]], quote(`<-`)) || identical(x[[1]], quote(`=`))
       if (!is.name(x[[1]])) {
         .walk(x[[1]])
       }
-      for (.i in seq_along(x)[-1]) {
-        if (.isAssign && .i == 2L && is.name(x[[2]])) {
-          .env$assigned <- c(.env$assigned, as.character(x[[2]]))
-        } else if (is.call(x[[.i]]) || (is.name(x[[.i]]) && nzchar(as.character(x[[.i]])))) {
-          .walk(x[[.i]])
+      .isAssign <- (identical(x[[1]], quote(`<-`)) || identical(x[[1]], quote(`=`))) &&
+        length(x) == 3L &&
+        is.name(x[[2]])
+      if (.isAssign) {
+        .walk(x[[3]])
+        .env$assigned <- c(.env$assigned, as.character(x[[2]]))
+      } else {
+        for (.i in seq_along(x)[-1]) {
+          if (is.call(x[[.i]]) || is.name(x[[.i]])) {
+            .walk(x[[.i]])
+          }
         }
       }
     }
   }
   .walk(body(fun))
-  setdiff(unique(.env$used), c(names(formals(fun)), .env$assigned))
+  unique(.env$free)
 }
 
 #' Current C user function registration of a name
