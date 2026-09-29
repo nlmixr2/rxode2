@@ -8,7 +8,14 @@ PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS)
 
 # The vendored SUNDIALS headers live in src/sundials_inc; PKG_CPPFLAGS
 # precedes the LinkingTo include flags (CLINK_CPPFLAGS) for C and C++.
-PKG_CPPFLAGS = @SUNDIALS_INC@
+# R_NO_REMAP must be defined BEFORE any R header is included ("Writing R
+# Extensions": the remapping "can be eliminated by defining R_NO_REMAP
+# (before including any R headers)").  Setting it in a header of our own is
+# too late for any translation unit that has already pulled in R's headers,
+# which is what let R's `match` macro expand inside the `declare variant
+# match(...)` pragma in LLVM's omp.h and broke the clang builds.  Defining it
+# on the command line is the only way to guarantee it for every source.
+PKG_CPPFLAGS = -DR_NO_REMAP @SUNDIALS_INC@
 
 # Release options -- -O3 gives meaningful speedup on the ODE hot paths
 PKG_CFLAGS  =  -D_isrxode2_ @O2@

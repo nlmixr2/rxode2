@@ -16,30 +16,36 @@ features and bug fixes collected since 5.1.7; the full list is in NEWS.md.
         #define match                   Rf_match
 
   `Rinternals.h` defines `match` as a macro for `Rf_match` unless
-  `R_NO_REMAP` is set, and LLVM's `omp.h` spells a clause of its
-  `declare variant` pragma `match(...)`.  Where R's headers were included
-  first the macro expanded inside the pragma and the compile failed.  Both
-  places that include `omp.h` -- `src/rxomp.h` for the package and
-  `inst/include/rxode2_model_shared.h` for the C code rxode2 generates and
-  compiles on the user's machine -- now hide the macro across the include
-  with `#pragma push_macro("match")` / `#undef match` /
-  `#pragma pop_macro("match")`.  The guard is confined to the `#include`
-  line, and on a compiler whose `omp.h` has no such pragma it does nothing.
+  `R_NO_REMAP` is defined, and LLVM's `omp.h` spells a clause of its
+  `declare variant` pragma `match(...)`, so the macro expanded inside the
+  pragma and the compile failed.
 
-  We have no clang 23 image, so we reproduced the failure locally with
-  clang 18, whose `omp.h` carries the same `declare variant match(...)`
-  lines: without the guard clang gives exactly the diagnostic above, and
-  with it the package and the generated model code both compile.  Neither
-  side of the collision is version specific.
+  `R_NO_REMAP` is now defined on the compile command line, with
+  `-DR_NO_REMAP` in `src/Makevars.in`.  That is the only way to have it in
+  effect before any R header is included, as the manual requires:
+  "This remapping can cause problems, and can be eliminated by defining
+  R_NO_REMAP (before including any R headers)".  Our previous attempt set it
+  inside one of our own headers, which is too late for a source that has
+  already included R's headers; we are sorry for the churn that caused.
+
+  Checked with clang: a source that includes `R.h` and `Rinternals.h` and
+  then reaches `omp.h` fails exactly as above without the flag and compiles
+  with it.
 
 ## Sanitizers
 
-* `gcc-UBSAN` reported `Status: OK` for 5.1.7.  The `runtime error` lines in
-  that run's `00install.out` are all in the TBB sources bundled with
-  RcppParallel, not in rxode2.  As of this version rxode2 no longer links to
-  RcppParallel, StanHeaders or RcppEigen at all -- the Stan-based `linCmt()`
-  kernels moved to the new package 'rxode2lincmt', already on CRAN -- so
-  those sources are no longer part of this package's build.
+* On the UBSAN error in our use of RcppParallel: this version does not use
+  RcppParallel at all.  The Stan-based `linCmt()` kernels, which were what
+  needed it, have moved to the separate package 'rxode2lincmt'.  RcppParallel,
+  StanHeaders and RcppEigen are gone from `DESCRIPTION` and no source or
+  header in `src/` or `inst/include/` refers to RcppParallel, TBB or
+  `STAN_THREADS` any more, so nothing in this package builds or runs that
+  code.  We are following up on the sanitizer report in 'rxode2lincmt', which
+  is where that configuration now lives.
+
+* `gcc-UBSAN` reported `Status: OK` for 5.1.7, and the `runtime error` lines
+  in that run's `00install.out` are in the TBB sources bundled with
+  RcppParallel as it was being installed as a dependency.
 
 * We ran this version through R-hub's `clang-ubsan` container: `Status: OK`,
   with the examples and the tests run under the sanitizer and no
