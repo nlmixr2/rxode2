@@ -72,12 +72,17 @@ passing assertions, no failures, no skips in the event-translator gates).
 
 Status: 2 NOTEs under `--as-cran`.
 
-* `Number of updates in past 6 months: 7`.  This upload is required for the
-  package to remain on CRAN: 5.1.7 does not install on
-  `r-devel-linux-x86_64-debian-clang` or `r-devel-linux-x86_64-fedora-clang`,
-  and that has to be corrected rather than left to the next scheduled
-  release.  The update frequency is a consequence of the fix being mandatory,
-  not of a faster release cadence.
+* `Days since last update: 0` and `Number of updates in past 6 months: 8`.
+  The update counted immediately before this one is 5.1.7.1, which Prof Brian
+  Ripley built and published from CRAN's side on 2026-09-29 to correct the
+  build; it was not a release from us, and we had no part in its timing.  Our
+  own previous release was 5.1.7 on 2026-09-14.
+
+  This upload is likewise not a discretionary release.  5.1.7 did not install
+  on `r-devel-linux-x86_64-debian-clang` or `r-devel-linux-x86_64-fedora-clang`,
+  and 5.1.8 carries the proper correction for that (R_NO_REMAP on the compile
+  command line, described above) together with the work already queued behind
+  it.  We are happy to hold the upload if you would rather it waited.
 
 * `Compilation used the following non-portable flag(s):
   -mno-omit-leaf-frame-pointer`.  This flag comes from the Ubuntu
