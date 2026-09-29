@@ -23,8 +23,8 @@
 
 #' User functions a model function defines for its model
 #'
-#' A function counts when a name used in the model block (or, transitively, in
-#' one of these functions) is bound to a function in the model function's own
+#' A function counts when a function the model block calls (or, transitively,
+#' one of these functions calls) is bound to a function in the model function's own
 #' frame or in an environment lexically enclosing it (#1416).
 #'
 #' @param expr model block expression
@@ -46,7 +46,7 @@
   # functions registered as C user functions (maybe by an earlier build of
   # this model) are still candidates
   .skip <- setdiff(rxSupportedFuns(), names(.udfEnv$rxSEeqUsr))
-  .todo <- list(list(names = all.names(expr), envs = .envs))
+  .todo <- list(list(names = .udfModelCallNames(expr), envs = .envs))
   while (length(.todo) > 0L) {
     .cur <- .todo[[1]]
     .todo <- .todo[-1]
@@ -60,7 +60,7 @@
             .todo <- c(
               .todo,
               list(list(
-                names = all.names(body(.f)),
+                names = .udfModelCallNames(body(.f)),
                 envs = .udfModelClosure(environment(.f))
               ))
             )
@@ -68,6 +68,25 @@
           break
         }
       }
+    }
+  }
+  .ret
+}
+
+#' Names of the functions an expression calls
+#'
+#' @param expr expression
+#' @return character vector
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelCallNames <- function(expr) {
+  if (!is.call(expr)) {
+    return(character(0))
+  }
+  .ret <- if (is.name(expr[[1]])) as.character(expr[[1]]) else .udfModelCallNames(expr[[1]])
+  for (.i in seq_along(expr)[-1]) {
+    if (is.call(expr[[.i]])) {
+      .ret <- c(.ret, .udfModelCallNames(expr[[.i]]))
     }
   }
   .ret
@@ -309,19 +328,22 @@
 
 #' Use a model's own user functions for the duration of the calling function
 #'
-#' The functions are looked up before any other environment, and those
-#' translated to C are registered only until the scope ends, so they never
-#' become global.
+#' In a strong scope the functions are looked up before any other environment,
+#' and those translated to C are registered only until the scope ends, so they
+#' never become global.  A weak scope registers nothing and is searched only
+#' after every other environment, so it can never shadow another function.
 #'
 #' @param env environment of the model's user functions (a ui's `meta`, or the
 #'   result of `.udfModelFuns()`); ignored unless it holds a function
 #' @param frame frame whose exit ends the scope
+#' @param weak start a weak scope
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelLocal <- function(env, frame = parent.frame()) {
-  if (.udfModelPush(env, frame)) {
-    do.call(base::on.exit, list(quote(.udfModelUnlocal()), add = TRUE), envir = frame)
+.udfModelLocal <- function(env, frame = parent.frame(), weak = FALSE) {
+  if (.udfModelPush(env, frame, weak)) {
+    # the function itself, since a caller's frame may not see rxode2's names
+    do.call(base::on.exit, list(as.call(list(.udfModelUnlocal, frame, weak)), add = TRUE), envir = frame)
   }
   invisible()
 }
@@ -330,11 +352,12 @@
 #'
 #' @param env environment of the model's user functions
 #' @param frame frame whose exit ends the scope
+#' @param weak start a weak scope (see `.udfModelLocal()`)
 #' @return `TRUE` when a scope was started (not when `env` already has one
-#'   for `frame`)
+#'   of this kind for `frame`)
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelPush <- function(env, frame) {
+.udfModelPush <- function(env, frame, weak = FALSE) {
   if (
     !is.environment(env) ||
       length(env) == 0L ||
@@ -344,14 +367,14 @@
   }
   .udfModelPrune()
   for (.s in .udfEnv$modelStack) {
-    if (identical(.s$env, env) && identical(.s$frame, frame)) {
+    if (identical(.s$env, env) && identical(.s$frame, frame) && .s$weak == weak) {
       return(FALSE)
     }
   }
-  .saved <- .udfRegActivate(.udfModelRegs(env))
+  .saved <- if (weak) list() else .udfRegActivate(.udfModelRegs(env))
   .udfEnv$modelStack <- c(
     .udfEnv$modelStack,
-    list(list(env = env, frame = frame, saved = .saved))
+    list(list(env = env, frame = frame, weak = weak, saved = .saved))
   )
   TRUE
 }
@@ -377,17 +400,26 @@
   .udfEnv$rxCcode[.n]
 }
 
-#' End the innermost `.udfModelLocal()` scope
+#' End a `.udfModelLocal()` scope
 #'
+#' Strong scopes end in reverse order, but a weak scope (kept for a caller)
+#' can outlive strong ones started after it, so the scope is found by its
+#' frame.
+#'
+#' @param frame frame of the scope
+#' @param weak whether it is a weak scope
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelUnlocal <- function() {
-  .n <- length(.udfEnv$modelStack)
-  if (.n > 0L) {
-    .s <- .udfEnv$modelStack[[.n]]
-    .udfEnv$modelStack <- .udfEnv$modelStack[-.n]
-    .udfRegRestore(.s$saved)
+.udfModelUnlocal <- function(frame, weak = FALSE) {
+  .stack <- .udfEnv$modelStack
+  for (.i in rev(seq_along(.stack))) {
+    .s <- .stack[[.i]]
+    if (.s$weak == weak && identical(.s$frame, frame)) {
+      .udfEnv$modelStack <- .stack[-.i]
+      .udfRegRestore(.s$saved)
+      break
+    }
   }
   invisible()
 }
@@ -395,8 +427,8 @@
 #' Discard model user function scopes whose frame is gone
 #'
 #' This happens when their restore was dropped by a later `on.exit()` without
-#' `add = TRUE`.  Scopes above the first dead one are ended and started again,
-#' so registrations are always restored in reverse order.
+#' `add = TRUE`.  Strong scopes above the first dead one are ended and started
+#' again, so registrations are always restored in reverse order.
 #'
 #' @return nothing, called for side effects
 #' @noRd
@@ -418,32 +450,16 @@
     return(invisible())
   }
   .first <- which(!.alive)[1]
+  .udfEnv$modelStack <- .stack[seq_len(.first - 1L)]
   for (.i in rev(seq(.first, length(.stack)))) {
-    .udfModelUnlocal()
+    .udfRegRestore(.stack[[.i]]$saved)
   }
   for (.i in seq(.first, length(.stack))) {
     if (.alive[.i]) {
-      .udfModelPush(.stack[[.i]]$env, .stack[[.i]]$frame)
+      .udfModelPush(.stack[[.i]]$env, .stack[[.i]]$frame, .stack[[.i]]$weak)
     }
   }
   invisible()
-}
-
-#' Environment of the model user functions in scope
-#'
-#' Scopes whose frame is gone (their restore dropped by a later `on.exit()`
-#' without `add = TRUE`) are discarded.
-#'
-#' @return environment or NULL
-#' @noRd
-#' @author Matthew L. Fidler
-.udfModelEnvGet <- function() {
-  .udfModelPrune()
-  .stack <- .udfEnv$modelStack
-  if (length(.stack) == 0L) {
-    return(.udfModelSolveEnv())
-  }
-  .stack[[length(.stack)]]$env
 }
 
 #' Model user function environment of the current solve
@@ -532,42 +548,31 @@
 
 #' Model user function environment that defines a function
 #'
-#' The scope in effect comes first, then the environments of the current
-#' solve.
+#' Strong scopes are searched innermost first, then the environments of the
+#' current solve; weak scopes are searched on their own.  Scopes whose frame is
+#' gone are discarded first.
 #'
 #' @param fun function name
+#' @param weak search the weak scopes instead
 #' @return environment or NULL
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelEnvFor <- function(fun) {
+.udfModelEnvFor <- function(fun, weak = FALSE) {
   .has <- function(.e) {
     is.environment(.e) && exists(fun, envir = .e, mode = "function", inherits = FALSE)
   }
-  .e <- .udfModelEnvGet()
-  if (.has(.e)) {
-    return(.e)
+  .udfModelPrune()
+  for (.s in rev(.udfEnv$modelStack)) {
+    if (.s$weak == weak && .has(.s$env)) {
+      return(.s$env)
+    }
   }
-  for (.e in .udfEnv$modelSolve) {
-    if (.has(.e)) {
-      return(.e)
+  if (!weak) {
+    for (.e in .udfEnv$modelSolve) {
+      if (.has(.e)) {
+        return(.e)
+      }
     }
   }
   NULL
-}
-
-#' Frame a model user function scope started by `$` ends with
-#'
-#' The caller's frame, unless that is the global environment (which never
-#' exits); then the `$` call itself.
-#'
-#' @param frame caller's frame
-#' @return frame
-#' @noRd
-#' @author Matthew L. Fidler
-.udfModelFrame <- function(frame) {
-  if (identical(frame, globalenv())) {
-    parent.frame()
-  } else {
-    frame
-  }
 }

@@ -34,9 +34,13 @@
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
   .udfEnvLocal(list(parent.frame(1), parent.frame(2)))
-  # the model's own user functions stay available to the caller, which may
-  # parse what it read (as nlmixr2est does with model text)
-  .udfModelLocal(.udfModelMeta(obj), frame = .udfModelFrame(parent.frame()))
+  # the model's own user functions; the caller may parse what it read (as
+  # nlmixr2est does with model text), so they stay a last resort there
+  .meta <- .udfModelMeta(obj)
+  .udfModelLocal(.meta)
+  if (!identical(parent.frame(), globalenv())) {
+    .udfModelLocal(.meta, frame = parent.frame(), weak = TRUE)
+  }
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply

@@ -71,10 +71,10 @@ rxTest({
     }
     m <- mk()
     expect_message(f <- m(), "converted model user function 'udfC1416' to C")
-    # `$` keeps them registered for its caller, here the local() block
+    # `$` registers them only for its own call
     local({
       expect_true(all(c("udfC1416", "udfCIn1416") %in% ls(f$meta)))
-      expect_true("udfC1416" %in% rxSupportedFuns())
+      expect_false("udfC1416" %in% rxSupportedFuns())
     })
     # not registered globally
     expect_false(any(c("udfC1416", "udfCIn1416", "rx_udfC1416_d_a") %in% .global()))
@@ -147,7 +147,7 @@ rxTest({
     expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
     local({
       expect_false(identical(f$meta$udfGlob1416, udfGlob1416))
-      expect_false(identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob))
+      expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
     })
     expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
     expect_equal(
@@ -233,6 +233,105 @@ rxTest({
     m <- mk()
     f <- suppressMessages(m())
     expect_equal(suppressWarnings(suppressMessages(rxSolve(f, e)))$y, rep(1, 4))
+  })
+
+  test_that("a closure function named like a model variable is not a model user function", {
+    mk <- function() {
+      v <- function(x) x * 100
+      function() {
+        ini({
+          t1 <- 2
+        })
+        model({
+          v <- t1
+          y <- 3 * v
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    local(expect_false("v" %in% ls(f$meta)))
+    expect_equal(suppressMessages(rxSolve(f, e))$y, rep(6, 4))
+  })
+
+  test_that("the caller of $ can parse the model text, without it shadowing anything", {
+    mk <- function(k) {
+      udfTxtR1416 <- function(x) x + k
+      udfTxtC1416 <- function(x) 2 * x
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfTxtR1416(t1) + udfTxtC1416(t1)
+        })
+      }
+    }
+    f1 <- suppressMessages(mk(10)())
+    f2 <- suppressMessages(mk(100)())
+    udfShadow1416 <- function(x) {
+      -x
+    }
+    mk2 <- function() {
+      udfShadow1416 <- function(x) x + 1
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfShadow1416(t1)
+        })
+      }
+    }
+    f3 <- suppressMessages(mk2()())
+    .caller <- function() {
+      # as nlmixr2est does: read the model text, then parse it
+      .txt <- f1$mv0$model["normModel"]
+      .mv <- suppressWarnings(rxModelVars(paste0(.txt, "\nz <- t1 + 1")))
+      expect_true("z" %in% .mv$lhs)
+      expect_false("udfTxtC1416" %in% rxSupportedFuns())
+      # the model read most recently does not hide the one read before
+      .txt3 <- f3$mv0$model["normModel"]
+      .s <- suppressWarnings(rxSolve(rxode2(.txt), e, params = c(t1 = 1)))
+      # a model's function never shadows one the caller can see
+      .s3 <- suppressWarnings(rxSolve(
+        rxode2({
+          y <- udfShadow1416(t1)
+        }),
+        e,
+        params = c(t1 = 1)
+      ))
+      list(.s$y, .s3$y)
+    }
+    .r <- .caller()
+    expect_equal(.r[[1]], rep(13, 4))
+    expect_equal(.r[[2]], rep(-1, 4))
+    expect_equal(suppressWarnings(suppressMessages(rxSolve(f2, e)))$y, rep(103, 4))
+  })
+
+  test_that("a scope whose exit handler was dropped is discarded", {
+    mk <- function() {
+      udfDrop1416 <- function(x) x + 1
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfDrop1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    .n <- length(.udfEnv$modelStack)
+    .drop <- function() {
+      .meta <- f$meta
+      on.exit(NULL)
+      expect_equal(length(.udfEnv$modelStack), .n + 1L)
+      invisible()
+    }
+    .drop()
+    # the dropped weak scope is pruned the next time scopes are read
+    expect_null(.udfModelEnvFor("udfDrop1416", weak = TRUE))
+    expect_equal(length(.udfEnv$modelStack), .n)
   })
 
   test_that("rxFun() translates a function whose body has no braces", {

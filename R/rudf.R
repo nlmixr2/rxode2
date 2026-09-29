@@ -541,6 +541,16 @@ rxRmFunParse <- function(name) {
   } else {
     .found <- TRUE
   }
+  if (!.found && is.null(.udfEnv$bestFun)) {
+    # last, a model whose functions a caller of `$` may still use
+    .modelEnv <- .udfModelEnvFor(fun, weak = TRUE)
+    if (is.environment(.modelEnv)) {
+      .fun <- .udfEnv$fun
+      .udfEnv$fun <- list()
+      .found <- .udfExists(fun, nargs, .modelEnv)
+      .udfEnv$fun <- .fun
+    }
+  }
   if (.udfEnv$bestFunHasDots) {
     return(list(nargs = NA_integer_, "rxode2 user defined R cannot have '...' arguments"))
   }
