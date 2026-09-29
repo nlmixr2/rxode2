@@ -111,6 +111,14 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code>$</code> on an rxUi no longer adds rxode2’s own call frames (like <code><a href="../reference/rxPriorLogDensity.html">rxPriorLogDensity()</a></code>’s) to the environments searched for user-defined functions; it records the nearest frames outside rxode2 instead. What those frames held (like a large <code>theta</code>) is now freed when they return, instead of staying in memory until later calls pushed them out of the search list.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.8" id="rxode2-518">rxode2 5.1.8<a class="anchor" aria-label="anchor" href="#rxode2-518"></a></h2>
 <div class="section level3">
 <h3 id="new-features-5-1-8">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-8"></a></h3>
