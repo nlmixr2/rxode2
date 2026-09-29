@@ -241,6 +241,11 @@
   `cores`/`ncores`; in-model draws are seeded per subject, so their values
   change from earlier versions (#1376).
 
+- Prof Brian Ripley fixed the rxode2 build and published rxode2 5.1.7.1 on
+  CRAN (2026-09-29) so that rxode2, and the packages that depend on it, would
+  install on the r-devel clang flavours again.  That source is kept in this
+  repository on the `cran-5.1.7.1` branch, tagged `v5.1.7.1`.  With thanks.
+
 - Fixed installation with clang/LLVM OpenMP (CRAN
   `r-devel-linux-x86_64-debian-clang` and `r-devel-linux-x86_64-fedora-clang`).
   `R_NO_REMAP` is now defined on the compile command line

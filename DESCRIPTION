@@ -10,6 +10,7 @@ Authors@R: c(
    person("Ashley", "Crawford", role="ctb", comment="SUNDIALS/CVODE"),
    person("Awad H.", "Al-Mohy",role="ctb"),
    person("Bill", "Denney", email="wdenney@humanpredictions.com", role="ctb", comment=c(ORCID="0000-0002-5759-428X")),
+   person("Brian", "Ripley", role="ctb"),
    person("Cleve", "Moler", role="ctb"),
    person("Cody J.", "Balos", role="ctb", comment="SUNDIALS/CVODE"),
    person("Dan", "Shumaker", role="ctb", comment="SUNDIALS/CVODE"),
