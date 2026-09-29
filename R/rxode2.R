@@ -548,6 +548,8 @@ rxode2 <- # nolint
     .env$modName <- modName
     .env$model <- model
     .env$extraC <- extraC
+    # C code of the model user functions in scope, for compiling outside it
+    .env$extraCmodel <- .udfModelActiveC()
     .env$debug <- debug
     .env$calcJac <- calcJac
     .env$calcSens <- calcSens
@@ -571,7 +573,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          rxode2::.extraC(extraC)
+          rxode2::.extraC(extraC, extraCmodel)
           ## Event ("jump") sensitivities: dLag/dF body lines passed straight to
           ## codegen (empty for mode "fd" or models without sensitivities).
           .esCode <- .rx$.rxEventSensCodeStrings(eventSensInfo)
@@ -593,7 +595,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    rxode2::.extraC(extraC)
+    rxode2::.extraC(extraC, .env$extraCmodel)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {

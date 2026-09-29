@@ -8,7 +8,6 @@ rxTest({
   e <- et(0:3)
 
   test_that("a user function in the model function's closure is found (#1416)", {
-    withr::defer(.rmFun("udfClo1416"))
     mk <- function() {
       udfClo1416 <- function(x) x + 1
       function() {
@@ -33,7 +32,6 @@ rxTest({
   })
 
   test_that("a user function defined in the model function body is found", {
-    withr::defer(.rmFun("udfBody1416"))
     m <- function() {
       udfBody1416 <- function(x) {
         2 * x
@@ -50,8 +48,7 @@ rxTest({
     expect_equal(suppressMessages(rxSolve(m, e))$y, rep(6, 4))
   })
 
-  test_that("model user functions are converted to C with derivatives", {
-    withr::defer(.rmFun("udfC1416", "udfCIn1416"))
+  test_that("model user functions are converted to C for that model only", {
     mk <- function() {
       udfCIn1416 <- function(x) x^2
       udfC1416 <- function(a, b) {
@@ -69,30 +66,76 @@ rxTest({
     }
     m <- mk()
     expect_message(f <- m(), "converted model user function 'udfC1416' to C")
-    expect_true(all(c("udfC1416", "udfCIn1416") %in% names(.udfEnv$rxCcode)))
     expect_true(all(c("udfC1416", "udfCIn1416") %in% ls(f$meta)))
+    # not registered globally
+    expect_false(any(c("udfC1416", "udfCIn1416", "rx_udfC1416_d_a") %in% names(.udfEnv$rxCcode)))
+    expect_false("udfC1416" %in% rxSupportedFuns())
+    expect_false(exists("udfC1416", envir = rxode2parseD(), inherits = FALSE))
     expect_equal(suppressMessages(rxSolve(f, e))$y, rep(12, 4))
-    # the derivative table was filled, so symbolic derivatives are exact
-    expect_equal(
-      rxFromSE("Derivative(udfC1416(a1,b1),a1)", unknownDerivatives = "error"),
-      "rx_udfC1416_d_a(a1, b1)"
-    )
-    expect_equal(
-      rxFromSE("Derivative(udfC1416(a1,b1),b1)", unknownDerivatives = "error"),
-      "rx_udfC1416_d_b(a1, b1)"
-    )
-    .d <- rxSolve(
-      rxode2({
-        da <- rx_udfC1416_d_a(t1, t2)
-        db <- rx_udfC1416_d_b(t1, t2)
-      }),
-      e,
-      params = c(t1 = 2, t2 = 3)
-    )
+    expect_false("udfC1416" %in% names(.udfEnv$rxCcode))
+    # the compiled model carries the C code, so it compiles again outside
+    # the model's scope
+    .sim <- f$simulationModel
+    rxDelete(.sim)
+    expect_false(file.exists(rxDll(.sim)))
+    expect_equal(suppressMessages(rxSolve(.sim, e, params = c(t1 = 2, t2 = 3)))$y, rep(12, 4))
+    # another model does not see it
+    expect_error(suppressMessages(rxode2({
+      y <- udfC1416(t1, t2)
+    })), "syntax error")
+    # within the model's scope the derivatives are exact
+    .inScope <- function(ui) {
+      .udfModelLocal(.udfModelMeta(ui))
+      expect_true("udfC1416" %in% names(.udfEnv$rxCcode))
+      expect_equal(
+        rxFromSE("Derivative(udfC1416(a1,b1),a1)", unknownDerivatives = "error"),
+        "rx_udfC1416_d_a(a1, b1)"
+      )
+      expect_equal(
+        rxFromSE("Derivative(udfC1416(a1,b1),b1)", unknownDerivatives = "error"),
+        "rx_udfC1416_d_b(a1, b1)"
+      )
+      rxSolve(
+        rxode2({
+          da <- rx_udfC1416_d_a(t1, t2)
+          db <- rx_udfC1416_d_b(t1, t2)
+        }),
+        e,
+        params = c(t1 = 2, t2 = 3)
+      )
+    }
+    .d <- .inScope(f)
     expect_equal(.d$da, rep(12, 4))
     expect_equal(.d$db, rep(4, 4))
+    expect_false("udfC1416" %in% names(.udfEnv$rxCcode))
     # building it again does not translate it again
     expect_no_message(m(), message = "converted model user function")
+  })
+
+  test_that("a model user function does not replace a global rxFun() of the same name", {
+    withr::defer(.rmFun("udfGlob1416"))
+    udfGlob1416 <- function(x) {
+      10 * x
+    }
+    suppressMessages(rxFun(udfGlob1416))
+    .glob <- .udfEnv$rxCcode[["udfGlob1416"]]
+    mk <- function() {
+      udfGlob1416 <- function(x) x + 1
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfGlob1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    expect_equal(suppressMessages(rxSolve(f, e))$y, rep(2, 4))
+    expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
+    expect_equal(suppressMessages(rxSolve(rxode2({
+      y <- udfGlob1416(t1)
+    }), e, params = c(t1 = 1)))$y, rep(10, 4))
   })
 
   test_that("a model user function that cannot be converted stays an R function", {
@@ -126,7 +169,6 @@ rxTest({
   })
 
   test_that("models defining a same-named function differently each use their own", {
-    withr::defer(.rmFun("udfSame1416"))
     mk <- function(two) {
       if (two) {
         udfSame1416 <- function(x) 2 * x
@@ -150,7 +192,6 @@ rxTest({
   })
 
   test_that("a model user function can be mixed with an ordinary R user function", {
-    withr::defer(.rmFun("udfMix1416"))
     udfGlobal1416 <- function(x) {
       if (x > 0) x else -x
     }

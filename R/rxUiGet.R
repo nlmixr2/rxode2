@@ -33,8 +33,7 @@
   # The model() and rxode2() assign the parent environments for UDF
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
-  .udfEnvLocal(list(parent.frame(1), parent.frame(2)))
-  .udfModelLocal(.udfModelMeta(obj))
+  .udfEnvLocal(list(parent.frame(1), parent.frame(2)), model = .udfModelMeta(obj))
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply

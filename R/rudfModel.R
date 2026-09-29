@@ -101,19 +101,109 @@
   setdiff(unique(.env$used), c(names(formals(fun)), .env$assigned))
 }
 
-#' Convert one model user function to C, with its derivatives
+#' Current C user function registration of a name
 #'
-#' Registers it the way `rxFun()` does.  A function that reads a variable it
-#' does not define, or that the translator cannot handle, stays an R user
-#' function.
+#' @param name function name
+#' @return list with the argument count, C code, symengine function and
+#'   derivative table entry (each NULL when absent)
+#' @noRd
+#' @author Matthew L. Fidler
+.udfRegGet <- function(name) {
+  .eq <- .udfEnv$rxSEeqUsr
+  .code <- .udfEnv$rxCcode
+  list(
+    eq = if (any(names(.eq) == name)) .eq[[name]] else NULL,
+    code = if (any(names(.code) == name)) .code[[name]] else NULL,
+    sfs = get0(name, envir = .udfEnv$symengineFs, inherits = FALSE),
+    d = get0(name, envir = rxode2parseD(), inherits = FALSE)
+  )
+}
+
+#' Set (or remove) the C user function registration of a name
+#'
+#' @param name function name
+#' @param reg registration, as from `.udfRegGet()`
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.udfRegSet <- function(name, reg) {
+  .eq <- .udfEnv$rxSEeqUsr
+  .eq <- .eq[names(.eq) != name]
+  if (!is.null(reg$eq)) {
+    .eq <- c(.eq, setNames(reg$eq, name))
+  }
+  .udfEnv$rxSEeqUsr <- .eq
+  .code <- .udfEnv$rxCcode
+  .code <- .code[names(.code) != name]
+  if (!is.null(reg$code)) {
+    .code <- c(.code, setNames(reg$code, name))
+  }
+  .udfEnv$rxCcode <- .code
+  if (is.null(reg$sfs)) {
+    if (exists(name, envir = .udfEnv$symengineFs, inherits = FALSE)) {
+      rm(list = name, envir = .udfEnv$symengineFs)
+    }
+  } else {
+    assign(name, reg$sfs, envir = .udfEnv$symengineFs)
+  }
+  .rxD <- rxode2parseD()
+  if (is.null(reg$d)) {
+    if (exists(name, envir = .rxD, inherits = FALSE)) {
+      rm(list = name, envir = .rxD)
+    }
+  } else {
+    assign(name, reg$d, envir = .rxD)
+  }
+  .rxSEstate$dTemplates <- NULL
+  invisible()
+}
+
+#' Register C user functions, returning what they replaced
+#'
+#' @param regs named list of registrations
+#' @return named list of the registrations replaced, for `.udfRegRestore()`
+#' @noRd
+#' @author Matthew L. Fidler
+.udfRegActivate <- function(regs) {
+  .saved <- list()
+  for (.n in names(regs)) {
+    .cur <- .udfRegGet(.n)
+    .reg <- regs[[.n]]
+    if (identical(.cur$code, .reg$code) && identical(.cur$eq, .reg$eq)) {
+      next
+    }
+    .saved[[.n]] <- .cur
+    .udfRegSet(.n, .reg)
+  }
+  .saved
+}
+
+#' Restore the registrations `.udfRegActivate()` replaced
+#'
+#' @param saved named list returned by `.udfRegActivate()`
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.udfRegRestore <- function(saved) {
+  for (.n in rev(names(saved))) {
+    .udfRegSet(.n, saved[[.n]])
+  }
+  invisible()
+}
+
+#' Translate one model user function to C, with its derivatives
+#'
+#' A function that reads a variable it does not define, or that the
+#' translator cannot handle, stays an R user function.
 #'
 #' @param name function name
 #' @param fun function
-#' @return list recording the function and whether it was converted
+#' @return list with the function, whether it was translated and the
+#'   registrations that make it (and its derivatives) available
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelFunToC <- function(name, fun) {
-  .ret <- list(fun = fun, ok = FALSE, cCode = NULL)
+.udfModelConvert <- function(name, fun) {
+  .ret <- list(fun = fun, ok = FALSE, regs = list())
   if (length(formals(fun)) == 0L || length(.udfModelFreeVars(fun)) > 0L) {
     return(.ret)
   }
@@ -123,86 +213,159 @@
   }
   .d <- list()
   for (.cur in .lst) {
-    suppressWarnings(rxRmFunParse(.cur$name))
-    rxFunParse(.cur$name, .cur$args, .cur$cCode)
+    .ret$regs[[.cur$name]] <- list(
+      eq = length(.cur$args),
+      code = .cur$cCode,
+      sfs = symengine::Function(.cur$name),
+      d = NULL
+    )
     if (length(.cur) == 4L) {
       .d <- c(.d, list(.cur[[4]]))
     }
   }
   if (length(.d) > 0L) {
-    suppressWarnings(rxD(name, .d))
+    .ret$regs[[name]]$d <- .d
   }
-  message("converted model user function '", name, "' to C")
   .ret$ok <- TRUE
-  .ret$cCode <- .lst[[1]]$cCode
   .ret
 }
 
-#' Convert a model's own user functions to C where possible
+#' Translation of a model user function already tried this session
 #'
-#' Functions are only translated again when their definition changes or their
-#' registration was removed.  A function calling another model user function
-#' is tried after the one it calls.
-#'
-#' @param env environment of model user functions (see `.udfModelFuns()`)
-#' @return nothing, called for side effects
+#' @param name function name
+#' @param fun function
+#' @return list from `.udfModelConvert()`, or NULL
 #' @noRd
 #' @author Matthew L. Fidler
-.udfModelToC <- function(env) {
-  if (!is.environment(env)) {
-    return(invisible())
+.udfModelCached <- function(name, fun) {
+  for (.v in .udfEnv$modelC[[name]]) {
+    if (identical(.v$fun, fun, ignore.environment = TRUE, ignore.bytecode = TRUE, ignore.srcref = TRUE)) {
+      return(.v)
+    }
   }
-  .todo <- character(0)
-  for (.n in ls(env)) {
+  NULL
+}
+
+#' Model user functions translated to C, ready to register
+#'
+#' Each distinct definition is translated once per session.  A function
+#' calling another model user function is translated after it, with it
+#' registered.
+#'
+#' @param env environment holding the model's user functions
+#' @return named list of registrations for the functions that translated
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelRegs <- function(env) {
+  .nms <- ls(env)
+  .funs <- list()
+  for (.n in .nms) {
     .f <- get0(.n, envir = env, mode = "function", inherits = FALSE)
-    if (!is.function(.f) || is.primitive(.f)) {
-      next
+    if (is.function(.f) && !is.primitive(.f)) {
+      .funs[[.n]] <- .f
     }
-    .c <- .udfEnv$modelC[[.n]]
-    if (
-      !is.null(.c) &&
-        identical(.c$fun, .f, ignore.environment = TRUE, ignore.bytecode = TRUE, ignore.srcref = TRUE) &&
-        (!.c$ok || identical(unname(.udfEnv$rxCcode[.n]), .c$cCode))
-    ) {
-      next
-    }
-    .todo <- c(.todo, .n)
   }
+  .regs <- list()
+  .todo <- character(0)
+  for (.n in names(.funs)) {
+    .v <- .udfModelCached(.n, .funs[[.n]])
+    if (is.null(.v)) {
+      .todo <- c(.todo, .n)
+    } else if (.v$ok) {
+      .regs <- c(.regs, .v$regs)
+    }
+  }
+  if (length(.todo) == 0L) {
+    return(.regs)
+  }
+  .saved <- .udfRegActivate(.regs)
+  on.exit(.udfRegRestore(.saved))
   repeat {
     .left <- character(0)
     for (.n in .todo) {
-      .c <- .udfModelFunToC(.n, get(.n, envir = env))
-      .udfEnv$modelC[[.n]] <- .c
-      if (!.c$ok) {
+      .v <- .udfModelConvert(.n, .funs[[.n]])
+      if (.v$ok) {
+        .udfEnv$modelC[[.n]] <- c(.udfEnv$modelC[[.n]], list(.v))
+        .regs <- c(.regs, .v$regs)
+        .saved <- c(.saved, .udfRegActivate(.v$regs))
+        message("converted model user function '", .n, "' to C")
+      } else {
         .left <- c(.left, .n)
       }
     }
-    if (length(.left) == length(.todo)) {
+    if (length(.left) == 0L || length(.left) == length(.todo)) {
       break
     }
     .todo <- .left
   }
-  invisible()
+  for (.n in .left) {
+    .udfEnv$modelC[[.n]] <- c(.udfEnv$modelC[[.n]], list(list(fun = .funs[[.n]], ok = FALSE, regs = list())))
+  }
+  .regs
 }
 
 #' Use a model's own user functions for the duration of the calling function
 #'
-#' These are looked up before any other environment, so a model uses the
-#' functions it was defined with.
+#' The functions are looked up before any other environment, and those
+#' translated to C are registered only until the scope ends, so they never
+#' become global.
 #'
 #' @param env environment of the model's user functions (a ui's `meta`, or the
-#'   result of `.udfModelFuns()`); ignored unless it holds something
+#'   result of `.udfModelFuns()`); ignored unless it holds a function
 #' @param frame frame whose exit ends the scope
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
 .udfModelLocal <- function(env, frame = parent.frame()) {
-  if (!is.environment(env) || length(env) == 0L) {
-    return(invisible())
+  if (.udfModelPush(env, frame)) {
+    do.call(base::on.exit, list(quote(.udfModelUnlocal()), add = TRUE), envir = frame)
   }
-  .udfEnv$modelStack <- c(.udfEnv$modelStack, list(list(env = env, frame = frame)))
-  do.call(base::on.exit, list(quote(.udfModelUnlocal()), add = TRUE), envir = frame)
   invisible()
+}
+
+#' Start a model user function scope; the caller ends it
+#'
+#' @param env environment of the model's user functions
+#' @param frame frame whose exit ends the scope
+#' @return `TRUE` when a scope was started
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelPush <- function(env, frame) {
+  if (
+    !is.environment(env) ||
+      length(env) == 0L ||
+      !any(unlist(eapply(env, is.function), use.names = FALSE))
+  ) {
+    return(FALSE)
+  }
+  .udfModelPrune()
+  .saved <- .udfRegActivate(.udfModelRegs(env))
+  .udfEnv$modelStack <- c(
+    .udfEnv$modelStack,
+    list(list(env = env, frame = frame, saved = .saved))
+  )
+  TRUE
+}
+
+#' Names the model user function scopes currently register
+#'
+#' @return character vector
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelActiveNames <- function() {
+  unique(unlist(lapply(.udfEnv$modelStack, function(.s) names(.s$saved)), use.names = FALSE))
+}
+
+#' C code of the model user functions currently registered
+#'
+#' Kept by a compiled model so it can be compiled again outside the scope.
+#'
+#' @return named character vector
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelActiveC <- function() {
+  .n <- intersect(.udfModelActiveNames(), names(.udfEnv$rxCcode))
+  .udfEnv$rxCcode[.n]
 }
 
 #' End the innermost `.udfModelLocal()` scope
@@ -213,7 +376,46 @@
 .udfModelUnlocal <- function() {
   .n <- length(.udfEnv$modelStack)
   if (.n > 0L) {
+    .s <- .udfEnv$modelStack[[.n]]
     .udfEnv$modelStack <- .udfEnv$modelStack[-.n]
+    .udfRegRestore(.s$saved)
+  }
+  invisible()
+}
+
+#' Discard model user function scopes whose frame is gone
+#'
+#' This happens when their restore was dropped by a later `on.exit()` without
+#' `add = TRUE`.  Scopes above the first dead one are ended and started again,
+#' so registrations are always restored in reverse order.
+#'
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelPrune <- function() {
+  .stack <- .udfEnv$modelStack
+  if (length(.stack) == 0L) {
+    return(invisible())
+  }
+  .frames <- sys.frames()
+  .alive <- vapply(
+    .stack,
+    function(.s) {
+      any(vapply(.frames, identical, logical(1), .s$frame))
+    },
+    logical(1)
+  )
+  if (all(.alive)) {
+    return(invisible())
+  }
+  .first <- which(!.alive)[1]
+  for (.i in rev(seq(.first, length(.stack)))) {
+    .udfModelUnlocal()
+  }
+  for (.i in seq(.first, length(.stack))) {
+    if (.alive[.i]) {
+      .udfModelPush(.stack[[.i]]$env, .stack[[.i]]$frame)
+    }
   }
   invisible()
 }
@@ -227,22 +429,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .udfModelEnvGet <- function() {
+  .udfModelPrune()
   .stack <- .udfEnv$modelStack
-  if (length(.stack) == 0L) {
-    return(.udfModelSolveEnv())
-  }
-  .frames <- sys.frames()
-  .alive <- vapply(
-    .stack,
-    function(.s) {
-      any(vapply(.frames, identical, logical(1), .s$frame))
-    },
-    logical(1)
-  )
-  if (!all(.alive)) {
-    .stack <- .stack[.alive]
-    .udfEnv$modelStack <- .stack
-  }
   if (length(.stack) == 0L) {
     return(.udfModelSolveEnv())
   }
@@ -331,24 +519,4 @@
   } else {
     NULL
   }
-}
-
-#' Model user functions of a ui, converted to C where possible
-#'
-#' Lets a ui made in another session convert its own functions again.
-#'
-#' @param ui rxUi
-#' @return the ui's `meta` environment, or NULL
-#' @noRd
-#' @author Matthew L. Fidler
-.udfModelUi <- function(ui) {
-  .meta <- .udfModelMeta(ui)
-  if (is.null(.meta) || length(.meta) == 0L) {
-    return(.meta)
-  }
-  .lstExpr <- if (is.environment(ui)) get0("lstExpr", envir = ui, inherits = FALSE) else .subset2(ui, "lstExpr")
-  if (length(.lstExpr) > 0L) {
-    .udfModelToC(.udfModelFuns(as.call(c(list(quote(`{`)), .lstExpr)), .meta, emptyenv()))
-  }
-  .meta
 }

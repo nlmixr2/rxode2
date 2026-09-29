@@ -478,7 +478,8 @@ model <- function(
     assignInMyNamespace(".lastIni", NULL)
     assignInMyNamespace(".lastIniQ", NULL)
     # user functions the model function defines or encloses live in the model
-    # (its meta), are converted to C where possible and are found first (#1416)
+    # (its meta), are found first and are converted to C for this model only
+    # (#1416)
     .meta <- new.env(parent = emptyenv())
     .closure <- .udfEnv$modelFunEnv
     .udfEnv$modelFunEnv <- NULL
@@ -489,7 +490,6 @@ model <- function(
     for (.i in ls(.udfFuns, all.names = TRUE)) {
       assign(.i, get(.i, envir = .udfFuns), envir = .meta)
     }
-    .udfModelToC(.udfFuns)
     .udfModelLocal(.meta)
     .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
     if (!identical(envir, globalenv())) {

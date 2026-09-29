@@ -69,11 +69,13 @@
 #' Generate extraC information for rxode2 models
 #'
 #' @param extraC Additional extraC from rxode2 compile optioioins
+#' @param extraCmodel named C code of the model's own user functions, used in
+#'   place of any registered function of the same name
 #' @return Nothing, called for side effects
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.extraC <- function(extraC = NULL) {
+.extraC <- function(extraC = NULL, extraCmodel = NULL) {
   if (!is.null(extraC)) {
     if (file.exists(extraC)) {
       .ret <- sprintf("#include \"%s\"\n", extraC)
@@ -83,8 +85,14 @@
   } else {
     .ret <- ""
   }
-  if (length(.udfEnv$rxCcode) > 0L) {
-    .ret <- sprintf("%s\n%s\n", .ret, paste(.udfEnv$rxCcode, collapse = "\n"))
+  .code <- .udfEnv$rxCcode
+  if (length(extraCmodel) > 0L) {
+    # model functions may call each other in any order, so declare them first
+    .proto <- paste0(sub("[)] *[{].*$", ");", sub("\n.*$", "", extraCmodel)), collapse = "\n")
+    .code <- c(.proto, .code[!(names(.code) %in% names(extraCmodel))], extraCmodel)
+  }
+  if (length(.code) > 0L) {
+    .ret <- sprintf("%s\n%s\n", .ret, paste(.code, collapse = "\n"))
   }
   .udfEnv$extraCnow <- .ret
   return(invisible())
@@ -308,9 +316,11 @@ rxRmFunParse <- function(name) {
 #'
 #' @param env environment or list of environments
 #' @param frame frame whose exit ends the scope
+#' @param model environment of a model's own user functions to use for the
+#'   same scope (see `.udfModelLocal()`)
 #' @return primary environment, invisibly
 #' @noRd
-.udfEnvLocal <- function(env, frame = parent.frame()) {
+.udfEnvLocal <- function(env, frame = parent.frame(), model = NULL) {
   .udfEnvEndDeadScope()
   .udfAddToSearch(env)
   if (.udfEnv$depth == 0L) {
@@ -322,7 +332,11 @@ rxRmFunParse <- function(name) {
     }
   }
   .udfEnv$depth <- .udfEnv$depth + 1L
-  do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
+  if (.udfModelPush(model, frame)) {
+    do.call(base::on.exit, list(quote(.udfEnvUnlocal(TRUE)), add = TRUE), envir = frame)
+  } else {
+    do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
+  }
   invisible(.udfEnv$envir)
 }
 
@@ -346,9 +360,13 @@ rxRmFunParse <- function(name) {
 
 #' End a `.udfEnvLocal()` scope
 #'
+#' @param model also end the model user function scope it started
 #' @return nothing, called for side effects
 #' @noRd
-.udfEnvUnlocal <- function() {
+.udfEnvUnlocal <- function(model = FALSE) {
+  if (model) {
+    .udfModelUnlocal()
+  }
   .udfEnv$depth <- max(.udfEnv$depth - 1L, 0L)
   if (.udfEnv$depth == 0L) {
     .udfEnv$envir <- .udfEnv$envirOuter
