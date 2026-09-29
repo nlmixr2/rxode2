@@ -89,9 +89,12 @@ rxTest({
     expect_false(file.exists(rxDll(.sim)))
     expect_equal(suppressMessages(rxSolve(.sim, e, params = c(t1 = 2, t2 = 3)))$y, rep(12, 4))
     # another model does not see it
-    expect_error(suppressMessages(rxode2({
+    expect_error(
+      suppressMessages(rxode2({
       y <- udfC1416(t1, t2)
-    })), "syntax error")
+    })),
+      "syntax error"
+    )
     # within the model's scope the derivatives are exact
     .inScope <- function(ui) {
       .udfModelLocal(.udfModelMeta(ui))
@@ -147,9 +150,16 @@ rxTest({
       expect_false(identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob))
     })
     expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
-    expect_equal(suppressMessages(rxSolve(rxode2({
+    expect_equal(
+      suppressMessages(rxSolve(
+        rxode2({
       y <- udfGlob1416(t1)
-    }), e, params = c(t1 = 1)))$y, rep(10, 4))
+    }),
+        e,
+        params = c(t1 = 1)
+      ))$y,
+      rep(10, 4)
+    )
   })
 
   test_that("a model user function that cannot be converted stays an R function", {

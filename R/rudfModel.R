@@ -57,10 +57,13 @@
         if (is.function(.f)) {
           if (!is.primitive(.f)) {
             assign(.n, .f, envir = .ret)
-            .todo <- c(.todo, list(list(
-              names = all.names(body(.f)),
-              envs = .udfModelClosure(environment(.f))
-            )))
+            .todo <- c(
+              .todo,
+              list(list(
+                names = all.names(body(.f)),
+                envs = .udfModelClosure(environment(.f))
+              ))
+            )
           }
           break
         }

@@ -4,10 +4,13 @@
 \alias{.extraC}
 \title{Generate extraC information for rxode2 models}
 \usage{
-.extraC(extraC = NULL)
+.extraC(extraC = NULL, extraCmodel = NULL)
 }
 \arguments{
 \item{extraC}{Additional extraC from rxode2 compile optioioins}
+
+\item{extraCmodel}{named C code of the model's own user functions, used in
+place of any registered function of the same name}
 }
 \value{
 Nothing, called for side effects
