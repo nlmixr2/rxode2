@@ -5202,6 +5202,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 
 .rxSupportedFunsExtra <- FALSE
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
+  .udfModelPrune()
   .ret <- setdiff(
     c(
       names(.rxSEsingle),

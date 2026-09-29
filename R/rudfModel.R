@@ -327,7 +327,8 @@
 #'
 #' @param env environment of the model's user functions
 #' @param frame frame whose exit ends the scope
-#' @return `TRUE` when a scope was started
+#' @return `TRUE` when a scope was started (not when `env` already has one
+#'   for `frame`)
 #' @noRd
 #' @author Matthew L. Fidler
 .udfModelPush <- function(env, frame) {
@@ -339,6 +340,11 @@
     return(FALSE)
   }
   .udfModelPrune()
+  for (.s in .udfEnv$modelStack) {
+    if (identical(.s$env, env) && identical(.s$frame, frame)) {
+      return(FALSE)
+    }
+  }
   .saved <- .udfRegActivate(.udfModelRegs(env))
   .udfEnv$modelStack <- c(
     .udfEnv$modelStack,
@@ -518,5 +524,47 @@
     .meta
   } else {
     NULL
+  }
+}
+
+#' Model user function environment that defines a function
+#'
+#' The scope in effect comes first, then the environments of the current
+#' solve.
+#'
+#' @param fun function name
+#' @return environment or NULL
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelEnvFor <- function(fun) {
+  .has <- function(.e) {
+    is.environment(.e) && exists(fun, envir = .e, mode = "function", inherits = FALSE)
+  }
+  .e <- .udfModelEnvGet()
+  if (.has(.e)) {
+    return(.e)
+  }
+  for (.e in .udfEnv$modelSolve) {
+    if (.has(.e)) {
+      return(.e)
+    }
+  }
+  NULL
+}
+
+#' Frame a model user function scope started by `$` ends with
+#'
+#' The caller's frame, unless that is the global environment (which never
+#' exits); then the `$` call itself.
+#'
+#' @param frame caller's frame
+#' @return frame
+#' @noRd
+#' @author Matthew L. Fidler
+.udfModelFrame <- function(frame) {
+  if (identical(frame, globalenv())) {
+    parent.frame()
+  } else {
+    frame
   }
 }

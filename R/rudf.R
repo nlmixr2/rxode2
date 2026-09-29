@@ -39,6 +39,7 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfMd5Info <- function() {
+  .udfModelPrune()
   .tmp <- ls(.udfEnv$symengineFs, all.names = TRUE)
   .env <- new.env(parent = emptyenv())
   .env$found <- FALSE
@@ -76,6 +77,7 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 .extraC <- function(extraC = NULL, extraCmodel = NULL) {
+  .udfModelPrune()
   if (!is.null(extraC)) {
     if (file.exists(extraC)) {
       .ret <- sprintf("#include \"%s\"\n", extraC)
@@ -316,11 +318,9 @@ rxRmFunParse <- function(name) {
 #'
 #' @param env environment or list of environments
 #' @param frame frame whose exit ends the scope
-#' @param model environment of a model's own user functions to use for the
-#'   same scope (see `.udfModelLocal()`)
 #' @return primary environment, invisibly
 #' @noRd
-.udfEnvLocal <- function(env, frame = parent.frame(), model = NULL) {
+.udfEnvLocal <- function(env, frame = parent.frame()) {
   .udfEnvEndDeadScope()
   .udfAddToSearch(env)
   if (.udfEnv$depth == 0L) {
@@ -332,11 +332,7 @@ rxRmFunParse <- function(name) {
     }
   }
   .udfEnv$depth <- .udfEnv$depth + 1L
-  if (.udfModelPush(model, frame)) {
-    do.call(base::on.exit, list(quote(.udfEnvUnlocal(TRUE)), add = TRUE), envir = frame)
-  } else {
-    do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
-  }
+  do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
   invisible(.udfEnv$envir)
 }
 
@@ -348,6 +344,7 @@ rxRmFunParse <- function(name) {
 #' @return nothing, called for side effects
 #' @noRd
 .udfEnvEndDeadScope <- function() {
+  .udfModelPrune()
   if (
     .udfEnv$depth > 0L &&
       !any(vapply(sys.frames(), identical, logical(1), .udfEnv$scopeFrame))
@@ -360,13 +357,9 @@ rxRmFunParse <- function(name) {
 
 #' End a `.udfEnvLocal()` scope
 #'
-#' @param model also end the model user function scope it started
 #' @return nothing, called for side effects
 #' @noRd
-.udfEnvUnlocal <- function(model = FALSE) {
-  if (model) {
-    .udfModelUnlocal()
-  }
+.udfEnvUnlocal <- function() {
   .udfEnv$depth <- max(.udfEnv$depth - 1L, 0L)
   if (.udfEnv$depth == 0L) {
     .udfEnv$envir <- .udfEnv$envirOuter
@@ -518,11 +511,8 @@ rxRmFunParse <- function(name) {
   .udfEnv$bestFunHasDots <- FALSE
   .udfEnv$bestEqArgs <- TRUE
   .found <- FALSE
-  .modelEnv <- .udfModelEnvGet()
-  if (
-    is.environment(.modelEnv) &&
-      exists(fun, envir = .modelEnv, mode = "function", inherits = FALSE)
-  ) {
+  .modelEnv <- .udfModelEnvFor(fun)
+  if (is.environment(.modelEnv)) {
     # a model's own function wins, and need not share an environment with
     # the other user functions it calls
     .fun <- .udfEnv$fun

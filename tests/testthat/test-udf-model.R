@@ -25,8 +25,10 @@ rxTest({
     f <- suppressMessages(m())
     expect_equal(suppressMessages(rxSolve(f, e))$y, rep(2, 4))
     # the function now lives in the model
-    expect_true(is.function(f$meta$udfClo1416))
-    expect_true(any(grepl("udfClo1416 <- function", deparse(f$fun), fixed = TRUE)))
+    local({
+      expect_true(is.function(f$meta$udfClo1416))
+      expect_true(any(grepl("udfClo1416 <- function", deparse(f$fun), fixed = TRUE)))
+    })
     f2 <- suppressMessages(f |> ini(t1 = 3))
     expect_equal(suppressMessages(rxSolve(f2, e))$y, rep(4, 4))
   })
@@ -64,18 +66,25 @@ rxTest({
         })
       }
     }
+    .global <- function() {
+      c(names(.rxSEeqUsr()), ls(.symengineFs()), ls(rxode2parseD()))
+    }
     m <- mk()
     expect_message(f <- m(), "converted model user function 'udfC1416' to C")
-    expect_true(all(c("udfC1416", "udfCIn1416") %in% ls(f$meta)))
+    # `$` keeps them registered for its caller, here the local() block
+    local({
+      expect_true(all(c("udfC1416", "udfCIn1416") %in% ls(f$meta)))
+      expect_true("udfC1416" %in% rxSupportedFuns())
+    })
     # not registered globally
-    expect_false(any(c("udfC1416", "udfCIn1416", "rx_udfC1416_d_a") %in% names(.udfEnv$rxCcode)))
+    expect_false(any(c("udfC1416", "udfCIn1416", "rx_udfC1416_d_a") %in% .global()))
     expect_false("udfC1416" %in% rxSupportedFuns())
-    expect_false(exists("udfC1416", envir = rxode2parseD(), inherits = FALSE))
     expect_equal(suppressMessages(rxSolve(f, e))$y, rep(12, 4))
-    expect_false("udfC1416" %in% names(.udfEnv$rxCcode))
+    expect_false("udfC1416" %in% .global())
     # the compiled model carries the C code, so it compiles again outside
     # the model's scope
-    .sim <- f$simulationModel
+    .sim <- local(f$simulationModel)
+    expect_false("udfC1416" %in% .global())
     rxDelete(.sim)
     expect_false(file.exists(rxDll(.sim)))
     expect_equal(suppressMessages(rxSolve(.sim, e, params = c(t1 = 2, t2 = 3)))$y, rep(12, 4))
@@ -107,7 +116,7 @@ rxTest({
     .d <- .inScope(f)
     expect_equal(.d$da, rep(12, 4))
     expect_equal(.d$db, rep(4, 4))
-    expect_false("udfC1416" %in% names(.udfEnv$rxCcode))
+    expect_false("udfC1416" %in% .global())
     # building it again does not translate it again
     expect_no_message(m(), message = "converted model user function")
   })
@@ -133,6 +142,11 @@ rxTest({
     f <- suppressMessages(mk()())
     expect_equal(suppressMessages(rxSolve(f, e))$y, rep(2, 4))
     expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
+    local({
+      expect_false(identical(f$meta$udfGlob1416, udfGlob1416))
+      expect_false(identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob))
+    })
+    expect_identical(.udfEnv$rxCcode[["udfGlob1416"]], .glob)
     expect_equal(suppressMessages(rxSolve(rxode2({
       y <- udfGlob1416(t1)
     }), e, params = c(t1 = 1)))$y, rep(10, 4))
@@ -156,7 +170,7 @@ rxTest({
     expect_equal(suppressWarnings(suppressMessages(rxSolve(f, e)))$y, rep(11, 4))
     expect_equal(suppressWarnings(suppressMessages(rxSolve(m, e)))$y, rep(11, 4))
     # the compiled model alone still finds it
-    .sim <- f$simulationModel
+    .sim <- local(f$simulationModel)
     expect_equal(
       suppressWarnings(suppressMessages(rxSolve(.sim, e, params = c(t1 = 1))))$y,
       rep(11, 4)

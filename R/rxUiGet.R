@@ -33,7 +33,10 @@
   # The model() and rxode2() assign the parent environments for UDF
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
-  .udfEnvLocal(list(parent.frame(1), parent.frame(2)), model = .udfModelMeta(obj))
+  .udfEnvLocal(list(parent.frame(1), parent.frame(2)))
+  # the model's own user functions stay available to the caller, which may
+  # parse what it read (as nlmixr2est does with model text)
+  .udfModelLocal(.udfModelMeta(obj), frame = .udfModelFrame(parent.frame()))
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply
@@ -495,7 +498,7 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # This changes how models can be expressed (and their output)
     allow.ini = getOption("rxode2.syntax.allow.ini", TRUE),
     # Defined lower level functions and udf functions
-    definedFuns = ls(.udfEnv$symengineFs, all.names = TRUE),
+    definedFuns = ls(.symengineFs(), all.names = TRUE),
     # Defined rxUdfUi methods
     uiFuns = as.character(utils::methods("rxUdfUi")),
     # Add version of rxode2
