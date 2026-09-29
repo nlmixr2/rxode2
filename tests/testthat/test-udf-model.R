@@ -207,6 +207,16 @@ rxTest({
       suppressWarnings(suppressMessages(rxSolve(.sim, e, params = c(t1 = 1))))$y,
       rep(11, 4)
     )
+    # the compiled model finds its functions after many other models too
+    for (.i in 1:25) {
+      suppressWarnings(suppressMessages(mk(.i)()))
+    }
+    udfR1416 <- function(x) x + 1000
+    expect_equal(
+      suppressWarnings(suppressMessages(rxSolve(.sim, e, params = c(t1 = 1))))$y,
+      rep(11, 4)
+    )
+    rm(udfR1416)
     # each model uses the function it was defined with
     m2 <- mk(100)
     f2 <- suppressMessages(m2())
@@ -352,6 +362,10 @@ rxTest({
     }
     .drop()
     # the dropped weak scope is pruned the next time scopes are read
+    expect_null(.udfModelEnvFor("udfDrop1416", weak = TRUE))
+    expect_equal(length(.udfEnv$modelStack), .n)
+    # `$` evaluated in a plain environment ends its scopes too
+    expect_true(is.function(eval(quote(f$meta$udfDrop1416), envir = new.env())))
     expect_null(.udfModelEnvFor("udfDrop1416", weak = TRUE))
     expect_equal(length(.udfEnv$modelStack), .n)
   })

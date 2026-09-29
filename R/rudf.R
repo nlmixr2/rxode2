@@ -27,8 +27,8 @@
 ## model user functions already tried for C, by name
 .udfEnv$modelC <- list()
 ## model user function environments the current parse used, those a compiled
-## model may still need (bounded, see .udfModelKeep()) and the ones the current
-## solve uses
+## model may still need (see .udfModelKeep()) and the ones the current solve
+## uses
 .udfEnv$modelUsed <- list()
 .udfEnv$modelList <- list()
 .udfEnv$modelSolve <- list()

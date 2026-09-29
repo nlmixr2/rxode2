@@ -509,7 +509,10 @@
 
 #' Keep a model user function environment for the compiled model
 #'
-#' The most recent `rxode2.udfSearchLimit` of them are kept.
+#' Kept, like `.udfEnv$envList`, for as long as the session lasts: a compiled
+#' model has no other way back to its functions, and a same-named function
+#' elsewhere must never stand in for them.  Only models with functions left
+#' in R are kept.
 #'
 #' @param env environment
 #' @return key recorded in the model variables
@@ -517,14 +520,7 @@
 #' @author Matthew L. Fidler
 .udfModelKeep <- function(env) {
   .key <- paste0("model:", data.table::address(env))
-  .lst <- .udfEnv$modelList
-  .lst[[.key]] <- NULL
-  .lst[[.key]] <- env
-  .max <- .udfSearchListMax()
-  if (length(.lst) > .max) {
-    .lst <- .lst[seq(length(.lst) - .max + 1L, length(.lst))]
-  }
-  .udfEnv$modelList <- .lst
+  .udfEnv$modelList[[.key]] <- env
   .key
 }
 
