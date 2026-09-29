@@ -34,6 +34,7 @@
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
   .udfEnvLocal(list(parent.frame(1), parent.frame(2)))
+  .udfModelLocal(.udfModelMeta(obj))
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply

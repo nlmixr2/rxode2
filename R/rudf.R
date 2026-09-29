@@ -20,6 +20,18 @@
 .udfEnv$bestFunHasDots <- FALSE
 .udfEnv$bestNargs <- NA_integer_
 .udfEnv$bestEqArgs <- FALSE
+## user functions a model carries itself (see .udfModelLocal()), innermost last
+.udfEnv$modelStack <- list()
+## closure environment of the model function .rxFunction2ui() is rebuilding
+.udfEnv$modelFunEnv <- NULL
+## model user functions already tried for C, by name
+.udfEnv$modelC <- list()
+## model user function environments the current parse used, those a compiled
+## model may still need (bounded, see .udfModelKeep()) and the ones the current
+## solve uses
+.udfEnv$modelUsed <- list()
+.udfEnv$modelList <- list()
+.udfEnv$modelSolve <- list()
 #' Get the udf strings for creating model md5
 #'
 #' @return string vector
@@ -42,6 +54,8 @@
     character(1),
     USE.NAMES = FALSE
   )
+  # the C code, so a same-named function with a new body recompiles
+  .ret <- c(.ret, unname(.udfEnv$rxCcode))
   if (.env$found) {
     .ret <- c(
       .ret,
@@ -356,6 +370,7 @@ rxRmFunParse <- function(name) {
 .udfEnvReset <- function(lock = TRUE) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
+  .udfEnv$modelSolve <- list()
 }
 
 #' Release every environment kept for finding user defined functions
@@ -371,6 +386,10 @@ rxRmFunParse <- function(name) {
   .udfEnv$envList <- list()
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunEnv <- NULL
+  .udfEnv$modelStack <- list()
+  .udfEnv$modelUsed <- list()
+  .udfEnv$modelList <- list()
+  .udfEnv$modelFunEnv <- NULL
   .rxToSE.envir$parent <- NULL
   .rxFromSE.envir$parent <- NULL
 }
@@ -481,7 +500,18 @@ rxRmFunParse <- function(name) {
   .udfEnv$bestFunHasDots <- FALSE
   .udfEnv$bestEqArgs <- TRUE
   .found <- FALSE
+  .modelEnv <- .udfModelEnvGet()
   if (
+    is.environment(.modelEnv) &&
+      exists(fun, envir = .modelEnv, mode = "function", inherits = FALSE)
+  ) {
+    # a model's own function wins, and need not share an environment with
+    # the other user functions it calls
+    .fun <- .udfEnv$fun
+    .udfEnv$fun <- list()
+    .found <- .udfExists(fun, nargs, .modelEnv)
+    .udfEnv$fun <- .fun
+  } else if (
     !.udfExists(fun, nargs, .envir) &&
       !(is.environment(.udfEnv$envirOuter) && .udfExists(fun, nargs, .udfEnv$envirOuter))
   ) {
@@ -518,8 +548,12 @@ rxRmFunParse <- function(name) {
   }
 
   .fun <- .udfEnv$bestFun
-  .udfEnv$envir <- .udfEnv$bestFunEnv
-  .udfEnv$fun[[fun]] <- list(fun, nargs)
+  if (identical(.udfEnv$bestFunEnv, .modelEnv)) {
+    .udfModelUsed(.modelEnv)
+  } else {
+    .udfEnv$envir <- .udfEnv$bestFunEnv
+    .udfEnv$fun[[fun]] <- list(fun, nargs)
+  }
   .w <- which(names(.udfEnv$udf) == fun)
   if (length(.w) == 0L) {
     .udfEnv$udf <- c(.udfEnv$udf, setNames(nargs, fun))
@@ -593,6 +627,7 @@ rxRmFunParse <- function(name) {
   .udfEnv$udf <- integer(0)
   ## functions that must share an environment are per model
   .udfEnv$fun <- list()
+  .udfEnv$modelUsed <- list()
 }
 
 #' This gets the user defined functions information for incorporation
@@ -606,12 +641,16 @@ rxRmFunParse <- function(name) {
   if (length(.udfEnv$udf) == 0) {
     return(integer(0))
   }
+  .model <- vapply(.udfEnv$modelUsed, .udfModelKeep, character(1))
   if (!is.environment(.udfEnv$envir)) {
-    return(integer(0))
+    if (length(.model) == 0L) {
+      return(integer(0))
+    }
+    return(c(.udfEnv$udf, setNames(rep(NA_integer_, length(.model)), .model)))
   }
   .addr <- data.table::address(.udfEnv$envir)
   .udfEnv$envList[[.addr]] <- .udfEnv$envir
-  c(.udfEnv$udf, setNames(NA_integer_, .addr))
+  c(.udfEnv$udf, setNames(rep(NA_integer_, length(.model) + 1L), c(.addr, .model)))
 }
 
 #' Use the udf model variable information to get the environment where
@@ -627,9 +666,16 @@ rxRmFunParse <- function(name) {
   if (length(udf) == 0L) {
     return(invisible())
   }
+  .udfEnv$modelSolve <- list()
   .w <- which(is.na(udf))
   .addr <- names(udf)[.w]
-  .env <- .udfEnv$envList[[.addr]]
+  .model <- startsWith(.addr, "model:")
+  .udfModelSolve(.addr[.model])
+  .addr <- .addr[!.model]
+  if (length(.addr) == 0L) {
+    return(invisible())
+  }
+  .env <- .udfEnv$envList[[.addr[1]]]
   if (is.environment(.env)) {
     .udfAddToSearch(.env)
     ## .udfEnv$envir <- .env

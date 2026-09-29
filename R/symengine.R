@@ -5642,8 +5642,12 @@ rxFun2c <- function(fun, name, onlyF = FALSE) {
     stop("functions with ... in them are not supported", call. = FALSE)
   }
   .start <- paste0("double ", .funName, "(", paste(paste("double ", .env$args), collapse = ", "), ") {\n")
-
-  .body <- as.list(body(fun))
+  # a body without braces is a single statement
+  .funBody <- body(fun)
+  if (!is.call(.funBody) || !identical(.funBody[[1]], quote(`{`))) {
+    .funBody <- as.call(list(quote(`{`), .funBody))
+  }
+  .body <- as.list(.funBody)
   .body <- paste(
     vapply(
       seq_along(.body)[-1],
@@ -5689,7 +5693,7 @@ rxFun2c <- function(fun, name, onlyF = FALSE) {
     .env$n <- 2
     .env$isExpr <- FALSE
     .env$hasReturn <- FALSE
-    .body <- as.list(body(fun))
+    .body <- as.list(.funBody)
     .body <- paste(
       vapply(
         seq_along(.body)[-1],

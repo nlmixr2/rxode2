@@ -2957,6 +2957,7 @@ rxSolve.rxUi <- function(
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
+  .udfModelLocal(.udfModelUi(object))
   # an unnamed useLinCmt is taken from the model's meta block, as other
   # control options are, before falling back to the option
   if (missing(useLinCmt)) {
