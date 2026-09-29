@@ -9,6 +9,12 @@ name: R-CMD-check.yaml
 
 permissions: read-all
 
+# Auto-cancel superseded in-progress runs for the same ref so stale runs don't
+# pile up and starve the runner pool.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
