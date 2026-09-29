@@ -263,8 +263,7 @@ rxRmFunParse <- function(name) {
     return(TRUE)
   }
   if (identical(.env, .BaseNamespaceEnv)) {
-    return(parents[i] > 0L && parents[i] < i &&
-      .udfIsRxFrame(parents[i], frames, parents, fns))
+    return(parents[i] > 0L && parents[i] < i && .udfIsRxFrame(parents[i], frames, parents, fns))
   }
   if (isNamespace(.env) || identical(.env, globalenv())) {
     return(FALSE)
@@ -290,28 +289,27 @@ rxRmFunParse <- function(name) {
 .udfUserFrames <- function(n, f1, f2) {
   .frames <- sys.frames()
   .parents <- sys.parents()
-  .p <- c(.parents[n], 0L)
-  if (.p[1] >= n) {
+  # move frame `p` up past rxode2's own frames; NA where parents stop decreasing
+  .up <- function(p) {
+    while (p > 0L && .udfIsRxFrame(p, .frames, .parents)) {
+      if (.parents[p] >= p) {
+        return(NA_integer_)
+      }
+      p <- .parents[p]
+    }
+    p
+  }
+  if (.parents[n] >= n) {
     return(list(f1, f2))
   }
-  while (.p[1] > 0L && .udfIsRxFrame(.p[1], .frames, .parents)) {
-    if (.parents[.p[1]] >= .p[1]) {
-      return(list(f1, f2))
-    }
-    .p[1] <- .parents[.p[1]]
-  }
-  if (.p[1] > 0L) {
-    .p[2] <- .parents[.p[1]]
-  }
-  while (.p[2] > 0L && .udfIsRxFrame(.p[2], .frames, .parents)) {
-    if (.parents[.p[2]] >= .p[2]) {
-      return(list(f1, f2))
-    }
-    .p[2] <- .parents[.p[2]]
+  .p1 <- .up(.parents[n])
+  .p2 <- if (!is.na(.p1) && .p1 > 0L) .up(.parents[.p1]) else 0L
+  if (is.na(.p1) || is.na(.p2)) {
+    return(list(f1, f2))
   }
   list(
-    if (.p[1] > 0L) .frames[[.p[1]]] else globalenv(),
-    if (.p[2] > 0L) .frames[[.p[2]]] else globalenv()
+    if (.p1 > 0L) .frames[[.p1]] else globalenv(),
+    if (.p2 > 0L) .frames[[.p2]] else globalenv()
   )
 }
 
