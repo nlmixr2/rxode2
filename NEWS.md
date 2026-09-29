@@ -241,18 +241,14 @@
   `cores`/`ncores`; in-model draws are seeded per subject, so their values
   change from earlier versions (#1376).
 
-- Prof Brian Ripley fixed the rxode2 build and published rxode2 5.1.7.1 on
-  CRAN (2026-09-29) so that rxode2, and the packages that depend on it, would
-  install on the r-devel clang flavours again.  That source is kept in this
-  repository on the `cran-5.1.7.1` branch, tagged `v5.1.7.1`.  With thanks.
-
 - Fixed installation with clang/LLVM OpenMP (CRAN
   `r-devel-linux-x86_64-debian-clang` and `r-devel-linux-x86_64-fedora-clang`).
   `R_NO_REMAP` is now defined on the compile command line
   (`-DR_NO_REMAP` in `src/Makevars.in`), which is the only way to have it in
   effect before any R header is included, as "Writing R Extensions" requires.
   Without it R's `match` macro expanded inside the `declare variant match(...)`
-  pragma in LLVM's `omp.h` and the compile failed.
+  pragma in LLVM's `omp.h` and the compile failed.  CRAN released 5.1.7.1 as
+  an interim fix for the same problem; see that version below.
 
 - `rxSolve()` of a function-style (`ini()`/`model()`) model no longer
   converts its ODEs to `linCmt()` unless asked.  `rxSolve.rxUi()` still
@@ -305,6 +301,23 @@
   frame was then never freed and whose same-named function a later model
   could use instead of its own.  A model now also finds its user function
   when an earlier model used a different one (#1409).
+
+# rxode2 5.1.7.1
+
+Published on CRAN by Prof Brian Ripley on 2026-09-29, not released from this
+repository.
+
+- Prof Brian Ripley fixed the rxode2 build so that rxode2, and the packages
+  that depend on it, would install on the r-devel clang flavours again.
+  `src/rxomp.h` undefines R's `match` macro when R's headers have already been
+  included, before `omp.h` is reached, where it otherwise expanded inside
+  LLVM's `#pragma omp begin declare variant match(...)`.  With thanks.
+
+  The source is kept in this repository on the `cran-5.1.7.1` branch, tagged
+  `v5.1.7.1`; upstream it is
+  `cran/rxode2@435808f390db2092b31364075e43e4881d9cb9a9`.  rxode2 5.1.8
+  addresses the same problem differently, by defining `R_NO_REMAP` on the
+  compile command line.
 
 # rxode2 5.1.7
 
