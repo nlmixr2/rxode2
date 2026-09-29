@@ -1,3 +1,13 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `$` on an rxUi no longer adds rxode2's own call frames (like
+  `rxPriorLogDensity()`'s) to the environments searched for user-defined
+  functions; it records the nearest frames outside rxode2 instead.  What those
+  frames held (like a large `theta`) is now freed when they return, instead of
+  staying in memory until later calls pushed them out of the search list.
+
 # rxode2 5.1.8
 
 ## New features
