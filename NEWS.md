@@ -2,6 +2,9 @@
 
 ## Bug fixes
 
+- `ui$fun` of a model that had been solved printed a stray `NULL` line in
+  place of the cached simulation model.
+
 - `$` on an rxUi no longer adds rxode2's own call frames (like
   `rxPriorLogDensity()`'s) to the environments searched for user-defined
   functions; it records the nearest frames outside rxode2 instead.  What those
@@ -92,7 +95,20 @@
   one symengine environment and cached between builds.  The resulting ui is
   unchanged.
 
+- A user function a model function defines in its body, or encloses (like
+  one made by a function that returns the model function), now lives in the
+  model: it is found first, kept in the model's `meta` and written into
+  `ui$fun`.  Such a function is converted to C, with its derivatives, for
+  that model only; it is never registered globally, so another model does
+  not see it and a global `rxFun()` of the same name is left alone.  A
+  function the C translator cannot handle (or that reads variables it does
+  not define) is called from R instead (#1416).
+
 ## Bug fixes
+
+- `rxFun()` of a function whose body has no braces (like
+  `function(x) x + 1`) translated each part of the expression as its own
+  statement, so the C function returned `1` and its derivative was 0.
 
 - A covariate column named `value` or `dose` is now passed through
   when the data has an `amt` column.  Without `amt`, `evid`, `mdv` or

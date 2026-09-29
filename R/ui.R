@@ -232,7 +232,12 @@
   .fun <- .rxEtaDistIniToModel(
     .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
   )
+  # `.fun` is re-created from source, so pass on where the original was defined
+  .funEnv <- .udfEnv$modelFunEnv
+  .udfEnv$modelFunEnv <- environment(fun)
+  on.exit(.udfEnv$modelFunEnv <- .funEnv, add = TRUE)
   .ret <- .fun()
+  .udfEnv$modelFunEnv <- .funEnv
   # Save $model like nlmixr UI used to...
   .ret <- rxUiDecompress(.ret)
   assign("model", fun, envir = .ret)
@@ -472,8 +477,21 @@ model <- function(
     }
     assignInMyNamespace(".lastIni", NULL)
     assignInMyNamespace(".lastIniQ", NULL)
-    .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
+    # user functions the model function defines or encloses live in the model
+    # (its meta), are found first and are converted to C for this model only
+    # (#1416)
     .meta <- new.env(parent = emptyenv())
+    .closure <- .udfEnv$modelFunEnv
+    .udfEnv$modelFunEnv <- NULL
+    if (!is.environment(.closure)) {
+      .closure <- parent.env(envir)
+    }
+    .udfFuns <- .udfModelFuns(substitute(x), envir, .closure)
+    for (.i in ls(.udfFuns, all.names = TRUE)) {
+      assign(.i, get(.i, envir = .udfFuns), envir = .meta)
+    }
+    .udfModelLocal(.meta)
+    .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
     if (!identical(envir, globalenv())) {
       for (.i in ls(envir, all.names = TRUE)) {
         if (.i != ".simModelBase") {

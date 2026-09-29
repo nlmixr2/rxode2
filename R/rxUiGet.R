@@ -39,6 +39,13 @@
   } else {
     .udfEnvLocal(.udfUserFrames(sys.nframe(), .f1, parent.frame(2)))
   }
+  # the model's own user functions; the caller may parse what it read (as
+  # nlmixr2est does with model text), so they stay a last resort there
+  .meta <- .udfModelMeta(obj)
+  .udfModelLocal(.meta)
+  if (!identical(.f1, globalenv())) {
+    .udfModelLocal(.meta, frame = .f1, weak = TRUE)
+  }
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
     # If Rstudio is running completion, then we need to simply
@@ -443,14 +450,11 @@ rxUiDeparse.default <- function(object, var) {
 #' @export
 rxUiGet.funPrint <- function(x, ...) {
   .x <- x[[1]]
-  .ls <- ls(.x$meta, all.names = TRUE)
+  .ls <- setdiff(ls(.x$meta, all.names = TRUE), ".simModelBase")
   .hasIni <- length(.x$iniDf$cond) > 0
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    if (.i == ".simModelBase") {
-      next
-    }
     .var <- .ls[.i]
     .val <- .x$meta[[.ls[.i]]]
     .ret[[.i + 1]] <- rxUiDeparse(.val, .var)
@@ -500,7 +504,7 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # This changes how models can be expressed (and their output)
     allow.ini = getOption("rxode2.syntax.allow.ini", TRUE),
     # Defined lower level functions and udf functions
-    definedFuns = ls(.udfEnv$symengineFs, all.names = TRUE),
+    definedFuns = ls(.symengineFs(), all.names = TRUE),
     # Defined rxUdfUi methods
     uiFuns = as.character(utils::methods("rxUdfUi")),
     # Add version of rxode2
