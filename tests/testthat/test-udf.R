@@ -50,18 +50,29 @@ rxTest({
     expect_true(all(d$z == d$x + d$y))
   })
 
+  # parse a model whose user function is in its own frame, so the next
+  # model's user function is in a different environment
+  .udfOtherEnv <- function() {
+    udfOther <- function(x, y) x - y
+    invisible(rxode2({
+      z <- udfOther(x, y)
+    }))
+  }
+
   test_that("user functions from different environments resolve in consecutive models", {
     .plainA <- function(data) {
       udfConsA <- function(x, y) x + 2 * y
-      suppressWarnings(rxSolve(rxode2({
+      .m <- rxode2({
         z <- udfConsA(x, y)
-      }), data))
+      })
+      suppressWarnings(rxSolve(.m, data))
     }
     .plainA2 <- function(data) {
       udfConsA2 <- function(x, y) x + 3 * y
-      suppressWarnings(rxSolve(rxode2({
+      .m <- rxode2({
         z <- udfConsA2(x, y)
-      }), data))
+      })
+      suppressWarnings(rxSolve(.m, data))
     }
     .uiFunB <- function() {
       ini({
@@ -89,8 +100,13 @@ rxTest({
     }
     # each model's user function is in a different environment from the last
     .steps <- list(
-      list(.plainA, 2), list(.plainA2, 3), list(.uiB, 4), list(.plainA, 2),
-      list(.uiD, 5), list(.uiB, 4), list(.uiD, 5)
+      list(.plainA, 2),
+      list(.plainA2, 3),
+      list(.uiB, 4),
+      list(.plainA, 2),
+      list(.uiD, 5),
+      list(.uiB, 4),
+      list(.uiD, 5)
     )
     for (.s in .steps) {
       .d <- .s[[1]](e)
@@ -119,7 +135,7 @@ rxTest({
     expect_equal(.d$z, .d$x + 7 * .d$y)
   })
 
-  test_that("a model built inside a user function during a solve", {
+  test_that("a model can be built inside a user function during a solve", {
     udfBuilds <- function(x, y) {
       udfBuildsInner <- function(a, b) a + b
       invisible(rxode2({
@@ -127,9 +143,10 @@ rxTest({
       }))
       x + 8 * y
     }
-    .d <- suppressWarnings(rxSolve(rxode2({
+    .m <- rxode2({
       z <- udfBuilds(x, y)
-    }), e))
+    })
+    .d <- suppressWarnings(rxSolve(.m, e))
     expect_equal(.d$z, .d$x + 8 * .d$y)
   })
 
@@ -144,6 +161,7 @@ rxTest({
       })
     }
     .solveUi <- function(data) suppressWarnings(rxSolve(rxode2(.uiFun), data))
+    .udfOtherEnv()
     .d <- .solveUi(e)
     expect_equal(.d$z, .d$x + 9 * .d$y)
   })
