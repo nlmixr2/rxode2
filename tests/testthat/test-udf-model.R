@@ -124,6 +124,28 @@ rxTest({
     expect_no_message(m(), message = "converted model user function")
   })
 
+  test_that("a model keeps its function's C code when a global rxFun() is identical", {
+    withr::defer(.rmFun("udfSameGlob1416"))
+    udfSameGlob1416 <- function(x) x + 1
+    suppressMessages(rxFun(udfSameGlob1416))
+    mk <- function() {
+      udfSameGlob1416 <- function(x) x + 1
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfSameGlob1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    .sim <- local(f$simulationModel)
+    suppressWarnings(rxRmFun("udfSameGlob1416"))
+    rxDelete(.sim)
+    expect_equal(suppressMessages(rxSolve(.sim, e, params = c(t1 = 1)))$y, rep(2, 4))
+  })
+
   test_that("a model user function does not replace a global rxFun() of the same name", {
     withr::defer(.rmFun("udfGlob1416"))
     udfGlob1416 <- function(x) {

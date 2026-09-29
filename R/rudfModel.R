@@ -371,10 +371,11 @@
       return(FALSE)
     }
   }
-  .saved <- if (weak) list() else .udfRegActivate(.udfModelRegs(env))
+  .regs <- if (weak) list() else .udfModelRegs(env)
+  .saved <- .udfRegActivate(.regs)
   .udfEnv$modelStack <- c(
     .udfEnv$modelStack,
-    list(list(env = env, frame = frame, weak = weak, saved = .saved))
+    list(list(env = env, frame = frame, weak = weak, saved = .saved, names = names(.regs)))
   )
   TRUE
 }
@@ -385,7 +386,9 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .udfModelActiveNames <- function() {
-  unique(unlist(lapply(.udfEnv$modelStack, function(.s) names(.s$saved)), use.names = FALSE))
+  # every function a scope registers, including one whose identical C code
+  # was already registered (so it did not need replacing)
+  unique(unlist(lapply(.udfEnv$modelStack, function(.s) .s$names), use.names = FALSE))
 }
 
 #' C code of the model user functions currently registered
