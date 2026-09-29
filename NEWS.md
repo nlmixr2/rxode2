@@ -215,10 +215,13 @@
   `cores`/`ncores`; in-model draws are seeded per subject, so their values
   change from earlier versions (#1376).
 
-- Fixed installation with clang/LLVM OpenMP (CRAN `r-devel-linux-x86_64-fedora-clang`):
-  R's `match` macro is now hidden while `omp.h` is included, so it no longer
-  breaks the `declare variant match(...)` pragma in LLVM's `omp.h`.  The same
-  guard covers compiled model code.
+- Fixed installation with clang/LLVM OpenMP (CRAN
+  `r-devel-linux-x86_64-debian-clang` and `r-devel-linux-x86_64-fedora-clang`).
+  `R_NO_REMAP` is now defined on the compile command line
+  (`-DR_NO_REMAP` in `src/Makevars.in`), which is the only way to have it in
+  effect before any R header is included, as "Writing R Extensions" requires.
+  Without it R's `match` macro expanded inside the `declare variant match(...)`
+  pragma in LLVM's `omp.h` and the compile failed.
 
 - `rxSolve()` of a function-style (`ini()`/`model()`) model no longer
   converts its ODEs to `linCmt()` unless asked.  `rxSolve.rxUi()` still
