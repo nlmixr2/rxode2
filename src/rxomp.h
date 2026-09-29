@@ -1,6 +1,11 @@
 #ifndef R_NO_REMAP
 #define R_NO_REMAP
 #endif
+// R.h may already have been included and defines match.
+#ifdef match
+#undef match
+#endif
+
 #ifdef _OPENMP
 #include <pthread.h>
 #include <omp.h>
