@@ -270,6 +270,77 @@ rxRmFunParse <- function(name) {
   invisible()
 }
 
+#' Whether a stack frame is rxode2's own (never where user functions live)
+#'
+#' (a) A frame of a function of the rxode2 namespace, (b) of a closure made in
+#' such a frame, or (c) of a base function (like `lapply()`) called from one.
+#' Not `topenv()`, which is rxode2's namespace for test code too.
+#'
+#' @param i frame number to classify
+#' @param frames,parents `sys.frames()` and `sys.parents()` for the stack
+#' @param fns list of the stack's functions (`sys.function()`), or `NULL` to
+#'   look them up as needed
+#' @return logical
+#' @noRd
+.udfIsRxFrame <- function(i, frames, parents, fns = NULL) {
+  .env <- environment(if (is.null(fns)) sys.function(i) else fns[[i]])
+  if (is.null(.env)) {
+    return(FALSE)
+  }
+  if (identical(.env, parent.env(environment()))) {
+    return(TRUE)
+  }
+  if (identical(.env, .BaseNamespaceEnv)) {
+    return(parents[i] > 0L && parents[i] < i && .udfIsRxFrame(parents[i], frames, parents, fns))
+  }
+  if (isNamespace(.env) || identical(.env, globalenv())) {
+    return(FALSE)
+  }
+  for (.j in seq_len(i - 1L)) {
+    if (identical(frames[[.j]], .env)) {
+      return(.udfIsRxFrame(.j, frames, parents, fns))
+    }
+  }
+  FALSE
+}
+
+#' Frames `$.rxUi` records for finding user functions
+#'
+#' Its caller and the caller's caller, each moved up past rxode2's own frames
+#' (`.udfIsRxFrame()`); `f1` and `f2` where `sys.parents()` stops decreasing
+#' (as under `rlang::eval_tidy()`).
+#'
+#' @param n frame number of the `$.rxUi` call
+#' @param f1,f2 `parent.frame(1)` and `parent.frame(2)` of that call
+#' @return list of two environments
+#' @noRd
+.udfUserFrames <- function(n, f1, f2) {
+  .frames <- sys.frames()
+  .parents <- sys.parents()
+  # move frame `p` up past rxode2's own frames; NA where parents stop decreasing
+  .up <- function(p) {
+    while (p > 0L && .udfIsRxFrame(p, .frames, .parents)) {
+      if (.parents[p] >= p) {
+        return(NA_integer_)
+      }
+      p <- .parents[p]
+    }
+    p
+  }
+  if (.parents[n] >= n) {
+    return(list(f1, f2))
+  }
+  .p1 <- .up(.parents[n])
+  .p2 <- if (!is.na(.p1) && .p1 > 0L) .up(.parents[.p1]) else 0L
+  if (is.na(.p1) || is.na(.p2)) {
+    return(list(f1, f2))
+  }
+  list(
+    if (.p1 > 0L) .frames[[.p1]] else globalenv(),
+    if (.p2 > 0L) .frames[[.p2]] else globalenv()
+  )
+}
+
 #' Setup the UDF environment (for querying user defined functions)
 #'
 #' Outside of an rxode2 call the most recent environment becomes the primary

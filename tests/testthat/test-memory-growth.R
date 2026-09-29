@@ -9,9 +9,10 @@
 ##  * `.udfAddToSearch()` appended the calling environment to an unbounded list
 ##    (indexed by a hash that had to mint a new name per environment).
 ##
-## The cheap invariants that guarantee those three run by default.  The tests
-## that measure process memory are opt-in: they need `ps`, they are slow, and a
-## machine under memory pressure can move RSS underneath them.  Run them with
+## The cheap invariants that guarantee those three run by default (the search
+## list's are in test-udf-search-list.R).  The tests that measure process memory
+## are opt-in: they need `ps`, they are slow, and a machine under memory
+## pressure can move RSS underneath them.  Run them with
 ##
 ##     Sys.setenv(RXODE2_MEMORY_TEST = "true")
 
@@ -93,39 +94,6 @@ rxTest({
     rxDelete(.mod)
     expect_no_error(.mod$compile())
     expect_true(rxDllLoaded(.mod))
-  })
-
-  test_that("the user function search list is bounded", {
-    .mod <- function() {
-      ini({
-        tkaSearch <- 0.5
-        addSdSearch <- 0.7
-      })
-      model({
-        kaSearch <- exp(tkaSearch)
-        d/dt(depotSearch) <- -kaSearch * depotSearch
-        cpSearch <- depotSearch
-        cpSearch ~ add(addSdSearch)
-      })
-    }
-    .ui <- rxode2(.mod)
-    # every one of these records the (fresh, and immediately dead) frame it was
-    # called from; the list used to keep all of them
-    for (.i in seq_len(50)) {
-      invisible(.ui$theta)
-    }
-    expect_lte(length(.udfEnv$searchList), .udfSearchListMax())
-
-    withr::with_options(list(rxode2.udfSearchLimit = 5), {
-      for (.i in seq_len(20)) {
-        invisible(.ui$theta)
-      }
-      expect_lte(length(.udfEnv$searchList), 5L)
-    })
-    # a bad option value falls back to the default rather than erroring
-    withr::with_options(list(rxode2.udfSearchLimit = "many"), {
-      expect_equal(.udfSearchListMax(), 20L)
-    })
   })
 
   test_that("repeated translation does not grow process memory", {

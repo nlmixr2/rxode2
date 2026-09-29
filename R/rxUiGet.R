@@ -33,13 +33,18 @@
   # The model() and rxode2() assign the parent environments for UDF
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
-  .udfEnvLocal(list(parent.frame(1), parent.frame(2)))
+  .f1 <- parent.frame(1)
+  if (identical(topenv(.f1, NULL), globalenv())) {
+    .udfEnvLocal(list(.f1, parent.frame(2))) # user code, the common case
+  } else {
+    .udfEnvLocal(.udfUserFrames(sys.nframe(), .f1, parent.frame(2)))
+  }
   # the model's own user functions; the caller may parse what it read (as
   # nlmixr2est does with model text), so they stay a last resort there
   .meta <- .udfModelMeta(obj)
   .udfModelLocal(.meta)
-  if (!identical(parent.frame(), globalenv())) {
-    .udfModelLocal(.meta, frame = parent.frame(), weak = TRUE)
+  if (!identical(.f1, globalenv())) {
+    .udfModelLocal(.meta, frame = .f1, weak = TRUE)
   }
   .obj <- .uiToRxUiGet(obj = obj, arg = arg, exact = exact)
   if (.rstudioComplete()) {
