@@ -89,6 +89,10 @@
   }
   .code <- .udfEnv$rxCcode
   if (length(extraCmodel) > 0L) {
+    # static, so a model always calls its own function: model DLLs are loaded
+    # globally, and on Linux a same-named function in another model's DLL
+    # would otherwise be called instead
+    extraCmodel <- sub("^double ", "static double ", extraCmodel)
     # model functions may call each other in any order, so declare them first
     .proto <- paste0(sub("[)] *[{].*$", ");", sub("\n.*$", "", extraCmodel)), collapse = "\n")
     .code <- c(.proto, .code[!(names(.code) %in% names(extraCmodel))], extraCmodel)

@@ -102,6 +102,9 @@ rxTest({
     }
     f1 <- suppressMessages(mk(TRUE)())
     f2 <- suppressMessages(mk(FALSE)())
+    # same model text, so the compiled model must be told apart by the code
+    .md5 <- function(f) local(rxModelVars(f$simulationModel)$md5["parsed_md5"])
+    expect_false(identical(.md5(f1), .md5(f2)))
     expect_equal(suppressMessages(rxSolve(f2, e))$y, rep(3, 4))
     expect_equal(suppressMessages(rxSolve(f1, e))$y, rep(2, 4))
     expect_equal(suppressMessages(rxSolve(f2, e))$y, rep(3, 4))
