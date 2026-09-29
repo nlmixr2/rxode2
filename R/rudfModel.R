@@ -202,7 +202,12 @@
   for (.n in names(regs)) {
     .cur <- .udfRegGet(.n)
     .reg <- regs[[.n]]
-    if (identical(.cur$code, .reg$code) && identical(.cur$eq, .reg$eq)) {
+    if (
+      identical(.cur$code, .reg$code) &&
+        identical(.cur$eq, .reg$eq) &&
+        !is.null(.cur$sfs) &&
+        (is.null(.reg$d) || !is.null(.cur$d))
+    ) {
       next
     }
     .saved[[.n]] <- .cur

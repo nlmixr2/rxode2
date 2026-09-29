@@ -146,6 +146,50 @@ rxTest({
     expect_equal(suppressMessages(rxSolve(.sim, e, params = c(t1 = 1)))$y, rep(2, 4))
   })
 
+  test_that("a model registers its derivatives over an identical global without them", {
+    withr::defer(.rmFun("udfNoD1416"))
+    udfNoD1416 <- function(x) 2 * x
+    .c <- rxFun2c(udfNoD1416, "udfNoD1416", onlyF = TRUE)
+    rxFun("udfNoD1416", .c$args, .c$cCode)
+    mk <- function() {
+      udfNoD1416 <- function(x) 2 * x
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfNoD1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    .inScope <- function(ui) {
+      .udfModelLocal(.udfModelMeta(ui))
+      rxFromSE("Derivative(udfNoD1416(a1),a1)", unknownDerivatives = "error")
+    }
+    expect_equal(.inScope(f), "rx_udfNoD1416_d_x(a1)")
+    expect_false(exists("udfNoD1416", envir = rxode2parseD(), inherits = FALSE))
+  })
+
+  test_that("piping a model keeps its user functions", {
+    mk <- function() {
+      udfPipe1416 <- function(x) 2 * x
+      function() {
+        ini({
+          t1 <- 1
+        })
+        model({
+          y <- udfPipe1416(t1)
+        })
+      }
+    }
+    f <- suppressMessages(mk()())
+    f2 <- suppressMessages(f |> model(z <- udfPipe1416(y) + 1, append = TRUE))
+    .s <- suppressMessages(rxSolve(f2, e))
+    expect_equal(.s$y, rep(2, 4))
+    expect_equal(.s$z, rep(5, 4))
+  })
+
   test_that("a model user function does not replace a global rxFun() of the same name", {
     withr::defer(.rmFun("udfGlob1416"))
     udfGlob1416 <- function(x) {
