@@ -30,9 +30,9 @@ rxTest({
   .sig <- function(ret, args) {
     c(gsub("\\s+|\\b(extern|RcppExport)\\b|\"C\"", "", ret), .types(args))
   }
-  .typedef <- function(t) {
+  .typedef <- function(t, hdr = .hdr) {
     .re <- paste0("typedef\\s+([^;(]*?)\\(\\s*\\*\\s*", t, "\\s*\\)\\s*\\(([^;]*?)\\)\\s*;")
-    .l <- unique(regmatches(.hdr, gregexpr(.re, .hdr, perl = TRUE))[[1]])
+    .l <- unique(regmatches(hdr, gregexpr(.re, hdr, perl = TRUE))[[1]])
     expect_equal(length(.l), 1, label = paste("typedefs of", t))
     .sig(sub(.re, "\\1", .l, perl = TRUE), sub(.re, "\\2", .l, perl = TRUE))
   }
@@ -130,6 +130,20 @@ rxTest({
       if (.s %in% names(.reg)) {
         expect_identical(.defs(.src, .reg[[.s]]), .typedef(.t), label = .s)
       }
+    }
+  })
+
+  test_that("PreciseSums typedefs match the ones model code casts to", {
+    .ps <- system.file("include", "PreciseSumsPtr.h", package = "PreciseSums")
+    skip_if_not(file.exists(.ps))
+    .psHdr <- paste(gsub("//.*$", "", readLines(.ps, warn = FALSE)), collapse = "\n")
+    .reCast <- "^\\s*\\w+\\s*=\\s*\\((\\w+)\\)\\s*R_GetCCallable\\(\\s*\"PreciseSums\"\\s*,\\s*\"(\\w+)\"\\s*\\).*$"
+    .casts <- grep(.reCast, .inc("rxode2_model_shared.c"), value = TRUE, perl = TRUE)
+    expect_length(.casts, 4)
+    for (.l in .casts) {
+      .t <- sub(.reCast, "\\1", .l, perl = TRUE)
+      .s <- sub(.reCast, "\\2", .l, perl = TRUE)
+      expect_identical(.typedef(.t), .typedef(paste0(.s, "_type"), .psHdr), label = .s)
     }
   })
 
