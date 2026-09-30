@@ -964,12 +964,12 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   fpIO = fopen(CHAR(STRING_ELT(c_file,0)), "wb");
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
 
-  if (badMd5){
+  if (badMd5 || md5 == NULL){
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(""));
   } else {
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
-  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code));
+  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code == NULL ? "" : me_code));
   int pro = 0;
   SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
   sbuf buf; sNull(&buf);

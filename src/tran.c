@@ -116,6 +116,11 @@ static void setOwnedStr(const char **dst, const char *src) {
   if (*dst != NULL) free((void*)(*dst));
   *dst = cp;
 }
+
+static void freeOwnedStr(const char **dst) {
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = NULL;
+}
 int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundPast=0, foundF0=0, needSort=0;
 
 sbuf sbOut;
@@ -292,6 +297,9 @@ void parseFreeLast(void) {
   freeP();
   sFree(&_bufw);
   sFree(&_bufw2);
+  freeOwnedStr(&model_prefix);
+  freeOwnedStr(&me_code);
+  freeOwnedStr(&md5);
 }
 
 sbuf sbErr1;
