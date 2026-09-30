@@ -101,10 +101,21 @@ sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
 
+// Owned copies: codegen reads these in a later .Call, after the argument
+// CHARSXPs they came from may have been collected (#1421).
 const char *model_prefix = NULL;
 const char *me_code = NULL;
 const char *md5 = NULL;
 int badMd5 = 0;
+
+static void setOwnedStr(const char **dst, const char *src) {
+  size_t n = strlen(src) + 1;
+  char *cp = (char*)malloc(n);
+  if (cp == NULL) (Rf_error)("out of memory copying parser string");
+  memcpy(cp, src, n);
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = cp;
+}
 int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundPast=0, foundF0=0, needSort=0;
 
 sbuf sbOut;
@@ -737,14 +748,14 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   set_d_verbose_level(0);
 
   if (Rf_isString(prefix) && Rf_length(prefix) == 1){
-    model_prefix = CHAR(STRING_ELT(prefix,0));
+    setOwnedStr(&model_prefix, CHAR(STRING_ELT(prefix,0)));
   } else {
     _rxode2parse_unprotect();
     err_trans("model prefix must be specified");
   }
 
   if (Rf_isString(inME) && Rf_length(inME) == 1){
-    me_code = CHAR(STRING_ELT(inME,0));
+    setOwnedStr(&me_code, CHAR(STRING_ELT(inME,0)));
   } else {
     freeP();
     _rxode2parse_unprotect();
@@ -752,12 +763,13 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   }
 
   if (Rf_isString(model_md5) && Rf_length(model_md5) == 1){
-    md5 = CHAR(STRING_ELT(model_md5,0));
+    setOwnedStr(&md5, CHAR(STRING_ELT(model_md5,0)));
     badMd5 = 0;
     if (strlen(md5)!= 32){
       badMd5=1;
     }
   } else {
+    setOwnedStr(&md5, "");
     badMd5=1;
   }
   return isStr;

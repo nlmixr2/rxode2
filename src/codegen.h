@@ -461,10 +461,10 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  if (!Rf_isNull(_mv)){\n    _rxRmModelLib(\"%smodel_vars\");\n  }\n  UNPROTECT(1);\n}\n", prefix);
 }
 
-void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,
+void print_aux_info(char *model, const char *prefix, const char *libname,
 		    const char *libname2);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *timeId, const char *libname2);
+void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2);
 void writeSb(sbuf *sbb, FILE *fp);
 
 #define gCode(i) (&sbOut)->s[0]='\0';		\
@@ -472,12 +472,11 @@ void writeSb(sbuf *sbb, FILE *fp);
   codegen(gBuf, i, CHAR(STRING_ELT(prefix,0)),	\
 	  CHAR(STRING_ELT(libname, 0)),		\
 	  CHAR(STRING_ELT(pMd5,0)),		\
-	  CHAR(STRING_ELT(timeId, 0)),		\
 	  CHAR(STRING_ELT(libname, 1)));					\
   writeSb(&sbOut, fpIO);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
-                          SEXP pMd5, SEXP timeId, SEXP mvLast, SEXP goodFuns,
+                          SEXP pMd5, SEXP mvLast, SEXP goodFuns,
                           SEXP esDLagCode, SEXP esDFCode,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
