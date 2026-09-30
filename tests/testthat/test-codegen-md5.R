@@ -36,4 +36,31 @@ rxTest({
     expect_true(grepl(.parsedMd5, .def, fixed = TRUE))
     expect_false(grepl(.codegenMd5(), .def, fixed = TRUE))
   })
+
+  test_that("a malformed model md5 is blanked, not left over from the last parse", {
+    .ret <- .Call(
+      `_rxode2_trans`,
+      "d/dt(cgMd5B) = -kCgMd5B * cgMd5B",
+      "",
+      "not-an-md5",
+      1L,
+      0L,
+      "",
+      .rxSupportedFuns(),
+      FALSE
+    )
+    .parsedMd5 <- digest::digest("rxode2 issue 1421 bad md5")
+    .ret$md5 <- c(file_md5 = "x", parsed_md5 = .parsedMd5)
+    .ret[[17]] <- list()
+    .cFile <- tempfile("rx_cgmd5b_", fileext = ".c")
+    on.exit(unlink(.cFile), add = TRUE)
+    .lib <- gsub("[.]c$", "", basename(.cFile))
+    .codegen(
+      .cFile, "rx_cgmd5b_", c(.lib, .lib), .parsedMd5, .ret,
+      .rxSupportedFuns()
+    )
+    expect_identical(.ret$md5[[1]], "")
+    .def <- grep("^#define _getRxSolve_ ", readLines(.cFile), value = TRUE)
+    expect_true(grepl(.parsedMd5, .def, fixed = TRUE))
+  })
 })

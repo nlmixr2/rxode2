@@ -101,7 +101,7 @@ sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
 
-// Owned copies: codegen reads these in a later .Call, after the argument
+// Owned copies: codegen reads md5/me_code in a later .Call, after the argument
 // CHARSXPs they came from may have been collected (#1421).
 const char *model_prefix = NULL;
 const char *me_code = NULL;

@@ -11,10 +11,10 @@
   frames held (like a large `theta`) is now freed when they return, instead of
   staying in memory until later calls pushed them out of the search list.
 
-- The model parser now keeps its own copies of the model md5, prefix and
+- The model parser now keeps its own copies of the model md5 and
   matrix-exponential code, which the code generator reads in a later call;
   it used to hold pointers into R strings that could be garbage collected in
-  between.  Generated C symbols are now keyed by the parsed md5 handed to the
+  between (the model prefix global is copied too, so it never dangles).  Generated C symbols are now keyed by the parsed md5 handed to the
   code generator, and its unused `timeId` argument was dropped (#1421).
 
 # rxode2 5.1.8
