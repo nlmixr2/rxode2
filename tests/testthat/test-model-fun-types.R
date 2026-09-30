@@ -5,7 +5,8 @@ rxTest({
   test_that("generated model functions match the typedefs they are called through", {
     .hdr <- c(
       readLines(system.file("include", "rxode2.h", package = "rxode2")),
-      readLines(system.file("include", "rxode2parseStruct.h", package = "rxode2"))
+      readLines(system.file("include", "rxode2parseStruct.h", package = "rxode2")),
+      readLines(system.file("include", "rxode2_model_shared.h", package = "rxode2"))
     )
     .m <- rxode2({
       ka <- 0.5
@@ -13,8 +14,9 @@ rxTest({
       d/dt(center) <- ka * depot - center
       f(depot) <- 1
     })
-    .c <- readLines(rxC(.m))
+    .c <- paste(readLines(rxC(.m)), collapse = "\n")
     .prefix <- rxModelVars(.m)$trans["prefix"]
+    .kw <- c("int", "unsigned", "long", "short", "char", "double", "float", "void", "const", "*")
     # Normalize a C parameter list to its types: drop names and restrict.
     .types <- function(args) {
       args <- trimws(strsplit(args, ",")[[1]])
@@ -24,7 +26,7 @@ rxTest({
         args,
         function(a) {
           .tok <- strsplit(trimws(a), "\\s+")[[1]]
-          if (length(.tok) > 1 && !(.tok[length(.tok)] %in% c("*", "void"))) {
+          if (length(.tok) > 1 && !(.tok[length(.tok)] %in% .kw)) {
             .tok <- .tok[-length(.tok)]
           }
           paste(.tok, collapse = " ")
@@ -34,19 +36,24 @@ rxTest({
       )
     }
     .sig <- function(ret, args) {
-      c(gsub("\\s+", "", gsub("^\\s*extern\\s+", "", ret)), .types(args))
+      c(gsub("\\s+", "", ret), .types(args))
     }
     .typedef <- function(t) {
       .re <- paste0("^\\s*typedef\\s+(.*?)\\(\\*", t, "\\)\\((.*)\\);")
-      .l <- grep(.re, .hdr, value = TRUE, perl = TRUE)
+      .l <- unique(grep(.re, .hdr, value = TRUE, perl = TRUE))
       expect_length(.l, 1)
       .sig(sub(.re, "\\1", .l, perl = TRUE), sub(.re, "\\2", .l, perl = TRUE))
     }
+    # A definition is `<ret> <name>(<args>) {`; calls and prototypes end in `;`.
     .def <- function(f) {
-      .re <- paste0("^\\s*(extern\\s+)?(.*?)\\b", .prefix, f, "\\s*\\((.*)\\)\\s*\\{?\\s*$")
-      .l <- grep(.re, .c, value = TRUE, perl = TRUE)
+      .re <- paste0(
+        "\\b([A-Za-z_]\\w*(?:\\s*\\*)*)\\s*\\b",
+        f,
+        "\\s*\\(([^()]*)\\)\\s*\\{"
+      )
+      .l <- regmatches(.c, gregexpr(.re, .c, perl = TRUE))[[1]]
       expect_length(.l, 1)
-      .sig(sub(.re, "\\2", .l, perl = TRUE), sub(.re, "\\3", .l, perl = TRUE))
+      .sig(sub(.re, "\\1", .l, perl = TRUE), sub(.re, "\\2", .l, perl = TRUE))
     }
     .pairs <- c(
       assignFuns = "t_assignFuns",
@@ -69,8 +76,19 @@ rxTest({
       dLag = "t_dLag",
       dF = "t_dF",
       dRate = "t_dRate",
-      dDur = "t_dDur"
+      dDur = "t_dDur",
+      d2F = "t_dF",
+      d2Lag = "t_dLag",
+      d2Rate = "t_dRate",
+      d2Dur = "t_dDur",
+      d3F = "t_dF",
+      dFQ = "t_dF",
+      dLagJac = "t_dLag",
+      dLagQ = "t_dLag",
+      dDurQ = "t_dDur"
     )
+    .pairs <- stats::setNames(.pairs, paste0(.prefix, names(.pairs)))
+    .pairs <- c(.pairs, "__assignFuns2" = "rxode2_assignFuns2_t")
     for (.f in names(.pairs)) {
       expect_identical(.def(.f), .typedef(.pairs[[.f]]), label = .f)
     }
