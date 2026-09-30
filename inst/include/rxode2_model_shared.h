@@ -368,7 +368,7 @@ typedef double (*rxode2i_fn2i) (double x, int i);
 
 typedef int (*rxode2i2_fn0i) (int id);
 typedef double (*rxode2i2_fn) (int id, double x);
-typedef int (*rxode2i2_ifn) (int id, double x);
+typedef double (*rxode2i2_ifn) (int id, double x);
 typedef double (*rxode2i2_fn2) (int id, double x, double y);
 typedef double (*rxode2i2_fn3i) (int id, double x, double y, int i);
 typedef double (*rxode2i2_fn2i) (int id, double x, int i);
@@ -383,9 +383,9 @@ typedef SEXP (*_rxGetModelLibType)(const char *s);
 typedef  SEXP (*_rx_asgn) (SEXP objectSEXP);
 typedef int(*_rxIsCurrentC_type)(SEXP);
 typedef double(*_rxSumType)(double *, int, double *, int, int);
-typedef double(*_udf_type)(const char *fun, int, double *);
+typedef double(*_udf_type)(const char *fun, int, const double *);
 
-typedef void(*_simfun)(int id);
+typedef void(*_simfun)(void);
 
 typedef double(*_rxProdType)(double*, double*, int, int);
 

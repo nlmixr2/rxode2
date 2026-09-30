@@ -11,9 +11,14 @@
   frames held (like a large `theta`) is now freed when they return, instead of
   staying in memory until later calls pushed them out of the search list.
 
-- The `t_assignFuns` typedef in `rxode2.h` now returns `void`, matching the
-  generated model's `__assignFuns`, so calling it is no longer flagged by
-  UBSAN's `-fsanitize=function` on every solve (#1420).
+- `rigeom()` and `ripois()` returned 0 for every subject, because model code
+  called them through a pointer typed to return `int` while they return
+  `double`; they now return their draws.
+
+- Function pointers between rxode2 and compiled models now match the
+  functions they call (`__assignFuns`, user-defined functions and
+  `simeta()`/`simeps()`), so solving is no longer flagged by UBSAN's
+  `-fsanitize=function` (#1420).
 
 # rxode2 5.1.8
 
