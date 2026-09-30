@@ -20,12 +20,18 @@ rxTest({
     .parsedMd5 <- digest::digest("rxode2 issue 1421 parsed md5")
     .ret$md5 <- c(file_md5 = "", parsed_md5 = .parsedMd5)
     .ret[[17]] <- list()
-    for (.i in 1:3) gc(full = TRUE)
+    for (.i in 1:3) {
+      gc(full = TRUE)
+    }
     .cFile <- tempfile("rx_cgmd5_", fileext = ".c")
     on.exit(unlink(.cFile), add = TRUE)
     .lib <- gsub("[.]c$", "", basename(.cFile))
     .codegen(
-      .cFile, "rx_cgmd5_", c(.lib, .lib), .parsedMd5, .ret,
+      .cFile,
+      "rx_cgmd5_",
+      c(.lib, .lib),
+      .parsedMd5,
+      .ret,
       .rxSupportedFuns()
     )
     expect_identical(.ret$md5[[1]], .codegenMd5())
@@ -57,7 +63,11 @@ rxTest({
     on.exit(unlink(.cFile), add = TRUE)
     .lib <- gsub("[.]c$", "", basename(.cFile))
     .codegen(
-      .cFile, "rx_cgmd5b_", c(.lib, .lib), .parsedMd5, .ret,
+      .cFile,
+      "rx_cgmd5b_",
+      c(.lib, .lib),
+      .parsedMd5,
+      .ret,
       .rxSupportedFuns()
     )
     expect_identical(.ret$md5[[1]], "")
