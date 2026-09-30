@@ -116,16 +116,10 @@ SEXP _rxode2parse_preserve(SEXP x) {
   return x;
 }
 
-/* The table getters return frames that nothing else may reference (the builtin
-   one is built afresh on every call), and _rxode2parse_preserve() allocates: it
-   conses onto R's precious list.  A collection inside it freed an unprotected
-   frame, and with it every column not yet preserved, before VECTOR_ELT() read
-   the next column -- the parse then preserved and indexed freed memory, seen as
-   "INTEGER() can only be applied to a 'integer', not a 'expression'" (or
-   'weakref', 'pairlist') or as a segfault once a later collection marked it.
-   So each frame is protected until all of its columns are claimed.  That
-   protection is released before returning, so it never crosses the parse (the
-   claims themselves must not be on the protect stack; see above). */
+/* The getters' frames may be unreferenced (the builtin one is rebuilt per call)
+   and _rxode2parse_preserve() allocates, so protect each frame until its columns
+   are claimed; the protection is released before returning, never crossing the
+   parse. */
 void _rxode2parse_assignTranslationBuiltin(void) {
   rxProtectGuard;
   SEXP df = rxP(getRxode2ParseDfBuiltin());

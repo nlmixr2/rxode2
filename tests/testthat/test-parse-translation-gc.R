@@ -10,7 +10,6 @@
 ## claims without depending on how many allocations anything else makes.
 rxTest({
   test_that("a collection while the parse claims the translation tables does not corrupt it", {
-    skip_on_cran()
     .orig <- rxode2parseGetTranslationBuiltin
     for (.k in 0:12) {
       .hook <- local({
