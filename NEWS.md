@@ -11,6 +11,10 @@
   frames held (like a large `theta`) is now freed when they return, instead of
   staying in memory until later calls pushed them out of the search list.
 
+- The `t_assignFuns` typedef in `rxode2.h` now returns `void`, matching the
+  generated model's `__assignFuns`, so calling it is no longer flagged by
+  UBSAN's `-fsanitize=function` on every solve (#1420).
+
 # rxode2 5.1.8
 
 ## New features
