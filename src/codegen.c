@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "codegen.h"
+#include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,13 +116,27 @@ SEXP _rxode2parse_preserve(SEXP x) {
   return x;
 }
 
+/* The table getters return frames that nothing else may reference (the builtin
+   one is built afresh on every call), and _rxode2parse_preserve() allocates: it
+   conses onto R's precious list.  A collection inside it freed an unprotected
+   frame, and with it every column not yet preserved, before VECTOR_ELT() read
+   the next column -- the parse then preserved and indexed freed memory, seen as
+   "INTEGER() can only be applied to a 'integer', not a 'expression'" (or
+   'weakref', 'pairlist') or as a segfault once a later collection marked it.
+   So each frame is protected until all of its columns are claimed.  That
+   protection is released before returning, so it never crosses the parse (the
+   claims themselves must not be on the protect stack; see above). */
 void _rxode2parse_assignTranslationBuiltin(void) {
-  SEXP df = getRxode2ParseDfBuiltin();
+  rxProtectGuard;
+  SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  rxUP(1);
 }
 
 void _rxode2parse_assignTranslation(SEXP df) {
+  rxProtectGuard;
+  rxP(df);
   _rxode2parse_unprotect();
   _rxode2parse_rxFunctionName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_functionName = _rxode2parse_preserve(VECTOR_ELT(df, 1));
@@ -132,6 +147,7 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
   _rxode2parse_assignTranslationBuiltin();
+  rxUP(1);
 }
 
 void _rxode2parse_unprotect(void) {

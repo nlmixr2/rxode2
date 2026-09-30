@@ -11,6 +11,16 @@
   frames held (like a large `theta`) is now freed when they return, instead of
   staying in memory until later calls pushed them out of the search list.
 
+- Parsing a model could read freed memory when a garbage collection happened
+  at the start of the parse.  The table of built-in function argument counts
+  is rebuilt for every parse, and it was not protected while its columns were
+  being claimed, so a collection there could free it before the parse read it.
+  Depending on what reused that memory, the parse failed with "INTEGER() can
+  only be applied to a 'integer', not a 'expression'" (or `'weakref'`,
+  `'pairlist'`) or R crashed.  It depended on when collections happened, so it
+  showed up as intermittent failures in downstream checks.  It was introduced
+  in 5.1.7.
+
 # rxode2 5.1.8
 
 ## New features
