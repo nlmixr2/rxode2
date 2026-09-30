@@ -461,15 +461,15 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  if (!Rf_isNull(_mv)){\n    _rxRmModelLib(\"%smodel_vars\");\n  }\n  UNPROTECT(1);\n}\n", prefix);
 }
 
-void print_aux_info(char *model, const char *prefix, const char *libname,
+void print_aux_info(const char *prefix, const char *libname,
 		    const char *libname2);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2);
+void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2);
 void writeSb(sbuf *sbb, FILE *fp);
 
 #define gCode(i) (&sbOut)->s[0]='\0';		\
   (&sbOut)->o=0;				\
-  codegen(gBuf, i, CHAR(STRING_ELT(prefix,0)),	\
+  codegen(i, CHAR(STRING_ELT(prefix,0)),	\
 	  CHAR(STRING_ELT(libname, 0)),		\
 	  CHAR(STRING_ELT(pMd5,0)),		\
 	  CHAR(STRING_ELT(libname, 1)));					\

@@ -205,7 +205,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
 
 
 
-void print_aux_info(char *model, const char *prefix, const char *libname,
+void print_aux_info(const char *prefix, const char *libname,
                     const char *libname2){
   sbuf bufw;
   sNull(&bufw);
@@ -226,11 +226,11 @@ void print_aux_info(char *model, const char *prefix, const char *libname,
 
 extern SEXP getRxode2ParseDf(void);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2) {
+void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2) {
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   _rxode2parse_packages = getRxode2ParseGetPointerAssignment();
   if (show_ode == ode_printaux) {
-    print_aux_info(model, prefix, libname, libname2);
+    print_aux_info(prefix, libname, libname2);
   } else {
     int i, j;
     char *buf;

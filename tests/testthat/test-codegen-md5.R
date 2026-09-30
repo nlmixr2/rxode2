@@ -31,10 +31,11 @@ rxTest({
     expect_identical(.ret$md5[[1]], .codegenMd5())
     expect_identical(.ret$model[[2]], .codegenMe())
     # generated symbols are keyed by the parsed md5 handed to codegen
-    .def <- grep("^#define _getRxSolve_ ", readLines(.cFile), value = TRUE)
-    expect_length(.def, 1L)
-    expect_true(grepl(.parsedMd5, .def, fixed = TRUE))
-    expect_false(grepl(.codegenMd5(), .def, fixed = TRUE))
+    .def <- grep("^#define [^ ]+ _rx", readLines(.cFile), value = TRUE)
+    expect_true(any(grepl("^#define _getRxSolve_ ", .def)))
+    expect_true(length(.def) > 1L)
+    expect_true(all(grepl(.parsedMd5, .def, fixed = TRUE)))
+    expect_false(any(grepl(.codegenMd5(), .def, fixed = TRUE)))
   })
 
   test_that("a malformed model md5 is blanked, not left over from the last parse", {
