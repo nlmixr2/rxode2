@@ -93,6 +93,19 @@
 
 ## Bug fixes
 
+- `ui$fun` of a model that had been solved printed a stray `NULL` line in
+  place of the cached simulation model.
+
+- `$` on an rxUi no longer adds rxode2's own call frames (like
+  `rxPriorLogDensity()`'s) to the environments searched for user-defined
+  functions; it records the nearest frames outside rxode2 instead.  What those
+  frames held (like a large `theta`) is now freed when they return, instead of
+  staying in memory until later calls pushed them out of the search list.
+
+- Parsing a model no longer reads freed memory when a garbage collection
+  happens while the built-in function table is claimed; this showed up as
+  intermittent "INTEGER() can only be applied to a 'integer'" errors or crashes
+  (introduced in 5.1.7).
 
 - The per-thread LSODA work-array and context pools are no longer reported
   by valgrind as definitely lost at R exit (seen in nonmem2rx's checks).

@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "codegen.h"
+#include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,13 +116,21 @@ SEXP _rxode2parse_preserve(SEXP x) {
   return x;
 }
 
+/* The getters' frames may be unreferenced (the builtin one is rebuilt per call)
+   and _rxode2parse_preserve() allocates, so protect each frame until its columns
+   are claimed; the protection is released before returning, never crossing the
+   parse. */
 void _rxode2parse_assignTranslationBuiltin(void) {
-  SEXP df = getRxode2ParseDfBuiltin();
+  rxProtectGuard;
+  SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  rxUP(1);
 }
 
 void _rxode2parse_assignTranslation(SEXP df) {
+  rxProtectGuard;
+  rxP(df);
   _rxode2parse_unprotect();
   _rxode2parse_rxFunctionName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_functionName = _rxode2parse_preserve(VECTOR_ELT(df, 1));
@@ -132,6 +141,7 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
   _rxode2parse_assignTranslationBuiltin();
+  rxUP(1);
 }
 
 void _rxode2parse_unprotect(void) {
