@@ -93,7 +93,10 @@ struct lsoda_pool_t {
   int                    allocated_neq; // neq used for alloc_mem; 0 = not prepared yet
 };
 
-static std::vector<lsoda_pool_t> __lsodaCtxPool;
+// Heap-allocated and never destroyed: R does not unload the DLL at exit, so a
+// static vector's destructor would drop the slot pointers before
+// freeLsodaCtxPool() runs, turning still-reachable memory into a leak.
+static std::vector<lsoda_pool_t> &__lsodaCtxPool = *new std::vector<lsoda_pool_t>();
 
 extern "C" void ensureLsodaCtxPool(int nCores) {
   if ((int)__lsodaCtxPool.size() < nCores) {
@@ -129,7 +132,8 @@ struct rwork_pool_t {
   unsigned int iworki = 0;
 };
 
-static std::vector<rwork_pool_t> __rworkPool;
+// Never destroyed, for the same reason as __lsodaCtxPool.
+static std::vector<rwork_pool_t> &__rworkPool = *new std::vector<rwork_pool_t>();
 
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw) {
   int need = lrw + 1;
