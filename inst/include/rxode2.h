@@ -99,7 +99,7 @@ typedef void (*t_set_solve)(rx_solve *);
 
 typedef rx_solve *(*t_get_solve)(void);
 
-typedef void *(*t_assignFuns)(void);
+typedef void (*t_assignFuns)(void);
 
 // External parameter-block loader hook signature.  A package registers a
 // callback (via the rxode2 function-pointer table) that rxode2 invokes once per

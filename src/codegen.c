@@ -215,7 +215,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
 
 
 
-void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,
+void print_aux_info(const char *prefix, const char *libname,
                     const char *libname2){
   sbuf bufw;
   sNull(&bufw);
@@ -236,22 +236,22 @@ void print_aux_info(char *model, const char *prefix, const char *libname, const 
 
 extern SEXP getRxode2ParseDf(void);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *timeId, const char *libname2) {
+void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2) {
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   _rxode2parse_packages = getRxode2ParseGetPointerAssignment();
   if (show_ode == ode_printaux) {
-    print_aux_info(model, prefix, libname, pMd5, timeId, libname2);
+    print_aux_info(prefix, libname, libname2);
   } else {
     int i, j;
     char *buf;
     if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
-      writeHeader(md5, extra);
+      writeHeader(pMd5, extra);
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
         sAppend(&sbOut, "#define %s _rx%s%s%ld_%s_%s\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
-                extra, md5, __timeId++,
+                extra, pMd5, __timeId++,
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
                 genRandomChar());
       }
@@ -933,7 +933,7 @@ void writeSb(sbuf *sbb, FILE *fp){
 extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
-                          SEXP pMd5, SEXP timeId, SEXP mvLast,
+                          SEXP pMd5, SEXP mvLast,
                           SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
@@ -974,12 +974,12 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   fpIO = fopen(CHAR(STRING_ELT(c_file,0)), "wb");
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
 
-  if (badMd5){
+  if (badMd5 || md5 == NULL){
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(""));
   } else {
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
-  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code));
+  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code == NULL ? "" : me_code));
   int pro = 0;
   SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
   sbuf buf; sNull(&buf);
