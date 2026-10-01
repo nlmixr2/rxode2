@@ -94,6 +94,9 @@
 ## Bug fixes
 
 
+- The per-thread LSODA work-array and context pools are no longer reported
+  by valgrind as definitely lost at R exit (seen in nonmem2rx's checks).
+
 - `ui$fun` of a model that had been solved printed a stray `NULL` line in
   place of the cached simulation model.
 
