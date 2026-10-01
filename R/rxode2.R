@@ -2449,7 +2449,8 @@ rxCompile.rxModelVars <- function(
           .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
         }
         .prefix2 <- .rxModelVarsCCache[[3]]
-        ## SEXP pMd5, SEXP timeId, SEXP fixInis
+        ## Register the model for unload bookkeeping (codegen no longer takes timeId)
+        .rxTimeId(.trans["parsed_md5"])
         .newMod <- FALSE
         if (!is.null(modName)) {
           .newMod <- regexpr("_new", modName) != -1
@@ -2466,7 +2467,6 @@ rxCompile.rxModelVars <- function(
             prefix,
             .libname,
             .trans["parsed_md5"],
-            paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast,
             .rxSupportedFuns(),
             eventSensCode[1],
@@ -2492,7 +2492,6 @@ rxCompile.rxModelVars <- function(
             prefix,
             .libname,
             .trans["parsed_md5"],
-            paste(.rxTimeId(.trans["parsed_md5"])),
             .rxModelVarsLast,
             .rxSupportedFuns(),
             eventSensCode[1],
