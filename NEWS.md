@@ -1,31 +1,4 @@
-# rxode2 (development version)
-
-## Bug fixes
-
-- `ui$fun` of a model that had been solved printed a stray `NULL` line in
-  place of the cached simulation model.
-
-- `$` on an rxUi no longer adds rxode2's own call frames (like
-  `rxPriorLogDensity()`'s) to the environments searched for user-defined
-  functions; it records the nearest frames outside rxode2 instead.  What those
-  frames held (like a large `theta`) is now freed when they return, instead of
-  staying in memory until later calls pushed them out of the search list.
-
-- `rigeom()` and `ripois()` returned 0 for every subject, because model code
-  called them through a pointer typed to return `int` while they return
-  `double`; they now return their draws.
-
-- Function pointers between rxode2 and compiled models now match the
-  functions they call (`__assignFuns`, user-defined functions and
-  `simeta()`/`simeps()`), so solving is no longer flagged by UBSAN's
-  `-fsanitize=function` (#1420).
-- The model parser now keeps its own copies of the model md5 and
-  matrix-exponential code, which the code generator reads in a later call;
-  it used to hold pointers into R strings that could be garbage collected in
-  between (the model prefix global is copied too, so it never dangles).  Generated C symbols are now keyed by the parsed md5 handed to the
-  code generator, and its unused `timeId` argument was dropped (#1421).
-
-# rxode2 5.1.8
+# rxode2 5.1.9
 
 ## New features
 
@@ -119,6 +92,33 @@
   not define) is called from R instead (#1416).
 
 ## Bug fixes
+
+
+- `ui$fun` of a model that had been solved printed a stray `NULL` line in
+  place of the cached simulation model.
+
+- `$` on an rxUi no longer adds rxode2's own call frames (like
+  `rxPriorLogDensity()`'s) to the environments searched for user-defined
+  functions; it records the nearest frames outside rxode2 instead.  What those
+  frames held (like a large `theta`) is now freed when they return, instead of
+  staying in memory until later calls pushed them out of the search list.
+
+- `rigeom()` and `ripois()` returned 0 for every subject, because model code
+  called them through a pointer typed to return `int` while they return
+  `double`; they now return their draws.
+
+- Function pointers between rxode2 and compiled models now match the
+  functions they call (`__assignFuns`, user-defined functions and
+  `simeta()`/`simeps()`), so solving is no longer flagged by UBSAN's
+  `-fsanitize=function` (#1420).
+
+- The model parser now keeps its own copies of the model md5 and
+  matrix-exponential code, which the code generator reads in a later
+  call; it used to hold pointers into R strings that could be garbage
+  collected in between (the model prefix global is copied too, so it
+  never dangles).  Generated C symbols are now keyed by the parsed md5
+  handed to the code generator, and its unused `timeId` argument was
+  dropped (#1421).
 
 - `rxFun()` of a function whose body has no braces (like
   `function(x) x + 1`) translated each part of the expression as its own
