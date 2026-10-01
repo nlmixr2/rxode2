@@ -19,6 +19,11 @@
   functions they call (`__assignFuns`, user-defined functions and
   `simeta()`/`simeps()`), so solving is no longer flagged by UBSAN's
   `-fsanitize=function` (#1420).
+- The model parser now keeps its own copies of the model md5 and
+  matrix-exponential code, which the code generator reads in a later call;
+  it used to hold pointers into R strings that could be garbage collected in
+  between (the model prefix global is copied too, so it never dangles).  Generated C symbols are now keyed by the parsed md5 handed to the
+  code generator, and its unused `timeId` argument was dropped (#1421).
 
 # rxode2 5.1.8
 
