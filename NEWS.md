@@ -11,6 +11,14 @@
   frames held (like a large `theta`) is now freed when they return, instead of
   staying in memory until later calls pushed them out of the search list.
 
+- `rigeom()` and `ripois()` returned 0 for every subject, because model code
+  called them through a pointer typed to return `int` while they return
+  `double`; they now return their draws.
+
+- Function pointers between rxode2 and compiled models now match the
+  functions they call (`__assignFuns`, user-defined functions and
+  `simeta()`/`simeps()`), so solving is no longer flagged by UBSAN's
+  `-fsanitize=function` (#1420).
 - The model parser now keeps its own copies of the model md5 and
   matrix-exponential code, which the code generator reads in a later call;
   it used to hold pointers into R strings that could be garbage collected in

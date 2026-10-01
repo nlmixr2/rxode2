@@ -51,8 +51,8 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     } else {
       if ((tb.simflg & 2) == 0) tb.simflg += 2;
     }
-    sAppend(&sb, "%s(_cSub);\n  _SYNC_%s_;", v, v);
-    sAppend(&sbDt, "%s(_cSub);\n  _SYNC_%s_;", v, v);
+    sAppend(&sb, "%s();\n  _SYNC_%s_;", v, v);
+    sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
     sAppend(&sbt, "%s();", v);
     addLine(&sbPm, "%s\n", sb.s);
     addLine(&sbPmDt, "%s\n", sbDt.s);
