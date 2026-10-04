@@ -110,4 +110,32 @@ rxTest({
     expect_identical(.res[1], .res[2])
     expect_identical(.res[1], .res[3])
   })
+
+  test_that("the C pass parses in parallel only with a thread-safe dparser (#1427)", {
+    expect_identical(.rxCseParallelOk(), utils::packageVersion("dparser") >= "1.3.2")
+    .old <- getRxThreads()
+    on.exit(setRxThreads(.old), add = TRUE)
+    setRxThreads(2L)
+    skip_if(getRxThreads() < 2L, "needs 2 threads")
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L, FALSE), 1L)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L, TRUE), 2L)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 10L, TRUE), 1L)
+  })
+
+  test_that("the C pass gives the same result with several threads (#1427)", {
+    skip_if_not(.rxCseParallelOk(), "dparser < 1.3.2 cannot parse concurrently")
+    .old <- getRxThreads()
+    on.exit(setRxThreads(.old), add = TRUE)
+    setRxThreads(2L)
+    .norm <- rxNorm(paste(
+      sprintf("a%d <- exp(tka + eta1) * (t + %d) / (tcl + exp(eta2))", 1:200, 1:200),
+      collapse = "\n"
+    ))
+    .l <- strsplit(.norm, "\n", fixed = TRUE)[[1]]
+    .l <- .l[nzchar(trimws(.l))]
+    .ref <- .Call(`_rxode2_rxCse`, .l, FALSE)
+    expect_false(is.na(.ref))
+    .par <- vapply(1:20, function(i) .Call(`_rxode2_rxCse`, .l, TRUE), character(1))
+    expect_true(all(.par == .ref))
+  })
 })

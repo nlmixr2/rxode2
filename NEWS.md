@@ -93,6 +93,12 @@
 
 ## Bug fixes
 
+- `rxOptExpr()` no longer segfaults with more than one thread on clang
+  builds (CRAN's r-devel clang checks of nlmixr2est).  Its C
+  common-subexpression pass parsed statements in parallel, but dparser
+  before 1.3.2 shares one vector across concurrent parses; the pass now
+  runs single threaded unless dparser is at least 1.3.2 (#1427).
+
 - `ui$fun` of a model that had been solved printed a stray `NULL` line in
   place of the cached simulation model.
 

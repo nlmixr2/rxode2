@@ -363,9 +363,11 @@ static char *csEmitPhase(csRun *r) {
    with several threads you get whichever one happened to fail.  Safety does
    not depend on this: nothing in the regions touches the R API, the reason is
    recorded and printed afterwards. */
-static int csPickThreads(R_xlen_t n) {
+static int csPickThreads(R_xlen_t n, int parallelOk) {
   int nthr;
-  if (n < CS_MIN_PARALLEL || csDebug()) return 1;
+  /* dparser before 1.3.2 shares one static vector across dparse() calls, so
+     concurrent parses race (#1427); the R side passes parallelOk = 0 then */
+  if (!parallelOk || n < CS_MIN_PARALLEL || csDebug()) return 1;
   nthr = getRxThreads((int64_t) n, true);
   if (nthr < 1) nthr = 1;
   if ((R_xlen_t) nthr > n) nthr = (int) n;
