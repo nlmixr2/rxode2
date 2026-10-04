@@ -61,13 +61,11 @@ rxTest({
     # parser on the second model
     .mv <- .rxModelVarsCharacter(.m1)
     expect_equal(.mv$state, "stateOne")
-    expect_equal(rxNorm(getFromNamespace(".rxModelVarsLast", "rxode2")), rxNorm(.mv))
+    expect_equal(rxNorm(.rxState$modelVarsLast), rxNorm(.mv))
   })
 
   test_that("the parse prefix is a function of the model, not of the call", {
-    # read the namespace, not the attached copy: `assignInMyNamespace()` in
-    # `.rxModelVarsCharacter()` updates the namespace binding only
-    .prefix <- function() getFromNamespace(".rxModelVarsCCache", "rxode2")[[3]]
+    .prefix <- function() .rxState$modelVarsCCache[[3]]
     .m1 <- "d/dt(prefixTest) = -kPrefixTest*prefixTest;\n"
     .m2 <- "d/dt(prefixTest2) = -kPrefixTest2*prefixTest2;\n"
     invisible(.rxModelVarsCharacter(.m1))

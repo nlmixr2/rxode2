@@ -244,8 +244,8 @@
   rxUiCompress(.ret)
 }
 
-.lastIni <- NULL
-.lastIniQ <- NULL
+.rxState$lastIni <- NULL
+.rxState$lastIniQ <- NULL
 
 #' Ini block for rxode2/nlmixr models
 #'
@@ -383,8 +383,8 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
       bquote(lotri::lotri(.(substitute(x)), cov = TRUE, rcm = TRUE)),
       envir = envir
     )
-    assignInMyNamespace(".lastIni", .ini)
-    assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
+    .rxState$lastIni <- .ini
+    .rxState$lastIniQ <- bquote(.(substitute(x)))
     return(invisible(.ini))
   }
   UseMethod("ini")
@@ -454,8 +454,8 @@ model <- function(
         .udfEnvLocal(parent.env(envir))
       }
     }
-    .ini <- .lastIni
-    .iniQ <- .lastIniQ
+    .ini <- .rxState$lastIni
+    .iniQ <- .rxState$lastIniQ
     if (is.null(.ini)) {
       .ini <- data.frame(
         ntheta = integer(0),
@@ -475,8 +475,8 @@ model <- function(
       ## stop("ini({}) block must be called before the model block",
       ##      call.=FALSE)
     }
-    assignInMyNamespace(".lastIni", NULL)
-    assignInMyNamespace(".lastIniQ", NULL)
+    .rxState$lastIni <- NULL
+    .rxState$lastIniQ <- NULL
     # user functions the model function defines or encloses live in the model
     # (its meta), are found first and are converted to C for this model only
     # (#1416)

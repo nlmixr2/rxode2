@@ -1869,7 +1869,7 @@ rxTest({
       unname(rxModelVars(mj)$md5["parsed_md5"])
     ))
     # the cache key is reset after each build (no leak to later non-jump builds)
-    expect_identical(.rxEventSensCacheKey, "")
+    expect_identical(.rxState$eventSensCacheKey, "")
   })
 
   test_that("reproduces the paper's PK/PD IMAX infusion example (dEffect/dtlag, ddose, dtinf)", {

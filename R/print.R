@@ -484,10 +484,10 @@ print.rxSolve <- function(x, ...) {
       .bound <- .args$bound
     } else {
       .bound <- .getBound(x, parent.frame(2))
-      assignInMyNamespace(".getBoundRemember", .bound)
+      .rxState$getBoundRemember <- .bound
       on.exit(
         {
-          assignInMyNamespace(".getBoundRemember", NULL)
+          .rxState$getBoundRemember <- NULL
         },
         add = TRUE
       )

@@ -91,6 +91,12 @@
   function the C translator cannot handle (or that reads variables it does
   not define) is called from R instead (#1416).
 
+- Building, compiling and solving a model no longer writes rxode2 namespace
+  variables with `assignInMyNamespace()`; the mutable state lives in an
+  internal environment.  Each such write cost milliseconds once other
+  packages (like nlmixr2) registered S3 methods on rxode2 generics, about 60%
+  of an evaluation-only FOCEi fit (#1425).
+
 ## Bug fixes
 
 - `ui$fun` of a model that had been solved printed a stray `NULL` line in

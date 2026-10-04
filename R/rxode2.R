@@ -8,12 +8,12 @@ NA_LOGICAL <- NA # nolint
 ## choice vector collapsed to the value `match.arg()` picks): it is folded into
 ## the parsed md5, so a NULL here would make the first build of a session hash
 ## differently from every later one (c() drops NULL).
-.linCmtSens <- "linCmtA"
+.rxState$linCmtSens <- "linCmtA"
 .clearME <- function() {
-  assignInMyNamespace(".rxMECode", "")
-  assignInMyNamespace(".indLinInfo", list())
+  .rxState$meCode <- ""
+  .rxState$indLinInfo <- list()
 }
-.rxFullPrint <- FALSE
+.rxState$fullPrint <- FALSE
 #' Create an ODE-based model specification
 #'
 #' Create a dynamic ODE-based model object suitably for translation
@@ -335,7 +335,7 @@ rxode2 <- # nolint
       )
     }
     .udfEnvLocal(envir)
-    assignInMyNamespace(".rxFullPrint", fullPrint)
+    .rxState$fullPrint <- fullPrint
     rxSuppressMsg()
     rxParseSuppressMsg()
     # named where it is used, so a `rxModelName()` method sees the model
@@ -418,9 +418,9 @@ rxode2 <- # nolint
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
-    assignInMyNamespace(".rxEventSensCacheKey", if (.eventSensActiveReq) .eventSensMode else "")
-    on.exit(assignInMyNamespace(".rxEventSensCacheKey", ""), add = TRUE)
-    ## Set BEFORE the parse: `.linCmtSens` is folded into the parsed md5, so
+    .rxState$eventSensCacheKey <- if (.eventSensActiveReq) .eventSensMode else ""
+    on.exit(.rxState$eventSensCacheKey <- "", add = TRUE)
+    ## Set BEFORE the parse: `.rxState$linCmtSens` is folded into the parsed md5, so
     ## assigning it afterwards hashed this build with the previous call's value.
     ## The default is the whole choice vector, which `match.arg()` resolves to
     ## its first element -- so collapse an in-effect default to that scalar and
@@ -430,7 +430,7 @@ rxode2 <- # nolint
     if (identical(linCmtSens, c("linCmtA", "linCmtB"))) {
       linCmtSens <- "linCmtA"
     }
-    assignInMyNamespace(".linCmtSens", linCmtSens)
+    .rxState$linCmtSens <- linCmtSens
     ## Detection parse -- no sensitivity/Jacobian expansion yet.  A linCmt()
     ## model has to have its linCmt() resolved (linCmtGen) BEFORE the
     ## sensitivities are expanded: expanding first and then re-parsing the
@@ -472,7 +472,7 @@ rxode2 <- # nolint
     ## re-parse below restarts from here: re-parsing the EXPANDED text with
     ## `calcSens=` expands a second time (nlmixr2/rxode2#1119).
     .modelBase <- model
-    .eventSensKeyAtParse <- .rxEventSensCacheKey
+    .eventSensKeyAtParse <- .rxState$eventSensCacheKey
     .env$.mv <- rxGetModel(.modelBase, calcSens = calcSens, calcJac = calcJac,
                            collapseModel = collapseModel, indLin = indLin,
                            calcSens2 = calcSens2, calcSens3 = calcSens3)
@@ -509,7 +509,7 @@ rxode2 <- # nolint
       .indLinSens
     .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) && length(.rxEventSensOdeStates(.env$.mv)) > 0L
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
-    assignInMyNamespace(".rxEventSensCacheKey", .eventSensCacheKey)
+    .rxState$eventSensCacheKey <- .eventSensCacheKey
     ## Re-parse only when the decision above changed an input to the parse: the
     ## jump injection needs the full state Jacobian, and the mode is folded into
     ## the parsed md5/cache key.  Always from `.modelBase`, never from the
@@ -913,16 +913,16 @@ rxGetModel <- function(
       stop("cannot figure out how to handle the model argument", call. = FALSE)
     }
   }
-  .oldEventSensKey <- .rxEventSensCacheKey
-  on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
-  ## `.indLinInfo` is a session global folded into the parsed md5 by rxMd5().  It
+  .oldEventSensKey <- .rxState$eventSensCacheKey
+  on.exit(.rxState$eventSensCacheKey <- .oldEventSensKey, add = TRUE)
+  ## `.rxState$indLinInfo` is a session global folded into the parsed md5 by rxMd5().  It
   ## is an OUTPUT of parsing (this call's own indLin/mexp branches below re-set
   ## it before codegen), never an input, so clear any value left by a prior
   ## build BEFORE the parse below hashes the model -- otherwise a stale
   ## descriptor from an earlier matrix-exponential build (or from a rxSensMatExp
   ## that never fully compiled) makes an unrelated plain model hash differently
   ## depending on build order.
-  assignInMyNamespace(".indLinInfo", list())
+  .rxState$indLinInfo <- list()
   ## Model variables are returned below WITHOUT re-parsing, so the parser-global
   ## linCmt() state -- both `_rxode2_isLinCmt` and the text `linCmtGen()`
   ## rewrites -- would still describe whatever was parsed last.  Model variables
@@ -1199,24 +1199,24 @@ rxGetModel <- function(
     ## rxToIndLin() so it uses doIndLin == 1/2 (not the old 3/4 paths).
     .mexpCode <- rxToIndLin(.ret, calcSens = calcSens)
     .ret <- rxModelVars(.mexpCode)
-    assignInMyNamespace(".indLinInfo", .ret$indLin)
+    .rxState$indLinInfo <- .ret$indLin
   } else if (length(.ret$indLin) == 4L) {
     ## NONMEM-like matrix exponential model: the parser already set up
     ## a 4-element indLin list via genModelVars.c (when tb.isMexp=1).
-    ## Propagate it to .indLinInfo so codegen serializes it into the DLL.
-    assignInMyNamespace(".indLinInfo", .ret$indLin)
+    ## Propagate it to .rxState$indLinInfo so codegen serializes it into the DLL.
+    .rxState$indLinInfo <- .ret$indLin
   } else {
-    ## This model has NO indLin structure -- `.indLinInfo` MUST be reset
+    ## This model has NO indLin structure -- `.rxState$indLinInfo` MUST be reset
     ## here rather than left as-is, or it silently carries over the LAST
     ## matExp/indLin model's 4-element descriptor into this (unrelated)
     ## plain-ODE model's compiled vars via rxCompile.rxModelVars()'s
-    ## `.rxModelVarsLast[[17]] <- .indLinInfo` line. `.clearME()` resets
+    ## `.rxModelVarsLast[[17]] <- .rxState$indLinInfo` line. `.clearME()` resets
     ## this too, but only fires via `on.exit()` on the FULL compile
     ## closure (R/rxode2.R's `.env$compile`) -- code paths that call
     ## rxGetModel()/rxSensMatExp() WITHOUT ever fully compiling/solving a
     ## model (e.g. inspecting rxSensMatExp()'s generated text directly, as
     ## in several test-mexp-nonmem.R tests) never reach that on.exit, so
-    ## `.indLinInfo` leaked forward and corrupted the NEXT unrelated
+    ## `.rxState$indLinInfo` leaked forward and corrupted the NEXT unrelated
     ## model's `mv$indLin` (and hence its solve-time method dispatch:
     ## rxSolve.default force-selects method="indLin" whenever
     ## `length(rxModelVars(object)$indLin) > 0L`) -- confirmed by FD/CI as
@@ -1224,8 +1224,8 @@ rxGetModel <- function(
     ## crash (`unsupported indLin code: 0`) when an unrelated population
     ## solve ran right after such a test. Resetting unconditionally here
     ## (whenever THIS model isn't indLin) closes the leak at its source.
-    if (length(.indLinInfo) > 0L) {
-      assignInMyNamespace(".indLinInfo", list())
+    if (length(.rxState$indLinInfo) > 0L) {
+      .rxState$indLinInfo <- list()
     }
   }
   return(.ret)
@@ -1320,11 +1320,11 @@ rxChain2.EventTable <- function(obj, solvedObject) {
   }
   ## nocov end
 }
-.getBoundRemember <- NULL
+.rxState$getBoundRemember <- NULL
 .getBound <- function(x, parent = parent.frame(2)) {
   ## nocov start
-  if (!is.null(.getBoundRemember)) {
-    return(.getBoundRemember)
+  if (!is.null(.rxState$getBoundRemember)) {
+    return(.rxState$getBoundRemember)
   }
   .isRx <- try(rxIs(x, "rxode2"), silent = TRUE)
   if (inherits(.isRx, "try-error")) {
@@ -1412,7 +1412,7 @@ coef.rxode2 <- function(object, ...) {
 
 .rxPre <- function(model, modName = NULL, eventSensCode = NULL) {
   if (!is.null(modName)) {
-    if (is.null(.pkg)) {
+    if (is.null(.rxState$pkg)) {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_", .Platform$r_arch, "_")
     } else {
       .modelPrefix <- paste0(gsub("\\W", "_", modName), "_")
@@ -1422,7 +1422,7 @@ coef.rxode2 <- function(object, ...) {
     if (.Call(`_rxode2_codeLoaded`) == 0L) {
       .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
     }
-    .cache <- .rxModelVarsCCache
+    .cache <- .rxState$modelVarsCCache
     .modelPrefix <- paste0("rx_", .mv$md5["parsed_md5"], "_", .Platform$r_arch, "_")
   }
   # `eventSensCode` changes the GENERATED C but is not part of the model text, so
@@ -1585,9 +1585,9 @@ rxMd5 <- function(
       .tmp,
       .rxIndLinStrategy,
       .rxIndLinState,
-      .linCmtSens,
+      .rxState$linCmtSens,
       .udfMd5Info(),
-      .rxFullPrint
+      .rxState$fullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1600,20 +1600,20 @@ rxMd5 <- function(
     .ret <- c(.ret, .rxVersion)
     return(list(
       text = model,
-      digest = digest::digest(list(.ret, .indLinInfo), serialize = TRUE, algo = "md5")
+      digest = digest::digest(list(.ret, .rxState$indLinInfo), serialize = TRUE, algo = "md5")
     ))
   } else {
     rxode2::rxModelVars(model)$md5
   }
 } # end function rxMd5
 
-.rxLastModels <- NULL
+.rxState$lastModels <- NULL
 
 .rxShouldUnload <- function(parseMd5) {
-  if (is.null(.rxLastModels)) {
+  if (is.null(.rxState$lastModels)) {
     return(TRUE)
   }
-  return(!(parseMd5 %in% .rxLastModels))
+  return(!(parseMd5 %in% .rxState$lastModels))
 }
 
 .rxTimeId <- function(parseMd5) {
@@ -1622,7 +1622,7 @@ rxMd5 <- function(
   } else {
     .timeId <- as.integer(Sys.time())
     assign(parseMd5, .timeId, envir = .rxModels)
-    .rxLastModels <- c(parseMd5, .rxLastModels)
+    .rxLastModels <- c(parseMd5, .rxState$lastModels)
     .nKeep <- getOption("rxode2.dontUnload", 10)
     .nKeep <- as.integer(.nKeep)
     if (.nKeep <= 0L) {
@@ -1630,7 +1630,7 @@ rxMd5 <- function(
     } else if (length(.rxLastModels) < .nKeep) {
       .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
     }
-    assignInMyNamespace(".rxLastModels", .rxLastModels)
+    .rxState$lastModels <- .rxLastModels
   }
   return(.timeId)
 }
@@ -1655,7 +1655,7 @@ rxMd5 <- function(
 #'     the parsed md5 cache key so the same model text translated in
 #'     different modes (e.g. `"fd"` vs `"jump"`) compiles to distinct
 #'     DLLs instead of colliding on a cached translation.  Defaults to
-#'     the session global `.rxEventSensCacheKey` (set by [rxode2()]
+#'     the session global `.rxState$eventSensCacheKey` (set by [rxode2()]
 #'     before parsing); an empty string leaves the md5 unchanged so the
 #'     legacy `"fd"` path keeps existing caches valid.  It is a formal
 #'     argument (rather than read from the global in the body) because
@@ -1706,13 +1706,13 @@ rxTrans.default <- function(
   }
 }
 
-.rxMECode <- ""
+.rxState$meCode <- ""
 
 ## Event ("jump") sensitivities: current mode folded into the parsed md5 (cache
 ## key) so that the same model text built in different modes compiles to distinct
 ## DLLs.  Empty for the default "fd" path -> md5 unchanged (existing caches stay
 ## valid).  Set by rxode2() before parsing; see .rxEventSensMode().
-.rxEventSensCacheKey <- ""
+.rxState$eventSensCacheKey <- ""
 
 #' The body of [rxTrans.character()], without the memoisation
 #'
@@ -1732,11 +1732,11 @@ rxTrans.default <- function(
   md5 = "", # Md5 of model
   modName = NULL, # Model name for DLL
   modVars = FALSE, # Return modVars
-  eventSensKey = .rxEventSensCacheKey, # nolint
+  eventSensKey = .rxState$eventSensCacheKey, # nolint
   ...
 ) {
   ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
-  ## than read from `.rxEventSensCacheKey` inside the body: memoise keys on the
+  ## than read from `.rxState$eventSensCacheKey` inside the body: memoise keys on the
   ## arguments (including default-valued ones), so a body-read global would make
   ## "fd" and "jump" builds of the same model text share one memoise entry -- the
   ## first builder's mode-folded parsed_md5 would then be reused for the other
@@ -1758,9 +1758,9 @@ rxTrans.default <- function(
     md5,
     .isStr,
     as.integer(crayon::has_color()),
-    .rxMECode,
+    .rxState$meCode,
     .rxSupportedFuns(),
-    .rxFullPrint
+    .rxState$fullPrint
   )
   if (inherits(.ret, "try-error")) {
     message("model")
@@ -2234,7 +2234,7 @@ rxNumLoaded <- function() {
   writeLines(.lines, .con, sep = "\n")
   .f
 }
-.pkg <- NULL
+.rxState$pkg <- NULL
 #' @rdname rxCompile
 #' @export
 rxCompile.rxModelVars <- function(
@@ -2247,7 +2247,7 @@ rxCompile.rxModelVars <- function(
   eventSensCode = rep("", 13L), # dLag/dF/dRate/dDur/d2F/d2Lag/d2Rate/d2Dur/d3F/dFQ/dLagJac/dLagQ/dDurQ body lines
   ...
 ) {
-  assignInMyNamespace(".pkg", package)
+  .rxState$pkg <- package
   ## rxCompile returns the DLL name that was created.
   model <- rxGetModel(model)
 
@@ -2418,7 +2418,7 @@ rxCompile.rxModelVars <- function(
         ## Load model into memory if needed.
         ##
         ## `_rxode2_codegen` below emits C from the parser's GLOBAL
-        ## `.rxModelVarsLast`, not from `model` -- so the parsed state has to be
+        ## `.rxState$modelVarsLast`, not from `model` -- so the parsed state has to be
         ## THIS model.  Testing `codeLoaded() == 0L` alone is not enough: it only
         ## asks whether *some* model is loaded.  Whenever the loaded model is a
         ## DIFFERENT one, the C written out is that other model's while the
@@ -2437,9 +2437,9 @@ rxCompile.rxModelVars <- function(
         ##
         ## Re-parse unless the loaded model is provably this one.  Only the model
         ## SYNTAX (`normModel`) is parsed: the sibling `indLin` slot holds
-        ## generated matrix-exponential C, and it is restored from `.indLinInfo`
-        ## / `.rxMECode` a few lines below anyway.
-        .lastMd5 <- .rxModelVarsLast$md5["parsed_md5"]
+        ## generated matrix-exponential C, and it is restored from `.rxState$indLinInfo`
+        ## / `.rxState$meCode` a few lines below anyway.
+        .lastMd5 <- .rxState$modelVarsLast$md5["parsed_md5"]
         if (
           .Call(`_rxode2_codeLoaded`) == 0L ||
             length(.lastMd5) != 1L ||
@@ -2448,16 +2448,18 @@ rxCompile.rxModelVars <- function(
         ) {
           .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
         }
-        .prefix2 <- .rxModelVarsCCache[[3]]
+        .prefix2 <- .rxState$modelVarsCCache[[3]]
         ## Register the model for unload bookkeeping (codegen no longer takes timeId)
         .rxTimeId(.trans["parsed_md5"])
         .newMod <- FALSE
         if (!is.null(modName)) {
           .newMod <- regexpr("_new", modName) != -1
         }
-        .rxModelVarsLast[[17]] <- .indLinInfo
+        ## a local copy: the global parser state is left as parsed
+        .rxModelVarsLast <- .rxState$modelVarsLast
+        .rxModelVarsLast[[17]] <- .rxState$indLinInfo
         .model <- .rxModelVarsLast$model
-        .model["indLin"] <- .rxMECode
+        .model["indLin"] <- .rxState$meCode
         .rxModelVarsLast$model <- .model
         if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
@@ -2689,8 +2691,8 @@ rxLoad <- rxDynLoad
 #' @export
 rxUnload <- rxDynUnload
 
-.rxConditionLst <- list()
-#' The `.rxConditionLst` key for an already-normalized model
+.rxState$conditionLst <- list()
+#' The `.rxState$conditionLst` key for an already-normalized model
 #'
 #' Split out of `rxCondition()` so `rxNorm()` can look a condition up with the
 #' normalized model it is about to return anyway.  Normalizing is a parse, and
@@ -2700,7 +2702,7 @@ rxUnload <- rxDynUnload
 #' @param norm normalized model text, exactly as `rxNorm(obj, FALSE)` returns
 #'   it (unnamed, length one) -- the key is a digest, so any difference in
 #'   attributes is a different key
-#' @return the md5 key into `.rxConditionLst`
+#' @return the md5 key into `.rxState$conditionLst`
 #' @author Matthew L. Fidler
 #' @noRd
 .rxConditionKey <- function(norm) {
@@ -2725,17 +2727,17 @@ rxCondition <- function(obj, condition = NULL) {
     condition <- FALSE
   }
   if (is.null(condition)) {
-    return(getFromNamespace(".rxConditionLst", "rxode2")[[.key]])
+    return(.rxState$conditionLst[[.key]])
   } else if (any(condition == rxNorm(obj, TRUE))) {
-    .lst <- getFromNamespace(".rxConditionLst", "rxode2")
+    .lst <- .rxState$conditionLst
     .lst[[.key]] <- condition
-    assignInMyNamespace(".rxConditionLst", .lst)
-    return(getFromNamespace(".rxConditionLst", "rxode2")[[.key]])
+    .rxState$conditionLst <- .lst
+    return(.rxState$conditionLst[[.key]])
   } else {
-    .lst <- getFromNamespace(".rxConditionLst", "rxode2")
+    .lst <- .rxState$conditionLst
     .lst[[.key]] <- NULL
-    assignInMyNamespace(".rxConditionLst", .lst)
-    return(getFromNamespace(".rxConditionLst", "rxode2")[[.key]])
+    .rxState$conditionLst <- .lst
+    return(.rxState$conditionLst[[.key]])
   }
 }
 
@@ -2804,7 +2806,7 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
       ## key, and a parse is by far the most expensive thing rxNorm() does.
       .tmp <- .norm()
       condition <-
-        getFromNamespace(".rxConditionLst", "rxode2")[[.rxConditionKey(.tmp)]]
+        .rxState$conditionLst[[.rxConditionKey(.tmp)]]
       if (is.null(condition)) {
         return(.tmp)
       }
@@ -2819,8 +2821,8 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 }
 
 
-.rxModelVarsCCache <- NULL
-.rxModelVarsLast <- NULL
+.rxState$modelVarsCCache <- NULL
+.rxState$modelVarsLast <- NULL
 #' Model variables of a model given as text, and the parser state that goes with it
 #'
 #' Always translates for real, never through the memoised `rxTrans.character()`.
@@ -2839,8 +2841,8 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
 #' @return model variables
 #' @noRd
 .rxModelVarsCharacter <- function(obj) {
-  .oldEventSensKey <- .rxEventSensCacheKey
-  on.exit(assignInMyNamespace(".rxEventSensCacheKey", .oldEventSensKey), add = TRUE)
+  .oldEventSensKey <- .rxState$eventSensCacheKey
+  on.exit(.rxState$eventSensCacheKey <- .oldEventSensKey, add = TRUE)
   if (length(obj) == 1) {
     .exists <- try(file.exists(obj), silent = TRUE)
     if (inherits(.exists, "try-error")) {
@@ -2872,8 +2874,8 @@ rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
     )
     .ret <- .rxTransCharacter(.parseModel, modelPrefix = .prefix, modVars = TRUE)
     .cFile <- list(.exists, ifelse(.exists, obj, ""), .prefix)
-    assignInMyNamespace(".rxModelVarsCCache", .cFile)
-    assignInMyNamespace(".rxModelVarsLast", .ret)
+    .rxState$modelVarsCCache <- .cFile
+    .rxState$modelVarsLast <- .ret
     return(.ret)
   } else {
     .rxModelVarsCharacter(paste(obj, collapse = "\n"))

@@ -1368,18 +1368,18 @@ rxTest({
   test_that("inspecting rxSensMatExp() output without solving does not leak indLin state to the next model", {
     # Regression for a real crash (uncaught Rcpp::exception "unsupported
     # indLin code: 0", also observed as a C stack overflow depending on
-    # platform/timing): `.indLinInfo` (R/rxode2.R) is a package-level
+    # platform/timing): `.rxState$indLinInfo` (R/rxode2.R) is a package-level
     # global used to carry matExp/indLin metadata into codegen. It was only
     # ever reset via `.clearME()`'s `on.exit()` on the FULL model-compile
     # closure -- a code path that calling `rxSensMatExp()` on a model and
     # merely inspecting the generated text (as above, never solving it)
-    # does NOT reach. That left `.indLinInfo` set from this matExp model,
+    # does NOT reach. That left `.rxState$indLinInfo` set from this matExp model,
     # which then silently attached itself to the NEXT, completely
     # unrelated model built afterward -- corrupting its `mv$indLin` field
     # and making `rxSolve.default()` force-select `method="indLin"` on a
     # plain ODE model, which then crashed inside `indLin()` since the
     # model's own `doIndLin` was correctly 0. Fixed by resetting
-    # `.indLinInfo` in `rxGetModel()` whenever the CURRENT model has no
+    # `.rxState$indLinInfo` in `rxGetModel()` whenever the CURRENT model has no
     # indLin structure of its own.
     mod <- function() {
       ini({
