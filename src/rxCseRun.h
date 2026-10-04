@@ -31,6 +31,9 @@
 #include "rxomp.h"
 #include <time.h>
 
+/* 1 when the loaded dparser can run dparse() concurrently; src/tran.c */
+extern "C" int rxDparserParallel;
+
 /* rxode2's own thread count; see src/seBatch.h for the same declaration */
 extern "C" int getRxThreads(int64_t n, bool throttle);
 
@@ -363,11 +366,9 @@ static char *csEmitPhase(csRun *r) {
    with several threads you get whichever one happened to fail.  Safety does
    not depend on this: nothing in the regions touches the R API, the reason is
    recorded and printed afterwards. */
-static int csPickThreads(R_xlen_t n, int parallelOk) {
+static int csPickThreads(R_xlen_t n) {
   int nthr;
-  /* dparser before 1.3.2 shares one static vector across dparse() calls, so
-     concurrent parses race (#1427); the R side passes parallelOk = 0 then */
-  if (!parallelOk || n < CS_MIN_PARALLEL || csDebug()) return 1;
+  if (!rxDparserParallel || n < CS_MIN_PARALLEL || csDebug()) return 1;
   nthr = getRxThreads((int64_t) n, true);
   if (nthr < 1) nthr = 1;
   if ((R_xlen_t) nthr > n) nthr = (int) n;

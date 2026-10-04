@@ -39,17 +39,12 @@ static const char **csReadLines(SEXP linesVec, R_xlen_t n) {
   return in;
 }
 
-static int csParallelOk(SEXP parallelOk) {
-  return TYPEOF(parallelOk) == LGLSXP && Rf_xlength(parallelOk) == 1 &&
-    LOGICAL(parallelOk)[0] == TRUE;
-}
-
 /* the thread count rxCse would use for `n` statements, for the tests */
-extern "C" SEXP _rxode2_rxCsePickThreads(SEXP n, SEXP parallelOk) {
-  return Rf_ScalarInteger(csPickThreads((R_xlen_t) Rf_asInteger(n), csParallelOk(parallelOk)));
+extern "C" SEXP _rxode2_rxCsePickThreads(SEXP n) {
+  return Rf_ScalarInteger(csPickThreads((R_xlen_t) Rf_asInteger(n)));
 }
 
-extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP parallelOk) {
+extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   R_xlen_t n;
   const char **in;
   csRun r;
@@ -62,7 +57,7 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP parallelOk) {
   in = csReadLines(linesVec, n);
   if (in == NULL) return Rf_ScalarString(NA_STRING);
 
-  csRunInit(&r, n, in, csPickThreads(n, csParallelOk(parallelOk)));
+  csRunInit(&r, n, in, csPickThreads(n));
   outText = csRunAll(&r);
   csRunFree(&r);
 

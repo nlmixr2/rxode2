@@ -1035,15 +1035,6 @@
   .rxRealignPastTau(.out, .txt)
 }
 
-# dparser 1.3.2 made dparse() safe to call from several threads at once (#1427)
-.rxCseEnv <- new.env(parent = emptyenv())
-.rxCseParallelOk <- function() {
-  if (is.null(.rxCseEnv$parallelOk)) {
-    .rxCseEnv$parallelOk <- utils::packageVersion("dparser") >= "1.3.2"
-  }
-  .rxCseEnv$parallelOk
-}
-
 #' Common subexpression elimination in C
 #'
 #' Hands the normalized model, one statement per element, to src/rxCse.c.  The
@@ -1072,7 +1063,7 @@
   if (length(.l) == 0L) {
     return(NA_character_)
   }
-  .Call(`_rxode2_rxCse`, .l, .rxCseParallelOk())
+  .Call(`_rxode2_rxCse`, .l)
 }
 
 #' Optimize rxode2 for computer evaluation

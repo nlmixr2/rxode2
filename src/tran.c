@@ -27,6 +27,19 @@
 
 dparserPtrIni
 
+/* dparser before 1.3.2 shared one static vector across dparse() calls, so
+   parsing on several threads at once crashed (#1427).  Set at load. */
+int rxDparserParallel = 0;
+
+/* set the flag from a non-NA logical; returns the previous value */
+SEXP _rxode2_rxDparserParallel(SEXP set) {
+  int old = rxDparserParallel;
+  if (TYPEOF(set) == LGLSXP && Rf_xlength(set) == 1 && LOGICAL(set)[0] != NA_LOGICAL) {
+    rxDparserParallel = LOGICAL(set)[0];
+  }
+  return Rf_ScalarLogical(old);
+}
+
 
 #include "tran.g.d_parser.h"
 

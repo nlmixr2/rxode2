@@ -67,8 +67,9 @@ SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP dName, SEXP dWhich, SE
 /* rxode2 -> symengine text, src/rxToSE.c */
 SEXP _rxode2_rxToSEChar(SEXP strVec);
 /* common subexpression elimination, src/rxCse.c */
-SEXP _rxode2_rxCse(SEXP linesVec, SEXP parallelOk);
-SEXP _rxode2_rxCsePickThreads(SEXP n, SEXP parallelOk);
+SEXP _rxode2_rxCse(SEXP linesVec);
+SEXP _rxode2_rxCsePickThreads(SEXP n);
+SEXP _rxode2_rxDparserParallel(SEXP set);
 SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_setRstudio(SEXP);
@@ -961,8 +962,9 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
     {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 5},
     {"_rxode2_rxToSEChar", (DL_FUNC) &_rxode2_rxToSEChar, 1},
-    {"_rxode2_rxCse", (DL_FUNC) &_rxode2_rxCse, 2},
-    {"_rxode2_rxCsePickThreads", (DL_FUNC) &_rxode2_rxCsePickThreads, 2},
+    {"_rxode2_rxCse", (DL_FUNC) &_rxode2_rxCse, 1},
+    {"_rxode2_rxCsePickThreads", (DL_FUNC) &_rxode2_rxCsePickThreads, 1},
+    {"_rxode2_rxDparserParallel", (DL_FUNC) &_rxode2_rxDparserParallel, 1},
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},
     {"_rxode2_rxIsReservedName", (DL_FUNC) &_rxode2_rxIsReservedName, 1},
     {"rxode2_get_mv", (DL_FUNC) &rxode2_get_mv, 0},
