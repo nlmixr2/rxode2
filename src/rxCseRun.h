@@ -31,6 +31,9 @@
 #include "rxomp.h"
 #include <time.h>
 
+/* 1 when the loaded dparser can run dparse() concurrently; src/tran.c */
+extern "C" int rxDparserParallel;
+
 /* rxode2's own thread count; see src/seBatch.h for the same declaration */
 extern "C" int getRxThreads(int64_t n, bool throttle);
 
@@ -365,7 +368,7 @@ static char *csEmitPhase(csRun *r) {
    recorded and printed afterwards. */
 static int csPickThreads(R_xlen_t n) {
   int nthr;
-  if (n < CS_MIN_PARALLEL || csDebug()) return 1;
+  if (!rxDparserParallel || n < CS_MIN_PARALLEL || csDebug()) return 1;
   nthr = getRxThreads((int64_t) n, true);
   if (nthr < 1) nthr = 1;
   if ((R_xlen_t) nthr > n) nthr = (int) n;

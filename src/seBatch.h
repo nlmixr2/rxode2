@@ -7,9 +7,10 @@
  * Threading is safe here for two reasons established rather than assumed:
  *
  *  - dparse() is re-entrant as long as each thread builds its OWN D_Parser
- *    from the shared read-only tables.  Verified in inst/tools/
- *    dparserReentrancy.c: 48000 concurrent parses with no mismatch, clean
- *    under both ThreadSanitizer and AddressSanitizer.
+ *    from the shared read-only tables -- but only from dparser 1.3.2.  Before
+ *    that, parse.c shared one static path vector across parses and clang
+ *    builds crashed (#1427), so the batch runs serially unless
+ *    rxDparserParallel says the loaded dparser is new enough.
  *  - the translators touch neither the R API nor symengine.  That is not an
  *    accident; symengine is built here WITHOUT thread-safe refcounting, so it
  *    could not be called from here even if we wanted to.
@@ -31,6 +32,8 @@
 /* rxode2's own thread count: respects setRxThreads() and throttles small
    batches, so it is also the "is this worth threading" gate */
 extern "C" int getRxThreads(int64_t n, bool throttle);
+/* 1 when the loaded dparser can run dparse() concurrently; src/tran.c */
+extern "C" int rxDparserParallel;
 
 /* below this many expressions the parallel region costs more than it saves */
 #define SE_MIN_PARALLEL 250
@@ -111,7 +114,7 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      batches worth threading are the jacobian and sensitivity ones, which run
      450-900 expressions at fifteen states and grow from there. */
   int nthr = 1;
-  if (n >= SE_MIN_PARALLEL) {
+  if (n >= SE_MIN_PARALLEL && rxDparserParallel) {
     nthr = getRxThreads((int64_t) n, true);
     if (nthr < 1) nthr = 1;
     if ((R_xlen_t) nthr > n) nthr = (int) n;

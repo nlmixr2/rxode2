@@ -110,4 +110,52 @@ rxTest({
     expect_identical(.res[1], .res[2])
     expect_identical(.res[1], .res[3])
   })
+
+  test_that("dparser is parsed in parallel only when it is thread safe (#1427)", {
+    .flag <- .Call(`_rxode2_rxDparserParallel`, NA)
+    expect_identical(.flag, utils::packageVersion("dparser") >= "1.3.1-14")
+    .old <- getRxThreads()
+    on.exit(
+      {
+        setRxThreads(.old)
+        .Call(`_rxode2_rxDparserParallel`, .flag)
+      },
+      add = TRUE
+    )
+    setRxThreads(2L)
+    skip_if(getRxThreads() < 2L, "needs 2 threads")
+    .Call(`_rxode2_rxDparserParallel`, FALSE)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L), 1L)
+    .Call(`_rxode2_rxDparserParallel`, TRUE)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L), 2L)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 10L), 1L)
+  })
+
+  test_that("parallel parses match serial ones with a thread-safe dparser (#1427)", {
+    .flag <- .Call(`_rxode2_rxDparserParallel`, NA)
+    skip_if_not(.flag, "dparser < 1.3.2 cannot parse concurrently")
+    .old <- getRxThreads()
+    on.exit(
+      {
+        setRxThreads(.old)
+        .Call(`_rxode2_rxDparserParallel`, .flag)
+      },
+      add = TRUE
+    )
+    setRxThreads(2L)
+    .norm <- rxNorm(paste(
+      sprintf("a%d <- exp(tka + eta1) * (t + %d) / (tcl + exp(eta2))", 1:200, 1:200),
+      collapse = "\n"
+    ))
+    .x <- sprintf("exp(tka + eta1) * (t + %d) / (tcl + exp(eta2)) + log(k%d + 1)", 1:300, 1:300)
+    .Call(`_rxode2_rxDparserParallel`, FALSE)
+    .cse <- .rxOptExprC(.norm)
+    .se <- .rxToSEC(.x)
+    expect_false(is.na(.cse))
+    .Call(`_rxode2_rxDparserParallel`, TRUE)
+    for (.i in 1:20) {
+      expect_identical(.rxOptExprC(.norm), .cse)
+      expect_identical(.rxToSEC(.x), .se)
+    }
+  })
 })

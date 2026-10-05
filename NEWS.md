@@ -99,6 +99,12 @@
 
 ## Bug fixes
 
+- `rxOptExpr()` and the symengine translation no longer segfault with
+  more than one thread on clang builds (CRAN's r-devel clang checks of
+  nlmixr2est).  They parse in parallel, but dparser before 1.3.2 shares one
+  vector across concurrent parses; they now parse serially unless the
+  loaded dparser is at least 1.3.2 (#1427).
+
 - `ui$fun` of a model that had been solved printed a stray `NULL` line in
   place of the cached simulation model.
 

@@ -39,6 +39,11 @@ static const char **csReadLines(SEXP linesVec, R_xlen_t n) {
   return in;
 }
 
+/* the thread count rxCse would use for `n` statements, for the tests */
+extern "C" SEXP _rxode2_rxCsePickThreads(SEXP n) {
+  return Rf_ScalarInteger(csPickThreads((R_xlen_t) Rf_asInteger(n)));
+}
+
 extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   R_xlen_t n;
   const char **in;
