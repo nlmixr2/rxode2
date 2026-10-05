@@ -113,7 +113,7 @@ rxTest({
 
   test_that("dparser is parsed in parallel only when it is thread safe (#1427)", {
     .flag <- .Call(`_rxode2_rxDparserParallel`, NA)
-    expect_identical(.flag, utils::packageVersion("dparser") >= "1.3.2")
+    expect_identical(.flag, utils::packageVersion("dparser") >= "1.3.1-14")
     .old <- getRxThreads()
     on.exit(
       {
