@@ -1,5 +1,5 @@
 rxTest({
-  # `_rxode2_codegen` emits C from the parser's global `.rxModelVarsLast`, so
+  # `_rxode2_codegen` emits C from the parser's global `.rxState$modelVarsLast`, so
   # rxCompile() has to make sure the parsed model is the one it was handed.
   # It used to re-parse only when NO model was loaded, which meant a recompile
   # requested while some other model was the parsed one wrote that other model's

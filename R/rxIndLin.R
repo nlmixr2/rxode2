@@ -195,7 +195,7 @@ rxIndLinState <- function(preferred = NULL) {
   return(c(.ret, paste0(.fullIndLin)))
 }
 
-.indLinInfo <- list()
+.rxState$indLinInfo <- list()
 
 #' This creates the inductive linearization pieces to integrate into
 #' a rxode2 model.
@@ -249,7 +249,7 @@ rxIndLinState <- function(preferred = NULL) {
     )
     .code <- c(.code, paste("_rxF=", as.vector(.ret1)))
   }
-  assignInMyNamespace(".indLinInfo", .ret)
+  .rxState$indLinInfo <- .ret
   rxProgressStop()
   .malert("indLin is in development and results subject to change")
   return(paste(.code, collapse = "\n"))

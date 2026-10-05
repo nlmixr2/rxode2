@@ -30,7 +30,7 @@ rxTrans(
   md5 = "",
   modName = NULL,
   modVars = FALSE,
-  eventSensKey = .rxEventSensCacheKey,
+  eventSensKey = .rxState$eventSensCacheKey,
   ...
 )
 }
@@ -72,7 +72,7 @@ vector of translated properties.}
 the parsed md5 cache key so the same model text translated in
 different modes (e.g. \code{"fd"} vs \code{"jump"}) compiles to distinct
 DLLs instead of colliding on a cached translation.  Defaults to
-the session global \code{.rxEventSensCacheKey} (set by \code{\link[=rxode2]{rxode2()}}
+the session global \code{.rxState$eventSensCacheKey} (set by \code{\link[=rxode2]{rxode2()}}
 before parsing); an empty string leaves the md5 unchanged so the
 legacy \code{"fd"} path keeps existing caches valid.  It is a formal
 argument (rather than read from the global in the body) because

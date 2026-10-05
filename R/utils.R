@@ -788,12 +788,13 @@ rxUnloadAll <- function(set = TRUE) {
     .nKeep <- 10L
   }
   .nKeep <- as.integer(.nKeep)
+  .rxLastModels <- .rxState$lastModels
   if (.nKeep <= 0L) {
     .rxLastModels <- NULL
   } else if (length(.rxLastModels) < .nKeep) {
     .rxLastModels <- .rxLastModels[!is.na(.rxLastModels)]
     .rxLastModels <- .rxLastModels[seq_len(.nKeep)]
-    assignInMyNamespace(".rxLastModels", .rxLastModels)
+    .rxState$lastModels <- .rxLastModels
   }
   .ret <- try(rxUnloadAll_(), silent = TRUE)
   # Now Look for orphan rxode2 DLLs

@@ -1,4 +1,4 @@
-.rxModelVarsLast <- NULL
+.rxState$modelVarsLast <- NULL
 
 #' Internal translation to get model variables list
 #'
