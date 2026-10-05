@@ -150,7 +150,7 @@
 .iniDparserPtr <- function() {
   .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
   # dparser 1.3.2 made dparse() safe to call from several threads at once (#1427)
-  .Call(`_rxode2_rxDparserParallel`, utils::packageVersion("dparser") >= "1.3.2")
+  .Call(`_rxode2_rxDparserParallel`, utils::packageVersion("dparser") >= "1.3.1-14")
   invisible()
 }
 
