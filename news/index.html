@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">5.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,9 +111,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="5.1.9" id="rxode2-519">rxode2 5.1.9<a class="anchor" aria-label="anchor" href="#rxode2-519"></a></h2>
+<h2 class="pkg-version" data-toc-text="5.1.8" id="rxode2-518">rxode2 5.1.8<a class="anchor" aria-label="anchor" href="#rxode2-518"></a></h2>
 <div class="section level3">
-<h3 id="new-features-5-1-9">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-9"></a></h3>
+<h3 id="new-features-5-1-8">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-8"></a></h3>
 <ul><li><p>New <code><a href="../reference/linCmtMicro.html">linCmtMicro()</a></code> returns the micro-constant parameterization (<code>k</code>, <code>k12</code>, <code>k21</code>, <code>k13</code>, <code>k31</code>, <code>v</code> and <code>ka</code>) of each <code>linCmt()</code> call in a model, as R expressions of the model variables. It lets translators (like babelmixr2) write a <code>linCmt()</code> model with another program’s closed-form linear compartment solutions.</p></li>
 <li><p>New assertions <code><a href="../reference/assertRxUi.html">assertRxUiTransform()</a></code>, <code><a href="../reference/assertRxUi.html">assertRxUiErrType()</a></code> and <code><a href="../reference/assertRxUi.html">assertRxUiAddProp()</a></code> refuse a model whose residual transformation (like <code><a href="../reference/boxCox.html">boxCox()</a></code> or <code>lnorm()</code>), residual error type (like <code>add() + pow()</code>) or <code>add() + prop()</code>/<code>add() + pow()</code> combination (<code>combined1</code> or <code>combined2</code>, including the <code>rxode2.addProp</code> default) is not in the allowed set; endpoints without a residual error (like <code>pois()</code> or <code>ll()</code>) are not checked. They let an estimation method that supports only some residual error models stop with a clear error instead of fitting a different one.</p></li>
 <li><p>New assertions <code><a href="../reference/assertRxUi.html">assertRxUiNoFixedResiduals()</a></code> and <code><a href="../reference/assertRxUi.html">assertRxUiNoFixedOmega()</a></code> refuse a model that fixes a residual error parameter (<code>add.sd &lt;- fix(0.7)</code>) or a between-subject variability (<code>eta.ka ~ fix(0.6)</code>), for estimation methods that would otherwise estimate them anyway.</p></li>
@@ -128,7 +128,7 @@
 <li><p>Building, compiling and solving a model no longer writes rxode2 namespace variables with <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">assignInMyNamespace()</a></code>; the mutable state lives in an internal environment. Each such write cost milliseconds once other packages (like nlmixr2) registered S3 methods on rxode2 generics, about 60% of an evaluation-only FOCEi fit (<a href="https://github.com/nlmixr2/rxode2/issues/1425" class="external-link">#1425</a>).</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-5-1-9">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-9"></a></h3>
+<h3 id="bug-fixes-5-1-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-5-1-8"></a></h3>
 <ul><li><p><code><a href="../reference/rxOptExpr.html">rxOptExpr()</a></code> and the symengine translation no longer segfault with more than one thread on clang builds (CRAN’s r-devel clang checks of nlmixr2est). They parse in parallel, but dparser before 1.3.2 shares one vector across concurrent parses; they now parse serially unless the loaded dparser is at least 1.3.2 (<a href="https://github.com/nlmixr2/rxode2/issues/1427" class="external-link">#1427</a>).</p></li>
 <li><p><code>ui$fun</code> of a model that had been solved printed a stray <code>NULL</code> line in place of the cached simulation model.</p></li>
 <li><p><code>$</code> on an rxUi no longer adds rxode2’s own call frames (like <code><a href="../reference/rxPriorLogDensity.html">rxPriorLogDensity()</a></code>’s) to the environments searched for user-defined functions; it records the nearest frames outside rxode2 instead. What those frames held (like a large <code>theta</code>) is now freed when they return, instead of staying in memory until later calls pushed them out of the search list.</p></li>
