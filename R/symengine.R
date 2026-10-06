@@ -309,6 +309,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikXNormDsd" = 4,
   "ReLU" = 1,
   "dReLU" = 1,
+  "dnorm" = 1,
   "GELU" = 1,
   "dGELU" = 1,
   "d2GELU" = 1,
@@ -1866,6 +1867,53 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   }
 }
 
+.rxToSEQnorm <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
+  if (length(x) < 2 || length(x) > 4) {
+    stop("'qnorm' can only take 1-3 arguments", call. = FALSE)
+  }
+  if (isEnv) {
+    .lastCall <- envir$..curCall
+    envir$..curCall <- c(envir$..curCall, "erfinv")
+  }
+  .ret <- paste0("sqrt(2)*erfinv(2*(", .rxToSE(x[[2]], envir = envir), ")-1)")
+  if (length(x) == 4) {
+    .ret <- paste0("(", .rxToSE(x[[4]], envir = envir), ")*", .ret)
+  }
+  if (length(x) >= 3) {
+    .ret <- paste0("(", .rxToSE(x[[3]], envir = envir), ")+", .ret)
+  }
+  if (isEnv) {
+    envir$..curCall <- .lastCall
+  }
+  .ret
+}
+
+## dnorm() stays a symengine function of one argument (derivative in .rxD);
+## dnorm(x, mean, sd) = dnorm((x-mean)/sd)/sd
+.rxToSEDnorm <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
+  if (length(x) < 2 || length(x) > 4) {
+    stop("'dnorm' can only take 1-3 arguments", call. = FALSE)
+  }
+  if (isEnv) {
+    .lastCall <- envir$..curCall
+    envir$..curCall <- c(envir$..curCall, "dnorm")
+  }
+  .z <- .rxToSE(x[[2]], envir = envir)
+  if (length(x) >= 3) {
+    .z <- paste0("(", .z, ")-(", .rxToSE(x[[3]], envir = envir), ")")
+  }
+  if (length(x) == 4) {
+    .sd <- .rxToSE(x[[4]], envir = envir)
+    .ret <- paste0("dnorm((", .z, ")/(", .sd, "))/(", .sd, ")")
+  } else {
+    .ret <- paste0("dnorm(", .z, ")")
+  }
+  if (isEnv) {
+    envir$..curCall <- .lastCall
+  }
+  .ret
+}
+
 .rxToSEd4GELU <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
   if (length(x) == 2) {
     if (isEnv) {
@@ -2350,6 +2398,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       (identical(x[[1]], quote(`phi`)))
   ) {
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv = isEnv))
+  } else if (identical(x[[1]], quote(`qnorm`))) {
+    return(.rxToSEQnorm(x, envir = envir, progress = progress, isEnv = isEnv))
+  } else if (identical(x[[1]], quote(`dnorm`))) {
+    return(.rxToSEDnorm(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (identical(x[[1]], quote(`mix`))) {
@@ -3932,7 +3984,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
           }
         }
         .ret <- .subs(.fun)
-        return(.rxFromSE(.ret))
+        .txt <- .rxFromSE(.ret)
+        ## the caller splices this into a product or after a sign, so a sum or
+        ## a leading minus (like the derivatives of dnorm()) keeps its grouping
+        if ((is.call(.ret) && as.character(.ret[[1]])[1] %in% c("+", "-")) ||
+              startsWith(.txt, "-")) {
+          .txt <- paste0("(", .txt, ")")
+        }
+        return(.txt)
       } else if (any(paste(.ret0[[1]]) == c("max", "min"))) {
         .x1 <- as.character(.ret0[[1]])
         .ret <- paste0(.x1, "(")

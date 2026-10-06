@@ -97,7 +97,21 @@
   packages (like nlmixr2) registered S3 methods on rxode2 generics, about 60%
   of an evaluation-only FOCEi fit (#1425).
 
+- `dnorm()` is now supported in model syntax, with 1-3 arguments
+  (`dnorm(x, mean, sd)`) and symbolic derivatives.  In model functions
+  (`ini()`/`model()`), `dnorm()`, `pnorm()` and `qnorm()` also take R's
+  arguments by name, including `log=` for `dnorm()` and `lower.tail=`/`log.p=`
+  for `pnorm()` and `qnorm()`.
+
 ## Bug fixes
+
+- `qnorm()` was documented as the normal pdf; it is the normal quantile
+  function.  `qnorm(p, mean, sd)` with more than one argument can now be
+  translated to symengine (it errored before).
+
+- `rxFromSE()` now keeps the grouping of a substituted derivative that is a
+  sum or starts with a minus, so a derivative like `-(x)*dnorm(x)` is no longer
+  spliced into a product as `--(...)` or with the wrong precedence.
 
 - `rxOptExpr()` and the symengine translation no longer segfault with
   more than one thread on clang builds (CRAN's r-devel clang checks of

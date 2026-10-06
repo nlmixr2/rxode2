@@ -942,6 +942,12 @@
   }
 )
 
+.rxD$dnorm <- list(
+  function(x) {
+    paste0("-(", x, ")*dnorm(", x, ")")
+  }
+)
+
 .rxD$GELU <- list(
   function(x) {
     paste0("dGELU(", x, ")")
