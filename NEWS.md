@@ -99,6 +99,13 @@
 
 ## Bug fixes
 
+- A time-varying covariate (including `DV` when the model refers to it,
+  as in `res <- DV - central`) no longer corrupts doses with modeled lag
+  times and durations in more than one compartment.  Interpolating the
+  covariate looked up neighbouring records and overwrote the compartment
+  of the dose being given, so a later infusion could be sent to the wrong
+  compartment and the amounts go negative (nlmixr2/nonmem2rx#263).
+
 - `rxOptExpr()` and the symengine translation no longer segfault with
   more than one thread on clang builds (CRAN's r-devel clang checks of
   nlmixr2est).  They parse in parallel, but dparser before 1.3.2 shares one

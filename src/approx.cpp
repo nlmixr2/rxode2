@@ -212,6 +212,19 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
   return ind->par_ptr[parNo];
 }
 
+// getTime() decodes the evid of the record it looks up into
+// ind->wh/cmt/wh100/whI/wh0.  Looking up neighbouring records while
+// interpolating a covariate must not clobber the event being handled.
+struct RxSaveWh {
+  rx_solving_options_ind *ind;
+  int wh, cmt, wh100, whI, wh0;
+  RxSaveWh(rx_solving_options_ind *i) : ind(i), wh(i->wh), cmt(i->cmt),
+                                         wh100(i->wh100), whI(i->whI), wh0(i->wh0) {}
+  ~RxSaveWh() {
+    ind->wh = wh; ind->cmt = cmt; ind->wh100 = wh100; ind->whI = whI; ind->wh0 = wh0;
+  }
+};
+
 extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) (Rf_errorcall)(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
@@ -226,6 +239,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
   int idx = idxIn;
   rx_solving_options *op = rx->op;
   if (!op->do_par_cov) return;
+  RxSaveWh _saveWh(ind);
   // handle extra dose, and out of bounds idx values
   if (idx < 0 && ind->extraDoseN[0] > 0) {
     if (-1-idx >= ind->extraDoseN[0]) {
