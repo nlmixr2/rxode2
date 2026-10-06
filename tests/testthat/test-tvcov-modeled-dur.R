@@ -21,8 +21,7 @@ rxTest({
   .ref <- rxSolve(rxode2(.base), .ev, returnType = "data.frame")
 
   test_that("a DV reference does not change modeled-duration doses", {
-    .s <- rxSolve(rxode2(paste(.base, "res <- DV - central")), .ev,
-                  returnType = "data.frame")
+    .s <- rxSolve(rxode2(paste(.base, "res <- DV - central")), .ev, returnType = "data.frame")
     expect_true(min(.s$central) >= 0)
     expect_equal(.s$central, .ref$central)
     expect_equal(.s$depot, .ref$depot)
@@ -31,8 +30,7 @@ rxTest({
   test_that("a time-varying covariate does not change modeled-duration doses", {
     .d <- as.data.frame(.ev)
     .d$WT <- .d$time
-    .s <- rxSolve(rxode2(paste(.base, "res <- WT - central")), .d,
-                  returnType = "data.frame")
+    .s <- rxSolve(rxode2(paste(.base, "res <- WT - central")), .d, returnType = "data.frame")
     expect_equal(.s$central, .ref$central)
     expect_equal(.s$depot, .ref$depot)
   })
