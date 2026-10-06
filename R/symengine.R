@@ -2399,9 +2399,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   ) {
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (identical(x[[1]], quote(`qnorm`))) {
-    return(.rxToSEQnorm(x, envir = envir, progress = progress, isEnv = isEnv))
+    .rxToSEQnorm(x, envir = envir, progress = progress, isEnv = isEnv)
   } else if (identical(x[[1]], quote(`dnorm`))) {
-    return(.rxToSEDnorm(x, envir = envir, progress = progress, isEnv = isEnv))
+    .rxToSEDnorm(x, envir = envir, progress = progress, isEnv = isEnv)
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (identical(x[[1]], quote(`mix`))) {
@@ -3987,11 +3987,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         .txt <- .rxFromSE(.ret)
         ## the caller splices this into a product or after a sign, so a sum or
         ## a leading minus (like the derivatives of dnorm()) keeps its grouping
-        if ((is.call(.ret) && as.character(.ret[[1]])[1] %in% c("+", "-")) ||
-              startsWith(.txt, "-")) {
-          .txt <- paste0("(", .txt, ")")
+        if (
+          (is.call(.ret) && as.character(.ret[[1]])[1] %in% c("+", "-")) ||
+            startsWith(.txt, "-")
+        ) {
+          paste0("(", .txt, ")")
+        } else {
+          .txt
         }
-        return(.txt)
       } else if (any(paste(.ret0[[1]]) == c("max", "min"))) {
         .x1 <- as.character(.ret0[[1]])
         .ret <- paste0(.x1, "(")

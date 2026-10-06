@@ -44,8 +44,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .normParen <- function(x) {
-  if (is.call(x) && length(x) %in% c(2L, 3L) &&
-        as.character(x[[1]]) %in% c("+", "-", "*", "/", "^")) {
+  if (is.call(x) && length(x) %in% c(2L, 3L) && as.character(x[[1]]) %in% c("+", "-", "*", "/", "^")) {
     return(call("(", x))
   }
   x
@@ -88,8 +87,11 @@ rxUdfUi.dnorm <- function(fun) {
     return(list(replace = .normCall("dnorm", .x, .mean, .sd, attr(.args, "supplied"))))
   }
   # -z^2/2 - log(sd) - log(2*pi)/2
-  .ret <- call("-", call("*", -0.5, call("^", .normParen(.normZLang(.x, .mean, .sd, env = .env)), 2)),
-               quote(0.5 * log(2 * pi)))
+  .ret <- call(
+    "-",
+    call("*", -0.5, call("^", .normParen(.normZLang(.x, .mean, .sd, env = .env)), 2)),
+    quote(0.5 * log(2 * pi))
+  )
   if (!rxUdfUiIsValue(.sd, 1, env = .env)) {
     .ret <- call("-", .ret, call("log", .sd))
   }

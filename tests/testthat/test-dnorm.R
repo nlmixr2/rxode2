@@ -83,8 +83,10 @@ rxTest({
       )
     )
     d <- data.frame(
-      x = c(-1, 0, 3), m = c(0.2, 0.3, -1),
-      pp = c(0.1, 0.5, 0.9), lp = log(c(0.1, 0.5, 0.9))
+      x = c(-1, 0, 3),
+      m = c(0.2, 0.3, -1),
+      pp = c(0.1, 0.5, 0.9),
+      lp = log(c(0.1, 0.5, 0.9))
     )
     s <- suppressMessages(rxSolve(f, d, et(0)))
     expect_equal(s$d1, dnorm(d$x, d$m, 2))
@@ -116,8 +118,8 @@ rxTest({
     )
     s <- suppressMessages(rxSolve(h, data.frame(x = c(-1, 2), pp = c(0.2, 0.7), depth = c(0, 1)), et(0)))
     expect_equal(s$a, pnorm(-c(-1, 2), lower.tail = FALSE))
-    expect_equal(s$b, qnorm(c(0.2, 0.7), -1, 1/3, lower.tail = FALSE))
-    expect_equal(s$c, pnorm(c(0, 1), 1/3))
+    expect_equal(s$b, qnorm(c(0.2, 0.7), -1, 1 / 3, lower.tail = FALSE))
+    expect_equal(s$c, pnorm(c(0, 1), 1 / 3))
 
     g <- function() {
       model({
