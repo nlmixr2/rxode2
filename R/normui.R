@@ -70,6 +70,20 @@
   .ret
 }
 
+#' Negate a mean expression, leaving a default zero mean alone
+#'
+#' @param mean mean expression
+#' @param env evaluation environment
+#' @return language object
+#' @noRd
+#' @author Matthew L. Fidler
+.normNeg <- function(mean, env = baseenv()) {
+  if (rxUdfUiIsValue(mean, 0, env = env)) {
+    return(mean)
+  }
+  call("-", .normParen(mean))
+}
+
 # The dnorm() ui translation; log=TRUE is written as the log density
 #' @export
 rxUdfUi.dnorm <- function(fun) {
@@ -98,7 +112,8 @@ rxUdfUi.dnorm <- function(fun) {
   list(replace = .ret)
 }
 
-# The pnorm() ui translation; the upper tail uses symmetry, pnorm(-z)
+# The pnorm() ui translation; the upper tail uses symmetry,
+# pnorm(q, mean, sd, lower.tail=FALSE) = pnorm(-q, -mean, sd)
 #' @export
 rxUdfUi.pnorm <- function(fun) {
   .args <- .normMatchCall(fun, stats::pnorm)
@@ -112,10 +127,11 @@ rxUdfUi.pnorm <- function(fun) {
   .sd <- .args$sd
   .lowerTail <- rxUdfUiFlag(.args$lower.tail, arg = "lower.tail", funName = "pnorm", env = .env)
   .logP <- rxUdfUiFlag(.args$log.p, arg = "log.p", funName = "pnorm", env = .env)
+  .supplied <- attr(.args, "supplied")
   if (.lowerTail) {
-    .ret <- .normCall("pnorm", .q, .mean, .sd, attr(.args, "supplied"))
+    .ret <- .normCall("pnorm", .q, .mean, .sd, .supplied)
   } else {
-    .ret <- call("pnorm", call("-", .normParen(.normZLang(.q, .mean, .sd, env = .env))))
+    .ret <- .normCall("pnorm", call("-", .normParen(.q)), .normNeg(.mean, .env), .sd, .supplied)
   }
   if (.logP) {
     .ret <- call("log", .ret)
@@ -145,13 +161,7 @@ rxUdfUi.qnorm <- function(fun) {
   if (.lowerTail) {
     .ret <- .normCall("qnorm", .p, .mean, .sd, .supplied)
   } else {
-    if (rxUdfUiIsValue(.mean, 0, env = .env)) {
-      .negMean <- .mean
-    } else {
-      .negMean <- call("-", .normParen(.mean))
-      .supplied <- c(.supplied, "mean")
-    }
-    .ret <- call("-", .normCall("qnorm", .p, .negMean, .sd, .supplied))
+    .ret <- call("-", .normCall("qnorm", .p, .normNeg(.mean, .env), .sd, .supplied))
   }
   list(replace = .ret)
 }

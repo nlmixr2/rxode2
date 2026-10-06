@@ -1880,7 +1880,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     .ret <- paste0("(", .rxToSE(x[[4]], envir = envir), ")*", .ret)
   }
   if (length(x) >= 3) {
-    .ret <- paste0("(", .rxToSE(x[[3]], envir = envir), ")+", .ret)
+    .ret <- paste0("((", .rxToSE(x[[3]], envir = envir), ")+", .ret, ")")
   }
   if (isEnv) {
     envir$..curCall <- .lastCall
@@ -1904,7 +1904,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   }
   if (length(x) == 4) {
     .sd <- .rxToSE(x[[4]], envir = envir)
-    .ret <- paste0("dnorm((", .z, ")/(", .sd, "))/(", .sd, ")")
+    .ret <- paste0("(dnorm((", .z, ")/(", .sd, "))/(", .sd, "))")
   } else {
     .ret <- paste0("dnorm(", .z, ")")
   }

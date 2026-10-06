@@ -21,9 +21,25 @@ rxTest({
 
   test_that("dnorm()/qnorm() translate to symengine with 1-3 arguments", {
     expect_equal(rxToSE("dnorm(x)"), "dnorm(x)")
-    expect_equal(rxToSE("dnorm(x, mu, s)"), "dnorm(((x)-(mu))/(s))/(s)")
-    expect_equal(rxToSE("qnorm(p, mu, s)"), "(mu)+(s)*sqrt(2)*erfinv(2*(p)-1)")
+    expect_equal(rxToSE("dnorm(x, mu, s)"), "(dnorm(((x)-(mu))/(s))/(s))")
+    expect_equal(rxToSE("qnorm(p, mu, s)"), "((mu)+(s)*sqrt(2)*erfinv(2*(p)-1))")
     expect_equal(rxFromSE("Derivative(dnorm(x),x)"), "-(x)*dnorm(x)")
+    o <- rxode2({
+      a <- 2 * qnorm(p, mu, s)
+      b <- 1 / dnorm(x, mu, s)
+    })
+    s <- rxSolve(o, c(p = 0.3, mu = 0.2, s = 1.3, x = 0.7), et(0))
+    expect_equal(s$a, 2 * qnorm(0.3, 0.2, 1.3))
+    expect_equal(s$b, 1 / dnorm(0.7, 0.2, 1.3))
+    .s <- rxS("a = 2*qnorm(p, mu, s)\nb = 1/dnorm(x, mu, s)")
+    .a <- with(.s, D(a, mu))
+    .b <- with(.s, D(b, mu))
+    .r <- c(rxFromSE(.a), rxFromSE(.b))
+    o <- rxode2(paste0("da = ", .r[1], "\ndb = ", .r[2]))
+    s <- rxSolve(o, c(p = 0.3, mu = 0.2, s = 1.3, x = 0.7), et(0))
+    expect_equal(s$da, 2)
+    .h <- 1e-5
+    expect_equal(s$db, (1 / dnorm(0.7, 0.2 + .h, 1.3) - 1 / dnorm(0.7, 0.2 - .h, 1.3)) / (2 * .h), tolerance = 1e-6)
   })
 
   test_that("dnorm()/pnorm()/qnorm() symbolic derivatives match finite differences", {
@@ -73,7 +89,7 @@ rxTest({
         "d2 <- (-0.5 * x^2 - 0.5 * log(2 * pi))",
         "d3 <- (-0.5 * ((x - 1)/2)^2 - 0.5 * log(2 * pi) - log(2))",
         "p1 <- pnorm(-x)",
-        "p2 <- log(pnorm(-((x - m)/2)))",
+        "p2 <- log(pnorm(-x, -m, 2))",
         "p3 <- pnorm(x, 0, 3)",
         "p4 <- pnorm(x, 0.5)",
         "q1 <- (-qnorm(pp))",
@@ -106,6 +122,7 @@ rxTest({
         a <- pnorm(-x, lower.tail = FALSE)
         b <- qnorm(pp, -1, 1/3, lower.tail = FALSE)
         c <- pnorm(depth, 1/3)
+        e <- pnorm(x, sd = sdn, lower.tail = FALSE)
       })
     }
     expect_equal(
@@ -113,10 +130,16 @@ rxTest({
       c(
         "a <- pnorm(-(-x))",
         "b <- (-qnorm(pp, -(-1), 1/3))",
-        "c <- pnorm(depth, 1/3)"
+        "c <- pnorm(depth, 1/3)",
+        "e <- pnorm(-x, 0, sdn)"
       )
     )
-    s <- suppressMessages(rxSolve(h, data.frame(x = c(-1, 2), pp = c(0.2, 0.7), depth = c(0, 1)), et(0)))
+    s <- suppressMessages(suppressWarnings(rxSolve(
+      h,
+      data.frame(x = c(-1, 2), pp = c(0.2, 0.7), depth = c(0, 1), sdn = c(-1, 2)),
+      et(0)
+    )))
+    expect_equal(s$e, suppressWarnings(pnorm(c(-1, 2), sd = c(-1, 2), lower.tail = FALSE)))
     expect_equal(s$a, pnorm(-c(-1, 2), lower.tail = FALSE))
     expect_equal(s$b, qnorm(c(0.2, 0.7), -1, 1 / 3, lower.tail = FALSE))
     expect_equal(s$c, pnorm(c(0, 1), 1 / 3))
