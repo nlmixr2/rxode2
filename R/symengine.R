@@ -4205,11 +4205,16 @@ local({
 #'
 #' @param x rxode2 object
 #' @param doConst Load constants into the environment as well.
+#' @param pkTime When `TRUE`, `time` in statements that do not depend on a
+#'   state is loaded as `rx_time_pk`, defined by `rx_time_pk~t` in `..lhs0`,
+#'   so it stays separate from the `time` in `d/dt()` after those statements
+#'   are inlined; `rxSolve(..., nonmem = TRUE)` then reads it as the record
+#'   time.  Only for callers that write `..lhs0` into the model they build.
 #' @inheritParams rxToSE
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
-rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame()) {
+rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(), pkTime = FALSE) {
   .udfEnvLocal(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
@@ -4267,8 +4272,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
     "rx__PTR__",
     "mixnum",
     "mixest",
-    "mixunif",
-    "rxPkTime"
+    "mixunif"
   )
 
   ## default lambda/yj values
@@ -4303,8 +4307,13 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   })
   .rxSEstate$promoteLinB <- promoteLinSens
   .expr <- eval(parse(text = paste0("quote({", rxNorm(.mv), "})")))
-  if (isTRUE(.mv$flags["pkTime"] == 1L)) {
+  .pkTime <- FALSE
+  if (pkTime && isTRUE(.mv$flags["pkTime"] == 1L)) {
     .expr <- .rxPkTimeExpr(.expr, rxState(.mv))
+    .pkTime <- isTRUE(attr(.expr, "pkTime"))
+    if (.pkTime) {
+      assign("rx_time_pk", symengine::Symbol("rx_time_pk"), envir = .env)
+    }
   }
   # variables referenced inside lag()/lead()/diff()/first()/last() must be kept
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
@@ -4312,25 +4321,30 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .env$..laggedVars <- .rxCollectLaggedVars(.expr)
   # loads the model into .env by side effect; the returned text is not used
   .rxToSE(.expr, envir = .env)
+  if (.pkTime) {
+    .env$..lhs0 <- c(c(rx_time_pk = "rx_time_pk~t"), .env$..lhs0)
+  }
   class(.env) <- "rxS"
   return(.env)
 }
 
-#' Mark the time PK-type statements read as `rxPkTime`
+#' Separate the time PK-type statements read
 #'
-#' Under `covsInterpolation = "nocb"` a statement that does not depend on a
+#' With `rxSolve(..., nonmem = TRUE)` a statement that does not depend on a
 #' state reads `time` as the record time (rxode2#1429).  Loading a model into
-#' symengine inlines those statements into `d/dt()`, so their `time` is written
-#' as `rxPkTime`, which keeps that meaning wherever it lands.  Mirrors
-#' `pkTimeClassify()` in `src/pkTime.h`.
+#' symengine inlines those statements into `d/dt()`, so their `time` is
+#' written as `rx_time_pk` (defined as `t`), which keeps that meaning wherever
+#' it lands.  Mirrors `pkTimeClassify()` in `src/pkTime.h`.
 #'
 #' @param expr a quoted model, `quote({...})`
 #' @param state the model states
-#' @return `expr` with `t`/`time` replaced by `rxPkTime` in PK-type statements
+#' @return `expr` with `t`/`time` replaced by `rx_time_pk` in PK-type
+#'   statements; attribute `pkTime` is `TRUE` when any was replaced
 #' @author Matthew Fidler
 #' @noRd
 .rxPkTimeExpr <- function(expr, state) {
   .stmts <- as.list(expr)[-1]
+  .any <- FALSE
   .isAssign <- function(e) {
     is.call(e) && is.name(e[[1]]) && as.character(e[[1]]) %in% c("=", "<-", "~")
   }
@@ -4382,7 +4396,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .sub <- function(e) {
     if (is.name(e)) {
       if (identical(e, quote(t)) || identical(e, quote(time))) {
-        return(quote(rxPkTime))
+        .any <<- TRUE
+        return(quote(rx_time_pk))
       }
       return(e)
     }
@@ -4405,7 +4420,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
     }
     .stmts[[.i]] <- .e
   }
-  as.call(c(list(quote(`{`)), .stmts))
+  .ret <- as.call(c(list(quote(`{`)), .stmts))
+  attr(.ret, "pkTime") <- .any
+  .ret
 }
 
 #' Collect the variables referenced inside history functions (lag/lead/diff/...)

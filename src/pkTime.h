@@ -1,6 +1,6 @@
 #ifndef __PKTIME_H__
 #define __PKTIME_H__
-// PK-type time under covsInterpolation = "nocb" (rxode2#1429).
+// PK-type time with rxControl(nonmem = TRUE) (rxode2#1429).
 //
 // A statement that does not depend on a state reads `time` as the time of the
 // record that ends the integration interval (NONMEM's $PK TIME); a statement

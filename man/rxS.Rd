@@ -4,7 +4,13 @@
 \alias{rxS}
 \title{Load a model into a symengine environment}
 \usage{
-rxS(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame())
+rxS(
+  x,
+  doConst = TRUE,
+  promoteLinSens = FALSE,
+  envir = parent.frame(),
+  pkTime = FALSE
+)
 }
 \arguments{
 \item{x}{rxode2 object}
@@ -16,6 +22,12 @@ sensitivity-based solutions.}
 
 \item{envir}{default is \code{NULL}; Environment to put symengine
 variables in.}
+
+\item{pkTime}{When \code{TRUE}, \code{time} in statements that do not depend on a
+state is loaded as \code{rx_time_pk}, defined by \code{rx_time_pk~t} in \code{..lhs0},
+so it stays separate from the \code{time} in \code{d/dt()} after those statements
+are inlined; \code{rxSolve(..., nonmem = TRUE)} then reads it as the record
+time.  Only for callers that write \code{..lhs0} into the model they build.}
 }
 \value{
 rxode2/symengine environment

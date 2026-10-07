@@ -58,7 +58,6 @@ static inline int assertForbiddenVariables(const char *s) {
 static inline int isReservedVariable(const char *s) {
   return !rxstrcmpi("amt", s) ||
     !rxstrcmpi("time", s) ||
-    !strcmp("rxPkTime", s) ||
     !rxstrcmpi("mixnum", s) ||
     !rxstrcmpi("mixest", s) ||
     !rxstrcmpi("mixunif", s) ||

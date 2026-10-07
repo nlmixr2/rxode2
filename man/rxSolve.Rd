@@ -162,6 +162,7 @@ rxSolve(
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
+  nonmem = FALSE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -850,10 +851,7 @@ by solving the line between the observed covariates and extrapolating the new
 covariate value.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
-that NONMEM uses.  Statements that do not depend on a state (like
-NONMEM's \verb{$PK}) also read \code{time} as the time of the record that
-ends the current interval; \code{d/dt()} and state-dependent statements
-keep the continuous time.
+that NONMEM uses.
 \item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
 carried backward to midpoint.
 
@@ -1429,6 +1427,15 @@ form row by row in the order earlier versions used.  All three are the
 same exact closed-form solution evaluated in a different order, so they
 can differ in the last few digits; use \code{FALSE} to reproduce earlier
 results digit for digit.}
+
+\item{nonmem}{Boolean that when \code{TRUE} evaluates statements that do not
+depend on a state (like NONMEM's \verb{$PK}) with \code{time} set to the time of
+the data record that ends the interval being integrated, the way NONMEM
+calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
+the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
+lagged doses and doses added while solving do not end an interval;
+\code{mtime()} times do.  Covariate interpolation is still set by
+\code{covsInterpolation}.  By default \code{FALSE}.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

@@ -403,13 +403,13 @@ rxTest({
       cp <- central / 30
     })
     pkEv <- et(amt = 100, ii = 12, addl = 3) |> et(c(2, 8, 14, 20, 26, 44))
-    pkRef <- rxSolve(pkMod, pkEv, covsInterpolation = "nocb")
+    pkRef <- rxSolve(pkMod, pkEv, covsInterpolation = "nocb", nonmem = TRUE)
     pkFile <- tempfile(fileext = ".rxbin")
-    rxSolve(pkMod, pkEv, covsInterpolation = "nocb", serializeFile = pkFile)
+    rxSolve(pkMod, pkEv, covsInterpolation = "nocb", nonmem = TRUE, serializeFile = pkFile)
 
     test_that("C-state replay keeps the nocb non-data records", {
       expect_equal(
-        as.data.frame(cStateSolve(pkMod, .rxReadStateBundle(pkFile))),
+        as.data.frame(cStateSolve(pkMod, .rxReadStateBundle(pkFile), control = rxControl(nonmem = TRUE))),
         as.data.frame(pkRef)
       )
     })

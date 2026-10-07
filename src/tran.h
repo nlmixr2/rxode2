@@ -155,7 +155,6 @@ lhs symbols?
   int curLhs; // symbol index being assigned, -1 outside an assignment
   int nCond; // depth of the enclosing if/while/ifelse blocks
   int hasDelay; // Has delay() function (delay differential equation)
-  int pkTimeSym; // reads rxPkTime, the nocb record time (rxode2#1429)
 } symtab;
 
 extern symtab tb;

@@ -4431,7 +4431,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         _globals.ginfPair[e0] = s0 - e0;
       }
     }
-    // rows that are not data records, for PK-type time under nocb
+    // rows that are not data records, for PK-type time with nonmem=TRUE
     // (rxode2#1429), as 1-based row numbers
     if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
     _globals.gpkSkip = NULL;
@@ -6604,6 +6604,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // so the two cannot drift: 2 = the closed-form transition matrix.
     rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
       asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
+    rx->nonmem = (Rf_length(rxControl) > Rxc_nonmem) ?
+      (int)asBool(rxControl[Rxc_nonmem], "nonmem") : 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

@@ -160,7 +160,7 @@ void _rxode2parse_unprotect(void) {
 #include "codegen2.h"
 #include "pkTime.h"
 
-// Lines that read `time` as the nocb record time (see pkTime.h); NULL when
+// Lines that read `time` as the record time (see pkTime.h); NULL when
 // the function being generated never does.
 static int *_pkLine = NULL;
 
@@ -565,17 +565,15 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
       // _tPK: the time PK-type statements read (pkTime.h); only the functions
-      // the integrator calls between records read the nocb record time
+      // the integrator calls between records read the record time
       _pkLine = NULL;
       if (show_ode == ode_dydt || show_ode == ode_jac ||
           show_ode == ode_mexp || show_ode == ode_indLinVec) {
         int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
         if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
-        if (_pkLine != NULL || tb.pkTimeSym) {
+        if (_pkLine != NULL) {
           sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
         }
-      } else if (tb.pkTimeSym) {
-        sAppend(&sbOut, "  double _tPK = t;\n  (void)_tPK;\n");
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != ode_past){

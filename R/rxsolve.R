@@ -399,10 +399,7 @@
 #' * `"locf"` -- Last observation carried forward (the default).
 #'
 #' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
-#'       that NONMEM uses.  Statements that do not depend on a state (like
-#'       NONMEM's `$PK`) also read `time` as the time of the record that
-#'       ends the current interval; `d/dt()` and state-dependent statements
-#'       keep the continuous time.
+#'       that NONMEM uses.
 #'
 #' * `"midpoint"` Last observation carried forward to midpoint; Next observation
 #'   carried backward to midpoint.
@@ -950,6 +947,14 @@
 #'   can differ in the last few digits; use `FALSE` to reproduce earlier
 #'   results digit for digit.
 #'
+#' @param nonmem Boolean that when `TRUE` evaluates statements that do not
+#'   depend on a state (like NONMEM's `$PK`) with `time` set to the time of
+#'   the data record that ends the interval being integrated, the way NONMEM
+#'   calls `$PK` at its records.  `d/dt()` and state-dependent statements keep
+#'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
+#'   lagged doses and doses added while solving do not end an interval;
+#'   `mtime()` times do.  Covariate interpolation is still set by
+#'   `covsInterpolation`.  By default `FALSE`.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1538,6 +1543,7 @@ rxSolve <- function(
   ),
   linCmtSensH = 0.0001,
   linCmtSensPhi = TRUE,
+  nonmem = FALSE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1851,6 +1857,7 @@ rxSolve <- function(
       checkmate::assertIntegerish(linCmtSensPhi, lower = 0, upper = 2, any.missing = FALSE, len = 1)
       .linCmtSensPhi <- as.integer(linCmtSensPhi)
     }
+    checkmate::assertLogical(nonmem, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
@@ -2340,7 +2347,8 @@ rxSolve <- function(
       priorOmega = priorOmega,
       priorOmegaEl = priorOmegaEl,
       priorSigmaEl = priorSigmaEl,
-      linCmtSensPhi = .linCmtSensPhi
+      linCmtSensPhi = .linCmtSensPhi,
+      nonmem = nonmem
     )
     class(.ret) <- "rxControl"
     return(.ret)

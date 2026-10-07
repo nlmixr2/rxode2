@@ -97,14 +97,17 @@
   packages (like nlmixr2) registered S3 methods on rxode2 generics, about 60%
   of an evaluation-only FOCEi fit (#1425).
 
-- With `covsInterpolation = "nocb"`, statements that do not depend on a
-  state (PK-type values) now read `time` as the time of the data record that
-  ends the interval being integrated, like `TIME` in NONMEM's `$PK`; `d/dt()`
-  and state-dependent statements keep the continuous time.  `addl` repeats,
+- New `rxSolve(..., nonmem = TRUE)` evaluates statements that do not depend
+  on a state (like NONMEM's `$PK`) with `time` set to the time of the data
+  record that ends the interval being integrated; `d/dt()` and
+  state-dependent statements keep the continuous time.  `addl` repeats,
   infusion ends, lagged and run-time doses do not end an interval, while
-  `mtime()` times do.  This also holds for `linCmt()`, `matExp()` and
-  symengine-built (`calcJac`/`calcSens`) models, where such `time` is written
-  as the new reserved variable `rxPkTime` (#1429).
+  `mtime()` times do.  It also covers `linCmt()`, `matExp()` and
+  `calcJac`/`calcSens` models, where `rxS(pkTime = TRUE)` keeps that time
+  apart as `rx_time_pk~t` when symengine inlines it into `d/dt()`.  With
+  `covsInterpolation = "nocb"` and `addlKeepsCov = FALSE` this matches
+  NONMEM 7.4 for TIME in `$PK`, a covariate changing between `ADDL` doses and
+  an `MTIME` change point (#1429).
 
 - `dnorm()` is now supported in model syntax, with 1-3 arguments
   (`dnorm(x, mean, sd)`) and symbolic derivatives.  In model functions

@@ -1787,7 +1787,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> idxInput;
   idxInput.reserve(resSize);
   // 1 for a record that is not a data record (an addl repeat or a record a
-  // dose expands to); only read for PK-type time under nocb (rxode2#1429)
+  // dose expands to); only read for PK-type time with nonmem=TRUE (rxode2#1429)
   std::vector<char> recImplied;
   recImplied.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()

@@ -212,15 +212,15 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
   return ind->par_ptr[parNo];
 }
 
-// The time PK-type statements read under covsInterpolation = "nocb"
+// The time PK-type statements read with rxControl(nonmem = TRUE)
 // (rxode2#1429): the time of the first data record at or after `t`, starting
 // from the record that ends the interval being integrated (ind->idx), since a
 // solver may step past it.  Records that are not data records are skipped,
 // like NONMEM's non-event doses: addl repeats and the records a dose expands
 // to (ind->pkSkip, from etTrans()), doses pushed at run time and lagged doses.
 extern "C" double _rxPkTime(double t, unsigned int id, rx_solve *rx) {
+  if (!rx->nonmem) return t;
   rx_solving_options *op = rx->op;
-  if (op->is_locf != 2) return t;
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   if (ind->idx < 0 || ind->timeThread == NULL) return t;
   double t0 = t - ind->curShift;
