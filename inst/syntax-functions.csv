@@ -34,9 +34,10 @@ factorial(x),factorial of x,
 lfactorial(x),log(factorial(x)),
 log10(x),log base 10,
 log2(x),log base 2,
-pnorm(x),Normal CDF of x,"normcdf, phi"
-qnorm(x),Normal pdf of x,norminv
-"probit(x, low=0, hi=1)",Probit (normal pdf) of x transforming into a range,
+"dnorm(x, mean=0, sd=1)",Normal density (pdf) of x,
+"pnorm(q, mean=0, sd=1)",Normal CDF of q,"normcdf, phi"
+"qnorm(p, mean=0, sd=1)",Normal quantile function (inverse CDF) of p,norminv
+"probit(x, low=0, hi=1)",Probit (normal quantile function) of x transforming into a range,
 "probitInv(q, low=0, hi=1)",Inverse probit of x transforming into a range,
 acos(x),Inverse cosine,
 asin(x),Inverse sine,

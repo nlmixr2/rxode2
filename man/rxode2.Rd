@@ -572,9 +572,10 @@ table:\tabular{lll}{
    lfactorial(x) \tab log(factorial(x)) \tab  \cr
    log10(x) \tab log base 10 \tab  \cr
    log2(x) \tab log base 2 \tab  \cr
-   pnorm(x) \tab Normal CDF of x \tab normcdf, phi \cr
-   qnorm(x) \tab Normal pdf of x \tab norminv \cr
-   probit(x, low=0, hi=1) \tab Probit (normal pdf) of x transforming into a range \tab  \cr
+   dnorm(x, mean=0, sd=1) \tab Normal density (pdf) of x \tab  \cr
+   pnorm(q, mean=0, sd=1) \tab Normal CDF of q \tab normcdf, phi \cr
+   qnorm(p, mean=0, sd=1) \tab Normal quantile function (inverse CDF) of p \tab norminv \cr
+   probit(x, low=0, hi=1) \tab Probit (normal quantile function) of x transforming into a range \tab  \cr
    probitInv(q, low=0, hi=1) \tab Inverse probit of x transforming into a range \tab  \cr
    acos(x) \tab Inverse cosine \tab  \cr
    asin(x) \tab Inverse sine \tab  \cr
