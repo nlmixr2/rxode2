@@ -501,6 +501,7 @@ void reset(void) {
   tb.pi		= 0;
   tb.isPi       = 0;
   tb.isNA       = 0;
+  tb.lagTime    = 0;
   tb.linCmt     = 0;
   tb.linCmtCmt  = 0;
   tb.linCmtN    = -100;

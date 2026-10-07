@@ -289,6 +289,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       prnt_vars(print_lhsLags, 1, "", "", 13);
       // And covariate/parameter lags
       prnt_vars(print_paramLags, 1, "", "", 15);
+      printTimeLags();
       // Add sync PP define
       prnt_vars(print_simeps, 1, "#define _SYNC_simeps_ for (int _svari=_solveData->neps; _svari--;){", "}\n", 15);
       prnt_vars(print_simeta, 1, "#define _SYNC_simeta_ for (int _ovari=_solveData->neta; _ovari--;){", "}\n", 16);

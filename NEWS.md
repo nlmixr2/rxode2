@@ -117,6 +117,12 @@
 
 ## Bug fixes
 
+- `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
+  R while the model is compiled; it now returns the time of the subject's
+  previous (or next) record.  `lag()` of another reserved name like `amt` is a
+  syntax error, and `lag(x, 0)` no longer normalizes to an empty expression
+  (#1434).
+
 - A time-varying covariate (including `DV` when the model refers to it,
   as in `res <- DV - central`) no longer corrupts doses with modeled lag
   times and durations in more than one compartment.  Interpolating the

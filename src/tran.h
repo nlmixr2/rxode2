@@ -81,6 +81,7 @@ lhs symbols?
   int pi; // # param
   int isPi; // # pi?
   int isNA; // # pi?
+  int lagTime; // lag()/lead()/diff()/first()/last() of time?
   int linCmt; // Unparsed linear compartment
   int linCmtCmt; // Are all non linear-system compartments derived from cmt()
   int linCmtN; // Unparsed linear compartment
