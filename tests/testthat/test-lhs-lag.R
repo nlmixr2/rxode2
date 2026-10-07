@@ -202,4 +202,26 @@ rxTest({
     expect_equal(r2$cp, r1$cp)
     expect_equal(r2$c0, r1$c0)
   })
+  test_that("rxS() keeps diff() of a reassigned lagged variable at its point of use (#1435)", {
+    .ode <- "d/dt(central) = -0.1*central"
+    e <- et(amt = 100) |> et(0:5)
+    for (.f in c("diff(c0)", "diff0(c0)", "diff(c0,1)", "lag0(c0)")) {
+      m <- rxode2(paste(
+        .ode,
+        "c0 = central/10",
+        paste0("c1 = 2*c0 + ", .f),
+        "c0 = c0*3",
+        paste0("c2 = ", .f),
+        "cp = c1 + 2*c2",
+        sep = "\n"
+      ))
+      r1 <- rxSolve(m, e)
+      s <- rxS(m)
+      m2 <- rxode2(paste(c(.ode, s$..lhs), collapse = "\n"))
+      expect_equal(rxSolve(m2, e)$cp, r1$cp, info = .f)
+      # loading the generated model again keeps its meaning
+      m3 <- rxode2(paste(c(.ode, rxS(m2)$..lhs), collapse = "\n"))
+      expect_equal(rxSolve(m3, e)$cp, r1$cp, info = .f)
+    }
+  })
 })

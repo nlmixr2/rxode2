@@ -1711,6 +1711,38 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   return(paste0("(t-tfirst())"))
 }
 
+#' Translate diff()/diff0() to symengine
+#'
+#' `diff(x)` reads the current value of `x`, so when `x` is a lagged variable
+#' that is reassigned later (#1435), the difference is emitted as its own lhs
+#' at this point and read through that symbol.
+#'
+#' @inheritParams .rxToSELagOrLead
+#' @return symengine text
+#' @author Matthew Fidler
+#' @noRd
+.rxToSEDiff <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
+  if (length(x) == 3L && length(x[[2]]) == 1L && identical(as.character(x[[3]]), "1")) {
+    x <- x[1:2]
+  }
+  if (isEnv && is.environment(envir) && length(x) == 2L && is.name(x[[2]])) {
+    .v <- as.character(x[[2]])
+    .n <- envir$..laggedAssignN[.v]
+    .i <- envir$..laggedAssignSeen[.v]
+    if (length(.n) == 1L && !is.na(.n) && length(.i) == 1L && !is.na(.i) && .i < .n) {
+      .fun <- as.character(x[[1]])
+      .snap <- paste0("rx_", .fun, "v", .i, "_", .v)
+      if (!any(.snap == envir$..laggedDiffSnap)) {
+        envir$..laggedDiffSnap <- c(envir$..laggedDiffSnap, .snap)
+        envir$..lhs <- c(envir$..lhs, paste0(.snap, "=", .fun, "(", .v, ")"))
+        assign(.snap, symengine::Symbol(.snap), envir = envir)
+      }
+      return(.snap)
+    }
+  }
+  .rxToSELagOrLead(x, envir = envir, progress = progress, isEnv = isEnv)
+}
+
 .rxToSETlastOrTafd <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
   .len <- length(x)
   if (.len == 1L) {} else if (.len == 2L) {
@@ -2380,6 +2412,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       identical(x[[1]], quote(`lead0`))
   ) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv = isEnv))
+  } else if (identical(x[[1]], quote(`diff`)) || identical(x[[1]], quote(`diff0`))) {
+    return(.rxToSEDiff(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (
     identical(x[[1]], quote(`delay`)) ||
       identical(x[[1]], quote(`rxDelayD`)) ||

@@ -125,7 +125,8 @@
 
 - When a variable read by `lag()` is assigned more than once, the symengine
   form of the model (`rxS()`, and the models built from it) now computes an lhs
-  that reads it with the value at that point, not the final value (#1435).
+  that reads it (directly or through `diff()`) with the value at that point,
+  not the final value (#1435).
 
 - A time-varying covariate (including `DV` when the model refers to it,
   as in `res <- DV - central`) no longer corrupts doses with modeled lag
