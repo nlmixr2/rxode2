@@ -58,6 +58,16 @@ rxTest({
       indLin(central) <- exp(-time)
     })
     expect_equal(rxModelVars(.il)$flags[["pkTime"]], 0L)
+    # an if/else chain that reads a state anywhere keeps the continuous time
+    .chain <- rxode2("
+      if (time > 10) cl = 3 * time
+      else if (central > 5) cl = 2 * time
+      else cl = 1
+      d/dt(central) = -cl / 30 * central
+    ")
+    expect_equal(rxModelVars(.chain)$flags[["pkTime"]], 0L)
+    .expr <- .rxPkTimeExpr(str2lang(paste0("{", rxNorm(.chain), "}")), "central")
+    expect_false("rxPkTime" %in% all.names(.expr))
   })
 
   test_that("nocb reads time in PK-type statements as the record time", {
