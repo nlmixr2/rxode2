@@ -123,6 +123,10 @@
   syntax error, and `lag(x, 0)` no longer normalizes to an empty expression
   (#1434).
 
+- When a variable read by `lag()` is assigned more than once, the symengine
+  form of the model (`rxS()`, and the models built from it) now computes an lhs
+  that reads it with the value at that point, not the final value (#1435).
+
 - A time-varying covariate (including `DV` when the model refers to it,
   as in `res <- DV - central`) no longer corrupts doses with modeled lag
   times and durations in more than one compartment.  Interpolating the
