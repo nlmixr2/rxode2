@@ -22,6 +22,29 @@ rxTest({
     expect_equal(s$w, c(20, 30, 40))
   })
 
+  test_that("a missing first covariate is filled the same with or without a dose", {
+    mod <- rxode2({
+      d/dt(central) <- -0.1 * central
+      w <- wt
+    })
+    withDose <- data.frame(
+      id = 1,
+      time = c(0, 0, 1, 2),
+      evid = c(1, 0, 0, 0),
+      amt = c(100, 0, 0, 0),
+      cmt = 1,
+      wt = c(NA, NA, 30, 40)
+    )
+    obsOnly <- withDose[-1, ]
+    obsOnly$amt <- 0
+    for (interp in c("locf", "nocb", "linear")) {
+      s1 <- rxSolve(mod, withDose, covsInterpolation = interp)
+      s2 <- rxSolve(mod, obsOnly, covsInterpolation = interp)
+      expect_equal(s2$w, s1$w)
+      expect_equal(s2$w, c(30, 30, 40))
+    }
+  })
+
   test_that("a time-zero observation keeps its endpoint with a lagged dose", {
     f <- function() {
       ini({
