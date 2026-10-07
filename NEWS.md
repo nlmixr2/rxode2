@@ -106,7 +106,27 @@
   symengine-built (`calcJac`/`calcSens`) models, where such `time` is written
   as the new reserved variable `rxPkTime` (#1429).
 
+- `dnorm()` is now supported in model syntax, with 1-3 arguments
+  (`dnorm(x, mean, sd)`) and symbolic derivatives.  In model functions
+  (`ini()`/`model()`), `dnorm()`, `pnorm()` and `qnorm()` also take R's
+  arguments by name, including `log=` for `dnorm()` and `lower.tail=`/`log.p=`
+  for `pnorm()` and `qnorm()`.
+
 ## Bug fixes
+
+- A time-varying covariate (including `DV` when the model refers to it,
+  as in `res <- DV - central`) no longer corrupts doses with modeled lag
+  times and durations in more than one compartment.  Interpolating the
+  covariate looked up neighbouring records and overwrote the compartment
+  of the dose being given, so a later infusion could be sent to the wrong
+  compartment and the amounts go negative (nlmixr2/nonmem2rx#263).
+- `qnorm()` was documented as the normal pdf; it is the normal quantile
+  function.  `qnorm(p, mean, sd)` with more than one argument can now be
+  translated to symengine (it errored before).
+
+- `rxFromSE()` now keeps the grouping of a substituted derivative that is a
+  sum or starts with a minus, so a derivative like `-(x)*dnorm(x)` is no longer
+  spliced into a product as `--(...)` or with the wrong precedence.
 
 - `rxOptExpr()` and the symengine translation no longer segfault with
   more than one thread on clang builds (CRAN's r-devel clang checks of

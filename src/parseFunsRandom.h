@@ -1,40 +1,32 @@
 // -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+static inline void handleFunctionPnormError(transFunctions *tf) {
+  if (tf->isPnorm) {
+    trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
+  } else if (!strcmp("qnorm", tf->v)) {
+    trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments qnorm(p, mean, sd)"));
+  } else {
+    trans_syntax_error_report_fn(_("'dnorm' in rxode2 takes 1-3 arguments dnorm(x, mean, sd)"));
+  }
+}
+
 static inline int handleFunctionPnorm(transFunctions *tf) {
   if ((tf->isPnorm = !strcmp("pnorm", tf->v)) ||
-      !strcmp("qnorm", tf->v)){
+      !strcmp("qnorm", tf->v) || !strcmp("dnorm", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    int bad = ii > 3;
     if (ii == 1) {
       D_ParseNode *xpn = d_get_child(tf->pn, 2);
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
+      bad = allSpaces(v2);
       /* Free(v2); */
-      if (allSpace){
-        updateSyntaxCol();
-        if (tf->isPnorm){
-          trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
-        } else {
-          trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
-        }
-      } else {
-        sAppend(&sb, "_%s1(", tf->v);
-        sAppend(&sbDt,"_%s1(", tf->v);
-        sAppend(&sbt, "%s(", tf->v);
-      }
-    } else if (ii == 2) {
-      sAppend(&sb,"_%s2(", tf->v);
-      sAppend(&sbDt,"_%s2(", tf->v);
-      sAppend(&sbt, "%s(", tf->v);
-    } else if (ii == 3) {
-      sAppend(&sb,"_%s3(", tf->v);
-      sAppend(&sbDt,"_%s3(", tf->v);
-      sAppend(&sbt, "%s(", tf->v);
-    } else {
+    }
+    if (bad) {
       updateSyntaxCol();
-      if (tf->isPnorm){
-        trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
-      } else {
-        trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
-      }
+      handleFunctionPnormError(tf);
+    } else {
+      sAppend(&sb, "_%s%d(", tf->v, ii);
+      sAppend(&sbDt,"_%s%d(", tf->v, ii);
+      sAppend(&sbt, "%s(", tf->v);
     }
     tf->i[0] = 1;// Parse next arguments
     tf->depth[0]=1;
