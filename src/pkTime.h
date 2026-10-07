@@ -47,6 +47,15 @@ static inline int pkTimeSkipLiteral(const char *s, int k) {
   return k;
 }
 
+// Is there an `else` token before s[k] (the `{` it opens)?
+static inline int pkTimeHasElse(const char *s, int k) {
+  for (int j = 0; j + 4 <= k; ++j) {
+    if (!strncmp(s + j, "else", 4) && (j == 0 || !pkTimeIdChar(s[j-1])) &&
+        !pkTimeIdChar(s[j+4])) return 1;
+  }
+  return 0;
+}
+
 typedef struct pkTimeVars {
   char **v;
   int n;
@@ -163,7 +172,7 @@ static inline int pkTimeClassify(int *isPk) {
         }
       } else if (s[k] == '{') {
         int g;
-        if (lastClosed >= 0 && strstr(s, "else") != NULL) {
+        if (lastClosed >= 0 && pkTimeHasElse(s, k)) {
           g = lastClosed; // else branch: same chain as the if it follows
         } else {
           g = nGrp++;

@@ -120,6 +120,19 @@ rxTest({
     expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
   })
 
+  test_that("`t` is read the same way as `time`", {
+    .t <- rxode2({
+      cl <- 3 * (1 + 1 * (1 - exp(-0.05 * t)))
+      d/dt(central) <- -cl / 30 * central
+      cp <- central / 30
+    })
+    .a <- rxSolve(.t, .ev,
+      covsInterpolation = "nocb",
+      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+    )
+    expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
+  })
+
   test_that("locf keeps the continuous time", {
     .des <- rxode2({
       d/dt(central) <- -3 * (1 + 1 * (1 - exp(-0.05 * time))) / 30 * central

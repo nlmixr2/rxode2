@@ -395,5 +395,23 @@ rxTest({
         as.data.frame(lagRef)
       )
     })
+
+    # ind->pkSkip (rxode2#1429): addl repeats must not end a nocb interval
+    pkMod <- rxode2({
+      cl <- 3 * (1 + 1 * (1 - exp(-0.05 * time)))
+      d/dt(central) <- -cl / 30 * central
+      cp <- central / 30
+    })
+    pkEv <- et(amt = 100, ii = 12, addl = 3) |> et(c(2, 8, 14, 20, 26, 44))
+    pkRef <- rxSolve(pkMod, pkEv, covsInterpolation = "nocb")
+    pkFile <- tempfile(fileext = ".rxbin")
+    rxSolve(pkMod, pkEv, covsInterpolation = "nocb", serializeFile = pkFile)
+
+    test_that("C-state replay keeps the nocb non-data records", {
+      expect_equal(
+        as.data.frame(cStateSolve(pkMod, .rxReadStateBundle(pkFile))),
+        as.data.frame(pkRef)
+      )
+    })
   })
 })
