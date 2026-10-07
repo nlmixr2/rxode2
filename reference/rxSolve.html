@@ -260,6 +260,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>    <span class="st">"endpointH5"</span>, <span class="st">"forwardG"</span><span class="op">)</span>,</span>
 <span>  linCmtSensH <span class="op">=</span> <span class="fl">1e-04</span>,</span>
 <span>  linCmtSensPhi <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  nonmem <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1699,6 +1700,17 @@ form row by row in the order earlier versions used.  All three are the
 same exact closed-form solution evaluated in a different order, so they
 can differ in the last few digits; use <code>FALSE</code> to reproduce earlier
 results digit for digit.</p></dd>
+
+
+<dt id="arg-nonmem">nonmem<a class="anchor" aria-label="anchor" href="#arg-nonmem"></a></dt>
+<dd><p>Boolean that when <code>TRUE</code> evaluates statements that do not
+depend on a state (like NONMEM's <code>$PK</code>) with <code>time</code> set to the time of
+the data record that ends the interval being integrated, the way NONMEM
+calls <code>$PK</code> at its records.  <code>d/dt()</code> and state-dependent statements keep
+the continuous time (like <code>$DES</code>).  <code>addl</code> repeats, infusion ends,
+lagged doses and doses added while solving do not end an interval;
+<code>mtime()</code> times do.  Covariate interpolation is still set by
+<code>covsInterpolation</code>.  By default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
