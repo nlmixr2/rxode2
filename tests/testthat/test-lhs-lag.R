@@ -189,9 +189,13 @@ rxTest({
     expect_equal(
       s$..lhs,
       c(
-        "c0=0.1*central", "rx_lagv1_c0=c0", "c1=2*rx_lagv1_c0+lag(c0)",
-        "c0=3*rx_lagv1_c0", "rx_lagv2_c0=c0",
-        "c2=2*rx_lagv1_c0+rx_lagv2_c0+lag(c0)", "c0=1+rx_lagv2_c0",
+        "c0=0.1*central",
+        "rx_lagv1_c0=c0",
+        "c1=2*rx_lagv1_c0+lag(c0)",
+        "c0=3*rx_lagv1_c0",
+        "rx_lagv2_c0=c0",
+        "c2=2*rx_lagv1_c0+rx_lagv2_c0+lag(c0)",
+        "c0=1+rx_lagv2_c0",
         "cp=4*rx_lagv1_c0+rx_lagv2_c0+3*lag(c0)"
       )
     )
