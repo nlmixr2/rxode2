@@ -141,7 +141,7 @@ rxTest({
       ld0 <- lead0(time)
       l02 <- lag0(time, 2)
     })
-    ev <- et(c(0, 1, 3, 7)) %>% et(id = 1:2)
+    ev <- et(c(0, 1, 3, 7)) |> et(id = 1:2)
     r <- rxSolve(m, ev, returnType = "data.frame")
     for (.id in 1:2) {
       .s <- r[r$id == .id, ]
