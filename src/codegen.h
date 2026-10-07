@@ -285,6 +285,29 @@ static inline void printParamLags(char *buf, int *j, int i) {
   j[0]=j[0]+1;
 }
 
+// lag()/lead()/diff()/first()/last() of time: the time of another record of
+// the current subject (NA outside the records or on the evid=9 start record)
+static inline void printTimeLags(void) {
+  if (!tb.lagTime) return;
+  sAppend(&sbOut, "#define _rxRecTime(k) (((k) < 0 || (k) >= (&_solveData->subjects[_cSub])->n_all_times || getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(k)]) == 9) ? NA_REAL : getAllTimes((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(k)]))\n");
+  sAppend(&sbOut, "#define _rxRecTimeIdx (&_solveData->subjects[_cSub])->idx\n");
+  sAppend(&sbOut, "#define _rxRecTime0(k) (ISNA(_rxRecTime(k)) ? 0.0 : _rxRecTime(k))\n");
+  sAppend(&sbOut, "#define lag_t1(x) _rxRecTime(_rxRecTimeIdx - 1)\n");
+  sAppend(&sbOut, "#define lag_t(x,y) _rxRecTime(_rxRecTimeIdx - (y))\n");
+  sAppend(&sbOut, "#define lead_t1(x) _rxRecTime(_rxRecTimeIdx + 1)\n");
+  sAppend(&sbOut, "#define lead_t(x,y) _rxRecTime(_rxRecTimeIdx + (y))\n");
+  sAppend(&sbOut, "#define diff_t1(x) ((x) - _rxRecTime(_rxRecTimeIdx - 1))\n");
+  sAppend(&sbOut, "#define diff_t(x,y) ((x) - _rxRecTime(_rxRecTimeIdx - (y)))\n");
+  sAppend(&sbOut, "#define first_t1(x) _rxRecTime(((&_solveData->subjects[_cSub])->n_all_times > 0 && getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[0]) == 9) ? 1 : 0)\n");
+  sAppend(&sbOut, "#define last_t1(x) _rxRecTime((&_solveData->subjects[_cSub])->n_all_times - 1)\n");
+  sAppend(&sbOut, "#define lag0_t1(x) _rxRecTime0(_rxRecTimeIdx - 1)\n");
+  sAppend(&sbOut, "#define lag0_t(x,y) _rxRecTime0(_rxRecTimeIdx - (y))\n");
+  sAppend(&sbOut, "#define lead0_t1(x) _rxRecTime0(_rxRecTimeIdx + 1)\n");
+  sAppend(&sbOut, "#define lead0_t(x,y) _rxRecTime0(_rxRecTimeIdx + (y))\n");
+  sAppend(&sbOut, "#define diff0_t1(x) ((x) - _rxRecTime0(_rxRecTimeIdx - 1))\n");
+  sAppend(&sbOut, "#define diff0_t(x,y) ((x) - _rxRecTime0(_rxRecTimeIdx - (y)))\n");
+}
+
 static inline void printLhsLag(char *buf, int *j, int i) {
   // *j is the lhs ordinal (matches the _lhs[_LHS_*_] write-back and the
   // sticky-variable _PL[_LHS_*_] load).  _PL (= _ind->lhs) holds the PREVIOUS

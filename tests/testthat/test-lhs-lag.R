@@ -122,4 +122,55 @@ rxTest({
     expect_equal(r$pw, c(NA, 70, 72, 75))
     expect_equal(r$dw, c(NA, 2, 3, 5))
   })
+
+  test_that("lag()/diff()/lead() of time use the record times (#1434)", {
+    m <- rxode2({
+      d/dt(a) <- -0.1 * a
+      l1 <- lag(time)
+      l2 <- lag(t)
+      l3 <- lag(time, 2)
+      l0 <- lag0(time)
+      d1 <- diff(time)
+      ld <- lead(time)
+      f1 <- first(time)
+      la <- last(time)
+      lz <- lag(time, 0)
+      d2 <- diff(time, 2)
+      d0 <- diff0(time)
+      ld2 <- lead(time, 2)
+      ld0 <- lead0(time)
+      l02 <- lag0(time, 2)
+    })
+    ev <- et(c(0, 1, 3, 7)) |> et(id = 1:2)
+    r <- rxSolve(m, ev, returnType = "data.frame")
+    for (.id in 1:2) {
+      .s <- r[r$id == .id, ]
+      expect_equal(.s$l1, c(NA, 0, 1, 3))
+      expect_equal(.s$l2, c(NA, 0, 1, 3))
+      expect_equal(.s$l3, c(NA, NA, 0, 1))
+      expect_equal(.s$l0, c(0, 0, 1, 3))
+      expect_equal(.s$d1, c(NA, 1, 2, 4))
+      expect_equal(.s$ld, c(1, 3, 7, NA))
+      expect_equal(.s$f1, rep(0, 4))
+      expect_equal(.s$la, rep(7, 4))
+      expect_equal(.s$lz, c(0, 1, 3, 7))
+      expect_equal(.s$d2, c(NA, NA, 3, 6))
+      expect_equal(.s$d0, c(0, 1, 2, 4))
+      expect_equal(.s$ld2, c(3, 7, NA, NA))
+      expect_equal(.s$ld0, c(1, 3, 7, 0))
+      expect_equal(.s$l02, c(0, 0, 0, 1))
+    }
+    expect_true(grepl("l1=lag(t);", rxNorm(m), fixed = TRUE))
+    expect_true(grepl("lz=t;", rxNorm(m), fixed = TRUE))
+  })
+
+  test_that("lag(x, 0) normalizes to x", {
+    expect_true(grepl("l=cv;", rxNorm(rxode2("cv=x;l=lag(cv,0)")), fixed = TRUE))
+  })
+
+  test_that("lag() of a reserved name is a syntax error, not a crash (#1434)", {
+    expect_error(rxode2("y = lag(amt)"), "syntax errors")
+    expect_error(rxode2("y = lag(tlast)"), "syntax errors")
+    expect_error(rxode2("y = diff(M_PI)"), "syntax errors")
+  })
 })
