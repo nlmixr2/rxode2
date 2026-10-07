@@ -947,7 +947,7 @@ rxGetModel <- function(
         stop("sensitivities do not make sense for models without ODEs", call. = FALSE)
       }
       .stateInfo <- .rxGenFunState(.ret)
-      .s <- .rxLoadPrune(.ret, FALSE)
+      .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
       .rxJacobian(.s)
       ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*
@@ -1066,7 +1066,7 @@ rxGetModel <- function(
     } else {
       ## calcSens=FALSE removes the sensitivity equations.
       .stateInfo <- .rxGenFunState(.ret)
-      .s <- .rxLoadPrune(.ret, FALSE)
+      .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
       .sensStrip <- .rxSensStrippable(.ret)
       if (length(.sensStrip) != 0) {
@@ -1141,7 +1141,7 @@ rxGetModel <- function(
         stop("Jacobians do not make sense for models without ODEs", call. = FALSE)
       }
       .stateInfo <- .rxGenFunState(.ret)
-      .s <- .rxLoadPrune(.ret, FALSE)
+      .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
       .rxJacobian(.s)
       .tmp1 <- .s$..jacobian
@@ -1171,7 +1171,7 @@ rxGetModel <- function(
     } else {
       ## remove Jacobian
       .stateInfo <- .rxGenFunState(.ret)
-      .s <- .rxLoadPrune(.ret, FALSE)
+      .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
       .tmp2 <- .s$..lhs
       if (collapseModel) {

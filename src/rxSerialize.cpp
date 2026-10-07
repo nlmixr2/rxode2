@@ -20,7 +20,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 8u;
+static const uint32_t rxSerializeFormatVer = 9u;
+// Format 9 appended each subject's ind->pkSkip (the records that are not data
+// records, nlmixr2/rxode2#1429) after infPair; empty when NULL.
 // Format 8 appended each subject's ind->infPair (the fixed infusion pairing
 // etTrans() records, nlmixr2/rxode2#1348) after linH; empty when NULL.
 // Format 7 added op->linCmtOriginMask after linCmtLagMask (read only when
@@ -473,6 +475,11 @@ SEXP rxSaveState_() {
     sWriteIntBlob(f, ind->infPair,
                   (uint64_t)(ind->infPair != NULL && ind->n_all_times_orig > 0 ?
                              ind->n_all_times_orig : 0), "infPair");
+
+    // pkSkip: n_all_times_orig ints, or none when NULL
+    sWriteIntBlob(f, ind->pkSkip,
+                  (uint64_t)(ind->pkSkip != NULL && ind->n_all_times_orig > 0 ?
+                             ind->n_all_times_orig : 0), "pkSkip");
   }
 
   // -- Section 9: op->indLin convergence set (format 3+) --------------------
@@ -1104,6 +1111,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   // infPair blobs, gathered into one _globals.ginfPair slab after the loop
   std::vector<int> infPairAll;
   std::vector<int64_t> infPairOff(nsub, -1);
+  // pkSkip blobs, gathered the same way into _globals.gpkSkip
+  std::vector<int> pkSkipAll;
+  std::vector<int64_t> pkSkipOff(nsub, -1);
 
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &inds[si];
@@ -1230,6 +1240,21 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       free(buf);
     }
 
+    if (fmt >= 9u) {
+      uint64_t n;
+      int *buf = sReadIntBlob(f, &n, "pkSkip");
+      if (n > 0) {
+        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
+          free(buf);
+          (Rf_error)("rxRestoreState: pkSkip size mismatch (file: %llu, expected: %d)",
+                     (unsigned long long)n, ind->n_all_times_orig);
+        }
+        pkSkipOff[si] = (int64_t)pkSkipAll.size();
+        pkSkipAll.insert(pkSkipAll.end(), buf, buf + n);
+      }
+      free(buf);
+    }
+
     // timeThread: not restored (recomputed from ix by solver)
     // Allocate a private timeThread buffer for this subject
     if (nat > 0) {
@@ -1264,6 +1289,16 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     std::copy(infPairAll.begin(), infPairAll.end(), _globals.ginfPair);
     for (uint32_t si = 0; si < nsub; si++) {
       if (infPairOff[si] >= 0) inds[si].infPair = _globals.ginfPair + infPairOff[si];
+    }
+  }
+
+  if (!pkSkipAll.empty()) {
+    if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
+    _globals.gpkSkip = (int *)malloc(pkSkipAll.size() * sizeof(int));
+    if (!_globals.gpkSkip) (Rf_error)("rxRestoreState: out of memory for pkSkip");
+    std::copy(pkSkipAll.begin(), pkSkipAll.end(), _globals.gpkSkip);
+    for (uint32_t si = 0; si < nsub; si++) {
+      if (pkSkipOff[si] >= 0) inds[si].pkSkip = _globals.gpkSkip + pkSkipOff[si];
     }
   }
 

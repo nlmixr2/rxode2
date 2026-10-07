@@ -516,7 +516,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
   doConst = TRUE,
   promoteLinSens = TRUE,
   fullModel = FALSE,
-  addProp = c("combined2", "combined1")
+  addProp = c("combined2", "combined1"),
+  pkTime = FALSE
 ) {
   addProp <- match.arg(addProp)
   ## if (fullModel) {
@@ -534,7 +535,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   ## } else {
   ##   .malert("loading into {.pkg symengine} environment...")
   ## }
-  .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens)
+  .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens, pkTime = pkTime)
   if (length(.captures) > 0L) {
     .newmod$..capturedEvid <- .captures
     .newmod$..restoreLines <- .restoreAdaptiveDosing(.captures)

@@ -414,6 +414,8 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
                              double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
+// record time PK-type statements read under nocb (rxode2#1429)
+typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
 
 /* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
    plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational

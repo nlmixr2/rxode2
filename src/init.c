@@ -320,6 +320,7 @@ void rxOptionsIni(void);
 /* void rxOptionsIniFocei(void); */
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+double _rxPkTime(double t, unsigned int id, rx_solve *rx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 /* rxRegisterParLoader / rxRemoveParLoader + t_rxParLoader come from rxode2.h;
    they are exported to downstream packages via the function-pointer table
@@ -1175,6 +1176,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "_rxPkTime", (DL_FUNC) &_rxPkTime);
   R_RegisterCCallable("rxode2", "rxCallDydtForce", (DL_FUNC) &rxCallDydtForce);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);

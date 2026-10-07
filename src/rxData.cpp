@@ -2003,6 +2003,8 @@ extern "C" void gFree(){
   _globals.gevid=NULL;
   if (_globals.ginfPair != NULL) free(_globals.ginfPair);
   _globals.ginfPair=NULL;
+  if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
+  _globals.gpkSkip=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
@@ -4429,6 +4431,23 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         _globals.ginfPair[e0] = s0 - e0;
       }
     }
+    // rows that are not data records, for PK-type time with nonmem=TRUE
+    // (rxode2#1429), as 1-based row numbers
+    if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
+    _globals.gpkSkip = NULL;
+    SEXP pkSkipS = Rf_getAttrib(ev1, Rf_install("rxPkSkip"));
+    if (TYPEOF(pkSkipS) == INTSXP && Rf_length(pkSkipS) > 0) {
+      int nr = evid.size();
+      _globals.gpkSkip = (int*)calloc(nr, sizeof(int));
+      if (_globals.gpkSkip == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load record types"));
+      }
+      int *ip = INTEGER(pkSkipS);
+      for (int k = 0; k < Rf_length(pkSkipS); ++k) {
+        if (ip[k] >= 1 && ip[k] <= nr) _globals.gpkSkip[ip[k] - 1] = 1;
+      }
+    }
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -4636,6 +4655,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->dose             = &_globals.gamt[startRow];
           ind->ii               = &_globals.gii[startRow];
           ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
+          ind->pkSkip           = _globals.gpkSkip ? &_globals.gpkSkip[startRow] : NULL;
           ind->cov_ptr          = groupCov;
           ind->n_all_times      = groupNAll;
           ind->n_all_times_orig = groupNAll;
@@ -4778,6 +4798,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->dose           = &_globals.gamt[i];
           ind->ii             = &_globals.gii[i];
           ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
+          ind->pkSkip         = _globals.gpkSkip ? &_globals.gpkSkip[i] : NULL;
           lasti = i;
 
           hmax1m=0.0;
@@ -5520,6 +5541,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->nevid2 = indS.nevid2;
             ind->ii   = &(indS.ii[0]);
             ind->infPair = indS.infPair;
+            ind->pkSkip = indS.pkSkip;
             ind->evid =&(indS.evid[0]);
             ind->dv    = &(indS.dv[0]);
             ind->limit = &(indS.limit[0]);
@@ -6582,6 +6604,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // so the two cannot drift: 2 = the closed-form transition matrix.
     rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
       asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
+    rx->nonmem = (Rf_length(rxControl) > Rxc_nonmem) ?
+      (int)asBool(rxControl[Rxc_nonmem], "nonmem") : 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

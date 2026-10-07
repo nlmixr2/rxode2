@@ -143,6 +143,7 @@
 #define Rxc_priorOmegaEl 139
 #define Rxc_priorSigmaEl 140
 #define Rxc_linCmtSensPhi 141
+#define Rxc_nonmem 142
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -196,6 +197,7 @@
 #define RxMvFlag_evid_ 14
 #define RxMvFlag_hasDelay 15
 #define RxMvFlag_linCmtBraw 16
+#define RxMvFlag_pkTime 17
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

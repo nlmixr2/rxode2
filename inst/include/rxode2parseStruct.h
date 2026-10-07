@@ -524,6 +524,12 @@ struct rx_solving_options_ind_s {
   // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
   // first n_all_times_orig records; pushed doses are never recorded here.
   int    *infPair;
+  // 1 for a record that is not a data record (an addl repeat or a record a
+  // dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
+  // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
+  // records.
+  int    *pkSkip;
 };
 
 typedef struct rx_solve_s {
@@ -634,6 +640,9 @@ typedef struct rx_solve_s {
   int *splitBolusInfusion;
   int splitBolusInfusionN;
   rx_fn_pointers fns;
+  // rxControl(nonmem=TRUE): PK-type statements read the record time
+  // (_rxPkTime(), rxode2#1429)
+  int nonmem;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

@@ -158,6 +158,20 @@ void _rxode2parse_unprotect(void) {
 }
 
 #include "codegen2.h"
+#include "pkTime.h"
+
+// Lines that read `time` as the record time (see pkTime.h); NULL when
+// the function being generated never does.
+static int *_pkLine = NULL;
+
+static inline void appendModelLine(int i, const char *line) {
+  if (_pkLine != NULL && _pkLine[i]) {
+    sAppendN(&sbOut, "  ", 2);
+    pkTimeAppendLine(&sbOut, line);
+  } else {
+    sAppend(&sbOut, "  %s", line);
+  }
+}
 
 SEXP _rxode2_rxQs(SEXP);
 SEXP _rxode2_rxQr(SEXP);
@@ -237,6 +251,7 @@ void print_aux_info(const char *prefix, const char *libname,
 extern SEXP getRxode2ParseDf(void);
 
 void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2) {
+  _pkLine = NULL;
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   _rxode2parse_packages = getRxode2ParseGetPointerAssignment();
   if (show_ode == ode_printaux) {
@@ -549,6 +564,17 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       } else {
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
+      // _tPK: the time PK-type statements read (pkTime.h); only the functions
+      // the integrator calls between records read the record time
+      _pkLine = NULL;
+      if (show_ode == ode_dydt || show_ode == ode_jac ||
+          show_ode == ode_mexp || show_ode == ode_indLinVec) {
+        int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+        if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
+        if (_pkLine != NULL) {
+          sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
+        }
+      }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != ode_past){
         // past() history is a function of t and parameters only (no states); its
@@ -626,7 +652,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             // hoist delay() into a common-subexpression assignment -- emitting it
             // into _rxPast would recurse (_rxDelay -> _rxPast -> _rxDelay ...).
             if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
-              sAppend(&sbOut, "  %s", _taLine);
+              appendModelLine(i, _taLine);
             }
           }
           break;
@@ -637,7 +663,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
               tb.ix = sbPm.lProp[i];
               if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSstr ||
                   tb.lh[tb.ix] == isLHSparam){
-                sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+                appendModelLine(i, show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
               }
             }
           }
@@ -682,7 +708,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           break;
         case TLOGIC:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
-            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
+            appendModelLine(i, (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
         case TMAT0:

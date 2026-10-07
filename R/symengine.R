@@ -4205,11 +4205,16 @@ local({
 #'
 #' @param x rxode2 object
 #' @param doConst Load constants into the environment as well.
+#' @param pkTime When `TRUE`, `time` in statements that do not depend on a
+#'   state is loaded as `rx_time_pk`, defined by `rx_time_pk~t` in `..lhs0`,
+#'   so it stays separate from the `time` in `d/dt()` after those statements
+#'   are inlined; `rxSolve(..., nonmem = TRUE)` then reads it as the record
+#'   time.  Only for callers that write `..lhs0` into the model they build.
 #' @inheritParams rxToSE
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
-rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame()) {
+rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(), pkTime = FALSE) {
   .udfEnvLocal(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
@@ -4302,14 +4307,122 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   })
   .rxSEstate$promoteLinB <- promoteLinSens
   .expr <- eval(parse(text = paste0("quote({", rxNorm(.mv), "})")))
+  .pkTime <- FALSE
+  if (pkTime && isTRUE(.mv$flags["pkTime"] == 1L)) {
+    .expr <- .rxPkTimeExpr(.expr, rxState(.mv))
+    .pkTime <- isTRUE(attr(.expr, "pkTime"))
+    if (.pkTime) {
+      assign("rx_time_pk", symengine::Symbol("rx_time_pk"), envir = .env)
+    }
+  }
   # variables referenced inside lag()/lead()/diff()/first()/last() must be kept
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
   # the history function still references a defined variable in the output model
   .env$..laggedVars <- .rxCollectLaggedVars(.expr)
   # loads the model into .env by side effect; the returned text is not used
   .rxToSE(.expr, envir = .env)
+  if (.pkTime) {
+    .env$..lhs0 <- c(c(rx_time_pk = "rx_time_pk~t"), .env$..lhs0)
+  }
   class(.env) <- "rxS"
   return(.env)
+}
+
+#' Separate the time PK-type statements read
+#'
+#' With `rxSolve(..., nonmem = TRUE)` a statement that does not depend on a
+#' state reads `time` as the record time (rxode2#1429).  Loading a model into
+#' symengine inlines those statements into `d/dt()`, so their `time` is
+#' written as `rx_time_pk` (defined as `t`), which keeps that meaning wherever
+#' it lands.  Mirrors `pkTimeClassify()` in `src/pkTime.h`.
+#'
+#' @param expr a quoted model, `quote({...})`
+#' @param state the model states
+#' @return `expr` with `t`/`time` replaced by `rx_time_pk` in PK-type
+#'   statements; attribute `pkTime` is `TRUE` when any was replaced
+#' @author Matthew Fidler
+#' @noRd
+.rxPkTimeExpr <- function(expr, state) {
+  .stmts <- as.list(expr)[-1]
+  .any <- FALSE
+  .isAssign <- function(e) {
+    is.call(e) && is.name(e[[1]]) && as.character(e[[1]]) %in% c("=", "<-", "~")
+  }
+  .isBlock <- function(e) {
+    is.call(e) && is.name(e[[1]]) && as.character(e[[1]]) %in% c("if", "while", "{")
+  }
+  .linFns <- c("linCmt", "linCmtA", "linCmtB")
+  # variables a statement assigns
+  .lhs <- function(e) {
+    if (.isAssign(e)) {
+      if (is.name(e[[2]])) {
+        return(as.character(e[[2]]))
+      }
+      return(character(0))
+    }
+    if (.isBlock(e)) {
+      return(unique(unlist(lapply(as.list(e)[-1], .lhs))))
+    }
+    character(0)
+  }
+  # does a statement depend on a state, given the state-dependent variables?
+  .dep <- function(e, dep) {
+    if (.isAssign(e)) {
+      # d/dt(), indLin(), dosing properties, ...
+      if (!is.name(e[[2]])) {
+        return(TRUE)
+      }
+      .rhs <- e[[3]]
+      return(any(all.vars(.rhs) %in% dep) || any(all.names(.rhs) %in% .linFns))
+    }
+    if (.isBlock(e)) {
+      if (any(all.vars(e) %in% dep) || any(all.names(e) %in% .linFns)) {
+        return(TRUE)
+      }
+      return(any(vapply(as.list(e)[-1], .dep, logical(1), dep = dep)))
+    }
+    is.call(e) && any(all.vars(e) %in% dep)
+  }
+  .depVars <- state
+  .isDep <- rep(FALSE, length(.stmts))
+  repeat {
+    .isDep <- vapply(.stmts, .dep, logical(1), dep = .depVars)
+    .new <- unique(c(.depVars, unlist(lapply(.stmts[.isDep], .lhs))))
+    if (length(.new) == length(.depVars)) {
+      break
+    }
+    .depVars <- .new
+  }
+  .sub <- function(e) {
+    if (is.name(e)) {
+      if (identical(e, quote(t)) || identical(e, quote(time))) {
+        .any <<- TRUE
+        return(quote(rx_time_pk))
+      }
+      return(e)
+    }
+    if (is.call(e)) {
+      for (.i in seq_along(e)[-1]) {
+        if (!is.null(e[[.i]])) e[[.i]] <- .sub(e[[.i]])
+      }
+    }
+    e
+  }
+  for (.i in seq_along(.stmts)) {
+    .e <- .stmts[[.i]]
+    if (.isDep[.i] || !(.isAssign(.e) || .isBlock(.e))) {
+      next
+    }
+    if (.isAssign(.e)) {
+      .e[[3]] <- .sub(.e[[3]])
+    } else {
+      .e <- .sub(.e)
+    }
+    .stmts[[.i]] <- .e
+  }
+  .ret <- as.call(c(list(quote(`{`)), .stmts))
+  attr(.ret, "pkTime") <- .any
+  .ret
 }
 
 #' Collect the variables referenced inside history functions (lag/lead/diff/...)

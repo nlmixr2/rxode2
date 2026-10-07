@@ -1786,6 +1786,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   limit.reserve(resSize);
   std::vector<int> idxInput;
   idxInput.reserve(resSize);
+  // 1 for a record that is not a data record (an addl repeat or a record a
+  // dose expands to); only read for PK-type time with nonmem=TRUE (rxode2#1429)
+  std::vector<char> recImplied;
+  recImplied.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
   std::vector<int> infClassic;               // see etTransNoteInfClassic()
   std::vector<int> cmtF; // Final compartment
@@ -2097,6 +2101,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         limit.push_back(NA_REAL);
 
         idxInput.push_back(-1);
+        recImplied.push_back(0);
       }
       nid++;
     }
@@ -2414,6 +2419,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
 
         idxInput.push_back(i);
+        recImplied.push_back(0);
         cevid = -1;
       }
       break;
@@ -2470,6 +2476,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cens.push_back(0);
 
         idxInput.push_back(i);
+        recImplied.push_back(0);
         ndose++;
         // + cmt needs to turn on cmts.
         // This gives a zero dose to cmt
@@ -2486,6 +2493,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cens.push_back(0);
 
           idxInput.push_back(i);
+          recImplied.push_back(0);
           ndose++;
         }
         cevid = -1;
@@ -2517,6 +2525,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cens.push_back(0);
 
       idxInput.push_back(i);
+      recImplied.push_back(0);
       ndose++;
       cevid = -1;
       break;
@@ -2559,6 +2568,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cens.push_back(0);
 
       idxInput.push_back(-1);
+      recImplied.push_back(1);
       ndose++;
       // Now use the transformed compartment
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
@@ -2683,8 +2693,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           // only does when addlKeepsCov asks for it
           if (rep == 0) {
             idxInput.push_back(k == 0 ? (int)i : -1);
+            recImplied.push_back(k == 0 ? 0 : 1);
           } else {
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
+            recImplied.push_back(1);
           }
           ndose++;
         }
@@ -2762,6 +2774,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     std::vector<double> limit2;
     std::vector<int> cens2;
     std::vector<int> idxInput2;
+    std::vector<char> recImplied2;
     id2.reserve(id.size());
     evid2.reserve(evid.size());
     cmtF2.reserve(cmtF.size());
@@ -2772,6 +2785,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     limit2.reserve(limit.size());
     cens2.reserve(cens.size());
     idxInput2.reserve(idxInput.size());
+    recImplied2.reserve(recImplied.size());
     // where each record's copies land, to carry infPairs across
     std::vector<int> newFirst(evid.size(), 0), newCount(evid.size(), 0);
     ndose = 0;
@@ -2810,6 +2824,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         limit2.push_back(limit[j]);
         cens2.push_back(cens[j]);
         idxInput2.push_back(idxInput[j]);
+        recImplied2.push_back(recImplied[j]);
         mxCmt = max2(mxCmt, cmtF[j]);
         newCount[j] = 1;
         continue;
@@ -2840,6 +2855,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           limit2.push_back(limit[j]);
           cens2.push_back(cens[j]);
           idxInput2.push_back(idxInput[j]);
+          recImplied2.push_back(recImplied[j]);
           mxCmt = max2(mxCmt, curCmt);
         };
         int promotion = canPromote ? promote[k] : 0;
@@ -2849,6 +2865,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           int stopFlag = promotion == EVIDF_MODEL_DUR_ON ? EVIDF_MODEL_DUR_OFF : EVIDF_MODEL_RATE_OFF;
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, promotion));
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, stopFlag));
+          recImplied2.back() = 1;
           hasModeledRateDur = true;
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
@@ -2881,6 +2898,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     limit.swap(limit2);
     cens.swap(cens2);
     idxInput.swap(idxInput2);
+    recImplied.swap(recImplied2);
   }
   if (hasReset && isSorted) {
     // Here EVID=3 resets time
@@ -2956,6 +2974,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cens.push_back(0);
 
             idxInput.push_back(-1);
+            recImplied.push_back(0);
           }
         }
       }
@@ -3396,9 +3415,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   int maxItemsPerId = 0;
   int curItems = 0;
+  // Output rows that are not data records, for a model whose PK-type
+  // statements read `time` (rxode2#1429)
+  std::vector<int> pkSkipRows;
+  IntegerVector mvFlags = mv[RxMv_flags];
+  bool needPkSkip = mvFlags.size() > RxMvFlag_pkTime &&
+    mvFlags[RxMvFlag_pkTime] != 0 && recImplied.size() == idxInput.size();
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
+      if (needPkSkip && recImplied[idxOutput[i]]) pkSkipRows.push_back(jj + 1);
       outId[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]) {
         maxItemsPerId = max2(curItems, maxItemsPerId);
@@ -3807,6 +3833,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   if (infPairAttr.size() > 0) {
     Rf_setAttrib(lstF, Rf_install("rxInfPair"), infPairAttr);
+  }
+  if (pkSkipRows.size() > 0) {
+    std::reverse(pkSkipRows.begin(), pkSkipRows.end());
+    Rf_setAttrib(lstF, Rf_install("rxPkSkip"), wrap(pkSkipRows));
   }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);
