@@ -46,7 +46,7 @@ static inline SEXP calcSLinCmt(void) {
   {
     // PK-type statements read `time` as the nocb record time (rxode2#1429)
     int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
-    INTEGER(sLinCmt)[17] = pkTimeClassify(pkLine) > 0;
+    INTEGER(sLinCmt)[17] = (pkTimeClassify(pkLine) > 0 || tb.pkTimeSym);
   }
 
   SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 18));

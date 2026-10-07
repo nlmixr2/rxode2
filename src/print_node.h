@@ -80,6 +80,18 @@ static inline int nodeTime(char *value) {
   return 0;
 }
 
+// rxPkTime: the nocb record time PK-type statements read (rxode2#1429); what
+// rxS() writes for `time` in a PK-type statement so it survives inlining
+static inline int nodePkTime(char *value) {
+  if (!strcmp("rxPkTime", value)) {
+    aAppendN("_tPK", 4);
+    sAppendN(&sbt, "rxPkTime", 8);
+    tb.pkTimeSym = 1;
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeCmt(char *value) {
   if (!strcmp("CMT",value)){
     aAppendN("_CMT", 4);

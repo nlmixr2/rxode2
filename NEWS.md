@@ -97,6 +97,15 @@
   packages (like nlmixr2) registered S3 methods on rxode2 generics, about 60%
   of an evaluation-only FOCEi fit (#1425).
 
+- With `covsInterpolation = "nocb"`, statements that do not depend on a
+  state (PK-type values) now read `time` as the time of the data record that
+  ends the interval being integrated, like `TIME` in NONMEM's `$PK`; `d/dt()`
+  and state-dependent statements keep the continuous time.  `addl` repeats,
+  infusion ends, lagged and run-time doses do not end an interval, while
+  `mtime()` times do.  This also holds for `linCmt()`, `matExp()` and
+  symengine-built (`calcJac`/`calcSens`) models, where such `time` is written
+  as the new reserved variable `rxPkTime` (#1429).
+
 ## Bug fixes
 
 - `rxOptExpr()` and the symengine translation no longer segfault with

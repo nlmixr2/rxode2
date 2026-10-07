@@ -399,7 +399,10 @@
 #' * `"locf"` -- Last observation carried forward (the default).
 #'
 #' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
-#'       that NONMEM uses.
+#'       that NONMEM uses.  Statements that do not depend on a state (like
+#'       NONMEM's `$PK`) also read `time` as the time of the record that
+#'       ends the current interval; `d/dt()` and state-dependent statements
+#'       keep the continuous time.
 #'
 #' * `"midpoint"` Last observation carried forward to midpoint; Next observation
 #'   carried backward to midpoint.

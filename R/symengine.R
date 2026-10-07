@@ -4205,7 +4205,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
     "rx__PTR__",
     "mixnum",
     "mixest",
-    "mixunif"
+    "mixunif",
+    "rxPkTime"
   )
 
   ## default lambda/yj values
@@ -4240,6 +4241,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   })
   .rxSEstate$promoteLinB <- promoteLinSens
   .expr <- eval(parse(text = paste0("quote({", rxNorm(.mv), "})")))
+  if (isTRUE(.mv$flags["pkTime"] == 1L)) {
+    .expr <- .rxPkTimeExpr(.expr, rxState(.mv))
+  }
   # variables referenced inside lag()/lead()/diff()/first()/last() must be kept
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
   # the history function still references a defined variable in the output model
@@ -4248,6 +4252,87 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .rxToSE(.expr, envir = .env)
   class(.env) <- "rxS"
   return(.env)
+}
+
+#' Mark the time PK-type statements read as `rxPkTime`
+#'
+#' Under `covsInterpolation = "nocb"` a statement that does not depend on a
+#' state reads `time` as the record time (rxode2#1429).  Loading a model into
+#' symengine inlines those statements into `d/dt()`, so their `time` is written
+#' as `rxPkTime`, which keeps that meaning wherever it lands.  Mirrors
+#' `pkTimeClassify()` in `src/pkTime.h`.
+#'
+#' @param expr a quoted model, `quote({...})`
+#' @param state the model states
+#' @return `expr` with `t`/`time` replaced by `rxPkTime` in PK-type statements
+#' @author Matthew Fidler
+#' @noRd
+.rxPkTimeExpr <- function(expr, state) {
+  .stmts <- as.list(expr)[-1]
+  .isAssign <- function(e) {
+    is.call(e) && (identical(e[[1]], quote(`=`)) || identical(e[[1]], quote(`<-`)) ||
+      identical(e[[1]], quote(`~`)))
+  }
+  .isBlock <- function(e) {
+    is.call(e) && (identical(e[[1]], quote(`if`)) || identical(e[[1]], quote(`while`)) ||
+      identical(e[[1]], quote(`{`)))
+  }
+  .linFns <- c("linCmt", "linCmtA", "linCmtB")
+  # variables a statement assigns
+  .lhs <- function(e) {
+    if (.isAssign(e)) {
+      if (is.name(e[[2]])) return(as.character(e[[2]]))
+      return(character(0))
+    }
+    if (.isBlock(e)) {
+      return(unique(unlist(lapply(as.list(e)[-1], .lhs))))
+    }
+    character(0)
+  }
+  # does a statement depend on a state, given the state-dependent variables?
+  .dep <- function(e, dep) {
+    if (.isAssign(e)) {
+      if (!is.name(e[[2]])) return(TRUE) # d/dt(), indLin(), properties, ...
+      .rhs <- e[[3]]
+      return(any(all.vars(.rhs) %in% dep) || any(all.names(.rhs) %in% .linFns))
+    }
+    if (.isBlock(e)) {
+      if (any(all.vars(e) %in% dep) || any(all.names(e) %in% .linFns)) return(TRUE)
+      return(any(vapply(as.list(e)[-1], .dep, logical(1), dep = dep)))
+    }
+    is.call(e) && any(all.vars(e) %in% dep)
+  }
+  .depVars <- state
+  .isDep <- rep(FALSE, length(.stmts))
+  repeat {
+    .isDep <- vapply(.stmts, .dep, logical(1), dep = .depVars)
+    .new <- unique(c(.depVars, unlist(lapply(.stmts[.isDep], .lhs))))
+    if (length(.new) == length(.depVars)) break
+    .depVars <- .new
+  }
+  .sub <- function(e) {
+    if (is.name(e)) {
+      if (identical(e, quote(t)) || identical(e, quote(time))) return(quote(rxPkTime))
+      return(e)
+    }
+    if (is.call(e)) {
+      for (.i in seq_along(e)[-1]) {
+        if (!is.null(e[[.i]])) e[[.i]] <- .sub(e[[.i]])
+      }
+    }
+    e
+  }
+  for (.i in seq_along(.stmts)) {
+    .e <- .stmts[[.i]]
+    if (.isDep[.i] || !(.isAssign(.e) || .isBlock(.e))) next
+    if (.isAssign(.e)) {
+      .e[[3]] <- .sub(.e[[3]])
+    } else {
+      .e <- .sub(.e)
+    }
+    .stmts[[.i]] <- .e
+  }
+  as.call(c(list(quote(`{`)), .stmts))
 }
 
 #' Collect the variables referenced inside history functions (lag/lead/diff/...)

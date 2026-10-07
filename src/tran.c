@@ -554,6 +554,7 @@ void reset(void) {
   tb.curLhs     = -1;
   tb.nCond      = 0;
   tb.hasDelay   = 0;
+  tb.pkTimeSym  = 0;
   tb.strCmpCurCov = NULL;
   tb.strCmpCurStr = NULL;
   tb.strCmpCurType = -1;

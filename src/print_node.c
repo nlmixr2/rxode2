@@ -8,6 +8,7 @@ extern SEXP _goodFuns;
 // Terminals translated to a different C spelling
 static inline int wprintSpecialValue(char *value) {
   return nodeTime(value) ||
+    nodePkTime(value) ||
     nodeCmt(value) ||
     nodeAmt(value) ||
     nodeTlast(value) ||

@@ -120,6 +120,21 @@ static inline int pkTimeLhs(const char *s, int *start) {
 static inline int pkTimeClassify(int *isPk) {
   int n = sbPm.n;
   if (n <= 0) return 0;
+  // nothing to classify unless a candidate line reads `t`
+  pkTimeVars d0;
+  d0.v = NULL;
+  d0.n = 0;
+  d0.nAlloc = 0;
+  int anyT = 0;
+  for (int i = 0; i < n && !anyT; ++i) {
+    int t = sbPm.lType[i];
+    if (t != TASSIGN && t != TLOGIC && t != TINI) continue;
+    pkTimeLineReadsDep(sbPm.line[i], &d0, &anyT);
+  }
+  if (!anyT) {
+    for (int i = 0; i < n; ++i) isPk[i] = 0;
+    return 0;
+  }
   int *dep = (int*)R_alloc(n, sizeof(int));
   int *hasT = (int*)R_alloc(n, sizeof(int));
   // if/else/while chains: span[g] = [first opener line, last closing line]
@@ -184,6 +199,12 @@ static inline int pkTimeClassify(int *isPk) {
       int cur = pkTimeLineReadsDep(sbPm.line[i], &d, &hasT[i]);
       if (t == TDDT || t == TLIN || t == TJAC || t == TMTIME ||
           t == TMAT0 || t == TMATF || t == TEVID) cur = 1;
+      // an indLin(state) <- forcing is part of the ODE right-hand side
+      if (t == TASSIGN && !cur) {
+        int start = 0;
+        int len = pkTimeLhs(sbPm.line[i], &start);
+        if (len > 10 && !strncmp(sbPm.line[i] + start, "rx_indLin_", 10)) cur = 1;
+      }
       if (cur && !dep[i]) {
         dep[i] = 1;
         changed = 1;
