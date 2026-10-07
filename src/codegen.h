@@ -298,7 +298,7 @@ static inline void printTimeLags(void) {
   sAppend(&sbOut, "#define lead_t(x,y) _rxRecTime(_rxRecTimeIdx + (y))\n");
   sAppend(&sbOut, "#define diff_t1(x) ((x) - _rxRecTime(_rxRecTimeIdx - 1))\n");
   sAppend(&sbOut, "#define diff_t(x,y) ((x) - _rxRecTime(_rxRecTimeIdx - (y)))\n");
-  sAppend(&sbOut, "#define first_t1(x) _rxRecTime(getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[0]) == 9 ? 1 : 0)\n");
+  sAppend(&sbOut, "#define first_t1(x) _rxRecTime(((&_solveData->subjects[_cSub])->n_all_times > 0 && getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[0]) == 9) ? 1 : 0)\n");
   sAppend(&sbOut, "#define last_t1(x) _rxRecTime((&_solveData->subjects[_cSub])->n_all_times - 1)\n");
   sAppend(&sbOut, "#define lag0_t1(x) _rxRecTime0(_rxRecTimeIdx - 1)\n");
   sAppend(&sbOut, "#define lag0_t(x,y) _rxRecTime0(_rxRecTimeIdx - (y))\n");
