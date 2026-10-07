@@ -418,4 +418,18 @@ rxTest({
     })
     expect_lt(.cmp("mtime-change-point-ode", .m, .par5, covsInterpolation = "nocb", nonmem = TRUE), 1e-4)
   })
+
+  test_that("the auto-generated Jacobian of an implicit method keeps the PK time", {
+    .m <- rxode2({
+      k <- 0.1 + 0.05 * t
+      a(0) <- 10
+      d/dt(a) <- -k * a
+    })
+    .ev <- et(seq(0, 10, by = 1))
+    for (.nm in c(FALSE, TRUE)) {
+      .r <- rxSolve(.m, .ev, method = "ros4", nonmem = .nm)
+      .l <- rxSolve(.m, .ev, method = "lsoda", nonmem = .nm)
+      expect_equal(.r$a, .l$a, tolerance = 1e-4)
+    }
+  })
 })

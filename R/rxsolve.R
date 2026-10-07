@@ -3702,7 +3702,8 @@ rxSolve.default <- function(
             .states <- .mvCur$state
             .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
             .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
-            .fc <- .origCode
+            # the Jacobian may read the PK record time (rx_time_pk~t)
+            .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
 
             for (.line in .normCode) {
               if (grepl("^df\\(", .line)) {
