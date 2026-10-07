@@ -63,13 +63,23 @@ rxTest({
   test_that("nocb reads time in PK-type statements as the record time", {
     .want <- .exact(.ev)
     for (.m in c("liblsoda", "lsoda", "dop853")) {
-      .a <- rxSolve(.mod, .ev,
-        covsInterpolation = "nocb", method = .m,
-        atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      .a <- rxSolve(
+        .mod,
+        .ev,
+        covsInterpolation = "nocb",
+        method = .m,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
       )
-      .b <- rxSolve(.modRec, .ev,
-        covsInterpolation = "nocb", method = .m,
-        atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      .b <- rxSolve(
+        .modRec,
+        .ev,
+        covsInterpolation = "nocb",
+        method = .m,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
       )
       expect_equal(.a$cp, .want, tolerance = 1e-6, label = .m)
       expect_equal(.a$cp, .b$cp, tolerance = 1e-6, label = .m)
@@ -82,9 +92,14 @@ rxTest({
       d/dt(central) <- -cl / 30 * central
       cp <- central / 30
     }, calcJac = TRUE)
-    .a <- rxSolve(.jac, .ev,
-      covsInterpolation = "nocb", method = "lsoda",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+    .a <- rxSolve(
+      .jac,
+      .ev,
+      covsInterpolation = "nocb",
+      method = "lsoda",
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
     )
     expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
   })
@@ -97,10 +112,15 @@ rxTest({
     }, calcSens = TRUE)
     expect_true(grepl("rxPkTime", rxNorm(.sens), fixed = TRUE))
     expect_false("rxPkTime" %in% rxModelVars(.sens)$params)
-    .a <- rxSolve(.sens, .ev,
+    .a <- rxSolve(
+      .sens,
+      .ev,
       params = c(eta.cl = 0),
-      covsInterpolation = "nocb", method = "lsoda",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      covsInterpolation = "nocb",
+      method = "lsoda",
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
     )
     expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
   })
@@ -113,10 +133,7 @@ rxTest({
       cp <- central / 30
     })
     expect_equal(rxModelVars(.me)$flags[["pkTime"]], 1L)
-    .a <- rxSolve(.me, .ev,
-      covsInterpolation = "nocb", method = "indLin",
-      returnType = "data.frame"
-    )
+    .a <- rxSolve(.me, .ev, covsInterpolation = "nocb", method = "indLin", returnType = "data.frame")
     expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
   })
 
@@ -126,10 +143,7 @@ rxTest({
       d/dt(central) <- -cl / 30 * central
       cp <- central / 30
     })
-    .a <- rxSolve(.t, .ev,
-      covsInterpolation = "nocb",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
-    )
+    .a <- rxSolve(.t, .ev, covsInterpolation = "nocb", atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
     expect_equal(.a$cp, .exact(.ev), tolerance = 1e-6)
   })
 
@@ -165,20 +179,34 @@ rxTest({
 
   test_that("addl doses do not end an interval", {
     .obs <- data.frame(
-      ID = 1, TIME = c(2, 6, 8, 14, 18, 20, 26, 30, 32, 38, 44), AMT = 0,
-      EVID = c(0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 0), ADDL = 0, II = 0
+      ID = 1,
+      TIME = c(2, 6, 8, 14, 18, 20, 26, 30, 32, 38, 44),
+      AMT = 0,
+      EVID = c(0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 0),
+      ADDL = 0,
+      II = 0
     )
     .addl <- rbind(data.frame(ID = 1, TIME = 0, AMT = 100, EVID = 1, ADDL = 3, II = 12), .obs)
     .addl$TREC <- .addl$TIME
     for (.k in c(TRUE, FALSE)) {
-      .a <- rxSolve(.mod, .addl,
-        covsInterpolation = "nocb", addlKeepsCov = .k,
-        atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      .a <- rxSolve(
+        .mod,
+        .addl,
+        covsInterpolation = "nocb",
+        addlKeepsCov = .k,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
       )
       # the implied doses carry no TREC, so nocb reads the next record's
-      .b <- rxSolve(.modRec, .addl,
-        covsInterpolation = "nocb", addlKeepsCov = FALSE,
-        atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      .b <- rxSolve(
+        .modRec,
+        .addl,
+        covsInterpolation = "nocb",
+        addlKeepsCov = FALSE,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
       )
       expect_equal(.a$cp, .b$cp, tolerance = 1e-6)
     }
@@ -192,14 +220,8 @@ rxTest({
       et(c(1, 4, 12)) |>
       as.data.frame()
     .inf$TREC <- .inf$time
-    .a <- rxSolve(.mod, .inf,
-      covsInterpolation = "nocb",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
-    )
-    .b <- rxSolve(.modRec, .inf,
-      covsInterpolation = "nocb",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
-    )
+    .a <- rxSolve(.mod, .inf, covsInterpolation = "nocb", atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+    .b <- rxSolve(.modRec, .inf, covsInterpolation = "nocb", atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
     expect_equal(.a$cp, .b$cp, tolerance = 1e-6)
   })
 
@@ -210,9 +232,13 @@ rxTest({
       alag(central) <- 1
       cp <- central / 30
     })
-    .s <- rxSolve(.lag, et(amt = 100, time = 0) |> et(c(2, 12)),
+    .s <- rxSolve(
+      .lag,
+      et(amt = 100, time = 0) |> et(c(2, 12)),
       covsInterpolation = "nocb",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
     )
     .a2 <- 100 * exp(-.cl(2) / 30 * 1)
     .a12 <- .a2 * exp(-.cl(12) / 30 * 10)
@@ -226,9 +252,13 @@ rxTest({
       d/dt(central) <- -cl / 30 * central
       cp <- central / 30
     })
-    .s <- rxSolve(.mt, et(amt = 100, time = 0) |> et(c(2, 12)),
+    .s <- rxSolve(
+      .mt,
+      et(amt = 100, time = 0) |> et(c(2, 12)),
       covsInterpolation = "nocb",
-      atol = 1e-10, rtol = 1e-10, returnType = "data.frame"
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
     )
     .a2 <- 100 * exp(-.cl(2) / 30 * 2)
     .a5 <- .a2 * exp(-.cl(5) / 30 * 3)

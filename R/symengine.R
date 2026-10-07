@@ -4270,18 +4270,18 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
 .rxPkTimeExpr <- function(expr, state) {
   .stmts <- as.list(expr)[-1]
   .isAssign <- function(e) {
-    is.call(e) && (identical(e[[1]], quote(`=`)) || identical(e[[1]], quote(`<-`)) ||
-      identical(e[[1]], quote(`~`)))
+    is.call(e) && is.name(e[[1]]) && as.character(e[[1]]) %in% c("=", "<-", "~")
   }
   .isBlock <- function(e) {
-    is.call(e) && (identical(e[[1]], quote(`if`)) || identical(e[[1]], quote(`while`)) ||
-      identical(e[[1]], quote(`{`)))
+    is.call(e) && is.name(e[[1]]) && as.character(e[[1]]) %in% c("if", "while", "{")
   }
   .linFns <- c("linCmt", "linCmtA", "linCmtB")
   # variables a statement assigns
   .lhs <- function(e) {
     if (.isAssign(e)) {
-      if (is.name(e[[2]])) return(as.character(e[[2]]))
+      if (is.name(e[[2]])) {
+        return(as.character(e[[2]]))
+      }
       return(character(0))
     }
     if (.isBlock(e)) {
@@ -4292,12 +4292,17 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   # does a statement depend on a state, given the state-dependent variables?
   .dep <- function(e, dep) {
     if (.isAssign(e)) {
-      if (!is.name(e[[2]])) return(TRUE) # d/dt(), indLin(), properties, ...
+      # d/dt(), indLin(), dosing properties, ...
+      if (!is.name(e[[2]])) {
+        return(TRUE)
+      }
       .rhs <- e[[3]]
       return(any(all.vars(.rhs) %in% dep) || any(all.names(.rhs) %in% .linFns))
     }
     if (.isBlock(e)) {
-      if (any(all.vars(e) %in% dep) || any(all.names(e) %in% .linFns)) return(TRUE)
+      if (any(all.vars(e) %in% dep) || any(all.names(e) %in% .linFns)) {
+        return(TRUE)
+      }
       return(any(vapply(as.list(e)[-1], .dep, logical(1), dep = dep)))
     }
     is.call(e) && any(all.vars(e) %in% dep)
@@ -4307,12 +4312,16 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   repeat {
     .isDep <- vapply(.stmts, .dep, logical(1), dep = .depVars)
     .new <- unique(c(.depVars, unlist(lapply(.stmts[.isDep], .lhs))))
-    if (length(.new) == length(.depVars)) break
+    if (length(.new) == length(.depVars)) {
+      break
+    }
     .depVars <- .new
   }
   .sub <- function(e) {
     if (is.name(e)) {
-      if (identical(e, quote(t)) || identical(e, quote(time))) return(quote(rxPkTime))
+      if (identical(e, quote(t)) || identical(e, quote(time))) {
+        return(quote(rxPkTime))
+      }
       return(e)
     }
     if (is.call(e)) {
@@ -4324,7 +4333,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   }
   for (.i in seq_along(.stmts)) {
     .e <- .stmts[[.i]]
-    if (.isDep[.i] || !(.isAssign(.e) || .isBlock(.e))) next
+    if (.isDep[.i] || !(.isAssign(.e) || .isBlock(.e))) {
+      next
+    }
     if (.isAssign(.e)) {
       .e[[3]] <- .sub(.e[[3]])
     } else {
