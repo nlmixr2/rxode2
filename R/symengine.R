@@ -1442,9 +1442,27 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     if (!is.null(envir$..laggedVars) && any(.var == envir$..laggedVars) && !identical(x[[1]], quote(`~`))) {
       .val <- try(eval(parse(text = .expr)), silent = TRUE)
       if (!inherits(.val, "try-error")) {
-        .rx <- paste0(rxFromSE(.var), "=", rxFromSE(.val))
+        # A lagged variable assigned more than once is read through a snapshot
+        # symbol after every assignment but the last, so an lhs that reads an
+        # earlier value is not computed with the final one (#1435); lag()
+        # still reads the variable itself, which holds the final value.
+        .name <- rxFromSE(.var)
+        .rx <- paste0(.name, "=", rxFromSE(.val))
+        .sym <- symengine::S(.var)
+        .n <- envir$..laggedAssignN[.name]
+        if (length(.n) == 1L && !is.na(.n)) {
+          .seen <- envir$..laggedAssignSeen
+          .i <- if (is.na(.seen[.name])) 1L else .seen[.name] + 1L
+          .seen[.name] <- .i
+          envir$..laggedAssignSeen <- .seen
+          if (.i < .n) {
+            .snap <- paste0("rx_lagv", .i, "_", .name)
+            .rx <- c(.rx, paste0(.snap, "=", .name))
+            .sym <- symengine::S(.snap)
+          }
+        }
         assign("..lhs", c(envir$..lhs, .rx), envir = envir)
-        .rxSEassign(.var, symengine::S(.var), envir)
+        .rxSEassign(.var, .sym, envir)
         return(invisible(NULL))
       }
     }
@@ -4319,6 +4337,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   # as emitted lhs and bound as symbols (not inlined or dead-code eliminated), so
   # the history function still references a defined variable in the output model
   .env$..laggedVars <- .rxCollectLaggedVars(.expr)
+  .env$..laggedAssignN <- .rxCountLaggedAssign(.expr, .env$..laggedVars)
+  .env$..laggedAssignSeen <- integer(0)
   # loads the model into .env by side effect; the returned text is not used
   .rxToSE(.expr, envir = .env)
   if (.pkTime) {
@@ -4482,6 +4502,38 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   }
   .walk(expr)
   unique(.acc)
+}
+
+#' Count the assignments of each lagged variable assigned more than once
+#'
+#' @param expr a quoted model
+#' @param vars the lagged variables, from `.rxCollectLaggedVars()`
+#' @return named integer of assignment counts, only for variables assigned
+#'   more than once
+#' @author Matthew Fidler
+#' @noRd
+.rxCountLaggedAssign <- function(expr, vars) {
+  .acc <- character(0)
+  .walk <- function(e) {
+    if (!is.call(e)) {
+      return(invisible())
+    }
+    .f <- e[[1]]
+    if (is.name(.f) && (identical(.f, quote(`<-`)) || identical(.f, quote(`=`)))) {
+      if (is.name(e[[2]]) && any(as.character(e[[2]]) == vars)) {
+        .acc[[length(.acc) + 1L]] <<- as.character(e[[2]])
+      }
+      return(invisible())
+    }
+    for (.i in seq_along(e)) {
+      .walk(e[[.i]])
+    }
+  }
+  .walk(expr)
+  .u <- unique(.acc)
+  .n <- vapply(.u, function(v) sum(.acc == v), integer(1), USE.NAMES = FALSE)
+  names(.n) <- .u
+  .n[.n > 1L]
 }
 
 symengineC <- new.env(parent = emptyenv())
