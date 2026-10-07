@@ -196,6 +196,7 @@
 #define RxMvFlag_evid_ 14
 #define RxMvFlag_hasDelay 15
 #define RxMvFlag_linCmtBraw 16
+#define RxMvFlag_pkTime 17
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

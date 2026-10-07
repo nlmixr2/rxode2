@@ -212,6 +212,30 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
   return ind->par_ptr[parNo];
 }
 
+// The time PK-type statements read under covsInterpolation = "nocb"
+// (rxode2#1429): the time of the first data record at or after `t`, starting
+// from the record that ends the interval being integrated (ind->idx), since a
+// solver may step past it.  Records that are not data records are skipped,
+// like NONMEM's non-event doses: addl repeats and the records a dose expands
+// to (ind->pkSkip, from etTrans()), doses pushed at run time and lagged doses.
+extern "C" double _rxPkTime(double t, unsigned int id, rx_solve *rx) {
+  rx_solving_options *op = rx->op;
+  if (op->is_locf != 2) return t;
+  rx_solving_options_ind *ind = &(rx->subjects[id]);
+  if (ind->idx < 0 || ind->timeThread == NULL) return t;
+  double t0 = t - ind->curShift;
+  for (int j = ind->idx; j < ind->n_all_times; ++j) {
+    int raw = ind->ix[j];
+    if (raw < 0 || raw >= ind->n_all_times_orig) continue;
+    if (ind->pkSkip != NULL && ind->pkSkip[raw]) continue;
+    double tj = ind->timeThread[raw];
+    if (tj < t0 && !isSameTimeOp(tj, t0)) continue;
+    if (isDose(getEvid(ind, raw)) && !isSameTime(tj, ind->all_times[raw])) continue;
+    return tj + ind->curShift;
+  }
+  return t;
+}
+
 extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) (Rf_errorcall)(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;

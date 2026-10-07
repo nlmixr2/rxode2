@@ -524,6 +524,11 @@ struct rx_solving_options_ind_s {
   // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
   // first n_all_times_orig records; pushed doses are never recorded here.
   int    *infPair;
+  // 1 for a record that is not a data record (an addl repeat or a record a
+  // dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`; NULL otherwise.  _rxPkTime() skips these under
+  // nocb (rxode2#1429).  Covers the first n_all_times_orig records.
+  int    *pkSkip;
 };
 
 typedef struct rx_solve_s {

@@ -19,10 +19,11 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "rxProtect.h"
 #include "parseParamMerge.h"
+#include "pkTime.h"
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,17));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,18));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -42,8 +43,13 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[14] = tb.evid_;
   INTEGER(sLinCmt)[15] = tb.hasDelay;
   INTEGER(sLinCmt)[16] = tb.linCmtBraw;
+  {
+    // PK-type statements read `time` as the nocb record time (rxode2#1429)
+    int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+    INTEGER(sLinCmt)[17] = pkTimeClassify(pkLine) > 0;
+  }
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 17));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 18));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -61,6 +67,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 14, Rf_mkChar("evid_"));
   SET_STRING_ELT(sLinCmtN, 15, Rf_mkChar("hasDelay"));
   SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
+  SET_STRING_ELT(sLinCmtN, 17, Rf_mkChar("pkTime"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);
