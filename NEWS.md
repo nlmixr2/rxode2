@@ -105,6 +105,12 @@
 
 ## Bug fixes
 
+- A time-varying covariate (including `DV` when the model refers to it,
+  as in `res <- DV - central`) no longer corrupts doses with modeled lag
+  times and durations in more than one compartment.  Interpolating the
+  covariate looked up neighbouring records and overwrote the compartment
+  of the dose being given, so a later infusion could be sent to the wrong
+  compartment and the amounts go negative (nlmixr2/nonmem2rx#263).
 - `qnorm()` was documented as the normal pdf; it is the normal quantile
   function.  `qnorm(p, mean, sd)` with more than one argument can now be
   translated to symengine (it errored before).
