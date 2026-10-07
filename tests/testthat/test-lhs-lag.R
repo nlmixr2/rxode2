@@ -228,4 +228,24 @@ rxTest({
       expect_equal(rxSolve(m3, e)$cp, r1$cp, info = .f)
     }
   })
+  test_that("rxS() snapshots a reassigned lagged variable named like a symengine constant (#1435)", {
+    m <- rxode2(paste(
+      "d/dt(central) = -0.1*central",
+      "pi = central/10",
+      "y = 2*pi + lag(pi)",
+      "pi = 3*pi",
+      "cp = y",
+      sep = "\n"
+    ))
+    expect_equal(
+      rxS(m)$..lhs,
+      c(
+        "pi=0.1*central",
+        "rx_lagv1_pi=pi",
+        "y=2*rx_lagv1_pi+lag(pi)",
+        "pi=3*rx_lagv1_pi",
+        "cp=2*rx_lagv1_pi+lag(pi)"
+      )
+    )
+  })
 })
