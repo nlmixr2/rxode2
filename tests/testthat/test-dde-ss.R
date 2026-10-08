@@ -34,34 +34,45 @@ rxTest({
   .obs <- c(0.25, 1, 3, 12, 24)
   # one steady-state dose at `t0` versus the same regimen written as 40
   # explicit doses ending at `t0`
-  .ddeSsCompare <- function(method, tau, lagD = 0, rate = 0, t0 = 0,
-                            mod = .ddeSsMod) {
+  .ddeSsCompare <- function(method, tau, lagD = 0, rate = 0, t0 = 0, mod = .ddeSsMod) {
     .dose <- data.frame(
-      id = 1, time = t0, evid = 1, amt = 100, cmt = "depot",
-      rate = rate, ss = 1, ii = 24
+      id = 1,
+      time = t0,
+      evid = 1,
+      amt = 100,
+      cmt = "depot",
+      rate = rate,
+      ss = 1,
+      ii = 24
     )
     .o <- data.frame(
-      id = 1, time = t0 + .obs, evid = 0, amt = NA, cmt = NA,
-      rate = 0, ss = 0, ii = 0
+      id = 1,
+      time = t0 + .obs,
+      evid = 0,
+      amt = NA,
+      cmt = NA,
+      rate = 0,
+      ss = 0,
+      ii = 0
     )
     .ss <- rbind(.dose, .o)
     .expl <- rbind(
       data.frame(
-        id = 1, time = t0 - 24 * (40:1), evid = 1, amt = 100,
-        cmt = "depot", rate = rate, ss = 0, ii = 0
+        id = 1,
+        time = t0 - 24 * (40:1),
+        evid = 1,
+        amt = 100,
+        cmt = "depot",
+        rate = rate,
+        ss = 0,
+        ii = 0
       ),
       transform(.dose, ss = 0, ii = 0),
       .o
     )
     .p <- c(tau = tau, lagD = lagD)
-    .s1 <- suppressWarnings(rxSolve(mod(), .ss,
-      params = .p, method = method,
-      returnType = "data.frame"
-    ))
-    .s2 <- suppressWarnings(rxSolve(mod(), .expl,
-      params = .p, method = method,
-      returnType = "data.frame"
-    ))
+    .s1 <- suppressWarnings(rxSolve(mod(), .ss, params = .p, method = method, returnType = "data.frame"))
+    .s2 <- suppressWarnings(rxSolve(mod(), .expl, params = .p, method = method, returnType = "data.frame"))
     .s2 <- .s2[.s2$time >= t0 + 0.2, ]
     expect_equal(.s1$time, .s2$time)
     expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
@@ -87,24 +98,31 @@ rxTest({
 
   test_that("a constant steady-state infusion (ii = 0) with delay() (#1447)", {
     .ss <- data.frame(
-      id = 1, time = c(0, .obs), evid = c(1, rep(0, 5)),
-      amt = c(0, rep(NA, 5)), rate = c(10, rep(0, 5)),
-      cmt = c("central", rep(NA, 5)), ss = c(1, rep(0, 5)), ii = 0
+      id = 1,
+      time = c(0, .obs),
+      evid = c(1, rep(0, 5)),
+      amt = c(0, rep(NA, 5)),
+      rate = c(10, rep(0, 5)),
+      cmt = c("central", rep(NA, 5)),
+      ss = c(1, rep(0, 5)),
+      ii = 0
     )
     # the same infusion run long enough to reach steady state, ending at 0
     # (the ss record sets the steady state; the infusion then stops)
     .expl <- data.frame(
-      id = 1, time = c(-3000, .obs), evid = c(1, rep(0, 5)),
-      amt = c(30000, rep(NA, 5)), rate = c(10, rep(0, 5)),
-      cmt = c("central", rep(NA, 5)), ss = 0, ii = 0
+      id = 1,
+      time = c(-3000, .obs),
+      evid = c(1, rep(0, 5)),
+      amt = c(30000, rep(NA, 5)),
+      rate = c(10, rep(0, 5)),
+      cmt = c("central", rep(NA, 5)),
+      ss = 0,
+      ii = 0
     )
     for (.tau in c(4, 300)) {
       .p <- c(tau = .tau, lagD = 0)
       .s1 <- rxSolve(.ddeSsMod(), .ss, params = .p, returnType = "data.frame")
-      .s2 <- suppressWarnings(rxSolve(.ddeSsMod(), .expl,
-        params = .p,
-        returnType = "data.frame"
-      ))
+      .s2 <- suppressWarnings(rxSolve(.ddeSsMod(), .expl, params = .p, returnType = "data.frame"))
       .s2 <- .s2[.s2$time > 0, ]
       expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
       expect_equal(.s1$R, .s2$R, tolerance = 1e-4)
@@ -114,14 +132,22 @@ rxTest({
 
   test_that("ss=1 after earlier doses replaces the delay() history (#1447)", {
     .ev <- data.frame(
-      id = 1, time = c(0, 48, 48 + .obs), evid = c(1, 1, rep(0, 5)),
-      amt = c(500, 100, rep(NA, 5)), cmt = c("depot", "depot", rep(NA, 5)),
-      ss = c(0, 1, rep(0, 5)), ii = c(0, 24, rep(0, 5))
+      id = 1,
+      time = c(0, 48, 48 + .obs),
+      evid = c(1, 1, rep(0, 5)),
+      amt = c(500, 100, rep(NA, 5)),
+      cmt = c("depot", "depot", rep(NA, 5)),
+      ss = c(0, 1, rep(0, 5)),
+      ii = c(0, 24, rep(0, 5))
     )
     .ref <- data.frame(
-      id = 1, time = c(48, 48 + .obs), evid = c(1, rep(0, 5)),
-      amt = c(100, rep(NA, 5)), cmt = c("depot", rep(NA, 5)),
-      ss = c(1, rep(0, 5)), ii = c(24, rep(0, 5))
+      id = 1,
+      time = c(48, 48 + .obs),
+      evid = c(1, rep(0, 5)),
+      amt = c(100, rep(NA, 5)),
+      cmt = c("depot", rep(NA, 5)),
+      ss = c(1, rep(0, 5)),
+      ii = c(24, rep(0, 5))
     )
     .p <- c(tau = 4, lagD = 0)
     .s1 <- rxSolve(.ddeSsMod(), .ev, params = .p, returnType = "data.frame")
@@ -145,22 +171,24 @@ rxTest({
       })
     }
     .ev <- data.frame(
-      id = 1, time = c(0, 48, 48 + .obs), evid = c(1, 1, rep(0, 5)),
-      amt = c(500, 100, rep(NA, 5)), cmt = c("depot", "depot", rep(NA, 5)),
-      ss = c(0, 2, rep(0, 5)), ii = c(0, 24, rep(0, 5))
+      id = 1,
+      time = c(0, 48, 48 + .obs),
+      evid = c(1, 1, rep(0, 5)),
+      amt = c(500, 100, rep(NA, 5)),
+      cmt = c("depot", "depot", rep(NA, 5)),
+      ss = c(0, 2, rep(0, 5)),
+      ii = c(0, 24, rep(0, 5))
     )
     .expl <- data.frame(
-      id = 1, time = c(48 - 24 * (40:1), 0, 48, 48 + .obs),
+      id = 1,
+      time = c(48 - 24 * (40:1), 0, 48, 48 + .obs),
       evid = c(rep(1, 42), rep(0, 5)),
       amt = c(rep(100, 40), 500, 100, rep(NA, 5)),
       cmt = c(rep("depot", 42), rep(NA, 5))
     )
     for (.tau in c(4, 30, 300)) {
       .s1 <- rxSolve(.lin(), .ev, params = c(tau = .tau), returnType = "data.frame")
-      .s2 <- suppressWarnings(rxSolve(.lin(), .expl,
-        params = c(tau = .tau),
-        returnType = "data.frame"
-      ))
+      .s2 <- suppressWarnings(rxSolve(.lin(), .expl, params = c(tau = .tau), returnType = "data.frame"))
       .s1 <- .s1[.s1$time > 48, ]
       .s2 <- .s2[.s2$time > 48, ]
       expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
