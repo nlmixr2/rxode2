@@ -55,4 +55,68 @@ rxTest({
       }
     }
   })
+
+  test_that("resampled covariates with modeled rate()/dur() match the sampled subject (#1439)", {
+    .t <- seq(0, 10, by = 0.5)
+    .one <- function(i, donor = i, rate = -2) {
+      .d <- data.frame(
+        id = i, time = c(1, .t), evid = c(1, rep(0, length(.t))),
+        amt = c(100, rep(0, length(.t))), rate = c(rate, rep(0, length(.t))),
+        cmt = 1, wt = 5 * donor + ifelse(c(1, .t) >= 5, 10, 0)
+      )
+      .d[order(.d$time, -.d$evid), ]
+    }
+    .mods <- list(
+      dur = rxode2({
+        dur(depot) <- 1 + wt / 50
+        d/dt(depot) <- -0.05 * depot * wt / 20
+        w <- wt
+      }),
+      rate = rxode2({
+        rate(depot) <- 20 + wt
+        d/dt(depot) <- -0.05 * depot * wt / 20
+        w <- wt
+      })
+    )
+    for (.m in names(.mods)) {
+      .rate <- ifelse(.m == "dur", -2, -1)
+      .d <- do.call(rbind, lapply(1:6, function(i) .one(i, rate = .rate)))
+      for (.cores in c(1L, 2L)) {
+        .s <- rxWithSeed(10, rxSolve(.mods[[.m]], .d,
+          resample = TRUE, cores = .cores, returnType = "data.frame"
+        ))
+        for (.x in split(.s, .s$id)) {
+          .donor <- .x$w[1] / 5
+          .ref <- rxSolve(.mods[[.m]], .one(1, .donor, .rate), returnType = "data.frame")
+          expect_equal(.x$depot, .ref$depot,
+            tolerance = 1e-6, info = paste(.m, .cores, .x$id[1])
+          )
+        }
+      }
+    }
+  })
+
+  test_that("covariates after a dose pushed while solving keep their values", {
+    .mod <- rxode2({
+      mtime(pushAt) <- 2
+      d/dt(depot) <- 0
+      d/dt(ca) <- a
+      d/dt(cb) <- b
+      if (t >= pushAt && t < pushAt + 0.5 && depot < 150) {
+        bolus(50, depot, 0, 0, 0)
+      }
+    })
+    .t <- seq(0, 10, by = 1)
+    .d <- data.frame(
+      id = 1, time = c(0, .t), evid = c(1, rep(0, length(.t))),
+      amt = c(100, rep(0, length(.t))), cmt = 1,
+      a = 1 + c(0, .t), b = 100 + c(0, .t)
+    )
+    .s <- rxSolve(.mod, .d, covsInterpolation = "linear", returnType = "data.frame")
+    .s <- .s[!duplicated(.s$time, fromLast = TRUE), ]
+    expect_equal(.s$depot[.s$time == 10], 150)
+    # integral of 1 + t and 100 + t
+    expect_equal(.s$ca, .s$time + .s$time^2 / 2, tolerance = 1e-5)
+    expect_equal(.s$cb, 100 * .s$time + .s$time^2 / 2, tolerance = 1e-5)
+  })
 })

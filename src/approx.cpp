@@ -68,11 +68,16 @@ extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
    - Use getTime(to allow model-based changes to dose timing
    - Use getValue to ignore NA values for time-varying covariates
 */
+static inline double rxCovRec(double *y, int raw, int nOrig) {
+  return (raw >= 0 && raw < nOrig) ? y[raw] : NA_REAL;
+}
+
 // getValue/rx_approxP index records through ix (NULL = record order, the
-// resampled-covariate case) and report the lh = -2/2 index through *iOut
+// resampled-covariate case) and report the lh = -2/2 index through *iOut.
+// Records from nOrig on were pushed while solving and have no covariate value.
 static inline double getValue(int idx, double *y, int is_locf, const int *ix, int n,
-                              rx_solving_options *op, int lh, int *iOut = NULL){
-#define _Y(i) y[ix == NULL ? (i) : ix[i]]
+                              int nOrig, rx_solving_options *op, int lh, int *iOut = NULL){
+#define _Y(i) rxCovRec(y, ix == NULL ? (i) : ix[i], nOrig)
   int i = idx;
   double ret = _Y(idx);
   if (ISNA(ret)) {
@@ -128,13 +133,13 @@ static inline double getValue(int idx, double *y, int is_locf, const int *ix, in
 static inline double getValue(int idx, double *y, int is_locf,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               int lh){
-  return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, op, lh);
+  return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
 }
 
-#define V(i, lh) getValue(i, y, is_locf, ix, n, Meth, lh)
+#define V(i, lh) getValue(i, y, is_locf, ix, n, nOrig, Meth, lh)
 template <typename TimeFn>
-static inline double rx_approxP(double v, double *y, int is_locf, int n, const int *ix,
-                                rx_solving_options *Meth, TimeFn T){
+static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOrig,
+                                const int *ix, rx_solving_options *Meth, TimeFn T){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
   if(!n) return R_NaN;
@@ -167,8 +172,8 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, const i
       // in the case of linear the time needs to be adjusted based on any na handling rules
       // when i = -2 or i = 2 then the index of the na value adjustment is saved.
       int idxLow = i, idxHi = j;
-      double vi = getValue(i, y, is_locf, ix, n, Meth, -2, &idxLow);
-      double vj = getValue(j, y, is_locf, ix, n, Meth, 2, &idxHi);
+      double vi = getValue(i, y, is_locf, ix, n, nOrig, Meth, -2, &idxLow);
+      double vj = getValue(j, y, is_locf, ix, n, nOrig, Meth, 2, &idxHi);
       // These saved values are then used for the adjusted times
       double ti = T(idxLow);
       double tj = T(idxHi);
@@ -193,7 +198,7 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, const i
 // Covariate of this subject at time t, on its (possibly lagged) sorted times
 static inline double rxApproxCov(double t, double *y, int is_locf,
                                  rx_solving_options *op, rx_solving_options_ind *id) {
-  return rx_approxP(t, y, is_locf, id->n_all_times, id->ix, op, [id](int i) {
+  return rx_approxP(t, y, is_locf, id->n_all_times, id->n_all_times_orig, id->ix, op, [id](int i) {
     return id->fns ? id->fns->gettime(id->ix[i], id) : getTime(id->ix[i], id);
   });
 }
@@ -208,7 +213,7 @@ static inline double rxApproxCovSample(double t, int k, int is_locf,
   double *at = indSample->all_times;
   int *evid = indSample->evid;
   // a modeled rate/duration stop's time is set while solving; use its start's
-  return rx_approxP(t, y, is_locf, n, NULL, op, [at, evid](int i) {
+  return rx_approxP(t, y, is_locf, n, n, NULL, op, [at, evid](int i) {
     return (i > 0 && (isEvidModeledRateStop(evid[i]) ||
                       isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
   });
@@ -234,8 +239,8 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
   if (op->do_par_cov){
     for (int k = op->ncov; k--;){
       if (op->par_cov[k] == parNo+1){
-        double *y = ind->cov_ptr + ind->n_all_times*k;
-        return y[ind->ix[idx]];
+        double *y = ind->cov_ptr + ind->n_all_times_orig*k;
+        return rxCovRec(y, ind->ix[idx], ind->n_all_times_orig);
       }
     }
   }
@@ -373,7 +378,8 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = ind;
             idxSample = idx;
           }
-          double *y = indSample->cov_ptr + indSample->n_all_times*k;
+          // cov_ptr is laid out by the data records (n_all_times_orig)
+          double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -416,7 +422,8 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           }
           double *par_ptr = ind->par_ptr;
           //double *all_times = indSample->all_times;
-          double *y = indSample->cov_ptr + indSample->n_all_times*k;
+          // cov_ptr is laid out by the data records (n_all_times_orig)
+          double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           if (idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
