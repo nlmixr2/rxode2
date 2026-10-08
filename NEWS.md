@@ -129,6 +129,12 @@
   covariate looked up neighbouring records and overwrote the compartment
   of the dose being given, so a later infusion could be sent to the wrong
   compartment and the amounts go negative (nlmixr2/nonmem2rx#263).
+- When a lagged first dose sorted after a time-zero record, that record read
+  its time-varying covariates (including the `CMT` that selects a
+  multiple-endpoint prediction) from the dose record instead of its own, so a
+  time-zero observation could get the wrong endpoint's `IPRED`
+  (nlmixr2/nlmixr2est#1182).  A missing (`NA`) covariate on the first sorted
+  record is now filled like on any other record instead of staying `NA`.
 - `qnorm()` was documented as the normal pdf; it is the normal quantile
   function.  `qnorm(p, mean, sd)` with more than one argument can now be
   translated to symengine (it errored before).

@@ -382,7 +382,8 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
-            par_ptr[op->par_cov[k]-1] = y[0];
+            // y is in record order; a lagged dose can move record 0 off sorted slot 0
+            par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
