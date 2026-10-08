@@ -100,6 +100,7 @@ rxTest({
     expect_equal(r2$cp, r1$cp)
   })
   test_that("a d/dt() after the last assignment of a lagged variable reads the variable (#1445)", {
+    # guards against over-applying the snapshot
     s <- rxS(rxode2(paste(
       "c0 = central/10",
       "c0 = c0*3",
