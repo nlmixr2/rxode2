@@ -128,7 +128,6 @@
   could segfault rxode2's parallel expression optimization
   (`rxOptExpr()`) on clang builds (nlmixr2/dparser-R#33; CRAN's clang
   checks of babelmixr2).
-
 - `delay(x, tau)` before the start of integration now returns the
   evaluated `x(0)` when `x(0)` is set from a parameter or a computed
   value, instead of 0; only a literal `x(0)` worked before (#1441).
