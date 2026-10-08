@@ -2802,6 +2802,10 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
   rxAutoSwitchCount(op, ind, true, _failed);
 }
 
+static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
+                           rx_solving_options *op, rx_solving_options_ind *ind,
+                           int eff);
+
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
                                 double *InfusionRate,
@@ -2824,6 +2828,9 @@ static inline void solveWith1Pt(int *neq,
       preSolve(op, ind, xp, xout, yp);
       linSolve(neq, ind, yp, &xp, xout);
     }
+  } else if (ind->delaySS && xout > xp) {
+    // steady state of a delay() model: record the history (rxode2#1447)
+    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff);
   } else if (op->stiff2 > 0) {
     solveWith1PtComposite(neq, yp, xout, xp, i, istate, op, ind, ctx, eff);
   } else {
@@ -3436,6 +3443,24 @@ extern "C" void handleSSinf8(int *neq,
 }
 
 
+static void handleSS0(int *neq,
+                     int *BadDose,
+                     double *InfusionRate,
+                     double *dose,
+                     double *yp,
+                     double xout, double xp, int id,
+                     int *i, int nx,
+                     int *istate,
+                     rx_solving_options *op,
+                     rx_solving_options_ind *ind,
+                     t_update_inis u_inis,
+                     void *ctx);
+
+// Steady state of a delay() model (rxode2#1447): the iterations record their
+// own history on a fresh buffer whose virtual clock starts at the dose time.
+// For ss=1 (which resets the system) the converged history is shifted to end
+// at the dose time and replaces the previous one; for ss=2 (superposition) the
+// previous history is kept.
 void handleSS(int *neq,
               int *BadDose,
               double *InfusionRate,
@@ -3448,6 +3473,68 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx) {
+  if (!ind->delayHistOn) {
+    handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+              istate, op, ind, u_inis, ctx);
+    return;
+  }
+  double *oldHist = ind->delayHist;
+  int oldN = ind->delayHistN, oldCap = ind->delayHistCap;
+  int oldStride = ind->delayHistStride, oldNeq = ind->delayHistNeq;
+  double oldT0 = ind->delayT0;
+  bool ss2 = (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20);
+  ind->delayHist = NULL;
+  ind->delayHistN = 0;
+  ind->delayHistCap = 0;
+  ind->delayT0 = xp;
+  ind->delaySSClock = xp;
+  ind->delayTOff = 0.0;
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    int eff = rxEffNeq(ind, op);
+    int neq0 = neq[0];
+    neq[0] = eff - op->numLin - op->numLinSens;
+    std::vector<double> _ddt((size_t)eff);
+    dydt(neq, xp, yp, _ddt.data());
+    neq[0] = neq0;
+    ind->delayWarmed = 1;
+  }
+  ind->delaySS = 1;
+  handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+            istate, op, ind, u_inis, ctx);
+  ind->delaySS = 0;
+  ind->delayTOff = 0.0;
+  if (ind->delaySSClock != xp && !ss2) {
+    double shift = xout - ind->delaySSClock;
+    int stride = ind->delayHistStride;
+    for (int k = 0; k < ind->delayHistN; ++k) {
+      ind->delayHist[(size_t)k * stride + (stride - 3)] += shift;
+    }
+    ind->delayT0 = xp + shift;
+    free(oldHist);
+  } else {
+    free(ind->delayHist);
+    ind->delayHist = oldHist;
+    ind->delayHistN = oldN;
+    ind->delayHistCap = oldCap;
+    ind->delayHistStride = oldStride;
+    ind->delayHistNeq = oldNeq;
+    ind->delayT0 = oldT0;
+  }
+}
+
+static void handleSS0(int *neq,
+                     int *BadDose,
+                     double *InfusionRate,
+                     double *dose,
+                     double *yp,
+                     double xout, double xp, int id,
+                     int *i, int nx,
+                     int *istate,
+                     rx_solving_options *op,
+                     rx_solving_options_ind *ind,
+                     t_update_inis u_inis,
+                     void *ctx) {
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
@@ -6513,7 +6600,7 @@ static void rxDelayHistPush(rx_solving_options_ind *ind, rx_solving_options *op,
     const double *src = rc[k];
     for (int c = 0; c < nd; c++) col[c] = src[ds[c]];
   }
-  rec[8 * nd]     = xold;
+  rec[8 * nd]     = xold + ind->delayTOff;  // virtual time during handleSS()
   rec[8 * nd + 1] = h;
   rec[8 * nd + 2] = 0.0;  // dop853 record
   ind->delayHistN++;
@@ -6536,7 +6623,7 @@ static void rxDelayHistPushSamples(rx_solving_options_ind *ind, rx_solving_optio
     const double *s = src[k];
     for (int c = 0; c < nd; c++) col[c] = s[ds[c]];
   }
-  rec[8 * nd]     = xold;
+  rec[8 * nd]     = xold + ind->delayTOff;  // virtual time during handleSS()
   rec[8 * nd + 1] = h;
   rec[8 * nd + 2] = 1.0;  // ros4 cubic-sample record
   ind->delayHistN++;
@@ -6694,6 +6781,39 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     rxAutoSwitchCount(op, ind, false, false);
   }
   return idid;
+}
+
+// One steady-state sub-solve [xp, xout] of a delay() model (rxode2#1447): use
+// the dense solver so every step is recorded into the delay history on the
+// virtual clock ind->delaySSClock (no observations are filled).  ros4 for a pure
+// ros4 solve, otherwise dop853 (with the stiff secondary of a composite).
+static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
+                           rx_solving_options *op, rx_solving_options_ind *ind,
+                           int eff) {
+  if (isSameTimeDop(xout, xp)) return;
+  ind->delayTOff = ind->delaySSClock - xp;
+  preSolve(op, ind, xp, xout, yp);
+  neq[0] = eff - op->numLin - op->numLinSens;
+  int base = op->stiff >= 200 ? op->stiff - 200 : op->stiff;
+  int idid;
+  if (base == 13 && op->stiff2 <= 0) {
+    idid = rxRos4DenseSegment(&rx_global, op, ind, neq, dydt, xp, xout, yp,
+                              1, 0, neq[1]);
+  } else {
+    DopDenseCtx dc;
+    dc.ind = ind;
+    dc.op  = op;
+    dc.neq = neq;
+    dc.obs_next = 1;    // empty observation range: record history only
+    dc.segment_end = 0;
+    idid = denseSegmentSolve(&rx_global, op, ind, neq, dydt, xp, xout, yp,
+                             &dc, 1, eff);
+  }
+  neq[0] = eff;
+  copyLinCmt(neq, ind, op, yp);
+  ind->delaySSClock += xout - xp;
+  ind->delayTOff = 0.0;
+  if ((idid <= 0 || ind->err) && ind->rc[0] == 0) ind->rc[0] = -2019;
 }
 
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,

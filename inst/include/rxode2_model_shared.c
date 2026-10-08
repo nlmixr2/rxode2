@@ -402,7 +402,7 @@ static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
 // default (no past()) returns the constant initial condition.
 double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
+  double td = t + _ind->delayTOff - T;
   // Learn the smallest delay so the solver can cap its step size and never
   // step over the delay (keeping the lagged time inside recorded history).
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
@@ -459,7 +459,7 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
 // estimated parameter).  Before the start of integration the history is the
 // constant initial condition, so the derivative is 0.
 double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
+  double td = t + _ind->delayTOff - T;
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;   // constant initial history -> zero time-derivative
@@ -511,7 +511,7 @@ double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
 // second-order forward sensitivities of parameter-dependent delays.  Constant
 // initial history -> 0.
 double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
+  double td = t + _ind->delayTOff - T;
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
@@ -562,7 +562,7 @@ double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
 // Used by the third-order forward sensitivities of parameter-dependent delays
 // (breaking-point jump terms).  Constant initial history -> 0.
 double _rxDelayD3(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
+  double td = t + _ind->delayTOff - T;
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
