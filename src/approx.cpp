@@ -140,6 +140,27 @@ static inline double getValue(int idx, double *y, int is_locf,
   return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
 }
 
+// v is at record i's time; a pushed record has no value of its own, so
+// interpolate across it instead
+static inline bool rxAtDataRec(double v, double ti, const int *ix, int i, int nOrig) {
+  return isSameTime(v, ti) && !rxPushedRec(ix, i, nOrig);
+}
+
+// Linear interpolation between records i and j, moved past NA values
+template <typename TimeFn>
+static inline double rxApproxLinear(double v, int i, int j, double *y, int n, int nOrig,
+                                    const int *ix, rx_solving_options *Meth, TimeFn T) {
+  int idxLow = i, idxHi = j;
+  double vi = getValue(i, y, 0, ix, n, nOrig, Meth, -2, &idxLow);
+  double vj = getValue(j, y, 0, ix, n, nOrig, Meth, 2, &idxHi);
+  // only one side has a value (eg a trailing NA or pushed record)
+  if (idxLow == idxHi) return vi;
+  double ti = T(idxLow);
+  double tj = T(idxHi);
+  if (isSameTime(ti, tj)) return vi;
+  return vi + (vj - vi) * ((v - ti)/(tj - ti));
+}
+
 #define V(i, lh) getValue(i, y, is_locf, ix, n, nOrig, Meth, lh)
 template <typename TimeFn>
 static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOrig,
@@ -166,27 +187,13 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
   double tj = T(j);
   double ti = T(i);
-  // a pushed record has no value of its own, so interpolate across it
-  if(isSameTime(v, tj) && !rxPushedRec(ix, j, nOrig)) return V(j, 1);
-  if(isSameTime(v, ti) && !rxPushedRec(ix, i, nOrig)) return V(i, -1);
+  if(rxAtDataRec(v, tj, ix, j, nOrig)) return V(j, 1);
+  if(rxAtDataRec(v, ti, ix, i, nOrig)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {
   case 0: // linear
-    {
-      // in the case of linear the time needs to be adjusted based on any na handling rules
-      // when i = -2 or i = 2 then the index of the na value adjustment is saved.
-      int idxLow = i, idxHi = j;
-      double vi = getValue(i, y, is_locf, ix, n, nOrig, Meth, -2, &idxLow);
-      double vj = getValue(j, y, is_locf, ix, n, nOrig, Meth, 2, &idxHi);
-      // These saved values are then used for the adjusted times
-      // only one side has a value (eg a trailing NA or pushed record)
-      if (idxLow == idxHi) return vi;
-      double ti = T(idxLow);
-      double tj = T(idxHi);
-      if (isSameTime(ti, tj)) return vi;
-      return vi + (vj - vi) * ((v - ti)/(tj - ti));
-    }
+    return rxApproxLinear(v, i, j, y, n, nOrig, ix, Meth, T);
     break;
   case 1: // locf
     return V(i, -1);
