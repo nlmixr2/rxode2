@@ -16,7 +16,7 @@
 .rxAssertPositiveTol <- function(x, ..., .var.name = checkmate::vname(x)) {
   checkmate::assertNumeric(x, lower = 0, finite = TRUE, any.missing = FALSE, ..., .var.name = .var.name)
   if (any(x <= 0)) {
-    stop("'", .var.name, "' must be > 0; a zero absolute tolerance cannot control the error of zero states", call. = FALSE)
+    stop("'", .var.name, "' must be > 0; a zero absolute tolerance fails on zero states", call. = FALSE)
   }
   invisible()
 }
