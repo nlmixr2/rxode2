@@ -128,6 +128,10 @@
   A pushed record interpolates its covariates, and `last()` of a covariate
   skips pushed records.
 
+- A linearly interpolated covariate past its last non-missing value (a
+  trailing `NA`, or past a pushed record) is now carried forward instead of
+  becoming `NaN`.
+
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's
   previous (or next) record.  `lag()` of another reserved name like `amt` is a

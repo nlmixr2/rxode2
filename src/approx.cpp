@@ -180,8 +180,11 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
       double vi = getValue(i, y, is_locf, ix, n, nOrig, Meth, -2, &idxLow);
       double vj = getValue(j, y, is_locf, ix, n, nOrig, Meth, 2, &idxHi);
       // These saved values are then used for the adjusted times
+      // only one side has a value (eg a trailing NA or pushed record)
+      if (idxLow == idxHi) return vi;
       double ti = T(idxLow);
       double tj = T(idxHi);
+      if (isSameTime(ti, tj)) return vi;
       return vi + (vj - vi) * ((v - ti)/(tj - ti));
     }
     break;
@@ -208,11 +211,12 @@ static inline double rxApproxCov(double t, double *y, int is_locf,
   });
 }
 
-// Covariate k of the subject a resampled covariate is drawn from, at time t.
-// That subject may be unsorted or solving on another thread, so read only its
-// data records in record order with their data times, never ix/timeThread.
-static inline double rxApproxCovSample(double t, int k, int is_locf,
-                                       rx_solving_options *op, rx_solving_options_ind *indSample) {
+// Covariate k of a subject at time t from its data records in record order and
+// their data times, never ix/timeThread: the subject a resampled covariate is
+// drawn from may be unsorted or solving on another thread, and a pushed record
+// is not sorted into ix yet when its lag is evaluated.
+static inline double rxApproxCovData(double t, int k, int is_locf,
+                                     rx_solving_options *op, rx_solving_options_ind *indSample) {
   int n = indSample->n_all_times_orig;
   double *y = indSample->cov_ptr + n*k;
   double *at = indSample->all_times;
@@ -381,7 +385,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             // the sampled subject at the data time of this subject's record idx
             ind->par_ptr[op->par_cov[k]-1] =
-              rxApproxCovSample(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, indSample);
+              rxApproxCovData(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, indSample);
             ind->cacheME=0;
             continue;
           } else {
@@ -392,7 +396,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           if (rxPushedRec(ind->ix, idx, ind->n_all_times_orig)) {
             ind->par_ptr[op->par_cov[k]-1] =
-              rxApproxCov(getAllTimes(ind, ind->ix[idx]), y, is_locf, op, ind);
+              rxApproxCovData(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, ind);
             ind->cacheME=0;
             continue;
           }
@@ -430,7 +434,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             // Use the same methodology as approxfun.  Don't need to reset ME
             // because solver doesn't use the times in-between.
-            ind->par_ptr[op->par_cov[k]-1] = rxApproxCovSample(t, k, is_locf, op, indSample);
+            ind->par_ptr[op->par_cov[k]-1] = rxApproxCovData(t, k, is_locf, op, indSample);
             continue;
           } else {
             indSample = ind;

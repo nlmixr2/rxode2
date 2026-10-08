@@ -125,20 +125,38 @@ rxTest({
       mtime(pushAt) <- 2.5
       alag(depot) <- a / 10
       d/dt(depot) <- 0
+      d/dt(cc) <- depot
       la <- last(a)
       if (t >= pushAt && t < pushAt + 0.01 && depot < 1) {
         bolus(50, depot, 12, 1, 0)
       }
     })
-    .t <- round(seq(0, 10, by = 0.05), 2)
-    .d <- data.frame(
-      id = 1, time = .t, evid = 0, amt = 0, cmt = 1,
-      a = ifelse(.t %in% c(0, 5, 10), 1 + .t, NA)
-    )
+    .d <- data.frame(id = 1, time = c(0, 5, 10), evid = 0, amt = 0, cmt = 1, a = c(1, 6, 11))
     .s <- rxSolve(.mod, .d, covsInterpolation = "linear", returnType = "data.frame")
     # a(2.5) = 3.5 linearly, so the pushed bolus lands at 2.85
-    expect_equal(min(.s$time[.s$depot > 25]), 2.85)
-    # the addl repeat at 14 is past the data; last(a) is the last data record
+    expect_equal(.s$cc[.s$time == 10], 50 * (10 - 2.85), tolerance = 1e-5)
+    # the addl repeat at 14.5 is past the data; last(a) is the last data record
     expect_equal(.s$la[.s$time == 10], 11)
+  })
+
+  test_that("linear covariates past the last value stay finite", {
+    .d <- data.frame(
+      id = 1, time = c(0, 5, 10, 20), evid = 0, amt = 0, cmt = 1,
+      a = c(1, 6, 11, NA)
+    )
+    .s <- rxSolve(rxode2({
+      d/dt(cc) <- a
+    }), .d, covsInterpolation = "linear", returnType = "data.frame")
+    expect_equal(.s$cc, c(0, 17.5, 60, 170), tolerance = 1e-5)
+    .mod <- rxode2({
+      mtime(pushAt) <- 2
+      d/dt(depot) <- 0
+      d/dt(cc) <- a
+      if (t >= pushAt && t < pushAt + 0.01 && depot < 1) {
+        bolus(50, depot, 12, 1, 0)
+      }
+    })
+    .s <- rxSolve(.mod, .d[1:3, ], covsInterpolation = "linear", returnType = "data.frame")
+    expect_equal(.s$cc[.s$time == 10], 60, tolerance = 1e-5)
   })
 })
