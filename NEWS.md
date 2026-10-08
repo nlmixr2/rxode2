@@ -149,6 +149,11 @@
   that reads it (directly or through `diff()`) with the value at that point,
   not the final value (#1435).
 
+- A `d/dt()` written between two assignments of a variable read by `lag()`
+  now reads the value at that point in the symengine form of the model
+  (`rxS()`), not the final value, matching how `rxSolve()` evaluates it
+  (#1445).
+
 - A time-varying covariate (including `DV` when the model refers to it,
   as in `res <- DV - central`) no longer corrupts doses with modeled lag
   times and durations in more than one compartment.  Interpolating the
