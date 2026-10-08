@@ -210,4 +210,41 @@ rxTest({
     # p1 is still a named parameter in the model
     expect_true("p1" %in% .ui$iniDf$name)
   })
+
+  test_that("rxFixRes skips auto-generated literal residual rows (#1450)", {
+    .ord <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+      })
+      model({
+        p0 <- expit(th + eta)
+        Y ~ c(p0 = 0, 1)
+      })
+    }
+    expect_error(.res <- rxFixRes(.ord, returnNull = TRUE), NA)
+    expect_null(.res)
+    expect_error(.res <- rxFixRes(.ord), NA)
+    expect_equal(
+      .res$iniDf$name,
+      c("th", "eta", "rx.Y.ordinal", "rx.Y.ordinal2")
+    )
+
+    .mixed <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+      })
+      model({
+        cp <- exp(th + eta)
+        cp ~ add(a) + prop(0.2)
+      })
+    }
+    expect_error(.res <- rxFixRes(.mixed), NA)
+    expect_false("a" %in% .res$iniDf$name)
+    expect_true("rx.cp.prop" %in% .res$iniDf$name)
+    expect_equal(.res$lstExpr[[2]], quote(a <- 0.3))
+    expect_equal(.res$lstExpr[[3]], quote(cp ~ add(a) + prop(0.2)))
+  })
 })

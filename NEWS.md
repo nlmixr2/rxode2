@@ -117,6 +117,11 @@
 
 ## Bug fixes
 
+- `rxFixRes()` no longer fails with `subscript out of bounds` on a model with
+  a literal residual value, like a named ordinal `Y ~ c(p0 = 0, 1)` or
+  `cp ~ add(0.5)`; the literal is already in the model, so its generated
+  fixed parameter is left alone.  This crashed nlmixr2 fits of these models
+  (#1450).
 - `delay(x, tau)` before the start of integration now returns the
   evaluated `x(0)` when `x(0)` is set from a parameter or a computed
   value, instead of 0; only a literal `x(0)` worked before (#1441).
