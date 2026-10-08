@@ -125,6 +125,8 @@
 
 - Time-varying covariates other than the first are no longer read from the
   wrong data after a dose is pushed while solving (`bolus()`, `evid_()`, ...).
+  A pushed record interpolates its covariates, and `last()` of a covariate
+  skips pushed records.
 
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's

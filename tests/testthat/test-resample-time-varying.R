@@ -119,4 +119,26 @@ rxTest({
     expect_equal(.s$ca, .s$time + .s$time^2 / 2, tolerance = 1e-5)
     expect_equal(.s$cb, 100 * .s$time + .s$time^2 / 2, tolerance = 1e-5)
   })
+
+  test_that("a pushed dose between data records interpolates its covariates", {
+    .mod <- rxode2({
+      mtime(pushAt) <- 2.5
+      alag(depot) <- a / 10
+      d/dt(depot) <- 0
+      la <- last(a)
+      if (t >= pushAt && t < pushAt + 0.01 && depot < 1) {
+        bolus(50, depot, 12, 1, 0)
+      }
+    })
+    .t <- round(seq(0, 10, by = 0.05), 2)
+    .d <- data.frame(
+      id = 1, time = .t, evid = 0, amt = 0, cmt = 1,
+      a = ifelse(.t %in% c(0, 5, 10), 1 + .t, NA)
+    )
+    .s <- rxSolve(.mod, .d, covsInterpolation = "linear", returnType = "data.frame")
+    # a(2.5) = 3.5 linearly, so the pushed bolus lands at 2.85
+    expect_equal(min(.s$time[.s$depot > 25]), 2.85)
+    # the addl repeat at 14 is past the data; last(a) is the last data record
+    expect_equal(.s$la[.s$time == 10], 11)
+  })
 })

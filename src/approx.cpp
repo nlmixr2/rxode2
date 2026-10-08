@@ -72,6 +72,10 @@ static inline double rxCovRec(double *y, int raw, int nOrig) {
   return (raw >= 0 && raw < nOrig) ? y[raw] : NA_REAL;
 }
 
+static inline bool rxPushedRec(const int *ix, int i, int nOrig) {
+  return (ix == NULL ? i : ix[i]) >= nOrig;
+}
+
 // getValue/rx_approxP index records through ix (NULL = record order, the
 // resampled-covariate case) and report the lh = -2/2 index through *iOut.
 // Records from nOrig on were pushed while solving and have no covariate value.
@@ -162,8 +166,9 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
   double tj = T(j);
   double ti = T(i);
-  if(isSameTime(v, tj)) return V(j, 1);
-  if(isSameTime(v, ti)) return V(i, -1);
+  // a pushed record has no value of its own, so interpolate across it
+  if(isSameTime(v, tj) && !rxPushedRec(ix, j, nOrig)) return V(j, 1);
+  if(isSameTime(v, ti) && !rxPushedRec(ix, i, nOrig)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {
@@ -240,7 +245,12 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
     for (int k = op->ncov; k--;){
       if (op->par_cov[k] == parNo+1){
         double *y = ind->cov_ptr + ind->n_all_times_orig*k;
-        return rxCovRec(y, ind->ix[idx], ind->n_all_times_orig);
+        // a pushed record has no value; use the nearest data record before it
+        // (or after it, when none is before)
+        int i = idx;
+        while (i > 0 && rxPushedRec(ind->ix, i, ind->n_all_times_orig)) i--;
+        while (i < ind->n_all_times-1 && rxPushedRec(ind->ix, i, ind->n_all_times_orig)) i++;
+        return rxCovRec(y, ind->ix[i], ind->n_all_times_orig);
       }
     }
   }
@@ -380,6 +390,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           }
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
+          if (rxPushedRec(ind->ix, idx, ind->n_all_times_orig)) {
+            ind->par_ptr[op->par_cov[k]-1] =
+              rxApproxCov(getAllTimes(ind, ind->ix[idx]), y, is_locf, op, ind);
+            ind->cacheME=0;
+            continue;
+          }
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -424,12 +440,14 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
-          if (idxSample == 0 &&
+          // a pushed record has no value of its own; interpolate across it
+          bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
+          if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
             par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
             ind->cacheME=0;
-          } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
+          } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
