@@ -103,18 +103,41 @@ rxTest({
     expect_equal(.s1$R, .s2$R, tolerance = 1e-6)
   })
 
-  test_that("ss=2 with delay() solves (#1447)", {
+  test_that("ss=2 adds the steady-state delay() history (#1447)", {
+    # linear in the doses, so ss=2 is exact superposition
+    .lin <- function() {
+      model({
+        ka <- 1.2
+        V <- 30
+        Cl <- 3
+        d / dt(depot) <- -ka * depot
+        d / dt(central) <- ka * depot - Cl / V * central
+        Cd <- delay(central, tau) / V
+        d / dt(E) <- 0.5 * Cd - 0.2 * E
+      })
+    }
     .ev <- data.frame(
       id = 1, time = c(0, 48, 48 + .obs), evid = c(1, 1, rep(0, 5)),
       amt = c(500, 100, rep(NA, 5)), cmt = c("depot", "depot", rep(NA, 5)),
       ss = c(0, 2, rep(0, 5)), ii = c(0, 24, rep(0, 5))
     )
-    .s <- rxSolve(.ddeSsMod(),
-      .ev,
-      params = c(tau = 4, lagD = 0),
-      returnType = "data.frame"
+    .expl <- data.frame(
+      id = 1, time = c(48 - 24 * (40:1), 0, 48, 48 + .obs),
+      evid = c(rep(1, 42), rep(0, 5)),
+      amt = c(rep(100, 40), 500, 100, rep(NA, 5)),
+      cmt = c(rep("depot", 42), rep(NA, 5))
     )
-    expect_true(all(is.finite(.s$R)))
-    expect_true(all(is.finite(.s$Cd)))
+    for (.tau in c(4, 30)) {
+      .s1 <- rxSolve(.lin(), .ev, params = c(tau = .tau), returnType = "data.frame")
+      .s2 <- suppressWarnings(rxSolve(.lin(), .expl,
+        params = c(tau = .tau),
+        returnType = "data.frame"
+      ))
+      .s1 <- .s1[.s1$time > 48, ]
+      .s2 <- .s2[.s2$time > 48, ]
+      expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
+      expect_equal(.s1$E, .s2$E, tolerance = 1e-4)
+      expect_equal(.s1$Cd, .s2$Cd, tolerance = 1e-4)
+    }
   })
 })

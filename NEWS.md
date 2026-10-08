@@ -117,11 +117,12 @@
 
 ## Bug fixes
 
-- Steady-state dosing (`ss=1`) in a model using `delay()` now brings the
+- Steady-state dosing in a model using `delay()` now brings the
   delay()-driven states to steady state; the steady-state iterations record
   the delay history and the converged dosing interval becomes the history
-  before the dose.  Before, `delay()` returned the initial condition during
-  and after the steady-state solve (#1447).
+  before the dose (added to the existing history for `ss=2`).  Before,
+  `delay()` returned the initial condition during and after the steady-state
+  solve (#1447).
 - `delay(x, tau)` before the start of integration now returns the
   evaluated `x(0)` when `x(0)` is set from a parameter or a computed
   value, instead of 0; only a literal `x(0)` worked before (#1441).
