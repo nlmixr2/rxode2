@@ -3447,6 +3447,10 @@ static void rxDelayHistSuperpose(rx_solving_options_ind *ind,
                                  rx_solving_options *op,
                                  double *oldH, int oldN, double oldT0,
                                  double *ssH, int ssN, double t1);
+static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
+                                rx_solving_options *op,
+                                double *runH, int runN, double cEnd,
+                                double ii, double t1);
 static void handleSS0(int *neq,
                      int *BadDose,
                      double *InfusionRate,
@@ -3496,25 +3500,29 @@ void handleSS(int *neq,
   ind->delayT0 = xp;
   ind->delaySSClock = xp;
   ind->delayTOff = 0.0;
+  // dosing interval, read the way handleSS0() reads it; 0 for a constant
+  // (ii = 0) infusion
+  double curIi = (ind->wh0 == EVID0_SSINF || ind->ixds == 0) ? 0.0 :
+    getIiNumber(ind, ind->ixds - 1);
+  ind->delaySSii = curIi;
   ind->delaySS = 1;
   handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
             istate, op, ind, u_inis, ctx);
   ind->delaySS = 0;
   ind->delayTOff = 0.0;
+  ind->delaySSii = 0.0;
   if (ind->delaySSClock != xp && ind->delayHistN > 0) {
-    // shift the converged history to end at the dose time
-    double shift = xout - ind->delaySSClock;
-    int stride = ind->delayHistStride;
-    for (int k = 0; k < ind->delayHistN; ++k) {
-      ind->delayHist[(size_t)k * stride + (stride - 3)] += shift;
-    }
+    // the converged interval, repeated back over the longest delay and ending
+    // at the dose time
+    double *runH = ind->delayHist;
+    rxDelayHistPeriodic(ind, op, runH, ind->delayHistN, ind->delaySSClock,
+                        curIi, xout);
+    free(runH);
     if (ss2) {
       double *ssH = ind->delayHist;
       rxDelayHistSuperpose(ind, op, oldHist, oldN, oldT0, ssH,
                            ind->delayHistN, xout);
       free(ssH);
-    } else {
-      ind->delayT0 = xp + shift;
     }
     free(oldHist);
   } else {
@@ -6670,6 +6678,67 @@ static void rxDelayDop853Basis(double s, double *b) {
   for (int k = 2; k < 8; ++k) b[k] = b[k - 1] * ((k % 2 == 0) ? s1 : s);
 }
 
+// Steady-state delay() history (rxode2#1447) from the steady-state run runH
+// (virtual times, ending at cEnd): the last dosing interval ii is repeated back
+// to cover the longest delay seen and shifted to end at t1.  A constant steady
+// state (ii = 0) becomes one constant record.  Replaces ind's buffer.
+static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
+                                rx_solving_options *op,
+                                double *runH, int runN, double cEnd,
+                                double ii, double t1) {
+  int nd = op->nDelayState;
+  int stride = RX_DELAY_STRIDE(nd);
+  double span = ind->delayMaxT > 0.0 ? ind->delayMaxT : 1.0;
+  ind->delayHist = NULL;
+  ind->delayHistN = 0;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = stride;
+  ind->delayHistNeq = nd;
+  int first = 0;
+  if (ii > 0.0) {
+    // records reaching into the last interval [cEnd - ii, cEnd]
+    while (first < runN &&
+           runH[(size_t)first * stride + (stride - 3)] +
+           runH[(size_t)first * stride + (stride - 2)] <= cEnd - ii) first++;
+  }
+  if (ii <= 0.0 || first >= runN) {
+    // constant: the state at cEnd over [t1 - span - 1, t1]
+    const double *last = runH + (size_t)rxDelayHistFind(runH, runN, stride, cEnd) * stride;
+    double *rec = rxDelayHistSlot(ind, nd);
+    if (rec != NULL) {
+      memset(rec, 0, (size_t)stride * sizeof(double));
+      for (int col = 0; col < nd; ++col) {
+        rec[col] = rxDelayRecValue(last, stride, nd, col, cEnd);
+      }
+      rec[8 * nd]     = t1 - span - 1.0;
+      rec[8 * nd + 1] = span + 1.0;
+      ind->delayHistN = 1;
+    }
+    ind->delayT0 = t1 - span - 1.0;
+    return;
+  }
+  int nCopy = (int)ceil(span / ii) + 1;
+  std::vector<std::pair<double, int> > ord;
+  ord.reserve((size_t)nCopy * (runN - first));
+  for (int m = 0; m < nCopy; ++m) {
+    double sh = t1 - cEnd - m * ii;
+    for (int k = first; k < runN; ++k) {
+      ord.push_back(std::make_pair(runH[(size_t)k * stride + (stride - 3)] + sh,
+                                   m * runN + k));
+    }
+  }
+  std::sort(ord.begin(), ord.end());
+  for (size_t q = 0; q < ord.size(); ++q) {
+    double *rec = rxDelayHistSlot(ind, nd);
+    if (rec == NULL) break;
+    int k = ord[q].second % runN;
+    memcpy(rec, runH + (size_t)k * stride, (size_t)stride * sizeof(double));
+    rec[stride - 3] = ord[q].first;
+    ind->delayHistN++;
+  }
+  ind->delayT0 = ord[0].first;
+}
+
 // ss=2 (superposition) of a delay() model (rxode2#1447): from the start ws of
 // the steady-state history ssH (already shifted to end at t1) up to t1 the
 // history becomes old + steady state.  Each sub-interval between the two
@@ -7000,6 +7069,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   ind->delayHistN  = 0;
   ind->delayT0     = x[0];
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
 
   // Track the last key event index so we know where each segment starts.

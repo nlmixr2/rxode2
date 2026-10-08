@@ -8539,6 +8539,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->delayHistN  = 0;
   ind->delayT0     = xp;
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
   if (ind->delayHistOn) {
     std::vector<double> _wu(neqOde);

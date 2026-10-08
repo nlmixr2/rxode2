@@ -73,8 +73,9 @@ rxTest({
   for (.meth in c("dop853", "dop853+ros4", "ros4", "dop853s")) {
     test_that(paste0("ss=1 bolus brings delay() states to steady state (#1447, ", .meth, ")"), {
       .ddeSsCompare(.meth, tau = 4)
-      # delay longer than the dosing interval
+      # delays longer than the dosing interval (and than the steady-state run)
       .ddeSsCompare(.meth, tau = 30)
+      .ddeSsCompare(.meth, tau = 300)
     })
   }
 
@@ -127,7 +128,7 @@ rxTest({
       amt = c(rep(100, 40), 500, 100, rep(NA, 5)),
       cmt = c(rep("depot", 42), rep(NA, 5))
     )
-    for (.tau in c(4, 30)) {
+    for (.tau in c(4, 30, 300)) {
       .s1 <- rxSolve(.lin(), .ev, params = c(tau = .tau), returnType = "data.frame")
       .s2 <- suppressWarnings(rxSolve(.lin(), .expl,
         params = c(tau = .tau),

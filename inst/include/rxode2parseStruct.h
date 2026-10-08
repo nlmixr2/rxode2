@@ -544,6 +544,8 @@ struct rx_solving_options_ind_s {
   double  delayTOff;
   double  delaySSClock; /* virtual time reached by the steady-state solve */
   int     delaySS;      /* 1 while handleSS() records delay() history */
+  double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
+  double  delayMaxT;    /* largest delay duration seen */
 };
 
 typedef struct rx_solve_s {

@@ -37,6 +37,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->delayHistN  = 0;
   ind->delayT0     = xp;
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
   double _ros4MaxDt = 0.0; // 0 = no cap (default rosenbrock4_controller behavior)
   if (ind->delayHistOn && neqOde > 0) {
