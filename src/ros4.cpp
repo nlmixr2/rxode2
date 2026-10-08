@@ -396,7 +396,7 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   int neqOde = eff - op->numLin - op->numLinSens;
   if (neqOde <= 0) { return 1; }
   double maxdt = 0.0;
-  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = ind->delayMinT;
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = rxDelayStepCap(ind);
 
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;

@@ -11,6 +11,7 @@
 #include <time.h>
 #include <string>
 #include <vector>
+#include <new>
 #include "strncmp.h"
 #include "timsort.h"
 #include "../inst/include/rxode2.h"
@@ -3443,11 +3444,11 @@ extern "C" void handleSSinf8(int *neq,
 }
 
 
-static void rxDelayHistSuperpose(rx_solving_options_ind *ind,
+static bool rxDelayHistSuperpose(rx_solving_options_ind *ind,
                                  rx_solving_options *op,
                                  double *oldH, int oldN, double oldT0,
                                  double *ssH, int ssN, double t1);
-static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
+static bool rxDelayHistPeriodic(rx_solving_options_ind *ind,
                                 rx_solving_options *op,
                                 double *runH, int runN, double cEnd,
                                 double ii, double t1);
@@ -3514,26 +3515,33 @@ static void handleSSDelay(int *neq,
   ind->delaySSii = 0.0;
   if (ind->delaySSClock != xp && ind->delayHistN > 0) {
     // the converged interval, repeated back over the longest delay and ending
-    // at the dose time
-    double *runH = ind->delayHist;
-    rxDelayHistPeriodic(ind, op, runH, ind->delayHistN, ind->delaySSClock,
-                        curIi, xout);
-    free(runH);
-    if (ss2 && ind->delayHistN == 0) {
-      // out of memory: keep the previous history
-      free(ind->delayHist);
-      ind->delayHist = oldHist;
-      ind->delayHistN = oldN;
-      ind->delayHistCap = oldCap;
-      ind->delayT0 = oldT0;
-      oldHist = NULL;
-    } else if (ss2) {
-      double *ssH = ind->delayHist;
-      rxDelayHistSuperpose(ind, op, oldHist, oldN, oldT0, ssH,
-                           ind->delayHistN, xout);
-      free(ssH);
+    // at the dose time; for ss=2 added to the previous history
+    double *runH = ind->delayHist, *ssH = NULL;
+    bool ok = false;
+    try {
+      ok = rxDelayHistPeriodic(ind, op, runH, ind->delayHistN,
+                               ind->delaySSClock, curIi, xout);
+      if (ok && ss2) {
+        ssH = ind->delayHist;
+        ok = rxDelayHistSuperpose(ind, op, oldHist, oldN, oldT0, ssH,
+                                  ind->delayHistN, xout);
+      }
+    } catch (const std::bad_alloc &) {
+      ok = false;
     }
+    if (ssH == ind->delayHist) ind->delayHist = NULL;  // threw before replacing it
+    free(ssH);
+    free(runH);
     free(oldHist);
+    if (!ok) {
+      // out of memory: fail this subject rather than use a partial history
+      free(ind->delayHist);
+      ind->delayHist = NULL;
+      ind->delayHistN = 0;
+      ind->delayHistCap = 0;
+      if (ind->rc[0] == 0) ind->rc[0] = -2019;
+      badSolveExit(*i);
+    }
   } else {
     free(ind->delayHist);
     ind->delayHist = oldHist;
@@ -6691,7 +6699,7 @@ static void rxDelayDop853Basis(double s, double *b) {
 // (virtual times, ending at cEnd): the last dosing interval ii is repeated back
 // to cover the longest delay seen and shifted to end at t1.  A constant steady
 // state (ii = 0) becomes one constant record.  Replaces ind's buffer.
-static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
+static bool rxDelayHistPeriodic(rx_solving_options_ind *ind,
                                 rx_solving_options *op,
                                 double *runH, int runN, double cEnd,
                                 double ii, double t1) {
@@ -6714,7 +6722,8 @@ static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
     // constant: the state at cEnd over [t1 - span - 1, t1]
     const double *last = runH + (size_t)rxDelayHistFind(runH, runN, stride, cEnd) * stride;
     double *rec = rxDelayHistSlot(ind, nd);
-    if (rec != NULL) {
+    if (rec == NULL) return false;
+    {
       memset(rec, 0, (size_t)stride * sizeof(double));
       for (int col = 0; col < nd; ++col) {
         rec[col] = rxDelayRecValue(last, stride, nd, col, cEnd);
@@ -6724,7 +6733,7 @@ static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
       ind->delayHistN = 1;
     }
     ind->delayT0 = t1 - span - 1.0;
-    return;
+    return true;
   }
   // at most ~1e6 records; a longer delay than that covers reads the pre-history
   double nPer = (double)(runN - first);
@@ -6743,13 +6752,14 @@ static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
   std::sort(ord.begin(), ord.end());
   for (size_t q = 0; q < ord.size(); ++q) {
     double *rec = rxDelayHistSlot(ind, nd);
-    if (rec == NULL) break;
+    if (rec == NULL) return false;
     int k = ord[q].second;
     memcpy(rec, runH + (size_t)k * stride, (size_t)stride * sizeof(double));
     rec[stride - 3] = ord[q].first;
     ind->delayHistN++;
   }
   ind->delayT0 = ord[0].first;
+  return true;
 }
 
 // Inverse of the dop853 basis matrix at the nodes s_k = k/7 (Gauss-Jordan).
@@ -6834,7 +6844,7 @@ static void rxDelaySumRecord(const rxDelaySum &d, const double inv[8][8],
 // history becomes old + steady state.  Each sub-interval between the two
 // histories' step boundaries is refit exactly as a dop853 record (the sum of
 // two interpolants of degree <= 7 has degree <= 7).  Replaces ind's buffer.
-static void rxDelayHistSuperpose(rx_solving_options_ind *ind,
+static bool rxDelayHistSuperpose(rx_solving_options_ind *ind,
                                  rx_solving_options *op,
                                  double *oldH, int oldN, double oldT0,
                                  double *ssH, int ssN, double t1) {
@@ -6860,27 +6870,36 @@ static void rxDelayHistSuperpose(rx_solving_options_ind *ind,
   // old records strictly before ws keep serving lookups before ws
   for (int k = 0; k < oldN && oldH[(size_t)k * stride + (stride - 3)] < ws; ++k) {
     double *rec = rxDelayHistSlot(ind, nd);
-    if (rec == NULL) break;
+    if (rec == NULL) return false;
     memcpy(rec, oldH + (size_t)k * stride, (size_t)stride * sizeof(double));
     ind->delayHistN++;
   }
   for (size_t q = 0; q + 1 < bp.size(); ++q) {
     if (isSameTimeDop(bp[q + 1], bp[q])) continue;
     double *rec = rxDelayHistSlot(ind, nd);
-    if (rec == NULL) break;
+    if (rec == NULL) return false;
     rxDelaySumRecord(d, inv, bp[q], bp[q + 1] - bp[q], rec);
     ind->delayHistN++;
   }
   ind->delayT0 = (oldN > 0 && oldT0 < ws) ? oldT0 : ws;
+  return true;
 }
 
 // Cap the maximum step size so the integrator never steps over the smallest
 // delay; this keeps every delay() lookup inside already-recorded history
 // instead of extrapolating off the current (not yet recorded) step.
+// The step-size cap: the smallest delay, or half of it while a constant
+// (ii = 0) steady state reads back half the smallest delay (rxode2#1447).
+static inline double rxDelayStepCap(rx_solving_options_ind *ind) {
+  return (ind->delaySS && ind->delaySSii <= 0.0) ? 0.5 * ind->delayMinT :
+    ind->delayMinT;
+}
+
 static inline double rxDelayCapHmax(rx_solving_options_ind *ind) {
   double h = ind->HMAX;
   if (ind->delayHistOn && R_FINITE(ind->delayMinT)) {
-    if (h <= 0.0 || ind->delayMinT < h) h = ind->delayMinT;
+    double cap = rxDelayStepCap(ind);
+    if (h <= 0.0 || cap < h) h = cap;
   }
   return h;
 }
