@@ -3473,7 +3473,10 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx) {
-  if (!ind->delayHistOn) {
+  if (!ind->delayHistOn ||
+      (ind->wh0 != EVID0_SS && ind->wh0 != EVID0_SS0 &&
+       ind->wh0 != EVID0_SS2 && ind->wh0 != EVID0_SS20 &&
+       ind->wh0 != EVID0_SSINF)) {
     handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
               istate, op, ind, u_inis, ctx);
     return;
@@ -3489,16 +3492,6 @@ void handleSS(int *neq,
   ind->delayT0 = xp;
   ind->delaySSClock = xp;
   ind->delayTOff = 0.0;
-  if (!ind->delayWarmed) {
-    // one RHS evaluation so delay() learns the step-size cap
-    int eff = rxEffNeq(ind, op);
-    int neq0 = neq[0];
-    neq[0] = eff - op->numLin - op->numLinSens;
-    std::vector<double> _ddt((size_t)eff);
-    dydt(neq, xp, yp, _ddt.data());
-    neq[0] = neq0;
-    ind->delayWarmed = 1;
-  }
   ind->delaySS = 1;
   handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
             istate, op, ind, u_inis, ctx);
@@ -6794,6 +6787,12 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   ind->delayTOff = ind->delaySSClock - xp;
   preSolve(op, ind, xp, xout, yp);
   neq[0] = eff - op->numLin - op->numLinSens;
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    std::vector<double> _ddt((size_t)eff);
+    dydt(neq, xp, yp, _ddt.data());
+    ind->delayWarmed = 1;
+  }
   int base = op->stiff >= 200 ? op->stiff - 200 : op->stiff;
   int idid;
   if (base == 13 && op->stiff2 <= 0) {

@@ -3,6 +3,7 @@ rxTest({
   # delay history taken from the converged dosing interval (rxode2#1447).
   .ddeSsMod <- function() {
     model({
+      R(0) <- 100
       ka <- 1.2
       V <- 30
       Cl <- 3
@@ -10,7 +11,6 @@ rxTest({
       Kout <- 0.1
       Imax <- 0.8
       IC50 <- 1
-      R(0) <- 100
       d / dt(depot) <- -ka * depot
       alag(depot) <- lagD
       d / dt(central) <- ka * depot - Cl / V * central
@@ -18,10 +18,24 @@ rxTest({
       d / dt(R) <- Kin * (1 - Imax * Cd / (Cd + IC50)) - Kout * R
     })
   }
+  # no x(0): an ss lag with an x(0) statement is a separate issue
+  .ddeSsModNoIni <- function() {
+    model({
+      ka <- 1.2
+      V <- 30
+      Cl <- 3
+      d / dt(depot) <- -ka * depot
+      alag(depot) <- lagD
+      d / dt(central) <- ka * depot - Cl / V * central
+      Cd <- delay(central, tau) / V
+      d / dt(R) <- 10 * (1 - 0.8 * Cd / (Cd + 1)) - 0.1 * R
+    })
+  }
   .obs <- c(0.25, 1, 3, 12, 24)
   # one steady-state dose at `t0` versus the same regimen written as 40
   # explicit doses ending at `t0`
-  .ddeSsCompare <- function(method, tau, lagD = 0, rate = 0, t0 = 0) {
+  .ddeSsCompare <- function(method, tau, lagD = 0, rate = 0, t0 = 0,
+                            mod = .ddeSsMod) {
     .dose <- data.frame(
       id = 1, time = t0, evid = 1, amt = 100, cmt = "depot",
       rate = rate, ss = 1, ii = 24
@@ -40,11 +54,11 @@ rxTest({
       .o
     )
     .p <- c(tau = tau, lagD = lagD)
-    .s1 <- suppressWarnings(rxSolve(.ddeSsMod(), .ss,
+    .s1 <- suppressWarnings(rxSolve(mod(), .ss,
       params = .p, method = method,
       returnType = "data.frame"
     ))
-    .s2 <- suppressWarnings(rxSolve(.ddeSsMod(), .expl,
+    .s2 <- suppressWarnings(rxSolve(mod(), .expl,
       params = .p, method = method,
       returnType = "data.frame"
     ))
@@ -66,7 +80,7 @@ rxTest({
 
   test_that("ss=1 delay() steady state with an infusion, a lag and a later dose time (#1447)", {
     .ddeSsCompare("dop853", tau = 4, rate = 50)
-    .ddeSsCompare("dop853", tau = 4, lagD = 1.5)
+    .ddeSsCompare("dop853", tau = 4, lagD = 1.5, mod = .ddeSsModNoIni)
     .ddeSsCompare("dop853", tau = 30, t0 = 48)
   })
 
