@@ -393,6 +393,11 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 // the value is interpolated from the per-subject dense history recorded by the
 // solver, using the same 8th-order Dormand-Prince interpolant as dop853's
 // contd8(), so delayed states are obtained to the full accuracy of the solve.
+// Subject's evaluated initial state x(0) (rxode2#1441), else the literal one.
+static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
+  if (i < _ind->delayIniN) return _ind->delayIni[i];
+  return _solveData->op->inits[i];
+}
 // forward declaration of the model's non-constant pre-history (past()); the
 // default (no past()) returns the constant initial condition.
 double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);

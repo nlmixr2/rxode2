@@ -232,6 +232,25 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
       }
 		}
+    // delay() pre-history is the evaluated x(0), not the literal op->inits
+    // (rxode2#1441); slot 0 holds it now, before handle_evid adds any dose.
+    if (inLhs == 0) {
+      ind->delayIniN = 0;
+      int _nIni = rxEffNeq(ind, op);
+      if (op->hasDelay && u_inis != NULL && _nIni > 0) {
+        if (ind->delayIniCap < _nIni) {
+          double *_p = (double*)realloc(ind->delayIni, _nIni*sizeof(double));
+          if (_p != NULL) {
+            ind->delayIni = _p;
+            ind->delayIniCap = _nIni;
+          }
+        }
+        if (ind->delayIniCap >= _nIni) {
+          memcpy(ind->delayIni, ind->solve, _nIni*sizeof(double));
+          ind->delayIniN = _nIni;
+        }
+      }
+    }
     // Reset ind->linCmtSave -- the PER-THREAD linCmt() inter-event amount
     // ("alast") save buffer (gLinSave sliced by thread id in
     // getLinCmtSaveThread()), shared by every subject run on the same OpenMP

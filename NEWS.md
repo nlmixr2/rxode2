@@ -117,6 +117,27 @@
 
 ## Bug fixes
 
+- `delay(x, tau)` before the start of integration now returns the
+  evaluated `x(0)` when `x(0)` is set from a parameter or a computed
+  value, instead of 0; only a literal `x(0)` worked before (#1441).
+- `rxControl()` and `rxSolve()` now reject a zero `atol`, `atolSens`, `ssAtol`
+  or `ssAtolSens`.  A zero absolute tolerance gave a failed or silently wrong
+  solve, since the states start at zero (#1440).
+- A time-varying covariate resampled with `rxSolve(..., resample = TRUE)` is
+  now read from the sampled subject at the right time.  Functional `alag()`,
+  `rate()`, `dur()` and `mtime()` read outside the subject's data, and the
+  ODE could see the sampled subject's covariate frozen at one value when that
+  subject had not been solved yet (#1439).
+
+- Time-varying covariates other than the first are no longer read from the
+  wrong data after a dose is pushed while solving (`bolus()`, `evid_()`, ...).
+  A pushed record interpolates its covariates, and `last()` of a covariate
+  skips pushed records.
+
+- A linearly interpolated covariate past its last non-missing value (a
+  trailing `NA`, or past a pushed record) is now carried forward instead of
+  becoming `NaN`.
+
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's
   previous (or next) record.  `lag()` of another reserved name like `amt` is a
