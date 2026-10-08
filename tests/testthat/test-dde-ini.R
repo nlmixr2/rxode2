@@ -66,18 +66,12 @@ rxTest({
   test_that("x(0) parameter sensitivity includes the history (#1441)", {
     .e <- et(seq(0, 3, by = 0.25))
     .mstr <- "y(0) <- a\nd/dt(y) <- -k*delay(y, 1)\n"
-    .s <- rxSolve(rxode2(.mstr, calcSens = c("k", "a")), .e,
-      params = c(k = 0.3, a = 1), atol = 1e-11, rtol = 1e-11
-    )
+    .s <- rxSolve(rxode2(.mstr, calcSens = c("k", "a")), .e, params = c(k = 0.3, a = 1), atol = 1e-11, rtol = 1e-11)
     .fwd <- function(k, a) {
       rxSolve(rxode2(.mstr), .e, params = c(k = k, a = a), atol = 1e-11, rtol = 1e-11)$y
     }
     .eps <- 1e-4
-    expect_equal(.s$rx__sens_y_BY_a__, (.fwd(0.3, 1 + .eps) - .fwd(0.3, 1 - .eps)) / (2 * .eps),
-      tolerance = 1e-4
-    )
-    expect_equal(.s$rx__sens_y_BY_k__, (.fwd(0.3 + .eps, 1) - .fwd(0.3 - .eps, 1)) / (2 * .eps),
-      tolerance = 1e-4
-    )
+    expect_equal(.s$rx__sens_y_BY_a__, (.fwd(0.3, 1 + .eps) - .fwd(0.3, 1 - .eps)) / (2 * .eps), tolerance = 1e-4)
+    expect_equal(.s$rx__sens_y_BY_k__, (.fwd(0.3 + .eps, 1) - .fwd(0.3 - .eps, 1)) / (2 * .eps), tolerance = 1e-4)
   })
 })
