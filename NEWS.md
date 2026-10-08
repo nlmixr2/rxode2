@@ -117,6 +117,10 @@
 
 ## Bug fixes
 
+- `rxControl()` and `rxSolve()` now reject a zero `atol`, `atolSens`, `ssAtol`
+  or `ssAtolSens`.  A zero absolute tolerance gave a failed or silently wrong
+  solve, since the states start at zero (#1440).
+
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's
   previous (or next) record.  `lag()` of another reserved name like `amt` is a
