@@ -203,9 +203,14 @@ rxFixRes <- function(ui, returnNull = FALSE) {
   .iniDf <- .model$iniDf
   .w <- which(!is.na(.iniDf$ntheta) & !is.na(.iniDf$err) & .iniDf$fix)
   .lstExpr0 <- .model$lstExpr
-  .isEndpoint <- vapply(.lstExpr0, function(.item) {
-    is.call(.item) && identical(.item[[1]], quote(`~`))
-  }, logical(1), USE.NAMES = FALSE)
+  .isEndpoint <- vapply(
+    .lstExpr0,
+    function(.item) {
+      is.call(.item) && identical(.item[[1]], quote(`~`))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )
   # a literal residual value (e.g. add(0.5), c(p0=0, 1)) is already literal in
   # the model; its auto-generated FIX row is never named there, so skip it
   .w <- .w[.iniDf$name[.w] %in% unlist(lapply(.lstExpr0[.isEndpoint], all.names))]
@@ -218,15 +223,18 @@ rxFixRes <- function(ui, returnNull = FALSE) {
   .v <- setNames(.iniDf$est[.w], .iniDf$name[.w])
   .env <- new.env(parent = emptyenv())
   .env$fix <- .iniDf$name[.w]
-  .lst <- do.call(c, lapply(seq_along(.lstExpr0), function(i) {
-    .item <- .lstExpr0[[i]]
-    if (!.isEndpoint[i]) {
-      return(list(.item))
-    }
-    .cerr <- .lineFixedRes(.item, .env$fix)
-    .env$fix <- setdiff(.env$fix, .cerr)
-    c(lapply(.cerr, function(.e) str2lang(paste0(.e, " <- ", .v[.e]))), list(.item))
-  }))
+  .lst <- do.call(
+    c,
+    lapply(seq_along(.lstExpr0), function(i) {
+      .item <- .lstExpr0[[i]]
+      if (!.isEndpoint[i]) {
+        return(list(.item))
+      }
+      .cerr <- .lineFixedRes(.item, .env$fix)
+      .env$fix <- setdiff(.env$fix, .cerr)
+      c(lapply(.cerr, function(.e) str2lang(paste0(.e, " <- ", .v[.e]))), list(.item))
+    })
+  )
 
   .iniDf <- .iniDf[-.w, ]
   .iniDf$ntheta <- ifelse(is.na(.iniDf$ntheta), NA_integer_, seq_along(.iniDf$ntheta))

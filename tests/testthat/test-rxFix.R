@@ -246,5 +246,33 @@ rxTest({
     expect_true("rx.cp.prop" %in% .res$iniDf$name)
     expect_equal(.res$lstExpr[[2]], quote(a <- 0.3))
     expect_equal(.res$lstExpr[[3]], quote(cp ~ add(a) + prop(0.2)))
+
+    .multi <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+        b <- fix(0.4)
+      })
+      model({
+        cp <- exp(th + eta)
+        eff <- cp
+        cp ~ add(a)
+        eff ~ add(0.1) + prop(b)
+      })
+    }
+    expect_error(.res <- rxFixRes(.multi), NA)
+    expect_equal(.res$iniDf$name, c("th", "rx.eff.add", "eta"))
+    expect_equal(
+      .res$lstExpr,
+      list(
+        quote(cp <- exp(th + eta)),
+        quote(eff <- cp),
+        quote(a <- 0.3),
+        quote(cp ~ add(a)),
+        quote(b <- 0.4),
+        quote(eff ~ add(0.1) + prop(b))
+      )
+    )
   })
 })
