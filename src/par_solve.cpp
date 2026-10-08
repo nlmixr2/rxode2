@@ -6725,21 +6725,25 @@ static void rxDelayHistPeriodic(rx_solving_options_ind *ind,
     ind->delayT0 = t1 - span - 1.0;
     return;
   }
-  int nCopy = (int)ceil(span / ii) + 1;
+  // at most ~1e6 records; a longer delay than that covers reads the pre-history
+  double nPer = (double)(runN - first);
+  double nCopyD = ceil(span / ii) + 1.0;
+  if (nCopyD * nPer > 1e6) nCopyD = fmax(1.0, floor(1e6 / nPer));
+  int nCopy = (int)nCopyD;
   std::vector<std::pair<double, int> > ord;
   ord.reserve((size_t)nCopy * (runN - first));
   for (int m = 0; m < nCopy; ++m) {
     double sh = t1 - cEnd - m * ii;
     for (int k = first; k < runN; ++k) {
       ord.push_back(std::make_pair(runH[(size_t)k * stride + (stride - 3)] + sh,
-                                   m * runN + k));
+                                   k));
     }
   }
   std::sort(ord.begin(), ord.end());
   for (size_t q = 0; q < ord.size(); ++q) {
     double *rec = rxDelayHistSlot(ind, nd);
     if (rec == NULL) break;
-    int k = ord[q].second % runN;
+    int k = ord[q].second;
     memcpy(rec, runH + (size_t)k * stride, (size_t)stride * sizeof(double));
     rec[stride - 3] = ord[q].first;
     ind->delayHistN++;
