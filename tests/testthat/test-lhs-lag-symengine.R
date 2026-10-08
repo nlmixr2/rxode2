@@ -74,4 +74,40 @@ rxTest({
       )
     )
   })
+  test_that("rxS() binds the snapshot in a d/dt() between assignments of a lagged variable (#1445)", {
+    m <- rxode2(paste(
+      "ka = 1.5; cl = 2.7; v = 30; ke = 0.3",
+      "d/dt(depot) = -ka*depot",
+      "d/dt(central) = ka*depot - cl/v*central",
+      "c0 = central/v",
+      "d/dt(eff) = ke*(c0 - eff)",
+      "c0 = c0*1.4",
+      "cp = eff + lag(c0)",
+      sep = "\n"
+    ))
+    s <- rxS(m)
+    expect_equal(s$..ddt[3], "d/dt(eff)=0.3*(-eff+rx_lagv1_c0)")
+    expect_equal(
+      s$..lhs,
+      c("c0=0.0333333333333333*central", "rx_lagv1_c0=c0", "c0=1.4*rx_lagv1_c0", "cp=eff+lag(c0)")
+    )
+    # the snapshot is defined before the ODEs that read it
+    m2 <- rxode2(paste(c(s$..lhs, s$..ddt), collapse = "\n"))
+    e <- et(amt = 100) |> et(seq(0, 24, by = 2))
+    r1 <- rxSolve(m, e)
+    r2 <- rxSolve(m2, e)
+    expect_equal(r2$eff, r1$eff)
+    expect_equal(r2$cp, r1$cp)
+  })
+  test_that("a d/dt() after the last assignment of a lagged variable reads the variable (#1445)", {
+    # guards against over-applying the snapshot
+    s <- rxS(rxode2(paste(
+      "c0 = central/10",
+      "c0 = c0*3",
+      "d/dt(central) = -0.1*c0",
+      "cp = lag(c0)",
+      sep = "\n"
+    )))
+    expect_equal(s$..ddt, "d/dt(central)=-0.1*c0")
+  })
 })
