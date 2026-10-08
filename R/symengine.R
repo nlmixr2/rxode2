@@ -2413,7 +2413,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   ) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv = isEnv))
   } else if (identical(x[[1]], quote(`diff`)) || identical(x[[1]], quote(`diff0`))) {
-    return(.rxToSEDiff(x, envir = envir, progress = progress, isEnv = isEnv))
+    .rxToSEDiff(x, envir = envir, progress = progress, isEnv = isEnv)
   } else if (
     identical(x[[1]], quote(`delay`)) ||
       identical(x[[1]], quote(`rxDelayD`)) ||
