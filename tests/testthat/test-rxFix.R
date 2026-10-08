@@ -274,5 +274,22 @@ rxTest({
         quote(eff ~ add(0.1) + prop(b))
       )
     )
+
+    # a fixed residual named before its endpoint is assigned before that use
+    .early <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+      })
+      model({
+        eff <- exp(th + eta) + a
+        cp <- eff
+        cp ~ add(a)
+      })
+    }
+    expect_error(.res <- rxFixRes(.early), NA)
+    expect_equal(.res$lstExpr[[1]], quote(a <- 0.3))
+    expect_equal(.res$lstExpr[[2]], quote(eff <- exp(th + eta) + a))
   })
 })

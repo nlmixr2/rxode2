@@ -227,9 +227,7 @@ rxFixRes <- function(ui, returnNull = FALSE) {
     c,
     lapply(seq_along(.lstExpr0), function(i) {
       .item <- .lstExpr0[[i]]
-      if (!.isEndpoint[i]) {
-        return(list(.item))
-      }
+      # assign each value before the first line naming it
       .cerr <- .lineFixedRes(.item, .env$fix)
       .env$fix <- setdiff(.env$fix, .cerr)
       c(lapply(.cerr, function(.e) str2lang(paste0(.e, " <- ", .v[.e]))), list(.item))
