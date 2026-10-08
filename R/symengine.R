@@ -1200,6 +1200,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     return(.ret)
   } else {
     .ret <- as.character(x)
+    if (!.rxSEstate$isLhs && isEnv && is.environment(envir)) {
+      # A read of a reassigned lagged variable before its last assignment uses
+      # the snapshot symbol; d/dt() is evaluated after the whole model is
+      # loaded, so it cannot rely on the variable's binding (#1445).
+      .n <- envir$..laggedAssignN[.ret]
+      .i <- envir$..laggedAssignSeen[.ret]
+      if (length(.n) == 1L && !is.na(.n) && length(.i) == 1L && !is.na(.i) && .i < .n) {
+        .snap <- paste0("rx_lagv", .i, "_", .ret)
+        if (!exists(.snap, envir = envir, inherits = FALSE)) {
+          assign(.snap, symengine::Symbol(.snap), envir = envir)
+        }
+        return(.snap)
+      }
+    }
     if (!.rxSEstate$isLhs && .ret %in% .rxToSEDualVarFunction) {
       ## A bare dose-history name (tad, dosenum, tlast, ...) used as a *value*
       ## expands to its functional form (e.g. tad -> (t-tlast())).  When the same
