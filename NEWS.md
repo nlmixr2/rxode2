@@ -123,6 +123,12 @@
   fixed parameter is left alone.  This crashed nlmixr2 fits of these models
   (#1450).  A fixed residual parameter is now assigned before the first
   model line that uses it, not just before its endpoint.
+- rxode2 now requires dparser (>= 1.3.1-14).  Earlier dparser versions
+  shared a first reduction path in `reduce_one()` across threads, which
+  could segfault rxode2's parallel expression optimization
+  (`rxOptExpr()`) on clang builds (nlmixr2/dparser-R#33; CRAN's clang
+  checks of babelmixr2).
+
 - `delay(x, tau)` before the start of integration now returns the
   evaluated `x(0)` when `x(0)` is set from a parameter or a computed
   value, instead of 0; only a literal `x(0)` worked before (#1441).
@@ -154,6 +160,11 @@
   form of the model (`rxS()`, and the models built from it) now computes an lhs
   that reads it (directly or through `diff()`) with the value at that point,
   not the final value (#1435).
+
+- A `d/dt()` written between two assignments of a variable read by `lag()`
+  now reads the value at that point in the symengine form of the model
+  (`rxS()`), not the final value, matching how `rxSolve()` evaluates it
+  (#1445).
 
 - A time-varying covariate (including `DV` when the model refers to it,
   as in `res <- DV - central`) no longer corrupts doses with modeled lag
