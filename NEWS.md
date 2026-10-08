@@ -117,6 +117,9 @@
 
 ## Bug fixes
 
+- `delay(x, tau)` before the start of integration now returns the
+  evaluated `x(0)` when `x(0)` is set from a parameter or a computed
+  value, instead of 0; only a literal `x(0)` worked before (#1441).
 - `rxControl()` and `rxSolve()` now reject a zero `atol`, `atolSens`, `ssAtol`
   or `ssAtolSens`.  A zero absolute tolerance gave a failed or silently wrong
   solve, since the states start at zero (#1440).
