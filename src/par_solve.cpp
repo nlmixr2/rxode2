@@ -3518,7 +3518,15 @@ void handleSS(int *neq,
     rxDelayHistPeriodic(ind, op, runH, ind->delayHistN, ind->delaySSClock,
                         curIi, xout);
     free(runH);
-    if (ss2) {
+    if (ss2 && ind->delayHistN == 0) {
+      // out of memory: keep the previous history
+      free(ind->delayHist);
+      ind->delayHist = oldHist;
+      ind->delayHistN = oldN;
+      ind->delayHistCap = oldCap;
+      ind->delayT0 = oldT0;
+      oldHist = NULL;
+    } else if (ss2) {
       double *ssH = ind->delayHist;
       rxDelayHistSuperpose(ind, op, oldHist, oldN, oldT0, ssH,
                            ind->delayHistN, xout);

@@ -85,6 +85,33 @@ rxTest({
     .ddeSsCompare("dop853", tau = 30, t0 = 48)
   })
 
+  test_that("a constant steady-state infusion (ii = 0) with delay() (#1447)", {
+    .ss <- data.frame(
+      id = 1, time = c(0, .obs), evid = c(1, rep(0, 5)),
+      amt = c(0, rep(NA, 5)), rate = c(10, rep(0, 5)),
+      cmt = c("central", rep(NA, 5)), ss = c(1, rep(0, 5)), ii = 0
+    )
+    # the same infusion run long enough to reach steady state, ending at 0
+    # (the ss record sets the steady state; the infusion then stops)
+    .expl <- data.frame(
+      id = 1, time = c(-3000, .obs), evid = c(1, rep(0, 5)),
+      amt = c(30000, rep(NA, 5)), rate = c(10, rep(0, 5)),
+      cmt = c("central", rep(NA, 5)), ss = 0, ii = 0
+    )
+    for (.tau in c(4, 300)) {
+      .p <- c(tau = .tau, lagD = 0)
+      .s1 <- rxSolve(.ddeSsMod(), .ss, params = .p, returnType = "data.frame")
+      .s2 <- suppressWarnings(rxSolve(.ddeSsMod(), .expl,
+        params = .p,
+        returnType = "data.frame"
+      ))
+      .s2 <- .s2[.s2$time > 0, ]
+      expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
+      expect_equal(.s1$R, .s2$R, tolerance = 1e-4)
+      expect_equal(.s1$Cd, .s2$Cd, tolerance = 1e-4)
+    }
+  })
+
   test_that("ss=1 after earlier doses replaces the delay() history (#1447)", {
     .ev <- data.frame(
       id = 1, time = c(0, 48, 48 + .obs), evid = c(1, 1, rep(0, 5)),

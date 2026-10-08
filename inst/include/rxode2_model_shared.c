@@ -401,13 +401,16 @@ static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
 // Lagged time t - T on the delay history's clock; also learns the smallest and
 // largest delays.  While handleSS() iterates (rxode2#1447) the clock is virtual
 // (delayTOff) and a delay longer than the dosing interval reads the previous
-// interval (the periodic orbit) rather than the start-up transient.
+// interval (the periodic orbit) rather than the start-up transient; for a
+// constant steady state (ii = 0) any recent interval (half the smallest delay).
 static inline double _rxDelayTd(rx_solving_options_ind *_ind, double t, double T) {
   if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
   if (T > _ind->delayMaxT) _ind->delayMaxT = T;
   double td = t + _ind->delayTOff - T;
-  double ii = _ind->delaySSii;
-  if (_ind->delaySS && ii > 0.0 && T > ii) td += ii * (floor(T / ii) - 1.0);
+  if (_ind->delaySS) {
+    double ii = _ind->delaySSii > 0.0 ? _ind->delaySSii : 0.5 * _ind->delayMinT;
+    if (ii > 0.0 && isfinite(ii) && T > ii) td += ii * (floor(T / ii) - 1.0);
+  }
   return td;
 }
 // forward declaration of the model's non-constant pre-history (past()); the
