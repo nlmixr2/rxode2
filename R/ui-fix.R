@@ -225,8 +225,7 @@ rxFixRes <- function(ui, returnNull = FALSE) {
   .env$fix <- .iniDf$name[.w]
   .lst <- do.call(
     c,
-    lapply(seq_along(.lstExpr0), function(i) {
-      .item <- .lstExpr0[[i]]
+    lapply(.lstExpr0, function(.item) {
       # assign each value before the first line naming it
       .cerr <- .lineFixedRes(.item, .env$fix)
       .env$fix <- setdiff(.env$fix, .cerr)
