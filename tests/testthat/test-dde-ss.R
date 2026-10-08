@@ -199,4 +199,45 @@ rxTest({
       }
     }
   })
+
+  test_that("delay() of a dosed state on a fine grid after ss=1 and ss=2 (#1447)", {
+    # the dosed state jumps at every dose, so lookups hit history boundaries
+    .jump <- function() {
+      model({
+        d / dt(depot) <- -1.2 * depot
+        d / dt(central) <- 1.2 * depot - 0.1 * central
+        Dd <- delay(depot, tau)
+        d / dt(E) <- 0.3 * Dd - 0.2 * E
+      })
+    }
+    .fine <- seq(48.05, 48 + 60, by = 0.35)
+    for (.ss in 1:2) {
+      .ev <- data.frame(
+        id = 1,
+        time = c(0, 48, .fine),
+        evid = c(1, 1, rep(0, length(.fine))),
+        amt = c(500, 100, rep(NA, length(.fine))),
+        cmt = c("depot", "depot", rep(NA, length(.fine))),
+        ss = c(0, .ss, rep(0, length(.fine))),
+        ii = c(0, 24, rep(0, length(.fine)))
+      )
+      .pre <- if (.ss == 2) 0 else numeric(0)
+      .expl <- data.frame(
+        id = 1,
+        time = c(48 - 24 * (40:1), .pre, 48, .fine),
+        evid = c(rep(1, 41 + length(.pre)), rep(0, length(.fine))),
+        amt = c(rep(100, 40), rep(500, length(.pre)), 100, rep(NA, length(.fine))),
+        cmt = c(rep("depot", 41 + length(.pre)), rep(NA, length(.fine)))
+      )
+      for (.tau in c(5, 30)) {
+        .p <- c(tau = .tau)
+        .s1 <- rxSolve(.jump(), .ev, params = .p, returnType = "data.frame")
+        .s2 <- suppressWarnings(rxSolve(.jump(), .expl, params = .p, returnType = "data.frame"))
+        .s1 <- .s1[.s1$time > 48, ]
+        .s2 <- .s2[.s2$time > 48, ]
+        expect_equal(.s1$Dd, .s2$Dd, tolerance = 1e-4)
+        expect_equal(.s1$E, .s2$E, tolerance = 1e-4)
+      }
+    }
+  })
 })
