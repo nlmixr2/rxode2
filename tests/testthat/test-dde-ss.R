@@ -186,14 +186,17 @@ rxTest({
       amt = c(rep(100, 40), 500, 100, rep(NA, 5)),
       cmt = c(rep("depot", 42), rep(NA, 5))
     )
-    for (.tau in c(4, 30, 300)) {
-      .s1 <- rxSolve(.lin(), .ev, params = c(tau = .tau), returnType = "data.frame")
-      .s2 <- suppressWarnings(rxSolve(.lin(), .expl, params = c(tau = .tau), returnType = "data.frame"))
-      .s1 <- .s1[.s1$time > 48, ]
-      .s2 <- .s2[.s2$time > 48, ]
-      expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
-      expect_equal(.s1$E, .s2$E, tolerance = 1e-4)
-      expect_equal(.s1$Cd, .s2$Cd, tolerance = 1e-4)
+    for (.meth in c("dop853", "ros4")) {
+      for (.tau in c(4, 30, 300)) {
+        .p <- c(tau = .tau)
+        .s1 <- rxSolve(.lin(), .ev, params = .p, method = .meth, returnType = "data.frame")
+        .s2 <- suppressWarnings(rxSolve(.lin(), .expl, params = .p, method = .meth, returnType = "data.frame"))
+        .s1 <- .s1[.s1$time > 48, ]
+        .s2 <- .s2[.s2$time > 48, ]
+        expect_equal(.s1$central, .s2$central, tolerance = 1e-4)
+        expect_equal(.s1$E, .s2$E, tolerance = 1e-4)
+        expect_equal(.s1$Cd, .s2$Cd, tolerance = 1e-4)
+      }
     }
   })
 })
