@@ -117,6 +117,9 @@
 
 ## Bug fixes
 
+- `rxControl()` and `rxSolve()` now reject a zero `atol`, `atolSens`, `ssAtol`
+  or `ssAtolSens`.  A zero absolute tolerance gave a failed or silently wrong
+  solve, since the states start at zero (#1440).
 - A time-varying covariate resampled with `rxSolve(..., resample = TRUE)` is
   now read from the sampled subject at the right time.  Functional `alag()`,
   `rate()`, `dur()` and `mtime()` read outside the subject's data, and the

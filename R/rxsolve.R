@@ -2,6 +2,25 @@
 ## Populated by rxSolve.function; entries for uiUseData models are skipped.
 .rxFunctionUiCache <- new.env(hash = TRUE, parent = emptyenv())
 
+#' Assert an absolute tolerance is finite and strictly positive
+#'
+#' A zero absolute tolerance gives a zero error weight for zero states
+#' (empty compartments, sensitivities), so the solve fails.
+#'
+#' @param x the tolerance
+#' @param ... passed to `checkmate::assertNumeric()`
+#' @param .var.name name used in the error message
+#' @return nothing, called for its error
+#' @noRd
+#' @author Matthew L. Fidler
+.rxAssertPositiveTol <- function(x, ..., .var.name = checkmate::vname(x)) {
+  checkmate::assertNumeric(x, lower = 0, finite = TRUE, any.missing = FALSE, ..., .var.name = .var.name)
+  if (any(x <= 0)) {
+    stop("'", .var.name, "' must be > 0; a zero absolute tolerance fails on zero states", call. = FALSE)
+  }
+  invisible()
+}
+
 #' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
@@ -71,7 +90,8 @@
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
 #'     achieved;  This is also used in the solved linear model to check
-#'     if prior doses do not add anything to the solution.
+#'     if prior doses do not add anything to the solution.  Must be
+#'     `> 0`.
 #'
 #' @param rtol a numeric relative tolerance (`1e-6` by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -79,7 +99,8 @@
 #'     if prior doses do not add anything to the solution.
 #'
 #' @param atolSens Sensitivity atol, can be different than atol with
-#'     liblsoda.  This allows a less accurate solve for gradients (if desired)
+#'     liblsoda.  This allows a less accurate solve for gradients (if
+#'     desired).  Must be `> 0`.
 #'
 #' @param rtolSens Sensitivity rtol, can be different than rtol with
 #'     liblsoda.  This allows a less accurate solve for gradients (if desired)
@@ -302,13 +323,14 @@
 #'     12.
 #'
 #' @param ssAtol Steady state atol convergence factor.  Can be
-#'     a vector based on each state.
+#'     a vector based on each state.  Must be `> 0`.
 #'
 #' @param ssRtol Steady state rtol convergence factor.  Can be a
 #'     vector based on each state.
 #'
 #' @param ssAtolSens Sensitivity absolute tolerance (atol) for
-#'     calculating if steady state has been achieved for sensitivity compartments.
+#'     calculating if steady state has been achieved for sensitivity
+#'     compartments.  Must be `> 0`.
 #'
 #' @param ssRtolSens Sensitivity relative tolerance (rtol) for
 #'     calculating if steady state has been achieved for sensitivity compartments.
@@ -1945,13 +1967,13 @@ rxSolve <- function(
         ssRtolSens <- 10 * .sigRtol
       }
     }
-    checkmate::assertNumeric(atol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    .rxAssertPositiveTol(atol, min.len = 1)
     checkmate::assertNumeric(rtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
-    checkmate::assertNumeric(atolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    .rxAssertPositiveTol(atolSens, len = 1)
     checkmate::assertNumeric(rtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
-    checkmate::assertNumeric(ssAtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
+    .rxAssertPositiveTol(ssAtol, min.len = 1)
     checkmate::assertNumeric(ssRtol, lower = 0, finite = TRUE, any.missing = FALSE, min.len = 1)
-    checkmate::assertNumeric(ssAtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
+    .rxAssertPositiveTol(ssAtolSens, len = 1)
     checkmate::assertNumeric(ssRtolSens, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(maxsteps, lower = 1, any.missing = FALSE, len = 1)
     maxsteps <- as.integer(maxsteps)
