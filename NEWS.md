@@ -117,6 +117,12 @@
 
 ## Bug fixes
 
+- A time-varying covariate resampled with `rxSolve(..., resample = TRUE)` is
+  now read from the sampled subject at the right time.  Functional `alag()`,
+  `rate()`, `dur()` and `mtime()` read outside the subject's data, and the
+  ODE could see the sampled subject's covariate frozen at one value when that
+  subject had not been solved yet (#1439).
+
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's
   previous (or next) record.  `lag()` of another reserved name like `amt` is a
