@@ -530,6 +530,13 @@ struct rx_solving_options_ind_s {
   // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
   // records.
   int    *pkSkip;
+  // delay() pre-history: this subject's evaluated initial state (after the
+  // x(0) <- expr assignments, before any dose), captured by iniSubject() for a
+  // delay() model so a parameter or computed x(0) is honored (rxode2#1441).
+  // Kept after the solve for the output pass; freed in rxFreeInd().
+  double *delayIni;
+  int     delayIniCap; /* allocated length of delayIni */
+  int     delayIniN;   /* valid entries; 0 = use op->inits */
 };
 
 typedef struct rx_solve_s {

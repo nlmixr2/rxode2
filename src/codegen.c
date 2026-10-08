@@ -436,11 +436,11 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         // default: the constant initial condition (states with no past() keep
         // the previous constant-history behavior)
         for (int jjj = nnn; jjj--;){
-          sAppend(&sbOut, "  _past[%d]=_solveData->op->inits[%d];\n", jjj, jjj);
+          sAppend(&sbOut, "  _past[%d]=_rxDelayIni(_ind, %d);\n", jjj, jjj);
         }
       } else {
         // body left open; the catch-all close ("}\n") at the end finishes it
-        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  (void)_cSub; (void)__t; (void)__zzStateVar__;\n  return _solveData->op->inits[_cmt];\n");
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  (void)__t; (void)__zzStateVar__;\n  return _rxDelayIni(&(_solveData->subjects[_cSub]), _cmt);\n");
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){

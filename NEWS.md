@@ -117,6 +117,10 @@
 
 ## Bug fixes
 
+- `delay(x, tau)` before the start of integration now returns the
+  evaluated `x(0)` when `x(0)` is set from a parameter or a computed
+  value, instead of 0; only a literal `x(0)` worked before (#1441).
+
 - `lag(time)` (or `lag(t)`, `diff(time)`, `lead(time)`, ...) no longer aborts
   R while the model is compiled; it now returns the time of the subject's
   previous (or next) record.  `lag()` of another reserved name like `amt` is a
