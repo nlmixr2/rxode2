@@ -8539,6 +8539,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->delayHistN  = 0;
   ind->delayT0     = xp;
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
   if (ind->delayHistOn) {
     std::vector<double> _wu(neqOde);
@@ -8771,8 +8772,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
