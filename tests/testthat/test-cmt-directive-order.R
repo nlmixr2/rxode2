@@ -96,14 +96,14 @@ rxTest({
   })
 
   test_that("parser tables grow past their first block", {
-    txt <- paste0(sprintf("A%d <- 1\nstr%d <- \"a\"", 1:5200, 1:5200),
-                  collapse = "\n")
+    txt <- paste0(sprintf("A%d <- 1\nstr%d <- \"a\"", 1:5200, 1:5200), collapse = "\n")
     mv <- rxModelVars(txt)
     expect_length(mv$lhs, 5200)
     expect_length(mv$strAssign, 5200)
-    txt <- paste0(c(sprintf("d/dt(c%d) <- -c%d", 1:5100, 1:5100),
-                    "x(0) <- 1", "d/dt(x) <- 0", "alag(c3) <- 2"),
-                  collapse = "\n")
+    txt <- paste0(
+      c(sprintf("d/dt(c%d) <- -c%d", 1:5100, 1:5100), "x(0) <- 1", "d/dt(x) <- 0", "alag(c3) <- 2"),
+      collapse = "\n"
+    )
     mv <- rxModelVars(txt)
     expect_length(mv$state, 5101)
     expect_length(mv$extraState, 0)
