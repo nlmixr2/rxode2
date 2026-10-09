@@ -378,3 +378,46 @@ rxTest({
     }
   })
 })
+
+rxTest({
+  test_that("ar() estimation chains stay per endpoint when the CMT branches are flattened (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); a1 <- 0.5; a2 <- 2; c1 <- 0.7; c2 <- 0.3})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        ef <- 100 - central / v
+        cp ~ add(a1) + ar(c1)
+        ef ~ add(a2) + ar(c2)
+      })
+    }
+    .ui <- rxode2(.f)
+    .l <- lapply(1:2, function(i) .handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[i, ], i, arNorm = TRUE))
+    # useIf = FALSE: every endpoint's lines run on every record, like the pruned model
+    .m <- eval(rxCombineErrorLines(.ui, errLines = .l, useIf = FALSE))
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 1, 2, 3, 3),
+      amt = c(100, NA, NA, NA, NA, NA),
+      evid = c(1, 0, 0, 0, 0, 0),
+      cmt = c("central", "cp", "ef", "cp", "ef", "cp"),
+      DV = c(NA, 9, 91, 8, 93, 7)
+    )
+    .s <- rxSolve(
+      .m,
+      .d,
+      c(tcl = 0, tv = log(10), a1 = 0.5, a2 = 2, c1 = 0.7, c2 = 0.3),
+      addDosing = TRUE,
+      returnType = "data.frame"
+    )
+    .cp <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[1], ]
+    .ef <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[2], ]
+    .resCp <- c(9, 8, 7) - .cp$cp
+    .resEf <- c(91, 93) - .ef$ef
+    expect_equal(.cp$rx_arPhi_cp, c(0, 0.7, 0.7))
+    expect_equal(.cp$rx_arEp_cp[-1], head(.resCp, -1))
+    expect_equal(.ef$rx_arPhi_ef, c(0, 0.3^2))
+    expect_equal(.ef$rx_arEp_ef[-1], head(.resEf, -1))
+  })
+})

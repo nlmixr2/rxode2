@@ -415,17 +415,20 @@
 #' 0) and carried through dose and `evid=2` records with `lag0()` (which reads
 #' the previous record's value even after the current assignment), so the
 #' previous residual is the previous observation's, whatever `DV` another
-#' record carries.  The first
+#' record carries.  With several endpoints only this endpoint's observations
+#' (`CMT == cmt`) count, since the estimation prune flattens the `CMT` branches.  The first
 #' observation per subject has `rx_arS_` lagged 0, so `phi = 0` (marginal), and
 #' every term stays finite (the pruned `ifelse()` would give `0*NaN`).
 #'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
 #' @param .var dot-free endpoint variable name
 #' @param .dvTrans quoted transformed DV
 #' @param cor quoted AR(1) correlation
 #' @return list of quoted model lines defining `rx_arEp_` and `rx_arPhi_`
 #' @author Matthew Fidler
 #' @noRd
-.rxArEstPrevLines <- function(.var, .dvTrans, cor) {
+.rxArEstPrevLines <- function(env, pred1, .var, .dvTrans, cor) {
   .o <- str2lang(paste0("rx_arO_", .var))
   .s <- str2lang(paste0("rx_arS_", .var))
   .e <- str2lang(paste0("rx_arE_", .var))
@@ -435,7 +438,11 @@
   .nf <- str2lang(paste0("rx_arNf_", .var))
   .phi <- str2lang(paste0("rx_arPhi_", .var))
   list(
-    bquote(.(.o) <- rx__isObs__),
+    if (length(env$predDf$line) > 1L) {
+      bquote(.(.o) <- rx__isObs__ * (CMT == .(as.numeric(pred1$cmt))))
+    } else {
+      bquote(.(.o) <- rx__isObs__)
+    },
     bquote(.(.e) <- .(.o) * (.(.dvTrans) - rx_pred_) + (1 - .(.o)) * lag0(.(.e), 1)),
     bquote(.(.t) <- .(.o) * time + (1 - .(.o)) * lag0(.(.t), 1)),
     bquote(.(.s) <- .(.o) + (1 - .(.o)) * lag0(.(.s), 1)),
@@ -488,7 +495,7 @@
       bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
       bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
     ),
-    .rxArEstPrevLines(.var, .dvTrans, cor),
+    .rxArEstPrevLines(env, pred1, .var, .dvTrans, cor),
     list(
       bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ep)), bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
       quote(rx_r_ ~ 0)
@@ -527,7 +534,7 @@
       bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
       bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj)))
     ),
-    .rxArEstPrevLines(.var, .dvTrans, cor),
+    .rxArEstPrevLines(env, pred1, .var, .dvTrans, cor),
     list(
       bquote(rx_pred_ ~ rx_pred_ + .(.phi) * .(.ep)),
       bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2))
