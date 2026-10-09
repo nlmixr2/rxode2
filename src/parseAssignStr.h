@@ -21,6 +21,7 @@ static inline void add_assign_str(char *v) {
   tb.isi[tb.str.n] = 0; // variable is not ignored by default
   tb.sin[tb.str.n] = 0; // No values added yet
   addLine(&(tb.str),"%s",v);
+  seedStrAssignFromCmp(tb.id);
 }
 
 
@@ -35,11 +36,11 @@ static inline int get_str_assign_int(int val, const char *s) {
     tb.strValI=R_Realloc(tb.strValI, tb.allocSV, int);
     tb.strValII=R_Realloc(tb.strValII, tb.allocSV, int);
   }
-  int n = tb.sin[tb.id];
+  int n = tb.sin[val];
   n++;
   tb.strValI[tb.strVal.n] = val;
   tb.strValII[tb.strVal.n] = n; // R factors start with 1 instead of 0
-  tb.sin[tb.id] = n;
+  tb.sin[val] = n;
   addLine(&(tb.strVal),"%s", s);
   return n;
 }
