@@ -82,6 +82,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus (for loggers and emitters)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
@@ -1564,6 +1565,22 @@
 
         </dt>
         <dd>Creates a package from compiled rxode2 models</dd>
+      </dl></div><div class="section level2">
+      <h2 id="event-bus">Event Bus<a class="anchor" aria-label="anchor" href="#event-bus"></a></h2>
+
+      <div class="section-desc"><p>Listen to and emit events for top-level fits, solves and results (used by loggers such as nlmixr2log).</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rxEventListen.html">rxEventListen()</a></code> <code><a href="rxEventListen.html">rxEventUnlisten()</a></code> <code><a href="rxEventListen.html">rxEventListeners()</a></code> <code><a href="rxEventListen.html">rxEventDepth()</a></code> <code><a href="rxEventListen.html">rxEventSeq()</a></code> <code><a href="rxEventListen.html">rxEventScope()</a></code> <code><a href="rxEventListen.html">.rxEventEnter()</a></code> <code><a href="rxEventListen.html">.rxEventExit()</a></code> <code><a href="rxEventListen.html">.rxEventCall()</a></code> <code><a href="rxEventListen.html">rxEventEmit()</a></code>
+
+        </dt>
+        <dd>rxode2 event bus</dd>
       </dl></div><div class="section level2">
       <h2 id="utility-functions">Utility Functions<a class="anchor" aria-label="anchor" href="#utility-functions"></a></h2>
 

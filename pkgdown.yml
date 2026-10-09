@@ -16,6 +16,7 @@ articles:
   articles/rxode2-desolve-comparison: rxode2-desolve-comparison.html
   articles/rxode2-et-refactor: rxode2-et-refactor.html
   articles/rxode2-eta-eps-resampling: rxode2-eta-eps-resampling.html
+  articles/rxode2-event-bus: rxode2-event-bus.html
   rxode2-event-table: rxode2-event-table.html
   rxode2-event-types: rxode2-event-types.html
   rxode2-events-classic: rxode2-events-classic.html
@@ -52,7 +53,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-10-09T13:20Z
+last_built: 2026-10-09T18:44Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

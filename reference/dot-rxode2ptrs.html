@@ -84,6 +84,7 @@ used to allow rxode2 to have binary linkage to nlmixr2est."><meta property="og:i
     <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus (for loggers and emitters)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
@@ -137,301 +138,301 @@ used to allow rxode2 to have binary linkage to nlmixr2est.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">.rxode2ptrs</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRmvnSEXP</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83b9a07d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646eda0940&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxParProgress</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb389a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef470c0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxSolve_</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb3b030&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef49770&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2indSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bc588e0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f06a760&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getTime</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb30930&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef3f070&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2isRstudio</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd5d50&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e8a90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2iniSubjectE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb862d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef96750&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2sortIds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcf1310&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f104070&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $getSolvingOptionsInd</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccacb0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dd980&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getUpdateInis</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccad00&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dd9d0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2_rxode2_rxModelVars_</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83b99ae20&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ed9af90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2_par_solve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bc4c740&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f05e2a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxGetId</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb38060&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef46780&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLambda</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccadc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dda90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLambdaYj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccadd0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddaa0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLogitLow</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccade0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddab0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLogitHi</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccadf0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddac0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndParPtr</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccae00&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddad0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndParPtr</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccae60&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddb40&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndNallTimes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaed0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddbb0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndIdx</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaee0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddbc0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndIx</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaef0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddbd0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndEvid</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb010&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddcf0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLhs</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb050&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd30&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndNdoses</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb060&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd40&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndNevid2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb070&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd50&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb080&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd60&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb090&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd70&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndDv</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb110&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dddf0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndYj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb180&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dde60&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndLimit</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb190&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dde70&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndCens</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb200&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddee0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndIdx</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb260&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddf40&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpNeq</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de080&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setOpNeq</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3b0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de090&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2hasOpBadSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3c0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpNlin</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0b0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpCores</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3e0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0c0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpNlhs</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb3f0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0d0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpStiff</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb400&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2resetOpBadSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb410&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de0f0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNsub</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb420&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de100&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2hasRxLimit</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb470&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de150&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2hasRxCens</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb4c0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de1a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNall</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb510&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de1f0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNobs</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb560&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de240&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNobs2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb5b0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de290&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOpIndSolve</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb710&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de3f0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNpars</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb650&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de330&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndMixest</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaf30&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddc10&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndMixest</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaf40&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddc20&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2mexpit</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83ba9d410&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ee9eeb0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxMixnum</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaf60&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddc40&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setRxMixnum</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccafb0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddc90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndTolFactor</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccafd0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddcb0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndTolFactor</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccafe0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddcc0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndNeqOverride</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccaff0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddcd0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndNeqOverride</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb000&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddce0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxSetSilentErr</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bdd2a50&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f1e55e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getOrdId</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb6a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de380&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2solveMethodThreadSafe</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd5960&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e86a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2atolRtolFactor_</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4010&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e6d50&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxInt</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd570e0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f169fe0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxReal</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd571e0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f16a0e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxNsim</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb600&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de2e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setRxThreadId</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd3560&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e6290&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2AdjointSweep</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83b9b7890&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646edb7a40&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2AdjointTrajSweep</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83b9b8f70&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646edb92e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxSetSolveAtolRtol</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4230&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e6f70&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxGetSolveAtolRtol</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4400&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7140&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getRxSeed1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd90fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f1a3df0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setSeedEng1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd6dec0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f180db0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2seedEng</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd69f60&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f17cea0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxNormEng</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd69210&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f17c180&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndSolvePtr</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd80&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndSolveSave</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0b0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddd90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndSolveSave</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0c0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddda0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndSolveLast</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dddb0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndSolveLast</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0e0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dddc0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndSolveLast2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb0f0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0dddd0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndSolveLast2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb100&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddde0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxUnifEng</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bd6e670&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f181590&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2getIndCmt</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb270&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0ddf50&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2setIndCmt</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bccb320&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0de000&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensShapeSize</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb39cb0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef483f0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensShapeSave</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb39cc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef48400&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensShapeRestore</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb39e60&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef485a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensLoadFull</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb3a030&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef48770&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensGetDims</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb3a060&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef487a0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensSetDims</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb3a0d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef48810&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensSetActive</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb39c30&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef48370&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2EventSensDeactivate</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bb3a110&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646ef48850&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRegisterParLoader</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4ea0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7bf0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRemoveParLoader</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4ec0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7c10&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRegisterDydtForce</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd5140&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7e90&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRemoveDydtForce</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd51a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7ef0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxode2rxRegisterParLoaderNamed</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcd4eb0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0e7c00&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxPriorLogDensityEval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcc5fd0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0d8c30&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $rxPriorOmegaToCholOmegaInvGrad</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7ff83bcc57d0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pointer: 0x7f646f0d83e0&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>

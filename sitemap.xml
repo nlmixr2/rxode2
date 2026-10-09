@@ -18,6 +18,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-desolve-comparison.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-et-refactor.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-eta-eps-resampling.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-bus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</loc></url>
@@ -298,6 +299,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtDispatchSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtaDistExpand.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEtaDistMuRef.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventListen.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventSensDeactivate.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventSensLoadModel.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxEventTableFile.html</loc></url>
