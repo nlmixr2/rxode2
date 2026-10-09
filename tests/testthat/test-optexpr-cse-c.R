@@ -158,4 +158,24 @@ rxTest({
       expect_identical(.rxToSEC(.x), .se)
     }
   })
+
+  test_that("a repeated lag() call is not hoisted above a self-recursive assignment (#1453)", {
+    .m <- paste(
+      "o = is.na(amt)",
+      "e = o*(DV - k) + (1 - o)*lag0(e, 1)",
+      "ep = lag0(e, 1)",
+      "y = ep*o + lag0(e, 1)*2",
+      "z = (DV - k)*2",
+      sep = "\n"
+    )
+    .c <- .rxOptExprC(rxNorm(.m))
+    expect_false(is.na(.c))
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    })
+    expect_identical(.c, .r)
+    expect_false(grepl("~lag0(", .c, fixed = TRUE))
+    # the optimized model still parses (no lag() of e ahead of its assignment)
+    expect_error(rxode2(.c), NA)
+  })
 })

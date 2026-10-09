@@ -317,3 +317,55 @@ rxTest({
     expect_true(grepl("ar2.cor", .all, fixed = TRUE))
   })
 })
+
+rxTest({
+  test_that("ar() estimation lines key the previous residual on observation records (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; ar1.cor <- 0.7})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        cp ~ add(add.sd) + ar(ar1.cor)
+      })
+    }
+    .ui <- rxode2(.f)
+    .toModel <- function(lines) {
+      .txt <- vapply(lines, function(l) {
+        if (identical(l[[1]], quote(`~`))) l[[1]] <- quote(`=`)
+        deparse1(l)
+      }, character(1))
+      rxode2(paste(c("cl <- exp(tcl); v <- exp(tv)",
+                     "d/dt(central) <- -cl / v * central",
+                     "cp <- central / v", .txt), collapse = "\n"))
+    }
+    .p <- c(tcl = log(1), tv = log(10), add.sd = 0.5, ar1.cor = 0.7)
+    # dose at 0 (before any observation) and a dose between observations
+    .d <- data.frame(id = 1, time = c(0, 0.5, 1.5, 2, 2.5, 4),
+                     amt = c(100, NA, NA, 100, NA, NA),
+                     evid = c(1, 0, 0, 1, 0, 0),
+                     DV = c(NA, 9, 8, NA, 15, 12))
+    .obs <- which(.d$evid == 0)
+    for (.arNorm in c(TRUE, FALSE)) {
+      .m <- .toModel(.handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[1, ], 1L, arNorm = .arNorm))
+      .s <- rxSolve(.m, .d, .p, addDosing = TRUE, returnType = "data.frame")
+      .d2 <- .d
+      .d2$DV[.d2$evid == 1] <- 1e6 # whatever a dose record carries must not matter
+      .s2 <- rxSolve(.m, .d2, .p, addDosing = TRUE, returnType = "data.frame")
+      expect_equal(.s$rx_pred_[.obs], .s2$rx_pred_[.obs])
+      .so <- .s[.s$evid == 0, ]
+      .res <- .d$DV[.obs] - .so$rx_pred_f_
+      # first observation: marginal likelihood
+      expect_equal(.so$rx_arPhi_cp[1], 0)
+      expect_equal(.so$rx_arEp_cp[1], 0)
+      # later observations: previous OBSERVATION's residual and time gap,
+      # skipping the dose at t=2
+      expect_equal(.so$rx_arEp_cp[-1], head(.res, -1))
+      expect_equal(.so$rx_arDt_cp[-1], diff(.d$time[.obs]))
+      expect_equal(.so$rx_arPhi_cp[-1], 0.7^diff(.d$time[.obs]))
+      if (.arNorm) {
+        expect_equal(.so$rx_r_, 0.25 * (1 - .so$rx_arPhi_cp^2))
+      }
+    }
+  })
+})

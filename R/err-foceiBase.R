@@ -408,14 +408,51 @@
   }
 }
 
+#' Previous-observation AR(1) residual, time gap and weight
+#'
+#' The residual `rx_arE_`, its time `rx_arT_` and the seen-an-observation flag
+#' `rx_arS_` are updated on observation (non-dose, `is.na(amt)`) records and
+#' carried through dose records with `lag0()` (which reads the previous record's
+#' value even after the current assignment), so the previous residual is the
+#' previous observation's, whatever `DV` a dose record carries.  The first
+#' observation per subject has `rx_arS_` lagged 0, so `phi = 0` (marginal), and
+#' every term stays finite (the pruned `ifelse()` would give `0*NaN`).
+#'
+#' @param .var dot-free endpoint variable name
+#' @param .dvTrans quoted transformed DV
+#' @param cor quoted AR(1) correlation
+#' @return list of quoted model lines defining `rx_arEp_` and `rx_arPhi_`
+#' @author Matthew Fidler
+#' @noRd
+.rxArEstPrevLines <- function(.var, .dvTrans, cor) {
+  .o <- str2lang(paste0("rx_arO_", .var))
+  .s <- str2lang(paste0("rx_arS_", .var))
+  .e <- str2lang(paste0("rx_arE_", .var))
+  .t <- str2lang(paste0("rx_arT_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  .dt <- str2lang(paste0("rx_arDt_", .var))
+  .nf <- str2lang(paste0("rx_arNf_", .var))
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  list(
+    bquote(.(.o) <- is.na(amt)),
+    bquote(.(.e) <- .(.o) * (.(.dvTrans) - rx_pred_) + (1 - .(.o)) * lag0(.(.e), 1)),
+    bquote(.(.t) <- .(.o) * time + (1 - .(.o)) * lag0(.(.t), 1)),
+    bquote(.(.s) <- .(.o) + (1 - .(.o)) * lag0(.(.s), 1)),
+    bquote(.(.ep) <- lag0(.(.e), 1)),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- lag0(.(.s), 1)),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt))
+  )
+}
+
 #' Generate the estimation lines for an AR(1) (`ar()`) endpoint
 #'
 #' Emits a continuous-time AR(1) conditional log-likelihood.  The marginal
 #' residual `rx.arE.<var> = DVtrans - pred` and last time `rx.arT.<var>` are
-#' plain lhs variables; their previous-record values come from `lag()` (which
-#' survives the symengine estimation prune), and `ifelse(is.na(...))` handles the
-#' first record per individual (marginal likelihood).  A normal endpoint is
-#' packed as `dnorm` so the engine takes the explicit-likelihood path.
+#' plain lhs variables; their previous-observation values come from `lag0()`
+#' (which survives the symengine estimation prune), see `.rxArEstPrevLines()`.
+#' A normal endpoint is packed as `dnorm` so the engine takes the
+#' explicit-likelihood path.
 #'
 #' @param env parsed model environment
 #' @param pred1 single predDf row
@@ -438,33 +475,23 @@
   # dotted variable names inside a llik() argument, which breaks analytic
   # gradients for the estimation model
   .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
-  .e <- str2lang(paste0("rx_arE_", .var))
-  .t <- str2lang(paste0("rx_arT_", .var))
-  .ep <- str2lang(paste0("rx_arEp_", .var))
-  .dt <- str2lang(paste0("rx_arDt_", .var))
-  .nf <- str2lang(paste0("rx_arNf_", .var))
   .phi <- str2lang(paste0("rx_arPhi_", .var))
-  # First observation per subject/endpoint uses the marginal likelihood.  lag0()
-  # keeps the previous residual and time gap FINITE on the first record (0 and
-  # time), and `1 - is.na(lag(...))` is a NaN-safe first-record indicator (0 on
-  # the first record, 1 after) -- so rx_arNf * cor^dt = 0*finite = 0 on the first
-  # record (marginal), with no NaN (which the pruned-ifelse 0*NaN would produce).
-  list(
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  c(
+    list(
     bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
     bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
     bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
     bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
     bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
     bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
-    bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1)))),
-    bquote(.(.t) <- time),
-    bquote(.(.e) <- .(.dvTrans) - rx_pred_),
-    bquote(.(.ep) <- lag0(.(.e), 1)),
-    bquote(.(.dt) <- time - lag0(.(.t), 1)),
-    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
-    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
-    bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ep)), bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
-    quote(rx_r_ ~ 0)
+      bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
+    ),
+    .rxArEstPrevLines(.var, .dvTrans, cor),
+    list(
+      bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ep)), bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
+      quote(rx_r_ ~ 0)
+    )
   )
 }
 
@@ -486,30 +513,24 @@
   .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
   # dot-free names (the symengine sensitivity path mishandles dotted names)
   .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
-  .e <- str2lang(paste0("rx_arE_", .var))
-  .t <- str2lang(paste0("rx_arT_", .var))
-  .ep <- str2lang(paste0("rx_arEp_", .var))
-  .dt <- str2lang(paste0("rx_arDt_", .var))
-  .nf <- str2lang(paste0("rx_arNf_", .var))
   .phi <- str2lang(paste0("rx_arPhi_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
   # rx_arE_ uses the structural (transformed) prediction; rx_pred_ is then
   # reassigned to the conditional mean and rx_r_ to the conditional variance.
-  # First record: rx_arNf_=0 => phi=0 => mean=pred, var=R (marginal), NaN-safe.
-  list(
-    bquote(rx_yj_ ~ .(yj + 10 * (as.integer(pred1$distribution) - 1))),
-    bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
-    bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
-    bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
-    bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
-    bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
-    bquote(.(.t) <- time),
-    bquote(.(.e) <- .(.dvTrans) - rx_pred_),
-    bquote(.(.ep) <- lag0(.(.e), 1)),
-    bquote(.(.dt) <- time - lag0(.(.t), 1)),
-    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
-    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
-    bquote(rx_pred_ ~ rx_pred_ + .(.phi) * .(.ep)),
-    bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2))
+  c(
+    list(
+      bquote(rx_yj_ ~ .(yj + 10 * (as.integer(pred1$distribution) - 1))),
+      bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+      bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+      bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj)))
+    ),
+    .rxArEstPrevLines(.var, .dvTrans, cor),
+    list(
+      bquote(rx_pred_ ~ rx_pred_ + .(.phi) * .(.ep)),
+      bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2))
+    )
   )
 }
 

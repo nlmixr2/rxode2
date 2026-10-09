@@ -196,8 +196,8 @@ static int csCountPhase(csRun *r) {
   return csReportDeclines(r) && csMergeCounts(r);
 }
 
-/* count > 1, then drop bare numbers, bare THETA[n]/ETA[n] and anything leading
-   with `-`, then order by nchar with first encounter breaking ties
+/* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
+   with `-` and anything calling lag()/lead()/diff()/first()/last(), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
 static int csSelectPhase(csRun *r) {
   int j;
@@ -207,6 +207,7 @@ static int csSelectPhase(csRun *r) {
     csEntry *e = &r->all.e[j];
     if (e->key == NULL || e->count <= 1) continue;
     if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') continue;
+    if (csHasHistCall(e->key)) continue;
     r->cand[r->ncand].key = e->key;
     r->cand[r->ncand].firstSeen = e->firstSeen;
     r->cand[r->ncand].len = strlen(e->key);
