@@ -86,6 +86,19 @@ rxTest({
     expect_equal(rxModelVars(m)$splitBolus, c(1L, 1L, 2L))
   })
 
+  test_that("alag() follows a cmt() declared compartment order with x(0) (#1452)", {
+    m <- rxode2({
+      cmt(central)
+      R(0) <- 1
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - 0.1 * central
+      d/dt(R) <- 0
+      alag(depot) <- 2
+    })
+    expect_equal(rxModelVars(m)$state, c("central", "depot", "R"))
+    expect_equal(rxModelVars(m)$alag, 2L)
+  })
+
   test_that("linCmt() alag() compartment survives an x(0) statement (#1452)", {
     m <- rxode2({
       eff(0) <- 10
@@ -116,7 +129,7 @@ rxTest({
     expect_length(mv$lhs, 5200)
     expect_length(mv$strAssign, 5200)
     txt <- paste0(
-      c(sprintf("d/dt(c%d) <- -c%d", 1:5100, 1:5100), "x(0) <- 1", "d/dt(x) <- 0", "alag(c3) <- 2"),
+      c("x(0) <- 1", sprintf("d/dt(c%d) <- -c%d", 1:5100, 1:5100), "d/dt(x) <- 0", "alag(c3) <- 2"),
       collapse = "\n"
     )
     mv <- rxModelVars(txt)
