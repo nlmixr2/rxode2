@@ -479,12 +479,12 @@
   .ep <- str2lang(paste0("rx_arEp_", .var))
   c(
     list(
-    bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
-    bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
-    bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
-    bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
-    bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
-    bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
+      bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
+      bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+      bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+      bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
       bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
     ),
     .rxArEstPrevLines(.var, .dvTrans, cor),

@@ -331,20 +331,29 @@ rxTest({
     }
     .ui <- rxode2(.f)
     .toModel <- function(lines) {
-      .txt <- vapply(lines, function(l) {
-        if (identical(l[[1]], quote(`~`))) l[[1]] <- quote(`=`)
-        deparse1(l)
-      }, character(1))
+      .txt <- vapply(
+        lines,
+        function(l) {
+          if (identical(l[[1]], quote(`~`))) {
+            l[[1]] <- quote(`=`)
+          }
+          deparse1(l)
+        },
+        character(1)
+      )
       rxode2(paste(c("cl <- exp(tcl); v <- exp(tv)",
                      "d/dt(central) <- -cl / v * central",
                      "cp <- central / v", .txt), collapse = "\n"))
     }
     .p <- c(tcl = log(1), tv = log(10), add.sd = 0.5, ar1.cor = 0.7)
     # dose at 0 (before any observation) and a dose between observations
-    .d <- data.frame(id = 1, time = c(0, 0.5, 1.5, 2, 2.5, 4),
-                     amt = c(100, NA, NA, 100, NA, NA),
-                     evid = c(1, 0, 0, 1, 0, 0),
-                     DV = c(NA, 9, 8, NA, 15, 12))
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 1.5, 2, 2.5, 4),
+      amt = c(100, NA, NA, 100, NA, NA),
+      evid = c(1, 0, 0, 1, 0, 0),
+      DV = c(NA, 9, 8, NA, 15, 12)
+    )
     .obs <- which(.d$evid == 0)
     for (.arNorm in c(TRUE, FALSE)) {
       .m <- .toModel(.handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[1, ], 1L, arNorm = .arNorm))
