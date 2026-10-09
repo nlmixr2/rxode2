@@ -134,7 +134,9 @@ rxEventScope <- function(expr) {
 #' @export
 .rxEventExit <- function(event = NULL, ..., fun = NULL) {
   .rxEventSetDepth(.rxEventEnv$depth - 1L)
-  if (!is.null(event)) rxEventEmit(event, ..., fun = fun)
+  if (!is.null(event)) {
+    rxEventEmit(event, ..., fun = fun)
+  }
   invisible(NULL)
 }
 
@@ -146,8 +148,10 @@ rxEventScope <- function(expr) {
   }
   if (!is.null(fun)) {
     call[[1]] <- as.name(fun)
-  } else if (!is.name(call[[1]]) &&
-               !(is.call(call[[1]]) && as.character(call[[1]][[1]]) %in% c("::", ":::"))) {
+  } else if (
+    !is.name(call[[1]]) &&
+      !(is.call(call[[1]]) && as.character(call[[1]][[1]]) %in% c("::", ":::"))
+  ) {
     call[[1]] <- as.name("<fun>")
   }
   if (length(call) > 1L) {
@@ -192,8 +196,10 @@ rxEventEmit <- function(event, ..., fun = NULL) {
     tryCatch(
       do.call(.f, c(list(event), .payload), quote = TRUE),
       error = function(e) {
-        warning(sprintf("rxode2 event listener '%s' failed on '%s': %s",
-                        .id, event, conditionMessage(e)), call. = FALSE)
+        warning(
+          sprintf("rxode2 event listener '%s' failed on '%s': %s", .id, event, conditionMessage(e)),
+          call. = FALSE
+        )
       }
     )
   }
@@ -204,8 +210,7 @@ rxEventEmit <- function(event, ..., fun = NULL) {
 #' @noRd
 .rxEventExitSolve <- function(result, object, call) {
   if (inherits(result, "rxSolve")) {
-    .rxEventExit("solveComplete", result = result, object = object, call = call,
-                 kind = "rxSolve", fun = "rxSolve")
+    .rxEventExit("solveComplete", result = result, object = object, call = call, kind = "rxSolve", fun = "rxSolve")
   } else {
     .rxEventExit()
   }

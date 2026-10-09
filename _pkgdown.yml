@@ -248,6 +248,10 @@ reference:
   contents:
   - rxUse
   - rxPkg
+- title: Event Bus
+  desc: Listen to and emit events for top-level fits, solves and results (used by loggers such as nlmixr2log).
+  contents:
+  - rxEventListen
 - title: Utility Functions
   desc: Miscellaneous helpers for working with rxode2 objects.
   contents:

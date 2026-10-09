@@ -36,7 +36,8 @@ rxTest({
     ## inner exit-emit is dropped (depth 1), outer exit-emit is delivered
     .rxEventEnter()
     rxEventScope(rxEventEmit("never"))
-    .rxEventEnter(); .rxEventExit("alsoNever")
+    .rxEventEnter()
+    .rxEventExit("alsoNever")
     .rxEventExit("first")
     expect_equal(.names(), "first")
     expect_equal(rxEventDepth(), 0L)
@@ -116,15 +117,21 @@ rxTest({
     skip_if_not_installed("callr")
     skip_on_cran()
     .lib <- .libPaths()
-    .d <- rxEventScope(callr::r(function(lib) {
-      .libPaths(lib)
-      rxode2::rxEventDepth()
-    }, list(.lib)))
+    .d <- rxEventScope(callr::r(
+      function(lib) {
+        .libPaths(lib)
+        rxode2::rxEventDepth()
+      },
+      list(.lib)
+    ))
     expect_gte(.d, 1L)
-    .d0 <- callr::r(function(lib) {
-      .libPaths(lib)
-      rxode2::rxEventDepth()
-    }, list(.lib))
+    .d0 <- callr::r(
+      function(lib) {
+        .libPaths(lib)
+        rxode2::rxEventDepth()
+      },
+      list(.lib)
+    )
     expect_equal(.d0, 0L)
   })
 })
