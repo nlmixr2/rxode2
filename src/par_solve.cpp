@@ -11,6 +11,7 @@
 #include <time.h>
 #include <string>
 #include <vector>
+#include <new>
 #include "strncmp.h"
 #include "timsort.h"
 #include "../inst/include/rxode2.h"
@@ -2802,6 +2803,10 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
   rxAutoSwitchCount(op, ind, true, _failed);
 }
 
+static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
+                           rx_solving_options *op, rx_solving_options_ind *ind,
+                           int eff);
+
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
                                 double *InfusionRate,
@@ -2824,6 +2829,9 @@ static inline void solveWith1Pt(int *neq,
       preSolve(op, ind, xp, xout, yp);
       linSolve(neq, ind, yp, &xp, xout);
     }
+  } else if (ind->delaySS && xout > xp) {
+    // steady state of a delay() model: record the history (rxode2#1447)
+    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff);
   } else if (op->stiff2 > 0) {
     solveWith1PtComposite(neq, yp, xout, xp, i, istate, op, ind, ctx, eff);
   } else {
@@ -3435,6 +3443,135 @@ extern "C" void handleSSinf8(int *neq,
   ind->ssTime = NA_REAL;
 }
 
+
+static bool rxDelayHistSuperpose(rx_solving_options_ind *ind,
+                                 rx_solving_options *op,
+                                 double *oldH, int oldN, double oldT0,
+                                 double *ssH, int ssN, double t1);
+static bool rxDelayHistPeriodic(rx_solving_options_ind *ind,
+                                rx_solving_options *op,
+                                double *runH, int runN, double cEnd,
+                                double ii, double t1);
+void handleSS(int *neq,
+              int *BadDose,
+              double *InfusionRate,
+              double *dose,
+              double *yp,
+              double xout, double xp, int id,
+              int *i, int nx,
+              int *istate,
+              rx_solving_options *op,
+              rx_solving_options_ind *ind,
+              t_update_inis u_inis,
+              void *ctx);
+
+// The previous delay() history, set aside while the steady state records its own.
+struct rxDelayHistSaved {
+  double *hist;
+  int n, cap, stride, neq;
+  double t0;
+};
+
+static inline bool rxDelayIsSSDose(rx_solving_options_ind *ind) {
+  return ind->wh0 == EVID0_SS || ind->wh0 == EVID0_SS0 ||
+    ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20 ||
+    ind->wh0 == EVID0_SSINF;
+}
+
+static void rxDelayHistRestore(rx_solving_options_ind *ind,
+                               const rxDelayHistSaved &old) {
+  free(ind->delayHist);
+  ind->delayHist = old.hist;
+  ind->delayHistN = old.n;
+  ind->delayHistCap = old.cap;
+  ind->delayHistStride = old.stride;
+  ind->delayHistNeq = old.neq;
+  ind->delayT0 = old.t0;
+}
+
+// Build the history after the steady state from the run in ind's buffer: the
+// converged interval repeated back over the longest delay and ending at t1; for
+// ss=2 added to the previous history.  False when out of memory.
+static bool rxDelaySSBuild(rx_solving_options_ind *ind, rx_solving_options *op,
+                           const rxDelayHistSaved &old, bool ss2, double ii,
+                           double t1) {
+  double *runH = ind->delayHist, *ssH = NULL;
+  bool ok = false;
+  try {
+    ok = rxDelayHistPeriodic(ind, op, runH, ind->delayHistN,
+                             ind->delaySSClock, ii, t1);
+    if (ok && ss2) {
+      ssH = ind->delayHist;
+      ok = rxDelayHistSuperpose(ind, op, old.hist, old.n, old.t0, ssH,
+                                ind->delayHistN, t1);
+    }
+  } catch (const std::bad_alloc &) {
+    ok = false;
+  }
+  if (ssH == ind->delayHist) ind->delayHist = NULL;  // threw before replacing it
+  free(ssH);
+  free(runH);
+  free(old.hist);
+  if (!ok) {
+    free(ind->delayHist);
+    ind->delayHist = NULL;
+    ind->delayHistN = 0;
+    ind->delayHistCap = 0;
+  }
+  return ok;
+}
+
+// Steady state of a delay() model (rxode2#1447): the iterations record their
+// own history on a fresh buffer whose virtual clock starts at the dose time.
+// The converged history is shifted to end at the dose time; for ss=1 (which
+// resets the system) it replaces the previous history, for ss=2 it is added to
+// it (superposition).  Called by the drivers that can solve a delay() model
+// (dense dop853, ros4, rk4s) in place of handleSS().
+static void handleSSDelay(int *neq,
+                          int *BadDose,
+                          double *InfusionRate,
+                          double *dose,
+                          double *yp,
+                          double xout, double xp, int id,
+                          int *i, int nx,
+                          int *istate,
+                          rx_solving_options *op,
+                          rx_solving_options_ind *ind,
+                          t_update_inis u_inis,
+                          void *ctx) {
+  if (!ind->delayHistOn || !rxDelayIsSSDose(ind)) {
+    handleSS(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+             istate, op, ind, u_inis, ctx);
+    return;
+  }
+  rxDelayHistSaved old = {ind->delayHist, ind->delayHistN, ind->delayHistCap,
+                          ind->delayHistStride, ind->delayHistNeq, ind->delayT0};
+  bool ss2 = (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20);
+  ind->delayHist = NULL;
+  ind->delayHistN = 0;
+  ind->delayHistCap = 0;
+  ind->delayT0 = xp;
+  ind->delaySSClock = xp;
+  ind->delayTOff = 0.0;
+  // dosing interval, read the way handleSS() reads it; 0 for a constant
+  // (ii = 0) infusion
+  double curIi = (ind->wh0 == EVID0_SSINF || ind->ixds == 0) ? 0.0 :
+    getIiNumber(ind, ind->ixds - 1);
+  ind->delaySSii = curIi;
+  ind->delaySS = 1;
+  handleSS(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+           istate, op, ind, u_inis, ctx);
+  ind->delaySS = 0;
+  ind->delayTOff = 0.0;
+  ind->delaySSii = 0.0;
+  if (ind->delaySSClock == xp || ind->delayHistN == 0) {
+    rxDelayHistRestore(ind, old);   // no steady state was solved
+  } else if (!rxDelaySSBuild(ind, op, old, ss2, curIi, xout)) {
+    // out of memory: fail this subject rather than use a partial history
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    badSolveExit(*i);
+  }
+}
 
 void handleSS(int *neq,
               int *BadDose,
@@ -6513,7 +6650,7 @@ static void rxDelayHistPush(rx_solving_options_ind *ind, rx_solving_options *op,
     const double *src = rc[k];
     for (int c = 0; c < nd; c++) col[c] = src[ds[c]];
   }
-  rec[8 * nd]     = xold;
+  rec[8 * nd]     = xold + ind->delayTOff;  // virtual time during handleSS()
   rec[8 * nd + 1] = h;
   rec[8 * nd + 2] = 0.0;  // dop853 record
   ind->delayHistN++;
@@ -6536,19 +6673,288 @@ static void rxDelayHistPushSamples(rx_solving_options_ind *ind, rx_solving_optio
     const double *s = src[k];
     for (int c = 0; c < nd; c++) col[c] = s[ds[c]];
   }
-  rec[8 * nd]     = xold;
+  rec[8 * nd]     = xold + ind->delayTOff;  // virtual time during handleSS()
   rec[8 * nd + 1] = h;
   rec[8 * nd + 2] = 1.0;  // ros4 cubic-sample record
   ind->delayHistN++;
 }
 
+// Value of compact history column `col` of one record at time td.
+static double rxDelayRecValue(const double *rec, int stride, int n, int col,
+                              double td) {
+  double s = (td - rec[stride - 3]) / rec[stride - 2];
+  if (rec[stride - 1] == 1.0) {
+    double L0 = -4.5 * (s - 1.0/3.0) * (s - 2.0/3.0) * (s - 1.0);
+    double L1 = 13.5 * s * (s - 2.0/3.0) * (s - 1.0);
+    double L2 = -13.5 * s * (s - 1.0/3.0) * (s - 1.0);
+    double L3 = 4.5 * s * (s - 1.0/3.0) * (s - 2.0/3.0);
+    return L0 * rec[col] + L1 * rec[n + col] + L2 * rec[2 * n + col] +
+      L3 * rec[3 * n + col];
+  }
+  double s1 = 1.0 - s;
+  return rec[col] + s * (rec[n + col] + s1 * (rec[2 * n + col] +
+         s * (rec[3 * n + col] + s1 * (rec[4 * n + col] + s * (rec[5 * n + col] +
+         s1 * (rec[6 * n + col] + s * rec[7 * n + col]))))));
+}
+
+// Index of the record whose step covers td (the last with t_old <= td).
+static int rxDelayHistFind(const double *hist, int nrec, int stride, double td) {
+  int lo = 0, hi = nrec - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+
+// dop853 interpolant basis c0 + s*(c1 + s1*(c2 + s*(c3 + ...))) at s.
+static void rxDelayDop853Basis(double s, double *b) {
+  double s1 = 1.0 - s;
+  b[0] = 1.0;
+  b[1] = s;
+  for (int k = 2; k < 8; ++k) b[k] = b[k - 1] * ((k % 2 == 0) ? s1 : s);
+}
+
+static void rxDelayDop853Inverse(double inv[8][8]);
+static void rxDelayRecRefit(const double *src, int stride, int nd,
+                            const double inv[8][8], double a, double h,
+                            double *rec);
+
+// Steady-state delay() history (rxode2#1447) from the steady-state run runH
+// (virtual times, ending at cEnd): the last dosing interval ii is repeated back
+// to cover the longest delay seen and shifted to end at t1.  A constant steady
+// state (ii = 0) becomes one constant record.  Replaces ind's buffer.
+static bool rxDelayHistPeriodic(rx_solving_options_ind *ind,
+                                rx_solving_options *op,
+                                double *runH, int runN, double cEnd,
+                                double ii, double t1) {
+  int nd = op->nDelayState;
+  int stride = RX_DELAY_STRIDE(nd);
+  double span = ind->delayMaxT > 0.0 ? ind->delayMaxT : 1.0;
+  ind->delayHist = NULL;
+  ind->delayHistN = 0;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = stride;
+  ind->delayHistNeq = nd;
+  int first = 0;
+  if (ii > 0.0) {
+    // records reaching into the last interval [cEnd - ii, cEnd]
+    while (first < runN &&
+           runH[(size_t)first * stride + (stride - 3)] +
+           runH[(size_t)first * stride + (stride - 2)] <= cEnd - ii) first++;
+  }
+  if (ii <= 0.0 || first >= runN) {
+    // constant: the state at cEnd over [t1 - span - 1, t1]
+    const double *last = runH + (size_t)rxDelayHistFind(runH, runN, stride, cEnd) * stride;
+    double *rec = rxDelayHistSlot(ind, nd);
+    if (rec == NULL) return false;
+    {
+      memset(rec, 0, (size_t)stride * sizeof(double));
+      for (int col = 0; col < nd; ++col) {
+        rec[col] = rxDelayRecValue(last, stride, nd, col, cEnd);
+      }
+      rec[8 * nd]     = t1 - span - 1.0;
+      rec[8 * nd + 1] = span + 1.0;
+      ind->delayHistN = 1;
+    }
+    ind->delayT0 = t1 - span - 1.0;
+    return true;
+  }
+  // at most ~1e6 records; a longer delay than that covers reads the pre-history
+  double nPer = (double)(runN - first);
+  double nCopyD = ceil(span / ii) + 1.0;
+  if (nCopyD * nPer > 1e6) nCopyD = fmax(1.0, floor(1e6 / nPer));
+  int nCopy = (int)nCopyD;
+  double inv[8][8];
+  rxDelayDop853Inverse(inv);
+  const double *f = runH + (size_t)first * stride;
+  double fEnd = f[stride - 3] + f[stride - 2];
+  // copies run oldest first and are disjoint: each starts exactly at its
+  // interval start, the record crossing it refit onto [start, its end]
+  for (int m = nCopy - 1; m >= 0; --m) {
+    double sh = t1 - cEnd - m * ii;
+    int k = first;
+    if (f[stride - 3] < cEnd - ii) {
+      double *rec = rxDelayHistSlot(ind, nd);
+      if (rec == NULL) return false;
+      rxDelayRecRefit(f, stride, nd, inv, cEnd - ii, fEnd - (cEnd - ii), rec);
+      rec[stride - 3] += sh;
+      ind->delayHistN++;
+      k++;
+    }
+    for (; k < runN; ++k) {
+      double *rec = rxDelayHistSlot(ind, nd);
+      if (rec == NULL) return false;
+      memcpy(rec, runH + (size_t)k * stride, (size_t)stride * sizeof(double));
+      rec[stride - 3] += sh;
+      ind->delayHistN++;
+    }
+  }
+  ind->delayT0 = t1 - nCopy * ii;
+  return true;
+}
+
+// Inverse of the dop853 basis matrix at the nodes s_k = k/7 (Gauss-Jordan).
+static void rxDelayDop853Inverse(double inv[8][8]) {
+  double M[8][16];
+  for (int k = 0; k < 8; ++k) {
+    rxDelayDop853Basis(k / 7.0, M[k]);
+    for (int j = 0; j < 8; ++j) M[k][8 + j] = (j == k) ? 1.0 : 0.0;
+  }
+  for (int c = 0; c < 8; ++c) {
+    int piv = c;
+    for (int r = c + 1; r < 8; ++r) if (fabs(M[r][c]) > fabs(M[piv][c])) piv = r;
+    if (piv != c) for (int j = 0; j < 16; ++j) std::swap(M[c][j], M[piv][j]);
+    double d = M[c][c];
+    for (int j = 0; j < 16; ++j) M[c][j] /= d;
+    for (int r = 0; r < 8; ++r) {
+      if (r == c) continue;
+      double f = M[r][c];
+      for (int j = 0; j < 16; ++j) M[r][j] -= f * M[c][j];
+    }
+  }
+  for (int k = 0; k < 8; ++k) {
+    for (int j = 0; j < 8; ++j) inv[k][j] = M[k][8 + j];
+  }
+}
+
+// Append the step start times of hist that fall inside (ws, t1).
+static void rxDelayHistBreaks(std::vector<double> &bp, const double *hist,
+                              int nrec, int stride, double ws, double t1) {
+  for (int k = 0; k < nrec; ++k) {
+    double t = hist[(size_t)k * stride + (stride - 3)];
+    if (t > ws && t < t1) bp.push_back(t);
+  }
+}
+
+// Inputs of an ss=2 superposition: the old and steady-state histories.
+struct rxDelaySum {
+  rx_solving_options_ind *ind;
+  rx_solving_options *op;
+  const double *oldH;
+  int oldN;
+  double oldT0;
+  const double *ssH;
+  int ssN;
+  int stride;
+  int nd;
+};
+
+// Fit coefficients rec[j * nd + col] of a dop853 record from its values v at
+// the nodes s_k = k/7.
+static inline void rxDelayFitColumn(const double inv[8][8], const double *v,
+                                    int nd, int col, double *rec) {
+  for (int j = 0; j < 8; ++j) {
+    double cj = 0.0;
+    for (int k = 0; k < 8; ++k) cj += inv[j][k] * v[k];
+    rec[(size_t)j * nd + col] = cj;
+  }
+}
+
+static inline void rxDelaySetRecTime(double *rec, int nd, double a, double h) {
+  rec[8 * nd]     = a;
+  rec[8 * nd + 1] = h;
+  rec[8 * nd + 2] = 0.0;  // dop853 record
+}
+
+// Fit the dop853 record for [a, a + h] exactly to old + steady state.  Each
+// history's record is chosen once at the midpoint (the breakpoints include
+// every record start), so a dose jump at either end is not straddled; before
+// the old history starts it is the constant pre-history (x(0)).
+static void rxDelaySumRecord(const rxDelaySum &d, const double inv[8][8],
+                             double a, double h, double *rec) {
+  double mid = a + 0.5 * h, v[8];
+  const double *sr = d.ssH + (size_t)rxDelayHistFind(d.ssH, d.ssN, d.stride, mid) * d.stride;
+  const double *orr = (d.oldN > 0 && mid > d.oldT0) ?
+    d.oldH + (size_t)rxDelayHistFind(d.oldH, d.oldN, d.stride, mid) * d.stride : NULL;
+  for (int col = 0; col < d.nd; ++col) {
+    int st = d.op->delayState[col];
+    double pre = (st < d.ind->delayIniN) ? d.ind->delayIni[st] : d.op->inits[st];
+    for (int k = 0; k < 8; ++k) {
+      double td = a + h * (k / 7.0);
+      v[k] = rxDelayRecValue(sr, d.stride, d.nd, col, td) +
+        (orr ? rxDelayRecValue(orr, d.stride, d.nd, col, td) : pre);
+    }
+    rxDelayFitColumn(inv, v, d.nd, col, rec);
+  }
+  rxDelaySetRecTime(rec, d.nd, a, h);
+}
+
+// Refit record src exactly onto [a, a + h] (a sub-interval of its step).
+static void rxDelayRecRefit(const double *src, int stride, int nd,
+                            const double inv[8][8], double a, double h,
+                            double *rec) {
+  double v[8];
+  for (int col = 0; col < nd; ++col) {
+    for (int k = 0; k < 8; ++k) {
+      v[k] = rxDelayRecValue(src, stride, nd, col, a + h * (k / 7.0));
+    }
+    rxDelayFitColumn(inv, v, nd, col, rec);
+  }
+  rxDelaySetRecTime(rec, nd, a, h);
+}
+
+// ss=2 (superposition) of a delay() model (rxode2#1447): from the start ws of
+// the steady-state history ssH (already shifted to end at t1) up to t1 the
+// history becomes old + steady state.  Each sub-interval between the two
+// histories' step boundaries is refit exactly as a dop853 record (the sum of
+// two interpolants of degree <= 7 has degree <= 7).  Replaces ind's buffer.
+static bool rxDelayHistSuperpose(rx_solving_options_ind *ind,
+                                 rx_solving_options *op,
+                                 double *oldH, int oldN, double oldT0,
+                                 double *ssH, int ssN, double t1) {
+  rxDelaySum d = {ind, op, oldH, oldN, oldT0, ssH, ssN,
+                  RX_DELAY_STRIDE(op->nDelayState), op->nDelayState};
+  int stride = d.stride, nd = d.nd;
+  double ws = ssH[stride - 3];
+  std::vector<double> bp;
+  bp.reserve((size_t)(ssN + oldN + 3));
+  bp.push_back(ws);
+  rxDelayHistBreaks(bp, ssH, ssN, stride, ws, t1);
+  rxDelayHistBreaks(bp, oldH, oldN, stride, ws, t1);
+  if (oldN > 0 && oldT0 > ws && oldT0 < t1) bp.push_back(oldT0);
+  bp.push_back(t1);
+  std::sort(bp.begin(), bp.end());
+  double inv[8][8];
+  rxDelayDop853Inverse(inv);
+  ind->delayHist = NULL;
+  ind->delayHistN = 0;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = stride;
+  ind->delayHistNeq = nd;
+  // old records strictly before ws keep serving lookups before ws
+  for (int k = 0; k < oldN && oldH[(size_t)k * stride + (stride - 3)] < ws; ++k) {
+    double *rec = rxDelayHistSlot(ind, nd);
+    if (rec == NULL) return false;
+    memcpy(rec, oldH + (size_t)k * stride, (size_t)stride * sizeof(double));
+    ind->delayHistN++;
+  }
+  for (size_t q = 0; q + 1 < bp.size(); ++q) {
+    if (isSameTimeDop(bp[q + 1], bp[q])) continue;
+    double *rec = rxDelayHistSlot(ind, nd);
+    if (rec == NULL) return false;
+    rxDelaySumRecord(d, inv, bp[q], bp[q + 1] - bp[q], rec);
+    ind->delayHistN++;
+  }
+  ind->delayT0 = (oldN > 0 && oldT0 < ws) ? oldT0 : ws;
+  return true;
+}
+
 // Cap the maximum step size so the integrator never steps over the smallest
 // delay; this keeps every delay() lookup inside already-recorded history
 // instead of extrapolating off the current (not yet recorded) step.
+// The step-size cap: the smallest delay, or half of it while a constant
+// (ii = 0) steady state reads back half the smallest delay (rxode2#1447).
+static inline double rxDelayStepCap(rx_solving_options_ind *ind) {
+  return (ind->delaySS && ind->delaySSii <= 0.0) ? 0.5 * ind->delayMinT :
+    ind->delayMinT;
+}
+
 static inline double rxDelayCapHmax(rx_solving_options_ind *ind) {
   double h = ind->HMAX;
   if (ind->delayHistOn && R_FINITE(ind->delayMinT)) {
-    if (h <= 0.0 || ind->delayMinT < h) h = ind->delayMinT;
+    double cap = rxDelayStepCap(ind);
+    if (h <= 0.0 || cap < h) h = cap;
   }
   return h;
 }
@@ -6696,6 +7102,45 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
   return idid;
 }
 
+// One steady-state sub-solve [xp, xout] of a delay() model (rxode2#1447): use
+// the dense solver so every step is recorded into the delay history on the
+// virtual clock ind->delaySSClock (no observations are filled).  ros4 for a pure
+// ros4 solve, otherwise dop853 (with the stiff secondary of a composite).
+static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
+                           rx_solving_options *op, rx_solving_options_ind *ind,
+                           int eff) {
+  if (isSameTimeDop(xout, xp)) return;
+  ind->delayTOff = ind->delaySSClock - xp;
+  preSolve(op, ind, xp, xout, yp);
+  neq[0] = eff - op->numLin - op->numLinSens;
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    std::vector<double> _ddt((size_t)eff);
+    dydt(neq, xp, yp, _ddt.data());
+    ind->delayWarmed = 1;
+  }
+  int base = op->stiff >= 200 ? op->stiff - 200 : op->stiff;
+  int idid;
+  if (base == 13 && op->stiff2 <= 0) {
+    idid = rxRos4DenseSegment(&rx_global, op, ind, neq, dydt, xp, xout, yp,
+                              1, 0, neq[1]);
+  } else {
+    DopDenseCtx dc;
+    dc.ind = ind;
+    dc.op  = op;
+    dc.neq = neq;
+    dc.obs_next = 1;    // empty observation range: record history only
+    dc.segment_end = 0;
+    idid = denseSegmentSolve(&rx_global, op, ind, neq, dydt, xp, xout, yp,
+                             &dc, 1, eff);
+  }
+  neq[0] = eff;
+  copyLinCmt(neq, ind, op, yp);
+  ind->delaySSClock += xout - xp;
+  ind->delayTOff = 0.0;
+  if ((idid <= 0 || ind->err) && ind->rc[0] == 0) ind->rc[0] = -2019;
+}
+
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,
                                int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -6740,6 +7185,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   ind->delayHistN  = 0;
   ind->delayT0     = x[0];
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
 
   // Track the last key event index so we know where each segment starts.
@@ -6896,8 +7342,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       if (this_evid == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-        handleSS(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF) {
           yp[ind->cmt] = inits[ind->cmt];
         }

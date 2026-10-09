@@ -537,6 +537,15 @@ struct rx_solving_options_ind_s {
   double *delayIni;
   int     delayIniCap; /* allocated length of delayIni */
   int     delayIniN;   /* valid entries; 0 = use op->inits */
+  // Steady-state delay() history (rxode2#1447): while handleSS() iterates a
+  // delay() model each sub-solve records history on a continuous virtual
+  // clock; delayTOff (virtual - solver time) is added to every delay() lookup
+  // and every recorded step.  0 outside the steady-state solve.
+  double  delayTOff;
+  double  delaySSClock; /* virtual time reached by the steady-state solve */
+  int     delaySS;      /* 1 while handleSS() records delay() history */
+  double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
+  double  delayMaxT;    /* largest delay duration seen */
 };
 
 typedef struct rx_solve_s {
