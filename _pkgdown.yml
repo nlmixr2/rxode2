@@ -248,6 +248,10 @@ reference:
   contents:
   - rxUse
   - rxPkg
+- title: Event Bus
+  desc: Listen to and emit events for top-level fits, solves and results (used by loggers such as nlmixr2log).
+  contents:
+  - rxEventListen
 - title: Utility Functions
   desc: Miscellaneous helpers for working with rxode2 objects.
   contents:
@@ -463,6 +467,8 @@ navbar:
           href: articles/rxode2-shiny.html
         - text: "Adding compiled models to a package"
           href: articles/rxode2-rxUse.html
+        - text: "The event bus (for loggers and emitters)"
+          href: articles/rxode2-event-bus.html
         - text: "--------------------------"
         - text: "Understanding Internal Code"
         - text: "Event Tables after 5.0.2: Architecture and Benchmark"

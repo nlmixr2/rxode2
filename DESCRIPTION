@@ -65,6 +65,7 @@ Depends:
 Suggests:
     Matrix,
     DT,
+    callr,
     covr,
     crayon,
     curl,
