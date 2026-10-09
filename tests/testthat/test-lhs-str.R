@@ -441,6 +441,37 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
     expect_equal(as.character(s$tRACE), c("A", "B"))
     expect_equal(s$isA, c(1, 0))
 
+    # several literals compared before the first assignment keep their order
+    m4 <- rxode2({
+      isB <- 0
+      isC <- 0
+      if (time > 1) {
+        isB <- (tRACE == "B")
+        isC <- (tRACE == "C")
+      }
+      tRACE <- "A"
+      if (RACE == 2) tRACE <- "C"
+      isC2 <- (tRACE == "C")
+    })
+    expect_equal(rxModelVars(m4)$strAssign, list(tRACE = c("B", "C", "A")))
+    s <- as.data.frame(rxSolve(m4, data.frame(id = 1:2, time = 1, RACE = 1:2)))
+    expect_equal(as.character(s$tRACE), c("A", "C"))
+    expect_equal(s$isC2, c(0, 1))
+
+    # levels() declared after a comparison
+    m5 <- rxode2({
+      isC <- 0
+      if (time > 1) isC <- (tRACE == "C")
+      levels(tRACE) <- c("A", "B")
+      tRACE <- "A"
+      if (RACE == 2) tRACE <- "B"
+      isB <- (tRACE == "B")
+    })
+    expect_equal(rxModelVars(m5)$strAssign, list(tRACE = c("C", "A", "B")))
+    s <- as.data.frame(rxSolve(m5, data.frame(id = 1:2, time = 1, RACE = 1:2)))
+    expect_equal(as.character(s$tRACE), c("A", "B"))
+    expect_equal(s$isB, c(0, 1))
+
     # levels() declared first
     m3 <- rxode2({
       levels(tRACE) <- c("A", "B")
