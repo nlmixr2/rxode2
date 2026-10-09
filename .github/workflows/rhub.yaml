@@ -60,6 +60,10 @@ jobs:
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
+          # rxode2 needs dparser >= 1.3.1-14, which is not on CRAN yet
+          extra-packages: |
+            any::rcmdcheck
+            github::nlmixr2/dparser-R
       - uses: r-hub/actions/run-check@v1
         with:
           token: ${{ secrets.RHUB_TOKEN }}
@@ -101,6 +105,7 @@ jobs:
           dependencies: "'hard'"
           extra-packages: |
             any::rcmdcheck
+            github::nlmixr2/dparser-R
             any::testthat
             any::nlmixr2data
             any::tibble
