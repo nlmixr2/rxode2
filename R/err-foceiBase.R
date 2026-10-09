@@ -418,7 +418,9 @@
 #' record carries.  With several endpoints only this endpoint's observations
 #' (`CMT == cmt`) count, since the estimation prune flattens the `CMT` branches.  The first
 #' observation per subject has `rx_arS_` lagged 0, so `phi = 0` (marginal), and
-#' every term stays finite (the pruned `ifelse()` would give `0*NaN`).
+#' every term stays finite (the pruned `ifelse()` would give `0*NaN`) as long
+#' as the transformed prediction is finite on non-observation records (as with
+#' the default `safeLog`).
 #'
 #' @param env parsed model environment
 #' @param pred1 single predDf row
