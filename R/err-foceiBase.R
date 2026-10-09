@@ -411,10 +411,11 @@
 #' Previous-observation AR(1) residual, time gap and weight
 #'
 #' The residual `rx_arE_`, its time `rx_arT_` and the seen-an-observation flag
-#' `rx_arS_` are updated on observation (non-dose, `is.na(amt)`) records and
-#' carried through dose records with `lag0()` (which reads the previous record's
-#' value even after the current assignment), so the previous residual is the
-#' previous observation's, whatever `DV` a dose record carries.  The first
+#' `rx_arS_` are updated on observation records (`rx__isObs__`, internal evid
+#' 0) and carried through dose and `evid=2` records with `lag0()` (which reads
+#' the previous record's value even after the current assignment), so the
+#' previous residual is the previous observation's, whatever `DV` another
+#' record carries.  The first
 #' observation per subject has `rx_arS_` lagged 0, so `phi = 0` (marginal), and
 #' every term stays finite (the pruned `ifelse()` would give `0*NaN`).
 #'
@@ -434,7 +435,7 @@
   .nf <- str2lang(paste0("rx_arNf_", .var))
   .phi <- str2lang(paste0("rx_arPhi_", .var))
   list(
-    bquote(.(.o) <- is.na(amt)),
+    bquote(.(.o) <- rx__isObs__),
     bquote(.(.e) <- .(.o) * (.(.dvTrans) - rx_pred_) + (1 - .(.o)) * lag0(.(.e), 1)),
     bquote(.(.t) <- .(.o) * time + (1 - .(.o)) * lag0(.(.t), 1)),
     bquote(.(.s) <- .(.o) + (1 - .(.o)) * lag0(.(.s), 1)),

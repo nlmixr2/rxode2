@@ -180,9 +180,10 @@
   record is now filled like on any other record instead of staying `NA`.
 - The `ar()` estimation lines (FOCEi and the log-likelihood methods) now
   take the previous residual and time gap from the previous observation,
-  skipping dose records, so the first observation gets the marginal
-  likelihood again and a dose's (filled) `DV` no longer enters the AR(1)
-  residual (#1453).  `rxOptExpr()` no longer hoists a `lag()`-family call
+  skipping dose and `evid=2` records, so the first observation gets the
+  marginal likelihood again and a dose's (filled) `DV` no longer enters the
+  AR(1) residual (#1453).  The new internal model variable `rx__isObs__` is 1
+  on an observation record and 0 otherwise.  `rxOptExpr()` no longer hoists a `lag()`-family call
   into a shared temporary, which could move a self-referencing
   `x <- f(lag(x, 1))` reference above the assignment of `x`.
 - `qnorm()` was documented as the normal pdf; it is the normal quantile

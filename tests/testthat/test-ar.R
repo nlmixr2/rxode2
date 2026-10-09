@@ -349,17 +349,17 @@ rxTest({
     # dose at 0 (before any observation) and a dose between observations
     .d <- data.frame(
       id = 1,
-      time = c(0, 0.5, 1.5, 2, 2.5, 4),
-      amt = c(100, NA, NA, 100, NA, NA),
-      evid = c(1, 0, 0, 1, 0, 0),
-      DV = c(NA, 9, 8, NA, 15, 12)
+      time = c(0, 0.5, 1.5, 2, 2.5, 3, 4),
+      amt = c(100, NA, NA, 100, NA, NA, NA),
+      evid = c(1, 0, 0, 1, 0, 2, 0),
+      DV = c(NA, 9, 8, NA, 15, NA, 12)
     )
     .obs <- which(.d$evid == 0)
     for (.arNorm in c(TRUE, FALSE)) {
       .m <- .toModel(.handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[1, ], 1L, arNorm = .arNorm))
       .s <- rxSolve(.m, .d, .p, addDosing = TRUE, returnType = "data.frame")
       .d2 <- .d
-      .d2$DV[.d2$evid == 1] <- 1e6 # whatever a dose record carries must not matter
+      .d2$DV[.d2$evid != 0] <- 1e6 # whatever a non-observation carries must not matter
       .s2 <- rxSolve(.m, .d2, .p, addDosing = TRUE, returnType = "data.frame")
       expect_equal(.s$rx_pred_[.obs], .s2$rx_pred_[.obs])
       .so <- .s[.s$evid == 0, ]
@@ -368,7 +368,7 @@ rxTest({
       expect_equal(.so$rx_arPhi_cp[1], 0)
       expect_equal(.so$rx_arEp_cp[1], 0)
       # later observations: previous OBSERVATION's residual and time gap,
-      # skipping the dose at t=2
+      # skipping the dose at t=2 and the evid=2 record at t=3
       expect_equal(.so$rx_arEp_cp[-1], head(.res, -1))
       expect_equal(.so$rx_arDt_cp[-1], diff(.d$time[.obs]))
       expect_equal(.so$rx_arPhi_cp[-1], 0.7^diff(.d$time[.obs]))
