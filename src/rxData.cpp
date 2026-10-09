@@ -126,6 +126,9 @@ int rxcTime  = -1;
 int rxcAmt   = -1;
 int rxcId    = -1;
 int rxcDv    = -1;
+// covariate index of a model's DV parameter (-1 = none); see rxRecCov()
+extern "C" int _rxDvCov;
+int _rxDvCov = -1;
 int rxcLimit = -1;
 int rxcCens  = -1;
 int rxcLen   = -1;
@@ -4543,6 +4546,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     //
     bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
     op->cmtCov = -1;   // covariate index of the CMT covariate; -1 = none (single endpoint)
+    _rxDvCov = -1;
     for (i = dfN; i--;){
       for (j = rx->npars; j--;){
         if (pars[j] == dfNames[i]){
@@ -4556,6 +4560,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           // per-observation endpoint (cov_ptr) without a per-call name comparison.
           if (op->cmtCov < 0 && curDfN == 3 && !strncmpci(curDf, "CMT", 3)) {
             op->cmtCov = ncov;
+          }
+          if (_rxDvCov < 0 && curDfN == 2 && !strncmpci(curDf, "DV", 2)) {
+            _rxDvCov = ncov;
           }
           _globals.gpar_covInterp[ncov] = interp0[j] - 2;
           if ((isLinearOrMidpointInterp &&

@@ -76,6 +76,8 @@ static inline bool rxPushedRec(const int *ix, int i, int nOrig) {
   return (ix == NULL ? i : ix[i]) >= nOrig;
 }
 
+extern "C" int _rxDvCov;
+
 // getValue/rx_approxP index records through ix (NULL = record order, the
 // resampled-covariate case) and report the lh = -2/2 index through *iOut.
 // Records from nOrig on were pushed while solving and have no covariate value.
@@ -138,6 +140,14 @@ static inline double getValue(int idx, double *y, int is_locf,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               int lh){
   return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
+}
+
+// A covariate's value on record idx.  DV is a measurement, not a covariate: a
+// record without one (a dose) keeps NA instead of a neighbouring record's DV.
+static inline double rxRecCov(int k, int idx, double *y, int is_locf,
+                              rx_solving_options_ind *ind, rx_solving_options *op) {
+  if (k == _rxDvCov) return rxCovRec(y, ind->ix == NULL ? idx : ind->ix[idx], ind->n_all_times_orig);
+  return getValue(idx, y, is_locf, ind, op, 0);
 }
 
 // v is at record i's time; a pushed record has no value of its own, so
@@ -407,8 +417,8 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
-          ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                    indSample, op, 0);
+          ind->par_ptr[op->par_cov[k]-1] = rxRecCov(k, idxSample, y, is_locf,
+                                                    indSample, op);
           if (idx == 0){
             ind->cacheME=0;
           } else if (!isSameTimeOp(getValue(idxSample, y, is_locf,
@@ -456,12 +466,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
+            par_ptr[op->par_cov[k]-1] = rxRecCov(k, 0, y, is_locf, indSample, op);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
-            par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                 indSample, op, 0);
+            par_ptr[op->par_cov[k]-1] = rxRecCov(k, idxSample, y, is_locf,
+                                                 indSample, op);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
                                        indSample, op, 0),
                               getValue(idxSample-1, y, is_locf,

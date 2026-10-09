@@ -117,6 +117,12 @@
 
 ## Bug fixes
 
+- A model that reads `DV` now sees `NA` on a record without one (a dose
+  record), instead of the `DV` of a neighbouring record filled in like a
+  covariate.  Since the time-zero covariate fix below, a subject's first
+  dose record took the first observation's `DV`, so the `ar()` residual of
+  nlmixr2's FOCEi family used that observation's own residual as its
+  previous one and the estimated correlation collapsed to 0.
 - Steady-state dosing in a model using `delay()` now brings the
   delay()-driven states to steady state; the steady-state iterations record
   the delay history and the converged dosing interval becomes the history
