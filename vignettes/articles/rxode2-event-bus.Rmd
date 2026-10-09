@@ -95,8 +95,8 @@ rec[[1]]$payload$call
 ```
 
 The `call` field is the call the user typed, not the value of every argument.
-When the call was built by `do.call()` its argument values are inlined; these
-are replaced by `` `<value>` `` (or, when there are more than five of them, by a
+When the call was built by `do.call()` its argument values are inlined; single
+constants (such as `nSub = 10`) are kept, and larger values are replaced by `` `<value>` `` (or, when there are more than five of them, by a
 single `` `<...>` ``) so a recorded call never embeds a large data set:
 
 ```{r do-call}
@@ -212,7 +212,8 @@ What the fields mean:
 
 * **`solveComplete`**: `result` is the solved object, `object` the model (or
   fit) that was solved, `call` the recorded call and `kind` how it was solved
-  (`"rxSolve"`, `"simulate"`, `"predict"`, `"vpcSim"`, `"augPred"`).  Because
+  (`"rxSolve"`, `"simulate"`, `"predict"`, `"vpcSim"`, `"augPred"`;
+  `simulate(fit)` reports `"rxSolve"`).  Because
   `object` is the fit for `simulate(fit)`, a logger can link a simulation to its
   fit.
 * **`fitComplete`**: `fit` is the new fit, `object` what it was estimated from
