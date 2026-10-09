@@ -34,6 +34,7 @@ static inline void _rxPrintf(const char *fmt, ...) {
 
 #define _evid getEvid(_ind, _ind->ix[_ind->idx])
 #define amt (isDose(_evid) ?  getDose(_ind,_ind->ixds) : NA_REAL)
+#define _rxIsObs ((double)(_evid == 0))
 #define JAC_Rprintf _rxPrintf
 #define _idx (_solveData->subjects[_cSub]).idx
 #define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) _rxPrintf
