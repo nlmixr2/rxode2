@@ -463,6 +463,8 @@ navbar:
           href: articles/rxode2-shiny.html
         - text: "Adding compiled models to a package"
           href: articles/rxode2-rxUse.html
+        - text: "The event bus (for loggers and emitters)"
+          href: articles/rxode2-event-bus.html
         - text: "--------------------------"
         - text: "Understanding Internal Code"
         - text: "Event Tables after 5.0.2: Architecture and Benchmark"
