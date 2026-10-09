@@ -42,5 +42,32 @@ rxTest({
     })
     expect_equal(rxModelVars(m)$state, c("depot", "gut2", "central", "R"))
     expect_equal(rxModelVars(m)$splitBolus, c(1L, 1L, 2L))
+
+    for (.split in c("splitInfusion", "splitInfusionBolus", "splitBolusInfusion")) {
+      .m <- rxode2(paste0(
+        "R(0) <- 0\n",
+        "d/dt(depot) <- -ka * depot\n",
+        "d/dt(gut2) <- -ka * gut2\n",
+        "d/dt(central) <- ka * depot + ka * gut2 - 0.1 * central\n",
+        "d/dt(R) <- 0\n",
+        .split, "(depot, depot, gut2)\n"
+      ))
+      expect_equal(rxModelVars(.m)[[.split]], c(1L, 1L, 2L))
+    }
+
+    mNoIni <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(gut2) <- -ka * gut2
+      d/dt(central) <- ka * depot + ka * gut2 - 0.1 * central
+      d/dt(R) <- 0
+      splitBolus(depot, depot, gut2)
+    })
+    e <- et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 6))
+    s <- rxSolve(m, e, params = c(ka = 1.2))
+    sNoIni <- rxSolve(mNoIni, e, params = c(ka = 1.2))
+    expect_equal(s$depot, sNoIni$depot)
+    expect_equal(s$gut2, sNoIni$gut2)
+    expect_equal(s$central, sNoIni$central)
+    expect_true(s$gut2[1] > 0)
   })
 })
