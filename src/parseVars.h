@@ -167,20 +167,34 @@ static inline int new_or_ith(const char *s) {
       return 0;
     }
   }
-  if (NV+1 > tb.allocS){
-    tb.allocS += MXSYM;
-    tb.lh = R_Realloc(tb.lh, tb.allocS, int);
-    tb.lho = R_Realloc(tb.lho, tb.allocS, int);
-    tb.interp = R_Realloc(tb.interp, tb.allocS, int);
-    tb.lag = R_Realloc(tb.lag, tb.allocS, int);
-    tb.alag = R_Realloc(tb.alag, tb.allocS, int);
-    tb.ini= R_Realloc(tb.ini, tb.allocS, int);
-    tb.mtime=R_Realloc(tb.mtime, tb.allocS, int);
-    tb.iniv=R_Realloc(tb.iniv, tb.allocS, double);
-    tb.ini0=R_Realloc(tb.ini0, tb.allocS, int);
-    tb.df=R_Realloc(tb.df, tb.allocS, int);
-    tb.dy=R_Realloc(tb.dy, tb.allocS, int);
-    tb.sdfdy=R_Realloc(tb.sdfdy, tb.allocS, int);
+  if (NV+1 > tb.allocNV){
+    int oldNV = tb.allocNV;
+    tb.allocNV += MXSYM;
+    tb.lh = R_Realloc(tb.lh, tb.allocNV, int);
+    tb.lho = R_Realloc(tb.lho, tb.allocNV, int);
+    tb.interp = R_Realloc(tb.interp, tb.allocNV, int);
+    tb.lag = R_Realloc(tb.lag, tb.allocNV, int);
+    tb.alag = R_Realloc(tb.alag, tb.allocNV, int);
+    tb.ini = R_Realloc(tb.ini, tb.allocNV, int);
+    tb.mtime = R_Realloc(tb.mtime, tb.allocNV, int);
+    tb.iniv = R_Realloc(tb.iniv, tb.allocNV, double);
+    tb.ini0 = R_Realloc(tb.ini0, tb.allocNV, int);
+    tb.df = R_Realloc(tb.df, tb.allocNV, int);
+    tb.dy = R_Realloc(tb.dy, tb.allocNV, int);
+    tb.sdfdy = R_Realloc(tb.sdfdy, tb.allocNV, int);
+    // R_Realloc does not zero; the first block is R_Calloc'd and read as 0
+    memset(tb.lh + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.lho + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.interp + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.lag + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.alag + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.ini + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.mtime + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.iniv + oldNV, 0, MXSYM*sizeof(double));
+    memset(tb.ini0 + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.df + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.dy + oldNV, 0, MXSYM*sizeof(int));
+    memset(tb.sdfdy + oldNV, 0, MXSYM*sizeof(int));
   }
   return 1;
 }

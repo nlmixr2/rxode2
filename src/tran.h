@@ -99,6 +99,7 @@ lhs symbols?
   int hasCentralCmt;
   int hasKa;
   int allocS;
+  int allocNV;
   int allocSV;
   int allocSC;
   int allocSCV;

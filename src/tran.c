@@ -517,7 +517,7 @@ void reset(void) {
   tb.hasDepotCmt = 0;
   tb.hasCentralCmt = 0;
   tb.hasKa      = 0;
-  tb.allocS	= MXSYM;
+  tb.allocNV	= MXSYM;
   tb.allocD	= MXDER;
   tb.allocS = MXDER;
   tb.allocSV = MXDER;

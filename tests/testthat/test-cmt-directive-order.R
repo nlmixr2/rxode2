@@ -70,4 +70,43 @@ rxTest({
     expect_equal(s$central, sNoIni$central)
     expect_true(s$gut2[1] > 0)
   })
+
+  test_that("linCmt() alag() compartment survives an x(0) statement (#1452)", {
+    m <- rxode2({
+      eff(0) <- 10
+      C2 <- linCmt(cl, v, ka)
+      d/dt(eff) <- -0.1 * eff + C2
+      alag(depot) <- 2
+    })
+    m0 <- rxode2({
+      C2 <- linCmt(cl, v, ka)
+      d/dt(eff) <- -0.1 * eff + C2
+      alag(depot) <- 2
+    })
+    expect_equal(rxModelVars(m)$state, c("eff", "depot", "central"))
+    expect_equal(rxModelVars(m)$alag, 2L)
+    e <- et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+      et(c(0, 1, 2, 3, 12))
+    p <- c(cl = 1, v = 10, ka = 1.2)
+    s <- rxSolve(m, e, p)
+    s0 <- rxSolve(m0, e, p, inits = c(eff = 10))
+    expect_equal(s$C2, s0$C2)
+    expect_equal(s$eff, s0$eff)
+    expect_true(s$C2[1] > 5)
+  })
+
+  test_that("parser tables grow past their first block", {
+    txt <- paste0(sprintf("A%d <- 1\nstr%d <- \"a\"", 1:5200, 1:5200),
+                  collapse = "\n")
+    mv <- rxModelVars(txt)
+    expect_length(mv$lhs, 5200)
+    expect_length(mv$strAssign, 5200)
+    txt <- paste0(c(sprintf("d/dt(c%d) <- -c%d", 1:5100, 1:5100),
+                    "x(0) <- 1", "d/dt(x) <- 0", "alag(c3) <- 2"),
+                  collapse = "\n")
+    mv <- rxModelVars(txt)
+    expect_length(mv$state, 5101)
+    expect_length(mv$extraState, 0)
+    expect_equal(mv$alag, 3L)
+  })
 })
