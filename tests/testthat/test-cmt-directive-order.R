@@ -84,6 +84,24 @@ rxTest({
     })
     expect_equal(sort(rxModelVars(m)$alag), c(1L, 2L))
     expect_equal(rxModelVars(m)$splitBolus, c(1L, 1L, 2L))
+
+    mNoIni <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(gut2) <- -ka * gut2
+      d/dt(central) <- ka * depot + ka * gut2 - 0.1 * central
+      d/dt(R) <- 0
+      alag(gut2) <- 1
+      alag(depot) <- 2
+      splitBolus(depot, depot, gut2)
+    })
+    e <- et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+      et(c(0, 0.5, 1, 1.5, 2, 3, 12))
+    s <- rxSolve(m, e, params = c(ka = 1.2))
+    sNoIni <- rxSolve(mNoIni, e, params = c(ka = 1.2))
+    expect_equal(s$depot, sNoIni$depot)
+    expect_equal(s$gut2, sNoIni$gut2)
+    expect_equal(s$central, sNoIni$central)
+    expect_true(s$central[1] > 0)
   })
 
   test_that("alag() follows a cmt() declared compartment order with x(0) (#1452)", {
