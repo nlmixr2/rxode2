@@ -146,31 +146,15 @@ rxFixPop <- function(ui, returnNull = FALSE) {
     .model
   })
 }
-.lineHasFixedResEnv <- new.env(parent = emptyenv())
-.lineHasFixedResEnv$err <- NULL
-#' Does this line have a fixed residual expression?
+#' Fixed residual parameters named in a line
 #'
 #' @param line parsed line to check
-#' @param errs errors to check against
-#' @return FALSE
+#' @param errs fixed residual parameter names to check against
+#' @return the subset of `errs` named in `line`
 #' @noRd
 #' @author Matthew L. Fidler
-.lineHasFixedRes <- function(line, errs) {
-  if (is.call(line)) {
-    return(any(sapply(line, .lineHasFixedRes, errs = errs)))
-  } else if (is.name(line)) {
-    .cline <- as.character(line)
-    if (.cline %in% errs) {
-      .lineHasFixedResEnv$err <- .cline
-      return(TRUE)
-    } else {
-      return(FALSE)
-    }
-  } else if (is.atomic(line)) {
-    return(FALSE)
-  } else {
-    stop("unknown expression", call. = FALSE)
-  }
+.lineFixedRes <- function(line, errs) {
+  errs[errs %in% all.names(line)]
 }
 
 #' Literally fix residual parameters
@@ -218,6 +202,18 @@ rxFixRes <- function(ui, returnNull = FALSE) {
   .model <- .copyUi(.model)
   .iniDf <- .model$iniDf
   .w <- which(!is.na(.iniDf$ntheta) & !is.na(.iniDf$err) & .iniDf$fix)
+  .lstExpr0 <- .model$lstExpr
+  .isEndpoint <- vapply(
+    .lstExpr0,
+    function(.item) {
+      is.call(.item) && identical(.item[[1]], quote(`~`))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )
+  # a literal residual value (e.g. add(0.5), c(p0=0, 1)) is already literal in
+  # the model; its auto-generated FIX row is never named there, so skip it
+  .w <- .w[.iniDf$name[.w] %in% unlist(lapply(.lstExpr0[.isEndpoint], all.names))]
   if (length(.w) == 0L) {
     if (returnNull) {
       return(NULL)
@@ -225,26 +221,17 @@ rxFixRes <- function(ui, returnNull = FALSE) {
     return(.model)
   }
   .v <- setNames(.iniDf$est[.w], .iniDf$name[.w])
-
-  .lstExpr0 <- .model$lstExpr
   .env <- new.env(parent = emptyenv())
-  .env$i <- 1
   .env$fix <- .iniDf$name[.w]
-  .lst <- lapply(seq_len(length(.lstExpr0) + length(.w)), function(i) {
-    .item <- .lstExpr0[[.env$i]]
-    if (
-      is.call(.item) &&
-        identical(.item[[1]], quote(`~`)) &&
-        .lineHasFixedRes(.item, .env$fix)
-    ) {
-      .cerr <- .lineHasFixedResEnv$err
-      .env$fix <- .env$fix[.env$fix != .cerr]
-      str2lang(paste0(.cerr, " <- ", .v[.cerr]))
-    } else {
-      .env$i <- .env$i + 1L
-      .item
-    }
-  })
+  .lst <- do.call(
+    c,
+    lapply(.lstExpr0, function(.item) {
+      # assign each value before the first line naming it
+      .cerr <- .lineFixedRes(.item, .env$fix)
+      .env$fix <- setdiff(.env$fix, .cerr)
+      c(lapply(.cerr, function(.e) str2lang(paste0(.e, " <- ", .v[.e]))), list(.item))
+    })
+  )
 
   .iniDf <- .iniDf[-.w, ]
   .iniDf$ntheta <- ifelse(is.na(.iniDf$ntheta), NA_integer_, seq_along(.iniDf$ntheta))
