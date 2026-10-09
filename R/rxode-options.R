@@ -87,6 +87,8 @@
   # snapshot the build environment BEFORE anything can leak into it (see
   # .rxWithCleanCompileEnv)
   assign("snapshot", Sys.getenv(.rxCompileEnvVars, unset = NA_character_), envir = .rxCompileEnvClean)
+  ## a worker started inside an event scope starts silent (see rxEvent.R)
+  .rxEventInitDepth()
   .ver <- .rxVersion
   .ver["version"] <- as.character(utils::packageVersion("rxode2"))
   assignInMyNamespace(".rxVersion", .ver)

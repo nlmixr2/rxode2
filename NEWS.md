@@ -2,6 +2,14 @@
 
 ## New features
 
+- New event bus (`rxEventListen()`, `rxEventEmit()`, `rxEventScope()` and
+  friends) so packages such as nlmixr2log can be told when a top-level
+  simulation, fit or result is finished.  Only the outermost operation
+  emits: work inside `rxEventScope()` is silent, and the scope depth is
+  inherited by worker processes started inside it.  `rxSolve()` now emits
+  `solveComplete` (never for `rxControl()`, nested solves or errors).  With
+  no listener registered, emitting costs a single length check.
+
 - New `linCmtMicro()` returns the micro-constant parameterization
   (`k`, `k12`, `k21`, `k13`, `k31`, `v` and `ka`) of each `linCmt()`
   call in a model, as R expressions of the model variables.  It lets

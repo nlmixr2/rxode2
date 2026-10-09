@@ -2375,6 +2375,11 @@ rxSolve <- function(
     class(.ret) <- "rxControl"
     return(.ret)
   }
+  ## event bus (see rxEvent.R): placed right before dispatch so the
+  ## rxControl() early return above never emits; nested solves are silent
+  .rxEventEnter()
+  .rxEventCallSave <- sys.call()
+  on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
   UseMethod("rxSolve")
 }
 
