@@ -398,14 +398,28 @@ static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
   if (i < _ind->delayIniN) return _ind->delayIni[i];
   return _solveData->op->inits[i];
 }
+// Lagged time t - T on the delay history's clock; also learns the smallest and
+// largest delays.  While handleSS() iterates (rxode2#1447) the clock is virtual
+// (delayTOff) and a delay longer than the dosing interval reads the previous
+// interval (the periodic orbit) rather than the start-up transient; for a
+// constant steady state (ii = 0) any recent interval (half the smallest delay).
+static inline double _rxDelayTd(rx_solving_options_ind *_ind, double t, double T) {
+  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  if (T > _ind->delayMaxT) _ind->delayMaxT = T;
+  double td = t + _ind->delayTOff - T;
+  if (_ind->delaySS) {
+    double ii = _ind->delaySSii > 0.0 ? _ind->delaySSii : 0.5 * _ind->delayMinT;
+    if (ii > 0.0 && isfinite(ii) && T > ii) td += ii * (floor(T / ii) - 1.0);
+  }
+  return td;
+}
 // forward declaration of the model's non-constant pre-history (past()); the
 // default (no past()) returns the constant initial condition.
 double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  // Learn the smallest delay so the solver can cap its step size and never
-  // step over the delay (keeping the lagged time inside recorded history).
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  // also learns the smallest delay so the solver can cap its step size and
+  // never step over the delay (keeping the lagged time inside recorded history)
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return _rxPast(_ind->id, i, td, (double*)0);   // pre-history: user past() or constant IC
   }
@@ -459,8 +473,7 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
 // estimated parameter).  Before the start of integration the history is the
 // constant initial condition, so the derivative is 0.
 double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;   // constant initial history -> zero time-derivative
   }
@@ -511,8 +524,7 @@ double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
 // second-order forward sensitivities of parameter-dependent delays.  Constant
 // initial history -> 0.
 double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
   }
@@ -562,8 +574,7 @@ double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
 // Used by the third-order forward sensitivities of parameter-dependent delays
 // (breaking-point jump terms).  Constant initial history -> 0.
 double _rxDelayD3(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
   }

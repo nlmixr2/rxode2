@@ -37,6 +37,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->delayHistN  = 0;
   ind->delayT0     = xp;
   ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
   double _ros4MaxDt = 0.0; // 0 = no cap (default rosenbrock4_controller behavior)
   if (ind->delayHistOn && neqOde > 0) {
@@ -254,8 +255,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         stepper_initialized = false;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
@@ -395,7 +396,7 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   int neqOde = eff - op->numLin - op->numLinSens;
   if (neqOde <= 0) { return 1; }
   double maxdt = 0.0;
-  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = ind->delayMinT;
+  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = rxDelayStepCap(ind);
 
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;
