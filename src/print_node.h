@@ -116,6 +116,16 @@ static inline int nodePtr(char *value) {
   return 0;
 }
 
+// rx__isObs__: 1 on an observation record (internal evid 0), else 0
+static inline int nodeIsObs(char *value) {
+  if (!strcmp("rx__isObs__",value)){
+    aAppendN("_rxIsObs", 8);
+    sAppendN(&sbt, "rx__isObs__", 11);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeNaN(char *value){
   if (!strcmp("NaN",value)){
     aAppendN("NAN", 3);

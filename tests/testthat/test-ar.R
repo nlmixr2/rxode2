@@ -317,3 +317,107 @@ rxTest({
     expect_true(grepl("ar2.cor", .all, fixed = TRUE))
   })
 })
+
+rxTest({
+  test_that("ar() estimation lines key the previous residual on observation records (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; ar1.cor <- 0.7})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        cp ~ add(add.sd) + ar(ar1.cor)
+      })
+    }
+    .ui <- rxode2(.f)
+    .toModel <- function(lines) {
+      .txt <- vapply(
+        lines,
+        function(l) {
+          if (identical(l[[1]], quote(`~`))) {
+            l[[1]] <- quote(`=`)
+          }
+          deparse1(l)
+        },
+        character(1)
+      )
+      rxode2(paste(c("cl <- exp(tcl); v <- exp(tv)",
+                     "d/dt(central) <- -cl / v * central",
+                     "cp <- central / v", .txt), collapse = "\n"))
+    }
+    .p <- c(tcl = log(1), tv = log(10), add.sd = 0.5, ar1.cor = 0.7)
+    # dose at 0 (before any observation) and a dose between observations
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 1.5, 2, 2.5, 3, 4),
+      amt = c(100, NA, NA, 100, NA, NA, NA),
+      evid = c(1, 0, 0, 1, 0, 2, 0),
+      DV = c(NA, 9, 8, NA, 15, NA, 12)
+    )
+    .obs <- which(.d$evid == 0)
+    for (.arNorm in c(TRUE, FALSE)) {
+      .m <- .toModel(.handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[1, ], 1L, arNorm = .arNorm))
+      .s <- rxSolve(.m, .d, .p, addDosing = TRUE, returnType = "data.frame")
+      .d2 <- .d
+      .d2$DV[.d2$evid != 0] <- 1e6 # whatever a non-observation carries must not matter
+      .s2 <- rxSolve(.m, .d2, .p, addDosing = TRUE, returnType = "data.frame")
+      expect_equal(.s$rx_pred_[.obs], .s2$rx_pred_[.obs])
+      .so <- .s[.s$evid == 0, ]
+      .res <- .d$DV[.obs] - .so$rx_pred_f_
+      # first observation: marginal likelihood
+      expect_equal(.so$rx_arPhi_cp[1], 0)
+      expect_equal(.so$rx_arEp_cp[1], 0)
+      # later observations: previous OBSERVATION's residual and time gap,
+      # skipping the dose at t=2 and the evid=2 record at t=3
+      expect_equal(.so$rx_arEp_cp[-1], head(.res, -1))
+      expect_equal(.so$rx_arDt_cp[-1], diff(.d$time[.obs]))
+      expect_equal(.so$rx_arPhi_cp[-1], 0.7^diff(.d$time[.obs]))
+      if (.arNorm) {
+        expect_equal(.so$rx_r_, 0.25 * (1 - .so$rx_arPhi_cp^2))
+      }
+    }
+  })
+})
+
+rxTest({
+  test_that("ar() estimation chains stay per endpoint when the CMT branches are flattened (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); a1 <- 0.5; a2 <- 2; c1 <- 0.7; c2 <- 0.3})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        ef <- 100 - central / v
+        cp ~ add(a1) + ar(c1)
+        ef ~ add(a2) + ar(c2)
+      })
+    }
+    .ui <- rxode2(.f)
+    .l <- lapply(1:2, function(i) .handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[i, ], i, arNorm = TRUE))
+    # useIf = FALSE: every endpoint's lines run on every record, like the pruned model
+    .m <- eval(rxCombineErrorLines(.ui, errLines = .l, useIf = FALSE))
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 1, 2, 3, 3),
+      amt = c(100, NA, NA, NA, NA, NA),
+      evid = c(1, 0, 0, 0, 0, 0),
+      cmt = c("central", "cp", "ef", "cp", "ef", "cp"),
+      DV = c(NA, 9, 91, 8, 93, 7)
+    )
+    .s <- rxSolve(
+      .m,
+      .d,
+      c(tcl = 0, tv = log(10), a1 = 0.5, a2 = 2, c1 = 0.7, c2 = 0.3),
+      addDosing = TRUE,
+      returnType = "data.frame"
+    )
+    .cp <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[1], ]
+    .ef <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[2], ]
+    .resCp <- c(9, 8, 7) - .cp$cp
+    .resEf <- c(91, 93) - .ef$ef
+    expect_equal(.cp$rx_arPhi_cp, c(0, 0.7, 0.7))
+    expect_equal(.cp$rx_arEp_cp[-1], head(.resCp, -1))
+    expect_equal(.ef$rx_arPhi_ef, c(0, 0.3^2))
+    expect_equal(.ef$rx_arEp_ef[-1], head(.resEf, -1))
+  })
+})

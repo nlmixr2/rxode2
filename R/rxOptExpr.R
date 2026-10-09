@@ -1066,6 +1066,12 @@
   .Call(`_rxode2_rxCse`, .l)
 }
 
+# History calls (lag()/lead()/diff()/first()/last() and their 0 variants) are
+# never hoisted: hoisting one could move a self-recursive `x = f(lag(x, 1))`
+# reference above the assignment of x, which the parser rejects.  Mirrored by
+# csHasHistCall() in src/rxCseSel.h.
+.rxOptHistRe <- "(^|[^A-Za-z0-9_.])(lag|lead|diff)0?\\(|(^|[^A-Za-z0-9_.])(first|last)\\("
+
 #' Optimize rxode2 for computer evaluation
 #'
 #' This optimizes rxode2 code for computer evaluation by only
@@ -1140,6 +1146,7 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .exprs <- .exprs[regexpr(rex::rex(start, regNum, end), .exprs, perl = TRUE) == -1]
   .thetaEtaR <- rex::rex(start, or("THETA[", "ETA["), any_numbers, "]", end)
   .exprs <- .exprs[regexpr(.thetaEtaR, .exprs, perl = TRUE) == -1]
+  .exprs <- .exprs[!grepl(.rxOptHistRe, .exprs, perl = TRUE)]
   if (length(.exprs) > 0) {
     ## Take out unary [-] that way
     ## expr1=-ka       #nolint

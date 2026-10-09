@@ -12,6 +12,7 @@ static inline int wprintSpecialValue(char *value) {
     nodeAmt(value) ||
     nodeTlast(value) ||
     nodePtr(value) ||
+    nodeIsObs(value) ||
     nodeNaN(value) ||
     nodeNA(value) ||
     nodeInf(value) ||
