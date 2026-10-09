@@ -121,6 +121,8 @@
   `splitBolus()`-family directives onto the wrong compartment.  A
   steady-state dose with `alag()` then gave 0 before the lag time instead of
   the steady state (#1452).
+- The parser now zeroes its compartment tables when a model grows past 5000
+  compartments, instead of reading uninitialized memory.
 - `rxFixRes()` no longer fails with `subscript out of bounds` on a model with
   a literal residual value, like a named ordinal `Y ~ c(p0 = 0, 1)` or
   `cp ~ add(0.5)`; the literal is already in the model, so its generated
