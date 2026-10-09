@@ -71,8 +71,10 @@ listener runs are dropped.
 A \code{call} payload field is passed through \code{.rxEventCall()}: its head
 becomes \code{fun} (when given; otherwise a function object in the head becomes
 \code{`<fun>`}) and every argument that is not language (a value inlined by
-\code{do.call()}) becomes \code{`<value>`}, so a recorded call never embeds a
-large object.
+\code{do.call()}) become \code{`<value>`}, except single constants; when there
+are more than five such values they are all dropped and replaced by one
+\code{`<...>`} marker.  A recorded call therefore never embeds a large
+object.
 }
 \examples{
 got <- NULL

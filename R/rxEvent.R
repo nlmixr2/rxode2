@@ -59,9 +59,11 @@
 #'
 #' @details A `call` payload field is passed through `.rxEventCall()`: its head
 #'   becomes `fun` (when given; otherwise a function object in the head becomes
-#'   `` `<fun>` ``) and every argument that is not language (a value inlined by
-#'   `do.call()`) becomes `` `<value>` ``, so a recorded call never embeds a
-#'   large object.
+#'   `` `<fun>` ``).  Arguments that are not language (values inlined by
+#'   `do.call()`) become `` `<value>` ``, except single constants; when there
+#'   are more than five such values they are all dropped and replaced by one
+#'   `` `<...>` `` marker.  A recorded call therefore never embeds a large
+#'   object.
 #'
 #' @return `rxEventListen()`, `rxEventUnlisten()` and `rxEventEmit()` return
 #'   `NULL` invisibly; `rxEventListeners()` returns the listener ids;
@@ -149,10 +151,21 @@ rxEventScope <- function(expr) {
     call[[1]] <- as.name("<fun>")
   }
   if (length(call) > 1L) {
-    for (.i in seq.int(2L, length(call))) {
-      .a <- call[[.i]]
-      if (!is.null(.a) && !is.language(.a) && !(is.atomic(.a) && length(.a) <= 1L)) {
-        call[[.i]] <- as.name("<value>")
+    .idx <- seq.int(2L, length(call))
+    .isVal <- vapply(.idx, function(i) !is.language(call[[i]]), logical(1))
+    if (sum(.isVal) > 5L) {
+      ## many values mean the call was built by do.call() (e.g. a spread
+      ## control list): drop them all, leaving one marker
+      .keep <- c(1L, .idx[!.isVal])
+      call <- as.call(c(as.list(call)[.keep], list(as.name("<...>"))))
+    } else {
+      ## a few typed constants (nSub = 10) are kept; larger values are not
+      for (.j in which(.isVal)) {
+        .i <- .idx[.j]
+        .a <- call[[.i]]
+        if (!is.null(.a) && !(is.atomic(.a) && length(.a) <= 1L)) {
+          call[[.i]] <- as.name("<value>")
+        }
       }
     }
   }

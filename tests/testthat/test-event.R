@@ -78,6 +78,9 @@ rxTest({
     .c2 <- .rxEventCall(as.call(list(function(x) x, 1)))
     expect_identical(.c2[[1]], as.name("<fun>"))
     expect_identical(.rxEventCall(quote(rxode2::rxSolve(a))), quote(rxode2::rxSolve(a)))
+    ## many inlined scalars (a spread control list) are all replaced
+    .many <- as.call(c(list(as.name("rxSolve"), quote(fit)), as.list(setNames(1:8, letters[1:8]))))
+    expect_identical(.rxEventCall(.many), quote(rxSolve(fit, `<...>`)))
   })
 
   test_that("rxSolve emits exactly once; rxControl and wrapped solves emit nothing", {
