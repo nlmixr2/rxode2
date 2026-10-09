@@ -183,7 +183,12 @@ SEXP generateModelVars(void) {
   int *splitInfusion = INTEGER(splitInfusionSexp);
   int *splitInfusionBolus = INTEGER(splitInfusionBolusSexp);
   int *splitBolusInfusion = INTEGER(splitBolusInfusionSexp);
-  int *ordFI = INTEGER(ordF);
+  // ordF maps compartment -> parse index; directives store the parse index
+  // (tb.id + 1), so they need the inverse map (rxode2#1452).
+  int *ordFP = INTEGER(ordF);
+  SEXP ordFInv = rxP(Rf_allocVector(INTSXP, tb.de.n));
+  int *ordFI = INTEGER(ordFInv);
+  for (int i = 0; i < tb.de.n; ++i) ordFI[ordFP[i]-1] = i + 1;
   SET_STRING_ELT(factorCls, 0, Rf_mkChar("factor"));
 
   for (int i = 0; i < tb.splitBolusN; ++i) {
