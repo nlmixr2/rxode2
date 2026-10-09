@@ -117,6 +117,14 @@
 
 ## Bug fixes
 
+- An `x(0)` statement in a model no longer moves `alag()` and the
+  `splitBolus()`-family directives onto the wrong compartment.  A
+  steady-state dose with `alag()` then gave 0 before the lag time instead of
+  the steady state (#1452).
+- The parser now zeroes its tables when a model grows past their first
+  block, and tracks the variable and string-variable table sizes separately;
+  a model with more than 5000 compartments or string variables could read
+  uninitialized memory or write past the end of a table.
 - Comparing a string variable assigned in the model (like
   `tRACE <- "A"`) with a literal (`tRACE == "B"`) now uses the numbering
   of the variable's assigned strings.  Before, the literals were numbered

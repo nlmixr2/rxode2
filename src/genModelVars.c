@@ -183,7 +183,18 @@ SEXP generateModelVars(void) {
   int *splitInfusion = INTEGER(splitInfusionSexp);
   int *splitInfusionBolus = INTEGER(splitInfusionBolusSexp);
   int *splitBolusInfusion = INTEGER(splitBolusInfusionSexp);
-  int *ordFI = INTEGER(ordF);
+  // Directives store the parse index (tb.id + 1); map it to the compartment
+  // number, states then extra states as populateStateVectors() numbers them
+  // (rxode2#1452).
+  int *ordFP = INTEGER(ordF);
+  SEXP ordFInv = rxP(Rf_allocVector(INTSXP, tb.de.n));
+  int *ordFI = INTEGER(ordFInv);
+  int nCmtI = 0;
+  for (int pass = 1; pass >= 0; --pass) {
+    for (int i = 0; i < tb.de.n; ++i) {
+      if ((tb.idu[ordFP[i]-1] == 1) == pass) ordFI[ordFP[i]-1] = ++nCmtI;
+    }
+  }
   SET_STRING_ELT(factorCls, 0, Rf_mkChar("factor"));
 
   for (int i = 0; i < tb.splitBolusN; ++i) {

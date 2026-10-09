@@ -41,6 +41,14 @@ static inline int new_de(const char *s, int fromWhere) {
     tb.idi=R_Realloc(tb.idi, tb.allocD, int);
     tb.idu=R_Realloc(tb.idu, tb.allocD, int);
     tb.dvid=R_Realloc(tb.dvid, tb.allocD, int);
+    // R_Realloc does not zero; the first block is R_Calloc'd and read as 0
+    int oldD = tb.allocD - MXDER;
+    memset(tb.di + oldD, 0, MXDER*sizeof(int));
+    memset(tb.didx + oldD, 0, MXDER*sizeof(int));
+    memset(tb.dprop + oldD, 0, MXDER*sizeof(int));
+    memset(tb.idi + oldD, 0, MXDER*sizeof(int));
+    memset(tb.idu + oldD, 0, MXDER*sizeof(int));
+    memset(tb.dvid + oldD, 0, MXDER*sizeof(int));
   }
   return 1;
 }
