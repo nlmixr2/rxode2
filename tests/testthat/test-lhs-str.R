@@ -437,9 +437,11 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
       isA <- (tRACE == "A")
     })
     expect_equal(rxModelVars(m2)$strAssign, list(tRACE = c("B", "A")))
-    s <- as.data.frame(rxSolve(m2, data.frame(id = 1:2, time = 1, RACE = 1:2)))
-    expect_equal(as.character(s$tRACE), c("A", "B"))
-    expect_equal(s$isA, c(1, 0))
+    # at time 2 the comparison sees the previous record's value
+    s <- as.data.frame(rxSolve(m2, data.frame(id = rep(1:2, each = 2), time = rep(1:2, 2), RACE = rep(1:2, each = 2))))
+    expect_equal(as.character(s$tRACE), c("A", "A", "B", "B"))
+    expect_equal(s$isA, c(1, 1, 0, 0))
+    expect_equal(s$isB, c(0, 0, 0, 1))
 
     # several literals compared before the first assignment keep their order
     m4 <- rxode2({
@@ -454,23 +456,31 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
       isC2 <- (tRACE == "C")
     })
     expect_equal(rxModelVars(m4)$strAssign, list(tRACE = c("B", "C", "A")))
-    s <- as.data.frame(rxSolve(m4, data.frame(id = 1:2, time = 1, RACE = 1:2)))
-    expect_equal(as.character(s$tRACE), c("A", "C"))
-    expect_equal(s$isC2, c(0, 1))
+    s <- as.data.frame(rxSolve(m4, data.frame(id = rep(1:2, each = 2), time = rep(1:2, 2), RACE = rep(1:2, each = 2))))
+    expect_equal(as.character(s$tRACE), c("A", "A", "C", "C"))
+    expect_equal(s$isB, c(0, 0, 0, 0))
+    expect_equal(s$isC, c(0, 0, 0, 1))
+    expect_equal(s$isC2, c(0, 0, 1, 1))
 
     # levels() declared after a comparison
     m5 <- rxode2({
       isC <- 0
-      if (time > 1) isC <- (tRACE == "C")
+      isA <- 0
+      if (time > 1) {
+        isC <- (tRACE == "C")
+        isA <- (tRACE == "A")
+      }
       levels(tRACE) <- c("A", "B")
       tRACE <- "A"
       if (RACE == 2) tRACE <- "B"
       isB <- (tRACE == "B")
     })
     expect_equal(rxModelVars(m5)$strAssign, list(tRACE = c("C", "A", "B")))
-    s <- as.data.frame(rxSolve(m5, data.frame(id = 1:2, time = 1, RACE = 1:2)))
-    expect_equal(as.character(s$tRACE), c("A", "B"))
-    expect_equal(s$isB, c(0, 1))
+    s <- as.data.frame(rxSolve(m5, data.frame(id = rep(1:2, each = 2), time = rep(1:2, 2), RACE = rep(1:2, each = 2))))
+    expect_equal(as.character(s$tRACE), c("A", "A", "B", "B"))
+    expect_equal(s$isB, c(0, 0, 1, 1))
+    expect_equal(s$isA, c(0, 1, 0, 0))
+    expect_equal(s$isC, c(0, 0, 0, 0))
 
     # levels() declared first
     m3 <- rxode2({
