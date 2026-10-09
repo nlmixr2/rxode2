@@ -410,4 +410,45 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
       expect_true(any(!is.na(df[[col]])), label = paste0(col, " must not be all NA"))
     }
   })
+
+  test_that("string comparisons use the string assignment numbering (#1456)", {
+    m <- rxode2({
+      tRACE <- "A"
+      if (RACE == 2) tRACE <- "B"
+      isB <- (tRACE == "B")
+      isB2 <- ("B" == tRACE)
+      notB <- (tRACE != "B")
+      isC <- (tRACE == "C")
+    })
+    expect_equal(rxModelVars(m)$strAssign, list(tRACE = c("A", "B", "C")))
+    s <- as.data.frame(rxSolve(m, data.frame(id = 1:2, time = 1, RACE = 1:2)))
+    expect_equal(as.character(s$tRACE), c("A", "B"))
+    expect_equal(s$isB, c(0, 1))
+    expect_equal(s$isB2, c(0, 1))
+    expect_equal(s$notB, c(1, 0))
+    expect_equal(s$isC, c(0, 0))
+
+    # comparison parsed before the first assignment
+    m2 <- rxode2({
+      isB <- 0
+      if (time > 1) isB <- (tRACE == "B")
+      tRACE <- "A"
+      if (RACE == 2) tRACE <- "B"
+      isA <- (tRACE == "A")
+    })
+    expect_equal(rxModelVars(m2)$strAssign, list(tRACE = c("B", "A")))
+    s <- as.data.frame(rxSolve(m2, data.frame(id = 1:2, time = 1, RACE = 1:2)))
+    expect_equal(as.character(s$tRACE), c("A", "B"))
+    expect_equal(s$isA, c(1, 0))
+
+    # levels() declared first
+    m3 <- rxode2({
+      levels(tRACE) <- c("A", "B")
+      tRACE <- "A"
+      if (RACE == 2) tRACE <- "B"
+      isB <- (tRACE == "B")
+    })
+    s <- as.data.frame(rxSolve(m3, data.frame(id = 1:2, time = 1, RACE = 1:2)))
+    expect_equal(s$isB, c(0, 1))
+  })
 })

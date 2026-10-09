@@ -117,6 +117,11 @@
 
 ## Bug fixes
 
+- Comparing a string variable assigned in the model (like
+  `tRACE <- "A"`) with a literal (`tRACE == "B"`) now uses the numbering
+  of the variable's assigned strings.  Before, the literals were numbered
+  separately, so the comparison could give the wrong answer unless both
+  appeared in the same order (#1456).
 - Steady-state dosing in a model using `delay()` now brings the
   delay()-driven states to steady state; the steady-state iterations record
   the delay history and the converged dosing interval becomes the history
