@@ -117,6 +117,12 @@
 
 ## Bug fixes
 
+- `rxFixRes()` no longer fails with `subscript out of bounds` on a model with
+  a literal residual value, like a named ordinal `Y ~ c(p0 = 0, 1)` or
+  `cp ~ add(0.5)`; the literal is already in the model, so its generated
+  fixed parameter is left alone.  This crashed nlmixr2 fits of these models
+  (#1450).  A fixed residual parameter is now assigned before the first
+  model line that uses it, not just before its endpoint.
 - rxode2 now requires dparser (>= 1.3.1-14).  Earlier dparser versions
   shared a first reduction path in `reduce_one()` across threads, which
   could segfault rxode2's parallel expression optimization
